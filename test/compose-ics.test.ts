@@ -4,7 +4,7 @@
 
 import { describe, expect, it } from "vitest";
 import { unscheduledIcsFields } from "../src/routes/comms";
-import { chunkIds } from "../src/server/repo/comms";
+import { chunkIds } from "../src/lib/chunk";
 import type { IcsScheduleRow } from "../src/server/repo/comms";
 import { buildIcsEvent } from "../src/mail/ics";
 
@@ -135,7 +135,7 @@ describe("chunkIds (D1 bound-parameter batching for compose data loading)", () =
   it("splits into batches small enough to leave headroom for an extra bound condition (e.g. eventId)", () => {
     const ids = Array.from({ length: 101 }, (_, i) => `id-${i}`);
     const batches = chunkIds(ids);
-    expect(batches.every((b) => b.length <= 90)).toBe(true);
+    expect(batches.every((b: string[]) => b.length <= 90)).toBe(true);
     expect(batches.flat()).toEqual(ids);
   });
 });

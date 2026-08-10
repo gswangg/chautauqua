@@ -10,6 +10,7 @@ import { and, asc, eq, inArray } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { formatRef } from "../../domain/ids";
+import { chunkIds } from "../../lib/chunk";
 
 // ---------------------------------------------------------------------------
 // Shared visibility gate
@@ -108,31 +109,31 @@ export interface PublicSession {
 
 /** Distinct, visibility-gated, optionally track-filtered submission ids for
  * an event, ordered by title — the stable pagination order for the sessions
- * list. Track filtering mirrors the two-step inArray pattern used by the
- * admin submissions list (server/repo/submissions.ts): resolve matching
- * submission ids from submission_track first, then narrow. */
+ * list. Track filtering (DEC-080) is a single innerJoin on submission_track
+ * with eq(trackId) in the main query — one bound param, no id list at all. */
 async function getVisibleSubmissionIdsOrdered(
   db: Db,
   eventId: string,
   trackId: string | null,
 ): Promise<Array<{ id: string; title: string }>> {
-  const conditions = [eq(schema.submission.eventId, eventId), visibleSubmissionConditions()];
+  const baseConditions = [eq(schema.submission.eventId, eventId), visibleSubmissionConditions()];
 
   if (trackId) {
-    const trackRows = await db
-      .select({ submissionId: schema.submissionTrack.submissionId })
-      .from(schema.submissionTrack)
-      .where(eq(schema.submissionTrack.trackId, trackId));
-    const ids = trackRows.map((r) => r.submissionId);
-    if (ids.length === 0) return [];
-    conditions.push(inArray(schema.submission.id, ids));
+    const rows = await db
+      .selectDistinct({ id: schema.submission.id, title: schema.submission.title })
+      .from(schema.submission)
+      .innerJoin(schema.participant, eq(schema.participant.submissionId, schema.submission.id))
+      .innerJoin(schema.submissionTrack, eq(schema.submissionTrack.submissionId, schema.submission.id))
+      .where(and(...baseConditions, eq(schema.submissionTrack.trackId, trackId)))
+      .orderBy(asc(schema.submission.title));
+    return rows;
   }
 
   const rows = await db
     .selectDistinct({ id: schema.submission.id, title: schema.submission.title })
     .from(schema.submission)
     .innerJoin(schema.participant, eq(schema.participant.submissionId, schema.submission.id))
-    .where(and(...conditions))
+    .where(and(...baseConditions))
     .orderBy(asc(schema.submission.title));
   return rows;
 }
@@ -146,29 +147,48 @@ async function hydrateSessions(
 ): Promise<PublicSession[]> {
   if (ids.length === 0) return [];
 
-  const subRows = await db
-    .select({
-      id: schema.submission.id,
-      seq: schema.submission.seq,
-      title: schema.submission.title,
-      description: schema.submission.description,
-      icsSequence: schema.submission.icsSequence,
-    })
-    .from(schema.submission)
-    .where(inArray(schema.submission.id, ids));
+  const subRows: {
+    id: string;
+    seq: number;
+    title: string;
+    description: string | null;
+    icsSequence: number;
+  }[] = [];
+  for (const batch of chunkIds(ids)) {
+    const batchRows = await db
+      .select({
+        id: schema.submission.id,
+        seq: schema.submission.seq,
+        title: schema.submission.title,
+        description: schema.submission.description,
+        icsSequence: schema.submission.icsSequence,
+      })
+      .from(schema.submission)
+      .where(inArray(schema.submission.id, batch));
+    subRows.push(...batchRows);
+  }
   const subById = new Map(subRows.map((r) => [r.id, r]));
 
-  const trackRows = await db
-    .select({
-      submissionId: schema.submissionTrack.submissionId,
-      id: schema.track.id,
-      name: schema.track.name,
-      color: schema.track.color,
-    })
-    .from(schema.submissionTrack)
-    .innerJoin(schema.track, eq(schema.submissionTrack.trackId, schema.track.id))
-    .where(inArray(schema.submissionTrack.submissionId, ids))
-    .orderBy(asc(schema.track.position));
+  const trackRows: {
+    submissionId: string;
+    id: string;
+    name: string;
+    color: string | null;
+  }[] = [];
+  for (const batch of chunkIds(ids)) {
+    const batchRows = await db
+      .select({
+        submissionId: schema.submissionTrack.submissionId,
+        id: schema.track.id,
+        name: schema.track.name,
+        color: schema.track.color,
+      })
+      .from(schema.submissionTrack)
+      .innerJoin(schema.track, eq(schema.submissionTrack.trackId, schema.track.id))
+      .where(inArray(schema.submissionTrack.submissionId, batch))
+      .orderBy(asc(schema.track.position));
+    trackRows.push(...batchRows);
+  }
   const tracksBySubmission = new Map<string, PublicTrack[]>();
   for (const t of trackRows) {
     const list = tracksBySubmission.get(t.submissionId) ?? [];
@@ -176,22 +196,36 @@ async function hydrateSessions(
     tracksBySubmission.set(t.submissionId, list);
   }
 
-  const speakerRows = await db
-    .select({
-      submissionId: schema.participant.submissionId,
-      order: schema.participant.order,
-      contactId: schema.contact.id,
-      firstName: schema.contact.firstName,
-      lastName: schema.contact.lastName,
-      title: schema.contact.title,
-      company: schema.contact.company,
-      headshotUrl: schema.contact.headshotUrl,
-      bio: schema.contact.bio,
-    })
-    .from(schema.participant)
-    .innerJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
-    .where(and(inArray(schema.participant.submissionId, ids), eq(schema.participant.visible, true)))
-    .orderBy(asc(schema.participant.order));
+  const speakerRows: {
+    submissionId: string;
+    order: number;
+    contactId: string;
+    firstName: string;
+    lastName: string;
+    title: string | null;
+    company: string | null;
+    headshotUrl: string | null;
+    bio: string | null;
+  }[] = [];
+  for (const batch of chunkIds(ids)) {
+    const batchRows = await db
+      .select({
+        submissionId: schema.participant.submissionId,
+        order: schema.participant.order,
+        contactId: schema.contact.id,
+        firstName: schema.contact.firstName,
+        lastName: schema.contact.lastName,
+        title: schema.contact.title,
+        company: schema.contact.company,
+        headshotUrl: schema.contact.headshotUrl,
+        bio: schema.contact.bio,
+      })
+      .from(schema.participant)
+      .innerJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
+      .where(and(inArray(schema.participant.submissionId, batch), eq(schema.participant.visible, true)))
+      .orderBy(asc(schema.participant.order));
+    speakerRows.push(...batchRows);
+  }
   const speakersBySubmission = new Map<string, PublicSpeaker[]>();
   for (const s of speakerRows) {
     const list = speakersBySubmission.get(s.submissionId) ?? [];
@@ -248,13 +282,21 @@ export async function getPublicSessionsByIds(
   ids: string[],
 ): Promise<PublicSession[]> {
   if (ids.length === 0) return [];
-  const visibleRows = await db
-    .selectDistinct({ id: schema.submission.id })
-    .from(schema.submission)
-    .innerJoin(schema.participant, eq(schema.participant.submissionId, schema.submission.id))
-    .where(
-      and(eq(schema.submission.eventId, event.id), inArray(schema.submission.id, ids), visibleSubmissionConditions()),
-    );
+  const visibleRows: { id: string }[] = [];
+  for (const batch of chunkIds(ids)) {
+    const batchRows = await db
+      .selectDistinct({ id: schema.submission.id })
+      .from(schema.submission)
+      .innerJoin(schema.participant, eq(schema.participant.submissionId, schema.submission.id))
+      .where(
+        and(
+          eq(schema.submission.eventId, event.id),
+          inArray(schema.submission.id, batch),
+          visibleSubmissionConditions(),
+        ),
+      );
+    visibleRows.push(...batchRows);
+  }
   const visibleIds = new Set(visibleRows.map((r) => r.id));
   const orderedVisible = ids.filter((id) => visibleIds.has(id));
   return hydrateSessions(db, orderedVisible, event.recordPrefix);
@@ -351,6 +393,8 @@ export async function getPublicAgenda(db: Db, event: PublicEvent): Promise<Publi
 
   if (rows.length === 0) return [];
 
+  // roomIds is bounded by the event's physical room count (~15) — a
+  // DEC-078 bounded-list exemption, so this inArray stays unchunked.
   const roomIds = [...new Set(rows.map((r) => r.roomId).filter((id): id is string => id !== null))];
   const roomRows =
     roomIds.length === 0
