@@ -57,6 +57,14 @@ vi.mock("../src/server/repo/review", async () => {
     listEvaluationsForPlan: vi.fn(async () => []),
     getEvaluation: vi.fn(async () => null),
     upsertEvaluation: vi.fn(async (_db: unknown, input: unknown) => input),
+    listReviewerRowsForPlan: vi.fn(async (_db: unknown, planId: string) =>
+      planId === planRecord.id ? [{ id: "pr-1", planId: planRecord.id, userId: "rev-1", trackId: null, submissionId: null }] : [],
+    ),
+    getUsersByIds: vi.fn(async () => [{ userId: "rev-1", email: "rev1@org.test" }]),
+    getReviewerRowById: vi.fn(async (_db: unknown, reviewerId: string) =>
+      reviewerId === "pr-1" ? { id: "pr-1", planId: planRecord.id, userId: "rev-1", trackId: null, submissionId: null } : null,
+    ),
+    removeReviewerById: vi.fn(async () => {}),
   };
 });
 
@@ -148,5 +156,48 @@ describe("DEC-039: reviewer-surface plan access is org-scoped", () => {
     const body = (await res.json()) as { items: Array<{ id: string }> };
     expect(body.items).toHaveLength(1);
     expect(body.items[0]?.id).toBe(planRecord.id);
+  });
+});
+
+describe("DEC-043/044: reviewer-row management (GET list + DELETE by row id)", () => {
+  it("GET /api/v1/plans/:id/reviewers 404s for an organizer of another org", async () => {
+    const app = await buildApp({ userId: "u1", role: "organizer", orgId: ORG_B });
+    const res = await app.request(`/api/v1/plans/${planRecord.id}/reviewers`);
+    expect(res.status).toBe(404);
+  });
+
+  it("GET /api/v1/plans/:id/reviewers lists reviewer rows joined to email for the owning org", async () => {
+    const app = await buildApp({ userId: "u1", role: "organizer", orgId: ORG_A });
+    const res = await app.request(`/api/v1/plans/${planRecord.id}/reviewers`);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { items: Array<{ id: string; userId: string; email: string }> };
+    expect(body.items).toEqual([{ id: "pr-1", userId: "rev-1", email: "rev1@org.test", trackId: null, submissionId: null }]);
+  });
+
+  it("DELETE /api/v1/plans/:id/reviewers/:reviewerId 404s for an organizer of another org", async () => {
+    const app = await buildApp({ userId: "u1", role: "organizer", orgId: ORG_B });
+    const res = await app.request(`/api/v1/plans/${planRecord.id}/reviewers/pr-1`, {
+      method: "DELETE",
+      headers: { "x-chq-csrf": "1" },
+    });
+    expect(res.status).toBe(404);
+  });
+
+  it("DELETE /api/v1/plans/:id/reviewers/:reviewerId 404s when the row belongs to a different plan", async () => {
+    const app = await buildApp({ userId: "u1", role: "organizer", orgId: ORG_A });
+    const res = await app.request(`/api/v1/plans/${planRecord.id}/reviewers/not-a-row`, {
+      method: "DELETE",
+      headers: { "x-chq-csrf": "1" },
+    });
+    expect(res.status).toBe(404);
+  });
+
+  it("DELETE /api/v1/plans/:id/reviewers/:reviewerId removes the row for the owning org", async () => {
+    const app = await buildApp({ userId: "u1", role: "organizer", orgId: ORG_A });
+    const res = await app.request(`/api/v1/plans/${planRecord.id}/reviewers/pr-1`, {
+      method: "DELETE",
+      headers: { "x-chq-csrf": "1" },
+    });
+    expect(res.status).toBe(204);
   });
 });

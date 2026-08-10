@@ -3,7 +3,15 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { apiDelete, apiGet, apiList, apiPatch, apiPost, ApiError } from '../../lib/api';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { addCriterion, removeCriterion, updateCriterion, validatePlanDraft } from './planForm';
-import { DEFAULT_PLAN_DRAFT, type CriterionKind, type EvaluationPlan, type PlanDraft, type PlanReviewer, type Track } from './types';
+import {
+  DEFAULT_PLAN_DRAFT,
+  type CriterionKind,
+  type EvaluationPlan,
+  type PlanDraft,
+  type PlanReviewer,
+  type ReviewerOption,
+  type Track,
+} from './types';
 
 function dateInputValue(ms: number | null): string {
   if (ms === null) return '';
@@ -102,10 +110,56 @@ export function PlanEditor() {
     }
   }
 
+  const [reviewerOptions, setReviewerOptions] = useState<ReviewerOption[]>([]);
   const [reviewerUserId, setReviewerUserId] = useState('');
   const [reviewerScope, setReviewerScope] = useState<'all' | 'track' | 'submission'>('all');
   const [reviewerTrackId, setReviewerTrackId] = useState('');
   const [reviewerSubmissionId, setReviewerSubmissionId] = useState('');
+
+  const [newReviewerEmail, setNewReviewerEmail] = useState('');
+  const [creatingReviewer, setCreatingReviewer] = useState(false);
+  const [revealedPassword, setRevealedPassword] = useState<string | null>(null);
+
+  function loadReviewerOptions() {
+    return apiList<ReviewerOption>('/users?role=reviewer')
+      .then((res) => setReviewerOptions(res.items))
+      .catch(() => {
+        // Same non-blocking treatment as the reviewer roster above.
+      });
+  }
+
+  useEffect(() => {
+    if (isNew || !planId) return;
+    loadReviewerOptions();
+  }, [planId, isNew]);
+
+  async function createReviewerAccount() {
+    if (!newReviewerEmail.trim()) return;
+    setError(null);
+    setCreatingReviewer(true);
+    try {
+      const res = await apiPost<{ id: string; email: string; role: string; password: string }>('/users', {
+        email: newReviewerEmail.trim(),
+        role: 'reviewer',
+      });
+      setRevealedPassword(res.password);
+      setNewReviewerEmail('');
+      await loadReviewerOptions();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Failed to create reviewer account');
+    } finally {
+      setCreatingReviewer(false);
+    }
+  }
+
+  function copyRevealedPassword() {
+    if (revealedPassword && navigator.clipboard) {
+      navigator.clipboard.writeText(revealedPassword).catch(() => {
+        // Clipboard access can be denied by the browser; the password is
+        // still visible on-screen for manual copy.
+      });
+    }
+  }
 
   async function assignReviewer() {
     if (!planId || !reviewerUserId.trim()) return;
@@ -356,8 +410,42 @@ export function PlanEditor() {
             {reviewers.length === 0 && <li>No reviewers assigned yet.</li>}
           </ul>
 
+          <div className="chq-reviewer-new-account">
+            <label>
+              New reviewer account (email)
+              <input
+                type="email"
+                placeholder="reviewer@example.com"
+                value={newReviewerEmail}
+                onChange={(e) => setNewReviewerEmail(e.target.value)}
+              />
+            </label>
+            <button type="button" disabled={creatingReviewer || !newReviewerEmail.trim()} onClick={createReviewerAccount}>
+              {creatingReviewer ? 'Creating…' : 'Create reviewer account'}
+            </button>
+            {revealedPassword && (
+              <div className="chq-token-reveal" role="alert">
+                <strong>Copy this password now — it will not be shown again:</strong>
+                <code>{revealedPassword}</code>
+                <button type="button" onClick={copyRevealedPassword}>
+                  Copy
+                </button>
+                <button type="button" onClick={() => setRevealedPassword(null)}>
+                  Done
+                </button>
+              </div>
+            )}
+          </div>
+
           <div className="chq-reviewer-assign-form">
-            <input placeholder="Reviewer user id" value={reviewerUserId} onChange={(e) => setReviewerUserId(e.target.value)} />
+            <select value={reviewerUserId} onChange={(e) => setReviewerUserId(e.target.value)}>
+              <option value="">Select a reviewer…</option>
+              {reviewerOptions.map((r) => (
+                <option key={r.userId} value={r.userId}>
+                  {r.email}
+                </option>
+              ))}
+            </select>
             <select value={reviewerScope} onChange={(e) => setReviewerScope(e.target.value as 'all' | 'track' | 'submission')}>
               <option value="all">All plan submissions</option>
               <option value="track">One track</option>

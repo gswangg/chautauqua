@@ -205,17 +205,27 @@ reviewRoutes.post("/api/v1/plans/:id/reviewers", requireOrganizer, csrfJson, asy
   return c.json(created, 201);
 });
 
-reviewRoutes.delete("/api/v1/plans/:id/reviewers", requireOrganizer, csrfJson, async (c) => {
+reviewRoutes.get("/api/v1/plans/:id/reviewers", requireOrganizer, async (c) => {
   const plan = await requireOwnedPlan(c, c.req.param("id"));
-  const body = asRecord(await c.req.json());
-  if (typeof body.userId !== "string" || body.userId.length === 0) {
-    throw new ApiError("invalid", "Invalid reviewer assignment", { userId: "required" });
-  }
-  await repo.removeReviewer(c.var.db, plan.id, {
-    userId: body.userId,
-    trackId: typeof body.trackId === "string" ? body.trackId : null,
-    submissionId: typeof body.submissionId === "string" ? body.submissionId : null,
-  });
+  const rows = await repo.listReviewerRowsForPlan(c.var.db, plan.id);
+  const users = await repo.getUsersByIds(c.var.db, [...new Set(rows.map((r) => r.userId))]);
+  const emailByUserId = new Map(users.map((u) => [u.userId, u.email]));
+  const items = rows.map((r) => ({
+    id: r.id,
+    userId: r.userId,
+    email: emailByUserId.get(r.userId) ?? "",
+    trackId: r.trackId,
+    submissionId: r.submissionId,
+  }));
+  return c.json({ items, total: items.length, page: 1, perPage: items.length || 1 });
+});
+
+reviewRoutes.delete("/api/v1/plans/:id/reviewers/:reviewerId", requireOrganizer, csrfJson, async (c) => {
+  const plan = await requireOwnedPlan(c, c.req.param("id"));
+  const reviewerId = c.req.param("reviewerId");
+  const row = await repo.getReviewerRowById(c.var.db, reviewerId);
+  if (!row || row.planId !== plan.id) throw new ApiError("not_found", "Reviewer assignment not found");
+  await repo.removeReviewerById(c.var.db, reviewerId);
   return c.body(null, 204);
 });
 
