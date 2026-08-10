@@ -1,0 +1,164 @@
+import { describe, expect, it } from "vitest";
+import { CsvParseError, mapColumns, parseCsv, toCsv } from "../src/lib/csv";
+
+describe("parseCsv - golden RFC 4180 samples", () => {
+  it("parses a simple unquoted CSV", () => {
+    expect(parseCsv("a,b,c\n1,2,3")).toEqual([
+      ["a", "b", "c"],
+      ["1", "2", "3"],
+    ]);
+  });
+
+  it("parses CRLF row endings", () => {
+    expect(parseCsv("a,b\r\n1,2\r\n3,4")).toEqual([
+      ["a", "b"],
+      ["1", "2"],
+      ["3", "4"],
+    ]);
+  });
+
+  it("parses quoted fields with embedded commas", () => {
+    expect(parseCsv('a,"b,c",d')).toEqual([["a", "b,c", "d"]]);
+  });
+
+  it("parses quoted fields with embedded newlines", () => {
+    expect(parseCsv('a,"line1\nline2",c')).toEqual([["a", "line1\nline2", "c"]]);
+  });
+
+  it("parses escaped double-quotes inside quoted fields", () => {
+    expect(parseCsv('"a""b",c')).toEqual([['a"b', "c"]]);
+  });
+
+  it("strips a leading UTF-8 BOM", () => {
+    expect(parseCsv("﻿a,b\n1,2")).toEqual([
+      ["a", "b"],
+      ["1", "2"],
+    ]);
+  });
+
+  it("ignores a single trailing empty line", () => {
+    expect(parseCsv("a,b\n1,2\n")).toEqual([
+      ["a", "b"],
+      ["1", "2"],
+    ]);
+  });
+
+  it("preserves additional trailing blank lines beyond the single ignored one", () => {
+    expect(parseCsv("a,b\n1,2\n\n")).toEqual([
+      ["a", "b"],
+      ["1", "2"],
+      [""],
+    ]);
+  });
+
+  it("returns an empty array for empty input", () => {
+    expect(parseCsv("")).toEqual([]);
+  });
+
+  it("handles a lone final field with no trailing newline", () => {
+    expect(parseCsv("a,b,c")).toEqual([["a", "b", "c"]]);
+  });
+});
+
+describe("parseCsv - malformed input", () => {
+  it("throws CsvParseError with a line number for an unterminated quote", () => {
+    let caught: unknown;
+    try {
+      parseCsv('a,b\n1,"unterminated');
+      throw new Error("expected parseCsv to throw");
+    } catch (err) {
+      caught = err;
+    }
+    expect(caught).toBeInstanceOf(CsvParseError);
+    expect((caught as CsvParseError).line).toBe(2);
+  });
+
+  it("reports the line the unterminated quote opened on, even spanning multiple lines", () => {
+    try {
+      parseCsv('a,b\nc,"unterminated\nstill going\nand going');
+      throw new Error("expected parseCsv to throw");
+    } catch (err) {
+      expect(err).toBeInstanceOf(CsvParseError);
+      expect((err as CsvParseError).line).toBe(2);
+    }
+  });
+});
+
+describe("parseCsv/toCsv - round-trip on tricky fixtures", () => {
+  const fixtures: (string | number | null)[][][] = [
+    [["a", "b", "c"]],
+    [["quote\"inside", "plain"]],
+    [['"already quoted"', "x"]],
+    [["comma,here", "newline\nhere", "crlf\r\nhere"]],
+    [["unicode 🎤 café résumé", "日本語", "emoji 👍"]],
+    [
+      ["header1", "header2"],
+      ["nested \"\"double\"\" quotes", "trailing,comma"],
+    ],
+    [["", "", ""]],
+  ];
+
+  for (const [idx, fixture] of fixtures.entries()) {
+    it(`round-trips fixture #${idx}`, () => {
+      const csvText = toCsv(fixture);
+      const parsed = parseCsv(csvText);
+      expect(parsed).toEqual(fixture);
+    });
+  }
+
+  it("round-trips a BOM-prefixed export back through parseCsv", () => {
+    const rows = [["a", "b"], ["1", "2"]];
+    const csvText = "﻿" + toCsv(rows);
+    expect(parseCsv(csvText)).toEqual(rows);
+  });
+});
+
+describe("toCsv", () => {
+  it("only quotes fields that need it", () => {
+    expect(toCsv([["plain", "has,comma", 'has"quote', "has\nnewline"]])).toBe(
+      'plain,"has,comma","has""quote","has\nnewline"',
+    );
+  });
+
+  it("uses CRLF between rows", () => {
+    expect(toCsv([["a"], ["b"]])).toBe("a\r\nb");
+  });
+
+  it("renders null cells as empty strings", () => {
+    expect(toCsv([["a", null, "c"]])).toBe("a,,c");
+  });
+
+  it("stringifies numeric cells", () => {
+    expect(toCsv([[1, 2.5, -3]])).toBe("1,2.5,-3");
+  });
+});
+
+describe("mapColumns", () => {
+  const header = ["First Name", "Last Name", "Email Address", "Company"];
+  const mapping = {
+    firstName: "First Name",
+    lastName: "Last Name",
+    email: "Email Address",
+  };
+
+  it("maps a data row from source headers to target fields", () => {
+    const mapper = mapColumns(header, mapping);
+    expect(mapper(["Ada", "Lovelace", "ada@example.com", "Analytical Engines"])).toEqual({
+      firstName: "Ada",
+      lastName: "Lovelace",
+      email: "ada@example.com",
+    });
+  });
+
+  it("defaults missing trailing row cells to an empty string", () => {
+    const mapper = mapColumns(header, { company: "Company" });
+    expect(mapper(["Ada", "Lovelace"])).toEqual({ company: "" });
+  });
+
+  it("throws when the mapping references a header not present in the CSV", () => {
+    expect(() => mapColumns(header, { phone: "Phone Number" })).toThrow(CsvParseError);
+    expect(() => mapColumns(header, { phone: "Phone Number" })).toThrow(
+      /Phone Number/,
+    );
+  });
+});
