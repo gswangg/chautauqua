@@ -1,5 +1,5 @@
-import { PlaceholderPage } from './PlaceholderPage';
+import { OnboardingGrid } from './speakers/OnboardingGrid';
 
 export function SpeakersPage() {
-  return <PlaceholderPage section="Speakers" />;
+  return <OnboardingGrid />;
 }
