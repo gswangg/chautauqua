@@ -97,17 +97,17 @@ describe("checkAndIncrementScopedLimit", () => {
     expect(claimAttempt).toEqual({ ok: true, count: 1 });
   });
 
-  it("DEC-057: 'submit' scope rejects the 11th submission within the same hour window", async () => {
+  it("DEC-072: 'submit' scope rejects the 61st submission within the same hour window", async () => {
     const kv = new InMemoryKV();
     const now = 1_000_000;
-    const submitOpts = { windowSeconds: 3600, max: 10 };
-    for (let i = 0; i < 10; i++) {
+    const submitOpts = { windowSeconds: 3600, max: 60 };
+    for (let i = 0; i < 60; i++) {
       const result = await checkAndIncrementScopedLimit(kv, "submit", "5.5.5.5", now, submitOpts);
       expect(result.ok).toBe(true);
     }
-    const eleventh = await checkAndIncrementScopedLimit(kv, "submit", "5.5.5.5", now, submitOpts);
-    expect(eleventh.ok).toBe(false);
-    expect(eleventh.count).toBe(10);
+    const sixtyFirst = await checkAndIncrementScopedLimit(kv, "submit", "5.5.5.5", now, submitOpts);
+    expect(sixtyFirst.ok).toBe(false);
+    expect(sixtyFirst.count).toBe(60);
   });
 });
 

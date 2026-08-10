@@ -39,7 +39,18 @@ export async function checkAndIncrementScopedLimit(
 }
 
 /** Mirrors the IP-resolution logic in src/routes/public/submit.tsx:
- * cf-connecting-ip, else the first hop of x-forwarded-for, else 'unknown'. */
+ * cf-connecting-ip, else the first hop of x-forwarded-for, else 'unknown'.
+ *
+ * DEC-072: x-forwarded-for is client-controllable and trivially spoofable
+ * (an attacker can send an arbitrary rotating value) — it is only a
+ * best-effort fallback for local/stage-1 dev where no trusted edge sets
+ * cf-connecting-ip. cf-connecting-ip is authoritative only when the
+ * request has actually passed through Cloudflare's edge (stage 2
+ * deployment); nothing upstream of this function currently guarantees
+ * that. Because IP is not a trustworthy identity, callers that need real
+ * correctness (e.g. login) MUST also key a scoped limiter by a stable
+ * identity value (such as the submitted account email) rather than
+ * relying on IP alone. */
 export function requestIpFromHeaders(header: (name: string) => string | undefined): string {
   const cfIp = header("cf-connecting-ip");
   if (cfIp) return cfIp;
