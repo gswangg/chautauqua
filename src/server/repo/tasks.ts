@@ -6,6 +6,7 @@ import { and, eq, inArray, isNull } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { newId } from "../../domain/ids";
+import { chunkIds } from "../../lib/chunk";
 import type { Mailer } from "../../mail/types";
 import { renderTemplate, textToHtml } from "../../mail/render";
 import type { ReminderAssignment } from "../../domain/reminders";
@@ -123,25 +124,42 @@ export async function getOnboardingGrid(db: Db, eventId: string): Promise<Onboar
 
   const taskIds = tasks.map((t) => t.id);
 
-  const assignmentRows = await db
-    .select({
-      assignmentId: schema.taskAssignment.id,
-      taskId: schema.taskAssignment.taskId,
-      status: schema.taskAssignment.status,
-      completedAt: schema.taskAssignment.completedAt,
-      fileId: schema.taskAssignment.fileId,
-      lastRemindedAt: schema.taskAssignment.lastRemindedAt,
-      contactId: schema.contact.id,
-      firstName: schema.contact.firstName,
-      lastName: schema.contact.lastName,
-      email: schema.contact.email,
-      company: schema.contact.company,
-      userId: schema.user.id,
-    })
-    .from(schema.taskAssignment)
-    .innerJoin(schema.contact, eq(schema.taskAssignment.contactId, schema.contact.id))
-    .leftJoin(schema.user, eq(schema.user.contactId, schema.contact.id))
-    .where(inArray(schema.taskAssignment.taskId, taskIds));
+  const assignmentRows: {
+    assignmentId: string;
+    taskId: string;
+    status: (typeof schema.taskAssignment.$inferSelect)["status"];
+    completedAt: Date | null;
+    fileId: string | null;
+    lastRemindedAt: Date | null;
+    contactId: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    company: string | null;
+    userId: string | null;
+  }[] = [];
+  for (const batch of chunkIds(taskIds)) {
+    const batchRows = await db
+      .select({
+        assignmentId: schema.taskAssignment.id,
+        taskId: schema.taskAssignment.taskId,
+        status: schema.taskAssignment.status,
+        completedAt: schema.taskAssignment.completedAt,
+        fileId: schema.taskAssignment.fileId,
+        lastRemindedAt: schema.taskAssignment.lastRemindedAt,
+        contactId: schema.contact.id,
+        firstName: schema.contact.firstName,
+        lastName: schema.contact.lastName,
+        email: schema.contact.email,
+        company: schema.contact.company,
+        userId: schema.user.id,
+      })
+      .from(schema.taskAssignment)
+      .innerJoin(schema.contact, eq(schema.taskAssignment.contactId, schema.contact.id))
+      .leftJoin(schema.user, eq(schema.user.contactId, schema.contact.id))
+      .where(inArray(schema.taskAssignment.taskId, batch));
+    assignmentRows.push(...batchRows);
+  }
 
   const rowsByContact = new Map<string, GridRow>();
   for (const r of assignmentRows) {
@@ -238,10 +256,14 @@ export async function createTaskAssignments(
   now: Date,
 ): Promise<void> {
   if (contactIds.length === 0) return;
-  const existing = await db
-    .select({ contactId: schema.taskAssignment.contactId })
-    .from(schema.taskAssignment)
-    .where(and(eq(schema.taskAssignment.taskId, taskId), inArray(schema.taskAssignment.contactId, contactIds)));
+  const existing: { contactId: string }[] = [];
+  for (const batch of chunkIds(contactIds)) {
+    const batchRows = await db
+      .select({ contactId: schema.taskAssignment.contactId })
+      .from(schema.taskAssignment)
+      .where(and(eq(schema.taskAssignment.taskId, taskId), inArray(schema.taskAssignment.contactId, batch)));
+    existing.push(...batchRows);
+  }
   const already = new Set(existing.map((r) => r.contactId));
   const toCreate = contactIds.filter((id) => !already.has(id));
   for (const contactId of toCreate) {
@@ -506,10 +528,12 @@ async function sendReminderEmails(
     });
 
     const assignmentIds = group.assignments.map((a) => a.assignmentId);
-    await db
-      .update(schema.taskAssignment)
-      .set({ lastRemindedAt: now, updatedAt: now })
-      .where(inArray(schema.taskAssignment.id, assignmentIds));
+    for (const batch of chunkIds(assignmentIds)) {
+      await db
+        .update(schema.taskAssignment)
+        .set({ lastRemindedAt: now, updatedAt: now })
+        .where(inArray(schema.taskAssignment.id, batch));
+    }
 
     sent += 1;
   }

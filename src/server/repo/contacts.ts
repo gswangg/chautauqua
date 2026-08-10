@@ -662,10 +662,14 @@ export async function deleteSegment(db: Db, id: string): Promise<void> {
 
 export async function findContactsForOrg(db: Db, ids: string[], orgId: string): Promise<ContactRow[]> {
   if (ids.length === 0) return [];
-  const rows = await db
-    .select()
-    .from(schema.contact)
-    .where(and(eq(schema.contact.orgId, orgId), inArray(schema.contact.id, ids)));
+  const rows: (typeof schema.contact.$inferSelect)[] = [];
+  for (const batch of chunkIds(ids)) {
+    const batchRows = await db
+      .select()
+      .from(schema.contact)
+      .where(and(eq(schema.contact.orgId, orgId), inArray(schema.contact.id, batch)));
+    rows.push(...batchRows);
+  }
   return rows.map(toRow);
 }
 
