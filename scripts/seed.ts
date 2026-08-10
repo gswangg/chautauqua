@@ -10,7 +10,7 @@
 // This is scripts/ tooling, not src/ pure-core, so node: imports are fine
 // (DEC-002's pure-core rule scopes to src/{auth,domain,forms,mail,lib}).
 
-import { readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -25,13 +25,18 @@ import {
   DEC_009,
   DEC_017,
   DEC_018,
+  DEC_020,
   DEC_023,
+  DEC_048,
 } from "../src/decisions";
 import {
   additionalSubmissionStatuses,
   deleteAllStmt,
   insertStmt,
+  minimalPdfBytes,
+  onePixelPngBytes,
   seedId,
+  sqlQuote,
 } from "./seed-lib";
 
 void DEC_003;
@@ -41,12 +46,16 @@ void DEC_008;
 void DEC_009;
 void DEC_017;
 void DEC_018;
+void DEC_020;
 void DEC_023;
+void DEC_048;
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(SCRIPT_DIR, "..");
 const FIXTURE_PATH = join(REPO_ROOT, "docs", "fixtures", "sample-data.json");
 const OUTPUT_PATH = join(REPO_ROOT, ".seed.sql");
+const ASSETS_DIR = join(REPO_ROOT, ".seed-assets");
+const MANIFEST_PATH = join(ASSETS_DIR, "manifest.json");
 
 interface FixtureData {
   event: {
@@ -180,6 +189,27 @@ async function main(): Promise<void> {
     return ts;
   };
 
+  // --- deterministic tiny R2 assets (task w6-e): one PDF, one PNG on disk,
+  // reused (via manifest entries keyed by r2Key) for every seeded file row
+  // that needs bytes. scripts/seed-r2.ts reads the manifest and `wrangler
+  // r2 object put`s each entry.
+  mkdirSync(ASSETS_DIR, { recursive: true });
+  const PDF_PATH = join(ASSETS_DIR, "sample.pdf");
+  const PNG_PATH = join(ASSETS_DIR, "sample.png");
+  const pdfBytes = minimalPdfBytes();
+  const pngBytes = onePixelPngBytes();
+  writeFileSync(PDF_PATH, pdfBytes);
+  writeFileSync(PNG_PATH, pngBytes);
+  const manifest: Array<{ r2Key: string; path: string; contentType: string }> = [];
+  function registerPdfAsset(r2Key: string): number {
+    manifest.push({ r2Key, path: PDF_PATH, contentType: "application/pdf" });
+    return pdfBytes.length;
+  }
+  function registerPngAsset(r2Key: string): number {
+    manifest.push({ r2Key, path: PNG_PATH, contentType: "image/png" });
+    return pngBytes.length;
+  }
+
   // --- DELETE statements first (idempotent reseed), children before parents ---
   const tablesInDeleteOrder = [
     "email_log",
@@ -205,7 +235,10 @@ async function main(): Promise<void> {
     "contact",
     "auth_session",
     "user",
+    "saved_view",
     "event",
+    "segment",
+    "api_token",
     "org",
   ];
   for (const table of tablesInDeleteOrder) {
@@ -921,6 +954,183 @@ async function main(): Promise<void> {
     }),
   );
 
+  // --- segment (w4-c, DEC-026): a CRM saved-segment rule matching company
+  // contains 'Labs' (matches synthetic contacts at "Bluepeak Labs").
+  statements.push(
+    insertStmt("segment", {
+      id: seedId("segment", 1),
+      org_id: orgId,
+      name: "Labs companies",
+      rules_json: JSON.stringify([{ field: "company", op: "contains", value: "Labs" }]),
+      created_at: nextTs(),
+      updated_at: ts,
+    }),
+  );
+
+  // --- saved view (w4-g, DEC-031): a Submissions-table saved view.
+  statements.push(
+    insertStmt("saved_view", {
+      id: seedId("saved_view", 1),
+      event_id: eventId,
+      name: "Accepted talks",
+      config_json: JSON.stringify({
+        q: "",
+        status: ["accepted"],
+        trackId: null,
+        sort: "newest",
+        columns: ["title", "status", "field_session_format", "field_audience_level"],
+      }),
+      created_at: nextTs(),
+      updated_at: ts,
+    }),
+  );
+
+  // --- file pipeline (DEC-020): a presentation v1->v2 version chain plus a
+  // poster on the first two accepted submissions, and a file_comment thread
+  // (producer note + speaker reply) on the v2 presentation.
+  const fileChainSub = acceptedSubmissions[0];
+  const posterSub = acceptedSubmissions[1] ?? acceptedSubmissions[0];
+  if (!fileChainSub || !posterSub) {
+    throw new Error("seed: expected at least one accepted submission for the file pipeline demo");
+  }
+
+  const filePresV1Id = seedId("file", 1);
+  const filePresV2Id = seedId("file", 2);
+  const filePosterId = seedId("file", 3);
+
+  const v1R2Key = `sub/${fileChainSub.submissionId}/${filePresV1Id}-slides-v1.pdf`;
+  statements.push(
+    insertStmt("file", {
+      id: filePresV1Id,
+      submission_id: fileChainSub.submissionId,
+      kind: "presentation",
+      filename: "slides-v1.pdf",
+      r2_key: v1R2Key,
+      size_bytes: registerPdfAsset(v1R2Key),
+      content_type: "application/pdf",
+      previous_file_id: null,
+      uploaded_by_contact_id: fileChainSub.contactId,
+      created_at: nextTs(),
+      updated_at: ts,
+    }),
+  );
+  const v2R2Key = `sub/${fileChainSub.submissionId}/${filePresV2Id}-slides-v2.pdf`;
+  statements.push(
+    insertStmt("file", {
+      id: filePresV2Id,
+      submission_id: fileChainSub.submissionId,
+      kind: "presentation",
+      filename: "slides-v2.pdf",
+      r2_key: v2R2Key,
+      size_bytes: registerPdfAsset(v2R2Key),
+      content_type: "application/pdf",
+      previous_file_id: filePresV1Id,
+      uploaded_by_contact_id: fileChainSub.contactId,
+      created_at: nextTs(),
+      updated_at: ts,
+    }),
+  );
+  const posterR2Key = `sub/${posterSub.submissionId}/${filePosterId}-poster.png`;
+  statements.push(
+    insertStmt("file", {
+      id: filePosterId,
+      submission_id: posterSub.submissionId,
+      kind: "poster",
+      filename: "poster.png",
+      r2_key: posterR2Key,
+      size_bytes: registerPngAsset(posterR2Key),
+      content_type: "image/png",
+      previous_file_id: null,
+      uploaded_by_contact_id: posterSub.contactId,
+      created_at: nextTs(),
+      updated_at: ts,
+    }),
+  );
+
+  statements.push(
+    insertStmt("file_comment", {
+      id: seedId("file_comment", 1),
+      file_id: filePresV2Id,
+      author_contact_id: null,
+      author_user_id: organizerUserId,
+      body: "Looks great — could you bump the font size on slide 4 for readability from the back of the room?",
+      created_at: nextTs(),
+      updated_at: ts,
+    }),
+  );
+  statements.push(
+    insertStmt("file_comment", {
+      id: seedId("file_comment", 2),
+      file_id: filePresV2Id,
+      author_contact_id: fileChainSub.contactId,
+      author_user_id: null,
+      body: "Good catch — done, re-uploaded with the larger font.",
+      created_at: nextTs(),
+      updated_at: ts,
+    }),
+  );
+
+  // --- resource file (DEC-047): a file row kind 'resource' (submission_id
+  // null), exposed via a resource row kind 'file'.
+  const resourceFileId = seedId("file", 4);
+  const resourceR2Key = `resource/${resourceFileId}-speaker-slide-template.pdf`;
+  statements.push(
+    insertStmt("file", {
+      id: resourceFileId,
+      submission_id: null,
+      kind: "resource",
+      filename: "speaker-slide-template.pdf",
+      r2_key: resourceR2Key,
+      size_bytes: registerPdfAsset(resourceR2Key),
+      content_type: "application/pdf",
+      previous_file_id: null,
+      uploaded_by_contact_id: null,
+      created_at: nextTs(),
+      updated_at: ts,
+    }),
+  );
+  statements.push(
+    insertStmt("resource", {
+      id: seedId("resource", 4),
+      event_id: eventId,
+      kind: "file",
+      title: "Speaker slide template",
+      content: null,
+      file_id: resourceFileId,
+      position: 3,
+      created_at: nextTs(),
+      updated_at: ts,
+    }),
+  );
+
+  // --- headshots (DEC-028): headshot file rows for the two named speaker
+  // contacts, with contact.headshot_url following the '/headshots/<fileId>'
+  // convention set by src/server/repo/profile.ts's setContactHeadshot.
+  function seedHeadshot(contactId: string, n: number): void {
+    const fileId = seedId("file", 10 + n);
+    const r2Key = `headshot/${contactId}/${fileId}-headshot.png`;
+    statements.push(
+      insertStmt("file", {
+        id: fileId,
+        submission_id: null,
+        kind: "headshot",
+        filename: "headshot.png",
+        r2_key: r2Key,
+        size_bytes: registerPngAsset(r2Key),
+        content_type: "image/png",
+        previous_file_id: null,
+        uploaded_by_contact_id: contactId,
+        created_at: nextTs(),
+        updated_at: ts,
+      }),
+    );
+    statements.push(
+      `UPDATE contact SET "headshot_url" = ${sqlQuote(`/headshots/${fileId}`)} WHERE "id" = ${sqlQuote(contactId)};`,
+    );
+  }
+  seedHeadshot(speakerContactId, 1);
+  seedHeadshot(speaker2ContactId, 2);
+
   // --- fixture 'Acceptance Notification' email template (DEC-006 merge fields) ---
   for (const field of ["speaker_name", "talk_title"] as const) {
     if (!MERGE_FIELDS.includes(field)) {
@@ -966,8 +1176,11 @@ async function main(): Promise<void> {
 
   const sql = statements.join("\n") + "\n";
   writeFileSync(OUTPUT_PATH, sql, "utf-8");
+  writeFileSync(MANIFEST_PATH, JSON.stringify(manifest, null, 2) + "\n", "utf-8");
   // eslint-disable-next-line no-console
   console.log(`Wrote ${statements.length} statements to ${OUTPUT_PATH}`);
+  // eslint-disable-next-line no-console
+  console.log(`Wrote ${manifest.length} asset manifest entries to ${MANIFEST_PATH}`);
 }
 
 main().catch((err) => {

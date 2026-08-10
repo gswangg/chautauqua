@@ -6,3 +6,4 @@ public/admin/
 *.log
 /.seed.sql
 /.perf-seed.sql
+/.seed-assets/
