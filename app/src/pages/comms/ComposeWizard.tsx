@@ -24,11 +24,16 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
   const [subject, setSubject] = useState('');
   const [bodyText, setBodyText] = useState('');
   const [includeFeedback, setIncludeFeedback] = useState(false);
+  const [attachIcs, setAttachIcs] = useState(false);
 
   const [preview, setPreview] = useState<RenderedRecipient[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [capMessage, setCapMessage] = useState<string | null>(null);
+  // DEC-051: submission ids the server rejected as "not scheduled" when
+  // attachIcs was requested. Surfaced literally next to the toggle — never
+  // pre-filtered client-side, since that would hide the server's contract.
+  const [icsUnscheduledIds, setIcsUnscheduledIds] = useState<string[] | null>(null);
   const [sentCount, setSentCount] = useState<number | null>(null);
 
   useEffect(() => {
@@ -64,6 +69,7 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
     const base: Record<string, unknown> = {
       submissionIds: [...selectedIds],
       includeFeedback,
+      attachIcs,
     };
     if (templateId) {
       base.templateId = templateId;
@@ -74,17 +80,32 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
     return base;
   }
 
+  // DEC-051: pulls the { <submissionId>: 'not scheduled' } field errors out
+  // of an ApiError so they can be listed next to the toggle, verbatim —
+  // no client-side guessing at which submissions are unscheduled.
+  function extractIcsUnscheduledIds(err: ApiError): string[] | null {
+    if (!err.fields) return null;
+    const ids = Object.entries(err.fields)
+      .filter(([, message]) => message === 'not scheduled')
+      .map(([submissionId]) => submissionId);
+    return ids.length > 0 ? ids : null;
+  }
+
   async function runPreview() {
     setBusy(true);
     setError(null);
     setCapMessage(null);
+    setIcsUnscheduledIds(null);
     try {
       const res = await apiPost<{ items: RenderedRecipient[] }>(`/events/${eventId}/compose/preview`, composeBody());
       setPreview(res.items);
       setStep('preview');
     } catch (err) {
       if (err instanceof ApiError && err.code === 'invalid') {
-        if (/exceeds the .*-recipient cap/i.test(err.message)) {
+        const unscheduled = extractIcsUnscheduledIds(err);
+        if (unscheduled) {
+          setIcsUnscheduledIds(unscheduled);
+        } else if (/exceeds the .*-recipient cap/i.test(err.message)) {
           setCapMessage(err.message);
         } else {
           setError(err.message);
@@ -100,12 +121,22 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
   async function send() {
     setBusy(true);
     setError(null);
+    setIcsUnscheduledIds(null);
     try {
       const res = await apiPost<{ sent: number }>(`/events/${eventId}/compose/send`, composeBody());
       setSentCount(res.sent);
       setStep('sent');
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Send failed');
+      if (err instanceof ApiError) {
+        const unscheduled = extractIcsUnscheduledIds(err);
+        if (unscheduled) {
+          setIcsUnscheduledIds(unscheduled);
+        } else {
+          setError(err.message);
+        }
+      } else {
+        setError('Send failed');
+      }
     } finally {
       setBusy(false);
     }
@@ -117,9 +148,11 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
     setTemplateId('');
     setSubject('');
     setBodyText('');
+    setAttachIcs(false);
     setPreview([]);
     setSentCount(null);
     setCapMessage(null);
+    setIcsUnscheduledIds(null);
     setError(null);
   }
 
@@ -221,6 +254,23 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
             <input type="checkbox" checked={includeFeedback} onChange={(e) => setIncludeFeedback(e.target.checked)} />
             Include reviewer feedback ({'{feedback}'})
           </label>
+          <label>
+            <input
+              type="checkbox"
+              checked={attachIcs}
+              onChange={(e) => {
+                setAttachIcs(e.target.checked);
+                setIcsUnscheduledIds(null);
+              }}
+            />
+            Attach calendar invite (.ics)
+          </label>
+          {icsUnscheduledIds && (
+            <div className="chq-error-banner" role="alert">
+              These submissions aren't scheduled yet, so a calendar invite can't be attached: {icsUnscheduledIds.join(', ')}.
+              Schedule them first, or uncheck &quot;Attach calendar invite&quot;.
+            </div>
+          )}
 
           <div>
             <button type="button" onClick={() => setStep('select')}>
@@ -236,6 +286,12 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
       {step === 'preview' && (
         <section>
           <h2>3. Preview</h2>
+          {icsUnscheduledIds && (
+            <div className="chq-error-banner" role="alert">
+              Send blocked: "Attach calendar invite" is checked, but these submissions aren't scheduled yet:{' '}
+              {icsUnscheduledIds.join(', ')}. Schedule them first, or go back and uncheck the toggle.
+            </div>
+          )}
           <PreviewPane items={preview} />
           <div>
             <button type="button" onClick={() => setStep('template')}>

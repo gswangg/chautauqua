@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { formatIcsChip } from './icsChip';
 import type { RenderedRecipient } from './types';
 
 export function PreviewPane({ items }: { items: RenderedRecipient[] }) {
@@ -32,6 +33,11 @@ export function PreviewPane({ items }: { items: RenderedRecipient[] }) {
         <div>
           <strong>Subject:</strong> {current.subject}
         </div>
+        {current.ics && (
+          <div className="chq-preview-ics-chip" role="note">
+            Calendar invite: {formatIcsChip(current.ics)}
+          </div>
+        )}
         <pre className="chq-preview-body">{current.text}</pre>
       </div>
     </div>

@@ -13,6 +13,18 @@ export interface EmailTemplate {
   bodyText: string;
 }
 
+// DEC-051: present only when the compose request set attachIcs: true and
+// the server was able to resolve a scheduled slot for this recipient's
+// submission. startUtc/endUtc reuse the same slot-conversion the public
+// schedule.ics uses; room is omitted (or empty) for the initial invite
+// before a room lands, and sequence bumps by 1 each subsequent send.
+export interface RenderedRecipientIcs {
+  startUtc: string;
+  endUtc: string;
+  room?: string | null;
+  sequence: number;
+}
+
 export interface RenderedRecipient {
   contactId: string;
   submissionId: string;
@@ -20,6 +32,7 @@ export interface RenderedRecipient {
   name: string;
   subject: string;
   text: string;
+  ics?: RenderedRecipientIcs;
 }
 
 export interface EmailLogRow {
