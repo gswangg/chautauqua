@@ -412,6 +412,14 @@ export const taskAssignment = sqliteTable(
     status: text("status").notNull().default("pending"),
     completedAt: integer("completed_at", { mode: "timestamp_ms" }),
     completedBy: text("completed_by"),
+    // DEC-017 (w3-a owns migration 0002; declared overlap — identical defs
+    // appended here so this branch typechecks/builds standalone).
+    // form-task answers, JSON map fieldId->value
+    responseJson: text("response_json"),
+    // file_request completion link
+    fileId: text("file_id"),
+    // reminder dedupe (DEC-023)
+    lastRemindedAt: integer("last_reminded_at", { mode: "timestamp_ms" }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },

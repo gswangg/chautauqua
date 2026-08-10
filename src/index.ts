@@ -11,6 +11,7 @@ import { submissionsRoutes } from "./routes/api/submissions";
 import { publicSubmitRoutes } from "./routes/public/submit";
 import { portalRoutes } from "./routes/portal/index";
 import { devMailboxRoutes, shouldMountDevMailbox } from "./routes/dev/mailbox";
+import { taskRoutes, runDueReminders } from "./routes/tasks";
 
 // Wave 2 wires the remaining routers (admin SPA, /api/v1/*, /submit,
 // /portal, public surfaces, /embed, /files, /dev/mailbox — see DEC-005).
@@ -33,6 +34,7 @@ app.get("/api/v1", (c) => c.json({ name: "chautauqua", version: "v1" }));
 app.route("/", authRoutes);
 app.route("/api/v1", eventsRoutes);
 app.route("/api/v1", submissionsRoutes);
+app.route("/api/v1", taskRoutes);
 app.route("/", emailLogRoutes);
 app.route("/", formsRoutes);
 app.route("/", publicSubmitRoutes);
@@ -59,7 +61,9 @@ export default {
     env: Bindings,
     ctx: ExecutionContext,
   ): Promise<void> {
-    // No-op stub; wave 2 tasks wire cron-driven jobs (e.g. reminders).
+    // DEC-023: due-date-driven onboarding task reminders — never wired to a
+    // status-change path (DEC-009).
     console.log("scheduled trigger fired", controller.cron);
+    await runDueReminders(env);
   },
 };
