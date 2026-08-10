@@ -111,3 +111,13 @@ export function apiPatch<T>(path: string, body?: unknown): Promise<T> {
 export function apiDelete<T>(path: string): Promise<T> {
   return request<T>(path, { method: 'DELETE' });
 }
+
+// DEC-018's reviewer evaluation upsert is a PUT (idempotent per plan +
+// submission + reviewer + round), unlike every other mutation in this
+// wire contract, so this mirrors apiPatch's shape for that one endpoint.
+export function apiPut<T>(path: string, body?: unknown): Promise<T> {
+  return request<T>(path, {
+    method: 'PUT',
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+}
