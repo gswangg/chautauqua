@@ -9,6 +9,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { formatRef } from "../../domain/ids";
+import { chunkIds } from "../../lib/chunk";
 // DEC-027: fixed export columns per kind; DEC-017: track membership reads
 // ONLY submission_track (never the frozen legacy submission.trackId).
 // DEC-055: show-flow export columns/ordering.
@@ -154,23 +155,37 @@ async function exportSubmissions(db: Db, eventId: string): Promise<ExportTable> 
   if (submissions.length === 0) return shapeSubmissionsExport([]);
   const ids = submissions.map((s) => s.id);
 
-  const trackJoinRows = await db
-    .select({ submissionId: schema.submissionTrack.submissionId, trackName: schema.track.name })
-    .from(schema.submissionTrack)
-    .innerJoin(schema.track, eq(schema.submissionTrack.trackId, schema.track.id))
-    .where(inArray(schema.submissionTrack.submissionId, ids));
+  const trackJoinRows: { submissionId: string; trackName: string }[] = [];
+  for (const batch of chunkIds(ids)) {
+    const batchRows = await db
+      .select({ submissionId: schema.submissionTrack.submissionId, trackName: schema.track.name })
+      .from(schema.submissionTrack)
+      .innerJoin(schema.track, eq(schema.submissionTrack.trackId, schema.track.id))
+      .where(inArray(schema.submissionTrack.submissionId, batch));
+    trackJoinRows.push(...batchRows);
+  }
 
-  const participantRows = await db
-    .select({
-      submissionId: schema.participant.submissionId,
-      order: schema.participant.order,
-      firstName: schema.contact.firstName,
-      lastName: schema.contact.lastName,
-      email: schema.contact.email,
-    })
-    .from(schema.participant)
-    .innerJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
-    .where(inArray(schema.participant.submissionId, ids));
+  const participantRows: {
+    submissionId: string;
+    order: number;
+    firstName: string;
+    lastName: string;
+    email: string;
+  }[] = [];
+  for (const batch of chunkIds(ids)) {
+    const batchRows = await db
+      .select({
+        submissionId: schema.participant.submissionId,
+        order: schema.participant.order,
+        firstName: schema.contact.firstName,
+        lastName: schema.contact.lastName,
+        email: schema.contact.email,
+      })
+      .from(schema.participant)
+      .innerJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
+      .where(inArray(schema.participant.submissionId, batch));
+    participantRows.push(...batchRows);
+  }
 
   const tracksBySubmission = new Map<string, Set<string>>();
   for (const t of trackJoinRows) {
@@ -332,22 +347,30 @@ async function exportAgenda(db: Db, eventId: string): Promise<ExportTable> {
   if (slotRows.length === 0) return shapeAgendaExport([]);
   const ids = slotRows.map((r) => r.submissionId);
 
-  const trackJoinRows = await db
-    .select({ submissionId: schema.submissionTrack.submissionId, trackName: schema.track.name })
-    .from(schema.submissionTrack)
-    .innerJoin(schema.track, eq(schema.submissionTrack.trackId, schema.track.id))
-    .where(inArray(schema.submissionTrack.submissionId, ids));
+  const trackJoinRows: { submissionId: string; trackName: string }[] = [];
+  for (const batch of chunkIds(ids)) {
+    const batchRows = await db
+      .select({ submissionId: schema.submissionTrack.submissionId, trackName: schema.track.name })
+      .from(schema.submissionTrack)
+      .innerJoin(schema.track, eq(schema.submissionTrack.trackId, schema.track.id))
+      .where(inArray(schema.submissionTrack.submissionId, batch));
+    trackJoinRows.push(...batchRows);
+  }
 
-  const participantRows = await db
-    .select({
-      submissionId: schema.participant.submissionId,
-      order: schema.participant.order,
-      firstName: schema.contact.firstName,
-      lastName: schema.contact.lastName,
-    })
-    .from(schema.participant)
-    .innerJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
-    .where(inArray(schema.participant.submissionId, ids));
+  const participantRows: { submissionId: string; order: number; firstName: string; lastName: string }[] = [];
+  for (const batch of chunkIds(ids)) {
+    const batchRows = await db
+      .select({
+        submissionId: schema.participant.submissionId,
+        order: schema.participant.order,
+        firstName: schema.contact.firstName,
+        lastName: schema.contact.lastName,
+      })
+      .from(schema.participant)
+      .innerJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
+      .where(inArray(schema.participant.submissionId, batch));
+    participantRows.push(...batchRows);
+  }
 
   const tracksBySubmission = new Map<string, Set<string>>();
   for (const t of trackJoinRows) {
@@ -511,8 +534,15 @@ export async function buildShowflowExport(db: Db, eventId: string): Promise<Expo
   if (submissions.length === 0) return shapeShowflowExport([]);
   const ids = submissions.map((s) => s.id);
 
-  const [slotRows, trackJoinRows, participantRows, presentationFiles] = await Promise.all([
-    db
+  const slotRows: {
+    submissionId: string;
+    day: string;
+    startMin: number;
+    endMin: number;
+    roomName: string | null;
+  }[] = [];
+  for (const batch of chunkIds(ids)) {
+    const batchRows = await db
       .select({
         submissionId: schema.scheduleSlot.submissionId,
         day: schema.scheduleSlot.day,
@@ -522,13 +552,23 @@ export async function buildShowflowExport(db: Db, eventId: string): Promise<Expo
       })
       .from(schema.scheduleSlot)
       .leftJoin(schema.room, eq(schema.scheduleSlot.roomId, schema.room.id))
-      .where(inArray(schema.scheduleSlot.submissionId, ids)),
-    db
+      .where(inArray(schema.scheduleSlot.submissionId, batch));
+    slotRows.push(...batchRows);
+  }
+
+  const trackJoinRows: { submissionId: string; trackName: string }[] = [];
+  for (const batch of chunkIds(ids)) {
+    const batchRows = await db
       .select({ submissionId: schema.submissionTrack.submissionId, trackName: schema.track.name })
       .from(schema.submissionTrack)
       .innerJoin(schema.track, eq(schema.submissionTrack.trackId, schema.track.id))
-      .where(inArray(schema.submissionTrack.submissionId, ids)),
-    db
+      .where(inArray(schema.submissionTrack.submissionId, batch));
+    trackJoinRows.push(...batchRows);
+  }
+
+  const participantRows: { submissionId: string; order: number; firstName: string; lastName: string }[] = [];
+  for (const batch of chunkIds(ids)) {
+    const batchRows = await db
       .select({
         submissionId: schema.participant.submissionId,
         order: schema.participant.order,
@@ -537,8 +577,13 @@ export async function buildShowflowExport(db: Db, eventId: string): Promise<Expo
       })
       .from(schema.participant)
       .innerJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
-      .where(inArray(schema.participant.submissionId, ids)),
-    db
+      .where(inArray(schema.participant.submissionId, batch));
+    participantRows.push(...batchRows);
+  }
+
+  const presentationFiles: { submissionId: string | null; id: string; filename: string; createdAt: Date }[] = [];
+  for (const batch of chunkIds(ids)) {
+    const batchRows = await db
       .select({
         submissionId: schema.file.submissionId,
         id: schema.file.id,
@@ -546,8 +591,9 @@ export async function buildShowflowExport(db: Db, eventId: string): Promise<Expo
         createdAt: schema.file.createdAt,
       })
       .from(schema.file)
-      .where(and(inArray(schema.file.submissionId, ids), eq(schema.file.kind, "presentation"))),
-  ]);
+      .where(and(inArray(schema.file.submissionId, batch), eq(schema.file.kind, "presentation")));
+    presentationFiles.push(...batchRows);
+  }
 
   const slotBySubmission = new Map<string, { day: string; startMin: number; endMin: number; roomName: string | null }>();
   for (const r of slotRows) {
