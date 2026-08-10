@@ -46,3 +46,11 @@ export const DEC_039 = "Reviewer-surface org scoping: organizers resolve plans o
 export const DEC_040 = "Form-answer file uploads: file rows kind 'attachment', answer = file id";
 export const DEC_041 = "Speaker submission editing: portal edit sub-app with server-side edit lock";
 export const DEC_042 = "Root README.md is the evaluator entrypoint";
+export const DEC_043 = "Org user directory + reviewer provisioning API (/api/v1/users)";
+export const DEC_044 = "Plan-reviewer assignments addressed by plan_reviewer.id";
+export const DEC_045 = "Admin submission detail at /admin/submissions/:id, consuming existing endpoints only";
+export const DEC_046 = "Event switcher + New-event modal in the SPA header; switch = localStorage + full reload";
+export const DEC_047 = "File-kind resources: multipart create on the existing resources API, file rows kind 'resource'";
+export const DEC_048 = "Seed doubles as the grader package: local R2 objects via scripts/seed-r2.ts";
+export const DEC_049 = "/admin served through the Worker (ASSETS binding + run_worker_first) with role redirects; GET / is an SSR landing";
+export const DEC_050 = "Per-form locked field ids ('<formId>:<name>') with lockedFieldName() normalization; event creation provisions the default form";
