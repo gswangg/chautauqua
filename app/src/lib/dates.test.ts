@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dateInputToMs, formatDate, msToDateInput } from './dates';
+import { dateInputToMs, formatDate, formatDateOnly, msToDateInput } from './dates';
 
 describe('msToDateInput', () => {
   it('returns empty string for null', () => {
@@ -50,5 +50,30 @@ describe('formatDate', () => {
   it('formats a valid timestamp', () => {
     const ms = Date.UTC(2026, 0, 15);
     expect(formatDate(ms)).toBe(new Date(ms).toLocaleDateString());
+  });
+});
+
+describe('formatDateOnly', () => {
+  it('returns em dash for null', () => {
+    expect(formatDateOnly(null)).toBe('—');
+  });
+
+  it('returns em dash for undefined', () => {
+    expect(formatDateOnly(undefined)).toBe('—');
+  });
+
+  it('returns em dash for NaN', () => {
+    expect(formatDateOnly(NaN)).toBe('—');
+  });
+
+  it('renders the entered calendar date regardless of local timezone', () => {
+    const ms = Date.UTC(2027, 4, 25); // 2027-05-25T00:00:00.000Z
+    const expected = new Intl.DateTimeFormat(undefined, {
+      timeZone: 'UTC',
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric',
+    }).format(new Date(ms));
+    expect(formatDateOnly(ms)).toBe(expected);
   });
 });
