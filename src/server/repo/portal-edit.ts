@@ -13,7 +13,7 @@ import * as schema from "../../db/schema";
 import type { Db } from "../context";
 import { newId } from "../../domain/ids";
 import type { FormFieldDef, FormFieldKind, FormFieldSection, FormFieldRule, AnswerMap } from "../../forms/types";
-import { LOCKED_SESSION_FIELDS, lockedFieldName } from "../../forms/types";
+import { LOCKED_SESSION_FIELDS, LOCKED_SPEAKER_FIELDS, lockedFieldName } from "../../forms/types";
 import type { SubmissionStatus } from "../../domain/status";
 import { resolveOfferedTrackIds } from "../../lib/submit-core";
 
@@ -76,6 +76,13 @@ export async function loadEditableSubmission(
   const row = rows[0];
   if (!row || !row.formId) return null;
 
+  const contactRows = await db
+    .select({ firstName: schema.contact.firstName, lastName: schema.contact.lastName, email: schema.contact.email })
+    .from(schema.contact)
+    .where(eq(schema.contact.id, contactId));
+  const contact = contactRows[0];
+  if (!contact) return null;
+
   const fieldRows = await db
     .select()
     .from(schema.formField)
@@ -110,6 +117,12 @@ export async function loadEditableSubmission(
   // shared form renderer can prefill them uniformly.
   answers[LOCKED_SESSION_FIELDS[0]] = row.title;
   answers[LOCKED_SESSION_FIELDS[1]] = row.description ?? "";
+  // DEC-121: speakers never re-enter their own contact data — prefill the
+  // locked speaker fields (name/email) from the contact record, never from
+  // submission_answer.
+  answers[LOCKED_SPEAKER_FIELDS[0]] = contact.firstName;
+  answers[LOCKED_SPEAKER_FIELDS[1]] = contact.lastName;
+  answers[LOCKED_SPEAKER_FIELDS[2]] = contact.email;
 
   const allTrackRows = await db
     .select({ id: schema.track.id, name: schema.track.name })
@@ -149,6 +162,7 @@ export async function loadEditableSubmission(
 export async function saveSubmissionEdits(
   db: Db,
   submissionId: string,
+  contactId: string,
   cleanedAnswers: AnswerMap,
   trackIds: string[] | null,
 ): Promise<void> {
@@ -163,6 +177,19 @@ export async function saveSubmissionEdits(
       updatedAt: now,
     })
     .where(eq(schema.submission.id, submissionId));
+
+  // DEC-121: edits to the locked speaker name fields land on the contact
+  // record (J2/J7 — the producer's shared record), never on
+  // submission_answer. Email is intentionally never synced from this path.
+  const firstName = cleanedAnswers[LOCKED_SPEAKER_FIELDS[0]];
+  const lastName = cleanedAnswers[LOCKED_SPEAKER_FIELDS[1]];
+  const contactUpdate: Partial<{ firstName: string; lastName: string; updatedAt: Date }> = {};
+  if (typeof firstName === "string" && firstName.length > 0) contactUpdate.firstName = firstName;
+  if (typeof lastName === "string" && lastName.length > 0) contactUpdate.lastName = lastName;
+  if (Object.keys(contactUpdate).length > 0) {
+    contactUpdate.updatedAt = now;
+    await db.update(schema.contact).set(contactUpdate).where(eq(schema.contact.id, contactId));
+  }
 
   const customEntries = Object.entries(cleanedAnswers).filter(([fieldId]) => lockedFieldName(fieldId) === null);
   for (const [fieldId, value] of customEntries) {
