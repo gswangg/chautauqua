@@ -114,6 +114,28 @@ export async function deleteTemplate(db: Db, id: string): Promise<void> {
 // Compose data loading: submissions -> participants (+ feedback)
 // ---------------------------------------------------------------------------
 
+// D1 rejects a single statement once its total bound-parameter count passes
+// a low ceiling (empirically ~100 in local dev) — well under the DEC-019
+// 100-recipient compose cap's own submissionIds input (a producer can select
+// up to MAX_PER_PAGE=200 submissions before the cap check on the *expanded*
+// recipient list even runs), so any inArray(...) keyed off the full
+// submissionIds list must be batched. Pure and unit-tested directly (no Db
+// needed) — duplicated from repo/submissions.ts's identical helper since
+// each verify-and-fix task owns only its named files (DEC-060).
+// Kept comfortably under the observed ~100-param ceiling: this file's
+// batched queries also bind eventId (or other) conditions alongside the
+// id list, so the chunk itself must leave headroom rather than hit exactly
+// 100.
+const ID_CHUNK_SIZE = 90;
+
+export function chunkIds(ids: string[]): string[][] {
+  const out: string[][] = [];
+  for (let i = 0; i < ids.length; i += ID_CHUNK_SIZE) {
+    out.push(ids.slice(i, i + ID_CHUNK_SIZE));
+  }
+  return out;
+}
+
 /** Loads the given submissions (scoped to eventId) with their visible
  * participants, for src/domain/compose.ts's expandRecipients. Submission ids
  * not belonging to this event are silently excluded (not a 404 — the caller
@@ -125,25 +147,39 @@ export async function loadComposeSubmissions(
 ): Promise<ComposeSubmission[]> {
   if (submissionIds.length === 0) return [];
 
-  const submissionRows = await db
-    .select({ id: schema.submission.id, title: schema.submission.title })
-    .from(schema.submission)
-    .where(and(eq(schema.submission.eventId, eventId), inArray(schema.submission.id, submissionIds)));
+  const submissionRows: { id: string; title: string }[] = [];
+  for (const batch of chunkIds(submissionIds)) {
+    const batchRows = await db
+      .select({ id: schema.submission.id, title: schema.submission.title })
+      .from(schema.submission)
+      .where(and(eq(schema.submission.eventId, eventId), inArray(schema.submission.id, batch)));
+    submissionRows.push(...batchRows);
+  }
 
   if (submissionRows.length === 0) return [];
 
   const foundIds = submissionRows.map((r) => r.id);
-  const participantRows = await db
-    .select({
-      submissionId: schema.participant.submissionId,
-      contactId: schema.participant.contactId,
-      firstName: schema.contact.firstName,
-      lastName: schema.contact.lastName,
-      email: schema.contact.email,
-    })
-    .from(schema.participant)
-    .innerJoin(schema.contact, eq(schema.contact.id, schema.participant.contactId))
-    .where(inArray(schema.participant.submissionId, foundIds));
+  const participantRows: {
+    submissionId: string;
+    contactId: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+  }[] = [];
+  for (const batch of chunkIds(foundIds)) {
+    const batchRows = await db
+      .select({
+        submissionId: schema.participant.submissionId,
+        contactId: schema.participant.contactId,
+        firstName: schema.contact.firstName,
+        lastName: schema.contact.lastName,
+        email: schema.contact.email,
+      })
+      .from(schema.participant)
+      .innerJoin(schema.contact, eq(schema.contact.id, schema.participant.contactId))
+      .where(inArray(schema.participant.submissionId, batch));
+    participantRows.push(...batchRows);
+  }
 
   return submissionRows.map((s) => ({
     id: s.id,

@@ -27,6 +27,20 @@ export const SORT_ORDERS: readonly SortOrder[] = ["newest", "oldest", "title", "
 const DEFAULT_PER_PAGE = 50;
 const MAX_PER_PAGE = 200;
 
+// D1 rejects a single statement once its total bound-parameter count passes
+// a low ceiling (empirically ~100 in local dev) — well under MAX_PER_PAGE,
+// so any inArray(...) keyed off a full page of ids must be batched. Pure
+// and unit-tested directly (no Db needed).
+const ID_CHUNK_SIZE = 100;
+
+export function chunkIds(ids: string[]): string[][] {
+  const out: string[][] = [];
+  for (let i = 0; i < ids.length; i += ID_CHUNK_SIZE) {
+    out.push(ids.slice(i, i + ID_CHUNK_SIZE));
+  }
+  return out;
+}
+
 export interface ParsedListQuery {
   page: number;
   perPage: number;
@@ -209,34 +223,52 @@ export async function listSubmissions(
   if (rows.length === 0) return { items: [], total };
 
   const ids = rows.map((r) => r.id);
+  const idBatches = chunkIds(ids);
 
-  const participantRows = await db
-    .select({
-      submissionId: schema.participant.submissionId,
-      contactId: schema.participant.contactId,
-      firstName: schema.contact.firstName,
-      lastName: schema.contact.lastName,
-      order: schema.participant.order,
-    })
-    .from(schema.participant)
-    .innerJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
-    .where(inArray(schema.participant.submissionId, ids));
+  const participantRows: {
+    submissionId: string;
+    contactId: string;
+    firstName: string;
+    lastName: string;
+    order: number;
+  }[] = [];
+  for (const batch of idBatches) {
+    const batchRows = await db
+      .select({
+        submissionId: schema.participant.submissionId,
+        contactId: schema.participant.contactId,
+        firstName: schema.contact.firstName,
+        lastName: schema.contact.lastName,
+        order: schema.participant.order,
+      })
+      .from(schema.participant)
+      .innerJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
+      .where(inArray(schema.participant.submissionId, batch));
+    participantRows.push(...batchRows);
+  }
 
-  const trackRows = await db
-    .select({ submissionId: schema.submissionTrack.submissionId, trackId: schema.submissionTrack.trackId })
-    .from(schema.submissionTrack)
-    .where(inArray(schema.submissionTrack.submissionId, ids));
+  const trackRows: { submissionId: string; trackId: string }[] = [];
+  for (const batch of idBatches) {
+    const batchRows = await db
+      .select({ submissionId: schema.submissionTrack.submissionId, trackId: schema.submissionTrack.trackId })
+      .from(schema.submissionTrack)
+      .where(inArray(schema.submissionTrack.submissionId, batch));
+    trackRows.push(...batchRows);
+  }
 
   let answerRows: { submissionId: string; formFieldId: string; valueJson: string }[] = [];
   if (params.includeAnswers) {
-    answerRows = await db
-      .select({
-        submissionId: schema.submissionAnswer.submissionId,
-        formFieldId: schema.submissionAnswer.formFieldId,
-        valueJson: schema.submissionAnswer.valueJson,
-      })
-      .from(schema.submissionAnswer)
-      .where(inArray(schema.submissionAnswer.submissionId, ids));
+    for (const batch of idBatches) {
+      const batchRows = await db
+        .select({
+          submissionId: schema.submissionAnswer.submissionId,
+          formFieldId: schema.submissionAnswer.formFieldId,
+          valueJson: schema.submissionAnswer.valueJson,
+        })
+        .from(schema.submissionAnswer)
+        .where(inArray(schema.submissionAnswer.submissionId, batch));
+      answerRows.push(...batchRows);
+    }
   }
 
   const speakersBySubmission = new Map<string, { contactId: string; name: string; order: number }[]>();

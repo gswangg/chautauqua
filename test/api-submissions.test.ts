@@ -1,6 +1,7 @@
 /// <reference types="vite/client" />
 import { describe, expect, it } from "vitest";
 import {
+  chunkIds,
   isValidStatusLiteral,
   parseListQuery,
   SORT_ORDERS,
@@ -103,6 +104,32 @@ describe("DEC-009 acceptance idempotence guard (pure logic, exercised via the do
     };
     const second = planAcceptance({ ...input, existingTaskTitlesByContact });
     expect(second.taskAssignments).toEqual([]);
+  });
+});
+
+describe("chunkIds (D1 bound-parameter batching for list-page enrichment queries)", () => {
+  it("returns a single batch for input under the chunk size", () => {
+    expect(chunkIds(["a", "b", "c"])).toEqual([["a", "b", "c"]]);
+  });
+
+  it("returns an empty array for empty input", () => {
+    expect(chunkIds([])).toEqual([]);
+  });
+
+  it("splits into batches of at most 100, preserving order and every id", () => {
+    const ids = Array.from({ length: 101 }, (_, i) => `id-${i}`);
+    const batches = chunkIds(ids);
+    expect(batches.length).toBe(2);
+    expect(batches[0]!.length).toBe(100);
+    expect(batches[1]!.length).toBe(1);
+    expect(batches.flat()).toEqual(ids);
+  });
+
+  it("handles an exact multiple of the chunk size without a trailing empty batch", () => {
+    const ids = Array.from({ length: 200 }, (_, i) => `id-${i}`);
+    const batches = chunkIds(ids);
+    expect(batches.length).toBe(2);
+    expect(batches.every((b) => b.length === 100)).toBe(true);
   });
 });
 
