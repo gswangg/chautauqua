@@ -180,6 +180,17 @@ function SpeakerNames(props: { speakers: PublicSession["speakers"] }) {
   );
 }
 
+// EMB-01: shared day/time formatting for session cards and agenda blocks.
+// `day` is already the wall-clock 'YYYY-MM-DD' in the event's own timezone
+// (DEC-010) — no zonedMinutesToUtc conversion needed to *display* it, only
+// to export it as a UTC .ics instant (schedule.ics, above).
+function formatDay(day: string): string {
+  const [year, month, date] = day.split("-").map(Number);
+  if (!year || !month || !date) return day;
+  const d = new Date(Date.UTC(year, month - 1, date));
+  return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
+}
+
 const DESCRIPTION_SNIPPET_LEN = 160;
 
 function SessionDescription(props: { description: string | null }) {
@@ -197,12 +208,27 @@ function SessionDescription(props: { description: string | null }) {
   );
 }
 
+/** EMB-01: date/time + room, only when a schedule_slot exists. Cards for an
+ * unscheduled session render nothing here (no dash pile) — the caller
+ * threads day/startMin/endMin/roomName as null-together in that case. */
+function SessionSchedule(props: { session: PublicSession }) {
+  const { session } = props;
+  if (session.day === null || session.startMin === null || session.endMin === null) return null;
+  return (
+    <p class="chq-session-when">
+      {formatDay(session.day)}, {formatMinutes(session.startMin)}–{formatMinutes(session.endMin)}
+      {session.roomName ? ` · ${session.roomName}` : ""}
+    </p>
+  );
+}
+
 function SessionCard(props: { session: PublicSession; itinerary?: boolean }) {
   const { session } = props;
   return (
     <div class="chq-card" id={`chq-session-${session.id}`}>
       <TrackChips tracks={session.tracks} />
       <h3>{session.title}</h3>
+      <SessionSchedule session={session} />
       <p>
         <SpeakerNames speakers={session.speakers} />
       </p>
@@ -225,16 +251,27 @@ function SessionsContent(props: {
   event: PublicEvent;
   tracks: PublicTrack[];
   activeTrackId: string | null;
+  q: string | null;
   items: PublicSession[];
   total: number;
   page: number;
 }) {
-  const { event, tracks, activeTrackId, items, total, page } = props;
+  const { event, tracks, activeTrackId, q, items, total, page } = props;
   const hasMore = items.length < total;
   const basePath = `/e/${event.slug}/sessions`;
   return (
     <>
       <h2>Sessions</h2>
+      {/* EMB-02: plain GET search form, preserves the active track filter as
+          a hidden field so search + track filtering compose. */}
+      <form method="get" action={basePath} role="search">
+        <label>
+          Search
+          <input type="search" name="q" value={q ?? ""} placeholder="Title or speaker name" />
+        </label>
+        {activeTrackId ? <input type="hidden" name="trackId" value={activeTrackId} /> : null}
+        <button type="submit">Search</button>
+      </form>
       <nav aria-label="Track filters">
         <a href={basePath} aria-current={activeTrackId === null ? "true" : undefined}>
           All
@@ -256,7 +293,13 @@ function SessionsContent(props: {
       ))}
       {hasMore ? (
         <p>
-          <a href={`${basePath}?${activeTrackId ? `trackId=${activeTrackId}&` : ""}page=${page + 1}`}>Show more</a>
+          <a
+            href={`${basePath}?${activeTrackId ? `trackId=${activeTrackId}&` : ""}${
+              q ? `q=${encodeURIComponent(q)}&` : ""
+            }page=${page + 1}`}
+          >
+            Show more
+          </a>
         </p>
       ) : null}
     </>
@@ -406,15 +449,40 @@ function groupByDay(items: PublicAgendaItem[]): Map<string, PublicAgendaItem[]> 
   return map;
 }
 
+/** EMB-07: day switcher — anchor links, one per event day, jumping to that
+ * day's section. Deliberately just the nav wrapper around AgendaDayGrid;
+ * AgendaDayGrid's internals (time grid, room columns) are untouched here. */
+function DaySwitcher(props: { days: string[] }) {
+  if (props.days.length <= 1) return null;
+  return (
+    <nav aria-label="Jump to day" class="chq-day-switcher">
+      {props.days.map((day, i) => (
+        <>
+          {i > 0 ? " · " : ""}
+          <a href={`#chq-day-${day}`}>{formatDay(day)}</a>
+        </>
+      ))}
+    </nav>
+  );
+}
+
 function AgendaContent(props: { event: PublicEvent; items: PublicAgendaItem[] }) {
   const byDay = groupByDay(props.items);
+  const days = [...byDay.keys()];
   return (
     <>
       <h2>Agenda</h2>
       {byDay.size === 0 ? (
         <p>No sessions scheduled yet.</p>
       ) : (
-        [...byDay.entries()].map(([day, items]) => <AgendaDayGrid day={day} items={items} />)
+        <>
+          <DaySwitcher days={days} />
+          {days.map((day) => (
+            <div id={`chq-day-${day}`}>
+              <AgendaDayGrid day={day} items={byDay.get(day) ?? []} />
+            </div>
+          ))}
+        </>
       )}
     </>
   );
@@ -455,6 +523,7 @@ function ItineraryScript(props: { eventSlug: string }) {
 
 function ScheduleContent(props: { event: PublicEvent; items: PublicAgendaItem[] }) {
   const byDay = groupByDay(props.items);
+  const days = [...byDay.keys()];
   return (
     <>
       <h2>My schedule</h2>
@@ -467,7 +536,14 @@ function ScheduleContent(props: { event: PublicEvent; items: PublicAgendaItem[] 
       {byDay.size === 0 ? (
         <p>No sessions scheduled yet.</p>
       ) : (
-        [...byDay.entries()].map(([day, items]) => <AgendaDayGrid day={day} items={items} itinerary />)
+        <>
+          <DaySwitcher days={days} />
+          {days.map((day) => (
+            <div id={`chq-day-${day}`}>
+              <AgendaDayGrid day={day} items={byDay.get(day) ?? []} itinerary />
+            </div>
+          ))}
+        </>
       )}
       <ItineraryScript eventSlug={props.event.slug} />
     </>
@@ -488,6 +564,10 @@ function parseTrackId(raw: string | undefined): string | null {
   return raw && raw.trim().length > 0 ? raw.trim() : null;
 }
 
+function parseQ(raw: string | undefined): string | null {
+  return raw && raw.trim().length > 0 ? raw.trim() : null;
+}
+
 // ---------------------------------------------------------------------------
 // Surface rendering dispatch (shared by /e and /embed)
 // ---------------------------------------------------------------------------
@@ -496,17 +576,20 @@ async function renderSurfaceContent(
   db: Parameters<typeof getPublicSessions>[0],
   event: PublicEvent,
   surface: Surface,
-  query: { trackId?: string; page?: string },
+  query: { trackId?: string; page?: string; q?: string },
 ): Promise<{ title: string; content: unknown }> {
   switch (surface) {
     case "sessions": {
       const trackId = parseTrackId(query.trackId);
       const page = parsePage(query.page);
+      const q = parseQ(query.q);
       const tracks = await getPublicTracks(db, event.id);
-      const { items, total } = await getPublicSessions(db, event, { trackId, page, perPage: PER_PAGE });
+      const { items, total } = await getPublicSessions(db, event, { trackId, page, perPage: PER_PAGE, q });
       return {
         title: `Sessions - ${event.name}`,
-        content: <SessionsContent event={event} tracks={tracks} activeTrackId={trackId} items={items} total={total} page={page} />,
+        content: (
+          <SessionsContent event={event} tracks={tracks} activeTrackId={trackId} q={q} items={items} total={total} page={page} />
+        ),
       };
     }
     case "speakers": {
@@ -544,6 +627,7 @@ for (const surface of SURFACES) {
     const { title, content } = await renderSurfaceContent(c.var.db, event, surface, {
       trackId: c.req.query("trackId"),
       page: c.req.query("page"),
+      q: c.req.query("q"),
     });
     return c.html(
       <PublicShell event={event} active={surface} title={title}>
@@ -562,6 +646,7 @@ publicRoutes.get("/embed/:eventSlug/:surface", async (c) => {
   const { title, content } = await renderSurfaceContent(c.var.db, event, surfaceParam, {
     trackId: c.req.query("trackId"),
     page: c.req.query("page"),
+    q: c.req.query("q"),
   });
   // No frame-blocking headers are ever set in this file — embeds stay
   // frameable by construction (DEC-022).
