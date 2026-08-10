@@ -108,6 +108,15 @@ export function apiPatch<T>(path: string, body?: unknown): Promise<T> {
   });
 }
 
+// DEC-021 requires a PUT verb (submissions/:id/slot); appended alongside
+// apiPatch following the identical pattern (declared overlap, DEC-024).
+export function apiPut<T>(path: string, body?: unknown): Promise<T> {
+  return request<T>(path, {
+    method: 'PUT',
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+}
+
 export function apiDelete<T>(path: string): Promise<T> {
   return request<T>(path, { method: 'DELETE' });
 }
