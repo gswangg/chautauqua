@@ -1,10 +1,11 @@
 // Shared shapes for the J4 review SPA (DEC-018 wire contract). Kept
 // dependency-free so the pure helpers stay unit-testable without a DOM.
 
-// DEC-018: criteria kinds. 'rating' requires weight > 0 and numeric scores
-// within scale_json {min,max}; 'dropdown' requires options: string[] and
-// stores the chosen string.
-export type CriterionKind = 'rating' | 'dropdown';
+// DEC-018/DEC-148: criteria kinds. 'rating' requires weight > 0 and numeric
+// scores within scale_json {min,max}; 'dropdown' requires options: string[]
+// and stores the chosen string; 'text' stores a free-text string, optionally
+// required, and never weighs into aggregation (like 'dropdown').
+export type CriterionKind = 'rating' | 'dropdown' | 'text';
 
 export interface EvaluationCriterion {
   id: string;
@@ -12,6 +13,7 @@ export interface EvaluationCriterion {
   kind: CriterionKind;
   weight?: number;
   options?: string[];
+  required?: boolean;
 }
 
 export interface EvaluationScale {
@@ -33,6 +35,10 @@ export interface EvaluationPlan {
   rounds: number;
   // DEC-082: the round the plan is currently on (1-based, <= rounds).
   currentRound: number;
+  // DEC-147: round -> criteria override map, keyed by round number as a
+  // string ("2", "3", ...). A round absent from this map (including round 1
+  // by convention) uses `criteria` above. null/undefined = no overrides.
+  roundCriteria?: Record<string, EvaluationCriterion[]> | null;
   maxEvaluationsPerSubmission?: number;
   createdAt: number;
 }
@@ -51,6 +57,7 @@ export const DEFAULT_PLAN_DRAFT: PlanDraft = {
   scale: { min: 1, max: 5 },
   criteria: [],
   rounds: 1,
+  roundCriteria: null,
   maxEvaluationsPerSubmission: undefined,
 };
 
@@ -112,6 +119,10 @@ export interface ReviewerSubmissionDetail {
   // This reviewer's own prior rating on this submission, if any. Reviewers
   // never see the aggregate/other reviewers' scores (DEC-018) -- only this.
   myEvaluation?: MyEvaluation;
+  // DEC-147: criteria resolved for the plan's ACTIVE round (via the server's
+  // criteriaForRound) -- the Scorecard renders these instead of plan.criteria
+  // so a round override actually takes effect.
+  criteria?: EvaluationCriterion[];
 }
 
 export interface Track {

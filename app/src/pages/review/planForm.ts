@@ -15,7 +15,9 @@ export function addCriterion(criteria: EvaluationCriterion[], kind: CriterionKin
   const base: EvaluationCriterion =
     kind === 'rating'
       ? { id: newCriterionId(), label: '', kind: 'rating', weight: 1 }
-      : { id: newCriterionId(), label: '', kind: 'dropdown', options: [] };
+      : kind === 'dropdown'
+        ? { id: newCriterionId(), label: '', kind: 'dropdown', options: [] }
+        : { id: newCriterionId(), label: '', kind: 'text', required: false };
   return [...criteria, base];
 }
 
@@ -58,11 +60,26 @@ export function validatePlanDraft(draft: PlanDraft): PlanValidationErrors {
   ) {
     errors.maxEvaluationsPerSubmission = 'Max evaluations must be at least 1, if set.';
   }
-  if (draft.criteria.length === 0) {
+  Object.assign(errors, validateCriteriaList(draft.criteria));
+
+  return errors;
+}
+
+/**
+ * Validates a criteria array against DEC-018/DEC-148's shape rules --
+ * 'rating' needs weight > 0, 'dropdown' needs non-empty options, 'text' only
+ * needs a label. Shared by the base `criteria` validation above and by every
+ * round override array in `roundCriteria` (DEC-147), so a round-tabbed
+ * editor reuses the exact same rules. Returns `{ criteria: ... }` only when
+ * the list itself is empty; per-row errors use the same
+ * `criterion.<id>.<field>` keys as validatePlanDraft.
+ */
+export function validateCriteriaList(criteria: EvaluationCriterion[]): PlanValidationErrors {
+  const errors: PlanValidationErrors = {};
+  if (criteria.length === 0) {
     errors.criteria = 'At least one criterion is required.';
   }
-
-  for (const criterion of draft.criteria) {
+  for (const criterion of criteria) {
     if (criterion.label.trim().length === 0) {
       errors[`criterion.${criterion.id}.label`] = 'Criterion label is required.';
     }
@@ -70,13 +87,13 @@ export function validatePlanDraft(draft: PlanDraft): PlanValidationErrors {
       if (criterion.weight === undefined || criterion.weight <= 0) {
         errors[`criterion.${criterion.id}.weight`] = 'Rating criteria need a weight greater than 0.';
       }
-    } else {
+    } else if (criterion.kind === 'dropdown') {
       if (!criterion.options || criterion.options.length === 0) {
         errors[`criterion.${criterion.id}.options`] = 'Dropdown criteria need at least one option.';
       }
     }
+    // 'text' criteria have no further shape requirements beyond a label.
   }
-
   return errors;
 }
 

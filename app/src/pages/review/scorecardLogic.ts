@@ -2,10 +2,16 @@
 // (number keys 1-9 set the focused rating; Enter submits and advances).
 import type { EvaluationCriterion, EvaluationScale, EvaluationScores } from './types';
 
-/** True once every criterion in the plan has a valid entry in `scores`. */
+/** True once every criterion in the plan has a valid entry in `scores`.
+ * DEC-148: a 'text' criterion is complete once its value is a string --
+ * required ones must be non-empty, optional ones may be ''. */
 export function isEvaluationComplete(criteria: EvaluationCriterion[], scores: EvaluationScores): boolean {
   return criteria.every((c) => {
     const v = scores[c.id];
+    if (c.kind === 'text') {
+      if (typeof v !== 'string') return false;
+      return c.required ? v.trim().length > 0 : true;
+    }
     if (v === undefined || v === null || v === '') return false;
     if (c.kind === 'rating') return typeof v === 'number' && !Number.isNaN(v);
     return typeof v === 'string' && (c.options ?? []).includes(v);

@@ -28,18 +28,33 @@ export function Scorecard() {
       .then(([planRes, subRes]) => {
         setPlan(planRes);
         setSubmission(subRes);
-        setScores(subRes?.myEvaluation?.scores ?? {});
+        // DEC-147: the server already resolved criteria for the plan's
+        // active round on the submission detail; fall back to plan.criteria
+        // only if that's somehow missing (e.g. an older cached response).
+        const criteria = subRes?.criteria ?? planRes?.criteria ?? [];
+        // DEC-148: optional text criteria default to '' so the validator's
+        // "every criterion has an entry" rule is satisfied without the
+        // reviewer having to click into every free-text field.
+        const initialScores = { ...(subRes?.myEvaluation?.scores ?? {}) };
+        for (const c of criteria) {
+          if (c.kind === 'text' && initialScores[c.id] === undefined) initialScores[c.id] = '';
+        }
+        setScores(initialScores);
         setComment(subRes?.myEvaluation?.comment ?? '');
-        const firstRating = planRes?.criteria.find((c) => c.kind === 'rating');
-        setFocusedId(firstRating?.id ?? planRes?.criteria[0]?.id ?? null);
+        const firstRating = criteria.find((c) => c.kind === 'rating');
+        setFocusedId(firstRating?.id ?? criteria[0]?.id ?? null);
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load submission'))
       .finally(() => setLoading(false));
   }, [planId, submissionId]);
 
+  // DEC-147: the submission detail's resolved criteria (this round) take
+  // priority over the base plan.criteria.
+  const criteria = submission?.criteria ?? plan?.criteria ?? [];
+
   async function submitAndAdvance() {
     if (!planId || !submissionId || !plan) return;
-    if (!isEvaluationComplete(plan.criteria, scores)) {
+    if (!isEvaluationComplete(criteria, scores)) {
       setError('Rate every criterion before submitting.');
       return;
     }
@@ -63,7 +78,7 @@ export function Scorecard() {
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
     if (!plan) return;
-    const focused = plan.criteria.find((c) => c.id === focusedId) ?? null;
+    const focused = criteria.find((c) => c.id === focusedId) ?? null;
     const action = scorecardKeyAction(e.key, focused, plan.scale);
     if (action.type === 'setRating') {
       e.preventDefault();
@@ -108,13 +123,16 @@ export function Scorecard() {
 
       <p className="chq-scorecard-hint">Tip: number keys 1-9 set the focused rating; Enter submits and advances.</p>
 
-      {plan.criteria.map((criterion: EvaluationCriterion) => (
+      {criteria.map((criterion: EvaluationCriterion) => (
         <div
           key={criterion.id}
           className={`chq-scorecard-criterion${focusedId === criterion.id ? ' chq-focused' : ''}`}
           onFocus={() => setFocusedId(criterion.id)}
         >
-          <label>{criterion.label}</label>
+          <label>
+            {criterion.label}
+            {criterion.kind === 'text' && criterion.required && ' *'}
+          </label>
           {criterion.kind === 'rating' ? (
             <input
               type="number"
@@ -124,7 +142,7 @@ export function Scorecard() {
               onFocus={() => setFocusedId(criterion.id)}
               onChange={(e) => setScores((s) => ({ ...s, [criterion.id]: Number(e.target.value) }))}
             />
-          ) : (
+          ) : criterion.kind === 'dropdown' ? (
             <select
               value={typeof scores[criterion.id] === 'string' ? (scores[criterion.id] as string) : ''}
               onFocus={() => setFocusedId(criterion.id)}
@@ -137,6 +155,13 @@ export function Scorecard() {
                 </option>
               ))}
             </select>
+          ) : (
+            <textarea
+              aria-label={criterion.label || 'criterion'}
+              value={typeof scores[criterion.id] === 'string' ? (scores[criterion.id] as string) : ''}
+              onFocus={() => setFocusedId(criterion.id)}
+              onChange={(e) => setScores((s) => ({ ...s, [criterion.id]: e.target.value }))}
+            />
           )}
         </div>
       ))}

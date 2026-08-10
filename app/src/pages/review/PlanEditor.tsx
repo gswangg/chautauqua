@@ -3,10 +3,11 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { apiDelete, apiGet, apiList, apiPatch, apiPost, ApiError } from '../../lib/api';
 import { dateInputToMs, msToDateInput } from '../../lib/dates';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
-import { addCriterion, removeCriterion, updateCriterion, validatePlanDraft } from './planForm';
+import { addCriterion, removeCriterion, updateCriterion, validateCriteriaList, validatePlanDraft } from './planForm';
 import {
   DEFAULT_PLAN_DRAFT,
   type CriterionKind,
+  type EvaluationCriterion,
   type EvaluationPlan,
   type PlanDraft,
   type PlanReviewer,
@@ -27,6 +28,46 @@ export function PlanEditor() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dateFieldError, setDateFieldError] = useState<string | null>(null);
+
+  // DEC-147: 0 = editing the base criteria; a round number 1..rounds means
+  // editing that round's override (or "inherit base" when no override key
+  // exists yet for that round in draft.roundCriteria).
+  const [activeRound, setActiveRound] = useState(0);
+
+  const roundOverride = activeRound === 0 ? null : (draft.roundCriteria?.[String(activeRound)] ?? null);
+  const editingCriteria = activeRound === 0 ? draft.criteria : (roundOverride ?? draft.criteria);
+
+  function setEditingCriteria(next: EvaluationCriterion[] | ((prev: EvaluationCriterion[]) => EvaluationCriterion[])) {
+    const resolved = typeof next === 'function' ? next(editingCriteria) : next;
+    if (activeRound === 0) {
+      setDraft((d) => ({ ...d, criteria: resolved }));
+      return;
+    }
+    setDraft((d) => ({
+      ...d,
+      roundCriteria: { ...(d.roundCriteria ?? {}), [String(activeRound)]: resolved },
+    }));
+  }
+
+  function customizeActiveRound() {
+    if (activeRound === 0) return;
+    setDraft((d) => ({
+      ...d,
+      roundCriteria: { ...(d.roundCriteria ?? {}), [String(activeRound)]: d.criteria.map((c) => ({ ...c })) },
+    }));
+  }
+
+  function revertActiveRoundToBase() {
+    if (activeRound === 0) return;
+    setDraft((d) => {
+      const next = { ...(d.roundCriteria ?? {}) };
+      delete next[String(activeRound)];
+      return { ...d, roundCriteria: Object.keys(next).length > 0 ? next : null };
+    });
+  }
+
+  const activeRoundIsCustomized = activeRound !== 0 && roundOverride !== null;
+  const criteriaErrors = validateCriteriaList(editingCriteria);
 
   function setOpenAt(value: string) {
     try {
@@ -70,6 +111,7 @@ export function PlanEditor() {
           scale: plan.scale,
           criteria: plan.criteria,
           rounds: plan.rounds,
+          roundCriteria: plan.roundCriteria ?? null,
           maxEvaluationsPerSubmission: plan.maxEvaluationsPerSubmission,
         });
       })
@@ -336,13 +378,42 @@ export function PlanEditor() {
 
       <fieldset className="chq-criteria-editor">
         <legend>Weighted criteria</legend>
-        {errors.criteria && <span className="chq-field-error">{errors.criteria}</span>}
-        {draft.criteria.map((criterion) => (
+
+        {draft.rounds > 1 && (
+          <div className="chq-criteria-round-tabs">
+            <label>
+              Editing criteria for
+              <select value={activeRound} onChange={(e) => setActiveRound(Number(e.target.value))}>
+                <option value={0}>Base (used by any round without an override)</option>
+                {Array.from({ length: draft.rounds }, (_, i) => i + 1).map((r) => (
+                  <option key={r} value={r}>
+                    Round {r}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {activeRound !== 0 &&
+              (activeRoundIsCustomized ? (
+                <button type="button" onClick={revertActiveRoundToBase}>
+                  Revert round {activeRound} to base
+                </button>
+              ) : (
+                <button type="button" onClick={customizeActiveRound}>
+                  Customize round {activeRound} (inherits base until then)
+                </button>
+              ))}
+          </div>
+        )}
+
+        {(activeRound === 0 ? errors.criteria : criteriaErrors.criteria) && (
+          <span className="chq-field-error">{activeRound === 0 ? errors.criteria : criteriaErrors.criteria}</span>
+        )}
+        {editingCriteria.map((criterion) => (
           <div key={criterion.id} className="chq-criterion-row">
             <input
               placeholder="Label"
               value={criterion.label}
-              onChange={(e) => setDraft((d) => ({ ...d, criteria: updateCriterion(d.criteria, criterion.id, { label: e.target.value }) }))}
+              onChange={(e) => setEditingCriteria((c) => updateCriterion(c, criterion.id, { label: e.target.value }))}
             />
             <span className="chq-criterion-kind">{criterion.kind}</span>
             {criterion.kind === 'rating' ? (
@@ -353,44 +424,59 @@ export function PlanEditor() {
                 aria-label={`${criterion.label || 'criterion'} weight`}
                 value={criterion.weight ?? ''}
                 onChange={(e) =>
-                  setDraft((d) => ({
-                    ...d,
-                    criteria: updateCriterion(d.criteria, criterion.id, { weight: Number(e.target.value) }),
-                  }))
+                  setEditingCriteria((c) => updateCriterion(c, criterion.id, { weight: Number(e.target.value) }))
                 }
               />
-            ) : (
+            ) : criterion.kind === 'dropdown' ? (
               <input
                 placeholder="Options (comma-separated)"
                 aria-label={`${criterion.label || 'criterion'} options`}
                 value={(criterion.options ?? []).join(', ')}
                 onChange={(e) =>
-                  setDraft((d) => ({
-                    ...d,
-                    criteria: updateCriterion(d.criteria, criterion.id, {
+                  setEditingCriteria((c) =>
+                    updateCriterion(c, criterion.id, {
                       options: e.target.value
                         .split(',')
                         .map((o) => o.trim())
                         .filter((o) => o.length > 0),
                     }),
-                  }))
+                  )
                 }
               />
+            ) : (
+              <label className="chq-checkbox-label">
+                <input
+                  type="checkbox"
+                  aria-label={`${criterion.label || 'criterion'} required`}
+                  checked={criterion.required ?? false}
+                  onChange={(e) => setEditingCriteria((c) => updateCriterion(c, criterion.id, { required: e.target.checked }))}
+                />
+                Required
+              </label>
             )}
-            {errors[`criterion.${criterion.id}.label`] && <span className="chq-field-error">{errors[`criterion.${criterion.id}.label`]}</span>}
-            {errors[`criterion.${criterion.id}.weight`] && <span className="chq-field-error">{errors[`criterion.${criterion.id}.weight`]}</span>}
-            {errors[`criterion.${criterion.id}.options`] && <span className="chq-field-error">{errors[`criterion.${criterion.id}.options`]}</span>}
-            <button type="button" onClick={() => setDraft((d) => ({ ...d, criteria: removeCriterion(d.criteria, criterion.id) }))}>
+            {(activeRound === 0 ? errors : criteriaErrors)[`criterion.${criterion.id}.label`] && (
+              <span className="chq-field-error">{(activeRound === 0 ? errors : criteriaErrors)[`criterion.${criterion.id}.label`]}</span>
+            )}
+            {(activeRound === 0 ? errors : criteriaErrors)[`criterion.${criterion.id}.weight`] && (
+              <span className="chq-field-error">{(activeRound === 0 ? errors : criteriaErrors)[`criterion.${criterion.id}.weight`]}</span>
+            )}
+            {(activeRound === 0 ? errors : criteriaErrors)[`criterion.${criterion.id}.options`] && (
+              <span className="chq-field-error">{(activeRound === 0 ? errors : criteriaErrors)[`criterion.${criterion.id}.options`]}</span>
+            )}
+            <button type="button" onClick={() => setEditingCriteria((c) => removeCriterion(c, criterion.id))}>
               Remove
             </button>
           </div>
         ))}
         <div className="chq-criteria-add">
-          <button type="button" onClick={() => setDraft((d) => ({ ...d, criteria: addCriterion(d.criteria, 'rating' as CriterionKind) }))}>
+          <button type="button" onClick={() => setEditingCriteria((c) => addCriterion(c, 'rating' as CriterionKind))}>
             Add rating criterion
           </button>
-          <button type="button" onClick={() => setDraft((d) => ({ ...d, criteria: addCriterion(d.criteria, 'dropdown' as CriterionKind) }))}>
+          <button type="button" onClick={() => setEditingCriteria((c) => addCriterion(c, 'dropdown' as CriterionKind))}>
             Add dropdown criterion
+          </button>
+          <button type="button" onClick={() => setEditingCriteria((c) => addCriterion(c, 'text' as CriterionKind))}>
+            Add free text criterion
           </button>
         </div>
       </fieldset>

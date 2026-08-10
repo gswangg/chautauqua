@@ -23,6 +23,34 @@ describe('isEvaluationComplete', () => {
   });
 });
 
+describe('isEvaluationComplete (DEC-148 text criteria)', () => {
+  const withText: EvaluationCriterion[] = [
+    { id: 'quality', label: 'Quality', kind: 'rating', weight: 2 },
+    { id: 'notes', label: 'Notes', kind: 'text' },
+    { id: 'flag', label: 'Escalation reason', kind: 'text', required: true },
+  ];
+
+  it('is true when an optional text criterion is an empty string', () => {
+    const scores: EvaluationScores = { quality: 4, notes: '', flag: 'reason' };
+    expect(isEvaluationComplete(withText, scores)).toBe(true);
+  });
+
+  it('is false when a required text criterion is an empty string', () => {
+    const scores: EvaluationScores = { quality: 4, notes: '', flag: '' };
+    expect(isEvaluationComplete(withText, scores)).toBe(false);
+  });
+
+  it('is false when a required text criterion is whitespace-only', () => {
+    const scores: EvaluationScores = { quality: 4, notes: '', flag: '   ' };
+    expect(isEvaluationComplete(withText, scores)).toBe(false);
+  });
+
+  it('is false when a text criterion has no entry at all', () => {
+    const scores: EvaluationScores = { quality: 4, flag: 'reason' };
+    expect(isEvaluationComplete(withText, scores)).toBe(false);
+  });
+});
+
 describe('clampRating', () => {
   it('clamps to the scale bounds', () => {
     expect(clampRating(9, { min: 1, max: 5 })).toBe(5);

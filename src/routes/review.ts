@@ -18,18 +18,24 @@ import {
   anonymizeForReviewer,
   validateEvaluationScores,
   resolveAssignments,
+  criteriaForRound,
   type EvaluationCriterion,
   type EvaluationCriterionDef,
   type EvaluationScores,
 } from "../domain/evaluation";
 import { toCsv } from "../lib/csv";
 import * as repo from "../server/repo/review";
+import { roundCriteriaJsonOf } from "../server/repo/review";
 import type { PlanRecord } from "../server/repo/review";
 import * as eventsRepo from "../server/repo/events";
-import { DEC_123 } from "../decisions";
+import { DEC_015, DEC_123, DEC_146, DEC_147, DEC_148 } from "../decisions";
 
 export const reviewRoutes = new Hono<AppEnv>();
 void DEC_123; // criteria/scale immutability guard on PATCH /api/v1/plans/:id below
+void DEC_015; // append-only migrations: migrations/0010_round_criteria.sql
+void DEC_146; // PlanEditor.tsx retains the null-safe SPA date guards this task must preserve
+void DEC_147; // per-round scorecards: round_criteria_json + criteriaForRound resolution
+void DEC_148; // free-text 'text' criterion kind
 
 function asRecord(body: unknown): Record<string, unknown> {
   if (typeof body !== "object" || body === null) {
@@ -68,39 +74,85 @@ function parseScale(body: Record<string, unknown>, errors: Record<string, string
   return { min: s.min, max: s.max };
 }
 
-function parseCriteria(body: Record<string, unknown>, errors: Record<string, string>): EvaluationCriterionDef[] | undefined {
-  const criteria = body.criteria;
-  if (!Array.isArray(criteria) || criteria.length === 0) {
-    errors.criteria = "required non-empty array";
+/** Shared criteria-array validator (DEC-147/DEC-148): used for both the
+ * plan's base `criteria` and every round override in `roundCriteria`. Writes
+ * a single error under `errKey` and returns undefined on the first problem
+ * found -- callers pass a distinct errKey per array so a base-criteria error
+ * and a round-override error never collide. */
+function parseCriteriaList(
+  list: unknown,
+  errors: Record<string, string>,
+  errKey: string,
+): EvaluationCriterionDef[] | undefined {
+  if (!Array.isArray(list) || list.length === 0) {
+    errors[errKey] = "required non-empty array";
     return undefined;
   }
   const out: EvaluationCriterionDef[] = [];
-  for (const raw of criteria) {
+  for (const raw of list) {
     if (typeof raw !== "object" || raw === null) {
-      errors.criteria = "each criterion must be an object";
+      errors[errKey] = "each criterion must be an object";
       return undefined;
     }
     const c = raw as Record<string, unknown>;
     if (typeof c.id !== "string" || typeof c.label !== "string") {
-      errors.criteria = "each criterion needs id and label";
+      errors[errKey] = "each criterion needs id and label";
       return undefined;
     }
     if (c.kind === "rating") {
       if (typeof c.weight !== "number" || c.weight <= 0) {
-        errors.criteria = `criterion "${c.id}" (rating) requires weight > 0`;
+        errors[errKey] = `criterion "${c.id}" (rating) requires weight > 0`;
         return undefined;
       }
       out.push({ id: c.id, label: c.label, kind: "rating", weight: c.weight });
     } else if (c.kind === "dropdown") {
       if (!Array.isArray(c.options) || c.options.length === 0 || !c.options.every((o) => typeof o === "string")) {
-        errors.criteria = `criterion "${c.id}" (dropdown) requires non-empty string options`;
+        errors[errKey] = `criterion "${c.id}" (dropdown) requires non-empty string options`;
         return undefined;
       }
       out.push({ id: c.id, label: c.label, kind: "dropdown", options: c.options as string[] });
+    } else if (c.kind === "text") {
+      out.push({ id: c.id, label: c.label, kind: "text", required: c.required === true });
     } else {
-      errors.criteria = `criterion "${c.id}" kind must be 'rating' or 'dropdown'`;
+      errors[errKey] = `criterion "${c.id}" kind must be 'rating', 'dropdown', or 'text'`;
       return undefined;
     }
+  }
+  return out;
+}
+
+function parseCriteria(body: Record<string, unknown>, errors: Record<string, string>): EvaluationCriterionDef[] | undefined {
+  return parseCriteriaList(body.criteria, errors, "criteria");
+}
+
+/** DEC-147: parses the optional `roundCriteria` map ({"<round>": [...]}) on
+ * plan create/PATCH, validating every override array with the same rules as
+ * the base criteria. Round keys must be integers within [1, rounds] when
+ * `rounds` is known. Caller must only invoke this when `body.roundCriteria`
+ * is present; a `null` body value means "clear all overrides" (returns
+ * null), distinct from "field absent" which callers skip entirely. */
+function parseRoundCriteria(
+  body: Record<string, unknown>,
+  errors: Record<string, string>,
+  rounds: number | undefined,
+): Record<string, EvaluationCriterionDef[]> | null | undefined {
+  const raw = body.roundCriteria;
+  if (raw === null) return null;
+  if (raw === undefined) return undefined;
+  if (typeof raw !== "object" || Array.isArray(raw)) {
+    errors.roundCriteria = "must be an object keyed by round number";
+    return undefined;
+  }
+  const out: Record<string, EvaluationCriterionDef[]> = {};
+  for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+    const roundNum = Number(key);
+    if (!Number.isInteger(roundNum) || roundNum < 1 || (rounds !== undefined && roundNum > rounds)) {
+      errors.roundCriteria = `round key "${key}" must be an integer between 1 and ${rounds ?? "rounds"}`;
+      return undefined;
+    }
+    const parsed = parseCriteriaList(value, errors, `roundCriteria.${key}`);
+    if (parsed === undefined) return undefined;
+    out[String(roundNum)] = parsed;
   }
   return out;
 }
@@ -189,6 +241,7 @@ reviewRoutes.post("/api/v1/events/:eventId/plans", requireOrganizer, csrfJson, a
   const scale = parseScale(body, errors);
   const criteria = parseCriteria(body, errors);
   const rounds = body.rounds !== undefined ? parseRounds(body, errors) : 1;
+  const roundCriteria = parseRoundCriteria(body, errors, rounds);
   if (Object.keys(errors).length > 0) throw new ApiError("invalid", "Invalid plan", errors);
 
   const created = await repo.createPlan(c.var.db, event.id, {
@@ -201,6 +254,7 @@ reviewRoutes.post("/api/v1/events/:eventId/plans", requireOrganizer, csrfJson, a
     scale: scale!,
     criteria: criteria!,
     rounds: rounds!,
+    roundCriteria: roundCriteria ?? null,
     maxEvaluations: typeof body.maxEvaluations === "number" ? body.maxEvaluations : null,
   });
   return c.json(created, 201);
@@ -219,6 +273,8 @@ reviewRoutes.patch("/api/v1/plans/:id", requireOrganizer, csrfJson, async (c) =>
   const scale = body.scale !== undefined ? parseScale(body, errors) : undefined;
   const criteria = body.criteria !== undefined ? parseCriteria(body, errors) : undefined;
   const rounds = body.rounds !== undefined ? parseRounds(body, errors, plan.currentRound) : undefined;
+  const roundCriteria =
+    body.roundCriteria !== undefined ? parseRoundCriteria(body, errors, rounds ?? plan.rounds) : undefined;
   if (Object.keys(errors).length > 0) throw new ApiError("invalid", "Invalid plan", errors);
 
   // DEC-123: once any evaluation exists on this plan, criteria/scale are
@@ -250,6 +306,7 @@ reviewRoutes.patch("/api/v1/plans/:id", requireOrganizer, csrfJson, async (c) =>
     scale,
     criteria,
     rounds,
+    roundCriteria,
     maxEvaluations: body.maxEvaluations !== undefined ? (body.maxEvaluations === null ? null : (body.maxEvaluations as number)) : undefined,
   });
   return c.json(updated);
@@ -346,7 +403,9 @@ async function buildResults(
 ): Promise<ResultsRow[]> {
   const submissions = await repo.listPlanFilteredSubmissions(c.var.db, plan);
   const evaluations = (await repo.listEvaluationsForPlan(c.var.db, plan.id, round)).filter((e) => e.round === round);
-  const criteria = ratingCriteria(plan.criteria);
+  // DEC-147: results aggregate against THIS round's rating criteria -- a
+  // round override can drop/add/reweight criteria relative to the base plan.
+  const criteria = ratingCriteria(criteriaForRound(plan.criteria, roundCriteriaJsonOf(plan), round));
 
   const rows: ResultsRow[] = submissions.map((sub) => {
     const evals = evaluations
@@ -364,7 +423,7 @@ reviewRoutes.get("/api/v1/plans/:id/results", requireOrganizer, async (c) => {
   const rows = await buildResults(c, plan, round);
 
   if (c.req.query("format") === "csv") {
-    const criteria = ratingCriteria(plan.criteria);
+    const criteria = ratingCriteria(criteriaForRound(plan.criteria, roundCriteriaJsonOf(plan), round));
     const header = ["ref", "title", "count", "average", ...criteria.map((cr) => cr.label)];
     const dataRows = rows.map((r) => [
       r.ref,
@@ -519,11 +578,17 @@ reviewRoutes.get("/api/v1/review/submissions/:id", async (c) => {
   const answers = await repo.listAnswersForSubmission(c.var.db, submissionId);
   const speakers = await repo.listSpeakersForSubmission(c.var.db, submissionId);
 
+  // DEC-147: the criteria embedded on the submission detail are resolved for
+  // the plan's ACTIVE round -- the reviewer's scorecard renders these, not
+  // plan.criteria, so a round override actually takes effect client-side.
+  const criteria = criteriaForRound(plan.criteria, roundCriteriaJsonOf(plan), plan.currentRound);
+
   const detail = {
     ...summary,
     speakers: speakers as repo.SpeakerSummary[] | undefined,
     speakerAnswers: answers.filter((a) => a.section === "speaker") as repo.SubmissionAnswerRow[] | undefined,
     sessionAnswers: answers.filter((a) => a.section === "session"),
+    criteria,
   };
 
   // DEC-018: server-side anonymization only, never client-side.
@@ -561,7 +626,10 @@ reviewRoutes.put("/api/v1/review/plans/:planId/evaluations/:submissionId", csrfJ
     }
   }
 
-  const result = validateEvaluationScores(scores as Record<string, unknown>, plan.criteria, plan.scale);
+  // DEC-147: validate against THIS round's resolved criteria, not the base
+  // plan.criteria -- a round override changes what's a valid submission.
+  const roundCriteria = criteriaForRound(plan.criteria, roundCriteriaJsonOf(plan), round);
+  const result = validateEvaluationScores(scores as Record<string, unknown>, roundCriteria, plan.scale);
   if (!result.ok) {
     throw new ApiError("invalid", "Invalid scores", result.errors);
   }

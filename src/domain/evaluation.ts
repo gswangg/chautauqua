@@ -134,7 +134,18 @@ export interface DropdownCriterionDef {
   options: string[];
 }
 
-export type EvaluationCriterionDef = RatingCriterionDef | DropdownCriterionDef;
+/** DEC-148: free-text criterion. Stored in the same scores map as a string,
+ * excluded from weighted scoring/aggregates exactly like 'dropdown'. */
+export interface TextCriterionDef {
+  id: string;
+  label: string;
+  kind: "text";
+  weight?: undefined;
+  options?: undefined;
+  required?: boolean;
+}
+
+export type EvaluationCriterionDef = RatingCriterionDef | DropdownCriterionDef | TextCriterionDef;
 
 export type EvaluationScoreValue = number | string;
 
@@ -176,13 +187,24 @@ export function validateEvaluationScores(
       if (value < scale.min || value > scale.max) {
         errors[criterion.id] = `score must be within [${scale.min}, ${scale.max}]`;
       }
-    } else {
+    } else if (criterion.kind === "dropdown") {
       if (!Array.isArray(criterion.options) || criterion.options.length === 0) {
         errors[criterion.id] = `criterion "${criterion.id}" has no options defined`;
         continue;
       }
       if (typeof value !== "string" || !criterion.options.includes(value)) {
         errors[criterion.id] = `score must be one of: ${criterion.options.join(", ")}`;
+      }
+    } else {
+      // DEC-148: 'text' -- a string map entry is always required (no partial
+      // submissions), but an empty string is only rejected when the
+      // criterion itself is marked required.
+      if (typeof value !== "string") {
+        errors[criterion.id] = "score must be a string";
+        continue;
+      }
+      if (criterion.required === true && value.trim().length === 0) {
+        errors[criterion.id] = "a response is required";
       }
     }
   }
@@ -197,6 +219,27 @@ export function validateEvaluationScores(
     return { ok: false, errors };
   }
   return { ok: true };
+}
+
+/**
+ * DEC-147: resolves the criteria list that applies to a given round of a
+ * plan. `overridesJson` is the plan's round_criteria_json column verbatim --
+ * a JSON object shaped `{"<round>": EvaluationCriterionDef[]}` -- or null.
+ * Round 1 and any round absent from the overrides map fall back to `base`
+ * (the plan's own criteria_json). This is the single resolution point: every
+ * caller (route validation, results/progress aggregation, the reviewer
+ * queue/submission/PUT surface) must resolve round criteria through this
+ * function rather than re-deriving the fallback logic.
+ */
+export function criteriaForRound(
+  base: EvaluationCriterionDef[],
+  overridesJson: string | null,
+  round: number,
+): EvaluationCriterionDef[] {
+  if (!overridesJson) return base;
+  const parsed = JSON.parse(overridesJson) as Record<string, EvaluationCriterionDef[]>;
+  const forRound = parsed[String(round)];
+  return forRound ?? base;
 }
 
 /**

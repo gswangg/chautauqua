@@ -5,6 +5,7 @@ import {
   removeCriterion,
   totalRatingWeight,
   updateCriterion,
+  validateCriteriaList,
   validatePlanDraft,
 } from './planForm';
 import { DEFAULT_PLAN_DRAFT, type EvaluationCriterion, type PlanDraft } from './types';
@@ -23,6 +24,11 @@ describe('addCriterion / removeCriterion / updateCriterion', () => {
   it('adds a dropdown criterion with empty options', () => {
     const criteria = addCriterion([], 'dropdown');
     expect(criteria[0]).toMatchObject({ kind: 'dropdown', options: [] });
+  });
+
+  it('adds a free-text criterion defaulting to not required (DEC-148)', () => {
+    const criteria = addCriterion([], 'text');
+    expect(criteria[0]).toMatchObject({ kind: 'text', required: false, label: '' });
   });
 
   it('removes a criterion by id', () => {
@@ -98,6 +104,38 @@ describe('validatePlanDraft', () => {
     const errors = validatePlanDraft(d);
     expect(errors.rounds).toBeDefined();
     expect(errors.maxEvaluationsPerSubmission).toBeDefined();
+  });
+});
+
+describe('validateCriteriaList (DEC-147/DEC-148, used for round overrides)', () => {
+  it('is valid for a well-formed mix including a text criterion', () => {
+    const criteria: EvaluationCriterion[] = [
+      { id: 'c1', label: 'Quality', kind: 'rating', weight: 2 },
+      { id: 'c2', label: 'Escalation reason', kind: 'text', required: true },
+    ];
+    expect(validateCriteriaList(criteria)).toEqual({});
+  });
+
+  it('requires a label on a text criterion like any other kind', () => {
+    const criteria: EvaluationCriterion[] = [{ id: 'c1', label: '', kind: 'text' }];
+    const errors = validateCriteriaList(criteria);
+    expect(errors['criterion.c1.label']).toBeDefined();
+  });
+
+  it('does not require a weight or options for a text criterion', () => {
+    const criteria: EvaluationCriterion[] = [{ id: 'c1', label: 'Notes', kind: 'text' }];
+    expect(validateCriteriaList(criteria)).toEqual({});
+  });
+
+  it('requires at least one criterion in the list', () => {
+    expect(validateCriteriaList([]).criteria).toBeDefined();
+  });
+
+  it('matches validatePlanDraft criteria-shape errors for the base list', () => {
+    const criteria: EvaluationCriterion[] = [{ id: 'c1', label: 'Quality', kind: 'rating', weight: 0 }];
+    const draftErrors = validatePlanDraft({ ...DEFAULT_PLAN_DRAFT, name: 'Plan', criteria });
+    const listErrors = validateCriteriaList(criteria);
+    expect(draftErrors['criterion.c1.weight']).toEqual(listErrors['criterion.c1.weight']);
   });
 });
 

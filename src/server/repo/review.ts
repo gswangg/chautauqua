@@ -30,9 +30,21 @@ export interface PlanRecord {
   criteria: EvaluationCriterionDef[];
   rounds: number;
   currentRound: number;
+  // DEC-147: parsed round -> criteria override map (round_criteria_json), or
+  // null when the plan has no round-specific overrides. Resolve to an
+  // effective criteria list ONLY via src/domain/evaluation.ts's
+  // criteriaForRound() -- never re-derive the round-1/fallback logic here.
+  roundCriteria: Record<string, EvaluationCriterionDef[]> | null;
   maxEvaluations: number | null;
   createdAt: number;
   updatedAt: number;
+}
+
+/** DEC-147: PlanRecord.roundCriteria is already parsed JSON; criteriaForRound
+ * takes the raw JSON string, so call sites re-serialize via this helper
+ * rather than duplicating the parse/fallback logic. */
+export function roundCriteriaJsonOf(plan: PlanRecord): string | null {
+  return plan.roundCriteria ? JSON.stringify(plan.roundCriteria) : null;
 }
 
 function toPlanRecord(row: typeof schema.evaluationPlan.$inferSelect): PlanRecord {
@@ -49,6 +61,9 @@ function toPlanRecord(row: typeof schema.evaluationPlan.$inferSelect): PlanRecor
     criteria: JSON.parse(row.criteriaJson) as EvaluationCriterionDef[],
     rounds: row.rounds,
     currentRound: row.currentRound,
+    roundCriteria: row.roundCriteriaJson
+      ? (JSON.parse(row.roundCriteriaJson) as Record<string, EvaluationCriterionDef[]>)
+      : null,
     maxEvaluations: row.maxEvaluations,
     createdAt: row.createdAt.getTime(),
     updatedAt: row.updatedAt.getTime(),
@@ -65,6 +80,7 @@ export interface PlanInput {
   scale: { min: number; max: number };
   criteria: EvaluationCriterionDef[];
   rounds?: number;
+  roundCriteria?: Record<string, EvaluationCriterionDef[]> | null;
   maxEvaluations?: number | null;
 }
 
@@ -88,6 +104,7 @@ export async function createPlan(db: Db, eventId: string, input: PlanInput): Pro
     scaleJson: JSON.stringify(input.scale),
     criteriaJson: JSON.stringify(input.criteria),
     rounds: input.rounds ?? 1,
+    roundCriteriaJson: input.roundCriteria ? JSON.stringify(input.roundCriteria) : null,
     maxEvaluations: input.maxEvaluations ?? null,
     createdAt: now,
     updatedAt: now,
@@ -126,6 +143,7 @@ export interface PlanPatch {
   scale?: { min: number; max: number };
   criteria?: EvaluationCriterionDef[];
   rounds?: number;
+  roundCriteria?: Record<string, EvaluationCriterionDef[]> | null;
   maxEvaluations?: number | null;
 }
 
@@ -142,6 +160,8 @@ export async function updatePlan(db: Db, planId: string, patch: PlanPatch): Prom
       scaleJson: patch.scale !== undefined ? JSON.stringify(patch.scale) : undefined,
       criteriaJson: patch.criteria !== undefined ? JSON.stringify(patch.criteria) : undefined,
       rounds: patch.rounds,
+      roundCriteriaJson:
+        patch.roundCriteria !== undefined ? (patch.roundCriteria ? JSON.stringify(patch.roundCriteria) : null) : undefined,
       maxEvaluations: patch.maxEvaluations !== undefined ? patch.maxEvaluations : undefined,
       updatedAt: new Date(),
     })
