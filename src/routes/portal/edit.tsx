@@ -23,7 +23,7 @@ import { isVisible } from "../../forms/visibility";
 import type { AnswerMap } from "../../forms/types";
 import { FormFieldsSection, FieldRulesScript, fieldInputName } from "../../views/form-render";
 import { parseCookies, newCsrfToken, CSRF_COOKIE_NAME } from "../../auth/cookies";
-import { DEC_041, DEC_074 } from "../../decisions";
+import { DEC_041, DEC_074, DEC_109 } from "../../decisions";
 import { validateTrackChoice } from "../../lib/submit-core";
 
 export const portalEditRoutes = new Hono<AppEnv>();
@@ -31,6 +31,7 @@ export const portalEditRoutes = new Hono<AppEnv>();
 // touch DEC constant so the dependency is compile-checked (field guide convention)
 void DEC_041;
 void DEC_074;
+void DEC_109;
 
 portalEditRoutes.use("*", speakerGate);
 
@@ -45,7 +46,11 @@ function ensureCsrfCookie(c: { req: { header(name: string): string | undefined }
   return { token, setCookieIfNew: `${CSRF_COOKIE_NAME}=${token}; Path=/; SameSite=Lax` };
 }
 
-function extractAnswers(fields: EditableSubmissionData["fields"], body: Record<string, unknown>): AnswerMap {
+export function extractAnswers(
+  fields: EditableSubmissionData["fields"],
+  body: Record<string, unknown>,
+  storedAnswers: AnswerMap,
+): AnswerMap {
   const answers: AnswerMap = {};
   for (const field of fields) {
     const name = fieldInputName(field.id);
@@ -56,6 +61,12 @@ function extractAnswers(fields: EditableSubmissionData["fields"], body: Record<s
     if (field.kind === "file") {
       // File-kind answers are shown read-only per DEC-041 — the current
       // filename is displayed but never re-submitted or re-validated here.
+      // Never read file inputs from body; carry over the stored answer
+      // (if any) so validation sees the existing file (DEC-109).
+      const stored = storedAnswers[field.id];
+      if (typeof stored === "string" && stored.length > 0) {
+        answers[field.id] = stored;
+      }
       continue;
     }
     const raw = body[name];
@@ -186,8 +197,14 @@ portalEditRoutes.post("/submissions/:id/edit", csrfForm, async (c) => {
   const tracksEditable = canEditTracks(data.form.closeDate, Date.now());
 
   const body = (await c.req.parseBody({ all: true })) as Record<string, unknown>;
-  const answers = extractAnswers(data.fields, body);
-  const validation = validateAnswers(data.fields, answers);
+  const answers = extractAnswers(data.fields, body, data.answers);
+  // File fields are read-only here (DEC-041): a missing stored file answer
+  // must never be fatal, so required is forced false for file fields only.
+  // Public submit's validateAnswers still enforces required files.
+  const validation = validateAnswers(
+    data.fields.map((f) => (f.kind === "file" ? { ...f, required: false } : f)),
+    answers,
+  );
 
   const selectedTrackIds = tracksEditable
     ? Array.from(new Set(extractTrackIds(body)))
