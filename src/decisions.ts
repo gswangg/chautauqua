@@ -79,3 +79,4 @@ export const DEC_072 = "Rate limits keyed by identity, not only by IP: login = p
 export const DEC_073 = "schedule_slot.roomId must belong to the submission's event, validated at write; public room lookups are event-scoped";
 export const DEC_074 = "Portal speaker edit validates track selection with the same validateTrackChoice gate as public submit, after dedupe";
 export const DEC_075 = "Disposition of the three w12-c open triage items: items 1-2 close via DEC-070 implementation + walkthrough conversion; item 3 closes via a route-level cross-org export test; seed stays single-org";
+export const DEC_076 = "Verification waves use a single code barrier: one closeout task lands/verifies the last outstanding code, every gate task chains behind it; log-only commits are not code-bearing under DEC-069";
