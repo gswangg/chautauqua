@@ -11,15 +11,21 @@ Aug 12, 10 PM PT** — repo + deployed site + submission form).
 
 ## 0. What we're building, and what governs it
 
-The **requirements** come from the customer, in fidelity order:
+The **requirements** come from the customer, in fidelity order — all vendored into this
+repo under `docs/` (see `docs/README.md` for the map):
 
-1. swyx's Discord clarifications (the highest-signal statements of actual need)
-2. The competition brief's primary-features list + screenshots + video walkthrough
-3. Sessionboard's documented behavior (learn.sessionboard.com) — the workflows the AIE
-   team already knows
-4. The `sbek` eval kit — a **derived** artifact of #3. It is our regression harness and
-   scoring floor, *not* our requirements document. swyx: the eval "is NOT … what the real
-   final judge (the tools buyer human) will focus on."
+1. swyx's Discord clarifications — `docs/clarifications.md` (the highest-signal
+   statements of actual need)
+2. The competition brief — `docs/brief.md` + the annotated UI screenshots in
+   `docs/brief-images/`
+3. Sessionboard's documented behavior — `docs/sessionboard-reference/` (per-area
+   personas, journeys, filled-state expectations; start with
+   `00-how-sessionboard-works.md`) — the workflows the AIE team already knows
+4. The `sbek` eval rubrics — `docs/eval-rubric/*.yaml`, a **derived** artifact of #3.
+   Regression harness and scoring floor, *not* the requirements document. swyx: the eval
+   "is NOT … what the real final judge (the tools buyer human) will focus on." The
+   bracketed rubric IDs throughout this spec (CFP-01, EMB-14, …) resolve there, and the
+   seed data should mirror `docs/fixtures/sample-data.json`.
 
 The **final judge** is the AIE team — non-technical event production professionals — using
 the product on real workflows, with the tiebreaker going to "judgment calls for the

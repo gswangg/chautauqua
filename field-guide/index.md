@@ -6,7 +6,10 @@ here is injected into every agent at spawn.
 
 - SPEC.md is the source of truth on requirements — the jobs J1–J12 are the
   acceptance bar, the sbek rubric IDs are verification hooks, §2 product
-  principles govern judgment calls.
+  principles govern judgment calls. Underlying sources are vendored in docs/
+  (precedence in docs/README.md): clarifications.md overrides all; brief.md +
+  brief-images/ screenshots; sessionboard-reference/ behavior docs;
+  eval-rubric/*.yaml (where rubric IDs resolve); fixtures/ seed data.
 - Design decisions live in decisions/DEC-*.md and are binding; constants in
   src/decisions.ts are the compile-checked index.
 - House invariants: fail loudly; status changes never auto-email; authz on
