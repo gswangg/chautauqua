@@ -1,0 +1,238 @@
+// Repo layer for the public CFP submit flow (src/routes/public/submit.tsx).
+// Per DEC-012: the only code here that touches drizzle row types; the pure
+// cores (src/forms, src/lib/submit-core.ts) stay schema-free.
+
+import { and, asc, eq, sql } from "drizzle-orm";
+import * as schema from "../../db/schema";
+import type { Db } from "../context";
+import { newId } from "../../domain/ids";
+import type { FormFieldDef, FormFieldKind, FormFieldSection, FormFieldRule, AnswerMap } from "../../forms/types";
+import { LOCKED_SESSION_FIELDS, LOCKED_SPEAKER_FIELDS } from "../../forms/types";
+
+export interface EventRow {
+  id: string;
+  orgId: string;
+  name: string;
+  slug: string;
+  recordPrefix: string;
+  timezone: string;
+  brandingJson: string | null;
+}
+
+export interface FormRow {
+  id: string;
+  eventId: string;
+  title: string;
+  description: string | null;
+  closeDate: number | null;
+  tracksJson: string | null;
+}
+
+export interface TrackRow {
+  id: string;
+  name: string;
+}
+
+export async function getEventBySlug(db: Db, slug: string): Promise<EventRow | null> {
+  const rows = await db.select().from(schema.event).where(eq(schema.event.slug, slug)).limit(1);
+  const row = rows[0];
+  if (!row) return null;
+  return {
+    id: row.id,
+    orgId: row.orgId,
+    name: row.name,
+    slug: row.slug,
+    recordPrefix: row.recordPrefix,
+    timezone: row.timezone,
+    brandingJson: row.brandingJson,
+  };
+}
+
+/** Public CFP always targets the event's default form (DEC-015: an event
+ * can have multiple forms, but /submit/:eventSlug has no form-id in path). */
+export async function getDefaultForm(db: Db, eventId: string): Promise<FormRow | null> {
+  const rows = await db
+    .select()
+    .from(schema.form)
+    .where(and(eq(schema.form.eventId, eventId), eq(schema.form.isDefault, true)))
+    .limit(1);
+  const row = rows[0];
+  if (!row) return null;
+  return {
+    id: row.id,
+    eventId: row.eventId,
+    title: row.title,
+    description: row.description,
+    closeDate: row.closeDate ? row.closeDate.getTime() : null,
+    tracksJson: row.tracksJson,
+  };
+}
+
+export async function getFormFields(db: Db, formId: string): Promise<FormFieldDef[]> {
+  const rows = await db
+    .select()
+    .from(schema.formField)
+    .where(eq(schema.formField.formId, formId))
+    .orderBy(asc(schema.formField.position));
+  return rows.map((row): FormFieldDef => ({
+    id: row.id,
+    section: row.section as FormFieldSection,
+    kind: row.kind as FormFieldKind,
+    label: row.label,
+    helpText: row.helpText ?? undefined,
+    required: row.required,
+    position: row.position,
+    options: row.optionsJson ? (JSON.parse(row.optionsJson) as string[]) : undefined,
+    rule: row.ruleJson ? (JSON.parse(row.ruleJson) as FormFieldRule) : undefined,
+  }));
+}
+
+export async function getEventTracks(db: Db, eventId: string): Promise<TrackRow[]> {
+  const rows = await db
+    .select({ id: schema.track.id, name: schema.track.name })
+    .from(schema.track)
+    .where(eq(schema.track.eventId, eventId))
+    .orderBy(asc(schema.track.position));
+  return rows;
+}
+
+/** DEC-014: repeat submitters are matched to their existing contact by
+ * case-insensitive email. */
+export async function findContactByEmail(
+  db: Db,
+  orgId: string,
+  email: string,
+): Promise<{ id: string } | null> {
+  const rows = await db
+    .select({ id: schema.contact.id })
+    .from(schema.contact)
+    .where(and(eq(schema.contact.orgId, orgId), sql`lower(${schema.contact.email}) = lower(${email})`))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+export async function createContact(
+  db: Db,
+  params: { orgId: string; firstName: string; lastName: string; email: string },
+): Promise<string> {
+  const id = newId();
+  const now = new Date();
+  await db.insert(schema.contact).values({
+    id,
+    orgId: params.orgId,
+    firstName: params.firstName,
+    lastName: params.lastName,
+    email: params.email,
+    createdAt: now,
+    updatedAt: now,
+  });
+  return id;
+}
+
+export async function findUserByEmail(db: Db, email: string): Promise<{ id: string } | null> {
+  const rows = await db
+    .select({ id: schema.user.id })
+    .from(schema.user)
+    .where(sql`lower(${schema.user.email}) = lower(${email})`)
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+/** Next seq for a new submission in this event: INSERT-select
+ * COALESCE(MAX(seq),0)+1, per the task's stated allocation strategy. Not
+ * wrapped in a DB transaction (D1/drizzle-kit stage-1 constraint) — a
+ * known race under concurrent submits to the same event, flagged rather
+ * than silently ignored. */
+export async function nextSubmissionSeq(db: Db, eventId: string): Promise<number> {
+  const rows = await db
+    .select({ maxSeq: sql<number>`COALESCE(MAX(${schema.submission.seq}), 0)` })
+    .from(schema.submission)
+    .where(eq(schema.submission.eventId, eventId));
+  const maxSeq = rows[0]?.maxSeq ?? 0;
+  return maxSeq + 1;
+}
+
+export interface CreateSubmissionParams {
+  eventId: string;
+  formId: string;
+  title: string;
+  description: string;
+}
+
+/** Creates the submission row per DEC-003/DEC-016: status 'pending',
+ * title/description on real columns, seq allocated via nextSubmissionSeq. */
+export async function createSubmission(
+  db: Db,
+  params: CreateSubmissionParams,
+): Promise<{ id: string; seq: number }> {
+  const seq = await nextSubmissionSeq(db, params.eventId);
+  const id = newId();
+  const now = new Date();
+  await db.insert(schema.submission).values({
+    id,
+    eventId: params.eventId,
+    formId: params.formId,
+    seq,
+    title: params.title,
+    description: params.description,
+    status: "pending",
+    contentStatus: "pending",
+    createdAt: now,
+    updatedAt: now,
+  });
+  return { id, seq };
+}
+
+export async function createParticipant(
+  db: Db,
+  params: { submissionId: string; contactId: string },
+): Promise<void> {
+  const now = new Date();
+  await db.insert(schema.participant).values({
+    id: newId(),
+    submissionId: params.submissionId,
+    contactId: params.contactId,
+    role: "speaker",
+    order: 0,
+    visible: true,
+    inviteStatus: "none",
+    createdAt: now,
+    updatedAt: now,
+  });
+}
+
+export async function createSubmissionTracks(
+  db: Db,
+  submissionId: string,
+  trackIds: string[],
+): Promise<void> {
+  if (trackIds.length === 0) return;
+  const now = new Date();
+  await db.insert(schema.submissionTrack).values(
+    trackIds.map((trackId) => ({ submissionId, trackId, createdAt: now })),
+  );
+}
+
+const LOCKED_FIELD_IDS = new Set<string>([...LOCKED_SESSION_FIELDS, ...LOCKED_SPEAKER_FIELDS]);
+
+/** Only custom (non-locked) fields get submission_answer rows — locked
+ * built-ins persist to real columns instead (DEC-016). */
+export async function createSubmissionAnswers(
+  db: Db,
+  submissionId: string,
+  answers: AnswerMap,
+): Promise<void> {
+  const now = new Date();
+  const rows = Object.entries(answers)
+    .filter(([fieldId]) => !LOCKED_FIELD_IDS.has(fieldId))
+    .map(([fieldId, value]) => ({
+      id: newId(),
+      submissionId,
+      formFieldId: fieldId,
+      valueJson: JSON.stringify(value),
+      createdAt: now,
+      updatedAt: now,
+    }));
+  if (rows.length === 0) return;
+  await db.insert(schema.submissionAnswer).values(rows);
+}
