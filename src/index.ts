@@ -2,6 +2,7 @@ import { createBaseApp, guardDevMailbox } from "./server/app";
 import { handleScheduled } from "./server/scheduled";
 import { authRoutes } from "./routes/auth";
 import { eventsRoutes } from "./routes/api/events";
+import { portalConfigRoutes } from "./routes/api/portal-config";
 import { emailLogRoutes } from "./routes/api/email-log";
 import { formsRoutes } from "./routes/api/forms";
 import { submissionsRoutes } from "./routes/api/submissions";
@@ -32,6 +33,7 @@ const app = createBaseApp();
 
 app.route("/", authRoutes);
 app.route("/api/v1", eventsRoutes);
+app.route("/api/v1", portalConfigRoutes);
 app.route("/api/v1", submissionsRoutes);
 app.route("/api/v1", contactsRoutes);
 app.route("/api/v1", overviewRoutes);

@@ -893,6 +893,33 @@ async function main(): Promise<void> {
       updated_at: ts,
     }),
   );
+  // Additive: two more wiki resource rows (w4-h), position after the handbook.
+  statements.push(
+    insertStmt("resource", {
+      id: seedId("resource", 2),
+      event_id: eventId,
+      kind: "wiki",
+      title: "Code of Conduct",
+      content: "All speakers and attendees are expected to treat one another with respect. Harassment of any kind will not be tolerated. If you experience or witness a violation, contact the organizer team immediately via the portal.",
+      file_id: null,
+      position: 1,
+      created_at: nextTs(),
+      updated_at: ts,
+    }),
+  );
+  statements.push(
+    insertStmt("resource", {
+      id: seedId("resource", 3),
+      event_id: eventId,
+      kind: "wiki",
+      title: "Recording & Media Release",
+      content: "Sessions may be recorded for later publication. By speaking at this event you consent to being recorded and to the resulting media being shared publicly. Contact the organizer team if you have concerns about a specific slide or demo.",
+      file_id: null,
+      position: 2,
+      created_at: nextTs(),
+      updated_at: ts,
+    }),
+  );
 
   // --- fixture 'Acceptance Notification' email template (DEC-006 merge fields) ---
   for (const field of ["speaker_name", "talk_title"] as const) {

@@ -2,6 +2,10 @@ import { useEffect, useState } from 'react';
 import { PlaceholderPage } from './PlaceholderPage';
 import { useCurrentEvent } from '../lib/useCurrentEvent';
 import { apiGet, ApiError } from '../lib/api';
+import { EventSettingsPanel } from './settings/EventSettingsPanel';
+import { TracksRoomsPanel } from './settings/TracksRoomsPanel';
+import { PortalSettingsPanel } from './settings/PortalSettingsPanel';
+import { ResourcesPanel } from './settings/ResourcesPanel';
 import { ApiTokensPanel } from './settings/ApiTokensPanel';
 import { ExportsPanel } from './settings/ExportsPanel';
 
@@ -69,6 +73,10 @@ export function SettingsPage() {
   return (
     <div>
       <PlaceholderPage section="Settings" />
+      <EventSettingsPanel />
+      <TracksRoomsPanel />
+      <PortalSettingsPanel />
+      <ResourcesPanel />
       <ApiTokensPanel />
       <ExportsPanel />
       <EmbedsPanel />
