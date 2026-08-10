@@ -1060,6 +1060,128 @@ async function main(): Promise<void> {
     }),
   );
 
+  // --- CRM sourcing pipeline (CRM-07/08, DEC-157, task w3-a): 3 synthetic
+  // contacts enrolled across different stages, with at least one note and a
+  // multi-step transition history. Deliberately NOT Marcus Okafor (speaker2)
+  // and NOT either Priya Raman contact (speakerContactId / priyaDupContactId)
+  // — CRM-S2 enrolls Marcus manually during the eval run, so the seed must
+  // leave that enrollment available rather than pre-empting it.
+  {
+    const pipelineContactIds = [seedId("synth_contact", 1), seedId("synth_contact", 2), seedId("synth_contact", 3)];
+    const pipelineEntryIds = pipelineContactIds.map((_, i) => seedId("pipeline_entry", i + 1));
+    let activityCounter = 0;
+    const nextActivityId = () => seedId("pipeline_activity", ++activityCounter);
+
+    // Entry 1: identified only, no history beyond enrollment.
+    statements.push(
+      insertStmt("pipeline_entry", {
+        id: pipelineEntryIds[0],
+        org_id: orgId,
+        contact_id: pipelineContactIds[0],
+        stage: "identified",
+        created_at: nextTs(),
+        updated_at: ts,
+      }),
+    );
+    statements.push(
+      insertStmt("pipeline_activity", {
+        id: nextActivityId(),
+        entry_id: pipelineEntryIds[0],
+        kind: "move",
+        body: null,
+        from_stage: null,
+        to_stage: "identified",
+        author_user_id: organizerUserId,
+        author_name: organizer.name,
+        created_at: nextTs(),
+      }),
+    );
+
+    // Entry 2: multi-step transition history (identified -> contacted ->
+    // interested) plus a note, landing in 'interested'.
+    statements.push(
+      insertStmt("pipeline_entry", {
+        id: pipelineEntryIds[1],
+        org_id: orgId,
+        contact_id: pipelineContactIds[1],
+        stage: "interested",
+        created_at: nextTs(),
+        updated_at: ts,
+      }),
+    );
+    const entry2Moves: { from: string | null; to: string }[] = [
+      { from: null, to: "identified" },
+      { from: "identified", to: "contacted" },
+      { from: "contacted", to: "interested" },
+    ];
+    for (const move of entry2Moves) {
+      statements.push(
+        insertStmt("pipeline_activity", {
+          id: nextActivityId(),
+          entry_id: pipelineEntryIds[1],
+          kind: "move",
+          body: null,
+          from_stage: move.from,
+          to_stage: move.to,
+          author_user_id: organizerUserId,
+          author_name: organizer.name,
+          created_at: nextTs(),
+        }),
+      );
+    }
+    statements.push(
+      insertStmt("pipeline_activity", {
+        id: nextActivityId(),
+        entry_id: pipelineEntryIds[1],
+        kind: "note",
+        body: "Warm intro via a mutual contact; follow up after the CFP closes.",
+        from_stage: null,
+        to_stage: null,
+        author_user_id: organizerUserId,
+        author_name: organizer.name,
+        created_at: nextTs(),
+      }),
+    );
+
+    // Entry 3: enrolled straight into 'confirmed', with a note.
+    statements.push(
+      insertStmt("pipeline_entry", {
+        id: pipelineEntryIds[2],
+        org_id: orgId,
+        contact_id: pipelineContactIds[2],
+        stage: "confirmed",
+        created_at: nextTs(),
+        updated_at: ts,
+      }),
+    );
+    statements.push(
+      insertStmt("pipeline_activity", {
+        id: nextActivityId(),
+        entry_id: pipelineEntryIds[2],
+        kind: "move",
+        body: null,
+        from_stage: null,
+        to_stage: "confirmed",
+        author_user_id: organizerUserId,
+        author_name: organizer.name,
+        created_at: nextTs(),
+      }),
+    );
+    statements.push(
+      insertStmt("pipeline_activity", {
+        id: nextActivityId(),
+        entry_id: pipelineEntryIds[2],
+        kind: "note",
+        body: "Confirmed via email; sending the speaker agreement next.",
+        from_stage: null,
+        to_stage: null,
+        author_user_id: organizerUserId,
+        author_name: organizer.name,
+        created_at: nextTs(),
+      }),
+    );
+  }
+
   // --- file pipeline (DEC-020): a presentation v1->v2 version chain plus a
   // poster on the first two accepted submissions, and a file_comment thread
   // (producer note + speaker reply) on the v2 presentation. acceptedSubmissions[0]

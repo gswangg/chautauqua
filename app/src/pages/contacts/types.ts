@@ -81,3 +81,41 @@ export interface ImportResult {
 export const BULK_EMAIL_MERGE_FIELDS = ['speaker_name', 'event_name', 'portal_link'] as const;
 
 export const BULK_EMAIL_RECIPIENT_CAP = 100;
+
+// CRM sourcing pipeline (CRM-07/08, DEC-157): fixed five-stage kanban.
+export const PIPELINE_STAGES = ['identified', 'contacted', 'interested', 'confirmed', 'declined'] as const;
+export type PipelineStage = (typeof PIPELINE_STAGES)[number];
+
+export const PIPELINE_STAGE_LABELS: Record<PipelineStage, string> = {
+  identified: 'Identified',
+  contacted: 'Contacted',
+  interested: 'Interested',
+  confirmed: 'Confirmed',
+  declined: 'Declined',
+};
+
+export interface PipelineEntry {
+  id: string;
+  contactId: string;
+  firstName: string;
+  lastName: string;
+  company?: string | null;
+  email: string;
+  stage: PipelineStage;
+  updatedAt: number;
+}
+
+export interface PipelineActivity {
+  kind: 'move' | 'note';
+  body: string | null;
+  fromStage: PipelineStage | null;
+  toStage: PipelineStage | null;
+  authorName: string;
+  createdAt: number;
+}
+
+export interface PipelineEntryDetail {
+  entry: { id: string; contactId: string; stage: PipelineStage; createdAt: number; updatedAt: number };
+  contact: { id: string; firstName: string; lastName: string; company?: string | null; email: string };
+  activity: PipelineActivity[];
+}

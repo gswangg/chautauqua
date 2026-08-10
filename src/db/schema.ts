@@ -599,6 +599,47 @@ export const savedView = sqliteTable(
   }),
 );
 
+// migrations/0012_pipeline.sql (DEC-157, task w3-a): CRM sourcing pipeline
+// (CRM-07/08). pipeline_entry is one row per contact enrolled into an org's
+// pipeline (fixed stage enum 'identified' | 'contacted' | 'interested' |
+// 'confirmed' | 'declined', unique per org+contact); pipeline_activity is an
+// append-only 'move'|'note' feed that doubles as both stage history and the
+// notes composer's backing store.
+export const pipelineEntry = sqliteTable(
+  "pipeline_entry",
+  {
+    id: id(),
+    orgId: text("org_id").notNull(),
+    contactId: text("contact_id").notNull(),
+    stage: text("stage").notNull().default("identified"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => ({
+    pipeline_entry_org_id_contact_id_idx: uniqueIndex("pipeline_entry_org_id_contact_id_idx").on(t.orgId, t.contactId),
+    pipeline_entry_org_id_idx: index("pipeline_entry_org_id_idx").on(t.orgId),
+  }),
+);
+
+export const pipelineActivity = sqliteTable(
+  "pipeline_activity",
+  {
+    id: id(),
+    entryId: text("entry_id").notNull(),
+    // 'move' | 'note'
+    kind: text("kind").notNull(),
+    body: text("body"),
+    fromStage: text("from_stage"),
+    toStage: text("to_stage"),
+    authorUserId: text("author_user_id").notNull(),
+    authorName: text("author_name").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => ({
+    pipeline_activity_entry_id_idx: index("pipeline_activity_entry_id_idx").on(t.entryId),
+  }),
+);
+
 export const emailLog = sqliteTable(
   "email_log",
   {

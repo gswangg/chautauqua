@@ -6,6 +6,7 @@ import { ContactDrawer } from './ContactDrawer';
 import { ContactsTable } from './ContactsTable';
 import { DuplicatesView } from './DuplicatesView';
 import { ImportWizard } from './ImportWizard';
+import { PipelineBoard } from './PipelineBoard';
 import { EMPTY_SELECTION, selectionReducer } from './selection';
 import { SegmentsPanel } from './SegmentsPanel';
 import { StatsStrip } from './StatsStrip';
@@ -13,7 +14,7 @@ import type { ContactListItem, ContactStats, Segment, SegmentRule } from './type
 
 const PER_PAGE = 25;
 
-type Panel = 'directory' | 'duplicates' | 'segments';
+type Panel = 'directory' | 'duplicates' | 'segments' | 'pipeline';
 
 export function ContactsApp() {
   const { eventId } = useCurrentEvent();
@@ -87,6 +88,9 @@ export function ContactsApp() {
         <button type="button" className={panel === 'segments' ? 'chq-tab-active' : ''} onClick={() => setPanel('segments')}>
           Segments
         </button>
+        <button type="button" className={panel === 'pipeline' ? 'chq-tab-active' : ''} onClick={() => setPanel('pipeline')}>
+          Pipeline
+        </button>
         <button type="button" onClick={() => setShowImport(true)}>
           Import CSV
         </button>
@@ -149,6 +153,8 @@ export function ContactsApp() {
           }}
         />
       )}
+
+      {panel === 'pipeline' && <PipelineBoard />}
 
       {openContactId && (
         <ContactDrawer
