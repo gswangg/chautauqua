@@ -1,14 +1,29 @@
 import { Hono } from "hono";
-import type { Bindings } from "./env";
+import type { AppEnv, Bindings } from "./server/env";
+import { makeDb } from "./server/context";
+import { sessionLoader } from "./server/middleware";
+import { registerErrorHandler } from "./server/http";
+import { authRoutes } from "./routes/auth";
 
-// Wave 2 wires the real routers (admin SPA, /api/v1/*, /submit, /portal,
-// public surfaces, /embed, /login, /claim, /files, /dev/mailbox — see
-// DEC-005). This scaffold only proves the Worker boots.
-const app = new Hono<{ Bindings: Bindings }>();
+// Wave 2 wires the remaining routers (admin SPA, /api/v1/*, /submit,
+// /portal, public surfaces, /embed, /files, /dev/mailbox — see DEC-005).
+// src/index.ts is the ONLY place that mounts sub-apps (DEC-012).
+const app = new Hono<AppEnv>();
+
+// Request-scoped db + always-on session loader, ahead of every route.
+app.use("*", async (c, next) => {
+  c.set("db", makeDb(c.env));
+  await next();
+});
+app.use("*", sessionLoader);
+
+registerErrorHandler(app);
 
 app.get("/health", (c) => c.json({ ok: true }));
 
 app.get("/api/v1", (c) => c.json({ name: "chautauqua", version: "v1" }));
+
+app.route("/", authRoutes);
 
 export default {
   fetch: app.fetch,
