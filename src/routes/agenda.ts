@@ -87,6 +87,27 @@ agendaRoutes.delete("/submissions/:id/slot", requireOrganizer, csrfJson, async (
   return c.json(refreshed);
 });
 
+// POST /api/v1/events/:eventId/agenda/publish — AIA-07: explicit publish
+// affordance. DEC-155: this is a pubcache purge affordance only, not a
+// separate draft/published state on the agenda itself — the schedule is
+// always "live" data, this endpoint just gives organizers a deliberate
+// moment to invalidate the public cache after a scheduling session. The
+// purge itself is the global bumpPublicVersionMiddleware (src/server/
+// pubcache.ts), which bumps the public cache version after any successful
+// (status < 400) mutating request — no separate purge call is needed here,
+// matching the established pattern in src/routes/api/submissions.ts's
+// PATCH /submissions/:id. No email is sent (house invariant).
+agendaRoutes.post("/events/:eventId/agenda/publish", requireOrganizer, csrfJson, async (c) => {
+  const auth = requireAuth(c);
+  const eventId = c.req.param("eventId");
+  const event = await getEventInfo(c.var.db, eventId);
+  if (!event) throw new ApiError("not_found", "Event not found");
+  if (event.orgId !== auth.orgId) throw new ApiError("forbidden", "Event belongs to a different org");
+
+  const payload = await getAgendaPayload(c.var.db, eventId, event);
+  return c.json({ published: payload.placed.length });
+});
+
 interface AutoScheduleBody {
   dayStartMin?: unknown;
   dayEndMin?: unknown;
