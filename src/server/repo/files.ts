@@ -114,6 +114,65 @@ export function canAccessFile(
 }
 
 // ---------------------------------------------------------------------------
+// Resource-file (DEC-047) organizer authz scope
+// ---------------------------------------------------------------------------
+
+export interface ResourceFileScope {
+  fileId: string;
+  orgId: string;
+  filename: string;
+  contentType: string;
+  r2Key: string;
+}
+
+/** Authz scope for GET /files/:fileId when the file is kind='resource'
+ * (submissionId null, so getFileScope/getSubmissionScope can never reach
+ * it). Organizers whose org owns the resource's event may serve it —
+ * mirrors src/server/repo/portal.ts's getResourceDownloadScope, which is
+ * the speaker-side counterpart for the same underlying resource/file rows. */
+export async function getResourceFileScope(db: Db, fileId: string): Promise<ResourceFileScope | null> {
+  const fileRows = await db
+    .select({
+      id: schema.file.id,
+      kind: schema.file.kind,
+      submissionId: schema.file.submissionId,
+      filename: schema.file.filename,
+      contentType: schema.file.contentType,
+      r2Key: schema.file.r2Key,
+    })
+    .from(schema.file)
+    .where(eq(schema.file.id, fileId))
+    .limit(1);
+  const fileRow = fileRows[0];
+  if (!fileRow || fileRow.kind !== "resource" || fileRow.submissionId !== null) return null;
+
+  const resourceRows = await db
+    .select({ eventOrgId: schema.event.orgId })
+    .from(schema.resource)
+    .innerJoin(schema.event, eq(schema.resource.eventId, schema.event.id))
+    .where(eq(schema.resource.fileId, fileId))
+    .limit(1);
+  const resourceRow = resourceRows[0];
+  if (!resourceRow) return null;
+
+  return {
+    fileId: fileRow.id,
+    orgId: resourceRow.eventOrgId,
+    filename: fileRow.filename,
+    contentType: fileRow.contentType,
+    r2Key: fileRow.r2Key,
+  };
+}
+
+/** Pure authz check for organizer access to a resource file — organizer-only
+ * (speakers already have a dedicated /portal/resources/:id/download route,
+ * DEC-047/DEC-029), org match only since resource files aren't submission-
+ * scoped (no participant/uploader path like canAccessFile's speaker branch). */
+export function canAccessResourceFile(auth: { role: string; orgId: string }, scope: { orgId: string }): boolean {
+  return auth.role === "organizer" && auth.orgId === scope.orgId;
+}
+
+// ---------------------------------------------------------------------------
 // Version-chain lookups
 // ---------------------------------------------------------------------------
 

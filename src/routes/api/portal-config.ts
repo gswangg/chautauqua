@@ -1,17 +1,24 @@
 // Portal settings + resources API (w4-h). Organizer-only, per DEC-005/
 // DEC-012/DEC-013/DEC-032. Route file exports a sub-app; only src/index.ts
-// mounts it. Resource creation via this API is kind='wiki' only — file-kind
-// resources need w3-f's upload plumbing (later wave) per DEC-029.
+// mounts it. Resource creation is JSON -> kind='wiki'; multipart/form-data
+// (title + file) -> kind='file' via validateUpload (DEC-047, DEC-020).
 
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import type { AppEnv } from "../../server/env";
 import { requireOrganizer, csrfJson } from "../../server/middleware";
 import { ApiError } from "../../server/http";
+import { makeFileStore } from "../../server/context";
+import { newId } from "../../domain/ids";
+import { sanitizeFilenameForKey, validateUpload } from "../../domain/files";
 import { getEventForOrg } from "../../server/repo/events";
 import {
+  createFileResource,
   createWikiResource,
   deleteResource,
+  getFileForDelete,
+  deleteFileRow,
   getPortalSettingsForEvent,
+  insertResourceFile,
   listResourcesForEvent,
   resourceEventId,
   updateWikiResource,
@@ -126,10 +133,85 @@ portalConfigRoutes.get("/events/:eventId/resources", async (c) => {
   return c.json({ items, total: items.length, page: 1, perPage: items.length || 1 });
 });
 
+/** Pure parse of the optional multipart `position` field — extracted so the
+ * non-negative-integer rule is unit-testable without a multipart request. */
+export function parseFileResourcePosition(
+  raw: unknown,
+): { ok: true; value: number | undefined } | { ok: false; message: string } {
+  if (typeof raw !== "string" || raw.length === 0) return { ok: true, value: undefined };
+  const parsed = Number(raw);
+  if (!Number.isInteger(parsed) || parsed < 0) {
+    return { ok: false, message: "Must be a non-negative integer" };
+  }
+  return { ok: true, value: parsed };
+}
+
+/**
+ * DEC-047 multipart branch of POST /events/:eventId/resources: title + file
+ * -> validateUpload (document/handout tier — resources aren't submission
+ * deliverables, so `kind` here only selects the size/extension tier, never
+ * the stored file row kind) -> R2 put -> file row kind='resource'
+ * (submissionId null) -> resource row kind='file' pointing at it.
+ */
+async function createFileResourceHandler(c: Context<AppEnv>, eventId: string) {
+  const body = await c.req.parseBody();
+  const title = body["title"];
+  const file = body["file"];
+  const positionRaw = body["position"];
+
+  const fields: Record<string, string> = {};
+  if (typeof title !== "string" || title.trim().length === 0) {
+    fields.title = "Required";
+  }
+  if (!(file instanceof File)) {
+    fields.file = "Required";
+  }
+  if (Object.keys(fields).length > 0) {
+    throw new ApiError("invalid", "Invalid resource", fields);
+  }
+
+  const positionResult = parseFileResourcePosition(positionRaw);
+  if (!positionResult.ok) {
+    throw new ApiError("invalid", "Invalid resource", { position: positionResult.message });
+  }
+  const position = positionResult.value;
+
+  const uploadedFile = file as File;
+  const validation = validateUpload({ filename: uploadedFile.name, sizeBytes: uploadedFile.size, kind: "handout" });
+  if (!validation.ok) {
+    throw new ApiError("invalid", validation.message, validation.fields);
+  }
+
+  const sanitized = sanitizeFilenameForKey(uploadedFile.name);
+  const r2Key = `resource/${eventId}/${newId()}-${sanitized}`;
+  const store = makeFileStore(c.env.FILES);
+  const buf = await uploadedFile.arrayBuffer();
+  await store.put(r2Key, buf, validation.servedContentType);
+
+  const fileId = await insertResourceFile(c.var.db, {
+    filename: uploadedFile.name,
+    r2Key,
+    sizeBytes: uploadedFile.size,
+    contentType: validation.servedContentType,
+  });
+
+  const created = await createFileResource(c.var.db, eventId, {
+    title: (title as string).trim(),
+    fileId,
+    position,
+  });
+  return c.json(created, 201);
+}
+
 portalConfigRoutes.post("/events/:eventId/resources", csrfJson, async (c) => {
   const orgId = currentOrgId(c);
   const eventId = c.req.param("eventId");
   await requireEvent(c.var.db, orgId, eventId);
+
+  const contentType = c.req.header("content-type") ?? "";
+  if (contentType.includes("multipart/form-data")) {
+    return createFileResourceHandler(c, eventId);
+  }
 
   const body = asRecord(await c.req.json());
   const fields: Record<string, string> = {};
@@ -205,6 +287,15 @@ portalConfigRoutes.delete("/resources/:resourceId", csrfJson, async (c) => {
   if (!eventId) throw new ApiError("not_found", "Resource not found");
   await requireEvent(db, orgId, eventId);
 
-  await deleteResource(db, resourceId, eventId);
+  const { fileId } = await deleteResource(db, resourceId, eventId);
+  if (fileId) {
+    // DEC-047: file-kind resource — cascade-delete the file row + R2 object.
+    // Fail loudly (getFileForDelete throws) rather than leaving an orphan
+    // file row after the resource row is already gone.
+    const { r2Key } = await getFileForDelete(db, fileId);
+    const store = makeFileStore(c.env.FILES);
+    await store.delete(r2Key);
+    await deleteFileRow(db, fileId);
+  }
   return c.body(null, 204);
 });

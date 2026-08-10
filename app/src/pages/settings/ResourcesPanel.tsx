@@ -1,9 +1,9 @@
-// Resources panel (w4-h, DEC-032): wiki page list/create/edit/delete with
-// textarea content. Creation via this API is kind='wiki' only — file-kind
-// resources need w3-f's upload plumbing (later wave), per the task's
-// server-side note and DEC-029's portal render contract.
+// Resources panel (w4-h, DEC-032; file kind w6-d/DEC-047): wiki page
+// list/create/edit/delete with textarea content, plus an "Upload file
+// resource" form (multipart -> kind='file', served to organizers via
+// GET /files/:fileId).
 import { useEffect, useState } from 'react';
-import { apiDelete, apiList, apiPatch, apiPost, ApiError } from '../../lib/api';
+import { apiDelete, apiList, apiPatch, apiPost, apiUpload, ApiError } from '../../lib/api';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { validateResourceForm, type ResourceForm, type ResourceFormErrors } from './formState';
 
@@ -12,6 +12,7 @@ interface Resource {
   kind: string;
   title: string;
   content: string | null;
+  fileId: string | null;
   position: number;
 }
 
@@ -24,6 +25,9 @@ export function ResourcesPanel() {
   const [newResource, setNewResource] = useState<ResourceForm>(EMPTY_FORM);
   const [fieldErrors, setFieldErrors] = useState<ResourceFormErrors>({});
   const [editing, setEditing] = useState<Record<string, ResourceForm>>({});
+  const [fileTitle, setFileTitle] = useState('');
+  const [fileToUpload, setFileToUpload] = useState<File | null>(null);
+  const [fileError, setFileError] = useState<string | undefined>(undefined);
 
   function reload(id: string) {
     apiList<Resource>(`/events/${id}/resources`)
@@ -50,6 +54,30 @@ export function ResourcesPanel() {
       reload(eventId);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to add resource');
+    }
+  }
+
+  async function uploadFileResource() {
+    if (!eventId) return;
+    if (fileTitle.trim().length === 0) {
+      setFileError('Title is required');
+      return;
+    }
+    if (!fileToUpload) {
+      setFileError('File is required');
+      return;
+    }
+    setFileError(undefined);
+    const form = new FormData();
+    form.set('title', fileTitle);
+    form.set('file', fileToUpload);
+    try {
+      await apiUpload(`/events/${eventId}/resources`, form);
+      setFileTitle('');
+      setFileToUpload(null);
+      reload(eventId);
+    } catch (err) {
+      setFileError(err instanceof ApiError ? err.message : 'Failed to upload resource');
     }
   }
 
@@ -103,7 +131,8 @@ export function ResourcesPanel() {
           const editForm = editing[resource.id];
           return (
             <li key={resource.id}>
-              {editForm ? (
+              <span data-testid="resource-kind-badge">{resource.kind === 'file' ? 'File' : 'Wiki'}</span>
+              {editForm && resource.kind === 'wiki' ? (
                 <div>
                   <input
                     value={editForm.title}
@@ -124,10 +153,18 @@ export function ResourcesPanel() {
               ) : (
                 <div>
                   <strong>{resource.title}</strong>
-                  <p>{resource.content}</p>
-                  <button type="button" onClick={() => startEdit(resource)}>
-                    Edit
-                  </button>
+                  {resource.kind === 'file' && resource.fileId ? (
+                    <p>
+                      <a href={`/files/${resource.fileId}`}>Download</a>
+                    </p>
+                  ) : (
+                    <p>{resource.content}</p>
+                  )}
+                  {resource.kind === 'wiki' ? (
+                    <button type="button" onClick={() => startEdit(resource)}>
+                      Edit
+                    </button>
+                  ) : null}
                   <button type="button" onClick={() => void deleteResource(resource)}>
                     Delete
                   </button>
@@ -154,6 +191,23 @@ export function ResourcesPanel() {
         {fieldErrors.content ? <span role="alert">{fieldErrors.content}</span> : null}
         <button type="button" onClick={() => void addResource()}>
           Add resource
+        </button>
+      </div>
+
+      <h3>Upload file resource</h3>
+      <div>
+        <input
+          placeholder="Title"
+          value={fileTitle}
+          onChange={(e) => setFileTitle(e.target.value)}
+        />
+        <input
+          type="file"
+          onChange={(e) => setFileToUpload(e.target.files?.[0] ?? null)}
+        />
+        {fileError ? <span role="alert">{fileError}</span> : null}
+        <button type="button" onClick={() => void uploadFileResource()}>
+          Upload file resource
         </button>
       </div>
     </section>

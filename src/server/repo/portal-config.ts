@@ -242,9 +242,85 @@ export async function updateWikiResource(
   return updated;
 }
 
-export async function deleteResource(db: Db, resourceId: string, eventId: string): Promise<void> {
+/** Deletes a resource row; returns the linked file id when the resource was
+ * kind='file' so the caller (route handler) can also delete the file row +
+ * R2 object — repo functions don't own the FileStore port (DEC-012). */
+export async function deleteResource(db: Db, resourceId: string, eventId: string): Promise<{ fileId: string | null }> {
   const existing = await getResourceForEvent(db, resourceId, eventId);
   if (!existing) throw new ApiError("not_found", "Resource not found");
 
   await db.delete(schema.resource).where(eq(schema.resource.id, resourceId));
+  return { fileId: existing.fileId };
+}
+
+// ---------------------------------------------------------------------------
+// File-kind resources (DEC-047): multipart create on this same API. The
+// file row is kind='resource' with submissionId null — never one of
+// domain/files.ts's submission-deliverable FileKind literals, so this
+// inserts directly rather than going through repo/files.ts's insertFile
+// (whose input type is pinned to FileKind).
+// ---------------------------------------------------------------------------
+
+export interface InsertResourceFileInput {
+  filename: string;
+  r2Key: string;
+  sizeBytes: number;
+  contentType: string;
+}
+
+export async function insertResourceFile(db: Db, input: InsertResourceFileInput): Promise<string> {
+  const id = newId();
+  const now = new Date();
+  await db.insert(schema.file).values({
+    id,
+    submissionId: null,
+    kind: "resource",
+    filename: input.filename,
+    r2Key: input.r2Key,
+    sizeBytes: input.sizeBytes,
+    contentType: input.contentType,
+    previousFileId: null,
+    uploadedByContactId: null,
+    createdAt: now,
+    updatedAt: now,
+  });
+  return id;
+}
+
+export async function createFileResource(
+  db: Db,
+  eventId: string,
+  input: { title: string; fileId: string; position?: number },
+): Promise<ResourceRecord> {
+  const now = new Date();
+  const id = newId();
+  await db.insert(schema.resource).values({
+    id,
+    eventId,
+    kind: "file",
+    title: input.title,
+    content: null,
+    fileId: input.fileId,
+    position: input.position ?? 0,
+    createdAt: now,
+    updatedAt: now,
+  });
+  const created = await getResourceForEvent(db, id, eventId);
+  if (!created) throw new Error("createFileResource: insert did not persist");
+  return created;
+}
+
+/** Loads a file row's serving fields for the delete-cascade path — throws if
+ * the id doesn't resolve to a row (fail loudly: deleteResource already
+ * confirmed the resource had a non-null fileId, so a missing row is a data
+ * invariant violation, not a normal not-found). */
+export async function getFileForDelete(db: Db, fileId: string): Promise<{ r2Key: string }> {
+  const rows = await db.select({ r2Key: schema.file.r2Key }).from(schema.file).where(eq(schema.file.id, fileId)).limit(1);
+  const row = rows[0];
+  if (!row) throw new Error(`getFileForDelete: file ${fileId} referenced by a resource row but missing`);
+  return row;
+}
+
+export async function deleteFileRow(db: Db, fileId: string): Promise<void> {
+  await db.delete(schema.file).where(eq(schema.file.id, fileId));
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canAccessFile, isValidContentStatus } from "../src/server/repo/files";
+import { canAccessFile, canAccessResourceFile, isValidContentStatus } from "../src/server/repo/files";
 
 describe("canAccessFile", () => {
   const scope = { orgId: "org1", uploadedByContactId: "c1", participantContactIds: ["c1", "c2"] };
@@ -32,6 +32,24 @@ describe("canAccessFile", () => {
 
   it("denies a reviewer — DEC-020 doesn't name reviewers for this surface", () => {
     expect(canAccessFile({ role: "reviewer", orgId: "org1" }, scope)).toBe(false);
+  });
+});
+
+describe("canAccessResourceFile (DEC-047 organizer-only resource-file authz)", () => {
+  it("allows an organizer in the same org", () => {
+    expect(canAccessResourceFile({ role: "organizer", orgId: "org1" }, { orgId: "org1" })).toBe(true);
+  });
+
+  it("denies an organizer from a different org — no cross-tenant leakage", () => {
+    expect(canAccessResourceFile({ role: "organizer", orgId: "org2" }, { orgId: "org1" })).toBe(false);
+  });
+
+  it("denies a speaker — speakers use the dedicated /portal/resources/:id/download route", () => {
+    expect(canAccessResourceFile({ role: "speaker", orgId: "org1" }, { orgId: "org1" })).toBe(false);
+  });
+
+  it("denies a reviewer", () => {
+    expect(canAccessResourceFile({ role: "reviewer", orgId: "org1" }, { orgId: "org1" })).toBe(false);
   });
 });
 

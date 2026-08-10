@@ -21,8 +21,10 @@ import {
 } from "../domain/files";
 import {
   canAccessFile,
+  canAccessResourceFile,
   getFileScope,
   getReplacesTarget,
+  getResourceFileScope,
   getSubmissionScope,
   insertFile,
   insertFileComment,
@@ -199,9 +201,33 @@ fileApiRoutes.post("/files/:fileId/comments", csrfJson, async (c) => {
 // -----------------------------------------------------------------------
 // GET /files/:fileId — root-mounted authenticated streaming
 // -----------------------------------------------------------------------
+
+interface ServeScope {
+  filename: string;
+  contentType: string;
+  r2Key: string;
+}
+
+/** GET /files/:fileId serves two disjoint file populations: submission
+ * deliverables/attachments (getFileScope, organizer-or-participant) and
+ * DEC-047 resource files (getResourceFileScope, organizer-only). A file row
+ * is one or the other, never both — resource files have submissionId null. */
+async function authzServeFile(c: Context<AppEnv>, fileId: string): Promise<ServeScope> {
+  const auth = requireAuth(c);
+  const scope = await getFileScope(c.var.db, fileId);
+  if (scope) {
+    if (!canAccessFile(auth, scope)) throw new ApiError("forbidden", "Not authorized for this file");
+    return scope;
+  }
+  const resourceScope = await getResourceFileScope(c.var.db, fileId);
+  if (!resourceScope) throw new ApiError("not_found", "File not found");
+  if (!canAccessResourceFile(auth, resourceScope)) throw new ApiError("forbidden", "Not authorized for this file");
+  return resourceScope;
+}
+
 fileServeRoutes.get("/files/:fileId", async (c) => {
   const fileId = c.req.param("fileId");
-  const { scope } = await authzFileRead(c, fileId);
+  const scope = await authzServeFile(c, fileId);
 
   const store = makeFileStore(c.env.FILES);
   const obj = await store.get(scope.r2Key);
