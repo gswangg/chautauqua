@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, NavLink, Route, Routes, useLocation } from 're
 import { useMe } from './lib/useMe';
 import { OverviewPage } from './pages/Overview';
 import { SubmissionsPage } from './pages/Submissions';
+import { FormsPage } from './pages/forms/FormsPage';
 import { ReviewPage } from './pages/Review';
 import { SpeakersPage } from './pages/Speakers';
 import { ContentPage } from './pages/Content';
@@ -72,6 +73,8 @@ export function App() {
               {NAV_SECTIONS.map((section) => (
                 <Route key={section.path} path={section.path} element={section.element} />
               ))}
+              {/* DEC-033: form builder lives under Submissions (route only — no new top-nav section). */}
+              <Route path="/submissions/forms" element={<FormsPage />} />
             </Routes>
           </RoleGate>
         </main>
