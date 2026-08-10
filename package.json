@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "wrangler dev",
     "dev:app": "vite build --watch --config app/vite.config.ts",
-    "build": "tsc --noEmit && vite build --config app/vite.config.ts",
+    "build": "tsc --noEmit && tsc --noEmit -p app/tsconfig.json && vite build --config app/vite.config.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "wrangler d1 migrations apply chautauqua --local",
     "seed": "tsx scripts/seed.ts && wrangler d1 execute chautauqua --local --file=.seed.sql",
@@ -17,6 +17,8 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260801.1",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.4",
     "drizzle-kit": "^0.28.1",
     "react": "^18.3.1",
