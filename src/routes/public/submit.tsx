@@ -52,7 +52,7 @@ import { renderTemplate, escapeHtml } from "../../mail/render";
 import { validateUpload, sanitizeFilenameForKey, type ValidUpload } from "../../domain/files";
 import { newId } from "../../domain/ids";
 import { FormFieldsSection, FieldRulesScript, fieldInputName } from "../../views/form-render";
-import { DEC_014, DEC_016, DEC_036, DEC_040 } from "../../decisions";
+import { DEC_014, DEC_016, DEC_036, DEC_040, DEC_132 } from "../../decisions";
 
 export const publicSubmitRoutes = new Hono<AppEnv>();
 
@@ -61,6 +61,7 @@ void DEC_014;
 void DEC_016;
 void DEC_036;
 void DEC_040;
+void DEC_132;
 
 function ensureCsrfCookie(c: { req: { header(name: string): string | undefined } }): {
   token: string;
@@ -408,6 +409,10 @@ publicSubmitRoutes.post("/submit/:eventSlug", csrfForm, async (c) => {
   const fileValidations: Record<string, ValidUpload> = {};
   const fileErrors: Record<string, string> = {};
   for (const field of fileFields) {
+    // DEC-132: rule-hidden file fields are ignored entirely — no upload
+    // validation, no error, no "pending" placeholder — so a hidden field
+    // never blocks submit and never leaves any trace of an attempted file.
+    if (!isVisible(field, answers)) continue;
     const file = fileAnswers[field.id];
     if (!file) continue;
     // `kind` here only selects the extension/size allowlist tier inside
@@ -467,6 +472,11 @@ publicSubmitRoutes.post("/submit/:eventSlug", csrfForm, async (c) => {
   // value is the file.id string).
   const fileStore = makeFileStore(c.env.FILES);
   for (const field of fileFields) {
+    // DEC-132: only proceed for fields that survived validation with the
+    // "pending" placeholder (visible + valid upload) — hidden fields never
+    // reach `answers[field.id] = "pending"` above, so `cleaned[field.id]`
+    // is undefined here and this loop skips them entirely.
+    if (cleaned[field.id] !== "pending") continue;
     const file = fileAnswers[field.id];
     const validated = fileValidations[field.id];
     if (!file || !validated) continue;
