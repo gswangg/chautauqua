@@ -93,3 +93,5 @@ export const DEC_086 = "Stage-1 exit is reopened at sha 2103c69; re-declaration 
 export const DEC_087 = "Review-rounds migration renumbered to migrations/0009_review_rounds.sql (journal idx 9); DEC-082 repo/API details pinned";
 export const DEC_088 = "Perf-probe seed contract: pinned literals for schedule, evaluation plan, and 12 reviewers in the seed_perf_ namespace";
 export const DEC_089 = "DEC-086 probe placement: five perf-smoke checks (incl. 301-id 400 assertion) and a sixth walkthrough area \"scale\" (bulk accept + purge refresh)";
+export const DEC_090 = "Non-code-bearing extension: docs/eval-findings.md pruning and all docs/verification-log.md appends are bookkeeping; wave-16 GREEN sections are void for exit purposes";
+export const DEC_091 = "Wave-3 closeout ruling: w2-a/b/c verified merged (main 1cc3fe8, listEvaluationsForPlan conformed to DEC-087); task-w3-a is the DEC-076 barrier covering only w2-d's walkthrough scale area; gates cite the newest code-bearing main short-sha";

@@ -21,39 +21,38 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   DEC-015 migrations append-only; DEC-016 locked = real cols.
 - Wave-3..10 (compact): route sub-apps/repos/ctx per DEC-012/013/019;
   public data only via repo/public.ts; Bearer chq_ CSRF-exempt cookie-
-  mint; uploads kind attachment/resource (DEC-040/041/047/048/065/066/
-  067); participant invites/visibility/track (DEC-070..074); ics
-  sequence (DEC-051); statuses deferred/showflow/docs SSR (DEC-054..056);
-  perf budget <300KB gz (DEC-058); headshots downscale (DEC-059,
-  superseded by DEC-084 below); walkthrough scripts modular (DEC-060);
-  claim consumes before user insert (DEC-064).
+  mint; uploads/participants/ics/statuses/perf/headshots/walkthrough/
+  claim per DEC-040/041/047/048/051/054-060/064-067/070-074 (headshots
+  DEC-059 superseded by DEC-084 below).
 - Wave-11..17 (EXIT, since reopened by DEC-086): DEC-068 log append-only;
   DEC-069 exit predicate (sha-scoped PASS for build+test/walkthrough/
   perf-smoke/spec-audit/triage-closure); DEC-076 single code barrier;
   DEC-077 gate lanes code-frozen, scribe bookkeeping non-code-bearing.
   Ports: 8801 walkthrough, 8803 perf, never 8787. Wave-17 GREEN @
   a05f17f, since voided by DEC-086.
-- Wave w1 fixes (all landed, verified in-tree @ main 7464b1c): DEC-078
-  src/lib/chunk.ts (ID_CHUNK_SIZE=90); DEC-079 plan-before-commit +
-  chunked bulk status; DEC-080 public chunking + 300-id .ics cap
-  (MAX_ITINERARY_IDS); DEC-081 set-based review (resolveAssignments in
-  src/domain/evaluation.ts, isSubmissionInReviewerScope, countEvaluations
-  ForSubmission(db,planId,submissionId,round)); DEC-083 versioned
-  caches.default purge (src/server/pubcache.ts, KV chq:pubver); DEC-084
-  image-dims gate 2048px (src/lib/image-dims.ts). DEC-085: DEC-054
-  upheld, submittedAt≡createdAt correct under DEC-014 — no task ships.
-  accentColor already hex-validated both write paths — no task.
-- Wave w2 (reopened run): ALL wave-1 fix branches landed mid-planning (main
-  7464b1c) — DEC-078/079/080/081/083/084 verified in-tree; accentColor was
-  already hex-validated at both write paths (no task). Remaining defect:
-  DEC-082 multi-round (task-w2-a; task-w1-d never launched). DEC-087
-  corrects DEC-082's migration to 0009_review_rounds (0005 was taken) and
-  pins listEvaluationsForPlan(db,planId,round) + advance-round 409.
-  DEC-088 pins the perf-probe seed literals (plan seed_perf_plan_0001, 12
-  reviewers perf.reviewer.<i>@example-perf.test / PerfReviewer!2027, 300
-  scheduled sessions 100/day); DEC-089 places the DEC-086 probes: 5
-  perf-smoke checks + 301-id 400 assertion, walkthrough area "scale"
+- Wave w1 fixes (all landed, verified in-tree @ main 7464b1c, compact):
+  DEC-078 src/lib/chunk.ts (ID_CHUNK_SIZE=90); DEC-079 plan-before-commit
+  + chunked bulk status; DEC-080 public chunking + 300-id .ics cap; DEC-081
+  set-based review (resolveAssignments in src/domain/evaluation.ts);
+  DEC-083 versioned caches.default purge (KV chq:pubver); DEC-084
+  image-dims gate 2048px. DEC-085/accentColor: no task needed.
+- Wave w2 (reopened run, compact): DEC-082 multi-round pinned by DEC-087
+  (0009_review_rounds, listEvaluationsForPlan(db,planId,round),
+  advance-round 409); DEC-088 pins perf-probe seed literals (plan
+  seed_perf_plan_0001, 12 reviewers perf.reviewer.<i>@example-perf.test /
+  PerfReviewer!2027, 300 sessions 100/day); DEC-089 places DEC-086 probes:
+  5 perf-smoke checks + 301-id 400 assertion, walkthrough area "scale"
   (110-id bulk accept, exactly-once re-POST, no-email, purge refresh).
-  WAVE-3 PROTOCOL: first VERIFY w2-a..d (and any late task-w1-d) merged,
-  then run the five DEC-069 gates at the frozen sha citing the new probes
-  (DEC-077: no code tasks alongside gates); triage prunes eval-findings.
+- Wave 3 (gate wave): w2-b/c/a merged MID-PLANNING (main 1cc3fe8) — DEC-088
+  perf seed, DEC-089 perf-smoke checks, and DEC-087 three-arg
+  listEvaluationsForPlan all verified in-tree; multi-round had already
+  landed via late task-w1-d (0009_review_rounds + journal idx 9,
+  advance-round 409, tests). Sole outstanding code: task-w2-d walkthrough
+  area "scale". Per DEC-076 the barrier is task-w3-a (verify w2-d merged,
+  implement DEC-089's scale area only if missing); all five DEC-069 gates
+  chain behind it, code-frozen per DEC-077. DEC-090: eval-findings pruning
+  + verification-log appends are non-code-bearing; original-run wave-16
+  GREEN sections are void (DEC-086). DEC-091: gates cite the newest
+  code-bearing main short-sha (skip bookkeeping commits). Exit = five
+  sections PASS with OPEN ITEMS: 0 all at that one sha; wave 4 re-runs
+  only failed/invalidated gates or fixes defects they surface.
