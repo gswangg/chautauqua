@@ -9,6 +9,7 @@ import { commsRoutes } from "./routes/comms";
 import { agendaRoutes } from "./routes/agenda";
 import { publicSubmitRoutes } from "./routes/public/submit";
 import { portalRoutes } from "./routes/portal/index";
+import { publicRoutes } from "./routes/public";
 import { devMailboxRoutes } from "./routes/dev/mailbox";
 import { taskRoutes } from "./routes/tasks";
 import { reviewRoutes } from "./routes/review";
@@ -36,6 +37,7 @@ app.route("/", publicSubmitRoutes);
 app.route("/", reviewRoutes);
 app.route("/", meRoutes);
 app.route("/portal", portalRoutes);
+app.route("/", publicRoutes);
 
 guardDevMailbox(app);
 app.route("/", devMailboxRoutes);
