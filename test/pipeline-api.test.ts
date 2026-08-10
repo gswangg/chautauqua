@@ -1,0 +1,358 @@
+// CRM sourcing pipeline API tests (CRM-07/08, DEC-157). Mounts the real
+// pipelineRoutes sub-app against a select-queue fake db, mirroring
+// test/contacts-add-to-event.test.ts's pattern (no D1 test harness exists
+// in stage 1).
+
+import { describe, expect, it } from "vitest";
+import { Hono } from "hono";
+import { pipelineRoutes } from "../src/routes/api/pipeline";
+import { registerErrorHandler } from "../src/server/http";
+import type { AppEnv, AuthInfo } from "../src/server/env";
+
+const ORG_A = "org-a";
+const ORG_B = "org-b";
+
+const CONTACT_ORG_A = {
+  id: "contact-1",
+  orgId: ORG_A,
+  firstName: "Ada",
+  lastName: "Lovelace",
+  email: "ada@example.com",
+  phone: null,
+  company: "Acme",
+  title: null,
+  bio: null,
+  headshotUrl: null,
+  socialLinksJson: null,
+  notes: null,
+  customFieldsJson: null,
+  createdAt: new Date(1000),
+  updatedAt: new Date(1000),
+};
+
+const CONTACT_ORG_B = { ...CONTACT_ORG_A, id: "contact-b1", orgId: ORG_B };
+
+const ORGANIZER_USER = { id: "u-organizer-a", email: "organizer@example.com", contactId: null };
+
+const ENTRY_ROW = {
+  id: "entry-1",
+  orgId: ORG_A,
+  contactId: "contact-1",
+  stage: "identified",
+  createdAt: new Date(2000),
+  updatedAt: new Date(2000),
+};
+
+function makeChain(rows: unknown[]) {
+  const chain: any = {
+    from: () => chain,
+    innerJoin: () => chain,
+    where: () => chain,
+    orderBy: () => chain,
+    limit: async () => rows,
+    then: (resolve: (v: unknown[]) => void) => resolve(rows),
+  };
+  return chain;
+}
+
+/** Feeds successive db.select() calls the queued row sets, in order, and
+ * records every insert()/update() write. */
+function fakeDb(selectQueue: unknown[][]) {
+  let call = 0;
+  const inserts: any[] = [];
+  const updates: any[] = [];
+  const db = {
+    select: () => {
+      const rows = selectQueue[call] ?? [];
+      call += 1;
+      return makeChain(rows);
+    },
+    insert: (table: unknown) => ({
+      values: async (vals: unknown) => {
+        inserts.push({ table, vals });
+      },
+    }),
+    update: (table: unknown) => ({
+      set: (vals: unknown) => ({
+        where: async () => {
+          updates.push({ table, vals });
+        },
+      }),
+    }),
+  };
+  return { db: db as unknown as AppEnv["Variables"]["db"], inserts, updates };
+}
+
+function appWithDbAndAuth(db: AppEnv["Variables"]["db"], auth: AuthInfo | undefined) {
+  const app = new Hono<AppEnv>();
+  registerErrorHandler(app);
+  app.use("*", async (c, next) => {
+    c.set("db", db);
+    if (auth) c.set("auth", auth);
+    await next();
+  });
+  app.route("/api/v1", pipelineRoutes);
+  return app;
+}
+
+const ORGANIZER_A: AuthInfo = { userId: "u-organizer-a", role: "organizer", orgId: ORG_A };
+const REVIEWER_A: AuthInfo = { userId: "u-reviewer-a", role: "reviewer", orgId: ORG_A };
+const SPEAKER_A: AuthInfo = { userId: "u-speaker-a", role: "speaker", orgId: ORG_A };
+
+function jsonRequest(method: string, path: string, body?: unknown) {
+  return new Request(`http://local${path}`, {
+    method,
+    headers: { "content-type": "application/json", "x-chq-csrf": "1" },
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+}
+
+describe("GET /api/v1/pipeline", () => {
+  it("lists entries joined with contact fields", async () => {
+    const { db } = fakeDb([
+      [ENTRY_ROW], // listPipelineForOrg: pipeline_entry rows
+      [CONTACT_ORG_A], // listPipelineForOrg: contact batch
+    ]);
+    const app = appWithDbAndAuth(db, ORGANIZER_A);
+
+    const res = await app.request(new Request("http://local/api/v1/pipeline"));
+    expect(res.status).toBe(200);
+    const json = (await res.json()) as { items: any[]; total: number; page: number; perPage: number };
+    expect(json.total).toBe(1);
+    expect(json.items[0]).toMatchObject({
+      id: "entry-1",
+      contactId: "contact-1",
+      firstName: "Ada",
+      lastName: "Lovelace",
+      company: "Acme",
+      stage: "identified",
+    });
+  });
+
+  it("403s a non-organizer (reviewer) session", async () => {
+    const { db } = fakeDb([]);
+    const app = appWithDbAndAuth(db, REVIEWER_A);
+    const res = await app.request(new Request("http://local/api/v1/pipeline"));
+    expect(res.status).toBe(403);
+  });
+
+  it("403s a speaker session", async () => {
+    const { db } = fakeDb([]);
+    const app = appWithDbAndAuth(db, SPEAKER_A);
+    const res = await app.request(new Request("http://local/api/v1/pipeline"));
+    expect(res.status).toBe(403);
+  });
+});
+
+describe("POST /api/v1/pipeline (enroll)", () => {
+  it("enrolls a contact and appends a 'move' activity from null", async () => {
+    const { db, inserts } = fakeDb([
+      [CONTACT_ORG_A], // findContactForOrg
+      [], // findEntryByContact: no existing entry
+      [ORGANIZER_USER], // resolveAuthorName: user lookup
+      [ENTRY_ROW], // findEntryById after insert
+    ]);
+    const app = appWithDbAndAuth(db, ORGANIZER_A);
+
+    const res = await app.request(jsonRequest("POST", "/api/v1/pipeline", { contactId: "contact-1", stage: "identified" }));
+    expect(res.status).toBe(201);
+    const json = (await res.json()) as any;
+    expect(json.contactId).toBe("contact-1");
+    expect(json.stage).toBe("identified");
+
+    expect(inserts).toHaveLength(2);
+    expect((inserts[0]!.vals as any).contactId).toBe("contact-1");
+    expect((inserts[0]!.vals as any).stage).toBe("identified");
+    const activityInsert = inserts[1]!.vals as any;
+    expect(activityInsert.kind).toBe("move");
+    expect(activityInsert.fromStage).toBeNull();
+    expect(activityInsert.toStage).toBe("identified");
+  });
+
+  it("defaults to 'identified' when stage is omitted", async () => {
+    const { db, inserts } = fakeDb([[CONTACT_ORG_A], [], [ORGANIZER_USER], [ENTRY_ROW]]);
+    const app = appWithDbAndAuth(db, ORGANIZER_A);
+
+    const res = await app.request(jsonRequest("POST", "/api/v1/pipeline", { contactId: "contact-1" }));
+    expect(res.status).toBe(201);
+    expect((inserts[0]!.vals as any).stage).toBe("identified");
+  });
+
+  it("400s a duplicate enrollment", async () => {
+    const { db, inserts } = fakeDb([
+      [CONTACT_ORG_A], // findContactForOrg
+      [ENTRY_ROW], // findEntryByContact: already enrolled
+    ]);
+    const app = appWithDbAndAuth(db, ORGANIZER_A);
+
+    const res = await app.request(jsonRequest("POST", "/api/v1/pipeline", { contactId: "contact-1" }));
+    expect(res.status).toBe(400);
+    const json = (await res.json()) as any;
+    expect(json.error.code).toBe("invalid");
+    expect(inserts).toHaveLength(0);
+  });
+
+  it("404s a contact from a different org (org scoping / IDOR guard)", async () => {
+    const { db, inserts } = fakeDb([
+      [], // findContactForOrg: not found in this org
+    ]);
+    const app = appWithDbAndAuth(db, ORGANIZER_A);
+
+    const res = await app.request(jsonRequest("POST", "/api/v1/pipeline", { contactId: CONTACT_ORG_B.id }));
+    expect(res.status).toBe(404);
+    expect(inserts).toHaveLength(0);
+  });
+
+  it("400s an invalid stage", async () => {
+    const { db, inserts } = fakeDb([[CONTACT_ORG_A]]);
+    const app = appWithDbAndAuth(db, ORGANIZER_A);
+    const res = await app.request(jsonRequest("POST", "/api/v1/pipeline", { contactId: "contact-1", stage: "won" }));
+    expect(res.status).toBe(400);
+    expect(inserts).toHaveLength(0);
+  });
+
+  it("403s a non-organizer before any db access", async () => {
+    const { db, inserts } = fakeDb([]);
+    const app = appWithDbAndAuth(db, REVIEWER_A);
+    const res = await app.request(jsonRequest("POST", "/api/v1/pipeline", { contactId: "contact-1" }));
+    expect(res.status).toBe(403);
+    expect(inserts).toHaveLength(0);
+  });
+});
+
+describe("PATCH /api/v1/pipeline/:id (move)", () => {
+  it("moves an entry and appends a 'move' activity with from/to stages", async () => {
+    const { db, inserts, updates } = fakeDb([
+      [ENTRY_ROW], // requireOwnedEntry
+      [ORGANIZER_USER], // resolveAuthorName
+      [{ ...ENTRY_ROW, stage: "contacted" }], // findEntryById after update
+      [CONTACT_ORG_A], // findContactForOrg for response serialization
+    ]);
+    const app = appWithDbAndAuth(db, ORGANIZER_A);
+
+    const res = await app.request(jsonRequest("PATCH", "/api/v1/pipeline/entry-1", { stage: "contacted" }));
+    expect(res.status).toBe(200);
+    const json = (await res.json()) as any;
+    expect(json.stage).toBe("contacted");
+
+    expect(updates).toHaveLength(1);
+    expect((updates[0]!.vals as any).stage).toBe("contacted");
+
+    expect(inserts).toHaveLength(1);
+    const activityInsert = inserts[0]!.vals as any;
+    expect(activityInsert.kind).toBe("move");
+    expect(activityInsert.fromStage).toBe("identified");
+    expect(activityInsert.toStage).toBe("contacted");
+  });
+
+  it("404s an entry from a different org", async () => {
+    const { db, updates } = fakeDb([[]]);
+    const app = appWithDbAndAuth(db, ORGANIZER_A);
+    const res = await app.request(jsonRequest("PATCH", "/api/v1/pipeline/entry-other-org", { stage: "contacted" }));
+    expect(res.status).toBe(404);
+    expect(updates).toHaveLength(0);
+  });
+
+  it("403s a reviewer session", async () => {
+    const { db } = fakeDb([]);
+    const app = appWithDbAndAuth(db, REVIEWER_A);
+    const res = await app.request(jsonRequest("PATCH", "/api/v1/pipeline/entry-1", { stage: "contacted" }));
+    expect(res.status).toBe(403);
+  });
+});
+
+describe("GET /api/v1/pipeline/:id (detail)", () => {
+  it("returns entry, contact, and newest-first activity", async () => {
+    const olderMove = {
+      id: "act-1",
+      entryId: "entry-1",
+      kind: "move",
+      body: null,
+      fromStage: null,
+      toStage: "identified",
+      authorUserId: "u-organizer-a",
+      authorName: "Jordan Alvarez",
+      createdAt: new Date(1000),
+    };
+    const newerNote = {
+      id: "act-2",
+      entryId: "entry-1",
+      kind: "note",
+      body: "Left a voicemail.",
+      fromStage: null,
+      toStage: null,
+      authorUserId: "u-organizer-a",
+      authorName: "Jordan Alvarez",
+      createdAt: new Date(2000),
+    };
+    const { db } = fakeDb([
+      [ENTRY_ROW], // requireOwnedEntry
+      [CONTACT_ORG_A], // findContactForOrg
+      [newerNote, olderMove], // listActivityForEntry (already newest-first from orderBy(desc))
+    ]);
+    const app = appWithDbAndAuth(db, ORGANIZER_A);
+
+    const res = await app.request(new Request("http://local/api/v1/pipeline/entry-1"));
+    expect(res.status).toBe(200);
+    const json = (await res.json()) as any;
+    expect(json.entry.id).toBe("entry-1");
+    expect(json.contact.firstName).toBe("Ada");
+    expect(json.activity).toHaveLength(2);
+    expect(json.activity[0].kind).toBe("note");
+    expect(json.activity[1].kind).toBe("move");
+  });
+});
+
+describe("POST /api/v1/pipeline/:id/notes", () => {
+  it("appends a note activity", async () => {
+    const { db, inserts } = fakeDb([
+      [ENTRY_ROW], // requireOwnedEntry
+      [ORGANIZER_USER], // resolveAuthorName
+    ]);
+    const app = appWithDbAndAuth(db, ORGANIZER_A);
+
+    const res = await app.request(
+      jsonRequest("POST", "/api/v1/pipeline/entry-1/notes", { body: "Left voicemail; follow up next week." }),
+    );
+    expect(res.status).toBe(201);
+    const json = (await res.json()) as any;
+    expect(json.kind).toBe("note");
+    expect(json.body).toBe("Left voicemail; follow up next week.");
+
+    expect(inserts).toHaveLength(1);
+    expect((inserts[0]!.vals as any).kind).toBe("note");
+    expect((inserts[0]!.vals as any).entryId).toBe("entry-1");
+  });
+
+  it("400s an empty note body", async () => {
+    const { db, inserts } = fakeDb([[ENTRY_ROW]]);
+    const app = appWithDbAndAuth(db, ORGANIZER_A);
+    const res = await app.request(jsonRequest("POST", "/api/v1/pipeline/entry-1/notes", { body: "  " }));
+    expect(res.status).toBe(400);
+    expect(inserts).toHaveLength(0);
+  });
+
+  it("403s a speaker session", async () => {
+    const { db } = fakeDb([]);
+    const app = appWithDbAndAuth(db, SPEAKER_A);
+    const res = await app.request(jsonRequest("POST", "/api/v1/pipeline/entry-1/notes", { body: "hi" }));
+    expect(res.status).toBe(403);
+  });
+});
+
+// product principle 4: pipeline moves/notes never send email.
+const sourceModules = import.meta.glob(["../src/server/repo/pipeline.ts", "../src/routes/api/pipeline.ts"], {
+  query: "?raw",
+  import: "default",
+  eager: true,
+}) as Record<string, string>;
+
+describe("product principle 4: no mailer import reachable from the pipeline module", () => {
+  it("neither the repo nor the route file imports a mailer", () => {
+    const entries = Object.entries(sourceModules);
+    expect(entries.length).toBe(2);
+    for (const [path, source] of entries) {
+      expect(source, `${path} must not import from mail/`).not.toMatch(/from ["'].*\/mail\//);
+    }
+  });
+});
