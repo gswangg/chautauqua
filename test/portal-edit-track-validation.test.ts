@@ -98,7 +98,7 @@ describe("POST /portal/submissions/:id/edit track validation (DEC-074)", () => {
     expect(res.status).toBe(302);
     expect(saveSubmissionEdits).toHaveBeenCalledTimes(1);
     const call = saveSubmissionEdits.mock.calls[0]!;
-    const trackIds = call[3] as string[] | null;
+    const trackIds = call[4] as string[] | null;
     expect(trackIds).toEqual(["t1", "t2"]);
   });
 
@@ -109,7 +109,7 @@ describe("POST /portal/submissions/:id/edit track validation (DEC-074)", () => {
     expect(res.status).toBe(302);
     expect(saveSubmissionEdits).toHaveBeenCalledTimes(1);
     const call = saveSubmissionEdits.mock.calls[0]!;
-    const trackIds = call[3] as string[] | null;
+    const trackIds = call[4] as string[] | null;
     expect(trackIds).toEqual(["t2"]);
   });
 });

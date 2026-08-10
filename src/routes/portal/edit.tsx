@@ -21,9 +21,10 @@ import { canEditSubmission, canEditTracks } from "../../domain/edit-lock";
 import { validateAnswers } from "../../forms/validate";
 import { isVisible } from "../../forms/visibility";
 import type { AnswerMap } from "../../forms/types";
+import { lockedFieldName } from "../../forms/types";
 import { FormFieldsSection, FieldRulesScript, fieldInputName } from "../../views/form-render";
 import { parseCookies, newCsrfToken, CSRF_COOKIE_NAME } from "../../auth/cookies";
-import { DEC_041, DEC_074, DEC_109 } from "../../decisions";
+import { DEC_041, DEC_074, DEC_109, DEC_121 } from "../../decisions";
 import { validateTrackChoice } from "../../lib/submit-core";
 
 export const portalEditRoutes = new Hono<AppEnv>();
@@ -32,6 +33,7 @@ export const portalEditRoutes = new Hono<AppEnv>();
 void DEC_041;
 void DEC_074;
 void DEC_109;
+void DEC_121;
 
 portalEditRoutes.use("*", speakerGate);
 
@@ -63,6 +65,17 @@ export function extractAnswers(
       // filename is displayed but never re-submitted or re-validated here.
       // Never read file inputs from body; carry over the stored answer
       // (if any) so validation sees the existing file (DEC-109).
+      const stored = storedAnswers[field.id];
+      if (typeof stored === "string" && stored.length > 0) {
+        answers[field.id] = stored;
+      }
+      continue;
+    }
+    if (lockedFieldName(field.id) === "email") {
+      // DEC-121: email is locked/read-only in the edit form — never read a
+      // body-supplied field__email (a client could post one anyway), always
+      // carry over the contact-sourced stored answer so required-validation
+      // passes and the value can never be spoofed here.
       const stored = storedAnswers[field.id];
       if (typeof stored === "string" && stored.length > 0) {
         answers[field.id] = stored;
@@ -138,7 +151,20 @@ function EditPage(props: {
           </p>
         )}
         <h3>Speaker</h3>
-        <FormFieldsSection fields={data.fields} section="speaker" answers={answers} errors={errors} isVisible={isVisible} />
+        <FormFieldsSection
+          fields={data.fields.filter((f) => lockedFieldName(f.id) !== "email")}
+          section="speaker"
+          answers={answers}
+          errors={errors}
+          isVisible={isVisible}
+        />
+        {data.fields
+          .filter((f) => lockedFieldName(f.id) === "email")
+          .map((f) => (
+            <p>
+              Email: {String(answers[f.id] ?? "")} (read-only)
+            </p>
+          ))}
         {data.fields
           .filter((f) => f.kind === "file")
           .map((f) => (
@@ -236,6 +262,6 @@ portalEditRoutes.post("/submissions/:id/edit", csrfForm, async (c) => {
     );
   }
 
-  await saveSubmissionEdits(c.var.db, submissionId, validation.cleaned, tracksEditable ? selectedTrackIds : null);
+  await saveSubmissionEdits(c.var.db, submissionId, contactId, validation.cleaned, tracksEditable ? selectedTrackIds : null);
   return c.redirect(`/portal/submissions/${submissionId}`, 302);
 });
