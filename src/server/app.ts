@@ -10,6 +10,7 @@ import { makeDb } from "./context";
 import { sessionLoader } from "./middleware";
 import { registerErrorHandler } from "./http";
 import { shouldMountDevMailbox } from "../routes/dev/mailbox";
+import { bumpPublicVersionMiddleware } from "./pubcache";
 
 /**
  * Builds the base Hono app with request-scoped db, the always-on session
@@ -26,6 +27,10 @@ export function createBaseApp(): Hono<AppEnv> {
     await next();
   });
   app.use("*", sessionLoader);
+  // DEC-083: bump the public cache version after any successful mutation,
+  // ahead of every route sub-app mount (src/index.ts is the only place
+  // that mounts routes, per DEC-012).
+  app.use("*", bumpPublicVersionMiddleware);
 
   registerErrorHandler(app);
 

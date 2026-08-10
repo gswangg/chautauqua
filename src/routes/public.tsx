@@ -22,7 +22,8 @@ import {
 import { buildIcsCalendar } from "../mail/ics";
 import { zonedMinutesToUtc } from "../lib/timezone";
 import { itineraryStorageKey, parseItineraryIds } from "../lib/itinerary";
-import { DEC_022, DEC_007, DEC_017, DEC_005, DEC_012 } from "../decisions";
+import { publicCacheMiddleware, defaultCache } from "../server/pubcache";
+import { DEC_022, DEC_007, DEC_017, DEC_005, DEC_012, DEC_083 } from "../decisions";
 
 export const publicRoutes = new Hono<AppEnv>();
 
@@ -32,6 +33,16 @@ void DEC_007;
 void DEC_017;
 void DEC_005;
 void DEC_012;
+void DEC_083;
+
+// DEC-083 supersedes DEC-022's "no purge machinery" sentence: public/embed
+// HTML GETs are now served through a version-salted caches.default, purged
+// by any successful mutation (see bumpPublicVersionMiddleware in
+// src/server/app.ts). setCacheHeaders below and its 60s client-facing
+// max-age are unchanged — the long-TTL edge copy is an implementation
+// detail behind that same client contract.
+publicRoutes.use("/e/*", publicCacheMiddleware(defaultCache));
+publicRoutes.use("/embed/*", publicCacheMiddleware(defaultCache));
 
 const SURFACES = ["sessions", "speakers", "agenda", "schedule", "gallery"] as const;
 type Surface = (typeof SURFACES)[number];
