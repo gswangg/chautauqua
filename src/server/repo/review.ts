@@ -3,12 +3,13 @@
 // src/domain/evaluation.ts shapes. Track membership reads ONLY the
 // submission_track join, per DEC-017.
 
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { newId } from "../../domain/ids";
 import { formatRef } from "../../domain/ids";
 import type { EvaluationCriterionDef } from "../../domain/evaluation";
+import { resolveAssignments } from "../../domain/evaluation";
 import { ApiError } from "../http";
 
 // ---------------------------------------------------------------------------
@@ -234,23 +235,24 @@ export interface SubmissionSummary {
   trackIds: string[];
 }
 
-async function submissionTrackIds(db: Db, submissionIds: string[]): Promise<Map<string, string[]>> {
-  if (submissionIds.length === 0) return new Map();
+/** Track ids for a single submission (DEC-078: this is always a one-id
+ * lookup — getSubmissionSummaryInEvent's use case only — never an unbounded
+ * id-list `inArray`). */
+async function submissionTrackIdsForOne(db: Db, submissionId: string): Promise<string[]> {
   const rows = await db
-    .select({ submissionId: schema.submissionTrack.submissionId, trackId: schema.submissionTrack.trackId })
+    .select({ trackId: schema.submissionTrack.trackId })
     .from(schema.submissionTrack)
-    .where(inArray(schema.submissionTrack.submissionId, submissionIds));
-  const map = new Map<string, string[]>();
-  for (const row of rows) {
-    const list = map.get(row.submissionId) ?? [];
-    list.push(row.trackId);
-    map.set(row.submissionId, list);
-  }
-  return map;
+    .where(eq(schema.submissionTrack.submissionId, submissionId));
+  return rows.map((r) => r.trackId);
 }
 
 /** All submissions in the plan's event, optionally narrowed by the plan's
- * filters_json (trackIds) and event record_prefix for ref formatting. */
+ * filters_json (trackIds) and event record_prefix for ref formatting.
+ * Two joined, non-id-list queries (DEC-078/DEC-081): (a) matched submissions
+ * — SQL-side track filter via submission_track join, never an `inArray`
+ * over submission ids; (b) full trackIds for every submission in the event,
+ * joined against submission by eventId (again no id-list binding), grouped
+ * in JS against the matched set. */
 export async function listPlanFilteredSubmissions(db: Db, plan: PlanRecord): Promise<SubmissionSummary[]> {
   const eventRows = await db
     .select({ recordPrefix: schema.event.recordPrefix })
@@ -259,27 +261,65 @@ export async function listPlanFilteredSubmissions(db: Db, plan: PlanRecord): Pro
     .limit(1);
   const recordPrefix = eventRows[0]?.recordPrefix ?? "SES";
 
-  const subRows = await db.select().from(schema.submission).where(eq(schema.submission.eventId, plan.eventId));
-  const trackMap = await submissionTrackIds(
-    db,
-    subRows.map((s) => s.id),
-  );
-
   const filterTracks = plan.filters?.trackIds;
-  return subRows
-    .map((row) => ({
-      id: row.id,
-      ref: formatRef(recordPrefix, row.seq),
-      title: row.title,
-      description: row.description,
-      trackIds: trackMap.get(row.id) ?? [],
-    }))
-    .filter((s) => !filterTracks || filterTracks.length === 0 || s.trackIds.some((t) => filterTracks.includes(t)));
+
+  // (a) Matched submissions -- {id, seq, title, description} only.
+  let matched: { id: string; seq: number; title: string; description: string | null }[];
+  if (filterTracks && filterTracks.length > 0) {
+    // filterTracks is organizer-authored plan config (a handful of track
+    // ids), not a request-scale id list -- this inArray is exempt from the
+    // DEC-078 chunk requirement (bounded to ~25 params in practice).
+    matched = await db
+      .selectDistinct({
+        id: schema.submission.id,
+        seq: schema.submission.seq,
+        title: schema.submission.title,
+        description: schema.submission.description,
+      })
+      .from(schema.submission)
+      .innerJoin(schema.submissionTrack, eq(schema.submissionTrack.submissionId, schema.submission.id))
+      .where(and(eq(schema.submission.eventId, plan.eventId), inArray(schema.submissionTrack.trackId, filterTracks)));
+  } else {
+    matched = await db
+      .select({
+        id: schema.submission.id,
+        seq: schema.submission.seq,
+        title: schema.submission.title,
+        description: schema.submission.description,
+      })
+      .from(schema.submission)
+      .where(eq(schema.submission.eventId, plan.eventId));
+  }
+
+  // (b) Full trackIds per matched submission, joined by event -- no id
+  // binding at all, grouped against the matched set in JS.
+  const trackRows = await db
+    .select({ submissionId: schema.submissionTrack.submissionId, trackId: schema.submissionTrack.trackId })
+    .from(schema.submissionTrack)
+    .innerJoin(schema.submission, eq(schema.submission.id, schema.submissionTrack.submissionId))
+    .where(eq(schema.submission.eventId, plan.eventId));
+
+  const matchedIds = new Set(matched.map((m) => m.id));
+  const trackMap = new Map<string, string[]>();
+  for (const row of trackRows) {
+    if (!matchedIds.has(row.submissionId)) continue;
+    const list = trackMap.get(row.submissionId) ?? [];
+    list.push(row.trackId);
+    trackMap.set(row.submissionId, list);
+  }
+
+  return matched.map((row) => ({
+    id: row.id,
+    ref: formatRef(recordPrefix, row.seq),
+    title: row.title,
+    description: row.description,
+    trackIds: trackMap.get(row.id) ?? [],
+  }));
 }
 
-/** Resolves the union of submission ids a reviewer's plan_reviewer rows
- * grant access to (DEC-017 scope semantics), intersected with the plan's
- * own track filters. */
+/** Resolves the submissions a reviewer's plan_reviewer rows grant access to
+ * (DEC-017 scope semantics), intersected with the plan's own track filters.
+ * One set-based load plus the pure resolveAssignments core (DEC-081). */
 export async function resolveReviewerSubmissions(
   db: Db,
   plan: PlanRecord,
@@ -287,16 +327,68 @@ export async function resolveReviewerSubmissions(
 ): Promise<SubmissionSummary[]> {
   const all = await listPlanFilteredSubmissions(db, plan);
   const reviewerRows = await listReviewerRowsForPlan(db, plan.id);
-  const mine = reviewerRows.filter((r) => r.userId === userId);
-  if (mine.length === 0) return [];
+  const assignments = resolveAssignments(all, reviewerRows);
+  return assignments.get(userId) ?? [];
+}
 
-  const unrestricted = mine.some((r) => r.trackId === null && r.submissionId === null);
-  if (unrestricted) return all;
+/** Targeted per-submission scope check for the reviewer GET/PUT endpoints
+ * (DEC-081): no full-set load. Loads only this (plan,user)'s plan_reviewer
+ * rows, then does bounded, single-submission-scoped queries. */
+export async function isSubmissionInReviewerScope(
+  db: Db,
+  plan: PlanRecord,
+  userId: string,
+  submissionId: string,
+): Promise<boolean> {
+  const rows = await db
+    .select()
+    .from(schema.planReviewer)
+    .where(and(eq(schema.planReviewer.planId, plan.id), eq(schema.planReviewer.userId, userId)));
+  if (rows.length === 0) return false;
 
-  const trackScopes = new Set(mine.filter((r) => r.trackId !== null).map((r) => r.trackId as string));
-  const submissionScopes = new Set(mine.filter((r) => r.submissionId !== null).map((r) => r.submissionId as string));
+  const filterTracks = plan.filters?.trackIds;
+  const unrestricted = rows.some((r) => r.trackId === null && r.submissionId === null);
 
-  return all.filter((s) => submissionScopes.has(s.id) || s.trackIds.some((t) => trackScopes.has(t)));
+  if (unrestricted) {
+    const subRows = await db
+      .select({ id: schema.submission.id })
+      .from(schema.submission)
+      .where(and(eq(schema.submission.id, submissionId), eq(schema.submission.eventId, plan.eventId)))
+      .limit(1);
+    if (!subRows[0]) return false;
+    if (!filterTracks || filterTracks.length === 0) return true;
+    const matchRows = await db
+      .select({ trackId: schema.submissionTrack.trackId })
+      .from(schema.submissionTrack)
+      .where(
+        and(eq(schema.submissionTrack.submissionId, submissionId), inArray(schema.submissionTrack.trackId, filterTracks)),
+      )
+      .limit(1);
+    return matchRows.length > 0;
+  }
+
+  const submissionScopes = new Set(rows.filter((r) => r.submissionId !== null).map((r) => r.submissionId as string));
+  if (submissionScopes.has(submissionId)) return true;
+
+  const trackScopes = [...new Set(rows.filter((r) => r.trackId !== null).map((r) => r.trackId as string))];
+  if (trackScopes.length === 0) return false;
+
+  const effectiveTracks = filterTracks && filterTracks.length > 0 ? trackScopes.filter((t) => filterTracks.includes(t)) : trackScopes;
+  if (effectiveTracks.length === 0) return false;
+
+  const matchRows = await db
+    .select({ trackId: schema.submissionTrack.trackId })
+    .from(schema.submissionTrack)
+    .innerJoin(schema.submission, eq(schema.submission.id, schema.submissionTrack.submissionId))
+    .where(
+      and(
+        eq(schema.submissionTrack.submissionId, submissionId),
+        eq(schema.submission.eventId, plan.eventId),
+        inArray(schema.submissionTrack.trackId, effectiveTracks),
+      ),
+    )
+    .limit(1);
+  return matchRows.length > 0;
 }
 
 export async function getSubmissionSummaryInEvent(
@@ -317,13 +409,13 @@ export async function getSubmissionSummaryInEvent(
     .where(eq(schema.event.id, eventId))
     .limit(1);
   const recordPrefix = eventRows[0]?.recordPrefix ?? "SES";
-  const trackMap = await submissionTrackIds(db, [submissionId]);
+  const trackIds = await submissionTrackIdsForOne(db, submissionId);
   return {
     id: row.id,
     ref: formatRef(recordPrefix, row.seq),
     title: row.title,
     description: row.description,
-    trackIds: trackMap.get(row.id) ?? [],
+    trackIds,
   };
 }
 
@@ -435,6 +527,29 @@ export async function getEvaluation(
     .limit(1);
   const row = rows[0];
   return row ? toEvaluationRecord(row) : null;
+}
+
+/** Count of evaluations recorded for a submission in a given round (DEC-081):
+ * a targeted `count(*)` for the PUT cap check, not a full-plan load. The
+ * round param is threaded through now so DEC-082 (multi-round) needs no
+ * signature change later. */
+export async function countEvaluationsForSubmission(
+  db: Db,
+  planId: string,
+  submissionId: string,
+  round: number,
+): Promise<number> {
+  const rows = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(schema.evaluation)
+    .where(
+      and(
+        eq(schema.evaluation.planId, planId),
+        eq(schema.evaluation.submissionId, submissionId),
+        eq(schema.evaluation.round, round),
+      ),
+    );
+  return Number(rows[0]?.count ?? 0);
 }
 
 /** Upserts a reviewer's evaluation for a submission+round (unique per

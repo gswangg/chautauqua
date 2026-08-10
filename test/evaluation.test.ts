@@ -8,8 +8,10 @@ import {
   anonymizeForReviewer,
   validateEvaluationScores,
   isPlanOpen,
+  resolveAssignments,
   type EvaluationCriterion,
   type EvaluationCriterionDef,
+  type ReviewerScopeRow,
 } from "../src/domain/evaluation";
 
 const criteria: EvaluationCriterion[] = [
@@ -233,6 +235,63 @@ describe("isPlanOpen", () => {
 
   it("is open within the window", () => {
     expect(isPlanOpen(500, 1500, 1000)).toBe(true);
+  });
+});
+
+describe("resolveAssignments", () => {
+  const subs = [
+    { id: "s1", trackIds: ["t1"] },
+    { id: "s2", trackIds: ["t2"] },
+    { id: "s3", trackIds: [] as string[] },
+  ];
+
+  it("assigns everything to a reviewer with an unrestricted row", () => {
+    const rows: ReviewerScopeRow[] = [{ userId: "u1", trackId: null, submissionId: null }];
+    const result = resolveAssignments(subs, rows);
+    expect(result.get("u1")?.map((s) => s.id)).toEqual(["s1", "s2", "s3"]);
+  });
+
+  it("assigns only submissions matching a track-scoped row", () => {
+    const rows: ReviewerScopeRow[] = [{ userId: "u1", trackId: "t1", submissionId: null }];
+    const result = resolveAssignments(subs, rows);
+    expect(result.get("u1")?.map((s) => s.id)).toEqual(["s1"]);
+  });
+
+  it("assigns only the submission named by a submission-scoped row", () => {
+    const rows: ReviewerScopeRow[] = [{ userId: "u1", trackId: null, submissionId: "s3" }];
+    const result = resolveAssignments(subs, rows);
+    expect(result.get("u1")?.map((s) => s.id)).toEqual(["s3"]);
+  });
+
+  it("unions submission scopes and track scopes across multiple rows for the same reviewer", () => {
+    const rows: ReviewerScopeRow[] = [
+      { userId: "u1", trackId: "t2", submissionId: null },
+      { userId: "u1", trackId: null, submissionId: "s3" },
+    ];
+    const result = resolveAssignments(subs, rows);
+    expect(result.get("u1")?.map((s) => s.id).sort()).toEqual(["s2", "s3"]);
+  });
+
+  it("reflects the plan's own track-filter intersection because `all` is already plan-filtered", () => {
+    // resolveAssignments itself doesn't know about plan filters -- callers
+    // pass an `all` list already narrowed by listPlanFilteredSubmissions.
+    // A track-scoped reviewer whose track was filtered out of `all` gets no
+    // assignments even though their plan_reviewer row still names it.
+    const planFiltered = [{ id: "s1", trackIds: ["t1"] }];
+    const rows: ReviewerScopeRow[] = [{ userId: "u1", trackId: "t2", submissionId: null }];
+    const result = resolveAssignments(planFiltered, rows);
+    expect(result.get("u1")).toEqual([]);
+  });
+
+  it("gives no entry for a userId with no rows at all", () => {
+    const result = resolveAssignments(subs, []);
+    expect(result.has("u1")).toBe(false);
+  });
+
+  it("assigns nothing to a reviewer whose scopes match nothing", () => {
+    const rows: ReviewerScopeRow[] = [{ userId: "u1", trackId: "t9", submissionId: null }];
+    const result = resolveAssignments(subs, rows);
+    expect(result.get("u1")).toEqual([]);
   });
 });
 

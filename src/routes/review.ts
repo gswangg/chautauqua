@@ -17,6 +17,7 @@ import {
   isPlanOpen,
   anonymizeForReviewer,
   validateEvaluationScores,
+  resolveAssignments,
   type EvaluationCriterion,
   type EvaluationCriterionDef,
   type EvaluationScores,
@@ -235,16 +236,18 @@ reviewRoutes.get("/api/v1/plans/:id/progress", requireOrganizer, async (c) => {
   const userIds = [...new Set(reviewerRows.map((r) => r.userId))];
   const users = await repo.getUsersByIds(c.var.db, userIds);
   const evaluations = await repo.listEvaluationsForPlan(c.var.db, plan.id);
+  // One plan-filtered load + pure assignment resolution (DEC-081): no
+  // per-reviewer awaits.
+  const submissions = await repo.listPlanFilteredSubmissions(c.var.db, plan);
+  const assignments = resolveAssignments(submissions, reviewerRows);
 
-  const items = await Promise.all(
-    users.map(async (user) => {
-      const assigned = await repo.resolveReviewerSubmissions(c.var.db, plan, user.userId);
-      const completed = new Set(
-        evaluations.filter((e) => e.reviewerId === user.userId).map((e) => e.submissionId),
-      ).size;
-      return { userId: user.userId, email: user.email, assigned: assigned.length, completed };
-    }),
-  );
+  const items = users.map((user) => {
+    const assigned = assignments.get(user.userId) ?? [];
+    const completed = new Set(
+      evaluations.filter((e) => e.reviewerId === user.userId).map((e) => e.submissionId),
+    ).size;
+    return { userId: user.userId, email: user.email, assigned: assigned.length, completed };
+  });
   return c.json({ items, total: items.length, page: 1, perPage: items.length || 1 });
 });
 
@@ -299,11 +302,15 @@ reviewRoutes.post("/api/v1/plans/:id/remind", requireOrganizer, csrfJson, async 
   const userIds = [...new Set(reviewerRows.map((r) => r.userId))];
   const users = await repo.getUsersByIds(c.var.db, userIds);
   const evaluations = await repo.listEvaluationsForPlan(c.var.db, plan.id);
+  // One plan-filtered load + pure assignment resolution (DEC-081): no
+  // per-reviewer awaits.
+  const submissions = await repo.listPlanFilteredSubmissions(c.var.db, plan);
+  const assignments = resolveAssignments(submissions, reviewerRows);
   const mailer = makeMailer(c.var.db);
 
   const reminded: string[] = [];
   for (const user of users) {
-    const assigned = await repo.resolveReviewerSubmissions(c.var.db, plan, user.userId);
+    const assigned = assignments.get(user.userId) ?? [];
     const completed = new Set(
       evaluations.filter((e) => e.reviewerId === user.userId).map((e) => e.submissionId),
     ).size;
@@ -413,8 +420,8 @@ reviewRoutes.get("/api/v1/review/submissions/:id", async (c) => {
   const plan = await requireAssignedPlan(c, planId);
 
   if (auth.role !== "organizer") {
-    const scoped = await repo.resolveReviewerSubmissions(c.var.db, plan, auth.userId);
-    if (!scoped.some((s) => s.id === submissionId)) throw new ApiError("not_found", "Submission not found");
+    const inScope = await repo.isSubmissionInReviewerScope(c.var.db, plan, auth.userId, submissionId);
+    if (!inScope) throw new ApiError("not_found", "Submission not found");
   }
 
   const summary = await repo.getSubmissionSummaryInEvent(c.var.db, submissionId, plan.eventId);
@@ -445,9 +452,9 @@ reviewRoutes.put("/api/v1/review/plans/:planId/evaluations/:submissionId", csrfJ
     throw new ApiError("conflict", "This review plan is not currently open");
   }
 
-  const scoped = await repo.resolveReviewerSubmissions(c.var.db, plan, auth.userId);
-  if (auth.role !== "organizer" && !scoped.some((s) => s.id === submissionId)) {
-    throw new ApiError("not_found", "Submission not found");
+  if (auth.role !== "organizer") {
+    const inScope = await repo.isSubmissionInReviewerScope(c.var.db, plan, auth.userId, submissionId);
+    if (!inScope) throw new ApiError("not_found", "Submission not found");
   }
 
   const body = asRecord(await c.req.json());
@@ -459,8 +466,7 @@ reviewRoutes.put("/api/v1/review/plans/:planId/evaluations/:submissionId", csrfJ
   const round = 1;
   const existing = await repo.getEvaluation(c.var.db, plan.id, submissionId, auth.userId, round);
   if (!existing) {
-    const evaluations = await repo.listEvaluationsForPlan(c.var.db, plan.id);
-    const ratingsCount = evaluations.filter((e) => e.submissionId === submissionId).length;
+    const ratingsCount = await repo.countEvaluationsForSubmission(c.var.db, plan.id, submissionId, round);
     if (!needsMoreRatings({ ratingsCount }, plan.maxEvaluations ?? undefined)) {
       throw new ApiError("conflict", "This submission has reached its evaluation cap");
     }
