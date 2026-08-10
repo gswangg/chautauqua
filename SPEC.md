@@ -1,128 +1,248 @@
 # Chautauqua — Specification
 
-An open-source speaker & event-content management platform (Sessionboard clone) built for
-the **Kill My SaaS** competition. Deadline: **Wednesday Aug 12, 10 PM PT**.
+An open-source speaker & event-content management platform, built to replace Sessionboard
+for the AI Engineer conference team (**Kill My SaaS** competition, deadline **Wednesday
+Aug 12, 10 PM PT** — repo + deployed site + submission form).
 
 > **Chautauqua** (shuh-TAW-kwa): the circuits of the 1870s–1920s that carried lecturers,
 > performers, and whole programs to towns that could never afford the institutions —
 > education under a tent, owned by the community. Same gesture here: the $40k program
 > office, open-sourced. CFP in, program out.
 
-## 0. Design priorities (in order)
+## 0. What we're building, and what governs it
 
-1. **Rubric completeness** — pass every item in the `sbek` eval kit (all 7 areas, including
-   the extra-credit Speaker CRM). The rubric is the floor; everything else waits.
-2. **Performance** — "we do not want slow SaaS pls" is a scored bonus. Public pages render
-   at the edge from cache; admin interactions stay under ~200 ms server time.
-3. **Architectural simplicity** — one deployable unit, one database, no queues, no
-   microservices, no framework magic we can't read.
-4. **Security** — real authz on every route; the eval actively probes for leakage
-   (`scoping` items: speaker reaching admin routes, hidden speakers leaking into embeds,
-   evaluation results visible to non-admins).
-5. **Ease of deployment** — `wrangler deploy` from a clean checkout, one seed command,
-   documented in a README a stranger can follow.
+The **requirements** come from the customer, in fidelity order:
 
-Open source from day one, maintained in git.
+1. swyx's Discord clarifications (the highest-signal statements of actual need)
+2. The competition brief's primary-features list + screenshots + video walkthrough
+3. Sessionboard's documented behavior (learn.sessionboard.com) — the workflows the AIE
+   team already knows
+4. The `sbek` eval kit — a **derived** artifact of #3. It is our regression harness and
+   scoring floor, *not* our requirements document. swyx: the eval "is NOT … what the real
+   final judge (the tools buyer human) will focus on."
 
-### Non-goals (explicitly out, per swyx's Discord clarifications)
+The **final judge** is the AIE team — non-technical event production professionals — using
+the product on real workflows, with the tiebreaker going to "judgment calls for the
+product that we would actually use/buy." So the spec is organized around users and jobs;
+features exist because a job needs them; rubric IDs appear only as verification hooks.
 
-- Accelevents integration ("skip accelevents its fine")
-- Attendee registration / ticketing
-- Sponsors & exhibitors
-- Agentic/chat admin interface ("admin ui is the priority")
-- Deep calendar-API integration (".ics good enough")
-- Pixel fidelity to Sessionboard (grading is implementation-agnostic)
+Engineering priorities, in order: performance · feature completeness · architectural
+simplicity · security · ease of deployment. Open source from day one, maintained in git.
+
+### Non-goals (explicit, per swyx)
+
+Accelevents integration ("skip accelevents its fine") · attendee registration/ticketing ·
+sponsors & exhibitors · agentic/chat admin ("admin ui is the priority") · calendar-API
+integration (".ics good enough") · pixel fidelity to Sessionboard.
+
+### Design assumptions (scale)
+
+AI Engineer-class events. Targets, not guesses to hard-code: 500–5,000 submissions/event ·
+up to ~25 tracks, ~15 rooms, 3–5 days · 200–800 speakers · 10–50 reviewers · 5–15 team
+members working concurrently · multiple events per year sharing one speaker network.
+Every list view, bulk action, and query must be designed for the top of these ranges.
 
 ---
 
-## 1. Stack
+## 1. Users and their jobs
+
+| User | Who they are | Success looks like |
+|---|---|---|
+| **Producer** (organizer/admin) | Non-technical event production pro; lives here for months per event | No parallel spreadsheet exists; nothing falls through the cracks; every screen answers "what needs my attention?" |
+| **Reviewer** | Time-poor community volunteer on the program committee | Opens a link, sees exactly their queue, rates fast, done |
+| **Speaker** | Busy professional; interacts a handful of times | One obvious portal; always knows what's owed and when; never re-enters data |
+| **Technical teammate** (swyx) | Wants the data to flow outward | Embeds on ai.engineer, exports, API, Airtable automations keep working |
+| **Public** | Attendees & the internet | Fast, mobile-friendly program pages that are always current |
+
+### The jobs, as workflow narratives
+
+Each job is the unit of acceptance: we walk it start-to-finish as that persona before
+calling it done. (Verification hooks: sbek scenario/rubric IDs in brackets.)
+
+**J1 — Launch a CFP in an afternoon.** Producer creates an event (name, slug, dates,
+location, timezone, branding), opens the default submission form, adds custom questions
+(text/long-text/dropdown/checkbox/number/file, required flags, help text), sets one or
+more tracks on the form, sets a close date, and shares a public link. A submitter needs no
+account to start. Basic conditional logic (show field X when format = Workshop) — swyx:
+"conditional fine for now." [CFP-01, CFP-03]
+
+**J2 — Submit a talk without friction.** Speaker opens the public link, sees event
+branding + deadline + tracks, fills the form (required fields gate progress), picks
+track(s), saves a draft, submits, sees confirmation on screen, and gets a **real email**
+with a portal link where they create a password. Editing stays open until the close date —
+and per swyx, accepted speakers can continue to edit after acceptance. [CFP-05, CFP-06]
+
+**J3 — Triage hundreds of submissions without drowning.** Submissions land as Pending in
+a table built for volume: any form answer as a column, saved views, search, filters by
+track/format/status, bulk select → bulk status change. Status pipeline: pending →
+accept-queue / decline-queue → accepted / declined (swyx's minimum: "unreviewed →
+approve/maybe/deny"). Manual session creation and cloning for invited talks. [CFP-12]
+
+**J4 — Run committee review in waves.** Producer creates an evaluation plan: instructions,
+open/close dates, session filters (track!), anonymization toggle, rating scale, weighted
+criteria, optional multiple rounds, max-evaluations cap. Reviewers are assigned by track
+("reviewers review one or more tracks" — swyx) or per-submission; each reviewer's queue is
+exactly their assignment, sorted fewest-ratings-first so coverage closes. Scorecards mix
+numeric ratings, dropdowns, free text. Producer watches progress, nudges laggards with one
+bulk reminder, and reads a results table sorted by aggregate score, exportable to CSV.
+Results are producer-only; anonymization is server-side. [ABS-01, ABS-03, ABS-05, ABS-10]
+
+**J5 — Decide and notify, deliberately.** Deciding is a status change — bulk or single —
+and **never sends email**. Notifying is its own act: select decided records → compose from
+a template with merge fields (`{speaker_name}`, `{talk_title}`) → per-recipient preview →
+send (100-recipient cap per batch) → every message logged per-recipient in history. Bonus
+per swyx: attach reviewer feedback to the decision email. [CFP-¬auto-email rules]
+
+**J6 — Onboarding runs itself; the producer watches a dashboard.** Acceptance
+**auto-creates** the speaker record, the session, and the onboarding task set (swyx:
+"yes"). Default tasks per swyx's must-haves: **hotel stay requirement form** and **flight
+reimbursement form** (form-type tasks), plus finalize talk description, finalize
+bio + headshot, announce participation. The producer's onboarding dashboard is a
+per-speaker × per-task status grid — due dates, filters, live upload state — answering the
+only question that matters: *who still owes me what?* Automated due-date reminders go out
+via cron; a bulk "remind everyone outstanding" button exists for the impatient. [CNT-01,
+CNT-07, SPK tasks]
+
+**J7 — Speakers self-serve everything.** The branded portal (logo, accent color, welcome
+message) shows: my submissions with status, my tasks with deadlines and required markers,
+my sessions, resources. Speakers edit bio/social links/headshot and the changes appear on
+the producer's record instantly (one record, two views). Session invitations can be
+accepted/declined. Scoping is absolute: only their own content, ever. [SPK-07, SPK-08,
+CNT-02, CNT-03]
+
+**J8 — Collect, review, and approve content.** Per-session file uploads typed
+Presentation/Poster/Handout; re-uploads chain as versions with full history; a comment
+thread per deliverable carries producer feedback ("please use the event template") and
+speaker replies. Sessions carry a content approval status; unapproved content never
+reaches public surfaces. Upload UI states accepted types and size caps. [CNT-12, CNT
+versioning/comments]
+
+**J9 — Build the agenda under constant change.** Rooms and tracks defined once; agenda
+views: list + day grid (time × rooms). Drag accepted sessions from an unscheduled tray
+into slots; placement persists. Conflicts (room overlap, same speaker in overlapping
+sessions) are **surfaced, never blocking** — a warning chip and a live "N unplaced ·
+M conflicts" counter, because the schedule is the most fluid artifact of an event and a
+tool that says "no" loses to a spreadsheet. Track colors throughout. An auto-schedule
+action (greedy conflict-avoiding placement) covers the "AI agenda basics." [AIA-01,
+AIA-03, AIA-04]
+
+**J10 — Publish continuously to the website.** Five public, mobile-friendly, no-login
+surfaces — sessions list (cards, show-more, filters), speakers list (alpha by surname,
+headshot/title/company), agenda (per-day time grid), schedule itinerary (personal picker,
+persists on reload, **.ics export with stable UIDs**), speaker gallery. Embed generator
+produces copyable iframe/snippet per surface. Only accepted + visible + content-approved
+records render, enforced in the query. Widgets read the same tables as admin — consistency
+by construction. Edge-cached, purged on publish-affecting writes. [EMB-01, EMB-04,
+EMB-06, EMB-14, EMB-16]
+
+**J11 — Reuse the network next event.** Org-level contact directory across events: search,
+custom fields, notes, CSV import with column mapping, per-contact history (submissions,
+talks, emails, events), duplicate merge, segments, bulk email, a small dashboard
+(returning-speaker count, top companies). Contacts attach to events; the
+contact → speaker → publicly-visible ladder never collapses. [CRM-01, CRM area]
+
+**J12 — The data stays theirs.** Exports everywhere CSV/JSON (submissions, speakers,
+evaluations, agenda, email log); a REST API (`/api/v1`, bearer tokens) that the admin SPA
+itself consumes; optional one-way Airtable sync (their automations fire on new rows —
+read-only is fine per swyx). No lock-in is not a feature of this product; it is the
+premise of the competition.
+
+---
+
+## 2. Product principles (how we make judgment calls)
+
+The tiebreaker is judgment. When the docs are silent, decide by these, in order:
+
+1. **Legible over configurable.** Sessionboard is "a maze of tabs and buttons with no
+   clear order" (verbatim competitor-user complaint in the hackathon Discord). Fewer
+   screens, obvious nav, guessable routes (`/admin`, `/portal`, `/submit/<event>`), one
+   clear next action per screen. Settings get defaults, not wizards.
+2. **Volume-first.** Every table assumes thousands of rows: server pagination, filters,
+   saved views, bulk actions, keyboard-fast review. A feature that demos well with 10 rows
+   and dies at 2,000 is not built.
+3. **Nothing falls through the cracks.** Dashboards are worklists, not reports: fewest-
+   ratings-first, who-owes-what, unplaced-and-conflicted. Every module answers "what needs
+   my attention?" on its first screen.
+4. **Communications are deliberate.** Status changes never auto-email. Sends are
+   templated, previewed per-recipient, capped, and logged. Automated reminders are
+   schedule-driven (due dates), never decision-driven.
+5. **The website is the output.** Embeds are a first-class product surface — fast, always
+   current, impossible to leak hidden/unapproved content into.
+6. **Fail loudly.** Exceptions and asserts over silent fallbacks; authz checks throw;
+   invariants assert. No defensive defaults that hide bugs. (House style throughout.)
+
+---
+
+## 3. Beyond parity — why they'd switch
+
+Parity loses to the incumbent by default; these are the reasons to switch, and they're
+mostly invisible to the eval harness — which is exactly why they matter to the human
+judges:
+
+- **Speed.** "we do not want slow SaaS pls" — sub-100 ms cached public pages, sub-200 ms
+  admin interactions, at our scale targets.
+- **Clarity.** Beat the maze: a producer should find any function in two clicks from an
+  obvious top nav.
+- **Own-your-data.** Exports + API + Airtable sync from day one.
+- **Calendar invites done right** (nice-to-have tier): initial .ics without a room, then
+  an *update* with the same UID and bumped SEQUENCE when the room is assigned — the exact
+  flow swyx described.
+- **Migration path** (roadmap, post-competition): Sessionboard has a public API
+  (sessionboard.mintlify.app); an importer that pulls their existing events/contacts is
+  the difference between "nice clone" and "we can actually cancel the contract." Not
+  buildable without their API key — flag it in the README roadmap so the judges see we
+  know killing a SaaS requires getting the data out.
+
+---
+
+## 4. Architecture & stack
 
 | Layer | Choice | Why |
 |---|---|---|
-| Runtime | **Cloudflare Workers** (single Worker) | CF-infra bonus points; edge performance; zero-ops deploy |
+| Runtime | **Cloudflare Workers** (single Worker) | CF-infra bonus; edge performance; zero-ops deploy |
 | Framework | **Hono** | Tiny, fast, first-class Workers support, JSX SSR built in |
-| Database | **Cloudflare D1** (SQLite) + **Drizzle ORM** | One DB, migrations in git, typed queries, no connection pools |
-| Files | **Cloudflare R2** | Headshots, slides, resources; presigned URLs; no egress fees |
-| Email | **Resend** (HTTP API) | Real MVP-basis delivery (swyx's suggestion); logged in-app |
-| Admin UI | **React + Vite SPA**, served as Worker static assets | Form builder + drag-drop agenda genuinely need client state |
-| Public pages | **Hono JSX SSR**, edge-cached | Widgets/embeds must be fast, mobile-friendly, no-JS-required |
-| Auth | Hand-rolled: PBKDF2 (Web Crypto) + HttpOnly session cookies | Auditable, no dependency surface, works on Workers |
-| API | REST JSON at `/api/v1`, bearer-token auth | Bonus points; the SPA consumes the same API (dogfooding) |
+| Database | **Cloudflare D1** (SQLite) + **Drizzle ORM** | One DB, migrations in git, typed queries |
+| Files | **Cloudflare R2** | Headshots/slides/resources; presigned URLs |
+| Email | **Resend** (HTTP API) | Real MVP-basis delivery (swyx's suggestion); logged in-app; stub-to-log mode when no API key so dev/CI never silently drop mail |
+| Admin UI | **React + Vite SPA** served as Worker static assets | Form builder + drag-drop agenda need client state |
+| Public pages | **Hono JSX SSR**, edge-cached | Fast, mobile-friendly, no-JS-required |
+| Auth | Hand-rolled PBKDF2 (Web Crypto) + HttpOnly session cookies | Auditable, minimal dependency surface |
+| API | REST JSON `/api/v1`, bearer tokens | The SPA consumes the same API (dogfooding) |
 
-**One deployable unit.** The Worker serves: SPA assets, `/api/v1`, SSR public pages,
-`/portal` (speaker), `/submit` (public CFP), and `/embed/*` (widgets).
+**One deployable unit.** The Worker serves SPA assets, `/api/v1`, SSR public pages,
+`/portal`, `/submit/<event>`, `/embed/*`. Local dev: `wrangler dev` (Miniflare provides
+local D1/R2). No Docker, no external services beyond Resend. Cron trigger (Workers
+scheduled event) drives reminders.
 
-Local dev: `wrangler dev` (Miniflare gives local D1/R2). No Docker, no external services
-except Resend (stub-to-log mode when `RESEND_API_KEY` is unset — emails still record to the
-in-app history so local dev and CI never silently drop them).
+### Auth model
 
-### Engineering principles
-
-- **Fail loudly.** Exceptions and asserts over silent fallbacks. Authz checks throw; missing
-  invariants throw. No defensive "just in case" defaults that hide bugs from the eval agent.
-- **No dead abstraction.** Build for the rubric that exists, not the platform we might want.
-- Server is the source of truth; the SPA holds no state the API can't reconstruct.
-
----
-
-## 2. Personas & auth model
-
-Four roles, matching the eval's fixtures (organizer **Jordan Alvarez**, speakers **Priya
-Raman** / **Marcus Okafor**, reviewer **Sam Whitfield**):
-
-| Role | Access |
-|---|---|
-| `organizer` | Full admin over their events |
-| `reviewer` | Only assigned evaluation plans; **no** admin settings, **no** results |
-| `speaker` | Portal: only their own submissions, sessions, tasks, files |
-| public | CFP form + published widgets; no login |
-
-Decisions:
-
-- **Password auth, not magic links.** The eval harness has no inbox; magic-link-only apps
-  force graders through a manual pre-auth step. Password login makes every scenario
-  self-serve. (Email verification is not required to log in.)
-- Speaker accounts are created **through the flow**: submitting a proposal offers "create a
-  password to track your submission"; the confirmation email carries the portal link
-  (rubric CFP-05, cross-cutting §5.1). No upfront registration wall.
-- **Seeded demo accounts** (all four personas, fixture emails + passwords) ship in the seed
-  script and are printed in the README + `submissionNotes` for graders.
-- Sessions: HttpOnly, Secure, SameSite=Lax cookies; 30-day TTL; CSRF token on mutating
-  form posts (SPA uses same-origin JSON + custom header check).
-
-**Authz enforcement (scoping items are the strongest rubric signal):**
-
-- Every query is scoped `WHERE event_id = ?` from the session's grant, never from client
-  input alone.
-- Route guards by role: `/admin/*` and admin API routes reject speaker/reviewer sessions
-  (302 to their own home + 403 on API). The eval explicitly navigates speakers to
-  `/admin`, `/organizer`, `/dashboard` and screenshots the result.
-- Reviewer sees only sessions matched by their plan's filters; anonymized plans strip
-  speaker fields **server-side** (not CSS-hidden).
-- Evaluation results endpoints: organizer only.
-- Public/embed queries filter `status = accepted AND visible = true` at the query layer —
-  hidden speakers/sessions can never leak (EMB items probe this).
+Password auth, not magic links — real users get a simpler mental model and the eval agent
+has no inbox. Speaker accounts are created **through the flow** (post-submission "create a
+password"; confirmation email carries the portal link) — no upfront registration wall.
+Roles: `organizer` (full event control), `reviewer` (assigned plans only — no admin
+settings, no results), `speaker` (own content only), public (CFP + widgets, no login).
+Seeded demo accounts for all four personas ship in the seed script and README.
 
 ---
 
-## 3. Data model
+## 5. Data model
 
-Single D1 database. Org-level tables (CRM) vs event-level tables mirror the product's
-"contact → speaker → public speaker" ladder.
+Org-level tables (people, CRM) vs event-level tables mirror the product's
+contact → speaker → public-speaker ladder.
 
 ```
 org
  └─ user (role grants per org/event)
- └─ contact ──────────────── org-level people (CRM area 07)
+ └─ contact ──────────────── org-level people (J11)
  └─ event
      ├─ form (CFP)             form_field (ordered, typed, conditional rules)
-     ├─ submission             = session record; 1 row through its whole lifecycle
+     ├─ submission             = session record; one row through its whole lifecycle
      │    ├─ submission_answer (per form_field)
      │    ├─ participant       (contact↔session join; role, order, visibility, invite state)
      │    ├─ evaluation        (per plan+reviewer+submission: scores, comment)
      │    ├─ file              (typed Presentation/Poster/Handout; version chain)
-     │    ├─ file_comment      (speaker↔admin thread on deliverables)
-     │    └─ schedule_slot     (day, start, end, room_id, nullable = unscheduled)
+     │    ├─ file_comment      (speaker↔producer thread)
+     │    └─ schedule_slot     (day, start, end, room_id; nullable = unscheduled)
      ├─ evaluation_plan        (filters, anonymized, scale, criteria weights, rounds)
      ├─ plan_reviewer          (user↔plan assignment)
      ├─ track / room
@@ -131,241 +251,129 @@ org
      ├─ portal_settings        (branding, welcome, visibility toggles)
      ├─ resource               (file | wiki page)
      ├─ email_template         (merge fields)
-     └─ email_log              (per-recipient rows; status, opened via Resend webhook—optional)
+     └─ email_log              (per-recipient rows; status)
 ```
 
-Key invariants (assert, don't paper over):
+Invariants (assert, don't paper over):
 
-- A submission's **status pipeline**: `pending → accept_queue | decline_queue → accepted |
-  declined` (+ custom statuses). Status changes **never** send email (§5.4 of eval docs).
+- Status pipeline: `pending → accept_queue | decline_queue → accepted | declined`
+  (+ custom). **Status changes never send email.**
 - A contact becomes a *speaker* only via a `participant` row; a speaker appears publicly
-  only if `participant.visible` AND submission accepted. Two distinct gates.
-- `form.close_date` past ⇒ new submissions rejected **and** speaker edits locked
-  (server-side check, not hidden button — `rule` items test both sides).
-- Stable IDs everywhere; record ID prefixes (e.g. `SES-014`) generated per event.
-- Files: a new upload may reference `previous_file_id` → version chain; history lists all
-  versions, all downloadable.
+  only if `participant.visible` AND submission accepted AND content approved — distinct
+  gates, never collapsed.
+- `form.close_date` past ⇒ new submissions rejected **and** (unaccepted) speaker edits
+  locked, server-side. Accepted speakers keep editing per swyx.
+- Acceptance transition fires the J6 auto-creation (speaker + session + default tasks)
+  exactly once, idempotently.
+- Stable IDs everywhere; per-event record prefixes (`SES-014`); .ics UIDs never churn.
+- Files: `previous_file_id` version chains; history complete and downloadable.
 
 ---
 
-## 4. Feature scope by rubric area
+## 6. Security
 
-Each area lists what we build and the acceptance bar. Weight-3 rubric IDs in parentheses
-are the must-not-fail items; `rule`/`scoping`/`roundtrip`/`handoff` behaviors are called
-out because that's where clones die.
+- PBKDF2-SHA256 (≥600k iterations), constant-time compares; session rotation on login.
+- HttpOnly/Secure/SameSite=Lax cookies; CSRF custom-header check on JSON mutations, token
+  on plain form posts.
+- Authz middleware on every admin/API route: role + event grant; object-level ownership
+  checks on every fetch-by-id (no IDOR). Speakers hitting `/admin` → 403/redirect.
+- Server-side filtering for all public and anonymized data — never CSS-hidden.
+- Uploads: extension+MIME allowlist, size caps, random R2 keys, presigned GETs, no
+  user-content served with HTML content types from our origin.
+- Parameterized queries only (Drizzle). Rate limits on auth + public submission. Secrets
+  via `wrangler secret`; `.dev.vars` gitignored.
+- Public submission endpoint validates against the server's form schema (required, types,
+  conditional visibility) — never trusts the client's rendering.
 
-### 4.1 Call for Papers (area weight 20)
+## 7. Performance
 
-- Form builder: add/reorder/remove fields — short text, long text, dropdown, checkbox,
-  number, file — with label, help text, required flag (CFP-01). Title/Description and
-  name/email are locked-in defaults.
-- Conditional logic: show a field based on a dropdown/checkbox answer (e.g. format =
-  Workshop ⇒ "equipment needs" appears). Basic is enough per swyx.
-- Form settings: close date, submission limit per submitter, confirmation message.
-- Public CFP page, no login: event branding, deadline, tracks (CFP-03). Multi-track
-  select on submission (one form, one-or-more tracks — swyx).
-- Draft save; speaker account creation in-flow; on submit: on-screen confirmation +
-  **real confirmation email** with portal link (CFP-05).
-- Organizer submissions table: status pills, form answers as columns, search/filter
-  (CFP-06 roundtrip — every submitted value must appear verbatim).
-- Accept/reject recording incl. bulk (CFP-12); notification is a separate explicit step.
-- **Rules to enforce:** closed form blocks submission *and* editing; required fields gate
-  page advance; per-submitter limit.
+Two-layer budget: what the server does, and what the user feels. All numbers **measured at
+scale-target row counts** (seed a 2,000-submission synthetic event for perf testing, not
+the 30-row demo).
 
-### 4.2 Abstract Management (area weight 20)
+**Server budgets** (this stack has no excuse for more — warm isolates are ~0 ms and a
+D1 query adjacent to the Worker is single-digit ms):
 
-- Evaluation plans: name, instructions, open/close dates, **≥2 independent rounds**
-  (ABS-01), anonymized toggle, session filters (track/format/status), rating scale,
-  weighted criteria, max evaluations per submission.
-- Scorecard: numeric rating + dropdown + free-text criteria all render reviewer-side
-  (ABS-03).
-- Reviewer assignment: specific submissions → specific reviewer; reviewer queue contains
-  **exactly** the assigned set (ABS-05 — scoping + roundtrip in one item). Track-scoped
-  assignment covers swyx's "reviewers review one or more tracks."
-- Reviewer UX: queue sorted fewest-ratings-first; submit scores + comment; progress
-  indicator.
-- Results (organizer-only): aggregate score per submission, sortable (ABS-10), per-plan
-  and cumulative CSV export.
-- Disposition: status pill editing incl. bulk; then **Send Emails** — template picker,
-  merge fields (`{speaker_name}`, `{talk_title}`), per-recipient preview, 100-recipient
-  cap, email history log. Bonus per swyx: attach reviewer feedback to the decision email.
-- Statuses `approve / maybe / deny` map to accepted / accept_queue / declined.
+- Admin API reads p95 < 50 ms, writes p95 < 100 ms server time. A route exceeding this is
+  a bug (waterfall, N+1, oversized payload), not a tuning opportunity.
+- One round trip per view: each screen's data loads in a single joined query/endpoint —
+  no client-side request waterfalls.
+- Public pages: edge-cache hit TTFB < 50 ms; uncached SSR < 150 ms. `Cache-Control` +
+  stale-while-revalidate; purge on publish-affecting writes.
+- Smart Placement on, so multi-query routes execute next to D1 rather than paying
+  cross-region latency per query.
 
-### 4.3 Speaker Management (area weight 15)
+**Perceived budgets** (the "we do not want slow SaaS" bar):
 
-- Speaker roster: all speakers with identity info, search/filter (SPK-01); add/edit with
-  persistence (SPK-02); drag display order; per-speaker public-visibility toggle.
-- Contacts vs speakers: assigning a contact to a session's Participants makes them a
-  speaker (the ladder — collapse it and we fail §5.3).
-- **Speaker portal** (branded: logo, accent color, welcome message): scoped strictly to
-  own content (SPK-07); My Submissions with status; edit submission until close date.
-- Portal profile editing: bio, social links, headshot upload → **changes appear on the
-  organizer's record** (SPK-08 roundtrip).
-- Portal invitation email; session invitation accept/decline (Invited → Confirmed).
-- Bulk email to filtered speaker group + templates with merge fields + automated
-  task-reminder emails (cron trigger, due-date driven).
-- Custom/logistics fields on the speaker record (travel preference — also feeds swyx's
-  hotel/flight onboarding forms).
+- High-frequency actions — drag-drop placement, status pills, task check-offs, ratings —
+  render **optimistically at ~0 ms** and reconcile with the server; failures surface
+  loudly and roll back (fail-loudly applies to optimistic UI too).
+- Navigation to any admin screen: interactive < 300 ms; prefetch route data on hover/
+  focus for the common paths.
+- 100 ms is the "feels instantaneous" threshold — anything a producer does repeatedly
+  must sit under it end-to-end.
 
-### 4.4 Content Management (area weight 15)
+**Mechanics:**
 
-- File-request tasks with instructions + due date, assigned to speakers/bulk (CNT-01).
-- Portal task list: deadlines, required markers, upload recorded against task+session
-  (CNT-02); explicit **Mark as Complete** (closing ≠ completing); upload UI states
-  accepted types/max size.
-- **Versioning:** re-upload as new version; history lists v1, v2… all downloadable.
-- Comment thread per session's content (admin note → speaker reply — roundtrip).
-- **Deliverables dashboard:** per-speaker × per-task status grid, due dates, filters,
-  reflects uploads live (CNT-07) — this is also the brief's "real-time onboarding
-  dashboard."
-- **Content approval status** per session; unapproved content excluded from public
-  surfaces (CNT-12 — rule + handoff).
-- Speaker scoping hard-tested here (CNT-03): Priya must never see Marcus's tasks, and
-  admin routes must 403.
-- Bulk reminder email to speakers with outstanding tasks.
-- Seed default onboarding tasks per swyx: hotel stay requirement form, flight
-  reimbursement form (form-type tasks), plus optional finalize-description / bio+photo.
+- D1 indexes on every FK + (event_id, status) + (event_id, slug); joined queries only.
+- Server pagination + filtering on all admin lists; headshots thumbnailed at upload with
+  long-lived cache headers.
+- SPA code-split by route; initial bundle < 300 KB gz.
+- CI perf smoke: hit the hot endpoints against the 2k-row seed and fail the build over
+  budget — budgets that aren't enforced are decoration.
 
-### 4.5 Agenda Builder (area weight 10)
+## 8. Deployment & operations
 
-- Multi-day schedule view: time × rooms grid + list view (AIA-01); day/room + drag-drop
-  + conflict detection is explicitly enough (swyx).
-- Drag unscheduled accepted sessions into day/time/room slots; **persists across reload**
-  (AIA-03).
-- Conflict detection: room overlap + same-speaker-in-overlapping-sessions shows a
-  **visible warning, never a blocking modal** (AIA-04) — warn-don't-block, partial
-  states always save.
-- Track color coding; unscheduled tray; "N unplaced · M conflicts" counter (cheap, high
-  polish-per-line).
-- "AI agenda" basics: an auto-schedule action that places accepted sessions into open
-  slots avoiding conflicts (greedy solver; no LLM required — cover the basics per brief).
-
-### 4.6 Public Widgets (area weight 20)
-
-Five public surfaces, SSR, no login, mobile-friendly, edge-cached (EMB-14 requires all
-five reachable):
-
-1. **Sessions list** — card per session: title, truncated description + Show more,
-   date/time/room, track, speakers (EMB-01)
-2. **Speakers list** — directory ordered alphabetically by surname: headshot, name,
-   title, company (EMB-04)
-3. **Agenda** — per-day, time-organized grid/timeline with rooms (EMB-06)
-4. **Schedule itinerary** — personal "my schedule" picker; persists across reload
-   (localStorage); add-to-calendar **.ics export with stable UIDs**
-5. **Speaker gallery** — photo grid
-
-- **Consistency (EMB-16):** widgets read the same tables as admin — same title, time,
-  room everywhere, by construction.
-- Only `accepted AND visible AND content-approved` records render — enforced in the
-  query, verified by the eval both directions.
-- Embed generator: copyable `<iframe>` + styled-snippet per widget (works cross-origin —
-  manual-checklist item).
-- Filters (track/day) on sessions list and agenda.
-
-### 4.7 Speaker CRM (extra credit, area weight 10)
-
-- Org-level contact directory across events, searchable (CRM-01); custom fields; notes.
-- CSV import with column mapping (`fixtures/speakers.csv` is the test vector).
-- Contact history timeline (submissions, talks, emails across events).
-- Duplicate detection (same name, different email) + merge.
-- Bulk email from directory; segments as saved filters.
-- CRM dashboard: total contacts, events, returning-speaker count + one analytics widget.
-
-### 4.8 Cross-cutting (the eval's §5 — treat as its own feature)
-
-- **Decisions never auto-notify**; notification is explicit, previewable, capped, logged.
-- Transactional email surface: submission confirmation (with portal link), admin
-  notification on new submission, form-close reminders, evaluator reminders, task
-  reminders, password reset. All real sends via Resend; all rows in `email_log`.
-- Deadlines change behavior (close dates, task due dates with timezone display).
-- Event-scoped everything; event switcher for multi-event users.
-- Filled-state fidelity: seed script populates a complete demo event so every screen the
-  judge opens is *populated* (mixed status pills, colored agenda, version history with
-  v1+v2, task checklist with states) using our own data mirroring the DevFlow fixtures.
-
----
-
-## 5. Security checklist
-
-- PBKDF2-SHA256 (≥600k iterations) password hashes; constant-time compares.
-- HttpOnly/Secure/SameSite cookies; session rotation on login; logout invalidates.
-- CSRF: custom-header requirement on JSON mutations; token on plain form posts.
-- Authz middleware: role + event grant checked on **every** admin/API route; object-level
-  checks on every fetch-by-id (no IDOR — the eval literally tries other users' URLs).
-- Server-side visibility filtering for public/anonymized data (never client-side hiding).
-- Uploads: extension+MIME allowlist, size caps, R2 keys are random (no path traversal),
-  presigned GETs; never serve user uploads from our origin with HTML content types.
-- Drizzle parameterized queries only; no string SQL.
-- Rate limits on auth + public submission endpoints (Workers KV counter).
-- Secrets via `wrangler secret`; none in the repo; `.dev.vars` gitignored.
-- Public submission endpoint validates against the *server's* form schema (required,
-  types, conditional visibility) — never trusts the client's rendering.
-
-## 6. Performance checklist
-
-- SSR public pages with `Cache-Control` + `stale-while-revalidate`; cache purge on
-  publish-affecting writes (status/visibility/schedule changes).
-- D1 indexes on every FK + (event_id, status) + (event_id, slug).
-- Headshots resized/thumbnailed at upload (Workers image API or client-side canvas);
-  serve from R2 with long-lived cache headers.
-- Admin lists paginated + server-filtered; no N+1 (Drizzle `with` joins).
-- SPA: code-split by route; bundle budget < 300 KB gz initial.
-- Target: public widget TTFB < 100 ms cached / < 300 ms uncached; API p95 < 200 ms.
-
-## 7. Deployment & operations
-
-- `npm i && npm run db:migrate && npm run seed && npm run dev` → working local app with
-  demo event + all four persona logins.
+- `npm i && npm run db:migrate && npm run seed && npm run dev` → working local app with a
+  populated demo event + all four persona logins.
 - `npm run deploy` = migrations + `wrangler deploy`. One command, idempotent.
-- Cron trigger (Workers scheduled event) drives reminder emails.
-- Seed script doubles as the **grader package**: creates DevFlow-Conf-shaped demo data +
-  persona credentials; README section "For evaluators" lists URLs + logins verbatim for
-  `evalconfig.json` `credentials`/`submissionNotes`.
-- GitHub public repo (Forge later if registration reopens — "very teeny" bonus).
-  MIT license. CI: typecheck + unit tests + `sbek` smoke on PRs.
+- Seed doubles as the **grader package**: a fully-populated DevFlow-Conf-shaped event
+  (mixed statuses, colored agenda, version history, task states) so every screen a judge
+  opens is filled; README "For evaluators" section lists URLs + credentials verbatim.
+- GitHub public repo, MIT. CI: typecheck + unit tests. (Forge mirror only if registration
+  reopens — "very teeny" bonus.)
 
-## 8. Verification plan (grade ourselves before they do)
+## 9. Verification
 
-1. **Continuous:** unit tests for the rule/scoping invariants (close-date lock, speaker
-   isolation, hidden-speaker exclusion, decision≠email) — these are cheap to test and
-   worth the most rubric weight.
-2. **Daily:** run the real harness against the deployed URL:
-   `npm run eval -- --url <ours> --agent-model claude-sonnet-5 --judge-model claude-opus-5`
-   (~$2–10/run; use `--areas` subsets + `--resume` while iterating).
-3. Work the **manual checklist** each run (email delivery, .ics opens, cross-account
-   checks) — coverage below 60% withholds the headline score.
-4. Keep scenarios **reachable**: `rule`/`scoping` checks run last in each scenario, so
-   nav must be obvious (the agent tries `/admin`, `/portal`, labeled nav links). Boring,
-   guessable routes are a grading feature.
-5. Send swyx the MVP URL for early human feedback (he's offering DMs) — the final judge
-   is the non-technical AIE team, not the harness.
+Two layers, in order of authority:
 
-## 9. Nice-to-haves (only after the rubric is green)
+1. **Persona walkthroughs (the real bar).** Before submission, walk J1→J12 end-to-end as
+   each persona, on the deployed site, on a phone for the public surfaces. If a
+   non-technical producer couldn't do J3/J5/J6 without guidance, it's not done — this is
+   the actual final exam. Send swyx the MVP URL early for human feedback (he's offering).
+2. **sbek eval as regression harness.** Run the real kit against the deployed URL
+   (`--agent-model claude-sonnet-5 --judge-model claude-opus-5`, ~$2–10/full run; area
+   subsets + `--resume` while iterating). Work the manual checklist (email delivery, .ics,
+   cross-account checks) — <60% coverage withholds the score. Unit-test the cheap,
+   high-weight invariants directly: close-date lock, speaker isolation, hidden-speaker
+   exclusion, decision≠email. Keep nav guessable — the agent tries `/admin`, `/portal`,
+   labeled links, and `rule`/`scoping` checks run last in each scenario.
 
-In rough value order:
+Known eval blind spots we cover anyway because the *product* needs them: portal
+resources/wiki pages, working .ics in speaker comms, performance at volume, mobile
+rendering, exports/API, visual polish.
 
-1. `.ics` invite **updates** (same UID, SEQUENCE bump) when a room is assigned later —
-   swyx described exactly this flow.
+## 10. Nice-to-haves (only after J1–J12 are green)
+
+1. .ics invite **updates** (same UID, SEQUENCE bump) when a room is assigned later.
 2. Decision-meeting view: live slot countdown by track; per-reviewer "my top-ranked, not
    yet accepted" queue; accept-with-condition note.
-3. Assisted chasing: reminder **drafts** for human review alongside the automated sends.
-4. "Resubmit with guidance" status + carry near-miss list into the CRM as an invite lane.
-5. Airtable one-way sync (contacts/sessions → Airtable base; new-row automation
-   friendly) — bonus points, read-only is fine per swyx; sync worker, never primary DB.
-6. Public REST API docs page (the API exists regardless; this is just the docs polish).
-7. Show-flow export: one document per event (final titles, full speaker lists, intro
-   text, deck locations).
-8. Email open/delivery tracking via Resend webhooks into `email_log`.
+3. Assisted chasing: reminder **drafts** for human review alongside automated sends.
+4. "Resubmit with guidance" status; near-miss list carried into the CRM as an invite lane.
+5. Airtable one-way sync (contacts/sessions → base; automation-friendly new rows).
+6. Public API docs page.
+7. Show-flow export (final titles, full speaker lists, intro text, deck locations).
+8. Resend webhooks → delivery/open tracking in `email_log`.
 
-## 10. Milestones (now → Wed Aug 12, 10 PM PT)
+## 11. Milestones (now → Wed Aug 12, 10 PM PT)
 
 | When | Deliverable |
 |---|---|
-| **M1 — Sun night** | Skeleton deployed: Worker + D1 + auth + seeded personas + event settings + CFP builder + public submission (CFP area passing locally) |
-| **M2 — Mon** | Abstract management (plans, reviewer flow, results, disposition + email compose) + speaker roster/portal shell + first full eval run |
-| **M3 — Tue** | Content mgmt (tasks, uploads, versions, comments, dashboard) + agenda builder + all five widgets + second eval run; fix `rule`/`scoping` reds |
-| **M4 — Wed AM** | Speaker CRM (extra credit) + polish pass from eval report + manual checklist + performance pass |
-| **M5 — Wed PM** | Freeze; final eval run; README-for-evaluators; submit form + repo + deployed URL |
+| **M1 — Sun night** | Skeleton deployed: Worker + D1 + auth + seeded personas + event settings + CFP builder + public submission (J1, J2 walkable) |
+| **M2 — Mon** | Review + disposition (J3–J5), speaker roster/portal shell (J7 partial); first full eval run |
+| **M3 — Tue** | Onboarding + content (J6, J8), agenda (J9), all five public surfaces (J10); second eval run; fix rule/scoping reds |
+| **M4 — Wed AM** | CRM (J11), exports/API (J12), polish from eval report + persona walkthroughs, perf pass at 2k-row scale |
+| **M5 — Wed PM** | Freeze; final eval run + manual checklist; README-for-evaluators; submit form + repo + deployed URL |
 
-Watch items: swyx's follow-up walkthrough video + requirements freeze; the eval repo may
-get commits (re-pull daily); Gene's unanswered "review ethos 1–10" thread.
+Watch items: swyx's follow-up video + requirements freeze; eval-repo commits (re-pull
+daily); Gene Kim's unanswered "review ethos 1–10" Discord thread.
