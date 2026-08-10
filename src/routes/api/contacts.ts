@@ -52,6 +52,7 @@ function serializeContact(row: repo.ContactRow) {
     headshotUrl: row.headshotUrl,
     notes: row.notes,
     customFields: row.customFieldsJson ? JSON.parse(row.customFieldsJson) : null,
+    socialLinks: row.socialLinksJson ? JSON.parse(row.socialLinksJson) : null,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
