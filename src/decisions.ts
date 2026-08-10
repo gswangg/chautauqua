@@ -175,3 +175,7 @@ export const DEC_169 = "Form tracks patch validated against the event's tracks";
 export const DEC_170 = "Reviewer file access is plan-scoped and anonymization-aware (supersedes DEC-066)";
 export const DEC_171 = "Admin review SPA conforms to the plan wire contract; render-test mocks mirror real wire shapes";
 export const DEC_172 = "Seed creates DEC-111 backing forms for form-kind onboarding tasks; manifest pins a speaker-owned pending form task";
+export const DEC_173 = "Walkthrough selectors assert semantics and tolerate markup wrappers; harness-repair lanes validate by running the full six-module walkthrough locally";
+export const DEC_174 = "Seed override guarantees the demo speaker keeps one pending general-kind task; global mod-3 completion formula and the DEC-172 pin unchanged";
+export const DEC_175 = "The review-lens authz probe set becomes permanent walkthrough assertions with existence-hiding semantics (404 for out-of-scope, 403 for wrong role, 401/302 for unauthenticated)";
+export const DEC_176 = "Wave-7 battery protocol: frozen sha = the harness-closure merge; every gate precondition-greps the fixes and runs at that sha; triage-closure verifies sibling sections plus eval-findings closure or fails cheaply";
