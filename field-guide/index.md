@@ -37,25 +37,23 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   (db,planId,round), advance-round 409); DEC-088 perf-probe seed
   literals; DEC-089 5 perf-smoke checks + 301-id 400, walkthrough
   "scale" (110-id bulk accept, exactly-once, no-email).
-- Wave 3/4/5 (compact): w1-d/w2-a/b/c landed early (1cc3fe8); wave-3/5
-  gate tasks never executed (history stalled @ 3878d4f then 6e1db15) —
-  DEC-096's chain void per DEC-097. DEC-092/093: portal-edit purge
-  probe ratified, barrier vacuous, gates parallel @ 3878d4f. DEC-094/
-  095: perf-smoke paginates @200/page (301-id probe=300 real+1 fake);
+- Wave 3-5 (compact): w1-d/w2-a/b/c landed early (1cc3fe8); wave-3/5
+  gate tasks never executed/void (DEC-096/097). DEC-092/093 portal-edit
+  purge probe ratified; DEC-094/095 perf-smoke paginates @200/page,
   scale.ts portal-edit POST needs trackIds.
-- Wave 6 (verify-first, compact): four verified defects fixed parallel
-  to re-issued w5 scripts fix (task-w6-a): DEC-098 on-screen claim link
-  only for same-request-created contacts; DEC-099 pubcache hits re-
-  served max-age=60/swr=300 (86400 internal only); DEC-100 seq = atomic
-  INSERT w/ COALESCE(MAX(seq),0)+1 subquery; DEC-101 merge repoints six
-  FKs (+file.uploaded_by_contact_id, file_comment.author_contact_id).
-- Wave 7 (verified in-tree, not inherited): ALL four DEC-098..101 fixes
-  merged mid-planning via task-w6-b/c/d/e (tip d12eb25 "merge task-w6-d"),
-  conforming: submit.tsx ConfirmationState, pubcache CLIENT_CACHE_CONTROL
-  on hits, submissions/seq.ts atomic subquery (old helpers deleted),
-  contacts six-FK repoint + participant dedupe. Late-w5 gate sections
-  (build+test/spec-audit/walkthrough @ b638f75/3d1e838) are VOID per
-  DEC-069 — w6 merges are code-bearing. DEC-102: barrier vacuous, four
-  gates parallel code-frozen @ >= d12eb25 (re-derive sha DEC-091);
-  triage-closure behind walkthrough; task-w6-a-retry must merge verify-
-  only or it resets the predicate. Wave-8 planner greps DEC-069 exit.
+- Wave 6-7 (verified in-tree, tip d12eb25 "merge task-w6-d"): DEC-098
+  on-screen claim link only same-request contacts; DEC-099 pubcache
+  hits re-served max-age=60/swr=300; DEC-100 seq atomic INSERT
+  COALESCE(MAX(seq),0)+1; DEC-101 merge repoints six FKs. Pre-w6 gate
+  sections VOID per DEC-069. DEC-102: barrier vacuous @ d12eb25, four
+  gates parallel code-frozen, triage-closure behind walkthrough.
+- Wave 8 (verify-or-run, DEC-103): w7 gates LIVE mid-planning —
+  task-w7-a build+test PASS @ d12eb25 merged during planning (52b9ead,
+  bookkeeping-only, d12eb25 still newest code-bearing); w7-b/c refs
+  advanced, sections not yet landed. Remaining scopes (walkthrough/
+  perf-smoke/spec-audit/triage) re-issued as idempotent verify-or-run
+  lanes: pre-grep log for same-scope green @ DEC-091 sha, append brief
+  confirm else run full gate; alt ports 8811 walkthrough/8813 perf
+  (8801/8803 may be held by live w7 lanes, never 8787). Triage chains
+  behind w8 walkthrough, audits every post-d12eb25 merge for DEC-090
+  exemption. Wave-9 planner greps DEC-069 exit predicate.
