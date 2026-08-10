@@ -53,6 +53,26 @@ export async function listEventsForOrg(db: Db, orgId: string): Promise<EventReco
   return rows.map(toEventRecord);
 }
 
+/** DEC-141: reviewers list events via their plan_reviewer assignments, not
+ * org membership directly — join plan_reviewer -> evaluation_plan -> event,
+ * scope by orgId (defense in depth against cross-tenant leakage) and dedup
+ * by event id (a reviewer may have multiple assignment rows on one plan, or
+ * be assigned to more than one plan on the same event). */
+export async function listEventsForReviewer(db: Db, userId: string, orgId: string): Promise<EventRecord[]> {
+  const rows = await db
+    .selectDistinct({ event: schema.event })
+    .from(schema.planReviewer)
+    .innerJoin(schema.evaluationPlan, eq(schema.evaluationPlan.id, schema.planReviewer.planId))
+    .innerJoin(schema.event, eq(schema.event.id, schema.evaluationPlan.eventId))
+    .where(and(eq(schema.planReviewer.userId, userId), eq(schema.event.orgId, orgId)));
+  const seen = new Map<string, EventRecord>();
+  for (const row of rows) {
+    const record = toEventRecord(row.event);
+    seen.set(record.id, record);
+  }
+  return [...seen.values()];
+}
+
 /** DEC-049: org-agnostic lookup for the root SSR landing page — it links to
  * "the seeded event", not any particular org's event, so this is the one
  * place in the codebase that queries `event` without an orgId scope. */

@@ -82,10 +82,14 @@ describe("api sub-app composition under a shared /api/v1 prefix", () => {
   });
 
   it("still gates the organizer-only sub-app's own routes for a non-organizer", async () => {
+    // DEC-141: GET /api/v1/events is intentionally reachable by reviewers
+    // now (their own inline role check, not requireOrganizer), so this
+    // regression check uses a route that stays organizer-only on both
+    // sub-apps to keep covering the original w8-d blanket-wildcard defect.
     const reviewerAuth: AuthInfo = { userId: "u-1", role: "reviewer", orgId: "org-1" };
     const app = buildApp(reviewerAuth);
 
-    const res = await app.request("/api/v1/events");
+    const res = await app.request("/api/v1/contacts");
     expect(res.status).toBe(403);
   });
 
