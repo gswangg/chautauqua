@@ -51,6 +51,21 @@ export interface DeliverableFile {
   createdAt: number;
 }
 
+// GET /api/v1/events/:eventId/files item (DEC-159: one row per
+// previous_file_id version chain, newest version's metadata surfaced).
+export interface EventFileChainItem {
+  rootFileId: string;
+  latestFileId: string;
+  filename: string;
+  kind: DeliverableKind;
+  submissionId: string;
+  submissionRef: string;
+  submissionTitle: string;
+  speakerName: string;
+  uploadedAt: number;
+  versionCount: number;
+}
+
 // GET/POST /api/v1/files/:fileId/comments item (DEC-020: author name + role).
 export interface FileComment {
   id: string;

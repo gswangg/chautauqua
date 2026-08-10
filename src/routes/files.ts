@@ -12,17 +12,20 @@ import { requireOrganizer, csrfJson } from "../server/middleware";
 import { ApiError } from "../server/http";
 import { makeFileStore } from "../server/context";
 import { newId } from "../domain/ids";
+import { buildZip } from "../lib/zip";
 import {
   isImageContentType,
   isValidFileKind,
   isValidVersionChain,
   sanitizeFilenameForKey,
+  slugifyTitle,
   validateUpload,
 } from "../domain/files";
 import {
   canAccessFile,
   canAccessResourceFile,
   canAccessTaskFile,
+  getEventFilesScope,
   getFileScope,
   getReplacesTarget,
   getResourceFileScope,
@@ -31,8 +34,10 @@ import {
   insertFile,
   insertFileComment,
   isValidContentStatus,
+  listEventDeliverableFiles,
   listFileComments,
   listSubmissionFiles,
+  resolveLatestVersions,
   reviewerHasPlanForEvent,
   updateContentStatus,
 } from "../server/repo/files";
@@ -164,6 +169,74 @@ fileApiRoutes.post("/submissions/:id/content-status", requireOrganizer, csrfJson
 
   await updateContentStatus(c.var.db, submissionId, body.contentStatus);
   return c.json({ id: submissionId, contentStatus: body.contentStatus });
+});
+
+// -----------------------------------------------------------------------
+// GET /api/v1/events/:eventId/files — DEC-159 central files library
+// -----------------------------------------------------------------------
+fileApiRoutes.get("/events/:eventId/files", requireOrganizer, async (c) => {
+  const auth = requireAuth(c);
+  const eventId = c.req.param("eventId");
+  const scope = await getEventFilesScope(c.var.db, eventId);
+  if (!scope) throw new ApiError("not_found", "Event not found");
+  if (scope.orgId !== auth.orgId) throw new ApiError("forbidden", "Event belongs to a different org");
+
+  const items = await listEventDeliverableFiles(c.var.db, eventId);
+  return c.json({ items, total: items.length, page: 1, perPage: items.length || 1 });
+});
+
+// -----------------------------------------------------------------------
+// POST /api/v1/events/:eventId/files/archive — DEC-160 bulk ZIP download
+// -----------------------------------------------------------------------
+const MAX_ARCHIVE_FILES = 50;
+
+fileApiRoutes.post("/events/:eventId/files/archive", requireOrganizer, csrfJson, async (c) => {
+  const auth = requireAuth(c);
+  const eventId = c.req.param("eventId");
+  const scope = await getEventFilesScope(c.var.db, eventId);
+  if (!scope) throw new ApiError("not_found", "Event not found");
+  if (scope.orgId !== auth.orgId) throw new ApiError("forbidden", "Event belongs to a different org");
+
+  const body = (await c.req.json().catch(() => ({}))) as { fileIds?: unknown };
+  const fileIds = body.fileIds;
+  if (!Array.isArray(fileIds) || fileIds.length === 0 || !fileIds.every((id) => typeof id === "string")) {
+    throw new ApiError("invalid", "fileIds must be a non-empty array of strings", { fileIds: "Required" });
+  }
+  if (fileIds.length > MAX_ARCHIVE_FILES) {
+    throw new ApiError("invalid", `fileIds must not exceed ${MAX_ARCHIVE_FILES} entries`, {
+      fileIds: `Max ${MAX_ARCHIVE_FILES}`,
+    });
+  }
+
+  // Loud 404 on any unknown/non-deliverable id — no silent skips (DEC-160).
+  const resolved = await resolveLatestVersions(c.var.db, eventId, fileIds as string[]);
+  const chains = await listEventDeliverableFiles(c.var.db, eventId);
+  const submissionTitleByLatestId = new Map(chains.map((ch) => [ch.latestFileId, ch.submissionTitle]));
+
+  const store = makeFileStore(c.env.FILES);
+  const entries: { name: string; data: Uint8Array }[] = [];
+  let seq = 1;
+  for (const requestedId of fileIds as string[]) {
+    const latest = resolved.get(requestedId);
+    if (!latest) throw new Error("unreachable: resolveLatestVersions validated every id");
+    const obj = await store.get(latest.r2Key);
+    if (!obj) throw new ApiError("not_found", `File contents not found for ${latest.filename}`);
+    const buf = new Uint8Array(await new Response(obj.body).arrayBuffer());
+    const title = submissionTitleByLatestId.get(latest.id) ?? "submission";
+    entries.push({ name: `${seq}-${slugifyTitle(title)}/${latest.filename}`, data: buf });
+    seq += 1;
+  }
+
+  const built = buildZip(entries);
+  // Copy into a plain ArrayBuffer-backed view: buildZip's return type is
+  // Uint8Array<ArrayBufferLike> (SharedArrayBuffer-compatible per DEC-002
+  // pure-core typing), narrower than Hono's c.body Uint8Array<ArrayBuffer>.
+  const zip = new Uint8Array(built.length);
+  zip.set(built);
+  return c.body(zip, 200, {
+    "Content-Type": "application/zip",
+    "Content-Disposition": `attachment; filename="${scope.slug}-files.zip"`,
+  });
 });
 
 // -----------------------------------------------------------------------
