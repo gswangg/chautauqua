@@ -8,7 +8,7 @@
 // lowercase base32 id via newId() before insert. Timestamps are integer ms
 // epoch (mode: 'timestamp_ms').
 
-import { sqliteTable, text, integer, index, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, index, uniqueIndex, primaryKey } from "drizzle-orm/sqlite-core";
 
 const id = () => text("id").primaryKey();
 const createdAt = () => integer("created_at", { mode: "timestamp_ms" }).notNull();
@@ -124,6 +124,9 @@ export const form = sqliteTable(
     description: text("description"),
     isDefault: integer("is_default", { mode: "boolean" }).notNull().default(false),
     closeDate: integer("close_date", { mode: "timestamp_ms" }),
+    // DEC-015: JSON array of track ids offered on this form; null/empty
+    // means all event tracks are offered.
+    tracksJson: text("tracks_json"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -211,6 +214,23 @@ export const submissionAnswer = sqliteTable(
       t.submissionId,
       t.formFieldId,
     ),
+  }),
+);
+
+// DEC-015: talks are submitted to one or more tracks; track membership is a
+// real join (never a form_field answer) so reviewer assignment, filtering,
+// and the agenda can all key on it.
+export const submissionTrack = sqliteTable(
+  "submission_track",
+  {
+    submissionId: text("submission_id").notNull(),
+    trackId: text("track_id").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => ({
+    submission_track_pk: primaryKey({ columns: [t.submissionId, t.trackId] }),
+    submission_track_submission_id_idx: index("submission_track_submission_id_idx").on(t.submissionId),
+    submission_track_track_id_idx: index("submission_track_track_id_idx").on(t.trackId),
   }),
 );
 
