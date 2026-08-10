@@ -9,6 +9,7 @@ import {
   validateEvaluationScores,
   isPlanOpen,
   resolveAssignments,
+  criteriaForRound,
   type EvaluationCriterion,
   type EvaluationCriterionDef,
   type ReviewerScopeRow,
@@ -217,6 +218,74 @@ describe("validateEvaluationScores", () => {
     );
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.errors.extra).toBeDefined();
+  });
+});
+
+describe("validateEvaluationScores (DEC-148 'text' kind)", () => {
+  const scale = { min: 1, max: 5 };
+  const withText: EvaluationCriterionDef[] = [
+    { id: "content", label: "Content", kind: "rating", weight: 2 },
+    { id: "notes", label: "Notes", kind: "text" },
+    { id: "flag", label: "Flag reason", kind: "text", required: true },
+  ];
+
+  it("accepts an empty string for a non-required text criterion", () => {
+    const result = validateEvaluationScores({ content: 4, notes: "", flag: "reason" }, withText, scale);
+    expect(result).toEqual({ ok: true });
+  });
+
+  it("accepts a non-empty string for a non-required text criterion", () => {
+    const result = validateEvaluationScores({ content: 4, notes: "great talk", flag: "reason" }, withText, scale);
+    expect(result).toEqual({ ok: true });
+  });
+
+  it("rejects an empty string for a required text criterion", () => {
+    const result = validateEvaluationScores({ content: 4, notes: "", flag: "" }, withText, scale);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.errors.flag).toBeDefined();
+  });
+
+  it("rejects whitespace-only as empty for a required text criterion", () => {
+    const result = validateEvaluationScores({ content: 4, notes: "", flag: "   " }, withText, scale);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.errors.flag).toBeDefined();
+  });
+
+  it("rejects a non-string value for a text criterion", () => {
+    const result = validateEvaluationScores({ content: 4, notes: 5, flag: "reason" }, withText, scale);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.errors.notes).toBeDefined();
+  });
+
+  it("still rejects a missing text criterion entry entirely", () => {
+    const result = validateEvaluationScores({ content: 4, flag: "reason" }, withText, scale);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.errors.notes).toBeDefined();
+  });
+});
+
+describe("criteriaForRound (DEC-147)", () => {
+  const base: EvaluationCriterionDef[] = [{ id: "c1", label: "Base quality", kind: "rating", weight: 1 }];
+  const round2: EvaluationCriterionDef[] = [{ id: "c2", label: "Round 2 override", kind: "rating", weight: 3 }];
+
+  it("returns base when overridesJson is null", () => {
+    expect(criteriaForRound(base, null, 1)).toBe(base);
+    expect(criteriaForRound(base, null, 2)).toBe(base);
+  });
+
+  it("returns base for round 1 by convention even with overrides present for other rounds", () => {
+    const overrides = JSON.stringify({ "2": round2 });
+    expect(criteriaForRound(base, overrides, 1)).toBe(base);
+  });
+
+  it("returns the round-specific override when present", () => {
+    const overrides = JSON.stringify({ "2": round2 });
+    expect(criteriaForRound(base, overrides, 2)).toEqual(round2);
+  });
+
+  it("falls back to base for a round absent from the overrides map", () => {
+    const overrides = JSON.stringify({ "2": round2 });
+    expect(criteriaForRound(base, overrides, 3)).toBe(base);
   });
 });
 

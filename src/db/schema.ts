@@ -276,6 +276,11 @@ export const evaluationPlan = sqliteTable(
     // DEC-082: the round an organizer has advanced this plan to (1-based,
     // capped at `rounds` by advancePlanRound). migrations/0009_review_rounds.sql.
     currentRound: integer("current_round").notNull().default(1),
+    // DEC-147: nullable map of round -> criteria array override, e.g.
+    // {"2":[{id,label,kind,...}]}. Rounds absent from this map (including
+    // round 1 by convention) fall back to criteriaJson -- resolved ONLY via
+    // src/domain/evaluation.ts's criteriaForRound(). migrations/0010_round_criteria.sql.
+    roundCriteriaJson: text("round_criteria_json"),
     maxEvaluations: integer("max_evaluations"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
