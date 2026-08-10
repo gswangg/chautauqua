@@ -29,6 +29,33 @@ features exist because a job needs them; rubric IDs appear only as verification 
 Engineering priorities, in order: performance · feature completeness · architectural
 simplicity · security · ease of deployment. Open source from day one, maintained in git.
 
+### Build staging (stage 1 now; stage 2 is a separate later swarm)
+
+External-platform configuration is deliberately deferred — the product gets built first.
+
+**Stage 1 — the local-complete product (this build).** The entire feature surface J1–J12,
+runnable with **zero external accounts or secrets**: `wrangler dev`'s local runtime
+(Miniflare) emulates D1, R2, KV, and cron triggers offline. Hard rule: **stage-1 code must
+run with no secrets present** — a fresh checkout plus `npm ci` plus one dev command is a
+fully working app. Every external service sits behind a port with a local implementation:
+
+- **Mailer port → dev sink.** Every "send" writes `email_log` rows and full rendered
+  messages (including .ics attachments) viewable at a dev-only mailbox route. This keeps
+  the whole communication surface buildable and testable now — templates, merge fields,
+  per-recipient preview, the 100-cap, reminder cron, confirmation emails — with the real
+  provider (Resend) as a stage-2 adapter swap.
+- **File storage → the R2 binding** (Miniflare local in dev). Files are served through an
+  authenticated Worker route in stage 1; presigned direct-from-R2 URLs are a stage-2
+  optimization, not a dependency.
+- **Self-grading runs against the local dev URL** — sbek takes any `--url`, including
+  localhost.
+
+**Stage 2 — platform wiring (second swarm, before submission).** Cloudflare provisioning
+(D1/R2/KV, cron), `wrangler deploy`, Resend API key + real delivery (+ optional webhooks),
+production edge-cache validation and perf measurement, Airtable one-way sync, domain/DNS,
+CI deploy pipeline. If stage 1 keeps its ports clean, stage 2 is mostly configuration and
+adapter swaps — which is exactly why the ports rule is a hard rule.
+
 ### Non-goals (explicit, per swyx)
 
 Accelevents integration ("skip accelevents its fine") · attendee registration/ticketing ·
@@ -203,7 +230,7 @@ judges:
 | Framework | **Hono** | Tiny, fast, first-class Workers support, JSX SSR built in |
 | Database | **Cloudflare D1** (SQLite) + **Drizzle ORM** | One DB, migrations in git, typed queries |
 | Files | **Cloudflare R2** | Headshots/slides/resources; presigned URLs |
-| Email | **Resend** (HTTP API) | Real MVP-basis delivery (swyx's suggestion); logged in-app; stub-to-log mode when no API key so dev/CI never silently drop mail |
+| Email | Mailer port: dev sink (stage 1) → **Resend** adapter (stage 2) | Full comms surface buildable with no key; real MVP-basis delivery (swyx's suggestion) is an adapter swap; everything logged in-app either way |
 | Admin UI | **React + Vite SPA** served as Worker static assets | Form builder + drag-drop agenda need client state |
 | Public pages | **Hono JSX SSR**, edge-cached | Fast, mobile-friendly, no-JS-required |
 | Auth | Hand-rolled PBKDF2 (Web Crypto) + HttpOnly session cookies | Auditable, minimal dependency surface |
@@ -278,8 +305,9 @@ Invariants (assert, don't paper over):
 - Authz middleware on every admin/API route: role + event grant; object-level ownership
   checks on every fetch-by-id (no IDOR). Speakers hitting `/admin` → 403/redirect.
 - Server-side filtering for all public and anonymized data — never CSS-hidden.
-- Uploads: extension+MIME allowlist, size caps, random R2 keys, presigned GETs, no
-  user-content served with HTML content types from our origin.
+- Uploads: extension+MIME allowlist, size caps, random R2 keys; files served through an
+  authenticated Worker route (stage 1; presigned GETs are a stage-2 optimization); no
+  user-content served with HTML content types.
 - Parameterized queries only (Drizzle). Rate limits on auth + public submission. Secrets
   via `wrangler secret`; `.dev.vars` gitignored.
 - Public submission endpoint validates against the server's form schema (required, types,
@@ -369,11 +397,11 @@ rendering, exports/API, visual polish.
 
 | When | Deliverable |
 |---|---|
-| **M1 — Sun night** | Skeleton deployed: Worker + D1 + auth + seeded personas + event settings + CFP builder + public submission (J1, J2 walkable) |
-| **M2 — Mon** | Review + disposition (J3–J5), speaker roster/portal shell (J7 partial); first full eval run |
+| **M1 — Sun night** | Stage-1 swarm running: Worker skeleton + local D1 + auth + seeded personas + event settings + CFP builder + public submission (J1, J2 walkable on `wrangler dev`) |
+| **M2 — Mon** | Review + disposition (J3–J5), speaker roster/portal shell (J7 partial); first full eval run against the local dev URL |
 | **M3 — Tue** | Onboarding + content (J6, J8), agenda (J9), all five public surfaces (J10); second eval run; fix rule/scoping reds |
-| **M4 — Wed AM** | CRM (J11), exports/API (J12), polish from eval report + persona walkthroughs, perf pass at 2k-row scale |
-| **M5 — Wed PM** | Freeze; final eval run + manual checklist; README-for-evaluators; submit form + repo + deployed URL |
+| **M4 — Wed AM** | CRM (J11), exports/API (J12); **stage-2 swarm: platform wiring + deploy** (provision, Resend key, `wrangler deploy`); polish from eval report + persona walkthroughs; perf pass at 2k-row scale |
+| **M5 — Wed PM** | Freeze; final eval run against the deployed URL + manual checklist; README-for-evaluators; submit form + repo + deployed URL |
 
 Watch items: swyx's follow-up video + requirements freeze; eval-repo commits (re-pull
 daily); Gene Kim's unanswered "review ethos 1–10" Discord thread.

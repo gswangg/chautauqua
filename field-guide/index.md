@@ -11,3 +11,7 @@ here is injected into every agent at spawn.
   src/decisions.ts are the compile-checked index.
 - House invariants: fail loudly; status changes never auto-email; authz on
   every route, server-side visibility filtering for all public data.
+- STAGE 1 (SPEC.md §0 "Build staging"): everything runs locally with zero
+  secrets on wrangler dev. No deploys, no real email providers, no Airtable —
+  external services go behind ports with local dev implementations (email →
+  dev sink + email_log + dev mailbox route). Stage 2 wires platforms later.
