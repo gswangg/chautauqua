@@ -31,3 +31,20 @@ export function renderTemplate(template: string, vars: Record<string, string>): 
     return vars[name];
   });
 }
+
+// DEC-037: outbound email HTML must never embed raw user/merge-field content.
+// escapeHtml/textToHtml are the only sanctioned path from plain text to HTML.
+export function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+export function textToHtml(text: string): string {
+  const escaped = escapeHtml(text);
+  const paragraphs = escaped.split(/\n{2,}/).map((p) => p.replace(/\n/g, "<br/>"));
+  return paragraphs.map((p) => `<p>${p}</p>`).join("");
+}

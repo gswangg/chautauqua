@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MergeFieldError, MERGE_FIELDS, renderTemplate } from "../src/mail/render";
+import { MergeFieldError, MERGE_FIELDS, renderTemplate, escapeHtml, textToHtml } from "../src/mail/render";
 import { buildIcsCalendar, buildIcsEvent, type IcsEventInput } from "../src/mail/ics";
 import { DevSinkMailer, InMemoryEmailLog } from "../src/mail/dev-sink";
 import type { RenderedEmail } from "../src/mail/types";
@@ -33,6 +33,43 @@ describe("renderTemplate", () => {
       "task_list",
       "feedback",
     ]);
+  });
+});
+
+describe("escapeHtml", () => {
+  it("escapes &, <, >, \", and '", () => {
+    expect(escapeHtml(`& < > " '`)).toBe("&amp; &lt; &gt; &quot; &#39;");
+  });
+
+  it("neutralizes an XSS payload disguised as a talk title", () => {
+    const title = `<img src=x onerror=alert(1)>`;
+    const out = escapeHtml(title);
+    expect(out).not.toContain("<img");
+    expect(out).toBe("&lt;img src=x onerror=alert(1)&gt;");
+  });
+});
+
+describe("textToHtml", () => {
+  it("wraps single-line text in a <p> after escaping", () => {
+    expect(textToHtml("hello world")).toBe("<p>hello world</p>");
+  });
+
+  it("converts a single newline within a paragraph to <br/>", () => {
+    expect(textToHtml("line one\nline two")).toBe("<p>line one<br/>line two</p>");
+  });
+
+  it("splits blank-line-separated paragraphs into separate <p> blocks", () => {
+    expect(textToHtml("para one\n\npara two")).toBe("<p>para one</p><p>para two</p>");
+  });
+
+  it("escapes a malicious talk title before wrapping in HTML", () => {
+    const text = `Hi Ada,\n\nWe received your submission "<img src=x onerror=alert(1)>" for DevConf.`;
+    const out = textToHtml(text);
+    expect(out).not.toContain("<img");
+    expect(out).toContain("&lt;img src=x onerror=alert(1)&gt;");
+    expect(out).toBe(
+      '<p>Hi Ada,</p><p>We received your submission &quot;&lt;img src=x onerror=alert(1)&gt;&quot; for DevConf.</p>',
+    );
   });
 });
 

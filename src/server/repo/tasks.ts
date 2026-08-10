@@ -7,7 +7,7 @@ import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { newId } from "../../domain/ids";
 import type { Mailer } from "../../mail/types";
-import { renderTemplate } from "../../mail/render";
+import { renderTemplate, textToHtml } from "../../mail/render";
 import type { ReminderAssignment } from "../../domain/reminders";
 import { planReminders } from "../../domain/reminders";
 
@@ -487,22 +487,20 @@ async function sendReminderEmails(
       .filter((d): d is number => d !== null)
       .sort((a, b) => a - b)[0];
 
-    await mailer.send({
-      to: { email: first.email, name: `${first.firstName} ${first.lastName}`.trim() },
-      subject: `Action needed: outstanding tasks for ${eventName}`,
-      text: renderTemplate("You have outstanding tasks for {event_name}: {task_list} (due {due_date}).", {
+    const reminderText = renderTemplate(
+      "You have outstanding tasks for {event_name}: {task_list} (due {due_date}).",
+      {
         event_name: eventName,
         task_list: taskList,
         due_date: formatDueDate(nextDue ?? null),
-      }),
-      html: renderTemplate(
-        "<p>You have outstanding tasks for {event_name}: {task_list} (due {due_date}).</p>",
-        {
-          event_name: eventName,
-          task_list: taskList,
-          due_date: formatDueDate(nextDue ?? null),
-        },
-      ),
+      },
+    );
+
+    await mailer.send({
+      to: { email: first.email, name: `${first.firstName} ${first.lastName}`.trim() },
+      subject: `Action needed: outstanding tasks for ${eventName}`,
+      text: reminderText,
+      html: textToHtml(reminderText),
       eventId,
       contactId: group.contactId,
     });
