@@ -26,7 +26,10 @@ hard 60-line budget, compacting old entries. Injected into every agent.
 - Wave-11..17 (EXIT, reopened by DEC-086): DEC-068 log append-only;
   DEC-069 exit predicate (sha-scoped PASS build+test/walkthrough/
   perf-smoke/spec-audit/triage-closure); DEC-076 single code barrier;
-  DEC-077 gates code-frozen, bookkeeping non-code-bearing.
+  DEC-077 gates code-frozen, bookkeeping non-code-bearing. Wave 11:
+  DEC-108..111 fixes verified in-tree WITH tests; DEC-114 code-bearing
+  iff first-parent name-only diff leaves the bookkeeping set (EMPTY
+  re-merges never void gates).
 - Wave w1-5 (compact): DEC-078 chunk.ts (ID_CHUNK_SIZE=90); DEC-079-084
   plan-before-commit/public chunking+.ics cap/set-based review/pubver
   KV purge/2048px images; DEC-082/087 multi-round; DEC-088 perf-probe
@@ -39,22 +42,19 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   inArray -> D1 too-many-vars @300) -> DEC-104 chunk-sweep + guard
   tests, DEC-105 timed+untimed probes. Wave 10 2nd barrier (DEC-107):
   DEC-108 public gate inviteStatus IN('none','accepted'); DEC-109
-  portal-edit file-answer merge; DEC-110 rules via
-  dangerouslySetInnerHTML+escape; DEC-111 backing forms (isDefault
-  false, self-healed, domain/acceptance.ts); DEC-112 probes spec'd but
-  NOT landed. Pre-w6 gate sections VOID per DEC-069.
-- Wave 11 (tip 82dc3da "merge task-w10-a"): DEC-108..111 fixes verified
-  in-tree WITH tests (public-invite-visibility/portal-edit-file-field/
-  form-render-rules/acceptance-form-tasks .test.ts); DEC-099/100/101/104/
-  105 re-confirmed. w10-e's DEC-112 probes did NOT land -> task-w11-a
-  re-lands per DEC-113: all in scripts/walkthrough/speaker.ts (invite
-  fixtures A/B + new pending C -> accepted+approved -> chq-session-card
-  and speakers-block scoped assertions; Flight task full backing-form
-  fill, Hotel pre-attach GET-200 only; expected-GREEN; self-test 8827).
-  DEC-114: code-bearing iff first-parent name-only diff leaves the
-  bookkeeping set; EMPTY re-merges (train duplicates observed) never
-  void gates. DEC-115: five gates chain behind w11-a — b build+test,
-  c walkthrough@8821, d perf-smoke@8823 (closes w7-c/w8-b OPEN ITEM
-  citing overview.ts chunkIds), e spec-audit, f triage behind c ('OPEN
-  ITEMS: n'). Wave-12 planner: evaluate exit PURELY by the DEC-069 grep
-  at the task-w11-a merge sha (or newest code-bearing sha per DEC-114).
+  portal-edit file-answer merge; DEC-110 rules via dangerouslySetInnerHTML
+  +escape; DEC-111 backing forms (isDefault false, self-healed,
+  domain/acceptance.ts). Pre-w6 gate sections VOID per DEC-069.
+- Wave 12: reflog shows 'merge task-w10-e' (3543f09) landed AFTER the
+  wave-11 snapshot — the DEC-112 probes ARE in-tree (speaker.ts:479-533
+  Hotel+Flight full fills; public.ts:620+ invite-visibility), and
+  wave-11's six tasks never executed (no task-w11-* refs/merges).
+  DEC-116 voids the DEC-113 barrier, rules the landed split-file probe
+  layout authoritative. Zero product code outstanding; DEC-099/100/
+  101/104/108-111 re-verified at tip with tests (pubcache-hit finding
+  is stale — hit path restores max-age=60). DEC-117: five gates only —
+  build+test/walkthrough@8831/perf-smoke@8833/spec-audit parallel,
+  triage-closure behind perf-smoke (closes w7-c/w8-b overview.ts OPEN
+  ITEM via DEC-104 chunkIds at overview.ts:170). Exit for wave-13 =
+  pure DEC-069 grep at DEC-114-derived sha (expected 3543f09): four
+  RESULT: PASS + triage OPEN ITEMS: 0.
