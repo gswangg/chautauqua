@@ -72,3 +72,4 @@ export const DEC_065 = "Task-assignment upload files are served through GET /fil
 export const DEC_066 = "Reviewers may download submission files for events where they hold a plan_reviewer assignment — read-only, no comment access";
 export const DEC_067 = "/headshots/:fileId is gated: 404 unless a contact currently references it; unauthenticated serving requires the public-visibility predicate; org members and the owner get a private-cache fallback";
 export const DEC_068 = "Verification results are a tracked artifact: docs/verification-log.md, append-only, one dated section per run";
+export const DEC_069 = "Machine-greppable stage-1 exit predicate in docs/verification-log.md (RESULT:/OPEN ITEMS: lines); green counts only for its named sha";
