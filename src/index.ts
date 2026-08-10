@@ -12,6 +12,7 @@ import { publicSubmitRoutes } from "./routes/public/submit";
 import { portalRoutes } from "./routes/portal/index";
 import { devMailboxRoutes, shouldMountDevMailbox } from "./routes/dev/mailbox";
 import { taskRoutes, runDueReminders } from "./routes/tasks";
+import { fileApiRoutes, fileServeRoutes } from "./routes/files";
 
 // Wave 2 wires the remaining routers (admin SPA, /api/v1/*, /submit,
 // /portal, public surfaces, /embed, /files, /dev/mailbox — see DEC-005).
@@ -35,6 +36,8 @@ app.route("/", authRoutes);
 app.route("/api/v1", eventsRoutes);
 app.route("/api/v1", submissionsRoutes);
 app.route("/api/v1", taskRoutes);
+app.route("/api/v1", fileApiRoutes);
+app.route("/", fileServeRoutes);
 app.route("/", emailLogRoutes);
 app.route("/", formsRoutes);
 app.route("/", publicSubmitRoutes);
