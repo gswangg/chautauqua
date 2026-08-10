@@ -39,6 +39,7 @@ describe("parseContactListQuery (DEC-013 pagination + DEC-026 filters)", () => {
       q: null,
       segmentId: null,
       sort: "name",
+      rules: [],
     });
   });
 
@@ -57,6 +58,12 @@ describe("parseContactListQuery (DEC-013 pagination + DEC-026 filters)", () => {
     expect(parseContactListQuery({ segmentId: "seg_1" }).segmentId).toBe("seg_1");
     expect(parseContactListQuery({ sort: "recent" }).sort).toBe("recent");
     expect(parseContactListQuery({ sort: "bogus" }).sort).toBe("name");
+  });
+
+  it("defaults rules to [] and threads a passed-in rules array through unchanged (DEC-149)", () => {
+    expect(parseContactListQuery({})).toMatchObject({ rules: [] });
+    const rules = [{ field: "any", op: "contains" as const, value: "ada" }];
+    expect(parseContactListQuery({}, rules)).toMatchObject({ rules });
   });
 });
 

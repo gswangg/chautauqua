@@ -1,5 +1,6 @@
-import type { ContactListItem, Segment } from './types';
+import type { ContactListItem, Segment, SegmentRule } from './types';
 import { isPageFullySelected, isPagePartiallySelected, selectionReducer, type SelectionState } from './selection';
+import { FilterRulesPanel } from './FilterRulesPanel';
 
 interface Props {
   items: ContactListItem[];
@@ -7,11 +8,13 @@ interface Props {
   page: number;
   perPage: number;
   q: string;
+  rules: SegmentRule[];
   segmentId: string;
   segments: Segment[];
   selection: SelectionState;
   loading: boolean;
   onChangeQ: (q: string) => void;
+  onChangeRules: (rules: SegmentRule[]) => void;
   onChangeSegment: (segmentId: string) => void;
   onChangePage: (page: number) => void;
   onSelectionChange: (selection: SelectionState) => void;
@@ -24,11 +27,13 @@ export function ContactsTable({
   page,
   perPage,
   q,
+  rules,
   segmentId,
   segments,
   selection,
   loading,
   onChangeQ,
+  onChangeRules,
   onChangeSegment,
   onChangePage,
   onSelectionChange,
@@ -58,6 +63,8 @@ export function ContactsTable({
           </select>
         </label>
       </div>
+
+      <FilterRulesPanel rules={rules} onChange={onChangeRules} />
 
       <table className="chq-contacts-table">
         <thead>

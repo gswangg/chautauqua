@@ -85,13 +85,20 @@ export interface ParsedContactListQuery {
   q: string | null;
   segmentId: string | null;
   sort: "name" | "recent";
+  rules: SegmentRule[];
 }
 
 const DEFAULT_PER_PAGE = 50;
 const MAX_PER_PAGE = 200;
 
-/** DEC-013 pagination parsing, DEC-026 filters (q, segmentId, sort name|recent). */
-export function parseContactListQuery(raw: Record<string, string | undefined>): ParsedContactListQuery {
+/** DEC-013 pagination parsing, DEC-026 filters (q, segmentId, sort
+ * name|recent), DEC-149 multi-criteria `rules` (already-parsed+validated by
+ * the route layer from ?rules= URL-encoded JSON — this function never
+ * touches raw JSON, it just threads the parsed array through). */
+export function parseContactListQuery(
+  raw: Record<string, string | undefined>,
+  rules: SegmentRule[] = [],
+): ParsedContactListQuery {
   const pageNum = Number(raw.page);
   const page = Number.isFinite(pageNum) && Number.isInteger(pageNum) && pageNum >= 1 ? pageNum : 1;
 
@@ -108,7 +115,7 @@ export function parseContactListQuery(raw: Record<string, string | undefined>): 
 
   const sort = raw.sort === "recent" ? "recent" : "name";
 
-  return { page, perPage, q, segmentId, sort };
+  return { page, perPage, q, segmentId, sort, rules };
 }
 
 /** Comparator for the two DEC-026 sort orders: name (last, first) or recent (updatedAt desc). */
@@ -310,8 +317,11 @@ export async function listContactsForOrg(db: Db, orgId: string, params: ParsedCo
   if (params.segmentId) {
     const segment = await findSegmentForOrg(db, params.segmentId, orgId);
     if (!segment) throw new Error(`segment ${params.segmentId} not found for org ${orgId}`);
-    const rules = JSON.parse(segment.rulesJson) as SegmentRule[];
-    filtered = rows.filter((r) => matchesSegment(rules, toContactRecord(r)));
+    const segmentRules = JSON.parse(segment.rulesJson) as SegmentRule[];
+    filtered = filtered.filter((r) => matchesSegment(segmentRules, toContactRecord(r)));
+  }
+  if (params.rules.length > 0) {
+    filtered = filtered.filter((r) => matchesSegment(params.rules, toContactRecord(r)));
   }
 
   const sorted = [...filtered].sort(compareContacts(params.sort));

@@ -9,7 +9,7 @@ import { ImportWizard } from './ImportWizard';
 import { EMPTY_SELECTION, selectionReducer } from './selection';
 import { SegmentsPanel } from './SegmentsPanel';
 import { StatsStrip } from './StatsStrip';
-import type { ContactListItem, ContactStats, Segment } from './types';
+import type { ContactListItem, ContactStats, Segment, SegmentRule } from './types';
 
 const PER_PAGE = 25;
 
@@ -24,6 +24,7 @@ export function ContactsApp() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [q, setQ] = useState('');
+  const [rules, setRules] = useState<SegmentRule[]>([]);
   const [segmentId, setSegmentId] = useState('');
   const [segments, setSegments] = useState<Segment[]>([]);
   const [selection, setSelection] = useState(EMPTY_SELECTION);
@@ -59,6 +60,7 @@ export function ContactsApp() {
     params.set('perPage', String(PER_PAGE));
     if (q.trim() !== '') params.set('q', q.trim());
     if (segmentId !== '') params.set('segmentId', segmentId);
+    if (rules.length > 0) params.set('rules', JSON.stringify(rules));
     apiList<ContactListItem>(`/contacts?${params.toString()}`)
       .then((res) => {
         setItems(res.items);
@@ -66,7 +68,7 @@ export function ContactsApp() {
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load contacts'))
       .finally(() => setLoading(false));
-  }, [page, q, segmentId, refreshKey]);
+  }, [page, q, rules, segmentId, refreshKey]);
 
   const selectedIds = [...selection.selectedIds];
 
@@ -103,12 +105,17 @@ export function ContactsApp() {
             page={page}
             perPage={PER_PAGE}
             q={q}
+            rules={rules}
             segmentId={segmentId}
             segments={segments}
             selection={selection}
             loading={loading}
             onChangeQ={(next) => {
               setQ(next);
+              setPage(1);
+            }}
+            onChangeRules={(next) => {
+              setRules(next);
               setPage(1);
             }}
             onChangeSegment={(next) => {
@@ -127,7 +134,7 @@ export function ContactsApp() {
       {panel === 'segments' && (
         <SegmentsPanel
           segments={segments}
-          activeFilters={{ q, company: '' }}
+          activeFilters={{ q, rules }}
           onChanged={() => {
             reload();
           }}

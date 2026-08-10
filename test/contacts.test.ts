@@ -184,6 +184,42 @@ describe("matchesSegment", () => {
     const rules: SegmentRule[] = [{ field: "nickname", op: "eq", value: "j" }];
     expect(() => matchesSegment(rules, c)).toThrow();
   });
+
+  describe("field: 'any' (DEC-149)", () => {
+    it("contains matches if ANY of email/firstName/lastName/company/title matches", () => {
+      expect(matchesSegment([{ field: "any", op: "contains", value: "acme" }], c)).toBe(true);
+      expect(matchesSegment([{ field: "any", op: "contains", value: "jane" }], c)).toBe(true);
+      expect(matchesSegment([{ field: "any", op: "contains", value: "nope" }], c)).toBe(false);
+    });
+
+    it("eq matches if ANY field equals the value exactly (case-insensitive)", () => {
+      expect(matchesSegment([{ field: "any", op: "eq", value: "doe" }], c)).toBe(true);
+      expect(matchesSegment([{ field: "any", op: "eq", value: "jane" }], c)).toBe(true);
+      expect(matchesSegment([{ field: "any", op: "eq", value: "jane doe" }], c)).toBe(false);
+    });
+
+    it("ne matches only if ALL fields differ from the value", () => {
+      expect(matchesSegment([{ field: "any", op: "ne", value: "nope" }], c)).toBe(true);
+      expect(matchesSegment([{ field: "any", op: "ne", value: "jane" }], c)).toBe(false);
+    });
+
+    it("does not fan out into custom fields", () => {
+      expect(matchesSegment([{ field: "any", op: "eq", value: "large" }], c)).toBe(false);
+    });
+
+    it("AND-composes with other rules", () => {
+      const rules: SegmentRule[] = [
+        { field: "any", op: "contains", value: "jane" },
+        { field: "company", op: "eq", value: "acme corp" },
+      ];
+      expect(matchesSegment(rules, c)).toBe(true);
+      const rulesFail: SegmentRule[] = [
+        { field: "any", op: "contains", value: "jane" },
+        { field: "company", op: "eq", value: "other" },
+      ];
+      expect(matchesSegment(rulesFail, c)).toBe(false);
+    });
+  });
 });
 
 describe("mapImportRow", () => {
