@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { apiList, ApiError } from '../../lib/api';
+import { apiList, apiPost, ApiError } from '../../lib/api';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { DeliverableDetail } from './DeliverableDetail';
 import { SessionList } from './SessionList';
@@ -80,6 +80,21 @@ export function ContentApp() {
     setItems((prev) => prev.map((item) => (item.id === id ? { ...item, contentStatus: status } : item)));
   }
 
+  // Row-level content-status control (CNT-12: the content-status endpoint
+  // was previously only reachable by drilling into a submission's
+  // deliverable detail). Optimistic with loud rollback, per SPEC §7.
+  async function requestContentStatus(id: string, status: ContentStatus) {
+    const previous = items;
+    setError(null);
+    onContentStatusChange(id, status);
+    try {
+      await apiPost(`/submissions/${id}/content-status`, { contentStatus: status });
+    } catch (err) {
+      setItems(previous);
+      setError(err instanceof ApiError ? `Content status update failed: ${err.message}` : 'Content status update failed');
+    }
+  }
+
   if (eventLoading) {
     return (
       <div className="chq-page">
@@ -114,7 +129,14 @@ export function ContentApp() {
           onContentStatusChange={onContentStatusChange}
         />
       ) : (
-        <SessionList items={items} tab={tab} onTabChange={changeTab} onSelect={selectSubmission} loading={loading} />
+        <SessionList
+          items={items}
+          tab={tab}
+          onTabChange={changeTab}
+          onSelect={selectSubmission}
+          loading={loading}
+          onContentStatusChange={requestContentStatus}
+        />
       )}
     </div>
   );

@@ -50,6 +50,11 @@ export function SubmissionDetailPage() {
   const [coPresenterResults, setCoPresenterResults] = useState<ContactSearchResult[]>([]);
   const [coPresenterSearching, setCoPresenterSearching] = useState(false);
   const [addingContactId, setAddingContactId] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [contentStatusPending, setContentStatusPending] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -92,6 +97,61 @@ export function SubmissionDetailPage() {
       setError(err instanceof ApiError ? `Status update failed: ${err.message}` : 'Status update failed');
     } finally {
       setStatusPending(false);
+    }
+  }
+
+  function startEditing() {
+    if (!detail) return;
+    setEditTitle(detail.title);
+    setEditDescription(detail.description ?? '');
+    setEditing(true);
+  }
+
+  async function saveEdit() {
+    if (!detail || !id) return;
+    const title = editTitle.trim();
+    if (!title) {
+      setError('Title is required');
+      return;
+    }
+    const previous = detail;
+    setSavingEdit(true);
+    setError(null);
+    // Optimistic update.
+    setDetail({ ...detail, title, description: editDescription });
+    try {
+      const updated = await apiPatch<SubmissionDetail>(`/submissions/${id}`, {
+        title,
+        description: editDescription,
+      });
+      setDetail(updated);
+      setEditing(false);
+    } catch (err) {
+      // Loud rollback: restore prior state and surface the failure.
+      setDetail(previous);
+      setError(err instanceof ApiError ? `Edit failed: ${err.message}` : 'Edit failed');
+    } finally {
+      setSavingEdit(false);
+    }
+  }
+
+  async function changeContentStatus(status: SubmissionDetail['contentStatus']) {
+    if (!detail || !id) return;
+    const previous = detail;
+    setContentStatusPending(true);
+    setError(null);
+    // Optimistic update.
+    setDetail({ ...detail, contentStatus: status });
+    try {
+      await apiPost<{ id: string; contentStatus: string }>(`/submissions/${id}/content-status`, {
+        contentStatus: status,
+      });
+    } catch (err) {
+      // Loud rollback: restore prior state and surface the failure.
+      setDetail(previous);
+      setError(err instanceof ApiError ? `Content status update failed: ${err.message}` : 'Content status update failed');
+    } finally {
+      setContentStatusPending(false);
     }
   }
 
@@ -218,17 +278,62 @@ export function SubmissionDetailPage() {
           </select>
         </label>
         <span className="chq-content-status">Content: {detail.contentStatus}</span>
+        <button
+          type="button"
+          disabled={contentStatusPending || detail.contentStatus === 'approved'}
+          onClick={() => changeContentStatus('approved')}
+        >
+          Approve content
+        </button>
+        <button
+          type="button"
+          disabled={contentStatusPending || detail.contentStatus === 'changes_requested'}
+          onClick={() => changeContentStatus('changes_requested')}
+        >
+          Request changes
+        </button>
         <button type="button" disabled={cloning} onClick={cloneSubmission}>
           Clone
         </button>
       </div>
 
-      {detail.description && (
-        <section>
-          <h2>Description</h2>
-          <p>{detail.description}</p>
-        </section>
-      )}
+      <section>
+        <h2>Session details</h2>
+        {!editing ? (
+          <>
+            {detail.description && <p>{detail.description}</p>}
+            <button type="button" onClick={startEditing}>
+              Edit
+            </button>
+          </>
+        ) : (
+          <div className="chq-submission-edit-form">
+            <label>
+              Title
+              <input
+                type="text"
+                value={editTitle}
+                disabled={savingEdit}
+                onChange={(e) => setEditTitle(e.target.value)}
+              />
+            </label>
+            <label>
+              Abstract
+              <textarea
+                value={editDescription}
+                disabled={savingEdit}
+                onChange={(e) => setEditDescription(e.target.value)}
+              />
+            </label>
+            <button type="button" disabled={savingEdit} onClick={saveEdit}>
+              Save
+            </button>
+            <button type="button" disabled={savingEdit} onClick={() => setEditing(false)}>
+              Cancel
+            </button>
+          </div>
+        )}
+      </section>
 
       <section>
         <h2>Tracks</h2>

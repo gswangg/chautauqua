@@ -1,4 +1,10 @@
-import { CONTENT_STATUS_LABELS, DELIVERABLE_KINDS, DELIVERABLE_LABELS, type ContentSubmissionListItem } from './types';
+import {
+  CONTENT_STATUS_LABELS,
+  DELIVERABLE_KINDS,
+  DELIVERABLE_LABELS,
+  type ContentStatus,
+  type ContentSubmissionListItem,
+} from './types';
 import { filterByContentStatus, sortForWorklist, WORKLIST_TABS, type WorklistTab } from './worklist';
 
 const TAB_LABELS: Record<WorklistTab, string> = {
@@ -14,9 +20,12 @@ interface SessionListProps {
   onTabChange: (tab: WorklistTab) => void;
   onSelect: (submissionId: string) => void;
   loading: boolean;
+  // CNT-12: always-visible per-row content-status control, so approval
+  // doesn't require drilling into a submission's deliverable detail first.
+  onContentStatusChange: (submissionId: string, status: ContentStatus) => void;
 }
 
-export function SessionList({ items, tab, onTabChange, onSelect, loading }: SessionListProps) {
+export function SessionList({ items, tab, onTabChange, onSelect, loading, onContentStatusChange }: SessionListProps) {
   const visible = sortForWorklist(filterByContentStatus(items, tab));
 
   return (
@@ -43,6 +52,7 @@ export function SessionList({ items, tab, onTabChange, onSelect, loading }: Sess
             <th>Title</th>
             <th>Speakers</th>
             <th>Content status</th>
+            <th>Content actions</th>
             {DELIVERABLE_KINDS.map((kind) => (
               <th key={kind}>{DELIVERABLE_LABELS[kind]}</th>
             ))}
@@ -51,12 +61,12 @@ export function SessionList({ items, tab, onTabChange, onSelect, loading }: Sess
         <tbody>
           {loading && (
             <tr>
-              <td colSpan={4 + DELIVERABLE_KINDS.length}>Loading...</td>
+              <td colSpan={5 + DELIVERABLE_KINDS.length}>Loading...</td>
             </tr>
           )}
           {!loading && visible.length === 0 && (
             <tr>
-              <td colSpan={4 + DELIVERABLE_KINDS.length}>No submissions in this view.</td>
+              <td colSpan={5 + DELIVERABLE_KINDS.length}>No submissions in this view.</td>
             </tr>
           )}
           {!loading &&
@@ -69,6 +79,22 @@ export function SessionList({ items, tab, onTabChange, onSelect, loading }: Sess
                   <span className={`chq-status-pill chq-content-status-${item.contentStatus}`}>
                     {CONTENT_STATUS_LABELS[item.contentStatus]}
                   </span>
+                </td>
+                <td onClick={(e) => e.stopPropagation()}>
+                  <button
+                    type="button"
+                    disabled={item.contentStatus === 'approved'}
+                    onClick={() => onContentStatusChange(item.id, 'approved')}
+                  >
+                    Approve
+                  </button>
+                  <button
+                    type="button"
+                    disabled={item.contentStatus === 'changes_requested'}
+                    onClick={() => onContentStatusChange(item.id, 'changes_requested')}
+                  >
+                    Request changes
+                  </button>
                 </td>
                 {DELIVERABLE_KINDS.map((kind) => (
                   <td key={kind}>{item.deliverableCounts?.[kind] ?? 0}</td>

@@ -1,5 +1,6 @@
 /// <reference types="vite/client" />
 import { describe, expect, it } from "vitest";
+import { Hono } from "hono";
 import {
   chunkIds,
   isValidStatusLiteral,
@@ -10,6 +11,9 @@ import {
 } from "../src/server/repo/submissions";
 import { changeStatus } from "../src/domain/status";
 import { planAcceptance } from "../src/domain/acceptance";
+import { submissionsRoutes } from "../src/routes/api/submissions";
+import { registerErrorHandler } from "../src/server/http";
+import type { AppEnv, AuthInfo } from "../src/server/env";
 
 describe("parseListQuery (DEC-013 pagination + DEC-016 filters)", () => {
   it("defaults page=1, perPage=50, sort=newest, includeAnswers=false", () => {
@@ -247,6 +251,147 @@ describe("listSubmissions: batched allowedIds fallback (>ID_CHUNK_SIZE track mat
     // sort=ref -> ascending by seq, so the first page is sub-000..sub-049.
     expect(result.items[0]!.id).toBe("sub-000");
     expect(result.items[49]!.id).toBe("sub-049");
+  });
+});
+
+describe("PATCH /api/v1/submissions/:id (CNT-09 admin session editing)", () => {
+  const ORG_A = "org-a";
+  const SUBMISSION_ORG_A = { eventId: "event-1", orgId: ORG_A };
+  const DETAIL_ROW = {
+    id: "sub-1",
+    eventId: "event-1",
+    formId: null,
+    seq: 1,
+    title: "Old Title",
+    description: "Old description",
+    trackId: null,
+    status: "pending",
+    contentStatus: "pending",
+    acceptedAt: null,
+    icsSequence: 0,
+    createdAt: new Date(1000),
+    updatedAt: new Date(2000),
+    recordPrefix: "TALK",
+  };
+
+  function makeChain(rows: unknown[]) {
+    const chain: any = {
+      from: () => chain,
+      innerJoin: () => chain,
+      where: () => chain,
+      orderBy: () => chain,
+      limit: async () => rows,
+      then: (resolve: (v: unknown[]) => void) => resolve(rows),
+    };
+    return chain;
+  }
+
+  function fakeDb(selectQueue: unknown[][]) {
+    let call = 0;
+    const updates: any[] = [];
+    const db = {
+      select: () => {
+        const rows = selectQueue[call] ?? [];
+        call += 1;
+        return makeChain(rows);
+      },
+      update: () => ({
+        set: (vals: unknown) => ({
+          where: async () => {
+            updates.push(vals);
+          },
+        }),
+      }),
+    };
+    return { db: db as unknown as AppEnv["Variables"]["db"], updates };
+  }
+
+  function appWithDbAndAuth(db: AppEnv["Variables"]["db"], auth: AuthInfo | undefined) {
+    const app = new Hono<AppEnv>();
+    registerErrorHandler(app);
+    app.use("*", async (c, next) => {
+      c.set("db", db);
+      if (auth) c.set("auth", auth);
+      await next();
+    });
+    app.route("/api/v1", submissionsRoutes);
+    return app;
+  }
+
+  const ORGANIZER_A: AuthInfo = { userId: "u-organizer-a", role: "organizer", orgId: ORG_A };
+  const SPEAKER_A: AuthInfo = { userId: "u-speaker-a", role: "speaker", orgId: ORG_A, contactId: "contact-1" };
+
+  function patchRequest(path: string, body: unknown) {
+    return new Request(`http://local${path}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json", "x-chq-csrf": "1" },
+      body: JSON.stringify(body),
+    });
+  }
+
+  it("organizer edits title and description", async () => {
+    const { db, updates } = fakeDb([
+      [SUBMISSION_ORG_A], // getSubmissionOwnership
+      [{ ...DETAIL_ROW, title: "New Title", description: "New description" }], // getSubmissionDetail: submission+event
+      [], // participants
+      [], // tracks
+      [], // answers
+    ]);
+    const app = appWithDbAndAuth(db, ORGANIZER_A);
+
+    const res = await app.request(
+      patchRequest("/api/v1/submissions/sub-1", { title: "New Title", description: "New description" }),
+    );
+
+    expect(res.status).toBe(200);
+    const json = (await res.json()) as any;
+    expect(json.title).toBe("New Title");
+    expect(json.description).toBe("New description");
+    expect(updates).toHaveLength(1);
+    expect(updates[0]).toMatchObject({ title: "New Title", description: "New description" });
+  });
+
+  it("404s a genuinely different org's organizer on a real submission id (cross-org isolation)", async () => {
+    const orgBOrganizer: AuthInfo = { userId: "u-org-b", role: "organizer", orgId: "org-b" };
+    const { db, updates } = fakeDb([[SUBMISSION_ORG_A]]);
+    const app = appWithDbAndAuth(db, orgBOrganizer);
+
+    const res = await app.request(patchRequest("/api/v1/submissions/sub-1", { title: "New Title" }));
+
+    expect(res.status).toBe(403);
+    expect(updates).toHaveLength(0);
+  });
+
+  it("404s a nonexistent submission id", async () => {
+    const { db, updates } = fakeDb([[]]);
+    const app = appWithDbAndAuth(db, ORGANIZER_A);
+
+    const res = await app.request(patchRequest("/api/v1/submissions/missing", { title: "New Title" }));
+
+    expect(res.status).toBe(404);
+    expect(updates).toHaveLength(0);
+  });
+
+  it("403s a speaker-session caller before any db access (requireOrganizer)", async () => {
+    const { db, updates } = fakeDb([]);
+    const app = appWithDbAndAuth(db, SPEAKER_A);
+
+    const res = await app.request(patchRequest("/api/v1/submissions/sub-1", { title: "New Title" }));
+
+    expect(res.status).toBe(403);
+    expect(updates).toHaveLength(0);
+  });
+
+  it("rejects an empty patch (neither title nor description provided)", async () => {
+    const { db, updates } = fakeDb([[SUBMISSION_ORG_A]]);
+    const app = appWithDbAndAuth(db, ORGANIZER_A);
+
+    const res = await app.request(patchRequest("/api/v1/submissions/sub-1", {}));
+
+    expect(res.status).toBe(400);
+    const json = (await res.json()) as any;
+    expect(json.error.code).toBe("invalid");
+    expect(updates).toHaveLength(0);
   });
 });
 
