@@ -75,6 +75,9 @@ export interface SubmissionsFilterState {
   includeAnswers: boolean;
 }
 
+// DEC-070: invite_status literal on a participant.
+export type InviteStatus = 'none' | 'invited' | 'accepted' | 'declined';
+
 // GET /api/v1/submissions/:id (src/server/repo/submissions.ts SubmissionDetail).
 export interface SubmissionDetailParticipant {
   id: string;
@@ -84,7 +87,16 @@ export interface SubmissionDetailParticipant {
   role: string;
   order: number;
   visible: boolean;
-  inviteStatus: string;
+  inviteStatus: InviteStatus;
+}
+
+// GET /api/v1/contacts item, as returned by src/routes/api/contacts.ts
+// serializeContact (only the fields the co-presenter search needs).
+export interface ContactSearchResult {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
 }
 
 export interface SubmissionDetail {

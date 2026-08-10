@@ -3,14 +3,34 @@
 // the existing bulk status endpoint (ids:[id]) — no new server code.
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { apiGet, apiList, apiPost, ApiError } from '../../lib/api';
+import { apiGet, apiList, apiPatch, apiPost, ApiError } from '../../lib/api';
 import type { CfpForm } from '../forms/types';
 import { buildAnswerRows, resolveAnswerFields } from './detailRows';
-import { STATUS_LABELS, SUBMISSION_STATUSES, type SubmissionDetail, type SubmissionStatus, type Track } from './types';
+import {
+  STATUS_LABELS,
+  SUBMISSION_STATUSES,
+  type ContactSearchResult,
+  type InviteStatus,
+  type SubmissionDetail,
+  type SubmissionDetailParticipant,
+  type SubmissionStatus,
+  type Track,
+} from './types';
 
 function formatDate(ms: number | null): string {
   if (ms === null) return '—';
   return new Date(ms).toLocaleString();
+}
+
+const INVITE_STATUS_LABELS: Record<InviteStatus, string> = {
+  none: 'None',
+  invited: 'Invited',
+  accepted: 'Accepted',
+  declined: 'Declined',
+};
+
+function InviteStatusChip({ status }: { status: InviteStatus }) {
+  return <span className={`chq-status-pill chq-invite-status-${status}`}>{INVITE_STATUS_LABELS[status]}</span>;
 }
 
 export function SubmissionDetailPage() {
@@ -24,6 +44,12 @@ export function SubmissionDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [statusPending, setStatusPending] = useState(false);
   const [cloning, setCloning] = useState(false);
+  const [participantsError, setParticipantsError] = useState<string | null>(null);
+  const [visiblePending, setVisiblePending] = useState<string | null>(null);
+  const [coPresenterQuery, setCoPresenterQuery] = useState('');
+  const [coPresenterResults, setCoPresenterResults] = useState<ContactSearchResult[]>([]);
+  const [coPresenterSearching, setCoPresenterSearching] = useState(false);
+  const [addingContactId, setAddingContactId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -80,6 +106,67 @@ export function SubmissionDetailPage() {
       setError(err instanceof ApiError ? `Clone failed: ${err.message}` : 'Clone failed');
     } finally {
       setCloning(false);
+    }
+  }
+
+  async function toggleParticipantVisible(participant: SubmissionDetailParticipant) {
+    if (!detail || !id) return;
+    const nextVisible = !participant.visible;
+    const previous = detail;
+    setParticipantsError(null);
+    setVisiblePending(participant.id);
+    // Optimistic update.
+    setDetail({
+      ...detail,
+      participants: detail.participants.map((p) => (p.id === participant.id ? { ...p, visible: nextVisible } : p)),
+    });
+    try {
+      await apiPatch<SubmissionDetailParticipant>(`/submissions/${id}/participants/${participant.id}`, {
+        visible: nextVisible,
+      });
+    } catch (err) {
+      // Loud rollback: restore prior state and surface the failure.
+      setDetail(previous);
+      setParticipantsError(err instanceof ApiError ? `Visibility update failed: ${err.message}` : 'Visibility update failed');
+    } finally {
+      setVisiblePending(null);
+    }
+  }
+
+  async function searchCoPresenters() {
+    const q = coPresenterQuery.trim();
+    if (!q) {
+      setCoPresenterResults([]);
+      return;
+    }
+    setCoPresenterSearching(true);
+    setParticipantsError(null);
+    try {
+      const res = await apiList<ContactSearchResult>(`/contacts?q=${encodeURIComponent(q)}`);
+      setCoPresenterResults(res.items);
+    } catch (err) {
+      setParticipantsError(err instanceof ApiError ? err.message : 'Contact search failed');
+    } finally {
+      setCoPresenterSearching(false);
+    }
+  }
+
+  async function addCoPresenter(contact: ContactSearchResult) {
+    if (!id) return;
+    setAddingContactId(contact.id);
+    setParticipantsError(null);
+    try {
+      const created = await apiPost<SubmissionDetailParticipant>(`/submissions/${id}/participants`, {
+        contactId: contact.id,
+      });
+      setDetail((prev) => (prev ? { ...prev, participants: [...prev.participants, created] } : prev));
+      setCoPresenterResults([]);
+      setCoPresenterQuery('');
+    } catch (err) {
+      // Surface the DEC-070 duplicate-contact 'invalid' error inline.
+      setParticipantsError(err instanceof ApiError ? err.message : 'Failed to add co-presenter');
+    } finally {
+      setAddingContactId(null);
     }
   }
 
@@ -160,6 +247,7 @@ export function SubmissionDetailPage() {
 
       <section>
         <h2>Participants</h2>
+        {participantsError && <div className="chq-error-banner">{participantsError}</div>}
         {detail.participants.length === 0 ? (
           <p>No participants.</p>
         ) : (
@@ -179,13 +267,61 @@ export function SubmissionDetailPage() {
                   <td>{p.name}</td>
                   <td>{p.email}</td>
                   <td>{p.role}</td>
-                  <td>{p.visible ? 'Yes' : 'No'}</td>
-                  <td>{p.inviteStatus}</td>
+                  <td>
+                    <label className="chq-visible-toggle">
+                      <input
+                        type="checkbox"
+                        checked={p.visible}
+                        disabled={visiblePending === p.id}
+                        onChange={() => toggleParticipantVisible(p)}
+                        aria-label={`Visible: ${p.name}`}
+                      />
+                    </label>
+                  </td>
+                  <td>
+                    <InviteStatusChip status={p.inviteStatus} />
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         )}
+
+        <div className="chq-add-co-presenter">
+          <label>
+            Add co-presenter
+            <input
+              type="search"
+              aria-label="Search contacts"
+              placeholder="Search contacts by name or email..."
+              value={coPresenterQuery}
+              onChange={(e) => setCoPresenterQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  searchCoPresenters();
+                }
+              }}
+            />
+          </label>
+          <button type="button" disabled={coPresenterSearching} onClick={searchCoPresenters}>
+            Search
+          </button>
+          {coPresenterResults.length > 0 && (
+            <ul className="chq-co-presenter-results">
+              {coPresenterResults.map((contact) => (
+                <li key={contact.id}>
+                  <span>
+                    {contact.firstName} {contact.lastName} ({contact.email})
+                  </span>
+                  <button type="button" disabled={addingContactId === contact.id} onClick={() => addCoPresenter(contact)}>
+                    Add
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </section>
 
       <section>
