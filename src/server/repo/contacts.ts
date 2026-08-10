@@ -20,6 +20,7 @@ import {
   type SegmentRule,
 } from "../../domain/contacts";
 import { createSubmission } from "./submissions/create";
+import { parseSocialLinks, serializeSocialLinks } from "./profile";
 import { DEC_156 } from "../../decisions";
 
 // Compile-checked dependency marker: pushContactToEvent below implements
@@ -69,8 +70,13 @@ function toRow(r: typeof schema.contact.$inferSelect): ContactRow {
   };
 }
 
-/** Projects a DB row into the pure-core ContactRecord shape (custom fields parsed). */
+/** Projects a DB row into the pure-core ContactRecord shape (custom fields
+ * parsed, social links parsed via the profile repo's shared helper — DEC-
+ * 167: every persisted field the merge domain reasons about is threaded
+ * through here so a duplicate-only value survives planMerge). */
 export function toContactRecord(row: ContactRow): ContactRecord {
+  const socialLinks = parseSocialLinks(row.socialLinksJson);
+  const hasSocialLinks = Object.values(socialLinks).some((v) => v !== "");
   return {
     id: row.id,
     email: row.email,
@@ -78,6 +84,11 @@ export function toContactRecord(row: ContactRow): ContactRecord {
     lastName: row.lastName,
     ...(row.company ? { company: row.company } : {}),
     ...(row.title ? { title: row.title } : {}),
+    ...(row.phone ? { phone: row.phone } : {}),
+    ...(row.bio ? { bio: row.bio } : {}),
+    ...(row.headshotUrl ? { headshotUrl: row.headshotUrl } : {}),
+    ...(row.notes ? { notes: row.notes } : {}),
+    ...(hasSocialLinks ? { socialLinks } : {}),
     ...(row.customFieldsJson ? { customFields: JSON.parse(row.customFieldsJson) as Record<string, string> } : {}),
   };
 }
@@ -509,6 +520,11 @@ export async function mergeContacts(db: Db, keepId: string, mergeId: string): Pr
       email: merged.email,
       company: merged.company ?? null,
       title: merged.title ?? null,
+      phone: merged.phone ?? null,
+      bio: merged.bio ?? null,
+      headshotUrl: merged.headshotUrl ?? null,
+      notes: merged.notes ?? null,
+      socialLinksJson: merged.socialLinks ? serializeSocialLinks(merged.socialLinks) : null,
       customFieldsJson: merged.customFields ? JSON.stringify(merged.customFields) : null,
       updatedAt: new Date(),
     })
