@@ -6,6 +6,7 @@ import { and, asc, eq, sql } from "drizzle-orm";
 import * as schema from "../../db/schema";
 import type { Db } from "../context";
 import { newId } from "../../domain/ids";
+import { submissionSeqSubquery } from "./submissions/seq";
 import type { FormFieldDef, FormFieldKind, FormFieldSection, FormFieldRule, AnswerMap } from "../../forms/types";
 import { lockedFieldName } from "../../forms/types";
 
@@ -143,20 +144,6 @@ export async function findUserByEmail(db: Db, email: string): Promise<{ id: stri
   return rows[0] ?? null;
 }
 
-/** Next seq for a new submission in this event: INSERT-select
- * COALESCE(MAX(seq),0)+1, per the task's stated allocation strategy. Not
- * wrapped in a DB transaction (D1/drizzle-kit stage-1 constraint) — a
- * known race under concurrent submits to the same event, flagged rather
- * than silently ignored. */
-export async function nextSubmissionSeq(db: Db, eventId: string): Promise<number> {
-  const rows = await db
-    .select({ maxSeq: sql<number>`COALESCE(MAX(${schema.submission.seq}), 0)` })
-    .from(schema.submission)
-    .where(eq(schema.submission.eventId, eventId));
-  const maxSeq = rows[0]?.maxSeq ?? 0;
-  return maxSeq + 1;
-}
-
 export interface CreateSubmissionParams {
   eventId: string;
   formId: string;
@@ -165,19 +152,20 @@ export interface CreateSubmissionParams {
 }
 
 /** Creates the submission row per DEC-003/DEC-016: status 'pending',
- * title/description on real columns, seq allocated via nextSubmissionSeq. */
+ * title/description on real columns, seq allocated atomically within the
+ * INSERT itself (DEC-100: submissionSeqSubquery), then read back by id so
+ * the caller still gets `{ id, seq }`. */
 export async function createSubmission(
   db: Db,
   params: CreateSubmissionParams,
 ): Promise<{ id: string; seq: number }> {
-  const seq = await nextSubmissionSeq(db, params.eventId);
   const id = newId();
   const now = new Date();
   await db.insert(schema.submission).values({
     id,
     eventId: params.eventId,
     formId: params.formId,
-    seq,
+    seq: submissionSeqSubquery(params.eventId),
     title: params.title,
     description: params.description,
     status: "pending",
@@ -185,7 +173,14 @@ export async function createSubmission(
     createdAt: now,
     updatedAt: now,
   });
-  return { id, seq };
+  const rows = await db
+    .select({ seq: schema.submission.seq })
+    .from(schema.submission)
+    .where(eq(schema.submission.id, id))
+    .limit(1);
+  const row = rows[0];
+  if (!row) throw new Error(`createSubmission: submission ${id} not found after insert`);
+  return { id, seq: row.seq };
 }
 
 export async function createParticipant(
