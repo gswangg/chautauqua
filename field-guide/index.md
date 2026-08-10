@@ -30,29 +30,28 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   DEC-077 gate lanes code-frozen, scribe bookkeeping non-code-bearing.
   Ports: 8801 walkthrough, 8803 perf, never 8787. Wave-17 GREEN @
   a05f17f, since voided by DEC-086.
-- Wave w1 fixes (all landed, verified in-tree @ main 7464b1c, compact):
-  DEC-078 src/lib/chunk.ts (ID_CHUNK_SIZE=90); DEC-079 plan-before-commit
-  + chunked bulk status; DEC-080 public chunking + 300-id .ics cap; DEC-081
-  set-based review (resolveAssignments in src/domain/evaluation.ts);
-  DEC-083 versioned caches.default purge (KV chq:pubver); DEC-084
-  image-dims gate 2048px. DEC-085/accentColor: no task needed.
-- Wave w2 (reopened run, compact): DEC-082 multi-round pinned by DEC-087
+- Wave w1/w2 fixes (all landed in-tree, compact): DEC-078 chunk.ts
+  (ID_CHUNK_SIZE=90); DEC-079 plan-before-commit + chunked bulk status;
+  DEC-080 public chunking + 300-id .ics cap; DEC-081 set-based review
+  (resolveAssignments); DEC-083 versioned caches.default purge (KV
+  chq:pubver); DEC-084 image-dims gate 2048px; DEC-082/087 multi-round
   (0009_review_rounds, listEvaluationsForPlan(db,planId,round),
-  advance-round 409); DEC-088 pins perf-probe seed literals (plan
-  seed_perf_plan_0001, 12 reviewers perf.reviewer.<i>@example-perf.test /
-  PerfReviewer!2027, 300 sessions 100/day); DEC-089 places DEC-086 probes:
-  5 perf-smoke checks + 301-id 400 assertion, walkthrough area "scale"
+  advance-round 409); DEC-088 perf-probe seed literals; DEC-089 places
+  DEC-086 probes: 5 perf-smoke checks + 301-id 400, walkthrough "scale"
   (110-id bulk accept, exactly-once re-POST, no-email, purge refresh).
-- Wave 3 (gate wave): w2-b/c/a merged MID-PLANNING (main 1cc3fe8) — DEC-088
-  perf seed, DEC-089 perf-smoke checks, and DEC-087 three-arg
-  listEvaluationsForPlan all verified in-tree; multi-round had already
-  landed via late task-w1-d (0009_review_rounds + journal idx 9,
-  advance-round 409, tests). Sole outstanding code: task-w2-d walkthrough
-  area "scale". Per DEC-076 the barrier is task-w3-a (verify w2-d merged,
-  implement DEC-089's scale area only if missing); all five DEC-069 gates
-  chain behind it, code-frozen per DEC-077. DEC-090: eval-findings pruning
-  + verification-log appends are non-code-bearing; original-run wave-16
-  GREEN sections are void (DEC-086). DEC-091: gates cite the newest
-  code-bearing main short-sha (skip bookkeeping commits). Exit = five
-  sections PASS with OPEN ITEMS: 0 all at that one sha; wave 4 re-runs
-  only failed/invalidated gates or fixes defects they surface.
+- Wave 3 (gate wave, compact): w1-d landed multi-round early; w2-b/c/a
+  merged mid-planning (1cc3fe8) landing perf seed/checks + 3-arg
+  listEvaluationsForPlan; sole outstanding code was w2-d walkthrough
+  "scale", covered by DEC-076 barrier task-w3-a (DEC-091). DEC-090:
+  eval-findings/verification-log appends non-code-bearing; wave-16 GREEN
+  void (DEC-086).
+- Wave 4 (reopened run): wave-3's gate tasks NEVER executed (no task-w3-*
+  merges; history ends at "merge task-w2-d" 3878d4f + bookkeeping
+  f9a33fd). All fix/probe code verified in-tree: scale.ts (6 steps) +
+  WALKTHROUGH_AREAS ends 'scale'; perf-smoke has the 5 DEC-089 checks +
+  301-id 400. DEC-092 ratifies scale.ts's portal-edit purge probe (no
+  organizer PATCH-title endpoint exists; GAP NOTE closed). DEC-093:
+  barrier vacuous, four gates parallel @ code-bearing sha 3878d4f
+  (workers re-derive, skipping DEC-090 bookkeeping), triage-closure
+  (w4-e, sole owner of eval-findings.md) chains behind walkthrough w4-b
+  only. Exit at wave 5: five sections PASS @ 3878d4f + OPEN ITEMS: 0.

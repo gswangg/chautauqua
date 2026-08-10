@@ -95,3 +95,5 @@ export const DEC_088 = "Perf-probe seed contract: pinned literals for schedule, 
 export const DEC_089 = "DEC-086 probe placement: five perf-smoke checks (incl. 301-id 400 assertion) and a sixth walkthrough area \"scale\" (bulk accept + purge refresh)";
 export const DEC_090 = "Non-code-bearing extension: docs/eval-findings.md pruning and all docs/verification-log.md appends are bookkeeping; wave-16 GREEN sections are void for exit purposes";
 export const DEC_091 = "Wave-3 closeout ruling: w2-a/b/c verified merged (main 1cc3fe8, listEvaluationsForPlan conformed to DEC-087); task-w3-a is the DEC-076 barrier covering only w2-d's walkthrough scale area; gates cite the newest code-bearing main short-sha";
+export const DEC_092 = "Ratify scale.ts's purge-probe deviation: no organizer PATCH-title endpoint exists or will be added; the portal-edit write path is the sanctioned DEC-086 publish-affecting write";
+export const DEC_093 = "Wave-4 gate protocol: wave-3 gate tasks never executed; the DEC-076 barrier is vacuously satisfied, so all four verification gates run in parallel at code-bearing sha 3878d4f, with triage-closure chained behind the walkthrough gate only";
