@@ -33,19 +33,27 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   8c7f479 all PASS; DEC-137 log-repair-by-section rule (marker damage
   belongs to merge train); W21 DEC-138 declared STAGE-1 EXIT @ d9be564
   — VOIDED by campaign 3 below.
-- Campaign 3 (2026-08-10): DEC-138 exit VOID — docs/eval-findings.md
-  now holds a browser-eval SWARM MANDATE (P0 fixes already in tree @
-  2dd2f33; ratify+test, P1 bugs, two render gates, seed enrichment, P2
-  by weight). DEC-139: exit needs the DEC-069 battery at a post-fix sha
-  PLUS render-sweep (DEC-144) as a 6th section PLUS findings A/B/E/F
-  closed, C fixed-or-waived. Branch prefix task-w1-* REUSED from
-  campaign 1: cite-able gate sections only if sha descends from
-  2dd2f33. New: DEC-140 .ics ids-roundtrip test from rendered
-  checkboxes + side-by-side overlap lanes; DEC-141 reviewers list
-  events via plan assignments; DEC-142 contact drawer = portal profile
-  (one row); DEC-143 dupes surface same-name+company across emails,
-  import stays email-keyed; DEC-145 seed: plan opens 2026-01-01Z, demo
-  speaker gets accepted session/tasks/versioned file+thread, headshots,
-  keep seeded dupes; DEC-146 null-safe date helpers only in app pages.
-  Workers: never edit docs/eval-findings.md, docs/verification-log.md,
+- Campaign 3 (2026-08-10, compact): DEC-138 exit VOID — docs/eval-
+  findings.md holds a browser-eval SWARM MANDATE. DEC-139 exit needs
+  DEC-069 battery + render-sweep (DEC-144) + findings closure. task-w1-*
+  gate sections cite-able only if sha descends from 2dd2f33. DEC-140
+  .ics ids-roundtrip + overlap lanes; DEC-141 reviewers list events via
+  plan assignments; DEC-142 contact drawer = portal profile (one row);
+  DEC-143 dupes surface same-name+company across emails; DEC-145 seed
+  enrichment (plan opens 2026-01-01Z, demo speaker full flow, headshots,
+  keep dupes); DEC-146 null-safe date helpers only in app pages. Workers
+  never edit docs/eval-findings.md, docs/verification-log.md,
   decisions/, src/decisions.ts.
+- Wave 2 (campaign 3, DEC-147..156) closes mandate Section C + cheap D.
+  Per-round criteria resolve ONLY via criteriaForRound (DEC-147); text
+  criteria excluded from weighted math like dropdowns (DEC-148); CRM
+  filters ARE SegmentRule[], 'any' pseudo-field, GET /contacts?rules=,
+  save-segment persists exact rules (DEC-149); bulk-email preview
+  shares send's render helper (DEC-150); public drill-ins are SSR
+  pages gated by visibleSubmissionConditions (DEC-151); admin contact
+  edits reuse portal-profile columns/plumbing (DEC-152); calendar
+  dates (UTC-midnight ms) display via formatDateOnly UTC, never
+  toLocaleDateString (DEC-153); agenda publish = pubcache purge
+  affordance, no draft state (DEC-155); push-to-event = invited
+  accepted submission, content pending, no email (DEC-156). contacts.ts
+  touched by w2-b/c/e/i in distinct regions, merge train expects it.
