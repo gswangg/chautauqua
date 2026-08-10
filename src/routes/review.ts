@@ -103,6 +103,34 @@ function parseCriteria(body: Record<string, unknown>, errors: Record<string, str
   return out;
 }
 
+/** DEC-082: rounds must be a positive integer. On PATCH, also refuses to
+ * shrink rounds below the plan's already-reached current_round (that would
+ * strand a plan mid-round with nowhere to go). */
+function parseRounds(body: Record<string, unknown>, errors: Record<string, string>, minAllowed?: number): number | undefined {
+  const rounds = body.rounds;
+  if (!Number.isInteger(rounds) || (rounds as number) < 1) {
+    errors.rounds = "must be an integer >= 1";
+    return undefined;
+  }
+  if (minAllowed !== undefined && (rounds as number) < minAllowed) {
+    errors.rounds = `must be >= the plan's current round (${minAllowed})`;
+    return undefined;
+  }
+  return rounds as number;
+}
+
+/** DEC-082: ?round= query param, defaulting to the plan's current round.
+ * Any value outside [1, plan.rounds] (or non-integer) is a 400. */
+function parseRoundQuery(c: { req: { query(name: string): string | undefined } }, plan: PlanRecord): number {
+  const raw = c.req.query("round");
+  if (raw === undefined) return plan.currentRound;
+  const n = Number(raw);
+  if (!Number.isInteger(n) || n < 1 || n > plan.rounds) {
+    throw new ApiError("invalid", `round must be an integer between 1 and ${plan.rounds}`, { round: "out of range" });
+  }
+  return n;
+}
+
 function ratingCriteria(criteria: EvaluationCriterionDef[]): EvaluationCriterion[] {
   return criteria
     .filter((c): c is EvaluationCriterionDef & { kind: "rating"; weight: number } => c.kind === "rating")
@@ -139,6 +167,7 @@ reviewRoutes.post("/api/v1/events/:eventId/plans", requireOrganizer, csrfJson, a
   if (typeof body.name !== "string" || body.name.trim().length === 0) errors.name = "required";
   const scale = parseScale(body, errors);
   const criteria = parseCriteria(body, errors);
+  const rounds = body.rounds !== undefined ? parseRounds(body, errors) : 1;
   if (Object.keys(errors).length > 0) throw new ApiError("invalid", "Invalid plan", errors);
 
   const created = await repo.createPlan(c.var.db, event.id, {
@@ -150,7 +179,7 @@ reviewRoutes.post("/api/v1/events/:eventId/plans", requireOrganizer, csrfJson, a
     anonymized: body.anonymized === true,
     scale: scale!,
     criteria: criteria!,
-    rounds: typeof body.rounds === "number" ? body.rounds : 1,
+    rounds: rounds!,
     maxEvaluations: typeof body.maxEvaluations === "number" ? body.maxEvaluations : null,
   });
   return c.json(created, 201);
@@ -168,6 +197,7 @@ reviewRoutes.patch("/api/v1/plans/:id", requireOrganizer, csrfJson, async (c) =>
 
   const scale = body.scale !== undefined ? parseScale(body, errors) : undefined;
   const criteria = body.criteria !== undefined ? parseCriteria(body, errors) : undefined;
+  const rounds = body.rounds !== undefined ? parseRounds(body, errors, plan.currentRound) : undefined;
   if (Object.keys(errors).length > 0) throw new ApiError("invalid", "Invalid plan", errors);
 
   const updated = await repo.updatePlan(c.var.db, plan.id, {
@@ -179,7 +209,7 @@ reviewRoutes.patch("/api/v1/plans/:id", requireOrganizer, csrfJson, async (c) =>
     anonymized: typeof body.anonymized === "boolean" ? body.anonymized : undefined,
     scale,
     criteria,
-    rounds: typeof body.rounds === "number" ? body.rounds : undefined,
+    rounds,
     maxEvaluations: body.maxEvaluations !== undefined ? (body.maxEvaluations === null ? null : (body.maxEvaluations as number)) : undefined,
   });
   return c.json(updated);
@@ -189,6 +219,14 @@ reviewRoutes.delete("/api/v1/plans/:id", requireOrganizer, csrfJson, async (c) =
   const plan = await requireOwnedPlan(c, c.req.param("id"));
   await repo.deletePlan(c.var.db, plan.id);
   return c.body(null, 204);
+});
+
+// DEC-082: advances the plan to current_round + 1. Rejects (409) once
+// current_round === rounds -- there is no round beyond the plan's own count.
+reviewRoutes.post("/api/v1/plans/:id/advance-round", requireOrganizer, csrfJson, async (c) => {
+  const plan = await requireOwnedPlan(c, c.req.param("id"));
+  const updated = await repo.advancePlanRound(c.var.db, plan.id);
+  return c.json(updated);
 });
 
 reviewRoutes.post("/api/v1/plans/:id/reviewers", requireOrganizer, csrfJson, async (c) => {
@@ -232,10 +270,11 @@ reviewRoutes.delete("/api/v1/plans/:id/reviewers/:reviewerId", requireOrganizer,
 
 reviewRoutes.get("/api/v1/plans/:id/progress", requireOrganizer, async (c) => {
   const plan = await requireOwnedPlan(c, c.req.param("id"));
+  const round = parseRoundQuery(c, plan);
   const reviewerRows = await repo.listReviewerRowsForPlan(c.var.db, plan.id);
   const userIds = [...new Set(reviewerRows.map((r) => r.userId))];
   const users = await repo.getUsersByIds(c.var.db, userIds);
-  const evaluations = await repo.listEvaluationsForPlan(c.var.db, plan.id);
+  const evaluations = (await repo.listEvaluationsForPlan(c.var.db, plan.id)).filter((e) => e.round === round);
   // One plan-filtered load + pure assignment resolution (DEC-081): no
   // per-reviewer awaits.
   const submissions = await repo.listPlanFilteredSubmissions(c.var.db, plan);
@@ -248,7 +287,7 @@ reviewRoutes.get("/api/v1/plans/:id/progress", requireOrganizer, async (c) => {
     ).size;
     return { userId: user.userId, email: user.email, assigned: assigned.length, completed };
   });
-  return c.json({ items, total: items.length, page: 1, perPage: items.length || 1 });
+  return c.json({ items, total: items.length, page: 1, perPage: items.length || 1, round });
 });
 
 interface ResultsRow {
@@ -260,9 +299,13 @@ interface ResultsRow {
   perCriterion: Record<string, number>;
 }
 
-async function buildResults(c: { var: { db: import("../server/context").Db } }, plan: PlanRecord): Promise<ResultsRow[]> {
+async function buildResults(
+  c: { var: { db: import("../server/context").Db } },
+  plan: PlanRecord,
+  round: number,
+): Promise<ResultsRow[]> {
   const submissions = await repo.listPlanFilteredSubmissions(c.var.db, plan);
-  const evaluations = await repo.listEvaluationsForPlan(c.var.db, plan.id);
+  const evaluations = (await repo.listEvaluationsForPlan(c.var.db, plan.id)).filter((e) => e.round === round);
   const criteria = ratingCriteria(plan.criteria);
 
   const rows: ResultsRow[] = submissions.map((sub) => {
@@ -277,7 +320,8 @@ async function buildResults(c: { var: { db: import("../server/context").Db } }, 
 
 reviewRoutes.get("/api/v1/plans/:id/results", requireOrganizer, async (c) => {
   const plan = await requireOwnedPlan(c, c.req.param("id"));
-  const rows = await buildResults(c, plan);
+  const round = parseRoundQuery(c, plan);
+  const rows = await buildResults(c, plan, round);
 
   if (c.req.query("format") === "csv") {
     const criteria = ratingCriteria(plan.criteria);
@@ -293,7 +337,7 @@ reviewRoutes.get("/api/v1/plans/:id/results", requireOrganizer, async (c) => {
     return c.body(csv, 200, { "Content-Type": "text/csv; charset=utf-8" });
   }
 
-  return c.json({ items: rows, total: rows.length, page: 1, perPage: rows.length || 1 });
+  return c.json({ items: rows, total: rows.length, page: 1, perPage: rows.length || 1, round });
 });
 
 reviewRoutes.post("/api/v1/plans/:id/remind", requireOrganizer, csrfJson, async (c) => {
@@ -301,7 +345,7 @@ reviewRoutes.post("/api/v1/plans/:id/remind", requireOrganizer, csrfJson, async 
   const reviewerRows = await repo.listReviewerRowsForPlan(c.var.db, plan.id);
   const userIds = [...new Set(reviewerRows.map((r) => r.userId))];
   const users = await repo.getUsersByIds(c.var.db, userIds);
-  const evaluations = await repo.listEvaluationsForPlan(c.var.db, plan.id);
+  const evaluations = (await repo.listEvaluationsForPlan(c.var.db, plan.id)).filter((e) => e.round === plan.currentRound);
   // One plan-filtered load + pure assignment resolution (DEC-081): no
   // per-reviewer awaits.
   const submissions = await repo.listPlanFilteredSubmissions(c.var.db, plan);
@@ -388,7 +432,12 @@ reviewRoutes.get("/api/v1/review/plans/:id/queue", async (c) => {
   }
 
   const scoped = await repo.resolveReviewerSubmissions(c.var.db, plan, auth.userId);
-  const evaluations = await repo.listEvaluationsForPlan(c.var.db, plan.id);
+  // DEC-082: queue counts/marks only the plan's current round -- earlier
+  // rounds' evaluations don't count toward this round's cap or "already
+  // rated" state.
+  const evaluations = (await repo.listEvaluationsForPlan(c.var.db, plan.id)).filter(
+    (e) => e.round === plan.currentRound,
+  );
   const countsBySubmission = new Map<string, number>();
   const ratedByMe = new Set<string>();
   for (const evaluation of evaluations) {
@@ -463,7 +512,7 @@ reviewRoutes.put("/api/v1/review/plans/:planId/evaluations/:submissionId", csrfJ
     throw new ApiError("invalid", "scores is required", { scores: "required" });
   }
 
-  const round = 1;
+  const round = plan.currentRound;
   const existing = await repo.getEvaluation(c.var.db, plan.id, submissionId, auth.userId, round);
   if (!existing) {
     const ratingsCount = await repo.countEvaluationsForSubmission(c.var.db, plan.id, submissionId, round);

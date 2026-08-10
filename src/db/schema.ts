@@ -273,6 +273,9 @@ export const evaluationPlan = sqliteTable(
     // weighted criteria, e.g. [{ id, label, weight }]
     criteriaJson: text("criteria_json").notNull(),
     rounds: integer("rounds").notNull().default(1),
+    // DEC-082: the round an organizer has advanced this plan to (1-based,
+    // capped at `rounds` by advancePlanRound). migrations/0009_review_rounds.sql.
+    currentRound: integer("current_round").notNull().default(1),
     maxEvaluations: integer("max_evaluations"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),

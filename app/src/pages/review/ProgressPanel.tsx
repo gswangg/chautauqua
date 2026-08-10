@@ -1,25 +1,32 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { apiList, apiPost, ApiError } from '../../lib/api';
+import { apiGet, apiList, apiPost, ApiError } from '../../lib/api';
 import { reviewersWithIncompleteQueues } from './progress';
-import type { ProgressRow } from './types';
+import type { EvaluationPlan, ProgressRow } from './types';
 
 export function ProgressPanel() {
   const { planId } = useParams<{ planId: string }>();
+  const [plan, setPlan] = useState<EvaluationPlan | null>(null);
   const [rows, setRows] = useState<ProgressRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reminding, setReminding] = useState(false);
   const [reminded, setReminded] = useState<number | null>(null);
+  const [advancing, setAdvancing] = useState(false);
 
-  useEffect(() => {
+  function load() {
     if (!planId) return;
     setLoading(true);
-    apiList<ProgressRow>(`/plans/${planId}/progress`)
-      .then((res) => setRows(res.items))
+    Promise.all([apiGet<EvaluationPlan>(`/plans/${planId}`), apiList<ProgressRow>(`/plans/${planId}/progress`)])
+      .then(([planRes, progressRes]) => {
+        setPlan(planRes);
+        setRows(progressRes.items);
+      })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load progress'))
       .finally(() => setLoading(false));
-  }, [planId]);
+  }
+
+  useEffect(load, [planId]);
 
   const laggards = reviewersWithIncompleteQueues(rows);
 
@@ -38,6 +45,22 @@ export function ProgressPanel() {
     }
   }
 
+  async function advanceRound() {
+    if (!planId || !plan) return;
+    const ok = window.confirm(`Advance this plan from round ${plan.currentRound} to round ${plan.currentRound + 1}? Reviewers will start rating the new round.`);
+    if (!ok) return;
+    setAdvancing(true);
+    setError(null);
+    try {
+      await apiPost<EvaluationPlan>(`/plans/${planId}/advance-round`);
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Failed to advance round');
+    } finally {
+      setAdvancing(false);
+    }
+  }
+
   if (loading) {
     return (
       <div className="chq-page">
@@ -53,12 +76,22 @@ export function ProgressPanel() {
         <Link to="/review">&larr; Back to plans</Link>
       </p>
       <h1>Reviewer progress</h1>
+      {plan && (
+        <p className="chq-round-status">
+          Round {plan.currentRound} of {plan.rounds}
+        </p>
+      )}
       {error && <div className="chq-error-banner">{error}</div>}
       {reminded !== null && <div className="chq-success-banner">Reminder sent to {reminded} reviewer(s).</div>}
 
       <button type="button" disabled={reminding || laggards.length === 0} onClick={remindLaggards}>
         Remind laggards ({laggards.length})
       </button>
+      {plan && plan.currentRound < plan.rounds && (
+        <button type="button" disabled={advancing} onClick={advanceRound}>
+          Advance to round {plan.currentRound + 1}
+        </button>
+      )}
 
       <table className="chq-progress-table">
         <thead>
