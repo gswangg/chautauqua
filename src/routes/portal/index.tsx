@@ -52,6 +52,13 @@ function PortalPage(props: { data: PortalData }) {
   const { branding, submissions, tasks } = props.data;
   return (
     <Layout branding={branding}>
+      <nav aria-label="Portal navigation">
+        <a href="/portal">My Submissions</a>
+        {" | "}
+        <a href="/portal/profile">Profile</a>
+        {" | "}
+        <a href="/portal/tasks">Tasks</a>
+      </nav>
       <section aria-label="My Submissions">
         <h2>My Submissions</h2>
         {submissions.length === 0 ? (

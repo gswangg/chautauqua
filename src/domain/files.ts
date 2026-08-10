@@ -152,3 +152,46 @@ export function isValidVersionChain(
   if (!target) return true;
   return target.submissionId === candidate.submissionId && target.kind === candidate.kind;
 }
+
+// ---------------------------------------------------------------------------
+// Headshot uploads (DEC-028, values per DEC-020's image tier: png/jpg/jpeg/
+// webp, 8 MB cap — narrower than the submission-file allowlist: no gif, and
+// there's no `kind` field since a headshot upload's kind is implicit).
+// ---------------------------------------------------------------------------
+
+const HEADSHOT_EXT_CONTENT_TYPE: Record<string, string> = {
+  png: "image/png",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  webp: "image/webp",
+};
+
+const HEADSHOT_MAX_BYTES = 8 * BYTES_PER_MB;
+
+export interface HeadshotUploadInput {
+  filename: string;
+  sizeBytes: number;
+}
+
+/**
+ * Validates a portal headshot upload: png/jpg/jpeg/webp only, 8 MB cap.
+ * Anything else (wrong extension, oversized, empty) is rejected loudly with
+ * a user-facing message — never silently coerced.
+ */
+export function validateHeadshotUpload(input: HeadshotUploadInput): ValidateUploadResult {
+  if (!Number.isFinite(input.sizeBytes) || input.sizeBytes <= 0) {
+    return { ok: false, message: "File is empty", fields: { headshot: "File is empty" } };
+  }
+  const ext = extname(input.filename);
+  if (!(ext in HEADSHOT_EXT_CONTENT_TYPE)) {
+    return {
+      ok: false,
+      message: "Headshots must be PNG, JPG, JPEG, or WEBP",
+      fields: { headshot: "Unsupported file type" },
+    };
+  }
+  if (input.sizeBytes > HEADSHOT_MAX_BYTES) {
+    return { ok: false, message: "Headshot exceeds the 8 MB limit", fields: { headshot: "Too large" } };
+  }
+  return { ok: true, ext, servedContentType: HEADSHOT_EXT_CONTENT_TYPE[ext]! };
+}
