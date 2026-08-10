@@ -266,7 +266,11 @@ async function main(): Promise<void> {
       filters_json: null,
       anonymized: false,
       scale_json: JSON.stringify({ min: 1, max: 5 }),
-      criteria_json: JSON.stringify([{ id: "overall", label: "Overall", weight: 1 }]),
+      // DEC-125: criteria entries must carry kind:'rating' to match the
+      // RatingCriterionDef union arm (src/domain/evaluation.ts:121-137);
+      // without it validateEvaluationScores falls into the dropdown branch
+      // and 400s every rating PUT (task-w11-d perf-smoke FAIL).
+      criteria_json: JSON.stringify([{ id: "overall", label: "Overall", kind: "rating", weight: 1 }]),
       rounds: 1,
       max_evaluations: null,
       created_at: nextTs(),
