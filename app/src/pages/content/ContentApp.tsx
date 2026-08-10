@@ -3,9 +3,12 @@ import { useSearchParams } from 'react-router-dom';
 import { apiList, apiPost, ApiError } from '../../lib/api';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { DeliverableDetail } from './DeliverableDetail';
+import { FilesLibrary } from './FilesLibrary';
 import { SessionList } from './SessionList';
 import { DELIVERABLE_KINDS, type ContentStatus, type ContentSubmissionListItem, type DeliverableFile } from './types';
 import type { WorklistTab } from './worklist';
+
+type ContentView = 'worklist' | 'files';
 
 /** J8 content review loop entry point: worklist -> per-session deliverable detail. */
 export function ContentApp() {
@@ -13,6 +16,7 @@ export function ContentApp() {
   const [searchParams, setSearchParams] = useSearchParams();
   const submissionId = searchParams.get('submissionId');
   const tab = (searchParams.get('tab') as WorklistTab | null) ?? 'changes_requested';
+  const view = (searchParams.get('view') as ContentView | null) ?? 'worklist';
 
   const [items, setItems] = useState<ContentSubmissionListItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -76,6 +80,15 @@ export function ContentApp() {
     });
   }
 
+  function changeView(next: ContentView) {
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev);
+      params.set('view', next);
+      params.delete('submissionId');
+      return params;
+    });
+  }
+
   function onContentStatusChange(id: string, status: ContentStatus) {
     setItems((prev) => prev.map((item) => (item.id === id ? { ...item, contentStatus: status } : item)));
   }
@@ -120,6 +133,29 @@ export function ContentApp() {
       <h1>Content</h1>
       {error && <div className="chq-error-banner">{error}</div>}
 
+      {!submissionId && (
+        <div className="chq-tab-bar" role="tablist" aria-label="Content view">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={view === 'worklist'}
+            className={view === 'worklist' ? 'chq-tab active' : 'chq-tab'}
+            onClick={() => changeView('worklist')}
+          >
+            Worklist
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={view === 'files'}
+            className={view === 'files' ? 'chq-tab active' : 'chq-tab'}
+            onClick={() => changeView('files')}
+          >
+            Files
+          </button>
+        </div>
+      )}
+
       {submissionId && selected ? (
         <DeliverableDetail
           submissionId={selected.id}
@@ -128,6 +164,8 @@ export function ContentApp() {
           onBack={backToWorklist}
           onContentStatusChange={onContentStatusChange}
         />
+      ) : view === 'files' ? (
+        <FilesLibrary eventId={eventId} onSelectSubmission={selectSubmission} />
       ) : (
         <SessionList
           items={items}

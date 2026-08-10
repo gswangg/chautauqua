@@ -124,6 +124,37 @@ export function apiDelete<T>(path: string): Promise<T> {
   return request<T>(path, { method: 'DELETE' });
 }
 
+// DEC-160: POST that returns a binary body (application/zip) rather than
+// JSON — the files-library bulk-download endpoint. Deliberately bypasses
+// `request()`'s JSON parsing but mirrors its csrf + credentials + ApiError
+// handling; on success returns the raw Blob plus the server's suggested
+// filename (parsed from Content-Disposition) for the caller to trigger a
+// browser download.
+export async function apiPostBlob(path: string, body: unknown): Promise<{ blob: Blob; filename: string }> {
+  const headers = new Headers({ 'content-type': 'application/json', 'x-chq-csrf': '1' });
+
+  const res = await fetch(`${API_PREFIX}${path}`, {
+    method: 'POST',
+    body: JSON.stringify(body),
+    headers,
+    credentials: 'include',
+  });
+
+  if (!res.ok) {
+    const parsed = await parseBody(res);
+    if (isApiErrorBody(parsed)) {
+      throw new ApiError(res.status, parsed.error.code, parsed.error.message, parsed.error.fields);
+    }
+    throw new ApiError(res.status, 'internal', `Request failed with status ${res.status}`);
+  }
+
+  const disposition = res.headers.get('content-disposition') ?? '';
+  const match = /filename="([^"]+)"/.exec(disposition);
+  const filename = match?.[1] ?? 'download.zip';
+  const blob = await res.blob();
+  return { blob, filename };
+}
+
 // DEC-024 / DEC-020: multipart upload helper for the Content SPA (file
 // uploads). Deliberately bypasses `request()` because FormData must not get
 // a manually-set content-type (the browser sets the multipart boundary);

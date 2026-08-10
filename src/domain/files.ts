@@ -149,6 +149,19 @@ export function sanitizeFilenameForKey(filename: string): string {
   return cleaned.length > 0 ? cleaned : "file";
 }
 
+/** DEC-160: slugifies a submission title for the per-session folder in a
+ * bulk-download ZIP's entry names — lowercase, non-alphanumerics collapsed
+ * to single hyphens, trimmed. Falls back to 'submission' for a title that
+ * slugifies to nothing (e.g. all punctuation). */
+export function slugifyTitle(title: string): string {
+  const slug = title
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return slug.length > 0 ? slug : "submission";
+}
+
 export interface ReplacesTarget {
   submissionId: string | null;
   kind: string;
