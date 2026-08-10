@@ -11,6 +11,7 @@ import { agendaRoutes } from "./routes/agenda";
 import { publicSubmitRoutes } from "./routes/public/submit";
 import { portalRoutes } from "./routes/portal/index";
 import { publicRoutes } from "./routes/public";
+import { portalTasksRoutes } from "./routes/portal/tasks";
 import { devMailboxRoutes } from "./routes/dev/mailbox";
 import { taskRoutes } from "./routes/tasks";
 import { reviewRoutes } from "./routes/review";
@@ -40,8 +41,9 @@ app.route("/", publicSubmitRoutes);
 app.route("/", reviewRoutes);
 app.route("/", meRoutes);
 app.route("/portal", portalRoutes);
-// w4-a (DEC-028): parallel portal sub-app + its public headshot route.
+// w4-a/w4-b (DEC-028): parallel portal sub-apps + the public headshot route.
 app.route("/portal", portalProfileRoutes);
+app.route("/portal", portalTasksRoutes);
 app.route("/", headshotServeRoutes);
 app.route("/", publicRoutes);
 

@@ -136,7 +136,9 @@ export async function getReplacesTarget(
 // ---------------------------------------------------------------------------
 
 export interface InsertFileInput {
-  submissionId: string;
+  // nullable: resource files (task_assignment handouts, headshots, standalone
+  // resources) aren't attached to a submission — matches the schema column.
+  submissionId: string | null;
   kind: FileKind;
   filename: string;
   r2Key: string;

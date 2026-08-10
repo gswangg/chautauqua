@@ -1,8 +1,8 @@
 // Shared portal chrome, per DEC-028: two wave-4 tasks (w4-a profile, w4-b
 // tasks) deepen /portal in parallel, each as its own Hono sub-app (DEC-012:
 // only src/index.ts mounts). This file is create-if-missing — both tasks
-// create it with this exact contract; a merge dedupes identical content. A
-// later cleanup rewires src/routes/portal/index.tsx onto it.
+// create it with this exact contract; a merge dedupes identical content.
+// src/routes/portal/index.tsx is now rewired onto it.
 
 import type { MiddlewareHandler } from "hono";
 import type { AppEnv } from "../../server/env";
@@ -17,7 +17,8 @@ export interface PortalBrandingChrome {
 /** Gate: no session -> /login; a session that isn't a speaker (organizer,
  * reviewer) -> /admin. Exact copy of src/routes/portal/index.tsx's redirect
  * gate — deliberately distinct from the JSON-error requireSpeaker
- * middleware (DEC-012), which is built for /api/v1. */
+ * middleware (DEC-012), which is built for /api/v1: an SSR surface redirects
+ * instead of returning a 401/403 body. */
 export const speakerGate: MiddlewareHandler<AppEnv> = async (c, next) => {
   const auth = c.var.auth;
   if (!auth) return c.redirect("/login", 302);
