@@ -4,6 +4,8 @@ import { makeDb } from "./server/context";
 import { sessionLoader } from "./server/middleware";
 import { registerErrorHandler } from "./server/http";
 import { authRoutes } from "./routes/auth";
+import { emailLogRoutes } from "./routes/api/email-log";
+import { devMailboxRoutes, shouldMountDevMailbox } from "./routes/dev/mailbox";
 
 // Wave 2 wires the remaining routers (admin SPA, /api/v1/*, /submit,
 // /portal, public surfaces, /embed, /files, /dev/mailbox — see DEC-005).
@@ -24,6 +26,21 @@ app.get("/health", (c) => c.json({ ok: true }));
 app.get("/api/v1", (c) => c.json({ name: "chautauqua", version: "v1" }));
 
 app.route("/", authRoutes);
+app.route("/", emailLogRoutes);
+
+// DEC-005: /dev/mailbox is dev-only, mounted only when env.DEV_MODE === '1'.
+// Bindings are only known per-request in a Worker, so the guard runs ahead
+// of the route match and 404s (via c.notFound()) rather than delegating —
+// with DEV_MODE unset the routes are indistinguishable from not existing.
+app.use("/dev/mailbox", async (c, next) => {
+  if (!shouldMountDevMailbox(c.env)) return c.notFound();
+  await next();
+});
+app.use("/dev/mailbox/*", async (c, next) => {
+  if (!shouldMountDevMailbox(c.env)) return c.notFound();
+  await next();
+});
+app.route("/", devMailboxRoutes);
 
 export default {
   fetch: app.fetch,

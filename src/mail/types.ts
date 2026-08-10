@@ -27,6 +27,10 @@ export interface EmailLogEntry {
   bodyText: string;
   bodyHtml: string;
   icsText?: string;
+  // Stored so the dev mailbox download link (DEC-005/§6) can serve the
+  // original filename rather than a synthesized one. Additive column;
+  // DEC-006's column list predates this need (see migrations/0002).
+  icsFilename?: string;
   provider: string;
   status: string;
   sentAt: number;

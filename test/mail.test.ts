@@ -155,6 +155,7 @@ describe("DevSinkMailer", () => {
       bodyText: "plain text body",
       bodyHtml: "<p>html body</p>",
       icsText: "BEGIN:VCALENDAR\r\nEND:VCALENDAR\r\n",
+      icsFilename: "invite.ics",
       provider: "dev",
       status: "sent",
       sentAt: Date.UTC(2026, 0, 1),
