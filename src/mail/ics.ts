@@ -2,6 +2,9 @@
 // by caller, METHOD:REQUEST, LOCATION only when provided, UTC times, 75-octet
 // line folding, CRLF line endings.
 
+import { DEC_131 } from "../decisions";
+void DEC_131;
+
 export interface IcsEventInput {
   uidSubmissionId: string;
   sequence: number;
@@ -30,8 +33,13 @@ function formatIcsDate(d: Date): string {
   );
 }
 
+// DEC-131: normalize CR before escaping so a lone CR (or CRLF) in source
+// text never survives as a bare CR inside a content line; both become \n
+// like a normal line break, then get escaped to the literal "\n" below.
 function escapeText(s: string): string {
   return s
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
     .replace(/\\/g, "\\\\")
     .replace(/;/g, "\\;")
     .replace(/,/g, "\\,")
