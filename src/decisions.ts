@@ -109,3 +109,9 @@ export const DEC_103 = "Wave-8 verify-or-run gate protocol: w7 lanes live mid-pl
 export const DEC_104 = "Complete the DEC-078 chunk sweep: every remaining unbounded inArray site iterates chunkIds batches; bounded sites enumerated as exempt; each fixed file gains a source-scan guard test";
 export const DEC_105 = "perf-smoke gains an organizer-agenda timed check plus one-shot untimed export min-line probes (submissions CSV >= 2001 lines, showflow.csv >= 301 lines); budgets and existing checks unchanged";
 export const DEC_106 = "Wave 9 is the reopened DEC-076 single code barrier; all gate sections citing d12eb25 become void once any w9 lane merges; wave-10 re-runs all five DEC-069 gates at the post-w9 sha on ports 8821/8823";
+export const DEC_107 = "Wave 10 is a second code barrier (four verified review-lens defects + walkthrough probes); the five DEC-069 gates shift to wave 11 with DEC-106 mechanics unchanged (ports 8821 walkthrough / 8823 perf-smoke)";
+export const DEC_108 = "Public/embed visibility additionally requires participant.inviteStatus IN ('none','accepted'), enforced in visibleSubmissionConditions() and the hydrateSessions speaker sub-query";
+export const DEC_109 = "Portal edit: stored file-kind answers are merged into the extracted answer map and file-kind required is forced false during validation; file values written back unchanged";
+export const DEC_110 = "FieldRulesScript emits the rules JSON via dangerouslySetInnerHTML with '<' escaped to <";
+export const DEC_111 = "Acceptance-created form tasks get real backing forms: find-or-create by exact title (isDefault=false, null open/close), task.formId set and self-healed when null; field specs are pure data FORM_TASK_FIELD_SPECS in domain/acceptance.ts";
+export const DEC_112 = "Walkthrough gains invite-visibility and form-task runtime probes; the w10-e lane verifies wiring by observing the expected pre-fix failures";
