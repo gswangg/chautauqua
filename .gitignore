@@ -5,3 +5,4 @@ public/admin/
 .dev.vars
 *.log
 /.seed.sql
+/.perf-seed.sql

@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+# Stage-1 scope only (DEC-034): typecheck + unit tests, plus a local perf
+# smoke run against a 2k-row seeded event. Everything here runs against
+# `wrangler dev`'s local Miniflare/D1 — no deploy, no secrets, no external
+# accounts.
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run build
+      - run: npm test
+
+  perf-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run db:migrate
+      - run: npm run seed
+      - run: npm run perf:seed
+      - name: Start wrangler dev in background
+        run: npx wrangler dev --port 8787 > wrangler-dev.log 2>&1 &
+      - name: Wait for /health
+        run: |
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:8787/health > /dev/null; then
+              echo "wrangler dev is up"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "wrangler dev did not become healthy in time"
+          cat wrangler-dev.log || true
+          exit 1
+      - run: npm run perf:smoke
+      - name: Show wrangler dev log on failure
+        if: failure()
+        run: cat wrangler-dev.log || true
