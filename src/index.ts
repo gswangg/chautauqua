@@ -10,6 +10,7 @@ import { formsRoutes } from "./routes/api/forms";
 import { submissionsRoutes } from "./routes/api/submissions";
 import { publicSubmitRoutes } from "./routes/public/submit";
 import { portalRoutes } from "./routes/portal/index";
+import { publicRoutes } from "./routes/public";
 import { devMailboxRoutes, shouldMountDevMailbox } from "./routes/dev/mailbox";
 import { taskRoutes, runDueReminders } from "./routes/tasks";
 
@@ -39,6 +40,7 @@ app.route("/", emailLogRoutes);
 app.route("/", formsRoutes);
 app.route("/", publicSubmitRoutes);
 app.route("/portal", portalRoutes);
+app.route("/", publicRoutes);
 
 // DEC-005: /dev/mailbox is dev-only, mounted only when env.DEV_MODE === '1'.
 // Bindings are only known per-request in a Worker, so the guard runs ahead
