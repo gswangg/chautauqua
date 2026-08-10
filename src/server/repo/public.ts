@@ -1,10 +1,14 @@
 // Public/embed repo layer (J10, DEC-022): the ONLY query source for the five
 // public surfaces (/e/:eventSlug/*, /embed/:eventSlug/*). Every query below
 // enforces the shared visibility gate — submission.status='accepted' AND
-// submission.content_status='approved' AND participant.visible=1 — in SQL
+// submission.content_status='approved' AND participant.visible=1 AND
+// participant.invite_status IN ('none','accepted') (DEC-108) — in SQL
 // via visibleSubmissionConditions(), never in application code, so it can
 // never accidentally be skipped by a caller. Per DEC-012 this is the only
-// module that touches drizzle row types for public data.
+// module that touches drizzle row types for public data. The standalone
+// speaker-hydration query in hydrateSessions applies the same DEC-108
+// invite-state clause directly, since it does not route through
+// visibleSubmissionConditions().
 
 import { and, asc, eq, inArray } from "drizzle-orm";
 import type { Db } from "../context";
@@ -20,13 +24,18 @@ import { chunkIds } from "../../lib/chunk";
  * Single-sourced visibility condition (DEC-022). Callers MUST join
  * `participant` into the query (innerJoin on participant.submissionId =
  * submission.id) for the participant.visible check to apply — every query
- * below does this.
+ * below does this. Also enforces DEC-108: participant.invite_status must be
+ * 'none' (never invited — solo/no-coordination case) or 'accepted' (invite
+ * accepted); any other invite state must never make a submission publicly
+ * visible.
  */
 export function visibleSubmissionConditions() {
   return and(
     eq(schema.submission.status, "accepted"),
     eq(schema.submission.contentStatus, "approved"),
     eq(schema.participant.visible, true),
+    // two literals, bounded — DEC-104-exempt
+    inArray(schema.participant.inviteStatus, ["none", "accepted"]),
   );
 }
 
@@ -222,7 +231,14 @@ async function hydrateSessions(
       })
       .from(schema.participant)
       .innerJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
-      .where(and(inArray(schema.participant.submissionId, batch), eq(schema.participant.visible, true)))
+      .where(
+        and(
+          inArray(schema.participant.submissionId, batch),
+          eq(schema.participant.visible, true),
+          // two literals, bounded — DEC-104-exempt
+          inArray(schema.participant.inviteStatus, ["none", "accepted"]),
+        ),
+      )
       .orderBy(asc(schema.participant.order));
     speakerRows.push(...batchRows);
   }
