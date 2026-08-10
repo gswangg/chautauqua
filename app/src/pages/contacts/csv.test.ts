@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isEmptyMappedRow, mapImportRow, parseCsv } from './csv';
+import { isEmptyMappedRow, mapImportRow, parseCsv, suggestMapping } from './csv';
 
 describe('parseCsv', () => {
   it('parses a simple header + rows', () => {
@@ -50,5 +50,28 @@ describe('mapImportRow', () => {
 
   it('throws for an unknown target field', () => {
     expect(() => mapImportRow({ 'First Name': 'bogus' }, header, ['Ada', 'Lovelace', 'a@b.com', 'x'])).toThrow(/unknown target field/);
+  });
+});
+
+describe('suggestMapping (P1 fix, w1-f: auto-map obvious CSV headers)', () => {
+  it('maps exact standard-field-named columns without user interaction', () => {
+    expect(suggestMapping(['Email', 'First Name', 'Last Name'])).toEqual({
+      Email: 'email',
+      'First Name': 'firstName',
+      'Last Name': 'lastName',
+    });
+  });
+
+  it('matches aliases case- and punctuation-insensitively', () => {
+    expect(suggestMapping(['E-Mail', 'first_name', 'Surname', 'Organization'])).toEqual({
+      'E-Mail': 'email',
+      first_name: 'firstName',
+      Surname: 'lastName',
+      Organization: 'company',
+    });
+  });
+
+  it('leaves unrecognized columns unmapped', () => {
+    expect(suggestMapping(['Shirt Size', 'Notes'])).toEqual({});
   });
 });

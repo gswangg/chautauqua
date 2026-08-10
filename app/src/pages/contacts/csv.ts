@@ -87,8 +87,13 @@ export function parseCsv(text: string): string[][] {
   return rows;
 }
 
-/** Standard target fields the mapping wizard offers, plus free-form 'custom.<key>'. */
-export const STANDARD_IMPORT_FIELDS = ['firstName', 'lastName', 'email', 'company', 'title', 'phone'] as const;
+/** Standard target fields the mapping wizard offers, plus free-form 'custom.<key>'.
+ * Deliberately NOT 'phone': the server's pure-core ContactRecord/mapImportRow
+ * (src/domain/contacts.ts) has no phone field and throws on an unrecognized
+ * target, so offering it here would let a user pick a mapping that 500s the
+ * whole import (P1 fix, w1-f) — keep this list exactly aligned with what the
+ * server import path supports. */
+export const STANDARD_IMPORT_FIELDS = ['firstName', 'lastName', 'email', 'company', 'title'] as const;
 export type StandardImportField = (typeof STANDARD_IMPORT_FIELDS)[number];
 
 export interface MappedContactRow {
@@ -97,7 +102,6 @@ export interface MappedContactRow {
   email?: string;
   company?: string;
   title?: string;
-  phone?: string;
   customFields?: Record<string, string>;
 }
 
@@ -145,4 +149,40 @@ export function mapImportRow(mapping: Record<string, string>, header: string[], 
 /** True when a mapping wizard row (post mapImportRow) has no usable data — used to compute "skipped" preview counts. */
 export function isEmptyMappedRow(row: MappedContactRow): boolean {
   return Object.keys(row).length === 0;
+}
+
+function normalizeHeaderName(col: string): string {
+  return col.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+/** column-name aliases (normalized: lowercase, non-alnum stripped) that
+ * should auto-map to each standard field. */
+const FIELD_ALIASES: Record<StandardImportField, string[]> = {
+  firstName: ['firstname', 'first', 'fname', 'givenname'],
+  lastName: ['lastname', 'last', 'lname', 'surname', 'familyname'],
+  email: ['email', 'emailaddress', 'e-mail', 'mail'],
+  company: ['company', 'organization', 'organisation', 'employer'],
+  title: ['title', 'jobtitle', 'role'],
+};
+
+/**
+ * P1 fix (w1-f): a pasted/uploaded CSV whose header already spells out the
+ * standard field names (e.g. "Email", "First Name") previously left the
+ * mapping wizard's per-column <select> defaulted to "(ignore)" until a user
+ * manually picked every column — a CSV with an obviously-named email column
+ * would silently import 0 rows (every row skipped as "missing email") unless
+ * the user hand-mapped it first. This suggests a starting mapping by
+ * matching normalized header names against FIELD_ALIASES; callers still let
+ * the user override any suggestion via the mapping <select>.
+ */
+export function suggestMapping(header: string[]): Record<string, string> {
+  const mapping: Record<string, string> = {};
+  for (const col of header) {
+    const normalized = normalizeHeaderName(col);
+    const match = (Object.entries(FIELD_ALIASES) as [StandardImportField, string[]][]).find(([, aliases]) =>
+      aliases.includes(normalized),
+    );
+    if (match) mapping[col] = match[0];
+  }
+  return mapping;
 }
