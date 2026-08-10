@@ -10,12 +10,58 @@ import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { newId } from "../../../domain/ids";
 import { changeStatus, type SubmissionStatus } from "../../../domain/status";
-import { planAcceptance } from "../../../domain/acceptance";
+import { planAcceptance, FORM_TASK_FIELD_SPECS } from "../../../domain/acceptance";
 import { isValidStatusLiteral } from "./query";
 import { chunkIds } from "../../../lib/chunk";
-import { DEC_079 } from "../../../decisions";
+import { DEC_079, DEC_111 } from "../../../decisions";
 
 void DEC_079; // planning-before-commit acceptance ordering + chunked/batched bulk status changes below
+void DEC_111; // form-task tasks get real backing forms, self-healed when formId is null
+
+/**
+ * DEC-111: for a kind='form' template title present in FORM_TASK_FIELD_SPECS,
+ * finds-or-creates an event-scoped schema.form titled exactly the task
+ * title (isDefault:false, null open/close so it can never leak into public
+ * CFP submit via getDefaultForm), inserting its fields on first creation.
+ * Idempotent — a pre-existing form with that title is reused as-is.
+ */
+async function getOrCreateFormTaskForm(db: Db, eventId: string, title: string, now: Date): Promise<string> {
+  const existingForm = await db
+    .select({ id: schema.form.id })
+    .from(schema.form)
+    .where(and(eq(schema.form.eventId, eventId), eq(schema.form.title, title)))
+    .limit(1);
+  if (existingForm[0]) return existingForm[0].id;
+
+  const formId = newId();
+  await db.insert(schema.form).values({
+    id: formId,
+    eventId,
+    title,
+    isDefault: false,
+    openDate: null,
+    closeDate: null,
+    createdAt: now,
+    updatedAt: now,
+  });
+
+  const specs = FORM_TASK_FIELD_SPECS[title] ?? [];
+  for (const [i, spec] of specs.entries()) {
+    await db.insert(schema.formField).values({
+      id: newId(),
+      formId,
+      section: spec.section,
+      kind: spec.kind,
+      label: spec.label,
+      required: spec.required,
+      position: i,
+      optionsJson: spec.options ? JSON.stringify(spec.options) : null,
+      createdAt: now,
+      updatedAt: now,
+    });
+  }
+  return formId;
+}
 
 async function getOrCreateTask(
   db: Db,
@@ -24,19 +70,29 @@ async function getOrCreateTask(
   now: Date,
 ): Promise<string> {
   const existing = await db
-    .select({ id: schema.task.id })
+    .select({ id: schema.task.id, formId: schema.task.formId })
     .from(schema.task)
     .where(and(eq(schema.task.eventId, eventId), eq(schema.task.title, template.title)))
     .limit(1);
-  if (existing[0]) return existing[0].id;
+  if (existing[0]) {
+    // DEC-111 self-heal: an already-existing 'form' task with a null formId
+    // (created before this backing-form logic existed) gets one now.
+    if (template.kind === "form" && !existing[0].formId) {
+      const formId = await getOrCreateFormTaskForm(db, eventId, template.title, now);
+      await db.update(schema.task).set({ formId, updatedAt: now }).where(eq(schema.task.id, existing[0].id));
+    }
+    return existing[0].id;
+  }
 
   const id = newId();
+  const formId = template.kind === "form" ? await getOrCreateFormTaskForm(db, eventId, template.title, now) : null;
   await db.insert(schema.task).values({
     id,
     eventId,
     kind: template.kind,
     title: template.title,
     required: template.required,
+    formId,
     createdAt: now,
     updatedAt: now,
   });

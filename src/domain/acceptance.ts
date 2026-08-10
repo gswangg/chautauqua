@@ -19,6 +19,56 @@ export const DEFAULT_ONBOARDING_TASKS: readonly OnboardingTaskTemplate[] = [
   { title: "Announce participation", kind: "general", required: false },
 ];
 
+/** DEC-008 form-field kinds usable in a field spec (no 'file' — the portal
+ * task-form POST has no upload path). */
+export type FormTaskFieldKind = "text" | "long_text" | "dropdown" | "checkbox" | "number";
+
+export interface FormTaskFieldSpec {
+  section: "speaker";
+  kind: FormTaskFieldKind;
+  label: string;
+  required: boolean;
+  options?: string[];
+}
+
+/**
+ * DEC-111: pure-data field specs for the two must-have acceptance form
+ * tasks, keyed by the exact task/form title. Consumed by the repo layer to
+ * find-or-create a backing schema.form + schema.formField rows, never
+ * referenced for I/O here.
+ */
+export const FORM_TASK_FIELD_SPECS: Readonly<Record<string, readonly FormTaskFieldSpec[]>> = {
+  "Hotel stay requirement form": [
+    {
+      section: "speaker",
+      kind: "dropdown",
+      label: "Do you need a hotel room?",
+      required: true,
+      options: ["Yes", "No"],
+    },
+    { section: "speaker", kind: "text", label: "Check-in date", required: false },
+    { section: "speaker", kind: "text", label: "Check-out date", required: false },
+    { section: "speaker", kind: "long_text", label: "Special requests", required: false },
+  ],
+  "Flight reimbursement form": [
+    {
+      section: "speaker",
+      kind: "dropdown",
+      label: "Do you need flight reimbursement?",
+      required: true,
+      options: ["Yes", "No"],
+    },
+    { section: "speaker", kind: "text", label: "Departure airport", required: false },
+    {
+      section: "speaker",
+      kind: "number",
+      label: "Estimated reimbursement amount (USD)",
+      required: false,
+    },
+    { section: "speaker", kind: "long_text", label: "Notes", required: false },
+  ],
+};
+
 export interface PlanAcceptanceInput {
   submissionId: string;
   eventId: string;
