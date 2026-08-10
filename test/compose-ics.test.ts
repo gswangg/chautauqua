@@ -4,6 +4,7 @@
 
 import { describe, expect, it } from "vitest";
 import { unscheduledIcsFields } from "../src/routes/comms";
+import { chunkIds } from "../src/server/repo/comms";
 import type { IcsScheduleRow } from "../src/server/repo/comms";
 import { buildIcsEvent } from "../src/mail/ics";
 
@@ -114,5 +115,27 @@ describe("LOCATION omitted when no room is assigned", () => {
       dtstamp: new Date("2026-08-10T12:00:00Z"),
     });
     expect(ics).toContain("LOCATION:Main Hall");
+  });
+});
+
+// Regression coverage for the D1 "too many SQL variables" crash a >90
+// selected-submission compose (DEC-019's own 100-recipient cap lets a
+// producer select more submissionIds than that before the expanded
+// recipient count is even checked) tripped in loadComposeSubmissions,
+// found by the producer walkthrough (scripts/walkthrough/producer.ts).
+describe("chunkIds (D1 bound-parameter batching for compose data loading)", () => {
+  it("returns a single batch for input under the chunk size", () => {
+    expect(chunkIds(["a", "b", "c"])).toEqual([["a", "b", "c"]]);
+  });
+
+  it("returns an empty array for empty input", () => {
+    expect(chunkIds([])).toEqual([]);
+  });
+
+  it("splits into batches small enough to leave headroom for an extra bound condition (e.g. eventId)", () => {
+    const ids = Array.from({ length: 101 }, (_, i) => `id-${i}`);
+    const batches = chunkIds(ids);
+    expect(batches.every((b) => b.length <= 90)).toBe(true);
+    expect(batches.flat()).toEqual(ids);
   });
 });
