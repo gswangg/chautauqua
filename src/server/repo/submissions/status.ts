@@ -13,10 +13,12 @@ import { changeStatus, type SubmissionStatus } from "../../../domain/status";
 import { planAcceptance, FORM_TASK_FIELD_SPECS } from "../../../domain/acceptance";
 import { isValidStatusLiteral } from "./query";
 import { chunkIds } from "../../../lib/chunk";
-import { DEC_079, DEC_111 } from "../../../decisions";
+import { ApiError } from "../../http";
+import { DEC_079, DEC_111, DEC_133 } from "../../../decisions";
 
 void DEC_079; // planning-before-commit acceptance ordering + chunked/batched bulk status changes below
 void DEC_111; // form-task tasks get real backing forms, self-healed when formId is null
+void DEC_133; // full-set id match guard below (mirrors DEC-122's requireFullMatch)
 
 /**
  * DEC-111: for a kind='form' template title present in FORM_TASK_FIELD_SPECS,
@@ -164,6 +166,13 @@ export interface UpdateStatusesResult {
  * module). On first transition into 'accepted' (accepted_at was null) runs
  * the acceptance planner exactly once, idempotently.
  *
+ * DEC-133 (DEC-122-style full-set match): every distinct id in `ids` must
+ * belong to `eventId`, checked BEFORE any mutation — if one or more ids are
+ * unknown/foreign, throws ApiError('invalid', ...) naming the missing ids
+ * and applies zero DB changes (no status row updated, no task_assignment
+ * created). Duplicate ids within `ids` are tolerated (deduped up front) and
+ * do not trigger the guard.
+ *
  * DEC-079: for a firing row, planning runs BEFORE the row's UPDATE — if
  * planning throws, the row stays un-accepted so a retry re-fires (planning
  * is already idempotent on (contact, task-title) pairs), preserving
@@ -191,6 +200,15 @@ export async function updateSubmissionStatuses(
       .from(schema.submission)
       .where(and(eq(schema.submission.eventId, eventId), inArray(schema.submission.id, idChunk)));
     rows.push(...chunkRows);
+  }
+
+  const requested = [...new Set(ids)];
+  const foundIdSet = new Set(rows.map((r) => r.id));
+  const missing = requested.filter((id) => !foundIdSet.has(id));
+  if (missing.length > 0) {
+    throw new ApiError("invalid", "One or more submission ids do not belong to this event", {
+      ids: `unknown ids: ${missing.join(", ")}`,
+    });
   }
 
   const nonFiringIds: string[] = [];
