@@ -140,3 +140,4 @@ export const DEC_134 = "Third code barrier: DEC-130..133 fix lanes void every 67
 export const DEC_135 = "Wave-19 five-gate battery at the post-wave-18 sha: lanes task-w19-a..e all-parallel, BEHAVIORAL DEC-130..133 preflight (void-marker imports alone prove nothing), fresh ports 8881/8882/8883, FAIL-and-stop on a missing fix marker";
 export const DEC_136 = "Wave-20 confirm-else-run closeout for the two outstanding DEC-069 gates (walkthrough, perf-smoke)";
 export const DEC_137 = "Verification-log conflict-marker hygiene: greps key on section headers plus per-section RESULT; marker damage belongs to the merge train";
+export const DEC_138 = "Stage-1 exit declared: DEC-069 predicate green @ 8c7f479; wave-20 confirm lanes mooted by the landed w19-b/c full-gate sections";

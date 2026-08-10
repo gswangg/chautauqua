@@ -31,29 +31,21 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   predicate 4/5 green, dual triage lanes closed the gap, ports 8871/72.
   HOMONYM HAZARD: log has first-campaign sections reusing task names;
   valid only if `git merge-base --is-ancestor 675219f <cited-sha>`.
-- Wave 18 (DEC-134, third barrier): predicate WAS fully green @675219f
-  but 4 verified live defects reopened code: DEC-130 autoSchedule
-  incremental indexes; DEC-131 ics escapeText CR-normalize; DEC-132
-  hidden file fields no-trace on public submit; DEC-133 bulk status
-  full-match pre-mutation. Landing any w18-a..d fix voids all 675219f
-  gates.
-- Wave 19 (DEC-135): five-gate battery task-w19-a..e ALL-PARALLEL at
-  post-w18 DEC-114 sha. Preflight DEC-130..133 by BEHAVIOR, not marker
-  import (marker+tests observed in-tree before fixes landed): no
-  findConflicts/trial array in autoSchedule; ics CR-normalize pre-
-  escape; submit.tsx gates on isVisible+cleaned==='pending'; status.ts
-  ApiError on unknown ids pre-mutation. Marker absent => RESULT: FAIL
-  preflight, never fix (DEC-077). Ports 8881/8882/8883. All 675219f
-  sections VOID (DEC-134); DEC-129 guard stays.
-- Wave 20 (DEC-136/137): w19 landed a/d/e — build+test, spec-audit,
-  triage-closure all PASS @ 8c7f479; w19-b/c (walkthrough/perf-smoke)
-  committed but unmerged at plan time, results unknown. Main @ 8e84281
-  transiently committed raw conflict markers in verification-log.md
-  (swallowed w19-a's RESULT line); healed by the hand-resolved w19-e
-  merge (24f6f84) — so DEC-137: locate sections by header, read that
-  section's own RESULT/OPEN ITEMS, tolerate marker lines, never repair
-  others' sections. W20 = two confirm-else-run lanes (DEC-136, ports
-  8891/8892): PASS found -> confirm append + one spot-check (ics CR
-  byte-check / untimed DEC-130 auto-schedule POST); FAIL found ->
-  inherit-FAIL note, never fix (DEC-077); absent -> full run per w19
-  spec. Exit stays planner-only DEC-069 grep at the DEC-114 sha.
+- Wave 18-20 (compact, DEC-134/135/136/137): w18 4th barrier: DEC-130
+  autoSchedule incremental indexes, DEC-131 ics CR-normalize, DEC-132
+  hidden file fields no-trace, DEC-133 bulk status full-match
+  pre-mutation, voided all 675219f gates. W19: five-gate battery @
+  post-w18 sha 8c7f479 (task-w19-a..e), BEHAVIORAL preflight not
+  marker-import; ports 8881-83; all PASS incl. triage OPEN ITEMS: 0.
+  Main @ 8e84281 transiently held raw conflict markers in
+  verification-log.md, healed by hand-resolved w19-e merge (24f6f84);
+  DEC-137: locate sections by header, read that section's own RESULT,
+  tolerate marker lines elsewhere, never repair others' sections. W20
+  confirm-lanes (DEC-136, ports 8891/92) never executed (moot per
+  DEC-138 — w19-b/c full gates already contain both spot-checks).
+- Wave 21 (DEC-138): STAGE-1 EXIT declared. Planner grep on main @
+  d9be564: five PASS DEC-069 sections @ 8c7f479, log marker-free,
+  eval-findings zero, 8c7f479 still newest code-bearing sha (later
+  commits are DEC-114 bookkeeping). Zero tasks, goalComplete: true.
+  Any future code-bearing commit reopens via DEC-069/134: full
+  five-gate battery required before re-declaring exit.
