@@ -38,3 +38,11 @@ export const DEC_031 = "Saved views are server rows scoped to the event; Submiss
 export const DEC_032 = "Settings page becomes a thin panel container; every feature adds its own file under app/src/pages/settings/";
 export const DEC_033 = "Form builder SPA at /admin/submissions/forms consuming the landed w2-c API; no new server endpoints";
 export const DEC_034 = "CI (typecheck + tests) plus a 2k-row perf harness that boots wrangler dev locally — budgets enforced, zero secrets";
+export const DEC_035 = "Ratify bootstrap split: src/server/app.ts + src/server/scheduled.ts";
+export const DEC_036 = "Form window semantics: open_date enforced via formWindowState";
+export const DEC_037 = "Email HTML built only via escapeHtml/textToHtml in src/mail/render.ts";
+export const DEC_038 = "Scoped KV rate limiter in src/lib/rate-limit.ts; login/claim limits";
+export const DEC_039 = "Reviewer-surface org scoping: organizers resolve plans only via getPlanForOrg";
+export const DEC_040 = "Form-answer file uploads: file rows kind 'attachment', answer = file id";
+export const DEC_041 = "Speaker submission editing: portal edit sub-app with server-side edit lock";
+export const DEC_042 = "Root README.md is the evaluator entrypoint";
