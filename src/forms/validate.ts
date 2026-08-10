@@ -1,5 +1,12 @@
 import type { AnswerMap, FormFieldDef } from "./types";
 import { isVisible } from "./visibility";
+import { DEC_124 } from "../decisions";
+
+// Referenced for compile-checked dependency per DEC-124.
+void DEC_124;
+
+export const MAX_TEXT_LENGTH = 2000;
+export const MAX_LONG_TEXT_LENGTH = 20000;
 
 export type ValidateResult =
   | { ok: true; cleaned: AnswerMap }
@@ -47,6 +54,11 @@ export function validateAnswers(
       case "long_text": {
         if (typeof value !== "string") {
           errors[field.id] = "must be a string";
+          continue;
+        }
+        const cap = field.kind === "text" ? MAX_TEXT_LENGTH : MAX_LONG_TEXT_LENGTH;
+        if (value.length > cap) {
+          errors[field.id] = `Too long (max ${cap} characters)`;
           continue;
         }
         cleaned[field.id] = value;
