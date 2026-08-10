@@ -2,6 +2,10 @@ import { useEffect, useState } from 'react';
 import { PlaceholderPage } from './PlaceholderPage';
 import { useCurrentEvent } from '../lib/useCurrentEvent';
 import { apiGet, ApiError } from '../lib/api';
+import { EventSettingsPanel } from './settings/EventSettingsPanel';
+import { TracksRoomsPanel } from './settings/TracksRoomsPanel';
+import { PortalSettingsPanel } from './settings/PortalSettingsPanel';
+import { ResourcesPanel } from './settings/ResourcesPanel';
 
 // J10/DEC-022: embed generator — copyable <iframe> snippets for the five
 // public surfaces (src/routes/public.tsx), built from location.origin so
@@ -67,6 +71,10 @@ export function SettingsPage() {
   return (
     <div>
       <PlaceholderPage section="Settings" />
+      <EventSettingsPanel />
+      <TracksRoomsPanel />
+      <PortalSettingsPanel />
+      <ResourcesPanel />
       <EmbedsPanel />
     </div>
   );
