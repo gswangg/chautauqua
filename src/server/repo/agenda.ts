@@ -8,6 +8,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { formatRef, newId } from "../../domain/ids";
+import { chunkIds } from "../../lib/chunk";
 import {
   autoSchedule,
   findConflicts,
@@ -160,33 +161,57 @@ async function loadAcceptedSessions(db: Db, eventId: string, recordPrefix: strin
   if (submissionRows.length === 0) return [];
   const ids = submissionRows.map((r) => r.id);
 
-  const trackRows = await db
-    .select({ submissionId: schema.submissionTrack.submissionId, trackId: schema.submissionTrack.trackId })
-    .from(schema.submissionTrack)
-    .where(inArray(schema.submissionTrack.submissionId, ids));
+  const trackRows: { submissionId: string; trackId: string }[] = [];
+  for (const batch of chunkIds(ids)) {
+    const batchRows = await db
+      .select({ submissionId: schema.submissionTrack.submissionId, trackId: schema.submissionTrack.trackId })
+      .from(schema.submissionTrack)
+      .where(inArray(schema.submissionTrack.submissionId, batch));
+    trackRows.push(...batchRows);
+  }
 
-  const participantRows = await db
-    .select({
-      submissionId: schema.participant.submissionId,
-      contactId: schema.participant.contactId,
-      firstName: schema.contact.firstName,
-      lastName: schema.contact.lastName,
-      order: schema.participant.order,
-    })
-    .from(schema.participant)
-    .innerJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
-    .where(inArray(schema.participant.submissionId, ids));
+  const participantRows: {
+    submissionId: string;
+    contactId: string;
+    firstName: string;
+    lastName: string;
+    order: number;
+  }[] = [];
+  for (const batch of chunkIds(ids)) {
+    const batchRows = await db
+      .select({
+        submissionId: schema.participant.submissionId,
+        contactId: schema.participant.contactId,
+        firstName: schema.contact.firstName,
+        lastName: schema.contact.lastName,
+        order: schema.participant.order,
+      })
+      .from(schema.participant)
+      .innerJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
+      .where(inArray(schema.participant.submissionId, batch));
+    participantRows.push(...batchRows);
+  }
 
-  const slotRows = await db
-    .select({
-      submissionId: schema.scheduleSlot.submissionId,
-      roomId: schema.scheduleSlot.roomId,
-      day: schema.scheduleSlot.day,
-      startMin: schema.scheduleSlot.startMin,
-      endMin: schema.scheduleSlot.endMin,
-    })
-    .from(schema.scheduleSlot)
-    .where(inArray(schema.scheduleSlot.submissionId, ids));
+  const slotRows: {
+    submissionId: string;
+    roomId: string | null;
+    day: string;
+    startMin: number;
+    endMin: number;
+  }[] = [];
+  for (const batch of chunkIds(ids)) {
+    const batchRows = await db
+      .select({
+        submissionId: schema.scheduleSlot.submissionId,
+        roomId: schema.scheduleSlot.roomId,
+        day: schema.scheduleSlot.day,
+        startMin: schema.scheduleSlot.startMin,
+        endMin: schema.scheduleSlot.endMin,
+      })
+      .from(schema.scheduleSlot)
+      .where(inArray(schema.scheduleSlot.submissionId, batch));
+    slotRows.push(...batchRows);
+  }
 
   const tracksBySubmission = new Map<string, string[]>();
   for (const t of trackRows) {
