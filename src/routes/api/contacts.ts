@@ -213,10 +213,22 @@ contactsRoutes.post("/contacts/import", csrfJson, async (c) => {
   const [header, ...dataRows] = table;
   if (!header) throw new ApiError("invalid", "CSV has no header row");
 
-  const rows = dataRows.map((row, idx) => ({
-    line: idx + 2,
-    parsed: mapImportRow(mapping, header, row) as Record<string, unknown>,
-  }));
+  // Fail loudly on a bad mapping (e.g. a target field the pure core doesn't
+  // recognize) with a 400 naming the offending column, instead of letting
+  // mapImportRow's thrown Error surface as an unhandled 500 mid-batch — a
+  // client/server mapping mismatch should be visible, not a silent/opaque
+  // failure of the whole import (P1 fix, w1-f).
+  let rows: { line: number; parsed: Record<string, unknown> }[];
+  try {
+    rows = dataRows.map((row, idx) => ({
+      line: idx + 2,
+      parsed: mapImportRow(mapping, header, row) as Record<string, unknown>,
+    }));
+  } catch (err) {
+    throw new ApiError("invalid", err instanceof Error ? err.message : "Invalid column mapping", {
+      mapping: err instanceof Error ? err.message : "invalid",
+    });
+  }
 
   const result = await repo.applyImportRows(c.var.db, orgId, rows);
   return c.json(result);

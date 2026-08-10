@@ -24,13 +24,21 @@ function normalizedName(first: string, last: string): string {
     .replace(/\s+/g, " ");
 }
 
+function normalizedCompany(company: string | undefined): string {
+  return (company ?? "").toLowerCase().trim();
+}
+
 /**
  * Groups contacts that are likely duplicates: first by case-insensitive
  * trimmed email (non-empty emails only), then — among contacts left over
  * with no non-empty email, or whose email did not match any other contact's
- * email — by normalized (lowercase, whitespace-collapsed) firstName+lastName.
- * Never merges contacts across two different non-empty emails, even if their
- * names match.
+ * email — by normalized (lowercase, whitespace-collapsed) firstName+lastName,
+ * sub-grouped by normalized company per DEC-143: within a name bucket,
+ * contacts are further split by normalized company, except contacts with a
+ * blank company match any named-company sub-group (a wildcard). Every
+ * resulting sub-group of two or more is surfaced regardless of how many
+ * distinct non-empty emails it spans — email diversity no longer suppresses
+ * a same-name-same-company match.
  */
 export function findDuplicateGroups(contacts: ContactRecord[]): string[][] {
   const groups: string[][] = [];
@@ -79,15 +87,45 @@ export function findDuplicateGroups(contacts: ContactRecord[]): string[][] {
 
   for (const bucket of byName.values()) {
     if (bucket.length < 2) continue;
-    // Guard: never merge across two different non-empty emails.
-    const nonEmptyEmails = new Set(
-      bucket.map((c) => normalizedEmail(c.email)).filter((e) => e !== ""),
-    );
-    if (nonEmptyEmails.size > 1) continue;
-    groups.push(bucket.map((c) => c.id));
+    for (const companyGroup of subGroupByCompany(bucket)) {
+      if (companyGroup.length >= 2) {
+        groups.push(companyGroup.map((c) => c.id));
+      }
+    }
   }
 
   return groups;
+}
+
+/**
+ * Splits a name-matched bucket into sub-groups by normalized company (DEC-
+ * 143). Contacts with a blank company are wildcards: they join every named-
+ * company sub-group that exists. If no contact in the bucket has a non-blank
+ * company, the whole bucket is a single (all-blank) sub-group.
+ */
+function subGroupByCompany(bucket: ContactRecord[]): ContactRecord[][] {
+  const named = new Map<string, ContactRecord[]>();
+  const blanks: ContactRecord[] = [];
+
+  for (const contact of bucket) {
+    const company = normalizedCompany(contact.company);
+    if (company === "") {
+      blanks.push(contact);
+      continue;
+    }
+    const existing = named.get(company);
+    if (existing) {
+      existing.push(contact);
+    } else {
+      named.set(company, [contact]);
+    }
+  }
+
+  if (named.size === 0) {
+    return [blanks];
+  }
+
+  return Array.from(named.values()).map((group) => [...group, ...blanks]);
 }
 
 function alreadyInMultiEmailGroup(

@@ -38,13 +38,31 @@ describe("findDuplicateGroups", () => {
     expect(groups).toEqual([["1", "2"]]);
   });
 
-  it("never merges across two different non-empty emails even if names match", () => {
+  it("flags same-name same-company contacts even across different emails (DEC-143)", () => {
     const contacts = [
-      contact({ id: "1", email: "a@example.com", firstName: "Jane", lastName: "Doe" }),
-      contact({ id: "2", email: "b@example.com", firstName: "Jane", lastName: "Doe" }),
+      contact({ id: "1", email: "a@example.com", firstName: "Jane", lastName: "Doe", company: "Acme Corp" }),
+      contact({ id: "2", email: "b@example.com", firstName: "Jane", lastName: "Doe", company: "acme corp" }),
+    ];
+    const groups = findDuplicateGroups(contacts);
+    expect(groups).toEqual([["1", "2"]]);
+  });
+
+  it("does not flag same-name contacts with different companies", () => {
+    const contacts = [
+      contact({ id: "1", email: "a@example.com", firstName: "Jane", lastName: "Doe", company: "Acme Corp" }),
+      contact({ id: "2", email: "b@example.com", firstName: "Jane", lastName: "Doe", company: "Beta Inc" }),
     ];
     const groups = findDuplicateGroups(contacts);
     expect(groups).toEqual([]);
+  });
+
+  it("joins a blank-company contact into a named-company group (DEC-143)", () => {
+    const contacts = [
+      contact({ id: "1", email: "a@example.com", firstName: "Jane", lastName: "Doe", company: "Acme Corp" }),
+      contact({ id: "2", email: "b@example.com", firstName: "Jane", lastName: "Doe" }),
+    ];
+    const groups = findDuplicateGroups(contacts);
+    expect(groups).toEqual([["1", "2"]]);
   });
 
   it("does not group unique singleton contacts", () => {
