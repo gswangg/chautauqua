@@ -40,3 +40,23 @@ export type AnswerMap = Record<string, unknown>;
 // objects — the builder is responsible for rendering/positioning them.
 export const LOCKED_SESSION_FIELDS = ["title", "description"] as const;
 export const LOCKED_SPEAKER_FIELDS = ["first_name", "last_name", "email"] as const;
+
+const ALL_LOCKED_NAMES = new Set<string>([...LOCKED_SESSION_FIELDS, ...LOCKED_SPEAKER_FIELDS]);
+
+// DEC-050: locked form_field rows get a per-form PK (`${formId}:${name}`)
+// so a second event's default form doesn't collide with the first event's
+// (formField.id is a global PK). lockedFieldId mints that PK for new rows;
+// lockedFieldName is the ONLY test for "is this row/answer-key a locked
+// built-in, and what's its short name" — it strips everything through the
+// first ':' and checks the remainder against the locked name sets. An
+// unprefixed id (no ':') is checked as-is, so pre-existing seeded rows
+// ('title', 'first_name', ...) still resolve without a data migration.
+export function lockedFieldId(formId: string, name: string): string {
+  return `${formId}:${name}`;
+}
+
+export function lockedFieldName(id: string): string | null {
+  const idx = id.indexOf(":");
+  const name = idx === -1 ? id : id.slice(idx + 1);
+  return ALL_LOCKED_NAMES.has(name) ? name : null;
+}
