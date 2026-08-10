@@ -4,10 +4,11 @@
 // drizzle row types (DEC-012); scoping is absolute — every write below is
 // keyed by the speaker's own contact_id (never a request-supplied id).
 
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { newId } from "../../domain/ids";
+import { visibleSubmissionConditions } from "./public";
 
 // ---------------------------------------------------------------------------
 // Pure helpers (no db/IO) — unit-tested directly.
@@ -168,22 +169,56 @@ export async function setContactHeadshot(db: Db, contactId: string, input: Inser
   return fileId;
 }
 
-export interface HeadshotFileScope {
+export interface HeadshotServeScope {
   r2Key: string;
   contentType: string;
+  contactId: string;
+  orgId: string;
+  // Mirrors repo/public.ts's exact visibility predicate (DEC-067): a
+  // participant row with visible=1 on >=1 submission with
+  // status='accepted' AND content_status='approved' for this contact.
+  publiclyVisible: boolean;
 }
 
-/** Loads a file row for the public GET /headshots/:fileId route — returns
- * null unless the row exists AND its kind is exactly 'headshot' (DEC-028:
- * 404 for anything else, never serve a submission deliverable through the
- * public headshot route). */
-export async function getHeadshotFileScope(db: Db, fileId: string): Promise<HeadshotFileScope | null> {
-  const rows = await db
+/** Loads scope for the public/gated GET /headshots/:fileId route (DEC-067,
+ * supersedes the old getHeadshotFileScope). Returns null unless: the file
+ * row exists AND kind is exactly 'headshot' (never serve a submission
+ * deliverable through this route) AND some contact row's headshotUrl
+ * points back at this exact fileId — a reverse lookup, so a superseded
+ * upload (contact re-uploaded, headshotUrl now points elsewhere) 404s even
+ * though the old file row and its R2 object still exist. publiclyVisible
+ * reuses repo/public.ts's visibleSubmissionConditions() verbatim so the
+ * gate can never drift from the public speakers/sessions surfaces. */
+export async function getHeadshotServeScope(db: Db, fileId: string): Promise<HeadshotServeScope | null> {
+  const fileRows = await db
     .select({ kind: schema.file.kind, r2Key: schema.file.r2Key, contentType: schema.file.contentType })
     .from(schema.file)
     .where(eq(schema.file.id, fileId))
     .limit(1);
-  const row = rows[0];
-  if (!row || row.kind !== "headshot") return null;
-  return { r2Key: row.r2Key, contentType: row.contentType };
+  const fileRow = fileRows[0];
+  if (!fileRow || fileRow.kind !== "headshot") return null;
+
+  const headshotUrl = `/headshots/${fileId}`;
+  const contactRows = await db
+    .select({ id: schema.contact.id, orgId: schema.contact.orgId })
+    .from(schema.contact)
+    .where(eq(schema.contact.headshotUrl, headshotUrl))
+    .limit(1);
+  const contactRow = contactRows[0];
+  if (!contactRow) return null;
+
+  const visibleRows = await db
+    .select({ id: schema.participant.id })
+    .from(schema.participant)
+    .innerJoin(schema.submission, eq(schema.participant.submissionId, schema.submission.id))
+    .where(and(eq(schema.participant.contactId, contactRow.id), visibleSubmissionConditions()))
+    .limit(1);
+
+  return {
+    r2Key: fileRow.r2Key,
+    contentType: fileRow.contentType,
+    contactId: contactRow.id,
+    orgId: contactRow.orgId,
+    publiclyVisible: visibleRows.length > 0,
+  };
 }

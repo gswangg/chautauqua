@@ -1,8 +1,8 @@
 // Portal profile self-service (J7), per DEC-028 (portal splits into
-// parallel sub-apps; headshots get kind 'headshot' + a public /headshots
-// route) + DEC-012 (thin handlers: gate -> repo -> render) + DEC-020
-// (upload validation values) + DEC-005 (route map). Route files export a
-// named Hono sub-app; only src/index.ts mounts it.
+// parallel sub-apps; headshots get kind 'headshot' + a /headshots route,
+// gated per DEC-067) + DEC-012 (thin handlers: gate -> repo -> render) +
+// DEC-020 (upload validation values) + DEC-005 (route map). Route files
+// export a named Hono sub-app; only src/index.ts mounts it.
 
 import { Hono } from "hono";
 import type { AppEnv, AuthInfo } from "../../server/env";
@@ -10,9 +10,11 @@ import { csrfForm } from "../../server/middleware";
 import { ApiError } from "../../server/http";
 import { makeFileStore } from "../../server/context";
 import { assertSpeakerContactId, getPortalData } from "../../server/repo/portal";
+import { DEC_067 } from "../../decisions";
+void DEC_067; // DEC-067: /headshots/:fileId gate — see headshotServeRoutes below.
 import {
   getContactProfile,
-  getHeadshotFileScope,
+  getHeadshotServeScope,
   setContactHeadshot,
   updateContactProfile,
   type ContactProfile,
@@ -287,18 +289,39 @@ portalProfileRoutes.post("/profile/headshot", csrfForm, async (c) => {
 });
 
 // -----------------------------------------------------------------------
-// GET /headshots/:fileId — PUBLIC route (DEC-028): headshots of visible
-// speakers are public content by definition (J10 renders them). 404 unless
-// the file row's kind is 'headshot'; never routes through the authenticated
-// /files/:fileId surface (in-flight w3-f, speaker/participant authz would
-// 401 public pages).
+// GET /headshots/:fileId — gated route (DEC-028 origin, DEC-067 gate):
+// headshots of visible speakers are public content by definition (J10
+// renders them), but a not-yet-visible speaker's headshot is private —
+// only the owning speaker or a same-org organizer may preview it, and a
+// superseded (no-longer-referenced) fileId 404s for everyone. Never routes
+// through the authenticated /files/:fileId surface (speaker/participant
+// authz there would 401 the public pages). sessionLoader runs "*" ahead of
+// every sub-app mount (src/server/app.ts), so c.var.auth is already
+// populated here with no extra wiring needed.
 // -----------------------------------------------------------------------
 export const headshotServeRoutes = new Hono<AppEnv>();
 
 headshotServeRoutes.get("/headshots/:fileId", async (c) => {
   const fileId = c.req.param("fileId");
-  const scope = await getHeadshotFileScope(c.var.db, fileId);
+  const scope = await getHeadshotServeScope(c.var.db, fileId);
   if (!scope) throw new ApiError("not_found", "Headshot not found");
+
+  let cacheControl: string;
+  if (scope.publiclyVisible) {
+    // DEC-059: safe to cache immutably — every upload writes a fresh
+    // random R2 key (see r2Key above), so a given fileId's contents never
+    // change.
+    cacheControl = "public, max-age=31536000, immutable";
+  } else {
+    const auth = c.var.auth;
+    const authorized =
+      !!auth &&
+      ((auth.role === "organizer" && auth.orgId === scope.orgId) ||
+        (auth.role === "speaker" && auth.contactId === scope.contactId));
+    // Never leak existence to an unauthorized caller — 404, not 401/403.
+    if (!authorized) throw new ApiError("not_found", "Headshot not found");
+    cacheControl = "private, max-age=0";
+  }
 
   const store = makeFileStore(c.env.FILES);
   const obj = await store.get(scope.r2Key);
@@ -307,9 +330,6 @@ headshotServeRoutes.get("/headshots/:fileId", async (c) => {
   const contentType = obj.contentType ?? scope.contentType;
   return c.body(obj.body, 200, {
     "Content-Type": contentType,
-    // DEC-059: safe to cache immutably — every upload writes a fresh
-    // random R2 key (see r2Key above), so a given fileId's contents never
-    // change.
-    "Cache-Control": "public, max-age=31536000, immutable",
+    "Cache-Control": cacheControl,
   });
 });

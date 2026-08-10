@@ -3,7 +3,7 @@ import { Hono } from "hono";
 import { parseSocialLinks, serializeSocialLinks, type SocialLinks } from "../src/server/repo/profile";
 import { validateHeadshotUpload } from "../src/domain/files";
 import { speakerGate } from "../src/routes/portal/shared";
-import { portalProfileRoutes, headshotServeRoutes } from "../src/routes/portal/profile";
+import { portalProfileRoutes } from "../src/routes/portal/profile";
 import { registerErrorHandler } from "../src/server/http";
 import type { AppEnv, AuthInfo } from "../src/server/env";
 
@@ -145,64 +145,8 @@ describe("speakerGate on /portal/profile", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// DEC-059: GET /headshots/:fileId serves an immutable Cache-Control header.
-// A minimal fake db (matching the select/from/where/limit chain
-// getHeadshotFileScope issues) and fake R2 bucket stand in for D1/R2 — full
-// wrangler-dev round trips are covered by the walkthrough scripts.
-// ---------------------------------------------------------------------------
-
-function fakeDbWithHeadshotRow(row: { kind: string; r2Key: string; contentType: string } | null) {
-  const chain = {
-    from: () => chain,
-    where: () => chain,
-    limit: async () => (row ? [row] : []),
-  };
-  return { select: () => chain } as unknown as AppEnv["Variables"]["db"];
-}
-
-function fakeFilesBucket(body: ReadableStream | null) {
-  return {
-    async get() {
-      if (!body) return null;
-      return { body, httpMetadata: { contentType: "image/jpeg" }, size: 3 };
-    },
-    async put() {},
-    async delete() {},
-  } as unknown as R2Bucket;
-}
-
-describe("GET /headshots/:fileId (DEC-059 immutable caching)", () => {
-  it("serves 31536000s immutable Cache-Control for a real headshot file", async () => {
-    const app = new Hono<AppEnv>();
-    registerErrorHandler(app);
-    app.use("*", async (c, next) => {
-      c.set("db", fakeDbWithHeadshotRow({ kind: "headshot", r2Key: "headshot/c1/abc.jpg", contentType: "image/jpeg" }));
-      await next();
-    });
-    app.route("/", headshotServeRoutes);
-    const body = new ReadableStream();
-    const res = await app.request("/headshots/f1", undefined, {
-      FILES: fakeFilesBucket(body),
-    } as unknown as AppEnv["Bindings"]);
-    expect(res.status).toBe(200);
-    expect(res.headers.get("Cache-Control")).toBe("public, max-age=31536000, immutable");
-  });
-
-  it("404s for a fileId whose row is not kind 'headshot'", async () => {
-    const app = new Hono<AppEnv>();
-    registerErrorHandler(app);
-    app.use("*", async (c, next) => {
-      c.set("db", fakeDbWithHeadshotRow(null));
-      await next();
-    });
-    app.route("/", headshotServeRoutes);
-    const res = await app.request("/headshots/nope", undefined, {
-      FILES: fakeFilesBucket(null),
-    } as unknown as AppEnv["Bindings"]);
-    expect(res.status).toBe(404);
-  });
-});
+// GET /headshots/:fileId route behavior (DEC-059 caching + DEC-067 gate) is
+// covered in test/headshot-gate.test.ts, not here.
 
 describe("no route surface accepts a foreign contactId — another contact's profile is unreachable", () => {
   it("GET /portal/profile takes no id param: hitting a path with one 404s (falls through to Hono's default not-found)", async () => {
