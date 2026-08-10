@@ -21,40 +21,40 @@ hard 60-line budget, compacting old entries. Injected into every agent.
 - Wave-3..10 (compact): route sub-apps/repos/ctx per DEC-012/013/019;
   public data via repo/public.ts; Bearer chq_ CSRF-exempt cookie-mint;
   uploads/ics/statuses/perf/headshots/walkthrough/claim DEC-040-074
-  (DEC-059 superseded DEC-084).
+  (DEC-059 superseded DEC-084); DEC-078 chunk.ts; w7 perf-smoke FAIL
+  (D1 too-many-vars @300) -> DEC-104/105 chunk-sweep+probes; 2nd
+  barrier DEC-107: DEC-108/109/110/111 fixes. Pre-w6 VOID.
 - Wave-11..17 (EXIT, reopened by DEC-086): DEC-068 log append-only;
   DEC-069 exit predicate (sha-scoped PASS build+test/walkthrough/
   perf-smoke/spec-audit/triage-closure); DEC-076 single code barrier;
   DEC-077 gates code-frozen, bookkeeping non-code-bearing; DEC-114
   code-bearing iff first-parent name-only diff leaves bookkeeping set
-  (EMPTY re-merges never void gates). Wave 11: DEC-108..111 fixes
-  verified in-tree WITH tests.
-- Wave w1-10 (compact): DEC-078 chunk.ts (ID_CHUNK_SIZE=90); DEC-079-084
-  plan-before-commit/public chunking+.ics cap/set-based review/pubver
-  KV purge/2048px images; DEC-088 perf-probe seeds; DEC-089 perf-smoke
-  checks+301-id 400; DEC-092-095 portal-edit purge probe, @200/page,
-  trackIds required; DEC-098 claim same-request only; DEC-099 pubcache
-  max-age=60/swr=300; DEC-100 seq atomic; DEC-101 merge 6 FKs; w7
-  perf-smoke FAIL (overview.ts inArray -> D1 too-many-vars @300) ->
-  DEC-104 chunk-sweep + guard tests, DEC-105 timed/untimed probes.
-  Wave 10 2nd barrier (DEC-107): DEC-108/109/110/111 fixes. Pre-w6 VOID.
-- Wave 12-14 (compact): DEC-116 voided DEC-113; DEC-117/118 gates never
-  ran, 3b7ed3d became newest code-bearing sha, task-w11-e spec-audit
-  PASS @3b7ed3d counts; wave-13 (DEC-119) gates cite 3b7ed3d. Wave 14:
-  exit NOT met @3b7ed3d (perf-smoke FAIL missing kind:'rating', triage
+  (EMPTY re-merges never void gates). Wave 11: DEC-108..111 verified.
+- Wave 12-14 (compact): DEC-116 voided DEC-113; 3b7ed3d became newest
+  code-bearing sha; wave-13 (DEC-119) gates cite 3b7ed3d. Wave 14: exit
+  NOT met @3b7ed3d (perf-smoke FAIL missing kind:'rating', triage
   OPEN:1); five live defects fixed @5fc22ec via DEC-120..125 (IDOR,
   portal-edit locked fields, compose id-drop, plan-PATCH 500, answer
-  len caps, perf-seed fix); DEC-126 lanes task-w14-i..n.
-- Wave 15 (compact): all six w14 fixes verified merged @675219f
-  (DEC-120..125 in-tree w/ tests); gates task-w15-g..k per DEC-127
-  (log-only, six-marker preflight, ports 8851-8853) -- but at wave-16
-  planning time g..j sat at bare main tip w/ zero commits and k didn't
-  exist: battery in flight, not grep-true.
+  len caps, perf-seed fix); DEC-126 lanes task-w14-i..n. DEC-120..124 =
+  five product defects, DEC-125 = perf-seed fix ("5 defects, 6 DECs").
+- Wave 15 (compact): six w14 fixes verified merged @675219f (DEC-120..
+  125 in-tree w/ tests); gates task-w15-g..k per DEC-127 (log-only,
+  six-marker preflight, ports 8851-8853). db8bcdb concern closed:
+  portal-edit-speaker-locked-route.test.ts:120-127 asserts contactId +
+  contact-sourced email.
 - Wave 16 (DEC-128): mirror battery task-w16-a..e, confirm-else-run --
-  re-derive DEC-114 sha, check verification-log.md for existing valid
-  section (sha + six-marker preflight): PASS present -> short confirm,
-  no servers; FAIL present -> reproduce honestly, never fix; absent ->
-  run full DEC-127 gate. Fresh ports 8861/8862/8863 avoid colliding w/
-  possibly-live w15 servers on 8851-8853. Duplicate PASS sections for
-  same gate+sha harmless (grep needs >=1). Exit stays a planner-only
-  DEC-069 grep next invocation; no worker declares complete.
+  re-derive DEC-114 sha, check log for existing valid section: PASS ->
+  short confirm, no servers; FAIL -> reproduce honestly, never fix;
+  absent -> run full DEC-127 gate. Ports 8861/8862/8863 avoid colliding
+  w/ possibly-live 8851-8853. Duplicate PASS sections harmless (grep
+  needs >=1).
+- Wave 17 (DEC-129): predicate 4/5 green @675219f (w15-g build+test,
+  w15-h/w16-b walkthrough, w15-i perf-smoke incl. rating-PUT, w15-j
+  spec-audit); ONLY triage-closure missing, lane died twice (task-w15-k
+  zero commits, task-w16-e never created) -> dual redundant lanes
+  task-w17-a/b, ports 8871/8872, confirm-else-run. HOMONYM HAZARD: log
+  has FIRST-campaign sections reusing current task names (e.g.
+  'task-w16-e — triage-closure @ 5692a6d, OPEN ITEMS: 0'); valid ONLY
+  if `git merge-base --is-ancestor 675219f <cited-sha>` passes --
+  explains reviewer 'merged-but-no-commits' contradictions. Exit stays
+  planner-only DEC-069 grep; no worker declares complete.
