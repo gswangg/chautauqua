@@ -30,6 +30,7 @@ export function d1EmailLogWriter(db: Db): EmailLogWriter {
         bodyText: row.bodyText,
         bodyHtml: row.bodyHtml ?? null,
         icsText: row.icsText ?? null,
+        icsFilename: row.icsFilename ?? null,
         provider: row.provider,
         status: row.status,
         sentAt: new Date(row.sentAt),

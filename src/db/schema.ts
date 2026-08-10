@@ -529,6 +529,9 @@ export const emailLog = sqliteTable(
     bodyText: text("body_text").notNull(),
     bodyHtml: text("body_html"),
     icsText: text("ics_text"),
+    // migrations/0002: DEC-006 omitted this column, but the /dev/mailbox
+    // download link needs the original filename (w2-i, additive per DEC-015).
+    icsFilename: text("ics_filename"),
     provider: text("provider").notNull().default("dev"),
     status: text("status").notNull().default("sent"),
     sentAt: integer("sent_at", { mode: "timestamp_ms" }).notNull(),

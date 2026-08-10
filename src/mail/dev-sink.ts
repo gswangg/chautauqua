@@ -21,6 +21,7 @@ export class DevSinkMailer implements Mailer {
       bodyText: m.text,
       bodyHtml: m.html,
       icsText: m.ics?.content,
+      icsFilename: m.ics?.filename,
       provider: "dev",
       status: "sent",
       sentAt: this.clock.now().getTime(),

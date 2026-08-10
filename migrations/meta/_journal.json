@@ -15,6 +15,13 @@
       "when": 1786333674980,
       "tag": "0001_worthless_arachne",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1786334138532,
+      "tag": "0002_narrow_vulcan",
+      "breakpoints": true
     }
   ]
 }

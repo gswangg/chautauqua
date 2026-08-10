@@ -91,6 +91,26 @@ export function buildIcsEvent(e: IcsEventInput): string {
   return buildIcsCalendar([e]);
 }
 
+/** Escapes a filename for a Content-Disposition header value (strips CR/LF
+ * and double quotes, which would otherwise let it break out of the quoted
+ * string / inject headers). */
+function sanitizeFilename(filename: string): string {
+  return filename.replace(/[\r\n"]/g, "");
+}
+
+/**
+ * Headers for serving a stored .ics file as a download (dev mailbox detail
+ * view, DEC-006): 'text/calendar' with the stored filename, never served as
+ * an inline page.
+ */
+export function icsDownloadHeaders(filename: string): Record<string, string> {
+  const safeName = sanitizeFilename(filename);
+  return {
+    "Content-Type": "text/calendar; charset=utf-8",
+    "Content-Disposition": `attachment; filename="${safeName}"`,
+  };
+}
+
 export function buildIcsCalendar(events: IcsEventInput[]): string {
   const lines: string[] = [];
   lines.push("BEGIN:VCALENDAR");
