@@ -47,6 +47,7 @@ Run the test suite with `npm test`.
 | Public speaker gallery | `/e/<event-slug>/gallery` |
 | Embeddable widget (any surface, chromeless) | `/embed/<event-slug>/<surface>` |
 | Dev mailbox (dev-only email sink — every sent email, including CFP confirmation and onboarding-task reminder emails, is viewable here) | `/dev/mailbox` |
+| Public API docs (auth, envelopes, endpoint table) | `/docs/api` |
 
 Seeded demo event slug: `devflow-conf-2027`
 

@@ -26,6 +26,7 @@ import { tokensRoutes } from "./routes/api/tokens";
 import { exportsRoutes } from "./routes/api/exports";
 import { usersRoutes } from "./routes/api/users";
 import { rootRoutes } from "./routes/root";
+import { docsRoutes } from "./routes/docs";
 
 // Wave 2 wires the remaining routers (admin SPA, /api/v1/*, /submit,
 // /portal, public surfaces, /embed, /files, /dev/mailbox — see DEC-005).
@@ -61,6 +62,7 @@ app.route("/portal", portalTasksRoutes);
 app.route("/portal", portalEditRoutes);
 app.route("/", headshotServeRoutes);
 app.route("/", publicRoutes);
+app.route("/", docsRoutes);
 app.route("/", rootRoutes);
 
 guardDevMailbox(app);
