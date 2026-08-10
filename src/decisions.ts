@@ -3,7 +3,6 @@
 // reference its constant here so the dependency is compile-checked.
 // Do not edit by hand below this header.
 export const DECISIONS_INDEX = true;
-
 export const DEC_001 = "Single-package repo layout, toolchain, and bindings";
 export const DEC_002 = "Pure-core + ports architecture; plain-vitest testability";
 export const DEC_003 = "Canonical D1 schema: table names, ID strategy, enum literals";
@@ -105,3 +104,4 @@ export const DEC_098 = "On-screen claim links only for contacts created in the s
 export const DEC_099 = "Public cache hits must be re-served with the client-facing Cache-Control (public, max-age=60, stale-while-revalidate=300); max-age=86400 is internal to the stored copy only (amends DEC-083)";
 export const DEC_100 = "Submission seq is allocated atomically: single INSERT with a scalar subquery (SELECT COALESCE(MAX(seq),0)+1 ... WHERE event_id=?) via one shared helper; SELECT-then-INSERT allocation is deleted";
 export const DEC_101 = "Contact merge repoints all six contact-FK columns — adding file.uploaded_by_contact_id and file_comment.author_contact_id — and dedupes same-submission participants before the participant repoint (supersedes DEC-026's four-table list)";
+export const DEC_102 = "Wave-7 gate protocol: all four wave-6 fix lanes verified merged (tip d12eb25), the DEC-076 barrier is vacuous, four DEC-069 gates run parallel and code-frozen with triage-closure behind walkthrough; every pre-wave-7 gate section is void for exit";
