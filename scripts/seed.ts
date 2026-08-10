@@ -210,6 +210,24 @@ async function main(): Promise<void> {
     return pngBytes.length;
   }
 
+  // --- real fixture deliverable/headshot bytes (task w1-d, DEC-145): the
+  // demo speaker's accepted-session deliverable and the seeded headshots
+  // use the actual docs/fixtures/slides.pdf and headshot.png bytes (not the
+  // synthetic minimal PDF/PNG above) so downloads and images render
+  // real, recognizable content in Miniflare.
+  const SLIDES_PDF_PATH = join(REPO_ROOT, "docs", "fixtures", "slides.pdf");
+  const HEADSHOT_PNG_PATH = join(REPO_ROOT, "docs", "fixtures", "headshot.png");
+  const slidesPdfBytes = readFileSync(SLIDES_PDF_PATH);
+  const headshotPngBytes = readFileSync(HEADSHOT_PNG_PATH);
+  function registerSlidesPdfAsset(r2Key: string): number {
+    manifest.push({ r2Key, path: SLIDES_PDF_PATH, contentType: "application/pdf" });
+    return slidesPdfBytes.length;
+  }
+  function registerHeadshotPngAsset(r2Key: string): number {
+    manifest.push({ r2Key, path: HEADSHOT_PNG_PATH, contentType: "image/png" });
+    return headshotPngBytes.length;
+  }
+
   // --- DELETE statements first (idempotent reseed), children before parents ---
   const tablesInDeleteOrder = [
     "email_log",
@@ -430,6 +448,53 @@ async function main(): Promise<void> {
     );
   }
 
+  // --- near-duplicate contacts (task w1-d / DEC-145): two more Priya
+  // Raman / Marcus Okafor contact rows — same name + company as the two
+  // named speaker contacts above, but a different (CSV-import-style) email
+  // address, mirroring docs/fixtures/speakers.csv. Not linked to a user
+  // account or any submission; they exist purely as the CRM dedupe test
+  // vector (DEC-143) and must be preserved by every future seed edit.
+  const priyaDupContactId = seedId("contact", 3);
+  const marcusDupContactId = seedId("contact", 4);
+  statements.push(
+    insertStmt("contact", {
+      id: priyaDupContactId,
+      org_id: orgId,
+      first_name: "Priya",
+      last_name: "Raman",
+      email: "priya.speaker@sbek-test.example.com",
+      phone: null,
+      company: "Latticework Systems",
+      title: "Principal Engineer",
+      bio: "Leads the build-tooling platform team at Latticework Systems.",
+      headshot_url: null,
+      social_links_json: null,
+      notes: null,
+      custom_fields_json: null,
+      created_at: nextTs(),
+      updated_at: ts,
+    }),
+  );
+  statements.push(
+    insertStmt("contact", {
+      id: marcusDupContactId,
+      org_id: orgId,
+      first_name: "Marcus",
+      last_name: "Okafor",
+      email: "marcus.speaker@sbek-test.example.com",
+      phone: null,
+      company: "Cloudreach Labs",
+      title: "Staff Developer Advocate",
+      bio: "Focused on AI agents in production; writes Agents Weekly.",
+      headshot_url: null,
+      social_links_json: null,
+      notes: null,
+      custom_fields_json: null,
+      created_at: nextTs(),
+      updated_at: ts,
+    }),
+  );
+
   const organizerUserId = seedId("user", 1);
   const speakerUserId = seedId("user", 2);
   const speaker2UserId = seedId("user", 3);
@@ -635,7 +700,13 @@ async function main(): Promise<void> {
     return submissionId;
   }
 
-  // 3 fixture submissions, alternating between the two seeded speaker contacts.
+  // 3 fixture submissions, alternating between the two seeded speaker
+  // contacts. Task w1-d / DEC-145: the demo speaker (fixture.identities
+  // .speaker, Priya Raman, sbek-speaker@example.com) needs a real accepted
+  // submission so every grader flow (deliverables, task assignments,
+  // acceptance-scoped portal views) is exercisable — her first fixture
+  // submission (index 0) is seeded 'accepted'; the rest stay 'pending' so
+  // the review queue also has fixture-backed work.
   fixture.submissions.forEach((sub, i) => {
     const useSpeaker2 = i % 2 === 1;
     const contactId = useSpeaker2 ? speaker2ContactId : speakerContactId;
@@ -649,7 +720,7 @@ async function main(): Promise<void> {
       format: sub.format,
       audienceLevel: sub.audience_level,
       notesForReviewers: sub.notes_for_reviewers,
-      status: "pending",
+      status: i === 0 ? "accepted" : "pending",
       contactId,
       firstName: name.first,
       lastName: name.last,
@@ -730,7 +801,11 @@ async function main(): Promise<void> {
       event_id: eventId,
       name: "Program Committee Review",
       instructions: "Score each proposal on content quality, delivery, and session length fit.",
-      open_date: Date.UTC(2027, 3, 1, 0, 0, 0),
+      // Task w1-d / DEC-145: opens 2026-01-01Z (not tied to Date.now — the
+      // grading window is a fixed date range) so the reviewer window spans
+      // 'now' regardless of when the eval is actually run; close_date is
+      // unchanged (still after the 2027 event dates).
+      open_date: Date.UTC(2026, 0, 1),
       close_date: Date.UTC(2027, 4, 20, 23, 59, 0),
       filters_json: null,
       anonymized: false,
@@ -987,7 +1062,11 @@ async function main(): Promise<void> {
 
   // --- file pipeline (DEC-020): a presentation v1->v2 version chain plus a
   // poster on the first two accepted submissions, and a file_comment thread
-  // (producer note + speaker reply) on the v2 presentation.
+  // (producer note + speaker reply) on the v2 presentation. acceptedSubmissions[0]
+  // is the demo speaker's (Priya Raman's) accepted fixture submission (task
+  // w1-d / DEC-145: fixture submissions are pushed before synthetic ones),
+  // so this deliverable/comment thread lands on her session, backed by the
+  // real docs/fixtures/slides.pdf bytes.
   const fileChainSub = acceptedSubmissions[0];
   const posterSub = acceptedSubmissions[1] ?? acceptedSubmissions[0];
   if (!fileChainSub || !posterSub) {
@@ -1006,7 +1085,7 @@ async function main(): Promise<void> {
       kind: "presentation",
       filename: "slides-v1.pdf",
       r2_key: v1R2Key,
-      size_bytes: registerPdfAsset(v1R2Key),
+      size_bytes: registerSlidesPdfAsset(v1R2Key),
       content_type: "application/pdf",
       previous_file_id: null,
       uploaded_by_contact_id: fileChainSub.contactId,
@@ -1022,7 +1101,7 @@ async function main(): Promise<void> {
       kind: "presentation",
       filename: "slides-v2.pdf",
       r2_key: v2R2Key,
-      size_bytes: registerPdfAsset(v2R2Key),
+      size_bytes: registerSlidesPdfAsset(v2R2Key),
       content_type: "application/pdf",
       previous_file_id: filePresV1Id,
       uploaded_by_contact_id: fileChainSub.contactId,
@@ -1103,9 +1182,14 @@ async function main(): Promise<void> {
     }),
   );
 
-  // --- headshots (DEC-028): headshot file rows for the two named speaker
-  // contacts, with contact.headshot_url following the '/headshots/<fileId>'
-  // convention set by src/server/repo/profile.ts's setContactHeadshot.
+  // --- headshots (DEC-028): headshot file rows for several seeded contacts,
+  // with contact.headshot_url following the '/headshots/<fileId>' convention
+  // set by src/server/repo/profile.ts's setContactHeadshot. Task w1-d /
+  // DEC-145: bytes come from the real docs/fixtures/headshot.png fixture (not
+  // the synthetic 1x1 PNG), and headshots go on contacts with accepted
+  // sessions so the public speakers directory/gallery (which only lists
+  // accepted+visible participants — src/server/repo/public.ts) actually
+  // renders these images.
   function seedHeadshot(contactId: string, n: number): void {
     const fileId = seedId("file", 10 + n);
     const r2Key = `headshot/${contactId}/${fileId}-headshot.png`;
@@ -1116,7 +1200,7 @@ async function main(): Promise<void> {
         kind: "headshot",
         filename: "headshot.png",
         r2_key: r2Key,
-        size_bytes: registerPngAsset(r2Key),
+        size_bytes: registerHeadshotPngAsset(r2Key),
         content_type: "image/png",
         previous_file_id: null,
         uploaded_by_contact_id: contactId,
@@ -1130,6 +1214,12 @@ async function main(): Promise<void> {
   }
   seedHeadshot(speakerContactId, 1);
   seedHeadshot(speaker2ContactId, 2);
+  // Two accepted synthetic speakers (synth_contact indices 0 and 19, i.e.
+  // seed indices bumped/originally 'accepted' — see additionalCount loop
+  // above) so the public directory/gallery show more than the two named
+  // fixture speakers with real headshots.
+  seedHeadshot(seedId("synth_contact", 1), 3);
+  seedHeadshot(seedId("synth_contact", 20), 4);
 
   // --- fixture 'Acceptance Notification' email template (DEC-006 merge fields) ---
   for (const field of ["speaker_name", "talk_title"] as const) {

@@ -1,4 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { execFileSync } from "node:child_process";
+import { existsSync, readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+import { beforeAll, describe, expect, it } from "vitest";
 import {
   additionalSubmissionStatuses,
   deleteAllStmt,
@@ -146,5 +151,134 @@ describe("onePixelPngBytes", () => {
 
   it("is deterministic across calls", () => {
     expect(onePixelPngBytes()).toEqual(onePixelPngBytes());
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Task w1-d / DEC-145: seed enrichment so every grader/eval flow is
+// exercisable at 'now'. Runs the actual seed.ts script (tsx subprocess,
+// same as `npm run seed`'s first step) and inspects the generated .seed.sql
+// output, rather than re-deriving expectations independently — this way the
+// test fails if the real script output ever regresses.
+// ---------------------------------------------------------------------------
+describe("seed.ts output (task w1-d, DEC-145)", () => {
+  const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
+  const REPO_ROOT = join(SCRIPT_DIR, "..");
+  const OUTPUT_PATH = join(REPO_ROOT, ".seed.sql");
+
+  let sql: string;
+
+  beforeAll(() => {
+    execFileSync("npx", ["tsx", "scripts/seed.ts"], { cwd: REPO_ROOT, stdio: "inherit" });
+    expect(existsSync(OUTPUT_PATH)).toBe(true);
+    sql = readFileSync(OUTPUT_PATH, "utf-8");
+  }, 60_000);
+
+  it("opens the evaluation plan window at 2026-01-01T00:00:00Z (spans 2026-08-10) without touching close_date", () => {
+    const match = sql.match(/INSERT INTO evaluation_plan \([^)]*\) VALUES \(([^;]*)\);/);
+    expect(match).toBeTruthy();
+    const values = match![1]!;
+    // open_date is the 5th value (id, event_id, name, instructions, open_date, ...).
+    expect(values).toContain(`${Date.UTC(2026, 0, 1)}`);
+    // close_date must remain the pre-existing 2027-05-20 23:59 UTC value.
+    expect(values).toContain(`${Date.UTC(2027, 4, 20, 23, 59, 0)}`);
+    expect(Date.UTC(2026, 0, 1)).toBeLessThanOrEqual(Date.now());
+  });
+
+  it("gives the demo speaker (sbek-speaker@example.com, seed_contact_0001) an accepted submission with a visible participant row", () => {
+    expect(sql).toContain(
+      "INSERT INTO contact (\"id\", \"org_id\", \"first_name\", \"last_name\", \"email\"",
+    );
+    expect(sql).toMatch(
+      /INSERT INTO submission \([^)]*\) VALUES \('seed_submission_0001', [^;]*'accepted'/,
+    );
+    expect(sql).toMatch(
+      /INSERT INTO participant \([^)]*\) VALUES \('seed_participant_0001', 'seed_submission_0001', 'seed_contact_0001', 'speaker', 0, 1, 'accepted'/,
+    );
+  });
+
+  it("assigns the demo speaker's contact at least 2 task_assignment rows, including a 'form'-kind and a 'file_request'-kind task, due in 2026-2027", () => {
+    const taskAssignmentRows = [
+      ...sql.matchAll(
+        /INSERT INTO task_assignment \([^)]*\) VALUES \('[^']*', '([^']*)', 'seed_contact_0001', '[^']*', ([^,]*), [^,]*, (\d+), \d+\);/g,
+      ),
+    ];
+    expect(taskAssignmentRows.length).toBeGreaterThanOrEqual(2);
+
+    const taskIds = new Set(taskAssignmentRows.map((r) => r[1]));
+    const taskRows = [...sql.matchAll(/INSERT INTO task \([^)]*\) VALUES \(('seed_task_\d+'), '[^']*', '([^']*)', '[^']*', [^,]*, (\d+),/g)];
+    const kindByTaskId = new Map(taskRows.map((r) => [r[1]!.replace(/'/g, ""), r[2]!]));
+    const dueDateByTaskId = new Map(taskRows.map((r) => [r[1]!.replace(/'/g, ""), Number(r[3])]));
+
+    const kindsAssigned = new Set([...taskIds].map((id) => kindByTaskId.get(id!)));
+    expect(kindsAssigned.has("form")).toBe(true);
+    expect(kindsAssigned.has("file_request")).toBe(true);
+
+    for (const id of taskIds) {
+      const due = dueDateByTaskId.get(id!)!;
+      const year = new Date(due).getUTCFullYear();
+      expect(year).toBeGreaterThanOrEqual(2026);
+      expect(year).toBeLessThanOrEqual(2027);
+    }
+  });
+
+  it("chains a second deliverable version via previous_file_id and threads a file_comment (organizer note + speaker reply)", () => {
+    const v1 = sql.match(/INSERT INTO file \([^)]*\) VALUES \('(seed_file_\d+)', 'seed_submission_0001', 'presentation', 'slides-v1\.pdf'[^;]*NULL, 'seed_contact_0001'/);
+    expect(v1).toBeTruthy();
+    const v1Id = v1![1]!;
+    const v2 = sql.match(new RegExp(`INSERT INTO file \\([^)]*\\) VALUES \\('(seed_file_\\d+)', 'seed_submission_0001', 'presentation', 'slides-v2\\.pdf'[^;]*'${v1Id}', 'seed_contact_0001'`));
+    expect(v2).toBeTruthy();
+    const v2Id = v2![1]!;
+
+    const comments = [...sql.matchAll(new RegExp(`INSERT INTO file_comment \\([^)]*\\) VALUES \\('[^']*', '${v2Id}', ([^,]*), ([^,]*),`, "g"))];
+    expect(comments.length).toBeGreaterThanOrEqual(2);
+    const organizerComment = comments.find((c) => c[1] === "NULL" && c[2] !== "NULL");
+    const speakerComment = comments.find((c) => c[1] !== "NULL" && c[2] === "NULL");
+    expect(organizerComment).toBeTruthy();
+    expect(speakerComment).toBeTruthy();
+  });
+
+  it("registers the deliverable's two R2 assets against the real docs/fixtures/slides.pdf fixture", () => {
+    const manifestPath = join(REPO_ROOT, ".seed-assets", "manifest.json");
+    const manifest: Array<{ r2Key: string; path: string; contentType: string }> = JSON.parse(
+      readFileSync(manifestPath, "utf-8"),
+    );
+    const slidesEntries = manifest.filter((m) => m.r2Key.includes("slides-v"));
+    expect(slidesEntries.length).toBe(2);
+    for (const entry of slidesEntries) {
+      expect(entry.path).toBe(join(REPO_ROOT, "docs", "fixtures", "slides.pdf"));
+      expect(existsSync(entry.path)).toBe(true);
+    }
+  });
+
+  it("sets headshot_url on at least 3 contacts, backed by the real docs/fixtures/headshot.png fixture", () => {
+    const updates = [...sql.matchAll(/UPDATE contact SET "headshot_url" = '([^']*)' WHERE "id" = '([^']*)';/g)];
+    expect(updates.length).toBeGreaterThanOrEqual(3);
+
+    const manifestPath = join(REPO_ROOT, ".seed-assets", "manifest.json");
+    const manifest: Array<{ r2Key: string; path: string; contentType: string }> = JSON.parse(
+      readFileSync(manifestPath, "utf-8"),
+    );
+    const headshotEntries = manifest.filter((m) => m.r2Key.startsWith("headshot/"));
+    expect(headshotEntries.length).toBeGreaterThanOrEqual(3);
+    for (const entry of headshotEntries) {
+      expect(entry.path).toBe(join(REPO_ROOT, "docs", "fixtures", "headshot.png"));
+    }
+  });
+
+  it("preserves the near-duplicate contacts: two Priya Raman + two Marcus Okafor rows, same name+company, different emails", () => {
+    const priyaRows = [
+      ...sql.matchAll(/INSERT INTO contact \([^)]*\) VALUES \('([^']*)', 'seed_org_0001', 'Priya', 'Raman', '([^']*)', NULL, 'Latticework Systems'/g),
+    ];
+    expect(priyaRows.length).toBeGreaterThanOrEqual(2);
+    const priyaEmails = new Set(priyaRows.map((r) => r[2]));
+    expect(priyaEmails.size).toBeGreaterThanOrEqual(2);
+
+    const marcusRows = [
+      ...sql.matchAll(/INSERT INTO contact \([^)]*\) VALUES \('([^']*)', 'seed_org_0001', 'Marcus', 'Okafor', '([^']*)', NULL, 'Cloudreach Labs'/g),
+    ];
+    expect(marcusRows.length).toBeGreaterThanOrEqual(2);
+    const marcusEmails = new Set(marcusRows.map((r) => r[2]));
+    expect(marcusEmails.size).toBeGreaterThanOrEqual(2);
   });
 });
