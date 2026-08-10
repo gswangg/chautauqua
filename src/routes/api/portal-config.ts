@@ -28,7 +28,11 @@ import { isValidHexColor } from "./validators";
 
 export const portalConfigRoutes = new Hono<AppEnv>();
 
-portalConfigRoutes.use("*", requireOrganizer);
+// NOTE: see events.ts for why a blanket `.use("*", requireOrganizer)` is
+// unsafe once mounted under /api/v1 alongside sibling sub-apps — scope to
+// this router's own path prefixes instead (DEC-060 w8-d finding).
+portalConfigRoutes.use("/events/*", requireOrganizer);
+portalConfigRoutes.use("/resources/*", requireOrganizer);
 
 function currentOrgId(c: { var: { auth?: { orgId: string } } }): string {
   const auth = c.var.auth;

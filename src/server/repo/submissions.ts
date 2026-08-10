@@ -136,6 +136,33 @@ function orderByForSort(sort: SortOrder) {
   }
 }
 
+/** JS mirror of orderByForSort's SQL ordering, used only by the batched
+ * allowedIds fallback below (>ID_CHUNK_SIZE candidate ids, where results
+ * come from multiple merged queries instead of one ORDER BY). Pure,
+ * unit-tested directly. */
+export function sortSubmissionRows<T extends { title: string; seq: number; createdAt: Date }>(
+  rows: T[],
+  sort: SortOrder,
+): T[] {
+  const out = [...rows];
+  switch (sort) {
+    case "oldest":
+      out.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+      break;
+    case "title":
+      out.sort((a, b) => a.title.localeCompare(b.title));
+      break;
+    case "ref":
+      out.sort((a, b) => a.seq - b.seq);
+      break;
+    case "newest":
+    default:
+      out.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+      break;
+  }
+  return out;
+}
+
 export async function listSubmissions(
   db: Db,
   eventId: string,
@@ -197,28 +224,54 @@ export async function listSubmissions(
     allowedIds = allowedIds ? new Set([...allowedIds].filter((id) => trackMatch.has(id))) : trackMatch;
   }
 
-  if (allowedIds !== null) {
-    if (allowedIds.size === 0) return { items: [], total: 0 };
-    conditions.push(inArray(schema.submission.id, [...allowedIds]));
-  }
+  if (allowedIds !== null && allowedIds.size === 0) return { items: [], total: 0 };
 
-  const whereExpr = and(...conditions);
-
-  const totalRows = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(schema.submission)
-    .where(whereExpr);
-  const total = Number(totalRows[0]?.count ?? 0);
-
+  // D1 rejects a statement once its bound-parameter count crosses the same
+  // ~100 ceiling documented by ID_CHUNK_SIZE above. A q/trackId match can
+  // legitimately narrow to more than ID_CHUNK_SIZE candidate ids in one
+  // event, so a single inArray(...) folded into the paginated query (as
+  // below) would crash exactly like the per-page enrichment queries did.
+  // Below that ceiling, keep the original single-query path (same
+  // behavior, same perf). At/above it, batch the id-scoped fetch and
+  // total across chunks and paginate/sort in JS instead of SQL.
   const offset = (params.page - 1) * params.perPage;
+  let total: number;
+  let rows: (typeof schema.submission.$inferSelect)[];
 
-  const rows = await db
-    .select()
-    .from(schema.submission)
-    .where(whereExpr)
-    .orderBy(orderByForSort(params.sort))
-    .limit(params.perPage)
-    .offset(offset);
+  if (allowedIds !== null && allowedIds.size > ID_CHUNK_SIZE) {
+    const baseWhereExpr = and(...conditions);
+    const idBatchesForFilter = chunkIds([...allowedIds]);
+    let allMatching: (typeof schema.submission.$inferSelect)[] = [];
+    for (const batch of idBatchesForFilter) {
+      const batchRows = await db
+        .select()
+        .from(schema.submission)
+        .where(and(baseWhereExpr, inArray(schema.submission.id, batch)));
+      allMatching = allMatching.concat(batchRows);
+    }
+    allMatching = sortSubmissionRows(allMatching, params.sort);
+    total = allMatching.length;
+    rows = allMatching.slice(offset, offset + params.perPage);
+  } else {
+    if (allowedIds !== null) {
+      conditions.push(inArray(schema.submission.id, [...allowedIds]));
+    }
+    const whereExpr = and(...conditions);
+
+    const totalRows = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(schema.submission)
+      .where(whereExpr);
+    total = Number(totalRows[0]?.count ?? 0);
+
+    rows = await db
+      .select()
+      .from(schema.submission)
+      .where(whereExpr)
+      .orderBy(orderByForSort(params.sort))
+      .limit(params.perPage)
+      .offset(offset);
+  }
 
   if (rows.length === 0) return { items: [], total };
 

@@ -30,7 +30,18 @@ import { isDateOrderValid, isValidHexColor, isValidSlug, isValidTimezone } from 
 
 export const eventsRoutes = new Hono<AppEnv>();
 
-eventsRoutes.use("*", requireOrganizer);
+// NOTE: a blanket `.use("*", requireOrganizer)` here is unsafe once this
+// sub-app is mounted via app.route("/api/v1", eventsRoutes) in
+// src/index.ts: Hono does not rewrite a bare "*" pattern with the mount
+// prefix, so it ends up matching every request against the FULLY
+// COMPOSED app (i.e. also every other sub-app mounted under /api/v1,
+// like /api/v1/me and /api/v1/review/*), not just this router's own
+// routes. Scope the middleware to this router's own path prefixes
+// instead (found live in the w8-d walkthrough, DEC-060).
+eventsRoutes.use("/events", requireOrganizer);
+eventsRoutes.use("/events/*", requireOrganizer);
+eventsRoutes.use("/tracks/*", requireOrganizer);
+eventsRoutes.use("/rooms/*", requireOrganizer);
 
 function currentOrgId(c: { var: { auth?: { orgId: string } } }): string {
   const auth = c.var.auth;
