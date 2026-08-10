@@ -25,6 +25,9 @@ export function ContactsApp() {
   const [page, setPage] = useState(1);
   const [q, setQ] = useState('');
   const [segmentId, setSegmentId] = useState('');
+  // CRM-12: top-companies KPI click applies a {field:'company',op:'eq'}
+  // filter rule (DEC-149) on top of q/segmentId.
+  const [companyRule, setCompanyRule] = useState<{ field: string; op: 'eq'; value: string } | null>(null);
   const [segments, setSegments] = useState<Segment[]>([]);
   const [selection, setSelection] = useState(EMPTY_SELECTION);
   const [loading, setLoading] = useState(false);
@@ -59,6 +62,7 @@ export function ContactsApp() {
     params.set('perPage', String(PER_PAGE));
     if (q.trim() !== '') params.set('q', q.trim());
     if (segmentId !== '') params.set('segmentId', segmentId);
+    if (companyRule) params.set('rules', JSON.stringify([companyRule]));
     apiList<ContactListItem>(`/contacts?${params.toString()}`)
       .then((res) => {
         setItems(res.items);
@@ -66,7 +70,7 @@ export function ContactsApp() {
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load contacts'))
       .finally(() => setLoading(false));
-  }, [page, q, segmentId, refreshKey]);
+  }, [page, q, segmentId, companyRule, refreshKey]);
 
   const selectedIds = [...selection.selectedIds];
 
@@ -95,7 +99,13 @@ export function ContactsApp() {
 
       {panel === 'directory' && (
         <>
-          <StatsStrip stats={stats} />
+          <StatsStrip
+            stats={stats}
+            onCompanyClick={(company) => {
+              setCompanyRule({ field: 'company', op: 'eq', value: company });
+              setPage(1);
+            }}
+          />
 
           <ContactsTable
             items={items}

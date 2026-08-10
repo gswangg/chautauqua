@@ -544,6 +544,7 @@ export async function mergeContacts(db: Db, keepId: string, mergeId: string): Pr
 
 export interface ContactStats {
   total: number;
+  eventCount: number;
   returningSpeakers: number;
   topCompanies: { company: string; count: number }[];
 }
@@ -554,6 +555,13 @@ export async function getContactStats(db: Db, orgId: string): Promise<ContactSta
     .from(schema.contact)
     .where(eq(schema.contact.orgId, orgId));
   const total = Number(totalRows[0]?.count ?? 0);
+
+  // CRM-12 dashboard KPI: total events the org runs (not per-contact).
+  const orgEventCountRows = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(schema.event)
+    .where(eq(schema.event.orgId, orgId));
+  const eventCount = Number(orgEventCountRows[0]?.count ?? 0);
 
   const eventCountRows = await db
     .select({
@@ -578,7 +586,7 @@ export async function getContactStats(db: Db, orgId: string): Promise<ContactSta
     .filter((r): r is { company: string; count: number } => r.company !== null)
     .map((r) => ({ company: r.company, count: Number(r.count) }));
 
-  return { total, returningSpeakers, topCompanies };
+  return { total, eventCount, returningSpeakers, topCompanies };
 }
 
 // ---------------------------------------------------------------------------

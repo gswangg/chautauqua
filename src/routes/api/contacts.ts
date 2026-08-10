@@ -362,12 +362,18 @@ async function resolvePortalLink(db: Db, kv: KVStore, contactId: string, eventId
   return `${origin}/claim/${token}`;
 }
 
-contactsRoutes.post("/contacts/bulk-email", csrfJson, async (c) => {
-  const orgId = currentOrgId(c);
-  const body = asRecord(await c.req.json().catch(() => {
-    throw new ApiError("invalid", "Invalid JSON body");
-  }));
+type BulkEmailRequest = {
+  event: { id: string; name: string };
+  contacts: repo.ContactRow[];
+  subject: string;
+  bodyText: string;
+};
 
+/** Shared validation for bulk-email send + preview (w2-c): checks
+ * contactIds shape/cap, required eventId/subject/bodyText, org-scoped
+ * event lookup, and that every contactId resolves to an org-owned
+ * contact (IDOR guard — "foreign" contactIds are rejected here). */
+async function validateBulkEmailRequest(db: Db, orgId: string, body: Record<string, unknown>): Promise<BulkEmailRequest> {
   if (!Array.isArray(body.contactIds) || body.contactIds.length === 0 || !body.contactIds.every((id) => typeof id === "string")) {
     throw new ApiError("invalid", "Validation failed", { contactIds: "must be a non-empty array of contact ids" });
   }
@@ -384,20 +390,34 @@ contactsRoutes.post("/contacts/bulk-email", csrfJson, async (c) => {
     throw new ApiError("invalid", "Validation failed", { bodyText: "required" });
   }
 
-  const event = await getEventForOrg(c.var.db, body.eventId, orgId);
+  const event = await getEventForOrg(db, body.eventId, orgId);
   if (!event) throw new ApiError("not_found", "Event not found");
 
   const contactIds = body.contactIds as string[];
-  const contacts = await repo.findContactsForOrg(c.var.db, contactIds, orgId);
+  const contacts = await repo.findContactsForOrg(db, contactIds, orgId);
   if (contacts.length !== contactIds.length) {
     throw new ApiError("not_found", "One or more contacts not found");
   }
 
-  const kv = c.env.KV as unknown as KVStore;
-  const origin = new URL(c.req.url).origin;
+  return { event, contacts, subject: body.subject, bodyText: body.bodyText };
+}
+
+/** Builds the RenderTarget[] (DEC-026 contact-scoped merge vars) for a
+ * subset of contacts, then runs preflightRender — the single merge-field
+ * rendering path shared by both POST /contacts/bulk-email (send) and
+ * POST /contacts/bulk-email/preview. */
+async function renderBulkEmailTargets(
+  db: Db,
+  kv: KVStore,
+  origin: string,
+  event: { id: string; name: string },
+  contacts: repo.ContactRow[],
+  subject: string,
+  bodyText: string,
+) {
   const targets: RenderTarget[] = [];
   for (const contact of contacts) {
-    const portalLink = await resolvePortalLink(c.var.db, kv, contact.id, event.id, contact.email, origin);
+    const portalLink = await resolvePortalLink(db, kv, contact.id, event.id, contact.email, origin);
     targets.push({
       contactId: contact.id,
       submissionId: "",
@@ -410,12 +430,25 @@ contactsRoutes.post("/contacts/bulk-email", csrfJson, async (c) => {
       },
     });
   }
+  return preflightRender(targets, subject, bodyText);
+}
+
+contactsRoutes.post("/contacts/bulk-email", csrfJson, async (c) => {
+  const orgId = currentOrgId(c);
+  const body = asRecord(await c.req.json().catch(() => {
+    throw new ApiError("invalid", "Invalid JSON body");
+  }));
+
+  const { event, contacts, subject, bodyText } = await validateBulkEmailRequest(c.var.db, orgId, body);
+
+  const kv = c.env.KV as unknown as KVStore;
+  const origin = new URL(c.req.url).origin;
 
   // Atomic preflight (DEC-019): every recipient must render before the
   // first send is attempted; any failure (including a submission-scoped
   // placeholder like {talk_title}/{feedback}, absent from the whitelist
   // above) rejects the whole batch — zero sends.
-  const result = preflightRender(targets, body.subject, body.bodyText);
+  const result = await renderBulkEmailTargets(c.var.db, kv, origin, event, contacts, subject, bodyText);
   if (!result.ok) {
     const fields: Record<string, string> = {};
     for (const m of result.missing) fields[m.contactId] = `missing merge field '${m.field}'`;
@@ -436,4 +469,33 @@ contactsRoutes.post("/contacts/bulk-email", csrfJson, async (c) => {
   }
 
   return c.json({ sent: result.rendered.length, items: result.rendered });
+});
+
+const BULK_EMAIL_PREVIEW_LIMIT = 5;
+
+/** CRM-11 (DEC-150): preview uses the exact same merge-field rendering
+ * helper as the send path, capped to the first 5 recipients. Never
+ * writes email_log — no mailer call. */
+contactsRoutes.post("/contacts/bulk-email/preview", csrfJson, async (c) => {
+  const orgId = currentOrgId(c);
+  const body = asRecord(await c.req.json().catch(() => {
+    throw new ApiError("invalid", "Invalid JSON body");
+  }));
+
+  const { event, contacts, subject, bodyText } = await validateBulkEmailRequest(c.var.db, orgId, body);
+
+  const kv = c.env.KV as unknown as KVStore;
+  const origin = new URL(c.req.url).origin;
+  const previewContacts = contacts.slice(0, BULK_EMAIL_PREVIEW_LIMIT);
+
+  const result = await renderBulkEmailTargets(c.var.db, kv, origin, event, previewContacts, subject, bodyText);
+  if (!result.ok) {
+    const fields: Record<string, string> = {};
+    for (const m of result.missing) fields[m.contactId] = `missing merge field '${m.field}'`;
+    throw new ApiError("invalid", "One or more recipients are missing merge fields (only speaker_name/event_name/portal_link are allowed)", fields);
+  }
+
+  return c.json({
+    items: result.rendered.map((r) => ({ contactId: r.contactId, email: r.email, subject: r.subject, bodyText: r.text })),
+  });
 });
