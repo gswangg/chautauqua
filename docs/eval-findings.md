@@ -7,7 +7,11 @@ tests do not, so it catches UI-reachability bugs they miss. Per DEC-069, fixing
 these is code-bearing and reopens the exit predicate: re-run gates before
 re-declaring stage-1. Prune entries as they land.
 
-## P0 — authenticated /admin is an infinite redirect loop; the admin SPA is unreachable in a browser
+## P0 [FIXED DIRECTLY 2026-08-10 — needs swarm gate-ratification + regression test] — authenticated /admin was an infinite redirect loop
+
+**Fix applied:** `wrangler.jsonc` assets `html_handling: "none"` so the worker's explicit `/admin/index.html` fetch returns 200 instead of ASSETS' auto-trailing-slash 307. Verified: authed /admin + /admin/ -> 200 SPA, deep links + assets 200, unauth -> /login intact. SWARM TODO: ratify under DEC-069 gates and add a redirect-following regression test (authenticate, assert GET /admin/ is 200 SPA not 3xx) — the gap that let this ship.
+
+### Original report
 
 Reproduction (fresh `npm run seed` + `wrangler dev`, real browser or curl):
 - Unauthenticated `GET /admin` -> `302 /login` (correct).
