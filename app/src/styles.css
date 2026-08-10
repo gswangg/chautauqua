@@ -284,3 +284,43 @@ body {
   font-size: 0.85rem;
   color: var(--chq-text-muted, #666);
 }
+
+.chq-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.chq-overview-card {
+  display: block;
+  border: 1px solid var(--chq-border);
+  border-radius: 8px;
+  padding: 1rem;
+  text-decoration: none;
+  color: var(--chq-text);
+  background: var(--chq-bg);
+}
+
+.chq-overview-card:hover {
+  border-color: var(--chq-accent);
+}
+
+.chq-overview-card-title {
+  font-weight: 600;
+  color: var(--chq-text-muted);
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+}
+
+.chq-overview-card-count {
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0.25rem 0;
+}
+
+.chq-overview-card-sentence {
+  font-size: 0.9rem;
+  color: var(--chq-text-muted);
+}
