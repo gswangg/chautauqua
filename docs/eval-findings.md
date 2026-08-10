@@ -1,22 +1,39 @@
-# Eval findings — round 1 (post-convergence final review, 2026-08-10)
+# Eval findings — round 2 (CC-native browser eval, 2026-08-10)
 
-Round 1 (source: `2103c69`, the campaign's fresh-eyes final review) is
-**fully dispositioned. Zero open findings remain in this file.**
+Source: a Claude Code browser-driving eval (subscription-auth, no API key) run
+against a fresh seeded `wrangler dev`. This drives the RENDERED app through a
+real browser, following redirects — which the API-level walkthrough and unit
+tests do not, so it catches UI-reachability bugs they miss. Per DEC-069, fixing
+these is code-bearing and reopens the exit predicate: re-run gates before
+re-declaring stage-1. Prune entries as they land.
 
-All five numbered issues plus all four narrowing-decision items are
-closed in-tree, with file:line evidence, in
-`docs/verification-log/task-w4-e-triage-closure.md` section "(1)
-Disposition of docs/eval-findings.md round-1 entries" (and the
-corresponding `docs/verification-log.md` "2026-08-10 task-w4-e —
-triage-closure" append).
+## P0 — authenticated /admin is an infinite redirect loop; the admin SPA is unreachable in a browser
 
-Two unrelated script-only bugs (walkthrough scale step 6, perf-smoke
-301-id cap probe) were found during this task's mandatory FAIL/PLANNER:
-sweep of the wave-4 gate detail files — they are **not** round-1
-eval-findings items; they were tracked in
-`docs/verification-log/task-w4-e-triage-closure.md` section "(3)" and
-are now **CLOSED**: both were fixed by `b638f75` (DEC-094/095/096) and
-runtime-confirmed closed by `task-w5-f`'s triage-closure and
-`task-w5-c`'s walkthrough PASS, per `task-w8-d`'s triage-closure sweep
-(section "(3)", which flagged this paragraph's prior "open items for a
-future code-bearing wave" phrasing as stale). No live findings remain.
+Reproduction (fresh `npm run seed` + `wrangler dev`, real browser or curl):
+- Unauthenticated `GET /admin` -> `302 /login` (correct).
+- Log in as organizer (sbek-organizer@example.com / SbekTest!2027-org) — login
+  succeeds, `chq_session` set, POST /login redirects to /admin.
+- Authenticated `GET /admin`  -> `307 Location: /admin/`
+- Authenticated `GET /admin/` -> `307 Location: /admin/`  (redirects to ITSELF — infinite loop)
+- Browsers report `ERR_TOO_MANY_REDIRECTS`; the built SPA index is never served.
+
+Impact: the entire organizer console (J3 triage, J4 review, J5 disposition,
+J6 onboarding dashboard, J9 agenda — most of the rubric, and swyx's #1 stated
+requirement "admin ui first") cannot be loaded in a browser. Note this passed
+the swarm's own walkthrough + 898 unit tests because those assert against API
+routes, never rendering /admin through redirect-following HTTP.
+
+Root cause: `src/routes/root.tsx` — the authed `/admin` and `/admin/*` handlers
+call `fetchAsset(c, "/admin/index.html")`, but `fetchAsset` (same file) proxies
+the INBOUND request (`c.req.raw`, path `/admin/`) to the ASSETS binding, whose
+trailing-slash/html_handling normalization returns `307 -> /admin/`, looping.
+The fetchAsset comment already flags "may carry /admin/* path segments ASSETS
+doesn't own."
+
+Fix direction: fetchAsset must fetch a NORMALIZED asset request
+(`new Request(new URL("/admin/index.html", origin), {headers})`) against ASSETS
+instead of passing the inbound `/admin/` path; and/or set the assets binding's
+`html_handling`/`not_found_handling` in wrangler.jsonc so `/admin/` does not
+307. Add a browser-level (redirect-following) regression test that authenticates
+and asserts `GET /admin/` returns 200 with the SPA index, not a 3xx — the gap
+that let this ship.
