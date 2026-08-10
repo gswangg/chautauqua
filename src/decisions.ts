@@ -73,3 +73,9 @@ export const DEC_066 = "Reviewers may download submission files for events where
 export const DEC_067 = "/headshots/:fileId is gated: 404 unless a contact currently references it; unauthenticated serving requires the public-visibility predicate; org members and the owner get a private-cache fallback";
 export const DEC_068 = "Verification results are a tracked artifact: docs/verification-log.md, append-only, one dated section per run";
 export const DEC_069 = "Machine-greppable stage-1 exit predicate in docs/verification-log.md (RESULT:/OPEN ITEMS: lines); green counts only for its named sha";
+export const DEC_070 = "Organizer participant-management endpoints: POST /api/v1/submissions/:id/participants (invite co-presenter) + PATCH /api/v1/submissions/:id/participants/:participantId (visibility); invites never auto-email";
+export const DEC_071 = "{portal_link} always resolves to an absolute URL built from the request origin";
+export const DEC_072 = "Rate limits keyed by identity, not only by IP: login = per-email 20/15min + per-IP flood guard 100/15min; public submit = per-IP 60/hour";
+export const DEC_073 = "schedule_slot.roomId must belong to the submission's event, validated at write; public room lookups are event-scoped";
+export const DEC_074 = "Portal speaker edit validates track selection with the same validateTrackChoice gate as public submit, after dedupe";
+export const DEC_075 = "Disposition of the three w12-c open triage items: items 1-2 close via DEC-070 implementation + walkthrough conversion; item 3 closes via a route-level cross-org export test; seed stays single-org";

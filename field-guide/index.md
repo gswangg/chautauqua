@@ -29,32 +29,32 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   resolves plans only via getPlanForOrg. DEC-040/041 form-answer uploads
   kind 'attachment', speaker edit routes/portal/edit.tsx. DEC-043/044
   reviewer mgmt /api/v1/users + plan_reviewer ids. DEC-050 locked fields
-  PK '<formId>:<name>'. DEC-049 /admin worker-first via ASSETS; GET /
-  SSR. DEC-047/048 resources kind 'resource'; seed writes .seed-assets/.
+  PK '<formId>:<name>'. DEC-049 /admin worker-first via ASSETS; GET / SSR.
+  DEC-047/048 resources kind 'resource'; seed writes .seed-assets/.
+  DEC-070 organizer participant invites/visibility; DEC-071 portal_link
+  absolute origin; DEC-072 login limits per-email+per-IP; DEC-073 slot
+  roomId event-scoped; DEC-074 portal edit validateTrackChoice.
 - Wave-7/8/9/10: DEC-051 compose attachIcs/ics_sequence; DEC-057 scoped
   limiter scope 'submit'; DEC-052 App.tsx-only React.lazy; DEC-054/055/056
   statuses deferred, showflow.csv, /docs/api SSR; DEC-058 perf CI budget
-  (js+css<300KB gz); DEC-059 headshots downscale 512px (superseded by
-  DEC-067); DEC-060 verification modular
-  scripts/walkthrough/{producer,review,speaker,public,data}.ts, DEC-053
-  conventions (cookie jar, chq_csrf, 'x-chq-csrf:1'); DEC-061 closes §10;
-  DEC-062 runner order producer->review->speaker->public->data; DEC-063
-  CI job 'walkthrough'. Unresolved Qs = 'PLANNER:'. DEC-064 claim POST
-  consumes only right before user insert; DEC-065 task-assignment uploads
-  via third GET /files/:fileId branch; DEC-066 reviewers download
-  submission files iff plan_reviewer on event; DEC-067 /headshots/:fileId
-  404s unless a contact references it.
-- Wave-11/12/13: tree moves MID-PLANNING — always re-read refs/reflog
-  before concluding a branch dropped (six drops so far, root cause:
-  commit-body triage of a clean pass = empty diff = dropped branch).
-  DEC-068: verification results land in tracked docs/verification-log.md
-  (append-only, '## <date> <branch> — <scope> @ <sha>' sections; commit
-  mandatory even on green). Verified live @ 01c6ace: all security fixes +
-  walkthrough/CI/perf stacks present; w12-a committed GREEN (859/859).
-- DEC-069 exit predicate: stage-1 is done iff docs/verification-log.md
-  has 'RESULT: PASS' sections (at/after the newest code-bearing sha) for
-  build+test, J1-J12 walkthrough, perf-smoke, SPEC §8/§9 static audit,
-  PLUS a triage-closure section ending 'OPEN ITEMS: 0'. A green section
-  counts only for the sha in its own header; later merges invalidate it.
-  Wave-14+: goalComplete is a grep of this pattern — holds -> zero tasks;
-  else FAIL/OPEN lines are the fix list.
+  (js+css<300KB gz); DEC-059 headshots downscale (superseded by DEC-067);
+  DEC-060 verification modular scripts/walkthrough/{producer,review,
+  speaker,public,data}.ts, DEC-053 conventions (cookie jar, chq_csrf,
+  'x-chq-csrf:1'); DEC-061 closes §10; DEC-062 runner order producer->
+  review->speaker->public->data; DEC-063 CI job 'walkthrough'. Unresolved
+  Qs = 'PLANNER:'. DEC-064 claim consumes right before user insert;
+  DEC-065 task uploads via GET /files/:fileId; DEC-066 reviewers download
+  files iff plan_reviewer on event; DEC-067 /headshots/:fileId 404s
+  unless a contact references it.
+- Wave-11/12/13: tree moves MID-PLANNING — re-read refs/reflog before
+  concluding a branch dropped (commit-body triage of a clean/empty diff
+  drops branches). DEC-068 verification results in tracked, append-only
+  docs/verification-log.md ('## <date> <branch> — <scope> @ <sha>';
+  commit mandatory even on green). DEC-069 exit predicate: stage-1 done
+  iff log has 'RESULT: PASS' (at/after newest code sha) for build+test,
+  walkthrough, perf-smoke, SPEC §8/§9 audit, plus triage-closure ending
+  'OPEN ITEMS: 0'; green counts only for its sha; goalComplete greps it.
+- Wave-14 (CODE): w13 gates @ 0ee30dd invalidated (sha-scoped, DEC-069);
+  wave-15 re-runs all gates + triage closure at post-merge sha, citing
+  DEC-075 for 'OPEN ITEMS: 0' (w12-c items close via DEC-070 impl +
+  walkthrough conversion + cross-org exports unit test).
