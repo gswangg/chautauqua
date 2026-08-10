@@ -10,7 +10,14 @@ import { describe, expect, it } from "vitest";
 import { Hono } from "hono";
 import { itineraryStorageKey, parseItineraryIds } from "../src/lib/itinerary";
 import { zonedMinutesToUtc } from "../src/lib/timezone";
-import { publicRoutes } from "../src/routes/public";
+import {
+  publicRoutes,
+  sessionDetailPath,
+  speakerDetailPath,
+  isValidFrom,
+  parseNameQuery,
+  sessionTimeLabel,
+} from "../src/routes/public";
 import { getPublicSessions, type PublicEvent } from "../src/server/repo/public";
 import { registerErrorHandler } from "../src/server/http";
 import type { AppEnv } from "../src/server/env";
@@ -340,5 +347,72 @@ describe("AgendaContent / ScheduleContent day switcher (EMB-07)", () => {
     const html = await res.text();
     expect(html).toContain('href="#chq-day-2026-08-10"');
     expect(html).toContain('href="#chq-day-2026-08-11"');
+  });
+});
+
+// Drill-in detail pages (DEC-151, EMB-05/EMB-08/EMB-13): pure query-param
+// parsing / path-building helpers. Query-gate verification (200/404 by
+// visibility) lives against wrangler dev per DEC-012 — this repo's vitest
+// harness runs in plain node with no D1/miniflare binding (see
+// test/resource-file.test.ts), so getPublicSpeakerDetail/getPublicSessionDetail
+// themselves aren't exercised here; test/public-invite-visibility.test.ts
+// source-scans both for the visibleSubmissionConditions() gate instead.
+const event: PublicEvent = {
+  id: "evt1",
+  orgId: "org1",
+  name: "DevFlow Conf",
+  slug: "devflow",
+  startDate: "2027-05-12",
+  endDate: "2027-05-14",
+  location: null,
+  timezone: "UTC",
+  recordPrefix: "DF",
+  brandingJson: null,
+};
+
+describe("sessionDetailPath / speakerDetailPath (DEC-151 ?from= back-link)", () => {
+  it("builds a session detail path with no ?from when omitted", () => {
+    expect(sessionDetailPath(event, "sub1")).toBe("/e/devflow/sessions/sub1");
+  });
+
+  it("builds a session detail path carrying ?from=<surface>", () => {
+    expect(sessionDetailPath(event, "sub1", "agenda")).toBe("/e/devflow/sessions/sub1?from=agenda");
+  });
+
+  it("builds a speaker detail path carrying ?from=<surface>", () => {
+    expect(speakerDetailPath(event, "contact1", "gallery")).toBe("/e/devflow/speakers/contact1?from=gallery");
+  });
+});
+
+describe("isValidFrom", () => {
+  it("passes through a known surface", () => {
+    expect(isValidFrom("gallery", "speakers")).toBe("gallery");
+  });
+
+  it("falls back on an unknown/missing surface", () => {
+    expect(isValidFrom("not-a-surface", "speakers")).toBe("speakers");
+    expect(isValidFrom(undefined, "sessions")).toBe("sessions");
+  });
+});
+
+describe("parseNameQuery (DEC-151 ?q= name search)", () => {
+  it("returns null for missing/empty/whitespace-only input", () => {
+    expect(parseNameQuery(undefined)).toBeNull();
+    expect(parseNameQuery("")).toBeNull();
+    expect(parseNameQuery("   ")).toBeNull();
+  });
+
+  it("trims a real query", () => {
+    expect(parseNameQuery("  Raman  ")).toBe("Raman");
+  });
+});
+
+describe("sessionTimeLabel", () => {
+  it("returns null when the session is unscheduled", () => {
+    expect(sessionTimeLabel(null, null, null)).toBeNull();
+  });
+
+  it("formats a scheduled session's day + time range", () => {
+    expect(sessionTimeLabel("2027-05-12", 540, 600)).toBe("2027-05-12, 9:00 AM–10:00 AM");
   });
 });

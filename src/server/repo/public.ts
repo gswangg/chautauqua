@@ -10,7 +10,7 @@
 // invite-state clause directly, since it does not route through
 // visibleSubmissionConditions().
 
-import { and, asc, eq, inArray, like, or } from "drizzle-orm";
+import { and, asc, eq, inArray, like, or, sql } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { formatRef } from "../../domain/ids";
@@ -389,8 +389,28 @@ export interface PublicSpeakerWithSessions extends PublicSpeaker {
 
 /** Speakers surface (DEC-022): alphabetical by surname, each with the list
  * of their visible sessions at this event. Gallery reuses this (headshot
- * grid is a rendering choice, not a different query). */
-export async function getPublicSpeakers(db: Db, eventId: string): Promise<PublicSpeakerWithSessions[]> {
+ * grid is a rendering choice, not a different query). `q` (DEC-151) is an
+ * optional case-insensitive name-search filter over first/last/full name,
+ * applied server-side so both the directory and gallery search forms stay
+ * JS-free GETs. */
+export async function getPublicSpeakers(
+  db: Db,
+  eventId: string,
+  opts?: { q?: string | null },
+): Promise<PublicSpeakerWithSessions[]> {
+  const conditions = [eq(schema.submission.eventId, eventId), visibleSubmissionConditions()];
+  const q = opts?.q?.trim();
+  if (q) {
+    const pattern = `%${q}%`;
+    conditions.push(
+      or(
+        sql`${schema.contact.firstName} LIKE ${pattern} COLLATE NOCASE`,
+        sql`${schema.contact.lastName} LIKE ${pattern} COLLATE NOCASE`,
+        sql`(${schema.contact.firstName} || ' ' || ${schema.contact.lastName}) LIKE ${pattern} COLLATE NOCASE`,
+      )!,
+    );
+  }
+
   const rows = await db
     .select({
       contactId: schema.contact.id,
@@ -406,7 +426,7 @@ export async function getPublicSpeakers(db: Db, eventId: string): Promise<Public
     .from(schema.participant)
     .innerJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
     .innerJoin(schema.submission, eq(schema.participant.submissionId, schema.submission.id))
-    .where(and(eq(schema.submission.eventId, eventId), visibleSubmissionConditions()))
+    .where(and(...conditions))
     .orderBy(asc(schema.contact.lastName), asc(schema.contact.firstName), asc(schema.submission.title));
 
   const bySpeaker = new Map<string, PublicSpeakerWithSessions>();
@@ -430,6 +450,207 @@ export async function getPublicSpeakers(db: Db, eventId: string): Promise<Public
   // rows are already ordered by lastName/firstName; Map preserves first-seen
   // insertion order, so this reflects that ordering.
   return [...bySpeaker.values()];
+}
+
+// ---------------------------------------------------------------------------
+// Drill-in detail pages (DEC-151, EMB-05/EMB-08/EMB-13)
+// ---------------------------------------------------------------------------
+
+/** Schedule placement (day/startMin/endMin/room) for a batch of submission
+ * ids, event-scoped. A submission with no row is unscheduled — callers treat
+ * that as all-null fields rather than an error. */
+async function getScheduleInfoForSubmissions(
+  db: Db,
+  eventId: string,
+  ids: string[],
+): Promise<Map<string, { day: string; startMin: number; endMin: number; roomId: string | null; roomName: string | null }>> {
+  const out = new Map<string, { day: string; startMin: number; endMin: number; roomId: string | null; roomName: string | null }>();
+  if (ids.length === 0) return out;
+
+  const slotRows: { submissionId: string; day: string; startMin: number; endMin: number; roomId: string | null }[] = [];
+  for (const batch of chunkIds(ids)) {
+    const batchRows = await db
+      .select({
+        submissionId: schema.scheduleSlot.submissionId,
+        day: schema.scheduleSlot.day,
+        startMin: schema.scheduleSlot.startMin,
+        endMin: schema.scheduleSlot.endMin,
+        roomId: schema.scheduleSlot.roomId,
+      })
+      .from(schema.scheduleSlot)
+      .where(inArray(schema.scheduleSlot.submissionId, batch));
+    slotRows.push(...batchRows);
+  }
+
+  // bounded by the event's physical room count (~15) — DEC-078 exemption
+  const roomIds = [...new Set(slotRows.map((r) => r.roomId).filter((id): id is string => id !== null))];
+  const roomRows =
+    roomIds.length === 0
+      ? []
+      : await db
+          .select({ id: schema.room.id, name: schema.room.name })
+          .from(schema.room)
+          .where(and(inArray(schema.room.id, roomIds), eq(schema.room.eventId, eventId)));
+  const roomNameById = new Map(roomRows.map((r) => [r.id, r.name]));
+
+  for (const row of slotRows) {
+    out.set(row.submissionId, {
+      day: row.day,
+      startMin: row.startMin,
+      endMin: row.endMin,
+      roomId: row.roomId,
+      roomName: row.roomId ? roomNameById.get(row.roomId) ?? null : null,
+    });
+  }
+  return out;
+}
+
+export interface PublicSpeakerDetailSession {
+  id: string;
+  title: string;
+  day: string | null;
+  startMin: number | null;
+  endMin: number | null;
+  room: string | null;
+  trackNames: string[];
+}
+
+export interface PublicSpeakerDetail {
+  contactId: string;
+  firstName: string;
+  lastName: string;
+  title: string | null;
+  company: string | null;
+  bio: string | null;
+  headshotUrl: string | null;
+  sessions: PublicSpeakerDetailSession[];
+}
+
+/** Speaker drill-in (DEC-151, EMB-05/EMB-13): reuses visibleSubmissionConditions
+ * verbatim, scoped to a single contact within a single event — a contact with
+ * zero visible submissions at this event returns null, so the route 404s
+ * exactly as an unknown id would (never leaks that a hidden speaker exists). */
+export async function getPublicSpeakerDetail(
+  db: Db,
+  eventId: string,
+  contactId: string,
+): Promise<PublicSpeakerDetail | null> {
+  const rows = await db
+    .select({
+      contactId: schema.contact.id,
+      firstName: schema.contact.firstName,
+      lastName: schema.contact.lastName,
+      title: schema.contact.title,
+      company: schema.contact.company,
+      bio: schema.contact.bio,
+      headshotUrl: schema.contact.headshotUrl,
+      submissionId: schema.submission.id,
+      submissionTitle: schema.submission.title,
+    })
+    .from(schema.participant)
+    .innerJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
+    .innerJoin(schema.submission, eq(schema.participant.submissionId, schema.submission.id))
+    .where(and(eq(schema.submission.eventId, eventId), eq(schema.contact.id, contactId), visibleSubmissionConditions()))
+    .orderBy(asc(schema.submission.title));
+
+  if (rows.length === 0) return null;
+
+  const submissionIds = [...new Set(rows.map((r) => r.submissionId))];
+  const scheduleInfo = await getScheduleInfoForSubmissions(db, eventId, submissionIds);
+
+  const trackRows: { submissionId: string; name: string }[] = [];
+  for (const batch of chunkIds(submissionIds)) {
+    const batchRows = await db
+      .select({ submissionId: schema.submissionTrack.submissionId, name: schema.track.name })
+      .from(schema.submissionTrack)
+      .innerJoin(schema.track, eq(schema.submissionTrack.trackId, schema.track.id))
+      .where(inArray(schema.submissionTrack.submissionId, batch))
+      .orderBy(asc(schema.track.position));
+    trackRows.push(...batchRows);
+  }
+  const trackNamesBySubmission = new Map<string, string[]>();
+  for (const t of trackRows) {
+    const list = trackNamesBySubmission.get(t.submissionId) ?? [];
+    list.push(t.name);
+    trackNamesBySubmission.set(t.submissionId, list);
+  }
+
+  const first = rows[0];
+  if (!first) return null;
+  return {
+    contactId: first.contactId,
+    firstName: first.firstName,
+    lastName: first.lastName,
+    title: first.title,
+    company: first.company,
+    bio: first.bio,
+    headshotUrl: first.headshotUrl,
+    sessions: rows.map((r) => {
+      const slot = scheduleInfo.get(r.submissionId);
+      return {
+        id: r.submissionId,
+        title: r.submissionTitle,
+        day: slot?.day ?? null,
+        startMin: slot?.startMin ?? null,
+        endMin: slot?.endMin ?? null,
+        room: slot?.roomName ?? null,
+        trackNames: trackNamesBySubmission.get(r.submissionId) ?? [],
+      };
+    }),
+  };
+}
+
+export interface PublicSessionDetail {
+  id: string;
+  ref: string;
+  title: string;
+  description: string | null;
+  tracks: PublicTrack[];
+  day: string | null;
+  startMin: number | null;
+  endMin: number | null;
+  roomId: string | null;
+  roomName: string | null;
+  speakers: PublicSpeaker[];
+}
+
+/** Session drill-in (DEC-151, EMB-08): visibility-gated exactly like
+ * getPublicSessionsByIds, singular; unscheduled sessions get null
+ * day/startMin/endMin/room rather than being excluded (a session can be
+ * publicly visible before it lands on the agenda). */
+export async function getPublicSessionDetail(
+  db: Db,
+  event: PublicEvent,
+  submissionId: string,
+): Promise<PublicSessionDetail | null> {
+  const visibleRows = await db
+    .selectDistinct({ id: schema.submission.id })
+    .from(schema.submission)
+    .innerJoin(schema.participant, eq(schema.participant.submissionId, schema.submission.id))
+    .where(
+      and(eq(schema.submission.eventId, event.id), eq(schema.submission.id, submissionId), visibleSubmissionConditions()),
+    );
+  if (visibleRows.length === 0) return null;
+
+  const [session] = await hydrateSessions(db, [submissionId], event.recordPrefix);
+  if (!session) return null;
+
+  const scheduleInfo = await getScheduleInfoForSubmissions(db, event.id, [submissionId]);
+  const slot = scheduleInfo.get(submissionId);
+
+  return {
+    id: session.id,
+    ref: session.ref,
+    title: session.title,
+    description: session.description,
+    tracks: session.tracks,
+    day: slot?.day ?? null,
+    startMin: slot?.startMin ?? null,
+    endMin: slot?.endMin ?? null,
+    roomId: slot?.roomId ?? null,
+    roomName: slot?.roomName ?? null,
+    speakers: session.speakers,
+  };
 }
 
 // ---------------------------------------------------------------------------

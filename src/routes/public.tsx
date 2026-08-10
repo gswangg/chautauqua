@@ -13,10 +13,14 @@ import {
   getPublicSessions,
   getPublicSpeakers,
   getPublicAgenda,
+  getPublicSpeakerDetail,
+  getPublicSessionDetail,
   type PublicEvent,
   type PublicTrack,
   type PublicSession,
   type PublicSpeakerWithSessions,
+  type PublicSpeakerDetail,
+  type PublicSessionDetail,
   type PublicAgendaItem,
 } from "../server/repo/public";
 import { buildIcsCalendar } from "../mail/ics";
@@ -25,7 +29,7 @@ import { itineraryStorageKey, parseItineraryIds, MAX_ITINERARY_IDS } from "../li
 import { assignLanes } from "../lib/overlap-lanes";
 import { ApiError } from "../server/http";
 import { publicCacheMiddleware, defaultCache } from "../server/pubcache";
-import { DEC_022, DEC_007, DEC_017, DEC_005, DEC_012, DEC_080, DEC_083 } from "../decisions";
+import { DEC_022, DEC_007, DEC_017, DEC_005, DEC_012, DEC_080, DEC_083, DEC_151 } from "../decisions";
 
 export const publicRoutes = new Hono<AppEnv>();
 
@@ -37,6 +41,7 @@ void DEC_005;
 void DEC_012;
 void DEC_080;
 void DEC_083;
+void DEC_151;
 
 // DEC-083 supersedes DEC-022's "no purge machinery" sentence: public/embed
 // HTML GETs are now served through a version-salted caches.default, purged
@@ -48,7 +53,7 @@ publicRoutes.use("/e/*", publicCacheMiddleware(defaultCache));
 publicRoutes.use("/embed/*", publicCacheMiddleware(defaultCache));
 
 const SURFACES = ["sessions", "speakers", "agenda", "schedule", "gallery"] as const;
-type Surface = (typeof SURFACES)[number];
+export type Surface = (typeof SURFACES)[number];
 
 function isSurface(value: string): value is Surface {
   return (SURFACES as readonly string[]).includes(value);
@@ -74,6 +79,20 @@ function branding(event: PublicEvent): { logoUrl?: string; accentColor?: string 
 
 function surfacePath(event: PublicEvent, surface: Surface): string {
   return `/e/${event.slug}/${surface}`;
+}
+
+/** Drill-in detail links (DEC-151) carry ?from=<surface> so the detail
+ * page's Back link returns to whichever surface it was reached from. */
+export function sessionDetailPath(event: PublicEvent, sessionId: string, from?: Surface): string {
+  return `/e/${event.slug}/sessions/${sessionId}${from ? `?from=${from}` : ""}`;
+}
+
+export function speakerDetailPath(event: PublicEvent, contactId: string, from?: Surface): string {
+  return `/e/${event.slug}/speakers/${contactId}${from ? `?from=${from}` : ""}`;
+}
+
+export function isValidFrom(raw: string | undefined, fallback: Surface): Surface {
+  return raw && isSurface(raw) ? raw : fallback;
 }
 
 const SURFACE_LABELS: Record<Surface, string> = {
@@ -223,12 +242,14 @@ function SessionSchedule(props: { session: PublicSession }) {
   );
 }
 
-function SessionCard(props: { session: PublicSession; itinerary?: boolean }) {
-  const { session } = props;
+function SessionCard(props: { session: PublicSession; event: PublicEvent; from?: Surface; itinerary?: boolean }) {
+  const { session, event } = props;
   return (
     <div class="chq-card" id={`chq-session-${session.id}`}>
       <TrackChips tracks={session.tracks} />
-      <h3>{session.title}</h3>
+      <h3>
+        <a href={sessionDetailPath(event, session.id, props.from)}>{session.title}</a>
+      </h3>
       <SessionSchedule session={session} />
       <p>
         <SpeakerNames speakers={session.speakers} />
@@ -290,7 +311,7 @@ function SessionsContent(props: {
         {items.length} of {total} session(s)
       </p>
       {items.map((s) => (
-        <SessionCard session={s} />
+        <SessionCard session={s} event={event} from="sessions" />
       ))}
       {hasMore ? (
         <p>
@@ -311,24 +332,46 @@ function SessionsContent(props: {
 // Speakers / gallery surfaces
 // ---------------------------------------------------------------------------
 
-function SpeakersContent(props: { event: PublicEvent; speakers: PublicSpeakerWithSessions[] }) {
+/** Plain GET name-search form (DEC-151): JS-free, preserves the page's other
+ * query semantics by resubmitting only `q` — page param is intentionally
+ * dropped on a new search since the result set changes size. */
+function NameSearchForm(props: { action: string; q: string | null }) {
+  return (
+    <form method="get" action={props.action} role="search">
+      <label>
+        Search by name{" "}
+        <input type="search" name="q" value={props.q ?? ""} placeholder="Speaker name" />
+      </label>{" "}
+      <button type="submit">Search</button>
+      {props.q ? <a href={props.action}>Clear</a> : null}
+    </form>
+  );
+}
+
+function SpeakersContent(props: { event: PublicEvent; speakers: PublicSpeakerWithSessions[]; q: string | null }) {
+  const { event, speakers, q } = props;
   return (
     <>
       <h2>Speakers</h2>
-      {props.speakers.length === 0 ? (
+      <NameSearchForm action={surfacePath(event, "speakers")} q={q} />
+      {speakers.length === 0 ? (
         <p>No speakers to show yet.</p>
       ) : (
         <div class="chq-speaker-grid">
-          {props.speakers.map((sp) => (
+          {speakers.map((sp) => (
             <div>
-              {sp.headshotUrl ? (
-                <img src={sp.headshotUrl} alt={`${sp.firstName} ${sp.lastName}`} />
-              ) : (
-                <div class="chq-headshot-fallback" />
-              )}
+              <a href={speakerDetailPath(event, sp.contactId, "speakers")}>
+                {sp.headshotUrl ? (
+                  <img src={sp.headshotUrl} alt={`${sp.firstName} ${sp.lastName}`} />
+                ) : (
+                  <div class="chq-headshot-fallback" />
+                )}
+              </a>
               <p>
                 <strong>
-                  {sp.firstName} {sp.lastName}
+                  <a href={speakerDetailPath(event, sp.contactId, "speakers")}>
+                    {sp.firstName} {sp.lastName}
+                  </a>
                 </strong>
                 <br />
                 {[sp.title, sp.company].filter(Boolean).join(", ")}
@@ -346,21 +389,25 @@ function SpeakersContent(props: { event: PublicEvent; speakers: PublicSpeakerWit
   );
 }
 
-function GalleryContent(props: { event: PublicEvent; speakers: PublicSpeakerWithSessions[] }) {
+function GalleryContent(props: { event: PublicEvent; speakers: PublicSpeakerWithSessions[]; q: string | null }) {
+  const { event, speakers, q } = props;
   return (
     <>
       <h2>Speaker gallery</h2>
+      <NameSearchForm action={surfacePath(event, "gallery")} q={q} />
       <div class="chq-speaker-grid">
-        {props.speakers.map((sp) => (
+        {speakers.map((sp) => (
           <div>
-            {sp.headshotUrl ? (
-              <img src={sp.headshotUrl} alt={`${sp.firstName} ${sp.lastName}`} />
-            ) : (
-              <div class="chq-headshot-fallback" />
-            )}
-            <p>
-              {sp.firstName} {sp.lastName}
-            </p>
+            <a href={speakerDetailPath(event, sp.contactId, "gallery")}>
+              {sp.headshotUrl ? (
+                <img src={sp.headshotUrl} alt={`${sp.firstName} ${sp.lastName}`} />
+              ) : (
+                <div class="chq-headshot-fallback" />
+              )}
+              <p>
+                {sp.firstName} {sp.lastName}
+              </p>
+            </a>
           </div>
         ))}
       </div>
@@ -382,8 +429,8 @@ function formatMinutes(min: number): string {
 
 /** Per-day time grid (DEC-022): CSS grid, rooms as columns, session blocks
  * positioned by grid-row from start/end minutes. */
-function AgendaDayGrid(props: { day: string; items: PublicAgendaItem[]; itinerary?: boolean }) {
-  const { day, items, itinerary } = props;
+function AgendaDayGrid(props: { day: string; items: PublicAgendaItem[]; event: PublicEvent; from: Surface; itinerary?: boolean }) {
+  const { day, items, event, from, itinerary } = props;
   const gridMin = 15;
   const dayStart = Math.min(...items.map((i) => i.startMin));
   const dayEnd = Math.max(...items.map((i) => i.endMin));
@@ -441,7 +488,9 @@ function AgendaDayGrid(props: { day: string; items: PublicAgendaItem[]; itinerar
               </div>
               <TrackChips tracks={item.tracks} />
               <div>
-                <strong>{item.title}</strong>
+                <strong>
+                  <a href={sessionDetailPath(event, item.submissionId, from)}>{item.title}</a>
+                </strong>
               </div>
               <div>
                 <SpeakerNames speakers={item.speakers} />
@@ -500,7 +549,7 @@ function AgendaContent(props: { event: PublicEvent; items: PublicAgendaItem[] })
           <DaySwitcher days={days} />
           {days.map((day) => (
             <div id={`chq-day-${day}`}>
-              <AgendaDayGrid day={day} items={byDay.get(day) ?? []} />
+              <AgendaDayGrid day={day} items={byDay.get(day) ?? []} event={props.event} from="agenda" />
             </div>
           ))}
         </>
@@ -564,7 +613,13 @@ function ScheduleContent(props: { event: PublicEvent; items: PublicAgendaItem[] 
           <DaySwitcher days={days} />
           {days.map((day) => (
             <div id={`chq-day-${day}`}>
-              <AgendaDayGrid day={day} items={byDay.get(day) ?? []} itinerary />
+              <AgendaDayGrid
+                day={day}
+                items={byDay.get(day) ?? []}
+                event={props.event}
+                from="schedule"
+                itinerary
+              />
             </div>
           ))}
         </>
@@ -588,7 +643,11 @@ function parseTrackId(raw: string | undefined): string | null {
   return raw && raw.trim().length > 0 ? raw.trim() : null;
 }
 
-function parseQ(raw: string | undefined): string | null {
+/** Trim-or-null for the ?q= search box, shared by both search surfaces: the
+ * EMB-02 keyword search on /sessions (title + speaker names) and the DEC-151
+ * name search on /speakers and /gallery. Parsing is identical — only the
+ * repo-side condition differs. */
+export function parseNameQuery(raw: string | undefined): string | null {
   return raw && raw.trim().length > 0 ? raw.trim() : null;
 }
 
@@ -606,7 +665,7 @@ async function renderSurfaceContent(
     case "sessions": {
       const trackId = parseTrackId(query.trackId);
       const page = parsePage(query.page);
-      const q = parseQ(query.q);
+      const q = parseNameQuery(query.q);
       const tracks = await getPublicTracks(db, event.id);
       const { items, total } = await getPublicSessions(db, event, { trackId, page, perPage: PER_PAGE, q });
       return {
@@ -617,12 +676,14 @@ async function renderSurfaceContent(
       };
     }
     case "speakers": {
-      const speakers = await getPublicSpeakers(db, event.id);
-      return { title: `Speakers - ${event.name}`, content: <SpeakersContent event={event} speakers={speakers} /> };
+      const q = parseNameQuery(query.q);
+      const speakers = await getPublicSpeakers(db, event.id, { q });
+      return { title: `Speakers - ${event.name}`, content: <SpeakersContent event={event} speakers={speakers} q={q} /> };
     }
     case "gallery": {
-      const speakers = await getPublicSpeakers(db, event.id);
-      return { title: `Speaker gallery - ${event.name}`, content: <GalleryContent event={event} speakers={speakers} /> };
+      const q = parseNameQuery(query.q);
+      const speakers = await getPublicSpeakers(db, event.id, { q });
+      return { title: `Speaker gallery - ${event.name}`, content: <GalleryContent event={event} speakers={speakers} q={q} /> };
     }
     case "agenda": {
       const items = await getPublicAgenda(db, event);
@@ -637,6 +698,87 @@ async function renderSurfaceContent(
       throw new Error(`Unknown public surface '${exhaustive}'`);
     }
   }
+}
+
+// ---------------------------------------------------------------------------
+// Drill-in detail pages (DEC-151, EMB-05/EMB-08/EMB-13)
+// ---------------------------------------------------------------------------
+
+function BackLink(props: { event: PublicEvent; from: Surface }) {
+  return (
+    <p>
+      <a href={surfacePath(props.event, props.from)}>&larr; Back to {SURFACE_LABELS[props.from]}</a>
+    </p>
+  );
+}
+
+export function sessionTimeLabel(day: string | null, startMin: number | null, endMin: number | null): string | null {
+  if (day === null || startMin === null || endMin === null) return null;
+  return `${day}, ${formatMinutes(startMin)}–${formatMinutes(endMin)}`;
+}
+
+function SpeakerDetailContent(props: { event: PublicEvent; speaker: PublicSpeakerDetail; from: Surface }) {
+  const { event, speaker, from } = props;
+  return (
+    <>
+      <BackLink event={event} from={from} />
+      <div class="chq-card">
+        {speaker.headshotUrl ? (
+          <img src={speaker.headshotUrl} alt={`${speaker.firstName} ${speaker.lastName}`} width={160} />
+        ) : (
+          <div class="chq-headshot-fallback" style="width:160px" />
+        )}
+        <h2>
+          {speaker.firstName} {speaker.lastName}
+        </h2>
+        <p>{[speaker.title, speaker.company].filter(Boolean).join(", ")}</p>
+        {speaker.bio ? <SessionDescription description={speaker.bio} /> : null}
+      </div>
+      <h3>Sessions ({speaker.sessions.length})</h3>
+      <ul>
+        {speaker.sessions.map((s) => {
+          const timeLabel = sessionTimeLabel(s.day, s.startMin, s.endMin);
+          return (
+            <li>
+              <a href={sessionDetailPath(event, s.id, from)}>{s.title}</a>
+              {timeLabel ? ` — ${timeLabel}` : ""}
+              {s.room ? ` (${s.room})` : ""}
+            </li>
+          );
+        })}
+      </ul>
+    </>
+  );
+}
+
+function SessionDetailContent(props: { event: PublicEvent; session: PublicSessionDetail; from: Surface }) {
+  const { event, session, from } = props;
+  const timeLabel = sessionTimeLabel(session.day, session.startMin, session.endMin);
+  return (
+    <>
+      <BackLink event={event} from={from} />
+      <div class="chq-card">
+        <TrackChips tracks={session.tracks} />
+        <h2>{session.title}</h2>
+        <p>
+          {timeLabel ?? "Not yet scheduled"}
+          {session.roomName ? ` · ${session.roomName}` : ""}
+        </p>
+        <p>
+          {session.speakers.map((s, i) => (
+            <>
+              {i > 0 ? ", " : ""}
+              <a href={speakerDetailPath(event, s.contactId, from)}>
+                {s.firstName} {s.lastName}
+              </a>
+              {s.title || s.company ? ` (${[s.title, s.company].filter(Boolean).join(", ")})` : ""}
+            </>
+          ))}
+        </p>
+        {session.description ? <p>{session.description}</p> : null}
+      </div>
+    </>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -660,6 +802,34 @@ for (const surface of SURFACES) {
     );
   });
 }
+
+publicRoutes.get("/e/:eventSlug/speakers/:contactId", async (c) => {
+  setCacheHeaders(c);
+  const event = await getPublicEventBySlug(c.var.db, c.req.param("eventSlug"));
+  if (!event) return c.text("Event not found.", 404);
+  const speaker = await getPublicSpeakerDetail(c.var.db, event.id, c.req.param("contactId"));
+  if (!speaker) return c.text("Speaker not found.", 404);
+  const from = isValidFrom(c.req.query("from"), "speakers");
+  return c.html(
+    <PublicShell event={event} active={from === "gallery" ? "gallery" : "speakers"} title={`${speaker.firstName} ${speaker.lastName} - ${event.name}`}>
+      <SpeakerDetailContent event={event} speaker={speaker} from={from} />
+    </PublicShell>,
+  );
+});
+
+publicRoutes.get("/e/:eventSlug/sessions/:sessionId", async (c) => {
+  setCacheHeaders(c);
+  const event = await getPublicEventBySlug(c.var.db, c.req.param("eventSlug"));
+  if (!event) return c.text("Event not found.", 404);
+  const session = await getPublicSessionDetail(c.var.db, event, c.req.param("sessionId"));
+  if (!session) return c.text("Session not found.", 404);
+  const from = isValidFrom(c.req.query("from"), "sessions");
+  return c.html(
+    <PublicShell event={event} active={from} title={`${session.title} - ${event.name}`}>
+      <SessionDetailContent event={event} session={session} from={from} />
+    </PublicShell>,
+  );
+});
 
 publicRoutes.get("/embed/:eventSlug/:surface", async (c) => {
   setCacheHeaders(c);
