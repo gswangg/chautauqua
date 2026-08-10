@@ -253,13 +253,6 @@ interface CfpFormField {
 interface CfpFormWithFields extends FormRow {
   fields: CfpFormField[];
 }
-interface OnboardingTask {
-  id: string;
-  title: string;
-}
-interface OnboardingGridWithTasks {
-  tasks: OnboardingTask[];
-}
 interface FileUploadResult {
   id: string;
   filename: string;
@@ -467,53 +460,134 @@ async function main(): Promise<void> {
   });
 
   // -------------------------------------------------------------------------
-  // form-kind task assignment (task w10-a addition): the default onboarding
-  // task set's 'form' kind tasks (portal.tsx.tsx's TaskFormPage) are created
-  // with no formId (src/server/repo/submissions.ts's getOrCreateTask passes
-  // only title/kind/required — DEFAULT_ONBOARDING_TASKS has no formId field
-  // at all), so /portal/tasks/:id/form 400s with "This task is not a form
-  // task" until an organizer attaches one via PATCH /api/v1/tasks/:id. That
-  // attach step is exercised here so the real speaker-facing form flow (not
-  // just the setup gap) gets covered end to end.
+  // DEC-111/DEC-112: acceptance-created 'Hotel stay requirement form' and
+  // 'Flight reimbursement form' onboarding tasks (kind 'form', SPEC.md:
+  // 131-132) must get a real backing form self-healed onto task.formId
+  // (find-or-create by exact title, isDefault=false). Before DEC-111 lands,
+  // getOrCreateTask (src/server/repo/submissions/status.ts) leaves formId
+  // null and both portal form routes 400 "This task is not a form task"
+  // (src/routes/portal/tasks.tsx:240,291). These probes assert POST-FIX
+  // behavior and MUST fail against pre-w10 main — task w10-e proves the
+  // walkthrough is correctly wired to the still-open defect (DEC-112); the
+  // wave-11 walkthrough gate at the post-w10 sha is the green runtime proof.
   // -------------------------------------------------------------------------
 
-  const cfpForm = await check("fetch the event's CFP form + fields (reused as the attached form)", async () => {
+  function escapeRegex(s: string): string {
+    return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  }
+
+  async function completeSelfHealedFormTask(taskTitle: string): Promise<void> {
+    const assignmentId = await check(
+      `find my '${taskTitle}' task's assignment id via /portal/tasks (DEC-111 self-healed form)`,
+      async () => {
+        const tasksPage = await speaker1.getText("/portal/tasks");
+        assert(tasksPage.status === 200, `GET /portal/tasks returned ${tasksPage.status}`);
+        const match = tasksPage.body.match(
+          new RegExp(`${escapeRegex(taskTitle)}(?:(?!<\\/li>)[\\s\\S])*?href="\\/portal\\/tasks\\/([\\w-]+)\\/form"`),
+        );
+        assert(match, `could not find the '${taskTitle}' task's 'Fill out form' link on /portal/tasks`);
+        return match![1]!;
+      },
+    );
+
+    const dropdownFieldName = await check(
+      `GET /portal/tasks/:assignmentId/form for '${taskTitle}' returns 200 (DEC-111: real formId, not 400 'not a form task')`,
+      async () => {
+        const res = await speaker1.getText(`/portal/tasks/${assignmentId}/form`);
+        assert(
+          res.status === 200,
+          `GET /portal/tasks/${assignmentId}/form returned ${res.status} (expected 200 once DEC-111 self-heals task.formId): ${res.body.slice(0, 300)}`,
+        );
+        const match = res.body.match(/<select[^>]*name="(field__[\w-]+)"/);
+        assert(
+          match,
+          `'${taskTitle}' form page has no dropdown <select> field (expected the required 'Yes'/'No' dropdown per DEC-111)`,
+        );
+        return match![1]!;
+      },
+    );
+
+    await check(`POST valid answers for '${taskTitle}' (required dropdown 'Yes', csrfForm-formatted body) completes the assignment`, async () => {
+      const res = await speaker1.postForm(`/portal/tasks/${assignmentId}/form`, {
+        [dropdownFieldName]: "Yes",
+      });
+      assert(res.status === 302, `POST /portal/tasks/${assignmentId}/form expected 302, got ${res.status}`);
+
+      const tasksPage = await speaker1.getText("/portal/tasks");
+      assert(
+        !tasksPage.body.includes(`/portal/tasks/${assignmentId}/form`),
+        `'${taskTitle}' still shows a 'Fill out form' link after completion`,
+      );
+      const rowMatch = tasksPage.body.match(
+        new RegExp(`${escapeRegex(taskTitle)}(?:(?!<\\/li>)[\\s\\S])*?(Completed|Pending)`),
+      );
+      assert(rowMatch, `could not find the '${taskTitle}' row on /portal/tasks after submission`);
+      assert(
+        rowMatch![1] === "Completed",
+        `'${taskTitle}' assignment status is '${rowMatch![1]}', expected 'Completed' after submission`,
+      );
+    });
+  }
+
+  await completeSelfHealedFormTask("Hotel stay requirement form");
+  await completeSelfHealedFormTask("Flight reimbursement form");
+
+  // -------------------------------------------------------------------------
+  // form-kind task assignment (task w10-a addition, retargeted at an ad hoc
+  // task by task w10-e so it doesn't collide with the DEC-111 Hotel/Flight
+  // probes above, which now own those two task titles end to end): an
+  // organizer-created custom kind='form' task starts with formId set at
+  // creation time (no self-heal needed — this exercises the general
+  // attach-a-form-then-complete flow with the seeded CFP form's real field
+  // mix, independent of DEC-111's fixed Hotel/Flight field specs).
+  // -------------------------------------------------------------------------
+
+  const cfpForm = await check("fetch the event's CFP form + fields (reused as the ad hoc task's form)", async () => {
     const { status, body } = await organizer.getJson<CfpFormWithFields>(`/api/v1/events/${eventId}/forms`);
     assert(status === 200, `GET event forms returned ${status}`);
     assert(Array.isArray(body.fields), "CFP form response is missing a fields array");
     return body;
   });
 
-  const hotelTaskId = await check("resolve the 'Hotel stay requirement form' task id", async () => {
-    const { status, body } = await organizer.getJson<OnboardingGridWithTasks>(`/api/v1/events/${eventId}/onboarding`);
-    assert(status === 200, `GET onboarding grid returned ${status}`);
-    const task = body.tasks.find((t) => t.title === "Hotel stay requirement form");
-    assert(task, "Hotel stay requirement form task not found in onboarding grid");
-    return task!.id;
+  const adHocFormTaskTitle = `Walkthrough ad hoc form task ${Date.now()}`;
+
+  const adHocTaskId = await check(
+    "organizer creates a custom kind='form' task with the CFP form attached at creation time",
+    async () => {
+      const { status, body } = await organizer.postJson<{ id: string }>(`/api/v1/events/${eventId}/tasks`, {
+        kind: "form",
+        title: adHocFormTaskTitle,
+        description: null,
+        dueDate: null,
+        required: true,
+        formId: cfpForm.id,
+      });
+      assert(status === 201, `create ad hoc form task returned ${status}: ${JSON.stringify(body)}`);
+      return body.id;
+    },
+  );
+
+  await check("organizer assigns the ad hoc form task to the speaker", async () => {
+    const { status } = await organizer.postJson<unknown>(`/api/v1/tasks/${adHocTaskId}/assign`, {
+      contactIds: [speakerParticipant.contactId],
+    });
+    assert(status === 200, `POST tasks/:id/assign returned ${status}`);
   });
 
-  await check("organizer attaches the CFP form to the 'Hotel stay requirement form' task", async () => {
-    const { status } = await organizer.patchJson<FormRow>(`/api/v1/tasks/${hotelTaskId}`, { formId: cfpForm.id });
-    assert(status === 200, `PATCH task formId returned ${status}`);
-  });
-
-  const hotelAssignmentId = await check(
-    "find my 'Hotel stay requirement form' task's assignment id via /portal/tasks",
+  const adHocAssignmentId = await check(
+    `find my '${adHocFormTaskTitle}' task's assignment id via /portal/tasks`,
     async () => {
       const tasksPage = await speaker1.getText("/portal/tasks");
       assert(tasksPage.status === 200, `GET /portal/tasks returned ${tasksPage.status}`);
       const match = tasksPage.body.match(
-        /Hotel stay requirement form(?:(?!<\/li>)[\s\S])*?href="\/portal\/tasks\/([\w-]+)\/form"/,
+        new RegExp(`${escapeRegex(adHocFormTaskTitle)}(?:(?!<\\/li>)[\\s\\S])*?href="\\/portal\\/tasks\\/([\\w-]+)\\/form"`),
       );
-      assert(
-        match,
-        "could not find the 'Hotel stay requirement form' task's 'Fill out form' link (task already completed by a prior run? re-seed the dev DB)",
-      );
+      assert(match, `could not find the '${adHocFormTaskTitle}' task's 'Fill out form' link on /portal/tasks`);
       return match![1]!;
     },
   );
 
-  await check("complete the form-kind onboarding task assignment (dynamic field fill from the attached form)", async () => {
+  await check("complete the ad hoc form-kind task assignment (dynamic field fill from the attached CFP form)", async () => {
     const fields: Record<string, string> = {};
     for (const f of cfpForm.fields) {
       if (!f.required) continue;
@@ -530,12 +604,12 @@ async function main(): Promise<void> {
         fields[name] = `Walkthrough answer for field ${f.id}`;
       }
     }
-    const res = await speaker1.postForm(`/portal/tasks/${hotelAssignmentId}/form`, fields);
+    const res = await speaker1.postForm(`/portal/tasks/${adHocAssignmentId}/form`, fields);
     assert(res.status === 302, `POST form-kind task completion expected 302, got ${res.status}`);
 
     const tasksPage = await speaker1.getText("/portal/tasks");
     assert(
-      !tasksPage.body.includes(`/portal/tasks/${hotelAssignmentId}/form`),
+      !tasksPage.body.includes(`/portal/tasks/${adHocAssignmentId}/form`),
       "the 'Fill out form' link should be gone once the form-kind task assignment is complete",
     );
   });
