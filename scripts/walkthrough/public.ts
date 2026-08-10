@@ -6,14 +6,11 @@
 // header on JSON mutations, hard exit(1) on the first failing check named
 // in the console output — fail loudly, no soft warnings.
 //
-// This is scripts/ tooling (not src/ pure-core), so node: imports and
-// shelling out to `wrangler d1 execute` (like scripts/seed-r2.ts does for
-// R2 puts) are both fine here. The one direct-SQL step below (flipping a
-// participant's `visible` flag) exists because stage 1 has no admin API
-// to hide a participant — the only way to construct that fixture is a
-// throwaway row mutation, exactly like seed.ts constructs its rows.
+// This is scripts/ tooling (not src/ pure-core). task-w14-g converts the
+// prior direct-SQL participant.visible flip to the real DEC-070 endpoint
+// (PATCH /api/v1/submissions/:id/participants/:participantId), now that
+// the organizer participant-management routes exist on main.
 
-import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -106,7 +103,7 @@ async function login(email: string, password: string): Promise<Cookies> {
 
 async function apiJson<T>(
   cookies: Cookies,
-  method: "GET" | "POST" | "PUT" | "DELETE",
+  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE",
   path: string,
   body?: unknown,
 ): Promise<{ status: number; json: T }> {
@@ -134,19 +131,6 @@ async function waitForHealth(timeoutMs = 30_000): Promise<void> {
     await new Promise((r) => setTimeout(r, 500));
   }
   throw new Error(`${BASE_URL}/health did not become ready within ${timeoutMs}ms`);
-}
-
-// ---------------------------------------------------------------------------
-// Direct-SQL escape hatch (only used for the hidden-participant fixture —
-// stage 1 has no admin API to flip participant.visible; mirrors seed.ts's
-// direct-row-construction pattern).
-// ---------------------------------------------------------------------------
-
-function runD1(sql: string): void {
-  execFileSync("npx", ["wrangler", "d1", "execute", "chautauqua", "--local", "--command", sql], {
-    cwd: REPO_ROOT,
-    stdio: "pipe",
-  });
 }
 
 // ---------------------------------------------------------------------------
@@ -598,10 +582,16 @@ async function main(): Promise<void> {
     const { json: detail } = await apiJson<SubmissionDetail>(cookies, "GET", `/api/v1/submissions/${id}`);
     const participantId = detail.participants[0]?.id;
     assert(participantId, "expected the throwaway submission to have a participant");
-    // No admin API exists to hide a participant in stage 1 (verified by
-    // scanning src/routes/api/*.ts) — direct SQL is the only way to
-    // construct this fixture, same as scripts/seed.ts constructing rows.
-    runD1(`UPDATE participant SET visible = 0 WHERE id = '${participantId}'`);
+    // DEC-070's PATCH /api/v1/submissions/:id/participants/:participantId
+    // toggles participant.visible through the real organizer endpoint.
+    const { status: visStatus, json: visJson } = await apiJson<{ visible: boolean }>(
+      cookies,
+      "PATCH",
+      `/api/v1/submissions/${id}/participants/${participantId}`,
+      { visible: false },
+    );
+    assert(visStatus === 200, `PATCH participant visibility -> ${visStatus}: ${JSON.stringify(visJson)}`);
+    assert(visJson.visible === false, `expected visible:false in PATCH response, got ${JSON.stringify(visJson)}`);
 
     await assertAbsentEverywhere(marker, id);
   });
