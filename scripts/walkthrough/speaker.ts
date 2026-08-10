@@ -171,6 +171,7 @@ class Session {
       method: "POST",
       headers: this.headers({ "x-chq-csrf": "1" }),
       body: form,
+      redirect: "manual",
     });
     const contentType = res.headers.get("content-type") ?? "";
     const body = contentType.includes("json") ? await res.json().catch(() => ({})) : await res.text();
@@ -265,6 +266,22 @@ interface FormRow {
   id: string;
   closeDate: number | null;
 }
+interface CfpFormField {
+  id: string;
+  kind: "text" | "long_text" | "dropdown" | "checkbox" | "number" | "file";
+  required: boolean;
+  options: string[] | null;
+}
+interface CfpFormWithFields extends FormRow {
+  fields: CfpFormField[];
+}
+interface OnboardingTask {
+  id: string;
+  title: string;
+}
+interface OnboardingGridWithTasks {
+  tasks: OnboardingTask[];
+}
 interface FileUploadResult {
   id: string;
   filename: string;
@@ -274,7 +291,13 @@ interface FilesByKindResponse {
   files: Record<string, Array<{ id: string; filename: string; previousFileId: string | null }>>;
 }
 interface CommentsResponse {
-  items: Array<{ id: string; body: string; authorContactId: string | null; authorUserId: string | null }>;
+  // src/server/repo/files.ts's FileCommentRow serializes authorName/
+  // authorRole (resolved server-side), not the raw authorUserId/
+  // authorContactId columns — matching the actual GET /api/v1/files/:id/
+  // comments response shape here (fixed from an incorrect assumption in
+  // the original w8-e version of this check, which asserted on fields the
+  // API never returns and so could never actually fail on a broken reply).
+  items: Array<{ id: string; body: string; authorName: string; authorRole: string }>;
 }
 interface ContactDetail {
   id: string;
@@ -462,6 +485,124 @@ async function main(): Promise<void> {
 
     const tasksPage = await speaker1.getText("/portal/tasks");
     assert(tasksPage.body.includes("Completed"), "task list does not show the task as Completed after marking it");
+  });
+
+  // -------------------------------------------------------------------------
+  // form-kind task assignment (task w10-a addition): the default onboarding
+  // task set's 'form' kind tasks (portal.tsx.tsx's TaskFormPage) are created
+  // with no formId (src/server/repo/submissions.ts's getOrCreateTask passes
+  // only title/kind/required — DEFAULT_ONBOARDING_TASKS has no formId field
+  // at all), so /portal/tasks/:id/form 400s with "This task is not a form
+  // task" until an organizer attaches one via PATCH /api/v1/tasks/:id. That
+  // attach step is exercised here so the real speaker-facing form flow (not
+  // just the setup gap) gets covered end to end.
+  // -------------------------------------------------------------------------
+
+  const cfpForm = await check("fetch the event's CFP form + fields (reused as the attached form)", async () => {
+    const { status, body } = await organizer.getJson<CfpFormWithFields>(`/api/v1/events/${eventId}/forms`);
+    assert(status === 200, `GET event forms returned ${status}`);
+    assert(Array.isArray(body.fields), "CFP form response is missing a fields array");
+    return body;
+  });
+
+  const hotelTaskId = await check("resolve the 'Hotel stay requirement form' task id", async () => {
+    const { status, body } = await organizer.getJson<OnboardingGridWithTasks>(`/api/v1/events/${eventId}/onboarding`);
+    assert(status === 200, `GET onboarding grid returned ${status}`);
+    const task = body.tasks.find((t) => t.title === "Hotel stay requirement form");
+    assert(task, "Hotel stay requirement form task not found in onboarding grid");
+    return task!.id;
+  });
+
+  await check("organizer attaches the CFP form to the 'Hotel stay requirement form' task", async () => {
+    const { status } = await organizer.patchJson<FormRow>(`/api/v1/tasks/${hotelTaskId}`, { formId: cfpForm.id });
+    assert(status === 200, `PATCH task formId returned ${status}`);
+  });
+
+  const hotelAssignmentId = await check(
+    "find my 'Hotel stay requirement form' task's assignment id via /portal/tasks",
+    async () => {
+      const tasksPage = await speaker1.getText("/portal/tasks");
+      assert(tasksPage.status === 200, `GET /portal/tasks returned ${tasksPage.status}`);
+      const match = tasksPage.body.match(
+        /Hotel stay requirement form(?:(?!<\/li>)[\s\S])*?href="\/portal\/tasks\/([\w-]+)\/form"/,
+      );
+      assert(
+        match,
+        "could not find the 'Hotel stay requirement form' task's 'Fill out form' link (task already completed by a prior run? re-seed the dev DB)",
+      );
+      return match![1]!;
+    },
+  );
+
+  await check("complete the form-kind onboarding task assignment (dynamic field fill from the attached form)", async () => {
+    const fields: Record<string, string> = {};
+    for (const f of cfpForm.fields) {
+      if (!f.required) continue;
+      if (f.kind === "file") continue; // no file-kind fields on the seeded CFP form; not drivable via this form-encoded POST
+      const name = `field__${f.id}`;
+      if (f.kind === "dropdown") {
+        assert(f.options && f.options.length > 0, `dropdown field ${f.id} has no options`);
+        fields[name] = f.options![0]!;
+      } else if (f.kind === "checkbox") {
+        fields[name] = "true";
+      } else if (f.kind === "number") {
+        fields[name] = "1";
+      } else {
+        fields[name] = `Walkthrough answer for field ${f.id}`;
+      }
+    }
+    const res = await speaker1.postForm(`/portal/tasks/${hotelAssignmentId}/form`, fields);
+    assert(res.status === 302, `POST form-kind task completion expected 302, got ${res.status}`);
+
+    const tasksPage = await speaker1.getText("/portal/tasks");
+    assert(
+      !tasksPage.body.includes(`/portal/tasks/${hotelAssignmentId}/form`),
+      "the 'Fill out form' link should be gone once the form-kind task assignment is complete",
+    );
+  });
+
+  // -------------------------------------------------------------------------
+  // file_request-kind task assignment upload: assert only the 302 redirect
+  // per task-w10-a's stated scope — GET /files/<uploadedFileId> serving for
+  // task-assignment ('handout' kind) uploads is DEC-065, landing in a
+  // parallel task this wave; not asserted here.
+  // -------------------------------------------------------------------------
+
+  const bioAssignmentId = await check(
+    "find my 'Finalize bio + headshot' file_request task's assignment id via /portal/tasks",
+    async () => {
+      const tasksPage = await speaker1.getText("/portal/tasks");
+      const match = tasksPage.body.match(
+        /Finalize bio \+ headshot(?:(?!<\/li>)[\s\S])*?action="\/portal\/tasks\/([\w-]+)\/upload"/,
+      );
+      assert(
+        match,
+        "could not find the 'Finalize bio + headshot' task's upload form action (task already completed by a prior run? re-seed the dev DB)",
+      );
+      return match![1]!;
+    },
+  );
+
+  await check("upload to the file_request onboarding task assignment (assert 302 only)", async () => {
+    const form = new FormData();
+    form.set("chq_csrf", speaker1.cookies.chq_csrf ?? "");
+    form.set("file", new File([new Uint8Array([0xff, 0xd8, 0xff, 0xdb])], "walkthrough-bio-photo.jpg", { type: "image/jpeg" }));
+    const res = await speaker1.postMultipart(`/portal/tasks/${bioAssignmentId}/upload`, form);
+    assert(res.status === 302, `POST /portal/tasks/:assignmentId/upload expected 302, got ${res.status}: ${JSON.stringify(res.body)}`);
+  });
+
+  // -------------------------------------------------------------------------
+  // Speaker itinerary .ics route (J9/DEC-022): public route, but exercised
+  // here as an authenticated speaker fetching their own accepted session's
+  // calendar export.
+  // -------------------------------------------------------------------------
+
+  await check("GET the speaker itinerary .ics route for my accepted session", async () => {
+    const res = await speaker1.getBinary(
+      `/e/${EVENT_SLUG}/schedule.ics?ids=${encodeURIComponent(speaker1Submission.id)}`,
+    );
+    assert(res.status === 200, `GET schedule.ics returned ${res.status}`);
+    assert(res.bytes > 0, "schedule.ics response body is empty");
   });
 
   // -------------------------------------------------------------------------
@@ -702,11 +843,11 @@ async function main(): Promise<void> {
     const { status, body } = await organizer.getJson<CommentsResponse>(`/api/v1/files/${presentationV2Id}/comments`);
     assert(status === 200, `GET comments returned ${status}`);
     assert(
-      body.items.some((c) => c.authorUserId !== null && c.body.includes("font size")),
+      body.items.some((c) => c.authorRole === "organizer" && c.body.includes("font size")),
       "comment thread is missing the producer's comment",
     );
     assert(
-      body.items.some((c) => c.authorContactId === speakerParticipant.contactId && c.body.includes("bumped it up")),
+      body.items.some((c) => c.authorRole === "speaker" && c.body.includes("bumped it up")),
       "comment thread is missing the speaker's reply",
     );
   });
