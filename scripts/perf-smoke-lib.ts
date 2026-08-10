@@ -70,3 +70,20 @@ export function assertContainsVevent(name: string, icsBody: string): void {
     throw new Error(`${name}: expected .ics body to contain BEGIN:VEVENT`);
   }
 }
+
+/**
+ * Asserts a CSV export body has at least `minLines` newline-separated
+ * non-empty lines (DEC-105's export-size regression net — a 200 with a
+ * truncated/empty CSV would otherwise pass the timing loop silently).
+ * Throws with the offending name on shortfall, and throws on a
+ * non-positive minLines — there is no sane "at least 0 lines" probe.
+ */
+export function assertMinCsvLines(name: string, body: string, minLines: number): void {
+  if (minLines <= 0) {
+    throw new Error(`assertMinCsvLines: minLines must be positive`);
+  }
+  const n = body.split("\n").filter((line) => line.length > 0).length;
+  if (n < minLines) {
+    throw new Error(`${name}: expected >= ${minLines} CSV lines, got ${n}`);
+  }
+}
