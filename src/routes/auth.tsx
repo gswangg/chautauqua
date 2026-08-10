@@ -103,19 +103,30 @@ authRoutes.get("/login", (c) => {
 
 authRoutes.post("/login", csrfForm, async (c) => {
   const kv = c.env.KV as unknown as KVStore;
-  const ip = requestIpFromHeaders((name) => c.req.header(name));
-  const limit = await checkAndIncrementScopedLimit(kv, "login", ip, Date.now(), {
+  const body = await c.req.parseBody();
+  const email = String(body.email ?? "").trim().toLowerCase();
+  const password = String(body.password ?? "");
+
+  // DEC-072: key by identity, not just IP — a shared-bucket per-IP counter
+  // lets one attacker lock out every account behind that IP (e.g. NAT,
+  // office network), and lets an attacker rotate x-forwarded-for to bypass
+  // a per-account cap. Two independent checks: a per-email budget (catches
+  // credential stuffing against one account) and a per-IP budget (catches
+  // a single source hammering many accounts). Either failing blocks login.
+  const userLimit = await checkAndIncrementScopedLimit(kv, "login-user", email, Date.now(), {
     windowSeconds: AUTH_RATE_LIMIT_WINDOW_SECONDS,
     max: AUTH_RATE_LIMIT_MAX,
   });
-  if (!limit.ok) {
+  const ip = requestIpFromHeaders((name) => c.req.header(name));
+  const ipLimit = await checkAndIncrementScopedLimit(kv, "login-ip", ip, Date.now(), {
+    windowSeconds: AUTH_RATE_LIMIT_WINDOW_SECONDS,
+    max: 100,
+  });
+  if (!userLimit.ok || !ipLimit.ok) {
     const { token: csrfToken } = ensureCsrfCookie(c);
     return c.html(<LoginPage csrfToken={csrfToken} error={RATE_LIMIT_ERROR} />, 429);
   }
 
-  const body = await c.req.parseBody();
-  const email = String(body.email ?? "").trim().toLowerCase();
-  const password = String(body.password ?? "");
   const db = c.var.db;
 
   const rows = await db.select().from(schema.user).where(eq(schema.user.email, email)).limit(1);

@@ -351,13 +351,16 @@ publicSubmitRoutes.post("/submit/:eventSlug", csrfForm, async (c) => {
     return c.html(<ClosedPage event={event} form={form} />);
   }
 
-  // Naive per-IP rate limit (DEC-014 note): 10 submissions/hour, fail loudly.
-  // DEC-057: uses the canonical scoped limiter (DEC-038).
+  // DEC-072: per-IP rate limit, raised from 10 to 60/hour — shared IPs
+  // (offices, conference wifi, NAT) legitimately produce bursts of
+  // submissions from distinct speakers; the cap exists to stop abuse, not
+  // to punish shared addresses. DEC-057: uses the canonical scoped limiter
+  // (DEC-038).
   const kv = c.env.KV as unknown as DraftKVStore;
   const ip = requestIpFromHeaders((name) => c.req.header(name));
   const rate = await checkAndIncrementScopedLimit(kv, "submit", ip, Date.now(), {
     windowSeconds: 3600,
-    max: 10,
+    max: 60,
   });
   if (!rate.ok) {
     throw new ApiError("invalid", "Too many submissions from this address. Try again later.");
