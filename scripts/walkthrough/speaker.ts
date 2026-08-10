@@ -460,23 +460,25 @@ async function main(): Promise<void> {
   });
 
   // -------------------------------------------------------------------------
-  // DEC-111/DEC-112: acceptance-created 'Hotel stay requirement form' and
-  // 'Flight reimbursement form' onboarding tasks (kind 'form', SPEC.md:
-  // 131-132) must get a real backing form self-healed onto task.formId
-  // (find-or-create by exact title, isDefault=false). Before DEC-111 lands,
-  // getOrCreateTask (src/server/repo/submissions/status.ts) leaves formId
-  // null and both portal form routes 400 "This task is not a form task"
-  // (src/routes/portal/tasks.tsx:240,291). These probes assert POST-FIX
-  // behavior and MUST fail against pre-w10 main — task w10-e proves the
-  // walkthrough is correctly wired to the still-open defect (DEC-112); the
-  // wave-11 walkthrough gate at the post-w10 sha is the green runtime proof.
+  // DEC-111 (landed on main, task w11-a re-lands the DEC-112 probes per
+  // DEC-113): acceptance-created 'Hotel stay requirement form' and 'Flight
+  // reimbursement form' onboarding tasks (kind 'form', SPEC.md:131-132) get a
+  // real backing form self-healed onto task.formId at task-creation time
+  // (find-or-create by exact title, isDefault=false; getOrCreateTask in
+  // src/server/repo/submissions/status.ts). Hotel is exercised as a
+  // GET-only 'form present at creation' probe below (no POST — it stays
+  // Pending so the ad hoc-task attach flow further down remains untouched
+  // coverage of a *different* path: PATCH/attach-at-creation of an
+  // organizer-authored task, not the self-healed default tasks). Flight is
+  // exercised end to end (GET the self-healed form, fill it, POST, confirm
+  // completion) via completeSelfHealedFormTask below.
   // -------------------------------------------------------------------------
 
   function escapeRegex(s: string): string {
     return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   }
 
-  async function completeSelfHealedFormTask(taskTitle: string): Promise<void> {
+  async function completeSelfHealedFormTask(taskTitle: string, expectedBodyText?: string): Promise<void> {
     const assignmentId = await check(
       `find my '${taskTitle}' task's assignment id via /portal/tasks (DEC-111 self-healed form)`,
       async () => {
@@ -498,6 +500,12 @@ async function main(): Promise<void> {
           res.status === 200,
           `GET /portal/tasks/${assignmentId}/form returned ${res.status} (expected 200 once DEC-111 self-heals task.formId): ${res.body.slice(0, 300)}`,
         );
+        if (expectedBodyText) {
+          assert(
+            res.body.includes(expectedBodyText),
+            `'${taskTitle}' form page is missing the expected field prompt '${expectedBodyText}' (DEC-111 field spec)`,
+          );
+        }
         const match = res.body.match(/<select[^>]*name="(field__[\w-]+)"/);
         assert(
           match,
@@ -529,8 +537,33 @@ async function main(): Promise<void> {
     });
   }
 
-  await completeSelfHealedFormTask("Hotel stay requirement form");
-  await completeSelfHealedFormTask("Flight reimbursement form");
+  const hotelFormAssignmentId = await check(
+    "find my 'Hotel stay requirement form' task's assignment id via /portal/tasks (DEC-111 self-healed form)",
+    async () => {
+      const tasksPage = await speaker1.getText("/portal/tasks");
+      assert(tasksPage.status === 200, `GET /portal/tasks returned ${tasksPage.status}`);
+      const match = tasksPage.body.match(
+        new RegExp(
+          `${escapeRegex("Hotel stay requirement form")}(?:(?!<\\/li>)[\\s\\S])*?href="\\/portal\\/tasks\\/([\\w-]+)\\/form"`,
+        ),
+      );
+      assert(match, "could not find the 'Hotel stay requirement form' task's 'Fill out form' link on /portal/tasks");
+      return match![1]!;
+    },
+  );
+
+  await check(
+    "GET /portal/tasks/:assignmentId/form for 'Hotel stay requirement form' returns 200 (DEC-111: real formId self-healed at task creation, not a 400 'not a form task') — GET only, task is left Pending",
+    async () => {
+      const res = await speaker1.getText(`/portal/tasks/${hotelFormAssignmentId}/form`);
+      assert(
+        res.status === 200,
+        `GET /portal/tasks/${hotelFormAssignmentId}/form returned ${res.status} (expected 200 once DEC-111 self-heals task.formId): ${res.body.slice(0, 300)}`,
+      );
+    },
+  );
+
+  await completeSelfHealedFormTask("Flight reimbursement form", "Do you need flight reimbursement?");
 
   // -------------------------------------------------------------------------
   // form-kind task assignment (task w10-a addition, retargeted at an ad hoc
@@ -754,6 +787,146 @@ async function main(): Promise<void> {
     const res = await speaker1.postForm(`/portal/invitations/${inviteParticipantIdA}`, { action: "decline" });
     assert(res.status === 400, `expected 400 invalid (already accepted, not re-transitionable), got ${res.status}`);
   });
+
+  // -------------------------------------------------------------------------
+  // DEC-108 public visibility gate (task w11-a, DEC-112/113): accept + approve
+  // submissions A/B/C, then confirm the public sessions/speakers surfaces only
+  // surface speaker1 where their participant row is invite_status IN
+  // ('none','accepted') -- A (accepted invite), not B (declined) or C (left
+  // 'invited', never answered). Proves the gate excludes 'invited' rows, not
+  // just declined ones.
+  // -------------------------------------------------------------------------
+
+  const inviteSubC = await check(
+    "create a throwaway submission to invite the speaker onto (C: left unanswered)",
+    async () => {
+      const { status, body } = await organizer.postJson<CreateSubmissionResult>(
+        `/api/v1/events/${eventId}/submissions`,
+        {
+          title: `Walkthrough co-presenter invite C ${Date.now()}`,
+          contact: {
+            email: `walkthrough-invite-c-${Date.now()}@example-speakers.test`,
+            firstName: "Invite",
+            lastName: "FixtureC",
+          },
+        },
+      );
+      assert(status === 201, `create throwaway submission C returned ${status}`);
+      return body.id;
+    },
+  );
+
+  await check(
+    "organizer invites the speaker as a co-presenter on submission C, left unanswered (DEC-070 invite endpoint)",
+    async () => {
+      const { status, body } = await organizer.postJson<InviteParticipantResult>(
+        `/api/v1/submissions/${inviteSubC}/participants`,
+        { contactId: speakerParticipant.contactId },
+      );
+      assert(status === 201, `POST submissions/:id/participants (C) returned ${status}: ${JSON.stringify(body)}`);
+      assert(body.inviteStatus === "invited", `expected inviteStatus 'invited', got '${body.inviteStatus}'`);
+    },
+  );
+
+  await check("organizer accepts submissions A, B and C (bulk status change)", async () => {
+    const { status, body } = await organizer.postJson<{ updated: number }>(
+      `/api/v1/events/${eventId}/submissions/status`,
+      { ids: [inviteSubA, inviteSubB, inviteSubC], status: "accepted" },
+    );
+    assert(status === 200, `POST submissions/status (A/B/C) returned ${status}: ${JSON.stringify(body)}`);
+    assert(body.updated === 3, `expected updated:3, got ${JSON.stringify(body)}`);
+  });
+
+  const [inviteTitleA, inviteTitleB, inviteTitleC] = await check(
+    "read submission A/B/C titles and set content-status approved for all three",
+    async () => {
+      const titles: string[] = [];
+      for (const id of [inviteSubA, inviteSubB, inviteSubC]) {
+        const detail = await organizer.getJson<SubmissionDetail>(`/api/v1/submissions/${id}`);
+        assert(detail.status === 200, `GET submission detail (${id}) returned ${detail.status}`);
+        titles.push(detail.body.title);
+
+        const approved = await organizer.postJson<{ contentStatus: string }>(
+          `/api/v1/submissions/${id}/content-status`,
+          { contentStatus: "approved" },
+        );
+        assert(approved.status === 200, `content-status approved (${id}) returned ${approved.status}: ${JSON.stringify(approved.body)}`);
+      }
+      return titles;
+    },
+  );
+
+  const anon = new Session();
+
+  const sessionCards = await check(
+    "unauthenticated /e/<slug>/sessions shows cards for A, B and C, following pagination",
+    async () => {
+      const wanted = [inviteSubA, inviteSubB, inviteSubC];
+      const found: Record<string, string> = {};
+      let page = 1;
+      const maxPages = 50;
+      for (; page <= maxPages; page += 1) {
+        const res = await anon.getText(`/e/${EVENT_SLUG}/sessions?page=${page}`);
+        assert(res.status === 200, `GET /e/${EVENT_SLUG}/sessions?page=${page} returned ${res.status}`);
+        for (const id of wanted) {
+          if (found[id]) continue;
+          const match = res.body.match(
+            new RegExp(`<div class="chq-card" id="chq-session-${id}">([\\s\\S]*?)<\\/div>`),
+          );
+          if (match) found[id] = match[1]!;
+        }
+        if (wanted.every((id) => found[id])) break;
+        const hasNextPage = res.body.includes(`page=${page + 1}`);
+        if (!hasNextPage) break;
+      }
+      for (const id of wanted) {
+        assert(found[id], `did not find chq-session-${id} card on the public sessions page across ${page} page(s)`);
+      }
+      return found;
+    },
+  );
+
+  await check(
+    "speaker1's name appears in A's public session card but not B's or C's (DEC-108 invite_status gate)",
+    async () => {
+      const speakerName = fixture.identities.speaker.name;
+      assert(
+        sessionCards[inviteSubA]!.includes(speakerName),
+        `expected speaker1's name '${speakerName}' inside submission A's public session card`,
+      );
+      assert(
+        !sessionCards[inviteSubB]!.includes(speakerName),
+        `speaker1's name '${speakerName}' should be absent from submission B's public session card (declined invite)`,
+      );
+      assert(
+        !sessionCards[inviteSubC]!.includes(speakerName),
+        `speaker1's name '${speakerName}' should be absent from submission C's public session card (unanswered invite)`,
+      );
+    },
+  );
+
+  await check(
+    "speaker1's block on /e/<slug>/speakers lists A's title but not B's or C's (DEC-108 invite_status gate)",
+    async () => {
+      const speakerName = fixture.identities.speaker.name;
+      const res = await anon.getText(`/e/${EVENT_SLUG}/speakers`);
+      assert(res.status === 200, `GET /e/${EVENT_SLUG}/speakers returned ${res.status}`);
+      const blockMatch = res.body.match(
+        new RegExp(`<strong>${escapeRegex(speakerName)}<\\/strong>([\\s\\S]*?)<\\/ul>`),
+      );
+      assert(blockMatch, `could not find speaker1's <strong>${speakerName}</strong>...</ul> block on the speakers page`);
+      const block = blockMatch![1]!;
+      assert(block.includes(inviteTitleA!), `speaker1's speakers-page block is missing A's title '${inviteTitleA}'`);
+      assert(
+        !block.includes(inviteTitleB!),
+        `speaker1's speakers-page block should not include B's title '${inviteTitleB}' (declined invite)`,
+      );
+      assert(
+        !block.includes(inviteTitleC!),
+        `speaker1's speakers-page block should not include C's title '${inviteTitleC}' (unanswered invite)`,
+      );
+    },
+  );
 
   // -------------------------------------------------------------------------
   // Profile edit: one record, two views (portal write, /api/v1 read)
