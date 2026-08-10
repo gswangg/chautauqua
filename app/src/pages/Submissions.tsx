@@ -1,5 +1,5 @@
-import { PlaceholderPage } from './PlaceholderPage';
+import { SubmissionsTable } from './submissions/SubmissionsTable';
 
 export function SubmissionsPage() {
-  return <PlaceholderPage section="Submissions" />;
+  return <SubmissionsTable />;
 }

@@ -84,3 +84,84 @@ body {
   color: var(--chq-text-muted);
   background: var(--chq-bg-muted);
 }
+
+.chq-error-banner {
+  margin: 1rem 0;
+  padding: 0.75rem 1rem;
+  border: 1px solid #c0392b;
+  border-radius: 6px;
+  color: #c0392b;
+  background: #fdecea;
+}
+
+.chq-submissions-filterbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  margin-top: 1rem;
+}
+
+.chq-status-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.chq-pill {
+  border: 1px solid var(--chq-border);
+  border-radius: 999px;
+  padding: 0.25rem 0.75rem;
+  background: var(--chq-bg);
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.chq-pill.active {
+  border-color: var(--chq-accent);
+  background: var(--chq-accent);
+  color: #fff;
+}
+
+.chq-column-picker {
+  margin-top: 0.75rem;
+}
+
+.chq-bulk-action-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin-top: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  background: var(--chq-bg-muted);
+}
+
+.chq-submissions-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+}
+
+.chq-submissions-table th,
+.chq-submissions-table td {
+  text-align: left;
+  padding: 0.5rem 0.6rem;
+  border-bottom: 1px solid var(--chq-border);
+}
+
+.chq-status-pill {
+  display: inline-block;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  background: var(--chq-bg-muted);
+  font-size: 0.8rem;
+}
+
+.chq-pagination {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  margin-top: 1rem;
+}
