@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PERF_P95_BUDGET_MS, computeP95 } from "../scripts/perf-smoke-lib";
+import { PERF_P95_BUDGET_MS, assertContainsVevent, computeP95, joinIcsIds } from "../scripts/perf-smoke-lib";
 
 describe("computeP95", () => {
   it("computes the 95th percentile via nearest-rank on a sorted sample", () => {
@@ -28,5 +28,31 @@ describe("computeP95", () => {
 
   it("exposes a 150ms local budget per DEC-034", () => {
     expect(PERF_P95_BUDGET_MS).toBe(150);
+  });
+});
+
+describe("joinIcsIds", () => {
+  it("comma-joins ids", () => {
+    expect(joinIcsIds(["a", "b", "c"])).toBe("a,b,c");
+  });
+
+  it("returns a single id unchanged", () => {
+    expect(joinIcsIds(["only"])).toBe("only");
+  });
+
+  it("throws on an empty list", () => {
+    expect(() => joinIcsIds([])).toThrow();
+  });
+});
+
+describe("assertContainsVevent", () => {
+  it("does not throw when BEGIN:VEVENT is present", () => {
+    expect(() => assertContainsVevent("check", "BEGIN:VCALENDAR\nBEGIN:VEVENT\nEND:VEVENT\nEND:VCALENDAR")).not.toThrow();
+  });
+
+  it("throws with the check name when BEGIN:VEVENT is missing", () => {
+    expect(() => assertContainsVevent("schedule.ics 150 ids", "BEGIN:VCALENDAR\nEND:VCALENDAR")).toThrow(
+      /schedule\.ics 150 ids/,
+    );
   });
 });

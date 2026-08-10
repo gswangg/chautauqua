@@ -22,3 +22,28 @@ export function computeP95(samplesMs: readonly number[]): number {
   const index = Math.min(Math.max(rank - 1, 0), sorted.length - 1);
   return sorted[index]!;
 }
+
+/**
+ * Comma-joins a list of ids for a schedule.ics?ids= query string, matching
+ * the walkthrough's own client-side join (see the inline itinerary script
+ * in src/routes/public.tsx). Throws on an empty list — an empty ?ids= is a
+ * harness bug, not a valid probe input (DEC-089).
+ */
+export function joinIcsIds(ids: readonly string[]): string {
+  if (ids.length === 0) {
+    throw new Error("joinIcsIds: ids must be non-empty");
+  }
+  return ids.join(",");
+}
+
+/**
+ * Asserts an .ics response body contains at least one VEVENT block —
+ * the DEC-089 "schedule.ics 150 ids" probe's correctness check (a 200
+ * with an empty/malformed calendar body would otherwise pass the timing
+ * loop silently). Throws with the offending name on failure (fail loudly).
+ */
+export function assertContainsVevent(name: string, icsBody: string): void {
+  if (!icsBody.includes("BEGIN:VEVENT")) {
+    throw new Error(`${name}: expected .ics body to contain BEGIN:VEVENT`);
+  }
+}

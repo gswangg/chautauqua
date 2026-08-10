@@ -1,8 +1,11 @@
-// Perf smoke harness (DEC-034): logs in as the seeded organizer against a
-// running `wrangler dev` (PERF_URL, default http://localhost:8787), then
-// times 5 warmup + 30 measured iterations of four representative admin
-// reads against the 2k-row perf-seeded event, prints a p95 table, and
-// exits 1 if any p95 exceeds the local budget.
+// Perf smoke harness (DEC-034, extended by DEC-086/DEC-088/DEC-089): logs in
+// as the seeded organizer against a running `wrangler dev` (PERF_URL,
+// default http://localhost:8787), then times 5 warmup + 30 measured
+// iterations of representative admin, public, and reviewer reads/writes
+// against the perf-seeded event (2k submissions, DEC-088's schedule/plan/
+// reviewer fixtures), prints a p95 table, and exits 1 if any p95 exceeds
+// the local budget. Also runs a one-shot untimed DEC-080 cap assertion
+// (301-id schedule.ics -> exactly 400) before the timed loop.
 //
 // Scripts/ tooling (not src/ pure-core), so node: imports and reading the
 // fixture file directly (like scripts/seed.ts does for the same organizer
@@ -12,8 +15,8 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { PERF_EVENT_ID, PERF_TOPICS } from "./perf-seed-lib";
-import { PERF_P95_BUDGET_MS, computeP95 } from "./perf-smoke-lib";
+import { PERF_EVENT_ID, PERF_EVENT_SLUG, PERF_TOPICS } from "./perf-seed-lib";
+import { PERF_P95_BUDGET_MS, assertContainsVevent, computeP95, joinIcsIds } from "./perf-smoke-lib";
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(SCRIPT_DIR, "..");
@@ -22,6 +25,13 @@ const FIXTURE_PATH = join(REPO_ROOT, "docs", "fixtures", "sample-data.json");
 const PERF_URL = process.env.PERF_URL ?? "http://localhost:8787";
 const WARMUP_ITERATIONS = 5;
 const MEASURED_ITERATIONS = 30;
+
+// DEC-088 is the single source for these literals (the perf-seed task owns
+// scripts/perf-seed-lib.ts; this file hardcodes them locally per DEC-089's
+// file-disjoint split rather than importing new exports from that module).
+const PERF_PLAN_ID = "seed_perf_plan_0001";
+const PERF_REVIEWER_EMAIL = "perf.reviewer.1@example-perf.test";
+const PERF_REVIEWER_PASSWORD = "PerfReviewer!2027";
 
 interface FixtureData {
   identities: {
@@ -55,10 +65,7 @@ function cookieHeader(cookies: Cookies): string {
     .join("; ");
 }
 
-async function login(): Promise<Cookies> {
-  const fixture: FixtureData = JSON.parse(readFileSync(FIXTURE_PATH, "utf-8"));
-  const { email, password } = fixture.identities.organizer;
-
+async function login(email: string, password: string): Promise<Cookies> {
   const cookies: Cookies = {};
 
   const getRes = await fetch(`${PERF_URL}/login`);
@@ -143,10 +150,49 @@ async function timeCheck(check: TimedCheck): Promise<number[] | null> {
   return samples;
 }
 
+/** Fetches N accepted submission ids via the organizer submissions API
+ * (all accepted perf submissions are scheduled, per DEC-088). */
+async function fetchAcceptedSubmissionIds(headers: Record<string, string>, count: number): Promise<string[]> {
+  const res = await fetch(
+    `${PERF_URL}/api/v1/events/${PERF_EVENT_ID}/submissions?status=accepted&perPage=${count}`,
+    { headers },
+  );
+  if (!res.ok) {
+    throw new Error(`fetchAcceptedSubmissionIds: GET submissions?status=accepted failed: ${res.status}`);
+  }
+  const body = (await res.json()) as { items: Array<{ id: string }> };
+  const ids = body.items.map((item) => item.id);
+  if (ids.length < count) {
+    throw new Error(`fetchAcceptedSubmissionIds: expected at least ${count} accepted submissions, got ${ids.length}`);
+  }
+  return ids.slice(0, count);
+}
+
 async function main(): Promise<void> {
   await waitForHealth();
-  const cookies = await login();
+  const fixture: FixtureData = JSON.parse(readFileSync(FIXTURE_PATH, "utf-8"));
+  const cookies = await login(fixture.identities.organizer.email, fixture.identities.organizer.password);
   const headers = { cookie: cookieHeader(cookies) };
+
+  // DEC-089 one-shot untimed assertion: 301 ids on the public, unauthenticated
+  // schedule.ics route must be rejected with exactly 400 (DEC-080 cap). Uses
+  // its own 301-id fetch (independent of the 150-id set the timed check below
+  // uses) so this probe doesn't depend on check ordering.
+  const capIds = await fetchAcceptedSubmissionIds(headers, 301);
+  const capRes = await fetch(`${PERF_URL}/e/${PERF_EVENT_SLUG}/schedule.ics?ids=${joinIcsIds(capIds)}`);
+  if (capRes.status !== 400) {
+    throw new Error(
+      `DEC-080 cap assertion failed: schedule.ics with 301 ids expected 400, got ${capRes.status}`,
+    );
+  }
+  await capRes.arrayBuffer();
+
+  const icsIds = await fetchAcceptedSubmissionIds(headers, 150);
+  const icsQuery = joinIcsIds(icsIds);
+  const ratingSubmissionId = icsIds[0]!;
+
+  const reviewerCookies = await login(PERF_REVIEWER_EMAIL, PERF_REVIEWER_PASSWORD);
+  const reviewerHeaders = { cookie: cookieHeader(reviewerCookies) };
 
   const checks: TimedCheck[] = [
     {
@@ -182,6 +228,42 @@ async function main(): Promise<void> {
       name: "event overview",
       run: () => fetch(`${PERF_URL}/api/v1/events/${PERF_EVENT_ID}/overview`, { headers }),
       optional: true,
+    },
+    {
+      name: "public sessions page",
+      run: () => fetch(`${PERF_URL}/e/${PERF_EVENT_SLUG}/sessions`),
+    },
+    {
+      name: "public agenda",
+      run: () => fetch(`${PERF_URL}/e/${PERF_EVENT_SLUG}/agenda`),
+    },
+    {
+      name: "schedule.ics 150 ids",
+      run: async () => {
+        const res = await fetch(`${PERF_URL}/e/${PERF_EVENT_SLUG}/schedule.ics?ids=${icsQuery}`);
+        if (res.ok) {
+          const body = await res.clone().text();
+          assertContainsVevent("schedule.ics 150 ids", body);
+        }
+        return res;
+      },
+    },
+    {
+      name: "plan progress (12 reviewers)",
+      run: () => fetch(`${PERF_URL}/api/v1/plans/${PERF_PLAN_ID}/progress`, { headers }),
+    },
+    {
+      name: "rating PUT",
+      run: () =>
+        fetch(`${PERF_URL}/api/v1/review/plans/${PERF_PLAN_ID}/evaluations/${ratingSubmissionId}`, {
+          method: "PUT",
+          headers: {
+            ...reviewerHeaders,
+            "content-type": "application/json",
+            "x-chq-csrf": "1",
+          },
+          body: JSON.stringify({ scores: { overall: 4 } }),
+        }),
     },
   ];
 
