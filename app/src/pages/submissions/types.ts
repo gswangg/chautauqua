@@ -75,6 +75,37 @@ export interface SubmissionsFilterState {
   includeAnswers: boolean;
 }
 
+// GET /api/v1/submissions/:id (src/server/repo/submissions.ts SubmissionDetail).
+export interface SubmissionDetailParticipant {
+  id: string;
+  contactId: string;
+  name: string;
+  email: string;
+  role: string;
+  order: number;
+  visible: boolean;
+  inviteStatus: string;
+}
+
+export interface SubmissionDetail {
+  id: string;
+  eventId: string;
+  ref: string;
+  title: string;
+  description: string | null;
+  status: SubmissionStatus;
+  contentStatus: 'pending' | 'approved' | 'changes_requested';
+  trackId: string | null;
+  trackIds: string[];
+  formId: string | null;
+  acceptedAt: number | null;
+  icsSequence: number;
+  createdAt: number;
+  updatedAt: number;
+  participants: SubmissionDetailParticipant[];
+  answers: Record<string, unknown>;
+}
+
 export const DEFAULT_FILTER_STATE: SubmissionsFilterState = {
   page: 1,
   perPage: 50,
