@@ -8,16 +8,11 @@
 // first failing check named in the console output — fail loudly, no soft
 // warnings.
 //
-// This is scripts/ tooling (not src/ pure-core), so node: imports and
-// shelling out to `wrangler d1 execute` (like scripts/walkthrough/public.ts
-// does to flip participant.visible) are both fine here. The one direct-SQL
-// step below constructs an 'invited' co-presenter participant row — stage 1
-// has no admin API to invite a co-presenter onto a submission (see this
-// commit's message), so it's the only way to exercise J7's real
-// accept/decline transitions end to end, mirroring seed.ts/public.ts's own
-// direct-row-construction pattern for fixtures with no API path.
+// This is scripts/ tooling (not src/ pure-core). task-w14-g converts the
+// prior direct-SQL 'invited' participant-row fixture to the real DEC-070
+// endpoint (POST /api/v1/submissions/:id/participants), now that the
+// organizer participant-management routes exist on main.
 
-import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -197,23 +192,6 @@ async function waitForHealth(timeoutMs = 30_000): Promise<void> {
     await new Promise((r) => setTimeout(r, 500));
   }
   throw new Error(`${BASE_URL}/health did not become ready within ${timeoutMs}ms`);
-}
-
-// ---------------------------------------------------------------------------
-// Direct-SQL escape hatch (mirrors scripts/walkthrough/public.ts): stage 1
-// has no admin API to invite a co-presenter onto a submission, so this is
-// the only way to construct an invite_status='invited' participant row.
-// ---------------------------------------------------------------------------
-
-function runD1(sql: string): void {
-  execFileSync("npx", ["wrangler", "d1", "execute", "chautauqua", "--local", "--command", sql], {
-    cwd: REPO_ROOT,
-    stdio: "pipe",
-  });
-}
-
-function sqlString(s: string): string {
-  return `'${s.replace(/'/g, "''")}'`;
 }
 
 // ---------------------------------------------------------------------------
@@ -607,12 +585,12 @@ async function main(): Promise<void> {
   });
 
   // -------------------------------------------------------------------------
-  // Invitation accept/decline: own participant rows only. Stage 1 has no
-  // admin API to invite a co-presenter onto a submission (see this commit's
-  // message for the gap) — construct two invite_status='invited'
-  // participant rows directly (mirrors scripts/walkthrough/public.ts's own
-  // direct-SQL fixture for participant.visible) so the real accept/decline
-  // transitions, plus the ownership guard, are all exercised end to end.
+  // Invitation accept/decline: own participant rows only. DEC-070's
+  // POST /api/v1/submissions/:id/participants invites a co-presenter onto
+  // an existing submission (invite_status='invited'), so the real
+  // accept/decline transitions, plus the ownership guard, are exercised
+  // end to end through the actual endpoint (task w14-g; previously a
+  // direct-SQL fixture insert).
   // -------------------------------------------------------------------------
 
   const inviteSubA = await check("create a throwaway submission to invite the speaker onto (A: will accept)", async () => {
@@ -639,18 +617,44 @@ async function main(): Promise<void> {
     return body.id;
   });
 
-  const inviteParticipantIdA = `wk_invite_a_${Date.now()}`;
-  const inviteParticipantIdB = `wk_invite_b_${Date.now()}`;
-
-  await check("construct 'invited' co-presenter participant rows (direct-SQL fixture, no admin API exists)", async () => {
-    const now = Date.now();
-    runD1(
-      `INSERT INTO participant (id, submission_id, contact_id, role, "order", visible, invite_status, created_at, updated_at) VALUES (${sqlString(inviteParticipantIdA)}, ${sqlString(inviteSubA)}, ${sqlString(speakerParticipant.contactId)}, 'speaker', 1, 1, 'invited', ${now}, ${now})`,
-    );
-    runD1(
-      `INSERT INTO participant (id, submission_id, contact_id, role, "order", visible, invite_status, created_at, updated_at) VALUES (${sqlString(inviteParticipantIdB)}, ${sqlString(inviteSubB)}, ${sqlString(speakerParticipant.contactId)}, 'speaker', 1, 1, 'invited', ${now}, ${now})`,
-    );
+  await check("speaker session cannot POST the invite-participant endpoint (organizer-only authz)", async () => {
+    const res = await speaker1.postJson<unknown>(`/api/v1/submissions/${inviteSubA}/participants`, {
+      contactId: speakerParticipant.contactId,
+    });
+    assert(res.status === 403, `expected 403 forbidden for a speaker session, got ${res.status}`);
   });
+
+  interface InviteParticipantResult {
+    id: string;
+    contactId: string;
+    inviteStatus: string;
+  }
+
+  const inviteParticipantIdA = await check(
+    "organizer invites the speaker as a co-presenter on submission A (DEC-070 invite endpoint)",
+    async () => {
+      const { status, body } = await organizer.postJson<InviteParticipantResult>(
+        `/api/v1/submissions/${inviteSubA}/participants`,
+        { contactId: speakerParticipant.contactId },
+      );
+      assert(status === 201, `POST submissions/:id/participants (A) returned ${status}: ${JSON.stringify(body)}`);
+      assert(body.inviteStatus === "invited", `expected inviteStatus 'invited', got '${body.inviteStatus}'`);
+      return body.id;
+    },
+  );
+
+  const inviteParticipantIdB = await check(
+    "organizer invites the speaker as a co-presenter on submission B (DEC-070 invite endpoint)",
+    async () => {
+      const { status, body } = await organizer.postJson<InviteParticipantResult>(
+        `/api/v1/submissions/${inviteSubB}/participants`,
+        { contactId: speakerParticipant.contactId },
+      );
+      assert(status === 201, `POST submissions/:id/participants (B) returned ${status}: ${JSON.stringify(body)}`);
+      assert(body.inviteStatus === "invited", `expected inviteStatus 'invited', got '${body.inviteStatus}'`);
+      return body.id;
+    },
+  );
 
   await check("invitation response rejects a participant row that isn't mine (no IDOR)", async () => {
     const speaker2Probe = new Session();
