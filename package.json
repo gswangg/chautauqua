@@ -11,6 +11,7 @@
     "seed": "tsx scripts/seed.ts && wrangler d1 execute chautauqua --local --file=.seed.sql && tsx scripts/seed-r2.ts",
     "perf:seed": "tsx scripts/perf-seed.ts && wrangler d1 execute chautauqua --local --file=.perf-seed.sql",
     "perf:smoke": "tsx scripts/perf-smoke.ts",
+    "bundle:check": "tsx scripts/bundle-check.ts",
     "test": "vitest run"
   },
   "dependencies": {

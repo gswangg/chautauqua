@@ -32,6 +32,9 @@
   "triggers": {
     "crons": ["*/15 * * * *"]
   },
+  "placement": {
+    "mode": "smart"
+  },
   "vars": {
     "DEV_MODE": "1"
   }
