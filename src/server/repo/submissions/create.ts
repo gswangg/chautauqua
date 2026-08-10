@@ -12,6 +12,9 @@ export interface CreateSubmissionInput {
   title: string;
   description?: string | null;
   contact?: { email: string; firstName: string; lastName: string } | null;
+  /** Submission status at creation (DEC-156 push-to-event creates directly
+   * as 'accepted'; every other caller keeps the 'pending' default). */
+  status?: "pending" | "accepted";
 }
 
 /** Shared with ./participants (co-presenter invite) — not re-exported from
@@ -59,7 +62,7 @@ export async function createSubmission(
     seq: submissionSeqSubquery(eventId),
     title: input.title,
     description: input.description ?? null,
-    status: "pending",
+    status: input.status ?? "pending",
     contentStatus: "pending",
     createdAt: now,
     updatedAt: now,

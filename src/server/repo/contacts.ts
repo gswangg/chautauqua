@@ -19,6 +19,13 @@ import {
   type ContactRecord,
   type SegmentRule,
 } from "../../domain/contacts";
+import { createSubmission } from "./submissions/create";
+import { DEC_156 } from "../../decisions";
+
+// Compile-checked dependency marker: pushContactToEvent below implements
+// DEC-156's push-to-event contract (accepted submission, pending content,
+// no email).
+void DEC_156;
 
 // ---------------------------------------------------------------------------
 // Row shapes + mapping
@@ -704,4 +711,34 @@ export async function findUserIdByEmail(db: Db, email: string): Promise<string |
     .where(sql`lower(${schema.user.email}) = lower(${email})`)
     .limit(1);
   return rows[0]?.id ?? null;
+}
+
+// ---------------------------------------------------------------------------
+// Push to event (CRM-10, DEC-156)
+// ---------------------------------------------------------------------------
+
+/**
+ * Pushes an already-org-owned contact into an event as an organizer-invited
+ * submission: status 'accepted', content_status left at its default
+ * 'pending' (createSubmission's default), title defaulting to
+ * 'Invited: <FirstName> <LastName>', and the contact as a visible
+ * participant. Reuses createSubmission's contact-linking plumbing
+ * (findOrCreateContact matches this contact's own email, so no duplicate
+ * contact is created) rather than hand-rolling submission/participant
+ * inserts. Sends no email. Caller is expected to have already verified the
+ * contact and event both belong to the caller's org.
+ */
+export async function pushContactToEvent(
+  db: Db,
+  eventId: string,
+  orgId: string,
+  contact: Pick<ContactRow, "email" | "firstName" | "lastName">,
+  title: string | undefined,
+): Promise<string> {
+  const resolvedTitle = title && title.trim() ? title.trim() : `Invited: ${contact.firstName} ${contact.lastName}`;
+  return createSubmission(db, eventId, orgId, {
+    title: resolvedTitle,
+    status: "accepted",
+    contact: { email: contact.email, firstName: contact.firstName, lastName: contact.lastName },
+  });
 }
