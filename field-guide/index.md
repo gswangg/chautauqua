@@ -34,3 +34,22 @@ here is injected into every agent at spawn.
 - package.json is shared-write in wave 1 (w1-a canonical list; w1-b/g/j add
   matching entries) — merge unions it. Everything else is single-owner per
   task. src/decisions.ts is scribe-owned; workers never edit it.
+- Wave-1 branches may still be landing when wave-2 tasks start: if a decided
+  module (DEC-001 scaffold, DEC-003 schema, DEC-009 acceptance planner,
+  DEC-006 mailer) is missing from main, create the minimal version per its
+  DEC in your branch rather than blocking — the merge train reconciles
+  duplicates. Expected overlap files: package.json, tsconfig.json,
+  src/index.ts, src/db/schema.ts.
+- DEC-012/013 are binding on all server code: route files export Hono
+  sub-apps, only src/index.ts mounts; middleware names sessionLoader/
+  requireOrganizer/requireReviewer/requireSpeaker/csrfJson/csrfForm; API
+  errors {error:{code,message,fields?}}, lists {items,total,page,perPage};
+  SPA talks to the API only through app/src/lib/api.ts.
+- DEC-015: migrations are append-only — never edit a committed migration;
+  new tables/columns go in new numbered files + append-only schema.ts edits.
+  Track membership is the submission_track join, never a form answer.
+- DEC-016: locked form fields persist to real columns (submission.title/
+  description, contact first/last/email); submission_answer holds custom
+  fields only.
+- Speaker-facing views never leak internal queue states: accept_queue/
+  decline_queue display as 'Under review'.
