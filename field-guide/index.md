@@ -33,28 +33,27 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   eval-findings.md, verification-log.md, decisions/, src/decisions.ts.
 - Wave 2 (DEC-147..156, compact): criteriaForRound sole resolution;
   text criteria excluded from weighted math; CRM filters ARE
-  SegmentRule[]+'any' via GET /contacts?rules=; bulk-email preview
-  shares send's render helper; public drill-ins SSR gated by
-  visibleSubmissionConditions; admin contact edits reuse portal-profile
-  plumbing; calendar dates via formatDateOnly UTC never
-  toLocaleDateString; agenda publish=pubcache purge; push-to-event=
+  SegmentRule[]+'any'; bulk-email preview shares send's render helper;
+  public drill-ins SSR gated by visibleSubmissionConditions; calendar
+  dates via formatDateOnly UTC never toLocaleDateString; push-to-event=
   invited accepted submission, no email.
-- Wave 3 (DEC-157..162, compact): Section D FIXED not waived. Pipeline
-  (CRM-07/08)=org pipeline_entry+pipeline_activity, 5 fixed stages,
-  moves+notes=activity rows, /api/v1/pipeline sub-app, 4th ContactsApp
-  tab, never emails. CNT-11=submission_revision snapshots via admin
-  PATCH+portal-edit locked-field sync, restore same path. Files
-  library=previous_file_id chains, GET /events/:id/files; ZIP=
-  src/lib/zip.ts STORE-only pure-core, POST .../files/archive, <=50,
-  folder-per-session. Render smokes: one test/page. Migrations 0012
-  pipeline, 0013 submission_revision. task-w1-i pushed unmerged.
-- Wave 4 (DEC-163/164): battery wave. w4-a=sole code-bearing lane:
-  consolidates wave 3 (merge pushed origin/task-w3-*; implement
-  never-pushed deliverables; one render test/page; migration prefix
-  collisions renumber to next free, 0011 gap ok; ContactsApp tabs
-  union, Pipeline last), greens build+test. Six gate lanes chain on
-  w4-a (build+test/walkthrough/perf-smoke/render-sweep/spec-audit/
-  triage-closure), each appends ONLY its own verification-log section
-  citing the frozen post-w4-a sha (descends 2dd2f33; docs-only merges
-  never invalidate a cited sha, DEC-069). Six PASS+0 OPEN ITEMS => next
-  wave re-declares stage-1 exit, DEC-139.
+- Wave 3 (DEC-157..162, compact): Pipeline (CRM-07/08)=org
+  pipeline_entry+pipeline_activity, 5 fixed stages, /api/v1/pipeline
+  sub-app, 4th ContactsApp tab. CNT-11=submission_revision snapshots
+  via admin PATCH+portal-edit locked-field sync. Files=previous_file_id
+  chains; ZIP=src/lib/zip.ts STORE-only, POST .../files/archive, <=50.
+  Migrations 0012 pipeline, 0013 submission_revision.
+- Wave 4 (DEC-163/164, compact): battery wave designed but NEVER RAN
+  (no task-w4-* merges after f357477); w3-a/b/c/d had already merged
+  via the train, so w4-a's consolidation plan was moot.
+- Wave 5 (DEC-165/166): battery re-issued unchanged. w3 deliverables
+  verified in-tree on main; sole real gap was ci.yml missing the
+  render-sweep job (eval-findings F.1). w5-a=only code lane: adds CI
+  job (npm ci + `npx playwright install --with-deps chromium` +
+  `npm run gate:render-sweep`; script self-boots migrate/seed/
+  wrangler-dev), greens build+test. Six gate lanes chain on w5-a
+  (build+test/walkthrough@8801/perf-smoke@8803/render-sweep/
+  spec-audit/triage-closure), citing frozen post-w5-a sha (must
+  contain CI job, descend 2dd2f33). Homonym hazard: old campaigns
+  left task-w5-* sections mid-log — sha, not branch, identifies
+  citable sections (DEC-129). Six PASS+0 OPEN => wave 6 exit DEC-139.
