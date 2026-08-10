@@ -142,6 +142,7 @@ export function FieldRulesScript(props: { fields: FormFieldDef[] }) {
     .filter((f) => f.rule)
     .map((f) => ({ fieldId: f.id, rule: f.rule }));
   const json = JSON.stringify(rules);
+  const safeJson = json.replace(/</g, "\\u003c");
   const inlineJs = `(function(){
   var rules = JSON.parse(document.getElementById('chq-field-rules').textContent);
   function getValue(id){
@@ -172,9 +173,7 @@ export function FieldRulesScript(props: { fields: FormFieldDef[] }) {
 })();`;
   return (
     <>
-      <script type="application/json" id="chq-field-rules">
-        {json}
-      </script>
+      <script type="application/json" id="chq-field-rules" dangerouslySetInnerHTML={{ __html: safeJson }} />
       <script dangerouslySetInnerHTML={{ __html: inlineJs }} />
     </>
   );
