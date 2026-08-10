@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { apiGet, apiPatch, ApiError } from '../../lib/api';
+import { useEffect, useRef, useState } from 'react';
+import { apiGet, apiPatch, apiUpload, ApiError } from '../../lib/api';
 import type { ContactDetail } from './types';
 
 interface Props {
@@ -27,6 +27,16 @@ export function ContactDrawer({ contactId, onClose, onSaved }: Props) {
   const [bio, setBio] = useState('');
   const [customFieldsText, setCustomFieldsText] = useState('{}');
 
+  const [twitter, setTwitter] = useState('');
+  const [linkedin, setLinkedin] = useState('');
+  const [github, setGithub] = useState('');
+  const [website, setWebsite] = useState('');
+
+  const [headshotUrl, setHeadshotUrl] = useState<string | null>(null);
+  const [headshotUploading, setHeadshotUploading] = useState(false);
+  const [headshotError, setHeadshotError] = useState<string | null>(null);
+  const headshotInputRef = useRef<HTMLInputElement | null>(null);
+
   useEffect(() => {
     setLoading(true);
     setError(null);
@@ -42,6 +52,11 @@ export function ContactDrawer({ contactId, onClose, onSaved }: Props) {
         setNotes(c.notes ?? '');
         setBio(c.bio ?? '');
         setCustomFieldsText(JSON.stringify(c.customFields ?? {}, null, 2));
+        setTwitter(c.socialLinks?.twitter ?? '');
+        setLinkedin(c.socialLinks?.linkedin ?? '');
+        setGithub(c.socialLinks?.github ?? '');
+        setWebsite(c.socialLinks?.website ?? '');
+        setHeadshotUrl(c.headshotUrl ?? null);
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load contact'))
       .finally(() => setLoading(false));
@@ -68,12 +83,32 @@ export function ContactDrawer({ contactId, onClose, onSaved }: Props) {
         notes: notes || undefined,
         bio: bio || undefined,
         customFields,
+        socialLinks: { twitter, linkedin, github, website },
       });
       onSaved();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to save contact');
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function uploadHeadshot() {
+    const file = headshotInputRef.current?.files?.[0];
+    if (!file) return;
+    setHeadshotUploading(true);
+    setHeadshotError(null);
+    try {
+      const form = new FormData();
+      form.set('headshot', file);
+      const updated = await apiUpload<ContactDetail>(`/contacts/${contactId}/headshot`, form);
+      setHeadshotUrl(updated.headshotUrl ?? null);
+      if (headshotInputRef.current) headshotInputRef.current.value = '';
+      onSaved();
+    } catch (err) {
+      setHeadshotError(err instanceof ApiError ? err.message : 'Failed to upload headshot');
+    } finally {
+      setHeadshotUploading(false);
     }
   }
 
@@ -90,70 +125,101 @@ export function ContactDrawer({ contactId, onClose, onSaved }: Props) {
         {!loading && contact && (
           <>
             <h2>Contact detail</h2>
-            {contact.headshotUrl && (
-              <img className="chq-contact-headshot" src={contact.headshotUrl} alt={`${contact.firstName} ${contact.lastName} headshot`} width={120} height={120} />
-            )}
-            <label>
+
+            <label htmlFor="chq-contact-first-name">
               First name
-              <input value={firstName} onChange={(e) => setFirstName(e.target.value)} />
+              <input id="chq-contact-first-name" value={firstName} onChange={(e) => setFirstName(e.target.value)} />
             </label>
-            <label>
+            <label htmlFor="chq-contact-last-name">
               Last name
-              <input value={lastName} onChange={(e) => setLastName(e.target.value)} />
+              <input id="chq-contact-last-name" value={lastName} onChange={(e) => setLastName(e.target.value)} />
             </label>
-            <label>
+            <label htmlFor="chq-contact-email">
               Email
-              <input value={email} onChange={(e) => setEmail(e.target.value)} />
+              <input id="chq-contact-email" value={email} onChange={(e) => setEmail(e.target.value)} />
             </label>
-            <label>
+            <label htmlFor="chq-contact-company">
               Company
-              <input value={company} onChange={(e) => setCompany(e.target.value)} />
+              <input id="chq-contact-company" value={company} onChange={(e) => setCompany(e.target.value)} />
             </label>
-            <label>
+            <label htmlFor="chq-contact-title">
               Title
-              <input value={title} onChange={(e) => setTitle(e.target.value)} />
+              <input id="chq-contact-title" value={title} onChange={(e) => setTitle(e.target.value)} />
             </label>
-            <label>
+            <label htmlFor="chq-contact-phone">
               Phone
-              <input value={phone} onChange={(e) => setPhone(e.target.value)} />
+              <input id="chq-contact-phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
             </label>
-            <label>
+            <label htmlFor="chq-contact-notes">
               Notes
-              <textarea rows={4} value={notes} onChange={(e) => setNotes(e.target.value)} />
+              <textarea id="chq-contact-notes" rows={4} value={notes} onChange={(e) => setNotes(e.target.value)} />
             </label>
-            <label>
-              Bio
-              <textarea rows={4} value={bio} onChange={(e) => setBio(e.target.value)} />
-            </label>
-            <label>
+            <label htmlFor="chq-contact-custom-fields">
               Custom fields (JSON)
-              <textarea rows={4} value={customFieldsText} onChange={(e) => setCustomFieldsText(e.target.value)} />
+              <textarea
+                id="chq-contact-custom-fields"
+                rows={4}
+                value={customFieldsText}
+                onChange={(e) => setCustomFieldsText(e.target.value)}
+              />
             </label>
 
-            {contact.socialLinks && (
-              <ul className="chq-contact-social-links">
-                {contact.socialLinks.twitter && (
-                  <li>
-                    Twitter: <a href={contact.socialLinks.twitter}>{contact.socialLinks.twitter}</a>
-                  </li>
+            {/* CNT-10 (DEC-152/DEC-142/DEC-028): speaker profile section — bio,
+                headshot, social links — kept visually separate from the CRM
+                fields above since it round-trips through the same portal
+                profile plumbing a speaker's own edits use. */}
+            <section aria-label="Speaker profile" className="chq-contact-profile-section">
+              <h3>Speaker profile</h3>
+
+              <label htmlFor="chq-contact-bio">
+                Bio
+                <textarea id="chq-contact-bio" rows={4} value={bio} onChange={(e) => setBio(e.target.value)} />
+              </label>
+
+              <div className="chq-contact-headshot-field">
+                {headshotUrl ? (
+                  <img
+                    className="chq-contact-headshot"
+                    src={headshotUrl}
+                    alt={`${firstName} ${lastName} headshot`}
+                    width={120}
+                    height={120}
+                  />
+                ) : (
+                  <p>No headshot uploaded yet.</p>
                 )}
-                {contact.socialLinks.linkedin && (
-                  <li>
-                    LinkedIn: <a href={contact.socialLinks.linkedin}>{contact.socialLinks.linkedin}</a>
-                  </li>
-                )}
-                {contact.socialLinks.github && (
-                  <li>
-                    GitHub: <a href={contact.socialLinks.github}>{contact.socialLinks.github}</a>
-                  </li>
-                )}
-                {contact.socialLinks.website && (
-                  <li>
-                    Website: <a href={contact.socialLinks.website}>{contact.socialLinks.website}</a>
-                  </li>
-                )}
-              </ul>
-            )}
+                <label htmlFor="chq-contact-headshot-upload">
+                  Upload headshot
+                  <input
+                    id="chq-contact-headshot-upload"
+                    type="file"
+                    accept=".png,.jpg,.jpeg,.webp"
+                    ref={headshotInputRef}
+                    onChange={uploadHeadshot}
+                    disabled={headshotUploading}
+                  />
+                </label>
+                {headshotUploading && <p>Uploading...</p>}
+                {headshotError && <div className="chq-error-banner">{headshotError}</div>}
+              </div>
+
+              <label htmlFor="chq-contact-twitter">
+                Twitter
+                <input id="chq-contact-twitter" value={twitter} onChange={(e) => setTwitter(e.target.value)} />
+              </label>
+              <label htmlFor="chq-contact-linkedin">
+                LinkedIn
+                <input id="chq-contact-linkedin" value={linkedin} onChange={(e) => setLinkedin(e.target.value)} />
+              </label>
+              <label htmlFor="chq-contact-github">
+                GitHub
+                <input id="chq-contact-github" value={github} onChange={(e) => setGithub(e.target.value)} />
+              </label>
+              <label htmlFor="chq-contact-website">
+                Website
+                <input id="chq-contact-website" value={website} onChange={(e) => setWebsite(e.target.value)} />
+              </label>
+            </section>
 
             <button type="button" disabled={saving} onClick={save}>
               Save
