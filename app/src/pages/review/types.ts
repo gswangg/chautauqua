@@ -21,14 +21,19 @@ export interface EvaluationScale {
   max: number;
 }
 
+// EvaluationPlan mirrors the raw wire shape returned by GET /api/v1/plans/:id
+// and /api/v1/events/:eventId/plans (src/server/repo/review.ts PlanRecord),
+// per DEC-171. PlanEditor's internal PlanDraft may keep friendlier field
+// names, but any type describing the API response/request bodies MUST match
+// the wire exactly -- this crashed the SPA once already (task-w4-e).
 export interface EvaluationPlan {
   id: string;
   eventId: string;
   name: string;
   instructions?: string;
-  openAt: number | null;
-  closeAt: number | null;
-  trackIds: string[];
+  openDate: number | null;
+  closeDate: number | null;
+  filters: { trackIds?: string[] } | null;
   anonymized: boolean;
   scale: EvaluationScale;
   criteria: EvaluationCriterion[];
@@ -39,13 +44,26 @@ export interface EvaluationPlan {
   // string ("2", "3", ...). A round absent from this map (including round 1
   // by convention) uses `criteria` above. null/undefined = no overrides.
   roundCriteria?: Record<string, EvaluationCriterion[]> | null;
-  maxEvaluationsPerSubmission?: number;
+  maxEvaluations: number | null;
   createdAt: number;
 }
 
-// currentRound is server-managed (DEC-082: only advance-round moves it) --
-// never part of the create/edit draft.
-export type PlanDraft = Omit<EvaluationPlan, 'id' | 'eventId' | 'createdAt' | 'currentRound'>;
+// PlanDraft keeps the SPA-internal field names (openAt/closeAt/trackIds/
+// maxEvaluationsPerSubmission); PlanEditor maps to/from the wire names above
+// when loading (GET) and saving (POST/PATCH).
+export interface PlanDraft {
+  name: string;
+  instructions?: string;
+  openAt: number | null;
+  closeAt: number | null;
+  trackIds: string[];
+  anonymized: boolean;
+  scale: EvaluationScale;
+  criteria: EvaluationCriterion[];
+  rounds: number;
+  roundCriteria?: Record<string, EvaluationCriterion[]> | null;
+  maxEvaluationsPerSubmission?: number;
+}
 
 export const DEFAULT_PLAN_DRAFT: PlanDraft = {
   name: '',

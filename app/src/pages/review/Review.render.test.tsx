@@ -1,12 +1,17 @@
-// DEC-144 layer-2 harness, DEC-146 regression: mounts the real /review
-// router surface (app/src/pages/Review.tsx) for both the organizer
+// DEC-144 layer-2 harness, DEC-146/DEC-171 regression: mounts the real
+// /review router surface (app/src/pages/Review.tsx) for both the organizer
 // (plan list / plan detail / progress / results) and reviewer
-// (ReviewerQueue) branches, against mocked fetch shaped like the real wire
-// envelopes. The plan-detail case specifically covers a plan with NULL
-// openAt/closeAt (DEC-146's P1 blank-page crash class): PlanEditor renders
-// those through the null-safe msToDateInput helper, which must fall back to
-// an empty <input type="date"> value rather than throwing on
-// `new Date(null).toISOString()`.
+// (ReviewerQueue) branches, against mocked fetch shaped like the REAL wire
+// envelope returned by GET /api/v1/plans/:id (PlanRecord: openDate/
+// closeDate/filters/maxEvaluations -- NOT the SPA-internal openAt/closeAt/
+// trackIds/maxEvaluationsPerSubmission names). The plan-detail case
+// specifically covers a plan with NULL openDate/closeDate/filters (DEC-146's
+// P1 blank-page crash class, later reintroduced as a wire-name mismatch and
+// fixed under DEC-171/task-w6-e): PlanEditor renders those through the
+// null-safe msToDateInput helper, which must fall back to an empty
+// <input type="date"> value rather than throwing on
+// `new Date(null).toISOString()`, and must not throw on `filters: null`
+// (draft.trackIds.includes crash).
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
@@ -31,16 +36,27 @@ function planWithNullDates() {
     eventId: EVENT_ID,
     name: 'Keynote Track Review',
     instructions: '',
-    openAt: null,
-    closeAt: null,
-    trackIds: [],
+    openDate: null,
+    closeDate: null,
+    filters: null,
     anonymized: false,
     scale: { min: 1, max: 5 },
     criteria: [{ id: 'c1', label: 'Quality', kind: 'rating', weight: 1 }],
     rounds: 1,
     currentRound: 1,
     roundCriteria: null,
+    maxEvaluations: null,
     createdAt: 1700000000000,
+  };
+}
+
+function planWithTrackFilter() {
+  return {
+    ...planWithNullDates(),
+    openDate: 1700000000000,
+    closeDate: 1700100000000,
+    filters: { trackIds: ['track-1'] },
+    maxEvaluations: 3,
   };
 }
 
@@ -98,6 +114,49 @@ describe('ReviewPage render smoke: organizer', () => {
     const closesInput = screen.getByLabelText('Closes') as HTMLInputElement;
     expect(opensInput.value).toBe('');
     expect(closesInput.value).toBe('');
+  });
+
+  it('renders plan detail for a plan with filters.trackIds set without throwing, and saves using wire field names (DEC-171)', async () => {
+    const fetchMock = mockApi({
+      'GET /api/v1/me': organizerMe(),
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([{ id: 'track-1', name: 'Main Stage' }]),
+      [`GET /api/v1/plans/${PLAN_ID}`]: planWithTrackFilter(),
+      [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([]),
+      [`GET /api/v1/users`]: listEnvelope([]),
+      [`PATCH /api/v1/plans/${PLAN_ID}`]: planWithTrackFilter(),
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/plans/${PLAN_ID}`]}>
+        <ReviewPage />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('heading', { name: 'Keynote Track Review' })).toBeInTheDocument();
+    const trackCheckbox = screen.getByLabelText('Main Stage') as HTMLInputElement;
+    expect(trackCheckbox.checked).toBe(true);
+
+    const saveButton = screen.getByRole('button', { name: 'Save plan' });
+    saveButton.click();
+
+    await waitFor(() => {
+      const patchCall = fetchMock.mock.calls.find(([input, init]) => {
+        const url = typeof input === 'string' ? input : (input as URL).toString();
+        return url.includes(`/plans/${PLAN_ID}`) && (init as RequestInit | undefined)?.method === 'PATCH';
+      });
+      expect(patchCall).toBeDefined();
+      const body = JSON.parse((patchCall![1] as RequestInit).body as string);
+      expect(body).toMatchObject({
+        openDate: 1700000000000,
+        closeDate: 1700100000000,
+        filters: { trackIds: ['track-1'] },
+        maxEvaluations: 3,
+      });
+      expect(body.openAt).toBeUndefined();
+      expect(body.closeAt).toBeUndefined();
+      expect(body.trackIds).toBeUndefined();
+      expect(body.maxEvaluationsPerSubmission).toBeUndefined();
+    });
   });
 
   it('renders the progress panel', async () => {

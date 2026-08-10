@@ -22,9 +22,9 @@ function plan() {
     eventId: 'evt-1',
     name: 'Track Review',
     instructions: '',
-    openAt: null,
-    closeAt: null,
-    trackIds: [],
+    openDate: null,
+    closeDate: null,
+    filters: null,
     anonymized: false,
     scale: { min: 1, max: 5 },
     criteria: [{ id: 'c1', label: 'Quality', kind: 'rating', weight: 1 }],
@@ -38,6 +38,7 @@ function plan() {
         { id: 'c3', label: 'Notes', kind: 'text', required: false },
       ],
     },
+    maxEvaluations: null,
     createdAt: 1700000000000,
   };
 }

@@ -104,15 +104,15 @@ export function PlanEditor() {
         setDraft({
           name: plan.name,
           instructions: plan.instructions ?? '',
-          openAt: plan.openAt,
-          closeAt: plan.closeAt,
-          trackIds: plan.trackIds,
+          openAt: plan.openDate,
+          closeAt: plan.closeDate,
+          trackIds: plan.filters?.trackIds ?? [],
           anonymized: plan.anonymized,
           scale: plan.scale,
           criteria: plan.criteria,
           rounds: plan.rounds,
           roundCriteria: plan.roundCriteria ?? null,
-          maxEvaluationsPerSubmission: plan.maxEvaluationsPerSubmission,
+          maxEvaluationsPerSubmission: plan.maxEvaluations ?? undefined,
         });
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load plan'))
@@ -135,12 +135,27 @@ export function PlanEditor() {
     }
     setSaving(true);
     setError(null);
+    // DEC-171: the API speaks PlanRecord's wire names (openDate/closeDate/
+    // filters/maxEvaluations), not the draft's internal field names.
+    const body = {
+      name: draft.name,
+      instructions: draft.instructions,
+      openDate: draft.openAt,
+      closeDate: draft.closeAt,
+      filters: draft.trackIds.length > 0 ? { trackIds: draft.trackIds } : null,
+      maxEvaluations: draft.maxEvaluationsPerSubmission ?? null,
+      anonymized: draft.anonymized,
+      scale: draft.scale,
+      criteria: draft.criteria,
+      rounds: draft.rounds,
+      roundCriteria: draft.roundCriteria,
+    };
     try {
       if (isNew) {
-        const created = await apiPost<EvaluationPlan>(`/events/${eventId}/plans`, draft);
+        const created = await apiPost<EvaluationPlan>(`/events/${eventId}/plans`, body);
         navigate(`/review/plans/${created.id}`);
       } else {
-        await apiPatch<EvaluationPlan>(`/plans/${planId}`, draft);
+        await apiPatch<EvaluationPlan>(`/plans/${planId}`, body);
       }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to save plan');
