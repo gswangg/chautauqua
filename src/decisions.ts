@@ -67,3 +67,7 @@ export const DEC_060 = "Persona verification is modular: scripts/walkthrough/<ar
 export const DEC_061 = "Stage-1 §10 scope is closed: items 2 and 3 deferred";
 export const DEC_062 = "scripts/walkthrough.ts is a thin sequential runner over the five DEC-060 modules, in fixed order producer -> review -> speaker -> public -> data";
 export const DEC_063 = "SPEC §9 persona walkthroughs are CI-enforced: a third 'walkthrough' job boots seeded wrangler dev and runs `npm run walkthrough`";
+export const DEC_064 = "Claim POST validates before consuming: consumeClaimToken runs only after all validation passes, immediately before user creation";
+export const DEC_065 = "Task-assignment upload files are served through GET /files/:fileId via a task-file scope: organizer org-match or the owning speaker";
+export const DEC_066 = "Reviewers may download submission files for events where they hold a plan_reviewer assignment — read-only, no comment access";
+export const DEC_067 = "/headshots/:fileId is gated: 404 unless a contact currently references it; unauthenticated serving requires the public-visibility predicate; org members and the owner get a private-cache fallback";
