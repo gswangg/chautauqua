@@ -16,7 +16,17 @@ import { fileURLToPath } from "node:url";
 
 import { hashPassword } from "../src/auth/password";
 import { MERGE_FIELDS } from "../src/mail/render";
-import { DEC_003, DEC_004, DEC_006, DEC_008 } from "../src/decisions";
+import { DEFAULT_ONBOARDING_TASKS } from "../src/domain/acceptance";
+import {
+  DEC_003,
+  DEC_004,
+  DEC_006,
+  DEC_008,
+  DEC_009,
+  DEC_017,
+  DEC_018,
+  DEC_023,
+} from "../src/decisions";
 import {
   additionalSubmissionStatuses,
   deleteAllStmt,
@@ -28,6 +38,10 @@ void DEC_003;
 void DEC_004;
 void DEC_006;
 void DEC_008;
+void DEC_009;
+void DEC_017;
+void DEC_018;
+void DEC_023;
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(SCRIPT_DIR, "..");
@@ -181,6 +195,7 @@ async function main(): Promise<void> {
     "plan_reviewer",
     "evaluation_plan",
     "participant",
+    "submission_track",
     "submission_answer",
     "submission",
     "form_field",
@@ -227,7 +242,9 @@ async function main(): Promise<void> {
     }),
   );
 
-  // --- tracks ---
+  // --- tracks --- (distinct, readable hex palette; cycles if more tracks
+  // than colors are ever added)
+  const TRACK_COLORS = ["#2563eb", "#16a34a", "#d97706", "#dc2626", "#7c3aed", "#0891b2"];
   const trackIds = fixture.event.tracks.map((name, i) => {
     const trackId = seedId("track", i + 1);
     statements.push(
@@ -235,7 +252,7 @@ async function main(): Promise<void> {
         id: trackId,
         event_id: eventId,
         name,
-        color: null,
+        color: TRACK_COLORS[i % TRACK_COLORS.length]!,
         position: i,
         created_at: nextTs(),
         updated_at: ts,
@@ -245,10 +262,11 @@ async function main(): Promise<void> {
   });
 
   // --- rooms ---
-  fixture.event.rooms.forEach((name, i) => {
+  const roomIds = fixture.event.rooms.map((name, i) => {
+    const roomId = seedId("room", i + 1);
     statements.push(
       insertStmt("room", {
-        id: seedId("room", i + 1),
+        id: roomId,
         event_id: eventId,
         name,
         capacity: null,
@@ -257,6 +275,7 @@ async function main(): Promise<void> {
         updated_at: ts,
       }),
     );
+    return roomId;
   });
 
   // --- default CFP form ---
@@ -432,6 +451,31 @@ async function main(): Promise<void> {
     }),
   );
 
+  // --- synthetic reviewer users (DEC-018): scoped to tracks other than the
+  // reviewer persona's, so plan_reviewer coverage spans every track.
+  const reviewerBUserId = seedId("user", 5);
+  const reviewerCUserId = seedId("user", 6);
+  const reviewerDUserId = seedId("user", 7);
+  const synthReviewerPassword = "ReviewerSeed!2027";
+  for (const [id, email] of [
+    [reviewerBUserId, "reviewer.b@example-speakers.test"],
+    [reviewerCUserId, "reviewer.c@example-speakers.test"],
+    [reviewerDUserId, "reviewer.d@example-speakers.test"],
+  ] as const) {
+    statements.push(
+      insertStmt("user", {
+        id,
+        org_id: orgId,
+        email,
+        password_hash: await hashPassword(synthReviewerPassword),
+        role: "reviewer",
+        contact_id: null,
+        created_at: nextTs(),
+        updated_at: ts,
+      }),
+    );
+  }
+
   // --- submissions: 3 fixture (status 'pending', seq 1..3) + ~27 synthetic ---
   function trackIdFor(name: string): string {
     const i = fixture.event.tracks.indexOf(name);
@@ -459,10 +503,16 @@ async function main(): Promise<void> {
   let seq = 0;
   let submissionCounter = 0;
 
+  // Per-track submission id lists (for evaluation-plan assignment) and the
+  // set of accepted submissions (for scheduling/onboarding/email seeding).
+  const submissionsByTrackIndex: string[][] = fixture.event.tracks.map(() => []);
+  const acceptedSubmissions: { submissionId: string; contactId: string; email: string }[] = [];
+
   function insertSubmissionWithSpeaker(opts: {
     title: string;
     description: string;
     trackId: string;
+    trackIndex: number;
     format: string;
     audienceLevel: string;
     notesForReviewers?: string;
@@ -471,7 +521,7 @@ async function main(): Promise<void> {
     firstName: string;
     lastName: string;
     email: string;
-  }): void {
+  }): string {
     seq += 1;
     submissionCounter += 1;
     const submissionId = seedId("submission", submissionCounter);
@@ -484,7 +534,10 @@ async function main(): Promise<void> {
         seq,
         title: opts.title,
         description: opts.description,
-        track_id: opts.trackId,
+        // DEC-017: submission.track_id / additional_track_ids_json are
+        // frozen legacy — never written; track membership lives only in
+        // submission_track (inserted below, keyed off opts.trackId).
+        track_id: null,
         additional_track_ids_json: null,
         status: opts.status,
         content_status: isAccepted ? "approved" : "pending",
@@ -519,6 +572,34 @@ async function main(): Promise<void> {
         updated_at: ts,
       }),
     );
+
+    // DEC-015/DEC-017: track membership is a real submission_track join,
+    // never the frozen submission.track_id column.
+    statements.push(
+      insertStmt("submission_track", {
+        submission_id: submissionId,
+        track_id: opts.trackId,
+        created_at: nextTs(),
+      }),
+    );
+    // Every 4th submission also belongs to a second track, so multi-track
+    // membership is exercised.
+    if (submissionCounter % 4 === 0) {
+      const secondaryTrackId = trackIds[(opts.trackIndex + 1) % trackIds.length]!;
+      statements.push(
+        insertStmt("submission_track", {
+          submission_id: submissionId,
+          track_id: secondaryTrackId,
+          created_at: nextTs(),
+        }),
+      );
+    }
+
+    submissionsByTrackIndex[opts.trackIndex]!.push(submissionId);
+    if (isAccepted) {
+      acceptedSubmissions.push({ submissionId, contactId: opts.contactId, email: opts.email });
+    }
+    return submissionId;
   }
 
   // 3 fixture submissions, alternating between the two seeded speaker contacts.
@@ -531,6 +612,7 @@ async function main(): Promise<void> {
       title: sub.title,
       description: sub.abstract,
       trackId: trackIdFor(sub.track),
+      trackIndex: fixture.event.tracks.indexOf(sub.track),
       format: sub.format,
       audienceLevel: sub.audience_level,
       notesForReviewers: sub.notes_for_reviewers,
@@ -545,7 +627,14 @@ async function main(): Promise<void> {
   // ~27 additional synthetic submissions, mixed statuses, populating every
   // admin screen. Each gets its own synthetic contact (not a login user).
   const additionalCount = 27;
-  const statuses = additionalSubmissionStatuses(additionalCount);
+  // Bump 3 of the (originally pending) statuses to 'accepted', one per
+  // track, so the event has 8 accepted submissions overall (5 original +
+  // 3 bumped) — enough for a full agenda/public-page demo (task w3-j).
+  // additionalSubmissionStatuses' distribution itself is untouched (owned
+  // by an earlier wave-2 task and covered by its own test).
+  const baseStatuses = additionalSubmissionStatuses(additionalCount);
+  const bumpToAccepted = new Set([0, 1, 2]);
+  const statuses = baseStatuses.map((s, i) => (bumpToAccepted.has(i) ? "accepted" : s));
   for (let i = 0; i < additionalCount; i++) {
     const { first, last } = synthName(i);
     const email = `${first.toLowerCase()}.${last.toLowerCase().replace(/[^a-z]/g, "")}@example-speakers.test`;
@@ -571,7 +660,8 @@ async function main(): Promise<void> {
       }),
     );
 
-    const trackName = fixture.event.tracks[i % fixture.event.tracks.length]!;
+    const trackIndex = i % fixture.event.tracks.length;
+    const trackName = fixture.event.tracks[trackIndex]!;
     const format = fixture.event.session_formats[i % fixture.event.session_formats.length]!;
     const audienceLevel = audienceLevels[i % audienceLevels.length]!;
     const title = synthTitle(i);
@@ -580,6 +670,7 @@ async function main(): Promise<void> {
       title,
       description: `A synthetic seed submission proposing "${title}" for the ${trackName} track. Generated for local development so every admin screen has representative data to work against.`,
       trackId: trackIdFor(trackName),
+      trackIndex,
       format,
       audienceLevel,
       status: statuses[i]!,
@@ -590,15 +681,229 @@ async function main(): Promise<void> {
     });
   }
 
+  // --- evaluation plan (DEC-018): 5-point scale, two weighted rating
+  // criteria + one dropdown criterion; plan_reviewer scopes the reviewer
+  // persona to track 0 and three synthetic reviewers to the other tracks
+  // (with one doubled-up on track 1 for reviewer-overlap realism).
+  const evalPlanId = seedId("evaluation_plan", 1);
+  const evalCriteria = [
+    { id: "content_quality", label: "Content quality & depth", kind: "rating", weight: 2 },
+    { id: "speaker_delivery", label: "Speaker delivery & clarity", kind: "rating", weight: 1 },
+    { id: "session_fit", label: "Session length fit", kind: "dropdown", options: ["Too short", "Just right", "Too long"] },
+  ] as const;
+  statements.push(
+    insertStmt("evaluation_plan", {
+      id: evalPlanId,
+      event_id: eventId,
+      name: "Program Committee Review",
+      instructions: "Score each proposal on content quality, delivery, and session length fit.",
+      open_date: Date.UTC(2027, 3, 1, 0, 0, 0),
+      close_date: Date.UTC(2027, 4, 20, 23, 59, 0),
+      filters_json: null,
+      anonymized: false,
+      scale_json: JSON.stringify({ min: 1, max: 5 }),
+      criteria_json: JSON.stringify(evalCriteria),
+      rounds: 1,
+      max_evaluations: null,
+      created_at: nextTs(),
+      updated_at: ts,
+    }),
+  );
+
+  const reviewerAssignments = [
+    { userId: reviewerUserId, trackIndex: 0 },
+    { userId: reviewerBUserId, trackIndex: 1 },
+    { userId: reviewerCUserId, trackIndex: 2 },
+    { userId: reviewerDUserId, trackIndex: 1 },
+  ];
+  reviewerAssignments.forEach((ra, i) => {
+    statements.push(
+      insertStmt("plan_reviewer", {
+        id: seedId("plan_reviewer", i + 1),
+        plan_id: evalPlanId,
+        user_id: ra.userId,
+        track_id: trackIds[ra.trackIndex]!,
+        created_at: nextTs(),
+        updated_at: ts,
+      }),
+    );
+  });
+
+  // ~40 evaluation rows: the reviewer persona (track 0) only clears 7 of
+  // 10 submissions, leaving their queue/progress view genuinely
+  // incomplete; the synthetic reviewers clear their whole tracks.
+  const EVAL_COMMENTS = [
+    "Strong technical depth, well organized.",
+    "Good energy but could tighten the scope.",
+    "Solid proposal, needs more concrete examples.",
+    "Compelling narrative and clear takeaways.",
+    "Interesting topic; timing might run long.",
+    "Well-suited for this track.",
+    "Could use more advanced content for this audience.",
+    "Clear structure, minor polish needed.",
+  ];
+  const dropdownOptions = evalCriteria[2].options;
+  let evalCounter = 0;
+  function insertEvaluation(reviewerId: string, submissionId: string): void {
+    evalCounter += 1;
+    const contentScore = 1 + ((evalCounter * 7 + 2) % 5);
+    const deliveryScore = 1 + ((evalCounter * 11 + 1) % 5);
+    const sessionFit = dropdownOptions[evalCounter % dropdownOptions.length]!;
+    const comment = EVAL_COMMENTS[evalCounter % EVAL_COMMENTS.length]!;
+    statements.push(
+      insertStmt("evaluation", {
+        id: seedId("evaluation", evalCounter),
+        plan_id: evalPlanId,
+        submission_id: submissionId,
+        reviewer_id: reviewerId,
+        round: 1,
+        scores_json: JSON.stringify({
+          content_quality: contentScore,
+          speaker_delivery: deliveryScore,
+          session_fit: sessionFit,
+        }),
+        comment,
+        submitted_at: nextTs(),
+        created_at: ts,
+        updated_at: ts,
+      }),
+    );
+  }
+
+  const track0Subs = submissionsByTrackIndex[0]!;
+  const track1Subs = submissionsByTrackIndex[1]!;
+  const track2Subs = submissionsByTrackIndex[2]!;
+  for (let i = 0; i < Math.min(7, track0Subs.length); i++) {
+    insertEvaluation(reviewerUserId, track0Subs[i]!);
+  }
+  for (const submissionId of track1Subs) {
+    insertEvaluation(reviewerBUserId, submissionId);
+  }
+  for (const submissionId of track2Subs) {
+    insertEvaluation(reviewerCUserId, submissionId);
+  }
+  for (const submissionId of track1Subs) {
+    insertEvaluation(reviewerDUserId, submissionId);
+  }
+
+  // --- onboarding tasks (DEC-009/DEC-023): the 5 canonical default tasks,
+  // staggered due dates before the event start, assigned to every accepted
+  // speaker's contact in mixed pending/complete states. Never reference
+  // response_json/file_id/last_reminded_at (wave-3 columns, migration
+  // 0002-pending per DEC-017) so this seed works pre- or post-migration.
+  const eventStartMs = Date.UTC(2027, 4, 12, 0, 0, 0);
+  const DAY_MS = 86_400_000;
+  const dueDaysBefore = [35, 28, 21, 14, 7];
+  const taskIds = DEFAULT_ONBOARDING_TASKS.map((tpl, i) => {
+    const taskId = seedId("task", i + 1);
+    statements.push(
+      insertStmt("task", {
+        id: taskId,
+        event_id: eventId,
+        kind: tpl.kind,
+        title: tpl.title,
+        description: null,
+        due_date: eventStartMs - dueDaysBefore[i]! * DAY_MS,
+        required: tpl.required,
+        form_id: null,
+        created_at: nextTs(),
+        updated_at: ts,
+      }),
+    );
+    return taskId;
+  });
+
+  let taskAssignmentCounter = 0;
+  acceptedSubmissions.forEach((acc, contactIdx) => {
+    taskIds.forEach((taskId, taskIdx) => {
+      taskAssignmentCounter += 1;
+      // Roughly two-thirds complete, one-third still pending, mixed per
+      // contact/task so the grid shows a realistic in-progress state.
+      const isComplete = (contactIdx + taskIdx) % 3 !== 0;
+      statements.push(
+        insertStmt("task_assignment", {
+          id: seedId("task_assignment", taskAssignmentCounter),
+          task_id: taskId,
+          contact_id: acc.contactId,
+          status: isComplete ? "complete" : "pending",
+          completed_at: isComplete ? nextTs() : null,
+          completed_by: isComplete ? organizerUserId : null,
+          created_at: nextTs(),
+          updated_at: ts,
+        }),
+      );
+    });
+  });
+
+  // --- schedule slots (DEC-010/DEC-021): roughly two-thirds of accepted
+  // submissions placed across the event's 3 days and 4 rooms, with one
+  // deliberate room-overlap conflict and one TBD (null room) slot; the
+  // rest stay unplaced so the agenda "unscheduled" count reads honestly.
+  const eventDays = ["2027-05-12", "2027-05-13", "2027-05-14"];
+  const placedForSchedule = acceptedSubmissions.slice(0, 5);
+  if (placedForSchedule.length === 5) {
+    const slots: Array<{ submissionId: string; roomId: string | null; day: string; startMin: number; endMin: number }> = [
+      // Deliberate conflict: both in room 0 on day 1, overlapping 09:15-09:45.
+      { submissionId: placedForSchedule[0]!.submissionId, roomId: roomIds[0]!, day: eventDays[0]!, startMin: 9 * 60, endMin: 9 * 60 + 45 },
+      { submissionId: placedForSchedule[1]!.submissionId, roomId: roomIds[0]!, day: eventDays[0]!, startMin: 9 * 60 + 15, endMin: 10 * 60 },
+      // TBD room.
+      { submissionId: placedForSchedule[2]!.submissionId, roomId: null, day: eventDays[1]!, startMin: 10 * 60, endMin: 10 * 60 + 45 },
+      { submissionId: placedForSchedule[3]!.submissionId, roomId: roomIds[1]!, day: eventDays[1]!, startMin: 11 * 60, endMin: 11 * 60 + 45 },
+      { submissionId: placedForSchedule[4]!.submissionId, roomId: roomIds[2]!, day: eventDays[2]!, startMin: 9 * 60, endMin: 9 * 60 + 45 },
+    ];
+    slots.forEach((slot, i) => {
+      statements.push(
+        insertStmt("schedule_slot", {
+          id: seedId("schedule_slot", i + 1),
+          submission_id: slot.submissionId,
+          room_id: slot.roomId,
+          day: slot.day,
+          start_min: slot.startMin,
+          end_min: slot.endMin,
+          created_at: nextTs(),
+          updated_at: ts,
+        }),
+      );
+    });
+  }
+
+  // --- portal settings + a wiki resource ---
+  statements.push(
+    insertStmt("portal_settings", {
+      id: seedId("portal_settings", 1),
+      event_id: eventId,
+      logo_url: null,
+      accent_color: "#4f46e5",
+      welcome_message: "Welcome to the speaker portal! Here you'll find your schedule, onboarding tasks, and resources for the event.",
+      show_resources: true,
+      created_at: nextTs(),
+      updated_at: ts,
+    }),
+  );
+  statements.push(
+    insertStmt("resource", {
+      id: seedId("resource", 1),
+      event_id: eventId,
+      kind: "wiki",
+      title: "Speaker Handbook",
+      content: "## Getting there\n\nParking and directions to the venue.\n\n## AV setup\n\nEach room has a wireless mic and an HDMI/USB-C adapter. Bring your own laptop.\n\n## Questions\n\nReach the organizer team any time via the portal.",
+      file_id: null,
+      position: 0,
+      created_at: nextTs(),
+      updated_at: ts,
+    }),
+  );
+
   // --- fixture 'Acceptance Notification' email template (DEC-006 merge fields) ---
   for (const field of ["speaker_name", "talk_title"] as const) {
     if (!MERGE_FIELDS.includes(field)) {
       throw new Error(`merge field '${field}' is not in the DEC-006 whitelist`);
     }
   }
+  const emailTemplateId = seedId("email_template", 1);
   statements.push(
     insertStmt("email_template", {
-      id: seedId("email_template", 1),
+      id: emailTemplateId,
       event_id: eventId,
       name: "Acceptance Notification",
       subject: fixture.communications.acceptance_subject,
@@ -608,6 +913,29 @@ async function main(): Promise<void> {
       updated_at: ts,
     }),
   );
+
+  // --- email log (dev sink history, DEC-006): a few 'sent' acceptance
+  // notifications so Comms history renders with real rows.
+  acceptedSubmissions.slice(0, 3).forEach((acc, i) => {
+    statements.push(
+      insertStmt("email_log", {
+        id: seedId("email_log", i + 1),
+        event_id: eventId,
+        template_id: emailTemplateId,
+        contact_id: acc.contactId,
+        to_email: acc.email,
+        subject: fixture.communications.acceptance_subject,
+        body_text: fixture.communications.acceptance_body,
+        body_html: null,
+        ics_text: null,
+        ics_filename: null,
+        provider: "dev",
+        status: "sent",
+        sent_at: nextTs(),
+        created_at: ts,
+      }),
+    );
+  });
 
   const sql = statements.join("\n") + "\n";
   writeFileSync(OUTPUT_PATH, sql, "utf-8");
