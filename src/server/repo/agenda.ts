@@ -115,6 +115,17 @@ export async function getEventInfo(db: Db, eventId: string): Promise<EventInfo |
   return rows[0] ?? null;
 }
 
+/** True iff `roomId` names a room row belonging to `eventId` (DEC-073:
+ * room writes/reads must be event-scoped to avoid cross-org room leaks). */
+export async function roomBelongsToEvent(db: Db, roomId: string, eventId: string): Promise<boolean> {
+  const rows = await db
+    .select({ id: schema.room.id })
+    .from(schema.room)
+    .where(and(eq(schema.room.id, roomId), eq(schema.room.eventId, eventId)))
+    .limit(1);
+  return rows.length > 0;
+}
+
 /** Returns the submission's eventId + org id, for ownership checks — null if
  * the submission doesn't exist (mirrors submissions repo helper). */
 export async function getSubmissionOwnership(

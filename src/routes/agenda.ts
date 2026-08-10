@@ -14,6 +14,7 @@ import {
   getEventInfo,
   getSubmissionOwnership,
   isValidSlotInput,
+  roomBelongsToEvent,
   runAutoSchedule,
   unscheduleSlot,
   upsertSlot,
@@ -54,6 +55,11 @@ agendaRoutes.put("/submissions/:id/slot", requireOrganizer, csrfJson, async (c) 
   if (!isValidSlotInput(body)) {
     throw new ApiError("invalid", "day, startMin, endMin (startMin < endMin) are required", {
       slot: "Invalid slot input",
+    });
+  }
+  if (typeof body.roomId === "string" && !(await roomBelongsToEvent(c.var.db, body.roomId, ownership.eventId))) {
+    throw new ApiError("invalid", "Room does not belong to this event", {
+      roomId: "Room does not belong to this event",
     });
   }
 
