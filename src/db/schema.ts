@@ -290,12 +290,18 @@ export const planReviewer = sqliteTable(
     userId: text("user_id").notNull(),
     // assignment scope: a track (reviewers review one or more tracks), null = all
     trackId: text("track_id"),
+    // migrations/0004 (DEC-017): a single-submission assignment scope. Scope
+    // semantics: trackId set = all plan submissions in that track;
+    // submissionId set = that single submission; both null = all submissions
+    // matching plan filters; a reviewer's assignment is the union of their rows.
+    submissionId: text("submission_id"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
   (t) => ({
     plan_reviewer_plan_id_idx: index("plan_reviewer_plan_id_idx").on(t.planId),
     plan_reviewer_user_id_idx: index("plan_reviewer_user_id_idx").on(t.userId),
+    plan_reviewer_submission_id_idx: index("plan_reviewer_submission_id_idx").on(t.submissionId),
   }),
 );
 
@@ -412,6 +418,13 @@ export const taskAssignment = sqliteTable(
     status: text("status").notNull().default("pending"),
     completedAt: integer("completed_at", { mode: "timestamp_ms" }),
     completedBy: text("completed_by"),
+    // migrations/0004 (DEC-017): kind='form' task answers, JSON map
+    // fieldId->value.
+    responseJson: text("response_json"),
+    // migrations/0004 (DEC-017): kind='file_request' completion link.
+    fileId: text("file_id"),
+    // migrations/0004 (DEC-017): reminder dedupe, ms epoch.
+    lastRemindedAt: integer("last_reminded_at", { mode: "timestamp_ms" }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },

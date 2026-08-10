@@ -112,6 +112,107 @@ export function aggregateSubmission(
   };
 }
 
+// ---------------------------------------------------------------------------
+// Criteria validation (DEC-018): a plan's criteria_json can mix 'rating'
+// (numeric, weighted, in-scale) and 'dropdown' (string, from a fixed option
+// list) criteria; free text lives outside scores as evaluation.comment.
+// ---------------------------------------------------------------------------
+
+export interface RatingCriterionDef {
+  id: string;
+  label: string;
+  kind: "rating";
+  weight: number;
+  options?: undefined;
+}
+
+export interface DropdownCriterionDef {
+  id: string;
+  label: string;
+  kind: "dropdown";
+  weight?: undefined;
+  options: string[];
+}
+
+export type EvaluationCriterionDef = RatingCriterionDef | DropdownCriterionDef;
+
+export type EvaluationScoreValue = number | string;
+
+export type EvaluationErrors = Record<string, string>;
+
+/**
+ * Validates a reviewer's submitted scores against the plan's criteria and
+ * scale (DEC-018): 'rating' criteria must have weight > 0 and a numeric
+ * score within [scale.min, scale.max]; 'dropdown' criteria must have a
+ * non-empty options list and the score must be one of those options. Every
+ * criterion must have a score present (no partial submissions); unknown
+ * criterion ids in `scores` are also rejected. Returns `{ ok: true }` or
+ * `{ ok: false, errors }` keyed by criterion id -- never throws, since this
+ * validates untrusted reviewer input at the route boundary.
+ */
+export function validateEvaluationScores(
+  scores: Record<string, unknown>,
+  criteria: EvaluationCriterionDef[],
+  scale: { min: number; max: number },
+): { ok: true } | { ok: false; errors: EvaluationErrors } {
+  const errors: EvaluationErrors = {};
+  const criterionIds = new Set(criteria.map((c) => c.id));
+
+  for (const criterion of criteria) {
+    const value = scores[criterion.id];
+    if (value === undefined || value === null) {
+      errors[criterion.id] = "score is required";
+      continue;
+    }
+    if (criterion.kind === "rating") {
+      if (criterion.weight <= 0) {
+        errors[criterion.id] = `criterion "${criterion.id}" has non-positive weight ${criterion.weight}`;
+        continue;
+      }
+      if (typeof value !== "number" || !Number.isFinite(value)) {
+        errors[criterion.id] = "score must be a number";
+        continue;
+      }
+      if (value < scale.min || value > scale.max) {
+        errors[criterion.id] = `score must be within [${scale.min}, ${scale.max}]`;
+      }
+    } else {
+      if (!Array.isArray(criterion.options) || criterion.options.length === 0) {
+        errors[criterion.id] = `criterion "${criterion.id}" has no options defined`;
+        continue;
+      }
+      if (typeof value !== "string" || !criterion.options.includes(value)) {
+        errors[criterion.id] = `score must be one of: ${criterion.options.join(", ")}`;
+      }
+    }
+  }
+
+  for (const key of Object.keys(scores)) {
+    if (!criterionIds.has(key)) {
+      errors[key] = "unknown criterion";
+    }
+  }
+
+  if (Object.keys(errors).length > 0) {
+    return { ok: false, errors };
+  }
+  return { ok: true };
+}
+
+/**
+ * True when `now` falls within the plan's open/close window (DEC-018 queue
+ * gating). A null openDate/closeDate means unbounded on that side.
+ */
+export function isPlanOpen(
+  openDate: number | null | undefined,
+  closeDate: number | null | undefined,
+  now: number,
+): boolean {
+  if (openDate !== null && openDate !== undefined && now < openDate) return false;
+  if (closeDate !== null && closeDate !== undefined && now > closeDate) return false;
+  return true;
+}
+
 export interface ReviewerQueueItem {
   submissionId: string;
   ratingsCount: number;

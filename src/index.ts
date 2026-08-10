@@ -9,6 +9,8 @@ import { emailLogRoutes } from "./routes/api/email-log";
 import { formsRoutes } from "./routes/api/forms";
 import { publicSubmitRoutes } from "./routes/public/submit";
 import { devMailboxRoutes, shouldMountDevMailbox } from "./routes/dev/mailbox";
+import { reviewRoutes } from "./routes/review";
+import { meRoutes } from "./routes/me";
 
 // Wave 2 wires the remaining routers (admin SPA, /api/v1/*, /submit,
 // /portal, public surfaces, /embed, /files, /dev/mailbox — see DEC-005).
@@ -33,6 +35,8 @@ app.route("/api/v1", eventsRoutes);
 app.route("/", emailLogRoutes);
 app.route("/", formsRoutes);
 app.route("/", publicSubmitRoutes);
+app.route("/", reviewRoutes);
+app.route("/", meRoutes);
 
 // DEC-005: /dev/mailbox is dev-only, mounted only when env.DEV_MODE === '1'.
 // Bindings are only known per-request in a Worker, so the guard runs ahead
