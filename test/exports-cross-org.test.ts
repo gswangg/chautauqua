@@ -8,38 +8,57 @@
 // used by test/headshot-gate.test.ts, to assert requireOwnedEvent
 // (src/routes/api/exports.ts) genuinely 404s org B's organizer on org A's
 // real eventId — not just a made-up id.
+//
+// task-w14-h extends this to (a) enumerate every export kind returned by
+// isExportKind/EXPORT_KINDS (src/server/repo/exports.ts), not just
+// 'submissions', (b) cover the separate DEC-055 showflow.csv route, (c)
+// assert the nonexistent-event path still 404s, and (d) make the fake db
+// throw -- rather than silently returning empty rows -- if any query runs
+// after the ownership check, proving isolation short-circuits before any
+// export data access rather than merely filtering results afterward.
 
 import { describe, expect, it } from "vitest";
 import { Hono } from "hono";
 import { exportsRoutes } from "../src/routes/api/exports";
 import { registerErrorHandler } from "../src/server/http";
+import { EXPORT_KINDS, isExportKind } from "../src/server/repo/exports";
 import type { AppEnv, AuthInfo } from "../src/server/env";
 
-const EVENT_ORG_A = { id: "event-org-a", orgId: "org-a", recordPrefix: "SES" };
+const EVENT_ORG_A = { id: "event-org-a", orgId: "org-a" };
 
-// Two sequential .limit()-terminated selects (requireOwnedEvent's event
-// lookup, then exportSubmissions' getRecordPrefix), followed by a bare
-// .where()-terminated select (the submissions query itself) that returns
-// zero rows so exportSubmissions short-circuits to an empty table.
-function fakeDb(eventRow: { id: string; orgId: string; recordPrefix: string } | undefined) {
+// Exactly one queued response: requireOwnedEvent's own event lookup
+// (src/routes/api/exports.ts). Any select beyond that -- i.e. any of the
+// export kinds' own data queries, which only run once ownership passes --
+// throws, proving the ownership check genuinely short-circuits before data
+// access rather than just filtering rows after fetching them.
+function fakeDbOwnershipOnly(eventRow: { id: string; orgId: string } | undefined) {
   let call = 0;
-  function makeChain(limitRows: unknown[]) {
-    const chain: any = {
-      from: () => chain,
-      innerJoin: () => chain,
-      where: () => chain,
-      limit: async () => limitRows,
-      then: (resolve: (v: unknown[]) => void) => resolve([]),
+  function makeChain(): any {
+    const chain: any = {};
+    for (const m of ["from", "innerJoin", "leftJoin", "where", "orderBy", "offset"]) chain[m] = () => chain;
+    chain.limit = async () => {
+      call += 1;
+      if (call > 1) {
+        throw new Error(
+          `fake db: unexpected query #${call} ran after requireOwnedEvent -- cross-org isolation must ` +
+            "short-circuit before any export data query executes.",
+        );
+      }
+      return eventRow ? [eventRow] : [];
+    };
+    chain.then = (resolve: (v: unknown[]) => void) => {
+      call += 1;
+      if (call > 1) {
+        throw new Error(
+          `fake db: unexpected query #${call} ran after requireOwnedEvent -- cross-org isolation must ` +
+            "short-circuit before any export data query executes.",
+        );
+      }
+      resolve([]);
     };
     return chain;
   }
-  return {
-    select: () => {
-      call += 1;
-      if (call <= 2) return makeChain(eventRow ? [eventRow] : []);
-      return makeChain([]);
-    },
-  } as unknown as AppEnv["Variables"]["db"];
+  return { select: () => makeChain() } as unknown as AppEnv["Variables"]["db"];
 }
 
 function appWithDbAndAuth(db: AppEnv["Variables"]["db"], auth: AuthInfo) {
@@ -54,18 +73,53 @@ function appWithDbAndAuth(db: AppEnv["Variables"]["db"], auth: AuthInfo) {
   return app;
 }
 
-describe("GET /api/v1/events/:eventId/export/:kind — cross-org isolation (w12-c PLANNER #3)", () => {
-  it("404s a genuinely different org's organizer on org A's real eventId (not a nonexistent id)", async () => {
-    const orgBOrganizer: AuthInfo = { userId: "u-org-b", role: "organizer", orgId: "org-b" };
-    const app = appWithDbAndAuth(fakeDb(EVENT_ORG_A), orgBOrganizer);
-    const res = await app.request(`/api/v1/events/${EVENT_ORG_A.id}/export/submissions?format=csv`);
-    expect(res.status).toBe(404);
+const ORG_B_ORGANIZER: AuthInfo = { userId: "u-org-b", role: "organizer", orgId: "org-b" };
+
+describe("GET /api/v1/events/:eventId/export/:kind — cross-org isolation, all kinds (w12-c PLANNER #3, task-w14-h)", () => {
+  it("EXPORT_KINDS matches isExportKind (sanity: enumeration below covers every supported kind)", () => {
+    for (const kind of EXPORT_KINDS) expect(isExportKind(kind)).toBe(true);
+    expect(EXPORT_KINDS.length).toBeGreaterThan(0);
   });
 
-  it("200s org A's own organizer on the same real eventId — sanity check that the fake db round-trips a match", async () => {
-    const orgAOrganizer: AuthInfo = { userId: "u-org-a", role: "organizer", orgId: "org-a" };
-    const app = appWithDbAndAuth(fakeDb(EVENT_ORG_A), orgAOrganizer);
-    const res = await app.request(`/api/v1/events/${EVENT_ORG_A.id}/export/submissions?format=csv`);
-    expect(res.status).toBe(200);
+  for (const kind of EXPORT_KINDS) {
+    it(`404s org B's organizer on org A's real eventId for kind '${kind}', with no data query executed`, async () => {
+      const app = appWithDbAndAuth(fakeDbOwnershipOnly(EVENT_ORG_A), ORG_B_ORGANIZER);
+      const res = await app.request(`/api/v1/events/${EVENT_ORG_A.id}/export/${kind}?format=csv`);
+      expect(res.status).toBe(404);
+      const body = (await res.json()) as { error: { code: string } };
+      expect(body.error.code).toBe("not_found");
+    });
+  }
+
+  it("404s org B's organizer on org A's real eventId for the nonexistent-kind path (invalid kind never reaches ownership check either way)", async () => {
+    const app = appWithDbAndAuth(fakeDbOwnershipOnly(EVENT_ORG_A), ORG_B_ORGANIZER);
+    const res = await app.request(`/api/v1/events/does-not-exist/export/submissions?format=csv`);
+    expect(res.status).toBe(404);
+  });
+});
+
+describe("GET /api/v1/events/:eventId/exports/showflow.csv — cross-org isolation (DEC-055 separate route)", () => {
+  it("404s org B's organizer on org A's real eventId, with no data query executed", async () => {
+    const app = appWithDbAndAuth(fakeDbOwnershipOnly(EVENT_ORG_A), ORG_B_ORGANIZER);
+    const res = await app.request(`/api/v1/events/${EVENT_ORG_A.id}/exports/showflow.csv`);
+    expect(res.status).toBe(404);
+    const body = (await res.json()) as { error: { code: string } };
+    expect(body.error.code).toBe("not_found");
+  });
+
+  it("404s for a nonexistent event", async () => {
+    const app = appWithDbAndAuth(fakeDbOwnershipOnly(undefined), ORG_B_ORGANIZER);
+    const res = await app.request(`/api/v1/events/does-not-exist/exports/showflow.csv`);
+    expect(res.status).toBe(404);
+  });
+});
+
+describe("nonexistent-event path (empty ownership lookup, distinct from a real cross-org row)", () => {
+  it("404s GET /export/:kind for every kind when the event lookup returns no row", async () => {
+    for (const kind of EXPORT_KINDS) {
+      const app = appWithDbAndAuth(fakeDbOwnershipOnly(undefined), ORG_B_ORGANIZER);
+      const res = await app.request(`/api/v1/events/does-not-exist/export/${kind}?format=csv`);
+      expect(res.status).toBe(404);
+    }
   });
 });
