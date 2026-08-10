@@ -10,8 +10,10 @@ import { csrfForm } from "../../server/middleware";
 import { ApiError } from "../../server/http";
 import { makeFileStore } from "../../server/context";
 import { assertSpeakerContactId, getPortalData } from "../../server/repo/portal";
-import { DEC_067 } from "../../decisions";
+import { DEC_067, DEC_084 } from "../../decisions";
+import { readImageDims, MAX_HEADSHOT_EDGE_PX } from "../../lib/image-dims";
 void DEC_067; // DEC-067: /headshots/:fileId gate — see headshotServeRoutes below.
+void DEC_084; // DEC-084: server-side PNG/JPEG dimension gate on headshot upload — see below.
 import {
   getContactProfile,
   getHeadshotServeScope,
@@ -273,6 +275,39 @@ portalProfileRoutes.post("/profile/headshot", csrfForm, async (c) => {
   const r2Key = `headshot/${contactId}/${newId()}-${sanitized}`;
   const store = makeFileStore(c.env.FILES);
   const buf = await headshot.arrayBuffer();
+
+  // DEC-084: server-side dimension gate, amending DEC-059's client-only
+  // downscale — a client can always be bypassed. PNG/JPEG are the only
+  // types we can sniff headers for; webp remains governed by the existing
+  // size cap above (DEC-084 note: webp dimension sniffing is out of scope).
+  if (validation.servedContentType === "image/png" || validation.servedContentType === "image/jpeg") {
+    let dims: { width: number; height: number };
+    try {
+      dims = readImageDims(new Uint8Array(buf), validation.servedContentType);
+    } catch (err) {
+      const { branding, profile } = await loadProfile(c);
+      const { token: csrfToken } = ensureCsrfCookie(c);
+      const message = err instanceof Error ? err.message : "Headshot image could not be read";
+      return c.html(
+        <ProfilePage branding={branding} profile={profile} csrfToken={csrfToken} error={message} />,
+        400,
+      );
+    }
+    if (dims.width > MAX_HEADSHOT_EDGE_PX || dims.height > MAX_HEADSHOT_EDGE_PX) {
+      const { branding, profile } = await loadProfile(c);
+      const { token: csrfToken } = ensureCsrfCookie(c);
+      return c.html(
+        <ProfilePage
+          branding={branding}
+          profile={profile}
+          csrfToken={csrfToken}
+          error="Headshot is larger than 2048px on its longest edge — please upload a smaller image (the portal resizes automatically in modern browsers)."
+        />,
+        400,
+      );
+    }
+  }
+
   await store.put(r2Key, buf, validation.servedContentType);
 
   await setContactHeadshot(c.var.db, contactId, {
