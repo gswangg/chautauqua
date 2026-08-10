@@ -324,25 +324,38 @@ reviewRoutes.post("/api/v1/plans/:id/remind", requireOrganizer, csrfJson, async 
 reviewRoutes.get("/api/v1/review/plans", async (c) => {
   requireReviewerOrOrganizer(c);
   const auth = currentAuth(c);
-  const planIds =
-    auth.role === "organizer"
-      ? (await repo.listPlansForEvent(c.var.db, c.req.query("eventId") ?? "")).map((p) => p.id)
-      : await repo.listPlanIdsForReviewer(c.var.db, auth.userId);
-  const plans = (await Promise.all(planIds.map((id) => repo.getPlanById(c.var.db, id)))).filter(
-    (p): p is PlanRecord => p !== null,
-  );
+  let plans: PlanRecord[];
+  if (auth.role === "organizer") {
+    const eventId = c.req.query("eventId");
+    if (!eventId) throw new ApiError("invalid", "eventId query param is required");
+    const event = await eventsRepo.getEventForOrg(c.var.db, eventId, auth.orgId);
+    if (!event) throw new ApiError("not_found", "Event not found");
+    plans = await repo.listPlansForEvent(c.var.db, event.id);
+  } else {
+    const planIds = await repo.listPlanIdsForReviewer(c.var.db, auth.userId);
+    plans = (await Promise.all(planIds.map((id) => repo.getPlanById(c.var.db, id)))).filter(
+      (p): p is PlanRecord => p !== null,
+    );
+  }
   return c.json({ items: plans, total: plans.length, page: 1, perPage: plans.length || 1 });
 });
 
+/** Mirrors requireOwnedPlan (line ~110) for the reviewer surface: organizers
+ * are scoped to their own org via repo.getPlanForOrg (DEC-039), reviewers
+ * are scoped via their plan assignments. */
 async function requireAssignedPlan(
-  c: { var: { db: import("../server/context").Db; auth?: { userId: string; role: string } } },
+  c: { var: { db: import("../server/context").Db; auth?: { userId: string; role: string; orgId: string } } },
   planId: string,
 ): Promise<PlanRecord> {
   const auth = c.var.auth;
   if (!auth) throw new ApiError("unauthorized", "Login required");
+  if (auth.role === "organizer") {
+    const plan = await repo.getPlanForOrg(c.var.db, planId, auth.orgId);
+    if (!plan) throw new ApiError("not_found", "Plan not found");
+    return plan;
+  }
   const plan = await repo.getPlanById(c.var.db, planId);
   if (!plan) throw new ApiError("not_found", "Plan not found");
-  if (auth.role === "organizer") return plan;
   const planIds = await repo.listPlanIdsForReviewer(c.var.db, auth.userId);
   if (!planIds.includes(planId)) throw new ApiError("not_found", "Plan not found");
   return plan;
