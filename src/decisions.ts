@@ -61,3 +61,7 @@ export const DEC_054 = "Custom submission statuses are deferred: the DEC-003 fiv
 export const DEC_055 = "Show-flow export: GET /api/v1/events/:eventId/exports/showflow.csv";
 export const DEC_056 = "Public API docs page at GET /docs/api (hand-maintained SSR)";
 export const DEC_057 = "Public-submit rate limiting migrates to the DEC-038 scoped limiter; submit-core's legacy limiter is deleted";
+export const DEC_058 = "Perf budgets enforced in CI: bundle-check script + Smart Placement config";
+export const DEC_059 = "Headshot thumbnailing = client-side canvas downscale at upload; /headshots served immutable";
+export const DEC_060 = "Persona verification is modular: scripts/walkthrough/<area>.ts standalone runnables; verify-and-fix tasks repair only their named files";
+export const DEC_061 = "Stage-1 §10 scope is closed: items 2 and 3 deferred";
