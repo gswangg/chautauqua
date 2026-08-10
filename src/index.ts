@@ -4,6 +4,7 @@ import { makeDb } from "./server/context";
 import { sessionLoader } from "./server/middleware";
 import { registerErrorHandler } from "./server/http";
 import { authRoutes } from "./routes/auth";
+import { formsRoutes } from "./routes/api/forms";
 
 // Wave 2 wires the remaining routers (admin SPA, /api/v1/*, /submit,
 // /portal, public surfaces, /embed, /files, /dev/mailbox — see DEC-005).
@@ -24,6 +25,7 @@ app.get("/health", (c) => c.json({ ok: true }));
 app.get("/api/v1", (c) => c.json({ name: "chautauqua", version: "v1" }));
 
 app.route("/", authRoutes);
+app.route("/", formsRoutes);
 
 export default {
   fetch: app.fetch,
