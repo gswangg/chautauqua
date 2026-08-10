@@ -20,6 +20,7 @@ import {
   isValidStatusLiteral,
   listSubmissions,
   parseListQuery,
+  updateSubmissionFields,
   updateSubmissionStatuses,
 } from "../../server/repo/submissions";
 import {
@@ -122,6 +123,47 @@ submissionsRoutes.post("/submissions/:id/clone", requireOrganizer, csrfJson, asy
   const newId = await cloneSubmission(c.var.db, id);
   const detail = await getSubmissionDetail(c.var.db, newId);
   return c.json(detail, 201);
+});
+
+interface UpdateSubmissionBody {
+  title?: unknown;
+  description?: unknown;
+}
+
+// PATCH /api/v1/submissions/:id — organizer-only edit of title/description
+// (CNT-09: admin session editing). Org-ownership check mirrors the clone
+// route above. An empty patch (neither field provided) is rejected rather
+// than silently no-op'ing (fail loudly). The global bumpPublicVersionMiddleware
+// (src/server/pubcache.ts) purges the public cache on any successful
+// mutating request, so no separate purge call is needed here.
+submissionsRoutes.patch("/submissions/:id", requireOrganizer, csrfJson, async (c) => {
+  const auth = requireAuth(c);
+  const id = c.req.param("id");
+  const ownership = await getSubmissionOwnership(c.var.db, id);
+  if (!ownership) throw new ApiError("not_found", "Submission not found");
+  if (ownership.orgId !== auth.orgId) throw new ApiError("forbidden", "Submission belongs to a different org");
+
+  const body = (await c.req.json().catch(() => ({}))) as UpdateSubmissionBody;
+  const fields: { title?: string; description?: string | null } = {};
+
+  if (body.title !== undefined) {
+    const title = typeof body.title === "string" ? body.title.trim() : "";
+    if (!title) throw new ApiError("invalid", "Title is required", { title: "Required" });
+    fields.title = title;
+  }
+  if (body.description !== undefined) {
+    fields.description = typeof body.description === "string" ? body.description : null;
+  }
+
+  if (Object.keys(fields).length === 0) {
+    throw new ApiError("invalid", "At least one of title or description is required", {
+      title: "Provide title or description",
+    });
+  }
+
+  await updateSubmissionFields(c.var.db, id, fields);
+  const detail = await getSubmissionDetail(c.var.db, id);
+  return c.json(detail);
 });
 
 interface InviteParticipantBody {

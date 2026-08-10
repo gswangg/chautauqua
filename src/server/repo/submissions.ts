@@ -40,7 +40,9 @@ export {
 export {
   cloneSubmission,
   createSubmission,
+  updateSubmissionFields,
   type CreateSubmissionInput,
+  type UpdateSubmissionFieldsInput,
 } from "./submissions/create";
 
 export {

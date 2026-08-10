@@ -83,6 +83,25 @@ export async function createSubmission(
   return id;
 }
 
+export interface UpdateSubmissionFieldsInput {
+  title?: string;
+  description?: string | null;
+}
+
+/** CNT-09: organizer edit of title/description (route: PATCH
+ * /api/v1/submissions/:id in routes/api/submissions.ts). Only the fields
+ * present in `fields` are updated; updatedAt is always bumped. */
+export async function updateSubmissionFields(
+  db: Db,
+  submissionId: string,
+  fields: UpdateSubmissionFieldsInput,
+): Promise<void> {
+  await db
+    .update(schema.submission)
+    .set({ ...fields, updatedAt: new Date() })
+    .where(eq(schema.submission.id, submissionId));
+}
+
 export async function cloneSubmission(db: Db, submissionId: string): Promise<string> {
   const rows = await db
     .select()
