@@ -11,6 +11,7 @@ import { validateFieldDefInput, isPermutation, type FieldDefInput } from "../../
 import type { FormFieldDef, FormFieldRule } from "../../forms/types";
 import * as repo from "../../server/repo/forms";
 import type { FormFieldRow } from "../../server/repo/forms";
+import { listTracksForEvent } from "../../server/repo/events";
 
 export const formsRoutes = new Hono<AppEnv>();
 
@@ -70,7 +71,7 @@ formsRoutes.get("/api/v1/events/:eventId/forms", requireOrganizer, async (c) => 
 // offered (form.tracks_json per DEC-015).
 formsRoutes.patch("/api/v1/forms/:formId", requireOrganizer, csrfJson, async (c) => {
   const formId = c.req.param("formId");
-  await requireOwnedForm(c, formId);
+  const form = await requireOwnedForm(c, formId);
 
   const body = await c.req.json().catch(() => {
     throw new ApiError("invalid", "Invalid JSON body");
@@ -103,8 +104,18 @@ formsRoutes.patch("/api/v1/forms/:formId", requireOrganizer, csrfJson, async (c)
   if (body.tracks !== undefined) {
     if (body.tracks !== null && (!Array.isArray(body.tracks) || !body.tracks.every((t: unknown) => typeof t === "string"))) {
       errors.tracks = "must be an array of track ids";
+    } else if (body.tracks !== null) {
+      const deduped = [...new Set(body.tracks as string[])];
+      const eventTracks = await listTracksForEvent(c.var.db, form.eventId);
+      const validIds = new Set(eventTracks.map((t) => t.id));
+      const unknown = deduped.find((id) => !validIds.has(id));
+      if (unknown !== undefined) {
+        errors.tracks = `unknown track id: ${unknown}`;
+      } else {
+        patch.tracks = deduped;
+      }
     } else {
-      patch.tracks = body.tracks;
+      patch.tracks = null;
     }
   }
 
