@@ -119,4 +119,10 @@ export const ROUTE_MANIFEST: readonly RouteManifestEntry[] = [
 
   // --- Public submission form (src/routes/public/submit.tsx) ---
   { path: `/submit/${EVENT_SLUG}`, role: "public", params: { eventSlug: EVENT_SLUG } },
+
+  // --- Admin catch-all (DEC-154, task w2-g's App.tsx <Route path="*">) ---
+  // Literal "/*" tail so routeManifest.test.ts's suffix match sees the
+  // wildcard segment; noted in w2-g's task text as an expected merge-train
+  // touch on this file.
+  { path: "/admin/*", role: "organizer" },
 ] as const;

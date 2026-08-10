@@ -42,6 +42,11 @@ export function PortalLayout(props: { branding: PortalBrandingChrome; children: 
           {props.branding.logoUrl ? <img src={props.branding.logoUrl} alt="" height={40} /> : null}
           <h1>{props.branding.eventName}</h1>
           {props.branding.welcomeMessage ? <p>{props.branding.welcomeMessage}</p> : null}
+          {/* DEC-154: sign-out control on every /portal/* page, via the
+              shared layout so it's not duplicated per-page. */}
+          <form method="post" action="/logout" class="chq-portal-signout">
+            <button type="submit">Sign out</button>
+          </form>
         </header>
         <main>{props.children as any}</main>
       </body>
