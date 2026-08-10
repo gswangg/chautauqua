@@ -3,6 +3,9 @@
  * auto-schedule. Pure module — no node:/cloudflare imports (DEC-002).
  */
 
+import { DEC_130 } from "../decisions";
+void DEC_130;
+
 export interface PlacedSession {
   submissionId: string;
   roomId: string | null;
@@ -115,6 +118,34 @@ export function autoSchedule(input: AutoScheduleInput): PlacedSession[] {
 
   const placed: PlacedSession[] = [...existing];
 
+  // Incremental occupancy indexes (DEC-130): avoid re-running findConflicts
+  // over the full trial set for every candidate placement.
+  const roomIndex = new Map<string, { startMin: number; endMin: number }[]>();
+  const speakerIndex = new Map<
+    string,
+    { startMin: number; endMin: number }[]
+  >();
+
+  const overlaps = (
+    a: { startMin: number; endMin: number },
+    b: { startMin: number; endMin: number },
+  ): boolean => a.startMin < b.endMin && b.startMin < a.endMin;
+
+  for (const p of existing) {
+    if (p.roomId !== null) {
+      const key = `${p.day}|${p.roomId}`;
+      const bucket = roomIndex.get(key) ?? [];
+      bucket.push({ startMin: p.startMin, endMin: p.endMin });
+      roomIndex.set(key, bucket);
+    }
+    for (const contactId of p.speakerContactIds) {
+      const key = `${p.day}|${contactId}`;
+      const bucket = speakerIndex.get(key) ?? [];
+      bucket.push({ startMin: p.startMin, endMin: p.endMin });
+      speakerIndex.set(key, bucket);
+    }
+  }
+
   for (const session of ordered) {
     let placedThisSession = false;
 
@@ -127,8 +158,23 @@ export function autoSchedule(input: AutoScheduleInput): PlacedSession[] {
       ) {
         if (placedThisSession) break;
         const endMin = startMin + session.durationMin;
+        const interval = { startMin, endMin };
 
         for (const roomId of rooms) {
+          const roomKey = `${day}|${roomId}`;
+          const roomBucket = roomIndex.get(roomKey);
+          if (roomBucket?.some((i) => overlaps(i, interval))) continue;
+
+          let speakerConflict = false;
+          for (const contactId of session.speakerContactIds) {
+            const speakerBucket = speakerIndex.get(`${day}|${contactId}`);
+            if (speakerBucket?.some((i) => overlaps(i, interval))) {
+              speakerConflict = true;
+              break;
+            }
+          }
+          if (speakerConflict) continue;
+
           const candidate: PlacedSession = {
             submissionId: session.submissionId,
             roomId,
@@ -138,16 +184,21 @@ export function autoSchedule(input: AutoScheduleInput): PlacedSession[] {
             speakerContactIds: session.speakerContactIds,
           };
 
-          const trial = [...placed, candidate];
-          const newConflicts = findConflicts(trial).filter((c) =>
-            c.submissionIds.includes(session.submissionId),
-          );
+          placed.push(candidate);
 
-          if (newConflicts.length === 0) {
-            placed.push(candidate);
-            placedThisSession = true;
-            break;
+          const roomBucketForKey = roomIndex.get(roomKey) ?? [];
+          roomBucketForKey.push(interval);
+          roomIndex.set(roomKey, roomBucketForKey);
+
+          for (const contactId of session.speakerContactIds) {
+            const speakerKey = `${day}|${contactId}`;
+            const speakerBucketForKey = speakerIndex.get(speakerKey) ?? [];
+            speakerBucketForKey.push(interval);
+            speakerIndex.set(speakerKey, speakerBucketForKey);
           }
+
+          placedThisSession = true;
+          break;
         }
       }
     }
