@@ -30,31 +30,31 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   DEC-077 gates code-frozen, bookkeeping non-code-bearing; DEC-114
   code-bearing iff first-parent name-only diff leaves bookkeeping set
   (EMPTY re-merges never void gates). Wave 11: DEC-108..111 verified.
-- Wave 12-14 (compact): DEC-116 voided DEC-113; 3b7ed3d became newest
-  code-bearing sha; wave-13 (DEC-119) gates cite 3b7ed3d. Wave 14: exit
-  NOT met @3b7ed3d (perf-smoke FAIL missing kind:'rating', triage
-  OPEN:1); five live defects fixed @5fc22ec via DEC-120..125 (IDOR,
-  portal-edit locked fields, compose id-drop, plan-PATCH 500, answer
-  len caps, perf-seed fix); DEC-126 lanes task-w14-i..n. DEC-120..124 =
-  five product defects, DEC-125 = perf-seed fix ("5 defects, 6 DECs").
-- Wave 15 (compact): six w14 fixes verified merged @675219f (DEC-120..
-  125 in-tree w/ tests); gates task-w15-g..k per DEC-127 (log-only,
-  six-marker preflight, ports 8851-8853). db8bcdb concern closed:
-  portal-edit-speaker-locked-route.test.ts:120-127 asserts contactId +
-  contact-sourced email.
-- Wave 16 (DEC-128): mirror battery task-w16-a..e, confirm-else-run --
-  re-derive DEC-114 sha, check log for existing valid section: PASS ->
-  short confirm, no servers; FAIL -> reproduce honestly, never fix;
-  absent -> run full DEC-127 gate. Ports 8861/8862/8863 avoid colliding
-  w/ possibly-live 8851-8853. Duplicate PASS sections harmless (grep
-  needs >=1).
-- Wave 17 (DEC-129): predicate 4/5 green @675219f (w15-g build+test,
-  w15-h/w16-b walkthrough, w15-i perf-smoke incl. rating-PUT, w15-j
-  spec-audit); ONLY triage-closure missing, lane died twice (task-w15-k
-  zero commits, task-w16-e never created) -> dual redundant lanes
-  task-w17-a/b, ports 8871/8872, confirm-else-run. HOMONYM HAZARD: log
-  has FIRST-campaign sections reusing current task names (e.g.
-  'task-w16-e — triage-closure @ 5692a6d, OPEN ITEMS: 0'); valid ONLY
-  if `git merge-base --is-ancestor 675219f <cited-sha>` passes --
-  explains reviewer 'merged-but-no-commits' contradictions. Exit stays
-  planner-only DEC-069 grep; no worker declares complete.
+- Wave 12-14 (compact): DEC-116 voided DEC-113; 3b7ed3d newest code-
+  bearing sha; wave-13 (DEC-119) cites it. Wave 14 exit NOT met (perf-
+  smoke FAIL, triage OPEN:1); five live defects fixed @5fc22ec via
+  DEC-120..125 (IDOR, portal-edit locked fields, compose id-drop,
+  plan-PATCH 500, answer len caps, perf-seed fix); DEC-126 lanes
+  task-w14-i..n.
+- Wave 15-16 (compact): six w14 fixes verified merged @675219f (DEC-
+  120..125 in-tree w/ tests); gates task-w15-g..k per DEC-127 (log-
+  only, six-marker preflight, ports 8851-8853). Wave 16 (DEC-128)
+  mirror battery task-w16-a..e, confirm-else-run vs DEC-114 sha +
+  log-section check (PASS->confirm, FAIL->reproduce never fix,
+  absent->full gate); ports 8861-8863.
+- Wave 17 (DEC-129): predicate 4/5 green @675219f; only triage-closure
+  missing (died twice) -> dual lanes task-w17-a/b, ports 8871/8872,
+  confirm-else-run. HOMONYM HAZARD: log has first-campaign sections
+  reusing current task names; valid only if `git merge-base
+  --is-ancestor 675219f <cited-sha>` passes. Exit stays planner-only
+  DEC-069 grep.
+- Wave 18 (DEC-134, third barrier): DEC-069 predicate WAS fully green
+  @675219f (w15-k + w16-e triage sections landed, OPEN:0/PASS, ancestor
+  guard ok) but four verified live defects reopened code: DEC-130
+  autoSchedule incremental indexes (no per-candidate findConflicts);
+  DEC-131 ics escapeText CR-normalize; DEC-132 hidden file fields leave
+  zero trace on public submit; DEC-133 bulk status full-match (mirrors
+  DEC-122, atomic, ApiError invalid). Lanes task-w18-a..d are the only
+  code-bearing changes; landing any voids all 675219f gates. Wave 19 =
+  full five-gate battery at the new DEC-114 sha, preflight must include
+  DEC-130..133 markers; keep the DEC-129 homonym ancestor guard.
