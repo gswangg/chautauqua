@@ -15,16 +15,21 @@ import {
   cloneSubmission,
   createSubmission,
   getEventOrgId,
-  getParticipantOwnership,
   getSubmissionDetail,
   getSubmissionOwnership,
-  inviteCoPresenter,
   isValidStatusLiteral,
   listSubmissions,
   parseListQuery,
-  setParticipantVisible,
   updateSubmissionStatuses,
 } from "../../server/repo/submissions";
+import {
+  DUPLICATE_PARTICIPANT,
+  getParticipantOwnership,
+  getParticipantRow,
+  inviteParticipant,
+  setParticipantVisible,
+} from "../../server/repo/participants";
+import { findContactForOrg } from "../../server/repo/contacts";
 
 export const submissionsRoutes = new Hono<AppEnv>();
 
@@ -119,17 +124,17 @@ submissionsRoutes.post("/submissions/:id/clone", requireOrganizer, csrfJson, asy
   return c.json(detail, 201);
 });
 
-interface InviteCoPresenterBody {
-  email?: unknown;
-  firstName?: unknown;
-  lastName?: unknown;
+interface InviteParticipantBody {
+  contactId?: unknown;
+  role?: unknown;
 }
 
-// POST /api/v1/submissions/:id/participants — invite a co-presenter.
-// (w12-c PLANNER item #1: previously the only way to construct a
-// participant row with invite_status='invited' was a direct D1 write from
-// the walkthrough script.) Per DEC-009 invariant #1, this does NOT send an
-// email — notifying the invitee is a separate, explicit comms action.
+// POST /api/v1/submissions/:id/participants — invite a participant onto an
+// existing submission (DEC-070; closes w12-c PLANNER item #1: previously
+// the only way to construct a participant row with invite_status='invited'
+// was a direct D1 write from the walkthrough script). Per product
+// principle 4, this does NOT send an email — notifying the invitee is a
+// separate, explicit comms action.
 submissionsRoutes.post("/submissions/:id/participants", requireOrganizer, csrfJson, async (c) => {
   const auth = requireAuth(c);
   const id = c.req.param("id");
@@ -137,17 +142,26 @@ submissionsRoutes.post("/submissions/:id/participants", requireOrganizer, csrfJs
   if (!ownership) throw new ApiError("not_found", "Submission not found");
   if (ownership.orgId !== auth.orgId) throw new ApiError("forbidden", "Submission belongs to a different org");
 
-  const body = (await c.req.json().catch(() => ({}))) as InviteCoPresenterBody;
-  const email = typeof body.email === "string" ? body.email.trim() : "";
-  const firstName = typeof body.firstName === "string" ? body.firstName.trim() : "";
-  const lastName = typeof body.lastName === "string" ? body.lastName.trim() : "";
-  if (!email) {
-    throw new ApiError("invalid", "Email is required", { email: "Required" });
+  const body = (await c.req.json().catch(() => ({}))) as InviteParticipantBody;
+  const contactId = typeof body.contactId === "string" ? body.contactId.trim() : "";
+  if (!contactId) {
+    throw new ApiError("invalid", "contactId is required", { contactId: "Required" });
+  }
+  const role = typeof body.role === "string" && body.role.trim() ? body.role.trim() : undefined;
+
+  const contact = await findContactForOrg(c.var.db, contactId, auth.orgId);
+  if (!contact) {
+    throw new ApiError("invalid", "Contact not found in this org", { contactId: "Invalid contact" });
   }
 
-  await inviteCoPresenter(c.var.db, id, auth.orgId, { email, firstName, lastName });
-  const detail = await getSubmissionDetail(c.var.db, id);
-  return c.json(detail, 201);
+  const result = await inviteParticipant(c.var.db, { submissionId: id, contactId, role });
+  if (result === DUPLICATE_PARTICIPANT) {
+    throw new ApiError("invalid", "This contact is already a participant on this submission", {
+      contactId: "Already invited",
+    });
+  }
+
+  return c.json(result, 201);
 });
 
 interface ParticipantVisibilityBody {
@@ -180,8 +194,8 @@ submissionsRoutes.patch(
     }
 
     await setParticipantVisible(c.var.db, participantId, body.visible);
-    const detail = await getSubmissionDetail(c.var.db, id);
-    return c.json(detail);
+    const row = await getParticipantRow(c.var.db, participantId);
+    return c.json(row);
   },
 );
 

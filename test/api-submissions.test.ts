@@ -255,6 +255,7 @@ const sourceModules = import.meta.glob(
     "../src/routes/api/submissions.ts",
     "../src/server/repo/submissions.ts",
     "../src/server/repo/submissions/*.ts",
+    "../src/server/repo/participants.ts",
   ],
   { query: "?raw", import: "default", eager: true },
 ) as Record<string, string>;
@@ -262,11 +263,12 @@ const sourceModules = import.meta.glob(
 describe("DEC-009 invariant #1: no mailer import reachable from the status-change path", () => {
   it("neither the route module nor any repo submodule import a mailer", () => {
     const entries = Object.entries(sourceModules);
-    // routes/api/submissions.ts + repo/submissions.ts barrel + the 6 split
-    // modules (query, list, detail, create, status, participants). This
-    // count is a tripwire: it fails if the glob stops matching (which would
-    // make the assertions below vacuous) or if a new submodule is added
-    // without being considered against DEC-009 invariant #1.
+    // routes/api/submissions.ts + repo/submissions.ts barrel + the 5 split
+    // submissions/ modules (query, list, detail, create, status) + the
+    // sibling repo/participants.ts (DEC-070). This count is a tripwire: it
+    // fails if the glob stops matching (which would make the assertions
+    // below vacuous) or if a new submodule is added without being
+    // considered against DEC-009 invariant #1.
     expect(entries.length).toBe(8);
     for (const [path, source] of entries) {
       expect(source, `${path} must not import from mail/`).not.toMatch(/from ["'].*\/mail\//);
