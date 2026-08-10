@@ -16,7 +16,7 @@ import { fileURLToPath } from "node:url";
 
 import { hashPassword } from "../src/auth/password";
 import { MERGE_FIELDS } from "../src/mail/render";
-import { DEFAULT_ONBOARDING_TASKS } from "../src/domain/acceptance";
+import { DEFAULT_ONBOARDING_TASKS, FORM_TASK_FIELD_SPECS } from "../src/domain/acceptance";
 import {
   DEC_003,
   DEC_004,
@@ -28,6 +28,7 @@ import {
   DEC_020,
   DEC_023,
   DEC_048,
+  DEC_172,
 } from "../src/decisions";
 import {
   additionalSubmissionStatuses,
@@ -49,6 +50,7 @@ void DEC_018;
 void DEC_020;
 void DEC_023;
 void DEC_048;
+void DEC_172;
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(SCRIPT_DIR, "..");
@@ -902,8 +904,51 @@ async function main(): Promise<void> {
   const eventStartMs = Date.UTC(2027, 4, 12, 0, 0, 0);
   const DAY_MS = 86_400_000;
   const dueDaysBefore = [35, 28, 21, 14, 7];
+  // DEC-111/DEC-172: form-kind onboarding tasks need a real backing form
+  // (non-default, null open/close so it never surfaces on the public CFP)
+  // with FORM_TASK_FIELD_SPECS' fields, mirroring
+  // src/server/repo/submissions/status.ts's getOrCreateFormTaskForm — the
+  // seed bypasses that repo helper, so it must replicate its shape here.
+  let taskFormCounter = 0;
   const taskIds = DEFAULT_ONBOARDING_TASKS.map((tpl, i) => {
     const taskId = seedId("task", i + 1);
+    let taskFormId: string | null = null;
+    if (tpl.kind === "form") {
+      taskFormCounter += 1;
+      taskFormId = seedId("task_form", taskFormCounter);
+      statements.push(
+        insertStmt("form", {
+          id: taskFormId,
+          event_id: eventId,
+          title: tpl.title,
+          description: null,
+          is_default: false,
+          close_date: null,
+          created_at: nextTs(),
+          updated_at: ts,
+        }),
+      );
+      const specs = FORM_TASK_FIELD_SPECS[tpl.title] ?? [];
+      specs.forEach((spec, fieldIdx) => {
+        statements.push(
+          insertStmt("form_field", {
+            id: seedId(`task_form_${taskFormCounter}_field`, fieldIdx + 1),
+            form_id: taskFormId,
+            section: spec.section,
+            kind: spec.kind,
+            label: spec.label,
+            help_text: null,
+            required: spec.required,
+            position: fieldIdx,
+            options_json: spec.options ? JSON.stringify(spec.options) : null,
+            rule_json: null,
+            locked: false,
+            created_at: nextTs(),
+            updated_at: ts,
+          }),
+        );
+      });
+    }
     statements.push(
       insertStmt("task", {
         id: taskId,
@@ -913,7 +958,7 @@ async function main(): Promise<void> {
         description: null,
         due_date: eventStartMs - dueDaysBefore[i]! * DAY_MS,
         required: tpl.required,
-        form_id: null,
+        form_id: taskFormId,
         created_at: nextTs(),
         updated_at: ts,
       }),
