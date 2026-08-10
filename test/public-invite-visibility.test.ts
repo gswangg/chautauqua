@@ -37,4 +37,22 @@ describe("DEC-108: invite-state gating on public surfaces", () => {
   it("'declined' never appears as an allowed invite-status literal", () => {
     expect(publicSrc).not.toContain("declined");
   });
+
+  it("getPublicSpeakerDetail (DEC-151 speaker drill-in) gates on visibleSubmissionConditions", () => {
+    const bodyStart = publicSrc.indexOf("export async function getPublicSpeakerDetail");
+    expect(bodyStart).toBeGreaterThan(-1);
+    const nextFnStart = publicSrc.indexOf("\nexport ", bodyStart + 1);
+    const body = publicSrc.slice(bodyStart, nextFnStart === -1 ? undefined : nextFnStart);
+    expect(body).toContain("visibleSubmissionConditions()");
+    expect(body).toContain("if (rows.length === 0) return null;");
+  });
+
+  it("getPublicSessionDetail (DEC-151 session drill-in) gates on visibleSubmissionConditions", () => {
+    const bodyStart = publicSrc.indexOf("export async function getPublicSessionDetail");
+    expect(bodyStart).toBeGreaterThan(-1);
+    const nextFnStart = publicSrc.indexOf("\nexport ", bodyStart + 1);
+    const body = publicSrc.slice(bodyStart, nextFnStart === -1 ? undefined : nextFnStart);
+    expect(body).toContain("visibleSubmissionConditions()");
+    expect(body).toContain("if (visibleRows.length === 0) return null;");
+  });
 });
