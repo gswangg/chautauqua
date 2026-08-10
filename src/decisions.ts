@@ -3,3 +3,15 @@
 // reference its constant here so the dependency is compile-checked.
 // Do not edit by hand below this header.
 export const DECISIONS_INDEX = true;
+
+export const DEC_001 = "Single-package repo layout, toolchain, and bindings";
+export const DEC_002 = "Pure-core + ports architecture; plain-vitest testability";
+export const DEC_003 = "Canonical D1 schema: table names, ID strategy, enum literals";
+export const DEC_004 = "Auth: PBKDF2 format, session tokens, cookies, CSRF";
+export const DEC_005 = "Route map and admin nav (guessable, two clicks to anything)";
+export const DEC_006 = "Mailer port, dev sink, merge-field rendering";
+export const DEC_007 = ".ics generation rules (stable UID, SEQUENCE bumps)";
+export const DEC_008 = "Form engine: field model, conditional visibility, server-side validation";
+export const DEC_009 = "Status pipeline semantics and idempotent acceptance side effects";
+export const DEC_010 = "Scheduling model: warn-never-block conflicts, greedy auto-schedule";
+export const DEC_011 = "Zero-dependency RFC 4180 CSV utilities";

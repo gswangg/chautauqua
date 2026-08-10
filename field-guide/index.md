@@ -21,3 +21,16 @@ here is injected into every agent at spawn.
   secrets on wrangler dev. No deploys, no real email providers, no Airtable —
   external services go behind ports with local dev implementations (email →
   dev sink + email_log + dev mailbox route). Stage 2 wires platforms later.
+- Wave 1 contracts are binding: DEC-003 owns table names + enum literals
+  ('pending'|'accept_queue'|'decline_queue'|'accepted'|'declined'; task kinds
+  'general'|'file_request'|'form'; file kinds
+  'presentation'|'poster'|'handout'), DEC-004 owns the hash format
+  'pbkdf2$v1$600000$salt$hash', DEC-005 owns the route map + admin nav. Use
+  these exact strings; never invent parallel enums.
+- Pure-core rule (DEC-002): src/{auth,domain,forms,mail,lib} must import
+  nothing from node:, cloudflare, or drizzle — Web APIs only, typed on plain
+  interfaces. That is what makes them testable under plain vitest and
+  swappable in stage 2.
+- package.json is shared-write in wave 1 (w1-a canonical list; w1-b/g/j add
+  matching entries) — merge unions it. Everything else is single-owner per
+  task. src/decisions.ts is scribe-owned; workers never edit it.
