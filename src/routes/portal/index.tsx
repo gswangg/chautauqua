@@ -27,6 +27,8 @@ import {
   type PortalSubmissionDetail,
 } from "../../server/repo/portal";
 import { parseCookies, newCsrfToken, CSRF_COOKIE_NAME } from "../../auth/cookies";
+import { loadEditableSubmission } from "../../server/repo/portal-edit";
+import { canEditSubmission } from "../../domain/edit-lock";
 
 export const portalRoutes = new Hono<AppEnv>();
 
@@ -173,8 +175,12 @@ function minutesToClock(min: number | null): string {
   return `${h}:${m}`;
 }
 
-function SubmissionDetailPage(props: { branding: PortalData["branding"]; detail: PortalSubmissionDetail }) {
-  const { detail } = props;
+function SubmissionDetailPage(props: {
+  branding: PortalData["branding"];
+  detail: PortalSubmissionDetail;
+  editable: boolean;
+}) {
+  const { detail, editable } = props;
   return (
     <PortalLayout branding={props.branding}>
       <a href="/portal">&larr; Back to My Submissions</a>
@@ -182,6 +188,7 @@ function SubmissionDetailPage(props: { branding: PortalData["branding"]; detail:
         {detail.ref}: {detail.title}
       </h2>
       <p>Status: {detail.statusLabel}</p>
+      {editable ? <p><a href={`/portal/submissions/${detail.id}/edit`}>Edit submission</a></p> : null}
       <p>Submitted: {new Date(detail.submittedAt).toISOString().slice(0, 10)}</p>
       {detail.description ? <p>{detail.description}</p> : null}
       <h3>Answers</h3>
@@ -225,7 +232,11 @@ portalRoutes.get("/submissions/:id", async (c) => {
   // Re-derive branding for the header; cheap relative to the round trip
   // already spent on the detail query, and keeps this handler thin.
   const data = await getPortalData(c.var.db, contactId, auth.orgId);
-  return c.html(<SubmissionDetailPage branding={data.branding} detail={detail} />);
+  // DEC-041: the edit link only shows when the submission is still
+  // editable (accepted, or the form window is open).
+  const editData = await loadEditableSubmission(c.var.db, contactId, id);
+  const editable = editData ? canEditSubmission(editData.submission.status, editData.form.closeDate, Date.now()) : false;
+  return c.html(<SubmissionDetailPage branding={data.branding} detail={detail} editable={editable} />);
 });
 
 // POST /portal/invitations/:participantId { action: 'accept'|'decline' } —
