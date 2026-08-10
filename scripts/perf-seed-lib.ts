@@ -66,3 +66,107 @@ export function trackIndexForSubmission(i: number): number {
   }
   return i % PERF_TRACK_COUNT;
 }
+
+// Topic pool for submission titles: cycling through a wide, fixed set
+// (rather than every title sharing one literal string) keeps a
+// realistic-search query term matching a *small minority* of the 2,000
+// rows, the way an actual CFP search term would. 80 topics -> 25 matches
+// each, comfortably under D1's bound-parameter ceiling on the id IN (...)
+// query the match set drives (observed to error out around ~100 binds in
+// local Miniflare D1) — a real product constraint this harness should
+// respect with realistic data, not manufacture by giving every row the
+// same searchable word.
+export const PERF_TOPICS: readonly string[] = [
+  "Kubernetes",
+  "Observability",
+  "Feature Flags",
+  "Data Contracts",
+  "Incident Response",
+  "API Design",
+  "Test Suites",
+  "Code Review",
+  "Edge Computing",
+  "Vector Databases",
+  "Build Caching",
+  "On-Call Culture",
+  "Prompt Engineering",
+  "Static Analysis",
+  "Release Trains",
+  "Config Management",
+  "Chaos Engineering",
+  "Developer Metrics",
+  "Monorepo Tooling",
+  "Secrets Management",
+  "Service Meshes",
+  "LLM Evaluation",
+  "Developer Onboarding",
+  "Internal Tooling",
+  "Platform Reliability",
+  "Documentation Systems",
+  "Infrastructure as Code",
+  "Database Migrations",
+  "Load Testing",
+  "Zero Trust Networking",
+  "GraphQL Federation",
+  "Event Sourcing",
+  "Distributed Tracing",
+  "Container Security",
+  "Serverless Cold Starts",
+  "Rate Limiting",
+  "Multi-Tenant Architecture",
+  "Schema Evolution",
+  "Blue-Green Deploys",
+  "Canary Releases",
+  "SLO Dashboards",
+  "Capacity Planning",
+  "Dependency Upgrades",
+  "Accessibility Audits",
+  "Design Systems",
+  "Mobile CI Pipelines",
+  "WebAssembly Runtimes",
+  "Streaming Data Pipelines",
+  "Feature Store Design",
+  "Model Serving",
+  "Data Lineage",
+  "Cost Observability",
+  "Terraform Modules",
+  "Kafka Consumer Groups",
+  "gRPC Contracts",
+  "Postgres Tuning",
+  "Redis Caching Patterns",
+  "Search Relevance",
+  "Notification Systems",
+  "Batch Job Orchestration",
+  "Zero-Downtime Migrations",
+  "Compliance Automation",
+  "Threat Modeling",
+  "Supply Chain Security",
+  "Developer Experience Metrics",
+  "Internal Platforms",
+  "API Gateways",
+  "Service Level Objectives",
+  "Progressive Delivery",
+  "Data Warehousing",
+  "Real-Time Analytics",
+  "Edge Caching",
+  "Client-Side Performance",
+  "Bundler Internals",
+  "Type-Safe APIs",
+  "Continuous Verification",
+  "Postmortem Culture",
+  "Runbook Automation",
+  "Multi-Region Failover",
+  "Cost-Aware Scheduling",
+  "Test Data Management",
+  "Contract Testing",
+];
+
+/** The topic (title-search substring) for the i-th (0-based) submission. */
+export function topicForSubmission(i: number): string {
+  if (!Number.isInteger(i) || i < 0) {
+    throw new Error(`topicForSubmission: i must be a non-negative integer, got ${i}`);
+  }
+  const topic = PERF_TOPICS[i % PERF_TOPICS.length];
+  if (!topic) throw new Error("topicForSubmission: empty PERF_TOPICS pool");
+  return topic;
+}

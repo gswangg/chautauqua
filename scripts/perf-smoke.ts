@@ -12,7 +12,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { PERF_EVENT_ID } from "./perf-seed-lib";
+import { PERF_EVENT_ID, PERF_TOPICS } from "./perf-seed-lib";
 import { PERF_P95_BUDGET_MS, computeP95 } from "./perf-smoke-lib";
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
@@ -155,11 +155,15 @@ async function main(): Promise<void> {
         fetch(`${PERF_URL}/api/v1/events/${PERF_EVENT_ID}/submissions?page=1&perPage=50`, { headers }),
     },
     {
-      name: "submissions list (q=Perf)",
+      // A single topic word (not e.g. 'Perf', which every seeded title
+      // contains) matches ~1/20th of the 2,000 rows, the way a real CFP
+      // search term would.
+      name: `submissions list (q=${PERF_TOPICS[0]})`,
       run: () =>
-        fetch(`${PERF_URL}/api/v1/events/${PERF_EVENT_ID}/submissions?page=1&perPage=50&q=Perf`, {
-          headers,
-        }),
+        fetch(
+          `${PERF_URL}/api/v1/events/${PERF_EVENT_ID}/submissions?page=1&perPage=50&q=${encodeURIComponent(PERF_TOPICS[0]!)}`,
+          { headers },
+        ),
     },
     {
       name: "submission detail",

@@ -28,6 +28,7 @@ import {
   PERF_TRACK_COUNT,
   contactIndexForSubmission,
   perfSubmissionStatuses,
+  topicForSubmission,
   trackIndexForSubmission,
 } from "./perf-seed-lib";
 
@@ -137,6 +138,7 @@ function main(): void {
     const isAccepted = status === "accepted";
     const contactId = contactIds[contactIndexForSubmission(i)]!;
     const trackId = trackIds[trackIndexForSubmission(i)]!;
+    const topic = topicForSubmission(i);
 
     statements.push(
       insertStmt("submission", {
@@ -144,8 +146,8 @@ function main(): void {
         event_id: PERF_EVENT_ID,
         form_id: null,
         seq: i + 1,
-        title: `Perf Submission ${i + 1}`,
-        description: `Synthetic perf-harness submission #${i + 1}, generated for local scale testing (2k rows, DEC-034).`,
+        title: `${topic}: Perf Submission ${i + 1}`,
+        description: `Synthetic perf-harness submission #${i + 1} on ${topic}, generated for local scale testing (2k rows, DEC-034).`,
         track_id: null,
         additional_track_ids_json: null,
         status,

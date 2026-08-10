@@ -4,9 +4,11 @@ import {
   PERF_CONTACT_COUNT,
   PERF_STATUS_COUNTS,
   PERF_SUBMISSION_COUNT,
+  PERF_TOPICS,
   PERF_TRACK_COUNT,
   contactIndexForSubmission,
   perfSubmissionStatuses,
+  topicForSubmission,
   totalPerfAnswerRows,
   trackIndexForSubmission,
 } from "../scripts/perf-seed-lib";
@@ -70,5 +72,24 @@ describe("trackIndexForSubmission", () => {
   it("rejects negative or non-integer indices", () => {
     expect(() => trackIndexForSubmission(-1)).toThrow();
     expect(() => trackIndexForSubmission(1.5)).toThrow();
+  });
+});
+
+describe("topicForSubmission", () => {
+  it("cycles through the topic pool so a single-topic search matches a minority of rows", () => {
+    expect(topicForSubmission(0)).toBe(PERF_TOPICS[0]);
+    expect(topicForSubmission(PERF_TOPICS.length)).toBe(PERF_TOPICS[0]);
+    const matches = Array.from({ length: PERF_SUBMISSION_COUNT }, (_, i) => topicForSubmission(i)).filter(
+      (t) => t === PERF_TOPICS[0],
+    ).length;
+    // Well under SQLite's ~999-host-parameter limit that an id IN (...)
+    // query built from a title-search match set would otherwise hit.
+    expect(matches).toBeLessThan(200);
+    expect(matches).toBeGreaterThan(0);
+  });
+
+  it("rejects negative or non-integer indices", () => {
+    expect(() => topicForSubmission(-1)).toThrow();
+    expect(() => topicForSubmission(1.5)).toThrow();
   });
 });
