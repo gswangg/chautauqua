@@ -18,7 +18,13 @@ import type { Db } from "../../server/context";
 
 export const contactsRoutes = new Hono<AppEnv>();
 
-contactsRoutes.use("*", requireOrganizer);
+// NOTE: see events.ts for why a blanket `.use("*", requireOrganizer)` is
+// unsafe once mounted under /api/v1 alongside sibling sub-apps — scope to
+// this router's own path prefixes instead (DEC-060 w8-d finding).
+contactsRoutes.use("/contacts", requireOrganizer);
+contactsRoutes.use("/contacts/*", requireOrganizer);
+contactsRoutes.use("/segments", requireOrganizer);
+contactsRoutes.use("/segments/*", requireOrganizer);
 
 function currentOrgId(c: { var: { auth?: { orgId: string } } }): string {
   const auth = c.var.auth;
