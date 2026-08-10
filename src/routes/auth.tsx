@@ -20,6 +20,11 @@ import {
   SESSION_COOKIE_NAME,
 } from "../auth/cookies";
 import { consumeClaimToken, readClaimToken, type KVStore } from "../auth/claim";
+import { checkAndIncrementScopedLimit, requestIpFromHeaders } from "../lib/rate-limit";
+
+const AUTH_RATE_LIMIT_WINDOW_SECONDS = 900;
+const AUTH_RATE_LIMIT_MAX = 20;
+const RATE_LIMIT_ERROR = "Too many attempts. Try again in a few minutes.";
 
 export const authRoutes = new Hono<AppEnv>();
 
@@ -97,6 +102,17 @@ authRoutes.get("/login", (c) => {
 });
 
 authRoutes.post("/login", csrfForm, async (c) => {
+  const kv = c.env.KV as unknown as KVStore;
+  const ip = requestIpFromHeaders((name) => c.req.header(name));
+  const limit = await checkAndIncrementScopedLimit(kv, "login", ip, Date.now(), {
+    windowSeconds: AUTH_RATE_LIMIT_WINDOW_SECONDS,
+    max: AUTH_RATE_LIMIT_MAX,
+  });
+  if (!limit.ok) {
+    const { token: csrfToken } = ensureCsrfCookie(c);
+    return c.html(<LoginPage csrfToken={csrfToken} error={RATE_LIMIT_ERROR} />, 429);
+  }
+
   const body = await c.req.parseBody();
   const email = String(body.email ?? "").trim().toLowerCase();
   const password = String(body.password ?? "");
@@ -152,6 +168,16 @@ authRoutes.get("/claim/:token", async (c) => {
 authRoutes.post("/claim/:token", csrfForm, async (c) => {
   const token = c.req.param("token");
   const kv = c.env.KV as unknown as KVStore;
+  const ip = requestIpFromHeaders((name) => c.req.header(name));
+  const limit = await checkAndIncrementScopedLimit(kv, "claim", ip, Date.now(), {
+    windowSeconds: AUTH_RATE_LIMIT_WINDOW_SECONDS,
+    max: AUTH_RATE_LIMIT_MAX,
+  });
+  if (!limit.ok) {
+    const { token: csrfToken } = ensureCsrfCookie(c);
+    return c.html(<ClaimPage csrfToken={csrfToken} error={RATE_LIMIT_ERROR} />, 429);
+  }
+
   const record = await consumeClaimToken(kv, token);
   if (!record) {
     throw new ApiError("not_found", "This link is invalid or has expired.");
