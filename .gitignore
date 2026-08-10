@@ -4,4 +4,3 @@ public/admin/
 .wrangler/
 .dev.vars
 *.log
-public/admin/
