@@ -52,6 +52,16 @@ const ROUTE_GROUPS: { title: string; rows: Row[] }[] = [
       { method: "POST", path: "/api/v1/events/:eventId/submissions", role: "organizer" },
       { method: "POST", path: "/api/v1/submissions/:id/clone", role: "organizer" },
       { method: "POST", path: "/api/v1/events/:eventId/submissions/status", role: "organizer (bulk status change)" },
+      {
+        method: "POST",
+        path: "/api/v1/submissions/:id/participants",
+        role: "organizer (invite co-presenter, invite_status='invited')",
+      },
+      {
+        method: "PATCH",
+        path: "/api/v1/submissions/:id/participants/:participantId",
+        role: "organizer (toggle visible)",
+      },
     ],
   },
   {

@@ -6,9 +6,9 @@
 // test in test/api-submissions.test.ts.
 //
 // This file is a barrel: implementation lives in submissions/{query,list,
-// detail,create,status}.ts, split out for contention decomposition (no
-// behavior change). Re-export everything so existing import paths keep
-// working unchanged.
+// detail,create,status,participants}.ts, split out for contention
+// decomposition (no behavior change). Re-export everything so existing
+// import paths keep working unchanged.
 
 export {
   chunkIds,
@@ -46,3 +46,11 @@ export {
   updateSubmissionStatuses,
   type UpdateStatusesResult,
 } from "./submissions/status";
+
+export {
+  getParticipantOwnership,
+  inviteCoPresenter,
+  setParticipantVisible,
+  type InviteCoPresenterInput,
+  type ParticipantScope,
+} from "./submissions/participants";

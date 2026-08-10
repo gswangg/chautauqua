@@ -22,7 +22,9 @@ async function nextSeq(db: Db, eventId: string): Promise<number> {
   return (max ?? 0) + 1;
 }
 
-async function findOrCreateContact(
+/** Shared with ./participants (co-presenter invite) — not re-exported from
+ * the repo/submissions barrel, this stays internal to the split modules. */
+export async function findOrCreateContact(
   db: Db,
   orgId: string,
   input: { email: string; firstName: string; lastName: string },
