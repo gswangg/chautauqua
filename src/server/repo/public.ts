@@ -355,7 +355,10 @@ export async function getPublicAgenda(db: Db, event: PublicEvent): Promise<Publi
   const roomRows =
     roomIds.length === 0
       ? []
-      : await db.select({ id: schema.room.id, name: schema.room.name }).from(schema.room).where(inArray(schema.room.id, roomIds));
+      : await db
+          .select({ id: schema.room.id, name: schema.room.name })
+          .from(schema.room)
+          .where(and(inArray(schema.room.id, roomIds), eq(schema.room.eventId, event.id)));
   const roomNameById = new Map(roomRows.map((r) => [r.id, r.name]));
 
   const ids = rows.map((r) => r.submissionId);
