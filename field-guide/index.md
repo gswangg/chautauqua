@@ -17,44 +17,44 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   import nothing from node:/cloudflare — Web APIs only.
 - DEC-012/013: route files export Hono sub-apps, only src/index.ts mounts
   (via src/server/app.ts's createBaseApp + src/server/scheduled.ts's cron
-  handler, DEC-035 — no second bootstrap path). Middleware sessionLoader/
-  requireOrganizer/requireReviewer/requireSpeaker/csrfJson/csrfForm; errors
-  {error:{code,message,fields?}}, lists {items,total,page,perPage}. DEC-015
-  migrations append-only; track membership is submission_track join.
-  DEC-016 locked form fields persist to real columns.
-- Wave-3: route sub-apps in src/routes/*.ts(x); repos in src/server/repo/;
+  handler, DEC-035). Middleware sessionLoader/requireOrganizer/
+  requireReviewer/requireSpeaker/csrfJson/csrfForm; errors
+  {error:{code,message,fields?}}, lists {items,total,page,perPage}.
+  DEC-015 migrations append-only; DEC-016 locked form fields = real cols.
+- Wave-3/4: route sub-apps src/routes/*.ts(x); repos src/server/repo/;
   ApiError(code,message,fields?) from src/server/http.ts; makeDb/makeMailer/
-  makeFileStore/systemClock from src/server/context.ts. DEC-017 migration
-  0002 owned by w3-a, others append schema.ts columns only; legacy track_id
-  cols frozen. DEC-024 SPA: useCurrentEvent.ts, useMe.ts, app/src/lib/api.ts
-  (check existing helpers first; apiUpload sanctioned). Compose (DEC-019)
-  atomic-or-nothing, >100 recipients rejects. Public data only through
-  repo/public.ts's shared SQL gate; embeds frameable; cache max-age=60+SWR.
-- Wave-4: RESERVED migration filenames (DEC-025): 0005 segment, 0006
-  api_token, 0007 saved_view; 0004 for w3-a. Settings.tsx thin container
-  (DEC-032). Portal sub-apps share routes/portal/shared.tsx (speakerGate +
-  PortalLayout, DEC-028). Headshots kind 'headshot', public /headshots/:id.
-  Bearer chq_ in sessionLoader (CSRF-exempt); minting cookie-only (DEC-027).
-- Wave-5: DEC-036 open_date via formWindowState() in submit-core; isFormClosed
-  frozen-exported. DEC-037 email HTML ONLY via escapeHtml/textToHtml in
-  src/mail/render.ts — never renderTemplate into HTML with user vars.
-  DEC-038 src/lib/rate-limit.ts canonical scoped KV limiter (login/claim
-  20/15min/IP). DEC-039 /api/v1/review/* resolves plans only via
-  getPlanForOrg — un-scoped getPlanById banned. DEC-040 form-answer uploads
-  = file rows kind 'attachment', answer = file id. DEC-041 speaker editing
-  routes/portal/edit.tsx (canEdit checked server-side). DEC-042 root
-  README.md is the evaluator entrypoint.
-- Wave-6: DEC-043/044 reviewer mgmt — org users via /api/v1/users (POST
-  returns generated password ONCE, welcome mail text-only via textToHtml);
-  plan_reviewer rows addressed by row id (GET list + DELETE /:reviewerId;
-  body-DELETE removed). DEC-050 locked form fields: new forms use PK
-  '<formId>:<name>'; lockedFieldName() in src/forms/types.ts is the ONLY
-  locked-membership test; repo/forms' row→spec conversion normalizes locked
-  spec ids to short names ('title'…). DEC-049 /admin runs worker-first via
-  ASSETS binding (role redirects: anon→/login, speaker→/portal); GET / is
-  an SSR landing. DEC-047 file resources: file rows kind 'resource'
-  (submission_id null), organizer serve via /files, speaker via portal.
-  DEC-048 seed writes .seed-assets/ + scripts/seed-r2.ts (wrangler r2
-  object put --local) chained into npm run seed. Merge expectations:
-  src/index.ts mount lines, App.tsx route/nav, rebuilt public/admin
-  bundle hashes across SPA tasks — rebuild, don't pick.
+  makeFileStore/systemClock from src/server/context.ts. app/src/lib/api.ts
+  — check existing wire helpers first (apiPut/apiUpload already exist).
+  Compose (DEC-019) atomic-or-nothing, >100 recipients rejects. Public
+  data only via repo/public.ts's shared SQL gate. RESERVED migrations:
+  0005 segment, 0006 api_token, 0007 saved_view. Portal sub-apps share
+  routes/portal/shared.tsx (speakerGate + PortalLayout). Bearer chq_ in
+  sessionLoader (CSRF-exempt); minting cookie-only.
+- Wave-5: DEC-036 open_date via formWindowState(). DEC-037 email HTML
+  ONLY via escapeHtml/textToHtml in src/mail/render.ts. DEC-038
+  src/lib/rate-limit.ts canonical scoped KV limiter. DEC-039
+  /api/v1/review/* resolves plans only via getPlanForOrg. DEC-040
+  form-answer uploads = file rows kind 'attachment'. DEC-041 speaker
+  editing routes/portal/edit.tsx. DEC-042 root README.md is the evaluator
+  entrypoint.
+- Wave-6: DEC-043/044 reviewer mgmt via /api/v1/users + plan_reviewer rows
+  by row id. DEC-050 locked form fields: PK '<formId>:<name>';
+  lockedFieldName() in src/forms/types.ts is the ONLY locked-membership
+  test. DEC-049 /admin worker-first via ASSETS binding; GET / SSR landing.
+  DEC-047 file resources: kind 'resource'. DEC-048 seed writes
+  .seed-assets/ + scripts/seed-r2.ts chained into npm run seed.
+- Wave-7: DEC-051 compose attachIcs — submission.ics_sequence via RESERVED
+  migration 0008_w7_ics_sequence.sql (journal idx 8); preview never bumps,
+  send bumps once/submission; UID stays uidFor(submissionId); public
+  schedule.ics untouched (sequence 0). DEC-057 supersedes DEC-038's
+  freeze: submit-core's legacy limiter DELETED, public submit uses
+  checkAndIncrementScopedLimit scope 'submit' (KV keys unchanged).
+  DEC-052 App.tsx-only React.lazy per route + NavLink hover/focus chunk
+  prefetch; pages keep named exports. DEC-053 scripts/walkthrough.ts is
+  the J1→J12 vehicle (cookie jar, form login w/ chq_csrf, JSON mutations
+  need 'x-chq-csrf: 1'). DEC-054 custom statuses deferred — five DEC-003
+  statuses are the stage-1 contract. DEC-055 showflow.csv cols fixed;
+  DEC-056 /docs/api hand-maintained SSR. Agenda drag-drop lives in
+  app/src/pages/agenda/state.ts (optimistic + reconcile — extend, don't
+  fork). Merge: rebuilt admin bundle hashes (w7-c/d/f), src/index.ts
+  mount lines (w7-g), one-line README adds (w7-e/g).
