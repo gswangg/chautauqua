@@ -9,7 +9,7 @@ import { Hono } from "hono";
 import type { AppEnv } from "../../server/env";
 import { csrfForm } from "../../server/middleware";
 import { ApiError } from "../../server/http";
-import { makeMailer } from "../../server/context";
+import { makeMailer, makeFileStore } from "../../server/context";
 import {
   getEventBySlug,
   getDefaultForm,
@@ -22,6 +22,7 @@ import {
   createParticipant,
   createSubmissionTracks,
   createSubmissionAnswers,
+  insertAttachmentFile,
   type EventRow,
   type FormRow,
   type TrackRow,
@@ -31,10 +32,11 @@ import { isVisible } from "../../forms/visibility";
 import type { AnswerMap, FormFieldDef } from "../../forms/types";
 import { LOCKED_SESSION_FIELDS, LOCKED_SPEAKER_FIELDS } from "../../forms/types";
 import {
-  isFormClosed,
+  formWindowState,
   validateTrackChoice,
   resolveOfferedTrackIds,
   checkAndIncrementRateLimit,
+  extractFileAnswers,
 } from "../../lib/submit-core";
 import {
   saveDraft,
@@ -47,14 +49,18 @@ import {
 import { createClaimToken, type KVStore as ClaimKVStore } from "../../auth/claim";
 import { parseCookies, newCsrfToken, CSRF_COOKIE_NAME } from "../../auth/cookies";
 import { renderTemplate } from "../../mail/render";
+import { validateUpload, sanitizeFilenameForKey, type ValidUpload } from "../../domain/files";
+import { newId } from "../../domain/ids";
 import { FormFieldsSection, FieldRulesScript, fieldInputName } from "../../views/form-render";
-import { DEC_014, DEC_016 } from "../../decisions";
+import { DEC_014, DEC_016, DEC_036, DEC_040 } from "../../decisions";
 
 export const publicSubmitRoutes = new Hono<AppEnv>();
 
 // touch DEC constants so the dependency is compile-checked (field guide convention)
 void DEC_014;
 void DEC_016;
+void DEC_036;
+void DEC_040;
 
 function ensureCsrfCookie(c: { req: { header(name: string): string | undefined } }): {
   token: string;
@@ -99,6 +105,17 @@ function ClosedPage(props: { event: EventRow; form: FormRow }) {
       <p role="alert">
         Submissions for this event closed on {new Date(props.form.closeDate ?? 0).toUTCString()}. Thanks for your
         interest — please reach out to the organizers directly if you have questions.
+      </p>
+    </PageShell>
+  );
+}
+
+function NotYetOpenPage(props: { event: EventRow; form: FormRow }) {
+  return (
+    <PageShell title={`Submissions not yet open - ${props.event.name}`} accentColor={branding(props.event).accentColor}>
+      <h1>{props.event.name}</h1>
+      <p role="alert">
+        Submissions open {new Date(props.form.openDate ?? 0).toUTCString()}. Please check back then.
       </p>
     </PageShell>
   );
@@ -156,7 +173,7 @@ function SubmitPage(props: {
       {props.hasDraft && props.draftSavedAt !== undefined ? (
         <DraftBanner formId={form.id} savedAt={props.draftSavedAt} />
       ) : null}
-      <form method="post" action={`/submit/${event.slug}`}>
+      <form method="post" action={`/submit/${event.slug}`} enctype="multipart/form-data">
         <input type="hidden" name={CSRF_COOKIE_NAME} value={csrfToken} />
         <h2>Session</h2>
         <FormFieldsSection fields={fields} section="session" answers={answers} errors={errors} isVisible={isVisible} />
@@ -205,6 +222,10 @@ function ConfirmationPage(props: { event: EventRow; title: string; claimUrl: str
 function extractAnswers(fields: FormFieldDef[], body: Record<string, unknown>): AnswerMap {
   const answers: AnswerMap = {};
   for (const field of fields) {
+    // File-kind answers are handled separately (extractFileAnswers) since
+    // they need async upload + a repo write before they become an answer
+    // value — never stringified here (DEC-040).
+    if (field.kind === "file") continue;
     const name = fieldInputName(field.id);
     if (field.kind === "checkbox") {
       answers[field.id] = body[name] !== undefined;
@@ -235,7 +256,11 @@ publicSubmitRoutes.get("/submit/:eventSlug", async (c) => {
   const form = await getDefaultForm(db, event.id);
   if (!form) return c.text("This event is not accepting submissions yet.", 404);
 
-  if (isFormClosed(form.closeDate, Date.now())) {
+  const windowState = formWindowState(form.openDate, form.closeDate, Date.now());
+  if (windowState === "not_yet_open") {
+    return c.html(<NotYetOpenPage event={event} form={form} />);
+  }
+  if (windowState === "closed") {
     return c.html(<ClosedPage event={event} form={form} />);
   }
 
@@ -286,12 +311,22 @@ publicSubmitRoutes.post("/submit/:eventSlug/save-draft", csrfForm, async (c) => 
   const form = await getDefaultForm(db, event.id);
   if (!form) return c.text("This event is not accepting submissions yet.", 404);
 
+  const windowState = formWindowState(form.openDate, form.closeDate, Date.now());
+  if (windowState === "not_yet_open") {
+    return c.html(<NotYetOpenPage event={event} form={form} />);
+  }
+  if (windowState === "closed") {
+    return c.html(<ClosedPage event={event} form={form} />);
+  }
+
   const fields = await getFormFields(db, form.id);
   const body = (await c.req.parseBody({ all: true })) as Record<string, unknown>;
   const answers = extractAnswers(fields, body);
   // Track selection is stored in the same draft answers blob under a
   // reserved key so it survives resume, without becoming a fake form field.
   (answers as Record<string, unknown>).__trackIds = extractTrackIds(body);
+  // Drafts never persist file selections (DEC-040): file answers are
+  // extracted only at final submit, so `answers` here already omits them.
 
   const cookies = parseCookies(c.req.header("cookie") ?? null);
   const cookieName = draftCookieName(form.id);
@@ -312,7 +347,11 @@ publicSubmitRoutes.post("/submit/:eventSlug", csrfForm, async (c) => {
   const form = await getDefaultForm(db, event.id);
   if (!form) return c.text("This event is not accepting submissions yet.", 404);
 
-  if (isFormClosed(form.closeDate, Date.now())) {
+  const windowState = formWindowState(form.openDate, form.closeDate, Date.now());
+  if (windowState === "not_yet_open") {
+    return c.html(<NotYetOpenPage event={event} form={form} />);
+  }
+  if (windowState === "closed") {
     return c.html(<ClosedPage event={event} form={form} />);
   }
 
@@ -332,10 +371,39 @@ publicSubmitRoutes.post("/submit/:eventSlug", csrfForm, async (c) => {
   const answers = extractAnswers(fields, body);
   const selectedTrackIds = extractTrackIds(body);
 
+  // File-kind answers (DEC-040): pull the uploaded File instances, validate
+  // type/size up front (no I/O yet — the submission doesn't exist until
+  // validation passes), and stand in a placeholder value so validateAnswers'
+  // required check sees a present answer for fields with a valid upload.
+  const fileFields = fields.filter((field) => field.kind === "file");
+  const fileAnswers = extractFileAnswers(
+    fileFields.map((field) => field.id),
+    fieldInputName,
+    body,
+  );
+  const fileValidations: Record<string, ValidUpload> = {};
+  const fileErrors: Record<string, string> = {};
+  for (const field of fileFields) {
+    const file = fileAnswers[field.id];
+    if (!file) continue;
+    // `kind` here only selects the extension/size allowlist tier inside
+    // validateUpload — the file row this becomes is always kind 'attachment'
+    // (DEC-040), never one of the submission-deliverable kinds.
+    const result = validateUpload({ filename: file.name, sizeBytes: file.size, kind: "handout" });
+    if (!result.ok) {
+      fileErrors[field.id] = result.message;
+      continue;
+    }
+    fileValidations[field.id] = result;
+    answers[field.id] = "pending";
+  }
+
   const validation = validateAnswers(fields, answers);
   const trackResult = validateTrackChoice(selectedTrackIds, offeredTrackIds);
+  const hasFileErrors = Object.keys(fileErrors).length > 0;
 
-  if (!validation.ok || !trackResult.ok) {
+  if (!validation.ok || !trackResult.ok || hasFileErrors) {
+    const mergedErrors = { ...(validation.ok ? {} : validation.errors), ...fileErrors };
     return c.html(
       <SubmitPage
         event={event}
@@ -346,7 +414,7 @@ publicSubmitRoutes.post("/submit/:eventSlug", csrfForm, async (c) => {
         selectedTrackIds={selectedTrackIds}
         hasDraft={false}
         csrfToken={(c.req.header("cookie") && parseCookies(c.req.header("cookie") ?? null)[CSRF_COOKIE_NAME]) || newCsrfToken()}
-        errors={validation.ok ? undefined : validation.errors}
+        errors={mergedErrors}
         trackError={trackResult.ok ? undefined : trackResult.error}
       />,
       400,
@@ -366,6 +434,29 @@ publicSubmitRoutes.post("/submit/:eventSlug", csrfForm, async (c) => {
   const submission = await createSubmission(db, { eventId: event.id, formId: form.id, title, description });
   await createParticipant(db, { submissionId: submission.id, contactId });
   await createSubmissionTracks(db, submission.id, selectedTrackIds);
+
+  // Upload each valid file answer now that the submission exists, and swap
+  // the "pending" placeholder for the real file id (DEC-040: the answer
+  // value is the file.id string).
+  const fileStore = makeFileStore(c.env.FILES);
+  for (const field of fileFields) {
+    const file = fileAnswers[field.id];
+    const validated = fileValidations[field.id];
+    if (!file || !validated) continue;
+    const r2Key = `sub/${submission.id}/answer-${newId()}-${sanitizeFilenameForKey(file.name)}`;
+    const buf = await file.arrayBuffer();
+    await fileStore.put(r2Key, buf, validated.servedContentType);
+    const fileId = await insertAttachmentFile(db, {
+      submissionId: submission.id,
+      filename: file.name,
+      r2Key,
+      sizeBytes: file.size,
+      contentType: validated.servedContentType,
+      uploadedByContactId: contactId,
+    });
+    cleaned[field.id] = fileId;
+  }
+
   await createSubmissionAnswers(db, submission.id, cleaned);
 
   // Delete the KV draft — drafts never survive a successful submit (DEC-014).
