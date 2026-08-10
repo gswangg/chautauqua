@@ -1,0 +1,132 @@
+import type { ContactListItem, Segment } from './types';
+import { isPageFullySelected, isPagePartiallySelected, selectionReducer, type SelectionState } from './selection';
+
+interface Props {
+  items: ContactListItem[];
+  total: number;
+  page: number;
+  perPage: number;
+  q: string;
+  segmentId: string;
+  segments: Segment[];
+  selection: SelectionState;
+  loading: boolean;
+  onChangeQ: (q: string) => void;
+  onChangeSegment: (segmentId: string) => void;
+  onChangePage: (page: number) => void;
+  onSelectionChange: (selection: SelectionState) => void;
+  onOpenContact: (id: string) => void;
+}
+
+export function ContactsTable({
+  items,
+  total,
+  page,
+  perPage,
+  q,
+  segmentId,
+  segments,
+  selection,
+  loading,
+  onChangeQ,
+  onChangeSegment,
+  onChangePage,
+  onSelectionChange,
+  onOpenContact,
+}: Props) {
+  const pageIds = items.map((item) => item.id);
+
+  return (
+    <div className="chq-contacts-table-wrap">
+      <div className="chq-contacts-toolbar">
+        <input
+          type="search"
+          placeholder="Search name, email, company..."
+          aria-label="Search contacts"
+          value={q}
+          onChange={(e) => onChangeQ(e.target.value)}
+        />
+        <label>
+          Segment
+          <select aria-label="Segment filter" value={segmentId} onChange={(e) => onChangeSegment(e.target.value)}>
+            <option value="">All contacts</option>
+            {segments.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      <table className="chq-contacts-table">
+        <thead>
+          <tr>
+            <th>
+              <input
+                type="checkbox"
+                aria-label="Select all on page"
+                checked={isPageFullySelected(selection, pageIds)}
+                ref={(el) => {
+                  if (el) el.indeterminate = isPagePartiallySelected(selection, pageIds);
+                }}
+                onChange={() => onSelectionChange(selectionReducer(selection, { type: 'TOGGLE_PAGE', pageIds }))}
+              />
+            </th>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Company</th>
+            <th>Title</th>
+            <th># Submissions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {loading && (
+            <tr>
+              <td colSpan={6}>Loading...</td>
+            </tr>
+          )}
+          {!loading && items.length === 0 && (
+            <tr>
+              <td colSpan={6}>No contacts match the current search/filter.</td>
+            </tr>
+          )}
+          {!loading &&
+            items.map((c) => (
+              <tr key={c.id}>
+                <td>
+                  <input
+                    type="checkbox"
+                    aria-label={`Select ${c.firstName} ${c.lastName}`}
+                    checked={selection.selectedIds.has(c.id)}
+                    onChange={() => onSelectionChange(selectionReducer(selection, { type: 'TOGGLE_ROW', id: c.id }))}
+                  />
+                </td>
+                <td>
+                  <button type="button" className="chq-link-button" onClick={() => onOpenContact(c.id)}>
+                    {c.firstName} {c.lastName}
+                  </button>
+                </td>
+                <td>{c.email}</td>
+                <td>{c.company ?? '—'}</td>
+                <td>{c.title ?? '—'}</td>
+                <td>{c.submissionCount ?? '—'}</td>
+              </tr>
+            ))}
+        </tbody>
+      </table>
+
+      <div className="chq-pagination">
+        <button type="button" disabled={page <= 1} onClick={() => onChangePage(page - 1)}>
+          Previous
+        </button>
+        <span>
+          Page {page} &middot; {total} total
+        </span>
+        <button type="button" disabled={page * perPage >= total} onClick={() => onChangePage(page + 1)}>
+          Next
+        </button>
+      </div>
+    </div>
+  );
+}
