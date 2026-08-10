@@ -119,6 +119,23 @@ async function apiJson<T>(
   return { status: res.status, json };
 }
 
+/** Form-encoded POST carrying the DEC-053 chq_csrf hidden field (csrfForm
+ * convention) — used for portal routes that aren't the JSON API. */
+async function postForm(
+  cookies: Cookies,
+  path: string,
+  fields: Record<string, string>,
+): Promise<{ status: number; body: string }> {
+  const body = new URLSearchParams({ chq_csrf: cookies.chq_csrf ?? "", ...fields });
+  const res = await fetch(`${BASE_URL}${path}`, {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded", cookie: cookieHeader(cookies) },
+    body: body.toString(),
+    redirect: "manual",
+  });
+  return { status: res.status, body: await res.text().catch(() => "") };
+}
+
 async function waitForHealth(timeoutMs = 30_000): Promise<void> {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
@@ -153,7 +170,11 @@ function extractAll(html: string, re: RegExp): string[] {
 // ---------------------------------------------------------------------------
 
 interface FixtureData {
-  identities: { organizer: { email: string; password: string } };
+  identities: {
+    organizer: { email: string; password: string };
+    speaker: { name: string; email: string; password: string };
+    speaker2: { name: string; email: string; password: string };
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -595,6 +616,145 @@ async function main(): Promise<void> {
 
     await assertAbsentEverywhere(marker, id);
   });
+
+  // -------------------------------------------------------------------------
+  // DEC-108/DEC-112: public/embed visibility must additionally require
+  // participant.inviteStatus IN ('none','accepted'). An accepted+approved
+  // session with a co-presenter who never responded ('invited') or who
+  // explicitly declined must never announce that co-presenter's name on
+  // public/embed surfaces (visibleSubmissionConditions() + the
+  // hydrateSessions speaker sub-query, public.ts:225). Builds on the
+  // existing DEC-070 invite + accept/decline flow (organizer invites via
+  // POST /api/v1/submissions/:id/participants, speaker responds via
+  // POST /portal/invitations/:participantId). This probe asserts POST-FIX
+  // behavior and MUST fail against pre-w10 main (the pending and declined
+  // invitees' names still leak onto /sessions and /speakers) — task w10-e
+  // proves the walkthrough is correctly wired to the still-open defect; the
+  // wave-11 walkthrough gate at the post-w10 sha is the green runtime proof.
+  // -------------------------------------------------------------------------
+
+  interface InviteParticipantResult {
+    id: string;
+    contactId: string;
+    inviteStatus: string;
+  }
+
+  async function findOrCreateContactId(email: string, firstName: string, lastName: string): Promise<string> {
+    const { status, json } = await apiJson<{ id: string }>(cookies, "POST", `/api/v1/events/${eventId}/submissions`, {
+      title: `Wk invite-visibility contact fixture ${Date.now()}`,
+      description: "Walkthrough invite-visibility contact fixture (throwaway, never scheduled itself).",
+      contact: { email, firstName, lastName },
+    });
+    assert(status === 201, `create contact-fixture submission -> ${status}`);
+    const { json: detail } = await apiJson<{ participants: Array<{ contactId: string }> }>(
+      cookies,
+      "GET",
+      `/api/v1/submissions/${json.id}`,
+    );
+    return detail.participants[0]!.contactId;
+  }
+
+  await check(
+    "J10 DEC-108 invite-visibility gate: accepted invitee shown, pending and declined invitees absent",
+    async () => {
+      const stamp2 = Date.now();
+      const baseTitle = `Wk Invite Visibility Base ${stamp2}`;
+      const base = await createAcceptedSubmission(baseTitle, `wk-invite-base-${stamp2}@example.test`);
+
+      const { status: approveStatus } = await apiJson(cookies, "POST", `/api/v1/submissions/${base.id}/content-status`, {
+        contentStatus: "approved",
+      });
+      assert(approveStatus === 200, `approve content-status -> ${approveStatus}`);
+      const { status: slotStatus } = await apiJson(cookies, "PUT", `/api/v1/submissions/${base.id}/slot`, {
+        day,
+        startMin: 950,
+        endMin: 980,
+        roomId: roomA,
+      });
+      assert(slotStatus === 200, `schedule base submission -> ${slotStatus}`);
+
+      // Accepted co-presenter: the real DEC-070 accept flow via the seeded
+      // speaker persona (has real login credentials).
+      const acceptedContactId = await findOrCreateContactId(
+        fixture.identities.speaker.email,
+        "Wk",
+        "AcceptedInviteeContact",
+      );
+      const { status: inviteAcceptedStatus, json: inviteAcceptedJson } = await apiJson<InviteParticipantResult>(
+        cookies,
+        "POST",
+        `/api/v1/submissions/${base.id}/participants`,
+        { contactId: acceptedContactId },
+      );
+      assert(inviteAcceptedStatus === 201, `invite accepted-to-be co-presenter -> ${inviteAcceptedStatus}`);
+      const speakerCookies = await login(fixture.identities.speaker.email, fixture.identities.speaker.password);
+      const acceptRes = await postForm(speakerCookies, `/portal/invitations/${inviteAcceptedJson.id}`, {
+        action: "accept",
+      });
+      assert(acceptRes.status === 302, `speaker accept invitation -> ${acceptRes.status}`);
+
+      // Declined co-presenter: the real DEC-070 decline flow via the second
+      // seeded speaker persona (only a real logged-in speaker can respond to
+      // their own participant row — DEC-070's ownership guard means a
+      // throwaway marker contact can't self-decline, so this leg asserts on
+      // speaker2's own fixture name instead of a marker; both speaker's and
+      // speaker2's fixture submissions are left 'pending' by the earlier
+      // walkthrough modules, so neither name is publicly visible from any
+      // other source when this check runs).
+      const declinedContactId = await findOrCreateContactId(
+        fixture.identities.speaker2.email,
+        "Wk",
+        "DeclinedInviteeContact",
+      );
+      const { status: inviteDeclinedStatus, json: inviteDeclinedJson } = await apiJson<InviteParticipantResult>(
+        cookies,
+        "POST",
+        `/api/v1/submissions/${base.id}/participants`,
+        { contactId: declinedContactId },
+      );
+      assert(inviteDeclinedStatus === 201, `invite declined-to-be co-presenter -> ${inviteDeclinedStatus}`);
+      const speaker2Cookies = await login(fixture.identities.speaker2.email, fixture.identities.speaker2.password);
+      const declineRes = await postForm(speaker2Cookies, `/portal/invitations/${inviteDeclinedJson.id}`, {
+        action: "decline",
+      });
+      assert(declineRes.status === 302, `speaker2 decline invitation -> ${declineRes.status}`);
+
+      // Pending co-presenter: invited, never responds (invite_status stays
+      // 'invited') — a fresh throwaway contact with a unique marker name so
+      // its absence can be asserted unambiguously.
+      const pendingMarkerFirst = `WkPendingMarker${stamp2}`;
+      const pendingContactId = await findOrCreateContactId(
+        `wk-invite-pending-${stamp2}@example.test`,
+        pendingMarkerFirst,
+        "PendingInvitee",
+      );
+      const { status: invitePendingStatus } = await apiJson<InviteParticipantResult>(
+        cookies,
+        "POST",
+        `/api/v1/submissions/${base.id}/participants`,
+        { contactId: pendingContactId },
+      );
+      assert(invitePendingStatus === 201, `invite pending co-presenter -> ${invitePendingStatus}`);
+
+      const sessionsRes = await fetch(`${BASE_URL}/e/${EVENT_SLUG}/sessions`);
+      const sessionsHtmlAfter = await sessionsRes.text();
+      const speakersRes = await fetch(`${BASE_URL}/e/${EVENT_SLUG}/speakers`);
+      const speakersHtmlAfter = await speakersRes.text();
+
+      assert(
+        sessionsHtmlAfter.includes(fixture.identities.speaker.name) || speakersHtmlAfter.includes(fixture.identities.speaker.name),
+        `expected accepted invitee '${fixture.identities.speaker.name}' to be present on /sessions or /speakers`,
+      );
+      assert(
+        !sessionsHtmlAfter.includes(pendingMarkerFirst) && !speakersHtmlAfter.includes(pendingMarkerFirst),
+        `DEC-108 leak: pending invitee '${pendingMarkerFirst}' found on /sessions or /speakers`,
+      );
+      assert(
+        !sessionsHtmlAfter.includes(fixture.identities.speaker2.name) && !speakersHtmlAfter.includes(fixture.identities.speaker2.name),
+        `DEC-108 leak: declined invitee '${fixture.identities.speaker2.name}' found on /sessions or /speakers`,
+      );
+    },
+  );
 
   console.log("");
   console.log("walkthrough/public.ts OK — all J9/J10 checks passed");
