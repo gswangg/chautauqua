@@ -1,49 +1,50 @@
-# task-w5-b — build+test gate re-run
+# task-w5-b — build+test detail @ 64ec7de
 
-Fresh worktree of `main` (contains task-w5-a's script-fix merge).
+## SHA derivation (DEC-114/165)
 
-## sha derivation (DEC-091)
+Walked `git log --first-parent main` from HEAD. HEAD itself
+(`64ec7de merge task-w5-a`) is not a bookkeeping-only commit (no
+docs/verification-log*, docs/eval-findings.md, decisions/*.md,
+field-guide/index.md, or pure-string-constant-only src/decisions.ts
+change), so it is the adopted sha without needing to walk further.
 
-Walked `git log main` skipping commits touching only
-docs/verification-log.md, docs/verification-log/, docs/eval-findings.md,
-field-guide/index.md, decisions/*.md, and scribe string-appends to
-src/decisions.ts:
+Verified:
+- `git show 64ec7de:.github/workflows/ci.yml` contains a `render-sweep:`
+  job running `npm run gate:render-sweep` — confirms this sha is
+  task-w5-a's merge or later (DEC-166).
+- `git merge-base --is-ancestor 2dd2f33 64ec7de` — exit 0, confirms
+  descent from the required base commit (DEC-129/139).
 
-```
-3d1e838 merge task-w5-a               <- exempt (merge commit, no diff of its own)
-b638f75 Fix two gate-failing probe scripts (DEC-094/095/096)   <- newest code-bearing
-6e1db15 scribe wave 5                 <- exempt
-281a31b scribe wave 4                 <- exempt
-f9a33fd scribe wave 3                 <- exempt
-3878d4f merge task-w2-d
-...
-```
+Both STEP 1 checks pass. Adopted sha: **64ec7de**.
 
-Newest code-bearing commit: **b638f75** ("Fix two gate-failing probe
-scripts (DEC-094/095/096)" — scripts/walkthrough/scale.ts,
-scripts/perf-smoke.ts, scripts/perf-smoke-lib.ts,
-test/perf-smoke.test.ts; "No src/ or product-code changes" per its own
-commit body). This matches the expected task-w5-a script-fix commit.
-Short sha used throughout: `b638f75`.
+## STEP 2 results
 
-## Commands
+- `npm ci --prefer-offline --no-audit --no-fund --silent` — clean
+  (node_modules pre-existed in the fresh worktree checkout; skipped
+  per the `[ -d node_modules ] ||` guard — confirmed present and valid).
+- `npm run build` (`tsc --noEmit && tsc --noEmit -p app/tsconfig.json
+  && vite build --config app/vite.config.ts`) — PASS. 131 modules
+  transformed. 19 output files under `public/admin/` (18 chunks/CSS +
+  index.html).
+- `npm run bundle:check` (DEC-058, 300KB gzip budget) — PASS. Entry
+  bundle (`index-CD2-kLqP.js` + `index-easpJsYc.css`) = 58.86 kB gzip,
+  well under the 300.00 kB budget. Largest secondary chunk:
+  `Contacts-D95Rc0Kq.js` at 8.83 kB gzip.
+- `npm test --silent` (vitest) — PASS. **151 test files, 1308 tests**,
+  0 failures. Duration 12.41s.
 
-- `npm ci --prefer-offline --no-audit --no-fund --silent`: completed, no
-  output (node_modules already present from harness bootstrap; ran clean
-  regardless).
-- `npm run build` (`tsc --noEmit && tsc --noEmit -p app/tsconfig.json &&
-  vite build --config app/vite.config.ts`): PASS. Both tsc passes clean
-  (0 errors), vite build produced 17 asset files (125 modules
-  transformed), entry `index-DOwNDQO_.js` 179.18 kB / gzip 58.63 kB.
-- `npm run bundle:check` (DEC-058 300KB gz budget): PASS. Entry bundle +
-  css = 58.60 kB gzip vs 300.00 kB budget.
-- `npm test --silent`: PASS. **94 test files / 976 tests**, all green,
-  0 failures. Duration 7.34s.
+## File/module counts
 
-## Post-run re-check
+- `src/**/*.ts` (pure-core + Worker routes): 93 files.
+- `app/src/**/*.{ts,tsx}` (admin SPA): 150 files.
+- Vite output: 131 modules transformed into 18 chunk/CSS assets +
+  index.html under `public/admin/`.
 
-Re-ran `git log main -3 --oneline` after the test run completed; tip is
-still `3d1e838 merge task-w5-a` — no code-bearing merge landed on main
-during this run.
+## Notes
 
-RESULT: PASS
+- No product/test/script/config changes were made in this worktree —
+  this is a log-only build+test confirmation lane per DEC-069/165.
+- A homonym `## ... task-w5-b — build+test @ b638f75` section already
+  exists earlier in this file (an older campaign, different sha). Per
+  DEC-129, sections are identified by sha, not branch/task-id; that
+  section was left untouched.
