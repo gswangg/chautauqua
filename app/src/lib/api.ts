@@ -108,8 +108,11 @@ export function apiPatch<T>(path: string, body?: unknown): Promise<T> {
   });
 }
 
-// DEC-021 requires a PUT verb (submissions/:id/slot); appended alongside
-// apiPatch following the identical pattern (declared overlap, DEC-024).
+// The one PUT verb in this wire contract, shared by the two idempotent
+// endpoints that need it: DEC-021's agenda slot write
+// (submissions/:id/slot) and DEC-018's reviewer evaluation upsert
+// (idempotent per plan + submission + reviewer + round). Mirrors
+// apiPatch's shape; api.ts is the sole wire (DEC-024).
 export function apiPut<T>(path: string, body?: unknown): Promise<T> {
   return request<T>(path, {
     method: 'PUT',
@@ -119,16 +122,6 @@ export function apiPut<T>(path: string, body?: unknown): Promise<T> {
 
 export function apiDelete<T>(path: string): Promise<T> {
   return request<T>(path, { method: 'DELETE' });
-}
-
-// DEC-018's reviewer evaluation upsert is a PUT (idempotent per plan +
-// submission + reviewer + round), unlike every other mutation in this
-// wire contract, so this mirrors apiPatch's shape for that one endpoint.
-export function apiPut<T>(path: string, body?: unknown): Promise<T> {
-  return request<T>(path, {
-    method: 'PUT',
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  });
 }
 
 // DEC-024 / DEC-020: multipart upload helper for the Content SPA (file
