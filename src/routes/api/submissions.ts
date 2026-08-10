@@ -15,11 +15,14 @@ import {
   cloneSubmission,
   createSubmission,
   getEventOrgId,
+  getParticipantOwnership,
   getSubmissionDetail,
   getSubmissionOwnership,
+  inviteCoPresenter,
   isValidStatusLiteral,
   listSubmissions,
   parseListQuery,
+  setParticipantVisible,
   updateSubmissionStatuses,
 } from "../../server/repo/submissions";
 
@@ -115,6 +118,72 @@ submissionsRoutes.post("/submissions/:id/clone", requireOrganizer, csrfJson, asy
   const detail = await getSubmissionDetail(c.var.db, newId);
   return c.json(detail, 201);
 });
+
+interface InviteCoPresenterBody {
+  email?: unknown;
+  firstName?: unknown;
+  lastName?: unknown;
+}
+
+// POST /api/v1/submissions/:id/participants — invite a co-presenter.
+// (w12-c PLANNER item #1: previously the only way to construct a
+// participant row with invite_status='invited' was a direct D1 write from
+// the walkthrough script.) Per DEC-009 invariant #1, this does NOT send an
+// email — notifying the invitee is a separate, explicit comms action.
+submissionsRoutes.post("/submissions/:id/participants", requireOrganizer, csrfJson, async (c) => {
+  const auth = requireAuth(c);
+  const id = c.req.param("id");
+  const ownership = await getSubmissionOwnership(c.var.db, id);
+  if (!ownership) throw new ApiError("not_found", "Submission not found");
+  if (ownership.orgId !== auth.orgId) throw new ApiError("forbidden", "Submission belongs to a different org");
+
+  const body = (await c.req.json().catch(() => ({}))) as InviteCoPresenterBody;
+  const email = typeof body.email === "string" ? body.email.trim() : "";
+  const firstName = typeof body.firstName === "string" ? body.firstName.trim() : "";
+  const lastName = typeof body.lastName === "string" ? body.lastName.trim() : "";
+  if (!email) {
+    throw new ApiError("invalid", "Email is required", { email: "Required" });
+  }
+
+  await inviteCoPresenter(c.var.db, id, auth.orgId, { email, firstName, lastName });
+  const detail = await getSubmissionDetail(c.var.db, id);
+  return c.json(detail, 201);
+});
+
+interface ParticipantVisibilityBody {
+  visible?: unknown;
+}
+
+// PATCH /api/v1/submissions/:id/participants/:participantId — toggle a
+// participant's public visibility. (w12-c PLANNER item #2: previously
+// participant.visible was only ever written at submission-create time.)
+submissionsRoutes.patch(
+  "/submissions/:id/participants/:participantId",
+  requireOrganizer,
+  csrfJson,
+  async (c) => {
+    const auth = requireAuth(c);
+    const id = c.req.param("id");
+    const participantId = c.req.param("participantId");
+    const ownership = await getSubmissionOwnership(c.var.db, id);
+    if (!ownership) throw new ApiError("not_found", "Submission not found");
+    if (ownership.orgId !== auth.orgId) throw new ApiError("forbidden", "Submission belongs to a different org");
+
+    const scope = await getParticipantOwnership(c.var.db, participantId);
+    if (!scope || scope.submissionId !== id) {
+      throw new ApiError("not_found", "Participant not found on this submission");
+    }
+
+    const body = (await c.req.json().catch(() => ({}))) as ParticipantVisibilityBody;
+    if (typeof body.visible !== "boolean") {
+      throw new ApiError("invalid", "visible must be a boolean", { visible: "Required" });
+    }
+
+    await setParticipantVisible(c.var.db, participantId, body.visible);
+    const detail = await getSubmissionDetail(c.var.db, id);
+    return c.json(detail);
+  },
+);
 
 interface StatusUpdateBody {
   ids?: unknown;
