@@ -14,6 +14,27 @@ export function isFormClosed(closeDate: number | null | undefined, now: number):
   return now > closeDate;
 }
 
+export type FormWindowState = "not_yet_open" | "open" | "closed";
+
+/** DEC-036: canonical form-window gate. A null/undefined open date means the
+ * form is open immediately; a null/undefined close date means it never
+ * closes. Boundaries match isFormClosed's inclusive-at-the-instant rule:
+ * exactly at openDate the form is open, exactly at closeDate it's still
+ * open (closes strictly after). */
+export function formWindowState(
+  openDate: number | null | undefined,
+  closeDate: number | null | undefined,
+  now: number,
+): FormWindowState {
+  if (openDate !== null && openDate !== undefined && now < openDate) {
+    return "not_yet_open";
+  }
+  if (isFormClosed(closeDate, now)) {
+    return "closed";
+  }
+  return "open";
+}
+
 export type TrackChoiceResult = { ok: true } | { ok: false; error: string };
 
 /** At least one track must be chosen, and only from the set actually
@@ -50,6 +71,28 @@ export function resolveOfferedTrackIds(
  * this formats the ref from that allocated seq. */
 export function nextSeqRef(recordPrefix: string, currentMaxSeq: number): string {
   return formatRef(recordPrefix, currentMaxSeq + 1);
+}
+
+/** DEC-040: pulls each file-kind field's uploaded File out of a parsed
+ * multipart body. `fieldNameOf` maps a field id to its form input name
+ * (kept as a caller-supplied callback rather than importing the view layer,
+ * per the pure-core import direction). A field with nothing selected, or a
+ * browser's empty-file placeholder (no filename / zero bytes), is simply
+ * absent from the result — same "no answer" case forms/validate.ts already
+ * handles for every other field kind. */
+export function extractFileAnswers(
+  fileFieldIds: string[],
+  fieldNameOf: (fieldId: string) => string,
+  body: Record<string, unknown>,
+): Record<string, File> {
+  const out: Record<string, File> = {};
+  for (const fieldId of fileFieldIds) {
+    const raw = body[fieldNameOf(fieldId)];
+    if (raw instanceof File && raw.size > 0 && raw.name !== "") {
+      out[fieldId] = raw;
+    }
+  }
+  return out;
 }
 
 const RATE_LIMIT_WINDOW_SECONDS = 60 * 60;

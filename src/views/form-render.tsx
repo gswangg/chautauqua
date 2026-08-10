@@ -5,6 +5,7 @@
 // progressive enhancement only, never the source of truth.
 
 import type { FormFieldDef, AnswerMap } from "../forms/types";
+import { ALLOWED_UPLOAD_EXTENSIONS, uploadHintText } from "../domain/files";
 
 export const FIELD_NAME_PREFIX = "field__";
 
@@ -71,7 +72,15 @@ function FieldControl(props: { field: FormFieldDef; value: unknown }) {
         />
       );
     case "file":
-      return <input type="file" id={name} name={name} data-field-id={field.id} />;
+      return (
+        <input
+          type="file"
+          id={name}
+          name={name}
+          data-field-id={field.id}
+          accept={ALLOWED_UPLOAD_EXTENSIONS.map((e) => `.${e}`).join(",")}
+        />
+      );
     default: {
       const exhaustive: never = field.kind;
       throw new Error(`unknown field kind: ${exhaustive}`);
@@ -90,6 +99,7 @@ export function FormField(props: { field: FormFieldDef; value: unknown; error?: 
         <FieldControl field={field} value={value} />
       </label>
       {field.helpText ? <p class="help">{field.helpText}</p> : null}
+      {field.kind === "file" ? <p class="help">{uploadHintText()}</p> : null}
       {error ? (
         <p role="alert" class="field-error">
           {error}

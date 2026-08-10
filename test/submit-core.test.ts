@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
   isFormClosed,
+  formWindowState,
   validateTrackChoice,
   resolveOfferedTrackIds,
   nextSeqRef,
   checkAndIncrementRateLimit,
   rateLimitKey,
+  extractFileAnswers,
 } from "../src/lib/submit-core";
 import { saveDraft, readDraft, deleteDraft, draftCookieName, type KVStore } from "../src/lib/draft";
 
@@ -48,6 +50,77 @@ describe("isFormClosed (CFP-04 closed-date gate)", () => {
 
   it("is open before the close date", () => {
     expect(isFormClosed(2000, 1000)).toBe(false);
+  });
+});
+
+describe("formWindowState (DEC-036 open/close gate)", () => {
+  it("is open when both dates are null", () => {
+    expect(formWindowState(null, null, 1000)).toBe("open");
+  });
+
+  it("is open when both dates are undefined", () => {
+    expect(formWindowState(undefined, undefined, 1000)).toBe("open");
+  });
+
+  it("is not_yet_open strictly before the open date", () => {
+    expect(formWindowState(2000, null, 1000)).toBe("not_yet_open");
+  });
+
+  it("is open exactly at the open date (inclusive)", () => {
+    expect(formWindowState(2000, null, 2000)).toBe("open");
+  });
+
+  it("is open just after the open date", () => {
+    expect(formWindowState(2000, null, 2001)).toBe("open");
+  });
+
+  it("is closed the instant after the close date, even past the open date", () => {
+    expect(formWindowState(1000, 2000, 2001)).toBe("closed");
+  });
+
+  it("is open exactly at the close date (inclusive)", () => {
+    expect(formWindowState(1000, 2000, 2000)).toBe("open");
+  });
+
+  it("not_yet_open takes priority over closed when open date is after close date (misconfigured)", () => {
+    expect(formWindowState(3000, 2000, 2500)).toBe("not_yet_open");
+  });
+
+  it("is not_yet_open when now is before an open date with no close date", () => {
+    expect(formWindowState(5000, null, 4999)).toBe("not_yet_open");
+  });
+});
+
+describe("extractFileAnswers (DEC-040 multipart file extraction)", () => {
+  const fieldNameOf = (fieldId: string) => `field__${fieldId}`;
+
+  it("extracts a File instance for a selected file field", () => {
+    const file = new File(["hello"], "slides.pdf", { type: "application/pdf" });
+    const result = extractFileAnswers(["f1"], fieldNameOf, { field__f1: file });
+    expect(result).toEqual({ f1: file });
+  });
+
+  it("omits a field with no value present in the body", () => {
+    const result = extractFileAnswers(["f1"], fieldNameOf, {});
+    expect(result).toEqual({});
+  });
+
+  it("omits a browser's empty-file placeholder (no filename, zero bytes)", () => {
+    const empty = new File([], "", { type: "application/octet-stream" });
+    const result = extractFileAnswers(["f1"], fieldNameOf, { field__f1: empty });
+    expect(result).toEqual({});
+  });
+
+  it("ignores non-File values (e.g. a stray string) for a file field", () => {
+    const result = extractFileAnswers(["f1"], fieldNameOf, { field__f1: "not-a-file" });
+    expect(result).toEqual({});
+  });
+
+  it("handles multiple file fields independently", () => {
+    const a = new File(["a"], "a.pdf", { type: "application/pdf" });
+    const b = new File(["b"], "b.png", { type: "image/png" });
+    const result = extractFileAnswers(["f1", "f2"], fieldNameOf, { field__f1: a, field__f2: b });
+    expect(result).toEqual({ f1: a, f2: b });
   });
 });
 

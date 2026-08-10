@@ -46,6 +46,21 @@ const IMAGE_MAX_BYTES = 8 * BYTES_PER_MB;
 // flavor of document upload.
 const TEXT_MAX_BYTES = 25 * BYTES_PER_MB;
 
+/** Every extension validateUpload accepts, for UI hints (accept attr, help
+ * text) — never used to bypass validateUpload itself, which stays the
+ * single source of truth. */
+export const ALLOWED_UPLOAD_EXTENSIONS: readonly string[] = [
+  ...Object.keys(DOCUMENT_EXT_CONTENT_TYPE),
+  ...Object.keys(IMAGE_EXT_CONTENT_TYPE),
+  ...Object.keys(TEXT_EXT_CONTENT_TYPE),
+];
+
+/** Human-readable summary of the upload allowlist + size caps, for form
+ * field help text (DEC-020: 25 MB documents/text, 8 MB images). */
+export function uploadHintText(): string {
+  return `Allowed types: ${ALLOWED_UPLOAD_EXTENSIONS.map((e) => `.${e}`).join(", ")}. Max 25 MB (8 MB for images).`;
+}
+
 export interface UploadInput {
   filename: string;
   sizeBytes: number;

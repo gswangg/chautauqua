@@ -24,6 +24,7 @@ export interface FormRow {
   eventId: string;
   title: string;
   description: string | null;
+  openDate: number | null;
   closeDate: number | null;
   tracksJson: string | null;
 }
@@ -63,6 +64,7 @@ export async function getDefaultForm(db: Db, eventId: string): Promise<FormRow |
     eventId: row.eventId,
     title: row.title,
     description: row.description,
+    openDate: row.openDate ? row.openDate.getTime() : null,
     closeDate: row.closeDate ? row.closeDate.getTime() : null,
     tracksJson: row.tracksJson,
   };
@@ -235,4 +237,35 @@ export async function createSubmissionAnswers(
     }));
   if (rows.length === 0) return;
   await db.insert(schema.submissionAnswer).values(rows);
+}
+
+export interface InsertAttachmentFileInput {
+  submissionId: string;
+  filename: string;
+  r2Key: string;
+  sizeBytes: number;
+  contentType: string;
+  uploadedByContactId: string;
+}
+
+/** DEC-040: form-answer file uploads get a file row with kind 'attachment',
+ * scoped to the new submission, uploaded by the submitting contact. Served
+ * through the existing authenticated /files route — never a new path. */
+export async function insertAttachmentFile(db: Db, input: InsertAttachmentFileInput): Promise<string> {
+  const id = newId();
+  const now = new Date();
+  await db.insert(schema.file).values({
+    id,
+    submissionId: input.submissionId,
+    kind: "attachment",
+    filename: input.filename,
+    r2Key: input.r2Key,
+    sizeBytes: input.sizeBytes,
+    contentType: input.contentType,
+    previousFileId: null,
+    uploadedByContactId: input.uploadedByContactId,
+    createdAt: now,
+    updatedAt: now,
+  });
+  return id;
 }
