@@ -125,3 +125,22 @@ per the task's own instruction (task overlapped in-flight task-w14-g, which
 had already landed the conversion by the time this task started).
 
 RESULT: PASS
+
+## 2026-08-10 task-w15-c — walkthrough @ 7c4101c
+
+Full detail: docs/verification-log/task-w15-c-walkthrough.md
+
+Full J1-J12 gate in a clean worktree of main at `7c4101c` (post-barrier
+per DEC-076): `npm ci`, `npm run build`, `npm test` (89 files / 898 tests)
+all PASS. Fresh `npm run db:migrate` + `npm run seed` against local
+wrangler dev on port 8811 (8787 was free but 8811 chosen defensively
+against concurrent sibling-gate worktrees). Ran
+`npx tsx scripts/walkthrough.ts --url http://localhost:8811` (DEC-062
+order producer -> review -> speaker -> public -> data): ALL PASS, no FAIL
+or PLANNER: lines. Explicitly confirmed the newly-converted DEC-070
+participant invite/visibility endpoint calls ran and passed (co-presenter
+invite, IDOR rejection, accept/decline, organizer-only authz probe in
+speaker.ts; hidden-participant visibility gate in public.ts) — no
+direct-SQL fallback remains in either script.
+
+RESULT: PASS
