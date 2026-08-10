@@ -8,7 +8,7 @@
     "build": "tsc --noEmit && tsc --noEmit -p app/tsconfig.json && vite build --config app/vite.config.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "wrangler d1 migrations apply chautauqua --local",
-    "seed": "tsx scripts/seed.ts && wrangler d1 execute chautauqua --local --file=.seed.sql",
+    "seed": "tsx scripts/seed.ts && wrangler d1 execute chautauqua --local --file=.seed.sql && tsx scripts/seed-r2.ts",
     "perf:seed": "tsx scripts/perf-seed.ts && wrangler d1 execute chautauqua --local --file=.perf-seed.sql",
     "perf:smoke": "tsx scripts/perf-smoke.ts",
     "test": "vitest run"

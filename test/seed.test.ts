@@ -3,6 +3,8 @@ import {
   additionalSubmissionStatuses,
   deleteAllStmt,
   insertStmt,
+  minimalPdfBytes,
+  onePixelPngBytes,
   seedId,
   sqlQuote,
 } from "../scripts/seed-lib";
@@ -90,5 +92,59 @@ describe("additionalSubmissionStatuses", () => {
 
   it("throws if count does not match the fixed distribution total", () => {
     expect(() => additionalSubmissionStatuses(10)).toThrow();
+  });
+});
+
+describe("minimalPdfBytes", () => {
+  it("produces a well-formed single-page PDF", () => {
+    const bytes = minimalPdfBytes();
+    const text = Buffer.from(bytes).toString("latin1");
+    expect(text.startsWith("%PDF-1.4")).toBe(true);
+    expect(text).toContain("/Type /Catalog");
+    expect(text).toContain("/Type /Pages");
+    expect(text).toContain("/Type /Page");
+    expect(text).toContain("/Count 1");
+    expect(text.trimEnd().endsWith("%%EOF")).toBe(true);
+  });
+
+  it("is deterministic across calls", () => {
+    expect(minimalPdfBytes()).toEqual(minimalPdfBytes());
+  });
+});
+
+describe("onePixelPngBytes", () => {
+  it("has a valid PNG signature", () => {
+    const bytes = onePixelPngBytes();
+    expect(Array.from(bytes.slice(0, 8))).toEqual([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+  });
+
+  it("declares a 1x1 image in IHDR", () => {
+    const buf = Buffer.from(onePixelPngBytes());
+    // IHDR data starts at byte 16 (8 sig + 4 length + 4 type).
+    const width = buf.readUInt32BE(16);
+    const height = buf.readUInt32BE(20);
+    expect(width).toBe(1);
+    expect(height).toBe(1);
+  });
+
+  it("has an IDAT chunk whose zlib 'stored' block unwraps to a valid 1-pixel raw scanline", () => {
+    const buf = Buffer.from(onePixelPngBytes());
+    const idatTypeOffset = buf.indexOf("IDAT");
+    const idatLen = buf.readUInt32BE(idatTypeOffset - 4);
+    const idatData = buf.subarray(idatTypeOffset + 4, idatTypeOffset + 4 + idatLen);
+    // zlib header (2 bytes) + stored-block header (1 byte, BFINAL=1/BTYPE=00)
+    // + LEN/NLEN (4 bytes) + raw data + Adler-32 (4 bytes).
+    expect(idatData[0]).toBe(0x78); // zlib CMF
+    expect(idatData[2]).toBe(0x01); // BFINAL=1, BTYPE=00 (stored, uncompressed)
+    const len = idatData.readUInt16LE(3);
+    const nlen = idatData.readUInt16LE(5);
+    expect(nlen).toBe(len ^ 0xffff);
+    const raw = idatData.subarray(7, 7 + len);
+    // 1 filter-type byte + 3 RGB bytes for the single black pixel.
+    expect(Array.from(raw)).toEqual([0, 0, 0, 0]);
+  });
+
+  it("is deterministic across calls", () => {
+    expect(onePixelPngBytes()).toEqual(onePixelPngBytes());
   });
 });

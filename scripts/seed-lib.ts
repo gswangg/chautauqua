@@ -75,3 +75,129 @@ export function seedId(kind: string, n: number): string {
   }
   return `seed_${kind}_${String(n).padStart(4, "0")}`;
 }
+
+// --------------------------------------------------------------------------
+// Deterministic tiny R2 assets (task w6-e): a minimal valid single-page PDF
+// and a 1x1 PNG, generated as pure byte-array builders so they're plain-
+// vitest testable without touching the filesystem or a real R2 binding.
+// --------------------------------------------------------------------------
+
+/**
+ * Builds a minimal, valid, single-page PDF (no text, empty content stream)
+ * as raw bytes. Deterministic byte-for-byte across runs — no timestamps or
+ * random ids embedded in the body.
+ */
+export function minimalPdfBytes(): Uint8Array {
+  // Fixed byte offsets for the xref table, computed from the literal object
+  // bodies below (which never change), so this stays 100% deterministic.
+  const objects = [
+    "1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n",
+    "2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n",
+    "3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << >> /Contents 4 0 R >>\nendobj\n",
+    "4 0 obj\n<< /Length 0 >>\nstream\n\nendstream\nendobj\n",
+  ];
+
+  const header = "%PDF-1.4\n";
+  let body = header;
+  const offsets: number[] = [];
+  for (const obj of objects) {
+    offsets.push(body.length);
+    body += obj;
+  }
+  const xrefStart = body.length;
+  let xref = `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+  for (const offset of offsets) {
+    xref += `${String(offset).padStart(10, "0")} 00000 n \n`;
+  }
+  const trailer = `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefStart}\n%%EOF`;
+
+  return new TextEncoder().encode(body + xref + trailer);
+}
+
+// CRC-32 (ISO 3309 / PNG spec) table, built once.
+const CRC_TABLE: number[] = (() => {
+  const table: number[] = [];
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) {
+      c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+    }
+    table[n] = c >>> 0;
+  }
+  return table;
+})();
+
+function crc32(bytes: Uint8Array): number {
+  let crc = 0xffffffff;
+  for (const byte of bytes) {
+    crc = CRC_TABLE[(crc ^ byte) & 0xff]! ^ (crc >>> 8);
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+function u32be(n: number): Uint8Array {
+  return new Uint8Array([(n >>> 24) & 0xff, (n >>> 16) & 0xff, (n >>> 8) & 0xff, n & 0xff]);
+}
+
+function concatBytes(chunks: Uint8Array[]): Uint8Array {
+  const total = chunks.reduce((sum, c) => sum + c.length, 0);
+  const out = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    out.set(chunk, offset);
+    offset += chunk.length;
+  }
+  return out;
+}
+
+/** Builds a PNG chunk (length + type + data + CRC-32 over type+data). */
+function pngChunk(type: string, data: Uint8Array): Uint8Array {
+  const typeBytes = new TextEncoder().encode(type);
+  const crcInput = concatBytes([typeBytes, data]);
+  return concatBytes([u32be(data.length), typeBytes, data, u32be(crc32(crcInput))]);
+}
+
+/**
+ * A hardcoded, computed-correct 1x1 opaque black PNG, as raw bytes (valid
+ * PNG signature + IHDR + IDAT + IEND chunks with proper CRC-32s). The pixel
+ * bytes and zlib "stored" (uncompressed) IDAT framing are literal/fixed, so
+ * output is byte-for-byte deterministic across runs.
+ */
+export function onePixelPngBytes(): Uint8Array {
+  const signature = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+
+  const ihdrData = concatBytes([
+    u32be(1), // width
+    u32be(1), // height
+    new Uint8Array([8, 2, 0, 0, 0]), // bit depth 8, color type 2 (RGB), compression/filter/interlace 0
+  ]);
+  const ihdr = pngChunk("IHDR", ihdrData);
+
+  // Raw scanline: 1 filter-type byte (0 = none) + 1 RGB pixel (black).
+  const raw = new Uint8Array([0x00, 0x00, 0x00, 0x00]);
+  // zlib stream with a single "stored" (uncompressed) deflate block, per
+  // RFC 1950/1951 — avoids needing a deflate implementation while staying a
+  // fully valid zlib-wrapped IDAT payload.
+  const zlibHeader = new Uint8Array([0x78, 0x01]); // CMF/FLG, no preset dict, default compression
+  const blockHeader = new Uint8Array([0x01]); // BFINAL=1, BTYPE=00 (stored)
+  const len = raw.length;
+  const lenBytes = new Uint8Array([len & 0xff, (len >> 8) & 0xff, (~len) & 0xff, ((~len) >> 8) & 0xff]);
+  const adler = adler32(raw);
+  const idatData = concatBytes([zlibHeader, blockHeader, lenBytes, raw, u32be(adler)]);
+  const idat = pngChunk("IDAT", idatData);
+
+  const iend = pngChunk("IEND", new Uint8Array(0));
+
+  return concatBytes([signature, ihdr, idat, iend]);
+}
+
+function adler32(bytes: Uint8Array): number {
+  const MOD_ADLER = 65521;
+  let a = 1;
+  let b = 0;
+  for (const byte of bytes) {
+    a = (a + byte) % MOD_ADLER;
+    b = (b + a) % MOD_ADLER;
+  }
+  return ((b << 16) | a) >>> 0;
+}
