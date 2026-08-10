@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { apiList, ApiError, apiPost } from '../../lib/api';
+import { apiList, apiGet, ApiError, apiPost } from '../../lib/api';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { BulkActionBar } from './BulkActionBar';
 import { deriveColumnsFromFormFields, formatAnswerValue, visibleColumns, type ColumnDef } from './columns';
@@ -48,8 +48,10 @@ export function SubmissionsTable() {
 
   useEffect(() => {
     if (!eventId) return;
-    apiList<FormField>(`/events/${eventId}/forms`)
-      .then((res) => setFormFields(res.items))
+    // GET /events/:id/forms returns the default form OBJECT (not a list); its
+    // custom columns come from the form's own `fields` array.
+    apiGet<{ fields: FormField[] }>(`/events/${eventId}/forms`)
+      .then((res) => setFormFields(res.fields ?? []))
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load form fields'));
   }, [eventId]);
 
