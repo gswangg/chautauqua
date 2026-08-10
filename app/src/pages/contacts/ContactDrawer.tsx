@@ -24,6 +24,7 @@ export function ContactDrawer({ contactId, onClose, onSaved }: Props) {
   const [title, setTitle] = useState('');
   const [phone, setPhone] = useState('');
   const [notes, setNotes] = useState('');
+  const [bio, setBio] = useState('');
   const [customFieldsText, setCustomFieldsText] = useState('{}');
 
   useEffect(() => {
@@ -39,6 +40,7 @@ export function ContactDrawer({ contactId, onClose, onSaved }: Props) {
         setTitle(c.title ?? '');
         setPhone(c.phone ?? '');
         setNotes(c.notes ?? '');
+        setBio(c.bio ?? '');
         setCustomFieldsText(JSON.stringify(c.customFields ?? {}, null, 2));
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load contact'))
@@ -64,6 +66,7 @@ export function ContactDrawer({ contactId, onClose, onSaved }: Props) {
         title: title || undefined,
         phone: phone || undefined,
         notes: notes || undefined,
+        bio: bio || undefined,
         customFields,
       });
       onSaved();
@@ -87,6 +90,9 @@ export function ContactDrawer({ contactId, onClose, onSaved }: Props) {
         {!loading && contact && (
           <>
             <h2>Contact detail</h2>
+            {contact.headshotUrl && (
+              <img className="chq-contact-headshot" src={contact.headshotUrl} alt={`${contact.firstName} ${contact.lastName} headshot`} width={120} height={120} />
+            )}
             <label>
               First name
               <input value={firstName} onChange={(e) => setFirstName(e.target.value)} />
@@ -116,9 +122,38 @@ export function ContactDrawer({ contactId, onClose, onSaved }: Props) {
               <textarea rows={4} value={notes} onChange={(e) => setNotes(e.target.value)} />
             </label>
             <label>
+              Bio
+              <textarea rows={4} value={bio} onChange={(e) => setBio(e.target.value)} />
+            </label>
+            <label>
               Custom fields (JSON)
               <textarea rows={4} value={customFieldsText} onChange={(e) => setCustomFieldsText(e.target.value)} />
             </label>
+
+            {contact.socialLinks && (
+              <ul className="chq-contact-social-links">
+                {contact.socialLinks.twitter && (
+                  <li>
+                    Twitter: <a href={contact.socialLinks.twitter}>{contact.socialLinks.twitter}</a>
+                  </li>
+                )}
+                {contact.socialLinks.linkedin && (
+                  <li>
+                    LinkedIn: <a href={contact.socialLinks.linkedin}>{contact.socialLinks.linkedin}</a>
+                  </li>
+                )}
+                {contact.socialLinks.github && (
+                  <li>
+                    GitHub: <a href={contact.socialLinks.github}>{contact.socialLinks.github}</a>
+                  </li>
+                )}
+                {contact.socialLinks.website && (
+                  <li>
+                    Website: <a href={contact.socialLinks.website}>{contact.socialLinks.website}</a>
+                  </li>
+                )}
+              </ul>
+            )}
 
             <button type="button" disabled={saving} onClick={save}>
               Save
