@@ -1,0 +1,756 @@
+// J6/J7/J8 speaker/onboarding/content persona walkthrough (task w8-e, SPEC
+// §9 jobs J6/J7/J8). Standalone runnable per DEC-060: `npx tsx
+// scripts/walkthrough/speaker.ts --url http://localhost:8787` against a
+// migrated+seeded dev server (npm run db:migrate && npm run seed). Same
+// conventions as DEC-053: cookie jar per persona, GET /login captures the
+// chq_csrf cookie, form posts carry that value as a same-named hidden
+// field, JSON mutations send header 'x-chq-csrf: 1', hard exit(1) on the
+// first failing check named in the console output — fail loudly, no soft
+// warnings.
+//
+// This is scripts/ tooling (not src/ pure-core), so node: imports and
+// shelling out to `wrangler d1 execute` (like scripts/walkthrough/public.ts
+// does to flip participant.visible) are both fine here. The one direct-SQL
+// step below constructs an 'invited' co-presenter participant row — stage 1
+// has no admin API to invite a co-presenter onto a submission (see this
+// commit's message), so it's the only way to exercise J7's real
+// accept/decline transitions end to end, mirroring seed.ts/public.ts's own
+// direct-row-construction pattern for fixtures with no API path.
+
+import { execFileSync } from "node:child_process";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
+const REPO_ROOT = join(SCRIPT_DIR, "..", "..");
+const FIXTURE_PATH = join(REPO_ROOT, "docs", "fixtures", "sample-data.json");
+const EVENT_SLUG = "devflow-conf-2027";
+
+function arg(name: string, fallback: string): string {
+  const idx = process.argv.indexOf(name);
+  if (idx === -1 || idx === process.argv.length - 1) return fallback;
+  return process.argv[idx + 1]!;
+}
+
+const BASE_URL = arg("--url", "http://localhost:8787");
+
+interface FixtureData {
+  identities: {
+    organizer: { email: string; password: string; name: string };
+    speaker: { email: string; password: string; name: string };
+    speaker2: { email: string; password: string; name: string };
+  };
+}
+
+const fixture: FixtureData = JSON.parse(readFileSync(FIXTURE_PATH, "utf-8"));
+
+// ---------------------------------------------------------------------------
+// Fail-loudly assertion helpers (DEC-053/060)
+// ---------------------------------------------------------------------------
+
+let currentCheck = "(startup)";
+
+function fail(message: string): never {
+  console.error(`FAIL [${currentCheck}]: ${message}`);
+  process.exit(1);
+}
+
+async function check<T>(name: string, fn: () => Promise<T>): Promise<T> {
+  currentCheck = name;
+  const result = await fn();
+  console.log(`ok   ${name}`);
+  return result;
+}
+
+function assert(condition: unknown, message: string): asserts condition {
+  if (!condition) fail(message);
+}
+
+// ---------------------------------------------------------------------------
+// Cookie jar + auth (DEC-053 conventions)
+// ---------------------------------------------------------------------------
+
+interface Cookies {
+  chq_csrf?: string;
+  chq_session?: string;
+}
+
+function parseSetCookies(res: Response, cookies: Cookies): void {
+  const setCookies = typeof res.headers.getSetCookie === "function" ? res.headers.getSetCookie() : [];
+  for (const raw of setCookies) {
+    const [pair] = raw.split(";");
+    if (!pair) continue;
+    const eqIdx = pair.indexOf("=");
+    if (eqIdx === -1) continue;
+    const name = pair.slice(0, eqIdx).trim();
+    const value = pair.slice(eqIdx + 1).trim();
+    if (name === "chq_csrf") cookies.chq_csrf = value;
+    if (name === "chq_session") cookies.chq_session = value;
+  }
+}
+
+function cookieHeader(cookies: Cookies): string {
+  return Object.entries(cookies)
+    .filter(([, v]) => v !== undefined)
+    .map(([k, v]) => `${k}=${v}`)
+    .join("; ");
+}
+
+class Session {
+  cookies: Cookies = {};
+
+  async login(email: string, password: string): Promise<void> {
+    const getRes = await fetch(`${BASE_URL}/login`);
+    if (!getRes.ok) throw new Error(`GET /login failed: ${getRes.status}`);
+    parseSetCookies(getRes, this.cookies);
+    if (!this.cookies.chq_csrf) throw new Error("GET /login did not set a chq_csrf cookie");
+
+    const body = new URLSearchParams({ email, password, chq_csrf: this.cookies.chq_csrf });
+    const postRes = await fetch(`${BASE_URL}/login`, {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded", cookie: cookieHeader(this.cookies) },
+      body: body.toString(),
+      redirect: "manual",
+    });
+    if (postRes.status !== 302) {
+      throw new Error(`POST /login for ${email} failed: expected 302, got ${postRes.status}`);
+    }
+    parseSetCookies(postRes, this.cookies);
+    if (!this.cookies.chq_session) throw new Error(`POST /login for ${email} did not set a chq_session cookie`);
+  }
+
+  private headers(extra?: Record<string, string>): Record<string, string> {
+    return { cookie: cookieHeader(this.cookies), ...extra };
+  }
+
+  async getJson<T>(path: string): Promise<{ status: number; body: T }> {
+    const res = await fetch(`${BASE_URL}${path}`, { headers: this.headers() });
+    const body = (await res.json().catch(() => ({}))) as T;
+    return { status: res.status, body };
+  }
+
+  async getText(path: string): Promise<{ status: number; body: string }> {
+    const res = await fetch(`${BASE_URL}${path}`, { headers: this.headers() });
+    return { status: res.status, body: await res.text() };
+  }
+
+  async postJson<T>(path: string, json: unknown): Promise<{ status: number; body: T }> {
+    const res = await fetch(`${BASE_URL}${path}`, {
+      method: "POST",
+      headers: this.headers({ "content-type": "application/json", "x-chq-csrf": "1" }),
+      body: JSON.stringify(json),
+    });
+    const body = (await res.json().catch(() => ({}))) as T;
+    return { status: res.status, body };
+  }
+
+  async patchJson<T>(path: string, json: unknown): Promise<{ status: number; body: T }> {
+    const res = await fetch(`${BASE_URL}${path}`, {
+      method: "PATCH",
+      headers: this.headers({ "content-type": "application/json", "x-chq-csrf": "1" }),
+      body: JSON.stringify(json),
+    });
+    const body = (await res.json().catch(() => ({}))) as T;
+    return { status: res.status, body };
+  }
+
+  async postForm(path: string, fields: Record<string, string>): Promise<{ status: number; body: string }> {
+    const body = new URLSearchParams({ chq_csrf: this.cookies.chq_csrf ?? "", ...fields });
+    const res = await fetch(`${BASE_URL}${path}`, {
+      method: "POST",
+      headers: this.headers({ "content-type": "application/x-www-form-urlencoded" }),
+      body: body.toString(),
+      redirect: "manual",
+    });
+    return { status: res.status, body: await res.text().catch(() => "") };
+  }
+
+  async postMultipart(path: string, form: FormData): Promise<{ status: number; body: unknown }> {
+    const res = await fetch(`${BASE_URL}${path}`, {
+      method: "POST",
+      headers: this.headers({ "x-chq-csrf": "1" }),
+      body: form,
+    });
+    const contentType = res.headers.get("content-type") ?? "";
+    const body = contentType.includes("json") ? await res.json().catch(() => ({})) : await res.text();
+    return { status: res.status, body };
+  }
+
+  async getBinary(path: string): Promise<{ status: number; bytes: number }> {
+    const res = await fetch(`${BASE_URL}${path}`, { headers: this.headers() });
+    const buf = await res.arrayBuffer();
+    return { status: res.status, bytes: buf.byteLength };
+  }
+}
+
+async function waitForHealth(timeoutMs = 30_000): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    try {
+      const res = await fetch(`${BASE_URL}/health`);
+      if (res.ok) return;
+    } catch {
+      // not up yet
+    }
+    await new Promise((r) => setTimeout(r, 500));
+  }
+  throw new Error(`${BASE_URL}/health did not become ready within ${timeoutMs}ms`);
+}
+
+// ---------------------------------------------------------------------------
+// Direct-SQL escape hatch (mirrors scripts/walkthrough/public.ts): stage 1
+// has no admin API to invite a co-presenter onto a submission, so this is
+// the only way to construct an invite_status='invited' participant row.
+// ---------------------------------------------------------------------------
+
+function runD1(sql: string): void {
+  execFileSync("npx", ["wrangler", "d1", "execute", "chautauqua", "--local", "--command", sql], {
+    cwd: REPO_ROOT,
+    stdio: "pipe",
+  });
+}
+
+function sqlString(s: string): string {
+  return `'${s.replace(/'/g, "''")}'`;
+}
+
+// ---------------------------------------------------------------------------
+// Shared response shapes (only the fields this script reads)
+// ---------------------------------------------------------------------------
+
+interface EventListItem {
+  id: string;
+  slug: string;
+}
+interface SubmissionListItem {
+  id: string;
+  status: string;
+}
+interface SubmissionParticipant {
+  id: string;
+  contactId: string;
+  email: string;
+  role: string;
+}
+interface SubmissionDetail {
+  id: string;
+  ref: string;
+  title: string;
+  status: string;
+  acceptedAt: number | null;
+  participants: SubmissionParticipant[];
+}
+interface GridTask {
+  id: string;
+  title: string;
+  kind: string;
+  required: boolean;
+  dueDate: number | null;
+}
+interface GridCell {
+  taskId: string;
+  assignmentId: string;
+  status: string;
+}
+interface GridRow {
+  contact: { id: string; email: string };
+  cells: GridCell[];
+}
+interface OnboardingGrid {
+  tasks: GridTask[];
+  rows: GridRow[];
+}
+interface FormRow {
+  id: string;
+  closeDate: number | null;
+}
+interface FileUploadResult {
+  id: string;
+  filename: string;
+  kind: string;
+}
+interface FilesByKindResponse {
+  files: Record<string, Array<{ id: string; filename: string; previousFileId: string | null }>>;
+}
+interface CommentsResponse {
+  items: Array<{ id: string; body: string; authorContactId: string | null; authorUserId: string | null }>;
+}
+interface ContactDetail {
+  id: string;
+  bio: string | null;
+}
+interface CreateSubmissionResult {
+  id: string;
+}
+
+async function main(): Promise<void> {
+  await check("GET /health is up", waitForHealth);
+
+  const organizer = new Session();
+  await check("organizer logs in (form login, chq_csrf cookie contract)", async () => {
+    await organizer.login(fixture.identities.organizer.email, fixture.identities.organizer.password);
+  });
+
+  const eventId = await check("resolve devflow-conf-2027 event id", async () => {
+    const { status, body } = await organizer.getJson<{ items: EventListItem[] }>("/api/v1/events");
+    assert(status === 200, `GET /api/v1/events returned ${status}`);
+    const event = body.items.find((e) => e.slug === EVENT_SLUG);
+    assert(event, `no event with slug '${EVENT_SLUG}' found`);
+    return event!.id;
+  });
+
+  // -------------------------------------------------------------------------
+  // J6: organizer accepts a pending submission -> acceptance auto-creation
+  // -------------------------------------------------------------------------
+
+  const speaker1Submission = await check(
+    "find a pending fixture submission belonging to the seeded speaker",
+    async () => {
+      const { status, body } = await organizer.getJson<{ items: SubmissionListItem[] }>(
+        `/api/v1/events/${eventId}/submissions?status=pending&q=${encodeURIComponent(fixture.identities.speaker.name)}&perPage=10`,
+      );
+      assert(status === 200, `GET submissions?status=pending failed: ${status}`);
+      const item = body.items[0];
+      assert(item, `no pending submission found for ${fixture.identities.speaker.name}`);
+      return item!;
+    },
+  );
+
+  const detailBefore = await check("submission detail before acceptance is 'pending'", async () => {
+    const { status, body } = await organizer.getJson<SubmissionDetail>(`/api/v1/submissions/${speaker1Submission.id}`);
+    assert(status === 200, `GET submission detail returned ${status}`);
+    assert(body.status === "pending", `expected status 'pending', got '${body.status}'`);
+    const participant = body.participants.find((p) => p.email === fixture.identities.speaker.email);
+    assert(participant, "seeded speaker is not a participant on the chosen submission");
+    return body;
+  });
+
+  await check("organizer accepts the submission (bulk status change)", async () => {
+    const { status, body } = await organizer.postJson<{ updated: number }>(
+      `/api/v1/events/${eventId}/submissions/status`,
+      { ids: [speaker1Submission.id], status: "accepted" },
+    );
+    assert(status === 200, `POST submissions/status returned ${status}: ${JSON.stringify(body)}`);
+    assert(body.updated === 1, `expected updated:1, got ${JSON.stringify(body)}`);
+  });
+
+  const detailAfter = await check(
+    "same submission row is now the accepted session (same id, status flips)",
+    async () => {
+      const { status, body } = await organizer.getJson<SubmissionDetail>(`/api/v1/submissions/${speaker1Submission.id}`);
+      assert(status === 200, `GET submission detail returned ${status}`);
+      assert(body.id === detailBefore.id, "submission id changed across acceptance — should be the same row");
+      assert(body.status === "accepted", `expected status 'accepted', got '${body.status}'`);
+      assert(body.acceptedAt !== null, "acceptedAt should be set after acceptance");
+      return body;
+    },
+  );
+
+  const speakerParticipant = detailAfter.participants.find((p) => p.email === fixture.identities.speaker.email)!;
+
+  await check("default onboarding task set was created for the speaker", async () => {
+    const { status, body } = await organizer.getJson<OnboardingGrid>(`/api/v1/events/${eventId}/onboarding`);
+    assert(status === 200, `GET onboarding grid returned ${status}`);
+    const row = body.rows.find((r) => r.contact.id === speakerParticipant.contactId);
+    assert(row, "no onboarding grid row for the newly-accepted speaker");
+
+    const titlesForRow = row!.cells
+      .map((cell) => body.tasks.find((t) => t.id === cell.taskId)?.title)
+      .filter((t): t is string => Boolean(t));
+    for (const title of [
+      "Hotel stay requirement form",
+      "Flight reimbursement form",
+      "Finalize talk description",
+      "Finalize bio + headshot",
+      "Announce participation",
+    ]) {
+      assert(titlesForRow.includes(title), `onboarding tasks missing '${title}': ${titlesForRow.join(", ")}`);
+    }
+
+    const hotelTask = body.tasks.find((t) => t.title === "Hotel stay requirement form");
+    const flightTask = body.tasks.find((t) => t.title === "Flight reimbursement form");
+    assert(hotelTask?.kind === "form" && hotelTask.required, "Hotel task must be kind 'form' and required");
+    assert(flightTask?.kind === "form" && flightTask.required, "Flight task must be kind 'form' and required");
+    assert("dueDate" in (hotelTask ?? {}), "grid task is missing a dueDate field");
+  });
+
+  await check("re-accepting is idempotent (no duplicate onboarding tasks)", async () => {
+    const before = await organizer.getJson<OnboardingGrid>(`/api/v1/events/${eventId}/onboarding`);
+    const rowBefore = before.body.rows.find((r) => r.contact.id === speakerParticipant.contactId)!;
+    const countBefore = rowBefore.cells.length;
+
+    const { status } = await organizer.postJson<{ updated: number }>(
+      `/api/v1/events/${eventId}/submissions/status`,
+      { ids: [speaker1Submission.id], status: "accepted" },
+    );
+    assert(status === 200, `re-POST submissions/status returned ${status}`);
+
+    const after = await organizer.getJson<OnboardingGrid>(`/api/v1/events/${eventId}/onboarding`);
+    const rowAfter = after.body.rows.find((r) => r.contact.id === speakerParticipant.contactId)!;
+    assert(
+      rowAfter.cells.length === countBefore,
+      `idempotency violated: onboarding task count changed from ${countBefore} to ${rowAfter.cells.length}`,
+    );
+  });
+
+  await check("bulk remind outstanding writes email_log rows (visible in dev mailbox)", async () => {
+    const { status, body } = await organizer.postJson<{ sent: number }>(
+      `/api/v1/events/${eventId}/onboarding/remind`,
+      {},
+    );
+    assert(status === 200, `POST onboarding/remind returned ${status}: ${JSON.stringify(body)}`);
+    assert(body.sent >= 1, `expected at least 1 reminder sent, got ${JSON.stringify(body)}`);
+
+    const mailbox = await organizer.getText("/dev/mailbox?perPage=50");
+    assert(mailbox.status === 200, `GET /dev/mailbox returned ${mailbox.status} (DEV_MODE must be '1')`);
+    assert(
+      mailbox.body.includes(fixture.identities.speaker.email),
+      "dev mailbox does not list a message to the seeded speaker after bulk remind",
+    );
+    assert(
+      mailbox.body.includes("outstanding tasks"),
+      "dev mailbox message does not have the expected reminder subject",
+    );
+  });
+
+  // -------------------------------------------------------------------------
+  // J7: speaker portal — submissions, tasks, sessions, resources, profile,
+  // invitations, edit-lock
+  // -------------------------------------------------------------------------
+
+  const speaker1 = new Session();
+  await check("speaker logs in", async () => {
+    await speaker1.login(fixture.identities.speaker.email, fixture.identities.speaker.password);
+  });
+
+  await check("portal dashboard shows my submissions with status", async () => {
+    const dashboard = await speaker1.getText("/portal");
+    assert(dashboard.status === 200, `GET /portal returned ${dashboard.status}`);
+    assert(dashboard.body.includes(detailAfter.ref), "portal dashboard is missing my accepted submission's ref");
+  });
+
+  await check("portal dashboard shows tasks with deadlines/required markers", async () => {
+    const dashboard = await speaker1.getText("/portal");
+    assert(dashboard.body.includes("Hotel stay requirement form"), "portal dashboard missing onboarding task");
+    assert(dashboard.body.includes("(required)"), "portal dashboard is missing a required-task marker");
+  });
+
+  await check("same accepted submission appears as my session", async () => {
+    const dashboard = await speaker1.getText("/portal");
+    assert(dashboard.body.includes(detailAfter.title), "portal Sessions section is missing my accepted talk");
+  });
+
+  await check("resources page lists both a wiki page and a downloadable file resource", async () => {
+    const resources = await speaker1.getText("/portal/resources");
+    assert(resources.status === 200, `GET /portal/resources returned ${resources.status}`);
+    assert(resources.body.includes("Speaker Handbook"), "resources page missing the seeded wiki resource");
+    assert(resources.body.includes("Download"), "resources page missing a downloadable file resource");
+  });
+
+  const myAssignmentId = await check("find my own general task's assignment id via /portal/tasks", async () => {
+    const tasksPage = await speaker1.getText("/portal/tasks");
+    assert(tasksPage.status === 200, `GET /portal/tasks returned ${tasksPage.status}`);
+    const match = tasksPage.body.match(/\/portal\/tasks\/([\w-]+)\/complete/);
+    assert(match, "could not find a 'Mark complete' form action on /portal/tasks");
+    return match![1]!;
+  });
+
+  await check("complete a general task via its own form action", async () => {
+    const res = await speaker1.postForm(`/portal/tasks/${myAssignmentId}/complete`, {});
+    assert(res.status === 302, `POST task complete expected 302, got ${res.status}`);
+
+    const tasksPage = await speaker1.getText("/portal/tasks");
+    assert(tasksPage.body.includes("Completed"), "task list does not show the task as Completed after marking it");
+  });
+
+  // -------------------------------------------------------------------------
+  // Invitation accept/decline: own participant rows only. Stage 1 has no
+  // admin API to invite a co-presenter onto a submission (see this commit's
+  // message for the gap) — construct two invite_status='invited'
+  // participant rows directly (mirrors scripts/walkthrough/public.ts's own
+  // direct-SQL fixture for participant.visible) so the real accept/decline
+  // transitions, plus the ownership guard, are all exercised end to end.
+  // -------------------------------------------------------------------------
+
+  const inviteSubA = await check("create a throwaway submission to invite the speaker onto (A: will accept)", async () => {
+    const { status, body } = await organizer.postJson<CreateSubmissionResult>(
+      `/api/v1/events/${eventId}/submissions`,
+      {
+        title: `Walkthrough co-presenter invite A ${Date.now()}`,
+        contact: { email: `walkthrough-invite-a-${Date.now()}@example-speakers.test`, firstName: "Invite", lastName: "FixtureA" },
+      },
+    );
+    assert(status === 201, `create throwaway submission A returned ${status}`);
+    return body.id;
+  });
+
+  const inviteSubB = await check("create a throwaway submission to invite the speaker onto (B: will decline)", async () => {
+    const { status, body } = await organizer.postJson<CreateSubmissionResult>(
+      `/api/v1/events/${eventId}/submissions`,
+      {
+        title: `Walkthrough co-presenter invite B ${Date.now()}`,
+        contact: { email: `walkthrough-invite-b-${Date.now()}@example-speakers.test`, firstName: "Invite", lastName: "FixtureB" },
+      },
+    );
+    assert(status === 201, `create throwaway submission B returned ${status}`);
+    return body.id;
+  });
+
+  const inviteParticipantIdA = `wk_invite_a_${Date.now()}`;
+  const inviteParticipantIdB = `wk_invite_b_${Date.now()}`;
+
+  await check("construct 'invited' co-presenter participant rows (direct-SQL fixture, no admin API exists)", async () => {
+    const now = Date.now();
+    runD1(
+      `INSERT INTO participant (id, submission_id, contact_id, role, "order", visible, invite_status, created_at, updated_at) VALUES (${sqlString(inviteParticipantIdA)}, ${sqlString(inviteSubA)}, ${sqlString(speakerParticipant.contactId)}, 'speaker', 1, 1, 'invited', ${now}, ${now})`,
+    );
+    runD1(
+      `INSERT INTO participant (id, submission_id, contact_id, role, "order", visible, invite_status, created_at, updated_at) VALUES (${sqlString(inviteParticipantIdB)}, ${sqlString(inviteSubB)}, ${sqlString(speakerParticipant.contactId)}, 'speaker', 1, 1, 'invited', ${now}, ${now})`,
+    );
+  });
+
+  await check("invitation response rejects a participant row that isn't mine (no IDOR)", async () => {
+    const speaker2Probe = new Session();
+    await speaker2Probe.login(fixture.identities.speaker2.email, fixture.identities.speaker2.password);
+    const res = await speaker2Probe.postForm(`/portal/invitations/${inviteParticipantIdA}`, { action: "accept" });
+    assert(res.status === 403, `expected 403 forbidden for a non-owning speaker, got ${res.status}`);
+  });
+
+  await check("speaker accepts invitation A (own participant row)", async () => {
+    const before = await speaker1.getText("/portal");
+    assert(before.body.includes("Invited to co-present"), "portal dashboard is missing the pending invitation");
+
+    const res = await speaker1.postForm(`/portal/invitations/${inviteParticipantIdA}`, { action: "accept" });
+    assert(res.status === 302, `expected 302 on invitation accept, got ${res.status}`);
+  });
+
+  await check("speaker declines invitation B (own participant row)", async () => {
+    const res = await speaker1.postForm(`/portal/invitations/${inviteParticipantIdB}`, { action: "decline" });
+    assert(res.status === 302, `expected 302 on invitation decline, got ${res.status}`);
+  });
+
+  await check("invitation response rejects an already-resolved participant row", async () => {
+    const res = await speaker1.postForm(`/portal/invitations/${inviteParticipantIdA}`, { action: "decline" });
+    assert(res.status === 400, `expected 400 invalid (already accepted, not re-transitionable), got ${res.status}`);
+  });
+
+  // -------------------------------------------------------------------------
+  // Profile edit: one record, two views (portal write, /api/v1 read)
+  // -------------------------------------------------------------------------
+
+  const newBio = `Walkthrough-updated bio ${Date.now()}`;
+  await check("edit bio via the portal profile form", async () => {
+    const profilePage = await speaker1.getText("/portal/profile");
+    assert(profilePage.status === 200, `GET /portal/profile returned ${profilePage.status}`);
+
+    const [firstName, ...rest] = fixture.identities.speaker.name.split(" ");
+    const res = await speaker1.postForm("/portal/profile", {
+      firstName: firstName ?? "Speaker",
+      lastName: rest.join(" ") || "One",
+      title: "Principal Engineer",
+      company: "Latticework Systems",
+      bio: newBio,
+      twitter: "",
+      linkedin: "",
+      github: "",
+      website: "",
+    });
+    assert(res.status === 200, `POST /portal/profile expected 200 (re-rendered page), got ${res.status}`);
+    assert(res.body.includes("Profile saved."), "profile save did not confirm success");
+  });
+
+  await check("the bio change appears on the organizer's contact record via /api/v1", async () => {
+    const { status, body } = await organizer.getJson<ContactDetail>(`/api/v1/contacts/${speakerParticipant.contactId}`);
+    assert(status === 200, `GET /api/v1/contacts/:id returned ${status}`);
+    assert(body.bio === newBio, `expected contact.bio to be the portal-edited value; got '${body.bio}'`);
+  });
+
+  // -------------------------------------------------------------------------
+  // Close-date edit lock (src/domain/edit-lock.ts): accepted keeps editing,
+  // unaccepted follows the close-date gate.
+  // -------------------------------------------------------------------------
+
+  const speaker2 = new Session();
+  await check("speaker2 logs in", async () => {
+    await speaker2.login(fixture.identities.speaker2.email, fixture.identities.speaker2.password);
+  });
+
+  const speaker2PendingSubmissionId = await check(
+    "find speaker2's own still-pending fixture submission",
+    async () => {
+      const { body } = await organizer.getJson<{ items: SubmissionListItem[] }>(
+        `/api/v1/events/${eventId}/submissions?status=pending&q=${encodeURIComponent(fixture.identities.speaker2.name)}&perPage=10`,
+      );
+      const item = body.items[0];
+      assert(item, "no pending submission found for speaker2");
+      return item!.id;
+    },
+  );
+
+  const { formId, originalCloseDate } = await check("read the CFP form id + original close date", async () => {
+    const { status, body } = await organizer.getJson<FormRow>(`/api/v1/events/${eventId}/forms`);
+    assert(status === 200, `GET event forms returned ${status}`);
+    return { formId: body.id, originalCloseDate: body.closeDate };
+  });
+
+  try {
+    await check("organizer sets the form close date to the past", async () => {
+      const { status } = await organizer.patchJson<FormRow>(`/api/v1/forms/${formId}`, {
+        closeDate: Date.now() - 60 * 60 * 1000,
+      });
+      assert(status === 200, `PATCH form closeDate returned ${status}`);
+    });
+
+    await check("accepted speaker's portal edit still succeeds past the close date", async () => {
+      const editPage = await speaker1.getText(`/portal/submissions/${speaker1Submission.id}/edit`);
+      assert(editPage.status === 200, `GET edit page returned ${editPage.status}`);
+      assert(!editPage.body.includes("Editing closed"), "accepted submission's edit page shows 'Editing closed'");
+
+      const res = await speaker1.postForm(`/portal/submissions/${speaker1Submission.id}/edit`, {});
+      assert(
+        res.status !== 403,
+        `accepted speaker's edit POST was rejected by the edit lock (403) past the close date`,
+      );
+    });
+
+    await check("unaccepted speaker's portal edit is rejected server-side past the close date", async () => {
+      const editPage = await speaker2.getText(`/portal/submissions/${speaker2PendingSubmissionId}/edit`);
+      assert(editPage.status === 200, `GET edit page returned ${editPage.status}`);
+      assert(editPage.body.includes("Editing closed"), "unaccepted submission's edit page should show 'Editing closed'");
+
+      const res = await speaker2.postForm(`/portal/submissions/${speaker2PendingSubmissionId}/edit`, {});
+      assert(res.status === 403, `expected 403 forbidden from the server-side edit lock, got ${res.status}`);
+    });
+  } finally {
+    await check("restore the form close date (leave no side effects)", async () => {
+      const { status } = await organizer.patchJson<FormRow>(`/api/v1/forms/${formId}`, {
+        closeDate: originalCloseDate,
+      });
+      assert(status === 200, `restoring form closeDate returned ${status}`);
+    });
+  }
+
+  // -------------------------------------------------------------------------
+  // J8: Presentation deliverable upload, versioning, comment thread, content
+  // approval gate on the public sessions surface (verify-only per w8-f).
+  // -------------------------------------------------------------------------
+
+  await check("uploading a Presentation with an unsupported extension is rejected (UI-stated allowlist)", async () => {
+    const form = new FormData();
+    form.set("kind", "presentation");
+    form.set("file", new File([new Uint8Array([1, 2, 3])], "slides.exe", { type: "application/octet-stream" }));
+    const res = await speaker1.postMultipart(`/api/v1/submissions/${speaker1Submission.id}/files`, form);
+    assert(res.status === 400, `expected 400 for an unsupported extension, got ${res.status}: ${JSON.stringify(res.body)}`);
+  });
+
+  await check("uploading a Presentation over the 25 MB document cap is rejected (UI-stated size cap)", async () => {
+    const oversized = new Uint8Array(25 * 1024 * 1024 + 1);
+    const form = new FormData();
+    form.set("kind", "presentation");
+    form.set("file", new File([oversized], "slides-too-big.pdf", { type: "application/pdf" }));
+    const res = await speaker1.postMultipart(`/api/v1/submissions/${speaker1Submission.id}/files`, form);
+    assert(res.status === 400, `expected 400 for an oversized document, got ${res.status}`);
+  });
+
+  const presentationV1Id = await check("upload a valid Presentation deliverable (v1)", async () => {
+    const form = new FormData();
+    form.set("kind", "presentation");
+    form.set("file", new File([new Uint8Array([37, 80, 68, 70])], "walkthrough-slides-v1.pdf", { type: "application/pdf" }));
+    const res = await speaker1.postMultipart(`/api/v1/submissions/${speaker1Submission.id}/files`, form);
+    assert(res.status === 201, `expected 201, got ${res.status}: ${JSON.stringify(res.body)}`);
+    return (res.body as FileUploadResult).id;
+  });
+
+  const presentationV2Id = await check("re-upload chains previous_file_id (v2 replaces v1)", async () => {
+    const form = new FormData();
+    form.set("kind", "presentation");
+    form.set("replacesFileId", presentationV1Id);
+    form.set("file", new File([new Uint8Array([37, 80, 68, 70, 1])], "walkthrough-slides-v2.pdf", { type: "application/pdf" }));
+    const res = await speaker1.postMultipart(`/api/v1/submissions/${speaker1Submission.id}/files`, form);
+    assert(res.status === 201, `expected 201, got ${res.status}: ${JSON.stringify(res.body)}`);
+    return (res.body as FileUploadResult).id;
+  });
+
+  await check("the version chain + both versions are downloadable (full history)", async () => {
+    const { status, body } = await speaker1.getJson<FilesByKindResponse>(
+      `/api/v1/submissions/${speaker1Submission.id}/files`,
+    );
+    assert(status === 200, `GET submission files returned ${status}`);
+    const presentations = body.files.presentation ?? [];
+    const v2 = presentations.find((f) => f.id === presentationV2Id);
+    assert(v2, "v2 presentation not found in the files list");
+    assert(v2!.previousFileId === presentationV1Id, "v2's previousFileId does not chain to v1");
+
+    const v1Download = await speaker1.getBinary(`/files/${presentationV1Id}`);
+    assert(v1Download.status === 200, `downloading v1 returned ${v1Download.status}`);
+    const v2Download = await speaker1.getBinary(`/files/${presentationV2Id}`);
+    assert(v2Download.status === 200, `downloading v2 returned ${v2Download.status}`);
+  });
+
+  await check("producer comment + speaker reply thread round-trips", async () => {
+    const producerComment = await organizer.postJson<{ id: string }>(`/api/v1/files/${presentationV2Id}/comments`, {
+      body: "Walkthrough: could you increase the font size on slide 2?",
+    });
+    assert(producerComment.status === 201, `producer comment POST returned ${producerComment.status}`);
+
+    const speakerReply = await speaker1.postJson<{ id: string }>(`/api/v1/files/${presentationV2Id}/comments`, {
+      body: "Walkthrough: done, bumped it up.",
+    });
+    assert(speakerReply.status === 201, `speaker reply POST returned ${speakerReply.status}`);
+
+    const { status, body } = await organizer.getJson<CommentsResponse>(`/api/v1/files/${presentationV2Id}/comments`);
+    assert(status === 200, `GET comments returned ${status}`);
+    assert(
+      body.items.some((c) => c.authorUserId !== null && c.body.includes("font size")),
+      "comment thread is missing the producer's comment",
+    );
+    assert(
+      body.items.some((c) => c.authorContactId === speakerParticipant.contactId && c.body.includes("bumped it up")),
+      "comment thread is missing the speaker's reply",
+    );
+  });
+
+  await check(
+    "content approval gate: flipping content-status changes public /e/<slug>/sessions visibility (verify only)",
+    async () => {
+      const pending = await organizer.postJson<{ contentStatus: string }>(
+        `/api/v1/submissions/${speaker1Submission.id}/content-status`,
+        { contentStatus: "pending" },
+      );
+      assert(pending.status === 200, `content-status pending returned ${pending.status}`);
+
+      const approved = await organizer.postJson<{ contentStatus: string }>(
+        `/api/v1/submissions/${speaker1Submission.id}/content-status`,
+        { contentStatus: "approved" },
+      );
+      assert(approved.status === 200, `content-status approved returned ${approved.status}`);
+      const publicAfter = await organizer.getText(`/e/${EVENT_SLUG}/sessions`);
+      assert(publicAfter.status === 200, `GET public sessions returned ${publicAfter.status}`);
+      assert(
+        publicAfter.body.includes(detailAfter.title),
+        "approved session's title should now appear on the public sessions page",
+      );
+
+      const backToPending = await organizer.postJson<{ contentStatus: string }>(
+        `/api/v1/submissions/${speaker1Submission.id}/content-status`,
+        { contentStatus: "pending" },
+      );
+      assert(backToPending.status === 200, "restoring content-status to pending failed");
+      const publicBefore = await organizer.getText(`/e/${EVENT_SLUG}/sessions`);
+      assert(
+        !publicBefore.body.includes(detailAfter.title),
+        "unapproved session's title should be absent from the public sessions page",
+      );
+    },
+  );
+
+  console.log("");
+  console.log("walkthrough/speaker.ts: all checks passed");
+}
+
+main().catch((err) => {
+  console.error(`FAIL [${currentCheck}]`);
+  console.error(err instanceof Error ? err.message : err);
+  process.exitCode = 1;
+});
