@@ -14,6 +14,7 @@ export interface ContactListItem {
 
 export interface ContactStats {
   total: number;
+  eventCount: number;
   returningSpeakers: number;
   topCompanies: { company: string; count: number }[];
 }

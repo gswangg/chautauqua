@@ -97,7 +97,16 @@ export function ContactsApp() {
 
       {panel === 'directory' && (
         <>
-          <StatsStrip stats={stats} />
+          <StatsStrip
+            stats={stats}
+            onCompanyClick={(company) => {
+              // CRM-12 drill-through: the top-companies click applies a
+              // {field:'company',op:'eq'} filter rule (DEC-149), replacing the
+              // active rule set so the directory shows exactly that company.
+              setRules([{ field: 'company', op: 'eq', value: company }]);
+              setPage(1);
+            }}
+          />
 
           <ContactsTable
             items={items}
