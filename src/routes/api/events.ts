@@ -5,6 +5,7 @@ import { Hono } from "hono";
 import { eq } from "drizzle-orm";
 import type { AppEnv } from "../../server/env";
 import { requireOrganizer, csrfJson } from "../../server/middleware";
+import type { AuthInfo } from "../../server/env";
 import { ApiError } from "../../server/http";
 import * as schema from "../../db/schema";
 import {
@@ -18,6 +19,7 @@ import {
   getTrackForEvent,
   isSlugTaken,
   listEventsForOrg,
+  listEventsForReviewer,
   listRoomsForEvent,
   listTracksForEvent,
   updateEvent,
@@ -38,10 +40,27 @@ export const eventsRoutes = new Hono<AppEnv>();
 // like /api/v1/me and /api/v1/review/*), not just this router's own
 // routes. Scope the middleware to this router's own path prefixes
 // instead (found live in the w8-d walkthrough, DEC-060).
-eventsRoutes.use("/events", requireOrganizer);
-eventsRoutes.use("/events/*", requireOrganizer);
+//
+// DEC-141: GET /events (the bare list route) is the one exception — it must
+// stay reachable by reviewers too, so it is intentionally left off this
+// blanket list and does its own inline role check below. Every other
+// events/tracks/rooms route (including POST /events) stays organizer-only.
+//
+// NOTE: a "/events/*" wildcard here would ALSO match the bare "/events" path
+// (Hono's `*` matches zero-or-more trailing segments), re-introducing the
+// exact reviewer lockout this task fixes -- so nested event routes are
+// listed explicitly by their one- and two-segment shapes instead.
+eventsRoutes.use("/events/:eventId", requireOrganizer);
+eventsRoutes.use("/events/:eventId/tracks", requireOrganizer);
+eventsRoutes.use("/events/:eventId/rooms", requireOrganizer);
 eventsRoutes.use("/tracks/*", requireOrganizer);
 eventsRoutes.use("/rooms/*", requireOrganizer);
+
+function requireAuth(c: { var: { auth?: AuthInfo } }): AuthInfo {
+  const auth = c.var.auth;
+  if (!auth) throw new ApiError("unauthorized", "Login required");
+  return auth;
+}
 
 function currentOrgId(c: { var: { auth?: { orgId: string } } }): string {
   const auth = c.var.auth;
@@ -128,12 +147,19 @@ async function roomEventId(db: import("../../server/context").Db, roomId: string
 // ---------------------------------------------------------------------------
 
 eventsRoutes.get("/events", async (c) => {
-  const orgId = currentOrgId(c);
-  const items = await listEventsForOrg(c.var.db, orgId);
+  const auth = requireAuth(c);
+  let items;
+  if (auth.role === "organizer") {
+    items = await listEventsForOrg(c.var.db, auth.orgId);
+  } else if (auth.role === "reviewer") {
+    items = await listEventsForReviewer(c.var.db, auth.userId, auth.orgId);
+  } else {
+    throw new ApiError("forbidden", "Requires role 'organizer' or 'reviewer'");
+  }
   return c.json({ items, total: items.length, page: 1, perPage: items.length || 1 });
 });
 
-eventsRoutes.post("/events", csrfJson, async (c) => {
+eventsRoutes.post("/events", requireOrganizer, csrfJson, async (c) => {
   const orgId = currentOrgId(c);
   const body = asRecord(await c.req.json());
   const fields: Record<string, string> = {};
