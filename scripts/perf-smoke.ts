@@ -16,7 +16,14 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { PERF_EVENT_ID, PERF_EVENT_SLUG, PERF_TOPICS } from "./perf-seed-lib";
-import { PERF_P95_BUDGET_MS, assertContainsVevent, computeP95, joinIcsIds, planPerfPages } from "./perf-smoke-lib";
+import {
+  PERF_P95_BUDGET_MS,
+  assertContainsVevent,
+  assertMinCsvLines,
+  computeP95,
+  joinIcsIds,
+  planPerfPages,
+} from "./perf-smoke-lib";
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(SCRIPT_DIR, "..");
@@ -211,6 +218,26 @@ async function main(): Promise<void> {
   }
   await capRes.arrayBuffer();
 
+  // DEC-105 one-shot untimed export size probes: exercise the CSV export
+  // endpoints against the DEC-088 seed scale (2,000 submissions / 300
+  // accepted, all scheduled), independent of the timed loop below.
+  const submissionsCsvRes = await fetch(
+    `${PERF_URL}/api/v1/events/${PERF_EVENT_ID}/export/submissions?format=csv`,
+    { headers },
+  );
+  if (submissionsCsvRes.status !== 200) {
+    throw new Error(`export submissions.csv: expected 200, got ${submissionsCsvRes.status}`);
+  }
+  assertMinCsvLines("export submissions.csv", await submissionsCsvRes.text(), 2001);
+
+  const showflowCsvRes = await fetch(`${PERF_URL}/api/v1/events/${PERF_EVENT_ID}/exports/showflow.csv`, {
+    headers,
+  });
+  if (showflowCsvRes.status !== 200) {
+    throw new Error(`showflow.csv: expected 200, got ${showflowCsvRes.status}`);
+  }
+  assertMinCsvLines("showflow.csv", await showflowCsvRes.text(), 301);
+
   const icsIds = await fetchAcceptedSubmissionIds(headers, 150);
   const icsQuery = joinIcsIds(icsIds);
   const ratingSubmissionId = icsIds[0]!;
@@ -252,6 +279,10 @@ async function main(): Promise<void> {
       name: "event overview",
       run: () => fetch(`${PERF_URL}/api/v1/events/${PERF_EVENT_ID}/overview`, { headers }),
       optional: true,
+    },
+    {
+      name: "organizer agenda (300 accepted)",
+      run: () => fetch(`${PERF_URL}/api/v1/events/${PERF_EVENT_ID}/agenda`, { headers }),
     },
     {
       name: "public sessions page",

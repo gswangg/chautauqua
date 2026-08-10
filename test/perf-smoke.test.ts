@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { PERF_P95_BUDGET_MS, assertContainsVevent, computeP95, joinIcsIds, planPerfPages } from "../scripts/perf-smoke-lib";
+import {
+  PERF_P95_BUDGET_MS,
+  assertContainsVevent,
+  assertMinCsvLines,
+  computeP95,
+  joinIcsIds,
+  planPerfPages,
+} from "../scripts/perf-smoke-lib";
 
 describe("computeP95", () => {
   it("computes the 95th percentile via nearest-rank on a sorted sample", () => {
@@ -85,6 +92,38 @@ describe("assertContainsVevent", () => {
   it("throws with the check name when BEGIN:VEVENT is missing", () => {
     expect(() => assertContainsVevent("schedule.ics 150 ids", "BEGIN:VCALENDAR\nEND:VCALENDAR")).toThrow(
       /schedule\.ics 150 ids/,
+    );
+  });
+});
+
+describe("assertMinCsvLines", () => {
+  it("does not throw when the line count equals the minimum exactly", () => {
+    const body = Array.from({ length: 5 }, (_, i) => `line${i}`).join("\n");
+    expect(() => assertMinCsvLines("export.csv", body, 5)).not.toThrow();
+  });
+
+  it("does not throw when the line count exceeds the minimum", () => {
+    const body = Array.from({ length: 10 }, (_, i) => `line${i}`).join("\n");
+    expect(() => assertMinCsvLines("export.csv", body, 5)).not.toThrow();
+  });
+
+  it("throws with the check name and counts when below the minimum", () => {
+    const body = Array.from({ length: 3 }, (_, i) => `line${i}`).join("\n");
+    expect(() => assertMinCsvLines("export submissions.csv", body, 5)).toThrow(
+      /export submissions\.csv: expected >= 5 CSV lines, got 3/,
+    );
+  });
+
+  it("throws on a non-positive minLines", () => {
+    expect(() => assertMinCsvLines("export.csv", "a\nb\nc", 0)).toThrow();
+    expect(() => assertMinCsvLines("export.csv", "a\nb\nc", -1)).toThrow();
+  });
+
+  it("counts a trailing-newline body correctly (does not count the trailing empty segment as a line)", () => {
+    const body = "line0\nline1\nline2\nline3\nline4\n";
+    expect(() => assertMinCsvLines("export.csv", body, 5)).not.toThrow();
+    expect(() => assertMinCsvLines("export.csv", body, 6)).toThrow(
+      /export\.csv: expected >= 6 CSV lines, got 5/,
     );
   });
 });
