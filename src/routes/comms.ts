@@ -221,15 +221,20 @@ async function resolvePortalLink(
   contactId: string,
   eventId: string,
   email: string,
+  origin: string,
 ): Promise<string> {
   const userId = await repo.findUserIdByEmail(db, email);
-  if (userId) return "/portal";
+  if (userId) return `${origin}/portal`;
   const token = await createClaimToken(kv, { contactId, eventId });
-  return `/claim/${token}`;
+  return `${origin}/claim/${token}`;
 }
 
 async function buildRenderTargets(
-  c: { var: { db: import("../server/context").Db; auth?: { orgId: string } }; env: { KV: KVNamespace } },
+  c: {
+    var: { db: import("../server/context").Db; auth?: { orgId: string } };
+    env: { KV: KVNamespace };
+    req: { url: string };
+  },
   event: { id: string; name: string },
   submissions: ComposeSubmission[],
   includeFeedback: boolean,
@@ -239,13 +244,14 @@ async function buildRenderTargets(
 
   const submissionById = new Map(submissions.map((s) => [s.id, s]));
   const kv = c.env.KV as unknown as KVStore;
+  const origin = new URL(c.req.url).origin;
 
   const targets = [];
   for (const recipient of expanded.recipients) {
     const submission = submissionById.get(recipient.submissionId);
     if (!submission) throw new Error(`recipient references unknown submission ${recipient.submissionId}`);
     const feedbackComments = includeFeedback ? await repo.listFeedbackComments(c.var.db, recipient.submissionId) : [];
-    const portalLink = await resolvePortalLink(c.var.db, kv, recipient.contactId, event.id, recipient.email);
+    const portalLink = await resolvePortalLink(c.var.db, kv, recipient.contactId, event.id, recipient.email, origin);
     const vars = buildMergeVars({
       speakerName: recipient.name,
       talkTitle: submission.title,

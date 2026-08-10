@@ -343,11 +343,11 @@ const MAX_BULK_EMAIL_RECIPIENTS = 100;
  * speaker_name/event_name/portal_link resolve; {talk_title}/{feedback} (or
  * any other placeholder) are absent from vars, so preflightRender's
  * MergeFieldError check naturally rejects them as 'invalid'. */
-async function resolvePortalLink(db: Db, kv: KVStore, contactId: string, eventId: string, email: string): Promise<string> {
+async function resolvePortalLink(db: Db, kv: KVStore, contactId: string, eventId: string, email: string, origin: string): Promise<string> {
   const userId = await repo.findUserIdByEmail(db, email);
-  if (userId) return "/portal";
+  if (userId) return `${origin}/portal`;
   const token = await createClaimToken(kv, { contactId, eventId });
-  return `/claim/${token}`;
+  return `${origin}/claim/${token}`;
 }
 
 contactsRoutes.post("/contacts/bulk-email", csrfJson, async (c) => {
@@ -382,9 +382,10 @@ contactsRoutes.post("/contacts/bulk-email", csrfJson, async (c) => {
   }
 
   const kv = c.env.KV as unknown as KVStore;
+  const origin = new URL(c.req.url).origin;
   const targets: RenderTarget[] = [];
   for (const contact of contacts) {
-    const portalLink = await resolvePortalLink(c.var.db, kv, contact.id, event.id, contact.email);
+    const portalLink = await resolvePortalLink(c.var.db, kv, contact.id, event.id, contact.email, origin);
     targets.push({
       contactId: contact.id,
       submissionId: "",
