@@ -30,3 +30,29 @@ export async function hashToken(token: string): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token));
   return toHex(new Uint8Array(digest));
 }
+
+// ---------------------------------------------------------------------------
+// Bearer API tokens (DEC-027)
+// ---------------------------------------------------------------------------
+
+const API_TOKEN_PREFIX = "chq_";
+const API_TOKEN_BASE32_ALPHABET = "abcdefghijklmnopqrstuvwxyz234567";
+const API_TOKEN_RANDOM_CHARS = 40;
+// First 12 plaintext chars (prefix included) are stored for display.
+export const API_TOKEN_DISPLAY_PREFIX_LENGTH = 12;
+
+/** Plaintext bearer token: 'chq_' + 40 lowercase base32 chars, shown exactly
+ * once at creation (DEC-027). */
+export function newApiToken(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(API_TOKEN_RANDOM_CHARS));
+  let suffix = "";
+  for (let i = 0; i < API_TOKEN_RANDOM_CHARS; i++) {
+    suffix += API_TOKEN_BASE32_ALPHABET[bytes[i]! % API_TOKEN_BASE32_ALPHABET.length];
+  }
+  return `${API_TOKEN_PREFIX}${suffix}`;
+}
+
+/** First 12 plaintext chars of a bearer token, for display (DEC-027). */
+export function apiTokenDisplayPrefix(plaintext: string): string {
+  return plaintext.slice(0, API_TOKEN_DISPLAY_PREFIX_LENGTH);
+}

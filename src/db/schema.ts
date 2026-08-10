@@ -532,6 +532,29 @@ export const emailTemplate = sqliteTable(
   }),
 );
 
+// migrations/0006_w4_api_token.sql (DEC-025, task w4-e): bearer API tokens
+// (DEC-027). Plaintext ('chq_' + 40 lowercase base32 chars) is shown exactly
+// once at creation; only its sha256 hex digest is persisted, plus the first
+// 12 plaintext chars for display purposes.
+export const apiToken = sqliteTable(
+  "api_token",
+  {
+    id: id(),
+    orgId: text("org_id").notNull(),
+    name: text("name").notNull(),
+    tokenHash: text("token_hash").notNull(),
+    tokenPrefix: text("token_prefix").notNull(),
+    createdByUserId: text("created_by_user_id").notNull(),
+    lastUsedAt: integer("last_used_at", { mode: "timestamp_ms" }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => ({
+    api_token_token_hash_idx: uniqueIndex("api_token_token_hash_idx").on(t.tokenHash),
+    api_token_org_id_idx: index("api_token_org_id_idx").on(t.orgId),
+  }),
+);
+
 export const emailLog = sqliteTable(
   "email_log",
   {
