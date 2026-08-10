@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { apiDelete, apiGet, apiList, apiPatch, apiPost, ApiError } from '../../lib/api';
+import { dateInputToMs, msToDateInput } from '../../lib/dates';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { addCriterion, removeCriterion, updateCriterion, validatePlanDraft } from './planForm';
 import {
@@ -12,17 +13,6 @@ import {
   type ReviewerOption,
   type Track,
 } from './types';
-
-function dateInputValue(ms: number | null): string {
-  if (ms === null) return '';
-  return new Date(ms).toISOString().slice(0, 10);
-}
-
-function parseDateInput(value: string): number | null {
-  if (!value) return null;
-  const ms = new Date(`${value}T00:00:00.000Z`).getTime();
-  return Number.isNaN(ms) ? null : ms;
-}
 
 export function PlanEditor() {
   const { planId } = useParams<{ planId: string }>();
@@ -36,6 +26,27 @@ export function PlanEditor() {
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [dateFieldError, setDateFieldError] = useState<string | null>(null);
+
+  function setOpenAt(value: string) {
+    try {
+      const ms = dateInputToMs(value);
+      setDateFieldError(null);
+      setDraft((d) => ({ ...d, openAt: ms }));
+    } catch {
+      setDateFieldError('Enter a valid open date.');
+    }
+  }
+
+  function setCloseAt(value: string) {
+    try {
+      const ms = dateInputToMs(value);
+      setDateFieldError(null);
+      setDraft((d) => ({ ...d, closeAt: ms }));
+    } catch {
+      setDateFieldError('Enter a valid close date.');
+    }
+  }
 
   useEffect(() => {
     if (!eventId) return;
@@ -212,6 +223,7 @@ export function PlanEditor() {
       </p>
       <h1>{isNew ? 'New evaluation plan' : draft.name || 'Evaluation plan'}</h1>
       {error && <div className="chq-error-banner">{error}</div>}
+      {dateFieldError && <div className="chq-error-banner">{dateFieldError}</div>}
 
       <label>
         Name
@@ -232,16 +244,16 @@ export function PlanEditor() {
           Opens
           <input
             type="date"
-            value={dateInputValue(draft.openAt)}
-            onChange={(e) => setDraft((d) => ({ ...d, openAt: parseDateInput(e.target.value) }))}
+            value={msToDateInput(draft.openAt)}
+            onChange={(e) => setOpenAt(e.target.value)}
           />
         </label>
         <label>
           Closes
           <input
             type="date"
-            value={dateInputValue(draft.closeAt)}
-            onChange={(e) => setDraft((d) => ({ ...d, closeAt: parseDateInput(e.target.value) }))}
+            value={msToDateInput(draft.closeAt)}
+            onChange={(e) => setCloseAt(e.target.value)}
           />
         </label>
       </div>
