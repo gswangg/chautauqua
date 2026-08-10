@@ -290,13 +290,19 @@ interface FileUploadResult {
 interface FilesByKindResponse {
   files: Record<string, Array<{ id: string; filename: string; previousFileId: string | null }>>;
 }
+// DEC-020: "Comments ... rows carry author name + role" — the API never
+// echoes raw authorContactId/authorUserId, so assertions below key off
+// authorRole (walkthrough-only fix; the product's shape is correct per DEC).
 interface CommentsResponse {
+<<<<<<< HEAD
   // src/server/repo/files.ts's FileCommentRow serializes authorName/
   // authorRole (resolved server-side), not the raw authorUserId/
   // authorContactId columns — matching the actual GET /api/v1/files/:id/
   // comments response shape here (fixed from an incorrect assumption in
   // the original w8-e version of this check, which asserted on fields the
   // API never returns and so could never actually fail on a broken reply).
+=======
+>>>>>>> task-w11-a
   items: Array<{ id: string; body: string; authorName: string; authorRole: string }>;
 }
 interface ContactDetail {
