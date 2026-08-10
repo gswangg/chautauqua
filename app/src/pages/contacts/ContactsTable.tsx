@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import type { ContactListItem, Segment, SegmentRule } from './types';
 import { isPageFullySelected, isPagePartiallySelected, selectionReducer, type SelectionState } from './selection';
 import { FilterRulesPanel } from './FilterRulesPanel';
+import { AddToEventModal } from './AddToEventModal';
 
 interface Props {
   items: ContactListItem[];
@@ -40,6 +42,7 @@ export function ContactsTable({
   onOpenContact,
 }: Props) {
   const pageIds = items.map((item) => item.id);
+  const [addToEventContact, setAddToEventContact] = useState<ContactListItem | null>(null);
 
   return (
     <div className="chq-contacts-table-wrap">
@@ -85,17 +88,18 @@ export function ContactsTable({
             <th>Company</th>
             <th>Title</th>
             <th># Submissions</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
           {loading && (
             <tr>
-              <td colSpan={6}>Loading...</td>
+              <td colSpan={7}>Loading...</td>
             </tr>
           )}
           {!loading && items.length === 0 && (
             <tr>
-              <td colSpan={6}>No contacts match the current search/filter.</td>
+              <td colSpan={7}>No contacts match the current search/filter.</td>
             </tr>
           )}
           {!loading &&
@@ -118,10 +122,19 @@ export function ContactsTable({
                 <td>{c.company ?? '—'}</td>
                 <td>{c.title ?? '—'}</td>
                 <td>{c.submissionCount ?? '—'}</td>
+                <td>
+                  <button type="button" onClick={() => setAddToEventContact(c)}>
+                    Add to event…
+                  </button>
+                </td>
               </tr>
             ))}
         </tbody>
       </table>
+
+      {addToEventContact && (
+        <AddToEventModal contact={addToEventContact} onClose={() => setAddToEventContact(null)} />
+      )}
 
       <div className="chq-pagination">
         <button type="button" disabled={page <= 1} onClick={() => onChangePage(page - 1)}>

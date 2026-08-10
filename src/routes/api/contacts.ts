@@ -279,6 +279,28 @@ function isPlainObject(v: unknown): v is Record<string, unknown> {
 }
 
 // ---------------------------------------------------------------------------
+// Push to event (CRM-10, DEC-156)
+// ---------------------------------------------------------------------------
+
+contactsRoutes.post("/contacts/:id/add-to-event", csrfJson, async (c) => {
+  const orgId = currentOrgId(c);
+  const contact = await requireOwnedContact(c.var.db, c.req.param("id"), orgId);
+  const body = asRecord(await c.req.json().catch(() => {
+    throw new ApiError("invalid", "Invalid JSON body");
+  }));
+
+  if (typeof body.eventId !== "string" || body.eventId.trim() === "") {
+    throw new ApiError("invalid", "Validation failed", { eventId: "required" });
+  }
+  const event = await getEventForOrg(c.var.db, body.eventId, orgId);
+  if (!event) throw new ApiError("not_found", "Event not found");
+
+  const title = typeof body.title === "string" ? body.title : undefined;
+  const submissionId = await repo.pushContactToEvent(c.var.db, event.id, orgId, contact, title);
+  return c.json({ submissionId }, 201);
+});
+
+// ---------------------------------------------------------------------------
 // CSV import (DEC-011/DEC-026)
 // ---------------------------------------------------------------------------
 
