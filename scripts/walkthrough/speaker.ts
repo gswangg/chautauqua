@@ -273,8 +273,11 @@ interface FileUploadResult {
 interface FilesByKindResponse {
   files: Record<string, Array<{ id: string; filename: string; previousFileId: string | null }>>;
 }
+// DEC-020: "Comments ... rows carry author name + role" — the API never
+// echoes raw authorContactId/authorUserId, so assertions below key off
+// authorRole (walkthrough-only fix; the product's shape is correct per DEC).
 interface CommentsResponse {
-  items: Array<{ id: string; body: string; authorContactId: string | null; authorUserId: string | null }>;
+  items: Array<{ id: string; body: string; authorName: string; authorRole: string }>;
 }
 interface ContactDetail {
   id: string;
@@ -702,11 +705,11 @@ async function main(): Promise<void> {
     const { status, body } = await organizer.getJson<CommentsResponse>(`/api/v1/files/${presentationV2Id}/comments`);
     assert(status === 200, `GET comments returned ${status}`);
     assert(
-      body.items.some((c) => c.authorUserId !== null && c.body.includes("font size")),
+      body.items.some((c) => c.authorRole === "organizer" && c.body.includes("font size")),
       "comment thread is missing the producer's comment",
     );
     assert(
-      body.items.some((c) => c.authorContactId === speakerParticipant.contactId && c.body.includes("bumped it up")),
+      body.items.some((c) => c.authorRole === "speaker" && c.body.includes("bumped it up")),
       "comment thread is missing the speaker's reply",
     );
   });
