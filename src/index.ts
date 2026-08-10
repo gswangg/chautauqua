@@ -12,6 +12,8 @@ import { publicSubmitRoutes } from "./routes/public/submit";
 import { portalRoutes } from "./routes/portal/index";
 import { devMailboxRoutes, shouldMountDevMailbox } from "./routes/dev/mailbox";
 import { taskRoutes, runDueReminders } from "./routes/tasks";
+import { reviewRoutes } from "./routes/review";
+import { meRoutes } from "./routes/me";
 
 // Wave 2 wires the remaining routers (admin SPA, /api/v1/*, /submit,
 // /portal, public surfaces, /embed, /files, /dev/mailbox — see DEC-005).
@@ -38,6 +40,8 @@ app.route("/api/v1", taskRoutes);
 app.route("/", emailLogRoutes);
 app.route("/", formsRoutes);
 app.route("/", publicSubmitRoutes);
+app.route("/", reviewRoutes);
+app.route("/", meRoutes);
 app.route("/portal", portalRoutes);
 
 // DEC-005: /dev/mailbox is dev-only, mounted only when env.DEV_MODE === '1'.

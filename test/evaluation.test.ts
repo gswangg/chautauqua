@@ -6,7 +6,10 @@ import {
   needsMoreRatings,
   buildResultsRows,
   anonymizeForReviewer,
+  validateEvaluationScores,
+  isPlanOpen,
   type EvaluationCriterion,
+  type EvaluationCriterionDef,
 } from "../src/domain/evaluation";
 
 const criteria: EvaluationCriterion[] = [
@@ -158,6 +161,78 @@ describe("buildResultsRows", () => {
     const rows = buildResultsRows(input);
     expect(rows).not.toBe(input);
     expect(input[0]?.submissionId).toBe("a");
+  });
+});
+
+describe("validateEvaluationScores", () => {
+  const scale = { min: 1, max: 5 };
+  const mixedCriteria: EvaluationCriterionDef[] = [
+    { id: "content", label: "Content", kind: "rating", weight: 2 },
+    { id: "format", label: "Format", kind: "dropdown", options: ["Talk", "Workshop"] },
+  ];
+
+  it("accepts a valid rating + dropdown submission", () => {
+    const result = validateEvaluationScores({ content: 4, format: "Talk" }, mixedCriteria, scale);
+    expect(result).toEqual({ ok: true });
+  });
+
+  it("rejects a missing score", () => {
+    const result = validateEvaluationScores({ content: 4 }, mixedCriteria, scale);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.errors.format).toBeDefined();
+  });
+
+  it("rejects a rating score outside the scale", () => {
+    const result = validateEvaluationScores({ content: 9, format: "Talk" }, mixedCriteria, scale);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.errors.content).toBeDefined();
+  });
+
+  it("rejects a non-numeric rating score", () => {
+    const result = validateEvaluationScores({ content: "great", format: "Talk" }, mixedCriteria, scale);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.errors.content).toBeDefined();
+  });
+
+  it("rejects a dropdown value not in the option list", () => {
+    const result = validateEvaluationScores({ content: 4, format: "Keynote" }, mixedCriteria, scale);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.errors.format).toBeDefined();
+  });
+
+  it("rejects a non-positive weight on a rating criterion", () => {
+    const bad: EvaluationCriterionDef[] = [{ id: "x", label: "X", kind: "rating", weight: 0 }];
+    const result = validateEvaluationScores({ x: 1 }, bad, scale);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.errors.x).toBeDefined();
+  });
+
+  it("rejects an unknown criterion id in scores", () => {
+    const result = validateEvaluationScores(
+      { content: 4, format: "Talk", extra: 1 },
+      mixedCriteria,
+      scale,
+    );
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.errors.extra).toBeDefined();
+  });
+});
+
+describe("isPlanOpen", () => {
+  it("is open with no dates at all", () => {
+    expect(isPlanOpen(null, null, 1000)).toBe(true);
+  });
+
+  it("is closed before the open date", () => {
+    expect(isPlanOpen(2000, null, 1000)).toBe(false);
+  });
+
+  it("is closed after the close date", () => {
+    expect(isPlanOpen(null, 500, 1000)).toBe(false);
+  });
+
+  it("is open within the window", () => {
+    expect(isPlanOpen(500, 1500, 1000)).toBe(true);
   });
 });
 
