@@ -1,0 +1,313 @@
+// Files repo (J8, DEC-020 contract). Repo functions are the only code that
+// touches drizzle row types (DEC-012); handlers in src/routes/files.ts stay
+// thin: parse/authz -> repo function -> pure core (src/domain/files.ts) ->
+// response.
+
+import { desc, eq, inArray } from "drizzle-orm";
+import type { Db } from "../context";
+import * as schema from "../../db/schema";
+import { newId } from "../../domain/ids";
+import { isValidFileKind, type FileKind } from "../../domain/files";
+
+// ---------------------------------------------------------------------------
+// Ownership / authz lookups
+// ---------------------------------------------------------------------------
+
+export interface SubmissionScope {
+  submissionId: string;
+  eventId: string;
+  orgId: string;
+  /** contact ids of every participant on the submission — for speaker IDOR checks. */
+  participantContactIds: string[];
+}
+
+/** Loads the submission's event/org + participant contact ids, or null if
+ * the submission doesn't exist. Used to authz both the upload and list
+ * endpoints under /api/v1/submissions/:id/files. */
+export async function getSubmissionScope(db: Db, submissionId: string): Promise<SubmissionScope | null> {
+  const subRows = await db
+    .select({ eventId: schema.submission.eventId, orgId: schema.event.orgId })
+    .from(schema.submission)
+    .innerJoin(schema.event, eq(schema.submission.eventId, schema.event.id))
+    .where(eq(schema.submission.id, submissionId))
+    .limit(1);
+  const sub = subRows[0];
+  if (!sub) return null;
+
+  const participantRows = await db
+    .select({ contactId: schema.participant.contactId })
+    .from(schema.participant)
+    .where(eq(schema.participant.submissionId, submissionId));
+
+  return {
+    submissionId,
+    eventId: sub.eventId,
+    orgId: sub.orgId,
+    participantContactIds: participantRows.map((r) => r.contactId),
+  };
+}
+
+export interface FileScope {
+  fileId: string;
+  submissionId: string | null;
+  orgId: string;
+  uploadedByContactId: string | null;
+  participantContactIds: string[];
+  filename: string;
+  contentType: string;
+  r2Key: string;
+}
+
+/** Loads a file's authz scope (submission ownership, participants, uploader)
+ * for GET /files/:fileId and the comment endpoints — null if not found or
+ * the file isn't attached to a submission (stage-1 J8 scope is submission
+ * deliverables only). */
+export async function getFileScope(db: Db, fileId: string): Promise<FileScope | null> {
+  const fileRows = await db
+    .select({
+      id: schema.file.id,
+      submissionId: schema.file.submissionId,
+      filename: schema.file.filename,
+      contentType: schema.file.contentType,
+      r2Key: schema.file.r2Key,
+      uploadedByContactId: schema.file.uploadedByContactId,
+    })
+    .from(schema.file)
+    .where(eq(schema.file.id, fileId))
+    .limit(1);
+  const fileRow = fileRows[0];
+  if (!fileRow) return null;
+  if (!fileRow.submissionId) return null;
+
+  const scope = await getSubmissionScope(db, fileRow.submissionId);
+  if (!scope) return null;
+
+  return {
+    fileId: fileRow.id,
+    submissionId: fileRow.submissionId,
+    orgId: scope.orgId,
+    uploadedByContactId: fileRow.uploadedByContactId,
+    participantContactIds: scope.participantContactIds,
+    filename: fileRow.filename,
+    contentType: fileRow.contentType,
+    r2Key: fileRow.r2Key,
+  };
+}
+
+/** Pure authz check for GET /files/:fileId and the comment endpoints, per
+ * DEC-020: organizers may access any file in their org; speakers only when
+ * they're a participant on the file's submission or the uploader — no IDOR.
+ * DEC-020 doesn't name reviewers for this surface, so (narrowest reading)
+ * they're not granted access here. */
+export function canAccessFile(
+  auth: { role: string; orgId: string; contactId?: string },
+  scope: { orgId: string; uploadedByContactId: string | null; participantContactIds: readonly string[] },
+): boolean {
+  if (auth.role === "organizer") {
+    return auth.orgId === scope.orgId;
+  }
+  if (auth.role === "speaker") {
+    if (!auth.contactId) return false;
+    return scope.uploadedByContactId === auth.contactId || scope.participantContactIds.includes(auth.contactId);
+  }
+  return false;
+}
+
+// ---------------------------------------------------------------------------
+// Version-chain lookups
+// ---------------------------------------------------------------------------
+
+/** Loads the submission id + kind of the file `replacesFileId` points at, for
+ * the DEC-020 version-chain rule — null if it doesn't exist. */
+export async function getReplacesTarget(
+  db: Db,
+  replacesFileId: string,
+): Promise<{ submissionId: string | null; kind: string } | null> {
+  const rows = await db
+    .select({ submissionId: schema.file.submissionId, kind: schema.file.kind })
+    .from(schema.file)
+    .where(eq(schema.file.id, replacesFileId))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+// ---------------------------------------------------------------------------
+// Writes
+// ---------------------------------------------------------------------------
+
+export interface InsertFileInput {
+  submissionId: string;
+  kind: FileKind;
+  filename: string;
+  r2Key: string;
+  sizeBytes: number;
+  contentType: string;
+  previousFileId: string | null;
+  uploadedByContactId: string | null;
+}
+
+export async function insertFile(db: Db, input: InsertFileInput): Promise<string> {
+  const id = newId();
+  const now = new Date();
+  await db.insert(schema.file).values({
+    id,
+    submissionId: input.submissionId,
+    kind: input.kind,
+    filename: input.filename,
+    r2Key: input.r2Key,
+    sizeBytes: input.sizeBytes,
+    contentType: input.contentType,
+    previousFileId: input.previousFileId,
+    uploadedByContactId: input.uploadedByContactId,
+    createdAt: now,
+    updatedAt: now,
+  });
+  return id;
+}
+
+// ---------------------------------------------------------------------------
+// Reads: deliverables grouped by kind, versions newest-first
+// ---------------------------------------------------------------------------
+
+export interface FileVersion {
+  id: string;
+  filename: string;
+  sizeBytes: number;
+  contentType: string;
+  previousFileId: string | null;
+  uploadedByContactId: string | null;
+  createdAt: number;
+}
+
+export type FilesByKind = Record<string, FileVersion[]>;
+
+/** Every file on the submission, grouped by kind, newest-first within each
+ * kind's version chain. */
+export async function listSubmissionFiles(db: Db, submissionId: string): Promise<FilesByKind> {
+  const rows = await db
+    .select({
+      id: schema.file.id,
+      kind: schema.file.kind,
+      filename: schema.file.filename,
+      sizeBytes: schema.file.sizeBytes,
+      contentType: schema.file.contentType,
+      previousFileId: schema.file.previousFileId,
+      uploadedByContactId: schema.file.uploadedByContactId,
+      createdAt: schema.file.createdAt,
+    })
+    .from(schema.file)
+    .where(eq(schema.file.submissionId, submissionId))
+    .orderBy(desc(schema.file.createdAt));
+
+  const grouped: FilesByKind = {};
+  for (const row of rows) {
+    const version: FileVersion = {
+      id: row.id,
+      filename: row.filename,
+      sizeBytes: row.sizeBytes,
+      contentType: row.contentType,
+      previousFileId: row.previousFileId,
+      uploadedByContactId: row.uploadedByContactId,
+      createdAt: row.createdAt.getTime(),
+    };
+    (grouped[row.kind] ??= []).push(version);
+  }
+  return grouped;
+}
+
+// ---------------------------------------------------------------------------
+// Comments
+// ---------------------------------------------------------------------------
+
+export interface FileCommentRow {
+  id: string;
+  body: string;
+  authorName: string;
+  authorRole: string;
+  createdAt: number;
+}
+
+export async function listFileComments(db: Db, fileId: string): Promise<FileCommentRow[]> {
+  const rows = await db
+    .select({
+      id: schema.fileComment.id,
+      body: schema.fileComment.body,
+      createdAt: schema.fileComment.createdAt,
+      authorUserId: schema.fileComment.authorUserId,
+    })
+    .from(schema.fileComment)
+    .where(eq(schema.fileComment.fileId, fileId))
+    .orderBy(schema.fileComment.createdAt);
+
+  const userIds = [...new Set(rows.map((r) => r.authorUserId).filter((x): x is string => !!x))];
+  const userMap = new Map<string, { email: string; role: string; contactId: string | null }>();
+  if (userIds.length > 0) {
+    const userRows = await db
+      .select({ id: schema.user.id, email: schema.user.email, role: schema.user.role, contactId: schema.user.contactId })
+      .from(schema.user)
+      .where(inArray(schema.user.id, userIds));
+    for (const u of userRows) userMap.set(u.id, { email: u.email, role: u.role, contactId: u.contactId });
+  }
+
+  const contactIds = [...new Set([...userMap.values()].map((u) => u.contactId).filter((x): x is string => !!x))];
+  const contactMap = new Map<string, string>();
+  if (contactIds.length > 0) {
+    const contactRows = await db
+      .select({ id: schema.contact.id, firstName: schema.contact.firstName, lastName: schema.contact.lastName })
+      .from(schema.contact)
+      .where(inArray(schema.contact.id, contactIds));
+    for (const c of contactRows) contactMap.set(c.id, `${c.firstName} ${c.lastName}`.trim());
+  }
+
+  return rows.map((row) => {
+    const user = row.authorUserId ? userMap.get(row.authorUserId) : undefined;
+    const authorName = user ? (user.contactId && contactMap.get(user.contactId)) || user.email : "Unknown";
+    return {
+      id: row.id,
+      body: row.body,
+      authorName,
+      authorRole: user?.role ?? "unknown",
+      createdAt: row.createdAt.getTime(),
+    };
+  });
+}
+
+export async function insertFileComment(
+  db: Db,
+  input: { fileId: string; body: string; authorUserId: string; authorContactId: string | null },
+): Promise<string> {
+  const id = newId();
+  const now = new Date();
+  await db.insert(schema.fileComment).values({
+    id,
+    fileId: input.fileId,
+    authorUserId: input.authorUserId,
+    authorContactId: input.authorContactId,
+    body: input.body,
+    createdAt: now,
+    updatedAt: now,
+  });
+  return id;
+}
+
+// ---------------------------------------------------------------------------
+// Content status (organizer approval)
+// ---------------------------------------------------------------------------
+
+export const CONTENT_STATUSES = ["pending", "approved", "changes_requested"] as const;
+export type ContentStatus = (typeof CONTENT_STATUSES)[number];
+
+export function isValidContentStatus(value: unknown): value is ContentStatus {
+  return typeof value === "string" && (CONTENT_STATUSES as readonly string[]).includes(value);
+}
+
+/** Organizer-only content approval; DEC-009 invariant — this module MUST
+ * NEVER import a mailer. Status changes never send email. */
+export async function updateContentStatus(db: Db, submissionId: string, contentStatus: ContentStatus): Promise<void> {
+  await db
+    .update(schema.submission)
+    .set({ contentStatus, updatedAt: new Date() })
+    .where(eq(schema.submission.id, submissionId));
+}
+
+export { isValidFileKind };
