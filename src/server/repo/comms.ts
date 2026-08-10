@@ -176,3 +176,72 @@ export async function findUserIdByEmail(db: Db, email: string): Promise<string |
     .limit(1);
   return rows[0]?.id ?? null;
 }
+
+// ---------------------------------------------------------------------------
+// Calendar invites (DEC-051): schedule slot + room + ics_sequence, one query
+// pass per selected submission set.
+// ---------------------------------------------------------------------------
+
+export interface IcsScheduleRow {
+  submissionId: string;
+  day: string;
+  startMin: number;
+  endMin: number;
+  roomName: string | null;
+  icsSequence: number;
+}
+
+/** Loads schedule slot (day/start/end), room name, and the current
+ * ics_sequence for each of the given submission ids, in one query pass.
+ * Submissions with no schedule_slot row are simply absent from the returned
+ * map — the caller (route layer) treats a missing entry as "unscheduled"
+ * and rejects attachIcs before any send (DEC-051/DEC-019). */
+export async function loadIcsScheduleData(db: Db, submissionIds: string[]): Promise<Map<string, IcsScheduleRow>> {
+  if (submissionIds.length === 0) return new Map();
+
+  const rows = await db
+    .select({
+      submissionId: schema.scheduleSlot.submissionId,
+      day: schema.scheduleSlot.day,
+      startMin: schema.scheduleSlot.startMin,
+      endMin: schema.scheduleSlot.endMin,
+      roomId: schema.scheduleSlot.roomId,
+      icsSequence: schema.submission.icsSequence,
+    })
+    .from(schema.scheduleSlot)
+    .innerJoin(schema.submission, eq(schema.scheduleSlot.submissionId, schema.submission.id))
+    .where(inArray(schema.scheduleSlot.submissionId, submissionIds));
+
+  const roomIds = [...new Set(rows.map((r) => r.roomId).filter((id): id is string => id !== null))];
+  const roomRows =
+    roomIds.length === 0
+      ? []
+      : await db.select({ id: schema.room.id, name: schema.room.name }).from(schema.room).where(inArray(schema.room.id, roomIds));
+  const roomNameById = new Map(roomRows.map((r) => [r.id, r.name]));
+
+  const map = new Map<string, IcsScheduleRow>();
+  for (const row of rows) {
+    map.set(row.submissionId, {
+      submissionId: row.submissionId,
+      day: row.day,
+      startMin: row.startMin,
+      endMin: row.endMin,
+      roomName: row.roomId ? roomNameById.get(row.roomId) ?? null : null,
+      icsSequence: row.icsSequence,
+    });
+  }
+  return map;
+}
+
+/** Bumps submission.ics_sequence by exactly 1 for each given submission id
+ * (DEC-051: once per submission per send call — never on preview, and never
+ * more than once even when a submission has multiple recipients). */
+export async function bumpIcsSequences(db: Db, submissionIds: string[]): Promise<void> {
+  const unique = [...new Set(submissionIds)];
+  for (const id of unique) {
+    await db
+      .update(schema.submission)
+      .set({ icsSequence: sql`${schema.submission.icsSequence} + 1` })
+      .where(eq(schema.submission.id, id));
+  }
+}

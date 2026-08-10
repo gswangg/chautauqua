@@ -57,6 +57,13 @@
       "when": 1786336250000,
       "tag": "0007_w4_saved_view",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1786339300000,
+      "tag": "0008_w7_ics_sequence",
+      "breakpoints": true
     }
   ]
 }
