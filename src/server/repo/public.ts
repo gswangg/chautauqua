@@ -10,7 +10,7 @@
 // invite-state clause directly, since it does not route through
 // visibleSubmissionConditions().
 
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray, like, or } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { formatRef } from "../../domain/ids";
@@ -114,24 +114,52 @@ export interface PublicSession {
   icsSequence: number;
   tracks: PublicTrack[];
   speakers: PublicSpeaker[];
+  // EMB-01: scheduled placement, when a schedule_slot exists for this
+  // submission — all null together when unscheduled. Cards render nothing
+  // (not a dash pile) when these are null (see SessionCard in public.tsx).
+  day: string | null;
+  startMin: number | null;
+  endMin: number | null;
+  roomName: string | null;
 }
 
-/** Distinct, visibility-gated, optionally track-filtered submission ids for
- * an event, ordered by title — the stable pagination order for the sessions
- * list. Track filtering (DEC-080) is a single innerJoin on submission_track
- * with eq(trackId) in the main query — one bound param, no id list at all. */
+/** Builds the case-insensitive substring condition for the EMB-02 keyword
+ * search: submission title OR either name field of a (still
+ * visibility-gated, via the caller's join) participant contact. Sqlite LIKE
+ * is case-insensitive over ASCII by default — no LOWER() needed. Always
+ * parameterized (Drizzle `like()`), never string-concatenated into SQL. */
+function searchCondition(q: string) {
+  const pattern = `%${q}%`;
+  return or(
+    like(schema.submission.title, pattern),
+    like(schema.contact.firstName, pattern),
+    like(schema.contact.lastName, pattern),
+  );
+}
+
+/** Distinct, visibility-gated, optionally track-filtered and/or keyword-
+ * filtered submission ids for an event, ordered by title — the stable
+ * pagination order for the sessions list. Track filtering (DEC-080) is a
+ * single innerJoin on submission_track with eq(trackId) in the main query
+ * — one bound param, no id list at all. Keyword search (EMB-02) joins
+ * contact (already reachable via participant, which every query here joins
+ * for the visibility gate) and filters server-side only — the visibility
+ * gate conditions are always included alongside it, never bypassed. */
 async function getVisibleSubmissionIdsOrdered(
   db: Db,
   eventId: string,
   trackId: string | null,
+  q: string | null,
 ): Promise<Array<{ id: string; title: string }>> {
   const baseConditions = [eq(schema.submission.eventId, eventId), visibleSubmissionConditions()];
+  if (q) baseConditions.push(searchCondition(q));
 
   if (trackId) {
     const rows = await db
       .selectDistinct({ id: schema.submission.id, title: schema.submission.title })
       .from(schema.submission)
       .innerJoin(schema.participant, eq(schema.participant.submissionId, schema.submission.id))
+      .innerJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
       .innerJoin(schema.submissionTrack, eq(schema.submissionTrack.submissionId, schema.submission.id))
       .where(and(...baseConditions, eq(schema.submissionTrack.trackId, trackId)))
       .orderBy(asc(schema.submission.title));
@@ -142,6 +170,7 @@ async function getVisibleSubmissionIdsOrdered(
     .selectDistinct({ id: schema.submission.id, title: schema.submission.title })
     .from(schema.submission)
     .innerJoin(schema.participant, eq(schema.participant.submissionId, schema.submission.id))
+    .innerJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
     .where(and(...baseConditions))
     .orderBy(asc(schema.submission.title));
   return rows;
@@ -257,6 +286,32 @@ async function hydrateSessions(
     speakersBySubmission.set(s.submissionId, list);
   }
 
+  // EMB-01: schedule_slot is at most one row per submission (unique index
+  // on submission_id), leftJoin room so an unroomed ("TBD") slot still
+  // yields day/start/end with roomName: null.
+  const slotRows: {
+    submissionId: string;
+    day: string;
+    startMin: number;
+    endMin: number;
+    roomName: string | null;
+  }[] = [];
+  for (const batch of chunkIds(ids)) {
+    const batchRows = await db
+      .select({
+        submissionId: schema.scheduleSlot.submissionId,
+        day: schema.scheduleSlot.day,
+        startMin: schema.scheduleSlot.startMin,
+        endMin: schema.scheduleSlot.endMin,
+        roomName: schema.room.name,
+      })
+      .from(schema.scheduleSlot)
+      .leftJoin(schema.room, eq(schema.scheduleSlot.roomId, schema.room.id))
+      .where(inArray(schema.scheduleSlot.submissionId, batch));
+    slotRows.push(...batchRows);
+  }
+  const slotBySubmission = new Map(slotRows.map((r) => [r.submissionId, r]));
+
   return ids
     .map((id) => subById.get(id))
     .filter((row): row is NonNullable<typeof row> => row !== undefined)
@@ -268,6 +323,10 @@ async function hydrateSessions(
       icsSequence: row.icsSequence,
       tracks: tracksBySubmission.get(row.id) ?? [],
       speakers: speakersBySubmission.get(row.id) ?? [],
+      day: slotBySubmission.get(row.id)?.day ?? null,
+      startMin: slotBySubmission.get(row.id)?.startMin ?? null,
+      endMin: slotBySubmission.get(row.id)?.endMin ?? null,
+      roomName: slotBySubmission.get(row.id)?.roomName ?? null,
     }));
 }
 
@@ -277,13 +336,15 @@ export interface PublicSessionsPage {
 }
 
 /** Sessions list surface (DEC-022): visibility-gated, optionally filtered
- * by trackId, show-more paginated by page/perPage. */
+ * by trackId and/or keyword (EMB-02: title or a visible speaker's first/last
+ * name, case-insensitive substring, server-side only), show-more paginated
+ * by page/perPage. */
 export async function getPublicSessions(
   db: Db,
   event: PublicEvent,
-  opts: { trackId: string | null; page: number; perPage: number },
+  opts: { trackId: string | null; page: number; perPage: number; q?: string | null },
 ): Promise<PublicSessionsPage> {
-  const ordered = await getVisibleSubmissionIdsOrdered(db, event.id, opts.trackId);
+  const ordered = await getVisibleSubmissionIdsOrdered(db, event.id, opts.trackId, opts.q ?? null);
   const total = ordered.length;
   const pageIds = ordered.slice(0, opts.page * opts.perPage).map((r) => r.id);
   const items = await hydrateSessions(db, pageIds, event.recordPrefix);

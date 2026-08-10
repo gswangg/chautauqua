@@ -17,6 +17,7 @@ function makeChain(rows: unknown[], onWhere?: (cond: unknown) => void) {
   const chain: any = {
     from: () => chain,
     innerJoin: () => chain,
+    leftJoin: () => chain,
     where: (cond: unknown) => {
       onWhere?.(cond);
       return chain;
@@ -174,6 +175,8 @@ describe("getPublicAgenda room-name resolution (DEC-073: never leak a cross-even
         // call 3: hydrateSessions trackRows
         if (selectCall === 3) return makeChain([]);
         // call 4: hydrateSessions speakerRows
+        if (selectCall === 4) return makeChain([]);
+        // call 5: hydrateSessions slotRows (EMB-01 schedule join)
         return makeChain([]);
       },
     } as unknown as AppEnv["Variables"]["db"];
