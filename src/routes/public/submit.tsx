@@ -191,16 +191,36 @@ function SubmitPage(props: {
   );
 }
 
-function ConfirmationPage(props: { event: EventRow; title: string; claimUrl: string; alreadyHasAccount: boolean }) {
+// DEC-098: the on-screen claim link is only safe to render when the
+// contact was freshly created by *this* submit request — anyone can type
+// an existing CRM contact's email into the public form, so rendering that
+// contact's claim URL on screen would let them take over the portal. Three
+// states:
+//  - "fresh": no user, contact created by this request -> claim link shown
+//    (byte-compatible with the pre-DEC-098 markup: walkthrough/scale
+//    scripts scrape `href="...(/claim/...)"` from this exact case).
+//  - "pending-existing-contact": no user, but the contact already existed
+//    -> no claim URL anywhere in the HTML; copy points at the emailed
+//    password-setup link plus a /login fallback.
+//  - "has-account": a user already exists for this email -> /login, as
+//    before.
+type ConfirmationState = "fresh" | "pending-existing-contact" | "has-account";
+
+function ConfirmationPage(props: { event: EventRow; title: string; claimUrl: string; state: ConfirmationState }) {
   return (
     <PageShell title={`Submission received - ${props.event.name}`}>
       <h1>Thanks for your submission!</h1>
       <p>
         We've emailed a confirmation for "{props.title}" to the address you provided.
       </p>
-      {props.alreadyHasAccount ? (
+      {props.state === "has-account" ? (
         <p>
           <a href="/login">Log in</a> to track your submission.
+        </p>
+      ) : props.state === "pending-existing-contact" ? (
+        <p>
+          A password-setup link was emailed to the address you submitted. <a href="/login">Log in</a> if you already
+          have a password.
         </p>
       ) : (
         <p>
@@ -432,8 +452,11 @@ publicSubmitRoutes.post("/submit/:eventSlug", csrfForm, async (c) => {
   const lastName = String(cleaned[LOCKED_SPEAKER_FIELDS[1]] ?? "");
   const email = String(cleaned[LOCKED_SPEAKER_FIELDS[2]] ?? "").trim().toLowerCase();
 
-  let contact = await findContactByEmail(db, event.orgId, email);
-  const contactId = contact ? contact.id : await createContact(db, { orgId: event.orgId, firstName, lastName, email });
+  const existingContact = await findContactByEmail(db, event.orgId, email);
+  const contactId = existingContact
+    ? existingContact.id
+    : await createContact(db, { orgId: event.orgId, firstName, lastName, email });
+  const contactIsFresh = !existingContact;
 
   const submission = await createSubmission(db, { eventId: event.id, formId: form.id, title, description });
   await createParticipant(db, { submissionId: submission.id, contactId });
@@ -504,7 +527,18 @@ publicSubmitRoutes.post("/submit/:eventSlug", csrfForm, async (c) => {
     contactId,
   });
 
+  // DEC-098: the claim token is minted and emailed in both no-user cases
+  // (existing contact or fresh) — only whether it's rendered on screen
+  // differs, since the email always goes to the address the submitter
+  // typed, while the on-screen page is visible to whoever is at the
+  // keyboard right now, who may not be that address's real owner.
+  const confirmationState: ConfirmationState = existingUser
+    ? "has-account"
+    : contactIsFresh
+      ? "fresh"
+      : "pending-existing-contact";
+
   return c.html(
-    <ConfirmationPage event={event} title={title} claimUrl={claimUrl} alreadyHasAccount={Boolean(existingUser)} />,
+    <ConfirmationPage event={event} title={title} claimUrl={claimUrl} state={confirmationState} />,
   );
 });
