@@ -1,0 +1,110 @@
+import { describe, expect, it } from "vitest";
+import {
+  checkAndIncrementScopedLimit,
+  requestIpFromHeaders,
+  scopedRateLimitKey,
+} from "../src/lib/rate-limit";
+import type { KVStore } from "../src/lib/draft";
+
+class InMemoryKV implements KVStore {
+  private readonly store = new Map<string, string>();
+
+  async get(key: string): Promise<string | null> {
+    return this.store.get(key) ?? null;
+  }
+
+  async put(key: string, value: string): Promise<void> {
+    this.store.set(key, value);
+  }
+
+  async delete(key: string): Promise<void> {
+    this.store.delete(key);
+  }
+
+  has(key: string): boolean {
+    return this.store.has(key);
+  }
+}
+
+describe("scopedRateLimitKey", () => {
+  it("formats scope:id:windowStart", () => {
+    expect(scopedRateLimitKey("login", "1.2.3.4", 5000)).toBe(
+      "ratelimit:login:1.2.3.4:5000",
+    );
+  });
+});
+
+describe("checkAndIncrementScopedLimit", () => {
+  const opts = { windowSeconds: 900, max: 3 };
+
+  it("allows requests under the cap and increments the count", async () => {
+    const kv = new InMemoryKV();
+    const now = 1_000_000;
+    const first = await checkAndIncrementScopedLimit(kv, "login", "1.1.1.1", now, opts);
+    expect(first).toEqual({ ok: true, count: 1 });
+    const second = await checkAndIncrementScopedLimit(kv, "login", "1.1.1.1", now + 10, opts);
+    expect(second).toEqual({ ok: true, count: 2 });
+  });
+
+  it("enforces the cap: rejects once max is reached", async () => {
+    const kv = new InMemoryKV();
+    const now = 1_000_000;
+    await checkAndIncrementScopedLimit(kv, "login", "2.2.2.2", now, opts);
+    await checkAndIncrementScopedLimit(kv, "login", "2.2.2.2", now, opts);
+    await checkAndIncrementScopedLimit(kv, "login", "2.2.2.2", now, opts);
+    const fourth = await checkAndIncrementScopedLimit(kv, "login", "2.2.2.2", now, opts);
+    expect(fourth).toEqual({ ok: false, count: 3 });
+  });
+
+  it("rolls over into a fresh window once windowSeconds elapses", async () => {
+    const kv = new InMemoryKV();
+    const now = 1_000_000;
+    await checkAndIncrementScopedLimit(kv, "login", "3.3.3.3", now, opts);
+    await checkAndIncrementScopedLimit(kv, "login", "3.3.3.3", now, opts);
+    await checkAndIncrementScopedLimit(kv, "login", "3.3.3.3", now, opts);
+    const capped = await checkAndIncrementScopedLimit(kv, "login", "3.3.3.3", now, opts);
+    expect(capped.ok).toBe(false);
+
+    const nextWindow = now + opts.windowSeconds * 1000;
+    const afterRollover = await checkAndIncrementScopedLimit(
+      kv,
+      "login",
+      "3.3.3.3",
+      nextWindow,
+      opts,
+    );
+    expect(afterRollover).toEqual({ ok: true, count: 1 });
+  });
+
+  it("isolates counters across scopes for the same id", async () => {
+    const kv = new InMemoryKV();
+    const now = 1_000_000;
+    await checkAndIncrementScopedLimit(kv, "login", "4.4.4.4", now, opts);
+    await checkAndIncrementScopedLimit(kv, "login", "4.4.4.4", now, opts);
+    await checkAndIncrementScopedLimit(kv, "login", "4.4.4.4", now, opts);
+    const loginCapped = await checkAndIncrementScopedLimit(kv, "login", "4.4.4.4", now, opts);
+    expect(loginCapped.ok).toBe(false);
+
+    const claimAttempt = await checkAndIncrementScopedLimit(kv, "claim", "4.4.4.4", now, opts);
+    expect(claimAttempt).toEqual({ ok: true, count: 1 });
+  });
+});
+
+describe("requestIpFromHeaders", () => {
+  it("prefers cf-connecting-ip", () => {
+    const headers: Record<string, string> = {
+      "cf-connecting-ip": "9.9.9.9",
+      "x-forwarded-for": "1.1.1.1, 2.2.2.2",
+    };
+    expect(requestIpFromHeaders((name) => headers[name])).toBe("9.9.9.9");
+  });
+
+  it("falls back to the first x-forwarded-for hop", () => {
+    const headers: Record<string, string> = { "x-forwarded-for": "1.1.1.1, 2.2.2.2" };
+    expect(requestIpFromHeaders((name) => headers[name])).toBe("1.1.1.1");
+  });
+
+  it("falls back to unknown when no headers present", () => {
+    expect(requestIpFromHeaders(() => undefined)).toBe("unknown");
+  });
+});
