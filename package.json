@@ -13,6 +13,7 @@
     "perf:smoke": "tsx scripts/perf-smoke.ts",
     "bundle:check": "tsx scripts/bundle-check.ts",
     "walkthrough": "tsx scripts/walkthrough.ts",
+    "gate:render-sweep": "tsx scripts/render-sweep.ts",
     "test": "vitest run"
   },
   "dependencies": {
@@ -29,6 +30,7 @@
     "@vitejs/plugin-react": "^4.3.4",
     "drizzle-kit": "^0.28.1",
     "jsdom": "^25.0.1",
+    "playwright": "^1.62.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.28.0",
