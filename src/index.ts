@@ -7,6 +7,7 @@ import { authRoutes } from "./routes/auth";
 import { eventsRoutes } from "./routes/api/events";
 import { emailLogRoutes } from "./routes/api/email-log";
 import { formsRoutes } from "./routes/api/forms";
+import { submissionsRoutes } from "./routes/api/submissions";
 import { publicSubmitRoutes } from "./routes/public/submit";
 import { devMailboxRoutes, shouldMountDevMailbox } from "./routes/dev/mailbox";
 
@@ -30,6 +31,7 @@ app.get("/api/v1", (c) => c.json({ name: "chautauqua", version: "v1" }));
 
 app.route("/", authRoutes);
 app.route("/api/v1", eventsRoutes);
+app.route("/api/v1", submissionsRoutes);
 app.route("/", emailLogRoutes);
 app.route("/", formsRoutes);
 app.route("/", publicSubmitRoutes);
