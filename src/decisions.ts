@@ -90,3 +90,6 @@ export const DEC_083 = "Real purge-on-publish for public surfaces (supersedes DE
 export const DEC_084 = "Server-side headshot dimension gate (amends DEC-059): pure PNG/JPEG header sniffing rejects uploads over 2048px max edge";
 export const DEC_085 = "Findings-file closures needing no code: DEC-054 five-status pipeline upheld (SPEC §10 item 4 explicitly deferred with it); submittedAt ≡ createdAt is correct under DEC-014";
 export const DEC_086 = "Stage-1 exit is reopened at sha 2103c69; re-declaration requires fresh DEC-069 gates whose perf/walkthrough probes exercise the fixed scale paths";
+export const DEC_087 = "Review-rounds migration renumbered to migrations/0009_review_rounds.sql (journal idx 9); DEC-082 repo/API details pinned";
+export const DEC_088 = "Perf-probe seed contract: pinned literals for schedule, evaluation plan, and 12 reviewers in the seed_perf_ namespace";
+export const DEC_089 = "DEC-086 probe placement: five perf-smoke checks (incl. 301-id 400 assertion) and a sixth walkthrough area \"scale\" (bulk accept + purge refresh)";
