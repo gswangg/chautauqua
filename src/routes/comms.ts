@@ -9,6 +9,7 @@ import { ApiError } from "../server/http";
 import * as repo from "../server/repo/comms";
 import { getEventForOrg } from "../server/repo/events";
 import { createClaimToken, type KVStore } from "../auth/claim";
+import { textToHtml } from "../mail/render";
 import {
   buildMergeVars,
   expandRecipients,
@@ -256,7 +257,7 @@ commsRoutes.post("/api/v1/events/:eventId/compose/send", requireOrganizer, csrfJ
       to: { email: rendered.email, name: rendered.name },
       subject: rendered.subject,
       text: rendered.text,
-      html: `<p>${rendered.text.replace(/\n/g, "<br/>")}</p>`,
+      html: textToHtml(rendered.text),
       templateId,
       eventId,
       contactId: rendered.contactId,

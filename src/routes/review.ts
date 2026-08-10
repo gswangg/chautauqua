@@ -8,6 +8,7 @@ import type { AppEnv } from "../server/env";
 import { csrfJson, requireOrganizer } from "../server/middleware";
 import { ApiError } from "../server/http";
 import { makeMailer } from "../server/context";
+import { textToHtml } from "../mail/render";
 import {
   aggregateSubmission,
   buildReviewerQueue,
@@ -306,7 +307,7 @@ reviewRoutes.post("/api/v1/plans/:id/remind", requireOrganizer, csrfJson, async 
       to: { email: user.email, name: user.email },
       subject: `Reminder: ${plan.name} review queue`,
       text: `You have ${assigned.length - completed} submission(s) left to review in "${plan.name}".`,
-      html: `<p>You have ${assigned.length - completed} submission(s) left to review in "${plan.name}".</p>`,
+      html: textToHtml(`You have ${assigned.length - completed} submission(s) left to review in "${plan.name}".`),
       eventId: plan.eventId,
       contactId: user.userId,
     });

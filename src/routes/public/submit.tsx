@@ -46,7 +46,7 @@ import {
 } from "../../lib/draft";
 import { createClaimToken, type KVStore as ClaimKVStore } from "../../auth/claim";
 import { parseCookies, newCsrfToken, CSRF_COOKIE_NAME } from "../../auth/cookies";
-import { renderTemplate } from "../../mail/render";
+import { renderTemplate, escapeHtml } from "../../mail/render";
 import { FormFieldsSection, FieldRulesScript, fieldInputName } from "../../views/form-render";
 import { DEC_014, DEC_016 } from "../../decisions";
 
@@ -395,15 +395,11 @@ publicSubmitRoutes.post("/submit/:eventSlug", csrfForm, async (c) => {
       portal_link: claimUrl,
     },
   );
-  const html = renderTemplate(
-    `<p>Hi {speaker_name},</p><p>We received your submission "{talk_title}" for {event_name}.</p><p><a href="{portal_link}">{portal_link}</a></p>`,
-    {
-      speaker_name: `${firstName} ${lastName}`.trim(),
-      talk_title: title,
-      event_name: event.name,
-      portal_link: claimUrl,
-    },
-  );
+  const safeSpeakerName = escapeHtml(`${firstName} ${lastName}`.trim());
+  const safeTitle = escapeHtml(title);
+  const safeEventName = escapeHtml(event.name);
+  const safeClaimUrl = escapeHtml(claimUrl);
+  const html = `<p>Hi ${safeSpeakerName},</p><p>We received your submission "${safeTitle}" for ${safeEventName}.</p><p><a href="${safeClaimUrl}">${safeClaimUrl}</a></p>`;
   await mailer.send({
     to: { email, name: `${firstName} ${lastName}`.trim() },
     subject: `We received your submission: ${title}`,

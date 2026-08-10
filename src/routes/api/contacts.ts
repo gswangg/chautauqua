@@ -13,6 +13,7 @@ import { createClaimToken, type KVStore } from "../../auth/claim";
 import { parseCsv } from "../../lib/csv";
 import { mapImportRow, matchesSegment, type ContactRecord, type SegmentRule } from "../../domain/contacts";
 import { preflightRender, type RenderTarget } from "../../domain/compose";
+import { textToHtml } from "../../mail/render";
 import type { Db } from "../../server/context";
 
 export const contactsRoutes = new Hono<AppEnv>();
@@ -408,7 +409,7 @@ contactsRoutes.post("/contacts/bulk-email", csrfJson, async (c) => {
       to: { email: rendered.email, name: rendered.name },
       subject: rendered.subject,
       text: rendered.text,
-      html: `<p>${rendered.text.replace(/\n/g, "<br/>")}</p>`,
+      html: textToHtml(rendered.text),
       eventId: event.id,
       contactId: rendered.contactId,
     });
