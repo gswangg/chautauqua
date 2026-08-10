@@ -462,6 +462,19 @@ async function purgeRefreshProbe(organizerJar: CookieJar, eventId: string): Prom
   assertTrue("step6: portal edit page sets chq_csrf cookie", Boolean(editCsrf), "no chq_csrf cookie");
   assertTrue("step6: portal edit page is editable (accepted speaker)", editGetBody.includes("Save changes"), editGetBody.slice(0, 400));
 
+  // DEC-095: the edit page renders one checkbox per track via hono/jsx, e.g.
+  // <input type="checkbox" name="trackIds" value="..." checked /> (the
+  // boolean `checked` attr may render as `checked` or `checked=""`). The POST
+  // must include the checked track's value or validateTrackChoice 400s
+  // (src/routes/portal/edit.tsx:192-219, src/lib/submit-core.ts:45). Fall
+  // back to the trackMatch captured from the submit page if none is found
+  // checked on the edit page.
+  const editTrackMatch = editGetBody.match(/name="trackIds" value="([^"]+)"[^>]*checked/);
+  const editTrackId = editTrackMatch?.[1] ?? trackMatch?.[1];
+  if (!editTrackId) {
+    fail("step6: portal edit page trackIds", "no checked trackIds checkbox found on edit page and no fallback trackMatch from submit page");
+  }
+
   const markerTitle = `Scale purge marker ${stamp}`;
   const editForm = new FormData();
   editForm.set("chq_csrf", editCsrf!);
@@ -471,6 +484,7 @@ async function purgeRefreshProbe(organizerJar: CookieJar, eventId: string): Prom
   editForm.set("field__last_name", "Prober");
   editForm.set("field__email", email);
   for (const [name, value] of dropdownValues) editForm.set(name, value);
+  editForm.set("trackIds", editTrackId);
 
   const editPostRes = await jarFetch(speakerJar, `${BASE_URL}/portal/submissions/${submissionId}/edit`, {
     method: "POST",
