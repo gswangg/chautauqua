@@ -13,11 +13,9 @@ import * as schema from "../../db/schema";
 import type { Db } from "../context";
 import { newId } from "../../domain/ids";
 import type { FormFieldDef, FormFieldKind, FormFieldSection, FormFieldRule, AnswerMap } from "../../forms/types";
-import { LOCKED_SESSION_FIELDS, LOCKED_SPEAKER_FIELDS } from "../../forms/types";
+import { LOCKED_SESSION_FIELDS, lockedFieldName } from "../../forms/types";
 import type { SubmissionStatus } from "../../domain/status";
 import { resolveOfferedTrackIds } from "../../lib/submit-core";
-
-const LOCKED_FIELD_IDS = new Set<string>([...LOCKED_SESSION_FIELDS, ...LOCKED_SPEAKER_FIELDS]);
 
 export interface EditableSubmission {
   id: string;
@@ -84,7 +82,10 @@ export async function loadEditableSubmission(
     .where(eq(schema.formField.formId, row.formId));
   const fields: FormFieldDef[] = fieldRows
     .map((f): FormFieldDef => ({
-      id: f.id,
+      // DEC-050: locked rows carry a per-form PK; normalize to the short
+      // locked name so the shared renderer/validator/answer-map keying
+      // matches the public submit path.
+      id: lockedFieldName(f.id) ?? f.id,
       section: f.section as FormFieldSection,
       kind: f.kind as FormFieldKind,
       label: f.label,
@@ -163,7 +164,7 @@ export async function saveSubmissionEdits(
     })
     .where(eq(schema.submission.id, submissionId));
 
-  const customEntries = Object.entries(cleanedAnswers).filter(([fieldId]) => !LOCKED_FIELD_IDS.has(fieldId));
+  const customEntries = Object.entries(cleanedAnswers).filter(([fieldId]) => lockedFieldName(fieldId) === null);
   for (const [fieldId, value] of customEntries) {
     const existing = await db
       .select({ id: schema.submissionAnswer.id })

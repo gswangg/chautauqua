@@ -6,7 +6,10 @@ import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { newId } from "../../domain/ids";
 import type { FormFieldDef, FormFieldRule } from "../../forms/types";
-import { LOCKED_SESSION_FIELDS, LOCKED_SPEAKER_FIELDS } from "../../forms/types";
+import { LOCKED_SESSION_FIELDS, LOCKED_SPEAKER_FIELDS, lockedFieldId } from "../../forms/types";
+import { DEC_050 } from "../../decisions";
+
+void DEC_050; // per-form locked field ids ('<formId>:<name>') — see createDefaultForm below
 
 export interface FormFieldRow extends FormFieldDef {
   formId: string;
@@ -113,7 +116,7 @@ export async function createDefaultForm(db: Db, eventId: string): Promise<{ form
   const fieldValues: (typeof schema.formField.$inferInsert)[] = [];
   for (const fieldId of LOCKED_SESSION_FIELDS) {
     fieldValues.push({
-      id: fieldId,
+      id: lockedFieldId(formId, fieldId),
       formId,
       section: "session",
       kind: fieldId === "description" ? "long_text" : "text",
@@ -127,7 +130,7 @@ export async function createDefaultForm(db: Db, eventId: string): Promise<{ form
   }
   for (const fieldId of LOCKED_SPEAKER_FIELDS) {
     fieldValues.push({
-      id: fieldId,
+      id: lockedFieldId(formId, fieldId),
       formId,
       section: "speaker",
       kind: "text",

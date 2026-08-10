@@ -7,7 +7,7 @@ import * as schema from "../../db/schema";
 import type { Db } from "../context";
 import { newId } from "../../domain/ids";
 import type { FormFieldDef, FormFieldKind, FormFieldSection, FormFieldRule, AnswerMap } from "../../forms/types";
-import { LOCKED_SESSION_FIELDS, LOCKED_SPEAKER_FIELDS } from "../../forms/types";
+import { lockedFieldName } from "../../forms/types";
 
 export interface EventRow {
   id: string;
@@ -77,7 +77,10 @@ export async function getFormFields(db: Db, formId: string): Promise<FormFieldDe
     .where(eq(schema.formField.formId, formId))
     .orderBy(asc(schema.formField.position));
   return rows.map((row): FormFieldDef => ({
-    id: row.id,
+    // DEC-050: locked rows carry a per-form PK ('${formId}:name'); the
+    // rendered form + validated/persisted answer map are keyed by the
+    // short locked name (e.g. 'title'), never the raw PK.
+    id: lockedFieldName(row.id) ?? row.id,
     section: row.section as FormFieldSection,
     kind: row.kind as FormFieldKind,
     label: row.label,
@@ -215,8 +218,6 @@ export async function createSubmissionTracks(
   );
 }
 
-const LOCKED_FIELD_IDS = new Set<string>([...LOCKED_SESSION_FIELDS, ...LOCKED_SPEAKER_FIELDS]);
-
 /** Only custom (non-locked) fields get submission_answer rows — locked
  * built-ins persist to real columns instead (DEC-016). */
 export async function createSubmissionAnswers(
@@ -226,7 +227,7 @@ export async function createSubmissionAnswers(
 ): Promise<void> {
   const now = new Date();
   const rows = Object.entries(answers)
-    .filter(([fieldId]) => !LOCKED_FIELD_IDS.has(fieldId))
+    .filter(([fieldId]) => lockedFieldName(fieldId) === null)
     .map(([fieldId, value]) => ({
       id: newId(),
       submissionId,

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { FormFieldDef } from "../src/forms/types";
+import { lockedFieldId, lockedFieldName } from "../src/forms/types";
 import { isVisible } from "../src/forms/visibility";
 import { validateAnswers } from "../src/forms/validate";
 
@@ -58,6 +59,36 @@ const slidesField: FormFieldDef = {
   required: false,
   position: 5,
 };
+
+describe("lockedFieldId / lockedFieldName (DEC-050)", () => {
+  it("mints a per-form PK for a locked name", () => {
+    expect(lockedFieldId("form_abc", "title")).toBe("form_abc:title");
+  });
+
+  it("resolves a per-form PK back to its short locked name", () => {
+    expect(lockedFieldName("form_abc:title")).toBe("title");
+    expect(lockedFieldName("form_xyz:first_name")).toBe("first_name");
+  });
+
+  it("resolves a plain unprefixed locked name (pre-existing seeded rows)", () => {
+    expect(lockedFieldName("title")).toBe("title");
+    expect(lockedFieldName("description")).toBe("description");
+    expect(lockedFieldName("first_name")).toBe("first_name");
+    expect(lockedFieldName("last_name")).toBe("last_name");
+    expect(lockedFieldName("email")).toBe("email");
+  });
+
+  it("returns null for a custom (non-locked) field id, prefixed or not", () => {
+    expect(lockedFieldName("format")).toBeNull();
+    expect(lockedFieldName("form_abc:format")).toBeNull();
+  });
+
+  it("round-trips through both directions for every locked name", () => {
+    for (const name of ["title", "description", "first_name", "last_name", "email"]) {
+      expect(lockedFieldName(lockedFieldId("form_1", name))).toBe(name);
+    }
+  });
+});
 
 describe("isVisible", () => {
   it("is visible when there is no rule", () => {

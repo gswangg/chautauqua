@@ -25,6 +25,7 @@ import {
   updateTrack,
   type EventBranding,
 } from "../../server/repo/events";
+import { createDefaultForm } from "../../server/repo/forms";
 import { isDateOrderValid, isValidHexColor, isValidSlug, isValidTimezone } from "./validators";
 
 export const eventsRoutes = new Hono<AppEnv>();
@@ -173,6 +174,10 @@ eventsRoutes.post("/events", csrfJson, async (c) => {
     timezone: timezone as string,
     branding: branding ?? null,
   });
+  // DEC-050: provision the default CFP form immediately so the event is
+  // submittable without relying on getOrCreateForm's first-read fallback
+  // (which previously crashed on the second event's global-PK collision).
+  await createDefaultForm(c.var.db, created.id);
   return c.json(created, 201);
 });
 
