@@ -72,6 +72,7 @@ const ROUTE_GROUPS: { title: string; rows: Row[] }[] = [
       { method: "GET", path: "/api/v1/plans/:id", role: "organizer" },
       { method: "PATCH", path: "/api/v1/plans/:id", role: "organizer" },
       { method: "DELETE", path: "/api/v1/plans/:id", role: "organizer" },
+      { method: "POST", path: "/api/v1/plans/:id/advance-round", role: "organizer" },
       { method: "POST", path: "/api/v1/plans/:id/reviewers", role: "organizer" },
       { method: "GET", path: "/api/v1/plans/:id/reviewers", role: "organizer" },
       { method: "DELETE", path: "/api/v1/plans/:id/reviewers/:reviewerId", role: "organizer" },
