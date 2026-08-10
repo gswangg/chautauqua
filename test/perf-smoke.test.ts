@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PERF_P95_BUDGET_MS, assertContainsVevent, computeP95, joinIcsIds } from "../scripts/perf-smoke-lib";
+import { PERF_P95_BUDGET_MS, assertContainsVevent, computeP95, joinIcsIds, planPerfPages } from "../scripts/perf-smoke-lib";
 
 describe("computeP95", () => {
   it("computes the 95th percentile via nearest-rank on a sorted sample", () => {
@@ -42,6 +42,38 @@ describe("joinIcsIds", () => {
 
   it("throws on an empty list", () => {
     expect(() => joinIcsIds([])).toThrow();
+  });
+});
+
+describe("planPerfPages", () => {
+  it("plans a single page when count fits within maxPerPage", () => {
+    expect(planPerfPages(150, 200)).toEqual([{ page: 1, perPage: 200 }]);
+  });
+
+  it("plans every page at the same fixed perPage, never a decreasing remainder (DEC-094: 301 over cap 200)", () => {
+    // Fixed perPage matters: the server computes each page's offset as
+    // (page-1)*perPage from that request's own perPage, so a shrinking
+    // remainder page would desync the offset and skip/duplicate rows.
+    expect(planPerfPages(301, 200)).toEqual([
+      { page: 1, perPage: 200 },
+      { page: 2, perPage: 200 },
+    ]);
+  });
+
+  it("plans exact multiples without a trailing empty page (300 over cap 200)", () => {
+    expect(planPerfPages(300, 200)).toEqual([
+      { page: 1, perPage: 200 },
+      { page: 2, perPage: 200 },
+    ]);
+  });
+
+  it("throws on non-positive count", () => {
+    expect(() => planPerfPages(0, 200)).toThrow();
+    expect(() => planPerfPages(-1, 200)).toThrow();
+  });
+
+  it("throws on non-positive maxPerPage", () => {
+    expect(() => planPerfPages(10, 0)).toThrow();
   });
 });
 

@@ -16,7 +16,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { PERF_EVENT_ID, PERF_EVENT_SLUG, PERF_TOPICS } from "./perf-seed-lib";
-import { PERF_P95_BUDGET_MS, assertContainsVevent, computeP95, joinIcsIds } from "./perf-smoke-lib";
+import { PERF_P95_BUDGET_MS, assertContainsVevent, computeP95, joinIcsIds, planPerfPages } from "./perf-smoke-lib";
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(SCRIPT_DIR, "..");
@@ -150,18 +150,35 @@ async function timeCheck(check: TimedCheck): Promise<number[] | null> {
   return samples;
 }
 
-/** Fetches N accepted submission ids via the organizer submissions API
- * (all accepted perf submissions are scheduled, per DEC-088). */
+// DEC-094: src/lib/pagination.ts clamps perPage to 200 server-side, so a
+// single perPage=301 request (or any request above 200) silently gets
+// clamped and returns fewer items than asked for. This helper paginates
+// at PERF_MAX_PER_PAGE-per-page and accumulates ids until `count` is
+// collected, matching the real client-side pagination contract instead of
+// assuming an unbounded single-page fetch.
+const PERF_MAX_PER_PAGE = 200;
+
+/** Fetches N accepted submission ids via the organizer submissions API,
+ * paginating at PERF_MAX_PER_PAGE per page (all accepted perf submissions
+ * are scheduled, per DEC-088). */
 async function fetchAcceptedSubmissionIds(headers: Record<string, string>, count: number): Promise<string[]> {
-  const res = await fetch(
-    `${PERF_URL}/api/v1/events/${PERF_EVENT_ID}/submissions?status=accepted&perPage=${count}`,
-    { headers },
-  );
-  if (!res.ok) {
-    throw new Error(`fetchAcceptedSubmissionIds: GET submissions?status=accepted failed: ${res.status}`);
+  const ids: string[] = [];
+  for (const { page, perPage } of planPerfPages(count, PERF_MAX_PER_PAGE)) {
+    const res = await fetch(
+      `${PERF_URL}/api/v1/events/${PERF_EVENT_ID}/submissions?status=accepted&page=${page}&perPage=${perPage}`,
+      { headers },
+    );
+    if (!res.ok) {
+      throw new Error(`fetchAcceptedSubmissionIds: GET submissions?status=accepted (page=${page}) failed: ${res.status}`);
+    }
+    const body = (await res.json()) as { items: Array<{ id: string }> };
+    const pageIds = body.items.map((item) => item.id);
+    ids.push(...pageIds);
+    // A short page (fewer than perPage rows) means the server has no more
+    // matching rows beyond this page — stop paginating rather than
+    // requesting an offset past the end of the data.
+    if (pageIds.length < perPage) break;
   }
-  const body = (await res.json()) as { items: Array<{ id: string }> };
-  const ids = body.items.map((item) => item.id);
   if (ids.length < count) {
     throw new Error(`fetchAcceptedSubmissionIds: expected at least ${count} accepted submissions, got ${ids.length}`);
   }
@@ -178,7 +195,14 @@ async function main(): Promise<void> {
   // schedule.ics route must be rejected with exactly 400 (DEC-080 cap). Uses
   // its own 301-id fetch (independent of the 150-id set the timed check below
   // uses) so this probe doesn't depend on check ordering.
-  const capIds = await fetchAcceptedSubmissionIds(headers, 301);
+  //
+  // DEC-094: the DEC-088 seed has exactly 300 accepted submissions, so 301
+  // real ids don't exist to fetch. The raw ?ids= length check fires before
+  // any hydration/lookup (src/routes/public.tsx:580-583), so a 301st
+  // syntactically-valid-but-nonexistent id still exercises the cap
+  // predicate correctly.
+  const capRealIds = await fetchAcceptedSubmissionIds(headers, 300);
+  const capIds = [...capRealIds, "sub_cap_probe_nonexistent_0001"];
   const capRes = await fetch(`${PERF_URL}/e/${PERF_EVENT_SLUG}/schedule.ics?ids=${joinIcsIds(capIds)}`);
   if (capRes.status !== 400) {
     throw new Error(
