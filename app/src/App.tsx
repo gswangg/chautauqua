@@ -19,6 +19,7 @@ const pageLoaders = {
   settings: () => import('./pages/Settings').then((m) => ({ default: m.SettingsPage })),
   submissionDetail: () =>
     import('./pages/submissions/SubmissionDetailPage').then((m) => ({ default: m.SubmissionDetailPage })),
+  notFound: () => import('./pages/NotFound').then((m) => ({ default: m.NotFoundPage })),
 } as const;
 
 const OverviewPage = lazy(pageLoaders.overview);
@@ -32,6 +33,7 @@ const CommsPage = lazy(pageLoaders.comms);
 const ContactsPage = lazy(pageLoaders.contacts);
 const SettingsPage = lazy(pageLoaders.settings);
 const SubmissionDetailPage = lazy(pageLoaders.submissionDetail);
+const NotFoundPage = lazy(pageLoaders.notFound);
 
 const NAV_SECTIONS = [
   { label: 'Overview', path: '/overview', element: <OverviewPage />, loader: pageLoaders.overview },
@@ -54,6 +56,19 @@ const prefetchByPath = new Map<string, () => Promise<unknown>>(
 // DEC-024: reviewers see only the Review nav section and land on /review.
 function isReviewerNav(section: (typeof NAV_SECTIONS)[number]): boolean {
   return section.path === '/review/*';
+}
+
+// DEC-154: sign-out. Mirrors app/src/lib/api.ts's CSRF convention
+// (x-chq-csrf header on mutations, credentials 'include') even though
+// /logout isn't under /api/v1 — it's not routed through api.ts's request()
+// helper because that helper hardcodes the /api/v1 prefix.
+async function signOut(): Promise<void> {
+  await fetch('/logout', {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'x-chq-csrf': '1' },
+  });
+  window.location.assign('/login');
 }
 
 function Nav() {
@@ -83,6 +98,9 @@ function Nav() {
           </li>
         ))}
       </ul>
+      <button type="button" className="chq-nav-signout" onClick={() => void signOut()}>
+        Sign out
+      </button>
     </nav>
   );
 }
@@ -119,6 +137,8 @@ export function App() {
                     declaration order here doesn't matter, but forms stays
                     first for readability. */}
                 <Route path="/submissions/:id" element={<SubmissionDetailPage />} />
+                {/* DEC-154: admin catch-all, must stay last so specific routes win. */}
+                <Route path="*" element={<NotFoundPage />} />
               </Routes>
             </Suspense>
           </RoleGate>
