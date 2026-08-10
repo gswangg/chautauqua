@@ -18,16 +18,24 @@ import { writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { hashPassword } from "../src/auth/password";
 import { insertStmt, seedId } from "./seed-lib";
 import {
   PERF_ANSWERS_PER_SUBMISSION,
   PERF_CONTACT_COUNT,
+  PERF_EVALUATION_COUNT,
   PERF_EVENT_ID,
   PERF_EVENT_SLUG,
+  PERF_PLAN_ID,
+  PERF_REVIEWER_COUNT,
+  PERF_REVIEWER_PASSWORD,
+  PERF_ROOM_COUNT,
   PERF_SUBMISSION_COUNT,
   PERF_TRACK_COUNT,
   contactIndexForSubmission,
+  perfReviewerEmail,
   perfSubmissionStatuses,
+  slotPlacementForAccepted,
   topicForSubmission,
   trackIndexForSubmission,
 } from "./perf-seed-lib";
@@ -46,7 +54,7 @@ const TRACK_COLORS = ["#2563eb", "#16a34a", "#d97706", "#dc2626", "#7c3aed", "#0
 const BASE_TS = Date.UTC(2027, 0, 1, 0, 0, 0);
 const MINUTE_MS = 60_000;
 
-function main(): void {
+async function main(): Promise<void> {
   const statements: string[] = [];
   let ts = BASE_TS;
   const nextTs = (): number => {
@@ -56,7 +64,13 @@ function main(): void {
 
   // --- idempotent delete, children before parents; never a blanket
   // DELETE FROM (that would also wipe the demo seed's rows in these
-  // shared tables) ---
+  // shared tables) --- DEC-088 extends this with schedule/plan/reviewer
+  // rows, also children-before-parents.
+  statements.push(`DELETE FROM evaluation WHERE plan_id = '${PERF_PLAN_ID}';`);
+  statements.push(`DELETE FROM plan_reviewer WHERE plan_id = '${PERF_PLAN_ID}';`);
+  statements.push(`DELETE FROM evaluation_plan WHERE id = '${PERF_PLAN_ID}';`);
+  statements.push(`DELETE FROM schedule_slot WHERE submission_id LIKE 'seed_perf_%';`);
+  statements.push(`DELETE FROM room WHERE event_id = 'seed_perf_event';`);
   statements.push(`DELETE FROM submission_answer WHERE submission_id LIKE 'seed_perf_%';`);
   statements.push(`DELETE FROM submission_track WHERE submission_id LIKE 'seed_perf_%';`);
   statements.push(`DELETE FROM participant WHERE submission_id LIKE 'seed_perf_%';`);
@@ -64,6 +78,7 @@ function main(): void {
   statements.push(`DELETE FROM track WHERE event_id = 'seed_perf_event';`);
   statements.push(`DELETE FROM contact WHERE id LIKE 'seed_perf_%';`);
   statements.push(`DELETE FROM event WHERE id = 'seed_perf_event';`);
+  statements.push(`DELETE FROM user WHERE id LIKE 'seed_perf_%';`);
 
   // --- event ---
   statements.push(
@@ -132,10 +147,14 @@ function main(): void {
   // column, per DEC-015/DEC-017), and 3 custom-field answers ---
   const statuses = perfSubmissionStatuses(PERF_SUBMISSION_COUNT);
   let answerCounter = 0;
+  const submissionIds: string[] = [];
+  const acceptedSubmissionIds: string[] = [];
   for (let i = 0; i < PERF_SUBMISSION_COUNT; i++) {
     const submissionId = seedId("perf_submission", i + 1);
+    submissionIds.push(submissionId);
     const status = statuses[i]!;
     const isAccepted = status === "accepted";
+    if (isAccepted) acceptedSubmissionIds.push(submissionId);
     const contactId = contactIds[contactIndexForSubmission(i)]!;
     const trackId = trackIds[trackIndexForSubmission(i)]!;
     const topic = topicForSubmission(i);
@@ -196,10 +215,125 @@ function main(): void {
     }
   }
 
+  // --- 10 rooms (DEC-088) ---
+  const roomIds: string[] = [];
+  for (let i = 0; i < PERF_ROOM_COUNT; i++) {
+    const roomId = seedId("perf_room", i + 1);
+    roomIds.push(roomId);
+    statements.push(
+      insertStmt("room", {
+        id: roomId,
+        event_id: PERF_EVENT_ID,
+        name: `Perf Room ${i + 1}`,
+        capacity: 100,
+        position: i,
+        created_at: nextTs(),
+        updated_at: ts,
+      }),
+    );
+  }
+
+  // --- schedule_slot for every accepted submission (already content_status
+  // approved + participant visible, so they are publicly visible) ---
+  for (let j = 0; j < acceptedSubmissionIds.length; j++) {
+    const submissionId = acceptedSubmissionIds[j]!;
+    const placement = slotPlacementForAccepted(j);
+    const roomId = roomIds[placement.roomIndex]!;
+    statements.push(
+      insertStmt("schedule_slot", {
+        id: seedId("perf_slot", j + 1),
+        submission_id: submissionId,
+        room_id: roomId,
+        day: placement.day,
+        start_min: placement.startMin,
+        end_min: placement.endMin,
+        created_at: nextTs(),
+        updated_at: ts,
+      }),
+    );
+  }
+
+  // --- one evaluation plan (DEC-088): INSERT never names current_round, so
+  // this works with or without the 0009_review_rounds migration ---
+  statements.push(
+    insertStmt("evaluation_plan", {
+      id: PERF_PLAN_ID,
+      event_id: PERF_EVENT_ID,
+      name: "Perf Review Plan",
+      instructions: null,
+      open_date: null,
+      close_date: null,
+      filters_json: null,
+      anonymized: false,
+      scale_json: JSON.stringify({ min: 1, max: 5 }),
+      criteria_json: JSON.stringify([{ id: "overall", label: "Overall", weight: 1 }]),
+      rounds: 1,
+      max_evaluations: null,
+      created_at: nextTs(),
+      updated_at: ts,
+    }),
+  );
+
+  // --- 12 reviewer users + 12 all-scope plan_reviewer rows (DEC-088): hash
+  // the reviewer password once, reuse for all 12 users ---
+  const reviewerPasswordHash = await hashPassword(PERF_REVIEWER_PASSWORD);
+  const reviewerUserIds: string[] = [];
+  for (let i = 1; i <= PERF_REVIEWER_COUNT; i++) {
+    const userId = seedId("perf_reviewer", i);
+    reviewerUserIds.push(userId);
+    statements.push(
+      insertStmt("user", {
+        id: userId,
+        org_id: ORG_ID,
+        email: perfReviewerEmail(i),
+        password_hash: reviewerPasswordHash,
+        role: "reviewer",
+        contact_id: null,
+        created_at: nextTs(),
+        updated_at: ts,
+      }),
+    );
+    statements.push(
+      insertStmt("plan_reviewer", {
+        id: seedId("perf_plan_reviewer", i),
+        plan_id: PERF_PLAN_ID,
+        user_id: userId,
+        track_id: null,
+        created_at: nextTs(),
+        updated_at: ts,
+      }),
+    );
+  }
+
+  // --- 600 round-1 evaluations (DEC-088): reviewers round-robin over the
+  // first 600 submissions ---
+  for (let n = 0; n < PERF_EVALUATION_COUNT; n++) {
+    const submissionId = submissionIds[n % submissionIds.length]!;
+    const reviewerId = reviewerUserIds[n % reviewerUserIds.length]!;
+    statements.push(
+      insertStmt("evaluation", {
+        id: seedId("perf_eval", n + 1),
+        plan_id: PERF_PLAN_ID,
+        submission_id: submissionId,
+        reviewer_id: reviewerId,
+        round: 1,
+        scores_json: JSON.stringify({ overall: (n % 5) + 1 }),
+        comment: null,
+        submitted_at: nextTs(),
+        created_at: nextTs(),
+        updated_at: ts,
+      }),
+    );
+  }
+
   const sql = statements.join("\n") + "\n";
   writeFileSync(OUTPUT_PATH, sql, "utf-8");
   // eslint-disable-next-line no-console
   console.log(`Wrote ${statements.length} statements to ${OUTPUT_PATH}`);
 }
 
-main();
+main().catch((err) => {
+  // eslint-disable-next-line no-console
+  console.error(err);
+  process.exitCode = 1;
+});
