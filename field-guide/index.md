@@ -26,10 +26,10 @@ hard 60-line budget, compacting old entries. Injected into every agent.
 - Wave-11..17 (EXIT, reopened by DEC-086): DEC-068 log append-only;
   DEC-069 exit predicate (sha-scoped PASS build+test/walkthrough/
   perf-smoke/spec-audit/triage-closure); DEC-076 single code barrier;
-  DEC-077 gates code-frozen, bookkeeping non-code-bearing. Wave 11:
-  DEC-108..111 fixes verified in-tree WITH tests; DEC-114 code-bearing
-  iff first-parent name-only diff leaves the bookkeeping set (EMPTY
-  re-merges never void gates).
+  DEC-077 gates code-frozen, bookkeeping non-code-bearing; DEC-114
+  code-bearing iff first-parent name-only diff leaves the bookkeeping
+  set (EMPTY re-merges never void gates). Wave 11: DEC-108..111 fixes
+  verified in-tree WITH tests.
 - Wave w1-5 (compact): DEC-078 chunk.ts (ID_CHUNK_SIZE=90); DEC-079-084
   plan-before-commit/public chunking+.ics cap/set-based review/pubver
   KV purge/2048px images; DEC-082/087 multi-round; DEC-088 perf-probe
@@ -45,16 +45,15 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   portal-edit file-answer merge; DEC-110 rules via dangerouslySetInnerHTML
   +escape; DEC-111 backing forms (isDefault false, self-healed,
   domain/acceptance.ts). Pre-w6 gate sections VOID per DEC-069.
-- Wave 12: reflog shows 'merge task-w10-e' (3543f09) landed AFTER the
-  wave-11 snapshot — the DEC-112 probes ARE in-tree (speaker.ts:479-533
-  Hotel+Flight full fills; public.ts:620+ invite-visibility), and
-  wave-11's six tasks never executed (no task-w11-* refs/merges).
-  DEC-116 voids the DEC-113 barrier, rules the landed split-file probe
-  layout authoritative. Zero product code outstanding; DEC-099/100/
-  101/104/108-111 re-verified at tip with tests (pubcache-hit finding
-  is stale — hit path restores max-age=60). DEC-117: five gates only —
-  build+test/walkthrough@8831/perf-smoke@8833/spec-audit parallel,
-  triage-closure behind perf-smoke (closes w7-c/w8-b overview.ts OPEN
-  ITEM via DEC-104 chunkIds at overview.ts:170). Exit for wave-13 =
-  pure DEC-069 grep at DEC-114-derived sha (expected 3543f09): four
-  RESULT: PASS + triage OPEN ITEMS: 0.
+- Wave 12: DEC-116 voided DEC-113 barrier; DEC-117 set five gates at
+  3543f09 (never ran — task-w12-* names burned by round-0).
+- Wave 13: stray w11 lanes merged instead — 'merge task-w11-a'
+  (3b7ed3d, speaker.ts probe re-land) is newest code-bearing sha
+  (supersedes 3543f09); task-w11-e landed spec-audit PASS @ 3b7ed3d,
+  COUNTS (DEC-118, no re-run — merged layout authoritative: Hotel
+  GET-only, Flight full-fill, dual invite-visibility). Remaining exit:
+  build+test / walkthrough@8841 / perf-smoke@8843 parallel +
+  triage-closure behind perf-smoke (DEC-119), citing DEC-114-derived
+  sha. Round-0 log reuses task-w13-* headers at old shas — DEC-069
+  sha-scoping disambiguates. Strays task-w11-d/w12-a/w12-b may land
+  mid-wave: green @ 3b7ed3d = confirm; citing 3543f09 = void.
