@@ -1,5 +1,5 @@
-import { PlaceholderPage } from './PlaceholderPage';
+import { ContentApp } from './content/ContentApp';
 
 export function ContentPage() {
-  return <PlaceholderPage section="Content" />;
+  return <ContentApp />;
 }

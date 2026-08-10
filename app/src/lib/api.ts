@@ -111,3 +111,30 @@ export function apiPatch<T>(path: string, body?: unknown): Promise<T> {
 export function apiDelete<T>(path: string): Promise<T> {
   return request<T>(path, { method: 'DELETE' });
 }
+
+// DEC-024 / DEC-020: multipart upload helper for the Content SPA (file
+// uploads). Deliberately bypasses `request()` because FormData must not get
+// a manually-set content-type (the browser sets the multipart boundary);
+// otherwise this mirrors request()'s csrf + credentials + ApiError handling.
+export async function apiUpload<T>(path: string, form: FormData): Promise<T> {
+  const headers = new Headers();
+  headers.set('x-chq-csrf', '1');
+
+  const res = await fetch(`${API_PREFIX}${path}`, {
+    method: 'POST',
+    body: form,
+    headers,
+    credentials: 'include',
+  });
+
+  const body = await parseBody(res);
+
+  if (!res.ok) {
+    if (isApiErrorBody(body)) {
+      throw new ApiError(res.status, body.error.code, body.error.message, body.error.fields);
+    }
+    throw new ApiError(res.status, 'internal', `Request failed with status ${res.status}`);
+  }
+
+  return body as T;
+}
