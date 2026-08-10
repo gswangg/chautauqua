@@ -13,6 +13,7 @@ import type { Db } from "../server/context";
 import { makeDb, makeMailer } from "../server/context";
 import { requireOrganizer, csrfJson } from "../server/middleware";
 import { ApiError } from "../server/http";
+import { DEC_120 } from "../decisions";
 import {
   assignTask,
   createTask,
@@ -30,6 +31,11 @@ import {
   type TaskAssignmentStatus,
   type UpdateTaskInput,
 } from "../server/repo/tasks";
+import { findContactsForOrg } from "../server/repo/contacts";
+
+// DEC-120: task-assign contact org-scoping is referenced below so this
+// dependency is compile-checked (see decisions.ts).
+void DEC_120;
 
 export const taskRoutes = new Hono<AppEnv>();
 
@@ -226,7 +232,19 @@ taskRoutes.post("/tasks/:id/assign", requireOrganizer, csrfJson, async (c) => {
     throw new ApiError("invalid", "contactIds must be a non-empty array", { contactIds: "Required" });
   }
 
-  await assignTask(c.var.db, taskId, contactIds);
+  // DEC-120: reject cross-org contact ids before any assignment write —
+  // atomic, no partial assignment (DEC-019).
+  const dedupedContactIds = Array.from(new Set(contactIds));
+  const orgContacts = await findContactsForOrg(c.var.db, dedupedContactIds, auth.orgId);
+  const foundIds = new Set(orgContacts.map((r) => r.id));
+  const missing = dedupedContactIds.filter((id) => !foundIds.has(id));
+  if (missing.length > 0) {
+    throw new ApiError("invalid", "One or more contacts do not belong to this org", {
+      contactIds: `unknown ids: ${missing.join(", ")}`,
+    });
+  }
+
+  await assignTask(c.var.db, taskId, dedupedContactIds);
   const grid = await getOnboardingGrid(c.var.db, ownership.eventId);
   return c.json(grid);
 });
