@@ -170,3 +170,49 @@ export function topicForSubmission(i: number): string {
   if (!topic) throw new Error("topicForSubmission: empty PERF_TOPICS pool");
   return topic;
 }
+
+// --------------------------------------------------------------------------
+// DEC-088: schedule, evaluation plan, and 12-reviewer contract for
+// DEC-086's scale probes.
+
+export const PERF_ROOM_COUNT = 10;
+export const PERF_REVIEWER_COUNT = 12;
+export const PERF_PLAN_ID = "seed_perf_plan_0001";
+export const PERF_REVIEWER_PASSWORD = "PerfReviewer!2027";
+export const PERF_EVALUATION_COUNT = 600;
+
+/** 1-based (per DEC-088's "i unpadded") reviewer email, e.g.
+ * perfReviewerEmail(1) === 'perf.reviewer.1@example-perf.test'. */
+export function perfReviewerEmail(i: number): string {
+  if (!Number.isInteger(i) || i < 1) {
+    throw new Error(`perfReviewerEmail: i must be a positive integer, got ${i}`);
+  }
+  return `perf.reviewer.${i}@example-perf.test`;
+}
+
+export interface PerfSlotPlacement {
+  day: string;
+  startMin: number;
+  endMin: number;
+  roomIndex: number;
+}
+
+/**
+ * Deterministic schedule-slot placement for the j-th (0-based) accepted
+ * submission: 100 sessions/day across the event's three days
+ * (2028-06-01..03), 30-minute slots starting at 09:00 (startMin 540),
+ * room assigned round-robin over the 10 rooms.
+ */
+export function slotPlacementForAccepted(j: number): PerfSlotPlacement {
+  if (!Number.isInteger(j) || j < 0) {
+    throw new Error(`slotPlacementForAccepted: j must be a non-negative integer, got ${j}`);
+  }
+  const dayIndex = Math.floor(j / 100); // 0, 1, 2
+  const dayOfMonth = 1 + dayIndex;
+  const day = `2028-06-0${dayOfMonth}`;
+  const withinDay = j % 100;
+  const startMin = 540 + 30 * Math.floor(withinDay / 10);
+  const endMin = startMin + 30;
+  const roomIndex = j % PERF_ROOM_COUNT;
+  return { day, startMin, endMin, roomIndex };
+}
