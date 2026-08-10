@@ -41,20 +41,20 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   tasks never executed (history ends "merge task-w2-d" 3878d4f). DEC-092
   ratified scale.ts's portal-edit purge probe. DEC-093: barrier vacuous,
   four gates ran parallel @ 3878d4f, triage-closure behind walkthrough.
-- Wave 5 (reopened-run gates executed; two FAILs, both script defects):
-  closeout/build+test/spec-audit/triage-closure PASS @ 3878d4f; FAILs:
-  (1) walkthrough scale step 6 — scripts/walkthrough/scale.ts POSTed
-  portal-edit without trackIds; open form -> validateTrackChoice
-  (src/lib/submit-core.ts:45) correctly 400s (portal/edit.tsx:201-219);
-  a browser would submit the checked checkbox. DEC-095: scripts-only fix,
-  no product change. (2) perf-smoke — fetchAcceptedSubmissionIds asked
-  perPage=301 in one page; clampPerPage caps 200 (src/lib/pagination.ts),
-  DEC-088 seeds exactly 300 accepted. DEC-094: clamp/seed stand; helper
-  paginates @200/page; 301-id cap probe = 300 real + 1 syntactically-
-  valid nonexistent id (rejected pre-hydration at public.tsx:580-583).
-  DEC-096: task-w5-a is the sole DEC-076 barrier landing BOTH fixes
-  (repro on port 8805); w5-b/c/d/e re-run all four gates code-frozen
-  (DEC-077) @ w5-a's new sha; w5-f triage-closure chains behind w5-c
-  walkthrough, must close the two OPEN ITEMS -> 0. Ports: 8805 fix-task
-  (else per above). Exit: wave-6 planner greps four PASS @ w5-a sha +
-  triage-closure OPEN ITEMS: 0 -> zero tasks, goalComplete.
+- Wave 5 (compact): planned gates never executed (main stayed at 6e1db15,
+  0-commit task-w5-a branch) — DEC-096's chain void per DEC-097. DEC-094/
+  095 fixes stand: perf-smoke paginates @200/page (301-id probe = 300
+  real + 1 nonexistent id); scale.ts portal-edit POST needs trackIds.
+- Wave 6 (verify-first lesson): four NEW verified product defects fixed
+  in parallel alongside the re-issued w5 scripts fix (task-w6-a):
+  DEC-098 on-screen claim link only when contact created by that same
+  submit request (pre-existing contact + no user -> email-only link,
+  never in HTML; walkthroughs use fresh emails, unaffected); DEC-099
+  pubcache hits re-served with CLIENT_CACHE_CONTROL max-age=60/swr=300
+  (86400 stays internal on stored copy); DEC-100 seq = atomic INSERT
+  w/ COALESCE(MAX(seq),0)+1 scalar subquery via repo/submissions/seq.ts
+  (both SELECT-then-INSERT helpers deleted); DEC-101 merge repoints six
+  FKs (adds file.uploaded_by_contact_id, file_comment.author_contact_id)
+  with participant dedupe BEFORE repoint. DEC-097: wave 7 runs the four
+  DEC-069 gates + triage-closure code-frozen at the post-wave-6 newest
+  code-bearing sha per DEC-091, then wave 8 can evaluate exit.
