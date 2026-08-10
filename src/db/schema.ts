@@ -532,6 +532,23 @@ export const emailTemplate = sqliteTable(
   }),
 );
 
+// migrations/0005_w4_segment.sql (DEC-025, task w4-c): CRM saved-segment
+// rules (DEC-026), rules_json holds SegmentRule[] from src/domain/contacts.ts.
+export const segment = sqliteTable(
+  "segment",
+  {
+    id: id(),
+    orgId: text("org_id").notNull(),
+    name: text("name").notNull(),
+    rulesJson: text("rules_json").notNull(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => ({
+    segment_org_id_idx: index("segment_org_id_idx").on(t.orgId),
+  }),
+);
+
 export const emailLog = sqliteTable(
   "email_log",
   {
