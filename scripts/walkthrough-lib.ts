@@ -6,11 +6,13 @@
 /**
  * Fixed sequential order of the DEC-060 walkthrough modules. producer must
  * run first (it seeds the event other personas depend on), then review,
- * speaker, public, data — in that order. The orchestrator (DEC-062) is the
- * sole place this order is defined; module files must not reorder
- * themselves.
+ * speaker, public, data, scale — in that order. The orchestrator
+ * (DEC-062) is the sole place this order is defined; module files must not
+ * reorder themselves. "scale" (DEC-089) runs last: it exercises >100-id
+ * volume paths (bulk accept, chunking, purge refresh) against the same
+ * seeded event the earlier areas already populated.
  */
-export const WALKTHROUGH_AREAS = ["producer", "review", "speaker", "public", "data"] as const;
+export const WALKTHROUGH_AREAS = ["producer", "review", "speaker", "public", "data", "scale"] as const;
 
 export type WalkthroughArea = (typeof WALKTHROUGH_AREAS)[number];
 

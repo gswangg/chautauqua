@@ -10,8 +10,8 @@ import {
 } from "../scripts/walkthrough-lib";
 
 describe("WALKTHROUGH_AREAS", () => {
-  it("is the fixed DEC-062 order: producer, review, speaker, public, data", () => {
-    expect(WALKTHROUGH_AREAS).toEqual(["producer", "review", "speaker", "public", "data"]);
+  it("is the fixed DEC-062/DEC-089 order: producer, review, speaker, public, data, scale", () => {
+    expect(WALKTHROUGH_AREAS).toEqual(["producer", "review", "speaker", "public", "data", "scale"]);
   });
 });
 
@@ -22,6 +22,7 @@ describe("modulePath", () => {
     expect(modulePath("speaker")).toBe("scripts/walkthrough/speaker.ts");
     expect(modulePath("public")).toBe("scripts/walkthrough/public.ts");
     expect(modulePath("data")).toBe("scripts/walkthrough/data.ts");
+    expect(modulePath("scale")).toBe("scripts/walkthrough/scale.ts");
   });
 });
 
