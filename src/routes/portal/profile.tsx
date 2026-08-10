@@ -31,7 +31,73 @@ export const portalProfileRoutes = new Hono<AppEnv>();
 portalProfileRoutes.use("/profile", speakerGate);
 portalProfileRoutes.use("/profile/*", speakerGate);
 
-const HEADSHOT_HELP_TEXT = "PNG, JPG, JPEG, or WEBP, up to 8 MB.";
+const HEADSHOT_HELP_TEXT =
+  "PNG, JPG, JPEG, or WEBP, up to 8 MB. Images are automatically downscaled to 512px on the longest edge before upload.";
+
+// DEC-059: framework-free, ES5-safe inline script — downscales oversized
+// headshots client-side (max edge 512px) before they hit the wire, so the
+// 8 MB server-side cap in validateHeadshotUpload (src/domain/files.ts)
+// rarely triggers for normal photos. On any failure (unsupported API,
+// decode error, etc.) it leaves the original file input untouched and
+// lets the server-side cap be the sole authority.
+const HEADSHOT_DOWNSCALE_JS = `(function(){
+  var MAX_EDGE = 512;
+  var input = document.querySelector('input[name="headshot"]');
+  if (!input) return;
+  function toJpegFile(blob, originalName) {
+    var base = originalName.replace(/\\.[^.]+$/, '');
+    return new File([blob], base + '.jpg', { type: 'image/jpeg' });
+  }
+  function downscale(file) {
+    var url = URL.createObjectURL(file);
+    var img = new Image();
+    img.onload = function () {
+      try {
+        var w = img.naturalWidth;
+        var h = img.naturalHeight;
+        if (w <= MAX_EDGE && h <= MAX_EDGE) {
+          URL.revokeObjectURL(url);
+          return;
+        }
+        var scale = MAX_EDGE / Math.max(w, h);
+        var targetW = Math.round(w * scale);
+        var targetH = Math.round(h * scale);
+        var canvas = document.createElement('canvas');
+        canvas.width = targetW;
+        canvas.height = targetH;
+        var ctx = canvas.getContext('2d');
+        if (!ctx) { URL.revokeObjectURL(url); return; }
+        ctx.drawImage(img, 0, 0, targetW, targetH);
+        canvas.toBlob(function (blob) {
+          URL.revokeObjectURL(url);
+          if (!blob) return;
+          try {
+            var dt = new DataTransfer();
+            dt.items.add(toJpegFile(blob, file.name));
+            input.files = dt.files;
+          } catch (e) {
+            // Leave the original file in place; server-side cap decides.
+          }
+        }, 'image/jpeg', 0.85);
+      } catch (e) {
+        URL.revokeObjectURL(url);
+      }
+    };
+    img.onerror = function () {
+      URL.revokeObjectURL(url);
+    };
+    img.src = url;
+  }
+  input.addEventListener('change', function () {
+    try {
+      var file = input.files && input.files[0];
+      if (!file) return;
+      downscale(file);
+    } catch (e) {
+      // Leave the original file in place; server-side cap decides.
+    }
+  });
+})();`;
 
 function ensureCsrfCookie(c: { req: { header(name: string): string | undefined } }): {
   token: string;
@@ -71,6 +137,7 @@ function ProfilePage(props: {
           <p>{HEADSHOT_HELP_TEXT}</p>
           <button type="submit">Upload headshot</button>
         </form>
+        <script dangerouslySetInnerHTML={{ __html: HEADSHOT_DOWNSCALE_JS }} />
       </section>
 
       <section aria-label="Profile details">
@@ -240,6 +307,9 @@ headshotServeRoutes.get("/headshots/:fileId", async (c) => {
   const contentType = obj.contentType ?? scope.contentType;
   return c.body(obj.body, 200, {
     "Content-Type": contentType,
-    "Cache-Control": "public, max-age=86400",
+    // DEC-059: safe to cache immutably — every upload writes a fresh
+    // random R2 key (see r2Key above), so a given fileId's contents never
+    // change.
+    "Cache-Control": "public, max-age=31536000, immutable",
   });
 });
