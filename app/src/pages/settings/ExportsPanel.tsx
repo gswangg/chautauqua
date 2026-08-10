@@ -44,6 +44,13 @@ export function ExportsPanel() {
                 </td>
               </tr>
             ))}
+            <tr>
+              <td>Show-flow (CSV)</td>
+              <td>
+                <a href={`/api/v1/events/${eventId}/exports/showflow.csv`}>Download CSV</a>
+              </td>
+              <td>—</td>
+            </tr>
           </tbody>
         </table>
       )}

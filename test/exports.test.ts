@@ -5,11 +5,14 @@ import {
   EXPORT_KINDS,
   SUBMISSIONS_HEADER,
   AGENDA_HEADER,
+  SHOWFLOW_HEADER,
   shapeSubmissionsExport,
   shapeAgendaExport,
+  shapeShowflowExport,
   minutesToClock,
   type SubmissionExportInput,
   type AgendaExportInput,
+  type ShowflowExportInput,
 } from "../src/server/repo/exports";
 
 describe("isExportKind", () => {
@@ -164,5 +167,153 @@ describe("shapeAgendaExport — CSV column snapshot", () => {
   it("handles zero rows (unscheduled event)", () => {
     const table = shapeAgendaExport([]);
     expect(table.rows).toEqual([]);
+  });
+});
+
+describe("shapeShowflowExport (DEC-055)", () => {
+  it("has the DEC-055 fixed header", () => {
+    expect(SHOWFLOW_HEADER).toEqual([
+      "ref",
+      "title",
+      "description",
+      "day",
+      "start",
+      "end",
+      "room",
+      "tracks",
+      "speakers",
+      "deck_file",
+      "deck_url",
+    ]);
+  });
+
+  it("orders scheduled rows by day, start, room and appends unscheduled accepted rows last (never dropped)", () => {
+    const inputs: ShowflowExportInput[] = [
+      {
+        ref: "SES-003",
+        title: "Unscheduled talk",
+        description: "No slot yet",
+        day: null,
+        startMin: null,
+        endMin: null,
+        room: null,
+        tracks: [],
+        speakers: [],
+        deckFile: "",
+        deckUrl: "",
+      },
+      {
+        ref: "SES-002",
+        title: "Afternoon, room B",
+        description: "Second day two",
+        day: "2026-06-02",
+        startMin: 570,
+        endMin: 600,
+        room: "Room B",
+        tracks: ["Platform"],
+        speakers: ["Ada Lovelace"],
+        deckFile: "slides.pptx (v2)",
+        deckUrl: "/files/f2",
+      },
+      {
+        ref: "SES-001",
+        title: "Morning, room A",
+        description: "Day one",
+        day: "2026-06-01",
+        startMin: 540,
+        endMin: 570,
+        room: "Room A",
+        tracks: ["Keynote"],
+        speakers: ["Grace Hopper", "Alan Turing"],
+        deckFile: "",
+        deckUrl: "",
+      },
+      {
+        ref: "SES-004",
+        title: "Afternoon, room A",
+        description: "Second day one, room A sorts before B",
+        day: "2026-06-02",
+        startMin: 570,
+        endMin: 600,
+        room: "Room A",
+        tracks: [],
+        speakers: [],
+        deckFile: "",
+        deckUrl: "",
+      },
+    ];
+
+    const table = shapeShowflowExport(inputs);
+    expect(table.header).toEqual([...SHOWFLOW_HEADER]);
+    expect(table.rows.map((r) => r[0])).toEqual(["SES-001", "SES-004", "SES-002", "SES-003"]);
+
+    // Speaker order preserved ('; '-joined in participant order).
+    expect(table.rows[0]).toEqual([
+      "SES-001",
+      "Morning, room A",
+      "Day one",
+      "2026-06-01",
+      "09:00",
+      "09:30",
+      "Room A",
+      "Keynote",
+      "Grace Hopper; Alan Turing",
+      "",
+      "",
+    ]);
+
+    // Deck columns joined when present.
+    expect(table.rows[2]).toEqual([
+      "SES-002",
+      "Afternoon, room B",
+      "Second day two",
+      "2026-06-02",
+      "09:30",
+      "10:00",
+      "Room B",
+      "Platform",
+      "Ada Lovelace",
+      "slides.pptx (v2)",
+      "/files/f2",
+    ]);
+
+    // Unscheduled row last, with empty schedule columns and empty deck columns.
+    expect(table.rows[3]).toEqual([
+      "SES-003",
+      "Unscheduled talk",
+      "No slot yet",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+    ]);
+  });
+
+  it("handles zero rows", () => {
+    const table = shapeShowflowExport([]);
+    expect(table.header).toEqual([...SHOWFLOW_HEADER]);
+    expect(table.rows).toEqual([]);
+  });
+
+  it("multiple unscheduled rows keep their given relative order (never dropped)", () => {
+    const mk = (ref: string): ShowflowExportInput => ({
+      ref,
+      title: ref,
+      description: "",
+      day: null,
+      startMin: null,
+      endMin: null,
+      room: null,
+      tracks: [],
+      speakers: [],
+      deckFile: "",
+      deckUrl: "",
+    });
+    const table = shapeShowflowExport([mk("SES-A"), mk("SES-B")]);
+    expect(table.rows.map((r) => r[0])).toEqual(["SES-A", "SES-B"]);
   });
 });
