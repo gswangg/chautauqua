@@ -156,7 +156,12 @@ const ROUTE_GROUPS: { title: string; rows: Row[] }[] = [
       {
         method: "GET",
         path: "/api/v1/events/:eventId/export/:kind?format=csv|json",
-        role: "organizer (kind: submissions, speakers, evaluations, agenda, email-log; agenda in CSV form is the show-flow file, DEC-055)",
+        role: "organizer (kind: submissions, speakers, evaluations, agenda, email-log)",
+      },
+      {
+        method: "GET",
+        path: "/api/v1/events/:eventId/exports/showflow.csv",
+        role: "organizer (fixed-column show-flow export, DEC-055)",
       },
     ],
   },
