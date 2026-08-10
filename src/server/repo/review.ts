@@ -170,6 +170,19 @@ export async function advancePlanRound(db: Db, planId: string): Promise<PlanReco
   return updated;
 }
 
+/** DEC-123: does any evaluation (any round) exist for this plan? Used to
+ * guard criteria/scale mutation on PATCH /api/v1/plans/:id -- once an
+ * evaluation is recorded, changing the criteria/scale shape would orphan it
+ * into a 500ing results surface (aggregateSubmission's fail-loudly throw). */
+export async function planHasEvaluations(db: Db, planId: string): Promise<boolean> {
+  const rows = await db
+    .select({ id: schema.evaluation.id })
+    .from(schema.evaluation)
+    .where(eq(schema.evaluation.planId, planId))
+    .limit(1);
+  return rows.length > 0;
+}
+
 export async function deletePlan(db: Db, planId: string): Promise<void> {
   await db.delete(schema.planReviewer).where(eq(schema.planReviewer.planId, planId));
   await db.delete(schema.evaluation).where(eq(schema.evaluation.planId, planId));

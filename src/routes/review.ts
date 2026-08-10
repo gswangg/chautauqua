@@ -26,8 +26,10 @@ import { toCsv } from "../lib/csv";
 import * as repo from "../server/repo/review";
 import type { PlanRecord } from "../server/repo/review";
 import * as eventsRepo from "../server/repo/events";
+import { DEC_123 } from "../decisions";
 
 export const reviewRoutes = new Hono<AppEnv>();
+void DEC_123; // criteria/scale immutability guard on PATCH /api/v1/plans/:id below
 
 function asRecord(body: unknown): Record<string, unknown> {
   if (typeof body !== "object" || body === null) {
@@ -131,6 +133,25 @@ function parseRoundQuery(c: { req: { query(name: string): string | undefined } }
   return n;
 }
 
+/** Deterministic deep-equal via a canonicalized (sorted-keys) JSON shape,
+ * for the DEC-123 no-op exemption. Array element order is preserved
+ * (criteria order and scale field order are meaningful). */
+function canonicalize(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(canonicalize);
+  if (typeof value === "object" && value !== null) {
+    const out: Record<string, unknown> = {};
+    for (const key of Object.keys(value as Record<string, unknown>).sort()) {
+      out[key] = canonicalize((value as Record<string, unknown>)[key]);
+    }
+    return out;
+  }
+  return value;
+}
+
+function deepEqual(a: unknown, b: unknown): boolean {
+  return JSON.stringify(canonicalize(a)) === JSON.stringify(canonicalize(b));
+}
+
 function ratingCriteria(criteria: EvaluationCriterionDef[]): EvaluationCriterion[] {
   return criteria
     .filter((c): c is EvaluationCriterionDef & { kind: "rating"; weight: number } => c.kind === "rating")
@@ -199,6 +220,25 @@ reviewRoutes.patch("/api/v1/plans/:id", requireOrganizer, csrfJson, async (c) =>
   const criteria = body.criteria !== undefined ? parseCriteria(body, errors) : undefined;
   const rounds = body.rounds !== undefined ? parseRounds(body, errors, plan.currentRound) : undefined;
   if (Object.keys(errors).length > 0) throw new ApiError("invalid", "Invalid plan", errors);
+
+  // DEC-123: once any evaluation exists on this plan, criteria/scale are
+  // immutable -- a shape change would orphan recorded evaluations into a
+  // 500ing results surface. Identical (no-op) values still pass through so
+  // full-object PATCHes from the admin SPA keep working.
+  if ((body.criteria !== undefined || body.scale !== undefined) && (await repo.planHasEvaluations(c.var.db, plan.id))) {
+    if (body.criteria !== undefined && !deepEqual(criteria, plan.criteria)) {
+      throw new ApiError(
+        "conflict",
+        "Criteria and scale cannot change once evaluations exist — create a new plan or delete the evaluations first",
+      );
+    }
+    if (body.scale !== undefined && !deepEqual(scale, plan.scale)) {
+      throw new ApiError(
+        "conflict",
+        "Criteria and scale cannot change once evaluations exist — create a new plan or delete the evaluations first",
+      );
+    }
+  }
 
   const updated = await repo.updatePlan(c.var.db, plan.id, {
     name: typeof body.name === "string" ? body.name : undefined,
