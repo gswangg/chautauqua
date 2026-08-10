@@ -153,6 +153,12 @@ describe("DEC-140 itinerary id round-trip (schedule HTML -> schedule.ics)", () =
 
     const summaries = [...ics.matchAll(/SUMMARY:(.+)\r?\n/g)].map((m) => m[1]!.trim());
     expect(summaries.sort()).toEqual(["Session A", "Session B", "Session C"].sort());
+
+    // DEC-168: public itinerary export is METHOD:PUBLISH with an ORGANIZER
+    // but never an ATTENDEE (no per-recipient RSVP for an anonymous export).
+    expect(ics).toContain("METHOD:PUBLISH");
+    expect(ics).toMatch(/ORGANIZER;CN="[^"]*":mailto:/);
+    expect(ics).not.toContain("ATTENDEE");
   });
 
   it("shows a live picked count next to the download link", async () => {

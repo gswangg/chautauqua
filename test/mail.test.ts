@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { MergeFieldError, MERGE_FIELDS, renderTemplate, escapeHtml, textToHtml } from "../src/mail/render";
-import { buildIcsCalendar, buildIcsEvent, type IcsEventInput } from "../src/mail/ics";
+import { buildIcsCalendar, buildIcsEvent, ICS_ORGANIZER_EMAIL, type IcsEventInput, type IcsOptions } from "../src/mail/ics";
 import { DevSinkMailer, InMemoryEmailLog } from "../src/mail/dev-sink";
 import type { RenderedEmail } from "../src/mail/types";
 
@@ -83,37 +83,87 @@ describe("ics builder", () => {
     dtstamp: new Date(Date.UTC(2026, 5, 1, 12, 0, 0)),
   };
 
+  const requestOpts: IcsOptions = {
+    method: "REQUEST",
+    organizer: { name: "DevConf", email: ICS_ORGANIZER_EMAIL },
+    attendee: { name: "Ada Lovelace", email: "ada@example.com" },
+  };
+
+  const publishOpts: IcsOptions = {
+    method: "PUBLISH",
+    organizer: { name: "DevConf", email: ICS_ORGANIZER_EMAIL },
+  };
+
   it("produces a stable UID derived from the submission id", () => {
-    const a = buildIcsEvent(base);
-    const b = buildIcsEvent({ ...base, sequence: 3 });
+    const a = buildIcsEvent(base, requestOpts);
+    const b = buildIcsEvent({ ...base, sequence: 3 }, requestOpts);
     expect(a).toContain("UID:chq-abc123@chautauqua");
     expect(b).toContain("UID:chq-abc123@chautauqua");
   });
 
   it("serializes SEQUENCE", () => {
-    const ics = buildIcsEvent({ ...base, sequence: 5 });
+    const ics = buildIcsEvent({ ...base, sequence: 5 }, requestOpts);
     expect(ics).toContain("SEQUENCE:5");
   });
 
   it("omits LOCATION when no room is assigned", () => {
-    const ics = buildIcsEvent(base);
+    const ics = buildIcsEvent(base, requestOpts);
     expect(ics).not.toContain("LOCATION");
   });
 
   it("includes LOCATION when provided", () => {
-    const ics = buildIcsEvent({ ...base, location: "Room A" });
+    const ics = buildIcsEvent({ ...base, location: "Room A" }, requestOpts);
     expect(ics).toContain("LOCATION:Room A");
   });
 
-  it("uses CRLF line endings and METHOD:REQUEST", () => {
-    const ics = buildIcsEvent(base);
+  it("uses CRLF line endings and METHOD:REQUEST with an ORGANIZER and ATTENDEE", () => {
+    const ics = buildIcsEvent(base, requestOpts);
     expect(ics).toContain("\r\n");
     expect(ics).toContain("METHOD:REQUEST");
+    expect(ics).toContain(`ORGANIZER;CN="DevConf":mailto:${ICS_ORGANIZER_EMAIL}`);
+    // The ATTENDEE line is long enough to be 75-octet folded; assert on the
+    // unfolded content rather than a single contiguous line.
+    expect(ics.replace(/\r\n /g, "")).toContain(
+      'ATTENDEE;CN="Ada Lovelace";ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=TRUE:mailto:ada@example.com',
+    );
     expect(ics.split("\r\n").some((l) => l.startsWith("\n"))).toBe(false);
   });
 
+  it("PUBLISH events carry an ORGANIZER but never an ATTENDEE", () => {
+    const ics = buildIcsEvent(base, publishOpts);
+    expect(ics).toContain("METHOD:PUBLISH");
+    expect(ics).toContain(`ORGANIZER;CN="DevConf":mailto:${ICS_ORGANIZER_EMAIL}`);
+    expect(ics).not.toContain("ATTENDEE");
+  });
+
+  it("throws when METHOD:REQUEST is built without an attendee", () => {
+    expect(() =>
+      buildIcsEvent(base, { method: "REQUEST", organizer: { name: "DevConf", email: ICS_ORGANIZER_EMAIL } }),
+    ).toThrow();
+  });
+
+  it("throws when METHOD:PUBLISH is built with an attendee", () => {
+    expect(() =>
+      buildIcsEvent(base, {
+        method: "PUBLISH",
+        organizer: { name: "DevConf", email: ICS_ORGANIZER_EMAIL },
+        attendee: { name: "Ada Lovelace", email: "ada@example.com" },
+      }),
+    ).toThrow();
+  });
+
+  it("strips embedded double quotes from CN values", () => {
+    const ics = buildIcsEvent(base, {
+      method: "REQUEST",
+      organizer: { name: 'Dev"Conf', email: ICS_ORGANIZER_EMAIL },
+      attendee: { name: 'Ada "Countess" Lovelace', email: "ada@example.com" },
+    });
+    expect(ics).toContain(`ORGANIZER;CN="DevConf":mailto:${ICS_ORGANIZER_EMAIL}`);
+    expect(ics).toContain('ATTENDEE;CN="Ada Countess Lovelace";ROLE=REQ-PARTICIPANT');
+  });
+
   it("golden string for a minimal event", () => {
-    const ics = buildIcsEvent(base);
+    const ics = buildIcsEvent(base, requestOpts);
     expect(ics).toBe(
       [
         "BEGIN:VCALENDAR",
@@ -127,6 +177,9 @@ describe("ics builder", () => {
         "DTSTART:20260601T140000Z",
         "DTEND:20260601T150000Z",
         "SUMMARY:On Engines",
+        `ORGANIZER;CN="DevConf":mailto:${ICS_ORGANIZER_EMAIL}`,
+        'ATTENDEE;CN="Ada Lovelace";ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=',
+        " TRUE:mailto:ada@example.com",
         "END:VEVENT",
         "END:VCALENDAR",
         "",
@@ -136,7 +189,7 @@ describe("ics builder", () => {
 
   it("folds long lines at 75 octets with a leading-space continuation", () => {
     const longTitle = "A".repeat(200);
-    const ics = buildIcsEvent({ ...base, title: longTitle });
+    const ics = buildIcsEvent({ ...base, title: longTitle }, requestOpts);
     const lines = ics.split("\r\n");
     const encoder = new TextEncoder();
     for (const line of lines) {
@@ -150,11 +203,29 @@ describe("ics builder", () => {
     expect(unfolded).toContain(`SUMMARY:${longTitle}`);
   });
 
+  it("folds a long ORGANIZER CN across continuation lines", () => {
+    const longName = "Ada Lovelace ".repeat(20).trim();
+    const ics = buildIcsEvent(base, {
+      method: "REQUEST",
+      organizer: { name: longName, email: ICS_ORGANIZER_EMAIL },
+      attendee: { name: "Ada Lovelace", email: "ada@example.com" },
+    });
+    const lines = ics.split("\r\n");
+    const encoder = new TextEncoder();
+    for (const line of lines) {
+      expect(encoder.encode(line).length).toBeLessThanOrEqual(75);
+    }
+    const organizerLineIdx = lines.findIndex((l) => l.startsWith("ORGANIZER;CN="));
+    expect(lines[organizerLineIdx + 1]?.startsWith(" ")).toBe(true);
+    const unfolded = ics.replace(/\r\n /g, "");
+    expect(unfolded).toContain(`ORGANIZER;CN="${longName}":mailto:${ICS_ORGANIZER_EMAIL}`);
+  });
+
   it("buildIcsCalendar emits one VCALENDAR with multiple VEVENTs sharing the schema", () => {
-    const cal = buildIcsCalendar([
-      base,
-      { ...base, uidSubmissionId: "def456", title: "Second Talk" },
-    ]);
+    const cal = buildIcsCalendar(
+      [base, { ...base, uidSubmissionId: "def456", title: "Second Talk" }],
+      requestOpts,
+    );
     expect(cal.match(/BEGIN:VEVENT/g)?.length).toBe(2);
     expect(cal.match(/BEGIN:VCALENDAR/g)?.length).toBe(1);
     expect(cal).toContain("UID:chq-abc123@chautauqua");

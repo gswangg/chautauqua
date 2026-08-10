@@ -20,7 +20,7 @@ import {
   getPublicSessionDetail,
   getPublicAgenda,
 } from "../../server/repo/public";
-import { buildIcsCalendar } from "../../mail/ics";
+import { buildIcsCalendar, ICS_ORGANIZER_EMAIL } from "../../mail/ics";
 import { zonedMinutesToUtc } from "../../lib/timezone";
 import { parseItineraryIds, MAX_ITINERARY_IDS } from "../../lib/itinerary";
 import { ApiError } from "../../server/http";
@@ -159,7 +159,10 @@ publicRoutes.get("/e/:eventSlug/schedule.ics", async (c) => {
       };
     });
 
-  const ics = buildIcsCalendar(events);
+  const ics = buildIcsCalendar(events, {
+    method: "PUBLISH",
+    organizer: { name: event.name, email: ICS_ORGANIZER_EMAIL },
+  });
   return c.body(ics, 200, {
     "Content-Type": "text/calendar; charset=utf-8",
     "Content-Disposition": `attachment; filename="${event.slug}-itinerary.ics"`,
