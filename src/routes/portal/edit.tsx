@@ -23,12 +23,14 @@ import { isVisible } from "../../forms/visibility";
 import type { AnswerMap } from "../../forms/types";
 import { FormFieldsSection, FieldRulesScript, fieldInputName } from "../../views/form-render";
 import { parseCookies, newCsrfToken, CSRF_COOKIE_NAME } from "../../auth/cookies";
-import { DEC_041 } from "../../decisions";
+import { DEC_041, DEC_074 } from "../../decisions";
+import { validateTrackChoice } from "../../lib/submit-core";
 
 export const portalEditRoutes = new Hono<AppEnv>();
 
 // touch DEC constant so the dependency is compile-checked (field guide convention)
 void DEC_041;
+void DEC_074;
 
 portalEditRoutes.use("*", speakerGate);
 
@@ -187,10 +189,13 @@ portalEditRoutes.post("/submissions/:id/edit", csrfForm, async (c) => {
   const answers = extractAnswers(data.fields, body);
   const validation = validateAnswers(data.fields, answers);
 
-  const selectedTrackIds = tracksEditable ? extractTrackIds(body) : data.selectedTrackIds;
+  const selectedTrackIds = tracksEditable
+    ? Array.from(new Set(extractTrackIds(body)))
+    : data.selectedTrackIds;
   let trackError: string | undefined;
-  if (tracksEditable && selectedTrackIds.length === 0) {
-    trackError = "Select at least one track.";
+  if (tracksEditable) {
+    const trackResult = validateTrackChoice(selectedTrackIds, data.offeredTrackIds);
+    if (!trackResult.ok) trackError = trackResult.error;
   }
 
   if (!validation.ok || trackError) {
