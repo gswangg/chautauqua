@@ -27,6 +27,14 @@ describe("GET /docs/api", () => {
     expect(body).toContain("perPage");
   });
 
+  it("documents the DEC-055 showflow export route alongside the DEC-027 export kinds", async () => {
+    const app = buildApp();
+    const res = await app.request("/docs/api");
+    const body = await res.text();
+    expect(body).toContain("/api/v1/events/:eventId/exports/showflow.csv");
+    expect(body).toContain("/api/v1/events/:eventId/export/:kind?format=csv|json");
+  });
+
   it("requires no login (no auth set on context)", async () => {
     const app = buildApp();
     const res = await app.request("/docs/api");
