@@ -3094,3 +3094,11 @@ than re-running the full DEC-069 five-scope predicate a third time.
 OPEN ITEMS: 0
 
 RESULT: PASS
+
+## 2026-08-10 task-w17-a — triage-closure @ 675219f
+
+DEC-128 confirm-else-run, DEC-129-guarded. Sha re-derivation (DEC-114): first-parent walk from `main` tip `36351c9` back through `42db9f9`/`40c49f6`/`334dc4e`/`5916788`/`cfab488`/`3ef7403`/`067a5cc`/`2280419`/`ef788c2`/`472dc3a`/`21ea856` confirmed each commit's first-parent name-only diff (`git diff --name-only <c>^..<c>`) touches only `docs/`, `decisions/`, `field-guide/`, `src/decisions.ts` — bookkeeping per DEC-114's exclusion set; `675219f` ("merge task-w14-k") remains the newest code-bearing sha. Per DEC-129's explicit warning, the `## 2026-08-10 task-w16-e — triage-closure @ 5692a6d` section (this file, earlier) was **not** used as a confirm source — `git merge-base --is-ancestor 675219f 5692a6d` fails, marking it a prior-campaign homonym. Instead, searched for a section citing a sha S with `git merge-base --is-ancestor 675219f S` true and `OPEN ITEMS: 0`: found `task-w15-k — triage-closure @ 675219f` (this file, line 2914) — S equals `675219f` exactly, so the ancestor check passes trivially (`git merge-base --is-ancestor 675219f 675219f` → true), and the section ends `OPEN ITEMS: 0` / `RESULT: PASS`, covering all five DEC-069 scopes (build+test/walkthrough/perf-smoke/spec-audit/triage-closure itself) plus the DEC-120..125 wave-14 defect closures and the perf-seed `kind:"rating"` closure (`scripts/perf-seed.ts:273`), with a PLANNER:-marker sweep (`675219f..HEAD`, zero hits) and full `RESULT: FAIL` accounting (all 13 hits pre-existing and closed). The subsequent `task-w16-e — triage-closure confirm @ 675219f` section (line 3049) independently re-verified the same sha with its own build+test run and eval-findings re-read, also `OPEN ITEMS: 0` / `RESULT: PASS`. No new commits landed between `675219f` and `36351c9` that touch product code (confirmed above), so no re-run of the full gate is warranted per DEC-128; this task's own worktree build (`npm run build`) and targeted `npm test --silent` pass ran clean as a cheap independent spot-check, matching the cited figures. No servers started.
+
+OPEN ITEMS: 0
+
+RESULT: PASS
