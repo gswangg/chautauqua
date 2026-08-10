@@ -11,6 +11,8 @@ import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { readImageDims, MAX_HEADSHOT_EDGE_PX } from "../src/lib/image-dims";
+
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(SCRIPT_DIR, "..");
 const MANIFEST_PATH = join(REPO_ROOT, ".seed-assets", "manifest.json");
@@ -38,6 +40,23 @@ function main(): void {
     if (!existsSync(entry.path)) {
       throw new Error(`seed-r2: asset file missing for ${entry.r2Key}: ${entry.path}`);
     }
+
+    // DEC-084: seeded headshots must pass the same server-side dimension
+    // gate the portal upload route enforces — fail the seed loudly rather
+    // than shipping a fixture that would be rejected in production.
+    if (
+      entry.r2Key.startsWith("headshot/") &&
+      (entry.contentType === "image/png" || entry.contentType === "image/jpeg")
+    ) {
+      const bytes = new Uint8Array(readFileSync(entry.path));
+      const dims = readImageDims(bytes, entry.contentType);
+      if (dims.width > MAX_HEADSHOT_EDGE_PX || dims.height > MAX_HEADSHOT_EDGE_PX) {
+        throw new Error(
+          `seed-r2: headshot ${entry.r2Key} is ${dims.width}x${dims.height}, exceeds ${MAX_HEADSHOT_EDGE_PX}px max edge (DEC-084)`,
+        );
+      }
+    }
+
     // Fail loudly (execFileSync throws on nonzero exit / spawn failure) —
     // no swallowed errors here, a broken local R2 put should stop the seed.
     execFileSync(
