@@ -262,7 +262,12 @@ const sourceModules = import.meta.glob(
 describe("DEC-009 invariant #1: no mailer import reachable from the status-change path", () => {
   it("neither the route module nor any repo submodule import a mailer", () => {
     const entries = Object.entries(sourceModules);
-    expect(entries.length).toBe(7);
+    // routes/api/submissions.ts + repo/submissions.ts barrel + the 6 split
+    // modules (query, list, detail, create, status, participants). This
+    // count is a tripwire: it fails if the glob stops matching (which would
+    // make the assertions below vacuous) or if a new submodule is added
+    // without being considered against DEC-009 invariant #1.
+    expect(entries.length).toBe(8);
     for (const [path, source] of entries) {
       expect(source, `${path} must not import from mail/`).not.toMatch(/from ["'].*\/mail\//);
       expect(source, `${path} must not reference Mailer`).not.toMatch(/Mailer/);
