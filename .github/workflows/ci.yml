@@ -83,3 +83,15 @@ jobs:
       - name: Show wrangler dev log on failure
         if: failure()
         run: cat wrangler-dev.log || true
+
+  render-sweep:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - run: npm run gate:render-sweep
