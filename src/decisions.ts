@@ -81,3 +81,12 @@ export const DEC_074 = "Portal speaker edit validates track selection with the s
 export const DEC_075 = "Disposition of the three w12-c open triage items: items 1-2 close via DEC-070 implementation + walkthrough conversion; item 3 closes via a route-level cross-org export test; seed stays single-org";
 export const DEC_076 = "Verification waves use a single code barrier: one closeout task lands/verifies the last outstanding code, every gate task chains behind it; log-only commits are not code-bearing under DEC-069";
 export const DEC_077 = "Wave-16 gate lanes are code-frozen and fully parallel; scribe bookkeeping commits (field-guide/, decisions/*.md, src/decisions.ts registry appends) are non-code-bearing under DEC-069";
+export const DEC_078 = "Canonical id-chunk helper src/lib/chunk.ts (ID_CHUNK_SIZE=90); every inArray over an unbounded id list must iterate chunks";
+export const DEC_079 = "Acceptance side effects become retryable-exactly-once: planning runs BEFORE the status/accepted_at commit; bulk status changes are chunked and batched";
+export const DEC_080 = "Public surfaces at scale: chunked hydration, SQL-join track filter, and a 300-id cap on schedule.ics ?ids=";
+export const DEC_081 = "Review surface is set-based: one plan-filtered load per request, pure assignment resolution, and targeted per-submission scope/cap checks on the rating PUT";
+export const DEC_082 = "Multi-round evaluation implemented (closes the \"rounds\" dead knob): evaluation_plan.current_round + advance-round endpoint; queue/rating/results operate per round";
+export const DEC_083 = "Real purge-on-publish for public surfaces (supersedes DEC-022's \"no purge machinery\"): version-salted caches.default + KV version bumped by any successful mutation";
+export const DEC_084 = "Server-side headshot dimension gate (amends DEC-059): pure PNG/JPEG header sniffing rejects uploads over 2048px max edge";
+export const DEC_085 = "Findings-file closures needing no code: DEC-054 five-status pipeline upheld (SPEC §10 item 4 explicitly deferred with it); submittedAt ≡ createdAt is correct under DEC-014";
+export const DEC_086 = "Stage-1 exit is reopened at sha 2103c69; re-declaration requires fresh DEC-069 gates whose perf/walkthrough probes exercise the fixed scale paths";

@@ -19,42 +19,40 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   requireOrganizer/requireReviewer/requireSpeaker/csrfJson/csrfForm;
   errors {error:{code,message,fields?}}, lists {items,total,page,perPage}.
   DEC-015 migrations append-only; DEC-016 locked = real cols.
-- Wave-3..6: route sub-apps src/routes/*.ts(x); repos src/server/repo/;
-  ApiError http.ts; ctx factories context.ts; check app/src/lib/api.ts
-  first. Compose (DEC-019) atomic, >100 recipients rejects. Public data
-  only via repo/public.ts gate. Bearer chq_ in sessionLoader (CSRF-exempt),
-  cookie-only mint. DEC-036 formWindowState(); DEC-037 email HTML ONLY
-  escapeHtml/textToHtml; DEC-038 rate-limit.ts scoped KV; DEC-039
-  getPlanForOrg; DEC-040/041/047/048 uploads kind 'attachment'/'resource';
-  DEC-043/044 /api/v1/users + plan_reviewer ids; DEC-050 locked PK
-  '<formId>:<name>'; DEC-049 /admin worker-first via ASSETS, GET / SSR;
-  DEC-070..074 participant invites/visibility, portal_link absolute,
-  login per-email+IP, slot roomId scoped, validateTrackChoice.
-- Wave-7..10: DEC-051 attachIcs/ics_sequence; DEC-057 limiter scope
-  'submit'; DEC-052 App.tsx-only React.lazy; DEC-054/055/056 statuses
-  deferred, showflow.csv, /docs/api SSR; DEC-058 perf budget (js+css
-  <300KB gz); DEC-059 headshots downscale (superseded DEC-067); DEC-060
-  modular scripts/walkthrough/{producer,review,speaker,public,data}.ts;
-  DEC-053 conventions (cookie jar, chq_csrf, 'x-chq-csrf:1'); DEC-061/062
-  closes §10, order producer->review->speaker->public->data; DEC-063 CI
-  'walkthrough'. Unresolved Qs='PLANNER:'. DEC-064 claim consumes before
-  user insert; DEC-065 uploads via GET /files/:fileId; DEC-066 reviewers
-  dl iff plan_reviewer; DEC-067 headshots 404 unless referenced.
-- Wave-11..16: DEC-068 verification append-only docs/verification-log.md.
-  DEC-069 exit predicate: stage-1 done iff log has sha-scoped
-  'RESULT: PASS' for build+test, walkthrough, perf-smoke, SPEC §8/§9
-  audit, plus triage-closure 'OPEN ITEMS: 0'. w14-g (single code
-  barrier, DEC-076) merged @ a05f17f. DEC-077: gate lanes CODE-FROZEN —
-  defects become RESULT: FAIL/open items, never fix commits (stales
-  sibling gates); scribe bookkeeping is non-code-bearing under DEC-069.
-  Ports: 8801 walkthrough, 8803 perf, never 8787.
-- Wave-17 (EXIT): DEC-069 predicate evaluated GREEN, stage 1 declared
-  complete. Newest code-bearing sha remains a05f17f (task-w14-g); w16-d
-  corroborated via git diff 7c4101c..HEAD --stat (bookkeeping only).
-  Green: build+test w15-b@7c4101c+w16-a@7ac6aef; walkthrough
-  w15-c@7c4101c+w16-b@7ac6aef; perf-smoke w15-d@7c4101c; spec-audit
-  w15-e@7c4101c+w16-d@7ac6aef; triage w15-f@ce451d9 OPEN ITEMS: 0. All 8
-  review-lens findings re-verified fixed in-tree (DEC-064..067,
-  071..074, cites in wave-17 summary). Late w16-c/w16-e merges are
-  log-only, cannot invalidate; any FUTURE code-bearing commit reopens
-  DEC-069, requiring fresh gates before re-declaring.
+- Wave-3..10 (compact): route sub-apps/repos/ctx per DEC-012/013/019;
+  public data only via repo/public.ts; Bearer chq_ CSRF-exempt cookie-
+  mint; uploads kind attachment/resource (DEC-040/041/047/048/065/066/
+  067); participant invites/visibility/track (DEC-070..074); ics
+  sequence (DEC-051); statuses deferred/showflow/docs SSR (DEC-054..056);
+  perf budget <300KB gz (DEC-058); headshots downscale (DEC-059,
+  superseded by DEC-084 below); walkthrough scripts modular (DEC-060);
+  claim consumes before user insert (DEC-064).
+- Wave-11..17 (EXIT, since reopened by DEC-086): DEC-068 verification
+  log append-only; DEC-069 exit predicate (sha-scoped PASS for
+  build+test/walkthrough/perf-smoke/spec-audit/triage-closure); DEC-076
+  single code barrier; DEC-077 gate lanes code-frozen, scribe bookkeeping
+  non-code-bearing. Ports: 8801 walkthrough, 8803 perf, never 8787.
+  Wave-17 declared stage-1 exit GREEN @ a05f17f — see DEC-086, now void.
+- REOPENED (DEC-086): docs/eval-findings.md round 1 landed at 2103c69
+  after the wave-17 exit; defects verified in-tree, so DEC-069 is
+  unsatisfied at HEAD. Fix wave w1 (this run's numbering restarts at
+  task-w1-*): DEC-078 canonical src/lib/chunk.ts (ID_CHUNK_SIZE=90;
+  parallel tasks create identical bytes), DEC-079 planning-before-commit
+  acceptance + chunked bulk status, DEC-080 public chunking + 300-id
+  .ics cap (MAX_ITINERARY_IDS), DEC-081 set-based review (contracts:
+  resolveAssignments pure in src/domain/evaluation.ts;
+  isSubmissionInReviewerScope(db,plan,userId,submissionId);
+  countEvaluationsForSubmission(db,planId,submissionId,round)), DEC-082
+  rounds via evaluation_plan.current_round + POST .../advance-round
+  (migrations/0005_review_rounds.sql), DEC-083 versioned caches.default
+  purge (src/server/pubcache.ts, KV key chq:pubver, random token bump
+  on any successful non-GET/HEAD/OPTIONS <400 mutation; .ics never
+  cached), DEC-084 image-dims gate 2048px (src/lib/image-dims.ts,
+  supersedes DEC-059's client-only coverage). DEC-085: DEC-054 upheld
+  (§10-4 deferred with it); submittedAt≡createdAt is correct under
+  DEC-014 — do not re-litigate, no task ships for either.
+  Next wave: one probe-extension task (perf-smoke + walkthrough per
+  DEC-086: >100-id bulk accept, 2k-row public+301-id .ics 400, ≥10-
+  reviewer progress + rating PUT timing, publish-write cache refresh),
+  THEN fresh five-gate re-run at the new sha; triage prunes
+  eval-findings entries as verified.
