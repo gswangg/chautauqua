@@ -123,6 +123,8 @@ export const form = sqliteTable(
     title: text("title").notNull(),
     description: text("description"),
     isDefault: integer("is_default", { mode: "boolean" }).notNull().default(false),
+    // w2-c: CFP form open/close window; description doubles as intro text.
+    openDate: integer("open_date", { mode: "timestamp_ms" }),
     closeDate: integer("close_date", { mode: "timestamp_ms" }),
     // DEC-015: JSON array of track ids offered on this form; null/empty
     // means all event tracks are offered.

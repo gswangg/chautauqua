@@ -1,0 +1,1 @@
+ALTER TABLE `form` ADD `open_date` integer;
