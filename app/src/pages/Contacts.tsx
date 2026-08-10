@@ -1,5 +1,5 @@
-import { PlaceholderPage } from './PlaceholderPage';
+import { ContactsApp } from './contacts/ContactsApp';
 
 export function ContactsPage() {
-  return <PlaceholderPage section="Contacts" />;
+  return <ContactsApp />;
 }
