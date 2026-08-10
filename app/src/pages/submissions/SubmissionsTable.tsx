@@ -5,6 +5,7 @@ import { deriveColumnsFromFormFields, formatAnswerValue, visibleColumns, type Co
 import { ColumnPicker } from './ColumnPicker';
 import { FilterBar } from './FilterBar';
 import { buildSubmissionsQuery } from './filters';
+import { NewSubmissionModal, type NewSubmissionInput } from './NewSubmissionModal';
 import { EMPTY_SELECTION, isPageFullySelected, isPagePartiallySelected, selectionReducer } from './selection';
 import {
   DEFAULT_FILTER_STATE,
@@ -16,6 +17,8 @@ import {
   type Track,
 } from './types';
 import { useCurrentEventId } from './useCurrentEventId';
+import { applyViewConfig, type SavedViewConfig } from './views';
+import { ViewsDropdown } from './ViewsDropdown';
 
 function formatDate(ms: number | null): string {
   if (ms === null) return '—';
@@ -35,6 +38,9 @@ export function SubmissionsTable() {
   const [loading, setLoading] = useState(false);
   const [bulkPending, setBulkPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showNewModal, setShowNewModal] = useState(false);
+  const [refreshToken, setRefreshToken] = useState(0);
+  const [cloningId, setCloningId] = useState<string | null>(null);
 
   const columns: ColumnDef[] = useMemo(() => deriveColumnsFromFormFields(formFields), [formFields]);
   const shownColumns = useMemo(() => visibleColumns(columns, visibleFieldIds), [columns, visibleFieldIds]);
@@ -58,9 +64,39 @@ export function SubmissionsTable() {
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load submissions'))
       .finally(() => setLoading(false));
-  }, [eventId, filters]);
+  }, [eventId, filters, refreshToken]);
 
   const pageIds = items.map((item) => item.id);
+
+  function applySavedView(config: SavedViewConfig) {
+    const { filters: nextFilters, visibleFieldIds: nextVisible } = applyViewConfig(config);
+    setFilters(nextFilters);
+    setVisibleFieldIds(nextVisible);
+  }
+
+  async function createSubmission(input: NewSubmissionInput) {
+    if (!eventId) return;
+    await apiPost(`/events/${eventId}/submissions`, {
+      title: input.title,
+      description: input.description || null,
+      contact: input.contact,
+    });
+    setShowNewModal(false);
+    setRefreshToken((n) => n + 1);
+  }
+
+  async function cloneSubmission(id: string) {
+    setCloningId(id);
+    setError(null);
+    try {
+      await apiPost(`/submissions/${id}/clone`);
+      setRefreshToken((n) => n + 1);
+    } catch (err) {
+      setError(err instanceof ApiError ? `Clone failed: ${err.message}` : 'Clone failed');
+    } finally {
+      setCloningId(null);
+    }
+  }
 
   async function applyBulkStatus(status: SubmissionStatus) {
     if (!eventId || selection.selectedIds.size === 0) return;
@@ -96,6 +132,22 @@ export function SubmissionsTable() {
       <h1>Submissions</h1>
 
       {error && <div className="chq-error-banner">{error}</div>}
+
+      <div className="chq-submissions-toolbar">
+        <ViewsDropdown
+          eventId={eventId}
+          filters={filters}
+          visibleFieldIds={visibleFieldIds}
+          onApply={applySavedView}
+        />
+        <button type="button" onClick={() => setShowNewModal(true)}>
+          New submission
+        </button>
+      </div>
+
+      {showNewModal && (
+        <NewSubmissionModal onCancel={() => setShowNewModal(false)} onCreate={createSubmission} />
+      )}
 
       <FilterBar filters={filters} tracks={tracks} onChange={setFilters} />
       <ColumnPicker
@@ -141,17 +193,18 @@ export function SubmissionsTable() {
             {shownColumns.map((col) => (
               <th key={col.fieldId}>{col.label}</th>
             ))}
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
           {loading && (
             <tr>
-              <td colSpan={7 + shownColumns.length}>Loading...</td>
+              <td colSpan={8 + shownColumns.length}>Loading...</td>
             </tr>
           )}
           {!loading && items.length === 0 && (
             <tr>
-              <td colSpan={7 + shownColumns.length}>No submissions match the current filters.</td>
+              <td colSpan={8 + shownColumns.length}>No submissions match the current filters.</td>
             </tr>
           )}
           {!loading &&
@@ -176,6 +229,11 @@ export function SubmissionsTable() {
                 {shownColumns.map((col) => (
                   <td key={col.fieldId}>{formatAnswerValue(item.answers?.[col.fieldId])}</td>
                 ))}
+                <td>
+                  <button type="button" disabled={cloningId === item.id} onClick={() => cloneSubmission(item.id)}>
+                    Clone
+                  </button>
+                </td>
               </tr>
             ))}
         </tbody>

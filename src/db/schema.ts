@@ -549,6 +549,25 @@ export const segment = sqliteTable(
   }),
 );
 
+// migrations/0007_w4_saved_view.sql (DEC-025, task w4-g): organizer-shared
+// Submissions saved views. config_json shape per DEC-031: { q, status[],
+// trackId, sort, columns[] } matching the landed submissions filter/column
+// state shapes exactly.
+export const savedView = sqliteTable(
+  "saved_view",
+  {
+    id: id(),
+    eventId: text("event_id").notNull(),
+    name: text("name").notNull(),
+    configJson: text("config_json").notNull(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => ({
+    saved_view_event_id_idx: index("saved_view_event_id_idx").on(t.eventId),
+  }),
+);
+
 export const emailLog = sqliteTable(
   "email_log",
   {
