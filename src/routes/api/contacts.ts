@@ -15,6 +15,11 @@ import { mapImportRow, matchesSegment, type ContactRecord, type SegmentRule } fr
 import { preflightRender, type RenderTarget } from "../../domain/compose";
 import { textToHtml } from "../../mail/render";
 import type { Db } from "../../server/context";
+import { makeFileStore } from "../../server/context";
+import { setContactHeadshot, serializeSocialLinks, type SocialLinks } from "../../server/repo/profile";
+import { sanitizeFilenameForKey, validateHeadshotUpload } from "../../domain/files";
+import { readImageDims, MAX_HEADSHOT_EDGE_PX } from "../../lib/image-dims";
+import { newId } from "../../domain/ids";
 
 export const contactsRoutes = new Hono<AppEnv>();
 
@@ -173,9 +178,98 @@ contactsRoutes.patch("/contacts/:id", csrfJson, async (c) => {
     else if (isPlainObject(body.customFields)) patch.customFields = body.customFields as Record<string, string>;
     else fields.customFields = "must be an object";
   }
+  // CNT-10 (DEC-152, DEC-142): admin bio/social-link editing reuses the
+  // portal profile plumbing verbatim — serializeSocialLinks is the single
+  // source of the on-disk JSON shape, whichever surface writes it.
+  if (body.socialLinks !== undefined) {
+    if (body.socialLinks === null) {
+      patch.socialLinksJson = serializeSocialLinks({ twitter: "", linkedin: "", github: "", website: "" });
+    } else if (isPlainObject(body.socialLinks)) {
+      const raw = body.socialLinks as Record<string, unknown>;
+      const socialFields = ["twitter", "linkedin", "github", "website"] as const;
+      let invalid = false;
+      for (const key of socialFields) {
+        if (raw[key] !== undefined && typeof raw[key] !== "string") invalid = true;
+      }
+      if (invalid) {
+        fields.socialLinks = "each link must be a string";
+      } else {
+        const links: SocialLinks = {
+          twitter: typeof raw.twitter === "string" ? raw.twitter : "",
+          linkedin: typeof raw.linkedin === "string" ? raw.linkedin : "",
+          github: typeof raw.github === "string" ? raw.github : "",
+          website: typeof raw.website === "string" ? raw.website : "",
+        };
+        patch.socialLinksJson = serializeSocialLinks(links);
+      }
+    } else {
+      fields.socialLinks = "must be an object of {twitter,linkedin,github,website}";
+    }
+  }
   if (Object.keys(fields).length > 0) throw new ApiError("invalid", "Validation failed", fields);
 
   const updated = await repo.patchContact(c.var.db, contact.id, patch);
+  return c.json(serializeContact(updated));
+});
+
+// ---------------------------------------------------------------------------
+// Headshot upload (CNT-10, DEC-152: organizer-side mirror of the portal
+// headshot route src/routes/portal/profile.tsx — same validation limits,
+// same repo write (setContactHeadshot), so a speaker's and an organizer's
+// upload of the same contact behave identically).
+// ---------------------------------------------------------------------------
+
+contactsRoutes.post("/contacts/:id/headshot", csrfJson, async (c) => {
+  const orgId = currentOrgId(c);
+  const contact = await requireOwnedContact(c.var.db, c.req.param("id"), orgId);
+
+  const body = await c.req.parseBody();
+  const headshot = body["headshot"];
+  if (!(headshot instanceof File)) {
+    throw new ApiError("invalid", "Validation failed", { headshot: "required" });
+  }
+
+  const validation = validateHeadshotUpload({ filename: headshot.name, sizeBytes: headshot.size });
+  if (!validation.ok) {
+    throw new ApiError("invalid", validation.message, validation.fields);
+  }
+
+  const buf = await headshot.arrayBuffer();
+
+  // DEC-084 dimension gate, mirrored verbatim from the portal route.
+  if (validation.servedContentType === "image/png" || validation.servedContentType === "image/jpeg") {
+    let dims: { width: number; height: number };
+    try {
+      dims = readImageDims(new Uint8Array(buf), validation.servedContentType);
+    } catch (err) {
+      throw new ApiError("invalid", err instanceof Error ? err.message : "Headshot image could not be read", {
+        headshot: "unreadable",
+      });
+    }
+    if (dims.width > MAX_HEADSHOT_EDGE_PX || dims.height > MAX_HEADSHOT_EDGE_PX) {
+      throw new ApiError(
+        "invalid",
+        "Headshot is larger than 2048px on its longest edge — please upload a smaller image.",
+        { headshot: "too large" },
+      );
+    }
+  }
+
+  const sanitized = sanitizeFilenameForKey(headshot.name);
+  const r2Key = `headshot/${contact.id}/${newId()}-${sanitized}`;
+  const store = makeFileStore(c.env.FILES);
+  await store.put(r2Key, buf, validation.servedContentType);
+
+  const auth = c.var.auth!;
+  await setContactHeadshot(c.var.db, contact.id, {
+    filename: headshot.name,
+    r2Key,
+    sizeBytes: headshot.size,
+    contentType: validation.servedContentType,
+    uploadedByContactId: auth.contactId ?? contact.id,
+  });
+
+  const updated = await requireOwnedContact(c.var.db, contact.id, orgId);
   return c.json(serializeContact(updated));
 });
 

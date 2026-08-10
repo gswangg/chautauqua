@@ -209,6 +209,11 @@ export interface ContactPatch {
   bio?: string | null;
   notes?: string | null;
   customFields?: Record<string, string> | null;
+  // Admin editing of speaker profile (CNT-10, DEC-152: reuses the portal
+  // profile plumbing) — already-serialized JSON string, produced by the
+  // caller via serializeSocialLinks (src/server/repo/profile.ts) so this
+  // repo layer stays agnostic of the SocialLinks shape.
+  socialLinksJson?: string | null;
 }
 
 function customFieldsJsonOf(customFields: Record<string, string> | null | undefined): string | null | undefined {
@@ -267,6 +272,7 @@ export async function patchContact(db: Db, id: string, patch: ContactPatch): Pro
       ...(patch.company !== undefined ? { company: patch.company } : {}),
       ...(patch.title !== undefined ? { title: patch.title } : {}),
       ...(patch.bio !== undefined ? { bio: patch.bio } : {}),
+      ...(patch.socialLinksJson !== undefined ? { socialLinksJson: patch.socialLinksJson } : {}),
       ...(patch.notes !== undefined ? { notes: patch.notes } : {}),
       ...(patch.customFields !== undefined ? { customFieldsJson: customFieldsJsonOf(patch.customFields) } : {}),
       updatedAt: new Date(),
