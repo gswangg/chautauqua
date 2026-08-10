@@ -1,8 +1,9 @@
 // DEC-038: the canonical scoped KV rate limiter used by auth endpoints
-// (login, claim). Modeled on checkAndIncrementRateLimit in
-// src/lib/submit-core.ts, which is frozen legacy and must not be modified.
-// Pure Web APIs + the plain KVStore interface only (DEC-002) — no
-// node:/cloudflare imports.
+// (login, claim). DEC-057 supersedes DEC-038's original freeze note: public
+// submit (src/routes/public/submit.tsx) now also uses this limiter directly
+// (scope 'submit') — the legacy checkAndIncrementRateLimit in
+// src/lib/submit-core.ts has been deleted. Pure Web APIs + the plain
+// KVStore interface only (DEC-002) — no node:/cloudflare imports.
 
 import type { KVStore } from "./draft";
 

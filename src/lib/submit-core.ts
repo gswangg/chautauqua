@@ -1,11 +1,10 @@
 // Pure logic backing the public CFP submit flow (src/routes/public/submit.tsx,
 // src/server/repo/submit.ts): closed-date gate (CFP-04), track-choice
-// validation, seq-ref formatting (DEC-003), and the naive per-IP rate
-// limiter (DEC-014 note: 10 submissions/hour). Web APIs + a plain KV
-// interface only (DEC-002) — no node:/cloudflare/drizzle imports.
+// validation, and seq-ref formatting (DEC-003). Rate limiting for public
+// submit lives in src/lib/rate-limit.ts's checkAndIncrementScopedLimit
+// (DEC-057). Web APIs only (DEC-002) — no node:/cloudflare/drizzle imports.
 
 import { formatRef } from "../domain/ids";
-import type { KVStore } from "./draft";
 
 /** CFP-04: past form.close_date rejects new submissions. A null/undefined
  * close date means the form never closes. */
@@ -93,38 +92,4 @@ export function extractFileAnswers(
     }
   }
   return out;
-}
-
-const RATE_LIMIT_WINDOW_SECONDS = 60 * 60;
-const RATE_LIMIT_MAX = 10;
-
-export function rateLimitKey(ip: string, windowStartMs: number): string {
-  return `ratelimit:submit:${ip}:${windowStartMs}`;
-}
-
-export interface RateLimitResult {
-  ok: boolean;
-  count: number;
-}
-
-/** Naive per-IP KV counter: 10 submissions/hour, fixed 1-hour windows keyed
- * by window start. Fails loudly by rejecting once the cap is hit — never
- * silently drops the count or allows overflow. */
-export async function checkAndIncrementRateLimit(
-  kv: KVStore,
-  ip: string,
-  now: number,
-  windowSeconds: number = RATE_LIMIT_WINDOW_SECONDS,
-  max: number = RATE_LIMIT_MAX,
-): Promise<RateLimitResult> {
-  const windowMs = windowSeconds * 1000;
-  const windowStart = Math.floor(now / windowMs) * windowMs;
-  const key = rateLimitKey(ip, windowStart);
-  const raw = await kv.get(key);
-  const count = raw ? Number(raw) : 0;
-  if (count >= max) {
-    return { ok: false, count };
-  }
-  await kv.put(key, String(count + 1), { expirationTtl: windowSeconds });
-  return { ok: true, count: count + 1 };
 }

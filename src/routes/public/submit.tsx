@@ -35,9 +35,9 @@ import {
   formWindowState,
   validateTrackChoice,
   resolveOfferedTrackIds,
-  checkAndIncrementRateLimit,
   extractFileAnswers,
 } from "../../lib/submit-core";
+import { checkAndIncrementScopedLimit, requestIpFromHeaders } from "../../lib/rate-limit";
 import {
   saveDraft,
   readDraft,
@@ -77,10 +77,6 @@ function branding(event: EventRow): { logoUrl?: string; accentColor?: string } {
   if (!event.brandingJson) return {};
   const parsed = JSON.parse(event.brandingJson) as { logoUrl?: string; accentColor?: string };
   return { logoUrl: parsed.logoUrl, accentColor: parsed.accentColor };
-}
-
-function requestIp(c: { req: { header(name: string): string | undefined } }): string {
-  return c.req.header("cf-connecting-ip") ?? c.req.header("x-forwarded-for") ?? "unknown";
 }
 
 function PageShell(props: { title: string; accentColor?: string; children: unknown }) {
@@ -356,8 +352,13 @@ publicSubmitRoutes.post("/submit/:eventSlug", csrfForm, async (c) => {
   }
 
   // Naive per-IP rate limit (DEC-014 note): 10 submissions/hour, fail loudly.
+  // DEC-057: uses the canonical scoped limiter (DEC-038).
   const kv = c.env.KV as unknown as DraftKVStore;
-  const rate = await checkAndIncrementRateLimit(kv, requestIp(c), Date.now());
+  const ip = requestIpFromHeaders((name) => c.req.header(name));
+  const rate = await checkAndIncrementScopedLimit(kv, "submit", ip, Date.now(), {
+    windowSeconds: 3600,
+    max: 10,
+  });
   if (!rate.ok) {
     throw new ApiError("invalid", "Too many submissions from this address. Try again later.");
   }
