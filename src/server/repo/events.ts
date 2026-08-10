@@ -53,6 +53,18 @@ export async function listEventsForOrg(db: Db, orgId: string): Promise<EventReco
   return rows.map(toEventRecord);
 }
 
+/** DEC-049: org-agnostic lookup for the root SSR landing page — it links to
+ * "the seeded event", not any particular org's event, so this is the one
+ * place in the codebase that queries `event` without an orgId scope. */
+export async function getFirstEventSlug(db: Db): Promise<string | null> {
+  const rows = await db
+    .select({ slug: schema.event.slug })
+    .from(schema.event)
+    .orderBy(schema.event.createdAt)
+    .limit(1);
+  return rows[0]?.slug ?? null;
+}
+
 export async function isSlugTaken(db: Db, slug: string): Promise<boolean> {
   const rows = await db
     .select({ id: schema.event.id })

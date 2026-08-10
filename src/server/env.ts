@@ -9,6 +9,10 @@ export type Bindings = {
   FILES: R2Bucket;
   KV: KVNamespace;
   DEV_MODE?: string;
+  // DEC-049: /admin is served through the Worker (run_worker_first) so role
+  // redirects can happen server-side; ASSETS proxies to the static bundle.
+  // Optional so existing test env fixtures that predate this task stay green.
+  ASSETS?: Fetcher;
 };
 
 export type AuthInfo = {
