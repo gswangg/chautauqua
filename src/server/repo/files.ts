@@ -8,6 +8,7 @@ import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { newId } from "../../domain/ids";
 import { isValidFileKind, type FileKind } from "../../domain/files";
+import { chunkIds } from "../../lib/chunk";
 
 // ---------------------------------------------------------------------------
 // Ownership / authz lookups
@@ -403,21 +404,25 @@ export async function listFileComments(db: Db, fileId: string): Promise<FileComm
   const userIds = [...new Set(rows.map((r) => r.authorUserId).filter((x): x is string => !!x))];
   const userMap = new Map<string, { email: string; role: string; contactId: string | null }>();
   if (userIds.length > 0) {
-    const userRows = await db
-      .select({ id: schema.user.id, email: schema.user.email, role: schema.user.role, contactId: schema.user.contactId })
-      .from(schema.user)
-      .where(inArray(schema.user.id, userIds));
-    for (const u of userRows) userMap.set(u.id, { email: u.email, role: u.role, contactId: u.contactId });
+    for (const batch of chunkIds(userIds)) {
+      const userRows = await db
+        .select({ id: schema.user.id, email: schema.user.email, role: schema.user.role, contactId: schema.user.contactId })
+        .from(schema.user)
+        .where(inArray(schema.user.id, batch));
+      for (const u of userRows) userMap.set(u.id, { email: u.email, role: u.role, contactId: u.contactId });
+    }
   }
 
   const contactIds = [...new Set([...userMap.values()].map((u) => u.contactId).filter((x): x is string => !!x))];
   const contactMap = new Map<string, string>();
   if (contactIds.length > 0) {
-    const contactRows = await db
-      .select({ id: schema.contact.id, firstName: schema.contact.firstName, lastName: schema.contact.lastName })
-      .from(schema.contact)
-      .where(inArray(schema.contact.id, contactIds));
-    for (const c of contactRows) contactMap.set(c.id, `${c.firstName} ${c.lastName}`.trim());
+    for (const batch of chunkIds(contactIds)) {
+      const contactRows = await db
+        .select({ id: schema.contact.id, firstName: schema.contact.firstName, lastName: schema.contact.lastName })
+        .from(schema.contact)
+        .where(inArray(schema.contact.id, batch));
+      for (const c of contactRows) contactMap.set(c.id, `${c.firstName} ${c.lastName}`.trim());
+    }
   }
 
   return rows.map((row) => {

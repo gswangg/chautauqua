@@ -11,6 +11,7 @@ import { formatRef } from "../../domain/ids";
 import type { EvaluationCriterionDef } from "../../domain/evaluation";
 import { resolveAssignments } from "../../domain/evaluation";
 import { ApiError } from "../http";
+import { chunkIds } from "../../lib/chunk";
 
 // ---------------------------------------------------------------------------
 // Plans
@@ -634,10 +635,14 @@ export interface ReviewerUserInfo {
 
 export async function getUsersByIds(db: Db, userIds: string[]): Promise<ReviewerUserInfo[]> {
   if (userIds.length === 0) return [];
-  const rows = await db
-    .select({ userId: schema.user.id, email: schema.user.email })
-    .from(schema.user)
-    .where(inArray(schema.user.id, userIds));
+  const rows: ReviewerUserInfo[] = [];
+  for (const batch of chunkIds(userIds)) {
+    const batchRows = await db
+      .select({ userId: schema.user.id, email: schema.user.email })
+      .from(schema.user)
+      .where(inArray(schema.user.id, batch));
+    rows.push(...batchRows);
+  }
   return rows;
 }
 
