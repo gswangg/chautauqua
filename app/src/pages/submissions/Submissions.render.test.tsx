@@ -1,0 +1,66 @@
+// DEC-144 layer-2 harness regression test. Locks the P0 crash where
+// SubmissionsTable called apiList (expects {items,...}) against
+// GET /events/:id/forms, which actually returns a single form object
+// ({fields: [...]}) -- destructuring/iterating that object as a list threw
+// "n is not iterable" and blanked the whole page. This mounts the real page
+// against a mocked fetch shaped like the real wire contract and asserts it
+// renders without throwing.
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { render, screen, waitFor } from '@testing-library/react';
+import '@testing-library/jest-dom/vitest';
+import { MemoryRouter } from 'react-router-dom';
+import { SubmissionsPage } from '../Submissions';
+import { listEnvelope, mockApi } from '../../test-utils/mockApi';
+
+const EVENT_ID = 'evt-render-1';
+
+beforeEach(() => {
+  window.localStorage.setItem('chq.currentEventId', EVENT_ID);
+});
+
+afterEach(() => {
+  window.localStorage.clear();
+  vi.unstubAllGlobals();
+});
+
+describe('SubmissionsPage render smoke', () => {
+  it('mounts without throwing and renders seeded column headers', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: {
+        id: 'form-1',
+        fields: [
+          { id: 'f1', section: 'session', kind: 'text', label: 'Abstract', required: true, position: 0 },
+        ],
+      },
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([
+        {
+          id: 'sub-1',
+          ref: 'S-001',
+          title: 'A Talk About Testing',
+          status: 'pending',
+          contentStatus: 'pending',
+          speakers: [{ contactId: 'c1', name: 'Ada Lovelace' }],
+          trackIds: [],
+          submittedAt: null,
+          createdAt: 1700000000000,
+        },
+      ]),
+    });
+
+    render(
+      <MemoryRouter>
+        <SubmissionsPage />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole('heading', { name: 'Submissions' })).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getByText('A Talk About Testing')).toBeInTheDocument();
+    });
+
+    expect(screen.getByRole('columnheader', { name: 'Ref' })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: 'Title' })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: 'Status' })).toBeInTheDocument();
+  });
+});
