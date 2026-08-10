@@ -32,31 +32,28 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   plan_reviewer ids. DEC-050 locked fields PK '<formId>:<name>'. DEC-049
   /admin worker-first via ASSETS; GET / SSR. DEC-047 resources kind
   'resource'. DEC-048 seed writes .seed-assets/ + seed-r2.ts.
-- Wave-7/8: DEC-051 compose attachIcs, ics_sequence via 0008. DEC-057
-  submit-core legacy limiter DELETED, uses scoped limiter scope
-  'submit'. DEC-052 App.tsx-only React.lazy. DEC-054/055/056 custom
-  statuses deferred, showflow.csv, /docs/api SSR. DEC-058 perf ENFORCED
-  in CI (js+css < 300 KB gz). DEC-059 headshots: client canvas downscale
-  512px at upload; /headshots/:fileId immutable 1y (R2 keys unique —
-  never reuse; superseded by DEC-067). DEC-060 verification modular:
+- Wave-7/8/9: DEC-051 compose attachIcs/ics_sequence. DEC-057 scoped
+  limiter scope 'submit'. DEC-052 App.tsx-only React.lazy. DEC-054/055/056
+  statuses deferred, showflow.csv, /docs/api SSR. DEC-058 perf CI budget
+  (js+css<300KB gz). DEC-059 headshots downscale 512px, immutable (R2 keys
+  unique, superseded by DEC-067). DEC-060 verification modular
   scripts/walkthrough/{producer,review,speaker,public,data}.ts, DEC-053
-  conventions (cookie jar, chq_csrf form login, 'x-chq-csrf: 1' on JSON
-  mutations). DEC-061 closes §10.
-- Wave-9: task-w7-e DROPPED — replanned w9-a. DEC-062 walkthrough.ts =
-  thin runner over DEC-060 modules, order producer->review->speaker->
-  public->data. DEC-063 CI job 'walkthrough' runs `npm run walkthrough`.
-  Unresolved Qs = 'PLANNER:' lines.
-- Wave-10: w8-e, w9-a AND w9-b all DROPPED with ZERO commits (branches
-  exist but point at main — check `git log main..<branch>` before
-  trusting wave summaries; 3 of last 4 verification-lane tasks vanished
-  this way). Rebuilt as ONE task w10-a (sole owner of
-  scripts/walkthrough/* + package.json + ci.yml + README, DEC-062). Four
-  NEW defects: DEC-064 claim POST peeks via readClaimToken, consumes only
-  right before user insert; DEC-065 task-assignment uploads (kind
-  'handout') served via third GET /files/:fileId branch — organizer
-  org-match or owning speaker; DEC-066 reviewers download submission
-  files iff plan_reviewer on a plan for that event (pure flag into
-  canAccessFile, comments stay organizer/speaker); DEC-067
-  /headshots/:fileId 404s unless a contact.headshotUrl references it —
-  unauthenticated requires exact repo/public.ts predicate, org/own
-  speaker get private-cache fallback, else 404.
+  conventions (cookie jar, chq_csrf, 'x-chq-csrf:1'). DEC-061 closes §10.
+  DEC-062 walkthrough.ts thin runner order producer->review->speaker->
+  public->data. DEC-063 CI job 'walkthrough'. Unresolved Qs = 'PLANNER:'.
+- Wave-10: w8-e, w9-a, w9-b all DROPPED w/ ZERO commits; rebuilt as w10-a
+  (scripts/walkthrough/* + ci.yml). DEC-064 claim POST consumes only
+  right before user insert; DEC-065 task-assignment uploads via third GET
+  /files/:fileId branch (organizer org-match/owning speaker); DEC-066
+  reviewers download submission files iff plan_reviewer on that event;
+  DEC-067 /headshots/:fileId 404s unless a contact references it.
+- Wave-11: tree moved MID-PLANNING — w10-b/c merged between planner reads;
+  always re-read refs/reflog immediately before concluding a branch
+  dropped. Verified live on main: DEC-064/065/066/067 land as described
+  above, plus full DEC-062/063 walkthrough stack + CI job (via late
+  w8-e/w9-a/w9-b merges). Sole remainder: w10-e triage (4th
+  verification-lane drop) re-issued as w11-a — integrated build/test/
+  walkthrough on merged main + harvest of w8-b..g and w10-b/c/d
+  commit-body defect notes, triage in commit body. Wave-12: read w11-a's
+  commit-body triage; if clean and CI walkthrough green, return ZERO
+  tasks with goalComplete: true.
