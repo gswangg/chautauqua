@@ -202,22 +202,16 @@ export async function addReviewer(
   return toPlanReviewerRecord(row);
 }
 
-/** Removes every plan_reviewer row matching this exact (userId, trackId,
- * submissionId) scope for the plan. */
-export async function removeReviewer(
-  db: Db,
-  planId: string,
-  input: { userId: string; trackId?: string | null; submissionId?: string | null },
-): Promise<void> {
-  const trackId = input.trackId ?? null;
-  const submissionId = input.submissionId ?? null;
-  const rows = await listReviewerRowsForPlan(db, planId);
-  const matches = rows.filter(
-    (r) => r.userId === input.userId && r.trackId === trackId && r.submissionId === submissionId,
-  );
-  for (const match of matches) {
-    await db.delete(schema.planReviewer).where(eq(schema.planReviewer.id, match.id));
-  }
+/** Looks up a single plan_reviewer row by its own id (DEC-043/044: the
+ * reviewer-management API addresses rows by id, not by scope tuple). */
+export async function getReviewerRowById(db: Db, reviewerId: string): Promise<PlanReviewerRecord | null> {
+  const rows = await db.select().from(schema.planReviewer).where(eq(schema.planReviewer.id, reviewerId)).limit(1);
+  const row = rows[0];
+  return row ? toPlanReviewerRecord(row) : null;
+}
+
+export async function removeReviewerById(db: Db, reviewerId: string): Promise<void> {
+  await db.delete(schema.planReviewer).where(eq(schema.planReviewer.id, reviewerId));
 }
 
 export async function listPlanIdsForReviewer(db: Db, userId: string): Promise<string[]> {

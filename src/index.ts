@@ -24,6 +24,7 @@ import { fileApiRoutes, fileServeRoutes } from "./routes/files";
 import { portalProfileRoutes, headshotServeRoutes } from "./routes/portal/profile";
 import { tokensRoutes } from "./routes/api/tokens";
 import { exportsRoutes } from "./routes/api/exports";
+import { usersRoutes } from "./routes/api/users";
 import { rootRoutes } from "./routes/root";
 
 // Wave 2 wires the remaining routers (admin SPA, /api/v1/*, /submit,
@@ -52,6 +53,7 @@ app.route("/", reviewRoutes);
 app.route("/", meRoutes);
 app.route("/", tokensRoutes);
 app.route("/", exportsRoutes);
+app.route("/", usersRoutes);
 app.route("/portal", portalRoutes);
 // w4-a/w4-b (DEC-028): parallel portal sub-apps + the public headshot route.
 app.route("/portal", portalProfileRoutes);
