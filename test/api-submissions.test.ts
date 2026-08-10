@@ -251,14 +251,18 @@ describe("listSubmissions: batched allowedIds fallback (>ID_CHUNK_SIZE track mat
 });
 
 const sourceModules = import.meta.glob(
-  ["../src/routes/api/submissions.ts", "../src/server/repo/submissions.ts"],
+  [
+    "../src/routes/api/submissions.ts",
+    "../src/server/repo/submissions.ts",
+    "../src/server/repo/submissions/*.ts",
+  ],
   { query: "?raw", import: "default", eager: true },
 ) as Record<string, string>;
 
 describe("DEC-009 invariant #1: no mailer import reachable from the status-change path", () => {
-  it("neither the route module nor the repo module import a mailer", () => {
+  it("neither the route module nor any repo submodule import a mailer", () => {
     const entries = Object.entries(sourceModules);
-    expect(entries.length).toBe(2);
+    expect(entries.length).toBe(7);
     for (const [path, source] of entries) {
       expect(source, `${path} must not import from mail/`).not.toMatch(/from ["'].*\/mail\//);
       expect(source, `${path} must not reference Mailer`).not.toMatch(/Mailer/);
