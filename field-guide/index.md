@@ -38,23 +38,23 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   perf-smoke FAIL (overview.ts inArray -> D1 too-many-vars @300) ->
   DEC-104 chunk-sweep + guard tests, DEC-105 timed/untimed probes.
   Wave 10 2nd barrier (DEC-107): DEC-108/109/110/111 fixes. Pre-w6 VOID.
-- Wave 12-13 (compact): DEC-116 voided DEC-113; DEC-117 gates @3543f09
-  never ran (task-w12-* burned); stray w11 lanes merged instead: 'merge
-  task-w11-a' (3b7ed3d) newest code-bearing sha, task-w11-e spec-audit
-  PASS @3b7ed3d counts (DEC-118). Wave 13 (DEC-119) gates cite 3b7ed3d.
-- Wave 14: exit NOT met at 3b7ed3d — perf-smoke FAIL (perf-seed.ts
-  missing kind:'rating'), triage OPEN ITEMS: 1 (w11-f). Five LIVE
-  defects @tip 5fc22ec -> DEC-120..124: task-assign IDOR (tasks.ts),
-  portal-edit locked speaker fields, compose silent id-drop, plan
-  criteria PATCH-after-evals 500, no answer length caps. DEC-125
-  perf-seed fix. DEC-126: lanes task-w14-i..n (round-0 burned a..h).
-- Wave 15: ALL SIX w14 fixes verified merged -- main 675219f ('merge
-  task-w14-k' last; empty-looking ref mid-wave = worker still pushing,
-  NOT a dead lane -- re-check refs before re-planning). DEC-120..125
-  confirmed in-tree w/ tests. Gates only: task-w15-g..k (a-f burned) =
-  build+test/walkthrough/perf-smoke/spec-audit + triage-closure chained
-  behind perf-smoke, per DEC-127: log-only (only verification-log.md
-  changes), six-marker preflight before PASS, fresh ports 8851/8852/
-  8853, triage spot-verifies unmerged siblings instead of counting
-  open. All five PASS/OPEN:0 at DEC-114 sha -> wave 16 greps DEC-069,
-  declares stage-1 complete.
+- Wave 12-14 (compact): DEC-116 voided DEC-113; DEC-117/118 gates never
+  ran, 3b7ed3d became newest code-bearing sha, task-w11-e spec-audit
+  PASS @3b7ed3d counts; wave-13 (DEC-119) gates cite 3b7ed3d. Wave 14:
+  exit NOT met @3b7ed3d (perf-smoke FAIL missing kind:'rating', triage
+  OPEN:1); five live defects fixed @5fc22ec via DEC-120..125 (IDOR,
+  portal-edit locked fields, compose id-drop, plan-PATCH 500, answer
+  len caps, perf-seed fix); DEC-126 lanes task-w14-i..n.
+- Wave 15 (compact): all six w14 fixes verified merged @675219f
+  (DEC-120..125 in-tree w/ tests); gates task-w15-g..k per DEC-127
+  (log-only, six-marker preflight, ports 8851-8853) -- but at wave-16
+  planning time g..j sat at bare main tip w/ zero commits and k didn't
+  exist: battery in flight, not grep-true.
+- Wave 16 (DEC-128): mirror battery task-w16-a..e, confirm-else-run --
+  re-derive DEC-114 sha, check verification-log.md for existing valid
+  section (sha + six-marker preflight): PASS present -> short confirm,
+  no servers; FAIL present -> reproduce honestly, never fix; absent ->
+  run full DEC-127 gate. Fresh ports 8861/8862/8863 avoid colliding w/
+  possibly-live w15 servers on 8851-8853. Duplicate PASS sections for
+  same gate+sha harmless (grep needs >=1). Exit stays a planner-only
+  DEC-069 grep next invocation; no worker declares complete.

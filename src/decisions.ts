@@ -130,3 +130,4 @@ export const DEC_124 = "Server-side answer length caps in validateAnswers: text-
 export const DEC_125 = "scripts/perf-seed.ts criteria literal gains kind: 'rating', unblocking the perf-smoke rating PUT check and the DEC-069 exit predicate";
 export const DEC_126 = "Wave-14 structure: six parallel code-bearing fix lanes named task-w14-i..n (a..h burned by round-0); landing any of them voids every 3b7ed3d gate section per DEC-069/114; wave 15 is a full five-gate re-run at the new sha";
 export const DEC_127 = "Wave-15 five-gate battery at the post-wave-14 sha: lanes task-w15-g..k (a-f burned by round-0), code-frozen log-only, fresh ports 8851/8852/8853, six-fix preflight mandatory, triage chains behind perf-smoke";
+export const DEC_128 = "Wave-16 contingency mirror gate battery: confirm-else-run semantics, fresh ports 8861/8862/8863, duplicates harmless, completion stays a planner grep";
