@@ -185,3 +185,17 @@ speaker.ts; hidden-participant visibility gate in public.ts) — no
 direct-SQL fallback remains in either script.
 
 RESULT: PASS
+
+## 2026-08-10 task-w15-d — perf-smoke @ 7c4101c
+
+Full detail: docs/verification-log/task-w15-d-perf-smoke.md
+
+Post-barrier (DEC-076) perf smoke, mirroring the CI `perf-smoke` job:
+`npm run db:migrate` (9 migrations 0000-0008), `npm run seed`, `npm run
+perf:seed` (2k-row scale), `wrangler dev` health-checked, then `npm run
+perf:smoke` — p95 24.1-37.2ms, all under the 150ms budget (higher than
+w13-d's 7.6-13.2ms but no regression per task guidance: large regressions
+are the signal, not tuning). Also ran `npm run build` and `npm test`
+(89 files / 898 tests) in the same worktree: ALL PASS.
+
+RESULT: PASS
