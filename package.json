@@ -3,11 +3,29 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsc --noEmit",
+    "dev": "wrangler dev",
+    "dev:app": "vite build --watch --config app/vite.config.ts",
+    "build": "tsc --noEmit && vite build --config app/vite.config.ts",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "wrangler d1 migrations apply chautauqua --local",
+    "seed": "tsx scripts/seed.ts && wrangler d1 execute chautauqua --local --file=.seed.sql",
     "test": "vitest run"
   },
+  "dependencies": {
+    "hono": "^4.6.14",
+    "drizzle-orm": "^0.36.4"
+  },
   "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260801.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "drizzle-kit": "^0.28.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.28.0",
+    "tsx": "^4.19.2",
     "typescript": "^5.6.3",
-    "vitest": "^3.2.4"
+    "vite": "^6.0.3",
+    "vitest": "^3.2.4",
+    "wrangler": "^4.0.0"
   }
 }
