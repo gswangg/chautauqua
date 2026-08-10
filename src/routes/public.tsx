@@ -22,6 +22,7 @@ import {
 import { buildIcsCalendar } from "../mail/ics";
 import { zonedMinutesToUtc } from "../lib/timezone";
 import { itineraryStorageKey, parseItineraryIds, MAX_ITINERARY_IDS } from "../lib/itinerary";
+import { assignLanes } from "../lib/overlap-lanes";
 import { ApiError } from "../server/http";
 import { publicCacheMiddleware, defaultCache } from "../server/pubcache";
 import { DEC_022, DEC_007, DEC_017, DEC_005, DEC_012, DEC_080, DEC_083 } from "../decisions";
@@ -346,6 +347,21 @@ function AgendaDayGrid(props: { day: string; items: PublicAgendaItem[]; itinerar
   const rooms = [...new Set(items.map((i) => i.roomId ?? "tbd"))];
   const roomNames = new Map(items.map((i) => [i.roomId ?? "tbd", i.roomName ?? "TBD"]));
 
+  // DEC-140: overlapping sessions in the same room column must render
+  // side-by-side (lanes) rather than stacked, or the top block eats the
+  // pointer events meant for the block(s) underneath it (docs/eval-
+  // findings.md P1). Lanes are computed per-room since only sessions in the
+  // same room column can visually collide.
+  const laneByItem = new Map<string, { lane: number; laneCount: number }>();
+  for (const roomId of rooms) {
+    const roomItems = items
+      .filter((i) => (i.roomId ?? "tbd") === roomId)
+      .map((i) => ({ id: i.submissionId, startMin: i.startMin, endMin: i.endMin }));
+    for (const laned of assignLanes(roomItems)) {
+      laneByItem.set(laned.item.id, { lane: laned.lane, laneCount: laned.laneCount });
+    }
+  }
+
   return (
     <section aria-label={`Agenda for ${day}`}>
       <h3>{day}</h3>
@@ -366,10 +382,15 @@ function AgendaDayGrid(props: { day: string; items: PublicAgendaItem[]; itinerar
           const col = rooms.indexOf(roomId) + 2;
           const rowStart = Math.floor((item.startMin - dayStart) / gridMin) + 2;
           const rowSpan = Math.max(1, Math.ceil((item.endMin - item.startMin) / gridMin));
+          const { lane, laneCount } = laneByItem.get(item.submissionId) ?? { lane: 0, laneCount: 1 };
+          const laneStyle =
+            laneCount > 1
+              ? `width:calc(${100 / laneCount}% - 4px);margin-left:calc(${(100 / laneCount) * lane}% + 2px);position:relative;z-index:1`
+              : "";
           return (
             <div
               class="chq-agenda-block"
-              style={`grid-column:${col};grid-row:${rowStart} / span ${rowSpan}`}
+              style={`grid-column:${col};grid-row:${rowStart} / span ${rowSpan};${laneStyle}`}
               id={`chq-agenda-${item.submissionId}`}
             >
               <div>
@@ -436,6 +457,8 @@ function ItineraryScript(props: { eventSlug: string }) {
   }
   function updateLink(ids){
     var link = document.getElementById('chq-ics-link');
+    var count = document.getElementById('chq-ics-count');
+    if (count) { count.textContent = ids.length + ' picked'; }
     if (!link) return;
     if (ids.length === 0) { link.setAttribute('aria-disabled', 'true'); link.removeAttribute('href'); return; }
     link.removeAttribute('aria-disabled');
@@ -462,7 +485,8 @@ function ScheduleContent(props: { event: PublicEvent; items: PublicAgendaItem[] 
         Check sessions to build a personal itinerary. Your picks are saved in this browser and survive a reload.{" "}
         <a id="chq-ics-link" href={`/e/${props.event.slug}/schedule.ics`} aria-disabled="true">
           Download .ics
-        </a>
+        </a>{" "}
+        (<span id="chq-ics-count">0 picked</span>)
       </p>
       {byDay.size === 0 ? (
         <p>No sessions scheduled yet.</p>
