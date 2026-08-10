@@ -65,3 +65,5 @@ export const DEC_058 = "Perf budgets enforced in CI: bundle-check script + Smart
 export const DEC_059 = "Headshot thumbnailing = client-side canvas downscale at upload; /headshots served immutable";
 export const DEC_060 = "Persona verification is modular: scripts/walkthrough/<area>.ts standalone runnables; verify-and-fix tasks repair only their named files";
 export const DEC_061 = "Stage-1 §10 scope is closed: items 2 and 3 deferred";
+export const DEC_062 = "scripts/walkthrough.ts is a thin sequential runner over the five DEC-060 modules, in fixed order producer -> review -> speaker -> public -> data";
+export const DEC_063 = "SPEC §9 persona walkthroughs are CI-enforced: a third 'walkthrough' job boots seeded wrangler dev and runs `npm run walkthrough`";
