@@ -5,6 +5,7 @@ import { filterOnboardingRows } from './rowFilters';
 import { GridFilters } from './GridFilters';
 import { computeOnboardingCounts, isCellOverdue, outstandingContactCount } from './overdue';
 import { TaskModal } from './TaskModal';
+import { formatDateOnly } from '../../lib/dates';
 import {
   DEFAULT_GRID_FILTERS,
   type AssignmentStatus,
@@ -12,11 +13,6 @@ import {
   type NewTaskInput,
   type OnboardingGridResponse,
 } from './types';
-
-function formatDate(ms: number | null): string {
-  if (ms === null) return '—';
-  return new Date(ms).toLocaleDateString();
-}
 
 function nextStatus(status: AssignmentStatus): AssignmentStatus {
   return status === 'complete' ? 'pending' : 'complete';
@@ -193,7 +189,7 @@ export function OnboardingGrid() {
                 <th key={task.id}>
                   {task.title}
                   {task.required && <span className="chq-required-marker"> *</span>}
-                  <div className="chq-task-due">{formatDate(task.dueDate)}</div>
+                  <div className="chq-task-due">{formatDateOnly(task.dueDate)}</div>
                 </th>
               ))}
             </tr>
