@@ -8,6 +8,7 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { findConflicts, type PlacedSession } from "../../domain/schedule";
+import { chunkIds } from "../../lib/chunk";
 
 export interface OverviewPayload {
   triage: { pending: number; accept_queue: number; decline_queue: number };
@@ -164,17 +165,18 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number): 
       .innerJoin(schema.submission, eq(schema.scheduleSlot.submissionId, schema.submission.id))
       .where(and(eq(schema.submission.eventId, eventId), eq(schema.submission.status, "accepted")));
 
-    const placedIds = slotRows.map((s) => s.submissionId);
-    const participantRows =
-      placedIds.length > 0
-        ? await db
-            .select({
-              submissionId: schema.participant.submissionId,
-              contactId: schema.participant.contactId,
-            })
-            .from(schema.participant)
-            .where(inArray(schema.participant.submissionId, placedIds))
-        : [];
+    const placedIds = [...new Set(slotRows.map((s) => s.submissionId))];
+    const participantRows: { submissionId: string; contactId: string }[] = [];
+    for (const batch of chunkIds(placedIds)) {
+      const batchRows = await db
+        .select({
+          submissionId: schema.participant.submissionId,
+          contactId: schema.participant.contactId,
+        })
+        .from(schema.participant)
+        .where(inArray(schema.participant.submissionId, batch));
+      participantRows.push(...batchRows);
+    }
     const speakersBySubmission = new Map<string, string[]>();
     for (const p of participantRows) {
       const arr = speakersBySubmission.get(p.submissionId) ?? [];
