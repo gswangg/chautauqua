@@ -2,11 +2,14 @@ import { describe, expect, it } from "vitest";
 import {
   buildMergeRepointOps,
   compareContacts,
+  mergeContacts,
   parseContactListQuery,
   resolveImportUpsert,
   type ContactRow,
 } from "../src/server/repo/contacts";
+import * as schema from "../src/db/schema";
 import { preflightRender, type RenderTarget } from "../src/domain/compose";
+import type { AppEnv } from "../src/server/env";
 
 function row(overrides: Partial<ContactRow> & { id: string }): ContactRow {
   return {
@@ -103,19 +106,137 @@ describe("resolveImportUpsert (DEC-026 CSV import upsert-by-email)", () => {
   });
 });
 
-describe("buildMergeRepointOps (DEC-026 merge repoint plan)", () => {
-  it("plans repoints for all four FK tables from mergeId to keepId", () => {
+describe("buildMergeRepointOps (DEC-026/DEC-101 merge repoint plan)", () => {
+  it("plans repoints for all six FK tables from mergeId to keepId, in order", () => {
     const ops = buildMergeRepointOps("keep_1", "merge_1");
     expect(ops).toEqual([
       { table: "participant", from: "merge_1", to: "keep_1" },
       { table: "task_assignment", from: "merge_1", to: "keep_1" },
       { table: "email_log", from: "merge_1", to: "keep_1" },
       { table: "user", from: "merge_1", to: "keep_1" },
+      { table: "file", from: "merge_1", to: "keep_1" },
+      { table: "file_comment", from: "merge_1", to: "keep_1" },
     ]);
   });
 
   it("fails loudly when asked to merge a contact into itself", () => {
     expect(() => buildMergeRepointOps("x", "x")).toThrow();
+  });
+});
+
+describe("mergeContacts (DEC-101 participant dedupe + six-table FK repoint)", () => {
+  const KEEP_ID = "ct_keep";
+  const MERGE_ID = "ct_merge";
+
+  function contactRaw(id: string, email: string) {
+    return {
+      id,
+      orgId: "org_1",
+      firstName: "First",
+      lastName: "Last",
+      email,
+      phone: null,
+      company: null,
+      title: null,
+      bio: null,
+      headshotUrl: null,
+      socialLinksJson: null,
+      notes: null,
+      customFieldsJson: null,
+      createdAt: new Date(1000),
+      updatedAt: new Date(1000),
+    };
+  }
+
+  function makeSelectChain(rows: unknown[]) {
+    const chain: any = {
+      from: () => chain,
+      where: () => chain,
+      limit: async () => rows,
+      then: (resolve: (v: unknown[]) => void) => resolve(rows),
+    };
+    return chain;
+  }
+
+  /** Records every update()/delete() call (with the drizzle table object it
+   * targeted, by reference) and feeds queued select() row sets in order. */
+  function fakeDb(selectQueue: unknown[][]) {
+    let call = 0;
+    const updates: { table: unknown; vals: unknown }[] = [];
+    const deletes: { table: unknown }[] = [];
+    const db = {
+      select: () => {
+        const rows = selectQueue[call] ?? [];
+        call += 1;
+        return makeSelectChain(rows);
+      },
+      update: (table: unknown) => ({
+        set: (vals: unknown) => ({
+          where: async () => {
+            updates.push({ table, vals });
+          },
+        }),
+      }),
+      delete: (table: unknown) => ({
+        where: async () => {
+          deletes.push({ table });
+        },
+      }),
+    };
+    return { db: db as unknown as AppEnv["Variables"]["db"], updates, deletes };
+  }
+
+  it("repoints file and file_comment (and the other four tables) from mergeId to keepId", async () => {
+    const { db, updates, deletes } = fakeDb([
+      [contactRaw(KEEP_ID, "keep@example.com")], // findContactById(keepId)
+      [contactRaw(MERGE_ID, "merge@example.com")], // findContactById(mergeId)
+      [], // mergeParticipants (none)
+      [], // keepParticipants (none)
+      [contactRaw(KEEP_ID, "keep@example.com")], // findContactById(keepId) after merge
+    ]);
+
+    const result = await mergeContacts(db, KEEP_ID, MERGE_ID);
+    expect(result.id).toBe(KEEP_ID);
+
+    // 1 contact-fields update (planMerge) + 6 FK repoints = 7 updates.
+    expect(updates).toHaveLength(7);
+    expect(updates.some((u) => u.table === schema.file && (u.vals as any).uploadedByContactId === KEEP_ID)).toBe(true);
+    expect(updates.some((u) => u.table === schema.fileComment && (u.vals as any).authorContactId === KEEP_ID)).toBe(true);
+    expect(updates.some((u) => u.table === schema.participant && (u.vals as any).contactId === KEEP_ID)).toBe(true);
+    expect(updates.some((u) => u.table === schema.taskAssignment && (u.vals as any).contactId === KEEP_ID)).toBe(true);
+    expect(updates.some((u) => u.table === schema.emailLog && (u.vals as any).contactId === KEEP_ID)).toBe(true);
+    expect(updates.some((u) => u.table === schema.user && (u.vals as any).contactId === KEEP_ID)).toBe(true);
+
+    // Only the merged contact row is deleted; no participant dedupe-delete
+    // fires because the two contacts shared no submissions.
+    expect(deletes).toHaveLength(1);
+    expect(deletes[0]?.table).toBe(schema.contact);
+  });
+
+  it("dedupes: deletes mergeId's participant row for a shared submission instead of repointing it, but still repoints its row on a distinct submission", async () => {
+    const { db, updates, deletes } = fakeDb([
+      [contactRaw(KEEP_ID, "keep@example.com")], // findContactById(keepId)
+      [contactRaw(MERGE_ID, "merge@example.com")], // findContactById(mergeId)
+      [
+        { id: "part_shared_merge", submissionId: "sub_shared" },
+        { id: "part_distinct_merge", submissionId: "sub_only_merge" },
+      ], // mergeParticipants
+      [{ submissionId: "sub_shared" }], // keepParticipants
+      [contactRaw(KEEP_ID, "keep@example.com")], // findContactById(keepId) after merge
+    ]);
+
+    await mergeContacts(db, KEEP_ID, MERGE_ID);
+
+    // The dedupe-delete of the shared-submission participant row happens
+    // before the deletion of the merged contact row itself.
+    expect(deletes).toHaveLength(2);
+    expect(deletes[0]?.table).toBe(schema.participant);
+    expect(deletes[1]?.table).toBe(schema.contact);
+
+    // The plain participant-repoint update still runs unconditionally
+    // (DEC-101): it's a no-op for the shared row (already deleted) and
+    // repoints the distinct-submission row.
+    expect(updates.some((u) => u.table === schema.participant)).toBe(true);
   });
 });
 

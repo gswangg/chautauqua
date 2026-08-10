@@ -11,6 +11,7 @@ import { and, desc, eq, inArray, or, sql } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { newId, formatRef } from "../../domain/ids";
+import { chunkIds } from "../../lib/chunk";
 import {
   findDuplicateGroups,
   matchesSegment,
@@ -160,21 +161,22 @@ export function resolveImportUpsert(existingId: string | undefined, parsed: Part
 }
 
 export interface MergeRepointOp {
-  table: "participant" | "task_assignment" | "email_log" | "user";
+  table: "participant" | "task_assignment" | "email_log" | "user" | "file" | "file_comment";
   from: string;
   to: string;
 }
 
 /**
- * Plans the four FK repoints DEC-026 requires on merge (participant,
- * task_assignment, email_log, user.contact_id) before the duplicate row is
- * deleted. Fails loudly if asked to merge a contact into itself.
+ * Plans the six FK repoints DEC-026/DEC-101 require on merge (participant,
+ * task_assignment, email_log, user.contact_id, file.uploaded_by_contact_id,
+ * file_comment.author_contact_id) before the duplicate row is deleted. Fails
+ * loudly if asked to merge a contact into itself.
  */
 export function buildMergeRepointOps(keepId: string, mergeId: string): MergeRepointOp[] {
   if (keepId === mergeId) {
     throw new Error("buildMergeRepointOps: keepId and mergeId must differ");
   }
-  return (["participant", "task_assignment", "email_log", "user"] as const).map((table) => ({
+  return (["participant", "task_assignment", "email_log", "user", "file", "file_comment"] as const).map((table) => ({
     table,
     from: mergeId,
     to: keepId,
@@ -462,9 +464,12 @@ export async function findDuplicateGroupsForOrg(db: Db, orgId: string): Promise<
   }));
 }
 
-/** Applies DEC-026 merge: planMerge onto the kept row, repoints the four FK
- * tables from mergeId to keepId, then deletes the merged row. Both ids must
- * already be verified org-scoped by the caller. */
+/** Applies DEC-026/DEC-101 merge: planMerge onto the kept row, dedupes
+ * participant rows the two contacts share a submission on (deleting mergeId's
+ * duplicate row rather than repointing it into a UNIQUE-violating dupe),
+ * repoints the six FK tables from mergeId to keepId, then deletes the merged
+ * row. Both ids must already be verified org-scoped by the caller. Order is
+ * load-bearing: dedupe-delete -> six repoints -> delete contact row. */
 export async function mergeContacts(db: Db, keepId: string, mergeId: string): Promise<ContactRow> {
   const keepRow = await findContactById(db, keepId);
   const mergeRow = await findContactById(db, mergeId);
@@ -486,6 +491,26 @@ export async function mergeContacts(db: Db, keepId: string, mergeId: string): Pr
     })
     .where(eq(schema.contact.id, keepId));
 
+  // Dedupe participant rows BEFORE repointing: if both contacts are already
+  // participants on the same submission, repointing mergeId's row onto
+  // keepId would produce a duplicate participant for that submission, so we
+  // delete mergeId's row for the shared submissions instead.
+  const mergeParticipants = await db
+    .select({ id: schema.participant.id, submissionId: schema.participant.submissionId })
+    .from(schema.participant)
+    .where(eq(schema.participant.contactId, mergeId));
+  const keepParticipants = await db
+    .select({ submissionId: schema.participant.submissionId })
+    .from(schema.participant)
+    .where(eq(schema.participant.contactId, keepId));
+  const keepSubmissionIds = new Set(keepParticipants.map((p) => p.submissionId));
+  const dupeParticipantIds = mergeParticipants
+    .filter((p) => keepSubmissionIds.has(p.submissionId))
+    .map((p) => p.id);
+  for (const chunk of chunkIds(dupeParticipantIds)) {
+    await db.delete(schema.participant).where(inArray(schema.participant.id, chunk));
+  }
+
   const ops = buildMergeRepointOps(keepId, mergeId);
   for (const op of ops) {
     if (op.table === "participant") {
@@ -494,8 +519,15 @@ export async function mergeContacts(db: Db, keepId: string, mergeId: string): Pr
       await db.update(schema.taskAssignment).set({ contactId: op.to }).where(eq(schema.taskAssignment.contactId, op.from));
     } else if (op.table === "email_log") {
       await db.update(schema.emailLog).set({ contactId: op.to }).where(eq(schema.emailLog.contactId, op.from));
-    } else {
+    } else if (op.table === "user") {
       await db.update(schema.user).set({ contactId: op.to }).where(eq(schema.user.contactId, op.from));
+    } else if (op.table === "file") {
+      await db.update(schema.file).set({ uploadedByContactId: op.to }).where(eq(schema.file.uploadedByContactId, op.from));
+    } else {
+      await db
+        .update(schema.fileComment)
+        .set({ authorContactId: op.to })
+        .where(eq(schema.fileComment.authorContactId, op.from));
     }
   }
 
