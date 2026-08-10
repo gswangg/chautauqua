@@ -31,6 +31,20 @@ it watch-rebuilds the Vite bundle that `wrangler dev` serves as static assets.
 
 Run the test suite with `npm test`.
 
+### Dev: render-sweep gate
+
+`npm run gate:render-sweep` boots its own migrated + seeded `wrangler dev` on
+a free local port, then uses Playwright chromium to visit every route in
+`app/src/routeManifest.ts` (organizer/reviewer/speaker/public) and asserts a
+200 status, non-empty rendered content, and zero console/page errors. It
+prints a PASS/FAIL table and exits non-zero on any failure. One-time setup:
+
+```sh
+npx playwright install chromium
+```
+
+Not part of `npm test` (it needs to boot a server itself); run it explicitly.
+
 ## For evaluators
 
 | Surface | Route |
