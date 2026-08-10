@@ -53,3 +53,33 @@ jobs:
       - name: Show wrangler dev log on failure
         if: failure()
         run: cat wrangler-dev.log || true
+
+  walkthrough:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run db:migrate
+      - run: npm run seed
+      - name: Start wrangler dev in background
+        run: npx wrangler dev --port 8787 > wrangler-dev.log 2>&1 &
+      - name: Wait for /health
+        run: |
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:8787/health > /dev/null; then
+              echo "wrangler dev is up"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "wrangler dev did not become healthy in time"
+          cat wrangler-dev.log || true
+          exit 1
+      - run: npm run walkthrough
+      - name: Show wrangler dev log on failure
+        if: failure()
+        run: cat wrangler-dev.log || true

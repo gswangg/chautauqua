@@ -61,6 +61,13 @@ loaded by `scripts/seed.ts`):
 | Speaker (second) | `sbek-speaker2@example.com` | `SbekTest!2027-spk2` |
 | Reviewer | `sbek-reviewer@example.com` | `SbekTest!2027-rev` |
 
+### Verification
+
+With `npm run dev` up (after `db:migrate` + `seed`), `npm run walkthrough`
+walks J1->J12 end to end as the producer, reviewer, speaker, public, and data
+personas in sequence against the seeded `devflow-conf-2027` event. It's
+enforced in CI (`.github/workflows/ci.yml`, `walkthrough` job) on every push.
+
 ## The twelve jobs
 
 Each job (SPEC.md §1) is a persona workflow, walked start-to-finish; the
