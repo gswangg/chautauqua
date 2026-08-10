@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { BrowserRouter, Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom';
 import { useMe } from './lib/useMe';
+import { EventSwitcher } from './components/EventSwitcher';
 import { OverviewPage } from './pages/Overview';
 import { SubmissionsPage } from './pages/Submissions';
 import { FormsPage } from './pages/forms/FormsPage';
@@ -36,6 +37,7 @@ function Nav() {
   return (
     <nav className="chq-nav">
       <div className="chq-nav-title">Chautauqua</div>
+      <EventSwitcher />
       <ul className="chq-nav-list">
         {sections.map((section) => (
           <li key={section.path}>

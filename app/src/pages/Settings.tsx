@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { PlaceholderPage } from './PlaceholderPage';
 import { useCurrentEvent } from '../lib/useCurrentEvent';
 import { apiGet, ApiError } from '../lib/api';
 import { EventSettingsPanel } from './settings/EventSettingsPanel';
@@ -71,8 +70,8 @@ function EmbedsPanel() {
 
 export function SettingsPage() {
   return (
-    <div>
-      <PlaceholderPage section="Settings" />
+    <div className="chq-page">
+      <h1>Settings</h1>
       <EventSettingsPanel />
       <TracksRoomsPanel />
       <PortalSettingsPanel />
