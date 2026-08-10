@@ -37,24 +37,24 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   max-age=60/swr=300; DEC-100 seq atomic; DEC-101 merge 6 FKs; w7
   perf-smoke FAIL (overview.ts inArray -> D1 too-many-vars @300) ->
   DEC-104 chunk-sweep + guard tests, DEC-105 timed/untimed probes.
-  Wave 10 2nd barrier (DEC-107): DEC-108 public gate inviteStatus
-  IN('none','accepted'); DEC-109 portal-edit file-answer merge;
-  DEC-110 rules via dangerouslySetInnerHTML+escape; DEC-111 backing
-  forms (isDefault false, self-healed). Pre-w6 sections VOID (DEC-069).
+  Wave 10 2nd barrier (DEC-107): DEC-108/109/110/111 fixes. Pre-w6 VOID.
 - Wave 12-13 (compact): DEC-116 voided DEC-113; DEC-117 gates @3543f09
   never ran (task-w12-* burned); stray w11 lanes merged instead: 'merge
   task-w11-a' (3b7ed3d) newest code-bearing sha, task-w11-e spec-audit
   PASS @3b7ed3d counts (DEC-118). Wave 13 (DEC-119) gates cite 3b7ed3d.
-- Wave 14: exit NOT met at 3b7ed3d — build+test/walkthrough/spec-audit
-  green but perf-smoke FAIL (perf-seed.ts:269 missing kind:'rating'),
-  triage OPEN ITEMS: 1 (w11-f). Five LIVE defects @tip 5fc22ec ->
-  DEC-120..124: task-assign IDOR (tasks.ts:229), portal-edit locked
-  speaker fields (portal-edit.ts:111), compose silent id-drop
-  (comms.ts:284/316), plan criteria PATCH-after-evals 500
-  (review.ts:193), no answer length caps (validate.ts). DEC-125
-  perf-seed fix. DEC-126: lanes task-w14-i..n (round-0 burned a..h —
-  never reuse ANY epoch's used suffix). Any w14 fix merge voids ALL
-  3b7ed3d sections (code-bearing); stray w12-e/w13-a/b/c sections
-  citing 3b7ed3d likewise void. Wave 15 = full five-gate re-run at new
-  DEC-114 sha, fresh 88xx ports; triage-closure -> OPEN ITEMS: 0 citing
-  DEC-125 + green perf-smoke. decisions.ts append overlap expected.
+- Wave 14: exit NOT met at 3b7ed3d — perf-smoke FAIL (perf-seed.ts
+  missing kind:'rating'), triage OPEN ITEMS: 1 (w11-f). Five LIVE
+  defects @tip 5fc22ec -> DEC-120..124: task-assign IDOR (tasks.ts),
+  portal-edit locked speaker fields, compose silent id-drop, plan
+  criteria PATCH-after-evals 500, no answer length caps. DEC-125
+  perf-seed fix. DEC-126: lanes task-w14-i..n (round-0 burned a..h).
+- Wave 15: ALL SIX w14 fixes verified merged -- main 675219f ('merge
+  task-w14-k' last; empty-looking ref mid-wave = worker still pushing,
+  NOT a dead lane -- re-check refs before re-planning). DEC-120..125
+  confirmed in-tree w/ tests. Gates only: task-w15-g..k (a-f burned) =
+  build+test/walkthrough/perf-smoke/spec-audit + triage-closure chained
+  behind perf-smoke, per DEC-127: log-only (only verification-log.md
+  changes), six-marker preflight before PASS, fresh ports 8851/8852/
+  8853, triage spot-verifies unmerged siblings instead of counting
+  open. All five PASS/OPEN:0 at DEC-114 sha -> wave 16 greps DEC-069,
+  declares stage-1 complete.
