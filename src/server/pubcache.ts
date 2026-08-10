@@ -9,6 +9,14 @@
 // key so a purge is just "the old key is never looked up again" (O(1),
 // no URL enumeration, no lost-update window from concurrent counters).
 //
+// DEC-099: the internal 86400 max-age on the stored copy must never reach
+// clients/proxies. On a cache hit, servePublicGet rebuilds the Response
+// with Cache-Control overwritten back to CLIENT_CACHE_CONTROL (byte-
+// identical to setCacheHeaders's header value in src/routes/public.tsx,
+// not imported from there since that module isn't pure-core) before
+// returning it — the cached Response's headers are immutable, so a fresh
+// Response wrapping the same body is required.
+//
 // Written against CacheLike + the KVStore interface from src/lib/draft.ts
 // (DEC-002 pure-core convention) so the core logic unit-tests with fakes,
 // no real Cache API / KVNamespace required.
@@ -34,6 +42,11 @@ export interface CacheLike {
 
 const ABSENT_VERSION = "v0";
 const CLIENT_CACHE_CONTROL_OVERRIDE = "public, max-age=86400";
+
+/** DEC-099: client-facing Cache-Control for cache-hit responses. Must stay
+ * byte-identical to setCacheHeaders's header value in src/routes/public.tsx
+ * (line ~61) — that module is not pure-core so it isn't imported here. */
+export const CLIENT_CACHE_CONTROL = "public, max-age=60, stale-while-revalidate=300";
 
 /** Reads the current public version, defaulting to 'v0' when the key is
  * simply absent (a fresh KV namespace pre-first-mutation). A missing KV
@@ -66,7 +79,14 @@ export async function servePublicGet(
   const cacheKey = versionedCacheKey(request.url, version);
 
   const hit = await cache.match(cacheKey);
-  if (hit) return hit;
+  if (hit) {
+    // Cached Response headers are immutable, so build a fresh Response
+    // wrapping the same body and restore the client-facing Cache-Control
+    // (the stored copy carries the internal 86400 override).
+    const restored = new Response(hit.body, hit);
+    restored.headers.set("Cache-Control", CLIENT_CACHE_CONTROL);
+    return restored;
+  }
 
   const response = await next();
   if (response.status === 200) {
