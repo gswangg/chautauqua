@@ -522,8 +522,14 @@ function toEvaluationRecord(row: typeof schema.evaluation.$inferSelect): Evaluat
   };
 }
 
-export async function listEvaluationsForPlan(db: Db, planId: string): Promise<EvaluationRecord[]> {
-  const rows = await db.select().from(schema.evaluation).where(eq(schema.evaluation.planId, planId));
+/** DEC-087: `round` is a required third param -- every call site filters
+ * server-side (SQL `where`) rather than loading the whole plan's evaluations
+ * across all rounds and filtering in JS. */
+export async function listEvaluationsForPlan(db: Db, planId: string, round: number): Promise<EvaluationRecord[]> {
+  const rows = await db
+    .select()
+    .from(schema.evaluation)
+    .where(and(eq(schema.evaluation.planId, planId), eq(schema.evaluation.round, round)));
   return rows.map(toEvaluationRecord);
 }
 

@@ -274,7 +274,7 @@ reviewRoutes.get("/api/v1/plans/:id/progress", requireOrganizer, async (c) => {
   const reviewerRows = await repo.listReviewerRowsForPlan(c.var.db, plan.id);
   const userIds = [...new Set(reviewerRows.map((r) => r.userId))];
   const users = await repo.getUsersByIds(c.var.db, userIds);
-  const evaluations = (await repo.listEvaluationsForPlan(c.var.db, plan.id)).filter((e) => e.round === round);
+  const evaluations = (await repo.listEvaluationsForPlan(c.var.db, plan.id, round)).filter((e) => e.round === round);
   // One plan-filtered load + pure assignment resolution (DEC-081): no
   // per-reviewer awaits.
   const submissions = await repo.listPlanFilteredSubmissions(c.var.db, plan);
@@ -305,7 +305,7 @@ async function buildResults(
   round: number,
 ): Promise<ResultsRow[]> {
   const submissions = await repo.listPlanFilteredSubmissions(c.var.db, plan);
-  const evaluations = (await repo.listEvaluationsForPlan(c.var.db, plan.id)).filter((e) => e.round === round);
+  const evaluations = (await repo.listEvaluationsForPlan(c.var.db, plan.id, round)).filter((e) => e.round === round);
   const criteria = ratingCriteria(plan.criteria);
 
   const rows: ResultsRow[] = submissions.map((sub) => {
@@ -345,7 +345,7 @@ reviewRoutes.post("/api/v1/plans/:id/remind", requireOrganizer, csrfJson, async 
   const reviewerRows = await repo.listReviewerRowsForPlan(c.var.db, plan.id);
   const userIds = [...new Set(reviewerRows.map((r) => r.userId))];
   const users = await repo.getUsersByIds(c.var.db, userIds);
-  const evaluations = (await repo.listEvaluationsForPlan(c.var.db, plan.id)).filter((e) => e.round === plan.currentRound);
+  const evaluations = (await repo.listEvaluationsForPlan(c.var.db, plan.id, plan.currentRound)).filter((e) => e.round === plan.currentRound);
   // One plan-filtered load + pure assignment resolution (DEC-081): no
   // per-reviewer awaits.
   const submissions = await repo.listPlanFilteredSubmissions(c.var.db, plan);
@@ -435,7 +435,7 @@ reviewRoutes.get("/api/v1/review/plans/:id/queue", async (c) => {
   // DEC-082: queue counts/marks only the plan's current round -- earlier
   // rounds' evaluations don't count toward this round's cap or "already
   // rated" state.
-  const evaluations = (await repo.listEvaluationsForPlan(c.var.db, plan.id)).filter(
+  const evaluations = (await repo.listEvaluationsForPlan(c.var.db, plan.id, plan.currentRound)).filter(
     (e) => e.round === plan.currentRound,
   );
   const countsBySubmission = new Map<string, number>();
