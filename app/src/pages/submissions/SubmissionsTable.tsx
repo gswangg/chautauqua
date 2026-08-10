@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { apiList, ApiError, apiPost } from '../../lib/api';
+import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { BulkActionBar } from './BulkActionBar';
 import { deriveColumnsFromFormFields, formatAnswerValue, visibleColumns, type ColumnDef } from './columns';
 import { ColumnPicker } from './ColumnPicker';
@@ -16,7 +18,6 @@ import {
   type SubmissionStatus,
   type Track,
 } from './types';
-import { useCurrentEventId } from './useCurrentEventId';
 import { applyViewConfig, type SavedViewConfig } from './views';
 import { ViewsDropdown } from './ViewsDropdown';
 
@@ -26,7 +27,7 @@ function formatDate(ms: number | null): string {
 }
 
 export function SubmissionsTable() {
-  const eventId = useCurrentEventId();
+  const { eventId } = useCurrentEvent();
 
   const [filters, setFilters] = useState<SubmissionsFilterState>({ ...DEFAULT_FILTER_STATE, includeAnswers: true });
   const [items, setItems] = useState<SubmissionListItem[]>([]);
@@ -219,7 +220,9 @@ export function SubmissionsTable() {
                   />
                 </td>
                 <td>{item.ref}</td>
-                <td>{item.title}</td>
+                <td>
+                  <Link to={`/submissions/${item.id}`}>{item.title}</Link>
+                </td>
                 <td>{item.speakers.map((s) => s.name).join(', ')}</td>
                 <td>{item.trackIds.length}</td>
                 <td>

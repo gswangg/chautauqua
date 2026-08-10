@@ -12,6 +12,7 @@ import { AgendaPage } from './pages/Agenda';
 import { CommsPage } from './pages/Comms';
 import { ContactsPage } from './pages/Contacts';
 import { SettingsPage } from './pages/Settings';
+import { SubmissionDetailPage } from './pages/submissions/SubmissionDetailPage';
 
 const NAV_SECTIONS = [
   { label: 'Overview', path: '/overview', element: <OverviewPage /> },
@@ -77,6 +78,11 @@ export function App() {
               ))}
               {/* DEC-033: form builder lives under Submissions (route only — no new top-nav section). */}
               <Route path="/submissions/forms" element={<FormsPage />} />
+              {/* DEC-045: submission detail. React Router v6 ranks the static
+                  /submissions/forms route above this dynamic :id segment, so
+                  declaration order here doesn't matter, but forms stays
+                  first for readability. */}
+              <Route path="/submissions/:id" element={<SubmissionDetailPage />} />
             </Routes>
           </RoleGate>
         </main>
