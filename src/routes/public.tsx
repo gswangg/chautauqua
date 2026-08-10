@@ -21,9 +21,10 @@ import {
 } from "../server/repo/public";
 import { buildIcsCalendar } from "../mail/ics";
 import { zonedMinutesToUtc } from "../lib/timezone";
-import { itineraryStorageKey, parseItineraryIds } from "../lib/itinerary";
+import { itineraryStorageKey, parseItineraryIds, MAX_ITINERARY_IDS } from "../lib/itinerary";
+import { ApiError } from "../server/http";
 import { publicCacheMiddleware, defaultCache } from "../server/pubcache";
-import { DEC_022, DEC_007, DEC_017, DEC_005, DEC_012, DEC_083 } from "../decisions";
+import { DEC_022, DEC_007, DEC_017, DEC_005, DEC_012, DEC_080, DEC_083 } from "../decisions";
 
 export const publicRoutes = new Hono<AppEnv>();
 
@@ -33,6 +34,7 @@ void DEC_007;
 void DEC_017;
 void DEC_005;
 void DEC_012;
+void DEC_080;
 void DEC_083;
 
 // DEC-083 supersedes DEC-022's "no purge machinery" sentence: public/embed
@@ -576,6 +578,9 @@ publicRoutes.get("/e/:eventSlug/schedule.ics", async (c) => {
   if (!event) return c.text("Event not found.", 404);
 
   const ids = parseItineraryIds(c.req.query("ids"));
+  if (ids.length > MAX_ITINERARY_IDS) {
+    throw new ApiError("invalid", `Too many ids: schedule.ics accepts at most ${MAX_ITINERARY_IDS} ids.`);
+  }
   // getPublicAgenda already applies the shared visibility gate — a
   // submission id that isn't in `agendaById` is either unscheduled or no
   // longer publicly visible, and is silently dropped from the export (a

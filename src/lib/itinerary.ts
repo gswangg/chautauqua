@@ -3,6 +3,13 @@
 // id list on GET .../schedule.ics?ids=. Kept schema-free (DEC-002) so it's
 // plain-vitest testable without a DB.
 
+// DEC-080: hard cap on the user-controlled ?ids= list accepted by the
+// public, unauthenticated GET /e/:slug/schedule.ics route. No real personal
+// itinerary exceeds this many sessions; an uncapped list is a free
+// amplification vector on a no-login route, so the route fails loudly with
+// a 400 beyond this cap rather than silently truncating.
+export const MAX_ITINERARY_IDS = 300;
+
 /** localStorage key for the itinerary picker: chq_itinerary_<slug>. */
 export function itineraryStorageKey(eventSlug: string): string {
   return `chq_itinerary_${eventSlug}`;

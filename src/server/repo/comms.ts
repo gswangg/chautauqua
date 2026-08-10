@@ -8,6 +8,7 @@ import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { newId } from "../../domain/ids";
 import type { ComposeSubmission } from "../../domain/compose";
+import { chunkIds } from "../../lib/chunk";
 
 // ---------------------------------------------------------------------------
 // Templates
@@ -119,22 +120,7 @@ export async function deleteTemplate(db: Db, id: string): Promise<void> {
 // 100-recipient compose cap's own submissionIds input (a producer can select
 // up to MAX_PER_PAGE=200 submissions before the cap check on the *expanded*
 // recipient list even runs), so any inArray(...) keyed off the full
-// submissionIds list must be batched. Pure and unit-tested directly (no Db
-// needed) — duplicated from repo/submissions.ts's identical helper since
-// each verify-and-fix task owns only its named files (DEC-060).
-// Kept comfortably under the observed ~100-param ceiling: this file's
-// batched queries also bind eventId (or other) conditions alongside the
-// id list, so the chunk itself must leave headroom rather than hit exactly
-// 100.
-const ID_CHUNK_SIZE = 90;
-
-export function chunkIds(ids: string[]): string[][] {
-  const out: string[][] = [];
-  for (let i = 0; i < ids.length; i += ID_CHUNK_SIZE) {
-    out.push(ids.slice(i, i + ID_CHUNK_SIZE));
-  }
-  return out;
-}
+// submissionIds list must be batched via the canonical chunkIds (DEC-078).
 
 /** Loads the given submissions (scoped to eventId) with their visible
  * participants, for src/domain/compose.ts's expandRecipients. Submission ids
@@ -235,19 +221,32 @@ export interface IcsScheduleRow {
 export async function loadIcsScheduleData(db: Db, submissionIds: string[]): Promise<Map<string, IcsScheduleRow>> {
   if (submissionIds.length === 0) return new Map();
 
-  const rows = await db
-    .select({
-      submissionId: schema.scheduleSlot.submissionId,
-      day: schema.scheduleSlot.day,
-      startMin: schema.scheduleSlot.startMin,
-      endMin: schema.scheduleSlot.endMin,
-      roomId: schema.scheduleSlot.roomId,
-      icsSequence: schema.submission.icsSequence,
-    })
-    .from(schema.scheduleSlot)
-    .innerJoin(schema.submission, eq(schema.scheduleSlot.submissionId, schema.submission.id))
-    .where(inArray(schema.scheduleSlot.submissionId, submissionIds));
+  const rows: {
+    submissionId: string;
+    day: string;
+    startMin: number;
+    endMin: number;
+    roomId: string | null;
+    icsSequence: number;
+  }[] = [];
+  for (const batch of chunkIds(submissionIds)) {
+    const batchRows = await db
+      .select({
+        submissionId: schema.scheduleSlot.submissionId,
+        day: schema.scheduleSlot.day,
+        startMin: schema.scheduleSlot.startMin,
+        endMin: schema.scheduleSlot.endMin,
+        roomId: schema.scheduleSlot.roomId,
+        icsSequence: schema.submission.icsSequence,
+      })
+      .from(schema.scheduleSlot)
+      .innerJoin(schema.submission, eq(schema.scheduleSlot.submissionId, schema.submission.id))
+      .where(inArray(schema.scheduleSlot.submissionId, batch));
+    rows.push(...batchRows);
+  }
 
+  // roomIds is bounded by the event's physical room count (~15) — a
+  // DEC-078 bounded-list exemption, so this inArray stays unchunked.
   const roomIds = [...new Set(rows.map((r) => r.roomId).filter((id): id is string => id !== null))];
   const roomRows =
     roomIds.length === 0

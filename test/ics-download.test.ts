@@ -1,5 +1,100 @@
 import { describe, expect, it } from "vitest";
+import { Hono } from "hono";
 import { icsDownloadHeaders } from "../src/mail/ics";
+import { publicRoutes } from "../src/routes/public";
+import { registerErrorHandler } from "../src/server/http";
+import { MAX_ITINERARY_IDS } from "../src/lib/itinerary";
+import { chunkIds } from "../src/lib/chunk";
+import type { AppEnv } from "../src/server/env";
+
+// DEC-080: GET /e/:slug/schedule.ics rejects ?ids= lists over
+// MAX_ITINERARY_IDS with a 400 before ever touching the (unbounded, user-
+// controlled) list. A minimal fake db stands in for D1 (see
+// test/headshot-gate.test.ts for the established pattern) — a request that
+// clears the cap check never needs to reach beyond the first two sequential
+// db calls (event lookup, then getPublicAgenda's schedule-slot query) since
+// an empty agenda short-circuits the rest of hydration.
+function makeChain(rows: unknown[]) {
+  const chain: any = {
+    from: () => chain,
+    innerJoin: () => chain,
+    where: () => chain,
+    orderBy: () => chain,
+    limit: async () => rows,
+    then: (resolve: (v: unknown[]) => void) => resolve(rows),
+  };
+  return chain;
+}
+
+const EVENT_ROW = {
+  id: "ev1",
+  orgId: "org1",
+  name: "Test Event",
+  slug: "conf",
+  startDate: "2026-08-10",
+  endDate: "2026-08-10",
+  location: null,
+  timezone: "UTC",
+  recordPrefix: "SES",
+  brandingJson: null,
+};
+
+function fakeDb(): AppEnv["Variables"]["db"] {
+  let call = 0;
+  return {
+    select: () => {
+      call += 1;
+      if (call === 1) return makeChain([EVENT_ROW]);
+      throw new Error(`unexpected select() call ${call}`);
+    },
+    selectDistinct: () => {
+      call += 1;
+      // getPublicAgenda's scheduleSlot query — empty rows short-circuits
+      // before any further db calls (room lookup, hydrateSessions).
+      return makeChain([]);
+    },
+  } as unknown as AppEnv["Variables"]["db"];
+}
+
+function buildApp() {
+  const app = new Hono<AppEnv>();
+  app.use("*", async (c, next) => {
+    c.set("db", fakeDb());
+    await next();
+  });
+  registerErrorHandler(app);
+  app.route("/", publicRoutes);
+  return app;
+}
+
+describe("GET /e/:slug/schedule.ics (DEC-080 300-id cap)", () => {
+  it("returns 400 naming the 300 cap for 301 ids", async () => {
+    const app = buildApp();
+    const ids = Array.from({ length: MAX_ITINERARY_IDS + 1 }, (_, i) => `s${i}`).join(",");
+    const res = await app.request(`/e/conf/schedule.ics?ids=${ids}`);
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: { code: string; message: string } };
+    expect(body.error.code).toBe("invalid");
+    expect(body.error.message).toContain("300");
+  });
+
+  it("accepts exactly 300 ids", async () => {
+    const app = buildApp();
+    const ids = Array.from({ length: MAX_ITINERARY_IDS }, (_, i) => `s${i}`).join(",");
+    const res = await app.request(`/e/conf/schedule.ics?ids=${ids}`);
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Content-Type")).toContain("text/calendar");
+  });
+});
+
+describe("chunkIds order preservation (DEC-078)", () => {
+  it("concatenating batches reproduces the original id order exactly", () => {
+    const ids = Array.from({ length: 301 }, (_, i) => `id-${i}`);
+    const batches = chunkIds(ids);
+    expect(batches.flat()).toEqual(ids);
+    expect(batches.every((b) => b.length <= 90)).toBe(true);
+  });
+});
 
 describe("icsDownloadHeaders", () => {
   it("returns a text/calendar content-type", () => {
