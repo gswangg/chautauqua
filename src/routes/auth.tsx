@@ -178,7 +178,10 @@ authRoutes.post("/claim/:token", csrfForm, async (c) => {
     return c.html(<ClaimPage csrfToken={csrfToken} error={RATE_LIMIT_ERROR} />, 429);
   }
 
-  const record = await consumeClaimToken(kv, token);
+  // DEC-064: peek the record without consuming it. Any validation failure
+  // below (short password, duplicate user) must leave the one-time link
+  // claimable — only consume it right before the user insert.
+  const record = await readClaimToken(kv, token);
   if (!record) {
     throw new ApiError("not_found", "This link is invalid or has expired.");
   }
@@ -203,7 +206,7 @@ authRoutes.post("/claim/:token", csrfForm, async (c) => {
   }
 
   // DEC-014: if a user already exists for this contact's email, don't create
-  // a duplicate — send them to /login instead.
+  // a duplicate — send them to /login instead. The token stays unconsumed.
   const existingRows = await db
     .select()
     .from(schema.user)
@@ -211,6 +214,13 @@ authRoutes.post("/claim/:token", csrfForm, async (c) => {
     .limit(1);
   if (existingRows[0]) {
     return c.redirect("/login", 302);
+  }
+
+  // Consume immediately before the insert. If another concurrent request
+  // already consumed it (lost race), treat this like an expired link.
+  const consumed = await consumeClaimToken(kv, token);
+  if (!consumed) {
+    throw new ApiError("not_found", "This link is invalid or has expired.");
   }
 
   const passwordHash = await hashPassword(password);
