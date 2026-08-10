@@ -195,27 +195,51 @@ function fieldValue(contact: ContactRecord, field: string): string {
   return typeof value === "string" ? value : "";
 }
 
-/**
- * AND semantics across all rules, case-insensitive comparisons. Custom
- * fields are addressable as 'custom.<key>'. An unknown standard field name
- * throws (fail loudly) — this module never silently treats unrecognized
- * fields as empty.
- */
-export function matchesSegment(rules: SegmentRule[], contact: ContactRecord): boolean {
-  return rules.every((rule) => {
-    const actual = fieldValue(contact, rule.field).toLowerCase();
-    const expected = rule.value.toLowerCase();
+/** The standard fields 'any' fans out across (DEC-149) — custom.<key> fields
+ * are intentionally excluded from 'any', matching the free-text search box's
+ * historical scope of name/email/company/title. */
+const ANY_FIELDS = ["email", "firstName", "lastName", "company", "title"] as const;
+
+function matchesRule(rule: SegmentRule, contact: ContactRecord): boolean {
+  const expected = rule.value.toLowerCase();
+
+  if (rule.field === "any") {
+    const values = ANY_FIELDS.map((f) => fieldValue(contact, f).toLowerCase());
     switch (rule.op) {
       case "eq":
-        return actual === expected;
-      case "ne":
-        return actual !== expected;
+        return values.some((v) => v === expected);
       case "contains":
-        return actual.includes(expected);
+        return values.some((v) => v.includes(expected));
+      case "ne":
+        return values.every((v) => v !== expected);
       default:
         throw new Error(`matchesSegment: unknown op "${rule.op}"`);
     }
-  });
+  }
+
+  const actual = fieldValue(contact, rule.field).toLowerCase();
+  switch (rule.op) {
+    case "eq":
+      return actual === expected;
+    case "ne":
+      return actual !== expected;
+    case "contains":
+      return actual.includes(expected);
+    default:
+      throw new Error(`matchesSegment: unknown op "${rule.op}"`);
+  }
+}
+
+/**
+ * AND semantics across all rules, case-insensitive comparisons. Custom
+ * fields are addressable as 'custom.<key>'. field === 'any' (DEC-149)
+ * evaluates against email/firstName/lastName/company/title: a rule matches
+ * if ANY of those fields matches for eq/contains, or if ALL of them differ
+ * for ne. An unknown standard field name (other than 'any') throws (fail
+ * loudly) — this module never silently treats unrecognized fields as empty.
+ */
+export function matchesSegment(rules: SegmentRule[], contact: ContactRecord): boolean {
+  return rules.every((rule) => matchesRule(rule, contact));
 }
 
 /**

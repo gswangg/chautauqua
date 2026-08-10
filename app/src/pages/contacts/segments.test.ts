@@ -6,19 +6,29 @@ const contact: ContactListItem = { id: 'c1', firstName: 'Ada', lastName: 'Lovela
 
 describe('buildSegmentRulesFromFilters', () => {
   it('returns [] when no filters are active', () => {
-    expect(buildSegmentRulesFromFilters({ q: '', company: '' })).toEqual([]);
+    expect(buildSegmentRulesFromFilters({ q: '', rules: [] })).toEqual([]);
   });
 
-  it('builds a contains rule for q and an eq rule for company', () => {
-    const rules = buildSegmentRulesFromFilters({ q: 'ada', company: 'Acme' });
+  it('emits q as a field:any contains rule, followed by the explicit rules unchanged', () => {
+    const explicitRules: SegmentRule[] = [{ field: 'company', op: 'eq', value: 'Acme' }];
+    const rules = buildSegmentRulesFromFilters({ q: 'ada', rules: explicitRules });
     expect(rules).toEqual([
-      { field: 'firstName', op: 'contains', value: 'ada' },
+      { field: 'any', op: 'contains', value: 'ada' },
       { field: 'company', op: 'eq', value: 'Acme' },
     ]);
   });
 
-  it('trims whitespace-only filters to nothing', () => {
-    expect(buildSegmentRulesFromFilters({ q: '   ', company: '  ' })).toEqual([]);
+  it('trims a whitespace-only q to nothing, keeping only explicit rules', () => {
+    const explicitRules: SegmentRule[] = [{ field: 'title', op: 'ne', value: 'CEO' }];
+    expect(buildSegmentRulesFromFilters({ q: '   ', rules: explicitRules })).toEqual(explicitRules);
+  });
+
+  it('reproduces the exact active rules with no q (non-lossy segment-from-filter)', () => {
+    const explicitRules: SegmentRule[] = [
+      { field: 'any', op: 'contains', value: 'acme' },
+      { field: 'email', op: 'ne', value: 'test@example.com' },
+    ];
+    expect(buildSegmentRulesFromFilters({ q: '', rules: explicitRules })).toEqual(explicitRules);
   });
 });
 
@@ -39,6 +49,24 @@ describe('matchesRules', () => {
   it('empty rules match everything', () => {
     expect(matchesRules([], contact)).toBe(true);
   });
+
+  describe("field: 'any' (DEC-149)", () => {
+    it('contains matches if ANY of email/firstName/lastName/company/title matches', () => {
+      expect(matchesRules([{ field: 'any', op: 'contains', value: 'acme' }], contact)).toBe(true);
+      expect(matchesRules([{ field: 'any', op: 'contains', value: 'lovelace' }], contact)).toBe(true);
+      expect(matchesRules([{ field: 'any', op: 'contains', value: 'nope' }], contact)).toBe(false);
+    });
+
+    it('eq matches if ANY field equals the value exactly', () => {
+      expect(matchesRules([{ field: 'any', op: 'eq', value: 'ada' }], contact)).toBe(true);
+      expect(matchesRules([{ field: 'any', op: 'eq', value: 'ada lovelace' }], contact)).toBe(false);
+    });
+
+    it('ne matches only if ALL fields differ from the value', () => {
+      expect(matchesRules([{ field: 'any', op: 'ne', value: 'nope' }], contact)).toBe(true);
+      expect(matchesRules([{ field: 'any', op: 'ne', value: 'acme' }], contact)).toBe(false);
+    });
+  });
 });
 
 describe('describeRules', () => {
@@ -48,9 +76,9 @@ describe('describeRules', () => {
 
   it('joins rules with AND', () => {
     const rules: SegmentRule[] = [
-      { field: 'firstName', op: 'contains', value: 'ada' },
+      { field: 'any', op: 'contains', value: 'ada' },
       { field: 'company', op: 'ne', value: 'Acme' },
     ];
-    expect(describeRules(rules)).toBe('firstName contains "ada" AND company ≠ "Acme"');
+    expect(describeRules(rules)).toBe('any contains "ada" AND company ≠ "Acme"');
   });
 });
