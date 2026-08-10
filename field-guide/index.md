@@ -24,34 +24,37 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   mint; uploads/participants/ics/statuses/perf/headshots/walkthrough/
   claim per DEC-040/041/047/048/051/054-060/064-067/070-074 (headshots
   DEC-059 superseded by DEC-084 below).
-- Wave-11..17 (EXIT, since reopened by DEC-086): DEC-068 log append-only;
-  DEC-069 exit predicate (sha-scoped PASS for build+test/walkthrough/
+- Wave-11..17 (EXIT, reopened by DEC-086): DEC-068 log append-only;
+  DEC-069 exit predicate (sha-scoped PASS build+test/walkthrough/
   perf-smoke/spec-audit/triage-closure); DEC-076 single code barrier;
   DEC-077 gate lanes code-frozen, scribe bookkeeping non-code-bearing.
-  Ports: 8801 walkthrough, 8803 perf, never 8787. Wave-17 GREEN @
-  a05f17f, since voided by DEC-086.
-- Wave w1/w2 fixes (all landed in-tree, compact): DEC-078 chunk.ts
-  (ID_CHUNK_SIZE=90); DEC-079 plan-before-commit + chunked bulk status;
-  DEC-080 public chunking + 300-id .ics cap; DEC-081 set-based review
-  (resolveAssignments); DEC-083 versioned caches.default purge (KV
-  chq:pubver); DEC-084 image-dims gate 2048px; DEC-082/087 multi-round
-  (0009_review_rounds, listEvaluationsForPlan(db,planId,round),
-  advance-round 409); DEC-088 perf-probe seed literals; DEC-089 places
-  DEC-086 probes: 5 perf-smoke checks + 301-id 400, walkthrough "scale"
-  (110-id bulk accept, exactly-once re-POST, no-email, purge refresh).
-- Wave 3 (gate wave, compact): w1-d landed multi-round early; w2-b/c/a
-  merged mid-planning (1cc3fe8) landing perf seed/checks + 3-arg
-  listEvaluationsForPlan; sole outstanding code was w2-d walkthrough
-  "scale", covered by DEC-076 barrier task-w3-a (DEC-091). DEC-090:
-  eval-findings/verification-log appends non-code-bearing; wave-16 GREEN
-  void (DEC-086).
-- Wave 4 (reopened run): wave-3's gate tasks NEVER executed (no task-w3-*
-  merges; history ends at "merge task-w2-d" 3878d4f + bookkeeping
-  f9a33fd). All fix/probe code verified in-tree: scale.ts (6 steps) +
-  WALKTHROUGH_AREAS ends 'scale'; perf-smoke has the 5 DEC-089 checks +
-  301-id 400. DEC-092 ratifies scale.ts's portal-edit purge probe (no
-  organizer PATCH-title endpoint exists; GAP NOTE closed). DEC-093:
-  barrier vacuous, four gates parallel @ code-bearing sha 3878d4f
-  (workers re-derive, skipping DEC-090 bookkeeping), triage-closure
-  (w4-e, sole owner of eval-findings.md) chains behind walkthrough w4-b
-  only. Exit at wave 5: five sections PASS @ 3878d4f + OPEN ITEMS: 0.
+  Ports: 8801 walkthrough, 8803 perf, never 8787.
+- Wave w1/w2 fixes (landed in-tree): DEC-078 chunk.ts (ID_CHUNK_SIZE=90);
+  DEC-079 plan-before-commit + chunked bulk status; DEC-080 public
+  chunking + 300-id .ics cap; DEC-081 set-based review; DEC-083
+  versioned caches.default purge (KV chq:pubver); DEC-084 image-dims
+  2048px; DEC-082/087 multi-round (0009_review_rounds,
+  listEvaluationsForPlan(db,planId,round), advance-round 409); DEC-088
+  perf-probe seed literals; DEC-089 places 5 perf-smoke checks + 301-id
+  400, walkthrough "scale" (110-id bulk accept, exactly-once, no-email).
+- Wave 3/4 (compact): w1-d/w2-a/b/c landed early (1cc3fe8); wave-3 gate
+  tasks never executed (history ends "merge task-w2-d" 3878d4f). DEC-092
+  ratified scale.ts's portal-edit purge probe. DEC-093: barrier vacuous,
+  four gates ran parallel @ 3878d4f, triage-closure behind walkthrough.
+- Wave 5 (reopened-run gates executed; two FAILs, both script defects):
+  closeout/build+test/spec-audit/triage-closure PASS @ 3878d4f; FAILs:
+  (1) walkthrough scale step 6 — scripts/walkthrough/scale.ts POSTed
+  portal-edit without trackIds; open form -> validateTrackChoice
+  (src/lib/submit-core.ts:45) correctly 400s (portal/edit.tsx:201-219);
+  a browser would submit the checked checkbox. DEC-095: scripts-only fix,
+  no product change. (2) perf-smoke — fetchAcceptedSubmissionIds asked
+  perPage=301 in one page; clampPerPage caps 200 (src/lib/pagination.ts),
+  DEC-088 seeds exactly 300 accepted. DEC-094: clamp/seed stand; helper
+  paginates @200/page; 301-id cap probe = 300 real + 1 syntactically-
+  valid nonexistent id (rejected pre-hydration at public.tsx:580-583).
+  DEC-096: task-w5-a is the sole DEC-076 barrier landing BOTH fixes
+  (repro on port 8805); w5-b/c/d/e re-run all four gates code-frozen
+  (DEC-077) @ w5-a's new sha; w5-f triage-closure chains behind w5-c
+  walkthrough, must close the two OPEN ITEMS -> 0. Ports: 8805 fix-task
+  (else per above). Exit: wave-6 planner greps four PASS @ w5-a sha +
+  triage-closure OPEN ITEMS: 0 -> zero tasks, goalComplete.
