@@ -10,6 +10,7 @@ import { formatRef, newId } from "../../domain/ids";
 import { isValidFileKind, type FileKind } from "../../domain/files";
 import { chunkIds } from "../../lib/chunk";
 import { ApiError } from "../http";
+import { listPlansForEvent, isSubmissionInReviewerScope } from "./review";
 
 // ---------------------------------------------------------------------------
 // Ownership / authz lookups
@@ -101,15 +102,15 @@ export async function getFileScope(db: Db, fileId: string): Promise<FileScope | 
 /** Pure authz check for GET /files/:fileId and the comment endpoints, per
  * DEC-020: organizers may access any file in their org; speakers only when
  * they're a participant on the file's submission or the uploader — no IDOR.
- * DEC-020 doesn't name reviewers for this surface; per DEC-066, reviewers may
- * download submission files (GET /files/:fileId only, never the comment
- * endpoints) iff they're assigned (plan_reviewer) to a review plan for the
- * file's event — callers pass that precomputed boolean in `opts`, never
- * defaulting to true. */
+ * DEC-020 doesn't name reviewers for this surface; per DEC-170 (supersedes
+ * DEC-066), reviewers may download submission files (GET /files/:fileId
+ * only, never the comment endpoints) iff the file's submission is in scope
+ * for one of their non-anonymized plan assignments — callers pass that
+ * precomputed boolean in `opts`, never defaulting to true. */
 export function canAccessFile(
   auth: { role: string; orgId: string; contactId?: string },
   scope: { orgId: string; uploadedByContactId: string | null; participantContactIds: readonly string[] },
-  opts?: { reviewerAssignedToEvent?: boolean },
+  opts?: { reviewerInScope?: boolean },
 ): boolean {
   if (auth.role === "organizer") {
     return auth.orgId === scope.orgId;
@@ -119,22 +120,42 @@ export function canAccessFile(
     return scope.uploadedByContactId === auth.contactId || scope.participantContactIds.includes(auth.contactId);
   }
   if (auth.role === "reviewer") {
-    return opts?.reviewerAssignedToEvent === true;
+    return opts?.reviewerInScope === true;
   }
   return false;
 }
 
-/** DEC-066: does this reviewer (by user id) have a plan_reviewer assignment
- * on any evaluation plan for the given event? Pure existence check — used to
- * gate reviewer downloads of submission files via GET /files/:fileId. */
-export async function reviewerHasPlanForEvent(db: Db, userId: string, eventId: string): Promise<boolean> {
-  const rows = await db
-    .select({ id: schema.planReviewer.id })
+/** DEC-170 (supersedes DEC-066): does this reviewer (by user id) have a
+ * non-anonymized plan assignment in `eventId` whose scope covers
+ * `submissionId`? Unlike the superseded DEC-066 check (event-wide plan
+ * existence), this scopes access to the reviewer's assigned tracks/
+ * submissions AND excludes anonymized plans entirely — a reviewer must
+ * never download a submission's files via an anonymized plan assignment.
+ * Loads the event's plans once (listPlansForEvent) rather than duplicating
+ * PlanRecord parsing, filters to the ones the reviewer is assigned to via
+ * plan_reviewer, then delegates the per-submission scope check to
+ * isSubmissionInReviewerScope (src/server/repo/review.ts). */
+export async function reviewerCanAccessSubmissionFile(
+  db: Db,
+  userId: string,
+  eventId: string,
+  submissionId: string,
+): Promise<boolean> {
+  const assignedRows = await db
+    .select({ planId: schema.planReviewer.planId })
     .from(schema.planReviewer)
     .innerJoin(schema.evaluationPlan, eq(schema.planReviewer.planId, schema.evaluationPlan.id))
-    .where(and(eq(schema.planReviewer.userId, userId), eq(schema.evaluationPlan.eventId, eventId)))
-    .limit(1);
-  return rows.length > 0;
+    .where(and(eq(schema.planReviewer.userId, userId), eq(schema.evaluationPlan.eventId, eventId)));
+  const assignedPlanIds = new Set(assignedRows.map((r) => r.planId));
+  if (assignedPlanIds.size === 0) return false;
+
+  const plans = await listPlansForEvent(db, eventId);
+  const candidatePlans = plans.filter((p) => assignedPlanIds.has(p.id) && p.anonymized === false);
+
+  for (const plan of candidatePlans) {
+    if (await isSubmissionInReviewerScope(db, plan, userId, submissionId)) return true;
+  }
+  return false;
 }
 
 // ---------------------------------------------------------------------------

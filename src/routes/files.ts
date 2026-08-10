@@ -38,7 +38,7 @@ import {
   listFileComments,
   listSubmissionFiles,
   resolveLatestVersions,
-  reviewerHasPlanForEvent,
+  reviewerCanAccessSubmissionFile,
   updateContentStatus,
 } from "../server/repo/files";
 
@@ -295,13 +295,20 @@ async function authzServeFile(c: Context<AppEnv>, fileId: string): Promise<Serve
   const auth = requireAuth(c);
   const scope = await getFileScope(c.var.db, fileId);
   if (scope) {
-    // DEC-066: reviewers aren't named in canAccessFile's org/participant
-    // logic — pass whether this reviewer is assigned (plan_reviewer) to a
-    // plan for the file's event, precomputed here so canAccessFile stays a
-    // pure function.
-    const reviewerAssignedToEvent =
-      auth.role === "reviewer" ? await reviewerHasPlanForEvent(c.var.db, auth.userId, scope.eventId) : undefined;
-    if (!canAccessFile(auth, scope, { reviewerAssignedToEvent })) {
+    // DEC-170 (supersedes DEC-066): reviewers aren't named in canAccessFile's
+    // org/participant logic — pass whether this reviewer's non-anonymized
+    // plan assignments put the file's submission in scope, precomputed here
+    // so canAccessFile stays a pure function. getFileScope only ever returns
+    // a non-null submissionId (it returns null itself when the file isn't
+    // submission-attached), so this is safe.
+    if (auth.role === "reviewer" && !scope.submissionId) {
+      throw new ApiError("forbidden", "Not authorized for this file");
+    }
+    const reviewerInScope =
+      auth.role === "reviewer" && scope.submissionId
+        ? await reviewerCanAccessSubmissionFile(c.var.db, auth.userId, scope.eventId, scope.submissionId)
+        : undefined;
+    if (!canAccessFile(auth, scope, { reviewerInScope })) {
       throw new ApiError("forbidden", "Not authorized for this file");
     }
     return scope;
