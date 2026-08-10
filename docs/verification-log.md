@@ -697,3 +697,21 @@ OPEN ITEMS: 2
    perf-seed fixture mismatch (perf-smoke aborts before any timed check).
 
 RESULT: FAIL
+
+## 2026-08-10 task-w5-b — build+test @ b638f75
+
+Full detail: docs/verification-log/task-w5-b-build-test.md
+
+Re-derived newest code-bearing main sha per DEC-091 (skipping
+docs/verification-log*, docs/eval-findings.md, field-guide/index.md,
+decisions/*.md, scribe src/decisions.ts appends): `b638f75` ("Fix two
+gate-failing probe scripts (DEC-094/095/096)", task-w5-a's script-fix
+commit, merged at `3d1e838`). `npm ci` clean; `npm run build` (tsc x2 +
+vite) PASS; `npm run bundle:check` PASS (58.60 kB gzip entry vs 300.00
+kB budget); `npm test --silent` PASS — 94 files / 976 tests, all green,
+0 failures. Post-run re-check of `git log main` confirms no code-bearing
+merge landed mid-run (tip still `3d1e838`).
+
+OPEN ITEMS: 0
+
+RESULT: PASS
