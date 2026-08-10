@@ -245,6 +245,36 @@ describe("mergeContacts (DEC-101 participant dedupe + six-table FK repoint)", ()
     // repoints the distinct-submission row.
     expect(updates.some((u) => u.table === schema.participant)).toBe(true);
   });
+
+  it("preserves duplicate-only bio/headshotUrl/phone/notes/social links onto the kept row (DEC-167)", async () => {
+    const keepRaw = { ...contactRaw(KEEP_ID, "keep@example.com") };
+    const mergeRaw = {
+      ...contactRaw(MERGE_ID, "merge@example.com"),
+      phone: "555-9999",
+      bio: "Duplicate-only bio.",
+      headshotUrl: "https://example.com/dup-headshot.jpg",
+      notes: "Duplicate-only notes.",
+      socialLinksJson: JSON.stringify({ twitter: "@dup", linkedin: "dup-linkedin" }),
+    };
+    const { db, updates } = fakeDb([
+      [keepRaw], // findContactById(keepId)
+      [mergeRaw], // findContactById(mergeId)
+      [], // mergeParticipants (none)
+      [], // keepParticipants (none)
+      [keepRaw], // findContactById(keepId) after merge
+    ]);
+
+    await mergeContacts(db, KEEP_ID, MERGE_ID);
+
+    const contactFieldsUpdate = updates.find((u) => u.table === schema.contact);
+    expect(contactFieldsUpdate).toBeDefined();
+    const vals = contactFieldsUpdate!.vals as any;
+    expect(vals.phone).toBe("555-9999");
+    expect(vals.bio).toBe("Duplicate-only bio.");
+    expect(vals.headshotUrl).toBe("https://example.com/dup-headshot.jpg");
+    expect(vals.notes).toBe("Duplicate-only notes.");
+    expect(JSON.parse(vals.socialLinksJson)).toEqual({ twitter: "@dup", linkedin: "dup-linkedin" });
+  });
 });
 
 describe("bulk-email atomicity (DEC-019 via preflightRender, DEC-026 whitelist)", () => {

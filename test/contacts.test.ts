@@ -135,6 +135,95 @@ describe("planMerge", () => {
     const { merged } = planMerge(primary, duplicate);
     expect(merged.customFields).toEqual({ shirt: "L", key1: "primaryVal", key2: "dupOnly" });
   });
+
+  it("fills phone/bio/headshotUrl from duplicate when primary is blank (DEC-167)", () => {
+    const primary = contact({ id: "p", email: "p@example.com", firstName: "P", lastName: "P" });
+    const duplicate = contact({
+      id: "d",
+      email: "d@example.com",
+      firstName: "D",
+      lastName: "D",
+      phone: "555-1234",
+      bio: "A speaker bio.",
+      headshotUrl: "https://example.com/headshot.jpg",
+    });
+    const { merged } = planMerge(primary, duplicate);
+    expect(merged.phone).toBe("555-1234");
+    expect(merged.bio).toBe("A speaker bio.");
+    expect(merged.headshotUrl).toBe("https://example.com/headshot.jpg");
+  });
+
+  it("keeps primary's phone/bio/headshotUrl when both are populated (DEC-167)", () => {
+    const primary = contact({
+      id: "p",
+      email: "p@example.com",
+      firstName: "P",
+      lastName: "P",
+      phone: "primary-phone",
+      bio: "primary bio",
+      headshotUrl: "primary.jpg",
+    });
+    const duplicate = contact({
+      id: "d",
+      email: "d@example.com",
+      firstName: "D",
+      lastName: "D",
+      phone: "dup-phone",
+      bio: "dup bio",
+      headshotUrl: "dup.jpg",
+    });
+    const { merged } = planMerge(primary, duplicate);
+    expect(merged.phone).toBe("primary-phone");
+    expect(merged.bio).toBe("primary bio");
+    expect(merged.headshotUrl).toBe("primary.jpg");
+  });
+
+  it("fills socialLinks per-key from duplicate (DEC-167)", () => {
+    const primary = contact({
+      id: "p",
+      email: "p@example.com",
+      firstName: "P",
+      lastName: "P",
+      socialLinks: { twitter: "@primary", linkedin: "", github: "", website: "" },
+    });
+    const duplicate = contact({
+      id: "d",
+      email: "d@example.com",
+      firstName: "D",
+      lastName: "D",
+      socialLinks: { twitter: "@dup", linkedin: "dup-linkedin", github: "dup-github", website: "" },
+    });
+    const { merged } = planMerge(primary, duplicate);
+    expect(merged.socialLinks).toEqual({
+      twitter: "@primary",
+      linkedin: "dup-linkedin",
+      github: "dup-github",
+      website: "",
+    });
+  });
+
+  it("concatenates notes with a separator when duplicate's notes are non-blank and differ (DEC-167)", () => {
+    const primary = contact({ id: "p", email: "p@example.com", firstName: "P", lastName: "P", notes: "Primary note." });
+    const duplicate = contact({ id: "d", email: "d@example.com", firstName: "D", lastName: "D", notes: "Duplicate note." });
+    const { merged } = planMerge(primary, duplicate);
+    expect(merged.notes).toBe("Primary note.\n\n---\n\nDuplicate note.");
+  });
+
+  it("leaves notes absent when both primary and duplicate have blank notes (DEC-167)", () => {
+    const primary = contact({ id: "p", email: "p@example.com", firstName: "P", lastName: "P" });
+    const duplicate = contact({ id: "d", email: "d@example.com", firstName: "D", lastName: "D" });
+    const { merged } = planMerge(primary, duplicate);
+    expect(merged.notes).toBeUndefined();
+  });
+
+  it("uses duplicate's notes alone when primary has none, and doesn't duplicate identical notes", () => {
+    const primaryBlank = contact({ id: "p", email: "p@example.com", firstName: "P", lastName: "P" });
+    const dup = contact({ id: "d", email: "d@example.com", firstName: "D", lastName: "D", notes: "Shared note." });
+    expect(planMerge(primaryBlank, dup).merged.notes).toBe("Shared note.");
+
+    const primarySame = contact({ id: "p", email: "p@example.com", firstName: "P", lastName: "P", notes: "Shared note." });
+    expect(planMerge(primarySame, dup).merged.notes).toBe("Shared note.");
+  });
 });
 
 describe("matchesSegment", () => {

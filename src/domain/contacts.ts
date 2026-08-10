@@ -3,6 +3,13 @@
 // already-parsed CSV rows (parseCsv lives in src/lib/csv.ts, DEC-011); it
 // never imports the CSV parser itself.
 
+export interface SocialLinks {
+  twitter: string;
+  linkedin: string;
+  github: string;
+  website: string;
+}
+
 export interface ContactRecord {
   id: string;
   email: string;
@@ -10,6 +17,11 @@ export interface ContactRecord {
   lastName: string;
   company?: string;
   title?: string;
+  phone?: string;
+  bio?: string;
+  headshotUrl?: string;
+  notes?: string;
+  socialLinks?: SocialLinks;
   customFields?: Record<string, string>;
 }
 
@@ -149,6 +161,14 @@ export interface MergePlan {
  * are unioned with primary taking precedence on key collisions. Does not
  * touch the database — repointing participant/submission/task_assignment/
  * email_log rows to primary.id is wave-3 wiring.
+ *
+ * DEC-167: primary wins are still fill-if-blank for phone/bio/headshotUrl,
+ * socialLinks are filled per-key (each of twitter/linkedin/github/website
+ * independently falls back to duplicate's value when primary's is blank),
+ * and notes are never silently dropped — primary's notes are kept, with
+ * duplicate's notes appended after a '\n\n---\n\n' separator when duplicate
+ * has non-blank notes that differ from primary's (so duplicate-only notes
+ * always survive the merge instead of being destroyed).
  */
 export function planMerge(primary: ContactRecord, duplicate: ContactRecord): MergePlan {
   const fill = (primaryVal: string | undefined, dupVal: string | undefined): string | undefined => {
@@ -168,6 +188,32 @@ export function planMerge(primary: ContactRecord, duplicate: ContactRecord): Mer
 
   const title = fill(primary.title, duplicate.title);
   if (title !== undefined) merged.title = title;
+
+  const phone = fill(primary.phone, duplicate.phone);
+  if (phone !== undefined) merged.phone = phone;
+
+  const bio = fill(primary.bio, duplicate.bio);
+  if (bio !== undefined) merged.bio = bio;
+
+  const headshotUrl = fill(primary.headshotUrl, duplicate.headshotUrl);
+  if (headshotUrl !== undefined) merged.headshotUrl = headshotUrl;
+
+  if (primary.socialLinks !== undefined || duplicate.socialLinks !== undefined) {
+    const keys: (keyof SocialLinks)[] = ["twitter", "linkedin", "github", "website"];
+    const socialLinks = {} as SocialLinks;
+    for (const key of keys) {
+      socialLinks[key] = fill(primary.socialLinks?.[key], duplicate.socialLinks?.[key]) ?? "";
+    }
+    merged.socialLinks = socialLinks;
+  }
+
+  const primaryNotes = primary.notes?.trim() ?? "";
+  const duplicateNotes = duplicate.notes?.trim() ?? "";
+  if (duplicateNotes !== "" && duplicateNotes !== primaryNotes) {
+    merged.notes = primaryNotes !== "" ? `${primaryNotes}\n\n---\n\n${duplicateNotes}` : duplicateNotes;
+  } else if (primaryNotes !== "") {
+    merged.notes = primaryNotes;
+  }
 
   const customFields = { ...(duplicate.customFields ?? {}), ...(primary.customFields ?? {}) };
   if (Object.keys(customFields).length > 0) merged.customFields = customFields;
