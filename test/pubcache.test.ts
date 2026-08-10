@@ -4,6 +4,7 @@
 
 import { describe, expect, it } from "vitest";
 import {
+  CLIENT_CACHE_CONTROL,
   PUBVER_KEY,
   bumpIfMutating,
   isIcsPath,
@@ -93,6 +94,25 @@ describe("servePublicGet", () => {
     const next = async () => new Response("ok", { status: 200, headers: { "Cache-Control": "public, max-age=60, stale-while-revalidate=300" } });
 
     await servePublicGet(cache, kv, new Request("https://x.test/e/foo/sessions"), next);
+    const stored = [...cache.store.values()][0]!;
+    expect(stored.headers.get("Cache-Control")).toBe("public, max-age=86400");
+  });
+
+  it("DEC-099: a hit is re-served with the client-facing Cache-Control, not the stored 86400 override", async () => {
+    const cache = fakeCache();
+    const kv = fakeKv();
+    const next = async () =>
+      new Response("hello", { status: 200, headers: { "Cache-Control": "public, max-age=60, stale-while-revalidate=300" } });
+
+    const req = () => new Request("https://x.test/e/foo/sessions");
+    const miss = await servePublicGet(cache, kv, req(), next);
+    expect(miss.headers.get("Cache-Control")).toBe("public, max-age=60, stale-while-revalidate=300");
+
+    const hit = await servePublicGet(cache, kv, req(), next);
+    expect(await hit.text()).toBe("hello");
+    expect(hit.headers.get("Cache-Control")).toBe(CLIENT_CACHE_CONTROL);
+
+    // the copy inside the cache itself is untouched — still the internal 86400 override
     const stored = [...cache.store.values()][0]!;
     expect(stored.headers.get("Cache-Control")).toBe("public, max-age=86400");
   });
