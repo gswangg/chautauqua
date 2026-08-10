@@ -33,9 +33,19 @@ export interface ContactEmailHistory {
   sentAt: number;
 }
 
+export interface ContactSocialLinks {
+  twitter?: string | null;
+  linkedin?: string | null;
+  github?: string | null;
+  website?: string | null;
+}
+
 export interface ContactDetail extends ContactListItem {
   phone?: string | null;
   notes?: string | null;
+  bio?: string | null;
+  headshotUrl?: string | null;
+  socialLinks?: ContactSocialLinks | null;
   customFields?: Record<string, string>;
   history: {
     submissions: ContactSubmissionHistory[];
