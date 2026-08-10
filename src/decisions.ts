@@ -133,7 +133,7 @@ export const DEC_127 = "Wave-15 five-gate battery at the post-wave-14 sha: lanes
 export const DEC_128 = "Wave-16 contingency mirror gate battery: confirm-else-run semantics, fresh ports 8861/8862/8863, duplicates harmless, completion stays a planner grep";
 export const DEC_129 = "Wave-17 dual redundant triage-closure lanes; first-campaign homonym sections never satisfy the exit grep (validity requires `git merge-base --is-ancestor 675219f <cited-sha>`)";
 export const DEC_130 = "autoSchedule uses incremental day-indexed conflict checks, never per-candidate findConflicts over the full trial";
-export const DEC_131 = "ics escapeText normalizes CR before escaping: CRLF and lone CR become \n, so no raw CR ever appears inside a content line";
+export const DEC_131 = "ics escapeText normalizes CR before escaping: CRLF and lone CR become \\n, so no raw CR ever appears inside a content line";
 export const DEC_132 = "Public submit ignores rule-hidden file fields entirely: no upload validation error, no R2 put, no file row, no answer row";
 export const DEC_133 = "Bulk submission status change enforces a DEC-122-style full-set id match before any side effect: unknown/foreign ids yield 400 invalid naming the missing ids";
 export const DEC_134 = "Third code barrier: DEC-130..133 fix lanes void every 675219f gate section; wave 19 re-runs the DEC-069 five-gate battery at the new DEC-114 sha";
@@ -141,3 +141,11 @@ export const DEC_135 = "Wave-19 five-gate battery at the post-wave-18 sha: lanes
 export const DEC_136 = "Wave-20 confirm-else-run closeout for the two outstanding DEC-069 gates (walkthrough, perf-smoke)";
 export const DEC_137 = "Verification-log conflict-marker hygiene: greps key on section headers plus per-section RESULT; marker damage belongs to the merge train";
 export const DEC_138 = "Stage-1 exit declared: DEC-069 predicate green @ 8c7f479; wave-20 confirm lanes mooted by the landed w19-b/c full-gate sections";
+export const DEC_139 = "Stage-1 exit reopened by the 2026-08-10 browser-eval mandate; docs/eval-findings.md governs this campaign; exit requires the full gate battery at a post-fix sha plus findings closure";
+export const DEC_140 = "Public itinerary .ics: selection travels in ?ids= from the schedule page's checkbox values; overlapping grid blocks render side-by-side, never stacked over each other's controls";
+export const DEC_141 = "Reviewers can list events: GET /api/v1/events returns plan-assignment-derived events for role=reviewer; event mutations stay organizer-only; queue UI distinguishes plan-not-open from queue-empty";
+export const DEC_142 = "Speaker-edited profile surfaces on the organizer's contact record: ContactDrawer shows and edits bio, social links, and headshot from the same contact row the portal writes";
+export const DEC_143 = "Duplicate detection surfaces same-normalized-name contacts even across distinct emails when normalized company also matches (or one side is blank); import stays an email-keyed upsert; merging stays a human act";
+export const DEC_144 = "Two permanent render gates: a Playwright chromium route-sweep script (scripts/render-sweep.ts) driven by an authoritative route manifest, plus jsdom+RTL component render smokes with fixture-shaped API mocks; render-sweep becomes a required DEC-069 gate section";
+export const DEC_145 = "Seed is the grader package, so it must exercise every flow at 'now': plan window opens 2026-01-01Z; the demo speaker gets an accepted session, onboarding tasks, a two-version deliverable with a comment thread; several contacts get real headshots; near-duplicate contacts stay";
+export const DEC_146 = "SPA date rendering rule: shared null-safe helpers only — date-input helpers return '' and display formatters return an em dash for null/undefined/invalid; no raw new Date().toISOString()/toLocale* on nullable values in page components";

@@ -25,27 +25,27 @@ hard 60-line budget, compacting old entries. Injected into every agent.
 - Wave-11..17 (EXIT, reopened by DEC-086, compact): DEC-068 log append-
   only; DEC-069 exit predicate (sha-scoped PASS build+test/walkthrough/
   perf-smoke/spec-audit/triage-closure); DEC-077 gates code-frozen;
-  DEC-114 code-bearing sha rule. W12-14 exit NOT met, 5 defects fixed
-  @5fc22ec (DEC-120..125, DEC-126 lanes). W15-17: fixes verified merged
-  @675219f (DEC-127/128 gate batteries, ports 8851-63); W17 (DEC-129)
-  predicate 4/5 green, dual triage lanes closed the gap, ports 8871/72.
-  HOMONYM HAZARD: log has first-campaign sections reusing task names;
-  valid only if `git merge-base --is-ancestor 675219f <cited-sha>`.
-- Wave 18-20 (compact, DEC-134/135/136/137): w18 4th barrier: DEC-130
-  autoSchedule incremental indexes, DEC-131 ics CR-normalize, DEC-132
-  hidden file fields no-trace, DEC-133 bulk status full-match
-  pre-mutation, voided all 675219f gates. W19: five-gate battery @
-  post-w18 sha 8c7f479 (task-w19-a..e), BEHAVIORAL preflight not
-  marker-import; ports 8881-83; all PASS incl. triage OPEN ITEMS: 0.
-  Main @ 8e84281 transiently held raw conflict markers in
-  verification-log.md, healed by hand-resolved w19-e merge (24f6f84);
-  DEC-137: locate sections by header, read that section's own RESULT,
-  tolerate marker lines elsewhere, never repair others' sections. W20
-  confirm-lanes (DEC-136, ports 8891/92) never executed (moot per
-  DEC-138 — w19-b/c full gates already contain both spot-checks).
-- Wave 21 (DEC-138): STAGE-1 EXIT declared. Planner grep on main @
-  d9be564: five PASS DEC-069 sections @ 8c7f479, log marker-free,
-  eval-findings zero, 8c7f479 still newest code-bearing sha (later
-  commits are DEC-114 bookkeeping). Zero tasks, goalComplete: true.
-  Any future code-bearing commit reopens via DEC-069/134: full
-  five-gate battery required before re-declaring exit.
+  DEC-114 code-bearing sha rule; DEC-129 dual triage lanes/homonym
+  guard (`git merge-base --is-ancestor <gate-sha> <cited-sha>`).
+- Wave 18-21 (compact, DEC-134-138): 4th barrier DEC-130..133
+  (autoSchedule indexes, ics CR-normalize, hidden-file no-trace, bulk
+  status full-match) voided 675219f gates; W19 five-gate battery @
+  8c7f479 all PASS; DEC-137 log-repair-by-section rule (marker damage
+  belongs to merge train); W21 DEC-138 declared STAGE-1 EXIT @ d9be564
+  — VOIDED by campaign 3 below.
+- Campaign 3 (2026-08-10): DEC-138 exit VOID — docs/eval-findings.md
+  now holds a browser-eval SWARM MANDATE (P0 fixes already in tree @
+  2dd2f33; ratify+test, P1 bugs, two render gates, seed enrichment, P2
+  by weight). DEC-139: exit needs the DEC-069 battery at a post-fix sha
+  PLUS render-sweep (DEC-144) as a 6th section PLUS findings A/B/E/F
+  closed, C fixed-or-waived. Branch prefix task-w1-* REUSED from
+  campaign 1: cite-able gate sections only if sha descends from
+  2dd2f33. New: DEC-140 .ics ids-roundtrip test from rendered
+  checkboxes + side-by-side overlap lanes; DEC-141 reviewers list
+  events via plan assignments; DEC-142 contact drawer = portal profile
+  (one row); DEC-143 dupes surface same-name+company across emails,
+  import stays email-keyed; DEC-145 seed: plan opens 2026-01-01Z, demo
+  speaker gets accepted session/tasks/versioned file+thread, headshots,
+  keep seeded dupes; DEC-146 null-safe date helpers only in app pages.
+  Workers: never edit docs/eval-findings.md, docs/verification-log.md,
+  decisions/, src/decisions.ts.
