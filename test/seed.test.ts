@@ -13,6 +13,7 @@ import {
   seedId,
   sqlQuote,
 } from "../scripts/seed-lib";
+import { FORM_TASK_FIELD_SPECS } from "../src/domain/acceptance";
 
 describe("sqlQuote", () => {
   it("quotes plain strings", () => {
@@ -280,5 +281,71 @@ describe("seed.ts output (task w1-d, DEC-145)", () => {
     expect(marcusRows.length).toBeGreaterThanOrEqual(2);
     const marcusEmails = new Set(marcusRows.map((r) => r[2]));
     expect(marcusEmails.size).toBeGreaterThanOrEqual(2);
+  });
+
+  // -------------------------------------------------------------------------
+  // Task w6-f / DEC-172: every form-kind onboarding task template gets a real
+  // backing form (title match, non-null task.form_id) with FORM_TASK_FIELD_
+  // SPECS' fields mirrored in order, so /portal/tasks/:assignmentId/form
+  // resolves instead of 400ing.
+  // -------------------------------------------------------------------------
+  it("gives every form-kind onboarding task a non-null form_id whose form's title matches and whose fields mirror FORM_TASK_FIELD_SPECS", () => {
+    const taskRows = [
+      ...sql.matchAll(
+        /INSERT INTO task \([^)]*\) VALUES \(('seed_task_\d+'), '[^']*', '([^']*)', '([^']*)', [^,]*, \d+, \d+, ([^,]*),/g,
+      ),
+    ];
+    const formTaskRows = taskRows.filter((r) => r[2] === "form");
+    expect(formTaskRows.length).toBe(2); // Hotel stay + Flight reimbursement, per DEFAULT_ONBOARDING_TASKS
+
+    for (const row of formTaskRows) {
+      const title = row[3]!;
+      const formIdLiteral = row[4]!;
+      expect(formIdLiteral).not.toBe("NULL");
+      const formId = formIdLiteral.replace(/'/g, "");
+
+      const formRow = sql.match(new RegExp(`INSERT INTO form \\("id"[^)]*\\) VALUES \\('${formId}',[^;]*\\);`));
+      expect(formRow, `expected a form row for ${formId} (${title})`).toBeTruthy();
+      expect(formRow![0]).toContain(`'${title}'`);
+      expect(formRow![0]).toMatch(/, 0, /); // is_default = false
+
+      const expectedSpecs = FORM_TASK_FIELD_SPECS[title] ?? [];
+      expect(expectedSpecs.length).toBeGreaterThan(0);
+      const fieldRows = [
+        ...sql.matchAll(
+          new RegExp(`INSERT INTO form_field \\([^)]*\\) VALUES \\('[^']*', '${formId}', '[^']*', '[^']*', '([^']*)', [^,]*, ([^,]*), (\\d+),`, "g"),
+        ),
+      ];
+      expect(fieldRows.length).toBe(expectedSpecs.length);
+      // Sort by position and compare labels in order.
+      const byPosition = fieldRows
+        .map((r) => ({ label: r[1]!, position: Number(r[3]) }))
+        .sort((a, b) => a.position - b.position);
+      expect(byPosition.map((r) => r.label)).toEqual(expectedSpecs.map((s) => s.label));
+    }
+  });
+
+  it("pins the render-sweep manifest's TASK_ASSIGNMENT_ID to a form-kind, pending task_assignment owned by the demo speaker's contact", () => {
+    const manifestSource = readFileSync(
+      join(REPO_ROOT, "app", "src", "routeManifest.ts"),
+      "utf-8",
+    );
+    const taskAssignmentIdMatch = manifestSource.match(/const TASK_ASSIGNMENT_ID = "([^"]+)";/);
+    expect(taskAssignmentIdMatch).toBeTruthy();
+    const taskAssignmentId = taskAssignmentIdMatch![1]!;
+
+    const assignmentRow = sql.match(
+      new RegExp(`INSERT INTO task_assignment \\([^)]*\\) VALUES \\('${taskAssignmentId}', '([^']*)', '([^']*)', '([^']*)',`),
+    );
+    expect(assignmentRow, `expected a task_assignment row for manifest id ${taskAssignmentId}`).toBeTruthy();
+    const [, taskId, contactId, status] = assignmentRow!;
+    expect(contactId).toBe("seed_contact_0001"); // demo speaker persona's contact
+    expect(status).toBe("pending");
+
+    const taskRow = sql.match(
+      new RegExp(`INSERT INTO task \\([^)]*\\) VALUES \\('${taskId}', '[^']*', '([^']*)',`),
+    );
+    expect(taskRow).toBeTruthy();
+    expect(taskRow![1]).toBe("form");
   });
 });

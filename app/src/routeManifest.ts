@@ -23,12 +23,14 @@
 //  - seed_submission_0002: first submission in track index 0, evaluated by
 //    the seeded reviewer persona — used for the reviewer scorecard route.
 //  - seed_evaluation_plan_0001: the single seeded evaluation plan.
-//  - seed_task_assignment_0001: first seeded task assignment row. NOTE: it
-//    is not guaranteed to belong to the seeded speaker persona (only
-//    accepted submissions' contacts get task assignments in the current
-//    seed) — the render-sweep may legitimately report this route as a
-//    403/ownership failure until seed data assigns the demo speaker an
-//    accepted submission (DEC-145, landing in a different w1 lane).
+//  - seed_task_assignment_0001: first seeded task assignment row — task
+//    counter 1 of (acceptedSubmissions x taskIds), i.e. contactIdx 0 /
+//    taskIdx 0: acceptedSubmissions[0].contactId is seed_contact_0001 (the
+//    demo speaker persona, DEC-145) and taskIds[0] is the 'Hotel stay
+//    requirement form' template (kind='form'). Its status is pending
+//    ((contactIdx+taskIdx) % 3 === 0, scripts/seed.ts). So this id is
+//    form-kind, pending, and owned by the seeded speaker's contact — the
+//    portal task-form route resolves end-to-end (DEC-172).
 export interface RouteManifestEntry {
   readonly path: string;
   readonly role: "organizer" | "reviewer" | "speaker" | "public";
