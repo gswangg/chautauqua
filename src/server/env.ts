@@ -16,6 +16,11 @@ export type AuthInfo = {
   role: "organizer" | "reviewer" | "speaker";
   orgId: string;
   contactId?: string;
+  // DEC-027: set when this request authenticated via an `Authorization:
+  // Bearer chq_...` API token rather than the chq_session cookie. Bearer
+  // requests are CSRF-exempt (cross-site forgery requires ambient cookie
+  // credentials) and can never mint new tokens themselves.
+  viaBearer?: boolean;
 };
 
 export type AppEnv = {

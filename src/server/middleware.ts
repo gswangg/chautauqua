@@ -17,6 +17,9 @@ import {
 } from "../auth/cookies";
 import { hashToken } from "../auth/tokens";
 import { ApiError } from "./http";
+import { DEC_027 } from "../decisions";
+
+void DEC_027;
 
 // ---------------------------------------------------------------------------
 // Pure session-resolution core (testable against fakes, no Hono/D1 needed)
@@ -109,10 +112,77 @@ function drizzleUserLookup(db: Db): UserLookup {
 }
 
 // ---------------------------------------------------------------------------
+// Bearer API tokens (DEC-027)
+// ---------------------------------------------------------------------------
+
+export const BEARER_TOKEN_PREFIX = "chq_";
+
+export interface ApiTokenRow {
+  id: string;
+  orgId: string;
+  createdByUserId: string;
+}
+
+export interface ApiTokenLookup {
+  findByTokenHash(tokenHash: string): Promise<ApiTokenRow | null>;
+}
+
+/** Extracts a `chq_...` bearer token from an `Authorization` header value,
+ * or undefined when absent/not a bearer chq_ token. */
+export function extractBearerToken(authorizationHeader: string | undefined | null): string | undefined {
+  if (!authorizationHeader) return undefined;
+  const match = /^Bearer\s+(chq_\S+)$/.exec(authorizationHeader.trim());
+  return match ? match[1] : undefined;
+}
+
+/**
+ * Resolves a `chq_...` bearer token to an AuthInfo, or undefined when
+ * there's no token or no matching api_token row. Per DEC-027, bearer auth
+ * always resolves to the organizer role (tokens are minted organizer-only,
+ * cookie-session-only) scoped to the token's org.
+ */
+export async function resolveBearerAuth(
+  token: string | undefined,
+  tokens: ApiTokenLookup,
+  hashFn: (token: string) => Promise<string>,
+): Promise<AuthInfo | undefined> {
+  if (!token) return undefined;
+  const tokenHash = await hashFn(token);
+  const row = await tokens.findByTokenHash(tokenHash);
+  if (!row) return undefined;
+  return {
+    userId: row.createdByUserId,
+    role: "organizer",
+    orgId: row.orgId,
+    viaBearer: true,
+  };
+}
+
+function drizzleApiTokenLookup(db: Db): ApiTokenLookup {
+  return {
+    async findByTokenHash(tokenHash) {
+      const rows = await db
+        .select({
+          id: schema.apiToken.id,
+          orgId: schema.apiToken.orgId,
+          createdByUserId: schema.apiToken.createdByUserId,
+        })
+        .from(schema.apiToken)
+        .where(eq(schema.apiToken.tokenHash, tokenHash))
+        .limit(1);
+      return rows[0] ?? null;
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Hono middleware
 // ---------------------------------------------------------------------------
 
-/** Always-on: parses chq_session, sets c.var.auth when a live session matches. */
+/** Always-on: parses chq_session, sets c.var.auth when a live session
+ * matches; falls back to an `Authorization: Bearer chq_...` API token
+ * (DEC-027) when no cookie session resolved. Bearer auth best-effort stamps
+ * api_token.last_used_at — that write never gates whether auth is set. */
 export const sessionLoader: MiddlewareHandler<AppEnv> = async (c, next) => {
   const cookies = parseCookies(c.req.header("cookie") ?? null);
   const token = cookies[SESSION_COOKIE_NAME];
@@ -120,7 +190,23 @@ export const sessionLoader: MiddlewareHandler<AppEnv> = async (c, next) => {
   const auth = await resolveAuth(token, drizzleSessionLookup(db), drizzleUserLookup(db), Date.now());
   if (auth) {
     c.set("auth", auth);
+    await next();
+    return;
   }
+
+  const bearerToken = extractBearerToken(c.req.header("authorization"));
+  if (bearerToken) {
+    const bearerAuth = await resolveBearerAuth(bearerToken, drizzleApiTokenLookup(db), hashToken);
+    if (bearerAuth) {
+      c.set("auth", bearerAuth);
+      const tokenHash = await hashToken(bearerToken);
+      await db
+        .update(schema.apiToken)
+        .set({ lastUsedAt: new Date() })
+        .where(eq(schema.apiToken.tokenHash, tokenHash));
+    }
+  }
+
   await next();
 };
 
@@ -141,9 +227,12 @@ export const requireOrganizer = requireRole("organizer");
 export const requireReviewer = requireRole("reviewer");
 export const requireSpeaker = requireRole("speaker");
 
-/** JSON mutations under /api/v1: header 'x-chq-csrf: 1' per DEC-004. */
+/** JSON mutations under /api/v1: header 'x-chq-csrf: 1' per DEC-004.
+ * Exempt when auth.viaBearer (DEC-027): CSRF protects cookie sessions
+ * (ambient browser credentials); bearer clients present the token
+ * explicitly on every request and cannot be cross-site-forged. */
 export const csrfJson: MiddlewareHandler<AppEnv> = async (c, next) => {
-  if (c.req.header(CSRF_HEADER) !== "1") {
+  if (!c.var.auth?.viaBearer && c.req.header(CSRF_HEADER) !== "1") {
     throw new ApiError("invalid", "Missing or invalid CSRF header");
   }
   await next();

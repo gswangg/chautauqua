@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { PlaceholderPage } from './PlaceholderPage';
 import { useCurrentEvent } from '../lib/useCurrentEvent';
 import { apiGet, ApiError } from '../lib/api';
+import { ApiTokensPanel } from './settings/ApiTokensPanel';
+import { ExportsPanel } from './settings/ExportsPanel';
 
 // J10/DEC-022: embed generator — copyable <iframe> snippets for the five
 // public surfaces (src/routes/public.tsx), built from location.origin so
@@ -67,6 +69,8 @@ export function SettingsPage() {
   return (
     <div>
       <PlaceholderPage section="Settings" />
+      <ApiTokensPanel />
+      <ExportsPanel />
       <EmbedsPanel />
     </div>
   );
