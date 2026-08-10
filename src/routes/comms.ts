@@ -18,8 +18,25 @@ import {
   preflightRender,
   type ComposeSubmission,
 } from "../domain/compose";
+import { DEC_122 } from "../decisions";
 
 export const commsRoutes = new Hono<AppEnv>();
+
+/** DEC-122 (DEC-019 no-silent-skips): loadComposeSubmissions silently drops
+ * ids that don't belong to this event (see its contract comment in
+ * server/repo/comms.ts). Shared by preview + send so a compose call against
+ * a stale/foreign/deleted submission id fails loudly with a 400 naming the
+ * unknown ids, instead of quietly composing to a smaller recipient set. */
+function requireFullMatch(requestedIds: string[], submissions: { id: string }[]): void {
+  void DEC_122;
+  const foundIds = new Set(submissions.map((s) => s.id));
+  const missing = requestedIds.filter((id) => !foundIds.has(id));
+  if (missing.length > 0) {
+    throw new ApiError("invalid", "One or more submission ids do not belong to this event", {
+      submissionIds: `unknown ids: ${missing.join(", ")}`,
+    });
+  }
+}
 
 async function requireOwnedEvent(c: { var: { db: import("../server/context").Db; auth?: { orgId: string } } }, eventId: string) {
   const auth = c.var.auth;
@@ -279,9 +296,14 @@ commsRoutes.post("/api/v1/events/:eventId/compose/preview", requireOrganizer, cs
   });
   const input = await resolveComposeInput(c, eventId, body);
 
+  // DEC-122: loadComposeSubmissions silently excludes ids outside this event
+  // (see its contract comment) — the caller must verify the full requested
+  // set matched BEFORE any other preflight (e.g. ics scheduling) runs.
+  const submissions = await repo.loadComposeSubmissions(c.var.db, eventId, input.submissionIds);
+  requireFullMatch(input.submissionIds, submissions);
+
   const icsMap = input.attachIcs ? await preflightIcsSchedule(c.var.db, input.submissionIds) : undefined;
 
-  const submissions = await repo.loadComposeSubmissions(c.var.db, eventId, input.submissionIds);
   const targets = await buildRenderTargets(c, event, submissions, input.includeFeedback);
 
   const result = preflightRender(targets, input.subjectTemplate, input.bodyTemplate);
@@ -307,13 +329,15 @@ commsRoutes.post("/api/v1/events/:eventId/compose/send", requireOrganizer, csrfJ
   });
   const input = await resolveComposeInput(c, eventId, body);
 
-  // Atomic preflight (DEC-019/DEC-051): schedule-slot + merge-field checks
-  // both run BEFORE the first send is attempted. Only once every recipient
-  // renders (and, when attachIcs is set, every selected submission is
-  // scheduled) do we start sending.
+  // Atomic preflight (DEC-019/DEC-051/DEC-122): full-set id match, then
+  // schedule-slot + merge-field checks all run BEFORE the first send is
+  // attempted. Only once every recipient renders (and, when attachIcs is
+  // set, every selected submission is scheduled) do we start sending.
+  const submissions = await repo.loadComposeSubmissions(c.var.db, eventId, input.submissionIds);
+  requireFullMatch(input.submissionIds, submissions);
+
   const icsMap = input.attachIcs ? await preflightIcsSchedule(c.var.db, input.submissionIds) : undefined;
 
-  const submissions = await repo.loadComposeSubmissions(c.var.db, eventId, input.submissionIds);
   const targets = await buildRenderTargets(c, event, submissions, input.includeFeedback);
 
   const result = preflightRender(targets, input.subjectTemplate, input.bodyTemplate);
