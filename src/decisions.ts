@@ -137,3 +137,4 @@ export const DEC_131 = "ics escapeText normalizes CR before escaping: CRLF and l
 export const DEC_132 = "Public submit ignores rule-hidden file fields entirely: no upload validation error, no R2 put, no file row, no answer row";
 export const DEC_133 = "Bulk submission status change enforces a DEC-122-style full-set id match before any side effect: unknown/foreign ids yield 400 invalid naming the missing ids";
 export const DEC_134 = "Third code barrier: DEC-130..133 fix lanes void every 675219f gate section; wave 19 re-runs the DEC-069 five-gate battery at the new DEC-114 sha";
+export const DEC_135 = "Wave-19 five-gate battery at the post-wave-18 sha: lanes task-w19-a..e all-parallel, BEHAVIORAL DEC-130..133 preflight (void-marker imports alone prove nothing), fresh ports 8881/8882/8883, FAIL-and-stop on a missing fix marker";
