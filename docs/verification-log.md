@@ -31,3 +31,53 @@ fix directly (no defect note left behind — nothing to triage there).
 | No admin or public route creates a co-presenter `participant` row with `invite_status='invited'` — J7 invite accept/decline is otherwise untestable end-to-end; speaker.ts works around it with a direct `wrangler d1 execute --local` INSERT. | 6b6ef85 (w8-e) | open-PLANNER: grepped src/routes/api/*.ts and src/routes/portal/*.tsx on current main — still no endpoint sets `participant.inviteStatus` to `"invited"` (only src/server/repo/portal.ts's accept/decline transition reads/consumes it, and src/server/repo/submissions.ts / submit.ts only ever write `"none"` at submission-create time). PLANNER: needs a real "invite co-presenter" admin/organizer endpoint (submissions or contacts route) that inserts a `participant` row with `invite_status='invited'` and sends the invite email — feature gap, not a regression, too large for this task's fix-in-place scope. |
 | No admin API exists to toggle `participant.visible` after a submission is created — public.ts's hidden-participant visibility-gate walkthrough check works around this with a direct `wrangler d1 execute --local` UPDATE. | b310272 (w8-f) | open-PLANNER: grepped src/routes/api/*.ts on current main — `participant.visible` is still only ever written at submission-create/submit time (src/server/repo/submissions.ts:513, submit.ts) and read (never mutated) elsewhere (exports.ts, public.ts). PLANNER: needs an organizer-facing "hide/show this speaker" endpoint — feature gap, out of this task's fix-in-place scope (>a few lines: new route + repo mutation + authz + test). |
 | scripts/seed.ts creates exactly one org, so the "another org's eventId -> 404" export walkthrough check (data.ts) falls back to a nonexistent eventId rather than a genuine cross-org id; still exercises the requireOwnedEvent not-found branch but doesn't assert true cross-tenant isolation on that surface specifically. | 9d34b59 (w8-g) | open-PLANNER: confirmed scripts/seed.ts on current main still inserts exactly one `org` row (single `insertStmt("org", ...)` call). True cross-org export-isolation coverage would need either a second seeded org (seed.ts is explicitly out of this task's file scope, and fixture data must stay demo-only per the no-eval-gaming rule) or a dedicated unit test constructing two orgs directly via the repo layer against a fake db — left as a PLANNER item, not a regression. |
+
+## 2026-08-10 task-w12-b — walkthrough @ f6e3422
+
+Note: task order specified sha f6e3422; main had advanced to 01c6ace
+(merge task-w11-a) by the time this worktree was created from main, so
+that is the commit actually verified.
+
+Replicated `.github/workflows/ci.yml` lines 57-85 (the `walkthrough` job)
+locally: `npm ci --no-audit --no-fund`, `npm run db:migrate`, `npm run
+seed`, `npx wrangler dev` in the background, polled `/health` until up,
+then `npm run walkthrough` (DEC-062 order: producer -> review -> speaker
+-> public -> data).
+
+Note on port: port 8787 was already bound by another concurrently-running
+worktree's `wrangler dev` process at the time of this run (a swarm-wide
+resource conflict, not a product defect); the first attempt's `curl -sf
+http://localhost:8787/health` polling loop reported "up" against that
+other process's server, and the review module then failed
+(`org2-organizer POST /login` → `expected 302, got 401`) because the
+throwaway second-org row inserted via `wrangler d1 execute --local` from
+this worktree landed in *this worktree's* local D1 state, not the other
+process's. Re-ran wrangler dev on port 8797 (this worktree only) and
+re-polled `/health` on that port before invoking `npm run walkthrough
+-- --url http://localhost:8797`; all five modules then passed cleanly.
+No product-code or walkthrough-script fix was needed — this was a
+local port collision between two concurrently-active worker worktrees,
+not a defect in the CI job itself (CI runs one job per runner, so this
+collision cannot occur there).
+
+- install (`npm ci --no-audit --no-fund`): PASS.
+- build (`npm run build`): PASS — no type errors, vite build succeeded.
+- `npm run db:migrate`: PASS — all 9 migrations applied (0000-0008).
+- `npm run seed`: PASS — D1 rows + 6 R2 objects seeded.
+- `wrangler dev` + `/health` poll: PASS (port 8797, after the 8787
+  collision described above).
+- `npm run walkthrough` (producer -> review -> speaker -> public -> data):
+  ALL PASS.
+  - PASS producer (J1, J2, J3, J5)
+  - PASS review (J4 — queue ordering/anonymization/scorecard/cap/authz/
+    remind/results/CSV, all `ok`)
+  - PASS speaker (J6/J7/J8 — onboarding tasks, portal, invitations,
+    deliverable versioning, comment thread, content-approval gate, all
+    `ok`)
+  - PASS public (J9/J10 — agenda scheduling, conflict surfacing,
+    auto-schedule, all public/embed surfaces, visibility gates, all `ok`)
+  - PASS data (J11/J12 — contacts/CSV import/merge/segments/bulk-email
+    cap, bearer tokens, exports, `/docs/api`, all `ok`)
+
+No FAIL lines, no PLANNER: lines. All five walkthrough modules green on
+this run; no product-code changes were required.
