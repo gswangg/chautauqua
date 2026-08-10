@@ -80,6 +80,9 @@ function LandingPage(props: { adminHref: string; portalHref: string; submitHref:
                 <a href={props.mailboxHref}>Dev mailbox</a>
               </li>
             ) : null}
+            <li>
+              <a href="/docs/api">API docs</a>
+            </li>
           </ul>
         </main>
       </body>
