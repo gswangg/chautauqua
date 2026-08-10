@@ -2,24 +2,16 @@
 // repo/submissions.ts (contention decomposition, no behavior change). See
 // repo/submissions.ts for the module-level contract notes.
 
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { newId } from "../../../domain/ids";
+import { submissionSeqSubquery } from "./seq";
 
 export interface CreateSubmissionInput {
   title: string;
   description?: string | null;
   contact?: { email: string; firstName: string; lastName: string } | null;
-}
-
-async function nextSeq(db: Db, eventId: string): Promise<number> {
-  const rows = await db
-    .select({ maxSeq: sql<number>`max(${schema.submission.seq})` })
-    .from(schema.submission)
-    .where(eq(schema.submission.eventId, eventId));
-  const max = rows[0]?.maxSeq;
-  return (max ?? 0) + 1;
 }
 
 /** Shared with ./participants (co-presenter invite) — not re-exported from
@@ -58,14 +50,13 @@ export async function createSubmission(
   input: CreateSubmissionInput,
 ): Promise<string> {
   const now = new Date();
-  const seq = await nextSeq(db, eventId);
   const id = newId();
 
   await db.insert(schema.submission).values({
     id,
     eventId,
     formId: null,
-    seq,
+    seq: submissionSeqSubquery(eventId),
     title: input.title,
     description: input.description ?? null,
     status: "pending",
@@ -102,14 +93,13 @@ export async function cloneSubmission(db: Db, submissionId: string): Promise<str
   if (!original) throw new Error(`cloneSubmission: submission ${submissionId} not found`);
 
   const now = new Date();
-  const seq = await nextSeq(db, original.eventId);
   const newSubmissionId = newId();
 
   await db.insert(schema.submission).values({
     id: newSubmissionId,
     eventId: original.eventId,
     formId: original.formId,
-    seq,
+    seq: submissionSeqSubquery(original.eventId),
     title: `${original.title} (copy)`,
     description: original.description,
     trackId: original.trackId,
