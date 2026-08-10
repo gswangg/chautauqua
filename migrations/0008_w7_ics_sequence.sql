@@ -1,0 +1,15 @@
+-- DEC-051: reserves migration slot 0008 for submission.ics_sequence.
+--
+-- Gap note (flagged, not silently papered over): DEC-051 describes
+-- ics_sequence as a NEW column to be added here. In this repo it already
+-- shipped in migrations/0000_secret_matthew_murdock.sql
+-- (`ics_sequence integer DEFAULT 0 NOT NULL` on `submission`) and has been in
+-- active use since DEC-021's agenda slot writes (src/server/repo/agenda.ts).
+-- Re-issuing `ALTER TABLE submission ADD COLUMN ics_sequence ...` here would
+-- fail (SQLite: duplicate column name) against any DB that already ran
+-- migration 0000, and SQLite's ALTER TABLE ADD COLUMN has no IF NOT EXISTS
+-- guard. This migration is therefore an intentional no-op that reserves the
+-- 0008 filename/journal slot DEC-051 calls for, without corrupting a fresh
+-- `npm run db:migrate` run. No schema change needed or performed.
+SELECT 1;
+--> statement-breakpoint
