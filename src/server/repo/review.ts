@@ -28,6 +28,7 @@ export interface PlanRecord {
   scale: { min: number; max: number };
   criteria: EvaluationCriterionDef[];
   rounds: number;
+  currentRound: number;
   maxEvaluations: number | null;
   createdAt: number;
   updatedAt: number;
@@ -46,6 +47,7 @@ function toPlanRecord(row: typeof schema.evaluationPlan.$inferSelect): PlanRecor
     scale: JSON.parse(row.scaleJson) as { min: number; max: number },
     criteria: JSON.parse(row.criteriaJson) as EvaluationCriterionDef[],
     rounds: row.rounds,
+    currentRound: row.currentRound,
     maxEvaluations: row.maxEvaluations,
     createdAt: row.createdAt.getTime(),
     updatedAt: row.updatedAt.getTime(),
@@ -145,6 +147,25 @@ export async function updatePlan(db: Db, planId: string, patch: PlanPatch): Prom
     .where(eq(schema.evaluationPlan.id, planId));
   const updated = await getPlanById(db, planId);
   if (!updated) throw new Error(`plan ${planId} not found after update`);
+  return updated;
+}
+
+/** DEC-082: advances the plan's current_round by one, e.g. once round N's
+ * evaluations are done and the organizer wants round N+1 opened. Rereads the
+ * plan first (never trusts a caller-passed stale record) and refuses to
+ * advance past plan.rounds. */
+export async function advancePlanRound(db: Db, planId: string): Promise<PlanRecord> {
+  const plan = await getPlanById(db, planId);
+  if (!plan) throw new ApiError("not_found", "Plan not found");
+  if (plan.currentRound >= plan.rounds) {
+    throw new ApiError("conflict", `Plan is already at its final round (${plan.rounds})`);
+  }
+  await db
+    .update(schema.evaluationPlan)
+    .set({ currentRound: plan.currentRound + 1, updatedAt: new Date() })
+    .where(eq(schema.evaluationPlan.id, planId));
+  const updated = await getPlanById(db, planId);
+  if (!updated) throw new Error(`plan ${planId} not found after round advance`);
   return updated;
 }
 

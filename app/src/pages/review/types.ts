@@ -31,11 +31,15 @@ export interface EvaluationPlan {
   scale: EvaluationScale;
   criteria: EvaluationCriterion[];
   rounds: number;
+  // DEC-082: the round the plan is currently on (1-based, <= rounds).
+  currentRound: number;
   maxEvaluationsPerSubmission?: number;
   createdAt: number;
 }
 
-export type PlanDraft = Omit<EvaluationPlan, 'id' | 'eventId' | 'createdAt'>;
+// currentRound is server-managed (DEC-082: only advance-round moves it) --
+// never part of the create/edit draft.
+export type PlanDraft = Omit<EvaluationPlan, 'id' | 'eventId' | 'createdAt' | 'currentRound'>;
 
 export const DEFAULT_PLAN_DRAFT: PlanDraft = {
   name: '',

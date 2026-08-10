@@ -1,0 +1,12 @@
+-- DEC-082: multi-round evaluation. Adds evaluation_plan.current_round, the
+-- round an organizer has advanced the plan to (starts at 1; POST
+-- /api/v1/plans/:id/advance-round increments it, capped at plan.rounds).
+--
+-- Filename note (DEC-015 append-only, following the 0004_wave3 pattern
+-- referenced in this task): the next free numeric slot in this repo's
+-- migrations/ directory is 0009, not 0005 -- migrations 0005-0008 already
+-- landed (segment, api_token, saved_view, ics_sequence) after 0004_wave3
+-- without a fresh meta/NNNN_snapshot.json each time. This migration follows
+-- that same established convention: it appends to migrations/meta/_journal.json
+-- but does not add a meta/0009_snapshot.json (none of 0005-0008 did either).
+ALTER TABLE `evaluation_plan` ADD `current_round` integer DEFAULT 1 NOT NULL;
