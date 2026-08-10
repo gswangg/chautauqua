@@ -22,15 +22,18 @@ import {
 import {
   canAccessFile,
   canAccessResourceFile,
+  canAccessTaskFile,
   getFileScope,
   getReplacesTarget,
   getResourceFileScope,
   getSubmissionScope,
+  getTaskFileScope,
   insertFile,
   insertFileComment,
   isValidContentStatus,
   listFileComments,
   listSubmissionFiles,
+  reviewerHasPlanForEvent,
   updateContentStatus,
 } from "../server/repo/files";
 
@@ -208,21 +211,37 @@ interface ServeScope {
   r2Key: string;
 }
 
-/** GET /files/:fileId serves two disjoint file populations: submission
- * deliverables/attachments (getFileScope, organizer-or-participant) and
- * DEC-047 resource files (getResourceFileScope, organizer-only). A file row
- * is one or the other, never both — resource files have submissionId null. */
+/** GET /files/:fileId serves three disjoint file populations: submission
+ * deliverables/attachments (getFileScope, organizer-or-participant, plus
+ * DEC-066 assigned reviewers), DEC-047 resource files (getResourceFileScope,
+ * organizer-only), and DEC-065 task-assignment handouts (getTaskFileScope,
+ * organizer-or-assigned-speaker). A file row belongs to exactly one
+ * population, never more than one — resource/task files have submissionId
+ * null. */
 async function authzServeFile(c: Context<AppEnv>, fileId: string): Promise<ServeScope> {
   const auth = requireAuth(c);
   const scope = await getFileScope(c.var.db, fileId);
   if (scope) {
-    if (!canAccessFile(auth, scope)) throw new ApiError("forbidden", "Not authorized for this file");
+    // DEC-066: reviewers aren't named in canAccessFile's org/participant
+    // logic — pass whether this reviewer is assigned (plan_reviewer) to a
+    // plan for the file's event, precomputed here so canAccessFile stays a
+    // pure function.
+    const reviewerAssignedToEvent =
+      auth.role === "reviewer" ? await reviewerHasPlanForEvent(c.var.db, auth.userId, scope.eventId) : undefined;
+    if (!canAccessFile(auth, scope, { reviewerAssignedToEvent })) {
+      throw new ApiError("forbidden", "Not authorized for this file");
+    }
     return scope;
   }
   const resourceScope = await getResourceFileScope(c.var.db, fileId);
-  if (!resourceScope) throw new ApiError("not_found", "File not found");
-  if (!canAccessResourceFile(auth, resourceScope)) throw new ApiError("forbidden", "Not authorized for this file");
-  return resourceScope;
+  if (resourceScope) {
+    if (!canAccessResourceFile(auth, resourceScope)) throw new ApiError("forbidden", "Not authorized for this file");
+    return resourceScope;
+  }
+  const taskScope = await getTaskFileScope(c.var.db, fileId);
+  if (!taskScope) throw new ApiError("not_found", "File not found");
+  if (!canAccessTaskFile(auth, taskScope)) throw new ApiError("forbidden", "Not authorized for this file");
+  return taskScope;
 }
 
 fileServeRoutes.get("/files/:fileId", async (c) => {

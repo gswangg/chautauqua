@@ -228,8 +228,19 @@ export function OnboardingGrid() {
                         aria-label={`Toggle ${task.title} for ${row.contact.name}`}
                       >
                         {cell.status === 'complete' ? 'Complete' : overdue ? 'Overdue' : 'Pending'}
-                        {cell.fileId && <span className="chq-paperclip" aria-label="Has file" title="Has file">{'📎'}</span>}
                       </button>
+                      {cell.fileId && (
+                        <a
+                          href={`/files/${cell.fileId}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="chq-paperclip"
+                          aria-label="Has file"
+                          title="Has file"
+                        >
+                          {'📎'}
+                        </a>
+                      )}
                     </td>
                   );
                 })}

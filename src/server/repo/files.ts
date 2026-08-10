@@ -3,7 +3,7 @@
 // thin: parse/authz -> repo function -> pure core (src/domain/files.ts) ->
 // response.
 
-import { desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { newId } from "../../domain/ids";
@@ -50,6 +50,7 @@ export async function getSubmissionScope(db: Db, submissionId: string): Promise<
 export interface FileScope {
   fileId: string;
   submissionId: string | null;
+  eventId: string;
   orgId: string;
   uploadedByContactId: string | null;
   participantContactIds: string[];
@@ -85,6 +86,7 @@ export async function getFileScope(db: Db, fileId: string): Promise<FileScope | 
   return {
     fileId: fileRow.id,
     submissionId: fileRow.submissionId,
+    eventId: scope.eventId,
     orgId: scope.orgId,
     uploadedByContactId: fileRow.uploadedByContactId,
     participantContactIds: scope.participantContactIds,
@@ -97,11 +99,15 @@ export async function getFileScope(db: Db, fileId: string): Promise<FileScope | 
 /** Pure authz check for GET /files/:fileId and the comment endpoints, per
  * DEC-020: organizers may access any file in their org; speakers only when
  * they're a participant on the file's submission or the uploader — no IDOR.
- * DEC-020 doesn't name reviewers for this surface, so (narrowest reading)
- * they're not granted access here. */
+ * DEC-020 doesn't name reviewers for this surface; per DEC-066, reviewers may
+ * download submission files (GET /files/:fileId only, never the comment
+ * endpoints) iff they're assigned (plan_reviewer) to a review plan for the
+ * file's event — callers pass that precomputed boolean in `opts`, never
+ * defaulting to true. */
 export function canAccessFile(
   auth: { role: string; orgId: string; contactId?: string },
   scope: { orgId: string; uploadedByContactId: string | null; participantContactIds: readonly string[] },
+  opts?: { reviewerAssignedToEvent?: boolean },
 ): boolean {
   if (auth.role === "organizer") {
     return auth.orgId === scope.orgId;
@@ -110,7 +116,23 @@ export function canAccessFile(
     if (!auth.contactId) return false;
     return scope.uploadedByContactId === auth.contactId || scope.participantContactIds.includes(auth.contactId);
   }
+  if (auth.role === "reviewer") {
+    return opts?.reviewerAssignedToEvent === true;
+  }
   return false;
+}
+
+/** DEC-066: does this reviewer (by user id) have a plan_reviewer assignment
+ * on any evaluation plan for the given event? Pure existence check — used to
+ * gate reviewer downloads of submission files via GET /files/:fileId. */
+export async function reviewerHasPlanForEvent(db: Db, userId: string, eventId: string): Promise<boolean> {
+  const rows = await db
+    .select({ id: schema.planReviewer.id })
+    .from(schema.planReviewer)
+    .innerJoin(schema.evaluationPlan, eq(schema.planReviewer.planId, schema.evaluationPlan.id))
+    .where(and(eq(schema.planReviewer.userId, userId), eq(schema.evaluationPlan.eventId, eventId)))
+    .limit(1);
+  return rows.length > 0;
 }
 
 // ---------------------------------------------------------------------------
@@ -170,6 +192,84 @@ export async function getResourceFileScope(db: Db, fileId: string): Promise<Reso
  * scoped (no participant/uploader path like canAccessFile's speaker branch). */
 export function canAccessResourceFile(auth: { role: string; orgId: string }, scope: { orgId: string }): boolean {
   return auth.role === "organizer" && auth.orgId === scope.orgId;
+}
+
+// ---------------------------------------------------------------------------
+// Task-assignment (kind='handout') organizer/speaker authz scope (DEC-065)
+// ---------------------------------------------------------------------------
+
+export interface TaskFileScope {
+  fileId: string;
+  orgId: string;
+  assignmentContactId: string;
+  uploadedByContactId: string | null;
+  filename: string;
+  contentType: string;
+  r2Key: string;
+}
+
+/** Authz scope for GET /files/:fileId when the file is a task-assignment
+ * handout upload: submissionId null, kind 'handout', reverse-joined via
+ * task_assignment.fileId -> its task -> event, for orgId. Returns null when
+ * no task_assignment row references the file (not this population) — mirrors
+ * getResourceFileScope's disjointness with getFileScope. */
+export async function getTaskFileScope(db: Db, fileId: string): Promise<TaskFileScope | null> {
+  const fileRows = await db
+    .select({
+      id: schema.file.id,
+      kind: schema.file.kind,
+      submissionId: schema.file.submissionId,
+      filename: schema.file.filename,
+      contentType: schema.file.contentType,
+      r2Key: schema.file.r2Key,
+      uploadedByContactId: schema.file.uploadedByContactId,
+    })
+    .from(schema.file)
+    .where(eq(schema.file.id, fileId))
+    .limit(1);
+  const fileRow = fileRows[0];
+  if (!fileRow || fileRow.kind !== "handout" || fileRow.submissionId !== null) return null;
+
+  const assignmentRows = await db
+    .select({
+      assignmentContactId: schema.taskAssignment.contactId,
+      orgId: schema.event.orgId,
+    })
+    .from(schema.taskAssignment)
+    .innerJoin(schema.task, eq(schema.taskAssignment.taskId, schema.task.id))
+    .innerJoin(schema.event, eq(schema.task.eventId, schema.event.id))
+    .where(eq(schema.taskAssignment.fileId, fileId))
+    .limit(1);
+  const assignmentRow = assignmentRows[0];
+  if (!assignmentRow) return null;
+
+  return {
+    fileId: fileRow.id,
+    orgId: assignmentRow.orgId,
+    assignmentContactId: assignmentRow.assignmentContactId,
+    uploadedByContactId: fileRow.uploadedByContactId,
+    filename: fileRow.filename,
+    contentType: fileRow.contentType,
+    r2Key: fileRow.r2Key,
+  };
+}
+
+/** Pure authz check for DEC-065 task-assignment handout downloads: organizer
+ * org-match, or the speaker who is the assignment's contact or the uploader
+ * (a task-completion handout may be uploaded by the assigned speaker's own
+ * account) — no IDOR for any other speaker. */
+export function canAccessTaskFile(
+  auth: { role: string; orgId: string; contactId?: string },
+  scope: { orgId: string; assignmentContactId: string; uploadedByContactId: string | null },
+): boolean {
+  if (auth.role === "organizer") {
+    return auth.orgId === scope.orgId;
+  }
+  if (auth.role === "speaker") {
+    if (!auth.contactId) return false;
+    return auth.contactId === scope.assignmentContactId || auth.contactId === scope.uploadedByContactId;
+  }
+  return false;
 }
 
 // ---------------------------------------------------------------------------
