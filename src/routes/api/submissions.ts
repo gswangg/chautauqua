@@ -15,8 +15,10 @@ import {
   cloneSubmission,
   createSubmission,
   getEventOrgId,
+  getSubmissionContent,
   getSubmissionDetail,
   getSubmissionOwnership,
+  getUserEmail,
   isValidStatusLiteral,
   listSubmissions,
   parseListQuery,
@@ -31,6 +33,7 @@ import {
   setParticipantVisible,
 } from "../../server/repo/participants";
 import { findContactForOrg } from "../../server/repo/contacts";
+import { appendSubmissionRevision, getRevision, listRevisions } from "../../server/repo/revisions";
 
 export const submissionsRoutes = new Hono<AppEnv>();
 
@@ -161,10 +164,82 @@ submissionsRoutes.patch("/submissions/:id", requireOrganizer, csrfJson, async (c
     });
   }
 
+  // DEC-158 (CNT-11): snapshot the pre-edit content so we can tell whether
+  // this PATCH actually changed title/description before appending history.
+  const before = await getSubmissionContent(c.var.db, id);
+  if (!before) throw new ApiError("not_found", "Submission not found");
+
   await updateSubmissionFields(c.var.db, id, fields);
+
+  const newTitle = fields.title ?? before.title;
+  const newDescription = fields.description !== undefined ? fields.description : before.description;
+  if (newTitle !== before.title || newDescription !== before.description) {
+    const editorName = (await getUserEmail(c.var.db, auth.userId)) ?? auth.userId;
+    await appendSubmissionRevision(c.var.db, {
+      submissionId: id,
+      editorUserId: auth.userId,
+      editorName,
+      title: newTitle,
+      description: newDescription,
+    });
+  }
+
   const detail = await getSubmissionDetail(c.var.db, id);
   return c.json(detail);
 });
+
+// GET /api/v1/submissions/:id/revisions — organizer-only content history
+// (CNT-11, DEC-158), newest-first standard list envelope.
+submissionsRoutes.get("/submissions/:id/revisions", requireOrganizer, async (c) => {
+  const auth = requireAuth(c);
+  const id = c.req.param("id");
+  const ownership = await getSubmissionOwnership(c.var.db, id);
+  if (!ownership) throw new ApiError("not_found", "Submission not found");
+  if (ownership.orgId !== auth.orgId) throw new ApiError("forbidden", "Submission belongs to a different org");
+
+  const items = await listRevisions(c.var.db, id);
+  return c.json({ items, total: items.length, page: 1, perPage: items.length || 1 });
+});
+
+// POST /api/v1/submissions/:id/revisions/:revisionId/restore — organizer-only.
+// Applies the snapshot's title+description through the same update path as
+// the PATCH handler above, so the restore itself lands its own history row
+// attributed to the restorer. Never sends email.
+submissionsRoutes.post(
+  "/submissions/:id/revisions/:revisionId/restore",
+  requireOrganizer,
+  csrfJson,
+  async (c) => {
+    const auth = requireAuth(c);
+    const id = c.req.param("id");
+    const revisionId = c.req.param("revisionId");
+    const ownership = await getSubmissionOwnership(c.var.db, id);
+    if (!ownership) throw new ApiError("not_found", "Submission not found");
+    if (ownership.orgId !== auth.orgId) throw new ApiError("forbidden", "Submission belongs to a different org");
+
+    const revision = await getRevision(c.var.db, id, revisionId);
+    if (!revision) throw new ApiError("not_found", "Revision not found");
+
+    const before = await getSubmissionContent(c.var.db, id);
+    if (!before) throw new ApiError("not_found", "Submission not found");
+
+    await updateSubmissionFields(c.var.db, id, { title: revision.title, description: revision.description });
+
+    if (revision.title !== before.title || revision.description !== before.description) {
+      const editorName = (await getUserEmail(c.var.db, auth.userId)) ?? auth.userId;
+      await appendSubmissionRevision(c.var.db, {
+        submissionId: id,
+        editorUserId: auth.userId,
+        editorName,
+        title: revision.title,
+        description: revision.description,
+      });
+    }
+
+    const detail = await getSubmissionDetail(c.var.db, id);
+    return c.json(detail);
+  },
+);
 
 interface InviteParticipantBody {
   contactId?: unknown;

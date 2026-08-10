@@ -289,6 +289,7 @@ describe("PATCH /api/v1/submissions/:id (CNT-09 admin session editing)", () => {
   function fakeDb(selectQueue: unknown[][]) {
     let call = 0;
     const updates: any[] = [];
+    const inserts: any[] = [];
     const db = {
       select: () => {
         const rows = selectQueue[call] ?? [];
@@ -302,8 +303,13 @@ describe("PATCH /api/v1/submissions/:id (CNT-09 admin session editing)", () => {
           },
         }),
       }),
+      insert: (table: unknown) => ({
+        values: async (vals: unknown) => {
+          inserts.push({ table, vals });
+        },
+      }),
     };
-    return { db: db as unknown as AppEnv["Variables"]["db"], updates };
+    return { db: db as unknown as AppEnv["Variables"]["db"], updates, inserts };
   }
 
   function appWithDbAndAuth(db: AppEnv["Variables"]["db"], auth: AuthInfo | undefined) {
@@ -330,8 +336,10 @@ describe("PATCH /api/v1/submissions/:id (CNT-09 admin session editing)", () => {
   }
 
   it("organizer edits title and description", async () => {
-    const { db, updates } = fakeDb([
+    const { db, updates, inserts } = fakeDb([
       [SUBMISSION_ORG_A], // getSubmissionOwnership
+      [{ title: "Old Title", description: "Old description" }], // getSubmissionContent (pre-edit snapshot, DEC-158)
+      [{ email: "organizer@example.com" }], // getUserEmail (editor_name snapshot, DEC-158)
       [{ ...DETAIL_ROW, title: "New Title", description: "New description" }], // getSubmissionDetail: submission+event
       [], // participants
       [], // tracks
@@ -349,6 +357,13 @@ describe("PATCH /api/v1/submissions/:id (CNT-09 admin session editing)", () => {
     expect(json.description).toBe("New description");
     expect(updates).toHaveLength(1);
     expect(updates[0]).toMatchObject({ title: "New Title", description: "New description" });
+    // DEC-158: a real content change appends exactly one submission_revision row.
+    expect(inserts).toHaveLength(1);
+    expect(inserts[0].vals).toMatchObject({
+      editorName: "organizer@example.com",
+      title: "New Title",
+      description: "New description",
+    });
   });
 
   it("404s a genuinely different org's organizer on a real submission id (cross-org isolation)", async () => {

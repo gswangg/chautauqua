@@ -4,6 +4,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { apiGet, apiList, apiPatch, apiPost, ApiError } from '../../lib/api';
+import { formatDate as formatTimestamp } from '../../lib/dates';
 import type { CfpForm } from '../forms/types';
 import { buildAnswerRows, resolveAnswerFields } from './detailRows';
 import {
@@ -33,6 +34,15 @@ function InviteStatusChip({ status }: { status: InviteStatus }) {
   return <span className={`chq-status-pill chq-invite-status-${status}`}>{INVITE_STATUS_LABELS[status]}</span>;
 }
 
+// CNT-11 (DEC-158): session content version history.
+interface RevisionEntry {
+  id: string;
+  editorName: string;
+  title: string;
+  description: string | null;
+  createdAt: number;
+}
+
 export function SubmissionDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -55,6 +65,11 @@ export function SubmissionDetailPage() {
   const [editDescription, setEditDescription] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
   const [contentStatusPending, setContentStatusPending] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyEntries, setHistoryEntries] = useState<RevisionEntry[]>([]);
+  const [historyError, setHistoryError] = useState<string | null>(null);
+  const [restoringId, setRestoringId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -230,6 +245,39 @@ export function SubmissionDetailPage() {
     }
   }
 
+  async function toggleHistory() {
+    const opening = !historyOpen;
+    setHistoryOpen(opening);
+    if (opening && id) {
+      setHistoryLoading(true);
+      setHistoryError(null);
+      try {
+        const res = await apiList<RevisionEntry>(`/submissions/${id}/revisions`);
+        setHistoryEntries(res.items);
+      } catch (err) {
+        setHistoryError(err instanceof ApiError ? err.message : 'Failed to load history');
+      } finally {
+        setHistoryLoading(false);
+      }
+    }
+  }
+
+  async function restoreRevision(revisionId: string) {
+    if (!id) return;
+    setRestoringId(revisionId);
+    setHistoryError(null);
+    try {
+      const updated = await apiPost<SubmissionDetail>(`/submissions/${id}/revisions/${revisionId}/restore`);
+      setDetail(updated);
+      const res = await apiList<RevisionEntry>(`/submissions/${id}/revisions`);
+      setHistoryEntries(res.items);
+    } catch (err) {
+      setHistoryError(err instanceof ApiError ? `Restore failed: ${err.message}` : 'Restore failed');
+    } finally {
+      setRestoringId(null);
+    }
+  }
+
   if (loading) {
     return (
       <div className="chq-page chq-submission-detail-page">
@@ -332,6 +380,42 @@ export function SubmissionDetailPage() {
               Cancel
             </button>
           </div>
+        )}
+      </section>
+
+      <section className="chq-submission-history">
+        <h2>
+          <button type="button" onClick={toggleHistory}>
+            {historyOpen ? 'Hide history' : 'Show history'}
+          </button>
+        </h2>
+        {historyOpen && (
+          <>
+            {historyError && <div className="chq-error-banner">{historyError}</div>}
+            {historyLoading ? (
+              <p>Loading history...</p>
+            ) : historyEntries.length === 0 ? (
+              <p>No edits recorded yet.</p>
+            ) : (
+              <ul className="chq-submission-history-list">
+                {historyEntries.map((entry) => (
+                  <li key={entry.id} className="chq-submission-history-entry">
+                    <div>
+                      <strong>{entry.editorName}</strong> &mdash; {formatTimestamp(entry.createdAt)}
+                    </div>
+                    <div>{entry.title}</div>
+                    <button
+                      type="button"
+                      disabled={restoringId === entry.id}
+                      onClick={() => restoreRevision(entry.id)}
+                    >
+                      Restore
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </>
         )}
       </section>
 

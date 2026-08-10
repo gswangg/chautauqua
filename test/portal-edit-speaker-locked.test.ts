@@ -31,6 +31,12 @@ interface FakeDbData {
   answerRows?: unknown[];
   trackRows?: unknown[];
   submissionTrackRows?: unknown[];
+  // DEC-158 (task w3-b): saveSubmissionEdits now reads the pre-edit
+  // submission row to decide whether to append a submission_revision.
+  // Empty by default: these tests aren't exercising the history feature,
+  // so an empty pre-edit snapshot means the revision-append branch is
+  // skipped (no insert() call, which this fake db doesn't support).
+  submissionRows?: unknown[];
 }
 
 function makeFakeDb(data: FakeDbData) {
@@ -43,6 +49,7 @@ function makeFakeDb(data: FakeDbData) {
     if (table === schema.submissionAnswer) return data.answerRows ?? [];
     if (table === schema.track) return data.trackRows ?? [];
     if (table === schema.submissionTrack) return data.submissionTrackRows ?? [];
+    if (table === schema.submission) return data.submissionRows ?? [];
     throw new Error("fake db: unexpected table in select");
   }
 

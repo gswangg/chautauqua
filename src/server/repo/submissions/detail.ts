@@ -61,6 +61,34 @@ export async function getEventOrgId(db: Db, eventId: string): Promise<string | n
   return rows[0]?.orgId ?? null;
 }
 
+/** Lightweight pre/post-edit snapshot for revision diffing (DEC-158,
+ * task w3-b) — avoids the full participants/answers join getSubmissionDetail
+ * does. */
+export async function getSubmissionContent(
+  db: Db,
+  submissionId: string,
+): Promise<{ title: string; description: string | null } | null> {
+  const rows = await db
+    .select({ title: schema.submission.title, description: schema.submission.description })
+    .from(schema.submission)
+    .where(eq(schema.submission.id, submissionId))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+/** The authenticated user's email, used as the editor-name snapshot on
+ * organizer-authored submission_revision rows (DEC-158) — the `user` table
+ * has no display-name column, so email is the best identifying attribute
+ * available. */
+export async function getUserEmail(db: Db, userId: string): Promise<string | null> {
+  const rows = await db
+    .select({ email: schema.user.email })
+    .from(schema.user)
+    .where(eq(schema.user.id, userId))
+    .limit(1);
+  return rows[0]?.email ?? null;
+}
+
 export async function getSubmissionDetail(db: Db, submissionId: string): Promise<SubmissionDetail | null> {
   const rows = await db
     .select({
