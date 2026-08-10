@@ -1,0 +1,157 @@
+import { useEffect, useState } from 'react';
+import { apiDelete, apiList, apiPatch, apiPost, ApiError } from '../../lib/api';
+import { COMPOSE_MERGE_FIELDS, type EmailTemplate } from './types';
+
+interface DraftTemplate {
+  name: string;
+  subject: string;
+  bodyText: string;
+}
+
+const BLANK_DRAFT: DraftTemplate = { name: '', subject: '', bodyText: '' };
+
+export function TemplatesTab({ eventId }: { eventId: string }) {
+  const [templates, setTemplates] = useState<EmailTemplate[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [draft, setDraft] = useState<DraftTemplate>(BLANK_DRAFT);
+  const [saving, setSaving] = useState(false);
+
+  function load() {
+    setLoading(true);
+    setError(null);
+    apiList<EmailTemplate>(`/events/${eventId}/templates`)
+      .then((res) => setTemplates(res.items))
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load templates'))
+      .finally(() => setLoading(false));
+  }
+
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eventId]);
+
+  function startNew() {
+    setEditingId('new');
+    setDraft(BLANK_DRAFT);
+  }
+
+  function startEdit(t: EmailTemplate) {
+    setEditingId(t.id);
+    setDraft({ name: t.name, subject: t.subject, bodyText: t.bodyText });
+  }
+
+  async function save() {
+    setSaving(true);
+    setError(null);
+    try {
+      if (editingId === 'new') {
+        await apiPost(`/events/${eventId}/templates`, draft);
+      } else if (editingId) {
+        await apiPatch(`/templates/${editingId}`, draft);
+      }
+      setEditingId(null);
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Failed to save template');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function remove(id: string) {
+    setError(null);
+    try {
+      await apiDelete(`/templates/${id}`);
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Failed to delete template');
+    }
+  }
+
+  function insertChip(field: string) {
+    setDraft((d) => ({ ...d, bodyText: `${d.bodyText}{${field}}` }));
+  }
+
+  return (
+    <div className="chq-templates-tab">
+      {error && <div className="chq-error-banner">{error}</div>}
+      {loading && <p>Loading templates...</p>}
+
+      <button type="button" onClick={startNew}>
+        New template
+      </button>
+
+      <table className="chq-templates-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Subject</th>
+            <th />
+          </tr>
+        </thead>
+        <tbody>
+          {templates.map((t) => (
+            <tr key={t.id}>
+              <td>{t.name}</td>
+              <td>{t.subject}</td>
+              <td>
+                <button type="button" onClick={() => startEdit(t)}>
+                  Edit
+                </button>
+                <button type="button" onClick={() => remove(t.id)}>
+                  Delete
+                </button>
+              </td>
+            </tr>
+          ))}
+          {!loading && templates.length === 0 && (
+            <tr>
+              <td colSpan={3}>No templates yet.</td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+
+      {editingId && (
+        <div className="chq-template-editor">
+          <h2>{editingId === 'new' ? 'New template' : 'Edit template'}</h2>
+          <label>
+            Name
+            <input value={draft.name} onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))} />
+          </label>
+          <label>
+            Subject
+            <input value={draft.subject} onChange={(e) => setDraft((d) => ({ ...d, subject: e.target.value }))} />
+          </label>
+          <label>
+            Body
+            <textarea
+              rows={8}
+              value={draft.bodyText}
+              onChange={(e) => setDraft((d) => ({ ...d, bodyText: e.target.value }))}
+            />
+          </label>
+
+          <div className="chq-merge-field-chips">
+            {COMPOSE_MERGE_FIELDS.map((field) => (
+              <button key={field} type="button" className="chq-chip" onClick={() => insertChip(field)}>
+                {`{${field}}`}
+              </button>
+            ))}
+          </div>
+
+          <div className="chq-template-editor-actions">
+            <button type="button" disabled={saving} onClick={save}>
+              Save
+            </button>
+            <button type="button" disabled={saving} onClick={() => setEditingId(null)}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

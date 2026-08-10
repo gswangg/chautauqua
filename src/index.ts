@@ -8,6 +8,7 @@ import { eventsRoutes } from "./routes/api/events";
 import { emailLogRoutes } from "./routes/api/email-log";
 import { formsRoutes } from "./routes/api/forms";
 import { submissionsRoutes } from "./routes/api/submissions";
+import { commsRoutes } from "./routes/comms";
 import { publicSubmitRoutes } from "./routes/public/submit";
 import { portalRoutes } from "./routes/portal/index";
 import { devMailboxRoutes, shouldMountDevMailbox } from "./routes/dev/mailbox";
@@ -37,6 +38,7 @@ app.route("/api/v1", submissionsRoutes);
 app.route("/api/v1", taskRoutes);
 app.route("/", emailLogRoutes);
 app.route("/", formsRoutes);
+app.route("/", commsRoutes);
 app.route("/", publicSubmitRoutes);
 app.route("/portal", portalRoutes);
 

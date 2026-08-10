@@ -2,7 +2,7 @@
 // types). Backs both /dev/mailbox (dev-only sink viewer, DEC-005/DEC-006)
 // and GET /api/v1/events/:eventId/email-log (J5 per-recipient history).
 
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, or, sql } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
 
@@ -27,6 +27,9 @@ export interface EmailLogListParams {
   eventId?: string;
   contactId?: string;
   status?: string;
+  /** Case-insensitive substring match over subject or recipient email
+   * (J5 Comms history tab search — DEC-013 ?q convention). */
+  q?: string;
   page: number;
   perPage: number;
 }
@@ -79,6 +82,12 @@ export async function listEmailLog(db: Db, params: EmailLogListParams): Promise<
   if (params.eventId) conditions.push(eq(schema.emailLog.eventId, params.eventId));
   if (params.contactId) conditions.push(eq(schema.emailLog.contactId, params.contactId));
   if (params.status) conditions.push(eq(schema.emailLog.status, params.status));
+  if (params.q && params.q.trim() !== "") {
+    const like = `%${params.q.trim()}%`;
+    conditions.push(
+      or(sql`${schema.emailLog.subject} LIKE ${like} COLLATE NOCASE`, sql`${schema.emailLog.toEmail} LIKE ${like} COLLATE NOCASE`),
+    );
+  }
   const where = conditions.length > 0 ? and(...conditions) : undefined;
 
   const base = db

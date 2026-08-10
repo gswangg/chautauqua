@@ -34,11 +34,13 @@ emailLogRoutes.get("/api/v1/events/:eventId/email-log", requireOrganizer, async 
   const perPage = clampPerPage(c.req.query("perPage"));
   const contactId = c.req.query("contactId") || undefined;
   const status = c.req.query("status") || undefined;
+  const q = c.req.query("q") || undefined;
 
   const { items, total } = await listEmailLog(c.var.db, {
     eventId,
     contactId,
     status,
+    q,
     page,
     perPage,
   });
