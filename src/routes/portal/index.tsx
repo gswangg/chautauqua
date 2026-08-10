@@ -1,57 +1,62 @@
 // Speaker portal shell, per DEC-005 (/portal/* Hono JSX SSR, light
 // progressive enhancement) + DEC-012 (thin handlers: gate -> repo -> render)
-// + DEC-016 (status label mapping never leaks internal queue states).
+// + DEC-016 (status label mapping never leaks internal queue states)
+// + DEC-028 (shared gate/layout) + DEC-029 (Sessions/invitations depth).
 //
 // Route files export a named Hono sub-app; only src/index.ts mounts it.
 
 import { Hono } from "hono";
 import type { AppEnv } from "../../server/env";
+import { speakerGate, PortalLayout } from "./shared";
+import { csrfForm } from "../../server/middleware";
+import { ApiError } from "../../server/http";
 import {
   assertSpeakerContactId,
+  canTransitionInvite,
+  getMyInvitations,
+  getMySessions,
+  getParticipantScope,
   getPortalData,
   getPortalSubmissionDetail,
+  nextInviteStatus,
+  setInviteStatus,
+  type InviteAction,
   type PortalData,
+  type PortalInvitation,
+  type PortalSession,
   type PortalSubmissionDetail,
 } from "../../server/repo/portal";
+import { parseCookies, newCsrfToken, CSRF_COOKIE_NAME } from "../../auth/cookies";
 
 export const portalRoutes = new Hono<AppEnv>();
 
-// Gate: no session -> /login; a session that isn't a speaker (organizer,
-// reviewer) -> /admin. This is deliberately distinct from the JSON-error
-// requireSpeaker middleware (DEC-012), which is built for /api/v1 — an SSR
-// surface redirects instead of returning a 401/403 body.
-portalRoutes.use("*", async (c, next) => {
-  const auth = c.var.auth;
-  if (!auth) return c.redirect("/login", 302);
-  if (auth.role !== "speaker") return c.redirect("/admin", 302);
-  await next();
-});
+portalRoutes.use("*", speakerGate);
 
-function Layout(props: { branding: PortalData["branding"]; children: unknown }) {
-  const accent = props.branding.accentColor ?? "#2b2b2b";
+function ensureCsrfCookie(c: { req: { header(name: string): string | undefined } }): {
+  token: string;
+  setCookieIfNew: string | null;
+} {
+  const cookies = parseCookies(c.req.header("cookie") ?? null);
+  const existing = cookies[CSRF_COOKIE_NAME];
+  if (existing) return { token: existing, setCookieIfNew: null };
+  const token = newCsrfToken();
+  return { token, setCookieIfNew: `${CSRF_COOKIE_NAME}=${token}; Path=/; SameSite=Lax` };
+}
+
+function Nav() {
   return (
-    <html lang="en">
-      <head>
-        <meta charset="utf-8" />
-        <title>{props.branding.eventName} - Speaker Portal</title>
-        <style>{`:root { --accent: ${accent}; } h1 { color: var(--accent); }`}</style>
-      </head>
-      <body>
-        <header>
-          {props.branding.logoUrl ? <img src={props.branding.logoUrl} alt="" height={40} /> : null}
-          <h1>{props.branding.eventName}</h1>
-          {props.branding.welcomeMessage ? <p>{props.branding.welcomeMessage}</p> : null}
-        </header>
-        <main>{props.children as any}</main>
-      </body>
-    </html>
+    <nav aria-label="Portal navigation">
+      <a href="/portal">Dashboard</a> | <a href="/portal/tasks">Tasks</a> | <a href="/portal/resources">Resources</a>
+    </nav>
   );
 }
 
-function PortalPage(props: { data: PortalData }) {
+function PortalPage(props: { data: PortalData; sessions: PortalSession[]; invitations: PortalInvitation[]; csrfToken: string }) {
   const { branding, submissions, tasks } = props.data;
+  const { sessions, invitations, csrfToken } = props;
   return (
-    <Layout branding={branding}>
+    <PortalLayout branding={branding}>
+      <Nav />
       <section aria-label="My Submissions">
         <h2>My Submissions</h2>
         {submissions.length === 0 ? (
@@ -101,25 +106,76 @@ function PortalPage(props: { data: PortalData }) {
             ))}
           </ul>
         )}
+        <p>
+          <a href="/portal/tasks">View all tasks</a>
+        </p>
       </section>
 
       <section aria-label="Sessions">
         <h2>Sessions</h2>
-        <p>Session invitations will appear here.</p>
+        {invitations.length > 0 ? (
+          <ul>
+            {invitations.map((inv) => (
+              <li>
+                Invited to co-present "{inv.title}" ({inv.ref}) at {inv.eventName}
+                <form method="post" action={`/portal/invitations/${inv.participantId}`} style="display:inline">
+                  <input type="hidden" name={CSRF_COOKIE_NAME} value={csrfToken} />
+                  <input type="hidden" name="action" value="accept" />
+                  <button type="submit">Accept</button>
+                </form>
+                <form method="post" action={`/portal/invitations/${inv.participantId}`} style="display:inline">
+                  <input type="hidden" name={CSRF_COOKIE_NAME} value={csrfToken} />
+                  <input type="hidden" name="action" value="decline" />
+                  <button type="submit">Decline</button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+        {sessions.length === 0 ? (
+          <p>No accepted sessions yet.</p>
+        ) : (
+          <ul>
+            {sessions.map((s) => (
+              <li>
+                {s.ref}: {s.title} —{" "}
+                {s.day ? (
+                  <>
+                    {s.day} {minutesToClock(s.startMin)}–{minutesToClock(s.endMin)}
+                    {s.roomName ? ` in ${s.roomName}` : ""}
+                  </>
+                ) : (
+                  "Not yet scheduled"
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
 
       <section aria-label="Resources">
         <h2>Resources</h2>
-        <p>Event resources will appear here.</p>
+        <p>
+          <a href="/portal/resources">View event resources</a>
+        </p>
       </section>
-    </Layout>
+    </PortalLayout>
   );
+}
+
+function minutesToClock(min: number | null): string {
+  if (min === null) return "";
+  const h = Math.floor(min / 60)
+    .toString()
+    .padStart(2, "0");
+  const m = (min % 60).toString().padStart(2, "0");
+  return `${h}:${m}`;
 }
 
 function SubmissionDetailPage(props: { branding: PortalData["branding"]; detail: PortalSubmissionDetail }) {
   const { detail } = props;
   return (
-    <Layout branding={props.branding}>
+    <PortalLayout branding={props.branding}>
       <a href="/portal">&larr; Back to My Submissions</a>
       <h2>
         {detail.ref}: {detail.title}
@@ -140,15 +196,21 @@ function SubmissionDetailPage(props: { branding: PortalData["branding"]; detail:
           ))}
         </dl>
       )}
-    </Layout>
+    </PortalLayout>
   );
 }
 
 portalRoutes.get("/", async (c) => {
   const auth = c.var.auth!;
   const contactId = assertSpeakerContactId(auth);
-  const data = await getPortalData(c.var.db, contactId, auth.orgId);
-  return c.html(<PortalPage data={data} />);
+  const [data, sessions, invitations] = await Promise.all([
+    getPortalData(c.var.db, contactId, auth.orgId),
+    getMySessions(c.var.db, contactId, auth.orgId),
+    getMyInvitations(c.var.db, contactId, auth.orgId),
+  ]);
+  const { token: csrfToken, setCookieIfNew } = ensureCsrfCookie(c);
+  if (setCookieIfNew) c.header("Set-Cookie", setCookieIfNew, { append: true });
+  return c.html(<PortalPage data={data} sessions={sessions} invitations={invitations} csrfToken={csrfToken} />);
 });
 
 portalRoutes.get("/submissions/:id", async (c) => {
@@ -163,4 +225,29 @@ portalRoutes.get("/submissions/:id", async (c) => {
   // already spent on the detail query, and keeps this handler thin.
   const data = await getPortalData(c.var.db, contactId, auth.orgId);
   return c.html(<SubmissionDetailPage branding={data.branding} detail={detail} />);
+});
+
+// POST /portal/invitations/:participantId { action: 'accept'|'decline' } —
+// own participant rows only, and only rows currently invite_status='invited'
+// may transition (DEC-029).
+portalRoutes.post("/invitations/:participantId", csrfForm, async (c) => {
+  const auth = c.var.auth!;
+  const contactId = assertSpeakerContactId(auth);
+  const participantId = c.req.param("participantId");
+
+  const scope = await getParticipantScope(c.var.db, participantId);
+  if (!scope || scope.orgId !== auth.orgId) throw new ApiError("not_found", "Invitation not found");
+  if (scope.contactId !== contactId) throw new ApiError("forbidden", "This invitation does not belong to you");
+  if (!canTransitionInvite(scope.inviteStatus)) {
+    throw new ApiError("invalid", "This invitation has already been responded to");
+  }
+
+  const body = await c.req.parseBody();
+  const action = body["action"];
+  if (action !== "accept" && action !== "decline") {
+    throw new ApiError("invalid", "action must be 'accept' or 'decline'", { action: "Invalid value" });
+  }
+
+  await setInviteStatus(c.var.db, participantId, nextInviteStatus(action as InviteAction));
+  return c.redirect("/portal", 302);
 });
