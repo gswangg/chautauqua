@@ -640,6 +640,30 @@ export const pipelineActivity = sqliteTable(
   }),
 );
 
+// migrations/0013_submission_revision.sql (DEC-158, task w3-b): CNT-11
+// session content history. Appended by exactly two write paths (organizer
+// PATCH /submissions/:id and portal-edit's locked-field sync), only when
+// title/description actually changed; restore re-applies a snapshot
+// through the same paths so it lands its own row too. editor_user_id is
+// nullable because the portal-edit path is authenticated as a speaker
+// contact, not a `user` row — editor_name is always a snapshot string so
+// history reads correctly even if the editor is later renamed/deleted.
+export const submissionRevision = sqliteTable(
+  "submission_revision",
+  {
+    id: id(),
+    submissionId: text("submission_id").notNull(),
+    editorUserId: text("editor_user_id"),
+    editorName: text("editor_name").notNull(),
+    title: text("title").notNull(),
+    description: text("description"),
+    createdAt: createdAt(),
+  },
+  (t) => ({
+    submission_revision_submission_id_idx: index("submission_revision_submission_id_idx").on(t.submissionId),
+  }),
+);
+
 export const emailLog = sqliteTable(
   "email_log",
   {

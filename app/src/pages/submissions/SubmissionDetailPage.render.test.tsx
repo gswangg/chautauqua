@@ -111,4 +111,45 @@ describe('SubmissionDetailPage render smoke: inline edit + content-status contro
       expect(screen.getByText('Content: approved')).toBeInTheDocument();
     });
   });
+
+  it('shows history panel and restores a prior revision (CNT-11, DEC-158)', async () => {
+    let currentDetail = baseDetail();
+    const revisions = [
+      { id: 'rev-2', editorName: 'organizer@example.com', title: 'Original Title', description: 'Second edit', createdAt: 1700000200000 },
+      { id: 'rev-1', editorName: 'organizer@example.com', title: 'Original Title', description: 'First edit', createdAt: 1700000100000 },
+    ];
+    const restoreMock = vi.fn(() => {
+      currentDetail = { ...currentDetail, description: 'First edit' };
+      return currentDetail;
+    });
+    mockApi({
+      [`GET /api/v1/submissions/${SUB_ID}`]: () => currentDetail,
+      [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
+      [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/revisions`]: { items: revisions, total: 2, page: 1, perPage: 2 },
+      [`POST /api/v1/submissions/${SUB_ID}/revisions/rev-1/restore`]: restoreMock,
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('Original description')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show history' }));
+
+    await waitFor(() => {
+      expect(screen.getAllByText('organizer@example.com').length).toBe(2);
+    });
+
+    const restoreButtons = screen.getAllByRole('button', { name: 'Restore' });
+    fireEvent.click(restoreButtons[1]!);
+
+    await waitFor(() => {
+      expect(restoreMock).toHaveBeenCalled();
+    });
+    await waitFor(() => {
+      expect(screen.getByText('First edit')).toBeInTheDocument();
+    });
+  });
 });

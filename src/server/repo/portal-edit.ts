@@ -12,6 +12,7 @@ import { and, eq } from "drizzle-orm";
 import * as schema from "../../db/schema";
 import type { Db } from "../context";
 import { newId } from "../../domain/ids";
+import { appendSubmissionRevision } from "./revisions";
 import type { FormFieldDef, FormFieldKind, FormFieldSection, FormFieldRule, AnswerMap } from "../../forms/types";
 import { LOCKED_SESSION_FIELDS, LOCKED_SPEAKER_FIELDS, lockedFieldName } from "../../forms/types";
 import type { SubmissionStatus } from "../../domain/status";
@@ -169,6 +170,26 @@ export async function saveSubmissionEdits(
   const now = new Date();
   const title = cleanedAnswers[LOCKED_SESSION_FIELDS[0]];
   const description = cleanedAnswers[LOCKED_SESSION_FIELDS[1]];
+
+  // DEC-158 (CNT-11): snapshot pre-edit title/description so the
+  // post-update append below can tell whether the locked fields actually
+  // changed. Also grab the contact's current name for the editor_name
+  // snapshot in case only firstName/lastName (and not title/description)
+  // changed this request.
+  const beforeRows = await db
+    .select({ title: schema.submission.title, description: schema.submission.description })
+    .from(schema.submission)
+    .where(eq(schema.submission.id, submissionId))
+    .limit(1);
+  const before = beforeRows[0];
+
+  const contactBeforeRows = await db
+    .select({ firstName: schema.contact.firstName, lastName: schema.contact.lastName })
+    .from(schema.contact)
+    .where(eq(schema.contact.id, contactId))
+    .limit(1);
+  const contactBefore = contactBeforeRows[0];
+
   await db
     .update(schema.submission)
     .set({
@@ -189,6 +210,23 @@ export async function saveSubmissionEdits(
   if (Object.keys(contactUpdate).length > 0) {
     contactUpdate.updatedAt = now;
     await db.update(schema.contact).set(contactUpdate).where(eq(schema.contact.id, contactId));
+  }
+
+  if (before) {
+    const newTitle = typeof title === "string" ? title : before.title;
+    const newDescription = typeof description === "string" ? description : before.description;
+    if (newTitle !== before.title || newDescription !== before.description) {
+      const resolvedFirstName = contactUpdate.firstName ?? contactBefore?.firstName ?? "";
+      const resolvedLastName = contactUpdate.lastName ?? contactBefore?.lastName ?? "";
+      const editorName = `${resolvedFirstName} ${resolvedLastName}`.trim() || "Speaker";
+      await appendSubmissionRevision(db, {
+        submissionId,
+        editorUserId: null,
+        editorName,
+        title: newTitle,
+        description: newDescription,
+      });
+    }
   }
 
   const customEntries = Object.entries(cleanedAnswers).filter(([fieldId]) => lockedFieldName(fieldId) === null);

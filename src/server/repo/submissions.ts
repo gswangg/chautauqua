@@ -31,8 +31,10 @@ export {
 
 export {
   getEventOrgId,
+  getSubmissionContent,
   getSubmissionDetail,
   getSubmissionOwnership,
+  getUserEmail,
   type SubmissionDetail,
   type SubmissionDetailParticipant,
 } from "./submissions/detail";
