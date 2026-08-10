@@ -18,6 +18,7 @@ export function AgendaPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [autoScheduling, setAutoScheduling] = useState(false);
+  const [publishing, setPublishing] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
   function loadAgenda(id: string) {
@@ -89,6 +90,20 @@ export function AgendaPage() {
     }
   }
 
+  async function handlePublish() {
+    if (!eventId) return;
+    setPublishing(true);
+    setError(null);
+    try {
+      const result = await apiPost<{ published: number }>(`/events/${eventId}/agenda/publish`, {});
+      setToast(`Schedule live — ${result.published} sessions public.`);
+    } catch (err) {
+      setError(err instanceof ApiError ? `Publish failed: ${err.message}` : 'Publish failed');
+    } finally {
+      setPublishing(false);
+    }
+  }
+
   if (eventLoading) {
     return (
       <div className="chq-page">
@@ -127,6 +142,9 @@ export function AgendaPage() {
         </div>
         <button type="button" onClick={handleAutoSchedule} disabled={autoScheduling || !agenda}>
           {autoScheduling ? 'Auto-scheduling...' : 'Auto-schedule'}
+        </button>
+        <button type="button" onClick={handlePublish} disabled={publishing || !agenda}>
+          {publishing ? 'Publishing...' : 'Publish schedule'}
         </button>
       </div>
 
