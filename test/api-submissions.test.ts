@@ -118,20 +118,20 @@ describe("chunkIds (D1 bound-parameter batching for list-page enrichment queries
     expect(chunkIds([])).toEqual([]);
   });
 
-  it("splits into batches of at most 100, preserving order and every id", () => {
-    const ids = Array.from({ length: 101 }, (_, i) => `id-${i}`);
+  it("splits into batches of at most 90 (DEC-078), preserving order and every id", () => {
+    const ids = Array.from({ length: 91 }, (_, i) => `id-${i}`);
     const batches = chunkIds(ids);
     expect(batches.length).toBe(2);
-    expect(batches[0]!.length).toBe(100);
+    expect(batches[0]!.length).toBe(90);
     expect(batches[1]!.length).toBe(1);
     expect(batches.flat()).toEqual(ids);
   });
 
   it("handles an exact multiple of the chunk size without a trailing empty batch", () => {
-    const ids = Array.from({ length: 200 }, (_, i) => `id-${i}`);
+    const ids = Array.from({ length: 180 }, (_, i) => `id-${i}`);
     const batches = chunkIds(ids);
     expect(batches.length).toBe(2);
-    expect(batches.every((b) => b.length === 100)).toBe(true);
+    expect(batches.every((b) => b.length === 90)).toBe(true);
   });
 });
 
@@ -218,15 +218,15 @@ describe("listSubmissions: batched allowedIds fallback (>ID_CHUNK_SIZE track mat
     // Response queue mirrors listSubmissions' call order for this scenario
     // (q unset, trackId set, status unset, includeAnswers false):
     // 1) event lookup, 2) track-primary rows, 3) track-join rows,
-    // 4/5) the two id-batches of the >100-match select fallback,
+    // 4/5) the two id-batches of the >ID_CHUNK_SIZE-match select fallback,
     // 6/7) participant + track enrichment (each single-batch since the
     // final page is only `perPage` ids).
     const responses = [
       [{ recordPrefix: "SES" }], // event lookup
       allRows.map((r) => ({ id: r.id })), // track-primary
       [], // track-join (no secondary-track matches in this fixture)
-      allRows.slice(0, 100), // batch 1 of the id-scoped select
-      allRows.slice(100), // batch 2 of the id-scoped select
+      allRows.slice(0, 90), // batch 1 of the id-scoped select
+      allRows.slice(90), // batch 2 of the id-scoped select
       [], // participant enrichment for the returned page
       [], // submission_track enrichment for the returned page
     ];

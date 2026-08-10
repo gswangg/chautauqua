@@ -1,5 +1,6 @@
-// Submissions repo: status change (DEC-009: no email, idempotent
-// acceptance planning). Split out of repo/submissions.ts (contention
+// Submissions repo: status change (DEC-009: no email; DEC-079: acceptance
+// side effects retryable-exactly-once — planning runs BEFORE the row's
+// accepted_at commit). Split out of repo/submissions.ts (contention
 // decomposition, no behavior change). This module deliberately contains NO
 // mail/mailer import (DEC-009 invariant #1) — verified by a source-scan
 // test in test/api-submissions.test.ts.
@@ -11,6 +12,10 @@ import { newId } from "../../../domain/ids";
 import { changeStatus, type SubmissionStatus } from "../../../domain/status";
 import { planAcceptance } from "../../../domain/acceptance";
 import { isValidStatusLiteral } from "./query";
+import { chunkIds } from "../../../lib/chunk";
+import { DEC_079 } from "../../../decisions";
+
+void DEC_079; // planning-before-commit acceptance ordering + chunked/batched bulk status changes below
 
 async function getOrCreateTask(
   db: Db,
@@ -49,17 +54,18 @@ async function runAcceptancePlanning(db: Db, eventId: string, submissionId: stri
   const participantContactIds = participantRows.map((p) => p.contactId);
   if (participantContactIds.length === 0) return;
 
-  const existingRows = await db
-    .select({ contactId: schema.taskAssignment.contactId, title: schema.task.title })
-    .from(schema.taskAssignment)
-    .innerJoin(schema.task, eq(schema.taskAssignment.taskId, schema.task.id))
-    .where(and(eq(schema.task.eventId, eventId), inArray(schema.taskAssignment.contactId, participantContactIds)));
-
   const existingTaskTitlesByContact: Record<string, string[]> = {};
-  for (const r of existingRows) {
-    const arr = existingTaskTitlesByContact[r.contactId] ?? [];
-    arr.push(r.title);
-    existingTaskTitlesByContact[r.contactId] = arr;
+  for (const contactChunk of chunkIds(participantContactIds)) {
+    const existingRows = await db
+      .select({ contactId: schema.taskAssignment.contactId, title: schema.task.title })
+      .from(schema.taskAssignment)
+      .innerJoin(schema.task, eq(schema.taskAssignment.taskId, schema.task.id))
+      .where(and(eq(schema.task.eventId, eventId), inArray(schema.taskAssignment.contactId, contactChunk)));
+    for (const r of existingRows) {
+      const arr = existingTaskTitlesByContact[r.contactId] ?? [];
+      arr.push(r.title);
+      existingTaskTitlesByContact[r.contactId] = arr;
+    }
   }
 
   const plan = planAcceptance({
@@ -101,6 +107,13 @@ export interface UpdateStatusesResult {
  * NEVER sends email (DEC-009 invariant #1 — no mailer import in this
  * module). On first transition into 'accepted' (accepted_at was null) runs
  * the acceptance planner exactly once, idempotently.
+ *
+ * DEC-079: for a firing row, planning runs BEFORE the row's UPDATE — if
+ * planning throws, the row stays un-accepted so a retry re-fires (planning
+ * is already idempotent on (contact, task-title) pairs), preserving
+ * exactly-once semantics without D1 interactive transactions. Non-firing
+ * rows are batched into one chunked UPDATE per batch (status + updatedAt
+ * only — accepted_at is never touched, preserving it).
  */
 export async function updateSubmissionStatuses(
   db: Db,
@@ -111,14 +124,20 @@ export async function updateSubmissionStatuses(
 ): Promise<UpdateStatusesResult> {
   if (ids.length === 0) return { updated: 0 };
 
-  const rows = await db
-    .select({
-      id: schema.submission.id,
-      status: schema.submission.status,
-      acceptedAt: schema.submission.acceptedAt,
-    })
-    .from(schema.submission)
-    .where(and(eq(schema.submission.eventId, eventId), inArray(schema.submission.id, ids)));
+  const rows: { id: string; status: string; acceptedAt: Date | null }[] = [];
+  for (const idChunk of chunkIds(ids)) {
+    const chunkRows = await db
+      .select({
+        id: schema.submission.id,
+        status: schema.submission.status,
+        acceptedAt: schema.submission.acceptedAt,
+      })
+      .from(schema.submission)
+      .where(and(eq(schema.submission.eventId, eventId), inArray(schema.submission.id, idChunk)));
+    rows.push(...chunkRows);
+  }
+
+  const nonFiringIds: string[] = [];
 
   for (const row of rows) {
     const currentStatus = isValidStatusLiteral(row.status) ? row.status : "pending";
@@ -127,18 +146,31 @@ export async function updateSubmissionStatuses(
       status,
       now.getTime(),
     );
-    await db
-      .update(schema.submission)
-      .set({
-        status: result.status,
-        acceptedAt: result.acceptedAt !== null ? new Date(result.acceptedAt) : null,
-        updatedAt: now,
-      })
-      .where(eq(schema.submission.id, row.id));
 
     if (result.fireAcceptance) {
+      // Planning first (DEC-079): a throw here leaves the row un-accepted
+      // so retry re-fires; planning is idempotent so a partial prior run
+      // is safe to re-execute.
       await runAcceptancePlanning(db, eventId, row.id, now);
+      await db
+        .update(schema.submission)
+        .set({
+          status: result.status,
+          acceptedAt: result.acceptedAt !== null ? new Date(result.acceptedAt) : null,
+          updatedAt: now,
+        })
+        .where(eq(schema.submission.id, row.id));
+    } else {
+      nonFiringIds.push(row.id);
     }
+  }
+
+  for (const idChunk of chunkIds(nonFiringIds)) {
+    if (idChunk.length === 0) continue;
+    await db
+      .update(schema.submission)
+      .set({ status, updatedAt: now })
+      .where(and(eq(schema.submission.eventId, eventId), inArray(schema.submission.id, idChunk)));
   }
 
   return { updated: rows.length };

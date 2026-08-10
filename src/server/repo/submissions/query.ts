@@ -3,6 +3,15 @@
 // change). See repo/submissions.ts for the module-level contract notes.
 
 import { SUBMISSION_STATUSES, type SubmissionStatus } from "../../../domain/status";
+import { DEC_078 } from "../../../decisions";
+
+void DEC_078; // canonical chunk helper, re-exported here for existing importers
+
+// Canonical chunking helper (DEC-078) — re-exported so list.ts/submissions.ts
+// importers are untouched. The size (90) leaves headroom for the extra
+// eventId/status binds list.ts's filtered chunk queries add alongside each
+// chunk of ids.
+export { chunkIds, ID_CHUNK_SIZE } from "../../../lib/chunk";
 
 export type SortOrder = "newest" | "oldest" | "title" | "ref";
 
@@ -10,20 +19,6 @@ export const SORT_ORDERS: readonly SortOrder[] = ["newest", "oldest", "title", "
 
 const DEFAULT_PER_PAGE = 50;
 const MAX_PER_PAGE = 200;
-
-// D1 rejects a single statement once its total bound-parameter count passes
-// a low ceiling (empirically ~100 in local dev) — well under MAX_PER_PAGE,
-// so any inArray(...) keyed off a full page of ids must be batched. Pure
-// and unit-tested directly (no Db needed).
-export const ID_CHUNK_SIZE = 100;
-
-export function chunkIds(ids: string[]): string[][] {
-  const out: string[][] = [];
-  for (let i = 0; i < ids.length; i += ID_CHUNK_SIZE) {
-    out.push(ids.slice(i, i + ID_CHUNK_SIZE));
-  }
-  return out;
-}
 
 export interface ParsedListQuery {
   page: number;
