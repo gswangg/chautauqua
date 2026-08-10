@@ -189,4 +189,112 @@ describe("autoSchedule", () => {
     expect(placedS1).toBeDefined();
     expect(placedS1!.startMin).toBeGreaterThanOrEqual(600);
   });
+
+  it("falls back to the next room when the first room is occupied at that slot", () => {
+    const existing: PlacedSession[] = [
+      session({
+        submissionId: "existing1",
+        roomId: "room-a",
+        startMin: 540,
+        endMin: 600,
+        speakerContactIds: [],
+      }),
+    ];
+    const input = {
+      sessions: [
+        { submissionId: "s1", durationMin: 60, track: null, speakerContactIds: [] },
+      ],
+      rooms: ["room-a", "room-b"],
+      days: ["2026-08-10"],
+      dayStartMin: 540,
+      dayEndMin: 720,
+      gridMin: 15,
+      existing,
+    };
+
+    const result = autoSchedule(input);
+    const placedS1 = result.find((p) => p.submissionId === "s1");
+    expect(placedS1).toBeDefined();
+    // Room-a is occupied at 540-600, so s1 must fall back to room-b at the
+    // same earliest slot rather than skip ahead to a later start time.
+    expect(placedS1!.roomId).toBe("room-b");
+    expect(placedS1!.startMin).toBe(540);
+    expect(findConflicts(result)).toEqual([]);
+  });
+
+  it("falls back to the next slot when a shared speaker is occupied across rooms", () => {
+    const existing: PlacedSession[] = [
+      session({
+        submissionId: "existing1",
+        roomId: "room-a",
+        startMin: 540,
+        endMin: 600,
+        speakerContactIds: ["c1"],
+      }),
+    ];
+    const input = {
+      sessions: [
+        { submissionId: "s1", durationMin: 60, track: null, speakerContactIds: ["c1"] },
+      ],
+      // Only one room, but the speaker conflict itself (independent of room)
+      // must push s1 to the next available start time.
+      rooms: ["room-b"],
+      days: ["2026-08-10"],
+      dayStartMin: 540,
+      dayEndMin: 720,
+      gridMin: 15,
+      existing,
+    };
+
+    const result = autoSchedule(input);
+    const placedS1 = result.find((p) => p.submissionId === "s1");
+    expect(placedS1).toBeDefined();
+    expect(placedS1!.startMin).toBeGreaterThanOrEqual(600);
+    expect(findConflicts(result)).toEqual([]);
+  });
+
+  it("schedules ~400 sessions across 15 rooms/5 days quickly with zero conflicts", () => {
+    const rooms = Array.from({ length: 15 }, (_, i) => `room-${i}`);
+    const days = Array.from({ length: 5 }, (_, i) => `2026-08-${10 + i}`);
+    const speakerPool = Array.from({ length: 60 }, (_, i) => `speaker-${i}`);
+
+    const sessions = Array.from({ length: 400 }, (_, i) => {
+      const durationMin = [30, 45, 60, 90][i % 4]!;
+      const track = ["a", "b", "c"][i % 3]!;
+      const speakerContactIds = [
+        speakerPool[i % speakerPool.length]!,
+        speakerPool[(i + 7) % speakerPool.length]!,
+      ];
+      return {
+        submissionId: `sess-${i}`,
+        durationMin,
+        track,
+        speakerContactIds,
+      };
+    });
+
+    const input = {
+      sessions,
+      rooms,
+      days,
+      dayStartMin: 540, // 9:00
+      dayEndMin: 1080, // 18:00 (9h day)
+      gridMin: 30,
+      existing: [],
+    };
+
+    const start = Date.now();
+    const result = autoSchedule(input);
+    const elapsedMs = Date.now() - start;
+
+    expect(elapsedMs).toBeLessThan(2000);
+
+    const newlyPlacedIds = new Set(result.map((p) => p.submissionId));
+    const conflicts = findConflicts(result).filter(
+      (c) =>
+        newlyPlacedIds.has(c.submissionIds[0]) ||
+        newlyPlacedIds.has(c.submissionIds[1]),
+    );
+    expect(conflicts).toEqual([]);
+  });
 });
