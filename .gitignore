@@ -4,3 +4,4 @@ public/admin/
 .wrangler/
 .dev.vars
 *.log
+/.seed.sql
