@@ -22,39 +22,38 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   repos/ctx DEC-012/013/019; uploads/ics/statuses/perf/headshots/
   walkthrough/claim DEC-040-074 (DEC-059 superseded DEC-084); 2nd
   barrier DEC-107 (DEC-108..111 fixes); DEC-068 log append-only;
-  DEC-069 exit predicate; W19/W21 batteries VOIDED. Campaign 3:
-  DEC-139 exit needs DEC-069 battery+render-sweep(DEC-144)+findings
-  closure, sha descends 2dd2f33. DEC-140 .ics roundtrip+overlap;
-  DEC-141 reviewers via plan assignments; DEC-143 dupes same-name+
-  company; DEC-145/146 seed+date helpers. Waves 2-5 (DEC-147..166):
-  criteriaForRound sole resolution; CRM filters ARE SegmentRule[]+
-  'any'; drill-ins SSR gated by visibleSubmissionConditions; calendar
-  via formatDateOnly UTC; Pipeline=pipeline_entry+pipeline_activity;
-  CNT-11=submission_revision snapshots; Files=previous_file_id chains;
-  ZIP=src/lib/zip.ts STORE-only <=50. w5-a=only code lane, adds CI
-  render-sweep. Workers never edit eval-findings.md,
-  verification-log.md, decisions/, src/decisions.ts.
+  DEC-069 exit predicate; W19/W21 batteries VOIDED. Campaign 3: DEC-139
+  exit needs battery+render-sweep(DEC-144)+findings closure, sha
+  descends 2dd2f33; DEC-140 .ics roundtrip+overlap; DEC-141 reviewers
+  via plan assignments; DEC-143 dupes; DEC-145/146 seed+date helpers.
+  Waves 2-5 (DEC-147..166): criteriaForRound sole resolution; CRM
+  filters ARE SegmentRule[]+'any'; drill-ins SSR gated by
+  visibleSubmissionConditions; calendar via formatDateOnly UTC;
+  Pipeline=pipeline_entry+activity; CNT-11=submission_revision
+  snapshots; Files=previous_file_id chains; ZIP=src/lib/zip.ts
+  STORE-only <=50. w5-a=only code lane, adds CI render-sweep. Workers
+  never edit eval-findings.md, verification-log.md, decisions/,
+  src/decisions.ts.
 - Wave 6 (DEC-167..172): batteries drain LATE — w4-d/e/f/g+w5-a merged
-  DURING wave-6 planning. PlanEditor openAt/trackIds vs wire's
-  openDate/filters.trackIds → SPA conforms to wire; render-test mocks
-  MUST mirror real wire shapes (DEC-171); form-kind tasks lacked
-  DEC-111 backing forms → fixed via seed+manifest pin (DEC-172). P1s:
-  merge dropped bio/headshot/notes/phone/social (DEC-167); .ics lacked
-  ORGANIZER/ATTENDEE (DEC-168 amends DEC-007); PATCH form tracks
-  unvalidated (DEC-169); reviewer file access event-wide (DEC-170
-  supersedes DEC-066).
-- Wave 7 (DEC-173..176): w6-a..f ALL merged during planning
-  (7d18e7e->77b76a9), six fixes grep-confirmed. w5-c walkthrough FAIL
-  @64ec7de was HARNESS-only: <strong> name extractors (public.ts:440,
-  speaker.ts:915) miss the nested <a>; seed's mod-3 formula completes
-  both general tasks for contactIdx0. DEC-173 selectors tolerate
-  wrappers + harness lanes validate via full local 6-module
-  walkthrough; DEC-174 seed forces 'Announce participation' pending
-  for contactIdx0 (DEC-172 pin untouched); DEC-175 authz probes
-  (unauth 302/401; speaker cross-owner 404/403; reviewer out-of-scope
-  404-not-403) become permanent walkthrough assertions; DEC-176
-  battery: frozen sha S = task-w7-a merge (only code-bearing lane),
-  every gate precondition-greps fixes + merge-base ancestor 2dd2f33,
-  triage-closure requires 5 sibling PASS @S + findings A/B/E/F+C
-  closure else FAILs cheaply. All green at S, OPEN ITEMS 0 -> wave 8
-  declares stage-1 complete.
+  DURING wave-6 planning; render-test mocks MUST mirror real wire
+  shapes (DEC-171); DEC-167 merge full profile; DEC-168 .ics
+  ORGANIZER/ATTENDEE; DEC-169 form-tracks validated; DEC-170 reviewer
+  file access plan-scoped; DEC-172 form-kind backing forms.
+- Wave 7 (DEC-173..176, VOID — never executed, superseded by Wave 8):
+  planned HARNESS-only fixes for w5-c's walkthrough FAIL (name
+  extractors miss nested <a>; seed mod-3 quirk) — none landed.
+- Wave 8 (DEC-177): wave 7 NEVER EXECUTED — after the w6 merges only
+  "scribe wave 7" landed on main; task-w7-a is a zero-commit branch
+  stub and the ledger has no w7 sections (docs/verification-log/
+  task-w7-*.md are first-campaign relics). Lesson: a whole planned
+  wave can vanish — verify reflog + ledger tail, never wave summaries.
+  DEC-177 rebinds the DEC-176 battery verbatim to wave 8: S =
+  task-w8-a merge (sole code lane; DEC-173 anchor-tolerant selectors,
+  DEC-174 seed override keeping "Announce participation" pending for
+  contactIdx0, DEC-175 authz probes; scripts/** only, every change
+  tagged with its DEC id for gate greps). Gates task-w8-b..f run
+  parallel at S (build+test, walkthrough 6/6, perf-smoke,
+  render-sweep expect 31/31, spec-audit delta vs d8d1cbd); w8-g
+  triage-closure after render-sweep, cheap-FAILs if siblings absent.
+  All six PASS at S with OPEN ITEMS 0 -> wave 9 declares stage-1
+  complete.

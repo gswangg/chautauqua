@@ -179,3 +179,4 @@ export const DEC_173 = "Walkthrough selectors assert semantics and tolerate mark
 export const DEC_174 = "Seed override guarantees the demo speaker keeps one pending general-kind task; global mod-3 completion formula and the DEC-172 pin unchanged";
 export const DEC_175 = "The review-lens authz probe set becomes permanent walkthrough assertions with existence-hiding semantics (404 for out-of-scope, 403 for wrong role, 401/302 for unauthenticated)";
 export const DEC_176 = "Wave-7 battery protocol: frozen sha = the harness-closure merge; every gate precondition-greps the fixes and runs at that sha; triage-closure verifies sibling sections plus eval-findings closure or fails cheaply";
+export const DEC_177 = "Wave-7 lanes never executed; the DEC-176 battery protocol rebinds verbatim to wave 8 with S = the task-w8-a merge commit and gate preconditions extended to grep the DEC-173/174/175 artifacts";
