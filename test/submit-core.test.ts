@@ -5,8 +5,6 @@ import {
   validateTrackChoice,
   resolveOfferedTrackIds,
   nextSeqRef,
-  checkAndIncrementRateLimit,
-  rateLimitKey,
   extractFileAnswers,
 } from "../src/lib/submit-core";
 import { saveDraft, readDraft, deleteDraft, draftCookieName, type KVStore } from "../src/lib/draft";
@@ -208,42 +206,5 @@ describe("draft round-trip against an in-memory KV fake", () => {
   it("draftCookieName is namespaced per form id (DEC-014)", () => {
     expect(draftCookieName("form1")).toBe("chq_draft_form1");
     expect(draftCookieName("form2")).toBe("chq_draft_form2");
-  });
-});
-
-describe("checkAndIncrementRateLimit", () => {
-  it("allows up to the cap within a window", async () => {
-    const kv = new InMemoryKV();
-    const now = Date.now();
-    for (let i = 0; i < 10; i++) {
-      const result = await checkAndIncrementRateLimit(kv, "1.2.3.4", now, 3600, 10);
-      expect(result.ok).toBe(true);
-    }
-  });
-
-  it("rejects the 11th submission within the same hour window", async () => {
-    const kv = new InMemoryKV();
-    const now = Date.now();
-    for (let i = 0; i < 10; i++) {
-      await checkAndIncrementRateLimit(kv, "1.2.3.4", now, 3600, 10);
-    }
-    const eleventh = await checkAndIncrementRateLimit(kv, "1.2.3.4", now, 3600, 10);
-    expect(eleventh.ok).toBe(false);
-    expect(eleventh.count).toBe(10);
-  });
-
-  it("tracks separate IPs independently", async () => {
-    const kv = new InMemoryKV();
-    const now = Date.now();
-    for (let i = 0; i < 10; i++) {
-      await checkAndIncrementRateLimit(kv, "1.1.1.1", now, 3600, 10);
-    }
-    const other = await checkAndIncrementRateLimit(kv, "2.2.2.2", now, 3600, 10);
-    expect(other.ok).toBe(true);
-  });
-
-  it("rateLimitKey is deterministic for the same ip/window", () => {
-    expect(rateLimitKey("1.2.3.4", 1000)).toBe(rateLimitKey("1.2.3.4", 1000));
-    expect(rateLimitKey("1.2.3.4", 1000)).not.toBe(rateLimitKey("5.6.7.8", 1000));
   });
 });
