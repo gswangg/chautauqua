@@ -10,7 +10,7 @@ import * as repo from "../server/repo/comms";
 import { getEventForOrg } from "../server/repo/events";
 import { createClaimToken, type KVStore } from "../auth/claim";
 import { textToHtml } from "../mail/render";
-import { buildIcsEvent } from "../mail/ics";
+import { buildIcsEvent, ICS_ORGANIZER_EMAIL } from "../mail/ics";
 import { zonedMinutesToUtc } from "../lib/timezone";
 import {
   buildMergeVars,
@@ -356,15 +356,22 @@ commsRoutes.post("/api/v1/events/:eventId/compose/send", requireOrganizer, csrfJ
       const submission = submissionById.get(rendered.submissionId)!;
       ics = {
         filename: `chq-${rendered.submissionId}.ics`,
-        content: buildIcsEvent({
-          uidSubmissionId: rendered.submissionId,
-          sequence: slot.icsSequence,
-          title: submission.title,
-          startUtc: zonedMinutesToUtc(slot.day, slot.startMin, event.timezone),
-          endUtc: zonedMinutesToUtc(slot.day, slot.endMin, event.timezone),
-          location: slot.roomName ?? undefined,
-          dtstamp: new Date(),
-        }),
+        content: buildIcsEvent(
+          {
+            uidSubmissionId: rendered.submissionId,
+            sequence: slot.icsSequence,
+            title: submission.title,
+            startUtc: zonedMinutesToUtc(slot.day, slot.startMin, event.timezone),
+            endUtc: zonedMinutesToUtc(slot.day, slot.endMin, event.timezone),
+            location: slot.roomName ?? undefined,
+            dtstamp: new Date(),
+          },
+          {
+            method: "REQUEST",
+            organizer: { name: event.name, email: ICS_ORGANIZER_EMAIL },
+            attendee: { name: rendered.name, email: rendered.email },
+          },
+        ),
       };
     }
     await mailer.send({

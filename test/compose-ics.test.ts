@@ -6,7 +6,13 @@ import { describe, expect, it } from "vitest";
 import { unscheduledIcsFields } from "../src/routes/comms";
 import { chunkIds } from "../src/lib/chunk";
 import type { IcsScheduleRow } from "../src/server/repo/comms";
-import { buildIcsEvent } from "../src/mail/ics";
+import { buildIcsEvent, ICS_ORGANIZER_EMAIL, type IcsOptions } from "../src/mail/ics";
+
+const requestOpts: IcsOptions = {
+  method: "REQUEST",
+  organizer: { name: "DevConf", email: ICS_ORGANIZER_EMAIL },
+  attendee: { name: "Ada Lovelace", email: "ada@example.com" },
+};
 
 function slot(overrides: Partial<IcsScheduleRow> = {}): IcsScheduleRow {
   return {
@@ -59,14 +65,14 @@ describe("use-then-bump SEQUENCE semantics", () => {
     };
 
     // First send: stored ics_sequence is 0.
-    const first = buildIcsEvent({ ...base, sequence: 0 });
+    const first = buildIcsEvent({ ...base, sequence: 0 }, requestOpts);
     expect(first).toContain("SEQUENCE:0");
     const firstUid = first.match(/UID:([^\r\n]+)/)?.[1];
 
     // Route bumps ics_sequence by exactly 1 after the first send. A second
     // send (e.g. after the room changed) uses the bumped value.
     const bumped = 0 + 1;
-    const second = buildIcsEvent({ ...base, sequence: bumped });
+    const second = buildIcsEvent({ ...base, sequence: bumped }, requestOpts);
     expect(second).toContain("SEQUENCE:1");
     const secondUid = second.match(/UID:([^\r\n]+)/)?.[1];
 
@@ -83,8 +89,8 @@ describe("use-then-bump SEQUENCE semantics", () => {
       dtstamp: new Date("2026-08-10T12:00:00Z"),
       sequence: 3,
     };
-    const previewOne = buildIcsEvent(base);
-    const previewTwo = buildIcsEvent(base);
+    const previewOne = buildIcsEvent(base, requestOpts);
+    const previewTwo = buildIcsEvent(base, requestOpts);
     expect(previewOne.match(/SEQUENCE:(\d+)/)?.[1]).toBe("3");
     expect(previewTwo.match(/SEQUENCE:(\d+)/)?.[1]).toBe("3");
   });
@@ -92,28 +98,34 @@ describe("use-then-bump SEQUENCE semantics", () => {
 
 describe("LOCATION omitted when no room is assigned", () => {
   it("emits no LOCATION line when the schedule slot has no room", () => {
-    const ics = buildIcsEvent({
-      uidSubmissionId: "sub_1",
-      sequence: 0,
-      title: "On Engines",
-      startUtc: new Date("2026-09-01T14:00:00Z"),
-      endUtc: new Date("2026-09-01T14:30:00Z"),
-      location: undefined,
-      dtstamp: new Date("2026-08-10T12:00:00Z"),
-    });
+    const ics = buildIcsEvent(
+      {
+        uidSubmissionId: "sub_1",
+        sequence: 0,
+        title: "On Engines",
+        startUtc: new Date("2026-09-01T14:00:00Z"),
+        endUtc: new Date("2026-09-01T14:30:00Z"),
+        location: undefined,
+        dtstamp: new Date("2026-08-10T12:00:00Z"),
+      },
+      requestOpts,
+    );
     expect(ics).not.toContain("LOCATION:");
   });
 
   it("emits LOCATION when a room is assigned", () => {
-    const ics = buildIcsEvent({
-      uidSubmissionId: "sub_1",
-      sequence: 0,
-      title: "On Engines",
-      startUtc: new Date("2026-09-01T14:00:00Z"),
-      endUtc: new Date("2026-09-01T14:30:00Z"),
-      location: "Main Hall",
-      dtstamp: new Date("2026-08-10T12:00:00Z"),
-    });
+    const ics = buildIcsEvent(
+      {
+        uidSubmissionId: "sub_1",
+        sequence: 0,
+        title: "On Engines",
+        startUtc: new Date("2026-09-01T14:00:00Z"),
+        endUtc: new Date("2026-09-01T14:30:00Z"),
+        location: "Main Hall",
+        dtstamp: new Date("2026-08-10T12:00:00Z"),
+      },
+      requestOpts,
+    );
     expect(ics).toContain("LOCATION:Main Hall");
   });
 });

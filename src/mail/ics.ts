@@ -1,9 +1,18 @@
-// .ics generation (DEC-007): stable UID from submission id, SEQUENCE bumped
-// by caller, METHOD:REQUEST, LOCATION only when provided, UTC times, 75-octet
-// line folding, CRLF line endings.
+// .ics generation (DEC-007, amended by DEC-168 for RFC 5546 compliance):
+// stable UID from submission id, SEQUENCE bumped by caller, METHOD is
+// caller-supplied (REQUEST for one-to-one scheduling emails, PUBLISH for
+// public/anonymous itinerary exports), LOCATION only when provided, UTC
+// times, 75-octet line folding, CRLF line endings. Every VEVENT carries an
+// ORGANIZER; REQUEST events also carry a single ATTENDEE (fail loudly if
+// that pairing is violated).
 
 import { DEC_131 } from "../decisions";
 void DEC_131;
+
+/** Dev-local organizer mailbox for outgoing .ics files (DEC-168). No real
+ * mailbox exists behind this address in Stage 1 — it is never used to send
+ * mail, only to populate the ORGANIZER property. */
+export const ICS_ORGANIZER_EMAIL = "noreply@chautauqua.local";
 
 export interface IcsEventInput {
   uidSubmissionId: string;
@@ -14,6 +23,17 @@ export interface IcsEventInput {
   endUtc: Date;
   location?: string;
   dtstamp: Date;
+}
+
+export interface IcsPerson {
+  name?: string;
+  email: string;
+}
+
+export interface IcsOptions {
+  method: "REQUEST" | "PUBLISH";
+  organizer: { name: string; email: string };
+  attendee?: IcsPerson;
 }
 
 function pad(n: number, width = 2): string {
@@ -76,7 +96,14 @@ function uidFor(submissionId: string): string {
   return `chq-${submissionId}@chautauqua`;
 }
 
-function buildVevent(e: IcsEventInput): string[] {
+// CN values are quoted-string parameters (RFC 5545 §3.2): embedded double
+// quotes would break out of the quoting, so they're stripped outright
+// rather than escaped.
+function sanitizeCn(name: string): string {
+  return name.replace(/"/g, "");
+}
+
+function buildVevent(e: IcsEventInput, opts: IcsOptions): string[] {
   const lines: string[] = [];
   lines.push("BEGIN:VEVENT");
   lines.push(`UID:${uidFor(e.uidSubmissionId)}`);
@@ -91,12 +118,19 @@ function buildVevent(e: IcsEventInput): string[] {
   if (e.location !== undefined) {
     lines.push(`LOCATION:${escapeText(e.location)}`);
   }
+  lines.push(`ORGANIZER;CN="${sanitizeCn(opts.organizer.name)}":mailto:${opts.organizer.email}`);
+  if (opts.method === "REQUEST") {
+    const attendee = opts.attendee!;
+    lines.push(
+      `ATTENDEE;CN="${sanitizeCn(attendee.name ?? attendee.email)}";ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=TRUE:mailto:${attendee.email}`,
+    );
+  }
   lines.push("END:VEVENT");
   return lines;
 }
 
-export function buildIcsEvent(e: IcsEventInput): string {
-  return buildIcsCalendar([e]);
+export function buildIcsEvent(e: IcsEventInput, opts: IcsOptions): string {
+  return buildIcsCalendar([e], opts);
 }
 
 /** Escapes a filename for a Content-Disposition header value (strips CR/LF
@@ -119,14 +153,20 @@ export function icsDownloadHeaders(filename: string): Record<string, string> {
   };
 }
 
-export function buildIcsCalendar(events: IcsEventInput[]): string {
+export function buildIcsCalendar(events: IcsEventInput[], opts: IcsOptions): string {
+  if (opts.method === "REQUEST" && !opts.attendee) {
+    throw new Error("buildIcsCalendar: METHOD:REQUEST requires an attendee");
+  }
+  if (opts.method === "PUBLISH" && opts.attendee) {
+    throw new Error("buildIcsCalendar: METHOD:PUBLISH must not have an attendee");
+  }
   const lines: string[] = [];
   lines.push("BEGIN:VCALENDAR");
   lines.push("VERSION:2.0");
   lines.push("PRODID:-//Chautauqua//Chautauqua//EN");
-  lines.push("METHOD:REQUEST");
+  lines.push(`METHOD:${opts.method}`);
   for (const e of events) {
-    lines.push(...buildVevent(e));
+    lines.push(...buildVevent(e, opts));
   }
   lines.push("END:VCALENDAR");
   return lines.map(foldLine).join("\r\n") + "\r\n";

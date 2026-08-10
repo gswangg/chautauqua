@@ -3,8 +3,14 @@
 // of the RFC 5545 CRLF line terminator.
 
 import { describe, expect, it } from "vitest";
-import { buildIcsEvent, buildIcsCalendar } from "../src/mail/ics";
-import type { IcsEventInput } from "../src/mail/ics";
+import { buildIcsEvent, buildIcsCalendar, ICS_ORGANIZER_EMAIL } from "../src/mail/ics";
+import type { IcsEventInput, IcsOptions } from "../src/mail/ics";
+
+const requestOpts: IcsOptions = {
+  method: "REQUEST",
+  organizer: { name: "DevConf", email: ICS_ORGANIZER_EMAIL },
+  attendee: { name: "Ada Lovelace", email: "ada@example.com" },
+};
 
 function baseEvent(overrides: Partial<IcsEventInput> = {}): IcsEventInput {
   return {
@@ -37,19 +43,19 @@ function unfold(ics: string): string[] {
 
 describe("ics escapeText CR normalization (DEC-131)", () => {
   it("escapes CRLF and lone CR in the title as literal \\n, not raw CR", () => {
-    const ics = buildIcsEvent(baseEvent());
+    const ics = buildIcsEvent(baseEvent(), requestOpts);
     const unfolded = unfold(ics);
     const summary = unfolded.find((l) => l.startsWith("SUMMARY:"));
     expect(summary).toBe("SUMMARY:Line1\\nLine2");
   });
 
   it("has no bare CR anywhere in the output (every CR is part of CRLF)", () => {
-    const ics = buildIcsCalendar([baseEvent(), baseEvent({ uidSubmissionId: "sub_crlf_2" })]);
+    const ics = buildIcsCalendar([baseEvent(), baseEvent({ uidSubmissionId: "sub_crlf_2" })], requestOpts);
     expect(/\r(?!\n)/.test(ics)).toBe(false);
   });
 
   it("produces no raw \\r or \\n in any content line after unfolding", () => {
-    const ics = buildIcsEvent(baseEvent());
+    const ics = buildIcsEvent(baseEvent(), requestOpts);
     const unfolded = unfold(ics);
     for (const line of unfolded) {
       expect(line.includes("\r")).toBe(false);
