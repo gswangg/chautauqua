@@ -33,28 +33,28 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   DEC-245 SSR confirms; DEC-247 flat {items}. DEC-250 FREEZES c211d4c ended
   5/6 (walkthrough FAILED DEC-252 bug); DEC-251 Section D (D1-D4+D6 fixed,
   rest WAIVED). Human committed stage-2 (mailer, Airtable cron), leave it.
-- Campaign-2 w1/w2 (DEC-252..257): DEC-252 fix = src/server/origin.ts
-  resolveBaseUrl + RELATIVE hrefs, gates never fetch off-origin hrefs.
-  DEC-253 mobile 390x844 zero h-overflow. DEC-254 one persona lane/J-area,
-  log task-w1-<x>, 'OPEN ITEMS: n'/'RESULT:'. DEC-255 superseded by DEC-256:
-  freeze BY RULE — wait for every task-w1-* ref ancestor of main, S=newest
-  first-parent commit outside {decisions/, field-guide/, docs/verification-
-  log/, docs/eval-findings.md, src/decisions.ts}; print `FROZEN SHA:`,
-  re-derive at end, movement=DRIFT. 8 sections a-h incl g fresh-clone
-  evaluator bootstrap (DEC-257, README-verbatim default 8787), h all 116
-  rubric ids -> file:line+test; lanes read-only, declares only 8/8 PASS,
-  OPEN ITEMS:0, 1 FROZEN SHA.
-- Campaign-2 w3 (DEC-258..261) is the LAST product-touching wave; DEC-256
-  battery lanes only log. main=1e08bc8; wave-1 a/b/c/d/h PASS OPEN ITEMS:0
-  (e/f/g never landed); no campaign-2 w2 log on main yet. DEC-258: participant
-  .title_at_time/org_at_time snapshot at creation, migration-backfilled;
-  public/exports/showflow/.ics read SNAPSHOT ONLY (no fallback), CRM/portal
-  read LIVE contact — last unimplemented clarifications.md item. DEC-259:
-  logs at task-w3-<x>-c2-<scope>.md ('-c2-' MANDATORY, DEC-129); fix ONLY
-  inside owned-file list w/ failing-before regression test, else OPEN ITEM;
-  evidence, never a battery section/FROZEN SHA. DEC-260: multi-form CFP
-  stays out. DEC-261: w4 re-runs DEC-256's 8 sections unchanged, only
-  battery-FAIL fixes after; stage 1 declares w4+. Lane craft: playwright
-  drivers in .scratch/ (NOT gitignored, delete before commit); non-default
-  port needs --var PUBLIC_BASE_URL:http://localhost:PORT; commit early,
-  worktrees reclaimable mid-task; migrations/ skips 0011.
+- Campaign-2 w1/w2 (DEC-252..257, compact): DEC-252 fix src/server/origin.ts
+  resolveBaseUrl + RELATIVE hrefs. DEC-253 mobile 390x844 zero h-overflow.
+  DEC-254 persona lanes log task-w1-<x>. DEC-255 superseded by DEC-256/262
+  (freeze protocol, see below). 8 sections a-h incl g fresh-clone bootstrap
+  (DEC-257, README-verbatim 8787), h=116 rubric ids -> file:line+test.
+- Campaign-2 w4 (DEC-262..267). Verified main=6a3bb88+: w2 battery landed
+  6/8 - b/c PASS@1e08bc8, d PASS@e002bc9, a FAIL(drift only), e FAIL(drift;
+  3 narrow items), f FAIL(2 REAL defects); g/h NEVER ran. DEC-262: DEC-256
+  step 1 amended - wait covers EVERY task-* ref + QUIESCENCE (main tip
+  unchanged 120s, poll 15s/40min), verify in `git worktree add --detach S`,
+  and the battery may only be scheduled in a wave with ZERO product tasks;
+  battery moves w4 -> w5. DEC-264: w4 = DEC-261-permitted battery-FAIL
+  fixes + sections g/h run as EVIDENCE (no FROZEN SHA); logs
+  task-w4-<x>-c2-<scope>.md ('-c2-' mandatory, campaign-1 owns task-w4-a/
+  -c/-d/-e names). WAIVED: w1-a baseline-count typo; b/c/d SHA
+  non-uniformity (DEC-262 remedies). DEC-265 participant rows carry
+  name+email server-side, `${first} ${last}`.trim(), POST==reload.
+  DEC-266 contact q = AND-tokens x OR-columns, pure fns in src/domain/
+  contacts.ts + superset SQL prefilter (repo layer has NO real-D1 harness,
+  only fakeDb - put testable logic in the pure core). DEC-267 every *_id
+  column indexed, tripwire test via getTableConfig; migration 0016, 0015
+  RESERVED for wave-3 DEC-258. DEC-263 migrations are hand-authored,
+  db:generate DELETED (meta/ stale at 0004), parity guarded by
+  test/migration-parity.test.ts. Confirmed present, stop re-auditing:
+  prefetch-on-hover app/src/App.tsx:50-95; ics SEQUENCE bump agenda.ts:409.
