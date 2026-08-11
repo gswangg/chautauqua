@@ -622,6 +622,11 @@ reviewRoutes.put("/api/v1/review/plans/:planId/evaluations/:submissionId", csrfJ
   const plan = await requireAssignedPlan(c, c.req.param("planId"));
   const submissionId = c.req.param("submissionId");
 
+  // DEC-211: existence-hiding 404 for a submission outside the plan's event,
+  // enforced for EVERY role (organizer included) before any other checks.
+  const inEvent = await repo.getSubmissionSummaryInEvent(c.var.db, submissionId, plan.eventId);
+  if (!inEvent) throw new ApiError("not_found", "Submission not found");
+
   if (!isPlanOpen(plan.openDate, plan.closeDate, Date.now())) {
     throw new ApiError("conflict", "This review plan is not currently open");
   }

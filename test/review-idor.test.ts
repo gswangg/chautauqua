@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
 import { registerErrorHandler } from "../src/server/http";
 import type { AppEnv, AuthInfo } from "../src/server/env";
+import * as reviewRepo from "../src/server/repo/review";
 
 const ORG_A = "org-a";
 const ORG_B = "org-b";
@@ -49,13 +50,23 @@ vi.mock("../src/server/repo/review", async () => {
     ),
     listPlanIdsForReviewer: vi.fn(async () => []),
     resolveReviewerSubmissions: vi.fn(async () => []),
+    // Default: no reviewer scope granted; individual tests override with
+    // mockResolvedValueOnce/mockImplementationOnce for reviewer-path checks.
+    isSubmissionInReviewerScope: vi.fn(async () => false),
+    // "sub-cross-event" simulates a submission that belongs to a different
+    // event (and therefore, in this fixture, a different org) than
+    // planRecord -- it must never resolve regardless of the requested
+    // eventId, exercising DEC-211's existence-hiding check.
     getSubmissionSummaryInEvent: vi.fn(async (_db: unknown, submissionId: string, eventId: string) =>
-      eventId === planRecord.eventId ? { id: submissionId, ref: "S-1", title: "Talk" } : null,
+      eventId === planRecord.eventId && submissionId !== "sub-cross-event"
+        ? { id: submissionId, ref: "S-1", title: "Talk" }
+        : null,
     ),
     listAnswersForSubmission: vi.fn(async () => []),
     listSpeakersForSubmission: vi.fn(async () => []),
     listEvaluationsForPlan: vi.fn(async () => []),
     getEvaluation: vi.fn(async () => null),
+    countEvaluationsForSubmission: vi.fn(async () => 0),
     upsertEvaluation: vi.fn(async (_db: unknown, input: unknown) => input),
     listReviewerRowsForPlan: vi.fn(async (_db: unknown, planId: string) =>
       planId === planRecord.id ? [{ id: "pr-1", planId: planRecord.id, userId: "rev-1", trackId: null, submissionId: null }] : [],
@@ -199,5 +210,51 @@ describe("DEC-043/044: reviewer-row management (GET list + DELETE by row id)", (
       headers: { "x-chq-csrf": "1" },
     });
     expect(res.status).toBe(204);
+  });
+});
+
+describe("DEC-211: PUT evaluation IDOR -- existence-hiding 404 for out-of-event submissions", () => {
+  function putEvaluation(auth: AuthInfo, submissionId: string) {
+    return buildApp(auth).then((app) =>
+      app.request(`/api/v1/review/plans/${planRecord.id}/evaluations/${submissionId}`, {
+        method: "PUT",
+        headers: { "content-type": "application/json", "x-chq-csrf": "1" },
+        body: JSON.stringify({ scores: { c1: 5 } }),
+      }),
+    );
+  }
+
+  it("organizer of the OWNING org PUTting an evaluation for a submission outside the plan's event -> 404, no evaluation persisted", async () => {
+    const res = await putEvaluation({ userId: "u1", role: "organizer", orgId: ORG_A }, "sub-cross-event");
+    expect(res.status).toBe(404);
+    const body = (await res.json()) as { error: { code: string } };
+    expect(body.error.code).toBe("not_found");
+    // The existence-hiding check must short-circuit BEFORE the
+    // getEvaluation/upsertEvaluation flow -- no evaluation row read or
+    // written for a submission outside the plan's event.
+    expect(vi.mocked(reviewRepo.getEvaluation)).not.toHaveBeenCalled();
+    expect(vi.mocked(reviewRepo.upsertEvaluation)).not.toHaveBeenCalled();
+  });
+
+  it("organizer of the OWNING org same-org same-event PUT still succeeds (200)", async () => {
+    const res = await putEvaluation({ userId: "u1", role: "organizer", orgId: ORG_A }, "sub-1");
+    expect(res.status).toBe(200);
+    expect(vi.mocked(reviewRepo.upsertEvaluation)).toHaveBeenCalledTimes(1);
+  });
+
+  it("reviewer PUT for an in-scope submission still succeeds (200) -- reviewer-scope path unchanged", async () => {
+    vi.mocked(reviewRepo.listPlanIdsForReviewer).mockResolvedValueOnce([planRecord.id]);
+    vi.mocked(reviewRepo.isSubmissionInReviewerScope).mockResolvedValueOnce(true);
+    const res = await putEvaluation({ userId: "rev-1", role: "reviewer", orgId: ORG_A }, "sub-1");
+    expect(res.status).toBe(200);
+    expect(vi.mocked(reviewRepo.upsertEvaluation)).toHaveBeenCalledTimes(1);
+  });
+
+  it("reviewer PUT for an out-of-scope submission still 404s -- reviewer-scope path unchanged", async () => {
+    vi.mocked(reviewRepo.listPlanIdsForReviewer).mockResolvedValueOnce([planRecord.id]);
+    // isSubmissionInReviewerScope defaults to false (not granted).
+    const res = await putEvaluation({ userId: "rev-1", role: "reviewer", orgId: ORG_A }, "sub-1");
+    expect(res.status).toBe(404);
+    expect(vi.mocked(reviewRepo.upsertEvaluation)).not.toHaveBeenCalled();
   });
 });
