@@ -5,10 +5,12 @@ import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { DeliverableDetail } from './DeliverableDetail';
 import { FilesLibrary } from './FilesLibrary';
 import { SessionList } from './SessionList';
-import { DELIVERABLE_KINDS, type ContentStatus, type ContentSubmissionListItem, type DeliverableFile } from './types';
+import { type ContentStatus, type ContentSubmissionListItem } from './types';
 import type { WorklistTab } from './worklist';
 
 type ContentView = 'worklist' | 'files';
+
+const PER_PAGE = 50;
 
 /** J8 content review loop entry point: worklist -> per-session deliverable detail. */
 export function ContentApp() {
@@ -17,8 +19,11 @@ export function ContentApp() {
   const submissionId = searchParams.get('submissionId');
   const tab = (searchParams.get('tab') as WorklistTab | null) ?? 'changes_requested';
   const view = (searchParams.get('view') as ContentView | null) ?? 'worklist';
+  const pageParam = Number(searchParams.get('page'));
+  const page = Number.isInteger(pageParam) && pageParam > 0 ? pageParam : 1;
 
   const [items, setItems] = useState<ContentSubmissionListItem[]>([]);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // w1-e: bumping this remounts FilesLibrary (its own load() effect keys on
@@ -27,33 +32,27 @@ export function ContentApp() {
   // the library's version counts never go stale.
   const [filesReloadKey, setFilesReloadKey] = useState(0);
 
+  // DEC-341: one server round trip per view — the list endpoint carries
+  // deliverableCounts (chain roots, DEC-247) and applies the tab filter +
+  // worklist sort server-side, so no client-side fan-out or re-filtering
+  // of a single page is needed (SPEC §7).
   const loadWorklist = useCallback(() => {
     if (!eventId) return;
     setLoading(true);
     setError(null);
-    apiList<ContentSubmissionListItem>(`/events/${eventId}/submissions`)
-      .then(async (res) => {
+    const params = new URLSearchParams();
+    params.set('sort', 'worklist');
+    params.set('page', String(page));
+    params.set('perPage', String(PER_PAGE));
+    if (tab !== 'all') params.set('contentStatus', tab);
+    apiList<ContentSubmissionListItem>(`/events/${eventId}/submissions?${params.toString()}`)
+      .then((res) => {
         setItems(res.items);
-        // Fill in per-kind deliverable/version counts by composing the
-        // DEC-020 per-submission files endpoint (no bulk-counts endpoint
-        // exists on the submissions list).
-        const withCounts = await Promise.all(
-          res.items.map(async (item) => {
-            const files = await apiList<DeliverableFile>(`/submissions/${item.id}/files`);
-            const counts: Partial<Record<(typeof DELIVERABLE_KINDS)[number], number>> = {};
-            for (const kind of DELIVERABLE_KINDS) {
-              // DEC-247: counts are chain roots (previousFileId === null),
-              // not every version in the replace chain.
-              counts[kind] = files.items.filter((f) => f.kind === kind && f.previousFileId === null).length;
-            }
-            return { ...item, deliverableCounts: counts };
-          }),
-        );
-        setItems(withCounts);
+        setTotal(res.total);
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load submissions'))
       .finally(() => setLoading(false));
-  }, [eventId]);
+  }, [eventId, tab, page]);
 
   useEffect(() => {
     loadWorklist();
@@ -95,6 +94,15 @@ export function ContentApp() {
     setSearchParams((prev) => {
       const params = new URLSearchParams(prev);
       params.set('tab', next);
+      params.set('page', '1');
+      return params;
+    });
+  }
+
+  function changePage(next: number) {
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev);
+      params.set('page', String(next));
       return params;
     });
   }
@@ -207,6 +215,10 @@ export function ContentApp() {
           onSelect={selectSubmission}
           loading={loading}
           onContentStatusChange={requestContentStatus}
+          total={total}
+          page={page}
+          perPage={PER_PAGE}
+          onPageChange={changePage}
         />
       )}
     </div>

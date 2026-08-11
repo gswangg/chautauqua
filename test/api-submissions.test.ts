@@ -22,6 +22,7 @@ describe("parseListQuery (DEC-013 pagination + DEC-016 filters)", () => {
       perPage: 50,
       q: null,
       status: [],
+      contentStatus: [],
       trackId: null,
       sort: "newest",
       includeAnswers: false,
@@ -170,7 +171,7 @@ describe("listSubmissions: one paginated statement for q+trackId (DEC-333/335)",
       const thisCallLog: { method: string; args: unknown[] }[] = [];
       calls.push(thisCallLog);
       const obj: any = {};
-      const passthrough = ["from", "where", "innerJoin", "orderBy", "limit", "offset", "select"];
+      const passthrough = ["from", "where", "innerJoin", "orderBy", "limit", "offset", "select", "groupBy"];
       for (const m of passthrough) {
         obj[m] = (...args: unknown[]) => {
           thisCallLog.push({ method: m, args });
@@ -212,6 +213,7 @@ describe("listSubmissions: one paginated statement for q+trackId (DEC-333/335)",
       [row], // 3: page
       [], // participant enrichment
       [], // submission_track enrichment
+      [], // deliverable-count enrichment (DEC-341)
     ];
     const db = makeFakeDb(responses);
 
@@ -220,13 +222,14 @@ describe("listSubmissions: one paginated statement for q+trackId (DEC-333/335)",
       perPage: 5,
       q: "talk",
       status: [],
+      contentStatus: [],
       trackId: "track-1",
       sort: "newest",
       includeAnswers: false,
     });
 
-    // Exactly 5 db.select() calls total: 3 core + 2 enrichment batches.
-    expect(db.calls.length).toBe(5);
+    // Exactly 6 db.select() calls total: 3 core + 3 enrichment batches.
+    expect(db.calls.length).toBe(6);
     expect(result.total).toBe(1);
     expect(result.items[0]!.id).toBe("sub-1");
 
@@ -458,7 +461,7 @@ describe("GET /api/v1/events/:eventId/submissions?includeAnswers=1 (DEC-243 answ
     let cursor = 0;
     function link(): any {
       const obj: any = {};
-      const passthrough = ["from", "where", "innerJoin", "orderBy", "limit", "offset", "select"];
+      const passthrough = ["from", "where", "innerJoin", "orderBy", "limit", "offset", "select", "groupBy"];
       for (const m of passthrough) obj[m] = () => obj;
       obj.then = (resolve: (v: unknown) => void, reject?: (e: unknown) => void) => {
         const value = responses[cursor];
@@ -506,7 +509,8 @@ describe("GET /api/v1/events/:eventId/submissions?includeAnswers=1 (DEC-243 answ
     // Call order for the simple (no q/trackId) path: 1) getEventOrgId
     // (assertEventOwnership), 2) event lookup for recordPrefix, 3) total
     // count, 4) page rows, 5) participant enrichment, 6) track enrichment,
-    // 7) answer enrichment (only fetched when includeAnswers=1).
+    // 7) answer enrichment (only fetched when includeAnswers=1), 8)
+    // deliverable-count enrichment (DEC-341).
     const db = chain([
       [{ orgId: ORG_A }],
       [{ recordPrefix: "TALK" }],
@@ -515,6 +519,7 @@ describe("GET /api/v1/events/:eventId/submissions?includeAnswers=1 (DEC-243 answ
       [],
       [],
       [{ submissionId: "sub-1", formFieldId: "field-format", valueJson: JSON.stringify("Workshop") }],
+      [],
     ]);
     const app = appWithDb(db, ORGANIZER_A);
 
@@ -552,7 +557,8 @@ describe("GET /api/v1/events/:eventId/submissions?includeAnswers=1 (DEC-243 answ
       [submissionRow],
       [],
       [],
-      // no 7th response consumed: includeAnswers=false skips the answers query
+      // no answers response: includeAnswers=false skips the answers query
+      [], // deliverable-count enrichment (DEC-341)
     ]);
     const app = appWithDb(db, ORGANIZER_A);
 

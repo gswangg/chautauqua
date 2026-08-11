@@ -6,6 +6,7 @@ import { and, eq, inArray, or, sql } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { formatRef } from "../../../domain/ids";
+import { FILE_KINDS, type FileKind } from "../../../domain/files";
 import { chunkIds, likeContains, type ParsedListQuery, type SortOrder } from "./query";
 
 export interface SubmissionSpeaker {
@@ -23,6 +24,7 @@ export interface SubmissionListItem {
   trackIds: string[];
   submittedAt: number | null;
   createdAt: number;
+  deliverableCounts: { presentation: number; poster: number; handout: number };
   answers?: Record<string, unknown>;
 }
 
@@ -41,6 +43,10 @@ function orderByForSort(sort: SortOrder) {
       return sql`${schema.submission.title} asc, ${schema.submission.seq} asc`;
     case "ref":
       return sql`${schema.submission.seq} asc`;
+    case "worklist":
+      // DEC-341: items needing action surface first (SPEC §2.3 — worklist,
+      // not report); title/seq tiebreakers keep OFFSET paging stable.
+      return sql`case ${schema.submission.contentStatus} when 'changes_requested' then 0 when 'pending' then 1 else 2 end asc, ${schema.submission.title} asc, ${schema.submission.seq} asc`;
     case "newest":
     default:
       return sql`${schema.submission.createdAt} desc, ${schema.submission.seq} desc`;
@@ -62,6 +68,9 @@ export async function listSubmissions(
   const conditions = [eq(schema.submission.eventId, eventId)];
   if (params.status.length > 0) {
     conditions.push(inArray(schema.submission.status, params.status));
+  }
+  if (params.contentStatus.length > 0) {
+    conditions.push(inArray(schema.submission.contentStatus, params.contentStatus));
   }
 
   // q / trackId narrowing: pushed into the WHERE clause as correlated
@@ -155,6 +164,39 @@ export async function listSubmissions(
     }
   }
 
+  // DEC-341: per-page deliverable counts (chain roots only — DEC-247) via
+  // ONE grouped query per id chunk, following the tracks/speakers hydration
+  // pattern above. Cost bound by page size, not total submission count.
+  const deliverableRows: { submissionId: string; kind: string; count: number }[] = [];
+  for (const batch of idBatches) {
+    const batchRows = await db
+      .select({
+        submissionId: schema.file.submissionId,
+        kind: schema.file.kind,
+        count: sql<number>`count(*)`,
+      })
+      .from(schema.file)
+      .where(
+        and(
+          inArray(schema.file.submissionId, batch),
+          sql`${schema.file.previousFileId} is null`,
+          inArray(schema.file.kind, FILE_KINDS as unknown as string[]),
+        ),
+      )
+      .groupBy(schema.file.submissionId, schema.file.kind);
+    deliverableRows.push(...(batchRows as { submissionId: string; kind: string; count: number }[]));
+  }
+
+  const deliverableCountsBySubmission = new Map<string, Record<FileKind, number>>();
+  for (const d of deliverableRows) {
+    if (!d.submissionId) continue;
+    const existing =
+      deliverableCountsBySubmission.get(d.submissionId) ??
+      ({ presentation: 0, poster: 0, handout: 0 } as Record<FileKind, number>);
+    existing[d.kind as FileKind] = Number(d.count);
+    deliverableCountsBySubmission.set(d.submissionId, existing);
+  }
+
   const speakersBySubmission = new Map<string, { contactId: string; name: string; order: number }[]>();
   for (const p of participantRows) {
     const arr = speakersBySubmission.get(p.submissionId) ?? [];
@@ -196,6 +238,8 @@ export async function listSubmissions(
       trackIds,
       submittedAt: r.createdAt.getTime(),
       createdAt: r.createdAt.getTime(),
+      deliverableCounts:
+        deliverableCountsBySubmission.get(r.id) ?? { presentation: 0, poster: 0, handout: 0 },
       ...(params.includeAnswers ? { answers: answersBySubmission.get(r.id) ?? {} } : {}),
     };
   });
