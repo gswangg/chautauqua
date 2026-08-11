@@ -5,9 +5,11 @@ import { filterOnboardingRows } from './rowFilters';
 import { GridFilters } from './GridFilters';
 import { computeOnboardingCounts, isCellOverdue, outstandingContactCount } from './overdue';
 import { TaskModal } from './TaskModal';
+import { ResponseModal } from './ResponseModal';
 import { formatDateOnly } from '../../lib/dates';
 import {
   DEFAULT_GRID_FILTERS,
+  type AssignmentResponseDetail,
   type AssignmentStatus,
   type GridFilterState,
   type NewTaskInput,
@@ -29,6 +31,10 @@ export function OnboardingGrid() {
   const [confirmingRemind, setConfirmingRemind] = useState(false);
   const [reminding, setReminding] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [viewingResponse, setViewingResponse] = useState<{ contactName: string } | null>(null);
+  const [responseLoading, setResponseLoading] = useState(false);
+  const [responseError, setResponseError] = useState<string | null>(null);
+  const [responseDetail, setResponseDetail] = useState<AssignmentResponseDetail | null>(null);
 
   function loadGrid(id: string) {
     setLoading(true);
@@ -97,6 +103,27 @@ export function OnboardingGrid() {
     } finally {
       setReminding(false);
     }
+  }
+
+  async function openResponse(assignmentId: string, contactName: string) {
+    setViewingResponse({ contactName });
+    setResponseDetail(null);
+    setResponseError(null);
+    setResponseLoading(true);
+    try {
+      const detail = await apiGet<AssignmentResponseDetail>(`/task-assignments/${assignmentId}/response`);
+      setResponseDetail(detail);
+    } catch (err) {
+      setResponseError(err instanceof ApiError ? err.message : 'Failed to load response');
+    } finally {
+      setResponseLoading(false);
+    }
+  }
+
+  function closeResponse() {
+    setViewingResponse(null);
+    setResponseDetail(null);
+    setResponseError(null);
   }
 
   async function handleCreateTask(input: NewTaskInput) {
@@ -237,6 +264,15 @@ export function OnboardingGrid() {
                           {'📎'}
                         </a>
                       )}
+                      {task.kind === 'form' && (
+                        <button
+                          type="button"
+                          className="chq-view-response-link"
+                          onClick={() => openResponse(cell.assignmentId, row.contact.name)}
+                        >
+                          View response
+                        </button>
+                      )}
                     </td>
                   );
                 })}
@@ -247,6 +283,16 @@ export function OnboardingGrid() {
       )}
 
       {showNewTask && <TaskModal onCancel={() => setShowNewTask(false)} onSubmit={handleCreateTask} />}
+
+      {viewingResponse && (
+        <ResponseModal
+          contactName={viewingResponse.contactName}
+          loading={responseLoading}
+          error={responseError}
+          detail={responseDetail}
+          onClose={closeResponse}
+        />
+      )}
     </div>
   );
 }

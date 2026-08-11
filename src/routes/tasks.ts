@@ -13,12 +13,13 @@ import type { Db } from "../server/context";
 import { makeDb, makeMailer } from "../server/context";
 import { requireOrganizer, csrfJson } from "../server/middleware";
 import { ApiError, parseBoundedIdArray } from "../server/http";
-import { DEC_120, DEC_214, DEC_240 } from "../decisions";
+import { DEC_120, DEC_214, DEC_240, DEC_291 } from "../decisions";
 import {
   assignTask,
   createTask,
   deleteTask,
   getAssignmentOwnership,
+  getAssignmentResponseDetail,
   getEventOrgId,
   getOnboardingGrid,
   getTaskOwnership,
@@ -42,6 +43,9 @@ void DEC_214;
 // DEC-240: task.deliverable_kind is validated below so this dependency is
 // compile-checked (see decisions.ts).
 void DEC_240;
+// DEC-291: organizer-readable form-task response viewer, referenced below so
+// this dependency is compile-checked (see decisions.ts).
+void DEC_291;
 
 export const taskRoutes = new Hono<AppEnv>();
 
@@ -329,6 +333,29 @@ taskRoutes.patch("/task-assignments/:id", csrfJson, async (c) => {
     new Date(),
   );
   return c.json(updated);
+});
+
+// ---------------------------------------------------------------------------
+// Response detail (DEC-291)
+// ---------------------------------------------------------------------------
+
+// GET /api/v1/task-assignments/:id/response
+taskRoutes.get("/task-assignments/:id/response", requireOrganizer, async (c) => {
+  const auth = requireAuth(c);
+  const assignmentId = c.req.param("id");
+  const ownership = await getAssignmentOwnership(c.var.db, assignmentId);
+  // Existence-hiding (review-IDOR house rule): an assignment in another org
+  // 404s exactly like one that doesn't exist at all.
+  if (!ownership || ownership.orgId !== auth.orgId) {
+    throw new ApiError("not_found", "Task assignment not found");
+  }
+  if (ownership.kind !== "form") {
+    throw new ApiError("invalid", "This task is not a form task");
+  }
+
+  const detail = await getAssignmentResponseDetail(c.var.db, assignmentId);
+  if (!detail) throw new ApiError("not_found", "Task assignment not found");
+  return c.json(detail);
 });
 
 // ---------------------------------------------------------------------------
