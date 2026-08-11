@@ -87,6 +87,24 @@ async function jarFetch(jar: CookieJar, url: string, init: RequestInit = {}): Pr
   return res;
 }
 
+// DEC-252: same-origin hrefs scraped from rendered pages (e.g. the
+// confirmation page's claim link) are relative — resolve against --url.
+// If a scraped href IS absolute, it must be same-origin with --url; an
+// off-origin absolute href (e.g. production chautauqua.cc leaking into a
+// local dev run) must fail loudly rather than the gate silently hitting a
+// live deployment.
+function resolveScrapedHref(href: string, baseUrl: string): string {
+  const resolved = new URL(href, baseUrl);
+  const base = new URL(baseUrl);
+  if (resolved.origin !== base.origin) {
+    throw new Error(
+      `resolveScrapedHref: scraped href ${JSON.stringify(href)} resolved to origin ${resolved.origin}, ` +
+        `which is off-origin from --url's ${base.origin}. Refusing to fetch an off-origin URL.`,
+    );
+  }
+  return resolved.toString();
+}
+
 /** GET /login to seed the chq_csrf cookie, then form-POST /login carrying
  * that cookie value (DEC-053 auth contract). Returns the authenticated jar. */
 async function loginAs(email: string, password: string): Promise<CookieJar> {
@@ -444,7 +462,7 @@ async function runJ2(seededEventId: string): Promise<void> {
   );
   const claimMatch = fullBody.match(/href="([^"]*\/claim\/[^"]+)"/);
   assertTrue("J2 confirmation page has a claim link", Boolean(claimMatch), fullBody.slice(0, 800));
-  const claimUrl = claimMatch![1]!;
+  const claimUrl = resolveScrapedHref(claimMatch![1]!, BASE_URL);
 
   // Confirmation email appears in /dev/mailbox with the claim link.
   const mailboxRes = await fetch(`${BASE_URL}/dev/mailbox`);

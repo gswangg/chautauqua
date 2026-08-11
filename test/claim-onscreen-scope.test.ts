@@ -159,6 +159,24 @@ describe("public submit confirmation (DEC-098 claim-link scope)", () => {
     expect((emailInsert as any).bodyHtml).toMatch(/\/claim\//);
   });
 
+  // DEC-252: the on-page href is relative (never depends on origin
+  // inference — under `wrangler dev` with wrangler.jsonc's production
+  // `routes`/`custom_domain` entry, an absolute href built from the naive
+  // `new URL(c.req.url).origin` would point at the live deployment). Only
+  // the emailed copy is an absolute, resolveBaseUrl-derived URL.
+  it("fresh contact + no user: the on-page claim href is relative (same-origin), while the emailed link is absolute", async () => {
+    const { db, inserts } = fakeDb(selectQueueFor([], []));
+    const res = await run(db, "fresh2@example.com");
+    const html = await res.text();
+    const match = html.match(/href="([^"]*\/claim\/[^"]+)"/);
+    expect(match).toBeTruthy();
+    expect(match![1]).toMatch(/^\/claim\//);
+    expect(match![1]).not.toMatch(/^https?:\/\//);
+
+    const emailInsert = inserts.find((v) => typeof v === "object" && v !== null && "toEmail" in v);
+    expect((emailInsert as any).bodyHtml).toMatch(/href="https?:\/\/[^"]*\/claim\//);
+  });
+
   it("pre-existing contact + no user: NO claim URL anywhere in the response HTML, but the emailed content DOES contain it", async () => {
     const { db, inserts } = fakeDb(selectQueueFor([{ id: "existing-contact-1" }], []));
     const res = await run(db, "existing@example.com");

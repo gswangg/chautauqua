@@ -59,7 +59,10 @@ import { renderTemplate, escapeHtml } from "../../mail/render";
 import { validateUpload, sanitizeFilenameForKey, type ValidUpload } from "../../domain/files";
 import { newId } from "../../domain/ids";
 import { FormFieldsSection, FieldRulesScript, fieldInputName } from "../../views/form-render";
-import { DEC_014, DEC_016, DEC_036, DEC_040, DEC_132 } from "../../decisions";
+import { DEC_014, DEC_016, DEC_036, DEC_040, DEC_132, DEC_252 } from "../../decisions";
+import { resolveBaseUrl } from "../../server/origin";
+
+void DEC_252;
 
 export const publicSubmitRoutes = new Hono<AppEnv>();
 
@@ -230,7 +233,7 @@ function SubmitPage(props: {
 //    before.
 type ConfirmationState = "fresh" | "pending-existing-contact" | "has-account";
 
-function ConfirmationPage(props: { event: EventRow; title: string; claimUrl: string; state: ConfirmationState }) {
+function ConfirmationPage(props: { event: EventRow; title: string; claimPath: string; state: ConfirmationState }) {
   return (
     <PageShell title={`Submission received - ${props.event.name}`}>
       <h1>Thanks for your submission!</h1>
@@ -247,8 +250,11 @@ function ConfirmationPage(props: { event: EventRow; title: string; claimUrl: str
           have a password.
         </p>
       ) : (
+        // DEC-252: same-origin on-page links are RELATIVE — they never
+        // depend on origin inference. Only the emailed copy (built with
+        // resolveBaseUrl below) is absolute.
         <p>
-          <a href={props.claimUrl}>Create a password to track your submission</a>
+          <a href={props.claimPath}>Create a password to track your submission</a>
         </p>
       )}
     </PageShell>
@@ -537,14 +543,20 @@ publicSubmitRoutes.post("/submit/:eventSlug", csrfForm, async (c) => {
     c.header("Set-Cookie", `${draftCookieName(form.id)}=; Path=/submit; SameSite=Lax; Max-Age=0`, { append: true });
   }
 
-  const origin = new URL(c.req.url).origin;
+  // DEC-252: the on-page href is relative (never depends on origin
+  // inference); the emailed copy is absolute, built from resolveBaseUrl so
+  // it's correct under local `wrangler dev` even though wrangler.jsonc's
+  // production `routes`/`custom_domain` entry would otherwise make
+  // `new URL(c.req.url).origin` resolve to the live deployed host.
+  const origin = resolveBaseUrl(c);
   const existingUser = await findUserByEmail(db, email);
-  let claimUrl = `${origin}/login`;
+  let claimPath = "/login";
   if (!existingUser) {
     const claimKv = c.env.KV as unknown as ClaimKVStore;
     const claimToken = await createClaimToken(claimKv, { contactId, eventId: event.id });
-    claimUrl = `${origin}/claim/${claimToken}`;
+    claimPath = `/claim/${claimToken}`;
   }
+  const claimUrl = `${origin}${claimPath}`;
 
   const mailer = makeMailer(db, c.env);
   const text = renderTemplate(
@@ -592,6 +604,6 @@ publicSubmitRoutes.post("/submit/:eventSlug", csrfForm, async (c) => {
       : "pending-existing-contact";
 
   return c.html(
-    <ConfirmationPage event={event} title={title} claimUrl={claimUrl} state={confirmationState} />,
+    <ConfirmationPage event={event} title={title} claimPath={claimPath} state={confirmationState} />,
   );
 });
