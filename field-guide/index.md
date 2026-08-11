@@ -18,41 +18,43 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   csrfForm; errors {error:{code,message,fields?}}. DEC-015 append-only;
   DEC-016 locked=real cols; DEC-114 sha rule; DEC-129 homonym guard = full heading incl '@ <sha>'.
 - Wave3-251 (Campaign1-3, ultra-compact): sub-apps/repos/ctx DEC-012/013/019;
-  uploads/ics/statuses/perf/headshots/walkthrough/claim DEC-040-074;
-  exit battery+render-sweep+findings closure DEC-068/069/139; criteriaForRound
-  sole resolution (DEC-147..178); CRM=SegmentRule[]+'any'; Files=
-  previous_file_id chains; DEC-179-231 CSV/login-limiter/email-ci-dup/SSR/
-  checkbox/cascades; DEC-232-251 post-prod hardening: batteries drain LATE
-  (recheck reflog, grep-code-not-prose, workers never edit eval-findings.md/
-  decisions/), render-sweep misses SPA-vs-route KEY mismatches (contract
-  tests, types.ts=contract), PBKDF2 100k, deliverable_kind chain, portal
-  self-service CHAIN-LATEST, Tracks/Format allowlist, flat {items}. Human
-  committed stage-2 (mailer, Airtable cron) — leave alone.
-- Campaign-2 w1/w2 (DEC-252..257): resolveBaseUrl+RELATIVE hrefs; mobile
-  390x844 zero h-overflow; 8 sections a-h incl g fresh-clone bootstrap
-  (README-verbatim), h=116 rubric ids -> file:line+test.
-- Campaign-2 w4 (DEC-262..267): w2 battery 6/8. Quiescence+worktree verify.
+  uploads/ics/statuses/perf/headshots/walkthrough/claim DEC-040-074; exit
+  battery+render-sweep+findings DEC-068/069/139; criteriaForRound sole
+  resolution (DEC-147..178); CRM=SegmentRule[]+'any'; Files=previous_file_id
+  chains; DEC-179-231 CSV/login-limiter/email-ci-dup/SSR/checkbox/cascades;
+  DEC-232-251 post-prod: batteries drain LATE (recheck reflog, grep-code-
+  not-prose, workers never edit eval-findings.md/decisions/), render-sweep
+  misses SPA-vs-route KEY mismatches, PBKDF2 100k, deliverable_kind chain,
+  portal CHAIN-LATEST, Tracks/Format allowlist, flat {items}. Human stage-2
+  (mailer, Airtable cron) — leave alone.
+- Campaign-2 w1/w2/w4 (DEC-252..267): resolveBaseUrl+RELATIVE hrefs; mobile
+  390x844 zero h-overflow; 8 sections a-h (g=fresh-clone bootstrap README-
+  verbatim, h=116 rubric ids->file:line+test); quiescence+worktree verify.
   Contact q=AND-tokens x OR-columns, pure fns src/domain/contacts.ts (repo
-  layer NO real-D1 harness, only fakeDb). Every *_id indexed via
-  getTableConfig; migrations hand-authored, db:generate DELETED, parity test.
-- Campaign-2 w5 (DEC-268..273) @ main=73042c3+: all four w4 fixes LANDED.
-  Fresh clone never builds public/admin (gitignored) -> /admin 404s empty;
-  predev+render-sweep now vite-build. DEC-271=ABS-12 recusal; DEC-272 WAIVES
-  ABS-14; DEC-273 approve/maybe/deny = reviewer RECOMMENDATION, never a 6th
-  status. DEC-270: wave 6 = battery ONLY, PLANNER names the 40-char frozen
-  sha. Tripwires (test/): docs-route-coverage, spa-contract-sweep,
-  schema-fk-indexes, migration-parity.
-- Campaign-2 w6 (DEC-274..279) @ main=ade5aa7: wave 5 STILL IN FLIGHT (only
-  task-w5-a merged; recusal SPA files present but migration 0017 +
-  schema.reviewRecusal NOT). DEC-279 re-points DEC-270's battery to first
-  ZERO-product-task wave (w7); protocol unchanged/binding. DEC-274 public
-  gates SPLIT: visibleSessionConditions (accepted+content-approved) vs
-  visibleParticipantConditions (visible+invite); session queries drop
-  mandatory innerJoin(participant), EMB-02 search -> gated leftJoin,
-  speakerless sessions render speakers:[]. DEC-275 clone copies ACTIVE
-  participants only, reset invite 'none'. DEC-276 bearer auth re-resolves
-  minting user every request (exists+role=organizer+org match), no expiry
-  col. DEC-277 slot day must be in event range on WRITE; out-of-range reads
-  unscheduled, counts in summary.unplaced, payload shape frozen. DEC-278
-  ensureOnboardingTasks fires at LAST of (accepted, participant active);
-  invited/declined excluded; ACTIVE_INVITE_STATUSES twin of DEC-274 SQL gate.
+  NO real-D1, only fakeDb); every *_id indexed via getTableConfig;
+  migrations hand-authored, db:generate DELETED.
+- Campaign-2 w5 (DEC-268..273): fresh clone never builds public/admin
+  (gitignored) -> /admin 404s empty; predev+render-sweep now vite-build.
+  DEC-271=ABS-12 recusal; DEC-272 WAIVES ABS-14; DEC-273 approve/maybe/deny
+  = reviewer RECOMMENDATION, never a 6th status. Tripwires (test/):
+  docs-route-coverage, spa-contract-sweep, schema-fk-indexes, migration-parity.
+- Campaign-2 w6 (DEC-274..279): DEC-274 public gates SPLIT
+  visibleSessionConditions/visibleParticipantConditions, speakerless
+  sessions render speakers:[]. DEC-275/278 landed w7 (see below); DEC-276
+  bearer re-resolves minting user/request; DEC-277 slot day in event range
+  on WRITE else unscheduled. DEC-270/279: wave-N battery-only protocol,
+  moved to first ZERO-product-task wave.
+- Campaign-2 w7 (DEC-280..284) @ main=1a4d55b: wave 6 PARTLY landed —
+  DEC-275 (create.ts:194) + DEC-278 (status.ts:133) ARE in; DEC-274/276/277
+  still in flight (public.ts:38, middleware.ts:155, agenda.ts:353
+  unchanged). DEC-280 amends DEC-270 step 3: post-S product commits are a
+  recorded POST-S DELTA to re-check, never a STOP; steps 1/2/4 (planner
+  names 40-char literal, detached worktree, verbatim FROZEN SHA) unchanged.
+  DEC-281: wave 8 IS the battery, zero product tasks, only a P1 may
+  displace it. DEC-282: contact merge covers SEVEN contact FK tables
+  (pipeline_entry was missing -> listPipelineForOrg:161 threw); both-
+  enrolled keeps further-along stage, activities repointed; task_assignment
+  deduped completion-wins; twin login accounts=conflict; CONTACT_FK_TABLES
+  locked by getTableConfig tripwire. DEC-283: assignToAllAccepted expands
+  to ACTIVE participants only. DEC-284: pre-battery gate lane reports red,
+  never fixes it.
