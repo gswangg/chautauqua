@@ -9,6 +9,7 @@ import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { newId } from "../../domain/ids";
 import { visibleSubmissionConditions } from "./public";
+import { backfillNullAttribution } from "./attribution";
 
 // ---------------------------------------------------------------------------
 // Pure helpers (no db/IO) — unit-tested directly.
@@ -132,6 +133,9 @@ export async function updateContactProfile(db: Db, contactId: string, input: Pro
       updatedAt: new Date(),
     })
     .where(eq(schema.contact.id, contactId));
+  // DEC-299: repair any never-taken (NULL) attribution snapshot now that the
+  // speaker has written a real title/company through their portal profile.
+  await backfillNullAttribution(db, contactId, { title: input.title, company: input.company });
 }
 
 export interface InsertHeadshotFileInput {

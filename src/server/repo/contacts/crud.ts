@@ -10,6 +10,7 @@ import { matchesContactQuery, matchesSegment, tokenizeContactQuery, type Segment
 import { findSegmentForOrg } from "./segments";
 import { toContactRecord, toRow, type ContactRow } from "./rows";
 import { compareContacts, type ParsedContactListQuery } from "./query";
+import { backfillNullAttribution } from "../attribution";
 
 export interface ContactInput {
   firstName: string;
@@ -102,6 +103,11 @@ export async function patchContact(db: Db, id: string, patch: ContactPatch): Pro
       updatedAt: new Date(),
     })
     .where(eq(schema.contact.id, id));
+  // DEC-299: repair any never-taken (NULL) attribution snapshot now that an
+  // organizer has written a real title/company onto this contact.
+  if (patch.title !== undefined || patch.company !== undefined) {
+    await backfillNullAttribution(db, id, { title: patch.title ?? null, company: patch.company ?? null });
+  }
   const updated = await findContactById(db, id);
   if (!updated) throw new Error(`contact ${id} not found after update`);
   return updated;
