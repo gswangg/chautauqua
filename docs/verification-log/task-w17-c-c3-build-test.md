@@ -159,11 +159,10 @@ citations re-anchored to the post-decomposition submodule paths.
 
 ## RECHECK SHA
 
-`<pending commit of this task>` — the commit created by this task on branch
-`task-w17-c`, containing only the two-file DEC-258 guard restoration plus
-this verification log. Run `git -C
-/Users/wednesdayniemeyer/Documents/gniemeyer/Projects/chautauqua log --oneline
--1 task-w17-c` after merge for the concrete sha.
+`ef57424888c67074741088b905a9611bfc9c0c4` (branch `task-w17-c`) — contains
+only the two-file DEC-258 guard restoration plus an earlier draft of this
+verification log; the doc's own content (this file) is finalized in a
+follow-up commit on the same branch.
 
 ## POST-S DELTA (DEC-280: informational, never a STOP)
 
