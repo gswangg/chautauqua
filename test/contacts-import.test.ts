@@ -177,15 +177,15 @@ describe("POST /api/v1/contacts/import (P1: silent non-persistence repro)", () =
   it("fails loudly with a 400 (not an unhandled 500) on an unsupported mapping target", async () => {
     const { db } = makeFakeContactDb();
     const app = appWithDbAndAuth(db, ORGANIZER);
-    // 'phone' is deliberately not offered client-side (app/src/pages/contacts/csv.ts
-    // STANDARD_IMPORT_FIELDS) precisely because the pure core here rejects it;
+    // 'zipCode' isn't a target the pure core (src/domain/contacts.ts
+    // mapImportRow) or the client wizard (STANDARD_IMPORT_FIELDS) recognize;
     // this covers a client/server mapping mismatch reaching the route directly.
     const res = await app.request("/api/v1/contacts/import", {
       method: "POST",
       headers: { "content-type": "application/json", "x-chq-csrf": "1" },
       body: JSON.stringify({
-        csvText: "Email,Phone\na@example.com,555-1234\n",
-        mapping: { Email: "email", Phone: "phone" },
+        csvText: "Email,Zip\na@example.com,90210\n",
+        mapping: { Email: "email", Zip: "zipCode" },
       }),
     });
     expect(res.status).toBe(400);

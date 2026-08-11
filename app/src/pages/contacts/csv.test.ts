@@ -60,6 +60,16 @@ describe('mapImportRow', () => {
   it('throws for an unknown target field', () => {
     expect(() => mapImportRow({ 'First Name': 'bogus' }, header, ['Ada', 'Lovelace', 'a@b.com', 'x'])).toThrow(/unknown target field/);
   });
+
+  it('maps phone and bio columns (DEC-290)', () => {
+    const phoneBioHeader = ['Email', 'Phone', 'Bio'];
+    const row = mapImportRow({ Email: 'email', Phone: 'phone', Bio: 'bio' }, phoneBioHeader, [
+      'ada@example.com',
+      '555-1234',
+      'Computer scientist',
+    ]);
+    expect(row).toEqual({ email: 'ada@example.com', phone: '555-1234', bio: 'Computer scientist' });
+  });
 });
 
 describe('splitFullName (P1 fix, w1-f: combined name column import)', () => {
@@ -167,6 +177,7 @@ describe('suggestMapping (P1 fix, w1-f: auto-map obvious CSV headers)', () => {
       email: 'email',
       title: 'title',
       company: 'company',
+      bio: 'bio',
     });
   });
 });

@@ -88,12 +88,11 @@ export function parseCsv(text: string): string[][] {
 }
 
 /** Standard target fields the mapping wizard offers, plus free-form 'custom.<key>'.
- * Deliberately NOT 'phone': the server's pure-core ContactRecord/mapImportRow
- * (src/domain/contacts.ts) has no phone field and throws on an unrecognized
- * target, so offering it here would let a user pick a mapping that 500s the
- * whole import (P1 fix, w1-f) — keep this list exactly aligned with what the
- * server import path supports. */
-export const STANDARD_IMPORT_FIELDS = ['firstName', 'lastName', 'email', 'company', 'title'] as const;
+ * Kept exactly aligned with the server's pure-core mapImportRow
+ * (src/domain/contacts.ts) target-field switch, which throws on an
+ * unrecognized target (P1 fix, w1-f) — phone and bio are supported there
+ * (DEC-290), so they're offered here too. */
+export const STANDARD_IMPORT_FIELDS = ['firstName', 'lastName', 'email', 'company', 'title', 'phone', 'bio'] as const;
 export type StandardImportField = (typeof STANDARD_IMPORT_FIELDS)[number];
 
 /**
@@ -191,6 +190,8 @@ export interface MappedContactRow {
   email?: string;
   company?: string;
   title?: string;
+  phone?: string;
+  bio?: string;
   customFields?: Record<string, string>;
 }
 
@@ -259,6 +260,8 @@ const FIELD_ALIASES: Record<StandardImportField, string[]> = {
   email: ['email', 'emailaddress', 'e-mail', 'mail'],
   company: ['company', 'organization', 'organisation', 'employer'],
   title: ['title', 'jobtitle', 'role'],
+  phone: ['phone', 'phonenumber', 'telephone', 'mobile', 'cell'],
+  bio: ['bio', 'biography', 'about'],
 };
 
 /** column-name aliases that indicate a single combined "full name" column

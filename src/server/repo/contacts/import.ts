@@ -18,6 +18,8 @@ export interface ImportResult {
   created: number;
   updated: number;
   skipped: ImportSkip[];
+  /** id of every created-or-updated contact, in row order, deduped (skipped rows excluded). */
+  contactIds: string[];
 }
 
 /** Applies parsed+mapped rows to the org's contacts, one row already resolved
@@ -38,6 +40,15 @@ export async function applyImportRows(
   let created = 0;
   let updated = 0;
   const skipped: ImportSkip[] = [];
+  const contactIds: string[] = [];
+  const seenContactIds = new Set<string>();
+
+  const addContactId = (id: string) => {
+    if (!seenContactIds.has(id)) {
+      seenContactIds.add(id);
+      contactIds.push(id);
+    }
+  };
 
   for (const { line, parsed } of rows) {
     const email = typeof parsed.email === "string" ? parsed.email : undefined;
@@ -52,11 +63,13 @@ export async function applyImportRows(
       const row = await createContact(db, orgId, decision.values);
       byEmail.set(key, row.id);
       created++;
+      addContactId(row.id);
     } else {
       await patchContact(db, decision.id, decision.patch);
       updated++;
+      addContactId(decision.id);
     }
   }
 
-  return { created, updated, skipped };
+  return { created, updated, skipped, contactIds };
 }
