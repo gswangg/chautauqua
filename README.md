@@ -36,6 +36,20 @@ If you run `wrangler dev` on a non-default port (e.g. `npx wrangler dev --port
 links (claim/portal) point at that port instead of being inferred from
 request headers (DEC-252; see `src/server/origin.ts`).
 
+### Dev: migrations
+
+Migrations under `migrations/*.sql` are hand-authored, not drizzle-kit
+generated (DEC-164/DEC-263) — `migrations/meta/` only has snapshots for
+`0000`-`0004`, so `drizzle-kit generate` diffs `src/db/schema.ts` against
+that stale snapshot and would emit a spurious migration re-creating tables
+and columns that already exist. Do **not** run `drizzle-kit generate` (there
+is no `db:generate` script for this reason); when the schema changes, hand-
+author the next-numbered `migrations/NNNN_*.sql` file yourself.
+`test/migration-parity.test.ts` is the real guard: it parses every
+`migrations/*.sql` file and asserts that every table/column exported from
+`src/db/schema.ts` has a creating migration, so a fresh clone's `npm run
+db:migrate` always produces the schema the code expects.
+
 ### Dev: render-sweep gate
 
 `npm run gate:render-sweep` boots its own migrated + seeded `wrangler dev` on
