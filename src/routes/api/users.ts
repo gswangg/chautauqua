@@ -76,7 +76,7 @@ usersRoutes.post("/api/v1/users", requireOrganizer, csrfJson, async (c) => {
   const anchorEventId = orgEvents[0]?.id;
   if (anchorEventId) {
     const mailer = makeMailer(c.var.db);
-    const text = `An account has been created for you.\n\nEmail: ${created.email}\nTemporary password: ${password}\n\nPlease sign in and change your password.`;
+    const text = `An account has been created for you.\n\nEmail: ${created.email}\n\nSign in at /login with the temporary password your organizer will share with you; you can change it at /account/password after signing in.`;
     await mailer.send({
       to: { email: created.email, name: created.email },
       subject: "Your account has been created",

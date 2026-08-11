@@ -128,6 +128,7 @@ function ProfilePage(props: {
       <h2>My Profile</h2>
       {props.error ? <p role="alert">{props.error}</p> : null}
       {props.saved ? <p role="status">Profile saved.</p> : null}
+      <p><a href="/account/password">Change password</a></p>
 
       <section aria-label="Headshot">
         <h3>Headshot</h3>

@@ -72,6 +72,9 @@ export function SettingsPage() {
   return (
     <div className="chq-page">
       <h1>Settings</h1>
+      <p>
+        <a href="/account/password">Change password</a>
+      </p>
       <EventSettingsPanel />
       <TracksRoomsPanel />
       <PortalSettingsPanel />

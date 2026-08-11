@@ -1,6 +1,7 @@
 import { createBaseApp, guardDevMailbox } from "./server/app";
 import { handleScheduled } from "./server/scheduled";
 import { authRoutes } from "./routes/auth";
+import { accountRoutes } from "./routes/account";
 import { eventsRoutes } from "./routes/api/events";
 import { portalConfigRoutes } from "./routes/api/portal-config";
 import { emailLogRoutes } from "./routes/api/email-log";
@@ -37,6 +38,7 @@ import { docsRoutes } from "./routes/docs";
 const app = createBaseApp();
 
 app.route("/", authRoutes);
+app.route("/", accountRoutes);
 app.route("/api/v1", eventsRoutes);
 app.route("/api/v1", portalConfigRoutes);
 app.route("/api/v1", submissionsRoutes);
