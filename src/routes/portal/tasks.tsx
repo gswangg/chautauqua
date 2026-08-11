@@ -304,14 +304,14 @@ function ResourcesPage(props: {
 // Routes: tasks
 // -----------------------------------------------------------------------
 
-portalTasksRoutes.get("/tasks", async (c) => {
-  const auth = requireAuth(c);
-  const contactId = auth.contactId;
-  if (!contactId) throw new Error("speaker auth session missing contact_id — invariant violated");
-
+// Shared loader for the /tasks list, factored out so a failed upload can
+// re-render the SAME page inline (with an on-screen field error attached to
+// the offending row) instead of the request falling through to the global
+// JSON error handler — see the /upload route below for why this exists.
+async function loadTasksPageData(c: Context<AppEnv>, contactId: string, orgId: string) {
   const [data, assignments] = await Promise.all([
-    getPortalData(c.var.db, contactId, auth.orgId),
-    getMyTaskAssignments(c.var.db, contactId, auth.orgId),
+    getPortalData(c.var.db, contactId, orgId),
+    getMyTaskAssignments(c.var.db, contactId, orgId),
   ]);
 
   // DEC-244 (implements DEC-242): for every completed file_request
@@ -332,6 +332,16 @@ portalTasksRoutes.get("/tasks", async (c) => {
     ]);
     fileExtrasByAssignmentId.set(a.id, { filename: latest.filename, version, uploadedAt: latest.createdAt, comments });
   }
+
+  return { data, assignments, fileExtrasByAssignmentId };
+}
+
+portalTasksRoutes.get("/tasks", async (c) => {
+  const auth = requireAuth(c);
+  const contactId = auth.contactId;
+  if (!contactId) throw new Error("speaker auth session missing contact_id — invariant violated");
+
+  const { data, assignments, fileExtrasByAssignmentId } = await loadTasksPageData(c, contactId, auth.orgId);
 
   const { token: csrfToken, setCookieIfNew } = ensureCsrfCookie(c);
   if (setCookieIfNew) c.header("Set-Cookie", setCookieIfNew, { append: true });
@@ -461,8 +471,35 @@ portalTasksRoutes.post("/tasks/:assignmentId/upload", csrfForm, async (c) => {
 
   const body = await c.req.parseBody();
   const file = body["file"];
+
+  // Disallowed extension/MIME or an over-cap size (SPEC §6) must produce a
+  // clear ON-SCREEN error, same page, same URL — NOT the raw
+  // {"error":{...}} JSON blob the global onError handler renders for a
+  // full-page form POST (a real regression found live in-browser: a
+  // full-page navigation landing on unstyled JSON is not a "clear
+  // on-screen error" by any reading of that requirement). Mirrors the
+  // existing /tasks/:id/form validation-failure pattern: re-render
+  // TasksPage inline (400, not a redirect) with the field error attached
+  // to the offending row via errorFor, instead of throwing.
+  async function reRenderWithError(message: string): Promise<Response> {
+    const { data, assignments, fileExtrasByAssignmentId } = await loadTasksPageData(c, contactId as string, auth.orgId);
+    const { token: csrfToken, setCookieIfNew } = ensureCsrfCookie(c);
+    if (setCookieIfNew) c.header("Set-Cookie", setCookieIfNew, { append: true });
+    return c.html(
+      <TasksPage
+        branding={data.branding}
+        assignments={assignments}
+        csrfToken={csrfToken}
+        formLinkFor={(a) => `/portal/tasks/${a.id}/form`}
+        fileExtrasFor={(id) => fileExtrasByAssignmentId.get(id)}
+        errorFor={(id) => (id === assignmentId ? message : undefined)}
+      />,
+      400,
+    );
+  }
+
   if (!(file instanceof File)) {
-    throw new ApiError("invalid", "file is required", { file: "Required" });
+    return reRenderWithError("file is required");
   }
 
   // DEC-240 (supersedes DEC-029's submission_id-null/'handout'-only rule):
@@ -474,7 +511,7 @@ portalTasksRoutes.post("/tasks/:assignmentId/upload", csrfForm, async (c) => {
   if (!isValidFileKind(kind)) throw new Error(`invalid task.deliverable_kind persisted: ${kind}`);
   const validation = validateUpload({ filename: file.name, sizeBytes: file.size, kind });
   if (!validation.ok) {
-    throw new ApiError("invalid", validation.message, validation.fields);
+    return reRenderWithError(validation.message);
   }
 
   const submissionId = await resolveDeliverableSubmissionId(c.var.db, contactId, scope.eventId);
