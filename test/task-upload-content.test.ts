@@ -189,6 +189,66 @@ describe("POST /portal/tasks/:assignmentId/upload (DEC-240)", () => {
     );
   });
 
+  it("disallowed extension: re-renders /portal/tasks inline with a clear on-screen error, not the raw JSON error envelope", async () => {
+    // Regression for a real browser-verified defect (task w3-c, J8 content
+    // lifecycle pass): a disallowed-extension/over-cap upload used to throw
+    // ApiError straight to the global onError handler, so a full-page form
+    // POST landed the browser on an unstyled `{"error":{...}}` JSON blob at
+    // POST's own URL instead of redisplaying My Tasks with an inline error.
+    const { getAssignmentScope } = await import("../src/server/repo/portal");
+    vi.mocked(getAssignmentScope).mockResolvedValue({
+      id: ASSIGNMENT_ID,
+      taskId: "task-1",
+      eventId: TASK_EVENT_ID,
+      kind: "file_request",
+      formId: null,
+      deliverableKind: "presentation",
+      contactId: CONTACT_A,
+      orgId: ORG_A,
+      status: "pending",
+      fileId: null,
+    });
+    const portalRepo = await import("../src/server/repo/portal");
+    vi.spyOn(portalRepo, "getPortalData").mockResolvedValue({
+      branding: { eventName: "Test Event", welcomeMessage: null, accentColor: null, logoUrl: null },
+    } as never);
+    vi.spyOn(portalRepo, "getMyTaskAssignments").mockResolvedValue([
+      {
+        id: ASSIGNMENT_ID,
+        title: "Finalize slides",
+        description: null,
+        required: true,
+        dueDate: null,
+        status: "pending",
+        kind: "file_request",
+        formId: null,
+        fileId: null,
+        responseJson: null,
+      } as never,
+    ]);
+
+    const app = await buildPortalApp(SPEAKER);
+    const form = new FormData();
+    form.set("chq_csrf", "tok-bad-ext");
+    form.set("file", new File(["not a real deliverable"], "malware.exe", { type: "application/octet-stream" }));
+    const res = await app.request(
+      new Request(`http://test.local/portal/tasks/${ASSIGNMENT_ID}/upload`, {
+        method: "POST",
+        headers: { cookie: "chq_csrf=tok-bad-ext" },
+        body: form,
+      }),
+    );
+
+    // Same URL family (no redirect), 400, HTML — never the JSON envelope.
+    expect(res.status).toBe(400);
+    expect(res.headers.get("content-type")).toMatch(/text\/html/);
+    const html = await res.text();
+    expect(html).not.toContain('"error":{"code"');
+    expect(html).toContain("My Tasks");
+    expect(html).toContain('role="alert"');
+    expect(html).toMatch(/isn(&#39;|')t allowed|not an accepted/i);
+  });
+
   it("falls back to 'handout' when the task has no deliverableKind set", async () => {
     const { getAssignmentScope } = await import("../src/server/repo/portal");
     const { insertFile } = await import("../src/server/repo/files");
