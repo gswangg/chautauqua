@@ -31,30 +31,31 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   (deliverable_kind chain, DEC-248 widens serve pop); DEC-242/244 portal
   self-service CHAIN-LATEST; DEC-243/249 Tracks/Format col+allowlist;
   DEC-245 SSR confirms; DEC-247 flat {items}. DEC-250 FREEZES c211d4c ended
-  5/6 (walkthrough FAILED DEC-252 bug); DEC-251 Section D (D1-D4+D6 fixed,
-  rest WAIVED). Human committed stage-2 (mailer, Airtable cron), leave it.
+  5/6 (DEC-252 bug); DEC-251 Section D (D1-D4+D6 fixed, WAIVED rest). Human
+  committed stage-2 (mailer, Airtable cron) — leave alone.
 - Campaign-2 w1/w2 (DEC-252..257, compact): DEC-252 fix src/server/origin.ts
   resolveBaseUrl + RELATIVE hrefs. DEC-253 mobile 390x844 zero h-overflow.
   DEC-254 persona lanes log task-w1-<x>. DEC-255 superseded by DEC-256/262
   (freeze protocol, see below). 8 sections a-h incl g fresh-clone bootstrap
   (DEC-257, README-verbatim 8787), h=116 rubric ids -> file:line+test.
-- Campaign-2 w4 (DEC-262..267). Verified main=6a3bb88+: w2 battery landed
-  6/8 - b/c PASS@1e08bc8, d PASS@e002bc9, a FAIL(drift only), e FAIL(drift;
-  3 narrow items), f FAIL(2 REAL defects); g/h NEVER ran. DEC-262: DEC-256
-  step 1 amended - wait covers EVERY task-* ref + QUIESCENCE (main tip
-  unchanged 120s, poll 15s/40min), verify in `git worktree add --detach S`,
-  and the battery may only be scheduled in a wave with ZERO product tasks;
-  battery moves w4 -> w5. DEC-264: w4 = DEC-261-permitted battery-FAIL
-  fixes + sections g/h run as EVIDENCE (no FROZEN SHA); logs
-  task-w4-<x>-c2-<scope>.md ('-c2-' mandatory, campaign-1 owns task-w4-a/
-  -c/-d/-e names). WAIVED: w1-a baseline-count typo; b/c/d SHA
-  non-uniformity (DEC-262 remedies). DEC-265 participant rows carry
-  name+email server-side, `${first} ${last}`.trim(), POST==reload.
-  DEC-266 contact q = AND-tokens x OR-columns, pure fns in src/domain/
-  contacts.ts + superset SQL prefilter (repo layer has NO real-D1 harness,
-  only fakeDb - put testable logic in the pure core). DEC-267 every *_id
-  column indexed, tripwire test via getTableConfig; migration 0016, 0015
-  RESERVED for wave-3 DEC-258. DEC-263 migrations are hand-authored,
-  db:generate DELETED (meta/ stale at 0004), parity guarded by
-  test/migration-parity.test.ts. Confirmed present, stop re-auditing:
-  prefetch-on-hover app/src/App.tsx:50-95; ics SEQUENCE bump agenda.ts:409.
+- Campaign-2 w4 (DEC-262..267, compact): w2 battery 6/8 (b/c/d PASS,
+  a/e/f FAIL drift+2defects, g/h never ran). DEC-262 quiescence+worktree
+  verify. DEC-266 contact q=AND-tokens x OR-columns, pure fns src/domain/
+  contacts.ts (repo layer NO real-D1 harness, only fakeDb). DEC-267 every
+  *_id indexed via getTableConfig; DEC-263 migrations hand-authored,
+  db:generate DELETED, parity via migration-parity.test.ts.
+- Campaign-2 w5 (DEC-268..273) @ main=73042c3+. VERIFIED all four w4 fixes
+  LANDED (participants.ts:106,170; contacts.ts:229,245; migration 0016+
+  schema-fk-indexes.test.ts; db:generate gone+migration-parity.test.ts).
+  Battery g/h landed LATE as task-w2-g/h. DEC-269: g's off-origin-claim-link
+  finding is STALE - lane froze at 2682c43, a PREVIOUS-campaign commit;
+  resolveBaseUrl live at submit.tsx:580, comms.ts:267, contacts.ts:609/661.
+  DEC-268: fresh clone never builds public/admin (gitignored, absent from
+  Quickstart+render-sweep boot) -> /admin 404s empty; predev+render-sweep
+  now vite-build, shell fetch fails loudly. DEC-271=ABS-12 recusal (only
+  real rubric gap of 116); DEC-272 WAIVES ABS-14 (rubric's own N/A clause +
+  zero-secret stage1). DEC-273: approve/maybe/deny = reviewer RECOMMENDATION
+  (seeded dropdown), never a 6th status. DEC-270: wave 6 = battery ONLY,
+  PLANNER names the 40-char frozen sha - lanes derived it wrong 3x, once
+  from another campaign. New route/table tripwires (all test/): docs-route-
+  coverage, spa-contract-sweep, schema-fk-indexes, migration-parity.
