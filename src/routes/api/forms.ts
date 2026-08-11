@@ -12,6 +12,9 @@ import type { FormFieldDef, FormFieldRule } from "../../forms/types";
 import * as repo from "../../server/repo/forms";
 import type { FormFieldRow } from "../../server/repo/forms";
 import { listTracksForEvent } from "../../server/repo/events";
+import { DEC_300 } from "../../decisions";
+
+void DEC_300; // DELETE /api/v1/fields/:fieldId cascade-confirm below
 
 export const formsRoutes = new Hono<AppEnv>();
 
@@ -199,7 +202,9 @@ formsRoutes.patch("/api/v1/fields/:fieldId", requireOrganizer, csrfJson, async (
 });
 
 // DELETE /api/v1/fields/:fieldId — remove a custom field; locked built-ins
-// reject removal.
+// reject removal. DEC-300: a field with dependent visibility rules or
+// collected answers 409s naming them unless ?cascade=1, which clears the
+// rules and deletes the answers as part of the same delete.
 formsRoutes.delete("/api/v1/fields/:fieldId", requireOrganizer, csrfJson, async (c) => {
   const fieldId = c.req.param("fieldId");
   const field = await requireOwnedField(c, fieldId);
@@ -208,8 +213,18 @@ formsRoutes.delete("/api/v1/fields/:fieldId", requireOrganizer, csrfJson, async 
     throw new ApiError("invalid", "Locked built-in fields cannot be removed");
   }
 
-  await repo.deleteField(c.var.db, fieldId);
-  return c.json({ ok: true });
+  const { dependentLabels, answerCount } = await repo.describeFieldDependents(c.var.db, field.formId, fieldId);
+  const cascade = c.req.query("cascade") === "1";
+  if ((dependentLabels.length > 0 || answerCount > 0) && !cascade) {
+    throw new ApiError(
+      "conflict",
+      `"${field.label}" has ${dependentLabels.length} dependent question(s) and ${answerCount} collected answer(s). Confirm to delete them too.`,
+      { dependents: dependentLabels.join(", "), answers: String(answerCount) },
+    );
+  }
+
+  const { clearedRules, deletedAnswers } = await repo.deleteFieldCascade(c.var.db, field.formId, fieldId);
+  return c.json({ ok: true, clearedRules, deletedAnswers });
 });
 
 // POST /api/v1/forms/:formId/fields/reorder — orderedIds must be a
