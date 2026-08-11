@@ -11,7 +11,7 @@ import type { Mailer } from "../../mail/types";
 import { renderTemplate, textToHtml } from "../../mail/render";
 import type { ReminderAssignment } from "../../domain/reminders";
 import { planReminders } from "../../domain/reminders";
-import { isActiveParticipant } from "../../domain/acceptance";
+import { ACTIVE_INVITE_STATUSES } from "../../domain/acceptance";
 import { listFields } from "./forms";
 import type { AnswerMap } from "../../forms/types";
 
@@ -342,26 +342,30 @@ function toTaskRecord(row: typeof schema.task.$inferSelect): TaskRecord {
   };
 }
 
-/** Returns the ACTIVE participants (DEC-278 isActiveParticipant — invite
- * status 'none' or 'accepted') of accepted submissions in the event — the
- * DEC-023 assignToAllAccepted expansion target, gated per DEC-283 so a task
- * an organizer creates event-wide doesn't re-add an 'invited' or 'declined'
+/** Returns the ACTIVE participants (DEC-278 — invite status 'none' or
+ * 'accepted') of accepted submissions in the event — the DEC-023
+ * assignToAllAccepted expansion target, gated per DEC-283 so a task an
+ * organizer creates event-wide doesn't re-add an 'invited' or 'declined'
  * co-speaker to the onboarding grid (mirroring ensureOnboardingTasks'
  * contactIds=null path in ../submissions/status.ts).
  *
- * The inviteStatus filter runs in application code rather than the SQL WHERE
- * clause: the repo-layer fakeDb test harness (no real D1 in stage 1, per
- * DEC-266) can't evaluate a WHERE predicate, only table-identity joins, and
- * the candidate row set here is already small and bounded — every
- * participant of the event's accepted submissions. */
+ * The SQL WHERE clause is normative per DEC-312: the inviteStatus filter is
+ * pushed into the query itself (inArray against ACTIVE_INVITE_STATUSES)
+ * rather than filtered in application code, so a test double's WHERE
+ * evaluation can't drift from what production SQL actually does. */
 export async function listAcceptedContactIds(db: Db, eventId: string): Promise<string[]> {
   const rows = await db
-    .select({ contactId: schema.participant.contactId, inviteStatus: schema.participant.inviteStatus })
+    .select({ contactId: schema.participant.contactId })
     .from(schema.participant)
     .innerJoin(schema.submission, eq(schema.participant.submissionId, schema.submission.id))
-    .where(and(eq(schema.submission.eventId, eventId), eq(schema.submission.status, "accepted")));
-  const active = rows.filter((r) => isActiveParticipant(r.inviteStatus));
-  return [...new Set(active.map((r) => r.contactId))];
+    .where(
+      and(
+        eq(schema.submission.eventId, eventId),
+        eq(schema.submission.status, "accepted"),
+        inArray(schema.participant.inviteStatus, [...ACTIVE_INVITE_STATUSES]),
+      ),
+    );
+  return [...new Set(rows.map((r) => r.contactId))];
 }
 
 export async function createTaskAssignments(
