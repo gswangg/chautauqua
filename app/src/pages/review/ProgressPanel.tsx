@@ -99,6 +99,7 @@ export function ProgressPanel() {
             <th>Reviewer</th>
             <th>Assigned</th>
             <th>Completed</th>
+            <th>Recused</th>
             <th>Status</th>
           </tr>
         </thead>
@@ -108,12 +109,13 @@ export function ProgressPanel() {
               <td>{row.email}</td>
               <td>{row.assigned}</td>
               <td>{row.completed}</td>
+              <td>{row.recused}</td>
               <td>{row.completed >= row.assigned ? 'Done' : 'In progress'}</td>
             </tr>
           ))}
           {rows.length === 0 && (
             <tr>
-              <td colSpan={4}>No reviewers assigned yet.</td>
+              <td colSpan={5}>No reviewers assigned yet.</td>
             </tr>
           )}
         </tbody>
