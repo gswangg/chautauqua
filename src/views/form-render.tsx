@@ -30,17 +30,30 @@ function FieldControl(props: { field: FormFieldDef; value: unknown }) {
           data-field-id={field.id}
           value={typeof value === "string" ? value : ""}
           required={field.required}
+          data-required={field.required ? "true" : "false"}
         />
       );
     case "long_text":
       return (
-        <textarea id={name} name={name} data-field-id={field.id} required={field.required}>
+        <textarea
+          id={name}
+          name={name}
+          data-field-id={field.id}
+          required={field.required}
+          data-required={field.required ? "true" : "false"}
+        >
           {typeof value === "string" ? value : ""}
         </textarea>
       );
     case "dropdown":
       return (
-        <select id={name} name={name} data-field-id={field.id} required={field.required}>
+        <select
+          id={name}
+          name={name}
+          data-field-id={field.id}
+          required={field.required}
+          data-required={field.required ? "true" : "false"}
+        >
           <option value="">Select…</option>
           {(field.options ?? []).map((opt) => (
             <option value={opt} selected={value === opt}>
@@ -69,6 +82,7 @@ function FieldControl(props: { field: FormFieldDef; value: unknown }) {
           data-field-id={field.id}
           value={typeof value === "number" ? String(value) : ""}
           required={field.required}
+          data-required={field.required ? "true" : "false"}
         />
       );
     case "file":
