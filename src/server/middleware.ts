@@ -17,9 +17,10 @@ import {
 } from "../auth/cookies";
 import { hashToken } from "../auth/tokens";
 import { ApiError } from "./http";
-import { DEC_027 } from "../decisions";
+import { DEC_027, DEC_276 } from "../decisions";
 
 void DEC_027;
+void DEC_276;
 
 // ---------------------------------------------------------------------------
 // Pure session-resolution core (testable against fakes, no Hono/D1 needed)
@@ -136,24 +137,36 @@ export function extractBearerToken(authorizationHeader: string | undefined | nul
 }
 
 /**
- * Resolves a `chq_...` bearer token to an AuthInfo, or undefined when
- * there's no token or no matching api_token row. Per DEC-027, bearer auth
- * always resolves to the organizer role (tokens are minted organizer-only,
- * cookie-session-only) scoped to the token's org.
+ * Resolves a `chq_...` bearer token to an AuthInfo, or undefined when there's
+ * no token, no matching api_token row, or the minting user no longer
+ * qualifies. Per DEC-276, tokens carry no privilege of their own: every
+ * request re-resolves the user who minted the token (via createdByUserId)
+ * and requires that user to still exist, still hold role='organizer', and
+ * still belong to the token's org — so demoting, deleting, or moving that
+ * user to another org revokes the token's authority immediately, without a
+ * token expiry column. A row with a role literal outside the known set is
+ * data corruption (assertRole throws, per DEC-012 fail-loudly) rather than
+ * silently degrading to undefined.
  */
 export async function resolveBearerAuth(
   token: string | undefined,
   tokens: ApiTokenLookup,
+  users: UserLookup,
   hashFn: (token: string) => Promise<string>,
 ): Promise<AuthInfo | undefined> {
   if (!token) return undefined;
   const tokenHash = await hashFn(token);
   const row = await tokens.findByTokenHash(tokenHash);
   if (!row) return undefined;
+  const user = await users.findById(row.createdByUserId);
+  if (!user) return undefined;
+  assertRole(user.role);
+  if (user.role !== "organizer") return undefined;
+  if (user.orgId !== row.orgId) return undefined;
   return {
-    userId: row.createdByUserId,
-    role: "organizer",
-    orgId: row.orgId,
+    userId: user.id,
+    role: user.role,
+    orgId: user.orgId,
     viaBearer: true,
   };
 }
@@ -196,7 +209,7 @@ export const sessionLoader: MiddlewareHandler<AppEnv> = async (c, next) => {
 
   const bearerToken = extractBearerToken(c.req.header("authorization"));
   if (bearerToken) {
-    const bearerAuth = await resolveBearerAuth(bearerToken, drizzleApiTokenLookup(db), hashToken);
+    const bearerAuth = await resolveBearerAuth(bearerToken, drizzleApiTokenLookup(db), drizzleUserLookup(db), hashToken);
     if (bearerAuth) {
       c.set("auth", bearerAuth);
       const tokenHash = await hashToken(bearerToken);
