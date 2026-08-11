@@ -252,3 +252,5 @@ export const DEC_246 = "Contract-mismatch resolution rule for the DEC-239 sweep"
 export const DEC_247 = "GET /api/v1/submissions/:id/files returns a flat {items: DeliverableFile[]} envelope; worklist deliverable counts = version-chain roots";
 export const DEC_248 = "Task-file serve population drops the 'handout'-only predicate — any kind, submissionId-null, assignment-referenced (DEC-240 conformance; amends DEC-065)";
 export const DEC_249 = "Format-column auto-show matches a fixed label allowlist {'format', 'session format'} (amends DEC-243)";
+export const DEC_250 = "Wave-4 exit battery frozen at product sha c211d4c; allow-listed drift; six greppable sections under docs/verification-log/";
+export const DEC_251 = "eval-findings Section D disposition: five items FIXED with cited evidence, three residuals WAIVED for stage-1 closure";
