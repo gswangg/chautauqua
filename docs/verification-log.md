@@ -4762,3 +4762,33 @@ green in this worktree.
 OPEN ITEMS: 0
 RESULT: PASS
 
+## 2026-08-10 task-w8-b — build+test @ 38860f9
+
+Full detail: docs/verification-log/task-w8-b-build-test.md
+
+Derived S per DEC-176/177: first-parent walk from `main` tip lands on
+`38860f9` ("merge task-w8-a") directly — this is the newest first-parent
+commit, matching the task's own note that task-w8-a has already merged.
+`git merge-base --is-ancestor 2dd2f33 38860f9` exits 0. All ten
+precondition greps at S hit: `DEC-167` (`src/domain/contacts.ts`),
+`ICS_ORGANIZER_EMAIL` (`src/mail/ics.ts`), `unknown track id`
+(`src/routes/api/forms.ts`), `anonymized === false`
+(`src/server/repo/files.ts`), `openDate`
+(`app/src/pages/review/PlanEditor.tsx`), `FORM_TASK_FIELD_SPECS` +
+`DEC-174` (`scripts/seed.ts`), `DEC-173` (`scripts/walkthrough/
+public.ts` + `speaker.ts`), `DEC-175` (`scripts/walkthrough/
+producer.ts` + `speaker.ts` + `review.ts`).
+
+Fresh worktree checked out at S (branch `task-w8-b` off `main`, HEAD =
+`38860f9`). `npm ci` clean; `npm run build` (tsc root + tsc app +
+vite) PASS — 131 modules transformed, 19 output assets (18 JS + 1
+CSS) under `public/admin/assets/`. `npm run bundle:check` PASS —
+entry bundle `index-Dtj2KjKK.js` + `index-easpJsYc.css` = 58.86 kB
+gzip vs 300.00 kB budget (DEC-058). `npm test --silent` PASS — 151
+test files / 1332 tests, all green, 0 failures, including the full
+17-file `app/src/**/*.render.test.tsx` render-sweep battery.
+
+OPEN ITEMS: 0
+
+RESULT: PASS
+
