@@ -89,4 +89,33 @@ describe("resolveBaseUrl (DEC-252)", () => {
     const c = ctx({ url: "https://chautauqua.cc/submit/foo" });
     expect(resolveBaseUrl(c)).toBe("https://chautauqua.cc");
   });
+
+  it("DEC-296: a non-loopback PUBLIC_BASE_URL always wins, even in dev mode with a loopback Origin header", () => {
+    const c = ctx({
+      url: "http://chautauqua.cc/submit/foo",
+      devMode: "1",
+      publicBaseUrl: "https://example.org",
+      headers: { Origin: "http://localhost:8801" },
+    });
+    expect(resolveBaseUrl(c)).toBe("https://example.org");
+  });
+
+  it("DEC-296: in dev mode, a loopback Origin header outranks a loopback default PUBLIC_BASE_URL (wrangler routes repro)", () => {
+    const c = ctx({
+      url: "http://chautauqua.cc/submit/foo",
+      devMode: "1",
+      publicBaseUrl: "http://localhost:8787",
+      headers: { Origin: "http://localhost:8792" },
+    });
+    expect(resolveBaseUrl(c)).toBe("http://localhost:8792");
+  });
+
+  it("DEC-296: in dev mode, a loopback default PUBLIC_BASE_URL wins when the request has no loopback origin/headers", () => {
+    const c = ctx({
+      url: "http://chautauqua.cc/submit/foo",
+      devMode: "1",
+      publicBaseUrl: "http://localhost:8787",
+    });
+    expect(resolveBaseUrl(c)).toBe("http://localhost:8787");
+  });
 });
