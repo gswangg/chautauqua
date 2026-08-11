@@ -4998,6 +4998,58 @@ OPEN ITEMS: 0
 
 RESULT: PASS
 
+## 2026-08-10 task-w9-d — perf-smoke @ 38860f9
+
+Full detail: docs/verification-log/task-w9-d-perf-smoke.md
+
+Derived S per DEC-114/DEC-176/DEC-177/DEC-178: no literal `merge
+task-w9-a` commit descends from `2dd2f33` (the two commits with that
+message in history predate `2dd2f33`, from an earlier round);
+`38860f9` ("merge task-w8-a") is the newest code-bearing first-parent
+commit descending from `2dd2f33` and carries the required
+DEC-173/174/175 content — same S already used by sibling gates
+`task-w8-b` and `task-w9-b`. `git merge-base --is-ancestor 2dd2f33
+38860f9` exits 0. All nine precondition greps at S hit (six w6
+anchors: `DEC-167` in `src/domain/contacts.ts`,
+`ICS_ORGANIZER_EMAIL` in `src/mail/ics.ts`, `unknown track id` in
+`src/routes/api/forms.ts`, `anonymized === false` in
+`src/server/repo/files.ts`, `openDate` in
+`app/src/pages/review/PlanEditor.tsx`, `FORM_TASK_FIELD_SPECS` in
+`scripts/seed.ts`; plus `DEC-173` in `scripts/walkthrough/{public,
+speaker}.ts`, `DEC-174` in `scripts/seed.ts`, `DEC-175` in
+`scripts/walkthrough/{producer,speaker,review}.ts`).
+
+Verified at S via a disposable detached worktree. `rm -rf
+.wrangler/state`; `npm ci` clean; `npm run build` PASS (131 modules,
+19 output assets); `npm run db:migrate` (14 migrations clean); `npm
+run seed` (required before `perf:seed`, per the w16-c precedent in
+this file); `npm run perf:seed` (DEC-088 2k-row scale, all batches
+`"success": true`); `npx wrangler dev --port 8833` (not
+8787/8801/8803/8831/8832), `/health` 200 on first poll.
+
+`npm run perf:smoke` (`PERF_URL=http://localhost:8833`) — exit 0,
+"perf:smoke OK", rerun twice for confirmation. p95 over 30 iterations
+(budget 150ms uniform, SPEC §7 finer budgets also satisfied):
+submissions list page 1 11.0ms, q=Kubernetes 19.0ms, submission
+detail 15.3ms, event overview 14.0ms, organizer agenda (300
+accepted) 18.9ms, public sessions page 4.0ms, public agenda 5.4ms,
+schedule.ics 150 ids 41.0ms, plan progress (12 reviewers) 18.0ms,
+rating PUT 42.1ms — all `ok`. DEC-094/095 301-id cap probe (300 real
+accepted ids + 1 synthetic) asserted 400 both runs (script's untimed
+one-shot assertion never threw). Compared against `task-w4-d @
+d8d1cbd`'s baseline (9.8/12.6/12.7/11.8/16.6/3.2/6.2/32.9/18.2/8.5ms)
+— same order of magnitude, no probe near budget, normal local-dev
+variance under a concurrently-loaded machine, not a regression.
+
+`npm test --silent` — PASS, 151 test files / 1332 tests, 0 failures,
+reproducing `task-w8-b`/`task-w9-b`'s identical counts at the same S.
+Server and `workerd` children killed; `lsof -i :8833` confirms port
+free.
+
+OPEN ITEMS: 0
+
+RESULT: PASS
+
 ## 2026-08-10 task-w9-e — render-sweep @ 38860f9
 
 Full detail: docs/verification-log/task-w9-e-render-sweep.md
