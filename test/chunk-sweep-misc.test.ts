@@ -2,8 +2,10 @@
 // reproduces the "too many bound parameters" 500 (local SQLite doesn't
 // enforce the limit), so this test asserts, by reading the source files
 // directly, that the seven enumerated unbounded inArray(...) call sites in
-// tasks.ts/review.ts/contacts.ts/files.ts have been rewritten to iterate
-// chunkIds(...) batches instead of passing the raw id list straight through.
+// tasks.ts/review.ts/contacts.ts/files.ts (listFileComments moved to
+// files-comments.ts by the contention-decomposition pass — same code,
+// different file) have been rewritten to iterate chunkIds(...) batches
+// instead of passing the raw id list straight through.
 import { describe, expect, it } from "vitest";
 
 const sourceModules = import.meta.glob(
@@ -11,7 +13,7 @@ const sourceModules = import.meta.glob(
     "../src/server/repo/tasks.ts",
     "../src/server/repo/review.ts",
     "../src/server/repo/contacts.ts",
-    "../src/server/repo/files.ts",
+    "../src/server/repo/files-comments.ts",
   ],
   { query: "?raw", import: "default", eager: true },
 ) as Record<string, string>;
@@ -89,19 +91,19 @@ describe("DEC-104 chunk sweep — misc lane", () => {
     expect(src).toMatch(/for \(const chunk of chunkIds\(dupeParticipantIds\)\)/);
   });
 
-  it("files.ts imports chunkIds", () => {
-    const src = readSrc("files.ts");
+  it("files-comments.ts imports chunkIds", () => {
+    const src = readSrc("files-comments.ts");
     expect(src).toMatch(/import\s*{\s*chunkIds\s*}\s*from\s*"..\/..\/lib\/chunk"/);
   });
 
-  it("files.ts: listFileComments user hydration no longer passes the raw userIds list to inArray", () => {
-    const src = readSrc("files.ts");
+  it("files-comments.ts: listFileComments user hydration no longer passes the raw userIds list to inArray", () => {
+    const src = readSrc("files-comments.ts");
     expect(src).not.toContain("inArray(schema.user.id, userIds)");
     expect(src).toMatch(/for \(const batch of chunkIds\(userIds\)\) \{[\s\S]*?inArray\(schema\.user\.id, batch\)/);
   });
 
-  it("files.ts: listFileComments contact hydration no longer passes the raw contactIds list to inArray", () => {
-    const src = readSrc("files.ts");
+  it("files-comments.ts: listFileComments contact hydration no longer passes the raw contactIds list to inArray", () => {
+    const src = readSrc("files-comments.ts");
     expect(src).not.toContain("inArray(schema.contact.id, contactIds)");
     expect(src).toMatch(/for \(const batch of chunkIds\(contactIds\)\) \{[\s\S]*?inArray\(schema\.contact\.id, batch\)/);
   });
