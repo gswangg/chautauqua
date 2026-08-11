@@ -316,6 +316,7 @@ export const planReviewer = sqliteTable(
     plan_reviewer_plan_id_idx: index("plan_reviewer_plan_id_idx").on(t.planId),
     plan_reviewer_user_id_idx: index("plan_reviewer_user_id_idx").on(t.userId),
     plan_reviewer_submission_id_idx: index("plan_reviewer_submission_id_idx").on(t.submissionId),
+    plan_reviewer_track_id_idx: index("plan_reviewer_track_id_idx").on(t.trackId),
   }),
 );
 
@@ -451,6 +452,7 @@ export const taskAssignment = sqliteTable(
   (t) => ({
     task_assignment_task_id_idx: index("task_assignment_task_id_idx").on(t.taskId),
     task_assignment_contact_id_idx: index("task_assignment_contact_id_idx").on(t.contactId),
+    task_assignment_file_id_idx: index("task_assignment_file_id_idx").on(t.fileId),
   }),
 );
 
@@ -515,6 +517,7 @@ export const file = sqliteTable(
   (t) => ({
     file_submission_id_idx: index("file_submission_id_idx").on(t.submissionId),
     file_previous_file_id_idx: index("file_previous_file_id_idx").on(t.previousFileId),
+    file_uploaded_by_contact_id_idx: index("file_uploaded_by_contact_id_idx").on(t.uploadedByContactId),
   }),
 );
 
@@ -531,6 +534,8 @@ export const fileComment = sqliteTable(
   },
   (t) => ({
     file_comment_file_id_idx: index("file_comment_file_id_idx").on(t.fileId),
+    file_comment_author_contact_id_idx: index("file_comment_author_contact_id_idx").on(t.authorContactId),
+    file_comment_author_user_id_idx: index("file_comment_author_user_id_idx").on(t.authorUserId),
   }),
 );
 
@@ -588,6 +593,7 @@ export const apiToken = sqliteTable(
   (t) => ({
     api_token_token_hash_idx: uniqueIndex("api_token_token_hash_idx").on(t.tokenHash),
     api_token_org_id_idx: index("api_token_org_id_idx").on(t.orgId),
+    api_token_created_by_user_id_idx: index("api_token_created_by_user_id_idx").on(t.createdByUserId),
   }),
 );
 
@@ -629,6 +635,7 @@ export const pipelineEntry = sqliteTable(
   (t) => ({
     pipeline_entry_org_id_contact_id_idx: uniqueIndex("pipeline_entry_org_id_contact_id_idx").on(t.orgId, t.contactId),
     pipeline_entry_org_id_idx: index("pipeline_entry_org_id_idx").on(t.orgId),
+    pipeline_entry_contact_id_idx: index("pipeline_entry_contact_id_idx").on(t.contactId),
   }),
 );
 
@@ -648,6 +655,7 @@ export const pipelineActivity = sqliteTable(
   },
   (t) => ({
     pipeline_activity_entry_id_idx: index("pipeline_activity_entry_id_idx").on(t.entryId),
+    pipeline_activity_author_user_id_idx: index("pipeline_activity_author_user_id_idx").on(t.authorUserId),
   }),
 );
 
@@ -672,6 +680,7 @@ export const submissionRevision = sqliteTable(
   },
   (t) => ({
     submission_revision_submission_id_idx: index("submission_revision_submission_id_idx").on(t.submissionId),
+    submission_revision_editor_user_id_idx: index("submission_revision_editor_user_id_idx").on(t.editorUserId),
   }),
 );
 
