@@ -84,6 +84,12 @@ export const contact = sqliteTable(
   (t) => ({
     contact_org_id_idx: index("contact_org_id_idx").on(t.orgId),
     contact_email_idx: index("contact_email_idx").on(t.email),
+    // DEC-337 (w18): composite covering this wave's contacts list query.
+    contact_org_id_last_name_first_name_idx: index("contact_org_id_last_name_first_name_idx").on(
+      t.orgId,
+      t.lastName,
+      t.firstName,
+    ),
   }),
 );
 
@@ -196,6 +202,8 @@ export const submission = sqliteTable(
     submission_track_id_idx: index("submission_track_id_idx").on(t.trackId),
     submission_event_id_status_idx: index("submission_event_id_status_idx").on(t.eventId, t.status),
     submission_event_id_seq_idx: uniqueIndex("submission_event_id_seq_idx").on(t.eventId, t.seq),
+    // DEC-337 (w18): composite covering this wave's paginated submissions list.
+    submission_event_id_created_at_idx: index("submission_event_id_created_at_idx").on(t.eventId, t.createdAt),
   }),
 );
 
@@ -734,5 +742,7 @@ export const emailLog = sqliteTable(
     email_log_event_id_idx: index("email_log_event_id_idx").on(t.eventId),
     email_log_template_id_idx: index("email_log_template_id_idx").on(t.templateId),
     email_log_contact_id_idx: index("email_log_contact_id_idx").on(t.contactId),
+    // DEC-337 (w18): composite covering this wave's event email log queries.
+    email_log_event_id_sent_at_idx: index("email_log_event_id_sent_at_idx").on(t.eventId, t.sentAt),
   }),
 );
