@@ -42,6 +42,15 @@ const agreeField: FormFieldDef = {
   position: 3,
 };
 
+const requiredAgreeField: FormFieldDef = {
+  id: "required_agree",
+  section: "session",
+  kind: "checkbox",
+  label: "I agree to the code of conduct",
+  required: true,
+  position: 6,
+};
+
 const attendeesField: FormFieldDef = {
   id: "attendees",
   section: "session",
@@ -214,6 +223,32 @@ describe("validateAnswers", () => {
     if (result.ok) {
       expect(result.cleaned.agree).toBe(false);
     }
+  });
+
+  it("DEC-227: rejects an unchecked required checkbox (value false) as required", () => {
+    const result = validateAnswers([requiredAgreeField], { required_agree: false });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors.required_agree).toBe("required");
+    }
+  });
+
+  it("DEC-227: rejects an absent required checkbox as required", () => {
+    const result = validateAnswers([requiredAgreeField], {});
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors.required_agree).toBe("required");
+    }
+  });
+
+  it("DEC-227: accepts a checked required checkbox and cleans it to true", () => {
+    const result = validateAnswers([requiredAgreeField], { required_agree: true });
+    expect(result).toEqual({ ok: true, cleaned: { required_agree: true } });
+  });
+
+  it("DEC-227: a non-required unchecked checkbox still cleans to false without error", () => {
+    const result = validateAnswers([agreeField], { agree: false });
+    expect(result).toEqual({ ok: true, cleaned: { agree: false } });
   });
 
   it("validates numeric fields and rejects non-numeric input", () => {
