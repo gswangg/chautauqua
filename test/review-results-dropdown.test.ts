@@ -1,11 +1,9 @@
-// DEC-212 regression coverage for task w22-b: a rating-less scorecard (all
-// criteria are 'dropdown', no 'rating' criteria) must not 500 the results
-// endpoint or its CSV. Before the fix, buildResults -> aggregateSubmission
-// called computeWeightedScore per-eval with an empty rating-criteria list,
-// which throws by design (an invariant guard, not a bug) -- the domain fix
-// is a short-circuit in aggregateSubmission itself when criteria.length===0.
-// Harness pattern copied from test/review-rounds.test.ts (mocked repo, no
-// D1/wrangler dependency in stage 1).
+// DEC-241 (ABS-10) coverage for task w1-h: the results endpoint's Average
+// stays rating-only when a plan mixes 'rating' and 'dropdown' criteria, and
+// each dropdown criterion gets its own perDropdown distribution + modal,
+// both in the JSON response and as extra CSV option columns. Harness
+// pattern copied from test/review-results-ratingless.test.ts (mocked repo,
+// no D1/wrangler dependency in stage 1).
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
@@ -25,8 +23,11 @@ function makePlan(overrides: Partial<Record<string, unknown>> = {}) {
     filters: null,
     anonymized: false,
     scale: { min: 1, max: 5 },
-    // Rating-less scorecard: a single 'dropdown' criterion, no 'rating' kind.
-    criteria: [{ id: "decision", label: "Decision", kind: "dropdown", options: ["advance", "reject"] }],
+    // Mixed scorecard: one 'rating' criterion, one 'dropdown' criterion.
+    criteria: [
+      { id: "quality", label: "Quality", kind: "rating", weight: 1 },
+      { id: "length", label: "Talk length", kind: "dropdown", options: ["Too short", "Just right", "Too long"] },
+    ],
     rounds: 1,
     currentRound: 1,
     maxEvaluations: null,
@@ -64,11 +65,17 @@ vi.mock("../src/server/repo/review", async () => {
     listPlansForEvent: vi.fn(async () => [plan]),
     listPlanFilteredSubmissions: vi.fn(async () => [submission]),
     resolveReviewerSubmissions: vi.fn(async () => [submission]),
-    listPlanIdsForReviewer: vi.fn(async (_db: unknown, userId: string) => (userId === "rev-1" ? [plan.id] : [])),
+    listPlanIdsForReviewer: vi.fn(async (_db: unknown, userId: string) =>
+      userId === "rev-1" || userId === "rev-2" ? [plan.id] : [],
+    ),
     listReviewerRowsForPlan: vi.fn(async () => [
       { id: "pr-1", planId: plan.id, userId: "rev-1", trackId: null, submissionId: null },
+      { id: "pr-2", planId: plan.id, userId: "rev-2", trackId: null, submissionId: null },
     ]),
-    getUsersByIds: vi.fn(async () => [{ userId: "rev-1", email: "rev1@org.test" }]),
+    getUsersByIds: vi.fn(async () => [
+      { userId: "rev-1", email: "rev1@org.test" },
+      { userId: "rev-2", email: "rev2@org.test" },
+    ]),
     listEvaluationsForPlan: vi.fn(async (_db: unknown, planId: string, round: number) =>
       store.filter((e) => e.planId === planId && e.round === round),
     ),
@@ -100,8 +107,6 @@ vi.mock("../src/server/repo/review", async () => {
       return created;
     }),
     isSubmissionInReviewerScope: vi.fn(async () => true),
-    // DEC-211: the PUT evaluations route resolves the submission inside the
-    // plan's event before anything else, so the fake repo must answer it.
     getSubmissionSummaryInEvent: vi.fn(async (_db: unknown, submissionId: string, eventId: string) =>
       submissionId === submission.id && eventId === plan.eventId ? submission : null,
     ),
@@ -149,48 +154,60 @@ async function buildApp(auth: AuthInfo) {
 }
 
 const organizer: AuthInfo = { userId: "org-user", role: "organizer", orgId: ORG_A };
-const reviewer: AuthInfo = { userId: "rev-1", role: "reviewer", orgId: ORG_A };
+const reviewer1: AuthInfo = { userId: "rev-1", role: "reviewer", orgId: ORG_A };
+const reviewer2: AuthInfo = { userId: "rev-2", role: "reviewer", orgId: ORG_A };
 
-describe("DEC-212: rating-less scorecard results (task w22-b)", () => {
-  it("GET results 200s with count 1 / average 0 after one dropdown-only evaluation", async () => {
-    const reviewerApp = await buildApp(reviewer);
+async function submitEval(auth: AuthInfo, scores: Record<string, unknown>) {
+  const app = await buildApp(auth);
+  const res = await app.request(`/api/v1/review/plans/${plan.id}/evaluations/${submission.id}`, {
+    method: "PUT",
+    headers: { "content-type": "application/json", "x-chq-csrf": "1" },
+    body: JSON.stringify({ scores }),
+  });
+  expect(res.status).toBe(200);
+}
 
-    const put = await reviewerApp.request(`/api/v1/review/plans/${plan.id}/evaluations/${submission.id}`, {
-      method: "PUT",
-      headers: { "content-type": "application/json", "x-chq-csrf": "1" },
-      body: JSON.stringify({ scores: { decision: "advance" } }),
-    });
-    expect(put.status).toBe(200);
-    expect(store).toHaveLength(1);
+describe("DEC-241: mixed rating+dropdown results (task w1-h)", () => {
+  it("Average ignores the dropdown criterion while perDropdown carries its distribution", async () => {
+    await submitEval(reviewer1, { quality: 5, length: "Just right" });
+    await submitEval(reviewer2, { quality: 3, length: "Just right" });
 
     const organizerApp = await buildApp(organizer);
     const results = await organizerApp.request(`/api/v1/plans/${plan.id}/results`);
     expect(results.status).toBe(200);
-    const body = (await results.json()) as { items: { count: number; average: number; perCriterion: Record<string, number> }[] };
+    const body = (await results.json()) as {
+      items: {
+        count: number;
+        average: number;
+        perCriterion: Record<string, number>;
+        perDropdown: Record<string, { counts: Record<string, number>; modal: string | null }>;
+      }[];
+    };
     expect(body.items).toHaveLength(1);
-    expect(body.items[0]?.count).toBe(1);
-    expect(body.items[0]?.average).toBe(0);
-    expect(body.items[0]?.perCriterion).toEqual({});
+    const row = body.items[0]!;
+    // Average is the rating-only weighted mean of 5 and 3 -- unaffected by
+    // the dropdown answers.
+    expect(row.average).toBe(4);
+    expect(row.perCriterion).toEqual({ quality: 4 });
+    expect(row.perDropdown.quality).toBeUndefined();
+    expect(row.perDropdown["length"]).toEqual({
+      counts: { "Too short": 0, "Just right": 2, "Too long": 0 },
+      modal: "Just right",
+    });
   });
 
-  it("GET results?format=csv 200s with no per-criterion columns", async () => {
-    const reviewerApp = await buildApp(reviewer);
-    await reviewerApp.request(`/api/v1/review/plans/${plan.id}/evaluations/${submission.id}`, {
-      method: "PUT",
-      headers: { "content-type": "application/json", "x-chq-csrf": "1" },
-      body: JSON.stringify({ scores: { decision: "reject" } }),
-    });
+  it("CSV includes one column per dropdown option alongside rating columns", async () => {
+    await submitEval(reviewer1, { quality: 5, length: "Too short" });
+    await submitEval(reviewer2, { quality: 3, length: "Too long" });
 
     const organizerApp = await buildApp(organizer);
     const csvRes = await organizerApp.request(`/api/v1/plans/${plan.id}/results?format=csv`);
     expect(csvRes.status).toBe(200);
-    expect(csvRes.headers.get("content-type")).toContain("text/csv");
     const csv = await csvRes.text();
     const [header, ...dataLines] = csv.trim().split(/\r?\n/);
-    // No rating criteria, so no rating columns -- but DEC-241 adds one CSV
-    // column per dropdown option, so the sole 'decision' criterion appears
-    // as its two option columns instead of a rating column.
-    expect(header).toBe("ref,title,count,average,Decision: advance,Decision: reject");
-    expect(dataLines[0]).toBe("S-1,Talk,1,0,0,1");
+    expect(header).toBe(
+      "ref,title,count,average,Quality,Talk length: Too short,Talk length: Just right,Talk length: Too long",
+    );
+    expect(dataLines[0]).toBe("S-1,Talk,2,4,4,1,0,1");
   });
 });

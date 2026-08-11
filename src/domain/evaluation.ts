@@ -231,6 +231,52 @@ export function validateEvaluationScores(
 }
 
 /**
+ * DEC-241: aggregates a dropdown criterion's answers into per-option counts
+ * plus the modal (most-frequent) option. Ties are broken by the criterion's
+ * own option-list order (first tied option wins), so the modal is stable and
+ * deterministic. Every evaluation must carry a string score for this
+ * criterion -- a missing or non-string score is a data-integrity violation
+ * and throws (fail loudly) rather than being silently skipped. Empty input
+ * yields a zeroed counts map (one entry per option, all 0) and a null modal.
+ */
+export function aggregateDropdownCriterion(
+  evals: { scores: Record<string, unknown> }[],
+  criterion: DropdownCriterionDef,
+): { counts: Record<string, number>; modal: string | null } {
+  const counts: Record<string, number> = {};
+  for (const option of criterion.options) {
+    counts[option] = 0;
+  }
+
+  for (const evaluation of evals) {
+    const value = evaluation.scores[criterion.id];
+    if (typeof value !== "string") {
+      throw new Error(
+        `aggregateDropdownCriterion: missing or non-string score for criterion "${criterion.id}"`,
+      );
+    }
+    if (!(value in counts)) {
+      throw new Error(
+        `aggregateDropdownCriterion: score "${value}" for criterion "${criterion.id}" is not one of its options`,
+      );
+    }
+    counts[value] = (counts[value] ?? 0) + 1;
+  }
+
+  let modal: string | null = null;
+  let modalCount = 0;
+  for (const option of criterion.options) {
+    const count = counts[option] ?? 0;
+    if (count > modalCount) {
+      modalCount = count;
+      modal = option;
+    }
+  }
+
+  return { counts, modal };
+}
+
+/**
  * DEC-147: resolves the criteria list that applies to a given round of a
  * plan. `overridesJson` is the plan's round_criteria_json column verbatim --
  * a JSON object shaped `{"<round>": EvaluationCriterionDef[]}` -- or null.

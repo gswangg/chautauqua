@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   computeWeightedScore,
   aggregateSubmission,
+  aggregateDropdownCriterion,
   buildReviewerQueue,
   needsMoreRatings,
   buildResultsRows,
@@ -12,6 +13,7 @@ import {
   criteriaForRound,
   type EvaluationCriterion,
   type EvaluationCriterionDef,
+  type DropdownCriterionDef,
   type ReviewerScopeRow,
 } from "../src/domain/evaluation";
 
@@ -397,5 +399,49 @@ describe("anonymizeForReviewer", () => {
     expect(anon.speakerAnswers).toBeUndefined();
     expect(anon.id).toBe("s1");
     expect(anon.title).toBe("Talk");
+  });
+});
+
+describe("aggregateDropdownCriterion", () => {
+  const format: DropdownCriterionDef = {
+    id: "format",
+    label: "Talk length",
+    kind: "dropdown",
+    options: ["Too short", "Just right", "Too long"],
+  };
+
+  it("counts each option and picks the most-frequent as modal", () => {
+    const evals = [
+      { scores: { format: "Just right" } },
+      { scores: { format: "Just right" } },
+      { scores: { format: "Too long" } },
+    ];
+    const result = aggregateDropdownCriterion(evals, format);
+    expect(result.counts).toEqual({ "Too short": 0, "Just right": 2, "Too long": 1 });
+    expect(result.modal).toBe("Just right");
+  });
+
+  it("breaks ties by option-list order", () => {
+    const evals = [{ scores: { format: "Too short" } }, { scores: { format: "Too long" } }];
+    const result = aggregateDropdownCriterion(evals, format);
+    expect(result.modal).toBe("Too short");
+  });
+
+  it("returns a zeroed counts map and null modal for no evaluations", () => {
+    const result = aggregateDropdownCriterion([], format);
+    expect(result.counts).toEqual({ "Too short": 0, "Just right": 0, "Too long": 0 });
+    expect(result.modal).toBeNull();
+  });
+
+  it("throws on a missing score", () => {
+    expect(() => aggregateDropdownCriterion([{ scores: {} }], format)).toThrow();
+  });
+
+  it("throws on a non-string score", () => {
+    expect(() => aggregateDropdownCriterion([{ scores: { format: 3 } }], format)).toThrow();
+  });
+
+  it("throws on a score outside the option list", () => {
+    expect(() => aggregateDropdownCriterion([{ scores: { format: "Nonsense" } }], format)).toThrow();
   });
 });
