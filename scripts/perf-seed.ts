@@ -37,6 +37,7 @@ import {
   PERF_TRACK_COUNT,
   contactIndexForSubmission,
   isTaskAssignmentComplete,
+  perfFileSpecs,
   perfReviewerEmail,
   perfSubmissionStatuses,
   sentAtForEmailLogRow,
@@ -76,6 +77,9 @@ async function main(): Promise<void> {
   statements.push(`DELETE FROM evaluation_plan WHERE id = '${PERF_PLAN_ID}';`);
   statements.push(`DELETE FROM schedule_slot WHERE submission_id LIKE 'seed_perf_%';`);
   statements.push(`DELETE FROM room WHERE event_id = 'seed_perf_event';`);
+  // DEC-347: file rows (deliverable chains) before their submission parents —
+  // scoped by the seed_perf_ id namespace, never a blanket DELETE FROM.
+  statements.push(`DELETE FROM file WHERE id LIKE 'seed_perf_%';`);
   statements.push(`DELETE FROM submission_answer WHERE submission_id LIKE 'seed_perf_%';`);
   statements.push(`DELETE FROM submission_track WHERE submission_id LIKE 'seed_perf_%';`);
   statements.push(`DELETE FROM participant WHERE submission_id LIKE 'seed_perf_%';`);
@@ -159,13 +163,19 @@ async function main(): Promise<void> {
   let answerCounter = 0;
   const submissionIds: string[] = [];
   const acceptedSubmissionIds: string[] = [];
+  // Parallel to acceptedSubmissionIds — DEC-347's file chains need the
+  // uploader contact for each accepted submission.
+  const acceptedContactIds: string[] = [];
   for (let i = 0; i < PERF_SUBMISSION_COUNT; i++) {
     const submissionId = seedId("perf_submission", i + 1);
     submissionIds.push(submissionId);
     const status = statuses[i]!;
     const isAccepted = status === "accepted";
-    if (isAccepted) acceptedSubmissionIds.push(submissionId);
     const contactId = contactIds[contactIndexForSubmission(i)]!;
+    if (isAccepted) {
+      acceptedSubmissionIds.push(submissionId);
+      acceptedContactIds.push(contactId);
+    }
     const trackId = trackIds[trackIndexForSubmission(i)]!;
     const topic = topicForSubmission(i);
 
@@ -257,6 +267,34 @@ async function main(): Promise<void> {
         day: placement.day,
         start_min: placement.startMin,
         end_min: placement.endMin,
+        created_at: nextTs(),
+        updated_at: ts,
+      }),
+    );
+  }
+
+  // --- DEC-347: deliverable file chains for the files library, one
+  // presentation (3 versions) + one handout (1 version) per accepted
+  // submission — 300 * 4 = 1,200 rows, ids via perfFileSpecs (pure,
+  // index-derived) + seedId('perf_file', n) ---
+  for (const spec of perfFileSpecs(acceptedSubmissionIds.length)) {
+    const submissionId = acceptedSubmissionIds[spec.acceptedIndex]!;
+    const contactId = acceptedContactIds[spec.acceptedIndex]!;
+    const fileId = seedId("perf_file", spec.n);
+    const previousFileId = spec.previousN === null ? null : seedId("perf_file", spec.previousN);
+    const filename = `${spec.kind}-v${spec.versionIndex + 1}.pdf`;
+    const r2Key = `sub/${submissionId}/${fileId}-${filename}`;
+    statements.push(
+      insertStmt("file", {
+        id: fileId,
+        submission_id: submissionId,
+        kind: spec.kind,
+        filename,
+        r2_key: r2Key,
+        size_bytes: 102400,
+        content_type: "application/pdf",
+        previous_file_id: previousFileId,
+        uploaded_by_contact_id: contactId,
         created_at: nextTs(),
         updated_at: ts,
       }),

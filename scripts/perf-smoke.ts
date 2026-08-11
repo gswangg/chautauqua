@@ -480,6 +480,20 @@ async function main(): Promise<void> {
       cls: "read",
       run: () => fetch(`${PERF_URL}/api/v1/events/${PERF_EVENT_ID}/email-log?page=1&perPage=50`, { headers }),
     },
+    {
+      // task-w20-d: DEC-347 — files library at perf scale (300 accepted
+      // submissions x 4 file rows each = 1,200 rows), server-paged (DEC-344).
+      name: "files library (page 1)",
+      cls: "read",
+      run: () => fetch(`${PERF_URL}/api/v1/events/${PERF_EVENT_ID}/files?page=1&perPage=50`, { headers }),
+    },
+    {
+      // task-w20-d: DEC-347 — plan results at perf scale (6,000 round-1
+      // evaluations against the 12-reviewer DEC-088 seed).
+      name: "plan results (page 1)",
+      cls: "read",
+      run: () => fetch(`${PERF_URL}/api/v1/plans/${PERF_PLAN_ID}/results?page=1&perPage=50`, { headers }),
+    },
   ];
 
   const results: ReturnType<typeof gradePerfCheck>[] = [];
