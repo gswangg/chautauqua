@@ -17,7 +17,7 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   middleware sessionLoader/requireOrganizer/requireReviewer/require
   Speaker/csrfJson/csrfForm; errors {error:{code,message,fields?}};
   DEC-015 append-only; DEC-016 locked=real cols; DEC-114 sha rule;
-  DEC-129 homonym guard.
+  DEC-129 homonym guard: match full ledger heading incl. '@ <sha>'.
 - Wave-3..9+Campaign3+Waves2-5 (very compact): sub-apps/repos/ctx DEC-
   012/013/019; uploads/ics/statuses/perf/headshots/walkthrough/claim
   DEC-040-074 (DEC-059 superseded DEC-084); 2nd barrier DEC-107 (DEC-
@@ -31,31 +31,30 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   via formatDateOnly UTC; Pipeline=pipeline_entry+activity; CNT-11=
   submission_revision snapshots; Files=previous_file_id chains; ZIP=
   src/lib/zip.ts STORE-only <=50. Workers never edit eval-findings.md,
-  verification-log.md, decisions/, src/decisions.ts. Wave6 (DEC-167..
-  172): batteries drain LATE; render-test mocks mirror real wire
-  shapes. Waves7+8 (DEC-173..177, VOID): dead stubs. Wave9 (DEC-178):
-  rebinds battery to task-w9-a. Lesson: verify execution via reflog+
-  branch refs+ledger tail, never summaries.
-- Wave 10 (DEC-179..185): w8-b merge committed raw conflict markers
-  into docs/verification-log.md (DEC-184 one-time repair, CLOSED per
-  DEC-186). Fixes, DEC-tagged in source: DEC-179 CSV formula-escape;
-  DEC-180 login limiter counts-failures-only; DEC-181 csrfFormOrHeader
-  on /logout+portal token; DEC-182 parseBoundedIdArray (64-char,1000
-  cap); DEC-183 DEV_MODE in .dev.vars (superseded by DEC-187 below).
-  DEC-185 rebinds battery to S' grepping DEC-177+179..183 markers.
-- Wave 11 (DEC-186, VOID except w11-a): S'=7561cc1. Only w11-a ran
-  (PASS); w11-b..e refs parked bdc472b zero commits, w11-f never
-  spawned — dead branches, never reuse. Orphan task-w11-e spec-audit
-  report never merged, no ledger section: cite nothing from it.
-- Wave 12 (DEC-187/188): operator commit 629d57e untracked .dev.vars
-  (a real secret had landed in it) — binding AND code-bearing per
-  DEC-114, so it voids w11-a's PASS too. Fresh clones were red:
-  wrangler-config test read .dev.vars, walkthrough needs DEV_MODE for
-  /dev/mailbox. DEC-187: .dev.vars stays untracked; scripts/ensure-
-  dev-vars.ts copies .dev.vars.example when absent (never overwrite,
-  NEVER read/print local .dev.vars), wired via predev+render-sweep+
-  ci.yml; test retargets .example, guards .gitignore. DEC-188: full
-  six-gate battery at S''=merge of task-w12-a; gates w12-b..f chained
-  on w12-a (S'' must exist), w12-g on w12-c. THIRD-generation task-
-  w12-* homonyms in ledger — full-heading '@ <sha>' matching only.
-  Six PASS at one S''+OPEN ITEMS 0 => wave 13 stage-1 complete.
+  verification-log.md, decisions/, src/decisions.ts. Wave6-9 (DEC-
+  167..178): batteries drain LATE; W7/8 VOID dead stubs; W9 rebinds
+  battery to task-w9-a. Verify execution via reflog+branch refs+
+  ledger tail, never summaries.
+- Wave 10 (DEC-179..185): DEC-179 CSV formula-escape; DEC-180 login-
+  limiter failures-only; DEC-181 csrfFormOrHeader on /logout; DEC-182
+  parseBoundedIdArray (64-char,1000 cap); DEC-183 DEV_MODE in
+  .dev.vars (superseded by DEC-187); w8-b's raw conflict markers:
+  DEC-184 one-time repair, CLOSED. DEC-185 rebinds battery to S'.
+- Wave 11 (DEC-186/190, VOID for exit): S'=7561cc1, battery fully
+  drained LATE (w11-a..e PASS; w11-f's FAIL was a sibling-merge race,
+  not a defect) but still void (629d57e postdates it). AIRTABLE_TOKEN
+  CLOSED (DEC-190): operator untracked .dev.vars; never rewrite git.
+- Wave 12 (DEC-187/188): operator 629d57e untracked .dev.vars (real
+  secret had landed in it) — binding+code-bearing, voiding w11-a's
+  PASS too. DEC-187: .dev.vars untracked; scripts/ensure-dev-vars.ts
+  materializes from .dev.vars.example (never overwrite/read/print
+  local .dev.vars), wired via predev+render-sweep+ci.yml. DEC-188:
+  six-gate battery at S''=merge of task-w12-a; THIRD-gen homonyms.
+- Wave 13 (DEC-189): task-w12-a MERGED mid-planning => S'''=7f7477e,
+  DEC-187 conformant. w12-b..g gates may drain CONCURRENTLY: w13-a..f
+  run COOPERATIVE battery — each gate first searches ledger for same-
+  type PASS @ S''' full-heading (either battery) and cites it instead
+  of re-running; triage-closure waits up to 10 min for sibling merges.
+  FOURTH-gen homonyms @0ee30dd/d4ebf7f/3b7ed3d. Ports: w13 walkthrough
+  8951, perf-smoke 8952. Five gate-types PASS + green triage-closure
+  at one S''' => wave 14 declares stage-1 complete.

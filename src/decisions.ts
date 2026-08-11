@@ -133,7 +133,7 @@ export const DEC_127 = "Wave-15 five-gate battery at the post-wave-14 sha: lanes
 export const DEC_128 = "Wave-16 contingency mirror gate battery: confirm-else-run semantics, fresh ports 8861/8862/8863, duplicates harmless, completion stays a planner grep";
 export const DEC_129 = "Wave-17 dual redundant triage-closure lanes; first-campaign homonym sections never satisfy the exit grep (validity requires `git merge-base --is-ancestor 675219f <cited-sha>`)";
 export const DEC_130 = "autoSchedule uses incremental day-indexed conflict checks, never per-candidate findConflicts over the full trial";
-export const DEC_131 = "ics escapeText normalizes CR before escaping: CRLF and lone CR become \n, so no raw CR ever appears inside a content line";
+export const DEC_131 = "ics escapeText normalizes CR before escaping: CRLF and lone CR become \\n, so no raw CR ever appears inside a content line";
 export const DEC_132 = "Public submit ignores rule-hidden file fields entirely: no upload validation error, no R2 put, no file row, no answer row";
 export const DEC_133 = "Bulk submission status change enforces a DEC-122-style full-set id match before any side effect: unknown/foreign ids yield 400 invalid naming the missing ids";
 export const DEC_134 = "Third code barrier: DEC-130..133 fix lanes void every 675219f gate section; wave 19 re-runs the DEC-069 five-gate battery at the new DEC-114 sha";
@@ -191,3 +191,5 @@ export const DEC_185 = "Wave-11 battery rebinding: six gates at frozen S' contai
 export const DEC_186 = "Wave-11 battery execution binding: S' derivation, lane-to-gate map, full-heading homonym guard, DEC-184 closed, w9-g drained";
 export const DEC_187 = "Zero-setup dev vars bootstrap: .dev.vars stays untracked; scripts/ensure-dev-vars.ts materializes it from .dev.vars.example; supersedes DEC-183's committed-.dev.vars clause";
 export const DEC_188 = "Wave-12 battery binding: wave-11 battery voided (only w11-a ran; 629d57e is code-bearing), S'' = merge of task-w12-a, third-generation homonym guard, dead-lane and orphan-report declarations";
+export const DEC_189 = "Wave-13 cooperative exit battery: S''' = merge of task-w12-a (7f7477e), dedupe against concurrently-draining task-w12-* gates, fourth-generation homonym guard, sibling-wait rule";
+export const DEC_190 = "Adjudications: late-drained wave-11 battery is historical-only; w11-f's FAIL was a sibling merge race; the AIRTABLE_TOKEN open item is CLOSED for stage-1 by operator commit 629d57e";
