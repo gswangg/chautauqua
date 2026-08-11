@@ -255,23 +255,6 @@ export function tokenizeContactQuery(q: string): string[] {
     .filter((t) => t !== "");
 }
 
-/**
- * DEC-266: a contact matches a tokenized query when EVERY token substring-
- * matches at least one of firstName/lastName/email/company (case-
- * insensitive) — AND-across-tokens, OR-across-columns. So 'Priya Raman'
- * requires one column to contain 'priya' and one (possibly different)
- * column to contain 'raman', fixing the old single-LIKE-per-column bug
- * where a two-word query matched nothing. Zero tokens matches every
- * contact.
- */
-export function matchesContactQuery(tokens: string[], contact: ContactRecord): boolean {
-  if (tokens.length === 0) return true;
-  const columns = [contact.firstName, contact.lastName, contact.email, contact.company ?? ""].map((v) =>
-    v.toLowerCase(),
-  );
-  return tokens.every((token) => columns.some((col) => col.includes(token)));
-}
-
 export interface SegmentRule {
   field: string;
   op: "eq" | "ne" | "contains";

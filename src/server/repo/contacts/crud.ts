@@ -6,11 +6,15 @@ import { and, eq, or, sql } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { newId } from "../../../domain/ids";
-import { matchesContactQuery, matchesSegment, tokenizeContactQuery, type SegmentRule } from "../../../domain/contacts";
+import { matchesSegment, tokenizeContactQuery, type SegmentRule } from "../../../domain/contacts";
 import { findSegmentForOrg } from "./segments";
 import { toContactRecord, toRow, type ContactRow } from "./rows";
-import { compareContacts, type ParsedContactListQuery } from "./query";
+import { compareContacts, likeContains, type ParsedContactListQuery } from "./query";
 import { backfillNullAttribution } from "../attribution";
+import { DEC_333, DEC_336 } from "../../../decisions";
+
+void DEC_333;
+void DEC_336;
 
 export interface ContactInput {
   firstName: string;
@@ -118,39 +122,64 @@ export interface ContactListResult {
   total: number;
 }
 
-/** DEC-026 list: q (DEC-266 AND-tokens x OR-columns over name/email/company),
- * segmentId (matchesSegment, applied server-side over the pure core), sort
+/** DEC-336: exact per-token predicate (AND-across-tokens x OR-across-
+ * columns over firstName/lastName/email/company), each column compared
+ * case-insensitively via a LIKE with escaped metacharacters (likeContains).
+ * No superset/narrow-in-JS step — this IS the true predicate. */
+function tokenCondition(token: string) {
+  const like = likeContains(token);
+  return or(
+    sql`${schema.contact.firstName} LIKE ${like} ESCAPE '\\' COLLATE NOCASE`,
+    sql`${schema.contact.lastName} LIKE ${like} ESCAPE '\\' COLLATE NOCASE`,
+    sql`${schema.contact.email} LIKE ${like} ESCAPE '\\' COLLATE NOCASE`,
+    sql`coalesce(${schema.contact.company}, '') LIKE ${like} ESCAPE '\\' COLLATE NOCASE`,
+  )!;
+}
+
+function orderByForSort(sort: "name" | "recent") {
+  if (sort === "recent") {
+    return sql`${schema.contact.updatedAt} desc, ${schema.contact.id} asc`;
+  }
+  return sql`lower(${schema.contact.lastName}) asc, lower(${schema.contact.firstName}) asc, ${schema.contact.id} asc`;
+}
+
+/** DEC-026 list: q (DEC-266 AND-tokens x OR-columns over name/email/company,
+ * DEC-336 pushed fully into SQL — no JS filter/sort/slice on the default
+ * directory path), segmentId/rules (DEC-149, matchesSegment over the pure
+ * core — the one documented whole-directory load, DEC-336), sort
  * name|recent, DEC-013 paging. */
 export async function listContactsForOrg(db: Db, orgId: string, params: ParsedContactListQuery): Promise<ContactListResult> {
   const conditions = [eq(schema.contact.orgId, orgId)];
   const tokens = params.q ? tokenizeContactQuery(params.q) : [];
   if (tokens.length > 0) {
-    // Superset SQL prefilter (DEC-266): OR every token across every
-    // searched column. The true predicate is AND-across-tokens x
-    // OR-across-columns, which this OR-of-everything can only ever be a
-    // superset of — any row the true predicate matches necessarily has at
-    // least one token matching at least one column, so it necessarily
-    // satisfies this OR. It can never drop a true match; matchesContactQuery
-    // below (same in-memory pass as matchesSegment) narrows it to the exact
-    // AND x OR result.
-    const perToken = tokens.map((token) => {
-      const like = `%${token}%`;
-      return or(
-        sql`${schema.contact.firstName} LIKE ${like} COLLATE NOCASE`,
-        sql`${schema.contact.lastName} LIKE ${like} COLLATE NOCASE`,
-        sql`${schema.contact.email} LIKE ${like} COLLATE NOCASE`,
-        sql`${schema.contact.company} LIKE ${like} COLLATE NOCASE`,
-      )!;
-    });
-    conditions.push(or(...perToken)!);
+    conditions.push(and(...tokens.map(tokenCondition))!);
+  }
+  const whereExpr = and(...conditions)!;
+
+  if (params.segmentId === null && params.rules.length === 0) {
+    // Default directory/search/sort/paging path: two SQL statements, no
+    // whole-org materialization (DEC-333 scale rule).
+    const totalRows = await db.select({ count: sql<number>`count(*)` }).from(schema.contact).where(whereExpr);
+    const total = Number(totalRows[0]?.count ?? 0);
+
+    const offset = (params.page - 1) * params.perPage;
+    const rows = await db
+      .select()
+      .from(schema.contact)
+      .where(whereExpr)
+      .orderBy(orderByForSort(params.sort))
+      .limit(params.perPage)
+      .offset(offset);
+    return { items: rows.map(toRow), total };
   }
 
-  const rows = (await db.select().from(schema.contact).where(and(...conditions))).map(toRow);
+  // DEC-336: the one documented whole-directory path — segmentId/rules
+  // evaluate matchesSegment (including custom.* JSON fields, which SQL
+  // can't express) over every row the SQL q predicate above matched, then
+  // sort/page in JS.
+  const rows = (await db.select().from(schema.contact).where(whereExpr)).map(toRow);
 
   let filtered = rows;
-  if (tokens.length > 0) {
-    filtered = filtered.filter((r) => matchesContactQuery(tokens, toContactRecord(r)));
-  }
   if (params.segmentId) {
     const segment = await findSegmentForOrg(db, params.segmentId, orgId);
     if (!segment) throw new Error(`segment ${params.segmentId} not found for org ${orgId}`);
