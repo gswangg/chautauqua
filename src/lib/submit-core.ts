@@ -37,11 +37,18 @@ export function formWindowState(
 export type TrackChoiceResult = { ok: true } | { ok: false; error: string };
 
 /** At least one track must be chosen, and only from the set actually
- * offered by the form (DEC-015 form.tracks_json / all event tracks). */
+ * offered by the form (DEC-015 form.tracks_json / all event tracks).
+ * DEC-301: a form that offers zero tracks cannot require one — every new
+ * event ships a default 'General' track, so a truly empty availableTrackIds
+ * only happens if a producer deletes every track, and submissions must not
+ * dead-end in that case either. */
 export function validateTrackChoice(
   selectedTrackIds: string[],
   availableTrackIds: string[],
 ): TrackChoiceResult {
+  if (availableTrackIds.length === 0) {
+    return { ok: true };
+  }
   if (selectedTrackIds.length === 0) {
     return { ok: false, error: "Select at least one track." };
   }

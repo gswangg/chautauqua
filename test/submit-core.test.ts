@@ -144,6 +144,21 @@ describe("validateTrackChoice", () => {
     const result = validateTrackChoice(["t1", "unknown"], available);
     expect(result.ok).toBe(false);
   });
+
+  it("DEC-301: accepts an empty selection when the form offers zero tracks", () => {
+    const result = validateTrackChoice([], []);
+    expect(result).toEqual({ ok: true });
+  });
+
+  it("DEC-301: still rejects an empty selection when tracks are offered", () => {
+    const result = validateTrackChoice([], available);
+    expect(result).toEqual({ ok: false, error: "Select at least one track." });
+  });
+
+  it("DEC-301: unknown-track rejection is unchanged", () => {
+    const result = validateTrackChoice(["unknown"], available);
+    expect(result).toEqual({ ok: false, error: "Selected track is not offered by this form." });
+  });
 });
 
 describe("resolveOfferedTrackIds", () => {
