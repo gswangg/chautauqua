@@ -20,6 +20,8 @@ import {
   validateEvaluationScores,
   resolveAssignments,
   criteriaForRound,
+  partitionRecused,
+  assignedExcludingRecused,
   type EvaluationCriterion,
   type EvaluationCriterionDef,
   type DropdownCriterionDef,
@@ -30,9 +32,10 @@ import * as repo from "../server/repo/review";
 import { roundCriteriaJsonOf } from "../server/repo/review";
 import type { PlanRecord } from "../server/repo/review";
 import * as eventsRepo from "../server/repo/events";
-import { DEC_015, DEC_123, DEC_146, DEC_147, DEC_148, DEC_213, DEC_238, DEC_239 } from "../decisions";
+import { DEC_015, DEC_123, DEC_146, DEC_147, DEC_148, DEC_213, DEC_238, DEC_239, DEC_271 } from "../decisions";
 
 export const reviewRoutes = new Hono<AppEnv>();
+void DEC_271; // recusal endpoints below: POST/DELETE .../recusals/:submissionId, queue exclusion, 409 on scoring, progress math
 void DEC_123; // criteria/scale immutability guard on PATCH /api/v1/plans/:id below
 void DEC_015; // append-only migrations: migrations/0010_round_criteria.sql
 void DEC_146; // PlanEditor.tsx retains the null-safe SPA date guards this task must preserve
@@ -408,13 +411,29 @@ reviewRoutes.get("/api/v1/plans/:id/progress", requireOrganizer, async (c) => {
   // per-reviewer awaits.
   const submissions = await repo.listPlanFilteredSubmissions(c.var.db, plan);
   const assignments = resolveAssignments(submissions, reviewerRows);
+  // DEC-271: a recused submission never counts toward a reviewer's assigned
+  // total -- an honest progress bar excludes it entirely rather than
+  // stranding it as permanently "incomplete".
+  const planRecusals = await repo.listRecusalsForPlan(c.var.db, plan.id);
+  const recusedByUser = new Map<string, Set<string>>();
+  for (const r of planRecusals) {
+    const set = recusedByUser.get(r.userId) ?? new Set<string>();
+    set.add(r.submissionId);
+    recusedByUser.set(r.userId, set);
+  }
 
   const items = users.map((user) => {
-    const assigned = assignments.get(user.userId) ?? [];
+    const assigned = assignedExcludingRecused(assignments.get(user.userId) ?? [], recusedByUser.get(user.userId) ?? new Set());
     const completed = new Set(
       evaluations.filter((e) => e.reviewerId === user.userId).map((e) => e.submissionId),
     ).size;
-    return { userId: user.userId, email: user.email, assigned: assigned.length, completed };
+    return {
+      userId: user.userId,
+      email: user.email,
+      assigned: assigned.length,
+      completed,
+      recused: recusedByUser.get(user.userId)?.size ?? 0,
+    };
   });
   return c.json({ items, total: items.length, page: 1, perPage: items.length || 1, round });
 });
@@ -610,7 +629,24 @@ reviewRoutes.get("/api/v1/review/plans/:id/queue", async (c) => {
     if (evaluation.reviewerId === auth.userId) ratedByMe.add(evaluation.submissionId);
   }
 
-  const queueItems = scoped
+  // DEC-271: recused submissions are dropped from the actionable queue and
+  // surfaced separately in the `recused` envelope key instead. partitionRecused
+  // (pure core, src/domain/evaluation.ts) does the set split; this route just
+  // shapes the two output lists.
+  const recusals = await repo.listRecusalsForReviewer(c.var.db, plan.id, auth.userId);
+  const recusalBySubmission = new Map(recusals.map((r) => [r.submissionId, r]));
+  const { kept: scopedActionable, recused: recusedScoped } = partitionRecused(
+    scoped.map((s) => ({ ...s, submissionId: s.id })),
+    new Set(recusals.map((r) => r.submissionId)),
+  );
+  const recusedOut = recusedScoped.map((s) => ({
+    submissionId: s.id,
+    ref: s.ref,
+    title: s.title,
+    reason: recusalBySubmission.get(s.id)?.reason ?? null,
+  }));
+
+  const queueItems = scopedActionable
     .map((s) => ({
       submissionId: s.id,
       ratingsCount: countsBySubmission.get(s.id) ?? 0,
@@ -619,7 +655,7 @@ reviewRoutes.get("/api/v1/review/plans/:id/queue", async (c) => {
     .filter((item) => item.alreadyRatedByMe || needsMoreRatings(item, plan.maxEvaluations ?? undefined));
 
   const orderedIds = buildReviewerQueue(queueItems);
-  const byId = new Map(scoped.map((s) => [s.id, s]));
+  const byId = new Map(scopedActionable.map((s) => [s.id, s]));
   // DEC-239: the SPA reads submissionId/ref/title/ratingsCount/
   // alreadyRatedByMe by exact key -- emit the shaped item, not the raw
   // SubmissionSummary row (which has `id`, not `submissionId`).
@@ -637,7 +673,7 @@ reviewRoutes.get("/api/v1/review/plans/:id/queue", async (c) => {
     })
     .filter((item): item is NonNullable<typeof item> => item !== undefined);
 
-  return c.json({ items, total: items.length, page: 1, perPage: items.length || 1, open: true });
+  return c.json({ items, total: items.length, page: 1, perPage: items.length || 1, open: true, recused: recusedOut });
 });
 
 reviewRoutes.get("/api/v1/review/submissions/:id", async (c) => {
@@ -697,6 +733,13 @@ reviewRoutes.put("/api/v1/review/plans/:planId/evaluations/:submissionId", csrfJ
     if (!inScope) throw new ApiError("not_found", "Submission not found");
   }
 
+  // DEC-271: a reviewer who has recused themselves cannot score the
+  // submission through this endpoint.
+  const recusal = await repo.hasRecusal(c.var.db, plan.id, submissionId, auth.userId);
+  if (recusal) {
+    throw new ApiError("conflict", "You have recused yourself from this submission");
+  }
+
   const body = asRecord(await c.req.json());
   const scores = body.scores;
   if (typeof scores !== "object" || scores === null) {
@@ -729,4 +772,61 @@ reviewRoutes.put("/api/v1/review/plans/:planId/evaluations/:submissionId", csrfJ
     comment: typeof body.comment === "string" ? body.comment : null,
   });
   return c.json(saved);
+});
+
+// ---------------------------------------------------------------------------
+// Recusal (DEC-271, ABS-12): reviewer conflict-of-interest self-exclusion.
+// ---------------------------------------------------------------------------
+
+function toRecusalOut(r: { planId: string; submissionId: string; userId: string; reason: string | null; createdAt: number }) {
+  return { planId: r.planId, submissionId: r.submissionId, userId: r.userId, reason: r.reason, createdAt: r.createdAt };
+}
+
+reviewRoutes.post("/api/v1/review/plans/:planId/recusals/:submissionId", csrfJson, async (c) => {
+  requireReviewerOrOrganizer(c);
+  const auth = currentAuth(c);
+  const plan = await requireAssignedPlan(c, c.req.param("planId"));
+  const submissionId = c.req.param("submissionId");
+
+  // DEC-211: existence-hiding 404 for a submission outside the plan's event,
+  // enforced before any role-scope check.
+  const inEvent = await repo.getSubmissionSummaryInEvent(c.var.db, submissionId, plan.eventId);
+  if (!inEvent) throw new ApiError("not_found", "Submission not found");
+
+  if (auth.role !== "organizer") {
+    const inScope = await repo.isSubmissionInReviewerScope(c.var.db, plan, auth.userId, submissionId);
+    if (!inScope) throw new ApiError("not_found", "Submission not found");
+  }
+
+  const body = asRecord(await c.req.json().catch(() => ({})));
+  let reason: string | null = null;
+  if (body.reason !== undefined && body.reason !== null) {
+    if (typeof body.reason !== "string" || body.reason.length > 500) {
+      throw new ApiError("invalid", "Invalid recusal", { reason: "must be a string of at most 500 characters" });
+    }
+    reason = body.reason;
+  }
+
+  const existing = await repo.hasRecusal(c.var.db, plan.id, submissionId, auth.userId);
+  const recusal = await repo.createRecusal(c.var.db, { planId: plan.id, submissionId, userId: auth.userId, reason });
+  return c.json({ recusal: toRecusalOut(recusal) }, existing ? 200 : 201);
+});
+
+reviewRoutes.delete("/api/v1/review/plans/:planId/recusals/:submissionId", csrfJson, async (c) => {
+  requireReviewerOrOrganizer(c);
+  const auth = currentAuth(c);
+  const plan = await requireAssignedPlan(c, c.req.param("planId"));
+  const submissionId = c.req.param("submissionId");
+
+  const inEvent = await repo.getSubmissionSummaryInEvent(c.var.db, submissionId, plan.eventId);
+  if (!inEvent) throw new ApiError("not_found", "Submission not found");
+
+  if (auth.role !== "organizer") {
+    const inScope = await repo.isSubmissionInReviewerScope(c.var.db, plan, auth.userId, submissionId);
+    if (!inScope) throw new ApiError("not_found", "Submission not found");
+  }
+
+  const deleted = await repo.deleteRecusal(c.var.db, plan.id, submissionId, auth.userId);
+  if (!deleted) throw new ApiError("not_found", "Recusal not found");
+  return c.body(null, 204);
 });

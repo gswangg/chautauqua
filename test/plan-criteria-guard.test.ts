@@ -44,6 +44,10 @@ vi.mock("../src/server/repo/review", async () => {
   );
   return {
     ...actual,
+    // DEC-271 (task w5-c): no recusals in these fixtures.
+    listRecusalsForPlan: vi.fn(async () => []),
+    listRecusalsForReviewer: vi.fn(async () => []),
+    hasRecusal: vi.fn(async () => null),
     getPlanForOrg: vi.fn(async (_db: unknown, planId: string, orgId: string) =>
       planId === plan.id && orgId === ORG_A ? plan : null,
     ),

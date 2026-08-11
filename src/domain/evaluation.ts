@@ -420,3 +420,37 @@ export function anonymizeForReviewer<
 >(sub: T): T {
   return { ...sub, speakers: undefined, speakerAnswers: undefined };
 }
+
+// ---------------------------------------------------------------------------
+// Recusal (DEC-271, ABS-12): reviewer conflict-of-interest self-exclusion.
+// Pure set-partitioning logic lives here; the repo layer has no real-D1 test
+// harness, so this is the tested core.
+// ---------------------------------------------------------------------------
+
+/**
+ * Splits a reviewer's queue/scope items into { kept, recused } by
+ * submissionId membership in `recusedIds`. Order of `kept` is preserved.
+ */
+export function partitionRecused<T extends { submissionId: string }>(
+  items: T[],
+  recusedIds: Set<string>,
+): { kept: T[]; recused: T[] } {
+  const kept: T[] = [];
+  const recused: T[] = [];
+  for (const item of items) {
+    if (recusedIds.has(item.submissionId)) recused.push(item);
+    else kept.push(item);
+  }
+  return { kept, recused };
+}
+
+/**
+ * Filters a reviewer's assigned submissions down to those they have not
+ * recused themselves from, for progress-endpoint `assigned` counts.
+ */
+export function assignedExcludingRecused<T extends { id: string }>(
+  assigned: T[],
+  recusedIds: Set<string>,
+): T[] {
+  return assigned.filter((item) => !recusedIds.has(item.id));
+}

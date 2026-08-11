@@ -86,6 +86,10 @@ async function buildReviewApp() {
       getUsersByIds: vi.fn(async () => USERS),
       listEvaluationsForPlan: vi.fn(async () => EVALUATIONS),
       listPlanFilteredSubmissions: vi.fn(async () => SUBMISSIONS),
+      // DEC-271 (task w5-c): no recusals in this fixture.
+      listRecusalsForPlan: vi.fn(async () => []),
+      listRecusalsForReviewer: vi.fn(async () => []),
+      hasRecusal: vi.fn(async () => null),
     };
   });
   const { reviewRoutes } = await import("../src/routes/review");
@@ -101,13 +105,13 @@ async function buildReviewApp() {
 }
 
 describe("DEC-239: plan progress/results wire shapes", () => {
-  it("GET /api/v1/plans/:id/progress items match ProgressRow {userId,email,assigned,completed}", async () => {
+  it("GET /api/v1/plans/:id/progress items match ProgressRow {userId,email,assigned,completed,recused}", async () => {
     const app = await buildReviewApp();
     const res = await app.request(`/api/v1/plans/${PLAN.id}/progress`);
     expect(res.status).toBe(200);
     const body = (await res.json()) as { items: Record<string, unknown>[] };
     expect(body.items.length).toBeGreaterThan(0);
-    expect(keysOf(first(body.items))).toEqual(["assigned", "completed", "email", "userId"]);
+    expect(keysOf(first(body.items))).toEqual(["assigned", "completed", "email", "recused", "userId"]);
   });
 
   it("GET /api/v1/plans/:id/results items match ResultsRow incl perCriterion/perDropdown", async () => {
