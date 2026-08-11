@@ -187,6 +187,9 @@ export function PlanEditor() {
   const [newReviewerEmail, setNewReviewerEmail] = useState('');
   const [creatingReviewer, setCreatingReviewer] = useState(false);
   const [revealedPassword, setRevealedPassword] = useState<string | null>(null);
+  // DEC-215: tracks the userId whose "Reset password" request is in flight,
+  // so only that row's button disables (pattern: creatingReviewer above).
+  const [resettingUserId, setResettingUserId] = useState<string | null>(null);
 
   function loadReviewerOptions() {
     return apiList<ReviewerOption>('/users?role=reviewer')
@@ -262,6 +265,7 @@ export function PlanEditor() {
       return;
     }
     setError(null);
+    setResettingUserId(userId);
     try {
       const res = await apiPost<{ id: string; email: string; role: string; password: string }>(
         `/users/${userId}/reset-password`,
@@ -270,6 +274,8 @@ export function PlanEditor() {
       setRevealedPassword(res.password);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to reset password');
+    } finally {
+      setResettingUserId(null);
     }
   }
 
@@ -533,8 +539,12 @@ export function PlanEditor() {
               <li key={r.id}>
                 {r.email ?? r.userId}
                 {r.trackId ? ` — track ${r.trackId}` : r.submissionId ? ` — submission ${r.submissionId}` : ' — all submissions'}
-                <button type="button" onClick={() => resetReviewerPassword(r.userId, r.email)}>
-                  Reset password
+                <button
+                  type="button"
+                  disabled={resettingUserId === r.userId}
+                  onClick={() => resetReviewerPassword(r.userId, r.email)}
+                >
+                  {resettingUserId === r.userId ? 'Resetting…' : 'Reset password'}
                 </button>
                 <button type="button" onClick={() => unassignReviewer(r.id)}>
                   Remove
