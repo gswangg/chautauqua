@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { apiList, apiGet, ApiError, apiPost } from '../../lib/api';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { BulkActionBar } from './BulkActionBar';
+import { chunkSelection } from './bulk';
 import { deriveColumnsFromFormFields, formatAnswerValue, visibleColumns, type ColumnDef } from './columns';
 import { ColumnPicker } from './ColumnPicker';
 import { FilterBar } from './FilterBar';
@@ -32,7 +33,7 @@ export function SubmissionsTable() {
   const [filters, setFilters] = useState<SubmissionsFilterState>({ ...DEFAULT_FILTER_STATE, includeAnswers: true });
   const [items, setItems] = useState<SubmissionListItem[]>([]);
   const [total, setTotal] = useState(0);
-  const [tracks] = useState<Track[]>([]);
+  const [tracks, setTracks] = useState<Track[]>([]);
   const [formFields, setFormFields] = useState<FormField[]>([]);
   const [visibleFieldIds, setVisibleFieldIds] = useState<Set<string>>(new Set());
   const [selection, setSelection] = useState(EMPTY_SELECTION);
@@ -53,6 +54,13 @@ export function SubmissionsTable() {
     apiGet<{ fields: FormField[] }>(`/events/${eventId}/forms`)
       .then((res) => setFormFields(res.fields ?? []))
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load form fields'));
+  }, [eventId]);
+
+  useEffect(() => {
+    if (!eventId) return;
+    apiList<Track>(`/events/${eventId}/tracks`)
+      .then((res) => setTracks(res.items))
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load tracks'));
   }, [eventId]);
 
   useEffect(() => {
@@ -104,18 +112,26 @@ export function SubmissionsTable() {
   async function applyBulkStatus(status: SubmissionStatus) {
     if (!eventId || selection.selectedIds.size === 0) return;
     const ids = [...selection.selectedIds];
-    const previous = items;
     setBulkPending(true);
     setError(null);
     // Optimistic update.
     setItems((prev) => prev.map((item) => (ids.includes(item.id) ? { ...item, status } : item)));
+    const batches = chunkSelection(ids);
+    let completed = 0;
     try {
-      await apiPost<{ updated: number }>(`/events/${eventId}/submissions/status`, { ids, status });
+      for (const batch of batches) {
+        // eslint-disable-next-line no-await-in-loop
+        await apiPost<{ updated: number }>(`/events/${eventId}/submissions/status`, { ids: batch, status });
+        completed += 1;
+      }
       setSelection((s) => selectionReducer(s, { type: 'CLEAR' }));
     } catch (err) {
-      // Loud rollback: restore prior state and surface the failure.
-      setItems(previous);
-      setError(err instanceof ApiError ? `Bulk status update failed: ${err.message}` : 'Bulk status update failed');
+      // DEC-193: batches already committed on the server must not be
+      // visually rolled back. Refetch server truth instead of restoring
+      // the stale pre-update snapshot.
+      const message = err instanceof ApiError ? err.message : 'unknown error';
+      setError(`Bulk status update failed after ${completed} of ${batches.length} batches: ${message}`);
+      setRefreshToken((n) => n + 1);
     } finally {
       setBulkPending(false);
     }
