@@ -68,17 +68,6 @@ export function computeAgendaSummary(
   };
 }
 
-/** Comms numbers: sends in the trailing 7 days + the most recent send. */
-export function aggregateCommsCounts(
-  sentTimestamps: number[],
-  now: number,
-): OverviewPayload["comms"] {
-  const cutoff = now - SEVEN_DAYS_MS;
-  const sentLast7Days = sentTimestamps.filter((t) => t >= cutoff).length;
-  const lastSentAt = sentTimestamps.length > 0 ? Math.max(...sentTimestamps) : null;
-  return { sentLast7Days, lastSentAt };
-}
-
 // ---------------------------------------------------------------------------
 // I/O: builds the full payload from joined/grouped queries.
 // ---------------------------------------------------------------------------
@@ -195,15 +184,21 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number): 
   }
   const agenda = computeAgendaSummary(acceptedIds, placed);
 
-  // --- Comms: email_log sends for the event.
-  const emailRows = await db
-    .select({ sentAt: schema.emailLog.sentAt })
+  // --- Comms: one aggregate query, never the whole email_log table
+  // (DEC-333/DEC-334: card numbers are SQL aggregates, not materialized
+  // rows spread into Math.max).
+  const cutoffMs = now - SEVEN_DAYS_MS;
+  const commsRows = await db
+    .select({
+      sentLast7Days: sql<number>`count(case when ${schema.emailLog.sentAt} >= ${cutoffMs} then 1 end)`,
+      lastSentAt: sql<number | null>`max(${schema.emailLog.sentAt})`,
+    })
     .from(schema.emailLog)
     .where(eq(schema.emailLog.eventId, eventId));
-  const comms = aggregateCommsCounts(
-    emailRows.map((r) => r.sentAt.getTime()),
-    now,
-  );
+  const comms = {
+    sentLast7Days: Number(commsRows[0]?.sentLast7Days ?? 0),
+    lastSentAt: commsRows[0]?.lastSentAt == null ? null : Number(commsRows[0].lastSentAt),
+  };
 
   return { triage, review: { plans, evaluationsSubmitted }, speakers, content, agenda, comms };
 }
