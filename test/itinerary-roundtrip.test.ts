@@ -79,6 +79,12 @@ vi.mock("../src/server/repo/public", async () => {
     ...actual,
     getPublicEventBySlug: vi.fn(async (_db: unknown, slug: string) => (slug === EVENT.slug ? EVENT : null)),
     getPublicAgenda: vi.fn(async () => AGENDA),
+    // DEC-310: schedule.ics now scopes its query to the requested ids
+    // rather than hydrating the whole agenda — mirror that filtering here
+    // so this end-to-end round-trip test still exercises real id handling.
+    getPublicAgendaByIds: vi.fn(async (_db: unknown, _event: unknown, ids: string[]) =>
+      AGENDA.filter((item) => ids.includes(item.submissionId)),
+    ),
   };
 });
 
