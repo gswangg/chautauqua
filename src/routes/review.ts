@@ -28,7 +28,7 @@ import * as repo from "../server/repo/review";
 import { roundCriteriaJsonOf } from "../server/repo/review";
 import type { PlanRecord } from "../server/repo/review";
 import * as eventsRepo from "../server/repo/events";
-import { DEC_015, DEC_123, DEC_146, DEC_147, DEC_148 } from "../decisions";
+import { DEC_015, DEC_123, DEC_146, DEC_147, DEC_148, DEC_213 } from "../decisions";
 
 export const reviewRoutes = new Hono<AppEnv>();
 void DEC_123; // criteria/scale immutability guard on PATCH /api/v1/plans/:id below
@@ -36,6 +36,7 @@ void DEC_015; // append-only migrations: migrations/0010_round_criteria.sql
 void DEC_146; // PlanEditor.tsx retains the null-safe SPA date guards this task must preserve
 void DEC_147; // per-round scorecards: round_criteria_json + criteriaForRound resolution
 void DEC_148; // free-text 'text' criterion kind
+void DEC_213; // per-round criteria freeze on PATCH /api/v1/plans/:id below
 
 function asRecord(body: unknown): Record<string, unknown> {
   if (typeof body !== "object" || body === null) {
@@ -293,6 +294,27 @@ reviewRoutes.patch("/api/v1/plans/:id", requireOrganizer, csrfJson, async (c) =>
         "conflict",
         "Criteria and scale cannot change once evaluations exist — create a new plan or delete the evaluations first",
       );
+    }
+  }
+
+  // DEC-213: independent of the whole-plan criteria/scale guard above, a
+  // roundCriteria change must not alter the RESOLVED criteria of any round
+  // that already has recorded evaluations -- only rounds without evaluations
+  // stay freely editable. Compares criteriaForRound's resolution before vs.
+  // after this patch, per affected round.
+  if (body.roundCriteria !== undefined && (await repo.planHasEvaluations(c.var.db, plan.id))) {
+    const evaluatedRounds = await repo.listRoundsWithEvaluations(c.var.db, plan.id);
+    const beforeOverridesJson = roundCriteriaJsonOf(plan);
+    const afterCriteria = criteria ?? plan.criteria;
+    for (const r of evaluatedRounds) {
+      const before = criteriaForRound(plan.criteria, beforeOverridesJson, r);
+      const after = roundCriteria === null ? afterCriteria : (roundCriteria?.[String(r)] ?? afterCriteria);
+      if (!deepEqual(before, after)) {
+        throw new ApiError(
+          "conflict",
+          "Criteria and scale cannot change once evaluations exist — create a new plan or delete the evaluations first",
+        );
+      }
     }
   }
 

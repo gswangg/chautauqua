@@ -36,6 +36,7 @@ function makePlan(overrides: Partial<Record<string, unknown>> = {}) {
 
 let plan = makePlan();
 let hasEvaluations = false;
+let evaluatedRounds: number[] = [];
 
 vi.mock("../src/server/repo/review", async () => {
   const actual = await vi.importActual<typeof import("../src/server/repo/review")>(
@@ -52,6 +53,7 @@ vi.mock("../src/server/repo/review", async () => {
       return plan;
     }),
     planHasEvaluations: vi.fn(async (_db: unknown, planId: string) => planId === plan.id && hasEvaluations),
+    listRoundsWithEvaluations: vi.fn(async (_db: unknown, planId: string) => (planId === plan.id ? evaluatedRounds : [])),
     listPlanFilteredSubmissions: vi.fn(async () => []),
     listEvaluationsForPlan: vi.fn(async () => []),
   };
@@ -81,6 +83,7 @@ afterEach(() => {
   vi.clearAllMocks();
   plan = makePlan();
   hasEvaluations = false;
+  evaluatedRounds = [];
 });
 
 async function buildApp(auth: AuthInfo) {
@@ -164,5 +167,65 @@ describe("DEC-123 plan criteria/scale immutability guard (task w14-m)", () => {
     hasEvaluations = false;
     const res = await patchPlan({ scale: { min: 0, max: 10 } });
     expect(res.status).toBe(200);
+  });
+});
+
+describe("DEC-213 per-round criteria freeze guard (task w22-c)", () => {
+  it("changing a round-1 override when round 1 has evaluations returns 409", async () => {
+    plan = makePlan({
+      rounds: 2,
+      currentRound: 1,
+      roundCriteria: { "1": [{ id: "c1", label: "Quality", kind: "rating", weight: 1 }] },
+    });
+    hasEvaluations = true;
+    evaluatedRounds = [1];
+    const res = await patchPlan({
+      roundCriteria: { "1": [{ id: "c1", label: "Quality Renamed", kind: "rating", weight: 1 }] },
+    });
+    expect(res.status).toBe(409);
+    const body = (await res.json()) as { error: { code: string } };
+    expect(body.error.code).toBe("conflict");
+  });
+
+  it("byte-identical no-op round-1 override on an evaluated round is a 200", async () => {
+    plan = makePlan({
+      rounds: 2,
+      currentRound: 1,
+      roundCriteria: { "1": [{ id: "c1", label: "Quality", kind: "rating", weight: 1 }] },
+    });
+    hasEvaluations = true;
+    evaluatedRounds = [1];
+    const res = await patchPlan({
+      roundCriteria: { "1": [{ id: "c1", label: "Quality", kind: "rating", weight: 1 }] },
+    });
+    expect(res.status).toBe(200);
+  });
+
+  it("adding a round-2 override on a 2-round plan with only round-1 evaluations is a 200", async () => {
+    plan = makePlan({
+      rounds: 2,
+      currentRound: 1,
+      roundCriteria: null,
+    });
+    hasEvaluations = true;
+    evaluatedRounds = [1];
+    const res = await patchPlan({
+      roundCriteria: { "2": [{ id: "c2", label: "Impact", kind: "rating", weight: 1 }] },
+    });
+    expect(res.status).toBe(200);
+  });
+
+  it("clearing roundCriteria (null) when an overridden round has evaluations and resolution would change returns 409", async () => {
+    plan = makePlan({
+      rounds: 2,
+      currentRound: 1,
+      roundCriteria: { "1": [{ id: "c1", label: "Round 1 Override", kind: "rating", weight: 1 }] },
+    });
+    hasEvaluations = true;
+    evaluatedRounds = [1];
+    const res = await patchPlan({ roundCriteria: null });
+    expect(res.status).toBe(409);
+    const body = (await res.json()) as { error: { code: string } };
+    expect(body.error.code).toBe("conflict");
   });
 });
