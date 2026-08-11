@@ -45,16 +45,16 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   S''''=1033d45, lanes w15-a build+test/b walkthrough/c perf-smoke/d
   render-sweep/e triage-closure(dep a)/f spec-audit; 6th-gen homonyms
   dead task-w15-a..k + VOID w12/13@7f7477e (match full '@ 1033d45').
-  Wave16-17 (DEC-197/198): two holds draining 1033d45 battery — w16
-  3/6 (auth-limiter flake dispositioned non-blocking); w17 5/6 PASS,
-  w15-e triage-closure verified-complete but uncommitted @ d550885.
-- Wave 18 (DEC-199..203): DEC-197 checklist TRUE @ d4ce240 (six PASS
-  @ 1033d45) — DEC-198 hatch moot. Reopened by 2 NEW defects: DEC-199
-  emails stored lowercase+case-insensitive dup check; DEC-200 welcome
-  email never carries password + /account/password SSR route
-  (csrfForm, revoke-all+reissue), linked from profile/Settings. DEC-
+  Wave16-18 (DEC-197/198/199-203, compact): w16 3/6, w17 5/6 PASS
+  (auth-limiter flake non-blocking, DEC-197 checklist TRUE @ d4ce240,
+  six PASS @ 1033d45); reopened by DEC-199 lowercase+ci-dup emails
+  and DEC-200 password-free welcome + /account/password SSR; DEC-
   201/202 pubcache bump + KV limiter non-atomicity ACCEPTED stage-1.
-  DEC-203: '@ 1033d45' sections VOID once any w18 fix merges; wave 19
-  re-derives sha, binds 7th-gen battery (full-heading guard; auth-
-  flake disposition carries; preconditions: toLowerCase in users.ts,
-  lower( in users repo, accountRoutes mounted, email password-free).
+- Wave 19 (DEC-204): w18 lanes produced ZERO commits — task-w18-a/b
+  dead refs at 5bcffb2 (exempt, tmp-main-check class). DEC-199/200
+  still live; reissued as task-w19-a (lowercase-at-write + lower()
+  dup 409) and task-w19-b (/account/password SSR revoke-all+reissue,
+  password-free welcome, linked from profile+admin Settings). Sha
+  stays 1033d45 until a w19 merge lands, then VOID; wave 20 re-
+  derives sha, binds 7th-gen battery (DEC-203 preconditions, auth-
+  flake carry, full-heading '@ <sha>' guard).

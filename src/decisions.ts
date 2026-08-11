@@ -206,3 +206,4 @@ export const DEC_200 = "Welcome email never carries the password; self-service p
 export const DEC_201 = "Global public-cache bump on every mutation is ACCEPTED for stage-1; narrowing to publish-affecting writes is stage-2";
 export const DEC_202 = "KV read-then-write rate limiting is ACCEPTED for stage-1; atomic counters are stage-2 platform wiring";
 export const DEC_203 = "DEC-197 checklist was TRUE at d4ce240, but the 1033d45 battery is VOID once any wave-18 fix merges; wave 19 binds a seventh-generation battery at the post-w18 sha";
+export const DEC_204 = "Wave-18 fix lanes produced zero commits; DEC-199/200 reissued as task-w19-a/b, battery binding moves to wave 20, task-w18-* refs are exempt dead refs, and the 1033d45 VOID trigger transfers to task-w19-* merges";
