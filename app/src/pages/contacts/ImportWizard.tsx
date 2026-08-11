@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { apiPost, ApiError } from '../../lib/api';
-import { mapImportRow, parseCsv, suggestMapping, STANDARD_IMPORT_FIELDS } from './csv';
+import { expandFullNameMapping, mapImportRow, parseCsv, suggestMapping, toCsv, FULL_NAME_TARGET, STANDARD_IMPORT_FIELDS } from './csv';
 import type { ImportResult } from './types';
 
 interface Props {
@@ -61,7 +61,11 @@ export function ImportWizard({ onClose, onImported }: Props) {
     setBusy(true);
     setError(null);
     try {
-      const res = await apiPost<ImportResult>('/contacts/import', { csvText, mapping });
+      // Split any full-name-mapped column into first/last before the
+      // server ever sees it (see expandFullNameMapping in ./csv.ts).
+      const expanded = expandFullNameMapping(header, dataRows, mapping);
+      const expandedCsvText = toCsv([expanded.header, ...expanded.rows]);
+      const res = await apiPost<ImportResult>('/contacts/import', { csvText: expandedCsvText, mapping: expanded.mapping });
       setResult(res);
       onImported();
     } catch (err) {
@@ -137,6 +141,7 @@ export function ImportWizard({ onClose, onImported }: Props) {
                                 {f}
                               </option>
                             ))}
+                            <option value={FULL_NAME_TARGET}>Full name (splits into first / last)</option>
                             <option value={`custom.${col}`}>custom: {col}</option>
                           </select>
                         </td>
