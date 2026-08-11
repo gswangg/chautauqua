@@ -40,4 +40,14 @@ describe("GET /docs/api", () => {
     const res = await app.request("/docs/api");
     expect(res.status).toBe(200);
   });
+
+  it("ships a viewport meta tag and a scrollable table wrapper (DEC-311/253 mobile overflow fix)", async () => {
+    const app = buildApp();
+    const res = await app.request("/docs/api");
+    const body = await res.text();
+    expect(body).toContain('<meta name="viewport" content="width=device-width, initial-scale=1"');
+    expect(body).toContain("table-scroll");
+    expect(body).toContain("overflow-x: auto");
+    expect(body).toContain("overflow-wrap: anywhere");
+  });
 });
