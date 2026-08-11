@@ -44,6 +44,18 @@ import { buildSurfaceFeed, agendaIcsEvents } from "./feeds";
 
 export const publicRoutes = new Hono<AppEnv>();
 
+// DEC-297: public surfaces must never emit a cacheable non-200. A 404 (or
+// any other non-200) response must always carry Cache-Control: no-store,
+// even though setCacheHeaders(c) has already set the 60s client cache
+// header earlier in the same handler — c.header() overwrites rather than
+// appends, so calling this last wins. Without this, a stale "not found"
+// page (e.g. before an organizer approves a session) could be cached by a
+// browser/proxy for up to max-age=60 after the underlying data changes.
+function publicNotFound(c: { header(name: string, value: string): void; text(body: string, status: 404): Response }, message: string): Response {
+  c.header("Cache-Control", "no-store");
+  return c.text(message, 404);
+}
+
 // touch DEC constants so the dependency is compile-checked (field guide convention)
 void DEC_022;
 void DEC_007;
@@ -78,7 +90,7 @@ for (const surface of SURFACES) {
   publicRoutes.get(`/e/:eventSlug/${surface}`, async (c) => {
     setCacheHeaders(c);
     const event = await getPublicEventBySlug(c.var.db, c.req.param("eventSlug"));
-    if (!event) return c.text("Event not found.", 404);
+    if (!event) return publicNotFound(c, "Event not found.");
     const { title, content } = await renderSurfaceContent(c.var.db, event, surface, {
       trackId: c.req.query("trackId"),
       page: c.req.query("page"),
@@ -98,9 +110,9 @@ for (const surface of SURFACES) {
 publicRoutes.get("/e/:eventSlug/speakers/:contactId", async (c) => {
   setCacheHeaders(c);
   const event = await getPublicEventBySlug(c.var.db, c.req.param("eventSlug"));
-  if (!event) return c.text("Event not found.", 404);
+  if (!event) return publicNotFound(c, "Event not found.");
   const speaker = await getPublicSpeakerDetail(c.var.db, event.id, c.req.param("contactId"));
-  if (!speaker) return c.text("Speaker not found.", 404);
+  if (!speaker) return publicNotFound(c, "Speaker not found.");
   const from = isValidFrom(c.req.query("from"), "speakers");
   return c.html(
     <PublicShell event={event} active={from === "gallery" ? "gallery" : "speakers"} title={`${speaker.firstName} ${speaker.lastName} - ${event.name}`}>
@@ -112,9 +124,9 @@ publicRoutes.get("/e/:eventSlug/speakers/:contactId", async (c) => {
 publicRoutes.get("/e/:eventSlug/sessions/:sessionId", async (c) => {
   setCacheHeaders(c);
   const event = await getPublicEventBySlug(c.var.db, c.req.param("eventSlug"));
-  if (!event) return c.text("Event not found.", 404);
+  if (!event) return publicNotFound(c, "Event not found.");
   const session = await getPublicSessionDetail(c.var.db, event, c.req.param("sessionId"));
-  if (!session) return c.text("Session not found.", 404);
+  if (!session) return publicNotFound(c, "Session not found.");
   const from = isValidFrom(c.req.query("from"), "sessions");
   return c.html(
     <PublicShell event={event} active={from} title={`${session.title} - ${event.name}`}>
@@ -133,9 +145,9 @@ publicRoutes.get("/e/:eventSlug/sessions/:sessionId", async (c) => {
 publicRoutes.get("/embed/:eventSlug/:surface{[a-z]+\\.json}", async (c) => {
   setCacheHeaders(c);
   const surfaceParam = c.req.param("surface").replace(/\.json$/, "");
-  if (!isSurface(surfaceParam)) return c.text("Unknown embed surface.", 404);
+  if (!isSurface(surfaceParam)) return publicNotFound(c, "Unknown embed surface.");
   const event = await getPublicEventBySlug(c.var.db, c.req.param("eventSlug"));
-  if (!event) return c.text("Event not found.", 404);
+  if (!event) return publicNotFound(c, "Event not found.");
   const items = await getSurfaceFeedItems(c.var.db, event, surfaceParam, {
     trackId: c.req.query("trackId"),
     page: c.req.query("page"),
@@ -147,9 +159,9 @@ publicRoutes.get("/embed/:eventSlug/:surface{[a-z]+\\.json}", async (c) => {
 publicRoutes.get("/embed/:eventSlug/:surface", async (c) => {
   setCacheHeaders(c);
   const surfaceParam = c.req.param("surface");
-  if (!isSurface(surfaceParam)) return c.text("Unknown embed surface.", 404);
+  if (!isSurface(surfaceParam)) return publicNotFound(c, "Unknown embed surface.");
   const event = await getPublicEventBySlug(c.var.db, c.req.param("eventSlug"));
-  if (!event) return c.text("Event not found.", 404);
+  if (!event) return publicNotFound(c, "Event not found.");
   const { title, content } = await renderSurfaceContent(c.var.db, event, surfaceParam, {
     trackId: c.req.query("trackId"),
     page: c.req.query("page"),
@@ -170,7 +182,7 @@ publicRoutes.get("/embed/:eventSlug/:surface", async (c) => {
 publicRoutes.get("/e/:eventSlug/schedule.ics", async (c) => {
   setCacheHeaders(c);
   const event = await getPublicEventBySlug(c.var.db, c.req.param("eventSlug"));
-  if (!event) return c.text("Event not found.", 404);
+  if (!event) return publicNotFound(c, "Event not found.");
 
   const ids = parseItineraryIds(c.req.query("ids"));
   if (ids.length > MAX_ITINERARY_IDS) {
@@ -216,7 +228,7 @@ publicRoutes.get("/e/:eventSlug/schedule.ics", async (c) => {
 publicRoutes.get("/e/:eventSlug/agenda.ics", async (c) => {
   setCacheHeaders(c);
   const event = await getPublicEventBySlug(c.var.db, c.req.param("eventSlug"));
-  if (!event) return c.text("Event not found.", 404);
+  if (!event) return publicNotFound(c, "Event not found.");
 
   const agenda = await getPublicAgenda(c.var.db, event);
   const ics = buildIcsCalendar(agendaIcsEvents(event, agenda, new Date()), {
