@@ -5873,3 +5873,44 @@ walkthrough's PASS result since it postdates S')
 RESULT: PASS (6/6 modules PASS at S' = `7561cc1`, all DEC-175 probes
 confirmed, DEC-180/181 do not alter walkthrough login/logout behavior
 as exercised — logout itself is untested by the walkthrough harness)
+## 2026-08-10 task-w11-d — render-sweep @ 7561cc1
+
+Full detail: docs/verification-log/task-w11-d-render-sweep.md
+
+Homonym note: an earlier `task-w11-d — perf-smoke @ 3b7ed3d` section
+already exists above (first-campaign, different lane/sha, DEC-129
+inert homonym). This section is the wave-11 render-sweep gate.
+
+S' derived per DEC-114 first-parent walk from `main` tip `bdc472b`
+("scribe wave 11"): `b57bdfd` ("merge task-w9-g") and `bdc472b` are
+doc-only and skipped, leaving **`7561cc1`** ("merge task-w10-d") as
+S' — matches this task's expected sha. `git merge-base --is-ancestor
+2dd2f33 7561cc1` exits 0 (DEC-139/DEC-144 ancestry satisfied).
+
+All 17 preconditions grep-confirmed present at `7561cc1` via `git show
+7561cc1:<path>` (12 DEC-177 anchors: six w6 fixes + six DEC-173/174/175
+harness-closure markers; plus DEC-179 in `src/lib/csv.ts`, DEC-180 in
+`src/lib/rate-limit.ts`, DEC-181 in `src/server/middleware.ts`, DEC-182
+in `src/server/http.ts`, DEC-183 in `wrangler.jsonc`). No precondition
+FAIL.
+
+Fresh scratch worktree at S' (`git worktree add --detach 7561cc1`,
+removed after use): `npm ci` clean; `npm run build` PASS (131 modules,
+0 tsc errors); `npm run db:migrate` PASS (13/13 migrations); `npm run
+seed` PASS. `npm run gate:render-sweep` (DEC-144 harness,
+`scripts/render-sweep.ts`) run on a freshly cleared local D1/KV/R2
+state (the gate self-boots its own migrated+reseeded `wrangler dev`;
+running a manual migrate+seed first and then the gate against the same
+state causes a harmless but confusing `UNIQUE constraint failed:
+pipeline_entry` double-seed collision — not a code regression, see
+detail file): **31/31 routes PASS**, matching the count last confirmed
+at `38860f9` (task-w8-e/task-w9-e). Zero console pageerrors on every
+route, including `/admin/contacts` (DEC-179 CSV export surface) and
+`/portal` (DEC-181 sign-out form surface) — both clean. Supplementary
+`npm test --silent` in the same worktree: 152 test files / 1364 tests,
+0 failures (up from wave-9's 151/1332, consistent with the wave-10
+DEC-179..183 fix lane).
+
+OPEN ITEMS: 0
+
+RESULT: PASS
