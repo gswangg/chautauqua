@@ -305,7 +305,11 @@ async function checkOnboardingAssignments(
   eventId: string,
   sampleContactIds: string[],
 ): Promise<Map<string, number>> {
-  const gridRes = await api(organizerJar, "GET", `/api/v1/events/${eventId}/onboarding`);
+  // DEC-340/DEC-329: the grid is now server-paginated (default perPage=50),
+  // so with 110 fresh contacts the sampled ids can fall past page 1 —
+  // narrowing the FETCH to perPage=200 (max, comfortably covers
+  // SCALE_COUNT=110 in one page) keeps every assertion below byte-identical.
+  const gridRes = await api(organizerJar, "GET", `/api/v1/events/${eventId}/onboarding?perPage=200`);
   assertStatus("step3: GET onboarding grid", gridRes.res, 200, gridRes.text);
   const grid = gridRes.json as OnboardingGrid;
   const counts = sampleAssignmentCounts(grid, sampleContactIds);
@@ -335,7 +339,9 @@ async function reAcceptIsExactlyOnce(
   assertStatus("step4: re-POST identical bulk status", bulkRes.res, 200, bulkRes.text);
   assertTrue("step4: re-POST also reports updated=110", bulkRes.json.updated === SCALE_COUNT, bulkRes.text);
 
-  const gridRes = await api(organizerJar, "GET", `/api/v1/events/${eventId}/onboarding`);
+  // DEC-340/DEC-329: same narrowing as step3 — perPage=200 keeps every
+  // sampled contact on the one page fetched.
+  const gridRes = await api(organizerJar, "GET", `/api/v1/events/${eventId}/onboarding?perPage=200`);
   assertStatus("step4: GET onboarding grid after re-accept", gridRes.res, 200, gridRes.text);
   const grid = gridRes.json as OnboardingGrid;
   const afterCounts = sampleAssignmentCounts(grid, sampleContactIds);
