@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "predev": "tsx scripts/ensure-dev-vars.ts",
     "dev": "wrangler dev",
     "dev:app": "vite build --watch --config app/vite.config.ts",
     "build": "tsc --noEmit && tsc --noEmit -p app/tsconfig.json && vite build --config app/vite.config.ts",
