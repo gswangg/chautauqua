@@ -1,0 +1,118 @@
+// DEC-297: public surfaces must never emit a cacheable non-200. This
+// mirrors the vi.mock(../src/server/repo/public) pattern established in
+// test/itinerary-roundtrip.test.ts (no local sqlite/D1 test driver is wired
+// up — see test/agenda-room-ownership.test.ts) so route handlers, including
+// publicNotFound's header override, run for real. getPublicEventBySlug
+// returns null for an unknown slug and a real event for a known one.
+
+import { describe, expect, it, vi } from "vitest";
+import { Hono } from "hono";
+
+vi.mock("../src/server/repo/public", async () => {
+  const actual = await vi.importActual<typeof import("../src/server/repo/public")>(
+    "../src/server/repo/public",
+  );
+
+  const EVENT: import("../src/server/repo/public").PublicEvent = {
+    id: "ev1",
+    orgId: "org1",
+    name: "Test Event",
+    slug: "conf",
+    startDate: "2026-08-10",
+    endDate: "2026-08-10",
+    location: null,
+    timezone: "UTC",
+    recordPrefix: "SES",
+    brandingJson: null,
+  };
+
+  return {
+    ...actual,
+    getPublicEventBySlug: vi.fn(async (_db: unknown, slug: string) => (slug === EVENT.slug ? EVENT : null)),
+    getPublicTracks: vi.fn(async () => []),
+    getPublicSessions: vi.fn(async () => ({ items: [], total: 0 })),
+    getPublicSpeakers: vi.fn(async () => []),
+    getPublicSpeakerDetail: vi.fn(async () => null),
+    getPublicAgenda: vi.fn(async () => []),
+  };
+});
+
+import { publicRoutes } from "../src/routes/public";
+import { registerErrorHandler } from "../src/server/http";
+import type { AppEnv } from "../src/server/env";
+import type { KVStore } from "../src/lib/draft";
+
+class InMemoryKV implements KVStore {
+  private store = new Map<string, string>();
+  async get(key: string) {
+    return this.store.get(key) ?? null;
+  }
+  async put(key: string, value: string) {
+    this.store.set(key, value);
+  }
+  async delete(key: string) {
+    this.store.delete(key);
+  }
+}
+
+class InMemoryCache {
+  private store = new Map<string, Response>();
+  async match(request: Request) {
+    return this.store.get(request.url);
+  }
+  async put(request: Request, response: Response) {
+    this.store.set(request.url, response);
+  }
+}
+
+(globalThis as unknown as { caches: { default: InMemoryCache } }).caches = { default: new InMemoryCache() };
+
+function buildApp() {
+  const app = new Hono<AppEnv>();
+  app.use("*", async (c, next) => {
+    // Never reached: the mocked repo functions above don't touch `db`.
+    c.set("db", {} as AppEnv["Variables"]["db"]);
+    await next();
+  });
+  registerErrorHandler(app);
+  app.route("/", publicRoutes);
+  const env = { KV: new InMemoryKV() as unknown as AppEnv["Bindings"]["KV"] };
+  return {
+    request: (path: string, init?: RequestInit) => app.request(path, init, env),
+  };
+}
+
+describe("DEC-297: public 404s are never cacheable", () => {
+  it("an unknown event slug's 404 carries Cache-Control: no-store, not max-age=60", async () => {
+    const app = buildApp();
+    const res = await app.request("/e/does-not-exist/sessions");
+
+    expect(res.status).toBe(404);
+    expect(res.headers.get("Cache-Control")).toBe("no-store");
+    expect(res.headers.get("Cache-Control")).not.toContain("max-age=60");
+  });
+
+  it("an unknown speaker's 404 carries Cache-Control: no-store", async () => {
+    const app = buildApp();
+    const res = await app.request("/e/conf/speakers/nope");
+
+    expect(res.status).toBe(404);
+    expect(res.headers.get("Cache-Control")).toBe("no-store");
+  });
+
+  it("an unknown embed surface's 404 carries Cache-Control: no-store", async () => {
+    const app = buildApp();
+    const res = await app.request("/embed/conf/not-a-surface");
+
+    expect(res.status).toBe(404);
+    expect(res.headers.get("Cache-Control")).toBe("no-store");
+  });
+
+  it("a known event/surface's 200 still carries the full 60s client cache header", async () => {
+    const app = buildApp();
+    const res = await app.request("/e/conf/sessions");
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Cache-Control")).toBe("public, max-age=60, stale-while-revalidate=300");
+  });
+});
