@@ -114,6 +114,8 @@ export function DayGrid({
             conflicts={conflicts}
             className="chq-day-grid-placed-card"
             style={{ gridColumn: colIdx + 2, gridRow: `${rowStart} / ${rowEnd}` }}
+            onDragOver={handleDragOver}
+            onDrop={(e) => handleDrop(e, session.roomId, session.startMin)}
           />
         );
       })}
