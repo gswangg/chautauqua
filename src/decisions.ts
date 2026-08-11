@@ -133,7 +133,7 @@ export const DEC_127 = "Wave-15 five-gate battery at the post-wave-14 sha: lanes
 export const DEC_128 = "Wave-16 contingency mirror gate battery: confirm-else-run semantics, fresh ports 8861/8862/8863, duplicates harmless, completion stays a planner grep";
 export const DEC_129 = "Wave-17 dual redundant triage-closure lanes; first-campaign homonym sections never satisfy the exit grep (validity requires `git merge-base --is-ancestor 675219f <cited-sha>`)";
 export const DEC_130 = "autoSchedule uses incremental day-indexed conflict checks, never per-candidate findConflicts over the full trial";
-export const DEC_131 = "ics escapeText normalizes CR before escaping: CRLF and lone CR become \\n, so no raw CR ever appears inside a content line";
+export const DEC_131 = "ics escapeText normalizes CR before escaping: CRLF and lone CR become \n, so no raw CR ever appears inside a content line";
 export const DEC_132 = "Public submit ignores rule-hidden file fields entirely: no upload validation error, no R2 put, no file row, no answer row";
 export const DEC_133 = "Bulk submission status change enforces a DEC-122-style full-set id match before any side effect: unknown/foreign ids yield 400 invalid naming the missing ids";
 export const DEC_134 = "Third code barrier: DEC-130..133 fix lanes void every 675219f gate section; wave 19 re-runs the DEC-069 five-gate battery at the new DEC-114 sha";
@@ -305,3 +305,7 @@ export const DEC_299 = "A NULL participant attribution snapshot was never frozen
 export const DEC_300 = "Deleting a form field is a declared cascade: 409 with the dependent counts unless the caller passes cascade=1, then dependent rules are cleared and orphaned answers deleted in one operation";
 export const DEC_301 = "A newly created event ships a submittable CFP: creation provisions a default 'General' track, and track choice is required only when the form actually offers tracks";
 export const DEC_302 = "npm audit advisories: dev-dependency-only advisories are accepted for stage 1 and must be recorded, not waved off, by the wave-11 build-test section";
+export const DEC_303 = "Wave-11's freeze is derived per-lane behind a seven-item WAVE-10 CONTENT GATE, not a planner-declared literal sha (main was provably mid-flight during planning)";
+export const DEC_304 = "The stage-1 exit predicate for the -c3- battery: eight green sections, substance not sha-identity; the wave-12 planner declares stage 1 at refs/heads/main and returns goalComplete";
+export const DEC_305 = "Wave-11 section->lane map, mandatory -c3- log infix, disjoint ports, and product-read-only lanes";
+export const DEC_306 = "The contacts-merge task_assignment tie-break is CORRECT as written; the review-lens claim against it is refuted and must not be 'fixed'";
