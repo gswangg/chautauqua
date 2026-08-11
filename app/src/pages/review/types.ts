@@ -106,6 +106,9 @@ export interface ResultsRow {
   count: number;
   average: number;
   perCriterion: Record<string, number>;
+  // DEC-241: per-dropdown-criterion option counts + modal option, keyed by
+  // criterion id. Never folded into `average`/`perCriterion` (rating-only).
+  perDropdown: Record<string, { counts: Record<string, number>; modal: string | null }>;
 }
 
 // GET /api/v1/review/plans/:id/queue item.

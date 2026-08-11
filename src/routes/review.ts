@@ -11,6 +11,7 @@ import { makeMailer } from "../server/context";
 import { textToHtml } from "../mail/render";
 import {
   aggregateSubmission,
+  aggregateDropdownCriterion,
   buildReviewerQueue,
   buildResultsRows,
   needsMoreRatings,
@@ -21,6 +22,7 @@ import {
   criteriaForRound,
   type EvaluationCriterion,
   type EvaluationCriterionDef,
+  type DropdownCriterionDef,
   type EvaluationScores,
 } from "../domain/evaluation";
 import { toCsv } from "../lib/csv";
@@ -209,6 +211,12 @@ function ratingCriteria(criteria: EvaluationCriterionDef[]): EvaluationCriterion
   return criteria
     .filter((c): c is EvaluationCriterionDef & { kind: "rating"; weight: number } => c.kind === "rating")
     .map((c) => ({ id: c.id, label: c.label, weight: c.weight }));
+}
+
+// DEC-241: dropdown criteria of a round's resolved criteria list, for the
+// results endpoint's perDropdown aggregate and CSV option columns.
+function dropdownCriteria(criteria: EvaluationCriterionDef[]): DropdownCriterionDef[] {
+  return criteria.filter((c): c is DropdownCriterionDef => c.kind === "dropdown");
 }
 
 async function requireOwnedPlan(c: { var: { db: import("../server/context").Db; auth?: { orgId: string } } }, planId: string): Promise<PlanRecord> {
@@ -416,6 +424,9 @@ interface ResultsRow {
   count: number;
   average: number;
   perCriterion: Record<string, number>;
+  // DEC-241: dropdown criteria never fold into the rating-only Average; each
+  // gets its own per-option distribution + modal here instead.
+  perDropdown: Record<string, { counts: Record<string, number>; modal: string | null }>;
 }
 
 async function buildResults(
@@ -425,16 +436,30 @@ async function buildResults(
 ): Promise<ResultsRow[]> {
   const submissions = await repo.listPlanFilteredSubmissions(c.var.db, plan);
   const evaluations = (await repo.listEvaluationsForPlan(c.var.db, plan.id, round)).filter((e) => e.round === round);
-  // DEC-147: results aggregate against THIS round's rating criteria -- a
+  // DEC-147: results aggregate against THIS round's full criteria list -- a
   // round override can drop/add/reweight criteria relative to the base plan.
-  const criteria = ratingCriteria(criteriaForRound(plan.criteria, roundCriteriaJsonOf(plan), round));
+  const roundCriteria = criteriaForRound(plan.criteria, roundCriteriaJsonOf(plan), round);
+  const criteria = ratingCriteria(roundCriteria);
+  const dropdowns = dropdownCriteria(roundCriteria);
 
   const rows: ResultsRow[] = submissions.map((sub) => {
-    const evals = evaluations
-      .filter((e) => e.submissionId === sub.id)
-      .map((e) => ({ scores: e.scores as unknown as EvaluationScores }));
+    const subEvals = evaluations.filter((e) => e.submissionId === sub.id);
+    const evals = subEvals.map((e) => ({ scores: e.scores as unknown as EvaluationScores }));
     const agg = aggregateSubmission(evals, criteria);
-    return { submissionId: sub.id, ref: sub.ref, title: sub.title, count: agg.count, average: agg.average, perCriterion: agg.perCriterion };
+    const dropdownEvals = subEvals.map((e) => ({ scores: e.scores as unknown as Record<string, unknown> }));
+    const perDropdown: Record<string, { counts: Record<string, number>; modal: string | null }> = {};
+    for (const dc of dropdowns) {
+      perDropdown[dc.id] = aggregateDropdownCriterion(dropdownEvals, dc);
+    }
+    return {
+      submissionId: sub.id,
+      ref: sub.ref,
+      title: sub.title,
+      count: agg.count,
+      average: agg.average,
+      perCriterion: agg.perCriterion,
+      perDropdown,
+    };
   });
   return buildResultsRows(rows);
 }
@@ -445,14 +470,25 @@ reviewRoutes.get("/api/v1/plans/:id/results", requireOrganizer, async (c) => {
   const rows = await buildResults(c, plan, round);
 
   if (c.req.query("format") === "csv") {
-    const criteria = ratingCriteria(criteriaForRound(plan.criteria, roundCriteriaJsonOf(plan), round));
-    const header = ["ref", "title", "count", "average", ...criteria.map((cr) => cr.label)];
+    const roundCriteria = criteriaForRound(plan.criteria, roundCriteriaJsonOf(plan), round);
+    const criteria = ratingCriteria(roundCriteria);
+    const dropdowns = dropdownCriteria(roundCriteria);
+    const dropdownColumns = dropdowns.flatMap((dc) => dc.options.map((option) => ({ dc, option })));
+    const header = [
+      "ref",
+      "title",
+      "count",
+      "average",
+      ...criteria.map((cr) => cr.label),
+      ...dropdownColumns.map(({ dc, option }) => `${dc.label}: ${option}`),
+    ];
     const dataRows = rows.map((r) => [
       r.ref,
       r.title,
       r.count,
       Number(r.average.toFixed(2)),
       ...criteria.map((cr) => Number((r.perCriterion[cr.id] ?? 0).toFixed(2))),
+      ...dropdownColumns.map(({ dc, option }) => r.perDropdown[dc.id]?.counts[option] ?? 0),
     ]);
     const csv = toCsv([header, ...dataRows]);
     return c.body(csv, 200, { "Content-Type": "text/csv; charset=utf-8" });
