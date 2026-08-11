@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { apiGet, apiPatch, apiUpload, ApiError } from '../../lib/api';
 import type { ContactDetail } from './types';
+import { fromRows, toRows, travelValue, type CustomFieldRow } from './customFields';
 
 interface Props {
   contactId: string;
@@ -25,7 +26,8 @@ export function ContactDrawer({ contactId, onClose, onSaved }: Props) {
   const [phone, setPhone] = useState('');
   const [notes, setNotes] = useState('');
   const [bio, setBio] = useState('');
-  const [customFieldsText, setCustomFieldsText] = useState('{}');
+  const [travel, setTravel] = useState('');
+  const [customFieldRows, setCustomFieldRows] = useState<CustomFieldRow[]>([]);
 
   const [twitter, setTwitter] = useState('');
   const [linkedin, setLinkedin] = useState('');
@@ -51,7 +53,8 @@ export function ContactDrawer({ contactId, onClose, onSaved }: Props) {
         setPhone(c.phone ?? '');
         setNotes(c.notes ?? '');
         setBio(c.bio ?? '');
-        setCustomFieldsText(JSON.stringify(c.customFields ?? {}, null, 2));
+        setTravel(travelValue(c.customFields ?? {}));
+        setCustomFieldRows(toRows(c.customFields ?? {}));
         setTwitter(c.socialLinks?.twitter ?? '');
         setLinkedin(c.socialLinks?.linkedin ?? '');
         setGithub(c.socialLinks?.github ?? '');
@@ -63,13 +66,12 @@ export function ContactDrawer({ contactId, onClose, onSaved }: Props) {
   }, [contactId]);
 
   async function save() {
-    let customFields: Record<string, string>;
-    try {
-      customFields = JSON.parse(customFieldsText);
-    } catch {
-      setError('Custom fields must be valid JSON.');
+    const result = fromRows(travel, customFieldRows);
+    if ('error' in result) {
+      setError(result.error);
       return;
     }
+    const customFields = result.fields;
     setSaving(true);
     setError(null);
     try {
@@ -91,6 +93,18 @@ export function ContactDrawer({ contactId, onClose, onSaved }: Props) {
     } finally {
       setSaving(false);
     }
+  }
+
+  function updateRow(index: number, patch: Partial<CustomFieldRow>) {
+    setCustomFieldRows((rows) => rows.map((row, i) => (i === index ? { ...row, ...patch } : row)));
+  }
+
+  function removeRow(index: number) {
+    setCustomFieldRows((rows) => rows.filter((_, i) => i !== index));
+  }
+
+  function addRow() {
+    setCustomFieldRows((rows) => [...rows, { key: '', value: '' }]);
   }
 
   async function uploadHeadshot() {
@@ -154,15 +168,46 @@ export function ContactDrawer({ contactId, onClose, onSaved }: Props) {
               Notes
               <textarea id="chq-contact-notes" rows={4} value={notes} onChange={(e) => setNotes(e.target.value)} />
             </label>
-            <label htmlFor="chq-contact-custom-fields">
-              Custom fields (JSON)
+            <label htmlFor="chq-contact-travel">
+              Travel &amp; logistics
               <textarea
-                id="chq-contact-custom-fields"
-                rows={4}
-                value={customFieldsText}
-                onChange={(e) => setCustomFieldsText(e.target.value)}
+                id="chq-contact-travel"
+                rows={3}
+                placeholder='e.g. "Arrival May 11, aisle seat; dietary: Vegetarian"'
+                value={travel}
+                onChange={(e) => setTravel(e.target.value)}
               />
             </label>
+
+            <div className="chq-contact-custom-fields" aria-label="Custom fields">
+              <h3>Custom fields</h3>
+              {customFieldRows.map((row, index) => (
+                <div className="chq-contact-custom-field-row" key={index}>
+                  <label htmlFor={`chq-contact-custom-field-key-${index}`}>
+                    Key
+                    <input
+                      id={`chq-contact-custom-field-key-${index}`}
+                      value={row.key}
+                      onChange={(e) => updateRow(index, { key: e.target.value })}
+                    />
+                  </label>
+                  <label htmlFor={`chq-contact-custom-field-value-${index}`}>
+                    Value
+                    <input
+                      id={`chq-contact-custom-field-value-${index}`}
+                      value={row.value}
+                      onChange={(e) => updateRow(index, { value: e.target.value })}
+                    />
+                  </label>
+                  <button type="button" onClick={() => removeRow(index)}>
+                    Remove
+                  </button>
+                </div>
+              ))}
+              <button type="button" onClick={addRow}>
+                Add field
+              </button>
+            </div>
 
             {/* CNT-10 (DEC-152/DEC-142/DEC-028): speaker profile section — bio,
                 headshot, social links — kept visually separate from the CRM
