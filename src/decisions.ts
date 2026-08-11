@@ -287,3 +287,6 @@ export const DEC_281 = "Wave 8 is the exit-battery wave; only a P1 may displace 
 export const DEC_282 = "Contact merge is total over every contact-referencing table: pipeline_entry/pipeline_activity carried, task_assignment deduped, twin login accounts refused, and a schema-derived tripwire keeps the list honest";
 export const DEC_283 = "'Assign to all accepted' means all ACTIVE participants of accepted submissions -- DEC-278's invite gate applies to the task-creation expansion too";
 export const DEC_284 = "A pre-battery mechanical gate lane runs in wave 7: it reports red, it never fixes red";
+export const DEC_285 = "Wave-8 exit battery freezes at S=80b811d250285de0d37417ddc12f65445ce27f96 with a pre-registered KNOWN-IN-FLIGHT ledger and a second detached RECHECK worktree";
+export const DEC_286 = "Wave-8 section->lane map: mandatory -c2- log infix, one new file per lane, and a disjoint port assignment with the fresh-clone lane owning default 8787";
+export const DEC_287 = "The wave-9 exit predicate is a mechanical planner-only grep over the eight -c2- logs; stage 1 is declared at the greatest RECHECK SHA";
