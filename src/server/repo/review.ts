@@ -203,6 +203,18 @@ export async function planHasEvaluations(db: Db, planId: string): Promise<boolea
   return rows.length > 0;
 }
 
+/** DEC-213: distinct rounds that have at least one recorded evaluation, for
+ * the PATCH /api/v1/plans/:id per-round freeze guard -- callers resolve
+ * effective criteria (before/after) for each of these rounds rather than
+ * treating the whole plan as frozen. */
+export async function listRoundsWithEvaluations(db: Db, planId: string): Promise<number[]> {
+  const rows = await db
+    .selectDistinct({ round: schema.evaluation.round })
+    .from(schema.evaluation)
+    .where(eq(schema.evaluation.planId, planId));
+  return rows.map((r) => r.round);
+}
+
 export async function deletePlan(db: Db, planId: string): Promise<void> {
   await db.delete(schema.planReviewer).where(eq(schema.planReviewer.planId, planId));
   await db.delete(schema.evaluation).where(eq(schema.evaluation.planId, planId));
