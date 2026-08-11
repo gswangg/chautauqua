@@ -26,6 +26,7 @@ afterEach(() => {
 describe('SubmissionsPage render smoke', () => {
   it('mounts without throwing and renders seeded column headers', async () => {
     mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([{ id: 'trk1', name: 'Keynotes', color: '#4f46e5' }]),
       [`GET /api/v1/events/${EVENT_ID}/forms`]: {
         id: 'form-1',
         fields: [
@@ -62,5 +63,12 @@ describe('SubmissionsPage render smoke', () => {
     expect(screen.getByRole('columnheader', { name: 'Ref' })).toBeInTheDocument();
     expect(screen.getByRole('columnheader', { name: 'Title' })).toBeInTheDocument();
     expect(screen.getByRole('columnheader', { name: 'Status' })).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('option', { name: 'Keynotes' }),
+      ).toBeInTheDocument();
+    });
+    expect(screen.getByRole('combobox', { name: 'Filter by track' })).toBeInTheDocument();
   });
 });
