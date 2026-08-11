@@ -6279,3 +6279,18 @@ Findings: none. All four audited areas conform.
 
 OPEN ITEMS: 0
 RESULT: PASS
+
+## 2026-08-10 task-w13-e — spec-audit @ 7f7477e
+
+Duplicate-citation per DEC-189(2)/Step 0: a `spec-audit` section
+already exists at S''' = `7f7477e` (`## 2026-08-10 task-w12-f —
+spec-audit @ 7f7477e`, above), covering `git diff 38860f9..7f7477e`
+(wave-10 DEC-179..183 fixes, operator 629d57e, DEC-187
+`ensure-dev-vars` implementation, secrets scan, own build+test) with
+RESULT: PASS, OPEN ITEMS: 0. This task-w13-e lane cites that PASS
+rather than re-running the gate. (Note: an inert homonym
+`task-w13-e — spec-audit @ 0ee30dd` exists from a dead campaign;
+matched by full heading only, not applicable here.) No new evidence
+collected; no build/test run for this lane.
+
+RESULT: PASS (cited from task-w12-f @ 7f7477e)
