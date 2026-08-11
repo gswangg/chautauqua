@@ -19,16 +19,20 @@ import {
   getPublicSpeakerDetail,
   getPublicSessionDetail,
   getPublicAgenda,
+  getPublicSessions,
+  getPublicSpeakers,
 } from "../../server/repo/public";
 import { buildIcsCalendar, ICS_ORGANIZER_EMAIL } from "../../mail/ics";
 import { zonedMinutesToUtc } from "../../lib/timezone";
 import { parseItineraryIds, MAX_ITINERARY_IDS } from "../../lib/itinerary";
 import { ApiError } from "../../server/http";
 import { publicCacheMiddleware, defaultCache } from "../../server/pubcache";
-import { DEC_022, DEC_007, DEC_017, DEC_005, DEC_012, DEC_080, DEC_083, DEC_151 } from "../../decisions";
-import { SURFACES, isSurface, setCacheHeaders, PublicShell, EmbedShell, isValidFrom } from "./shell";
+import { DEC_022, DEC_007, DEC_017, DEC_005, DEC_012, DEC_080, DEC_083, DEC_151, DEC_289 } from "../../decisions";
+import { SURFACES, isSurface, setCacheHeaders, PublicShell, EmbedShell, isValidFrom, PER_PAGE, type Surface } from "./shell";
 import { renderSurfaceContent } from "./dispatch";
 import { SpeakerDetailContent, SessionDetailContent } from "./detail";
+import { parsePage, parseTrackId, parseNameQuery } from "./query";
+import { buildSurfaceFeed, agendaIcsEvents } from "./feeds";
 
 export const publicRoutes = new Hono<AppEnv>();
 
@@ -41,6 +45,7 @@ void DEC_012;
 void DEC_080;
 void DEC_083;
 void DEC_151;
+void DEC_289;
 
 // re-exports: public surface for other modules / tests (unchanged names).
 export type { Surface } from "./shell";
@@ -107,6 +112,27 @@ publicRoutes.get("/e/:eventSlug/sessions/:sessionId", async (c) => {
   );
 });
 
+// EMB-15 (DEC-289): JSON feed of a public surface, registered ahead of the
+// plain HTML /embed/:eventSlug/:surface route below so the `.json` suffix
+// is matched here first (the regex param constraint keeps every other
+// surface value falling through to the HTML route untouched). Data comes
+// from the exact same src/server/repo/public.ts calls renderSurfaceContent
+// uses for the HTML dispatch — this is not a new query, just a JSON
+// projection of the same visibility-gated rows.
+publicRoutes.get("/embed/:eventSlug/:surface{[a-z]+\\.json}", async (c) => {
+  setCacheHeaders(c);
+  const surfaceParam = c.req.param("surface").replace(/\.json$/, "");
+  if (!isSurface(surfaceParam)) return c.text("Unknown embed surface.", 404);
+  const event = await getPublicEventBySlug(c.var.db, c.req.param("eventSlug"));
+  if (!event) return c.text("Event not found.", 404);
+  const items = await getSurfaceFeedItems(c.var.db, event, surfaceParam, {
+    trackId: c.req.query("trackId"),
+    page: c.req.query("page"),
+    q: c.req.query("q"),
+  });
+  return c.json(buildSurfaceFeed(event, surfaceParam, items, new Date()));
+});
+
 publicRoutes.get("/embed/:eventSlug/:surface", async (c) => {
   setCacheHeaders(c);
   const surfaceParam = c.req.param("surface");
@@ -168,3 +194,55 @@ publicRoutes.get("/e/:eventSlug/schedule.ics", async (c) => {
     "Content-Disposition": `attachment; filename="${event.slug}-itinerary.ics"`,
   });
 });
+
+// EMB-15 (DEC-289): the full published agenda as .ics — same UIDs/SEQUENCE
+// as schedule.ics (agendaIcsEvents in ./feeds mirrors its mapping exactly)
+// so a calendar app that already imported an itinerary link updates rather
+// than duplicates when it later subscribes to the whole agenda.
+publicRoutes.get("/e/:eventSlug/agenda.ics", async (c) => {
+  setCacheHeaders(c);
+  const event = await getPublicEventBySlug(c.var.db, c.req.param("eventSlug"));
+  if (!event) return c.text("Event not found.", 404);
+
+  const agenda = await getPublicAgenda(c.var.db, event);
+  const ics = buildIcsCalendar(agendaIcsEvents(event, agenda, new Date()), {
+    method: "PUBLISH",
+    organizer: { name: event.name, email: ICS_ORGANIZER_EMAIL },
+  });
+  return c.body(ics, 200, {
+    "Content-Type": "text/calendar; charset=utf-8",
+    "Content-Disposition": `attachment; filename="${event.slug}-agenda.ics"`,
+  });
+});
+
+// Raw (non-JSX) items for a surface's JSON feed — mirrors renderSurfaceContent's
+// switch but returns the repo's own item shape instead of rendered markup.
+// Same repo calls, same query params, same visibility gate; no new query.
+async function getSurfaceFeedItems(
+  db: Parameters<typeof getPublicSessions>[0],
+  event: Parameters<typeof getPublicSessions>[1],
+  surface: Surface,
+  query: { trackId?: string; page?: string; q?: string },
+): Promise<unknown> {
+  switch (surface) {
+    case "sessions": {
+      const trackId = parseTrackId(query.trackId);
+      const page = parsePage(query.page);
+      const q = parseNameQuery(query.q);
+      const { items } = await getPublicSessions(db, event, { trackId, page, perPage: PER_PAGE, q });
+      return items;
+    }
+    case "speakers":
+    case "gallery": {
+      const q = parseNameQuery(query.q);
+      return getPublicSpeakers(db, event.id, { q });
+    }
+    case "agenda":
+    case "schedule":
+      return getPublicAgenda(db, event);
+    default: {
+      const exhaustive: never = surface;
+      throw new Error(`Unknown public surface '${exhaustive}'`);
+    }
+  }
+}
