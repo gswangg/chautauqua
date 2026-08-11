@@ -54,12 +54,37 @@ function ensureCsrfCookie(c: {
   };
 }
 
+// DEC-253 mobile bar: /login is one of the tested no-login surfaces.
+// Styling-only (viewport meta + tap-target sizing) — no markup/behavior
+// change. Shared inline rather than importing src/routes/public/shell.tsx
+// to avoid coupling this unrelated route's chrome to the public-surface
+// shell's styles.
+const AUTH_MOBILE_STYLE = `
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { max-width: 100%; overflow-x: hidden; }
+  body { font-family: system-ui, sans-serif; margin: 0; padding: 1rem; color: #1a1a1a; }
+  form { max-width: 420px; }
+  label { display: block; margin-bottom: 0.75rem; }
+  input[type=email], input[type=password] {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    min-height: 40px;
+    font-size: 1rem;
+    margin-top: 0.25rem;
+  }
+  button[type=submit] { min-height: 40px; padding: 0.4rem 0.9rem; font-size: 1rem; }
+`;
+
 function LoginPage(props: { csrfToken: string; error?: string }) {
   return (
     <html lang="en">
       <head>
         <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>Log in - Chautauqua</title>
+        <style>{AUTH_MOBILE_STYLE}</style>
       </head>
       <body>
         <h1>Log in</h1>
@@ -92,7 +117,9 @@ function ClaimPage(props: { csrfToken: string; error?: string }) {
     <html lang="en">
       <head>
         <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>Create your password - Chautauqua</title>
+        <style>{AUTH_MOBILE_STYLE}</style>
       </head>
       <body>
         <h1>Create a password to track your submission</h1>

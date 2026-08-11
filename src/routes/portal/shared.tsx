@@ -38,8 +38,32 @@ export function PortalLayout(props: {
     <html lang="en">
       <head>
         <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>{props.branding.eventName} - Speaker Portal</title>
-        <style>{`:root { --accent: ${accent}; } h1 { color: var(--accent); }`}</style>
+        <style>{`
+          :root { --accent: ${accent}; }
+          *, *::before, *::after { box-sizing: border-box; }
+          html, body { max-width: 100%; overflow-x: hidden; }
+          body { font-family: system-ui, sans-serif; margin: 0; color: #1a1a1a; }
+          main, header { max-width: 960px; margin: 0 auto; padding: 0 1rem; }
+          img { max-width: 100%; height: auto; }
+          h1 { color: var(--accent); }
+          nav[aria-label="Portal navigation"] { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.75rem; }
+          nav a { display: inline-flex; align-items: center; min-height: 40px; }
+          button, input[type=submit] { min-height: 40px; padding: 0.4rem 0.9rem; font-size: 1rem; }
+          input[type=text], input[type=email], input[type=tel], input[type=url], input[type=search],
+          input[type=password], select, textarea {
+            max-width: 100%;
+            box-sizing: border-box;
+            min-height: 40px;
+            font-size: 1rem;
+          }
+          /* DEC-253: wide data tables (My Submissions/Tasks) scroll inside
+             their own container on a phone viewport rather than blowing out
+             page-level width. */
+          .chq-table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+          table { border-collapse: collapse; }
+        `}</style>
       </head>
       <body>
         <header>
