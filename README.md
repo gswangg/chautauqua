@@ -10,6 +10,30 @@ Cloudflare Worker (Hono + D1/Drizzle + R2) serving the admin SPA, the
 `/api/v1` REST API, server-rendered public pages, the speaker portal, and the
 public CFP form. Licensed MIT.
 
+## Live demo
+
+**https://chautauqua.cc** — a deployed instance with a fully populated demo
+event (*DevFlow Conf 2027*). Sign in at [/login](https://chautauqua.cc/login):
+
+| Role | Email | Password | Lands on |
+|---|---|---|---|
+| Organizer | `sbek-organizer@example.com` | `SbekTest!2027-org` | `/admin` |
+| Reviewer | `sbek-reviewer@example.com` | `SbekTest!2027-rev` | `/admin` (review queue) |
+| Speaker | `sbek-speaker@example.com` | `SbekTest!2027-spk` | `/portal` |
+
+No login needed for the public surfaces: [CFP form](https://chautauqua.cc/submit/devflow-conf-2027) ·
+[sessions](https://chautauqua.cc/e/devflow-conf-2027/sessions) ·
+[speakers](https://chautauqua.cc/e/devflow-conf-2027/speakers) ·
+[agenda](https://chautauqua.cc/e/devflow-conf-2027/agenda) ·
+[schedule + .ics](https://chautauqua.cc/e/devflow-conf-2027/schedule) ·
+[gallery](https://chautauqua.cc/e/devflow-conf-2027/gallery) ·
+[API docs](https://chautauqua.cc/docs/api)
+
+The deployed instance sends **real email** from `hello@chautauqua.cc` via the
+Cloudflare Email Service binding (SPF/DKIM/DMARC in-zone), including `.ics`
+calendar invites as attachments. `/dev/mailbox` (the local dev email sink) is
+deliberately **not** mounted in production.
+
 ## Quickstart
 
 Stage 1 requires zero secrets — everything runs against local Miniflare-backed
