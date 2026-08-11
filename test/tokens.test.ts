@@ -7,6 +7,8 @@ import {
   csrfJson,
   type ApiTokenLookup,
   type ApiTokenRow,
+  type UserLookup,
+  type UserRow,
 } from "../src/server/middleware";
 import type { AuthInfo } from "../src/server/env";
 
@@ -26,6 +28,20 @@ class FakeApiTokens implements ApiTokenLookup {
     return this.rows.get(tokenHash) ?? null;
   }
 }
+
+class FakeUsers implements UserLookup {
+  constructor(private readonly rows: Map<string, UserRow>) {}
+  async findById(userId: string): Promise<UserRow | null> {
+    return this.rows.get(userId) ?? null;
+  }
+}
+
+const organizerUser = (id: string, orgId: string): UserRow => ({
+  id,
+  orgId,
+  role: "organizer",
+  contactId: null,
+});
 
 describe("newApiToken / apiTokenDisplayPrefix / hashToken", () => {
   it("mints a chq_ prefixed token with 40 random chars", () => {
@@ -69,25 +85,75 @@ describe("extractBearerToken", () => {
 });
 
 describe("resolveBearerAuth", () => {
-  it("resolves a known token hash to an organizer AuthInfo with viaBearer=true", async () => {
+  it("resolves a known token hash to an organizer AuthInfo with viaBearer=true when the minting user is a live organizer in the token's org", async () => {
     const token = newApiToken();
     const tokenHash = await hashToken(token);
     const tokens = new FakeApiTokens(
       new Map([[tokenHash, { id: "tok1", orgId: "org1", createdByUserId: "u1" }]]),
     );
-    const auth = await resolveBearerAuth(token, tokens, hashToken);
+    const users = new FakeUsers(new Map([["u1", organizerUser("u1", "org1")]]));
+    const auth = await resolveBearerAuth(token, tokens, users, hashToken);
     expect(auth).toEqual({ userId: "u1", role: "organizer", orgId: "org1", viaBearer: true });
   });
 
   it("returns undefined for an unknown token (no lookup match)", async () => {
     const tokens = new FakeApiTokens(new Map());
-    const auth = await resolveBearerAuth("chq_unknowntoken", tokens, hashToken);
+    const users = new FakeUsers(new Map());
+    const auth = await resolveBearerAuth("chq_unknowntoken", tokens, users, hashToken);
     expect(auth).toBeUndefined();
   });
 
   it("returns undefined when there's no token", async () => {
     const tokens = new FakeApiTokens(new Map());
-    await expect(resolveBearerAuth(undefined, tokens, hashToken)).resolves.toBeUndefined();
+    const users = new FakeUsers(new Map());
+    await expect(resolveBearerAuth(undefined, tokens, users, hashToken)).resolves.toBeUndefined();
+  });
+
+  it("returns undefined per DEC-276 when the minting user has been demoted off organizer", async () => {
+    const token = newApiToken();
+    const tokenHash = await hashToken(token);
+    const tokens = new FakeApiTokens(
+      new Map([[tokenHash, { id: "tok1", orgId: "org1", createdByUserId: "u1" }]]),
+    );
+    const users = new FakeUsers(
+      new Map([["u1", { id: "u1", orgId: "org1", role: "reviewer", contactId: null }]]),
+    );
+    const auth = await resolveBearerAuth(token, tokens, users, hashToken);
+    expect(auth).toBeUndefined();
+  });
+
+  it("returns undefined per DEC-276 when the minting user row no longer exists (deleted)", async () => {
+    const token = newApiToken();
+    const tokenHash = await hashToken(token);
+    const tokens = new FakeApiTokens(
+      new Map([[tokenHash, { id: "tok1", orgId: "org1", createdByUserId: "u1" }]]),
+    );
+    const users = new FakeUsers(new Map());
+    const auth = await resolveBearerAuth(token, tokens, users, hashToken);
+    expect(auth).toBeUndefined();
+  });
+
+  it("returns undefined per DEC-276 when the minting user has moved to a different org than the token", async () => {
+    const token = newApiToken();
+    const tokenHash = await hashToken(token);
+    const tokens = new FakeApiTokens(
+      new Map([[tokenHash, { id: "tok1", orgId: "org1", createdByUserId: "u1" }]]),
+    );
+    const users = new FakeUsers(new Map([["u1", organizerUser("u1", "org2")]]));
+    const auth = await resolveBearerAuth(token, tokens, users, hashToken);
+    expect(auth).toBeUndefined();
+  });
+
+  it("throws (fails loudly) rather than silently degrading when the minting user has an unknown role literal", async () => {
+    const token = newApiToken();
+    const tokenHash = await hashToken(token);
+    const tokens = new FakeApiTokens(
+      new Map([[tokenHash, { id: "tok1", orgId: "org1", createdByUserId: "u1" }]]),
+    );
+    const users = new FakeUsers(
+      new Map([["u1", { id: "u1", orgId: "org1", role: "superadmin", contactId: null }]]),
+    );
+    await expect(resolveBearerAuth(token, tokens, users, hashToken)).rejects.toThrow(/role/i);
   });
 });
 
@@ -103,7 +169,8 @@ describe("cookie-session precedence (sessionLoader contract)", () => {
     const tokens = new FakeApiTokens(
       new Map([[tokenHash, { id: "tok1", orgId: "org-from-token", createdByUserId: "u9" }]]),
     );
-    const auth = await resolveBearerAuth(token, tokens, hashToken);
+    const users = new FakeUsers(new Map([["u9", organizerUser("u9", "org-from-token")]]));
+    const auth = await resolveBearerAuth(token, tokens, users, hashToken);
     expect(auth?.orgId).toBe("org-from-token");
   });
 });

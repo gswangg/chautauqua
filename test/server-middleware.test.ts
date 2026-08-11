@@ -1,9 +1,17 @@
 import { describe, expect, it } from "vitest";
 import { Hono } from "hono";
-import { resolveAuth, checkDoubleSubmitCsrf, noStoreApi } from "../src/server/middleware";
+import {
+  resolveAuth,
+  checkDoubleSubmitCsrf,
+  noStoreApi,
+  sessionLoader,
+  requireOrganizer,
+} from "../src/server/middleware";
 import type { SessionLookup, UserLookup, SessionRow, UserRow } from "../src/server/middleware";
-import { hashToken, newSessionToken } from "../src/auth/tokens";
+import { hashToken, newSessionToken, newApiToken } from "../src/auth/tokens";
 import type { AppEnv } from "../src/server/env";
+import * as schema from "../src/db/schema";
+import { registerErrorHandler } from "../src/server/http";
 
 class FakeSessions implements SessionLookup {
   constructor(private readonly rows: Map<string, SessionRow>) {}
@@ -133,5 +141,62 @@ describe("noStoreApi", () => {
 
     const res = await app.request("/api/v1/special");
     expect(res.headers.get("Cache-Control")).toBe("public, max-age=60");
+  });
+});
+
+// DEC-276: a bearer token minted while its user was an organizer must stop
+// authenticating the instant that user is demoted, without any expiry
+// column — sessionLoader re-resolves the minting user on every request.
+describe("sessionLoader + requireOrganizer with a bearer token whose minting user was demoted (DEC-276)", () => {
+  it("401s an organizer-only route for a token whose minting user is now a reviewer", async () => {
+    const token = newApiToken();
+
+    // Minimal fake drizzle db: dispatches by which table .from() names,
+    // covering the two lookups sessionLoader performs (apiToken, then
+    // user) plus the best-effort last_used_at update.
+    const fakeDb = {
+      select() {
+        return {
+          from(table: unknown) {
+            return {
+              where() {
+                return {
+                  limit: async () => {
+                    if (table === schema.apiToken) {
+                      return [{ id: "tok1", orgId: "org-1", createdByUserId: "u-1" }];
+                    }
+                    if (table === schema.user) {
+                      return [{ id: "u-1", orgId: "org-1", role: "reviewer", contactId: null }];
+                    }
+                    return [];
+                  },
+                };
+              },
+            };
+          },
+        };
+      },
+      update() {
+        return {
+          set() {
+            return { where: async () => undefined };
+          },
+        };
+      },
+    } as unknown as AppEnv["Variables"]["db"];
+
+    const app = new Hono<AppEnv>();
+    registerErrorHandler(app);
+    app.use("*", async (c, next) => {
+      c.set("db", fakeDb);
+      await next();
+    });
+    app.use("*", sessionLoader);
+    app.get("/api/v1/organizer-only", requireOrganizer, (c) => c.json({ ok: true }));
+
+    const res = await app.request("/api/v1/organizer-only", {
+      headers: { authorization: `Bearer ${token}` },
+    });
+    expect(res.status).toBe(401);
   });
 });
