@@ -4,6 +4,8 @@
 
 import type { Bindings } from "./env";
 import { runDueReminders } from "../routes/tasks";
+import { runAirtableSync } from "../sync/airtable";
+import { makeDb } from "./context";
 
 export async function handleScheduled(
   controller: ScheduledController,
@@ -11,5 +13,8 @@ export async function handleScheduled(
   _ctx: ExecutionContext,
 ): Promise<void> {
   console.log("scheduled trigger fired", controller.cron);
+  // Reminders first: a sync failure must not cost anyone their reminder.
   await runDueReminders(env);
+  // One-way Airtable push (no-op unless AIRTABLE_* secrets are configured).
+  await runAirtableSync(env, makeDb(env));
 }

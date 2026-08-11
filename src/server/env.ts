@@ -15,6 +15,10 @@ export type Bindings = {
   EMAIL?: import("../mail/email-binding").EmailSender;
   MAIL_FROM_EMAIL?: string;
   MAIL_FROM_NAME?: string;
+  // Optional one-way Airtable sync (bonus): both must be set (as Worker
+  // secrets) or the sync is off. Airtable is never a source of truth.
+  AIRTABLE_TOKEN?: string;
+  AIRTABLE_BASE_ID?: string;
   // DEC-049: /admin is served through the Worker (run_worker_first) so role
   // redirects can happen server-side; ASSETS proxies to the static bundle.
   // Optional so existing test env fixtures that predate this task stay green.
