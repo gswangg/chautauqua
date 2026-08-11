@@ -133,7 +133,7 @@ export function PublicShell(props: { event: PublicEvent; active: Surface; title:
 
 /** Chromeless embed shell (DEC-022): same surface content, no nav/header, no
  * frame-blocking headers set anywhere in this file so iframes work. */
-export function EmbedShell(props: { event: PublicEvent; title: string; children: unknown }) {
+export function EmbedShell(props: { event: PublicEvent; title: string; children: unknown; accentOverride?: string }) {
   const b = branding(props.event);
   return (
     <html lang="en">
@@ -141,7 +141,7 @@ export function EmbedShell(props: { event: PublicEvent; title: string; children:
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>{props.title}</title>
-        <BaseStyles accentColor={b.accentColor} />
+        <BaseStyles accentColor={props.accentOverride ?? b.accentColor} />
       </head>
       <body>
         <main>{props.children as any}</main>

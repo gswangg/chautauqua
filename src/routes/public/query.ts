@@ -19,3 +19,55 @@ export function parseTrackId(raw: string | undefined): string | null {
 export function parseNameQuery(raw: string | undefined): string | null {
   return raw && raw.trim().length > 0 ? raw.trim() : null;
 }
+
+// DEC-289: embed configuration params — all optional, all degrade to
+// today's behavior on absence or bad input, none of them ever throw.
+
+const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
+const HEX3_OR_6_RE = /^[0-9a-fA-F]{3}$|^[0-9a-fA-F]{6}$/;
+
+/** `day` = agenda/schedule filter, /^\d{4}-\d{2}-\d{2}$/ or null. */
+export function parseDay(raw: string | undefined): string | null {
+  return raw && DAY_RE.test(raw) ? raw : null;
+}
+
+/** `limit` = sessions-surface page size override, integer 1..100, else null
+ * (caller falls back to PER_PAGE). */
+export function parseLimit(raw: string | undefined): number | null {
+  const n = Number(raw);
+  return Number.isInteger(n) && n >= 1 && n <= 100 ? n : null;
+}
+
+export const ALL_CARD_FIELDS = ["track", "time", "room", "speaker", "description"] as const;
+export type CardField = (typeof ALL_CARD_FIELDS)[number];
+export type CardFields = Record<CardField, boolean>;
+
+const ALL_CARD_FIELDS_ON: CardFields = { track: true, time: true, room: true, speaker: true, description: true };
+
+/** `fields` = comma list from ALL_CARD_FIELDS; unknown names ignored;
+ * absent-or-empty == all five on (title is not part of this allowlist and
+ * always renders). */
+export function parseCardFields(raw: string | undefined): CardFields {
+  if (!raw || raw.trim().length === 0) return { ...ALL_CARD_FIELDS_ON };
+  const named = new Set(
+    raw
+      .split(",")
+      .map((s) => s.trim())
+      .filter((s): s is CardField => (ALL_CARD_FIELDS as readonly string[]).includes(s)),
+  );
+  return {
+    track: named.has("track"),
+    time: named.has("time"),
+    room: named.has("room"),
+    speaker: named.has("speaker"),
+    description: named.has("description"),
+  };
+}
+
+/** `accent` = 3- or 6-digit hex without '#', normalized to '#rrggbb'
+ * lowercase (3-digit expanded); anything else parses to null. */
+export function parseAccent(raw: string | undefined): string | null {
+  if (!raw || !HEX3_OR_6_RE.test(raw)) return null;
+  const hex = raw.length === 3 ? raw.split("").map((c) => c + c).join("") : raw;
+  return `#${hex.toLowerCase()}`;
+}
