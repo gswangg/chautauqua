@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   PERF_ANSWERS_PER_SUBMISSION,
   PERF_CONTACT_COUNT,
+  PERF_EMAIL_LOG_COUNT,
+  PERF_EMAIL_LOG_RECENT_WINDOW_DAYS,
+  PERF_EMAIL_LOG_SPREAD_DAYS,
   PERF_EVALUATION_COUNT,
   PERF_PLAN_ID,
   PERF_REVIEWER_COUNT,
@@ -9,11 +12,16 @@ import {
   PERF_ROOM_COUNT,
   PERF_STATUS_COUNTS,
   PERF_SUBMISSION_COUNT,
+  PERF_TASK_ASSIGNMENT_COUNT,
+  PERF_TASK_COUNT,
+  PERF_TASKS,
   PERF_TOPICS,
   PERF_TRACK_COUNT,
   contactIndexForSubmission,
+  isTaskAssignmentComplete,
   perfReviewerEmail,
   perfSubmissionStatuses,
+  sentAtForEmailLogRow,
   slotPlacementForAccepted,
   topicForSubmission,
   totalPerfAnswerRows,
@@ -177,5 +185,73 @@ describe("slotPlacementForAccepted", () => {
     for (const count of Object.values(slotKeyCounts)) {
       expect(count).toBe(1);
     }
+  });
+});
+
+describe("DEC-338 onboarding task/task_assignment scale", () => {
+  it("has exactly 5 tasks, one of them a file_request", () => {
+    expect(PERF_TASK_COUNT).toBe(5);
+    expect(PERF_TASKS).toHaveLength(5);
+    const fileRequestCount = PERF_TASKS.filter((t) => t.kind === "file_request").length;
+    expect(fileRequestCount).toBe(1);
+  });
+
+  it("assigns every task to every one of the 800 contacts: 4,000 rows", () => {
+    expect(PERF_TASK_ASSIGNMENT_COUNT).toBe(PERF_TASK_COUNT * PERF_CONTACT_COUNT);
+    expect(PERF_TASK_ASSIGNMENT_COUNT).toBe(4000);
+  });
+
+  it("mixes pending/complete by index modulo across the full grid", () => {
+    let completeCount = 0;
+    let pendingCount = 0;
+    for (let taskIdx = 0; taskIdx < PERF_TASK_COUNT; taskIdx++) {
+      for (let contactIdx = 0; contactIdx < PERF_CONTACT_COUNT; contactIdx++) {
+        if (isTaskAssignmentComplete(taskIdx, contactIdx)) completeCount++;
+        else pendingCount++;
+      }
+    }
+    expect(completeCount).toBeGreaterThan(0);
+    expect(pendingCount).toBeGreaterThan(0);
+    expect(completeCount + pendingCount).toBe(PERF_TASK_ASSIGNMENT_COUNT);
+  });
+
+  it("rejects negative or non-integer indices", () => {
+    expect(() => isTaskAssignmentComplete(-1, 0)).toThrow();
+    expect(() => isTaskAssignmentComplete(0, -1)).toThrow();
+    expect(() => isTaskAssignmentComplete(1.5, 0)).toThrow();
+  });
+});
+
+describe("DEC-338 email_log scale + spread", () => {
+  const NOW_MS = Date.UTC(2027, 6, 1, 0, 0, 0);
+
+  it("seeds exactly 5,000 rows", () => {
+    expect(PERF_EMAIL_LOG_COUNT).toBe(5000);
+  });
+
+  it("spreads sent_at across the last 30 days so the trailing-7-day window is a strict subset", () => {
+    const DAY_MS = 24 * 60 * 60 * 1000;
+    const recentCutoff = NOW_MS - PERF_EMAIL_LOG_RECENT_WINDOW_DAYS * DAY_MS;
+    const spreadFloor = NOW_MS - PERF_EMAIL_LOG_SPREAD_DAYS * DAY_MS;
+    let recentCount = 0;
+    let olderCount = 0;
+    for (let n = 0; n < PERF_EMAIL_LOG_COUNT; n++) {
+      const sentAt = sentAtForEmailLogRow(n, NOW_MS);
+      expect(sentAt).toBeLessThanOrEqual(NOW_MS);
+      expect(sentAt).toBeGreaterThanOrEqual(spreadFloor);
+      if (sentAt >= recentCutoff) recentCount++;
+      else olderCount++;
+    }
+    // Strict subset: some rows within the last 7 days, but not all 5,000.
+    expect(recentCount).toBeGreaterThan(0);
+    expect(recentCount).toBeLessThan(PERF_EMAIL_LOG_COUNT);
+    expect(olderCount).toBeGreaterThan(0);
+  });
+
+  it("is deterministic and rejects negative/non-integer input", () => {
+    expect(sentAtForEmailLogRow(42, NOW_MS)).toEqual(sentAtForEmailLogRow(42, NOW_MS));
+    expect(() => sentAtForEmailLogRow(-1, NOW_MS)).toThrow();
+    expect(() => sentAtForEmailLogRow(1.5, NOW_MS)).toThrow();
+    expect(() => sentAtForEmailLogRow(0, -1)).toThrow();
   });
 });
