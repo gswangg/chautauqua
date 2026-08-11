@@ -55,9 +55,9 @@ describe('FilesLibrary render smoke', () => {
     for (const button of openButtons) {
       expect(button.tagName).toBe('BUTTON');
     }
-    fireEvent.click(openButtons[0]);
+    fireEvent.click(openButtons[0]!);
     expect(onSelectSubmission).toHaveBeenCalledWith('sub-1');
-    fireEvent.click(openButtons[2]);
+    fireEvent.click(openButtons[2]!);
     expect(onSelectSubmission).toHaveBeenCalledWith('sub-1');
 
     consoleError.mockRestore();
