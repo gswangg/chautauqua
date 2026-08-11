@@ -8,7 +8,9 @@ import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { newId } from "../../domain/ids";
 import type { ComposeSubmission } from "../../domain/compose";
+export type { ComposeSubmission } from "../../domain/compose";
 import { chunkIds } from "../../lib/chunk";
+import { ACTIVE_INVITE_STATUSES } from "../../domain/acceptance";
 
 // ---------------------------------------------------------------------------
 // Templates
@@ -122,10 +124,14 @@ export async function deleteTemplate(db: Db, id: string): Promise<void> {
 // recipient list even runs), so any inArray(...) keyed off the full
 // submissionIds list must be batched via the canonical chunkIds (DEC-078).
 
-/** Loads the given submissions (scoped to eventId) with their visible
- * participants, for src/domain/compose.ts's expandRecipients. Submission ids
- * not belonging to this event are silently excluded (not a 404 — the caller
- * validates the full set matched before proceeding). */
+/** Loads the given submissions (scoped to eventId) with their ACTIVE-invite
+ * participants (DEC-317: inviteStatus in ACTIVE_INVITE_STATUSES — 'none' or
+ * 'accepted' — never 'invited' or 'declined'), for src/domain/compose.ts's
+ * expandRecipients. This filter deliberately ignores participant.visible:
+ * visible governs program/public display, not who is eligible to receive
+ * organizer mail, so a visible=0 accepted co-speaker still gets composed to.
+ * Submission ids not belonging to this event are silently excluded (not a
+ * 404 — the caller validates the full set matched before proceeding). */
 export async function loadComposeSubmissions(
   db: Db,
   eventId: string,
@@ -163,7 +169,12 @@ export async function loadComposeSubmissions(
       })
       .from(schema.participant)
       .innerJoin(schema.contact, eq(schema.contact.id, schema.participant.contactId))
-      .where(inArray(schema.participant.submissionId, batch));
+      .where(
+        and(
+          inArray(schema.participant.submissionId, batch),
+          inArray(schema.participant.inviteStatus, [...ACTIVE_INVITE_STATUSES]),
+        ),
+      );
     participantRows.push(...batchRows);
   }
 

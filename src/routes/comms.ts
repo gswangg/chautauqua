@@ -202,6 +202,24 @@ export function unscheduledIcsFields(
   return fields;
 }
 
+/** DEC-317 preflight: after loadComposeSubmissions (which now filters
+ * participants down to ACTIVE_INVITE_STATUSES), a submission whose only
+ * participant(s) declined/are still 'invited' loads with zero participants
+ * — a silent-drop hole that would otherwise render/send to a smaller
+ * recipient set than requested with no error. Returns the ApiError `fields`
+ * map for every selected submission id with zero loaded participants
+ * (including ids that failed to load at all), empty when every selection has
+ * at least one eligible recipient. */
+export function noRecipientFields(submissions: repo.ComposeSubmission[], submissionIds: string[]): Record<string, string> {
+  const bySubmissionId = new Map(submissions.map((s) => [s.id, s]));
+  const fields: Record<string, string> = {};
+  for (const id of submissionIds) {
+    const submission = bySubmissionId.get(id);
+    if (!submission || submission.participants.length === 0) fields[id] = "no eligible recipients";
+  }
+  return fields;
+}
+
 /** DEC-051 preflight: when attachIcs is set, every selected submission must
  * have a schedule slot. Runs before any render/send is attempted (atomic per
  * DEC-019) and returns the schedule data so the caller doesn't re-query. */
@@ -305,6 +323,14 @@ commsRoutes.post("/api/v1/events/:eventId/compose/preview", requireOrganizer, cs
   const submissions = await repo.loadComposeSubmissions(c.var.db, eventId, input.submissionIds);
   requireFullMatch(input.submissionIds, submissions);
 
+  // DEC-317: loadComposeSubmissions now filters participants down to active
+  // invite statuses only, so a submission whose only participant(s)
+  // declined would otherwise silently compose to zero people.
+  const noRecipients = noRecipientFields(submissions, input.submissionIds);
+  if (Object.keys(noRecipients).length > 0) {
+    throw new ApiError("invalid", "Some selected sessions have no eligible recipients", noRecipients);
+  }
+
   const icsMap = input.attachIcs ? await preflightIcsSchedule(c.var.db, input.submissionIds) : undefined;
 
   const targets = await buildRenderTargets(c, event, submissions, input.includeFeedback);
@@ -338,6 +364,14 @@ commsRoutes.post("/api/v1/events/:eventId/compose/send", requireOrganizer, csrfJ
   // set, every selected submission is scheduled) do we start sending.
   const submissions = await repo.loadComposeSubmissions(c.var.db, eventId, input.submissionIds);
   requireFullMatch(input.submissionIds, submissions);
+
+  // DEC-317: same atomic preflight as preview — reject the whole batch
+  // before any mailer.send if a selected submission has no active-invite
+  // participants left to notify.
+  const noRecipients = noRecipientFields(submissions, input.submissionIds);
+  if (Object.keys(noRecipients).length > 0) {
+    throw new ApiError("invalid", "Some selected sessions have no eligible recipients", noRecipients);
+  }
 
   const icsMap = input.attachIcs ? await preflightIcsSchedule(c.var.db, input.submissionIds) : undefined;
 
