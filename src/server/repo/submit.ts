@@ -113,9 +113,14 @@ export async function findContactByEmail(
   db: Db,
   orgId: string,
   email: string,
-): Promise<{ id: string; title: string | null; company: string | null } | null> {
+): Promise<{ id: string; title: string | null; company: string | null; bio: string | null } | null> {
   const rows = await db
-    .select({ id: schema.contact.id, title: schema.contact.title, company: schema.contact.company })
+    .select({
+      id: schema.contact.id,
+      title: schema.contact.title,
+      company: schema.contact.company,
+      bio: schema.contact.bio,
+    })
     .from(schema.contact)
     .where(and(eq(schema.contact.orgId, orgId), sql`lower(${schema.contact.email}) = lower(${email})`))
     .limit(1);
@@ -124,7 +129,18 @@ export async function findContactByEmail(
 
 export async function createContact(
   db: Db,
-  params: { orgId: string; firstName: string; lastName: string; email: string },
+  params: {
+    orgId: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    // DEC-321: default CFP now collects job title/company/bio directly onto
+    // the contact so J10's public speakers list isn't blank for real
+    // submitters.
+    title?: string | null;
+    company?: string | null;
+    bio?: string | null;
+  },
 ): Promise<string> {
   const id = newId();
   const now = new Date();
@@ -134,10 +150,46 @@ export async function createContact(
     firstName: params.firstName,
     lastName: params.lastName,
     email: params.email,
+    title: params.title ?? null,
+    company: params.company ?? null,
+    bio: params.bio ?? null,
     createdAt: now,
     updatedAt: now,
   });
   return id;
+}
+
+/** DEC-321(b): a repeat submitter's stored profile is never overwritten by a
+ * later CFP submission — only columns that are currently null/empty are
+ * filled from the new submission's answers. Returns the resolved
+ * (post-fill) values so the caller can snapshot them onto the participant. */
+export async function fillContactProfileIfBlank(
+  db: Db,
+  contactId: string,
+  current: { title: string | null; company: string | null; bio: string | null },
+  incoming: { title: string | null; company: string | null; bio: string | null },
+): Promise<{ title: string | null; company: string | null; bio: string | null }> {
+  const resolved = { ...current };
+  const patch: Record<string, string> = {};
+  if (!current.title && incoming.title) {
+    patch.title = incoming.title;
+    resolved.title = incoming.title;
+  }
+  if (!current.company && incoming.company) {
+    patch.company = incoming.company;
+    resolved.company = incoming.company;
+  }
+  if (!current.bio && incoming.bio) {
+    patch.bio = incoming.bio;
+    resolved.bio = incoming.bio;
+  }
+  if (Object.keys(patch).length > 0) {
+    await db
+      .update(schema.contact)
+      .set({ ...patch, updatedAt: new Date() })
+      .where(eq(schema.contact.id, contactId));
+  }
+  return resolved;
 }
 
 export async function findUserByEmail(db: Db, email: string): Promise<{ id: string } | null> {

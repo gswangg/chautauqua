@@ -78,7 +78,14 @@ export async function loadEditableSubmission(
   if (!row || !row.formId) return null;
 
   const contactRows = await db
-    .select({ firstName: schema.contact.firstName, lastName: schema.contact.lastName, email: schema.contact.email })
+    .select({
+      firstName: schema.contact.firstName,
+      lastName: schema.contact.lastName,
+      email: schema.contact.email,
+      title: schema.contact.title,
+      company: schema.contact.company,
+      bio: schema.contact.bio,
+    })
     .from(schema.contact)
     .where(eq(schema.contact.id, contactId));
   const contact = contactRows[0];
@@ -124,6 +131,11 @@ export async function loadEditableSubmission(
   answers[LOCKED_SPEAKER_FIELDS[0]] = contact.firstName;
   answers[LOCKED_SPEAKER_FIELDS[1]] = contact.lastName;
   answers[LOCKED_SPEAKER_FIELDS[2]] = contact.email;
+  // DEC-321: mirrors DEC-121 — prefill the appended job_title/company/bio
+  // locked fields from the contact record too.
+  answers[LOCKED_SPEAKER_FIELDS[3]] = contact.title ?? "";
+  answers[LOCKED_SPEAKER_FIELDS[4]] = contact.company ?? "";
+  answers[LOCKED_SPEAKER_FIELDS[5]] = contact.bio ?? "";
 
   const allTrackRows = await db
     .select({ id: schema.track.id, name: schema.track.name })

@@ -370,6 +370,11 @@ async function main(): Promise<void> {
     { id: "first_name", section: "speaker", kind: "text", label: "First name", helpText: null, required: true, position: 0, options: null, locked: true },
     { id: "last_name", section: "speaker", kind: "text", label: "Last name", helpText: null, required: true, position: 1, options: null, locked: true },
     { id: "email", section: "speaker", kind: "text", label: "Email", helpText: null, required: true, position: 2, options: null, locked: true },
+    // DEC-321: optional profile fields appended to LOCKED_SPEAKER_FIELDS so
+    // seeded events match a freshly created event's default form.
+    { id: "job_title", section: "speaker", kind: "text", label: "Job title", helpText: null, required: false, position: 3, options: null, locked: true },
+    { id: "company", section: "speaker", kind: "text", label: "Company", helpText: null, required: false, position: 4, options: null, locked: true },
+    { id: "bio", section: "speaker", kind: "long_text", label: "Speaker bio", helpText: null, required: false, position: 5, options: null, locked: true },
   ];
   for (const field of formFields) {
     statements.push(

@@ -17,6 +17,7 @@ import {
   getEventTracks,
   findContactByEmail,
   createContact,
+  fillContactProfileIfBlank,
   findUserByEmail,
   createSubmission,
   createParticipant,
@@ -523,19 +524,49 @@ publicSubmitRoutes.post("/submit/:eventSlug", csrfForm, async (c) => {
   const firstName = String(cleaned[LOCKED_SPEAKER_FIELDS[0]] ?? "");
   const lastName = String(cleaned[LOCKED_SPEAKER_FIELDS[1]] ?? "");
   const email = String(cleaned[LOCKED_SPEAKER_FIELDS[2]] ?? "").trim().toLowerCase();
+  // DEC-321: job_title/company/bio, appended (optional) to the default CFP
+  // so the public speakers list isn't blank for real submitters.
+  const jobTitle = String(cleaned[LOCKED_SPEAKER_FIELDS[3]] ?? "").trim() || null;
+  const company = String(cleaned[LOCKED_SPEAKER_FIELDS[4]] ?? "").trim() || null;
+  const bio = String(cleaned[LOCKED_SPEAKER_FIELDS[5]] ?? "").trim() || null;
 
   const existingContact = await findContactByEmail(db, event.orgId, email);
-  const contactId = existingContact
-    ? existingContact.id
-    : await createContact(db, { orgId: event.orgId, firstName, lastName, email });
   const contactIsFresh = !existingContact;
+  let contactId: string;
+  let resolvedTitle: string | null;
+  let resolvedCompany: string | null;
+  if (existingContact) {
+    contactId = existingContact.id;
+    // DEC-321(b): never overwrite a non-empty stored profile value — only
+    // fill columns that are currently null/empty.
+    const filled = await fillContactProfileIfBlank(
+      db,
+      contactId,
+      { title: existingContact.title, company: existingContact.company, bio: existingContact.bio },
+      { title: jobTitle, company, bio },
+    );
+    resolvedTitle = filled.title;
+    resolvedCompany = filled.company;
+  } else {
+    contactId = await createContact(db, {
+      orgId: event.orgId,
+      firstName,
+      lastName,
+      email,
+      title: jobTitle,
+      company,
+      bio,
+    });
+    resolvedTitle = jobTitle;
+    resolvedCompany = company;
+  }
 
   const submission = await createSubmission(db, { eventId: event.id, formId: form.id, title, description });
   await createParticipant(db, {
     submissionId: submission.id,
     contactId,
-    titleAtTime: existingContact?.title ?? null,
-    orgAtTime: existingContact?.company ?? null,
+    titleAtTime: resolvedTitle,
+    orgAtTime: resolvedCompany,
   });
   await createSubmissionTracks(db, submission.id, selectedTrackIds);
 
