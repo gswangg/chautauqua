@@ -10,12 +10,19 @@ import type { EmailTemplate, RenderedRecipient } from './types';
 // any status can be selected (this is a filter, not a hard restriction).
 const DECIDED_STATUSES: SubmissionStatus[] = ['accepted', 'declined'];
 
+const PER_PAGE = 50;
+
 type Step = 'select' | 'template' | 'preview' | 'sent';
 
 export function ComposeWizard({ eventId }: { eventId: string }) {
   const [step, setStep] = useState<Step>('select');
   const [statusFilter, setStatusFilter] = useState<SubmissionStatus[]>(DECIDED_STATUSES);
   const [submissions, setSubmissions] = useState<SubmissionListItem[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [q, setQ] = useState('');
+  // DEC-350: selection spans pages — never cleared on page/q/status change,
+  // exactly like ../submissions/selection.ts.
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [loadingSubmissions, setLoadingSubmissions] = useState(false);
 
@@ -39,12 +46,15 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
   useEffect(() => {
     setLoadingSubmissions(true);
     setError(null);
-    const qs = buildSubmissionsQuery({ ...DEFAULT_FILTER_STATE, status: statusFilter, perPage: 200 });
+    const qs = buildSubmissionsQuery({ ...DEFAULT_FILTER_STATE, status: statusFilter, q, page, perPage: PER_PAGE });
     apiList<SubmissionListItem>(`/events/${eventId}/submissions${qs}`)
-      .then((res) => setSubmissions(res.items))
+      .then((res) => {
+        setSubmissions(res.items);
+        setTotal(res.total);
+      })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load submissions'))
       .finally(() => setLoadingSubmissions(false));
-  }, [eventId, statusFilter]);
+  }, [eventId, statusFilter, q, page]);
 
   useEffect(() => {
     apiList<EmailTemplate>(`/events/${eventId}/templates`)
@@ -54,6 +64,12 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
 
   function toggleStatus(status: SubmissionStatus) {
     setStatusFilter((prev) => (prev.includes(status) ? prev.filter((s) => s !== status) : [...prev, status]));
+    setPage(1);
+  }
+
+  function handleSearchChange(next: string) {
+    setQ(next);
+    setPage(1);
   }
 
   function toggleSubmission(id: string) {
@@ -145,6 +161,8 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
   function reset() {
     setStep('select');
     setSelectedIds(new Set());
+    setPage(1);
+    setQ('');
     setTemplateId('');
     setSubject('');
     setBodyText('');
@@ -155,6 +173,9 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
     setIcsUnscheduledIds(null);
     setError(null);
   }
+
+  const rangeStart = total === 0 ? 0 : (page - 1) * PER_PAGE + 1;
+  const rangeEnd = total === 0 ? 0 : Math.min(page * PER_PAGE, total);
 
   return (
     <div className="chq-compose-wizard">
@@ -176,6 +197,15 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
               </label>
             ))}
           </div>
+          <label>
+            Search
+            <input
+              type="text"
+              value={q}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              placeholder="Search submissions"
+            />
+          </label>
 
           {loadingSubmissions && <p>Loading submissions...</p>}
           <table className="chq-compose-submissions-table">
@@ -210,6 +240,18 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
               )}
             </tbody>
           </table>
+
+          <div className="chq-pager">
+            <span>
+              Showing {rangeStart}-{rangeEnd} of {total}
+            </span>
+            <button type="button" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1}>
+              Previous
+            </button>
+            <button type="button" onClick={() => setPage((p) => p + 1)} disabled={page * PER_PAGE >= total}>
+              Next
+            </button>
+          </div>
 
           <button type="button" disabled={selectedIds.size === 0} onClick={() => setStep('template')}>
             Next: choose template ({selectedIds.size} submission{selectedIds.size === 1 ? '' : 's'} selected)
