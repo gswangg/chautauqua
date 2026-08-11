@@ -23,7 +23,6 @@ export {
 
 export {
   listSubmissions,
-  sortSubmissionRows,
   type ListSubmissionsResult,
   type SubmissionListItem,
   type SubmissionSpeaker,

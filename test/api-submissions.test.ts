@@ -6,9 +6,9 @@ import {
   isValidStatusLiteral,
   listSubmissions,
   parseListQuery,
-  sortSubmissionRows,
   SORT_ORDERS,
 } from "../src/server/repo/submissions";
+import { likeContains } from "../src/server/repo/submissions/query";
 import { changeStatus } from "../src/domain/status";
 import { planAcceptance } from "../src/domain/acceptance";
 import { submissionsRoutes } from "../src/routes/api/submissions";
@@ -139,51 +139,44 @@ describe("chunkIds (D1 bound-parameter batching for list-page enrichment queries
   });
 });
 
-describe("sortSubmissionRows (JS mirror of orderByForSort, used by the batched allowedIds fallback)", () => {
-  const rows = [
-    { id: "a", title: "Beta talk", seq: 3, createdAt: new Date("2026-01-02T00:00:00Z") },
-    { id: "b", title: "Alpha talk", seq: 1, createdAt: new Date("2026-01-03T00:00:00Z") },
-    { id: "c", title: "Gamma talk", seq: 2, createdAt: new Date("2026-01-01T00:00:00Z") },
-  ];
-
-  it("sorts newest (default) by createdAt desc", () => {
-    expect(sortSubmissionRows(rows, "newest").map((r) => r.id)).toEqual(["b", "a", "c"]);
+describe("likeContains (pure LIKE-bind escaping for q/trackId filters, DEC-333/335)", () => {
+  it("lowercases and wraps in %...%", () => {
+    expect(likeContains("Hello World")).toBe("%hello world%");
   });
 
-  it("sorts oldest by createdAt asc", () => {
-    expect(sortSubmissionRows(rows, "oldest").map((r) => r.id)).toEqual(["c", "a", "b"]);
+  it("escapes %, _ and backslash with a leading backslash", () => {
+    expect(likeContains("100%")).toBe("%100\\%%");
+    expect(likeContains("a_b")).toBe("%a\\_b%");
+    expect(likeContains("a\\b")).toBe("%a\\\\b%");
   });
 
-  it("sorts title alphabetically", () => {
-    expect(sortSubmissionRows(rows, "title").map((r) => r.id)).toEqual(["b", "a", "c"]);
-  });
-
-  it("sorts ref by seq ascending", () => {
-    expect(sortSubmissionRows(rows, "ref").map((r) => r.id)).toEqual(["b", "c", "a"]);
-  });
-
-  it("does not mutate the input array", () => {
-    const copy = [...rows];
-    sortSubmissionRows(rows, "title");
-    expect(rows).toEqual(copy);
+  it("escapes all three special characters together", () => {
+    expect(likeContains("50%_off\\now")).toBe("%50\\%\\_off\\\\now%");
   });
 });
 
-// Regression for the w8-c walkthrough's out-of-area defect: the q/trackId
-// `allowedIds` inArray narrowing folded a single, unbatched id list into
-// the main paginated query — same unbatched-inArray shape as the per-page
-// enrichment queries chunkIds already fixes, and it would hit the same D1
-// "too many SQL variables" ceiling once a filter matched >100 submissions
-// in one event. Exercises listSubmissions' batched fallback end-to-end
-// against a fake db double (no wrangler/D1 dependency in stage 1 unit
-// tests) with 150 track-matching candidate ids.
-describe("listSubmissions: batched allowedIds fallback (>ID_CHUNK_SIZE track matches)", () => {
+// DEC-335: listSubmissions is one paginated SQL statement — q/trackId
+// narrowing is pushed into the WHERE clause as correlated EXISTS
+// subqueries, not a separate candidate-id pass + JS-side pagination.
+// Exercises listSubmissions against a fake db double (no wrangler/D1
+// dependency in stage 1 unit tests), asserting exactly three queries run
+// before per-page enrichment (event-prefix lookup, count, page) and that
+// limit/offset made it onto the page query.
+describe("listSubmissions: one paginated statement for q+trackId (DEC-333/335)", () => {
   function makeFakeDb(responses: unknown[]) {
     let cursor = 0;
+    const calls: { method: string; args: unknown[] }[][] = [];
     function chain(): any {
+      const thisCallLog: { method: string; args: unknown[] }[] = [];
+      calls.push(thisCallLog);
       const obj: any = {};
       const passthrough = ["from", "where", "innerJoin", "orderBy", "limit", "offset", "select"];
-      for (const m of passthrough) obj[m] = () => obj;
+      for (const m of passthrough) {
+        obj[m] = (...args: unknown[]) => {
+          thisCallLog.push({ method: m, args });
+          return obj;
+        };
+      }
       obj.then = (resolve: (v: unknown) => void, reject?: (e: unknown) => void) => {
         const value = responses[cursor];
         cursor += 1;
@@ -191,66 +184,57 @@ describe("listSubmissions: batched allowedIds fallback (>ID_CHUNK_SIZE track mat
       };
       return obj;
     }
-    return { select: () => chain() } as any;
+    return { select: () => chain(), calls } as any;
   }
 
-  it("returns correctly sorted+paginated results without a single unbatched inArray over all matches", async () => {
-    const TRACK_ID = "track-1";
+  it("issues exactly three queries before enrichment and applies limit/offset", async () => {
     const EVENT_ID = "event-1";
-    const matchIds = Array.from({ length: 150 }, (_, i) => `sub-${String(i).padStart(3, "0")}`);
+    const row = {
+      id: "sub-1",
+      title: "A Talk",
+      seq: 1,
+      createdAt: new Date(2026, 0, 1),
+      updatedAt: new Date(2026, 0, 1),
+      eventId: EVENT_ID,
+      description: null,
+      formId: null,
+      trackId: "track-1",
+      additionalTrackIdsJson: null,
+      status: "submitted",
+      contentStatus: "unset",
+      acceptedAt: null,
+      icsSequence: 0,
+    };
 
-    function submissionRow(id: string, i: number) {
-      return {
-        id,
-        title: `Talk ${id}`,
-        seq: i,
-        createdAt: new Date(2026, 0, 1, 0, 0, i),
-        updatedAt: new Date(2026, 0, 1),
-        eventId: EVENT_ID,
-        description: null,
-        formId: null,
-        trackId: TRACK_ID,
-        additionalTrackIdsJson: null,
-        status: "submitted",
-        contentStatus: "unset",
-        acceptedAt: null,
-        icsSequence: 0,
-      };
-    }
-    const allRows = matchIds.map((id, i) => submissionRow(id, i));
-
-    // Response queue mirrors listSubmissions' call order for this scenario
-    // (q unset, trackId set, status unset, includeAnswers false):
-    // 1) event lookup, 2) track-primary rows, 3) track-join rows,
-    // 4/5) the two id-batches of the >ID_CHUNK_SIZE-match select fallback,
-    // 6/7) participant + track enrichment (each single-batch since the
-    // final page is only `perPage` ids).
     const responses = [
-      [{ recordPrefix: "SES" }], // event lookup
-      allRows.map((r) => ({ id: r.id })), // track-primary
-      [], // track-join (no secondary-track matches in this fixture)
-      allRows.slice(0, 90), // batch 1 of the id-scoped select
-      allRows.slice(90), // batch 2 of the id-scoped select
-      [], // participant enrichment for the returned page
-      [], // submission_track enrichment for the returned page
+      [{ recordPrefix: "SES" }], // 1: event prefix lookup
+      [{ count: 1 }], // 2: count
+      [row], // 3: page
+      [], // participant enrichment
+      [], // submission_track enrichment
     ];
     const db = makeFakeDb(responses);
 
     const result = await listSubmissions(db, EVENT_ID, {
-      page: 1,
-      perPage: 50,
-      q: null,
+      page: 2,
+      perPage: 5,
+      q: "talk",
       status: [],
-      trackId: TRACK_ID,
-      sort: "ref",
+      trackId: "track-1",
+      sort: "newest",
       includeAnswers: false,
     });
 
-    expect(result.total).toBe(150);
-    expect(result.items.length).toBe(50);
-    // sort=ref -> ascending by seq, so the first page is sub-000..sub-049.
-    expect(result.items[0]!.id).toBe("sub-000");
-    expect(result.items[49]!.id).toBe("sub-049");
+    // Exactly 5 db.select() calls total: 3 core + 2 enrichment batches.
+    expect(db.calls.length).toBe(5);
+    expect(result.total).toBe(1);
+    expect(result.items[0]!.id).toBe("sub-1");
+
+    const pageCallLog = db.calls[2]!;
+    const limitCall = pageCallLog.find((c: { method: string }) => c.method === "limit");
+    const offsetCall = pageCallLog.find((c: { method: string }) => c.method === "offset");
+    expect(limitCall?.args).toEqual([5]);
+    expect(offsetCall?.args).toEqual([5]); // (page 2 - 1) * perPage 5
   });
 });
 
