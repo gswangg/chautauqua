@@ -2,10 +2,12 @@
 // repo/contacts.ts (contention decomposition, no behavior change). See
 // repo/contacts.ts for the module-level contract notes.
 
-import { eq } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import type { ContactRecord } from "../../../domain/contacts";
+import { ApiError } from "../../http";
+import { chunkIds } from "../../../lib/chunk";
 import { createContact, patchContact } from "./crud";
 import { resolveImportUpsert } from "./query";
 
@@ -22,20 +24,51 @@ export interface ImportResult {
   contactIds: string[];
 }
 
+/** Hard cap on rows per CSV import (DEC-356): protects against an unbounded
+ * per-row write burst. Producers must split larger files client-side. */
+export const MAX_IMPORT_ROWS = 2000;
+
 /** Applies parsed+mapped rows to the org's contacts, one row already resolved
  * per resolveImportUpsert. Rows are applied in order so within-file
- * duplicate emails collapse onto the same created contact. */
+ * duplicate emails collapse onto the same created contact.
+ *
+ * DEC-356: rather than loading the org's entire contact table, this looks up
+ * only the rows whose email appears in the file (chunked by ID_CHUNK_SIZE),
+ * keeping cost proportional to the file's distinct emails, not org size. */
 export async function applyImportRows(
   db: Db,
   orgId: string,
   rows: { line: number; parsed: Record<string, unknown> }[],
 ): Promise<ImportResult> {
-  const existing = await db
-    .select({ id: schema.contact.id, email: schema.contact.email })
-    .from(schema.contact)
-    .where(eq(schema.contact.orgId, orgId));
+  if (rows.length > MAX_IMPORT_ROWS) {
+    throw new ApiError(
+      "invalid",
+      `CSV has ${rows.length} rows, which exceeds the ${MAX_IMPORT_ROWS}-row import cap; split the file into smaller batches and import each separately.`,
+      { csvText: "Too many rows" },
+    );
+  }
+
+  const fileEmails = new Set<string>();
+  for (const { parsed } of rows) {
+    const email = typeof parsed.email === "string" ? parsed.email : undefined;
+    if (!email || email.trim() === "") continue;
+    fileEmails.add(email.trim().toLowerCase());
+  }
+
   const byEmail = new Map<string, string>();
-  for (const r of existing) byEmail.set(r.email.trim().toLowerCase(), r.id);
+  const emailList = [...fileEmails];
+  for (const batch of chunkIds(emailList)) {
+    const existing = await db
+      .select({ id: schema.contact.id, email: schema.contact.email })
+      .from(schema.contact)
+      .where(
+        and(
+          eq(schema.contact.orgId, orgId),
+          inArray(sql`lower(${schema.contact.email})`, batch),
+        ),
+      );
+    for (const r of existing) byEmail.set(r.email.trim().toLowerCase(), r.id);
+  }
 
   let created = 0;
   let updated = 0;

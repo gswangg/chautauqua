@@ -19,7 +19,9 @@ import * as schema from "../src/db/schema";
 type Marker =
   | { __marker: "eq"; col: unknown; val: unknown }
   | { __marker: "and"; conds: unknown[] }
-  | { __marker: "or"; conds: unknown[] };
+  | { __marker: "or"; conds: unknown[] }
+  | { __marker: "inArray"; col: unknown; val: unknown[] }
+  | { __marker: "lower"; col: unknown };
 
 vi.mock("drizzle-orm", async (importOriginal) => {
   const actual = await importOriginal<typeof import("drizzle-orm")>();
@@ -28,6 +30,19 @@ vi.mock("drizzle-orm", async (importOriginal) => {
     eq: (col: unknown, val: unknown): Marker => ({ __marker: "eq", col, val }),
     and: (...conds: unknown[]): Marker => ({ __marker: "and", conds }),
     or: (...conds: unknown[]): Marker => ({ __marker: "or", conds }),
+    // DEC-356's chunked email lookup uses inArray(sql`lower(col)`, batch);
+    // mocked here (rather than left as real drizzle SQL objects) so the
+    // in-memory evalCond below can still evaluate it structurally.
+    inArray: (col: unknown, vals: unknown[]): Marker => ({ __marker: "inArray", col, val: vals }),
+    sql: (strings: TemplateStringsArray, ...values: unknown[]): unknown => {
+      if (strings.length === 2 && strings[0]?.trim() === "lower(" && strings[1]?.trim() === ")") {
+        return { __marker: "lower", col: values[0] } satisfies Marker;
+      }
+      // Other sql`...` usages (e.g. a count(*) select field) aren't part of
+      // a where condition this fake evaluates structurally -- fall back to
+      // the real drizzle sql tag, unchanged from pre-DEC-356 behavior.
+      return actual.sql(strings, ...values);
+    },
   };
 });
 
@@ -42,11 +57,22 @@ function colKey(col: unknown): string {
   throw new Error("fake db: condition referenced a column not on schema.contact");
 }
 
+/** Resolves a column reference (which may be wrapped in a "lower" marker
+ * from a mocked sql`lower(...)` call) to its value on a row. */
+function fieldValue(colOrExpr: unknown, row: Record<string, unknown>): unknown {
+  const m = colOrExpr as Marker;
+  if (m && typeof m === "object" && "__marker" in m && m.__marker === "lower") {
+    return String(fieldValue(m.col, row)).toLowerCase();
+  }
+  return row[colKey(colOrExpr)];
+}
+
 function evalCond(cond: unknown, row: Record<string, unknown>): boolean {
   const m = cond as Marker;
   if (m.__marker === "eq") return row[colKey(m.col)] === m.val;
   if (m.__marker === "and") return m.conds.every((c) => evalCond(c, row));
   if (m.__marker === "or") return m.conds.some((c) => evalCond(c, row));
+  if (m.__marker === "inArray") return m.val.includes(fieldValue(m.col, row));
   throw new Error(`fake db: unsupported condition ${JSON.stringify(cond)}`);
 }
 
