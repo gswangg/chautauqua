@@ -120,6 +120,25 @@ export async function listSubmissionIdsRatedBy(
   return new Set(rows.map((r) => r.submissionId));
 }
 
+/** DEC-351: reviewer+submission pairs completed for a plan+round -- a single
+ * select of only reviewerId/submissionId (no scoresJson, no comment, no
+ * toEvaluationRecord mapping) for /progress and /remind, which never need
+ * scores. */
+export async function listCompletedPairsForPlan(
+  db: Db,
+  planId: string,
+  round: number,
+): Promise<{ reviewerId: string; submissionId: string }[]> {
+  const rows = await db
+    .select({
+      reviewerId: schema.evaluation.reviewerId,
+      submissionId: schema.evaluation.submissionId,
+    })
+    .from(schema.evaluation)
+    .where(and(eq(schema.evaluation.planId, planId), eq(schema.evaluation.round, round)));
+  return rows;
+}
+
 /** Upserts a reviewer's evaluation for a submission+round (unique per
  * plan+submission+reviewer+round, per DEC-018). */
 export async function upsertEvaluation(

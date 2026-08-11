@@ -119,6 +119,7 @@ describe("POST /api/v1/plans/:id/remind logs contactId: null (DEC-191)", () => {
         ]),
         getUsersByIds: vi.fn(async () => [{ userId: "rev-1", email: "rev1@org.test" }]),
         listEvaluationsForPlan: vi.fn(async () => []),
+        listCompletedPairsForPlan: vi.fn(async () => []),
         listPlanFilteredSubmissions: vi.fn(async () => [submission]),
       };
     });

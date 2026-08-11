@@ -98,6 +98,11 @@ vi.mock("../src/server/repo/review", async () => {
     listEvaluationsForPlan: vi.fn(async (_db: unknown, planId: string, round: number) =>
       store.filter((e) => e.planId === planId && e.round === round),
     ),
+    listCompletedPairsForPlan: vi.fn(async (_db: unknown, planId: string, round: number) =>
+      store
+        .filter((e) => e.planId === planId && e.round === round)
+        .map((e) => ({ reviewerId: e.reviewerId, submissionId: e.submissionId })),
+    ),
     // DEC-346: the queue route sources counts/ratedByMe from these SQL
     // aggregates -- backed here by the same in-memory store so the fake stays
     // consistent with listEvaluationsForPlan.
@@ -313,14 +318,25 @@ describe("multi-round lifecycle (task w2-a)", () => {
     await app.request(`/api/v1/plans/${plan.id}/remind`, { method: "POST", headers: { "x-chq-csrf": "1" } });
     // DEC-346: the reviewer queue no longer calls listEvaluationsForPlan --
     // it sources counts/ratedByMe from countEvaluationsBySubmission/
-    // listSubmissionIdsRatedBy instead. listEvaluationsForPlan still serves
-    // /progress, /results and /remind (asserted above/below).
+    // listSubmissionIdsRatedBy instead. DEC-351: /progress and /remind no
+    // longer call listEvaluationsForPlan either -- they source completed
+    // pairs from listCompletedPairsForPlan (asserted below). Only /results
+    // (buildResults, DEC-345) still needs the full scored rows.
     const reviewerApp = await buildApp(reviewer);
     await reviewerApp.request(`/api/v1/review/plans/${plan.id}/queue`);
 
     const calls = (repo.listEvaluationsForPlan as unknown as { mock: { calls: unknown[][] } }).mock.calls;
-    expect(calls.length).toBeGreaterThanOrEqual(3);
+    expect(calls.length).toBeGreaterThanOrEqual(1);
     for (const call of calls) {
+      expect(typeof call[2]).toBe("number");
+    }
+
+    // DEC-351: /progress and /remind's replacement call site also carries
+    // the DEC-087 round arg -- narrowing what's fetched must not weaken the
+    // round-scoping assertion (DEC-329).
+    const pairCalls = (repo.listCompletedPairsForPlan as unknown as { mock: { calls: unknown[][] } }).mock.calls;
+    expect(pairCalls.length).toBeGreaterThanOrEqual(2);
+    for (const call of pairCalls) {
       expect(typeof call[2]).toBe("number");
     }
   });

@@ -85,6 +85,12 @@ async function buildReviewApp() {
       listReviewerRowsForPlan: vi.fn(async () => REVIEWER_ROWS),
       getUsersByIds: vi.fn(async () => USERS),
       listEvaluationsForPlan: vi.fn(async () => EVALUATIONS),
+      listCompletedPairsForPlan: vi.fn(async (_db: unknown, planId: string, round: number) =>
+        EVALUATIONS.filter((e) => e.planId === planId && e.round === round).map((e) => ({
+          reviewerId: e.reviewerId,
+          submissionId: e.submissionId,
+        })),
+      ),
       listPlanFilteredSubmissions: vi.fn(async () => SUBMISSIONS),
       // DEC-271 (task w5-c): no recusals in this fixture.
       listRecusalsForPlan: vi.fn(async () => []),
