@@ -1,9 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  PERF_CLASS_BUDGET_MS,
   PERF_P95_BUDGET_MS,
+  adjustedP95,
   assertContainsVevent,
   assertMinCsvLines,
   computeP95,
+  computePercentile,
+  gradePerfCheck,
   joinIcsIds,
   planPerfPages,
 } from "../scripts/perf-smoke-lib";
@@ -35,6 +39,109 @@ describe("computeP95", () => {
 
   it("exposes a 150ms local budget per DEC-034", () => {
     expect(PERF_P95_BUDGET_MS).toBe(150);
+  });
+});
+
+describe("computePercentile", () => {
+  it("computes p50 (median) via nearest-rank on a sorted sample", () => {
+    // 10 samples 1..10 -> ceil(0.5*10) = 5th smallest = 5.
+    const samples = Array.from({ length: 10 }, (_, i) => i + 1);
+    expect(computePercentile(samples, 0.5)).toBe(5);
+  });
+
+  it("computes p95 identically to computeP95", () => {
+    const samples = Array.from({ length: 20 }, (_, i) => i + 1);
+    expect(computePercentile(samples, 0.95)).toBe(computeP95(samples));
+  });
+
+  it("computes p100 as the max", () => {
+    expect(computePercentile([10, 20, 30], 1)).toBe(30);
+  });
+
+  it("throws on an empty sample set", () => {
+    expect(() => computePercentile([], 0.5)).toThrow();
+  });
+
+  it("throws on q <= 0", () => {
+    expect(() => computePercentile([1, 2, 3], 0)).toThrow();
+    expect(() => computePercentile([1, 2, 3], -0.5)).toThrow();
+  });
+
+  it("throws on q > 1", () => {
+    expect(() => computePercentile([1, 2, 3], 1.5)).toThrow();
+  });
+});
+
+describe("adjustedP95", () => {
+  it("subtracts the overhead floor from the raw p95", () => {
+    expect(adjustedP95(60, 10)).toBe(50);
+  });
+
+  it("clamps at 0 when the floor exceeds the raw p95", () => {
+    expect(adjustedP95(5, 10)).toBe(0);
+  });
+
+  it("returns the raw value unchanged when the floor is 0", () => {
+    expect(adjustedP95(42, 0)).toBe(42);
+  });
+
+  it("throws on a negative rawP95Ms", () => {
+    expect(() => adjustedP95(-1, 10)).toThrow();
+  });
+
+  it("throws on a negative overheadFloorMs", () => {
+    expect(() => adjustedP95(60, -1)).toThrow();
+  });
+});
+
+describe("gradePerfCheck", () => {
+  it("exposes SPEC §7 per-class budgets (DEC-309)", () => {
+    expect(PERF_CLASS_BUDGET_MS).toEqual({ read: 50, write: 100, public: 150 });
+  });
+
+  it("passes when both the raw ceiling and the adjusted class budget are respected", () => {
+    // raw 60ms, floor 20ms -> adjusted 40ms, under the 50ms read budget.
+    const result = gradePerfCheck("submissions list", "read", 60, 20);
+    expect(result.ok).toBe(true);
+    expect(result.adjustedMs).toBe(40);
+    expect(result.reason).toBeUndefined();
+  });
+
+  it("fails when the raw p95 exceeds the unconditional 150ms ceiling, even if adjusted is under class budget", () => {
+    // raw 160ms > 150ms ceiling, floor 100ms -> adjusted 60ms is under the
+    // 150ms public budget, but the raw ceiling still fails it.
+    const result = gradePerfCheck("public agenda", "public", 160, 100);
+    expect(result.ok).toBe(false);
+    expect(result.reason).toMatch(/raw p95 160\.0ms exceeds 150ms ceiling/);
+  });
+
+  it("fails when the adjusted p95 exceeds the class budget even though raw is under the 150ms ceiling", () => {
+    // The motivating case: raw 51.9ms is under the flat 150ms ceiling, but
+    // for a read check (50ms budget) with a negligible overhead floor,
+    // the adjusted figure still fails against the read class budget.
+    const result = gradePerfCheck("submission detail", "read", 51.9, 1);
+    expect(result.ok).toBe(false);
+    expect(result.adjustedMs).toBeCloseTo(50.9, 5);
+    expect(result.reason).toMatch(/adjusted p95 50\.9ms exceeds read class budget 50ms/);
+  });
+
+  it("fails with both reasons joined when raw and adjusted both exceed budget", () => {
+    const result = gradePerfCheck("rating PUT", "write", 200, 50);
+    expect(result.ok).toBe(false);
+    expect(result.reason).toMatch(/raw p95 200\.0ms exceeds 150ms ceiling/);
+    expect(result.reason).toMatch(/adjusted p95 150\.0ms exceeds write class budget 100ms/);
+  });
+
+  it("returns the check name, class, raw and adjusted values, and budget", () => {
+    const result = gradePerfCheck("plan progress", "read", 30, 5);
+    expect(result).toMatchObject({
+      name: "plan progress",
+      cls: "read",
+      rawP95Ms: 30,
+      adjustedMs: 25,
+      budgetMs: 50,
+      ok: true,
+    });
   });
 });
 
