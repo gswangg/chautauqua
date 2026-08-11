@@ -67,9 +67,13 @@ export interface Segment {
   rules: SegmentRule[];
 }
 
+// Matches the server's DuplicateGroup shape verbatim (src/server/repo/
+// contacts.ts) — {contactIds, contacts}, not {ids, contacts}. A client/server
+// drift here (w1-c P1, DEC-239) let a TypeError escape outside the merge
+// try/catch and hang the merge dialog with no visible error.
 export interface DuplicateGroup {
-  ids: string[];
-  contacts: ContactListItem[];
+  contactIds: string[];
+  contacts: { id: string; firstName: string; lastName: string; email: string; company?: string | null }[];
 }
 
 export interface ImportResult {

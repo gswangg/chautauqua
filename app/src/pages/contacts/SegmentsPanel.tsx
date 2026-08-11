@@ -6,10 +6,16 @@ import type { Segment } from './types';
 interface Props {
   segments: Segment[];
   activeFilters: ActiveFilters;
+  // The segment id currently applied as the directory's filter, if any
+  // (P3 fix, DEC-239/w1-c): deleting this segment must clear it BEFORE the
+  // delete-triggered reload, or the list refetches with a now-nonexistent
+  // segmentId and 500s ("Internal server error" flash).
+  activeSegmentId: string;
   onChanged: () => void;
+  onDeletedActiveSegment: () => void;
 }
 
-export function SegmentsPanel({ segments, activeFilters, onChanged }: Props) {
+export function SegmentsPanel({ segments, activeFilters, activeSegmentId, onChanged, onDeletedActiveSegment }: Props) {
   const [name, setName] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -36,6 +42,10 @@ export function SegmentsPanel({ segments, activeFilters, onChanged }: Props) {
     setError(null);
     try {
       await apiDelete(`/segments/${id}`);
+      // Clear the applied-segment filter state first (if this was it) so
+      // the directory's refetch never asks the server for a deleted
+      // segmentId — then reload the segment list itself.
+      if (id === activeSegmentId) onDeletedActiveSegment();
       onChanged();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to delete segment');

@@ -26,7 +26,7 @@ const CONTACTS: ContactListItem[] = [
 
 const DUPLICATE_GROUPS: DuplicateGroup[] = [
   {
-    ids: ['ct3', 'ct4'],
+    contactIds: ['ct3', 'ct4'],
     contacts: [
       { id: 'ct3', firstName: 'Sam', lastName: 'Rivera', email: 'sam.rivera@acme.example', company: 'Acme' },
       { id: 'ct4', firstName: 'Sam', lastName: 'Rivera', email: 'sam.r@acmecorp.example', company: 'Acme' },

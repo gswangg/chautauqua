@@ -1,0 +1,91 @@
+// w1-c P3 fix (DEC-239): deleting the actively-applied segment used to
+// flash "Internal server error" — SegmentsPanel's onChanged() bumped
+// ContactsApp's refreshKey and re-triggered the directory's contacts-list
+// effect while segmentId still pointed at the now-deleted segment. Proves
+// the state transition: the applied-segment filter (and its query param)
+// clears BEFORE the delete-triggered refetch, so no request ever asks the
+// server for a deleted segmentId, and no error banner appears.
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, render, screen, waitFor, fireEvent } from '@testing-library/react';
+import '@testing-library/jest-dom/vitest';
+import { ContactsApp } from './ContactsApp';
+import { mockApi, listEnvelope } from '../../test-utils/mockApi';
+import type { ContactListItem, Segment } from './types';
+
+const EVENT_ID = 'evt-segment-delete-render';
+
+const CONTACTS: ContactListItem[] = [
+  { id: 'ct1', firstName: 'Ada', lastName: 'Lovelace', email: 'ada@example.com' },
+];
+
+const SEGMENTS: Segment[] = [{ id: 'seg1', name: 'VIP speakers', rules: [{ field: 'company', op: 'eq', value: 'Acme' }] }];
+
+let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
+
+beforeEach(() => {
+  window.localStorage.setItem('chq.currentEventId', EVENT_ID);
+  consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+});
+
+afterEach(() => {
+  consoleErrorSpy.mockRestore();
+  cleanup();
+  window.localStorage.clear();
+  vi.unstubAllGlobals();
+});
+
+describe('ContactsApp + SegmentsPanel: deleting the applied segment (w1-c P3, DEC-239)', () => {
+  it('clears the segmentId filter before the delete-triggered refetch, so no request carries the deleted segmentId', async () => {
+    const fetchMock = mockApi({
+      'GET /api/v1/contacts/stats': { total: 1, eventCount: 1, returningSpeakers: 0, topCompanies: [] },
+      'GET /api/v1/segments': () => listEnvelope(SEGMENTS),
+      'GET /api/v1/contacts': listEnvelope(CONTACTS),
+      'GET /api/v1/contacts/duplicates': listEnvelope([]),
+      'DELETE /api/v1/segments/seg1': { ok: true },
+    });
+
+    render(<ContactsApp />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Ada Lovelace' })).toBeInTheDocument();
+    });
+
+    // Apply the segment as the directory's active filter.
+    fireEvent.change(screen.getByLabelText('Segment filter'), { target: { value: 'seg1' } });
+    await waitFor(() => {
+      const calls = fetchMock.mock.calls.filter(([input]) =>
+        (typeof input === 'string' ? input : input.toString()).includes('/api/v1/contacts?'),
+      );
+      const last = calls[calls.length - 1]![0];
+      expect((typeof last === 'string' ? last : last.toString())).toContain('segmentId=seg1');
+    });
+
+    // Delete that segment from the Segments tab.
+    fireEvent.click(screen.getByRole('button', { name: 'Segments' }));
+    await waitFor(() => {
+      expect(screen.getByText('VIP speakers', { exact: false })).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+
+    await waitFor(() => {
+      const deleteCall = fetchMock.mock.calls.find(([input]) =>
+        (typeof input === 'string' ? input : input.toString()).includes('/segments/seg1'),
+      );
+      expect(deleteCall).toBeDefined();
+    });
+
+    // No error banner anywhere in the app (the old bug flashed "Internal
+    // server error" here because the refetch still carried segmentId=seg1).
+    expect(screen.queryByText(/internal server error/i)).not.toBeInTheDocument();
+
+    // Every /contacts request issued AFTER the delete must not carry the
+    // now-deleted segmentId.
+    await waitFor(() => {
+      const contactsCallsAfterDelete = fetchMock.mock.calls
+        .map(([input]) => (typeof input === 'string' ? input : input.toString()))
+        .filter((url) => url.includes('/api/v1/contacts?'));
+      const lastContactsCall = contactsCallsAfterDelete[contactsCallsAfterDelete.length - 1]!;
+      expect(lastContactsCall).not.toContain('segmentId=seg1');
+    });
+  });
+});
