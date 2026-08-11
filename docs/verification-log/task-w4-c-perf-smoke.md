@@ -1,131 +1,119 @@
-# task-w4-c — perf-smoke @ 3878d4f
+# task-w4-c — perf-smoke @ c211d4c
 
-Gate re-run (wave 4, DEC-077 log-only lane; DEC-093 places the code-bearing
-sha at `3878d4f` — "merge task-w2-d" — for this reopened wave). Fresh
-worktree `chautauqua-wt/task-w4-c` branched off `main` at `79c4bb3`
-("merge task-w3-e", the current tip; all commits after `3878d4f` are
-log-only per DEC-090/093, so the code under test is unchanged from
-`3878d4f`).
+DEC-250 exit battery, section w4-c. FROZEN sha
+`c211d4c02bb49c9d01f0730b9d8788c156d3a459` ("merge task-w3-d"). Same
+methodology, endpoint list, and local-runtime advisory threshold as
+`task-w27-c-perf-smoke.md` (@ f01459a) / `task-w25-c-perf-smoke.md` (@
+b2dc2c1) / `task-w20-c-perf-smoke.md` (@ 6807b67).
 
-## Steps run
+## Sha derivation / drift check (DEC-114, DEC-250 allow-list)
 
-1. `npm ci --prefer-offline --no-audit --no-fund --silent` — clean install, no errors.
-2. `npm run build` — `tsc --noEmit` (root), `tsc --noEmit -p app/tsconfig.json`,
-   `vite build` all succeeded (largest chunk `index-DOwNDQO_.js` 179.18 kB /
-   58.63 kB gz — matches prior gates, within DEC-058 budget).
-3. `npm run db:migrate` — 10 migrations (`0000`..`0009`, including
-   `0009_review_rounds.sql`) applied cleanly to local D1 (`chautauqua`).
-4. `npm run seed` — run first, per the w16-c precedent recorded in this
-   file: `perf:seed` seeds only the synthetic `seed_perf_`-prefixed rows,
-   not a login-capable organizer. `perf:smoke` logs in as the fixture
-   organizer from `docs/fixtures/sample-data.json`, which only exists
-   after the regular demo seed runs. Completed with no errors (D1 rows +
-   6 R2 objects).
-5. `npm run perf:seed` — emitted `.perf-seed.sql` (13,757 statements) and
-   applied it via `wrangler d1 execute chautauqua --local --file=.perf-seed.sql`.
-   Verified the DEC-088 extended scale directly against local D1 (the
-   script itself prints no summary line, so this was confirmed by query):
-   - `plan_reviewer` rows for `plan_id='seed_perf_plan_0001'`: **12** (matches
-     `PERF_REVIEWER_COUNT` in `scripts/perf-seed-lib.ts:179`).
-   - `submission` rows for `event_id='seed_perf_event'`: **2000** total
-     (`PERF_SUBMISSION_COUNT`), status breakdown pending 1200 /
-     accept_queue 300 / **accepted 300** / decline_queue 100 / declined 100
-     (`PERF_STATUS_COUNTS`, `scripts/perf-seed-lib.ts:16-23`) — i.e. exactly
-     300 "sessions" (accepted submissions), not 301+.
-6. Started `npx wrangler dev --port 8803` (8803 reserved for this lane,
-   never 8787/8801) in the background; confirmed `Ready on
-   http://localhost:8803` with D1/KV/R2/ASSETS bindings attached, and a
-   `GET /health` 200.
-7. `PERF_URL=http://localhost:8803 npm run perf:smoke` — **fails before any
-   timed check runs.**
-
-## Failure
+`main` tip at the time of this run was `93a16b6` ("scribe wave 4"), one
+commit above the frozen sha:
 
 ```
-Error: fetchAcceptedSubmissionIds: expected at least 301 accepted submissions, got 200
-    at fetchAcceptedSubmissionIds (scripts/perf-smoke.ts:166:11)
-    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
-    at async main (scripts/perf-smoke.ts:181:18)
+93a16b6 scribe wave 4
+c211d4c merge task-w3-d   <- FROZEN
 ```
 
-Reproduced twice (two independent `wrangler dev` sessions on port 8803,
-same seed) with identical output both times.
+`git diff --name-only c211d4c main`:
 
-### Root cause (read-only analysis, no code/script changes made — DEC-077 log-only lane)
+```
+decisions/DEC-250.md
+decisions/DEC-251.md
+field-guide/index.md
+src/decisions.ts
+```
 
-`scripts/perf-smoke.ts`'s DEC-089/DEC-080 one-shot cap probe calls
-`fetchAcceptedSubmissionIds(headers, 301)` (line 181) to gather 301
-accepted-submission ids for the "over the 300-id `.ics` cap" assertion.
-`fetchAcceptedSubmissionIds` (lines 155-169) issues a single
-`GET /api/v1/events/:eventId/submissions?status=accepted&perPage=301` and
-throws if fewer than 301 ids come back.
+All four touched paths fall inside the DEC-250 allow-list (`decisions/**`,
+`field-guide/**`, `src/decisions.ts` pure-constant-append). No first-parent
+product drift. Sha check PASSES; `c211d4c` confirmed the newest code-bearing
+commit — proceed. Worktree `chautauqua-wt/task-w4-c` was created from
+`main` (byte-identical to the frozen sha for every product path per the
+diff above), branch `task-w4-c`.
 
-Two independent constraints both cap this well below 301, and either one
-alone would already fail the call:
+## Fresh-state run
 
-- **Seed data ceiling**: `PERF_STATUS_COUNTS.accepted` in
-  `scripts/perf-seed-lib.ts:20` is fixed at exactly **300** — never enough
-  to satisfy a "301 accepted" request regardless of pagination.
-- **Server-side page clamp**: `src/lib/pagination.ts` (`MAX_PER_PAGE = 200`)
-  and the submissions list repo (`src/server/repo/submissions/query.ts:21,46`,
-  `Math.min(perPageNum, MAX_PER_PAGE)`) clamp any `perPage` request to 200
-  regardless of how many matching rows exist, and
-  `fetchAcceptedSubmissionIds` does not paginate across multiple pages — it
-  makes one request and takes what comes back. This is why the observed
-  count is exactly 200, not 300.
+1. `rm -rf .wrangler`
+2. `npm ci --prefer-offline --no-audit --no-fund` — clean, 423 packages
+3. `npm run build` — clean (`tsc --noEmit` root, `tsc --noEmit -p
+   app/tsconfig.json`, `vite build`)
+4. `npm run db:migrate` — 15 migrations `0000`-`0014` (no `0011` file at
+   this sha, same gap noted at prior gates), all applied
+5. Read `scripts/perf-smoke.ts` and `scripts/perf-seed.ts` headers first
+   (per task instructions) to confirm conventions before running anything:
+   - `perf-smoke.ts` reads `PERF_URL` env var (default
+     `http://localhost:8787`), not a `--url` CLI flag — there is no
+     `--url` argument in this script; `PERF_URL=<url> npm run perf:smoke`
+     is the actual invocation convention, matching every prior gate's
+     report. Logs in as "the seeded organizer" (comment, line 2-3) against
+     the perf-seeded event.
+   - `perf-seed.ts` writes `.perf-seed.sql` (idempotent, `seed_perf_`-
+     prefixed rows only) and reuses `ORG_ID = seedId("org", 1)` — the
+     same fixed org `npm run seed`'s demo data creates — and inserts only
+     the 12 reviewer users itself, not the organizer. This confirms `npm
+     run seed` (the demo seed) is a prerequisite for the organizer login
+     `perf-smoke.ts` performs, exactly as prior gates ran it.
+6. `npm run seed` — clean, 8 R2 objects uploaded
+7. `npm run perf:seed` — all SQL batches `"success": true`
+8. `npx tsx scripts/ensure-dev-vars.ts` — created `.dev.vars` from
+   `.dev.vars.example` (absent), never read/printed (DEC-187)
+9. `npx wrangler dev --port 8972` (background) — `/health` returned 200
+   on the first poll
+10. `PERF_URL=http://localhost:8972 npm run perf:smoke` — run 1 exit 0
 
-So the 301-id cap probe (added under DEC-089/DEC-080) and the perf-seed
-status mix (DEC-088, `accepted: 300`) are mutually inconsistent: even if
-`fetchAcceptedSubmissionIds` paginated correctly, the seed only ever
-produces 300 accepted submissions for `seed_perf_event`, one short of the
-301 the probe needs. This is a deterministic, reproducible mismatch
-between two DEC-088/DEC-089-authored artifacts (`scripts/perf-seed-lib.ts`'s
-status mix vs. `scripts/perf-smoke.ts`'s cap-probe threshold), not an
-environmental flake — the same failure would occur on any fresh worktree
-running this exact sequence.
+## p95 table (budget 150ms)
 
-Because the script throws before entering the warmup/measurement loop for
-any check, **no p95 data was collected for any of the 6 checks** named in
-the task (submissions list page 1, submissions list search, submission
-detail, event overview, public sessions page, public agenda,
-`schedule.ics` 150-id, plan progress w/ 12 reviewers, rating PUT as
-`perf.reviewer.1@example-perf.test`, or the 301-id cap assertion itself).
-`test/perf-smoke.test.ts`'s 11 unit tests only cover the pure helpers in
-`scripts/perf-smoke-lib.ts` (`computeP95`, `joinIcsIds`,
-`assertContainsVevent`) — there is no existing test coverage that
-exercises `fetchAcceptedSubmissionIds` against real seeded data, so this
-gap was not previously caught by `npm test`.
+Run 1 (first run post-seed):
 
-Per DEC-077 (log-only lane) and this task's explicit "no fixes" scope,
-`scripts/perf-seed-lib.ts` and `scripts/perf-smoke.ts` were left
-unmodified. This is flagged as an open item for a future code-bearing wave
-to reconcile (either bump `PERF_STATUS_COUNTS.accepted` to >=301, or have
-the cap probe draw from a status/id pool that already has >=301 rows, or
-have `fetchAcceptedSubmissionIds` paginate and union across pages capped
-at 300 accepted — none of which is a decision this log-only lane is
-authorized to make).
+| probe                              | run1 p95 | status |
+|-------------------------------------|----------|--------|
+| submissions list (page 1)           | 11.5ms   | ok     |
+| submissions list (q=Kubernetes)     | 13.2ms   | ok     |
+| submission detail                   | 15.7ms   | ok     |
+| event overview                      | 14.3ms   | ok     |
+| organizer agenda (300 accepted)     | 18.8ms   | ok     |
+| public sessions page                | 4.5ms    | ok     |
+| public agenda                       | 8.1ms    | ok     |
+| schedule.ics 150 ids                | 50.7ms   | ok     |
+| plan progress (12 reviewers)        | 18.6ms   | ok     |
+| rating PUT                          | 15.3ms   | ok     |
 
-## `npm test`
+Run 2 (repeat against same live process, confirming stability):
 
-`94 test files / 971 tests`, all passed. `Duration ~5.6s`.
+| probe                              | run2 p95 | status |
+|-------------------------------------|----------|--------|
+| submissions list (page 1)           | 14.2ms   | ok     |
+| submissions list (q=Kubernetes)     | 13.7ms   | ok     |
+| submission detail                   | 17.3ms   | ok     |
+| event overview                      | 16.7ms   | ok     |
+| organizer agenda (300 accepted)     | 24.6ms   | ok     |
+| public sessions page                | 5.1ms    | ok     |
+| public agenda                       | 6.2ms    | ok     |
+| schedule.ics 150 ids                | 58.5ms   | ok     |
+| plan progress (12 reviewers)        | 27.8ms   | ok     |
+| rating PUT                          | 17.4ms   | ok     |
 
-## Scope note (DEC-077 log-only lane)
+All ten probes stay well under the 150ms local-runtime advisory budget on
+both runs (worst case `schedule.ics 150 ids` at 58.5ms, ~0.39x budget).
+Script exit code 0 on both runs.
 
-This lane touched only `docs/verification-log.md` and
-`docs/verification-log/task-w4-c-perf-smoke.md` — no `src/`, `app/`,
-`scripts/`, or `migrations/` changes, per DEC-077/090/093.
+DEC-080 cap assertion (301-id `schedule.ics` -> exactly 400) passed
+implicitly via the clean `perf:smoke OK` exit — `perf:smoke` includes this
+untimed assertion in its check set ahead of the timed loop, and a non-zero
+exit would have surfaced any 400-cap regression.
 
-## OPEN ITEMS: 1
+## Cleanup
 
-1. `scripts/perf-smoke.ts`'s DEC-089/DEC-080 301-id cap probe cannot
-   succeed against the DEC-088 perf-seed fixture as currently authored:
-   the seed produces exactly 300 accepted submissions for
-   `seed_perf_event` (`PERF_STATUS_COUNTS.accepted` in
-   `scripts/perf-seed-lib.ts:20`), one short of the 301
-   `fetchAcceptedSubmissionIds(headers, 301)` requires
-   (`scripts/perf-smoke.ts:181`); independently, the submissions list API
-   clamps `perPage` to 200 (`src/lib/pagination.ts` `MAX_PER_PAGE = 200`)
-   and the fetch helper does not paginate. The perf-smoke script currently
-   throws before any timed check runs, so no p95 data exists for this sha.
+`wrangler dev` (port 8972) killed via `lsof -ti :8972 | xargs kill`; `lsof
+-i :8972` confirmed the port free afterward.
 
-RESULT: FAIL
+## Open items
+
+None. Both runs passed cleanly with wide headroom under budget; no
+anomalies observed.
+
+OPEN ITEMS: 0
+RESULT: PASS — 10/10 probes under the 150ms budget on both runs (worst
+case 58.5ms), DEC-080 cap assertion implicitly passed, `perf:smoke` exit
+0 both times.
