@@ -131,6 +131,7 @@ function ProfilePage(props: {
   csrfToken: string;
   error?: string;
   saved?: boolean;
+  headshotSavedMessage?: string;
 }) {
   const { profile } = props;
   return (
@@ -143,6 +144,9 @@ function ProfilePage(props: {
 
       <section aria-label="Headshot">
         <h3>Headshot</h3>
+        {/* DEC-245: headshot success renders its own 'Headshot uploaded.'
+            status, distinct from the details form's 'Profile saved.' */}
+        {props.headshotSavedMessage ? <p role="status">{props.headshotSavedMessage}</p> : null}
         {profile.headshotUrl ? <img src={profile.headshotUrl} alt="" width={120} height={120} /> : <p>No headshot uploaded yet.</p>}
         <form method="post" action="/portal/profile/headshot" enctype="multipart/form-data">
           <input type="hidden" name={CSRF_COOKIE_NAME} value={props.csrfToken} />
@@ -224,7 +228,16 @@ portalProfileRoutes.get("/profile", async (c) => {
   const { token: csrfToken, setCookieIfNew } = ensureCsrfCookie(c);
   if (setCookieIfNew) c.header("Set-Cookie", setCookieIfNew);
   const saved = c.req.query("saved") === "1";
-  return c.html(<ProfilePage branding={branding} profile={profile} csrfToken={csrfToken} saved={saved} />);
+  const headshotSavedMessage = c.req.query("headshot") === "1" ? "Headshot uploaded." : undefined;
+  return c.html(
+    <ProfilePage
+      branding={branding}
+      profile={profile}
+      csrfToken={csrfToken}
+      saved={saved}
+      headshotSavedMessage={headshotSavedMessage}
+    />,
+  );
 });
 
 portalProfileRoutes.post("/profile", csrfForm, async (c) => {
@@ -332,10 +345,11 @@ portalProfileRoutes.post("/profile/headshot", csrfForm, async (c) => {
   });
 
   // Redirect (PRG) rather than re-rendering directly: a fresh GET picks up
-  // the newly-set headshotUrl and the ?saved=1 flag renders the success
-  // notice, so a page reload after upload doesn't silently drop the
-  // confirmation or resubmit the file.
-  return c.redirect("/portal/profile?saved=1", 302);
+  // the newly-set headshotUrl and the ?headshot=1 flag renders the
+  // 'Headshot uploaded.' success notice (DEC-245, distinct from the
+  // details form's 'Profile saved.'), so a page reload after upload
+  // doesn't silently drop the confirmation or resubmit the file.
+  return c.redirect("/portal/profile?headshot=1", 302);
 });
 
 // -----------------------------------------------------------------------

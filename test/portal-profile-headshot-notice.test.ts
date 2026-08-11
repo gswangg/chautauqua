@@ -1,8 +1,10 @@
-// w1-i (docs/eval-findings.md Section D): the headshot upload flow now
-// renders the CURRENT headshot next to the upload control (existing gated
-// /headshots/:fileId route), and a successful upload redirects with
-// ?saved=1 so a fresh GET renders a success notice — mirrors the vi.mock
-// pattern in test/portal-edit-speaker-locked-route.test.ts.
+// w1-i / DEC-245 (docs/eval-findings.md Section D): the headshot upload
+// flow renders the CURRENT headshot next to the upload control (existing
+// gated /headshots/:fileId route), and a successful upload redirects with
+// ?headshot=1 so a fresh GET renders a distinct 'Headshot uploaded.'
+// success notice near the Headshot section (separate from the details
+// form's 'Profile saved.' under ?saved=1) — mirrors the vi.mock pattern in
+// test/portal-edit-speaker-locked-route.test.ts.
 
 import { describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
@@ -102,6 +104,17 @@ describe("GET /portal/profile?saved=1 — success notice", () => {
   });
 });
 
+describe("GET /portal/profile?headshot=1 — distinct headshot success notice", () => {
+  it("renders 'Headshot uploaded.' (not 'Profile saved.') when the headshot=1 flag is present", async () => {
+    currentProfile = PROFILE_WITH_HEADSHOT;
+    const app = buildApp();
+    const res = await app.request("/portal/profile?headshot=1");
+    const html = await res.text();
+    expect(html).toContain("Headshot uploaded.");
+    expect(html).not.toContain("Profile saved.");
+  });
+});
+
 function fakeFilesBucket() {
   return {
     async put() {},
@@ -128,13 +141,13 @@ describe("POST /portal/profile/headshot", () => {
     );
   }
 
-  it("redirects to /portal/profile?saved=1 on a successful upload (PRG)", async () => {
+  it("redirects to /portal/profile?headshot=1 on a successful upload (PRG)", async () => {
     currentProfile = PROFILE_WITH_HEADSHOT;
     const app = buildApp();
     const file = new File([new Uint8Array([1, 2, 3])], "photo.webp", { type: "image/webp" });
     const res = await postHeadshot(app, file);
     expect(res.status).toBe(302);
-    expect(res.headers.get("location")).toBe("/portal/profile?saved=1");
+    expect(res.headers.get("location")).toBe("/portal/profile?headshot=1");
   });
 
   it("rejects an empty-file submit with a clear validation error, not a silent success", async () => {
