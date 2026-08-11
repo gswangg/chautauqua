@@ -5,7 +5,7 @@ import {
   type ContentStatus,
   type ContentSubmissionListItem,
 } from './types';
-import { filterByContentStatus, sortForWorklist, WORKLIST_TABS, type WorklistTab } from './worklist';
+import { WORKLIST_TABS, type WorklistTab } from './worklist';
 
 const TAB_LABELS: Record<WorklistTab, string> = {
   all: 'All',
@@ -23,10 +23,30 @@ interface SessionListProps {
   // CNT-12: always-visible per-row content-status control, so approval
   // doesn't require drilling into a submission's deliverable detail first.
   onContentStatusChange: (submissionId: string, status: ContentStatus) => void;
+  // DEC-341: server-driven pagination — the tab filter and worklist sort
+  // are already applied server-side on `items`, so `total` reflects the
+  // event-wide match count, not just this page.
+  total: number;
+  page: number;
+  perPage: number;
+  onPageChange: (page: number) => void;
 }
 
-export function SessionList({ items, tab, onTabChange, onSelect, loading, onContentStatusChange }: SessionListProps) {
-  const visible = sortForWorklist(filterByContentStatus(items, tab));
+export function SessionList({
+  items,
+  tab,
+  onTabChange,
+  onSelect,
+  loading,
+  onContentStatusChange,
+  total,
+  page,
+  perPage,
+  onPageChange,
+}: SessionListProps) {
+  const visible = items;
+  const rangeStart = total === 0 ? 0 : (page - 1) * perPage + 1;
+  const rangeEnd = Math.min(page * perPage, total);
 
   return (
     <div className="chq-content-worklist">
@@ -97,12 +117,24 @@ export function SessionList({ items, tab, onTabChange, onSelect, loading, onCont
                   </button>
                 </td>
                 {DELIVERABLE_KINDS.map((kind) => (
-                  <td key={kind}>{item.deliverableCounts?.[kind] ?? 0}</td>
+                  <td key={kind}>{item.deliverableCounts[kind]}</td>
                 ))}
               </tr>
             ))}
         </tbody>
       </table>
+
+      <div className="chq-content-pager">
+        <button type="button" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>
+          Previous
+        </button>
+        <span>
+          Showing {rangeStart}-{rangeEnd} of {total}
+        </span>
+        <button type="button" disabled={page * perPage >= total} onClick={() => onPageChange(page + 1)}>
+          Next
+        </button>
+      </div>
     </div>
   );
 }

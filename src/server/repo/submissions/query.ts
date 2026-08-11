@@ -3,6 +3,7 @@
 // change). See repo/submissions.ts for the module-level contract notes.
 
 import { SUBMISSION_STATUSES, type SubmissionStatus } from "../../../domain/status";
+import { CONTENT_STATUSES, type ContentStatus } from "../files-content-status";
 import { DEC_078 } from "../../../decisions";
 
 void DEC_078; // canonical chunk helper, re-exported here for existing importers
@@ -13,9 +14,9 @@ void DEC_078; // canonical chunk helper, re-exported here for existing importers
 // chunk of ids.
 export { chunkIds, ID_CHUNK_SIZE } from "../../../lib/chunk";
 
-export type SortOrder = "newest" | "oldest" | "title" | "ref";
+export type SortOrder = "newest" | "oldest" | "title" | "ref" | "worklist";
 
-export const SORT_ORDERS: readonly SortOrder[] = ["newest", "oldest", "title", "ref"];
+export const SORT_ORDERS: readonly SortOrder[] = ["newest", "oldest", "title", "ref", "worklist"];
 
 const DEFAULT_PER_PAGE = 50;
 const MAX_PER_PAGE = 200;
@@ -25,6 +26,7 @@ export interface ParsedListQuery {
   perPage: number;
   q: string | null;
   status: SubmissionStatus[];
+  contentStatus: ContentStatus[];
   trackId: string | null;
   sort: SortOrder;
   includeAnswers: boolean;
@@ -55,6 +57,11 @@ export function parseListQuery(raw: Record<string, string | undefined>): ParsedL
       (SUBMISSION_STATUSES as readonly string[]).includes(s),
     );
 
+  const contentStatus = (raw.contentStatus ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter((s): s is ContentStatus => (CONTENT_STATUSES as readonly string[]).includes(s));
+
   const trackId = raw.trackId && raw.trackId.trim().length > 0 ? raw.trackId.trim() : null;
 
   const sort: SortOrder =
@@ -64,7 +71,7 @@ export function parseListQuery(raw: Record<string, string | undefined>): ParsedL
 
   const includeAnswers = raw.includeAnswers === "1";
 
-  return { page, perPage, q, status, trackId, sort, includeAnswers };
+  return { page, perPage, q, status, contentStatus, trackId, sort, includeAnswers };
 }
 
 /** Validates a single status literal against the DEC-003 set. Fails loudly

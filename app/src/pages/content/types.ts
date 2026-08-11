@@ -33,7 +33,7 @@ export interface ContentSubmissionListItem {
   title: string;
   contentStatus: ContentStatus;
   speakers: { contactId: string; name: string }[];
-  deliverableCounts?: Partial<Record<DeliverableKind, number>>;
+  deliverableCounts: Record<DeliverableKind, number>;
 }
 
 // GET /api/v1/submissions/:id/files item (DEC-020: flat file rows; the SPA
