@@ -133,7 +133,7 @@ export const DEC_127 = "Wave-15 five-gate battery at the post-wave-14 sha: lanes
 export const DEC_128 = "Wave-16 contingency mirror gate battery: confirm-else-run semantics, fresh ports 8861/8862/8863, duplicates harmless, completion stays a planner grep";
 export const DEC_129 = "Wave-17 dual redundant triage-closure lanes; first-campaign homonym sections never satisfy the exit grep (validity requires `git merge-base --is-ancestor 675219f <cited-sha>`)";
 export const DEC_130 = "autoSchedule uses incremental day-indexed conflict checks, never per-candidate findConflicts over the full trial";
-export const DEC_131 = "ics escapeText normalizes CR before escaping: CRLF and lone CR become \\n, so no raw CR ever appears inside a content line";
+export const DEC_131 = "ics escapeText normalizes CR before escaping: CRLF and lone CR become \n, so no raw CR ever appears inside a content line";
 export const DEC_132 = "Public submit ignores rule-hidden file fields entirely: no upload validation error, no R2 put, no file row, no answer row";
 export const DEC_133 = "Bulk submission status change enforces a DEC-122-style full-set id match before any side effect: unknown/foreign ids yield 400 invalid naming the missing ids";
 export const DEC_134 = "Third code barrier: DEC-130..133 fix lanes void every 675219f gate section; wave 19 re-runs the DEC-069 five-gate battery at the new DEC-114 sha";
@@ -198,3 +198,4 @@ export const DEC_192 = "Admin submissions track filter is populated via GET /api
 export const DEC_193 = "Client-side bulk-status chunking: SubmissionsTable splits selected ids into sequential batches of 500; on mid-run failure it stops loudly and refetches";
 export const DEC_194 = "FieldControl emits data-required=\"true\"/\"false\" on the four required-capable controls, restoring the DEC-008 visibility script's dataset.required contract";
 export const DEC_195 = "The 7f7477e battery is VOID for exit once any w14 fix merges; wave 15 binds a fresh DEC-189-style cooperative battery at the post-w14 sha; fifth-generation homonym guard";
+export const DEC_196 = "S'''' exit battery binds at 1033d45 ('merge task-w14-c'): fix-marker preconditions, lane-letter/gate-type mapping chosen against dead-campaign w15 homonyms, sixth-generation full-heading guard";
