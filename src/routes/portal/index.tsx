@@ -76,30 +76,32 @@ function PortalPage(props: { data: PortalData; sessions: PortalSession[]; invita
         {submissions.length === 0 ? (
           <p>You haven't submitted anything yet.</p>
         ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>Ref</th>
-                <th>Title</th>
-                <th>Status</th>
-                <th>Submitted</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {submissions.map((s) => (
+          <div class="chq-table-scroll">
+            <table>
+              <thead>
                 <tr>
-                  <td>{s.ref}</td>
-                  <td>{s.title}</td>
-                  <td>{s.statusLabel}</td>
-                  <td>{new Date(s.submittedAt).toISOString().slice(0, 10)}</td>
-                  <td>
-                    <a href={`/portal/submissions/${s.id}`}>View</a>
-                  </td>
+                  <th>Ref</th>
+                  <th>Title</th>
+                  <th>Status</th>
+                  <th>Submitted</th>
+                  <th></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {submissions.map((s) => (
+                  <tr>
+                    <td>{s.ref}</td>
+                    <td>{s.title}</td>
+                    <td>{s.statusLabel}</td>
+                    <td>{new Date(s.submittedAt).toISOString().slice(0, 10)}</td>
+                    <td>
+                      <a href={`/portal/submissions/${s.id}`}>View</a>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </section>
 

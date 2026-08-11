@@ -50,6 +50,25 @@ npx playwright install chromium
 
 Not part of `npm test` (it needs to boot a server itself); run it explicitly.
 
+After the desktop pass, the gate runs a second **mobile pass** (DEC-253): the
+same booted server is re-visited at a 390x844 (phone-sized) Playwright
+viewport across every no-login surface — `/submit/<slug>`, the five public
+`/e/<slug>/*` surfaces plus one session and one speaker detail drill-in, the
+three `/embed/<slug>/*` surfaces, `/login`, and `/portal` (logged in as the
+seeded speaker). For each route it asserts:
+
+- zero page-level horizontal overflow
+  (`document.scrollingElement.scrollWidth <= window.innerWidth + 1px`)
+- every primary nav/filter/submit control (surface nav, search/track-filter
+  forms, submit/save-draft/sign-out buttons) measures >= 40px tall (tap-target
+  size)
+
+It prints its own PASS/FAIL table + summary and fails the gate (non-zero
+exit) on any mobile-route failure, independent of the desktop pass. Route
+list: `MOBILE_ROUTE_MANIFEST` in `scripts/render-sweep.ts`; pass criteria +
+unit tests: `scripts/render-sweep-lib.ts`'s `evaluateMobileRoute` and
+`test/render-sweep-lib.test.ts`.
+
 ## For evaluators
 
 | Surface | Route |

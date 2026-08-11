@@ -74,3 +74,99 @@ export function formatSummary(results: readonly RouteResult[]): string {
   const passed = results.filter((r) => r.ok).length;
   return `${passed}/${results.length} routes passed`;
 }
+
+// ---------------------------------------------------------------------------
+// DEC-253 mobile pass (390x844): a second sweep over the no-login/portal
+// surfaces asserting zero page-level horizontal overflow and a minimum
+// tap-target height on primary nav/filter/submit controls. Kept separate
+// from RouteResult/evaluateRoute above since the observations are different
+// (viewport geometry, not console/pageerror events) — same PASS/FAIL table
+// + summary shape for a consistent gate report.
+// ---------------------------------------------------------------------------
+
+export interface MobileRouteEntry {
+  readonly path: string;
+  readonly role: "organizer" | "reviewer" | "speaker" | "public";
+}
+
+export interface MobileObservation {
+  status: number;
+  /** document.scrollingElement.scrollWidth */
+  scrollWidth: number;
+  /** window.innerWidth */
+  viewportWidth: number;
+  /** Minimum getBoundingClientRect().height among visible primary nav/
+   * filter/submit controls on the page, or null if the page has none
+   * (e.g. a route with no such controls at all). */
+  minControlHeight: number | null;
+}
+
+export interface MobileRouteResult {
+  entry: MobileRouteEntry;
+  status: number;
+  scrollWidth: number;
+  viewportWidth: number;
+  overflowPx: number;
+  minControlHeight: number | null;
+  ok: boolean;
+  failureReason?: string;
+}
+
+const MIN_TAP_TARGET_PX = 40;
+// 1px slack for sub-pixel layout rounding across engines.
+const OVERFLOW_TOLERANCE_PX = 1;
+
+/** Evaluates one route's mobile-viewport observation: HTTP 200, no
+ * page-level horizontal overflow, and every measured primary control
+ * meets the >= 40px tap-target height. */
+export function evaluateMobileRoute(entry: MobileRouteEntry, observed: MobileObservation): MobileRouteResult {
+  const overflowPx = observed.scrollWidth - observed.viewportWidth;
+  const reasons: string[] = [];
+  if (observed.status !== 200) reasons.push(`status ${observed.status} !== 200`);
+  if (overflowPx > OVERFLOW_TOLERANCE_PX) {
+    reasons.push(
+      `horizontal overflow ${overflowPx}px (scrollWidth ${observed.scrollWidth} > viewport ${observed.viewportWidth})`,
+    );
+  }
+  if (observed.minControlHeight !== null && observed.minControlHeight < MIN_TAP_TARGET_PX) {
+    reasons.push(`control height ${observed.minControlHeight}px < ${MIN_TAP_TARGET_PX}px`);
+  }
+  return {
+    entry,
+    status: observed.status,
+    scrollWidth: observed.scrollWidth,
+    viewportWidth: observed.viewportWidth,
+    overflowPx,
+    minControlHeight: observed.minControlHeight,
+    ok: reasons.length === 0,
+    failureReason: reasons.length > 0 ? reasons.join("; ") : undefined,
+  };
+}
+
+/** True if every mobile route result passed. */
+export function allMobilePassed(results: readonly MobileRouteResult[]): boolean {
+  return results.every((r) => r.ok);
+}
+
+/** Renders a PASS/FAIL table for the collected mobile route results. */
+export function formatMobileResultsTable(results: readonly MobileRouteResult[]): string {
+  const pathWidth = Math.max(...results.map((r) => r.entry.path.length), "path".length);
+  const lines: string[] = [];
+  lines.push(`${"path".padEnd(pathWidth)}  overflowPx  minControlPx  status`);
+  for (const r of results) {
+    const mark = r.ok ? "PASS" : "FAIL";
+    const detail = r.ok ? "" : `  (${r.failureReason})`;
+    lines.push(
+      `${r.entry.path.padEnd(pathWidth)}  ${String(r.overflowPx).padStart(10)}  ${String(
+        r.minControlHeight ?? "-",
+      ).padStart(13)}  ${mark}${detail}`,
+    );
+  }
+  return lines.join("\n");
+}
+
+/** Summary line: "N/M mobile routes passed". */
+export function formatMobileSummary(results: readonly MobileRouteResult[]): string {
+  const passed = results.filter((r) => r.ok).length;
+  return `${passed}/${results.length} mobile routes passed`;
+}

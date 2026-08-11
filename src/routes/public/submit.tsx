@@ -100,10 +100,34 @@ function PageShell(props: { title: string; accentColor?: string; children: unkno
     <html lang="en">
       <head>
         <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>{props.title}</title>
-        {props.accentColor ? (
-          <style>{`:root { --chq-accent: ${props.accentColor}; } a, button[type=submit] { color: var(--chq-accent); }`}</style>
-        ) : null}
+        <style>{`
+          :root { --chq-accent: ${props.accentColor ?? "#2b2b2b"}; }
+          *, *::before, *::after { box-sizing: border-box; }
+          html, body { max-width: 100%; overflow-x: hidden; }
+          body { font-family: system-ui, sans-serif; margin: 0; padding: 1rem; color: #1a1a1a; }
+          main, form { max-width: 640px; margin: 0 auto; }
+          img { max-width: 100%; height: auto; }
+          a, button[type=submit] { color: var(--chq-accent); }
+          label { display: block; margin-bottom: 0.75rem; }
+          input[type=text], input[type=email], input[type=tel], input[type=url], input[type=search],
+          input[type=number], input[type=file], select, textarea {
+            display: block;
+            width: 100%;
+            max-width: 100%;
+            box-sizing: border-box;
+            min-height: 40px;
+            font-size: 1rem;
+            margin-top: 0.25rem;
+          }
+          textarea { min-height: 6rem; }
+          button, input[type=submit] {
+            min-height: 40px;
+            padding: 0.4rem 0.9rem;
+            font-size: 1rem;
+          }
+        `}</style>
       </head>
       <body>{props.children as any}</body>
     </html>

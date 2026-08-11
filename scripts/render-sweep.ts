@@ -12,6 +12,15 @@
 //     routes) text is non-empty
 //   - zero collected console 'error' + pageerror events (no allowlist)
 //
+// DEC-253: a second pass then re-visits MOBILE_ROUTE_MANIFEST (the no-login
+// public/embed/submit surfaces + /login + /portal) at a 390x844 viewport and
+// asserts zero page-level horizontal overflow
+// (document.scrollingElement.scrollWidth <= window.innerWidth + 1px slack)
+// and that every primary nav/filter/submit control on the page measures
+// >= 40px tall (tap-target size) — see scripts/render-sweep-lib.ts's
+// evaluateMobileRoute for the pass criteria and test/render-sweep-lib.test.ts
+// for its unit tests.
+//
 // Prints a per-route PASS/FAIL table and exits non-zero on any failure.
 // Not run as part of `npm test` (needs a booted server) — run explicitly
 // via `npm run gate:render-sweep`.
@@ -31,13 +40,58 @@ import { chromium, type Browser, type BrowserContext, type ConsoleMessage } from
 
 import { ROUTE_MANIFEST, type RouteManifestEntry } from "../app/src/routeManifest";
 import {
+  allMobilePassed,
   allPassed,
+  evaluateMobileRoute,
   evaluateRoute,
+  formatMobileResultsTable,
+  formatMobileSummary,
   formatResultsTable,
   formatSummary,
+  type MobileRouteEntry,
+  type MobileRouteResult,
   type RouteResult,
 } from "./render-sweep-lib";
 import { ensureDevVars } from "./ensure-dev-vars";
+
+// DEC-253: the no-login/portal mobile-bar surfaces (390x844). Seed literals
+// mirror app/src/routeManifest.ts (same "devflow-conf-2027" event,
+// seed_submission_0001/seed_contact_0001 — the seed's index-0 accepted +
+// content-approved + visible submission/contact, DEC-108 — so the session
+// and speaker detail drill-ins resolve against `npm run seed` data).
+const MOBILE_EVENT_SLUG = "devflow-conf-2027";
+const MOBILE_SESSION_ID = "seed_submission_0001";
+const MOBILE_SPEAKER_ID = "seed_contact_0001";
+
+export const MOBILE_ROUTE_MANIFEST: readonly MobileRouteEntry[] = [
+  { path: `/submit/${MOBILE_EVENT_SLUG}`, role: "public" },
+  { path: `/e/${MOBILE_EVENT_SLUG}/sessions`, role: "public" },
+  { path: `/e/${MOBILE_EVENT_SLUG}/speakers`, role: "public" },
+  { path: `/e/${MOBILE_EVENT_SLUG}/agenda`, role: "public" },
+  { path: `/e/${MOBILE_EVENT_SLUG}/schedule`, role: "public" },
+  { path: `/e/${MOBILE_EVENT_SLUG}/gallery`, role: "public" },
+  { path: `/e/${MOBILE_EVENT_SLUG}/sessions/${MOBILE_SESSION_ID}`, role: "public" },
+  { path: `/e/${MOBILE_EVENT_SLUG}/speakers/${MOBILE_SPEAKER_ID}`, role: "public" },
+  { path: `/embed/${MOBILE_EVENT_SLUG}/sessions`, role: "public" },
+  { path: `/embed/${MOBILE_EVENT_SLUG}/agenda`, role: "public" },
+  { path: `/embed/${MOBILE_EVENT_SLUG}/speakers`, role: "public" },
+  { path: "/login", role: "public" },
+  { path: "/portal", role: "speaker" },
+] as const;
+
+/** Selector list for "primary nav/filter/submit controls" (DEC-253): surface
+ * nav, search/track-filter forms, submit/save-draft buttons, and the portal
+ * sign-out/nav controls. Deliberately excludes secondary inline links (e.g.
+ * per-card "View"/"Show more") — those aren't the primary navigation the
+ * mobile bar is graded on. */
+const MOBILE_CONTROL_SELECTOR = [
+  "nav a",
+  "form[role='search'] input",
+  "form[role='search'] button",
+  "form button[type='submit']",
+  "form input[type='submit']",
+  "header form button",
+].join(", ");
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(SCRIPT_DIR, "..");
@@ -110,8 +164,13 @@ function personaForRole(role: RouteManifestEntry["role"], identities: FixtureDat
 }
 
 /** Logs in via the real HTML /login form (not the JSON API) so the render-sweep exercises the same path a real browser session takes. */
-async function loginContext(browser: Browser, baseUrl: string, persona: Persona): Promise<BrowserContext> {
-  const context = await browser.newContext();
+async function loginContext(
+  browser: Browser,
+  baseUrl: string,
+  persona: Persona,
+  options?: { viewport?: { width: number; height: number } },
+): Promise<BrowserContext> {
+  const context = await browser.newContext(options?.viewport ? { viewport: options.viewport } : {});
   const page = await context.newPage();
   const getRes = await page.goto(`${baseUrl}/login`);
   if (!getRes || getRes.status() !== 200) {
@@ -162,6 +221,39 @@ async function visitRoute(context: BrowserContext, baseUrl: string, entry: Route
 
   await page.close();
   return evaluateRoute(entry, { status, bodyText, consoleErrors, pageErrors });
+}
+
+const MOBILE_VIEWPORT = { width: 390, height: 844 };
+
+/** DEC-253: visits one mobile-manifest route in a 390x844 context and
+ * measures page-level horizontal overflow + the shortest primary control. */
+async function visitMobileRoute(
+  context: BrowserContext,
+  baseUrl: string,
+  entry: MobileRouteEntry,
+): Promise<MobileRouteResult> {
+  const page = await context.newPage();
+  let status = 0;
+  try {
+    const res = await page.goto(`${baseUrl}${entry.path}`, { waitUntil: "networkidle" });
+    status = res ? res.status() : 0;
+  } catch {
+    status = 0;
+  }
+
+  const measured = await page.evaluate((selector: string) => {
+    const scrollWidth = document.scrollingElement ? document.scrollingElement.scrollWidth : document.body.scrollWidth;
+    const viewportWidth = window.innerWidth;
+    const controls = Array.from(document.querySelectorAll(selector)) as HTMLElement[];
+    const heights = controls
+      .filter((el) => el.offsetParent !== null) // visible only (not display:none)
+      .map((el) => el.getBoundingClientRect().height);
+    const minControlHeight = heights.length > 0 ? Math.min(...heights) : null;
+    return { scrollWidth, viewportWidth, minControlHeight };
+  }, MOBILE_CONTROL_SELECTOR);
+
+  await page.close();
+  return evaluateMobileRoute(entry, { status, ...measured });
 }
 
 async function main(): Promise<void> {
@@ -216,7 +308,38 @@ async function main(): Promise<void> {
 
     if (!allPassed(results)) {
       failed = true;
-    } else {
+    }
+
+    // DEC-253: second pass at a 390x844 mobile viewport over the no-login/
+    // portal surfaces. Separate contexts (viewport is fixed per-context in
+    // Playwright) — the speaker persona logs in again inside its own mobile
+    // context so /portal is exercised through the real cookie session.
+    console.log("");
+    console.log("render-sweep: mobile pass (390x844)...");
+    const mobileContextByRole = new Map<MobileRouteEntry["role"], BrowserContext>();
+    mobileContextByRole.set("public", await browser.newContext({ viewport: MOBILE_VIEWPORT }));
+    const speakerPersona = personaForRole("speaker", fixture.identities);
+    if (!speakerPersona) throw new Error("render-sweep: fixture is missing the speaker identity");
+    mobileContextByRole.set("speaker", await loginContext(browser, baseUrl, speakerPersona, { viewport: MOBILE_VIEWPORT }));
+
+    const mobileResults: MobileRouteResult[] = [];
+    for (const entry of MOBILE_ROUTE_MANIFEST) {
+      const context = mobileContextByRole.get(entry.role);
+      if (!context) throw new Error(`render-sweep: no mobile browser context for role '${entry.role}'`);
+      mobileResults.push(await visitMobileRoute(context, baseUrl, entry));
+    }
+    for (const ctx of mobileContextByRole.values()) await ctx.close();
+
+    console.log("");
+    console.log(formatMobileResultsTable(mobileResults));
+    console.log("");
+    console.log(formatMobileSummary(mobileResults));
+
+    if (!allMobilePassed(mobileResults)) {
+      failed = true;
+    }
+
+    if (!failed) {
       console.log("gate:render-sweep OK");
     }
   } finally {

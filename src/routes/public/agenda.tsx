@@ -36,55 +36,57 @@ export function AgendaDayGrid(props: { day: string; items: PublicAgendaItem[]; e
   return (
     <section aria-label={`Agenda for ${day}`}>
       <h3>{day}</h3>
-      <div
-        class="chq-agenda-day"
-        style={`grid-template-columns: 70px repeat(${rooms.length}, 1fr); grid-template-rows: auto repeat(${Math.ceil(
-          (dayEnd - dayStart) / gridMin,
-        )}, 22px);`}
-      >
-        <div style="grid-column:1;grid-row:1"></div>
-        {rooms.map((roomId, idx) => (
-          <div style={`grid-column:${idx + 2};grid-row:1;font-weight:600;background:#fff;padding:0.2rem`}>
-            {roomNames.get(roomId)}
-          </div>
-        ))}
-        {items.map((item) => {
-          const roomId = item.roomId ?? "tbd";
-          const col = rooms.indexOf(roomId) + 2;
-          const rowStart = Math.floor((item.startMin - dayStart) / gridMin) + 2;
-          const rowSpan = Math.max(1, Math.ceil((item.endMin - item.startMin) / gridMin));
-          const { lane, laneCount } = laneByItem.get(item.submissionId) ?? { lane: 0, laneCount: 1 };
-          const laneStyle =
-            laneCount > 1
-              ? `width:calc(${100 / laneCount}% - 4px);margin-left:calc(${(100 / laneCount) * lane}% + 2px);position:relative;z-index:1`
-              : "";
-          return (
-            <div
-              class="chq-agenda-block"
-              style={`grid-column:${col};grid-row:${rowStart} / span ${rowSpan};${laneStyle}`}
-              id={`chq-agenda-${item.submissionId}`}
-            >
-              <div>
-                {formatMinutes(item.startMin)}–{formatMinutes(item.endMin)}
-              </div>
-              <TrackChips tracks={item.tracks} />
-              <div>
-                <strong>
-                  <a href={sessionDetailPath(event, item.submissionId, from)}>{item.title}</a>
-                </strong>
-              </div>
-              <div>
-                <SpeakerNames speakers={item.speakers} />
-              </div>
-              {itinerary ? (
-                <label>
-                  <input type="checkbox" class="chq-itinerary-toggle" value={item.submissionId} />
-                  Add to itinerary
-                </label>
-              ) : null}
+      <div class="chq-agenda-day-scroll">
+        <div
+          class="chq-agenda-day"
+          style={`grid-template-columns: 70px repeat(${rooms.length}, minmax(140px, 1fr)); grid-template-rows: auto repeat(${Math.ceil(
+            (dayEnd - dayStart) / gridMin,
+          )}, 22px);`}
+        >
+          <div style="grid-column:1;grid-row:1"></div>
+          {rooms.map((roomId, idx) => (
+            <div style={`grid-column:${idx + 2};grid-row:1;font-weight:600;background:#fff;padding:0.2rem`}>
+              {roomNames.get(roomId)}
             </div>
-          );
-        })}
+          ))}
+          {items.map((item) => {
+            const roomId = item.roomId ?? "tbd";
+            const col = rooms.indexOf(roomId) + 2;
+            const rowStart = Math.floor((item.startMin - dayStart) / gridMin) + 2;
+            const rowSpan = Math.max(1, Math.ceil((item.endMin - item.startMin) / gridMin));
+            const { lane, laneCount } = laneByItem.get(item.submissionId) ?? { lane: 0, laneCount: 1 };
+            const laneStyle =
+              laneCount > 1
+                ? `width:calc(${100 / laneCount}% - 4px);margin-left:calc(${(100 / laneCount) * lane}% + 2px);position:relative;z-index:1`
+                : "";
+            return (
+              <div
+                class="chq-agenda-block"
+                style={`grid-column:${col};grid-row:${rowStart} / span ${rowSpan};${laneStyle}`}
+                id={`chq-agenda-${item.submissionId}`}
+              >
+                <div>
+                  {formatMinutes(item.startMin)}–{formatMinutes(item.endMin)}
+                </div>
+                <TrackChips tracks={item.tracks} />
+                <div>
+                  <strong>
+                    <a href={sessionDetailPath(event, item.submissionId, from)}>{item.title}</a>
+                  </strong>
+                </div>
+                <div>
+                  <SpeakerNames speakers={item.speakers} />
+                </div>
+                {itinerary ? (
+                  <label>
+                    <input type="checkbox" class="chq-itinerary-toggle" value={item.submissionId} />
+                    Add to itinerary
+                  </label>
+                ) : null}
+              </div>
+            );
+          })}
+        </div>
       </div>
     </section>
   );
