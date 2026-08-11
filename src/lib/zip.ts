@@ -79,6 +79,14 @@ class ByteWriter {
     return this.length;
   }
 
+  /** Moves `other`'s chunks onto this writer (no copy) so a later
+   * toUint8Array() on this writer materialises the combined bytes exactly
+   * once instead of once per writer. */
+  append(other: ByteWriter): void {
+    this.chunks.push(...other.chunks);
+    this.length += other.length;
+  }
+
   toUint8Array(): Uint8Array {
     const out = new Uint8Array(this.length);
     let offset = 0;
@@ -185,9 +193,10 @@ export function buildZip(entries: ZipEntry[]): Uint8Array {
   eocd.u32(centralOffset);
   eocd.u16(0); // comment length
 
-  const out = new ByteWriter();
-  out.bytes(body.toUint8Array());
-  out.bytes(central.toUint8Array());
-  out.bytes(eocd.toUint8Array());
-  return out.toUint8Array();
+  // Push the central-directory and EOCD chunks into the SAME writer as the
+  // body (append, not a bytes()-of-toUint8Array() copy) so the final
+  // toUint8Array() below materialises the archive exactly once.
+  body.append(central);
+  body.append(eocd);
+  return body.toUint8Array();
 }
