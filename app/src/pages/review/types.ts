@@ -148,7 +148,11 @@ export interface Track {
   name: string;
 }
 
+// GET /api/v1/users?role=reviewer item (DEC-239 wire-shape contract: the
+// server's OrgUserRecord keys the id as `id`, not `userId` -- an earlier
+// mismatch here posted `undefined` as the reviewer assignment's userId).
 export interface ReviewerOption {
-  userId: string;
+  id: string;
   email: string;
+  role: string;
 }

@@ -451,6 +451,7 @@ export function PlanEditor() {
           <div key={criterion.id} className="chq-criterion-row">
             <input
               placeholder="Label"
+              aria-label="Criterion label"
               value={criterion.label}
               onChange={(e) => setEditingCriteria((c) => updateCriterion(c, criterion.id, { label: e.target.value }))}
             />
@@ -582,21 +583,25 @@ export function PlanEditor() {
           </div>
 
           <div className="chq-reviewer-assign-form">
-            <select value={reviewerUserId} onChange={(e) => setReviewerUserId(e.target.value)}>
+            <select aria-label="Reviewer" value={reviewerUserId} onChange={(e) => setReviewerUserId(e.target.value)}>
               <option value="">Select a reviewer…</option>
               {reviewerOptions.map((r) => (
-                <option key={r.userId} value={r.userId}>
+                <option key={r.id} value={r.id}>
                   {r.email}
                 </option>
               ))}
             </select>
-            <select value={reviewerScope} onChange={(e) => setReviewerScope(e.target.value as 'all' | 'track' | 'submission')}>
+            <select
+              aria-label="Assignment scope"
+              value={reviewerScope}
+              onChange={(e) => setReviewerScope(e.target.value as 'all' | 'track' | 'submission')}
+            >
               <option value="all">All plan submissions</option>
               <option value="track">One track</option>
               <option value="submission">One submission</option>
             </select>
             {reviewerScope === 'track' && (
-              <select value={reviewerTrackId} onChange={(e) => setReviewerTrackId(e.target.value)}>
+              <select aria-label="Track" value={reviewerTrackId} onChange={(e) => setReviewerTrackId(e.target.value)}>
                 <option value="">Select a track…</option>
                 {tracks.map((t) => (
                   <option key={t.id} value={t.id}>
@@ -608,6 +613,7 @@ export function PlanEditor() {
             {reviewerScope === 'submission' && (
               <input
                 placeholder="Submission id"
+                aria-label="Submission id"
                 value={reviewerSubmissionId}
                 onChange={(e) => setReviewerSubmissionId(e.target.value)}
               />
