@@ -309,6 +309,20 @@ async function main(): Promise<void> {
   const extraSubmission = trackBSubs.items.find((s) => !s.trackIds.includes(trackA.id));
   if (!extraSubmission) fail("list track B submissions", "expected a track B submission not also in track A");
 
+  // DEC-175: an out-of-scope submission for the track-scoped reviewer built
+  // below — not in track A (the reviewer's assigned track) and not the one
+  // per-submission extra assignment (extraSubmission) either. Any other
+  // track B (or trackless) submission qualifies.
+  const outOfScopeSubmission = trackBSubs.items.find(
+    (s) => !s.trackIds.includes(trackA.id) && s.id !== extraSubmission.id,
+  );
+  if (!outOfScopeSubmission) {
+    fail(
+      "list track B submissions for DEC-175 out-of-scope probe",
+      "expected a second track-B-only submission distinct from extraSubmission",
+    );
+  }
+
   // -- (1) Organizer creates the evaluation plan ----------------------------
 
   const now = Date.now();
@@ -584,6 +598,40 @@ async function main(): Promise<void> {
     "second-org organizer fetching this plan's results -> 404/403 (DEC-039)",
     org2ResultsRes.status === 404 || org2ResultsRes.status === 403,
     `expected 404 or 403, got ${org2ResultsRes.status}: ${org2ResultsRes.text}`,
+  );
+
+  // DEC-175: a reviewer assigned only to a track-scoped plan (track A +
+  // one specific per-submission assignment) hitting an out-of-scope
+  // submission's detail/evaluation on that same plan -> 404 (existence
+  // hiding), NOT 403 -- distinct from the DEC-039 cross-org probes above
+  // (src/routes/review.ts:570-573, 609-612).
+  const outOfScopeDetailRes = await reviewer.request(
+    `/api/v1/review/submissions/${outOfScopeSubmission!.id}?planId=${plan.id}`,
+  );
+  assertCheck(
+    "DEC-175 reviewer GET of an out-of-scope submission's review detail -> 404 (not 403)",
+    outOfScopeDetailRes.status === 404,
+    `expected 404, got ${outOfScopeDetailRes.status}: ${outOfScopeDetailRes.text}`,
+  );
+  assertCheck(
+    "DEC-175 out-of-scope detail probe is not 403 (existence-hiding, not authz-denial)",
+    outOfScopeDetailRes.status !== 403,
+    `status was 403 -- should be 404 to avoid confirming the submission's existence`,
+  );
+
+  const outOfScopeEvalRes = await reviewer.request(
+    `/api/v1/review/plans/${plan.id}/evaluations/${outOfScopeSubmission!.id}`,
+    { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ scores: {} }) },
+  );
+  assertCheck(
+    "DEC-175 reviewer PUT evaluation for an out-of-scope submission -> 404 (not 403)",
+    outOfScopeEvalRes.status === 404,
+    `expected 404, got ${outOfScopeEvalRes.status}: ${outOfScopeEvalRes.text}`,
+  );
+  assertCheck(
+    "DEC-175 out-of-scope evaluation probe is not 403 (existence-hiding, not authz-denial)",
+    outOfScopeEvalRes.status !== 403,
+    `status was 403 -- should be 404 to avoid confirming the submission's existence`,
   );
 
   // -- (4) Organizer: progress, remind, results, results CSV -----------

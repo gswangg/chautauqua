@@ -770,6 +770,29 @@ async function seedOverflowEvent(organizerJar: CookieJar): Promise<string> {
 }
 
 // ---------------------------------------------------------------------------
+// DEC-175: unauthenticated authz probes
+// ---------------------------------------------------------------------------
+
+/** DEC-175: unauthenticated requests must be turned away at the door —
+ * /admin redirects to /login, and JSON APIs (including the root-mounted
+ * file-serving route) return 401 rather than leaking any data. */
+async function runAuthzProbes(): Promise<void> {
+  const adminRes = await fetch(`${BASE_URL}/admin`, { redirect: "manual" });
+  assertStatus("DEC-175 unauthenticated GET /admin", adminRes, 302, await adminRes.text());
+
+  const contactsRes = await fetch(`${BASE_URL}/api/v1/contacts`);
+  assertStatus("DEC-175 unauthenticated GET /api/v1/contacts", contactsRes, 401, await contactsRes.text());
+
+  const plansRes = await fetch(`${BASE_URL}/api/v1/review/plans`);
+  assertStatus("DEC-175 unauthenticated GET /api/v1/review/plans", plansRes, 401, await plansRes.text());
+
+  // A known /files/:id — the auth check runs before any file lookup, so an
+  // arbitrary (even non-existent) id still exercises the 401 boundary.
+  const filesRes = await fetch(`${BASE_URL}/files/seed_file_0001`);
+  assertStatus("DEC-175 unauthenticated GET /files/:id", filesRes, 401, await filesRes.text());
+}
+
+// ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
 
@@ -806,6 +829,10 @@ async function main(): Promise<void> {
   console.log("  ok");
 
   void newEventId;
+
+  console.log("Running DEC-175 authz probes (unauthenticated requests)...");
+  await runAuthzProbes();
+  console.log("  ok");
 
   console.log("");
   console.log("producer walkthrough OK (J1, J2, J3, J5)");

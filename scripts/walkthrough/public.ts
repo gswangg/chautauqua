@@ -436,8 +436,14 @@ async function main(): Promise<void> {
     const res = await fetch(`${BASE_URL}/e/${EVENT_SLUG}/speakers`);
     const html = await res.text();
     assert(res.status === 200, `-> ${res.status}`);
-    // Speaker names render as "<strong>First Last</strong>" inside the grid.
-    const names = extractAll(html, /<strong>\s*([^<]+?)\s*<\/strong>/g);
+    // Speaker names render as "<strong>First Last</strong>" (or, since
+    // DEC-173, "<strong><a href=...>First Last</a></strong>") inside the
+    // chq-speaker-grid region — scope extraction there so a looser tag
+    // pattern can't accidentally catch unrelated <strong> markup elsewhere
+    // on the page.
+    const gridMatch = html.match(/<div class="chq-speaker-grid">([\s\S]*)$/);
+    const gridHtml = gridMatch ? gridMatch[1]! : html;
+    const names = extractAll(gridHtml, /<strong>\s*(?:<a[^>]*>)?\s*([^<]+?)\s*(?:<\/a>)?\s*<\/strong>/g);
     assert(names.length >= 2, "expected at least 2 speakers to check ordering");
     const surnames = names.map((n) => n.trim().split(/\s+/).slice(-1)[0]!.toLowerCase());
     const sorted = [...surnames].sort((a, b) => a.localeCompare(b));
@@ -595,8 +601,13 @@ async function main(): Promise<void> {
 
     // Sanity check: fully accepted+approved+scheduled, it MUST be visible
     // before we hide its only participant — otherwise the absence check
-    // below would be a false positive.
-    const preRes = await fetch(`${BASE_URL}/e/${EVENT_SLUG}/sessions`);
+    // below would be a false positive. Scoped with ?q=<marker> (EMB-02
+    // title/speaker-name search): the unfiltered /sessions view is
+    // PER_PAGE=12-capped (src/routes/public/shell.tsx), and by this point
+    // in the combined six-module walkthrough run the event already has
+    // >=12 other accepted+approved sessions, so an unfiltered fetch can
+    // miss this fixture on page 1 even though it's genuinely visible.
+    const preRes = await fetch(`${BASE_URL}/e/${EVENT_SLUG}/sessions?q=${encodeURIComponent(marker)}`);
     const preHtml = await preRes.text();
     assert(preHtml.includes(marker), "expected fully-visible fixture to appear before hiding its participant");
 
