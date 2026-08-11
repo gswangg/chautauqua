@@ -464,6 +464,122 @@ const sourceModules = import.meta.glob(
   { query: "?raw", import: "default", eager: true },
 ) as Record<string, string>;
 
+describe("GET /api/v1/events/:eventId/submissions?includeAnswers=1 (DEC-243 answers pipeline route contract)", () => {
+  // task w1-g: the production symptom was "toggling a column does nothing"
+  // because the answers keyed by form_field_id never made it onto the
+  // response item at all in some code paths. This is a route-level
+  // regression test pinning the exact response shape the SPA's
+  // formatAnswerValue(item.answers?.[col.fieldId]) lookup depends on.
+  function chain(responses: unknown[]) {
+    let cursor = 0;
+    function link(): any {
+      const obj: any = {};
+      const passthrough = ["from", "where", "innerJoin", "orderBy", "limit", "offset", "select"];
+      for (const m of passthrough) obj[m] = () => obj;
+      obj.then = (resolve: (v: unknown) => void, reject?: (e: unknown) => void) => {
+        const value = responses[cursor];
+        cursor += 1;
+        return Promise.resolve(value).then(resolve, reject);
+      };
+      return obj;
+    }
+    return { select: () => link() } as unknown as AppEnv["Variables"]["db"];
+  }
+
+  function appWithDb(db: AppEnv["Variables"]["db"], auth: AuthInfo) {
+    const app = new Hono<AppEnv>();
+    registerErrorHandler(app);
+    app.use("*", async (c, next) => {
+      c.set("db", db);
+      c.set("auth", auth);
+      await next();
+    });
+    app.route("/api/v1", submissionsRoutes);
+    return app;
+  }
+
+  const ORG_A = "org-a";
+  const ORGANIZER_A: AuthInfo = { userId: "u-organizer-a", role: "organizer", orgId: ORG_A };
+
+  it("carries answers keyed by form_field_id for a seeded dropdown field", async () => {
+    const submissionRow = {
+      id: "sub-1",
+      title: "A talk",
+      seq: 1,
+      createdAt: new Date(2026, 0, 1),
+      updatedAt: new Date(2026, 0, 1),
+      eventId: "event-1",
+      description: null,
+      formId: "form-1",
+      trackId: null,
+      additionalTrackIdsJson: null,
+      status: "pending",
+      contentStatus: "pending",
+      acceptedAt: null,
+      icsSequence: 0,
+    };
+
+    // Call order for the simple (no q/trackId) path: 1) getEventOrgId
+    // (assertEventOwnership), 2) event lookup for recordPrefix, 3) total
+    // count, 4) page rows, 5) participant enrichment, 6) track enrichment,
+    // 7) answer enrichment (only fetched when includeAnswers=1).
+    const db = chain([
+      [{ orgId: ORG_A }],
+      [{ recordPrefix: "TALK" }],
+      [{ count: 1 }],
+      [submissionRow],
+      [],
+      [],
+      [{ submissionId: "sub-1", formFieldId: "field-format", valueJson: JSON.stringify("Workshop") }],
+    ]);
+    const app = appWithDb(db, ORGANIZER_A);
+
+    const res = await app.request(
+      new Request("http://local/api/v1/events/event-1/submissions?includeAnswers=1"),
+    );
+
+    expect(res.status).toBe(200);
+    const json = (await res.json()) as { items: Array<{ id: string; answers?: Record<string, unknown> }> };
+    expect(json.items).toHaveLength(1);
+    expect(json.items[0]!.answers).toEqual({ "field-format": "Workshop" });
+  });
+
+  it("omits the answers key entirely when includeAnswers is not set", async () => {
+    const submissionRow = {
+      id: "sub-1",
+      title: "A talk",
+      seq: 1,
+      createdAt: new Date(2026, 0, 1),
+      updatedAt: new Date(2026, 0, 1),
+      eventId: "event-1",
+      description: null,
+      formId: "form-1",
+      trackId: null,
+      additionalTrackIdsJson: null,
+      status: "pending",
+      contentStatus: "pending",
+      acceptedAt: null,
+      icsSequence: 0,
+    };
+    const db = chain([
+      [{ orgId: ORG_A }],
+      [{ recordPrefix: "TALK" }],
+      [{ count: 1 }],
+      [submissionRow],
+      [],
+      [],
+      // no 7th response consumed: includeAnswers=false skips the answers query
+    ]);
+    const app = appWithDb(db, ORGANIZER_A);
+
+    const res = await app.request(new Request("http://local/api/v1/events/event-1/submissions"));
+
+    expect(res.status).toBe(200);
+    const json = (await res.json()) as { items: Array<{ id: string; answers?: Record<string, unknown> }> };
+    expect(json.items[0]).not.toHaveProperty("answers");
+  });
+});
+
 describe("DEC-009 invariant #1: no mailer import reachable from the status-change path", () => {
   it("neither the route module nor any repo submodule import a mailer", () => {
     const entries = Object.entries(sourceModules);

@@ -4,7 +4,7 @@ import { apiList, apiGet, ApiError, apiPost } from '../../lib/api';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { BulkActionBar } from './BulkActionBar';
 import { chunkSelection } from './bulk';
-import { deriveColumnsFromFormFields, formatAnswerValue, visibleColumns, type ColumnDef } from './columns';
+import { deriveColumnsFromFormFields, findFormatField, formatAnswerValue, visibleColumns, type ColumnDef } from './columns';
 import { ColumnPicker } from './ColumnPicker';
 import { FilterBar } from './FilterBar';
 import { buildSubmissionsQuery } from './filters';
@@ -27,6 +27,13 @@ function formatDate(ms: number | null): string {
   return new Date(ms).toLocaleDateString();
 }
 
+/** DEC-243: render track NAMES, not the raw count of trackIds. */
+function trackNames(trackIds: string[], tracks: Track[]): string {
+  if (trackIds.length === 0) return '—';
+  const byId = new Map(tracks.map((t) => [t.id, t.name]));
+  return trackIds.map((id) => byId.get(id) ?? id).join(', ');
+}
+
 export function SubmissionsTable() {
   const { eventId } = useCurrentEvent();
 
@@ -36,6 +43,10 @@ export function SubmissionsTable() {
   const [tracks, setTracks] = useState<Track[]>([]);
   const [formFields, setFormFields] = useState<FormField[]>([]);
   const [visibleFieldIds, setVisibleFieldIds] = useState<Set<string>>(new Set());
+  // DEC-243: has the picker state been established yet, either by the user
+  // toggling a column, or by applying a saved view? Until then, the Format
+  // column (if the form has one) is auto-shown on first load.
+  const [pickerInitialized, setPickerInitialized] = useState(false);
   const [selection, setSelection] = useState(EMPTY_SELECTION);
   const [loading, setLoading] = useState(false);
   const [bulkPending, setBulkPending] = useState(false);
@@ -55,6 +66,15 @@ export function SubmissionsTable() {
       .then((res) => setFormFields(res.fields ?? []))
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load form fields'));
   }, [eventId]);
+
+  useEffect(() => {
+    if (pickerInitialized || formFields.length === 0) return;
+    const formatField = findFormatField(formFields);
+    if (formatField) {
+      setVisibleFieldIds((prev) => new Set(prev).add(formatField.id));
+    }
+    setPickerInitialized(true);
+  }, [formFields, pickerInitialized]);
 
   useEffect(() => {
     if (!eventId) return;
@@ -83,6 +103,7 @@ export function SubmissionsTable() {
     const { filters: nextFilters, visibleFieldIds: nextVisible } = applyViewConfig(config);
     setFilters(nextFilters);
     setVisibleFieldIds(nextVisible);
+    setPickerInitialized(true);
   }
 
   async function createSubmission(input: NewSubmissionInput) {
@@ -172,14 +193,15 @@ export function SubmissionsTable() {
       <ColumnPicker
         columns={columns}
         visibleFieldIds={visibleFieldIds}
-        onToggle={(fieldId) =>
+        onToggle={(fieldId) => {
+          setPickerInitialized(true);
           setVisibleFieldIds((prev) => {
             const next = new Set(prev);
             if (next.has(fieldId)) next.delete(fieldId);
             else next.add(fieldId);
             return next;
-          })
-        }
+          });
+        }}
       />
 
       <BulkActionBar
@@ -242,7 +264,7 @@ export function SubmissionsTable() {
                   <Link to={`/submissions/${item.id}`}>{item.title}</Link>
                 </td>
                 <td>{item.speakers.map((s) => s.name).join(', ')}</td>
-                <td>{item.trackIds.length}</td>
+                <td>{trackNames(item.trackIds, tracks)}</td>
                 <td>
                   <span className={`chq-status-pill chq-status-${item.status}`}>{STATUS_LABELS[item.status]}</span>
                 </td>
