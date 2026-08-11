@@ -15,7 +15,10 @@ void DEC_013;
 
 type Row = { method: string; path: string; role: string };
 
-const ROUTE_GROUPS: { title: string; rows: Row[] }[] = [
+// Exported for test/docs-route-coverage.test.ts, which mounts the real
+// sub-apps the same way src/index.ts does and diffs this table against
+// their actual registered routes so this hand-maintained page can't drift.
+export const ROUTE_GROUPS: { title: string; rows: Row[] }[] = [
   {
     title: "Events, tracks & rooms",
     rows: [
@@ -31,6 +34,18 @@ const ROUTE_GROUPS: { title: string; rows: Row[] }[] = [
       { method: "POST", path: "/api/v1/events/:eventId/rooms", role: "organizer" },
       { method: "PATCH", path: "/api/v1/rooms/:roomId", role: "organizer" },
       { method: "DELETE", path: "/api/v1/rooms/:roomId", role: "organizer" },
+      { method: "GET", path: "/api/v1/events/:eventId/overview", role: "organizer" },
+    ],
+  },
+  {
+    title: "Portal settings & resources",
+    rows: [
+      { method: "GET", path: "/api/v1/events/:eventId/portal-settings", role: "organizer" },
+      { method: "PUT", path: "/api/v1/events/:eventId/portal-settings", role: "organizer" },
+      { method: "GET", path: "/api/v1/events/:eventId/resources", role: "organizer" },
+      { method: "POST", path: "/api/v1/events/:eventId/resources", role: "organizer (JSON -> wiki, multipart -> file)" },
+      { method: "PATCH", path: "/api/v1/resources/:resourceId", role: "organizer" },
+      { method: "DELETE", path: "/api/v1/resources/:resourceId", role: "organizer" },
     ],
   },
   {
@@ -49,6 +64,7 @@ const ROUTE_GROUPS: { title: string; rows: Row[] }[] = [
     rows: [
       { method: "GET", path: "/api/v1/events/:eventId/submissions", role: "organizer" },
       { method: "GET", path: "/api/v1/submissions/:id", role: "organizer" },
+      { method: "PATCH", path: "/api/v1/submissions/:id", role: "organizer (edit title/description)" },
       { method: "POST", path: "/api/v1/events/:eventId/submissions", role: "organizer" },
       { method: "POST", path: "/api/v1/submissions/:id/clone", role: "organizer" },
       { method: "POST", path: "/api/v1/events/:eventId/submissions/status", role: "organizer (bulk status change)" },
@@ -62,6 +78,22 @@ const ROUTE_GROUPS: { title: string; rows: Row[] }[] = [
         path: "/api/v1/submissions/:id/participants/:participantId",
         role: "organizer (toggle visible)",
       },
+      { method: "GET", path: "/api/v1/submissions/:id/revisions", role: "organizer" },
+      {
+        method: "POST",
+        path: "/api/v1/submissions/:id/revisions/:revisionId/restore",
+        role: "organizer",
+      },
+    ],
+  },
+  {
+    title: "Speaker pipeline",
+    rows: [
+      { method: "GET", path: "/api/v1/pipeline", role: "organizer" },
+      { method: "POST", path: "/api/v1/pipeline", role: "organizer" },
+      { method: "GET", path: "/api/v1/pipeline/:id", role: "organizer" },
+      { method: "PATCH", path: "/api/v1/pipeline/:id", role: "organizer" },
+      { method: "POST", path: "/api/v1/pipeline/:id/notes", role: "organizer" },
     ],
   },
   {
@@ -90,6 +122,7 @@ const ROUTE_GROUPS: { title: string; rows: Row[] }[] = [
     rows: [
       { method: "GET", path: "/api/v1/users", role: "organizer" },
       { method: "POST", path: "/api/v1/users", role: "organizer" },
+      { method: "POST", path: "/api/v1/users/:id/reset-password", role: "organizer" },
     ],
   },
   {
@@ -122,6 +155,7 @@ const ROUTE_GROUPS: { title: string; rows: Row[] }[] = [
       { method: "GET", path: "/api/v1/events/:eventId/agenda", role: "organizer" },
       { method: "PUT", path: "/api/v1/submissions/:id/slot", role: "organizer" },
       { method: "DELETE", path: "/api/v1/submissions/:id/slot", role: "organizer" },
+      { method: "POST", path: "/api/v1/events/:eventId/agenda/publish", role: "organizer" },
       { method: "POST", path: "/api/v1/events/:eventId/agenda/auto-schedule", role: "organizer" },
     ],
   },
@@ -131,6 +165,8 @@ const ROUTE_GROUPS: { title: string; rows: Row[] }[] = [
       { method: "POST", path: "/api/v1/submissions/:id/files", role: "organizer or submission's speaker" },
       { method: "GET", path: "/api/v1/submissions/:id/files", role: "organizer or submission's speaker" },
       { method: "POST", path: "/api/v1/submissions/:id/content-status", role: "organizer" },
+      { method: "GET", path: "/api/v1/events/:eventId/files", role: "organizer" },
+      { method: "POST", path: "/api/v1/events/:eventId/files/archive", role: "organizer" },
       { method: "GET", path: "/api/v1/files/:fileId/comments", role: "organizer or submission's speaker" },
       { method: "POST", path: "/api/v1/files/:fileId/comments", role: "organizer or submission's speaker" },
     ],
@@ -144,9 +180,12 @@ const ROUTE_GROUPS: { title: string; rows: Row[] }[] = [
       { method: "GET", path: "/api/v1/contacts/stats", role: "organizer" },
       { method: "GET", path: "/api/v1/contacts/:id", role: "organizer" },
       { method: "PATCH", path: "/api/v1/contacts/:id", role: "organizer" },
+      { method: "POST", path: "/api/v1/contacts/:id/headshot", role: "organizer" },
+      { method: "POST", path: "/api/v1/contacts/:id/add-to-event", role: "organizer" },
       { method: "POST", path: "/api/v1/contacts/import", role: "organizer" },
       { method: "POST", path: "/api/v1/contacts/merge", role: "organizer" },
       { method: "POST", path: "/api/v1/contacts/bulk-email", role: "organizer" },
+      { method: "POST", path: "/api/v1/contacts/bulk-email/preview", role: "organizer" },
       { method: "GET", path: "/api/v1/segments", role: "organizer" },
       { method: "POST", path: "/api/v1/segments", role: "organizer" },
       { method: "PATCH", path: "/api/v1/segments/:id", role: "organizer" },
