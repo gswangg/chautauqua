@@ -181,3 +181,10 @@ export const DEC_175 = "The review-lens authz probe set becomes permanent walkth
 export const DEC_176 = "Wave-7 battery protocol: frozen sha = the harness-closure merge; every gate precondition-greps the fixes and runs at that sha; triage-closure verifies sibling sections plus eval-findings closure or fails cheaply";
 export const DEC_177 = "Wave-7 lanes never executed; the DEC-176 battery protocol rebinds verbatim to wave 8 with S = the task-w8-a merge commit and gate preconditions extended to grep the DEC-173/174/175 artifacts";
 export const DEC_178 = "Waves 7 and 8 both vanished unexecuted; the DEC-176 battery protocol rebinds verbatim to wave 9 with S = the task-w9-a merge, fresh ports 8831-8833, and the dead w7/w8 branch stubs quarantined";
+export const DEC_179 = "CSV formula-injection neutralization in the single toCsv serializer";
+export const DEC_180 = "Login rate limiter counts only failed attempts; success resets the per-email window";
+export const DEC_181 = "POST /logout requires CSRF via a new csrfFormOrHeader guard; portal sign-out form carries the double-submit token";
+export const DEC_182 = "Bounded id-array validation helper applied to every bulk-ids JSON endpoint";
+export const DEC_183 = "DEV_MODE moves from wrangler.jsonc vars to a committed .dev.vars; deployable config never mounts /dev/mailbox";
+export const DEC_184 = "One-time authorized repair of committed conflict markers in docs/verification-log.md";
+export const DEC_185 = "Wave-11 battery rebinding: six gates at frozen S' containing all wave-10 fix markers";

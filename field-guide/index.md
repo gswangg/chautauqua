@@ -32,28 +32,29 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   Pipeline=pipeline_entry+activity; CNT-11=submission_revision
   snapshots; Files=previous_file_id chains; ZIP=src/lib/zip.ts
   STORE-only <=50. w5-a=only code lane, adds CI render-sweep. Workers
-  never edit eval-findings.md, verification-log.md, decisions/,
-  src/decisions.ts.
+  never edit eval-findings.md, verification-log.md, decisions/, src/decisions.ts.
 - Wave 6 (DEC-167..172): batteries drain LATE — w4-d/e/f/g+w5-a merged
   DURING wave-6 planning; render-test mocks MUST mirror real wire
   shapes (DEC-171); DEC-167 merge full profile; DEC-168 .ics
   ORGANIZER/ATTENDEE; DEC-169 form-tracks validated; DEC-170 reviewer
   file access plan-scoped; DEC-172 form-kind backing forms.
 - Waves 7+8 (DEC-173..177, BOTH VOID — never executed): planned
-  HARNESS-only fixes (anchor-tolerant selectors, seed mod-3/pending-
-  task override, authz probes) for w5-c's walkthrough FAIL; task-w7-a
-  and task-w8-a are both zero-commit branch stubs, dead, never reuse.
-- Wave 9 (DEC-178): wave 8 ALSO vanished — second consecutive wave
-  where only the scribe commit landed (tip 5d3acae). All six
-  DEC-167..172 fixes re-grep-confirmed in src; DEC-173/174/175
-  closure re-confirmed absent from scripts. DEC-178 rebinds the
-  DEC-176 battery verbatim: task-w9-a sole code lane (scripts/**
-  only, changes tagged DEC-173/174/175, validated by a full 6-module
-  walkthrough on port 8831); S = 'merge task-w9-a'; gates task-w9-b..f
-  parallel at S (build+test, walkthrough 6/6 + DEC-175 probes on
-  8832, perf-smoke on 8833, render-sweep expect 31/31, spec-audit
-  delta vs 64ec7de); w9-g triage-closure after w9-e, cheap-FAILs if
-  siblings absent. Six PASS at one S with OPEN ITEMS 0 -> next wave
-  returns zero tasks and declares stage-1 complete. Lesson
-  (twice-proven): verify wave execution via reflog + branch refs +
-  ledger tail, never wave summaries or plans.
+  HARNESS-only fixes for w5-c's walkthrough FAIL; task-w7-a/w8-a dead stubs.
+- Wave 9 (DEC-178): rebinds DEC-176 battery to task-w9-a (scripts/**
+  only, DEC-173/174/175 tags); six PASS at one S, OPEN ITEMS 0 ->
+  stage-1 complete. Lesson (repeatedly proven): verify wave execution
+  via reflog + branch refs + ledger tail, never summaries/plans.
+- Wave 10 (DEC-179..185): wave-8 battery drained LATE — w8-a closure +
+  w8-b build+test PASS + w8-e render-sweep 31/31 PASS all reached main
+  (S=38860f9); w8-c walkthrough 6/6 PASS sits UNMERGED at 2c6070b; BUT
+  the w8-b merge committed raw conflict markers into
+  docs/verification-log.md (DEC-184 one-time repair, task-w10-f). Five
+  NEW verified product defects fixed this wave: DEC-179 CSV
+  formula-escape in formatCell; DEC-180 login limiter counts only
+  failures + success resets email budget; DEC-181 csrfFormOrHeader on
+  POST /logout + portal token; DEC-182 parseBoundedIdArray (64-char
+  elements, 1000 cap) on all five bulk-ids routes; DEC-183 DEV_MODE
+  moved to committed .dev.vars. Code-bearing wave -> DEC-185: wave 11
+  runs the full six-gate battery at S' = first-parent main sha grepping
+  all DEC-177 anchors PLUS DEC-179..183 markers; 38860f9 results are
+  historical only. Always check merges for committed conflict markers.
