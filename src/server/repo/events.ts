@@ -6,6 +6,11 @@ import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { newId } from "../../domain/ids";
 import { ApiError } from "../http";
+import { findFormForEvent } from "./forms";
+import { listPlansForEvent, listReviewerRowsForPlan } from "./review";
+import { DEC_229 } from "../../decisions";
+
+void DEC_229; // deleteTrack's referential guard extends to forms/plans/plan_reviewer -- see below
 
 export interface EventBranding {
   logoUrl?: string;
@@ -282,6 +287,28 @@ export async function deleteTrack(db: Db, trackId: string, eventId: string): Pro
     .limit(1);
   if (joinRefs.length > 0) {
     throw new ApiError("conflict", "Track is referenced by one or more submissions");
+  }
+
+  // DEC-229: never cascade -- also reject when a form's tracks_json, a
+  // plan's filters_json track filter, or a plan_reviewer track scope still
+  // names this track. Reuse the canonical parsed shapes from forms.ts /
+  // review.ts rather than re-parsing the raw JSON columns here.
+  const form = await findFormForEvent(db, eventId);
+  if (form && form.tracks && form.tracks.includes(trackId)) {
+    throw new ApiError("conflict", "Track is referenced by a form's track selection");
+  }
+
+  const plans = await listPlansForEvent(db, eventId);
+  const filterPlan = plans.find((p) => p.filters?.trackIds?.includes(trackId));
+  if (filterPlan) {
+    throw new ApiError("conflict", "Track is referenced by an evaluation plan's track filter");
+  }
+
+  for (const plan of plans) {
+    const reviewers = await listReviewerRowsForPlan(db, plan.id);
+    if (reviewers.some((r) => r.trackId === trackId)) {
+      throw new ApiError("conflict", "Track is referenced by a reviewer's track scope");
+    }
   }
 
   await db.delete(schema.track).where(eq(schema.track.id, trackId));
