@@ -131,6 +131,40 @@ describe("toCsv", () => {
   it("stringifies numeric cells", () => {
     expect(toCsv([[1, 2.5, -3]])).toBe("1,2.5,-3");
   });
+
+  describe("DEC-179 formula injection neutralization", () => {
+    it("prefixes an apostrophe on a leading =", () => {
+      expect(toCsv([["=SUM(A1)"]])).toBe("'=SUM(A1)");
+    });
+
+    it("prefixes an apostrophe on a leading +", () => {
+      expect(toCsv([["+1 (555) 0100"]])).toBe("'+1 (555) 0100");
+    });
+
+    it("prefixes an apostrophe on a leading -", () => {
+      expect(toCsv([["-foo"]])).toBe("'-foo");
+    });
+
+    it("prefixes an apostrophe on a leading @", () => {
+      expect(toCsv([["@cmd"]])).toBe("'@cmd");
+    });
+
+    it("prefixes an apostrophe on a leading tab", () => {
+      expect(toCsv([["\tfoo"]])).toBe("'\tfoo");
+    });
+
+    it("prefixes an apostrophe on a leading CR", () => {
+      expect(toCsv([["\rfoo"]])).toBe('"\'\rfoo"');
+    });
+
+    it("neutralizes and quotes a formula cell that also needs quoting", () => {
+      expect(toCsv([["=a,b"]])).toBe('"\'=a,b"');
+    });
+
+    it("leaves negative numeric cells unchanged", () => {
+      expect(toCsv([[-42]])).toBe("-42");
+    });
+  });
 });
 
 describe("mapColumns", () => {
