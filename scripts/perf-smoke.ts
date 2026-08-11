@@ -145,7 +145,12 @@ async function timeCheck(check: TimedCheck): Promise<number[] | null> {
     if (!res.ok) {
       throw new Error(`${check.name} failed during warmup: ${res.status}`);
     }
-    await res.arrayBuffer();
+    // Some checks (the .ics/HTML-body assertions) already fully drain the
+    // response via res.clone() inside their own run(); guard against
+    // double-draining the original body (observed under Node 24's undici as
+    // a "Body is unusable: Body has already been read" TypeError on larger
+    // response bodies) rather than unconditionally reading again.
+    if (!res.bodyUsed) await res.arrayBuffer();
   }
 
   const samples: number[] = [];
@@ -155,7 +160,12 @@ async function timeCheck(check: TimedCheck): Promise<number[] | null> {
     if (!res.ok) {
       throw new Error(`${check.name} failed during measurement: ${res.status}`);
     }
-    await res.arrayBuffer();
+    // Some checks (the .ics/HTML-body assertions) already fully drain the
+    // response via res.clone() inside their own run(); guard against
+    // double-draining the original body (observed under Node 24's undici as
+    // a "Body is unusable: Body has already been read" TypeError on larger
+    // response bodies) rather than unconditionally reading again.
+    if (!res.bodyUsed) await res.arrayBuffer();
     samples.push(performance.now() - start);
   }
   return samples;
@@ -215,7 +225,12 @@ async function measureOverheadFloor(): Promise<number> {
     if (!res.ok) {
       throw new Error(`measureOverheadFloor: GET /health failed: ${res.status}`);
     }
-    await res.arrayBuffer();
+    // Some checks (the .ics/HTML-body assertions) already fully drain the
+    // response via res.clone() inside their own run(); guard against
+    // double-draining the original body (observed under Node 24's undici as
+    // a "Body is unusable: Body has already been read" TypeError on larger
+    // response bodies) rather than unconditionally reading again.
+    if (!res.bodyUsed) await res.arrayBuffer();
     samples.push(performance.now() - start);
   }
   return computePercentile(samples, 0.5);
@@ -312,7 +327,6 @@ async function main(): Promise<void> {
       name: "event overview",
       cls: "read",
       run: () => fetch(`${PERF_URL}/api/v1/events/${PERF_EVENT_ID}/overview`, { headers }),
-      optional: true,
     },
     {
       name: "organizer agenda (300 accepted)",
@@ -444,6 +458,27 @@ async function main(): Promise<void> {
           },
           body: JSON.stringify({ scores: { overall: 4 } }),
         }),
+    },
+    {
+      // task-w18-d: DEC-338 — onboarding grid at perf scale (800 speakers x
+      // 5 tasks = 4,000 task_assignment rows), a hot admin screen previously
+      // untimed by this harness.
+      name: "onboarding grid (800 speakers x 5 tasks)",
+      cls: "read",
+      run: () => fetch(`${PERF_URL}/api/v1/events/${PERF_EVENT_ID}/onboarding`, { headers }),
+    },
+    {
+      // task-w18-d: DEC-338 — reviewer queue against the DEC-088 12-reviewer/
+      // 600-evaluation seed, using the reviewer cookies already built above.
+      name: "reviewer queue",
+      cls: "read",
+      run: () => fetch(`${PERF_URL}/api/v1/review/plans/${PERF_PLAN_ID}/queue`, { headers: reviewerHeaders }),
+    },
+    {
+      // task-w18-d: DEC-338 — email log list at perf scale (5,000 rows).
+      name: "email log list (page 1)",
+      cls: "read",
+      run: () => fetch(`${PERF_URL}/api/v1/events/${PERF_EVENT_ID}/email-log?page=1&perPage=50`, { headers }),
     },
   ];
 

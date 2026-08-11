@@ -216,3 +216,86 @@ export function slotPlacementForAccepted(j: number): PerfSlotPlacement {
   const roomIndex = j % PERF_ROOM_COUNT;
   return { day, startMin, endMin, roomIndex };
 }
+
+// --------------------------------------------------------------------------
+// DEC-338 (companion to DEC-331): the three hot admin screens nobody
+// measures — onboarding grid, reviewer queue (already covered by
+// PERF_EVALUATION_COUNT above), and email log — need seeded rows at scale
+// too. Onboarding tasks and their per-contact assignments, plus a large
+// email_log table spread across a real trailing-30-day window so the
+// email-log route's default 7-day filter is a strict, non-trivial subset.
+
+/** 5 onboarding tasks for the perf event, one of them a file_request (the
+ * kind that also drives Files-library/worklist counts, mirroring
+ * scripts/seed.ts's deliverable_kind convention). */
+export const PERF_TASK_COUNT = 5;
+
+/** task_assignment rows: PERF_TASK_COUNT tasks x PERF_CONTACT_COUNT contacts. */
+export const PERF_TASK_ASSIGNMENT_COUNT = PERF_TASK_COUNT * PERF_CONTACT_COUNT;
+
+export interface PerfTaskSpec {
+  kind: "general" | "file_request";
+  title: string;
+  deliverableKind: "presentation" | null;
+}
+
+/** Fixed 5-task set (0-based index i in [0, PERF_TASK_COUNT)); task index 0
+ * is the sole file_request task, matching scripts/seed.ts's one-file-
+ * request-task convention. */
+export const PERF_TASKS: readonly PerfTaskSpec[] = [
+  { kind: "file_request", title: "Finalize bio + headshot", deliverableKind: "presentation" },
+  { kind: "general", title: "Confirm travel details", deliverableKind: null },
+  { kind: "general", title: "Submit AV requirements", deliverableKind: null },
+  { kind: "general", title: "Review session abstract", deliverableKind: null },
+  { kind: "general", title: "Announce participation", deliverableKind: null },
+];
+
+if (PERF_TASKS.length !== PERF_TASK_COUNT) {
+  throw new Error(`PERF_TASKS must have exactly ${PERF_TASK_COUNT} entries, got ${PERF_TASKS.length}`);
+}
+
+/**
+ * Deterministic pending/complete split for the (taskIndex, contactIndex)
+ * pair, both 0-based: index-modulo mixed the same way scripts/seed.ts mixes
+ * its own onboarding grid (contactIdx + taskIdx) % 3 !== 0 => complete, so
+ * every task/contact pair spreads evenly across both statuses rather than
+ * every assignment landing in one bucket.
+ */
+export function isTaskAssignmentComplete(taskIndex: number, contactIndex: number): boolean {
+  if (!Number.isInteger(taskIndex) || taskIndex < 0) {
+    throw new Error(`isTaskAssignmentComplete: taskIndex must be a non-negative integer, got ${taskIndex}`);
+  }
+  if (!Number.isInteger(contactIndex) || contactIndex < 0) {
+    throw new Error(`isTaskAssignmentComplete: contactIndex must be a non-negative integer, got ${contactIndex}`);
+  }
+  return (taskIndex + contactIndex) % 3 !== 0;
+}
+
+/** 5,000 email_log rows for the perf event, spread across the last 30 days
+ * (from a fixed `now`) so the email-log route's default trailing-7-day
+ * filter is a strict, realistically-sized subset of the full table. */
+export const PERF_EMAIL_LOG_COUNT = 5000;
+
+/** Number of the 30 trailing days considered "within the last 7 days" of `now`. */
+export const PERF_EMAIL_LOG_RECENT_WINDOW_DAYS = 7;
+export const PERF_EMAIL_LOG_SPREAD_DAYS = 30;
+
+/**
+ * Deterministic sent_at (ms epoch) for the n-th (0-based) email_log row,
+ * index-modulo across PERF_EMAIL_LOG_SPREAD_DAYS trailing days ending at
+ * `nowMs` (inclusive of day 0 = most recent), so the resulting rows spread
+ * evenly across the whole window rather than clustering at one instant.
+ */
+export function sentAtForEmailLogRow(n: number, nowMs: number): number {
+  if (!Number.isInteger(n) || n < 0) {
+    throw new Error(`sentAtForEmailLogRow: n must be a non-negative integer, got ${n}`);
+  }
+  if (!Number.isInteger(nowMs) || nowMs < 0) {
+    throw new Error(`sentAtForEmailLogRow: nowMs must be a non-negative integer, got ${nowMs}`);
+  }
+  const dayOffset = n % PERF_EMAIL_LOG_SPREAD_DAYS; // 0..29 days back
+  const minuteOfDay = (n * 7) % (24 * 60); // spreads within the day too
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  const MINUTE_MS = 60 * 1000;
+  return nowMs - dayOffset * DAY_MS - minuteOfDay * MINUTE_MS;
+}

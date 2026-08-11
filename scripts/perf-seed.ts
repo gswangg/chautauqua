@@ -23,6 +23,7 @@ import { insertStmt, seedId } from "./seed-lib";
 import {
   PERF_ANSWERS_PER_SUBMISSION,
   PERF_CONTACT_COUNT,
+  PERF_EMAIL_LOG_COUNT,
   PERF_EVALUATION_COUNT,
   PERF_EVENT_ID,
   PERF_EVENT_SLUG,
@@ -31,10 +32,14 @@ import {
   PERF_REVIEWER_PASSWORD,
   PERF_ROOM_COUNT,
   PERF_SUBMISSION_COUNT,
+  PERF_TASK_COUNT,
+  PERF_TASKS,
   PERF_TRACK_COUNT,
   contactIndexForSubmission,
+  isTaskAssignmentComplete,
   perfReviewerEmail,
   perfSubmissionStatuses,
+  sentAtForEmailLogRow,
   slotPlacementForAccepted,
   topicForSubmission,
   trackIndexForSubmission,
@@ -76,6 +81,11 @@ async function main(): Promise<void> {
   statements.push(`DELETE FROM participant WHERE submission_id LIKE 'seed_perf_%';`);
   statements.push(`DELETE FROM submission WHERE event_id = 'seed_perf_event';`);
   statements.push(`DELETE FROM track WHERE event_id = 'seed_perf_event';`);
+  // DEC-338: task_assignment (children) before task (parent), email_log is
+  // its own leaf table — both scoped to the perf id namespace/event.
+  statements.push(`DELETE FROM task_assignment WHERE task_id LIKE 'seed_perf_%';`);
+  statements.push(`DELETE FROM task WHERE event_id = 'seed_perf_event';`);
+  statements.push(`DELETE FROM email_log WHERE event_id = 'seed_perf_event';`);
   statements.push(`DELETE FROM contact WHERE id LIKE 'seed_perf_%';`);
   statements.push(`DELETE FROM event WHERE id = 'seed_perf_event';`);
   statements.push(`DELETE FROM user WHERE id LIKE 'seed_perf_%';`);
@@ -326,6 +336,83 @@ async function main(): Promise<void> {
         submitted_at: nextTs(),
         created_at: nextTs(),
         updated_at: ts,
+      }),
+    );
+  }
+
+  // --- DEC-338: 5 onboarding tasks (one file_request) with a task_assignment
+  // for every one of the 800 contacts (4,000 assignments total), mixed
+  // pending/complete by index modulo — the onboarding grid's realistic scale
+  // (800 speakers x 5 tasks), which nothing exercised before this ---
+  const taskIds: string[] = [];
+  for (let i = 0; i < PERF_TASK_COUNT; i++) {
+    const spec = PERF_TASKS[i]!;
+    const taskId = seedId("perf_task", i + 1);
+    taskIds.push(taskId);
+    statements.push(
+      insertStmt("task", {
+        id: taskId,
+        event_id: PERF_EVENT_ID,
+        kind: spec.kind,
+        title: spec.title,
+        description: null,
+        due_date: null,
+        required: false,
+        form_id: null,
+        deliverable_kind: spec.deliverableKind,
+        created_at: nextTs(),
+        updated_at: ts,
+      }),
+    );
+  }
+
+  let taskAssignmentCounter = 0;
+  for (let taskIdx = 0; taskIdx < PERF_TASK_COUNT; taskIdx++) {
+    const taskId = taskIds[taskIdx]!;
+    for (let contactIdx = 0; contactIdx < PERF_CONTACT_COUNT; contactIdx++) {
+      taskAssignmentCounter += 1;
+      const contactId = contactIds[contactIdx]!;
+      const isComplete = isTaskAssignmentComplete(taskIdx, contactIdx);
+      statements.push(
+        insertStmt("task_assignment", {
+          id: seedId("perf_task_assignment", taskAssignmentCounter),
+          task_id: taskId,
+          contact_id: contactId,
+          status: isComplete ? "complete" : "pending",
+          completed_at: isComplete ? nextTs() : null,
+          completed_by: null,
+          response_json: null,
+          file_id: null,
+          last_reminded_at: null,
+          created_at: nextTs(),
+          updated_at: ts,
+        }),
+      );
+    }
+  }
+
+  // --- DEC-338: 5,000 email_log rows for the perf event, sent_at spread
+  // across the last 30 days so the email-log route's default trailing-7-day
+  // filter is a strict, non-trivial subset of the full table ---
+  const emailLogNowMs = Date.UTC(2027, 6, 1, 0, 0, 0);
+  for (let n = 0; n < PERF_EMAIL_LOG_COUNT; n++) {
+    const contactId = contactIds[n % contactIds.length]!;
+    statements.push(
+      insertStmt("email_log", {
+        id: seedId("perf_email_log", n + 1),
+        event_id: PERF_EVENT_ID,
+        template_id: null,
+        contact_id: contactId,
+        to_email: `perf.contact.${(n % contactIds.length) + 1}@example-perf.test`,
+        subject: `Perf harness email ${n + 1}`,
+        body_text: `Synthetic perf-harness email body #${n + 1}.`,
+        body_html: null,
+        ics_text: null,
+        ics_filename: null,
+        provider: "dev",
+        status: "sent",
+        sent_at: sentAtForEmailLogRow(n, emailLogNowMs),
+        created_at: emailLogNowMs,
       }),
     );
   }
