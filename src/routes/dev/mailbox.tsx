@@ -41,35 +41,39 @@ function MailboxListPage(props: {
     <html lang="en">
       <head>
         <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>Dev mailbox - Chautauqua</title>
+        <style>{`.table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; } table { border-collapse: collapse; min-width: 100%; }`}</style>
       </head>
       <body>
         <h1>Dev mailbox</h1>
         <p>{total} message(s) — page {page}</p>
-        <table>
-          <thead>
-            <tr>
-              <th>Recipient</th>
-              <th>Subject</th>
-              <th>Status</th>
-              <th>Sent</th>
-              <th>Event</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
+        <div class="table-scroll">
+          <table>
+            <thead>
               <tr>
-                <td>{row.toEmail}</td>
-                <td>
-                  <a href={`/dev/mailbox/${row.id}`}>{row.subject}</a>
-                </td>
-                <td>{row.status}</td>
-                <td>{formatSentAt(row.sentAt)}</td>
-                <td>{row.eventName}</td>
+                <th>Recipient</th>
+                <th>Subject</th>
+                <th>Status</th>
+                <th>Sent</th>
+                <th>Event</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr>
+                  <td>{row.toEmail}</td>
+                  <td>
+                    <a href={`/dev/mailbox/${row.id}`}>{row.subject}</a>
+                  </td>
+                  <td>{row.status}</td>
+                  <td>{formatSentAt(row.sentAt)}</td>
+                  <td>{row.eventName}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
         <nav>
           {hasPrev ? <a href={`/dev/mailbox?page=${page - 1}`}>Newer</a> : null}{" "}
           {hasNext ? <a href={`/dev/mailbox?page=${page + 1}`}>Older</a> : null}
@@ -85,7 +89,9 @@ function MailboxDetailPage(props: { row: NonNullable<Awaited<ReturnType<typeof g
     <html lang="en">
       <head>
         <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>{row.subject} - Dev mailbox - Chautauqua</title>
+        <style>{`pre { overflow-x: auto; white-space: pre-wrap; overflow-wrap: anywhere; }`}</style>
       </head>
       <body>
         <p>

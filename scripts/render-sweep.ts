@@ -77,6 +77,8 @@ export const MOBILE_ROUTE_MANIFEST: readonly MobileRouteEntry[] = [
   { path: `/embed/${MOBILE_EVENT_SLUG}/speakers`, role: "public" },
   { path: "/login", role: "public" },
   { path: "/portal", role: "speaker" },
+  { path: "/docs/api", role: "public" },
+  { path: "/dev/mailbox", role: "public" },
 ] as const;
 
 /** Selector list for "primary nav/filter/submit controls" (DEC-253): surface

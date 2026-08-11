@@ -239,7 +239,7 @@ function DocsPage() {
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>Chautauqua API docs</title>
-        <style>{`body { font-family: system-ui, sans-serif; margin: 0; color: #1a1a1a; } main { max-width: 900px; margin: 2rem auto; padding: 0 1rem 3rem; } h2 { margin-top: 2.5rem; border-bottom: 1px solid #ddd; padding-bottom: 0.25rem; } table { border-collapse: collapse; width: 100%; margin-top: 0.5rem; } th, td { text-align: left; padding: 0.35rem 0.6rem; border-bottom: 1px solid #eee; font-size: 0.92rem; } code, pre { background: #f4f4f4; padding: 0.1rem 0.35rem; border-radius: 3px; font-size: 0.92rem; } pre { padding: 0.75rem; overflow-x: auto; }`}</style>
+        <style>{`body { font-family: system-ui, sans-serif; margin: 0; color: #1a1a1a; } main { max-width: 900px; margin: 2rem auto; padding: 0 1rem 3rem; } h2 { margin-top: 2.5rem; border-bottom: 1px solid #ddd; padding-bottom: 0.25rem; } .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; } table { border-collapse: collapse; width: 100%; min-width: 100%; margin-top: 0.5rem; } th, td { text-align: left; padding: 0.35rem 0.6rem; border-bottom: 1px solid #eee; font-size: 0.92rem; } td code { overflow-wrap: anywhere; } code, pre { background: #f4f4f4; padding: 0.1rem 0.35rem; border-radius: 3px; font-size: 0.92rem; } pre { padding: 0.75rem; overflow-x: auto; }`}</style>
       </head>
       <body>
         <main>
@@ -282,26 +282,28 @@ function DocsPage() {
           {ROUTE_GROUPS.map((group) => (
             <section>
               <h2>{group.title}</h2>
-              <table>
-                <thead>
-                  <tr>
-                    <th>Method</th>
-                    <th>Path</th>
-                    <th>Role</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {group.rows.map((row) => (
+              <div class="table-scroll">
+                <table>
+                  <thead>
                     <tr>
-                      <td>{row.method}</td>
-                      <td>
-                        <code>{row.path}</code>
-                      </td>
-                      <td>{row.role}</td>
+                      <th>Method</th>
+                      <th>Path</th>
+                      <th>Role</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {group.rows.map((row) => (
+                      <tr>
+                        <td>{row.method}</td>
+                        <td>
+                          <code>{row.path}</code>
+                        </td>
+                        <td>{row.role}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </section>
           ))}
         </main>
