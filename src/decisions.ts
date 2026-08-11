@@ -276,3 +276,9 @@ export const DEC_270 = "Wave 6 is the exit battery and nothing else; the PLANNER
 export const DEC_271 = "Reviewer conflict-of-interest / recusal (rubric ABS-12): a review_recusal row, a control in the scoring view, exclusion from the actionable queue, and honest organizer progress math";
 export const DEC_272 = "ABS-14 (AI-assisted triage) is formally WAIVED for stage 1 and may not be listed as an open item again";
 export const DEC_273 = "'unreviewed -> approve/maybe/deny' is a reviewer RECOMMENDATION expressed as a scorecard criterion, never a sixth submission-status literal; the seeded demo says the customer's words";
+export const DEC_274 = "Public visibility is TWO predicates, not one: visibleSessionConditions (accepted + content-approved) gates sessions, visibleParticipantConditions (visible + invite-state) gates speakers, and session-rooted queries stop inner-joining participant";
+export const DEC_275 = "cloneSubmission copies ACTIVE participants (invite_status none|accepted) as invite_status 'none'; a participant-less submission is a legitimate TBA session and acceptance planning is a documented no-op for it";
+export const DEC_276 = "Bearer API tokens re-resolve the minting user on every request: existence + role='organizer' + org match, or the token does not authenticate";
+export const DEC_277 = "A schedule slot's day must lie inside the event date range at write time; an out-of-range placement reads as UNSCHEDULED in the agenda payload, and the wire shape does not change";
+export const DEC_278 = "Onboarding auto-creation fires at the LAST of (submission accepted, participant becomes active); one idempotent ensureOnboardingTasks with three call sites; 'invited' and 'declined' participants are excluded";
+export const DEC_279 = "Wave 6 is a defect-fix wave; the eight-section exit battery moves to wave 7, the first wave whose planner emits zero product tasks (re-points DEC-270's wave number, keeps its declaration protocol verbatim)";

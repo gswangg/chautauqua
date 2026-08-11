@@ -19,43 +19,40 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   DEC-016 locked=real cols; DEC-114 sha rule; DEC-129 homonym guard = full heading incl '@ <sha>'.
 - Wave3-251 (Campaign1-3, ultra-compact): sub-apps/repos/ctx DEC-012/013/019;
   uploads/ics/statuses/perf/headshots/walkthrough/claim DEC-040-074;
-  DEC-068/069 log+exit predicate; DEC-139 exit battery+render-sweep+findings
-  closure; criteriaForRound sole resolution (DEC-147..178); CRM=SegmentRule[]
-  +'any'; Files=previous_file_id chains; DEC-179-231 CSV formula-escape/
-  login-limiter/lowercase+ci-dup emails/password-free SSR/checkbox===true/
-  deleteTrack 409 cascades; DEC-232-236 FROZEN f01459a w27 6/6 (reopened) —
-  batteries drain LATE, recheck reflog, grep-code-not-prose, workers never
-  edit eval-findings.md/decisions/. DEC-237-251 post-prod: render-sweep
-  misses SPA-vs-route KEY mismatches (DEC-239 contract tests, types.ts=
-  contract DEC-246); DEC-237 PBKDF2 100k; DEC-240 supersedes DEC-029
-  (deliverable_kind chain, DEC-248 widens serve pop); DEC-242/244 portal
-  self-service CHAIN-LATEST; DEC-243/249 Tracks/Format col+allowlist;
-  DEC-245 SSR confirms; DEC-247 flat {items}. DEC-250 FREEZES c211d4c ended
-  5/6 (DEC-252 bug); DEC-251 Section D (D1-D4+D6 fixed, WAIVED rest). Human
+  exit battery+render-sweep+findings closure DEC-068/069/139; criteriaForRound
+  sole resolution (DEC-147..178); CRM=SegmentRule[]+'any'; Files=
+  previous_file_id chains; DEC-179-231 CSV/login-limiter/email-ci-dup/SSR/
+  checkbox/cascades; DEC-232-251 post-prod hardening: batteries drain LATE
+  (recheck reflog, grep-code-not-prose, workers never edit eval-findings.md/
+  decisions/), render-sweep misses SPA-vs-route KEY mismatches (contract
+  tests, types.ts=contract), PBKDF2 100k, deliverable_kind chain, portal
+  self-service CHAIN-LATEST, Tracks/Format allowlist, flat {items}. Human
   committed stage-2 (mailer, Airtable cron) — leave alone.
-- Campaign-2 w1/w2 (DEC-252..257, compact): DEC-252 fix src/server/origin.ts
-  resolveBaseUrl + RELATIVE hrefs. DEC-253 mobile 390x844 zero h-overflow.
-  DEC-254 persona lanes log task-w1-<x>. DEC-255 superseded by DEC-256/262
-  (freeze protocol, see below). 8 sections a-h incl g fresh-clone bootstrap
-  (DEC-257, README-verbatim 8787), h=116 rubric ids -> file:line+test.
-- Campaign-2 w4 (DEC-262..267, compact): w2 battery 6/8 (b/c/d PASS,
-  a/e/f FAIL drift+2defects, g/h never ran). DEC-262 quiescence+worktree
-  verify. DEC-266 contact q=AND-tokens x OR-columns, pure fns src/domain/
-  contacts.ts (repo layer NO real-D1 harness, only fakeDb). DEC-267 every
-  *_id indexed via getTableConfig; DEC-263 migrations hand-authored,
-  db:generate DELETED, parity via migration-parity.test.ts.
-- Campaign-2 w5 (DEC-268..273) @ main=73042c3+. VERIFIED all four w4 fixes
-  LANDED (participants.ts:106,170; contacts.ts:229,245; migration 0016+
-  schema-fk-indexes.test.ts; db:generate gone+migration-parity.test.ts).
-  Battery g/h landed LATE as task-w2-g/h. DEC-269: g's off-origin-claim-link
-  finding is STALE - lane froze at 2682c43, a PREVIOUS-campaign commit;
-  resolveBaseUrl live at submit.tsx:580, comms.ts:267, contacts.ts:609/661.
-  DEC-268: fresh clone never builds public/admin (gitignored, absent from
-  Quickstart+render-sweep boot) -> /admin 404s empty; predev+render-sweep
-  now vite-build, shell fetch fails loudly. DEC-271=ABS-12 recusal (only
-  real rubric gap of 116); DEC-272 WAIVES ABS-14 (rubric's own N/A clause +
-  zero-secret stage1). DEC-273: approve/maybe/deny = reviewer RECOMMENDATION
-  (seeded dropdown), never a 6th status. DEC-270: wave 6 = battery ONLY,
-  PLANNER names the 40-char frozen sha - lanes derived it wrong 3x, once
-  from another campaign. New route/table tripwires (all test/): docs-route-
-  coverage, spa-contract-sweep, schema-fk-indexes, migration-parity.
+- Campaign-2 w1/w2 (DEC-252..257): resolveBaseUrl+RELATIVE hrefs; mobile
+  390x844 zero h-overflow; 8 sections a-h incl g fresh-clone bootstrap
+  (README-verbatim), h=116 rubric ids -> file:line+test.
+- Campaign-2 w4 (DEC-262..267): w2 battery 6/8. Quiescence+worktree verify.
+  Contact q=AND-tokens x OR-columns, pure fns src/domain/contacts.ts (repo
+  layer NO real-D1 harness, only fakeDb). Every *_id indexed via
+  getTableConfig; migrations hand-authored, db:generate DELETED, parity test.
+- Campaign-2 w5 (DEC-268..273) @ main=73042c3+: all four w4 fixes LANDED.
+  Fresh clone never builds public/admin (gitignored) -> /admin 404s empty;
+  predev+render-sweep now vite-build. DEC-271=ABS-12 recusal; DEC-272 WAIVES
+  ABS-14; DEC-273 approve/maybe/deny = reviewer RECOMMENDATION, never a 6th
+  status. DEC-270: wave 6 = battery ONLY, PLANNER names the 40-char frozen
+  sha. Tripwires (test/): docs-route-coverage, spa-contract-sweep,
+  schema-fk-indexes, migration-parity.
+- Campaign-2 w6 (DEC-274..279) @ main=ade5aa7: wave 5 STILL IN FLIGHT (only
+  task-w5-a merged; recusal SPA files present but migration 0017 +
+  schema.reviewRecusal NOT). DEC-279 re-points DEC-270's battery to first
+  ZERO-product-task wave (w7); protocol unchanged/binding. DEC-274 public
+  gates SPLIT: visibleSessionConditions (accepted+content-approved) vs
+  visibleParticipantConditions (visible+invite); session queries drop
+  mandatory innerJoin(participant), EMB-02 search -> gated leftJoin,
+  speakerless sessions render speakers:[]. DEC-275 clone copies ACTIVE
+  participants only, reset invite 'none'. DEC-276 bearer auth re-resolves
+  minting user every request (exists+role=organizer+org match), no expiry
+  col. DEC-277 slot day must be in event range on WRITE; out-of-range reads
+  unscheduled, counts in summary.unplaced, payload shape frozen. DEC-278
+  ensureOnboardingTasks fires at LAST of (accepted, participant active);
+  invited/declined excluded; ACTIVE_INVITE_STATUSES twin of DEC-274 SQL gate.
