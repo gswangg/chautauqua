@@ -130,4 +130,44 @@ describe("migration parity", () => {
 
     expect(missing, `columns/tables in schema.ts with no creating migration:\n${missing.join("\n")}`).toEqual([]);
   });
+
+  it("every index declared in src/db/schema.ts is created by some migration (DEC-337)", () => {
+    // Collect declared index names via getTableConfig(table).indexes; each
+    // entry exposes its configured name at .config.name under drizzle-orm
+    // 0.45.x.
+    const declared: string[] = [];
+    for (const exportName of Object.keys(schema)) {
+      const candidate = (schema as Record<string, unknown>)[exportName];
+      let config: ReturnType<typeof getTableConfig>;
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        config = getTableConfig(candidate as any);
+      } catch {
+        continue;
+      }
+      if (!config || !config.name || !Array.isArray(config.indexes)) continue;
+      for (const idx of config.indexes) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const name = (idx as any).config?.name ?? (idx as any).name;
+        if (name) declared.push(name);
+      }
+    }
+    expect(declared.length, "expected at least one declared index in schema.ts").toBeGreaterThan(0);
+
+    // Collect every index name created by CREATE INDEX / CREATE UNIQUE INDEX
+    // across migrations/*.sql, tolerant of backticks/quotes and IF NOT EXISTS.
+    const created = new Set<string>();
+    const files = readdirSync(MIGRATIONS_DIR).filter((f) => f.endsWith(".sql"));
+    const indexRe = /CREATE\s+(?:UNIQUE\s+)?INDEX\s+(?:IF NOT EXISTS\s+)?([`"'\w]+)/gi;
+    for (const file of files) {
+      const sql = readFileSync(join(MIGRATIONS_DIR, file), "utf8");
+      let m: RegExpExecArray | null;
+      while ((m = indexRe.exec(sql)) !== null) {
+        created.add(unquote(m[1]!));
+      }
+    }
+
+    const missing = declared.filter((name) => !created.has(name));
+    expect(missing, `indexes in schema.ts with no creating migration:\n${missing.join("\n")}`).toEqual([]);
+  });
 });
