@@ -118,7 +118,7 @@ function TaskFormPage(props: {
 }) {
   const { branding, assignment, fields, answers, csrfToken, errors } = props;
   return (
-    <PortalLayout branding={branding}>
+    <PortalLayout branding={branding} csrfToken={csrfToken}>
       <a href="/portal/tasks">&larr; Back to My Tasks</a>
       <h2>{assignment.title}</h2>
       {assignment.description ? <p>{assignment.description}</p> : null}
@@ -142,7 +142,7 @@ function TasksPage(props: {
 }) {
   const { branding, assignments, csrfToken, formLinkFor, errorFor } = props;
   return (
-    <PortalLayout branding={branding}>
+    <PortalLayout branding={branding} csrfToken={csrfToken}>
       <a href="/portal">&larr; Back to Dashboard</a>
       <h2>My Tasks</h2>
       {assignments.length === 0 ? (
@@ -171,10 +171,11 @@ function TasksPage(props: {
 function ResourcesPage(props: {
   branding: PortalBrandingChrome;
   groups: Awaited<ReturnType<typeof getMyResources>>;
+  csrfToken: string;
 }) {
-  const { branding, groups } = props;
+  const { branding, groups, csrfToken } = props;
   return (
-    <PortalLayout branding={branding}>
+    <PortalLayout branding={branding} csrfToken={csrfToken}>
       <a href="/portal">&larr; Back to Dashboard</a>
       <h2>Resources</h2>
       {groups.length === 0 ? (
@@ -390,7 +391,9 @@ portalTasksRoutes.get("/resources", async (c) => {
     getPortalData(c.var.db, contactId, auth.orgId),
     getMyResources(c.var.db, contactId, auth.orgId),
   ]);
-  return c.html(<ResourcesPage branding={data.branding} groups={groups} />);
+  const { token: csrfToken, setCookieIfNew } = ensureCsrfCookie(c);
+  if (setCookieIfNew) c.header("Set-Cookie", setCookieIfNew, { append: true });
+  return c.html(<ResourcesPage branding={data.branding} groups={groups} csrfToken={csrfToken} />);
 });
 
 portalTasksRoutes.get("/resources/:resourceId/download", async (c) => {

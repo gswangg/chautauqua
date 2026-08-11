@@ -58,7 +58,7 @@ function PortalPage(props: { data: PortalData; sessions: PortalSession[]; invita
   const { branding, submissions, tasks } = props.data;
   const { sessions, invitations, csrfToken } = props;
   return (
-    <PortalLayout branding={branding}>
+    <PortalLayout branding={branding} csrfToken={csrfToken}>
       <Nav />
       <section aria-label="My Submissions">
         <h2>My Submissions</h2>
@@ -179,10 +179,11 @@ function SubmissionDetailPage(props: {
   branding: PortalData["branding"];
   detail: PortalSubmissionDetail;
   editable: boolean;
+  csrfToken: string;
 }) {
   const { detail, editable } = props;
   return (
-    <PortalLayout branding={props.branding}>
+    <PortalLayout branding={props.branding} csrfToken={props.csrfToken}>
       <a href="/portal">&larr; Back to My Submissions</a>
       <h2>
         {detail.ref}: {detail.title}
@@ -236,7 +237,9 @@ portalRoutes.get("/submissions/:id", async (c) => {
   // editable (accepted, or the form window is open).
   const editData = await loadEditableSubmission(c.var.db, contactId, id);
   const editable = editData ? canEditSubmission(editData.submission.status, editData.form.closeDate, Date.now()) : false;
-  return c.html(<SubmissionDetailPage branding={data.branding} detail={detail} editable={editable} />);
+  const { token: csrfToken, setCookieIfNew } = ensureCsrfCookie(c);
+  if (setCookieIfNew) c.header("Set-Cookie", setCookieIfNew, { append: true });
+  return c.html(<SubmissionDetailPage branding={data.branding} detail={detail} editable={editable} csrfToken={csrfToken} />);
 });
 
 // POST /portal/invitations/:participantId { action: 'accept'|'decline' } —

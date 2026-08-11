@@ -258,3 +258,26 @@ export const csrfForm: MiddlewareHandler<AppEnv> = async (c, next) => {
 export function checkDoubleSubmitCsrf(cookieToken: string | undefined, formToken: unknown): boolean {
   return typeof cookieToken === "string" && cookieToken.length > 0 && formToken === cookieToken;
 }
+
+// DEC-181
+/** Accepts either the JSON-style 'x-chq-csrf: 1' header (used by the admin
+ * SPA's fetch-based sign-out) or the plain-form double-submit rule (used by
+ * server-rendered portal/auth sign-out forms). Closes the /logout CSRF hole
+ * without forcing every caller onto one shape. */
+export const csrfFormOrHeader: MiddlewareHandler<AppEnv> = async (c, next) => {
+  if (c.req.header(CSRF_HEADER) === "1") {
+    await next();
+    return;
+  }
+  const cookies = parseCookies(c.req.header("cookie") ?? null);
+  const cookieToken = cookies[CSRF_COOKIE_NAME];
+  if (!cookieToken) {
+    throw new ApiError("invalid", "Missing CSRF cookie");
+  }
+  const body = await c.req.parseBody();
+  const formToken = body[CSRF_COOKIE_NAME];
+  if (typeof formToken !== "string" || formToken !== cookieToken) {
+    throw new ApiError("invalid", "CSRF token mismatch");
+  }
+  await next();
+};

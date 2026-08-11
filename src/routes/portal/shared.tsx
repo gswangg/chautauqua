@@ -28,7 +28,11 @@ export const speakerGate: MiddlewareHandler<AppEnv> = async (c, next) => {
 
 /** Shared page chrome for every /portal/* SSR page — the existing Layout
  * markup from index.tsx, taking { branding, children }. */
-export function PortalLayout(props: { branding: PortalBrandingChrome; children: unknown }) {
+export function PortalLayout(props: {
+  branding: PortalBrandingChrome;
+  csrfToken: string;
+  children: unknown;
+}) {
   const accent = props.branding.accentColor ?? "#2b2b2b";
   return (
     <html lang="en">
@@ -44,7 +48,10 @@ export function PortalLayout(props: { branding: PortalBrandingChrome; children: 
           {props.branding.welcomeMessage ? <p>{props.branding.welcomeMessage}</p> : null}
           {/* DEC-154: sign-out control on every /portal/* page, via the
               shared layout so it's not duplicated per-page. */}
+          {/* DEC-181: /logout now requires CSRF proof; the portal form uses
+              the double-submit cookie pair. */}
           <form method="post" action="/logout" class="chq-portal-signout">
+            <input type="hidden" name="chq_csrf" value={props.csrfToken} />
             <button type="submit">Sign out</button>
           </form>
         </header>
