@@ -109,6 +109,23 @@ export function autoSchedule(input: AutoScheduleInput): PlacedSession[] {
   const { sessions, rooms, days, dayStartMin, dayEndMin, gridMin, existing } =
     input;
 
+  // DEC-298: fail loudly on any termination-invariant violation. The grid
+  // scan below (startMin += gridMin) never terminates unless gridMin is a
+  // positive integer and dayEndMin exceeds dayStartMin; this assertion is
+  // the module's own guarantee against a hung isolate, independent of
+  // whatever validation an upstream caller does or forgets to do.
+  if (!Number.isInteger(gridMin) || gridMin <= 0) {
+    throw new Error(`autoSchedule: gridMin must be a positive integer, got ${gridMin}`);
+  }
+  if (!Number.isInteger(dayStartMin) || !Number.isInteger(dayEndMin)) {
+    throw new Error("autoSchedule: dayStartMin/dayEndMin must be integers");
+  }
+  if (dayEndMin <= dayStartMin) {
+    throw new Error(
+      `autoSchedule: dayEndMin (${dayEndMin}) must exceed dayStartMin (${dayStartMin})`,
+    );
+  }
+
   const ordered = [...sessions].sort((a, b) => {
     if (b.durationMin !== a.durationMin) return b.durationMin - a.durationMin;
     const trackA = a.track ?? "";

@@ -117,6 +117,50 @@ describe("scheduleSummary", () => {
   });
 });
 
+describe("autoSchedule termination invariant (DEC-298)", () => {
+  it("throws rather than looping forever when gridMin is 0", () => {
+    const input = {
+      sessions: [{ submissionId: "s1", durationMin: 30, track: null, speakerContactIds: [] }],
+      rooms: ["room-a"],
+      days: ["2026-08-10"],
+      dayStartMin: 540,
+      dayEndMin: 600,
+      gridMin: 0,
+      existing: [],
+    };
+    // If the guard regresses, this call hangs instead of throwing — the
+    // test's own default vitest timeout (5s) then fails it loudly rather
+    // than stalling the whole suite indefinitely.
+    expect(() => autoSchedule(input)).toThrow(/gridMin/);
+  }, 5000);
+
+  it("throws when gridMin is negative", () => {
+    const input = {
+      sessions: [{ submissionId: "s1", durationMin: 30, track: null, speakerContactIds: [] }],
+      rooms: ["room-a"],
+      days: ["2026-08-10"],
+      dayStartMin: 540,
+      dayEndMin: 600,
+      gridMin: -5,
+      existing: [],
+    };
+    expect(() => autoSchedule(input)).toThrow(/gridMin/);
+  }, 5000);
+
+  it("throws when dayEndMin does not exceed dayStartMin", () => {
+    const input = {
+      sessions: [{ submissionId: "s1", durationMin: 30, track: null, speakerContactIds: [] }],
+      rooms: ["room-a"],
+      days: ["2026-08-10"],
+      dayStartMin: 600,
+      dayEndMin: 600,
+      gridMin: 15,
+      existing: [],
+    };
+    expect(() => autoSchedule(input)).toThrow(/dayEndMin/);
+  }, 5000);
+});
+
 describe("autoSchedule", () => {
   it("is deterministic and produces zero conflicts on a solvable fixture", () => {
     const input = {
