@@ -123,16 +123,53 @@ export function FilesLibrary({ eventId, onSelectSubmission }: FilesLibraryProps)
                     onChange={() => toggle(item.rootFileId)}
                   />
                 </td>
-                <td style={{ cursor: 'pointer' }} onClick={() => onSelectSubmission(item.submissionId)}>
-                  {item.filename}
+                <td>
+                  {item.submissionId ? (
+                    <button
+                      type="button"
+                      className="chq-link-button"
+                      aria-label={`Open ${item.filename} versions and comments`}
+                      onClick={() => onSelectSubmission(item.submissionId)}
+                    >
+                      {item.filename}
+                    </button>
+                  ) : (
+                    item.filename
+                  )}
                 </td>
                 <td>{DELIVERABLE_LABELS[item.kind]}</td>
-                <td style={{ cursor: 'pointer' }} onClick={() => onSelectSubmission(item.submissionId)}>
-                  {item.submissionRef} {item.submissionTitle}
+                <td>
+                  {item.submissionId ? (
+                    <button
+                      type="button"
+                      className="chq-link-button"
+                      aria-label={`Open ${item.filename} versions and comments`}
+                      onClick={() => onSelectSubmission(item.submissionId)}
+                    >
+                      {item.submissionRef} {item.submissionTitle}
+                    </button>
+                  ) : (
+                    <>
+                      {item.submissionRef} {item.submissionTitle}
+                    </>
+                  )}
                 </td>
                 <td>{item.speakerName}</td>
                 <td>{formatDateTime(item.uploadedAt)}</td>
-                <td>{item.versionCount}</td>
+                <td>
+                  {item.submissionId ? (
+                    <button
+                      type="button"
+                      className="chq-link-button"
+                      aria-label={`Open ${item.filename} versions and comments`}
+                      onClick={() => onSelectSubmission(item.submissionId)}
+                    >
+                      {item.versionCount}
+                    </button>
+                  ) : (
+                    '—'
+                  )}
+                </td>
               </tr>
             ))}
         </tbody>

@@ -21,6 +21,11 @@ export function ContentApp() {
   const [items, setItems] = useState<ContentSubmissionListItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // w1-e: bumping this remounts FilesLibrary (its own load() effect keys on
+  // eventId, not on time), which forces a fresh fetch — used on view
+  // switch, the explicit Refresh button, and after a deliverable upload so
+  // the library's version counts never go stale.
+  const [filesReloadKey, setFilesReloadKey] = useState(0);
 
   const loadWorklist = useCallback(() => {
     if (!eventId) return;
@@ -70,6 +75,22 @@ export function ContentApp() {
       next.delete('submissionId');
       return next;
     });
+    // Whichever list we're returning to may be stale (e.g. an upload just
+    // happened in DeliverableDetail) — reload it rather than trusting
+    // first-mount data.
+    if (view === 'files') {
+      setFilesReloadKey((k) => k + 1);
+    } else {
+      loadWorklist();
+    }
+  }
+
+  function refresh() {
+    if (view === 'files') {
+      setFilesReloadKey((k) => k + 1);
+    } else {
+      loadWorklist();
+    }
   }
 
   function changeTab(next: WorklistTab) {
@@ -87,6 +108,14 @@ export function ContentApp() {
       params.delete('submissionId');
       return params;
     });
+    // Reload whichever list backs the view being switched to, so a
+    // Worklist <-> Files toggle never surfaces data captured on first
+    // mount (the "stale rows appeared 10 min later" P3).
+    if (next === 'worklist') {
+      loadWorklist();
+    } else {
+      setFilesReloadKey((k) => k + 1);
+    }
   }
 
   function onContentStatusChange(id: string, status: ContentStatus) {
@@ -134,24 +163,29 @@ export function ContentApp() {
       {error && <div className="chq-error-banner">{error}</div>}
 
       {!submissionId && (
-        <div className="chq-tab-bar" role="tablist" aria-label="Content view">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={view === 'worklist'}
-            className={view === 'worklist' ? 'chq-tab active' : 'chq-tab'}
-            onClick={() => changeView('worklist')}
-          >
-            Worklist
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={view === 'files'}
-            className={view === 'files' ? 'chq-tab active' : 'chq-tab'}
-            onClick={() => changeView('files')}
-          >
-            Files
+        <div className="chq-content-view-bar">
+          <div className="chq-tab-bar" role="tablist" aria-label="Content view">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={view === 'worklist'}
+              className={view === 'worklist' ? 'chq-tab active' : 'chq-tab'}
+              onClick={() => changeView('worklist')}
+            >
+              Worklist
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={view === 'files'}
+              className={view === 'files' ? 'chq-tab active' : 'chq-tab'}
+              onClick={() => changeView('files')}
+            >
+              Files
+            </button>
+          </div>
+          <button type="button" aria-label="Refresh" onClick={refresh}>
+            Refresh
           </button>
         </div>
       )}
@@ -163,9 +197,10 @@ export function ContentApp() {
           contentStatus={selected.contentStatus}
           onBack={backToWorklist}
           onContentStatusChange={onContentStatusChange}
+          onUploaded={() => setFilesReloadKey((k) => k + 1)}
         />
       ) : view === 'files' ? (
-        <FilesLibrary eventId={eventId} onSelectSubmission={selectSubmission} />
+        <FilesLibrary key={filesReloadKey} eventId={eventId} onSelectSubmission={selectSubmission} />
       ) : (
         <SessionList
           items={items}

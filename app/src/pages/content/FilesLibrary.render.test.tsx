@@ -2,7 +2,7 @@
 // mounts against real /api/v1/events/:eventId/files list-envelope shapes
 // and asserts a marker element renders with zero console.error.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { FilesLibrary } from './FilesLibrary';
 import { listEnvelope, mockApi } from '../../test-utils/mockApi';
@@ -37,7 +37,8 @@ describe('FilesLibrary render smoke', () => {
       ]),
     });
 
-    render(<FilesLibrary eventId={EVENT_ID} onSelectSubmission={() => {}} />);
+    const onSelectSubmission = vi.fn();
+    render(<FilesLibrary eventId={EVENT_ID} onSelectSubmission={onSelectSubmission} />);
 
     await waitFor(() => {
       expect(screen.getByTestId('files-library')).toBeInTheDocument();
@@ -45,6 +46,50 @@ describe('FilesLibrary render smoke', () => {
     expect(await screen.findByText('slides.pdf')).toBeInTheDocument();
     expect(screen.getByText('Priya Raman')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Download ZIP (0)' })).toBeInTheDocument();
+
+    // Filename, session, and Versions cells must all be real focusable
+    // buttons (not onClick divs) so keyboard users and automation can
+    // discover and open the deliverable detail drill-in.
+    const openButtons = screen.getAllByRole('button', { name: 'Open slides.pdf versions and comments' });
+    expect(openButtons).toHaveLength(3);
+    for (const button of openButtons) {
+      expect(button.tagName).toBe('BUTTON');
+    }
+    fireEvent.click(openButtons[0]);
+    expect(onSelectSubmission).toHaveBeenCalledWith('sub-1');
+    fireEvent.click(openButtons[2]);
+    expect(onSelectSubmission).toHaveBeenCalledWith('sub-1');
+
+    consoleError.mockRestore();
+  });
+
+  it('renders a dash instead of a dead control for rows with no submissionId', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {
+      throw new Error('console.error called during render');
+    });
+
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/files`]: listEnvelope([
+        {
+          rootFileId: 'file-orphan',
+          latestFileId: 'file-orphan',
+          filename: 'orphan.pdf',
+          kind: 'presentation',
+          submissionId: '',
+          submissionRef: '',
+          submissionTitle: '',
+          speakerName: 'Unknown',
+          uploadedAt: 1700000000000,
+          versionCount: 1,
+        },
+      ]),
+    });
+
+    render(<FilesLibrary eventId={EVENT_ID} onSelectSubmission={() => {}} />);
+
+    expect(await screen.findByText('orphan.pdf')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Open orphan\.pdf/ })).not.toBeInTheDocument();
+    expect(screen.getByText('—')).toBeInTheDocument();
 
     consoleError.mockRestore();
   });

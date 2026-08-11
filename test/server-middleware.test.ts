@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { resolveAuth, checkDoubleSubmitCsrf } from "../src/server/middleware";
+import { Hono } from "hono";
+import { resolveAuth, checkDoubleSubmitCsrf, noStoreApi } from "../src/server/middleware";
 import type { SessionLookup, UserLookup, SessionRow, UserRow } from "../src/server/middleware";
 import { hashToken, newSessionToken } from "../src/auth/tokens";
+import type { AppEnv } from "../src/server/env";
 
 class FakeSessions implements SessionLookup {
   constructor(private readonly rows: Map<string, SessionRow>) {}
@@ -102,5 +104,34 @@ describe("checkDoubleSubmitCsrf", () => {
   it("fails when the form field is missing or not a string", () => {
     expect(checkDoubleSubmitCsrf("abc123", undefined)).toBe(false);
     expect(checkDoubleSubmitCsrf("abc123", ["abc123"])).toBe(false);
+  });
+});
+
+// w1-e: every /api/v1 GET response carries Cache-Control: no-store, mirroring
+// src/server/app.ts's `app.use("/api/v1", noStoreApi)` / `app.use("/api/v1/*",
+// noStoreApi)` registration — admin/API data must never be edge- or
+// browser-cached; that staleness class is why the Files library P3 (rows
+// appearing "10 min later") reproduced.
+describe("noStoreApi", () => {
+  it("adds Cache-Control: no-store to a GET response that doesn't set one", async () => {
+    const app = new Hono<AppEnv>();
+    app.use("/api/v1/*", noStoreApi);
+    app.get("/api/v1/widgets", (c) => c.json({ items: [] }));
+
+    const res = await app.request("/api/v1/widgets");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Cache-Control")).toBe("no-store");
+  });
+
+  it("does not override a route's own explicit Cache-Control", async () => {
+    const app = new Hono<AppEnv>();
+    app.use("/api/v1/*", noStoreApi);
+    app.get("/api/v1/special", (c) => {
+      c.header("Cache-Control", "public, max-age=60");
+      return c.json({ ok: true });
+    });
+
+    const res = await app.request("/api/v1/special");
+    expect(res.headers.get("Cache-Control")).toBe("public, max-age=60");
   });
 });
