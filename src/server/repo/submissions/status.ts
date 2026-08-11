@@ -102,6 +102,69 @@ async function getOrCreateTask(
 }
 
 /**
+ * DEC-355: set-based core shared by ensureOnboardingTasks (single-submission
+ * callers) and the bulk-accept path in updateSubmissionStatuses. Given an
+ * already-deduped, already-filtered (isActiveParticipant) list of contact
+ * ids, loads their existing (contactId, task.title) pairs with ONE chunked
+ * SELECT (not one per submission), plans once via the pure planAcceptance,
+ * finds-or-creates each distinct planned task title exactly once, then
+ * inserts one task_assignment row per planned (contact, title) pair — that
+ * insert count is proportional to distinct new pairs, not to submission/id
+ * count. No mailer reference — DEC-009 invariant.
+ */
+async function planAndPersistOnboardingTasks(
+  db: Db,
+  eventId: string,
+  participantContactIds: string[],
+  now: Date,
+): Promise<void> {
+  if (participantContactIds.length === 0) return;
+
+  const existingTaskTitlesByContact: Record<string, string[]> = {};
+  for (const contactChunk of chunkIds(participantContactIds)) {
+    const existingRows = await db
+      .select({ contactId: schema.taskAssignment.contactId, title: schema.task.title })
+      .from(schema.taskAssignment)
+      .innerJoin(schema.task, eq(schema.taskAssignment.taskId, schema.task.id))
+      .where(and(eq(schema.task.eventId, eventId), inArray(schema.taskAssignment.contactId, contactChunk)));
+    for (const r of existingRows) {
+      const arr = existingTaskTitlesByContact[r.contactId] ?? [];
+      arr.push(r.title);
+      existingTaskTitlesByContact[r.contactId] = arr;
+    }
+  }
+
+  const plan = planAcceptance({
+    submissionId: "",
+    eventId,
+    participantContactIds,
+    existingTaskTitlesByContact,
+  });
+
+  const taskIdByTitle = new Map<string, string>();
+  for (const assignment of plan.taskAssignments) {
+    let taskId = taskIdByTitle.get(assignment.taskTitle);
+    if (!taskId) {
+      taskId = await getOrCreateTask(
+        db,
+        eventId,
+        { title: assignment.taskTitle, kind: assignment.taskKind, required: assignment.required },
+        now,
+      );
+      taskIdByTitle.set(assignment.taskTitle, taskId);
+    }
+    await db.insert(schema.taskAssignment).values({
+      id: newId(),
+      taskId,
+      contactId: assignment.contactId,
+      status: "pending",
+      createdAt: now,
+      updatedAt: now,
+    });
+  }
+}
+
+/**
  * Runs the DEC-009 acceptance planner for one submission's participants,
  * idempotently: only creates task_assignment rows for (contact, title)
  * pairs that don't already exist. No mailer reference — DEC-009 invariant.
@@ -132,50 +195,7 @@ export async function ensureOnboardingTasks(
       .where(eq(schema.participant.submissionId, submissionId));
     participantContactIds = participantRows.filter((p) => isActiveParticipant(p.inviteStatus)).map((p) => p.contactId);
   }
-  if (participantContactIds.length === 0) return;
-
-  const existingTaskTitlesByContact: Record<string, string[]> = {};
-  for (const contactChunk of chunkIds(participantContactIds)) {
-    const existingRows = await db
-      .select({ contactId: schema.taskAssignment.contactId, title: schema.task.title })
-      .from(schema.taskAssignment)
-      .innerJoin(schema.task, eq(schema.taskAssignment.taskId, schema.task.id))
-      .where(and(eq(schema.task.eventId, eventId), inArray(schema.taskAssignment.contactId, contactChunk)));
-    for (const r of existingRows) {
-      const arr = existingTaskTitlesByContact[r.contactId] ?? [];
-      arr.push(r.title);
-      existingTaskTitlesByContact[r.contactId] = arr;
-    }
-  }
-
-  const plan = planAcceptance({
-    submissionId,
-    eventId,
-    participantContactIds,
-    existingTaskTitlesByContact,
-  });
-
-  const taskIdByTitle = new Map<string, string>();
-  for (const assignment of plan.taskAssignments) {
-    let taskId = taskIdByTitle.get(assignment.taskTitle);
-    if (!taskId) {
-      taskId = await getOrCreateTask(
-        db,
-        eventId,
-        { title: assignment.taskTitle, kind: assignment.taskKind, required: assignment.required },
-        now,
-      );
-      taskIdByTitle.set(assignment.taskTitle, taskId);
-    }
-    await db.insert(schema.taskAssignment).values({
-      id: newId(),
-      taskId,
-      contactId: assignment.contactId,
-      status: "pending",
-      createdAt: now,
-      updatedAt: now,
-    });
-  }
+  await planAndPersistOnboardingTasks(db, eventId, participantContactIds, now);
 }
 
 /**
@@ -280,6 +300,7 @@ export async function updateSubmissionStatuses(
   }
 
   const nonFiringIds: string[] = [];
+  const firingIds: string[] = [];
 
   for (const row of rows) {
     const currentStatus = isValidStatusLiteral(row.status) ? row.status : "pending";
@@ -290,20 +311,41 @@ export async function updateSubmissionStatuses(
     );
 
     if (result.fireAcceptance) {
-      // Planning first (DEC-079): a throw here leaves the row un-accepted
-      // so retry re-fires; planning is idempotent so a partial prior run
-      // is safe to re-execute.
-      await ensureOnboardingTasks(db, eventId, row.id, null, now);
-      await db
-        .update(schema.submission)
-        .set({
-          status: result.status,
-          acceptedAt: result.acceptedAt !== null ? new Date(result.acceptedAt) : null,
-          updatedAt: now,
-        })
-        .where(eq(schema.submission.id, row.id));
+      // changeStatus sets acceptedAt = now for every fireAcceptance row
+      // (enteringAcceptedFirstTime branch), so the whole batch shares one
+      // acceptedAt value — no per-row bookkeeping needed.
+      firingIds.push(row.id);
     } else {
       nonFiringIds.push(row.id);
+    }
+  }
+
+  if (firingIds.length > 0) {
+    // DEC-355 set-based planning: ONE chunked participant SELECT for all
+    // firing submissions, dedup contacts in memory, then plan/persist once
+    // (planAndPersistOnboardingTasks) — proportional to ids/90 + distinct
+    // titles, not to per-submission loops. DEC-079 ordering is preserved:
+    // this all runs BEFORE any firing row's UPDATE, so a throw here leaves
+    // every firing row un-accepted and a retry re-plans idempotently.
+    const participantRows: { contactId: string; inviteStatus: string }[] = [];
+    for (const idChunk of chunkIds(firingIds)) {
+      const chunkRows = await db
+        .select({ contactId: schema.participant.contactId, inviteStatus: schema.participant.inviteStatus })
+        .from(schema.participant)
+        .where(inArray(schema.participant.submissionId, idChunk));
+      participantRows.push(...chunkRows);
+    }
+    const participantContactIds = [
+      ...new Set(participantRows.filter((p) => isActiveParticipant(p.inviteStatus)).map((p) => p.contactId)),
+    ];
+    await planAndPersistOnboardingTasks(db, eventId, participantContactIds, now);
+
+    for (const idChunk of chunkIds(firingIds)) {
+      if (idChunk.length === 0) continue;
+      await db
+        .update(schema.submission)
+        .set({ status, acceptedAt: now, updatedAt: now })
+        .where(and(eq(schema.submission.eventId, eventId), inArray(schema.submission.id, idChunk)));
     }
   }
 
