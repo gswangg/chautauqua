@@ -11,11 +11,14 @@ describe("assertOwnAssignment", () => {
   const scope: PortalAssignmentScope = {
     id: "a1",
     taskId: "t1",
+    eventId: "e1",
     kind: "general",
     formId: null,
+    deliverableKind: null,
     contactId: "c1",
     orgId: "org1",
     status: "pending",
+    fileId: null,
   };
 
   it("does not throw when the assignment belongs to the contact", () => {

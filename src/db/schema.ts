@@ -408,6 +408,11 @@ export const task = sqliteTable(
     required: integer("required", { mode: "boolean" }).notNull().default(false),
     // for kind='form' tasks, the form to fill out
     formId: text("form_id"),
+    // migrations/0014 (DEC-240): 'presentation' | 'poster' | 'handout',
+    // meaningful only when kind='file_request' — the content-pipeline file
+    // kind portal uploads for this task should use (defaults to 'handout'
+    // at the upload site when unset).
+    deliverableKind: text("deliverable_kind"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },

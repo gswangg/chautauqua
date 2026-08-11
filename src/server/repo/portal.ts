@@ -337,11 +337,19 @@ export async function getMyTaskAssignments(db: Db, contactId: string, orgId: str
 export interface PortalAssignmentScope {
   id: string;
   taskId: string;
+  eventId: string;
   kind: PortalTaskKind;
   formId: string | null;
+  // DEC-240: the file kind the task's uploads should use ('presentation'|
+  // 'poster'|'handout'); null for non-file_request tasks or unset ones (the
+  // upload site falls back to 'handout').
+  deliverableKind: string | null;
   contactId: string;
   orgId: string;
   status: string;
+  // current linked file, if any — DEC-240 re-uploads chain previous_file_id
+  // to this value and replace it.
+  fileId: string | null;
 }
 
 /** Ownership + kind lookup for a single task_assignment, used by every
@@ -353,10 +361,13 @@ export async function getAssignmentScope(db: Db, assignmentId: string): Promise<
     .select({
       id: schema.taskAssignment.id,
       taskId: schema.taskAssignment.taskId,
+      eventId: schema.task.eventId,
       contactId: schema.taskAssignment.contactId,
       status: schema.taskAssignment.status,
       kind: schema.task.kind,
       formId: schema.task.formId,
+      deliverableKind: schema.task.deliverableKind,
+      fileId: schema.taskAssignment.fileId,
       orgId: schema.event.orgId,
     })
     .from(schema.taskAssignment)
@@ -369,12 +380,56 @@ export async function getAssignmentScope(db: Db, assignmentId: string): Promise<
   return {
     id: row.id,
     taskId: row.taskId,
+    eventId: row.eventId,
     kind: row.kind as PortalTaskKind,
     formId: row.formId,
+    deliverableKind: row.deliverableKind,
     contactId: row.contactId,
     orgId: row.orgId,
     status: row.status,
+    fileId: row.fileId,
   };
+}
+
+// ---------------------------------------------------------------------------
+// DEC-240: deterministic submission linkage for task-assignment uploads
+// ---------------------------------------------------------------------------
+
+export interface DeliverableSubmissionCandidate {
+  id: string;
+  status: SubmissionStatus;
+  seq: number;
+}
+
+/** Pure tie-break: the uploader-contact's participant submission in the
+ * task's event — an 'accepted' one with the lowest seq if any exist, else
+ * the lowest-seq submission of any status, else null (no participant
+ * submissions at all — e.g. a staff/organizer-only contact). DEC-240. */
+export function pickDeliverableSubmission(candidates: DeliverableSubmissionCandidate[]): string | null {
+  if (candidates.length === 0) return null;
+  const accepted = candidates.filter((c) => c.status === "accepted");
+  const pool = accepted.length > 0 ? accepted : candidates;
+  const lowest = pool.reduce((best, c) => (c.seq < best.seq ? c : best));
+  return lowest.id;
+}
+
+/** Resolves the file.submission_id a task-assignment upload from `contactId`
+ * in `eventId` should link to, per DEC-240's deterministic rule. */
+export async function resolveDeliverableSubmissionId(
+  db: Db,
+  contactId: string,
+  eventId: string,
+): Promise<string | null> {
+  const rows = await db
+    .select({
+      id: schema.submission.id,
+      status: schema.submission.status,
+      seq: schema.submission.seq,
+    })
+    .from(schema.participant)
+    .innerJoin(schema.submission, eq(schema.participant.submissionId, schema.submission.id))
+    .where(and(eq(schema.participant.contactId, contactId), eq(schema.submission.eventId, eventId)));
+  return pickDeliverableSubmission(rows as DeliverableSubmissionCandidate[]);
 }
 
 /** Pure ownership guard for a task_assignment: only the speaker whose own
