@@ -344,6 +344,80 @@ async function main(): Promise<void> {
       },
     },
     {
+      // task-w17-d: DEC-331 requires all five public surfaces timed, not
+      // just sessions/agenda. Public, unauthenticated HTML read.
+      name: "public speakers page",
+      cls: "public",
+      run: async () => {
+        const res = await fetch(`${PERF_URL}/e/${PERF_EVENT_SLUG}/speakers`);
+        if (res.ok) {
+          const body = await res.clone().text();
+          if (body.length === 0) {
+            throw new Error("public speakers page: expected non-empty rendered body");
+          }
+        }
+        return res;
+      },
+    },
+    {
+      // task-w17-d: DEC-331 fifth public surface — the gallery page.
+      name: "public gallery page",
+      cls: "public",
+      run: async () => {
+        const res = await fetch(`${PERF_URL}/e/${PERF_EVENT_SLUG}/gallery`);
+        if (res.ok) {
+          const body = await res.clone().text();
+          if (body.length === 0) {
+            throw new Error("public gallery page: expected non-empty rendered body");
+          }
+        }
+        return res;
+      },
+    },
+    {
+      // task-w17-d: DEC-331 fifth public surface — the schedule page.
+      name: "public schedule page",
+      cls: "public",
+      run: async () => {
+        const res = await fetch(`${PERF_URL}/e/${PERF_EVENT_SLUG}/schedule`);
+        if (res.ok) {
+          const body = await res.clone().text();
+          if (body.length === 0) {
+            throw new Error("public schedule page: expected non-empty rendered body");
+          }
+        }
+        return res;
+      },
+    },
+    {
+      // task-w17-d: DEC-331 — agenda.ics (whole-agenda calendar export).
+      name: "agenda.ics",
+      cls: "public",
+      run: async () => {
+        const res = await fetch(`${PERF_URL}/e/${PERF_EVENT_SLUG}/agenda.ics`);
+        if (res.ok) {
+          const body = await res.clone().text();
+          assertContainsVevent("agenda.ics", body);
+        }
+        return res;
+      },
+    },
+    {
+      // task-w17-d: DEC-331 + DEC-323 — bare schedule.ics with no ?ids= is
+      // the whole-agenda path, only reachable since DEC-323 and previously
+      // timed nowhere in this harness.
+      name: "schedule.ics (bare, whole agenda)",
+      cls: "public",
+      run: async () => {
+        const res = await fetch(`${PERF_URL}/e/${PERF_EVENT_SLUG}/schedule.ics`);
+        if (res.ok) {
+          const body = await res.clone().text();
+          assertContainsVevent("schedule.ics (bare, whole agenda)", body);
+        }
+        return res;
+      },
+    },
+    {
       name: "plan progress (12 reviewers)",
       cls: "read",
       run: () => fetch(`${PERF_URL}/api/v1/plans/${PERF_PLAN_ID}/progress`, { headers }),
