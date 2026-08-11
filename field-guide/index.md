@@ -34,27 +34,27 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   free welcome+/account/password SSR, pubcache+KV limiter non-atomicity
   ACCEPTED stage-1. w18 LATE DRAINERS a85ddcc/6807b67 landed during
   w19-20 planning; '@1033d45' VOID. Battery FROZEN @6807b67, 6/6 PASS.
-- Wave 21 (DEC-207..209): 'merge task-w20-a' embedded LITERAL conflict
-  markers in verification-log.md, repaired task-w21-a; battery fresh
-  @FROZEN 6807b67, grep marker-free.
-- Wave 22 (DEC-210..217): four review-lens defects reopened exit (eval-
-  PUT in-event check, scorecard 500, roundCriteria freeze gap, kind-
-  gate bypass); DEC-215 reset-password endpoint+PlanEditor reveal;
-  DEC-216 declines lower(email) migration; DEC-217 /account/password
-  in routeManifest.
-- Wave 23 (DEC-218..220): w22-a/b/d late-drained DURING w23 planning
-  (verified on main w/ tests). w22-e/f called dead stubs -> VOID,
-  rebound w23-a/b/c (DEC-218). DEC-219: battery only after planner
-  verifies all task-w* merged/VOID, sha frozen LITERALLY in task text.
-  DEC-220: reset-password self-target allowed, 404 only unknown/cross-org.
-- Wave 24 (DEC-221/222): w22-e/f were NOT dead — THIRD late-drain of
-  campaign (f459735=w22-f, 0a263d2=w22-e landed during w23 planning).
-  Entire w23 remit already on main (users.ts:101 reset-password +
-  users-api.test.ts DEC-215 block; PlanEditor reveal; manifest x3) ->
-  DEC-221 VOIDs zero-commit task-w23-a/b/c; drop unmerged; late w23
-  merge = sha drift FAIL-stop. DEC-222: FROZEN literal 0a263d2e6e4d
-  bf438f6ad9e98bffa6af527b965c (merge task-w22-e; 617679b scribe=
-  bookkeeping-only), 6 gates task-w24-a..f, each writes ONLY docs/
-  verification-log/task-w24-*.md, own worktree+port (walkthrough
-  8961, perf 8962). Wave25: complete IFF 6/6 PASS @0a263d2 + zero
-  new defects. LESSON: recheck reflog before trusting "dead stub".
+- Wave21-22 (compact): DEC-207-209 conflict-marker repair, battery@6807b67;
+  DEC-210-217 four review-lens defects fixed, reset-password endpoint+
+  PlanEditor reveal, lower(email) migration, /account/password manifest.
+- Wave23-24 (compact): DEC-218-220 w22-a/b/d late-drained, w22-e/f wrongly
+  called dead->VOID, rebound w23-a/b/c, battery-after-verify rule, reset-
+  password self-target ok. DEC-221/222: w22-e/f were NOT dead — THIRD
+  late-drain (0a263d2=w22-e); w23 remit already on main -> w23-a/b/c
+  VOIDed zero-commit; late w23 merge=drift FAIL-stop; FROZEN 0a263d2,
+  6 gates task-w24-a..f, ports 8961/8962. LESSON: recheck reflog before
+  trusting "dead stub".
+- Wave 25 (DEC-223..225): FOURTH late-drain — w23-a (871ee28, reset-
+  password test) and w23-b (b2dc2c1, PlanEditor resettingUserId guard)
+  landed after DEC-222 froze 0a263d2; w24-a FAIL-stopped correctly,
+  w24-b..f never produced evidence. DEC-223 ACCEPTS the late content
+  (verified sane) and re-freezes LITERAL b2dc2c103309433732bc689b933
+  610fc7cfb3b06. DEC-224: w24 battery VOID; accounting now LATE-DRAIN-
+  IMMUNE — wave-26 exit counts ONLY docs/verification-log/task-w25-*.md;
+  stray task-w24-* log merges allow-listed non-code-bearing, never
+  drift; never make "branch will be dropped" a load-bearing premise.
+  DEC-225: battery task-w25-a..f, one log each, ports 8963/8964 (8961/
+  8962 may be held by stragglers), sha check tolerates decisions//
+  field-guide//docs/verification-log//eval-findings//decisions.ts-
+  appends. LESSON: search-tool rendering can mangle '//' comments into
+  '/' — confirm suspected syntax errors with a raw file Read first.
