@@ -246,3 +246,6 @@ export const DEC_240 = "Task uploads join the content pipeline: task.deliverable
 export const DEC_241 = "Results table: numeric Average stays rating-only; dropdown criteria get modal-plus-distribution columns; text criteria get no column; all result columns client-sortable";
 export const DEC_242 = "Speaker deliverable self-service: completed file_request tasks show the current file, a replace-file form, and the file's comment thread in /portal/tasks";
 export const DEC_243 = "Submissions table: Tracks column shows track names, a 'Format' dropdown form field surfaces as a default-visible column, and the Columns picker must be labeled and demonstrably functional";
+export const DEC_244 = "Portal deliverable panel mechanics (implements DEC-242)";
+export const DEC_245 = "SSR action-confirmation conventions (closes remaining Section D feedback findings)";
+export const DEC_246 = "Contract-mismatch resolution rule for the DEC-239 sweep";
