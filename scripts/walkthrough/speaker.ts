@@ -173,10 +173,10 @@ class Session {
     return { status: res.status, body };
   }
 
-  async getBinary(path: string): Promise<{ status: number; bytes: number }> {
+  async getBinary(path: string): Promise<{ status: number; bytes: number; contentDisposition: string | null }> {
     const res = await fetch(`${BASE_URL}${path}`, { headers: this.headers() });
     const buf = await res.arrayBuffer();
-    return { status: res.status, bytes: buf.byteLength };
+    return { status: res.status, bytes: buf.byteLength, contentDisposition: res.headers.get("content-disposition") };
   }
 }
 
@@ -657,10 +657,17 @@ async function main(): Promise<void> {
   });
 
   // -------------------------------------------------------------------------
-  // file_request-kind task assignment upload: assert only the 302 redirect
-  // per task-w10-a's stated scope — GET /files/<uploadedFileId> serving for
-  // task-assignment ('handout' kind) uploads is DEC-065, landing in a
-  // parallel task this wave; not asserted here.
+  // file_request-kind task assignment upload + the DEC-244 deliverable panel
+  // (implements DEC-242): beyond the 302 on upload, this now exercises the
+  // full portal round trip — the completed assignment's file panel on
+  // /portal/tasks (filename/version/CHAIN-LATEST download link/Replace
+  // form/Comments section), the dedicated GET .../file download route
+  // (Content-Disposition, never the organizer /files route), posting a
+  // reply via the double-submit chq_csrf FORM FIELD (not the x-chq-csrf
+  // header used by JSON mutations — see docs/verification-log/
+  // task-w2-e-findings-closure.md's CNT-07a note), the reply rendering back
+  // on re-GET, and the MAX_COMMENT_BODY_LENGTH=4000 cap rejecting an
+  // oversized body with 400.
   // -------------------------------------------------------------------------
 
   const bioAssignmentId = await check(
@@ -684,6 +691,61 @@ async function main(): Promise<void> {
     form.set("file", new File([new Uint8Array([0xff, 0xd8, 0xff, 0xdb])], "walkthrough-bio-photo.jpg", { type: "image/jpeg" }));
     const res = await speaker1.postMultipart(`/portal/tasks/${bioAssignmentId}/upload`, form);
     assert(res.status === 302, `POST /portal/tasks/:assignmentId/upload expected 302, got ${res.status}: ${JSON.stringify(res.body)}`);
+  });
+
+  await check(
+    "GET /portal/tasks shows the DEC-244 deliverable panel for the completed 'Finalize bio + headshot' assignment",
+    async () => {
+      const tasksPage = await speaker1.getText("/portal/tasks");
+      assert(tasksPage.status === 200, `GET /portal/tasks returned ${tasksPage.status}`);
+      const rowMatch = tasksPage.body.match(
+        new RegExp(`Finalize bio \\+ headshot(?:(?!<\\/li>)[\\s\\S])*?<\\/li>`),
+      );
+      assert(rowMatch, "could not find the 'Finalize bio + headshot' task row on /portal/tasks");
+      const row = rowMatch![0]!;
+      assert(row.includes('<section aria-label="Uploaded file">'), "row is missing the Uploaded file section");
+      assert(row.includes("walkthrough-bio-photo.jpg"), "row is missing the uploaded filename");
+      assert(row.includes("version 1"), "row is missing 'version 1'");
+      assert(
+        new RegExp(`href="\\/portal\\/tasks\\/${escapeRegex(bioAssignmentId)}\\/file"`).test(row),
+        "row is missing a download link to /portal/tasks/:assignmentId/file",
+      );
+      assert(row.includes(">Replace file<"), "row is missing the 'Replace file' button");
+      assert(row.includes('<section aria-label="Comments">'), "row is missing the Comments section");
+    },
+  );
+
+  await check("GET the uploaded deliverable via the DEC-244 portal file route (Content-Disposition)", async () => {
+    const res = await speaker1.getBinary(`/portal/tasks/${bioAssignmentId}/file`);
+    assert(res.status === 200, `GET /portal/tasks/:assignmentId/file returned ${res.status}`);
+    assert(res.bytes > 0, "downloaded file body is empty");
+    assert(
+      res.contentDisposition !== null && res.contentDisposition.startsWith("attachment"),
+      `expected an attachment Content-Disposition header, got '${res.contentDisposition}'`,
+    );
+  });
+
+  const walkthroughCommentBody = "Walkthrough: please confirm this deck renders correctly";
+
+  await check("POST a reply on the deliverable's comment thread (form-field chq_csrf, not the header)", async () => {
+    const res = await speaker1.postForm(`/portal/tasks/${bioAssignmentId}/comments`, {
+      body: walkthroughCommentBody,
+    });
+    assert(res.status === 302, `POST /portal/tasks/:assignmentId/comments expected 302, got ${res.status}`);
+  });
+
+  await check("re-GET /portal/tasks and see the reply rendered in the deliverable panel", async () => {
+    const tasksPage = await speaker1.getText("/portal/tasks");
+    assert(tasksPage.status === 200, `GET /portal/tasks returned ${tasksPage.status}`);
+    assert(tasksPage.body.includes(walkthroughCommentBody), "posted comment body did not render on /portal/tasks");
+    assert(tasksPage.body.includes(fixture.identities.speaker.name), "comment author name did not render on /portal/tasks");
+  });
+
+  await check("POST a reply exceeding MAX_COMMENT_BODY_LENGTH (4000) is rejected with 400", async () => {
+    const res = await speaker1.postForm(`/portal/tasks/${bioAssignmentId}/comments`, {
+      body: "x".repeat(4001),
+    });
+    assert(res.status === 400, `expected 400 for an over-length comment body, got ${res.status}`);
   });
 
   // -------------------------------------------------------------------------
