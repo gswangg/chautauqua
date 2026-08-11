@@ -111,4 +111,86 @@ describe('FilesLibrary render smoke', () => {
 
     consoleError.mockRestore();
   });
+
+  it('renders a kind filter and search box (DEC-344 server-side filtering)', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/files`]: listEnvelope([]),
+    });
+
+    render(<FilesLibrary eventId={EVENT_ID} onSelectSubmission={() => {}} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('No deliverable files yet.')).toBeInTheDocument();
+    });
+
+    const kindSelect = screen.getByLabelText('Filter by kind') as HTMLSelectElement;
+    expect(Array.from(kindSelect.options).map((o) => o.textContent)).toEqual([
+      'All',
+      'Presentation',
+      'Poster',
+      'Handout',
+    ]);
+    expect(screen.getByLabelText('Search files')).toBeInTheDocument();
+  });
+
+  it('renders a Previous/Next pager driven by the envelope total', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/files`]: listEnvelope(
+        [
+          {
+            rootFileId: 'file-v1',
+            latestFileId: 'file-v2',
+            filename: 'slides.pdf',
+            kind: 'presentation',
+            submissionId: 'sub-1',
+            submissionRef: 'SES-014',
+            submissionTitle: 'Scaling Vector Search',
+            speakerName: 'Priya Raman',
+            uploadedAt: 1700000000000,
+            versionCount: 2,
+          },
+        ],
+        { total: 137, page: 1, perPage: 50 },
+      ),
+    });
+
+    render(<FilesLibrary eventId={EVENT_ID} onSelectSubmission={() => {}} />);
+
+    expect(await screen.findByText('Page 1 · 137 total')).toBeInTheDocument();
+    const prevButton = screen.getByRole('button', { name: 'Previous' });
+    const nextButton = screen.getByRole('button', { name: 'Next' });
+    expect(prevButton).toBeDisabled();
+    expect(nextButton).not.toBeDisabled();
+  });
+
+  it('disables the Download ZIP button with a visible message once selection exceeds 50', async () => {
+    const items = Array.from({ length: 51 }, (_, i) => ({
+      rootFileId: `file-${i}`,
+      latestFileId: `file-${i}-latest`,
+      filename: `slides-${i}.pdf`,
+      kind: 'presentation' as const,
+      submissionId: `sub-${i}`,
+      submissionRef: `SES-${i}`,
+      submissionTitle: `Talk ${i}`,
+      speakerName: 'Speaker',
+      uploadedAt: 1700000000000,
+      versionCount: 1,
+    }));
+
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/files`]: listEnvelope(items, { total: 51, page: 1, perPage: 51 }),
+    });
+
+    render(<FilesLibrary eventId={EVENT_ID} onSelectSubmission={() => {}} />);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Select all files on this page')).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByLabelText('Select all files on this page'));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Download ZIP (51)' })).toBeDisabled();
+    });
+    expect(screen.getByRole('alert')).toHaveTextContent('Select at most 50 files to download as a ZIP.');
+  });
 });
