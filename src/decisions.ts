@@ -315,3 +315,7 @@ export const DEC_309 = "Perf grading gets SPEC §7 route classes measured agains
 export const DEC_310 = "schedule.ics must query the requested ids, not hydrate the entire published agenda";
 export const DEC_311 = "The 390x844 no-overflow bar extends to /docs/api and /dev/mailbox, and both join MOBILE_ROUTE_MANIFEST";
 export const DEC_312 = "SQL WHERE clauses are normative; test doubles model the predicate, never the reverse";
+export const DEC_313 = "Wave 13 is the CLOSING battery: five live sections re-run (a build-test, b walkthrough, c perf-smoke, d render-sweep, g fresh-clone) plus two closure lanes (i citation-delta, j eval-findings §D) — because wave 12 changed exactly what those sections measure";
+export const DEC_314 = "Wave-13 lane letters keep their wave-11 section meaning, logs keep the '-c3-' infix, ports are planner-assigned, and the WAVE-12 CONTENT GATE polls BOUNDED then records PARTIAL rather than blocking";
+export const DEC_315 = "The stage-1 exit predicate: seven wave-13 '-c3-' logs at OPEN ITEMS: 0 / RESULT: PASS; a planner that cannot see all seven returns ZERO tasks rather than padding";
+export const DEC_316 = "docs/eval-findings.md §D (P3 polish) is CLOSED by live verification this wave, and graded functionally: a row is an OPEN ITEM only if the user action actually fails; latency/'occasionally' observations from campaign-1's deployed run are out of stage-1 local scope";
