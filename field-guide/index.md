@@ -18,44 +18,43 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   requireSpeaker/csrfJson/csrfForm; errors {error:{code,message,
   fields?}}. DEC-015 append-only; DEC-016 locked=real cols; DEC-114
   sha rule; DEC-129 homonym guard matches full heading incl '@ <sha>'.
-- Wave3-28+Campaign3 (compact): sub-apps/repos/ctx DEC-012/013/019;
+- Wave3-251 (Campaign1-3, compact): sub-apps/repos/ctx DEC-012/013/019;
   uploads/ics/statuses/perf/headshots/walkthrough/claim DEC-040-074;
-  2nd barrier DEC-107; DEC-068/069 log+exit predicate; DEC-139 exit
-  battery+render-sweep(144)+findings closure; criteriaForRound sole
-  resolution (DEC-147..178); CRM=SegmentRule[]+'any'; calendar via
-  formatDateOnly UTC; Pipeline=pipeline_entry+activity; Files=
-  previous_file_id chains; ZIP=STORE-only<=50; DEC-179-196 CSV
-  formula-escape/login-limiter/csrfFormOrHeader/parseBoundedIdArray;
-  DEC-197-222 lowercase+ci-dup emails, password-free SSR, pubcache+KV
-  non-atomicity ACCEPTED, conflict-marker repair, reset-password
-  reveal; DEC-223-231 checkbox===true/cookie HttpOnly-Secure/
-  deleteTrack 409 cascades/two-pass DST; DEC-232-236 FROZEN f01459a,
-  w27 battery 6/6 PASS, STAGE 1 COMPLETE (later reopened). Batteries
-  drain LATE, dead stubs VOID on rebind; recheck reflog; grep-code-
-  not-prose; workers never edit eval-findings.md/decisions/.
-- Wave post-production (DEC-237..246, compact): live eval reopened
-  DEC-069 — render-sweep misses SPA-vs-route payload-KEY mismatches,
-  hence DEC-239 route-level contract tests (DEC-246: SPA types.ts is
-  contract of record). DEC-237 PBKDF2 100k cap+best-effort submit-
-  confirm. DEC-238 mailer best-effort, organizer batch never 500.
-  DEC-240 supersedes DEC-029 (deliverable_kind+previous_file_id chain;
-  DEC-248 widens task-file serve pop off 'handout'-only). DEC-241
-  dropdown-criteria col. DEC-242/244 portal speaker self-service,
-  CHAIN-LATEST file serve. DEC-243 Tracks/Format col (DEC-249 widens
-  match to 'format'/'session format' allowlist). DEC-245 SSR confirms
-  (?draft=saved, 'Headshot uploaded.', #chq-login-submit). Human
+  DEC-068/069 log+exit predicate; DEC-139 exit battery+render-sweep+
+  findings closure; criteriaForRound sole resolution (DEC-147..178);
+  CRM=SegmentRule[]+'any'; Files=previous_file_id chains; DEC-179-231
+  CSV formula-escape/login-limiter/lowercase+ci-dup emails/password-
+  free SSR/checkbox===true/deleteTrack 409 cascades; DEC-232-236
+  FROZEN f01459a, w27 battery 6/6 PASS (later reopened). Batteries
+  drain LATE; recheck reflog; grep-code-not-prose; workers never edit
+  eval-findings.md/decisions/. DEC-237-251 post-prod: DEC-069
+  reopened — render-sweep misses SPA-vs-route KEY mismatches, hence
+  DEC-239 contract tests (types.ts=contract, DEC-246); DEC-237 PBKDF2
+  100k; DEC-240 supersedes DEC-029 (deliverable_kind chain, DEC-248
+  widens serve pop); DEC-242/244 portal self-service CHAIN-LATEST;
+  DEC-243/249 Tracks/Format col+allowlist; DEC-245 SSR confirms;
+  DEC-247 flat {items} envelope. DEC-250 FREEZES battery at c211d4c,
+  ended 5/6 (task-w4-b walkthrough FAILED on DEC-252 origin bug;
+  triage-closure never landed) — DEC-069 NOT met. DEC-251 disposes
+  Section D: D1-D4+D6 fixed, D5/D7-residual/D8 WAIVED. Human
   committed stage-2 (mailer, Airtable cron) on main, leave it.
-  DEC-247..249 (w3, 6th late-drain): flat {items} files envelope+
-  chain-root counts, task-file pop widened to ANY kind submissionId-
-  null+assignment-ref, Format allowlist exact; review.ts QueueItem fixed.
-- Wave 4 (DEC-250/251): SEVENTH-NINTH late-drains — ALL five w3 lanes
-  merged MID-planning; re-read .git/logs/HEAD before citing any file.
-  Wave-3 verified conformant on main @ c211d4c. DEC-250 FREEZES the
-  exit battery at sha c211d4c (allow-listed drift only: decisions/,
-  field-guide/, docs/verification-log/, eval-findings.md,
-  src/decisions.ts; FAIL-stop on product drift); six sections
-  task-w4-a..f under docs/verification-log/, heading '@ c211d4c'
-  disambiguates task-w4-* homonyms (DEC-129). DEC-251 disposes
-  Section D: D1-D4+D6 fixed (cited), D5/D7-residual/D8 WAIVED. Six
-  green sections + OPEN ITEMS: 0 => stage-1 complete (DEC-069); any
-  product commit after c211d4c voids the battery.
+- Campaign-2 wave 1 (DEC-252..255). VERIFIED on main @ b2127bb (not inherited):
+  prior campaign's DEC-250 battery ended 5/6 — a/c/d/e logged OPEN ITEMS: 0,
+  task-w4-b walkthrough FAILED (2 items), and the 6th section (triage-closure)
+  never landed, so DEC-069 was never met: stage 1 is NOT complete. DEC-252:
+  wrangler.jsonc's routes/custom_domain (human stage-2, untouchable) makes
+  `new URL(c.req.url).origin` = chautauqua.cc under `wrangler dev`; sole fix is
+  src/server/origin.ts resolveBaseUrl (PUBLIC_BASE_URL -> dev-only loopback
+  Origin/Referer -> request origin) + RELATIVE same-origin hrefs; gates must
+  never fetch an off-origin scraped href -- fail loudly instead. DEC-253 mobile
+  bar 390x844: zero page-level h-overflow on public/submit/portal/login, agenda
+  grid scrolls in its own container at minmax(140px,1fr), enforced by a second
+  render-sweep pass. DEC-254 browser persona passes are SPEC 9.1's real bar
+  (every last-round defect was invisible to unit/contract/render gates): one
+  lane per J-area, own worktree + own port 88NN, fix only your listed files,
+  regression test per fix, log docs/verification-log/task-w1-<x>-<scope>.md
+  headed with the sha and ending 'OPEN ITEMS: n' / 'RESULT: PASS|FAIL'; a clean
+  0-item PASS is a fine outcome -- never invent work. DEC-255: stage 1 closes
+  only on a fresh six-section battery (build+test, walkthrough, perf, render-
+  sweep incl. mobile, 6/7 audit, triage-closure of all w1 OPEN ITEMS) at one
+  new frozen sha with OPEN ITEMS: 0 everywhere.
