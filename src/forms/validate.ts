@@ -73,7 +73,12 @@ export function validateAnswers(
         break;
       }
       case "checkbox": {
-        cleaned[field.id] = Boolean(value);
+        const boolValue = Boolean(value);
+        if (field.required && boolValue !== true) {
+          errors[field.id] = "required";
+          continue;
+        }
+        cleaned[field.id] = boolValue;
         break;
       }
       case "number": {
