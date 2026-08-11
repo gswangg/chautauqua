@@ -6618,3 +6618,43 @@ markers, eval-findings.md Section A/B/E/F closure re-confirmed, and
 the w11-b `AIRTABLE_TOKEN` open item is CLOSED per DEC-190. Per
 DEC-069/DEC-139/DEC-189, the stage-1 exit predicate is satisfied at
 S''' = `7f7477e`, pending planner declaration.
+
+## 2026-08-10 task-w15-c — perf-smoke @ 1033d45
+
+Full detail: docs/verification-log/task-w15-c-perf-smoke.md
+
+DEC-196 gate lane, S'''' = `1033d45`. Preconditions confirmed:
+`merge-base --is-ancestor` holds for both `2dd2f33` and `7f7477e`
+against `1033d45`; all DEC-196 marker greps present (`DEC-191`/
+`contactId: null` in `src/routes/api/users.ts` and
+`src/routes/review.ts`; `data-required` in `src/views/form-render.tsx`;
+`chunkSelection`/`/tracks` in `SubmissionsTable.tsx`; the four new
+test/helper files and `.dev.vars.example` present in
+`git ls-tree -r 1033d45`, `.dev.vars` absent). No prior
+`perf-smoke @ 1033d45` PASS section existed, so ran fresh: `git
+worktree add --detach` at `1033d45`, `.dev.vars` confirmed absent
+(never read/printed), `npm ci`, `npm run build` (clean), `npm run
+db:migrate` (14 migrations 0000-0013), `npm run seed` (required first
+for the login-capable fixture organizer — verified empirically, same
+precondition documented at every prior perf-smoke gate), `npm run
+perf:seed` (2k-row `seed_perf_` scale, idempotent, does not touch demo
+seed rows), `npx wrangler dev --port 8952` (DEC-196 lane->port
+binding), then `PERF_URL=http://localhost:8952 npm run perf:smoke`.
+
+All 10 timed probes passed within the 150ms budget (p95 3.4ms-35.4ms,
+well inside the <150ms envelope observed at `7f7477e`): submissions
+list x2, submission detail, event overview, organizer agenda,
+public sessions page, public agenda, schedule.ics 150 ids, plan
+progress, rating PUT. The DEC-089/DEC-094 301-id `schedule.ics` cap
+probe returned 400 as expected. The DEC-105 export-size probes both
+passed (submissions.csv >= 2001 lines, showflow.csv >= 301 lines).
+Script exited 0 with `perf:smoke OK`. Per the task note, DEC-193's
+client-side 500/batch chunking in `app/src/pages/submissions/bulk.ts`
+leaves the server's DEC-182 1000-id cap unchanged; no server-side cap
+change was probed or expected. `wrangler dev` stopped after the run,
+port 8952 confirmed free. No `.dev.vars` was read or printed at any
+point.
+
+**OPEN ITEMS: 0**
+
+**RESULT: PASS**
