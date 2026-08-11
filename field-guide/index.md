@@ -15,46 +15,46 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   csrfForm; errors {error:{code,message,fields?}}; 015 append-only/016
   locked=real cols/114 sha rule/129 homonym=full heading. Never hand-edit
   src/decisions.ts.
-- Wave3-251+Campaign2 w1-w16 (DEC-012..328, ultra-compact): sub-apps/
-  repos/ctx/uploads/ics/statuses/perf/headshots/walkthrough/claim;
-  criteriaForRound sole resolution; CRM=SegmentRule[]+'any'; battery
-  FROZEN sha POST-S DELTA never STOP; tripwires(test/)x4; drizzle-orm
-  ^0.45.2(kit/config DELETED); 309 perf p95 MINUS /health floor; 317
-  invite=3 gates; 322 safeExternalUrl allowlist; 323 bare .ics=WHOLE
-  agenda; 326 repaired probe never loosens assertion; 327/328 EXIT=
-  six w13 PASS+w15 landed; lens citations age out—grep SYMBOL not line.
-- Campaign-2 w17-18 (DEC-329..339, compact): 329 probe premise vs
-  binding=PROBE defect; narrow FETCH ok, weaken ASSERTION never. 331
-  perf covers 5 public surfaces+both .ics, over-budget=logged never
-  dropped. 332 repo/public.ts=BARREL, cite submodule. 333 STAGE-1
-  scale rule: cost~TOTAL rows+observable on D1 => defect now (see
-  348). 335 listSubmissions=ONE paginated stmt+correlated EXISTS+LIKE
-  ESCAPE+seq tiebreaker. 336 contacts q=AND-tokens x OR-cols in SQL.
-  337 schema.ts index w/o migration DOESN'T EXIST. 339 wave19 re-runs
-  ONLY build+test+tripwires+walkthrough+perf:smoke.
-- Campaign-2 w19-20 (DEC-340..349, ultra-compact): 340 J6 grid=server-
-  paged/filtered, SUPERSEDES 023: ANDed EXISTS, counts EVENT-WIDE. 341
-  J8 worklist=SQL filter+sort+page; client fan-out DELETED. 342 queue+
-  files DEFERRED: order GLOBAL, find-in-loop=defect on sight. 344
-  files library=server-paged, find-in-loop DELETED. 345 results rank-
-  >server sort->slice IN ORDER, resultsSort.ts DELETED. 346 plan loads
-  shed `description`, queue counts=SQL GROUP BY, paging deferred. 347
-  perf BASELINE at pre-fix tip: newly-scaled over-budget=finding not
-  OPEN ITEM. 348 DEC-201/202 REAFFIRMED. 349 w20 gates=build/test only;
-  walkthrough+perf->w21, ports d=8811 e=8812.
-- Campaign-2 w21 (DEC-350..352, compact): 350 J5 compose picker=server-
-  paged(50)+q search+"Showing X-Y of N", selection SPANS pages, status/q
-  change resets page, NEVER client-filter/sort one page (341/345 rule).
-  351 /progress+/remind use listCompletedPairsForPlan (reviewerId+
-  submissionId ONLY, round in SQL); listEvaluationsForPlan STAYS for
-  /results ranking (shared.ts buildResults); wire bytes unchanged; every
-  test repo mock w/ listEvaluationsForPlan needs the new key too; the
-  review-rounds call-site sweep is RE-POINTED not weakened. 352 a gate
-  log dies only to a change that alters what it ASSERTS: SPA-only
-  (app/src/**) and wire-identical load-shedding do NOT invalidate
-  walkthrough/perf (walkthrough is HTTP-level, never loads the bundle),
-  DO require build/test re-run => w21-b/c are the authoritative
-  walkthrough+perf evidence; W22 EXIT = ONE build/test/tripwire/fresh-
-  migration lane at a tip w/ w21-a..e, then goalComplete. Ports w21
-  b=8821 c=8822. Verified this wave: perf-smoke's `if (!res.bodyUsed)`
-  guard is NON-corrupting (a clone read never marks the original used).
+- Wave3-16 (DEC-012..328): sub-apps/repos/ctx/uploads/ics/statuses/perf/
+  headshots/walkthrough/claim; criteriaForRound sole resolution; CRM=
+  SegmentRule[]+'any'; battery FROZEN sha; tripwires(test/)x4; drizzle-
+  orm ^0.45.2; 309 perf p95 MINUS /health; 317 invite=3 gates; 322
+  safeExternalUrl allowlist; 323 bare .ics=WHOLE agenda; lens citations
+  age out—grep SYMBOL not line.
+- w17-18 (DEC-329..339): 329 probe premise vs binding=defect, narrow
+  FETCH ok weaken ASSERTION never. 331 perf 5 surfaces+.ics. 333 STAGE-1
+  scale rule: cost~TOTAL rows+observable on D1=>defect now. 335
+  listSubmissions=ONE stmt+EXISTS+LIKE ESCAPE+seq tiebreak. 336
+  contacts=AND-tokens x OR-cols SQL. 337 schema.ts idx w/o migration
+  DOESN'T EXIST.
+- w19-20 (DEC-340..349): 340 J6 grid server-paged, SUPERSEDES 023. 341
+  J8 SQL filter+sort+page, client fan-out DELETED. 342 queue+files
+  DEFERRED(find-in-loop=defect on sight)->344 files lib server-paged,
+  find-in-loop DELETED. 345 results rank server-side, resultsSort.ts
+  DELETED. 346 plan loads shed `description`, queue counts=GROUP BY.
+  347 perf BASELINE at pre-fix tip: newly-scaled over-budget=finding
+  not OPEN ITEM. 348 DEC-201/202 REAFFIRMED (pubcache purge OK as-is).
+- w21 (DEC-350..352): 350 J5 picker server-paged(50)+q, selection SPANS
+  pages. 351 /progress+/remind=listCompletedPairsForPlan, /results
+  keeps listEvaluationsForPlan (buildResults); wire bytes unchanged.
+  352 gate log dies only to a change altering what it ASSERTS: SPA-only
+  / wire-identical shedding do NOT invalidate walkthrough/perf but DO
+  need build/test re-run.
+- w22 (DEC-353..358): 353 archive=40MB TOTAL-byte guard from D1
+  sizeBytes BEFORE first R2 get + buildZip assembles ONCE (DEC-160's
+  "bounded memory" premise was false: 50x25MB in 128MB isolate);
+  zip.test.ts assertions may NEVER change. 354 plan_reviewer trackId/
+  submissionId validated vs plan.eventId at WRITE (120 precedent) AND
+  isSubmissionInReviewerScope per-submission branch gets the event
+  guard the other branches have — both, not either; filters.trackIds
+  still never applies there (017). 355 bulk accept planning=set-based:
+  SELECTs O(ids/90)+O(titles), DEC-079 plan-before-commit kept, row-
+  level outcome identical (346 rule). 356 CSV import=email-scoped
+  chunked lookup + 2000-row cap, never org's whole contact table. 357
+  roster-add=one chunked contact load + ONE updateSubmissionStatuses
+  for all ids; createSubmission stays per-row (seq=SQL subquery,
+  multi-row VALUES collides). 358 pubcache global purge stays CLOSED
+  (201/333/348: read it, STOP); DEC-342 files-library trigger DISCHARGED
+  by 344; W23 EXIT=build/test/tripwires/fresh-migration + FULL
+  walkthrough + perf:smoke at one tip w/ w21-a..e + w22-a..e, then
+  goalComplete.
