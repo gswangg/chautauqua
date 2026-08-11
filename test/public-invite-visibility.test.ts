@@ -1,7 +1,13 @@
-// DEC-108 source-scan guard: every public/embed surface must gate on
-// participant.invite_status IN ('none','accepted') — both in the shared
-// visibleSubmissionConditions() gate and in the standalone speaker-hydration
-// query in hydrateSessions, which does not route through that gate.
+// DEC-108/DEC-274 source-scan guard: the session-visibility gate
+// (visibleSessionConditions) must never reference schema.participant, and
+// every session-rooted public query must gate on visibleSessionConditions()
+// alone (no mandatory innerJoin(participant)) — DEC-274 splits the session
+// gate from the participant gate (visibleParticipantConditions) so a
+// speakerless or all-hidden-speaker session stays publicly visible. Every
+// participant-gating query (visibleParticipantConditions() and the
+// standalone speaker-hydration query in hydrateSessions, which does not
+// route through visibleSubmissionConditions()) must still gate on
+// participant.invite_status IN ('none','accepted').
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -11,27 +17,45 @@ const publicSrc = readFileSync(
   "utf-8",
 );
 
+function fnBody(src: string, marker: string): string {
+  const bodyStart = src.indexOf(marker);
+  expect(bodyStart).toBeGreaterThan(-1);
+  const nextFnStart = src.indexOf("\nexport ", bodyStart + 1);
+  return src.slice(bodyStart, nextFnStart === -1 ? undefined : nextFnStart);
+}
+
+describe("DEC-274: session gate vs participant gate", () => {
+  it("visibleSessionConditions body contains no reference to schema.participant", () => {
+    const body = fnBody(publicSrc, "export function visibleSessionConditions");
+    expect(body).not.toContain("schema.participant");
+  });
+
+  it.each([
+    "async function getVisibleSubmissionIdsOrdered",
+    "export async function getPublicSessionsByIds",
+    "export async function getPublicSessionDetail",
+    "export async function getPublicAgenda",
+  ])("%s gates on visibleSessionConditions() and does not innerJoin(participant)", (marker) => {
+    const body = fnBody(publicSrc, marker);
+    expect(body).toContain("visibleSessionConditions()");
+    expect(body).not.toContain(".innerJoin(schema.participant");
+  });
+});
+
 describe("DEC-108: invite-state gating on public surfaces", () => {
-  it("visibleSubmissionConditions body includes the inviteStatus inArray with both literals", () => {
-    const bodyStart = publicSrc.indexOf("export function visibleSubmissionConditions");
-    expect(bodyStart).toBeGreaterThan(-1);
-    const nextFnStart = publicSrc.indexOf("\nexport ", bodyStart + 1);
-    const body = publicSrc.slice(bodyStart, nextFnStart === -1 ? undefined : nextFnStart);
+  it("visibleParticipantConditions body includes the inviteStatus inArray with both literals", () => {
+    const body = fnBody(publicSrc, "export function visibleParticipantConditions");
     expect(body).toContain("inArray(schema.participant.inviteStatus,");
     expect(body).toContain('"none"');
     expect(body).toContain('"accepted"');
   });
 
-  it("the hydrateSessions speaker-hydration query also gates on inviteStatus", () => {
-    const bodyStart = publicSrc.indexOf("async function hydrateSessions");
-    expect(bodyStart).toBeGreaterThan(-1);
-    const nextFnStart = publicSrc.indexOf("\nexport ", bodyStart + 1);
-    const body = publicSrc.slice(bodyStart, nextFnStart === -1 ? undefined : nextFnStart);
-    // scope down to the speaker query specifically
+  it("the hydrateSessions speaker-hydration query gates on visibleParticipantConditions()", () => {
+    const body = fnBody(publicSrc, "async function hydrateSessions");
     const speakerQueryStart = body.indexOf("schema.participant.submissionId, batch");
     expect(speakerQueryStart).toBeGreaterThan(-1);
     const speakerQuery = body.slice(speakerQueryStart - 200, speakerQueryStart + 400);
-    expect(speakerQuery).toContain("inArray(schema.participant.inviteStatus,");
+    expect(speakerQuery).toContain("visibleParticipantConditions()");
   });
 
   it("'declined' never appears as an allowed invite-status literal", () => {
@@ -39,20 +63,14 @@ describe("DEC-108: invite-state gating on public surfaces", () => {
   });
 
   it("getPublicSpeakerDetail (DEC-151 speaker drill-in) gates on visibleSubmissionConditions", () => {
-    const bodyStart = publicSrc.indexOf("export async function getPublicSpeakerDetail");
-    expect(bodyStart).toBeGreaterThan(-1);
-    const nextFnStart = publicSrc.indexOf("\nexport ", bodyStart + 1);
-    const body = publicSrc.slice(bodyStart, nextFnStart === -1 ? undefined : nextFnStart);
+    const body = fnBody(publicSrc, "export async function getPublicSpeakerDetail");
     expect(body).toContain("visibleSubmissionConditions()");
     expect(body).toContain("if (rows.length === 0) return null;");
   });
 
-  it("getPublicSessionDetail (DEC-151 session drill-in) gates on visibleSubmissionConditions", () => {
-    const bodyStart = publicSrc.indexOf("export async function getPublicSessionDetail");
-    expect(bodyStart).toBeGreaterThan(-1);
-    const nextFnStart = publicSrc.indexOf("\nexport ", bodyStart + 1);
-    const body = publicSrc.slice(bodyStart, nextFnStart === -1 ? undefined : nextFnStart);
-    expect(body).toContain("visibleSubmissionConditions()");
+  it("getPublicSessionDetail (DEC-151 session drill-in) gates on visibleSessionConditions", () => {
+    const body = fnBody(publicSrc, "export async function getPublicSessionDetail");
+    expect(body).toContain("visibleSessionConditions()");
     expect(body).toContain("if (visibleRows.length === 0) return null;");
   });
 });
