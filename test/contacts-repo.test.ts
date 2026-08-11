@@ -5,6 +5,7 @@ import {
   mergeContacts,
   parseContactListQuery,
   resolveImportUpsert,
+  tokenizeContactSearchQuery,
   type ContactRow,
 } from "../src/server/repo/contacts";
 import * as schema from "../src/db/schema";
@@ -64,6 +65,25 @@ describe("parseContactListQuery (DEC-013 pagination + DEC-026 filters)", () => {
     expect(parseContactListQuery({})).toMatchObject({ rules: [] });
     const rules = [{ field: "any", op: "contains" as const, value: "ada" }];
     expect(parseContactListQuery({}, rules)).toMatchObject({ rules });
+  });
+});
+
+describe("tokenizeContactSearchQuery (w3-b: multi-word directory search)", () => {
+  it("splits a two-word query into separate tokens", () => {
+    expect(tokenizeContactSearchQuery("Priya Raman")).toEqual(["Priya", "Raman"]);
+  });
+
+  it("collapses repeated whitespace and trims", () => {
+    expect(tokenizeContactSearchQuery("  Priya   Raman  ")).toEqual(["Priya", "Raman"]);
+  });
+
+  it("returns a single-element array for a one-word query", () => {
+    expect(tokenizeContactSearchQuery("Priya")).toEqual(["Priya"]);
+  });
+
+  it("returns [] for an empty/whitespace-only query", () => {
+    expect(tokenizeContactSearchQuery("")).toEqual([]);
+    expect(tokenizeContactSearchQuery("   ")).toEqual([]);
   });
 });
 

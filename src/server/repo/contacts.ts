@@ -314,20 +314,38 @@ export interface ContactListResult {
   total: number;
 }
 
-/** DEC-026 list: q (LIKE over name/email/company), segmentId (matchesSegment,
- * applied server-side over the pure core), sort name|recent, DEC-013 paging. */
+/** Splits a directory search query into whitespace-separated tokens (w3-b
+ * fix): a two-word query like "Priya Raman" must match a contact whose
+ * first name is "Priya" and last name is "Raman" even though neither single
+ * LIKE pattern matches the *other* half of the string. Each returned token
+ * is later AND-ed as its own per-field OR clause, so every token has to
+ * match *some* field (name/email/company) but different tokens are free to
+ * match different fields — this is what makes full "First Last" search work
+ * without hard-coding any concatenated-name column. */
+export function tokenizeContactSearchQuery(q: string): string[] {
+  return q
+    .split(/\s+/)
+    .map((t) => t.trim())
+    .filter((t) => t.length > 0);
+}
+
+/** DEC-026 list: q (LIKE over name/email/company, tokenized so multi-word
+ * "First Last" queries match), segmentId (matchesSegment, applied
+ * server-side over the pure core), sort name|recent, DEC-013 paging. */
 export async function listContactsForOrg(db: Db, orgId: string, params: ParsedContactListQuery): Promise<ContactListResult> {
   const conditions = [eq(schema.contact.orgId, orgId)];
   if (params.q) {
-    const like = `%${params.q}%`;
-    conditions.push(
-      or(
-        sql`${schema.contact.firstName} LIKE ${like} COLLATE NOCASE`,
-        sql`${schema.contact.lastName} LIKE ${like} COLLATE NOCASE`,
-        sql`${schema.contact.email} LIKE ${like} COLLATE NOCASE`,
-        sql`${schema.contact.company} LIKE ${like} COLLATE NOCASE`,
-      )!,
-    );
+    for (const token of tokenizeContactSearchQuery(params.q)) {
+      const like = `%${token}%`;
+      conditions.push(
+        or(
+          sql`${schema.contact.firstName} LIKE ${like} COLLATE NOCASE`,
+          sql`${schema.contact.lastName} LIKE ${like} COLLATE NOCASE`,
+          sql`${schema.contact.email} LIKE ${like} COLLATE NOCASE`,
+          sql`${schema.contact.company} LIKE ${like} COLLATE NOCASE`,
+        )!,
+      );
+    }
   }
 
   const rows = (await db.select().from(schema.contact).where(and(...conditions))).map(toRow);
