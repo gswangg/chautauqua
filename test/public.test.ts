@@ -263,16 +263,17 @@ describe("EMB-02: keyword search (q) server-side substring filter", () => {
     return { db, getCaptured: () => captured };
   }
 
-  it("builds a WHERE that ANDs the search condition with the full visibility gate (never bypasses it)", async () => {
+  it("builds a WHERE that ANDs the search condition with the session visibility gate (never bypasses it)", async () => {
     const { db, getCaptured } = captureWhere("Ada");
     await getPublicSessions(db, EVENT, { trackId: null, page: 1, perPage: 12, q: "Ada" });
     const tokens = walkCondition(getCaptured());
-    // visibility gate columns still present alongside the search condition
+    // session visibility gate columns still present alongside the search
+    // condition; participant.visible (DEC-274) now lives in the leftJoin's
+    // ON condition, not the WHERE clause captured here.
     expect(tokens).toContain("col:status");
     expect(tokens).toContain('val:"accepted"');
     expect(tokens).toContain("col:content_status");
     expect(tokens).toContain('val:"approved"');
-    expect(tokens).toContain("col:visible");
     // search condition: title OR first_name OR last_name, parameterized
     expect(tokens).toContain("col:title");
     expect(tokens).toContain("col:first_name");
@@ -287,6 +288,34 @@ describe("EMB-02: keyword search (q) server-side substring filter", () => {
     expect(tokens).not.toContain('val:"%Ada%"');
     // visibility gate is still present without a search term
     expect(tokens).toContain('val:"accepted"');
+  });
+
+  // DEC-274: an accepted+content-approved submission with zero participant
+  // rows (or all-hidden participants) must still surface publicly, with
+  // speakers: [] — the session gate no longer requires a participant join.
+  it("getPublicSessions returns a speakerless accepted+content-approved session with speakers: []", async () => {
+    let selectCall = 0;
+    const db = {
+      select: () => {
+        selectCall += 1;
+        // 1: hydrateSessions subRows
+        if (selectCall === 1) {
+          return makeChain([{ id: "sub1", seq: 1, title: "Solo Title Match", description: null, icsSequence: 0 }]);
+        }
+        // 2: hydrateSessions trackRows
+        if (selectCall === 2) return makeChain([]);
+        // 3: hydrateSessions speakerRows — zero rows: no participants at all
+        if (selectCall === 3) return makeChain([]);
+        // 4: hydrateSessions slotRows
+        return makeChain([]);
+      },
+      selectDistinct: () => makeChain([{ id: "sub1", title: "Solo Title Match" }]),
+    } as unknown as AppEnv["Variables"]["db"];
+
+    const page = await getPublicSessions(db, EVENT, { trackId: null, page: 1, perPage: 12, q: null });
+    expect(page.items).toHaveLength(1);
+    expect(page.items[0]?.id).toBe("sub1");
+    expect(page.items[0]?.speakers).toEqual([]);
   });
 });
 

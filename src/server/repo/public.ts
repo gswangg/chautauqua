@@ -1,14 +1,20 @@
-// Public/embed repo layer (J10, DEC-022): the ONLY query source for the five
-// public surfaces (/e/:eventSlug/*, /embed/:eventSlug/*). Every query below
-// enforces the shared visibility gate — submission.status='accepted' AND
-// submission.content_status='approved' AND participant.visible=1 AND
-// participant.invite_status IN ('none','accepted') (DEC-108) — in SQL
-// via visibleSubmissionConditions(), never in application code, so it can
-// never accidentally be skipped by a caller. Per DEC-012 this is the only
-// module that touches drizzle row types for public data. The standalone
-// speaker-hydration query in hydrateSessions applies the same DEC-108
-// invite-state clause directly, since it does not route through
-// visibleSubmissionConditions().
+// Public/embed repo layer (J10, DEC-022, DEC-274): the ONLY query source for
+// the five public surfaces (/e/:eventSlug/*, /embed/:eventSlug/*). DEC-274
+// splits the visibility gate into two distinct conditions: session gates
+// (submission.status='accepted' AND submission.content_status='approved',
+// via visibleSessionConditions() — no reference to participant) and
+// participant gates (participant.visible=1 AND participant.invite_status IN
+// ('none','accepted'), DEC-108, via visibleParticipantConditions()).
+// Session-rooted queries (list/agenda/detail) use visibleSessionConditions()
+// alone and left-join participant — a session with zero participants, or
+// whose participants are all hidden, is still publicly visible with
+// speakers: []. Speaker-rooted queries (getPublicSpeakers/
+// getPublicSpeakerDetail) still use visibleSubmissionConditions(), the AND
+// of both gates, since a hidden/uninvited participant must never appear as
+// a speaker. Per DEC-012 this is the only module that touches drizzle row
+// types for public data. The standalone speaker-hydration query in
+// hydrateSessions applies visibleParticipantConditions() directly, since it
+// does not route through visibleSubmissionConditions().
 
 import { and, asc, eq, inArray, like, or, sql } from "drizzle-orm";
 import type { Db } from "../context";
@@ -27,22 +33,43 @@ void DEC_258;
 // ---------------------------------------------------------------------------
 
 /**
- * Single-sourced visibility condition (DEC-022). Callers MUST join
- * `participant` into the query (innerJoin on participant.submissionId =
- * submission.id) for the participant.visible check to apply — every query
- * below does this. Also enforces DEC-108: participant.invite_status must be
- * 'none' (never invited — solo/no-coordination case) or 'accepted' (invite
- * accepted); any other invite state must never make a submission publicly
- * visible.
+ * Session-only visibility gate (DEC-274): submission.status='accepted' AND
+ * submission.content_status='approved'. Contains NO reference to
+ * schema.participant — a session with zero participants, or whose
+ * participants are all hidden, still satisfies this gate. Use this (not
+ * visibleSubmissionConditions()) for every session-rooted public query.
  */
-export function visibleSubmissionConditions() {
+export function visibleSessionConditions() {
+  return and(eq(schema.submission.status, "accepted"), eq(schema.submission.contentStatus, "approved"));
+}
+
+/**
+ * Participant-only visibility gate (DEC-274, DEC-108): participant.visible=1
+ * AND participant.invite_status IN ('none','accepted') — 'none' is the
+ * never-invited (solo/no-coordination) case, 'accepted' is invite-accepted;
+ * any other invite state must never make a participant publicly visible.
+ * Callers must join `participant` for this to apply.
+ */
+export function visibleParticipantConditions() {
   return and(
-    eq(schema.submission.status, "accepted"),
-    eq(schema.submission.contentStatus, "approved"),
     eq(schema.participant.visible, true),
     // two literals, bounded — DEC-104-exempt
     inArray(schema.participant.inviteStatus, ["none", "accepted"]),
   );
+}
+
+/**
+ * Single-sourced visibility condition (DEC-022, DEC-274): the AND of the
+ * session gate and the participant gate. Callers MUST join `participant`
+ * into the query (innerJoin on participant.submissionId = submission.id)
+ * for the participant.visible check to apply. Use this only for
+ * speaker-rooted queries (getPublicSpeakers/getPublicSpeakerDetail) — a
+ * hidden/uninvited participant must never appear as a speaker. Session-
+ * rooted queries must use visibleSessionConditions() instead, so a
+ * speakerless or all-hidden-speaker session remains publicly visible.
+ */
+export function visibleSubmissionConditions() {
+  return and(visibleSessionConditions(), visibleParticipantConditions());
 }
 
 // ---------------------------------------------------------------------------
@@ -157,15 +184,18 @@ async function getVisibleSubmissionIdsOrdered(
   trackId: string | null,
   q: string | null,
 ): Promise<Array<{ id: string; title: string }>> {
-  const baseConditions = [eq(schema.submission.eventId, eventId), visibleSubmissionConditions()];
+  const baseConditions = [eq(schema.submission.eventId, eventId), visibleSessionConditions()];
   if (q) baseConditions.push(searchCondition(q));
 
   if (trackId) {
     const rows = await db
       .selectDistinct({ id: schema.submission.id, title: schema.submission.title })
       .from(schema.submission)
-      .innerJoin(schema.participant, eq(schema.participant.submissionId, schema.submission.id))
-      .innerJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
+      .leftJoin(
+        schema.participant,
+        and(eq(schema.participant.submissionId, schema.submission.id), visibleParticipantConditions()),
+      )
+      .leftJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
       .innerJoin(schema.submissionTrack, eq(schema.submissionTrack.submissionId, schema.submission.id))
       .where(and(...baseConditions, eq(schema.submissionTrack.trackId, trackId)))
       .orderBy(asc(schema.submission.title));
@@ -175,8 +205,11 @@ async function getVisibleSubmissionIdsOrdered(
   const rows = await db
     .selectDistinct({ id: schema.submission.id, title: schema.submission.title })
     .from(schema.submission)
-    .innerJoin(schema.participant, eq(schema.participant.submissionId, schema.submission.id))
-    .innerJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
+    .leftJoin(
+      schema.participant,
+      and(eq(schema.participant.submissionId, schema.submission.id), visibleParticipantConditions()),
+    )
+    .leftJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
     .where(and(...baseConditions))
     .orderBy(asc(schema.submission.title));
   return rows;
@@ -266,14 +299,7 @@ async function hydrateSessions(
       })
       .from(schema.participant)
       .innerJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
-      .where(
-        and(
-          inArray(schema.participant.submissionId, batch),
-          eq(schema.participant.visible, true),
-          // two literals, bounded — DEC-104-exempt
-          inArray(schema.participant.inviteStatus, ["none", "accepted"]),
-        ),
-      )
+      .where(and(inArray(schema.participant.submissionId, batch), visibleParticipantConditions()))
       .orderBy(asc(schema.participant.order));
     speakerRows.push(...batchRows);
   }
@@ -370,12 +396,11 @@ export async function getPublicSessionsByIds(
     const batchRows = await db
       .selectDistinct({ id: schema.submission.id })
       .from(schema.submission)
-      .innerJoin(schema.participant, eq(schema.participant.submissionId, schema.submission.id))
       .where(
         and(
           eq(schema.submission.eventId, event.id),
           inArray(schema.submission.id, batch),
-          visibleSubmissionConditions(),
+          visibleSessionConditions(),
         ),
       );
     visibleRows.push(...batchRows);
@@ -632,9 +657,8 @@ export async function getPublicSessionDetail(
   const visibleRows = await db
     .selectDistinct({ id: schema.submission.id })
     .from(schema.submission)
-    .innerJoin(schema.participant, eq(schema.participant.submissionId, schema.submission.id))
     .where(
-      and(eq(schema.submission.eventId, event.id), eq(schema.submission.id, submissionId), visibleSubmissionConditions()),
+      and(eq(schema.submission.eventId, event.id), eq(schema.submission.id, submissionId), visibleSessionConditions()),
     );
   if (visibleRows.length === 0) return null;
 
@@ -691,8 +715,7 @@ export async function getPublicAgenda(db: Db, event: PublicEvent): Promise<Publi
     })
     .from(schema.scheduleSlot)
     .innerJoin(schema.submission, eq(schema.scheduleSlot.submissionId, schema.submission.id))
-    .innerJoin(schema.participant, eq(schema.participant.submissionId, schema.submission.id))
-    .where(and(eq(schema.submission.eventId, event.id), visibleSubmissionConditions()))
+    .where(and(eq(schema.submission.eventId, event.id), visibleSessionConditions()))
     .orderBy(asc(schema.scheduleSlot.day), asc(schema.scheduleSlot.startMin));
 
   if (rows.length === 0) return [];
