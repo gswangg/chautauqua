@@ -42,16 +42,28 @@ export async function getTaskOwnership(
 /** Returns ownership info for a task_assignment row: event/org (for the
  * organizer authz path) plus the assignment's own contactId (for the
  * owning-speaker authz path — DEC-023 PATCH allows organizer OR the owning
- * speaker, compared against c.var.auth.contactId). */
+ * speaker, compared against c.var.auth.contactId). Also carries the task's
+ * kind and the assignment's own response_json/file_id so the PATCH handler
+ * can enforce the DEC-214 speaker-side kind gates in the same round-trip. */
 export async function getAssignmentOwnership(
   db: Db,
   assignmentId: string,
-): Promise<{ eventId: string; orgId: string; contactId: string } | null> {
+): Promise<{
+  eventId: string;
+  orgId: string;
+  contactId: string;
+  kind: string;
+  responseJson: string | null;
+  fileId: string | null;
+} | null> {
   const rows = await db
     .select({
       eventId: schema.task.eventId,
       orgId: schema.event.orgId,
       contactId: schema.taskAssignment.contactId,
+      kind: schema.task.kind,
+      responseJson: schema.taskAssignment.responseJson,
+      fileId: schema.taskAssignment.fileId,
     })
     .from(schema.taskAssignment)
     .innerJoin(schema.task, eq(schema.taskAssignment.taskId, schema.task.id))
