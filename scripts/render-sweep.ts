@@ -261,6 +261,12 @@ async function main(): Promise<void> {
   const port = await findFreePort();
   const baseUrl = `http://localhost:${port}`;
 
+  console.log("render-sweep: building admin SPA bundle...");
+  // DEC-268: a fresh worktree has no gitignored app/dist bundle unless something
+  // built it first; wrangler dev serves static assets from that dir, so build it
+  // here rather than relying on a prior `npm run build` having been run.
+  runOrThrow("npx", ["vite", "build", "--config", "app/vite.config.ts"]);
+
   console.log("render-sweep: applying migrations + seed data...");
   runOrThrow("npx", ["wrangler", "d1", "migrations", "apply", "chautauqua", "--local"]);
   runOrThrow("npx", ["tsx", "scripts/seed.ts"]);
