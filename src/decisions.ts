@@ -193,3 +193,8 @@ export const DEC_187 = "Zero-setup dev vars bootstrap: .dev.vars stays untracked
 export const DEC_188 = "Wave-12 battery binding: wave-11 battery voided (only w11-a ran; 629d57e is code-bearing), S'' = merge of task-w12-a, third-generation homonym guard, dead-lane and orphan-report declarations";
 export const DEC_189 = "Wave-13 cooperative exit battery: S''' = merge of task-w12-a (7f7477e), dedupe against concurrently-draining task-w12-* gates, fourth-generation homonym guard, sibling-wait rule";
 export const DEC_190 = "Adjudications: late-drained wave-11 battery is historical-only; w11-f's FAIL was a sibling merge race; the AIRTABLE_TOKEN open item is CLOSED for stage-1 by operator commit 629d57e";
+export const DEC_191 = "email_log.contact_id is a real contact id or NULL — never a user id; RenderedEmail/EmailLogEntry.contactId widen to string | null";
+export const DEC_192 = "Admin submissions track filter is populated via GET /api/v1/events/:eventId/tracks using the existing apiList<Track> pattern";
+export const DEC_193 = "Client-side bulk-status chunking: SubmissionsTable splits selected ids into sequential batches of 500; on mid-run failure it stops loudly and refetches";
+export const DEC_194 = "FieldControl emits data-required=\"true\"/\"false\" on the four required-capable controls, restoring the DEC-008 visibility script's dataset.required contract";
+export const DEC_195 = "The 7f7477e battery is VOID for exit once any w14 fix merges; wave 15 binds a fresh DEC-189-style cooperative battery at the post-w14 sha; fifth-generation homonym guard";
