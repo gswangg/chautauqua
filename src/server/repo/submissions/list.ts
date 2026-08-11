@@ -2,11 +2,11 @@
 // repo/submissions.ts (contention decomposition, no behavior change). See
 // repo/submissions.ts for the module-level contract notes.
 
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, or, sql } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { formatRef } from "../../../domain/ids";
-import { chunkIds, ID_CHUNK_SIZE, type ParsedListQuery, type SortOrder } from "./query";
+import { chunkIds, likeContains, type ParsedListQuery, type SortOrder } from "./query";
 
 export interface SubmissionSpeaker {
   contactId: string;
@@ -31,45 +31,20 @@ export interface ListSubmissionsResult {
   total: number;
 }
 
+/** ORDER BY clause for each sort, with a seq tiebreaker (DEC-335) so OFFSET
+ * paging stays stable when createdAt/title values tie across rows. */
 function orderByForSort(sort: SortOrder) {
   switch (sort) {
     case "oldest":
-      return sql`${schema.submission.createdAt} asc`;
+      return sql`${schema.submission.createdAt} asc, ${schema.submission.seq} asc`;
     case "title":
-      return sql`${schema.submission.title} asc`;
+      return sql`${schema.submission.title} asc, ${schema.submission.seq} asc`;
     case "ref":
       return sql`${schema.submission.seq} asc`;
     case "newest":
     default:
-      return sql`${schema.submission.createdAt} desc`;
+      return sql`${schema.submission.createdAt} desc, ${schema.submission.seq} desc`;
   }
-}
-
-/** JS mirror of orderByForSort's SQL ordering, used only by the batched
- * allowedIds fallback below (>ID_CHUNK_SIZE candidate ids, where results
- * come from multiple merged queries instead of one ORDER BY). Pure,
- * unit-tested directly. */
-export function sortSubmissionRows<T extends { title: string; seq: number; createdAt: Date }>(
-  rows: T[],
-  sort: SortOrder,
-): T[] {
-  const out = [...rows];
-  switch (sort) {
-    case "oldest":
-      out.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
-      break;
-    case "title":
-      out.sort((a, b) => a.title.localeCompare(b.title));
-      break;
-    case "ref":
-      out.sort((a, b) => a.seq - b.seq);
-      break;
-    case "newest":
-    default:
-      out.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-      break;
-  }
-  return out;
 }
 
 export async function listSubmissions(
@@ -89,98 +64,45 @@ export async function listSubmissions(
     conditions.push(inArray(schema.submission.status, params.status));
   }
 
-  // Candidate-id narrowing for q / trackId: a handful of aggregate queries
-  // over the whole event, never per-row of the result page (no N+1).
-  let allowedIds: Set<string> | null = null;
-
+  // q / trackId narrowing: pushed into the WHERE clause as correlated
+  // EXISTS subqueries (DEC-335) rather than a separate candidate-id pass +
+  // JS pagination — one paginated statement, cost bound by the WHERE, not
+  // by materializing every matching row.
   if (params.q) {
-    const like = `%${params.q.toLowerCase()}%`;
-    const titleRows = await db
-      .select({ id: schema.submission.id })
-      .from(schema.submission)
-      .where(
-        and(eq(schema.submission.eventId, eventId), sql`lower(${schema.submission.title}) like ${like}`),
-      );
-    const nameRows = await db
-      .select({ submissionId: schema.participant.submissionId })
-      .from(schema.participant)
-      .innerJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
-      .innerJoin(schema.submission, eq(schema.participant.submissionId, schema.submission.id))
-      .where(
-        and(
-          eq(schema.submission.eventId, eventId),
-          sql`lower(${schema.contact.firstName} || ' ' || ${schema.contact.lastName}) like ${like}`,
-        ),
-      );
-    const ids = new Set<string>();
-    for (const r of titleRows) ids.add(r.id);
-    for (const r of nameRows) ids.add(r.submissionId);
-    allowedIds = ids;
+    const like = likeContains(params.q);
+    conditions.push(
+      or(
+        sql`lower(${schema.submission.title}) like ${like} escape '\\'`,
+        sql`exists (select 1 from ${schema.participant} inner join ${schema.contact} on ${schema.contact.id} = ${schema.participant.contactId} where ${schema.participant.submissionId} = ${schema.submission.id} and lower(${schema.contact.firstName} || ' ' || ${schema.contact.lastName}) like ${like} escape '\\')`,
+      )!,
+    );
   }
 
   if (params.trackId) {
-    const primaryRows = await db
-      .select({ id: schema.submission.id })
-      .from(schema.submission)
-      .where(and(eq(schema.submission.eventId, eventId), eq(schema.submission.trackId, params.trackId)));
-    const joinRows = await db
-      .select({ submissionId: schema.submissionTrack.submissionId })
-      .from(schema.submissionTrack)
-      .where(eq(schema.submissionTrack.trackId, params.trackId));
-    const trackMatch = new Set<string>();
-    for (const r of primaryRows) trackMatch.add(r.id);
-    for (const r of joinRows) trackMatch.add(r.submissionId);
-    allowedIds = allowedIds ? new Set([...allowedIds].filter((id) => trackMatch.has(id))) : trackMatch;
+    conditions.push(
+      or(
+        eq(schema.submission.trackId, params.trackId),
+        sql`exists (select 1 from ${schema.submissionTrack} where ${schema.submissionTrack.submissionId} = ${schema.submission.id} and ${schema.submissionTrack.trackId} = ${params.trackId})`,
+      )!,
+    );
   }
 
-  if (allowedIds !== null && allowedIds.size === 0) return { items: [], total: 0 };
-
-  // D1 rejects a statement once its bound-parameter count crosses the same
-  // ~100 ceiling documented by ID_CHUNK_SIZE above. A q/trackId match can
-  // legitimately narrow to more than ID_CHUNK_SIZE candidate ids in one
-  // event, so a single inArray(...) folded into the paginated query (as
-  // below) would crash exactly like the per-page enrichment queries did.
-  // Below that ceiling, keep the original single-query path (same
-  // behavior, same perf). At/above it, batch the id-scoped fetch and
-  // total across chunks and paginate/sort in JS instead of SQL.
   const offset = (params.page - 1) * params.perPage;
-  let total: number;
-  let rows: (typeof schema.submission.$inferSelect)[];
+  const whereExpr = and(...conditions);
 
-  if (allowedIds !== null && allowedIds.size > ID_CHUNK_SIZE) {
-    const baseWhereExpr = and(...conditions);
-    const idBatchesForFilter = chunkIds([...allowedIds]);
-    let allMatching: (typeof schema.submission.$inferSelect)[] = [];
-    for (const batch of idBatchesForFilter) {
-      const batchRows = await db
-        .select()
-        .from(schema.submission)
-        .where(and(baseWhereExpr, inArray(schema.submission.id, batch)));
-      allMatching = allMatching.concat(batchRows);
-    }
-    allMatching = sortSubmissionRows(allMatching, params.sort);
-    total = allMatching.length;
-    rows = allMatching.slice(offset, offset + params.perPage);
-  } else {
-    if (allowedIds !== null) {
-      conditions.push(inArray(schema.submission.id, [...allowedIds]));
-    }
-    const whereExpr = and(...conditions);
+  const totalRows = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(schema.submission)
+    .where(whereExpr);
+  const total = Number(totalRows[0]?.count ?? 0);
 
-    const totalRows = await db
-      .select({ count: sql<number>`count(*)` })
-      .from(schema.submission)
-      .where(whereExpr);
-    total = Number(totalRows[0]?.count ?? 0);
-
-    rows = await db
-      .select()
-      .from(schema.submission)
-      .where(whereExpr)
-      .orderBy(orderByForSort(params.sort))
-      .limit(params.perPage)
-      .offset(offset);
-  }
+  const rows = await db
+    .select()
+    .from(schema.submission)
+    .where(whereExpr)
+    .orderBy(orderByForSort(params.sort))
+    .limit(params.perPage)
+    .offset(offset);
 
   if (rows.length === 0) return { items: [], total };
 
