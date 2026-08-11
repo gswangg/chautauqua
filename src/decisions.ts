@@ -220,3 +220,6 @@ export const DEC_214 = "Speaker-side kind gates on PATCH /api/v1/task-assignment
 export const DEC_215 = "Org-user temp-password re-issue: POST /api/v1/users/:id/reset-password (organizer-only, own org, csrfJson) returns a fresh one-time password in the JSON response and revokes the target's sessions; never emailed";
 export const DEC_216 = "DEC-199 stage-1 disposition: no schema migration for case-insensitive email uniqueness; app-level normalization plus the existing raw unique index are sufficient";
 export const DEC_217 = "app/src/routeManifest.ts gains authenticated /account/password entries for organizer, reviewer, and speaker so the render-sweep gate covers DEC-200's account routes";
+export const DEC_218 = "task-w22-e and task-w22-f are dead stubs, rebound to wave-23 lanes; late commits from those branches are superseded";
+export const DEC_219 = "The exit battery is planned only after the planner verifies every task-w* ref is merged or VOID, and each battery task carries the literal frozen sha in its task text";
+export const DEC_220 = "POST /api/v1/users/:id/reset-password has no self-target guard: any own-org user id, including the caller's own, is a valid target";
