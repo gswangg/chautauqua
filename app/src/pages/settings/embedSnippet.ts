@@ -1,0 +1,75 @@
+// EMB-15 / DEC-289: pure URL and snippet builders for the organizer-side
+// embed builder (EmbedsPanel.tsx). Conforms exactly to the server contract
+// fixed in decisions/DEC-289.md: output format is a PATH SUFFIX (never a
+// ?format= query param), query params are optional and only the non-default
+// ones are serialized, in the stable order trackId, day, limit, fields,
+// accent, and `accent` is sent WITHOUT its leading '#' (the server
+// normalizes it back to '#rrggbb').
+
+export const EMBED_SURFACES = ['sessions', 'speakers', 'agenda', 'schedule', 'gallery'] as const;
+export type EmbedSurface = (typeof EMBED_SURFACES)[number];
+
+export const EMBED_FORMATS = ['iframe', 'link', 'json', 'ics'] as const;
+export type EmbedFormat = (typeof EMBED_FORMATS)[number];
+
+// DEC-289: `fields` allowlist — sessions surface cards only. Title and its
+// detail link always render and are not part of the allowlist.
+export const EMBED_FIELDS = ['track', 'time', 'room', 'speaker', 'description'] as const;
+export type EmbedField = (typeof EMBED_FIELDS)[number];
+
+export interface EmbedOptions {
+  format: EmbedFormat;
+  trackId?: string;
+  day?: string;
+  limit?: number;
+  fields?: EmbedField[];
+  accent?: string;
+}
+
+/** Builds the public embed URL for a surface + format + filter/branding
+ * options, per DEC-289. `origin` is expected to be `window.location.origin`
+ * (or an equivalent) supplied by the caller — this module never reads
+ * globals. */
+export function buildEmbedUrl(origin: string, slug: string, surface: EmbedSurface, opts: EmbedOptions): string {
+  const { format } = opts;
+  let path: string;
+  if (format === 'iframe' || format === 'link') {
+    path = `/embed/${slug}/${surface}`;
+  } else if (format === 'json') {
+    path = `/embed/${slug}/${surface}.json`;
+  } else if (format === 'ics') {
+    // DEC-289: iCal is the full published agenda, a single fixed route
+    // under /e/, not per-surface.
+    path = `/e/${slug}/agenda.ics`;
+  } else {
+    throw new Error(`Unknown embed format: ${String(format)}`);
+  }
+
+  const params = new URLSearchParams();
+  if (opts.trackId) params.set('trackId', opts.trackId);
+  if (opts.day) params.set('day', opts.day);
+  if (opts.limit !== undefined) params.set('limit', String(opts.limit));
+  if (opts.fields && opts.fields.length > 0 && opts.fields.length < EMBED_FIELDS.length) {
+    params.set('fields', opts.fields.join(','));
+  }
+  if (opts.accent) params.set('accent', opts.accent.replace(/^#/, ''));
+
+  const qs = params.toString();
+  return `${origin}${path}${qs ? `?${qs}` : ''}`;
+}
+
+/** Builds the copyable snippet for a resolved URL. `format` drives the
+ * shape: an <iframe> tag, a plain <a> tag, or the bare URL for the two
+ * feed formats (json/ics — nothing to embed inline, just a link to fetch). */
+export function buildSnippet(url: string, surface: EmbedSurface, format: EmbedFormat): string {
+  if (format === 'iframe') {
+    return `<iframe src="${url}" style="width:100%;min-height:600px;border:0" loading="lazy" title="${surface}"></iframe>`;
+  }
+  if (format === 'link') {
+    return `<a href="${url}">${surface}</a>`;
+  }
+  if (format === 'json' || format === 'ics') {
+    return url;
+  }
+  throw new Error(`Unknown embed format: ${String(format)}`);
+}
