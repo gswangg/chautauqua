@@ -47,13 +47,13 @@ instead (DEC-252/DEC-296; see `src/server/origin.ts`).
 ### Dev: migrations
 
 Migrations under `migrations/*.sql` are hand-authored, not drizzle-kit
-generated (DEC-164/DEC-263) — `migrations/meta/` only has snapshots for
-`0000`-`0004`, so `drizzle-kit generate` diffs `src/db/schema.ts` against
-that stale snapshot and would emit a spurious migration re-creating tables
-and columns that already exist. Do **not** run `drizzle-kit generate` (there
-is no `db:generate` script for this reason); when the schema changes, hand-
-author the next-numbered `migrations/NNNN_*.sql` file yourself.
-`test/migration-parity.test.ts` is the real guard: it parses every
+generated (DEC-164/DEC-263/DEC-308). `drizzle-kit` is **not installed** in
+this repo — `migrations/meta/` only has snapshots for `0000`-`0004`, so
+`drizzle-kit generate` would diff `src/db/schema.ts` against that stale
+snapshot and emit a spurious migration re-creating tables and columns that
+already exist. There is no `db:generate` script for this reason; when the
+schema changes, hand-author the next-numbered `migrations/NNNN_*.sql` file
+yourself. `test/migration-parity.test.ts` is the real guard: it parses every
 `migrations/*.sql` file and asserts that every table/column exported from
 `src/db/schema.ts` has a creating migration, so a fresh clone's `npm run
 db:migrate` always produces the schema the code expects.
