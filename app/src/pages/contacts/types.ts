@@ -80,6 +80,11 @@ export interface ImportResult {
   created: number;
   updated: number;
   skipped: { line: number; reason: string }[];
+  // DEC-290: present when the import request carried an `eventId` (roster
+  // import from the Speakers page) -- the imported/matched contact ids and
+  // how many of them were newly pushed onto that event's roster.
+  contactIds?: string[];
+  addedToEvent?: number;
 }
 
 export const BULK_EMAIL_MERGE_FIELDS = ['speaker_name', 'event_name', 'portal_link'] as const;

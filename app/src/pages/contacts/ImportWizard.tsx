@@ -6,11 +6,17 @@ import type { ImportResult } from './types';
 interface Props {
   onClose: () => void;
   onImported: () => void;
+  // DEC-290: when set (e.g. the Speakers roster importer), the import is
+  // additionally scoped to this event -- the server pushes every imported
+  // contact onto the event's roster and reports `addedToEvent` back. Absent
+  // this prop, behavior is unchanged from the CRM-only import (today's
+  // ContactsApp call site).
+  eventId?: string;
 }
 
 const PREVIEW_ROWS = 5;
 
-export function ImportWizard({ onClose, onImported }: Props) {
+export function ImportWizard({ onClose, onImported, eventId }: Props) {
   const [csvText, setCsvText] = useState('');
   const [mapping, setMapping] = useState<Record<string, string>>({});
   const [result, setResult] = useState<ImportResult | null>(null);
@@ -65,7 +71,11 @@ export function ImportWizard({ onClose, onImported }: Props) {
       // server ever sees it (see expandFullNameMapping in ./csv.ts).
       const expanded = expandFullNameMapping(header, dataRows, mapping);
       const expandedCsvText = toCsv([expanded.header, ...expanded.rows]);
-      const res = await apiPost<ImportResult>('/contacts/import', { csvText: expandedCsvText, mapping: expanded.mapping });
+      const res = await apiPost<ImportResult>('/contacts/import', {
+        csvText: expandedCsvText,
+        mapping: expanded.mapping,
+        ...(eventId ? { eventId } : {}),
+      });
       setResult(res);
       onImported();
     } catch (err) {
@@ -187,6 +197,9 @@ export function ImportWizard({ onClose, onImported }: Props) {
             <p>
               Created {result.created}, updated {result.updated}, skipped {result.skipped.length}.
             </p>
+            {eventId && (
+              <p>Added {result.addedToEvent ?? 0} to this event.</p>
+            )}
             {result.skipped.length > 0 && (
               <ul>
                 {result.skipped.map((s) => (
