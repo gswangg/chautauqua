@@ -218,7 +218,7 @@ reviewPlansRoutes.get("/api/v1/plans/:id/progress", requireOrganizer, async (c) 
   const reviewerRows = await repo.listReviewerRowsForPlan(c.var.db, plan.id);
   const userIds = [...new Set(reviewerRows.map((r) => r.userId))];
   const users = await repo.getUsersByIds(c.var.db, userIds);
-  const evaluations = (await repo.listEvaluationsForPlan(c.var.db, plan.id, round)).filter((e) => e.round === round);
+  const evaluations = await repo.listCompletedPairsForPlan(c.var.db, plan.id, round);
   // One plan-filtered load + pure assignment resolution (DEC-081): no
   // per-reviewer awaits.
   const submissions = await repo.listPlanFilteredSubmissions(c.var.db, plan);
@@ -306,7 +306,7 @@ reviewPlansRoutes.post("/api/v1/plans/:id/remind", requireOrganizer, csrfJson, a
   const reviewerRows = await repo.listReviewerRowsForPlan(c.var.db, plan.id);
   const userIds = [...new Set(reviewerRows.map((r) => r.userId))];
   const users = await repo.getUsersByIds(c.var.db, userIds);
-  const evaluations = (await repo.listEvaluationsForPlan(c.var.db, plan.id, plan.currentRound)).filter((e) => e.round === plan.currentRound);
+  const evaluations = await repo.listCompletedPairsForPlan(c.var.db, plan.id, plan.currentRound);
   // One plan-filtered load + pure assignment resolution (DEC-081): no
   // per-reviewer awaits.
   const submissions = await repo.listPlanFilteredSubmissions(c.var.db, plan);

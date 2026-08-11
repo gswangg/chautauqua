@@ -69,6 +69,7 @@ vi.mock("../src/server/repo/review", async () => {
     listAnswersForSubmission: vi.fn(async () => []),
     listSpeakersForSubmission: vi.fn(async () => []),
     listEvaluationsForPlan: vi.fn(async () => []),
+    listCompletedPairsForPlan: vi.fn(async () => []),
     // DEC-346: the queue route sources counts/ratedByMe from these.
     countEvaluationsBySubmission: vi.fn(async () => new Map<string, number>()),
     listSubmissionIdsRatedBy: vi.fn(async () => new Set<string>()),

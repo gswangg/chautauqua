@@ -80,6 +80,11 @@ vi.mock("../src/server/repo/review", async () => {
     listPlanFilteredSubmissions: vi.fn(async () => [submission]),
     resolveReviewerSubmissions: vi.fn(async () => [submission]),
     listEvaluationsForPlan: vi.fn(async () => evaluations),
+    listCompletedPairsForPlan: vi.fn(async (_db: unknown, planId: string, round: number) =>
+      evaluations
+        .filter((e) => e.planId === planId && e.round === round)
+        .map((e) => ({ reviewerId: e.reviewerId, submissionId: e.submissionId })),
+    ),
     // DEC-346: the queue route sources counts/ratedByMe from these SQL
     // aggregates -- derive them from the same fixture list.
     countEvaluationsBySubmission: vi.fn(async (_db: unknown, planId: string, round: number) => {

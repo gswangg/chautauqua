@@ -60,6 +60,7 @@ vi.mock("../src/server/repo/review", async () => {
     listRoundsWithEvaluations: vi.fn(async (_db: unknown, planId: string) => (planId === plan.id ? evaluatedRounds : [])),
     listPlanFilteredSubmissions: vi.fn(async () => []),
     listEvaluationsForPlan: vi.fn(async () => []),
+    listCompletedPairsForPlan: vi.fn(async () => []),
   };
 });
 
