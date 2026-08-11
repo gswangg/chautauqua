@@ -57,7 +57,14 @@ vi.mock("../src/server/repo/tasks", async () => {
     assignTask: vi.fn(async (_db: unknown, taskId: string, contactIds: string[]) => {
       assignTaskCalls.push({ taskId, contactIds });
     }),
-    getOnboardingGrid: vi.fn(async () => ({ tasks: [], rows: [] })),
+    getOnboardingGrid: vi.fn(async () => ({
+      tasks: [],
+      rows: [],
+      total: 0,
+      page: 1,
+      perPage: 50,
+      counts: { speakers: 0, outstandingRequired: 0, overdue: 0, outstandingContacts: 0 },
+    })),
   };
 });
 
@@ -107,7 +114,14 @@ describe("DEC-120: POST /tasks/:id/assign rejects cross-org contact ids", () => 
     const res = await app.request(assignRequest([CONTACT_A1, CONTACT_A2]));
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body).toEqual({ tasks: [], rows: [] });
+    expect(body).toEqual({
+      tasks: [],
+      rows: [],
+      total: 0,
+      page: 1,
+      perPage: 50,
+      counts: { speakers: 0, outstandingRequired: 0, overdue: 0, outstandingContacts: 0 },
+    });
     expect(assignTaskCalls).toHaveLength(1);
     expect(assignTaskCalls[0]?.contactIds.sort()).toEqual([CONTACT_A1, CONTACT_A2].sort());
   });

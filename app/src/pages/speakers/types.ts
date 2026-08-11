@@ -40,19 +40,33 @@ export interface OnboardingRow {
   cells: OnboardingCell[];
 }
 
-// GET /api/v1/events/:eventId/onboarding response (DEC-023).
+export interface OnboardingGridCounts {
+  speakers: number;
+  outstandingRequired: number;
+  overdue: number;
+  outstandingContacts: number;
+}
+
+// GET /api/v1/events/:eventId/onboarding response (DEC-340: server-paginated/
+// filtered/searchable roster, superseding the DEC-023 whole-event envelope).
 export interface OnboardingGridResponse {
   tasks: OnboardingTask[];
   rows: OnboardingRow[];
+  total: number;
+  page: number;
+  perPage: number;
+  counts: OnboardingGridCounts;
 }
 
 export interface GridFilterState {
+  q: string;
   taskId: string | null;
   status: AssignmentStatus | null;
   overdueOnly: boolean;
 }
 
 export const DEFAULT_GRID_FILTERS: GridFilterState = {
+  q: '',
   taskId: null,
   status: null,
   overdueOnly: false,

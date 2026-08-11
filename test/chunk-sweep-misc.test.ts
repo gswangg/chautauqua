@@ -37,14 +37,18 @@ describe("DEC-104 chunk sweep — misc lane", () => {
     expect(src).toMatch(/import\s*{\s*chunkIds\s*}\s*from\s*"..\/..\/lib\/chunk"/);
   });
 
-  it("tasks.ts: getOnboardingGrid no longer passes the raw taskIds list to inArray", () => {
+  it("tasks.ts: getOnboardingGrid no longer passes the raw contact-id page list to inArray unbounded (DEC-340)", () => {
     const src = readSrc("tasks.ts");
-    // The exempt sendDueRemindersForEvent-adjacent listOutstandingForEvent
-    // filter (line ~421, DEC-104-exempt bounded track filter) legitimately
-    // still uses `inArray(schema.taskAssignment.taskId, taskIds)` once —
-    // only the getOnboardingGrid site (chunked below) must be gone.
-    expect((src.match(/inArray\(schema\.taskAssignment\.taskId, taskIds\)/g) ?? []).length).toBe(1);
-    expect(src).toMatch(/for \(const batch of chunkIds\(taskIds\)\) \{[\s\S]*?inArray\(schema\.taskAssignment\.taskId, batch\)/);
+    // DEC-340: getOnboardingGrid's page-cells query is bounded by the page's
+    // *contact* ids (never an unbounded event-wide id list), chunked via
+    // chunkIds. The taskIds list is bounded by "tasks in one event" (never
+    // unboundedly grown per request) so it's ANDed in unchunked alongside the
+    // chunked contactId batch — the exempt sendDueRemindersForEvent-adjacent
+    // listOutstandingForEvent filter (DEC-104-exempt bounded track filter)
+    // legitimately still uses `inArray(schema.taskAssignment.taskId, taskIds)`
+    // once too, so this count is 2 (one per site), not 1.
+    expect((src.match(/inArray\(schema\.taskAssignment\.taskId, taskIds\)/g) ?? []).length).toBe(2);
+    expect(src).toMatch(/for \(const batch of chunkIds\(contactIdsInOrder\)\) \{[\s\S]*?inArray\(schema\.taskAssignment\.contactId, batch\)/);
   });
 
   it("tasks.ts: createTaskAssignments no longer passes the raw contactIds list to inArray", () => {

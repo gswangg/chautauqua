@@ -249,7 +249,8 @@ describe("DEC-239/DEC-247: GET /api/v1/submissions/:id/files vs DeliverableFile"
 
 // ---------------------------------------------------------------------------
 // speakers-matrix rows: GET /api/v1/events/:eventId/onboarding vs
-// OnboardingGridResponse {tasks: OnboardingTask[], rows: OnboardingRow[]}
+// OnboardingGridResponse {tasks, rows, total, page, perPage, counts} (DEC-340
+// server-paginated/filtered/searchable roster, superseding DEC-023).
 // ---------------------------------------------------------------------------
 
 const ONBOARDING_GRID = {
@@ -269,10 +270,14 @@ const ONBOARDING_GRID = {
       ],
     },
   ],
+  total: 1,
+  page: 1,
+  perPage: 50,
+  counts: { speakers: 1, outstandingRequired: 1, overdue: 0, outstandingContacts: 1 },
 };
 
-describe("DEC-239: GET /api/v1/events/:eventId/onboarding vs OnboardingGridResponse", () => {
-  it("matches {tasks,rows} with exact task/row/cell/contact key names", async () => {
+describe("DEC-239/DEC-340: GET /api/v1/events/:eventId/onboarding vs OnboardingGridResponse", () => {
+  it("matches {tasks,rows,total,page,perPage,counts} with exact task/row/cell/contact key names", async () => {
     vi.doMock("../src/server/repo/tasks", async () => {
       const actual = await vi.importActual<typeof import("../src/server/repo/tasks")>("../src/server/repo/tasks");
       return {
@@ -293,9 +298,14 @@ describe("DEC-239: GET /api/v1/events/:eventId/onboarding vs OnboardingGridRespo
 
     const res = await app.request("/api/v1/events/event-1/onboarding");
     expect(res.status).toBe(200);
-    const body = (await res.json()) as { tasks: Record<string, unknown>[]; rows: Record<string, unknown>[] };
-    expect(keysOf(body)).toEqual(["rows", "tasks"]);
+    const body = (await res.json()) as {
+      tasks: Record<string, unknown>[];
+      rows: Record<string, unknown>[];
+      counts: Record<string, unknown>;
+    };
+    expect(keysOf(body)).toEqual(["counts", "page", "perPage", "rows", "tasks", "total"]);
     expect(keysOf(first(body.tasks))).toEqual(["dueDate", "id", "kind", "required", "title"]);
+    expect(keysOf(body.counts)).toEqual(["outstandingContacts", "outstandingRequired", "overdue", "speakers"]);
     const row = first(body.rows);
     expect(keysOf(row)).toEqual(["cells", "contact"]);
     expect(keysOf(row.contact as Record<string, unknown>)).toEqual([

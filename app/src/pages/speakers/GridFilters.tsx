@@ -12,6 +12,17 @@ export function GridFilters({ tasks, filters, onChange }: GridFiltersProps) {
   return (
     <div className="chq-onboarding-filters">
       <label>
+        Search
+        <input
+          type="text"
+          aria-label="Search speakers"
+          placeholder="Name or email"
+          value={filters.q}
+          onChange={(e) => onChange({ ...filters, q: e.target.value })}
+        />
+      </label>
+
+      <label>
         Task
         <select
           aria-label="Filter by task"

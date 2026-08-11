@@ -96,12 +96,36 @@ function asRecord(body: unknown): Record<string, unknown> {
 // Grid
 // ---------------------------------------------------------------------------
 
+const DEFAULT_GRID_PER_PAGE = 50;
+const MAX_GRID_PER_PAGE = 200;
+
+/** DEC-340: parses the onboarding grid's page/perPage/q/taskId/status/
+ * overdueOnly query params, mirroring parseListQuery's page/perPage
+ * defaults (DEC-013). */
+function parseOnboardingGridQuery(raw: Record<string, string | undefined>, now: number) {
+  const pageNum = Number(raw.page);
+  const page = Number.isInteger(pageNum) && pageNum > 0 ? pageNum : 1;
+
+  const perPageNum = Number(raw.perPage);
+  const perPage =
+    Number.isInteger(perPageNum) && perPageNum > 0 ? Math.min(perPageNum, MAX_GRID_PER_PAGE) : DEFAULT_GRID_PER_PAGE;
+
+  const q = raw.q && raw.q.trim().length > 0 ? raw.q.trim() : null;
+  const taskId = raw.taskId && raw.taskId.trim().length > 0 ? raw.taskId.trim() : null;
+  const status: "pending" | "complete" | null =
+    raw.status === "pending" || raw.status === "complete" ? raw.status : null;
+  const overdueOnly = raw.overdueOnly === "1" || raw.overdueOnly === "true";
+
+  return { page, perPage, q, taskId, status, overdueOnly, now };
+}
+
 // GET /api/v1/events/:eventId/onboarding
 taskRoutes.get("/events/:eventId/onboarding", requireOrganizer, async (c) => {
   const auth = requireAuth(c);
   const eventId = c.req.param("eventId");
   await assertEventOwnership(c.var.db, eventId, auth.orgId);
-  const grid = await getOnboardingGrid(c.var.db, eventId);
+  const params = parseOnboardingGridQuery(c.req.query(), Date.now());
+  const grid = await getOnboardingGrid(c.var.db, eventId, params);
   return c.json(grid);
 });
 
@@ -280,7 +304,15 @@ taskRoutes.post("/tasks/:id/assign", requireOrganizer, csrfJson, async (c) => {
   }
 
   await assignTask(c.var.db, taskId, dedupedContactIds);
-  const grid = await getOnboardingGrid(c.var.db, ownership.eventId);
+  const grid = await getOnboardingGrid(c.var.db, ownership.eventId, {
+    page: 1,
+    perPage: DEFAULT_GRID_PER_PAGE,
+    q: null,
+    taskId: null,
+    status: null,
+    overdueOnly: false,
+    now: Date.now(),
+  });
   return c.json(grid);
 });
 

@@ -25,6 +25,10 @@ const GRID: OnboardingGridResponse = {
       ],
     },
   ],
+  total: 1,
+  page: 1,
+  perPage: 50,
+  counts: { speakers: 1, outstandingRequired: 0, overdue: 0, outstandingContacts: 0 },
 };
 
 const DETAIL: AssignmentResponseDetail = {
