@@ -361,3 +361,7 @@ export const DEC_355 = "Bulk acceptance planning becomes set-based: a bulk statu
 export const DEC_356 = "CSV import never loads the org's whole contact table: the upsert lookup is chunked and keyed on the file's own emails, behind a 2,000-row per-import cap";
 export const DEC_357 = "Bulk roster-add is set-based: one chunked contact load plus exactly ONE updateSubmissionStatuses call for every created submission; createSubmission stays per-row because seq is allocated by a SQL subquery";
 export const DEC_358 = "Stage-1 exit accounting for wave 22: the global public-cache purge stays CLOSED, and wave 23's exit set is build/test/tripwires/fresh-migration + FULL walkthrough + perf:smoke at one tip";
+export const DEC_359 = "Wave 23's stage-1 exit set is SIX gate lanes, not DEC-358's three: the browser render-sweep, the SPEC/rubric audit, and the zero-secret fresh-clone proof are all stale by many waves or have never run";
+export const DEC_360 = "Wave-23 gate lanes are log-only: each owns exactly one new file (its own verification log) and never patches product code; a red gate is an OPEN ITEM with file:line for wave 24";
+export const DEC_361 = "Every wave-23 gate verifies the ten wave-21/wave-22 lanes are ancestors of its FROZEN SHA before the expensive run; drift is a logged POST-S DELTA, never a STOP";
+export const DEC_362 = "The stage-1 exit predicate, restated for the next planner: six wave-23 logs at OPEN ITEMS: 0 / RESULT: PASS, then goalComplete — supersedes DEC-358's three-log predicate";
