@@ -352,3 +352,6 @@ export const DEC_346 = "Plan-scoped submission loads shed `description`, and the
 export const DEC_347 = "The wave-20 perf run is a BASELINE at a pre-fix tip: a new or newly-scaled check over budget is a logged finding owned by its fix lane, never an OPEN ITEM; a check over budget at UNCHANGED seed scale is a regression and is an OPEN ITEM";
 export const DEC_348 = "DEC-201/DEC-202 REAFFIRMED against the wave-20 review lens: the global public-cache bump stays stage-1-accepted; and three lens findings are recorded as verified STALE at the symbol";
 export const DEC_349 = "Wave 20 runs only the build/test gate; the full walkthrough and the authoritative perf run move to wave 21, whose three-item exit set is fixed now";
+export const DEC_350 = "The J5 compose recipient picker becomes server-paged and searchable with an explicit total; its silent 200-row truncation is a stage-1 defect";
+export const DEC_351 = "/plans/:id/progress and /plans/:id/remind stop loading whole-round evaluation rows; /results keeps the full load because ranking genuinely needs the scores";
+export const DEC_352 = "Gate evidence is invalidated only by a change that can alter what that gate asserts; wave 22's exit set is exactly one build/test lane";
