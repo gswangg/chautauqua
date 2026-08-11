@@ -80,6 +80,8 @@ export function resolveImportUpsert(existingId: string | undefined, parsed: Part
         lastName: parsed.lastName ?? "",
         ...(parsed.company !== undefined ? { company: parsed.company } : {}),
         ...(parsed.title !== undefined ? { title: parsed.title } : {}),
+        ...(parsed.phone !== undefined ? { phone: parsed.phone } : {}),
+        ...(parsed.bio !== undefined ? { bio: parsed.bio } : {}),
         ...(parsed.customFields !== undefined ? { customFields: parsed.customFields } : {}),
       },
     };
@@ -89,6 +91,8 @@ export function resolveImportUpsert(existingId: string | undefined, parsed: Part
   if (parsed.lastName !== undefined) patch.lastName = parsed.lastName;
   if (parsed.company !== undefined) patch.company = parsed.company;
   if (parsed.title !== undefined) patch.title = parsed.title;
+  if (parsed.phone !== undefined) patch.phone = parsed.phone;
+  if (parsed.bio !== undefined) patch.bio = parsed.bio;
   if (parsed.customFields !== undefined) patch.customFields = parsed.customFields;
   return { action: "update", id: existingId, patch };
 }

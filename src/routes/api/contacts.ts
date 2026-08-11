@@ -9,6 +9,7 @@ import { csrfJson, requireOrganizer } from "../../server/middleware";
 import { ApiError, parseBoundedIdArray } from "../../server/http";
 import * as repo from "../../server/repo/contacts";
 import { getEventForOrg } from "../../server/repo/events";
+import { listAcceptedContactIds } from "../../server/repo/tasks";
 import { createClaimToken, type KVStore } from "../../auth/claim";
 import { parseCsv } from "../../lib/csv";
 import { mapImportRow, matchesSegment, type ContactRecord, type SegmentRule } from "../../domain/contacts";
@@ -21,9 +22,12 @@ import { sanitizeFilenameForKey, validateHeadshotUpload } from "../../domain/fil
 import { readImageDims, MAX_HEADSHOT_EDGE_PX } from "../../lib/image-dims";
 import { newId } from "../../domain/ids";
 import { resolveBaseUrl } from "../../server/origin";
-import { DEC_252 } from "../../decisions";
+import { DEC_252, DEC_290 } from "../../decisions";
 
 void DEC_252;
+// Compile-checked dependency marker: the optional eventId on POST /contacts
+// and POST /contacts/import (roster-scoped create/import) implements DEC-290.
+void DEC_290;
 
 export const contactsRoutes = new Hono<AppEnv>();
 
@@ -119,6 +123,18 @@ contactsRoutes.post("/contacts", csrfJson, async (c) => {
   if (typeof body.email !== "string" || body.email.trim() === "") fields.email = "required";
   if (Object.keys(fields).length > 0) throw new ApiError("invalid", "Validation failed", fields);
 
+  // DEC-290: an optional eventId puts the newly-created contact directly on
+  // the event roster, riding the existing add-to-event push (no new route).
+  let eventId: string | undefined;
+  if (body.eventId !== undefined) {
+    if (typeof body.eventId !== "string" || body.eventId.trim() === "") {
+      throw new ApiError("invalid", "Validation failed", { eventId: "must be a non-empty string" });
+    }
+    const event = await getEventForOrg(c.var.db, body.eventId, orgId);
+    if (!event) throw new ApiError("not_found", "Event not found");
+    eventId = event.id;
+  }
+
   const created = await repo.createContact(c.var.db, orgId, {
     firstName: body.firstName as string,
     lastName: body.lastName as string,
@@ -130,6 +146,14 @@ contactsRoutes.post("/contacts", csrfJson, async (c) => {
     notes: typeof body.notes === "string" ? body.notes : undefined,
     customFields: isPlainObject(body.customFields) ? (body.customFields as Record<string, string>) : undefined,
   });
+
+  if (eventId !== undefined) {
+    const alreadyOnRoster = await listAcceptedContactIds(c.var.db, eventId);
+    if (!alreadyOnRoster.includes(created.id)) {
+      await repo.pushContactToEvent(c.var.db, eventId, orgId, created, undefined);
+    }
+  }
+
   return c.json(serializeContact(created), 201);
 });
 
@@ -322,6 +346,19 @@ contactsRoutes.post("/contacts/import", csrfJson, async (c) => {
   }
   const mapping = body.mapping as Record<string, string>;
 
+  // DEC-290: an optional eventId puts every imported/updated contact (not
+  // already on the roster) onto the event, riding the existing add-to-event
+  // push (no new roster table, no new route).
+  let eventId: string | undefined;
+  if (body.eventId !== undefined) {
+    if (typeof body.eventId !== "string" || body.eventId.trim() === "") {
+      throw new ApiError("invalid", "Validation failed", { eventId: "must be a non-empty string" });
+    }
+    const event = await getEventForOrg(c.var.db, body.eventId, orgId);
+    if (!event) throw new ApiError("not_found", "Event not found");
+    eventId = event.id;
+  }
+
   let table: string[][];
   try {
     table = parseCsv(body.csvText);
@@ -329,7 +366,7 @@ contactsRoutes.post("/contacts/import", csrfJson, async (c) => {
     throw new ApiError("invalid", err instanceof Error ? err.message : "Failed to parse CSV");
   }
   if (table.length === 0) {
-    return c.json({ created: 0, updated: 0, skipped: [] });
+    return c.json(eventId !== undefined ? { created: 0, updated: 0, skipped: [], addedToEvent: 0 } : { created: 0, updated: 0, skipped: [] });
   }
   const [header, ...dataRows] = table;
   if (!header) throw new ApiError("invalid", "CSV has no header row");
@@ -352,7 +389,23 @@ contactsRoutes.post("/contacts/import", csrfJson, async (c) => {
   }
 
   const result = await repo.applyImportRows(c.var.db, orgId, rows);
-  return c.json(result);
+
+  if (eventId === undefined) {
+    return c.json({ created: result.created, updated: result.updated, skipped: result.skipped });
+  }
+
+  const alreadyOnRoster = new Set(await listAcceptedContactIds(c.var.db, eventId));
+  let addedToEvent = 0;
+  for (const contactId of result.contactIds) {
+    if (alreadyOnRoster.has(contactId)) continue;
+    const contact = await repo.findContactForOrg(c.var.db, contactId, orgId);
+    if (!contact) throw new Error(`applyImportRows returned contactId ${contactId} not owned by org ${orgId}`);
+    await repo.pushContactToEvent(c.var.db, eventId, orgId, contact, undefined);
+    alreadyOnRoster.add(contactId);
+    addedToEvent++;
+  }
+
+  return c.json({ created: result.created, updated: result.updated, skipped: result.skipped, addedToEvent });
 });
 
 // ---------------------------------------------------------------------------

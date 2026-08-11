@@ -320,7 +320,7 @@ export function matchesSegment(rules: SegmentRule[], contact: ContactRecord): bo
 /**
  * Maps an already-parsed CSV row into a partial ContactRecord using a
  * csvColumn -> targetField mapping. Targets are the standard fields
- * (email, firstName, lastName, company, title) plus 'custom.<key>'.
+ * (email, firstName, lastName, company, title, phone, bio) plus 'custom.<key>'.
  * Columns with no mapping entry are ignored. If the mapped email column is
  * missing or blank, returns {} so callers can reject the row.
  */
@@ -362,6 +362,12 @@ export function mapImportRow(
         break;
       case "title":
         result.title = value;
+        break;
+      case "phone":
+        result.phone = value;
+        break;
+      case "bio":
+        result.bio = value;
         break;
       default:
         throw new Error(`mapImportRow: unknown target field "${target}"`);
