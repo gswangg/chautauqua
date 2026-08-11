@@ -64,4 +64,4 @@ export {
 
 export { findContactsForOrg, findUserIdByEmail } from "./contacts/bulk";
 
-export { pushContactToEvent } from "./contacts/push";
+export { pushContactToEvent, pushContactsToEvent } from "./contacts/push";

@@ -52,3 +52,40 @@ export async function pushContactToEvent(
   await updateSubmissionStatuses(db, eventId, [submissionId], "accepted", new Date());
   return submissionId;
 }
+
+/**
+ * Set-based counterpart to pushContactToEvent (DEC-357), for batch roster
+ * adds (CSV import + eventId, src/routes/api/contacts.ts's /contacts/import).
+ * Creates one submission per contact via the same per-row createSubmission
+ * (deliberately NOT a multi-row insert: submissionSeqSubquery at
+ * src/server/repo/submit.ts:225 evaluates against the pre-statement table
+ * state, so a multi-row VALUES would collide on seq), applying the same
+ * `Invited: <First> <Last>` default title per contact when no title is
+ * given, then runs updateSubmissionStatuses ONCE over every created id
+ * (instead of once per contact) so the acceptance planner (DEC-079) does a
+ * single set-based pass. Same DEC-156 contract as pushContactToEvent:
+ * status accepted, content_status pending, visible participant, no email.
+ * Returns submission ids in input order.
+ */
+export async function pushContactsToEvent(
+  db: Db,
+  eventId: string,
+  orgId: string,
+  contacts: Pick<ContactRow, "id" | "email" | "firstName" | "lastName">[],
+  title?: string,
+): Promise<string[]> {
+  const resolvedTitle = title && title.trim() ? title.trim() : undefined;
+  const submissionIds: string[] = [];
+  for (const contact of contacts) {
+    const contactTitle = resolvedTitle ?? `Invited: ${contact.firstName} ${contact.lastName}`;
+    const submissionId = await createSubmission(db, eventId, orgId, {
+      title: contactTitle,
+      contact: { email: contact.email, firstName: contact.firstName, lastName: contact.lastName },
+    });
+    submissionIds.push(submissionId);
+  }
+  if (submissionIds.length > 0) {
+    await updateSubmissionStatuses(db, eventId, submissionIds, "accepted", new Date());
+  }
+  return submissionIds;
+}
