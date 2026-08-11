@@ -73,3 +73,27 @@ export async function createUser(db: Db, input: CreateUserInput): Promise<OrgUse
   if (!row) throw new Error("createUser: insert did not persist");
   return toOrgUserRecord(row);
 }
+
+/** Loads a user by id, scoped to orgId — returns undefined for an unknown
+ * id OR a cross-org id, so callers can 404 without leaking which case it was. */
+export async function getOrgUserById(db: Db, userId: string, orgId: string): Promise<OrgUserRecord | undefined> {
+  const rows = await db
+    .select()
+    .from(schema.user)
+    .where(and(eq(schema.user.id, userId), eq(schema.user.orgId, orgId)))
+    .limit(1);
+  const row = rows[0];
+  return row ? toOrgUserRecord(row) : undefined;
+}
+
+/** Updates a user's password_hash (DEC-215 org-user password re-issue). */
+export async function updateUserPasswordHash(db: Db, userId: string, passwordHash: string): Promise<void> {
+  await db.update(schema.user).set({ passwordHash, updatedAt: new Date() }).where(eq(schema.user.id, userId));
+}
+
+/** Deletes every auth_session row for a user — used on password reset/
+ * re-issue to force re-authentication everywhere (mirrors DEC-200's
+ * self-service /account/password revoke-all behavior). */
+export async function deleteUserSessions(db: Db, userId: string): Promise<void> {
+  await db.delete(schema.authSession).where(eq(schema.authSession.userId, userId));
+}

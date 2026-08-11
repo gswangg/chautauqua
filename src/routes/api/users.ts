@@ -91,3 +91,25 @@ usersRoutes.post("/api/v1/users", requireOrganizer, csrfJson, async (c) => {
 
   return c.json({ id: created.id, email: created.email, role: created.role, password }, 201);
 });
+
+// DEC-215: organizer-triggered password re-issue for an org user (reviewer
+// or organizer). The fresh one-time password is returned ONLY in this JSON
+// response body — never emailed (DEC-200/DEC-043 pattern: passwords never
+// travel over email, only the account-creation notice does, and that notice
+// omits the password too). The organizer is responsible for relaying it to
+// the user out of band.
+usersRoutes.post("/api/v1/users/:id/reset-password", requireOrganizer, csrfJson, async (c) => {
+  const auth = currentAuth(c);
+  const userId = c.req.param("id");
+  const target = await repo.getOrgUserById(c.var.db, userId, auth.orgId);
+  if (!target) throw new ApiError("not_found", "User not found");
+
+  const password = generatePassword();
+  const passwordHash = await hashPassword(password);
+  await repo.updateUserPasswordHash(c.var.db, target.id, passwordHash);
+  // Revoke every existing session for the target user so a stolen/shared
+  // old password can't keep an active session alive (DEC-200 pattern).
+  await repo.deleteUserSessions(c.var.db, target.id);
+
+  return c.json({ id: target.id, email: target.email, role: target.role, password }, 200);
+});

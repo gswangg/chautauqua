@@ -255,6 +255,24 @@ export function PlanEditor() {
     }
   }
 
+  // DEC-215: organizer-triggered password re-issue for a reviewer roster
+  // entry. Reuses the same one-time-reveal banner as account creation.
+  async function resetReviewerPassword(userId: string, email: string | undefined) {
+    if (!window.confirm(`Reset the password for ${email ?? userId}? Their existing sessions will be signed out.`)) {
+      return;
+    }
+    setError(null);
+    try {
+      const res = await apiPost<{ id: string; email: string; role: string; password: string }>(
+        `/users/${userId}/reset-password`,
+        {},
+      );
+      setRevealedPassword(res.password);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Failed to reset password');
+    }
+  }
+
   if (!eventId) {
     return (
       <div className="chq-page">
@@ -515,6 +533,9 @@ export function PlanEditor() {
               <li key={r.id}>
                 {r.email ?? r.userId}
                 {r.trackId ? ` — track ${r.trackId}` : r.submissionId ? ` — submission ${r.submissionId}` : ' — all submissions'}
+                <button type="button" onClick={() => resetReviewerPassword(r.userId, r.email)}>
+                  Reset password
+                </button>
                 <button type="button" onClick={() => unassignReviewer(r.id)}>
                   Remove
                 </button>
