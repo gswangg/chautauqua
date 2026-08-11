@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { FormFieldDef } from "../src/forms/types";
-import { FieldRulesScript } from "../src/views/form-render";
+import { FieldRulesScript, FormField, FormFieldsSection } from "../src/views/form-render";
 
 const formatField: FormFieldDef = {
   id: "format",
@@ -68,5 +68,52 @@ describe("FieldRulesScript", () => {
     // literally inside the script body, keeping the element from closing
     // early — but the JSON-decoded value round-trips to the real string.
     expect(rulesJson).not.toContain("</script>");
+  });
+
+  it("emits the exact dataset.required contract string the inline script relies on (DEC-194)", () => {
+    const html = FieldRulesScript({ fields: [formatField, materialsField] }).toString();
+    expect(html).toContain("input.dataset.required === 'true'");
+  });
+});
+
+describe("FieldControl data-required attribute (DEC-008/DEC-194)", () => {
+  it("a required text field renders data-required=\"true\" alongside required", () => {
+    const html = FormField({ field: materialsField, value: undefined, visible: true }).toString();
+    expect(html).toContain('data-required="true"');
+    expect(html).toContain("required");
+  });
+
+  it("an optional field renders data-required=\"false\"", () => {
+    const optionalField: FormFieldDef = {
+      id: "notes2",
+      section: "session",
+      kind: "text",
+      label: "Notes",
+      required: false,
+      position: 3,
+    };
+    const html = FormField({ field: optionalField, value: undefined, visible: true }).toString();
+    expect(html).toContain('data-required="false"');
+  });
+
+  it("a rule-gated required dropdown keeps both required and data-required=\"true\" when visible", () => {
+    const gatedRequiredDropdown: FormFieldDef = {
+      id: "workshopLevel",
+      section: "session",
+      kind: "dropdown",
+      label: "Workshop level",
+      required: true,
+      position: 4,
+      options: ["Beginner", "Advanced"],
+      rule: { fieldId: "format", op: "eq", value: "Workshop" },
+    };
+    const html = FormFieldsSection({
+      fields: [formatField, gatedRequiredDropdown],
+      section: "session",
+      answers: { format: "Workshop" },
+      isVisible: () => true,
+    }).toString();
+    expect(html).toContain('data-required="true"');
+    expect(html).toMatch(/<select[^>]*\brequired\b/);
   });
 });
