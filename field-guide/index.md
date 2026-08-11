@@ -45,9 +45,9 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   a battery. VERIFIED live: only w13-a-c3 log on main (PASS@f6983e6);
   b/c/d/g/i/j still in worktrees => DEC-315 un-evaluable. Review-
   lens findings 1-4 are STALE (fixed by DEC-298/299/300/301); always
-  re-verify before planning. 317: invite
-  state = THREE gates — public(visible AND active), notify(active
-  ONLY, ignore `visible`), portal(read=not declined, write=active);
+  re-verify before planning. 317: invite state = THREE gates —
+  public(visible AND active), notify(active ONLY, ignore `visible`),
+  portal(read=not declined, write=active);
   zero-recipient compose rejects loudly via a fields map like
   unscheduledIcsFields. 318: all 4 public schedule_slot reads carry
   the event [startDate,endDate] bound admin classifies on. 319:
