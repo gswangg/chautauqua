@@ -123,7 +123,7 @@ describe('SubmissionsPage render smoke', () => {
     expect(screen.queryByRole('columnheader', { name: 'Level' })).not.toBeInTheDocument();
 
     const [summary] = screen.getAllByText('Columns');
-    fireEvent.click(summary);
+    fireEvent.click(summary!);
     const checkbox = await screen.findByRole('checkbox', { name: 'Level' });
     fireEvent.click(checkbox);
 
