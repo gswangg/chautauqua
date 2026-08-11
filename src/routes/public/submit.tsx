@@ -544,14 +544,24 @@ publicSubmitRoutes.post("/submit/:eventSlug", csrfForm, async (c) => {
   const safeEventName = escapeHtml(event.name);
   const safeClaimUrl = escapeHtml(claimUrl);
   const html = `<p>Hi ${safeSpeakerName},</p><p>We received your submission "${safeTitle}" for ${safeEventName}.</p><p><a href="${safeClaimUrl}">${safeClaimUrl}</a></p>`;
-  await mailer.send({
-    to: { email, name: `${firstName} ${lastName}`.trim() },
-    subject: `We received your submission: ${title}`,
-    text,
-    html,
-    eventId: event.id,
-    contactId,
-  });
+  // The submission is already persisted; the confirmation email is a
+  // best-effort side effect at an IO boundary (a real provider can reject a
+  // recipient or transiently fail). A send failure must NOT 500 the submit —
+  // that showed the speaker an error page while the row persisted, so every
+  // retry created a duplicate. Log it (the send attempt is recorded in
+  // email_log with status 'error' by the mailer) and still show success.
+  try {
+    await mailer.send({
+      to: { email, name: `${firstName} ${lastName}`.trim() },
+      subject: `We received your submission: ${title}`,
+      text,
+      html,
+      eventId: event.id,
+      contactId,
+    });
+  } catch (err) {
+    console.error("submission confirmation email failed (submission still saved):", err);
+  }
 
   // DEC-098: the claim token is minted and emailed in both no-user cases
   // (existing contact or fresh) — only whether it's rendered on screen
