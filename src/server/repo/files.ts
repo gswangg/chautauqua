@@ -313,6 +313,28 @@ export async function getReplacesTarget(
   return rows[0] ?? null;
 }
 
+/** DEC-242: 1-indexed version number for `fileId`, counting `fileId` itself
+ * plus every ancestor reachable by walking previous_file_id — matches the
+ * VersionList frontend's `versions.length - idx` numbering (oldest = v1,
+ * current/latest = v<chain length>) since a task_assignment's linked file is
+ * always the newest link in its chain. */
+export async function getFileVersionNumber(db: Db, fileId: string): Promise<number> {
+  let current: string | null = fileId;
+  let version = 0;
+  while (current) {
+    version += 1;
+    const rows: { previousFileId: string | null }[] = await db
+      .select({ previousFileId: schema.file.previousFileId })
+      .from(schema.file)
+      .where(eq(schema.file.id, current))
+      .limit(1);
+    const row: { previousFileId: string | null } | undefined = rows[0];
+    if (!row) throw new Error(`getFileVersionNumber: file ${current} not found mid-chain — data corruption`);
+    current = row.previousFileId;
+  }
+  return version;
+}
+
 // ---------------------------------------------------------------------------
 // Writes
 // ---------------------------------------------------------------------------
