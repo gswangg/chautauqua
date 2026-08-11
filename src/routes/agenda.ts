@@ -122,8 +122,34 @@ interface AutoScheduleBody {
   gridMin?: unknown;
 }
 
-function numberOrDefault(value: unknown, fallback: number): number {
-  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+// DEC-298: auto-schedule parameters are a bounded, integer-validated
+// allowlist. This is what keeps src/domain/schedule.ts's greedy grid loop
+// (startMin += gridMin) from being handed a zero/negative/absurd step that
+// never advances, which would run the isolate to its CPU limit.
+const AUTO_SCHEDULE_BOUNDS = {
+  dayStartMin: { min: 0, max: 1439 },
+  dayEndMin: { min: 1, max: 1440 },
+  defaultDurationMin: { min: 1, max: 1440 },
+  gridMin: { min: 1, max: 480 },
+} as const;
+
+type AutoScheduleKey = keyof typeof AUTO_SCHEDULE_BOUNDS;
+
+/** Absent -> default (today's behavior). Present -> must be an in-bounds
+ * integer, else a fields[key] validation error (DEC-298). */
+function parseBoundedInt(
+  key: AutoScheduleKey,
+  value: unknown,
+  fallback: number,
+  fields: Record<string, string>,
+): number {
+  if (value === undefined) return fallback;
+  const { min, max } = AUTO_SCHEDULE_BOUNDS[key];
+  if (typeof value !== "number" || !Number.isInteger(value) || value < min || value > max) {
+    fields[key] = `must be an integer between ${min} and ${max}`;
+    return fallback;
+  }
+  return value;
 }
 
 // POST /api/v1/events/:eventId/agenda/auto-schedule
@@ -135,12 +161,29 @@ agendaRoutes.post("/events/:eventId/agenda/auto-schedule", requireOrganizer, csr
   if (event.orgId !== auth.orgId) throw new ApiError("forbidden", "Event belongs to a different org");
 
   const body = ((await c.req.json().catch(() => ({}))) ?? {}) as AutoScheduleBody;
+  const fields: Record<string, string> = {};
   const params = {
-    dayStartMin: numberOrDefault(body.dayStartMin, DEFAULT_AUTO_SCHEDULE_PARAMS.dayStartMin),
-    dayEndMin: numberOrDefault(body.dayEndMin, DEFAULT_AUTO_SCHEDULE_PARAMS.dayEndMin),
-    defaultDurationMin: numberOrDefault(body.defaultDurationMin, DEFAULT_AUTO_SCHEDULE_PARAMS.defaultDurationMin),
-    gridMin: numberOrDefault(body.gridMin, DEFAULT_AUTO_SCHEDULE_PARAMS.gridMin),
+    dayStartMin: parseBoundedInt(
+      "dayStartMin",
+      body.dayStartMin,
+      DEFAULT_AUTO_SCHEDULE_PARAMS.dayStartMin,
+      fields,
+    ),
+    dayEndMin: parseBoundedInt("dayEndMin", body.dayEndMin, DEFAULT_AUTO_SCHEDULE_PARAMS.dayEndMin, fields),
+    defaultDurationMin: parseBoundedInt(
+      "defaultDurationMin",
+      body.defaultDurationMin,
+      DEFAULT_AUTO_SCHEDULE_PARAMS.defaultDurationMin,
+      fields,
+    ),
+    gridMin: parseBoundedInt("gridMin", body.gridMin, DEFAULT_AUTO_SCHEDULE_PARAMS.gridMin, fields),
   };
+  if (params.dayEndMin <= params.dayStartMin) {
+    fields.dayEndMin = fields.dayEndMin ?? "must be greater than dayStartMin";
+  }
+  if (Object.keys(fields).length > 0) {
+    throw new ApiError("invalid", "Invalid auto-schedule parameters", fields);
+  }
 
   const payload = await runAutoSchedule(c.var.db, eventId, event, params);
   return c.json(payload);
