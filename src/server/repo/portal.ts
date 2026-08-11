@@ -7,11 +7,12 @@
 // verifying ownership first) — see assertSpeakerContactId and
 // isOwnedByContact.
 
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { formatRef } from "../../domain/ids";
 import type { SubmissionStatus } from "../../domain/status";
+import { ACTIVE_INVITE_STATUSES, PORTAL_VISIBLE_INVITE_STATUSES } from "../../domain/acceptance";
 
 // ---------------------------------------------------------------------------
 // Pure helpers (no db/IO) — unit-tested directly against tiny fakes/values.
@@ -125,7 +126,13 @@ export async function getPortalData(db: Db, contactId: string, orgId: string): P
     .from(schema.participant)
     .innerJoin(schema.submission, eq(schema.participant.submissionId, schema.submission.id))
     .innerJoin(schema.event, eq(schema.submission.eventId, schema.event.id))
-    .where(and(eq(schema.participant.contactId, contactId), eq(schema.event.orgId, orgId)))
+    .where(
+      and(
+        eq(schema.participant.contactId, contactId),
+        eq(schema.event.orgId, orgId),
+        inArray(schema.participant.inviteStatus, PORTAL_VISIBLE_INVITE_STATUSES),
+      ),
+    )
     .orderBy(desc(schema.submission.createdAt));
 
   const submissions: PortalSubmissionSummary[] = submissionRows.map((row) => {
@@ -238,9 +245,14 @@ export async function getPortalSubmissionDetail(
   if (!row || row.eventOrgId !== orgId) return null;
 
   const participantRows = await db
-    .select({ contactId: schema.participant.contactId })
+    .select({ contactId: schema.participant.contactId, inviteStatus: schema.participant.inviteStatus })
     .from(schema.participant)
-    .where(eq(schema.participant.submissionId, submissionId));
+    .where(
+      and(
+        eq(schema.participant.submissionId, submissionId),
+        inArray(schema.participant.inviteStatus, PORTAL_VISIBLE_INVITE_STATUSES),
+      ),
+    );
   const participantContactIds = participantRows.map((p) => p.contactId);
   if (!isOwnedByContact(participantContactIds, contactId)) return null;
 
@@ -428,7 +440,13 @@ export async function resolveDeliverableSubmissionId(
     })
     .from(schema.participant)
     .innerJoin(schema.submission, eq(schema.participant.submissionId, schema.submission.id))
-    .where(and(eq(schema.participant.contactId, contactId), eq(schema.submission.eventId, eventId)));
+    .where(
+      and(
+        eq(schema.participant.contactId, contactId),
+        eq(schema.submission.eventId, eventId),
+        inArray(schema.participant.inviteStatus, ACTIVE_INVITE_STATUSES),
+      ),
+    );
   return pickDeliverableSubmission(rows as DeliverableSubmissionCandidate[]);
 }
 
@@ -588,6 +606,7 @@ export async function getMySessions(db: Db, contactId: string, orgId: string): P
         eq(schema.participant.contactId, contactId),
         eq(schema.event.orgId, orgId),
         eq(schema.submission.status, "accepted"),
+        inArray(schema.participant.inviteStatus, ACTIVE_INVITE_STATUSES),
       ),
     );
 
@@ -631,7 +650,13 @@ export async function getMyEventIds(db: Db, contactId: string, orgId: string): P
     .from(schema.participant)
     .innerJoin(schema.submission, eq(schema.participant.submissionId, schema.submission.id))
     .innerJoin(schema.event, eq(schema.submission.eventId, schema.event.id))
-    .where(and(eq(schema.participant.contactId, contactId), eq(schema.event.orgId, orgId)));
+    .where(
+      and(
+        eq(schema.participant.contactId, contactId),
+        eq(schema.event.orgId, orgId),
+        inArray(schema.participant.inviteStatus, PORTAL_VISIBLE_INVITE_STATUSES),
+      ),
+    );
   return rows.map((r) => r.eventId);
 }
 

@@ -83,6 +83,15 @@ export function isActiveParticipant(inviteStatus: string): boolean {
   return (ACTIVE_INVITE_STATUSES as readonly string[]).includes(inviteStatus);
 }
 
+/**
+ * DEC-317: participant invite state gates portal and file access on two
+ * levels — read=not-declined (a participant may still SEE their submission
+ * while an invite is outstanding), write=active (only ACTIVE_INVITE_STATUSES
+ * may edit/upload). "invited" participants are portal-visible (read) but not
+ * active (no write); "declined" participants are excluded from both.
+ */
+export const PORTAL_VISIBLE_INVITE_STATUSES = ["none", "accepted", "invited"] as const;
+
 export interface PlanAcceptanceInput {
   submissionId: string;
   eventId: string;

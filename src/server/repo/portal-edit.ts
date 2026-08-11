@@ -8,7 +8,7 @@
 // foreign org) resolves to null, which the caller renders as a 404. Never
 // trust a :id path param without this check.
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import * as schema from "../../db/schema";
 import type { Db } from "../context";
 import { newId } from "../../domain/ids";
@@ -17,6 +17,7 @@ import type { FormFieldDef, FormFieldKind, FormFieldSection, FormFieldRule, Answ
 import { LOCKED_SESSION_FIELDS, LOCKED_SPEAKER_FIELDS, lockedFieldName } from "../../forms/types";
 import type { SubmissionStatus } from "../../domain/status";
 import { resolveOfferedTrackIds } from "../../lib/submit-core";
+import { ACTIVE_INVITE_STATUSES } from "../../domain/acceptance";
 
 export interface EditableSubmission {
   id: string;
@@ -72,7 +73,13 @@ export async function loadEditableSubmission(
     .innerJoin(schema.submission, eq(schema.participant.submissionId, schema.submission.id))
     .innerJoin(schema.event, eq(schema.submission.eventId, schema.event.id))
     .leftJoin(schema.form, eq(schema.submission.formId, schema.form.id))
-    .where(and(eq(schema.submission.id, submissionId), eq(schema.participant.contactId, contactId)));
+    .where(
+      and(
+        eq(schema.submission.id, submissionId),
+        eq(schema.participant.contactId, contactId),
+        inArray(schema.participant.inviteStatus, ACTIVE_INVITE_STATUSES),
+      ),
+    );
 
   const row = rows[0];
   if (!row || !row.formId) return null;
