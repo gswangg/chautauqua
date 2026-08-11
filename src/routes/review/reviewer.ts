@@ -56,18 +56,12 @@ reviewReviewerRoutes.get("/api/v1/review/plans/:id/queue", async (c) => {
   }
 
   const scoped = await repo.resolveReviewerSubmissions(c.var.db, plan, auth.userId);
-  // DEC-082: queue counts/marks only the plan's current round -- earlier
-  // rounds' evaluations don't count toward this round's cap or "already
-  // rated" state.
-  const evaluations = (await repo.listEvaluationsForPlan(c.var.db, plan.id, plan.currentRound)).filter(
-    (e) => e.round === plan.currentRound,
-  );
-  const countsBySubmission = new Map<string, number>();
-  const ratedByMe = new Set<string>();
-  for (const evaluation of evaluations) {
-    countsBySubmission.set(evaluation.submissionId, (countsBySubmission.get(evaluation.submissionId) ?? 0) + 1);
-    if (evaluation.reviewerId === auth.userId) ratedByMe.add(evaluation.submissionId);
-  }
+  // DEC-082/DEC-346: queue counts/marks only the plan's current round --
+  // earlier rounds' evaluations don't count toward this round's cap or
+  // "already rated" state. SQL aggregates replace the whole-round
+  // evaluation load + JS reduce.
+  const countsBySubmission = await repo.countEvaluationsBySubmission(c.var.db, plan.id, plan.currentRound);
+  const ratedByMe = await repo.listSubmissionIdsRatedBy(c.var.db, plan.id, plan.currentRound, auth.userId);
 
   // DEC-271: recused submissions are dropped from the actionable queue and
   // surfaced separately in the `recused` envelope key instead. partitionRecused
