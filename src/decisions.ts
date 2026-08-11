@@ -189,3 +189,5 @@ export const DEC_183 = "DEV_MODE moves from wrangler.jsonc vars to a committed .
 export const DEC_184 = "One-time authorized repair of committed conflict markers in docs/verification-log.md";
 export const DEC_185 = "Wave-11 battery rebinding: six gates at frozen S' containing all wave-10 fix markers";
 export const DEC_186 = "Wave-11 battery execution binding: S' derivation, lane-to-gate map, full-heading homonym guard, DEC-184 closed, w9-g drained";
+export const DEC_187 = "Zero-setup dev vars bootstrap: .dev.vars stays untracked; scripts/ensure-dev-vars.ts materializes it from .dev.vars.example; supersedes DEC-183's committed-.dev.vars clause";
+export const DEC_188 = "Wave-12 battery binding: wave-11 battery voided (only w11-a ran; 629d57e is code-bearing), S'' = merge of task-w12-a, third-generation homonym guard, dead-lane and orphan-report declarations";
