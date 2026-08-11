@@ -395,15 +395,16 @@ contactsRoutes.post("/contacts/import", csrfJson, async (c) => {
   }
 
   const alreadyOnRoster = new Set(await listAcceptedContactIds(c.var.db, eventId));
-  let addedToEvent = 0;
-  for (const contactId of result.contactIds) {
-    if (alreadyOnRoster.has(contactId)) continue;
-    const contact = await repo.findContactForOrg(c.var.db, contactId, orgId);
+  const toAddIds = result.contactIds.filter((contactId) => !alreadyOnRoster.has(contactId));
+  const contacts = await repo.findContactsForOrg(c.var.db, toAddIds, orgId);
+  const contactsById = new Map(contacts.map((contact) => [contact.id, contact]));
+  const toAdd = toAddIds.map((contactId) => {
+    const contact = contactsById.get(contactId);
     if (!contact) throw new Error(`applyImportRows returned contactId ${contactId} not owned by org ${orgId}`);
-    await repo.pushContactToEvent(c.var.db, eventId, orgId, contact, undefined);
-    alreadyOnRoster.add(contactId);
-    addedToEvent++;
-  }
+    return contact;
+  });
+  await repo.pushContactsToEvent(c.var.db, eventId, orgId, toAdd, undefined);
+  const addedToEvent = toAdd.length;
 
   return c.json({ created: result.created, updated: result.updated, skipped: result.skipped, addedToEvent });
 });
