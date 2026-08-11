@@ -555,11 +555,15 @@ async function main(): Promise<void> {
   // below must be entirely absent from every surface, embed, and the .ics.
   // -------------------------------------------------------------------
 
-  async function createThrowawaySubmission(title: string): Promise<string> {
+  async function createThrowawaySubmission(
+    title: string,
+    firstName = "Wk",
+    lastName = "Fixture",
+  ): Promise<string> {
     const { status, json } = await apiJson<{ id: string }>(cookies, "POST", `/api/v1/events/${eventId}/submissions`, {
       title,
       description: "Walkthrough visibility-gate fixture.",
-      contact: { email: `wk-${Date.now()}-${Math.random().toString(36).slice(2)}@example.test`, firstName: "Wk", lastName: "Fixture" },
+      contact: { email: `wk-${Date.now()}-${Math.random().toString(36).slice(2)}@example.test`, firstName, lastName },
     });
     assert(status === 201, `create submission -> ${status}`);
     return json.id;
@@ -601,54 +605,113 @@ async function main(): Promise<void> {
     await assertAbsentEverywhere(marker, id);
   });
 
-  await check("J10 visibility gate: hidden participant is absent from every surface", async () => {
-    const marker = `Wk HiddenSpeaker Marker ${Date.now()}`;
-    const id = await createThrowawaySubmission(marker);
-    const { status: acceptStatus } = await apiJson(cookies, "POST", `/api/v1/events/${eventId}/submissions/status`, {
-      ids: [id],
-      status: "accepted",
-    });
-    assert(acceptStatus === 200, `accept submission -> ${acceptStatus}`);
-    const { status: approveStatus } = await apiJson(cookies, "POST", `/api/v1/submissions/${id}/content-status`, {
-      contentStatus: "approved",
-    });
-    assert(approveStatus === 200, `approve content -> ${approveStatus}`);
-    const { status: slotStatus } = await apiJson(cookies, "PUT", `/api/v1/submissions/${id}/slot`, {
-      day,
-      startMin: 700,
-      endMin: 730,
-      roomId: roomA,
-    });
-    assert(slotStatus === 200, `schedule -> ${slotStatus}`);
+  await check(
+    "J10 visibility gate (DEC-274): hidden participant's name vanishes everywhere but the session stays public with speakers:[]",
+    async () => {
+      const stamp3 = Date.now();
+      const title = `Wk HiddenSpeaker Session ${stamp3}`;
+      const nameFirst = `WkHidden${stamp3}`;
+      const nameLast = "SpeakerMarker";
+      const nameMarker = `${nameFirst} ${nameLast}`;
+      const id = await createThrowawaySubmission(title, nameFirst, nameLast);
+      const { status: acceptStatus } = await apiJson(cookies, "POST", `/api/v1/events/${eventId}/submissions/status`, {
+        ids: [id],
+        status: "accepted",
+      });
+      assert(acceptStatus === 200, `accept submission -> ${acceptStatus}`);
+      const { status: approveStatus } = await apiJson(cookies, "POST", `/api/v1/submissions/${id}/content-status`, {
+        contentStatus: "approved",
+      });
+      assert(approveStatus === 200, `approve content -> ${approveStatus}`);
+      const { status: slotStatus } = await apiJson(cookies, "PUT", `/api/v1/submissions/${id}/slot`, {
+        day,
+        startMin: 700,
+        endMin: 730,
+        roomId: roomA,
+      });
+      assert(slotStatus === 200, `schedule -> ${slotStatus}`);
 
-    // Sanity check: fully accepted+approved+scheduled, it MUST be visible
-    // before we hide its only participant — otherwise the absence check
-    // below would be a false positive. Scoped with ?q=<marker> (EMB-02
-    // title/speaker-name search): the unfiltered /sessions view is
-    // PER_PAGE=12-capped (src/routes/public/shell.tsx), and by this point
-    // in the combined six-module walkthrough run the event already has
-    // >=12 other accepted+approved sessions, so an unfiltered fetch can
-    // miss this fixture on page 1 even though it's genuinely visible.
-    const preRes = await fetch(`${BASE_URL}/e/${EVENT_SLUG}/sessions?q=${encodeURIComponent(marker)}`);
-    const preHtml = await preRes.text();
-    assert(preHtml.includes(marker), "expected fully-visible fixture to appear before hiding its participant");
+      // Sanity check: fully accepted+approved+scheduled, both the title and
+      // the speaker name marker MUST be visible before we hide the only
+      // participant — otherwise the checks below would be false positives.
+      // Scoped with ?q=<title> (EMB-02 title/speaker-name search): the
+      // unfiltered /sessions view is PER_PAGE=12-capped
+      // (src/routes/public/shell.tsx), and by this point in the combined
+      // six-module walkthrough run the event already has >=12 other
+      // accepted+approved sessions, so an unfiltered fetch can miss this
+      // fixture on page 1 even though it's genuinely visible.
+      const preRes = await fetch(`${BASE_URL}/e/${EVENT_SLUG}/sessions?q=${encodeURIComponent(title)}`);
+      const preHtml = await preRes.text();
+      assert(preHtml.includes(title), "expected fully-visible fixture title to appear before hiding its participant");
+      assert(preHtml.includes(nameMarker), "expected fully-visible fixture's speaker name to appear before hiding its participant");
 
-    const { json: detail } = await apiJson<SubmissionDetail>(cookies, "GET", `/api/v1/submissions/${id}`);
-    const participantId = detail.participants[0]?.id;
-    assert(participantId, "expected the throwaway submission to have a participant");
-    // DEC-070's PATCH /api/v1/submissions/:id/participants/:participantId
-    // toggles participant.visible through the real organizer endpoint.
-    const { status: visStatus, json: visJson } = await apiJson<{ visible: boolean }>(
-      cookies,
-      "PATCH",
-      `/api/v1/submissions/${id}/participants/${participantId}`,
-      { visible: false },
-    );
-    assert(visStatus === 200, `PATCH participant visibility -> ${visStatus}: ${JSON.stringify(visJson)}`);
-    assert(visJson.visible === false, `expected visible:false in PATCH response, got ${JSON.stringify(visJson)}`);
+      const { json: detail } = await apiJson<SubmissionDetail>(cookies, "GET", `/api/v1/submissions/${id}`);
+      const participantId = detail.participants[0]?.id;
+      assert(participantId, "expected the throwaway submission to have a participant");
+      // DEC-070's PATCH /api/v1/submissions/:id/participants/:participantId
+      // toggles participant.visible through the real organizer endpoint.
+      const { status: visStatus, json: visJson } = await apiJson<{ visible: boolean }>(
+        cookies,
+        "PATCH",
+        `/api/v1/submissions/${id}/participants/${participantId}`,
+        { visible: false },
+      );
+      assert(visStatus === 200, `PATCH participant visibility -> ${visStatus}: ${JSON.stringify(visJson)}`);
+      assert(visJson.visible === false, `expected visible:false in PATCH response, got ${JSON.stringify(visJson)}`);
 
-    await assertAbsentEverywhere(marker, id);
-  });
+      // (i) The speaker NAME marker must be gone from every surface, embed,
+      // and the .ics — DEC-274: a hidden-only-participant session is still
+      // public, but the person themself must never be named.
+      for (const surface of ["sessions", "speakers", "agenda", "schedule", "gallery"] as const) {
+        const res = await fetch(`${BASE_URL}/e/${EVENT_SLUG}/${surface}`);
+        const html = await res.text();
+        assert(!html.includes(nameMarker), `DEC-274 leak: hidden speaker name '${nameMarker}' found in /e/${EVENT_SLUG}/${surface}`);
+        const embedRes = await fetch(`${BASE_URL}/embed/${EVENT_SLUG}/${surface}`);
+        const embedHtml = await embedRes.text();
+        assert(
+          !embedHtml.includes(nameMarker),
+          `DEC-274 leak: hidden speaker name '${nameMarker}' found in /embed/${EVENT_SLUG}/${surface}`,
+        );
+      }
+      const icsRes = await fetch(`${BASE_URL}/e/${EVENT_SLUG}/schedule.ics?ids=${id}`);
+      const icsBody = await icsRes.text();
+      assert(!icsBody.includes(nameMarker), `DEC-274 leak: hidden speaker name '${nameMarker}' found in raw .ics`);
+
+      // (ii) The session TITLE must STILL be present on all session-rooted
+      // surfaces — DEC-274: visibleSessionConditions() never references
+      // participant visibility, so the session (with speakers: []) stays
+      // public even though its only participant is hidden.
+      const sessionsRes = await fetch(`${BASE_URL}/e/${EVENT_SLUG}/sessions?q=${encodeURIComponent(title)}`);
+      const sessionsHtml = await sessionsRes.text();
+      assert(sessionsHtml.includes(title), `DEC-274 regression: session title '${title}' missing from /sessions?q=`);
+
+      const agendaRes = await fetch(`${BASE_URL}/e/${EVENT_SLUG}/agenda?day=${encodeURIComponent(day)}`);
+      const agendaHtml = await agendaRes.text();
+      assert(agendaHtml.includes(title), `DEC-274 regression: session title '${title}' missing from /agenda?day=`);
+
+      const scheduleRes = await fetch(`${BASE_URL}/e/${EVENT_SLUG}/schedule?day=${encodeURIComponent(day)}`);
+      const scheduleHtml = await scheduleRes.text();
+      assert(scheduleHtml.includes(title), `DEC-274 regression: session title '${title}' missing from /schedule?day=`);
+
+      const icsRes2 = await fetch(`${BASE_URL}/e/${EVENT_SLUG}/schedule.ics?ids=${id}`);
+      const icsBody2 = await icsRes2.text();
+      const uids = extractAll(icsBody2, /^UID:(.+)$/gm);
+      assert(
+        uids.some((u) => u.includes(id)),
+        `DEC-274 regression: no VEVENT UID referencing submission '${id}' in /schedule.ics?ids=`,
+      );
+
+      // (iii) The speaker themself must be gone from the speaker-rooted
+      // surfaces, which DO apply the composite gate (public/speakers.ts,
+      // public/detail.ts).
+      const speakersRes2 = await fetch(`${BASE_URL}/e/${EVENT_SLUG}/speakers`);
+      const speakersHtml2 = await speakersRes2.text();
+      assert(!speakersHtml2.includes(nameMarker), `DEC-274 leak: hidden speaker name '${nameMarker}' found in /speakers`);
+      const galleryRes2 = await fetch(`${BASE_URL}/e/${EVENT_SLUG}/gallery`);
+      const galleryHtml2 = await galleryRes2.text();
+      assert(!galleryHtml2.includes(nameMarker), `DEC-274 leak: hidden speaker name '${nameMarker}' found in /gallery`);
+    },
+  );
 
   // -------------------------------------------------------------------------
   // DEC-108/DEC-112: public/embed visibility must additionally require
