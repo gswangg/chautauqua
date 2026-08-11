@@ -10,6 +10,7 @@ import { Hono } from "hono";
 import { rootRoutes } from "../src/routes/root";
 import type { AppEnv, AuthInfo } from "../src/server/env";
 import type { Db } from "../src/server/context";
+import { registerErrorHandler } from "../src/server/http";
 
 function fakeAssets(): Fetcher {
   return {
@@ -21,6 +22,16 @@ function fakeAssets(): Fetcher {
           headers: { "content-type": "text/html" },
         });
       }
+      return new Response("not found", { status: 404 });
+    },
+  } as unknown as Fetcher;
+}
+
+// DEC-268: simulates the fresh-clone / never-built state where
+// public/admin/index.html doesn't exist and the ASSETS binding 404s it.
+function fakeAssetsMissingAdmin(): Fetcher {
+  return {
+    async fetch() {
       return new Response("not found", { status: 404 });
     },
   } as unknown as Fetcher;
@@ -46,6 +57,7 @@ function buildApp(opts: { auth?: AuthInfo; slug?: string | null; devMode?: strin
     await next();
   });
   app.route("/", rootRoutes);
+  registerErrorHandler(app);
   return app;
 }
 
@@ -79,6 +91,14 @@ describe("GET /admin and /admin/*", () => {
     const res = await app.request("/admin", {}, { ASSETS: fakeAssets() });
     expect(res.status).toBe(200);
     expect(await res.text()).toContain("admin shell");
+  });
+
+  it("fails loudly with a 500 and an actionable message when the admin bundle is missing (DEC-268)", async () => {
+    const app = buildApp({ auth: ORGANIZER });
+    const res = await app.request("/admin", {}, { ASSETS: fakeAssetsMissingAdmin() });
+    expect(res.status).toBe(500);
+    const body = await res.text();
+    expect(body).toContain("npm run build");
   });
 
   it("proxies /admin/assets/* to ASSETS regardless of auth", async () => {

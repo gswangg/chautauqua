@@ -8,7 +8,8 @@ import { Hono } from "hono";
 import type { AppEnv } from "../server/env";
 import { getFirstEventSlug } from "../server/repo/events";
 import { shouldMountDevMailbox } from "./dev/mailbox";
-import { DEC_049, DEC_012, DEC_005 } from "../decisions";
+import { ApiError } from "../server/http";
+import { DEC_049, DEC_012, DEC_005, DEC_268 } from "../decisions";
 
 export const rootRoutes = new Hono<AppEnv>();
 
@@ -16,6 +17,7 @@ export const rootRoutes = new Hono<AppEnv>();
 void DEC_049;
 void DEC_012;
 void DEC_005;
+void DEC_268;
 
 /** Fetches a static asset path from the ASSETS binding against the
  * request's own origin — building a fresh Request rather than mutating the
@@ -27,11 +29,26 @@ function fetchAsset(c: { env: { ASSETS?: Fetcher }; req: { url: string; raw: Req
   return assets.fetch(new Request(new URL(path, origin), c.req.raw));
 }
 
+/** Fetches the admin SPA shell and fails loudly (rather than returning the
+ * assets binding's bare, bodyless 404) when public/admin/index.html hasn't
+ * been built — the registered error handler turns this into a real 500 with
+ * an actionable message instead of a silent empty response (DEC-268). */
+async function fetchAdminShell(c: { env: { ASSETS?: Fetcher }; req: { url: string; raw: Request } }) {
+  const res = await fetchAsset(c, "/admin/index.html");
+  if (!res.ok) {
+    throw new ApiError(
+      "internal",
+      "Admin SPA bundle missing at public/admin/index.html -- run `npm run build` (or `npm run dev`, whose predev builds it). DEC-268.",
+    );
+  }
+  return res;
+}
+
 rootRoutes.get("/admin", async (c) => {
   const auth = c.var.auth;
   if (!auth) return c.redirect("/login", 302);
   if (auth.role === "speaker") return c.redirect("/portal", 302);
-  return fetchAsset(c, "/admin/index.html");
+  return fetchAdminShell(c);
 });
 
 rootRoutes.get("/admin/*", async (c) => {
@@ -42,7 +59,7 @@ rootRoutes.get("/admin/*", async (c) => {
   const auth = c.var.auth;
   if (!auth) return c.redirect("/login", 302);
   if (auth.role === "speaker") return c.redirect("/portal", 302);
-  return fetchAsset(c, "/admin/index.html");
+  return fetchAdminShell(c);
 });
 
 function LandingPage(props: { adminHref: string; portalHref: string; submitHref: string | null; sessionsHref: string | null; mailboxHref: string | null }) {
