@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { matchesContactQuery, tokenizeContactQuery, type ContactRecord } from "../src/domain/contacts";
+import { tokenizeContactQuery, type ContactRecord } from "../src/domain/contacts";
 import { listContactsForOrg } from "../src/server/repo/contacts";
+import { likeContains } from "../src/server/repo/contacts/query";
 import type { AppEnv } from "../src/server/env";
 
 function contact(overrides: Partial<ContactRecord> & { id: string }): ContactRecord {
@@ -24,42 +25,26 @@ describe("tokenizeContactQuery (DEC-266)", () => {
   });
 });
 
-describe("matchesContactQuery (DEC-266 AND-tokens x OR-columns)", () => {
-  const priya = contact({ id: "1", firstName: "Priya", lastName: "Raman", email: "priya@acme.com", company: "Acme" });
-
-  it("matches a two-word 'firstName lastName' query (the reported defect)", () => {
-    expect(matchesContactQuery(tokenizeContactQuery("Priya Raman"), priya)).toBe(true);
+describe("likeContains (DEC-333/DEC-336)", () => {
+  it("lowercases and wraps in % ... %", () => {
+    expect(likeContains("Priya")).toBe("%priya%");
   });
 
-  it("matches when the tokens are reversed (order-independent)", () => {
-    expect(matchesContactQuery(tokenizeContactQuery("raman priya"), priya)).toBe(true);
+  it("escapes backslash, percent and underscore", () => {
+    expect(likeContains("100%_done\\now")).toBe("%100\\%\\_done\\\\now%");
   });
 
-  it("matches across two different columns (name + company)", () => {
-    expect(matchesContactQuery(tokenizeContactQuery("priya acme"), priya)).toBe(true);
-  });
-
-  it("does not match when one token has no substring match anywhere", () => {
-    expect(matchesContactQuery(tokenizeContactQuery("priya nomatch"), priya)).toBe(false);
-  });
-
-  it("blank query behaves as no filter (matches everything)", () => {
-    expect(matchesContactQuery(tokenizeContactQuery("   "), priya)).toBe(true);
-    expect(matchesContactQuery([], priya)).toBe(true);
-  });
-
-  it("is case-insensitive", () => {
-    expect(matchesContactQuery(tokenizeContactQuery("PRIYA RAMAN"), priya)).toBe(true);
-    // Column values are compared case-insensitively even against an already-
-    // lowercase token, against an all-caps-named contact.
-    const upperCaseContact = contact({ id: "2", firstName: "PRIYA", lastName: "RAMAN", email: "" });
-    expect(matchesContactQuery(["priya"], upperCaseContact)).toBe(true);
+  it("a literal % in the query cannot widen into a wildcard match", () => {
+    // Once escaped and paired with ESCAPE '\\' at the call site, a search
+    // term of exactly "%" only matches values that literally contain "%".
+    expect(likeContains("%")).toBe("%\\%%");
   });
 });
 
 // ---------------------------------------------------------------------------
-// Repo-level: listContactsForOrg narrows via the SQL OR-prefilter then the
-// exact AND x OR in-memory pass, same fakeDb pattern as test/contacts-repo.test.ts.
+// Repo-level: listContactsForOrg's default (no segmentId/no rules) path is
+// two SQL statements — a count(*) and a paginated select — with no JS
+// filter/sort/slice. Same fakeDb pattern as test/contacts-repo.test.ts.
 // ---------------------------------------------------------------------------
 
 function rawRow(id: string, firstName: string, lastName: string, email: string, company: string | null) {
@@ -82,37 +67,63 @@ function rawRow(id: string, firstName: string, lastName: string, email: string, 
   };
 }
 
-describe("listContactsForOrg (DEC-266 repo-level narrowing)", () => {
-  it("SQL prefilter returns a superset (both tokens present, but split across two rows); in-memory pass narrows to the true AND x OR match, and total reflects the filtered count", async () => {
-    // Simulates: SQL WHERE org=org_1 AND (token 'priya' OR token 'raman' matches
-    // any column) returning every row that contains AT LEAST ONE of the tokens
-    // somewhere — a superset of the true "Priya Raman" match.
-    const priyaRaman = rawRow("ct_1", "Priya", "Raman", "priya.raman@acme.com", "Acme");
-    // Contains 'priya' only (superset row the SQL OR-prefilter would return,
-    // but the true AND predicate must reject it).
-    const priyaOnly = rawRow("ct_2", "Priya", "Nomatch", "priya.nomatch@example.com", null);
-    // Contains 'raman' only.
-    const ramanOnly = rawRow("ct_3", "Someone", "Raman", "someone.raman@example.com", null);
-
-    const selectRows = [priyaRaman, priyaOnly, ramanOnly];
+describe("listContactsForOrg (DEC-333/DEC-336 default path: exactly two SQL statements)", () => {
+  it("issues one count(*) and one paginated select, returning the fake db's rows unfiltered/unsorted in JS", async () => {
+    // Deliberately NOT in name-sort order, so a passing test proves the
+    // default path applies no JS filter/sort/slice of its own — whatever
+    // order/rows the (fake) SQL query yields is what comes back verbatim.
+    const rows = [
+      rawRow("ct_3", "Zed", "Zephyr", "zed@example.com", null),
+      rawRow("ct_1", "Ann", "Alpha", "ann@example.com", null),
+    ];
+    let selectCalls = 0;
+    let sawCountQuery = false;
+    let sawPaginatedQuery = false;
     const db = {
-      select: () => ({
-        from: () => ({
-          where: async () => selectRows,
-        }),
-      }),
+      select: (arg?: unknown) => {
+        selectCalls += 1;
+        if (arg !== undefined) {
+          // select({ count: ... }) — the count(*) statement.
+          return {
+            from: () => ({
+              where: async () => {
+                sawCountQuery = true;
+                return [{ count: rows.length }];
+              },
+            }),
+          };
+        }
+        // select() — the paginated statement.
+        return {
+          from: () => ({
+            where: () => ({
+              orderBy: () => ({
+                limit: () => ({
+                  offset: async () => {
+                    sawPaginatedQuery = true;
+                    return rows;
+                  },
+                }),
+              }),
+            }),
+          }),
+        };
+      },
     } as unknown as AppEnv["Variables"]["db"];
 
     const result = await listContactsForOrg(db, "org_1", {
       page: 1,
       perPage: 50,
-      q: "Priya Raman",
+      q: null,
       segmentId: null,
       sort: "name",
       rules: [],
     });
 
-    expect(result.items.map((r) => r.id)).toEqual(["ct_1"]);
-    expect(result.total).toBe(1);
+    expect(selectCalls).toBe(2);
+    expect(sawCountQuery).toBe(true);
+    expect(sawPaginatedQuery).toBe(true);
+    expect(result.items.map((r) => r.id)).toEqual(["ct_3", "ct_1"]);
+    expect(result.total).toBe(2);
   });
 });

@@ -66,17 +66,40 @@ function makeFakeContactDb() {
   const db = {
     select(fields?: Record<string, unknown>) {
       let whereCond: unknown = null;
+      let limitN: number | null = null;
+      let offsetN = 0;
       const run = () => {
         const filtered = whereCond ? rows.filter((r) => evalCond(whereCond, r)) : rows.slice();
-        return fields ? filtered.map((r) => project(r, fields)) : filtered.map((r) => ({ ...r }));
+        // Aggregate select (e.g. `select({ count: sql`count(*)` })`): the
+        // field value isn't a real schema.contact column, so colKey/project
+        // can't resolve it — treat any such select as a one-row count(*).
+        if (fields && Object.values(fields).some((v) => !Object.values(schema.contact).includes(v))) {
+          const out: Record<string, unknown> = {};
+          for (const key of Object.keys(fields)) out[key] = filtered.length;
+          return [out];
+        }
+        const projected = fields ? filtered.map((r) => project(r, fields)) : filtered.map((r) => ({ ...r }));
+        return limitN !== null ? projected.slice(offsetN, offsetN + limitN) : projected;
       };
+      // orderBy is a no-op here (the real ordering is exercised against a
+      // real DB elsewhere; this fake only needs to route rows through, per
+      // the module comment above — no eq/and-only condition evaluator for
+      // ORDER BY exists).
       const chain: any = {
         from: () => chain,
         where: (cond: unknown) => {
           whereCond = cond;
           return chain;
         },
-        limit: async (n: number) => run().slice(0, n),
+        orderBy: () => chain,
+        limit: (n: number) => {
+          limitN = n;
+          return chain;
+        },
+        offset: (n: number) => {
+          offsetN = n;
+          return chain;
+        },
         then: (resolve: (v: unknown[]) => void) => resolve(run()),
       };
       return chain;
