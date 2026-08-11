@@ -240,7 +240,11 @@ export function PlanEditor() {
       if (reviewerScope === 'track' && reviewerTrackId) body.trackId = reviewerTrackId;
       if (reviewerScope === 'submission' && reviewerSubmissionId.trim()) body.submissionId = reviewerSubmissionId.trim();
       const created = await apiPost<PlanReviewer>(`/plans/${planId}/reviewers`, body);
-      setReviewers((prev) => [...prev, created]);
+      // The create response doesn't carry an email (PlanReviewerRecord has no
+      // such column); resolve it from the already-loaded reviewer options so
+      // the row doesn't flash the raw userId until the next reload.
+      const resolvedEmail = reviewerOptions.find((r) => r.id === created.userId)?.email;
+      setReviewers((prev) => [...prev, { ...created, email: created.email ?? resolvedEmail }]);
       setReviewerUserId('');
       setReviewerSubmissionId('');
     } catch (err) {

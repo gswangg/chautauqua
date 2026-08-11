@@ -104,4 +104,41 @@ describe('PlanEditor render smoke', () => {
 
     expect((screen.getByPlaceholderText('Label') as HTMLInputElement).value).toBe('Innovation');
   });
+
+  it('shows the assigned reviewer email (not the raw userId) immediately after Assign, before any reload', async () => {
+    // Section B repair: the browser pass (task-w1-d) found that the newly-
+    // assigned row rendered "seed_user_0004" instead of the email, because
+    // POST /plans/:id/reviewers's PlanReviewerRecord response has no email
+    // column -- fixed by resolving it from the already-loaded reviewerOptions.
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
+      [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([]),
+      'GET /api/v1/users': listEnvelope([{ id: 'user-42', email: 'reviewer@example.test', role: 'reviewer', contactId: null, createdAt: 0 }]),
+      [`POST /api/v1/plans/${PLAN_ID}/reviewers`]: {
+        status: 201,
+        body: { id: 'pr-1', userId: 'user-42', trackId: null, submissionId: null },
+      },
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId" element={<PlanEditor />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole('option', { name: 'reviewer@example.test' })).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByLabelText('Reviewer'), { target: { value: 'user-42' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Assign' }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/reviewer@example\.test/)).toBeInTheDocument();
+    });
+    expect(screen.queryByText(/user-42/)).not.toBeInTheDocument();
+  });
 });
