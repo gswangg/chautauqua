@@ -617,18 +617,27 @@ contactsRoutes.post("/contacts/bulk-email", csrfJson, async (c) => {
 
   const { makeMailer } = await import("../../server/context");
   const mailer = makeMailer(c.var.db, c.env);
+  // DEC-238 class 2 (organizer-triggered batch): a bad recipient must not
+  // abort the whole send — catch per-recipient, keep going, and report the
+  // partial outcome in the 200 response rather than surfacing a 500.
+  const failed: { email: string; message: string }[] = [];
   for (const rendered of result.rendered) {
-    await mailer.send({
-      to: { email: rendered.email, name: rendered.name },
-      subject: rendered.subject,
-      text: rendered.text,
-      html: textToHtml(rendered.text),
-      eventId: event.id,
-      contactId: rendered.contactId,
-    });
+    try {
+      await mailer.send({
+        to: { email: rendered.email, name: rendered.name },
+        subject: rendered.subject,
+        text: rendered.text,
+        html: textToHtml(rendered.text),
+        eventId: event.id,
+        contactId: rendered.contactId,
+      });
+    } catch (err) {
+      console.error("CRM bulk email failed for", rendered.email, err);
+      failed.push({ email: rendered.email, message: err instanceof Error ? err.message : String(err) });
+    }
   }
 
-  return c.json({ sent: result.rendered.length, items: result.rendered });
+  return c.json({ sent: result.rendered.length - failed.length, failed, items: result.rendered });
 });
 
 const BULK_EMAIL_PREVIEW_LIMIT = 5;

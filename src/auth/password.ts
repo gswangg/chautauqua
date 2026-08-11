@@ -10,7 +10,10 @@
 
 const ALGORITHM = "pbkdf2";
 const VERSION = "v1";
-const ITERATIONS = 100_000;
+// DEC-237: 100k is the max the production Workers runtime (workerd) supports
+// for PBKDF2 — exported so tests can assert it never regresses above the
+// runtime cap (a 600k value passed every local gate but 500'd in prod).
+export const ITERATIONS = 100_000;
 const SALT_BYTES = 16;
 const KEY_BYTES = 32;
 

@@ -349,6 +349,10 @@ commsRoutes.post("/api/v1/events/:eventId/compose/send", requireOrganizer, csrfJ
   const templateId = typeof body.templateId === "string" ? body.templateId : undefined;
   const { makeMailer } = await import("../server/context");
   const mailer = makeMailer(c.var.db, c.env);
+  // DEC-238 class 2 (organizer-triggered batch): a bad recipient must not
+  // abort the whole send — catch per-recipient, keep going, and report the
+  // partial outcome in the 200 response rather than surfacing a 500.
+  const failed: { email: string; message: string }[] = [];
   for (const rendered of result.rendered) {
     let ics: { filename: string; content: string } | undefined;
     if (icsMap) {
@@ -374,16 +378,21 @@ commsRoutes.post("/api/v1/events/:eventId/compose/send", requireOrganizer, csrfJ
         ),
       };
     }
-    await mailer.send({
-      to: { email: rendered.email, name: rendered.name },
-      subject: rendered.subject,
-      text: rendered.text,
-      html: textToHtml(rendered.text),
-      ics,
-      templateId,
-      eventId,
-      contactId: rendered.contactId,
-    });
+    try {
+      await mailer.send({
+        to: { email: rendered.email, name: rendered.name },
+        subject: rendered.subject,
+        text: rendered.text,
+        html: textToHtml(rendered.text),
+        ics,
+        templateId,
+        eventId,
+        contactId: rendered.contactId,
+      });
+    } catch (err) {
+      console.error("compose send failed for", rendered.email, err);
+      failed.push({ email: rendered.email, message: err instanceof Error ? err.message : String(err) });
+    }
   }
 
   // Bump ics_sequence exactly once per submission per send call — after
@@ -393,7 +402,7 @@ commsRoutes.post("/api/v1/events/:eventId/compose/send", requireOrganizer, csrfJ
     await repo.bumpIcsSequences(c.var.db, input.submissionIds);
   }
 
-  return c.json({ sent: result.rendered.length, items: result.rendered });
+  return c.json({ sent: result.rendered.length - failed.length, failed, items: result.rendered });
 });
 
 function missingToFields(missing: { contactId: string; submissionId: string; field: string }[]): Record<string, string> {

@@ -508,8 +508,14 @@ async function sendReminderEmails(
   groups: { contactId: string; assignments: ReminderAssignment[] }[],
   outstandingByContact: Map<string, OutstandingRow[]>,
   now: Date,
-): Promise<number> {
+): Promise<{ sent: number; failed: { email: string; message: string }[] }> {
   let sent = 0;
+  // DEC-238: a send failure for one recipient must not abort the batch —
+  // class 1 (cron, sendDueRemindersForEvent) logs and moves on; class 2
+  // (organizer-triggered remindNow) additionally surfaces `failed` in its
+  // response so the organizer sees a structured partial-failure summary
+  // instead of a 500.
+  const failed: { email: string; message: string }[] = [];
   for (const group of groups) {
     const rows = outstandingByContact.get(group.contactId) ?? [];
     if (rows.length === 0) continue;
@@ -530,14 +536,20 @@ async function sendReminderEmails(
       },
     );
 
-    await mailer.send({
-      to: { email: first.email, name: `${first.firstName} ${first.lastName}`.trim() },
-      subject: `Action needed: outstanding tasks for ${eventName}`,
-      text: reminderText,
-      html: textToHtml(reminderText),
-      eventId,
-      contactId: group.contactId,
-    });
+    try {
+      await mailer.send({
+        to: { email: first.email, name: `${first.firstName} ${first.lastName}`.trim() },
+        subject: `Action needed: outstanding tasks for ${eventName}`,
+        text: reminderText,
+        html: textToHtml(reminderText),
+        eventId,
+        contactId: group.contactId,
+      });
+    } catch (err) {
+      console.error("reminder email failed for", first.email, err);
+      failed.push({ email: first.email, message: err instanceof Error ? err.message : String(err) });
+      continue;
+    }
 
     const assignmentIds = group.assignments.map((a) => a.assignmentId);
     for (const batch of chunkIds(assignmentIds)) {
@@ -549,7 +561,7 @@ async function sendReminderEmails(
 
     sent += 1;
   }
-  return sent;
+  return { sent, failed };
 }
 
 /** Bulk "remind now" — an explicit organizer action, so it reminds every
@@ -560,9 +572,9 @@ export async function remindNow(
   eventId: string,
   taskIds: string[] | undefined,
   now: Date,
-): Promise<{ sent: number }> {
+): Promise<{ sent: number; failed: { email: string; message: string }[] }> {
   const outstanding = await listOutstandingForEvent(db, eventId, taskIds);
-  if (outstanding.length === 0) return { sent: 0 };
+  if (outstanding.length === 0) return { sent: 0, failed: [] };
   const eventName = outstanding[0]?.eventName ?? "";
 
   const outstandingByContact = new Map<string, OutstandingRow[]>();
@@ -580,8 +592,7 @@ export async function remindNow(
     assignments,
   }));
 
-  const sent = await sendReminderEmails(db, mailer, eventId, eventName, groups, outstandingByContact, now);
-  return { sent };
+  return sendReminderEmails(db, mailer, eventId, eventName, groups, outstandingByContact, now);
 }
 
 /** Due-date-driven cron reminder pass, scoped to one event's outstanding
@@ -605,7 +616,8 @@ export async function sendDueRemindersForEvent(db: Db, mailer: Mailer, eventId: 
   });
   if (plan.groups.length === 0) return 0;
 
-  return sendReminderEmails(db, mailer, eventId, eventName, plan.groups, outstandingByContact, now);
+  const result = await sendReminderEmails(db, mailer, eventId, eventName, plan.groups, outstandingByContact, now);
+  return result.sent;
 }
 
 /** All event ids that have at least one non-complete task assignment — the

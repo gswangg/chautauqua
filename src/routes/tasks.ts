@@ -330,6 +330,12 @@ export async function runDueReminders(env: Bindings): Promise<void> {
   const now = new Date();
   const eventIds = await listEventIdsWithOutstandingAssignments(db);
   for (const eventId of eventIds) {
-    await sendDueRemindersForEvent(db, mailer, eventId, now);
+    // DEC-238 class 1 (cron): one event's failure (bad row, mailer outage,
+    // etc.) must not abort the tick for every other event.
+    try {
+      await sendDueRemindersForEvent(db, mailer, eventId, now);
+    } catch (err) {
+      console.error("due-reminder pass failed for event", eventId, err);
+    }
   }
 }
