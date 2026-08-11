@@ -479,16 +479,25 @@ async function main(): Promise<void> {
   }
 
   async function completeSelfHealedFormTask(taskTitle: string, expectedBodyText?: string): Promise<void> {
+    // Look up the assignment id via the organizer's onboarding grid (DEC-023
+    // owns assignment status semantics; the grid's assignmentId is stable
+    // regardless of the task's current pending/complete status), rather
+    // than scraping /portal/tasks for a 'Fill out form' href — the seed's
+    // isComplete distribution (scripts/seed.ts) may seed some self-healed
+    // form tasks as already-complete for a given contact, in which case the
+    // portal page never renders that href at all.
     const assignmentId = await check(
-      `find my '${taskTitle}' task's assignment id via /portal/tasks (DEC-111 self-healed form)`,
+      `find my '${taskTitle}' task's assignment id via the organizer's onboarding grid (DEC-111 self-healed form)`,
       async () => {
-        const tasksPage = await speaker1.getText("/portal/tasks");
-        assert(tasksPage.status === 200, `GET /portal/tasks returned ${tasksPage.status}`);
-        const match = tasksPage.body.match(
-          new RegExp(`${escapeRegex(taskTitle)}(?:(?!<\\/li>)[\\s\\S])*?href="\\/portal\\/tasks\\/([\\w-]+)\\/form"`),
-        );
-        assert(match, `could not find the '${taskTitle}' task's 'Fill out form' link on /portal/tasks`);
-        return match![1]!;
+        const { status, body } = await organizer.getJson<OnboardingGrid>(`/api/v1/events/${eventId}/onboarding`);
+        assert(status === 200, `GET onboarding grid returned ${status}`);
+        const row = body.rows.find((r) => r.contact.id === speakerParticipant.contactId);
+        assert(row, "no onboarding grid row for the speaker");
+        const task = body.tasks.find((t) => t.title === taskTitle);
+        assert(task, `no onboarding task titled '${taskTitle}' found in the grid`);
+        const cell = row!.cells.find((c) => c.taskId === task!.id);
+        assert(cell, `no onboarding grid cell for task '${taskTitle}' on the speaker's row`);
+        return cell!.assignmentId;
       },
     );
 
@@ -911,8 +920,13 @@ async function main(): Promise<void> {
       const speakerName = fixture.identities.speaker.name;
       const res = await anon.getText(`/e/${EVENT_SLUG}/speakers`);
       assert(res.status === 200, `GET /e/${EVENT_SLUG}/speakers returned ${res.status}`);
+      // DEC-173: the name may be wrapped in an <a href=...> inside the
+      // <strong> (live markup is <strong><a href=...>Name</a></strong>) —
+      // tolerate that optional wrapper.
       const blockMatch = res.body.match(
-        new RegExp(`<strong>${escapeRegex(speakerName)}<\\/strong>([\\s\\S]*?)<\\/ul>`),
+        new RegExp(
+          `<strong>(?:<a[^>]*>)?${escapeRegex(speakerName)}(?:<\\/a>)?<\\/strong>([\\s\\S]*?)<\\/ul>`,
+        ),
       );
       assert(blockMatch, `could not find speaker1's <strong>${speakerName}</strong>...</ul> block on the speakers page`);
       const block = blockMatch![1]!;
@@ -1137,6 +1151,53 @@ async function main(): Promise<void> {
       );
     },
   );
+
+  // -------------------------------------------------------------------------
+  // DEC-175: object-level authz probes — speaker2 must be turned away from
+  // speaker1's objects (existence-hiding 404 on the portal submission
+  // detail page, 403 on task-assignment/file object-level checks), and a
+  // speaker session must be turned away from organizer-only APIs.
+  // -------------------------------------------------------------------------
+
+  await check("DEC-175 speaker2 GET speaker1's portal submission -> 404 (existence-hiding)", async () => {
+    const res = await speaker2.getText(`/portal/submissions/${speaker1Submission.id}`);
+    assert(res.status === 404, `expected 404, got ${res.status}`);
+  });
+
+  await check("DEC-175 speaker2 GET speaker1's task-assignment form -> 403", async () => {
+    const res = await speaker2.getText(`/portal/tasks/${hotelFormAssignmentId}/form`);
+    assert(res.status === 403, `expected 403, got ${res.status}`);
+  });
+
+  await check("DEC-175 speaker2 POST speaker1's task-assignment form -> 403", async () => {
+    const res = await speaker2.postForm(`/portal/tasks/${hotelFormAssignmentId}/form`, {});
+    assert(res.status === 403, `expected 403, got ${res.status}`);
+  });
+
+  await check("DEC-175 speaker2 POST-complete speaker1's task assignment -> 403", async () => {
+    const res = await speaker2.postForm(`/portal/tasks/${hotelFormAssignmentId}/complete`, {});
+    assert(res.status === 403, `expected 403, got ${res.status}`);
+  });
+
+  await check("DEC-175 speaker2 GET speaker1's uploaded file -> 403", async () => {
+    const res = await speaker2.getText(`/files/${presentationV2Id}`);
+    assert(res.status === 403, `expected 403, got ${res.status}`);
+  });
+
+  await check("DEC-175 speaker session on organizer API GET /api/v1/events/:id/submissions -> 403", async () => {
+    const res = await speaker1.getText(`/api/v1/events/${eventId}/submissions`);
+    assert(res.status === 403, `expected 403, got ${res.status}`);
+  });
+
+  await check("DEC-175 speaker session on organizer API GET /api/v1/contacts -> 403", async () => {
+    const res = await speaker1.getText(`/api/v1/contacts`);
+    assert(res.status === 403, `expected 403, got ${res.status}`);
+  });
+
+  await check("DEC-175 speaker session on organizer API GET /api/v1/events/:id/email-log -> 403", async () => {
+    const res = await speaker1.getText(`/api/v1/events/${eventId}/email-log`);
+    assert(res.status === 403, `expected 403, got ${res.status}`);
+  });
 
   console.log("");
   console.log("walkthrough/speaker.ts: all checks passed");

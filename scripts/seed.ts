@@ -972,7 +972,13 @@ async function main(): Promise<void> {
       taskAssignmentCounter += 1;
       // Roughly two-thirds complete, one-third still pending, mixed per
       // contact/task so the grid shows a realistic in-progress state.
-      const isComplete = (contactIdx + taskIdx) % 3 !== 0;
+      // DEC-174: force contactIdx 0 / taskIdx 4 ("Announce participation",
+      // general kind, seed_task_assignment_0005) to pending regardless of
+      // the formula, so the walkthrough has a deterministic general-kind
+      // pending row to mark-complete round-trip against. All other rows
+      // keep the original formula (this does not disturb DEC-172's pin of
+      // seed_task_assignment_0001 = contactIdx 0/taskIdx 0, already pending).
+      const isComplete = contactIdx === 0 && taskIdx === 4 ? false : (contactIdx + taskIdx) % 3 !== 0;
       statements.push(
         insertStmt("task_assignment", {
           id: seedId("task_assignment", taskAssignmentCounter),
