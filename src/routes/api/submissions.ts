@@ -277,6 +277,9 @@ submissionsRoutes.post("/submissions/:id/participants", requireOrganizer, csrfJs
     role,
     titleAtTime: contact.title,
     orgAtTime: contact.company,
+    firstName: contact.firstName,
+    lastName: contact.lastName,
+    email: contact.email,
   });
   if (result === DUPLICATE_PARTICIPANT) {
     throw new ApiError("invalid", "This contact is already a participant on this submission", {

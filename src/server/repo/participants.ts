@@ -35,15 +35,23 @@ export interface InviteParticipantInput {
    * performs no additional contact lookup of its own. */
   titleAtTime?: string | null;
   orgAtTime?: string | null;
+  /** Contact's name/email, from the same caller-side contact lookup used
+   * for titleAtTime/orgAtTime — passed through so the returned row is
+   * complete without a second query (DEC-265). */
+  firstName: string;
+  lastName: string;
+  email: string;
 }
 
 /** Participant row shape shared by both endpoints' responses, matching
- * src/server/repo/submissions/detail.ts's participant serialization
- * (minus the contact name/email projection, which callers can join in
- * separately if needed). */
+ * src/server/repo/submissions/detail.ts's SubmissionDetailParticipant
+ * field-for-field (DEC-265), so a freshly invited/patched participant
+ * round-trips identically to a page reload. */
 export interface ParticipantRow {
   id: string;
   contactId: string;
+  name: string;
+  email: string;
   role: string;
   order: number;
   visible: boolean;
@@ -92,7 +100,16 @@ export async function inviteParticipant(
     updatedAt: now,
   });
 
-  return { id, contactId, role, order: nextOrder, visible: true, inviteStatus: "invited" };
+  return {
+    id,
+    contactId,
+    name: `${input.firstName} ${input.lastName}`.trim(),
+    email: input.email,
+    role,
+    order: nextOrder,
+    visible: true,
+    inviteStatus: "invited",
+  };
 }
 
 export interface ParticipantScope {
@@ -133,13 +150,28 @@ export async function getParticipantRow(db: Db, participantId: string): Promise<
     .select({
       id: schema.participant.id,
       contactId: schema.participant.contactId,
+      firstName: schema.contact.firstName,
+      lastName: schema.contact.lastName,
+      email: schema.contact.email,
       role: schema.participant.role,
       order: schema.participant.order,
       visible: schema.participant.visible,
       inviteStatus: schema.participant.inviteStatus,
     })
     .from(schema.participant)
+    .innerJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
     .where(eq(schema.participant.id, participantId))
     .limit(1);
-  return rows[0] ?? null;
+  const row = rows[0];
+  if (!row) return null;
+  return {
+    id: row.id,
+    contactId: row.contactId,
+    name: `${row.firstName} ${row.lastName}`.trim(),
+    email: row.email,
+    role: row.role,
+    order: row.order,
+    visible: row.visible,
+    inviteStatus: row.inviteStatus,
+  };
 }
