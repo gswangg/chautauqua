@@ -180,10 +180,29 @@ reviewPlansRoutes.post("/api/v1/plans/:id/reviewers", requireOrganizer, csrfJson
     throw new ApiError("invalid", "Invalid reviewer assignment", { userId: "required" });
   }
   await repo.requireOrgUser(c.var.db, body.userId, currentAuth(c).orgId);
+
+  // DEC-354: reject a trackId/submissionId that does not belong to the
+  // plan's own event before any plan_reviewer row is written (mirrors the
+  // DEC-120 cross-org rejection at src/routes/tasks.ts:294).
+  const trackId = typeof body.trackId === "string" && body.trackId.length > 0 ? body.trackId : null;
+  if (trackId !== null) {
+    const trackOk = await repo.trackExistsInEvent(c.var.db, trackId, plan.eventId);
+    if (!trackOk) {
+      throw new ApiError("invalid", "Invalid reviewer assignment", { trackId: "unknown track for this event" });
+    }
+  }
+  const submissionId = typeof body.submissionId === "string" && body.submissionId.length > 0 ? body.submissionId : null;
+  if (submissionId !== null) {
+    const submissionOk = await repo.getSubmissionSummaryInEvent(c.var.db, submissionId, plan.eventId);
+    if (!submissionOk) {
+      throw new ApiError("invalid", "Invalid reviewer assignment", { submissionId: "unknown submission for this event" });
+    }
+  }
+
   const created = await repo.addReviewer(c.var.db, plan.id, {
     userId: body.userId,
-    trackId: typeof body.trackId === "string" ? body.trackId : null,
-    submissionId: typeof body.submissionId === "string" ? body.submissionId : null,
+    trackId,
+    submissionId,
   });
   return c.json(created, 201);
 });
