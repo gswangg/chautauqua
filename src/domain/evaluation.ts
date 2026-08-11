@@ -75,6 +75,15 @@ export function aggregateSubmission(
   evals: { scores: EvaluationScores }[],
   criteria: EvaluationCriterion[],
 ): SubmissionAggregate {
+  // DEC-212: a rating-less scorecard (all dropdown/text criteria, no
+  // 'rating' criteria) has no numeric weight to aggregate -- there is
+  // nothing for computeWeightedScore to do, and calling it per-eval would
+  // hit its empty-list invariant throw. Short-circuit with average 0 and an
+  // empty perCriterion map, but keep count real (reviews did happen).
+  if (criteria.length === 0) {
+    return { count: evals.length, average: 0, perCriterion: {} };
+  }
+
   const perCriterion: Record<string, number> = {};
 
   if (evals.length === 0) {
