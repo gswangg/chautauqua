@@ -6,7 +6,7 @@
 import { Hono } from "hono";
 import type { AppEnv } from "../../server/env";
 import { csrfJson, requireOrganizer } from "../../server/middleware";
-import { ApiError } from "../../server/http";
+import { ApiError, parseBoundedIdArray } from "../../server/http";
 import * as repo from "../../server/repo/contacts";
 import { getEventForOrg } from "../../server/repo/events";
 import { createClaimToken, type KVStore } from "../../auth/claim";
@@ -538,12 +538,8 @@ type BulkEmailRequest = {
  * event lookup, and that every contactId resolves to an org-owned
  * contact (IDOR guard — "foreign" contactIds are rejected here). */
 async function validateBulkEmailRequest(db: Db, orgId: string, body: Record<string, unknown>): Promise<BulkEmailRequest> {
-  if (!Array.isArray(body.contactIds) || body.contactIds.length === 0 || !body.contactIds.every((id) => typeof id === "string")) {
-    throw new ApiError("invalid", "Validation failed", { contactIds: "must be a non-empty array of contact ids" });
-  }
-  if (body.contactIds.length > MAX_BULK_EMAIL_RECIPIENTS) {
-    throw new ApiError("invalid", `${body.contactIds.length} recipients exceeds the ${MAX_BULK_EMAIL_RECIPIENTS}-recipient cap; narrow the batch.`);
-  }
+  // DEC-182
+  parseBoundedIdArray(body.contactIds, "contactIds", { maxCount: MAX_BULK_EMAIL_RECIPIENTS });
   if (typeof body.eventId !== "string" || body.eventId.trim() === "") {
     throw new ApiError("invalid", "Validation failed", { eventId: "required" });
   }
