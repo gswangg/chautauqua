@@ -84,6 +84,11 @@ vi.mock("../src/server/repo/review", async () => {
     ),
     upsertEvaluation: vi.fn(async (_db: unknown, input: Record<string, unknown>) => ({ ...input })),
     isSubmissionInReviewerScope: vi.fn(async () => true),
+    // DEC-211: the PUT evaluations route resolves the submission inside the
+    // plan's event before anything else, so the fake repo must answer it.
+    getSubmissionSummaryInEvent: vi.fn(async (_db: unknown, submissionId: string, eventId: string) =>
+      submissionId === submission.id && eventId === plan.eventId ? submission : null,
+    ),
   };
 });
 
