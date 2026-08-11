@@ -12,10 +12,18 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-const publicSrc = readFileSync(
-  join(__dirname, "..", "src", "server", "repo", "public.ts"),
-  "utf-8",
-);
+// DEC-326: public.ts is now a re-export barrel (contention decomposition) —
+// this probe cites the submodules under src/server/repo/public/ that OWN
+// each behaviour post-decomposition, rather than the barrel file.
+const repoDir = join(__dirname, "..", "src", "server", "repo");
+const gatesSrc = readFileSync(join(repoDir, "public", "gates.ts"), "utf-8");
+const sessionsSrc = readFileSync(join(repoDir, "public", "sessions.ts"), "utf-8");
+const detailSrc = readFileSync(join(repoDir, "public", "detail.ts"), "utf-8");
+const agendaSrc = readFileSync(join(repoDir, "public", "agenda.ts"), "utf-8");
+const speakersSrc = readFileSync(join(repoDir, "public", "speakers.ts"), "utf-8");
+const eventSrc = readFileSync(join(repoDir, "public", "event.ts"), "utf-8");
+const barrelSrc = readFileSync(join(repoDir, "public.ts"), "utf-8");
+const allPublicSrc = [gatesSrc, sessionsSrc, detailSrc, agendaSrc, speakersSrc, eventSrc, barrelSrc].join("\n");
 
 function fnBody(src: string, marker: string): string {
   const bodyStart = src.indexOf(marker);
@@ -26,17 +34,17 @@ function fnBody(src: string, marker: string): string {
 
 describe("DEC-274: session gate vs participant gate", () => {
   it("visibleSessionConditions body contains no reference to schema.participant", () => {
-    const body = fnBody(publicSrc, "export function visibleSessionConditions");
+    const body = fnBody(gatesSrc, "export function visibleSessionConditions");
     expect(body).not.toContain("schema.participant");
   });
 
   it.each([
-    "async function getVisibleSubmissionIdsOrdered",
-    "export async function getPublicSessionsByIds",
-    "export async function getPublicSessionDetail",
-    "export async function getPublicAgenda",
-  ])("%s gates on visibleSessionConditions() and does not innerJoin(participant)", (marker) => {
-    const body = fnBody(publicSrc, marker);
+    { marker: "async function getVisibleSubmissionIdsOrdered", src: sessionsSrc },
+    { marker: "export async function getPublicSessionsByIds", src: sessionsSrc },
+    { marker: "export async function getPublicSessionDetail", src: detailSrc },
+    { marker: "export async function getPublicAgenda", src: agendaSrc },
+  ])("$marker gates on visibleSessionConditions() and does not innerJoin(participant)", ({ marker, src }) => {
+    const body = fnBody(src, marker);
     expect(body).toContain("visibleSessionConditions()");
     expect(body).not.toContain(".innerJoin(schema.participant");
   });
@@ -44,14 +52,14 @@ describe("DEC-274: session gate vs participant gate", () => {
 
 describe("DEC-108: invite-state gating on public surfaces", () => {
   it("visibleParticipantConditions body includes the inviteStatus inArray with both literals", () => {
-    const body = fnBody(publicSrc, "export function visibleParticipantConditions");
+    const body = fnBody(gatesSrc, "export function visibleParticipantConditions");
     expect(body).toContain("inArray(schema.participant.inviteStatus,");
     expect(body).toContain('"none"');
     expect(body).toContain('"accepted"');
   });
 
   it("the hydrateSessions speaker-hydration query gates on visibleParticipantConditions()", () => {
-    const body = fnBody(publicSrc, "async function hydrateSessions");
+    const body = fnBody(sessionsSrc, "export async function hydrateSessions");
     const speakerQueryStart = body.indexOf("schema.participant.submissionId, batch");
     expect(speakerQueryStart).toBeGreaterThan(-1);
     const speakerQuery = body.slice(speakerQueryStart - 200, speakerQueryStart + 400);
@@ -59,17 +67,17 @@ describe("DEC-108: invite-state gating on public surfaces", () => {
   });
 
   it("'declined' never appears as an allowed invite-status literal", () => {
-    expect(publicSrc).not.toContain("declined");
+    expect(allPublicSrc).not.toContain("declined");
   });
 
   it("getPublicSpeakerDetail (DEC-151 speaker drill-in) gates on visibleSubmissionConditions", () => {
-    const body = fnBody(publicSrc, "export async function getPublicSpeakerDetail");
+    const body = fnBody(detailSrc, "export async function getPublicSpeakerDetail");
     expect(body).toContain("visibleSubmissionConditions()");
     expect(body).toContain("if (rows.length === 0) return null;");
   });
 
   it("getPublicSessionDetail (DEC-151 session drill-in) gates on visibleSessionConditions", () => {
-    const body = fnBody(publicSrc, "export async function getPublicSessionDetail");
+    const body = fnBody(detailSrc, "export async function getPublicSessionDetail");
     expect(body).toContain("visibleSessionConditions()");
     expect(body).toContain("if (visibleRows.length === 0) return null;");
   });
