@@ -26,7 +26,13 @@ import {
   type PortalSession,
   type PortalSubmissionDetail,
 } from "../../server/repo/portal";
-import { parseCookies, newCsrfToken, CSRF_COOKIE_NAME } from "../../auth/cookies";
+import {
+  parseCookies,
+  newCsrfToken,
+  buildCsrfCookie,
+  isSecureRequest,
+  CSRF_COOKIE_NAME,
+} from "../../auth/cookies";
 import { loadEditableSubmission } from "../../server/repo/portal-edit";
 import { canEditSubmission } from "../../domain/edit-lock";
 
@@ -34,7 +40,9 @@ export const portalRoutes = new Hono<AppEnv>();
 
 portalRoutes.use("*", speakerGate);
 
-function ensureCsrfCookie(c: { req: { header(name: string): string | undefined } }): {
+function ensureCsrfCookie(c: {
+  req: { header(name: string): string | undefined; url: string };
+}): {
   token: string;
   setCookieIfNew: string | null;
 } {
@@ -42,7 +50,10 @@ function ensureCsrfCookie(c: { req: { header(name: string): string | undefined }
   const existing = cookies[CSRF_COOKIE_NAME];
   if (existing) return { token: existing, setCookieIfNew: null };
   const token = newCsrfToken();
-  return { token, setCookieIfNew: `${CSRF_COOKIE_NAME}=${token}; Path=/; SameSite=Lax` };
+  return {
+    token,
+    setCookieIfNew: buildCsrfCookie(token, { secure: isSecureRequest(c.req.url) }),
+  };
 }
 
 function Nav() {

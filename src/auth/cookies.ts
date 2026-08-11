@@ -76,3 +76,35 @@ export function newCsrfToken(): string {
   const bytes = crypto.getRandomValues(new Uint8Array(32));
   return toBase64Url(bytes);
 }
+
+// DEC-228: shared Secure-request check, consolidated from the duplicated
+// `isSecureRequest` helpers previously in src/routes/auth.tsx and
+// src/routes/account.tsx.
+export function isSecureRequest(url: string): boolean {
+  return new URL(url).protocol === "https:";
+}
+
+export interface CsrfCookieOptions {
+  secure: boolean;
+}
+
+// DEC-228: CSRF double-submit cookie, now HttpOnly (nothing client-side
+// reads it — JSON CSRF uses the static x-chq-csrf header and SSR forms
+// carry the token as a server-rendered hidden field).
+export function buildCsrfCookie(token: string, options: CsrfCookieOptions): string {
+  const attributes = [`${CSRF_COOKIE_NAME}=${token}`, "HttpOnly", "Path=/", "SameSite=Lax"];
+  if (options.secure) {
+    attributes.push("Secure");
+  }
+  return attributes.join("; ");
+}
+
+// DEC-228: draft-resume cookie, scoped to /submit, now HttpOnly for the same
+// reason as the CSRF cookie above.
+export function buildDraftCookie(name: string, token: string, options: CsrfCookieOptions): string {
+  const attributes = [`${name}=${token}`, "HttpOnly", "Path=/submit", "SameSite=Lax"];
+  if (options.secure) {
+    attributes.push("Secure");
+  }
+  return attributes.join("; ");
+}

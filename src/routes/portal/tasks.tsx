@@ -36,7 +36,13 @@ import { isVisible } from "../../forms/visibility";
 import type { AnswerMap } from "../../forms/types";
 import { FormFieldsSection, FieldRulesScript, fieldInputName } from "../../views/form-render";
 import { isImageContentType, isValidFileKind, sanitizeFilenameForKey, validateUpload } from "../../domain/files";
-import { parseCookies, newCsrfToken, CSRF_COOKIE_NAME } from "../../auth/cookies";
+import {
+  parseCookies,
+  newCsrfToken,
+  buildCsrfCookie,
+  isSecureRequest,
+  CSRF_COOKIE_NAME,
+} from "../../auth/cookies";
 import { DEC_016, DEC_020, DEC_023, DEC_028, DEC_029 } from "../../decisions";
 
 export const portalTasksRoutes = new Hono<AppEnv>();
@@ -61,7 +67,10 @@ function ensureCsrfCookie(c: Context<AppEnv>): { token: string; setCookieIfNew: 
   const existing = cookies[CSRF_COOKIE_NAME];
   if (existing) return { token: existing, setCookieIfNew: null };
   const token = newCsrfToken();
-  return { token, setCookieIfNew: `${CSRF_COOKIE_NAME}=${token}; Path=/; SameSite=Lax` };
+  return {
+    token,
+    setCookieIfNew: buildCsrfCookie(token, { secure: isSecureRequest(c.req.url) }),
+  };
 }
 
 // -----------------------------------------------------------------------

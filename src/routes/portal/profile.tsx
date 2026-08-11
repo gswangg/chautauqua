@@ -24,7 +24,13 @@ import {
 } from "../../server/repo/profile";
 import { sanitizeFilenameForKey, validateHeadshotUpload } from "../../domain/files";
 import { newId } from "../../domain/ids";
-import { CSRF_COOKIE_NAME, newCsrfToken, parseCookies } from "../../auth/cookies";
+import {
+  CSRF_COOKIE_NAME,
+  newCsrfToken,
+  parseCookies,
+  buildCsrfCookie,
+  isSecureRequest,
+} from "../../auth/cookies";
 import { speakerGate, PortalLayout } from "./shared";
 
 // Mounted at /portal in src/index.ts (DEC-012, declared union overlap with
@@ -103,7 +109,9 @@ const HEADSHOT_DOWNSCALE_JS = `(function(){
   });
 })();`;
 
-function ensureCsrfCookie(c: { req: { header(name: string): string | undefined } }): {
+function ensureCsrfCookie(c: {
+  req: { header(name: string): string | undefined; url: string };
+}): {
   token: string;
   setCookieIfNew: string | null;
 } {
@@ -111,7 +119,10 @@ function ensureCsrfCookie(c: { req: { header(name: string): string | undefined }
   const existing = cookies[CSRF_COOKIE_NAME];
   if (existing) return { token: existing, setCookieIfNew: null };
   const token = newCsrfToken();
-  return { token, setCookieIfNew: `${CSRF_COOKIE_NAME}=${token}; Path=/; SameSite=Lax` };
+  return {
+    token,
+    setCookieIfNew: buildCsrfCookie(token, { secure: isSecureRequest(c.req.url) }),
+  };
 }
 
 function ProfilePage(props: {
