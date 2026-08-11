@@ -139,7 +139,17 @@ function formatCell(cell: string | number | null): string {
   if (cell === null) {
     return "";
   }
-  const s = typeof cell === "number" ? String(cell) : cell;
+  if (typeof cell === "number") {
+    return String(cell);
+  }
+  // DEC-179: neutralize CSV formula injection. A string cell whose first
+  // character could be interpreted by spreadsheet software as the start of
+  // a formula/command gets a leading apostrophe, applied before the
+  // existing quote-when-needed logic runs.
+  let s = cell;
+  if (/^[=+\-@\t\r]/.test(s)) {
+    s = "'" + s;
+  }
   if (s.includes(",") || s.includes('"') || s.includes("\n") || s.includes("\r")) {
     return '"' + s.replace(/"/g, '""') + '"';
   }
