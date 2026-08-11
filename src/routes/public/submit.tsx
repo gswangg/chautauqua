@@ -229,7 +229,11 @@ function SubmitPage(props: {
             {trackError}
           </p>
         ) : null}
-        <TrackChoices tracks={tracks} selected={selectedTrackIds} />
+        {/* DEC-301: a form offering zero tracks renders no Track fieldset —
+            validateTrackChoice treats an empty offered set as "no track
+            requirement", so an empty required-looking block would be
+            unactionable and misleading. */}
+        {tracks.length > 0 ? <TrackChoices tracks={tracks} selected={selectedTrackIds} /> : null}
         <h2>Speaker</h2>
         <FormFieldsSection fields={fields} section="speaker" answers={answers} errors={errors} isVisible={isVisible} />
         <button type="submit" formaction={`/submit/${event.slug}/save-draft`} formnovalidate>

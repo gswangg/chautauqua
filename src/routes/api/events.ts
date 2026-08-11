@@ -215,6 +215,12 @@ eventsRoutes.post("/events", requireOrganizer, csrfJson, async (c) => {
   // submittable without relying on getOrCreateForm's first-read fallback
   // (which previously crashed on the second event's global-PK collision).
   await createDefaultForm(c.var.db, created.id);
+  // SPEC section 2.1 "settings get defaults, not wizards" + DEC-301: every
+  // new event ships one 'General' track so the CFP is submittable from
+  // minute one (a form offering zero tracks cannot pass the required-track
+  // validation). The producer renames it in Settings, and track colors plus
+  // track-scoped reviewer assignment work immediately.
+  await createTrack(c.var.db, created.id, { name: "General", color: null });
   return c.json(created, 201);
 });
 
