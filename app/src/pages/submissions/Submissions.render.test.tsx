@@ -6,7 +6,7 @@
 // against a mocked fetch shaped like the real wire contract and asserts it
 // renders without throwing.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { SubmissionsPage } from '../Submissions';
@@ -70,5 +70,66 @@ describe('SubmissionsPage render smoke', () => {
       ).toBeInTheDocument();
     });
     expect(screen.getByRole('combobox', { name: 'Filter by track' })).toBeInTheDocument();
+  });
+
+  it('renders track names (not a count) and formatAnswerValue output for a toggled-on custom column', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([{ id: 'trk1', name: 'Keynotes', color: '#4f46e5' }]),
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: {
+        id: 'form-1',
+        fields: [
+          {
+            id: 'f-level',
+            section: 'session',
+            kind: 'dropdown',
+            label: 'Level',
+            required: false,
+            position: 0,
+            options: ['Beginner', 'Advanced'],
+          },
+        ],
+      },
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([
+        {
+          id: 'sub-1',
+          ref: 'S-001',
+          title: 'A Talk About Testing',
+          status: 'pending',
+          contentStatus: 'pending',
+          speakers: [{ contactId: 'c1', name: 'Ada Lovelace' }],
+          trackIds: ['trk1'],
+          submittedAt: null,
+          createdAt: 1700000000000,
+          answers: { 'f-level': 'Advanced' },
+        },
+      ]),
+    });
+
+    render(
+      <MemoryRouter>
+        <SubmissionsPage />
+      </MemoryRouter>,
+    );
+
+    // Tracks column shows the track NAME, not item.trackIds.length.
+    await waitFor(() => {
+      expect(screen.getByText('Keynotes')).toBeInTheDocument();
+    });
+
+    // The custom "Level" column is off by default; toggling it on in the
+    // picker must render formatAnswerValue(item.answers['f-level']) in the
+    // cell -- the production symptom was that this toggle appeared to do
+    // nothing.
+    expect(screen.queryByRole('columnheader', { name: 'Level' })).not.toBeInTheDocument();
+
+    const [summary] = screen.getAllByText('Columns');
+    fireEvent.click(summary);
+    const checkbox = await screen.findByRole('checkbox', { name: 'Level' });
+    fireEvent.click(checkbox);
+
+    await waitFor(() => {
+      expect(screen.getByRole('columnheader', { name: 'Level' })).toBeInTheDocument();
+    });
+    expect(screen.getByText('Advanced')).toBeInTheDocument();
   });
 });

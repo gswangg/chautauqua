@@ -36,6 +36,17 @@ export function visibleColumns(columns: ColumnDef[], visibleFieldIds: ReadonlySe
   return columns.filter((col) => visibleFieldIds.has(col.fieldId));
 }
 
+/**
+ * DEC-243: the CFP form's Format field (a dropdown labeled "Format", e.g.
+ * Talk/Workshop/Panel) should be visible in the submissions table by
+ * default, out of the box, without the organizer having to open the column
+ * picker. Matches case-insensitively on the exact label "format" so forms
+ * that don't define such a field simply have nothing to default-show.
+ */
+export function findFormatField(fields: FormField[]): FormField | undefined {
+  return fields.find((field) => field.kind === 'dropdown' && field.label.trim().toLowerCase() === 'format');
+}
+
 /** Format an answer value for display in a dynamic column cell. */
 export function formatAnswerValue(value: unknown): string {
   if (value === null || value === undefined) return '';
