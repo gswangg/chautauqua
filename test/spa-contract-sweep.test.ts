@@ -184,6 +184,66 @@ describe("DEC-239: GET /api/v1/events/:eventId/files vs EventFileChainItem", () 
 });
 
 // ---------------------------------------------------------------------------
+// DEC-247: GET /api/v1/submissions/:id/files must be a flat
+// { items: DeliverableFile[] } envelope, not the repo's internal
+// kind-grouped shape.
+// ---------------------------------------------------------------------------
+
+describe("DEC-239/DEC-247: GET /api/v1/submissions/:id/files vs DeliverableFile", () => {
+  it("items match flat {id,submissionId,kind,filename,sizeBytes,contentType,previousFileId,uploadedByContactId,createdAt}", async () => {
+    vi.doMock("../src/server/repo/files", async () => {
+      const actual = await vi.importActual<typeof import("../src/server/repo/files")>("../src/server/repo/files");
+      return {
+        ...actual,
+        getSubmissionScope: vi.fn(async (_db: unknown, submissionId: string) =>
+          submissionId === "sub-1" ? { orgId: ORG_A, participantContactIds: [] } : null,
+        ),
+        listSubmissionFiles: vi.fn(async () => ({
+          presentation: [
+            {
+              id: "file-1",
+              filename: "slides.pdf",
+              sizeBytes: 100,
+              contentType: "application/pdf",
+              previousFileId: null,
+              uploadedByContactId: "ct-1",
+              createdAt: 1700000000000,
+            },
+          ],
+        })),
+      };
+    });
+    const { fileApiRoutes } = await import("../src/routes/files");
+    const app = new Hono<AppEnv>();
+    registerErrorHandler(app);
+    app.use("*", async (c, next) => {
+      c.set("auth", organizerAuth);
+      c.set("db", {} as never);
+      await next();
+    });
+    app.route("/api/v1", fileApiRoutes);
+
+    const res = await app.request("/api/v1/submissions/sub-1/files");
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(keysOf(body)).toEqual(["items"]);
+    expect(keysOf(first(body.items as Record<string, unknown>[]))).toEqual(
+      [
+        "contentType",
+        "createdAt",
+        "filename",
+        "id",
+        "kind",
+        "previousFileId",
+        "sizeBytes",
+        "submissionId",
+        "uploadedByContactId",
+      ].sort(),
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
 // speakers-matrix rows: GET /api/v1/events/:eventId/onboarding vs
 // OnboardingGridResponse {tasks: OnboardingTask[], rows: OnboardingRow[]}
 // ---------------------------------------------------------------------------

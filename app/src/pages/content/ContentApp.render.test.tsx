@@ -40,7 +40,7 @@ describe('ContentApp / SessionList render smoke: always-visible content-status c
           createdAt: 1700000000000,
         },
       ]),
-      [`GET /api/v1/submissions/sub-1/files`]: { files: {} },
+      [`GET /api/v1/submissions/sub-1/files`]: { items: [] },
       [`POST /api/v1/submissions/sub-1/content-status`]: contentStatusMock,
     });
 
@@ -68,6 +68,75 @@ describe('ContentApp / SessionList render smoke: always-visible content-status c
   });
 });
 
+// CNT-07b regression: the server envelope is a flat { items: DeliverableFile[] }
+// (DEC-247), and deliverable counts on the worklist must count chain roots
+// (previousFileId === null) rather than every version in a replace chain.
+// Prior mocks matched the server shape but nothing asserted the resulting
+// count, so a mismatch (or a wrong count formula) could pass silently.
+describe('ContentApp worklist deliverable counts (DEC-247 chain roots)', () => {
+  it('counts only the chain root when a presentation file has been replaced', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([
+        {
+          id: 'sub-1',
+          ref: 'S-001',
+          title: 'A Talk With A Replaced File',
+          status: 'accepted',
+          contentStatus: 'pending',
+          speakers: [],
+          trackIds: [],
+          submittedAt: null,
+          createdAt: 1700000000000,
+        },
+      ]),
+      [`GET /api/v1/submissions/sub-1/files`]: {
+        items: [
+          {
+            id: 'file-2',
+            submissionId: 'sub-1',
+            kind: 'presentation',
+            filename: 'v2.pdf',
+            sizeBytes: 100,
+            contentType: 'application/pdf',
+            previousFileId: 'file-1',
+            uploadedByContactId: null,
+            createdAt: 1700000001000,
+          },
+          {
+            id: 'file-1',
+            submissionId: 'sub-1',
+            kind: 'presentation',
+            filename: 'v1.pdf',
+            sizeBytes: 90,
+            contentType: 'application/pdf',
+            previousFileId: null,
+            uploadedByContactId: null,
+            createdAt: 1700000000000,
+          },
+        ],
+      },
+    });
+
+    render(
+      <MemoryRouter>
+        <ContentApp />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(await screen.findByRole('tab', { name: 'All' }));
+
+    const row = (await screen.findByText('A Talk With A Replaced File')).closest('tr');
+    if (!row) throw new Error('worklist row not found');
+
+    const headerCells = Array.from(row.closest('table')!.querySelectorAll('thead th'));
+    const presentationColIndex = headerCells.findIndex((th) => th.textContent === 'Presentation');
+    expect(presentationColIndex).toBeGreaterThanOrEqual(0);
+
+    const rowCells = Array.from(row.querySelectorAll('td'));
+    expect(rowCells[presentationColIndex]?.textContent).toBe('1');
+  });
+});
+
 // w1-e: staleness fixes — switching Worklist <-> Files refetches, and the
 // explicit Refresh button re-fetches whichever list is currently visible.
 describe('ContentApp: fresh loads on view switch and explicit refresh', () => {
@@ -89,7 +158,7 @@ describe('ContentApp: fresh loads on view switch and explicit refresh', () => {
     );
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/submissions`]: submissionsMock,
-      [`GET /api/v1/submissions/sub-1/files`]: { files: {} },
+      [`GET /api/v1/submissions/sub-1/files`]: { items: [] },
     });
 
     render(
