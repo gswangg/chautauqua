@@ -16,10 +16,12 @@ import {
   type EvaluationCriterionDef,
   type DropdownCriterionDef,
   type EvaluationScores,
+  type ResultsSortKey,
+  type SortDirection,
 } from "../../domain/evaluation";
 import * as repo from "../../server/repo/review";
 import { roundCriteriaJsonOf } from "../../server/repo/review";
-import type { PlanRecord } from "../../server/repo/review";
+import type { PlanRecord, EvaluationRecord } from "../../server/repo/review";
 
 export function asRecord(body: unknown): Record<string, unknown> {
   if (typeof body !== "object" || body === null) {
@@ -254,8 +256,18 @@ export async function buildResults(
   const criteria = ratingCriteria(roundCriteria);
   const dropdowns = dropdownCriteria(roundCriteria);
 
+  // DEC-345: index evaluations by submissionId in one pass instead of
+  // filtering the whole per-plan evaluation array once per submission
+  // (O(submissions x evaluations) -> O(submissions + evaluations)).
+  const evalsBySubmission = new Map<string, EvaluationRecord[]>();
+  for (const e of evaluations) {
+    const list = evalsBySubmission.get(e.submissionId) ?? [];
+    list.push(e);
+    evalsBySubmission.set(e.submissionId, list);
+  }
+
   const rows: ResultsRow[] = submissions.map((sub) => {
-    const subEvals = evaluations.filter((e) => e.submissionId === sub.id);
+    const subEvals = evalsBySubmission.get(sub.id) ?? [];
     const evals = subEvals.map((e) => ({ scores: e.scores as unknown as EvaluationScores }));
     const agg = aggregateSubmission(evals, criteria);
     const dropdownEvals = subEvals.map((e) => ({ scores: e.scores as unknown as Record<string, unknown> }));
@@ -274,6 +286,36 @@ export async function buildResults(
     };
   });
   return buildResultsRows(rows);
+}
+
+/** DEC-345: parses the results endpoint's optional ?sort=/&criterionId=/
+ * &dir= query params into a {key, direction} pair, or undefined when ?sort=
+ * is absent (caller then skips the server-side sort entirely, leaving the
+ * DEC-341-style average-desc/count-desc ranking as the order). criterionId
+ * is required (and validated) only for the 'rating'/'dropdown' columns. */
+export function parseResultsSort(c: {
+  req: { query(name: string): string | undefined };
+}): { key: ResultsSortKey; direction: SortDirection } | undefined {
+  const sort = c.req.query("sort");
+  if (sort === undefined) return undefined;
+  const dirRaw = c.req.query("dir");
+  const direction: SortDirection = dirRaw === "asc" ? "asc" : "desc";
+  if (dirRaw !== undefined && dirRaw !== "asc" && dirRaw !== "desc") {
+    throw new ApiError("invalid", "dir must be 'asc' or 'desc'", { dir: "must be 'asc' or 'desc'" });
+  }
+  if (sort === "ref" || sort === "title" || sort === "count" || sort === "average") {
+    return { key: { column: sort }, direction };
+  }
+  if (sort === "rating" || sort === "dropdown") {
+    const criterionId = c.req.query("criterionId");
+    if (!criterionId) {
+      throw new ApiError("invalid", "criterionId is required when sort is 'rating' or 'dropdown'", {
+        criterionId: "required",
+      });
+    }
+    return { key: { column: sort, criterionId }, direction };
+  }
+  throw new ApiError("invalid", "sort must be one of ref|title|count|average|rating|dropdown", { sort: "invalid" });
 }
 
 export function toRecusalOut(r: { planId: string; submissionId: string; userId: string; reason: string | null; createdAt: number }) {
