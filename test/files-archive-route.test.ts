@@ -20,29 +20,40 @@ vi.mock("../src/server/repo/files", async () => {
       eventId === "event-1" ? { orgId: "org-1", slug: "demo-event" } : null,
     ),
     resolveLatestVersions: vi.fn(async (_db: unknown, _eventId: string, fileIds: string[]) => {
-      const map = new Map<string, { id: string; filename: string; contentType: string; r2Key: string }>();
+      const map = new Map<string, { id: string; filename: string; contentType: string; r2Key: string; submissionTitle: string }>();
       for (const id of fileIds) {
         if (id === "unknown-file") {
           throw new ApiError("not_found", `File ${id} is not a deliverable of this event`);
         }
-        map.set(id, { id: "file-v2", filename: "slides.pdf", contentType: "application/pdf", r2Key: "sub/sub-1/slides.pdf" });
+        map.set(id, {
+          id: "file-v2",
+          filename: "slides.pdf",
+          contentType: "application/pdf",
+          r2Key: "sub/sub-1/slides.pdf",
+          submissionTitle: "Scaling Vector Search",
+        });
       }
       return map;
     }),
-    listEventDeliverableFiles: vi.fn(async () => [
-      {
-        rootFileId: "file-v1",
-        latestFileId: "file-v2",
-        filename: "slides.pdf",
-        kind: "presentation",
-        submissionId: "sub-1",
-        submissionRef: "SES-014",
-        submissionTitle: "Scaling Vector Search",
-        speakerName: "Priya Raman",
-        uploadedAt: Date.now(),
-        versionCount: 2,
-      },
-    ]),
+    listEventDeliverableFiles: vi.fn(async () => ({
+      items: [
+        {
+          rootFileId: "file-v1",
+          latestFileId: "file-v2",
+          filename: "slides.pdf",
+          kind: "presentation",
+          submissionId: "sub-1",
+          submissionRef: "SES-014",
+          submissionTitle: "Scaling Vector Search",
+          speakerName: "Priya Raman",
+          uploadedAt: Date.now(),
+          versionCount: 2,
+        },
+      ],
+      total: 137,
+      page: 1,
+      perPage: 50,
+    })),
   };
 });
 
@@ -81,6 +92,20 @@ async function buildArchiveApp(auth: AuthInfo, bytes: Uint8Array) {
 
 const ORGANIZER: AuthInfo = { userId: "u1", role: "organizer", orgId: "org-1" };
 const OTHER_ORG_ORGANIZER: AuthInfo = { userId: "u2", role: "organizer", orgId: "org-2" };
+
+describe("GET /api/v1/events/:eventId/files (DEC-159/344)", () => {
+  it("returns the server-paginated envelope with a real total independent of items.length", async () => {
+    const app = await buildArchiveApp(ORGANIZER, new Uint8Array());
+    const res = await app.request("/api/v1/events/event-1/files", { method: "GET" });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { items: unknown[]; total: number; page: number; perPage: number };
+    expect(body.items).toHaveLength(1);
+    expect(body.total).toBe(137);
+    expect(body.total).toBeGreaterThan(body.items.length);
+    expect(body.page).toBe(1);
+    expect(body.perPage).toBe(50);
+  });
+});
 
 describe("POST /api/v1/events/:eventId/files/archive (DEC-160)", () => {
   it("returns a ZIP with Content-Disposition naming the event slug", async () => {

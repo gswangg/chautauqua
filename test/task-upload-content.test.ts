@@ -281,7 +281,8 @@ describe("POST /portal/tasks/:assignmentId/upload (DEC-240)", () => {
 type Marker =
   | { __marker: "eq"; col: unknown; val: unknown }
   | { __marker: "and"; conds: unknown[] }
-  | { __marker: "inArray"; col: unknown; vals: unknown[] };
+  | { __marker: "inArray"; col: unknown; vals: unknown[] }
+  | { __marker: "isNull"; col: unknown };
 
 vi.mock("drizzle-orm", async (importOriginal) => {
   const actual = await importOriginal<typeof import("drizzle-orm")>();
@@ -290,6 +291,7 @@ vi.mock("drizzle-orm", async (importOriginal) => {
     eq: (col: unknown, val: unknown): Marker => ({ __marker: "eq", col, val }),
     and: (...conds: unknown[]): Marker => ({ __marker: "and", conds }),
     inArray: (col: unknown, vals: unknown[]): Marker => ({ __marker: "inArray", col, vals }),
+    isNull: (col: unknown): Marker => ({ __marker: "isNull", col }),
   };
 });
 
@@ -312,18 +314,62 @@ function colKey(col: unknown): string {
   throw new Error("fake db: condition referenced a column not on a known table");
 }
 
+function isColumnRef(x: unknown): boolean {
+  for (const tableObj of Object.values(TABLE_SCHEMAS)) {
+    for (const value of Object.values(tableObj)) {
+      if (value === x) return true;
+    }
+  }
+  return false;
+}
+
+function isSqlNode(x: unknown): x is { queryChunks: unknown[] } {
+  return typeof x === "object" && x !== null && "queryChunks" in (x as Record<string, unknown>);
+}
+
 function evalCond(cond: unknown, row: Record<string, unknown>): boolean {
   const m = cond as Marker;
-  if (m.__marker === "eq") return row[colKey(m.col)] === m.val;
+  if (m.__marker === "eq") {
+    const right = isColumnRef(m.val) ? row[colKey(m.val)] : m.val;
+    return row[colKey(m.col)] === right;
+  }
   if (m.__marker === "and") return m.conds.every((c) => evalCond(c, row));
   if (m.__marker === "inArray") return m.vals.includes(row[colKey(m.col)]);
+  if (m.__marker === "isNull") return row[colKey(m.col)] == null;
   throw new Error(`fake db: unsupported condition ${JSON.stringify(cond)}`);
+}
+
+/** Resolves a join predicate's column operand against whichever of the two
+ * joined tables actually declares it — avoids the "id" key collision a
+ * naive object merge would hit (every table's PK is named "id"). */
+function evalJoinCond(
+  cond: unknown,
+  sRow: Record<string, unknown>,
+  jRow: Record<string, unknown>,
+  sTable: Record<string, unknown>,
+  jTable: Record<string, unknown>,
+): boolean {
+  const m = cond as Marker;
+  if (m.__marker !== "eq") throw new Error("fake db: only eq join predicates supported");
+  const resolve = (col: unknown) => {
+    if (Object.values(sTable).includes(col)) return sRow[colKey(col)];
+    if (Object.values(jTable).includes(col)) return jRow[colKey(col)];
+    throw new Error("fake db: join predicate column not found on either joined table");
+  };
+  return resolve(m.col) === resolve(m.val);
 }
 
 function project(row: Record<string, unknown>, fields: Record<string, unknown>) {
   const out: Record<string, unknown> = {};
-  for (const [outKey, col] of Object.entries(fields)) out[outKey] = row[colKey(col)];
+  for (const [outKey, col] of Object.entries(fields)) {
+    out[outKey] = isColumnRef(col) ? row[colKey(col)] : row[outKey];
+  }
   return out;
+}
+
+function isCountStarFields(fields: Record<string, unknown> | undefined): boolean {
+  if (!fields || Object.keys(fields).length !== 1) return false;
+  return isSqlNode(fields.count);
 }
 
 function makeFakeDb(seed: {
@@ -344,10 +390,15 @@ function makeFakeDb(seed: {
   const db = {
     select(fields?: Record<string, unknown>) {
       let source: Record<string, unknown>[] = [];
+      let fromTable: Record<string, unknown> | null = null;
       let whereCond: unknown = null;
       let orderDesc = false;
+      let limitN: number | undefined;
+      let offsetN = 0;
       const run = () => {
-        let filtered = whereCond ? source.filter((r) => evalCond(whereCond, r)) : source.slice();
+        const matched = whereCond ? source.filter((r) => evalCond(whereCond, r)) : source.slice();
+        if (isCountStarFields(fields)) return [{ count: matched.length }];
+        let filtered = matched;
         if (orderDesc) {
           filtered = filtered.slice().sort((a, b) => {
             const av = (a.createdAt as Date).getTime();
@@ -355,11 +406,30 @@ function makeFakeDb(seed: {
             return bv - av;
           });
         }
+        if (offsetN) filtered = filtered.slice(offsetN);
+        if (limitN !== undefined) filtered = filtered.slice(0, limitN);
         return fields ? filtered.map((r) => project(r, fields)) : filtered.map((r) => ({ ...r }));
       };
       const chain: any = {
-        from: (table: unknown) => {
-          source = byTable.get(table) ?? [];
+        from: (table: Record<string, unknown>) => {
+          fromTable = table;
+          source = (byTable.get(table) ?? []).map((r) => ({ ...r }));
+          return chain;
+        },
+        innerJoin: (table: Record<string, unknown>, cond: unknown) => {
+          const joinRows = byTable.get(table) ?? [];
+          const sTable = fromTable!;
+          const merged: Record<string, unknown>[] = [];
+          for (const s of source) {
+            for (const j of joinRows) {
+              if (evalJoinCond(cond, s, j, sTable, table)) {
+                // s (the driving/"from" table) wins on key collisions (every
+                // table's PK is literally "id").
+                merged.push({ ...j, ...s });
+              }
+            }
+          }
+          source = merged;
           return chain;
         },
         where: (cond: unknown) => {
@@ -370,7 +440,14 @@ function makeFakeDb(seed: {
           orderDesc = true;
           return chain;
         },
-        limit: async (n: number) => run().slice(0, n),
+        limit: (n: number) => {
+          limitN = n;
+          return chain;
+        },
+        offset: (n: number) => {
+          offsetN = n;
+          return chain;
+        },
         then: (resolve: (v: unknown[]) => void) => resolve(run()),
       };
       return chain;
@@ -419,9 +496,9 @@ describe("read side: DEC-240-linked task upload surfaces through existing file q
 
   it("listEventDeliverableFiles surfaces the chain as one row with versionCount 2", async () => {
     const db = makeFakeDb(seedWithChainedTaskUpload());
-    const chains = await listEventDeliverableFiles(db, "event-1");
-    expect(chains).toHaveLength(1);
-    expect(chains[0]).toMatchObject({
+    const result = await listEventDeliverableFiles(db, "event-1", { page: 1, perPage: 50, kinds: [], q: null });
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]).toMatchObject({
       rootFileId: "file-v1",
       latestFileId: "file-v2",
       filename: "slides-v2.pdf",
