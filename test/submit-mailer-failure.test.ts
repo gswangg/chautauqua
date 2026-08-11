@@ -181,8 +181,11 @@ describe("public submit: mailer failure is best-effort (DEC-237/DEC-238)", () =>
     expect(html).toContain("Thanks for your submission!");
 
     // The submission row itself was persisted regardless of the mail outcome.
+    // Matched on "description" too (not just "title") since DEC-321's
+    // createContact insert now also carries a "title" key (job title,
+    // typically null here) that would otherwise collide with this filter.
     const submissionInserts = inserts.filter(
-      (v) => typeof v === "object" && v !== null && !Array.isArray(v) && "title" in (v as object),
+      (v) => typeof v === "object" && v !== null && !Array.isArray(v) && "title" in (v as object) && "description" in (v as object),
     );
     expect(submissionInserts).toHaveLength(1);
     expect((submissionInserts[0] as any).title).toBe("My great talk");

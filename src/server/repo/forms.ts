@@ -92,6 +92,17 @@ const LOCKED_SPEAKER_LABELS: Record<string, string> = {
   first_name: "First name",
   last_name: "Last name",
   email: "Email",
+  // DEC-321: optional profile fields so the public speakers list isn't blank.
+  job_title: "Job title",
+  company: "Company",
+  bio: "Speaker bio",
+};
+// DEC-321: the three appended locked speaker fields are optional (a).
+const OPTIONAL_LOCKED_SPEAKER_FIELDS = new Set<string>(["job_title", "company", "bio"]);
+const LOCKED_SPEAKER_KIND: Record<string, "text" | "long_text"> = {
+  job_title: "text",
+  company: "text",
+  bio: "long_text",
 };
 
 /** Creates the default CFP form (locked built-ins + empty custom set) for an
@@ -133,9 +144,9 @@ export async function createDefaultForm(db: Db, eventId: string): Promise<{ form
       id: lockedFieldId(formId, fieldId),
       formId,
       section: "speaker",
-      kind: "text",
+      kind: LOCKED_SPEAKER_KIND[fieldId] ?? "text",
       label: LOCKED_SPEAKER_LABELS[fieldId] ?? fieldId,
-      required: true,
+      required: !OPTIONAL_LOCKED_SPEAKER_FIELDS.has(fieldId),
       position: position++,
       locked: true,
       createdAt: now,

@@ -39,7 +39,17 @@ export type AnswerMap = Record<string, unknown>;
 // present in the builder UI. These are field ids, not full FormFieldDef
 // objects — the builder is responsible for rendering/positioning them.
 export const LOCKED_SESSION_FIELDS = ["title", "description"] as const;
-export const LOCKED_SPEAKER_FIELDS = ["first_name", "last_name", "email"] as const;
+// DEC-321: job_title/company/bio appended so the default CFP collects a
+// public-speakers-list-worthy profile. Append-only — existing code that
+// indexes [0]/[1]/[2] (first_name/last_name/email) keeps working.
+export const LOCKED_SPEAKER_FIELDS = [
+  "first_name",
+  "last_name",
+  "email",
+  "job_title",
+  "company",
+  "bio",
+] as const;
 
 const ALL_LOCKED_NAMES = new Set<string>([...LOCKED_SESSION_FIELDS, ...LOCKED_SPEAKER_FIELDS]);
 
