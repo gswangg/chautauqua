@@ -25,10 +25,10 @@ import { newId } from "../../domain/ids";
 import { updateAssignmentStatus } from "../../server/repo/tasks";
 import {
   getFileVersionNumber,
-  getTaskFileScope,
   insertFile,
   insertFileComment,
   listFileComments,
+  resolveTaskFileChainLatest,
   type FileCommentRow,
 } from "../../server/repo/files";
 import {
@@ -57,7 +57,7 @@ import {
   isSecureRequest,
   CSRF_COOKIE_NAME,
 } from "../../auth/cookies";
-import { DEC_016, DEC_020, DEC_023, DEC_028, DEC_029, DEC_240, DEC_242 } from "../../decisions";
+import { DEC_016, DEC_020, DEC_023, DEC_028, DEC_029, DEC_240, DEC_242, DEC_244 } from "../../decisions";
 
 export const portalTasksRoutes = new Hono<AppEnv>();
 
@@ -69,6 +69,13 @@ void DEC_028;
 void DEC_029;
 void DEC_240;
 void DEC_242;
+void DEC_244;
+
+// DEC-244: comment body cap on the portal reply endpoint (matches no
+// existing forms/validate.ts constant since file comments aren't a form
+// field — long-text form answers cap at 20000, but a deliverable reply
+// thread is capped much tighter).
+export const MAX_COMMENT_BODY_LENGTH = 4000;
 
 portalTasksRoutes.use("*", speakerGate);
 
@@ -99,6 +106,7 @@ function ensureCsrfCookie(c: Context<AppEnv>): { token: string; setCookieIfNew: 
 export interface FileRequestExtras {
   filename: string;
   version: number;
+  uploadedAt: number;
   comments: FileCommentRow[];
 }
 
@@ -171,16 +179,18 @@ function TaskRow(props: {
           ) : null}
         </>
       )}
-      {/* DEC-242: a completed file_request assignment shows the current file
-          (linking through the existing authenticated /files/:fileId route),
-          a replace-file form re-posting to the same upload endpoint (chains
+      {/* DEC-244 (implements DEC-242): a completed file_request assignment
+          shows the current CHAIN-LATEST file (via the dedicated portal
+          download route, never the organizer /files route), a replace-file
+          form re-posting to the same upload endpoint (chains
           previous_file_id per DEC-240), and the file's comment thread — a
           speaker must be able to see their own upload without an organizer
           flipping status. */}
       {t.status === "complete" && t.kind === "file_request" && fileExtras ? (
         <section aria-label="Uploaded file">
           <p>
-            <a href={`/files/${t.fileId}`}>{fileExtras.filename}</a> (version {fileExtras.version})
+            <a href={`/portal/tasks/${t.id}/file`}>{fileExtras.filename}</a> (version {fileExtras.version}, uploaded{" "}
+            {new Date(fileExtras.uploadedAt).toISOString()})
           </p>
           <form method="post" action={`/portal/tasks/${t.id}/upload`} enctype="multipart/form-data">
             <input type="hidden" name={CSRF_COOKIE_NAME} value={csrfToken} />
@@ -304,21 +314,23 @@ portalTasksRoutes.get("/tasks", async (c) => {
     getMyTaskAssignments(c.var.db, contactId, auth.orgId),
   ]);
 
-  // DEC-242: for every completed file_request assignment, load the current
-  // file's display name/version and comment thread up front so TaskRow stays
-  // a pure render — the file itself is guaranteed to belong to this org's
-  // task-assignment population (getTaskFileScope), and this org-scoped
-  // /tasks list already only ever contains the caller's own assignments.
+  // DEC-244 (implements DEC-242): for every completed file_request
+  // assignment, resolve the CHAIN-LATEST file (following previous_file_id
+  // forward from the assignment's stored file id, so an organizer-side
+  // replace via the submission files route is honored) and load its
+  // display name/uploaded time/comment thread up front so TaskRow stays a
+  // pure render — this org-scoped /tasks list already only ever contains
+  // the caller's own assignments, so no further per-file authz is needed
+  // here (ownership flows from the assignment, not the file row).
   const fileExtrasByAssignmentId = new Map<string, FileRequestExtras>();
   for (const a of assignments) {
     if (a.kind !== "file_request" || a.status !== "complete" || !a.fileId) continue;
-    const fileScope = await getTaskFileScope(c.var.db, a.fileId);
-    if (!fileScope) throw new Error(`task_assignment ${a.id} references file ${a.fileId} with no task-file scope — data corruption`);
+    const latest = await resolveTaskFileChainLatest(c.var.db, a.fileId);
     const [version, comments] = await Promise.all([
-      getFileVersionNumber(c.var.db, a.fileId),
-      listFileComments(c.var.db, a.fileId),
+      getFileVersionNumber(c.var.db, latest.id),
+      listFileComments(c.var.db, latest.id),
     ]);
-    fileExtrasByAssignmentId.set(a.id, { filename: fileScope.filename, version, comments });
+    fileExtrasByAssignmentId.set(a.id, { filename: latest.filename, version, uploadedAt: latest.createdAt, comments });
   }
 
   const { token: csrfToken, setCookieIfNew } = ensureCsrfCookie(c);
@@ -489,13 +501,14 @@ portalTasksRoutes.post("/tasks/:assignmentId/upload", csrfForm, async (c) => {
   return c.redirect("/portal/tasks", 302);
 });
 
-// DEC-242: reply on a completed file_request assignment's file comment
-// thread. Authorized strictly through getAssignmentScope +
-// assertOwnAssignmentOr403 (existence-hiding: an unknown/foreign
-// assignmentId 404s/403s before any file is ever looked up) and then
-// re-verified through getTaskFileScope on the resolved fileId — a speaker
-// can only ever reach their own assignment's thread, never another
-// speaker's by probing assignment ids.
+// DEC-244 (implements DEC-242): reply on a completed file_request
+// assignment's file comment thread, anchored to the CHAIN-LATEST file id
+// (same anchor rule as the organizer DeliverableDetail view, which shows
+// comments[latest.id]) — not the assignment's raw stored file id, so a
+// reply always lands on the thread the current version's viewers see.
+// Authorized strictly through getAssignmentScope + assertOwnAssignmentOr403
+// (existence-hiding: an unknown/foreign assignmentId 404s/403s before any
+// file is ever looked up) — identical to the upload route's authz.
 portalTasksRoutes.post("/tasks/:assignmentId/comments", csrfForm, async (c) => {
   const auth = requireAuth(c);
   const contactId = auth.contactId;
@@ -509,25 +522,54 @@ portalTasksRoutes.post("/tasks/:assignmentId/comments", csrfForm, async (c) => {
     throw new ApiError("invalid", "This task has no uploaded file to comment on");
   }
 
-  const fileScope = await getTaskFileScope(c.var.db, scope.fileId);
-  if (!fileScope || fileScope.assignmentContactId !== contactId) {
-    // Same-shape 403 as assertOwnAssignmentOr403 — defense in depth, should
-    // be unreachable given getAssignmentScope already matched contactId.
-    throw new ApiError("forbidden", "This task assignment does not belong to you");
-  }
-
   const body = await c.req.parseBody();
   const raw = body["body"];
   const text = typeof raw === "string" ? raw.trim() : "";
   if (!text) throw new ApiError("invalid", "body is required", { body: "Required" });
+  if (text.length > MAX_COMMENT_BODY_LENGTH) {
+    throw new ApiError("invalid", `body must be ${MAX_COMMENT_BODY_LENGTH} characters or fewer`, {
+      body: "Too long",
+    });
+  }
 
+  const latest = await resolveTaskFileChainLatest(c.var.db, scope.fileId);
   await insertFileComment(c.var.db, {
-    fileId: scope.fileId,
+    fileId: latest.id,
     body: text,
     authorUserId: auth.userId,
     authorContactId: contactId,
   });
   return c.redirect("/portal/tasks", 302);
+});
+
+// DEC-244: streams the CHAIN-LATEST version of a completed file_request
+// assignment's deliverable — authz identical to the upload route
+// (getAssignmentScope + assertOwnAssignmentOr403 + org scope), deliberately
+// NOT the organizer /files route, so a speaker's own portal session is
+// self-sufficient for downloading their own uploads.
+portalTasksRoutes.get("/tasks/:assignmentId/file", async (c) => {
+  const auth = requireAuth(c);
+  const contactId = auth.contactId;
+  if (!contactId) throw new Error("speaker auth session missing contact_id — invariant violated");
+  const assignmentId = c.req.param("assignmentId");
+
+  const scope = await getAssignmentScope(c.var.db, assignmentId);
+  if (!scope || scope.orgId !== auth.orgId) throw new ApiError("not_found", "Task assignment not found");
+  assertOwnAssignmentOr403(scope, contactId);
+  if (scope.kind !== "file_request" || !scope.fileId) {
+    throw new ApiError("not_found", "This task has no uploaded file");
+  }
+
+  const latest = await resolveTaskFileChainLatest(c.var.db, scope.fileId);
+  const store = makeFileStore(c.env.FILES);
+  const obj = await store.get(latest.r2Key);
+  if (!obj) throw new ApiError("not_found", "File contents not found");
+
+  const safeName = latest.filename.replace(/[\r\n"]/g, "");
+  return c.body(obj.body, 200, {
+    "Content-Type": obj.contentType ?? latest.contentType,
+    "Content-Disposition": `attachment; filename="${safeName}"`,
+  });
 });
 
 // -----------------------------------------------------------------------

@@ -335,6 +335,61 @@ export async function getFileVersionNumber(db: Db, fileId: string): Promise<numb
   return version;
 }
 
+export interface TaskFileChainLatest {
+  id: string;
+  filename: string;
+  contentType: string;
+  r2Key: string;
+  createdAt: number;
+}
+
+/** DEC-244: given a task_assignment's linked completion file id, walks
+ * FORWARD along previous_file_id (i.e. finds the file whose
+ * previous_file_id points at the current one, repeatedly) to the newest
+ * file in the chain. Task-assignment uploads always chain forward from the
+ * assignment's stored file id (DEC-240), and an organizer may separately
+ * replace the same underlying deliverable via
+ * POST /api/v1/submissions/:id/files (when the file is linked to a
+ * submission) without ever rewriting task_assignment.file_id — so the
+ * assignment's stored id can lag behind the true latest version. This is
+ * the sole resolution path for both the portal download route and the
+ * portal comment-thread anchor (DEC-244: "do NOT reuse the organizer
+ * /files route"). Bounded by chain length; throws on a previous_file_id
+ * cycle or a missing row (data corruption, never a normal state). */
+export async function resolveTaskFileChainLatest(db: Db, fileId: string): Promise<TaskFileChainLatest> {
+  let current = fileId;
+  const visited = new Set<string>([current]);
+  for (;;) {
+    const nextRows = await db
+      .select({ id: schema.file.id })
+      .from(schema.file)
+      .where(eq(schema.file.previousFileId, current))
+      .limit(1);
+    const next = nextRows[0];
+    if (!next) break;
+    if (visited.has(next.id)) {
+      throw new Error(`resolveTaskFileChainLatest: previous_file_id cycle detected at ${next.id}`);
+    }
+    visited.add(next.id);
+    current = next.id;
+  }
+
+  const rows = await db
+    .select({
+      id: schema.file.id,
+      filename: schema.file.filename,
+      contentType: schema.file.contentType,
+      r2Key: schema.file.r2Key,
+      createdAt: schema.file.createdAt,
+    })
+    .from(schema.file)
+    .where(eq(schema.file.id, current))
+    .limit(1);
+  const row = rows[0];
+  if (!row) throw new Error(`resolveTaskFileChainLatest: file ${current} not found — data corruption`);
+  return { id: row.id, filename: row.filename, contentType: row.contentType, r2Key: row.r2Key, createdAt: row.createdAt.getTime() };
+}
+
 // ---------------------------------------------------------------------------
 // Writes
 // ---------------------------------------------------------------------------
