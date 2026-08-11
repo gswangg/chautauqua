@@ -10,7 +10,7 @@ import { chunkIds } from "../../lib/chunk";
 import type { Mailer } from "../../mail/types";
 import { renderTemplate, textToHtml } from "../../mail/render";
 import type { ReminderAssignment } from "../../domain/reminders";
-import { planReminders } from "../../domain/reminders";
+import { capReminderGroups, planManualReminders, planReminders } from "../../domain/reminders";
 import { ACTIVE_INVITE_STATUSES } from "../../domain/acceptance";
 import { listFields } from "./forms";
 import type { AnswerMap } from "../../forms/types";
@@ -676,34 +676,36 @@ async function sendReminderEmails(
 }
 
 /** Bulk "remind now" — an explicit organizer action, so it reminds every
- * outstanding assignment regardless of the due-window/dedupe gate. */
+ * outstanding assignment regardless of the due-window/dedupe gate, but is
+ * still capped and de-duped per DEC-319 (planManualReminders) so a huge
+ * event can't blow one request past MAX_REMINDER_BATCH contacts; the
+ * organizer clicks again to continue through `remaining`. */
 export async function remindNow(
   db: Db,
   mailer: Mailer,
   eventId: string,
   taskIds: string[] | undefined,
   now: Date,
-): Promise<{ sent: number; failed: { email: string; message: string }[] }> {
+): Promise<{ sent: number; failed: { email: string; message: string }[]; skipped: number; remaining: number }> {
   const outstanding = await listOutstandingForEvent(db, eventId, taskIds);
-  if (outstanding.length === 0) return { sent: 0, failed: [] };
+  if (outstanding.length === 0) return { sent: 0, failed: [], skipped: 0, remaining: 0 };
   const eventName = outstanding[0]?.eventName ?? "";
 
   const outstandingByContact = new Map<string, OutstandingRow[]>();
-  const byContactAssignments = new Map<string, ReminderAssignment[]>();
   for (const r of outstanding) {
     const arr = outstandingByContact.get(r.contactId) ?? [];
     arr.push(r);
     outstandingByContact.set(r.contactId, arr);
-    const arr2 = byContactAssignments.get(r.contactId) ?? [];
-    arr2.push(toReminderAssignment(r));
-    byContactAssignments.set(r.contactId, arr2);
   }
-  const groups = [...byContactAssignments.entries()].map(([contactId, assignments]) => ({
-    contactId,
-    assignments,
-  }));
 
-  return sendReminderEmails(db, mailer, eventId, eventName, groups, outstandingByContact, now);
+  const plan = planManualReminders({
+    assignments: outstanding.map(toReminderAssignment),
+    now: now.getTime(),
+  });
+  if (plan.groups.length === 0) return { sent: 0, failed: [], skipped: plan.skipped, remaining: plan.remaining };
+
+  const result = await sendReminderEmails(db, mailer, eventId, eventName, plan.groups, outstandingByContact, now);
+  return { ...result, skipped: plan.skipped, remaining: plan.remaining };
 }
 
 /** Due-date-driven cron reminder pass, scoped to one event's outstanding
@@ -727,7 +729,12 @@ export async function sendDueRemindersForEvent(db: Db, mailer: Mailer, eventId: 
   });
   if (plan.groups.length === 0) return 0;
 
-  const result = await sendReminderEmails(db, mailer, eventId, eventName, plan.groups, outstandingByContact, now);
+  // DEC-319: cap even the cron's due-window batch so one event with a huge
+  // outstanding backlog can't send an unbounded number of emails in one
+  // tick — the next tick picks up the `remaining` contacts.
+  const { groups: cappedGroups } = capReminderGroups(plan.groups);
+
+  const result = await sendReminderEmails(db, mailer, eventId, eventName, cappedGroups, outstandingByContact, now);
   return result.sent;
 }
 

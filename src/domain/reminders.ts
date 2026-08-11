@@ -6,6 +6,11 @@
 const DUE_WINDOW_MS = 72 * 60 * 60 * 1000; // 72h
 const DEDUPE_WINDOW_MS = 24 * 60 * 60 * 1000; // 24h
 
+// DEC-319: manual "remind now" batches are capped and de-duped separately
+// from the cron's DUE_WINDOW/DEDUPE_WINDOW gate above.
+export const MAX_REMINDER_BATCH = 100;
+export const MANUAL_DEDUPE_WINDOW_MS = 60 * 60 * 1000; // 1h
+
 export interface ReminderAssignment {
   assignmentId: string;
   contactId: string;
@@ -60,4 +65,59 @@ export function planReminders(input: PlanRemindersInput): PlanRemindersResult {
     assignments,
   }));
   return { groups };
+}
+
+/**
+ * DEC-319: caps a list of per-contact reminder groups at `max` (default
+ * MAX_REMINDER_BATCH), sorting by contactId ascending first so repeat calls
+ * are deterministic — a second pass over the same outstanding set advances
+ * to the next slice's contacts rather than repeating the first `max`.
+ */
+export function capReminderGroups<T extends { contactId: string }>(
+  groups: T[],
+  max: number = MAX_REMINDER_BATCH,
+): { groups: T[]; remaining: number } {
+  const sorted = [...groups].sort((a, b) => (a.contactId < b.contactId ? -1 : a.contactId > b.contactId ? 1 : 0));
+  const capped = sorted.slice(0, max);
+  const remaining = sorted.length - capped.length;
+  return { groups: capped, remaining };
+}
+
+/**
+ * DEC-319: groups ALL outstanding assignments per contact regardless of
+ * dueDate (remind-now deliberately overrides the 72h DUE_WINDOW gate used by
+ * the cron's planReminders), drops any contact whose most recent
+ * lastRemindedAt falls within MANUAL_DEDUPE_WINDOW_MS of `now` (counted in
+ * `skipped`), then applies capReminderGroups.
+ */
+export function planManualReminders(input: PlanRemindersInput): {
+  groups: ReminderGroup[];
+  skipped: number;
+  remaining: number;
+} {
+  const byContact = new Map<string, ReminderAssignment[]>();
+  for (const a of input.assignments) {
+    if (a.status === "complete") continue;
+    const arr = byContact.get(a.contactId) ?? [];
+    arr.push(a);
+    byContact.set(a.contactId, arr);
+  }
+
+  let skipped = 0;
+  const eligible: ReminderGroup[] = [];
+  for (const [contactId, assignments] of byContact.entries()) {
+    const mostRecentRemindedAt = assignments.reduce<number | null>((latest, a) => {
+      if (a.lastRemindedAt === null) return latest;
+      if (latest === null || a.lastRemindedAt > latest) return a.lastRemindedAt;
+      return latest;
+    }, null);
+    if (mostRecentRemindedAt !== null && input.now - mostRecentRemindedAt < MANUAL_DEDUPE_WINDOW_MS) {
+      skipped += 1;
+      continue;
+    }
+    eligible.push({ contactId, assignments });
+  }
+
+  const { groups, remaining } = capReminderGroups(eligible);
+  return { groups, skipped, remaining };
 }

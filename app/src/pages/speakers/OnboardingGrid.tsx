@@ -94,8 +94,20 @@ export function OnboardingGrid() {
     setReminding(true);
     setError(null);
     try {
-      const res = await apiPost<{ sent: number }>(`/events/${eventId}/onboarding/remind`, {});
-      setToast(`Reminder sent to ${res.sent} contact${res.sent === 1 ? '' : 's'}.`);
+      const res = await apiPost<{ sent: number; skipped: number; remaining: number }>(
+        `/events/${eventId}/onboarding/remind`,
+        {},
+      );
+      const parts = [`Reminder sent to ${res.sent} contact${res.sent === 1 ? '' : 's'}.`];
+      if (res.skipped > 0) {
+        parts.push(`${res.skipped} contact${res.skipped === 1 ? '' : 's'} skipped (reminded recently).`);
+      }
+      if (res.remaining > 0) {
+        parts.push(
+          `${res.remaining} contact${res.remaining === 1 ? '' : 's'} still outstanding — click Remind again to continue.`,
+        );
+      }
+      setToast(parts.join(' '));
       setConfirmingRemind(false);
       await loadGrid(eventId);
     } catch (err) {
