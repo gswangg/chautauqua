@@ -348,6 +348,31 @@ export const evaluation = sqliteTable(
   }),
 );
 
+// DEC-271 (task w5-c): reviewer conflict-of-interest / recusal. A reviewer
+// may recuse themselves from a submission within a plan; recused submissions
+// are excluded from that reviewer's queue and scoring is blocked (409).
+export const reviewRecusal = sqliteTable(
+  "review_recusal",
+  {
+    id: id(),
+    planId: text("plan_id").notNull(),
+    submissionId: text("submission_id").notNull(),
+    userId: text("user_id").notNull(),
+    reason: text("reason"),
+    createdAt: createdAt(),
+  },
+  (t) => ({
+    review_recusal_plan_id_idx: index("review_recusal_plan_id_idx").on(t.planId),
+    review_recusal_submission_id_idx: index("review_recusal_submission_id_idx").on(t.submissionId),
+    review_recusal_user_id_idx: index("review_recusal_user_id_idx").on(t.userId),
+    review_recusal_plan_submission_user_idx: uniqueIndex("review_recusal_plan_submission_user_idx").on(
+      t.planId,
+      t.submissionId,
+      t.userId,
+    ),
+  }),
+);
+
 export const track = sqliteTable(
   "track",
   {

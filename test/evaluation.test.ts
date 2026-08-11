@@ -11,6 +11,8 @@ import {
   isPlanOpen,
   resolveAssignments,
   criteriaForRound,
+  partitionRecused,
+  assignedExcludingRecused,
   type EvaluationCriterion,
   type EvaluationCriterionDef,
   type DropdownCriterionDef,
@@ -443,5 +445,46 @@ describe("aggregateDropdownCriterion", () => {
 
   it("throws on a score outside the option list", () => {
     expect(() => aggregateDropdownCriterion([{ scores: { format: "Nonsense" } }], format)).toThrow();
+  });
+});
+
+describe("partitionRecused (DEC-271)", () => {
+  it("splits items into kept/recused by submissionId membership, preserving kept order", () => {
+    const items = [{ submissionId: "s1" }, { submissionId: "s2" }, { submissionId: "s3" }];
+    const result = partitionRecused(items, new Set(["s2"]));
+    expect(result.kept).toEqual([{ submissionId: "s1" }, { submissionId: "s3" }]);
+    expect(result.recused).toEqual([{ submissionId: "s2" }]);
+  });
+
+  it("with an empty recusedIds set, everything is kept and nothing is recused", () => {
+    const items = [{ submissionId: "s1" }, { submissionId: "s2" }];
+    const result = partitionRecused(items, new Set());
+    expect(result.kept).toEqual(items);
+    expect(result.recused).toEqual([]);
+  });
+
+  it("with every id recused, kept is empty", () => {
+    const items = [{ submissionId: "s1" }, { submissionId: "s2" }];
+    const result = partitionRecused(items, new Set(["s1", "s2"]));
+    expect(result.kept).toEqual([]);
+    expect(result.recused).toEqual(items);
+  });
+});
+
+describe("assignedExcludingRecused (DEC-271)", () => {
+  it("filters out assigned items whose id is in recusedIds", () => {
+    const assigned = [{ id: "s1" }, { id: "s2" }, { id: "s3" }];
+    const result = assignedExcludingRecused(assigned, new Set(["s2"]));
+    expect(result).toEqual([{ id: "s1" }, { id: "s3" }]);
+  });
+
+  it("returns the full list unchanged when recusedIds is empty", () => {
+    const assigned = [{ id: "s1" }, { id: "s2" }];
+    expect(assignedExcludingRecused(assigned, new Set())).toEqual(assigned);
+  });
+
+  it("returns an empty list when every assigned id is recused", () => {
+    const assigned = [{ id: "s1" }, { id: "s2" }];
+    expect(assignedExcludingRecused(assigned, new Set(["s1", "s2"]))).toEqual([]);
   });
 });

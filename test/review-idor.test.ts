@@ -33,6 +33,10 @@ vi.mock("../src/server/repo/review", async () => {
   );
   return {
     ...actual,
+    // DEC-271 (task w5-c): no recusals in these fixtures.
+    listRecusalsForPlan: vi.fn(async () => []),
+    listRecusalsForReviewer: vi.fn(async () => []),
+    hasRecusal: vi.fn(async () => null),
     // getPlanForOrg is org-scoped: only returns the plan when orgId matches
     // the fixture's "owning" org (ORG_A). This is what requireAssignedPlan
     // must call for the organizer branch.
