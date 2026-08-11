@@ -12,7 +12,9 @@ import {
 } from "../src/auth/cookies";
 import { authRoutes } from "../src/routes/auth";
 import { registerErrorHandler } from "../src/server/http";
+import * as schema from "../src/db/schema";
 import type { AppEnv } from "../src/server/env";
+import type { KVStore } from "../src/auth/claim";
 
 const B64URL_RE = /^[A-Za-z0-9_-]+$/;
 const GOLDEN_FORMAT_RE = /^pbkdf2\$v1\$600000\$[A-Za-z0-9_-]+\$[A-Za-z0-9_-]+$/;
@@ -200,5 +202,157 @@ describe("POST /logout (route-level, DEC-181)", () => {
     expect(res.status).toBe(302);
     expect(res.headers.get("location")).toBe("/login");
     expect(wasDeleted()).toBe(true);
+  });
+});
+
+// DEC-180: POST /login rate limiting counts only failures — a successful
+// login must not consume the shared budget, and success clears the
+// per-email budget entirely.
+describe("POST /login rate limiting (DEC-180)", () => {
+  const EMAIL = "user@example.test";
+  const PASSWORD = "correct-password-123";
+
+  class InMemoryKV implements KVStore {
+    private readonly store = new Map<string, string>();
+
+    async get(key: string): Promise<string | null> {
+      return this.store.get(key) ?? null;
+    }
+
+    async put(key: string, value: string): Promise<void> {
+      this.store.set(key, value);
+    }
+
+    async delete(key: string): Promise<void> {
+      this.store.delete(key);
+    }
+  }
+
+  async function buildApp() {
+    const passwordHash = await hashPassword(PASSWORD);
+    const users = [
+      {
+        id: "u_1",
+        orgId: "org_1",
+        email: EMAIL,
+        passwordHash,
+        role: "organizer",
+        contactId: null,
+      },
+    ];
+    const sessions: unknown[] = [];
+    const db = {
+      select() {
+        return {
+          from(table: unknown) {
+            return {
+              where() {
+                return {
+                  limit() {
+                    if (table === schema.user) return Promise.resolve(users);
+                    throw new Error("unexpected table in fake db select");
+                  },
+                };
+              },
+            };
+          },
+        };
+      },
+      insert(table: unknown) {
+        return {
+          values(row: unknown) {
+            if (table === schema.authSession) sessions.push(row);
+            return Promise.resolve();
+          },
+        };
+      },
+    } as unknown as AppEnv["Variables"]["db"];
+
+    const kv = new InMemoryKV();
+    const app = new Hono<AppEnv>();
+    registerErrorHandler(app);
+    app.use("*", async (c, next) => {
+      c.set("db", db);
+      await next();
+    });
+    app.route("/", authRoutes);
+    const env = { KV: kv as unknown as AppEnv["Bindings"]["KV"] };
+    return { app, kv, env, sessions };
+  }
+
+  async function getCsrf(app: Hono<AppEnv>, env: { KV: AppEnv["Bindings"]["KV"] }) {
+    const res = await app.request("/login", {}, env);
+    const setCookie = res.headers.get("set-cookie") ?? "";
+    const match = setCookie.match(new RegExp(`${CSRF_COOKIE_NAME}=([^;]+)`));
+    if (!match) throw new Error(`no ${CSRF_COOKIE_NAME} cookie set on /login`);
+    return { csrf: match[1]!, cookie: `${CSRF_COOKIE_NAME}=${match[1]}` };
+  }
+
+  async function postLogin(
+    app: Hono<AppEnv>,
+    env: { KV: AppEnv["Bindings"]["KV"] },
+    fields: { email: string; password: string },
+  ) {
+    const { csrf, cookie } = await getCsrf(app, env);
+    const form = new URLSearchParams({
+      [CSRF_COOKIE_NAME]: csrf,
+      email: fields.email,
+      password: fields.password,
+    });
+    return app.request(
+      "/login",
+      {
+        method: "POST",
+        headers: { "content-type": "application/x-www-form-urlencoded", cookie },
+        body: form.toString(),
+      },
+      env,
+    );
+  }
+
+  it("20 failed logins for one email then a 429", async () => {
+    const { app, env } = await buildApp();
+    for (let i = 0; i < 20; i++) {
+      const res = await postLogin(app, env, { email: EMAIL, password: "wrong" });
+      expect(res.status).toBe(401);
+    }
+    const res21 = await postLogin(app, env, { email: EMAIL, password: "wrong" });
+    expect(res21.status).toBe(429);
+  });
+
+  it("a successful login does not increment the budget: 19 failures, then success, then a failure is still allowed", async () => {
+    const { app, env } = await buildApp();
+    for (let i = 0; i < 19; i++) {
+      const res = await postLogin(app, env, { email: EMAIL, password: "wrong" });
+      expect(res.status).toBe(401);
+    }
+    const successRes = await postLogin(app, env, { email: EMAIL, password: PASSWORD });
+    expect(successRes.status).toBe(302);
+
+    // The per-email budget was at 19 failures pre-success; since success
+    // resets it, one more failure must still be allowed (not 429).
+    const afterSuccess = await postLogin(app, env, { email: EMAIL, password: "wrong" });
+    expect(afterSuccess.status).toBe(401);
+  });
+
+  it("success clears the email budget: 19 failures, success, then 19 more failures are allowed", async () => {
+    const { app, env } = await buildApp();
+    for (let i = 0; i < 19; i++) {
+      const res = await postLogin(app, env, { email: EMAIL, password: "wrong" });
+      expect(res.status).toBe(401);
+    }
+    const successRes = await postLogin(app, env, { email: EMAIL, password: PASSWORD });
+    expect(successRes.status).toBe(302);
+
+    for (let i = 0; i < 19; i++) {
+      const res = await postLogin(app, env, { email: EMAIL, password: "wrong" });
+      expect(res.status).toBe(401);
+    }
+    // Budget was reset by the success, so this is only the 20th failure
+    // post-reset — still allowed, not yet capped.
+    const res20AfterReset = await postLogin(app, env, { email: EMAIL, password: "wrong" });
+    expect(res20AfterReset.status).toBe(401);
+    const res21AfterReset = await postLogin(app, env, { email: EMAIL, password: "wrong" });
+    expect(res21AfterReset.status).toBe(429);
   });
 });

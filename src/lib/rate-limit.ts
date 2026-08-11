@@ -38,6 +38,61 @@ export async function checkAndIncrementScopedLimit(
   return { ok: true, count: count + 1 };
 }
 
+// DEC-180: login rate limiting must count only failures, not every attempt
+// (a successful login should not consume the shared budget, and a success
+// should reset the per-identity budget). These three helpers split the
+// check-and-increment behavior of checkAndIncrementScopedLimit into
+// independent read / write / reset primitives so callers can decide when
+// (and whether) to record an attempt.
+
+/** Read-only peek at the current window's count. Never writes to KV. */
+export async function peekScopedLimit(
+  kv: KVStore,
+  scope: string,
+  id: string,
+  now: number,
+  opts: { windowSeconds: number; max: number },
+): Promise<ScopedRateLimitResult> {
+  const { windowSeconds, max } = opts;
+  const windowMs = windowSeconds * 1000;
+  const windowStart = Math.floor(now / windowMs) * windowMs;
+  const key = scopedRateLimitKey(scope, id, windowStart);
+  const raw = await kv.get(key);
+  const count = raw ? Number(raw) : 0;
+  return { ok: count < max, count };
+}
+
+/** Unconditionally increments the current window's counter by one. */
+export async function incrementScopedLimit(
+  kv: KVStore,
+  scope: string,
+  id: string,
+  now: number,
+  opts: { windowSeconds: number; max: number },
+): Promise<void> {
+  const { windowSeconds } = opts;
+  const windowMs = windowSeconds * 1000;
+  const windowStart = Math.floor(now / windowMs) * windowMs;
+  const key = scopedRateLimitKey(scope, id, windowStart);
+  const raw = await kv.get(key);
+  const count = raw ? Number(raw) : 0;
+  await kv.put(key, String(count + 1), { expirationTtl: windowSeconds });
+}
+
+/** Deletes the current window's counter key, clearing the budget. */
+export async function resetScopedLimit(
+  kv: KVStore,
+  scope: string,
+  id: string,
+  now: number,
+  windowSeconds: number,
+): Promise<void> {
+  const windowMs = windowSeconds * 1000;
+  const windowStart = Math.floor(now / windowMs) * windowMs;
+  const key = scopedRateLimitKey(scope, id, windowStart);
+  await kv.delete(key);
+}
+
 /** Mirrors the IP-resolution logic in src/routes/public/submit.tsx:
  * cf-connecting-ip, else the first hop of x-forwarded-for, else 'unknown'.
  *

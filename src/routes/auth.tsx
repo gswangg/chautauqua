@@ -20,7 +20,13 @@ import {
   SESSION_COOKIE_NAME,
 } from "../auth/cookies";
 import { consumeClaimToken, readClaimToken, type KVStore } from "../auth/claim";
-import { checkAndIncrementScopedLimit, requestIpFromHeaders } from "../lib/rate-limit";
+import {
+  checkAndIncrementScopedLimit,
+  peekScopedLimit,
+  incrementScopedLimit,
+  resetScopedLimit,
+  requestIpFromHeaders,
+} from "../lib/rate-limit";
 
 const AUTH_RATE_LIMIT_WINDOW_SECONDS = 900;
 const AUTH_RATE_LIMIT_MAX = 20;
@@ -113,16 +119,22 @@ authRoutes.post("/login", csrfForm, async (c) => {
   // a per-account cap. Two independent checks: a per-email budget (catches
   // credential stuffing against one account) and a per-IP budget (catches
   // a single source hammering many accounts). Either failing blocks login.
-  const userLimit = await checkAndIncrementScopedLimit(kv, "login-user", email, Date.now(), {
+  //
+  // DEC-180: the counters only advance on FAILED attempts — a successful
+  // login must not consume the shared budget, so we peek (read-only) before
+  // verifying the password, and only increment after a failure is
+  // confirmed. On success the per-email budget is cleared entirely.
+  const ip = requestIpFromHeaders((name) => c.req.header(name));
+  const loginNow = Date.now();
+  const userPeek = await peekScopedLimit(kv, "login-user", email, loginNow, {
     windowSeconds: AUTH_RATE_LIMIT_WINDOW_SECONDS,
     max: AUTH_RATE_LIMIT_MAX,
   });
-  const ip = requestIpFromHeaders((name) => c.req.header(name));
-  const ipLimit = await checkAndIncrementScopedLimit(kv, "login-ip", ip, Date.now(), {
+  const ipPeek = await peekScopedLimit(kv, "login-ip", ip, loginNow, {
     windowSeconds: AUTH_RATE_LIMIT_WINDOW_SECONDS,
     max: 100,
   });
-  if (!userLimit.ok || !ipLimit.ok) {
+  if (!userPeek.ok || !ipPeek.ok) {
     const { token: csrfToken } = ensureCsrfCookie(c);
     return c.html(<LoginPage csrfToken={csrfToken} error={RATE_LIMIT_ERROR} />, 429);
   }
@@ -132,9 +144,19 @@ authRoutes.post("/login", csrfForm, async (c) => {
   const rows = await db.select().from(schema.user).where(eq(schema.user.email, email)).limit(1);
   const user = rows[0];
   if (!user || !(await verifyPassword(password, user.passwordHash))) {
+    await incrementScopedLimit(kv, "login-user", email, loginNow, {
+      windowSeconds: AUTH_RATE_LIMIT_WINDOW_SECONDS,
+      max: AUTH_RATE_LIMIT_MAX,
+    });
+    await incrementScopedLimit(kv, "login-ip", ip, loginNow, {
+      windowSeconds: AUTH_RATE_LIMIT_WINDOW_SECONDS,
+      max: 100,
+    });
     const { token: csrfToken } = ensureCsrfCookie(c);
     return c.html(<LoginPage csrfToken={csrfToken} error="Invalid email or password." />, 401);
   }
+
+  await resetScopedLimit(kv, "login-user", email, loginNow, AUTH_RATE_LIMIT_WINDOW_SECONDS);
 
   const token = newSessionToken();
   const tokenHash = await hashToken(token);
