@@ -4,8 +4,14 @@
 import { and, asc, eq, or, sql } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
+import { DEC_258 } from "../../../decisions";
 import { visibleSubmissionConditions } from "./gates";
 import type { PublicSpeaker } from "./sessions";
+
+// Compile-checked dependency marker: every speaker title/company read below
+// comes from participant.title_at_time/org_at_time (DEC-258's frozen
+// snapshot), never the live contact — no fallback.
+void DEC_258;
 
 export interface PublicSpeakerWithSessions extends PublicSpeaker {
   sessions: Array<{ id: string; title: string }>;

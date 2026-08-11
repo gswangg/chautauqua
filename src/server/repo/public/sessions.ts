@@ -10,8 +10,14 @@ import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { formatRef } from "../../../domain/ids";
 import { chunkIds } from "../../../lib/chunk";
+import { DEC_258 } from "../../../decisions";
 import { visibleParticipantConditions, visibleSessionConditions, slotWithinEventRange } from "./gates";
 import type { PublicEvent, PublicTrack } from "./event";
+
+// Compile-checked dependency marker: every speaker title/company read below
+// comes from participant.title_at_time/org_at_time (DEC-258's frozen
+// snapshot), never the live contact — no fallback.
+void DEC_258;
 
 export interface PublicSpeaker {
   contactId: string;
