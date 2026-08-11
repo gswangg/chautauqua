@@ -1,6 +1,6 @@
-// w1-i (docs/eval-findings.md Section D): POST /submit/:eventSlug/save-draft
-// previously did a bare redirect, which left no on-screen confirmation. It
-// now re-renders the form directly with a visible "Draft saved" banner.
+// DEC-245 (supersedes the w1-i re-render approach): POST
+// /submit/:eventSlug/save-draft redirects to ?draft=saved, and the
+// following GET renders a distinct "Draft saved" banner above the form.
 // Mounts the real publicSubmitRoutes sub-app against a minimal fake db,
 // mirroring the fakeDb pattern in test/submit-hidden-file-field.test.ts.
 
@@ -92,7 +92,7 @@ function appWithDb(db: AppEnv["Variables"]["db"]) {
 const CSRF_TOKEN = "test-csrf-token";
 
 describe("POST /submit/:eventSlug/save-draft", () => {
-  it("re-renders the form with a visible confirmation banner naming the close date, instead of a bare redirect", async () => {
+  it("redirects (302) to ?draft=saved rather than re-rendering directly", async () => {
     const db = fakeDb([[EVENT_ROW], [FORM_ROW], FIELD_ROWS, [TRACK_ROW]]);
     const app = appWithDb(db);
 
@@ -114,13 +114,25 @@ describe("POST /submit/:eventSlug/save-draft", () => {
       { KV: fakeKv() } as unknown as AppEnv["Bindings"],
     );
 
-    // Not a redirect: the confirmation is rendered directly in this response.
+    expect(res.status).toBe(302);
+    expect(res.headers.get("location")).toBe("/submit/test-conf?draft=saved");
+  });
+});
+
+describe("GET /submit/:eventSlug?draft=saved", () => {
+  it("renders a distinct 'Draft saved' confirmation banner above the form", async () => {
+    const db = fakeDb([[EVENT_ROW], [FORM_ROW], FIELD_ROWS, [TRACK_ROW]]);
+    const app = appWithDb(db);
+
+    const res = await app.request(
+      "/submit/test-conf?draft=saved",
+      { headers: {} },
+      { KV: fakeKv() } as unknown as AppEnv["Bindings"],
+    );
+
     expect(res.status).toBe(200);
     const body = await res.text();
     expect(body).toContain("Draft saved");
-    expect(body).toContain("you can return via this link/browser");
-    expect(body).toContain(FORM_ROW.closeDate.toUTCString());
-    // The submitted answer values survive the re-render.
-    expect(body).toContain("My great talk");
+    expect(body).toContain("you can return later to finish and submit");
   });
 });

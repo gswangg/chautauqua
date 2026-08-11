@@ -138,18 +138,12 @@ function DraftBanner(props: { formId: string; savedAt: number }) {
   );
 }
 
-// Field guide w1-i: the save-draft POST previously did a bare redirect,
-// which loses any confirmation the moment the browser follows it. Instead
-// the handler now re-renders the form directly with this notice so the
-// speaker sees explicit proof the draft persisted (and the exact deadline)
-// before doing anything else.
-function DraftSavedNotice(props: { closeDate: number | null }) {
-  return (
-    <p role="status">
-      Draft saved — you can return via this link/browser
-      {props.closeDate ? ` until ${new Date(props.closeDate).toUTCString()}` : ""}.
-    </p>
-  );
+// DEC-245: the save-draft POST redirects to ?draft=saved so the browser's
+// address bar and back/forward history reflect the saved state, and the
+// GET handler renders this distinct notice above the form — separate from
+// the DraftBanner shown when merely resuming an earlier draft.
+function DraftSavedNotice() {
+  return <p role="status">Draft saved — you can return later to finish and submit.</p>;
 }
 
 function TrackChoices(props: { tracks: TrackRow[]; selected: string[] }) {
@@ -194,8 +188,9 @@ function SubmitPage(props: {
       <h1>{event.name}</h1>
       <p>{form.title}</p>
       {form.closeDate ? <p>Submissions close {new Date(form.closeDate).toUTCString()}.</p> : null}
-      {props.draftSavedNotice ? <DraftSavedNotice closeDate={form.closeDate ?? null} /> : null}
-      {props.hasDraft && props.draftSavedAt !== undefined ? (
+      {props.draftSavedNotice ? (
+        <DraftSavedNotice />
+      ) : props.hasDraft && props.draftSavedAt !== undefined ? (
         <DraftBanner formId={form.id} savedAt={props.draftSavedAt} />
       ) : null}
       <form method="post" action={`/submit/${event.slug}`} enctype="multipart/form-data">
@@ -345,6 +340,7 @@ publicSubmitRoutes.get("/submit/:eventSlug", async (c) => {
       hasDraft={hasDraft}
       draftSavedAt={draftSavedAt}
       csrfToken={csrfToken}
+      draftSavedNotice={c.req.query("draft") === "saved"}
     />,
   );
 });
@@ -388,33 +384,10 @@ publicSubmitRoutes.post("/submit/:eventSlug/save-draft", csrfForm, async (c) => 
     );
   }
 
-  // Re-render the form directly (rather than a bare redirect) with a
-  // visible confirmation banner — a redirect round-trips to the GET
-  // handler which only shows the resume banner, giving no explicit
-  // "saved" acknowledgement at the moment the speaker clicked Save draft.
-  const eventTracks = await getEventTracks(db, event.id);
-  const offeredTrackIds = resolveOfferedTrackIds(form.tracksJson, eventTracks.map((t) => t.id));
-  const tracks = eventTracks.filter((t) => offeredTrackIds.includes(t.id));
-  const selectedTrackIds = Array.isArray((answers as Record<string, unknown>).__trackIds)
-    ? ((answers as Record<string, unknown>).__trackIds as string[])
-    : [];
-  const { token: csrfToken, setCookieIfNew } = ensureCsrfCookie(c);
-  if (setCookieIfNew) c.header("Set-Cookie", setCookieIfNew, { append: true });
-
-  return c.html(
-    <SubmitPage
-      event={event}
-      form={form}
-      fields={fields}
-      tracks={tracks}
-      answers={answers}
-      selectedTrackIds={selectedTrackIds}
-      hasDraft={true}
-      draftSavedAt={savedAt}
-      csrfToken={csrfToken}
-      draftSavedNotice
-    />,
-  );
+  // DEC-245: redirect (rather than re-render) so the URL itself carries the
+  // ?draft=saved marker — the GET handler reads it and renders a distinct
+  // "Draft saved" confirmation banner above the form.
+  return c.redirect(`/submit/${event.slug}?draft=saved`, 302);
 });
 
 publicSubmitRoutes.post("/submit/:eventSlug", csrfForm, async (c) => {
