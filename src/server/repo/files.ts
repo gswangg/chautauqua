@@ -232,10 +232,13 @@ export interface TaskFileScope {
 }
 
 /** Authz scope for GET /files/:fileId when the file is a task-assignment
- * handout upload: submissionId null, kind 'handout', reverse-joined via
- * task_assignment.fileId -> its task -> event, for orgId. Returns null when
- * no task_assignment row references the file (not this population) — mirrors
- * getResourceFileScope's disjointness with getFileScope. */
+ * upload: DEC-248 population is submissionId-null + referenced by
+ * task_assignment.fileId, of ANY kind (not restricted to 'handout') —
+ * reverse-joined via task_assignment.fileId -> its task -> event, for orgId.
+ * Submission-linked task uploads are a disjoint population served through
+ * getFileScope, not here. Returns null when no task_assignment row
+ * references the file (not this population) — mirrors getResourceFileScope's
+ * disjointness with getFileScope. */
 export async function getTaskFileScope(db: Db, fileId: string): Promise<TaskFileScope | null> {
   const fileRows = await db
     .select({
@@ -251,7 +254,7 @@ export async function getTaskFileScope(db: Db, fileId: string): Promise<TaskFile
     .where(eq(schema.file.id, fileId))
     .limit(1);
   const fileRow = fileRows[0];
-  if (!fileRow || fileRow.kind !== "handout" || fileRow.submissionId !== null) return null;
+  if (!fileRow || fileRow.submissionId !== null) return null;
 
   const assignmentRows = await db
     .select({
