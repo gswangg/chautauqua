@@ -806,7 +806,7 @@ async function main(): Promise<void> {
   const evalCriteria = [
     { id: "content_quality", label: "Content quality & depth", kind: "rating", weight: 2 },
     { id: "speaker_delivery", label: "Speaker delivery & clarity", kind: "rating", weight: 1 },
-    { id: "session_fit", label: "Session length fit", kind: "dropdown", options: ["Too short", "Just right", "Too long"] },
+    { id: "recommendation", label: "Recommendation", kind: "dropdown", options: ["Approve", "Maybe", "Deny"] },
   ] as const;
   statements.push(
     insertStmt("evaluation_plan", {
@@ -863,13 +863,28 @@ async function main(): Promise<void> {
     "Could use more advanced content for this audience.",
     "Clear structure, minor polish needed.",
   ];
-  const dropdownOptions = evalCriteria[2].options;
+  // Deterministic, non-degenerate recommendation spread (DEC-273): mostly
+  // Approve, a meaningful minority Maybe, a few Deny -- so the DEC-241
+  // per-option distribution and modal columns are visibly interesting.
+  const RECOMMENDATION_PATTERN = [
+    "Approve",
+    "Approve",
+    "Approve",
+    "Maybe",
+    "Approve",
+    "Deny",
+    "Approve",
+    "Maybe",
+    "Approve",
+    "Approve",
+  ] as const;
   let evalCounter = 0;
   function insertEvaluation(reviewerId: string, submissionId: string): void {
     evalCounter += 1;
     const contentScore = 1 + ((evalCounter * 7 + 2) % 5);
     const deliveryScore = 1 + ((evalCounter * 11 + 1) % 5);
-    const sessionFit = dropdownOptions[evalCounter % dropdownOptions.length]!;
+    const recommendation =
+      RECOMMENDATION_PATTERN[(evalCounter - 1) % RECOMMENDATION_PATTERN.length]!;
     const comment = EVAL_COMMENTS[evalCounter % EVAL_COMMENTS.length]!;
     statements.push(
       insertStmt("evaluation", {
@@ -881,7 +896,7 @@ async function main(): Promise<void> {
         scores_json: JSON.stringify({
           content_quality: contentScore,
           speaker_delivery: deliveryScore,
-          session_fit: sessionFit,
+          recommendation,
         }),
         comment,
         submitted_at: nextTs(),

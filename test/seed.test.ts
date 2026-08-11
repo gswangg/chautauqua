@@ -348,4 +348,34 @@ describe("seed.ts output (task w1-d, DEC-145)", () => {
     expect(taskRow).toBeTruthy();
     expect(taskRow![1]).toBe("form");
   });
+
+  it("DEC-273: seeds the evaluation plan's third criterion as a Recommendation dropdown (Approve/Maybe/Deny), not session_fit", () => {
+    const match = sql.match(/INSERT INTO evaluation_plan \([^)]*\) VALUES \(([^;]*)\);/);
+    expect(match).toBeTruthy();
+    const values = match![1]!;
+    // criteria_json is embedded as a SQL string literal within the VALUES tuple
+    // (sqlQuote only doubles single quotes; the JSON's double quotes pass through as-is).
+    expect(values).toContain(
+      '"id":"recommendation","label":"Recommendation","kind":"dropdown","options":["Approve","Maybe","Deny"]',
+    );
+    expect(values).not.toContain("session_fit");
+  });
+
+  it("DEC-273: every seeded evaluation's scores JSON carries a recommendation value, with all three options represented across the seeded set", () => {
+    const evaluationRows = [
+      ...sql.matchAll(/INSERT INTO evaluation \([^)]*\) VALUES \('[^']*', '[^']*', '[^']*', '[^']*', \d+, '([^']*(?:''[^']*)*)',/g),
+    ];
+    expect(evaluationRows.length).toBeGreaterThan(0);
+
+    const recommendations = evaluationRows.map((row) => {
+      const scoresJson = row[1]!.replace(/''/g, "'");
+      const scores = JSON.parse(scoresJson);
+      expect(scores).toHaveProperty("recommendation");
+      expect(["Approve", "Maybe", "Deny"]).toContain(scores.recommendation);
+      expect(scores).not.toHaveProperty("session_fit");
+      return scores.recommendation as string;
+    });
+
+    expect(new Set(recommendations)).toEqual(new Set(["Approve", "Maybe", "Deny"]));
+  });
 });
