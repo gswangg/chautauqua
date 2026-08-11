@@ -13,7 +13,7 @@ import type { Db } from "../server/context";
 import { makeDb, makeMailer } from "../server/context";
 import { requireOrganizer, csrfJson } from "../server/middleware";
 import { ApiError, parseBoundedIdArray } from "../server/http";
-import { DEC_120 } from "../decisions";
+import { DEC_120, DEC_214 } from "../decisions";
 import {
   assignTask,
   createTask,
@@ -36,6 +36,9 @@ import { findContactsForOrg } from "../server/repo/contacts";
 // DEC-120: task-assign contact org-scoping is referenced below so this
 // dependency is compile-checked (see decisions.ts).
 void DEC_120;
+// DEC-214: speaker-side kind gates on PATCH /api/v1/task-assignments/:id,
+// referenced below so this dependency is compile-checked (see decisions.ts).
+void DEC_214;
 
 export const taskRoutes = new Hono<AppEnv>();
 
@@ -265,6 +268,24 @@ taskRoutes.patch("/task-assignments/:id", csrfJson, async (c) => {
   const status = typeof body.status === "string" ? body.status : undefined;
   if (!status || !ASSIGNMENT_STATUSES.has(status as TaskAssignmentStatus)) {
     throw new ApiError("invalid", "status must be 'pending' or 'complete'", { status: "Invalid status" });
+  }
+
+  // DEC-214: the owning speaker (never the organizer, whose completion is a
+  // deliberate manual J6 grid override) may only mark a 'form' task complete
+  // once a response has been saved, and a 'file_request' task complete once
+  // a file has been uploaded — both gated through the portal, not this raw
+  // JSON API. 'general' tasks and any 'pending' transition are ungated.
+  if (isOwningSpeaker && status === "complete") {
+    if (ownership.kind === "form" && ownership.responseJson === null) {
+      throw new ApiError("invalid", "Complete this task through the portal form/upload flow", {
+        status: "Save a response in the portal before marking this task complete",
+      });
+    }
+    if (ownership.kind === "file_request" && ownership.fileId === null) {
+      throw new ApiError("invalid", "Complete this task through the portal form/upload flow", {
+        status: "Upload a file in the portal before marking this task complete",
+      });
+    }
   }
 
   const updated = await updateAssignmentStatus(
