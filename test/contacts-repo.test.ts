@@ -118,16 +118,17 @@ describe("resolveImportUpsert (DEC-026 CSV import upsert-by-email)", () => {
   });
 });
 
-describe("buildMergeRepointOps (DEC-026/DEC-101 merge repoint plan)", () => {
-  it("plans repoints for all six FK tables from mergeId to keepId, in order", () => {
+describe("buildMergeRepointOps (DEC-282 merge repoint plan)", () => {
+  it("plans repoints for all seven FK tables from mergeId to keepId, in order", () => {
     const ops = buildMergeRepointOps("keep_1", "merge_1");
     expect(ops).toEqual([
+      { table: "user", from: "merge_1", to: "keep_1" },
       { table: "participant", from: "merge_1", to: "keep_1" },
       { table: "task_assignment", from: "merge_1", to: "keep_1" },
       { table: "email_log", from: "merge_1", to: "keep_1" },
-      { table: "user", from: "merge_1", to: "keep_1" },
       { table: "file", from: "merge_1", to: "keep_1" },
       { table: "file_comment", from: "merge_1", to: "keep_1" },
+      { table: "pipeline_entry", from: "merge_1", to: "keep_1" },
     ]);
   });
 
@@ -198,20 +199,26 @@ describe("mergeContacts (DEC-101 participant dedupe + six-table FK repoint)", ()
     return { db: db as unknown as AppEnv["Variables"]["db"], updates, deletes };
   }
 
-  it("repoints file and file_comment (and the other four tables) from mergeId to keepId", async () => {
+  it("repoints file and file_comment (and the other five tables) from mergeId to keepId", async () => {
     const { db, updates, deletes } = fakeDb([
       [contactRaw(KEEP_ID, "keep@example.com")], // findContactById(keepId)
       [contactRaw(MERGE_ID, "merge@example.com")], // findContactById(mergeId)
+      [], // user rows for keepId
+      [], // user rows for mergeId
       [], // mergeParticipants (none)
       [], // keepParticipants (none)
+      [], // task_assignment rows for mergeId
+      [], // task_assignment rows for keepId
+      [], // pipelineEntry for keepId
+      [], // pipelineEntry for mergeId
       [contactRaw(KEEP_ID, "keep@example.com")], // findContactById(keepId) after merge
     ]);
 
     const result = await mergeContacts(db, KEEP_ID, MERGE_ID);
     expect(result.id).toBe(KEEP_ID);
 
-    // 1 contact-fields update (planMerge) + 6 FK repoints = 7 updates.
-    expect(updates).toHaveLength(7);
+    // 1 contact-fields update (planMerge) + 7 FK repoints (DEC-282) = 8 updates.
+    expect(updates).toHaveLength(8);
     expect(updates.some((u) => u.table === schema.file && (u.vals as any).uploadedByContactId === KEEP_ID)).toBe(true);
     expect(updates.some((u) => u.table === schema.fileComment && (u.vals as any).authorContactId === KEEP_ID)).toBe(true);
     expect(updates.some((u) => u.table === schema.participant && (u.vals as any).contactId === KEEP_ID)).toBe(true);
@@ -229,11 +236,17 @@ describe("mergeContacts (DEC-101 participant dedupe + six-table FK repoint)", ()
     const { db, updates, deletes } = fakeDb([
       [contactRaw(KEEP_ID, "keep@example.com")], // findContactById(keepId)
       [contactRaw(MERGE_ID, "merge@example.com")], // findContactById(mergeId)
+      [], // user rows for keepId
+      [], // user rows for mergeId
       [
         { id: "part_shared_merge", submissionId: "sub_shared" },
         { id: "part_distinct_merge", submissionId: "sub_only_merge" },
       ], // mergeParticipants
       [{ submissionId: "sub_shared" }], // keepParticipants
+      [], // task_assignment rows for mergeId
+      [], // task_assignment rows for keepId
+      [], // pipelineEntry for keepId
+      [], // pipelineEntry for mergeId
       [contactRaw(KEEP_ID, "keep@example.com")], // findContactById(keepId) after merge
     ]);
 
@@ -264,8 +277,14 @@ describe("mergeContacts (DEC-101 participant dedupe + six-table FK repoint)", ()
     const { db, updates } = fakeDb([
       [keepRaw], // findContactById(keepId)
       [mergeRaw], // findContactById(mergeId)
+      [], // user rows for keepId
+      [], // user rows for mergeId
       [], // mergeParticipants (none)
       [], // keepParticipants (none)
+      [], // task_assignment rows for mergeId
+      [], // task_assignment rows for keepId
+      [], // pipelineEntry for keepId
+      [], // pipelineEntry for mergeId
       [keepRaw], // findContactById(keepId) after merge
     ]);
 

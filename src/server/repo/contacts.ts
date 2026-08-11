@@ -25,6 +25,7 @@ import { createSubmission } from "./submissions/create";
 import { updateSubmissionStatuses } from "./submissions";
 import { parseSocialLinks, serializeSocialLinks } from "./profile";
 import { DEC_156 } from "../../decisions";
+import { ApiError } from "../http";
 
 // Compile-checked dependency marker: pushContactToEvent below implements
 // DEC-156's push-to-event contract (accepted submission, pending content,
@@ -188,27 +189,79 @@ export function resolveImportUpsert(existingId: string | undefined, parsed: Part
   return { action: "update", id: existingId, patch };
 }
 
+/** DEC-282: every table with a *_id column pointing at contact.id must be
+ * repointed on merge. This is the exhaustive list — the schema-tripwire
+ * test in test/contacts-merge-integrity.test.ts walks src/db/schema.ts and
+ * fails loudly if a new contact-referencing table is added here without
+ * being enumerated. pipeline_entry was the DEC-282 gap: it was omitted,
+ * so listPipelineForOrg threw "references missing contact" for the whole
+ * org after any merge (the merged contact's pipeline_entry row was never
+ * repointed before the contact row was deleted). */
+export const CONTACT_FK_TABLES = [
+  "user",
+  "participant",
+  "task_assignment",
+  "email_log",
+  "file",
+  "file_comment",
+  "pipeline_entry",
+] as const;
+export type MergeRepointTable = (typeof CONTACT_FK_TABLES)[number];
+
 export interface MergeRepointOp {
-  table: "participant" | "task_assignment" | "email_log" | "user" | "file" | "file_comment";
+  table: MergeRepointTable;
   from: string;
   to: string;
 }
 
 /**
- * Plans the six FK repoints DEC-026/DEC-101 require on merge (participant,
- * task_assignment, email_log, user.contact_id, file.uploaded_by_contact_id,
- * file_comment.author_contact_id) before the duplicate row is deleted. Fails
- * loudly if asked to merge a contact into itself.
+ * Plans the DEC-282 FK repoints on merge (participant, task_assignment,
+ * email_log, user.contact_id, file.uploaded_by_contact_id,
+ * file_comment.author_contact_id, pipeline_entry.contact_id) before the
+ * duplicate row is deleted. Fails loudly if asked to merge a contact into
+ * itself.
  */
 export function buildMergeRepointOps(keepId: string, mergeId: string): MergeRepointOp[] {
   if (keepId === mergeId) {
     throw new Error("buildMergeRepointOps: keepId and mergeId must differ");
   }
-  return (["participant", "task_assignment", "email_log", "user", "file", "file_comment"] as const).map((table) => ({
+  return CONTACT_FK_TABLES.map((table) => ({
     table,
     from: mergeId,
     to: keepId,
   }));
+}
+
+/** Local union, not imported from ./pipeline, to avoid a module cycle
+ * (pipeline.ts's PipelineStage is structurally identical). */
+export type PipelineStageLike = "identified" | "contacted" | "interested" | "confirmed" | "declined";
+
+const PIPELINE_STAGE_RANK: Record<PipelineStageLike, number> = {
+  identified: 0,
+  contacted: 1,
+  interested: 2,
+  confirmed: 3,
+  declined: -1,
+};
+
+/** DEC-282: picks the surviving stage when both contacts being merged are
+ * enrolled in the pipeline. null means "not enrolled" (a missing
+ * pipeline_entry row) — if only one side is enrolled, that side's stage
+ * wins outright. If both are enrolled, the further-along stage wins by
+ * rank (declined is deliberately rank -1 so it never displaces genuine
+ * progress just because it's "later" chronologically); equal rank keeps
+ * the kept contact's own value. */
+export function mergedPipelineStage(
+  keep: PipelineStageLike | null,
+  merge: PipelineStageLike | null,
+): PipelineStageLike | null {
+  if (keep === null && merge === null) return null;
+  if (keep === null) return merge;
+  if (merge === null) return keep;
+  const keepRank = PIPELINE_STAGE_RANK[keep];
+  const mergeRank = PIPELINE_STAGE_RANK[merge];
+  if (mergeRank > keepRank) return merge;
+  return keep;
 }
 
 // ---------------------------------------------------------------------------
@@ -515,18 +568,44 @@ export async function findDuplicateGroupsForOrg(db: Db, orgId: string): Promise<
   }));
 }
 
-/** Applies DEC-026/DEC-101 merge: planMerge onto the kept row, dedupes
- * participant rows the two contacts share a submission on (deleting mergeId's
- * duplicate row rather than repointing it into a UNIQUE-violating dupe),
- * repoints the six FK tables from mergeId to keepId, then deletes the merged
- * row. Both ids must already be verified org-scoped by the caller. Order is
- * load-bearing: dedupe-delete -> six repoints -> delete contact row. */
+/** Applies DEC-026/DEC-101/DEC-282 merge, in this exact load-bearing order:
+ *  (a) BEFORE any write, load both contacts' user rows; if both have a
+ *      login account, throw a conflict (no partial merge — a merge that
+ *      silently orphaned one login would be worse than refusing it).
+ *  (b) planMerge onto the kept contact row.
+ *  (c) dedupe participant rows the two contacts share a submission on
+ *      (deleting mergeId's duplicate row rather than repointing it into a
+ *      UNIQUE-violating dupe).
+ *  (d) dedupe task_assignment rows the two contacts share a task on,
+ *      keeping whichever row is 'complete' (completion is never lost).
+ *  (e) if both contacts are enrolled in the CRM pipeline, repoint
+ *      pipeline_activity onto the kept entry, merge the stage
+ *      (mergedPipelineStage), and delete the merged entry.
+ *  (f) repoint the seven CONTACT_FK_TABLES from mergeId to keepId.
+ *  (g) delete the merged contact row.
+ * Both ids must already be verified org-scoped by the caller. */
 export async function mergeContacts(db: Db, keepId: string, mergeId: string): Promise<ContactRow> {
   const keepRow = await findContactById(db, keepId);
   const mergeRow = await findContactById(db, mergeId);
   if (!keepRow) throw new Error(`merge: keep contact ${keepId} not found`);
   if (!mergeRow) throw new Error(`merge: merge contact ${mergeId} not found`);
 
+  // (a) Login-account conflict check, before any write.
+  const keepUserRows = await db
+    .select({ id: schema.user.id })
+    .from(schema.user)
+    .where(eq(schema.user.contactId, keepId))
+    .limit(1);
+  const mergeUserRows = await db
+    .select({ id: schema.user.id })
+    .from(schema.user)
+    .where(eq(schema.user.contactId, mergeId))
+    .limit(1);
+  if (keepUserRows.length > 0 && mergeUserRows.length > 0) {
+    throw new ApiError("conflict", "Both contacts have a login account; remove one account before merging");
+  }
+
+  // (b) planMerge onto the kept row.
   const { merged } = planMerge(toContactRecord(keepRow), toContactRecord(mergeRow));
 
   await db
@@ -567,6 +646,75 @@ export async function mergeContacts(db: Db, keepId: string, mergeId: string): Pr
     await db.delete(schema.participant).where(inArray(schema.participant.id, chunk));
   }
 
+  // (d) Dedupe task_assignment rows the two contacts share a task on, same
+  // shape as the participant dedupe above (repointing onto keepId would
+  // otherwise produce two assignment rows for the same task). Completion is
+  // never lost: if exactly one side is 'complete', that side's row survives.
+  const mergeTasks = await db
+    .select({ id: schema.taskAssignment.id, taskId: schema.taskAssignment.taskId, status: schema.taskAssignment.status })
+    .from(schema.taskAssignment)
+    .where(eq(schema.taskAssignment.contactId, mergeId));
+  const keepTasks = await db
+    .select({ id: schema.taskAssignment.id, taskId: schema.taskAssignment.taskId, status: schema.taskAssignment.status })
+    .from(schema.taskAssignment)
+    .where(eq(schema.taskAssignment.contactId, keepId));
+  const keepTaskById = new Map(keepTasks.map((t) => [t.taskId, t]));
+  const dupeTaskAssignmentIds: string[] = [];
+  for (const mergeTask of mergeTasks) {
+    const keepTask = keepTaskById.get(mergeTask.taskId);
+    if (!keepTask) continue;
+    const mergeComplete = mergeTask.status === "complete";
+    const keepComplete = keepTask.status === "complete";
+    // Delete the merged row unless it's the only completed one, in which
+    // case delete the kept row instead so completion survives.
+    if (mergeComplete && !keepComplete) {
+      dupeTaskAssignmentIds.push(keepTask.id);
+    } else {
+      dupeTaskAssignmentIds.push(mergeTask.id);
+    }
+  }
+  for (const chunk of chunkIds(dupeTaskAssignmentIds)) {
+    await db.delete(schema.taskAssignment).where(inArray(schema.taskAssignment.id, chunk));
+  }
+
+  // (e) Pipeline handling (DEC-282): if both contacts are enrolled, the
+  // merged entry's activity feed is repointed onto the kept entry, the kept
+  // entry's stage becomes the further-along of the two (mergedPipelineStage
+  // — declined never displaces real progress), and the merged entry row is
+  // deleted so it isn't left dangling for (f)'s generic repoint to touch.
+  // If only one side is enrolled, there's nothing to reconcile here — (f)'s
+  // generic pipeline_entry repoint below handles that case on its own.
+  const keepEntryRows = await db
+    .select({ id: schema.pipelineEntry.id, stage: schema.pipelineEntry.stage })
+    .from(schema.pipelineEntry)
+    .where(eq(schema.pipelineEntry.contactId, keepId))
+    .limit(1);
+  const mergeEntryRows = await db
+    .select({ id: schema.pipelineEntry.id, stage: schema.pipelineEntry.stage })
+    .from(schema.pipelineEntry)
+    .where(eq(schema.pipelineEntry.contactId, mergeId))
+    .limit(1);
+  const keepEntry = keepEntryRows[0];
+  const mergeEntry = mergeEntryRows[0];
+  if (keepEntry && mergeEntry) {
+    // Both entries exist, so mergedPipelineStage's null branches (either
+    // side "not enrolled") are unreachable here; the cast reflects that.
+    const nextStage = mergedPipelineStage(
+      keepEntry.stage as PipelineStageLike,
+      mergeEntry.stage as PipelineStageLike,
+    ) as PipelineStageLike;
+    await db
+      .update(schema.pipelineActivity)
+      .set({ entryId: keepEntry.id })
+      .where(eq(schema.pipelineActivity.entryId, mergeEntry.id));
+    await db
+      .update(schema.pipelineEntry)
+      .set({ stage: nextStage, updatedAt: new Date() })
+      .where(eq(schema.pipelineEntry.id, keepEntry.id));
+    await db.delete(schema.pipelineEntry).where(eq(schema.pipelineEntry.id, mergeEntry.id));
+  }
+
+  // (f) Generic FK repoints (DEC-282, CONTACT_FK_TABLES).
   const ops = buildMergeRepointOps(keepId, mergeId);
   for (const op of ops) {
     if (op.table === "participant") {
@@ -579,14 +727,17 @@ export async function mergeContacts(db: Db, keepId: string, mergeId: string): Pr
       await db.update(schema.user).set({ contactId: op.to }).where(eq(schema.user.contactId, op.from));
     } else if (op.table === "file") {
       await db.update(schema.file).set({ uploadedByContactId: op.to }).where(eq(schema.file.uploadedByContactId, op.from));
-    } else {
+    } else if (op.table === "file_comment") {
       await db
         .update(schema.fileComment)
         .set({ authorContactId: op.to })
         .where(eq(schema.fileComment.authorContactId, op.from));
+    } else {
+      await db.update(schema.pipelineEntry).set({ contactId: op.to }).where(eq(schema.pipelineEntry.contactId, op.from));
     }
   }
 
+  // (g) Delete the merged contact row.
   await db.delete(schema.contact).where(eq(schema.contact.id, mergeId));
 
   const updated = await findContactById(db, keepId);

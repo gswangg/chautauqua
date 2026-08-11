@@ -135,8 +135,14 @@ describe("POST /api/v1/contacts/merge roundtrip from a duplicates response (DEC-
       [KEEP.id === mergeId ? KEEP : MERGE], // requireOwnedContact(mergeId)
       [KEEP.id === keepId ? KEEP : MERGE], // mergeContacts: findContactById(keepId)
       [KEEP.id === mergeId ? KEEP : MERGE], // mergeContacts: findContactById(mergeId)
+      [], // mergeContacts: user rows for keepId (none)
+      [], // mergeContacts: user rows for mergeId (none)
       [], // mergeParticipants (none)
       [], // keepParticipants (none)
+      [], // mergeContacts: task_assignment rows for mergeId (none)
+      [], // mergeContacts: task_assignment rows for keepId (none)
+      [], // mergeContacts: pipelineEntry for keepId (none)
+      [], // mergeContacts: pipelineEntry for mergeId (none)
       [KEEP.id === keepId ? KEEP : MERGE], // mergeContacts: findContactById(keepId) after merge
     ]);
     const mergeApp = appWithDbAndAuth(mergeDb, ORGANIZER_A);
