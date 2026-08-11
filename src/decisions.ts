@@ -342,3 +342,7 @@ export const DEC_336 = "Contact directory search/sort/paging happens in SQL; DEC
 export const DEC_337 = "An index declared in src/db/schema.ts that no migration creates does not exist: migration parity is extended from columns to indexes, and the three composite indexes the new queries need land in migration 0018";
 export const DEC_338 = "Perf enforcement extends to the three hot admin screens nobody measures, and the perf seed grows the rows that make them measurable; the overview check loses its `optional` flag";
 export const DEC_339 = "Wave-18 product commits supersede task-w17-c's build/test evidence; wave 19 re-runs exactly the gates whose covered code moved, and nothing else";
+export const DEC_340 = "The J6 onboarding grid becomes a server-paginated, server-filtered, searchable roster; DEC-023's whole-event grid envelope is superseded";
+export const DEC_341 = "The J8 content worklist is server-driven: contentStatus filter and worklist ordering move into SQL, deliverable counts are hydrated page-bounded, and the per-row client fan-out is deleted";
+export const DEC_342 = "The reviewer queue and the event files library were evaluated live and are DEFERRED with explicit triggers, not silently left";
+export const DEC_343 = "Wave-19 gates freeze before the wave-19 product lanes; w17-e's FAILED closes only by a green six-module orchestrator; the wave-20 re-run set is fixed now";

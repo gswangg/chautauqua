@@ -17,44 +17,45 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   src/decisions.ts.
 - Wave3-251+Campaign2 w1-w16 (DEC-012..328, ultra-compact): sub-apps/
   repos/ctx/uploads/ics/statuses/perf/headshots/walkthrough/claim;
-  criteriaForRound sole resolution; CRM=SegmentRule[]+'any'; batteries
-  LATE grep-not-prose; resolveBaseUrl+RELATIVE hrefs; mobile 390x844; 8
-  sections a-h; battery FROZEN sha POST-S DELTA never STOP, recusal/
-  WAIVES ABS-14; tripwires(test/)x4; PUBLIC_BASE_URL=localhost:8787
-  DEV-only, NULL backfill; drizzle-orm ^0.45.2(kit/config DELETED); 309
-  perf p95 MINUS /health floor,schedule.ics=public; 310
-  getPublicAgendaByIds(never hydrate whole agenda); 312 SQL WHERE
-  normative; 314 GATE polls 10x60s then PARTIAL+PROCEEDS; 317 invite=3
-  gates; 318 4 public schedule_slot reads event-bound; 319 batch=100+
+  criteriaForRound sole resolution; CRM=SegmentRule[]+'any'; battery
+  FROZEN sha POST-S DELTA never STOP, recusal/WAIVES ABS-14;
+  tripwires(test/)x4; drizzle-orm ^0.45.2(kit/config DELETED); 309 perf
+  p95 MINUS /health floor; 310 getPublicAgendaByIds never hydrate whole
+  agenda; 312 SQL WHERE normative; 317 invite=3 gates; 319 batch=100+
   dedupe; 322 safeExternalUrl allowlist; 323 bare schedule.ics=WHOLE
-  agenda; 326 probes derive dates from event under test,repaired probe
-  never loosens assertion; 327 EXIT=six w13 PASS+w15-a/b landed+w15-c/
-  d/e OPEN ITEMS:0/PASS; 328 lens citations age out—grep SYMBOL not
-  line;absent/fixed=CLOSED never a task.
+  agenda; 326 repaired probe never loosens assertion; 327 EXIT=six w13
+  PASS+w15 landed; 328 lens citations age out—grep SYMBOL not line.
 - Campaign-2 w17 (DEC-329..332): 329 probe premise vs binding DEC=
-  PROBE defect: rewrite BOTH directions, narrowing a FETCH allowed,
-  weakening an ASSERTION never. DEC-274 REAFFIRMED: hiding participant
-  hides SPEAKER. 330 EXIT=DEC-327+w17-a/b/d/e green. 331 perf covers
-  all 5 public surfaces+agenda.ics+BARE schedule.ics; over budget=
-  logged finding, never raised budget/dropped check. 332 repo/public.ts
-  =BARREL over public/{gates,event,...,agenda}.ts—cite the submodule;
-  decomposition never sheds guards (DEC_258 marker in EVERY module).
+  PROBE defect, narrowing a FETCH allowed/weakening ASSERTION never;
+  274 REAFFIRMED hiding participant hides SPEAKER. 330 EXIT=327+w17-a/
+  b/d/e green. 331 perf covers 5 public surfaces+agenda.ics+BARE
+  schedule.ics, over budget=logged finding never raised/dropped. 332
+  repo/public.ts=BARREL, cite submodule, decomposition never sheds
+  guards (DEC_258 marker every module).
 - Campaign-2 w18 (DEC-333..339): 333 STAGE-1 scale rule=cost scales w/
   TOTAL rows not page size AND observable on local D1=>product defect
-  now; stage-2 only if needs real edge/provider (201 pubcache coarse
-  bump, 202 KV rate limit stay CLOSED). Lens findings closed by anchor:
-  public agenda date-bound=318 at public/agenda.ts:40/:120; remindNow
-  capped=319. 334 dashboard numbers=SQL COUNT/MAX, never materialized
-  rows (email_log sent_at=timestamp_ms, bind NUMBER); aggregateComms
-  Counts DELETED. 335 listSubmissions=ONE paginated stmt, q/trackId=
-  correlated EXISTS, LIKE escapes \\%_ w/ ESCAPE, ORDER BY carries seq
-  tiebreaker; sortSubmissionRows deleted. 336 contacts q=exact AND-
-  tokens x OR-cols in SQL (266 semantics kept), matchesContactQuery
-  deleted; segment/rules=only documented whole-directory path. 337
-  index in schema.ts w/o a CREATE INDEX migration DOESN'T EXIST—parity
-  test covers indexes; 0018 single-lane-owned. 338 perf covers
-  onboarding grid/reviewer queue/email-log; seed grows tasks+
-  assignments+5k email_log; `optional:true` removed. 339 w18 supersedes
-  w17-c build/test: wave19 re-runs ONLY build+test+tripwires,
-  walkthrough producer+data,perf:smoke. Ports: a=8795 b=8796 c=8797
-  d=8798.
+  now (201/202 stage-2-only stay CLOSED). 334 dashboard numbers=SQL
+  COUNT/MAX never materialized rows; aggregateCommsCounts DELETED. 335
+  listSubmissions=ONE paginated stmt, correlated EXISTS, LIKE escapes
+  \\%_ w/ ESCAPE, ORDER BY carries seq tiebreaker. 336 contacts q=exact
+  AND-tokens x OR-cols in SQL (266 kept), matchesContactQuery deleted.
+  337 index in schema.ts w/o CREATE INDEX migration DOESN'T EXIST. 338
+  perf covers onboarding grid/reviewer queue/email-log; `optional:true`
+  removed. 339 wave19 re-runs ONLY build+test+tripwires,walkthrough,
+  perf:smoke. Ports a=8795 b=8796 c=8797 d=8798.
+- Campaign-2 w19 (DEC-340..343): 340 J6 grid=server-paged/filtered/
+  searchable roster, SUPERSEDES 023 envelope: all filters ANDed inside
+  ONE correlated EXISTS (=rowFilters semantics), q=likeContains AND-
+  tokens x OR-cols, order lower(last),lower(first),id, perPage 50/
+  max200, counts EVENT-WIDE never page-local. 341 J8 worklist=SQL
+  contentStatus filter + sort=worklist + page-bounded deliverableCounts
+  (chain roots,247); client per-row files fan-out+filterByContentStatus/
+  sortForWorklist DELETED (SPEC §7 one round trip; tab-over-one-page
+  was a CORRECTNESS bug). 342 reviewer queue + /events/:id/files
+  reviewed and DEFERRED w/ triggers: queue order is global (build
+  ReviewerQueue + Scorecard next-unrated) so a naive slice=new bug,
+  18.5ms measured; files-library unobservable till seed has file rows,
+  quadratic participantRows.find-in-loop is a defect on sight. 343
+  w17-e FAILED closes ONLY by a green SIX-module orchestrator; w19
+  gates freeze pre-d/e, wave20 re-runs build+test+tripwires, full
+  walkthrough, perf:smoke — nothing else. Ports b=8801 c=8802 d=8803.
