@@ -223,7 +223,8 @@ portalProfileRoutes.get("/profile", async (c) => {
   const { branding, profile } = await loadProfile(c);
   const { token: csrfToken, setCookieIfNew } = ensureCsrfCookie(c);
   if (setCookieIfNew) c.header("Set-Cookie", setCookieIfNew);
-  return c.html(<ProfilePage branding={branding} profile={profile} csrfToken={csrfToken} />);
+  const saved = c.req.query("saved") === "1";
+  return c.html(<ProfilePage branding={branding} profile={profile} csrfToken={csrfToken} saved={saved} />);
 });
 
 portalProfileRoutes.post("/profile", csrfForm, async (c) => {
@@ -330,9 +331,11 @@ portalProfileRoutes.post("/profile/headshot", csrfForm, async (c) => {
     uploadedByContactId: contactId,
   });
 
-  const { branding, profile } = await loadProfile(c);
-  const { token: csrfToken } = ensureCsrfCookie(c);
-  return c.html(<ProfilePage branding={branding} profile={profile} csrfToken={csrfToken} saved />);
+  // Redirect (PRG) rather than re-rendering directly: a fresh GET picks up
+  // the newly-set headshotUrl and the ?saved=1 flag renders the success
+  // notice, so a page reload after upload doesn't silently drop the
+  // confirmation or resubmit the file.
+  return c.redirect("/portal/profile?saved=1", 302);
 });
 
 // -----------------------------------------------------------------------

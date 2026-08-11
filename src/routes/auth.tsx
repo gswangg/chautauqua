@@ -64,7 +64,11 @@ function LoginPage(props: { csrfToken: string; error?: string }) {
       <body>
         <h1>Log in</h1>
         {props.error ? <p role="alert">{props.error}</p> : null}
-        <form method="post" action="/login">
+        <form
+          method="post"
+          action="/login"
+          onsubmit="var b=document.getElementById('chq-login-submit');if(b){b.disabled=true;b.textContent='Signing in…';}"
+        >
           <input type="hidden" name={CSRF_COOKIE_NAME} value={props.csrfToken} />
           <label>
             Email
@@ -74,7 +78,9 @@ function LoginPage(props: { csrfToken: string; error?: string }) {
             Password
             <input type="password" name="password" required />
           </label>
-          <button type="submit">Log in</button>
+          <button type="submit" id="chq-login-submit">
+            Log in
+          </button>
         </form>
       </body>
     </html>
