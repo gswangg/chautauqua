@@ -14,10 +14,12 @@ import { ApiError, parseBoundedIdArray } from "../../server/http";
 import {
   cloneSubmission,
   createSubmission,
+  ensureOnboardingTasks,
   getEventOrgId,
   getSubmissionContent,
   getSubmissionDetail,
   getSubmissionOwnership,
+  getSubmissionStatus,
   getUserEmail,
   isValidStatusLiteral,
   listSubmissions,
@@ -25,6 +27,7 @@ import {
   updateSubmissionFields,
   updateSubmissionStatuses,
 } from "../../server/repo/submissions";
+import { isActiveParticipant } from "../../domain/acceptance";
 import {
   DUPLICATE_PARTICIPANT,
   getParticipantOwnership,
@@ -285,6 +288,17 @@ submissionsRoutes.post("/submissions/:id/participants", requireOrganizer, csrfJs
     throw new ApiError("invalid", "This contact is already a participant on this submission", {
       contactId: "Already invited",
     });
+  }
+
+  // DEC-278: a participant added to an already-'accepted' submission never
+  // goes through updateSubmissionStatuses' fireAcceptance branch (that only
+  // fires once, at the original accept transition), so the who-owes-me-what
+  // dashboard would otherwise never see them. inviteParticipant currently
+  // always writes inviteStatus='invited' (not active), so this is a no-op
+  // today — kept anyway as the correct guard for any future default change.
+  const submissionStatus = await getSubmissionStatus(c.var.db, id);
+  if (submissionStatus === "accepted" && isActiveParticipant(result.inviteStatus)) {
+    await ensureOnboardingTasks(c.var.db, ownership.eventId, id, [contactId], new Date());
   }
 
   return c.json(result, 201);

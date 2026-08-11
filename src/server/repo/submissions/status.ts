@@ -10,7 +10,7 @@ import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { newId } from "../../../domain/ids";
 import { changeStatus, type SubmissionStatus } from "../../../domain/status";
-import { planAcceptance, FORM_TASK_FIELD_SPECS } from "../../../domain/acceptance";
+import { planAcceptance, FORM_TASK_FIELD_SPECS, isActiveParticipant } from "../../../domain/acceptance";
 import { isValidStatusLiteral } from "./query";
 import { chunkIds } from "../../../lib/chunk";
 import { ApiError } from "../../http";
@@ -101,15 +101,37 @@ async function getOrCreateTask(
   return id;
 }
 
-/** Runs the DEC-009 acceptance planner for one submission's participants,
+/**
+ * Runs the DEC-009 acceptance planner for one submission's participants,
  * idempotently: only creates task_assignment rows for (contact, title)
- * pairs that don't already exist. No mailer reference — DEC-009 invariant. */
-async function runAcceptancePlanning(db: Db, eventId: string, submissionId: string, now: Date): Promise<void> {
-  const participantRows = await db
-    .select({ contactId: schema.participant.contactId })
-    .from(schema.participant)
-    .where(eq(schema.participant.submissionId, submissionId));
-  const participantContactIds = participantRows.map((p) => p.contactId);
+ * pairs that don't already exist. No mailer reference — DEC-009 invariant.
+ *
+ * DEC-278: `contactIds`, when non-null, restricts planning to exactly those
+ * contacts (used when a participant is added to an already-accepted
+ * submission — the fireAcceptance branch below never re-runs for them, so
+ * callers plan the single new participant directly). When null (the
+ * fireAcceptance path), this loads the submission's participant rows and
+ * keeps only the DEC-274-active ones (isActiveParticipant) — an 'invited' or
+ * 'declined' participant never gets tasks planned until/unless they accept.
+ * Zero eligible participants is a silent no-op either way.
+ */
+export async function ensureOnboardingTasks(
+  db: Db,
+  eventId: string,
+  submissionId: string,
+  contactIds: string[] | null,
+  now: Date,
+): Promise<void> {
+  let participantContactIds: string[];
+  if (contactIds !== null) {
+    participantContactIds = contactIds;
+  } else {
+    const participantRows = await db
+      .select({ contactId: schema.participant.contactId, inviteStatus: schema.participant.inviteStatus })
+      .from(schema.participant)
+      .where(eq(schema.participant.submissionId, submissionId));
+    participantContactIds = participantRows.filter((p) => isActiveParticipant(p.inviteStatus)).map((p) => p.contactId);
+  }
   if (participantContactIds.length === 0) return;
 
   const existingTaskTitlesByContact: Record<string, string[]> = {};
@@ -154,6 +176,52 @@ async function runAcceptancePlanning(db: Db, eventId: string, submissionId: stri
       updatedAt: now,
     });
   }
+}
+
+/**
+ * DEC-278: fetches a single submission's current status literal, used by the
+ * participant-invite route to decide whether a newly-added participant to an
+ * already-'accepted' submission needs onboarding tasks planned immediately
+ * (since the fireAcceptance branch of updateSubmissionStatuses only ever
+ * fires once, at the original accept transition).
+ */
+export async function getSubmissionStatus(db: Db, submissionId: string): Promise<string | null> {
+  const rows = await db
+    .select({ status: schema.submission.status })
+    .from(schema.submission)
+    .where(eq(schema.submission.id, submissionId))
+    .limit(1);
+  return rows[0]?.status ?? null;
+}
+
+export interface SubmissionStatusForParticipant {
+  submissionId: string;
+  eventId: string;
+  status: string;
+}
+
+/**
+ * DEC-278: given a participant row id, resolves its parent submission's
+ * (id, eventId, status). Used by the portal invitation-accept handler to
+ * decide whether accepting on an already-'accepted' submission needs
+ * onboarding tasks planned immediately for that one contact (mirrors the
+ * organizer-side add-participant guard in routes/api/submissions.ts).
+ */
+export async function getSubmissionStatusForParticipant(
+  db: Db,
+  participantId: string,
+): Promise<SubmissionStatusForParticipant | null> {
+  const rows = await db
+    .select({
+      submissionId: schema.submission.id,
+      eventId: schema.submission.eventId,
+      status: schema.submission.status,
+    })
+    .from(schema.participant)
+    .innerJoin(schema.submission, eq(schema.participant.submissionId, schema.submission.id))
+    .where(eq(schema.participant.id, participantId))
+    .limit(1);
+  return rows[0] ?? null;
 }
 
 export interface UpdateStatusesResult {
@@ -225,7 +293,7 @@ export async function updateSubmissionStatuses(
       // Planning first (DEC-079): a throw here leaves the row un-accepted
       // so retry re-fires; planning is idempotent so a partial prior run
       // is safe to re-execute.
-      await runAcceptancePlanning(db, eventId, row.id, now);
+      await ensureOnboardingTasks(db, eventId, row.id, null, now);
       await db
         .update(schema.submission)
         .set({
