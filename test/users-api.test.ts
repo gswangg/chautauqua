@@ -30,6 +30,13 @@ vi.mock("../src/server/repo/users", async () => {
       email: input.email,
       role: input.role,
     })),
+    // DEC-215 reset-password helpers: default to the real implementations
+    // (wrapped in vi.fn so individual tests can still override them), rather
+    // than hardcoded stubs — the reset-password describe block below relies
+    // on the real drizzle where()/and() clauses running against its fake db.
+    getOrgUserById: vi.fn(actual.getOrgUserById),
+    updateUserPasswordHash: vi.fn(actual.updateUserPasswordHash),
+    deleteUserSessions: vi.fn(actual.deleteUserSessions),
   };
 });
 
@@ -157,6 +164,346 @@ describe("DEC-043 conflict propagation", () => {
       body: JSON.stringify({ email: "dupe@org.test", role: "reviewer" }),
     });
     expect(res.status).toBe(409);
+  });
+});
+
+// -----------------------------------------------------------------------
+// DEC-215: POST /api/v1/users/:id/reset-password — org-user password
+// re-issue. Exercises the real (unmocked) repo helpers against a small
+// in-memory fake db that evaluates real drizzle eq()/and() conditions,
+// mirroring test/account-password.test.ts's approach, plus the real
+// /login route so the old/new password swap is verified end to end.
+// -----------------------------------------------------------------------
+
+describe("POST /api/v1/users/:id/reset-password", () => {
+  type Row = Record<string, unknown>;
+
+  function buildColumnMap(table: Record<string, unknown>): Map<unknown, string> {
+    const map = new Map<unknown, string>();
+    for (const [key, col] of Object.entries(table)) {
+      if (col && typeof col === "object" && "name" in (col as object)) {
+        map.set(col, key);
+      }
+    }
+    return map;
+  }
+
+  const COLUMN_KEYS = new Map<unknown, string>([
+    ...buildColumnMap(schema.user as unknown as Record<string, unknown>),
+    ...buildColumnMap(schema.authSession as unknown as Record<string, unknown>),
+  ]);
+
+  function colKey(col: unknown): string {
+    const key = COLUMN_KEYS.get(col);
+    if (!key) throw new Error("unmapped column in fake db test helper");
+    return key;
+  }
+
+  function unwrap(rawValue: unknown): unknown {
+    return rawValue && typeof rawValue === "object" && "value" in (rawValue as object)
+      ? (rawValue as { value: unknown }).value
+      : rawValue;
+  }
+
+  // Evaluates a real drizzle eq()/and() condition tree against a row.
+  // Recurses into any nested queryChunks-bearing chunk so and(eq, eq)
+  // works without hardcoding AND's chunk layout.
+  function evalCond(cond: unknown, row: Row): boolean {
+    const chunks = (cond as { queryChunks: unknown[] }).queryChunks;
+    if (COLUMN_KEYS.has(chunks[1])) {
+      return row[colKey(chunks[1])] === unwrap(chunks[3]);
+    }
+    let any = false;
+    let result = true;
+    for (const chunk of chunks) {
+      if (chunk && typeof chunk === "object" && Array.isArray((chunk as { queryChunks?: unknown }).queryChunks)) {
+        any = true;
+        result = result && evalCond(chunk, row);
+      }
+    }
+    if (!any) throw new Error("evalCond: no matchable condition found in fake db test helper");
+    return result;
+  }
+
+  function project(row: Row, fields?: Record<string, unknown>): Row {
+    if (!fields) return { ...row };
+    const out: Row = {};
+    for (const [key, col] of Object.entries(fields)) out[key] = row[colKey(col)];
+    return out;
+  }
+
+  function makeFakeDb() {
+    const state: { users: Row[]; sessions: Row[] } = { users: [], sessions: [] };
+    function rowsFor(table: unknown): Row[] {
+      if (table === schema.user) return state.users;
+      if (table === schema.authSession) return state.sessions;
+      throw new Error("unexpected table in fake db test helper");
+    }
+    const db = {
+      select(fields?: Record<string, unknown>) {
+        return {
+          from(table: unknown) {
+            return {
+              where(cond: unknown) {
+                const matched = rowsFor(table).filter((r) => evalCond(cond, r));
+                return {
+                  limit(n: number) {
+                    return Promise.resolve(matched.slice(0, n).map((r) => project(r, fields)));
+                  },
+                };
+              },
+            };
+          },
+        };
+      },
+      insert(table: unknown) {
+        return {
+          values(row: Row) {
+            rowsFor(table).push({ ...row });
+            return Promise.resolve();
+          },
+        };
+      },
+      update(table: unknown) {
+        return {
+          set(patch: Row) {
+            return {
+              where(cond: unknown) {
+                for (const r of rowsFor(table)) {
+                  if (evalCond(cond, r)) Object.assign(r, patch);
+                }
+                return Promise.resolve();
+              },
+            };
+          },
+        };
+      },
+      delete(table: unknown) {
+        return {
+          where(cond: unknown) {
+            const rows = rowsFor(table);
+            const remaining = rows.filter((r) => !evalCond(cond, r));
+            rows.length = 0;
+            rows.push(...remaining);
+            return Promise.resolve();
+          },
+        };
+      },
+    };
+    return { db: db as unknown as AppEnv["Variables"]["db"], state };
+  }
+
+  class InMemoryKV {
+    private readonly store = new Map<string, string>();
+    async get(key: string): Promise<string | null> {
+      return this.store.get(key) ?? null;
+    }
+    async put(key: string, value: string): Promise<void> {
+      this.store.set(key, value);
+    }
+    async delete(key: string): Promise<void> {
+      this.store.delete(key);
+    }
+  }
+
+  const TARGET_EMAIL = "reviewer-reset@example.test";
+  const OLD_PASSWORD = "old-password-999";
+  const ORG_B = "org-b";
+
+  async function seedTargetUser(state: { users: Row[] }, orgId = ORG_A) {
+    const { hashPassword } = await import("../src/auth/password");
+    const passwordHash = await hashPassword(OLD_PASSWORD);
+    const user = {
+      id: "target-user-1",
+      orgId,
+      email: TARGET_EMAIL,
+      passwordHash,
+      role: "reviewer",
+      contactId: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    state.users.push(user);
+    return user;
+  }
+
+  async function useRealResetHelpers() {
+    const usersRepo = await import("../src/server/repo/users");
+    const actual = await vi.importActual<typeof import("../src/server/repo/users")>("../src/server/repo/users");
+    vi.mocked(usersRepo.getOrgUserById).mockImplementation(actual.getOrgUserById);
+    vi.mocked(usersRepo.updateUserPasswordHash).mockImplementation(actual.updateUserPasswordHash);
+    vi.mocked(usersRepo.deleteUserSessions).mockImplementation(actual.deleteUserSessions);
+  }
+
+  async function buildFullApp(db: AppEnv["Variables"]["db"]) {
+    const { sessionLoader } = await import("../src/server/middleware");
+    const { authRoutes } = await import("../src/routes/auth");
+    const { usersRoutes: freshUsersRoutes } = await import("../src/routes/api/users");
+    const app = new Hono<AppEnv>();
+    registerErrorHandler(app);
+    app.use("*", async (c, next) => {
+      c.set("db", db);
+      await next();
+    });
+    app.use("*", sessionLoader);
+    app.route("/", authRoutes);
+    app.route("/", freshUsersRoutes);
+    const env = { KV: new InMemoryKV() as unknown as AppEnv["Bindings"]["KV"] };
+    return { app, env };
+  }
+
+  async function login(app: Hono<AppEnv>, env: { KV: AppEnv["Bindings"]["KV"] }, email: string, password: string) {
+    const csrfRes = await app.request("/login", {}, env);
+    const setCookie = csrfRes.headers.get("set-cookie") ?? "";
+    const match = setCookie.match(new RegExp(`${CSRF_COOKIE_NAME}=([^;]+)`));
+    if (!match) throw new Error("no csrf cookie on /login");
+    const csrf = match[1]!;
+    const cookie = `${CSRF_COOKIE_NAME}=${csrf}`;
+    const form = new URLSearchParams({ [CSRF_COOKIE_NAME]: csrf, email, password });
+    return app.request(
+      "/login",
+      { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded", cookie }, body: form.toString() },
+      env,
+    );
+  }
+
+  function sessionCookieFrom(res: Response): string {
+    const setCookie = res.headers.get("set-cookie") ?? "";
+    const match = setCookie.match(/chq_session=([^;]+)/);
+    if (!match) throw new Error("no chq_session cookie on response");
+    return `chq_session=${match[1]}`;
+  }
+
+  it("re-issues a well-formed password; old password stops working, new one logs in", async () => {
+    await useRealResetHelpers();
+
+    const { db, state } = makeFakeDb();
+    await seedTargetUser(state);
+    const { app, env } = await buildFullApp(db);
+
+    const organizerApp = new Hono<AppEnv>();
+    registerErrorHandler(organizerApp);
+    organizerApp.use("*", async (c, next) => {
+      c.set("db", db);
+      c.set("auth", { userId: "org-admin", role: "organizer", orgId: ORG_A });
+      await next();
+    });
+    const { usersRoutes: freshUsersRoutes } = await import("../src/routes/api/users");
+    organizerApp.route("/", freshUsersRoutes);
+
+    const oldLoginBefore = await login(app, env, TARGET_EMAIL, OLD_PASSWORD);
+    expect(oldLoginBefore.status).toBe(302);
+
+    const resetRes = await organizerApp.request(`/api/v1/users/${state.users[0]!.id}/reset-password`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-chq-csrf": "1" },
+      body: "{}",
+    });
+    expect(resetRes.status).toBe(200);
+    const body = (await resetRes.json()) as { id: string; email: string; role: string; password: string };
+    expect(body.email).toBe(TARGET_EMAIL);
+    expect(body.role).toBe("reviewer");
+    expect(body.password).toMatch(/^[a-z2-7]{4}-[a-z2-7]{4}-[a-z2-7]{4}$/);
+
+    const oldLoginAfter = await login(app, env, TARGET_EMAIL, OLD_PASSWORD);
+    expect(oldLoginAfter.status).toBe(401);
+
+    const newLogin = await login(app, env, TARGET_EMAIL, body.password);
+    expect(newLogin.status).toBe(302);
+  });
+
+  it("revokes the target user's existing sessions", async () => {
+    await useRealResetHelpers();
+
+    const { db, state } = makeFakeDb();
+    await seedTargetUser(state);
+    const { app, env } = await buildFullApp(db);
+
+    const targetLogin = await login(app, env, TARGET_EMAIL, OLD_PASSWORD);
+    expect(targetLogin.status).toBe(302);
+    const targetSessionCookie = sessionCookieFrom(targetLogin);
+    expect(state.sessions).toHaveLength(1);
+
+    const organizerApp = new Hono<AppEnv>();
+    registerErrorHandler(organizerApp);
+    organizerApp.use("*", async (c, next) => {
+      c.set("db", db);
+      c.set("auth", { userId: "org-admin", role: "organizer", orgId: ORG_A });
+      await next();
+    });
+    const { usersRoutes: freshUsersRoutes } = await import("../src/routes/api/users");
+    organizerApp.route("/", freshUsersRoutes);
+
+    const resetRes = await organizerApp.request(`/api/v1/users/${state.users[0]!.id}/reset-password`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-chq-csrf": "1" },
+      body: "{}",
+    });
+    expect(resetRes.status).toBe(200);
+    expect(state.sessions).toHaveLength(0);
+
+    // The now-revoked session cookie no longer authenticates.
+    const authedApp = new Hono<AppEnv>();
+    registerErrorHandler(authedApp);
+    authedApp.use("*", async (c, next) => {
+      c.set("db", db);
+      await next();
+    });
+    const { sessionLoader, requireReviewer } = await import("../src/server/middleware");
+    authedApp.use("*", sessionLoader);
+    authedApp.get("/api/v1/whoami", requireReviewer, (c) => c.json({ ok: true }));
+    const whoamiRes = await authedApp.request("/api/v1/whoami", { headers: { cookie: targetSessionCookie } });
+    expect(whoamiRes.status).toBe(401);
+  });
+
+  it("404s for an unknown or cross-org target id", async () => {
+    await useRealResetHelpers();
+    const { db, state } = makeFakeDb();
+    await seedTargetUser(state, ORG_B);
+
+    const organizerApp = new Hono<AppEnv>();
+    registerErrorHandler(organizerApp);
+    organizerApp.use("*", async (c, next) => {
+      c.set("db", db);
+      c.set("auth", { userId: "org-admin", role: "organizer", orgId: ORG_A });
+      await next();
+    });
+    const { usersRoutes: freshUsersRoutes } = await import("../src/routes/api/users");
+    organizerApp.route("/", freshUsersRoutes);
+
+    const crossOrgRes = await organizerApp.request(`/api/v1/users/${state.users[0]!.id}/reset-password`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-chq-csrf": "1" },
+      body: "{}",
+    });
+    expect(crossOrgRes.status).toBe(404);
+
+    const unknownRes = await organizerApp.request(`/api/v1/users/does-not-exist/reset-password`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-chq-csrf": "1" },
+      body: "{}",
+    });
+    expect(unknownRes.status).toBe(404);
+  });
+
+  it("403s for a reviewer caller", async () => {
+    const app = await buildApp({ userId: "u1", role: "reviewer", orgId: ORG_A });
+    const res = await app.request("/api/v1/users/target-user-1/reset-password", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-chq-csrf": "1" },
+      body: "{}",
+    });
+    expect(res.status).toBe(403);
+  });
+
+  it("400s without the CSRF header", async () => {
+    const app = await buildApp({ userId: "u1", role: "organizer", orgId: ORG_A });
+    const res = await app.request("/api/v1/users/target-user-1/reset-password", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: "{}",
+    });
+    expect(res.status).toBe(400);
   });
 });
 
