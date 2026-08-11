@@ -98,6 +98,24 @@ vi.mock("../src/server/repo/review", async () => {
     listEvaluationsForPlan: vi.fn(async (_db: unknown, planId: string, round: number) =>
       store.filter((e) => e.planId === planId && e.round === round),
     ),
+    // DEC-346: the queue route sources counts/ratedByMe from these SQL
+    // aggregates -- backed here by the same in-memory store so the fake stays
+    // consistent with listEvaluationsForPlan.
+    countEvaluationsBySubmission: vi.fn(async (_db: unknown, planId: string, round: number) => {
+      const counts = new Map<string, number>();
+      for (const e of store) {
+        if (e.planId !== planId || e.round !== round) continue;
+        counts.set(e.submissionId, (counts.get(e.submissionId) ?? 0) + 1);
+      }
+      return counts;
+    }),
+    listSubmissionIdsRatedBy: vi.fn(async (_db: unknown, planId: string, round: number, reviewerId: string) => {
+      return new Set(
+        store
+          .filter((e) => e.planId === planId && e.round === round && e.reviewerId === reviewerId)
+          .map((e) => e.submissionId),
+      );
+    }),
     getEvaluation: vi.fn(
       async (_db: unknown, planId: string, submissionId: string, reviewerId: string, round: number) =>
         store.find(
@@ -293,11 +311,15 @@ describe("multi-round lifecycle (task w2-a)", () => {
     await app.request(`/api/v1/plans/${plan.id}/progress`);
     await app.request(`/api/v1/plans/${plan.id}/results`);
     await app.request(`/api/v1/plans/${plan.id}/remind`, { method: "POST", headers: { "x-chq-csrf": "1" } });
+    // DEC-346: the reviewer queue no longer calls listEvaluationsForPlan --
+    // it sources counts/ratedByMe from countEvaluationsBySubmission/
+    // listSubmissionIdsRatedBy instead. listEvaluationsForPlan still serves
+    // /progress, /results and /remind (asserted above/below).
     const reviewerApp = await buildApp(reviewer);
     await reviewerApp.request(`/api/v1/review/plans/${plan.id}/queue`);
 
     const calls = (repo.listEvaluationsForPlan as unknown as { mock: { calls: unknown[][] } }).mock.calls;
-    expect(calls.length).toBeGreaterThanOrEqual(4);
+    expect(calls.length).toBeGreaterThanOrEqual(3);
     for (const call of calls) {
       expect(typeof call[2]).toBe("number");
     }

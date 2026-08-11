@@ -294,12 +294,18 @@ export async function listPlanIdsForReviewer(db: Db, userId: string): Promise<st
 // Submissions in scope
 // ---------------------------------------------------------------------------
 
-export interface SubmissionSummary {
+/** DEC-346: the narrow shape every plan-scoped whole-set load returns --
+ * `description` is never selected for these (list/queue/results/progress),
+ * only getSubmissionSummaryInEvent's single-row lookup needs the abstract. */
+export interface PlanSubmissionRef {
   id: string;
   ref: string;
   title: string;
-  description: string | null;
   trackIds: string[];
+}
+
+export interface SubmissionSummary extends PlanSubmissionRef {
+  description: string | null;
 }
 
 /** Track ids for a single submission (DEC-078: this is always a one-id
@@ -320,7 +326,7 @@ async function submissionTrackIdsForOne(db: Db, submissionId: string): Promise<s
  * over submission ids; (b) full trackIds for every submission in the event,
  * joined against submission by eventId (again no id-list binding), grouped
  * in JS against the matched set. */
-export async function listPlanFilteredSubmissions(db: Db, plan: PlanRecord): Promise<SubmissionSummary[]> {
+export async function listPlanFilteredSubmissions(db: Db, plan: PlanRecord): Promise<PlanSubmissionRef[]> {
   const eventRows = await db
     .select({ recordPrefix: schema.event.recordPrefix })
     .from(schema.event)
@@ -330,8 +336,9 @@ export async function listPlanFilteredSubmissions(db: Db, plan: PlanRecord): Pro
 
   const filterTracks = plan.filters?.trackIds;
 
-  // (a) Matched submissions -- {id, seq, title, description} only.
-  let matched: { id: string; seq: number; title: string; description: string | null }[];
+  // (a) Matched submissions -- {id, seq, title} only (DEC-346: description
+  // dropped -- no plan-scoped whole-set load needs it).
+  let matched: { id: string; seq: number; title: string }[];
   if (filterTracks && filterTracks.length > 0) {
     // filterTracks is organizer-authored plan config (a handful of track
     // ids), not a request-scale id list -- this inArray is exempt from the
@@ -341,7 +348,6 @@ export async function listPlanFilteredSubmissions(db: Db, plan: PlanRecord): Pro
         id: schema.submission.id,
         seq: schema.submission.seq,
         title: schema.submission.title,
-        description: schema.submission.description,
       })
       .from(schema.submission)
       .innerJoin(schema.submissionTrack, eq(schema.submissionTrack.submissionId, schema.submission.id))
@@ -352,7 +358,6 @@ export async function listPlanFilteredSubmissions(db: Db, plan: PlanRecord): Pro
         id: schema.submission.id,
         seq: schema.submission.seq,
         title: schema.submission.title,
-        description: schema.submission.description,
       })
       .from(schema.submission)
       .where(eq(schema.submission.eventId, plan.eventId));
@@ -379,7 +384,6 @@ export async function listPlanFilteredSubmissions(db: Db, plan: PlanRecord): Pro
     id: row.id,
     ref: formatRef(recordPrefix, row.seq),
     title: row.title,
-    description: row.description,
     trackIds: trackMap.get(row.id) ?? [],
   }));
 }
@@ -391,7 +395,7 @@ export async function resolveReviewerSubmissions(
   db: Db,
   plan: PlanRecord,
   userId: string,
-): Promise<SubmissionSummary[]> {
+): Promise<PlanSubmissionRef[]> {
   const all = await listPlanFilteredSubmissions(db, plan);
   const reviewerRows = await listReviewerRowsForPlan(db, plan.id);
   const assignments = resolveAssignments(all, reviewerRows);
@@ -623,6 +627,41 @@ export async function countEvaluationsForSubmission(
       ),
     );
   return Number(rows[0]?.count ?? 0);
+}
+
+/** DEC-346: per-submission evaluation counts for a plan+round, via SQL
+ * `count(*) ... group by submission_id` -- replaces loading every evaluation
+ * row for the round and reducing in JS (the reviewer queue's prior
+ * approach). */
+export async function countEvaluationsBySubmission(db: Db, planId: string, round: number): Promise<Map<string, number>> {
+  const rows = await db
+    .select({ submissionId: schema.evaluation.submissionId, count: sql<number>`count(*)` })
+    .from(schema.evaluation)
+    .where(and(eq(schema.evaluation.planId, planId), eq(schema.evaluation.round, round)))
+    .groupBy(schema.evaluation.submissionId);
+  return new Map(rows.map((r) => [r.submissionId, Number(r.count)]));
+}
+
+/** DEC-346: the set of submission ids a single reviewer has already rated in
+ * a plan+round -- a targeted SQL select, not a filter over a full-round
+ * evaluation load. */
+export async function listSubmissionIdsRatedBy(
+  db: Db,
+  planId: string,
+  round: number,
+  reviewerId: string,
+): Promise<Set<string>> {
+  const rows = await db
+    .select({ submissionId: schema.evaluation.submissionId })
+    .from(schema.evaluation)
+    .where(
+      and(
+        eq(schema.evaluation.planId, planId),
+        eq(schema.evaluation.round, round),
+        eq(schema.evaluation.reviewerId, reviewerId),
+      ),
+    );
+  return new Set(rows.map((r) => r.submissionId));
 }
 
 /** Upserts a reviewer's evaluation for a submission+round (unique per

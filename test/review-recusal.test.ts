@@ -76,6 +76,23 @@ vi.mock("../src/server/repo/review", async () => {
     listEvaluationsForPlan: vi.fn(async (_db: unknown, planId: string, round: number) =>
       evaluations.filter((e) => e.planId === planId && e.round === round),
     ),
+    // DEC-346: the queue route sources counts/ratedByMe from these SQL
+    // aggregates -- derive them from the same stateful fake store.
+    countEvaluationsBySubmission: vi.fn(async (_db: unknown, planId: string, round: number) => {
+      const counts = new Map<string, number>();
+      for (const e of evaluations) {
+        if (e.planId !== planId || e.round !== round) continue;
+        counts.set(e.submissionId, (counts.get(e.submissionId) ?? 0) + 1);
+      }
+      return counts;
+    }),
+    listSubmissionIdsRatedBy: vi.fn(async (_db: unknown, planId: string, round: number, reviewerId: string) =>
+      new Set(
+        evaluations
+          .filter((e) => e.planId === planId && e.round === round && e.reviewerId === reviewerId)
+          .map((e) => e.submissionId),
+      ),
+    ),
     getEvaluation: vi.fn(
       async (_db: unknown, planId: string, submissionId: string, reviewerId: string, round: number) =>
         evaluations.find(
