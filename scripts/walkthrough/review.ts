@@ -241,7 +241,11 @@ interface ReviewerRow {
 }
 
 interface QueueItem {
-  id: string;
+  submissionId: string;
+  ref: string;
+  title: string;
+  ratingsCount: number;
+  alreadyRatedByMe: boolean;
 }
 
 interface ResultsRow {
@@ -434,7 +438,7 @@ async function main(): Promise<void> {
     [200],
   );
   const expectedIds = new Set([...trackASubs.items.map((s) => s.id), extraSubmission.id]);
-  const queueIds = queue.items.map((i) => i.id);
+  const queueIds = queue.items.map((i) => i.submissionId);
   assertCheck(
     "queue contains exactly the reviewer's assignment (no unassigned submissions)",
     queueIds.length === expectedIds.size && queueIds.every((id) => expectedIds.has(id)),
