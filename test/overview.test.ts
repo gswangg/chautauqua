@@ -4,7 +4,7 @@ import {
   aggregateTriageCounts,
   aggregateSpeakerCounts,
   computeAgendaSummary,
-  aggregateCommsCounts,
+  getOverviewPayload,
 } from "../src/server/repo/overview";
 import type { PlacedSession } from "../src/domain/schedule";
 
@@ -77,19 +77,56 @@ describe("computeAgendaSummary (DEC-030 agenda card, delegates to findConflicts)
   });
 });
 
-describe("aggregateCommsCounts (DEC-030 comms card)", () => {
-  const now = 10 * 24 * 60 * 60 * 1000; // day 10
+// Regression for DEC-333/DEC-334: getOverviewPayload's comms card must be
+// derived from a single SQL aggregate row (count/max), never by reading the
+// whole email_log table into memory and spreading it into Math.max. Uses the
+// response-queue fake-db pattern from test/api-submissions.test.ts — a
+// chainable object whose `then` pops the next queued response in call order.
+describe("getOverviewPayload: comms card is one aggregate query (DEC-333, DEC-334)", () => {
+  function makeFakeDb(responses: unknown[]) {
+    let cursor = 0;
+    function chain(): any {
+      const obj: any = {};
+      const passthrough = [
+        "from",
+        "where",
+        "innerJoin",
+        "orderBy",
+        "limit",
+        "offset",
+        "select",
+        "groupBy",
+      ];
+      for (const m of passthrough) obj[m] = () => obj;
+      obj.then = (resolve: (v: unknown) => void, reject?: (e: unknown) => void) => {
+        const value = responses[cursor];
+        cursor += 1;
+        return Promise.resolve(value).then(resolve, reject);
+      };
+      return obj;
+    }
+    return { select: () => chain() } as any;
+  }
 
-  it("counts sends within the trailing 7 days and reports the latest send", () => {
-    const sixDaysAgo = now - 6 * 24 * 60 * 60 * 1000;
-    const twentyDaysAgo = now - 20 * 24 * 60 * 60 * 1000;
-    expect(aggregateCommsCounts([sixDaysAgo, twentyDaysAgo], now)).toEqual({
-      sentLast7Days: 1,
-      lastSentAt: sixDaysAgo,
-    });
-  });
+  it("returns comms derived from the single aggregate row, in call order", async () => {
+    const now = 1_735_999_999_999;
+    // Call order inside getOverviewPayload: triage status rows, plan count,
+    // evaluations-submitted count, pending assignment rows, content count,
+    // accepted-submission ids (empty, so the slot/participant queries are
+    // skipped), then the comms aggregate row last.
+    const responses = [
+      [], // statusRows
+      [{ count: 0 }], // planCountRows
+      [{ count: 0 }], // evaluationsSubmittedRows
+      [], // pendingAssignmentRows
+      [{ count: 0 }], // contentRows
+      [], // acceptedRows (empty -> no slot/participant queries)
+      [{ sentLast7Days: 3, lastSentAt: 1735689600000 }], // commsRows (the only email_log query)
+    ];
+    const db = makeFakeDb(responses);
 
-  it("returns lastSentAt null with no sends", () => {
-    expect(aggregateCommsCounts([], now)).toEqual({ sentLast7Days: 0, lastSentAt: null });
+    const payload = await getOverviewPayload(db, "event-1", now);
+
+    expect(payload.comms).toEqual({ sentLast7Days: 3, lastSentAt: 1735689600000 });
   });
 });
