@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { groupByKindNewestFirst, orderVersionsNewestFirst } from './version-chain';
+import { groupByKindNewestFirst, orderVersionChains, orderVersionsNewestFirst } from './version-chain';
 import type { DeliverableFile } from './types';
 
 function file(overrides: Partial<DeliverableFile> = {}): DeliverableFile {
@@ -51,6 +51,35 @@ describe('orderVersionsNewestFirst', () => {
     expect(result).toContain('v2');
     expect(result).toContain('orphan');
     expect(result[0]).toBe('v2');
+  });
+});
+
+describe('orderVersionChains', () => {
+  // w1-e regression: a task-upload chain and an unrelated organizer-upload
+  // chain can coexist for the same submission+kind (e.g. a speaker's
+  // "Finalize bio + headshot" file_request upload and a completely
+  // separate seed/organizer presentation upload). Browser-persona pass
+  // found the old flat-index labeling ("v${length - idx}" over the WHOLE
+  // combined list) mislabeled the two independent two-version chains as
+  // one fake four-version lineage. Chains must stay separate so each
+  // keeps its own version numbers.
+  it('keeps independent chains separate rather than merging their numbering', () => {
+    const aOld = file({ id: 'a-old', createdAt: 100, previousFileId: null });
+    const aNew = file({ id: 'a-new', createdAt: 400, previousFileId: 'a-old' });
+    const bOld = file({ id: 'b-old', createdAt: 150, previousFileId: null });
+    const bNew = file({ id: 'b-new', createdAt: 250, previousFileId: 'b-old' });
+    const chains = orderVersionChains([aOld, bOld, aNew, bNew]);
+    expect(chains).toEqual([
+      [aNew, aOld],
+      [bNew, bOld],
+    ]);
+  });
+
+  it('gives every unreachable straggler its own single-file chain', () => {
+    const v2 = file({ id: 'v2', createdAt: 200, previousFileId: 'missing' });
+    const orphan = file({ id: 'orphan', createdAt: 50, previousFileId: null });
+    const chains = orderVersionChains([v2, orphan]);
+    expect(chains).toEqual([[v2], [orphan]]);
   });
 });
 
