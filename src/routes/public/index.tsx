@@ -19,6 +19,7 @@ import {
   getPublicSpeakerDetail,
   getPublicSessionDetail,
   getPublicAgenda,
+  getPublicAgendaByIds,
   getPublicSessions,
   getPublicSpeakers,
 } from "../../server/repo/public";
@@ -188,11 +189,12 @@ publicRoutes.get("/e/:eventSlug/schedule.ics", async (c) => {
   if (ids.length > MAX_ITINERARY_IDS) {
     throw new ApiError("invalid", `Too many ids: schedule.ics accepts at most ${MAX_ITINERARY_IDS} ids.`);
   }
-  // getPublicAgenda already applies the shared visibility gate — a
-  // submission id that isn't in `agendaById` is either unscheduled or no
-  // longer publicly visible, and is silently dropped from the export (a
-  // stale itinerary link never leaks a hidden session).
-  const agenda = await getPublicAgenda(c.var.db, event);
+  // getPublicAgenda/getPublicAgendaByIds already apply the shared visibility
+  // gate — a submission id that isn't in `agendaById` is either unscheduled
+  // or no longer publicly visible, and is silently dropped from the export
+  // (a stale itinerary link never leaks a hidden session). DEC-310: scope
+  // the query to the requested ids instead of hydrating the whole agenda.
+  const agenda = ids.length > 0 ? await getPublicAgendaByIds(c.var.db, event, ids) : await getPublicAgenda(c.var.db, event);
   const agendaById = new Map(agenda.map((a) => [a.submissionId, a]));
 
   const events = ids
