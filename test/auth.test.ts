@@ -17,7 +17,7 @@ import type { AppEnv } from "../src/server/env";
 import type { KVStore } from "../src/auth/claim";
 
 const B64URL_RE = /^[A-Za-z0-9_-]+$/;
-const GOLDEN_FORMAT_RE = /^pbkdf2\$v1\$600000\$[A-Za-z0-9_-]+\$[A-Za-z0-9_-]+$/;
+const GOLDEN_FORMAT_RE = /^pbkdf2\$v1\$100000\$[A-Za-z0-9_-]+\$[A-Za-z0-9_-]+$/;
 
 describe("password", () => {
   it("round-trips hash/verify", async () => {

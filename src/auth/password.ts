@@ -1,11 +1,16 @@
-// Password hashing per DEC-004: PBKDF2-SHA256, 600000 iterations,
+// Password hashing per DEC-004 (amended): PBKDF2-SHA256, 100000 iterations,
 // 16-byte random salt, 32-byte derived key, stored as
-// 'pbkdf2$v1$600000$<salt-b64url>$<hash-b64url>'.
+// 'pbkdf2$v1$100000$<salt-b64url>$<hash-b64url>'.
+// 100k is the max the production Workers runtime supports (workerd rejects
+// PBKDF2 above 100000 iterations with NotSupportedError; local dev does not
+// enforce the cap, which is how 600k passed every local gate). The format
+// self-describes iterations, so verification honors whatever a stored hash
+// declares — but stored hashes must stay <= 100k to be verifiable in prod.
 // Pure Web Crypto only (DEC-002) — no node:/cloudflare imports.
 
 const ALGORITHM = "pbkdf2";
 const VERSION = "v1";
-const ITERATIONS = 600_000;
+const ITERATIONS = 100_000;
 const SALT_BYTES = 16;
 const KEY_BYTES = 32;
 
