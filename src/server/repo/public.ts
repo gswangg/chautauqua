@@ -22,6 +22,8 @@ import * as schema from "../../db/schema";
 import { formatRef } from "../../domain/ids";
 import { chunkIds } from "../../lib/chunk";
 import { DEC_258 } from "../../decisions";
+import { safeExternalUrl } from "../../domain/contacts";
+import { parseSocialLinks } from "./profile";
 
 // Compile-checked dependency marker: every speaker title/company read below
 // comes from participant.title_at_time/org_at_time (DEC-258's frozen
@@ -554,6 +556,7 @@ export interface PublicSpeakerDetail {
   company: string | null;
   bio: string | null;
   headshotUrl: string | null;
+  socialLinks: { label: string; url: string }[];
   sessions: PublicSpeakerDetailSession[];
 }
 
@@ -575,6 +578,7 @@ export async function getPublicSpeakerDetail(
       company: schema.participant.orgAtTime,
       bio: schema.contact.bio,
       headshotUrl: schema.contact.headshotUrl,
+      socialLinksJson: schema.contact.socialLinksJson,
       submissionId: schema.submission.id,
       submissionTitle: schema.submission.title,
     })
@@ -608,6 +612,24 @@ export async function getPublicSpeakerDetail(
 
   const first = rows[0];
   if (!first) return null;
+
+  // DEC-322: parse the stored social_links_json, then run each non-empty
+  // value through safeExternalUrl (external-input boundary), dropping
+  // anything unsafe/unparseable. Fixed label order regardless of which
+  // fields are populated.
+  const parsedSocial = parseSocialLinks(first.socialLinksJson);
+  const socialLinks: { label: string; url: string }[] = [];
+  const socialFieldOrder: { label: string; key: keyof typeof parsedSocial }[] = [
+    { label: "Twitter", key: "twitter" },
+    { label: "LinkedIn", key: "linkedin" },
+    { label: "GitHub", key: "github" },
+    { label: "Website", key: "website" },
+  ];
+  for (const { label, key } of socialFieldOrder) {
+    const safe = safeExternalUrl(parsedSocial[key]);
+    if (safe !== null) socialLinks.push({ label, url: safe });
+  }
+
   return {
     contactId: first.contactId,
     firstName: first.firstName,
@@ -616,6 +638,7 @@ export async function getPublicSpeakerDetail(
     company: first.company,
     bio: first.bio,
     headshotUrl: first.headshotUrl,
+    socialLinks,
     sessions: rows.map((r) => {
       const slot = scheduleInfo.get(r.submissionId);
       return {
