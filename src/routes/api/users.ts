@@ -11,8 +11,10 @@ import { textToHtml } from "../../mail/render";
 import { hashPassword } from "../../auth/password";
 import * as repo from "../../server/repo/users";
 import { listEventsForOrg } from "../../server/repo/events";
+import { DEC_239 } from "../../decisions";
 
 export const usersRoutes = new Hono<AppEnv>();
+void DEC_239; // GET /api/v1/users items must retain {id,email,role,...} -- the SPA's ReviewerOption keys on `id`, not `userId`
 
 const ALLOWED_ROLES = new Set(["reviewer", "organizer"]);
 

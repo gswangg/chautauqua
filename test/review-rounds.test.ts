@@ -205,8 +205,8 @@ describe("multi-round lifecycle (task w2-a)", () => {
 
     // Queue re-offers the submission for round 2 (round-1 rating doesn't count).
     const queueR2 = await reviewerApp.request(`/api/v1/review/plans/${plan.id}/queue`);
-    const queueR2Body = (await queueR2.json()) as { items: { id: string }[] };
-    expect(queueR2Body.items.map((i) => i.id)).toEqual([submission.id]);
+    const queueR2Body = (await queueR2.json()) as { items: { submissionId: string }[] };
+    expect(queueR2Body.items.map((i) => i.submissionId)).toEqual([submission.id]);
 
     // PUT in round 2 creates a SECOND evaluation row -- the unique index is
     // (plan, submission, reviewer, round), so round 1's row is untouched.

@@ -109,6 +109,27 @@ describe("GET /api/v1/users", () => {
     const res = await app.request("/api/v1/users?role=speaker");
     expect(res.status).toBe(400);
   });
+
+  // DEC-239 wire-shape contract: PlanEditor's ReviewerOption (app/src/pages/
+  // review/types.ts) reads {id,email,role} -- an earlier `userId` mismatch
+  // here posted `undefined` as the reviewer assignment's userId ("User not
+  // found" bug, docs/eval-findings.md Section B).
+  it("items contain exactly the {id,email,role,contactId,createdAt} keys the SPA's ReviewerOption reads", async () => {
+    const app = await buildApp({ userId: "u1", role: "organizer", orgId: ORG_A });
+    const res = await app.request("/api/v1/users?role=reviewer");
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { items: Record<string, unknown>[] };
+    expect(body.items.length).toBeGreaterThan(0);
+    for (const item of body.items) {
+      expect(typeof item.id).toBe("string");
+      expect((item.id as string).length).toBeGreaterThan(0);
+      expect(typeof item.email).toBe("string");
+      expect(typeof item.role).toBe("string");
+      expect(Object.keys(item).sort()).toEqual(["contactId", "createdAt", "email", "id", "orgId", "role"]);
+      // must NOT be shaped with a `userId` key -- that's the bug this guards.
+      expect(item.userId).toBeUndefined();
+    }
+  });
 });
 
 describe("POST /api/v1/users", () => {

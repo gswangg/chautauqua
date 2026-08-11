@@ -28,7 +28,7 @@ import * as repo from "../server/repo/review";
 import { roundCriteriaJsonOf } from "../server/repo/review";
 import type { PlanRecord } from "../server/repo/review";
 import * as eventsRepo from "../server/repo/events";
-import { DEC_015, DEC_123, DEC_146, DEC_147, DEC_148, DEC_213 } from "../decisions";
+import { DEC_015, DEC_123, DEC_146, DEC_147, DEC_148, DEC_213, DEC_238, DEC_239 } from "../decisions";
 
 export const reviewRoutes = new Hono<AppEnv>();
 void DEC_123; // criteria/scale immutability guard on PATCH /api/v1/plans/:id below
@@ -37,6 +37,8 @@ void DEC_146; // PlanEditor.tsx retains the null-safe SPA date guards this task 
 void DEC_147; // per-round scorecards: round_criteria_json + criteriaForRound resolution
 void DEC_148; // free-text 'text' criterion kind
 void DEC_213; // per-round criteria freeze on PATCH /api/v1/plans/:id below
+void DEC_238; // /plans/:id/remind: per-recipient catch, {sent,failed} 200 below
+void DEC_239; // /review/plans/:id/queue: shaped {submissionId,ref,title,ratingsCount,alreadyRatedByMe} below
 
 function asRecord(body: unknown): Record<string, unknown> {
   if (typeof body !== "object" || body === null) {
@@ -473,7 +475,11 @@ reviewRoutes.post("/api/v1/plans/:id/remind", requireOrganizer, csrfJson, async 
   const assignments = resolveAssignments(submissions, reviewerRows);
   const mailer = makeMailer(c.var.db, c.env);
 
+  // DEC-238 class 2: this is an organizer-triggered batch send -- a single
+  // reviewer's mail failure must not 500 the whole reminder run or hide the
+  // other reviewers' outcomes. Per-recipient catch, structured summary.
   const reminded: string[] = [];
+  const failed: { email: string; message: string }[] = [];
   for (const user of users) {
     const assigned = assignments.get(user.userId) ?? [];
     const completed = new Set(
@@ -481,19 +487,23 @@ reviewRoutes.post("/api/v1/plans/:id/remind", requireOrganizer, csrfJson, async 
     ).size;
     if (completed >= assigned.length) continue;
 
-    // DEC-191: reviewers are users, not contacts; per-contact email history
-    // intentionally excludes rows like this one.
-    await mailer.send({
-      to: { email: user.email, name: user.email },
-      subject: `Reminder: ${plan.name} review queue`,
-      text: `You have ${assigned.length - completed} submission(s) left to review in "${plan.name}".`,
-      html: textToHtml(`You have ${assigned.length - completed} submission(s) left to review in "${plan.name}".`),
-      eventId: plan.eventId,
-      contactId: null,
-    });
-    reminded.push(user.userId);
+    try {
+      // DEC-191: reviewers are users, not contacts; per-contact email history
+      // intentionally excludes rows like this one.
+      await mailer.send({
+        to: { email: user.email, name: user.email },
+        subject: `Reminder: ${plan.name} review queue`,
+        text: `You have ${assigned.length - completed} submission(s) left to review in "${plan.name}".`,
+        html: textToHtml(`You have ${assigned.length - completed} submission(s) left to review in "${plan.name}".`),
+        eventId: plan.eventId,
+        contactId: null,
+      });
+      reminded.push(user.userId);
+    } catch (err) {
+      failed.push({ email: user.email, message: err instanceof Error ? err.message : String(err) });
+    }
   }
-  return c.json({ reminded });
+  return c.json({ reminded, sent: reminded.length, failed });
 });
 
 // ---------------------------------------------------------------------------
@@ -574,7 +584,22 @@ reviewRoutes.get("/api/v1/review/plans/:id/queue", async (c) => {
 
   const orderedIds = buildReviewerQueue(queueItems);
   const byId = new Map(scoped.map((s) => [s.id, s]));
-  const items = orderedIds.map((id) => byId.get(id)).filter((s): s is repo.SubmissionSummary => s !== undefined);
+  // DEC-239: the SPA reads submissionId/ref/title/ratingsCount/
+  // alreadyRatedByMe by exact key -- emit the shaped item, not the raw
+  // SubmissionSummary row (which has `id`, not `submissionId`).
+  const items = orderedIds
+    .map((id) => {
+      const summary = byId.get(id);
+      if (!summary) return undefined;
+      return {
+        submissionId: summary.id,
+        ref: summary.ref,
+        title: summary.title,
+        ratingsCount: countsBySubmission.get(id) ?? 0,
+        alreadyRatedByMe: ratedByMe.has(id),
+      };
+    })
+    .filter((item): item is NonNullable<typeof item> => item !== undefined);
 
   return c.json({ items, total: items.length, page: 1, perPage: items.length || 1, open: true });
 });
