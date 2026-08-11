@@ -132,4 +132,48 @@ describe('SubmissionsPage render smoke', () => {
     });
     expect(screen.getByText('Advanced')).toBeInTheDocument();
   });
+
+  it('auto-shows the Format column for a form with a "Session format" dropdown (DEC-249)', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([{ id: 'trk1', name: 'Keynotes', color: '#4f46e5' }]),
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: {
+        id: 'form-1',
+        fields: [
+          {
+            id: 'f-format',
+            section: 'session',
+            kind: 'dropdown',
+            label: 'Session format',
+            required: false,
+            position: 0,
+            options: ['Talk', 'Workshop'],
+          },
+        ],
+      },
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([
+        {
+          id: 'sub-1',
+          ref: 'S-001',
+          title: 'A Talk About Testing',
+          status: 'pending',
+          contentStatus: 'pending',
+          speakers: [{ contactId: 'c1', name: 'Ada Lovelace' }],
+          trackIds: [],
+          submittedAt: null,
+          createdAt: 1700000000000,
+          answers: { 'f-format': 'Workshop' },
+        },
+      ]),
+    });
+
+    render(
+      <MemoryRouter>
+        <SubmissionsPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole('columnheader', { name: 'Session format' })).toBeInTheDocument();
+    });
+  });
 });

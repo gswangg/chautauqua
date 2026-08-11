@@ -37,14 +37,19 @@ export function visibleColumns(columns: ColumnDef[], visibleFieldIds: ReadonlySe
 }
 
 /**
- * DEC-243: the CFP form's Format field (a dropdown labeled "Format", e.g.
- * Talk/Workshop/Panel) should be visible in the submissions table by
+ * DEC-243 (amended by DEC-249): the CFP form's Format field (a dropdown
+ * e.g. Talk/Workshop/Panel) should be visible in the submissions table by
  * default, out of the box, without the organizer having to open the column
- * picker. Matches case-insensitively on the exact label "format" so forms
- * that don't define such a field simply have nothing to default-show.
+ * picker. DEC-249 widens the label match to an allowlist since fixture forms
+ * label the field "Session format" rather than plain "Format". Matches are
+ * exact (after trim + lowercase) against FORMAT_LABELS -- no substring or
+ * fuzzy matching -- so forms that don't define such a field simply have
+ * nothing to default-show.
  */
+const FORMAT_LABELS = new Set(['format', 'session format']);
+
 export function findFormatField(fields: FormField[]): FormField | undefined {
-  return fields.find((field) => field.kind === 'dropdown' && field.label.trim().toLowerCase() === 'format');
+  return fields.find((field) => field.kind === 'dropdown' && FORMAT_LABELS.has(field.label.trim().toLowerCase()));
 }
 
 /** Format an answer value for display in a dynamic column cell. */
