@@ -37,6 +37,7 @@ import {
   formatSummary,
   type RouteResult,
 } from "./render-sweep-lib";
+import { ensureDevVars } from "./ensure-dev-vars";
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(SCRIPT_DIR, "..");
@@ -164,6 +165,7 @@ async function visitRoute(context: BrowserContext, baseUrl: string, entry: Route
 }
 
 async function main(): Promise<void> {
+  ensureDevVars(REPO_ROOT); // DEC-187
   const port = await findFreePort();
   const baseUrl = `http://localhost:${port}`;
 
