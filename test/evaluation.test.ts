@@ -83,6 +83,26 @@ describe("aggregateSubmission", () => {
       aggregateSubmission([{ scores: { content: 4 } }], criteria),
     ).toThrow();
   });
+
+  // DEC-212: a rating-less scorecard (all dropdown/text criteria) passes an
+  // empty rating-criteria list to aggregateSubmission; this must not throw
+  // (computeWeightedScore's empty-list guard would otherwise fire per-eval).
+  it("returns count 0, average 0, empty perCriterion for zero criteria and zero evals", () => {
+    const agg = aggregateSubmission([], []);
+    expect(agg).toEqual({ count: 0, average: 0, perCriterion: {} });
+  });
+
+  it("returns real count, average 0, empty perCriterion for zero criteria with >=1 evals", () => {
+    // scores map is irrelevant when criteria is empty -- no criterion id to
+    // look up -- but real reviews (e.g. dropdown-only scorecards) still land
+    // arbitrary non-rating values here; the shape doesn't matter to the
+    // short-circuit.
+    const agg = aggregateSubmission(
+      [{ scores: {} }, { scores: {} }],
+      [],
+    );
+    expect(agg).toEqual({ count: 2, average: 0, perCriterion: {} });
+  });
 });
 
 describe("buildReviewerQueue", () => {
