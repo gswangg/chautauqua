@@ -5,8 +5,7 @@ OPEN ITEMS: 1
 RESULT: PARTIAL (both assigned stale probes repaired and proven; one
   pre-existing, out-of-scope test defect in `public.ts` newly reached and
   logged, not fixed)
-RECHECK SHA: (this task's own commit — see `git log -1` in the worktree
-  after committing)
+RECHECK SHA: c47fe7b (this task's commit on branch task-w15-b)
 
 ## Scope
 
