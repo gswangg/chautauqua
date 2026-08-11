@@ -3,17 +3,19 @@
 // enforce the limit), so this test asserts, by reading the source files
 // directly, that the seven enumerated unbounded inArray(...) call sites in
 // tasks.ts/review.ts/contacts.ts/files.ts (listFileComments moved to
-// files-comments.ts, and contacts.ts's findContactsForOrg/dupeParticipantIds
-// sites moved to contacts/bulk.ts and contacts/merge.ts, both by the
-// contention-decomposition pass — same code, different file) have been
-// rewritten to iterate chunkIds(...) batches instead of passing the raw id
-// list straight through.
+// files-comments.ts; contacts.ts's findContactsForOrg/dupeParticipantIds
+// sites moved to contacts/bulk.ts and contacts/merge.ts; review.ts's
+// getUsersByIds/track-filter sites moved to review/users.ts and
+// review/submissions.ts -- all by contention-decomposition passes, same
+// code, different file) have been rewritten to iterate chunkIds(...)
+// batches instead of passing the raw id list straight through.
 import { describe, expect, it } from "vitest";
 
 const sourceModules = import.meta.glob(
   [
     "../src/server/repo/tasks.ts",
-    "../src/server/repo/review.ts",
+    "../src/server/repo/review/users.ts",
+    "../src/server/repo/review/submissions.ts",
     "../src/server/repo/contacts/bulk.ts",
     "../src/server/repo/contacts/merge.ts",
     "../src/server/repo/files-comments.ts",
@@ -28,8 +30,8 @@ function readSrc(fileName: string): string {
 }
 
 describe("DEC-104 chunk sweep — misc lane", () => {
-  it("glob matches exactly the five target files (tripwire against a silently vacuous scan)", () => {
-    expect(Object.keys(sourceModules).length).toBe(5);
+  it("glob matches exactly the six target files (tripwire against a silently vacuous scan)", () => {
+    expect(Object.keys(sourceModules).length).toBe(6);
   });
 
   it("tasks.ts imports chunkIds", () => {
@@ -63,19 +65,19 @@ describe("DEC-104 chunk sweep — misc lane", () => {
     expect(src).toMatch(/for \(const batch of chunkIds\(assignmentIds\)\) \{[\s\S]*?inArray\(schema\.taskAssignment\.id, batch\)/);
   });
 
-  it("review.ts imports chunkIds", () => {
-    const src = readSrc("review.ts");
-    expect(src).toMatch(/import\s*{\s*chunkIds\s*}\s*from\s*"..\/..\/lib\/chunk"/);
+  it("review/users.ts imports chunkIds", () => {
+    const src = readSrc("users.ts");
+    expect(src).toMatch(/import\s*{\s*chunkIds\s*}\s*from\s*"..\/..\/..\/lib\/chunk"/);
   });
 
-  it("review.ts: getUsersByIds no longer passes the raw userIds list to inArray", () => {
-    const src = readSrc("review.ts");
+  it("review/users.ts: getUsersByIds no longer passes the raw userIds list to inArray", () => {
+    const src = readSrc("users.ts");
     expect(src).not.toContain("inArray(schema.user.id, userIds)");
     expect(src).toMatch(/for \(const batch of chunkIds\(userIds\)\) \{[\s\S]*?inArray\(schema\.user\.id, batch\)/);
   });
 
-  it("review.ts: DEC-104-exempt bounded track filters (lines ~302/385/408) are left alone", () => {
-    const src = readSrc("review.ts");
+  it("review/submissions.ts: DEC-104-exempt bounded track filters are left alone", () => {
+    const src = readSrc("submissions.ts");
     // These sites filter by a small, request-bounded track/status list, not
     // an unbounded id list expansion — DEC-104 explicitly exempts them.
     const exemptCount = (src.match(/inArray\(/g) ?? []).length;
