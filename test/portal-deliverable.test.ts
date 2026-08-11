@@ -1,10 +1,13 @@
-// DEC-242 coverage (task w1-f): speaker-side deliverable self-service — a
-// completed file_request assignment renders the current file's download
-// link, a replace-file form, and its comment thread (read + reply) on
+// DEC-242/DEC-244 coverage (tasks w1-f, w2-a): speaker-side deliverable
+// self-service — a completed file_request assignment renders the current
+// CHAIN-LATEST file's download link (dedicated portal route), a
+// replace-file form, and its comment thread (read + reply) on
 // /portal/tasks, gated strictly by assignment ownership so a speaker can
 // only ever reach their own assignment's file/thread. Repo calls are mocked
 // (no D1 test harness in this repo) — same pattern as
-// test/task-upload-content.test.ts.
+// test/task-upload-content.test.ts. See also
+// test/portal-deliverable-panel.test.ts for the new GET .../file route,
+// chain-latest resolution, and comment-cap coverage.
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
@@ -31,14 +34,12 @@ const COMPLETE_SCOPE = {
   fileId: FILE_ID,
 };
 
-const TASK_FILE_SCOPE = {
-  fileId: FILE_ID,
-  orgId: ORG_A,
-  assignmentContactId: CONTACT_A,
-  uploadedByContactId: CONTACT_A,
+const CHAIN_LATEST = {
+  id: FILE_ID,
   filename: "slides-v2.pdf",
   contentType: "application/pdf",
   r2Key: "task/assignment-1/slides-v2.pdf",
+  createdAt: Date.now(),
 };
 
 vi.mock("../src/server/repo/portal", async () => {
@@ -57,7 +58,7 @@ vi.mock("../src/server/repo/files", async () => {
   const actual = await vi.importActual<typeof import("../src/server/repo/files")>("../src/server/repo/files");
   return {
     ...actual,
-    getTaskFileScope: vi.fn(),
+    resolveTaskFileChainLatest: vi.fn(),
     getFileVersionNumber: vi.fn(async () => 2),
     listFileComments: vi.fn(async () => []),
     insertFileComment: vi.fn(async () => "comment-new-1"),
@@ -88,7 +89,7 @@ const SPEAKER_B: AuthInfo = { userId: "u2", role: "speaker", orgId: ORG_A, conta
 describe("GET /portal/tasks — completed file_request assignment (DEC-242)", () => {
   it("renders the download link, replace-file form, version, and comment thread instead of collapsing to plain text", async () => {
     const { getMyTaskAssignments } = await import("../src/server/repo/portal");
-    const { getTaskFileScope, listFileComments } = await import("../src/server/repo/files");
+    const { resolveTaskFileChainLatest, listFileComments } = await import("../src/server/repo/files");
     vi.mocked(getMyTaskAssignments).mockResolvedValue([
       {
         id: ASSIGNMENT_ID,
@@ -104,7 +105,7 @@ describe("GET /portal/tasks — completed file_request assignment (DEC-242)", ()
         responseJson: null,
       },
     ]);
-    vi.mocked(getTaskFileScope).mockResolvedValue(TASK_FILE_SCOPE);
+    vi.mocked(resolveTaskFileChainLatest).mockResolvedValue(CHAIN_LATEST);
     vi.mocked(listFileComments).mockResolvedValue([
       { id: "c1", body: "Looks great", authorName: "Pat Organizer", authorRole: "organizer", createdAt: Date.now() },
     ]);
@@ -114,8 +115,8 @@ describe("GET /portal/tasks — completed file_request assignment (DEC-242)", ()
     expect(res.status).toBe(200);
     const html = await res.text();
 
-    // download link through the existing authenticated file route
-    expect(html).toContain(`href="/files/${FILE_ID}"`);
+    // download link through the dedicated portal deliverable route (DEC-244)
+    expect(html).toContain(`href="/portal/tasks/${ASSIGNMENT_ID}/file"`);
     expect(html).toContain("slides-v2.pdf");
     // version history derived from the chain length
     expect(html).toContain("version 2");
@@ -132,9 +133,9 @@ describe("GET /portal/tasks — completed file_request assignment (DEC-242)", ()
 describe("POST /portal/tasks/:assignmentId/comments (DEC-242)", () => {
   it("persists a reply and redirects", async () => {
     const { getAssignmentScope } = await import("../src/server/repo/portal");
-    const { getTaskFileScope, insertFileComment } = await import("../src/server/repo/files");
+    const { resolveTaskFileChainLatest, insertFileComment } = await import("../src/server/repo/files");
     vi.mocked(getAssignmentScope).mockResolvedValue(COMPLETE_SCOPE);
-    vi.mocked(getTaskFileScope).mockResolvedValue(TASK_FILE_SCOPE);
+    vi.mocked(resolveTaskFileChainLatest).mockResolvedValue(CHAIN_LATEST);
 
     const app = await buildPortalApp(SPEAKER_A);
     const form = new FormData();
