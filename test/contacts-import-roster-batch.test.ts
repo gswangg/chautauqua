@@ -102,11 +102,17 @@ describe("pushContactsToEvent (DEC-357): set-based batch push", () => {
     // The read half of updateSubmissionStatuses is one chunked pass
     // (chunkIds over the 3 created ids together), not 3 separate calls.
     expect(submissionSelectCalls).toHaveLength(1);
-    // Each row still gets its own commit (acceptedAt varies per row) —
-    // DEC-357 only collapses the planning PASS, not the per-row UPDATE.
-    expect(submissionUpdateCalls).toHaveLength(3);
+    // The commit half is one chunked UPDATE over all firing ids, not one per
+    // row: DEC-355 collapsed that loop ("only then ONE chunked UPDATE setting
+    // status/acceptedAt/updatedAt over the firing ids"), and changeStatus
+    // gives every first-time-accepted row the same acceptedAt=now, so there
+    // is no per-row bookkeeping left to split it. 3 ids < ID_CHUNK_SIZE=90
+    // -> exactly 1 UPDATE.
+    expect(submissionUpdateCalls).toHaveLength(1);
     for (const call of submissionUpdateCalls) {
-      expect((call.setValue as { status: string }).status).toBe("accepted");
+      const setValue = call.setValue as { status: string; acceptedAt: Date };
+      expect(setValue.status).toBe("accepted");
+      expect(setValue.acceptedAt).toBeInstanceOf(Date);
     }
   });
 
