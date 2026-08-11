@@ -136,6 +136,7 @@ export const ROUTE_GROUPS: { title: string; rows: Row[] }[] = [
       { method: "DELETE", path: "/api/v1/tasks/:id", role: "organizer" },
       { method: "POST", path: "/api/v1/tasks/:id/assign", role: "organizer" },
       { method: "PATCH", path: "/api/v1/task-assignments/:id", role: "organizer or assigned speaker" },
+      { method: "GET", path: "/api/v1/task-assignments/:id/response", role: "organizer (kind='form' only)" },
       { method: "POST", path: "/api/v1/events/:eventId/onboarding/remind", role: "organizer" },
     ],
   },

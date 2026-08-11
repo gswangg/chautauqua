@@ -64,6 +64,22 @@ export type DeliverableKind = 'presentation' | 'poster' | 'handout';
 
 export const DELIVERABLE_KINDS: readonly DeliverableKind[] = ['presentation', 'poster', 'handout'];
 
+// GET /api/v1/task-assignments/:id/response response (DEC-291).
+export interface AssignmentResponseField {
+  label: string;
+  value: string;
+}
+
+export interface AssignmentResponseDetail {
+  assignmentId: string;
+  taskTitle: string;
+  taskKind: TaskKind;
+  contact: { id: string; name: string; email: string };
+  status: AssignmentStatus;
+  completedAt: number | null;
+  fields: AssignmentResponseField[];
+}
+
 export interface NewTaskInput {
   kind: TaskKind;
   title: string;
