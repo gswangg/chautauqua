@@ -148,6 +148,15 @@ export function ContactsApp() {
         <SegmentsPanel
           segments={segments}
           activeFilters={{ q, rules }}
+          activeSegmentId={segmentId}
+          onDeletedActiveSegment={() => {
+            // Clear the applied segment (and its query-param filter state)
+            // BEFORE reload() bumps refreshKey, so the directory's
+            // contacts-list effect never refetches with the now-deleted
+            // segmentId (P3 fix, w1-c).
+            setSegmentId('');
+            setPage(1);
+          }}
           onChanged={() => {
             reload();
           }}
