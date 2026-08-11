@@ -2,7 +2,7 @@
 // accounts here. user_email_idx (schema.ts) is globally unique across orgs —
 // a duplicate email anywhere fails loudly as a 409 conflict.
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { newId } from "../../domain/ids";
@@ -47,7 +47,12 @@ export interface CreateUserInput {
 /** Creates an org user account. Throws ApiError('conflict') on duplicate
  * email (user_email_idx is unique) rather than swallowing the D1 error. */
 export async function createUser(db: Db, input: CreateUserInput): Promise<OrgUserRecord> {
-  const existing = await db.select({ id: schema.user.id }).from(schema.user).where(eq(schema.user.email, input.email)).limit(1);
+  if (input.email !== input.email.toLowerCase()) throw new Error("createUser: email must be lowercased by the caller");
+  const existing = await db
+    .select({ id: schema.user.id })
+    .from(schema.user)
+    .where(sql`lower(${schema.user.email}) = ${input.email}`)
+    .limit(1);
   if (existing.length > 0) {
     throw new ApiError("conflict", "A user with this email already exists", { email: "already in use" });
   }

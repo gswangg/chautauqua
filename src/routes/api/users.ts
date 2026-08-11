@@ -54,7 +54,7 @@ usersRoutes.post("/api/v1/users", requireOrganizer, csrfJson, async (c) => {
   const record = typeof body === "object" && body !== null ? (body as Record<string, unknown>) : {};
 
   const errors: Record<string, string> = {};
-  const email = typeof record.email === "string" ? record.email.trim() : "";
+  const email = typeof record.email === "string" ? record.email.trim().toLowerCase() : "";
   if (email.length === 0) errors.email = "required";
   const role = typeof record.role === "string" ? record.role : "";
   if (!ALLOWED_ROLES.has(role)) errors.role = "must be 'reviewer' or 'organizer'";
