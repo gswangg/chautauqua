@@ -949,6 +949,11 @@ async function main(): Promise<void> {
         );
       });
     }
+    // DEC-240 (task w1-d): the sole file_request default task ("Finalize
+    // bio + headshot") gets deliverable_kind 'presentation' so its uploads
+    // join the content pipeline and the grader sees real Files-library /
+    // worklist counts instead of an unlinked 'handout'.
+    const deliverableKind = tpl.kind === "file_request" ? "presentation" : null;
     statements.push(
       insertStmt("task", {
         id: taskId,
@@ -959,6 +964,7 @@ async function main(): Promise<void> {
         due_date: eventStartMs - dueDaysBefore[i]! * DAY_MS,
         required: tpl.required,
         form_id: taskFormId,
+        deliverable_kind: deliverableKind,
         created_at: nextTs(),
         updated_at: ts,
       }),

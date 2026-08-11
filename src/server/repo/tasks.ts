@@ -25,13 +25,15 @@ export async function getEventOrgId(db: Db, eventId: string): Promise<string | n
   return rows[0]?.orgId ?? null;
 }
 
-/** Returns the (eventId, orgId) owning a task row, or null if it doesn't exist. */
+/** Returns the (eventId, orgId, kind) owning a task row, or null if it
+ * doesn't exist. `kind` is included so callers (e.g. the PATCH deliverable
+ * kind gate, DEC-240) don't need a second round-trip. */
 export async function getTaskOwnership(
   db: Db,
   taskId: string,
-): Promise<{ eventId: string; orgId: string } | null> {
+): Promise<{ eventId: string; orgId: string; kind: string } | null> {
   const rows = await db
-    .select({ eventId: schema.task.eventId, orgId: schema.event.orgId })
+    .select({ eventId: schema.task.eventId, orgId: schema.event.orgId, kind: schema.task.kind })
     .from(schema.task)
     .innerJoin(schema.event, eq(schema.task.eventId, schema.event.id))
     .where(eq(schema.task.id, taskId))
@@ -212,6 +214,8 @@ export async function getOnboardingGrid(db: Db, eventId: string): Promise<Onboar
 // Task CRUD
 // ---------------------------------------------------------------------------
 
+export type DeliverableKind = "presentation" | "poster" | "handout";
+
 export interface CreateTaskInput {
   kind: "general" | "file_request" | "form";
   title: string;
@@ -219,6 +223,8 @@ export interface CreateTaskInput {
   dueDate?: number | null;
   required: boolean;
   formId?: string | null;
+  // DEC-240: only meaningful when kind='file_request'.
+  deliverableKind?: DeliverableKind | null;
   assignToAllAccepted?: boolean;
 }
 
@@ -231,6 +237,7 @@ export interface TaskRecord {
   dueDate: number | null;
   required: boolean;
   formId: string | null;
+  deliverableKind: string | null;
   createdAt: number;
   updatedAt: number;
 }
@@ -245,6 +252,7 @@ function toTaskRecord(row: typeof schema.task.$inferSelect): TaskRecord {
     dueDate: row.dueDate ? row.dueDate.getTime() : null,
     required: row.required,
     formId: row.formId,
+    deliverableKind: row.deliverableKind,
     createdAt: row.createdAt.getTime(),
     updatedAt: row.updatedAt.getTime(),
   };
@@ -302,6 +310,7 @@ export async function createTask(db: Db, eventId: string, input: CreateTaskInput
     dueDate: input.dueDate ? new Date(input.dueDate) : null,
     required: input.required,
     formId: input.formId ?? null,
+    deliverableKind: input.deliverableKind ?? null,
     createdAt: now,
     updatedAt: now,
   });
@@ -323,6 +332,8 @@ export interface UpdateTaskInput {
   dueDate?: number | null;
   required?: boolean;
   formId?: string | null;
+  // DEC-240: only meaningful when the task's kind is 'file_request'.
+  deliverableKind?: DeliverableKind | null;
 }
 
 export async function updateTask(db: Db, taskId: string, input: UpdateTaskInput): Promise<TaskRecord> {
@@ -335,6 +346,7 @@ export async function updateTask(db: Db, taskId: string, input: UpdateTaskInput)
       ...(input.dueDate !== undefined ? { dueDate: input.dueDate ? new Date(input.dueDate) : null } : {}),
       ...(input.required !== undefined ? { required: input.required } : {}),
       ...(input.formId !== undefined ? { formId: input.formId } : {}),
+      ...(input.deliverableKind !== undefined ? { deliverableKind: input.deliverableKind } : {}),
       updatedAt: now,
     })
     .where(eq(schema.task.id, taskId));

@@ -13,7 +13,7 @@ import type { Db } from "../server/context";
 import { makeDb, makeMailer } from "../server/context";
 import { requireOrganizer, csrfJson } from "../server/middleware";
 import { ApiError, parseBoundedIdArray } from "../server/http";
-import { DEC_120, DEC_214 } from "../decisions";
+import { DEC_120, DEC_214, DEC_240 } from "../decisions";
 import {
   assignTask,
   createTask,
@@ -39,11 +39,35 @@ void DEC_120;
 // DEC-214: speaker-side kind gates on PATCH /api/v1/task-assignments/:id,
 // referenced below so this dependency is compile-checked (see decisions.ts).
 void DEC_214;
+// DEC-240: task.deliverable_kind is validated below so this dependency is
+// compile-checked (see decisions.ts).
+void DEC_240;
 
 export const taskRoutes = new Hono<AppEnv>();
 
 const TASK_KINDS = new Set(["general", "file_request", "form"]);
 const ASSIGNMENT_STATUSES = new Set<TaskAssignmentStatus>(["pending", "complete"]);
+const DELIVERABLE_KINDS = new Set(["presentation", "poster", "handout"]);
+
+/** DEC-240: deliverableKind is only meaningful (and only accepted) when the
+ * task's kind is 'file_request'; every other kind must leave it null. */
+function parseDeliverableKind(
+  body: Record<string, unknown>,
+  fields: Record<string, string>,
+  effectiveKind: string,
+): string | null | undefined {
+  if (body.deliverableKind === undefined) return null;
+  if (body.deliverableKind === null) return null;
+  if (typeof body.deliverableKind !== "string" || !DELIVERABLE_KINDS.has(body.deliverableKind)) {
+    fields.deliverableKind = "Must be one of 'presentation', 'poster', 'handout'";
+    return undefined;
+  }
+  if (effectiveKind !== "file_request") {
+    fields.deliverableKind = "Only valid when kind is 'file_request'";
+    return undefined;
+  }
+  return body.deliverableKind;
+}
 
 function requireAuth(c: Context<AppEnv>): AuthInfo {
   const auth = c.var.auth;
@@ -130,6 +154,8 @@ taskRoutes.post("/events/:eventId/tasks", requireOrganizer, csrfJson, async (c) 
     fields.assignToAllAccepted = "Must be a boolean";
   }
 
+  const deliverableKind = parseDeliverableKind(body, fields, kind ?? "");
+
   if (Object.keys(fields).length > 0) {
     throw new ApiError("invalid", "Invalid task", fields);
   }
@@ -141,6 +167,7 @@ taskRoutes.post("/events/:eventId/tasks", requireOrganizer, csrfJson, async (c) 
     dueDate,
     required: required as boolean,
     formId,
+    deliverableKind: deliverableKind as CreateTaskInput["deliverableKind"],
     assignToAllAccepted,
   };
   const created = await createTask(c.var.db, eventId, input);
@@ -192,6 +219,12 @@ taskRoutes.patch("/tasks/:id", requireOrganizer, csrfJson, async (c) => {
       fields.formId = "Must be a string or null";
     } else {
       input.formId = body.formId;
+    }
+  }
+  if (body.deliverableKind !== undefined) {
+    const deliverableKind = parseDeliverableKind(body, fields, ownership.kind);
+    if (deliverableKind !== undefined) {
+      input.deliverableKind = deliverableKind as UpdateTaskInput["deliverableKind"];
     }
   }
 

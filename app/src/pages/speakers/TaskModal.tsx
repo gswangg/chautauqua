@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { TASK_KINDS, type NewTaskInput, type TaskKind } from './types';
+import { DELIVERABLE_KINDS, TASK_KINDS, type DeliverableKind, type NewTaskInput, type TaskKind } from './types';
 
 interface TaskModalProps {
   onCancel: () => void;
@@ -12,6 +12,12 @@ function kindLabel(kind: TaskKind): string {
   return 'Form';
 }
 
+function deliverableKindLabel(kind: DeliverableKind): string {
+  if (kind === 'presentation') return 'Presentation';
+  if (kind === 'poster') return 'Poster';
+  return 'Handout';
+}
+
 export function TaskModal({ onCancel, onSubmit }: TaskModalProps) {
   const [kind, setKind] = useState<TaskKind>('general');
   const [title, setTitle] = useState('');
@@ -20,6 +26,7 @@ export function TaskModal({ onCancel, onSubmit }: TaskModalProps) {
   const [required, setRequired] = useState(true);
   const [assignToAllAccepted, setAssignToAllAccepted] = useState(true);
   const [formId, setFormId] = useState('');
+  const [deliverableKind, setDeliverableKind] = useState<DeliverableKind>('handout');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -39,6 +46,7 @@ export function TaskModal({ onCancel, onSubmit }: TaskModalProps) {
         dueDate: dueDate.length > 0 ? new Date(dueDate).getTime() : undefined,
         required,
         formId: kind === 'form' && formId.trim().length > 0 ? formId.trim() : undefined,
+        deliverableKind: kind === 'file_request' ? deliverableKind : undefined,
         assignToAllAccepted,
       });
     } catch (err) {
@@ -85,6 +93,22 @@ export function TaskModal({ onCancel, onSubmit }: TaskModalProps) {
           <label>
             Form ID
             <input type="text" value={formId} onChange={(e) => setFormId(e.target.value)} />
+          </label>
+        )}
+
+        {kind === 'file_request' && (
+          <label>
+            Deliverable kind
+            <select
+              value={deliverableKind}
+              onChange={(e) => setDeliverableKind(e.target.value as DeliverableKind)}
+            >
+              {DELIVERABLE_KINDS.map((k) => (
+                <option key={k} value={k}>
+                  {deliverableKindLabel(k)}
+                </option>
+              ))}
+            </select>
           </label>
         )}
 

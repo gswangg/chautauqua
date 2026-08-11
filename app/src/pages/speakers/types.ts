@@ -58,6 +58,12 @@ export const DEFAULT_GRID_FILTERS: GridFilterState = {
   overdueOnly: false,
 };
 
+// DEC-240: meaningful only when kind='file_request' — the content-pipeline
+// file kind portal uploads for the task should land as.
+export type DeliverableKind = 'presentation' | 'poster' | 'handout';
+
+export const DELIVERABLE_KINDS: readonly DeliverableKind[] = ['presentation', 'poster', 'handout'];
+
 export interface NewTaskInput {
   kind: TaskKind;
   title: string;
@@ -65,5 +71,6 @@ export interface NewTaskInput {
   dueDate?: number;
   required: boolean;
   formId?: string;
+  deliverableKind?: DeliverableKind;
   assignToAllAccepted?: boolean;
 }

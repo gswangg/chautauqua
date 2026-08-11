@@ -3,6 +3,12 @@
 // src/server/repo/tasks.ts) + DEC-020 (upload validation/caps). Route file
 // exports a named Hono sub-app; only src/index.ts mounts it (DEC-012).
 //
+// DEC-240 supersedes DEC-029's file-upload rule specifically: the upload
+// handler below no longer hardcodes kind='handout'/submission_id=null — see
+// its own comment for the current (deterministic-linkage + chaining) rule.
+// DEC-029 still governs everything else in this module (form/general/
+// resources).
+//
 // KNOWN RUNTIME DEPENDENCY: task_assignment.response_json/file_id live in
 // src/db/schema.ts on main but their D1 migration is owned by in-flight
 // w3-a (DEC-017) — this module creates NO migration. The form/upload
@@ -25,6 +31,7 @@ import {
   getMyTaskAssignments,
   getPortalData,
   getResourceDownloadScope,
+  resolveDeliverableSubmissionId,
   saveTaskFileCompletion,
   saveTaskFormResponse,
   type PortalAssignmentScope,
@@ -43,7 +50,7 @@ import {
   isSecureRequest,
   CSRF_COOKIE_NAME,
 } from "../../auth/cookies";
-import { DEC_016, DEC_020, DEC_023, DEC_028, DEC_029 } from "../../decisions";
+import { DEC_016, DEC_020, DEC_023, DEC_028, DEC_029, DEC_240 } from "../../decisions";
 
 export const portalTasksRoutes = new Hono<AppEnv>();
 
@@ -53,6 +60,7 @@ void DEC_020;
 void DEC_023;
 void DEC_028;
 void DEC_029;
+void DEC_240;
 
 portalTasksRoutes.use("*", speakerGate);
 
@@ -356,14 +364,19 @@ portalTasksRoutes.post("/tasks/:assignmentId/upload", csrfForm, async (c) => {
     throw new ApiError("invalid", "file is required", { file: "Required" });
   }
 
-  // task_assignment uploads always land in the 'handout' file kind
-  // (DEC-029): submission_id null, uploaded_by_contact_id set.
-  const kind = "handout";
-  if (!isValidFileKind(kind)) throw new Error("unreachable: 'handout' is a valid file kind");
+  // DEC-240 (supersedes DEC-029's submission_id-null/'handout'-only rule):
+  // task_assignment uploads use the task's own deliverable_kind when set
+  // (falling back to 'handout'), link to the uploader's own submission in
+  // the task's event when one resolves, and chain previous_file_id on
+  // re-upload instead of minting an unlinked file each time.
+  const kind = scope.deliverableKind ?? "handout";
+  if (!isValidFileKind(kind)) throw new Error(`invalid task.deliverable_kind persisted: ${kind}`);
   const validation = validateUpload({ filename: file.name, sizeBytes: file.size, kind });
   if (!validation.ok) {
     throw new ApiError("invalid", validation.message, validation.fields);
   }
+
+  const submissionId = await resolveDeliverableSubmissionId(c.var.db, contactId, scope.eventId);
 
   const sanitized = sanitizeFilenameForKey(file.name);
   const r2Key = `task/${assignmentId}/${newId()}-${sanitized}`;
@@ -372,13 +385,13 @@ portalTasksRoutes.post("/tasks/:assignmentId/upload", csrfForm, async (c) => {
   await store.put(r2Key, buf, validation.servedContentType);
 
   const fileId = await insertFile(c.var.db, {
-    submissionId: null,
+    submissionId,
     kind,
     filename: file.name,
     r2Key,
     sizeBytes: file.size,
     contentType: validation.servedContentType,
-    previousFileId: null,
+    previousFileId: scope.fileId,
     uploadedByContactId: contactId,
   });
 
