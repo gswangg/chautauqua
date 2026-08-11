@@ -133,7 +133,7 @@ export const DEC_127 = "Wave-15 five-gate battery at the post-wave-14 sha: lanes
 export const DEC_128 = "Wave-16 contingency mirror gate battery: confirm-else-run semantics, fresh ports 8861/8862/8863, duplicates harmless, completion stays a planner grep";
 export const DEC_129 = "Wave-17 dual redundant triage-closure lanes; first-campaign homonym sections never satisfy the exit grep (validity requires `git merge-base --is-ancestor 675219f <cited-sha>`)";
 export const DEC_130 = "autoSchedule uses incremental day-indexed conflict checks, never per-candidate findConflicts over the full trial";
-export const DEC_131 = "ics escapeText normalizes CR before escaping: CRLF and lone CR become \\n, so no raw CR ever appears inside a content line";
+export const DEC_131 = "ics escapeText normalizes CR before escaping: CRLF and lone CR become \n, so no raw CR ever appears inside a content line";
 export const DEC_132 = "Public submit ignores rule-hidden file fields entirely: no upload validation error, no R2 put, no file row, no answer row";
 export const DEC_133 = "Bulk submission status change enforces a DEC-122-style full-set id match before any side effect: unknown/foreign ids yield 400 invalid naming the missing ids";
 export const DEC_134 = "Third code barrier: DEC-130..133 fix lanes void every 675219f gate section; wave 19 re-runs the DEC-069 five-gate battery at the new DEC-114 sha";
@@ -325,3 +325,8 @@ export const DEC_319 = "Reminder sends are capped and ordered like every other b
 export const DEC_320 = "Wave-14 supersedes DEC-315's exit predicate: the wave-13 log battery is evidence at a PRE-FIX sha, so goalComplete additionally requires a wave-15 confirmation pass over the four surfaces wave-14 changes";
 export const DEC_321 = "The default CFP form collects job title, company and bio as OPTIONAL locked speaker fields backed by contact columns; blank-only fill on an existing contact, and the frozen participant snapshot is taken from the resolved values";
 export const DEC_322 = "Speaker social links are a public surface, and every externally-supplied URL passes a pure http/https allowlist before it can become an href";
+export const DEC_323 = "`/e/:slug/schedule.ics` with no `ids` publishes the whole agenda through the shared agendaIcsEvents mapper; the ids filter never runs against an empty selection";
+export const DEC_324 = "DEC-297's no-cacheable-non-200 rule moves to the public sub-app's own onError: setCacheHeaders has already run by the time anything throws, so every public ApiError and every unexpected 500 currently ships max-age=60";
+export const DEC_325 = "File access under a pending ('invited') participation follows DEC-317's WRITE gate, not its read gate: files-authz.ts's ACTIVE_INVITE_STATUSES scope is ratified, not drift";
+export const DEC_326 = "Walkthrough probes never hardcode a fact about the tree: dates are derived from the event under test, and static 'the SPA does X' assertions cite the module that actually owns the behaviour";
+export const DEC_327 = "Wave-15 exit predicate: w13's six PASS logs stand, w13-b's FAIL closes through its three cited fixes carrying their own evidence, and three wave-15 confirmation logs complete DEC-320(ii)";
