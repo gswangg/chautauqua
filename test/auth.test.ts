@@ -205,6 +205,28 @@ describe("POST /logout (route-level, DEC-181)", () => {
   });
 });
 
+// w1-i (docs/eval-findings.md Section D): the ~1-3s PBKDF2 round-trip on
+// login must not read as a no-op first click — the submit button disables
+// itself and swaps to a "Signing in…" label on submit.
+describe("GET /login markup carries the pending-state hook", () => {
+  it("renders a submit button with an onsubmit hook that disables it and shows 'Signing in…'", async () => {
+    const app = new Hono<AppEnv>();
+    registerErrorHandler(app);
+    app.use("*", async (c, next) => {
+      c.set("db", {} as AppEnv["Variables"]["db"]);
+      await next();
+    });
+    app.route("/", authRoutes);
+
+    const res = await app.request("/login");
+    expect(res.status).toBe(200);
+    const body = await res.text();
+    expect(body).toContain('id="chq-login-submit"');
+    expect(body).toContain("Signing in…");
+    expect(body).toMatch(/onsubmit="[^"]*chq-login-submit[^"]*disabled[^"]*"/);
+  });
+});
+
 // DEC-180: POST /login rate limiting counts only failures — a successful
 // login must not consume the shared budget, and success clears the
 // per-email budget entirely.
