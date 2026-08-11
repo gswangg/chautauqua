@@ -1,9 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { apiGet, apiPatch, apiPost, ApiError } from '../../lib/api';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
-import { filterOnboardingRows } from './rowFilters';
 import { GridFilters } from './GridFilters';
-import { computeOnboardingCounts, isCellOverdue, outstandingContactCount } from './overdue';
+import { isCellOverdue } from './overdue';
 import { TaskModal } from './TaskModal';
 import { ResponseModal } from './ResponseModal';
 import { formatDateOnly } from '../../lib/dates';
@@ -20,6 +19,21 @@ function nextStatus(status: AssignmentStatus): AssignmentStatus {
   return status === 'complete' ? 'pending' : 'complete';
 }
 
+const PER_PAGE = 50;
+
+/** Builds the DEC-340 query string from the current filters + page — every
+ * active predicate is server-side, so the SPA never filters rows itself. */
+function buildGridQuery(filters: GridFilterState, page: number): string {
+  const params = new URLSearchParams();
+  params.set('page', String(page));
+  params.set('perPage', String(PER_PAGE));
+  if (filters.q.trim()) params.set('q', filters.q.trim());
+  if (filters.taskId) params.set('taskId', filters.taskId);
+  if (filters.status) params.set('status', filters.status);
+  if (filters.overdueOnly) params.set('overdueOnly', '1');
+  return params.toString();
+}
+
 export function OnboardingGrid() {
   const { eventId, loading: eventLoading, error: eventError } = useCurrentEvent();
 
@@ -27,6 +41,7 @@ export function OnboardingGrid() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState<GridFilterState>(DEFAULT_GRID_FILTERS);
+  const [page, setPage] = useState(1);
   const [showNewTask, setShowNewTask] = useState(false);
   const [confirmingRemind, setConfirmingRemind] = useState(false);
   const [reminding, setReminding] = useState(false);
@@ -36,10 +51,11 @@ export function OnboardingGrid() {
   const [responseError, setResponseError] = useState<string | null>(null);
   const [responseDetail, setResponseDetail] = useState<AssignmentResponseDetail | null>(null);
 
-  function loadGrid(id: string) {
+  function loadGrid(id: string, currentFilters: GridFilterState, currentPage: number) {
     setLoading(true);
     setError(null);
-    return apiGet<OnboardingGridResponse>(`/events/${id}/onboarding`)
+    const qs = buildGridQuery(currentFilters, currentPage);
+    return apiGet<OnboardingGridResponse>(`/events/${id}/onboarding?${qs}`)
       .then((res) => setGrid(res))
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load onboarding grid'))
       .finally(() => setLoading(false));
@@ -47,20 +63,22 @@ export function OnboardingGrid() {
 
   useEffect(() => {
     if (!eventId) return;
-    loadGrid(eventId);
+    loadGrid(eventId, filters, page);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [eventId]);
+  }, [eventId, filters, page]);
+
+  function handleFiltersChange(next: GridFilterState) {
+    setFilters(next);
+    setPage(1);
+  }
 
   const now = Date.now();
-  const counts = useMemo(() => (grid ? computeOnboardingCounts(grid, now) : null), [grid, now]);
-  const visibleRows = useMemo(
-    () => (grid ? filterOnboardingRows(grid, filters, now) : []),
-    [grid, filters, now],
-  );
-  const remindCount = useMemo(
-    () => (grid ? outstandingContactCount(grid) : 0),
-    [grid],
-  );
+  const counts = grid?.counts ?? null;
+  const visibleRows = grid?.rows ?? [];
+  const remindCount = counts?.outstandingContacts ?? 0;
+  const total = grid?.total ?? 0;
+  const rangeStart = total === 0 ? 0 : (page - 1) * PER_PAGE + 1;
+  const rangeEnd = total === 0 ? 0 : Math.min(page * PER_PAGE, total);
 
   async function toggleCell(assignmentId: string, currentStatus: AssignmentStatus) {
     if (!grid || !eventId) return;
@@ -109,7 +127,7 @@ export function OnboardingGrid() {
       }
       setToast(parts.join(' '));
       setConfirmingRemind(false);
-      await loadGrid(eventId);
+      await loadGrid(eventId, filters, page);
     } catch (err) {
       setError(err instanceof ApiError ? `Remind failed: ${err.message}` : 'Remind failed');
     } finally {
@@ -143,7 +161,7 @@ export function OnboardingGrid() {
     await apiPost(`/events/${eventId}/tasks`, input);
     setShowNewTask(false);
     setToast('Task created.');
-    await loadGrid(eventId);
+    await loadGrid(eventId, filters, page);
   }
 
   if (eventLoading) {
@@ -191,7 +209,7 @@ export function OnboardingGrid() {
       </div>
 
       <div className="chq-onboarding-toolbar">
-        {grid && <GridFilters tasks={grid.tasks} filters={filters} onChange={setFilters} />}
+        {grid && <GridFilters tasks={grid.tasks} filters={filters} onChange={handleFiltersChange} />}
         <div className="chq-onboarding-actions">
           <button type="button" onClick={() => setShowNewTask(true)}>
             New task
@@ -292,6 +310,20 @@ export function OnboardingGrid() {
             ))}
           </tbody>
         </table>
+      )}
+
+      {!loading && grid && (
+        <div className="chq-pager">
+          <span>
+            Showing {rangeStart}-{rangeEnd} of {total}
+          </span>
+          <button type="button" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1}>
+            Prev
+          </button>
+          <button type="button" onClick={() => setPage((p) => p + 1)} disabled={rangeEnd >= total}>
+            Next
+          </button>
+        </div>
       )}
 
       {showNewTask && <TaskModal onCancel={() => setShowNewTask(false)} onSubmit={handleCreateTask} />}
