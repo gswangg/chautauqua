@@ -3,16 +3,19 @@
 // enforce the limit), so this test asserts, by reading the source files
 // directly, that the seven enumerated unbounded inArray(...) call sites in
 // tasks.ts/review.ts/contacts.ts/files.ts (listFileComments moved to
-// files-comments.ts by the contention-decomposition pass — same code,
-// different file) have been rewritten to iterate chunkIds(...) batches
-// instead of passing the raw id list straight through.
+// files-comments.ts, and contacts.ts's findContactsForOrg/dupeParticipantIds
+// sites moved to contacts/bulk.ts and contacts/merge.ts, both by the
+// contention-decomposition pass — same code, different file) have been
+// rewritten to iterate chunkIds(...) batches instead of passing the raw id
+// list straight through.
 import { describe, expect, it } from "vitest";
 
 const sourceModules = import.meta.glob(
   [
     "../src/server/repo/tasks.ts",
     "../src/server/repo/review.ts",
-    "../src/server/repo/contacts.ts",
+    "../src/server/repo/contacts/bulk.ts",
+    "../src/server/repo/contacts/merge.ts",
     "../src/server/repo/files-comments.ts",
   ],
   { query: "?raw", import: "default", eager: true },
@@ -25,8 +28,8 @@ function readSrc(fileName: string): string {
 }
 
 describe("DEC-104 chunk sweep — misc lane", () => {
-  it("glob matches exactly the four target files (tripwire against a silently vacuous scan)", () => {
-    expect(Object.keys(sourceModules).length).toBe(4);
+  it("glob matches exactly the five target files (tripwire against a silently vacuous scan)", () => {
+    expect(Object.keys(sourceModules).length).toBe(5);
   });
 
   it("tasks.ts imports chunkIds", () => {
@@ -75,19 +78,19 @@ describe("DEC-104 chunk sweep — misc lane", () => {
     expect(exemptCount).toBeGreaterThan(0);
   });
 
-  it("contacts.ts imports chunkIds", () => {
-    const src = readSrc("contacts.ts");
-    expect(src).toMatch(/import\s*{\s*chunkIds\s*}\s*from\s*"..\/..\/lib\/chunk"/);
+  it("contacts/bulk.ts imports chunkIds", () => {
+    const src = readSrc("bulk.ts");
+    expect(src).toMatch(/import\s*{\s*chunkIds\s*}\s*from\s*"..\/..\/..\/lib\/chunk"/);
   });
 
-  it("contacts.ts: findContactsForOrg no longer passes the raw ids list to inArray", () => {
-    const src = readSrc("contacts.ts");
+  it("contacts/bulk.ts: findContactsForOrg no longer passes the raw ids list to inArray", () => {
+    const src = readSrc("bulk.ts");
     expect(src).not.toContain("inArray(schema.contact.id, ids)");
     expect(src).toMatch(/for \(const batch of chunkIds\(ids\)\) \{[\s\S]*?inArray\(schema\.contact\.id, batch\)/);
   });
 
-  it("contacts.ts: the pre-existing chunked dupeParticipantIds site (line ~511) is untouched", () => {
-    const src = readSrc("contacts.ts");
+  it("contacts/merge.ts: the pre-existing chunked dupeParticipantIds site is untouched", () => {
+    const src = readSrc("merge.ts");
     expect(src).toMatch(/for \(const chunk of chunkIds\(dupeParticipantIds\)\)/);
   });
 
