@@ -18,7 +18,10 @@ import {
   preflightRender,
   type ComposeSubmission,
 } from "../domain/compose";
-import { DEC_122 } from "../decisions";
+import { DEC_122, DEC_252 } from "../decisions";
+import { resolveBaseUrl } from "../server/origin";
+
+void DEC_252;
 
 export const commsRoutes = new Hono<AppEnv>();
 
@@ -249,8 +252,8 @@ async function resolvePortalLink(
 async function buildRenderTargets(
   c: {
     var: { db: import("../server/context").Db; auth?: { orgId: string } };
-    env: { KV: KVNamespace };
-    req: { url: string };
+    env: { KV: KVNamespace; PUBLIC_BASE_URL?: string; DEV_MODE?: string };
+    req: { url: string; header(name: string): string | undefined };
   },
   event: { id: string; name: string },
   submissions: ComposeSubmission[],
@@ -261,7 +264,7 @@ async function buildRenderTargets(
 
   const submissionById = new Map(submissions.map((s) => [s.id, s]));
   const kv = c.env.KV as unknown as KVStore;
-  const origin = new URL(c.req.url).origin;
+  const origin = resolveBaseUrl(c);
 
   const targets = [];
   for (const recipient of expanded.recipients) {

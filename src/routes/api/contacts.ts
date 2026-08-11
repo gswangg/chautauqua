@@ -20,6 +20,10 @@ import { setContactHeadshot, serializeSocialLinks, type SocialLinks } from "../.
 import { sanitizeFilenameForKey, validateHeadshotUpload } from "../../domain/files";
 import { readImageDims, MAX_HEADSHOT_EDGE_PX } from "../../lib/image-dims";
 import { newId } from "../../domain/ids";
+import { resolveBaseUrl } from "../../server/origin";
+import { DEC_252 } from "../../decisions";
+
+void DEC_252;
 
 export const contactsRoutes = new Hono<AppEnv>();
 
@@ -602,7 +606,7 @@ contactsRoutes.post("/contacts/bulk-email", csrfJson, async (c) => {
   const { event, contacts, subject, bodyText } = await validateBulkEmailRequest(c.var.db, orgId, body);
 
   const kv = c.env.KV as unknown as KVStore;
-  const origin = new URL(c.req.url).origin;
+  const origin = resolveBaseUrl(c);
 
   // Atomic preflight (DEC-019): every recipient must render before the
   // first send is attempted; any failure (including a submission-scoped
@@ -654,7 +658,7 @@ contactsRoutes.post("/contacts/bulk-email/preview", csrfJson, async (c) => {
   const { event, contacts, subject, bodyText } = await validateBulkEmailRequest(c.var.db, orgId, body);
 
   const kv = c.env.KV as unknown as KVStore;
-  const origin = new URL(c.req.url).origin;
+  const origin = resolveBaseUrl(c);
   const previewContacts = contacts.slice(0, BULK_EMAIL_PREVIEW_LIMIT);
 
   const result = await renderBulkEmailTargets(c.var.db, kv, origin, event, previewContacts, subject, bodyText);

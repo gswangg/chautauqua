@@ -31,6 +31,11 @@ it watch-rebuilds the Vite bundle that `wrangler dev` serves as static assets.
 
 Run the test suite with `npm test`.
 
+If you run `wrangler dev` on a non-default port (e.g. `npx wrangler dev --port
+8801`), also pass `--var PUBLIC_BASE_URL:http://localhost:8801` so emailed
+links (claim/portal) point at that port instead of being inferred from
+request headers (DEC-252; see `src/server/origin.ts`).
+
 ### Dev: render-sweep gate
 
 `npm run gate:render-sweep` boots its own migrated + seeded `wrangler dev` on

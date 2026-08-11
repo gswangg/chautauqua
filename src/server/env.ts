@@ -9,6 +9,10 @@ export type Bindings = {
   FILES: R2Bucket;
   KV: KVNamespace;
   DEV_MODE?: string;
+  // DEC-252: overrides resolveBaseUrl()'s origin inference for user-facing
+  // absolute links (e.g. `wrangler dev --var PUBLIC_BASE_URL:http://localhost:8801`
+  // for a non-default port). Must be an absolute http(s) URL when set.
+  PUBLIC_BASE_URL?: string;
   // Stage 2: Cloudflare Email Service binding + sender identity. Optional so
   // test env fixtures and pre-deploy local dev stay green; makeMailer only
   // selects the real mailer when EMAIL is bound and DEV_MODE is unset.

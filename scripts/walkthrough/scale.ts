@@ -111,6 +111,24 @@ async function jarFetch(jar: CookieJar, url: string, init: RequestInit = {}): Pr
   return res;
 }
 
+// DEC-252: same-origin hrefs scraped from rendered pages (e.g. the
+// confirmation page's claim link) are relative — resolve against --url.
+// If a scraped href IS absolute, it must be same-origin with --url; an
+// off-origin absolute href (e.g. production chautauqua.cc leaking into a
+// local dev run) must fail loudly rather than the gate silently hitting a
+// live deployment.
+function resolveScrapedHref(href: string, baseUrl: string): string {
+  const resolved = new URL(href, baseUrl);
+  const base = new URL(baseUrl);
+  if (resolved.origin !== base.origin) {
+    throw new Error(
+      `resolveScrapedHref: scraped href ${JSON.stringify(href)} resolved to origin ${resolved.origin}, ` +
+        `which is off-origin from --url's ${base.origin}. Refusing to fetch an off-origin URL.`,
+    );
+  }
+  return resolved.toString();
+}
+
 async function loginAs(email: string, password: string): Promise<CookieJar> {
   const jar = new CookieJar();
   const getRes = await jarFetch(jar, `${BASE_URL}/login`);
@@ -401,7 +419,7 @@ async function purgeRefreshProbe(organizerJar: CookieJar, eventId: string): Prom
 
   const claimMatch = submitBody.match(/href="([^"]*\/claim\/[^"]+)"/);
   assertTrue("step6: confirmation page has a claim link", Boolean(claimMatch), submitBody.slice(0, 800));
-  const claimUrl = claimMatch![1]!;
+  const claimUrl = resolveScrapedHref(claimMatch![1]!, BASE_URL);
 
   const speakerJar = new CookieJar();
   const claimGetRes = await jarFetch(speakerJar, claimUrl);
