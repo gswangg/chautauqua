@@ -179,7 +179,13 @@ export const PERF_ROOM_COUNT = 10;
 export const PERF_REVIEWER_COUNT = 12;
 export const PERF_PLAN_ID = "seed_perf_plan_0001";
 export const PERF_REVIEWER_PASSWORD = "PerfReviewer!2027";
-export const PERF_EVALUATION_COUNT = 600;
+// DEC-347: raised from 600 so the plan's current round holds at least 5,000
+// evaluation rows. 6,000 = lcm(PERF_SUBMISSION_COUNT=2000, PERF_REVIEWER_COUNT=12),
+// which keeps the existing (n % submissionCount, n % reviewerCount) round-robin
+// assignment shape while guaranteeing no (plan_id, submission_id, reviewer_id,
+// round) collision across the full n range (the evaluation table's unique
+// index) — a duplicate would require n2 = n1 + 6000, outside [0, 6000).
+export const PERF_EVALUATION_COUNT = 6000;
 
 /** 1-based (per DEC-088's "i unpadded") reviewer email, e.g.
  * perfReviewerEmail(1) === 'perf.reviewer.1@example-perf.test'. */
@@ -298,4 +304,62 @@ export function sentAtForEmailLogRow(n: number, nowMs: number): number {
   const DAY_MS = 24 * 60 * 60 * 1000;
   const MINUTE_MS = 60 * 1000;
   return nowMs - dayOffset * DAY_MS - minuteOfDay * MINUTE_MS;
+}
+
+// --------------------------------------------------------------------------
+// DEC-347: deliverable `file` rows at scale, so the files library (server-
+// paged, DEC-344) is observable at SPEC scale. For each of the
+// PERF_STATUS_COUNTS.accepted (300) accepted perf submissions: one
+// `presentation` version chain of 3 rows (root -> v2 -> v3, previous_file_id
+// pointing from newer to older, root NULL — same direction as
+// scripts/seed.ts's own demo chain) and one single-version `handout` chain.
+
+/** Versions in each accepted submission's `presentation` chain. */
+export const PERF_FILE_PRESENTATION_VERSIONS = 3;
+/** Rows contributed per accepted submission: 3 presentation versions + 1 handout. */
+export const PERF_FILE_ROWS_PER_SUBMISSION = PERF_FILE_PRESENTATION_VERSIONS + 1;
+/** Total deliverable `file` rows: 300 accepted submissions x 4 rows each = 1,200. */
+export const PERF_FILE_COUNT = (PERF_STATUS_COUNTS.accepted ?? 0) * PERF_FILE_ROWS_PER_SUBMISSION;
+
+export interface PerfFileRowSpec {
+  /** 1-based index for seedId('perf_file', n) — unique across the whole 1,200-row set. */
+  n: number;
+  /** 0-based index into the accepted-submission id list this row's file belongs to. */
+  acceptedIndex: number;
+  kind: "presentation" | "handout";
+  /** 0-based position within this row's own chain (0 = root). */
+  versionIndex: number;
+  /** `n` of the row this one's previous_file_id points at, or null for the chain root. */
+  previousN: number | null;
+}
+
+/**
+ * Deterministic, index-only spec for every perf `file` row across all
+ * accepted submissions: for the j-th (0-based) accepted submission, a
+ * 3-version `presentation` chain (n = base+1..base+3, previous_file_id
+ * chaining newer -> older, root null) plus a 1-version `handout` chain
+ * (n = base+4, previous_file_id null), where base = j * PERF_FILE_ROWS_PER_SUBMISSION.
+ */
+export function perfFileSpecs(acceptedCount: number): PerfFileRowSpec[] {
+  if (!Number.isInteger(acceptedCount) || acceptedCount < 0) {
+    throw new Error(`perfFileSpecs: acceptedCount must be a non-negative integer, got ${acceptedCount}`);
+  }
+  const out: PerfFileRowSpec[] = [];
+  for (let j = 0; j < acceptedCount; j++) {
+    const base = j * PERF_FILE_ROWS_PER_SUBMISSION;
+    let previousN: number | null = null;
+    for (let v = 0; v < PERF_FILE_PRESENTATION_VERSIONS; v++) {
+      const n = base + v + 1;
+      out.push({ n, acceptedIndex: j, kind: "presentation", versionIndex: v, previousN });
+      previousN = n;
+    }
+    out.push({
+      n: base + PERF_FILE_PRESENTATION_VERSIONS + 1,
+      acceptedIndex: j,
+      kind: "handout",
+      versionIndex: 0,
+      previousN: null,
+    });
+  }
+  return out;
 }

@@ -6,6 +6,9 @@ import {
   PERF_EMAIL_LOG_RECENT_WINDOW_DAYS,
   PERF_EMAIL_LOG_SPREAD_DAYS,
   PERF_EVALUATION_COUNT,
+  PERF_FILE_COUNT,
+  PERF_FILE_PRESENTATION_VERSIONS,
+  PERF_FILE_ROWS_PER_SUBMISSION,
   PERF_PLAN_ID,
   PERF_REVIEWER_COUNT,
   PERF_REVIEWER_PASSWORD,
@@ -19,6 +22,7 @@ import {
   PERF_TRACK_COUNT,
   contactIndexForSubmission,
   isTaskAssignmentComplete,
+  perfFileSpecs,
   perfReviewerEmail,
   perfSubmissionStatuses,
   sentAtForEmailLogRow,
@@ -128,7 +132,23 @@ describe("DEC-088 pinned literals", () => {
     expect(PERF_REVIEWER_COUNT).toBe(12);
     expect(PERF_PLAN_ID).toBe("seed_perf_plan_0001");
     expect(PERF_REVIEWER_PASSWORD).toBe("PerfReviewer!2027");
-    expect(PERF_EVALUATION_COUNT).toBe(600);
+    expect(PERF_EVALUATION_COUNT).toBe(6000);
+  });
+
+  it("DEC-347: holds at least 5,000 evaluation rows for the plan's current round", () => {
+    expect(PERF_EVALUATION_COUNT).toBeGreaterThanOrEqual(5000);
+  });
+
+  it("DEC-347: the (submission, reviewer) round-robin pairing over PERF_EVALUATION_COUNT never repeats — " +
+    "no duplicate (plan_id, submission_id, reviewer_id, round) row, matching the evaluation table's unique index", () => {
+    const seen = new Set<string>();
+    for (let n = 0; n < PERF_EVALUATION_COUNT; n++) {
+      const submissionIdx = n % PERF_SUBMISSION_COUNT;
+      const reviewerIdx = n % PERF_REVIEWER_COUNT;
+      const key = `${submissionIdx}|${reviewerIdx}`;
+      expect(seen.has(key)).toBe(false);
+      seen.add(key);
+    }
   });
 });
 
@@ -253,5 +273,88 @@ describe("DEC-338 email_log scale + spread", () => {
     expect(() => sentAtForEmailLogRow(-1, NOW_MS)).toThrow();
     expect(() => sentAtForEmailLogRow(1.5, NOW_MS)).toThrow();
     expect(() => sentAtForEmailLogRow(0, -1)).toThrow();
+  });
+});
+
+describe("DEC-347 perfFileSpecs (deliverable file chains at scale)", () => {
+  const accepted = PERF_STATUS_COUNTS.accepted!; // 300
+  const specs = perfFileSpecs(accepted);
+
+  it("has exactly 4 rows per accepted submission: 300 * 4 = 1,200", () => {
+    expect(PERF_FILE_ROWS_PER_SUBMISSION).toBe(4);
+    expect(PERF_FILE_COUNT).toBe(accepted * 4);
+    expect(PERF_FILE_COUNT).toBe(1200);
+    expect(specs).toHaveLength(PERF_FILE_COUNT);
+  });
+
+  it("every row's n is unique across the whole 1,200-row set", () => {
+    const ns = new Set(specs.map((s) => s.n));
+    expect(ns.size).toBe(specs.length);
+  });
+
+  it("exactly 300 chains have 3 presentation versions, and 300 have exactly 1 handout version", () => {
+    const byAccepted = new Map<number, { presentation: number; handout: number }>();
+    for (const s of specs) {
+      const entry = byAccepted.get(s.acceptedIndex) ?? { presentation: 0, handout: 0 };
+      entry[s.kind] += 1;
+      byAccepted.set(s.acceptedIndex, entry);
+    }
+    expect(byAccepted.size).toBe(accepted);
+    let threeVersionChains = 0;
+    let oneVersionChains = 0;
+    for (const entry of byAccepted.values()) {
+      expect(entry.presentation).toBe(PERF_FILE_PRESENTATION_VERSIONS);
+      expect(entry.handout).toBe(1);
+      if (entry.presentation === 3) threeVersionChains++;
+      if (entry.handout === 1) oneVersionChains++;
+    }
+    expect(threeVersionChains).toBe(300);
+    expect(oneVersionChains).toBe(300);
+  });
+
+  it("every non-root row's previousN points at a row in the same chain (same acceptedIndex + kind)", () => {
+    const byN = new Map(specs.map((s) => [s.n, s]));
+    for (const s of specs) {
+      if (s.previousN === null) continue;
+      const prev = byN.get(s.previousN);
+      expect(prev).toBeDefined();
+      expect(prev!.acceptedIndex).toBe(s.acceptedIndex);
+      expect(prev!.kind).toBe(s.kind);
+      expect(prev!.versionIndex).toBe(s.versionIndex - 1);
+    }
+  });
+
+  it("no chain has a cycle (walking previousN from any row terminates at a root within its own chain length)", () => {
+    const byN = new Map(specs.map((s) => [s.n, s]));
+    for (const s of specs) {
+      const visited = new Set<number>();
+      let cur: typeof s | undefined = s;
+      let steps = 0;
+      while (cur) {
+        expect(visited.has(cur.n)).toBe(false);
+        visited.add(cur.n);
+        steps++;
+        expect(steps).toBeLessThanOrEqual(PERF_FILE_PRESENTATION_VERSIONS);
+        if (cur.previousN === null) break;
+        cur = byN.get(cur.previousN);
+      }
+    }
+  });
+
+  it("root rows (versionIndex 0) always have previousN null; non-root rows never do", () => {
+    for (const s of specs) {
+      if (s.versionIndex === 0) expect(s.previousN).toBeNull();
+      else expect(s.previousN).not.toBeNull();
+    }
+  });
+
+  it("is deterministic and rejects negative/non-integer input", () => {
+    expect(perfFileSpecs(5)).toEqual(perfFileSpecs(5));
+    expect(() => perfFileSpecs(-1)).toThrow();
+    expect(() => perfFileSpecs(1.5)).toThrow();
+  });
+
+  it("returns an empty array for 0 accepted submissions", () => {
+    expect(perfFileSpecs(0)).toEqual([]);
   });
 });
