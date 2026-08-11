@@ -2,10 +2,11 @@
 // files.ts (contention decomposition) — no behavior change, files.ts
 // re-exports everything below for existing callers.
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { listPlansForEvent, isSubmissionInReviewerScope } from "./review";
+import { ACTIVE_INVITE_STATUSES } from "../../domain/acceptance";
 
 // ---------------------------------------------------------------------------
 // Ownership / authz lookups
@@ -35,7 +36,12 @@ export async function getSubmissionScope(db: Db, submissionId: string): Promise<
   const participantRows = await db
     .select({ contactId: schema.participant.contactId })
     .from(schema.participant)
-    .where(eq(schema.participant.submissionId, submissionId));
+    .where(
+      and(
+        eq(schema.participant.submissionId, submissionId),
+        inArray(schema.participant.inviteStatus, ACTIVE_INVITE_STATUSES),
+      ),
+    );
 
   return {
     submissionId,
