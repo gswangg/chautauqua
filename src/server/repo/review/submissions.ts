@@ -154,8 +154,20 @@ export async function isSubmissionInReviewerScope(
     return matchRows.length > 0;
   }
 
+  // DEC-354: per-submission assignments must be bounded to plan.eventId
+  // the same way the unrestricted (:139-145) and track (:166-177) branches
+  // are, else a stale/foreign-event submissionId on the plan_reviewer row
+  // silently grants scope across events.
   const submissionScopes = new Set(rows.filter((r) => r.submissionId !== null).map((r) => r.submissionId as string));
-  if (submissionScopes.has(submissionId)) return true;
+  if (submissionScopes.has(submissionId)) {
+    const scopedRows = await db
+      .select({ id: schema.submission.id })
+      .from(schema.submission)
+      .where(and(eq(schema.submission.id, submissionId), eq(schema.submission.eventId, plan.eventId)))
+      .limit(1);
+    if (!scopedRows[0]) return false;
+    return true;
+  }
 
   const trackScopes = [...new Set(rows.filter((r) => r.trackId !== null).map((r) => r.trackId as string))];
   if (trackScopes.length === 0) return false;

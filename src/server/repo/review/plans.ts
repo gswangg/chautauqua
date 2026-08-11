@@ -2,7 +2,7 @@
 // drizzle row types (DEC-012) for evaluation_plan. Converts to/from the pure
 // src/domain/evaluation.ts shapes.
 
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { newId } from "../../../domain/ids";
@@ -211,4 +211,17 @@ export async function deletePlan(db: Db, planId: string): Promise<void> {
   await db.delete(schema.planReviewer).where(eq(schema.planReviewer.planId, planId));
   await db.delete(schema.evaluation).where(eq(schema.evaluation.planId, planId));
   await db.delete(schema.evaluationPlan).where(eq(schema.evaluationPlan.id, planId));
+}
+
+/** DEC-354: bounded existence check used by the reviewer-assignment write
+ * path (POST /api/v1/plans/:id/reviewers) to reject a trackId that does
+ * not name a track of the plan's own event, before any plan_reviewer row
+ * is written. */
+export async function trackExistsInEvent(db: Db, trackId: string, eventId: string): Promise<boolean> {
+  const rows = await db
+    .select({ id: schema.track.id })
+    .from(schema.track)
+    .where(and(eq(schema.track.id, trackId), eq(schema.track.eventId, eventId)))
+    .limit(1);
+  return rows.length > 0;
 }
