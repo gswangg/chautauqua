@@ -9,7 +9,7 @@ import type { AppEnv } from "../server/env";
 import { getFirstEventSlug } from "../server/repo/events";
 import { shouldMountDevMailbox } from "./dev/mailbox";
 import { ApiError } from "../server/http";
-import { DEC_049, DEC_012, DEC_005, DEC_268 } from "../decisions";
+import { DEC_049, DEC_012, DEC_005, DEC_268, DEC_295 } from "../decisions";
 
 export const rootRoutes = new Hono<AppEnv>();
 
@@ -18,6 +18,7 @@ void DEC_049;
 void DEC_012;
 void DEC_005;
 void DEC_268;
+void DEC_295;
 
 /** Fetches a static asset path from the ASSETS binding against the
  * request's own origin — building a fresh Request rather than mutating the
@@ -32,10 +33,18 @@ function fetchAsset(c: { env: { ASSETS?: Fetcher }; req: { url: string; raw: Req
 /** Fetches the admin SPA shell and fails loudly (rather than returning the
  * assets binding's bare, bodyless 404) when public/admin/index.html hasn't
  * been built — the registered error handler turns this into a real 500 with
- * an actionable message instead of a silent empty response (DEC-268). */
+ * an actionable message instead of a silent empty response (DEC-268).
+ *
+ * DEC-295: fetchAsset forwards c.req.raw, which carries the browser's own
+ * conditional-GET headers (If-None-Match), and the outer /admin response is
+ * a byte-for-byte proxy of index.html including its ETag. So the ASSETS
+ * binding correctly answers 304 Not Modified on a matching revisit — that is
+ * a successful fetch, not a missing bundle, and must be returned untouched
+ * (an empty 304 body) rather than treated as a failure. Only a genuinely
+ * missing bundle (any other non-ok status) keeps failing loudly. */
 async function fetchAdminShell(c: { env: { ASSETS?: Fetcher }; req: { url: string; raw: Request } }) {
   const res = await fetchAsset(c, "/admin/index.html");
-  if (!res.ok) {
+  if (!res.ok && res.status !== 304) {
     throw new ApiError(
       "internal",
       "Admin SPA bundle missing at public/admin/index.html -- run `npm run build` (or `npm run dev`, whose predev builds it). DEC-268.",
