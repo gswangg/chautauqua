@@ -37,24 +37,20 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   zero-commit; late w23 merge=drift FAIL-stop; FROZEN 0a263d2, 6 gates
   task-w24-a..f, ports 8961/8962. LESSON: recheck reflog before trusting
   "dead stub".
-- Wave 25 (DEC-223..225, compact): FOURTH late-drain — w23-a/b landed after
-  DEC-222 froze 0a263d2; w24 FAIL-stopped/no evidence. DEC-223 re-freezes
-  LITERAL b2dc2c1. DEC-224: w24 battery VOID, LATE-DRAIN-IMMUNE accounting —
-  exit counts ONLY docs/verification-log/task-w25-*.md. DEC-225: battery
-  task-w25-a..f, ports 8963/8964, sha check allow-lists decisions//field-
-  guide//verification-log//eval-findings//decisions.ts-appends. LESSON:
-  search-tool rendering can mangle '//' — verify via raw Read.
-- Wave 26 (DEC-226..231, compact): w25 battery drained ONLY lane a (PASS@
-  b2dc2c1); planner VERIFIED 4 live defects, fixes-first fired. DEC-227
-  required checkbox ===true; DEC-228 cookie builders in cookies.ts, HttpOnly+
-  conditional Secure all 8 mint sites; DEC-229 deleteTrack 409s on tracks_json
-  /filters_json/plan_reviewer.track_id, never cascades; DEC-230 two-pass DST,
-  gap->forward, overlap->earlier. DEC-226 SUPERSEDED b2dc2c1. DEC-231: CRM-02
-  closed — prose-grep false negative; grep code symbols not report prose.
-- Wave 27 (DEC-232..234): w26 fix lanes drained DURING planning (a=4e44499,
-  c=225e7f8, b=b2a5545, d=f01459a) — recheck refs mid-session, don't trust
-  initial snapshot. Zero task-w* refs remained -> FROZEN LITERAL f01459a
-  (merge task-w26-d); all 4 fixes verified WITH tests. DEC-233 battery
-  task-w27-a..f, ports 8965/8966, exit = six task-w27-* logs, SAME sha, 6/6
-  PASS, zero new defects, declared wave 28. DEC-234: deleteField dangling
-  visible-if rules fail SAFE (hidden->stripped->not required), fix declined.
+- Wave25-27 (compact): DEC-223..225 FOURTH late-drain, refroze LITERAL
+  b2dc2c1, late-drain-immune accounting (exit counts only verification-log
+  files), battery task-w25-a..f ports 8963/8964; search-tool '//' mangling
+  LESSON. DEC-226..231 w25 lane-a-only drain, 4 live defects fixed (checkbox
+  ===true, cookie HttpOnly/Secure all 8 sites, deleteTrack 409 tracks_json/
+  filters_json/track_id never cascade, two-pass DST gap-forward/overlap-
+  earlier), CRM-02 grep-code-not-prose lesson. DEC-232..234 w26 fix lanes
+  drained DURING planning, recheck refs mid-session; FROZEN LITERAL f01459a;
+  battery task-w27-a..f ports 8965/8966; deleteField dangling refs fail-safe,
+  fix declined.
+- Wave 28 (DEC-235/236): w27 battery drained 6/6 PASS @ f01459a — a/d/e/c/f
+  merged (main 4ef4448), b committed d8fe456 mid-session (SIXTH mid-session
+  drain; counted per DEC-224 late-drain-immune accounting, merge routine).
+  Prompt's "new" review-lens quartet verified STALE — pre-fix line numbers,
+  all closed by DEC-211..214 with regression tests; do not reopen (DEC-236).
+  STAGE 1 DECLARED COMPLETE at f01459a (DEC-235). Housekeeping only: prune
+  task-w27-* and tmp-main-check refs after b's log lands.
