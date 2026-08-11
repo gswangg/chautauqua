@@ -9,7 +9,7 @@
 import { Hono, type Context } from "hono";
 import type { AppEnv, AuthInfo } from "../server/env";
 import { requireOrganizer, csrfJson } from "../server/middleware";
-import { ApiError } from "../server/http";
+import { ApiError, parseBoundedIdArray } from "../server/http";
 import { makeFileStore } from "../server/context";
 import { newId } from "../domain/ids";
 import { buildZip } from "../lib/zip";
@@ -198,25 +198,17 @@ fileApiRoutes.post("/events/:eventId/files/archive", requireOrganizer, csrfJson,
   if (scope.orgId !== auth.orgId) throw new ApiError("forbidden", "Event belongs to a different org");
 
   const body = (await c.req.json().catch(() => ({}))) as { fileIds?: unknown };
-  const fileIds = body.fileIds;
-  if (!Array.isArray(fileIds) || fileIds.length === 0 || !fileIds.every((id) => typeof id === "string")) {
-    throw new ApiError("invalid", "fileIds must be a non-empty array of strings", { fileIds: "Required" });
-  }
-  if (fileIds.length > MAX_ARCHIVE_FILES) {
-    throw new ApiError("invalid", `fileIds must not exceed ${MAX_ARCHIVE_FILES} entries`, {
-      fileIds: `Max ${MAX_ARCHIVE_FILES}`,
-    });
-  }
+  const fileIds = parseBoundedIdArray(body.fileIds, "fileIds", { maxCount: MAX_ARCHIVE_FILES }); // DEC-182
 
   // Loud 404 on any unknown/non-deliverable id — no silent skips (DEC-160).
-  const resolved = await resolveLatestVersions(c.var.db, eventId, fileIds as string[]);
+  const resolved = await resolveLatestVersions(c.var.db, eventId, fileIds);
   const chains = await listEventDeliverableFiles(c.var.db, eventId);
   const submissionTitleByLatestId = new Map(chains.map((ch) => [ch.latestFileId, ch.submissionTitle]));
 
   const store = makeFileStore(c.env.FILES);
   const entries: { name: string; data: Uint8Array }[] = [];
   let seq = 1;
-  for (const requestedId of fileIds as string[]) {
+  for (const requestedId of fileIds) {
     const latest = resolved.get(requestedId);
     if (!latest) throw new Error("unreachable: resolveLatestVersions validated every id");
     const obj = await store.get(latest.r2Key);

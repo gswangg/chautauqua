@@ -408,6 +408,50 @@ describe("PATCH /api/v1/submissions/:id (CNT-09 admin session editing)", () => {
     expect(json.error.code).toBe("invalid");
     expect(updates).toHaveLength(0);
   });
+
+  // DEC-182: POST /events/:eventId/submissions/status bounds `ids` via
+  // parseBoundedIdArray — no SQLITE_TOOBIG 500s, no silent element drops.
+  describe("POST /events/:eventId/submissions/status (DEC-182 bulk-ids bound)", () => {
+    function postRequest(path: string, body: unknown) {
+      return new Request(`http://local${path}`, {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-chq-csrf": "1" },
+        body: JSON.stringify(body),
+      });
+    }
+
+    it("400s with code 'invalid' when an id is absurdly oversized rather than 500ing", async () => {
+      const { db } = fakeDb([[{ orgId: ORG_A }]]); // getEventOrgId
+      const app = appWithDbAndAuth(db, ORGANIZER_A);
+
+      const res = await app.request(
+        postRequest("/api/v1/events/event-1/submissions/status", {
+          ids: ["x".repeat(100000)],
+          status: "accepted",
+        }),
+      );
+
+      expect(res.status).toBe(400);
+      const json = (await res.json()) as any;
+      expect(json.error.code).toBe("invalid");
+    });
+
+    it("400s (not silently dropped) when an id element is a non-string", async () => {
+      const { db } = fakeDb([[{ orgId: ORG_A }]]); // getEventOrgId
+      const app = appWithDbAndAuth(db, ORGANIZER_A);
+
+      const res = await app.request(
+        postRequest("/api/v1/events/event-1/submissions/status", {
+          ids: [123],
+          status: "accepted",
+        }),
+      );
+
+      expect(res.status).toBe(400);
+      const json = (await res.json()) as any;
+      expect(json.error.code).toBe("invalid");
+    });
+  });
 });
 
 const sourceModules = import.meta.glob(

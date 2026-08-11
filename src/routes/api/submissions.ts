@@ -10,7 +10,7 @@ import { Hono, type Context } from "hono";
 import type { AppEnv, AuthInfo } from "../../server/env";
 import type { Db } from "../../server/context";
 import { requireOrganizer, csrfJson } from "../../server/middleware";
-import { ApiError } from "../../server/http";
+import { ApiError, parseBoundedIdArray } from "../../server/http";
 import {
   cloneSubmission,
   createSubmission,
@@ -328,10 +328,7 @@ submissionsRoutes.post("/events/:eventId/submissions/status", requireOrganizer, 
   await assertEventOwnership(c.var.db, eventId, auth.orgId);
 
   const body = (await c.req.json().catch(() => ({}))) as StatusUpdateBody;
-  const ids = Array.isArray(body.ids) ? body.ids.filter((x): x is string => typeof x === "string") : [];
-  if (ids.length === 0) {
-    throw new ApiError("invalid", "ids must be a non-empty array of submission ids", { ids: "Required" });
-  }
+  const ids = parseBoundedIdArray(body.ids, "ids"); // DEC-182
   if (!isValidStatusLiteral(body.status)) {
     throw new ApiError("invalid", "status must be one of the DEC-003 submission statuses", {
       status: "Invalid status",

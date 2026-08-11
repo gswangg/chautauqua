@@ -12,7 +12,7 @@ import type { AppEnv, AuthInfo, Bindings } from "../server/env";
 import type { Db } from "../server/context";
 import { makeDb, makeMailer } from "../server/context";
 import { requireOrganizer, csrfJson } from "../server/middleware";
-import { ApiError } from "../server/http";
+import { ApiError, parseBoundedIdArray } from "../server/http";
 import { DEC_120 } from "../decisions";
 import {
   assignTask,
@@ -225,12 +225,7 @@ taskRoutes.post("/tasks/:id/assign", requireOrganizer, csrfJson, async (c) => {
   if (ownership.orgId !== auth.orgId) throw new ApiError("forbidden", "Task belongs to a different org");
 
   const body = asRecord(await c.req.json().catch(() => ({})));
-  const contactIds = Array.isArray(body.contactIds)
-    ? body.contactIds.filter((x): x is string => typeof x === "string")
-    : [];
-  if (contactIds.length === 0) {
-    throw new ApiError("invalid", "contactIds must be a non-empty array", { contactIds: "Required" });
-  }
+  const contactIds = parseBoundedIdArray(body.contactIds, "contactIds"); // DEC-182
 
   // DEC-120: reject cross-org contact ids before any assignment write —
   // atomic, no partial assignment (DEC-019).
@@ -293,9 +288,9 @@ taskRoutes.post("/events/:eventId/onboarding/remind", requireOrganizer, csrfJson
   await assertEventOwnership(c.var.db, eventId, auth.orgId);
 
   const body = asRecord(await c.req.json().catch(() => ({})));
-  const taskIds = Array.isArray(body.taskIds)
-    ? body.taskIds.filter((x): x is string => typeof x === "string")
-    : undefined;
+  // DEC-182: taskIds is optional (undefined => remind for all outstanding
+  // tasks on the event); when present it must be a bounded array of ids.
+  const taskIds = body.taskIds === undefined ? undefined : parseBoundedIdArray(body.taskIds, "taskIds");
 
   const mailer = makeMailer(c.var.db);
   const result = await remindNow(c.var.db, mailer, eventId, taskIds, new Date());

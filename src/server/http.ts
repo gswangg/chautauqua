@@ -48,6 +48,39 @@ export function errorEnvelope(err: ApiError): {
   };
 }
 
+// DEC-182
+/**
+ * Validates and returns a bounded array of non-empty string ids.
+ * Fails loudly (no silent filtering) on: non-array input, empty array,
+ * more than `opts.maxCount` (default 1000) elements, any non-string
+ * element, or any element with length 0 or > 64.
+ */
+export function parseBoundedIdArray(
+  value: unknown,
+  field: string,
+  opts?: { maxCount?: number },
+): string[] {
+  const maxCount = opts?.maxCount ?? 1000;
+  if (!Array.isArray(value) || value.length === 0) {
+    throw new ApiError("invalid", `${field} must be a non-empty array of ids`, {
+      [field]: "Required",
+    });
+  }
+  if (value.length > maxCount) {
+    throw new ApiError("invalid", `${field} must not exceed ${maxCount} entries`, {
+      [field]: `Max ${maxCount}`,
+    });
+  }
+  for (const item of value) {
+    if (typeof item !== "string" || item.length === 0 || item.length > 64) {
+      throw new ApiError("invalid", `${field} must be an array of id strings (1-64 chars)`, {
+        [field]: "Invalid id",
+      });
+    }
+  }
+  return value;
+}
+
 /** Registers the shared onError handler; call once on the top-level app. */
 export function registerErrorHandler(app: Hono<AppEnv>): void {
   app.onError((err, c) => {
