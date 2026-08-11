@@ -330,3 +330,4 @@ export const DEC_324 = "DEC-297's no-cacheable-non-200 rule moves to the public 
 export const DEC_325 = "File access under a pending ('invited') participation follows DEC-317's WRITE gate, not its read gate: files-authz.ts's ACTIVE_INVITE_STATUSES scope is ratified, not drift";
 export const DEC_326 = "Walkthrough probes never hardcode a fact about the tree: dates are derived from the event under test, and static 'the SPA does X' assertions cite the module that actually owns the behaviour";
 export const DEC_327 = "Wave-15 exit predicate: w13's six PASS logs stand, w13-b's FAIL closes through its three cited fixes carrying their own evidence, and three wave-15 confirmation logs complete DEC-320(ii)";
+export const DEC_328 = "All four wave-16 review-lens findings are STALE and are closed by anchor; a finding whose cited line no longer holds its cited symbol must be re-verified at the SYMBOL before it can become a task";
