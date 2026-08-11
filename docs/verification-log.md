@@ -4998,6 +4998,44 @@ OPEN ITEMS: 0
 
 RESULT: PASS
 
+## 2026-08-10 task-w9-b — build+test @ 38860f9
+
+Full detail: docs/verification-log/task-w9-b-build-test.md
+
+Derived S per DEC-114/DEC-176/DEC-177/DEC-178: first-parent walk from
+`main` tip `aa7bf95` ("merge task-w8-b") skips that commit as
+log-only (touches only verification-log files) and lands on
+`38860f9` ("merge task-w8-a") as the newest code-bearing first-parent
+commit — this is task-w9-a's own work, landed under a reused/stale
+branch name, confirmed by content (DEC-173/174/175 tags present in
+`scripts/walkthrough/{producer,public,review,speaker}.ts` and
+`scripts/seed.ts`). `git merge-base --is-ancestor 2dd2f33 38860f9`
+exits 0. All ten precondition greps at S hit: `DEC-167`
+(`src/domain/contacts.ts`), `ICS_ORGANIZER_EMAIL` (`src/mail/ics.ts`),
+`unknown track id` (`src/routes/api/forms.ts`), `anonymized === false`
+(`src/server/repo/files.ts`), `openDate`
+(`app/src/pages/review/PlanEditor.tsx`), `FORM_TASK_FIELD_SPECS` +
+`DEC-174` (`scripts/seed.ts`), `DEC-173` (`scripts/walkthrough/
+public.ts` + `speaker.ts`), `DEC-175` (`scripts/walkthrough/
+producer.ts` + `speaker.ts` + `review.ts`).
+
+Verified at S via a disposable detached worktree (`git worktree add
+--detach ... 38860f9`), keeping the `task-w9-b` branch worktree free
+of detached-HEAD state; confirmed `git diff --stat 38860f9 aa7bf95`
+shows only log-only changes (zero code delta from S to `main` tip).
+`npm ci` clean; `npm run build` (tsc root + tsc app + vite) PASS —
+131 modules transformed, 19 output assets. `npm run bundle:check`
+PASS — entry bundle 58.86 kB gzip vs 300.00 kB budget (DEC-058).
+`npm test --silent` PASS — 151 test files / 1332 tests, all green, 0
+failures, including the full `app/src/**/*.render.test.tsx`
+render-sweep battery. Independently reproduces the `task-w8-b` gate's
+numbers at the same S, as expected under DEC-178 (both wave-9 gates
+target the identical frozen sha).
+
+OPEN ITEMS: 0
+
+RESULT: PASS
+
 ## 2026-08-10 task-w8-d — perf-smoke @ 38860f9
 
 DEC-069/DEC-088/DEC-139/DEC-176/DEC-177 gate, wave-8/9 battery (S = the
