@@ -2,13 +2,27 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { apiGet, apiList, ApiError } from '../../lib/api';
 import { buildResultsCsvHref } from './resultsCsv';
-import { sortResultsRows, type ResultsSortKey, type SortDirection } from './resultsSort';
 import type { EvaluationPlan, ResultsRow } from './types';
+
+// DEC-345: mirrors src/domain/evaluation.ts's ResultsSortKey/SortDirection
+// (the pure-core sort now lives server-side, so the SPA only needs the wire
+// shape of a sort spec, not the sorting logic itself).
+export type SortDirection = 'asc' | 'desc';
+
+export type ResultsSortKey =
+  | { column: 'ref' }
+  | { column: 'title' }
+  | { column: 'average' }
+  | { column: 'count' }
+  | { column: 'rating'; criterionId: string }
+  | { column: 'dropdown'; criterionId: string };
+
+const PER_PAGE = 50;
 
 function sortKeysEqual(a: ResultsSortKey, b: ResultsSortKey): boolean {
   if (a.column !== b.column) return false;
   if (a.column === 'rating' || a.column === 'dropdown') {
-    return (b as { criterionId: string }).criterionId === a.criterionId;
+    return (b as { criterionId: string }).criterionId === (a as { criterionId: string }).criterionId;
   }
   return true;
 }
@@ -38,12 +52,15 @@ export function ResultsTable() {
   const { planId } = useParams<{ planId: string }>();
   const [plan, setPlan] = useState<EvaluationPlan | null>(null);
   const [rows, setRows] = useState<ResultsRow[]>([]);
+  const [total, setTotal] = useState(0);
   const [round, setRound] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  // DEC-241: client-side only -- results are one bounded plan's rows, not a
-  // paginated table. null = the server's default (unsorted) order.
+  // DEC-345: sort/dir/page are now server round trips -- the table shows
+  // exactly the rows the server ranked, sorted, and paged, never a
+  // client-side re-sort of a single page (that class of bug is DEC-341's).
   const [sort, setSort] = useState<{ key: ResultsSortKey; direction: SortDirection } | null>(null);
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     if (!planId) return;
@@ -57,12 +74,32 @@ export function ResultsTable() {
       .finally(() => setLoading(false));
   }, [planId]);
 
+  // Any sort/round change resets to page 1 -- a stale page number from a
+  // previous sort/round would silently show the wrong slice.
+  useEffect(() => {
+    setPage(1);
+  }, [round, sort]);
+
   useEffect(() => {
     if (!planId || round === null) return;
-    apiList<ResultsRow>(`/plans/${planId}/results?round=${round}`)
-      .then((resultsRes) => setRows(resultsRes.items))
+    const params = new URLSearchParams();
+    params.set('round', String(round));
+    if (sort) {
+      params.set('sort', sort.key.column);
+      if (sort.key.column === 'rating' || sort.key.column === 'dropdown') {
+        params.set('criterionId', sort.key.criterionId);
+      }
+      params.set('dir', sort.direction);
+    }
+    params.set('page', String(page));
+    params.set('perPage', String(PER_PAGE));
+    apiList<ResultsRow>(`/plans/${planId}/results?${params.toString()}`)
+      .then((resultsRes) => {
+        setRows(resultsRes.items);
+        setTotal(resultsRes.total);
+      })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load results'));
-  }, [planId, round]);
+  }, [planId, round, sort, page]);
 
   const handleSort = (key: ResultsSortKey) => {
     setSort((prev) => {
@@ -79,10 +116,7 @@ export function ResultsTable() {
   const ratingCriteria = useMemo(() => (plan?.criteria ?? []).filter((c) => c.kind === 'rating'), [plan]);
   const dropdownCriteria = useMemo(() => (plan?.criteria ?? []).filter((c) => c.kind === 'dropdown'), [plan]);
 
-  const sortedRows = useMemo(() => {
-    if (!sort) return rows;
-    return sortResultsRows(rows, sort.key, sort.direction);
-  }, [rows, sort]);
+  const totalPages = Math.max(1, Math.ceil(total / PER_PAGE));
 
   if (loading) {
     return (
@@ -115,7 +149,15 @@ export function ResultsTable() {
         </label>
       )}
       {planId && (
-        <a href={buildResultsCsvHref(planId, round ?? undefined)} download className="chq-button">
+        <a
+          href={buildResultsCsvHref(
+            planId,
+            round ?? undefined,
+            sort ? { column: sort.key.column, criterionId: (sort.key as { criterionId?: string }).criterionId, direction: sort.direction } : undefined,
+          )}
+          download
+          className="chq-button"
+        >
           Download CSV
         </a>
       )}
@@ -126,7 +168,9 @@ export function ResultsTable() {
             <th>
               <SortButton label="Ref" columnKey={{ column: 'ref' }} sort={sort} onSort={handleSort} />
             </th>
-            <th>Title</th>
+            <th>
+              <SortButton label="Title" columnKey={{ column: 'title' }} sort={sort} onSort={handleSort} />
+            </th>
             <th>
               <SortButton label="Average" columnKey={{ column: 'average' }} sort={sort} onSort={handleSort} />
             </th>
@@ -156,7 +200,7 @@ export function ResultsTable() {
           </tr>
         </thead>
         <tbody>
-          {sortedRows.map((row) => (
+          {rows.map((row) => (
             <tr key={row.submissionId}>
               <td>{row.ref}</td>
               <td>{row.title}</td>
@@ -197,6 +241,24 @@ export function ResultsTable() {
           )}
         </tbody>
       </table>
+
+      {total > 0 && (
+        <div className="chq-pager">
+          <button type="button" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1}>
+            Prev
+          </button>
+          <span>
+            Page {page} of {totalPages}
+          </span>
+          <button
+            type="button"
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            disabled={page >= totalPages}
+          >
+            Next
+          </button>
+        </div>
+      )}
     </div>
   );
 }

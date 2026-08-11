@@ -10,8 +10,15 @@ import { csrfJson, requireOrganizer } from "../../server/middleware";
 import { ApiError } from "../../server/http";
 import { makeMailer } from "../../server/context";
 import { textToHtml } from "../../mail/render";
-import { resolveAssignments, criteriaForRound, assignedExcludingRecused } from "../../domain/evaluation";
+import {
+  resolveAssignments,
+  criteriaForRound,
+  assignedExcludingRecused,
+  sortResultsRows,
+  type ResultsSortKey,
+} from "../../domain/evaluation";
 import { toCsv } from "../../lib/csv";
+import { clampPage, clampPerPage } from "../../lib/pagination";
 import * as repo from "../../server/repo/review";
 import { roundCriteriaJsonOf } from "../../server/repo/review";
 import * as eventsRepo from "../../server/repo/events";
@@ -29,6 +36,7 @@ import {
   dropdownCriteria,
   requireOwnedPlan,
   buildResults,
+  parseResultsSort,
 } from "./shared";
 
 export const reviewPlansRoutes = new Hono<AppEnv>();
@@ -226,11 +234,18 @@ reviewPlansRoutes.get("/api/v1/plans/:id/progress", requireOrganizer, async (c) 
     recusedByUser.set(r.userId, set);
   }
 
+  // DEC-345: index completed-submission-ids by reviewerId in one pass
+  // instead of filtering the whole evaluation array per reviewer.
+  const completedByReviewer = new Map<string, Set<string>>();
+  for (const e of evaluations) {
+    const set = completedByReviewer.get(e.reviewerId) ?? new Set<string>();
+    set.add(e.submissionId);
+    completedByReviewer.set(e.reviewerId, set);
+  }
+
   const items = users.map((user) => {
     const assigned = assignedExcludingRecused(assignments.get(user.userId) ?? [], recusedByUser.get(user.userId) ?? new Set());
-    const completed = new Set(
-      evaluations.filter((e) => e.reviewerId === user.userId).map((e) => e.submissionId),
-    ).size;
+    const completed = completedByReviewer.get(user.userId)?.size ?? 0;
     return {
       userId: user.userId,
       email: user.email,
@@ -245,7 +260,13 @@ reviewPlansRoutes.get("/api/v1/plans/:id/progress", requireOrganizer, async (c) 
 reviewPlansRoutes.get("/api/v1/plans/:id/results", requireOrganizer, async (c) => {
   const plan = await requireOwnedPlan(c, c.req.param("id"));
   const round = parseRoundQuery(c, plan);
-  const rows = await buildResults(c, plan, round);
+  // DEC-345: buildResults already ranks (average desc, count desc); an
+  // explicit ?sort= re-sorts that WHOLE ranked set before paging/CSV --
+  // paging without moving the sort first would sort one page and mis-rank
+  // the rest (DEC-341's worklist bug class).
+  const rankedRows = await buildResults(c, plan, round);
+  const sortSpec = parseResultsSort(c);
+  const sortedRows = sortSpec ? sortResultsRows(rankedRows, sortSpec.key, sortSpec.direction) : rankedRows;
 
   if (c.req.query("format") === "csv") {
     const roundCriteria = criteriaForRound(plan.criteria, roundCriteriaJsonOf(plan), round);
@@ -260,7 +281,8 @@ reviewPlansRoutes.get("/api/v1/plans/:id/results", requireOrganizer, async (c) =
       ...criteria.map((cr) => cr.label),
       ...dropdownColumns.map(({ dc, option }) => `${dc.label}: ${option}`),
     ];
-    const dataRows = rows.map((r) => [
+    // ?format=csv ignores page/perPage (DEC-345): every row, in sort order.
+    const dataRows = sortedRows.map((r) => [
       r.ref,
       r.title,
       r.count,
@@ -272,7 +294,11 @@ reviewPlansRoutes.get("/api/v1/plans/:id/results", requireOrganizer, async (c) =
     return c.body(csv, 200, { "Content-Type": "text/csv; charset=utf-8" });
   }
 
-  return c.json({ items: rows, total: rows.length, page: 1, perPage: rows.length || 1, round });
+  const page = clampPage(c.req.query("page"));
+  const perPage = clampPerPage(c.req.query("perPage"));
+  const start = (page - 1) * perPage;
+  const items = sortedRows.slice(start, start + perPage);
+  return c.json({ items, total: sortedRows.length, page, perPage, round });
 });
 
 reviewPlansRoutes.post("/api/v1/plans/:id/remind", requireOrganizer, csrfJson, async (c) => {
@@ -290,13 +316,20 @@ reviewPlansRoutes.post("/api/v1/plans/:id/remind", requireOrganizer, csrfJson, a
   // DEC-238 class 2: this is an organizer-triggered batch send -- a single
   // reviewer's mail failure must not 500 the whole reminder run or hide the
   // other reviewers' outcomes. Per-recipient catch, structured summary.
+  // DEC-345: index completed-submission-ids by reviewerId in one pass
+  // instead of filtering the whole evaluation array per reviewer.
+  const completedByReviewer = new Map<string, Set<string>>();
+  for (const e of evaluations) {
+    const set = completedByReviewer.get(e.reviewerId) ?? new Set<string>();
+    set.add(e.submissionId);
+    completedByReviewer.set(e.reviewerId, set);
+  }
+
   const reminded: string[] = [];
   const failed: { email: string; message: string }[] = [];
   for (const user of users) {
     const assigned = assignments.get(user.userId) ?? [];
-    const completed = new Set(
-      evaluations.filter((e) => e.reviewerId === user.userId).map((e) => e.submissionId),
-    ).size;
+    const completed = completedByReviewer.get(user.userId)?.size ?? 0;
     if (completed >= assigned.length) continue;
 
     try {
