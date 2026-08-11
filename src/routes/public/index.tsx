@@ -112,7 +112,7 @@ publicRoutes.get("/e/:eventSlug/speakers/:contactId", async (c) => {
   setCacheHeaders(c);
   const event = await getPublicEventBySlug(c.var.db, c.req.param("eventSlug"));
   if (!event) return publicNotFound(c, "Event not found.");
-  const speaker = await getPublicSpeakerDetail(c.var.db, event.id, c.req.param("contactId"));
+  const speaker = await getPublicSpeakerDetail(c.var.db, event, c.req.param("contactId"));
   if (!speaker) return publicNotFound(c, "Speaker not found.");
   const from = isValidFrom(c.req.query("from"), "speakers");
   return c.html(
