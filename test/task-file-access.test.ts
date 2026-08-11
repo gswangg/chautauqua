@@ -1,9 +1,16 @@
-// DEC-065 regression coverage: GET /files/:fileId for task-assignment
-// (kind='handout', submissionId null) uploads. Organizer org-match or the
-// assigned speaker (assignment contact or uploader) may download; every
-// other speaker and cross-org organizer get denied. Repo calls are mocked so
-// these are pure route-level access-decision tests (no D1/wrangler
-// dependency in stage 1) — same pattern as test/review-idor.test.ts.
+// DEC-065/DEC-248 regression coverage: GET /files/:fileId for task-assignment
+// uploads. Organizer org-match or the assigned speaker (assignment contact or
+// uploader) may download; every other speaker and cross-org organizer get
+// denied. Repo calls are mocked so these are pure route-level
+// access-decision tests (no D1/wrangler dependency in stage 1) — same
+// pattern as test/review-idor.test.ts.
+//
+// DEC-248 widened getTaskFileScope's population from kind='handout'-only to
+// ANY kind (still submissionId-null + referenced by task_assignment.fileId);
+// submission-linked task uploads remain a disjoint population served
+// through getFileScope. The "getTaskFileScope against a fake db" describe
+// block below exercises the real (non-mocked) repo function directly to pin
+// that population rule.
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
@@ -24,15 +31,30 @@ const taskFileScope = {
   r2Key: "task/file-task-1/handout.pdf",
 };
 
+// DEC-248: a non-'handout' kind file (e.g. 'presentation') that is
+// submissionId-null and referenced by a task_assignment is still in the
+// getTaskFileScope population — the kind gate was dropped.
+const presentationTaskFileScope = {
+  fileId: "file-task-presentation",
+  orgId: ORG_A,
+  assignmentContactId: "contact-assigned",
+  uploadedByContactId: null as string | null,
+  filename: "slides.pptx",
+  contentType: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  r2Key: "task/file-task-presentation/slides.pptx",
+};
+
 vi.mock("../src/server/repo/files", async () => {
   const actual = await vi.importActual<typeof import("../src/server/repo/files")>("../src/server/repo/files");
   return {
     ...actual,
     getFileScope: vi.fn(async () => null),
     getResourceFileScope: vi.fn(async () => null),
-    getTaskFileScope: vi.fn(async (_db: unknown, fileId: string) =>
-      fileId === taskFileScope.fileId ? taskFileScope : null,
-    ),
+    getTaskFileScope: vi.fn(async (_db: unknown, fileId: string) => {
+      if (fileId === taskFileScope.fileId) return taskFileScope;
+      if (fileId === presentationTaskFileScope.fileId) return presentationTaskFileScope;
+      return null;
+    }),
   };
 });
 
@@ -130,5 +152,107 @@ describe("DEC-065: GET /files/:fileId for task-assignment handout uploads", () =
     const app = await buildApp({ userId: "u1", role: "organizer", orgId: ORG_A });
     const res = await app.request(`/files/unknown-file`);
     expect(res.status).toBe(404);
+  });
+
+  // DEC-248: kind='presentation' (non-'handout') submissionId-null file
+  // referenced by a task_assignment is still served through this same
+  // fileServeRoutes/authzServeFile -> getTaskFileScope path.
+  it("200s for the same-org organizer on a non-'handout'-kind task upload (DEC-248)", async () => {
+    const app = await buildApp({ userId: "u1", role: "organizer", orgId: ORG_A });
+    const res = await app.request(`/files/${presentationTaskFileScope.fileId}`);
+    expect(res.status).toBe(200);
+  });
+
+  it("200s for the assigned speaker on a non-'handout'-kind task upload (DEC-248)", async () => {
+    const app = await buildApp({ userId: "u2", role: "speaker", orgId: ORG_A, contactId: "contact-assigned" });
+    const res = await app.request(`/files/${presentationTaskFileScope.fileId}`);
+    expect(res.status).toBe(200);
+  });
+});
+
+describe("getTaskFileScope against a fake db (DEC-248 population rule, real implementation)", () => {
+  // Minimal fake drizzle-chain query object: from/innerJoin/where are no-ops
+  // that return `this`, limit resolves the canned rows. Mirrors the two
+  // sequential db.select(...) calls inside getTaskFileScope.
+  function makeQuery(rows: unknown[]) {
+    const query = {
+      from: () => query,
+      innerJoin: () => query,
+      where: () => query,
+      limit: () => Promise.resolve(rows),
+    };
+    return query;
+  }
+
+  function makeFakeDb(fileRows: unknown[], assignmentRows: unknown[]) {
+    let call = 0;
+    return {
+      select: () => {
+        call += 1;
+        return call === 1 ? makeQuery(fileRows) : makeQuery(assignmentRows);
+      },
+    } as unknown as import("../src/server/context").Db;
+  }
+
+  it("returns null for a submission-linked task upload (disjoint from getFileScope's population)", async () => {
+    const actual = await vi.importActual<typeof import("../src/server/repo/files")>("../src/server/repo/files");
+    const fakeDb = makeFakeDb(
+      [
+        {
+          id: "file-linked",
+          kind: "handout",
+          submissionId: "submission-1",
+          filename: "f.pdf",
+          contentType: "application/pdf",
+          r2Key: "k",
+          uploadedByContactId: null,
+        },
+      ],
+      [],
+    );
+    const scope = await actual.getTaskFileScope(fakeDb, "file-linked");
+    expect(scope).toBeNull();
+  });
+
+  it("returns a scope for a kind='presentation' submissionId-null file referenced by an assignment (DEC-248)", async () => {
+    const actual = await vi.importActual<typeof import("../src/server/repo/files")>("../src/server/repo/files");
+    const fakeDb = makeFakeDb(
+      [
+        {
+          id: "file-presentation",
+          kind: "presentation",
+          submissionId: null,
+          filename: "slides.pptx",
+          contentType: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+          r2Key: "k",
+          uploadedByContactId: null,
+        },
+      ],
+      [{ assignmentContactId: "contact-assigned", orgId: ORG_A }],
+    );
+    const scope = await actual.getTaskFileScope(fakeDb, "file-presentation");
+    expect(scope).not.toBeNull();
+    expect(scope?.orgId).toBe(ORG_A);
+    expect(scope?.assignmentContactId).toBe("contact-assigned");
+  });
+
+  it("returns null for an unreferenced submissionId-null file (no population leak)", async () => {
+    const actual = await vi.importActual<typeof import("../src/server/repo/files")>("../src/server/repo/files");
+    const fakeDb = makeFakeDb(
+      [
+        {
+          id: "file-orphan",
+          kind: "presentation",
+          submissionId: null,
+          filename: "orphan.pptx",
+          contentType: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+          r2Key: "k",
+          uploadedByContactId: null,
+        },
+      ],
+      [],
+    );
+    const scope = await actual.getTaskFileScope(fakeDb, "file-orphan");
+    expect(scope).toBeNull();
   });
 });

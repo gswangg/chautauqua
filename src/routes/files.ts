@@ -279,10 +279,11 @@ interface ServeScope {
 /** GET /files/:fileId serves three disjoint file populations: submission
  * deliverables/attachments (getFileScope, organizer-or-participant, plus
  * DEC-066 assigned reviewers), DEC-047 resource files (getResourceFileScope,
- * organizer-only), and DEC-065 task-assignment handouts (getTaskFileScope,
- * organizer-or-assigned-speaker). A file row belongs to exactly one
- * population, never more than one — resource/task files have submissionId
- * null. */
+ * organizer-only), and DEC-065/DEC-248 task-assignment uploads
+ * (getTaskFileScope, organizer-or-assigned-speaker; population is
+ * submissionId-null + referenced by task_assignment.fileId, any kind). A
+ * file row belongs to exactly one population, never more than one —
+ * resource/task files have submissionId null. */
 async function authzServeFile(c: Context<AppEnv>, fileId: string): Promise<ServeScope> {
   const auth = requireAuth(c);
   const scope = await getFileScope(c.var.db, fileId);
