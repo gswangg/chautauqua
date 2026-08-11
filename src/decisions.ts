@@ -295,3 +295,13 @@ export const DEC_289 = "Public/embed URL contract: shared query params on both /
 export const DEC_290 = "Event-roster add and roster CSV import ride the existing add-to-event push; no new roster table, no new route file — `eventId` becomes an optional field on the two contact endpoints that already exist; phone and bio become first-class import targets";
 export const DEC_291 = "Form-task responses are organizer-readable through one read-only assignment-scoped endpoint, entered from the Speakers onboarding grid; travel/logistics data lives in those responses, never in a new schema column";
 export const DEC_292 = "Contact custom fields are edited as key/value rows with a reserved `travel_logistics` key surfaced as a labeled 'Travel & logistics' textarea; duplicate keys are a loud validation error, never a silent overwrite";
+export const DEC_293 = "The deferred DEC-287 exit grep, run at wave 10: PREDICATE FAILS (f/g/h are RESULT: FAIL); the two baseline-count doc-typo rows are WAIVED and must never be counted OPEN again";
+export const DEC_294 = "Wave 11 is battery-only at a new frozen sha — all eight sections, zero product commits — and the wave-12 planner re-runs DEC-287 verbatim to declare stage 1";
+export const DEC_295 = "A 304 from the ASSETS binding is a successful admin-shell fetch, not a missing bundle";
+export const DEC_296 = "Stage-1 dev links: .dev.vars.example ships PUBLIC_BASE_URL=http://localhost:8787, and under DEV_MODE an observed loopback origin outranks a loopback PUBLIC_BASE_URL";
+export const DEC_297 = "Public surfaces never emit a cacheable non-200: every 404/error response from src/routes/public/* carries Cache-Control: no-store";
+export const DEC_298 = "Auto-schedule parameters are a bounded, integer-validated allowlist; the greedy loop asserts its own termination invariant";
+export const DEC_299 = "A NULL participant attribution snapshot was never frozen: any write of contact.title/company backfills participant rows whose snapshot column IS NULL, and the CFP form gains no title/company fields";
+export const DEC_300 = "Deleting a form field is a declared cascade: 409 with the dependent counts unless the caller passes cascade=1, then dependent rules are cleared and orphaned answers deleted in one operation";
+export const DEC_301 = "A newly created event ships a submittable CFP: creation provisions a default 'General' track, and track choice is required only when the form actually offers tracks";
+export const DEC_302 = "npm audit advisories: dev-dependency-only advisories are accepted for stage 1 and must be recorded, not waved off, by the wave-11 build-test section";
