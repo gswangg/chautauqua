@@ -55,7 +55,7 @@ export const ROUTE_GROUPS: { title: string; rows: Row[] }[] = [
       { method: "PATCH", path: "/api/v1/forms/:formId", role: "organizer" },
       { method: "POST", path: "/api/v1/forms/:formId/fields", role: "organizer" },
       { method: "PATCH", path: "/api/v1/fields/:fieldId", role: "organizer" },
-      { method: "DELETE", path: "/api/v1/fields/:fieldId", role: "organizer" },
+      { method: "DELETE", path: "/api/v1/fields/:fieldId", role: "organizer (409 if dependent rules/answers exist; ?cascade=1 to confirm)" },
       { method: "POST", path: "/api/v1/forms/:formId/fields/reorder", role: "organizer" },
     ],
   },

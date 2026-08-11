@@ -77,7 +77,15 @@ export function FormsPage() {
     if (!window.confirm(`Delete the "${field.label}" field? This cannot be undone.`)) return;
     setBusy(true);
     try {
-      await apiDelete(`/fields/${field.id}`);
+      try {
+        await apiDelete(`/fields/${field.id}`);
+      } catch (err) {
+        if (err instanceof ApiError && err.code === 'conflict' && window.confirm(err.message)) {
+          await apiDelete(`/fields/${field.id}?cascade=1`);
+        } else {
+          throw err;
+        }
+      }
       setForm({ ...form, fields: form.fields.filter((f) => f.id !== field.id) });
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to delete field');

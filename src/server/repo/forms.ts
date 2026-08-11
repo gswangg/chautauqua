@@ -258,8 +258,51 @@ export async function patchField(db: Db, fieldId: string, patch: FieldPatch): Pr
   return updated;
 }
 
-export async function deleteField(db: Db, fieldId: string): Promise<void> {
+/** DEC-300: what would silently break if `fieldId` were deleted right now —
+ * sibling fields whose visibility rule targets it, plus the count of
+ * submission_answer rows recorded against it. Both sides are things a bare
+ * delete would orphan without warning. */
+export async function describeFieldDependents(
+  db: Db,
+  formId: string,
+  fieldId: string,
+): Promise<{ dependentLabels: string[]; answerCount: number }> {
+  const siblings = await listFields(db, formId);
+  const dependentLabels = siblings.filter((f) => f.id !== fieldId && f.rule?.fieldId === fieldId).map((f) => f.label);
+
+  const answerRows = await db
+    .select({ id: schema.submissionAnswer.id })
+    .from(schema.submissionAnswer)
+    .where(eq(schema.submissionAnswer.formFieldId, fieldId));
+
+  return { dependentLabels, answerCount: answerRows.length };
+}
+
+/** DEC-300: declared cascade — clears dependent siblings' rules (they become
+ * unconditional/always-visible rather than referencing a field that no
+ * longer exists), deletes the field's collected answers, then the field
+ * itself. */
+export async function deleteFieldCascade(
+  db: Db,
+  formId: string,
+  fieldId: string,
+): Promise<{ clearedRules: number; deletedAnswers: number }> {
+  const siblings = await listFields(db, formId);
+  const dependents = siblings.filter((f) => f.id !== fieldId && f.rule?.fieldId === fieldId);
+
+  for (const dependent of dependents) {
+    await db.update(schema.formField).set({ ruleJson: null, updatedAt: new Date() }).where(eq(schema.formField.id, dependent.id));
+  }
+
+  const answerRows = await db
+    .select({ id: schema.submissionAnswer.id })
+    .from(schema.submissionAnswer)
+    .where(eq(schema.submissionAnswer.formFieldId, fieldId));
+  await db.delete(schema.submissionAnswer).where(eq(schema.submissionAnswer.formFieldId, fieldId));
+
   await db.delete(schema.formField).where(eq(schema.formField.id, fieldId));
+
+  return { clearedRules: dependents.length, deletedAnswers: answerRows.length };
 }
 
 export async function reorderFields(db: Db, formId: string, orderedIds: string[]): Promise<FormFieldRow[]> {
