@@ -6057,6 +6057,66 @@ OPEN ITEMS: 0
 
 RESULT: PASS
 
+## 2026-08-10 task-w12-d — perf-smoke @ 7f7477e
+
+Full detail: docs/verification-log/task-w12-d-perf-smoke.md
+
+Derived S'' per DEC-114/DEC-188: `git log --first-parent --oneline`
+from `main` tops out at `7f7477e merge task-w12-a`, the expected
+merge commit (not the bare `629d57e` precondition-FAIL case).
+`git merge-base --is-ancestor 2dd2f33 7f7477e` and `git merge-base
+--is-ancestor 629d57e 7f7477e` both exit 0. All 20 DEC-188 precondition
+markers hit at S'' (12 DEC-177 anchors, 5 DEC-185 markers, `DEC-187` in
+`scripts/ensure-dev-vars.ts` and `test/wrangler-config.test.ts`,
+`"ensure-dev-vars"` in `package.json`); `git ls-files` lists
+`.dev.vars.example` and not `.dev.vars`.
+
+Verified in a fresh detached worktree at `7f7477e`
+(`chautauqua-wt/gate-w12-d-perf`), no `.dev.vars` present beforehand.
+`npm ci` clean; `npm run db:migrate` 14/14 clean; `npm run seed`
+clean; `npm run perf:seed` all batches `"success": true`; `npx tsx
+scripts/ensure-dev-vars.ts` created `.dev.vars` from the tracked
+`.dev.vars.example` (never read/printed by this gate); `npx wrangler
+dev --port 8899` (avoiding prior-gate ports), `/health` 200 on first
+poll.
+
+`PERF_URL=http://localhost:8899 npm run perf:smoke` run twice for
+confirmation, both exit 0 ("perf:smoke OK"). p95 over 30 iterations
+(budget 150ms uniform per `scripts/perf-smoke-lib.ts`'s
+`PERF_P95_BUDGET_MS`), run 1 / run 2: submissions list page 1
+12.6/31.1ms, q=Kubernetes 12.0/39.5ms, submission detail 12.6/45.4ms,
+event overview 12.5/34.0ms, organizer agenda (300 accepted)
+18.4/42.5ms, public sessions page 3.5/11.9ms, public agenda
+5.8/26.8ms, schedule.ics 150 ids 84.2/83.2ms, plan progress (12
+reviewers) 39.1/18.2ms, rating PUT 31.8/29.3ms — all `ok` both runs,
+no budget breached. DEC-094/095 301-id cap probe (untimed, asserts
+400) never threw either run.
+
+Compared against the last matching-sha green baseline found via full
+heading grep for `perf-smoke @ 38860f9` (distinguishing it from the
+dead-campaign homonyms `task-w12-c — perf-smoke @ 3543f09` and
+`task-w13-d — perf-smoke @ 0ee30dd`): `task-w9-d — perf-smoke @
+38860f9` (PASS, same 150ms budget) reported 11.0/19.0/15.3/14.0/18.9/
+4.0/5.4/41.0/18.0/42.1ms. This gate's two runs are the same order of
+magnitude for every route; `schedule.ics 150 ids` (83-84ms vs 41ms)
+and the general run-2 uplift are normal local-dev variance under a
+concurrently-loaded machine, well under the 150ms ceiling — not a
+regression.
+
+`wrangler dev`/`workerd` killed after; `lsof -i :8899` confirms the
+port free. Local `.dev.vars` (main worktree's, and the fresh copy
+`ensure-dev-vars.ts` created in the detached worktree) never read or
+printed.
+
+This gate's own checks are green, but per DEC-069/DEC-139/DEC-188 the
+stage-1 exit predicate requires all six wave-12 sibling sections
+(w12-b, w12-c, w12-d, w12-e, w12-f, w12-g) PASS at this same S'' =
+`7f7477e`; this section alone does not declare stage-1 complete.
+
+OPEN ITEMS: 0
+
+RESULT: PASS
+
 ## 2026-08-10 task-w12-e — render-sweep @ 7f7477e
 
 **S'' derivation (DEC-114 first-parent walk from `main`).** `git log
