@@ -26,6 +26,9 @@ This installs dependencies, applies migrations to a local D1 database, seeds a
 fully-populated demo event (see "For evaluators" below), and starts
 `wrangler dev`.
 
+`npm run dev` builds the admin SPA bundle first via its `predev` hook (DEC-268),
+so `/admin` works on a clean clone with no extra step.
+
 While iterating on the admin SPA, run `npm run dev:app` in a second terminal —
 it watch-rebuilds the Vite bundle that `wrangler dev` serves as static assets.
 
