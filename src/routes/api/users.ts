@@ -75,18 +75,26 @@ usersRoutes.post("/api/v1/users", requireOrganizer, csrfJson, async (c) => {
   const orgEvents = await listEventsForOrg(c.var.db, auth.orgId);
   const anchorEventId = orgEvents[0]?.id;
   if (anchorEventId) {
-    const mailer = makeMailer(c.var.db, c.env);
-    const text = `An account has been created for you.\n\nEmail: ${created.email}\n\nSign in at /login with the temporary password your organizer will share with you; you can change it at /account/password after signing in.`;
-    await mailer.send({
-      to: { email: created.email, name: created.email },
-      subject: "Your account has been created",
-      text,
-      html: textToHtml(text),
-      eventId: anchorEventId,
-      // DEC-191: this user is not a contact; per-contact email history
-      // intentionally excludes rows like this one.
-      contactId: null,
-    });
+    // DEC-238: user creation must succeed even if the best-effort welcome
+    // notice fails to send (the account, password, and response body are
+    // already valid) — catch, log, and continue rather than surfacing a 500
+    // for a side-effect email.
+    try {
+      const mailer = makeMailer(c.var.db, c.env);
+      const text = `An account has been created for you.\n\nEmail: ${created.email}\n\nSign in at /login with the temporary password your organizer will share with you; you can change it at /account/password after signing in.`;
+      await mailer.send({
+        to: { email: created.email, name: created.email },
+        subject: "Your account has been created",
+        text,
+        html: textToHtml(text),
+        eventId: anchorEventId,
+        // DEC-191: this user is not a contact; per-contact email history
+        // intentionally excludes rows like this one.
+        contactId: null,
+      });
+    } catch (err) {
+      console.error("account-creation welcome email failed (account still created):", err);
+    }
   }
 
   return c.json({ id: created.id, email: created.email, role: created.role, password }, 201);
