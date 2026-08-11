@@ -69,6 +69,20 @@ export const FORM_TASK_FIELD_SPECS: Readonly<Record<string, readonly FormTaskFie
   ],
 };
 
+/**
+ * DEC-278: the TS-layer twin of DEC-274's SQL-layer visibility gate — the
+ * `inArray(schema.participant.inviteStatus, ["none", "accepted"])` clause in
+ * `visibleSubmissionConditions()` (src/server/repo/public.ts). Both must
+ * carry the identical two literals; a participant is "active" (eligible for
+ * onboarding-task planning / public visibility) iff their invite is either
+ * unsent ('none') or accepted ('accepted') — never 'invited' or 'declined'.
+ */
+export const ACTIVE_INVITE_STATUSES = ["none", "accepted"] as const;
+
+export function isActiveParticipant(inviteStatus: string): boolean {
+  return (ACTIVE_INVITE_STATUSES as readonly string[]).includes(inviteStatus);
+}
+
 export interface PlanAcceptanceInput {
   submissionId: string;
   eventId: string;

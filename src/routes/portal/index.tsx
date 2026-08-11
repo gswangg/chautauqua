@@ -35,6 +35,7 @@ import {
 } from "../../auth/cookies";
 import { loadEditableSubmission } from "../../server/repo/portal-edit";
 import { canEditSubmission } from "../../domain/edit-lock";
+import { ensureOnboardingTasks, getSubmissionStatusForParticipant } from "../../server/repo/submissions";
 
 export const portalRoutes = new Hono<AppEnv>();
 
@@ -276,6 +277,20 @@ portalRoutes.post("/invitations/:participantId", csrfForm, async (c) => {
     throw new ApiError("invalid", "action must be 'accept' or 'decline'", { action: "Invalid value" });
   }
 
-  await setInviteStatus(c.var.db, participantId, nextInviteStatus(action as InviteAction));
+  const nextStatus = nextInviteStatus(action as InviteAction);
+  await setInviteStatus(c.var.db, participantId, nextStatus);
+
+  // DEC-278: accepting an invitation on a submission that is ALREADY
+  // 'accepted' never re-fires updateSubmissionStatuses' fireAcceptance
+  // branch (that only fires once, at the original accept transition), so
+  // this speaker would otherwise never get onboarding tasks planned. Never
+  // sends email on this path (product principle 4).
+  if (nextStatus === "accepted") {
+    const submissionInfo = await getSubmissionStatusForParticipant(c.var.db, participantId);
+    if (submissionInfo && submissionInfo.status === "accepted") {
+      await ensureOnboardingTasks(c.var.db, submissionInfo.eventId, submissionInfo.submissionId, [contactId], new Date());
+    }
+  }
+
   return c.redirect("/portal", 302);
 });

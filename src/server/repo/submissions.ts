@@ -49,5 +49,9 @@ export {
 
 export {
   updateSubmissionStatuses,
+  ensureOnboardingTasks,
+  getSubmissionStatus,
+  getSubmissionStatusForParticipant,
   type UpdateStatusesResult,
+  type SubmissionStatusForParticipant,
 } from "./submissions/status";
