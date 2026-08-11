@@ -209,3 +209,6 @@ export const DEC_203 = "DEC-197 checklist was TRUE at d4ce240, but the 1033d45 b
 export const DEC_204 = "Wave-18 fix lanes produced zero commits; DEC-199/200 reissued as task-w19-a/b, battery binding moves to wave 20, task-w18-* refs are exempt dead refs, and the 1033d45 VOID trigger transfers to task-w19-* merges";
 export const DEC_205 = "Wave-18 lanes were late drainers, not dead: a85ddcc (w18-a, DEC-199) and 6807b67 (w18-b, DEC-200) merged during waves 19-20; all '@ 1033d45' sections are VOID; newest code-bearing sha = 6807b67; w19 lanes superseded and their deleted refs are clean";
 export const DEC_206 = "Seventh-generation battery binds at FROZEN sha 6807b67 with a hard drift-stop; homonym dead-set now includes task-w19-*/task-w20-* sections '@ 8c7f479'; green 6/6 at 6807b67 satisfies DEC-069/DEC-139 and wave 21 declares with zero tasks";
+export const DEC_207 = "Deterministic repair of the conflict-marker-corrupted verification ledger (sole authorized non-append edit)";
+export const DEC_208 = "Wave-21 completion battery: repaired w20-a/w20-c count as green; four missing gates run as task-w21-* lanes at FROZEN 6807b67; wave-22 declaration is a grep";
+export const DEC_209 = "Stale wave-20 ref disposition: b/c/d are late-drain hazards deduped by full heading on arrival; e/f are dead zero-commit refs; 'task-w21' headings are collision-free";
