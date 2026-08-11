@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   checkAndIncrementScopedLimit,
+  incrementScopedLimit,
+  peekScopedLimit,
   requestIpFromHeaders,
+  resetScopedLimit,
   scopedRateLimitKey,
 } from "../src/lib/rate-limit";
 import type { KVStore } from "../src/lib/draft";
@@ -108,6 +111,50 @@ describe("checkAndIncrementScopedLimit", () => {
     const sixtyFirst = await checkAndIncrementScopedLimit(kv, "submit", "5.5.5.5", now, submitOpts);
     expect(sixtyFirst.ok).toBe(false);
     expect(sixtyFirst.count).toBe(60);
+  });
+});
+
+describe("DEC-180: peekScopedLimit / incrementScopedLimit / resetScopedLimit", () => {
+  const opts = { windowSeconds: 900, max: 3 };
+
+  it("peekScopedLimit never writes and reports ok while under the cap", async () => {
+    const kv = new InMemoryKV();
+    const now = 1_000_000;
+    const peek1 = await peekScopedLimit(kv, "login-user", "a@example.com", now, opts);
+    expect(peek1).toEqual({ ok: true, count: 0 });
+    const peek2 = await peekScopedLimit(kv, "login-user", "a@example.com", now, opts);
+    expect(peek2).toEqual({ ok: true, count: 0 });
+    expect(kv.has(scopedRateLimitKey("login-user", "a@example.com", 0))).toBe(false);
+  });
+
+  it("peekScopedLimit reflects counts written by incrementScopedLimit and rejects at the cap", async () => {
+    const kv = new InMemoryKV();
+    const now = 1_000_000;
+    await incrementScopedLimit(kv, "login-user", "b@example.com", now, opts);
+    await incrementScopedLimit(kv, "login-user", "b@example.com", now, opts);
+    await incrementScopedLimit(kv, "login-user", "b@example.com", now, opts);
+    const peek = await peekScopedLimit(kv, "login-user", "b@example.com", now, opts);
+    expect(peek).toEqual({ ok: false, count: 3 });
+  });
+
+  it("incrementScopedLimit unconditionally increments even past the cap", async () => {
+    const kv = new InMemoryKV();
+    const now = 1_000_000;
+    for (let i = 0; i < 5; i++) {
+      await incrementScopedLimit(kv, "login-user", "c@example.com", now, opts);
+    }
+    const peek = await peekScopedLimit(kv, "login-user", "c@example.com", now, opts);
+    expect(peek).toEqual({ ok: false, count: 5 });
+  });
+
+  it("resetScopedLimit deletes the current window's counter", async () => {
+    const kv = new InMemoryKV();
+    const now = 1_000_000;
+    await incrementScopedLimit(kv, "login-user", "d@example.com", now, opts);
+    await incrementScopedLimit(kv, "login-user", "d@example.com", now, opts);
+    await resetScopedLimit(kv, "login-user", "d@example.com", now, opts.windowSeconds);
+    const peek = await peekScopedLimit(kv, "login-user", "d@example.com", now, opts);
+    expect(peek).toEqual({ ok: true, count: 0 });
   });
 });
 
