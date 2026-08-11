@@ -53,5 +53,7 @@ describe("portal shell sign-out", () => {
     const html = await res.text();
     expect(html).toContain('<form method="post" action="/logout"');
     expect(html).toMatch(/Sign out/);
+    // DEC-181: the sign-out form now carries a CSRF double-submit field.
+    expect(html).toMatch(/<input type="hidden" name="chq_csrf" value="[^"]+"\s*\/?>/);
   });
 });

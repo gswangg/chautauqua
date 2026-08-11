@@ -123,7 +123,7 @@ function ProfilePage(props: {
 }) {
   const { profile } = props;
   return (
-    <PortalLayout branding={props.branding}>
+    <PortalLayout branding={props.branding} csrfToken={props.csrfToken}>
       <a href="/portal">&larr; Back to My Submissions</a>
       <h2>My Profile</h2>
       {props.error ? <p role="alert">{props.error}</p> : null}

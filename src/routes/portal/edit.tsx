@@ -111,7 +111,7 @@ function EditPage(props: {
   const { data, answers, selectedTrackIds, csrfToken, errors, trackError, editable, tracksEditable } = props;
   if (!editable) {
     return (
-      <PortalLayout branding={props.branding}>
+      <PortalLayout branding={props.branding} csrfToken={csrfToken}>
         <a href={`/portal/submissions/${props.submissionId}`}>&larr; Back to submission</a>
         <h2>Editing closed</h2>
         <p role="alert">
@@ -122,7 +122,7 @@ function EditPage(props: {
   }
   const offeredTracks = data.allTracks.filter((t) => data.offeredTrackIds.includes(t.id));
   return (
-    <PortalLayout branding={props.branding}>
+    <PortalLayout branding={props.branding} csrfToken={csrfToken}>
       <a href={`/portal/submissions/${props.submissionId}`}>&larr; Back to submission</a>
       <h2>Edit submission</h2>
       <form method="post" action={`/portal/submissions/${props.submissionId}/edit`}>

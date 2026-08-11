@@ -5,7 +5,7 @@
 import { Hono } from "hono";
 import { eq } from "drizzle-orm";
 import type { AppEnv } from "../server/env";
-import { csrfForm } from "../server/middleware";
+import { csrfForm, csrfFormOrHeader } from "../server/middleware";
 import { ApiError } from "../server/http";
 import * as schema from "../db/schema";
 import { newId } from "../domain/ids";
@@ -153,7 +153,7 @@ authRoutes.post("/login", csrfForm, async (c) => {
   return c.redirect(dest, 302);
 });
 
-authRoutes.post("/logout", async (c) => {
+authRoutes.post("/logout", csrfFormOrHeader, async (c) => {
   const cookies = parseCookies(c.req.header("cookie") ?? null);
   const token = cookies[SESSION_COOKIE_NAME];
   if (token) {
