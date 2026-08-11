@@ -249,3 +249,6 @@ export const DEC_243 = "Submissions table: Tracks column shows track names, a 'F
 export const DEC_244 = "Portal deliverable panel mechanics (implements DEC-242)";
 export const DEC_245 = "SSR action-confirmation conventions (closes remaining Section D feedback findings)";
 export const DEC_246 = "Contract-mismatch resolution rule for the DEC-239 sweep";
+export const DEC_247 = "GET /api/v1/submissions/:id/files returns a flat {items: DeliverableFile[]} envelope; worklist deliverable counts = version-chain roots";
+export const DEC_248 = "Task-file serve population drops the 'handout'-only predicate — any kind, submissionId-null, assignment-referenced (DEC-240 conformance; amends DEC-065)";
+export const DEC_249 = "Format-column auto-show matches a fixed label allowlist {'format', 'session format'} (amends DEC-243)";
