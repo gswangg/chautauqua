@@ -83,7 +83,9 @@ usersRoutes.post("/api/v1/users", requireOrganizer, csrfJson, async (c) => {
       text,
       html: textToHtml(text),
       eventId: anchorEventId,
-      contactId: created.id,
+      // DEC-191: this user is not a contact; per-contact email history
+      // intentionally excludes rows like this one.
+      contactId: null,
     });
   }
 

@@ -8,7 +8,7 @@ export interface RenderedEmail {
   ics?: { filename: string; content: string };
   templateId?: string;
   eventId: string;
-  contactId: string;
+  contactId: string | null;
 }
 
 export interface Mailer {
@@ -19,7 +19,7 @@ export interface Mailer {
 // status, sent_at (plus identifying/routing fields carried on RenderedEmail).
 export interface EmailLogEntry {
   eventId: string;
-  contactId: string;
+  contactId: string | null;
   templateId?: string;
   toEmail: string;
   toName: string;

@@ -459,17 +459,15 @@ reviewRoutes.post("/api/v1/plans/:id/remind", requireOrganizer, csrfJson, async 
     ).size;
     if (completed >= assigned.length) continue;
 
-    // RenderedEmail assumes a contact recipient (DEC-006); reviewers are
-    // users without a guaranteed contact record, so we stand in with the
-    // reviewer's own userId when no contactId exists (email_log.contact_id
-    // has no DB-level FK enforcement).
+    // DEC-191: reviewers are users, not contacts; per-contact email history
+    // intentionally excludes rows like this one.
     await mailer.send({
       to: { email: user.email, name: user.email },
       subject: `Reminder: ${plan.name} review queue`,
       text: `You have ${assigned.length - completed} submission(s) left to review in "${plan.name}".`,
       html: textToHtml(`You have ${assigned.length - completed} submission(s) left to review in "${plan.name}".`),
       eventId: plan.eventId,
-      contactId: user.userId,
+      contactId: null,
     });
     reminded.push(user.userId);
   }
