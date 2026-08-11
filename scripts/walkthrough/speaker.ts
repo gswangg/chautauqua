@@ -259,7 +259,7 @@ interface FileUploadResult {
   kind: string;
 }
 interface FilesByKindResponse {
-  files: Record<string, Array<{ id: string; filename: string; previousFileId: string | null }>>;
+  items: Array<{ id: string; kind: string; filename: string; previousFileId: string | null }>;
 }
 // DEC-020: "Comments ... rows carry author name + role" — the API never
 // echoes raw authorContactId/authorUserId, so assertions below key off
@@ -1084,9 +1084,11 @@ async function main(): Promise<void> {
       `/api/v1/submissions/${speaker1Submission.id}/files`,
     );
     assert(status === 200, `GET submission files returned ${status}`);
-    const presentations = body.files.presentation ?? [];
+    const presentations = body.items.filter((f) => f.kind === "presentation");
+    const v1 = presentations.find((f) => f.id === presentationV1Id);
+    assert(v1, "v1 presentation not found in the flat items list");
     const v2 = presentations.find((f) => f.id === presentationV2Id);
-    assert(v2, "v2 presentation not found in the files list");
+    assert(v2, "v2 presentation not found in the flat items list");
     assert(v2!.previousFileId === presentationV1Id, "v2's previousFileId does not chain to v1");
 
     const v1Download = await speaker1.getBinary(`/files/${presentationV1Id}`);

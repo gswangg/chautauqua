@@ -147,7 +147,20 @@ fileApiRoutes.get("/submissions/:id/files", async (c) => {
   const submissionId = c.req.param("id");
   await authzSubmissionWrite(c, submissionId);
   const grouped = await listSubmissionFiles(c.var.db, submissionId);
-  return c.json({ files: grouped });
+  const items = Object.entries(grouped).flatMap(([kind, versions]) =>
+    versions.map((v) => ({
+      id: v.id,
+      submissionId,
+      kind,
+      filename: v.filename,
+      sizeBytes: v.sizeBytes,
+      contentType: v.contentType,
+      previousFileId: v.previousFileId,
+      uploadedByContactId: v.uploadedByContactId,
+      createdAt: v.createdAt,
+    })),
+  );
+  return c.json({ items });
 });
 
 // -----------------------------------------------------------------------

@@ -39,16 +39,14 @@ export function ContentApp() {
         // exists on the submissions list).
         const withCounts = await Promise.all(
           res.items.map(async (item) => {
-            try {
-              const files = await apiList<DeliverableFile>(`/submissions/${item.id}/files`);
-              const counts: Partial<Record<(typeof DELIVERABLE_KINDS)[number], number>> = {};
-              for (const kind of DELIVERABLE_KINDS) {
-                counts[kind] = files.items.filter((f) => f.kind === kind).length;
-              }
-              return { ...item, deliverableCounts: counts };
-            } catch {
-              return item;
+            const files = await apiList<DeliverableFile>(`/submissions/${item.id}/files`);
+            const counts: Partial<Record<(typeof DELIVERABLE_KINDS)[number], number>> = {};
+            for (const kind of DELIVERABLE_KINDS) {
+              // DEC-247: counts are chain roots (previousFileId === null),
+              // not every version in the replace chain.
+              counts[kind] = files.items.filter((f) => f.kind === kind && f.previousFileId === null).length;
             }
+            return { ...item, deliverableCounts: counts };
           }),
         );
         setItems(withCounts);
