@@ -36,6 +36,13 @@ export function computeDays(startDate: string, endDate: string): string[] {
   return days;
 }
 
+/** True iff `day` (YYYY-MM-DD) falls within [startDate, endDate] inclusive,
+ * using lexical string comparison (safe for zero-padded ISO dates). DEC-277:
+ * slot writes and payload classification must agree on this boundary. */
+export function isDayWithinEventRange(day: string, startDate: string, endDate: string): boolean {
+  return day >= startDate && day <= endDate;
+}
+
 export const DEFAULT_AUTO_SCHEDULE_PARAMS = {
   dayStartMin: 540,
   dayEndMin: 1080,
@@ -270,7 +277,7 @@ export async function getAgendaPayload(db: Db, eventId: string, event: EventInfo
   const placedSessions: PlacedSession[] = [];
 
   for (const s of accepted) {
-    if (s.slot) {
+    if (s.slot && isDayWithinEventRange(s.slot.day, event.startDate, event.endDate)) {
       placed.push({
         submissionId: s.submissionId,
         ref: s.ref,
@@ -320,11 +327,14 @@ export async function getAgendaPayload(db: Db, eventId: string, event: EventInfo
 export async function getConflictsAndSummary(
   db: Db,
   eventId: string,
-  recordPrefix: string,
+  event: Pick<EventInfo, "startDate" | "endDate" | "recordPrefix">,
 ): Promise<{ conflicts: Conflict[]; summary: { unplaced: number; conflicts: number } }> {
-  const accepted = await loadAcceptedSessions(db, eventId, recordPrefix);
+  const accepted = await loadAcceptedSessions(db, eventId, event.recordPrefix);
   const placedSessions: PlacedSession[] = accepted
-    .filter((s): s is AcceptedSessionRow & { slot: NonNullable<AcceptedSessionRow["slot"]> } => s.slot !== null)
+    .filter(
+      (s): s is AcceptedSessionRow & { slot: NonNullable<AcceptedSessionRow["slot"]> } =>
+        s.slot !== null && isDayWithinEventRange(s.slot.day, event.startDate, event.endDate),
+    )
     .map((s) => ({
       submissionId: s.submissionId,
       roomId: s.slot.roomId,

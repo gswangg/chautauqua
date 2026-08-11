@@ -13,6 +13,7 @@ import {
   getConflictsAndSummary,
   getEventInfo,
   getSubmissionOwnership,
+  isDayWithinEventRange,
   isValidSlotInput,
   roomBelongsToEvent,
   runAutoSchedule,
@@ -63,11 +64,17 @@ agendaRoutes.put("/submissions/:id/slot", requireOrganizer, csrfJson, async (c) 
     });
   }
 
-  await upsertSlot(c.var.db, submissionId, body);
-
   const event = await getEventInfo(c.var.db, ownership.eventId);
   if (!event) throw new ApiError("not_found", "Event not found");
-  const refreshed = await getConflictsAndSummary(c.var.db, ownership.eventId, event.recordPrefix);
+  if (!isDayWithinEventRange(body.day, event.startDate, event.endDate)) {
+    throw new ApiError("invalid", "Slot day is outside the event date range", {
+      day: `Outside ${event.startDate}..${event.endDate}`,
+    });
+  }
+
+  await upsertSlot(c.var.db, submissionId, body);
+
+  const refreshed = await getConflictsAndSummary(c.var.db, ownership.eventId, event);
   return c.json(refreshed);
 });
 
@@ -83,7 +90,7 @@ agendaRoutes.delete("/submissions/:id/slot", requireOrganizer, csrfJson, async (
 
   const event = await getEventInfo(c.var.db, ownership.eventId);
   if (!event) throw new ApiError("not_found", "Event not found");
-  const refreshed = await getConflictsAndSummary(c.var.db, ownership.eventId, event.recordPrefix);
+  const refreshed = await getConflictsAndSummary(c.var.db, ownership.eventId, event);
   return c.json(refreshed);
 });
 
