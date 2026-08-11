@@ -63,6 +63,9 @@ describe("DEC-258: snapshot captured at creation, independent of later contact e
       contactId: "contact-1",
       titleAtTime: "Staff Engineer",
       orgAtTime: "Acme Corp",
+      firstName: "Ada",
+      lastName: "Lovelace",
+      email: "ada@example.com",
     });
 
     expect(inserts).toHaveLength(1);
@@ -77,6 +80,9 @@ describe("DEC-258: snapshot captured at creation, independent of later contact e
       contactId: "contact-1",
       titleAtTime: "VP Engineering", // contact was promoted since the first call
       orgAtTime: "Acme Corp",
+      firstName: "Ada",
+      lastName: "Lovelace",
+      email: "ada@example.com",
     });
     expect(inserts2[0]).toMatchObject({ titleAtTime: "VP Engineering" });
     // The first insert's captured value is untouched — snapshots are

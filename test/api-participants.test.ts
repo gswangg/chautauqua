@@ -123,6 +123,8 @@ describe("POST /api/v1/submissions/:id/participants (DEC-070 invite)", () => {
     const json = (await res.json()) as any;
     expect(json).toMatchObject({
       contactId: "contact-1",
+      name: "Ada Lovelace",
+      email: "ada@example.com",
       role: "speaker",
       order: 3,
       visible: true,
@@ -220,9 +222,14 @@ describe("POST /api/v1/submissions/:id/participants (DEC-070 invite)", () => {
 
 describe("PATCH /api/v1/submissions/:id/participants/:participantId (DEC-070 visibility toggle)", () => {
   const PARTICIPANT_SCOPE = { id: "p1", submissionId: "sub-1", orgId: ORG_A };
+  // Raw join row shape returned by getParticipantRow's select (participant
+  // innerJoin contact) — the repo formats firstName/lastName into `name`.
   const PARTICIPANT_ROW_AFTER = {
     id: "p1",
     contactId: "contact-1",
+    firstName: "Ada",
+    lastName: "Lovelace",
+    email: "ada@example.com",
     role: "speaker",
     order: 0,
     visible: false,
@@ -241,7 +248,14 @@ describe("PATCH /api/v1/submissions/:id/participants/:participantId (DEC-070 vis
 
     expect(res.status).toBe(200);
     const json = (await res.json()) as any;
-    expect(json).toMatchObject({ id: "p1", contactId: "contact-1", visible: false, inviteStatus: "invited" });
+    expect(json).toMatchObject({
+      id: "p1",
+      contactId: "contact-1",
+      name: "Ada Lovelace",
+      email: "ada@example.com",
+      visible: false,
+      inviteStatus: "invited",
+    });
     expect(updates).toHaveLength(1);
     expect((updates[0] as any).visible).toBe(false);
   });
