@@ -16,45 +16,45 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   fields?}}; 015 append-only/016 locked=real cols/114 sha rule/129
   homonym=full heading. Never hand-edit src/decisions.ts.
 - Wave3-251+Campaign2 w1-w10 (DEC-012..302, ultra-compact): sub-apps/
-  repos/ctx; uploads/ics/statuses/perf/headshots/walkthrough/claim;
-  exit battery+render-sweep+findings; criteriaForRound sole
-  resolution; CRM=SegmentRule[]+'any'; CSV/login-limiter/email-ci-dup/
-  SSR/checkbox/cascades; batteries LATE, grep-not-prose. resolveBaseUrl
-  +RELATIVE hrefs; mobile 390x844; 8 battery sections a-h (g=fresh-
-  clone verbatim, h=rubric ids->file:line+test); migrations hand-
-  authored, fresh clone never builds public/admin (gitignored); 271-
-  273 recusal/WAIVES ABS-14/recommendation!=6th status; 270/279-281
-  wave-N battery protocol (FROZEN sha, POST-S DELTA never STOP); 282
-  seven contact FK tables; 283 assignToAll=ACTIVE only; 285/286 pre-
-  register defects, logs MANDATORY; 287 exit=grep 8 files (superseded
-  w11-13 by 303/304/307/315); tripwires(test/) docs-route-coverage/
-  spa-contract-sweep/schema-fk-indexes/migration-parity; 289-292 embed
-  PATH SUFFIX, roster optional eventId, GET/custom fields=key/value+
-  `travel_logistics`; 293-302: waive 2 doc-typo rows, treadmill=w11-
-  only, 304=success, PUBLIC_BASE_URL=localhost:8787 DEV_MODE-only,
-  public non-200=>no-store, schedule int+bounds 400, NULL backfill,
-  field delete 409/cascade=1, event='General', npm audit --omit=dev.
+  repos/ctx/uploads/ics/statuses/perf/headshots/walkthrough/claim;
+  criteriaForRound sole resolution; CRM=SegmentRule[]+'any'; batteries
+  LATE grep-not-prose; resolveBaseUrl+RELATIVE hrefs; mobile 390x844;
+  8 battery sections a-h (g=fresh-clone verbatim, h=rubric->file:line
+  +test); 271-273 recusal/WAIVES ABS-14; 270/279-281 wave-N battery
+  (FROZEN sha, POST-S DELTA never STOP); 282 seven contact FK tables;
+  285/286 pre-register defects, logs MANDATORY; 287 exit=grep 8 files
+  (superseded by 303/304/307/315/320); tripwires(test/) docs-route-
+  coverage/spa-contract-sweep/schema-fk-indexes/migration-parity;
+  289-302: embed PATH SUFFIX, `travel_logistics`, PUBLIC_BASE_URL=
+  localhost:8787 DEV-only, public non-200=>no-store, schedule int+
+  bounds 400, NULL backfill, field delete 409/cascade=1.
 - Campaign-2 w11 (DEC-303..306)=BATTERY-ONLY: 303 main moves UNDER
-  planner, each lane resolves S=refs/heads/main via 7-item WAVE-10
-  GATE (poll if missing); 305 ports a-h(8791-8794/8787), '-c3-'
-  MANDATORY; 304 superseded 307/315; 306 merge.ts tie-break refuted.
-- Campaign-2 w12 (DEC-307..312)=NARROWING-FIX, not exit. Harness
-  replans at lowWater=8, planner sees wave N DISPATCHED not merged.
-  307: read battery ONE WAVE LATE — w12 saw a/c/d FAIL, 304 predicate
-  ALREADY failed. Fixes: 308 drizzle-orm ^0.45.2 (kit+config DELETED);
-  309 perf classes graded p95 MINUS /health floor, schedule.ics=
-  public; 310 getPublicAgendaByIds (never hydrate whole agenda); 311
-  mobile bar +=/docs/api+/dev/mailbox, join MOBILE_ROUTE_MANIFEST; 312
-  SQL WHERE normative, no app-code filters.
+  planner; 305 ports a-h(8791-8794/8787), '-c3-' MANDATORY; 304
+  superseded 307/315/320; 306 merge.ts tie-break refuted.
+- Campaign-2 w12 (DEC-307..312)=NARROWING-FIX, not exit. 308 drizzle-
+  orm ^0.45.2 (kit+config DELETED); 309 perf p95 MINUS /health floor,
+  schedule.ics=public; 310 getPublicAgendaByIds (never hydrate whole
+  agenda); 312 SQL WHERE normative, no app-code filters (precedent
+  for 317/318).
 - Campaign-2 w13 (DEC-313..316)=CLOSING battery, log-only lanes.
-  VERIFIED: ALL w12 merged+task-custodian-w12-2, main=fa37629. 313:
-  re-run a/b(8791)/c(8792)/d(own port)/g(8787 verbatim) + NEW i
-  citation-delta, j eval-findings §D; e/h stand (drizzle 0.36.4->
-  0.45.2 is runtime-SQL, live-D1 lanes=its test, 500/SQL=OPEN ITEM
-  verbatim; custodian split review.ts->review/{index,plans,reviewer,
-  recusals,shared}.ts, killing 14 w11-h citations). 314: letters keep
-  meaning, '-c3-' MANDATORY, ports planner-assigned, WAVE-12 GATE
-  W1..W7 polls 10x60s then PARTIAL+PROCEEDS. 315 exit: seven w13 -c3-
-  logs OPEN ITEMS:0/RESULT:PASS (main OR worktree) => goalComplete;
-  partial => ZERO tasks; FAIL => narrow fix on cited lines only. 316:
+  314: '-c3-' MANDATORY, WAVE-12 GATE polls 10x60s then PARTIAL+
+  PROCEEDS. 315 exit: seven w13 -c3- logs OPEN ITEMS:0/RESULT:PASS
+  => goalComplete; partial => ZERO tasks (superseded by 320). 316:
   §D row=OPEN ITEM only if action fails; latency out of scope.
+- Campaign-2 w14 (DEC-317..322)=NARROW FIX on verified defects, not
+  a battery. VERIFIED live: only w13-a-c3 log on main (PASS@f6983e6);
+  b/c/d/g/i/j still in worktrees => DEC-315 un-evaluable. Review-
+  lens findings 1-4 are STALE (fixed by DEC-298/299/300/301); always
+  re-verify before planning. 317: invite
+  state = THREE gates — public(visible AND active), notify(active
+  ONLY, ignore `visible`), portal(read=not declined, write=active);
+  zero-recipient compose rejects loudly via a fields map like
+  unscheduledIcsFields. 318: all 4 public schedule_slot reads carry
+  the event [startDate,endDate] bound admin classifies on. 319:
+  MAX_REMINDER_BATCH=100 + contactId order + 1h manual dedupe (vs
+  cron's 24h) + reported remainder; cap, never reject. 321: default
+  CFP gains optional locked job_title/company/bio on contact cols,
+  blank-only fill. 322: safeExternalUrl http/https allowlist gates
+  the first user-supplied href in the tree. 320 EXIT: DEC-315's seven
+  logs AND a wave-15 confirmation pass at a post-w14 sha; see (i) not
+  (ii) => ZERO tasks, wait.
