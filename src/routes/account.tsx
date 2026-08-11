@@ -15,8 +15,10 @@ import { hashPassword, verifyPassword } from "../auth/password";
 import { newSessionToken, hashToken } from "../auth/tokens";
 import {
   buildSessionCookie,
+  buildCsrfCookie,
   parseCookies,
   newCsrfToken,
+  isSecureRequest,
   CSRF_COOKIE_NAME,
 } from "../auth/cookies";
 
@@ -24,14 +26,9 @@ export const accountRoutes = new Hono<AppEnv>();
 
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 
-function isSecureRequest(url: string): boolean {
-  return new URL(url).protocol === "https:";
-}
-
-// Duplicated in src/routes/auth.tsx and src/routes/portal/profile.tsx —
-// house convention is a small per-route-file copy rather than a shared
-// helper, per those files' precedent.
-function ensureCsrfCookie(c: { req: { header(name: string): string | undefined } }): {
+function ensureCsrfCookie(c: {
+  req: { header(name: string): string | undefined; url: string };
+}): {
   token: string;
   setCookieIfNew: string | null;
 } {
@@ -39,7 +36,10 @@ function ensureCsrfCookie(c: { req: { header(name: string): string | undefined }
   const existing = cookies[CSRF_COOKIE_NAME];
   if (existing) return { token: existing, setCookieIfNew: null };
   const token = newCsrfToken();
-  return { token, setCookieIfNew: `${CSRF_COOKIE_NAME}=${token}; Path=/; SameSite=Lax` };
+  return {
+    token,
+    setCookieIfNew: buildCsrfCookie(token, { secure: isSecureRequest(c.req.url) }),
+  };
 }
 
 function PasswordPage(props: { csrfToken: string; error?: string; success?: boolean }) {

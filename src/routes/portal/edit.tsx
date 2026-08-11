@@ -23,7 +23,13 @@ import { isVisible } from "../../forms/visibility";
 import type { AnswerMap } from "../../forms/types";
 import { lockedFieldName } from "../../forms/types";
 import { FormFieldsSection, FieldRulesScript, fieldInputName } from "../../views/form-render";
-import { parseCookies, newCsrfToken, CSRF_COOKIE_NAME } from "../../auth/cookies";
+import {
+  parseCookies,
+  newCsrfToken,
+  buildCsrfCookie,
+  isSecureRequest,
+  CSRF_COOKIE_NAME,
+} from "../../auth/cookies";
 import { DEC_041, DEC_074, DEC_109, DEC_121 } from "../../decisions";
 import { validateTrackChoice } from "../../lib/submit-core";
 
@@ -37,7 +43,9 @@ void DEC_121;
 
 portalEditRoutes.use("*", speakerGate);
 
-function ensureCsrfCookie(c: { req: { header(name: string): string | undefined } }): {
+function ensureCsrfCookie(c: {
+  req: { header(name: string): string | undefined; url: string };
+}): {
   token: string;
   setCookieIfNew: string | null;
 } {
@@ -45,7 +53,10 @@ function ensureCsrfCookie(c: { req: { header(name: string): string | undefined }
   const existing = cookies[CSRF_COOKIE_NAME];
   if (existing) return { token: existing, setCookieIfNew: null };
   const token = newCsrfToken();
-  return { token, setCookieIfNew: `${CSRF_COOKIE_NAME}=${token}; Path=/; SameSite=Lax` };
+  return {
+    token,
+    setCookieIfNew: buildCsrfCookie(token, { secure: isSecureRequest(c.req.url) }),
+  };
 }
 
 export function extractAnswers(

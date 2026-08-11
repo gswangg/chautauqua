@@ -47,7 +47,14 @@ import {
   type KVStore as DraftKVStore,
 } from "../../lib/draft";
 import { createClaimToken, type KVStore as ClaimKVStore } from "../../auth/claim";
-import { parseCookies, newCsrfToken, CSRF_COOKIE_NAME } from "../../auth/cookies";
+import {
+  parseCookies,
+  newCsrfToken,
+  buildCsrfCookie,
+  buildDraftCookie,
+  isSecureRequest,
+  CSRF_COOKIE_NAME,
+} from "../../auth/cookies";
 import { renderTemplate, escapeHtml } from "../../mail/render";
 import { validateUpload, sanitizeFilenameForKey, type ValidUpload } from "../../domain/files";
 import { newId } from "../../domain/ids";
@@ -63,7 +70,9 @@ void DEC_036;
 void DEC_040;
 void DEC_132;
 
-function ensureCsrfCookie(c: { req: { header(name: string): string | undefined } }): {
+function ensureCsrfCookie(c: {
+  req: { header(name: string): string | undefined; url: string };
+}): {
   token: string;
   setCookieIfNew: string | null;
 } {
@@ -71,7 +80,10 @@ function ensureCsrfCookie(c: { req: { header(name: string): string | undefined }
   const existing = cookies[CSRF_COOKIE_NAME];
   if (existing) return { token: existing, setCookieIfNew: null };
   const token = newCsrfToken();
-  return { token, setCookieIfNew: `${CSRF_COOKIE_NAME}=${token}; Path=/; SameSite=Lax` };
+  return {
+    token,
+    setCookieIfNew: buildCsrfCookie(token, { secure: isSecureRequest(c.req.url) }),
+  };
 }
 
 function branding(event: EventRow): { logoUrl?: string; accentColor?: string } {
@@ -352,7 +364,11 @@ publicSubmitRoutes.post("/submit/:eventSlug/save-draft", csrfForm, async (c) => 
   await saveDraft(kv, token, { formId: form.id, answers, savedAt: Date.now() });
 
   if (!cookies[cookieName]) {
-    c.header("Set-Cookie", `${cookieName}=${token}; Path=/submit; SameSite=Lax`, { append: true });
+    c.header(
+      "Set-Cookie",
+      buildDraftCookie(cookieName, token, { secure: isSecureRequest(c.req.url) }),
+      { append: true },
+    );
   }
   return c.redirect(`/submit/${event.slug}`, 302);
 });
