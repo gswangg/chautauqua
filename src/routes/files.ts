@@ -13,7 +13,9 @@ import { ApiError, parseBoundedIdArray } from "../server/http";
 import { makeFileStore } from "../server/context";
 import { newId } from "../domain/ids";
 import { buildZip } from "../lib/zip";
+import { clampPage, clampPerPage } from "../lib/pagination";
 import {
+  FILE_KINDS,
   isImageContentType,
   isValidFileKind,
   isValidVersionChain,
@@ -185,8 +187,20 @@ fileApiRoutes.post("/submissions/:id/content-status", requireOrganizer, csrfJson
 });
 
 // -----------------------------------------------------------------------
-// GET /api/v1/events/:eventId/files — DEC-159 central files library
+// GET /api/v1/events/:eventId/files — DEC-159/344 central files library
 // -----------------------------------------------------------------------
+
+/** kind is repeatable (?kind=poster&kind=handout) or CSV (?kind=poster,handout);
+ * unknown tokens are dropped silently, same tolerant parsing as `status` on
+ * the submissions list (DEC-016). */
+function parseKinds(c: Context<AppEnv>): string[] {
+  const raw = [...(c.req.queries("kind") ?? [])];
+  const single = c.req.query("kind");
+  if (single) raw.push(single);
+  const tokens = raw.flatMap((v) => v.split(","));
+  return [...new Set(tokens.map((t) => t.trim()).filter((t) => (FILE_KINDS as readonly string[]).includes(t)))];
+}
+
 fileApiRoutes.get("/events/:eventId/files", requireOrganizer, async (c) => {
   const auth = requireAuth(c);
   const eventId = c.req.param("eventId");
@@ -194,8 +208,14 @@ fileApiRoutes.get("/events/:eventId/files", requireOrganizer, async (c) => {
   if (!scope) throw new ApiError("not_found", "Event not found");
   if (scope.orgId !== auth.orgId) throw new ApiError("forbidden", "Event belongs to a different org");
 
-  const items = await listEventDeliverableFiles(c.var.db, eventId);
-  return c.json({ items, total: items.length, page: 1, perPage: items.length || 1 });
+  const page = clampPage(c.req.query("page"));
+  const perPage = clampPerPage(c.req.query("perPage"));
+  const kinds = parseKinds(c);
+  const qRaw = c.req.query("q");
+  const q = qRaw && qRaw.trim().length > 0 ? qRaw.trim() : null;
+
+  const result = await listEventDeliverableFiles(c.var.db, eventId, { page, perPage, kinds, q });
+  return c.json({ items: result.items, total: result.total, page: result.page, perPage: result.perPage });
 });
 
 // -----------------------------------------------------------------------
@@ -214,9 +234,9 @@ fileApiRoutes.post("/events/:eventId/files/archive", requireOrganizer, csrfJson,
   const fileIds = parseBoundedIdArray(body.fileIds, "fileIds", { maxCount: MAX_ARCHIVE_FILES }); // DEC-182
 
   // Loud 404 on any unknown/non-deliverable id — no silent skips (DEC-160).
+  // DEC-344: resolved already carries submissionTitle — no second
+  // whole-event listEventDeliverableFiles scan needed here.
   const resolved = await resolveLatestVersions(c.var.db, eventId, fileIds);
-  const chains = await listEventDeliverableFiles(c.var.db, eventId);
-  const submissionTitleByLatestId = new Map(chains.map((ch) => [ch.latestFileId, ch.submissionTitle]));
 
   const store = makeFileStore(c.env.FILES);
   const entries: { name: string; data: Uint8Array }[] = [];
@@ -227,7 +247,7 @@ fileApiRoutes.post("/events/:eventId/files/archive", requireOrganizer, csrfJson,
     const obj = await store.get(latest.r2Key);
     if (!obj) throw new ApiError("not_found", `File contents not found for ${latest.filename}`);
     const buf = new Uint8Array(await new Response(obj.body).arrayBuffer());
-    const title = submissionTitleByLatestId.get(latest.id) ?? "submission";
+    const title = latest.submissionTitle || "submission";
     entries.push({ name: `${seq}-${slugifyTitle(title)}/${latest.filename}`, data: buf });
     seq += 1;
   }

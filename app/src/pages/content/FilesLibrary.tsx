@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { apiList, apiPostBlob, ApiError } from '../../lib/api';
-import { DELIVERABLE_LABELS, type EventFileChainItem } from './types';
+import { DELIVERABLE_KINDS, DELIVERABLE_LABELS, type DeliverableKind, type EventFileChainItem } from './types';
 import { formatDateTime } from './format';
 
 interface FilesLibraryProps {
@@ -8,13 +8,22 @@ interface FilesLibraryProps {
   onSelectSubmission: (submissionId: string) => void;
 }
 
-/** CNT-13/CNT-14 (DEC-159/DEC-160): central files library — one row per
- * deliverable version chain across the whole event, with multi-select bulk
- * ZIP download. Row click drills into the same DeliverableDetail used by
- * the worklist, so the version list + comment thread stay one
- * implementation. */
+const PER_PAGE = 50;
+// DEC-160/182's bulk-archive bound — the SPA must never let a selection
+// grow past what POST /events/:eventId/files/archive will accept.
+const MAX_ARCHIVE_FILES = 50;
+
+/** CNT-13/CNT-14 (DEC-159/DEC-160/DEC-344): central files library — one row
+ * per deliverable version chain across the whole event, server-paginated
+ * and server-filtered (kind + search), with multi-select bulk ZIP download.
+ * Row click drills into the same DeliverableDetail used by the worklist, so
+ * the version list + comment thread stay one implementation. */
 export function FilesLibrary({ eventId, onSelectSubmission }: FilesLibraryProps) {
   const [items, setItems] = useState<EventFileChainItem[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [kind, setKind] = useState<DeliverableKind | ''>('');
+  const [q, setQ] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -23,14 +32,20 @@ export function FilesLibrary({ eventId, onSelectSubmission }: FilesLibraryProps)
   const load = useCallback(() => {
     setLoading(true);
     setError(null);
-    apiList<EventFileChainItem>(`/events/${eventId}/files`)
+    const params = new URLSearchParams();
+    params.set('page', String(page));
+    params.set('perPage', String(PER_PAGE));
+    if (kind) params.set('kind', kind);
+    if (q.trim() !== '') params.set('q', q.trim());
+    apiList<EventFileChainItem>(`/events/${eventId}/files?${params.toString()}`)
       .then((res) => {
         setItems(res.items);
+        setTotal(res.total);
         setSelected(new Set());
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load files'))
       .finally(() => setLoading(false));
-  }, [eventId]);
+  }, [eventId, page, kind, q]);
 
   useEffect(() => {
     load();
@@ -45,11 +60,17 @@ export function FilesLibrary({ eventId, onSelectSubmission }: FilesLibraryProps)
     });
   }
 
+  // Select-all only ever selects the current page's rows — the library is
+  // server-paginated (DEC-344), there's no "select every matching file
+  // across the event" affordance.
   function toggleAll() {
     setSelected((prev) => (prev.size === items.length ? new Set() : new Set(items.map((i) => i.rootFileId))));
   }
 
+  const overArchiveLimit = selected.size > MAX_ARCHIVE_FILES;
+
   async function downloadZip() {
+    if (overArchiveLimit) return;
     setError(null);
     setDownloading(true);
     try {
@@ -77,9 +98,42 @@ export function FilesLibrary({ eventId, onSelectSubmission }: FilesLibraryProps)
       {error && <div className="chq-error-banner">{error}</div>}
 
       <div className="chq-files-library-toolbar">
-        <button type="button" disabled={selected.size === 0 || downloading} onClick={downloadZip}>
+        <label>
+          Kind{' '}
+          <select
+            aria-label="Filter by kind"
+            value={kind}
+            onChange={(e) => {
+              setKind(e.target.value as DeliverableKind | '');
+              setPage(1);
+            }}
+          >
+            <option value="">All</option>
+            {DELIVERABLE_KINDS.map((k) => (
+              <option key={k} value={k}>
+                {DELIVERABLE_LABELS[k]}
+              </option>
+            ))}
+          </select>
+        </label>
+        <input
+          type="search"
+          aria-label="Search files"
+          placeholder="Search filename, session, or speaker"
+          value={q}
+          onChange={(e) => {
+            setQ(e.target.value);
+            setPage(1);
+          }}
+        />
+        <button type="button" disabled={selected.size === 0 || overArchiveLimit || downloading} onClick={downloadZip}>
           Download ZIP ({selected.size})
         </button>
+        {overArchiveLimit && (
+          <span className="chq-error-inline" role="alert">
+            Select at most {MAX_ARCHIVE_FILES} files to download as a ZIP.
+          </span>
+        )}
       </div>
 
       <table className="chq-content-table">
@@ -88,7 +142,7 @@ export function FilesLibrary({ eventId, onSelectSubmission }: FilesLibraryProps)
             <th>
               <input
                 type="checkbox"
-                aria-label="Select all files"
+                aria-label="Select all files on this page"
                 checked={items.length > 0 && selected.size === items.length}
                 onChange={toggleAll}
               />
@@ -174,6 +228,18 @@ export function FilesLibrary({ eventId, onSelectSubmission }: FilesLibraryProps)
             ))}
         </tbody>
       </table>
+
+      <div className="chq-files-library-pager">
+        <button type="button" disabled={page <= 1 || loading} onClick={() => setPage((p) => p - 1)}>
+          Previous
+        </button>
+        <span>
+          Page {page} &middot; {total} total
+        </span>
+        <button type="button" disabled={page * PER_PAGE >= total || loading} onClick={() => setPage((p) => p + 1)}>
+          Next
+        </button>
+      </div>
     </div>
   );
 }

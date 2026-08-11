@@ -153,7 +153,7 @@ describe("DEC-239: GET /api/v1/events/:eventId/files vs EventFileChainItem", () 
         getEventFilesScope: vi.fn(async (_db: unknown, eventId: string) =>
           eventId === "event-1" ? { orgId: ORG_A, slug: "arbitrary-con" } : null,
         ),
-        listEventDeliverableFiles: vi.fn(async () => [FILE_CHAIN_ITEM]),
+        listEventDeliverableFiles: vi.fn(async () => ({ items: [FILE_CHAIN_ITEM], total: 1, page: 1, perPage: 50 })),
       };
     });
     const { fileApiRoutes } = await import("../src/routes/files");
