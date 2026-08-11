@@ -7,7 +7,7 @@
 import { Hono } from "hono";
 import type { AppEnv } from "./env";
 import { makeDb } from "./context";
-import { sessionLoader } from "./middleware";
+import { sessionLoader, noStoreApi } from "./middleware";
 import { registerErrorHandler } from "./http";
 import { shouldMountDevMailbox } from "../routes/dev/mailbox";
 import { bumpPublicVersionMiddleware } from "./pubcache";
@@ -31,6 +31,12 @@ export function createBaseApp(): Hono<AppEnv> {
   // ahead of every route sub-app mount (src/index.ts is the only place
   // that mounts routes, per DEC-012).
   app.use("*", bumpPublicVersionMiddleware);
+  // w1-e: every /api/v1 response is request-fresh (no edge/browser caching
+  // of admin/API data) — scoped to the /api/v1 prefix so public SSR
+  // surfaces (which own their own Cache-Control via pubcache.ts) are
+  // untouched.
+  app.use("/api/v1", noStoreApi);
+  app.use("/api/v1/*", noStoreApi);
 
   registerErrorHandler(app);
 

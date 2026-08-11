@@ -20,9 +20,20 @@ interface DeliverableDetailProps {
   contentStatus: ContentStatus;
   onBack: () => void;
   onContentStatusChange: (submissionId: string, status: ContentStatus) => void;
+  /** w1-e: invoked after a successful upload so callers (ContentApp) can
+   * invalidate any cached list that surfaces version counts, e.g. the
+   * Files library, without this component knowing that list exists. */
+  onUploaded?: () => void;
 }
 
-export function DeliverableDetail({ submissionId, title, contentStatus, onBack, onContentStatusChange }: DeliverableDetailProps) {
+export function DeliverableDetail({
+  submissionId,
+  title,
+  contentStatus,
+  onBack,
+  onContentStatusChange,
+  onUploaded,
+}: DeliverableDetailProps) {
   const [files, setFiles] = useState<DeliverableFile[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -76,6 +87,7 @@ export function DeliverableDetail({ submissionId, title, contentStatus, onBack, 
     if (replacesFileId) form.set('replacesFileId', replacesFileId);
     await apiUpload(`/submissions/${submissionId}/files`, form);
     await loadFiles();
+    onUploaded?.();
   }
 
   async function handlePostComment(fileId: string, body: string) {

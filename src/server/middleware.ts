@@ -254,6 +254,18 @@ export const csrfForm: MiddlewareHandler<AppEnv> = async (c, next) => {
   await next();
 };
 
+/** w1-e: every /api/v1 response is 'Cache-Control: no-store' (added only
+ * when absent, so a route that has an intentional stronger opinion isn't
+ * overridden) — API data is always request-fresh; publish-affecting edge
+ * caching belongs solely to the public SSR surfaces gated by
+ * publicCacheMiddleware in ./pubcache.ts, which this must never touch. */
+export const noStoreApi: MiddlewareHandler<AppEnv> = async (c, next) => {
+  await next();
+  if (!c.res.headers.has("Cache-Control")) {
+    c.res.headers.set("Cache-Control", "no-store");
+  }
+};
+
 /** Pure helper for tests: same rule csrfForm applies, without a Hono context. */
 export function checkDoubleSubmitCsrf(cookieToken: string | undefined, formToken: unknown): boolean {
   return typeof cookieToken === "string" && cookieToken.length > 0 && formToken === cookieToken;
