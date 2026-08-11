@@ -4968,3 +4968,33 @@ speaker, public, data, scale all clean; both prior task-w5-c FAILs
 are now confirmed fixed by the DEC-173/174 harness closure; every
 DEC-175 authz probe across producer/review/speaker/data PASSes with
 correct existence-hiding semantics).
+
+## 2026-08-10 task-w9-e — render-sweep @ 38860f9
+
+Full detail: docs/verification-log/task-w9-e-render-sweep.md
+
+LOG-ONLY re-run of the render-sweep battery at the same frozen sha S
+used by the sibling wave-9 gates (`38860f9`, merge commit for the
+DEC-178 harness-closure code lane; `git diff --stat 38860f9 25e81f9`
+(the `main` tip at worktree creation) shows only prior gate-log
+appends between S and tip, so the code under test is identical). `git
+merge-base --is-ancestor 2dd2f33 38860f9` exits 0 (DEC-139 ancestry
+satisfied). All six w6 anchors (DEC-167/168/169/170/171/172) and all
+three closure anchors (DEC-173/174/175) confirmed present via grep —
+no precondition FAIL.
+
+- `npm run build`: PASS (tsc x2 + vite build, 131 modules).
+- `npm run gate:render-sweep`: self-boots migrated+seeded `wrangler
+  dev` on a free port; 31/31 `routeManifest` routes PASS, including
+  both routes that failed at `d8d1cbd`:
+  - `/admin/review/plans/seed_evaluation_plan_0001` (organizer):
+    non-empty `#root`, zero console pageerrors — confirms the DEC-171
+    `openDate` wire-name fix in `app/src/pages/review/PlanEditor.tsx`
+    holds.
+  - `/portal/tasks/seed_task_assignment_0001/form` (speaker): HTTP
+    200 — confirms the DEC-172 `FORM_TASK_FIELD_SPECS` backing-form
+    seed fix in `scripts/seed.ts` holds.
+
+OPEN ITEMS: 0
+
+RESULT: PASS
