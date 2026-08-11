@@ -14,8 +14,10 @@ import { newId, formatRef } from "../../domain/ids";
 import { chunkIds } from "../../lib/chunk";
 import {
   findDuplicateGroups,
+  matchesContactQuery,
   matchesSegment,
   planMerge,
+  tokenizeContactQuery,
   type ContactRecord,
   type SegmentRule,
 } from "../../domain/contacts";
@@ -314,25 +316,39 @@ export interface ContactListResult {
   total: number;
 }
 
-/** DEC-026 list: q (LIKE over name/email/company), segmentId (matchesSegment,
- * applied server-side over the pure core), sort name|recent, DEC-013 paging. */
+/** DEC-026 list: q (DEC-266 AND-tokens x OR-columns over name/email/company),
+ * segmentId (matchesSegment, applied server-side over the pure core), sort
+ * name|recent, DEC-013 paging. */
 export async function listContactsForOrg(db: Db, orgId: string, params: ParsedContactListQuery): Promise<ContactListResult> {
   const conditions = [eq(schema.contact.orgId, orgId)];
-  if (params.q) {
-    const like = `%${params.q}%`;
-    conditions.push(
-      or(
+  const tokens = params.q ? tokenizeContactQuery(params.q) : [];
+  if (tokens.length > 0) {
+    // Superset SQL prefilter (DEC-266): OR every token across every
+    // searched column. The true predicate is AND-across-tokens x
+    // OR-across-columns, which this OR-of-everything can only ever be a
+    // superset of — any row the true predicate matches necessarily has at
+    // least one token matching at least one column, so it necessarily
+    // satisfies this OR. It can never drop a true match; matchesContactQuery
+    // below (same in-memory pass as matchesSegment) narrows it to the exact
+    // AND x OR result.
+    const perToken = tokens.map((token) => {
+      const like = `%${token}%`;
+      return or(
         sql`${schema.contact.firstName} LIKE ${like} COLLATE NOCASE`,
         sql`${schema.contact.lastName} LIKE ${like} COLLATE NOCASE`,
         sql`${schema.contact.email} LIKE ${like} COLLATE NOCASE`,
         sql`${schema.contact.company} LIKE ${like} COLLATE NOCASE`,
-      )!,
-    );
+      )!;
+    });
+    conditions.push(or(...perToken)!);
   }
 
   const rows = (await db.select().from(schema.contact).where(and(...conditions))).map(toRow);
 
   let filtered = rows;
+  if (tokens.length > 0) {
+    filtered = filtered.filter((r) => matchesContactQuery(tokens, toContactRecord(r)));
+  }
   if (params.segmentId) {
     const segment = await findSegmentForOrg(db, params.segmentId, orgId);
     if (!segment) throw new Error(`segment ${params.segmentId} not found for org ${orgId}`);
