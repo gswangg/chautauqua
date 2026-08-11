@@ -1,2 +1,6 @@
 # Local dev vars — copy to .dev.vars (gitignored). DEC-183: DEV_MODE mounts /dev/mailbox; never set in production.
 DEV_MODE=1
+# DEC-296: default base for emailed absolute links (e.g. CFP claim links) when running on
+# the default port. Change this (or pass --var PUBLIC_BASE_URL:http://localhost:<port>) when
+# running wrangler dev on another port.
+PUBLIC_BASE_URL=http://localhost:8787

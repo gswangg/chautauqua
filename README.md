@@ -34,10 +34,15 @@ it watch-rebuilds the Vite bundle that `wrangler dev` serves as static assets.
 
 Run the test suite with `npm test`.
 
-If you run `wrangler dev` on a non-default port (e.g. `npx wrangler dev --port
-8801`), also pass `--var PUBLIC_BASE_URL:http://localhost:8801` so emailed
-links (claim/portal) point at that port instead of being inferred from
-request headers (DEC-252; see `src/server/origin.ts`).
+`.dev.vars.example` (copied to your gitignored `.dev.vars` on first `predev`
+run) ships `PUBLIC_BASE_URL=http://localhost:8787` so emailed links
+(claim/portal) resolve on the default port even though `wrangler.jsonc`'s
+`routes`/`custom_domain` entry would otherwise make them resolve to the
+production host under local `wrangler dev` (DEC-296). If you run `wrangler
+dev` on a non-default port (e.g. `npx wrangler dev --port 8801`), either edit
+`PUBLIC_BASE_URL` in your local `.dev.vars` or pass `--var
+PUBLIC_BASE_URL:http://localhost:8801` so emailed links point at that port
+instead (DEC-252/DEC-296; see `src/server/origin.ts`).
 
 ### Dev: migrations
 
