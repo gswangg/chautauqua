@@ -194,31 +194,46 @@ async function seedScaleFixture(
   const submissionIds: string[] = [];
   const contactIds: string[] = [];
 
+  // PROBE REPAIR (DEC-329): the original draft of this step created the
+  // contact via POST /api/v1/contacts and then invited it onto the
+  // submission via POST /submissions/:id/participants
+  // (src/server/repo/participants.ts inviteParticipant). That route always
+  // writes inviteStatus='invited' (DEC-070) — by design an organizer invite
+  // is not automatically "active" until the invitee accepts (DEC-274/278
+  // isActiveParticipant only treats 'none'/'accepted' as active), so those
+  // fresh participants were correctly excluded from the acceptance planner
+  // (src/server/repo/submissions/status.ts ensureOnboardingTasks) and step
+  // 3 below always found zero onboarding task_assignments. That's the probe
+  // asserting a premise the binding decisions contradict, not a product
+  // defect. POST /api/v1/events/:eventId/submissions instead accepts an
+  // inline `contact` (src/server/repo/submissions/create.ts createSubmission)
+  // that inserts the participant with inviteStatus='none' directly — the
+  // same "no invite needed, this person is the submitter" path public
+  // submissions use — so a fresh participant IS active immediately and
+  // becomes onboarding-eligible on accept, matching what this walkthrough
+  // step actually needs to exercise.
   for (let i = 0; i < SCALE_COUNT; i++) {
-    const contactRes = await api(organizerJar, "POST", "/api/v1/contacts", {
-      firstName: "Scale",
-      lastName: `Speaker${i}`,
-      email: `scale.speaker.${stamp}.${i}@example-scale.test`,
-    });
-    assertStatus(`step1: create contact ${i}`, contactRes.res, 201, contactRes.text);
-    const contactId = contactRes.json.id as string;
-    assertTrue(`step1: contact ${i} has an id`, Boolean(contactId), contactRes.text);
-    contactIds.push(contactId);
-
     const submissionRes = await api(organizerJar, "POST", `/api/v1/events/${eventId}/submissions`, {
       title: `Scale walkthrough submission ${stamp}-${i}`,
       description: "Fresh submission created by the scale walkthrough.",
+      contact: {
+        firstName: "Scale",
+        lastName: `Speaker${i}`,
+        email: `scale.speaker.${stamp}.${i}@example-scale.test`,
+      },
     });
     assertStatus(`step1: create submission ${i}`, submissionRes.res, 201, submissionRes.text);
     const submissionId = submissionRes.json.id as string;
     assertTrue(`step1: submission ${i} has an id`, Boolean(submissionId), submissionRes.text);
     submissionIds.push(submissionId);
 
-    const participantRes = await api(organizerJar, "POST", `/api/v1/submissions/${submissionId}/participants`, {
-      contactId,
-      role: "speaker",
-    });
-    assertStatus(`step1: invite participant ${i}`, participantRes.res, 201, participantRes.text);
+    const participants = submissionRes.json.participants as { contactId: string; role: string }[];
+    assertTrue(`step1: submission ${i} has exactly one participant`, participants?.length === 1, submissionRes.text);
+    const participant = participants[0]!;
+    assertTrue(`step1: submission ${i} participant role is speaker`, participant.role === "speaker", submissionRes.text);
+    const contactId = participant.contactId;
+    assertTrue(`step1: submission ${i} participant has a contactId`, Boolean(contactId), submissionRes.text);
+    contactIds.push(contactId);
   }
 
   assertTrue("step1: created 110 fresh submissions", submissionIds.length === SCALE_COUNT, String(submissionIds.length));
@@ -231,14 +246,40 @@ async function seedScaleFixture(
 // Step 2: one bulk accept POST, >100 ids (DEC-078/079 chunking)
 // ---------------------------------------------------------------------------
 
+// SPEC §5/§7 + J5: the email-log total must be identical immediately before
+// and after the bulk accept — "status changes never auto-email" is a house
+// invariant, and email-log (not just the dev mailbox, checked separately in
+// step 5) is the authoritative per-recipient comms record the Comms screen
+// reads. Also records the wall-clock of the 110-row bulk accept itself.
+async function readEmailLogTotal(organizerJar: CookieJar, eventId: string): Promise<number> {
+  const res = await api(organizerJar, "GET", `/api/v1/events/${eventId}/email-log`);
+  assertStatus("step2: GET email-log total", res.res, 200, res.text);
+  assertTrue("step2: email-log response has a numeric total", typeof res.json.total === "number", res.text);
+  return res.json.total as number;
+}
+
 async function bulkAccept(organizerJar: CookieJar, eventId: string, submissionIds: string[]): Promise<void> {
+  const emailLogBefore = await readEmailLogTotal(organizerJar, eventId);
+
+  const startedAt = Date.now();
   const bulkRes = await api(organizerJar, "POST", `/api/v1/events/${eventId}/submissions/status`, {
     ids: submissionIds,
     status: "accepted",
   });
+  const wallClockMs = Date.now() - startedAt;
   assertStatus("step2: POST bulk status (110 ids, accepted)", bulkRes.res, 200, bulkRes.text);
   assertTrue("step2: bulk accept reports updated=110", bulkRes.json.updated === SCALE_COUNT, bulkRes.text);
-  pass(`step2 (one bulk POST, ${SCALE_COUNT} ids, updated=${SCALE_COUNT})`);
+  console.log(`step2: wall-clock for the ${SCALE_COUNT}-row bulk accept: ${wallClockMs}ms`);
+
+  const emailLogAfter = await readEmailLogTotal(organizerJar, eventId);
+  console.log(`step2: email-log total before bulk accept: ${emailLogBefore}, after: ${emailLogAfter}`);
+  assertTrue(
+    "step2: email-log total unchanged by bulk accept (status changes never auto-email, SPEC §5)",
+    emailLogAfter === emailLogBefore,
+    `email-log total went from ${emailLogBefore} to ${emailLogAfter}`,
+  );
+
+  pass(`step2 (one bulk POST, ${SCALE_COUNT} ids, updated=${SCALE_COUNT}, ${wallClockMs}ms, email-log unchanged)`);
 }
 
 // ---------------------------------------------------------------------------
