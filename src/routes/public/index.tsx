@@ -29,6 +29,7 @@ import { DEC_022, DEC_007, DEC_017, DEC_005, DEC_012, DEC_080, DEC_083, DEC_151 
 import { SURFACES, isSurface, setCacheHeaders, PublicShell, EmbedShell, isValidFrom } from "./shell";
 import { renderSurfaceContent } from "./dispatch";
 import { SpeakerDetailContent, SessionDetailContent } from "./detail";
+import { parseDay, parseLimit, parseCardFields, parseAccent } from "./query";
 
 export const publicRoutes = new Hono<AppEnv>();
 
@@ -70,6 +71,9 @@ for (const surface of SURFACES) {
       trackId: c.req.query("trackId"),
       page: c.req.query("page"),
       q: c.req.query("q"),
+      day: parseDay(c.req.query("day")),
+      limit: parseLimit(c.req.query("limit")),
+      fields: parseCardFields(c.req.query("fields")),
     });
     return c.html(
       <PublicShell event={event} active={surface} title={title}>
@@ -117,11 +121,14 @@ publicRoutes.get("/embed/:eventSlug/:surface", async (c) => {
     trackId: c.req.query("trackId"),
     page: c.req.query("page"),
     q: c.req.query("q"),
+    day: parseDay(c.req.query("day")),
+    limit: parseLimit(c.req.query("limit")),
+    fields: parseCardFields(c.req.query("fields")),
   });
   // No frame-blocking headers are ever set in this file — embeds stay
   // frameable by construction (DEC-022).
   return c.html(
-    <EmbedShell event={event} title={title}>
+    <EmbedShell event={event} title={title} accentOverride={parseAccent(c.req.query("accent")) ?? undefined}>
       {content as any}
     </EmbedShell>,
   );

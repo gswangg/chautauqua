@@ -4,6 +4,9 @@
 
 import type { PublicSession, PublicTrack } from "../../server/repo/public";
 import { sessionDetailPath, type Surface } from "./shell";
+import type { CardFields } from "./query";
+
+const ALL_FIELDS_ON: CardFields = { track: true, time: true, room: true, speaker: true, description: true };
 
 export function TrackChips(props: { tracks: PublicTrack[] }) {
   return (
@@ -72,30 +75,41 @@ export function SessionDescription(props: { description: string | null }) {
 /** EMB-01: date/time + room, only when a schedule_slot exists. Cards for an
  * unscheduled session render nothing here (no dash pile) — the caller
  * threads day/startMin/endMin/roomName as null-together in that case. */
-export function SessionSchedule(props: { session: PublicSession }) {
+export function SessionSchedule(props: { session: PublicSession; fields?: CardFields }) {
   const { session } = props;
+  const fields = props.fields ?? ALL_FIELDS_ON;
+  if (!fields.time) return null;
   if (session.day === null || session.startMin === null || session.endMin === null) return null;
   return (
     <p class="chq-session-when">
       {formatDay(session.day)}, {formatMinutes(session.startMin)}–{formatMinutes(session.endMin)}
-      {session.roomName ? ` · ${session.roomName}` : ""}
+      {fields.room && session.roomName ? ` · ${session.roomName}` : ""}
     </p>
   );
 }
 
-export function SessionCard(props: { session: PublicSession; event: import("../../server/repo/public").PublicEvent; from?: Surface; itinerary?: boolean }) {
+export function SessionCard(props: {
+  session: PublicSession;
+  event: import("../../server/repo/public").PublicEvent;
+  from?: Surface;
+  itinerary?: boolean;
+  fields?: CardFields;
+}) {
   const { session, event } = props;
+  const fields = props.fields ?? ALL_FIELDS_ON;
   return (
     <div class="chq-card" id={`chq-session-${session.id}`}>
-      <TrackChips tracks={session.tracks} />
+      {fields.track ? <TrackChips tracks={session.tracks} /> : null}
       <h3>
         <a href={sessionDetailPath(event, session.id, props.from)}>{session.title}</a>
       </h3>
-      <SessionSchedule session={session} />
-      <p>
-        <SpeakerNames speakers={session.speakers} />
-      </p>
-      <SessionDescription description={session.description} />
+      <SessionSchedule session={session} fields={fields} />
+      {fields.speaker ? (
+        <p>
+          <SpeakerNames speakers={session.speakers} />
+        </p>
+      ) : null}
+      {fields.description ? <SessionDescription description={session.description} /> : null}
       {props.itinerary ? (
         <label>
           <input type="checkbox" class="chq-itinerary-toggle" value={session.id} />

@@ -4,6 +4,7 @@
 
 import type { PublicEvent, PublicSession, PublicTrack } from "../../server/repo/public";
 import { SessionCard } from "./cards";
+import type { CardFields } from "./query";
 
 export function SessionsContent(props: {
   event: PublicEvent;
@@ -13,10 +14,17 @@ export function SessionsContent(props: {
   items: PublicSession[];
   total: number;
   page: number;
+  day?: string | null;
+  limit?: number | null;
+  fields?: CardFields;
 }) {
-  const { event, tracks, activeTrackId, q, items, total, page } = props;
+  const { event, tracks, activeTrackId, q, items, total, page, day, limit, fields } = props;
   const hasMore = items.length < total;
   const basePath = `/e/${event.slug}/sessions`;
+  // DEC-289: embed configuration params carried forward across the search
+  // form and 'Show more' link exactly like trackId/q, so a configured embed
+  // does not lose its configuration on page 2.
+  const carryQs = `${day ? `day=${encodeURIComponent(day)}&` : ""}${limit ? `limit=${limit}&` : ""}`;
   return (
     <>
       <h2>Sessions</h2>
@@ -28,6 +36,8 @@ export function SessionsContent(props: {
           <input type="search" name="q" value={q ?? ""} placeholder="Title or speaker name" />
         </label>
         {activeTrackId ? <input type="hidden" name="trackId" value={activeTrackId} /> : null}
+        {day ? <input type="hidden" name="day" value={day} /> : null}
+        {limit ? <input type="hidden" name="limit" value={String(limit)} /> : null}
         <button type="submit">Search</button>
       </form>
       <nav aria-label="Track filters">
@@ -47,14 +57,14 @@ export function SessionsContent(props: {
         {items.length} of {total} session(s)
       </p>
       {items.map((s) => (
-        <SessionCard session={s} event={event} from="sessions" />
+        <SessionCard session={s} event={event} from="sessions" fields={fields} />
       ))}
       {hasMore ? (
         <p>
           <a
             href={`${basePath}?${activeTrackId ? `trackId=${activeTrackId}&` : ""}${
               q ? `q=${encodeURIComponent(q)}&` : ""
-            }page=${page + 1}`}
+            }${carryQs}page=${page + 1}`}
           >
             Show more
           </a>
