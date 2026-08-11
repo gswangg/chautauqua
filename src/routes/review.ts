@@ -471,7 +471,7 @@ reviewRoutes.post("/api/v1/plans/:id/remind", requireOrganizer, csrfJson, async 
   // per-reviewer awaits.
   const submissions = await repo.listPlanFilteredSubmissions(c.var.db, plan);
   const assignments = resolveAssignments(submissions, reviewerRows);
-  const mailer = makeMailer(c.var.db);
+  const mailer = makeMailer(c.var.db, c.env);
 
   const reminded: string[] = [];
   for (const user of users) {

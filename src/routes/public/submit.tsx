@@ -529,7 +529,7 @@ publicSubmitRoutes.post("/submit/:eventSlug", csrfForm, async (c) => {
     claimUrl = `${origin}/claim/${claimToken}`;
   }
 
-  const mailer = makeMailer(db);
+  const mailer = makeMailer(db, c.env);
   const text = renderTemplate(
     "Hi {speaker_name},\n\nWe received your submission \"{talk_title}\" for {event_name}.\n\n{portal_link}\n",
     {

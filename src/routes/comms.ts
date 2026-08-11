@@ -348,7 +348,7 @@ commsRoutes.post("/api/v1/events/:eventId/compose/send", requireOrganizer, csrfJ
   const submissionById = new Map(submissions.map((s) => [s.id, s]));
   const templateId = typeof body.templateId === "string" ? body.templateId : undefined;
   const { makeMailer } = await import("../server/context");
-  const mailer = makeMailer(c.var.db);
+  const mailer = makeMailer(c.var.db, c.env);
   for (const rendered of result.rendered) {
     let ics: { filename: string; content: string } | undefined;
     if (icsMap) {

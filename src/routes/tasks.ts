@@ -313,7 +313,7 @@ taskRoutes.post("/events/:eventId/onboarding/remind", requireOrganizer, csrfJson
   // tasks on the event); when present it must be a bounded array of ids.
   const taskIds = body.taskIds === undefined ? undefined : parseBoundedIdArray(body.taskIds, "taskIds");
 
-  const mailer = makeMailer(c.var.db);
+  const mailer = makeMailer(c.var.db, c.env);
   const result = await remindNow(c.var.db, mailer, eventId, taskIds, new Date());
   return c.json(result);
 });
@@ -326,7 +326,7 @@ taskRoutes.post("/events/:eventId/onboarding/remind", requireOrganizer, csrfJson
 
 export async function runDueReminders(env: Bindings): Promise<void> {
   const db = makeDb(env);
-  const mailer = makeMailer(db);
+  const mailer = makeMailer(db, env);
   const now = new Date();
   const eventIds = await listEventIdsWithOutstandingAssignments(db);
   for (const eventId of eventIds) {

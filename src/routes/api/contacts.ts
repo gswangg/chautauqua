@@ -616,7 +616,7 @@ contactsRoutes.post("/contacts/bulk-email", csrfJson, async (c) => {
   }
 
   const { makeMailer } = await import("../../server/context");
-  const mailer = makeMailer(c.var.db);
+  const mailer = makeMailer(c.var.db, c.env);
   for (const rendered of result.rendered) {
     await mailer.send({
       to: { email: rendered.email, name: rendered.name },

@@ -14,7 +14,7 @@
     {
       "binding": "DB",
       "database_name": "chautauqua",
-      "database_id": "local",
+      "database_id": "e497c766-ecdd-4dcb-9acf-240668bb3f28",
       "migrations_dir": "migrations"
     }
   ],
@@ -24,10 +24,21 @@
       "bucket_name": "chautauqua-files"
     }
   ],
+  "send_email": [
+    {
+      "name": "EMAIL"
+    }
+  ],
+  "routes": [
+    {
+      "pattern": "chautauqua.cc",
+      "custom_domain": true
+    }
+  ],
   "kv_namespaces": [
     {
       "binding": "KV",
-      "id": "local"
+      "id": "de4b864736784b1c8c8e1ae875971c43"
     }
   ],
   "triggers": {
@@ -35,6 +46,12 @@
   },
   "placement": {
     "mode": "smart"
+  },
+  "vars": {
+    // Stage-2 sender identity for the EMAIL (send_email) binding; the domain
+    // is onboarded to Cloudflare Email Sending with SPF/DKIM/DMARC in-zone.
+    "MAIL_FROM_EMAIL": "hello@chautauqua.cc",
+    "MAIL_FROM_NAME": "Chautauqua"
   }
   // DEC-183: DEV_MODE lives in .dev.vars (wrangler dev auto-loads it); production must never set it — it mounts /dev/mailbox.
 }
