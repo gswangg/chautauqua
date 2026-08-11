@@ -350,6 +350,66 @@ describe("AgendaContent / ScheduleContent day switcher (EMB-07)", () => {
   });
 });
 
+// task-w3-g (J10 public browser pass, SPEC §5 "ics UIDs never churn"):
+// GET /e/:eventSlug/schedule.ics builds its VEVENT UID from the submission
+// id alone (src/mail/ics.ts's uidFor, fed uidSubmissionId — never the
+// title), so a title edit between two exports of the same session must
+// leave the UID byte-identical while SUMMARY picks up the new title.
+// Manually confirmed end-to-end against a live wrangler dev on :8835 (edit
+// via the real organizer PATCH route, re-export, diff the UID) per this
+// task's browser sweep; this is the vitest regression pinning that
+// behavior against the fake-db-chain harness above so it can't regress
+// silently.
+describe("schedule.ics UID stability across a title change (SPEC §5)", () => {
+  function buildIcsApp(title: string) {
+    let selectCall = 0;
+    const db = {
+      select: () => {
+        selectCall += 1;
+        // 1: getPublicEventBySlug
+        if (selectCall === 1) return makeChain([EVENT_ROW]);
+        // 2: getPublicAgenda's room lookup
+        if (selectCall === 2) return makeChain([{ id: "room1", name: "Main Hall" }]);
+        // 3: hydrateSessions subRows
+        if (selectCall === 3) {
+          return makeChain([{ id: "sub1", seq: 1, title, description: null, icsSequence: 0 }]);
+        }
+        // 4: hydrateSessions trackRows
+        if (selectCall === 4) return makeChain([]);
+        // 5: hydrateSessions speakerRows
+        if (selectCall === 5) return makeChain([]);
+        // 6: hydrateSessions slotRows
+        return makeChain([]);
+      },
+      selectDistinct: () =>
+        makeChain([{ submissionId: "sub1", day: "2026-08-10", startMin: 540, endMin: 600, roomId: "room1" }]),
+    } as unknown as AppEnv["Variables"]["db"];
+
+    const app = new Hono<AppEnv>();
+    app.use("*", async (c, next) => {
+      c.set("db", db);
+      await next();
+    });
+    registerErrorHandler(app);
+    app.route("/", publicRoutes);
+    installFakeCaches();
+    return app.request("/e/conf/schedule.ics?ids=sub1", {}, TEST_ENV);
+  }
+
+  it("keeps the UID identical across a title change, while SUMMARY reflects the new title", async () => {
+    const before = await (await buildIcsApp("Original Title")).text();
+    const after = await (await buildIcsApp("Renamed Title")).text();
+
+    const uidBefore = before.match(/UID:([^\r\n]+)/)?.[1];
+    const uidAfter = after.match(/UID:([^\r\n]+)/)?.[1];
+    expect(uidBefore).toBeTruthy();
+    expect(uidAfter).toBe(uidBefore);
+
+    expect(before).toContain("SUMMARY:Original Title");
+    expect(after).toContain("SUMMARY:Renamed Title");
+  });
+});
+
 // Drill-in detail pages (DEC-151, EMB-05/EMB-08/EMB-13): pure query-param
 // parsing / path-building helpers. Query-gate verification (200/404 by
 // visibility) lives against wrangler dev per DEC-012 — this repo's vitest
