@@ -1,8 +1,15 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { apiGet, apiList, apiPut, ApiError } from '../../lib/api';
+import { apiDelete, apiGet, apiList, apiPost, apiPut, ApiError } from '../../lib/api';
 import { isEvaluationComplete, scorecardKeyAction } from './scorecardLogic';
-import type { EvaluationCriterion, EvaluationPlan, EvaluationScores, ReviewerQueueItem, ReviewerSubmissionDetail } from './types';
+import type {
+  EvaluationCriterion,
+  EvaluationPlan,
+  EvaluationScores,
+  RecusalRecord,
+  ReviewerQueueItem,
+  ReviewerSubmissionDetail,
+} from './types';
 
 export function Scorecard() {
   const { planId, submissionId } = useParams<{ planId: string; submissionId: string }>();
@@ -16,6 +23,13 @@ export function Scorecard() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // DEC-271: this reviewer's declared conflict of interest on this
+  // submission, if any. Scoring is disabled once recused.
+  const [recusal, setRecusal] = useState<RecusalRecord | null>(null);
+  const [recusalReason, setRecusalReason] = useState('');
+  const [recusing, setRecusing] = useState(false);
+  const [undoingRecusal, setUndoingRecusal] = useState(false);
 
   useEffect(() => {
     if (!planId || !submissionId) return;
@@ -76,6 +90,38 @@ export function Scorecard() {
     }
   }
 
+  // DEC-271: POST/DELETE /api/v1/review/plans/:planId/recusals/:submissionId
+  // -- reason is optional free text, sent as null when blank.
+  async function handleRecuse() {
+    if (!planId || !submissionId) return;
+    setRecusing(true);
+    setError(null);
+    try {
+      const res = await apiPost<{ recusal: RecusalRecord }>(`/review/plans/${planId}/recusals/${submissionId}`, {
+        reason: recusalReason.trim() === '' ? null : recusalReason.trim(),
+      });
+      setRecusal(res.recusal);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Failed to record recusal');
+    } finally {
+      setRecusing(false);
+    }
+  }
+
+  async function handleUndoRecusal() {
+    if (!planId || !submissionId) return;
+    setUndoingRecusal(true);
+    setError(null);
+    try {
+      await apiDelete(`/review/plans/${planId}/recusals/${submissionId}`);
+      setRecusal(null);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Failed to undo recusal');
+    } finally {
+      setUndoingRecusal(false);
+    }
+  }
+
   function handleKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
     if (!plan) return;
     const focused = criteria.find((c) => c.id === focusedId) ?? null;
@@ -121,6 +167,32 @@ export function Scorecard() {
       {submission.description && <p className="chq-scorecard-description">{submission.description}</p>}
       {error && <div className="chq-error-banner">{error}</div>}
 
+      <div className="chq-scorecard-recusal">
+        {recusal ? (
+          <>
+            <p className="chq-recusal-active">You recused yourself from this submission.</p>
+            <button type="button" disabled={undoingRecusal} onClick={() => void handleUndoRecusal()}>
+              Undo
+            </button>
+          </>
+        ) : (
+          <>
+            <label>
+              I have a conflict of interest with this submission
+              <input
+                type="text"
+                placeholder="Reason (optional)"
+                value={recusalReason}
+                onChange={(e) => setRecusalReason(e.target.value)}
+              />
+            </label>
+            <button type="button" disabled={recusing} onClick={() => void handleRecuse()}>
+              Declare conflict of interest
+            </button>
+          </>
+        )}
+      </div>
+
       <p className="chq-scorecard-hint">Tip: number keys 1-9 set the focused rating; Enter submits and advances.</p>
 
       {criteria.map((criterion: EvaluationCriterion) => (
@@ -138,6 +210,7 @@ export function Scorecard() {
               type="number"
               min={plan.scale.min}
               max={plan.scale.max}
+              disabled={!!recusal}
               value={typeof scores[criterion.id] === 'number' ? (scores[criterion.id] as number) : ''}
               onFocus={() => setFocusedId(criterion.id)}
               onChange={(e) => setScores((s) => ({ ...s, [criterion.id]: Number(e.target.value) }))}
@@ -145,6 +218,7 @@ export function Scorecard() {
           ) : criterion.kind === 'dropdown' ? (
             <select
               value={typeof scores[criterion.id] === 'string' ? (scores[criterion.id] as string) : ''}
+              disabled={!!recusal}
               onFocus={() => setFocusedId(criterion.id)}
               onChange={(e) => setScores((s) => ({ ...s, [criterion.id]: e.target.value }))}
             >
@@ -159,6 +233,7 @@ export function Scorecard() {
             <textarea
               aria-label={criterion.label || 'criterion'}
               value={typeof scores[criterion.id] === 'string' ? (scores[criterion.id] as string) : ''}
+              disabled={!!recusal}
               onFocus={() => setFocusedId(criterion.id)}
               onChange={(e) => setScores((s) => ({ ...s, [criterion.id]: e.target.value }))}
             />
@@ -168,10 +243,10 @@ export function Scorecard() {
 
       <label className="chq-scorecard-comment">
         Comment
-        <textarea value={comment} onChange={(e) => setComment(e.target.value)} />
+        <textarea value={comment} disabled={!!recusal} onChange={(e) => setComment(e.target.value)} />
       </label>
 
-      <button type="button" disabled={submitting} onClick={() => void submitAndAdvance()}>
+      <button type="button" disabled={submitting || !!recusal} onClick={() => void submitAndAdvance()}>
         Submit and advance
       </button>
     </div>

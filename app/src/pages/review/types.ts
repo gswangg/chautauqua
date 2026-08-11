@@ -90,12 +90,15 @@ export interface PlanReviewer {
   submissionId?: string | null;
 }
 
-// GET /api/v1/plans/:id/progress item.
+// GET /api/v1/plans/:id/progress item. DEC-271: `recused` is the count of
+// submissions this reviewer has declared a conflict of interest on, so the
+// organizer can see declared conflicts alongside assigned/completed.
 export interface ProgressRow {
   userId: string;
   email: string;
   assigned: number;
   completed: number;
+  recused: number;
 }
 
 // GET /api/v1/plans/:id/results item.
@@ -117,6 +120,41 @@ export interface ReviewerQueueItem {
   ref: string;
   title: string;
   ratingsCount: number;
+}
+
+// DEC-271: a submission this reviewer has recused themselves from (conflict
+// of interest). Surfaced by the queue envelope's `recused` array -- these
+// submissions are excluded from `items` (never assigned/scored) but still
+// need to be visible so the reviewer can see/undo their own declared
+// conflicts.
+export interface RecusalItem {
+  submissionId: string;
+  ref: string;
+  title: string;
+  reason: string | null;
+}
+
+// POST/DELETE /api/v1/review/plans/:planId/recusals/:submissionId response
+// (POST only -- DELETE returns 204 with no body). POST body is
+// { reason: string | null }.
+export interface RecusalRecord {
+  planId: string;
+  submissionId: string;
+  userId: string;
+  reason: string | null;
+  createdAt: number;
+}
+
+// GET /api/v1/review/plans/:id/queue envelope. Extends the shared list
+// envelope with `open` (DEC-141, plan open/close window) and `recused`
+// (DEC-271, this reviewer's declared conflicts of interest on this plan).
+export interface ReviewerQueueEnvelope {
+  items: ReviewerQueueItem[];
+  total: number;
+  page: number;
+  perPage: number;
+  open: boolean;
+  recused: RecusalItem[];
 }
 
 // PUT /api/v1/review/plans/:planId/evaluations/:submissionId body/response.

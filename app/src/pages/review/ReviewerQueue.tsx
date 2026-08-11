@@ -1,12 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { apiList, ApiError, type ListEnvelope } from '../../lib/api';
-import type { EvaluationPlan, ReviewerQueueItem } from './types';
-
-// The queue endpoint extends the list envelope with `open` (DEC-141):
-// false when the plan's openDate/closeDate window excludes now — see
-// src/routes/review.ts's queue handler.
-type ReviewerQueueEnvelope = ListEnvelope<ReviewerQueueItem> & { open: boolean };
+import { apiDelete, apiList, ApiError } from '../../lib/api';
+import type { EvaluationPlan, RecusalItem, ReviewerQueueEnvelope, ReviewerQueueItem } from './types';
 
 function PlanPicker() {
   const [plans, setPlans] = useState<EvaluationPlan[]>([]);
@@ -47,20 +42,40 @@ function PlanPicker() {
 
 function Queue({ planId }: { planId: string }) {
   const [items, setItems] = useState<ReviewerQueueItem[]>([]);
+  const [recused, setRecused] = useState<RecusalItem[]>([]);
   const [open, setOpen] = useState(true);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [undoingId, setUndoingId] = useState<string | null>(null);
 
-  useEffect(() => {
+  function load() {
     setLoading(true);
     (apiList(`/review/plans/${planId}/queue`) as Promise<ReviewerQueueEnvelope>)
       .then((res) => {
         setItems(res.items);
         setOpen(res.open);
+        setRecused(res.recused);
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load your queue'))
       .finally(() => setLoading(false));
-  }, [planId]);
+  }
+
+  useEffect(load, [planId]);
+
+  // DEC-271: undo a declared conflict of interest -- DELETEs the recusal so
+  // the submission returns to this reviewer's queue.
+  async function undoRecusal(submissionId: string) {
+    setUndoingId(submissionId);
+    setError(null);
+    try {
+      await apiDelete(`/review/plans/${planId}/recusals/${submissionId}`);
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Failed to undo recusal');
+    } finally {
+      setUndoingId(null);
+    }
+  }
 
   if (loading) {
     return (
@@ -95,6 +110,23 @@ function Queue({ planId }: { planId: string }) {
           </li>
         ))}
       </ol>
+
+      {recused.length > 0 && (
+        <div className="chq-recused-section">
+          <h2>Recused (not in your queue)</h2>
+          <ul className="chq-recused-list">
+            {recused.map((item) => (
+              <li key={item.submissionId}>
+                {item.ref} — {item.title}
+                {item.reason && <span className="chq-recusal-reason"> ({item.reason})</span>}{' '}
+                <button type="button" disabled={undoingId === item.submissionId} onClick={() => void undoRecusal(item.submissionId)}>
+                  Undo
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }

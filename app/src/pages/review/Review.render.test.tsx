@@ -164,7 +164,7 @@ describe('ReviewPage render smoke: organizer', () => {
       'GET /api/v1/me': organizerMe(),
       [`GET /api/v1/plans/${PLAN_ID}`]: planWithNullDates(),
       [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([
-        { userId: 'u-1', email: 'rev1@example.com', assigned: 4, completed: 2 },
+        { userId: 'u-1', email: 'rev1@example.com', assigned: 4, completed: 2, recused: 0 },
       ]),
     });
 
@@ -212,6 +212,7 @@ describe('ReviewPage render smoke: reviewer', () => {
           { submissionId: 'sub-2', ref: 'S-002', title: 'Another Talk', ratingsCount: 1 },
         ]),
         open: true,
+        recused: [],
       },
     });
 
