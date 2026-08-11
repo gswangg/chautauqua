@@ -18,44 +18,43 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   Speaker/csrfJson/csrfForm, errors {error:{code,message,fields?}};
   DEC-015 append-only; DEC-016 locked=real cols; DEC-114 sha rule;
   DEC-129 homonym guard match full heading incl. '@ <sha>'.
-- Wave-3..9+Campaign3+Waves2-9 (compact history): sub-apps/repos/ctx
-  DEC-012/013/019; uploads/ics/statuses/perf/headshots/walkthrough/
-  claim DEC-040-074; 2nd barrier DEC-107; DEC-068 log append-only;
-  DEC-069 exit predicate. Campaign3: DEC-139 exit battery+render-sweep
-  (DEC-144)+findings closure; DEC-140 .ics roundtrip; DEC-141 reviewers
-  via plan assignments; DEC-143 dupes. Waves2-9 (DEC-147..178):
-  criteriaForRound sole resolution; CRM filters ARE SegmentRule[]+
-  'any'; calendar via formatDateOnly UTC; Pipeline=pipeline_entry+
-  activity; Files=previous_file_id chains; ZIP=STORE-only<=50. Workers
-  never edit eval-findings.md/verification-log.md/decisions/. Batteries
-  drain LATE; W7/8/19 VOID dead stubs; W9 rebinds to task-w9-a.
-- Wave10-15 (DEC-179..196, compact): CSV formula-escape; login-limiter
-  failures-only; csrfFormOrHeader/logout; parseBoundedIdArray (64-char,
-  1000 cap); DEC-187 .dev.vars via ensure-dev-vars.ts (never overwrite/
-  read/print). S'=7561cc1 VOIDED->S''=task-w12-a->S'''=7f7477e (DEC-189
-  w13-a..f COOPERATIVE, dedupe '@ sha'; ports 8951/8952); reopened by
-  DEC-192/193 tracks+bulk chunking, DEC-194 data-required, DEC-191
-  email_log nullable. Wave15: S''''=1033d45, 6th-gen lanes w15-a..f,
-  homonyms dead task-w15-a..k + VOID w12/13.
+- Wave3-15+Campaign3 (compact history): sub-apps/repos/ctx DEC-012/013/
+  019; uploads/ics/statuses/perf/headshots/walkthrough/claim DEC-040-
+  074; 2nd barrier DEC-107; DEC-068/069 log+exit predicate; DEC-139
+  exit battery+render-sweep(144)+findings closure; criteriaForRound
+  sole resolution (DEC-147..178); CRM=SegmentRule[]+'any'; calendar
+  via formatDateOnly UTC; Pipeline=pipeline_entry+activity; Files=
+  previous_file_id chains; ZIP=STORE-only<=50. Workers never edit
+  eval-findings.md/verification-log.md/decisions/. Batteries drain
+  LATE, dead stubs VOID on rebind. DEC-179-196: CSV formula-escape;
+  login-limiter failures-only; csrfFormOrHeader/logout; parseBounded
+  IdArray(64-char,1000 cap); DEC-187 .dev.vars via ensure-dev-vars.ts
+  (never overwrite/read/print). Sha chain 7561cc1->7f7477e->1033d45
+  (DEC-189..194 tracks/bulk chunking/data-required/email_log nullable).
 - Wave16-20 (DEC-197..206, compact): w16 3/6, w17 5/6 PASS (auth-
-  limiter flake non-blocking, checklist TRUE @d4ce240); reopened by
-  DEC-199 lowercase+ci-dup emails, DEC-200 password-free welcome+
-  /account/password SSR; DEC-201/202 pubcache+KV limiter non-atomicity
-  ACCEPTED stage-1. w18 lanes LATE DRAINERS not dead — 'merge
-  task-w18-a'(a85ddcc,DEC-199) & 'merge task-w18-b'(6807b67,DEC-200)
-  landed during w19-20 planning; all '@1033d45' sections VOID. Battery
-  task-w20-a..f binds FROZEN '@6807b67'; sha drift=FAIL-stop, no
-  rebinding. Dead homonyms: task-w19-a..e, task-w20-a/b '@8c7f479'
-  (FULL-heading only). Auth-flake PASS only if test/auth.test.ts passes
-  solo. 6/6 PASS @6807b67 -> wave21 verifies ledger, declares done.
+  limiter flake non-blocking); DEC-199 lowercase+ci-dup emails, DEC-200
+  password-free welcome+/account/password SSR; DEC-201/202 pubcache+KV
+  limiter non-atomicity ACCEPTED stage-1. w18 lanes LATE DRAINERS:
+  a85ddcc(DEC-199)/6807b67(DEC-200) landed during w19-20 planning;
+  '@1033d45' sections VOID. Battery task-w20-a..f binds FROZEN
+  '@6807b67'; sha drift=FAIL-stop, no rebinding. Auth-flake PASS only
+  if test/auth.test.ts passes solo. 6/6 PASS @6807b67.
 - Wave 21 (DEC-207..209): 'merge task-w20-a'(d1c13d2) embedded LITERAL
-  conflict markers in docs/verification-log.md (self-merged w20-c
-  unresolved); w20-a+w20-c PASS content both on main but shared one
-  footer; w20-b walkthrough PASSed @6807b67 (detail file on main) but
-  stranded on unmerged ref 3106e5c; w20-e/f never ran. Newest code-
-  bearing sha still 6807b67. task-w21-a deletes the 3 marker lines,
-  restores w20-a's own footer, cross-checks vs d1c13d2^2+ref task-w20-c;
-  w21-b/c/d run walkthrough(8951)/render-sweep/spec-audit fresh @FROZEN
-  6807b67 (confirm-else-run if a w20 homonym '@6807b67' drains late);
-  w21-e triage-closure gated on repair. No 'task-w21' homonyms. Wave22
-  exit=grep: marker-free + 6 PASS gates @6807b67 + OPEN ITEMS: 0.
+  conflict markers in verification-log.md (self-merged w20-c
+  unresolved); w20-a repaired by task-w21-a; w21-b/c/d ran walkthrough/
+  render-sweep/spec-audit fresh @FROZEN 6807b67; w21-e triage-closure
+  gated on repair. Wave22 exit was declared a grep: marker-free + 6
+  PASS gates @6807b67 + OPEN ITEMS: 0.
+- Wave 22 (DEC-210..217): DEC-208 predicate WAS met on main 9b3b875 —
+  all six w20 lanes late-drained, ledger marker-free, 6/6 PASS '@6807b67'
+  — but four review-lens defects verified REAL reopened exit (DEC-210):
+  eval-PUT missing in-event check (DEC-211), rating-less scorecard 500
+  (DEC-212, fix in aggregateSubmission), roundCriteria freeze gap
+  (DEC-213 per-round rule), task-assignment kind-gate bypass (DEC-214).
+  Also DEC-215 reset-password endpoint + PlanEditor reveal; DEC-216
+  declines lower(email) index migration; DEC-217 adds /account/password
+  to routeManifest. Lanes task-w22-a..f are FIX lanes (product code
+  changes — first since 6807b67). Wave 23: re-derive newest code-
+  bearing sha per DEC-114 AFTER w22 merges, freeze it, run fresh
+  6-gate battery there; '@6807b67' sections become history, not exit
+  evidence.
