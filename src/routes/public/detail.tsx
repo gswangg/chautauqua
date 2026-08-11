@@ -35,6 +35,17 @@ export function SpeakerDetailContent(props: { event: PublicEvent; speaker: Publi
         </h2>
         <p>{[speaker.title, speaker.company].filter(Boolean).join(", ")}</p>
         {speaker.bio ? <SessionDescription description={speaker.bio} /> : null}
+        {speaker.socialLinks.length > 0 ? (
+          <ul>
+            {speaker.socialLinks.map((link) => (
+              <li>
+                <a href={link.url} rel="noopener noreferrer nofollow" target="_blank">
+                  {link.label}
+                </a>
+              </li>
+            ))}
+          </ul>
+        ) : null}
       </div>
       <h3>Sessions ({speaker.sessions.length})</h3>
       <ul>

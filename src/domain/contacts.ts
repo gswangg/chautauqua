@@ -25,6 +25,28 @@ export interface ContactRecord {
   customFields?: Record<string, string>;
 }
 
+/**
+ * Sanitizes a stored contact URL for safe public rendering (DEC-322): trims
+ * whitespace, returns null for blank input, and parses via the URL
+ * constructor at this external-input boundary (try/catch is appropriate
+ * here — malformed stored values are expected). Only http:/https: protocols
+ * are allowed through; anything else (javascript:, data:, etc.) returns
+ * null so it can never reach an href/src attribute.
+ */
+export function safeExternalUrl(raw: string | null | undefined): string | null {
+  const trimmed = (raw ?? "").trim();
+  if (trimmed === "") return null;
+  try {
+    const url = new URL(trimmed);
+    if (url.protocol === "http:" || url.protocol === "https:") {
+      return url.href;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 function normalizedEmail(email: string): string {
   return email.trim().toLowerCase();
 }
