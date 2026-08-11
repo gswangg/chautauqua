@@ -515,13 +515,35 @@ async function main(): Promise<void> {
   }
 
   await check("J10 Settings embed-generator snippet URLs match live /embed routes", async () => {
+    // The embed URL builder was decomposed out of Settings.tsx (DEC-289):
+    // app/src/pages/settings/embedSnippet.ts now owns buildEmbedUrl, and
+    // app/src/pages/settings/EmbedsPanel.tsx renders it. Settings.tsx only
+    // mounts <EmbedsPanel />.
     const settingsSrc = readFileSync(join(REPO_ROOT, "app", "src", "pages", "Settings.tsx"), "utf-8");
-    for (const surface of SURFACES) {
-      assert(
-        settingsSrc.includes("/embed/${slug}/${surface}") || settingsSrc.includes(`/embed/`),
-        "Settings.tsx embed snippet builder missing /embed/ path",
-      );
-    }
+    assert(settingsSrc.includes("<EmbedsPanel"), "Settings.tsx no longer mounts <EmbedsPanel />");
+
+    const embedSnippetSrc = readFileSync(
+      join(REPO_ROOT, "app", "src", "pages", "settings", "embedSnippet.ts"),
+      "utf-8",
+    );
+    assert(
+      embedSnippetSrc.includes("/embed/${slug}/${surface}"),
+      "embedSnippet.ts buildEmbedUrl missing /embed/${slug}/${surface} path",
+    );
+    assert(
+      embedSnippetSrc.includes(".json"),
+      "embedSnippet.ts buildEmbedUrl missing the .json suffix for the json format",
+    );
+
+    const embedsPanelSrc = readFileSync(
+      join(REPO_ROOT, "app", "src", "pages", "settings", "EmbedsPanel.tsx"),
+      "utf-8",
+    );
+    assert(
+      embedsPanelSrc.includes("buildEmbedUrl"),
+      "EmbedsPanel.tsx no longer renders the buildEmbedUrl snippet output",
+    );
+
     // Confirm the generated URL for one concrete surface actually resolves.
     const probe = `${BASE_URL}/embed/${EVENT_SLUG}/sessions`;
     const res = await fetch(probe);

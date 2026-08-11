@@ -578,7 +578,7 @@ async function runJ3(organizerJar: CookieJar, eventId: string): Promise<void> {
 // J5: compose — templates, merge fields, 100-cap, real send + ICS, HTML escaping
 // ---------------------------------------------------------------------------
 
-async function runJ5(organizerJar: CookieJar, eventId: string, capEventId: string): Promise<void> {
+async function runJ5(organizerJar: CookieJar, eventId: string, eventStartDate: string, capEventId: string): Promise<void> {
   // Template with the merge fields under test.
   const templateRes = await api(organizerJar, "POST", `/api/v1/events/${eventId}/templates`, {
     name: "Walkthrough acceptance note",
@@ -649,7 +649,7 @@ async function runJ5(organizerJar: CookieJar, eventId: string, capEventId: strin
   // Schedule the target submission (attachIcs preflight requires a slot,
   // DEC-051) so the send below can carry a calendar invite.
   const slotRes = await api(organizerJar, "PUT", `/api/v1/submissions/${targetSubmissionId}/slot`, {
-    day: "2027-09-01",
+    day: eventStartDate,
     startMin: 540,
     endMin: 600,
   });
@@ -843,7 +843,7 @@ async function main(): Promise<void> {
   console.log("  ok");
 
   console.log("Running J5 (compose: merge fields, cap, ICS, HTML escaping) against devflow-conf-2027...");
-  await runJ5(organizerJar, seededEvent.id, capEventId);
+  await runJ5(organizerJar, seededEvent.id, seededEvent.startDate, capEventId);
   console.log("  ok");
 
   void newEventId;
