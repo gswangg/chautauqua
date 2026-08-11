@@ -96,6 +96,95 @@ export function parseCsv(text: string): string[][] {
 export const STANDARD_IMPORT_FIELDS = ['firstName', 'lastName', 'email', 'company', 'title'] as const;
 export type StandardImportField = (typeof STANDARD_IMPORT_FIELDS)[number];
 
+/**
+ * P1 fix (w1-f): a fixture/export CSV frequently carries one combined "name"
+ * column (e.g. docs/fixtures/speakers.csv's `name` header, "Priya Raman")
+ * rather than separate first/last columns. The server's mapImportRow
+ * (src/domain/contacts.ts) only understands firstName/lastName/email/
+ * company/title targets — there's no wire-level "split this value" target —
+ * so a wizard user mapping a combined name column to just "firstName" (the
+ * only option that reads like a name field) silently dropped the surname on
+ * every imported row. This client-only pseudo-target lets the wizard offer
+ * "Full name (splits into first / last)"; expandFullNameMapping() below
+ * rewrites the CSV + mapping into columns the server already supports
+ * *before* the request is sent, so no server/domain change is needed.
+ */
+export const FULL_NAME_TARGET = 'fullName';
+
+/** Splits "Priya Raman" into { firstName: 'Priya', lastName: 'Raman' }.
+ * Splits on the first space: everything before it is the first name,
+ * everything after is the last name. A single-token name (no space) becomes
+ * firstName only, matching how a human would read it. */
+export function splitFullName(value: string): { firstName: string; lastName: string } {
+  const trimmed = value.trim();
+  if (trimmed === '') return { firstName: '', lastName: '' };
+  const idx = trimmed.indexOf(' ');
+  if (idx === -1) return { firstName: trimmed, lastName: '' };
+  return { firstName: trimmed.slice(0, idx).trim(), lastName: trimmed.slice(idx + 1).trim() };
+}
+
+/** RFC 4180 serializer (mirrors parseCsv's dialect): quotes a field only
+ * when it contains a comma, quote, or newline, doubling embedded quotes. */
+function csvField(value: string): string {
+  if (/[",\n\r]/.test(value)) {
+    return `"${value.replace(/"/g, '""')}"`;
+  }
+  return value;
+}
+
+export function toCsv(rows: string[][]): string {
+  return rows.map((row) => row.map(csvField).join(',')).join('\n') + '\n';
+}
+
+/**
+ * Rewrites a parsed CSV + mapping so that any column mapped to
+ * FULL_NAME_TARGET is replaced by two new columns (already split via
+ * splitFullName) mapped to firstName/lastName, and everything else passes
+ * through unchanged. Returns a new {header, rows, mapping} the server's
+ * mapImportRow already understands.
+ */
+export function expandFullNameMapping(
+  header: string[],
+  dataRows: string[][],
+  mapping: Record<string, string>,
+): { header: string[]; rows: string[][]; mapping: Record<string, string> } {
+  const fullNameCols = header.filter((col) => mapping[col] === FULL_NAME_TARGET);
+  if (fullNameCols.length === 0) {
+    return { header, rows: dataRows, mapping };
+  }
+
+  const nextHeader: string[] = [];
+  const nextMapping: Record<string, string> = {};
+
+  header.forEach((col) => {
+    if (mapping[col] === FULL_NAME_TARGET) {
+      const firstCol = `${col} (first)`;
+      const lastCol = `${col} (last)`;
+      nextHeader.push(firstCol, lastCol);
+      nextMapping[firstCol] = 'firstName';
+      nextMapping[lastCol] = 'lastName';
+    } else {
+      nextHeader.push(col);
+      if (mapping[col]) nextMapping[col] = mapping[col];
+    }
+  });
+
+  const nextRows = dataRows.map((row) => {
+    const out: string[] = [];
+    header.forEach((col, i) => {
+      if (mapping[col] === FULL_NAME_TARGET) {
+        const { firstName, lastName } = splitFullName(row[i] ?? '');
+        out.push(firstName, lastName);
+      } else {
+        out.push(row[i] ?? '');
+      }
+    });
+    return out;
+  });
+
+  return { header: nextHeader, rows: nextRows, mapping: nextMapping };
+}
+
 export interface MappedContactRow {
   firstName?: string;
   lastName?: string;
@@ -127,6 +216,13 @@ export function mapImportRow(mapping: Record<string, string>, header: string[], 
       const key = target.slice('custom.'.length);
       customFields[key] = value;
       hasCustom = true;
+      continue;
+    }
+
+    if (target === FULL_NAME_TARGET) {
+      const { firstName, lastName } = splitFullName(value);
+      if (firstName) result.firstName = firstName;
+      if (lastName) result.lastName = lastName;
       continue;
     }
 
@@ -165,6 +261,10 @@ const FIELD_ALIASES: Record<StandardImportField, string[]> = {
   title: ['title', 'jobtitle', 'role'],
 };
 
+/** column-name aliases that indicate a single combined "full name" column
+ * (see FULL_NAME_TARGET) rather than separate first/last columns. */
+const FULL_NAME_ALIASES = ['name', 'fullname', 'contactname', 'speakername'];
+
 /**
  * P1 fix (w1-f): a pasted/uploaded CSV whose header already spells out the
  * standard field names (e.g. "Email", "First Name") previously left the
@@ -182,7 +282,11 @@ export function suggestMapping(header: string[]): Record<string, string> {
     const match = (Object.entries(FIELD_ALIASES) as [StandardImportField, string[]][]).find(([, aliases]) =>
       aliases.includes(normalized),
     );
-    if (match) mapping[col] = match[0];
+    if (match) {
+      mapping[col] = match[0];
+    } else if (FULL_NAME_ALIASES.includes(normalized)) {
+      mapping[col] = FULL_NAME_TARGET;
+    }
   }
   return mapping;
 }
