@@ -260,3 +260,7 @@ export const DEC_254 = "Wave-1 browser persona passes: lane-scoped fix authority
 export const DEC_255 = "Stage-1 completion criterion for this campaign: a fresh six-section battery at a new frozen sha";
 export const DEC_256 = "Wave-2 exit battery: freeze-by-rule at the newest code-bearing commit, eight greppable sections, unanimity predicate (supersedes DEC-255's six-section formulation)";
 export const DEC_257 = "Fresh-clone evaluator bootstrap is a battery section: the stranger test the swarm's own gates structurally cannot run";
+export const DEC_258 = "Frozen speaker attribution: participant.title_at_time / org_at_time, captured at participant creation, read by every public/export/.ics surface";
+export const DEC_259 = "Wave-3 lanes are fix-authorized inside an owned file list, log as task-w3-<x>-c2-<scope>.md, and are evidence rather than battery sections";
+export const DEC_260 = "Multiple CFP forms per event stays out of stage 1; one form with track options is the shipped model";
+export const DEC_261 = "Wave 3 is campaign-2's last product-touching wave; wave 4 re-runs the DEC-256 eight-section battery and is the only place stage 1 is declared";
