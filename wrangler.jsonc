@@ -35,8 +35,6 @@
   },
   "placement": {
     "mode": "smart"
-  },
-  "vars": {
-    "DEV_MODE": "1"
   }
+  // DEC-183: DEV_MODE lives in .dev.vars (wrangler dev auto-loads it); production must never set it — it mounts /dev/mailbox.
 }
