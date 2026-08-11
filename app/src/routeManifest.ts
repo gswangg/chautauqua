@@ -13,6 +13,8 @@
 //    in src/index.ts)
 //  - src/routes/public.tsx SURFACES loop (/e/:eventSlug/<surface>) and
 //    src/routes/public/submit.tsx (/submit/:eventSlug)
+//  - src/routes/account.tsx (/account/password, self-service password
+//    change — any authenticated role, mounted at "/" in src/index.ts)
 //
 // Seed literals used below (all from scripts/seed.ts, deterministic via
 // seedId()):
@@ -121,6 +123,12 @@ export const ROUTE_MANIFEST: readonly RouteManifestEntry[] = [
 
   // --- Public submission form (src/routes/public/submit.tsx) ---
   { path: `/submit/${EVENT_SLUG}`, role: "public", params: { eventSlug: EVENT_SLUG } },
+
+  // --- Self-service password change (src/routes/account.tsx, DEC-217 —
+  // any authenticated role, one entry per role the sweep logs in as) ---
+  { path: "/account/password", role: "organizer" },
+  { path: "/account/password", role: "reviewer" },
+  { path: "/account/password", role: "speaker" },
 
   // --- Admin catch-all (DEC-154, task w2-g's App.tsx <Route path="*">) ---
   // Literal "/*" tail so routeManifest.test.ts's suffix match sees the
