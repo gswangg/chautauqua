@@ -621,6 +621,10 @@ async function main(): Promise<void> {
     firstName: string;
     lastName: string;
     email: string;
+    // DEC-258: contact's title/company at the moment this participant row
+    // is created, snapshotted onto participant.title_at_time/org_at_time.
+    titleAtTime: string | null;
+    orgAtTime: string | null;
   }): string {
     seq += 1;
     submissionCounter += 1;
@@ -668,6 +672,8 @@ async function main(): Promise<void> {
         order: 0,
         visible: true,
         invite_status: isAccepted ? "accepted" : "none",
+        title_at_time: opts.titleAtTime,
+        org_at_time: opts.orgAtTime,
         created_at: nextTs(),
         updated_at: ts,
       }),
@@ -714,6 +720,7 @@ async function main(): Promise<void> {
     const contactId = useSpeaker2 ? speaker2ContactId : speakerContactId;
     const name = useSpeaker2 ? splitName(speaker2.name) : splitName(speaker.name);
     const email = useSpeaker2 ? speaker2.email : speaker.email;
+    const activeSpeaker = useSpeaker2 ? speaker2 : speaker;
     insertSubmissionWithSpeaker({
       title: sub.title,
       description: sub.abstract,
@@ -727,6 +734,8 @@ async function main(): Promise<void> {
       firstName: name.first,
       lastName: name.last,
       email,
+      titleAtTime: activeSpeaker.title,
+      orgAtTime: activeSpeaker.company,
     });
   });
 
@@ -784,6 +793,8 @@ async function main(): Promise<void> {
       firstName: first,
       lastName: last,
       email,
+      titleAtTime: "Software Engineer",
+      orgAtTime: company,
     });
   }
 

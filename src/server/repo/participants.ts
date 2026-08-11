@@ -11,11 +11,14 @@ import { and, eq, sql } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { newId } from "../../domain/ids";
-import { DEC_070 } from "../../decisions";
+import { DEC_070, DEC_258 } from "../../decisions";
 
 // Compile-checked dependency marker: this module implements DEC_070's
 // endpoint contract (invite shape, duplicate rejection, visibility toggle).
 void DEC_070;
+// inviteParticipant below snapshots DEC-258's title_at_time/org_at_time
+// from the caller-supplied contact attribution.
+void DEC_258;
 
 /** Sentinel returned by inviteParticipant when the (submissionId, contactId)
  * pair already has a participant row — callers surface this as an
@@ -26,6 +29,12 @@ export interface InviteParticipantInput {
   submissionId: string;
   contactId: string;
   role?: string;
+  /** DEC-258: contact's current title/company at invite time, snapshotted
+   * onto the new participant row. Caller passes these from the contact
+   * record it already fetched to validate org ownership — this function
+   * performs no additional contact lookup of its own. */
+  titleAtTime?: string | null;
+  orgAtTime?: string | null;
 }
 
 /** Participant row shape shared by both endpoints' responses, matching
@@ -77,6 +86,8 @@ export async function inviteParticipant(
     order: nextOrder,
     visible: true,
     inviteStatus: "invited",
+    titleAtTime: input.titleAtTime ?? null,
+    orgAtTime: input.orgAtTime ?? null,
     createdAt: now,
     updatedAt: now,
   });

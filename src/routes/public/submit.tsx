@@ -527,7 +527,12 @@ publicSubmitRoutes.post("/submit/:eventSlug", csrfForm, async (c) => {
   const contactIsFresh = !existingContact;
 
   const submission = await createSubmission(db, { eventId: event.id, formId: form.id, title, description });
-  await createParticipant(db, { submissionId: submission.id, contactId });
+  await createParticipant(db, {
+    submissionId: submission.id,
+    contactId,
+    titleAtTime: existingContact?.title ?? null,
+    orgAtTime: existingContact?.company ?? null,
+  });
   await createSubmissionTracks(db, submission.id, selectedTrackIds);
 
   // Upload each valid file answer now that the submission exists, and swap

@@ -271,7 +271,13 @@ submissionsRoutes.post("/submissions/:id/participants", requireOrganizer, csrfJs
     throw new ApiError("invalid", "Contact not found in this org", { contactId: "Invalid contact" });
   }
 
-  const result = await inviteParticipant(c.var.db, { submissionId: id, contactId, role });
+  const result = await inviteParticipant(c.var.db, {
+    submissionId: id,
+    contactId,
+    role,
+    titleAtTime: contact.title,
+    orgAtTime: contact.company,
+  });
   if (result === DUPLICATE_PARTICIPANT) {
     throw new ApiError("invalid", "This contact is already a participant on this submission", {
       contactId: "Already invited",

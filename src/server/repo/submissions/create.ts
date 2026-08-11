@@ -7,6 +7,11 @@ import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { newId } from "../../../domain/ids";
 import { submissionSeqSubquery } from "./seq";
+import { DEC_258 } from "../../../decisions";
+
+// Compile-checked dependency marker: createSubmission's participant insert
+// below snapshots DEC-258's title_at_time/org_at_time.
+void DEC_258;
 
 export interface CreateSubmissionInput {
   title: string;
@@ -17,6 +22,16 @@ export interface CreateSubmissionInput {
   status?: "pending" | "accepted";
 }
 
+export interface FoundOrCreatedContact {
+  id: string;
+  /** DEC-258: title/company as of this call — null for a freshly-created
+   * contact (this input shape collects no such fields), or the matched
+   * existing contact's current values. Callers snapshot these onto the new
+   * participant row rather than issuing a second contact lookup. */
+  title: string | null;
+  company: string | null;
+}
+
 /** Shared with ./participants (co-presenter invite) — not re-exported from
  * the repo/submissions barrel, this stays internal to the split modules. */
 export async function findOrCreateContact(
@@ -24,14 +39,14 @@ export async function findOrCreateContact(
   orgId: string,
   input: { email: string; firstName: string; lastName: string },
   now: Date,
-): Promise<string> {
+): Promise<FoundOrCreatedContact> {
   const email = input.email.trim().toLowerCase();
   const existing = await db
-    .select({ id: schema.contact.id })
+    .select({ id: schema.contact.id, title: schema.contact.title, company: schema.contact.company })
     .from(schema.contact)
     .where(and(eq(schema.contact.orgId, orgId), eq(schema.contact.email, email)))
     .limit(1);
-  if (existing[0]) return existing[0].id;
+  if (existing[0]) return existing[0];
 
   const id = newId();
   await db.insert(schema.contact).values({
@@ -43,7 +58,7 @@ export async function findOrCreateContact(
     createdAt: now,
     updatedAt: now,
   });
-  return id;
+  return { id, title: null, company: null };
 }
 
 export async function createSubmission(
@@ -69,15 +84,17 @@ export async function createSubmission(
   });
 
   if (input.contact) {
-    const contactId = await findOrCreateContact(db, orgId, input.contact, now);
+    const contact = await findOrCreateContact(db, orgId, input.contact, now);
     await db.insert(schema.participant).values({
       id: newId(),
       submissionId: id,
-      contactId,
+      contactId: contact.id,
       role: "speaker",
       order: 0,
       visible: true,
       inviteStatus: "none",
+      titleAtTime: contact.title,
+      orgAtTime: contact.company,
       createdAt: now,
       updatedAt: now,
     });
