@@ -1,0 +1,2 @@
+# Local dev vars — copy to .dev.vars (gitignored). DEC-183: DEV_MODE mounts /dev/mailbox; never set in production.
+DEV_MODE=1

@@ -6,3 +6,4 @@ public/admin/
 /.seed.sql
 /.perf-seed.sql
 /.seed-assets/
+.dev.vars
