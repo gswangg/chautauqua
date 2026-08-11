@@ -207,3 +207,5 @@ export const DEC_201 = "Global public-cache bump on every mutation is ACCEPTED f
 export const DEC_202 = "KV read-then-write rate limiting is ACCEPTED for stage-1; atomic counters are stage-2 platform wiring";
 export const DEC_203 = "DEC-197 checklist was TRUE at d4ce240, but the 1033d45 battery is VOID once any wave-18 fix merges; wave 19 binds a seventh-generation battery at the post-w18 sha";
 export const DEC_204 = "Wave-18 fix lanes produced zero commits; DEC-199/200 reissued as task-w19-a/b, battery binding moves to wave 20, task-w18-* refs are exempt dead refs, and the 1033d45 VOID trigger transfers to task-w19-* merges";
+export const DEC_205 = "Wave-18 lanes were late drainers, not dead: a85ddcc (w18-a, DEC-199) and 6807b67 (w18-b, DEC-200) merged during waves 19-20; all '@ 1033d45' sections are VOID; newest code-bearing sha = 6807b67; w19 lanes superseded and their deleted refs are clean";
+export const DEC_206 = "Seventh-generation battery binds at FROZEN sha 6807b67 with a hard drift-stop; homonym dead-set now includes task-w19-*/task-w20-* sections '@ 8c7f479'; green 6/6 at 6807b67 satisfies DEC-069/DEC-139 and wave 21 declares with zero tasks";
