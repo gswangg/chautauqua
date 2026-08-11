@@ -308,6 +308,14 @@ async function main(): Promise<void> {
       run: () => fetch(`${PERF_URL}/api/v1/plans/${PERF_PLAN_ID}/progress`, { headers }),
     },
     {
+      // DEC-266 q search against the 800-contact perf pool (SPEC's top-of-
+      // range speaker network); every seeded contact's firstName is
+      // 'Perf<n>', so q=perf matches every row and exercises the
+      // full-width filter+sort+paginate path.
+      name: "contacts list (q=perf)",
+      run: () => fetch(`${PERF_URL}/api/v1/contacts?q=perf&page=1&perPage=50`, { headers }),
+    },
+    {
       name: "rating PUT",
       run: () =>
         fetch(`${PERF_URL}/api/v1/review/plans/${PERF_PLAN_ID}/evaluations/${ratingSubmissionId}`, {

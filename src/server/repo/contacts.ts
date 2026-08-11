@@ -14,8 +14,10 @@ import { newId, formatRef } from "../../domain/ids";
 import { chunkIds } from "../../lib/chunk";
 import {
   findDuplicateGroups,
+  matchesContactQuery,
   matchesSegment,
   planMerge,
+  tokenizeContactQuery,
   type ContactRecord,
   type SegmentRule,
 } from "../../domain/contacts";
@@ -314,43 +316,39 @@ export interface ContactListResult {
   total: number;
 }
 
-/** Splits a directory search query into whitespace-separated tokens (w3-b
- * fix): a two-word query like "Priya Raman" must match a contact whose
- * first name is "Priya" and last name is "Raman" even though neither single
- * LIKE pattern matches the *other* half of the string. Each returned token
- * is later AND-ed as its own per-field OR clause, so every token has to
- * match *some* field (name/email/company) but different tokens are free to
- * match different fields — this is what makes full "First Last" search work
- * without hard-coding any concatenated-name column. */
-export function tokenizeContactSearchQuery(q: string): string[] {
-  return q
-    .split(/\s+/)
-    .map((t) => t.trim())
-    .filter((t) => t.length > 0);
-}
-
-/** DEC-026 list: q (LIKE over name/email/company, tokenized so multi-word
- * "First Last" queries match), segmentId (matchesSegment, applied
- * server-side over the pure core), sort name|recent, DEC-013 paging. */
+/** DEC-026 list: q (DEC-266 AND-tokens x OR-columns over name/email/company),
+ * segmentId (matchesSegment, applied server-side over the pure core), sort
+ * name|recent, DEC-013 paging. */
 export async function listContactsForOrg(db: Db, orgId: string, params: ParsedContactListQuery): Promise<ContactListResult> {
   const conditions = [eq(schema.contact.orgId, orgId)];
-  if (params.q) {
-    for (const token of tokenizeContactSearchQuery(params.q)) {
+  const tokens = params.q ? tokenizeContactQuery(params.q) : [];
+  if (tokens.length > 0) {
+    // Superset SQL prefilter (DEC-266): OR every token across every
+    // searched column. The true predicate is AND-across-tokens x
+    // OR-across-columns, which this OR-of-everything can only ever be a
+    // superset of — any row the true predicate matches necessarily has at
+    // least one token matching at least one column, so it necessarily
+    // satisfies this OR. It can never drop a true match; matchesContactQuery
+    // below (same in-memory pass as matchesSegment) narrows it to the exact
+    // AND x OR result.
+    const perToken = tokens.map((token) => {
       const like = `%${token}%`;
-      conditions.push(
-        or(
-          sql`${schema.contact.firstName} LIKE ${like} COLLATE NOCASE`,
-          sql`${schema.contact.lastName} LIKE ${like} COLLATE NOCASE`,
-          sql`${schema.contact.email} LIKE ${like} COLLATE NOCASE`,
-          sql`${schema.contact.company} LIKE ${like} COLLATE NOCASE`,
-        )!,
-      );
-    }
+      return or(
+        sql`${schema.contact.firstName} LIKE ${like} COLLATE NOCASE`,
+        sql`${schema.contact.lastName} LIKE ${like} COLLATE NOCASE`,
+        sql`${schema.contact.email} LIKE ${like} COLLATE NOCASE`,
+        sql`${schema.contact.company} LIKE ${like} COLLATE NOCASE`,
+      )!;
+    });
+    conditions.push(or(...perToken)!);
   }
 
   const rows = (await db.select().from(schema.contact).where(and(...conditions))).map(toRow);
 
   let filtered = rows;
+  if (tokens.length > 0) {
+    filtered = filtered.filter((r) => matchesContactQuery(tokens, toContactRecord(r)));
+  }
   if (params.segmentId) {
     const segment = await findSegmentForOrg(db, params.segmentId, orgId);
     if (!segment) throw new Error(`segment ${params.segmentId} not found for org ${orgId}`);
