@@ -20,7 +20,10 @@ vi.mock("../src/server/repo/files", async () => {
       eventId === "event-1" ? { orgId: "org-1", slug: "demo-event" } : null,
     ),
     resolveLatestVersions: vi.fn(async (_db: unknown, _eventId: string, fileIds: string[]) => {
-      const map = new Map<string, { id: string; filename: string; contentType: string; r2Key: string; submissionTitle: string }>();
+      const map = new Map<
+        string,
+        { id: string; filename: string; contentType: string; r2Key: string; submissionTitle: string; sizeBytes: number }
+      >();
       for (const id of fileIds) {
         if (id === "unknown-file") {
           throw new ApiError("not_found", `File ${id} is not a deliverable of this event`);
@@ -31,6 +34,7 @@ vi.mock("../src/server/repo/files", async () => {
           contentType: "application/pdf",
           r2Key: "sub/sub-1/slides.pdf",
           submissionTitle: "Scaling Vector Search",
+          sizeBytes: 1024,
         });
       }
       return map;

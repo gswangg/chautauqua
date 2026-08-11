@@ -253,10 +253,11 @@ export async function resolveLatestVersions(
   db: Db,
   eventId: string,
   fileIds: string[],
-): Promise<Map<string, { id: string; filename: string; contentType: string; r2Key: string; submissionTitle: string }>> {
+): Promise<Map<string, { id: string; filename: string; contentType: string; r2Key: string; submissionTitle: string; sizeBytes: number }>> {
   interface RequestedFileRow extends DeliverableFileRow {
     contentType: string;
     r2Key: string;
+    sizeBytes: number;
   }
 
   const requestedFileRows: RequestedFileRow[] = [];
@@ -271,6 +272,7 @@ export async function resolveLatestVersions(
         createdAt: schema.file.createdAt,
         contentType: schema.file.contentType,
         r2Key: schema.file.r2Key,
+        sizeBytes: schema.file.sizeBytes,
       })
       .from(schema.file)
       .where(inArray(schema.file.id, batch));
@@ -323,6 +325,7 @@ export async function resolveLatestVersions(
         createdAt: schema.file.createdAt,
         contentType: schema.file.contentType,
         r2Key: schema.file.r2Key,
+        sizeBytes: schema.file.sizeBytes,
       })
       .from(schema.file)
       .where(inArray(schema.file.submissionId, batch));
@@ -340,7 +343,7 @@ export async function resolveLatestVersions(
     chainsByRoot.set(root, arr);
   }
 
-  const out = new Map<string, { id: string; filename: string; contentType: string; r2Key: string; submissionTitle: string }>();
+  const out = new Map<string, { id: string; filename: string; contentType: string; r2Key: string; submissionTitle: string; sizeBytes: number }>();
   for (const requestedId of fileIds) {
     const root = findRoot(requestedId, byId);
     const chain = chainsByRoot.get(root);
@@ -359,6 +362,7 @@ export async function resolveLatestVersions(
       contentType: latest.contentType,
       r2Key: latest.r2Key,
       submissionTitle: sub.title,
+      sizeBytes: latest.sizeBytes,
     });
   }
   return out;

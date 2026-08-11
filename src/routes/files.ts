@@ -222,6 +222,10 @@ fileApiRoutes.get("/events/:eventId/files", requireOrganizer, async (c) => {
 // POST /api/v1/events/:eventId/files/archive — DEC-160 bulk ZIP download
 // -----------------------------------------------------------------------
 const MAX_ARCHIVE_FILES = 50;
+// DEC-353: bound the memory the archive materialises in-worker — the sum of
+// the resolved latest versions' sizeBytes must fit under this before any R2
+// get is issued (fail loudly, no truncation/partial archive/silent skip).
+export const ARCHIVE_MAX_TOTAL_BYTES = 40 * 1024 * 1024;
 
 fileApiRoutes.post("/events/:eventId/files/archive", requireOrganizer, csrfJson, async (c) => {
   const auth = requireAuth(c);
@@ -237,6 +241,25 @@ fileApiRoutes.post("/events/:eventId/files/archive", requireOrganizer, csrfJson,
   // DEC-344: resolved already carries submissionTitle — no second
   // whole-event listEventDeliverableFiles scan needed here.
   const resolved = await resolveLatestVersions(c.var.db, eventId, fileIds);
+
+  // DEC-353: sum the resolved latest versions' sizeBytes BEFORE the first R2
+  // get — reject the whole request if it exceeds the archive memory budget
+  // rather than truncating or silently skipping files.
+  let totalBytes = 0;
+  for (const requestedId of fileIds) {
+    const latest = resolved.get(requestedId);
+    if (!latest) throw new Error("unreachable: resolveLatestVersions validated every id");
+    totalBytes += latest.sizeBytes;
+  }
+  if (totalBytes > ARCHIVE_MAX_TOTAL_BYTES) {
+    const totalMb = (totalBytes / (1024 * 1024)).toFixed(1);
+    const capMb = (ARCHIVE_MAX_TOTAL_BYTES / (1024 * 1024)).toFixed(0);
+    throw new ApiError(
+      "invalid",
+      `Requested files total ${totalMb}MB, which exceeds the ${capMb}MB archive limit. Select fewer files.`,
+      { fileIds: "Too large" },
+    );
+  }
 
   const store = makeFileStore(c.env.FILES);
   const entries: { name: string; data: Uint8Array }[] = [];
@@ -256,6 +279,9 @@ fileApiRoutes.post("/events/:eventId/files/archive", requireOrganizer, csrfJson,
   // Copy into a plain ArrayBuffer-backed view: buildZip's return type is
   // Uint8Array<ArrayBufferLike> (SharedArrayBuffer-compatible per DEC-002
   // pure-core typing), narrower than Hono's c.body Uint8Array<ArrayBuffer>.
+  // Tried narrowing this away per DEC-353 (3): tsc rejects
+  // Uint8Array<ArrayBufferLike> -> Uint8Array<ArrayBuffer> even when the
+  // runtime value is always ArrayBuffer-backed, so the copy stays.
   const zip = new Uint8Array(built.length);
   zip.set(built);
   return c.body(zip, 200, {
