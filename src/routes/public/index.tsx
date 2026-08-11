@@ -24,9 +24,8 @@ import {
   getPublicSpeakers,
 } from "../../server/repo/public";
 import { buildIcsCalendar, ICS_ORGANIZER_EMAIL } from "../../mail/ics";
-import { zonedMinutesToUtc } from "../../lib/timezone";
 import { parseItineraryIds, MAX_ITINERARY_IDS } from "../../lib/itinerary";
-import { ApiError } from "../../server/http";
+import { ApiError, errorEnvelope } from "../../server/http";
 import { publicCacheMiddleware, defaultCache } from "../../server/pubcache";
 import { DEC_022, DEC_007, DEC_017, DEC_005, DEC_012, DEC_080, DEC_083, DEC_151, DEC_289 } from "../../decisions";
 import { SURFACES, isSurface, setCacheHeaders, PublicShell, EmbedShell, isValidFrom, PER_PAGE, type Surface } from "./shell";
@@ -82,6 +81,21 @@ export { sessionTimeLabel } from "./detail";
 // detail behind that same client contract.
 publicRoutes.use("/e/*", publicCacheMiddleware(defaultCache));
 publicRoutes.use("/embed/*", publicCacheMiddleware(defaultCache));
+
+// DEC-324: setCacheHeaders(c) runs before any handler-thrown error, so a
+// non-200 response (e.g. schedule.ics rejecting an over-cap ?ids=, or an
+// unexpected 500) would otherwise ship the same 60s client cache header as
+// a successful response. This onError always overwrites Cache-Control to
+// no-store on the way out — mirrors publicNotFound's rationale above, but
+// covers thrown errors instead of the explicit 404 path.
+publicRoutes.onError((err, c) => {
+  c.header("Cache-Control", "no-store");
+  if (err instanceof ApiError) {
+    return c.json(errorEnvelope(err), err.status as 400 | 401 | 403 | 404 | 409);
+  }
+  console.error("unhandled error", err);
+  return c.json({ error: { code: "internal", message: "Internal server error" } }, 500);
+});
 
 // ---------------------------------------------------------------------------
 // Routes
@@ -197,23 +211,13 @@ publicRoutes.get("/e/:eventSlug/schedule.ics", async (c) => {
   const agenda = ids.length > 0 ? await getPublicAgendaByIds(c.var.db, event, ids) : await getPublicAgenda(c.var.db, event);
   const agendaById = new Map(agenda.map((a) => [a.submissionId, a]));
 
-  const events = ids
-    .filter((id) => agendaById.has(id))
-    .map((id) => {
-      const item = agendaById.get(id)!;
-      return {
-        uidSubmissionId: item.submissionId,
-        sequence: item.icsSequence,
-        title: item.title,
-        description: item.description ?? undefined,
-        startUtc: zonedMinutesToUtc(item.day, item.startMin, event.timezone),
-        endUtc: zonedMinutesToUtc(item.day, item.endMin, event.timezone),
-        location: item.roomName ?? undefined,
-        dtstamp: new Date(),
-      };
-    });
+  // DEC-323: with no ?ids=, this must publish the WHOLE agenda, not filter
+  // an empty ids array against it. selected reuses the shared agendaIcsEvents
+  // mapper (./feeds) so schedule.ics and agenda.ics emit identical
+  // UID/SEQUENCE per session from one copy of the mapping.
+  const selected = ids.length > 0 ? ids.filter((id) => agendaById.has(id)).map((id) => agendaById.get(id)!) : agenda;
 
-  const ics = buildIcsCalendar(events, {
+  const ics = buildIcsCalendar(agendaIcsEvents(event, selected, new Date()), {
     method: "PUBLISH",
     organizer: { name: event.name, email: ICS_ORGANIZER_EMAIL },
   });

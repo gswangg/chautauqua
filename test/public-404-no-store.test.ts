@@ -39,6 +39,7 @@ vi.mock("../src/server/repo/public", async () => {
 
 import { publicRoutes } from "../src/routes/public";
 import { registerErrorHandler } from "../src/server/http";
+import { MAX_ITINERARY_IDS } from "../src/lib/itinerary";
 import type { AppEnv } from "../src/server/env";
 import type { KVStore } from "../src/lib/draft";
 
@@ -114,5 +115,37 @@ describe("DEC-297: public 404s are never cacheable", () => {
 
     expect(res.status).toBe(200);
     expect(res.headers.get("Cache-Control")).toBe("public, max-age=60, stale-while-revalidate=300");
+  });
+});
+
+describe("DEC-324: public onError overrides the 60s cache header on non-200s", () => {
+  it("an over-cap ?ids= request on schedule.ics is a 400 with Cache-Control: no-store", async () => {
+    const app = buildApp();
+    const ids = Array.from({ length: MAX_ITINERARY_IDS + 1 }, (_, i) => `sub-${i}`).join(",");
+    const res = await app.request(`/e/conf/schedule.ics?ids=${ids}`);
+
+    expect(res.status).toBe(400);
+    expect(res.headers.get("Cache-Control")).toBe("no-store");
+    expect(res.headers.get("Cache-Control")).not.toContain("max-age=60");
+    const body = await res.json();
+    expect(body).toMatchObject({ error: { code: "invalid" } });
+  });
+
+  it("an unexpected repo throw on a public surface is a 500 with Cache-Control: no-store", async () => {
+    const repo = await import("../src/server/repo/public");
+    vi.mocked(repo.getPublicEventBySlug).mockImplementationOnce(async () => {
+      throw new Error("boom");
+    });
+    const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const app = buildApp();
+    const res = await app.request("/e/conf/speakers");
+
+    expect(res.status).toBe(500);
+    expect(res.headers.get("Cache-Control")).toBe("no-store");
+    const body = await res.json();
+    expect(body).toMatchObject({ error: { code: "internal" } });
+
+    consoleErrorSpy.mockRestore();
   });
 });

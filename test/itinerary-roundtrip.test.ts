@@ -174,3 +174,26 @@ describe("DEC-140 itinerary id round-trip (schedule HTML -> schedule.ics)", () =
     expect(html).toMatch(/id="chq-ics-count"/);
   });
 });
+
+describe("DEC-323: bare schedule.ics (no ?ids=) publishes the whole agenda", () => {
+  it("emits one VEVENT per agenda item, with UIDs matching agenda.ics", async () => {
+    const app = buildApp();
+
+    const scheduleIcsRes = await app.request("/e/conf/schedule.ics");
+    expect(scheduleIcsRes.status).toBe(200);
+    const scheduleIcs = await scheduleIcsRes.text();
+
+    const scheduleVeventCount = (scheduleIcs.match(/BEGIN:VEVENT/g) ?? []).length;
+    expect(scheduleVeventCount).toBe(3);
+
+    const agendaIcsRes = await app.request("/e/conf/agenda.ics");
+    expect(agendaIcsRes.status).toBe(200);
+    const agendaIcs = await agendaIcsRes.text();
+
+    const uidsOf = (ics: string) => [...ics.matchAll(/UID:(.+)\r?\n/g)].map((m) => m[1]!.trim()).sort();
+    expect(uidsOf(scheduleIcs)).toEqual(uidsOf(agendaIcs));
+
+    const summaries = [...scheduleIcs.matchAll(/SUMMARY:(.+)\r?\n/g)].map((m) => m[1]!.trim());
+    expect(summaries.sort()).toEqual(["Session A", "Session B", "Session C"].sort());
+  });
+});
