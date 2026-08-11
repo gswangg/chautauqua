@@ -247,6 +247,12 @@ export const participant = sqliteTable(
     visible: integer("visible", { mode: "boolean" }).notNull().default(true),
     // 'none' | 'invited' | 'accepted' | 'declined' — DEC-003
     inviteStatus: text("invite_status").notNull().default("none"),
+    // DEC-258: frozen attribution snapshot of contact.title/company as of
+    // participant creation. Nullable; public/export/ics reads use this
+    // snapshot ONLY (no fallback to live contact). CRM/portal continue to
+    // read the live contact fields — that split is deliberate.
+    titleAtTime: text("title_at_time"),
+    orgAtTime: text("org_at_time"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },

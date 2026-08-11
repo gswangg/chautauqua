@@ -9,6 +9,11 @@ import { newId } from "../../domain/ids";
 import { submissionSeqSubquery } from "./submissions/seq";
 import type { FormFieldDef, FormFieldKind, FormFieldSection, FormFieldRule, AnswerMap } from "../../forms/types";
 import { lockedFieldName } from "../../forms/types";
+import { DEC_258 } from "../../decisions";
+
+// Compile-checked dependency marker: createParticipant below snapshots
+// DEC-258's title_at_time/org_at_time onto every new participant row.
+void DEC_258;
 
 export interface EventRow {
   id: string;
@@ -108,9 +113,9 @@ export async function findContactByEmail(
   db: Db,
   orgId: string,
   email: string,
-): Promise<{ id: string } | null> {
+): Promise<{ id: string; title: string | null; company: string | null } | null> {
   const rows = await db
-    .select({ id: schema.contact.id })
+    .select({ id: schema.contact.id, title: schema.contact.title, company: schema.contact.company })
     .from(schema.contact)
     .where(and(eq(schema.contact.orgId, orgId), sql`lower(${schema.contact.email}) = lower(${email})`))
     .limit(1);
@@ -185,7 +190,18 @@ export async function createSubmission(
 
 export async function createParticipant(
   db: Db,
-  params: { submissionId: string; contactId: string },
+  params: {
+    submissionId: string;
+    contactId: string;
+    /** DEC-258: contact's title/company at submit time, snapshotted onto
+     * the new participant row. A freshly-created contact (no repeat-
+     * submitter match) has neither field collected by the CFP form, so
+     * callers pass null; a matched contact's caller passes the values
+     * already read back by findContactByEmail — this function performs no
+     * additional contact lookup of its own. */
+    titleAtTime?: string | null;
+    orgAtTime?: string | null;
+  },
 ): Promise<void> {
   const now = new Date();
   await db.insert(schema.participant).values({
@@ -196,6 +212,8 @@ export async function createParticipant(
     order: 0,
     visible: true,
     inviteStatus: "none",
+    titleAtTime: params.titleAtTime ?? null,
+    orgAtTime: params.orgAtTime ?? null,
     createdAt: now,
     updatedAt: now,
   });

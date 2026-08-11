@@ -15,6 +15,12 @@ import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { formatRef } from "../../domain/ids";
 import { chunkIds } from "../../lib/chunk";
+import { DEC_258 } from "../../decisions";
+
+// Compile-checked dependency marker: every speaker title/company read below
+// comes from participant.title_at_time/org_at_time (DEC-258's frozen
+// snapshot), never the live contact — no fallback.
+void DEC_258;
 
 // ---------------------------------------------------------------------------
 // Shared visibility gate
@@ -253,8 +259,8 @@ async function hydrateSessions(
         contactId: schema.contact.id,
         firstName: schema.contact.firstName,
         lastName: schema.contact.lastName,
-        title: schema.contact.title,
-        company: schema.contact.company,
+        title: schema.participant.titleAtTime,
+        company: schema.participant.orgAtTime,
         headshotUrl: schema.contact.headshotUrl,
         bio: schema.contact.bio,
       })
@@ -416,8 +422,8 @@ export async function getPublicSpeakers(
       contactId: schema.contact.id,
       firstName: schema.contact.firstName,
       lastName: schema.contact.lastName,
-      title: schema.contact.title,
-      company: schema.contact.company,
+      title: schema.participant.titleAtTime,
+      company: schema.participant.orgAtTime,
       headshotUrl: schema.contact.headshotUrl,
       bio: schema.contact.bio,
       submissionId: schema.submission.id,
@@ -540,8 +546,8 @@ export async function getPublicSpeakerDetail(
       contactId: schema.contact.id,
       firstName: schema.contact.firstName,
       lastName: schema.contact.lastName,
-      title: schema.contact.title,
-      company: schema.contact.company,
+      title: schema.participant.titleAtTime,
+      company: schema.participant.orgAtTime,
       bio: schema.contact.bio,
       headshotUrl: schema.contact.headshotUrl,
       submissionId: schema.submission.id,

@@ -13,11 +13,14 @@ import { chunkIds } from "../../lib/chunk";
 // DEC-027: fixed export columns per kind; DEC-017: track membership reads
 // ONLY submission_track (never the frozen legacy submission.trackId).
 // DEC-055: show-flow export columns/ordering.
-import { DEC_017, DEC_027, DEC_055 } from "../../decisions";
+import { DEC_017, DEC_027, DEC_055, DEC_258 } from "../../decisions";
 
 void DEC_017;
 void DEC_027;
 void DEC_055;
+// exportSpeakers below reads participant.title_at_time/org_at_time (DEC-258
+// frozen snapshot), never the live contact.
+void DEC_258;
 
 export const EXPORT_KINDS = ["submissions", "speakers", "evaluations", "agenda", "email-log"] as const;
 export type ExportKind = (typeof EXPORT_KINDS)[number];
@@ -233,8 +236,8 @@ async function exportSpeakers(db: Db, eventId: string): Promise<ExportTable> {
       firstName: schema.contact.firstName,
       lastName: schema.contact.lastName,
       email: schema.contact.email,
-      company: schema.contact.company,
-      title: schema.contact.title,
+      company: schema.participant.orgAtTime,
+      title: schema.participant.titleAtTime,
       visible: schema.participant.visible,
       status: schema.submission.status,
       seq: schema.submission.seq,
