@@ -200,3 +200,4 @@ export const DEC_194 = "FieldControl emits data-required=\"true\"/\"false\" on t
 export const DEC_195 = "The 7f7477e battery is VOID for exit once any w14 fix merges; wave 15 binds a fresh DEC-189-style cooperative battery at the post-w14 sha; fifth-generation homonym guard";
 export const DEC_196 = "S'''' exit battery binds at 1033d45 ('merge task-w14-c'): fix-marker preconditions, lane-letter/gate-type mapping chosen against dead-campaign w15 homonyms, sixth-generation full-heading guard";
 export const DEC_197 = "Wave-16 hold: battery draining 3/6 at 1033d45; w15-a auth-flake open item dispositioned non-blocking; wave-17 declaration checklist";
+export const DEC_198 = "Wave-17 hold: battery 5/6 landed at 1033d45, sixth lane verified-complete but unmerged; wave-18 declaration path and dead-lane escape hatch";
