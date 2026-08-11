@@ -14,6 +14,73 @@ import * as schema from "../src/db/schema";
 import { createTask, listAcceptedContactIds } from "../src/server/repo/tasks";
 import type { Db } from "../src/server/context";
 
+// --- minimal drizzle SQL condition evaluator ------------------------------
+// This fakeDb has no real D1/SQLite behind it (DEC-266), so `.where()`
+// previously ignored its condition entirely and returned every row in the
+// table — any invite-status filtering had to happen in application code for
+// the double to prove anything. DEC-312 pushes that filter into the SQL
+// WHERE clause instead, so the double must actually evaluate the drizzle
+// condition tree (eq/inArray/and, plus column-vs-column join predicates)
+// against ctx rows, or this test would pass for the wrong reason.
+
+type CtxEntry = { table: unknown; row: any };
+
+function isColumnNode(v: unknown): v is { table: unknown; name: string } {
+  return !!v && typeof v === "object" && "columnType" in (v as object);
+}
+
+function isParamNode(v: unknown): v is { value: unknown } {
+  return !!v && typeof v === "object" && "encoder" in (v as object) && !("columnType" in (v as object));
+}
+
+function fieldNameForColumn(column: { table: unknown; name: string }): string {
+  const table = column.table as Record<string, unknown>;
+  for (const key of Object.keys(table)) {
+    if (table[key] === column) return key;
+  }
+  throw new Error(`fakeDb: no field name found for column "${column.name}"`);
+}
+
+function getValue(column: { table: unknown; name: string }, ctx: CtxEntry[]): unknown {
+  const entry = ctx.find((e) => e.table === column.table);
+  if (!entry) throw new Error(`fakeDb: no row context for table of column "${column.name}"`);
+  return entry.row[fieldNameForColumn(column)];
+}
+
+function stringChunkText(v: unknown): string {
+  const value = (v as { value?: unknown } | undefined)?.value;
+  return Array.isArray(value) ? value.join("") : String(value ?? "");
+}
+
+function evalCond(cond: any, ctx: CtxEntry[]): boolean {
+  const chunks: unknown[] = cond.queryChunks;
+  const colIdx = chunks.findIndex(isColumnNode);
+  if (colIdx !== -1) {
+    const column = chunks[colIdx] as { table: unknown; name: string };
+    const opText = stringChunkText(chunks[colIdx + 1]).trim();
+    const rhs = chunks[colIdx + 2];
+    const leftVal = getValue(column, ctx);
+    if (Array.isArray(rhs)) {
+      if (opText !== "in") throw new Error(`fakeDb: unsupported operator "${opText}" with array rhs`);
+      return rhs.map((p) => (p as { value: unknown }).value).includes(leftVal);
+    }
+    if (isColumnNode(rhs)) {
+      if (opText !== "=") throw new Error(`fakeDb: unsupported column-vs-column operator "${opText}"`);
+      return leftVal === getValue(rhs, ctx);
+    }
+    if (isParamNode(rhs)) {
+      if (opText !== "=") throw new Error(`fakeDb: unsupported operator "${opText}"`);
+      return leftVal === rhs.value;
+    }
+    throw new Error("fakeDb: unrecognized condition rhs shape");
+  }
+  const subConds = chunks.filter(
+    (c) => c && typeof c === "object" && Array.isArray((c as { queryChunks?: unknown }).queryChunks),
+  );
+  if (subConds.length > 0) return subConds.every((c) => evalCond(c, ctx));
+  throw new Error("fakeDb: unrecognized condition shape (no column, no sub-conditions)");
+}
+
 function fakeDb(seed: { participant?: unknown[]; submission?: unknown[]; task?: unknown[]; taskAssignment?: unknown[] }) {
   const state = {
     participant: [...(seed.participant ?? [])] as any[],
@@ -30,19 +97,33 @@ function fakeDb(seed: { participant?: unknown[]; submission?: unknown[]; task?: 
     return undefined;
   }
 
-  function makeChain(rows: unknown[]) {
+  function mergeCtx(ctx: CtxEntry[]): any {
+    return ctx.reduce((acc, e) => ({ ...acc, ...e.row }), {});
+  }
+
+  function makeChain(ctxLists: CtxEntry[][]) {
     const chain: any = {
-      innerJoin: () => chain,
-      where: () => chain,
-      limit: () => chain,
-      then: (resolve: (v: unknown[]) => void) => resolve(rows),
+      innerJoin: (table: unknown, cond: unknown) => {
+        const rightRows = stateArrayFor(table) ?? [];
+        const joined: CtxEntry[][] = [];
+        for (const ctxList of ctxLists) {
+          for (const row of rightRows) {
+            const candidate = [...ctxList, { table, row }];
+            if (evalCond(cond, candidate)) joined.push(candidate);
+          }
+        }
+        return makeChain(joined);
+      },
+      where: (cond: unknown) => makeChain(ctxLists.filter((ctxList) => evalCond(cond, ctxList))),
+      limit: (n: number) => makeChain(ctxLists.slice(0, n)),
+      then: (resolve: (v: unknown[]) => void) => resolve(ctxLists.map(mergeCtx)),
     };
     return chain;
   }
 
   const db = {
     select: (_cols?: unknown) => ({
-      from: (table: unknown) => makeChain([...(stateArrayFor(table) ?? [])]),
+      from: (table: unknown) => makeChain((stateArrayFor(table) ?? []).map((row) => [{ table, row }])),
     }),
     insert: (table: unknown) => ({
       values: async (vals: unknown) => {
@@ -83,6 +164,23 @@ describe("DEC-283: listAcceptedContactIds excludes invited/declined co-speakers"
     const ids = await listAcceptedContactIds(db, EVENT_ID);
 
     expect(ids).toEqual(["contact-none", "contact-accepted"]);
+  });
+
+  it("excludes an active-invite-status participant of a non-accepted submission (whole predicate, not just the new clause)", async () => {
+    const { db } = fakeDb({
+      submission: [
+        acceptedSubmission(),
+        { id: "sub-pending", eventId: EVENT_ID, status: "pending" },
+      ],
+      participant: [
+        participantRow("contact-accepted", "accepted"),
+        { id: "p-contact-pending", submissionId: "sub-pending", contactId: "contact-pending", inviteStatus: "none" },
+      ],
+    });
+
+    const ids = await listAcceptedContactIds(db, EVENT_ID);
+
+    expect(ids).toEqual(["contact-accepted"]);
   });
 
   it("createTask({assignToAllAccepted:true}) inserts task_assignment rows for exactly the active contacts", async () => {
