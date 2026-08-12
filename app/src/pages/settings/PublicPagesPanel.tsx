@@ -27,16 +27,21 @@ interface PublicPageRow {
   key: string;
   name: string;
   path: string;
-  state: string;
+  /** null while the data this state is derived from is still in flight (DEC-678). */
+  state: string | null;
 }
 
-function surfaceState(acceptedCount: number | null): string {
-  if (acceptedCount === null) return 'Loading…';
+// DEC-678: a row's state is DERIVED, so until the data it derives from has
+// settled there is no state to assert -- these return null (the row renders
+// the shared <DelayedLoading /> primitive) rather than a bare literal or,
+// worse, a premature "Not published yet".
+function surfaceState(acceptedCount: number | null): string | null {
+  if (acceptedCount === null) return null;
   return acceptedCount > 0 ? `Live · ${acceptedCount} published` : 'Not published yet';
 }
 
-function cfpState(form: CfpFormSummary | null, now: number): string {
-  if (!form) return 'Loading…';
+function cfpState(form: CfpFormSummary | null, now: number): string | null {
+  if (!form) return null;
   if (form.closeDate != null && now > form.closeDate) return 'Closed';
   if (form.openDate != null && now < form.openDate) return 'Not open yet';
   return 'Open';
@@ -85,7 +90,11 @@ export function PublicPagesPanel() {
             <li key={row.key} className="chq-settings-public-pages-row">
               <span className="chq-settings-public-pages-name">{row.name}</span>
               <span className="chq-settings-public-pages-path">{row.path}</span>
-              <span className="chq-settings-public-pages-state">{row.state}</span>
+              {row.state === null ? (
+                <DelayedLoading />
+              ) : (
+                <span className="chq-settings-public-pages-state">{row.state}</span>
+              )}
               <a className="chq-settings-inline-action" href={row.path}>
                 View
               </a>
