@@ -129,7 +129,7 @@ export async function getPublicSpeakerDetail(
       .from(schema.submissionTrack)
       .innerJoin(schema.track, eq(schema.submissionTrack.trackId, schema.track.id))
       .where(inArray(schema.submissionTrack.submissionId, batch))
-      .orderBy(asc(schema.track.position));
+      .orderBy(asc(schema.track.position), asc(schema.track.id));
     trackRows.push(...batchRows);
   }
   const trackNamesBySubmission = new Map<string, string[]>();

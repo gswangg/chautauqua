@@ -607,6 +607,7 @@ describe("agendaIcsEvents", () => {
         endMin: 600,
         roomId: "room1",
         roomName: "Main Hall",
+        roomPosition: 0,
         icsSequence: 3,
         tracks: [],
         speakers: [],

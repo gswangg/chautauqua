@@ -4,7 +4,7 @@
 // submission_track (DEC-017) — submission.track_id/additional_track_ids_json
 // are frozen legacy and never touched here.
 
-import { and, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { formatRef, newId } from "../../domain/ids";
@@ -297,7 +297,7 @@ export async function getAgendaPayload(db: Db, eventId: string, event: EventInfo
     .select({ id: schema.room.id, name: schema.room.name })
     .from(schema.room)
     .where(eq(schema.room.eventId, eventId))
-    .orderBy(schema.room.position);
+    .orderBy(schema.room.position, asc(schema.room.id));
 
   const trackRows = await db
     .select({ id: schema.track.id, name: schema.track.name, color: schema.track.color })
@@ -491,7 +491,7 @@ export async function runAutoSchedule(
     .select({ id: schema.room.id })
     .from(schema.room)
     .where(eq(schema.room.eventId, eventId))
-    .orderBy(schema.room.position);
+    .orderBy(schema.room.position, asc(schema.room.id));
   const rooms = roomRows.map((r) => r.id);
 
   const accepted = await loadAcceptedSessions(db, eventId, event.recordPrefix);

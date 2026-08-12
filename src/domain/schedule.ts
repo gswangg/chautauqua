@@ -223,7 +223,9 @@ export function autoSchedule(input: AutoScheduleInput): PlacedSession[] {
     if (b.durationMin !== a.durationMin) return b.durationMin - a.durationMin;
     const trackA = a.track ?? "";
     const trackB = b.track ?? "";
-    return trackA.localeCompare(trackB);
+    const trackCmp = trackA.localeCompare(trackB);
+    if (trackCmp !== 0) return trackCmp;
+    return a.submissionId.localeCompare(b.submissionId);
   });
 
   const placed: PlacedSession[] = [...existing];

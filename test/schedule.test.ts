@@ -341,4 +341,36 @@ describe("autoSchedule", () => {
     );
     expect(conflicts).toEqual([]);
   });
+
+  it("DEC-563: input array order is the tiebreak of record — a shuffled equal-duration session array produces byte-identical placements", () => {
+    const baseSessions = Array.from({ length: 8 }, (_, i) => ({
+      submissionId: `sub-${i}`,
+      durationMin: 30, // equal duration and no track: the sort is a total
+      track: null, // no-op except for submissionId, so shuffling the input
+      speakerContactIds: [], // must not change the placement.
+    }));
+
+    const input = {
+      rooms: ["room-a", "room-b"],
+      days: ["2026-08-10"],
+      dayStartMin: 540,
+      dayEndMin: 720,
+      gridMin: 15,
+      existing: [] as PlacedSession[],
+    };
+
+    const inOrder = autoSchedule({ ...input, sessions: baseSessions });
+    const shuffled = [...baseSessions].reverse();
+    const reversed = autoSchedule({ ...input, sessions: shuffled });
+    const rotated = autoSchedule({
+      ...input,
+      sessions: [...baseSessions.slice(4), ...baseSessions.slice(0, 4)],
+    });
+
+    const byId = (result: typeof inOrder) =>
+      [...result].sort((a, b) => a.submissionId.localeCompare(b.submissionId));
+
+    expect(byId(reversed)).toEqual(byId(inOrder));
+    expect(byId(rotated)).toEqual(byId(inOrder));
+  });
 });

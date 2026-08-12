@@ -276,11 +276,13 @@ export async function createTrack(
 ): Promise<TrackRecord> {
   const now = new Date();
   const id = newId();
+  const nextPositionSql = sql<number>`(SELECT COALESCE(MAX(${schema.track.position}), -1) + 1 FROM ${schema.track} WHERE ${schema.track.eventId} = ${eventId})`;
   await db.insert(schema.track).values({
     id,
     eventId,
     name: input.name,
     color: input.color ?? null,
+    position: nextPositionSql,
     createdAt: now,
     updatedAt: now,
   });
@@ -421,11 +423,13 @@ export async function createRoom(
 ): Promise<RoomRecord> {
   const now = new Date();
   const id = newId();
+  const nextPositionSql = sql<number>`(SELECT COALESCE(MAX(${schema.room.position}), -1) + 1 FROM ${schema.room} WHERE ${schema.room.eventId} = ${eventId})`;
   await db.insert(schema.room).values({
     id,
     eventId,
     name: input.name,
     capacity: input.capacity ?? null,
+    position: nextPositionSql,
     createdAt: now,
     updatedAt: now,
   });

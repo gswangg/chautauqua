@@ -20,6 +20,7 @@ export interface PublicAgendaItem {
   endMin: number;
   roomId: string | null;
   roomName: string | null;
+  roomPosition: number | null;
   icsSequence: number;
   tracks: PublicTrack[];
   speakers: PublicSpeaker[];
@@ -88,10 +89,11 @@ export async function getPublicAgenda(
     roomIds.length === 0
       ? []
       : await db
-          .select({ id: schema.room.id, name: schema.room.name })
+          .select({ id: schema.room.id, name: schema.room.name, position: schema.room.position })
           .from(schema.room)
           .where(and(inArray(schema.room.id, roomIds), eq(schema.room.eventId, event.id)));
   const roomNameById = new Map(roomRows.map((r) => [r.id, r.name]));
+  const roomPositionById = new Map(roomRows.map((r) => [r.id, r.position]));
 
   const ids = rows.map((r) => r.submissionId);
   const sessions = await hydrateSessions(db, ids, event);
@@ -111,6 +113,7 @@ export async function getPublicAgenda(
         endMin: row.endMin,
         roomId: row.roomId,
         roomName: row.roomId ? roomNameById.get(row.roomId) ?? null : null,
+        roomPosition: row.roomId ? roomPositionById.get(row.roomId) ?? null : null,
         icsSequence: session.icsSequence,
         tracks: session.tracks,
         speakers: session.speakers,
@@ -174,10 +177,11 @@ export async function getPublicAgendaByIds(
     roomIds.length === 0
       ? []
       : await db
-          .select({ id: schema.room.id, name: schema.room.name })
+          .select({ id: schema.room.id, name: schema.room.name, position: schema.room.position })
           .from(schema.room)
           .where(and(inArray(schema.room.id, roomIds), eq(schema.room.eventId, event.id)));
   const roomNameById = new Map(roomRows.map((r) => [r.id, r.name]));
+  const roomPositionById = new Map(roomRows.map((r) => [r.id, r.position]));
 
   const sessionIds = rows.map((r) => r.submissionId);
   const sessions = await hydrateSessions(db, sessionIds, event);
@@ -197,6 +201,7 @@ export async function getPublicAgendaByIds(
         endMin: row.endMin,
         roomId: row.roomId,
         roomName: row.roomId ? roomNameById.get(row.roomId) ?? null : null,
+        roomPosition: row.roomId ? roomPositionById.get(row.roomId) ?? null : null,
         icsSequence: session.icsSequence,
         tracks: session.tracks,
         speakers: session.speakers,
