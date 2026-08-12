@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { CfpForm, EventTrack } from './types';
 import { dateInputToMs, msToDateInput } from '../../lib/dates';
+import { copyText } from '../../lib/clipboard';
 
 export interface FormSettingsPatch {
   intro?: string | null;
@@ -26,7 +27,8 @@ export function FormSettings({ form, tracks, eventSlug, onSave }: FormSettingsPr
   const [selectedTracks, setSelectedTracks] = useState<string[]>(form.tracks ?? []);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [copyResult, setCopyResult] = useState<{ ok: boolean; text: string } | null>(null);
+  const failedCopyRef = useRef<HTMLInputElement | null>(null);
 
   const publicLink = `${window.location.origin}/submit/${eventSlug}`;
 
@@ -52,10 +54,19 @@ export function FormSettings({ form, tracks, eventSlug, onSave }: FormSettingsPr
   }
 
   async function handleCopyLink() {
-    await navigator.clipboard.writeText(publicLink);
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 2000);
+    const ok = await copyText(publicLink);
+    setCopyResult({ ok, text: publicLink });
+    if (ok) {
+      window.setTimeout(() => setCopyResult(null), 2000);
+    }
   }
+
+  useEffect(() => {
+    if (copyResult && !copyResult.ok) {
+      failedCopyRef.current?.focus();
+      failedCopyRef.current?.select();
+    }
+  }, [copyResult]);
 
   return (
     <section className="chq-forms-settings">
@@ -107,10 +118,23 @@ export function FormSettings({ form, tracks, eventSlug, onSave }: FormSettingsPr
         Public link
         <div className="chq-forms-public-link">
           <input type="text" className="chq-input" value={publicLink} readOnly />
-          <button type="button" className="chq-btn chq-btn-secondary" onClick={handleCopyLink}>
-            {copied ? 'Copied!' : 'Copy'}
+          <button type="button" className="chq-btn chq-btn-secondary" onClick={() => void handleCopyLink()}>
+            {copyResult?.ok ? 'Copied!' : 'Copy'}
           </button>
         </div>
+        <div role="status" aria-live="polite" className="chq-copy-status">
+          {copyResult ? (copyResult.ok ? 'Copied' : 'Copy failed — select the text and copy it manually') : null}
+        </div>
+        {copyResult && !copyResult.ok ? (
+          <input
+            ref={failedCopyRef}
+            className="chq-input"
+            readOnly
+            value={copyResult.text}
+            onFocus={(e) => e.currentTarget.select()}
+            aria-label="Public link to copy manually"
+          />
+        ) : null}
       </label>
 
       <button type="button" className="chq-btn chq-btn-primary" onClick={handleSave} disabled={saving}>
