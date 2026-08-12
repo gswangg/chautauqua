@@ -77,6 +77,25 @@ function toReminderAssignment(r: OutstandingRow): ReminderAssignment {
   };
 }
 
+/** ONE builder for the reminder email body — used by both the real send
+ * (sendReminderEmails) and the preview endpoint (previewRemindNow), so a
+ * preview draft is always byte-identical to what a send would produce. */
+export function buildReminderMessage(
+  eventName: string,
+  eventTimezone: string,
+  assignments: ReminderAssignment[],
+): { subject: string; text: string } {
+  const header = renderTemplate("You have outstanding tasks for {event_name}:", {
+    event_name: eventName,
+  });
+  const taskLines = assignments.map((a) => {
+    if (a.dueDate === null) return `- ${a.taskTitle} — No due date`;
+    return `- ${a.taskTitle} — due ${formatEventDate(a.dueDate, eventTimezone)}`;
+  });
+  const text = [header, ...taskLines].join("\n");
+  return { subject: `Action needed: outstanding tasks for ${eventName}`, text };
+}
+
 /** Sends one reminder email per contact via `mailer`, stamps
  * last_reminded_at on every assignment included in that email. Used by
  * both the bulk 'remind now' endpoint (taskIds optional filter, ignores the
@@ -106,19 +125,12 @@ async function sendReminderEmails(
     const first = rows[0];
     if (!first) continue;
 
-    const header = renderTemplate("You have outstanding tasks for {event_name}:", {
-      event_name: eventName,
-    });
-    const taskLines = group.assignments.map((a) => {
-      if (a.dueDate === null) return `- ${a.taskTitle} — No due date`;
-      return `- ${a.taskTitle} — due ${formatEventDate(a.dueDate, eventTimezone)}`;
-    });
-    const reminderText = [header, ...taskLines].join("\n");
+    const { subject, text: reminderText } = buildReminderMessage(eventName, eventTimezone, group.assignments);
 
     try {
       await mailer.send({
         to: { email: first.email, name: `${first.firstName} ${first.lastName}`.trim() },
-        subject: `Action needed: outstanding tasks for ${eventName}`,
+        subject,
         text: reminderText,
         html: textToHtml(reminderText),
         eventId,
@@ -184,6 +196,55 @@ export async function remindNow(
     now,
   );
   return { ...result, skipped: plan.skipped, remaining: plan.remaining };
+}
+
+/** Preview for "remind now" (SPEC §10 #3, DEC-441): runs the identical
+ * listOutstandingForEvent + planManualReminders path as remindNow and
+ * renders each group through the same buildReminderMessage used by the
+ * real send, but never calls the mailer and never writes a row — pure
+ * read, safe to call as often as an organizer opens the review dialog. */
+export async function previewRemindNow(
+  db: Db,
+  eventId: string,
+  taskIds: string[] | undefined,
+  now: Date,
+): Promise<{
+  drafts: { contactId: string; email: string; name: string; subject: string; text: string }[];
+  skipped: number;
+  remaining: number;
+}> {
+  const outstanding = await listOutstandingForEvent(db, eventId, taskIds);
+  if (outstanding.length === 0) return { drafts: [], skipped: 0, remaining: 0 };
+  const eventName = outstanding[0]?.eventName ?? "";
+  const eventTimezone = outstanding[0]?.timezone ?? "";
+
+  const outstandingByContact = new Map<string, OutstandingRow[]>();
+  for (const r of outstanding) {
+    const arr = outstandingByContact.get(r.contactId) ?? [];
+    arr.push(r);
+    outstandingByContact.set(r.contactId, arr);
+  }
+
+  const plan = planManualReminders({
+    assignments: outstanding.map(toReminderAssignment),
+    now: now.getTime(),
+  });
+
+  const drafts: { contactId: string; email: string; name: string; subject: string; text: string }[] = [];
+  for (const group of plan.groups) {
+    const rows = outstandingByContact.get(group.contactId) ?? [];
+    const first = rows[0];
+    if (!first) continue;
+    const { subject, text } = buildReminderMessage(eventName, eventTimezone, group.assignments);
+    drafts.push({
+      contactId: group.contactId,
+      email: first.email,
+      name: `${first.firstName} ${first.lastName}`.trim(),
+      subject,
+      text,
+    });
+  }
+  return { drafts, skipped: plan.skipped, remaining: plan.remaining };
 }
 
 /** Due-date-driven cron reminder pass, scoped to one event's outstanding

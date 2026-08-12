@@ -61,13 +61,37 @@
   color: var(--chq-muted);
 }
 
-.chq-speakers-remind-confirm {
+/* SPEC §10 #3 (DEC-441): review-before-send dialog contents for bulk
+   onboarding reminders -- recipient list plus a read-only rendering of the
+   first draft, from the RemindPreviewModal. */
+.chq-speakers-remind-recipients {
+  margin: 0;
+  padding: 0;
+  list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 6px;
+  max-height: 160px;
+  overflow-y: auto;
+  font-size: 14px;
+}
+
+.chq-speakers-remind-draft {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
   background: var(--chq-surface-sunk);
   border-radius: var(--chq-r-ctl, 4px);
   padding: 14px 16px;
+}
+
+.chq-speakers-remind-draft-text {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.5;
 }
 
 /* Grid: horizontal scroll within its own container -- never breaks the page
