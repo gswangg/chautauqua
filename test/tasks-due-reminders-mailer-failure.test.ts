@@ -14,6 +14,22 @@ import { describe, expect, it } from "vitest";
 import { sendDueRemindersForEvent } from "../src/server/repo/tasks";
 import type { Db } from "../src/server/context";
 import type { Mailer } from "../src/mail/types";
+import type { KVStore } from "../src/auth/claim";
+
+class InMemoryKV implements KVStore {
+  private readonly store = new Map<string, string>();
+  async get(key: string): Promise<string | null> {
+    return this.store.get(key) ?? null;
+  }
+  async put(key: string, value: string): Promise<void> {
+    this.store.set(key, value);
+  }
+  async delete(key: string): Promise<void> {
+    this.store.delete(key);
+  }
+}
+
+const ORIGIN = "https://events.example.com";
 
 interface OutstandingRowShape {
   assignmentId: string;
@@ -43,6 +59,9 @@ function fakeDb(rows: OutstandingRowShape[]): { db: Db; updateCalls: unknown[] }
             }),
           }),
         }),
+        // findAccountUserIds' single-table select — no accounts in this
+        // fake, so every recipient resolves to a fresh claim link.
+        where: async () => [],
       }),
     }),
     update: () => ({
@@ -112,7 +131,7 @@ describe("sendDueRemindersForEvent (DEC-238 class 1 cron, partial mailer failure
     // The exported cron function must not throw even though one of the two
     // recipients' sends fails — this call itself completing without
     // throwing is part of the assertion (a throw here would fail the test).
-    const count = await sendDueRemindersForEvent(db, mailer, "event_1", NOW);
+    const count = await sendDueRemindersForEvent(db, mailer, "event_1", NOW, new InMemoryKV(), ORIGIN);
 
     expect(count).toBe(1);
     expect(sent).toHaveLength(1);

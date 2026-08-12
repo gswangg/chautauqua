@@ -12,6 +12,30 @@ import { buildReminderMessage, previewRemindNow, remindNow } from "../src/server
 import type { Db } from "../src/server/context";
 import type { Mailer } from "../src/mail/types";
 import type { ReminderAssignment } from "../src/domain/reminders";
+import type { KVStore } from "../src/auth/claim";
+import { PREVIEW_CLAIM_TOKEN } from "../src/domain/compose";
+
+class InMemoryKV implements KVStore {
+  private readonly store = new Map<string, string>();
+  async get(key: string): Promise<string | null> {
+    return this.store.get(key) ?? null;
+  }
+  async put(key: string, value: string): Promise<void> {
+    this.store.set(key, value);
+  }
+  async delete(key: string): Promise<void> {
+    this.store.delete(key);
+  }
+}
+
+const ORIGIN = "https://events.example.com";
+
+/** Normalizes a minted /claim/:token link to a fixed placeholder so a real
+ * send's freshly-minted token doesn't fail a byte-for-byte body comparison
+ * against a preview's fixed PREVIEW_CLAIM_TOKEN. */
+function normalizeClaimToken(text: string): string {
+  return text.replace(/\/claim\/[A-Za-z0-9_-]+/g, "/claim/TOKEN");
+}
 
 interface OutstandingRowShape {
   assignmentId: string;
@@ -43,6 +67,7 @@ function fakeDb(rows: OutstandingRowShape[]): { db: Db; touchedTables: unknown[]
             }),
           }),
         }),
+        where: async () => [],
       }),
     }),
     update(table: unknown) {
@@ -114,7 +139,7 @@ describe("previewRemindNow (SPEC §10 #3, DEC-441)", () => {
     const { mailer, sendCalls } = fakeMailer();
     void mailer; // previewRemindNow takes no mailer at all -- see signature below
 
-    const result = await previewRemindNow(db, "event_1", undefined, NOW);
+    const result = await previewRemindNow(db, "event_1", undefined, NOW, new InMemoryKV(), ORIGIN);
 
     expect(result.drafts.length).toBe(2);
     expect(sendCalls).toHaveLength(0);
@@ -123,7 +148,7 @@ describe("previewRemindNow (SPEC §10 #3, DEC-441)", () => {
   it("never touches task_assignment (or any table) via update/insert", async () => {
     const { db, touchedTables } = fakeDb(ROWS);
 
-    await previewRemindNow(db, "event_1", undefined, NOW);
+    await previewRemindNow(db, "event_1", undefined, NOW, new InMemoryKV(), ORIGIN);
 
     expect(touchedTables).not.toContain(schema.taskAssignment);
     expect(touchedTables).toHaveLength(0);
@@ -132,10 +157,11 @@ describe("previewRemindNow (SPEC §10 #3, DEC-441)", () => {
   it("renders each draft's subject/text identically to buildReminderMessage's own output", async () => {
     const { db } = fakeDb(ROWS);
 
-    const result = await previewRemindNow(db, "event_1", undefined, NOW);
+    const result = await previewRemindNow(db, "event_1", undefined, NOW, new InMemoryKV(), ORIGIN);
 
     const eventName = "DevFlow Conf 2027";
     const eventTimezone = "America/Los_Angeles";
+    const portalLink = `${ORIGIN}/claim/${PREVIEW_CLAIM_TOKEN}`;
 
     for (const draft of result.drafts) {
       const row = ROWS.find((r) => r.contactId === draft.contactId);
@@ -149,7 +175,7 @@ describe("previewRemindNow (SPEC §10 #3, DEC-441)", () => {
         taskId: r.taskId,
         taskTitle: r.taskTitle,
       }));
-      const expected = buildReminderMessage(eventName, eventTimezone, assignments);
+      const expected = buildReminderMessage(eventName, eventTimezone, assignments, portalLink);
       expect(draft.subject).toBe(expected.subject);
       expect(draft.text).toBe(expected.text);
     }
@@ -160,15 +186,17 @@ describe("previewRemindNow (SPEC §10 #3, DEC-441)", () => {
     const { db: sendDb } = fakeDb(ROWS);
     const { mailer, sendCalls } = fakeMailer();
 
-    const preview = await previewRemindNow(previewDb, "event_1", undefined, NOW);
-    await remindNow(sendDb, mailer, "event_1", undefined, NOW);
+    const preview = await previewRemindNow(previewDb, "event_1", undefined, NOW, new InMemoryKV(), ORIGIN);
+    await remindNow(sendDb, mailer, "event_1", undefined, NOW, new InMemoryKV(), ORIGIN);
 
     expect(sendCalls).toHaveLength(2);
     for (const call of sendCalls as { to: { email: string }; subject: string; text: string }[]) {
       const draft = preview.drafts.find((d) => d.email === call.to.email);
       expect(draft).toBeDefined();
       expect(draft?.subject).toBe(call.subject);
-      expect(draft?.text).toBe(call.text);
+      // DEC-559/DEC-397: preview never mints a claim token, so its body
+      // matches a real send except for the token value itself.
+      expect(normalizeClaimToken(draft?.text ?? "")).toBe(normalizeClaimToken(call.text));
     }
   });
 });

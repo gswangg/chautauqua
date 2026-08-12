@@ -11,6 +11,22 @@ import { describe, expect, it } from "vitest";
 import { sendDueRemindersForEvent } from "../src/server/repo/tasks";
 import type { Db } from "../src/server/context";
 import type { Mailer } from "../src/mail/types";
+import type { KVStore } from "../src/auth/claim";
+
+class InMemoryKV implements KVStore {
+  private readonly store = new Map<string, string>();
+  async get(key: string): Promise<string | null> {
+    return this.store.get(key) ?? null;
+  }
+  async put(key: string, value: string): Promise<void> {
+    this.store.set(key, value);
+  }
+  async delete(key: string): Promise<void> {
+    this.store.delete(key);
+  }
+}
+
+const ORIGIN = "https://events.example.com";
 
 interface OutstandingRowShape {
   assignmentId: string;
@@ -33,6 +49,7 @@ function fakeDb(rows: OutstandingRowShape[]): { db: Db; updateCalls: unknown[] }
   const db = {
     select: () => ({
       from: () => ({
+        // listOutstandingForEvent's join chain.
         innerJoin: () => ({
           innerJoin: () => ({
             innerJoin: () => ({
@@ -40,6 +57,9 @@ function fakeDb(rows: OutstandingRowShape[]): { db: Db; updateCalls: unknown[] }
             }),
           }),
         }),
+        // findAccountUserIds' single-table select — no accounts in this
+        // fake, so every recipient resolves to a fresh claim link.
+        where: async () => [],
       }),
     }),
     update: () => ({
@@ -88,7 +108,7 @@ describe("sendDueRemindersForEvent (DEC-023 due-date cron path, invoked per-even
     const { db, updateCalls } = fakeDb(rows);
     const { mailer, sent } = fakeMailer();
 
-    const count = await sendDueRemindersForEvent(db, mailer, "event_1", NOW);
+    const count = await sendDueRemindersForEvent(db, mailer, "event_1", NOW, new InMemoryKV(), ORIGIN);
 
     expect(count).toBe(1);
     expect(sent).toHaveLength(1);
@@ -118,7 +138,7 @@ describe("sendDueRemindersForEvent (DEC-023 due-date cron path, invoked per-even
     const { db } = fakeDb(rows);
     const { mailer, sent } = fakeMailer();
 
-    const count = await sendDueRemindersForEvent(db, mailer, "event_1", NOW);
+    const count = await sendDueRemindersForEvent(db, mailer, "event_1", NOW, new InMemoryKV(), ORIGIN);
 
     expect(count).toBe(0);
     expect(sent).toHaveLength(0);
@@ -128,7 +148,7 @@ describe("sendDueRemindersForEvent (DEC-023 due-date cron path, invoked per-even
     const { db } = fakeDb([]);
     const { mailer, sent } = fakeMailer();
 
-    const count = await sendDueRemindersForEvent(db, mailer, "event_1", NOW);
+    const count = await sendDueRemindersForEvent(db, mailer, "event_1", NOW, new InMemoryKV(), ORIGIN);
 
     expect(count).toBe(0);
     expect(sent).toHaveLength(0);

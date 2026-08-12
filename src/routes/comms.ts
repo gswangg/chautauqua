@@ -9,7 +9,8 @@ import { ApiError, parseBoundedIdArray } from "../server/http";
 import * as repo from "../server/repo/comms";
 import { bumpIcsSequences } from "../server/repo/ics-sequence";
 import { getEventForOrg } from "../server/repo/events";
-import { createClaimToken, type KVStore } from "../auth/claim";
+import type { KVStore } from "../auth/claim";
+import { resolvePortalLink } from "../server/repo/portal-link";
 import { textToHtml } from "../mail/render";
 import { buildIcsEvent, ICS_ORGANIZER_EMAIL } from "../mail/ics";
 import { zonedMinutesToUtc } from "../lib/timezone";
@@ -18,7 +19,6 @@ import {
   expandRecipients,
   preflightRender,
   MAX_COMPOSE_RECIPIENTS,
-  PREVIEW_CLAIM_TOKEN,
   type ComposeSubmission,
 } from "../domain/compose";
 import { DEC_122, DEC_252 } from "../decisions";
@@ -283,28 +283,6 @@ function icsPreviewInfoFor(slot: repo.IcsScheduleRow, event: { timezone: string 
     sequence: slot.icsSequence,
     timeZone: event.timezone,
   };
-}
-
-/** portal_link (DEC-014/DEC-019): /portal when a user exists for the
- * contact's email, else a claim link. DEC-397 (preview never mints
- * credentials): when mintClaimTokens is false, a userless contact resolves
- * to the fixed PREVIEW_CLAIM_TOKEN placeholder with zero KV writes instead
- * of a freshly minted token. `userId` is looked up once per recipient set
- * (DEC-530: batched via repo.findAccountUserIds) and passed in rather than
- * re-queried per recipient here — claim-token minting itself stays
- * per-recipient (DEC-397: a KV write with real side effects). */
-async function resolvePortalLink(
-  kv: KVStore,
-  contactId: string,
-  eventId: string,
-  userId: string | null,
-  origin: string,
-  mintClaimTokens: boolean,
-): Promise<string> {
-  if (userId) return `${origin}/portal`;
-  if (!mintClaimTokens) return `${origin}/claim/${PREVIEW_CLAIM_TOKEN}`;
-  const token = await createClaimToken(kv, { contactId, eventId });
-  return `${origin}/claim/${token}`;
 }
 
 /** Exported for test/comms-batched-lookups.test.ts (DEC-530): this is the

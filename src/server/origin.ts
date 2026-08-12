@@ -119,6 +119,21 @@ export function resolveBaseUrl(c: OriginRequestLike): string {
   return requestOrigin;
 }
 
+/**
+ * Resolves the absolute base URL for links minted from a cron/scheduled
+ * context (DEC-559), which has no incoming request to sniff a header or URL
+ * origin from — unlike resolveBaseUrl, there is no dev-loopback fallback:
+ * `env.PUBLIC_BASE_URL` must be set to a valid absolute http(s) URL or this
+ * throws (fail loudly) rather than inventing one.
+ */
+export function resolveBaseUrlForCron(env: { PUBLIC_BASE_URL?: string }): string {
+  const publicBaseUrl = env.PUBLIC_BASE_URL;
+  if (!publicBaseUrl) {
+    throw new Error("resolveBaseUrlForCron: PUBLIC_BASE_URL is not set — a scheduled job has no request to fall back to");
+  }
+  return parseAbsoluteHttpOrigin(publicBaseUrl);
+}
+
 /** Returns the first LOOPBACK origin among [request URL origin, `Origin`
  * header, `Referer` origin], or null if none of them are loopback. */
 function firstLoopbackCandidate(c: OriginRequestLike): string | null {

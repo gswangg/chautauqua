@@ -12,6 +12,9 @@ import { renderTemplate, textToHtml } from "../../../mail/render";
 import type { ReminderAssignment } from "../../../domain/reminders";
 import { capReminderGroups, planManualReminders, planReminders } from "../../../domain/reminders";
 import { formatCalendarDate } from "../../../lib/event-time";
+import type { KVStore } from "../../../auth/claim";
+import { resolvePortalLink } from "../portal-link";
+import { findAccountUserIds } from "../comms";
 
 interface OutstandingRow {
   assignmentId: string;
@@ -84,6 +87,7 @@ export function buildReminderMessage(
   eventName: string,
   eventTimezone: string,
   assignments: ReminderAssignment[],
+  portalLink: string,
 ): { subject: string; text: string } {
   const header = renderTemplate("You have outstanding tasks for {event_name}:", {
     event_name: eventName,
@@ -96,7 +100,10 @@ export function buildReminderMessage(
     // signature; still used by callers for other purposes).
     return `- ${a.taskTitle} — due ${formatCalendarDate(a.dueDate)}`;
   });
-  const text = [header, ...taskLines].join("\n");
+  // DEC-559: append the portal link through the same renderTemplate
+  // '{portal_link}' idiom the CFP confirmation email uses (submit.tsx).
+  const footer = renderTemplate("{portal_link}", { portal_link: portalLink });
+  const text = [header, ...taskLines, "", footer].join("\n");
   return { subject: `Action needed: outstanding tasks for ${eventName}`, text };
 }
 
@@ -115,6 +122,9 @@ async function sendReminderEmails(
   groups: { contactId: string; assignments: ReminderAssignment[] }[],
   outstandingByContact: Map<string, OutstandingRow[]>,
   now: Date,
+  kv: KVStore,
+  origin: string,
+  mintClaimTokens: boolean,
 ): Promise<{ sent: number; failed: { email: string; message: string }[] }> {
   let sent = 0;
   // DEC-238: a send failure for one recipient must not abort the batch —
@@ -123,13 +133,33 @@ async function sendReminderEmails(
   // response so the organizer sees a structured partial-failure summary
   // instead of a 500.
   const failed: { email: string; message: string }[] = [];
+
+  // DEC-530: resolve every recipient's account identity in one batched query
+  // instead of per-recipient (the capped group is bounded, so this stays a
+  // single round trip regardless of group count).
+  const accountMap = await findAccountUserIds(
+    db,
+    groups.map((group) => {
+      const rows = outstandingByContact.get(group.contactId) ?? [];
+      const first = rows[0];
+      return { contactId: group.contactId, email: first?.email ?? "" };
+    }),
+  );
+
   for (const group of groups) {
     const rows = outstandingByContact.get(group.contactId) ?? [];
     if (rows.length === 0) continue;
     const first = rows[0];
     if (!first) continue;
 
-    const { subject, text: reminderText } = buildReminderMessage(eventName, eventTimezone, group.assignments);
+    const userId = accountMap.get(group.contactId) ?? null;
+    const portalLink = await resolvePortalLink(kv, group.contactId, eventId, userId, origin, mintClaimTokens);
+    const { subject, text: reminderText } = buildReminderMessage(
+      eventName,
+      eventTimezone,
+      group.assignments,
+      portalLink,
+    );
 
     try {
       await mailer.send({
@@ -170,6 +200,8 @@ export async function remindNow(
   eventId: string,
   taskIds: string[] | undefined,
   now: Date,
+  kv: KVStore,
+  origin: string,
 ): Promise<{ sent: number; failed: { email: string; message: string }[]; skipped: number; remaining: number }> {
   const outstanding = await listOutstandingForEvent(db, eventId, taskIds);
   if (outstanding.length === 0) return { sent: 0, failed: [], skipped: 0, remaining: 0 };
@@ -198,6 +230,9 @@ export async function remindNow(
     plan.groups,
     outstandingByContact,
     now,
+    kv,
+    origin,
+    true,
   );
   return { ...result, skipped: plan.skipped, remaining: plan.remaining };
 }
@@ -212,6 +247,8 @@ export async function previewRemindNow(
   eventId: string,
   taskIds: string[] | undefined,
   now: Date,
+  kv: KVStore,
+  origin: string,
 ): Promise<{
   drafts: { contactId: string; email: string; name: string; subject: string; text: string }[];
   skipped: number;
@@ -234,12 +271,26 @@ export async function previewRemindNow(
     now: now.getTime(),
   });
 
+  // DEC-530/DEC-397: batched account lookup, then a preview never mints a
+  // claim token (mintClaimTokens=false) — a userless contact resolves to
+  // the fixed PREVIEW_CLAIM_TOKEN placeholder with zero KV writes.
+  const accountMap = await findAccountUserIds(
+    db,
+    plan.groups.map((group) => {
+      const rows = outstandingByContact.get(group.contactId) ?? [];
+      const first = rows[0];
+      return { contactId: group.contactId, email: first?.email ?? "" };
+    }),
+  );
+
   const drafts: { contactId: string; email: string; name: string; subject: string; text: string }[] = [];
   for (const group of plan.groups) {
     const rows = outstandingByContact.get(group.contactId) ?? [];
     const first = rows[0];
     if (!first) continue;
-    const { subject, text } = buildReminderMessage(eventName, eventTimezone, group.assignments);
+    const userId = accountMap.get(group.contactId) ?? null;
+    const portalLink = await resolvePortalLink(kv, group.contactId, eventId, userId, origin, false);
+    const { subject, text } = buildReminderMessage(eventName, eventTimezone, group.assignments, portalLink);
     drafts.push({
       contactId: group.contactId,
       email: first.email,
@@ -254,7 +305,14 @@ export async function previewRemindNow(
 /** Due-date-driven cron reminder pass, scoped to one event's outstanding
  * assignments, filtered through the pure DEC-023 planReminders gate. Never
  * triggered by a submission/assignment status change (DEC-009). */
-export async function sendDueRemindersForEvent(db: Db, mailer: Mailer, eventId: string, now: Date): Promise<number> {
+export async function sendDueRemindersForEvent(
+  db: Db,
+  mailer: Mailer,
+  eventId: string,
+  now: Date,
+  kv: KVStore,
+  origin: string,
+): Promise<number> {
   const outstanding = await listOutstandingForEvent(db, eventId);
   if (outstanding.length === 0) return 0;
   const eventName = outstanding[0]?.eventName ?? "";
@@ -287,6 +345,9 @@ export async function sendDueRemindersForEvent(db: Db, mailer: Mailer, eventId: 
     cappedGroups,
     outstandingByContact,
     now,
+    kv,
+    origin,
+    true,
   );
   return result.sent;
 }
