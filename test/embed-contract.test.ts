@@ -151,8 +151,8 @@ describe("EMB-7: every embed link/form action stays inside /embed", () => {
     expect(res.status).toBe(200);
     const html = await res.text();
 
-    const hrefs = [...html.matchAll(/href="([^"]+)"/g)].map((m) => m[1]);
-    const actions = [...html.matchAll(/action="([^"]+)"/g)].map((m) => m[1]);
+    const hrefs = [...html.matchAll(/href="([^"]+)"/g)].map((m) => m[1]!);
+    const actions = [...html.matchAll(/action="([^"]+)"/g)].map((m) => m[1]!);
     expect(hrefs.length + actions.length).toBeGreaterThan(0);
     for (const href of hrefs) {
       // Anchor-only in-page fragments (e.g. #chq-day-...) are not surface
