@@ -188,4 +188,49 @@ describe("getOnboardingGrid (DEC-340)", () => {
     // and(...) joins clauses with " and " at the top level.
     expect(sql.split(" and ").length).toBeGreaterThan(1);
   });
+
+  // DEC-558: the J6 grid's task COLUMN query is now a legible total order —
+  // undated tasks last, then due date ascending, then title ascending, then
+  // task.id ascending — so column rendering order is stable.
+  it("orders the task columns: undated last, then dueDate asc, title asc, task.id asc (DEC-558)", async () => {
+    const orderByArgs: unknown[][] = [];
+    let call = 0;
+    // Reuses the exact response sequence from "counts come straight from
+    // the aggregate query untouched" above (no contacts on the page, so
+    // the cellRows select is skipped): tasks, count, contacts page (empty),
+    // counts aggregate.
+    const responses = [TASK_ROWS, [{ count: 0 }], [], COUNTS_ROW];
+    const db = {
+      select: () => {
+        const rows = responses[call] ?? [];
+        call += 1;
+        const chain: any = {
+          from: () => chain,
+          where: () => chain,
+          innerJoin: () => chain,
+          leftJoin: () => chain,
+          limit: () => chain,
+          offset: () => chain,
+          groupBy: () => chain,
+          orderBy: (...args: unknown[]) => {
+            orderByArgs.push(args);
+            return chain;
+          },
+          then: (resolve: (v: unknown[]) => void) => resolve(rows),
+        };
+        return chain;
+      },
+    } as unknown as Db;
+    await getOnboardingGrid(db, "event-1", baseParams());
+    expect(orderByArgs.length).toBeGreaterThanOrEqual(1);
+    // First orderBy() call belongs to the tasks select (the only query
+    // this test's fixture asserts against).
+    const rendered = orderByArgs[0]!.map((clause) => sqlTextOf(clause).sql);
+    expect(rendered).toEqual([
+      '"task"."due_date" is null',
+      '"task"."due_date" asc',
+      '"task"."title" asc',
+      '"task"."id" asc',
+    ]);
+  });
 });

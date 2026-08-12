@@ -7,11 +7,17 @@ import {
   buildOverdueTaskRows,
   buildConflictRows,
   getOverviewPayload,
+  pickLatestFilePerSubmission,
+  pickLeadSpeakerPerSubmission,
   type ConflictSessionInfo,
+  type FileRowForPick,
+  type LeadSpeakerRow,
 } from "../src/server/repo/overview";
 import { getOnboardingGrid } from "../src/server/repo/tasks";
 import { findConflicts, type PlacedSession } from "../src/domain/schedule";
 import type { Db } from "../src/server/context";
+import { asc, desc } from "drizzle-orm";
+import * as schema from "../src/db/schema";
 
 describe("aggregateTriageCounts (DEC-030 triage card)", () => {
   it("maps grouped status rows to the three triage buckets", () => {
@@ -181,6 +187,56 @@ describe("buildConflictRows (DEC-370 section 04, delegates to findConflicts)", (
     ];
     const conflicts = findConflicts(placed);
     expect(() => buildConflictRows(conflicts, new Map(), new Map())).toThrow(/not in the loaded set/);
+  });
+});
+
+// DEC-558: the two "best row" reducers extracted from getOverviewPayload
+// each get an explicit id/contactId tiebreak, so they're a total order —
+// feeding the same rows in reversed order must produce byte-identical
+// output (the DEC-534 rule as a property, not a spot check).
+describe("pickLatestFilePerSubmission (DEC-558 total order)", () => {
+  const rows: FileRowForPick[] = [
+    { id: "f1", submissionId: "s1", filename: "a.pdf", previousFileId: null, createdAt: 100 },
+    { id: "f2", submissionId: "s1", filename: "b.pdf", previousFileId: "f1", createdAt: 200 },
+    { id: "f3", submissionId: "s1", filename: "c.pdf", previousFileId: "f2", createdAt: 200 }, // tie w/ f2
+  ];
+
+  it("picks the highest createdAt, tiebreak on file.id ascending", () => {
+    const picked = pickLatestFilePerSubmission(rows);
+    expect(picked?.id).toBe("f2"); // f2 < f3 on tied createdAt
+  });
+
+  it("is order-independent: reversed input yields byte-identical output", () => {
+    const forward = pickLatestFilePerSubmission(rows);
+    const reversed = pickLatestFilePerSubmission([...rows].reverse());
+    expect(reversed).toEqual(forward);
+  });
+
+  it("returns null for an empty row list", () => {
+    expect(pickLatestFilePerSubmission([])).toBeNull();
+  });
+});
+
+describe("pickLeadSpeakerPerSubmission (DEC-558 total order)", () => {
+  const rows: LeadSpeakerRow[] = [
+    { submissionId: "s1", order: 2, contactId: "c2", name: "Bob" },
+    { submissionId: "s1", order: 1, contactId: "cB", name: "Ann" },
+    { submissionId: "s1", order: 1, contactId: "cA", name: "Zoe" }, // tie w/ cB on order
+  ];
+
+  it("picks the lowest order, tiebreak on contactId ascending", () => {
+    const picked = pickLeadSpeakerPerSubmission(rows);
+    expect(picked?.contactId).toBe("cA"); // cA < cB on tied order
+  });
+
+  it("is order-independent: reversed input yields byte-identical output", () => {
+    const forward = pickLeadSpeakerPerSubmission(rows);
+    const reversed = pickLeadSpeakerPerSubmission([...rows].reverse());
+    expect(reversed).toEqual(forward);
+  });
+
+  it("returns null for an empty row list", () => {
+    expect(pickLeadSpeakerPerSubmission([])).toBeNull();
   });
 });
 
@@ -470,5 +526,54 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
 
     expect(overview.speakers.contactsOwing).toBe(grid.counts.outstandingContacts);
     expect(overview.speakers.overdueAssignments).toBe(grid.counts.overdue);
+  });
+
+  // DEC-558: every capped detail-row query gets a total order (a tail id
+  // tiebreak so the top-N is stable across ties). Captures the exact
+  // orderBy() call args (in select-call order) rather than just the
+  // response shape.
+  it("issues the DEC-558 total-order orderBy args for each capped detail-row query", async () => {
+    const now = 1_735_999_999_999;
+    const orderByCallsBySelectIndex: unknown[][] = [];
+    let selectIndex = -1;
+    function chain(): any {
+      const myIndex = selectIndex;
+      const obj: any = {};
+      const passthrough = ["from", "where", "innerJoin", "limit", "offset", "groupBy"];
+      for (const m of passthrough) obj[m] = () => obj;
+      obj.orderBy = (...args: unknown[]) => {
+        orderByCallsBySelectIndex[myIndex] = args;
+        return obj;
+      };
+      obj.then = (resolve: (v: unknown) => void, reject?: (e: unknown) => void) => {
+        if (cursor >= responses.length) {
+          throw new Error(`fake db: query #${cursor + 1} has no queued response`);
+        }
+        const value = responses[cursor];
+        cursor += 1;
+        return Promise.resolve(value).then(resolve, reject);
+      };
+      return obj;
+    }
+    let cursor = 0;
+    const responses = emptyResponses();
+    const db = {
+      select: () => {
+        selectIndex += 1;
+        return chain();
+      },
+    } as any;
+
+    await getOverviewPayload(db, "event-1", now);
+
+    // Call order: 0=event, 1=statusRows, 2=planCount, 3=evaluationsSubmitted,
+    // 4=planClose, 5=formClose, 6=speakerAgg, 7=overdueDetail,
+    // 8=triageDetail, 9=contentAgg, 10=contentDetail, 11=accepted, 12=comms
+    // (no track/file/slot/lead-speaker/room queries fire on this all-empty
+    // fixture).
+    expect(orderByCallsBySelectIndex[7]).toEqual([asc(schema.task.dueDate), asc(schema.taskAssignment.id)]);
+    expect(orderByCallsBySelectIndex[8]).toEqual([asc(schema.submission.createdAt), asc(schema.submission.id)]);
+    expect(orderByCallsBySelectIndex[10]).toEqual([desc(schema.submission.updatedAt), asc(schema.submission.id)]);
+    expect(orderByCallsBySelectIndex[11]).toEqual([asc(schema.submission.seq)]);
   });
 });
