@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { apiGet, apiList, apiPost, ApiError } from '../../lib/api';
 import { reviewersWithIncompleteQueues } from './progress';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
 import './review.css';
 import type { EvaluationPlan, ProgressRow } from './types';
 
@@ -14,6 +15,7 @@ export function ProgressPanel() {
   const [reminding, setReminding] = useState(false);
   const [reminded, setReminded] = useState<number | null>(null);
   const [advancing, setAdvancing] = useState(false);
+  const [advanceConfirmOpen, setAdvanceConfirmOpen] = useState(false);
 
   function load() {
     if (!planId) return;
@@ -46,17 +48,22 @@ export function ProgressPanel() {
     }
   }
 
-  async function advanceRound() {
+  function advanceRound() {
     if (!planId || !plan) return;
-    const ok = window.confirm(`Advance this plan from round ${plan.currentRound} to round ${plan.currentRound + 1}? Reviewers will start rating the new round.`);
-    if (!ok) return;
+    setAdvanceConfirmOpen(true);
+  }
+
+  async function confirmAdvanceRound() {
+    if (!planId || !plan) return;
     setAdvancing(true);
     setError(null);
     try {
       await apiPost<EvaluationPlan>(`/plans/${planId}/advance-round`);
+      setAdvanceConfirmOpen(false);
       load();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to advance round');
+      setAdvanceConfirmOpen(false);
     } finally {
       setAdvancing(false);
     }
@@ -140,6 +147,17 @@ export function ProgressPanel() {
           {rows.length === 0 && <p className="chq-empty">No reviewers assigned yet.</p>}
         </div>
       </section>
+
+      {advanceConfirmOpen && plan && (
+        <ConfirmDialog
+          title="Advance round"
+          body={`Advance this plan from round ${plan.currentRound} to round ${plan.currentRound + 1}? Reviewers will start rating the new round.`}
+          confirmLabel="Advance round"
+          pending={advancing}
+          onConfirm={confirmAdvanceRound}
+          onCancel={() => setAdvanceConfirmOpen(false)}
+        />
+      )}
     </div>
   );
 }

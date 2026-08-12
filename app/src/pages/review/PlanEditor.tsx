@@ -4,6 +4,7 @@ import { apiDelete, apiGet, apiList, apiPatch, apiPost, ApiError } from '../../l
 import { dateInputToMs, msToDateInput } from '../../lib/dates';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { copyText } from '../../lib/clipboard';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { addCriterion, removeCriterion, updateCriterion, validateCriteriaList, validatePlanDraft } from './planForm';
 import './review.css';
 import {
@@ -177,15 +178,22 @@ export function PlanEditor() {
     }
   }
 
-  async function removePlan() {
+  const [deletePlanConfirmOpen, setDeletePlanConfirmOpen] = useState(false);
+
+  function removePlan() {
     if (isNew || !planId) return;
-    if (!window.confirm('Delete this evaluation plan?')) return;
+    setDeletePlanConfirmOpen(true);
+  }
+
+  async function confirmRemovePlan() {
+    if (isNew || !planId) return;
     setSaving(true);
     try {
       await apiDelete(`/plans/${planId}`);
       navigate('/review');
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to delete plan');
+      setDeletePlanConfirmOpen(false);
     } finally {
       setSaving(false);
     }
@@ -403,10 +411,17 @@ export function PlanEditor() {
 
   // DEC-215: organizer-triggered password re-issue for a reviewer roster
   // entry. Reuses the same one-time-reveal banner as account creation.
-  async function resetReviewerPassword(userId: string, email: string | undefined) {
-    if (!window.confirm(`Reset the password for ${email ?? userId}? Their existing sessions will be signed out.`)) {
-      return;
-    }
+  const [resetPasswordConfirm, setResetPasswordConfirm] = useState<{ userId: string; email: string | undefined } | null>(
+    null,
+  );
+
+  function resetReviewerPassword(userId: string, email: string | undefined) {
+    setResetPasswordConfirm({ userId, email });
+  }
+
+  async function confirmResetReviewerPassword() {
+    if (!resetPasswordConfirm) return;
+    const { userId } = resetPasswordConfirm;
     setError(null);
     setResettingUserId(userId);
     try {
@@ -419,6 +434,7 @@ export function PlanEditor() {
       setError(err instanceof ApiError ? err.message : 'Failed to reset password');
     } finally {
       setResettingUserId(null);
+      setResetPasswordConfirm(null);
     }
   }
 
@@ -950,6 +966,29 @@ export function PlanEditor() {
           </section>
         )}
       </div>
+
+      {deletePlanConfirmOpen && (
+        <ConfirmDialog
+          title="Delete evaluation plan"
+          confirmLabel="Delete plan"
+          destructive
+          pending={saving}
+          onConfirm={confirmRemovePlan}
+          onCancel={() => setDeletePlanConfirmOpen(false)}
+        />
+      )}
+
+      {resetPasswordConfirm && (
+        <ConfirmDialog
+          title="Reset password"
+          body={`Reset the password for ${resetPasswordConfirm.email ?? resetPasswordConfirm.userId}? Their existing sessions will be signed out.`}
+          confirmLabel="Reset password"
+          destructive
+          pending={resettingUserId === resetPasswordConfirm.userId}
+          onConfirm={confirmResetReviewerPassword}
+          onCancel={() => setResetPasswordConfirm(null)}
+        />
+      )}
     </div>
   );
 }
