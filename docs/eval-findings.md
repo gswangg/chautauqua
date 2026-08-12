@@ -679,3 +679,10 @@ compare phone frames pixel-for-pixel.
     status is still pending review. R2 object deleted too, not just the row.
     Conditional-and-quiet affordance per the rules: a "Delete" tertiary on the
     version row, never on the section.
+
+28-ESCALATION: **Item 28 (framing middleware 500s on immutable asset headers) is STILL
+UNFIXED on main after two cycles** — RouteErrorBoundary (the client half) landed but
+the middleware itself still throws; every authenticated /admin load 500s on a fresh
+checkout. This is the FIRST item of the entire mandate: no deploy can happen until it
+lands. The verified fix shape is in item 28 (try/set → clone → retry). Fix framing.ts
+AND audit noStoreByDefault + any other header-stamping middleware for the same throw.
