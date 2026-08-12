@@ -1,20 +1,17 @@
+import type { ColumnDef } from './columns';
+import { ColumnPicker } from './ColumnPicker';
 import { SORT_ORDERS, STATUS_LABELS, SUBMISSION_STATUSES, type SortOrder, type SubmissionsFilterState, type SubmissionStatus, type Track } from './types';
 
-interface FilterBarProps {
+interface FilterBarSearchSortProps {
   filters: SubmissionsFilterState;
-  tracks: Track[];
   onChange: (next: SubmissionsFilterState) => void;
 }
 
-export function FilterBar({ filters, tracks, onChange }: FilterBarProps) {
-  function toggleStatus(status: SubmissionStatus) {
-    const has = filters.status.includes(status);
-    const nextStatus = has ? filters.status.filter((s) => s !== status) : [...filters.status, status];
-    onChange({ ...filters, status: nextStatus, page: 1 });
-  }
-
+/** Row 1 of the mock (docs/design/Chautauqua Submissions.dc.html:59-64):
+ * search + sort, pushed right by the caller alongside the ViewTabs row. */
+export function FilterBarSearchSort({ filters, onChange }: FilterBarSearchSortProps) {
   return (
-    <div className="chq-submissions-filterbar">
+    <div className="chq-submissions-filterbar-searchsort">
       <input
         type="search"
         className="chq-input chq-submissions-filterbar-search"
@@ -23,6 +20,45 @@ export function FilterBar({ filters, tracks, onChange }: FilterBarProps) {
         value={filters.q}
         onChange={(e) => onChange({ ...filters, q: e.target.value, page: 1 })}
       />
+
+      <select
+        className="chq-select chq-submissions-filterbar-select"
+        aria-label="Sort"
+        value={filters.sort}
+        onChange={(e) => onChange({ ...filters, sort: e.target.value as SortOrder, page: 1 })}
+      >
+        {SORT_ORDERS.map((sort) => (
+          <option key={sort} value={sort}>
+            {sortLabel(sort)}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+interface FilterBarProps {
+  filters: SubmissionsFilterState;
+  tracks: Track[];
+  columns: ColumnDef[];
+  visibleFieldIds: ReadonlySet<string>;
+  onChange: (next: SubmissionsFilterState) => void;
+  onToggleColumn: (fieldId: string) => void;
+}
+
+/** Row 2 of the mock (docs/design/Chautauqua Submissions.dc.html:75-83): a
+ * STATUS caption + status pills + a hairline divider + the track select + the
+ * column picker on the same row. */
+export function FilterBar({ filters, tracks, columns, visibleFieldIds, onChange, onToggleColumn }: FilterBarProps) {
+  function toggleStatus(status: SubmissionStatus) {
+    const has = filters.status.includes(status);
+    const nextStatus = has ? filters.status.filter((s) => s !== status) : [...filters.status, status];
+    onChange({ ...filters, status: nextStatus, page: 1 });
+  }
+
+  return (
+    <div className="chq-submissions-filterbar">
+      <span className="chq-submissions-status-label">Status</span>
 
       <div className="chq-status-pills" role="group" aria-label="Filter by status">
         {SUBMISSION_STATUSES.map((status) => (
@@ -38,6 +74,8 @@ export function FilterBar({ filters, tracks, onChange }: FilterBarProps) {
         ))}
       </div>
 
+      <span className="chq-submissions-filterbar-divider" aria-hidden="true" />
+
       <select
         className="chq-select chq-submissions-filterbar-select"
         aria-label="Filter by track"
@@ -52,18 +90,7 @@ export function FilterBar({ filters, tracks, onChange }: FilterBarProps) {
         ))}
       </select>
 
-      <select
-        className="chq-select chq-submissions-filterbar-select"
-        aria-label="Sort"
-        value={filters.sort}
-        onChange={(e) => onChange({ ...filters, sort: e.target.value as SortOrder, page: 1 })}
-      >
-        {SORT_ORDERS.map((sort) => (
-          <option key={sort} value={sort}>
-            {sortLabel(sort)}
-          </option>
-        ))}
-      </select>
+      <ColumnPicker columns={columns} visibleFieldIds={visibleFieldIds} onToggle={onToggleColumn} />
     </div>
   );
 }

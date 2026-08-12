@@ -6,8 +6,7 @@ import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { BulkActionBar } from './BulkActionBar';
 import { chunkSelection } from './bulk';
 import { deriveColumnsFromFormFields, findFormatField, formatAnswerValue, visibleColumns, type ColumnDef } from './columns';
-import { ColumnPicker } from './ColumnPicker';
-import { FilterBar } from './FilterBar';
+import { FilterBar, FilterBarSearchSort } from './FilterBar';
 import { buildSubmissionsQuery } from './filters';
 import { NewSubmissionModal, type NewSubmissionInput } from './NewSubmissionModal';
 import { EMPTY_SELECTION, isPageFullySelected, isPagePartiallySelected, selectionReducer } from './selection';
@@ -21,7 +20,7 @@ import {
   type Track,
 } from './types';
 import { applyViewConfig, type SavedViewConfig } from './views';
-import { ViewsDropdown } from './ViewsDropdown';
+import { ViewTabs } from './ViewTabs';
 
 /** DEC-243: render track NAMES, not the raw count of trackIds. */
 function trackNames(trackIds: string[], tracks: Track[]): string {
@@ -30,12 +29,34 @@ function trackNames(trackIds: string[], tracks: Track[]): string {
   return trackIds.map((id) => byId.get(id) ?? id).join(', ');
 }
 
+/** DEC-649: the CSV export sits beside a filtered table, so it must carry
+ * the same filter query string as the list -- minus page/perPage, which
+ * describe a page of the SPA's table, not the export. */
+export function exportHref(eventId: string, filters: SubmissionsFilterState): string {
+  const params = new URLSearchParams(buildSubmissionsQuery(filters));
+  params.delete('page');
+  params.delete('perPage');
+  params.set('format', 'csv');
+  return `/api/v1/events/${eventId}/export/submissions?${params.toString()}`;
+}
+
+/** Pure pagination summary text: "Showing {start}-{end} of {total}",
+ * replacing the old "Page N · total" copy. Exported for its own unit test. */
+export function paginationSummary(page: number, perPage: number, total: number): string {
+  if (total === 0) return 'Showing 0 of 0';
+  const start = (page - 1) * perPage + 1;
+  const end = Math.min(page * perPage, total);
+  return `Showing ${start}–${end} of ${total}`;
+}
+
 export function SubmissionsTable() {
   const { eventId } = useCurrentEvent();
 
   const [filters, setFilters] = useState<SubmissionsFilterState>({ ...DEFAULT_FILTER_STATE, includeAnswers: true });
   const [items, setItems] = useState<SubmissionListItem[]>([]);
   const [total, setTotal] = useState(0);
+  // null while in flight or on failure -- never a fabricated number.
+  const [pendingTotal, setPendingTotal] = useState<number | null>(null);
   const [tracks, setTracks] = useState<Track[]>([]);
   const [formFields, setFormFields] = useState<FormField[]>([]);
   const [visibleFieldIds, setVisibleFieldIds] = useState<Set<string>>(new Set());
@@ -93,6 +114,16 @@ export function SubmissionsTable() {
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load submissions'))
       .finally(() => setLoading(false));
   }, [eventId, filters, refreshToken]);
+
+  // Second, independent parallel fetch for the head summary's "N awaiting
+  // triage" figure -- a count of status='pending' regardless of the current
+  // filters, not derived from the (possibly filtered) main list above.
+  useEffect(() => {
+    if (!eventId) return;
+    apiList<SubmissionListItem>(`/events/${eventId}/submissions?status=pending&perPage=1`)
+      .then((res) => setPendingTotal(res.total))
+      .catch(() => setPendingTotal(null));
+  }, [eventId, refreshToken]);
 
   const pageIds = items.map((item) => item.id);
 
@@ -198,9 +229,17 @@ export function SubmissionsTable() {
       <div className="chq-submissions-head">
         <div className="chq-submissions-head-titles">
           <h1 className="chq-page-title">Submissions</h1>
-          <span className="chq-summary">{total} total</span>
+          <span className="chq-summary">
+            {total} total{pendingTotal !== null ? ` · ${pendingTotal} awaiting triage` : ''}
+          </span>
         </div>
         <div className="chq-submissions-head-actions">
+          <Link to="/submissions/forms" className="chq-btn chq-btn-secondary">
+            Forms
+          </Link>
+          <a className="chq-btn chq-btn-secondary" download href={exportHref(eventId, filters)}>
+            Export CSV
+          </a>
           <button type="button" className="chq-btn chq-btn-primary" onClick={() => setShowNewModal(true)}>
             New submission
           </button>
@@ -220,30 +259,25 @@ export function SubmissionsTable() {
 
       <div className="chq-submissions-toolbar">
         <div className="chq-submissions-toolbar-row">
-          <ViewsDropdown
-            eventId={eventId}
-            filters={filters}
-            visibleFieldIds={visibleFieldIds}
-            onApply={applySavedView}
-          />
-          <FilterBar filters={filters} tracks={tracks} onChange={setFilters} />
+          <ViewTabs eventId={eventId} filters={filters} visibleFieldIds={visibleFieldIds} onApply={applySavedView} />
+          <FilterBarSearchSort filters={filters} onChange={setFilters} />
         </div>
-        <div className="chq-submissions-status-row">
-          <span className="chq-submissions-status-label">Columns</span>
-          <ColumnPicker
-            columns={columns}
-            visibleFieldIds={visibleFieldIds}
-            onToggle={(fieldId) => {
-              setPickerInitialized(true);
-              setVisibleFieldIds((prev) => {
-                const next = new Set(prev);
-                if (next.has(fieldId)) next.delete(fieldId);
-                else next.add(fieldId);
-                return next;
-              });
-            }}
-          />
-        </div>
+        <FilterBar
+          filters={filters}
+          tracks={tracks}
+          columns={columns}
+          visibleFieldIds={visibleFieldIds}
+          onChange={setFilters}
+          onToggleColumn={(fieldId) => {
+            setPickerInitialized(true);
+            setVisibleFieldIds((prev) => {
+              const next = new Set(prev);
+              if (next.has(fieldId)) next.delete(fieldId);
+              else next.add(fieldId);
+              return next;
+            });
+          }}
+        />
       </div>
 
       <BulkActionBar
@@ -372,7 +406,7 @@ export function SubmissionsTable() {
 
       <div className="chq-submissions-pagination">
         <span className="chq-submissions-pagination-summary">
-          Page {filters.page} &middot; {total} total
+          {paginationSummary(filters.page, filters.perPage, total)}
         </span>
         <div className="chq-submissions-pagination-actions">
           <button
