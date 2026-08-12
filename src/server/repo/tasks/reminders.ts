@@ -293,12 +293,13 @@ export async function sendDueRemindersForEvent(db: Db, mailer: Mailer, eventId: 
 
 /** All event ids that have at least one non-complete task assignment — the
  * cron's outer loop, so each event's reminder pass stays a small, scoped
- * joined query rather than one unbounded cross-event query. */
+ * joined query rather than one unbounded cross-event query. DEC-537: the
+ * dedupe is a SQL DISTINCT, not a whole-table scan reduced in JS. */
 export async function listEventIdsWithOutstandingAssignments(db: Db): Promise<string[]> {
   const rows = await db
-    .select({ eventId: schema.task.eventId })
+    .selectDistinct({ eventId: schema.task.eventId })
     .from(schema.taskAssignment)
     .innerJoin(schema.task, eq(schema.taskAssignment.taskId, schema.task.id))
     .where(and(eq(schema.taskAssignment.status, "pending"), isNull(schema.taskAssignment.completedAt)));
-  return [...new Set(rows.map((r) => r.eventId))];
+  return rows.map((r) => r.eventId);
 }

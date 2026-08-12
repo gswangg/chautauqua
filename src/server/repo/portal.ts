@@ -7,7 +7,7 @@
 // verifying ownership first) — see assertSpeakerContactId and
 // isOwnedByContact.
 
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, lte } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { formatRef } from "../../domain/ids";
@@ -612,7 +612,19 @@ export async function getMySessions(db: Db, contactId: string, orgId: string): P
     .from(schema.participant)
     .innerJoin(schema.submission, eq(schema.participant.submissionId, schema.submission.id))
     .innerJoin(schema.event, eq(schema.submission.eventId, schema.event.id))
-    .leftJoin(schema.scheduleSlot, eq(schema.scheduleSlot.submissionId, schema.submission.id))
+    // DEC-318/DEC-536: a schedule_slot dated outside the event's
+    // [startDate, endDate] must never render as a placement. The range
+    // predicate lives in the LEFT JOIN's ON clause (not the WHERE) so an
+    // out-of-range slot nulls the placement fields instead of dropping
+    // the whole session row.
+    .leftJoin(
+      schema.scheduleSlot,
+      and(
+        eq(schema.scheduleSlot.submissionId, schema.submission.id),
+        gte(schema.scheduleSlot.day, schema.event.startDate),
+        lte(schema.scheduleSlot.day, schema.event.endDate),
+      ),
+    )
     .leftJoin(schema.room, eq(schema.scheduleSlot.roomId, schema.room.id))
     .where(
       and(
