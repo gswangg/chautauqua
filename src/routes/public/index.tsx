@@ -27,7 +27,7 @@ import { buildIcsCalendar, ICS_ORGANIZER_EMAIL } from "../../mail/ics";
 import { parseItineraryIds, MAX_ITINERARY_IDS } from "../../lib/itinerary";
 import { ApiError, errorEnvelope } from "../../server/http";
 import { publicCacheMiddleware, defaultCache } from "../../server/pubcache";
-import { DEC_022, DEC_007, DEC_017, DEC_005, DEC_012, DEC_080, DEC_083, DEC_151, DEC_289 } from "../../decisions";
+import { DEC_022, DEC_007, DEC_017, DEC_005, DEC_012, DEC_080, DEC_083, DEC_151, DEC_289, DEC_489 } from "../../decisions";
 import { SURFACES, isSurface, setCacheHeaders, PublicShell, EmbedShell, isValidFrom, type Surface } from "./shell";
 import { PUBLIC_PER_PAGE } from "../../server/repo/public/bounds";
 import { renderSurfaceContent } from "./dispatch";
@@ -67,6 +67,7 @@ void DEC_080;
 void DEC_083;
 void DEC_151;
 void DEC_289;
+void DEC_489;
 
 // re-exports: public surface for other modules / tests (unchanged names).
 export type { Surface } from "./shell";
@@ -169,6 +170,7 @@ publicRoutes.get("/embed/:eventSlug/:surface{[a-z]+\\.json}", async (c) => {
     page: c.req.query("page"),
     q: c.req.query("q"),
     limit: parseLimit(c.req.query("limit")),
+    day: parseDay(c.req.query("day")),
   });
   return c.json(buildSurfaceFeed(event, surfaceParam, paged, new Date()));
 });
@@ -255,12 +257,15 @@ publicRoutes.get("/e/:eventSlug/agenda.ics", async (c) => {
 // DEC-484: honors ?limit= exactly like the HTML dispatch (query.limit ??
 // PUBLIC_PER_PAGE) instead of hard-coding it, and reports page/perPage/total
 // so a feed consumer can tell it's looking at a truncated window. Agenda/
-// schedule are unpaged — page=1, perPage=total=items.length.
+// schedule are unpaged — page=1, perPage=total=items.length. DEC-489: also
+// honors ?day= on agenda/schedule exactly like dispatch.tsx's HTML cases,
+// filtering `items` before total is computed so the .json twin's reported
+// total matches the HTML page's.
 async function getSurfaceFeedPage(
   db: Parameters<typeof getPublicSessions>[0],
   event: Parameters<typeof getPublicSessions>[1],
   surface: Surface,
-  query: { trackId?: string; page?: string; q?: string; limit: number | null },
+  query: { trackId?: string; page?: string; q?: string; limit: number | null; day: string | null },
 ): Promise<{ items: unknown; total: number; page: number; perPage: number }> {
   switch (surface) {
     case "sessions": {
@@ -281,7 +286,8 @@ async function getSurfaceFeedPage(
     }
     case "agenda":
     case "schedule": {
-      const items = await getPublicAgenda(db, event);
+      let items = await getPublicAgenda(db, event);
+      if (query.day) items = items.filter((i) => i.day === query.day);
       return { items, total: items.length, page: 1, perPage: items.length };
     }
     default: {
