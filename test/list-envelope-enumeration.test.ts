@@ -16,10 +16,6 @@ import { join } from "node:path";
  *     literal -- the DEC-461(a) list-envelope contract. Two sites are
  *     deliberately not list-GET envelopes and are named exceptions, each
  *     read at file:line before being allowlisted:
- *       - src/routes/api/forms.ts:259 (POST .../fields/reorder) returns the
- *         reordered field list in full -- a form's field set is small and
- *         bounded by the form itself, this is a mutation response, not a
- *         paginated GET list.
  *       - src/routes/comms.ts:383 (POST .../compose/preview) returns a
  *         compose-preview render, one row per selected submission, bounded
  *         by the 100-recipient send cap (DEC checked elsewhere in comms.ts)
@@ -119,7 +115,6 @@ function findItemsEnvelopeSites(source: string, file: string): EnvelopeSite[] {
 // deliberate reviewed act -- see the file-header comment above for why each
 // one is exempt.
 const ENVELOPE_ALLOWLIST = new Set<string>([
-  "src/routes/api/forms.ts:259",
   "src/routes/comms.ts:383",
   "src/routes/api/contacts/bulk-email.ts:189",
 ]);

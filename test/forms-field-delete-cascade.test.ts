@@ -31,8 +31,9 @@ function fieldRow(overrides: Partial<Record<string, unknown>> = {}) {
 }
 
 /** Fake db mirroring listFields' single select().from().where().orderBy()
- * call, plus select()/update()/delete() for submission_answer and
- * formField, tracked so we can assert cascade order/effects. */
+ * call, plus select()/update()/delete() for submission_answer (a
+ * count(*) select, no orderBy) and formField, tracked so we can assert
+ * cascade order/effects. */
 function fakeDb(opts: { siblings: ReturnType<typeof fieldRow>[]; answerRows: { id: string }[] }) {
   const updates: { ruleJson: unknown }[] = [];
   const deletes: { table: string }[] = [];
@@ -42,8 +43,9 @@ function fakeDb(opts: { siblings: ReturnType<typeof fieldRow>[]; answerRows: { i
     where: () => selectChain,
     orderBy: async () => opts.siblings,
     then: (resolve: (v: unknown[]) => void) => {
-      // submission_answer select (no orderBy call) resolves to answerRows
-      resolve(opts.answerRows);
+      // submission_answer count(*) select (no orderBy call) resolves to a
+      // single count row, mirroring sql<number>`count(*)` (DEC-488).
+      resolve([{ count: opts.answerRows.length }]);
     },
   };
 

@@ -151,6 +151,11 @@ formsRoutes.post("/api/v1/forms/:formId/fields", requireOrganizer, csrfJson, asy
   })) as FieldDefInput;
 
   const existing = await repo.listFields(c.var.db, formId);
+  if (existing.length >= repo.MAX_FORM_FIELDS) {
+    throw new ApiError("invalid", `This form already has the maximum of ${repo.MAX_FORM_FIELDS} questions.`, {
+      label: `Max ${repo.MAX_FORM_FIELDS} fields per form`,
+    });
+  }
   const existingDefs = toDefList(existing);
   const result = validateFieldDefInput(body, existingDefs);
   if (!result.ok) {
@@ -256,5 +261,5 @@ formsRoutes.post("/api/v1/forms/:formId/fields/reorder", requireOrganizer, csrfJ
   }
 
   const reordered = await repo.reorderFields(c.var.db, formId, body.orderedIds as string[]);
-  return c.json({ items: reordered.map(toPublicField) });
+  return c.json({ items: reordered.map(toPublicField), total: reordered.length, page: 1, perPage: repo.MAX_FORM_FIELDS });
 });
