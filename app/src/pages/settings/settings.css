@@ -380,6 +380,14 @@
   margin: 0 0 16px;
 }
 
+/* task-w8-a: participants entity import-order note, same tier as the
+   layer-2 note it follows. */
+.chq-settings-sessionboard-order-note {
+  font-size: 13px;
+  color: var(--chq-ink-2);
+  margin: 0 0 16px;
+}
+
 .chq-settings-sessionboard-field {
   display: flex;
   flex-direction: column;
