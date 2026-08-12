@@ -34,27 +34,27 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   to event-local instant at every HARD gate; documented-forbidden routes
   can still be live, inert only by mount order -- test ADVERSARIAL order;
   ONE date-input<->epoch home; a nudge and its sibling dashboard must count
-  identically (same-file disagreement = one invariant asked twice); glob
-  boundary validators rather than hand-picking call sites; an opaque-id
-  export column is a lock-in -- derive columns from KEYS PRESENT; batch
-  per-recipient lookups inside a batch send, contract-test vs singular in
-  both directions; delete a losing duplicate implementation, don't keep it
-  unused.
-- STAGE1-CLOSE w32 (DEC-532..539): tree moved mid-plan a NINTH wave -- 31's a/b/c/d/f
-  landed between reads (only e, comms batching, in flight); none re-issued. 532
-  conditional visibility must be a FIXED POINT: 501 stripped depth-1 hidden answers
-  but a grandchild gated on a hidden field still read its stale answer -- required-
-  blocks an invisible question; hidden is monotone, cycles settle hidden. 533
-  findConflicts was O(n^2) while autoSchedule 40 lines below already had the day/
-  room/speaker index -- same invariant, slow twin, re-run by scheduleSummary too;
-  an output-identical rewrite is proven by a NAIVE REFERENCE in the test, never a
-  hand-written expectation. 534 a bulk send stamps 100 rows one millisecond apart,
-  so a LIMIT/OFFSET list ordered only by that timestamp repeats/drops rows: every
-  offset-paged ORDER BY ends in a unique column, globbed. 535 a nudge with a capped
-  sibling and no cap of its own; ONE capById, deferred half DOCUMENTED not forgotten.
-  536 an event-range slot gate honoured at four reads, missed at the portal where
-  the speaker ACTS on it; predicate goes in the JOIN ON, not the WHERE. 537 whole-
-  table scan reduced by a JS Set where DISTINCT belongs. 538 a hand-copied enum
-  drifted: saved-view validator rejects a sort its own list endpoint emits. 539 a
-  raw NUL byte makes a source file BINARY to ripgrep -- every globbed guard in
-  this repo silently skips it; guard the guards.
+  identically; glob boundary validators rather than hand-picking call sites;
+  an opaque-id export column is a lock-in -- derive columns from KEYS
+  PRESENT; batch per-recipient lookups, contract-test vs singular both
+  directions; delete a losing duplicate implementation, don't keep it unused.
+- STAGE1-CLOSE w32-33 (DEC-532..545, compacted): tree moved mid-plan a TENTH
+  consecutive wave -- verify prior claims in the FILE; verify a reviewer finding
+  is still open before planning it (pubcache '*' bump CLOSED 4x, do not re-raise).
+  Conditional visibility is a FIXED POINT (hidden monotone, cycles settle hidden);
+  findConflicts/cron sweep/aggregateSpeakerCounts were slow JS twins of an index
+  or SQL agg proven elsewhere -- prove rewrites vs a NAIVE REFERENCE; offset-paged
+  ORDER BY always ends in a unique column (glob it); a nudge shares its sibling's
+  cap, deferred halves DOCUMENTED not forgotten; event-range slot gate lives in
+  the JOIN ON, not a WHERE bolted on downstream; hand-copied enums/vocabularies
+  drift -- IMPORT them; raw NUL makes a file BINARY to ripgrep, invisible to every
+  globbed guard -- guard the guards. iCalendar sanitization at DEC-499 covered
+  PARAMs only -- TEXT VALUES need the same serializer-side strip, proven per-byte;
+  a uniqueIndex the schema declares makes read-then-write loops an atomic ON
+  CONFLICT DO UPDATE (create = upsert-that-cannot-conflict, delete the twin); the
+  last per-row insert loop is now chunked, and a cap whose fan-out is one row's
+  own children is a number with no failure mode -- say so; a list SELECTing a
+  column no renderer shows is oversized payload, derive projection from renderers;
+  a "pure helper for tests" with zero src callers tests NOTHING -- scan for the
+  copy; a formatter module that bans toLocale* but ships no date-TIME variant
+  gets copies -- add the helper AND glob the ban.
