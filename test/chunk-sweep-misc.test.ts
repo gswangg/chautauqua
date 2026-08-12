@@ -6,14 +6,18 @@
 // files-comments.ts; contacts.ts's findContactsForOrg/dupeParticipantIds
 // sites moved to contacts/bulk.ts and contacts/merge.ts; review.ts's
 // getUsersByIds/track-filter sites moved to review/users.ts and
-// review/submissions.ts -- all by contention-decomposition passes, same
-// code, different file) have been rewritten to iterate chunkIds(...)
-// batches instead of passing the raw id list straight through.
+// review/submissions.ts; tasks.ts's getOnboardingGrid/createTaskAssignments/
+// sendReminderEmails sites moved to tasks/grid.ts, tasks/crud.ts and
+// tasks/reminders.ts -- all by contention-decomposition passes, same code,
+// different file) have been rewritten to iterate chunkIds(...) batches
+// instead of passing the raw id list straight through.
 import { describe, expect, it } from "vitest";
 
 const sourceModules = import.meta.glob(
   [
-    "../src/server/repo/tasks.ts",
+    "../src/server/repo/tasks/grid.ts",
+    "../src/server/repo/tasks/crud.ts",
+    "../src/server/repo/tasks/reminders.ts",
     "../src/server/repo/review/users.ts",
     "../src/server/repo/review/submissions.ts",
     "../src/server/repo/contacts/bulk.ts",
@@ -30,39 +34,38 @@ function readSrc(fileName: string): string {
 }
 
 describe("DEC-104 chunk sweep — misc lane", () => {
-  it("glob matches exactly the six target files (tripwire against a silently vacuous scan)", () => {
-    expect(Object.keys(sourceModules).length).toBe(6);
+  it("glob matches exactly the eight target files (tripwire against a silently vacuous scan)", () => {
+    expect(Object.keys(sourceModules).length).toBe(8);
   });
 
-  it("tasks.ts imports chunkIds", () => {
-    const src = readSrc("tasks.ts");
-    expect(src).toMatch(/import\s*{\s*chunkIds\s*}\s*from\s*"..\/..\/lib\/chunk"/);
+  it("grid.ts imports chunkIds", () => {
+    const src = readSrc("grid.ts");
+    expect(src).toMatch(/import\s*{\s*chunkIds\s*}\s*from\s*"..\/..\/..\/lib\/chunk"/);
   });
 
-  it("tasks.ts: getOnboardingGrid no longer passes the raw contact-id page list to inArray unbounded (DEC-340)", () => {
-    const src = readSrc("tasks.ts");
+  it("grid.ts: getOnboardingGrid no longer passes the raw contact-id page list to inArray unbounded (DEC-340)", () => {
+    const src = readSrc("grid.ts");
     // DEC-340: getOnboardingGrid's page-cells query is bounded by the page's
     // *contact* ids (never an unbounded event-wide id list), chunked via
     // chunkIds. The taskIds list is bounded by "tasks in one event" (never
     // unboundedly grown per request) so it's ANDed in unchunked alongside the
-    // chunked contactId batch — the exempt sendDueRemindersForEvent-adjacent
-    // listOutstandingForEvent filter (DEC-104-exempt bounded track filter)
-    // legitimately still uses `inArray(schema.taskAssignment.taskId, taskIds)`
-    // once too, so this count is 2 (one per site), not 1.
-    expect((src.match(/inArray\(schema\.taskAssignment\.taskId, taskIds\)/g) ?? []).length).toBe(2);
+    // chunked contactId batch.
+    expect((src.match(/inArray\(schema\.taskAssignment\.taskId, taskIds\)/g) ?? []).length).toBe(1);
     expect(src).toMatch(/for \(const batch of chunkIds\(contactIdsInOrder\)\) \{[\s\S]*?inArray\(schema\.taskAssignment\.contactId, batch\)/);
   });
 
-  it("tasks.ts: createTaskAssignments no longer passes the raw contactIds list to inArray", () => {
-    const src = readSrc("tasks.ts");
+  it("crud.ts: createTaskAssignments no longer passes the raw contactIds list to inArray", () => {
+    const src = readSrc("crud.ts");
     expect(src).not.toContain("inArray(schema.taskAssignment.contactId, contactIds)");
     expect(src).toMatch(/for \(const batch of chunkIds\(contactIds\)\) \{[\s\S]*?inArray\(schema\.taskAssignment\.contactId, batch\)/);
   });
 
-  it("tasks.ts: sendReminderEmails stamps lastRemindedAt in chunkIds batches", () => {
-    const src = readSrc("tasks.ts");
+  it("reminders.ts: sendReminderEmails stamps lastRemindedAt in chunkIds batches", () => {
+    const src = readSrc("reminders.ts");
     expect(src).not.toMatch(/\.where\(inArray\(schema\.taskAssignment\.id, assignmentIds\)\)/);
     expect(src).toMatch(/for \(const batch of chunkIds\(assignmentIds\)\) \{[\s\S]*?inArray\(schema\.taskAssignment\.id, batch\)/);
+    // exempt bounded track filter (DEC-104-exempt) still present once.
+    expect((src.match(/inArray\(schema\.taskAssignment\.taskId, taskIds\)/g) ?? []).length).toBe(1);
   });
 
   it("review/users.ts imports chunkIds", () => {
