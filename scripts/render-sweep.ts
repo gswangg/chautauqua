@@ -63,6 +63,17 @@ import {
   type MobileRouteResult,
   type RouteResult,
 } from "./render-sweep-lib";
+import {
+  allContrastPassed,
+  CONTRAST_BLOCKING,
+  CONTRAST_MIN_RATIO,
+  CONTRAST_MIN_RATIO_LARGE,
+  contrastErrorResult,
+  evaluateContrast,
+  formatContrastSummary,
+  formatContrastTable,
+  type ContrastResult,
+} from "./render-sweep-contrast";
 import { ensureDevVars } from "./ensure-dev-vars";
 
 // DEC-253: the no-login/portal mobile-bar surfaces (390x844). Seed literals
@@ -274,11 +285,103 @@ async function measureFontFloor(page: Page): Promise<{ minPx: number | null; off
   }, FONT_FLOOR_MIN_PX);
 }
 
+// DEC-426: walks every rendered element, keeping only those with a non-empty
+// direct text node and a non-zero rendered box, and returns the lowest
+// observed foreground/background contrast ratio (against the applicable
+// WCAG AA threshold — CONTRAST_MIN_RATIO_LARGE for >=24px text, or >=18.66px
+// at font-weight >= 700, else CONTRAST_MIN_RATIO) plus up to 3 structural
+// (never text-content, DEC-401) offender descriptors. Kept INLINE in the
+// page.evaluate callback rather than a helper serialised across the
+// boundary (DEC-411) — must only be called on a page that already had
+// PAGE_EVALUATE_KEEPNAMES_SHIM applied via addInitScript.
+async function measureContrast(page: Page): Promise<{ minRatio: number | null; offenders: string[] }> {
+  return page.evaluate(
+    ({ minRatioNormal, minRatioLarge }: { minRatioNormal: number; minRatioLarge: number }) => {
+      const hasNonEmptyDirectText = (el: Element): boolean => {
+        for (const node of Array.from(el.childNodes)) {
+          if (node.nodeType === Node.TEXT_NODE && (node.textContent ?? "").trim().length > 0) return true;
+        }
+        return false;
+      };
+
+      const parseColor = (value: string): { rgb: [number, number, number]; alpha: number } | null => {
+        const m = value.match(/rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*(?:,\s*([\d.]+)\s*)?\)/);
+        if (!m) return null;
+        return {
+          rgb: [parseFloat(m[1]!), parseFloat(m[2]!), parseFloat(m[3]!)],
+          alpha: m[4] !== undefined ? parseFloat(m[4]) : 1,
+        };
+      };
+
+      const luminance = (rgb: [number, number, number]): number => {
+        const channel = (c: number): number => {
+          const s = c / 255;
+          return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+        };
+        return 0.2126 * channel(rgb[0]) + 0.7152 * channel(rgb[1]) + 0.0722 * channel(rgb[2]);
+      };
+      const ratio = (fg: [number, number, number], bg: [number, number, number]): number => {
+        const l1 = luminance(fg);
+        const l2 = luminance(bg);
+        const lighter = Math.max(l1, l2);
+        const darker = Math.min(l1, l2);
+        return (lighter + 0.05) / (darker + 0.05);
+      };
+
+      const backgroundFor = (el: Element): [number, number, number] => {
+        let node: Element | null = el;
+        while (node) {
+          const parsed = parseColor(getComputedStyle(node).backgroundColor);
+          if (parsed && parsed.alpha > 0) return parsed.rgb;
+          node = node.parentElement;
+        }
+        return [255, 255, 255]; // default: white
+      };
+
+      const describe = (el: Element, r: number, fg: [number, number, number], bg: [number, number, number]): string => {
+        const tag = el.tagName.toLowerCase();
+        const classes = Array.from(el.classList).slice(0, 3);
+        const base = classes.length > 0 ? `${tag}.${classes.join(".")}` : tag;
+        return `${base} ratio=${r.toFixed(2)} fg=rgb(${fg.map((c) => Math.round(c)).join(",")}) bg=rgb(${bg
+          .map((c) => Math.round(c))
+          .join(",")})`;
+      };
+
+      const elements = Array.from(document.querySelectorAll("*"));
+      let minRatio: number | null = null;
+      const under: { el: Element; ratio: number; fg: [number, number, number]; bg: [number, number, number] }[] = [];
+      for (const el of elements) {
+        if (!hasNonEmptyDirectText(el)) continue;
+        const rect = el.getBoundingClientRect();
+        if (rect.width <= 0 || rect.height <= 0) continue;
+        const style = getComputedStyle(el);
+        const fgParsed = parseColor(style.color);
+        if (!fgParsed) continue;
+        const fg = fgParsed.rgb;
+        const bg = backgroundFor(el);
+        const r = ratio(fg, bg);
+        if (minRatio === null || r < minRatio) minRatio = r;
+
+        const fontSize = parseFloat(style.fontSize);
+        const fontWeight = parseInt(style.fontWeight, 10) || 400;
+        const isLarge = fontSize >= 24 || (fontSize >= 18.66 && fontWeight >= 700);
+        const threshold = isLarge ? minRatioLarge : minRatioNormal;
+        if (r < threshold) under.push({ el, ratio: r, fg, bg });
+      }
+      under.sort((a, b) => a.ratio - b.ratio);
+      const offenders = under.slice(0, 3).map(({ el, ratio: r, fg, bg }) => describe(el, r, fg, bg));
+      return { minRatio, offenders };
+    },
+    { minRatioNormal: CONTRAST_MIN_RATIO, minRatioLarge: CONTRAST_MIN_RATIO_LARGE },
+  );
+}
+
 async function visitRoute(
   context: BrowserContext,
   baseUrl: string,
   entry: RouteManifestEntry,
   fontFloorResults?: FontFloorResult[],
+  contrastResults?: ContrastResult[],
 ): Promise<RouteResult> {
   const page = await context.newPage();
   // DEC-411: must run before any in-page evaluation on this page.
@@ -322,6 +425,17 @@ async function visitRoute(
       fontFloorResults.push(evaluateFontFloor(entry, "desktop", { minFontPx: minPx, offenders }));
     } catch (err) {
       fontFloorResults.push(fontFloorErrorResult(entry, "desktop", err instanceof Error ? err.message : String(err)));
+    }
+  }
+
+  // DEC-426: advisory WCAG AA contrast measurement, same page/session — never
+  // lets an instrument failure fail the desktop render-sweep pass above.
+  if (contrastResults) {
+    try {
+      const { minRatio, offenders } = await measureContrast(page);
+      contrastResults.push(evaluateContrast(entry, { minRatio, offenders }));
+    } catch (err) {
+      contrastResults.push(contrastErrorResult(entry, err instanceof Error ? err.message : String(err)));
     }
   }
 
@@ -464,6 +578,11 @@ async function main(): Promise<void> {
     // type-floor table printed after the three existing passes.
     const fontFloorResults: FontFloorResult[] = [];
 
+    // DEC-426: collects contrast readings from every visitRoute call below
+    // (desktop pass only) into one flat list for the advisory contrast table
+    // printed after the type-floor pass.
+    const contrastResults: ContrastResult[] = [];
+
     const results: RouteResult[] = [];
     for (const entry of ROUTE_MANIFEST) {
       const context = contextByRole.get(entry.role);
@@ -480,7 +599,7 @@ async function main(): Promise<void> {
         continue;
       }
       try {
-        results.push(await visitRoute(context, baseUrl, entry, fontFloorResults));
+        results.push(await visitRoute(context, baseUrl, entry, fontFloorResults, contrastResults));
       } catch (err) {
         results.push(routeErrorResult(entry, err instanceof Error ? err.message : String(err)));
       }
@@ -619,6 +738,22 @@ async function main(): Promise<void> {
     console.log(formatFontFloorSummary(fontFloorResults));
 
     if (!allFontFloorPassed(fontFloorResults) && FONT_FLOOR_BLOCKING) {
+      failed = true;
+    }
+
+    // DEC-426: WCAG AA contrast pass (advisory) — desktop ROUTE_MANIFEST
+    // visits only, one reading per route from the same visitRoute pass
+    // above (no separate route list or extra page visits). Failures never
+    // flip the exit code while CONTRAST_BLOCKING is false (see its flip-rule
+    // comment in scripts/render-sweep-contrast.ts).
+    console.log("");
+    console.log("render-sweep: contrast pass (WCAG AA, advisory)...");
+    console.log("");
+    console.log(formatContrastTable(contrastResults));
+    console.log("");
+    console.log(formatContrastSummary(contrastResults));
+
+    if (!allContrastPassed(contrastResults) && CONTRAST_BLOCKING) {
       failed = true;
     }
 
