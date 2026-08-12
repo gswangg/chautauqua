@@ -10,6 +10,7 @@
 import type { Db } from "../../context";
 import { type ExportKind } from "./kinds";
 import { exportSubmissions } from "./submissions";
+import type { ParsedListQuery } from "../submissions/query";
 import { exportSpeakers } from "./speakers";
 import { exportEvaluations } from "./evaluations";
 import { exportAgenda } from "./agenda";
@@ -35,10 +36,16 @@ export { CONTACTS_HEADER, exportContacts } from "./contacts";
 // here — `orgId` is required exactly when kind === 'contacts' (the caller,
 // the DEC-027 export route, already resolves it via its object-level event
 // ownership check) and ignored otherwise.
-export async function buildExport(db: Db, eventId: string, kind: ExportKind, orgId?: string): Promise<ExportTable> {
+export async function buildExport(
+  db: Db,
+  eventId: string,
+  kind: ExportKind,
+  orgId?: string,
+  submissionsListParams?: ParsedListQuery,
+): Promise<ExportTable> {
   switch (kind) {
     case "submissions":
-      return exportSubmissions(db, eventId);
+      return exportSubmissions(db, eventId, submissionsListParams);
     case "speakers":
       return exportSpeakers(db, eventId);
     case "evaluations":

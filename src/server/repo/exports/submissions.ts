@@ -2,11 +2,13 @@
 // submission_track (DEC-017) — submission.trackId/additionalTrackIdsJson
 // are frozen legacy and never read here.
 
-import { asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { formatRef } from "../../../domain/ids";
 import { chunkIds } from "../../../lib/chunk";
+import { submissionListConditions, orderByForSort } from "../submissions/list";
+import type { ParsedListQuery } from "../submissions/query";
 // DEC-515: lockedFieldName is the ONLY test for "is this a locked built-in"
 // form field — used to exclude locked session/speaker fields (their answers
 // live on the submission row / participant snapshot, never submission_answer)
@@ -87,8 +89,20 @@ export function shapeSubmissionsExport(
   return buildTable(header, rows);
 }
 
-export async function exportSubmissions(db: Db, eventId: string): Promise<ExportTable> {
+// DEC-649: an export is the same WHERE clause as the list beside it, or the
+// file lies — when `params` is supplied (kind === 'submissions' only, via
+// buildExport), the export applies the identical submissionListConditions +
+// orderByForSort listSubmissions uses, unpaginated. With no params, behavior
+// is byte-identical to before this filter was threaded through.
+export async function exportSubmissions(
+  db: Db,
+  eventId: string,
+  params?: ParsedListQuery,
+): Promise<ExportTable> {
   const recordPrefix = await getRecordPrefix(db, eventId);
+
+  const whereExpr = params ? and(...submissionListConditions(eventId, params)) : eq(schema.submission.eventId, eventId);
+  const orderExpr = params ? orderByForSort(params.sort) : asc(schema.submission.seq);
 
   const submissions = await db
     .select({
@@ -102,8 +116,8 @@ export async function exportSubmissions(db: Db, eventId: string): Promise<Export
       createdAt: schema.submission.createdAt,
     })
     .from(schema.submission)
-    .where(eq(schema.submission.eventId, eventId))
-    .orderBy(asc(schema.submission.seq));
+    .where(whereExpr)
+    .orderBy(orderExpr);
 
   if (submissions.length === 0) return shapeSubmissionsExport([]);
   const ids = submissions.map((s) => s.id);
