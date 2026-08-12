@@ -10,6 +10,12 @@ import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { formatRef } from "../../domain/ids";
 import { chunkIds } from "../../lib/chunk";
+// DEC-515: lockedFieldName is the ONLY test for "is this a locked built-in"
+// form field — used to exclude locked session/speaker fields (their answers
+// live on the submission row / participant snapshot, never submission_answer)
+// from the dynamic custom-field export columns.
+import { lockedFieldName } from "../../forms/types";
+import { parseSocialLinks } from "./profile";
 // DEC-027: fixed export columns per kind; DEC-017: track membership reads
 // ONLY submission_track (never the frozen legacy submission.trackId).
 // DEC-055: show-flow export columns/ordering.
@@ -81,9 +87,58 @@ export interface SubmissionExportInput {
   speakers: string[];
   speakerEmails: string[];
   createdAt: string;
+  description: string;
+  /** Custom form-field answers keyed by form_field.id, unvalidated JSON
+   * values as parsed from submission_answer.value_json. Only holds keys
+   * present in `customFields` below (locked built-ins never appear here —
+   * their data already lives in the fixed columns above). */
+  answers: Record<string, unknown>;
 }
 
-export function shapeSubmissionsExport(inputs: SubmissionExportInput[]): ExportTable {
+/** A custom (non-locked-built-in) form field to render as its own dynamic
+ * export column, ordered/deduped by the caller (exportSubmissions). */
+export interface SubmissionCustomFieldColumn {
+  fieldId: string;
+  label: string;
+}
+
+/** Renders one answer value as a CSV/JSON cell string: arrays (checkbox
+ * multi-select) '; '-joined like every other list column in this file,
+ * booleans as 'true'/'false', missing/null as ''. */
+function renderAnswerCell(value: unknown): string {
+  if (value === null || value === undefined) return "";
+  if (Array.isArray(value)) return value.map((v) => String(v)).join("; ");
+  if (typeof value === "boolean") return value ? "true" : "false";
+  return String(value);
+}
+
+// The full set of fixed (non-dynamic) submissions export columns — a custom
+// field's label collides with one of these iff it would silently shadow a
+// fixed column in JSON records (buildTable keys records by header string).
+const FIXED_SUBMISSIONS_COLUMN_NAMES = new Set<string>([...SUBMISSIONS_HEADER, "description"]);
+
+/** Names each custom field's export column: the field's label, unless that
+ * label is empty, collides with another custom field's label, or collides
+ * with a fixed column name — in which case ' (<fieldId>)' is appended so
+ * every header cell stays unique (a duplicate header silently eats a column
+ * in buildTable's JSON `records`). */
+function nameCustomColumns(customFields: SubmissionCustomFieldColumn[]): string[] {
+  const labelCounts = new Map<string, number>();
+  for (const f of customFields) labelCounts.set(f.label, (labelCounts.get(f.label) ?? 0) + 1);
+  return customFields.map((f) => {
+    const isEmpty = f.label.trim() === "";
+    const isDuplicate = (labelCounts.get(f.label) ?? 0) > 1;
+    const isFixedName = FIXED_SUBMISSIONS_COLUMN_NAMES.has(f.label);
+    return isEmpty || isDuplicate || isFixedName ? `${f.label} (${f.fieldId})` : f.label;
+  });
+}
+
+export function shapeSubmissionsExport(
+  inputs: SubmissionExportInput[],
+  customFields: SubmissionCustomFieldColumn[] = [],
+): ExportTable {
+  const customColumnNames = nameCustomColumns(customFields);
+  const header = [...SUBMISSIONS_HEADER, "description", ...customColumnNames];
   const rows = inputs.map((s) => [
     s.ref,
     s.title,
@@ -93,8 +148,10 @@ export function shapeSubmissionsExport(inputs: SubmissionExportInput[]): ExportT
     s.speakers.join("; "),
     s.speakerEmails.join("; "),
     s.createdAt,
+    s.description,
+    ...customFields.map((f) => renderAnswerCell(s.answers[f.fieldId])),
   ]);
-  return buildTable([...SUBMISSIONS_HEADER], rows);
+  return buildTable(header, rows);
 }
 
 export const AGENDA_HEADER = ["day", "start", "end", "room", "ref", "title", "speakers", "tracks"] as const;
@@ -147,6 +204,7 @@ async function exportSubmissions(db: Db, eventId: string): Promise<ExportTable> 
       id: schema.submission.id,
       seq: schema.submission.seq,
       title: schema.submission.title,
+      description: schema.submission.description,
       status: schema.submission.status,
       contentStatus: schema.submission.contentStatus,
       trackId: schema.submission.trackId,
@@ -205,6 +263,55 @@ async function exportSubmissions(db: Db, eventId: string): Promise<ExportTable> 
   }
   for (const arr of speakersBySubmission.values()) arr.sort((a, b) => a.order - b.order);
 
+  // DEC-515: enumerate every non-locked-built-in form_field belonging to
+  // this event's forms, ordered by (form, position) and deduped by field
+  // id, as the export's dynamic custom-field columns.
+  const formRows = await db.select({ id: schema.form.id }).from(schema.form).where(eq(schema.form.eventId, eventId));
+  const formIds = formRows.map((f) => f.id);
+
+  const fieldRows: { id: string; formId: string; position: number; label: string }[] = [];
+  for (const batch of chunkIds(formIds)) {
+    const batchRows = await db
+      .select({
+        id: schema.formField.id,
+        formId: schema.formField.formId,
+        position: schema.formField.position,
+        label: schema.formField.label,
+      })
+      .from(schema.formField)
+      .where(inArray(schema.formField.formId, batch));
+    fieldRows.push(...batchRows);
+  }
+
+  const customFields: SubmissionCustomFieldColumn[] = [];
+  const seenFieldIds = new Set<string>();
+  for (const f of [...fieldRows].sort((a, b) => (a.formId === b.formId ? a.position - b.position : a.formId < b.formId ? -1 : 1))) {
+    if (lockedFieldName(f.id) !== null) continue;
+    if (seenFieldIds.has(f.id)) continue;
+    seenFieldIds.add(f.id);
+    customFields.push({ fieldId: f.id, label: f.label });
+  }
+
+  const answerRows: { submissionId: string; formFieldId: string; valueJson: string }[] = [];
+  for (const batch of chunkIds(ids)) {
+    const batchRows = await db
+      .select({
+        submissionId: schema.submissionAnswer.submissionId,
+        formFieldId: schema.submissionAnswer.formFieldId,
+        valueJson: schema.submissionAnswer.valueJson,
+      })
+      .from(schema.submissionAnswer)
+      .where(inArray(schema.submissionAnswer.submissionId, batch));
+    answerRows.push(...batchRows);
+  }
+
+  const answersBySubmission = new Map<string, Record<string, unknown>>();
+  for (const a of answerRows) {
+    const rec = answersBySubmission.get(a.submissionId) ?? {};
+    rec[a.formFieldId] = JSON.parse(a.valueJson);
+    answersBySubmission.set(a.submissionId, rec);
+  }
+
   const inputs: SubmissionExportInput[] = submissions.map((s) => {
     const speakers = speakersBySubmission.get(s.id) ?? [];
     return {
@@ -216,10 +323,12 @@ async function exportSubmissions(db: Db, eventId: string): Promise<ExportTable> 
       speakers: speakers.map((sp) => sp.name),
       speakerEmails: speakers.map((sp) => sp.email),
       createdAt: s.createdAt.toISOString(),
+      description: s.description ?? "",
+      answers: answersBySubmission.get(s.id) ?? {},
     };
   });
 
-  return shapeSubmissionsExport(inputs);
+  return shapeSubmissionsExport(inputs, customFields);
 }
 
 // ---------------------------------------------------------------------------
@@ -228,7 +337,23 @@ async function exportSubmissions(db: Db, eventId: string): Promise<ExportTable> 
 
 async function exportSpeakers(db: Db, eventId: string): Promise<ExportTable> {
   const recordPrefix = await getRecordPrefix(db, eventId);
-  const header = ["firstName", "lastName", "email", "company", "title", "acceptedSessions", "visible"];
+  // DEC-515: bio/headshotUrl/social links appended so the export carries a
+  // public-speakers-list-worthy profile, not just contact identity.
+  const header = [
+    "firstName",
+    "lastName",
+    "email",
+    "company",
+    "title",
+    "acceptedSessions",
+    "visible",
+    "bio",
+    "headshotUrl",
+    "twitter",
+    "linkedin",
+    "github",
+    "website",
+  ];
 
   const rows = await db
     .select({
@@ -241,6 +366,9 @@ async function exportSpeakers(db: Db, eventId: string): Promise<ExportTable> {
       visible: schema.participant.visible,
       status: schema.submission.status,
       seq: schema.submission.seq,
+      bio: schema.contact.bio,
+      headshotUrl: schema.contact.headshotUrl,
+      socialLinksJson: schema.contact.socialLinksJson,
     })
     .from(schema.participant)
     .innerJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
@@ -255,6 +383,9 @@ async function exportSpeakers(db: Db, eventId: string): Promise<ExportTable> {
     title: string | null;
     acceptedRefs: string[];
     visible: boolean;
+    bio: string | null;
+    headshotUrl: string | null;
+    socialLinksJson: string | null;
   }
   const byContact = new Map<string, Agg>();
   for (const r of rows) {
@@ -267,21 +398,33 @@ async function exportSpeakers(db: Db, eventId: string): Promise<ExportTable> {
       title: r.title,
       acceptedRefs: [],
       visible: false,
+      bio: r.bio,
+      headshotUrl: r.headshotUrl,
+      socialLinksJson: r.socialLinksJson,
     };
     if (r.status === "accepted") agg.acceptedRefs.push(formatRef(recordPrefix, r.seq));
     if (r.visible) agg.visible = true;
     byContact.set(r.contactId, agg);
   }
 
-  const outRows = [...byContact.values()].map((a) => [
-    a.firstName,
-    a.lastName,
-    a.email,
-    a.company ?? "",
-    a.title ?? "",
-    a.acceptedRefs.join("; "),
-    a.visible ? "true" : "false",
-  ]);
+  const outRows = [...byContact.values()].map((a) => {
+    const social = parseSocialLinks(a.socialLinksJson);
+    return [
+      a.firstName,
+      a.lastName,
+      a.email,
+      a.company ?? "",
+      a.title ?? "",
+      a.acceptedRefs.join("; "),
+      a.visible ? "true" : "false",
+      a.bio ?? "",
+      a.headshotUrl ?? "",
+      social.twitter,
+      social.linkedin,
+      social.github,
+      social.website,
+    ];
+  });
 
   return buildTable(header, outRows);
 }
