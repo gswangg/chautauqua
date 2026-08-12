@@ -54,7 +54,9 @@ vi.mock("../src/server/repo/comms", async () => {
     ...actual,
     loadComposeSubmissions: (...args: Parameters<typeof loadComposeSubmissionsMock>) => loadComposeSubmissionsMock(...args),
     findAccountUserId: vi.fn(async () => null),
+    findAccountUserIds: vi.fn(async (_db: unknown, params: { contactId: string }[]) => new Map(params.map((p) => [p.contactId, null]))),
     listFeedbackComments: vi.fn(async () => []),
+    listFeedbackCommentsForSubmissions: vi.fn(async () => new Map()),
   };
 });
 

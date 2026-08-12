@@ -16,11 +16,11 @@ import { join } from "node:path";
  *     literal -- the DEC-461(a) list-envelope contract. Two sites are
  *     deliberately not list-GET envelopes and are named exceptions, each
  *     read at file:line before being allowlisted:
- *       - src/routes/comms.ts:388 (POST .../compose/preview) returns a
+ *       - src/routes/comms.ts:406 (POST .../compose/preview) returns a
  *         compose-preview render, one row per selected submission, bounded
  *         by the 100-recipient send cap (DEC checked elsewhere in comms.ts)
  *         -- a preview payload, not a list GET.
- *       - src/routes/api/contacts/bulk-email.ts:189 (POST
+ *       - src/routes/api/contacts/bulk-email.ts:198 (POST
  *         /contacts/bulk-email/preview) is the CRM-11/DEC-150 bulk-email
  *         preview: it slices to `previewContacts = contacts.slice(0,
  *         BULK_EMAIL_PREVIEW_LIMIT)` (5) before rendering, so it is bounded
@@ -115,8 +115,8 @@ function findItemsEnvelopeSites(source: string, file: string): EnvelopeSite[] {
 // deliberate reviewed act -- see the file-header comment above for why each
 // one is exempt.
 const ENVELOPE_ALLOWLIST = new Set<string>([
-  "src/routes/comms.ts:388",
-  "src/routes/api/contacts/bulk-email.ts:189",
+  "src/routes/comms.ts:406",
+  "src/routes/api/contacts/bulk-email.ts:198",
 ]);
 
 describe("DEC-480: list-envelope enumeration (executable, not prose)", () => {

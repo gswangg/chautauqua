@@ -289,24 +289,28 @@ function icsPreviewInfoFor(slot: repo.IcsScheduleRow, event: { timezone: string 
  * contact's email, else a claim link. DEC-397 (preview never mints
  * credentials): when mintClaimTokens is false, a userless contact resolves
  * to the fixed PREVIEW_CLAIM_TOKEN placeholder with zero KV writes instead
- * of a freshly minted token. */
+ * of a freshly minted token. `userId` is looked up once per recipient set
+ * (DEC-530: batched via repo.findAccountUserIds) and passed in rather than
+ * re-queried per recipient here — claim-token minting itself stays
+ * per-recipient (DEC-397: a KV write with real side effects). */
 async function resolvePortalLink(
-  db: import("../server/context").Db,
   kv: KVStore,
   contactId: string,
   eventId: string,
-  email: string,
+  userId: string | null,
   origin: string,
   mintClaimTokens: boolean,
 ): Promise<string> {
-  const userId = await repo.findAccountUserId(db, { contactId, email });
   if (userId) return `${origin}/portal`;
   if (!mintClaimTokens) return `${origin}/claim/${PREVIEW_CLAIM_TOKEN}`;
   const token = await createClaimToken(kv, { contactId, eventId });
   return `${origin}/claim/${token}`;
 }
 
-async function buildRenderTargets(
+/** Exported for test/comms-batched-lookups.test.ts (DEC-530): this is the
+ * per-request hotspot the batching fixed, so its query-count characteristics
+ * are tested directly rather than only through the full HTTP route. */
+export async function buildRenderTargets(
   c: {
     var: { db: import("../server/context").Db; auth?: { orgId: string } };
     env: { KV: KVNamespace; PUBLIC_BASE_URL?: string; DEV_MODE?: string };
@@ -324,12 +328,26 @@ async function buildRenderTargets(
   const kv = c.env.KV as unknown as KVStore;
   const origin = resolveBaseUrl(c);
 
+  // DEC-530: resolve the feedback-comment and account-identity lookups once
+  // for the whole expanded recipient set instead of per-recipient — at the
+  // DEC-019 100-recipient cap this collapses up to 200 sequential D1
+  // round trips into 2.
+  const submissionIds = [...new Set(expanded.recipients.map((r) => r.submissionId))];
+  const feedbackMap = includeFeedback
+    ? await repo.listFeedbackCommentsForSubmissions(c.var.db, submissionIds)
+    : new Map<string, string[]>();
+  const accountMap = await repo.findAccountUserIds(
+    c.var.db,
+    expanded.recipients.map((r) => ({ contactId: r.contactId, email: r.email })),
+  );
+
   const targets = [];
   for (const recipient of expanded.recipients) {
     const submission = submissionById.get(recipient.submissionId);
     if (!submission) throw new Error(`recipient references unknown submission ${recipient.submissionId}`);
-    const feedbackComments = includeFeedback ? await repo.listFeedbackComments(c.var.db, recipient.submissionId) : [];
-    const portalLink = await resolvePortalLink(c.var.db, kv, recipient.contactId, event.id, recipient.email, origin, mintClaimTokens);
+    const feedbackComments = includeFeedback ? feedbackMap.get(recipient.submissionId) ?? [] : [];
+    const userId = accountMap.get(recipient.contactId) ?? null;
+    const portalLink = await resolvePortalLink(kv, recipient.contactId, event.id, userId, origin, mintClaimTokens);
     const vars = buildMergeVars({
       speakerName: recipient.name,
       talkTitle: submission.title,

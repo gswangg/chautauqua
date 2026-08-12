@@ -64,6 +64,6 @@ export {
 } from "./contacts/segments";
 
 export { findContactsForOrg } from "./contacts/bulk";
-export { findAccountUserId } from "./comms";
+export { findAccountUserId, findAccountUserIds } from "./comms";
 
 export { pushContactToEvent, pushContactsToEvent } from "./contacts/push";
