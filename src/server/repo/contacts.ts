@@ -47,7 +47,16 @@ export {
   type ContactHistory,
 } from "./contacts/history";
 
-export { applyImportRows, MAX_IMPORT_ROWS, type ImportSkip, type ImportResult } from "./contacts/import";
+export {
+  applyImportRows,
+  planImportRows,
+  MAX_IMPORT_ROWS,
+  type ImportSkip,
+  type ImportResult,
+  type ImportPlan,
+  type ImportPlanRow,
+  type ImportPlanOverwrite,
+} from "./contacts/import";
 
 export { findDuplicateGroupsForOrg, mergeContacts, type DuplicateGroup } from "./contacts/merge";
 

@@ -50,6 +50,29 @@ export function registerImportRoutes(contactsRoutes: Hono<AppEnv>): void {
     // DEC-290: an optional eventId puts every imported/updated contact (not
     // already on the roster) onto the event, riding the existing add-to-event
     // push (no new roster table, no new route).
+    // DEC-663: an organizer-facing dry-run plan (never writes) vs. the real
+    // import run. Validated up front, alongside the other bounds, so an
+    // organizer never falls through to a real write on a malformed request.
+    let dryRun = false;
+    if (body.dryRun !== undefined) {
+      if (typeof body.dryRun !== "boolean") {
+        throw new ApiError("invalid", "Validation failed", { dryRun: "must be a boolean" });
+      }
+      dryRun = body.dryRun;
+    }
+
+    let skipLines: number[] = [];
+    if (body.skipLines !== undefined) {
+      if (
+        !Array.isArray(body.skipLines) ||
+        body.skipLines.length > MAX_IMPORT_ROWS ||
+        !body.skipLines.every((n): n is number => typeof n === "number" && Number.isInteger(n))
+      ) {
+        throw new ApiError("invalid", "Validation failed", { skipLines: "must be an array of integers" });
+      }
+      skipLines = body.skipLines as number[];
+    }
+
     let eventId: string | undefined;
     if (body.eventId !== undefined) {
       if (typeof body.eventId !== "string" || body.eventId.trim() === "") {
@@ -67,6 +90,7 @@ export function registerImportRoutes(contactsRoutes: Hono<AppEnv>): void {
       throw new ApiError("invalid", err instanceof Error ? err.message : "Failed to parse CSV");
     }
     if (table.length === 0) {
+      if (dryRun) return c.json({ rows: [], created: 0, updated: 0, skipped: 0 });
       return c.json(eventId !== undefined ? { created: 0, updated: 0, skipped: [], addedToEvent: 0 } : { created: 0, updated: 0, skipped: [] });
     }
     const [header, ...dataRows] = table;
@@ -95,7 +119,13 @@ export function registerImportRoutes(contactsRoutes: Hono<AppEnv>): void {
       });
     }
 
-    const result = await repo.applyImportRows(c.var.db, orgId, rows);
+    if (dryRun) {
+      // DEC-663: never applyImportRows/pushContactsToEvent on a dry run.
+      const plan = await repo.planImportRows(c.var.db, orgId, rows);
+      return c.json(plan);
+    }
+
+    const result = await repo.applyImportRows(c.var.db, orgId, rows, { skipLines });
 
     if (eventId === undefined) {
       return c.json({ created: result.created, updated: result.updated, skipped: result.skipped });

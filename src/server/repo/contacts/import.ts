@@ -5,11 +5,16 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
-import type { ContactRecord } from "../../../domain/contacts";
+import {
+  describeImportOverwrites,
+  findImportDuplicateCandidates,
+  type ContactRecord,
+} from "../../../domain/contacts";
 import { ApiError } from "../../http";
 import { chunkIds } from "../../../lib/chunk";
 import { customFieldsJsonOf, type ContactPatch } from "./crud";
 import { resolveImportUpsert } from "./query";
+import { toContactRecord, toRow } from "./rows";
 import { isValidEmail, normalizeEmail } from "../../../domain/email"; // DEC-454
 import { newId } from "../../../domain/ids";
 import { backfillNullAttribution } from "../attribution";
@@ -119,6 +124,7 @@ export async function applyImportRows(
   db: Db,
   orgId: string,
   rows: { line: number; parsed: Record<string, unknown> }[],
+  opts?: { skipLines?: number[] },
 ): Promise<ImportResult> {
   if (rows.length > MAX_IMPORT_ROWS) {
     throw new ApiError(
@@ -166,6 +172,11 @@ export async function applyImportRows(
   const skipped: ImportSkip[] = [];
   const contactIds: string[] = [];
   const seenContactIds = new Set<string>();
+  // DEC-663: lines an organizer chose to skip on the dry-run plan screen
+  // never reach create/update — reported in `skipped`, real-run counts
+  // still tallied AFTER commit exactly as today (they simply never fire
+  // for a skipped line).
+  const skipLineSet = new Set(opts?.skipLines ?? []);
 
   const addContactId = (id: string) => {
     if (!seenContactIds.has(id)) {
@@ -175,6 +186,10 @@ export async function applyImportRows(
   };
 
   for (const { line, parsed } of rows) {
+    if (skipLineSet.has(line)) {
+      skipped.push({ line, reason: "skipped by organizer" });
+      continue;
+    }
     const email = typeof parsed.email === "string" ? parsed.email : undefined;
     if (!email || email.trim() === "") {
       skipped.push({ line, reason: "missing email" });
@@ -205,4 +220,145 @@ export async function applyImportRows(
   }
 
   return { created, updated, skipped, contactIds };
+}
+
+export interface ImportPlanOverwrite {
+  field: "firstName" | "lastName" | "company" | "title" | "phone" | "bio";
+  from: string;
+  to: string;
+}
+
+export interface ImportPlanRow {
+  line: number;
+  email: string;
+  action: "create" | "update" | "skip";
+  reason?: string;
+  contactId?: string;
+  overwrites?: ImportPlanOverwrite[];
+  possibleDuplicates?: ContactRecord[];
+}
+
+export interface ImportPlan {
+  rows: ImportPlanRow[];
+  created: number;
+  updated: number;
+  skipped: number;
+}
+
+async function selectContactsWhere(
+  db: Db,
+  orgId: string,
+  extra: ReturnType<typeof inArray>,
+): Promise<ContactRecord[]> {
+  const raw = await db
+    .select()
+    .from(schema.contact)
+    .where(and(eq(schema.contact.orgId, orgId), extra));
+  return (raw as (typeof schema.contact.$inferSelect)[]).map((r) => toContactRecord(toRow(r)));
+}
+
+/**
+ * DEC-663: the read-only dry-run counterpart of applyImportRows above — NO
+ * writes. Reuses the same chunked-by-file-contents pre-pass idiom
+ * (applyImportRows above) for BOTH lookups it needs: by lower(email) (as
+ * applyImportRows already does, to decide create vs. update) and, new here,
+ * by lower(last_name) over the file's distinct last names (to surface
+ * findImportDuplicateCandidates possible-duplicate matches) — cost stays
+ * proportional to the file's distinct emails/last names, never a whole-org
+ * scan (DEC-356).
+ */
+export async function planImportRows(
+  db: Db,
+  orgId: string,
+  rows: { line: number; parsed: Record<string, unknown> }[],
+): Promise<ImportPlan> {
+  if (rows.length > MAX_IMPORT_ROWS) {
+    throw new ApiError(
+      "invalid",
+      `CSV has ${rows.length} rows, which exceeds the ${MAX_IMPORT_ROWS}-row import cap; split the file into smaller batches and import each separately.`,
+      { csvText: "Too many rows" },
+    );
+  }
+
+  const fileEmails = new Set<string>();
+  const fileLastNames = new Set<string>();
+  for (const { parsed } of rows) {
+    const email = typeof parsed.email === "string" ? parsed.email : undefined;
+    if (email && email.trim() !== "" && isValidEmail(email)) {
+      fileEmails.add(normalizeEmail(email));
+    }
+    const lastName = typeof parsed.lastName === "string" ? parsed.lastName.trim().toLowerCase() : "";
+    if (lastName !== "") fileLastNames.add(lastName);
+  }
+
+  const byEmail = new Map<string, ContactRecord>();
+  for (const batch of chunkIds([...fileEmails])) {
+    const found = await selectContactsWhere(db, orgId, inArray(sql`lower(${schema.contact.email})`, batch));
+    for (const c of found) byEmail.set(normalizeEmail(c.email), c);
+  }
+
+  // DEC-663: candidates for findImportDuplicateCandidates — every org
+  // contact whose last name (lowercased) appears in the file, chunked over
+  // the file's distinct last names so cost is proportional to the file, not
+  // the org's whole directory (DEC-356/DEC-554's MAX_CONTACT_DIRECTORY_SCAN
+  // is deliberately never touched here).
+  const nameCandidates: ContactRecord[] = [];
+  for (const batch of chunkIds([...fileLastNames])) {
+    const found = await selectContactsWhere(db, orgId, inArray(sql`lower(${schema.contact.lastName})`, batch));
+    nameCandidates.push(...found);
+  }
+
+  const planRows: ImportPlanRow[] = [];
+  let created = 0;
+  let updated = 0;
+  let skippedCount = 0;
+
+  for (const { line, parsed } of rows) {
+    const email = typeof parsed.email === "string" ? parsed.email : undefined;
+    if (!email || email.trim() === "") {
+      planRows.push({ line, email: "", action: "skip", reason: "missing email" });
+      skippedCount++;
+      continue;
+    }
+    if (!isValidEmail(email)) {
+      planRows.push({ line, email, action: "skip", reason: "invalid email" });
+      skippedCount++;
+      continue;
+    }
+    const key = normalizeEmail(email);
+    const existing = byEmail.get(key);
+    const normalizedParsed = { ...parsed, email: key } as Partial<ContactRecord>;
+    const decision = resolveImportUpsert(existing?.id, normalizedParsed, existing?.customFields);
+
+    if (decision.action === "create") {
+      created++;
+      const duplicates = findImportDuplicateCandidates(
+        {
+          firstName: normalizedParsed.firstName,
+          lastName: normalizedParsed.lastName,
+          company: normalizedParsed.company,
+          email: key,
+        },
+        nameCandidates,
+      );
+      planRows.push({
+        line,
+        email: key,
+        action: "create",
+        ...(duplicates.length > 0 ? { possibleDuplicates: duplicates } : {}),
+      });
+    } else {
+      updated++;
+      const overwrites = existing ? describeImportOverwrites(existing, decision.patch) : [];
+      planRows.push({
+        line,
+        email: key,
+        action: "update",
+        contactId: decision.id,
+        ...(overwrites.length > 0 ? { overwrites } : {}),
+      });
+    }
+  }
+
+  return { rows: planRows, created, updated, skipped: skippedCount };
 }

@@ -171,6 +171,68 @@ function alreadyInMultiEmailGroup(
   return !!bucket && bucket.length > 1;
 }
 
+/**
+ * DEC-663: finds contacts that plausibly refer to the same human as an
+ * about-to-be-imported CSV row, for the dry-run plan's `possibleDuplicates`.
+ * Uses the SAME normalization findDuplicateGroups uses above (normalized
+ * first+last name, sub-grouped by normalized company where a blank company
+ * is a wildcard on EITHER side), restricted to candidates whose
+ * normalizeEmail differs from the row's (a matching email is an update, not
+ * a "possible" duplicate — resolveImportUpsert already handles that case).
+ */
+export function findImportDuplicateCandidates(
+  row: { firstName?: string; lastName?: string; company?: string; email: string },
+  candidates: ContactRecord[],
+): ContactRecord[] {
+  const name = normalizedName(row.firstName ?? "", row.lastName ?? "");
+  if (name === "") return [];
+  const rowEmail = normalizeEmail(row.email);
+  const rowCompany = normalizedCompany(row.company);
+
+  const nameMatches = candidates.filter(
+    (c) => normalizeEmail(c.email) !== rowEmail && normalizedName(c.firstName, c.lastName) === name,
+  );
+
+  if (rowCompany === "") {
+    // The row is a company-blank wildcard: it matches every name-matched
+    // candidate regardless of that candidate's own company.
+    return nameMatches;
+  }
+
+  return nameMatches.filter((c) => {
+    const candidateCompany = normalizedCompany(c.company);
+    return candidateCompany === "" || candidateCompany === rowCompany;
+  });
+}
+
+/**
+ * DEC-663: describes which non-blank stored fields a resolveImportUpsert
+ * update `patch` would REPLACE on `existing` — a field is an overwrite only
+ * when the incoming value is non-blank, the stored value is non-blank, and
+ * they differ after trim (a blank incoming cell is ABSENT DATA, per
+ * resolveImportUpsert's existing setIfNonBlank semantics, which this
+ * function does not change — it only describes, never decides, what a patch
+ * would do).
+ */
+export function describeImportOverwrites(
+  existing: ContactRecord,
+  patch: Partial<ContactRecord>,
+): Array<{ field: "firstName" | "lastName" | "company" | "title" | "phone" | "bio"; from: string; to: string }> {
+  const fields = ["firstName", "lastName", "company", "title", "phone", "bio"] as const;
+  const out: Array<{ field: (typeof fields)[number]; from: string; to: string }> = [];
+  for (const field of fields) {
+    const incoming = patch[field];
+    if (incoming === undefined) continue;
+    const incomingTrimmed = incoming.trim();
+    if (incomingTrimmed === "") continue;
+    const stored = (existing[field] ?? "").trim();
+    if (stored === "") continue;
+    if (stored === incomingTrimmed) continue;
+    out.push({ field, from: stored, to: incomingTrimmed });
+  }
+  return out;
+}
+
 export interface MergePlan {
   merged: ContactRecord;
   duplicateId: string;
