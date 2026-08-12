@@ -46,6 +46,7 @@ import {
   insertFileComment,
   isValidContentStatus,
   listEventDeliverableFiles,
+  listEventHeadshotFiles,
   listFileComments,
   listSubmissionFiles,
   resolveLatestVersions,
@@ -238,6 +239,26 @@ fileApiRoutes.get("/events/:eventId/files", requireOrganizer, async (c) => {
   const q = qRaw && qRaw.trim().length > 0 ? qRaw.trim() : null;
 
   const result = await listEventDeliverableFiles(c.var.db, eventId, { page, perPage, kinds, q });
+  return c.json({ items: result.items, total: result.total, page: result.page, perPage: result.perPage });
+});
+
+// -----------------------------------------------------------------------
+// GET /api/v1/events/:eventId/headshots — DEC-669 speaker headshots tab
+// -----------------------------------------------------------------------
+fileApiRoutes.get("/events/:eventId/headshots", requireOrganizer, async (c) => {
+  const auth = requireAuth(c);
+  const eventId = c.req.param("eventId");
+  const scope = await getEventFilesScope(c.var.db, eventId);
+  // DEC-669: an eventId from another org 404s, never 403 — object-level
+  // ownership is not disclosed to the caller.
+  if (!scope || scope.orgId !== auth.orgId) throw new ApiError("not_found", "Event not found");
+
+  const page = clampPage(c.req.query("page"));
+  const perPage = clampPerPage(c.req.query("perPage"));
+  const qRaw = c.req.query("q");
+  const q = qRaw && qRaw.trim().length > 0 ? qRaw.trim() : undefined;
+
+  const result = await listEventHeadshotFiles(c.var.db, eventId, { page, perPage, q });
   return c.json({ items: result.items, total: result.total, page: result.page, perPage: result.perPage });
 });
 

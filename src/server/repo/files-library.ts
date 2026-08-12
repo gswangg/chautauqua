@@ -9,7 +9,7 @@
 // scans the event's submissions; it only ever loads the requested files'
 // own submissions/version chains.
 
-import { and, eq, inArray, isNull, or, sql } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { formatRef } from "../../domain/ids";
@@ -17,6 +17,10 @@ import { chunkIds } from "../../lib/chunk";
 import { likeContains } from "./like";
 import { ApiError } from "../http";
 import { batchContactNames } from "./files-versions";
+import { ACTIVE_INVITE_STATUSES } from "../../domain/acceptance";
+import { DEC_669 } from "../../decisions";
+
+void DEC_669;
 
 export interface EventFilesScope {
   orgId: string;
@@ -399,4 +403,120 @@ export async function resolveLatestVersions(
     });
   }
   return out;
+}
+
+// -----------------------------------------------------------------------
+// Headshots tab (DEC-669) — speaker headshot files are structurally
+// unreachable from listEventDeliverableFiles: a headshot's file row carries
+// submissionId null (DEC-028) and is linked instead by
+// contact.headshot_url = '/headshots/<fileId>'. This is a SEPARATE query
+// (never a union into listEventDeliverableFiles, per DEC-669) returning the
+// product's ONE page shape with items AND total from the same WHERE.
+// -----------------------------------------------------------------------
+
+export interface EventHeadshotFile {
+  fileId: string;
+  filename: string;
+  sizeBytes: number;
+  contentType: string;
+  createdAt: number;
+  contactId: string;
+  contactName: string;
+  company: string | null;
+}
+
+export interface EventHeadshotFilesQuery {
+  page: number;
+  perPage: number;
+  q?: string;
+}
+
+export interface EventHeadshotFilesPage {
+  items: EventHeadshotFile[];
+  total: number;
+  page: number;
+  perPage: number;
+}
+
+/** Scopes contacts to the event's accepted speakers using the same
+ * definition tasks.ts's listAcceptedContactIds establishes (DEC-278/312:
+ * accepted submissions, invite status in ACTIVE_INVITE_STATUSES), pushed
+ * into the WHERE alongside the headshot join rather than resolved as a
+ * separate id list — items and total come from this ONE where clause. */
+export async function listEventHeadshotFiles(
+  db: Db,
+  eventId: string,
+  params: EventHeadshotFilesQuery,
+): Promise<EventHeadshotFilesPage> {
+  const conditions = [
+    eq(schema.submission.eventId, eventId),
+    eq(schema.submission.status, "accepted"),
+    inArray(schema.participant.inviteStatus, [...ACTIVE_INVITE_STATUSES]),
+    isNotNull(schema.contact.headshotUrl),
+  ];
+
+  if (params.q) {
+    const tokens = params.q.split(/\s+/).filter((t) => t.length > 0);
+    const tokenConditions = tokens.map((token) => {
+      const like = likeContains(token.toLowerCase());
+      return or(
+        sql`lower(${schema.contact.firstName} || ' ' || ${schema.contact.lastName}) like ${like} escape '\\'`,
+        sql`lower(coalesce(${schema.contact.company}, '')) like ${like} escape '\\'`,
+        sql`lower(${schema.file.filename}) like ${like} escape '\\'`,
+      )!;
+    });
+    if (tokenConditions.length > 0) {
+      conditions.push(and(...tokenConditions)!);
+    }
+  }
+
+  const whereExpr = and(...conditions);
+  const headshotJoin = sql`${schema.contact.headshotUrl} = '/headshots/' || ${schema.file.id}`;
+
+  // Distinct contact ids in scope (a contact can speak on multiple accepted
+  // submissions; one headshot row per contact, not one per participant row).
+  const totalRows = await db
+    .selectDistinct({ contactId: schema.contact.id })
+    .from(schema.participant)
+    .innerJoin(schema.submission, eq(schema.participant.submissionId, schema.submission.id))
+    .innerJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
+    .innerJoin(schema.file, headshotJoin)
+    .where(whereExpr);
+  const total = totalRows.length;
+
+  const offset = (params.page - 1) * params.perPage;
+
+  const rows = await db
+    .selectDistinct({
+      fileId: schema.file.id,
+      filename: schema.file.filename,
+      sizeBytes: schema.file.sizeBytes,
+      contentType: schema.file.contentType,
+      createdAt: schema.file.createdAt,
+      contactId: schema.contact.id,
+      firstName: schema.contact.firstName,
+      lastName: schema.contact.lastName,
+      company: schema.contact.company,
+    })
+    .from(schema.participant)
+    .innerJoin(schema.submission, eq(schema.participant.submissionId, schema.submission.id))
+    .innerJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
+    .innerJoin(schema.file, headshotJoin)
+    .where(whereExpr)
+    .orderBy(sql`${schema.contact.lastName} asc, ${schema.contact.firstName} asc, ${schema.file.id} asc`)
+    .limit(params.perPage)
+    .offset(offset);
+
+  const items: EventHeadshotFile[] = rows.map((row) => ({
+    fileId: row.fileId,
+    filename: row.filename,
+    sizeBytes: row.sizeBytes,
+    contentType: row.contentType,
+    createdAt: row.createdAt.getTime(),
+    contactId: row.contactId,
+    contactName: `${row.firstName} ${row.lastName}`.trim(),
+    company: row.company ?? null,
+  }));
+
+  return { items, total, page: params.page, perPage: params.perPage };
 }
