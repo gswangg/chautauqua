@@ -96,10 +96,15 @@ describe("DEC-584: public agenda phone list + desktop grid dual markup", () => {
     expect(wrappedHtml).toContain(bareHtml);
   });
 
-  it("ScheduleContent renders TWO .chq-itinerary-toggle inputs with the same value per session (the trap)", () => {
+  // DEC-602: ScheduleContent no longer renders AgendaDayGrid's room-column
+  // grid at any width (EMB-09), so /schedule renders exactly ONE
+  // .chq-itinerary-toggle per session now, not the dual-markup trap the
+  // old desktop-grid + phone-list wrapper produced.
+  it("ScheduleContent renders exactly ONE .chq-itinerary-toggle input per session (no dual grid+list markup)", () => {
     const html = String(ScheduleContent({ event: EVENT, items: ITEMS, total: ITEMS.length }));
     const matches = [...html.matchAll(/class="chq-itinerary-toggle" value="s1"/g)];
-    expect(matches.length).toBe(2);
+    expect(matches.length).toBe(1);
+    expect(html).not.toContain('class="chq-pub-agenda-day"');
   });
 
   it("the phone list itinerary row exists only on /schedule (ScheduleContent), not /agenda (AgendaContent)", () => {
