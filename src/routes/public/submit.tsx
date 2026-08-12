@@ -29,7 +29,7 @@ import {
 } from "../../server/repo/submit";
 import { findAccountUserId } from "../../server/repo/comms";
 import { validateAnswers } from "../../forms/validate";
-import { isVisible } from "../../forms/visibility";
+import { makeVisibilityPredicate } from "../../forms/visibility";
 import type { AnswerMap, FormFieldDef } from "../../forms/types";
 import { LOCKED_SESSION_FIELDS, LOCKED_SPEAKER_FIELDS } from "../../forms/types";
 import {
@@ -249,6 +249,9 @@ function SubmitPage(props: {
   const { event, form, fields, tracks, answers, selectedTrackIds, csrfToken, errors, trackError } = props;
   const accentColor = branding(event).accentColor;
   const logoUrl = branding(event).logoUrl;
+  // DEC-532: one predicate built from the FULL field list (a session field
+  // can gate a speaker field), shared by both sections below.
+  const isVisible = makeVisibilityPredicate(fields, answers);
   return (
     <PageShell title={`Submit a session - ${event.name}`} accentColor={accentColor}>
       <div class="chq-cfp-shell">
@@ -615,11 +618,14 @@ publicSubmitRoutes.post("/submit/:eventSlug", csrfForm, async (c) => {
   );
   const fileValidations: Record<string, ValidUpload> = {};
   const fileErrors: Record<string, string> = {};
+  // DEC-532: built from the FULL field list — a hidden non-file field can
+  // transitively hide a file field.
+  const isFieldVisible = makeVisibilityPredicate(fields, answers);
   for (const field of fileFields) {
     // DEC-132: rule-hidden file fields are ignored entirely — no upload
     // validation, no error, no "pending" placeholder — so a hidden field
     // never blocks submit and never leaves any trace of an attempted file.
-    if (!isVisible(field, answers)) continue;
+    if (!isFieldVisible(field, answers)) continue;
     const file = fileAnswers[field.id];
     if (!file) continue;
     // `kind` here only selects the extension/size allowlist tier inside

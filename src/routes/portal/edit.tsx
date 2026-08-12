@@ -19,7 +19,7 @@ import {
 } from "../../server/repo/portal-edit";
 import { canEditSubmission, canEditTracks } from "../../domain/edit-lock";
 import { validateAnswers } from "../../forms/validate";
-import { isVisible } from "../../forms/visibility";
+import { makeVisibilityPredicate } from "../../forms/visibility";
 import type { AnswerMap } from "../../forms/types";
 import { lockedFieldName } from "../../forms/types";
 import { FormFieldsSection, FieldRulesScript, fieldInputName } from "../../views/form-render";
@@ -132,6 +132,9 @@ function EditPage(props: {
     );
   }
   const offeredTracks = data.allTracks.filter((t) => data.offeredTrackIds.includes(t.id));
+  // DEC-532: one predicate built from the FULL field list (a session field
+  // can gate a speaker field), shared by both sections below.
+  const isVisible = makeVisibilityPredicate(data.fields, answers);
   return (
     <PortalLayout branding={props.branding} csrfToken={csrfToken}>
       <a href={`/portal/submissions/${props.submissionId}`} class="chq-portal-back">&larr; Back to submission</a>
