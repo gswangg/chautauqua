@@ -7,6 +7,9 @@ void DEC_124;
 
 export const MAX_TEXT_LENGTH = 2000;
 export const MAX_LONG_TEXT_LENGTH = 20000;
+// DEC-417
+export const MAX_NAME_LENGTH = 200;
+export const MAX_RICH_TEXT_LENGTH = 100000;
 
 export type ValidateResult =
   | { ok: true; cleaned: AnswerMap }

@@ -7,6 +7,7 @@
 
 import type { AppEnv } from "../../server/env";
 import { ApiError } from "../../server/http";
+import { MAX_NAME_LENGTH } from "../../forms/validate"; // DEC-417
 import {
   aggregateSubmission,
   aggregateDropdownCriterion,
@@ -83,6 +84,10 @@ export function parseCriteriaList(
     const c = raw as Record<string, unknown>;
     if (typeof c.id !== "string" || typeof c.label !== "string") {
       errors[errKey] = "each criterion needs id and label";
+      return undefined;
+    }
+    if (c.label.length > MAX_NAME_LENGTH) {
+      errors[errKey] = `criterion "${c.id}" label must be at most ${MAX_NAME_LENGTH} characters`; // DEC-417
       return undefined;
     }
     if (c.kind === "rating") {

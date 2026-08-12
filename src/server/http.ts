@@ -81,6 +81,47 @@ export function parseBoundedIdArray(
   return value;
 }
 
+// DEC-417
+/**
+ * Validates and returns a bounded, optionally-required, string field.
+ * Fails loudly on non-string input, missing-when-required, or over-cap
+ * length -- a clean 400 instead of a downstream D1 SQLITE_TOOBIG 500.
+ * Cap constants live in ../forms/validate (single source of truth).
+ */
+export function parseBoundedText(
+  value: unknown,
+  field: string,
+  opts: { max: number; required?: boolean; trim?: boolean },
+): string {
+  if (typeof value !== "string") {
+    throw new ApiError("invalid", `${field} must be a string`, { [field]: "Invalid" });
+  }
+  const result = opts.trim !== false ? value.trim() : value;
+  if (opts.required && result.length === 0) {
+    throw new ApiError("invalid", `${field} is required`, { [field]: "Required" });
+  }
+  if (result.length > opts.max) {
+    throw new ApiError("invalid", `${field} must be at most ${opts.max} characters`, {
+      [field]: `Max ${opts.max}`,
+    });
+  }
+  return result;
+}
+
+// DEC-417
+/** Like parseBoundedText, but nullable columns: undefined/null/empty -> null. */
+export function parseBoundedOptionalText(
+  value: unknown,
+  field: string,
+  opts: { max: number },
+): string | null {
+  if (value === undefined || value === null) {
+    return null;
+  }
+  const text = parseBoundedText(value, field, { max: opts.max, required: false, trim: true });
+  return text.length === 0 ? null : text;
+}
+
 /** Registers the shared onError handler; call once on the top-level app. */
 export function registerErrorHandler(app: Hono<AppEnv>): void {
   app.onError((err, c) => {

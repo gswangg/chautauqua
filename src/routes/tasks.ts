@@ -13,6 +13,7 @@ import type { Db } from "../server/context";
 import { makeDb, makeMailer } from "../server/context";
 import { requireOrganizer, csrfJson } from "../server/middleware";
 import { ApiError, parseBoundedIdArray } from "../server/http";
+import { MAX_NAME_LENGTH, MAX_LONG_TEXT_LENGTH } from "../forms/validate"; // DEC-417
 import { DEC_120, DEC_214, DEC_240, DEC_291, DEC_398 } from "../decisions";
 import { findFormById } from "../server/repo/forms";
 import {
@@ -153,6 +154,7 @@ taskRoutes.post("/events/:eventId/tasks", requireOrganizer, csrfJson, async (c) 
 
   const title = typeof body.title === "string" ? body.title.trim() : "";
   if (!title) fields.title = "Required";
+  else if (title.length > MAX_NAME_LENGTH) fields.title = `Max ${MAX_NAME_LENGTH}`; // DEC-417
 
   const description = body.description === undefined || body.description === null
     ? null
@@ -160,6 +162,9 @@ taskRoutes.post("/events/:eventId/tasks", requireOrganizer, csrfJson, async (c) 
       ? body.description
       : undefined;
   if (description === undefined) fields.description = "Must be a string";
+  else if (description !== null && description.length > MAX_LONG_TEXT_LENGTH) {
+    fields.description = `Max ${MAX_LONG_TEXT_LENGTH}`; // DEC-417
+  }
 
   let dueDate: number | null | undefined = null;
   if (body.dueDate !== undefined && body.dueDate !== null) {
@@ -239,6 +244,8 @@ taskRoutes.patch("/tasks/:id", requireOrganizer, csrfJson, async (c) => {
   if (body.title !== undefined) {
     if (typeof body.title !== "string" || body.title.trim().length === 0) {
       fields.title = "Must be a non-empty string";
+    } else if (body.title.trim().length > MAX_NAME_LENGTH) {
+      fields.title = `Max ${MAX_NAME_LENGTH}`; // DEC-417
     } else {
       input.title = body.title.trim();
     }
@@ -246,6 +253,8 @@ taskRoutes.patch("/tasks/:id", requireOrganizer, csrfJson, async (c) => {
   if (body.description !== undefined) {
     if (body.description !== null && typeof body.description !== "string") {
       fields.description = "Must be a string or null";
+    } else if (body.description !== null && body.description.length > MAX_LONG_TEXT_LENGTH) {
+      fields.description = `Max ${MAX_LONG_TEXT_LENGTH}`; // DEC-417
     } else {
       input.description = body.description;
     }

@@ -3,6 +3,7 @@
 // directly by the route layer and by plain vitest.
 
 import type { FormFieldDef, FormFieldKind, FormFieldRule, FormFieldRuleOp } from "./types";
+import { MAX_NAME_LENGTH, MAX_TEXT_LENGTH } from "./validate"; // DEC-417
 
 export const FIELD_KINDS: readonly FormFieldKind[] = [
   "text",
@@ -103,12 +104,25 @@ export function validateFieldDefInput(
       const options = input.options;
       if (!Array.isArray(options) || options.length === 0 || !options.every((o) => typeof o === "string")) {
         errors.options = "dropdown fields require a non-empty string array of options";
+      } else if (options.some((o) => (o as string).length > MAX_NAME_LENGTH)) {
+        errors.options = `each option must be at most ${MAX_NAME_LENGTH} characters`; // DEC-417
       }
     }
   }
 
   if (input.label !== undefined && (typeof input.label !== "string" || input.label.trim().length === 0)) {
     errors.label = "required";
+  } else if (input.label !== undefined && (input.label as string).length > MAX_NAME_LENGTH) {
+    errors.label = `must be at most ${MAX_NAME_LENGTH} characters`; // DEC-417
+  }
+
+  if (
+    input.helpText !== undefined &&
+    input.helpText !== null &&
+    typeof input.helpText === "string" &&
+    input.helpText.length > MAX_TEXT_LENGTH
+  ) {
+    errors.helpText = `must be at most ${MAX_TEXT_LENGTH} characters`; // DEC-417
   }
 
   if (input.required !== undefined && typeof input.required !== "boolean") {

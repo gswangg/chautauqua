@@ -10,6 +10,7 @@ import { Hono, type Context } from "hono";
 import type { AppEnv, AuthInfo } from "../server/env";
 import { requireOrganizer, csrfJson } from "../server/middleware";
 import { ApiError, parseBoundedIdArray } from "../server/http";
+import { MAX_LONG_TEXT_LENGTH } from "../forms/validate"; // DEC-417
 import { makeFileStore } from "../server/context";
 import { newId } from "../domain/ids";
 import { buildZip } from "../lib/zip";
@@ -315,6 +316,11 @@ fileApiRoutes.post("/files/:fileId/comments", csrfJson, async (c) => {
   const body = (await c.req.json().catch(() => ({}))) as { body?: unknown };
   const text = typeof body.body === "string" ? body.body.trim() : "";
   if (!text) throw new ApiError("invalid", "body is required", { body: "Required" });
+  if (text.length > MAX_LONG_TEXT_LENGTH) {
+    throw new ApiError("invalid", `body must be at most ${MAX_LONG_TEXT_LENGTH} characters`, {
+      body: `Max ${MAX_LONG_TEXT_LENGTH}`,
+    }); // DEC-417
+  }
 
   const commentId = await insertFileComment(c.var.db, {
     fileId,

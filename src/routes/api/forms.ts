@@ -7,6 +7,7 @@ import { Hono } from "hono";
 import type { AppEnv } from "../../server/env";
 import { csrfJson, requireOrganizer } from "../../server/middleware";
 import { ApiError } from "../../server/http";
+import { MAX_LONG_TEXT_LENGTH } from "../../forms/validate"; // DEC-417
 import { validateFieldDefInput, isPermutation, type FieldDefInput } from "../../forms/builder";
 import type { FormFieldDef, FormFieldRule } from "../../forms/types";
 import * as repo from "../../server/repo/forms";
@@ -92,6 +93,8 @@ formsRoutes.patch("/api/v1/forms/:formId", requireOrganizer, csrfJson, async (c)
   if (body.intro !== undefined) {
     if (body.intro !== null && typeof body.intro !== "string") {
       errors.intro = "must be a string";
+    } else if (body.intro !== null && body.intro.length > MAX_LONG_TEXT_LENGTH) {
+      errors.intro = `must be at most ${MAX_LONG_TEXT_LENGTH} characters`; // DEC-417
     } else {
       patch.intro = body.intro;
     }

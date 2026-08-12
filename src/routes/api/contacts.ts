@@ -7,6 +7,7 @@ import { Hono } from "hono";
 import type { AppEnv } from "../../server/env";
 import { csrfJson, requireOrganizer } from "../../server/middleware";
 import { ApiError, parseBoundedIdArray } from "../../server/http";
+import { MAX_NAME_LENGTH, MAX_TEXT_LENGTH, MAX_LONG_TEXT_LENGTH } from "../../forms/validate"; // DEC-417
 import * as repo from "../../server/repo/contacts";
 import { getEventForOrg } from "../../server/repo/events";
 import { listAcceptedContactIds } from "../../server/repo/tasks";
@@ -30,6 +31,11 @@ void DEC_252;
 void DEC_290;
 
 export const contactsRoutes = new Hono<AppEnv>();
+
+// DEC-417: CSV import request-input bounds, before parseCsv touches an
+// arbitrarily large body.
+export const MAX_IMPORT_CSV_BYTES = 5_000_000;
+export const MAX_IMPORT_ROWS = 10_000;
 
 // NOTE: see events.ts for why a blanket `.use("*", requireOrganizer)` is
 // unsafe once mounted under /api/v1 alongside sibling sub-apps — scope to
@@ -119,8 +125,21 @@ contactsRoutes.post("/contacts", csrfJson, async (c) => {
 
   const fields: Record<string, string> = {};
   if (typeof body.firstName !== "string" || body.firstName.trim() === "") fields.firstName = "required";
+  else checkLen(body.firstName, "firstName", MAX_NAME_LENGTH, fields); // DEC-417
   if (typeof body.lastName !== "string" || body.lastName.trim() === "") fields.lastName = "required";
+  else checkLen(body.lastName, "lastName", MAX_NAME_LENGTH, fields); // DEC-417
   if (typeof body.email !== "string" || body.email.trim() === "") fields.email = "required";
+  else checkLen(body.email, "email", MAX_NAME_LENGTH, fields); // DEC-417
+  if (typeof body.phone === "string") checkLen(body.phone, "phone", MAX_NAME_LENGTH, fields); // DEC-417
+  if (typeof body.company === "string") checkLen(body.company, "company", MAX_NAME_LENGTH, fields); // DEC-417
+  if (typeof body.title === "string") checkLen(body.title, "title", MAX_NAME_LENGTH, fields); // DEC-417
+  if (typeof body.bio === "string") checkLen(body.bio, "bio", MAX_LONG_TEXT_LENGTH, fields); // DEC-417
+  if (typeof body.notes === "string") checkLen(body.notes, "notes", MAX_LONG_TEXT_LENGTH, fields); // DEC-417
+  if (isPlainObject(body.customFields)) {
+    for (const [key, value] of Object.entries(body.customFields)) {
+      if (typeof value === "string") checkLen(value, `customFields.${key}`, MAX_TEXT_LENGTH, fields); // DEC-417
+    }
+  }
   if (Object.keys(fields).length > 0) throw new ApiError("invalid", "Validation failed", fields);
 
   // DEC-290: an optional eventId puts the newly-created contact directly on
@@ -187,25 +206,44 @@ contactsRoutes.patch("/contacts/:id", csrfJson, async (c) => {
   const patch: repo.ContactPatch = {};
   if (body.firstName !== undefined) {
     if (typeof body.firstName !== "string" || body.firstName.trim() === "") fields.firstName = "must be a non-empty string";
-    else patch.firstName = body.firstName;
+    else { checkLen(body.firstName, "firstName", MAX_NAME_LENGTH, fields); patch.firstName = body.firstName; } // DEC-417
   }
   if (body.lastName !== undefined) {
     if (typeof body.lastName !== "string" || body.lastName.trim() === "") fields.lastName = "must be a non-empty string";
-    else patch.lastName = body.lastName;
+    else { checkLen(body.lastName, "lastName", MAX_NAME_LENGTH, fields); patch.lastName = body.lastName; } // DEC-417
   }
   if (body.email !== undefined) {
     if (typeof body.email !== "string" || body.email.trim() === "") fields.email = "must be a non-empty string";
-    else patch.email = body.email;
+    else { checkLen(body.email, "email", MAX_NAME_LENGTH, fields); patch.email = body.email; } // DEC-417
   }
-  if (body.phone !== undefined) patch.phone = body.phone === null ? null : String(body.phone);
-  if (body.company !== undefined) patch.company = body.company === null ? null : String(body.company);
-  if (body.title !== undefined) patch.title = body.title === null ? null : String(body.title);
-  if (body.bio !== undefined) patch.bio = body.bio === null ? null : String(body.bio);
-  if (body.notes !== undefined) patch.notes = body.notes === null ? null : String(body.notes);
+  if (body.phone !== undefined) {
+    patch.phone = body.phone === null ? null : String(body.phone);
+    if (patch.phone !== null) checkLen(patch.phone, "phone", MAX_NAME_LENGTH, fields); // DEC-417
+  }
+  if (body.company !== undefined) {
+    patch.company = body.company === null ? null : String(body.company);
+    if (patch.company !== null) checkLen(patch.company, "company", MAX_NAME_LENGTH, fields); // DEC-417
+  }
+  if (body.title !== undefined) {
+    patch.title = body.title === null ? null : String(body.title);
+    if (patch.title !== null) checkLen(patch.title, "title", MAX_NAME_LENGTH, fields); // DEC-417
+  }
+  if (body.bio !== undefined) {
+    patch.bio = body.bio === null ? null : String(body.bio);
+    if (patch.bio !== null) checkLen(patch.bio, "bio", MAX_LONG_TEXT_LENGTH, fields); // DEC-417
+  }
+  if (body.notes !== undefined) {
+    patch.notes = body.notes === null ? null : String(body.notes);
+    if (patch.notes !== null) checkLen(patch.notes, "notes", MAX_LONG_TEXT_LENGTH, fields); // DEC-417
+  }
   if (body.customFields !== undefined) {
     if (body.customFields === null) patch.customFields = null;
-    else if (isPlainObject(body.customFields)) patch.customFields = body.customFields as Record<string, string>;
-    else fields.customFields = "must be an object";
+    else if (isPlainObject(body.customFields)) {
+      for (const [key, value] of Object.entries(body.customFields)) {
+        if (typeof value === "string") checkLen(value, `customFields.${key}`, MAX_TEXT_LENGTH, fields); // DEC-417
+      }
+      patch.customFields = body.customFields as Record<string, string>;
+    } else fields.customFields = "must be an object";
   }
   // CNT-10 (DEC-152, DEC-142): admin bio/social-link editing reuses the
   // portal profile plumbing verbatim — serializeSocialLinks is the single
@@ -219,6 +257,7 @@ contactsRoutes.patch("/contacts/:id", csrfJson, async (c) => {
       let invalid = false;
       for (const key of socialFields) {
         if (raw[key] !== undefined && typeof raw[key] !== "string") invalid = true;
+        else if (typeof raw[key] === "string" && (raw[key] as string).length > MAX_TEXT_LENGTH) invalid = true; // DEC-417
       }
       if (invalid) {
         fields.socialLinks = "each link must be a string";
@@ -302,6 +341,11 @@ contactsRoutes.post("/contacts/:id/headshot", csrfJson, async (c) => {
   return c.json(serializeContact(updated));
 });
 
+// DEC-417
+function checkLen(value: string, field: string, max: number, fields: Record<string, string>): void {
+  if (value.length > max) fields[field] = `Max ${max}`;
+}
+
 function isPlainObject(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null && !Array.isArray(v);
 }
@@ -341,6 +385,12 @@ contactsRoutes.post("/contacts/import", csrfJson, async (c) => {
   if (typeof body.csvText !== "string" || body.csvText.trim() === "") {
     throw new ApiError("invalid", "Validation failed", { csvText: "required" });
   }
+  // DEC-417: bound the raw CSV payload BEFORE parseCsv touches it.
+  if (new TextEncoder().encode(body.csvText).length > MAX_IMPORT_CSV_BYTES) {
+    throw new ApiError("invalid", `csvText must be at most ${MAX_IMPORT_CSV_BYTES} bytes`, {
+      csvText: `Max ${MAX_IMPORT_CSV_BYTES} bytes`,
+    });
+  }
   if (!isPlainObject(body.mapping)) {
     throw new ApiError("invalid", "Validation failed", { mapping: "required, column -> field" });
   }
@@ -370,6 +420,12 @@ contactsRoutes.post("/contacts/import", csrfJson, async (c) => {
   }
   const [header, ...dataRows] = table;
   if (!header) throw new ApiError("invalid", "CSV has no header row");
+  // DEC-417: bound row count after parsing, before mapImportRow/applyImportRows.
+  if (dataRows.length > MAX_IMPORT_ROWS) {
+    throw new ApiError("invalid", `csvText must have at most ${MAX_IMPORT_ROWS} data rows`, {
+      csvText: `Max ${MAX_IMPORT_ROWS} rows`,
+    });
+  }
 
   // Fail loudly on a bad mapping (e.g. a target field the pure core doesn't
   // recognize) with a 400 naming the offending column, instead of letting
@@ -530,6 +586,7 @@ contactsRoutes.post("/segments", csrfJson, async (c) => {
 
   const fields: Record<string, string> = {};
   if (typeof body.name !== "string" || body.name.trim() === "") fields.name = "required";
+  else checkLen(body.name, "name", MAX_NAME_LENGTH, fields); // DEC-417
   const rules = parseRules(body, fields);
   if (Object.keys(fields).length > 0) throw new ApiError("invalid", "Validation failed", fields);
 
@@ -548,7 +605,7 @@ contactsRoutes.patch("/segments/:id", csrfJson, async (c) => {
   const patch: { name?: string; rules?: SegmentRule[] } = {};
   if (body.name !== undefined) {
     if (typeof body.name !== "string" || body.name.trim() === "") fields.name = "must be a non-empty string";
-    else patch.name = body.name;
+    else { checkLen(body.name, "name", MAX_NAME_LENGTH, fields); patch.name = body.name; } // DEC-417
   }
   if (body.rules !== undefined) {
     const rules = parseRules(body, fields);
@@ -613,8 +670,14 @@ async function validateBulkEmailRequest(db: Db, orgId: string, body: Record<stri
   if (typeof body.subject !== "string" || body.subject.trim() === "") {
     throw new ApiError("invalid", "Validation failed", { subject: "required" });
   }
+  if (body.subject.length > MAX_TEXT_LENGTH) {
+    throw new ApiError("invalid", "Validation failed", { subject: `Max ${MAX_TEXT_LENGTH}` }); // DEC-417
+  }
   if (typeof body.bodyText !== "string" || body.bodyText.trim() === "") {
     throw new ApiError("invalid", "Validation failed", { bodyText: "required" });
+  }
+  if (body.bodyText.length > MAX_LONG_TEXT_LENGTH) {
+    throw new ApiError("invalid", "Validation failed", { bodyText: `Max ${MAX_LONG_TEXT_LENGTH}` }); // DEC-417
   }
 
   const event = await getEventForOrg(db, body.eventId, orgId);

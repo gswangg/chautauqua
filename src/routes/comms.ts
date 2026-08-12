@@ -21,6 +21,7 @@ import {
   type ComposeSubmission,
 } from "../domain/compose";
 import { DEC_122, DEC_252 } from "../decisions";
+import { MAX_NAME_LENGTH, MAX_TEXT_LENGTH, MAX_RICH_TEXT_LENGTH } from "../forms/validate"; // DEC-417
 import { resolveBaseUrl } from "../server/origin";
 
 void DEC_252;
@@ -76,8 +77,11 @@ commsRoutes.post("/api/v1/events/:eventId/templates", requireOrganizer, csrfJson
 
   const errors: Record<string, string> = {};
   if (typeof body.name !== "string" || body.name.trim() === "") errors.name = "required";
+  else if (body.name.length > MAX_NAME_LENGTH) errors.name = `Max ${MAX_NAME_LENGTH}`; // DEC-417
   if (typeof body.subject !== "string" || body.subject.trim() === "") errors.subject = "required";
+  else if (body.subject.length > MAX_TEXT_LENGTH) errors.subject = `Max ${MAX_TEXT_LENGTH}`; // DEC-417
   if (typeof body.bodyText !== "string" || body.bodyText.trim() === "") errors.bodyText = "required";
+  else if (body.bodyText.length > MAX_RICH_TEXT_LENGTH) errors.bodyText = `Max ${MAX_RICH_TEXT_LENGTH}`; // DEC-417
   if (Object.keys(errors).length > 0) throw new ApiError("invalid", "Validation failed", errors);
 
   const created = await repo.createTemplate(c.var.db, eventId, {
@@ -103,14 +107,17 @@ commsRoutes.patch("/api/v1/templates/:templateId", requireOrganizer, csrfJson, a
   const patch: repo.TemplatePatch = {};
   if (body.name !== undefined) {
     if (typeof body.name !== "string" || body.name.trim() === "") errors.name = "must be a non-empty string";
+    else if (body.name.length > MAX_NAME_LENGTH) errors.name = `Max ${MAX_NAME_LENGTH}`; // DEC-417
     else patch.name = body.name;
   }
   if (body.subject !== undefined) {
     if (typeof body.subject !== "string" || body.subject.trim() === "") errors.subject = "must be a non-empty string";
+    else if (body.subject.length > MAX_TEXT_LENGTH) errors.subject = `Max ${MAX_TEXT_LENGTH}`; // DEC-417
     else patch.subject = body.subject;
   }
   if (body.bodyText !== undefined) {
     if (typeof body.bodyText !== "string" || body.bodyText.trim() === "") errors.bodyText = "must be a non-empty string";
+    else if (body.bodyText.length > MAX_RICH_TEXT_LENGTH) errors.bodyText = `Max ${MAX_RICH_TEXT_LENGTH}`; // DEC-417
     else patch.bodyText = body.bodyText;
   }
   if (Object.keys(errors).length > 0) throw new ApiError("invalid", "Validation failed", errors);
@@ -177,6 +184,17 @@ async function resolveComposeInput(
     if (typeof b.subject !== "string" || typeof b.bodyText !== "string") {
       throw new ApiError("invalid", "Validation failed", {
         templateId: "provide templateId, or both subject and bodyText",
+      });
+    }
+    // DEC-417
+    if (b.subject.length > MAX_TEXT_LENGTH) {
+      throw new ApiError("invalid", `subject must be at most ${MAX_TEXT_LENGTH} characters`, {
+        subject: `Max ${MAX_TEXT_LENGTH}`,
+      });
+    }
+    if (b.bodyText.length > MAX_RICH_TEXT_LENGTH) {
+      throw new ApiError("invalid", `bodyText must be at most ${MAX_RICH_TEXT_LENGTH} characters`, {
+        bodyText: `Max ${MAX_RICH_TEXT_LENGTH}`,
       });
     }
     subjectTemplate = b.subject;
