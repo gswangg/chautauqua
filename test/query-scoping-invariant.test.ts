@@ -54,7 +54,17 @@ const SRC_ROOT = join(__dirname, "..", "src");
 // backs the unauthenticated "/" landing page (src/routes/root.tsx), which
 // has no org/session context to scope by, and it returns only a public
 // routing slug (no tenant data) used to build demo CTA links.
-const GLOBAL_READ_ALLOWLIST: string[] = ["src/server/repo/events.ts#getFirstEventSlug"];
+// src/server/repo/public/home.ts#getHubOrg (DEC-581) is intentionally global
+// for the same reason: it backs the unauthenticated home hub (GET /), which
+// has no org/session context to scope by — this read is the one that
+// *resolves* the deployment's single org (STAGE 1 is single-tenant), so an
+// orgId scope would have to come from the very row it is fetching. It selects
+// only {id, name} of that org and no tenant data; every other read in
+// src/server/repo/public/home.ts is scoped by the orgId it returns.
+const GLOBAL_READ_ALLOWLIST: string[] = [
+  "src/server/repo/events.ts#getFirstEventSlug",
+  "src/server/repo/public/home.ts#getHubOrg",
+];
 
 function listTsFiles(dir: string): string[] {
   const out: string[] = [];
