@@ -230,3 +230,11 @@ CNT 52% · AIA 88% · EMB 72% · CRM 76% (of judged weight).
     (NavLink/useLocation), never from click state — fold into the shared-shell rebuild
     (Tier 1 #8) with a render-sweep assertion: every route's nav highlights its tab on
     DIRECT load.
+
+11b. ROOT CAUSE for item 11 (user-diagnosed): the nav active check is EXACT string
+     matching that breaks on trailing slashes — `/admin/review/` underlines the Review
+     tab while `/admin/review` does not. Fix by normalizing the pathname (strip
+     trailing slash) or using prefix/route matching, in ONE place in the shared shell.
+     The render-sweep assertion from item 11 must test BOTH slash variants of every
+     route. (Historical note: trailing-slash handling also caused the original
+     unreachable-/admin 307 loop — normalize once, at the shell, forever.)
