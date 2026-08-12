@@ -18,7 +18,7 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   see LIES, render `total`; atomic SQL beats read-then-write; hand-listed
   manifests desync -- enumerate; conditional visibility is a FIXED
   POINT; hand-copied vocabularies drift -- IMPORT them; a uniqueIndex is
-  a CONTRACT; a `position` column nobody sets is dead; negation skips NULLs.
+  a CONTRACT; negation skips NULLs.
 - FINDINGS w1-9 (DEC-570..654, compacted): full suites SERIALIZED; real
   <button> not `div draggable`; colour alone isn't track identity -- NAME
   it; blank CSV cell is ABSENT DATA; seed has ONE clock; imported row
@@ -26,35 +26,36 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   two readings END in one resolver; anonymity is a RATCHET; merge takes
   a SET; confirmation is a DIALOG not window.confirm; items+total from
   ONE where clause; a join row's identity is the PAIR its uniqueIndex
-  names; disclosure toggles hiding state should be a visible tab; raw
-  id leaks -- render LABELS; a worklist row carries its action.
-- FINDINGS w10-11 (DEC-655..669, compacted): a scope check that skips
-  the plan's own filter grants what the queue hides -- every reader of
-  "in scope?" ends in ONE rule. A guard whose comment names routes it
-  doesn't guard is a manifest already desynced: enumerate the repo.
-  Cacheability is a DEFAULT (no-store) plus "own header wins". A subset
-  vocabulary encodes a server fact -- test it EQUALS those keys. An
-  import is PLANNED before applied: the dry run names REPLACEs and
-  collisions. Every send ends in ONE reporter (sent+failed+skipped+
-  remaining). A union makes items AND total lie: a second scope is a
-  second TAB.
-- FINDINGS w12 (DEC-670..674, compacted): a capped ANONYMOUS list may
-  only count what it shows, never the hidden rows; export = same where
-  clause everywhere; a chromeless surface is CLOSED both ways, proved
-  by rendering + enumerating hrefs; a builder's option list is the
-  server's vocabulary IMPORTED through one named boundary module; a
-  worklist whose regions live one navigation away is a report.
-- FINDINGS w13 (DEC-675..680): an IMPORT is not exempt from closed
-  vocabularies -- validate status/role/order in the PLANNER so the dry
-  run names the row+value; an imported participant is RECORDED
-  (visible=false), never published -- the importer is not exempt from
-  the organizer's own visibility gate. A rule the server enforces and
-  the UI never states is a trap: a frozen criteria list renders LOCKED
-  with its reason+count; a relative weight renders its computed share.
-  ONE reporter means the only one -- a surface typing away `failed[]`
-  to print its own "Sent N" is a second reporter; scan-lock it. A
-  loading indicator is DELAYED (~250ms); an empty state never renders
-  mid-load. A manifest saying "Enumerated from ..." has desynced --
-  derive coverage from the route table, walk DETAIL pages too. A
-  `total` that is `rows.length` after a materialized scan is the read
-  the page window exists to avoid -- count(*), one where clause.
+  names; raw id leaks -- render LABELS; a worklist row carries its action.
+- FINDINGS w10-11 (DEC-655..669, compacted): a scope check skipping the
+  plan's own filter grants what the queue hides -- "in scope?" ends in
+  ONE rule; a guard citing routes it doesn't guard is a desynced
+  manifest -- enumerate. Cacheability is a DEFAULT (no-store) plus "own
+  header wins". A subset vocabulary encoding a server fact must test
+  EQUALS those keys. Import is PLANNED before applied: dry run names
+  REPLACEs+collisions. Every send ends in ONE reporter. A union makes
+  items AND total lie -- a second scope is a second TAB.
+- FINDINGS w12-13 (DEC-670..680, compacted): a capped ANONYMOUS list
+  counts only what it shows; export = same where clause everywhere; a
+  chromeless surface is CLOSED both ways (render + enumerate hrefs); a
+  builder's options are the server's vocabulary IMPORTED via one named
+  boundary module; a worklist whose regions are one nav away is a
+  report. An import is not exempt from closed vocabularies -- validate
+  in the PLANNER; an imported row is RECORDED (visible=false), never
+  published. A server-enforced rule the UI never states is a trap:
+  locked/weighted state renders its reason. ONE reporter means the
+  only one -- scan-lock `failed[]`. Loading is DELAYED (~250ms); empty
+  state never mid-load. `total` is count(*), never `rows.length`.
+- FINDINGS w14 (DEC-681..686): a rule's VALUE is typed by its TRIGGER's
+  kind -- string-vs-boolean/number equality hides the field forever,
+  then the next save DELETES the answer; the browser toggler must
+  compute the SAME fixed point as the server, proven by a parity test
+  over ONE shared case table. A merge var the toggle never populated
+  must be ABSENT (preflight names it), never a polite sentence;
+  attached feedback is plan+round scoped like every evaluation read
+  (DEC-087 has no comms exception). A public list page is list + rail,
+  rail never renders inside /embed. An irreversible action is a PAGE
+  at its own URL, not a modal; list search sits in the toolbar. A
+  dialog's form is ONE FormRow inside ModalFrame. A paged read touches
+  only the page -- aggregates key to page rows, paging in SQL, never
+  a scan sliced in JS.
