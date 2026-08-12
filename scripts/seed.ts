@@ -952,7 +952,18 @@ async function main(): Promise<void> {
   // regardless of when the seed is run — exactly 3 of the 5 default tasks
   // already past, 2 still upcoming, all still safely before event start
   // (asserted below).
-  const dueOffsetDaysFromSeedNow = [-12, -6, -2, 9, 23];
+  // DEC-646: the mock (docs/design/Chautauqua Overview.dc.html §01) shows
+  // three staggered late rows at 4/2/1 days late. Its row titles ("Upload
+  // headshot", "Upload final slides", "Sign speaker release") don't map
+  // cleanly onto DEFAULT_ONBOARDING_TASKS' titles — only "Finalize bio +
+  // headshot" (the file_request task, index 3) is a plausible match for the
+  // mock's 4-days-late headshot row, so we pin that task to -4 and keep the
+  // remaining two past offsets (-2, -1) on the next two tasks in
+  // DEFAULT_ONBOARDING_TASKS' existing declaration order (index 0, index 1)
+  // rather than inventing a title correspondence for the other two mock
+  // rows. The two upcoming tasks keep the same offset values (9, 23) as
+  // before, now on index 2 and index 4.
+  const dueOffsetDaysFromSeedNow = [-2, -1, 9, -4, 23];
   const pastCount = dueOffsetDaysFromSeedNow.filter((d) => d < 0).length;
   if (pastCount !== 3) {
     throw new Error(`seed: expected exactly 3 past-due default onboarding tasks, got ${pastCount}`);

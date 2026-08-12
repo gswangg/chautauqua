@@ -226,11 +226,45 @@ describe("seed.ts output (task w1-d, DEC-145)", () => {
     }
 
     // Exactly 3 of the 5 DEFAULT_ONBOARDING_TASKS due dates are already
-    // past relative to 'now' (DEC-591's SEED_NOW offsets: -12,-6,-2,+9,+23).
+    // past relative to 'now' (DEC-591's SEED_NOW offsets: -2,-1,+9,-4,+23,
+    // DEC-646).
     const allTaskDueDates = [...dueDateByTaskId.values()];
     expect(allTaskDueDates.length).toBe(5);
     const pastCount = allTaskDueDates.filter((d) => d < Date.now()).length;
     expect(pastCount).toBe(3);
+  });
+
+  it("DEC-646: stages at least 3 pending, past-due task_assignment rows across >=3 distinct contacts with distinct due dates exactly 4/2/1 days before SEED_NOW, matching Overview §01's staggered lateness", () => {
+    const taskAssignmentRows = [
+      ...sql.matchAll(
+        /INSERT INTO task_assignment \([^)]*\) VALUES \('[^']*', '([^']*)', '([^']*)', '(pending|complete)', [^,]*, [^,]*, \d+, \d+\);/g,
+      ),
+    ].map((r) => ({ taskId: r[1]!, contactId: r[2]!, status: r[3]! }));
+
+    const taskRows = [
+      ...sql.matchAll(
+        /INSERT INTO task \([^)]*\) VALUES \(('seed_task_\d+'), '[^']*', '[^']*', '[^']*', [^,]*, (\d+),/g,
+      ),
+    ];
+    const dueDateByTaskId = new Map(taskRows.map((r) => [r[1]!.replace(/'/g, ""), Number(r[2])]));
+
+    const now = Date.now();
+    const pastPendingRows = taskAssignmentRows.filter((r) => {
+      if (r.status !== "pending") return false;
+      const due = dueDateByTaskId.get(r.taskId);
+      return due !== undefined && due < now;
+    });
+
+    expect(pastPendingRows.length).toBeGreaterThanOrEqual(3);
+
+    const distinctContactIds = new Set(pastPendingRows.map((r) => r.contactId));
+    expect(distinctContactIds.size).toBeGreaterThanOrEqual(3);
+
+    const distinctDueDates = new Set(pastPendingRows.map((r) => dueDateByTaskId.get(r.taskId)!));
+    const daysLate = [...distinctDueDates]
+      .map((due) => Math.round((now - due) / (24 * 60 * 60 * 1000)))
+      .sort((a, b) => a - b);
+    expect(daysLate).toEqual([1, 2, 4]);
   });
 
   it("chains a second deliverable version via previous_file_id and threads a file_comment (organizer note + speaker reply)", () => {
