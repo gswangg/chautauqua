@@ -21,41 +21,40 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   dates via event-time.ts, OWNING EVENT's tz, throws never toISOString;
   ONE parseBoundedText, oversized=400 never 500; public lists
   LIMIT+separate COUNT(DISTINCT).
-- STAGE1-CLOSE w11-14 (DEC-420..438): 426 WCAG AA THIRD mandate,
-  desktop-only advisory, render-sweep-contrast.ts; 430 contrast
-  remedies change PIXELS never the instrument; 431/436 flip fires only
-  in the flipping lane's OWN re-run, that lane owns the old-value test;
-  428 SPEC.md:308 >=600k amended to 100k; 433 public ?page= TWO bounds
-  (parsePage clamps 1..50, boundedRowLimit caps 600, throws on
-  non-finite); 434 ONE isDevMode(env) DEV_MODE==="1" only; 435
-  formatRef ONLY ref builder; 437/446 SPEC §10 items DEFERRED-BY-
-  DECISION/CLOSED; 438 ledger names its sha, splits FAIL-unowned vs
-  PENDING-OWNED, goalComplete needs both empty.
-- STAGE1-CLOSE w15 (DEC-439..443): w14 merged DURING planning -- re-
-  read before touching. 439 the 3 perf-smoke FAILs are STAGE-1 defects,
-  fix by loading less never restructuring. 440 buildResults keeps JS
-  aggregation (throws on missing scores); NEVER launder a throwing
-  invariant into SQL. 441 §10 #3 ships, #2/#4 deferred (CLOSED by 446).
-  442 cacheability REQUEST-shaped not path-shaped: skip cache only when
-  URL HAS ?ids=. New /api/v1 routes ship docs.tsx rows; new SPA routes
-  ship routeManifest.ts rows.
-- STAGE1-CLOSE w16 (DEC-444..448): tree moved TWICE mid-plan -- w15
-  b/c/d/e/f landed while reading, only task-w15-a still in flight;
-  re-read before touching anything w15 owned. Only real unowned FAIL
-  left on main was the WCAG offender w15-e named: /admin/submissions/
-  forms td, --chq-disabled #8E8A7A on paper, 3.06 < 4.5. 444 remedy =
-  re-point .chq-forms-field-locked (app/src/styles.css ~1147) and
-  .chq-forms-settings-title (forms.css ~130) to var(--chq-muted)
-  (~6.2:1); NEVER redefine --chq-disabled (frozen, WCAG-exempt), NEVER
-  touch the checker. 445 flip passes to w16 build/test lane, DEC-436
-  rule unchanged: own run, all-PASS, flipping lane owns old-value test.
-  446 SPEC §10 #2 + #4 CLOSED out-of-stage-1 (schema changes -- no track
-  capacity column, status set frozen at five literals); ledgers score
-  them DEFERRED-BY-DECISION forever. 447 THE LEDGER TRAP: 3 ledgers in
-  a row read NOT PASS only because cut before their own wave's fix --
-  a closing wave dispatches exactly ONE source-changing lane, orders
-  the ledger behind it with dependsOn; all other lanes log-only (own no
-  SPEC item, can never be PENDING-OWNED). 448 `npm run dev` + predev
-  ensure-dev-vars is the ONLY zero-setup entrypoint -- prior
-  walkthroughs did `cp .dev.vars.example` + bare `npx wrangler dev`,
-  bypassing SPEC:44; lanes needing a port pass it through npm run dev.
+- STAGE1-CLOSE w11-14 (DEC-420..438, compacted): 426 WCAG AA THIRD
+  mandate, desktop-only advisory; 430 contrast remedies change PIXELS
+  never the instrument; 431/436 flip fires only in the flipping lane's
+  OWN re-run; 428 SPEC.md:308 >=600k amended to 100k; 433 public ?page=
+  TWO bounds (parsePage 1..50, boundedRowLimit 600, throws non-finite);
+  434 ONE isDevMode(env) DEV_MODE==="1"; 435 formatRef ONLY ref builder;
+  437/446 SPEC §10 items DEFERRED/CLOSED; 438 ledger names its sha,
+  splits FAIL-unowned vs PENDING-OWNED, goalComplete needs both empty.
+- STAGE1-CLOSE w15-16 (DEC-439..448, compacted): 439 perf-smoke FAILs
+  are STAGE-1 defects, fix by loading less never restructuring. 440
+  buildResults keeps JS aggregation; NEVER launder a throwing invariant
+  into SQL. 441/446 SPEC §10 #3 shipped, #2/#4 CLOSED out-of-stage-1.
+  442 cacheability REQUEST-shaped: skip cache only when URL HAS ?ids=.
+  444 WCAG remedy = re-point CSS to var(--chq-muted); NEVER redefine
+  --chq-disabled or touch the checker. 445 CONTRAST_BLOCKING flip: own
+  run, all-PASS, flipping lane owns old-value test. 447 THE LEDGER
+  TRAP: closing wave = exactly ONE source-changing lane, ledger behind
+  it via dependsOn, other lanes log-only. 448 `npm run dev` + predev
+  ensure-dev-vars is the ONLY zero-setup entrypoint -- never hand-`cp`
+  .dev.vars or bare `npx wrangler dev`.
+- STAGE1-CLOSE w17 (DEC-449..453): w16's ledger read PASS at S=235d677
+  but w16-c's perf log (FAIL, reviewer queue 54-88ms vs 50ms budget)
+  merged AFTER S -- a PASS ledger is evidence about ITS OWN sha only.
+  453: never grade a MEASURED budget row from code presence; cite a
+  perf run whose sha is an ancestor-or-equal of S, and re-read every
+  evidence log that landed since the last ledger. 449: reviewer queue
+  fixed by DELETING chunked per-90-id round-trips (track lookup gone --
+  its one caller never read trackIds; countEvaluationsBySubmission
+  loses its submissionIds param), never by paging/reshaping; a
+  count(*) GROUP BY is NOT DEC-440 laundering (score aggregation only).
+  450: airtable sync = ONE org, AIRTABLE_ORG_ID required, throws if
+  token+base set without it; sync CODE correctness is stage-1 (DEC-435
+  precedent), only its wiring is stage-2. 451: test/query-scoping-
+  invariant.test.ts scans src for where-less Drizzle reads, allowlist
+  ships EMPTY. 452: w17 is a FIX wave, two source lanes, NO ledger (a
+  ledger behind one fix reports the other PENDING-OWNED); w18 closes
+  under DEC-447, ledger cut behind the evidence lanes too.
