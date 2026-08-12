@@ -59,6 +59,8 @@ vi.mock("../src/server/repo/review", async () => {
     planHasEvaluations: vi.fn(async (_db: unknown, planId: string) => planId === plan.id && hasEvaluations),
     listRoundsWithEvaluations: vi.fn(async (_db: unknown, planId: string) => (planId === plan.id ? evaluatedRounds : [])),
     listPlanFilteredSubmissions: vi.fn(async () => []),
+    listSpeakerNamesForSubmissions: vi.fn(async () => new Map()),
+    listTrackNamesForSubmissions: vi.fn(async () => new Map()),
     listEvaluationsForPlan: vi.fn(async () => []),
     listEvaluationScoresForPlan: vi.fn(async () => []),
     listCompletedPairsForPlan: vi.fn(async () => []),

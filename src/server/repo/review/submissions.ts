@@ -6,6 +6,7 @@ import { and, asc, eq, exists, inArray, or, sql } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { formatRef, parseRef } from "../../../domain/ids";
+import { chunkIds } from "../../../lib/chunk";
 import type { PlanRecord } from "./plans";
 
 /** DEC-346: the narrow shape every plan-scoped whole-set load returns --
@@ -485,6 +486,61 @@ export async function listSpeakersForSubmission(db: Db, submissionId: string): P
     company: r.company,
     title: r.title,
   }));
+}
+
+/** DEC-703: batched speaker-name lookup for a results page/export -- ONE
+ * query (per chunkIds batch, DEC-078) keyed to the caller's own submission
+ * id set, never a per-submission read and never an unscoped scan of
+ * participant/contact. Visible-participant order only (DEC-561/DEC-562:
+ * participant.order asc, contact.id asc), mirroring listSpeakersForSubmission
+ * but for many submissions at once. */
+export async function listSpeakerNamesForSubmissions(db: Db, submissionIds: string[]): Promise<Map<string, string[]>> {
+  const map = new Map<string, string[]>();
+  if (submissionIds.length === 0) return map;
+  for (const batch of chunkIds(submissionIds)) {
+    const rows = await db
+      .select({
+        submissionId: schema.participant.submissionId,
+        firstName: schema.contact.firstName,
+        lastName: schema.contact.lastName,
+      })
+      .from(schema.participant)
+      .innerJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
+      .where(and(inArray(schema.participant.submissionId, batch), eq(schema.participant.visible, true)))
+      .orderBy(asc(schema.participant.order), asc(schema.contact.id));
+    for (const row of rows) {
+      const list = map.get(row.submissionId) ?? [];
+      list.push(`${row.firstName} ${row.lastName}`.trim());
+      map.set(row.submissionId, list);
+    }
+  }
+  return map;
+}
+
+/** DEC-703: batched track-name lookup for a results page/export, mirroring
+ * listSpeakerNamesForSubmissions -- ONE query per chunkIds batch, keyed to
+ * the caller's own submission id set. Ordered (track.position asc, track.id
+ * asc) -- the event's own track order, never a hand-copied one. */
+export async function listTrackNamesForSubmissions(db: Db, submissionIds: string[]): Promise<Map<string, string[]>> {
+  const map = new Map<string, string[]>();
+  if (submissionIds.length === 0) return map;
+  for (const batch of chunkIds(submissionIds)) {
+    const rows = await db
+      .select({
+        submissionId: schema.submissionTrack.submissionId,
+        name: schema.track.name,
+      })
+      .from(schema.submissionTrack)
+      .innerJoin(schema.track, eq(schema.submissionTrack.trackId, schema.track.id))
+      .where(inArray(schema.submissionTrack.submissionId, batch))
+      .orderBy(asc(schema.track.position), asc(schema.track.id));
+    for (const row of rows) {
+      const list = map.get(row.submissionId) ?? [];
+      list.push(row.name);
+      map.set(row.submissionId, list);
+    }
+  }
+  return map;
 }
 
 export interface SubmissionAnswerRow {

@@ -68,6 +68,8 @@ vi.mock("../src/server/repo/review", async () => {
     getPlanById: vi.fn(async (_db: unknown, planId: string) => (planId === plan.id ? plan : null)),
     listPlansForEvent: vi.fn(async () => [plan]),
     listPlanFilteredSubmissions: vi.fn(async () => [submission]),
+    listSpeakerNamesForSubmissions: vi.fn(async () => new Map()),
+    listTrackNamesForSubmissions: vi.fn(async () => new Map()),
     resolveReviewerSubmissions: vi.fn(async () => [submission]),
     listPlanIdsForReviewer: vi.fn(async (_db: unknown, userId: string) => (userId === "rev-1" ? [plan.id] : [])),
     listReviewerRowsForPlan: vi.fn(async () => [
@@ -205,7 +207,7 @@ describe("DEC-212: rating-less scorecard results (task w22-b)", () => {
     // No rating criteria, so no rating columns -- but DEC-241 adds one CSV
     // column per dropdown option, so the sole 'decision' criterion appears
     // as its two option columns instead of a rating column.
-    expect(header).toBe("ref,title,Status,count,average,Decision: advance,Decision: reject");
-    expect(dataLines[0]).toBe("S-1,Talk,pending,1,0,0,1");
+    expect(header).toBe("ref,title,Speaker,Track,Status,count,average,Decision: advance,Decision: reject");
+    expect(dataLines[0]).toBe("S-1,Talk,,,pending,1,0,0,1");
   });
 });

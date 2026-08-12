@@ -35,7 +35,7 @@ function plan() {
   };
 }
 
-function resultsRow(overrides: Partial<{ status: string }> = {}) {
+function resultsRow(overrides: Partial<{ status: string; speakers: string[]; trackNames: string[] }> = {}) {
   return {
     submissionId: 'sub-1',
     ref: 'S-001',
@@ -45,6 +45,8 @@ function resultsRow(overrides: Partial<{ status: string }> = {}) {
     perCriterion: { c1: 4.5 },
     perDropdown: { c2: { counts: { Yes: 2, No: 1 }, modal: 'Yes' } },
     status: overrides.status ?? 'pending',
+    speakers: overrides.speakers ?? ['Ada Lovelace'],
+    trackNames: overrides.trackNames ?? ['Engineering'],
   };
 }
 
@@ -89,6 +91,39 @@ describe('ResultsTable phone-card data-label invariant (DEC-390)', () => {
     cells.forEach((cell, i) => {
       expect(cell.getAttribute('data-label')).toBe(headerLabels[i]);
     });
+  });
+});
+
+// DEC-703: the ranked results row names the human and the track, between the
+// title and score columns -- the one screen an organizer decides the
+// programme from must answer "who is this and where does it go" without
+// leaving the page.
+describe('ResultsTable Speaker/Track columns (DEC-703)', () => {
+  it('renders Speaker and Track header cells and a populated row cell', async () => {
+    mockApi({
+      [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
+      [`GET /api/v1/plans/${PLAN_ID}/results`]: listEnvelope([
+        resultsRow({ speakers: ['Ada Lovelace', 'Grace Hopper'], trackNames: ['Engineering'] }),
+      ]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}/results`]}>
+        <Routes>
+          <Route path="/review/plans/:planId/results" element={<ResultsTable />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText('A Great Talk')).toBeInTheDocument();
+
+    const table = document.querySelector('table.chq-review-results-table')!;
+    const headerLabels = Array.from(table.querySelectorAll('thead th')).map((th) => th.textContent!.trim());
+    expect(headerLabels).toContain('Speaker');
+    expect(headerLabels).toContain('Track');
+
+    expect(screen.getByText('Ada Lovelace, Grace Hopper')).toBeInTheDocument();
+    expect(screen.getByText('Engineering')).toBeInTheDocument();
   });
 });
 

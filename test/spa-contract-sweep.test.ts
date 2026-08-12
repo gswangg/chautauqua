@@ -98,6 +98,10 @@ async function buildReviewApp() {
         })),
       ),
       listPlanFilteredSubmissions: vi.fn(async () => SUBMISSIONS),
+      // DEC-703: batched speaker/track lookups -- no participant/track
+      // fixtures here, so both resolve to empty (still present as [] keys).
+      listSpeakerNamesForSubmissions: vi.fn(async () => new Map()),
+      listTrackNamesForSubmissions: vi.fn(async () => new Map()),
       // DEC-271 (task w5-c): no recusals in this fixture.
       listRecusalsForPlan: vi.fn(async () => []),
       listRecusalsForReviewer: vi.fn(async () => []),
@@ -133,7 +137,17 @@ describe("DEC-239: plan progress/results wire shapes", () => {
     const body = (await res.json()) as { items: Record<string, unknown>[] };
     expect(body.items.length).toBeGreaterThan(0);
     const row = first(body.items);
-    expect(keysOf(row)).toEqual(["average", "count", "perCriterion", "perDropdown", "ref", "submissionId", "title"]);
+    expect(keysOf(row)).toEqual([
+      "average",
+      "count",
+      "perCriterion",
+      "perDropdown",
+      "ref",
+      "speakers",
+      "submissionId",
+      "title",
+      "trackNames",
+    ]);
     expect(typeof row.perCriterion).toBe("object");
     expect(typeof row.perDropdown).toBe("object");
   });

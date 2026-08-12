@@ -220,7 +220,8 @@ export function ResultsTable({ planId: planIdProp }: { planId?: string } = {}) {
     );
   }
 
-  const columnCount = 6 + ratingCriteria.length + dropdownCriteria.length;
+  // DEC-703: +2 for the Speaker/Track columns between Title and Average.
+  const columnCount = 8 + ratingCriteria.length + dropdownCriteria.length;
   const Wrapper = embedded ? Fragment : 'div';
   const wrapperProps = embedded ? {} : { className: 'chq-page chq-review-page' };
 
@@ -296,6 +297,11 @@ export function ResultsTable({ planId: planIdProp }: { planId?: string } = {}) {
               <th>
                 <SortButton label="Title" columnKey={{ column: 'title' }} sort={sort} onSort={handleSort} />
               </th>
+              {/* DEC-703: SPEAKER and TRACK, unsorted (server has no sort key
+                 for them) -- who this is and where it goes, without leaving
+                 the page. */}
+              <th>Speaker</th>
+              <th>Track</th>
               <th>
                 <SortButton label="Average" columnKey={{ column: 'average' }} sort={sort} onSort={handleSort} />
               </th>
@@ -340,6 +346,8 @@ export function ResultsTable({ planId: planIdProp }: { planId?: string } = {}) {
                 <td className="chq-review-results-title" data-label="Title">
                   {row.title}
                 </td>
+                <td data-label="Speaker">{row.speakers.length > 0 ? row.speakers.join(', ') : '—'}</td>
+                <td data-label="Track">{row.trackNames.length > 0 ? row.trackNames.join(', ') : '—'}</td>
                 <td className="chq-review-results-score" data-label="Average">
                   {row.average.toFixed(2)}
                 </td>

@@ -1,19 +1,23 @@
-// DEC-439/DEC-440 payload-width regression: the ranked-results endpoint must
-// not ship the whole plan over the wire for a page. Recording-fake-db
-// pattern copied from test/spec9-invariants.test.ts -- a minimal fake
+// DEC-439/DEC-440/DEC-703 payload-width regression: the ranked-results
+// endpoint must not ship the whole plan over the wire for a page. Recording-
+// fake-db pattern copied from test/spec9-invariants.test.ts -- a minimal fake
 // drizzle db that only supports the exact chains buildResults' call graph
 // uses, and records every table + column-set it's asked to touch.
 //
-// Three payload-width assertions (task w15-b):
-// 1. a results build with no plan track filter never touches
-//    schema.submissionTrack (listPlanFilteredSubmissions({withTrackIds:
-//    false}) skips query (b) entirely).
+// Payload-width assertions (task w15-b, extended by task w16-g):
+// 1. a results build with no plan track filter never issues the OLD
+//    whole-event trackId scan (listPlanFilteredSubmissions({withTrackIds:
+//    false}) skips query (b) entirely) -- distinguished from DEC-703's own
+//    page-scoped {submissionId, name} track-name lookup by column shape,
+//    since both target schema.submissionTrack.
 // 2. the evaluation read selects exactly {submission_id, scores_json} -- not
 //    a bare `select()` (whole row: id/planId/reviewerId/round/comment/
 //    timestamps too).
 // 3. the ranked rows/averages/perCriterion/perDropdown for a fixture are
 //    byte-identical to the pre-change values (buildResults' aggregation
 //    logic itself is unchanged -- only its data source is narrower).
+// 4. DEC-703: speakers/trackNames are resolved via exactly ONE query each
+//    (never per-row), and their values land on the right row.
 
 import { describe, expect, it } from "vitest";
 import * as schema from "../src/db/schema";
@@ -22,17 +26,28 @@ import type { PlanRecord } from "../src/server/repo/review";
 import type { Db } from "../src/server/context";
 
 /**
- * Fake drizzle db supporting only `select(cols).from(table).where(cond)`
- * (optionally `.limit(n)`), backed by a per-table row array. Records every
- * `{table, cols}` pair `select().from()` is asked to touch, in order.
+ * Fake drizzle db supporting `select(cols).from(table).innerJoin(table2).
+ * where(cond).orderBy(...)` (optionally `.limit(n)`), backed by a per-table
+ * row array. innerJoin is a no-op over the FROM table's own preset rows --
+ * callers provide the join's OWN combined output as that table's fixture
+ * (e.g. rows.participant already carries {submissionId, firstName,
+ * lastName} as if joined to contact). Records every `{table, cols}` pair
+ * `select().from()`/`.innerJoin()` is asked to touch, in order.
  */
-function fakeDb(rows: { event: unknown[]; submission: unknown[]; evaluation: unknown[]; submissionTrack: unknown[] }) {
+function fakeDb(rows: {
+  event: unknown[];
+  submission: unknown[];
+  evaluation: unknown[];
+  submissionTrack: unknown[];
+  participant?: unknown[];
+}) {
   const touched: { table: unknown; cols: unknown }[] = [];
   const byTable = new Map<unknown, unknown[]>([
     [schema.event, rows.event],
     [schema.submission, rows.submission],
     [schema.evaluation, rows.evaluation],
     [schema.submissionTrack, rows.submissionTrack],
+    [schema.participant, rows.participant ?? []],
   ]);
 
   const db = {
@@ -41,12 +56,22 @@ function fakeDb(rows: { event: unknown[]; submission: unknown[]; evaluation: unk
         from(table: unknown) {
           touched.push({ table, cols });
           const tableRows = byTable.get(table) ?? [];
-          const where = () => {
-            const result: Promise<unknown[]> & { limit?: (n: number) => Promise<unknown[]> } = Promise.resolve(tableRows);
-            (result as { limit: (n: number) => Promise<unknown[]> }).limit = async (n: number) => tableRows.slice(0, n);
-            return result;
+          const chain = {
+            innerJoin(joinTable: unknown) {
+              touched.push({ table: joinTable, cols });
+              return chain;
+            },
+            where() {
+              const result: Promise<unknown[]> & {
+                limit?: (n: number) => Promise<unknown[]>;
+                orderBy?: (...args: unknown[]) => Promise<unknown[]>;
+              } = Promise.resolve(tableRows);
+              (result as { limit: (n: number) => Promise<unknown[]> }).limit = async (n: number) => tableRows.slice(0, n);
+              (result as { orderBy: (...args: unknown[]) => Promise<unknown[]> }).orderBy = async () => tableRows;
+              return result;
+            },
           };
-          return { where };
+          return chain;
         },
       };
     },
@@ -78,7 +103,7 @@ function makePlan(overrides: Partial<PlanRecord> = {}): PlanRecord {
 }
 
 describe("DEC-439/DEC-440: buildResults payload width", () => {
-  it("never touches schema.submissionTrack when the plan has no track filter", async () => {
+  it("never issues the old whole-event trackId scan when the plan has no track filter", async () => {
     const plan = makePlan();
     const { db, touched } = fakeDb({
       event: [{ recordPrefix: "S" }],
@@ -92,7 +117,16 @@ describe("DEC-439/DEC-440: buildResults payload width", () => {
 
     await buildResults({ var: { db } }, plan, 1);
 
-    expect(touched.some((t) => t.table === schema.submissionTrack)).toBe(false);
+    // DEC-703's own page-scoped track-name lookup selects {submissionId,
+    // name} from schema.submissionTrack (joined to track) -- distinct from
+    // the OLD whole-event {submissionId, trackId} scan this test guards
+    // against (DEC-439/listPlanFilteredSubmissions({withTrackIds: false})
+    // must still skip its own second query entirely).
+    const submissionTrackTouches = touched.filter((t) => t.table === schema.submissionTrack);
+    for (const touch of submissionTrackTouches) {
+      const colKeys = Object.keys((touch.cols ?? {}) as Record<string, unknown>).sort();
+      expect(colKeys).not.toEqual(["submissionId", "trackId"]);
+    }
   });
 
   it("selects exactly {submissionId, scoresJson} from schema.evaluation, not a whole-row select()", async () => {
@@ -151,6 +185,8 @@ describe("DEC-439/DEC-440: buildResults payload width", () => {
         perCriterion: { c1: 5 },
         perDropdown: { decision: { counts: { advance: 1, reject: 0 }, modal: "advance" } },
         status: "accepted",
+        speakers: [],
+        trackNames: [],
       },
       {
         submissionId: "sub-1",
@@ -161,7 +197,52 @@ describe("DEC-439/DEC-440: buildResults payload width", () => {
         perCriterion: { c1: 3 },
         perDropdown: { decision: { counts: { advance: 1, reject: 1 }, modal: "advance" } },
         status: "pending",
+        speakers: [],
+        trackNames: [],
       },
     ]);
+  });
+
+  it("DEC-703: a results row carries speaker names and track names, resolved via ONE batched query each", async () => {
+    const plan = makePlan();
+    const { db, touched } = fakeDb({
+      event: [{ recordPrefix: "S" }],
+      submission: [
+        { id: "sub-1", seq: 1, title: "Talk A", status: "pending" },
+        { id: "sub-2", seq: 2, title: "Talk B", status: "pending" },
+      ],
+      evaluation: [],
+      submissionTrack: [
+        { submissionId: "sub-1", name: "Engineering" },
+        { submissionId: "sub-1", name: "Leadership" },
+      ],
+      participant: [
+        { submissionId: "sub-1", firstName: "Ada", lastName: "Lovelace" },
+        { submissionId: "sub-1", firstName: "Grace", lastName: "Hopper" },
+      ],
+    });
+
+    const rows = await buildResults({ var: { db } }, plan, 1);
+
+    const rowA = rows.find((r) => r.submissionId === "sub-1");
+    const rowB = rows.find((r) => r.submissionId === "sub-2");
+    expect(rowA?.speakers).toEqual(["Ada Lovelace", "Grace Hopper"]);
+    expect(rowA?.trackNames).toEqual(["Engineering", "Leadership"]);
+    // A submission with no participant/track rows gets empty arrays, never
+    // undefined -- the row shape is uniform regardless of data presence.
+    expect(rowB?.speakers).toEqual([]);
+    expect(rowB?.trackNames).toEqual([]);
+
+    // ONE statement per page for each lookup (never per-row): exactly one
+    // select().from(schema.participant) and one select().from(
+    // schema.submissionTrack) whose cols select {submissionId, name} (the
+    // DEC-703 track-name lookup), regardless of there being two submissions
+    // on this page.
+    const participantFromTouches = touched.filter((t) => t.table === schema.participant);
+    expect(participantFromTouches.length).toBe(1);
+    const trackNameTouches = touched.filter(
+      (t) => t.table === schema.submissionTrack && Object.keys((t.cols ?? {}) as Record<string, unknown>).includes("name"),
+    );
+    expect(trackNameTouches.length).toBe(1);
   });
 });

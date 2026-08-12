@@ -426,9 +426,14 @@ reviewPlansRoutes.get("/api/v1/plans/:id/results", requireOrganizer, async (c) =
     const criteria = ratingCriteria(roundCriteria);
     const dropdowns = dropdownCriteria(roundCriteria);
     const dropdownColumns = dropdowns.flatMap((dc) => dc.options.map((option) => ({ dc, option })));
+    // DEC-703: Speaker/Track sit between title and the score columns, same
+    // as the SPA table -- the export is not a second opinion about what a
+    // result is.
     const header = [
       "ref",
       "title",
+      "Speaker",
+      "Track",
       "Status",
       "count",
       "average",
@@ -439,6 +444,8 @@ reviewPlansRoutes.get("/api/v1/plans/:id/results", requireOrganizer, async (c) =
     const dataRows = sortedRows.map((r) => [
       r.ref,
       r.title,
+      r.speakers.join("; "),
+      r.trackNames.join("; "),
       r.status,
       r.count,
       Number(r.average.toFixed(2)),

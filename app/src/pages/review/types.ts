@@ -128,6 +128,10 @@ export interface ResultsRow {
   // DEC-632/DEC-633: the submission's decision state (DEC-003 literal),
   // server truth for whether this row has already been decided.
   status: string;
+  // DEC-703: who this is and where it goes -- visible-participant order
+  // (speakers) / the event's own track order (trackNames).
+  speakers: string[];
+  trackNames: string[];
 }
 
 // GET /api/v1/submissions/:id/evaluations item (DEC-596/DEC-622/DEC-632/
