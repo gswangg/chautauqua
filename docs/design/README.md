@@ -191,6 +191,82 @@ Preserve today's behaviour exactly; the redesign changes none of it.
 
 Hover: rows and nav items get `#EFEBDF`; links go `#4E5C31` → `#3C471F`. Focus: 2px olive outline, 2px offset.
 
+## Review criteria — interaction rules
+
+Implements the appended spec in `docs/eval-findings.md` (2026-08-12). A criterion is **label + optional one-line guidance + relative integer weight**. Shown in `03-review.png`.
+
+- **Scale is plan-wide, never per-criterion.** It sits with Opens / Closes / Reviews per talk in the plan fields, captioned "Applies to every criterion in this plan".
+- **Editing is inline rows**, the same pattern as the CFP form builder — no dialog. "Add criterion" is a tertiary link. Soft cap stated honestly: "3 of about 7 · more than that and reviewers rush the last ones".
+- **Weights are relative integers with a computed share beside each** ("3 · 50%"). Never forced to sum to 100. Section caption: "Scores average by weight".
+- **Criteria freeze at the first submitted review** (the anonymization-snapshot precedent). Locked rows are read-only under "Locked — 7 reviews scored against these criteria", with the reason given — "Changing these would rescore work already done" — and *Start a new wave* as the way forward. Delete follows the same rule.
+- **A new plan prefills three editable defaults** (Relevance / Depth / Speaker readiness, equal weights) rather than an empty list.
+- **The scorecard** renders each criterion as label + guidance + rating pills; the overall is the computed weighted mean, displayed and not editable.
+- **Weights in the mock are 3/2/1, not equal**, so weighted ≠ naive is visible: pills 5/4/4 give **4.5**, and the panel says so — "A plain average of 5, 4, 4 would be 4.33". The reviewer queue chip and the wave-1 results row for that submission both read 4.5; all three derive from the one formula. Seed plans should carry distinct weights for the same reason.
+
+## Speakers grid — interaction rules
+
+Three things the first version of this design left unstated, each of which the build then invented an answer to. Shown in `04-speakers.png`.
+
+- **Status cells are controls, not labels.** Clicking one toggles complete ↔ pending (`PATCH /task-assignments/:id`, optimistic with loud rollback — `toggleCell`). All three states share one control shape — filled olive for complete, outlined for pending, ink-outlined bold caps for overdue — with a hover ring and `cursor:pointer`. The grid footer states it: "Click any status to mark it complete or pending". Overdue must not be bare text; it looked passive and was the state most likely to be clicked.
+- **Reading a form response: one quiet link, conditional.** A "Response" text link, styled exactly like the existing "File" link, appears **only on completed form-kind cells**. Never on pending cells (there is nothing to read), never on upload- or acknowledge-kind tasks. The grid carries a real form-kind column — *Hotel stay form* — so the link, the task-response modal and the speaker portal all name the same task. Do not render a bordered button per cell: at 12 speakers × 2 form columns that is 24 controls serving about 10 responses, and it doubles every row's height.
+- **Reminding one person.** Each row with something outstanding carries a quiet "Remind ‹first name›" link; rows that are fully complete carry nothing, by the same conditional-and-quiet rule as the Response link. The bulk "Remind all outstanding" stays on the title row for the whole-event case. **This needs a scope that does not exist yet.** `src/routes/tasks.ts:444` `POST /events/:eventId/onboarding/remind` parses only an optional `taskIds` and calls `remindNow(db, mailer, eventId, taskIds, now, kv, baseUrl)`; its sibling `/remind/preview` (:464) calls `previewRemindNow` with the same signature. Neither takes a recipient. Add an optional `contactIds` to **both** — preview must scope identically or the review dialog will show more drafts than the send delivers — keeping the one-hour dedupe window and the 100-contact cap, and returning the same `{sent, skipped, remaining}` shape so one result-reporting helper serves both paths. Until then an organiser's only option is to mail everyone, which is why the build had no per-person control to render.
+- **The response modal has exactly one action: *Reopen this task*.** It PATCHes `/task-assignments/:id` back to `pending` — the same call the grid cells make, optimistic with loud rollback, and the open modal and the grid row must agree. That is enough on its own: reminders target whatever is outstanding, so the task re-enters the chase loop automatically. The modal says so beside the button. There is deliberately no *Mark complete* here — the modal is only reachable from the Response link, which only appears on completed cells, so a complete action would be permanently dead. Marking complete happens by clicking the status cell in the grid.
+
+  An earlier draft of this design said *"Ask for more"*, which implied sending the speaker a reason. Nothing supports that: `buildReminderMessage(eventName, timezone, assignments, portalLink)` renders from the assignments alone and takes no custom body, and task assignments have no note field (`notes` lives on contacts; the only note feed is the pipeline's). If you want a real "here's what's missing" message, that is a schema change — a note column on `task_assignment` plus a `buildReminderMessage` parameter — not a button. Note also that `ResponseModal` is currently a read-only viewer, so even this one action is new work.
+- **Many tasks scroll sideways.** The grid keeps its column-per-task shape and scrolls horizontally below ~1060px of content rather than compressing headers into wrapped stacks. Real events run 7+ tasks; the seed's five is not the ceiling.
+- **Row identity is one line**: "Company · has account". Email belongs in the contact drawer — in the grid it wraps to two or three lines and doubles every row.
+
+## Content — required implementation
+
+**Two screens, not one.** `/admin/content` is the worklist: every session needing a decision, nothing speaker-specific. One session's deliverables, versions and notes live on their own route, `/content/:submissionId`, opened from a row. An earlier draft of this design showed both in one frame, which made a list page look like it belonged to one speaker.
+
+**"Ask for changes" must send an email, and today nothing does.** `POST /submissions/:id/content-status` (`src/routes/files.ts:194`) accepts only `{contentStatus}` and flips a column; `POST /files/:fileId/comments` inserts a row and returns. Neither touches the mailer. As built, a speaker learns their deliverable was rejected only if they happen to open the portal — so the design specifies a notification that does not exist yet:
+
+- On `changes_requested`, email the submission's speakers with the note body, the session title, and a portal link. Route it through the existing `Mailer` port and log it like every other send, so it appears in Comms history.
+- Decide whether `approved` also notifies. The design assumes **not** — an approval needs no action from the speaker, and a silent approval is not a trap the way a silent rejection is.
+- A plain *Send note only* should notify too, or the thread is a message nobody is told about.
+
+Until that exists, the "emails the speaker" copy in these frames describes intent, not behaviour. **Do not ship the flip without the send.**
+
+**The worklist row offers only *Approve* and *Open*.** Approving needs no reason, so it can fire from the row. Asking for changes always carries a note, so it cannot — it lives on the session screen beside the composer, and the row's second control just opens that screen. Desktop and phone rows are identical in this.
+
+**Two composer actions, one distinction:** *Ask for changes* emails the note **and** sets `changes_requested`; *Send note only* emails the note and leaves the status alone — for a clarifying question that isn't a rejection ("can you confirm the font sizes?"). Both post to the same thread; only the first moves the session out of the queue.
+
+## Content — supporting rules
+
+**One deliverable at a time.** A submission can carry several deliverables — slides, a recording, a workshop pack — and each is a separate version chain with its own comment thread. The detail panel therefore names the session in its heading, offers a chip per deliverable ("Slides · 3 versions", "Recording · 1 version"), and scopes both the version list and the note thread to the selected one: "Versions and notes below are for the selected deliverable". A heading like "Files for ‹session›" over a single chain is wrong — it promises every file and shows one thread with no way to tell which.
+
+The thread is titled after the deliverable, not after a speaker: per DEC-573 it belongs to the version *chain*, and a session can have several speakers. Posting a comment **sends no email** — `POST /files/:fileId/comments` inserts a row and returns, with no mailer in that path — so the composer says "the speaker sees it in their portal", never "emailed to". If a note should notify, that is a new mailer call, not a copy change.
+
+Comment threads are real and already built: `GET/POST /api/v1/files/:fileId/comments`, organiser or the submission's speaker, anchored to the whole version **chain** rather than one file row (DEC-573), so a reply survives a re-upload. The speaker sees the same thread in `/portal/tasks`.
+
+## Contacts — pipeline stages
+
+The board's columns are the five fixed stages from `src/server/repo/pipeline.ts:13` (DEC-157), in order and by their own names: **identified · contacted · interested · confirmed · declined**. They are a closed set — `isPipelineStage` rejects anything else and both `/api/v1/pipeline` write routes 400 with "must be one of …" — so the board must not invent friendlier labels. An earlier draft of this design used *Idea / Asked / Said yes / Not this year*, which dropped `interested` entirely and left two columns that no stage id maps to.
+
+**Labels are custom fields, not a tags column.** `contact` has no `tags` — `src/server/repo/exports/contacts.ts:48` emits an empty string for it with the comment "no data-model support yet". What does exist is `customFields` (`Record<string, string>`), settable on import via `mapImportRow`'s `custom.<key>` targets and addressable in segment rules. So the directory's Labels column and the drawer's Labels row render custom-field values (`role: speaker`, `year: 2027`), and the saved segments are written in the DSL that actually evaluates:
+
+```
+custom.role is speaker
+custom.year contains 2026
+custom.role is reviewer
+company is Independent
+```
+
+Labels render in **one keyed format everywhere** — `role speaker · year 2027` in the directory, the drawer, the phone rows and the merge screen. The key is what makes a rule writable: an organiser reading `SPEAKER · 2027` has no way to know it is `custom.role` + `custom.year`.
+
+**The merge screen shows the two fields `mergeContacts` actually reasons about.** Labels/customFields are **combined**, not chosen (`{...duplicate.customFields, ...primary.customFields}`), and notes are **appended** — primary's kept, duplicate's added after a `\n\n---\n\n` separator when they differ (DEC-266). Both are shown in the keep column rather than as a keep/discard pair, and the footer says so: "Labels combine, notes are appended". Merge is irreversible, so the one rule that is not "pick a side" has to be visible before committing.
+
+The rule vocabulary is fixed by `SEGMENT_STANDARD_FIELDS` — `email`, `firstName`, `lastName`, `company`, `title` — plus `any` (which fans out across all five, DEC-149) and any `custom.<key>`. `matchesSegment` **throws** on an unknown standard field rather than treating it as empty, so a segment written against a field that doesn't exist fails loudly at evaluation. Do not offer a rule builder that can express fields outside that set. An earlier draft of this design wrote segments as "Tag is speaker · status accepted" and "Tag contains 2026" — neither is expressible, and event participation and submission status are not contact fields at all.
+
+**Every card shows its age, derived from the newest `move` in `pipeline_activity`** — "Added 6 days ago", "Replied 5 days ago", "Confirmed 3 days ago". On `contacted` it reads "No reply · N days", and past 30 days it sets in bold caps. This is deliberately **not** a sixth stage: silence is the most common outcome of outreach and nobody decides it, so it belongs on the card as age rather than as a status somebody has to set. Without it `contacted` becomes a graveyard that organisers stop reading.
+
+**`declined` carries a reason**, because the stage conflates two opposite things: "They declined · no capacity" versus "We passed · off-topic". Same column, completely different follow-up next year.
+
+**The board is five columns and scrolls sideways** below 1000px rather than compressing — it was laid out for four before the stages were corrected.
+
+Moving a card writes a `move` activity; notes write a `note` activity to the same append-only feed (`pipeline_activity`). Neither sends email — the module comment is explicit that pipeline moves and notes never touch the mailer.
+
 ## Copy rules
 
 These were the most-revised part of the design. Hold them:
@@ -248,7 +324,7 @@ The screens are correct as *design*; the numbers on them are illustrative until 
 | `01-overview.png` | Overview desktop + phone, New event modal |
 | `12-home.png` | Home — three states at both widths, plus the design-notes panel |
 | `02-submissions.png` | Table, submission detail (desktop + phone), form builder (desktop + phone), 2 modals |
-| `03-review.png` | Organiser view, reviewer scorecard, reviewer queue, plan editor (desktop + phone) |
+| `03-review.png` | Organiser view, reviewer scorecard, reviewer queue, plan editor (desktop + phone), criteria frozen, new plan |
 | `04-speakers.png` | Onboarding grid + phone, roster phone, New task and Task response modals |
 | `05-content.png` | Worklist + deliverable detail, phone list, files library (desktop + phone) |
 | `06-agenda.png` | Day grid, phone tap-to-place |
@@ -257,6 +333,8 @@ The screens are correct as *design*; the numbers on them are illustrative until 
 | `09-settings.png` | All 7 desktop sections, 7 phone subscreens |
 | `10-public-and-portal.png` | 5 public surfaces, CFP form + confirmation + closed, portal home and 5 sub-routes |
 | `11-account.png` | Login, change password, not-found (desktop + phone) |
+
+**Phone frames are captured at full content height, not at 844px.** The design files render each phone frame as a fixed 390 × 844 device with an internally scrolling body; for these exports that body is expanded so nothing is cut off. A capture taller than 844px is therefore showing scrolled content, not a screen that fits — treat 844 as the fold line.
 
 Captures are of the design canvas, so each frame carries its title label and, where relevant, a note about intent. Measurements in this README are authoritative over the images.
 

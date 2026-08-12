@@ -78,7 +78,7 @@
 
           <section>
             <div style="display:grid; grid-template-columns:26px 1fr 130px 118px auto; gap:16px; padding:0 0 9px; border-bottom:2px solid #1B1D17; font-size:10px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">
-              <span>☐</span><span>Name and email</span><span>Company</span><span>Tags</span><span></span>
+              <span>☐</span><span>Name and email</span><span>Company</span><span>Labels</span><span></span>
             </div>
             <sc-for list="{{ rows }}" as="row" hint-placeholder-count="7">
               <div style="display:grid; grid-template-columns:26px 1fr 130px 118px auto; gap:16px; align-items:baseline; padding:13px 0; border-bottom:1px solid #E1DDCE">
@@ -194,6 +194,7 @@
             <span style="{{ t.text }}">{{ t.label }}</span>
           </div>
         </sc-for>
+       </div>
       </div>
     </div>
   </div>
@@ -278,16 +279,17 @@
       <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Pipeline · invitations for next year</span>
     </div>
 
-    <div style="width:1100px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:6px; overflow:hidden; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+    <div style="width:900px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:6px; overflow:hidden; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
       <div style="border-bottom:1px solid #1B1D17; padding:20px 32px; display:flex; align-items:flex-end; justify-content:space-between; gap:20px">
         <div style="display:flex; flex-direction:column; gap:5px">
           <a href="#" style="font-size:13px; font-weight:700">‹ Contacts</a>
           <span style="font-family:'Familjen Grotesk', sans-serif; font-size:28px; font-weight:700; letter-spacing:-0.04em; line-height:1">Pipeline</span>
         </div>
-        <span style="font-size:13px; color:#565A4B">18 people · drag between columns</span>
+        <span style="font-size:13px; color:#565A4B">20 people · drag between columns</span>
       </div>
-      <div style="padding:22px 32px 34px; display:grid; grid-template-columns:repeat(4, 1fr); gap:18px; align-items:start">
-        <sc-for list="{{ pipeline }}" as="col" hint-placeholder-count="4">
+      <div style="padding:22px 32px 34px; overflow-x:auto; -webkit-overflow-scrolling:touch">
+       <div style="min-width:1000px; display:grid; grid-template-columns:repeat(5, 1fr); gap:16px; align-items:start">
+        <sc-for list="{{ pipeline }}" as="col" hint-placeholder-count="5">
           <div style="display:flex; flex-direction:column; gap:12px">
             <div style="border-bottom:2px solid #1B1D17; padding-bottom:8px; display:flex; align-items:baseline; justify-content:space-between">
               <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase">{{ col.name }}</span>
@@ -298,10 +300,12 @@
                 <span style="font-family:'Familjen Grotesk', sans-serif; font-size:14px; font-weight:600; letter-spacing:-0.01em">{{ card.name }}</span>
                 <span style="font-size:12px; color:#565A4B">{{ card.company }}</span>
                 <span style="font-size:11px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B">{{ card.note }}</span>
+                <span style="{{ card.ageStyle }}">{{ card.age }}</span>
               </div>
             </sc-for>
           </div>
         </sc-for>
+       </div>
       </div>
     </div>
   </div>
@@ -312,7 +316,7 @@
       <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Duplicates · merge</span>
     </div>
 
-    <div style="width:760px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:6px; overflow:hidden; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+    <div style="width:900px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:6px; overflow:hidden; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
       <div style="border-bottom:1px solid #1B1D17; padding:20px 28px; display:flex; align-items:flex-end; justify-content:space-between; gap:20px">
         <div style="display:flex; flex-direction:column; gap:5px">
           <a href="#" style="font-size:13px; font-weight:700">‹ Contacts</a>
@@ -388,12 +392,13 @@
       <div style="border-bottom:1px solid #1B1D17; padding:14px 16px; flex-shrink:0; display:flex; flex-direction:column; gap:7px">
         <a href="#" style="font-size:13px; font-weight:700; min-height:44px; display:flex; align-items:center">‹ Contacts</a>
         <h1 style="margin:0; font-family:'Familjen Grotesk', sans-serif; font-size:25px; font-weight:700; letter-spacing:-0.04em; line-height:1.05">Pipeline</h1>
-        <span style="font-size:13px; color:#565A4B">18 people</span>
+        <span style="font-size:13px; color:#565A4B">20 people</span>
       </div><div style="flex-shrink:0; border-bottom:1px solid #E1DDCE; padding:12px 16px; display:flex; gap:7px; overflow-x:auto; -webkit-overflow-scrolling:touch">
-        <span style="flex-shrink:0; background:#1B1D17; color:#F4F1E8; border-radius:99px; min-height:44px; display:flex; align-items:center; padding:0 14px; font-size:13px; font-weight:600">Idea · 7</span>
-        <span style="flex-shrink:0; border:1px solid #BAB6A6; border-radius:99px; min-height:44px; display:flex; align-items:center; padding:0 14px; font-size:13px; font-weight:500">Asked · 5</span>
-        <span style="flex-shrink:0; border:1px solid #BAB6A6; border-radius:99px; min-height:44px; display:flex; align-items:center; padding:0 14px; font-size:13px; font-weight:500">Said yes · 4</span>
-        <span style="flex-shrink:0; border:1px solid #BAB6A6; border-radius:99px; min-height:44px; display:flex; align-items:center; padding:0 14px; font-size:13px; font-weight:500">Not this year · 2</span>
+        <span style="flex-shrink:0; background:#1B1D17; color:#F4F1E8; border-radius:99px; min-height:44px; display:flex; align-items:center; padding:0 14px; font-size:13px; font-weight:600">Identified · 7</span>
+        <span style="flex-shrink:0; border:1px solid #BAB6A6; border-radius:99px; min-height:44px; display:flex; align-items:center; padding:0 14px; font-size:13px; font-weight:500">Contacted · 5</span>
+        <span style="flex-shrink:0; border:1px solid #BAB6A6; border-radius:99px; min-height:44px; display:flex; align-items:center; padding:0 14px; font-size:13px; font-weight:500">Interested · 4</span>
+        <span style="flex-shrink:0; border:1px solid #BAB6A6; border-radius:99px; min-height:44px; display:flex; align-items:center; padding:0 14px; font-size:13px; font-weight:500">Confirmed · 2</span>
+        <span style="flex-shrink:0; border:1px solid #BAB6A6; border-radius:99px; min-height:44px; display:flex; align-items:center; padding:0 14px; font-size:13px; font-weight:500">Declined · 2</span>
       </div><div style="flex:1; min-height:0; overflow-y:auto; padding:14px 16px 16px">
         <sc-for list="{{ pipelinePhone }}" as="c" hint-placeholder-count="3">
           <div style="padding:15px 0; border-bottom:1px solid #E1DDCE; display:flex; align-items:center; gap:12px">
@@ -401,6 +406,7 @@
               <span style="font-family:'Familjen Grotesk', sans-serif; font-size:16px; font-weight:600; letter-spacing:-0.015em">{{ c.name }}</span>
               <span style="font-size:13px; color:#565A4B">{{ c.company }}</span>
               <span style="font-size:11px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B">{{ c.note }}</span>
+              <span style="{{ c.ageStyle }}">{{ c.age }}</span>
             </div>
             <span style="border:1px solid #BAB6A6; border-radius:6px; background:#EFEBDF; min-height:44px; display:flex; align-items:center; padding:0 13px; font-size:13px; font-weight:600">Move ›</span>
           </div>
@@ -467,7 +473,7 @@
             <div style="border:1px solid #BAB6A6; border-radius:6px; min-height:48px; display:flex; align-items:center; padding:0 13px; font-size:15px; color:#565A4B; text-decoration:line-through; text-decoration-color:#A8A392; word-break:break-word">{{ m.drop }}</div>
           </div>
         </sc-for>
-        <div style="padding:16px 0 0; font-size:13px; color:#565A4B; line-height:1.5">3 submissions and 1 task move to the record you keep</div></div>
+        <div style="padding:16px 0 0; font-size:13px; color:#565A4B; line-height:1.5">Labels combine, notes are appended · 3 submissions and 1 task move to the record you keep</div></div>
       <div style="flex-shrink:0; border-top:1px solid #1B1D17; background:#EFEBDF; padding:12px 16px 16px; display:flex; gap:8px">
         <span style="flex:1; background:#4E5C31; color:#F7F9F0; border-radius:6px; min-height:48px; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700">Merge them</span>
         <span style="border:1px solid #BAB6A6; border-radius:6px; min-height:48px; display:flex; align-items:center; padding:0 16px; font-size:13px; font-weight:600">Not a duplicate</span>
@@ -552,17 +558,25 @@ const TARGET_SKIP = 'font-size:14px; font-weight:500; color:#565A4B; border:1px 
 const KEEP = 'font-size:15px; font-weight:600';
 const DROP = 'font-size:15px; color:#565A4B; text-decoration:line-through; text-decoration-color:#A8A392';
 
+const AGE = 'font-size:11px; color:#565A4B';
+const AGE_STALE = 'font-size:11px; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; color:#1B1D17';
+
+// display-only, from the newest pipeline_activity move — surfaces silence without a sixth stage
+function withAge(cards) {
+  return cards.map((c) => ({ ...c, ageStyle: c.stale ? AGE_STALE : AGE }));
+}
+
 class Component extends DCLogic {
   renderVals() {
     return {
       rows: [
-        { check: '☑', name: 'Priya Raman', email: 'sbek-speaker@example.com', company: 'Latticework Systems', role: 'Principal Engineer', tags: 'Speaker · 2027' },
-        { check: '☑', name: 'Marcus Okafor', email: 'sbek-speaker2@example.com', company: 'Cloudreach Labs', role: 'Staff Developer Advocate', tags: 'Speaker · 2027' },
-        { check: '☐', name: 'Sam Whitfield', email: 'sbek-reviewer@example.com', company: 'Independent', role: 'Program committee', tags: 'Reviewer' },
-        { check: '☐', name: 'Nadia Ferrone', email: 'nadia@example.com', company: 'Northwind Data', role: 'Research Engineer', tags: 'Speaker' },
-        { check: '☐', name: 'Ruth Adeyemi', email: 'ruth@example.com', company: 'Meridian Tools', role: 'DX Lead', tags: 'Speaker' },
-        { check: '☐', name: 'Iris Bell', email: 'iris@example.com', company: 'Latticework Systems', role: 'Staff Engineer', tags: 'Speaker · 2026' },
-        { check: '☐', name: 'Oskar Vance', email: 'oskar@example.com', company: 'Independent', role: '—', tags: 'Declined 2027' },
+        { check: '☑', name: 'Priya Raman', email: 'sbek-speaker@example.com', company: 'Latticework Systems', role: 'Principal Engineer', tags: 'role speaker · year 2027' },
+        { check: '☑', name: 'Marcus Okafor', email: 'sbek-speaker2@example.com', company: 'Cloudreach Labs', role: 'Staff Developer Advocate', tags: 'role speaker · year 2027' },
+        { check: '☐', name: 'Sam Whitfield', email: 'sbek-reviewer@example.com', company: 'Independent', role: 'Program committee', tags: 'role reviewer' },
+        { check: '☐', name: 'Nadia Ferrone', email: 'nadia@example.com', company: 'Northwind Data', role: 'Research Engineer', tags: 'role speaker' },
+        { check: '☐', name: 'Ruth Adeyemi', email: 'ruth@example.com', company: 'Meridian Tools', role: 'DX Lead', tags: 'role speaker' },
+        { check: '☐', name: 'Iris Bell', email: 'iris@example.com', company: 'Latticework Systems', role: 'Staff Engineer', tags: 'role speaker · year 2026' },
+        { check: '☐', name: 'Oskar Vance', email: 'oskar@example.com', company: 'Independent', role: '—', tags: 'role speaker · year 2027' },
       ],
       companies: [
         { name: 'Latticework Systems', count: '7' },
@@ -572,16 +586,16 @@ class Component extends DCLogic {
         { name: 'Independent', count: '19' },
       ],
       segments: [
-        { name: 'Accepted speakers 2027', rule: 'Tag is speaker · status accepted', count: '23' },
-        { name: 'Never submitted', rule: 'No submission in any event', count: '112' },
-        { name: 'Returning from 2026', rule: 'Tag contains 2026', count: '38' },
-        { name: 'Reviewers, all waves', rule: 'Tag is reviewer', count: '9' },
+        { name: 'Accepted speakers 2027', rule: 'custom.role is speaker', count: '23' },
+        { name: 'Never submitted', rule: 'company is Independent', count: '112' },
+        { name: 'Returning from 2026', rule: 'custom.year contains 2026', count: '38' },
+        { name: 'Reviewers, all waves', rule: 'custom.role is reviewer', count: '9' },
       ],
       contactFields: [
         { label: 'Email', value: 'sbek-speaker@example.com' },
         { label: 'Company', value: 'Latticework Systems' },
         { label: 'Title', value: 'Principal Engineer' },
-        { label: 'Tags', value: 'Speaker · 2027 · returning' },
+        { label: 'Labels', value: 'role speaker · year 2027 · returning' },
         { label: 'Dietary', value: 'Vegetarian · T-shirt M' },
       ],
       contactHistory: [
@@ -597,41 +611,40 @@ class Component extends DCLogic {
         { column: 'internal_notes', sample: 'met at PlatformCon', target: 'Skip this column', targetStyle: TARGET_SKIP },
       ],
       pipeline: [
-        { name: 'Idea', count: '7', cards: [
-          { name: 'Aisha Karim', company: 'Vector Foundry', note: 'Suggested by Priya' },
-          { name: 'Tom Vasquez', company: 'Riverbed', note: 'Wrote the CI post' },
-          { name: 'Lena Fischer', company: 'Northwind Data', note: 'Spoke 2025' },
-        ] },
-        { name: 'Asked', count: '5', cards: [
-          { name: 'Ben Aturo', company: 'Cloudreach Labs', note: 'Emailed 2 Aug' },
-          { name: 'Sofia Marchetti', company: 'Latticework', note: 'Emailed 4 Aug' },
-        ] },
-        { name: 'Said yes', count: '4', cards: [
-          { name: 'Dana Whitmore', company: 'Fieldnote Docs', note: 'Wants a workshop' },
-          { name: 'Iris Bell', company: 'Latticework', note: 'Any track' },
-        ] },
-        { name: 'Not this year', count: '2', cards: [
-          { name: 'Oskar Vance', company: 'Independent', note: 'Ask again in 2028' },
-        ] },
+        { name: 'Identified', count: '7', cards: withAge([
+          { name: 'Aisha Karim', company: 'Vector Foundry', note: 'Suggested by Priya', age: 'Added 6 days ago' },
+          { name: 'Tom Vasquez', company: 'Riverbed', note: 'Wrote the CI post', age: 'Added 12 days ago' },
+          { name: 'Lena Fischer', company: 'Northwind Data', note: 'Spoke 2025', age: 'Added 20 days ago' },
+        ]) },
+        { name: 'Contacted', count: '5', cards: withAge([
+          { name: 'Ben Aturo', company: 'Cloudreach Labs', note: 'Emailed 2 Aug', age: 'No reply · 41 days', stale: true },
+          { name: 'Sofia Marchetti', company: 'Latticework', note: 'Emailed 4 Aug', age: 'No reply · 8 days' },
+        ]) },
+        { name: 'Interested', count: '4', cards: withAge([
+          { name: 'Dana Whitmore', company: 'Fieldnote Docs', note: 'Wants a workshop', age: 'Replied 5 days ago' },
+          { name: 'Iris Bell', company: 'Latticework', note: 'Any track', age: 'Replied 9 days ago' },
+        ]) },
+        { name: 'Confirmed', count: '2', cards: withAge([
+          { name: 'Wei Chen', company: 'Northwind Data', note: 'Submitting in March', age: 'Confirmed 3 days ago' },
+          { name: 'Ruth Adeyemi', company: 'Meridian Tools', note: 'Workshop slot held', age: 'Confirmed 11 days ago' },
+        ]) },
+        { name: 'Declined', count: '2', cards: withAge([
+          { name: 'Oskar Vance', company: 'Independent', note: 'They declined · no capacity', age: 'Ask again in 2028' },
+          { name: 'Marta Reyes', company: 'Substrate', note: 'We passed · off-topic', age: 'Closed 22 days ago' },
+        ]) },
       ],
-      pipelinePhone: [
-        { name: 'Aisha Karim', company: 'Vector Foundry', note: 'Suggested by Priya' },
-        { name: 'Tom Vasquez', company: 'Riverbed', note: 'Wrote the CI post' },
-        { name: 'Lena Fischer', company: 'Northwind Data', note: 'Spoke 2025' },
-      ],
-      importTargets: [
-        { label: 'Email', style: 'display:flex; align-items:center; gap:11px; border:1px solid #4E5C31; border-radius:6px; background:#FAF8F2; min-height:48px; padding:0 14px; font-size:15px; font-weight:700; margin-top:10px', mark: 'width:16px; height:16px; border-radius:50%; border:5px solid #4E5C31; flex-shrink:0' },
-        { label: 'Name', style: 'display:flex; align-items:center; gap:11px; border:1px solid #BAB6A6; border-radius:6px; background:#FAF8F2; min-height:48px; padding:0 14px; font-size:15px; margin-top:10px', mark: 'width:16px; height:16px; border-radius:50%; border:1px solid #8E8A7A; flex-shrink:0' },
-        { label: 'Company', style: 'display:flex; align-items:center; gap:11px; border:1px solid #BAB6A6; border-radius:6px; background:#FAF8F2; min-height:48px; padding:0 14px; font-size:15px; margin-top:10px', mark: 'width:16px; height:16px; border-radius:50%; border:1px solid #8E8A7A; flex-shrink:0' },
-        { label: 'Job title', style: 'display:flex; align-items:center; gap:11px; border:1px solid #BAB6A6; border-radius:6px; background:#FAF8F2; min-height:48px; padding:0 14px; font-size:15px; margin-top:10px', mark: 'width:16px; height:16px; border-radius:50%; border:1px solid #8E8A7A; flex-shrink:0' },
-        { label: 'Skip this column', style: 'display:flex; align-items:center; gap:11px; border:1px dashed #BAB6A6; border-radius:6px; min-height:48px; padding:0 14px; font-size:15px; color:#565A4B; margin-top:10px', mark: 'width:16px; height:16px; border-radius:50%; border:1px solid #8E8A7A; flex-shrink:0' },
-      ],
+      pipelinePhone: withAge([
+        { name: 'Aisha Karim', company: 'Vector Foundry', note: 'Suggested by Priya', age: 'Added 6 days ago' },
+        { name: 'Tom Vasquez', company: 'Riverbed', note: 'Wrote the CI post', age: 'Added 12 days ago' },
+        { name: 'Lena Fischer', company: 'Northwind Data', note: 'Spoke 2025', age: 'Added 20 days ago' },
+      ]),
       mergeRows: [
         { label: 'Name', keep: 'Marcus Okafor', drop: 'Marcus O.', keepStyle: KEEP, dropStyle: DROP },
         { label: 'Email', keep: 'sbek-speaker2@example.com', drop: 'marcus@cloudreach.example', keepStyle: KEEP, dropStyle: DROP },
         { label: 'Company', keep: 'Cloudreach Labs', drop: '—', keepStyle: KEEP, dropStyle: DROP },
         { label: 'Title', keep: 'Staff Developer Advocate', drop: 'Developer Advocate', keepStyle: KEEP, dropStyle: DROP },
-        { label: 'Tags', keep: 'Speaker · 2027 · 2026', drop: 'Speaker', keepStyle: KEEP, dropStyle: DROP },
+        { label: 'Labels', keep: 'role speaker · year 2027', drop: 'year 2026', keepStyle: KEEP, dropStyle: KEEP },
+        { label: 'Notes', keep: 'Met at PlatformCon. Wants a workshop slot.', drop: 'Prefers Tuesday.', keepStyle: KEEP, dropStyle: KEEP },
       ],
       tabs: [
         { label: 'Overview', dot: DOT, text: TXT },

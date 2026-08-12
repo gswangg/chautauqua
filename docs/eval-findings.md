@@ -367,3 +367,22 @@ mock shows criteria but not their editing flow; prod's invented flow is unintuit
     "Save" itinerary buttons, and row anatomy drifts from the mock. Rebuild to the
     10-public-and-portal sessions frame — this is also where the itinerary-persistence
     CRITICAL (EMB-10/11) lives, so fix surface and storage together.
+
+## APPENDED: design pack v4 vendored (2026-08-12 evening) — SUPERSEDES v2
+
+`docs/design/` is now **v4**. Changed: Review, Speakers, Contacts, Content + README.
+The README gained two NORMATIVE sections that supersede earlier mandate items:
+- **"Review criteria — interaction rules"** — supersedes the earlier criteria spec
+  append (same content, refined: mock weights 3/2/1 with the 4.5-vs-4.33 panel copy;
+  "Start a new wave" from locked criteria; honest soft-cap copy). New Review frames
+  cover criteria/template creation — implement from the mock, not memory.
+- **"Speakers grid — interaction rules"** — supersedes mandate item 12: status cells
+  are visible CONTROLS (shared shape, hover ring, footer caption); conditional quiet
+  "Response" link only on completed form-kind cells; per-person "Remind ‹name›" links
+  — **requires adding optional `contactIds` to BOTH `POST
+  /events/:eventId/onboarding/remind` (tasks.ts:444) AND its /remind/preview sibling**
+  (identical scoping, same {sent,skipped,remaining} shape, keep dedupe window + cap);
+  response modal has exactly ONE action ("Reopen this task"); grid scrolls
+  horizontally below ~1060px; row identity "Company · has account", no emails.
+Full-resolution screens/ now include fullscreen phone captures — fidelity checks can
+compare phone frames pixel-for-pixel.

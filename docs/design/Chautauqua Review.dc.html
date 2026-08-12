@@ -158,15 +158,16 @@
         <div style="display:flex; flex-direction:column; gap:8px; padding-bottom:18px; border-bottom:1px solid #E1DDCE">
           <span style="font-size:10px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Abstract</span>
           <span style="font-size:14px; line-height:1.6; color:#3F4237">Code generation is easy; trusting it is hard. This session covers verification patterns for AI-generated code — property tests, mutation coverage, snapshot judges, and CI gates — with data from 18 months of running them on a 200-engineer codebase.</span>
-          <a href="#" style="font-size:13px; font-weight:700">Read the full submission</a>
+          <a href="#" style="font-size:13px; font-weight:700; display:inline-flex; align-items:center; min-height:44px">Read the full submission</a>
         </div>
 
         <sc-for list="{{ criteria }}" as="c" hint-placeholder-count="3">
-          <div style="padding:18px 0; border-bottom:1px solid #E1DDCE; display:flex; flex-direction:column; gap:11px">
+          <div style="padding:18px 0; border-bottom:1px solid #E1DDCE; display:flex; flex-direction:column; gap:10px">
             <div style="display:flex; align-items:baseline; justify-content:space-between; gap:10px">
-              <span style="font-family:'Familjen Grotesk', sans-serif; font-size:15px; font-weight:600">{{ c.label }}</span>
-              <span style="font-size:11px; font-weight:600; color:#565A4B">{{ c.weight }}</span>
+              <span style="font-family:'Familjen Grotesk', sans-serif; font-size:16px; font-weight:600; letter-spacing:-0.015em">{{ c.label }}</span>
+              <span style="font-size:11px; font-weight:600; color:#565A4B; white-space:nowrap">{{ c.weight }}</span>
             </div>
+            <span style="font-size:13px; color:#565A4B; line-height:1.5">{{ c.hint }}</span>
             <div style="display:flex; gap:7px">
               <sc-for list="{{ c.scale }}" as="n" hint-placeholder-count="5">
                 <span style="{{ n.style }}">{{ n.value }}</span>
@@ -174,6 +175,15 @@
             </div>
           </div>
         </sc-for>
+
+        <div style="padding:18px 0; border-bottom:1px solid #E1DDCE; display:flex; align-items:center; gap:14px">
+          <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:3px">
+            <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Overall</span>
+            <span style="font-size:13px; color:#565A4B; line-height:1.5">Averaged by weight · not editable</span>
+            <span style="font-size:12px; color:#565A4B; line-height:1.5">A plain average of 5, 4, 4 would be 4.33</span>
+          </div>
+          <span style="font-family:'Familjen Grotesk', sans-serif; font-size:34px; font-weight:700; letter-spacing:-0.03em; line-height:1">4.5</span>
+        </div>
 
         <div style="padding:18px 0 0; display:flex; flex-direction:column; gap:9px">
           <span style="font-size:10px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Comment to the committee</span>
@@ -227,7 +237,7 @@
 
       <div style="flex-shrink:0; border-top:1px solid #1B1D17; background:#EFEBDF; padding:12px 16px 16px; display:flex; align-items:center; gap:12px">
         <span style="font-size:13px; color:#565A4B">Scores stay hidden from other reviewers</span>
-        <a href="#" style="margin-left:auto; font-size:13px; font-weight:700">Sign out</a>
+        <a href="#" style="margin-left:auto; font-size:13px; font-weight:700; display:inline-flex; align-items:center; min-height:44px">Sign out</a>
       </div>
     </div>
   </div>
@@ -251,7 +261,7 @@
       </div>
 
       <div style="padding:22px 32px 34px; display:flex; flex-direction:column; gap:26px">
-        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:18px; max-width:660px">
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:18px; max-width:440px">
           <div style="display:flex; flex-direction:column; gap:6px">
             <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Opens</span>
             <div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; min-height:46px; display:flex; align-items:center; padding:0 13px; font-size:15px">24 Mar 2027</div>
@@ -264,25 +274,37 @@
             <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Reviews per talk</span>
             <div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; min-height:46px; display:flex; align-items:center; padding:0 13px; font-size:15px">2</div>
           </div>
+          <div style="display:flex; flex-direction:column; gap:6px">
+            <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Rating scale</span>
+            <div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; min-height:46px; display:flex; align-items:center; padding:0 13px; font-size:15px">1 to 5</div>
+            <span style="font-size:12px; color:#565A4B; line-height:1.45">Applies to every criterion in this plan</span>
+          </div>
         </div>
 
         <section>
           <div style="border-bottom:2px solid #1B1D17; padding-bottom:8px; display:flex; align-items:baseline; justify-content:space-between">
             <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase">Scoring criteria</span>
-            <a href="#" style="font-size:13px; font-weight:700">Add a criterion</a>
+            <span style="font-size:11px; font-weight:600; letter-spacing:0.04em; text-transform:uppercase; color:#565A4B">Scores average by weight</span>
+          </div>
+          <div style="display:grid; grid-template-columns:20px 1fr 260px 132px 62px; gap:16px; padding:11px 0 8px; font-size:10px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">
+            <span></span><span>Criterion</span><span>Guidance for reviewers · optional</span><span>Weight</span><span></span>
           </div>
           <sc-for list="{{ planCriteria }}" as="c" hint-placeholder-count="3">
-            <div style="display:grid; grid-template-columns:20px 1fr 130px 108px auto; gap:16px; align-items:center; padding:13px 0; border-bottom:1px solid #E1DDCE">
+            <div style="display:grid; grid-template-columns:20px 1fr 260px 132px 62px; gap:16px; align-items:center; padding:9px 0; border-bottom:1px solid #E1DDCE">
               <span style="font-size:14px; color:#8E8A7A">⋮⋮</span>
-              <div style="display:flex; flex-direction:column; gap:2px">
-                <span style="font-family:'Familjen Grotesk', sans-serif; font-size:15px; font-weight:600; letter-spacing:-0.01em">{{ c.label }}</span>
-                <span style="font-size:12px; color:#565A4B">{{ c.hint }}</span>
+              <div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; min-height:46px; display:flex; align-items:center; padding:0 13px; font-size:15px; font-weight:600">{{ c.label }}</div>
+              <div style="{{ c.hintStyle }}">{{ c.hint }}</div>
+              <div style="display:flex; align-items:center; gap:9px">
+                <div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; min-height:46px; width:62px; display:flex; align-items:center; justify-content:center; font-family:'Familjen Grotesk', sans-serif; font-size:16px; font-weight:700">{{ c.weight }}</div>
+                <span style="font-size:13px; color:#565A4B; white-space:nowrap">{{ c.share }}</span>
               </div>
-              <span style="font-size:13px">{{ c.scale }}</span>
-              <span style="font-size:13px; font-weight:600">{{ c.weight }}</span>
-              <a href="#" style="font-size:12px; font-weight:700">Edit</a>
+              <a href="#" style="font-size:12px; font-weight:700; color:#565A4B">Remove</a>
             </div>
           </sc-for>
+          <div style="display:flex; align-items:center; gap:16px; padding:14px 0 0">
+            <a href="#" style="font-size:14px; font-weight:700">Add criterion</a>
+            <span style="font-size:13px; color:#565A4B">3 of about 7 · more than that and reviewers rush the last ones</span>
+          </div>
         </section>
 
         <section>
@@ -325,14 +347,21 @@
           <span style="font-size:12px; font-weight:700; color:#565A4B">3</span>
         </div>
         <sc-for list="{{ planCriteria }}" as="c" hint-placeholder-count="3">
-          <div style="padding:14px 0; border-bottom:1px solid #E1DDCE; display:flex; align-items:center; gap:12px">
-            <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:2px">
-              <span style="font-family:'Familjen Grotesk', sans-serif; font-size:16px; font-weight:600; letter-spacing:-0.015em">{{ c.label }}</span>
-              <span style="font-size:12px; color:#565A4B">{{ c.scale }} · {{ c.weight }}</span>
+          <div style="padding:14px 0; border-bottom:1px solid #E1DDCE; display:flex; flex-direction:column; gap:8px">
+            <div style="border:1px solid #BAB6A6; border-radius:6px; background:#FAF8F2; min-height:48px; display:flex; align-items:center; padding:0 13px; font-size:15px; font-weight:600">{{ c.label }}</div>
+            <div style="{{ c.hintStyleM }}">{{ c.hint }}</div>
+            <div style="display:flex; align-items:center; gap:10px">
+              <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Weight</span>
+              <div style="border:1px solid #BAB6A6; border-radius:6px; background:#FAF8F2; min-height:44px; width:58px; display:flex; align-items:center; justify-content:center; font-family:'Familjen Grotesk', sans-serif; font-size:16px; font-weight:700">{{ c.weight }}</div>
+              <span style="font-size:13px; color:#565A4B">{{ c.share }}</span>
+              <a href="#" style="margin-left:auto; font-size:13px; font-weight:700; color:#565A4B; min-height:44px; display:flex; align-items:center">Remove</a>
             </div>
-            <span style="border:1px solid #BAB6A6; border-radius:6px; background:#EFEBDF; min-height:44px; display:flex; align-items:center; padding:0 14px; font-size:13px; font-weight:600">Edit</span>
           </div>
         </sc-for>
+        <div style="padding:14px 0 0; display:flex; flex-direction:column; gap:6px">
+          <a href="#" style="font-size:14px; font-weight:700; min-height:44px; display:flex; align-items:center">Add criterion</a>
+          <span style="font-size:12px; color:#565A4B; line-height:1.5">3 of about 7 · scores average by weight</span>
+        </div>
         <div style="padding:18px 0 8px; border-bottom:2px solid #1B1D17; display:flex; align-items:baseline; justify-content:space-between">
           <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase">Reviewers</span>
           <span style="font-size:12px; font-weight:700; color:#565A4B">4</span>
@@ -354,6 +383,96 @@
     </div>
   </div>
 
+  <div style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:center; gap:12px">
+      <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; background:#1B1D17; color:#F4F1E8; padding:5px 10px; border-radius:4px">Subscreen</span>
+      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Plan editor · criteria frozen</span>
+      <span style="font-size:11px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B">From the first submitted review onward</span>
+    </div>
+
+    <div style="width:900px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:6px; overflow:hidden; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+      <div style="border-bottom:1px solid #1B1D17; padding:20px 32px; display:flex; align-items:flex-end; justify-content:space-between; gap:20px">
+        <div style="display:flex; flex-direction:column; gap:5px">
+          <a href="#" style="font-size:13px; font-weight:700">‹ Review</a>
+          <span style="font-family:'Familjen Grotesk', sans-serif; font-size:27px; font-weight:700; letter-spacing:-0.04em; line-height:1">Wave 2 — AI Engineering deep pass</span>
+          <span style="font-size:13px; color:#565A4B">Open · 7 of 18 reviews in</span>
+        </div>
+        <div style="display:flex; gap:9px"><span style="border:1px solid #CFC7B7; border-radius:4px; background:#EFEBDF; padding:9px 15px; font-size:13px; font-weight:600; color:#2E2A24">Duplicate</span><span style="background:#4E5C31; color:#F7F9F0; border-radius:4px; padding:10px 15px; font-size:13px; font-weight:700">Save</span></div>
+      </div>
+
+      <div style="padding:22px 32px 34px; display:flex; flex-direction:column; gap:26px">
+        <section>
+          <div style="border-bottom:2px solid #1B1D17; padding-bottom:8px; display:flex; align-items:baseline; justify-content:space-between">
+            <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase">Scoring criteria</span>
+            <span style="font-size:11px; font-weight:800; letter-spacing:0.09em; text-transform:uppercase">Locked — 7 reviews scored against these criteria</span>
+          </div>
+          <sc-for list="{{ planCriteria }}" as="c" hint-placeholder-count="3">
+            <div style="display:grid; grid-template-columns:1fr 260px 132px; gap:16px; align-items:baseline; padding:14px 0; border-bottom:1px solid #E1DDCE">
+              <span style="font-family:'Familjen Grotesk', sans-serif; font-size:16px; font-weight:600; letter-spacing:-0.015em">{{ c.label }}</span>
+              <span style="font-size:13px; color:#565A4B; line-height:1.5">{{ c.hint }}</span>
+              <span style="font-size:13px">Weight {{ c.weight }} · {{ c.share }}</span>
+            </div>
+          </sc-for>
+          <div style="margin-top:16px; background:#EFEBDF; border-radius:5px; padding:16px 18px; display:flex; align-items:center; gap:16px; flex-wrap:wrap">
+            <div style="display:flex; flex-direction:column; gap:4px; max-width:52ch">
+              <span style="font-family:'Familjen Grotesk', sans-serif; font-size:15px; font-weight:700">Changing these would rescore work already done</span>
+              <span style="font-size:13px; color:#3F4237; line-height:1.55">Wording, weights and the scale are fixed for the rest of this wave. To score differently, open a new wave — the reviews already in stay attached to this one.</span>
+            </div>
+            <span style="margin-left:auto; background:#4E5C31; color:#F7F9F0; border-radius:4px; min-height:46px; display:flex; align-items:center; padding:0 18px; font-size:14px; font-weight:700; white-space:nowrap">Start a new wave</span>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:center; gap:12px">
+      <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; background:#1B1D17; color:#F4F1E8; padding:5px 10px; border-radius:4px">Subscreen</span>
+      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">New plan · /review/plans/new</span>
+      <span style="font-size:11px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B">Prefilled, not empty</span>
+    </div>
+
+    <div style="width:900px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:6px; overflow:hidden; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+      <div style="border-bottom:1px solid #1B1D17; padding:20px 32px; display:flex; align-items:flex-end; justify-content:space-between; gap:20px">
+        <div style="display:flex; flex-direction:column; gap:5px">
+          <a href="#" style="font-size:13px; font-weight:700">‹ Review</a>
+          <span style="font-family:'Familjen Grotesk', sans-serif; font-size:27px; font-weight:700; letter-spacing:-0.04em; line-height:1">New evaluation plan</span>
+          <span style="font-size:13px; color:#565A4B">Nothing is sent to reviewers until you open it</span>
+        </div>
+        <div style="display:flex; gap:9px"><span style="border:1px solid #CFC7B7; border-radius:4px; background:#EFEBDF; padding:9px 15px; font-size:13px; font-weight:600; color:#2E2A24">Cancel</span><span style="background:#4E5C31; color:#F7F9F0; border-radius:4px; padding:10px 15px; font-size:13px; font-weight:700">Create the plan</span></div>
+      </div>
+
+      <div style="padding:22px 32px 34px; display:flex; flex-direction:column; gap:26px">
+        <section>
+          <div style="border-bottom:2px solid #1B1D17; padding-bottom:8px; display:flex; align-items:baseline; justify-content:space-between">
+            <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase">Scoring criteria</span>
+            <span style="font-size:11px; font-weight:600; letter-spacing:0.04em; text-transform:uppercase; color:#565A4B">Scores average by weight</span>
+          </div>
+          <div style="padding:14px 0 4px; font-size:14px; line-height:1.6; color:#3F4237; max-width:60ch">Three to start with. Rename them, change the weights, or remove any you don't want.</div>
+          <div style="display:grid; grid-template-columns:20px 1fr 260px 132px 62px; gap:16px; padding:11px 0 8px; font-size:10px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">
+            <span></span><span>Criterion</span><span>Guidance for reviewers · optional</span><span>Weight</span><span></span>
+          </div>
+          <sc-for list="{{ defaultCriteria }}" as="c" hint-placeholder-count="3">
+            <div style="display:grid; grid-template-columns:20px 1fr 260px 132px 62px; gap:16px; align-items:center; padding:9px 0; border-bottom:1px solid #E1DDCE">
+              <span style="font-size:14px; color:#8E8A7A">⋮⋮</span>
+              <div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; min-height:46px; display:flex; align-items:center; padding:0 13px; font-size:15px; font-weight:600">{{ c.label }}</div>
+              <div style="{{ c.hintStyle }}">{{ c.hint }}</div>
+              <div style="display:flex; align-items:center; gap:9px">
+                <div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; min-height:46px; width:62px; display:flex; align-items:center; justify-content:center; font-family:'Familjen Grotesk', sans-serif; font-size:16px; font-weight:700">{{ c.weight }}</div>
+                <span style="font-size:13px; color:#565A4B; white-space:nowrap">{{ c.share }}</span>
+              </div>
+              <a href="#" style="font-size:12px; font-weight:700; color:#565A4B">Remove</a>
+            </div>
+          </sc-for>
+          <div style="display:flex; align-items:center; gap:16px; padding:14px 0 0">
+            <a href="#" style="font-size:14px; font-weight:700">Add criterion</a>
+            <span style="font-size:13px; color:#565A4B">3 of about 7 · more than that and reviewers rush the last ones</span>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+
 </section>
 </x-dc>
 <script type="text/x-dc" data-dc-script>
@@ -364,6 +483,24 @@ const FLAG_LATE = 'font-size:10px; font-weight:800; letter-spacing:0.1em; text-t
 const FLAG_OK = 'font-size:10px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B; justify-self:start';
 const SCORE_ON = 'flex:1; min-height:44px; display:flex; align-items:center; justify-content:center; background:#4E5C31; color:#F7F9F0; border-radius:6px; font-family:\'Familjen Grotesk\', sans-serif; font-size:16px; font-weight:700';
 const SCORE_OFF = 'flex:1; min-height:44px; display:flex; align-items:center; justify-content:center; border:1px solid #BAB6A6; border-radius:6px; font-family:\'Familjen Grotesk\', sans-serif; font-size:16px; font-weight:600; color:#3F4237';
+
+const HINT = 'border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; min-height:46px; display:flex; align-items:center; padding:0 13px; font-size:14px; color:#3F4237';
+const HINT_EMPTY = 'border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; min-height:46px; display:flex; align-items:center; padding:0 13px; font-size:14px; color:#565A4B';
+const HINT_M = 'border:1px solid #BAB6A6; border-radius:6px; background:#FAF8F2; min-height:46px; display:flex; align-items:center; padding:0 13px; font-size:14px; color:#3F4237';
+const HINT_M_EMPTY = 'border:1px solid #BAB6A6; border-radius:6px; background:#FAF8F2; min-height:46px; display:flex; align-items:center; padding:0 13px; font-size:14px; color:#565A4B';
+
+// weights are relative integers; the share beside each is computed, never typed
+function crit(rows) {
+  const total = rows.reduce((sum, r) => sum + r[2], 0);
+  return rows.map(([label, hint, weight]) => ({
+    label,
+    hint: hint || 'Add a line of guidance',
+    hintStyle: hint ? HINT : HINT_EMPTY,
+    hintStyleM: hint ? HINT_M : HINT_M_EMPTY,
+    weight,
+    share: Math.round((weight / total) * 100) + '%',
+  }));
+}
 
 function scale(picked) {
   return [1, 2, 3, 4, 5].map((v) => ({ value: v, style: v === picked ? SCORE_ON : SCORE_OFF }));
@@ -376,11 +513,16 @@ const BTN_QUIET = 'border:1px solid #BAB6A6; background:#EFEBDF; border-radius:6
 class Component extends DCLogic {
   renderVals() {
     return {
-      planCriteria: [
-        { label: 'Relevance to the track', hint: 'Does it belong in AI Engineering', scale: '1 to 5', weight: 'Weight 2×' },
-        { label: 'Depth and originality', hint: 'New material, not a rerun', scale: '1 to 5', weight: 'Weight 2×' },
-        { label: 'Speaker experience', hint: 'Past talks, video if any', scale: '1 to 5', weight: 'Weight 1×' },
-      ],
+      planCriteria: crit([
+        ['Relevance to the track', 'Does it belong in AI Engineering?', 3],
+        ['Depth and originality', 'New material, not a conference-circuit rerun', 2],
+        ['Speaker readiness', 'Past talks or video, if any', 1],
+      ]),
+      defaultCriteria: crit([
+        ['Relevance', '', 1],
+        ['Depth', '', 1],
+        ['Speaker readiness', '', 1],
+      ]),
       planAssignments: [
         { name: 'Sam Whitfield', email: 'sbek-reviewer@example.com', track: 'AI Engineering', load: '6 talks' },
         { name: 'Ana Petrov', email: 'ana@example.com', track: 'AI Engineering', load: '6 talks' },
@@ -388,7 +530,7 @@ class Component extends DCLogic {
         { name: 'Ines Duarte', email: 'ines@example.com', track: 'Developer Experience', load: '6 talks' },
       ],
       queue: [
-        { ref: 'DFC-021', title: 'Your AI Pair Programmer Is Lying to You', meta: 'Talk, 30 min · advanced', mark: 'Scored 4.3', markStyle: MARK_DONE, btn: 'Change your score', btnStyle: BTN_QUIET },
+        { ref: 'DFC-021', title: 'Your AI Pair Programmer Is Lying to You', meta: 'Talk, 30 min · advanced', mark: 'Scored 4.5', markStyle: MARK_DONE, btn: 'Change your score', btnStyle: BTN_QUIET },
         { ref: 'DFC-041', title: 'Evaluating Agents: Harnesses, Judges, and Regression Sets', meta: 'Workshop, 120 min · advanced', mark: 'Not scored', markStyle: MARK_TODO, btn: 'Score this', btnStyle: BTN_PRIMARY },
         { ref: 'DFC-052', title: 'Observability for LLM Pipelines', meta: 'Panel, 45 min · intermediate', mark: 'Not scored', markStyle: MARK_TODO, btn: 'Score this', btnStyle: BTN_PRIMARY },
         { ref: 'DFC-058', title: 'Retrieval That Survives a Rewrite', meta: 'Talk, 30 min · intermediate', mark: 'Not scored', markStyle: MARK_TODO, btn: 'Score this', btnStyle: BTN_PRIMARY },
@@ -409,14 +551,14 @@ class Component extends DCLogic {
       ],
       results: [
         { rank: '1', title: 'Taming 40-Minute CI: Incremental Builds at Monorepo Scale', speaker: 'Priya Raman', track: 'Platform & Infra', score: '4.6', count: '3 reviews' },
-        { rank: '2', title: 'Your AI Pair Programmer Is Lying to You', speaker: 'Marcus Okafor', track: 'AI Engineering', score: '4.3', count: '3 reviews' },
+        { rank: '2', title: 'Your AI Pair Programmer Is Lying to You', speaker: 'Marcus Okafor', track: 'AI Engineering', score: '4.5', count: '3 reviews' },
         { rank: '3', title: 'Evaluating Agents: Harnesses, Judges, and Regression Sets', speaker: 'Nadia Ferrone', track: 'AI Engineering', score: '3.9', count: '2 reviews · 1 recusal' },
         { rank: '4', title: 'Docs That Answer Back', speaker: 'Dana Whitmore', track: 'Developer Experience', score: '3.4', count: '3 reviews' },
       ],
       criteria: [
-        { label: 'Relevance to the track', weight: 'Weight 2×', scale: scale(5) },
-        { label: 'Depth and originality', weight: 'Weight 2×', scale: scale(4) },
-        { label: 'Speaker experience', weight: 'Weight 1×', scale: scale(4) },
+        { label: 'Relevance to the track', hint: 'Does it belong in AI Engineering?', weight: 'Weight 3 · 50%', scale: scale(5) },
+        { label: 'Depth and originality', hint: 'New material, not a conference-circuit rerun', weight: 'Weight 2 · 33%', scale: scale(4) },
+        { label: 'Speaker readiness', hint: 'Past talks or video, if any', weight: 'Weight 1 · 17%', scale: scale(4) },
       ],
     };
   }

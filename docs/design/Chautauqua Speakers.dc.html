@@ -71,10 +71,10 @@
           <span style="margin-left:auto; font-size:11px; font-weight:600; letter-spacing:0.04em; text-transform:uppercase; color:#565A4B">Skips anyone emailed in the last hour</span>
         </div>
 
-        <div>
-          <div style="display:grid; grid-template-columns:264px repeat(5, 1fr); gap:12px; padding:0 0 10px; border-bottom:2px solid #1B1D17">
+        <div style="overflow-x:auto; -webkit-overflow-scrolling:touch">
+          <div style="min-width:1060px; display:grid; grid-template-columns:230px repeat(6, 1fr); gap:12px; padding:0 0 10px; border-bottom:2px solid #1B1D17">
             <span style="font-size:10px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Speaker</span>
-            <sc-for list="{{ tasks }}" as="t" hint-placeholder-count="5">
+            <sc-for list="{{ tasks }}" as="t" hint-placeholder-count="6">
               <div style="display:flex; flex-direction:column; gap:2px">
                 <span style="font-size:12px; font-weight:700; line-height:1.25">{{ t.title }}</span>
                 <span style="font-size:10px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B">{{ t.due }}</span>
@@ -82,16 +82,22 @@
             </sc-for>
           </div>
           <sc-for list="{{ speakers }}" as="row" hint-placeholder-count="6">
-            <div style="display:grid; grid-template-columns:264px repeat(5, 1fr); gap:12px; align-items:center; padding:13px 0; border-bottom:1px solid #E1DDCE">
+            <div style="min-width:1060px; display:grid; grid-template-columns:230px repeat(6, 1fr); gap:12px; align-items:center; padding:13px 0; border-bottom:1px solid #E1DDCE">
               <div style="display:flex; flex-direction:column; gap:3px; padding-right:12px">
                 <a href="#" style="font-family:'Familjen Grotesk', sans-serif; font-size:16px; font-weight:600; letter-spacing:-0.015em; color:#1B1D17">{{ row.name }}</a>
                 <span style="font-size:12px; color:#565A4B">{{ row.meta }}</span>
+                <sc-if value="{{ row.outstanding }}" hint-placeholder-val="{{ true }}">
+                  <a href="#" style="font-size:12px; font-weight:700; padding-top:2px">Remind {{ row.first }}</a>
+                </sc-if>
               </div>
-              <sc-for list="{{ row.cells }}" as="cell" hint-placeholder-count="5">
+              <sc-for list="{{ row.cells }}" as="cell" hint-placeholder-count="6">
                 <div style="display:flex; align-items:center; gap:7px">
-                  <span style="{{ cell.style }}">{{ cell.label }}</span>
+                  <span style="{{ cell.style }}" style-hover="box-shadow:0 0 0 2px #CFC7B7">{{ cell.label }}</span>
                   <sc-if value="{{ cell.file }}" hint-placeholder-val="{{ false }}">
                     <a href="#" style="font-size:11px; font-weight:700">File</a>
+                  </sc-if>
+                  <sc-if value="{{ cell.response }}" hint-placeholder-val="{{ false }}">
+                    <a href="#" style="font-size:11px; font-weight:700">Response</a>
                   </sc-if>
                 </div>
               </sc-for>
@@ -99,6 +105,7 @@
           </sc-for>
           <div style="display:flex; align-items:center; gap:16px; padding:15px 0 0">
             <span style="font-size:13px; color:#565A4B">Showing 1–6 of 12</span>
+            <span style="font-size:13px; color:#565A4B">Click any status to mark it complete or pending</span>
             
             <div style="margin-left:auto; display:flex; gap:9px">
               <span style="border:1px solid #DDD8C8; border-radius:4px; padding:8px 14px; font-size:13px; font-weight:600; color:#8E8A7A">Previous</span>
@@ -139,10 +146,15 @@
               <span style="font-size:12px; color:#565A4B">{{ row.meta }}</span>
             </div>
             <div style="display:flex; flex-direction:column; gap:8px">
-              <sc-for list="{{ row.cells }}" as="cell" hint-placeholder-count="5">
+              <sc-for list="{{ row.cells }}" as="cell" hint-placeholder-count="6">
                 <div style="display:flex; align-items:center; gap:10px; justify-content:space-between">
                   <span style="font-size:13px; color:#3F4237">{{ cell.task }}</span>
-                  <span style="{{ cell.style }}">{{ cell.label }}</span>
+                  <div style="display:flex; align-items:center; gap:9px">
+                    <sc-if value="{{ cell.response }}" hint-placeholder-val="{{ false }}">
+                      <a href="#" style="font-size:12px; font-weight:700; min-height:44px; display:inline-flex; align-items:center">Response</a>
+                    </sc-if>
+                    <span style="{{ cell.style }}" style-hover="box-shadow:0 0 0 2px #CFC7B7">{{ cell.label }}</span>
+                  </div>
                 </div>
               </sc-for>
             </div>
@@ -227,9 +239,9 @@
             <span style="font-size:15px; line-height:1.5">{{ r.a }}</span>
           </div>
         </sc-for>
-        <div style="display:flex; gap:9px; padding-top:4px">
-          <span style="background:#4E5C31; color:#F7F9F0; border-radius:4px; min-height:46px; display:flex; align-items:center; padding:0 18px; font-size:14px; font-weight:700">Mark complete</span>
-          <span style="border:1px solid #BAB6A6; border-radius:4px; background:#EFEBDF; min-height:46px; display:flex; align-items:center; padding:0 16px; font-size:13px; font-weight:600">Ask for more</span>
+        <div style="display:flex; align-items:center; gap:14px; padding-top:4px; flex-wrap:wrap">
+          <span style="border:1px solid #CFC7B7; border-radius:4px; background:#EFEBDF; min-height:46px; display:flex; align-items:center; padding:0 18px; font-size:14px; font-weight:600; color:#2E2A24">Reopen this task</span>
+          <span style="font-size:13px; color:#565A4B; line-height:1.5">Sets it back to pending — the next reminder picks it up</span>
         </div>
       </div>
     </div>
@@ -268,12 +280,14 @@
 </section>
 </x-dc>
 <script type="text/x-dc" data-dc-script>
-const DONE = 'font-size:11px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color:#F7F9F0; background:#4E5C31; border-radius:3px; padding:3px 8px';
-const PEND = 'font-size:11px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B; border:1px solid #BAB6A6; border-radius:3px; padding:2px 8px';
-const LATE = 'font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#1B1D17';
+const DONE = 'font-size:11px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color:#F7F9F0; background:#4E5C31; border-radius:3px; padding:3px 8px; cursor:pointer';
+const PEND = 'font-size:11px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B; border:1px solid #BAB6A6; border-radius:3px; padding:2px 8px; cursor:pointer';
+const LATE = 'font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#1B1D17; border:1px solid #1B1D17; border-radius:3px; padding:2px 8px; cursor:pointer';
 const NONE = 'font-size:11px; color:#6B665B';
 
-const TASKS = ['Confirm participation', 'Upload headshot', 'Bio and profile', 'Final slides', 'Speaker release'];
+const TASKS = ['Confirm participation', 'Upload headshot', 'Bio and profile', 'Final slides', 'Speaker release', 'Hotel stay form'];
+// only a form-kind task can carry a response, and only once complete
+const FORM_TASKS = [5];
 
 function cells(states, files) {
   return states.map((s, i) => ({
@@ -281,6 +295,15 @@ function cells(states, files) {
     label: s === 'c' ? 'Complete' : s === 'l' ? 'Overdue' : s === 'n' ? '—' : 'Pending',
     style: s === 'c' ? DONE : s === 'l' ? LATE : s === 'n' ? NONE : PEND,
     file: !!(files && files.includes(i)),
+    response: s === 'c' && FORM_TASKS.includes(i),
+  }));
+}
+
+function withRemind(rows) {
+  return rows.map((r) => ({
+    ...r,
+    first: r.name.split(' ')[0],
+    outstanding: r.cells.some((c) => c.label === 'Pending' || c.label === 'Overdue'),
   }));
 }
 
@@ -300,15 +323,16 @@ class Component extends DCLogic {
         { title: 'Bio and profile', due: 'Due 10 Apr' },
         { title: 'Final slides', due: 'Due 1 May · required' },
         { title: 'Speaker release', due: 'Due 20 Apr' },
+        { title: 'Hotel stay form', due: 'Due 25 Apr · form' },
       ],
-      speakers: [
-        { name: 'Priya Raman', meta: 'Latticework Systems · has account', cells: cells(['c','c','p','p','c'], [1]) },
-        { name: 'Marcus Okafor', meta: 'Cloudreach Labs · has account', cells: cells(['c','l','p','p','p']) },
-        { name: 'Ruth Adeyemi', meta: 'Meridian Tools', cells: cells(['p','p','p','l','p']) },
-        { name: 'Oskar Vance', meta: 'Independent', cells: cells(['c','c','c','c','l'], [3]) },
-        { name: 'Nadia Ferrone', meta: 'Northwind Data · has account', cells: cells(['c','c','c','p','c'], [1]) },
-        { name: 'Wei Chen', meta: 'Northwind Data', cells: cells(['c','p','p','n','p']) },
-      ],
+      speakers: withRemind([
+        { name: 'Priya Raman', meta: 'Latticework Systems · has account', cells: cells(['c','c','p','p','c','c'], [1]) },
+        { name: 'Marcus Okafor', meta: 'Cloudreach Labs · has account', cells: cells(['c','l','p','p','p','p']) },
+        { name: 'Ruth Adeyemi', meta: 'Meridian Tools', cells: cells(['p','p','p','l','p','p']) },
+        { name: 'Oskar Vance', meta: 'Independent', cells: cells(['c','c','c','c','l','c'], [3]) },
+        { name: 'Nadia Ferrone', meta: 'Northwind Data · has account', cells: cells(['c','c','c','p','c','p']) },
+        { name: 'Wei Chen', meta: 'Northwind Data', cells: cells(['c','p','p','n','p','n']) },
+      ]),
       tabs: [
         { label: 'Overview', dot: 'width:8px; height:8px; border-radius:50%; background:#BAB6A6', text: 'font-size:11px; font-weight:600; color:#565A4B' },
         { label: 'Submissions', dot: 'width:8px; height:8px; border-radius:50%; background:#BAB6A6', text: 'font-size:11px; font-weight:600; color:#565A4B' },
