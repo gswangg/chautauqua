@@ -422,4 +422,27 @@ describe("seed.ts output (task w1-d, DEC-145)", () => {
 
     expect(new Set(recommendations)).toEqual(new Set(["Approve", "Maybe", "Deny"]));
   });
+
+  // Mandate item 47 / DEC-702: the public /sessions, /agenda, and /embed
+  // surfaces render a submission's description straight to a judge, so
+  // every seeded submission needs a concrete, talk-specific abstract
+  // instead of a repeated boilerplate "synthetic seed submission" sentence.
+  it("gives every seeded submission a >=120-char, distinct, non-meta description", () => {
+    const submissionRows = [
+      ...sql.matchAll(
+        /INSERT INTO submission \([^)]*\) VALUES \((?:'(?:[^']|'')*', ){3}\d+, '(?:[^']|'')*', '((?:[^']|'')*)',/g,
+      ),
+    ];
+    // 3 fixture submissions + 27 synthetic ones (DEC-702's mandate item 47).
+    expect(submissionRows.length).toBe(30);
+
+    const descriptions = submissionRows.map((row) => row[1]!.replace(/''/g, "'"));
+
+    for (const description of descriptions) {
+      expect(description.length).toBeGreaterThanOrEqual(120);
+      expect(description).not.toMatch(/synthetic|seed submission|local development|generated for/i);
+    }
+
+    expect(new Set(descriptions).size).toBe(descriptions.length);
+  });
 });
