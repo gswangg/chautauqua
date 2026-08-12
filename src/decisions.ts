@@ -446,3 +446,8 @@ export const DEC_440 = "buildResults keeps its JS aggregation: aggregateSubmissi
 export const DEC_441 = "SPEC §10 #3 (assisted chasing) ships now; #2 (decision-meeting view) waits exactly one more wave, because its natural implementation reuses the function this wave is rewriting";
 export const DEC_442 = "A public GET joins the edge cache exactly when its URL carries no per-user parameter: bare schedule.ics is cacheable, ?ids= is not";
 export const DEC_443 = "CONTRAST_BLOCKING's flip passes to wave 15's build/test lane under DEC-436's unchanged rule";
+export const DEC_444 = "The last WCAG AA offender is remedied by re-pointing the rule to --chq-muted; --chq-disabled's value and the contrast checker are both untouchable";
+export const DEC_445 = "The CONTRAST_BLOCKING flip passes to wave 16's build/test lane under DEC-436's rule, unchanged and unweakened";
+export const DEC_446 = "SPEC §10 #2 (decision-meeting view) and #4 (resubmit-with-guidance) close as out-of-stage-1-scope; DEC-441's 'waits exactly one more wave' resolves to 'not in stage 1'";
+export const DEC_447 = "The completion ledger is scheduled behind its wave's only source-changing lane, so it audits a tree that contains its own wave's fix";
+export const DEC_448 = "`npm run dev` and its predev ensure-dev-vars hook are the one supported zero-setup entrypoint; verification lanes may not hand-copy .dev.vars";
