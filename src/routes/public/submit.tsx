@@ -60,8 +60,23 @@ import { renderTemplate, escapeHtml } from "../../mail/render";
 import { validateUpload, sanitizeFilenameForKey, type ValidUpload } from "../../domain/files";
 import { newId } from "../../domain/ids";
 import { FormFieldsSection, FieldRulesScript, fieldInputName } from "../../views/form-render";
-import { DEC_014, DEC_016, DEC_036, DEC_040, DEC_132, DEC_252 } from "../../decisions";
+import {
+  DEC_014,
+  DEC_016,
+  DEC_036,
+  DEC_040,
+  DEC_132,
+  DEC_252,
+  DEC_366,
+  DEC_367,
+  DEC_371,
+  DEC_373,
+  DEC_374,
+  DEC_377,
+} from "../../decisions";
 import { resolveBaseUrl } from "../../server/origin";
+import { ThemeStyles } from "../../views/theme";
+import { CFP_CSS } from "./cfp.css";
 
 void DEC_252;
 
@@ -73,6 +88,22 @@ void DEC_016;
 void DEC_036;
 void DEC_040;
 void DEC_132;
+void DEC_366;
+void DEC_367;
+void DEC_371;
+void DEC_373;
+void DEC_374;
+void DEC_377;
+
+// DEC-374: strict hex-only guard for the per-event accent -- anything that
+// doesn't match becomes the default brand olive, never interpolated
+// unchecked into a style attribute.
+const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
+const DEFAULT_ACCENT = "#4E5C31";
+
+function safeAccent(accentColor: string | undefined): string {
+  return accentColor && HEX_COLOR_RE.test(accentColor) ? accentColor : DEFAULT_ACCENT;
+}
 
 function ensureCsrfCookie(c: {
   req: { header(name: string): string | undefined; url: string };
@@ -96,6 +127,13 @@ function branding(event: EventRow): { logoUrl?: string; accentColor?: string } {
   return { logoUrl: parsed.logoUrl, accentColor: parsed.accentColor };
 }
 
+// DEC-371/DEC-374: THEME_CSS (tokens/resets, shared by every SSR surface)
+// followed by this surface's own CFP_CSS, both inlined via
+// dangerouslySetInnerHTML as value-free module constants -- never the
+// ad-hoc per-page <style> template literal this used to be. The per-event
+// accent is the one piece of request data involved, and it lands in a
+// validated style ATTRIBUTE on <body>, never interpolated into either CSS
+// string (DEC-374).
 function PageShell(props: { title: string; accentColor?: string; children: unknown }) {
   return (
     <html lang="en">
@@ -103,46 +141,29 @@ function PageShell(props: { title: string; accentColor?: string; children: unkno
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>{props.title}</title>
-        <style>{`
-          :root { --chq-accent: ${props.accentColor ?? "#2b2b2b"}; }
-          *, *::before, *::after { box-sizing: border-box; }
-          html, body { max-width: 100%; overflow-x: hidden; }
-          body { font-family: system-ui, sans-serif; margin: 0; padding: 1rem; color: #1a1a1a; }
-          main, form { max-width: 640px; margin: 0 auto; }
-          img { max-width: 100%; height: auto; }
-          a, button[type=submit] { color: var(--chq-accent); }
-          label { display: block; margin-bottom: 0.75rem; }
-          input[type=text], input[type=email], input[type=tel], input[type=url], input[type=search],
-          input[type=number], input[type=file], select, textarea {
-            display: block;
-            width: 100%;
-            max-width: 100%;
-            box-sizing: border-box;
-            min-height: 40px;
-            font-size: 1rem;
-            margin-top: 0.25rem;
-          }
-          textarea { min-height: 6rem; }
-          button, input[type=submit] {
-            min-height: 40px;
-            padding: 0.4rem 0.9rem;
-            font-size: 1rem;
-          }
-        `}</style>
+        <ThemeStyles />
+        <style dangerouslySetInnerHTML={{ __html: CFP_CSS }} />
       </head>
-      <body>{props.children as any}</body>
+      <body style={`--chq-brandable-accent: ${safeAccent(props.accentColor)};`}>
+        <main class="chq-measure">{props.children as any}</main>
+      </body>
     </html>
   );
 }
 
+// DEC-366/DEC-377: the closed/not-yet-open copy is unchanged behavior, just
+// re-skinned into the .chq-cfp-closed card frame from the design mock.
 function ClosedPage(props: { event: EventRow; form: FormRow }) {
   return (
     <PageShell title={`Submissions closed - ${props.event.name}`} accentColor={branding(props.event).accentColor}>
-      <h1>{props.event.name}</h1>
-      <p role="alert">
-        Submissions for this event closed on {new Date(props.form.closeDate ?? 0).toUTCString()}. Thanks for your
-        interest — please reach out to the organizers directly if you have questions.
-      </p>
+      <div class="chq-cfp-closed">
+        <span class="chq-cfp-meta">{props.event.name}</span>
+        <h1>The call for papers has closed</h1>
+        <p role="alert" class="chq-cfp-closed-body">
+          Submissions for this event closed on {new Date(props.form.closeDate ?? 0).toUTCString()}. Thanks for your
+          interest — please reach out to the organizers directly if you have questions.
+        </p>
+      </div>
     </PageShell>
   );
 }
@@ -150,17 +171,20 @@ function ClosedPage(props: { event: EventRow; form: FormRow }) {
 function NotYetOpenPage(props: { event: EventRow; form: FormRow }) {
   return (
     <PageShell title={`Submissions not yet open - ${props.event.name}`} accentColor={branding(props.event).accentColor}>
-      <h1>{props.event.name}</h1>
-      <p role="alert">
-        Submissions open {new Date(props.form.openDate ?? 0).toUTCString()}. Please check back then.
-      </p>
+      <div class="chq-cfp-closed">
+        <span class="chq-cfp-meta">{props.event.name}</span>
+        <h1>Submissions aren't open yet</h1>
+        <p role="alert" class="chq-cfp-closed-body">
+          Submissions open {new Date(props.form.openDate ?? 0).toUTCString()}. Please check back then.
+        </p>
+      </div>
     </PageShell>
   );
 }
 
 function DraftBanner(props: { formId: string; savedAt: number }) {
   return (
-    <p role="status">
+    <p role="status" class="chq-cfp-actions-note">
       Resuming your saved draft from {new Date(props.savedAt).toUTCString()}.
     </p>
   );
@@ -171,15 +195,19 @@ function DraftBanner(props: { formId: string; savedAt: number }) {
 // GET handler renders this distinct notice above the form — separate from
 // the DraftBanner shown when merely resuming an earlier draft.
 function DraftSavedNotice() {
-  return <p role="status">Draft saved — you can return later to finish and submit.</p>;
+  return (
+    <p role="status" class="chq-cfp-actions-note">
+      Draft saved — you can return later to finish and submit.
+    </p>
+  );
 }
 
 function TrackChoices(props: { tracks: TrackRow[]; selected: string[] }) {
   return (
-    <fieldset>
+    <fieldset class="chq-cfp-fieldset">
       <legend>Track *</legend>
       {props.tracks.map((track) => (
-        <label>
+        <label class="chq-cfp-option">
           <input
             type="checkbox"
             name="trackIds"
@@ -212,37 +240,79 @@ function SubmitPage(props: {
   const logoUrl = branding(event).logoUrl;
   return (
     <PageShell title={`Submit a session - ${event.name}`} accentColor={accentColor}>
-      {logoUrl ? <img src={logoUrl} alt={`${event.name} logo`} /> : null}
-      <h1>{event.name}</h1>
-      <p>{form.title}</p>
-      {form.closeDate ? <p>Submissions close {new Date(form.closeDate).toUTCString()}.</p> : null}
-      {props.draftSavedNotice ? (
-        <DraftSavedNotice />
-      ) : props.hasDraft && props.draftSavedAt !== undefined ? (
-        <DraftBanner formId={form.id} savedAt={props.draftSavedAt} />
-      ) : null}
-      <form method="post" action={`/submit/${event.slug}`} enctype="multipart/form-data">
-        <input type="hidden" name={CSRF_COOKIE_NAME} value={csrfToken} />
-        <h2>Session</h2>
-        <FormFieldsSection fields={fields} section="session" answers={answers} errors={errors} isVisible={isVisible} />
-        {trackError ? (
-          <p role="alert" class="field-error">
-            {trackError}
-          </p>
-        ) : null}
-        {/* DEC-301: a form offering zero tracks renders no Track fieldset —
-            validateTrackChoice treats an empty offered set as "no track
-            requirement", so an empty required-looking block would be
-            unactionable and misleading. */}
-        {tracks.length > 0 ? <TrackChoices tracks={tracks} selected={selectedTrackIds} /> : null}
-        <h2>Speaker</h2>
-        <FormFieldsSection fields={fields} section="speaker" answers={answers} errors={errors} isVisible={isVisible} />
-        <button type="submit" formaction={`/submit/${event.slug}/save-draft`} formnovalidate>
-          Save draft
-        </button>
-        <button type="submit">Submit</button>
-      </form>
-      <FieldRulesScript fields={fields} />
+      <div class="chq-cfp-shell">
+        <header class="chq-cfp-header">
+          {logoUrl ? <img src={logoUrl} alt={`${event.name} logo`} height={32} /> : null}
+          <span class="chq-cfp-meta">{event.name}</span>
+          <span class="chq-cfp-title">{form.title}</span>
+          {form.closeDate ? (
+            <span class="chq-cfp-sub">Call for papers · closes {new Date(form.closeDate).toUTCString()}</span>
+          ) : null}
+        </header>
+        <div class="chq-cfp-body">
+          <div class="chq-cfp-intro">
+            <h1>Submit a talk</h1>
+          </div>
+          {props.draftSavedNotice ? (
+            <DraftSavedNotice />
+          ) : props.hasDraft && props.draftSavedAt !== undefined ? (
+            <DraftBanner formId={form.id} savedAt={props.draftSavedAt} />
+          ) : null}
+          <form method="post" action={`/submit/${event.slug}`} enctype="multipart/form-data">
+            <input type="hidden" name={CSRF_COOKIE_NAME} value={csrfToken} />
+            <section>
+              <div class="chq-cfp-section-label">Your talk</div>
+              <div class="chq-cfp-fields">
+                <FormFieldsSection
+                  fields={fields}
+                  section="session"
+                  answers={answers}
+                  errors={errors}
+                  isVisible={isVisible}
+                />
+                {trackError ? (
+                  <p role="alert" class="chq-field-error">
+                    {trackError}
+                  </p>
+                ) : null}
+                {/* DEC-301: a form offering zero tracks renders no Track
+                    fieldset — validateTrackChoice treats an empty offered
+                    set as "no track requirement", so an empty
+                    required-looking block would be unactionable and
+                    misleading. */}
+                {tracks.length > 0 ? <TrackChoices tracks={tracks} selected={selectedTrackIds} /> : null}
+              </div>
+            </section>
+            <section>
+              <div class="chq-cfp-section-label">You</div>
+              <div class="chq-cfp-fields">
+                <FormFieldsSection
+                  fields={fields}
+                  section="speaker"
+                  answers={answers}
+                  errors={errors}
+                  isVisible={isVisible}
+                />
+              </div>
+            </section>
+            <div class="chq-cfp-actions">
+              <button type="submit" class="chq-btn chq-btn-primary">
+                Submit this talk
+              </button>
+              <button
+                type="submit"
+                class="chq-btn chq-btn-secondary"
+                formaction={`/submit/${event.slug}/save-draft`}
+                formnovalidate
+              >
+                Save draft
+              </button>
+              <span class="chq-cfp-actions-note">We email a confirmation with a link to your portal</span>
+            </div>
+          </form>
+          <FieldRulesScript fields={fields} />
+        </div>
+      </div>
     </PageShell>
   );
 }
@@ -265,27 +335,38 @@ type ConfirmationState = "fresh" | "pending-existing-contact" | "has-account";
 function ConfirmationPage(props: { event: EventRow; title: string; claimPath: string; state: ConfirmationState }) {
   return (
     <PageShell title={`Submission received - ${props.event.name}`}>
-      <h1>Thanks for your submission!</h1>
-      <p>
-        We've emailed a confirmation for "{props.title}" to the address you provided.
-      </p>
-      {props.state === "has-account" ? (
-        <p>
-          <a href="/login">Log in</a> to track your submission.
-        </p>
-      ) : props.state === "pending-existing-contact" ? (
-        <p>
-          A password-setup link was emailed to the address you submitted. <a href="/login">Log in</a> if you already
-          have a password.
-        </p>
-      ) : (
-        // DEC-252: same-origin on-page links are RELATIVE — they never
-        // depend on origin inference. Only the emailed copy (built with
-        // resolveBaseUrl below) is absolute.
-        <p>
-          <a href={props.claimPath}>Create a password to track your submission</a>
-        </p>
-      )}
+      <div class="chq-cfp-confirm">
+        <span class="chq-cfp-confirm-flag">Submitted</span>
+        <h1>Thanks for your submission!</h1>
+        <div class="chq-cfp-confirm-card">
+          <span class="chq-cfp-title" style="font-size:17px">
+            {props.title}
+          </span>
+        </div>
+        {/* DEC-377: no delivery-window or "check spam" timing promise here —
+            the earlier copy asserted arrival timing the confirmation email
+            send (a best-effort side effect) can't actually guarantee. */}
+        <p class="chq-cfp-confirm-body">We've emailed a confirmation for "{props.title}" to the address you provided.</p>
+        <div class="chq-cfp-confirm-actions">
+          {props.state === "has-account" ? (
+            <p>
+              <a href="/login">Log in</a> to track your submission.
+            </p>
+          ) : props.state === "pending-existing-contact" ? (
+            <p>
+              A password-setup link was emailed to the address you submitted. <a href="/login">Log in</a> if you
+              already have a password.
+            </p>
+          ) : (
+            // DEC-252: same-origin on-page links are RELATIVE — they never
+            // depend on origin inference. Only the emailed copy (built with
+            // resolveBaseUrl below) is absolute.
+            <p>
+              <a href={props.claimPath}>Create a password to track your submission</a>
+            </p>
+          )}
+        </div>
+      </div>
     </PageShell>
   );
 }
