@@ -59,6 +59,7 @@ import {
 } from "../../auth/cookies";
 import { renderTemplate, escapeHtml } from "../../mail/render";
 import { formatEventDateTime } from "../../lib/event-time";
+import { dayLabelEndInstant, dayLabelStartInstant } from "../../lib/timezone";
 import { validateUpload, sanitizeFilenameForKey, type ValidUpload } from "../../domain/files";
 import { newId } from "../../domain/ids";
 import { FormFieldsSection, FieldRulesScript, fieldInputName } from "../../views/form-render";
@@ -160,7 +161,12 @@ function ClosedPage(props: { event: EventRow; form: FormRow }) {
         <span class="chq-cfp-meta">{props.event.name}</span>
         <h1>The call for papers has closed</h1>
         <p role="alert" class="chq-cfp-closed-body">
-          Submissions for this event closed on {formatEventDateTime(props.form.closeDate ?? 0, props.event.timezone)}. Thanks for your
+          Submissions for this event closed on{" "}
+          {formatEventDateTime(
+            props.form.closeDate ? dayLabelEndInstant(props.form.closeDate, props.event.timezone) : 0,
+            props.event.timezone,
+          )}
+          . Thanks for your
           interest — please reach out to the organizers directly if you have questions.
         </p>
       </div>
@@ -175,7 +181,12 @@ function NotYetOpenPage(props: { event: EventRow; form: FormRow }) {
         <span class="chq-cfp-meta">{props.event.name}</span>
         <h1>Submissions aren't open yet</h1>
         <p role="alert" class="chq-cfp-closed-body">
-          Submissions open {formatEventDateTime(props.form.openDate ?? 0, props.event.timezone)}. Please check back then.
+          Submissions open{" "}
+          {formatEventDateTime(
+            props.form.openDate ? dayLabelStartInstant(props.form.openDate, props.event.timezone) : 0,
+            props.event.timezone,
+          )}
+          . Please check back then.
         </p>
       </div>
     </PageShell>
@@ -246,7 +257,9 @@ function SubmitPage(props: {
           <span class="chq-cfp-meta">{event.name}</span>
           <span class="chq-cfp-title">{form.title}</span>
           {form.closeDate ? (
-            <span class="chq-cfp-sub">Call for papers · closes {formatEventDateTime(form.closeDate, event.timezone)}</span>
+            <span class="chq-cfp-sub">
+              Call for papers · closes {formatEventDateTime(dayLabelEndInstant(form.closeDate, event.timezone), event.timezone)}
+            </span>
           ) : null}
         </header>
         <div class="chq-cfp-body">
@@ -414,7 +427,7 @@ publicSubmitRoutes.get("/submit/:eventSlug", async (c) => {
   const form = await getDefaultForm(db, event.id);
   if (!form) return c.text("This event is not accepting submissions yet.", 404);
 
-  const windowState = formWindowState(form.openDate, form.closeDate, Date.now());
+  const windowState = formWindowState(form.openDate, form.closeDate, Date.now(), event.timezone);
   if (windowState === "not_yet_open") {
     return c.html(<NotYetOpenPage event={event} form={form} />);
   }
@@ -470,7 +483,7 @@ publicSubmitRoutes.post("/submit/:eventSlug/save-draft", csrfForm, async (c) => 
   const form = await getDefaultForm(db, event.id);
   if (!form) return c.text("This event is not accepting submissions yet.", 404);
 
-  const windowState = formWindowState(form.openDate, form.closeDate, Date.now());
+  const windowState = formWindowState(form.openDate, form.closeDate, Date.now(), event.timezone);
   if (windowState === "not_yet_open") {
     return c.html(<NotYetOpenPage event={event} form={form} />);
   }
@@ -558,7 +571,7 @@ publicSubmitRoutes.post("/submit/:eventSlug", csrfForm, async (c) => {
   const form = await getDefaultForm(db, event.id);
   if (!form) return c.text("This event is not accepting submissions yet.", 404);
 
-  const windowState = formWindowState(form.openDate, form.closeDate, Date.now());
+  const windowState = formWindowState(form.openDate, form.closeDate, Date.now(), event.timezone);
   if (windowState === "not_yet_open") {
     return c.html(<NotYetOpenPage event={event} form={form} />);
   }

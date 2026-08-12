@@ -93,3 +93,40 @@ export function zonedMinutesToUtc(day: string, minutes: number, timeZone: string
   // candidates).
   return new Date(Math.max(candidateBefore, candidateAfter));
 }
+
+/** Derives the 'YYYY-MM-DD' day label from an epoch-ms day-label instant,
+ * using UTC field getters (never toISOString — standing ban). Day-label
+ * instants (form open/close dates) are stored as UTC midnight of the
+ * intended calendar day. */
+function dayLabelToYmd(dayLabelMs: number): string {
+  if (!Number.isFinite(dayLabelMs)) {
+    throw new Error(`Invalid day label instant '${dayLabelMs}' — expected a finite epoch-ms value`);
+  }
+  const d = new Date(dayLabelMs);
+  const year = d.getUTCFullYear();
+  const month = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const date = String(d.getUTCDate()).padStart(2, "0");
+  return `${year}-${month}-${date}`;
+}
+
+/** DEC-522: a date-only field (e.g. form open/close date) is a DAY LABEL, not
+ * an instant — it must be expanded to an event-local instant at hard gates.
+ * Returns the UTC instant of local 00:00 of that day, in `timeZone`. */
+export function dayLabelStartInstant(dayLabelMs: number, timeZone: string): number {
+  if (!timeZone) {
+    throw new Error("dayLabelStartInstant requires a non-empty timeZone");
+  }
+  const day = dayLabelToYmd(dayLabelMs);
+  return zonedMinutesToUtc(day, 0, timeZone).getTime();
+}
+
+/** DEC-522: the UTC instant one millisecond before the next local midnight of
+ * that day, in `timeZone` — i.e. the last instant that is still "that day"
+ * wall-clock-wise in the event's zone. */
+export function dayLabelEndInstant(dayLabelMs: number, timeZone: string): number {
+  if (!timeZone) {
+    throw new Error("dayLabelEndInstant requires a non-empty timeZone");
+  }
+  const day = dayLabelToYmd(dayLabelMs);
+  return zonedMinutesToUtc(day, 1440, timeZone).getTime() - 1;
+}

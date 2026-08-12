@@ -199,8 +199,8 @@ portalEditRoutes.get("/submissions/:id/edit", async (c) => {
   const data = await loadEditableSubmission(c.var.db, contactId, submissionId);
   if (!data) return c.text("Not found", 404);
 
-  const editable = canEditSubmission(data.submission.status, data.form.closeDate, Date.now());
-  const tracksEditable = canEditTracks(data.form.closeDate, Date.now());
+  const editable = canEditSubmission(data.submission.status, data.form.closeDate, Date.now(), data.form.timezone);
+  const tracksEditable = canEditTracks(data.form.closeDate, Date.now(), data.form.timezone);
   const { token: csrfToken, setCookieIfNew } = ensureCsrfCookie(c);
   if (setCookieIfNew) c.header("Set-Cookie", setCookieIfNew, { append: true });
   const portalData = await getPortalData(c.var.db, contactId, auth.orgId);
@@ -229,11 +229,11 @@ portalEditRoutes.post("/submissions/:id/edit", csrfForm, async (c) => {
   // Server-side re-check — never trust the hidden form (DEC-041): a client
   // could POST here after the window closes even if the GET rendered the
   // read-only notice.
-  const editable = canEditSubmission(data.submission.status, data.form.closeDate, Date.now());
+  const editable = canEditSubmission(data.submission.status, data.form.closeDate, Date.now(), data.form.timezone);
   if (!editable) {
     throw new ApiError("forbidden", "This submission can no longer be edited");
   }
-  const tracksEditable = canEditTracks(data.form.closeDate, Date.now());
+  const tracksEditable = canEditTracks(data.form.closeDate, Date.now(), data.form.timezone);
 
   const body = (await c.req.parseBody({ all: true })) as Record<string, unknown>;
   const answers = extractAnswers(data.fields, body, data.answers);
