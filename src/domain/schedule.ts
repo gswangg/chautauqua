@@ -38,34 +38,84 @@ function intersects(a: PlacedSession, b: PlacedSession): boolean {
  * Room overlap only applies when both sessions have the same non-null room.
  * Speaker overlap applies when any speaker contact is shared, regardless of
  * room. Each unordered pair is reported at most once per kind.
+ *
+ * DEC-533: rather than an O(n^2) scan of every pair, bucket placements by
+ * `${day}|${roomId}` and `${day}|${contactId}` (the same two indexes
+ * `autoSchedule` builds above) and only test candidate pairs that share a
+ * bucket — a room conflict requires the same room key, a speaker conflict
+ * requires a shared contact key, so no true conflict can be missed. The
+ * candidate pairs are then sorted ascending by original index (i, j) so the
+ * emitted order — and therefore `submissionIds` order and interleaving of
+ * `room_overlap`/`speaker_overlap` per pair — is byte-identical to the naive
+ * double loop.
  */
 export function findConflicts(placed: PlacedSession[]): Conflict[] {
   const conflicts: Conflict[] = [];
+  const n = placed.length;
+  if (n === 0) return conflicts;
 
-  for (let i = 0; i < placed.length; i++) {
-    for (let j = i + 1; j < placed.length; j++) {
-      const a = placed[i]!;
-      const b = placed[j]!;
-      if (!intersects(a, b)) continue;
+  const roomBuckets = new Map<string, number[]>();
+  const speakerBuckets = new Map<string, number[]>();
 
-      if (a.roomId !== null && b.roomId !== null && a.roomId === b.roomId) {
-        conflicts.push({
-          kind: "room_overlap",
-          submissionIds: [a.submissionId, b.submissionId],
-          detail: `Room "${a.roomId}" double-booked on ${a.day} between submissions ${a.submissionId} and ${b.submissionId}`,
-        });
+  for (let idx = 0; idx < n; idx++) {
+    const p = placed[idx]!;
+    if (p.roomId !== null) {
+      const key = `${p.day}|room|${p.roomId}`;
+      const bucket = roomBuckets.get(key) ?? [];
+      bucket.push(idx);
+      roomBuckets.set(key, bucket);
+    }
+    for (const contactId of p.speakerContactIds) {
+      const key = `${p.day}|speaker|${contactId}`;
+      const bucket = speakerBuckets.get(key) ?? [];
+      bucket.push(idx);
+      speakerBuckets.set(key, bucket);
+    }
+  }
+
+  const candidatePairs = new Set<string>();
+  const addPairs = (bucket: number[]) => {
+    for (let x = 0; x < bucket.length; x++) {
+      for (let y = x + 1; y < bucket.length; y++) {
+        if (bucket[x] === bucket[y]) continue; // same placement listed twice in its own bucket (e.g. a duplicate speaker id)
+        const i = Math.min(bucket[x]!, bucket[y]!);
+        const j = Math.max(bucket[x]!, bucket[y]!);
+        candidatePairs.add(`${i},${j}`);
       }
+    }
+  };
+  for (const bucket of roomBuckets.values()) addPairs(bucket);
+  for (const bucket of speakerBuckets.values()) addPairs(bucket);
 
-      const sharedSpeakers = a.speakerContactIds.filter((id) =>
-        b.speakerContactIds.includes(id),
-      );
-      if (sharedSpeakers.length > 0) {
-        conflicts.push({
-          kind: "speaker_overlap",
-          submissionIds: [a.submissionId, b.submissionId],
-          detail: `Speaker(s) ${sharedSpeakers.join(", ")} double-booked on ${a.day} between submissions ${a.submissionId} and ${b.submissionId}`,
-        });
-      }
+  const pairs = [...candidatePairs]
+    .map((s): [number, number] => {
+      const [i, j] = s.split(",").map(Number);
+      return [i!, j!];
+    })
+    .sort((p1, p2) => p1[0] - p2[0] || p1[1] - p2[1]);
+
+  for (const [i, j] of pairs) {
+    const a = placed[i]!;
+    const b = placed[j]!;
+    if (!intersects(a, b)) continue;
+
+    if (a.roomId !== null && b.roomId !== null && a.roomId === b.roomId) {
+      conflicts.push({
+        kind: "room_overlap",
+        submissionIds: [a.submissionId, b.submissionId],
+        detail: `Room "${a.roomId}" double-booked on ${a.day} between submissions ${a.submissionId} and ${b.submissionId}`,
+      });
+    }
+
+    const sharedSpeakers = a.speakerContactIds.filter((id) =>
+      b.speakerContactIds.includes(id),
+    );
+    if (sharedSpeakers.length > 0) {
+      conflicts.push({
+        kind: "speaker_overlap",
+        submissionIds: [a.submissionId, b.submissionId],
+        detail: `Speaker(s) ${sharedSpeakers.join(", ")} double-booked on ${a.day} between submissions ${a.submissionId} and ${b.submissionId}`,
+      });
     }
   }
 
@@ -78,11 +128,12 @@ export function findConflicts(placed: PlacedSession[]): Conflict[] {
 export function scheduleSummary(
   placed: PlacedSession[],
   totalAccepted: number,
+  conflicts: Conflict[] = findConflicts(placed),
 ): { unplaced: number; conflicts: number } {
   const placedIds = new Set(placed.map((p) => p.submissionId));
   return {
     unplaced: totalAccepted - placedIds.size,
-    conflicts: findConflicts(placed).length,
+    conflicts: conflicts.length,
   };
 }
 
