@@ -110,8 +110,12 @@ export function AgendaPage() {
     setPublishing(true);
     setError(null);
     try {
-      const result = await apiPost<{ published: number }>(`/events/${eventId}/agenda/publish`, {});
-      setToast(`Schedule live — ${result.published} sessions public.`);
+      const result = await apiPost<{ placed: number; public: number; heldBack: number }>(
+        `/events/${eventId}/agenda/publish`,
+        {},
+      );
+      const base = `Schedule live — ${result.public} of ${result.placed} placed sessions are public.`;
+      setToast(result.heldBack > 0 ? `${base} ${result.heldBack} held back: content not approved.` : base);
     } catch (err) {
       setError(err instanceof ApiError ? `Publish failed: ${err.message}` : 'Publish failed');
     } finally {

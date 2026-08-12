@@ -234,6 +234,46 @@ describe('AgendaPage render smoke', () => {
     expect(screen.queryByText(/Placing S-003/)).toBeNull();
   });
 
+  // DEC-595: publish toast names all three counts and only mentions
+  // held-back sessions when there actually are some (AIA-S2-D1 regression —
+  // the old toast lied by reporting the placement count as "public").
+  it('publish toast names the held-back count when heldBack > 0', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/agenda`]: agendaPayload(),
+      [`POST /api/v1/events/${EVENT_ID}/agenda/publish`]: { placed: 14, public: 12, heldBack: 2 },
+    });
+
+    render(<AgendaPage />);
+    await waitFor(() => {
+      expect(screen.getByText('Overlapping Talk A')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Publish schedule' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Schedule live — 12 of 14 placed sessions are public. 2 held back: content not approved.')).toBeInTheDocument();
+    });
+  });
+
+  it('publish toast omits the held-back sentence when heldBack is 0', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/agenda`]: agendaPayload(),
+      [`POST /api/v1/events/${EVENT_ID}/agenda/publish`]: { placed: 14, public: 14, heldBack: 0 },
+    });
+
+    render(<AgendaPage />);
+    await waitFor(() => {
+      expect(screen.getByText('Overlapping Talk A')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Publish schedule' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Schedule live — 14 of 14 placed sessions are public.')).toBeInTheDocument();
+    });
+    expect(screen.queryByText(/held back/)).toBeNull();
+  });
+
   it('never renders the literal text "undefined" anywhere in the tree', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/agenda`]: agendaPayload(),
