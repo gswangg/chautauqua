@@ -47,6 +47,8 @@ describe("shapeSubmissionsExport — CSV column snapshot", () => {
       speakers: ["Ada Lovelace", "Alan Turing"],
       speakerEmails: ["ada@example.com", "alan@example.com"],
       createdAt: "2026-01-15T10:00:00.000Z",
+      description: "An intro to the platform.",
+      answers: {},
     },
     {
       ref: "SES-002",
@@ -57,6 +59,8 @@ describe("shapeSubmissionsExport — CSV column snapshot", () => {
       speakers: [],
       speakerEmails: [],
       createdAt: "2026-01-16T10:00:00.000Z",
+      description: "",
+      answers: {},
     },
   ];
 
@@ -75,7 +79,7 @@ describe("shapeSubmissionsExport — CSV column snapshot", () => {
 
   it("produces matching header/rows/records and a stable CSV snapshot", () => {
     const table = shapeSubmissionsExport(inputs);
-    expect(table.header).toEqual([...SUBMISSIONS_HEADER]);
+    expect(table.header).toEqual([...SUBMISSIONS_HEADER, "description"]);
     expect(table.rows).toEqual([
       [
         "SES-001",
@@ -86,8 +90,19 @@ describe("shapeSubmissionsExport — CSV column snapshot", () => {
         "Ada Lovelace; Alan Turing",
         "ada@example.com; alan@example.com",
         "2026-01-15T10:00:00.000Z",
+        "An intro to the platform.",
       ],
-      ["SES-002", 'A talk, with "quotes" and, a comma', "pending", "pending", "", "", "", "2026-01-16T10:00:00.000Z"],
+      [
+        "SES-002",
+        'A talk, with "quotes" and, a comma',
+        "pending",
+        "pending",
+        "",
+        "",
+        "",
+        "2026-01-16T10:00:00.000Z",
+        "",
+      ],
     ]);
     expect(table.records[0]).toEqual({
       ref: "SES-001",
@@ -98,23 +113,70 @@ describe("shapeSubmissionsExport — CSV column snapshot", () => {
       speakers: "Ada Lovelace; Alan Turing",
       speakerEmails: "ada@example.com; alan@example.com",
       createdAt: "2026-01-15T10:00:00.000Z",
+      description: "An intro to the platform.",
     });
 
     const csv = toCsv([table.header, ...table.rows]);
     expect(csv).toBe(
       [
-        "ref,title,status,contentStatus,tracks,speakers,speakerEmails,createdAt",
-        'SES-001,Intro to Chautauqua,accepted,approved,Keynote; Platform,Ada Lovelace; Alan Turing,ada@example.com; alan@example.com,2026-01-15T10:00:00.000Z',
-        'SES-002,"A talk, with ""quotes"" and, a comma",pending,pending,,,,2026-01-16T10:00:00.000Z',
+        "ref,title,status,contentStatus,tracks,speakers,speakerEmails,createdAt,description",
+        'SES-001,Intro to Chautauqua,accepted,approved,Keynote; Platform,Ada Lovelace; Alan Turing,ada@example.com; alan@example.com,2026-01-15T10:00:00.000Z,An intro to the platform.',
+        'SES-002,"A talk, with ""quotes"" and, a comma",pending,pending,,,,2026-01-16T10:00:00.000Z,',
       ].join("\r\n"),
     );
   });
 
   it("handles zero rows", () => {
     const table = shapeSubmissionsExport([]);
-    expect(table.header).toEqual([...SUBMISSIONS_HEADER]);
+    expect(table.header).toEqual([...SUBMISSIONS_HEADER, "description"]);
     expect(table.rows).toEqual([]);
     expect(table.records).toEqual([]);
+  });
+
+  it("appends dynamic custom-field columns, named by label, after the fixed prefix", () => {
+    const withCustom = [
+      {
+        ...inputs[0]!,
+        answers: { "field-abstract": "Abstract text here.", "field-level": "Advanced" },
+      },
+    ];
+    const table = shapeSubmissionsExport(withCustom, [
+      { fieldId: "field-abstract", label: "Abstract" },
+      { fieldId: "field-level", label: "Level" },
+    ]);
+    expect(table.header).toEqual([...SUBMISSIONS_HEADER, "description", "Abstract", "Level"]);
+    expect(table.rows[0]!.slice(-2)).toEqual(["Abstract text here.", "Advanced"]);
+    expect(table.records[0]).toMatchObject({ Abstract: "Abstract text here.", Level: "Advanced" });
+  });
+
+  it("disambiguates a custom column whose label is empty, duplicated, or a fixed column name", () => {
+    const table = shapeSubmissionsExport([{ ...inputs[0]!, answers: {} }], [
+      { fieldId: "f1", label: "" },
+      { fieldId: "f2", label: "Dup" },
+      { fieldId: "f3", label: "Dup" },
+      { fieldId: "f4", label: "title" },
+    ]);
+    expect(table.header).toEqual([
+      ...SUBMISSIONS_HEADER,
+      "description",
+      " (f1)",
+      "Dup (f2)",
+      "Dup (f3)",
+      "title (f4)",
+    ]);
+  });
+
+  it("renders boolean and array custom-field answers like every other list column", () => {
+    const table = shapeSubmissionsExport(
+      [{ ...inputs[0]!, answers: { bool: true, boolFalse: false, arr: ["A", "B"], missing: undefined } }],
+      [
+        { fieldId: "bool", label: "Recorded" },
+        { fieldId: "boolFalse", label: "Streamed" },
+        { fieldId: "arr", label: "Topics" },
+        { fieldId: "missing", label: "Unanswered" },
+      ],
+    );
+    expect(table.rows[0]!.slice(-4)).toEqual(["true", "false", "A; B", ""]);
   });
 });
 
