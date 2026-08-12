@@ -1,10 +1,11 @@
 // Reviewers (plan_reviewer scope rows -- DEC-017): the drizzle-row/domain
 // boundary for who is assigned to review what within a plan.
 
-import { eq, sql } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
-import { newId } from "../../../domain/ids";
+import { formatRef, newId } from "../../../domain/ids";
+import { chunkIds } from "../../../lib/chunk";
 
 export interface PlanReviewerRecord {
   id: string;
@@ -83,6 +84,53 @@ export async function getReviewerRowById(db: Db, reviewerId: string): Promise<Pl
 
 export async function removeReviewerById(db: Db, reviewerId: string): Promise<void> {
   await db.delete(schema.planReviewer).where(eq(schema.planReviewer.id, reviewerId));
+}
+
+/** DEC-659: reviewer assignment scope speaks in names, not ULIDs -- batched
+ * label lookups for the GET /plans/:id/reviewers mapper. ONE query over the
+ * page's distinct non-null track ids (never a query per row). Ids with no
+ * matching row (deleted track) are simply absent from the returned map so
+ * the caller can render a "(removed)" label. */
+export async function getTrackNamesByIds(db: Db, trackIds: string[]): Promise<Map<string, string>> {
+  const map = new Map<string, string>();
+  if (trackIds.length === 0) return map;
+  for (const batch of chunkIds(trackIds)) {
+    const rows = await db
+      .select({ id: schema.track.id, name: schema.track.name })
+      .from(schema.track)
+      .where(inArray(schema.track.id, batch));
+    for (const row of rows) map.set(row.id, row.name);
+  }
+  return map;
+}
+
+export interface SubmissionLabel {
+  ref: string;
+  title: string;
+}
+
+/** DEC-659: ONE query over the page's distinct non-null submission ids,
+ * joined to event for the record prefix so `ref` is the same formatRef
+ * value POST /reviewers already accepts as input (DEC-623) -- the label the
+ * organizer reads is the string they can type back. Ids with no matching
+ * row (deleted submission) are absent from the map. */
+export async function getSubmissionLabelsByIds(db: Db, submissionIds: string[]): Promise<Map<string, SubmissionLabel>> {
+  const map = new Map<string, SubmissionLabel>();
+  if (submissionIds.length === 0) return map;
+  for (const batch of chunkIds(submissionIds)) {
+    const rows = await db
+      .select({
+        id: schema.submission.id,
+        title: schema.submission.title,
+        seq: schema.submission.seq,
+        recordPrefix: schema.event.recordPrefix,
+      })
+      .from(schema.submission)
+      .innerJoin(schema.event, eq(schema.submission.eventId, schema.event.id))
+      .where(inArray(schema.submission.id, batch));
+    for (const row of rows) map.set(row.id, { ref: formatRef(row.recordPrefix, row.seq), title: row.title });
+  }
+  return map;
 }
 
 export async function listPlanIdsForReviewer(db: Db, userId: string): Promise<string[]> {

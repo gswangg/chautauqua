@@ -739,9 +739,17 @@ export function PlanEditor() {
             {reviewers.map((r) => (
               <div key={r.id} className="chq-review-reviewer-row">
                 <div>
-                  <div>{r.email ?? r.userId}</div>
+                  <div>{r.email ?? '(account removed)'}</div>
                   <div className="chq-review-reviewer-email">
-                    {r.trackId ? `Track ${r.trackId}` : r.submissionId ? `Submission ${r.submissionId}` : 'All submissions'}
+                    {r.trackId
+                      ? r.trackName
+                        ? `Track - ${r.trackName}`
+                        : 'Track (removed)'
+                      : r.submissionId
+                        ? r.submissionRef
+                          ? `${r.submissionRef} - ${r.submissionTitle ?? 'Submission (removed)'}`
+                          : 'Submission (removed)'
+                        : 'All submissions'}
                   </div>
                 </div>
                 <button

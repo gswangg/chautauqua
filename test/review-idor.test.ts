@@ -193,7 +193,18 @@ describe("DEC-043/044: reviewer-row management (GET list + DELETE by row id)", (
     const res = await app.request(`/api/v1/plans/${planRecord.id}/reviewers`);
     expect(res.status).toBe(200);
     const body = (await res.json()) as { items: Array<{ id: string; userId: string; email: string }> };
-    expect(body.items).toEqual([{ id: "pr-1", userId: "rev-1", email: "rev1@org.test", trackId: null, submissionId: null }]);
+    expect(body.items).toEqual([
+      {
+        id: "pr-1",
+        userId: "rev-1",
+        email: "rev1@org.test",
+        trackId: null,
+        submissionId: null,
+        trackName: null,
+        submissionRef: null,
+        submissionTitle: null,
+      },
+    ]);
   });
 
   it("DELETE /api/v1/plans/:id/reviewers/:reviewerId 404s for an organizer of another org", async () => {

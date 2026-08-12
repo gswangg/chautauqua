@@ -88,6 +88,11 @@ export interface PlanReviewer {
   email?: string;
   trackId?: string | null;
   submissionId?: string | null;
+  // DEC-659: the scope row's own labels, resolved server-side -- never
+  // derive a display string from the raw id.
+  trackName?: string | null;
+  submissionRef?: string | null;
+  submissionTitle?: string | null;
 }
 
 // GET /api/v1/plans/:id/progress item. DEC-271: `recused` is the count of

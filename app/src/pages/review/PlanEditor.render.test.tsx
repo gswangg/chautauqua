@@ -192,4 +192,64 @@ describe('PlanEditor render smoke', () => {
 
     expect(screen.queryByText(/Showing first/)).not.toBeInTheDocument();
   });
+
+  // DEC-659: the scope line must render server-provided names, never a raw
+  // ULID, and must say so in words when the server returns a null label for
+  // a non-null id (deleted track/submission).
+  it('renders reviewer scope by name, never by ULID, and words a null label as removed', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
+      [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([
+        {
+          id: 'pr-track',
+          userId: 'user-42',
+          email: 'reviewer@example.test',
+          trackId: '01ARZ3NDEKTSV4RRFFQ69G5FAV',
+          submissionId: null,
+          trackName: 'Design',
+          submissionRef: null,
+          submissionTitle: null,
+        },
+        {
+          id: 'pr-submission',
+          userId: 'user-43',
+          email: 'reviewer2@example.test',
+          trackId: null,
+          submissionId: '01ARZ3NDEKTSV4RRFFQ69G5FBW',
+          trackName: null,
+          submissionRef: 'SES-014',
+          submissionTitle: 'Talk Title',
+        },
+        {
+          id: 'pr-removed-track',
+          userId: 'user-44',
+          email: 'reviewer3@example.test',
+          trackId: '01ARZ3NDEKTSV4RRFFQ69G5FCX',
+          submissionId: null,
+          trackName: null,
+          submissionRef: null,
+          submissionTitle: null,
+        },
+      ]),
+      'GET /api/v1/users': listEnvelope([]),
+    });
+
+    const { container } = render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId" element={<PlanEditor />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Track - Design')).toBeInTheDocument();
+    });
+    expect(screen.getByText('SES-014 - Talk Title')).toBeInTheDocument();
+    expect(screen.getByText('Track (removed)')).toBeInTheDocument();
+
+    // No 26-character ULID anywhere in the rendered reviewer list.
+    expect(container.textContent ?? '').not.toMatch(/\b[0-9A-Za-z]{26}\b/);
+  });
 });
