@@ -38,24 +38,28 @@ export type TrackChoiceResult = { ok: true } | { ok: false; error: string };
 
 /** At least one track must be chosen, and only from the set actually
  * offered by the form (DEC-015 form.tracks_json / all event tracks).
- * DEC-301: a form that offers zero tracks cannot require one — every new
- * event ships a default 'General' track, so a truly empty availableTrackIds
- * only happens if a producer deletes every track, and submissions must not
- * dead-end in that case either. */
+ * DEC-416: the membership check runs FIRST and unconditionally — including
+ * when availableTrackIds is empty — so a submitter can never smuggle in a
+ * foreign/other-org track id just because the form happens to offer none.
+ * Only after that check clears does DEC-301 apply: a form that offers zero
+ * tracks cannot require one — every new event ships a default 'General'
+ * track, so a truly empty availableTrackIds only happens if a producer
+ * deletes every track, and submissions must not dead-end in that case
+ * either. */
 export function validateTrackChoice(
   selectedTrackIds: string[],
   availableTrackIds: string[],
 ): TrackChoiceResult {
+  const available = new Set(availableTrackIds);
+  const hasUnknown = selectedTrackIds.some((id) => !available.has(id));
+  if (hasUnknown) {
+    return { ok: false, error: "Selected track is not offered by this form." };
+  }
   if (availableTrackIds.length === 0) {
     return { ok: true };
   }
   if (selectedTrackIds.length === 0) {
     return { ok: false, error: "Select at least one track." };
-  }
-  const available = new Set(availableTrackIds);
-  const hasUnknown = selectedTrackIds.some((id) => !available.has(id));
-  if (hasUnknown) {
-    return { ok: false, error: "Selected track is not offered by this form." };
   }
   return { ok: true };
 }

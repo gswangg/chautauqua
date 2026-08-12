@@ -275,9 +275,11 @@ function SubmitPage(props: {
                   </p>
                 ) : null}
                 {/* DEC-301: a form offering zero tracks renders no Track
-                    fieldset — validateTrackChoice treats an empty offered
-                    set as "no track requirement", so an empty
-                    required-looking block would be unactionable and
+                    fieldset — once validateTrackChoice's membership check
+                    clears (DEC-416: it runs even when nothing is offered,
+                    rejecting any foreign track id), an empty offered set
+                    only relaxes the "must pick one" requirement, so an
+                    empty required-looking block would be unactionable and
                     misleading. */}
                 {tracks.length > 0 ? <TrackChoices tracks={tracks} selected={selectedTrackIds} /> : null}
               </div>

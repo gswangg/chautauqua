@@ -157,7 +157,10 @@ export async function hydrateSessions(
         color: schema.track.color,
       })
       .from(schema.submissionTrack)
-      .innerJoin(schema.track, eq(schema.submissionTrack.trackId, schema.track.id))
+      .innerJoin(
+        schema.track,
+        and(eq(schema.submissionTrack.trackId, schema.track.id), eq(schema.track.eventId, event.id)),
+      )
       .where(inArray(schema.submissionTrack.submissionId, batch))
       .orderBy(asc(schema.track.position));
     trackRows.push(...batchRows);
