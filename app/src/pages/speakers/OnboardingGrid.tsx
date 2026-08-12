@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { apiGet, apiPatch, apiPost, ApiError } from '../../lib/api';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { GridFilters } from './GridFilters';
-import { isCellOverdue } from './overdue';
+import { daysLate, isCellOverdue } from './overdue';
 import { TaskModal } from './TaskModal';
 import { ResponseModal } from './ResponseModal';
 import { formatDateOnly } from '../../lib/dates';
@@ -32,6 +32,14 @@ function buildGridQuery(filters: GridFilterState, page: number): string {
   if (filters.status) params.set('status', filters.status);
   if (filters.overdueOnly) params.set('overdueOnly', '1');
   return params.toString();
+}
+
+/** Label for a pending, overdue cell — never colour alone, never red
+ * (DEC-367). Complete is a filled pill, pending is an outline pill, overdue
+ * drops the pill entirely for a .chq-flag "N DAYS LATE" typographic mark. */
+function lateLabel(dueDate: number, now: number): string {
+  const d = daysLate(dueDate, now);
+  return `${d} DAY${d === 1 ? '' : 'S'} LATE`;
 }
 
 export function OnboardingGrid() {
@@ -166,8 +174,8 @@ export function OnboardingGrid() {
 
   if (eventLoading) {
     return (
-      <div className="chq-page">
-        <h1>Speakers</h1>
+      <div className="chq-page chq-speakers-page">
+        <h1 className="chq-page-title">Speakers</h1>
         <p>Loading event...</p>
       </div>
     );
@@ -175,154 +183,250 @@ export function OnboardingGrid() {
 
   if (eventError || !eventId) {
     return (
-      <div className="chq-page">
-        <h1>Speakers</h1>
-        <div className="chq-attention-frame">{eventError ?? 'No event selected.'}</div>
+      <div className="chq-page chq-speakers-page">
+        <h1 className="chq-page-title">Speakers</h1>
+        <div className="chq-error">{eventError ?? 'No event selected.'}</div>
       </div>
     );
   }
 
   return (
-    <div className="chq-page chq-onboarding-page">
-      <h1>Speakers</h1>
-
-      {error && <div className="chq-error-banner">{error}</div>}
+    <div className="chq-page chq-speakers-page">
+      {error && <div className="chq-error">{error}</div>}
       {toast && (
-        <div className="chq-toast" role="status">
+        <div className="chq-error" role="status">
           {toast}
-          <button type="button" onClick={() => setToast(null)} aria-label="Dismiss">
+          <button type="button" className="chq-btn-tertiary" onClick={() => setToast(null)} aria-label="Dismiss">
             &times;
           </button>
         </div>
       )}
 
-      <div className="chq-attention-frame chq-onboarding-counts">
-        <div>
-          <strong>{counts?.speakers ?? 0}</strong> accepted speakers
+      <div className="chq-speakers-head">
+        <div className="chq-speakers-head-titles">
+          <h1 className="chq-page-title">Speakers</h1>
+          <span className="chq-summary">
+            <strong>{counts?.speakers ?? 0}</strong> accepted &middot; <strong>{counts?.outstandingRequired ?? 0}</strong>{' '}
+            tasks open &middot; <strong>{counts?.overdue ?? 0}</strong> overdue
+          </span>
         </div>
-        <div>
-          <strong>{counts?.outstandingRequired ?? 0}</strong> outstanding required tasks
-        </div>
-        <div className={counts && counts.overdue > 0 ? 'chq-overdue-count' : ''}>
-          <strong>{counts?.overdue ?? 0}</strong> overdue
+        <div className="chq-speakers-head-actions">
+          <button type="button" className="chq-btn chq-btn-secondary" onClick={() => setShowNewTask(true)}>
+            New task
+          </button>
+          <button
+            type="button"
+            className="chq-btn chq-btn-primary"
+            onClick={() => setConfirmingRemind(true)}
+            disabled={!grid || grid.rows.length === 0}
+          >
+            Remind all outstanding
+          </button>
         </div>
       </div>
 
-      <div className="chq-onboarding-toolbar">
+      <div className="chq-speakers-toolbar">
         {grid && <GridFilters tasks={grid.tasks} filters={filters} onChange={handleFiltersChange} />}
-        <div className="chq-onboarding-actions">
-          <button type="button" onClick={() => setShowNewTask(true)}>
-            New task
-          </button>
-          <button type="button" onClick={() => setConfirmingRemind(true)} disabled={!grid || grid.rows.length === 0}>
-            Remind everyone outstanding
-          </button>
-        </div>
+        <span className="chq-speakers-toolbar-caption">Skips anyone reminded in the last hour</span>
       </div>
 
       {confirmingRemind && (
-        <div className="chq-attention-frame chq-remind-confirm">
+        <div className="chq-speakers-remind-confirm">
           <p>
             This will email <strong>{remindCount}</strong> contact{remindCount === 1 ? '' : 's'} with outstanding
             tasks. Continue?
           </p>
-          <button type="button" onClick={handleRemind} disabled={reminding}>
-            {reminding ? 'Sending...' : 'Confirm and send'}
-          </button>
-          <button type="button" onClick={() => setConfirmingRemind(false)} disabled={reminding}>
-            Cancel
-          </button>
+          <div className="chq-modal-actions">
+            <button type="button" className="chq-btn chq-btn-primary" onClick={handleRemind} disabled={reminding}>
+              {reminding ? 'Sending...' : 'Confirm and send'}
+            </button>
+            <button
+              type="button"
+              className="chq-btn chq-btn-secondary"
+              onClick={() => setConfirmingRemind(false)}
+              disabled={reminding}
+            >
+              Cancel
+            </button>
+          </div>
         </div>
       )}
 
       {loading && <p>Loading...</p>}
 
       {!loading && grid && (
-        <table className="chq-onboarding-table">
-          <thead>
-            <tr>
-              <th>Speaker</th>
-              {grid.tasks.map((task) => (
-                <th key={task.id}>
-                  {task.title}
-                  {task.required && <span className="chq-required-marker"> *</span>}
-                  <div className="chq-task-due">{formatDateOnly(task.dueDate)}</div>
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {visibleRows.length === 0 && (
-              <tr>
-                <td colSpan={1 + grid.tasks.length}>No speakers match the current filters.</td>
-              </tr>
-            )}
+        <>
+          <div className="chq-speakers-grid-wrap">
+            <table className="chq-table chq-speakers-grid">
+              <thead>
+                <tr>
+                  <th>Speaker</th>
+                  {grid.tasks.map((task) => (
+                    <th key={task.id}>
+                      {task.title}
+                      {task.required && <span className="chq-speakers-required-marker"> *</span>}
+                      <div className="chq-speakers-task-due">{formatDateOnly(task.dueDate)}</div>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {visibleRows.length === 0 && (
+                  <tr>
+                    <td colSpan={1 + grid.tasks.length} className="chq-empty">
+                      No speakers match the current filters.
+                    </td>
+                  </tr>
+                )}
+                {visibleRows.map((row) => (
+                  <tr key={row.contact.id}>
+                    <td>
+                      <div className="chq-row-title">{row.contact.name}</div>
+                      <div className="chq-meta">
+                        {row.contact.company ?? '—'} &middot; {row.contact.email}
+                        {row.contact.hasAccount && (
+                          <span className="chq-pill chq-speakers-has-account">Has account</span>
+                        )}
+                      </div>
+                    </td>
+                    {grid.tasks.map((task) => {
+                      const cell = row.cells.find((c) => c.taskId === task.id);
+                      if (!cell) {
+                        return (
+                          <td key={task.id}>
+                            <span className="chq-speakers-cell-none">&mdash;</span>
+                          </td>
+                        );
+                      }
+                      const overdue = isCellOverdue(cell, task, now);
+                      const cellClass =
+                        cell.status === 'complete'
+                          ? 'chq-speakers-cell-fill'
+                          : overdue
+                            ? 'chq-flag chq-speakers-cell-late'
+                            : 'chq-speakers-cell-outline';
+                      return (
+                        <td key={task.id}>
+                          <div className="chq-speakers-cell">
+                            <button
+                              type="button"
+                              className={cellClass}
+                              onClick={() => toggleCell(cell.assignmentId, cell.status)}
+                              aria-label={`Toggle ${task.title} for ${row.contact.name}`}
+                            >
+                              {cell.status === 'complete'
+                                ? 'Complete'
+                                : overdue && task.dueDate !== null
+                                  ? lateLabel(task.dueDate, now)
+                                  : 'Pending'}
+                            </button>
+                            {cell.fileId && (
+                              <a
+                                href={`/files/${cell.fileId}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="chq-speakers-file-link"
+                                aria-label="Has file"
+                                title="Has file"
+                              >
+                                File
+                              </a>
+                            )}
+                            {task.kind === 'form' && (
+                              <button
+                                type="button"
+                                className="chq-btn-tertiary chq-speakers-view-response"
+                                onClick={() => openResponse(cell.assignmentId, row.contact.name)}
+                              >
+                                View response
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="chq-speakers-cards">
+            {visibleRows.length === 0 && <p className="chq-empty">No speakers match the current filters.</p>}
             {visibleRows.map((row) => (
-              <tr key={row.contact.id}>
-                <td>
-                  <div>{row.contact.name}</div>
-                  <div className="chq-contact-meta">
+              <div key={row.contact.id} className="chq-speakers-card">
+                <div className="chq-speakers-card-head">
+                  <span className="chq-row-title">{row.contact.name}</span>
+                  <span className="chq-meta">
                     {row.contact.company ?? '—'} &middot; {row.contact.email}
-                    {row.contact.hasAccount && <span className="chq-pill chq-has-account">Has account</span>}
-                  </div>
-                </td>
-                {grid.tasks.map((task) => {
-                  const cell = row.cells.find((c) => c.taskId === task.id);
-                  if (!cell) {
-                    return <td key={task.id}>&mdash;</td>;
-                  }
-                  const overdue = isCellOverdue(cell, task, now);
-                  return (
-                    <td key={task.id}>
-                      <button
-                        type="button"
-                        className={`chq-status-pill chq-status-${cell.status}${overdue ? ' chq-overdue' : ''}`}
-                        onClick={() => toggleCell(cell.assignmentId, cell.status)}
-                        aria-label={`Toggle ${task.title} for ${row.contact.name}`}
-                      >
-                        {cell.status === 'complete' ? 'Complete' : overdue ? 'Overdue' : 'Pending'}
-                      </button>
-                      {cell.fileId && (
-                        <a
-                          href={`/files/${cell.fileId}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="chq-paperclip"
-                          aria-label="Has file"
-                          title="Has file"
-                        >
-                          {'📎'}
-                        </a>
-                      )}
-                      {task.kind === 'form' && (
+                  </span>
+                </div>
+                <div className="chq-speakers-card-tasks">
+                  {grid.tasks.map((task) => {
+                    const cell = row.cells.find((c) => c.taskId === task.id);
+                    if (!cell) {
+                      return (
+                        <div key={task.id} className="chq-speakers-card-task">
+                          <span className="chq-speakers-card-task-label">{task.title}</span>
+                          <span className="chq-speakers-cell-none">&mdash;</span>
+                        </div>
+                      );
+                    }
+                    const overdue = isCellOverdue(cell, task, now);
+                    const cellClass =
+                      cell.status === 'complete'
+                        ? 'chq-speakers-cell-fill'
+                        : overdue
+                          ? 'chq-flag chq-speakers-cell-late'
+                          : 'chq-speakers-cell-outline';
+                    return (
+                      <div key={task.id} className="chq-speakers-card-task">
+                        <span className="chq-speakers-card-task-label">{task.title}</span>
                         <button
                           type="button"
-                          className="chq-view-response-link"
-                          onClick={() => openResponse(cell.assignmentId, row.contact.name)}
+                          className={cellClass}
+                          onClick={() => toggleCell(cell.assignmentId, cell.status)}
+                          aria-label={`Toggle ${task.title} for ${row.contact.name}`}
                         >
-                          View response
+                          {cell.status === 'complete'
+                            ? 'Complete'
+                            : overdue && task.dueDate !== null
+                              ? lateLabel(task.dueDate, now)
+                              : 'Pending'}
                         </button>
-                      )}
-                    </td>
-                  );
-                })}
-              </tr>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             ))}
-          </tbody>
-        </table>
+          </div>
+        </>
       )}
 
       {!loading && grid && (
-        <div className="chq-pager">
-          <span>
+        <div className="chq-speakers-pager">
+          <span className="chq-summary">
             Showing {rangeStart}-{rangeEnd} of {total}
           </span>
-          <button type="button" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1}>
-            Prev
-          </button>
-          <button type="button" onClick={() => setPage((p) => p + 1)} disabled={rangeEnd >= total}>
-            Next
-          </button>
+          <div className="chq-speakers-pager-actions">
+            <button
+              type="button"
+              className="chq-btn chq-btn-secondary"
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page <= 1}
+            >
+              Previous
+            </button>
+            <button
+              type="button"
+              className="chq-btn chq-btn-secondary"
+              onClick={() => setPage((p) => p + 1)}
+              disabled={rangeEnd >= total}
+            >
+              Next
+            </button>
+          </div>
         </div>
       )}
 

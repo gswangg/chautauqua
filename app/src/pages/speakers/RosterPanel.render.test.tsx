@@ -30,7 +30,11 @@ afterEach(() => {
   window.localStorage.clear();
 });
 
-function fillAddForm() {
+// The add-speaker form is collapsed behind an "Add speaker" toggle in the
+// re-skinned RosterPanel (w1-g); open it before filling fields, then submit
+// via the form's own "Add speaker" button (the toggle is hidden once open).
+function openAndFillAddForm() {
+  fireEvent.click(screen.getByRole('button', { name: 'Add speaker' }));
   fireEvent.change(screen.getByLabelText('First name'), { target: { value: 'Ada' } });
   fireEvent.change(screen.getByLabelText('Last name'), { target: { value: 'Lovelace' } });
   fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'ada@example.com' } });
@@ -43,7 +47,7 @@ describe('RosterPanel', () => {
 
     render(<RosterPanel onChanged={onChanged} />);
 
-    fillAddForm();
+    openAndFillAddForm();
     fireEvent.click(screen.getByRole('button', { name: 'Add speaker' }));
 
     await waitFor(() => expect(apiPostMock).toHaveBeenCalledTimes(1));
@@ -68,7 +72,7 @@ describe('RosterPanel', () => {
 
     render(<RosterPanel onChanged={onChanged} />);
 
-    fillAddForm();
+    openAndFillAddForm();
     fireEvent.click(screen.getByRole('button', { name: 'Add speaker' }));
 
     expect(await screen.findByText('A contact with that email already exists.')).toBeInTheDocument();

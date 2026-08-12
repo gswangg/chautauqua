@@ -9,3 +9,12 @@ export function isCellOverdue(cell: OnboardingCell, task: OnboardingTask | undef
   if (cell.status === 'complete') return false;
   return task.dueDate < now;
 }
+
+/**
+ * Whole days between a past due date and now, floored at 1 -- feeds the
+ * .chq-flag "N DAYS LATE" micro-label. Callers must only invoke this when
+ * isCellOverdue is already true (dueDate non-null and in the past).
+ */
+export function daysLate(dueDate: number, now: number): number {
+  return Math.max(1, Math.floor((now - dueDate) / (24 * 60 * 60 * 1000)));
+}

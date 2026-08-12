@@ -1,0 +1,314 @@
+/* Speakers re-skin (w1-g, DEC-366..368). Shared .chq-* classes (page-title,
+   summary, toolbar, table, pill, flag, btn, modal, input/select/textarea,
+   check, error, empty) are owned by the shell lane in ../../styles.css --
+   this file only defines the .chq-speakers-* layout classes specific to
+   this screen. */
+
+.chq-speakers-page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.chq-speakers-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.chq-speakers-head-titles {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.chq-speakers-head-actions {
+  display: flex;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+
+.chq-speakers-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  border-top: 1px solid var(--chq-rule, #d3cfc0);
+  border-bottom: 1px solid var(--chq-rule, #d3cfc0);
+  padding: 13px 0;
+}
+
+.chq-speakers-filters {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.chq-speakers-filters-search {
+  min-width: 230px;
+}
+
+.chq-speakers-toolbar-caption {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--chq-muted, #565a4b);
+}
+
+.chq-speakers-remind-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--chq-surface-sunk, #efebdf);
+  border-radius: var(--chq-r-ctl, 4px);
+  padding: 14px 16px;
+}
+
+/* Grid: horizontal scroll within its own container -- never breaks the page
+   layout regardless of task-column count. */
+.chq-speakers-grid-wrap {
+  overflow-x: auto;
+}
+
+.chq-speakers-grid {
+  min-width: 640px;
+}
+
+.chq-speakers-required-marker {
+  color: var(--chq-muted, #565a4b);
+}
+
+.chq-speakers-task-due {
+  margin-top: 2px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--chq-muted, #565a4b);
+}
+
+.chq-speakers-cell {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+/* Complete: filled pill. */
+.chq-speakers-cell-fill {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--chq-on-brand, #f7f9f0);
+  background: var(--chq-brand, #4e5c31);
+  border: none;
+  border-radius: 3px;
+  padding: 3px 8px;
+  cursor: pointer;
+}
+
+/* Pending, not overdue: outline pill. */
+.chq-speakers-cell-outline {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--chq-muted, #565a4b);
+  background: none;
+  border: 1px solid var(--chq-border, #bab6a6);
+  border-radius: 3px;
+  padding: 2px 8px;
+  cursor: pointer;
+}
+
+/* Overdue: no fill/outline -- typographic .chq-flag only, never colour/red. */
+.chq-speakers-cell-late {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.chq-speakers-cell-none {
+  font-size: 11px;
+  color: var(--chq-disabled, #8e8a7a);
+}
+
+.chq-speakers-has-account {
+  margin-left: 8px;
+  padding: 2px 8px;
+  font-size: 10px;
+}
+
+.chq-speakers-file-link,
+.chq-speakers-view-response {
+  font-size: 11px;
+  font-weight: 700;
+}
+
+/* Mobile: matrix becomes one card per speaker (DEC-367 390px reference). */
+.chq-speakers-cards {
+  display: none;
+}
+
+@media (max-width: 700px) {
+  .chq-speakers-grid-wrap {
+    display: none;
+  }
+
+  .chq-speakers-cards {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .chq-speakers-card {
+    padding: 16px 0;
+    border-bottom: 1px solid var(--chq-hairline, #e1ddce);
+    display: flex;
+    flex-direction: column;
+    gap: 11px;
+  }
+
+  .chq-speakers-card-head {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .chq-speakers-card-tasks {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .chq-speakers-card-task {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .chq-speakers-card-task-label {
+    font-size: 13px;
+    color: var(--chq-ink-2, #3f4237);
+  }
+}
+
+.chq-speakers-pager {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding-top: 6px;
+}
+
+.chq-speakers-pager-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 9px;
+}
+
+/* Modal shells reused by TaskModal + ResponseModal. */
+.chq-speakers-modal-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.chq-speakers-modal-head-titles {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.chq-speakers-modal-title {
+  margin: 0;
+  font-family: var(--chq-font-display, inherit);
+  font-size: 23px;
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  line-height: 1;
+}
+
+.chq-speakers-modal-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.chq-speakers-modal-label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--chq-muted, #565a4b);
+}
+
+.chq-speakers-response-fields {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.chq-speakers-response-field {
+  display: grid;
+  grid-template-columns: 170px 1fr;
+  gap: 16px;
+  align-items: baseline;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--chq-hairline, #e1ddce);
+}
+
+.chq-speakers-response-field dt {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--chq-ink-2, #3f4237);
+}
+
+.chq-speakers-response-field dd {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+/* Roster panel (add speaker / import CSV). */
+.chq-speakers-roster {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.chq-speakers-roster-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.chq-speakers-roster-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.chq-speakers-roster-actions {
+  display: flex;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+
+.chq-check-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  font-size: 14px;
+  color: var(--chq-ink-2, #3f4237);
+}

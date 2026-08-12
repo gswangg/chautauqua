@@ -57,15 +57,23 @@ export function TaskModal({ onCancel, onSubmit }: TaskModalProps) {
   }
 
   return (
-    <div className="chq-modal-overlay" role="dialog" aria-label="New task">
-      <form className="chq-modal" onSubmit={handleSubmit}>
-        <h2>New task</h2>
+    <div className="chq-modal-overlay" role="dialog" aria-modal="true" aria-label="New task">
+      <form className="chq-modal chq-speakers-modal" onSubmit={handleSubmit}>
+        <div className="chq-speakers-modal-head">
+          <div className="chq-speakers-modal-head-titles">
+            <h2 className="chq-speakers-modal-title">New task</h2>
+            <span className="chq-summary">Applies to every accepted speaker</span>
+          </div>
+          <button type="button" className="chq-btn-tertiary" onClick={onCancel} disabled={submitting}>
+            Close
+          </button>
+        </div>
 
-        {error && <div className="chq-error-banner">{error}</div>}
+        {error && <div className="chq-error">{error}</div>}
 
-        <label>
-          Kind
-          <select value={kind} onChange={(e) => setKind(e.target.value as TaskKind)}>
+        <label className="chq-speakers-modal-field">
+          <span className="chq-speakers-modal-label">Kind</span>
+          <select className="chq-select" value={kind} onChange={(e) => setKind(e.target.value as TaskKind)}>
             {TASK_KINDS.map((k) => (
               <option key={k} value={k}>
                 {kindLabel(k)}
@@ -74,32 +82,33 @@ export function TaskModal({ onCancel, onSubmit }: TaskModalProps) {
           </select>
         </label>
 
-        <label>
-          Title
-          <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} required />
+        <label className="chq-speakers-modal-field">
+          <span className="chq-speakers-modal-label">Task</span>
+          <input className="chq-input" type="text" value={title} onChange={(e) => setTitle(e.target.value)} required />
         </label>
 
-        <label>
-          Description
-          <textarea value={description} onChange={(e) => setDescription(e.target.value)} />
+        <label className="chq-speakers-modal-field">
+          <span className="chq-speakers-modal-label">Description</span>
+          <textarea className="chq-textarea" value={description} onChange={(e) => setDescription(e.target.value)} />
         </label>
 
-        <label>
-          Due date
-          <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+        <label className="chq-speakers-modal-field">
+          <span className="chq-speakers-modal-label">Due date</span>
+          <input className="chq-input" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
         </label>
 
         {kind === 'form' && (
-          <label>
-            Form ID
-            <input type="text" value={formId} onChange={(e) => setFormId(e.target.value)} />
+          <label className="chq-speakers-modal-field">
+            <span className="chq-speakers-modal-label">Form ID</span>
+            <input className="chq-input" type="text" value={formId} onChange={(e) => setFormId(e.target.value)} />
           </label>
         )}
 
         {kind === 'file_request' && (
-          <label>
-            Deliverable kind
+          <label className="chq-speakers-modal-field">
+            <span className="chq-speakers-modal-label">Deliverable kind</span>
             <select
+              className="chq-select"
               value={deliverableKind}
               onChange={(e) => setDeliverableKind(e.target.value as DeliverableKind)}
             >
@@ -112,13 +121,14 @@ export function TaskModal({ onCancel, onSubmit }: TaskModalProps) {
           </label>
         )}
 
-        <label className="chq-checkbox-label">
-          <input type="checkbox" checked={required} onChange={(e) => setRequired(e.target.checked)} />
+        <label className="chq-check-label">
+          <input className="chq-check" type="checkbox" checked={required} onChange={(e) => setRequired(e.target.checked)} />
           Required
         </label>
 
-        <label className="chq-checkbox-label">
+        <label className="chq-check-label">
           <input
+            className="chq-check"
             type="checkbox"
             checked={assignToAllAccepted}
             onChange={(e) => setAssignToAllAccepted(e.target.checked)}
@@ -127,11 +137,11 @@ export function TaskModal({ onCancel, onSubmit }: TaskModalProps) {
         </label>
 
         <div className="chq-modal-actions">
-          <button type="button" onClick={onCancel} disabled={submitting}>
-            Cancel
+          <button type="submit" className="chq-btn chq-btn-primary" disabled={submitting}>
+            {submitting ? 'Creating...' : 'Create the task'}
           </button>
-          <button type="submit" disabled={submitting}>
-            {submitting ? 'Creating...' : 'Create task'}
+          <button type="button" className="chq-btn chq-btn-secondary" onClick={onCancel} disabled={submitting}>
+            Cancel
           </button>
         </div>
       </form>
