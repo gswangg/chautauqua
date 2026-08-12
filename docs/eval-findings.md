@@ -386,3 +386,16 @@ The README gained two NORMATIVE sections that supersede earlier mandate items:
   horizontally below ~1060px; row identity "Company · has account", no emails.
 Full-resolution screens/ now include fullscreen phone captures — fidelity checks can
 compare phone frames pixel-for-pixel.
+
+## APPENDED: LIVE REGRESSION on main (2026-08-12 evening) — FIX FIRST
+
+28. **P0 REGRESSION: authenticated /admin 500s — DEC-636's framing middleware throws
+    "TypeError: Can't modify immutable headers" at src/server/framing.ts:35** when it
+    stamps X-Frame-Options onto ASSET responses, whose headers are immutable in
+    workerd. Every logged-in admin asset load 500s; logged-out requests redirect
+    before hitting it, so shallow checks pass. Fix: clone the response before mutating
+    when headers are immutable (try/catch set → new Response(res.body, res) → c.res =
+    clone). The same hazard exists for ANY response-decorating middleware (DEC-658
+    no-store, security headers) — audit them all and add a regression test that
+    exercises header-stamping over an ASSETS-served response in workerd mode.
+    (Verified fix shape on a snapshot: patch restores authed /admin to 200.)
