@@ -527,3 +527,13 @@ compare phone frames pixel-for-pixel.
     silent mid-glyph cuts. (c) Focus should land on Cancel/first placement cell when
     placing mode opens (currently <body>). (d) Conflict layout: prefer the mock's
     full-column treatment or justify the split pair as a deliberate decision in a DEC.
+
+43. r2-Comms: KEEP: shell fix, template clipping fix, phone landing existence. FIX:
+    phone step-bar letter-stacking (unchanged from r1 — give steps real min-width or
+    horizontal chip strip); VERIFY DEC-603 batched history actually landed (decision
+    committed, implementation absent in snapshot 259c0a4 — per-recipient rows, no
+    drill-in); phone landing content (summary line, Draft-in-progress card, Recent
+    sends per mock); Body textarea width = Subject width (185px vs 569px bug);
+    Edit/Delete → 44px controls; per-recipient SCHEDULED/NO-SLOT tags + "N have no
+    slot" advisory in Preview; make Templates/History bookmarkable routes; phone
+    fixed-shell here too.
