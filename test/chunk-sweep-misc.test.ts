@@ -105,7 +105,10 @@ describe("DEC-104 chunk sweep — misc lane", () => {
 
   it("files-comments.ts imports chunkIds", () => {
     const src = readSrc("files-comments.ts");
-    expect(src).toMatch(/import\s*{\s*chunkIds\s*}\s*from\s*"..\/..\/lib\/chunk"/);
+    // The import may carry other names alongside chunkIds (DEC-686 added
+    // ID_CHUNK_SIZE for the version-chain paging guard) — assert on chunkIds
+    // being imported from lib/chunk, not on the exact shape of the clause.
+    expect(src).toMatch(/import\s*{[^}]*\bchunkIds\b[^}]*}\s*from\s*"..\/..\/lib\/chunk"/);
   });
 
   it("files-comments.ts: listFileComments user hydration no longer passes the raw userIds list to inArray", () => {
