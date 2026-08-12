@@ -58,26 +58,33 @@ export function ViewsDropdown({ eventId, filters, visibleFieldIds, onApply }: Vi
   }
 
   return (
-    <div className="chq-views-dropdown">
-      {error && <div className="chq-error-banner">{error}</div>}
+    <div className="chq-submissions-views">
+      {error && <div className="chq-error">{error}</div>}
       <details>
         <summary>Views{views.length > 0 ? ` (${views.length})` : ''}</summary>
-        <ul>
-          {views.length === 0 && <li className="chq-views-empty">No saved views yet.</li>}
-          {views.map((view) => (
-            <li key={view.id}>
-              <button type="button" onClick={() => onApply(view.config)}>
-                {view.name}
-              </button>
-              <button type="button" aria-label={`Delete ${view.name}`} onClick={() => deleteView(view.id)}>
-                &times;
-              </button>
-            </li>
-          ))}
-        </ul>
-        <button type="button" disabled={saving} onClick={saveCurrentAsView}>
-          Save current as view…
-        </button>
+        <div className="chq-submissions-views-panel">
+          <ul className="chq-submissions-views-list">
+            {views.length === 0 && <li className="chq-submissions-views-empty">No saved views yet.</li>}
+            {views.map((view) => (
+              <li key={view.id} className="chq-submissions-views-item">
+                <button type="button" className="chq-btn chq-btn-tertiary" onClick={() => onApply(view.config)}>
+                  {view.name}
+                </button>
+                <button
+                  type="button"
+                  className="chq-btn chq-btn-tertiary"
+                  aria-label={`Delete ${view.name}`}
+                  onClick={() => deleteView(view.id)}
+                >
+                  &times;
+                </button>
+              </li>
+            ))}
+          </ul>
+          <button type="button" className="chq-btn chq-btn-tertiary" disabled={saving} onClick={saveCurrentAsView}>
+            Save current as view…
+          </button>
+        </div>
       </details>
     </div>
   );

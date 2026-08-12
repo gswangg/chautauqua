@@ -17,8 +17,9 @@ export function FilterBar({ filters, tracks, onChange }: FilterBarProps) {
     <div className="chq-submissions-filterbar">
       <input
         type="search"
+        className="chq-input chq-submissions-filterbar-search"
         aria-label="Search submissions"
-        placeholder="Search title or speaker..."
+        placeholder="Search title or speaker…"
         value={filters.q}
         onChange={(e) => onChange({ ...filters, q: e.target.value, page: 1 })}
       />
@@ -28,7 +29,7 @@ export function FilterBar({ filters, tracks, onChange }: FilterBarProps) {
           <button
             key={status}
             type="button"
-            className={filters.status.includes(status) ? 'chq-pill active' : 'chq-pill'}
+            className={filters.status.includes(status) ? 'chq-pill is-active' : 'chq-pill'}
             aria-pressed={filters.status.includes(status)}
             onClick={() => toggleStatus(status)}
           >
@@ -38,6 +39,7 @@ export function FilterBar({ filters, tracks, onChange }: FilterBarProps) {
       </div>
 
       <select
+        className="chq-select chq-submissions-filterbar-select"
         aria-label="Filter by track"
         value={filters.trackId ?? ''}
         onChange={(e) => onChange({ ...filters, trackId: e.target.value === '' ? null : e.target.value, page: 1 })}
@@ -51,6 +53,7 @@ export function FilterBar({ filters, tracks, onChange }: FilterBarProps) {
       </select>
 
       <select
+        className="chq-select chq-submissions-filterbar-select"
         aria-label="Sort"
         value={filters.sort}
         onChange={(e) => onChange({ ...filters, sort: e.target.value as SortOrder, page: 1 })}

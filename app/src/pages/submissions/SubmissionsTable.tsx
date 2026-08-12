@@ -161,7 +161,7 @@ export function SubmissionsTable() {
   if (!eventId) {
     return (
       <div className="chq-page">
-        <h1>Submissions</h1>
+        <h1 className="chq-page-title">Submissions</h1>
         <div className="chq-attention-frame">No event selected. Append ?eventId=&lt;id&gt; to the URL.</div>
       </div>
     );
@@ -169,40 +169,51 @@ export function SubmissionsTable() {
 
   return (
     <div className="chq-page chq-submissions-page">
-      <h1>Submissions</h1>
-
-      {error && <div className="chq-error-banner">{error}</div>}
-
-      <div className="chq-submissions-toolbar">
-        <ViewsDropdown
-          eventId={eventId}
-          filters={filters}
-          visibleFieldIds={visibleFieldIds}
-          onApply={applySavedView}
-        />
-        <button type="button" onClick={() => setShowNewModal(true)}>
-          New submission
-        </button>
+      <div className="chq-submissions-head">
+        <div className="chq-submissions-head-titles">
+          <h1 className="chq-page-title">Submissions</h1>
+          <span className="chq-summary">{total} total</span>
+        </div>
+        <div className="chq-submissions-head-actions">
+          <button type="button" className="chq-btn chq-btn-primary" onClick={() => setShowNewModal(true)}>
+            New submission
+          </button>
+        </div>
       </div>
+
+      {error && <div className="chq-error">{error}</div>}
 
       {showNewModal && (
         <NewSubmissionModal onCancel={() => setShowNewModal(false)} onCreate={createSubmission} />
       )}
 
-      <FilterBar filters={filters} tracks={tracks} onChange={setFilters} />
-      <ColumnPicker
-        columns={columns}
-        visibleFieldIds={visibleFieldIds}
-        onToggle={(fieldId) => {
-          setPickerInitialized(true);
-          setVisibleFieldIds((prev) => {
-            const next = new Set(prev);
-            if (next.has(fieldId)) next.delete(fieldId);
-            else next.add(fieldId);
-            return next;
-          });
-        }}
-      />
+      <div className="chq-submissions-toolbar">
+        <div className="chq-submissions-toolbar-row">
+          <ViewsDropdown
+            eventId={eventId}
+            filters={filters}
+            visibleFieldIds={visibleFieldIds}
+            onApply={applySavedView}
+          />
+          <FilterBar filters={filters} tracks={tracks} onChange={setFilters} />
+        </div>
+        <div className="chq-submissions-status-row">
+          <span className="chq-submissions-status-label">Columns</span>
+          <ColumnPicker
+            columns={columns}
+            visibleFieldIds={visibleFieldIds}
+            onToggle={(fieldId) => {
+              setPickerInitialized(true);
+              setVisibleFieldIds((prev) => {
+                const next = new Set(prev);
+                if (next.has(fieldId)) next.delete(fieldId);
+                else next.add(fieldId);
+                return next;
+              });
+            }}
+          />
+        </div>
+      </div>
 
       <BulkActionBar
         selectedCount={selection.selectedIds.size}
@@ -211,91 +222,114 @@ export function SubmissionsTable() {
         onClear={() => setSelection((s) => selectionReducer(s, { type: 'CLEAR' }))}
       />
 
-      <table className="chq-submissions-table">
-        <thead>
-          <tr>
-            <th>
-              <input
-                type="checkbox"
-                aria-label="Select all on page"
-                checked={isPageFullySelected(selection, pageIds)}
-                ref={(el) => {
-                  if (el) el.indeterminate = isPagePartiallySelected(selection, pageIds);
-                }}
-                onChange={() => setSelection((s) => selectionReducer(s, { type: 'TOGGLE_PAGE', pageIds }))}
-              />
-            </th>
-            <th>Ref</th>
-            <th>Title</th>
-            <th>Speakers</th>
-            <th>Tracks</th>
-            <th>Status</th>
-            <th>Submitted</th>
-            {shownColumns.map((col) => (
-              <th key={col.fieldId}>{col.label}</th>
-            ))}
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {loading && (
+      <div className="chq-submissions-table-wrap">
+        <table className="chq-table chq-submissions-table">
+          <thead>
             <tr>
-              <td colSpan={8 + shownColumns.length}>Loading...</td>
+              <th>
+                <input
+                  type="checkbox"
+                  className="chq-check"
+                  aria-label="Select all on page"
+                  checked={isPageFullySelected(selection, pageIds)}
+                  ref={(el) => {
+                    if (el) el.indeterminate = isPagePartiallySelected(selection, pageIds);
+                  }}
+                  onChange={() => setSelection((s) => selectionReducer(s, { type: 'TOGGLE_PAGE', pageIds }))}
+                />
+              </th>
+              <th>Ref</th>
+              <th>Title</th>
+              <th>Speakers</th>
+              <th>Tracks</th>
+              <th>Status</th>
+              <th>Submitted</th>
+              {shownColumns.map((col) => (
+                <th key={col.fieldId}>{col.label}</th>
+              ))}
+              <th></th>
             </tr>
-          )}
-          {!loading && items.length === 0 && (
-            <tr>
-              <td colSpan={8 + shownColumns.length}>No submissions match the current filters.</td>
-            </tr>
-          )}
-          {!loading &&
-            items.map((item) => (
-              <tr key={item.id}>
-                <td>
-                  <input
-                    type="checkbox"
-                    aria-label={`Select ${item.ref}`}
-                    checked={selection.selectedIds.has(item.id)}
-                    onChange={() => setSelection((s) => selectionReducer(s, { type: 'TOGGLE_ROW', id: item.id }))}
-                  />
-                </td>
-                <td>{item.ref}</td>
-                <td>
-                  <Link to={`/submissions/${item.id}`}>{item.title}</Link>
-                </td>
-                <td>{item.speakers.map((s) => s.name).join(', ')}</td>
-                <td>{trackNames(item.trackIds, tracks)}</td>
-                <td>
-                  <span className={`chq-status-pill chq-status-${item.status}`}>{STATUS_LABELS[item.status]}</span>
-                </td>
-                <td>{formatDate(item.submittedAt)}</td>
-                {shownColumns.map((col) => (
-                  <td key={col.fieldId}>{formatAnswerValue(item.answers?.[col.fieldId])}</td>
-                ))}
-                <td>
-                  <button type="button" disabled={cloningId === item.id} onClick={() => cloneSubmission(item.id)}>
-                    Clone
-                  </button>
+          </thead>
+          <tbody>
+            {loading && (
+              <tr>
+                <td className="chq-submissions-loading" colSpan={8 + shownColumns.length}>
+                  Loading...
                 </td>
               </tr>
-            ))}
-        </tbody>
-      </table>
+            )}
+            {!loading && items.length === 0 && (
+              <tr>
+                <td className="chq-submissions-empty" colSpan={8 + shownColumns.length}>
+                  No submissions match the current filters.
+                </td>
+              </tr>
+            )}
+            {!loading &&
+              items.map((item) => (
+                <tr key={item.id}>
+                  <td>
+                    <input
+                      type="checkbox"
+                      className="chq-check"
+                      aria-label={`Select ${item.ref}`}
+                      checked={selection.selectedIds.has(item.id)}
+                      onChange={() => setSelection((s) => selectionReducer(s, { type: 'TOGGLE_ROW', id: item.id }))}
+                    />
+                  </td>
+                  <td className="chq-submissions-table-ref">{item.ref}</td>
+                  <td>
+                    <Link to={`/submissions/${item.id}`} className="chq-submissions-table-title">
+                      {item.title}
+                    </Link>
+                  </td>
+                  <td>{item.speakers.map((s) => s.name).join(', ')}</td>
+                  <td className="chq-submissions-table-muted">{trackNames(item.trackIds, tracks)}</td>
+                  <td>
+                    <span className={`chq-flag chq-status-${item.status}`}>{STATUS_LABELS[item.status]}</span>
+                  </td>
+                  <td className="chq-submissions-table-muted">{formatDate(item.submittedAt)}</td>
+                  {shownColumns.map((col) => (
+                    <td key={col.fieldId}>{formatAnswerValue(item.answers?.[col.fieldId])}</td>
+                  ))}
+                  <td>
+                    <button
+                      type="button"
+                      className="chq-submissions-clone"
+                      disabled={cloningId === item.id}
+                      onClick={() => cloneSubmission(item.id)}
+                    >
+                      Clone
+                    </button>
+                  </td>
+                </tr>
+              ))}
+          </tbody>
+        </table>
+      </div>
 
-      <div className="chq-pagination">
-        <button type="button" disabled={filters.page <= 1} onClick={() => setFilters((f) => ({ ...f, page: f.page - 1 }))}>
-          Previous
-        </button>
-        <span>
+      <div className="chq-submissions-pagination">
+        <span className="chq-submissions-pagination-summary">
           Page {filters.page} &middot; {total} total
         </span>
-        <button
-          type="button"
-          disabled={filters.page * filters.perPage >= total}
-          onClick={() => setFilters((f) => ({ ...f, page: f.page + 1 }))}
-        >
-          Next
-        </button>
+        <div className="chq-submissions-pagination-actions">
+          <button
+            type="button"
+            className="chq-btn chq-btn-secondary"
+            disabled={filters.page <= 1}
+            onClick={() => setFilters((f) => ({ ...f, page: f.page - 1 }))}
+          >
+            Previous
+          </button>
+          <button
+            type="button"
+            className="chq-btn chq-btn-secondary"
+            disabled={filters.page * filters.perPage >= total}
+            onClick={() => setFilters((f) => ({ ...f, page: f.page + 1 }))}
+          >
+            Next
+          </button>
+        </div>
       </div>
     </div>
   );
