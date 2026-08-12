@@ -14,6 +14,7 @@ import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { cleanup, render, screen, waitFor, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
+import { MemoryRouter } from 'react-router-dom';
 import { ContactsApp } from './ContactsApp';
 import { mockApi, listEnvelope } from '../../test-utils/mockApi';
 
@@ -61,7 +62,11 @@ describe('ContactsApp: New-contact dialog (DEC-597)', () => {
       'POST /api/v1/contacts': { status: 201, body: { id: 'ct-new', firstName: 'Nora', lastName: 'North', email: 'nora@example.com' } },
     });
 
-    render(<ContactsApp />);
+    render(
+      <MemoryRouter initialEntries={['/contacts']}>
+        <ContactsApp />
+      </MemoryRouter>,
+    );
 
     const trigger = await screen.findByRole('button', { name: 'New contact' });
     fireEvent.click(trigger);
@@ -99,7 +104,11 @@ describe('ContactsApp: New-contact dialog (DEC-597)', () => {
       'GET /api/v1/contacts': listEnvelope([]),
     });
 
-    render(<ContactsApp />);
+    render(
+      <MemoryRouter initialEntries={['/contacts']}>
+        <ContactsApp />
+      </MemoryRouter>,
+    );
     fireEvent.click(await screen.findByRole('button', { name: 'New contact' }));
     await screen.findByRole('dialog', { name: 'New contact' });
 

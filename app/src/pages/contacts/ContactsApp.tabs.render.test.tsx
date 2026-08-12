@@ -13,6 +13,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, waitFor, fireEvent, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
+import { MemoryRouter } from 'react-router-dom';
 import { ContactsApp } from './ContactsApp';
 import { mockApi, listEnvelope } from '../../test-utils/mockApi';
 import type { ContactDetail, ContactListItem, DuplicateGroup, Segment } from './types';
@@ -85,7 +86,11 @@ describe('ContactsApp render smoke: directory tab', () => {
   it('renders the StatsStrip and the contacts list envelope', async () => {
     mockApi(baseRoutes());
 
-    render(<ContactsApp />);
+    render(
+      <MemoryRouter initialEntries={['/contacts']}>
+        <ContactsApp />
+      </MemoryRouter>,
+    );
 
     await waitFor(() => {
       expect(screen.getByText('Ada Lovelace' as unknown as string, { exact: false })).toBeTruthy();
@@ -103,7 +108,11 @@ describe('ContactsApp render smoke: duplicates tab', () => {
   it('renders a same-name+company duplicate group (DEC-143)', async () => {
     mockApi(baseRoutes());
 
-    render(<ContactsApp />);
+    render(
+      <MemoryRouter initialEntries={['/contacts']}>
+        <ContactsApp />
+      </MemoryRouter>,
+    );
 
     fireEvent.click(screen.getByRole('tab', { name: 'Duplicates' }));
 
@@ -122,7 +131,11 @@ describe('ContactsApp render smoke: segments tab', () => {
   it('renders the saved segment list', async () => {
     mockApi(baseRoutes());
 
-    render(<ContactsApp />);
+    render(
+      <MemoryRouter initialEntries={['/contacts']}>
+        <ContactsApp />
+      </MemoryRouter>,
+    );
 
     fireEvent.click(screen.getByRole('tab', { name: 'Segments' }));
 
@@ -139,7 +152,11 @@ describe('ContactsApp render smoke: ContactDrawer', () => {
       'GET /api/v1/contacts/ct1': FULL_CONTACT,
     });
 
-    render(<ContactsApp />);
+    render(
+      <MemoryRouter initialEntries={['/contacts']}>
+        <ContactsApp />
+      </MemoryRouter>,
+    );
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Ada Lovelace' })).toBeInTheDocument();
@@ -174,7 +191,11 @@ describe('ContactsApp: headshot upload does not discard unsaved drawer edits (DE
       },
     });
 
-    render(<ContactsApp />);
+    render(
+      <MemoryRouter initialEntries={['/contacts']}>
+        <ContactsApp />
+      </MemoryRouter>,
+    );
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Ada Lovelace' })).toBeInTheDocument();
@@ -215,7 +236,11 @@ describe('ContactsApp render smoke: ImportWizard', () => {
   it('renders the first step (upload/paste CSV)', async () => {
     mockApi(baseRoutes());
 
-    render(<ContactsApp />);
+    render(
+      <MemoryRouter initialEntries={['/contacts']}>
+        <ContactsApp />
+      </MemoryRouter>,
+    );
 
     fireEvent.click(screen.getByRole('button', { name: 'Import CSV' }));
 
@@ -233,7 +258,11 @@ describe('ContactsApp render smoke: BulkEmailModal over a selection', () => {
       [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
     });
 
-    render(<ContactsApp />);
+    render(
+      <MemoryRouter initialEntries={['/contacts']}>
+        <ContactsApp />
+      </MemoryRouter>,
+    );
 
     await waitFor(() => {
       expect(screen.getByLabelText('Select Ada Lovelace')).toBeInTheDocument();

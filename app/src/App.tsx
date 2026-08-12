@@ -20,6 +20,7 @@ const pageLoaders = {
   agenda: () => import('./pages/Agenda').then((m) => ({ default: m.AgendaPage })),
   comms: () => import('./pages/Comms').then((m) => ({ default: m.CommsPage })),
   contacts: () => import('./pages/Contacts').then((m) => ({ default: m.ContactsPage })),
+  contactsMerge: () => import('./pages/contacts/MergePage').then((m) => ({ default: m.MergePage })),
   settings: () => import('./pages/Settings').then((m) => ({ default: m.SettingsPage })),
   submissionDetail: () =>
     import('./pages/submissions/SubmissionDetailPage').then((m) => ({ default: m.SubmissionDetailPage })),
@@ -35,6 +36,7 @@ const ContentPage = lazy(pageLoaders.content);
 const AgendaPage = lazy(pageLoaders.agenda);
 const CommsPage = lazy(pageLoaders.comms);
 const ContactsPage = lazy(pageLoaders.contacts);
+const ContactsMergePage = lazy(pageLoaders.contactsMerge);
 const SettingsPage = lazy(pageLoaders.settings);
 const SubmissionDetailPage = lazy(pageLoaders.submissionDetail);
 const NotFoundPage = lazy(pageLoaders.notFound);
@@ -263,6 +265,9 @@ export function App() {
                 {NAV_SECTIONS.map((section) => (
                   <Route key={section.path} path={section.path} element={section.element} />
                 ))}
+                {/* DEC-684: contact merge lives under Contacts (route only — no
+                    new top-nav section, mirrors /submissions/forms below). */}
+                <Route path="/contacts/merge" element={<ContactsMergePage />} />
                 {/* DEC-033: form builder lives under Submissions (route only — no new top-nav section). */}
                 <Route path="/submissions/forms" element={<FormsPage />} />
                 {/* DEC-045: submission detail. React Router v6 ranks the static

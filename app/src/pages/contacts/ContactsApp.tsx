@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { apiGet, apiList, ApiError } from '../../lib/api';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { BulkEmailModal } from './BulkEmailModal';
@@ -39,10 +40,23 @@ const PANEL_LABELS: Record<Panel, string> = {
   pipeline: 'Pipeline',
 };
 
+// DEC-684: after a merge, MergePage navigates back to /contacts with
+// { state: { panel: 'duplicates', notice: 'Contacts merged.' } } so the
+// directory lands on the Duplicates tab with the merge confirmation — a
+// one-shot read, captured on the render that mounts this component and
+// cleared immediately after so a later tab switch never replays it.
+interface NavState {
+  panel?: Panel;
+  notice?: string;
+}
+
 export function ContactsApp() {
   const { eventId } = useCurrentEvent();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const navState = location.state as NavState | null;
 
-  const [panel, setPanel] = useState<Panel>('directory');
+  const [panel, setPanel] = useState<Panel>(navState?.panel ?? 'directory');
   const [stats, setStats] = useState<ContactStats | null>(null);
   const [items, setItems] = useState<ContactListItem[]>([]);
   const [total, setTotal] = useState(0);
@@ -64,6 +78,14 @@ export function ContactsApp() {
   function reload() {
     setRefreshKey((k) => k + 1);
   }
+
+  useEffect(() => {
+    // Clear the one-shot nav state (panel + notice) immediately after
+    // mount so switching away from Duplicates and back never replays a
+    // stale merge confirmation.
+    if (navState) navigate(location.pathname, { replace: true, state: null });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     apiGet<ContactStats>('/contacts/stats')
@@ -131,6 +153,23 @@ export function ContactsApp() {
 
       {error && <div className="chq-error" role="alert">{error}</div>}
 
+      {/* DEC-684: list search sits in the toolbar, directly under the
+          title — not buried inside the table component. First control in
+          this row, ahead of any other filter control that lands here. */}
+      <div className="chq-toolbar chq-contacts-search-toolbar">
+        <input
+          className="chq-input chq-contacts-search"
+          type="search"
+          placeholder="Search name, email or company…"
+          aria-label="Search contacts"
+          value={q}
+          onChange={(e) => {
+            setQ(e.target.value);
+            setPage(1);
+          }}
+        />
+      </div>
+
       <div className="chq-toolbar chq-contacts-tabstrip-row">
         <div className="chq-chipstrip" role="tablist" aria-label="Contacts view">
           {(Object.keys(PANEL_LABELS) as Panel[]).map((key) => (
@@ -166,16 +205,11 @@ export function ContactsApp() {
             total={total}
             page={page}
             perPage={PER_PAGE}
-            q={q}
             rules={rules}
             segmentId={segmentId}
             segments={segments}
             selection={selection}
             loading={loading}
-            onChangeQ={(next) => {
-              setQ(next);
-              setPage(1);
-            }}
             onChangeRules={(next) => {
               setRules(next);
               setPage(1);
@@ -192,7 +226,7 @@ export function ContactsApp() {
         </>
       )}
 
-      {panel === 'duplicates' && <DuplicatesView onMerged={reload} />}
+      {panel === 'duplicates' && <DuplicatesView onMerged={reload} initialNotice={navState?.notice} />}
 
       {panel === 'segments' && (
         <SegmentsPanel

@@ -10,13 +10,11 @@ interface Props {
   total: number;
   page: number;
   perPage: number;
-  q: string;
   rules: SegmentRule[];
   segmentId: string;
   segments: Segment[];
   selection: SelectionState;
   loading: boolean;
-  onChangeQ: (q: string) => void;
   onChangeRules: (rules: SegmentRule[]) => void;
   onChangeSegment: (segmentId: string) => void;
   onChangePage: (page: number) => void;
@@ -30,13 +28,11 @@ export function ContactsTable({
   total,
   page,
   perPage,
-  q,
   rules,
   segmentId,
   segments,
   selection,
   loading,
-  onChangeQ,
   onChangeRules,
   onChangeSegment,
   onChangePage,
@@ -50,15 +46,7 @@ export function ContactsTable({
 
   return (
     <div className="chq-contacts-table-wrap">
-      <div className="chq-toolbar chq-contacts-search-toolbar">
-        <input
-          className="chq-input chq-contacts-search"
-          type="search"
-          placeholder="Search name, email or company…"
-          aria-label="Search contacts"
-          value={q}
-          onChange={(e) => onChangeQ(e.target.value)}
-        />
+      <div className="chq-toolbar">
         <label className="chq-contacts-segment-select">
           Segment
           <select className="chq-select" aria-label="Segment filter" value={segmentId} onChange={(e) => onChangeSegment(e.target.value)}>

@@ -72,6 +72,10 @@ export const ROUTE_MANIFEST: readonly RouteManifestEntry[] = [
   { path: "/admin/agenda", role: "organizer" },
   { path: "/admin/comms", role: "organizer" },
   { path: "/admin/contacts", role: "organizer" },
+  // DEC-684: contact merge is a page at its own URL (app/src/pages/contacts/
+  // MergePage.tsx), reached from the Duplicates tab -- ids travel in the
+  // query string, not a path param, so no seed-id substitution is needed.
+  { path: "/admin/contacts/merge", role: "organizer" },
   { path: "/admin/settings", role: "organizer" },
 
   // --- Organizer review tree (app/src/pages/Review.tsx, me.role !== 'reviewer') ---
