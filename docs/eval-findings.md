@@ -305,3 +305,11 @@ mock shows criteria but not their editing flow; prod's invented flow is unintuit
     pipeline board flashes "0 people · Loading…" before data (suppress empty-state
     until loaded); seed must not mark a submission Accepted while it sits in an open
     blind round (DEC-591 refinement).
+
+19. (User QA, Comms + app-wide) **Button styles are inconsistent** — the system defines
+    exactly THREE tiers (primary #4E5C31 filled/700; secondary #EFEBDF + #CFC7B7
+    border/600; tertiary olive text/700) and surfaces mix paddings, radii, and hybrid
+    styles beyond them. Fix like ModalFrame (DEC-651): ONE shared button vocabulary
+    (chq-btn tier classes), migrate every button to it, and lock with a source scan —
+    no inline button styling, no per-page button CSS. The 44px phone floor applies to
+    every tier (the ~22px Edit/Delete links in phone Templates are the worst case).
