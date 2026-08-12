@@ -16,6 +16,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { PERF_EVENT_ID, PERF_EVENT_SLUG, PERF_TOPICS } from "./perf-seed-lib";
+import { MAX_PUBLIC_PAGE, MAX_PUBLIC_ROWS } from "../src/server/repo/public/bounds";
 import {
   PERF_P95_BUDGET_MS,
   assertContainsVevent,
@@ -385,6 +386,42 @@ async function main(): Promise<void> {
           const body = await res.clone().text();
           if (body.length === 0) {
             throw new Error("public speakers page at row ceiling: expected non-empty rendered body");
+          }
+        }
+        return res;
+      },
+    },
+    {
+      // task-w23-f: DEC-477/DEC-453 — the raised public ceiling must be
+      // MEASURED, not merely graded from code presence. Reads MAX_PUBLIC_PAGE
+      // from src/server/repo/public/bounds.ts (the single source, DEC-487)
+      // rather than a hardcoded literal, so a future ceiling change is
+      // measured automatically without editing this file.
+      name: "public speakers deepest page",
+      cls: "public",
+      run: async () => {
+        const res = await fetch(`${PERF_URL}/e/${PERF_EVENT_SLUG}/speakers?page=${MAX_PUBLIC_PAGE}`);
+        if (res.ok) {
+          const body = await res.clone().text();
+          if (body.length === 0) {
+            throw new Error("public speakers deepest page: expected non-empty rendered body");
+          }
+        }
+        return res;
+      },
+    },
+    {
+      // task-w23-f: DEC-477/DEC-453 — the deepest row-ceiling page reachable
+      // via the sessions surface's `limit` override (1..100), i.e. the last
+      // page before boundedRowLimit's MAX_PUBLIC_ROWS clamp kicks in.
+      name: "public sessions deepest rows",
+      cls: "public",
+      run: async () => {
+        const res = await fetch(`${PERF_URL}/e/${PERF_EVENT_SLUG}/sessions?limit=100&page=${MAX_PUBLIC_ROWS / 100}`);
+        if (res.ok) {
+          const body = await res.clone().text();
+          if (body.length === 0) {
+            throw new Error("public sessions deepest rows: expected non-empty rendered body");
           }
         }
         return res;
