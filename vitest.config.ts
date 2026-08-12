@@ -7,6 +7,8 @@ import react from "@vitejs/plugin-react";
 // DEC-378: useEscapeKey.test.ts also needs a real `window` (renderHook +
 // dispatchEvent), so it gets the same jsdom treatment despite its plain
 // .test.ts name.
+// w6-a: useNavExceptions.test.ts needs the same (renderHook + window.fetch
+// stubbing + localStorage), also a plain .test.ts name.
 export default defineConfig({
   plugins: [react()],
   test: {
@@ -14,6 +16,7 @@ export default defineConfig({
     environmentMatchGlobs: [
       ["app/src/**/*.render.test.tsx", "jsdom"],
       ["app/src/lib/useEscapeKey.test.ts", "jsdom"],
+      ["app/src/lib/useNavExceptions.test.ts", "jsdom"],
     ],
     include: ["test/**/*.test.ts", "app/src/**/*.test.ts", "app/src/**/*.render.test.tsx"],
   },

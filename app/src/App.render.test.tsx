@@ -143,7 +143,10 @@ describe('Phone tab bar (DEC-381)', () => {
     expect(within(tabbar).getByRole('button', { name: /^More/ })).toBeInTheDocument();
   });
 
-  it('shows Review alone with no More control for a reviewer', async () => {
+  it('shows Review alone plus a More control for a reviewer, whose sheet carries Sign out', async () => {
+    // DEC-392: reviewers have exactly one section (Review), so the More
+    // sheet is their only route to Sign out once the phone header drops
+    // the desktop identity block's Sign out button.
     mockApi({
       'GET /api/v1/me': { userId: 'u-2', email: 'reviewer@example.com', role: 'reviewer', orgId: 'org-1' },
       'GET /api/v1/events': { items: [], total: 0, page: 1, perPage: 50 },
@@ -151,11 +154,15 @@ describe('Phone tab bar (DEC-381)', () => {
 
     render(<App />);
 
-    await waitFor(() => {
-      const tabbar = screen.getByRole('navigation', { name: 'Primary, phone' });
-      expect(within(tabbar).getByRole('link', { name: /^Review/ })).toBeInTheDocument();
-      expect(within(tabbar).queryByRole('button', { name: /^More/ })).not.toBeInTheDocument();
-    });
+    const tabbar = await screen.findByRole('navigation', { name: 'Primary, phone' });
+    expect(within(tabbar).getByRole('link', { name: /^Review/ })).toBeInTheDocument();
+    const moreButton = within(tabbar).getByRole('button', { name: /^More/ });
+    expect(moreButton).toBeInTheDocument();
+
+    moreButton.click();
+
+    const dialog = await screen.findByRole('dialog', { name: 'More' });
+    expect(within(dialog).getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
   });
 
   it('reveals a Sign out control in the More sheet, which stays closed by default', async () => {

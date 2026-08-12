@@ -9,6 +9,7 @@
 import { useEffect, useState } from 'react';
 import { apiGet } from './api';
 import { useCurrentEvent } from './useCurrentEvent';
+import { useMe } from './useMe';
 
 interface OverviewAggregatesPayload {
   speakers: { overdueAssignments: number };
@@ -24,10 +25,14 @@ const EMPTY: NavExceptions = { late: null, clash: null };
 
 export function useNavExceptions(): NavExceptions {
   const { eventId } = useCurrentEvent();
+  const { me, loading: meLoading } = useMe();
   const [exceptions, setExceptions] = useState<NavExceptions>(EMPTY);
 
   useEffect(() => {
-    if (!eventId) {
+    // DEC-395: reviewers have no access to overview aggregates and no use
+    // for late/clash badges (their sole section is Review) — only issue
+    // the request once role is known to be 'organizer'.
+    if (meLoading || me?.role !== 'organizer' || !eventId) {
       setExceptions(EMPTY);
       return;
     }
@@ -46,7 +51,7 @@ export function useNavExceptions(): NavExceptions {
     return () => {
       cancelled = true;
     };
-  }, [eventId]);
+  }, [eventId, meLoading, me?.role]);
 
   return exceptions;
 }

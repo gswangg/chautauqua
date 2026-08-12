@@ -114,6 +114,8 @@ a:hover {
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--chq-muted);
+  flex-wrap: wrap;
+  min-width: 0;
 }
 
 .chq-wordmark {
@@ -173,8 +175,15 @@ a:hover {
   }
 
   .chq-nav {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
+    display: none;
+  }
+
+  .chq-header-identity .chq-meta {
+    display: none;
+  }
+
+  .chq-header-identity .chq-btn-tertiary {
+    display: none;
   }
 
   .chq-tabbar {
