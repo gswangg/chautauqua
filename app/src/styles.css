@@ -477,6 +477,21 @@ a:hover {
   color: var(--chq-brand-hover);
 }
 
+/* DEC-577: shared segmented-button-group shell -- a <select> replaced by a
+   row of .chq-btn toggles, the active one filled/primary and the rest
+   outline/secondary (active state carried by fill + aria-pressed, never
+   colour alone). Per-page modules opt a <select> into this markup; the
+   class itself lives here once. */
+.chq-segmented {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chq-segmented .chq-btn {
+  flex: 1 1 auto;
+}
+
 .chq-input,
 .chq-select,
 .chq-textarea {
@@ -647,6 +662,15 @@ a:hover {
   }
 
   .chq-btn-tertiary {
+    border-radius: var(--chq-r-ctl-phone);
+  }
+
+  .chq-segmented {
+    flex-direction: column;
+  }
+
+  .chq-segmented .chq-btn {
+    width: 100%;
     border-radius: var(--chq-r-ctl-phone);
   }
 }

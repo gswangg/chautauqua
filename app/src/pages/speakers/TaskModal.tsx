@@ -107,16 +107,24 @@ export function TaskModal({ onCancel, onSubmit, forms }: TaskModalProps) {
 
         {error && <div className="chq-error">{error}</div>}
 
-        <label className="chq-speakers-modal-field">
-          <span className="chq-speakers-modal-label">Kind</span>
-          <select className="chq-select" value={kind} onChange={(e) => setKind(e.target.value as TaskKind)}>
+        <div className="chq-speakers-modal-field">
+          <span className="chq-speakers-modal-label" id="task-kind-label">
+            Kind
+          </span>
+          <div className="chq-segmented" role="group" aria-label="Kind">
             {TASK_KINDS.map((k) => (
-              <option key={k} value={k}>
+              <button
+                key={k}
+                type="button"
+                className={`chq-btn ${kind === k ? 'chq-btn-primary' : 'chq-btn-secondary'}`}
+                aria-pressed={kind === k}
+                onClick={() => setKind(k)}
+              >
                 {kindLabel(k)}
-              </option>
+              </button>
             ))}
-          </select>
-        </label>
+          </div>
+        </div>
 
         <label className="chq-speakers-modal-field">
           <span className="chq-speakers-modal-label">Task</span>

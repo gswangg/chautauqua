@@ -190,16 +190,8 @@
 
 /* DEC-577: the decision status control is a segmented button group, not a
    <select> -- the active status is the one filled/primary button, the other
-   two stay outline/secondary. */
-.chq-segmented {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.chq-segmented .chq-btn {
-  flex: 1 1 auto;
-}
+   two stay outline/secondary. The .chq-segmented base shell lives once in
+   ../../styles.css (w3-j) and is reused here. */
 
 /* Speaker card: name, title/company, email -- same numbered-section rule
    treatment as every other aside/main section. min-width:0 lets the long
@@ -384,14 +376,13 @@
     overflow-wrap: anywhere;
   }
 
-  /* Decision panel buttons: full-width, phone control radius. */
-  .chq-segmented .chq-btn,
+  /* Decision panel buttons: full-width, phone control radius. .chq-segmented
+     itself stacks via the shared ../../styles.css phone rule (w3-j). */
   .chq-detail-decision-actions .chq-btn {
     width: 100%;
     border-radius: var(--chq-r-ctl-phone);
   }
 
-  .chq-segmented,
   .chq-detail-decision-actions {
     flex-direction: column;
   }

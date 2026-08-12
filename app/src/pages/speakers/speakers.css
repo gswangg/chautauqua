@@ -303,6 +303,15 @@
   line-height: 1.5;
 }
 
+/* DEC-599: 'Mark complete' / 'Ask for more' plus the one caption clause
+   confirming reopening never sends email. */
+.chq-speakers-response-status {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 /* Roster panel (add speaker / import CSV). */
 .chq-speakers-roster {
   display: flex;
