@@ -278,6 +278,27 @@ export async function createSubmissionTracks(
   );
 }
 
+/**
+ * The ONE submission_track writer for a full-set replace (DEC-598): delete
+ * every existing row for this submission, then insert the given set. Used by
+ * both the speaker portal-edit path (src/server/repo/portal-edit.ts) and the
+ * organizer PATCH /api/v1/submissions/:id path (src/routes/api/submissions.ts)
+ * so the two call sites never drift into two different "replace" semantics.
+ */
+export async function replaceSubmissionTracks(
+  db: Db,
+  submissionId: string,
+  trackIds: string[],
+): Promise<void> {
+  const now = new Date();
+  await db.delete(schema.submissionTrack).where(eq(schema.submissionTrack.submissionId, submissionId));
+  if (trackIds.length > 0) {
+    await db.insert(schema.submissionTrack).values(
+      trackIds.map((trackId) => ({ submissionId, trackId, createdAt: now })),
+    );
+  }
+}
+
 /** Only custom (non-locked) fields get submission_answer rows — locked
  * built-ins persist to real columns instead (DEC-016). DEC-541: one
  * set-based, atomic upsert per chunk — schema.ts declares a uniqueIndex over
