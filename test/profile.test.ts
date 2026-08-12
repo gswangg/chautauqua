@@ -88,6 +88,21 @@ describe("validateHeadshotUpload", () => {
     const result = validateHeadshotUpload({ filename: "me", sizeBytes: 1024 });
     expect(result.ok).toBe(false);
   });
+
+  // DEC-425: caps the attacker-controlled filename length before extension lookup.
+  it("rejects a filename over MAX_NAME_LENGTH (200) with an InvalidUpload", () => {
+    const filename = "x".repeat(201) + ".png";
+    const result = validateHeadshotUpload({ filename, sizeBytes: 1024 });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.fields?.headshot).toBeDefined();
+  });
+
+  it("accepts a filename exactly AT MAX_NAME_LENGTH (200) (off-by-one)", () => {
+    const filename = "x".repeat(196) + ".png"; // 196 + 4 = 200
+    expect(filename.length).toBe(200);
+    const result = validateHeadshotUpload({ filename, sizeBytes: 1024 });
+    expect(result.ok).toBe(true);
+  });
 });
 
 // ---------------------------------------------------------------------------
