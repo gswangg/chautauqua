@@ -98,7 +98,7 @@ export const AUTH_CSS = `
   .chq-auth-footer-links { display: flex; gap: 16px; flex-wrap: wrap; }
   .chq-auth-footer-links a { font-size: 14px; font-weight: 700; min-height: 44px; display: inline-flex; align-items: center; }
 
-  @media (max-width: 480px) {
+  @media (max-width: 700px) {
     body { padding: 0; }
     .chq-auth-card {
       max-width: none;

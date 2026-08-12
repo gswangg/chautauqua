@@ -97,7 +97,7 @@
 /* Phone (< 700px): the rail is a full-width list of section links; picking
    one hides the list and shows only that section plus a back control.
    Component state only — see Settings.tsx's `active`/data-drilled. */
-@media (max-width: 699px) {
+@media (max-width: 700px) {
   .chq-settings-layout {
     display: block;
   }
