@@ -26,9 +26,10 @@ import { findConflicts, type PlacedSession } from "../../domain/schedule";
 import { formatRef } from "../../domain/ids";
 import { chunkIds } from "../../lib/chunk";
 import { DEFAULT_AUTO_SCHEDULE_PARAMS } from "./agenda";
-import { DEC_370, DEC_531 } from "../../decisions";
+import { DEC_370, DEC_531, DEC_704 } from "../../decisions";
 void DEC_370;
 void DEC_531;
+void DEC_704;
 
 export * from "./overview/types";
 export * from "./overview/aggregate";
@@ -86,12 +87,16 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number): 
   const evaluationsSubmitted = Number(evaluationsAggRows[0]?.submitted ?? 0);
 
   // --- Evaluation plan close date: soonest non-null across the event's
-  // plans (DEC-370 deadlines strip).
+  // plans (DEC-370 deadlines strip), carrying that plan's currentRound
+  // (DEC-704) so the "Review wave" cell can name its round number.
   const planCloseRows = await db
-    .select({ closeDate: sql<number | null>`min(${schema.evaluationPlan.closeDate})` })
+    .select({ closeDate: schema.evaluationPlan.closeDate, currentRound: schema.evaluationPlan.currentRound })
     .from(schema.evaluationPlan)
-    .where(eq(schema.evaluationPlan.eventId, eventId));
-  const planCloseDate = planCloseRows[0]?.closeDate == null ? null : Number(planCloseRows[0].closeDate);
+    .where(and(eq(schema.evaluationPlan.eventId, eventId), sql`${schema.evaluationPlan.closeDate} is not null`))
+    .orderBy(asc(schema.evaluationPlan.closeDate))
+    .limit(1);
+  const planCloseDate = planCloseRows[0]?.closeDate == null ? null : planCloseRows[0].closeDate.getTime();
+  const planRound = planCloseRows[0]?.currentRound ?? null;
 
   // --- Form close date: the default CFP form's close date (the only form
   // submit.ts and the public CFP treat as "the" form for the event).
@@ -475,7 +480,7 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number): 
     content,
     agenda,
     comms,
-    deadlines: { formCloseDate, nextTaskDueDate, planCloseDate, eventStartDate },
+    deadlines: { formCloseDate, nextTaskDueDate, planCloseDate, planRound, eventStartDate },
     overdueTasks,
     triage: triageQueue,
     contentApproval,

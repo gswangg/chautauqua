@@ -28,6 +28,10 @@ export interface OverviewDeadlines {
   formCloseDate: number | null;
   nextTaskDueDate: number | null;
   planCloseDate: number | null;
+  // DEC-704: the round of the plan that owns `planCloseDate` (the soonest
+  // non-null close date), so the "Review wave" cell can name it. Null when
+  // there's no plan with a close date to attribute a round to.
+  planRound: number | null;
   eventStartDate: number | null;
 }
 

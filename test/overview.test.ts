@@ -291,7 +291,7 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
       overrides.statusRows ?? [],
       overrides.planCount ?? [{ count: 0 }],
       overrides.evaluationsAgg ?? [{ expected: 0, submitted: 0 }],
-      overrides.planClose ?? [{ closeDate: null }],
+      overrides.planClose ?? [{ closeDate: null, currentRound: null }],
       overrides.formClose ?? [{ closeDate: null }],
       overrides.speakerAgg ?? [{ outstandingContacts: 0, overdue: 0, nextDue: null }],
       overrides.overdueDetail ?? [],
@@ -323,6 +323,7 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
       formCloseDate: null,
       nextTaskDueDate: null,
       planCloseDate: null,
+      planRound: null,
       eventStartDate: new Date("2027-03-10T00:00:00Z").getTime(),
     });
     expect(payload.overdueTasks).toEqual({ total: 0, rows: [] });
@@ -336,7 +337,7 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
     const db = makeFakeDb(
       emptyResponses({
         event: [{ recordPrefix: "DFC", startDate: null }],
-        planClose: [{ closeDate: 1_700_000_000_000 }],
+        planClose: [{ closeDate: new Date(1_700_000_000_000), currentRound: 2 }],
         formClose: [{ closeDate: null }],
       }),
     );
@@ -345,6 +346,7 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
       formCloseDate: null,
       nextTaskDueDate: null,
       planCloseDate: 1_700_000_000_000,
+      planRound: 2,
       eventStartDate: null,
     });
   });
@@ -429,7 +431,7 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
       [], // statusRows
       [{ count: 0 }], // planCount
       [{ expected: 0, submitted: 0 }], // evaluationsAgg
-      [{ closeDate: null }], // planClose
+      [{ closeDate: null, currentRound: null }], // planClose
       [{ closeDate: null }], // formClose
       [], // speakerAgg
       [], // overdueDetail

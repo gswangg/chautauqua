@@ -15,7 +15,7 @@ import type { OverviewPayload } from './types';
 
 function basePayload(): OverviewPayload {
   return {
-    deadlines: { formCloseDate: null, nextTaskDueDate: null, planCloseDate: null, eventStartDate: null },
+    deadlines: { formCloseDate: null, nextTaskDueDate: null, planCloseDate: null, planRound: null, eventStartDate: null },
     overdueTasks: { total: 0, rows: [] },
     triage: { total: 0, oldestSubmittedAt: null, rows: [] },
     contentApproval: { total: 0, reuploadedCount: 0, rows: [] },

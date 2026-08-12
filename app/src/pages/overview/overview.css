@@ -135,6 +135,12 @@
   padding: 9px 0 0;
 }
 
+.chq-overview-overflow {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 9px 0 0;
+}
+
 .chq-overview-row {
   display: grid;
   gap: 20px;
@@ -196,6 +202,8 @@
 }
 
 .chq-overview-row-actions-stacked {
+  display: flex;
+  flex-direction: column;
   margin-top: 11px;
   align-self: flex-start;
 }

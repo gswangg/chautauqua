@@ -19,6 +19,7 @@ function payload(overrides: Partial<OverviewPayload> = {}): OverviewPayload {
       formCloseDate: NOW + 6 * DAY,
       nextTaskDueDate: NOW + 2 * DAY,
       planCloseDate: NOW + 19 * DAY,
+      planRound: 2,
       eventStartDate: NOW + 94 * DAY,
     },
     overdueTasks: { total: 0, rows: [] },
@@ -97,26 +98,39 @@ describe('formatDeadlineValue', () => {
 });
 
 describe('buildDeadlineCells', () => {
-  it('orders nearest-first and marks the first cell as nearest', () => {
+  it('keeps the fixed reading order (CFP close, next task due, Review wave, Doors open) and marks only the nearest', () => {
     const cells = buildDeadlineCells(payload().deadlines, NOW);
-    expect(cells.map((c) => c.key)).toEqual(['nextTaskDueDate', 'formCloseDate', 'planCloseDate', 'eventStartDate']);
-    expect(cells[0]!.isNearest).toBe(true);
-    expect(cells.slice(1).every((c) => c.isNearest === false)).toBe(true);
+    expect(cells.map((c) => c.key)).toEqual(['formCloseDate', 'nextTaskDueDate', 'planCloseDate', 'eventStartDate']);
+    expect(cells.find((c) => c.key === 'nextTaskDueDate')!.isNearest).toBe(true);
+    expect(cells.filter((c) => c.key !== 'nextTaskDueDate').every((c) => c.isNearest === false)).toBe(true);
   });
 
-  it('sorts null deadlines to the end and does not mark them nearest', () => {
+  it('carries the round number onto the Review wave label', () => {
+    const cells = buildDeadlineCells(payload().deadlines, NOW);
+    expect(cells.find((c) => c.key === 'planCloseDate')!.label).toBe('Review wave 2');
+  });
+
+  it('falls back to the bare Review wave label when no round is attributed', () => {
     const cells = buildDeadlineCells(
-      { formCloseDate: null, nextTaskDueDate: NOW + 3 * DAY, planCloseDate: null, eventStartDate: null },
+      { formCloseDate: null, nextTaskDueDate: null, planCloseDate: NOW + 5 * DAY, planRound: null, eventStartDate: null },
       NOW,
     );
-    expect(cells[0]!.key).toBe('nextTaskDueDate');
-    expect(cells[0]!.isNearest).toBe(true);
-    expect(cells.slice(1).every((c) => c.value === null && c.isNearest === false)).toBe(true);
+    expect(cells.find((c) => c.key === 'planCloseDate')!.label).toBe('Review wave');
+  });
+
+  it('keeps the fixed order and marks the nearest even when nulls are interleaved', () => {
+    const cells = buildDeadlineCells(
+      { formCloseDate: null, nextTaskDueDate: NOW + 3 * DAY, planCloseDate: null, planRound: null, eventStartDate: null },
+      NOW,
+    );
+    expect(cells.map((c) => c.key)).toEqual(['formCloseDate', 'nextTaskDueDate', 'planCloseDate', 'eventStartDate']);
+    expect(cells.find((c) => c.key === 'nextTaskDueDate')!.isNearest).toBe(true);
+    expect(cells.filter((c) => c.key !== 'nextTaskDueDate').every((c) => c.value === null && c.isNearest === false)).toBe(true);
   });
 
   it('marks no cell nearest when every deadline is unset', () => {
     const cells = buildDeadlineCells(
-      { formCloseDate: null, nextTaskDueDate: null, planCloseDate: null, eventStartDate: null },
+      { formCloseDate: null, nextTaskDueDate: null, planCloseDate: null, planRound: null, eventStartDate: null },
       NOW,
     );
     expect(cells.every((c) => c.isNearest === false)).toBe(true);

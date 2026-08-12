@@ -252,13 +252,13 @@ export function OverviewPage() {
       <section className="chq-overview-section">
         <div className="chq-overview-section-header">
           <span className="chq-overview-section-label">01 — Overdue speaker tasks</span>
-          {payload.overdueTasks.total > 0 && (
+          {payload.overdueTasks.rows.length > 0 && (
             <button
               type="button"
               className="chq-overview-section-action chq-overview-remind-all"
               onClick={() => handleRemind(payload.overdueTasks.rows.map((r) => r.taskId))}
             >
-              Remind all {payload.overdueTasks.total}
+              Remind all {payload.overdueTasks.rows.length}
             </button>
           )}
         </div>
@@ -267,6 +267,13 @@ export function OverviewPage() {
         )}
         {payload.overdueTasks.rows.length === 0 && (
           <div className="chq-overview-empty">No overdue speaker tasks.</div>
+        )}
+        {payload.overdueTasks.total > payload.overdueTasks.rows.length && (
+          <div className="chq-overview-overflow">
+            <Link to="/speakers">
+              {payload.overdueTasks.total - payload.overdueTasks.rows.length} more overdue
+            </Link>
+          </div>
         )}
         {payload.overdueTasks.rows.map((row) => (
           <div key={row.assignmentId} className="chq-overview-row chq-overview-row-overdue">
