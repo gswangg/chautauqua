@@ -9,7 +9,7 @@ import type { AppEnv } from "../server/env";
 import { getFirstEventSlug } from "../server/repo/events";
 import { shouldMountDevMailbox } from "./dev/mailbox";
 import { ApiError } from "../server/http";
-import { DEC_049, DEC_012, DEC_005, DEC_268, DEC_295, DEC_382 } from "../decisions";
+import { DEC_049, DEC_012, DEC_005, DEC_268, DEC_295, DEC_382, DEC_546 } from "../decisions";
 import { ThemeStyles } from "../views/theme";
 import { ToolsStyles } from "./tools.css";
 
@@ -22,6 +22,7 @@ void DEC_005;
 void DEC_268;
 void DEC_295;
 void DEC_382;
+void DEC_546;
 
 /** Fetches a static asset path from the ASSETS binding against the
  * request's own origin — building a fresh Request rather than mutating the
@@ -135,7 +136,7 @@ rootRoutes.get("/", async (c) => {
       portalHref="/portal"
       submitHref={slug ? `/submit/${slug}` : null}
       sessionsHref={slug ? `/e/${slug}/sessions` : null}
-      mailboxHref={shouldMountDevMailbox(c.env) ? "/dev/mailbox" : null}
+      mailboxHref={shouldMountDevMailbox(c.env) && c.var.auth?.role === "organizer" ? "/dev/mailbox" : null}
     />,
   );
 });

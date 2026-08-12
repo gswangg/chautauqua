@@ -81,6 +81,7 @@ function buildMailboxApp() {
   const app = new Hono<AppEnv>();
   app.use("*", async (c, next) => {
     c.set("db", {} as never);
+    c.set("auth", { userId: "u-1", role: "organizer", orgId: "org-1" });
     await next();
   });
   app.route("/", devMailboxRoutes);

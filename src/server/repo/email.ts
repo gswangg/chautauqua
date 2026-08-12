@@ -44,6 +44,8 @@ export interface EmailLogListParams {
   eventId?: string;
   contactId?: string;
   status?: string;
+  /** DEC-546: org-scopes the dev mailbox to the viewer's own org. */
+  orgId?: string;
   /** Case-insensitive substring match over subject or recipient email
    * (J5 Comms history tab search — DEC-013 ?q convention). */
   q?: string;
@@ -124,6 +126,7 @@ export async function listEmailLog(db: Db, params: EmailLogListParams): Promise<
   if (params.eventId) conditions.push(eq(schema.emailLog.eventId, params.eventId));
   if (params.contactId) conditions.push(eq(schema.emailLog.contactId, params.contactId));
   if (params.status) conditions.push(eq(schema.emailLog.status, params.status));
+  if (params.orgId) conditions.push(eq(schema.event.orgId, params.orgId));
   if (params.q && params.q.trim() !== "") {
     // DEC-506: escape via likeContains + ESCAPE '\\' so a literal `%`/`_`
     // in the query string can't widen into a wildcard match.
@@ -162,12 +165,15 @@ export async function listEmailLog(db: Db, params: EmailLogListParams): Promise<
   return { items: rows.map(toListRow), total };
 }
 
-export async function getEmailLogById(db: Db, id: string): Promise<EmailLogRow | null> {
+/** DEC-546: org-scoped — an id belonging to a different org's event returns
+ * null (indistinguishable from a nonexistent id) rather than leaking cross-
+ * org email content. */
+export async function getEmailLogById(db: Db, id: string, orgId: string): Promise<EmailLogRow | null> {
   const rows = await db
     .select(SELECTED_COLUMNS)
     .from(schema.emailLog)
     .innerJoin(schema.event, eq(schema.event.id, schema.emailLog.eventId))
-    .where(eq(schema.emailLog.id, id))
+    .where(and(eq(schema.emailLog.id, id), eq(schema.event.orgId, orgId)))
     .limit(1);
   const row = rows[0];
   return row ? toRow(row) : null;

@@ -16,6 +16,9 @@ import { clampPage, clampPerPage } from "../../lib/pagination";
 import { icsDownloadHeaders } from "../../mail/ics";
 import { ThemeStyles } from "../../views/theme";
 import { ToolsStyles } from "../tools.css";
+import { DEC_546 } from "../../decisions";
+
+void DEC_546;
 
 /** Pure mounting predicate (DEC-005, DEC-434): delegates to the one
  * isDevMode(env) predicate — DEV_MODE must be the exact string '1'.
@@ -165,12 +168,13 @@ function MailboxDetailPage(props: { row: NonNullable<Awaited<ReturnType<typeof g
 devMailboxRoutes.get("/dev/mailbox", async (c) => {
   const page = clampPage(c.req.query("page"));
   const perPage = clampPerPage(c.req.query("perPage"));
-  const { items, total } = await listEmailLog(c.var.db, { page, perPage });
+  // DEC-546: middleware guarantees an organizer here (guardDevMailbox).
+  const { items, total } = await listEmailLog(c.var.db, { page, perPage, orgId: c.var.auth!.orgId });
   return c.html(<MailboxListPage rows={items} total={total} page={page} perPage={perPage} />);
 });
 
 devMailboxRoutes.get("/dev/mailbox/:emailId/ics", async (c) => {
-  const row = await getEmailLogById(c.var.db, c.req.param("emailId"));
+  const row = await getEmailLogById(c.var.db, c.req.param("emailId"), c.var.auth!.orgId);
   if (!row || !row.icsText) {
     return c.text("Not found", 404);
   }
@@ -179,7 +183,7 @@ devMailboxRoutes.get("/dev/mailbox/:emailId/ics", async (c) => {
 });
 
 devMailboxRoutes.get("/dev/mailbox/:emailId", async (c) => {
-  const row = await getEmailLogById(c.var.db, c.req.param("emailId"));
+  const row = await getEmailLogById(c.var.db, c.req.param("emailId"), c.var.auth!.orgId);
   if (!row) {
     return c.text("Not found", 404);
   }

@@ -11,6 +11,10 @@ import { sessionLoader, noStoreApi } from "./middleware";
 import { registerErrorHandler } from "./http";
 import { shouldMountDevMailbox } from "../routes/dev/mailbox";
 import { bumpPublicVersionMiddleware } from "./pubcache";
+import { ApiError } from "./http";
+import { DEC_546 } from "../decisions";
+
+void DEC_546;
 
 /**
  * Builds the base Hono app with request-scoped db, the always-on session
@@ -53,16 +57,30 @@ export function createBaseApp(): Hono<AppEnv> {
  * of the route match and 404s (via c.notFound()) rather than delegating —
  * with DEV_MODE unset the routes are indistinguishable from not existing.
  *
+ * DEC-546: behind that existence check, /dev/mailbox is also organizer-only
+ * and org-scoped -- the wave-18 "public by design" disposition rested on a
+ * false premise (it rendered every /claim/<token>). The existence check
+ * (404) stays first and unchanged; the authz gate (redirect to /login when
+ * anonymous, 403 when not an organizer) only ever runs once DEV_MODE='1'
+ * has already been established, so it never leaks the routes' existence to
+ * a non-dev deployment.
+ *
  * This installs middleware guards only (app.use), not the sub-app mount
  * itself — index.ts still does `app.route("/", devMailboxRoutes)`.
  */
 export function guardDevMailbox(app: Hono<AppEnv>): void {
   app.use("/dev/mailbox", async (c, next) => {
     if (!shouldMountDevMailbox(c.env)) return c.notFound();
+    const auth = c.var.auth;
+    if (!auth) return c.redirect("/login", 302);
+    if (auth.role !== "organizer") throw new ApiError("forbidden", "Requires role 'organizer'");
     await next();
   });
   app.use("/dev/mailbox/*", async (c, next) => {
     if (!shouldMountDevMailbox(c.env)) return c.notFound();
+    const auth = c.var.auth;
+    if (!auth) return c.redirect("/login", 302);
+    if (auth.role !== "organizer") throw new ApiError("forbidden", "Requires role 'organizer'");
     await next();
   });
 }
