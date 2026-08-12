@@ -1,9 +1,6 @@
 // Shared shapes for the Comms SPA (J5, DEC-019). Matches src/routes/comms.ts.
-
-// The subset of the DEC-006 merge-field whitelist that compose can actually
-// resolve (due_date/task_list belong to the DEC-023 reminders pipeline, not
-// compose — showing them here would invite an unrenderable template).
-export const COMPOSE_MERGE_FIELDS = ['speaker_name', 'talk_title', 'event_name', 'portal_link', 'feedback'] as const;
+// DEC-660: the COMPOSE_MERGE_FIELDS vocabulary lives in ../../lib/merge-fields
+// (the one module that crosses the app/ -> src/ boundary), not here.
 
 export interface EmailTemplate {
   id: string;

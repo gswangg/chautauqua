@@ -87,9 +87,10 @@ export interface ImportResult {
   addedToEvent?: number;
 }
 
-export const BULK_EMAIL_MERGE_FIELDS = ['speaker_name', 'event_name', 'portal_link'] as const;
-
-export const BULK_EMAIL_RECIPIENT_CAP = 100;
+// DEC-660: the BULK_EMAIL_MERGE_FIELDS vocabulary and the recipient cap
+// (mirroring src/domain/compose.ts's MAX_COMPOSE_RECIPIENTS) live in
+// ../../lib/merge-fields (the one module that crosses the app/ -> src/
+// boundary), not here.
 
 // CRM sourcing pipeline (CRM-07/08, DEC-157): fixed five-stage kanban.
 export const PIPELINE_STAGES = ['identified', 'contacted', 'interested', 'confirmed', 'declined'] as const;

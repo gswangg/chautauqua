@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { apiDelete, apiList, apiPatch, apiPost, ApiError } from '../../lib/api';
-import { COMPOSE_MERGE_FIELDS, type EmailTemplate } from './types';
+import { COMPOSE_MERGE_FIELDS } from '../../lib/merge-fields';
+import type { EmailTemplate } from './types';
 
 interface DraftTemplate {
   name: string;
