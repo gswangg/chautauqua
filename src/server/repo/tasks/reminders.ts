@@ -92,7 +92,21 @@ export function buildReminderMessage(
   const header = renderTemplate("You have outstanding tasks for {event_name}:", {
     event_name: eventName,
   });
-  const taskLines = assignments.map((a) => {
+  // DEC-564: render in a fixed order so a preview and the send it previewed
+  // (and two sends of the same group) are byte-identical regardless of the
+  // caller's array order — dueDate ascending with null (no due date) last,
+  // then taskTitle ascending, then assignmentId ascending as the final
+  // tiebreak of record.
+  const sortedAssignments = [...assignments].sort((a, b) => {
+    if (a.dueDate !== b.dueDate) {
+      if (a.dueDate === null) return 1;
+      if (b.dueDate === null) return -1;
+      return a.dueDate - b.dueDate;
+    }
+    if (a.taskTitle !== b.taskTitle) return a.taskTitle.localeCompare(b.taskTitle);
+    return a.assignmentId.localeCompare(b.assignmentId);
+  });
+  const taskLines = sortedAssignments.map((a) => {
     if (a.dueDate === null) return `- ${a.taskTitle} — No due date`;
     // DEC-522: dueDate is a day label (UTC-midnight), not an instant — it
     // renders as the same calendar day for every reader regardless of the

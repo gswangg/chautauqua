@@ -157,16 +157,22 @@ export async function loadComposeSubmissions(
 ): Promise<ComposeSubmission[]> {
   if (submissionIds.length === 0) return [];
 
-  const submissionRows: { id: string; title: string }[] = [];
+  const submissionRows: { id: string; title: string; seq: number }[] = [];
   for (const batch of chunkIds(submissionIds)) {
     const batchRows = await db
-      .select({ id: schema.submission.id, title: schema.submission.title })
+      .select({ id: schema.submission.id, title: schema.submission.title, seq: schema.submission.seq })
       .from(schema.submission)
       .where(and(eq(schema.submission.eventId, eventId), inArray(schema.submission.id, batch)));
     submissionRows.push(...batchRows);
   }
 
   if (submissionRows.length === 0) return [];
+
+  // DEC-078 chunking means SQL order can't survive across batches, so the
+  // canonical order is re-established here in JS: submissions by seq asc,
+  // then each submission's participants by (order asc, contactId asc) — the
+  // DEC-562 people order the notify pipeline must reproduce across requests.
+  submissionRows.sort((a, b) => a.seq - b.seq || a.id.localeCompare(b.id));
 
   const foundIds = submissionRows.map((r) => r.id);
   const participantRows: {
@@ -175,6 +181,7 @@ export async function loadComposeSubmissions(
     firstName: string;
     lastName: string;
     email: string;
+    order: number;
   }[] = [];
   for (const batch of chunkIds(foundIds)) {
     const batchRows = await db
@@ -184,6 +191,7 @@ export async function loadComposeSubmissions(
         firstName: schema.contact.firstName,
         lastName: schema.contact.lastName,
         email: schema.contact.email,
+        order: schema.participant.order,
       })
       .from(schema.participant)
       .innerJoin(schema.contact, eq(schema.contact.id, schema.participant.contactId))
@@ -195,6 +203,7 @@ export async function loadComposeSubmissions(
       );
     participantRows.push(...batchRows);
   }
+  participantRows.sort((a, b) => a.order - b.order || a.contactId.localeCompare(b.contactId));
 
   return submissionRows.map((s) => ({
     id: s.id,
@@ -212,7 +221,7 @@ export async function listFeedbackComments(db: Db, submissionId: string): Promis
     .select({ comment: schema.evaluation.comment, submittedAt: schema.evaluation.submittedAt })
     .from(schema.evaluation)
     .where(eq(schema.evaluation.submissionId, submissionId))
-    .orderBy(asc(schema.evaluation.createdAt));
+    .orderBy(asc(schema.evaluation.createdAt), asc(schema.evaluation.id));
   return rows.filter((r) => r.submittedAt !== null && r.comment && r.comment.trim() !== "").map((r) => r.comment as string);
 }
 
@@ -235,7 +244,7 @@ export async function listFeedbackCommentsForSubmissions(db: Db, submissionIds: 
       })
       .from(schema.evaluation)
       .where(inArray(schema.evaluation.submissionId, batch))
-      .orderBy(asc(schema.evaluation.createdAt));
+      .orderBy(asc(schema.evaluation.createdAt), asc(schema.evaluation.id));
     for (const row of rows) {
       if (row.submittedAt === null || !row.comment || row.comment.trim() === "") continue;
       const existing = map.get(row.submissionId);
