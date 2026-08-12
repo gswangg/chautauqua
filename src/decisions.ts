@@ -390,3 +390,7 @@ export const DEC_384 = "The wave-3 render-sweep gate is log-only; its open items
 export const DEC_385 = "One phone switch (max-width: 700px) and one set of phone metrics for every stylesheet in the product";
 export const DEC_386 = "Phone cards come from CSS on the same markup, and a phone card shows exactly the desktop row's cells";
 export const DEC_387 = "The render sweep gains an admin mobile pass, advisory in the wave that introduces it";
+export const DEC_388 = "D1 bind values are primitives: a timestamp comparison inside a raw sql template interpolates epoch milliseconds, never a Date";
+export const DEC_389 = "A gate script reports; it never throws";
+export const DEC_390 = "The phone card transform adds no markup by default; ambiguous cells get a data-label mirrored from their own th";
+export const DEC_391 = "The two mock affordances DEC-380 and DEC-386 dropped are settled, not deferred";
