@@ -6,6 +6,40 @@ import { ThemeStyles, THEME_CSS } from "../src/views/theme";
 const REPO_ROOT = join(__dirname, "..");
 const STYLES_CSS_PATH = join(REPO_ROOT, "app/src/styles.css");
 const PAGES_DIR = join(REPO_ROOT, "app/src/pages");
+const APP_SRC_DIR = join(REPO_ROOT, "app/src");
+
+function listFilesWithExt(dir: string, ext: string): string[] {
+  const out: string[] = [];
+  for (const entry of readdirSync(dir)) {
+    const full = join(dir, entry);
+    const st = statSync(full);
+    if (st.isDirectory()) {
+      out.push(...listFilesWithExt(full, ext));
+    } else if (entry.endsWith(ext) && !entry.includes(".test.")) {
+      out.push(full);
+    }
+  }
+  return out;
+}
+
+function extractClassNameTokens(source: string): Set<string> {
+  const tokens = new Set<string>();
+  const classNameRe = /className=(\{`[^`]*`\}|\{"[^"]*"\}|"[^"]*"|\{[^}]*\})/g;
+  const tokenRe = /chq-[a-z0-9-]+/g;
+  let cm: RegExpExecArray | null;
+  while ((cm = classNameRe.exec(source))) {
+    const chunk = cm[1];
+    if (chunk === undefined) continue;
+    let tm: RegExpExecArray | null;
+    tokenRe.lastIndex = 0;
+    while ((tm = tokenRe.exec(chunk))) {
+      const token = tm[0];
+      if (token.endsWith("-")) continue;
+      tokens.add(token);
+    }
+  }
+  return tokens;
+}
 
 function readTokenNames(css: string): Set<string> {
   const names = new Set<string>();
@@ -196,5 +230,41 @@ describe("page stylesheets never redefine a DEC-368 shared class name (DEC-368)"
       }
     }
     expect(offenders).toEqual([]);
+  });
+});
+
+describe("DEC-379: styles.css closes the SPA's chq-* class vocabulary", () => {
+  function allDefinedCssClasses(): Set<string> {
+    const defined = new Set<string>();
+    const defRe = /\.(chq-[a-z0-9-]+)/g;
+    for (const file of listFilesWithExt(APP_SRC_DIR, ".css")) {
+      const css = readFileSync(file, "utf8");
+      let m: RegExpExecArray | null;
+      while ((m = defRe.exec(css))) {
+        const name = m[1];
+        if (name !== undefined) defined.add(name);
+      }
+    }
+    return defined;
+  }
+
+  it("every chq-* class referenced in a .tsx className has a rule somewhere under app/src/**/*.css", () => {
+    const defined = allDefinedCssClasses();
+    const missing: string[] = [];
+    for (const file of listFilesWithExt(APP_SRC_DIR, ".tsx")) {
+      const source = readFileSync(file, "utf8");
+      for (const token of extractClassNameTokens(source)) {
+        if (!defined.has(token)) {
+          missing.push(`${file}: ${token}`);
+        }
+      }
+    }
+    expect(missing).toEqual([]);
+  });
+
+  it("--chq-ink-strong is defined in both token files (DEC-379)", () => {
+    const stylesCss = readFileSync(STYLES_CSS_PATH, "utf8");
+    expect(stylesCss).toMatch(/--chq-ink-strong\s*:\s*#2e2a24/i);
+    expect(THEME_CSS).toMatch(/--chq-ink-strong\s*:\s*#2e2a24/i);
   });
 });

@@ -33,6 +33,7 @@ export const THEME_CSS = `
     --chq-surface-sunk: #EFEBDF;
     --chq-ink: #1B1D17;
     --chq-ink-2: #3F4237;
+    --chq-ink-strong: #2E2A24;
     --chq-muted: #565A4B;
     --chq-disabled: #8E8A7A;
     --chq-hairline: #E1DDCE;
@@ -133,7 +134,7 @@ export const THEME_CSS = `
   }
   .chq-btn-secondary {
     background: var(--chq-surface-sunk);
-    color: #2E2A24;
+    color: var(--chq-ink-strong);
     border: 1px solid var(--chq-border-strong);
     font-weight: 600;
   }
