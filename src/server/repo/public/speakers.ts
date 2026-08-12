@@ -8,7 +8,7 @@ import { DEC_258, DEC_418 } from "../../../decisions";
 import { chunkIds } from "../../../lib/chunk";
 import { visibleSubmissionConditions } from "./gates";
 import type { PublicSpeaker } from "./sessions";
-import { boundedRowLimit } from "./bounds";
+import { boundedRowLimit, boundedWindow } from "./bounds";
 import { likeContains } from "../like";
 
 // Compile-checked dependency marker: every speaker title/company read below
@@ -44,7 +44,7 @@ export interface PublicSpeakersPage {
 export async function getPublicSpeakers(
   db: Db,
   eventId: string,
-  opts: { q?: string | null; page: number; perPage: number },
+  opts: { q?: string | null; page: number; perPage: number; window?: boolean },
 ): Promise<PublicSpeakersPage> {
   const conditions = [eq(schema.submission.eventId, eventId), visibleSubmissionConditions()];
   const q = opts.q?.trim();
@@ -63,14 +63,24 @@ export async function getPublicSpeakers(
     );
   }
 
-  const idRows = await db
+  // DEC-516: `window` opts into a real one-page LIMIT+OFFSET (boundedWindow)
+  // for the paged JSON feeds; defaults to false so the HTML directory/
+  // gallery show-more list keeps getting boundedRowLimit's cumulative
+  // prefix. offset() is only chained when non-zero so page 1 stays the
+  // identical query shape either way (existing fake-db-chain harnesses stub
+  // .limit() as the terminal call).
+  const { limit, offset } = opts.window
+    ? boundedWindow(opts.page, opts.perPage)
+    : { limit: boundedRowLimit(opts.page, opts.perPage), offset: 0 };
+  const idQuery = db
     .selectDistinct({ contactId: schema.contact.id })
     .from(schema.participant)
     .innerJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
     .innerJoin(schema.submission, eq(schema.participant.submissionId, schema.submission.id))
     .where(and(...conditions))
     .orderBy(asc(schema.contact.lastName), asc(schema.contact.firstName))
-    .limit(boundedRowLimit(opts.page, opts.perPage));
+    .limit(limit);
+  const idRows = await (offset > 0 ? idQuery.offset(offset) : idQuery);
   const orderedIds = idRows.map((r) => r.contactId);
 
   const countRows = await db

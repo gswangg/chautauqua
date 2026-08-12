@@ -273,29 +273,23 @@ async function getSurfaceFeedPage(
       const page = parsePage(query.page);
       const q = parseNameQuery(query.q);
       const perPage = query.limit ?? PUBLIC_PER_PAGE;
-      const { items, total } = await getPublicSessions(db, event, { trackId, page, perPage, q });
-      // DEC-502: the repo call above returns a CUMULATIVE prefix (pages 1..page
-      // concatenated) because boundedRowLimit is a bare LIMIT with no OFFSET —
-      // correct for the HTML show-more list, wrong for a paged JSON feed. Slice
-      // to the single requested window here so `items.length <= perPage` always
-      // holds for paged surfaces. `total` stays the full unwindowed count so a
-      // consumer can still detect truncation. A window starting at or beyond
-      // the MAX_PUBLIC_ROWS ceiling honestly returns an empty page (slice of an
-      // out-of-range start is `[]`, not an error).
-      const start = (page - 1) * perPage;
-      const windowed = (items as unknown[]).slice(start, start + perPage);
-      return { items: windowed, total, page, perPage };
+      // DEC-516: the repo call gets a real one-page SQL window (LIMIT+OFFSET
+      // via boundedWindow) instead of a cumulative prefix sliced here —
+      // `items.length <= perPage` always holds for paged surfaces, `total`
+      // stays the full unwindowed count so a consumer can still detect
+      // truncation, and a page past the MAX_PUBLIC_ROWS ceiling honestly
+      // returns an empty items array (never an error).
+      const { items, total } = await getPublicSessions(db, event, { trackId, page, perPage, q, window: true });
+      return { items, total, page, perPage };
     }
     case "speakers":
     case "gallery": {
       const q = parseNameQuery(query.q);
       const page = parsePage(query.page);
       const perPage = query.limit ?? PUBLIC_PER_PAGE;
-      const { items, total } = await getPublicSpeakers(db, event.id, { q, page, perPage });
-      // DEC-502: same cumulative-to-windowed slice as the sessions case above.
-      const start = (page - 1) * perPage;
-      const windowed = (items as unknown[]).slice(start, start + perPage);
-      return { items: windowed, total, page, perPage };
+      // DEC-516: same real SQL window as the sessions case above.
+      const { items, total } = await getPublicSpeakers(db, event.id, { q, page, perPage, window: true });
+      return { items, total, page, perPage };
     }
     case "agenda":
     case "schedule": {
