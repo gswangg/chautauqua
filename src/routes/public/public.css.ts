@@ -297,4 +297,67 @@ export const PUBLIC_CSS = `
     font-size: 0.8rem;
     margin-right: 0.25rem;
   }
+
+  /* ===== task-w4-a (DEC-602): agenda geometry + /schedule itinerary list =====
+     Owned by task-w4-a; another lane may append its own labelled block
+     below this one in the same file. */
+
+  /* EMB-06 w3: AgendaDayGrid reserves a 70px first column for hour labels
+     (grid-template-columns: 70px repeat(...)) but never rendered anything
+     into it. Labels are positioned via the SAME rowForMinute math the
+     session blocks use (agenda.tsx), so a label's row can never drift from
+     the blocks around it. */
+  .chq-pub-agenda-hour-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--chq-muted);
+    padding: 2px 4px 0 0;
+    text-align: right;
+    background: var(--chq-surface-sunk);
+  }
+
+  /* EMB-06 w3: a grid block's grid-row span sets its box height, but
+     unbounded text content still visually overflowed into the row below.
+     overflow:hidden clips to the assigned span; the title/speaker lines are
+     clamped so long text truncates instead of bleeding. A grid block must
+     never contain an interactive control (agenda.tsx no longer renders the
+     itinerary checkbox inside AgendaDayGrid's blocks). */
+  .chq-pub-agenda-block {
+    overflow: hidden;
+  }
+  .chq-pub-agenda-block-title,
+  .chq-pub-agenda-block-speakers {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* EMB-09 w2: /schedule renders the shared item-list markup (.chq-pub-
+     schedule-list) at EVERY width -- never AgendaDayGrid's room-column
+     grid, unlike /agenda which still switches between the two at 700px.
+     Reuses .chq-pub-agenda-list-item/-time/-title/-room/-speakers, so only
+     the list container itself needs an always-visible rule. */
+  .chq-pub-schedule-list {
+    display: block;
+    list-style: none;
+    margin: 0 0 1.5rem;
+    padding: 0;
+  }
+
+  /* EMB-10 w1: 'Show only my picks' toggle + honest empty state, handled by
+     ItineraryScript's applyPicksFilter (agenda.tsx). */
+  .chq-pub-picks-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+  }
+  .chq-pub-picks-empty {
+    color: var(--chq-muted);
+    font-size: 13px;
+  }
 `;

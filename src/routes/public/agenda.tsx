@@ -6,15 +6,37 @@ import type { PublicAgendaItem, PublicEvent } from "../../server/repo/public";
 import { itineraryStorageKey, mergeItinerarySelection, mirrorItineraryCheckboxes } from "../../lib/itinerary";
 import { assignLanes } from "../../lib/overlap-lanes";
 import { sessionDetailPath, type Surface } from "./shell";
-import { TrackChips, SpeakerNames, formatDay, formatMinutes } from "./cards";
+import { TrackChips, SpeakerNames, SessionDescription, formatDay, formatMinutes } from "./cards";
+
+// DEC-602: shared row-map math. The hour-label column (grid-column 1) and
+// every session block are positioned from the SAME dayStart/gridMin
+// arithmetic so a label's row and a block's row can never drift apart —
+// compute it once here, not twice in two places that claim "the same
+// formula".
+function rowForMinute(min: number, dayStart: number, gridMin: number): number {
+  return Math.floor((min - dayStart) / gridMin) + 2;
+}
+
+function formatHourLabel(min: number): string {
+  const h = Math.floor(min / 60);
+  const hour12 = h % 12 === 0 ? 12 : h % 12;
+  const ampm = h < 12 ? "AM" : "PM";
+  return `${hour12} ${ampm}`;
+}
 
 /** Per-day time grid (DEC-022): CSS grid, rooms as columns, session blocks
  * positioned by grid-row from start/end minutes. */
-export function AgendaDayGrid(props: { day: string; items: PublicAgendaItem[]; event: PublicEvent; from: Surface; itinerary?: boolean }) {
-  const { day, items, event, from, itinerary } = props;
+export function AgendaDayGrid(props: { day: string; items: PublicAgendaItem[]; event: PublicEvent; from: Surface }) {
+  const { day, items, event, from } = props;
   const gridMin = 15;
   const dayStart = Math.min(...items.map((i) => i.startMin));
   const dayEnd = Math.max(...items.map((i) => i.endMin));
+  // DEC-602: whole-hour marks that fall within this day's grid, positioned
+  // via the SAME rowForMinute math the blocks use below.
+  const hourMarks: number[] = [];
+  for (let h = Math.ceil(dayStart / 60) * 60; h <= dayEnd; h += 60) {
+    hourMarks.push(h);
+  }
   const roomNames = new Map(items.map((i) => [i.roomId ?? "tbd", i.roomName ?? "TBD"]));
   const roomPositions = new Map(items.map((i) => [i.roomId ?? "tbd", i.roomId ? i.roomPosition : null]));
   // DEC-563: a room column's position is a producer-owned fact (schema
@@ -68,10 +90,15 @@ export function AgendaDayGrid(props: { day: string; items: PublicAgendaItem[]; e
               {roomNames.get(roomId)}
             </div>
           ))}
+          {hourMarks.map((h) => (
+            <div class="chq-pub-agenda-hour-label" style={`grid-column:1;grid-row:${rowForMinute(h, dayStart, gridMin)}`}>
+              {formatHourLabel(h)}
+            </div>
+          ))}
           {items.map((item) => {
             const roomId = item.roomId ?? "tbd";
             const col = rooms.indexOf(roomId) + 2;
-            const rowStart = Math.floor((item.startMin - dayStart) / gridMin) + 2;
+            const rowStart = rowForMinute(item.startMin, dayStart, gridMin);
             const rowSpan = Math.max(1, Math.ceil((item.endMin - item.startMin) / gridMin));
             const { lane, laneCount } = laneByItem.get(item.submissionId) ?? { lane: 0, laneCount: 1 };
             const laneStyle =
@@ -79,6 +106,9 @@ export function AgendaDayGrid(props: { day: string; items: PublicAgendaItem[]; e
                 ? `width:calc(${100 / laneCount}% - 4px);margin-left:calc(${(100 / laneCount) * lane}% + 2px);position:relative;z-index:1`
                 : "";
             return (
+              // DEC-602: a grid block never contains an interactive control
+              // (no itinerary checkbox here — that lives only in the
+              // /schedule list, which no longer renders this grid at all).
               <div
                 class="chq-pub-agenda-block"
                 style={`grid-column:${col};grid-row:${rowStart} / span ${rowSpan};${laneStyle}`}
@@ -88,20 +118,14 @@ export function AgendaDayGrid(props: { day: string; items: PublicAgendaItem[]; e
                   {formatMinutes(item.startMin)}–{formatMinutes(item.endMin)}
                 </div>
                 <TrackChips tracks={item.tracks} />
-                <div>
+                <div class="chq-pub-agenda-block-title">
                   <strong>
                     <a href={sessionDetailPath(event, item.submissionId, from)}>{item.title}</a>
                   </strong>
                 </div>
-                <div>
+                <div class="chq-pub-agenda-block-speakers">
                   <SpeakerNames speakers={item.speakers} />
                 </div>
-                {itinerary ? (
-                  <label class="chq-pub-itinerary-row">
-                    <input type="checkbox" class="chq-itinerary-toggle" value={item.submissionId} />
-                    Add to itinerary
-                  </label>
-                ) : null}
               </div>
             );
           })}
@@ -118,8 +142,23 @@ export function AgendaDayGrid(props: { day: string; items: PublicAgendaItem[]; e
  * position (DEC-563's producer-owned ordering, same tiebreak as the desktop
  * grid's room columns), then id. Room and track are rendered as visible
  * text/chip content here (not colour alone), same as the desktop grid. */
-function AgendaPhoneList(props: { day: string; items: PublicAgendaItem[]; event: PublicEvent; from: Surface; itinerary?: boolean }) {
-  const { day, items, event, from, itinerary } = props;
+// DEC-602: shared list markup between /agenda's phone-only breakpoint and
+// /schedule (which now renders this list at EVERY width, never the room-
+// column grid). `showDescription`/`showDay` and the extra list/section
+// classes are only turned on for /schedule; /agenda's phone list keeps its
+// exact prior output.
+function AgendaItemList(props: {
+  day: string;
+  items: PublicAgendaItem[];
+  event: PublicEvent;
+  from: Surface;
+  itinerary?: boolean;
+  showDescription?: boolean;
+  showDay?: boolean;
+  listClass?: string;
+  sectionClass?: string;
+}) {
+  const { day, items, event, from, itinerary, showDescription, showDay, listClass, sectionClass } = props;
   const sorted = [...items].sort((a, b) => {
     if (a.startMin !== b.startMin) return a.startMin - b.startMin;
     const posA = a.roomId ? (a.roomPosition ?? Number.POSITIVE_INFINITY) : Number.POSITIVE_INFINITY;
@@ -128,12 +167,13 @@ function AgendaPhoneList(props: { day: string; items: PublicAgendaItem[]; event:
     return a.submissionId.localeCompare(b.submissionId);
   });
   return (
-    <section aria-label={`Agenda for ${day}, phone list`} class="chq-pub-agenda-list-wrap">
+    <section aria-label={`Agenda for ${day}`} class={sectionClass ?? "chq-pub-agenda-list-wrap"}>
       <h3>{day}</h3>
-      <ol class="chq-pub-agenda-list">
+      <ol class={listClass ?? "chq-pub-agenda-list"}>
         {sorted.map((item) => (
-          <li class="chq-pub-agenda-list-item" id={`chq-agenda-list-${item.submissionId}`}>
+          <li class="chq-pub-agenda-list-item" id={`chq-agenda-list-${item.submissionId}`} data-submission-id={item.submissionId}>
             <div class="chq-pub-agenda-list-time">
+              {showDay ? `${formatDay(day)} · ` : ""}
               {formatMinutes(item.startMin)}–{formatMinutes(item.endMin)}
             </div>
             <div>
@@ -147,6 +187,7 @@ function AgendaPhoneList(props: { day: string; items: PublicAgendaItem[]; event:
             <div>
               <TrackChips tracks={item.tracks} />
             </div>
+            {showDescription ? <SessionDescription description={item.description} /> : null}
             <div class="chq-pub-agenda-list-speakers">
               <SpeakerNames speakers={item.speakers} />
             </div>
@@ -167,13 +208,13 @@ function AgendaPhoneList(props: { day: string; items: PublicAgendaItem[]; event:
  * from the same `items` array, switched at the 700px breakpoint purely by
  * CSS `display:none` (public.css.ts) so exactly one is in the a11y tree at
  * a time. */
-function AgendaDay(props: { day: string; items: PublicAgendaItem[]; event: PublicEvent; from: Surface; itinerary?: boolean }) {
+function AgendaDay(props: { day: string; items: PublicAgendaItem[]; event: PublicEvent; from: Surface }) {
   return (
     <div id={`chq-day-${props.day}`}>
       <div class="chq-pub-agenda-desktop">
         <AgendaDayGrid {...props} />
       </div>
-      <AgendaPhoneList {...props} />
+      <AgendaItemList {...props} />
     </div>
   );
 }
@@ -263,8 +304,35 @@ function ItineraryScript(props: { eventSlug: string }) {
     link.removeAttribute('aria-disabled');
     link.href = '/e/' + slug + '/schedule.ics?ids=' + encodeURIComponent(ids.join(','));
   }
+  // DEC-602: 'Show only my picks' toggle (/schedule only -- no-ops
+  // harmlessly if these elements aren't on the page). Filters the rendered
+  // list to the stored ids, shows a live count and an honest empty state,
+  // and drops a session the moment it's unchecked (see applyPicksFilter
+  // call at the end of the change handler below).
+  var picksOnly = document.getElementById('chq-picks-only');
+  var picksCount = document.getElementById('chq-picks-only-count');
+  var picksEmpty = document.getElementById('chq-picks-empty');
+  var listItems = Array.prototype.slice.call(document.querySelectorAll('.chq-pub-agenda-list-item'));
+  var daySections = Array.prototype.slice.call(document.querySelectorAll('.chq-pub-schedule-day'));
+  function applyPicksFilter(){
+    var ids = currentIds();
+    if (picksCount) { picksCount.textContent = String(ids.length); }
+    var on = !!(picksOnly && picksOnly.checked);
+    Array.prototype.forEach.call(listItems, function(li){
+      var id = li.getAttribute('data-submission-id');
+      li.style.display = (!on || ids.indexOf(id) !== -1) ? '' : 'none';
+    });
+    Array.prototype.forEach.call(daySections, function(sec){
+      var items = sec.querySelectorAll('.chq-pub-agenda-list-item');
+      var anyVisible = Array.prototype.some.call(items, function(li){ return li.style.display !== 'none'; });
+      sec.style.display = (on && !anyVisible) ? 'none' : '';
+    });
+    if (picksEmpty) { picksEmpty.hidden = !(on && ids.length === 0); }
+  }
   Array.prototype.forEach.call(boxes, function(b){ b.checked = stored.indexOf(b.value) !== -1; });
   updateLink(stored);
+  applyPicksFilter();
+  if (picksOnly) { picksOnly.addEventListener('change', applyPicksFilter); }
   document.addEventListener('change', function(e){
     if (!e.target || !e.target.classList || !e.target.classList.contains('chq-itinerary-toggle')) return;
     // THE TRAP (DEC-584): currentIds() below is "every checked box" across
@@ -280,6 +348,7 @@ function ItineraryScript(props: { eventSlug: string }) {
     var ids = __chqMerge(latestStored, allRenderedIds, currentIds());
     localStorage.setItem(key, JSON.stringify(ids));
     updateLink(ids);
+    applyPicksFilter();
   });
 })();`;
   return <script dangerouslySetInnerHTML={{ __html: js }} />;
@@ -312,9 +381,30 @@ export function ScheduleContent(props: { event: PublicEvent; items: PublicAgenda
               Showing the first {props.items.length} of {props.total} scheduled sessions.
             </p>
           ) : null}
+          {/* DEC-602: EMB-09 -- /schedule is the LIST at every width, never
+              the room-column grid AgendaDayGrid renders for /agenda. */}
+          <label class="chq-pub-picks-toggle">
+            <input type="checkbox" id="chq-picks-only" class="chq-pub-picks-only-input" />
+            Show only my picks (<span id="chq-picks-only-count">0</span>)
+          </label>
+          <p id="chq-picks-empty" class="chq-pub-picks-empty" hidden>
+            You have not picked any sessions yet. Check "Add to itinerary" on a session below to add it.
+          </p>
           <DaySwitcher days={days} />
           {days.map((day) => (
-            <AgendaDay day={day} items={byDay.get(day) ?? []} event={props.event} from="schedule" itinerary />
+            <div id={`chq-day-${day}`}>
+              <AgendaItemList
+                day={day}
+                items={byDay.get(day) ?? []}
+                event={props.event}
+                from="schedule"
+                itinerary
+                showDescription
+                showDay
+                listClass="chq-pub-schedule-list"
+                sectionClass="chq-pub-agenda-list-wrap chq-pub-schedule-day"
+              />
+            </div>
           ))}
         </>
       )}
