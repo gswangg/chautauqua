@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { apiDelete, apiGet, apiPost, apiPut, ApiError } from '../lib/api';
 import { useCurrentEvent } from '../lib/useCurrentEvent';
+import { useIsPhone } from '../lib/useIsPhone';
 import { DayGrid } from './agenda/DayGrid';
 import { UnscheduledTray } from './agenda/UnscheduledTray';
+import { PhoneAgenda } from './agenda/PhoneAgenda';
 import { placeOptimistically, reconcileConflictsSummary, unscheduleOptimistically } from './agenda/state';
 import type { AgendaPayload, RefreshedConflictsSummary } from './agenda/types';
 import './agenda/agenda.css';
@@ -13,6 +15,7 @@ const GRID_MIN = 15;
 
 export function AgendaPage() {
   const { eventId, loading: eventLoading, error: eventError } = useCurrentEvent();
+  const isPhone = useIsPhone();
 
   const [agenda, setAgenda] = useState<AgendaPayload | null>(null);
   const [activeDay, setActiveDay] = useState<string | null>(null);
@@ -171,27 +174,46 @@ export function AgendaPage() {
             <span className="chq-agenda-clash-note">Clashes are flagged, not blocked</span>
           </div>
 
-          <div className="chq-agenda-layout">
-            {activeDay && (
-              <DayGrid
+          {isPhone ? (
+            activeDay && (
+              <PhoneAgenda
                 day={activeDay}
                 rooms={agenda.rooms}
-                tracks={agenda.tracks}
                 placed={agenda.placed}
+                unscheduled={agenda.unscheduled}
                 conflicts={agenda.conflicts}
                 dayStartMin={DAY_START_MIN}
                 dayEndMin={DAY_END_MIN}
                 gridMin={GRID_MIN}
-                onDropPlace={handlePlace}
+                onPlace={handlePlace}
+                onUnschedule={handleUnschedule}
+                onAutoSchedule={handleAutoSchedule}
+                autoScheduling={autoScheduling}
               />
-            )}
-            <UnscheduledTray
-              sessions={agenda.unscheduled}
-              tracks={agenda.tracks}
-              conflicts={agenda.conflicts}
-              onDropUnschedule={handleUnschedule}
-            />
-          </div>
+            )
+          ) : (
+            <div className="chq-agenda-layout">
+              {activeDay && (
+                <DayGrid
+                  day={activeDay}
+                  rooms={agenda.rooms}
+                  tracks={agenda.tracks}
+                  placed={agenda.placed}
+                  conflicts={agenda.conflicts}
+                  dayStartMin={DAY_START_MIN}
+                  dayEndMin={DAY_END_MIN}
+                  gridMin={GRID_MIN}
+                  onDropPlace={handlePlace}
+                />
+              )}
+              <UnscheduledTray
+                sessions={agenda.unscheduled}
+                tracks={agenda.tracks}
+                conflicts={agenda.conflicts}
+                onDropUnschedule={handleUnschedule}
+              />
+            </div>
+          )}
         </>
       )}
     </div>

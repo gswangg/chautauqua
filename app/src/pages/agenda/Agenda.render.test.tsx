@@ -186,3 +186,76 @@ describe('AgendaPage render smoke', () => {
     });
   });
 });
+
+/** Minimal jsdom-safe MediaQueryList stand-in so useIsPhone's
+ * `window.matchMedia('(max-width: 700px)')` subscription resolves to the
+ * phone tree in these tests (DEC-380). jsdom does not implement
+ * matchMedia at all, so AgendaPage's default (matchMedia undefined -> the
+ * desktop tree) is what every other test in this file exercises; this
+ * suite stubs it to force the phone split instead. */
+class FakeMediaQueryList {
+  matches = true;
+  addEventListener() {}
+  removeEventListener() {}
+}
+
+function stubPhoneMatchMedia() {
+  vi.stubGlobal('matchMedia', () => new FakeMediaQueryList());
+}
+
+describe('AgendaPage phone tap-to-place (DEC-380)', () => {
+  it('renders the room chip strip with a CLASH flag and the phone slot list instead of the desktop day grid', async () => {
+    stubPhoneMatchMedia();
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/agenda`]: agendaPayload(),
+    });
+
+    render(<AgendaPage />);
+    await waitFor(() => {
+      expect(screen.getByText('Overlapping Talk A')).toBeInTheDocument();
+    });
+
+    expect(document.querySelector('.chq-day-grid')).toBeNull();
+    expect(document.querySelector('.chq-phone-agenda')).not.toBeNull();
+
+    const roomChip = screen.getByRole('button', { name: /Main Hall/ });
+    expect(roomChip).toHaveClass('active');
+    expect(roomChip.querySelector('.chq-flag')?.textContent).toBe('CLASH');
+
+    // Overlapping A/B render as one merged clash run, not two placed cards.
+    expect(screen.getByText('Two sessions in this slot')).toBeInTheDocument();
+  });
+
+  it('arms an unscheduled session from the sheet, places it on tap, and fires the same PUT as desktop drag-drop', async () => {
+    stubPhoneMatchMedia();
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/agenda`]: agendaPayload(),
+      'PUT /api/v1/submissions/sub-3/slot': { status: 200, body: { conflicts: [], summary: { unplaced: 0, conflicts: 1 } } },
+    });
+
+    render(<AgendaPage />);
+    await waitFor(() => {
+      expect(screen.getByText('Overlapping Talk A')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /Unscheduled 1/ }));
+    expect(screen.getByRole('dialog', { name: 'Unscheduled sessions' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Unplaced Talk'));
+
+    // Sheet closes, footer shows the armed session, and a free run is now a
+    // tap target (it only renders while armed).
+    expect(screen.queryByRole('dialog', { name: 'Unscheduled sessions' })).toBeNull();
+    expect(screen.getByText('Placing · tap a free slot')).toBeInTheDocument();
+    const freeTargets = screen.getAllByText('Place here');
+    expect(freeTargets.length).toBeGreaterThan(0);
+
+    fireEvent.click(freeTargets[0]!);
+
+    await waitFor(() => {
+      expect(screen.queryByText('Placing · tap a free slot')).toBeNull();
+    });
+    // sub-3 moved out of the unscheduled sheet trigger's count.
+    expect(screen.getByRole('button', { name: /Unscheduled 0/ })).toBeInTheDocument();
+  });
+});
