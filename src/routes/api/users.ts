@@ -6,17 +6,19 @@ import { Hono } from "hono";
 import type { AppEnv } from "../../server/env";
 import { requireOrganizer, csrfJson } from "../../server/middleware";
 import { ApiError } from "../../server/http";
-import { MAX_NAME_LENGTH } from "../../forms/validate"; // DEC-417
 import { makeMailer } from "../../server/context";
 import { textToHtml } from "../../mail/render";
 import { hashPassword } from "../../auth/password";
 import * as repo from "../../server/repo/users";
 import { listEventsForOrg } from "../../server/repo/events";
 import { clampPage, clampPerPage } from "../../lib/pagination";
-import { DEC_239 } from "../../decisions";
+import { normalizeEmail, isValidEmail } from "../../domain/email";
+import { DEC_239, DEC_454, DEC_467 } from "../../decisions";
 
 export const usersRoutes = new Hono<AppEnv>();
 void DEC_239; // GET /api/v1/users items must retain {id,email,role,...} -- the SPA's ReviewerOption keys on `id`, not `userId`
+void DEC_454; // one canonical email rule, applied at every contact.email write/lookup
+void DEC_467; // user.email obeys DEC-454 too
 
 const ALLOWED_ROLES = new Set(["reviewer", "organizer"]);
 
@@ -63,9 +65,8 @@ usersRoutes.post("/api/v1/users", requireOrganizer, csrfJson, async (c) => {
   const record = typeof body === "object" && body !== null ? (body as Record<string, unknown>) : {};
 
   const errors: Record<string, string> = {};
-  const email = typeof record.email === "string" ? record.email.trim().toLowerCase() : "";
-  if (email.length === 0) errors.email = "required";
-  else if (email.length > MAX_NAME_LENGTH) errors.email = `Max ${MAX_NAME_LENGTH}`; // DEC-417
+  const email = normalizeEmail(typeof record.email === "string" ? record.email : "");
+  if (!isValidEmail(email)) errors.email = "must be a valid email address"; // DEC-454/DEC-467
   const role = typeof record.role === "string" ? record.role : "";
   if (!ALLOWED_ROLES.has(role)) errors.role = "must be 'reviewer' or 'organizer'";
   if (Object.keys(errors).length > 0) {
