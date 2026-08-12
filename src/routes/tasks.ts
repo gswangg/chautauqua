@@ -450,10 +450,23 @@ taskRoutes.post("/events/:eventId/onboarding/remind", requireOrganizer, csrfJson
   // DEC-182: taskIds is optional (undefined => remind for all outstanding
   // tasks on the event); when present it must be a bounded array of ids.
   const taskIds = body.taskIds === undefined ? undefined : parseBoundedIdArray(body.taskIds, "taskIds");
+  // DEC-694: contactIds is optional (undefined => today's behaviour, every
+  // outstanding contact); when present it scopes the send to exactly those
+  // contacts, identically to the preview endpoint below.
+  const contactIds = body.contactIds === undefined ? undefined : parseBoundedIdArray(body.contactIds, "contactIds");
 
   const mailer = makeMailer(c.var.db, c.env);
   const kv = c.env.KV as unknown as KVStore;
-  const result = await remindNow(c.var.db, mailer, eventId, taskIds, new Date(), kv, resolveBaseUrl(c));
+  const result = await remindNow(
+    c.var.db,
+    mailer,
+    eventId,
+    taskIds,
+    new Date(),
+    kv,
+    resolveBaseUrl(c),
+    contactIds,
+  );
   return c.json(result);
 });
 
@@ -468,9 +481,20 @@ taskRoutes.post("/events/:eventId/onboarding/remind/preview", requireOrganizer, 
 
   const body = asRecord(await c.req.json().catch(() => ({})));
   const taskIds = body.taskIds === undefined ? undefined : parseBoundedIdArray(body.taskIds, "taskIds");
+  // DEC-694: same optional contactIds scope as the send endpoint, so a
+  // preview and the send it previewed always address the same recipients.
+  const contactIds = body.contactIds === undefined ? undefined : parseBoundedIdArray(body.contactIds, "contactIds");
 
   const kv = c.env.KV as unknown as KVStore;
-  const result = await previewRemindNow(c.var.db, eventId, taskIds, new Date(), kv, resolveBaseUrl(c));
+  const result = await previewRemindNow(
+    c.var.db,
+    eventId,
+    taskIds,
+    new Date(),
+    kv,
+    resolveBaseUrl(c),
+    contactIds,
+  );
   return c.json(result);
 });
 
