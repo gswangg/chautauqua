@@ -114,11 +114,12 @@ describe("PUT /submissions/:id/slot (DEC-476 minute bounds)", () => {
   }
 
   it("accepts {startMin: 0, endMin: 1440} (the full-day boundary)", async () => {
+    // DEC-492: ics_sequence bump is one atomic set-based UPDATE with no
+    // preceding select, so there is no extra select entry for it here.
     const { app } = appWithDb([
       acceptedOwnership,
       [{ orgId: "org1", startDate: "2026-08-10", endDate: "2026-08-10", recordPrefix: "EV" }],
       [],
-      [{ icsSequence: 0 }],
       [],
       [],
       [],
@@ -129,11 +130,12 @@ describe("PUT /submissions/:id/slot (DEC-476 minute bounds)", () => {
   });
 
   it("accepts a normal {540, 600} slot", async () => {
+    // DEC-492: ics_sequence bump is one atomic set-based UPDATE with no
+    // preceding select, so there is no extra select entry for it here.
     const { app } = appWithDb([
       acceptedOwnership,
       [{ orgId: "org1", startDate: "2026-08-10", endDate: "2026-08-10", recordPrefix: "EV" }],
       [],
-      [{ icsSequence: 0 }],
       [],
       [],
       [],

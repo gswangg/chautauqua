@@ -7,6 +7,7 @@ import type { AppEnv } from "../server/env";
 import { csrfJson, requireOrganizer } from "../server/middleware";
 import { ApiError, parseBoundedIdArray } from "../server/http";
 import * as repo from "../server/repo/comms";
+import { bumpIcsSequences } from "../server/repo/ics-sequence";
 import { getEventForOrg } from "../server/repo/events";
 import { createClaimToken, type KVStore } from "../auth/claim";
 import { textToHtml } from "../mail/render";
@@ -473,7 +474,7 @@ commsRoutes.post("/api/v1/events/:eventId/compose/send", requireOrganizer, csrfJ
   // every recipient of every submission has been sent the CURRENT stored
   // sequence value (DEC-051). Never runs on preview.
   if (icsMap) {
-    await repo.bumpIcsSequences(c.var.db, input.submissionIds);
+    await bumpIcsSequences(c.var.db, input.submissionIds);
   }
 
   return c.json({ sent: result.rendered.length - failed.length, failed, items: result.rendered });
