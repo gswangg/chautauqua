@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { apiDelete, apiGet, apiList, apiPost, apiPut, ApiError } from '../../lib/api';
+import './review.css';
 import { isEvaluationComplete, scorecardKeyAction } from './scorecardLogic';
 import type {
   EvaluationCriterion,
@@ -137,8 +138,8 @@ export function Scorecard() {
 
   if (loading) {
     return (
-      <div className="chq-page">
-        <h1>Scorecard</h1>
+      <div className="chq-page chq-review-page">
+        <h1 className="chq-page-title">Scorecard</h1>
         <p>Loading…</p>
       </div>
     );
@@ -146,68 +147,82 @@ export function Scorecard() {
 
   if (!plan || !submission) {
     return (
-      <div className="chq-page">
-        <h1>Scorecard</h1>
-        <div className="chq-attention-frame">{error ?? 'This submission is not part of your assignment.'}</div>
+      <div className="chq-page chq-review-page">
+        <h1 className="chq-page-title">Scorecard</h1>
+        <div className="chq-error" role="alert">
+          {error ?? 'This submission is not part of your assignment.'}
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="chq-page chq-scorecard" onKeyDown={handleKeyDown} tabIndex={-1}>
+    <div className="chq-page chq-review-page" onKeyDown={handleKeyDown} tabIndex={-1}>
       <p>
-        <Link to={`/review/plans/${planId}`}>&larr; Back to your queue</Link>
+        <Link to={`/review/plans/${planId}`} className="chq-review-back">
+          &larr; Back to your queue
+        </Link>
       </p>
-      <h1>
-        {submission.ref} — {submission.title}
-      </h1>
-      {submission.speakers && (
-        <p className="chq-scorecard-speakers">Speakers: {submission.speakers.map((s) => s.name).join(', ')}</p>
-      )}
-      {submission.description && <p className="chq-scorecard-description">{submission.description}</p>}
-      {error && <div className="chq-error-banner">{error}</div>}
 
-      <div className="chq-scorecard-recusal">
+      <div className="chq-review-scorecard-head">
+        <h1 className="chq-page-title" style={{ fontSize: '27px' }}>
+          {submission.ref} — {submission.title}
+        </h1>
+        {submission.speakers && (
+          <span className="chq-summary">Speakers: {submission.speakers.map((s) => s.name).join(', ')}</span>
+        )}
+        {submission.description && <p className="chq-review-scorecard-abstract">{submission.description}</p>}
+      </div>
+
+      {error && (
+        <div className="chq-error" role="alert">
+          {error}
+        </div>
+      )}
+
+      <div className="chq-review-recusal">
         {recusal ? (
           <>
-            <p className="chq-recusal-active">You recused yourself from this submission.</p>
-            <button type="button" disabled={undoingRecusal} onClick={() => void handleUndoRecusal()}>
+            <p>You recused yourself from this submission.</p>
+            <button type="button" className="chq-btn chq-btn-secondary" disabled={undoingRecusal} onClick={() => void handleUndoRecusal()}>
               Undo
             </button>
           </>
         ) : (
           <>
-            <label>
+            <label className="chq-review-checkbox-label">
               I have a conflict of interest with this submission
               <input
                 type="text"
+                className="chq-input"
                 placeholder="Reason (optional)"
                 value={recusalReason}
                 onChange={(e) => setRecusalReason(e.target.value)}
               />
             </label>
-            <button type="button" disabled={recusing} onClick={() => void handleRecuse()}>
+            <button type="button" className="chq-btn chq-btn-secondary" disabled={recusing} onClick={() => void handleRecuse()}>
               Declare conflict of interest
             </button>
           </>
         )}
       </div>
 
-      <p className="chq-scorecard-hint">Tip: number keys 1-9 set the focused rating; Enter submits and advances.</p>
+      <p className="chq-review-hint">Tip: number keys 1-9 set the focused rating; Enter submits and advances.</p>
 
       {criteria.map((criterion: EvaluationCriterion) => (
         <div
           key={criterion.id}
-          className={`chq-scorecard-criterion${focusedId === criterion.id ? ' chq-focused' : ''}`}
+          className={`chq-review-criterion${focusedId === criterion.id ? ' chq-focused' : ''}`}
           onFocus={() => setFocusedId(criterion.id)}
         >
-          <label>
+          <label className="chq-review-criterion-label">
             {criterion.label}
             {criterion.kind === 'text' && criterion.required && ' *'}
           </label>
           {criterion.kind === 'rating' ? (
             <input
               type="number"
+              className="chq-input"
               min={plan.scale.min}
               max={plan.scale.max}
               disabled={!!recusal}
@@ -217,6 +232,7 @@ export function Scorecard() {
             />
           ) : criterion.kind === 'dropdown' ? (
             <select
+              className="chq-select"
               value={typeof scores[criterion.id] === 'string' ? (scores[criterion.id] as string) : ''}
               disabled={!!recusal}
               onFocus={() => setFocusedId(criterion.id)}
@@ -231,6 +247,7 @@ export function Scorecard() {
             </select>
           ) : (
             <textarea
+              className="chq-textarea"
               aria-label={criterion.label || 'criterion'}
               value={typeof scores[criterion.id] === 'string' ? (scores[criterion.id] as string) : ''}
               disabled={!!recusal}
@@ -241,14 +258,16 @@ export function Scorecard() {
         </div>
       ))}
 
-      <label className="chq-scorecard-comment">
+      <label className="chq-review-field">
         Comment
-        <textarea value={comment} disabled={!!recusal} onChange={(e) => setComment(e.target.value)} />
+        <textarea className="chq-textarea" value={comment} disabled={!!recusal} onChange={(e) => setComment(e.target.value)} />
       </label>
 
-      <button type="button" disabled={submitting || !!recusal} onClick={() => void submitAndAdvance()}>
-        Submit and advance
-      </button>
+      <div className="chq-review-editor-actions">
+        <button type="button" className="chq-btn chq-btn-primary" disabled={submitting || !!recusal} onClick={() => void submitAndAdvance()}>
+          Submit and advance
+        </button>
+      </div>
     </div>
   );
 }
