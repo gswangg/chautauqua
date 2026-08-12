@@ -11,6 +11,7 @@ import { sessionLoader, noStoreApi } from "./middleware";
 import { registerErrorHandler } from "./http";
 import { shouldMountDevMailbox } from "../routes/dev/mailbox";
 import { bumpPublicVersionMiddleware } from "./pubcache";
+import { registerFramingHeaders } from "./framing";
 import { ApiError } from "./http";
 import { DEC_546 } from "../decisions";
 
@@ -41,6 +42,8 @@ export function createBaseApp(): Hono<AppEnv> {
   // untouched.
   app.use("/api/v1", noStoreApi);
   app.use("/api/v1/*", noStoreApi);
+  // DEC-636: deny framing everywhere except /embed/*.
+  registerFramingHeaders(app);
 
   registerErrorHandler(app);
 
