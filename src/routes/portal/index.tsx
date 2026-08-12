@@ -282,7 +282,9 @@ portalRoutes.get("/submissions/:id", async (c) => {
   // DEC-041: the edit link only shows when the submission is still
   // editable (accepted, or the form window is open).
   const editData = await loadEditableSubmission(c.var.db, contactId, id);
-  const editable = editData ? canEditSubmission(editData.submission.status, editData.form.closeDate, Date.now()) : false;
+  const editable = editData
+    ? canEditSubmission(editData.submission.status, editData.form.closeDate, Date.now(), editData.form.timezone)
+    : false;
   const { token: csrfToken, setCookieIfNew } = ensureCsrfCookie(c);
   if (setCookieIfNew) c.header("Set-Cookie", setCookieIfNew, { append: true });
   return c.html(<SubmissionDetailPage branding={data.branding} detail={detail} editable={editable} csrfToken={csrfToken} />);

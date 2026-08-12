@@ -31,6 +31,7 @@ export interface EditableSubmission {
 export interface EditableForm {
   id: string;
   closeDate: number | null;
+  timezone: string;
 }
 
 export interface EditableTrack {
@@ -69,6 +70,7 @@ export async function loadEditableSubmission(
       formCloseDate: schema.form.closeDate,
       formTracksJson: schema.form.tracksJson,
       eventId: schema.event.id,
+      eventTimezone: schema.event.timezone,
       participantContactId: schema.participant.contactId,
     })
     .from(schema.participant)
@@ -167,7 +169,11 @@ export async function loadEditableSubmission(
       title: row.title,
       description: row.description,
     },
-    form: { id: row.formId, closeDate: row.formCloseDate ? row.formCloseDate.getTime() : null },
+    form: {
+      id: row.formId,
+      closeDate: row.formCloseDate ? row.formCloseDate.getTime() : null,
+      timezone: row.eventTimezone,
+    },
     fields,
     answers,
     offeredTrackIds,

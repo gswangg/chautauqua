@@ -5,30 +5,42 @@
 // (DEC-057). Web APIs only (DEC-002) — no node:/cloudflare/drizzle imports.
 
 import { formatRef } from "../domain/ids";
+import { dayLabelEndInstant, dayLabelStartInstant } from "./timezone";
 
-/** CFP-04: past form.close_date rejects new submissions. A null/undefined
- * close date means the form never closes. */
-export function isFormClosed(closeDate: number | null | undefined, now: number): boolean {
+/** CFP-04 / DEC-522: past form.close_date rejects new submissions. A
+ * null/undefined close date means the form never closes. closeDate is a DAY
+ * LABEL (UTC midnight of the intended calendar day), not an instant — it is
+ * expanded to the event-local end-of-day instant (dayLabelEndInstant) before
+ * comparison, so a form set to close on 2027-03-01 in America/Los_Angeles
+ * actually closes at the end of March 1st local time, not at UTC midnight. */
+export function isFormClosed(
+  closeDate: number | null | undefined,
+  now: number,
+  timeZone: string,
+): boolean {
   if (closeDate === null || closeDate === undefined) return false;
-  return now > closeDate;
+  return now > dayLabelEndInstant(closeDate, timeZone);
 }
 
 export type FormWindowState = "not_yet_open" | "open" | "closed";
 
-/** DEC-036: canonical form-window gate. A null/undefined open date means the
- * form is open immediately; a null/undefined close date means it never
- * closes. Boundaries match isFormClosed's inclusive-at-the-instant rule:
- * exactly at openDate the form is open, exactly at closeDate it's still
- * open (closes strictly after). */
+/** DEC-036/DEC-522: canonical form-window gate. A null/undefined open date
+ * means the form is open immediately; a null/undefined close date means it
+ * never closes. openDate/closeDate are DAY LABELS, expanded to event-local
+ * start-of-day / end-of-day instants respectively. Boundaries match
+ * isFormClosed's inclusive-at-the-instant rule: exactly at the local start
+ * of openDate the form is open, exactly at the local end of closeDate it's
+ * still open (closes strictly after). */
 export function formWindowState(
   openDate: number | null | undefined,
   closeDate: number | null | undefined,
   now: number,
+  timeZone: string,
 ): FormWindowState {
-  if (openDate !== null && openDate !== undefined && now < openDate) {
+  if (openDate !== null && openDate !== undefined && now < dayLabelStartInstant(openDate, timeZone)) {
     return "not_yet_open";
   }
-  if (isFormClosed(closeDate, now)) {
+  if (isFormClosed(closeDate, now, timeZone)) {
     return "closed";
   }
   return "open";

@@ -14,7 +14,7 @@ import type { EditableSubmissionData } from "../src/server/repo/portal-edit";
 
 const BASE_DATA: EditableSubmissionData = {
   submission: { id: "s1", status: "pending", title: "Talk title", description: "desc" },
-  form: { id: "f1", closeDate: null },
+  form: { id: "f1", closeDate: null, timezone: "America/Los_Angeles" },
   fields: [],
   answers: {},
   offeredTrackIds: ["t1", "t2"],

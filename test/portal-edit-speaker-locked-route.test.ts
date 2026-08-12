@@ -19,7 +19,7 @@ const BASE_FIELDS: FormFieldDef[] = [
 
 const BASE_DATA: EditableSubmissionData = {
   submission: { id: "s1", status: "pending", title: "Talk title", description: "desc" },
-  form: { id: "f1", closeDate: null },
+  form: { id: "f1", closeDate: null, timezone: "America/Los_Angeles" },
   fields: BASE_FIELDS,
   answers: { first_name: "Jane", last_name: "Doe", email: "jane@example.test" },
   offeredTrackIds: ["t1"],
