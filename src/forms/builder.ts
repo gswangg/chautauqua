@@ -4,6 +4,7 @@
 
 import type { FormFieldDef, FormFieldKind, FormFieldRule, FormFieldRuleOp } from "./types";
 import { MAX_NAME_LENGTH, MAX_TEXT_LENGTH } from "./validate"; // DEC-417
+import { canonicalizeOperand } from "./rule-match"; // DEC-681
 
 export const FIELD_KINDS: readonly FormFieldKind[] = [
   "text",
@@ -62,6 +63,29 @@ export function validateRuleReference(
   }
   if (rule.op === "in" && !Array.isArray(rule.value)) {
     return "rule.value must be an array for op 'in'";
+  }
+
+  // DEC-681: a rule's value is typed by its TRIGGER field's kind. Reject
+  // rules that can never match against that kind, at write time, rather
+  // than silently accepting a value that comparison will never satisfy
+  // (the historical checkbox 'true'-vs-true bug this decision closes).
+  const values = rule.op === "in" ? (rule.value as unknown[]) : [rule.value];
+  if (target.kind === "file") {
+    return "a file field cannot be a rule trigger";
+  }
+  if (target.kind === "checkbox") {
+    if (values.some((v) => canonicalizeOperand("checkbox", v) === undefined)) {
+      return "rule.value must be true or false for a checkbox trigger";
+    }
+  } else if (target.kind === "number") {
+    if (values.some((v) => canonicalizeOperand("number", v) === undefined)) {
+      return "rule.value must be a number for a number trigger";
+    }
+  } else if (target.kind === "dropdown") {
+    const options = target.options ?? [];
+    if (values.some((v) => typeof v !== "string" || !options.includes(v))) {
+      return "rule.value must be one of the trigger field's options";
+    }
   }
 
   // Walk the chain of rule.fieldId references starting at the target field;

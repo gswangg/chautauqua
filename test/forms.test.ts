@@ -105,11 +105,11 @@ describe("isVisible", () => {
   });
 
   it("eq rule: hidden when trigger does not match", () => {
-    expect(isVisible(materialsField, { format: "Talk" })).toBe(false);
+    expect(isVisible(materialsField, { format: "Talk" }, "dropdown")).toBe(false);
   });
 
   it("eq rule: visible when trigger matches (J1 show-when-Workshop scenario)", () => {
-    expect(isVisible(materialsField, { format: "Workshop" })).toBe(true);
+    expect(isVisible(materialsField, { format: "Workshop" }, "dropdown")).toBe(true);
   });
 
   it("ne rule: visible when trigger differs", () => {
@@ -117,8 +117,8 @@ describe("isVisible", () => {
       ...materialsField,
       rule: { fieldId: "format", op: "ne", value: "Workshop" },
     };
-    expect(isVisible(field, { format: "Talk" })).toBe(true);
-    expect(isVisible(field, { format: "Workshop" })).toBe(false);
+    expect(isVisible(field, { format: "Talk" }, "dropdown")).toBe(true);
+    expect(isVisible(field, { format: "Workshop" }, "dropdown")).toBe(false);
   });
 
   it("in rule: visible when trigger value is a member of the value array", () => {
@@ -126,8 +126,8 @@ describe("isVisible", () => {
       ...materialsField,
       rule: { fieldId: "format", op: "in", value: ["Workshop", "Panel"] },
     };
-    expect(isVisible(field, { format: "Panel" })).toBe(true);
-    expect(isVisible(field, { format: "Talk" })).toBe(false);
+    expect(isVisible(field, { format: "Panel" }, "dropdown")).toBe(true);
+    expect(isVisible(field, { format: "Talk" }, "dropdown")).toBe(false);
   });
 
   it("in rule: hidden when rule value is not an array", () => {
@@ -135,7 +135,7 @@ describe("isVisible", () => {
       ...materialsField,
       rule: { fieldId: "format", op: "in", value: "Workshop" },
     };
-    expect(isVisible(field, { format: "Workshop" })).toBe(false);
+    expect(isVisible(field, { format: "Workshop" }, "dropdown")).toBe(false);
   });
 });
 

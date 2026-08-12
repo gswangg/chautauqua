@@ -6,6 +6,7 @@
 
 import type { FormFieldDef, AnswerMap } from "../forms/types";
 import { ALLOWED_UPLOAD_EXTENSIONS, uploadHintText } from "../domain/files";
+import { RULE_MATCH_JS } from "../forms/rule-match";
 
 export const FIELD_NAME_PREFIX = "field__";
 
@@ -160,12 +161,23 @@ export function FormFieldsSection(props: {
 /** Emits the field-rules JSON + the inline vanilla-JS toggler. Server-side
  * validation (validateAnswers) is authoritative regardless of this script. */
 export function FieldRulesScript(props: { fields: FormFieldDef[] }) {
+  const kindById = new Map(props.fields.map((f) => [f.id, f.kind] as const));
   const rules = props.fields
     .filter((f) => f.rule)
-    .map((f) => ({ fieldId: f.id, rule: f.rule }));
+    .map((f) => ({
+      fieldId: f.id,
+      rule: f.rule,
+      triggerKind: f.rule ? kindById.get(f.rule.fieldId) : undefined,
+    }));
   const json = JSON.stringify(rules);
   const safeJson = json.replace(/</g, "\\u003c");
+  // DEC-681: browser twin agrees with the server via the shared
+  // RULE_MATCH_JS canonicalizer, and computes the same TRANSITIVE fixed
+  // point resolveHiddenFieldIds does server-side — a field whose trigger is
+  // itself currently hidden is hidden too, its (stale) value never
+  // consulted (treated as undefined).
   const inlineJs = `(function(){
+  ${RULE_MATCH_JS}
   var rules = JSON.parse(document.getElementById('chq-field-rules').textContent);
   function getValue(id){
     var el = document.querySelector('[data-field-id="' + id + '"]');
@@ -173,17 +185,30 @@ export function FieldRulesScript(props: { fields: FormFieldDef[] }) {
     if (el.type === 'checkbox') return el.checked;
     return el.value;
   }
-  function matches(rule, val){
-    if (rule.op === 'eq') return val === rule.value;
-    if (rule.op === 'ne') return val !== rule.value;
-    if (rule.op === 'in') return Array.isArray(rule.value) && rule.value.indexOf(val) !== -1;
-    return true;
+  function computeHidden(){
+    var hidden = {};
+    var changed = true;
+    while (changed) {
+      changed = false;
+      rules.forEach(function(r){
+        if (hidden[r.fieldId]) return;
+        if (r.triggerKind === undefined) { hidden[r.fieldId] = true; changed = true; return; }
+        var triggerHidden = !!hidden[r.rule.fieldId];
+        var val = triggerHidden ? undefined : getValue(r.rule.fieldId);
+        if (!chqRuleMatches(r.rule, val, r.triggerKind)) {
+          hidden[r.fieldId] = true;
+          changed = true;
+        }
+      });
+    }
+    return hidden;
   }
   function apply(){
+    var hidden = computeHidden();
     rules.forEach(function(r){
       var wrap = document.getElementById('chq-field-wrap-' + r.fieldId);
       if (!wrap) return;
-      var visible = matches(r.rule, getValue(r.rule.fieldId));
+      var visible = !hidden[r.fieldId];
       wrap.style.display = visible ? '' : 'none';
       var input = wrap.querySelector('[data-field-id="' + r.fieldId + '"]');
       if (input) { input.required = visible && input.dataset.required === 'true'; }

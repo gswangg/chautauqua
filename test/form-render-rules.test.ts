@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { FormFieldDef } from "../src/forms/types";
 import { FieldRulesScript, FormField, FormFieldsSection } from "../src/views/form-render";
+import { RULE_MATCH_JS, RULE_MATCH_CASES, ruleMatches } from "../src/forms/rule-match";
 
 const formatField: FormFieldDef = {
   id: "format",
@@ -39,7 +40,13 @@ describe("FieldRulesScript", () => {
     const rulesJson = extractRulesJson(html);
     const parsed = JSON.parse(rulesJson);
 
-    expect(parsed).toEqual([{ fieldId: "materials", rule: { fieldId: "format", op: "eq", value: "Workshop" } }]);
+    expect(parsed).toEqual([
+      {
+        fieldId: "materials",
+        rule: { fieldId: "format", op: "eq", value: "Workshop" },
+        triggerKind: "dropdown",
+      },
+    ]);
 
     // DEC-110: must be raw JSON via dangerouslySetInnerHTML, not JSX-escaped
     // text (which would turn quotes into &quot; entities and break JSON.parse
@@ -115,5 +122,109 @@ describe("FieldControl data-required attribute (DEC-008/DEC-194)", () => {
     }).toString();
     expect(html).toContain('data-required="true"');
     expect(html).toMatch(/<select[^>]*\brequired\b/);
+  });
+});
+
+describe("RULE_MATCH_JS parity with ruleMatches (DEC-681)", () => {
+  it("chqRuleMatches agrees with the server's ruleMatches on every shared case", () => {
+    // eslint-disable-next-line @typescript-eslint/no-implied-eval
+    const chqRuleMatches = new Function(
+      `${RULE_MATCH_JS}\nreturn chqRuleMatches;`,
+    )() as (rule: unknown, value: unknown, kind: string) => boolean;
+
+    for (const { kind, answer, rule, expected } of RULE_MATCH_CASES) {
+      expect(chqRuleMatches(rule, answer, kind)).toBe(expected);
+      expect(ruleMatches(rule, answer, kind)).toBe(expected);
+    }
+  });
+});
+
+describe("FieldRulesScript emits a transitive fixed point for a chain (DEC-681/DEC-532)", () => {
+  it("hides C when B is hidden, even though C's own trigger value would otherwise match", () => {
+    const a: FormFieldDef = {
+      id: "a",
+      section: "session",
+      kind: "dropdown",
+      label: "A",
+      required: true,
+      position: 0,
+      options: ["yes", "no"],
+    };
+    const b: FormFieldDef = {
+      id: "b",
+      section: "session",
+      kind: "dropdown",
+      label: "B",
+      required: true,
+      position: 1,
+      options: ["yes", "no"],
+      rule: { fieldId: "a", op: "eq", value: "yes" },
+    };
+    const c: FormFieldDef = {
+      id: "c",
+      section: "session",
+      kind: "text",
+      label: "C",
+      required: true,
+      position: 2,
+      rule: { fieldId: "b", op: "eq", value: "yes" },
+    };
+
+    const html = FieldRulesScript({ fields: [a, b, c] }).toString();
+    const match = html.match(
+      /<script type="application\/json" id="chq-field-rules">([\s\S]*?)<\/script>/,
+    );
+    if (!match || match[1] === undefined) throw new Error("chq-field-rules script tag not found");
+    const rules = JSON.parse(match[1]);
+    expect(rules).toEqual([
+      { fieldId: "b", rule: { fieldId: "a", op: "eq", value: "yes" }, triggerKind: "dropdown" },
+      { fieldId: "c", rule: { fieldId: "b", op: "eq", value: "yes" }, triggerKind: "dropdown" },
+    ]);
+
+    // Simulate the browser: a = 'no' (so b's own rule fails -> b hidden),
+    // but b's stale DOM value is still 'yes' (the value c's rule targets).
+    // The fixed point must hide c too, not just evaluate c's rule directly
+    // against b's stale value. A minimal fake `document` (no jsdom in this
+    // plain .test.ts environment) is enough to run the actual emitted IIFE.
+    const scriptMatch = html.match(/<script>([\s\S]*?)<\/script>\s*$/);
+    if (!scriptMatch || scriptMatch[1] === undefined) throw new Error("inline script not found");
+    const inlineJs = scriptMatch[1];
+
+    function makeInput(fieldId: string, value: string) {
+      return { dataset: { fieldId, required: "true" }, type: "text", value, required: false };
+    }
+    const rulesScriptEl = { textContent: match[1] };
+    const inputA = makeInput("a", "no");
+    const inputB = makeInput("b", "yes"); // stale: still shows the value from when it was visible
+    const inputC = makeInput("c", "irrelevant");
+    const wrapB = { style: { display: "" }, querySelector: () => inputB };
+    const wrapC = { style: { display: "" }, querySelector: () => inputC };
+
+    const byId: Record<string, unknown> = {
+      "chq-field-rules": rulesScriptEl,
+      "chq-field-wrap-b": wrapB,
+      "chq-field-wrap-c": wrapC,
+    };
+    const bySelector: Record<string, unknown> = {
+      '[data-field-id="a"]': inputA,
+      '[data-field-id="b"]': inputB,
+      '[data-field-id="c"]': inputC,
+    };
+    function querySelector(sel: string) {
+      return bySelector[sel] ?? null;
+    }
+
+    const fakeDocument = {
+      getElementById: (id: string) => byId[id] ?? null,
+      querySelector,
+      addEventListener: () => {},
+    };
+
+    // eslint-disable-next-line @typescript-eslint/no-implied-eval
+    new Function("document", inlineJs)(fakeDocument);
+
+    expect(wrapB.style.display).toBe("none");
+    expect(wrapC.style.display).toBe("none");
+    expect(inputC.required).toBe(false);
   });
 });

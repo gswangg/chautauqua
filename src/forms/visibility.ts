@@ -1,31 +1,24 @@
 import { lockedFieldName } from "./types";
-import type { AnswerMap, FormFieldDef } from "./types";
+import type { AnswerMap, FormFieldDef, FormFieldKind } from "./types";
+import { ruleMatches } from "./rule-match";
 
 // A field with no rule is always visible. A field with a rule is visible
 // only when the referenced trigger field's current answer matches per the
-// rule's operator. Basic show/hide only (DEC-008: "conditional fine for
-// now") — no compound/boolean rule composition.
-export function isVisible(field: FormFieldDef, answers: AnswerMap): boolean {
+// rule's operator, TYPED by the trigger field's kind (DEC-681 — see
+// ./rule-match.ts). Basic show/hide only (DEC-008: "conditional fine for
+// now") — no compound/boolean rule composition. `triggerKind` is undefined
+// when the rule's fieldId doesn't resolve to a known field — same as an
+// unknown trigger id, the field is hidden.
+export function isVisible(
+  field: FormFieldDef,
+  answers: AnswerMap,
+  triggerKind?: FormFieldKind,
+): boolean {
   const rule = field.rule;
   if (!rule) return true;
+  if (triggerKind === undefined) return false;
 
-  const actual = answers[rule.fieldId];
-
-  switch (rule.op) {
-    case "eq":
-      return actual === rule.value;
-    case "ne":
-      return actual !== rule.value;
-    case "in": {
-      const candidates = rule.value;
-      if (!Array.isArray(candidates)) return false;
-      return candidates.includes(actual);
-    }
-    default: {
-      const exhaustive: never = rule.op;
-      throw new Error(`unknown rule op: ${exhaustive}`);
-    }
-  }
+  return ruleMatches(rule, answers[rule.fieldId], triggerKind);
 }
 
 // DEC-532: visibility is transitive — a field whose rule points at a
@@ -43,6 +36,7 @@ export function resolveHiddenFieldIds(
   answers: AnswerMap,
 ): Set<string> {
   const ids = new Set(fields.map((f) => f.id));
+  const kindById = new Map(fields.map((f) => [f.id, f.kind] as const));
   const hidden = new Set<string>();
 
   let changed = true;
@@ -65,7 +59,7 @@ export function resolveHiddenFieldIds(
         changed = true;
         continue;
       }
-      if (!isVisible(field, effectiveAnswers)) {
+      if (!isVisible(field, effectiveAnswers, rule ? kindById.get(rule.fieldId) : undefined)) {
         hidden.add(field.id);
         changed = true;
       }
