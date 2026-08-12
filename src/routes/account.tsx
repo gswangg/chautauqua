@@ -21,6 +21,7 @@ import {
   isSecureRequest,
   CSRF_COOKIE_NAME,
 } from "../auth/cookies";
+import { ThemeStyles } from "../views/theme";
 
 export const accountRoutes = new Hono<AppEnv>();
 
@@ -42,35 +43,110 @@ function ensureCsrfCookie(c: {
   };
 }
 
+// DEC-367/371: self-service password change re-skinned to the "Change
+// password · /account/password" panel from docs/design/Chautauqua
+// Account.dc.html — paper card, uppercase field labels, one filled
+// primary + a plain-type "you stay signed in" note, error/status text as
+// type not a colored banner (no red anywhere).
+const ACCOUNT_CARD_STYLE = `
+  body { display: flex; justify-content: center; padding: 40px 20px; }
+  .chq-account-card {
+    width: 100%;
+    max-width: 520px;
+    background: var(--chq-paper);
+    border: 1px solid var(--chq-rule);
+    border-radius: 6px;
+    padding: 32px 34px 30px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  .chq-account-back { font-size: 13px; font-weight: 700; min-height: 44px; display: inline-flex; align-items: center; }
+  .chq-account-title {
+    font-family: 'Familjen Grotesk', system-ui, sans-serif;
+    font-size: 27px;
+    font-weight: 700;
+    letter-spacing: -0.04em;
+    line-height: 1;
+    color: var(--chq-ink);
+  }
+  .chq-account-fields { display: flex; flex-direction: column; gap: 14px; }
+  .chq-account-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--chq-muted);
+    margin-bottom: 6px;
+  }
+  .chq-account-card input[type=password] { display: block; width: 100%; min-height: 48px; }
+  .chq-account-message { font-size: 14px; font-weight: 700; color: var(--chq-ink); }
+  .chq-account-actions {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    border-top: 1px solid var(--chq-rule);
+    padding-top: 18px;
+  }
+  .chq-account-actions button[type=submit] { padding: 0 20px; }
+  .chq-account-hint { font-size: 13px; color: var(--chq-muted); }
+  @media (max-width: 480px) {
+    body { padding: 0; }
+    .chq-account-card { max-width: none; border: none; border-radius: 0; padding: 28px 16px 20px; }
+  }
+`;
+
 function PasswordPage(props: { csrfToken: string; error?: string; success?: boolean }) {
   return (
     <html lang="en">
       <head>
         <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>Change password - Chautauqua</title>
+        <ThemeStyles />
+        <style>{ACCOUNT_CARD_STYLE}</style>
       </head>
       <body>
-        <h1>Change password</h1>
-        {props.error ? <p role="alert">{props.error}</p> : null}
-        {props.success ? (
-          <p role="status">Password changed. Every other signed-in session has been signed out.</p>
-        ) : null}
-        <form method="post" action="/account/password">
-          <input type="hidden" name={CSRF_COOKIE_NAME} value={props.csrfToken} />
-          <label>
-            Current password
-            <input type="password" name="current" required />
-          </label>
-          <label>
-            New password
-            <input type="password" name="next" minlength={8} required />
-          </label>
-          <label>
-            Confirm new password
-            <input type="password" name="confirm" minlength={8} required />
-          </label>
-          <button type="submit">Change password</button>
-        </form>
+        <div className="chq-account-card">
+          <div>
+            <a className="chq-account-back" href="/admin">
+              &lsaquo; Back
+            </a>
+            <div className="chq-account-title">Change your password</div>
+          </div>
+          {props.error ? (
+            <p className="chq-account-message" role="alert">
+              {props.error}
+            </p>
+          ) : null}
+          {props.success ? (
+            <p className="chq-account-message" role="status">
+              Password changed. Every other signed-in session has been signed out.
+            </p>
+          ) : null}
+          <form className="chq-account-fields" method="post" action="/account/password">
+            <input type="hidden" name={CSRF_COOKIE_NAME} value={props.csrfToken} />
+            <label>
+              <span className="chq-account-label">Current password</span>
+              <input type="password" name="current" required />
+            </label>
+            <label>
+              <span className="chq-account-label">New password</span>
+              <input type="password" name="next" minlength={8} required />
+            </label>
+            <label>
+              <span className="chq-account-label">Confirm new password</span>
+              <input type="password" name="confirm" minlength={8} required />
+            </label>
+            <div className="chq-account-actions">
+              <button type="submit" className="chq-btn-primary">
+                Change it
+              </button>
+              <span className="chq-account-hint">You stay signed in on this device</span>
+            </div>
+          </form>
+        </div>
       </body>
     </html>
   );
