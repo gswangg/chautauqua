@@ -8,12 +8,17 @@
 // is plain .ts (not .tsx) so ThemeStyles() below is built with hono/jsx's
 // `jsx` factory directly rather than JSX syntax.
 //
-// hono/jsx escaping trap (see src/routes/public/shell.tsx:65-72): a
-// hono/jsx <style>{THEME_CSS}</style> child gets THEME_CSS HTML-escaped
-// like any other text node — a double-quoted attribute selector
-// (input[type="search"]) round-trips as the literal, invalid-CSS text
-// input[type=&quot;search&quot;]. Every attribute selector in this file is
-// therefore written unquoted (input[type=search]).
+// DEC-374 escaping trap: a hono/jsx <style>{THEME_CSS}</style> *text
+// child* gets THEME_CSS HTML-escaped like any other text node (& < > " '
+// all round-trip as entities — &amp; &lt; &gt; &quot; &#39;). That silently
+// breaks CSS containing any of those characters, including the self-hosted
+// font stack: 'Familjen Grotesk' and url('/fonts/...') both round-tripped
+// as &#39;-quoted strings, so the browser never recognized the font-family
+// name or the font URL and the custom fonts never loaded. ThemeStyles()
+// below instead renders `<style dangerouslySetInnerHTML={{ __html:
+// THEME_CSS }} />`, which writes THEME_CSS to the DOM verbatim (no escaping)
+// since THEME_CSS is a fixed, value-free module constant, never
+// interpolated with request/user data.
 
 import { jsx } from "hono/jsx";
 import { DEC_367, DEC_371 } from "../decisions";
@@ -27,7 +32,7 @@ export const THEME_CSS = `
     --chq-surface: #FAF8F2;
     --chq-surface-sunk: #EFEBDF;
     --chq-ink: #1B1D17;
-    --chq-ink-secondary: #3F4237;
+    --chq-ink-2: #3F4237;
     --chq-muted: #565A4B;
     --chq-disabled: #8E8A7A;
     --chq-hairline: #E1DDCE;
@@ -37,7 +42,16 @@ export const THEME_CSS = `
     --chq-brand: #4E5C31;
     --chq-brand-hover: #3C471F;
     --chq-on-brand: #F7F9F0;
+    --chq-on-ink: #F4F1E8;
+    --chq-on-ink-muted: #B5AFA2;
+    --chq-on-ink-hairline: #3A3D32;
     --chq-brandable-accent: #4E5C31;
+    --chq-r-ctl: 4px;
+    --chq-r-ctl-phone: 6px;
+    --chq-r-card: 5px;
+    --chq-r-pill: 99px;
+    --chq-font-display: 'Familjen Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
+    --chq-font-ui: 'Figtree', -apple-system, BlinkMacSystemFont, sans-serif;
   }
 
   @font-face {
@@ -61,7 +75,7 @@ export const THEME_CSS = `
   body {
     margin: 0;
     font-family: 'Figtree', system-ui, sans-serif;
-    color: var(--chq-ink-secondary);
+    color: var(--chq-ink-2);
     background: var(--chq-paper);
   }
   h1, h2, h3, h4, h5, h6 {
@@ -74,7 +88,9 @@ export const THEME_CSS = `
   a:hover { color: var(--chq-brand-hover); }
 
   /* Every interactive element is >=44px tall on phone (min-height, not
-     padding) -- DEC-367. Unquoted attribute selectors: see file header. */
+     padding) -- DEC-367. Attribute selectors stay unquoted here for
+     consistency, though dangerouslySetInnerHTML (see file header) no
+     longer requires it. */
   input[type=search], input[type=text], input[type=email], input[type=tel],
   input[type=url], input[type=password], select, textarea {
     max-width: 100%;
@@ -164,7 +180,7 @@ export const THEME_CSS = `
     align-items: center;
     min-height: 40px;
     padding: 4px 0;
-    color: var(--chq-ink-secondary);
+    color: var(--chq-ink-2);
     text-decoration: none;
   }
   .chq-nav a:hover { background: var(--chq-surface-sunk); }
@@ -232,6 +248,55 @@ export const THEME_CSS = `
   .chq-measure { max-width: 820px; margin: 0 auto; }
 
   main { padding: 26px 34px 34px; }
+
+  /* Shared component classes (DEC-368) -- SSR-needed subset only. The rest
+     (.chq-steps/.chq-step, .chq-bulkbar, .chq-rail, .chq-panel,
+     .chq-scrim) live only in app/src/styles.css, owned by the admin SPA
+     shell lane; nothing under src/views/ needs them today. */
+  .chq-bar {
+    height: 5px;
+    border-radius: var(--chq-r-pill);
+    background: var(--chq-hairline);
+    overflow: hidden;
+  }
+  .chq-bar-fill {
+    height: 100%;
+    background: var(--chq-brand);
+  }
+  .chq-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--chq-border);
+  }
+  .chq-dot.is-on {
+    background: var(--chq-brand);
+  }
+  .chq-kv {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .chq-kv dt {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--chq-muted);
+    margin: 0;
+  }
+  .chq-kv dd {
+    font-size: 15px;
+    color: var(--chq-ink-2);
+    margin: 0;
+  }
+  .chq-pager {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 15px 0 0;
+  }
 `;
 
 /** Inlines THEME_CSS into a <style> element. Every SSR shell calls this
@@ -245,5 +310,5 @@ export const THEME_CSS = `
 // makes every `<ThemeStyles />` call site a JSX2786 error, since
 // `JSXNode` doesn't structurally satisfy `FunctionComponentResult`.
 export function ThemeStyles(): any {
-  return jsx("style", null, THEME_CSS);
+  return jsx("style", { dangerouslySetInnerHTML: { __html: THEME_CSS } });
 }
