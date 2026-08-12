@@ -157,6 +157,7 @@ export function PlanList() {
           <div key={plan.id} className="chq-review-plan-row">
             <label className="chq-review-plan-select">
               <input
+                className="chq-check"
                 type="radio"
                 name="chq-review-plan-select"
                 aria-label={`Show ${plan.name} below`}
