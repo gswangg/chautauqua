@@ -12,7 +12,7 @@ export function TrackChips(props: { tracks: PublicTrack[] }) {
   return (
     <>
       {props.tracks.map((t) => (
-        <span class="chq-track-chip" style={`background:${t.color ?? "#666"}`}>
+        <span class="chq-pub-track-chip" style={`background:${t.color ?? "#666"}`}>
           {t.name}
         </span>
       ))}
@@ -81,10 +81,15 @@ export function SessionSchedule(props: { session: PublicSession; fields?: CardFi
   if (!fields.time) return null;
   if (session.day === null || session.startMin === null || session.endMin === null) return null;
   return (
-    <p class="chq-session-when">
-      {formatDay(session.day)}, {formatMinutes(session.startMin)}–{formatMinutes(session.endMin)}
-      {fields.room && session.roomName ? ` · ${session.roomName}` : ""}
-    </p>
+    <div class="chq-pub-session-when">
+      <span class="chq-pub-session-time">
+        {formatMinutes(session.startMin)}–{formatMinutes(session.endMin)}
+      </span>
+      <span class="chq-pub-session-room">
+        {formatDay(session.day)}
+        {fields.room && session.roomName ? ` · ${session.roomName}` : ""}
+      </span>
+    </div>
   );
 }
 
@@ -98,20 +103,26 @@ export function SessionCard(props: {
   const { session, event } = props;
   const fields = props.fields ?? ALL_FIELDS_ON;
   return (
-    <div class="chq-card" id={`chq-session-${session.id}`}>
-      {fields.track ? <TrackChips tracks={session.tracks} /> : null}
-      <h3>
-        <a href={sessionDetailPath(event, session.id, props.from)}>{session.title}</a>
-      </h3>
+    <div class="chq-pub-session-row" id={`chq-session-${session.id}`}>
       <SessionSchedule session={session} fields={fields} />
-      {fields.speaker ? (
-        <p>
-          <SpeakerNames speakers={session.speakers} />
-        </p>
-      ) : null}
-      {fields.description ? <SessionDescription description={session.description} /> : null}
+      <div class="chq-pub-session-body">
+        <a class="chq-pub-session-title" href={sessionDetailPath(event, session.id, props.from)}>
+          {session.title}
+        </a>
+        {fields.speaker ? (
+          <p class="chq-pub-session-speaker">
+            <SpeakerNames speakers={session.speakers} />
+          </p>
+        ) : null}
+        {fields.track ? (
+          <div class="chq-pub-session-tags">
+            <TrackChips tracks={session.tracks} />
+          </div>
+        ) : null}
+        {fields.description ? <SessionDescription description={session.description} /> : null}
+      </div>
       {props.itinerary ? (
-        <label>
+        <label class="chq-pub-itinerary-row">
           <input type="checkbox" class="chq-itinerary-toggle" value={session.id} />
           Add to my itinerary
         </label>

@@ -261,8 +261,8 @@ describe("embed config: fields param gates card content (title always renders)",
     const fragment = cardFragment(html, "sub1");
     expect(fragment).toContain("Talk 1"); // title anchor always renders
     expect(fragment).not.toContain("Ada");
-    expect(fragment).not.toContain("chq-session-when");
-    expect(fragment).not.toContain("chq-track-chip");
+    expect(fragment).not.toContain("chq-pub-session-when");
+    expect(fragment).not.toContain("chq-pub-track-chip");
     expect(fragment).not.toContain("A description long enough");
   });
 
@@ -272,8 +272,8 @@ describe("embed config: fields param gates card content (title always renders)",
     const res = await app.request("/embed/conf/sessions?fields=track,bogus", {}, TEST_ENV);
     const html = await res.text();
     const fragment = cardFragment(html, "sub1");
-    expect(fragment).toContain("chq-track-chip");
-    expect(fragment).not.toContain("chq-session-when");
+    expect(fragment).toContain("chq-pub-track-chip");
+    expect(fragment).not.toContain("chq-pub-session-when");
     expect(fragment).not.toContain("Ada");
   });
 
@@ -285,8 +285,8 @@ describe("embed config: fields param gates card content (title always renders)",
     const fragment = cardFragment(html, "sub1");
     expect(fragment).toContain("Talk 1");
     expect(fragment).toContain("Ada");
-    expect(fragment).toContain("chq-session-when");
-    expect(fragment).toContain("chq-track-chip");
+    expect(fragment).toContain("chq-pub-session-when");
+    expect(fragment).toContain("chq-pub-track-chip");
     expect(fragment).toContain("A description long enough");
   });
 });

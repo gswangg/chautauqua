@@ -5,6 +5,10 @@
 
 import type { PublicEvent } from "../../server/repo/public";
 import { ThemeStyles } from "../../views/theme";
+import { PUBLIC_CSS } from "./public.css";
+import { DEC_374 } from "../../decisions";
+
+void DEC_374;
 
 export const SURFACES = ["sessions", "speakers", "agenda", "schedule", "gallery"] as const;
 export type Surface = (typeof SURFACES)[number];
@@ -25,6 +29,19 @@ export function branding(event: PublicEvent): { logoUrl?: string; accentColor?: 
   if (!event.brandingJson) return {};
   const parsed = JSON.parse(event.brandingJson) as { logoUrl?: string; accentColor?: string };
   return { logoUrl: parsed.logoUrl, accentColor: parsed.accentColor };
+}
+
+const DEFAULT_ACCENT = "#4E5C31";
+const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
+
+/** DEC-374: the per-event accent is never interpolated into CSS text (that
+ * was the pre-redesign approach, and it's how untrusted branding JSON could
+ * have injected arbitrary CSS/markup into a `<style>` block). Instead it's
+ * validated against a strict hex pattern and applied as a `style` attribute
+ * on <body> -- exported so a non-hex brandingJson value can be asserted to
+ * fall back to DEFAULT_ACCENT in tests. */
+export function validAccent(color: string | undefined): string {
+  return color && HEX_COLOR_RE.test(color) ? color : DEFAULT_ACCENT;
 }
 
 export function surfacePath(event: PublicEvent, surface: Surface): string {
@@ -53,55 +70,66 @@ export const SURFACE_LABELS: Record<Surface, string> = {
   gallery: "Gallery",
 };
 
-export function BaseStyles(props: { accentColor?: string }) {
+/** DEC-374: THEME_CSS then one PUBLIC_CSS `<style>` element, both inlined
+ * via dangerouslySetInnerHTML so hono/jsx never HTML-escapes the CSS text
+ * (no stray &#39;/&quot;/&gt; entities). PUBLIC_CSS is a value-free module
+ * constant -- the per-event accent is never interpolated here; see
+ * validAccent() and the `style` attribute on <body> in PublicShell/
+ * EmbedShell below instead. */
+export function BaseStyles() {
   return (
     <>
       <ThemeStyles />
-      <style>{`
-        /* DEC-371: --chq-brandable-accent is the only per-event recolour
-           hook — never repoint --chq-brand/--chq-ink/link or button colors
-           to the event's accent, or branding would recolour body text and
-           controls along with it. */
-        :root { --chq-brandable-accent: ${props.accentColor ?? "#4E5C31"}; }
-        /* DEC-253: mobile bar (390x844) — nav/filter/submit controls stay
-           reachable and tap-target-sized, and wrap instead of overflowing.
-           Unquoted attribute selectors below: hono/jsx HTML-escapes this
-           template literal's text content like any other child text, so a
-           quoted selector like input[type="search"] round-trips as literal
-           input[type=&quot;search&quot;] — invalid CSS that silently matches
-           nothing. Unquoted identifier-value selectors survive that escaping
-           unchanged. */
-        form[role=search] { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
-        form[role=search] label { display: flex; flex-direction: column; gap: 0.2rem; flex: 1 1 200px; }
-        .chq-track-chip { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 999px; color: #fff; font-size: 0.8rem; margin-right: 0.25rem; }
-        .chq-speaker-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 1rem; }
-        .chq-speaker-grid img, .chq-speaker-grid .chq-headshot-fallback { width: 100%; aspect-ratio: 1/1; object-fit: cover; border-radius: 8px; background: var(--chq-surface-sunk); }
-        /* DEC-253: the day grid itself keeps its legible per-room minmax
-           columns and scrolls sideways in its own container rather than
-           collapsing the whole page or blowing out page-level width. */
-        .chq-agenda-day-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 1.5rem; }
-        .chq-agenda-day { display: grid; gap: 1px; background: var(--chq-hairline); margin-bottom: 0; }
-        .chq-agenda-block { background: var(--chq-surface); border-left: 3px solid var(--chq-brandable-accent); padding: 0.4rem 0.6rem; font-size: 0.85rem; }
-      `}</style>
+      <style dangerouslySetInnerHTML={{ __html: PUBLIC_CSS }} />
     </>
   );
 }
 
-/** Mobile-first shared layout with event branding + surface nav (DEC-022). */
+/** "12–14 May 2027 · Moscone West, San Francisco" style meta line for the
+ * public header (DEC-377: every field here traces to PublicEvent's own
+ * startDate/endDate/location columns, nothing illustrative). */
+function eventDatesLine(event: PublicEvent): string {
+  const fmt = (iso: string, withYear: boolean) => {
+    const [year, month, date] = iso.split("-").map(Number);
+    if (!year || !month || !date) return iso;
+    const d = new Date(Date.UTC(year, month - 1, date));
+    return d.toLocaleDateString("en-US", {
+      day: "numeric",
+      month: "short",
+      year: withYear ? "numeric" : undefined,
+      timeZone: "UTC",
+    });
+  };
+  const dates =
+    event.startDate === event.endDate
+      ? fmt(event.startDate, true)
+      : `${fmt(event.startDate, false)}–${fmt(event.endDate, true)}`;
+  return event.location ? `${dates} · ${event.location}` : dates;
+}
+
+/** Mobile-first shared layout with event branding + surface nav (DEC-022,
+ * DEC-366 chrome from docs/design/Chautauqua Public and Portal.dc.html). */
 export function PublicShell(props: { event: PublicEvent; active: Surface; title: string; children: unknown }) {
   const { event, active } = props;
   const b = branding(event);
+  const accent = validAccent(b.accentColor);
   return (
     <html lang="en">
       <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>{props.title}</title>
-        <BaseStyles accentColor={b.accentColor} />
+        <BaseStyles />
       </head>
-      <body>
-        <header class="chq-header">
-          <span class="chq-wordmark">{b.logoUrl ? <img src={b.logoUrl} alt="" height={40} /> : null}{event.name}</span>
+      <body style={`--chq-brandable-accent: ${accent};`}>
+        <header class="chq-pub-header">
+          <div class="chq-pub-header-meta">
+            <span class="chq-pub-header-dates">{eventDatesLine(event)}</span>
+            <span class="chq-pub-header-title">
+              {b.logoUrl ? <img class="chq-pub-header-logo" src={b.logoUrl} alt="" /> : null}
+              {event.name}
+            </span>
+          </div>
           <nav class="chq-nav">
             {SURFACES.map((s) => (
               <a href={surfacePath(event, s)} aria-current={s === active ? "page" : undefined}>
@@ -110,26 +138,28 @@ export function PublicShell(props: { event: PublicEvent; active: Surface; title:
             ))}
           </nav>
         </header>
-        <main>{props.children as any}</main>
+        <main class="chq-pub-main">{props.children as any}</main>
       </body>
     </html>
   );
 }
 
 /** Chromeless embed shell (DEC-022): same surface content, no nav/header, no
- * frame-blocking headers set anywhere in this file so iframes work. */
+ * frame-blocking headers set anywhere in this file so iframes work. Keeps
+ * the identical BaseStyles() style pair as PublicShell (DEC-374). */
 export function EmbedShell(props: { event: PublicEvent; title: string; children: unknown; accentOverride?: string }) {
   const b = branding(props.event);
+  const accent = validAccent(props.accentOverride ?? b.accentColor);
   return (
     <html lang="en">
       <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>{props.title}</title>
-        <BaseStyles accentColor={props.accentOverride ?? b.accentColor} />
+        <BaseStyles />
       </head>
-      <body>
-        <main>{props.children as any}</main>
+      <body style={`--chq-brandable-accent: ${accent};`}>
+        <main class="chq-pub-main">{props.children as any}</main>
       </body>
     </html>
   );
