@@ -12,6 +12,7 @@ import { chunkIds } from "../../lib/chunk";
 import {
   autoSchedule,
   findConflicts,
+  MINUTES_PER_DAY,
   scheduleSummary,
   type AutoScheduleSessionInput,
   type Conflict,
@@ -364,8 +365,16 @@ export function isValidSlotInput(body: unknown): body is SlotInput {
   if (typeof body !== "object" || body === null) return false;
   const b = body as Record<string, unknown>;
   const dayOk = typeof b.day === "string" && /^\d{4}-\d{2}-\d{2}$/.test(b.day);
-  const startOk = typeof b.startMin === "number" && Number.isInteger(b.startMin) && b.startMin >= 0;
-  const endOk = typeof b.endMin === "number" && Number.isInteger(b.endMin) && b.endMin > (b.startMin as number);
+  const startOk =
+    typeof b.startMin === "number" &&
+    Number.isInteger(b.startMin) &&
+    b.startMin >= 0 &&
+    b.startMin <= MINUTES_PER_DAY - 1;
+  const endOk =
+    typeof b.endMin === "number" &&
+    Number.isInteger(b.endMin) &&
+    b.endMin > (b.startMin as number) &&
+    b.endMin <= MINUTES_PER_DAY;
   const roomOk = b.roomId === undefined || b.roomId === null || typeof b.roomId === "string";
   return dayOk && startOk && endOk && roomOk;
 }

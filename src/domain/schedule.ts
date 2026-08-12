@@ -3,8 +3,14 @@
  * auto-schedule. Pure module — no node:/cloudflare imports (DEC-002).
  */
 
-import { DEC_130 } from "../decisions";
+import { DEC_130, DEC_476 } from "../decisions";
 void DEC_130;
+void DEC_476;
+
+/** DEC-476: single source of truth for the day boundary in minutes. Every
+ * schedule-slot writer and the auto-schedule bounds share this constant so
+ * the two bounds cannot drift apart. */
+export const MINUTES_PER_DAY = 1440;
 
 export interface PlacedSession {
   submissionId: string;

@@ -7,6 +7,7 @@ import { Hono, type Context } from "hono";
 import type { AppEnv, AuthInfo } from "../server/env";
 import { requireOrganizer, csrfJson } from "../server/middleware";
 import { ApiError } from "../server/http";
+import { MINUTES_PER_DAY } from "../domain/schedule";
 import {
   DEFAULT_AUTO_SCHEDULE_PARAMS,
   getAgendaPayload,
@@ -54,9 +55,13 @@ agendaRoutes.put("/submissions/:id/slot", requireOrganizer, csrfJson, async (c) 
 
   const body = await c.req.json().catch(() => null);
   if (!isValidSlotInput(body)) {
-    throw new ApiError("invalid", "day, startMin, endMin (startMin < endMin) are required", {
-      slot: "Invalid slot input",
-    });
+    throw new ApiError(
+      "invalid",
+      `day, startMin, endMin (startMin < endMin, both within 0..${MINUTES_PER_DAY}) are required`,
+      {
+        slot: `Invalid slot input: startMin/endMin must fall within a single day (0..${MINUTES_PER_DAY} minutes)`,
+      },
+    );
   }
   if (typeof body.roomId === "string" && !(await roomBelongsToEvent(c.var.db, body.roomId, ownership.eventId))) {
     throw new ApiError("invalid", "Room does not belong to this event", {
@@ -127,9 +132,9 @@ interface AutoScheduleBody {
 // (startMin += gridMin) from being handed a zero/negative/absurd step that
 // never advances, which would run the isolate to its CPU limit.
 const AUTO_SCHEDULE_BOUNDS = {
-  dayStartMin: { min: 0, max: 1439 },
-  dayEndMin: { min: 1, max: 1440 },
-  defaultDurationMin: { min: 1, max: 1440 },
+  dayStartMin: { min: 0, max: MINUTES_PER_DAY - 1 },
+  dayEndMin: { min: 1, max: MINUTES_PER_DAY },
+  defaultDurationMin: { min: 1, max: MINUTES_PER_DAY },
   gridMin: { min: 1, max: 480 },
 } as const;
 
