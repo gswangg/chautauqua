@@ -1,20 +1,25 @@
-// DEC-291: dumb read-only viewer for a kind='form' task_assignment's saved
-// answers, opened from the OnboardingGrid's 'View response' cell control.
+// DEC-291: viewer for a kind='form' task_assignment's saved answers, opened
+// from the OnboardingGrid's 'View response' cell control. DEC-599: no longer
+// read-only -- 'Mark complete' and 'Ask for more' both write the existing
+// PATCH /task-assignments/:id status (pending|complete, no 'waive'). The
+// grid that opened this modal owns the write + optimistic reconcile/rollback
+// (matching toggleCell), so this component only calls back up.
 
 import type { MouseEvent } from 'react';
 import { formatDate } from '../../lib/dates';
 import { useEscapeKey } from '../../lib/useEscapeKey';
-import type { AssignmentResponseDetail } from './types';
+import type { AssignmentResponseDetail, AssignmentStatus } from './types';
 
 interface ResponseModalProps {
   contactName: string;
   loading: boolean;
   error: string | null;
   detail: AssignmentResponseDetail | null;
+  onStatusChange: (status: AssignmentStatus) => void;
   onClose: () => void;
 }
 
-export function ResponseModal({ contactName, loading, error, detail, onClose }: ResponseModalProps) {
+export function ResponseModal({ contactName, loading, error, detail, onStatusChange, onClose }: ResponseModalProps) {
   useEscapeKey(true, onClose);
 
   function handleScrimClick(e: MouseEvent<HTMLDivElement>) {
@@ -37,7 +42,7 @@ export function ResponseModal({ contactName, loading, error, detail, onClose }: 
         {loading && <p>Loading...</p>}
         {error && <div className="chq-error">{error}</div>}
 
-        {!loading && !error && detail && (
+        {!loading && detail && (
           <dl className="chq-speakers-response-fields">
             {detail.fields.map((field) => (
               <div key={field.label} className="chq-speakers-response-field">
@@ -46,6 +51,30 @@ export function ResponseModal({ contactName, loading, error, detail, onClose }: 
               </div>
             ))}
           </dl>
+        )}
+
+        {!loading && detail && (
+          <div className="chq-speakers-response-status">
+            {detail.status === 'pending' && (
+              <button
+                type="button"
+                className="chq-btn chq-btn-primary"
+                onClick={() => onStatusChange('complete')}
+              >
+                Mark complete
+              </button>
+            )}
+            {detail.status === 'complete' && (
+              <button
+                type="button"
+                className="chq-btn chq-btn-secondary"
+                onClick={() => onStatusChange('pending')}
+              >
+                Ask for more
+              </button>
+            )}
+            <span className="chq-summary">Reopening does not email the speaker.</span>
+          </div>
         )}
 
         <div className="chq-modal-actions">

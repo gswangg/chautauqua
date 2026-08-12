@@ -61,7 +61,9 @@ export function OnboardingGrid() {
   const [remindDrafts, setRemindDrafts] = useState<ReminderDraft[] | null>(null);
   const [reminding, setReminding] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
-  const [viewingResponse, setViewingResponse] = useState<{ contactName: string } | null>(null);
+  const [viewingResponse, setViewingResponse] = useState<{ assignmentId: string; contactName: string } | null>(
+    null,
+  );
   const [responseLoading, setResponseLoading] = useState(false);
   const [responseError, setResponseError] = useState<string | null>(null);
   const [responseDetail, setResponseDetail] = useState<AssignmentResponseDetail | null>(null);
@@ -201,7 +203,7 @@ export function OnboardingGrid() {
   }
 
   async function openResponse(assignmentId: string, contactName: string) {
-    setViewingResponse({ contactName });
+    setViewingResponse({ assignmentId, contactName });
     setResponseDetail(null);
     setResponseError(null);
     setResponseLoading(true);
@@ -219,6 +221,37 @@ export function OnboardingGrid() {
     setViewingResponse(null);
     setResponseDetail(null);
     setResponseError(null);
+  }
+
+  // DEC-599: 'Mark complete' / 'Ask for more' in the response modal write
+  // the same PATCH /task-assignments/:id status the grid cells write, and
+  // reconcile optimistically with loud rollback on ApiError (matching
+  // toggleCell) -- the grid row AND the open modal's status must agree.
+  async function changeResponseStatus(assignmentId: string, desired: AssignmentStatus) {
+    if (!grid) return;
+    const previousGrid = grid;
+    const previousDetail = responseDetail;
+    const completedAt = desired === 'complete' ? now : null;
+
+    setGrid({
+      ...grid,
+      rows: grid.rows.map((row) => ({
+        ...row,
+        cells: row.cells.map((cell) =>
+          cell.assignmentId === assignmentId ? { ...cell, status: desired, completedAt } : cell,
+        ),
+      })),
+    });
+    setResponseDetail((prev) => (prev ? { ...prev, status: desired, completedAt } : prev));
+    setResponseError(null);
+
+    try {
+      await apiPatch(`/task-assignments/${assignmentId}`, { status: desired });
+    } catch (err) {
+      setGrid(previousGrid);
+      setResponseDetail(previousDetail);
+      setResponseError(err instanceof ApiError ? `Update failed: ${err.message}` : 'Update failed');
+    }
   }
 
   async function handleCreateTask(input: NewTaskInput) {
@@ -486,6 +519,7 @@ export function OnboardingGrid() {
           loading={responseLoading}
           error={responseError}
           detail={responseDetail}
+          onStatusChange={(status) => changeResponseStatus(viewingResponse.assignmentId, status)}
           onClose={closeResponse}
         />
       )}

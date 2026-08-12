@@ -106,3 +106,77 @@ describe('OnboardingGrid: DEC-291 view-response control', () => {
     });
   });
 });
+
+// DEC-599: the response modal's 'Ask for more' writes the assignment back
+// to pending via the existing PATCH /task-assignments/:id -- reconciled
+// optimistically against the grid cell (matching toggleCell), with a loud
+// visible rollback if the PATCH fails.
+describe('OnboardingGrid: DEC-599 reopen from response modal', () => {
+  it('PATCHes status back to pending on Ask for more and updates the grid cell', async () => {
+    const fetchMock = mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: GRID,
+      'GET /api/v1/task-assignments/as2/response': DETAIL,
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+      'PATCH /api/v1/task-assignments/as2': { body: {} },
+    });
+
+    render(<OnboardingGrid />);
+
+    await waitFor(() => screen.getAllByText('Ada Lovelace').length > 0);
+    screen.getAllByRole('button', { name: 'View response' })[0]!.click();
+
+    await screen.findByRole('dialog', { name: 'Task response' });
+    await waitFor(() => expect(screen.getByText('Hotel name')).toBeInTheDocument());
+
+    const askForMore = screen.getByRole('button', { name: 'Ask for more' });
+    expect(screen.getByText('Reopening does not email the speaker.')).toBeInTheDocument();
+    fireEvent.click(askForMore);
+
+    await waitFor(() => {
+      const calls = fetchMock.mock.calls.filter(([input, init]) => {
+        const url = typeof input === 'string' ? input : (input as Request | URL).toString();
+        return url.includes('/task-assignments/as2') && init?.method === 'PATCH';
+      });
+      expect(calls.length).toBe(1);
+      expect(JSON.parse(calls[0]![1]!.body as string)).toEqual({ status: 'pending' });
+    });
+
+    // The dialog now offers 'Mark complete' instead -- the modal's own
+    // status flipped in lockstep with the PATCH.
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Mark complete' })).toBeInTheDocument();
+    });
+    expect(screen.queryByRole('button', { name: 'Ask for more' })).not.toBeInTheDocument();
+  });
+
+  it('rolls back visibly when the reopen PATCH fails', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: GRID,
+      'GET /api/v1/task-assignments/as2/response': DETAIL,
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+      'PATCH /api/v1/task-assignments/as2': { status: 500, body: { error: { code: 'internal', message: 'boom' } } },
+    });
+
+    render(<OnboardingGrid />);
+
+    await waitFor(() => screen.getAllByText('Ada Lovelace').length > 0);
+    screen.getAllByRole('button', { name: 'View response' })[0]!.click();
+
+    await screen.findByRole('dialog', { name: 'Task response' });
+    await waitFor(() => expect(screen.getByText('Hotel name')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ask for more' }));
+
+    // Optimistic flip happens first...
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Mark complete' })).toBeInTheDocument();
+    });
+
+    // ...then rolls back visibly on the failed PATCH: the modal reverts to
+    // 'Ask for more' and an error surfaces, not a silent no-op.
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Ask for more' })).toBeInTheDocument();
+    });
+    expect(screen.getByText(/Update failed/)).toBeInTheDocument();
+  });
+});
