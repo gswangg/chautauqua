@@ -21,40 +21,40 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   manifests desync -- enumerate in a test; date-only field is a DAY
   LABEL; conditional visibility is a FIXED POINT; offset-paged ORDER BY
   ends in a unique column; hand-copied vocabularies drift -- IMPORT
-  them; a helper with zero src callers tests NOTHING; a uniqueIndex is a
-  CONTRACT -- sweep every SELECT-then-INSERT; a cron has no request --
-  own origin entry point that THROWS; a `position`/`order` column
-  nobody sets on create is dead -- assign max+1 INSIDE the insert; a
-  nullable column inside a NEGATED set predicate (NOT IN / !=) silently
-  skips NULL rows; two functions claiming "the same semantics" END in
-  the same helper; a completion count taken OUTSIDE the assigned set can
-  exceed its denominator.
-- FINDINGS ROUND w1 (DEC-570..580, compacted): full suites SERIALIZED via
-  scripts/with-test-lock.sh, workers run TARGETED tests only. A `div
-  draggable` is invisible to the a11y tree -- use a real <button>. A card
-  with `height:100%` and no `overflow` bleeds into the next row. Colour
-  alone may not carry track identity -- NAME it in type. A fan-out with
-  no count is a cap the UI can't see: preview/queue END in one predicate
-  builder. A comment thread belongs to the version CHAIN, not a file
-  row. An upload that navigates DISCARDS the form; a blank CSV cell is
-  ABSENT DATA, never delete. `flex:1; min-height:0; overflow-y:auto`
-  beats guessed bottom padding under a fixed bar. A drill-in must
-  resolve its own subject; a fidelity report is an OBSERVATION, not spec.
-- FINDINGS ROUND w2 (DEC-581..590): verify before you trust -- w2 was
-  planned against a tree where w1 had NOT landed; read main. GET / is an
-  ANONYMOUS hub: signed-in visitors redirect by role, and what a
-  stranger may read is a PURE predicate (src/lib/home-hub.ts), never a
-  WHERE clause -- would you mind a competitor reading it? Credentials
-  copied by hand drift -- IMPORT them, assert against the fixture; a
-  password renders only when those exact seeded accounts exist. SSR
-  can't know the viewport, so a phone layout is a SECOND markup switched
-  with display:none (visibility/opacity leave it in the a11y tree) --
-  duplicated inputs sharing a value must MIRROR each other or unchecking
-  silently fails. One shared stylesheet per layer: THEME_CSS owns bare
-  control selectors for every SSR surface (DEC-585) as app/src/styles.css
-  does for the SPA (DEC-577); a surface module styles .chq-* only. A
-  picker between a person and their work is an administrative noun -- a
-  reviewer lands on the queue. A ratio whose numerator/denominator count
-  different KINDS of thing is a sentence that cannot be true. A branch
-  comparing against a copied-wrong vocabulary never fires and prints the
-  raw enum -- import the label from whoever owns the vocabulary.
+  them; a uniqueIndex is a CONTRACT; a cron has no request -- own origin
+  entry point that THROWS; a `position`/`order` column nobody sets on
+  create is dead -- assign max+1 INSIDE the insert; a nullable column
+  inside a NEGATED set predicate (NOT IN/!=) silently skips NULL rows;
+  two functions claiming "the same semantics" END in the same helper.
+- FINDINGS w1-2 (DEC-570..590, compacted): full suites SERIALIZED via
+  with-test-lock.sh, workers run TARGETED tests; verify before trust --
+  read main first. Real <button> not `div draggable`; colour alone
+  isn't track identity -- NAME it. Fan-out with no count is a hidden
+  cap: preview/queue END in one predicate builder. Comment thread
+  belongs to the version CHAIN. Upload-that-navigates DISCARDS the
+  form; blank CSV cell is ABSENT DATA. `flex:1;min-height:0;overflow-y:
+  auto` beats guessed padding. Drill-in resolves its own subject;
+  fidelity report is OBSERVATION, not spec. GET / is an ANONYMOUS hub,
+  stranger-visible is a PURE predicate (home-hub.ts). Credentials
+  copied by hand drift -- IMPORT, assert against fixture. SSR can't
+  know viewport: phone layout is a SECOND markup via display:none;
+  mirrored inputs must MIRROR. ONE stylesheet per layer: THEME_CSS
+  (SSR)/styles.css (SPA) own bare controls. A ratio whose num/denom
+  count different KINDS is false. Branch against a copied-wrong
+  vocabulary never fires -- import the label.
+- FINDINGS w3 (DEC-591..601): the seed has ONE clock -- SEED_NOW,
+  every instant an offset from it, and a loud assert when the demo's
+  own event has already happened. A value with no column is an ANSWER:
+  name its field id once (SESSION_FORMAT_FIELD_ID) and import it, seed
+  included. Two renderings of one person must not disagree about which
+  facts a person has -- one card, two layouts. A query param that
+  parses and then no-ops is the same lie as a hidden cap: honor it in
+  BOTH the HTML and the .json twin, or delete it; and an embed whose
+  links leave the iframe is not an embed. A count taken at the wrong
+  gate is not a count -- publish reports through the PUBLIC visibility
+  predicate, never through placement, and names what it held back.
+  Anonymity is the plan's fact, decided server-side, never the
+  renderer's. `?? 'Unknown'` in a component is the SERVER forgetting to
+  resolve a name. A phone block with no desktop `display:none` renders
+  TWICE. And a defect report can be wrong: 'Pending' vs 'Under review'
+  is deliberate (DEC-600) -- the speaker must never see the queue.
