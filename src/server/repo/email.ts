@@ -5,6 +5,7 @@
 import { and, desc, eq, or, sql } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
+import { likeContains } from "./like";
 
 export interface EmailLogRow {
   id: string;
@@ -83,9 +84,14 @@ export async function listEmailLog(db: Db, params: EmailLogListParams): Promise<
   if (params.contactId) conditions.push(eq(schema.emailLog.contactId, params.contactId));
   if (params.status) conditions.push(eq(schema.emailLog.status, params.status));
   if (params.q && params.q.trim() !== "") {
-    const like = `%${params.q.trim()}%`;
+    // DEC-506: escape via likeContains + ESCAPE '\\' so a literal `%`/`_`
+    // in the query string can't widen into a wildcard match.
+    const like = likeContains(params.q.trim());
     conditions.push(
-      or(sql`${schema.emailLog.subject} LIKE ${like} COLLATE NOCASE`, sql`${schema.emailLog.toEmail} LIKE ${like} COLLATE NOCASE`),
+      or(
+        sql`${schema.emailLog.subject} LIKE ${like} ESCAPE '\\' COLLATE NOCASE`,
+        sql`${schema.emailLog.toEmail} LIKE ${like} ESCAPE '\\' COLLATE NOCASE`,
+      ),
     );
   }
   const where = conditions.length > 0 ? and(...conditions) : undefined;

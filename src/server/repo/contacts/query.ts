@@ -37,18 +37,6 @@ export function parseContactListQuery(
   return { page, perPage, q, segmentId, sort, rules };
 }
 
-/**
- * Lowercases `raw`, escapes SQL LIKE metacharacters (\, %, _) so a literal
- * search term can never widen into a wildcard match, and wraps it for
- * substring containment. Callers must pair the result with
- * `LIKE ${like} ESCAPE '\\'` so SQLite honors the escaped backslash
- * (DEC-333/DEC-336: the contact directory search predicate moves into SQL).
- */
-export function likeContains(raw: string): string {
-  const escaped = raw.toLowerCase().replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
-  return `%${escaped}%`;
-}
-
 /** Comparator for the two DEC-026 sort orders: name (last, first) or recent (updatedAt desc). */
 export function compareContacts(sort: "name" | "recent"): (a: ContactRow, b: ContactRow) => number {
   if (sort === "recent") {

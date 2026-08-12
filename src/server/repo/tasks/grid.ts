@@ -7,7 +7,7 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { chunkIds } from "../../../lib/chunk";
-import { likeContains } from "../contacts/query";
+import { likeContains } from "../like";
 
 export interface GridTask {
   id: string;
@@ -128,7 +128,7 @@ export async function getOnboardingGrid(db: Db, eventId: string, params: Onboard
 
   const conditions = [matchExists];
   if (params.q) {
-    const like = likeContains(params.q);
+    const like = likeContains(params.q.toLowerCase());
     conditions.push(
       sql`(lower(${schema.contact.firstName}) like ${like} escape '\\' or lower(${schema.contact.lastName}) like ${like} escape '\\' or lower(${schema.contact.email}) like ${like} escape '\\')`,
     );

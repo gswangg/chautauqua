@@ -74,12 +74,3 @@ export function parseListQuery(raw: Record<string, string | undefined>): ParsedL
 export function isValidStatusLiteral(value: unknown): value is SubmissionStatus {
   return typeof value === "string" && (SUBMISSION_STATUSES as readonly string[]).includes(value);
 }
-
-/** Lowercases and escapes backslash/%/_ for a SQL LIKE bind (ESCAPE '\'),
- * wrapping in %...% for substring matching (DEC-333/335). A near-identical
- * helper is deliberately duplicated in the contacts repo lane — pure, tiny,
- * not worth a shared module across independently-owned files. */
-export function likeContains(raw: string): string {
-  const escaped = raw.toLowerCase().replace(/[\\%_]/g, (ch) => `\\${ch}`);
-  return `%${escaped}%`;
-}

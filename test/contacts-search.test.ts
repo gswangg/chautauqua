@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { tokenizeContactQuery, type ContactRecord } from "../src/domain/contacts";
 import { listContactsForOrg } from "../src/server/repo/contacts";
-import { likeContains } from "../src/server/repo/contacts/query";
+import { likeContains } from "../src/server/repo/like";
 import type { AppEnv } from "../src/server/env";
 
 function contact(overrides: Partial<ContactRecord> & { id: string }): ContactRecord {
@@ -25,9 +25,9 @@ describe("tokenizeContactQuery (DEC-266)", () => {
   });
 });
 
-describe("likeContains (DEC-333/DEC-336)", () => {
-  it("lowercases and wraps in % ... %", () => {
-    expect(likeContains("Priya")).toBe("%priya%");
+describe("likeContains (DEC-333/DEC-336/DEC-506)", () => {
+  it("wraps in % ... % without case-folding", () => {
+    expect(likeContains("Priya")).toBe("%Priya%");
   });
 
   it("escapes backslash, percent and underscore", () => {

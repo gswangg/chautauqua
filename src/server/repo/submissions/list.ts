@@ -7,7 +7,8 @@ import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { formatRef } from "../../../domain/ids";
 import { FILE_KINDS, type FileKind } from "../../../domain/files";
-import { chunkIds, likeContains, type ParsedListQuery, type SortOrder } from "./query";
+import { chunkIds, type ParsedListQuery, type SortOrder } from "./query";
+import { likeContains } from "../like";
 
 export interface SubmissionSpeaker {
   contactId: string;
@@ -78,7 +79,7 @@ export async function listSubmissions(
   // JS pagination — one paginated statement, cost bound by the WHERE, not
   // by materializing every matching row.
   if (params.q) {
-    const like = likeContains(params.q);
+    const like = likeContains(params.q.toLowerCase());
     conditions.push(
       or(
         sql`lower(${schema.submission.title}) like ${like} escape '\\'`,

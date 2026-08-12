@@ -9,6 +9,7 @@ import { chunkIds } from "../../../lib/chunk";
 import { visibleSubmissionConditions } from "./gates";
 import type { PublicSpeaker } from "./sessions";
 import { boundedRowLimit } from "./bounds";
+import { likeContains } from "../like";
 
 // Compile-checked dependency marker: every speaker title/company read below
 // comes from participant.title_at_time/org_at_time (DEC-258's frozen
@@ -48,12 +49,16 @@ export async function getPublicSpeakers(
   const conditions = [eq(schema.submission.eventId, eventId), visibleSubmissionConditions()];
   const q = opts.q?.trim();
   if (q) {
-    const pattern = `%${q}%`;
+    // DEC-506: escape via likeContains + pair with ESCAPE '\\' so a
+    // literal `%`/`_` in the query string can't widen into a wildcard
+    // match (unescaped LIKE previously let `?q=%` return the whole
+    // roster).
+    const like = likeContains(q);
     conditions.push(
       or(
-        sql`${schema.contact.firstName} LIKE ${pattern} COLLATE NOCASE`,
-        sql`${schema.contact.lastName} LIKE ${pattern} COLLATE NOCASE`,
-        sql`(${schema.contact.firstName} || ' ' || ${schema.contact.lastName}) LIKE ${pattern} COLLATE NOCASE`,
+        sql`${schema.contact.firstName} LIKE ${like} ESCAPE '\\' COLLATE NOCASE`,
+        sql`${schema.contact.lastName} LIKE ${like} ESCAPE '\\' COLLATE NOCASE`,
+        sql`(${schema.contact.firstName} || ' ' || ${schema.contact.lastName}) LIKE ${like} ESCAPE '\\' COLLATE NOCASE`,
       )!,
     );
   }
