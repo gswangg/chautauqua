@@ -142,3 +142,25 @@ A clean re-run happens after this round.
 
 Per-area (for calibration only, deflated by the fault): CFP 82% · ABS 50% · SPK 57% ·
 CNT 52% · AIA 88% · EMB 72% · CRM 76% (of judged weight).
+
+## APPENDED: user manual-QA findings — prod desktop Overview (2026-08-12)
+
+1. **Event switcher looks foreign to the design system** (refines Tier-1 #8): even
+   granting that multi-event needs a switcher the mocks didn't draw, a bordered native
+   `<select>` in the header reads as not belonging. Keep the switching capability
+   (CFP-17 requires it) but restyle it as a design-system control — event name in the
+   shell's specified type (13px/600) with a quiet affordance (chevron + styled popover
+   or menu), no native select chrome. It must sit ON the single-row shell, not in a
+   second band.
+2. **Font weights on Overview don't quite match the design system**: audit every text
+   role on the page against the README typography table (overview headline 44px/700/
+   -0.042em; section labels 11px/700/0.12em uppercase; row titles 600 with tight
+   tracking; metadata 400–600 Muted; deadline values 30px/400 with ONLY the nearest at
+   700). Add the type-scale to a shared stylesheet token set rather than per-component
+   numbers so drift can't recur; extend the DEC-421 render-sweep type invariant to
+   assert computed weights on Overview's key roles.
+3. **Seed must populate the overdue-tasks section** (refines DEC-591's "a day's work"):
+   the mock's §01 shows three named overdue tasks (headshot 4 days late, slides 2 days,
+   release 1 day). SEED_NOW placement must yield ≥3 overdue speaker tasks with staggered
+   lateness so Overview §01 renders rows and "Remind" is exercisable — the user
+   explicitly wants this comparable against the mock.
