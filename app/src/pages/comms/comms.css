@@ -49,7 +49,7 @@
 }
 
 .chq-comms-step-title {
-  font-family: var(--chq-font-display, 'Familjen Grotesk', sans-serif);
+  font-family: var(--chq-font-display);
   font-size: 14px;
   font-weight: 500;
   color: var(--chq-ink-2);
@@ -105,7 +105,7 @@
 .chq-comms-panel {
   margin-top: 22px;
   border: 1px solid var(--chq-border);
-  border-radius: var(--chq-r-card, 5px);
+  border-radius: var(--chq-r-card);
   background: var(--chq-surface);
   padding: 16px;
   display: flex;
@@ -114,7 +114,7 @@
 }
 
 .chq-comms-panel-title {
-  font-family: var(--chq-font-display, 'Familjen Grotesk', sans-serif);
+  font-family: var(--chq-font-display);
   font-size: 14px;
   font-weight: 700;
 }
@@ -143,7 +143,7 @@
 .chq-comms-preview-card {
   margin-top: 16px;
   border: 1px solid var(--chq-rule);
-  border-radius: var(--chq-r-card, 5px);
+  border-radius: var(--chq-r-card);
   background: var(--chq-surface);
   overflow: hidden;
 }
@@ -170,7 +170,7 @@
 }
 
 .chq-comms-preview-subject {
-  font-family: var(--chq-font-display, 'Familjen Grotesk', sans-serif);
+  font-family: var(--chq-font-display);
   font-size: 17px;
   font-weight: 600;
   letter-spacing: -0.015em;
@@ -238,7 +238,7 @@
 }
 
 .chq-comms-template-name {
-  font-family: var(--chq-font-display, 'Familjen Grotesk', sans-serif);
+  font-family: var(--chq-font-display);
   font-size: 16px;
   font-weight: 500;
   letter-spacing: -0.015em;
@@ -281,5 +281,113 @@
   .chq-comms-review,
   .chq-comms-templates {
     grid-template-columns: 1fr;
+  }
+}
+
+/* ---------------------------------------------------------------------- */
+/* Phone (DEC-385: one switch at 700px in every stylesheet). The 900px    */
+/* collapse above still applies (cascades down) — these rules only add    */
+/* the phone-specific card/strip treatments the mock calls for. This page */
+/* never redefines .chq-steps (shared, already single-column <=700px in   */
+/* ../../styles.css) or .chq-meta itself — the send-history override      */
+/* below is scoped under .chq-comms-history-row, matching the .chq-step   */
+/* .chq-comms-step-title contextual-override pattern used above.         */
+/* ---------------------------------------------------------------------- */
+
+@media (max-width: 700px) {
+  /* Send-history rows: recipient / subject / status stacked as a card.
+     The row's 4th span is .chq-meta (shared); the 3rd (recipient email)
+     carries no class in HistoryTab.tsx, so it's addressed structurally. */
+  .chq-comms-history-row {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 14px 0;
+  }
+
+  .chq-comms-history-when {
+    order: 0;
+  }
+
+  .chq-comms-history-row > span:nth-child(3) {
+    order: 1;
+    font-size: 13px;
+    color: var(--chq-ink-2);
+  }
+
+  .chq-comms-history-subject {
+    order: 2;
+  }
+
+  .chq-comms-history-row .chq-meta {
+    order: 3;
+    margin-top: 2px;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  /* Templates list: CSS-only table-to-card (thead hidden, td block) — no
+     cell is hidden, matching DEC-386's non-Speakers table pattern. */
+  .chq-comms-templates-table thead {
+    display: none;
+  }
+
+  .chq-comms-templates-table,
+  .chq-comms-templates-table tbody,
+  .chq-comms-templates-table tr,
+  .chq-comms-templates-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .chq-comms-templates-table tr {
+    padding: 14px 0;
+    border-bottom: 1px solid var(--chq-hairline);
+  }
+
+  .chq-comms-templates-table td {
+    padding: 2px 0;
+    border: none;
+  }
+
+  /* Template editor: merge-field chip strip wraps (chq-pill already gets
+     44px/centred-flex from the shared 700px rule in ../../styles.css). */
+  .chq-comms-merge-chips {
+    row-gap: 10px;
+  }
+
+  /* Preview pane switcher: flex-shrink:0 horizontal strip. The Prev/Next
+     buttons carry no className in ComposeWizard.tsx, so they're addressed
+     structurally, scoped under this page's own .chq-comms-preview-nav. */
+  .chq-comms-preview-nav {
+    flex-shrink: 0;
+    overflow-x: auto;
+  }
+
+  .chq-comms-preview-nav button {
+    flex-shrink: 0;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 14px;
+    border: 1px solid var(--chq-border);
+    border-radius: var(--chq-r-ctl-phone);
+    background: var(--chq-surface);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  .chq-comms-preview-nav button:disabled {
+    color: var(--chq-disabled);
+  }
+
+  /* Preview card and panel already have no max-width constraint, so they
+     already run full width; tighten the panel's gutter to match. */
+  .chq-comms-panel {
+    margin-top: 16px;
   }
 }
