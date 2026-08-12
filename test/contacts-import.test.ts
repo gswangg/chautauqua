@@ -223,6 +223,58 @@ describe("POST /api/v1/contacts/import (P1: silent non-persistence repro)", () =
     expect((rows()[0] as { firstName: string }).firstName).toBe("New");
   });
 
+  it("DEC-575: a blank bio cell and a partial custom-field sheet never clear existing bio/custom fields", async () => {
+    const { db, rows } = makeFakeContactDb();
+    const app = appWithDbAndAuth(db, ORGANIZER);
+
+    // Seed an existing contact directly (bypassing import) with a bio and
+    // two custom fields.
+    await db
+      .insert(schema.contact)
+      .values({
+        id: "ct_seed",
+        orgId: "org-1",
+        firstName: "Ada",
+        lastName: "Lovelace",
+        email: "ada@example.com",
+        phone: null,
+        company: null,
+        title: null,
+        bio: "Computing pioneer.",
+        notes: null,
+        customFieldsJson: JSON.stringify({ badge: "VIP", dietary: "Vegan" }),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as any);
+
+    // Re-import the same email with an empty Bio column and one custom
+    // column (TalkTitle) the original row never carried.
+    const csvText = "Email,Bio,TalkTitle\nada@example.com,,Ada's Keynote\n";
+    const mapping = { Email: "email", Bio: "bio", TalkTitle: "custom.talkTitle" };
+
+    const importRes = await app.request("/api/v1/contacts/import", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-chq-csrf": "1" },
+      body: JSON.stringify({ csvText, mapping }),
+    });
+    expect(importRes.status).toBe(200);
+    const importBody = (await importRes.json()) as { created: number; updated: number };
+    expect(importBody).toEqual({ created: 0, updated: 1, skipped: [] });
+
+    const updatedRow = rows().find((r) => (r as { id: string }).id === "ct_seed") as {
+      bio: string | null;
+      customFieldsJson: string | null;
+    };
+    // Bio survives (blank cell never clears it).
+    expect(updatedRow.bio).toBe("Computing pioneer.");
+    // Both original custom fields survive, and the new one is added.
+    expect(JSON.parse(updatedRow.customFieldsJson as string)).toEqual({
+      badge: "VIP",
+      dietary: "Vegan",
+      talkTitle: "Ada's Keynote",
+    });
+  });
+
   it("fails loudly with a 400 (not an unhandled 500) on an unsupported mapping target", async () => {
     const { db } = makeFakeContactDb();
     const app = appWithDbAndAuth(db, ORGANIZER);

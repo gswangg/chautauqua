@@ -136,10 +136,16 @@ export async function applyImportRows(
   }
 
   const byEmail = new Map<string, string>();
+  // DEC-575: the update branch needs each matched contact's currently
+  // stored custom fields to merge into (rather than replace with the
+  // file's blob) -- fetched here, in the SAME chunked pre-pass that
+  // already builds byEmail, so the per-row statement budget (DEC-491)
+  // never grows.
+  const existingCustomFieldsById = new Map<string, Record<string, string>>();
   const emailList = [...fileEmails];
   for (const batch of chunkIds(emailList)) {
     const existing = await db
-      .select({ id: schema.contact.id, email: schema.contact.email })
+      .select({ id: schema.contact.id, email: schema.contact.email, customFieldsJson: schema.contact.customFieldsJson })
       .from(schema.contact)
       .where(
         and(
@@ -147,7 +153,12 @@ export async function applyImportRows(
           inArray(sql`lower(${schema.contact.email})`, batch),
         ),
       );
-    for (const r of existing) byEmail.set(normalizeEmail(r.email), r.id);
+    for (const r of existing) {
+      byEmail.set(normalizeEmail(r.email), r.id);
+      if (r.customFieldsJson) {
+        existingCustomFieldsById.set(r.id, JSON.parse(r.customFieldsJson) as Record<string, string>);
+      }
+    }
   }
 
   let created = 0;
@@ -176,7 +187,11 @@ export async function applyImportRows(
     const key = normalizeEmail(email);
     const existingId = byEmail.get(key);
     const normalizedParsed = { ...parsed, email: key };
-    const decision = resolveImportUpsert(existingId, normalizedParsed as Partial<ContactRecord>);
+    const decision = resolveImportUpsert(
+      existingId,
+      normalizedParsed as Partial<ContactRecord>,
+      existingId !== undefined ? existingCustomFieldsById.get(existingId) : undefined,
+    );
     if (decision.action === "create") {
       const id = await createContactForImport(db, orgId, decision.values);
       byEmail.set(key, id);

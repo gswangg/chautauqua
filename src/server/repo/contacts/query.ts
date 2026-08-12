@@ -61,11 +61,24 @@ export type ImportUpsertAction =
 /**
  * Decides create-vs-update for one already-mapped import row, matched by
  * case-insensitive email (DEC-026). `existingId` is the id of an org
- * contact whose email already matches (case-insensitively), if any. Update
- * patches only carry the fields present on the parsed row (partial CSV
- * mappings never blank out existing data).
+ * contact whose email already matches (case-insensitively), if any.
+ *
+ * DEC-575: on the create branch, blank stays blank (there's nothing to
+ * lose). On the update branch, a blank-after-trim cell means "no value
+ * supplied", never "clear this field" — such standard fields (firstName,
+ * lastName, company, title, phone, bio) are omitted from the patch
+ * entirely rather than written as "". customFields never replace the
+ * stored blob wholesale: `existingCustomFields` (the contact's currently
+ * stored custom fields, if any — the caller fetches this in its own
+ * chunked pre-pass, not per row) is merged key-by-key with the parsed
+ * row's custom columns, and a blank-after-trim custom value is skipped
+ * (leaves the stored key, if any, untouched) rather than overwriting it.
  */
-export function resolveImportUpsert(existingId: string | undefined, parsed: Partial<ContactRecord>): ImportUpsertAction {
+export function resolveImportUpsert(
+  existingId: string | undefined,
+  parsed: Partial<ContactRecord>,
+  existingCustomFields?: Record<string, string>,
+): ImportUpsertAction {
   if (!parsed.email || parsed.email.trim() === "") {
     throw new Error("resolveImportUpsert: parsed row must have a non-blank email");
   }
@@ -85,13 +98,29 @@ export function resolveImportUpsert(existingId: string | undefined, parsed: Part
     };
   }
   const patch: Partial<Omit<ContactRecord, "id">> = {};
-  if (parsed.firstName !== undefined) patch.firstName = parsed.firstName;
-  if (parsed.lastName !== undefined) patch.lastName = parsed.lastName;
-  if (parsed.company !== undefined) patch.company = parsed.company;
-  if (parsed.title !== undefined) patch.title = parsed.title;
-  if (parsed.phone !== undefined) patch.phone = parsed.phone;
-  if (parsed.bio !== undefined) patch.bio = parsed.bio;
-  if (parsed.customFields !== undefined) patch.customFields = parsed.customFields;
+  const setIfNonBlank = (
+    key: "firstName" | "lastName" | "company" | "title" | "phone" | "bio",
+    value: string | undefined,
+  ) => {
+    if (value !== undefined && value.trim() !== "") {
+      patch[key] = value;
+    }
+  };
+  setIfNonBlank("firstName", parsed.firstName);
+  setIfNonBlank("lastName", parsed.lastName);
+  setIfNonBlank("company", parsed.company);
+  setIfNonBlank("title", parsed.title);
+  setIfNonBlank("phone", parsed.phone);
+  setIfNonBlank("bio", parsed.bio);
+
+  if (parsed.customFields !== undefined) {
+    const merged: Record<string, string> = { ...(existingCustomFields ?? {}) };
+    for (const [key, value] of Object.entries(parsed.customFields)) {
+      if (value.trim() !== "") merged[key] = value;
+    }
+    patch.customFields = merged;
+  }
+
   return { action: "update", id: existingId, patch };
 }
 
