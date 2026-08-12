@@ -467,7 +467,10 @@ export async function updateRoom(
   return updated;
 }
 
-/** 409 conflict (never cascades) when the room is referenced by a schedule slot. */
+/** 409 conflict (never cascades) when the room is referenced by a schedule
+ * slot — DEC-519: deletion never mutates or clears an existing placement's
+ * room_id, it is refused outright while any schedule_slot still references
+ * this room, so there is no ics_sequence bump to make here. */
 export async function deleteRoom(db: Db, roomId: string, eventId: string): Promise<void> {
   const existing = await getRoomForEvent(db, roomId, eventId);
   if (!existing) throw new ApiError("not_found", "Room not found");
