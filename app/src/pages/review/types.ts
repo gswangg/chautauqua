@@ -217,3 +217,19 @@ export interface ReviewerOption {
   email: string;
   role: string;
 }
+
+// GET /api/v1/plans/:id/scope-preview?trackId=... response (DEC-572): the
+// TRUE total plus a bounded (<=perPage) preview page, so the reviewer
+// track-assignment action can show a real count and let the organizer
+// confirm before it fans out.
+export interface ScopePreviewItem {
+  id: string;
+  ref: string;
+  title: string;
+}
+
+export interface ScopePreview {
+  count: number;
+  items: ScopePreviewItem[];
+  perPage: number;
+}

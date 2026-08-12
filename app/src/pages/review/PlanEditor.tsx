@@ -13,8 +13,19 @@ import {
   type PlanDraft,
   type PlanReviewer,
   type ReviewerOption,
+  type ScopePreview,
   type Track,
 } from './types';
+
+// DEC-572: batches per-submission plan_reviewer POSTs to at most this many
+// concurrent requests per wave, mirroring the server's own bound.
+const SCOPE_ASSIGN_BATCH_SIZE = 100;
+
+function chunk<T>(items: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
+  return out;
+}
 
 export function PlanEditor() {
   const { planId } = useParams<{ planId: string }>();
@@ -189,6 +200,52 @@ export function PlanEditor() {
   const [reviewerTrackId, setReviewerTrackId] = useState('');
   const [reviewerSubmissionId, setReviewerSubmissionId] = useState('');
 
+  // DEC-572: ABS-S2-D1 -- a track-scoped assignment must show its true
+  // fan-out count and require confirmation before any POST happens.
+  const [scopePreview, setScopePreview] = useState<ScopePreview | null>(null);
+  const [scopePreviewLoading, setScopePreviewLoading] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [chooseMode, setChooseMode] = useState(false);
+  const [chosenSubmissionIds, setChosenSubmissionIds] = useState<Set<string>>(new Set());
+  const [assigningBatch, setAssigningBatch] = useState(false);
+
+  function resetScopeConfirm() {
+    setConfirmOpen(false);
+    setChooseMode(false);
+    setChosenSubmissionIds(new Set());
+  }
+
+  useEffect(() => {
+    resetScopeConfirm();
+    if (!planId || reviewerScope !== 'track' || !reviewerTrackId) {
+      setScopePreview(null);
+      return;
+    }
+    setScopePreviewLoading(true);
+    apiGet<ScopePreview>(`/plans/${planId}/scope-preview?trackId=${encodeURIComponent(reviewerTrackId)}`)
+      .then((res) => setScopePreview(res))
+      .catch((err) => {
+        setScopePreview(null);
+        setError(err instanceof ApiError ? err.message : 'Failed to load track submission count');
+      })
+      .finally(() => setScopePreviewLoading(false));
+  }, [planId, reviewerScope, reviewerTrackId]);
+
+  // DEC-572: same preview endpoint feeds the single-submission picker
+  // (replacing the earlier free-text submission-id input) -- the picker is
+  // scoped by the same reviewerTrackId select shown for scope 'track', since
+  // the preview endpoint requires a trackId.
+  const [submissionPickerOptions, setSubmissionPickerOptions] = useState<ScopePreview['items']>([]);
+  useEffect(() => {
+    if (!planId || reviewerScope !== 'submission' || !reviewerTrackId) {
+      setSubmissionPickerOptions([]);
+      return;
+    }
+    apiGet<ScopePreview>(`/plans/${planId}/scope-preview?trackId=${encodeURIComponent(reviewerTrackId)}`)
+      .then((res) => setSubmissionPickerOptions(res.items))
+      .catch(() => setSubmissionPickerOptions([]));
+  }, [planId, reviewerScope, reviewerTrackId]);
+
   const [newReviewerEmail, setNewReviewerEmail] = useState('');
   const [creatingReviewer, setCreatingReviewer] = useState(false);
   const [revealedPassword, setRevealedPassword] = useState<string | null>(null);
@@ -240,24 +297,86 @@ export function PlanEditor() {
     }
   }
 
+  async function postReviewerAssignment(body: { userId: string; trackId?: string; submissionId?: string }) {
+    const created = await apiPost<PlanReviewer>(`/plans/${planId}/reviewers`, body);
+    // The create response doesn't carry an email (PlanReviewerRecord has no
+    // such column); resolve it from the already-loaded reviewer options so
+    // the row doesn't flash the raw userId until the next reload.
+    const resolvedEmail = reviewerOptions.find((r) => r.id === created.userId)?.email;
+    setReviewers((prev) => [...prev, { ...created, email: created.email ?? resolvedEmail }]);
+    return created;
+  }
+
+  // DEC-572: 'all'/'submission' scopes assign immediately (unchanged
+  // behavior, and 'submission' is already a single explicit row). 'track'
+  // scope now only OPENS the inline confirm -- nothing is POSTed here.
   async function assignReviewer() {
     if (!planId || !reviewerUserId.trim()) return;
+    if (reviewerScope === 'track') {
+      if (!reviewerTrackId || !scopePreview) return;
+      setConfirmOpen(true);
+      return;
+    }
     setError(null);
     try {
       const body: { userId: string; trackId?: string; submissionId?: string } = { userId: reviewerUserId.trim() };
-      if (reviewerScope === 'track' && reviewerTrackId) body.trackId = reviewerTrackId;
       if (reviewerScope === 'submission' && reviewerSubmissionId.trim()) body.submissionId = reviewerSubmissionId.trim();
-      const created = await apiPost<PlanReviewer>(`/plans/${planId}/reviewers`, body);
-      // The create response doesn't carry an email (PlanReviewerRecord has no
-      // such column); resolve it from the already-loaded reviewer options so
-      // the row doesn't flash the raw userId until the next reload.
-      const resolvedEmail = reviewerOptions.find((r) => r.id === created.userId)?.email;
-      setReviewers((prev) => [...prev, { ...created, email: created.email ?? resolvedEmail }]);
+      await postReviewerAssignment(body);
       setReviewerUserId('');
       setReviewerSubmissionId('');
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to assign reviewer');
     }
+  }
+
+  // "Assign all N": the single trackId-scoped plan_reviewer row, exactly as
+  // before the DEC-572 confirm gate was added.
+  async function confirmAssignAllInTrack() {
+    if (!planId || !reviewerUserId.trim() || !reviewerTrackId) return;
+    setError(null);
+    setAssigningBatch(true);
+    try {
+      await postReviewerAssignment({ userId: reviewerUserId.trim(), trackId: reviewerTrackId });
+      setReviewerUserId('');
+      resetScopeConfirm();
+      setScopePreview(null);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Failed to assign reviewer');
+    } finally {
+      setAssigningBatch(false);
+    }
+  }
+
+  // "Choose submissions": one per-submission plan_reviewer row per checked
+  // item, issued in batches of at most SCOPE_ASSIGN_BATCH_SIZE.
+  async function confirmAssignChosen() {
+    if (!planId || !reviewerUserId.trim() || chosenSubmissionIds.size === 0) return;
+    setError(null);
+    setAssigningBatch(true);
+    try {
+      const ids = [...chosenSubmissionIds];
+      for (const batch of chunk(ids, SCOPE_ASSIGN_BATCH_SIZE)) {
+        await Promise.all(
+          batch.map((submissionId) => postReviewerAssignment({ userId: reviewerUserId.trim(), submissionId })),
+        );
+      }
+      setReviewerUserId('');
+      resetScopeConfirm();
+      setScopePreview(null);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Failed to assign reviewer');
+    } finally {
+      setAssigningBatch(false);
+    }
+  }
+
+  function toggleChosenSubmission(id: string) {
+    setChosenSubmissionIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   }
 
   async function unassignReviewer(id: string) {
@@ -683,18 +802,115 @@ export function PlanEditor() {
                 </select>
               )}
               {reviewerScope === 'submission' && (
-                <input
-                  className="chq-input"
-                  placeholder="Submission id"
-                  aria-label="Submission id"
-                  value={reviewerSubmissionId}
-                  onChange={(e) => setReviewerSubmissionId(e.target.value)}
-                />
+                <>
+                  {/* DEC-572: the submission picker is fed by the scope-preview
+                      endpoint, which requires a trackId -- reusing the same
+                      track select as scope 'track' rather than a free-text id. */}
+                  <select className="chq-select" aria-label="Track" value={reviewerTrackId} onChange={(e) => setReviewerTrackId(e.target.value)}>
+                    <option value="">Select a track…</option>
+                    {tracks.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    className="chq-select"
+                    aria-label="Submission"
+                    value={reviewerSubmissionId}
+                    onChange={(e) => setReviewerSubmissionId(e.target.value)}
+                    disabled={!reviewerTrackId}
+                  >
+                    <option value="">Select a submission…</option>
+                    {submissionPickerOptions.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.ref} — {s.title}
+                      </option>
+                    ))}
+                  </select>
+                </>
               )}
-              <button type="button" className="chq-btn chq-btn-primary" onClick={assignReviewer}>
-                Assign
+              <button
+                type="button"
+                className="chq-btn chq-btn-primary"
+                onClick={assignReviewer}
+                disabled={
+                  !reviewerUserId.trim() ||
+                  (reviewerScope === 'track' && (!reviewerTrackId || scopePreviewLoading || !scopePreview))
+                }
+              >
+                {reviewerScope === 'track'
+                  ? scopePreviewLoading
+                    ? 'Loading…'
+                    : scopePreview
+                      ? `Assign ${scopePreview.count} submissions in ${tracks.find((t) => t.id === reviewerTrackId)?.name ?? reviewerTrackId}`
+                      : 'Assign'
+                  : 'Assign'}
               </button>
             </div>
+
+            {/* DEC-572: nothing is POSTed until one of the two confirm
+                choices below is clicked. */}
+            {confirmOpen && scopePreview && (
+              <div className="chq-review-scope-confirm" role="alertdialog" aria-label="Confirm track assignment">
+                <p>
+                  Assign {scopePreview.count} submission{scopePreview.count === 1 ? '' : 's'} in{' '}
+                  {tracks.find((t) => t.id === reviewerTrackId)?.name ?? reviewerTrackId} to this reviewer?
+                </p>
+                <ul className="chq-review-scope-preview-list">
+                  {scopePreview.items.slice(0, 10).map((item) => (
+                    <li key={item.id}>
+                      {item.ref} — {item.title}
+                    </li>
+                  ))}
+                </ul>
+                {!chooseMode ? (
+                  <div className="chq-review-scope-confirm-actions">
+                    <button
+                      type="button"
+                      className="chq-btn chq-btn-primary"
+                      disabled={assigningBatch}
+                      onClick={confirmAssignAllInTrack}
+                    >
+                      {assigningBatch ? 'Assigning…' : `Assign all ${scopePreview.count}`}
+                    </button>
+                    <button type="button" className="chq-btn chq-btn-secondary" onClick={() => setChooseMode(true)}>
+                      Choose submissions
+                    </button>
+                    <button type="button" className="chq-btn chq-btn-tertiary" onClick={resetScopeConfirm}>
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <div className="chq-review-scope-choose">
+                    {scopePreview.items.map((item) => (
+                      <label key={item.id} className="chq-review-checkbox-label">
+                        <input
+                          type="checkbox"
+                          className="chq-check"
+                          checked={chosenSubmissionIds.has(item.id)}
+                          onChange={() => toggleChosenSubmission(item.id)}
+                        />
+                        {item.ref} — {item.title}
+                      </label>
+                    ))}
+                    <div className="chq-review-scope-confirm-actions">
+                      <button
+                        type="button"
+                        className="chq-btn chq-btn-primary"
+                        disabled={assigningBatch || chosenSubmissionIds.size === 0}
+                        onClick={confirmAssignChosen}
+                      >
+                        {assigningBatch ? 'Assigning…' : `Confirm selection (${chosenSubmissionIds.size})`}
+                      </button>
+                      <button type="button" className="chq-btn chq-btn-tertiary" onClick={resetScopeConfirm}>
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </section>
         )}
       </div>

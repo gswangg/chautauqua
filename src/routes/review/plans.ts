@@ -23,7 +23,7 @@ import { clampPage, clampPerPage, listPerPage } from "../../lib/pagination";
 import * as repo from "../../server/repo/review";
 import { roundCriteriaJsonOf } from "../../server/repo/review";
 import * as eventsRepo from "../../server/repo/events";
-import { DEC_015, DEC_123, DEC_146, DEC_147, DEC_148, DEC_213, DEC_238, DEC_460, DEC_461, DEC_466, DEC_535 } from "../../decisions";
+import { DEC_015, DEC_123, DEC_146, DEC_147, DEC_148, DEC_213, DEC_238, DEC_460, DEC_461, DEC_466, DEC_535, DEC_572 } from "../../decisions";
 import { capById, MAX_REVIEWER_REMINDER_BATCH } from "../../domain/reminders";
 import {
   asRecord,
@@ -57,6 +57,7 @@ void DEC_460; // enforced bound on every /api/v1 list envelope, no exemptions
 void DEC_461; // optional repo page param + sibling count fn + deterministic ORDER BY below
 void DEC_466; // /plans/:id/progress bounded below via the blessed JS-slice (DEC-461(e))
 void DEC_535; // /plans/:id/remind: laggard list capped via capById below
+void DEC_572; // /plans/:id/scope-preview: true count + bounded preview before a track-scope fan-out below
 
 reviewPlansRoutes.get("/api/v1/events/:eventId/plans", requireOrganizer, async (c) => {
   const auth = currentAuth(c);
@@ -253,6 +254,26 @@ reviewPlansRoutes.post("/api/v1/plans/:id/reviewers", requireOrganizer, csrfJson
     submissionId,
   });
   return c.json(created, 201);
+});
+
+// DEC-572: preview a plan_reviewer track-scope assignment BEFORE it fans out
+// -- the true COUNT plus a bounded (<=200) row list, so PlanEditor can show
+// "Assign N submissions" and let the organizer confirm rather than the
+// server silently granting access to every plan-filtered submission in the
+// track. 400 on a missing/unknown trackId, mirroring the POST /reviewers
+// DEC-354 in-event check.
+reviewPlansRoutes.get("/api/v1/plans/:id/scope-preview", requireOrganizer, async (c) => {
+  const plan = await requireOwnedPlan(c, c.req.param("id"));
+  const trackId = c.req.query("trackId");
+  if (!trackId) {
+    throw new ApiError("invalid", "Invalid scope preview request", { trackId: "required" });
+  }
+  const trackOk = await repo.trackExistsInEvent(c.var.db, trackId, plan.eventId);
+  if (!trackOk) {
+    throw new ApiError("invalid", "Invalid scope preview request", { trackId: "unknown track for this event" });
+  }
+  const { count, items } = await repo.countPlanScopedSubmissions(c.var.db, plan, { trackId });
+  return c.json({ count, items, perPage: 200 });
 });
 
 reviewPlansRoutes.get("/api/v1/plans/:id/reviewers", requireOrganizer, async (c) => {

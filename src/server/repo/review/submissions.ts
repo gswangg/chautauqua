@@ -120,6 +120,68 @@ export interface ReviewerScopedSubmission {
   title: string;
 }
 
+/** Narrows to either an explicit set of submissionIds, an explicit set of
+ * trackIds, or both -- undefined/empty means "no scope narrowing at all"
+ * (the unrestricted case). */
+export interface PlanScopeSelector {
+  submissionIds?: string[];
+  trackIds?: string[];
+}
+
+/** DEC-572: the condition list every plan-scoped `submission` query in this
+ * file filters by -- event eq, an optional (submissionIds OR
+ * trackIds-EXISTS-over-submission_track) scope narrowing, and the plan's
+ * own filters_json trackIds EXISTS narrowing. Extracted from
+ * resolveReviewerSubmissions so countPlanScopedSubmissions (the
+ * assignment-preview count) shares the EXACT same predicate rather than a
+ * hand-copied twin that could silently drift from it. */
+export function buildPlanScopeConditions(db: Db, plan: PlanRecord, selector?: PlanScopeSelector) {
+  const conditions = [eq(schema.submission.eventId, plan.eventId)];
+
+  const submissionScopes = selector?.submissionIds ?? [];
+  const trackScopes = selector?.trackIds ?? [];
+  if (submissionScopes.length > 0 || trackScopes.length > 0) {
+    const scopeConds = [];
+    if (submissionScopes.length > 0) scopeConds.push(inArray(schema.submission.id, submissionScopes));
+    if (trackScopes.length > 0) {
+      scopeConds.push(
+        exists(
+          db
+            .select({ one: sql`1` })
+            .from(schema.submissionTrack)
+            .where(
+              and(
+                eq(schema.submissionTrack.submissionId, schema.submission.id),
+                inArray(schema.submissionTrack.trackId, trackScopes),
+              ),
+            ),
+        ),
+      );
+    }
+    const scopeCond = scopeConds.length > 1 ? or(...scopeConds) : scopeConds[0];
+    if (scopeCond) conditions.push(scopeCond);
+  }
+
+  const filterTracks = plan.filters?.trackIds;
+  if (filterTracks && filterTracks.length > 0) {
+    conditions.push(
+      exists(
+        db
+          .select({ one: sql`1` })
+          .from(schema.submissionTrack)
+          .where(
+            and(
+              eq(schema.submissionTrack.submissionId, schema.submission.id),
+              inArray(schema.submissionTrack.trackId, filterTracks),
+            ),
+          ),
+      ),
+    );
+  }
+
+  return conditions;
+}
+
 /** Resolves the submissions a single reviewer's plan_reviewer rows grant
  * access to (DEC-017 scope semantics), intersected with the plan's own
  * track filters -- DEC-439: cost scales with THIS reviewer's slice, not the
@@ -152,46 +214,11 @@ export async function resolveReviewerSubmissions(
   const trackScopes = [...new Set(reviewerRows.filter((r) => r.trackId !== null).map((r) => r.trackId as string))];
   if (!unrestricted && submissionScopes.length === 0 && trackScopes.length === 0) return [];
 
-  const filterTracks = plan.filters?.trackIds;
-  const conditions = [eq(schema.submission.eventId, plan.eventId)];
-
-  if (!unrestricted) {
-    const scopeConds = [];
-    if (submissionScopes.length > 0) scopeConds.push(inArray(schema.submission.id, submissionScopes));
-    if (trackScopes.length > 0) {
-      scopeConds.push(
-        exists(
-          db
-            .select({ one: sql`1` })
-            .from(schema.submissionTrack)
-            .where(
-              and(
-                eq(schema.submissionTrack.submissionId, schema.submission.id),
-                inArray(schema.submissionTrack.trackId, trackScopes),
-              ),
-            ),
-        ),
-      );
-    }
-    const scopeCond = scopeConds.length > 1 ? or(...scopeConds) : scopeConds[0];
-    if (scopeCond) conditions.push(scopeCond);
-  }
-
-  if (filterTracks && filterTracks.length > 0) {
-    conditions.push(
-      exists(
-        db
-          .select({ one: sql`1` })
-          .from(schema.submissionTrack)
-          .where(
-            and(
-              eq(schema.submissionTrack.submissionId, schema.submission.id),
-              inArray(schema.submissionTrack.trackId, filterTracks),
-            ),
-          ),
-      ),
-    );
-  }
+  const conditions = buildPlanScopeConditions(
+    db,
+    plan,
+    unrestricted ? undefined : { submissionIds: submissionScopes, trackIds: trackScopes },
+  );
 
   const matched = await db
     .select({ id: schema.submission.id, seq: schema.submission.seq, title: schema.submission.title })
@@ -211,6 +238,51 @@ export async function resolveReviewerSubmissions(
     ref: formatRef(recordPrefix, row.seq),
     title: row.title,
   }));
+}
+
+/** DEC-572: the assignment-preview count/list for the "assign this whole
+ * track" reviewer-scope action (ABS-S2-D1) -- the organizer must see the
+ * TRUE total (COUNT, not the page size) before the fan-out happens, plus a
+ * bounded preview page to render. `items` is capped at 200 rows ordered
+ * (seq asc, id asc) -- a LIMIT obliges a total order and the caller must
+ * read `count`, never `items.length`, as the real number. */
+export const SCOPE_PREVIEW_LIMIT = 200;
+
+export async function countPlanScopedSubmissions(
+  db: Db,
+  plan: PlanRecord,
+  opts: { trackId: string },
+): Promise<{ count: number; items: ReviewerScopedSubmission[] }> {
+  const conditions = buildPlanScopeConditions(db, plan, { trackIds: [opts.trackId] });
+
+  const countRows = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(schema.submission)
+    .where(and(...conditions));
+  const count = Number(countRows[0]?.count ?? 0);
+
+  const rows = await db
+    .select({ id: schema.submission.id, seq: schema.submission.seq, title: schema.submission.title })
+    .from(schema.submission)
+    .where(and(...conditions))
+    .orderBy(asc(schema.submission.seq), asc(schema.submission.id))
+    .limit(SCOPE_PREVIEW_LIMIT);
+
+  const eventRows = await db
+    .select({ recordPrefix: schema.event.recordPrefix })
+    .from(schema.event)
+    .where(eq(schema.event.id, plan.eventId))
+    .limit(1);
+  const recordPrefix = eventRows[0]?.recordPrefix ?? "SES";
+
+  return {
+    count,
+    items: rows.map((row) => ({
+      id: row.id,
+      ref: formatRef(recordPrefix, row.seq),
+      title: row.title,
+    })),
+  };
 }
 
 /** Targeted per-submission scope check for the reviewer GET/PUT endpoints
