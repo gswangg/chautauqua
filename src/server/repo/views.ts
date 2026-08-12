@@ -8,16 +8,12 @@ import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { newId } from "../../domain/ids";
 import { DEC_031 } from "../../decisions";
+import { SUBMISSION_STATUSES } from "../../domain/status";
+import { SORT_ORDERS } from "./submissions/query";
 
 // Compile-checked dependency marker per the field guide: this module
 // implements DEC_031 (saved views as server rows scoped to the event).
 void DEC_031;
-
-// DEC-003 submission status literals — mirrors src/server/repo/submissions.ts
-// SUBMISSION_STATUSES without importing it, to keep this module's shape
-// validation self-contained and dependency-light.
-const SUBMISSION_STATUSES = ["pending", "accept_queue", "decline_queue", "accepted", "declined"] as const;
-const SORT_ORDERS = ["newest", "oldest", "title", "ref"] as const;
 
 // DEC-031 config_json shape, matching the landed submissions filter/column
 // state shapes (app/src/pages/submissions/types.ts SubmissionsFilterState +
