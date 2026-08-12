@@ -360,3 +360,10 @@ mock shows criteria but not their editing flow; prod's invented flow is unintuit
     (content-row redesign, the two MISSING sections "Call for papers" + "People and
     roles", phone subscreens instead of accordions, the tab-bar overlap) as the top
     remaining Tier-2 priority after the agenda desktop rebuild.
+
+27. (User QA — strengthens the fidelity PARTIAL) **Public sessions page
+    (/e/:slug/sessions) is more divergent than "partial"**: missing the entire
+    right-rail sidebar (Your Schedule panel + Call for Papers card), missing per-row
+    "Save" itinerary buttons, and row anatomy drifts from the mock. Rebuild to the
+    10-public-and-portal sessions frame — this is also where the itinerary-persistence
+    CRITICAL (EMB-10/11) lives, so fix surface and storage together.
