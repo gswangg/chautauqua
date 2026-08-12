@@ -459,3 +459,75 @@
   font-size: 13px;
   color: var(--chq-muted);
 }
+
+/* Phone: merge compare grid stacks to one column (label, then kept value,
+   then discarded value -- the DOM order already reads that way, so the
+   grid collapse alone is enough, no reordering); the import wizard's
+   column-mapping table drops its thead and turns each row into a card
+   (CSV column name on its own line, 44px select beneath it -- same
+   markup, no cell dropped, DEC-386); the step strip becomes a horizontal
+   scroller so the last step stays reachable (DEC-385). */
+@media (max-width: 700px) {
+  .chq-contacts-merge-compare-head {
+    display: none;
+  }
+
+  .chq-contacts-merge-compare-row {
+    grid-template-columns: 1fr;
+    gap: 6px;
+    padding: 14px 0;
+  }
+
+  .chq-contacts-import .chq-steps {
+    display: flex;
+    grid-template-columns: none;
+    overflow-x: auto;
+    border-top: 1px solid var(--chq-rule);
+  }
+
+  .chq-contacts-import .chq-step {
+    flex-shrink: 0;
+  }
+
+  .chq-contacts-import-mapping thead {
+    display: none;
+  }
+
+  .chq-contacts-import-mapping,
+  .chq-contacts-import-mapping tbody {
+    display: block;
+    width: 100%;
+  }
+
+  .chq-contacts-import-mapping tbody tr {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--chq-hairline);
+  }
+
+  .chq-contacts-import-mapping tbody tr:first-child {
+    padding-top: 0;
+  }
+
+  .chq-contacts-import-mapping tbody td {
+    display: block;
+    padding: 0;
+    border-bottom: none;
+  }
+
+  .chq-contacts-import-mapping tbody td:first-child {
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .chq-contacts-import-mapping .chq-select {
+    width: 100%;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    border-radius: var(--chq-r-ctl-phone);
+  }
+}
