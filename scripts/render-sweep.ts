@@ -87,6 +87,8 @@ const MOBILE_SPEAKER_ID = "seed_contact_0001";
 const MOBILE_TASK_ASSIGNMENT_ID = "seed_task_assignment_0001";
 
 export const MOBILE_ROUTE_MANIFEST: readonly MobileRouteEntry[] = [
+  // DEC-582 mandate: the anonymous event hub at / must be render-swept too.
+  { path: "/", role: "public" },
   { path: `/submit/${MOBILE_EVENT_SLUG}`, role: "public" },
   { path: `/e/${MOBILE_EVENT_SLUG}/sessions`, role: "public" },
   { path: `/e/${MOBILE_EVENT_SLUG}/speakers`, role: "public" },

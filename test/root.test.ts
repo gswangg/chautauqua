@@ -1,9 +1,16 @@
-// DEC-049: /admin served through the Worker with role redirects; GET / is
-// an SSR landing. Route/query-gate verification against real D1 happens via
-// wrangler dev per DEC-012 (see test/public.test.ts) — this exercises the
-// rootRoutes sub-app directly with a fake ASSETS fetcher and injected auth,
-// same style as the FakeSessions/FakeUsers stubs in
-// test/server-middleware.test.ts.
+// DEC-049/DEC-581/DEC-582: GET / is now the anonymous event hub -- signed-in
+// organizer/reviewer/speaker sessions redirect away, and anonymous visitors
+// get the org's own hub, built from getHubOrg/listHubEvents (src/server/
+// repo/public/home.ts) + groupHubEvents/hubState (src/lib/home-hub.ts).
+//
+// The fake Db below is a generic drizzle-shaped query-chain stub: every
+// db.select() call returns the next array off a queue, regardless of which
+// columns/from/where/orderBy/limit/groupBy calls are chained on top -- the
+// real column-shape/predicate contract is covered by
+// test/home-hub.test.ts (pure grouping logic) and the real-D1 integration
+// suite (test/public.test.ts's sibling, per DEC-012). This file only proves
+// root.tsx wires auth redirects + the hub render correctly given whatever
+// rows the repo layer hands back.
 
 import { describe, expect, it } from "vitest";
 import { Hono } from "hono";
@@ -37,22 +44,81 @@ function fakeAssetsMissingAdmin(): Fetcher {
   } as unknown as Fetcher;
 }
 
-function fakeDbWithSlug(slug: string | null): Db {
+/** A generic drizzle-shaped query-chain fake: each db.select() call pops the
+ * next row array off `resultQueue`, in call order, regardless of which
+ * from/leftJoin/where/orderBy/limit/groupBy calls follow -- awaiting the
+ * chain at any point resolves to that array. */
+function fakeDb(resultQueue: unknown[][]): Db {
+  let i = 0;
   return {
-    select: () => ({
-      from: () => ({
-        orderBy: () => ({
-          limit: async () => (slug ? [{ slug }] : []),
-        }),
-      }),
-    }),
+    select: () => {
+      const results = resultQueue[i++] ?? [];
+      const chain: any = {
+        from: () => chain,
+        leftJoin: () => chain,
+        where: () => chain,
+        orderBy: () => chain,
+        limit: () => chain,
+        groupBy: () => chain,
+        then: (resolve: (v: unknown) => unknown, reject?: (e: unknown) => unknown) => Promise.resolve(results).then(resolve, reject),
+      };
+      return chain;
+    },
   } as unknown as Db;
 }
 
-function buildApp(opts: { auth?: AuthInfo; slug?: string | null; devMode?: string }) {
+const ORG = { id: "org1", name: "Chautauqua Demo Org" };
+
+const DAY = 86_400_000;
+// root.tsx computes nowMs via its own Date.now() call at request time (not
+// injectable) -- NOW here is captured at test-file load, close enough to
+// the request-time value that all offsets below (days) stay unambiguous.
+const NOW = Date.now();
+
+// listHubEvents reads form.openDate/closeDate as Drizzle timestamp_ms
+// columns, i.e. JS Date objects (see src/db/schema.ts) -- `openMs`/`closeMs`
+// below are plain epoch-ms test inputs, converted to Date here so the fake
+// db hands back the same shape the real column would.
+function eventRow(overrides: {
+  id?: string;
+  name?: string;
+  slug?: string;
+  startDate?: string;
+  endDate?: string;
+  location?: string | null;
+  timezone?: string;
+  openMs?: number | null;
+  closeMs?: number | null;
+}) {
+  const { openMs = null, closeMs = null, ...rest } = overrides;
+  return {
+    id: "e1",
+    name: "DevFlow Conf 2027",
+    slug: "devflow-conf-2027",
+    startDate: "2027-05-12",
+    endDate: "2027-05-14",
+    location: "Moscone West, San Francisco",
+    timezone: "America/Los_Angeles",
+    ...rest,
+    openDate: openMs === null ? null : new Date(openMs),
+    closeDate: closeMs === null ? null : new Date(closeMs),
+  };
+}
+
+/** Builds the [orgRows, eventRows, totalRows, countRows] queue
+ * listHubEvents/getHubOrg consume, in call order. `countRows` may be
+ * omitted for a zero-event fixture (listHubEvents skips that query when
+ * eventIds is empty). */
+function buildQueue(opts: { events: ReturnType<typeof eventRow>[]; countRows?: { eventId: string; count: number }[] }): unknown[][] {
+  const totalRows = [{ count: opts.events.length }];
+  const countRows = opts.events.length > 0 ? (opts.countRows ?? []) : [];
+  return [[ORG], opts.events, totalRows, countRows];
+}
+
+function buildApp(opts: { auth?: AuthInfo; queue?: unknown[][] }) {
   const app = new Hono<AppEnv>();
   app.use("*", async (c, next) => {
-    c.set("db", fakeDbWithSlug(opts.slug ?? null));
+    c.set("db", fakeDb(opts.queue ?? buildQueue({ events: [] })));
     if (opts.auth) c.set("auth", opts.auth);
     await next();
   });
@@ -62,6 +128,7 @@ function buildApp(opts: { auth?: AuthInfo; slug?: string | null; devMode?: strin
 }
 
 const ORGANIZER: AuthInfo = { userId: "u1", role: "organizer", orgId: "o1" };
+const REVIEWER: AuthInfo = { userId: "u3", role: "reviewer", orgId: "o1" };
 const SPEAKER: AuthInfo = { userId: "u2", role: "speaker", orgId: "o1", contactId: "c1" };
 
 describe("GET /admin and /admin/*", () => {
@@ -87,7 +154,7 @@ describe("GET /admin and /admin/*", () => {
   });
 
   it("serves the bare /admin route for a reviewer session too", async () => {
-    const app = buildApp({ auth: { userId: "u3", role: "reviewer", orgId: "o1" } });
+    const app = buildApp({ auth: REVIEWER });
     const res = await app.request("/admin", {}, { ASSETS: fakeAssets() });
     expect(res.status).toBe(200);
     expect(await res.text()).toContain("admin shell");
@@ -110,21 +177,158 @@ describe("GET /admin and /admin/*", () => {
   });
 });
 
-describe("GET /", () => {
-  it("returns 200 with a link to /admin", async () => {
-    const app = buildApp({ slug: null });
+describe("GET / — role redirects (DEC-582)", () => {
+  it("redirects an organizer session to /admin", async () => {
+    const app = buildApp({ auth: ORGANIZER });
+    const res = await app.request("/", {}, { ASSETS: fakeAssets() });
+    expect(res.status).toBe(302);
+    expect(res.headers.get("location")).toBe("/admin");
+  });
+
+  it("redirects a reviewer session to /admin", async () => {
+    const app = buildApp({ auth: REVIEWER });
+    const res = await app.request("/", {}, { ASSETS: fakeAssets() });
+    expect(res.status).toBe(302);
+    expect(res.headers.get("location")).toBe("/admin");
+  });
+
+  it("redirects a speaker session to /portal", async () => {
+    const app = buildApp({ auth: SPEAKER });
+    const res = await app.request("/", {}, { ASSETS: fakeAssets() });
+    expect(res.status).toBe(302);
+    expect(res.headers.get("location")).toBe("/portal");
+  });
+});
+
+describe("GET / — anonymous hub (DEC-581)", () => {
+  it("fresh state: no events at all -- sign-in only, org name in masthead", async () => {
+    const app = buildApp({ queue: buildQueue({ events: [] }) });
     const res = await app.request("/", {}, { ASSETS: fakeAssets() });
     expect(res.status).toBe(200);
     const body = await res.text();
-    expect(body).toContain('href="/admin"');
-    expect(body).toContain('href="/portal"');
+    expect(body).toContain("Chautauqua Demo Org");
+    expect(body).toContain("Nothing here yet");
+    expect(body).toContain('href="/login"');
   });
 
-  it("links to /submit/<slug> and /e/<slug>/sessions when an event exists", async () => {
-    const app = buildApp({ slug: "devcon-2026" });
+  it("between_cycles state: only a past event -- archive leads, sign-in note shown", async () => {
+    const events = [
+      eventRow({
+        id: "e1",
+        name: "DevFlow Conf 2026",
+        startDate: "2026-01-01",
+        endDate: "2026-01-03",
+        openMs: null,
+        closeMs: null,
+      }),
+    ];
+    const app = buildApp({ queue: buildQueue({ events, countRows: [{ eventId: "e1", count: 5 }] }) });
     const res = await app.request("/", {}, { ASSETS: fakeAssets() });
     const body = await res.text();
-    expect(body).toContain('href="/submit/devcon-2026"');
-    expect(body).toContain('href="/e/devcon-2026/sessions"');
+    expect(body).toContain("No open calls right now");
+    expect(body).toContain("Already happened");
+    expect(body).toContain("DevFlow Conf 2026");
+    expect(body).toContain("Organisers and reviewers");
+  });
+
+  it("full state: an open-CFP event renders 'Submit a talk' linking to /submit/:slug", async () => {
+    const events = [
+      eventRow({
+        id: "e1",
+        startDate: "2027-05-12",
+        endDate: "2027-05-14",
+        openMs: null,
+        closeMs: NOW + 6 * DAY,
+      }),
+    ];
+    const app = buildApp({ queue: buildQueue({ events }) });
+    const res = await app.request("/", {}, { ASSETS: fakeAssets() });
+    const body = await res.text();
+    expect(body).toContain("Events");
+    expect(body).toContain("Open for submissions");
+    expect(body).toContain("No account needed");
+    expect(body).toContain('href="/submit/devflow-conf-2027"');
+  });
+
+  it("full state: a published (non-open-CFP) event links to the public programme, not /submit", async () => {
+    const events = [
+      eventRow({
+        id: "e2",
+        name: "DevFlow Workshops",
+        slug: "devflow-workshops",
+        startDate: "2027-10-09",
+        endDate: "2027-10-10",
+        openMs: null,
+        closeMs: null, // form has no close date but is not open (see below)
+      }),
+    ];
+    // closeDate null + openDate null would compute cfpOpen=true via
+    // formWindowState; force a closed window instead via a past close date.
+    (events[0] as { closeDate: Date | null }).closeDate = new Date(NOW - 30 * DAY);
+    const app = buildApp({ queue: buildQueue({ events, countRows: [{ eventId: "e2", count: 12 }] }) });
+    const res = await app.request("/", {}, { ASSETS: fakeAssets() });
+    const body = await res.text();
+    expect(body).toContain("Programme published");
+    expect(body).toContain("DevFlow Workshops");
+    expect(body).toContain('href="/e/devflow-workshops/sessions"');
+    expect(body).not.toContain('href="/submit/devflow-workshops"');
+  });
+
+  it("never lists an event with a not_yet_open CFP and zero published sessions", async () => {
+    const events = [
+      eventRow({
+        id: "e3",
+        name: "Hidden Future Summit",
+        slug: "hidden-future-summit",
+        startDate: "2028-01-01",
+        endDate: "2028-01-02",
+        openMs: NOW + 60 * DAY,
+        closeMs: NOW + 90 * DAY,
+      }),
+    ];
+    const app = buildApp({ queue: buildQueue({ events, countRows: [] }) });
+    const res = await app.request("/", {}, { ASSETS: fakeAssets() });
+    const body = await res.text();
+    expect(body).not.toContain("Hidden Future Summit");
+  });
+
+  it("never renders a submission-count or review-progress string", async () => {
+    const events = [
+      eventRow({
+        id: "e1",
+        startDate: "2027-05-12",
+        endDate: "2027-05-14",
+        openMs: null,
+        closeMs: NOW + 6 * DAY,
+      }),
+    ];
+    const app = buildApp({ queue: buildQueue({ events, countRows: [{ eventId: "e1", count: 40 }] }) });
+    const res = await app.request("/", {}, { ASSETS: fakeAssets() });
+    const body = await res.text().then((t) => t.toLowerCase());
+    // "Open for submissions" (the DEC-581 section heading) legitimately
+    // contains the word "submission" -- what must never appear is an actual
+    // count/progress metric (docs/design's "Kept off every row" panel).
+    expect(body).not.toContain("submission count");
+    expect(body).not.toContain("submissions received");
+    expect(body).not.toContain("review progress");
+    expect(body).not.toContain("acceptance rate");
+    expect(body).not.toContain("speaker-task health");
+    expect(body).not.toContain("last activity");
+  });
+
+  it("carries the GitHub attribution footer and never says 'chautauqua' outside it", async () => {
+    // deliberately an org name that does NOT itself contain "chautauqua" --
+    // the fixture org in other tests is named "Chautauqua Demo Org", which
+    // would make this assertion trivially pass/fail on the wrong signal.
+    const queue = buildQueue({ events: [] });
+    queue[0] = [{ id: "org1", name: "Example Org" }];
+    const app = buildApp({ queue });
+    const res = await app.request("/", {}, { ASSETS: fakeAssets() });
+    const body = await res.text();
+    expect(body).toContain("Running on");
+    expect(body).toContain("github.com/chautauqua-project/chautauqua");
+    // the masthead carries the org's name, not the product's
+    const beforeFooter = body.split("chq-home-footer")[0] ?? "";
+    expect(beforeFooter.toLowerCase()).not.toContain("chautauqua");
   });
 });
