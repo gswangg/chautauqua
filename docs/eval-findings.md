@@ -245,3 +245,22 @@ CNT 52% · AIA 88% · EMB 72% · CRM 76% (of judged weight).
      results w/ Accept/Decline — confirmed unimplemented, not data-starved. AND the
      seed should provide THREE evaluation plans in mixed states (one closed/complete,
      one open mid-wave, one future) so the rebuilt plans list renders like the mock.
+
+## APPENDED: interaction spec — plan-editor criteria (2026-08-12, orchestrator-drafted, user-reviewed)
+
+Governs the add/edit-criterion flow inside the Tier-2 Review plan-editor rebuild (the
+mock shows criteria but not their editing flow; prod's invented flow is unintuitive):
+- A criterion = label + optional one-line guidance + relative integer weight (1-5).
+  Scale is PLAN-WIDE, never per-criterion.
+- Editing is INLINE rows in the plan editor (form-builder fields pattern) with an
+  "Add criterion" tertiary link — no dialog. Soft cap ~7 with honest caption.
+- Weights are relative; render the computed share beside each ("Weight 3 · 30%").
+  Section caption: "Scores average by weight." Never force sum-to-100.
+- **Criteria FREEZE at the first submitted review** (anonymization-snapshot precedent).
+  Locked rows state the reason: "Locked — N reviews scored against these criteria."
+  Changes after that = new wave. Delete follows the same rule.
+- New plan prefills three editable defaults (Relevance / Depth / Speaker readiness,
+  equal weights) instead of an empty list.
+- Scorecard renders each criterion as label + guidance + rating pills; overall is the
+  computed weighted mean, displayed not editable.
+- Seed: plans carry 3 criteria with DISTINCT weights so weighted ≠ naive mean.
