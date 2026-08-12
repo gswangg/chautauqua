@@ -267,7 +267,8 @@ async function loadAcceptedSessions(db: Db, eventId: string, recordPrefix: strin
     arr.push({ contactId: p.contactId, name: `${p.firstName} ${p.lastName}`.trim(), order: p.order });
     speakersBySubmission.set(p.submissionId, arr);
   }
-  for (const arr of speakersBySubmission.values()) arr.sort((a, b) => a.order - b.order);
+  for (const arr of speakersBySubmission.values())
+    arr.sort((a, b) => a.order - b.order || (a.contactId < b.contactId ? -1 : a.contactId > b.contactId ? 1 : 0));
 
   const slotBySubmission = new Map<string, { roomId: string | null; day: string; startMin: number; endMin: number }>();
   for (const s of slotRows) {

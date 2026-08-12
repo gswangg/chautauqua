@@ -115,7 +115,7 @@ export async function getPublicSpeakerDetail(
     .innerJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
     .innerJoin(schema.submission, eq(schema.participant.submissionId, schema.submission.id))
     .where(and(eq(schema.submission.eventId, event.id), eq(schema.contact.id, contactId), visibleSubmissionConditions()))
-    .orderBy(asc(schema.submission.title));
+    .orderBy(asc(schema.submission.title), asc(schema.submission.id));
 
   if (rows.length === 0) return null;
 

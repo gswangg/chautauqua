@@ -204,7 +204,8 @@ export async function listSubmissions(
     arr.push({ contactId: p.contactId, name: `${p.firstName} ${p.lastName}`.trim(), order: p.order });
     speakersBySubmission.set(p.submissionId, arr);
   }
-  for (const arr of speakersBySubmission.values()) arr.sort((a, b) => a.order - b.order);
+  for (const arr of speakersBySubmission.values())
+    arr.sort((a, b) => a.order - b.order || (a.contactId < b.contactId ? -1 : a.contactId > b.contactId ? 1 : 0));
 
   const tracksBySubmission = new Map<string, string[]>();
   for (const t of trackRows) {
