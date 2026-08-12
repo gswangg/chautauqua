@@ -334,20 +334,51 @@ describe("criteriaForRound (DEC-147)", () => {
 });
 
 describe("isPlanOpen", () => {
+  const UTC = "UTC";
+
   it("is open with no dates at all", () => {
-    expect(isPlanOpen(null, null, 1000)).toBe(true);
+    expect(isPlanOpen(null, null, 1000, UTC)).toBe(true);
   });
 
   it("is closed before the open date", () => {
-    expect(isPlanOpen(2000, null, 1000)).toBe(false);
+    expect(isPlanOpen(Date.UTC(1970, 0, 3), null, 1000, UTC)).toBe(false);
   });
 
   it("is closed after the close date", () => {
-    expect(isPlanOpen(null, 500, 1000)).toBe(false);
+    expect(isPlanOpen(null, Date.UTC(1970, 0, 1), 1000, UTC)).toBe(true); // still within day-label 1970-01-01
+    expect(isPlanOpen(null, Date.UTC(1970, 0, 1), Date.UTC(1970, 0, 2), UTC)).toBe(false);
   });
 
   it("is open within the window", () => {
-    expect(isPlanOpen(500, 1500, 1000)).toBe(true);
+    expect(isPlanOpen(Date.UTC(1970, 0, 1), Date.UTC(1970, 0, 3), 1000, UTC)).toBe(true);
+  });
+
+  it("throws without a timeZone", () => {
+    expect(() => isPlanOpen(null, null, 1000, "")).toThrow();
+  });
+
+  // DEC-522: openDate/closeDate are day labels (UTC midnight of the intended
+  // calendar day), not instants -- a plan set to close 2027-03-01 for a
+  // Pacific-timezone event stays open through end-of-day Pacific on
+  // 2027-03-01, not UTC midnight.
+  it("DEC-522 regression: a close day-label of 2027-03-01 in America/Los_Angeles is still OPEN at 2027-03-01T23:00Z", () => {
+    const closeDate = Date.UTC(2027, 2, 1);
+    const now = Date.UTC(2027, 2, 1, 23, 0, 0);
+    expect(isPlanOpen(null, closeDate, now, "America/Los_Angeles")).toBe(true);
+  });
+
+  it("DEC-522: closes at 2027-03-02T08:00:01Z (one second past end-of-day Pacific)", () => {
+    const closeDate = Date.UTC(2027, 2, 1);
+    const now = Date.UTC(2027, 2, 2, 8, 0, 1);
+    expect(isPlanOpen(null, closeDate, now, "America/Los_Angeles")).toBe(false);
+  });
+
+  it("DEC-522: east-of-UTC zone (Asia/Tokyo) — a day-label expands to the preceding UTC day's afternoon", () => {
+    const closeDate = Date.UTC(2027, 5, 15); // 2027-06-15 day label
+    const stillOpen = Date.UTC(2027, 5, 15, 14, 59, 59, 999); // 23:59:59.999 Tokyo
+    const closed = Date.UTC(2027, 5, 15, 15, 0, 0); // 2027-06-16T00:00 Tokyo
+    expect(isPlanOpen(null, closeDate, stillOpen, "Asia/Tokyo")).toBe(true);
+    expect(isPlanOpen(null, closeDate, closed, "Asia/Tokyo")).toBe(false);
   });
 });
 

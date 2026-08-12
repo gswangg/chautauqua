@@ -25,6 +25,7 @@ const planRecord = {
   criteria: [{ id: "c1", label: "Quality", kind: "rating", weight: 1 }],
   rounds: 1,
   maxEvaluations: null,
+  timezone: "UTC",
 };
 
 vi.mock("../src/server/repo/review", async () => {

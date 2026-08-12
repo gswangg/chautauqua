@@ -31,6 +31,7 @@ function makePlan(overrides: Partial<Record<string, unknown>> = {}) {
     rounds: 1,
     currentRound: 1,
     maxEvaluations: null,
+    timezone: "UTC",
     ...overrides,
   };
 }
