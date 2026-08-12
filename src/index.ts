@@ -74,6 +74,11 @@ app.route("/", rootRoutes);
 guardDevMailbox(app);
 app.route("/", devMailboxRoutes);
 
+// DEC-637: exported (in addition to the default fetch/scheduled export) so
+// tests can enumerate the real mounted route table via app.routes without
+// re-parsing this file's source.
+export { app };
+
 export default {
   fetch: app.fetch,
   scheduled: handleScheduled,
