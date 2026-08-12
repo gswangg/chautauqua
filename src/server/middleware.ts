@@ -18,6 +18,7 @@ import {
 import { hashToken } from "../auth/tokens";
 import { ApiError } from "./http";
 import { DEC_027, DEC_276 } from "../decisions";
+import { responseHasHeader, setResponseHeaders } from "./response-headers";
 
 void DEC_027;
 void DEC_276;
@@ -279,8 +280,8 @@ export const csrfForm: MiddlewareHandler<AppEnv> = async (c, next) => {
  * exception rule — no per-prefix allowlist to keep in sync as routes land. */
 export const noStoreByDefault: MiddlewareHandler<AppEnv> = async (c, next) => {
   await next();
-  if (!c.res.headers.has("Cache-Control")) {
-    c.res.headers.set("Cache-Control", "no-store");
+  if (!responseHasHeader(c, "Cache-Control")) {
+    setResponseHeaders(c, [["Cache-Control", "no-store"]]);
   }
 };
 
