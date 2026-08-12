@@ -453,3 +453,33 @@ compare phone frames pixel-for-pixel.
     reviewer-progress section headers; mock copy ("Remind the 4 not started" as
     tertiary, three-state DONE/NOT STARTED/N TO GO, full page summary, page-level
     Export results CSV).
+
+35. **REGRESSION, near-P0: WAITLIST IS GONE APP-WIDE.** Submissions filter chips have
+    no Waitlisted; the detail decision toggle offers only Pending/Accepted/Declined
+    (verified on a pending item). The mock ships a WAITLISTED row + Waitlist action,
+    and the EVAL RUBRIC exercises waitlisting. Restore the status across filter chips,
+    decision buttons, bulk actions, and any status vocabulary that dropped it. Add a
+    closed-vocabulary test so a status can't silently vanish again.
+36. **The phone tab bar has been moved to the TOP as position:static on multiple
+    surfaces** (Speakers, Content — likely one shared component). This "fixes" overlap
+    by abandoning the core phone pattern. Implement the README's actual shell: fixed
+    bottom five-item tab bar + fixed header + inset overflow-y:auto body. One shared
+    component, all page families.
+37. r2-Content dispositions: KEEP: CNT-D1 navigation fix, SIZE column, default view.
+    FIX: worklist columns to SESSION/SPEAKER/LATEST FILE/STATUS with Approve + OPEN
+    actions (Ask-for-changes lives on the session screen per README); session detail
+    rebuild (shared version list + one scoped note thread, "Send note only", Download
+    all); "Unknown (unknown)" uploader STILL present on SES-001 v2 despite DEC-601 —
+    finish it; files-library stat + chips + Download-all; remove or mock-conform the
+    undocumented Deliverables/Headshots tabs.
+38. r2-Submissions dispositions: KEEP: views chip row, Export CSV, form-builder
+    rebuild + working Preview, real Save-view modal, decision buttons + Speaker +
+    Reviews sections. FIX: phone triage cards (still desktop-table at 390 — mock
+    rebuild pending); detail page structure to mock (AWAITING TRIAGE indicator,
+    Prev/Next + position, content controls OUT of the decision panel per "two
+    screens", history section w/ visible entries, reviews as name + computed score +
+    comment); RECONCILE quick-add fields: keep Track/Format capability (eval CNT-D6)
+    but to mock grammar (radios, styled select, mock field set otherwise); Save-view
+    subtitle echoes ACTUAL active filters + sharing becomes the mock's opt-in
+    checkbox; "Columns: <state>" label; "DECLINE QUEUE" no-wrap; combined name field
+    per mock.
