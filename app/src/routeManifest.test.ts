@@ -103,4 +103,25 @@ describe("routeManifest coverage", () => {
     expect(extractRoutePaths(appSource).length).toBeGreaterThan(0);
     expect(extractRoutePaths(reviewSource).length).toBeGreaterThan(0);
   });
+
+  // DEC-403: the manifest must also carry the no-login surfaces the mobile
+  // pass (scripts/render-sweep.ts's MOBILE_ROUTE_MANIFEST) visits, so the
+  // desktop sweep covers everything the mobile sweep covers. Pinned as
+  // literal paths so a later edit can't quietly drop one.
+  it("carries every DEC-403 no-login surface the mobile pass visits", () => {
+    const manifestPaths = ROUTE_MANIFEST.map((e) => e.path);
+    const required = [
+      "/e/devflow-conf-2027/sessions/seed_submission_0001",
+      "/e/devflow-conf-2027/speakers/seed_contact_0001",
+      "/embed/devflow-conf-2027/sessions",
+      "/embed/devflow-conf-2027/agenda",
+      "/embed/devflow-conf-2027/speakers",
+      "/login",
+      "/docs/api",
+      "/dev/mailbox",
+    ];
+    for (const path of required) {
+      expect(manifestPaths, `missing DEC-403 entry: ${path}`).toContain(path);
+    }
+  });
 });
