@@ -661,3 +661,11 @@ compare phone frames pixel-for-pixel.
      read as a state change within one control system, not a punishment. Footer
      caption stays the mock's single line — do not add explanatory clauses (copy rule
      1).
+
+32d. Wording correction to 32c (user): the issue is not that the flip feels punitive —
+     it's that "X DAYS LATE" doesn't obviously read as A KIND OF PENDING. The v4 state
+     shapes already encode the mapping — complete is FILLED, pending is OUTLINED,
+     overdue is OUTLINED (ink, bold caps): the outline is the shared "not done" axis,
+     ink/caps is the urgency modifier. Implement the shapes exactly so the family
+     resemblance carries the meaning: an outlined overdue cell visibly belongs to the
+     same "not done" family as pending.
