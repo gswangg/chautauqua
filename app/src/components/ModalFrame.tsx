@@ -26,6 +26,52 @@ type ModalFrameProps =
   | (ModalFrameBaseProps & { as?: 'div' })
   | (ModalFrameBaseProps & { as: 'form'; onSubmit: (e: FormEvent<HTMLFormElement>) => void });
 
+interface FormRowProps {
+  /** Section-label text rendered ABOVE the control (11px/700/0.12em
+   * uppercase, per the shared .chq-section-label type). */
+  label: string;
+  /** id of the control inside `children`, for explicit label association.
+   * Omit for controls that aren't a single labelable element (e.g. a
+   * segmented button group) -- the visual contract is unchanged either
+   * way. */
+  htmlFor?: string;
+  /** Optional caption rendered below the control. */
+  help?: ReactNode;
+  /** Validation message. Rendered with role="alert" and marked with a
+   * leading glyph + weight (DEC-367: never colour alone). */
+  error?: string | null;
+  required?: boolean;
+  children: ReactNode;
+}
+
+// DEC-685: the ONE form-row skeleton every dialog field is built on --
+// label above the control at the modal's full measure, so every field in
+// every modal lines up on the same left edge instead of the drifting
+// label-beside-input layout it replaces.
+export function FormRow({ label, htmlFor, help, error, required = false, children }: FormRowProps) {
+  return (
+    <div className="chq-form-row">
+      <label className="chq-form-row-label" htmlFor={htmlFor}>
+        {label}
+        {required && (
+          <span className="chq-form-row-required" aria-hidden="true">
+            {' '}
+            *
+          </span>
+        )}
+      </label>
+      <div className="chq-form-row-control">{children}</div>
+      {help !== undefined && <div className="chq-form-row-help">{help}</div>}
+      {error ? (
+        <div className="chq-form-row-error" role="alert">
+          <span aria-hidden="true">&#9650; </span>
+          {error}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 // DEC-651: the ONE dialog frame. Renders the existing .chq-scrim + .chq-modal
 // contract (role="dialog" + aria-modal on the scrim, useEscapeKey, scrim-click
 // close) -- callers must not re-invent that chrome -- plus a bordered header
