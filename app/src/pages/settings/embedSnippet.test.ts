@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { buildEmbedUrl, buildSnippet, type EmbedField } from './embedSnippet';
+import { buildEmbedUrl, buildSnippet, EMBED_FIELDS, type EmbedField } from './embedSnippet';
+import { ALL_CARD_FIELDS } from '../../lib/embed-fields';
 
 const ORIGIN = 'https://example.org';
 const SLUG = 'devcon-2026';
@@ -35,33 +36,33 @@ describe('buildEmbedUrl', () => {
     );
   });
 
-  it('omits default knobs (full fields set, no track/day/limit/accent)', () => {
+  it('omits default knobs (full fields set, no track/day/q/limit/accent)', () => {
     const url = buildEmbedUrl(ORIGIN, SLUG, 'sessions', {
       format: 'iframe',
-      fields: ['track', 'time', 'room', 'speaker', 'description'],
+      fields: ['track', 'time', 'room', 'speaker', 'description', 'format'],
     });
     expect(url).toBe(`${ORIGIN}/embed/${SLUG}/sessions`);
   });
 
-  it('omits fields when empty (absent-or-empty == all five per DEC-289)', () => {
+  it('omits fields when empty (absent-or-empty == all six per DEC-289/DEC-673)', () => {
     const url = buildEmbedUrl(ORIGIN, SLUG, 'sessions', { format: 'iframe', fields: [] });
     expect(url).toBe(`${ORIGIN}/embed/${SLUG}/sessions`);
   });
 
-  it('serializes only the non-default knobs in the stable order trackId, day, limit, fields, accent (sessions honors all of them)', () => {
+  it('serializes only the non-default knobs in the stable order trackId, day, q, limit, fields, accent (sessions honors all of them)', () => {
     const url = buildEmbedUrl(ORIGIN, SLUG, 'sessions', {
       format: 'json',
       accent: '#4f46e5',
       limit: 10,
       day: '2026-09-02',
+      q: 'ai',
       trackId: 'trk1',
       fields: ['track', 'time'],
     });
-    // DEC-489: sessions does not honor `day`, so it is dropped even though
-    // it was passed — the stable order trackId, limit, fields, accent holds
-    // for the knobs the surface does honor.
+    // DEC-634/DEC-673: sessions honors day and q too, so both appear, in the
+    // stable order trackId, day, q, limit, fields, accent.
     expect(url).toBe(
-      `${ORIGIN}/embed/${SLUG}/sessions.json?trackId=trk1&limit=10&fields=track%2Ctime&accent=4f46e5`,
+      `${ORIGIN}/embed/${SLUG}/sessions.json?trackId=trk1&day=2026-09-02&q=ai&limit=10&fields=track%2Ctime&accent=4f46e5`,
     );
   });
 
@@ -84,22 +85,25 @@ describe('buildEmbedUrl knob table (DEC-489/DEC-490)', () => {
     format: 'iframe' as const,
     trackId: 'trk1',
     day: '2026-09-02',
+    q: 'ai',
     limit: 10,
     fields: ['speaker'] as EmbedField[],
     accent: '#4f46e5',
   };
 
-  it('sessions honors trackId, limit, fields, accent but drops day', () => {
+  it('sessions honors trackId, day, q, limit, fields, accent (all of them)', () => {
     const url = buildEmbedUrl(ORIGIN, SLUG, 'sessions', ALL_OPTS);
     expect(url).toContain('trackId=trk1');
+    expect(url).toContain('day=2026-09-02');
+    expect(url).toContain('q=ai');
     expect(url).toContain('limit=10');
     expect(url).toContain('fields=speaker');
     expect(url).toContain('accent=4f46e5');
-    expect(url).not.toContain('day=');
   });
 
-  it('speakers honors only limit and accent, dropping trackId, day, fields', () => {
+  it('speakers honors only q, limit and accent, dropping trackId, day, fields', () => {
     const url = buildEmbedUrl(ORIGIN, SLUG, 'speakers', ALL_OPTS);
+    expect(url).toContain('q=ai');
     expect(url).toContain('limit=10');
     expect(url).toContain('accent=4f46e5');
     expect(url).not.toContain('trackId=');
@@ -107,8 +111,9 @@ describe('buildEmbedUrl knob table (DEC-489/DEC-490)', () => {
     expect(url).not.toContain('fields=');
   });
 
-  it('gallery honors only limit and accent, dropping trackId, day, fields', () => {
+  it('gallery honors only q, limit and accent, dropping trackId, day, fields', () => {
     const url = buildEmbedUrl(ORIGIN, SLUG, 'gallery', ALL_OPTS);
+    expect(url).toContain('q=ai');
     expect(url).toContain('limit=10');
     expect(url).toContain('accent=4f46e5');
     expect(url).not.toContain('trackId=');
@@ -137,6 +142,15 @@ describe('buildEmbedUrl knob table (DEC-489/DEC-490)', () => {
   it('ics drops every knob, including accent', () => {
     const url = buildEmbedUrl(ORIGIN, SLUG, 'schedule', { ...ALL_OPTS, format: 'ics' });
     expect(url).toBe(`${ORIGIN}/e/${SLUG}/agenda.ics`);
+  });
+});
+
+// DEC-673: EMBED_FIELDS is derived from the server's own card-field
+// vocabulary, not hand-copied — a copy that can drift must be pinned by a
+// test that compares it to its source.
+describe('EMBED_FIELDS (DEC-673 subset-vocabulary pin)', () => {
+  it('equals the server card-field vocabulary', () => {
+    expect([...EMBED_FIELDS].sort()).toEqual([...ALL_CARD_FIELDS].sort());
   });
 });
 

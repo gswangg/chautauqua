@@ -53,39 +53,9 @@ export function parseLimit(raw: string | undefined): number | null {
   return Number.isInteger(n) && n >= 1 && n <= 100 ? n : null;
 }
 
-export const ALL_CARD_FIELDS = ["track", "time", "room", "speaker", "description", "format"] as const;
-export type CardField = (typeof ALL_CARD_FIELDS)[number];
-export type CardFields = Record<CardField, boolean>;
-
-const ALL_CARD_FIELDS_ON: CardFields = {
-  track: true,
-  time: true,
-  room: true,
-  speaker: true,
-  description: true,
-  format: true,
-};
-
-/** `fields` = comma list from ALL_CARD_FIELDS; unknown names ignored;
- * absent-or-empty == all six on (title is not part of this allowlist and
- * always renders). */
-export function parseCardFields(raw: string | undefined): CardFields {
-  if (!raw || raw.trim().length === 0) return { ...ALL_CARD_FIELDS_ON };
-  const named = new Set(
-    raw
-      .split(",")
-      .map((s) => s.trim())
-      .filter((s): s is CardField => (ALL_CARD_FIELDS as readonly string[]).includes(s)),
-  );
-  return {
-    track: named.has("track"),
-    time: named.has("time"),
-    room: named.has("room"),
-    speaker: named.has("speaker"),
-    description: named.has("description"),
-    format: named.has("format"),
-  };
-}
+// DEC-673: the card-field vocabulary moved to src/lib/card-fields.ts (pure
+// core); re-exported here so every existing import site keeps compiling.
+export { ALL_CARD_FIELDS, parseCardFields, type CardField, type CardFields } from "../../lib/card-fields";
 
 /** `accent` = 3- or 6-digit hex without '#', normalized to '#rrggbb'
  * lowercase (3-digit expanded); anything else parses to null. */
