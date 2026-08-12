@@ -5,6 +5,7 @@
 import { SUBMISSION_STATUSES, type SubmissionStatus } from "../../../domain/status";
 import { CONTENT_STATUSES, type ContentStatus } from "../files-content-status";
 import { DEC_078 } from "../../../decisions";
+import { clampPage, clampPerPage } from "../../../lib/pagination";
 
 void DEC_078; // canonical chunk helper, re-exported here for existing importers
 
@@ -17,9 +18,6 @@ export { chunkIds, ID_CHUNK_SIZE } from "../../../lib/chunk";
 export type SortOrder = "newest" | "oldest" | "title" | "ref" | "worklist";
 
 export const SORT_ORDERS: readonly SortOrder[] = ["newest", "oldest", "title", "ref", "worklist"];
-
-const DEFAULT_PER_PAGE = 50;
-const MAX_PER_PAGE = 200;
 
 export interface ParsedListQuery {
   page: number;
@@ -37,16 +35,12 @@ export interface ParsedListQuery {
  * DEC-016 (status/trackId/sort/includeAnswers). Unknown status tokens are
  * dropped silently (filters degrade gracefully; they don't reject a
  * request) — validation of status literals on WRITE happens in
- * parseStatusLiteral below, which fails loudly.
+ * parseStatusLiteral below, which fails loudly. Clamp rule per DEC-480
+ * delegated to clampPage/clampPerPage -- no local copy.
  */
 export function parseListQuery(raw: Record<string, string | undefined>): ParsedListQuery {
-  const pageNum = Number(raw.page);
-  const perPageNum = Number(raw.perPage);
-  const page = Number.isInteger(pageNum) && pageNum > 0 ? pageNum : 1;
-  const perPage =
-    Number.isInteger(perPageNum) && perPageNum > 0
-      ? Math.min(perPageNum, MAX_PER_PAGE)
-      : DEFAULT_PER_PAGE;
+  const page = clampPage(raw.page);
+  const perPage = clampPerPage(raw.perPage);
 
   const q = raw.q && raw.q.trim().length > 0 ? raw.q.trim() : null;
 

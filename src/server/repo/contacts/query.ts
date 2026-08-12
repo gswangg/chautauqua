@@ -4,6 +4,7 @@
 
 import type { ContactRecord, SegmentRule } from "../../../domain/contacts";
 import type { ContactRow } from "./rows";
+import { clampPage, clampPerPage } from "../../../lib/pagination";
 
 export interface ParsedContactListQuery {
   page: number;
@@ -14,25 +15,17 @@ export interface ParsedContactListQuery {
   rules: SegmentRule[];
 }
 
-const DEFAULT_PER_PAGE = 50;
-const MAX_PER_PAGE = 200;
-
 /** DEC-013 pagination parsing, DEC-026 filters (q, segmentId, sort
  * name|recent), DEC-149 multi-criteria `rules` (already-parsed+validated by
  * the route layer from ?rules= URL-encoded JSON — this function never
- * touches raw JSON, it just threads the parsed array through). */
+ * touches raw JSON, it just threads the parsed array through). Clamp rule
+ * per DEC-480 delegated to clampPage/clampPerPage -- no local copy. */
 export function parseContactListQuery(
   raw: Record<string, string | undefined>,
   rules: SegmentRule[] = [],
 ): ParsedContactListQuery {
-  const pageNum = Number(raw.page);
-  const page = Number.isFinite(pageNum) && Number.isInteger(pageNum) && pageNum >= 1 ? pageNum : 1;
-
-  const perPageNum = Number(raw.perPage);
-  const perPage =
-    Number.isFinite(perPageNum) && Number.isInteger(perPageNum) && perPageNum >= 1
-      ? Math.min(perPageNum, MAX_PER_PAGE)
-      : DEFAULT_PER_PAGE;
+  const page = clampPage(raw.page);
+  const perPage = clampPerPage(raw.perPage);
 
   const qTrimmed = raw.q?.trim();
   const q = qTrimmed ? qTrimmed : null;

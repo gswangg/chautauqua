@@ -36,6 +36,7 @@ import {
   type UpdateTaskInput,
 } from "../server/repo/tasks";
 import { findContactsForOrg } from "../server/repo/contacts";
+import { clampPage, clampPerPage, DEFAULT_PER_PAGE } from "../lib/pagination";
 
 // DEC-120: task-assign contact org-scoping is referenced below so this
 // dependency is compile-checked (see decisions.ts).
@@ -102,19 +103,13 @@ function asRecord(body: unknown): Record<string, unknown> {
 // Grid
 // ---------------------------------------------------------------------------
 
-const DEFAULT_GRID_PER_PAGE = 50;
-const MAX_GRID_PER_PAGE = 200;
-
 /** DEC-340: parses the onboarding grid's page/perPage/q/taskId/status/
  * overdueOnly query params, mirroring parseListQuery's page/perPage
- * defaults (DEC-013). */
+ * defaults (DEC-013). Clamp rule per DEC-480 delegated to
+ * clampPage/clampPerPage in src/lib/pagination.ts -- no local copy. */
 function parseOnboardingGridQuery(raw: Record<string, string | undefined>, now: number) {
-  const pageNum = Number(raw.page);
-  const page = Number.isInteger(pageNum) && pageNum > 0 ? pageNum : 1;
-
-  const perPageNum = Number(raw.perPage);
-  const perPage =
-    Number.isInteger(perPageNum) && perPageNum > 0 ? Math.min(perPageNum, MAX_GRID_PER_PAGE) : DEFAULT_GRID_PER_PAGE;
+  const page = clampPage(raw.page);
+  const perPage = clampPerPage(raw.perPage);
 
   const q = raw.q && raw.q.trim().length > 0 ? raw.q.trim() : null;
   const taskId = raw.taskId && raw.taskId.trim().length > 0 ? raw.taskId.trim() : null;
@@ -354,7 +349,7 @@ taskRoutes.post("/tasks/:id/assign", requireOrganizer, csrfJson, async (c) => {
   await assignTask(c.var.db, taskId, dedupedContactIds);
   const grid = await getOnboardingGrid(c.var.db, ownership.eventId, {
     page: 1,
-    perPage: DEFAULT_GRID_PER_PAGE,
+    perPage: DEFAULT_PER_PAGE,
     q: null,
     taskId: null,
     status: null,
