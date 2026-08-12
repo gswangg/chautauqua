@@ -126,7 +126,7 @@ describe("getPublicSessions (DEC-418): SQL-bound pagination", () => {
   it("DEC-433: LIMIT never exceeds MAX_PUBLIC_ROWS even for a large page*perPage", async () => {
     const { db, idRecord } = buildDb([{ id: "a" }], 1, ["a"]);
     await getPublicSessions(db, EVENT, { trackId: null, page: 50, perPage: 100, q: null });
-    expect(idRecord.limit).toBe(600);
+    expect(idRecord.limit).toBe(1200);
     expect(Number.isFinite(idRecord.limit)).toBe(true);
   });
 

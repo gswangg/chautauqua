@@ -15,8 +15,8 @@ describe("boundedRowLimit (DEC-433)", () => {
     expect(boundedRowLimit(1000, 1000)).toBe(MAX_PUBLIC_ROWS);
   });
 
-  it("MAX_PUBLIC_ROWS is 600", () => {
-    expect(MAX_PUBLIC_ROWS).toBe(600);
+  it("MAX_PUBLIC_ROWS is 1200 (DEC-477)", () => {
+    expect(MAX_PUBLIC_ROWS).toBe(1200);
   });
 
   it("throws (fail loudly) on non-finite or non-integer page", () => {
