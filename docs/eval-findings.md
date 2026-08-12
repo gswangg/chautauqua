@@ -419,3 +419,14 @@ compare phone frames pixel-for-pixel.
     month); (e) spell out small counts in the tagline ("One call for papers"); (f)
     text-decoration:none on .chq-home-signin and .chq-home-footer-link. Redirects,
     masthead, grouping, privacy filter all verified CORRECT — do not disturb.
+
+32. r2-Speakers dispositions: KEEP (fixed): single-band shell, conditional Response
+    link, no emails, segmented Kind picker. FIX against v4 rules: overdue cells need
+    the shared control shape (ink-outlined bold caps, NOT bare text) + hover ring on
+    all three states + footer caption; per-person "Remind ‹name›" links (w/ the
+    contactIds API change on remind+preview); response modal action label → "Reopen
+    this task" (v4 rejected "Ask for more") AND fix its data binding — completed form
+    responses render as em-dashes (REAL BUG); one-line row identity; grid scrolls in
+    its own container not the page; phone tab bar to fixed bottom + 44px pills;
+    New-task Kind labels per mock (Upload/Form/Acknowledge), styled date; roster phone
+    screen still missing entirely.
