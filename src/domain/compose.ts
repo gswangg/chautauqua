@@ -11,6 +11,11 @@ export const MAX_COMPOSE_RECIPIENTS = 100;
 /** DEC-019: the stated value for zero reviewer comments (not a silent blank). */
 export const NO_FEEDBACK_TEXT = "No reviewer feedback was recorded.";
 
+/** DEC-397: preview never mints credentials. When a compose/bulk-email
+ * preview would otherwise mint a claim token for a userless recipient, it
+ * renders this fixed placeholder token instead — zero KV writes. */
+export const PREVIEW_CLAIM_TOKEN = "example-one-time-link";
+
 export interface ComposeParticipant {
   contactId: string;
   firstName: string;
