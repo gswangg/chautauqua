@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { drizzle } from "drizzle-orm/sqlite-proxy";
 import { chunk, contactRecord, submissionRecord, runAirtableSync } from "../src/sync/airtable";
 import { formatRef } from "../src/domain/ids";
 import * as schema from "../src/db/schema";
@@ -54,6 +55,49 @@ describe("runAirtableSync gating", () => {
     expect(await runAirtableSync({ AIRTABLE_TOKEN: "t" }, db)).toBeNull();
     expect(await runAirtableSync({ AIRTABLE_BASE_ID: "b" }, db)).toBeNull();
   });
+
+  // DEC-450: a configured-but-unscoped sync would push one tenant's rows
+  // into another tenant's base — this must throw, not silently sync
+  // unscoped, and it must never touch the db.
+  it("throws when token+base are set but AIRTABLE_ORG_ID is missing, and never touches the db", async () => {
+    const db = null as never; // must not be touched
+    await expect(runAirtableSync({ AIRTABLE_TOKEN: "t", AIRTABLE_BASE_ID: "b" }, db)).rejects.toThrow(
+      /AIRTABLE_ORG_ID/,
+    );
+  });
+});
+
+// DEC-450: every read the sync issues must be scoped to the configured org
+// at the SQL level, not just "in practice" via the JS shape of a fake db —
+// build a real drizzle instance over sqlite-proxy so we can inspect the
+// actual emitted SQL text and bound params.
+describe("runAirtableSync SQL-level org scoping (DEC-450)", () => {
+  it("binds an org_id predicate to the configured org id in every emitted statement", async () => {
+    const ORG_ID = "org-scoped-1";
+    const captured: Array<{ sql: string; params: unknown[] }> = [];
+    const db = drizzle(async (sql, params) => {
+      captured.push({ sql, params });
+      return { rows: [] };
+    }, { schema }) as unknown as Db;
+
+    const fakeFetch = (async () => {
+      throw new Error("no rows to sync — fetch should never be called");
+    }) as unknown as typeof fetch;
+
+    const result = await runAirtableSync(
+      { AIRTABLE_TOKEN: "t", AIRTABLE_BASE_ID: "b", AIRTABLE_ORG_ID: ORG_ID },
+      db,
+      fakeFetch,
+      NOW,
+    );
+    expect(result).toEqual({ contacts: 0, submissions: 0 });
+
+    expect(captured.length).toBeGreaterThan(0);
+    for (const stmt of captured) {
+      expect(stmt.sql).toMatch(/"org_id"\s*=/);
+      expect(stmt.params).toContain(ORG_ID);
+    }
+  });
 });
 
 // DEC-435: the sync must build every human ref via formatRef(event.recordPrefix,
@@ -82,13 +126,25 @@ describe("runAirtableSync ref building (DEC-435)", () => {
     const partRows: Array<{ submissionId: string; firstName: string; lastName: string }> = [];
     const trackRows: Array<{ submissionId: string; name: string }> = [];
 
+    const whereLimit = <T>(rows: T[]) => ({
+      where: () => ({
+        limit: () => Promise.resolve(rows),
+      }),
+    });
+    const whereOnly = <T>(rows: T[]) => ({
+      where: () => Promise.resolve(rows),
+    });
+
     const db = {
       select: () => ({
         from: (table: unknown) => {
-          if (table === schema.contact) return Promise.resolve(contactRows);
-          if (table === schema.submission) return { innerJoin: () => Promise.resolve(subRows) };
-          if (table === schema.participant) return { innerJoin: () => Promise.resolve(partRows) };
-          if (table === schema.submissionTrack) return { innerJoin: () => Promise.resolve(trackRows) };
+          if (table === schema.contact) return whereLimit(contactRows);
+          if (table === schema.submission)
+            return { innerJoin: () => whereLimit(subRows) };
+          if (table === schema.participant)
+            return { innerJoin: () => ({ innerJoin: () => ({ innerJoin: () => whereOnly(partRows) }) }) };
+          if (table === schema.submissionTrack)
+            return { innerJoin: () => ({ innerJoin: () => ({ innerJoin: () => whereOnly(trackRows) }) }) };
           throw new Error("unexpected table passed to fakeDb.from in this test");
         },
       }),
@@ -102,7 +158,7 @@ describe("runAirtableSync ref building (DEC-435)", () => {
     }) as typeof fetch;
 
     const result = await runAirtableSync(
-      { AIRTABLE_TOKEN: "t", AIRTABLE_BASE_ID: "b" },
+      { AIRTABLE_TOKEN: "t", AIRTABLE_BASE_ID: "b", AIRTABLE_ORG_ID: "org-1" },
       db,
       fakeFetch,
       NOW,
