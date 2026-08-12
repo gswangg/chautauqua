@@ -18,33 +18,25 @@ import {
   criteriaForRound,
   partitionRecused,
 } from "../../domain/evaluation";
-import { clampPage, clampPerPage } from "../../lib/pagination";
+import { clampPage, listPerPage } from "../../lib/pagination";
 import * as repo from "../../server/repo/review";
 import { roundCriteriaJsonOf } from "../../server/repo/review";
 import type { PlanRecord } from "../../server/repo/review";
 import * as eventsRepo from "../../server/repo/events";
-import { DEC_239, DEC_460, DEC_461 } from "../../decisions";
+import { DEC_239, DEC_460, DEC_461, DEC_466 } from "../../decisions";
 import { currentAuth, requireReviewerOrOrganizer, asRecord, requireAssignedPlan } from "./shared";
 
 export const reviewReviewerRoutes = new Hono<AppEnv>();
 void DEC_239; // /review/plans/:id/queue: shaped {submissionId,ref,title,ratingsCount,alreadyRatedByMe} below
 void DEC_460; // enforced bound on every /api/v1 list envelope, no exemptions
 void DEC_461; // optional repo page param + sibling count fn + deterministic ORDER BY below
-
-/** DEC-461(a): default perPage 200 (MAX_PER_PAGE) for this previously-
- * unpaginated envelope, not clampPerPage's built-in 50. */
-function resolvePerPage(raw: string | undefined): number {
-  if (raw === undefined) return 200;
-  const n = Number(raw);
-  if (!Number.isFinite(n) || !Number.isInteger(n) || n < 1) return 200;
-  return clampPerPage(n);
-}
+void DEC_466; // /review/plans/:id/queue bounded below via the blessed JS-slice (DEC-461(e))
 
 reviewReviewerRoutes.get("/api/v1/review/plans", async (c) => {
   requireReviewerOrOrganizer(c);
   const auth = currentAuth(c);
   const page = clampPage(c.req.query("page"));
-  const perPage = resolvePerPage(c.req.query("perPage"));
+  const perPage = listPerPage(c.req.query("perPage"));
   let plans: PlanRecord[];
   let total: number;
   if (auth.role === "organizer") {
@@ -75,9 +67,11 @@ reviewReviewerRoutes.get("/api/v1/review/plans/:id/queue", async (c) => {
   requireReviewerOrOrganizer(c);
   const auth = currentAuth(c);
   const plan = await requireAssignedPlan(c, c.req.param("id"));
+  const page = clampPage(c.req.query("page"));
+  const perPage = listPerPage(c.req.query("perPage"));
 
   if (!isPlanOpen(plan.openDate, plan.closeDate, Date.now())) {
-    return c.json({ items: [], total: 0, page: 1, perPage: 1, open: false });
+    return c.json({ items: [], total: 0, page, perPage, open: false });
   }
 
   const scoped = await repo.resolveReviewerSubmissions(c.var.db, plan, auth.userId);
@@ -133,7 +127,15 @@ reviewReviewerRoutes.get("/api/v1/review/plans/:id/queue", async (c) => {
     })
     .filter((item): item is NonNullable<typeof item> => item !== undefined);
 
-  return c.json({ items, total: items.length, page: 1, perPage: items.length || 1, open: true, recused: recusedOut });
+  // DEC-466/DEC-461(e): blessed JS-slice -- items is already assembled from a
+  // materialized array (buildReviewerQueue's fewest-ratings-first order),
+  // so clamp with a slice and report the FULL array length as `total`, not
+  // the slice's. `recused` stays unpaged below: it's the reviewer's own
+  // recusal set, not a list envelope.
+  const total = items.length;
+  const start = (page - 1) * perPage;
+  const pagedItems = items.slice(start, start + perPage);
+  return c.json({ items: pagedItems, total, page, perPage, open: true, recused: recusedOut });
 });
 
 reviewReviewerRoutes.get("/api/v1/review/submissions/:id", async (c) => {

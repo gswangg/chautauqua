@@ -23,7 +23,7 @@ export async function findDuplicateGroupsForOrg(db: Db, orgId: string): Promise<
   const records = rows.map(toContactRecord);
   const groups = findDuplicateGroups(records);
   const byId = new Map(rows.map((r) => [r.id, r]));
-  return groups.map((ids) => ({
+  const out = groups.map((ids) => ({
     contactIds: ids,
     contacts: ids.map((id) => {
       const r = byId.get(id);
@@ -31,6 +31,17 @@ export async function findDuplicateGroupsForOrg(db: Db, orgId: string): Promise<
       return { id: r.id, firstName: r.firstName, lastName: r.lastName, email: r.email };
     }),
   }));
+  // DEC-466: the query above has no ORDER BY, so `rows` (and therefore
+  // findDuplicateGroups's output order) is not guaranteed deterministic --
+  // GET /api/v1/contacts/duplicates now pages this array, so a stable
+  // order matters for page 2+ to be meaningful across requests. Tiebreak on
+  // each group's own first contact id.
+  out.sort((a, b) => {
+    const ai = a.contactIds[0] ?? "";
+    const bi = b.contactIds[0] ?? "";
+    return ai < bi ? -1 : ai > bi ? 1 : 0;
+  });
+  return out;
 }
 
 /** Applies DEC-026/DEC-101/DEC-282 merge, in this exact load-bearing order:

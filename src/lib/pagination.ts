@@ -19,4 +19,16 @@ export function clampPerPage(raw: string | number | null | undefined): number {
   return Math.min(n, MAX_PER_PAGE);
 }
 
+// DEC-465: the single perPage-with-200-default rule, replacing five local
+// per-route copies (three of which mishandled `?perPage=abc` by falling
+// through to clampPerPage's DEFAULT_PER_PAGE=50 instead of the site default
+// of 200). Absent, null, empty-string, or invalid all resolve to
+// MAX_PER_PAGE; an explicit valid value clamps to [1, MAX_PER_PAGE].
+export function listPerPage(raw: string | number | null | undefined): number {
+  if (raw === undefined || raw === null || raw === "") return MAX_PER_PAGE;
+  const n = typeof raw === "number" ? raw : Number(raw);
+  if (!Number.isFinite(n) || !Number.isInteger(n) || n < 1) return MAX_PER_PAGE;
+  return Math.min(n, MAX_PER_PAGE);
+}
+
 export { DEFAULT_PER_PAGE, MAX_PER_PAGE };
