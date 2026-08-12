@@ -8,7 +8,7 @@ import type { Db } from "../context";
 import { newId } from "../../domain/ids";
 import { submissionSeqSubquery } from "./submissions/seq";
 import type { FormFieldDef, FormFieldKind, FormFieldSection, FormFieldRule, AnswerMap } from "../../forms/types";
-import { lockedFieldName } from "../../forms/types";
+import { lockedFieldName, normalizeRuleFieldId } from "../../forms/types";
 import { DEC_258 } from "../../decisions";
 
 // Compile-checked dependency marker: createParticipant below snapshots
@@ -86,6 +86,9 @@ export async function getFormFields(db: Db, formId: string): Promise<FormFieldDe
     // DEC-050: locked rows carry a per-form PK ('${formId}:name'); the
     // rendered form + validated/persisted answer map are keyed by the
     // short locked name (e.g. 'title'), never the raw PK.
+    // DEC-475: a rule's own fieldId is a reference into that same answer
+    // map, so it must be normalized the same way — otherwise a rule
+    // triggered by a locked field is silently and permanently dead.
     id: lockedFieldName(row.id) ?? row.id,
     section: row.section as FormFieldSection,
     kind: row.kind as FormFieldKind,
@@ -94,7 +97,7 @@ export async function getFormFields(db: Db, formId: string): Promise<FormFieldDe
     required: row.required,
     position: row.position,
     options: row.optionsJson ? (JSON.parse(row.optionsJson) as string[]) : undefined,
-    rule: row.ruleJson ? (JSON.parse(row.ruleJson) as FormFieldRule) : undefined,
+    rule: row.ruleJson ? normalizeRuleFieldId(JSON.parse(row.ruleJson) as FormFieldRule) : undefined,
   }));
 }
 
