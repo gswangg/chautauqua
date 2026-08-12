@@ -207,15 +207,138 @@ describe("GET /embed/:eventSlug/:surface.json (EMB-15)", () => {
   });
 });
 
+describe("GET /embed/:eventSlug/speakers.json paging (DEC-484)", () => {
+  function buildSpeakersApp(idRows: { contactId: string }[], total: number) {
+    let selectCall = 0;
+    const db = {
+      select: () => {
+        selectCall += 1;
+        // 1: getPublicEventBySlug
+        if (selectCall === 1) return makeChain([EVENT_ROW]);
+        // 2: getPublicSpeakers countRows
+        if (selectCall === 2) return makeChain([{ total }]);
+        // 3+: getPublicSpeakers hydration batch(es)
+        return makeChain(
+          idRows.map((r) => ({
+            contactId: r.contactId,
+            firstName: "First",
+            lastName: r.contactId,
+            title: null,
+            company: null,
+            headshotUrl: null,
+            bio: null,
+            submissionId: `sub-${r.contactId}`,
+            submissionTitle: "Talk",
+          })),
+        );
+      },
+      selectDistinct: () => makeChain(idRows),
+    } as unknown as AppEnv["Variables"]["db"];
+
+    const app = new Hono<AppEnv>();
+    app.use("*", async (c, next) => {
+      c.set("db", db);
+      await next();
+    });
+    registerErrorHandler(app);
+    app.route("/", publicRoutes);
+    return app;
+  }
+
+  function contactIds(n: number, offset = 0) {
+    return Array.from({ length: n }, (_, i) => ({ contactId: `c${i + offset}` }));
+  }
+
+  it("reports the full total with one page of items when there are more speakers than one page", async () => {
+    installFakeCaches();
+    const app = buildSpeakersApp(contactIds(12), 15);
+    const res = await app.request("/embed/conf/speakers.json", {}, TEST_ENV);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { total: number; page: number; perPage: number; items: unknown[] };
+    expect(body.total).toBe(15);
+    expect(body.page).toBe(1);
+    expect(body.perPage).toBe(12);
+    expect(body.items).toHaveLength(12);
+  });
+
+  it("?limit=50 returns 50 items and perPage=50", async () => {
+    installFakeCaches();
+    const app = buildSpeakersApp(contactIds(50), 60);
+    const res = await app.request("/embed/conf/speakers.json?limit=50", {}, TEST_ENV);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { total: number; page: number; perPage: number; items: unknown[] };
+    expect(body.total).toBe(60);
+    expect(body.perPage).toBe(50);
+    expect(body.items).toHaveLength(50);
+  });
+
+  it("?page=2 advances the window", async () => {
+    installFakeCaches();
+    const app = buildSpeakersApp(contactIds(3, 12), 15);
+    const res = await app.request("/embed/conf/speakers.json?page=2", {}, TEST_ENV);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { total: number; page: number; perPage: number; items: unknown[] };
+    expect(body.total).toBe(15);
+    expect(body.page).toBe(2);
+    expect(body.perPage).toBe(12);
+    expect(body.items).toHaveLength(3);
+  });
+});
+
+describe("GET /embed/:eventSlug/agenda.json (DEC-484 unpaged surface)", () => {
+  it("reports total === items.length", async () => {
+    installFakeCaches();
+    let selectCall = 0;
+    const db = {
+      select: () => {
+        selectCall += 1;
+        // 1: getPublicEventBySlug
+        if (selectCall === 1) return makeChain([EVENT_ROW]);
+        // 2: hydrateSessions subRows
+        if (selectCall === 2) {
+          return makeChain([{ id: "sub1", seq: 1, title: "Visible Talk", description: null, icsSequence: 0 }]);
+        }
+        // 3: hydrateSessions trackRows
+        if (selectCall === 3) return makeChain([]);
+        // 4: hydrateSessions speakerRows
+        if (selectCall === 4) return makeChain([]);
+        // 5: hydrateSessions slotRows
+        return makeChain([]);
+      },
+      selectDistinct: () =>
+        makeChain([{ submissionId: "sub1", day: "2026-08-10", startMin: 540, endMin: 600, roomId: null }]),
+    } as unknown as AppEnv["Variables"]["db"];
+
+    const app = new Hono<AppEnv>();
+    app.use("*", async (c, next) => {
+      c.set("db", db);
+      await next();
+    });
+    registerErrorHandler(app);
+    app.route("/", publicRoutes);
+
+    const res = await app.request("/embed/conf/agenda.json", {}, TEST_ENV);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { total: number; page: number; perPage: number; items: unknown[] };
+    expect(body.items).toHaveLength(1);
+    expect(body.total).toBe(body.items.length);
+    expect(body.page).toBe(1);
+    expect(body.perPage).toBe(body.items.length);
+  });
+});
+
 describe("buildSurfaceFeed", () => {
-  it("shapes the DEC-289 envelope, passing items through unchanged", () => {
+  it("shapes the DEC-289/DEC-484 envelope, passing items through unchanged", () => {
     const now = new Date("2026-08-11T12:00:00.000Z");
     const items = [{ id: "sub1", title: "Visible Talk" }];
-    const feed = buildSurfaceFeed(EVENT, "sessions", items, now);
+    const feed = buildSurfaceFeed(EVENT, "sessions", { items, total: 1, page: 1, perPage: 12 }, now);
     expect(feed).toEqual({
       event: { slug: "conf", name: "Test Event", timezone: "UTC", startDate: "2026-08-10", endDate: "2026-08-11" },
       surface: "sessions",
       generatedAt: "2026-08-11T12:00:00.000Z",
+      page: 1,
+      perPage: 12,
+      total: 1,
       items,
     });
   });
