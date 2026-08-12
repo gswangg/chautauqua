@@ -26,24 +26,24 @@
 }
 
 .chq-overview-deadline-label {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
+  font-size: var(--chq-type-deadline-label-size);
+  font-weight: var(--chq-type-deadline-label-weight);
+  letter-spacing: var(--chq-type-deadline-label-tracking);
   text-transform: uppercase;
   color: var(--chq-muted);
 }
 
 .chq-overview-deadline-value {
   font-family: var(--chq-display-font, 'Familjen Grotesk', sans-serif);
-  font-size: 30px;
-  font-weight: 400;
+  font-size: var(--chq-type-deadline-value-size);
+  font-weight: var(--chq-type-deadline-value-weight);
   letter-spacing: -0.03em;
   line-height: 1.15;
   color: var(--chq-ink);
 }
 
 .chq-overview-deadline-value.chq-overview-deadline-nearest {
-  font-weight: 700;
+  font-weight: var(--chq-type-deadline-value-weight-nearest);
 }
 
 .chq-overview-headline-row {
@@ -57,10 +57,10 @@
 .chq-overview-headline {
   margin: 0;
   font-family: var(--chq-display-font, 'Familjen Grotesk', sans-serif);
-  font-size: 44px;
-  font-weight: 700;
-  letter-spacing: -0.042em;
-  line-height: 1.04;
+  font-size: var(--chq-type-overview-headline-size);
+  font-weight: var(--chq-type-overview-headline-weight);
+  letter-spacing: var(--chq-type-overview-headline-tracking);
+  line-height: var(--chq-type-overview-headline-line-height);
   color: var(--chq-ink);
 }
 
@@ -108,9 +108,9 @@
 
 .chq-overview-section-label {
   font-family: var(--chq-display-font, 'Familjen Grotesk', sans-serif);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
+  font-size: var(--chq-type-section-label-size);
+  font-weight: var(--chq-type-section-label-weight);
+  letter-spacing: var(--chq-type-section-label-tracking);
   text-transform: uppercase;
   color: var(--chq-ink);
 }
@@ -166,8 +166,8 @@
 .chq-overview-row-title {
   font-family: var(--chq-display-font, 'Familjen Grotesk', sans-serif);
   font-size: 18px;
-  font-weight: 600;
-  letter-spacing: -0.015em;
+  font-weight: var(--chq-type-row-title-weight);
+  letter-spacing: var(--chq-type-row-title-tracking);
 }
 
 .chq-overview-row-title-lg {

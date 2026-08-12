@@ -455,3 +455,164 @@ export function filterKnownClipExceptions(
     return !(key in exceptions);
   });
 }
+
+// ---------------------------------------------------------------------------
+// DEC-643 type-role pass (advisory): docs/design/README.md's typography
+// table (lines 62-74) plus the Overview §01 deadline-cell note (line 166)
+// name exact size/weight/tracking values for a handful of key roles, tokenised
+// in app/src/styles.css as --chq-type-<role>-size|-weight|-tracking (see
+// test/type-scale-conformance.test.ts for the source-scanning check that
+// overview.css actually references those tokens). This pass measures the
+// *rendered* values via getComputedStyle at /admin/overview desktop, the same
+// "advisory, never flips the exit code" convention as the DEC-421 font-floor
+// pass above — a drifted computed value is real signal, but this is the
+// first time these roles have been measured and shouldn't gate the sweep.
+// ---------------------------------------------------------------------------
+
+/** Mirrors FONT_FLOOR_BLOCKING: type-role failures never flip render-sweep's
+ * exit code while this stays false. Flip per the same DEC-387 rule once a
+ * reading has come back all-PASS and been reconfirmed on a later branch. */
+export const TYPE_ROLE_BLOCKING = false;
+
+/** Tolerance for float comparisons of px/em values coming back from
+ * getComputedStyle (browser rounding, subpixel rendering). */
+const TYPE_ROLE_PX_TOLERANCE = 0.5;
+const TYPE_ROLE_EM_TOLERANCE = 0.002;
+
+export interface TypeRoleExpected {
+  readonly fontSizePx?: number;
+  readonly fontWeight?: number;
+  readonly letterSpacingEm?: number;
+}
+
+export interface TypeRoleObserved {
+  readonly fontSizePx?: number;
+  readonly fontWeight?: number;
+  readonly letterSpacingEm?: number;
+}
+
+export interface TypeRoleEntry {
+  readonly selector: string;
+  readonly role: string;
+  readonly expected: TypeRoleExpected;
+}
+
+export interface TypeRoleResult {
+  selector: string;
+  role: string;
+  ok: boolean;
+  failureReason?: string;
+  observed: TypeRoleObserved;
+  expected: TypeRoleExpected;
+}
+
+/** Pure, DOM-free comparison of one role's observed getComputedStyle reading
+ * against its expected {fontSizePx, fontWeight, letterSpacingEm} — only the
+ * properties present on `expected` are checked (mirrors evaluateFontFloor's
+ * "only measured properties can fail" shape). Font-size/letter-spacing
+ * compare within a small tolerance for browser subpixel rounding; weight
+ * compares exactly (weights are discrete tokens, never fractional). */
+export function evaluateTypeRoleResult(
+  observed: TypeRoleObserved,
+  expected: TypeRoleExpected,
+): { ok: boolean; failureReason?: string } {
+  const reasons: string[] = [];
+
+  if (expected.fontSizePx !== undefined) {
+    if (observed.fontSizePx === undefined || Number.isNaN(observed.fontSizePx)) {
+      reasons.push(`font-size not measured (expected ${expected.fontSizePx}px)`);
+    } else if (Math.abs(observed.fontSizePx - expected.fontSizePx) > TYPE_ROLE_PX_TOLERANCE) {
+      reasons.push(`font-size ${observed.fontSizePx}px !== expected ${expected.fontSizePx}px`);
+    }
+  }
+
+  if (expected.fontWeight !== undefined) {
+    if (observed.fontWeight === undefined || Number.isNaN(observed.fontWeight)) {
+      reasons.push(`font-weight not measured (expected ${expected.fontWeight})`);
+    } else if (observed.fontWeight !== expected.fontWeight) {
+      reasons.push(`font-weight ${observed.fontWeight} !== expected ${expected.fontWeight}`);
+    }
+  }
+
+  if (expected.letterSpacingEm !== undefined) {
+    if (observed.letterSpacingEm === undefined || Number.isNaN(observed.letterSpacingEm)) {
+      reasons.push(`letter-spacing not measured (expected ${expected.letterSpacingEm}em)`);
+    } else if (Math.abs(observed.letterSpacingEm - expected.letterSpacingEm) > TYPE_ROLE_EM_TOLERANCE) {
+      reasons.push(`letter-spacing ${observed.letterSpacingEm}em !== expected ${expected.letterSpacingEm}em`);
+    }
+  }
+
+  return { ok: reasons.length === 0, failureReason: reasons.length > 0 ? reasons.join("; ") : undefined };
+}
+
+/** The Overview §01 deadline-strip note: "the nearest deadline is weight
+ * 700, the rest 400" — a group rule across the strip's 4 cells that a
+ * single-selector check can't express. Fails if the count of 700-weight
+ * cells isn't exactly 1, or if any non-700 cell isn't 400. */
+export function evaluateDeadlineNearestWeights(weights: readonly number[]): {
+  ok: boolean;
+  failureReason?: string;
+} {
+  const nearestCount = weights.filter((w) => w === 700).length;
+  const reasons: string[] = [];
+  if (nearestCount !== 1) {
+    reasons.push(`expected exactly 1 cell at weight 700, observed ${nearestCount} (weights: ${weights.join(",")})`);
+  }
+  const stray = weights.filter((w) => w !== 700 && w !== 400);
+  if (stray.length > 0) {
+    reasons.push(`non-nearest cells must read weight 400, observed [${weights.join(",")}]`);
+  }
+  return { ok: reasons.length === 0, failureReason: reasons.length > 0 ? reasons.join("; ") : undefined };
+}
+
+/** /admin/overview desktop key-role table (DEC-643): the five roles named in
+ * the tokenisation task plus the deadline-strip group rule, expressed as one
+ * entry per measured selector. `.chq-overview-deadline-value` (no
+ * `.chq-overview-deadline-nearest` modifier) covers the 3 non-nearest cells;
+ * the nearest cell is measured separately by role/selector below and the
+ * group weight rule is checked by evaluateDeadlineNearestWeights over all 4
+ * cells' observed weights (wired in scripts/render-sweep.ts). */
+export const OVERVIEW_TYPE_ROLES: readonly TypeRoleEntry[] = [
+  { selector: ".chq-overview-headline", role: "overview-headline", expected: { fontSizePx: 44, fontWeight: 700, letterSpacingEm: -0.042 } },
+  { selector: ".chq-overview-section-label", role: "section-label", expected: { fontSizePx: 11, fontWeight: 700, letterSpacingEm: 0.12 } },
+  { selector: ".chq-overview-deadline-label", role: "deadline-label", expected: { fontSizePx: 10, fontWeight: 700, letterSpacingEm: 0.12 } },
+  {
+    selector: ".chq-overview-deadline-value:not(.chq-overview-deadline-nearest)",
+    role: "deadline-value",
+    expected: { fontSizePx: 30, fontWeight: 400 },
+  },
+  {
+    selector: ".chq-overview-deadline-value.chq-overview-deadline-nearest",
+    role: "deadline-value-nearest",
+    expected: { fontSizePx: 30, fontWeight: 700 },
+  },
+  { selector: ".chq-overview-row-title", role: "row-title", expected: { fontWeight: 600, letterSpacingEm: -0.015 } },
+] as const;
+
+/** Renders a PASS/FAIL table for the collected type-role results, one line
+ * per selector (mirrors formatFontFloorTable's shape). */
+export function formatTypeRoleTable(results: readonly TypeRoleResult[]): string {
+  const selectorWidth = Math.max(...results.map((r) => r.selector.length), "selector".length);
+  const roleWidth = Math.max(...results.map((r) => r.role.length), "role".length);
+  const lines: string[] = [];
+  lines.push(`${"selector".padEnd(selectorWidth)}  ${"role".padEnd(roleWidth)}  status`);
+  for (const r of results) {
+    const mark = r.ok ? "PASS" : "FAIL";
+    const detail = r.ok ? "" : `  (${r.failureReason})`;
+    lines.push(`${r.selector.padEnd(selectorWidth)}  ${r.role.padEnd(roleWidth)}  ${mark}${detail}`);
+  }
+  return lines.join("\n");
+}
+
+/** True if every type-role result passed; kept for symmetry with
+ * allFontFloorPassed even though TYPE_ROLE_BLOCKING keeps this out of the
+ * gate's exit code for now. */
+export function allTypeRolePassed(results: readonly TypeRoleResult[]): boolean {
+  return results.every((r) => r.ok);
+}
+
+/** Summary line: "N/M type-role checks passed". */
+export function typeRoleSummaryLine(results: readonly TypeRoleResult[]): string {
+  const passed = results.filter((r) => r.ok).length;
+  return `${passed}/${results.length} type-role checks passed`;
+}
