@@ -653,3 +653,11 @@ compare phone frames pixel-for-pixel.
      control) exists precisely to prevent this; treat item 32 as top-tier desktop
      polish. An interaction that surprises its own designer will certainly surprise a
      judge.
+
+32c. Behavior note for item 32 (user-observed): toggling a COMPLETE cell on a past-due
+     task renders "X DAYS LATE" — CORRECT (overdue is derived: pending + past due;
+     no third stored state exists, per SPEC). Keep the semantics. The fix is entirely
+     presentational: with the v4 control trio in place, the complete→overdue flip must
+     read as a state change within one control system, not a punishment. Footer
+     caption stays the mock's single line — do not add explanatory clauses (copy rule
+     1).
