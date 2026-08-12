@@ -61,6 +61,21 @@ function toTaskRecord(row: typeof schema.task.$inferSelect): TaskRecord {
   };
 }
 
+/** DEC-680: the ONE accepted-speaker predicate — accepted submissions in
+ * `eventId` whose participant invite status is still active. Both
+ * listAcceptedContactIds below and files-library.ts's listEventHeadshotFiles
+ * compose this instead of hand-copying the pair of conditions, so the
+ * definition can't drift between the onboarding grid and the headshots tab.
+ * Callers AND this with `eq(schema.submission.eventId, eventId)` and their
+ * own joins/conditions. */
+export function acceptedSpeakerConditions(eventId: string) {
+  return and(
+    eq(schema.submission.eventId, eventId),
+    eq(schema.submission.status, "accepted"),
+    inArray(schema.participant.inviteStatus, [...ACTIVE_INVITE_STATUSES]),
+  )!;
+}
+
 /** Returns the ACTIVE participants (DEC-278 — invite status 'none' or
  * 'accepted') of accepted submissions in the event — the DEC-023
  * assignToAllAccepted expansion target, gated per DEC-283 so a task an
@@ -77,13 +92,7 @@ export async function listAcceptedContactIds(db: Db, eventId: string): Promise<s
     .select({ contactId: schema.participant.contactId })
     .from(schema.participant)
     .innerJoin(schema.submission, eq(schema.participant.submissionId, schema.submission.id))
-    .where(
-      and(
-        eq(schema.submission.eventId, eventId),
-        eq(schema.submission.status, "accepted"),
-        inArray(schema.participant.inviteStatus, [...ACTIVE_INVITE_STATUSES]),
-      ),
-    );
+    .where(acceptedSpeakerConditions(eventId));
   return [...new Set(rows.map((r) => r.contactId))];
 }
 

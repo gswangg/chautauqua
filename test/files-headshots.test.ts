@@ -30,6 +30,7 @@ vi.mock("drizzle-orm", async (importOriginal) => {
 });
 
 const { listEventHeadshotFiles } = await import("../src/server/repo/files-library");
+const { listAcceptedContactIds } = await import("../src/server/repo/tasks");
 
 // -----------------------------------------------------------------------
 // Fake DB: joined rows are kept as TAGGED sub-objects (never flat-merged),
@@ -181,14 +182,29 @@ function makeFakeHeadshotsDb(seed: Seed) {
     return found[0];
   };
 
+  /** `count(distinct <col>)` aggregate — the only aggregate this module's
+   * select() fields ever request (DEC-680's headshots total). */
+  function isCountDistinctNode(x: unknown): x is { queryChunks: unknown[] } {
+    if (!isSqlNode(x)) return false;
+    const { text } = renderSql(x);
+    return text.startsWith("count(distinct");
+  }
+
   function select(fields: Record<string, unknown>, distinct: boolean) {
     let source: JoinedRow[] = [];
     let whereCond: unknown = null;
     let orderByArg: unknown = null;
     let limitN: number | undefined;
     let offsetN = 0;
+    const countField = Object.entries(fields).find(([, v]) => isCountDistinctNode(v));
     const run = () => {
       let matched = whereCond ? source.filter((r) => evalCond(whereCond, r)) : source.slice();
+      if (countField) {
+        const [outKey, node] = countField as [string, { queryChunks: unknown[] }];
+        const { cols } = renderSql(node);
+        const distinctVals = new Set(matched.map((r) => resolveVal(cols[0], r)));
+        return [{ [outKey]: distinctVals.size }];
+      }
       if (orderByArg) {
         matched = matched
           .slice()
@@ -261,6 +277,7 @@ function makeFakeHeadshotsDb(seed: Seed) {
   }
 
   const db = {
+    select: (fields: Record<string, unknown>) => select(fields, false),
     selectDistinct: (fields: Record<string, unknown>) => select(fields, true),
   };
   return db as unknown as import("../src/server/context").Db;
@@ -335,5 +352,63 @@ describe("listEventHeadshotFiles (DEC-669)", () => {
     const db = makeFakeHeadshotsDb(seed);
     const result = await listEventHeadshotFiles(db, "event-1", { page: 1, perPage: 50 });
     expect(result).toEqual({ items: [], total: 0, page: 1, perPage: 50 });
+  });
+});
+
+// -----------------------------------------------------------------------
+// DEC-680: total is count(distinct contact.id), never rows.length of a
+// materialized scan — and 'accepted speaker' is the ONE predicate
+// (tasks/crud.ts's acceptedSpeakerConditions) both listAcceptedContactIds
+// and listEventHeadshotFiles compose.
+// -----------------------------------------------------------------------
+
+function manySpeakerSeed(n: number): Seed {
+  const participant: Seed["participant"] = [];
+  const submission: Seed["submission"] = [];
+  const contact: Seed["contact"] = [];
+  const file: Seed["file"] = [];
+  for (let i = 0; i < n; i++) {
+    const subId = `sub-${i}`;
+    const contactId = `contact-${i}`;
+    const fileId = `file-${i}`;
+    submission.push({ id: subId, eventId: "event-1", status: "accepted" });
+    participant.push({ submissionId: subId, contactId, order: 0, role: "speaker", inviteStatus: "accepted" });
+    contact.push({
+      id: contactId,
+      firstName: "Speaker",
+      lastName: String(i).padStart(3, "0"),
+      company: null,
+      headshotUrl: `/headshots/${fileId}`,
+    });
+    file.push({ id: fileId, filename: `${contactId}.jpg`, sizeBytes: 100, contentType: "image/jpeg", createdAt: new Date("2026-01-05T00:00:00Z") });
+  }
+  return { participant, submission, contact, file };
+}
+
+describe("listEventHeadshotFiles total (DEC-680)", () => {
+  it("counts with count(distinct contact.id) — total is the true roster size even when page 1 truncates it", async () => {
+    const db = makeFakeHeadshotsDb(manySpeakerSeed(75));
+    const page1 = await listEventHeadshotFiles(db, "event-1", { page: 1, perPage: 50 });
+    expect(page1.items).toHaveLength(50); // page window truncates...
+    expect(page1.total).toBe(75); // ...but total is the full distinct-contact count, not items.length
+  });
+});
+
+describe("acceptedSpeakerConditions is the ONE predicate (DEC-680)", () => {
+  it("a participant whose invite status is not active is excluded from BOTH listAcceptedContactIds and listEventHeadshotFiles", async () => {
+    const seed = baseSeed();
+    // Flip Priya's invite status to 'declined' — an inactive status per
+    // ACTIVE_INVITE_STATUSES — while keeping her headshot and her
+    // submission accepted.
+    seed.participant[0]!.inviteStatus = "declined";
+    const db = makeFakeHeadshotsDb(seed);
+
+    const acceptedIds = await listAcceptedContactIds(db, "event-1");
+    expect(acceptedIds).not.toContain("contact-priya");
+
+    const dbHeadshots = makeFakeHeadshotsDb(seed);
+    const headshots = await listEventHeadshotFiles(dbHeadshots, "event-1", { page: 1, perPage: 50 });
+    expect(headshots.items.map((i) => i.contactId)).not.toContain("contact-priya");
+    expect(headshots.total).toBe(0);
   });
 });

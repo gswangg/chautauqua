@@ -17,10 +17,11 @@ import { chunkIds } from "../../lib/chunk";
 import { likeContains } from "./like";
 import { ApiError } from "../http";
 import { batchContactNames } from "./files-versions";
-import { ACTIVE_INVITE_STATUSES } from "../../domain/acceptance";
-import { DEC_669 } from "../../decisions";
+import { acceptedSpeakerConditions } from "./tasks/crud";
+import { DEC_669, DEC_680 } from "../../decisions";
 
 void DEC_669;
+void DEC_680;
 
 export interface EventFilesScope {
   orgId: string;
@@ -438,22 +439,19 @@ export interface EventHeadshotFilesPage {
   perPage: number;
 }
 
-/** Scopes contacts to the event's accepted speakers using the same
- * definition tasks.ts's listAcceptedContactIds establishes (DEC-278/312:
- * accepted submissions, invite status in ACTIVE_INVITE_STATUSES), pushed
- * into the WHERE alongside the headshot join rather than resolved as a
- * separate id list — items and total come from this ONE where clause. */
+/** Scopes contacts to the event's accepted speakers via
+ * tasks/crud.ts's acceptedSpeakerConditions (DEC-278/312/680: accepted
+ * submissions, invite status in ACTIVE_INVITE_STATUSES) — the same builder
+ * listAcceptedContactIds composes, so the definition can't drift between
+ * the onboarding grid and this tab. Pushed into the WHERE alongside the
+ * headshot join rather than resolved as a separate id list — items and
+ * total come from this ONE where clause. */
 export async function listEventHeadshotFiles(
   db: Db,
   eventId: string,
   params: EventHeadshotFilesQuery,
 ): Promise<EventHeadshotFilesPage> {
-  const conditions = [
-    eq(schema.submission.eventId, eventId),
-    eq(schema.submission.status, "accepted"),
-    inArray(schema.participant.inviteStatus, [...ACTIVE_INVITE_STATUSES]),
-    isNotNull(schema.contact.headshotUrl),
-  ];
+  const conditions = [acceptedSpeakerConditions(eventId), isNotNull(schema.contact.headshotUrl)];
 
   if (params.q) {
     const tokens = params.q.split(/\s+/).filter((t) => t.length > 0);
@@ -473,16 +471,19 @@ export async function listEventHeadshotFiles(
   const whereExpr = and(...conditions);
   const headshotJoin = sql`${schema.contact.headshotUrl} = '/headshots/' || ${schema.file.id}`;
 
-  // Distinct contact ids in scope (a contact can speak on multiple accepted
-  // submissions; one headshot row per contact, not one per participant row).
+  // DEC-680: total is count(distinct contact.id) over the same joins and
+  // whereExpr as the item query below — never a materialized scan whose
+  // length stands in for the count (a contact can speak on multiple
+  // accepted submissions; one headshot row per contact, not one per
+  // participant row).
   const totalRows = await db
-    .selectDistinct({ contactId: schema.contact.id })
+    .select({ count: sql<number>`count(distinct ${schema.contact.id})` })
     .from(schema.participant)
     .innerJoin(schema.submission, eq(schema.participant.submissionId, schema.submission.id))
     .innerJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
     .innerJoin(schema.file, headshotJoin)
     .where(whereExpr);
-  const total = totalRows.length;
+  const total = Number(totalRows[0]?.count ?? 0);
 
   const offset = (params.page - 1) * params.perPage;
 
