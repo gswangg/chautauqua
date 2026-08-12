@@ -3,7 +3,7 @@
 // GET /api/v1/task-assignments/:id/response and opens ResponseModal with the
 // fetched fields.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { OnboardingGrid } from './OnboardingGrid';
 import { mockApi } from '../../test-utils/mockApi';
@@ -92,6 +92,16 @@ describe('OnboardingGrid: DEC-291 view-response control', () => {
     screen.getByRole('button', { name: 'Close' }).click();
     await waitFor(() => {
       expect(screen.queryByRole('dialog', { name: 'Task response' })).not.toBeInTheDocument();
+    });
+
+    // DEC-378: Escape closes the New task dialog too.
+    screen.getByRole('button', { name: 'New task' }).click();
+    const taskDialog = await screen.findByRole('dialog', { name: 'New task' });
+    expect(taskDialog).toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: 'Escape' });
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: 'New task' })).not.toBeInTheDocument();
     });
   });
 });

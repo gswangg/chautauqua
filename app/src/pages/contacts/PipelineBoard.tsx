@@ -11,8 +11,9 @@
 // a client-side display filter only, the Move-to select below each card is
 // still what persists a stage change.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type MouseEvent } from 'react';
 import { apiGet, apiList, apiPost, apiPatch, ApiError } from '../../lib/api';
+import { useEscapeKey } from '../../lib/useEscapeKey';
 import type { ContactListItem, PipelineEntry, PipelineEntryDetail, PipelineStage } from './types';
 import { PIPELINE_STAGES, PIPELINE_STAGE_LABELS } from './types';
 import './contacts-panels.css';
@@ -208,8 +209,16 @@ function EnrollDialog({ alreadyEnrolledContactIds, onClose, onEnrolled }: Enroll
     }
   }
 
+  useEscapeKey(true, () => {
+    if (!busy) onClose();
+  });
+
+  function handleScrimClick(e: MouseEvent<HTMLDivElement>) {
+    if (e.target === e.currentTarget && !busy) onClose();
+  }
+
   return (
-    <div className="chq-modal-backdrop" role="dialog" aria-label="Enroll contact">
+    <div className="chq-scrim" role="dialog" aria-modal="true" aria-label="Enroll contact" onClick={handleScrimClick}>
       <div className="chq-modal">
         <h3 className="chq-page-title">Enroll a contact</h3>
         {error && <div className="chq-error">{error}</div>}
@@ -286,8 +295,16 @@ function EntryDetailPanel({ entryId, onClose, onChanged }: EntryDetailPanelProps
     }
   }
 
+  useEscapeKey(true, () => {
+    if (!busy) onClose();
+  });
+
+  function handleScrimClick(e: MouseEvent<HTMLDivElement>) {
+    if (e.target === e.currentTarget && !busy) onClose();
+  }
+
   return (
-    <div className="chq-modal-backdrop" role="dialog" aria-label="Pipeline card detail">
+    <div className="chq-scrim" role="dialog" aria-modal="true" aria-label="Pipeline card detail" onClick={handleScrimClick}>
       <div className="chq-modal">
         {error && <div className="chq-error">{error}</div>}
         {!detail && <p>Loading...</p>}

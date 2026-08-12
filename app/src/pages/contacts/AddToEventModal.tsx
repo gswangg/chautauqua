@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type MouseEvent } from 'react';
 import { apiList, apiPost, ApiError } from '../../lib/api';
+import { useEscapeKey } from '../../lib/useEscapeKey';
 import type { ContactListItem } from './types';
 
 interface EventOption {
@@ -51,8 +52,16 @@ export function AddToEventModal({ contact, onClose }: Props) {
     }
   }
 
+  useEscapeKey(true, () => {
+    if (!busy) onClose();
+  });
+
+  function handleScrimClick(e: MouseEvent<HTMLDivElement>) {
+    if (e.target === e.currentTarget && !busy) onClose();
+  }
+
   return (
-    <div className="chq-scrim" role="dialog" aria-label="Add to event">
+    <div className="chq-scrim" role="dialog" aria-modal="true" aria-label="Add to event" onClick={handleScrimClick}>
       <div className="chq-modal chq-contacts-add-to-event-modal">
         <div className="chq-contacts-modal-head">
           <div className="chq-contacts-modal-heading">

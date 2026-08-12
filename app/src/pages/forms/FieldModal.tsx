@@ -1,6 +1,7 @@
-import { useState, type FormEvent } from 'react';
+import { useState, type FormEvent, type MouseEvent } from 'react';
 import { deserializeRule, ruleReferenceCandidates, serializeRule, type RuleBuilderState } from './logic';
 import { FIELD_KINDS, RULE_OPS, kindLabel, type FormField, type FormFieldKind, type FormFieldSection } from './types';
+import { useEscapeKey } from '../../lib/useEscapeKey';
 
 export interface FieldModalInput {
   section: FormFieldSection;
@@ -71,8 +72,20 @@ export function FieldModal({ field, allFields, onCancel, onSubmit }: FieldModalP
     }
   }
 
+  useEscapeKey(true, onCancel);
+
+  function handleScrimClick(e: MouseEvent<HTMLDivElement>) {
+    if (e.target === e.currentTarget && !submitting) onCancel();
+  }
+
   return (
-    <div className="chq-modal-overlay" role="dialog" aria-label={field ? 'Edit field' : 'New field'}>
+    <div
+      className="chq-scrim"
+      role="dialog"
+      aria-modal="true"
+      aria-label={field ? 'Edit field' : 'New field'}
+      onClick={handleScrimClick}
+    >
       <form className="chq-modal chq-forms-field-modal" onSubmit={handleSubmit}>
         <h2>{field ? 'Edit field' : 'New field'}</h2>
 

@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type MouseEvent } from 'react';
 import { apiList, apiPost, ApiError } from '../../lib/api';
+import { useEscapeKey } from '../../lib/useEscapeKey';
 import { BULK_EMAIL_MERGE_FIELDS, BULK_EMAIL_RECIPIENT_CAP } from './types';
 
 interface Props {
@@ -101,8 +102,16 @@ export function BulkEmailModal({ contactIds, eventId, onClose }: Props) {
     }
   }
 
+  useEscapeKey(true, () => {
+    if (!busy) onClose();
+  });
+
+  function handleScrimClick(e: MouseEvent<HTMLDivElement>) {
+    if (e.target === e.currentTarget && !busy) onClose();
+  }
+
   return (
-    <div className="chq-scrim" role="dialog" aria-label="Bulk email">
+    <div className="chq-scrim" role="dialog" aria-modal="true" aria-label="Bulk email" onClick={handleScrimClick}>
       <div className="chq-modal chq-contacts-bulk-email-modal">
         <div className="chq-contacts-modal-head">
           <div className="chq-contacts-modal-heading">

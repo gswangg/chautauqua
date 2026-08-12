@@ -1,7 +1,9 @@
 // DEC-291: dumb read-only viewer for a kind='form' task_assignment's saved
 // answers, opened from the OnboardingGrid's 'View response' cell control.
 
+import type { MouseEvent } from 'react';
 import { formatDate } from '../../lib/dates';
+import { useEscapeKey } from '../../lib/useEscapeKey';
 import type { AssignmentResponseDetail } from './types';
 
 interface ResponseModalProps {
@@ -13,8 +15,14 @@ interface ResponseModalProps {
 }
 
 export function ResponseModal({ contactName, loading, error, detail, onClose }: ResponseModalProps) {
+  useEscapeKey(true, onClose);
+
+  function handleScrimClick(e: MouseEvent<HTMLDivElement>) {
+    if (e.target === e.currentTarget) onClose();
+  }
+
   return (
-    <div className="chq-modal-overlay" role="dialog" aria-modal="true" aria-label="Task response">
+    <div className="chq-scrim" role="dialog" aria-modal="true" aria-label="Task response" onClick={handleScrimClick}>
       <div className="chq-modal chq-speakers-modal">
         <div className="chq-speakers-modal-head">
           <div className="chq-speakers-modal-head-titles">

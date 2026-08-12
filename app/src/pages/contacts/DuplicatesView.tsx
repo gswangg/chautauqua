@@ -8,8 +8,9 @@
 // being discarded struck through in var(--chq-muted) with the ONE
 // off-palette hex the whole app permits, #A8A392 (DEC-376) — that colour
 // appears nowhere else in this lane's stylesheet.
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type MouseEvent } from 'react';
 import { apiList, apiPost, ApiError } from '../../lib/api';
+import { useEscapeKey } from '../../lib/useEscapeKey';
 import type { DuplicateGroup } from './types';
 import './contacts-panels.css';
 
@@ -86,6 +87,14 @@ export function DuplicatesView({ onMerged }: Props) {
   const keepContact = mergeGroup?.contacts.find((c) => c.id === keepId) ?? null;
   const otherContacts = mergeGroup ? mergeGroup.contacts.filter((c) => c.id !== keepId) : [];
 
+  useEscapeKey(mergeGroup !== null, () => {
+    if (!busy) setMergeGroup(null);
+  });
+
+  function handleScrimClick(e: MouseEvent<HTMLDivElement>) {
+    if (e.target === e.currentTarget && !busy) setMergeGroup(null);
+  }
+
   return (
     <div className="chq-contacts-duplicates">
       <h2 className="chq-section-label">
@@ -116,7 +125,7 @@ export function DuplicatesView({ onMerged }: Props) {
       </ul>
 
       {mergeGroup && keepContact && (
-        <div className="chq-modal-backdrop" role="dialog" aria-label="Merge duplicates">
+        <div className="chq-scrim" role="dialog" aria-modal="true" aria-label="Merge duplicates" onClick={handleScrimClick}>
           <div className="chq-modal">
             <h3 className="chq-page-title">Merge contacts</h3>
             <p className="chq-contacts-merge-intro">

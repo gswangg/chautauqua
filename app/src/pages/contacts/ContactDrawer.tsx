@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type MouseEvent } from 'react';
 import { apiGet, apiPatch, apiUpload, ApiError } from '../../lib/api';
+import { useEscapeKey } from '../../lib/useEscapeKey';
 import type { ContactDetail } from './types';
 import { fromRows, toRows, travelValue, type CustomFieldRow } from './customFields';
 
@@ -126,8 +127,16 @@ export function ContactDrawer({ contactId, onClose, onSaved }: Props) {
     }
   }
 
+  useEscapeKey(true, () => {
+    if (!saving && !headshotUploading) onClose();
+  });
+
+  function handleScrimClick(e: MouseEvent<HTMLDivElement>) {
+    if (e.target === e.currentTarget && !saving && !headshotUploading) onClose();
+  }
+
   return (
-    <div className="chq-scrim" role="dialog" aria-label="Contact detail">
+    <div className="chq-scrim" role="dialog" aria-modal="true" aria-label="Contact detail" onClick={handleScrimClick}>
       <div className="chq-drawer chq-contacts-drawer">
         <div className="chq-contacts-drawer-head">
           {!loading && contact && (
