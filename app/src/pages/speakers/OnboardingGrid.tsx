@@ -10,6 +10,7 @@ import {
   DEFAULT_GRID_FILTERS,
   type AssignmentResponseDetail,
   type AssignmentStatus,
+  type EventForm,
   type GridFilterState,
   type NewTaskInput,
   type OnboardingGridResponse,
@@ -51,6 +52,7 @@ export function OnboardingGrid() {
   const [filters, setFilters] = useState<GridFilterState>(DEFAULT_GRID_FILTERS);
   const [page, setPage] = useState(1);
   const [showNewTask, setShowNewTask] = useState(false);
+  const [taskForms, setTaskForms] = useState<EventForm[]>([]);
   const [confirmingRemind, setConfirmingRemind] = useState(false);
   const [reminding, setReminding] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -74,6 +76,27 @@ export function OnboardingGrid() {
     loadGrid(eventId, filters, page);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eventId, filters, page]);
+
+  // DEC-398: the form-task picker needs the event's forms {id, title,
+  // isDefault} — fetched only when the New task modal opens (not on the
+  // grid's initial load path, per SPEC 7's one-round-trip-per-view rule).
+  // A failed fetch fails loudly IN the modal: taskForms stays empty, which
+  // TaskModal renders as a disabled select plus an inline explanatory line
+  // and a blocked submit, rather than silently posting no formId.
+  useEffect(() => {
+    if (!showNewTask || !eventId) return;
+    let cancelled = false;
+    apiGet<{ forms: EventForm[] }>(`/events/${eventId}/forms`)
+      .then((res) => {
+        if (!cancelled) setTaskForms(res.forms);
+      })
+      .catch(() => {
+        if (!cancelled) setTaskForms([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [showNewTask, eventId]);
 
   function handleFiltersChange(next: GridFilterState) {
     setFilters(next);
@@ -430,7 +453,9 @@ export function OnboardingGrid() {
         </div>
       )}
 
-      {showNewTask && <TaskModal onCancel={() => setShowNewTask(false)} onSubmit={handleCreateTask} />}
+      {showNewTask && (
+        <TaskModal onCancel={() => setShowNewTask(false)} onSubmit={handleCreateTask} forms={taskForms} />
+      )}
 
       {viewingResponse && (
         <ResponseModal

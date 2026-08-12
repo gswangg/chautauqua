@@ -1,10 +1,22 @@
-import { useState, type FormEvent, type MouseEvent } from 'react';
-import { DELIVERABLE_KINDS, TASK_KINDS, type DeliverableKind, type NewTaskInput, type TaskKind } from './types';
+import { useEffect, useState, type FormEvent, type MouseEvent } from 'react';
+import {
+  DELIVERABLE_KINDS,
+  TASK_KINDS,
+  type DeliverableKind,
+  type EventForm,
+  type NewTaskInput,
+  type TaskKind,
+} from './types';
 import { useEscapeKey } from '../../lib/useEscapeKey';
 
 interface TaskModalProps {
   onCancel: () => void;
   onSubmit: (input: NewTaskInput) => Promise<void>;
+  // DEC-398: the event's own forms, {id, title, isDefault} — the producer
+  // picks a form by NAME from this list; the client never types or invents
+  // an id. An empty list (no forms yet, or the fetch failed) disables the
+  // select and blocks submit rather than silently posting no formId.
+  forms: EventForm[];
 }
 
 function kindLabel(kind: TaskKind): string {
@@ -19,7 +31,7 @@ function deliverableKindLabel(kind: DeliverableKind): string {
   return 'Handout';
 }
 
-export function TaskModal({ onCancel, onSubmit }: TaskModalProps) {
+export function TaskModal({ onCancel, onSubmit, forms }: TaskModalProps) {
   const [kind, setKind] = useState<TaskKind>('general');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -31,10 +43,26 @@ export function TaskModal({ onCancel, onSubmit }: TaskModalProps) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Defaults to the first form in the (default-first, per DEC-398) list, and
+  // re-syncs if the previously-selected id falls out of the list (e.g. the
+  // async fetch resolves after the modal has already mounted with none) --
+  // a blank submit is impossible by construction.
+  useEffect(() => {
+    if (forms.length === 0) {
+      setFormId('');
+      return;
+    }
+    setFormId((current) => (forms.some((f) => f.id === current) ? current : forms[0]!.id));
+  }, [forms]);
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (title.trim().length === 0) {
       setError('Title is required.');
+      return;
+    }
+    if (kind === 'form' && (forms.length === 0 || formId.trim().length === 0)) {
+      setError('Select a form before creating a form task.');
       return;
     }
     setSubmitting(true);
@@ -46,7 +74,7 @@ export function TaskModal({ onCancel, onSubmit }: TaskModalProps) {
         description: description.trim().length > 0 ? description.trim() : undefined,
         dueDate: dueDate.length > 0 ? new Date(dueDate).getTime() : undefined,
         required,
-        formId: kind === 'form' && formId.trim().length > 0 ? formId.trim() : undefined,
+        formId: kind === 'form' ? formId : undefined,
         deliverableKind: kind === 'file_request' ? deliverableKind : undefined,
         assignToAllAccepted,
       });
@@ -105,10 +133,30 @@ export function TaskModal({ onCancel, onSubmit }: TaskModalProps) {
         </label>
 
         {kind === 'form' && (
-          <label className="chq-speakers-modal-field">
-            <span className="chq-speakers-modal-label">Form ID</span>
-            <input className="chq-input" type="text" value={formId} onChange={(e) => setFormId(e.target.value)} />
-          </label>
+          <div className="chq-speakers-modal-field">
+            <label>
+              <span className="chq-speakers-modal-label">Form</span>
+              <select
+                className="chq-select"
+                value={formId}
+                onChange={(e) => setFormId(e.target.value)}
+                disabled={forms.length === 0}
+              >
+                {forms.length === 0 ? (
+                  <option value="">No forms available</option>
+                ) : (
+                  forms.map((f) => (
+                    <option key={f.id} value={f.id}>
+                      {f.title}
+                    </option>
+                  ))
+                )}
+              </select>
+            </label>
+            {forms.length === 0 && (
+              <span className="chq-summary">This event has no forms yet. Add a form before creating a form task.</span>
+            )}
+          </div>
         )}
 
         {kind === 'file_request' && (
