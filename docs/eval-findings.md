@@ -699,3 +699,11 @@ AND audit noStoreByDefault + any other header-stamping middleware for the same t
     Where-they-work section, the FIELD/OPERATOR/VALUE builder, the # SUBMISSIONS
     column. The rail is what makes the page a CRM instead of a list — it's the core
     of the design, not an accessory.
+
+56. (User QA) **The agenda's TBD column renders unconditionally** — it's the null-room
+    bucket (sessions with a time but no room), correctly not deletable from Settings
+    because it isn't a room. Fix per the conditional-and-quiet rule: render the column
+    ONLY when at least one placement is roomless for the visible day; header copy
+    "No room yet" instead of the cryptic "TBD" (copy rule: plain names from the app's
+    vocabulary). Keep the semantics (time-first placement is a feature). Phone room
+    chips: same conditional rule.
