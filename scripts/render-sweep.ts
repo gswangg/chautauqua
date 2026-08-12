@@ -50,6 +50,7 @@ import {
   formatResultsTable,
   formatSummary,
   mobileErrorResult,
+  PAGE_EVALUATE_KEEPNAMES_SHIM,
   routeErrorResult,
   type MobileRouteEntry,
   type MobileRouteResult,
@@ -65,6 +66,7 @@ import { ensureDevVars } from "./ensure-dev-vars";
 const MOBILE_EVENT_SLUG = "devflow-conf-2027";
 const MOBILE_SESSION_ID = "seed_submission_0001";
 const MOBILE_SPEAKER_ID = "seed_contact_0001";
+const MOBILE_TASK_ASSIGNMENT_ID = "seed_task_assignment_0001";
 
 export const MOBILE_ROUTE_MANIFEST: readonly MobileRouteEntry[] = [
   { path: `/submit/${MOBILE_EVENT_SLUG}`, role: "public" },
@@ -80,6 +82,15 @@ export const MOBILE_ROUTE_MANIFEST: readonly MobileRouteEntry[] = [
   { path: `/embed/${MOBILE_EVENT_SLUG}/speakers`, role: "public" },
   { path: "/login", role: "public" },
   { path: "/portal", role: "speaker" },
+  // DEC-411: widen the mobile pass from the single /portal route to the
+  // whole phone product — the same speaker portal surfaces already in
+  // app/src/routeManifest.ts (110-127), same deterministic seed ids.
+  { path: `/portal/submissions/${MOBILE_SESSION_ID}`, role: "speaker" },
+  { path: `/portal/submissions/${MOBILE_SESSION_ID}/edit`, role: "speaker" },
+  { path: "/portal/profile", role: "speaker" },
+  { path: "/portal/tasks", role: "speaker" },
+  { path: `/portal/tasks/${MOBILE_TASK_ASSIGNMENT_ID}/form`, role: "speaker" },
+  { path: "/account/password", role: "speaker" },
   { path: "/docs/api", role: "public" },
   { path: "/dev/mailbox", role: "public" },
 ] as const;
@@ -217,6 +228,8 @@ async function loginContext(
 
 async function visitRoute(context: BrowserContext, baseUrl: string, entry: RouteManifestEntry): Promise<RouteResult> {
   const page = await context.newPage();
+  // DEC-411: must run before any in-page evaluation on this page.
+  await page.addInitScript({ content: PAGE_EVALUATE_KEEPNAMES_SHIM });
   const consoleErrors: string[] = [];
   const pageErrors: string[] = [];
   page.on("console", (msg: ConsoleMessage) => {
@@ -262,6 +275,8 @@ async function visitMobileRoute(
   controlSelector: string = MOBILE_CONTROL_SELECTOR,
 ): Promise<MobileRouteResult> {
   const page = await context.newPage();
+  // DEC-411: must run before the in-page evaluation below.
+  await page.addInitScript({ content: PAGE_EVALUATE_KEEPNAMES_SHIM });
   let status = 0;
   try {
     const res = await page.goto(`${baseUrl}${entry.path}`, { waitUntil: "networkidle" });
