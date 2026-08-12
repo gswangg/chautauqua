@@ -36,12 +36,14 @@ Evaluation plans, scoring, anonymized reviewer queue (`src/domain/evaluation.ts`
 `anonymizeForReviewer`), progress/results rollups. Built for both the organizer plan tree
 and the reviewer's own queue/scorecard tree (same paths, role-gated).
 
-**Degraded vs. the steal-mandate's own target (not yet built, see below):**
-anonymization is read live off the plan at render/repo-query time
-(`evaluation.anonymized` column, `src/db/schema.ts:307`), not snapshotted onto the
-assignment row at assignment time. If an organizer flips a plan's anonymize flag mid-round,
-previously-assigned reviewers' view changes retroactively rather than staying frozen at
-whatever it was when they were assigned.
+**Not the steal-mandate's literal ask, by deliberate design (DEC-624):** the mandate's
+item 2 asks for an assignment-time snapshot of the anonymize flag; this tree instead reads
+`evaluation.anonymized` live off the plan (`src/db/schema.ts:307`) and enforces a monotone
+ratchet — an organizer may always turn anonymization ON, but turning it OFF is refused with
+a 409 (naming the count) once any evaluation has been submitted under that plan. This
+delivers the same integrity property the snapshot would (a reviewer who wrote under a
+promise of anonymity can never be retroactively unmasked) without an additive migration or
+a second source of truth for a flag DEC-596 already gives the plan. Not a gap; see DEC-624.
 
 ## J5 — Decide and notify (`/admin/submissions/:id`, comms compose)
 
@@ -84,11 +86,11 @@ are reported, nothing is refused.
 sessions simply stay unplaced (already surfaced via the agenda payload's unplaced count,
 never thrown as an error).
 
-**Not built (steal-mandate item 1, not yet shipped in this tree):** `autoSchedulePlan`
-still reports **counts only** — `{ unplaced: number, conflicts: number }`
-(`src/domain/schedule.ts`) — not a per-session reason ("no free 45-minute slot", "speaker
-already booked in every candidate slot", "not accepted"). The unplaced list on screen is a
-bare count, not yet a diagnosis.
+**Steal-mandate item 1 (per-session unplaced reasons) is built:** `autoSchedulePlan`
+returns `unplaced: UnplacedSession[]` (`src/domain/schedule.ts:400`), each item a typed
+`UnplacedReason` (`src/domain/schedule.ts:66`) — `no_rooms_configured`,
+`duration_exceeds_day`, `speaker_double_booked`, `no_free_slot` — rendered to prose by the
+one renderer `describeUnplaced` (`src/domain/schedule.ts:89`). Not a bare count.
 
 ## J10 — Publish to the public site (`/e/:eventSlug/sessions`, `/e/:eventSlug/sessions/:sessionId`, `/e/:eventSlug/speakers`, `/e/:eventSlug/speakers/:speakerId`, `/e/:eventSlug/gallery`, `/e/:eventSlug/agenda`, `/e/:eventSlug/schedule`, `/embed/:eventSlug/sessions`, `/embed/:eventSlug/speakers`, `/embed/:eventSlug/gallery`, `/embed/:eventSlug/agenda`, `/embed/:eventSlug/schedule`)
 
@@ -102,10 +104,11 @@ is public). `/e/:eventSlug/schedule` also serves `.ics`. Built.
 is the deepest row reachable via pagination or `?limit=`; deeper pages are not offered
 (`hasMore` false past the ceiling), not silently truncated with no signal.
 
-**Not built (steal-mandate item 3):** the copyable `<iframe>` snippet is the only embed
-surface. There is no `embed.js` custom element yet (origin-validated `src`, sandboxed
-iframe, `postMessage`-based height resize with origin/source/instance-id validation) — the
-plain iframe snippet remains the only option, not the fallback under a hardened default.
+**Steal-mandate item 3 (hardened `embed.js` custom element) is built:** `public/embed.js`
+ships a custom element with an origin-validated `src`, a sandboxed iframe, and
+`postMessage`-based height resize with origin/source/instance-id validation, covered by
+`test/embed-element.test.ts`. The plain `<iframe>` snippet remains available as the
+unhardened fallback, not the only option.
 
 ## J11 — Reuse the network (`/admin/contacts`)
 
@@ -168,29 +171,53 @@ This is a dashboard preview, not a report — the full lists live on their own a
 
 ## Deliberately not built (stage 1 scope, per SPEC §10 and `decisions/DEC-446.md`)
 
+Each bullet below carries an HTML-comment absence marker naming the artefact that would
+have to exist for the claim to be false. `test/audit-claims.test.ts` (DEC-642) parses
+every marker and fails, naming the bullet, if the artefact it names is actually present in
+the tree — the same mechanism that keeps route claims honest (above), extended to this
+list.
+
+<!-- absent: file:app/src/pages/DecisionMeeting.tsx -->
 - **Decision-meeting view** (SPEC §10 #2) — live slot countdown by track, per-reviewer
   "my top-ranked, not yet accepted" queue, accept-with-condition note. Explicitly closed
   as out-of-stage-1-scope (`DEC_446`).
+<!-- absent: symbol:RESUBMIT_WITH_GUIDANCE@src/domain/evaluation.ts -->
 - **"Resubmit with guidance" status** and the near-miss-as-CRM-invite-lane flow (SPEC §10
   #4). Same decision, same reason.
-- **Steal-mandate item 1** (per-session unplaced reasons) — see J9 above.
-- **Steal-mandate item 2** (per-assignment anonymization snapshot) — see J4 above.
-- **Steal-mandate item 3** (hardened `embed.js` custom element) — see J10 above.
-- **Steal-mandate item 5, layer 1** (Sessionboard export importer: CSV/XLSX upload, dry
-  run, idempotent `external_ref` upsert). The pure planning core exists
-  (`src/domain/sessionboard.ts` — external-ref minting, row mapping/validation) but there
-  is no `POST /api/v1/events/:eventId/import/sessionboard` route wired to it yet, and no
-  UI. Not reachable from any URL in `app/src/routeManifest.ts` — nothing to claim here.
-- **Steal-mandate item 5, layer 2** (Sessionboard REST API adapter). Not started; would in
-  any case need the same "implemented against their published API, not verified against a
-  live account" honesty note the mandate calls for, since this project has no Sessionboard
-  account to test against.
-- **Non-goals, explicit per SPEC §0**: attendee registration/ticketing, sponsors &
-  exhibitors, agentic/chat admin, calendar-API integration beyond `.ics`, pixel fidelity to
+<!-- absent: route:GET /api/v1/integrations/sessionboard/status -->
+- **Steal-mandate item 5, layer 2** (Sessionboard REST API adapter). Closed as a
+  documented stage-1 non-goal per DEC-641: with no Sessionboard account in this project,
+  not one byte of a live adapter could be executed or verified, and a token field wired to
+  unverifiable paging code behind a real-looking UI is exactly the "simulator behind a
+  full UI" the mandate warns against — the honest artefact is this sentence, not a
+  half-working adapter. Layer 1 (the export importer) is built; see the "Sessionboard
+  import" section below.
+<!-- absent: file:src/domain/ticketing.ts -->
+- **Non-goals, explicit per SPEC §0**: attendee registration/ticketing (marker names the
+  nearest domain module a ticketing feature would need), sponsors & exhibitors,
+  agentic/chat admin, calendar-API integration beyond `.ics`, pixel fidelity to
   Sessionboard, Accelevents integration.
 
-Every item above is a real gap, not a euphemism — none of it is reachable from a URL, a
-button, or an API route in this tree today.
+Every item above is a real gap, not a euphemism — each bullet's absence marker is asserted
+by `test/audit-claims.test.ts`, not just claimed in prose.
+
+## Sessionboard import (steal-mandate item 5)
+
+**Layer 1 (export importer) is built:** `POST /api/v1/events/:eventId/import/sessionboard`
+(`src/routes/api/import.ts`), organiser-only, org-scoped (an `eventId` from another org is
+404, never 403). Supports a dry run (`dryRun: boolean` in the request body) and idempotent
+`external_ref` upsert via the pure planning core in `src/domain/sessionboard.ts`. The
+importable entity set is not hand-listed here — it drifts as entities are added — the
+source of truth is `SB_TARGET_FIELDS` in `src/domain/sessionboard.ts`. The admin panel
+(`app/src/pages/settings/SessionboardImportPanel.tsx`, under `/admin/settings`) drives
+column mapping, dry-run preview, and the real run.
+
+<!-- absent: route:GET /api/v1/integrations/sessionboard/status -->
+**Layer 2 (REST API adapter) is a deliberate stage-1 non-goal (DEC-641):** this project has
+no Sessionboard account, so no code path against their live REST API could be executed or
+verified — an unverifiable adapter behind a real-looking token field would be precisely the
+"simulator behind a full UI" the steal-mandate warns against. Recorded as a non-goal, never
+as "coming soon".
 
 ## Stage-2 platform wiring (the operator owns this, not the product — SPEC §0 "Build staging")
 
@@ -217,7 +244,8 @@ and adapter swaps that a deploying operator does, not code gaps:
   `MAX_CONTACT_DIRECTORY_SCAN`, `MAX_IMPORT_ROWS`, `MAX_PER_PAGE`) is read live from its
   source constant, not restated from memory — if the constant changes, this document is
   wrong until edited, which is exactly why `test/audit-claims.test.ts` exists: to catch
-  drift in the one thing it *can* check mechanically (route paths), forcing a human to
+  drift in the things it *can* check mechanically — route paths (DEC-618) and the
+  "Deliberately not built" section's absence markers (DEC-642) — forcing a human to
   re-read the rest at review time.
 - **No slug that was not read.** Route paths above are patterns copied from
   `app/src/routeManifest.ts`, not typed from memory — the test enforces this for every
