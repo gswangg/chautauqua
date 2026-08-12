@@ -14,9 +14,12 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { getTableName, isTable } from "drizzle-orm";
+
 import { hashPassword } from "../src/auth/password";
 import { MERGE_FIELDS } from "../src/mail/render";
 import { DEFAULT_ONBOARDING_TASKS, FORM_TASK_FIELD_SPECS } from "../src/domain/acceptance";
+import * as schema from "../src/db/schema";
 import {
   DEC_003,
   DEC_004,
@@ -32,12 +35,14 @@ import {
 } from "../src/decisions";
 import {
   additionalSubmissionStatuses,
+  assertDeleteOrderCoversSchema,
   deleteAllStmt,
   insertStmt,
   minimalPdfBytes,
   onePixelPngBytes,
   seedId,
   sqlQuote,
+  TABLES_IN_DELETE_ORDER,
 } from "./seed-lib";
 
 void DEC_003;
@@ -231,37 +236,13 @@ async function main(): Promise<void> {
   }
 
   // --- DELETE statements first (idempotent reseed), children before parents ---
-  const tablesInDeleteOrder = [
-    "email_log",
-    "email_template",
-    "file_comment",
-    "file",
-    "resource",
-    "portal_settings",
-    "task_assignment",
-    "task",
-    "schedule_slot",
-    "evaluation",
-    "plan_reviewer",
-    "evaluation_plan",
-    "participant",
-    "submission_track",
-    "submission_answer",
-    "submission",
-    "form_field",
-    "form",
-    "room",
-    "track",
-    "contact",
-    "auth_session",
-    "user",
-    "saved_view",
-    "event",
-    "segment",
-    "api_token",
-    "org",
-  ];
-  for (const table of tablesInDeleteOrder) {
+  // DEC-578: TABLES_IN_DELETE_ORDER (scripts/seed-lib.ts) is the hand-curated
+  // FK-safe order; assert its table *set* still matches every sqliteTable
+  // src/db/schema.ts actually exports, so an added-but-forgotten table fails
+  // loudly here instead of silently surviving a reseed.
+  const schemaTableNames = Object.values(schema).filter(isTable).map((t) => getTableName(t));
+  assertDeleteOrderCoversSchema(TABLES_IN_DELETE_ORDER, schemaTableNames);
+  for (const table of TABLES_IN_DELETE_ORDER) {
     statements.push(deleteAllStmt(table));
   }
 
