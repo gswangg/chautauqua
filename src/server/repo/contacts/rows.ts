@@ -6,6 +6,11 @@ import * as schema from "../../../db/schema";
 import type { ContactRecord } from "../../../domain/contacts";
 import { parseSocialLinks } from "../profile";
 
+// DEC-554: bounds a whole-directory scan (duplicate detection) so it can
+// never silently grow unbounded; the scanner refuses (throws) rather than
+// truncating once an org's contact count exceeds this.
+export const MAX_CONTACT_DIRECTORY_SCAN = 20000;
+
 export interface ContactRow {
   id: string;
   orgId: string;
