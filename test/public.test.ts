@@ -259,6 +259,11 @@ describe("EMB-02: keyword search (q) server-side substring filter", () => {
     let captured: unknown;
     const db = {
       selectDistinct: () => makeChain([], (cond) => (captured = cond)),
+      // DEC-418: getPublicSessions now also runs countVisibleSubmissions()
+      // (a plain db.select() count(distinct) query) alongside the id query
+      // — stubbed here so the count query doesn't blow up; its WHERE isn't
+      // what this test cares about (the id query's WHERE, above, is).
+      select: () => makeChain([{ count: 0 }]),
     } as unknown as AppEnv["Variables"]["db"];
     return { db, getCaptured: () => captured };
   }

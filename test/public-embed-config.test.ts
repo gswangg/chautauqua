@@ -9,6 +9,10 @@ import { parseDay, parseLimit, parseCardFields, parseAccent, ALL_CARD_FIELDS } f
 import { registerErrorHandler } from "../src/server/http";
 import type { AppEnv } from "../src/server/env";
 
+// DEC-418: getVisibleSubmissionIdsOrdered's id query now carries a real SQL
+// LIMIT (see src/server/repo/public/sessions.ts) instead of the caller
+// JS-slicing an unbounded result — so this fake, like a real driver, must
+// honor the bound passed to .limit(n) rather than ignoring it.
 function makeChain(rows: unknown[]) {
   const chain: any = {
     from: () => chain,
@@ -16,7 +20,7 @@ function makeChain(rows: unknown[]) {
     leftJoin: () => chain,
     where: () => chain,
     orderBy: () => chain,
-    limit: async () => rows,
+    limit: async (n: number) => rows.slice(0, n),
     then: (resolve: (v: unknown[]) => void) => resolve(rows),
   };
   return chain;
