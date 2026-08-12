@@ -18,33 +18,57 @@ import {
   criteriaForRound,
   partitionRecused,
 } from "../../domain/evaluation";
+import { clampPage, clampPerPage } from "../../lib/pagination";
 import * as repo from "../../server/repo/review";
 import { roundCriteriaJsonOf } from "../../server/repo/review";
 import type { PlanRecord } from "../../server/repo/review";
 import * as eventsRepo from "../../server/repo/events";
-import { DEC_239 } from "../../decisions";
+import { DEC_239, DEC_460, DEC_461 } from "../../decisions";
 import { currentAuth, requireReviewerOrOrganizer, asRecord, requireAssignedPlan } from "./shared";
 
 export const reviewReviewerRoutes = new Hono<AppEnv>();
 void DEC_239; // /review/plans/:id/queue: shaped {submissionId,ref,title,ratingsCount,alreadyRatedByMe} below
+void DEC_460; // enforced bound on every /api/v1 list envelope, no exemptions
+void DEC_461; // optional repo page param + sibling count fn + deterministic ORDER BY below
+
+/** DEC-461(a): default perPage 200 (MAX_PER_PAGE) for this previously-
+ * unpaginated envelope, not clampPerPage's built-in 50. */
+function resolvePerPage(raw: string | undefined): number {
+  if (raw === undefined) return 200;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || !Number.isInteger(n) || n < 1) return 200;
+  return clampPerPage(n);
+}
 
 reviewReviewerRoutes.get("/api/v1/review/plans", async (c) => {
   requireReviewerOrOrganizer(c);
   const auth = currentAuth(c);
+  const page = clampPage(c.req.query("page"));
+  const perPage = resolvePerPage(c.req.query("perPage"));
   let plans: PlanRecord[];
+  let total: number;
   if (auth.role === "organizer") {
     const eventId = c.req.query("eventId");
     if (!eventId) throw new ApiError("invalid", "eventId query param is required");
     const event = await eventsRepo.getEventForOrg(c.var.db, eventId, auth.orgId);
     if (!event) throw new ApiError("not_found", "Event not found");
-    plans = await repo.listPlansForEvent(c.var.db, event.id);
+    [plans, total] = await Promise.all([
+      repo.listPlansForEvent(c.var.db, event.id, { limit: perPage, offset: (page - 1) * perPage }),
+      repo.countPlansForEvent(c.var.db, event.id),
+    ]);
   } else {
-    const planIds = await repo.listPlanIdsForReviewer(c.var.db, auth.userId);
-    plans = (await Promise.all(planIds.map((id) => repo.getPlanById(c.var.db, id)))).filter(
+    // DEC-461(e): the reviewer's plan set starts from an already-bounded
+    // assigned-plan-id list (one row per plan the reviewer is on) -- the
+    // blessed JS-slice exception applies. Sort deterministically by id,
+    // clamp with a slice, but report the true count as `total`.
+    const planIds = [...(await repo.listPlanIdsForReviewer(c.var.db, auth.userId))].sort();
+    total = planIds.length;
+    const pagedIds = planIds.slice((page - 1) * perPage, (page - 1) * perPage + perPage);
+    plans = (await Promise.all(pagedIds.map((id) => repo.getPlanById(c.var.db, id)))).filter(
       (p): p is PlanRecord => p !== null,
     );
   }
-  return c.json({ items: plans, total: plans.length, page: 1, perPage: plans.length || 1 });
+  return c.json({ items: plans, total, page, perPage });
 });
 
 reviewReviewerRoutes.get("/api/v1/review/plans/:id/queue", async (c) => {
