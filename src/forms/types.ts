@@ -71,12 +71,23 @@ export function lockedFieldName(id: string): string | null {
   return ALL_LOCKED_NAMES.has(name) ? name : null;
 }
 
-// DEC-475: a rule's fieldId must be re-keyed exactly like the field's own id
-// (lockedFieldName(...) ?? id) — the builder stores rules against the raw
-// per-form PK ('<formId>:description'), but answers/visibility checks are
-// keyed by the short locked name. Without this normalization, an eq/ne rule
-// referencing a locked trigger field silently and permanently evaluates
-// against undefined.
-export function normalizeRuleFieldId(rule: FormFieldRule): FormFieldRule {
-  return { ...rule, fieldId: lockedFieldName(rule.fieldId) ?? rule.fieldId };
+// DEC-475/DEC-486: a field's own id AND its rule's fieldId are both
+// references into the same answer map, and must be re-keyed identically
+// (lockedFieldName(...) ?? id) — the builder stores locked rows and rule
+// references against the raw per-form PK ('<formId>:description'), but
+// answers/visibility checks are keyed by the short locked name. Doing this
+// normalization in two separate call sites let them drift (a rule keyed on
+// a locked trigger field silently and permanently evaluated against
+// undefined); projectFieldForAnswers is the ONE projection — id and
+// rule.fieldId normalized in the same expression so they can never diverge
+// again. Callers must build the FormFieldDef with RAW ids/rule.fieldId and
+// pass it through this function, never call lockedFieldName inline on id.
+export function projectFieldForAnswers(def: FormFieldDef): FormFieldDef {
+  return {
+    ...def,
+    id: lockedFieldName(def.id) ?? def.id,
+    ...(def.rule
+      ? { rule: { ...def.rule, fieldId: lockedFieldName(def.rule.fieldId) ?? def.rule.fieldId } }
+      : {}),
+  };
 }

@@ -8,7 +8,7 @@ import type { Db } from "../context";
 import { newId } from "../../domain/ids";
 import { submissionSeqSubquery } from "./submissions/seq";
 import type { FormFieldDef, FormFieldKind, FormFieldSection, FormFieldRule, AnswerMap } from "../../forms/types";
-import { lockedFieldName, normalizeRuleFieldId } from "../../forms/types";
+import { lockedFieldName, projectFieldForAnswers } from "../../forms/types";
 import { DEC_258 } from "../../decisions";
 
 // Compile-checked dependency marker: createParticipant below snapshots
@@ -82,23 +82,23 @@ export async function getFormFields(db: Db, formId: string): Promise<FormFieldDe
     .from(schema.formField)
     .where(eq(schema.formField.formId, formId))
     .orderBy(asc(schema.formField.position));
-  return rows.map((row): FormFieldDef => ({
-    // DEC-050: locked rows carry a per-form PK ('${formId}:name'); the
-    // rendered form + validated/persisted answer map are keyed by the
-    // short locked name (e.g. 'title'), never the raw PK.
-    // DEC-475: a rule's own fieldId is a reference into that same answer
-    // map, so it must be normalized the same way — otherwise a rule
-    // triggered by a locked field is silently and permanently dead.
-    id: lockedFieldName(row.id) ?? row.id,
-    section: row.section as FormFieldSection,
-    kind: row.kind as FormFieldKind,
-    label: row.label,
-    helpText: row.helpText ?? undefined,
-    required: row.required,
-    position: row.position,
-    options: row.optionsJson ? (JSON.parse(row.optionsJson) as string[]) : undefined,
-    rule: row.ruleJson ? normalizeRuleFieldId(JSON.parse(row.ruleJson) as FormFieldRule) : undefined,
-  }));
+  // DEC-050/DEC-475/DEC-486: build with RAW ids (locked rows carry a
+  // per-form PK '${formId}:name') and project through projectFieldForAnswers
+  // once, so the field's own id and its rule's fieldId are normalized to the
+  // short locked name in the same expression and can never drift apart.
+  return rows.map((row) =>
+    projectFieldForAnswers({
+      id: row.id,
+      section: row.section as FormFieldSection,
+      kind: row.kind as FormFieldKind,
+      label: row.label,
+      helpText: row.helpText ?? undefined,
+      required: row.required,
+      position: row.position,
+      options: row.optionsJson ? (JSON.parse(row.optionsJson) as string[]) : undefined,
+      rule: row.ruleJson ? (JSON.parse(row.ruleJson) as FormFieldRule) : undefined,
+    }),
+  );
 }
 
 export async function getEventTracks(db: Db, eventId: string): Promise<TrackRow[]> {
