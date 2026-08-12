@@ -1,9 +1,9 @@
 // w1-c P1 fix (DEC-239): the server's DuplicateGroup shape is {contactIds,
 // contacts}, not {ids, contacts}. Proves the merge dialog reads contactIds
-// (not the old, nonexistent `.ids`) and posts {keepId, mergeId} drawn from
-// it — plus that a merge failure surfaces inside the modal (the top banner
-// renders behind the backdrop) and a success closes the dialog with a
-// confirmation.
+// (not the old, nonexistent `.ids`) and posts {keepId, mergeIds} (DEC-629:
+// set-based, every non-primary id in one request) drawn from it — plus that
+// a merge failure surfaces inside the modal (the top banner renders behind
+// the backdrop) and a success closes the dialog with a confirmation.
 import { afterEach, describe, expect, it } from 'vitest';
 import { cleanup, render, screen, waitFor, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
@@ -23,7 +23,7 @@ afterEach(() => {
 });
 
 describe('DuplicatesView render (w1-c P1, DEC-239)', () => {
-  it('issues apiPost(/contacts/merge, {keepId, mergeId}) with ids drawn from contactIds, then closes with a confirmation', async () => {
+  it('issues apiPost(/contacts/merge, {keepId, mergeIds}) with ids drawn from contactIds, then closes with a confirmation', async () => {
     const fetchMock = mockApi({
       'GET /api/v1/contacts/duplicates': listEnvelope([GROUP]),
       'POST /api/v1/contacts/merge': { id: 'ct-keep', firstName: 'Jane', lastName: 'Doe', email: 'jane@example.com' },
@@ -54,7 +54,7 @@ describe('DuplicatesView render (w1-c P1, DEC-239)', () => {
     );
     expect(mergeCall).toBeDefined();
     const body = JSON.parse((mergeCall![1] as RequestInit).body as string);
-    expect(body).toEqual({ keepId: 'ct-keep', mergeId: 'ct-merge' });
+    expect(body).toEqual({ keepId: 'ct-keep', mergeIds: ['ct-merge'] });
   });
 
   it('renders a merge failure inside the modal, not just the (backdrop-hidden) top banner', async () => {

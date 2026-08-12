@@ -1,6 +1,7 @@
 // Duplicates + merge (CRM, DEC-239). Behaviour frozen (DEC-366): merge and
-// not-a-duplicate semantics are untouched — POST /contacts/merge with
-// {keepId, mergeId} drawn from the group's real `contactIds`.
+// not-a-duplicate semantics are untouched. DEC-629: POST /contacts/merge is
+// set-based — {keepId, mergeIds} where mergeIds is every other id in the
+// group's real `contactIds`, sent in ONE request.
 //
 // Redesign (w2-e, DEC-366..368/372/376/377): the merge dialog now shows a
 // field-by-field comparison (mock "Duplicates · merge"): the value kept on
@@ -69,9 +70,11 @@ export function DuplicatesView({ onMerged }: Props) {
     setBusy(true);
     setMergeError(null);
     try {
-      const mergeId = mergeGroup.contactIds.find((id) => id !== keepId);
-      if (!mergeId) throw new Error('Pick a record to keep from at least two duplicates.');
-      await apiPost('/contacts/merge', { keepId, mergeId });
+      // DEC-629: post every non-primary id of this duplicate group in one
+      // request rather than one pairwise merge per extra record.
+      const mergeIds = mergeGroup.contactIds.filter((id) => id !== keepId);
+      if (mergeIds.length === 0) throw new Error('Pick a record to keep from at least two duplicates.');
+      await apiPost('/contacts/merge', { keepId, mergeIds });
       setMergeGroup(null);
       setMergedNotice('Contacts merged.');
       reload();

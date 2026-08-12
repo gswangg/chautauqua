@@ -254,7 +254,7 @@ describe("mergeContacts (DEC-101 participant dedupe + six-table FK repoint)", ()
       [contactRaw(KEEP_ID, "keep@example.com")], // findContactById(keepId) after merge
     ]);
 
-    const result = await mergeContacts(db, KEEP_ID, MERGE_ID);
+    const result = await mergeContacts(db, KEEP_ID, [MERGE_ID]);
     expect(result.id).toBe(KEEP_ID);
 
     // 1 contact-fields update (planMerge) + 7 FK repoints (DEC-282) + 1
@@ -293,7 +293,7 @@ describe("mergeContacts (DEC-101 participant dedupe + six-table FK repoint)", ()
       [contactRaw(KEEP_ID, "keep@example.com")], // findContactById(keepId) after merge
     ]);
 
-    await mergeContacts(db, KEEP_ID, MERGE_ID);
+    await mergeContacts(db, KEEP_ID, [MERGE_ID]);
 
     // The dedupe-delete of the shared-submission participant row happens
     // before the deletion of the merged contact row itself.
@@ -332,7 +332,7 @@ describe("mergeContacts (DEC-101 participant dedupe + six-table FK repoint)", ()
       [keepRaw], // findContactById(keepId) after merge
     ]);
 
-    await mergeContacts(db, KEEP_ID, MERGE_ID);
+    await mergeContacts(db, KEEP_ID, [MERGE_ID]);
 
     const contactFieldsUpdate = updates.find((u) => u.table === schema.contact);
     expect(contactFieldsUpdate).toBeDefined();

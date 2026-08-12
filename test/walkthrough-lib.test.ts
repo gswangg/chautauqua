@@ -168,7 +168,7 @@ describe("queueItemHasSubmissionId (B2, DEC-239)", () => {
 
 describe("buildContactsMergeBody (B3)", () => {
   it("builds the merge request body", () => {
-    expect(buildContactsMergeBody("keep1", "merge1")).toEqual({ keepId: "keep1", mergeId: "merge1" });
+    expect(buildContactsMergeBody("keep1", "merge1")).toEqual({ keepId: "keep1", mergeIds: ["merge1"] });
   });
 });
 

@@ -122,7 +122,7 @@ export function emailConflictsWithOtherAccount(
  *      address (the same DEC-456 invariant patchContact enforces).
  *  (g) delete the merged contact row.
  * Both ids must already be verified org-scoped by the caller. */
-export async function mergeContacts(db: Db, keepId: string, mergeId: string): Promise<ContactRow> {
+async function mergeOnePair(db: Db, keepId: string, mergeId: string): Promise<ContactRow> {
   const keepRow = await findContactById(db, keepId);
   const mergeRow = await findContactById(db, mergeId);
   if (!keepRow) throw new Error(`merge: keep contact ${keepId} not found`);
@@ -307,4 +307,23 @@ export async function mergeContacts(db: Db, keepId: string, mergeId: string): Pr
   const updated = await findContactById(db, keepId);
   if (!updated) throw new Error(`merge: keep contact ${keepId} missing after merge`);
   return updated;
+}
+
+/** DEC-629: set-based merge. Dedupes mergeIds, drops keepId if present (a
+ * no-op to merge a contact into itself), and folds each remaining id
+ * through mergeOnePair in order — the survivor of each fold becomes the
+ * keep row for the next fold — returning the single final survivor. Both
+ * keepId and every id in mergeIds must already be verified org-scoped by
+ * the caller. */
+export async function mergeContacts(db: Db, keepId: string, mergeIds: string[]): Promise<ContactRow> {
+  const toMerge = Array.from(new Set(mergeIds)).filter((id) => id !== keepId);
+  if (toMerge.length === 0) {
+    throw new ApiError("invalid", "mergeIds must contain at least one id other than keepId");
+  }
+  let survivor: ContactRow | undefined;
+  for (const mergeId of toMerge) {
+    survivor = await mergeOnePair(db, keepId, mergeId);
+  }
+  if (!survivor) throw new Error("merge: no survivor produced");
+  return survivor;
 }

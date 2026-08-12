@@ -114,8 +114,9 @@ export function queueItemHasSubmissionId(item: unknown): item is { submissionId:
 }
 
 /** B3: POST /api/v1/contacts/merge body. */
-export function buildContactsMergeBody(keepId: string, mergeId: string): { keepId: string; mergeId: string } {
-  return { keepId, mergeId };
+// DEC-629: POST /contacts/merge is set-based -- {keepId, mergeIds}.
+export function buildContactsMergeBody(keepId: string, mergeId: string): { keepId: string; mergeIds: string[] } {
+  return { keepId, mergeIds: [mergeId] };
 }
 
 /** B3: is the (idA, idB) pair still reported as a duplicate group by GET
