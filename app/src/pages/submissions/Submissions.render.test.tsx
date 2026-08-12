@@ -6,7 +6,7 @@
 // against a mocked fetch shaped like the real wire contract and asserts it
 // renders without throwing.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { SubmissionsPage } from '../Submissions';
@@ -271,5 +271,97 @@ describe('SubmissionsPage render smoke', () => {
 
     expect(screen.getByText('Kept across pages · sent in batches of 100')).toBeInTheDocument();
     expect(screen.getByText('1 selected')).toBeInTheDocument();
+  });
+
+  it('save-view dialog (DEC-610) validates an empty name and POSTs the trimmed name on save', async () => {
+    const fetchMock = mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { id: 'form-1', fields: [] },
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([]),
+      [`GET /api/v1/events/${EVENT_ID}/views`]: listEnvelope([]),
+      [`POST /api/v1/events/${EVENT_ID}/views`]: { id: 'view-1', name: 'My saved view', config: {} },
+    });
+
+    render(
+      <MemoryRouter>
+        <SubmissionsPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Views')).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByText('Views'));
+    fireEvent.click(screen.getByRole('button', { name: 'Save current as view…' }));
+
+    // The ONE dialog contract: scrim + role="dialog" aria-modal, not
+    // window.prompt.
+    const dialog = await screen.findByRole('dialog', { name: 'Name this view' });
+    expect(dialog).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect(await screen.findByText('Name is required')).toBeInTheDocument();
+    // Empty-name validation must not have posted.
+    expect(fetchMock.mock.calls.some(([, init]) => (init as RequestInit | undefined)?.method === 'POST')).toBe(false);
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Name' }), { target: { value: '  My saved view  ' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: 'Name this view' })).not.toBeInTheDocument();
+    });
+
+    const postCall = fetchMock.mock.calls.find(([, init]) => (init as RequestInit | undefined)?.method === 'POST');
+    expect(postCall).toBeDefined();
+    const body = JSON.parse((postCall![1] as RequestInit).body as string);
+    expect(body.name).toBe('My saved view');
+  });
+
+  it('phone triage (DEC-610): Accept on a pending row optimistically updates status and rolls back loudly on failure', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { id: 'form-1', fields: [] },
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([
+        {
+          id: 'sub-1',
+          ref: 'S-001',
+          title: 'A Talk About Testing',
+          status: 'pending',
+          contentStatus: 'pending',
+          speakers: [{ contactId: 'c1', name: 'Ada Lovelace' }],
+          trackIds: [],
+          submittedAt: null,
+          createdAt: 1700000000000,
+        },
+      ]),
+      [`POST /api/v1/events/${EVENT_ID}/submissions/status`]: () => ({
+        status: 500,
+        body: { error: { code: 'internal', message: 'boom' } },
+      }),
+    });
+
+    render(
+      <MemoryRouter>
+        <SubmissionsPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('A Talk About Testing')).toBeInTheDocument();
+    });
+
+    const group = screen.getByRole('group', { name: 'Triage S-001' });
+    fireEvent.click(within(group).getByRole('button', { name: 'Accept' }));
+
+    // Optimistic: status pill flips immediately.
+    await waitFor(() => {
+      expect(screen.getByText('Accepted')).toBeInTheDocument();
+    });
+
+    // Server rejects: rolls back loudly (visible error + status reverts).
+    await waitFor(() => {
+      expect(screen.getByText(/Status update failed/)).toBeInTheDocument();
+    });
+    expect(screen.getByRole('cell', { name: 'Pending' })).toBeInTheDocument();
   });
 });
