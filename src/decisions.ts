@@ -657,3 +657,10 @@ export const DEC_651 = "One dialog HEADER contract: title + optional subtitle + 
 export const DEC_652 = "Overview §04 carries the CONCRETE next action the server computed — \"Place at 11:30\" — and clicking it places; a suggestion the server cannot compute is absent, never invented";
 export const DEC_653 = "The SPA has no second upload vocabulary: delete the mirror, import the pure core";
 export const DEC_654 = "Scale is a GATE, not a paragraph: the scale-mandate functional bars are timed, named checks that exit non-zero";
+export const DEC_655 = "A plan_reviewer row selects WITHIN the plan's filtered universe: the per-submission branch intersects plan.filters.trackIds like every other reader, and an out-of-universe assignment is refused at write time";
+export const DEC_656 = "A speaker-added co-presenter is RECORDED, not PUBLISHED: portal-created participants land visible=false and reach the public site only through the organizer's existing visibility toggle (amends DEC-604)";
+export const DEC_657 = "The speaker portal's file surface keeps no private upload vocabulary and ships no unlabelled byte stream; the DEC-551 nosniff guard enumerates the whole repo";
+export const DEC_658 = "Cacheability is a closed rule with one default: a response that does not set its own Cache-Control gets no-store, app-wide (supersedes the /api/v1-only noStoreApi scope)";
+export const DEC_659 = "A scope row carries its own LABEL from the server: GET /api/v1/plans/:id/reviewers emits trackName and submissionRef/submissionTitle beside the ids, and the plan editor never prints a ULID";
+export const DEC_660 = "One merge-field vocabulary: the per-surface resolvable sets and the 100-recipient cap are declared once in pure core and reach the SPA through a single boundary module";
+export const DEC_661 = "Every public surface has a guessable root: /e/:slug and /embed/:slug redirect to the sessions surface, and an unknown slug 404s rather than redirecting into one";
