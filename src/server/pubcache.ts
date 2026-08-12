@@ -120,7 +120,7 @@ export async function servePublicGet(
  * stripped. Every other segment must match literally. */
 type PathPattern = string;
 
-function matchPattern(pattern: PathPattern, path: string): boolean {
+export function matchPattern(pattern: PathPattern, path: string): boolean {
   const isWildcard = pattern.endsWith("*");
   let corePattern = isWildcard ? pattern.slice(0, -1) : pattern;
   // A trailing "/*" (e.g. "/api/v1/tasks/*") leaves a dangling "/" once the
@@ -149,7 +149,7 @@ function matchPattern(pattern: PathPattern, path: string): boolean {
  * the /submit/:eventSlug page that renders them is never behind the
  * cache (only /e/* and /embed/* are), so editing the form structure has
  * nothing cached to invalidate. */
-const NEVER_PUBLIC: PathPattern[] = [
+export const NEVER_PUBLIC: PathPattern[] = [
   "/login",
   "/logout",
   "/claim/*",
@@ -196,7 +196,7 @@ const NEVER_PUBLIC: PathPattern[] = [
  * (src/server/repo/public/gates.ts) gates public speaker visibility on
  * invite_status IN ('none','accepted') — so this write can flip a
  * speaker's public visibility directly. */
-const PUBLIC_AFFECTING: PathPattern[] = [
+export const PUBLIC_AFFECTING: PathPattern[] = [
   "/api/v1/events",
   "/api/v1/events/:id",
   "/api/v1/events/:id/tracks",
