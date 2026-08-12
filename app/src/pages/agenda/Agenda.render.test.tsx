@@ -5,7 +5,7 @@
 // drop), plus the unscheduled tray and a conflict chip surfacing the
 // room_overlap between them.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { AgendaPage } from '../Agenda';
 import { mockApi } from '../../test-utils/mockApi';
@@ -85,13 +85,20 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  // Explicit unmount/cleanup: this suite's ambient test-runner detection of
+  // `afterEach` for testing-library's auto-cleanup is not reliably wired up
+  // (three tests in this file previously bled DOM trees into each other —
+  // stale cards from an earlier test's render made later `getByText`/
+  // `getAllByText` queries match duplicates), so cleanup is called
+  // explicitly to guarantee test isolation regardless.
+  cleanup();
   window.localStorage.clear();
   vi.unstubAllGlobals();
   consoleErrorSpy.mockRestore();
 });
 
 describe('AgendaPage render smoke', () => {
-  it('renders two overlapping slots in one room, the unscheduled tray, and a conflict chip', async () => {
+  it('renders two overlapping slots in one room, the unscheduled tray, and a conflict caption', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/agenda`]: agendaPayload(),
     });
@@ -110,9 +117,30 @@ describe('AgendaPage render smoke', () => {
     expect(screen.getByText('Unscheduled (1)')).toBeInTheDocument();
     expect(screen.getByText('Unplaced Talk')).toBeInTheDocument();
 
-    // Conflict chip surfaces on the overlapping cards (room_overlap -> "Room").
-    const chips = screen.getAllByText('⚠ Room conflict');
-    expect(chips.length).toBe(2);
+    // Conflicted cards invert (ink/on-ink) with the caption, not a chip
+    // (DEC-367/369 redesign: no red, lateness/clash are type not colour).
+    const captions = screen.getAllByText('Two sessions in one room');
+    expect(captions.length).toBe(2);
+  });
+
+  it('renders a conflicted cell inverted to ink/on-ink with its caption', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/agenda`]: agendaPayload(),
+    });
+
+    render(<AgendaPage />);
+    await waitFor(() => {
+      expect(screen.getByText('Overlapping Talk A')).toBeInTheDocument();
+    });
+
+    const cardA = document.querySelector('[data-submission-id="sub-1"]');
+    const cardB = document.querySelector('[data-submission-id="sub-2"]');
+    expect(cardA).toHaveClass('chq-session-card-conflict');
+    expect(cardB).toHaveClass('chq-session-card-conflict');
+    expect(cardA).toHaveAttribute('data-conflict', 'true');
+
+    expect(cardA?.querySelector('.chq-conflict-caption')?.textContent).toBe('Two sessions in one room');
+    expect(cardB?.querySelector('.chq-conflict-caption')?.textContent).toBe('Two sessions in one room');
   });
 
   // Regression for a live-browser finding (task-w3-e): DayGrid renders

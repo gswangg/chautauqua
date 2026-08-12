@@ -5,21 +5,22 @@ interface ConflictChipProps {
   submissionId: string;
 }
 
-/** Warning chip for a session card, listing the kind(s) of conflict it's
- * involved in; full detail surfaces on the title/hover per DEC-021. */
+/** Caption for a conflicted session card (DEC-367/369 redesign): the card
+ * itself inverts to ink/on-ink (see SessionCard's `chq-session-card-conflict`
+ * class); this renders the caption inside it — no red chip, since the
+ * redesign's palette has no third accent and lateness/clash are always type,
+ * never colour. The write is never blocked (DEC-010, warn-never-block); full
+ * per-conflict detail (which two sessions, which room) surfaces on hover via
+ * the title attribute. */
 export function ConflictChip({ conflicts, submissionId }: ConflictChipProps) {
   const mine = conflicts.filter((c) => c.submissionIds.includes(submissionId));
   if (mine.length === 0) return null;
 
-  const kinds = [...new Set(mine.map((c) => c.kind))];
-  const label = kinds
-    .map((k) => (k === 'room_overlap' ? 'Room' : 'Speaker'))
-    .join(' + ');
   const title = mine.map((c) => c.detail).join('\n');
 
   return (
-    <span className="chq-conflict-chip" title={title}>
-      ⚠ {label} conflict
+    <span className="chq-conflict-caption" title={title}>
+      Two sessions in one room
     </span>
   );
 }
