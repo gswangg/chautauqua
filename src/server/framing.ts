@@ -8,6 +8,7 @@
 import type { Hono, Context, Next } from "hono";
 import type { AppEnv } from "./env";
 import { DEC_636 } from "../decisions";
+import { setResponseHeaders } from "./response-headers";
 
 void DEC_636;
 
@@ -32,7 +33,9 @@ export function registerFramingHeaders(app: Hono<AppEnv>): void {
     await next();
     const pathname = new URL(c.req.url).pathname;
     if (isFramable(pathname)) return;
-    c.res.headers.set("X-Frame-Options", "DENY");
-    c.res.headers.set("Content-Security-Policy", "frame-ancestors 'none'");
+    setResponseHeaders(c, [
+      ["X-Frame-Options", "DENY"],
+      ["Content-Security-Policy", "frame-ancestors 'none'"],
+    ]);
   });
 }
