@@ -388,6 +388,14 @@
   margin: 0 0 16px;
 }
 
+/* task-w13-a: imported-speakers-are-hidden note, same tier as the two notes
+   it follows (DEC-379 keeps the class vocabulary closed). */
+.chq-settings-sessionboard-visibility-note {
+  font-size: 13px;
+  color: var(--chq-ink-2);
+  margin: 0 0 16px;
+}
+
 .chq-settings-sessionboard-field {
   display: flex;
   flex-direction: column;
