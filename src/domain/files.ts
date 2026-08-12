@@ -2,6 +2,9 @@
 // version-chain rule. Web APIs only — no node:/cloudflare/drizzle imports
 // (DEC-002, pure-core rule).
 
+// DEC-425: caps attacker-controlled filename length; reuses MAX_NAME_LENGTH.
+import { MAX_NAME_LENGTH } from "../forms/validate";
+
 // 'presentation' | 'poster' | 'handout' — DEC-003 file.kind literal.
 export const FILE_KINDS = ["presentation", "poster", "handout"] as const;
 export type FileKind = (typeof FILE_KINDS)[number];
@@ -103,6 +106,12 @@ export function validateUpload(input: UploadInput): ValidateUploadResult {
   }
   if (!Number.isFinite(input.sizeBytes) || input.sizeBytes <= 0) {
     return { ok: false, message: "File is empty", fields: { file: "File is empty" } };
+  }
+
+  // DEC-425: reject an oversized filename before type/extension checks so
+  // the message is about length, not type.
+  if (input.filename.length > MAX_NAME_LENGTH) {
+    return { ok: false, message: `Filename is too long (max ${MAX_NAME_LENGTH} characters)`, fields: { file: `Max ${MAX_NAME_LENGTH}` } };
   }
 
   const ext = extname(input.filename);
@@ -209,6 +218,11 @@ export interface HeadshotUploadInput {
 export function validateHeadshotUpload(input: HeadshotUploadInput): ValidateUploadResult {
   if (!Number.isFinite(input.sizeBytes) || input.sizeBytes <= 0) {
     return { ok: false, message: "File is empty", fields: { headshot: "File is empty" } };
+  }
+  // DEC-425: reject an oversized filename before type/extension checks so
+  // the message is about length, not type.
+  if (input.filename.length > MAX_NAME_LENGTH) {
+    return { ok: false, message: `Filename is too long (max ${MAX_NAME_LENGTH} characters)`, fields: { headshot: `Max ${MAX_NAME_LENGTH}` } };
   }
   const ext = extname(input.filename);
   if (!(ext in HEADSHOT_EXT_CONTENT_TYPE)) {

@@ -101,6 +101,21 @@ describe("validateUpload", () => {
     const result = validateUpload({ filename: "deck.pdf", sizeBytes: 0, kind: "handout" });
     expect(result.ok).toBe(false);
   });
+
+  // DEC-425: caps the attacker-controlled filename length before extension lookup.
+  it("rejects a filename over MAX_NAME_LENGTH (200) with an InvalidUpload", () => {
+    const filename = "x".repeat(201) + ".pdf";
+    const result = validateUpload({ filename, sizeBytes: 100, kind: "handout" });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.fields?.file).toBeDefined();
+  });
+
+  it("accepts a filename exactly AT MAX_NAME_LENGTH (200) (off-by-one)", () => {
+    const filename = "x".repeat(196) + ".pdf"; // 196 + 4 = 200
+    expect(filename.length).toBe(200);
+    const result = validateUpload({ filename, sizeBytes: 100, kind: "handout" });
+    expect(result.ok).toBe(true);
+  });
 });
 
 describe("isImageContentType", () => {

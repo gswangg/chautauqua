@@ -286,6 +286,26 @@ describe("validateEvaluationScores (DEC-148 'text' kind)", () => {
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.errors.notes).toBeDefined();
   });
+
+  // DEC-425: caps a 'text' criterion's value at MAX_LONG_TEXT_LENGTH.
+  it("rejects a text criterion value over MAX_LONG_TEXT_LENGTH", () => {
+    const result = validateEvaluationScores(
+      { content: 4, notes: "x".repeat(20001), flag: "reason" },
+      withText,
+      scale,
+    );
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.errors.notes).toBeDefined();
+  });
+
+  it("accepts a text criterion value exactly AT MAX_LONG_TEXT_LENGTH (off-by-one)", () => {
+    const result = validateEvaluationScores(
+      { content: 4, notes: "x".repeat(20000), flag: "reason" },
+      withText,
+      scale,
+    );
+    expect(result).toEqual({ ok: true });
+  });
 });
 
 describe("criteriaForRound (DEC-147)", () => {

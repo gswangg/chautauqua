@@ -8,6 +8,7 @@ import { Hono } from "hono";
 import type { AppEnv } from "../../server/env";
 import { csrfJson } from "../../server/middleware";
 import { ApiError } from "../../server/http";
+import { MAX_LONG_TEXT_LENGTH } from "../../forms/validate"; // DEC-425
 import {
   buildReviewerQueue,
   needsMoreRatings,
@@ -195,6 +196,11 @@ reviewReviewerRoutes.put("/api/v1/review/plans/:planId/evaluations/:submissionId
   const result = validateEvaluationScores(scores as Record<string, unknown>, roundCriteria, plan.scale);
   if (!result.ok) {
     throw new ApiError("invalid", "Invalid scores", result.errors);
+  }
+
+  // DEC-425: cap the comment free-text field.
+  if (typeof body.comment === "string" && body.comment.length > MAX_LONG_TEXT_LENGTH) {
+    throw new ApiError("invalid", "Invalid comment", { comment: `Max ${MAX_LONG_TEXT_LENGTH}` });
   }
 
   const saved = await repo.upsertEvaluation(c.var.db, {

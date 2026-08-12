@@ -12,6 +12,7 @@ import * as schema from "../../db/schema";
 import { newId } from "../../domain/ids";
 import { hashToken, newApiToken, apiTokenDisplayPrefix } from "../../auth/tokens";
 import { DEC_027 } from "../../decisions";
+import { MAX_NAME_LENGTH } from "../../forms/validate"; // DEC-425
 
 void DEC_027;
 
@@ -61,6 +62,9 @@ tokensRoutes.post("/api/v1/tokens", requireOrganizer, csrfJson, async (c) => {
   const name = body && typeof body === "object" ? (body as Record<string, unknown>).name : undefined;
   if (typeof name !== "string" || name.trim().length === 0) {
     throw new ApiError("invalid", "name is required", { name: "required" });
+  }
+  if (name.length > MAX_NAME_LENGTH) {
+    throw new ApiError("invalid", "name is too long", { name: `Max ${MAX_NAME_LENGTH}` });
   }
 
   const plaintext = newApiToken();

@@ -1,6 +1,10 @@
 // Evaluation domain core (SPEC J4), pure module (DEC-002): no node:/cloudflare/
 // drizzle imports, plain interfaces only — testable under plain vitest.
 
+// DEC-425: caps the last uncapped free-text write paths; reuses the
+// existing MAX_LONG_TEXT_LENGTH constant rather than introducing a new one.
+import { MAX_LONG_TEXT_LENGTH } from "../forms/validate";
+
 export interface EvaluationCriterion {
   id: string;
   label: string;
@@ -214,6 +218,11 @@ export function validateEvaluationScores(
       }
       if (criterion.required === true && value.trim().length === 0) {
         errors[criterion.id] = "a response is required";
+        continue;
+      }
+      // DEC-425: cap free-text criterion values.
+      if (value.length > MAX_LONG_TEXT_LENGTH) {
+        errors[criterion.id] = `Max ${MAX_LONG_TEXT_LENGTH}`;
       }
     }
   }
