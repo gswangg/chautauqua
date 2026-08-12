@@ -36,8 +36,8 @@
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
-  border-top: 1px solid var(--chq-rule, #d3cfc0);
-  border-bottom: 1px solid var(--chq-rule, #d3cfc0);
+  border-top: 1px solid var(--chq-rule);
+  border-bottom: 1px solid var(--chq-rule);
   padding: 13px 0;
 }
 
@@ -58,14 +58,14 @@
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--chq-muted, #565a4b);
+  color: var(--chq-muted);
 }
 
 .chq-speakers-remind-confirm {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  background: var(--chq-surface-sunk, #efebdf);
+  background: var(--chq-surface-sunk);
   border-radius: var(--chq-r-ctl, 4px);
   padding: 14px 16px;
 }
@@ -81,7 +81,7 @@
 }
 
 .chq-speakers-required-marker {
-  color: var(--chq-muted, #565a4b);
+  color: var(--chq-muted);
 }
 
 .chq-speakers-task-due {
@@ -90,7 +90,7 @@
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--chq-muted, #565a4b);
+  color: var(--chq-muted);
 }
 
 .chq-speakers-cell {
@@ -106,8 +106,8 @@
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--chq-on-brand, #f7f9f0);
-  background: var(--chq-brand, #4e5c31);
+  color: var(--chq-on-brand);
+  background: var(--chq-brand);
   border: none;
   border-radius: 3px;
   padding: 3px 8px;
@@ -120,9 +120,9 @@
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--chq-muted, #565a4b);
+  color: var(--chq-muted);
   background: none;
-  border: 1px solid var(--chq-border, #bab6a6);
+  border: 1px solid var(--chq-border);
   border-radius: 3px;
   padding: 2px 8px;
   cursor: pointer;
@@ -138,7 +138,7 @@
 
 .chq-speakers-cell-none {
   font-size: 11px;
-  color: var(--chq-disabled, #8e8a7a);
+  color: var(--chq-disabled);
 }
 
 .chq-speakers-has-account {
@@ -170,7 +170,7 @@
 
   .chq-speakers-card {
     padding: 16px 0;
-    border-bottom: 1px solid var(--chq-hairline, #e1ddce);
+    border-bottom: 1px solid var(--chq-hairline);
     display: flex;
     flex-direction: column;
     gap: 11px;
@@ -197,7 +197,7 @@
 
   .chq-speakers-card-task-label {
     font-size: 13px;
-    color: var(--chq-ink-2, #3f4237);
+    color: var(--chq-ink-2);
   }
 }
 
@@ -248,7 +248,7 @@
   font-weight: 800;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--chq-muted, #565a4b);
+  color: var(--chq-muted);
 }
 
 .chq-speakers-response-fields {
@@ -264,13 +264,13 @@
   gap: 16px;
   align-items: baseline;
   padding-bottom: 12px;
-  border-bottom: 1px solid var(--chq-hairline, #e1ddce);
+  border-bottom: 1px solid var(--chq-hairline);
 }
 
 .chq-speakers-response-field dt {
   font-size: 13px;
   font-weight: 600;
-  color: var(--chq-ink-2, #3f4237);
+  color: var(--chq-ink-2);
 }
 
 .chq-speakers-response-field dd {
@@ -310,5 +310,5 @@
   gap: 10px;
   min-height: 44px;
   font-size: 14px;
-  color: var(--chq-ink-2, #3f4237);
+  color: var(--chq-ink-2);
 }

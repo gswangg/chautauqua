@@ -109,7 +109,11 @@ export const PUBLIC_CSS = `
   .chq-pub-session-speaker { font-size: 14px; color: var(--chq-ink-2); margin: 0; }
   .chq-pub-session-tags { display: flex; gap: 8px; align-items: center; }
   .chq-pub-session-tag { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--chq-muted); }
-  .chq-pub-track-chip { display: inline-block; padding: 0.1rem 0.5rem; border-radius: var(--chq-r-pill); color: #fff; font-size: 0.8rem; margin-right: 0.25rem; }
+  /* w3-h: chip text sits on a per-event accent background set inline (safeExternalUrl-
+     free style attribute, DEC-322 territory but not colour palette); no token models
+     "text on an arbitrary accent fill", so on-brand (the closest light/on-dark ink) is
+     the nearest DEC-367 substitute for the removed literal #fff. */
+  .chq-pub-track-chip { display: inline-block; padding: 0.1rem 0.5rem; border-radius: var(--chq-r-pill); color: var(--chq-on-brand); font-size: 0.8rem; margin-right: 0.25rem; }
   .chq-pub-session-action { white-space: nowrap; align-self: center; }
 
   /* Speaker grid (speakers.tsx / gallery). */

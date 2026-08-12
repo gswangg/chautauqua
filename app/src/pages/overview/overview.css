@@ -6,8 +6,8 @@
 .chq-overview-deadlines {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  border-top: 1px solid var(--chq-rule, #d3cfc0);
-  border-bottom: 1px solid var(--chq-rule, #d3cfc0);
+  border-top: 1px solid var(--chq-rule);
+  border-bottom: 1px solid var(--chq-rule);
   margin: 20px 0 34px;
 }
 
@@ -16,8 +16,8 @@
   flex-direction: column;
   gap: 2px;
   padding: 13px 14px;
-  border-left: 1px solid var(--chq-rule, #d3cfc0);
-  color: var(--chq-ink, #1b1d17);
+  border-left: 1px solid var(--chq-rule);
+  color: var(--chq-ink);
   text-decoration: none;
 }
 
@@ -31,7 +31,7 @@
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--chq-muted, #565a4b);
+  color: var(--chq-muted);
 }
 
 .chq-overview-deadline-value {
@@ -40,7 +40,7 @@
   font-weight: 400;
   letter-spacing: -0.03em;
   line-height: 1.15;
-  color: var(--chq-ink, #1b1d17);
+  color: var(--chq-ink);
 }
 
 .chq-overview-deadline-value.chq-overview-deadline-nearest {
@@ -54,7 +54,7 @@
   font-weight: 700;
   letter-spacing: -0.042em;
   line-height: 1.04;
-  color: var(--chq-ink, #1b1d17);
+  color: var(--chq-ink);
 }
 
 .chq-overview-section {
@@ -66,7 +66,7 @@
   align-items: baseline;
   justify-content: space-between;
   gap: 20px;
-  border-bottom: 2px solid var(--chq-ink, #1b1d17);
+  border-bottom: 2px solid var(--chq-ink);
   padding-bottom: 8px;
 }
 
@@ -76,13 +76,13 @@
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--chq-ink, #1b1d17);
+  color: var(--chq-ink);
 }
 
 .chq-overview-section-action {
   font-size: 13px;
   font-weight: 700;
-  color: var(--chq-brand, #4e5c31);
+  color: var(--chq-brand);
   background: none;
   border: none;
   padding: 0;
@@ -95,7 +95,7 @@
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--chq-muted, #565a4b);
+  color: var(--chq-muted);
   padding: 9px 0 0;
 }
 
@@ -104,7 +104,7 @@
   gap: 20px;
   align-items: baseline;
   padding: 16px 0;
-  border-bottom: 1px solid var(--chq-hairline, #e1ddce);
+  border-bottom: 1px solid var(--chq-hairline);
 }
 
 .chq-overview-row-overdue {
@@ -132,7 +132,7 @@
 
 .chq-overview-row-meta {
   font-size: 12px;
-  color: var(--chq-muted, #565a4b);
+  color: var(--chq-muted);
 }
 
 .chq-overview-row-late {
@@ -140,7 +140,7 @@
   font-weight: 800;
   letter-spacing: 0.11em;
   text-transform: uppercase;
-  color: var(--chq-ink, #1b1d17);
+  color: var(--chq-ink);
 }
 
 .chq-overview-row-actions {
@@ -152,21 +152,21 @@
 }
 
 .chq-overview-btn {
-  border: 1px solid var(--chq-border, #bab6a6);
+  border: 1px solid var(--chq-border);
   border-radius: 4px;
   padding: 9px 16px;
   font-size: 13px;
   font-weight: 600;
-  background: var(--chq-sunk, #efebdf);
-  color: var(--chq-ink, #1b1d17);
+  background: var(--chq-sunk);
+  color: var(--chq-ink);
   cursor: pointer;
   white-space: nowrap;
 }
 
 .chq-overview-btn-primary {
   border: none;
-  background: var(--chq-brand, #4e5c31);
-  color: var(--chq-on-brand, #f7f9f0);
+  background: var(--chq-brand);
+  color: var(--chq-on-brand);
   font-weight: 700;
 }
 
@@ -176,17 +176,17 @@
   padding: 0;
   font-size: 13px;
   font-weight: 700;
-  color: var(--chq-brand, #4e5c31);
+  color: var(--chq-brand);
   cursor: pointer;
   white-space: nowrap;
 }
 
 .chq-overview-link-btn.chq-overview-link-muted {
-  color: var(--chq-muted, #565a4b);
+  color: var(--chq-muted);
 }
 
 .chq-overview-empty {
   padding: 14px 0;
-  color: var(--chq-muted, #565a4b);
+  color: var(--chq-muted);
   font-size: 13px;
 }

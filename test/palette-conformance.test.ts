@@ -1,0 +1,164 @@
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { join } from "node:path";
+import { describe, expect, it } from "vitest";
+
+// DEC-383 palette closure guard: page and surface sheets compose var(--chq-*)
+// tokens only. Colour literals live in exactly two places -- app/src/styles.css
+// and src/views/theme.ts (the DEC-372 token files, pinned by
+// test/design-system.test.ts and owned by task-w3-a, never touched here) -- plus
+// the single DEC-376 merge-screen allowlist exception below.
+
+const REPO_ROOT = join(__dirname, "..");
+
+const TOKEN_FILES = new Set([
+  join(REPO_ROOT, "app/src/styles.css"),
+  join(REPO_ROOT, "src/views/theme.ts"),
+]);
+
+const ALLOWLIST_HEX = "#a8a392";
+const ALLOWLIST_FILE = join(REPO_ROOT, "app/src/pages/contacts/contacts-panels.css");
+
+/** Recursively collect files under `dir` whose path matches one of `suffixes`. */
+function glob(dir: string, suffixes: string[]): string[] {
+  if (!existsSync(dir)) return [];
+  const out: string[] = [];
+  for (const entry of readdirSync(dir)) {
+    const full = join(dir, entry);
+    const st = statSync(full);
+    if (st.isDirectory()) {
+      out.push(...glob(full, suffixes));
+    } else if (suffixes.some((suffix) => entry.endsWith(suffix))) {
+      out.push(full);
+    }
+  }
+  return out;
+}
+
+/** Strip CSS block comments and JS/TS line + block comments so prose mentions
+ * of colour words (e.g. "no red anywhere", DEC-367 commentary) never trip a
+ * literal-colour check that only cares about real declarations. */
+function stripComments(src: string): string {
+  return src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
+}
+
+// Rule 1 + rule 2 scope: page sheets under app/src/pages/**/*.css and SSR
+// surface modules under src/routes/**/*.css.ts. The glob runs even though some
+// surface modules (e.g. a future admin/tools split) may not exist yet on this
+// branch -- later files land inside these same trees and are covered for free.
+const pageAndSurfaceFiles = [
+  ...glob(join(REPO_ROOT, "app/src/pages"), [".css"]),
+  ...glob(join(REPO_ROOT, "src/routes"), [".css.ts"]),
+].filter((f) => !TOKEN_FILES.has(f));
+
+// Rule 2's wider scope additionally includes every app/src/**/*.css file (not
+// just app/src/pages) and the theme.ts token file itself.
+const boxShadowScopeFiles = [
+  ...glob(join(REPO_ROOT, "app/src"), [".css"]),
+  join(REPO_ROOT, "src/views/theme.ts"),
+  ...glob(join(REPO_ROOT, "src/routes"), [".css.ts"]),
+];
+
+// Rule 3's scope is the whole app/src and src trees, but src/decisions.ts is
+// the compile-checked DEC constant registry (never hand-edited per DEC-*):
+// its string literals quote decision text describing the "no red" rule itself
+// ("it reports red", "no semantic red anywhere"), not a CSS colour value, so
+// it is excluded from the literal-colour-word scan the same way the two token
+// files are excluded from rule 1.
+const DECISIONS_FILE = join(REPO_ROOT, "src/decisions.ts");
+const wholeTreeFiles = [
+  ...glob(join(REPO_ROOT, "app/src"), [".ts", ".tsx", ".css"]),
+  ...glob(join(REPO_ROOT, "src"), [".ts", ".tsx", ".css"]),
+].filter((f) => f !== DECISIONS_FILE);
+
+describe("palette closure guard (DEC-383)", () => {
+  it("scanned at least one page sheet and one SSR surface module", () => {
+    // Guards against the glob silently matching nothing (e.g. a path typo)
+    // and the whole test suite passing vacuously.
+    expect(pageAndSurfaceFiles.some((f) => f.endsWith(".css"))).toBe(true);
+    expect(pageAndSurfaceFiles.some((f) => f.endsWith(".css.ts"))).toBe(true);
+  });
+
+  it("no page or surface sheet declares a hex colour literal outside the DEC-376 allowlist", () => {
+    const hexRe = /#[0-9a-fA-F]{3,8}\b/g;
+    const violations: string[] = [];
+    let allowlistHits = 0;
+
+    for (const file of pageAndSurfaceFiles) {
+      const clean = stripComments(readFileSync(file, "utf8"));
+      let m: RegExpExecArray | null;
+      hexRe.lastIndex = 0;
+      while ((m = hexRe.exec(clean))) {
+        const hex = m[0].toLowerCase();
+        if (hex === ALLOWLIST_HEX) {
+          allowlistHits += 1;
+          if (file !== ALLOWLIST_FILE) {
+            violations.push(`${file}: allowlisted hex found outside its owning file`);
+          }
+          continue;
+        }
+        violations.push(`${file}: literal hex colour ${m[0]}`);
+      }
+    }
+
+    expect(violations).toEqual([]);
+    // The one DEC-376 exception may not spread: at most a single real
+    // declaration, and only inside the merge-screen panels file.
+    expect(allowlistHits).toBeLessThanOrEqual(1);
+  });
+
+  it("no page or surface sheet uses rgb()/rgba() -- colour lives only in var(--chq-*) tokens", () => {
+    const rgbRe = /rgba?\(/gi;
+    const violations: string[] = [];
+    for (const file of pageAndSurfaceFiles) {
+      const clean = stripComments(readFileSync(file, "utf8"));
+      if (rgbRe.test(clean)) violations.push(file);
+      rgbRe.lastIndex = 0;
+    }
+    expect(violations).toEqual([]);
+  });
+
+  it("the DEC-376 allowlisted hex, where it appears, is only ever used on a text-decoration declaration", () => {
+    const clean = stripComments(readFileSync(ALLOWLIST_FILE, "utf8"));
+    const lines = clean.split("\n");
+    const hitLines = lines.filter((line) => line.toLowerCase().includes(ALLOWLIST_HEX));
+    for (const line of hitLines) {
+      expect(line.toLowerCase()).toMatch(/text-decoration/);
+    }
+  });
+
+  it("no box-shadow declaration in app/src/**/*.css, theme.ts or SSR surface modules lacks inset", () => {
+    const shadowRe = /box-shadow\s*:\s*([^;]+);/g;
+    const violations: string[] = [];
+    for (const file of boxShadowScopeFiles) {
+      const clean = stripComments(readFileSync(file, "utf8"));
+      let m: RegExpExecArray | null;
+      shadowRe.lastIndex = 0;
+      while ((m = shadowRe.exec(clean))) {
+        const value = m[1]!.trim();
+        if (value === "none") continue;
+        if (!/\binset\b/.test(value)) {
+          violations.push(`${file}: box-shadow: ${value}`);
+        }
+      }
+    }
+    expect(violations).toEqual([]);
+  });
+
+  it("the removed pre-redesign error/conflict palette (#c0392b, #fdecea, red, crimson) does not reappear", () => {
+    const bannedLiteral = [/#c0392b/i, /#fdecea/i];
+    const bannedWord = [/\bred\b/i, /\bcrimson\b/i];
+    const violations: string[] = [];
+
+    for (const file of wholeTreeFiles) {
+      const clean = stripComments(readFileSync(file, "utf8"));
+      for (const re of bannedLiteral) {
+        if (re.test(clean)) violations.push(`${file}: ${re}`);
+      }
+      for (const re of bannedWord) {
+        if (re.test(clean)) violations.push(`${file}: ${re}`);
+      }
+    }
+
+    expect(violations).toEqual([]);
+  });
+});

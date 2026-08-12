@@ -5,7 +5,7 @@
 
 .chq-forms-page {
   font-family: var(--chq-font-body, 'Figtree', 'Helvetica Neue', Arial, sans-serif);
-  color: var(--chq-ink, #1b1d17);
+  color: var(--chq-ink);
 }
 
 .chq-forms-content {
@@ -36,7 +36,7 @@
 .chq-forms-section-title {
   margin: 0;
   padding-bottom: 8px;
-  border-bottom: 2px solid var(--chq-ink, #1b1d17);
+  border-bottom: 2px solid var(--chq-ink);
   display: flex;
   align-items: baseline;
   justify-content: space-between;
@@ -50,7 +50,7 @@
 
 .chq-forms-section-title::before {
   content: counter(chq-forms-section, decimal-leading-zero) ' \2014 ';
-  color: var(--chq-muted, #565a4b);
+  color: var(--chq-muted);
 }
 
 .chq-forms-section-title h2 {
@@ -80,7 +80,7 @@
 
 .chq-forms-field-optional {
   font-weight: 600;
-  color: var(--chq-muted, #565a4b);
+  color: var(--chq-muted);
 }
 
 .chq-forms-field-locked-tag {
@@ -90,13 +90,13 @@
   font-weight: 800;
   letter-spacing: 0.09em;
   text-transform: uppercase;
-  color: var(--chq-muted, #565a4b);
+  color: var(--chq-muted);
 }
 
 /* Drag affordance glyph (DEC-367: no icons/images/SVG). Purely decorative
    -- real reordering stays on the accessible move-up/move-down buttons. */
 .chq-forms-field-drag {
-  color: var(--chq-border, #8e8a7a);
+  color: var(--chq-border);
   font-size: 14px;
   width: 20px;
 }

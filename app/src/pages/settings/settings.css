@@ -37,19 +37,19 @@
   padding: 8px 0 8px 11px;
   font-size: 14px;
   font-weight: 500;
-  color: var(--chq-ink-2, #3f4237);
+  color: var(--chq-ink-2);
   box-shadow: inset 2px 0 0 transparent;
   cursor: pointer;
 }
 
 .chq-settings-rail-link:hover {
-  color: var(--chq-ink, #1b1d17);
+  color: var(--chq-ink);
 }
 
 .chq-settings-rail-link-active {
   font-weight: 700;
-  color: var(--chq-ink, #1b1d17);
-  box-shadow: inset 2px 0 0 var(--chq-brand, #4e5c31);
+  color: var(--chq-ink);
+  box-shadow: inset 2px 0 0 var(--chq-brand);
 }
 
 .chq-settings-content {
@@ -69,7 +69,7 @@
 }
 
 .chq-settings-panel h2 {
-  border-bottom: 2px solid var(--chq-ink, #1b1d17);
+  border-bottom: 2px solid var(--chq-ink);
   padding-bottom: 8px;
   font-family: var(--chq-font-display, 'Familjen Grotesk', sans-serif);
   font-size: 11px;
@@ -91,7 +91,7 @@
   gap: 6px;
   font-size: 13px;
   font-weight: 600;
-  color: var(--chq-ink-2, #3f4237);
+  color: var(--chq-ink-2);
 }
 
 /* Phone (< 700px): the rail is a full-width list of section links; picking
@@ -111,7 +111,7 @@
     min-height: 44px;
     display: flex;
     align-items: center;
-    border-bottom: 1px solid var(--chq-hairline, #e1ddce);
+    border-bottom: 1px solid var(--chq-hairline);
   }
 
   .chq-settings-content {
