@@ -39,11 +39,36 @@
 
 .chq-review-plan-row {
   display: grid;
-  grid-template-columns: 1fr 150px 190px 210px auto;
+  grid-template-columns: 24px 1fr 150px 190px 210px auto;
   gap: 20px;
   align-items: center;
   padding: 16px 0;
   border-bottom: 1px solid var(--chq-hairline);
+}
+
+/* DEC-674: the organiser Review landing's plan-row selector -- picks which
+   plan's progress/results render in regions two and three below the list. */
+.chq-review-plan-select {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chq-review-plan-export {
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* DEC-674: the landing page's region two/three wrappers -- each holds a
+   composed ProgressPanel/ResultsTable (embedded=true, so those components'
+   own page title/back-link chrome is suppressed; this section head is the
+   only title region two/three carry). */
+.chq-review-landing-progress,
+.chq-review-landing-results {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .chq-review-plan-name {

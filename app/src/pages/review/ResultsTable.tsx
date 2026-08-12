@@ -61,8 +61,17 @@ function SortButton({
   );
 }
 
-export function ResultsTable() {
-  const { planId } = useParams<{ planId: string }>();
+// DEC-674: when a planId prop is supplied (the organiser Review landing
+// embeds this table as its "region three"), it wins over the route param,
+// and the table drops its own page title/back-link chrome -- that chrome
+// belongs to the standalone /review/plans/:planId/results route, which
+// still renders it unchanged (no planId prop -> falls back to useParams()).
+// `embedded` is derived from the prop's presence rather than a second flag,
+// since the two are the same condition by construction.
+export function ResultsTable({ planId: planIdProp }: { planId?: string } = {}) {
+  const { planId: planIdParam } = useParams<{ planId: string }>();
+  const planId = planIdProp ?? planIdParam;
+  const embedded = planIdProp !== undefined;
   const [plan, setPlan] = useState<EvaluationPlan | null>(null);
   const [rows, setRows] = useState<ResultsRow[]>([]);
   const [total, setTotal] = useState(0);
@@ -201,6 +210,7 @@ export function ResultsTable() {
   const totalPages = Math.max(1, Math.ceil(total / PER_PAGE));
 
   if (loading) {
+    if (embedded) return <p>Loading…</p>;
     return (
       <div className="chq-page chq-review-page">
         <h1 className="chq-page-title">Results</h1>
@@ -210,15 +220,19 @@ export function ResultsTable() {
   }
 
   const columnCount = 6 + ratingCriteria.length + dropdownCriteria.length;
+  const Wrapper = embedded ? Fragment : 'div';
+  const wrapperProps = embedded ? {} : { className: 'chq-page chq-review-page' };
 
   return (
-    <div className="chq-page chq-review-page">
-      <p>
-        <Link to="/review" className="chq-review-back">
-          &larr; Back to plans
-        </Link>
-      </p>
-      <h1 className="chq-page-title">Results{plan ? `: ${plan.name}` : ''}</h1>
+    <Wrapper {...wrapperProps}>
+      {!embedded && (
+        <p>
+          <Link to="/review" className="chq-review-back">
+            &larr; Back to plans
+          </Link>
+        </p>
+      )}
+      {!embedded && <h1 className="chq-page-title">Results{plan ? `: ${plan.name}` : ''}</h1>}
       {error && (
         <div className="chq-error" role="alert">
           {error}
@@ -479,6 +493,6 @@ export function ResultsTable() {
           </div>
         )}
       </section>
-    </div>
+    </Wrapper>
   );
 }

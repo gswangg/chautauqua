@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { apiGet, apiList, apiPost, ApiError } from '../../lib/api';
 import { reviewersWithIncompleteQueues } from './progress';
@@ -7,8 +7,17 @@ import { describeSendResult, type SendResult } from '../../lib/sendResult';
 import './review.css';
 import type { EvaluationPlan, ProgressRow } from './types';
 
-export function ProgressPanel() {
-  const { planId } = useParams<{ planId: string }>();
+// DEC-674: when a planId prop is supplied (the organiser Review landing
+// embeds this panel as its "region two"), it wins over the route param, and
+// the panel drops its own page title/back-link chrome -- that chrome
+// belongs to the standalone /review/plans/:planId/progress route, which
+// still renders it unchanged (no planId prop -> falls back to useParams()).
+// `embedded` is derived from the prop's presence rather than a second flag,
+// since the two are the same condition by construction.
+export function ProgressPanel({ planId: planIdProp }: { planId?: string } = {}) {
+  const { planId: planIdParam } = useParams<{ planId: string }>();
+  const planId = planIdProp ?? planIdParam;
+  const embedded = planIdProp !== undefined;
   const [plan, setPlan] = useState<EvaluationPlan | null>(null);
   const [rows, setRows] = useState<ProgressRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -71,6 +80,7 @@ export function ProgressPanel() {
   }
 
   if (loading) {
+    if (embedded) return <p>Loading…</p>;
     return (
       <div className="chq-page chq-review-page">
         <h1 className="chq-page-title">Review</h1>
@@ -79,15 +89,20 @@ export function ProgressPanel() {
     );
   }
 
+  const Wrapper = embedded ? Fragment : 'div';
+  const wrapperProps = embedded ? {} : { className: 'chq-page chq-review-page' };
+
   return (
-    <div className="chq-page chq-review-page">
-      <p>
-        <Link to="/review" className="chq-review-back">
-          &larr; Back to plans
-        </Link>
-      </p>
+    <Wrapper {...wrapperProps}>
+      {!embedded && (
+        <p>
+          <Link to="/review" className="chq-review-back">
+            &larr; Back to plans
+          </Link>
+        </p>
+      )}
       <div className="chq-review-summary-row">
-        <h1 className="chq-page-title">Reviewer progress</h1>
+        {!embedded && <h1 className="chq-page-title">Reviewer progress</h1>}
         {plan && (
           <span className="chq-summary">
             Round {plan.currentRound} of {plan.rounds}
@@ -159,6 +174,6 @@ export function ProgressPanel() {
           onCancel={() => setAdvanceConfirmOpen(false)}
         />
       )}
-    </div>
+    </Wrapper>
   );
 }
