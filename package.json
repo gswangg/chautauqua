@@ -14,7 +14,8 @@
     "bundle:check": "tsx scripts/bundle-check.ts",
     "walkthrough": "tsx scripts/walkthrough.ts",
     "gate:render-sweep": "tsx scripts/render-sweep.ts",
-    "test": "vitest run"
+    "test": "sh scripts/with-test-lock.sh vitest run",
+    "test:targeted": "vitest run"
   },
   "dependencies": {
     "drizzle-orm": "^0.45.2",
