@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, NavLink, Route, Routes, useLocation } from 're
 import { useMe } from './lib/useMe';
 import { useNavExceptions } from './lib/useNavExceptions';
 import { useEscapeKey } from './lib/useEscapeKey';
+import { identityLabel } from './lib/identity';
 import { EventSwitcher } from './components/EventSwitcher';
 
 // DEC-052: every route page is code-split via React.lazy. Page modules keep
@@ -171,10 +172,15 @@ function Header() {
         </nav>
         <div className="chq-header-identity">
           <EventSwitcher />
-          {me && <span className="chq-meta">{me.email}</span>}
-          <button type="button" className="chq-btn chq-btn-tertiary" onClick={() => void signOut()}>
-            Sign out
-          </button>
+          {me && (
+            <span className="chq-user-identity">
+              {identityLabel(me.name, me.email)}
+              <span aria-hidden="true">·</span>
+              <button type="button" className="chq-btn chq-btn-tertiary" onClick={() => void signOut()}>
+                Sign out
+              </button>
+            </span>
+          )}
         </div>
       </header>
 

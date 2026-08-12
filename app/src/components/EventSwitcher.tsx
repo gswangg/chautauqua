@@ -155,6 +155,7 @@ export function EventSwitcher() {
   const [items, setItems] = useState<EventListItem[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [showNewEvent, setShowNewEvent] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     apiList<EventListItem>('/events')
@@ -164,8 +165,11 @@ export function EventSwitcher() {
 
   const storedId = window.localStorage.getItem(STORAGE_KEY);
   const current = resolveCurrentEvent(items, storedId);
+  const closeMenu = () => setMenuOpen(false);
+  useEscapeKey(menuOpen, closeMenu);
 
   function switchTo(id: string) {
+    closeMenu();
     if (id === current?.id) return;
     window.localStorage.setItem(STORAGE_KEY, id);
     window.location.assign('/admin');
@@ -180,26 +184,49 @@ export function EventSwitcher() {
   return (
     <div className="chq-eventswitcher">
       {error && <span className="chq-field-error">{error}</span>}
-      <select
-        className="chq-select chq-eventswitcher-select"
-        aria-label="Current event"
-        value={current?.id ?? ''}
-        onChange={(e) => {
-          if (e.target.value === '__new__') {
-            setShowNewEvent(true);
-            return;
-          }
-          switchTo(e.target.value);
-        }}
+      {/* DEC-576: desktop header shows the current event as plain text
+          (13px/600) beside a menu button, not the raw <select> this used
+          to render — switching/create behaviour is unchanged, only the
+          control. */}
+      <span className="chq-eventswitcher-name">{current?.name ?? 'No events'}</span>
+      <button
+        type="button"
+        className="chq-eventswitcher-menu-btn"
+        aria-haspopup="menu"
+        aria-expanded={menuOpen}
+        aria-label="Switch event"
+        onClick={() => setMenuOpen((v) => !v)}
       >
-        {items.length === 0 && <option value="">No events</option>}
-        {items.map((item) => (
-          <option key={item.id} value={item.id}>
-            {item.name}
-          </option>
-        ))}
-        <option value="__new__">New event…</option>
-      </select>
+        ▾
+      </button>
+
+      {menuOpen && (
+        <div className="chq-eventswitcher-menu" role="menu" aria-label="Events">
+          {items.length === 0 && <span className="chq-meta">No events</span>}
+          {items.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              role="menuitem"
+              className={`chq-eventswitcher-menu-item${item.id === current?.id ? ' is-current' : ''}`}
+              onClick={() => switchTo(item.id)}
+            >
+              {item.name}
+            </button>
+          ))}
+          <button
+            type="button"
+            role="menuitem"
+            className="chq-eventswitcher-menu-item"
+            onClick={() => {
+              closeMenu();
+              setShowNewEvent(true);
+            }}
+          >
+            New event…
+          </button>
+        </div>
+      )}
 
       {showNewEvent && <NewEventModal onCancel={() => setShowNewEvent(false)} onCreated={handleCreated} />}
     </div>

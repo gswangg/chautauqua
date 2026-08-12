@@ -1,6 +1,10 @@
 // GET /api/v1/me bootstrap endpoint (DEC-018): lets the SPA role-gate nav
 // and land reviewers on /review. Route file exports a named Hono sub-app;
 // only src/index.ts mounts it (DEC-012).
+//
+// DEC-576: also returns `name` (first + last from the signed-in user's
+// linked contact, or null if the user has no linked contact) so the header
+// can render "J. ALVAREZ" instead of a bare email.
 
 import { Hono } from "hono";
 import { eq } from "drizzle-orm";
@@ -15,16 +19,25 @@ meRoutes.get("/api/v1/me", async (c) => {
   if (!auth) throw new ApiError("unauthorized", "Login required");
 
   const rows = await c.var.db
-    .select({ email: schema.user.email })
+    .select({
+      email: schema.user.email,
+      firstName: schema.contact.firstName,
+      lastName: schema.contact.lastName,
+    })
     .from(schema.user)
+    .leftJoin(schema.contact, eq(schema.user.contactId, schema.contact.id))
     .where(eq(schema.user.id, auth.userId))
     .limit(1);
-  const email = rows[0]?.email;
+  const row = rows[0];
+  const email = row?.email;
   if (!email) throw new ApiError("unauthorized", "Login required");
+
+  const name = row.firstName && row.lastName ? `${row.firstName} ${row.lastName}` : null;
 
   return c.json({
     userId: auth.userId,
     email,
+    name,
     role: auth.role,
     orgId: auth.orgId,
     ...(auth.contactId ? { contactId: auth.contactId } : {}),

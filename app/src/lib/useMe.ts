@@ -5,6 +5,9 @@ import { apiGet, ApiError } from './api';
 export interface Me {
   userId: string;
   email: string;
+  // DEC-576: first + last name from the signed-in user's linked contact,
+  // null when the user has no linked contact (or no name on file).
+  name: string | null;
   role: string;
   orgId: string;
   contactId?: string;

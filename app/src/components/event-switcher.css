@@ -1,29 +1,85 @@
-/* EventSwitcher (w3-d, DEC-368/378/379). Layout only — control chrome
-   (.chq-select, .chq-input, .chq-btn, .chq-scrim, .chq-modal, .chq-field,
-   .chq-field-error, .chq-modal-title, .chq-modal-actions, .chq-error-banner)
-   comes from the shared vocabulary in app/src/styles.css; nothing here
-   redefines a shared class. */
+/* EventSwitcher (w3-d, DEC-378/379; restyled w1-h, DEC-576). Layout only —
+   control chrome (.chq-select, .chq-input, .chq-btn, .chq-scrim, .chq-modal,
+   .chq-field, .chq-field-error, .chq-modal-title, .chq-modal-actions,
+   .chq-error-banner) comes from the shared vocabulary in app/src/styles.css;
+   nothing here redefines a shared class. */
 
 .chq-eventswitcher {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 8px;
 }
 
-/* DEC-369: right-aligned event name in the header reads 13px/600, matching
-   the identity block beside it. */
-.chq-eventswitcher-select {
+/* DEC-576: the header's desktop row shows the current event as PLAIN TEXT
+   (13px/600, matching the identity block beside it), not a raw <select>. */
+.chq-eventswitcher-name {
   font-size: 13px;
   font-weight: 600;
+  color: var(--chq-ink);
   min-width: 0;
   max-width: 220px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chq-eventswitcher-menu-btn {
+  background: none;
+  border: 1px solid var(--chq-border);
+  border-radius: var(--chq-r-ctl);
+  color: var(--chq-ink);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+
+.chq-eventswitcher-menu-btn:hover {
+  background: var(--chq-surface-sunk);
+}
+
+.chq-eventswitcher-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 6px;
+  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+  background: var(--chq-surface);
+  border: 1px solid var(--chq-border);
+  border-radius: var(--chq-r-ctl);
+  padding: 6px;
+  z-index: 20;
+}
+
+.chq-eventswitcher-menu-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--chq-ink);
+  padding: 8px 10px;
+  border-radius: var(--chq-r-ctl);
+  cursor: pointer;
+}
+
+.chq-eventswitcher-menu-item:hover {
+  background: var(--chq-surface-sunk);
+}
+
+.chq-eventswitcher-menu-item.is-current {
+  color: var(--chq-brand);
 }
 
 @media (max-width: 700px) {
-  .chq-eventswitcher-select {
+  .chq-eventswitcher-name {
     max-width: 160px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
   }
 }
