@@ -125,6 +125,64 @@ describe('App shell (DEC-369)', () => {
   });
 });
 
+describe('Desktop header single row + identity (DEC-576)', () => {
+  it('renders wordmark, nav, event name as text, and initials · sign out in one row', async () => {
+    mockApi({
+      'GET /api/v1/me': {
+        userId: 'u-1',
+        email: 'organizer@example.com',
+        name: 'Jordan Alvarez',
+        role: 'organizer',
+        orgId: 'org-1',
+      },
+      'GET /api/v1/events': { items: [{ id: 'ev-1', name: 'DevFlow Conf' }], total: 1, page: 1, perPage: 50 },
+      'GET /api/v1/events/ev-1/overview': {
+        speakers: { contactsOwing: 0, overdueAssignments: 0 },
+        agenda: { unplaced: 0, conflicts: 0 },
+      },
+    });
+
+    render(<App />);
+
+    const header = await screen.findByRole('banner');
+    // Single row: header is a flex container with no wrap (styled via
+    // .chq-header's flex-wrap: nowrap), and wordmark/nav/identity all live
+    // directly inside it.
+    expect(within(header).getByText('chautauqua')).toBeInTheDocument();
+    expect(within(header).getByRole('navigation', { name: 'Primary' })).toBeInTheDocument();
+    // The event renders as plain text, not a <select>.
+    expect(within(header).getByText('DevFlow Conf')).toBeInTheDocument();
+    expect(within(header).queryByRole('combobox')).not.toBeInTheDocument();
+    // The user renders as initials-form "J. ALVAREZ" beside Sign out —
+    // never a bare email, never the literal 'undefined'.
+    expect(within(header).getByText('J. ALVAREZ', { exact: false })).toBeInTheDocument();
+    expect(within(header).queryByText('organizer@example.com')).not.toBeInTheDocument();
+    expect(within(header).queryByText(/undefined/i)).not.toBeInTheDocument();
+    expect(within(header).getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
+  });
+
+  it('falls back to the email local-part, uppercased, when name is null', async () => {
+    mockApi({
+      'GET /api/v1/me': {
+        userId: 'u-1',
+        email: 'organizer@example.com',
+        name: null,
+        role: 'organizer',
+        orgId: 'org-1',
+      },
+      'GET /api/v1/events': { items: [], total: 0, page: 1, perPage: 50 },
+    });
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByText('ORGANIZER', { exact: false })).toBeInTheDocument();
+    });
+    expect(screen.queryByText('organizer@example.com')).not.toBeInTheDocument();
+    expect(screen.queryByText(/undefined/i)).not.toBeInTheDocument();
+  });
+});
+
 describe('Phone tab bar (DEC-381)', () => {
   it('shows Overview, Submissions, Speakers and Content for an organizer, not Review', async () => {
     mockApi({

@@ -1,0 +1,65 @@
+// DEC-576: GET /api/v1/me gains `name` (first + last from the signed-in
+// user's linked contact via a leftJoin on user.contactId), null when the
+// user has no linked contact — the header falls back to the email
+// local-part rather than ever rendering a bare email or 'undefined'.
+// Mirrors test/api-route-composition.test.ts's technique: a stubbed db
+// chain shaped like the real drizzle query the route awaits.
+
+import { describe, expect, it } from "vitest";
+import { Hono } from "hono";
+import type { AppEnv, AuthInfo } from "../src/server/env";
+import { registerErrorHandler } from "../src/server/http";
+import { meRoutes } from "../src/routes/me";
+
+function buildApp(auth: AuthInfo, row: { email: string; firstName: string | null; lastName: string | null } | undefined) {
+  const app = new Hono<AppEnv>();
+  app.use("*", async (c, next) => {
+    c.set("auth", auth);
+    c.set("db", {
+      select: () => ({
+        from: () => ({
+          leftJoin: () => ({
+            where: () => ({
+              limit: async () => (row ? [row] : []),
+            }),
+          }),
+        }),
+      }),
+    } as unknown as AppEnv["Variables"]["db"]);
+    await next();
+  });
+  registerErrorHandler(app);
+  app.route("/", meRoutes);
+  return app;
+}
+
+describe("GET /api/v1/me name field (DEC-576)", () => {
+  it("returns name as 'First Last' when the user has a linked contact", async () => {
+    const auth: AuthInfo = { userId: "u-1", role: "organizer", orgId: "org-1" };
+    const app = buildApp(auth, { email: "organizer@example.com", firstName: "Jordan", lastName: "Alvarez" });
+
+    const res = await app.request("/api/v1/me");
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { name: string | null; email: string };
+    expect(body.name).toBe("Jordan Alvarez");
+    expect(body.email).toBe("organizer@example.com");
+  });
+
+  it("returns name: null when the user has no linked contact", async () => {
+    const auth: AuthInfo = { userId: "u-2", role: "organizer", orgId: "org-1" };
+    const app = buildApp(auth, { email: "organizer@example.com", firstName: null, lastName: null });
+
+    const res = await app.request("/api/v1/me");
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { name: string | null };
+    expect(body.name).toBeNull();
+  });
+
+  it("401s (not a crash) when the user row itself can't be found", async () => {
+    const auth: AuthInfo = { userId: "u-missing", role: "organizer", orgId: "org-1" };
+    const app = buildApp(auth, undefined);
+
+    const res = await app.request("/api/v1/me");
+    expect(res.status).toBe(401);
+  });
+});

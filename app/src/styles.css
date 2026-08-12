@@ -88,20 +88,26 @@ a:hover {
 /* Shell + chrome (DEC-369)                                               */
 /* ---------------------------------------------------------------------- */
 
+/* DEC-576: .chq-shell is a flex column filling the viewport; header and
+   .chq-tabbar are in-flow flex-shrink:0 regions and .chq-main is the ONLY
+   scrolling region (flex:1; min-height:0; overflow-y:auto). No fixed
+   positioning and no guessed bottom-padding compensation — content can
+   never sit under the tab bar because the bar is not over it. */
 .chq-shell {
-  min-height: 100%;
+  height: 100%;
   display: flex;
   flex-direction: column;
 }
 
 .chq-header {
+  flex-shrink: 0;
   border-bottom: 1px solid var(--chq-ink);
   padding: 15px 34px;
   display: flex;
   align-items: center;
   gap: 22px;
   background: var(--chq-paper);
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 
 .chq-header-identity {
@@ -114,8 +120,25 @@ a:hover {
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--chq-muted);
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   min-width: 0;
+}
+
+/* DEC-576: "J. ALVAREZ · SIGN OUT" — the user's name and the sign-out
+   control read as one identity block, styled entirely by the inherited
+   .chq-header-identity type (11px/700/0.1em uppercase Muted). */
+.chq-user-identity {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.chq-user-identity .chq-btn-tertiary {
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  padding: 0;
 }
 
 .chq-wordmark {
@@ -167,6 +190,7 @@ a:hover {
 
 .chq-tabbar {
   display: none;
+  flex-shrink: 0;
 }
 
 @media (max-width: 700px) {
@@ -178,25 +202,16 @@ a:hover {
     display: none;
   }
 
-  .chq-header-identity .chq-meta {
-    display: none;
-  }
-
-  .chq-header-identity .chq-btn-tertiary {
+  .chq-header-identity .chq-user-identity {
     display: none;
   }
 
   .chq-tabbar {
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
     display: flex;
     gap: 2px;
     border-top: 1px solid var(--chq-ink);
     background: var(--chq-surface-sunk);
     padding: 10px 8px 14px;
-    z-index: 10;
   }
 
   .chq-tabbar .chq-nav-link {
@@ -217,7 +232,7 @@ a:hover {
   }
 
   .chq-main {
-    padding: 16px 16px 84px;
+    padding: 16px;
     overflow-wrap: anywhere;
   }
 
@@ -299,6 +314,8 @@ a:hover {
 
 .chq-main {
   flex: 1;
+  min-height: 0;
+  overflow-y: auto;
   padding: 26px 34px 34px;
 }
 

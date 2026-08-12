@@ -1,8 +1,11 @@
 // w3-d (DEC-378/379): render coverage for the restyled EventSwitcher — the
 // .chq-scrim/.chq-modal dialog contract, .chq-field-error on a local
 // validation failure, and Escape dismissal via useEscapeKey.
+// w1-h (DEC-576): the header control changed from a raw <select> to plain
+// text (the current event name) beside a menu button; switching and
+// create-event behaviour is unchanged.
 import { afterEach, describe, expect, it } from 'vitest';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { EventSwitcher } from './EventSwitcher';
 import { mockApi, listEnvelope } from '../test-utils/mockApi';
@@ -13,7 +16,7 @@ afterEach(() => {
 });
 
 describe('EventSwitcher', () => {
-  it('renders the current-event select with two events', async () => {
+  it('renders the current event as plain text beside a menu button', async () => {
     mockApi({
       'GET /api/v1/events': listEnvelope([
         { id: 'ev-1', name: 'Alpha Conf' },
@@ -23,21 +26,44 @@ describe('EventSwitcher', () => {
 
     render(<EventSwitcher />);
 
-    const select = await screen.findByRole('combobox', { name: 'Current event' });
-    expect(select).toHaveClass('chq-select');
-    const options = Array.from(select.querySelectorAll('option')).map((o) => o.textContent);
-    expect(options).toEqual(['Alpha Conf', 'Beta Summit', 'New event…']);
+    await waitFor(() => {
+      expect(screen.getByText('Alpha Conf')).toBeInTheDocument();
+    });
+    expect(screen.getByText('Alpha Conf')).toHaveClass('chq-eventswitcher-name');
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Switch event' })).toBeInTheDocument();
   });
 
-  it('opening "New event…" shows the dialog inside a .chq-scrim', async () => {
+  it('the menu button opens a menu listing every event plus "New event…"', async () => {
+    mockApi({
+      'GET /api/v1/events': listEnvelope([
+        { id: 'ev-1', name: 'Alpha Conf' },
+        { id: 'ev-2', name: 'Beta Summit' },
+      ]),
+    });
+
+    render(<EventSwitcher />);
+
+    await waitFor(() => screen.getByText('Alpha Conf'));
+    fireEvent.click(screen.getByRole('button', { name: 'Switch event' }));
+
+    const menu = await screen.findByRole('menu', { name: 'Events' });
+    expect(within(menu).getByRole('menuitem', { name: 'Alpha Conf' })).toBeInTheDocument();
+    expect(within(menu).getByRole('menuitem', { name: 'Beta Summit' })).toBeInTheDocument();
+    expect(within(menu).getByRole('menuitem', { name: 'New event…' })).toBeInTheDocument();
+  });
+
+  it('opening "New event…" from the menu shows the dialog inside a .chq-scrim', async () => {
     mockApi({
       'GET /api/v1/events': listEnvelope([{ id: 'ev-1', name: 'Alpha Conf' }]),
     });
 
     render(<EventSwitcher />);
 
-    const select = await screen.findByRole('combobox', { name: 'Current event' });
-    fireEvent.change(select, { target: { value: '__new__' } });
+    await waitFor(() => screen.getByText('Alpha Conf'));
+    fireEvent.click(screen.getByRole('button', { name: 'Switch event' }));
+    const menu = await screen.findByRole('menu', { name: 'Events' });
+    fireEvent.click(within(menu).getByRole('menuitem', { name: 'New event…' }));
 
     const dialog = await screen.findByRole('dialog', { name: 'New event' });
     expect(dialog).toHaveClass('chq-modal');
@@ -52,8 +78,10 @@ describe('EventSwitcher', () => {
 
     render(<EventSwitcher />);
 
-    const select = await screen.findByRole('combobox', { name: 'Current event' });
-    fireEvent.change(select, { target: { value: '__new__' } });
+    await waitFor(() => screen.getByText('Alpha Conf'));
+    fireEvent.click(screen.getByRole('button', { name: 'Switch event' }));
+    const menu = await screen.findByRole('menu', { name: 'Events' });
+    fireEvent.click(within(menu).getByRole('menuitem', { name: 'New event…' }));
 
     const dialog = await screen.findByRole('dialog', { name: 'New event' });
     // Every field carries `required`, so jsdom's native HTML5 validation
@@ -81,8 +109,10 @@ describe('EventSwitcher', () => {
 
     render(<EventSwitcher />);
 
-    const select = await screen.findByRole('combobox', { name: 'Current event' });
-    fireEvent.change(select, { target: { value: '__new__' } });
+    await waitFor(() => screen.getByText('Alpha Conf'));
+    fireEvent.click(screen.getByRole('button', { name: 'Switch event' }));
+    const menu = await screen.findByRole('menu', { name: 'Events' });
+    fireEvent.click(within(menu).getByRole('menuitem', { name: 'New event…' }));
 
     await screen.findByRole('dialog', { name: 'New event' });
     fireEvent.keyDown(window, { key: 'Escape' });

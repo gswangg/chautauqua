@@ -51,8 +51,10 @@ function buildApp(auth: AuthInfo) {
     c.set("db", {
       select: () => ({
         from: () => ({
-          where: () => ({
-            limit: async () => [{ email: "reviewer@example.com" }],
+          leftJoin: () => ({
+            where: () => ({
+              limit: async () => [{ email: "reviewer@example.com", firstName: null, lastName: null }],
+            }),
           }),
         }),
       }),
