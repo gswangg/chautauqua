@@ -25,29 +25,50 @@ function toRecusalRecord(row: typeof schema.reviewRecusal.$inferSelect): Recusal
   };
 }
 
-/** Creates a recusal, or returns the existing row unchanged if one already
- * exists for this (plan, submission, user) -- idempotent per the unique
- * index, so callers can distinguish "created" (201) from "already existed"
- * (200) by comparing the returned row's id/createdAt to a pre-check, or by
- * using hasRecusal first. */
+/** Creates a recusal, or leaves the existing row unchanged if one already
+ * exists for this (plan, submission, user) -- DEC-552: one atomic INSERT ...
+ * ON CONFLICT DO NOTHING against the uniqueIndex at src/db/schema.ts:376,
+ * never a hasRecusal probe before the write. `created` tells the caller
+ * whether this call's insert won the race (201) or a prior row already
+ * existed (200). */
 export async function createRecusal(
   db: Db,
   input: { planId: string; submissionId: string; userId: string; reason: string | null },
-): Promise<RecusalRecord> {
-  const existing = await hasRecusal(db, input.planId, input.submissionId, input.userId);
-  if (existing) return existing;
+): Promise<{ recusal: RecusalRecord; created: boolean }> {
   const now = new Date();
-  await db.insert(schema.reviewRecusal).values({
-    id: newId(),
-    planId: input.planId,
-    submissionId: input.submissionId,
-    userId: input.userId,
-    reason: input.reason,
-    createdAt: now,
-  });
-  const created = await hasRecusal(db, input.planId, input.submissionId, input.userId);
-  if (!created) throw new Error("createRecusal: row missing after write");
-  return created;
+  const inserted = await db
+    .insert(schema.reviewRecusal)
+    .values({
+      id: newId(),
+      planId: input.planId,
+      submissionId: input.submissionId,
+      userId: input.userId,
+      reason: input.reason,
+      createdAt: now,
+    })
+    .onConflictDoNothing({
+      target: [schema.reviewRecusal.planId, schema.reviewRecusal.submissionId, schema.reviewRecusal.userId],
+    })
+    .returning({ id: schema.reviewRecusal.id });
+
+  const insertedId = inserted[0]?.id;
+  if (insertedId !== undefined) {
+    return {
+      recusal: {
+        id: insertedId,
+        planId: input.planId,
+        submissionId: input.submissionId,
+        userId: input.userId,
+        reason: input.reason,
+        createdAt: now.getTime(),
+      },
+      created: true,
+    };
+  }
+
+  const existing = await hasRecusal(db, input.planId, input.submissionId, input.userId);
+  if (!existing) throw new Error("createRecusal: conflict reported but no existing row found");
+  return { recusal: existing, created: false };
 }
 
 export async function deleteRecusal(db: Db, planId: string, submissionId: string, userId: string): Promise<boolean> {
