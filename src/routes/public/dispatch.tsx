@@ -49,13 +49,21 @@ export async function renderSurfaceContent(
     }
     case "speakers": {
       const q = parseNameQuery(query.q);
-      const speakers = await getPublicSpeakers(db, event.id, { q });
-      return { title: `Speakers - ${event.name}`, content: <SpeakersContent event={event} speakers={speakers} q={q} /> };
+      const page = parsePage(query.page);
+      const { items, total } = await getPublicSpeakers(db, event.id, { q, page, perPage: PER_PAGE });
+      return {
+        title: `Speakers - ${event.name}`,
+        content: <SpeakersContent event={event} speakers={items} total={total} page={page} q={q} />,
+      };
     }
     case "gallery": {
       const q = parseNameQuery(query.q);
-      const speakers = await getPublicSpeakers(db, event.id, { q });
-      return { title: `Speaker gallery - ${event.name}`, content: <GalleryContent event={event} speakers={speakers} q={q} /> };
+      const page = parsePage(query.page);
+      const { items, total } = await getPublicSpeakers(db, event.id, { q, page, perPage: PER_PAGE });
+      return {
+        title: `Speaker gallery - ${event.name}`,
+        content: <GalleryContent event={event} speakers={items} total={total} page={page} q={q} />,
+      };
     }
     case "agenda": {
       let items = await getPublicAgenda(db, event);

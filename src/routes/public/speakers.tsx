@@ -21,54 +21,97 @@ function NameSearchForm(props: { action: string; q: string | null }) {
   );
 }
 
-export function SpeakersContent(props: { event: PublicEvent; speakers: PublicSpeakerWithSessions[]; q: string | null }) {
-  const { event, speakers, q } = props;
+export function SpeakersContent(props: {
+  event: PublicEvent;
+  speakers: PublicSpeakerWithSessions[];
+  total: number;
+  page: number;
+  q: string | null;
+}) {
+  const { event, speakers, total, page, q } = props;
+  const hasMore = speakers.length < total;
+  const basePath = surfacePath(event, "speakers");
   return (
     <>
       <h2>Speakers</h2>
-      <NameSearchForm action={surfacePath(event, "speakers")} q={q} />
+      <NameSearchForm action={basePath} q={q} />
       {speakers.length === 0 ? (
         <p>No speakers to show yet.</p>
       ) : (
-        <div class="chq-pub-speaker-grid">
-          {speakers.map((sp) => (
-            <div class="chq-pub-speaker-card">
-              <a href={speakerDetailPath(event, sp.contactId, "speakers")}>
-                {sp.headshotUrl ? (
-                  <img src={sp.headshotUrl} alt={`${sp.firstName} ${sp.lastName}`} />
-                ) : (
-                  <div class="chq-pub-headshot-fallback" />
-                )}
-              </a>
-              <a class="chq-pub-speaker-name" href={speakerDetailPath(event, sp.contactId, "speakers")}>
-                {sp.firstName} {sp.lastName}
-              </a>
-              <p class="chq-pub-speaker-role">{[sp.title, sp.company].filter(Boolean).join(", ")}</p>
-              <ul class="chq-pub-speaker-sessions">
-                {sp.sessions.map((s) => (
-                  <li>{s.title}</li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
+        <>
+          <p>
+            {speakers.length} of {total} speaker(s)
+          </p>
+          <div class="chq-pub-speaker-grid">
+            {speakers.map((sp) => (
+              <div class="chq-pub-speaker-card">
+                <a href={speakerDetailPath(event, sp.contactId, "speakers")}>
+                  {sp.headshotUrl ? (
+                    <img
+                      src={sp.headshotUrl}
+                      alt={`${sp.firstName} ${sp.lastName}`}
+                      loading="lazy"
+                      width="96"
+                      height="96"
+                    />
+                  ) : (
+                    <div class="chq-pub-headshot-fallback" />
+                  )}
+                </a>
+                <a class="chq-pub-speaker-name" href={speakerDetailPath(event, sp.contactId, "speakers")}>
+                  {sp.firstName} {sp.lastName}
+                </a>
+                <p class="chq-pub-speaker-role">{[sp.title, sp.company].filter(Boolean).join(", ")}</p>
+                <ul class="chq-pub-speaker-sessions">
+                  {sp.sessions.map((s) => (
+                    <li>{s.title}</li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </>
       )}
+      {hasMore ? (
+        <p>
+          <a href={`${basePath}?${q ? `q=${encodeURIComponent(q)}&` : ""}page=${page + 1}`}>Show more</a>
+        </p>
+      ) : null}
     </>
   );
 }
 
-export function GalleryContent(props: { event: PublicEvent; speakers: PublicSpeakerWithSessions[]; q: string | null }) {
-  const { event, speakers, q } = props;
+export function GalleryContent(props: {
+  event: PublicEvent;
+  speakers: PublicSpeakerWithSessions[];
+  total: number;
+  page: number;
+  q: string | null;
+}) {
+  const { event, speakers, total, page, q } = props;
+  const hasMore = speakers.length < total;
+  const basePath = surfacePath(event, "gallery");
   return (
     <>
       <h2>Speaker gallery</h2>
       <p>Headshots only, no session details.</p>
-      <NameSearchForm action={surfacePath(event, "gallery")} q={q} />
+      <NameSearchForm action={basePath} q={q} />
+      <p>
+        {speakers.length} of {total} speaker(s)
+      </p>
       <div class="chq-pub-gallery-grid">
         {speakers.map((sp) => (
           <a href={speakerDetailPath(event, sp.contactId, "gallery")}>
             <div class="chq-pub-gallery-tile">
-              {sp.headshotUrl ? <img src={sp.headshotUrl} alt={`${sp.firstName} ${sp.lastName}`} /> : null}
+              {sp.headshotUrl ? (
+                <img
+                  src={sp.headshotUrl}
+                  alt={`${sp.firstName} ${sp.lastName}`}
+                  loading="lazy"
+                  width="96"
+                  height="96"
+                />
+              ) : null}
             </div>
             <span class="chq-pub-gallery-name">
               {sp.firstName} {sp.lastName}
@@ -76,6 +119,11 @@ export function GalleryContent(props: { event: PublicEvent; speakers: PublicSpea
           </a>
         ))}
       </div>
+      {hasMore ? (
+        <p>
+          <a href={`${basePath}?${q ? `q=${encodeURIComponent(q)}&` : ""}page=${page + 1}`}>Show more</a>
+        </p>
+      ) : null}
     </>
   );
 }

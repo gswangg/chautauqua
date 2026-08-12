@@ -267,7 +267,9 @@ async function getSurfaceFeedItems(
     case "speakers":
     case "gallery": {
       const q = parseNameQuery(query.q);
-      return getPublicSpeakers(db, event.id, { q });
+      const page = parsePage(query.page);
+      const { items } = await getPublicSpeakers(db, event.id, { q, page, perPage: PER_PAGE });
+      return items;
     }
     case "agenda":
     case "schedule":
