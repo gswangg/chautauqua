@@ -164,6 +164,15 @@ export const ROUTE_MANIFEST: readonly RouteManifestEntry[] = [
   { path: `/embed/${EVENT_SLUG}/sessions`, role: "public", params: { eventSlug: EVENT_SLUG } },
   { path: `/embed/${EVENT_SLUG}/agenda`, role: "public", params: { eventSlug: EVENT_SLUG } },
   { path: `/embed/${EVENT_SLUG}/speakers`, role: "public", params: { eventSlug: EVENT_SLUG } },
+  // DEC-489/DEC-490 (task-w25-d): the remaining two of the five public-
+  // surface embed twins (SURFACES in src/routes/public/shell.tsx is
+  // sessions/speakers/agenda/schedule/gallery) — /embed/:slug/schedule and
+  // /embed/:slug/gallery were missing from this manifest even though the
+  // producer-side embed generator (app/src/pages/settings/EmbedsPanel.tsx)
+  // and the generic `/embed/:eventSlug/:surface` route (src/routes/public/
+  // index.tsx) already support all five.
+  { path: `/embed/${EVENT_SLUG}/schedule`, role: "public", params: { eventSlug: EVENT_SLUG } },
+  { path: `/embed/${EVENT_SLUG}/gallery`, role: "public", params: { eventSlug: EVENT_SLUG } },
   { path: "/login", role: "public" },
   { path: "/docs/api", role: "public" },
   { path: "/dev/mailbox", role: "public" },
