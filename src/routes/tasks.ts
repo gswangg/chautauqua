@@ -14,6 +14,7 @@ import { makeDb, makeMailer } from "../server/context";
 import { requireOrganizer, csrfJson } from "../server/middleware";
 import { ApiError, parseBoundedIdArray } from "../server/http";
 import { MAX_NAME_LENGTH, MAX_LONG_TEXT_LENGTH } from "../forms/validate"; // DEC-417
+import { isEpochMs } from "./api/validators"; // DEC-517/DEC-527
 import { DEC_120, DEC_214, DEC_240, DEC_291, DEC_398 } from "../decisions";
 import { findFormById } from "../server/repo/forms";
 import {
@@ -164,8 +165,8 @@ taskRoutes.post("/events/:eventId/tasks", requireOrganizer, csrfJson, async (c) 
 
   let dueDate: number | null | undefined = null;
   if (body.dueDate !== undefined && body.dueDate !== null) {
-    dueDate = typeof body.dueDate === "number" ? body.dueDate : undefined;
-    if (dueDate === undefined) fields.dueDate = "Must be a ms-epoch number";
+    dueDate = isEpochMs(body.dueDate) ? body.dueDate : undefined;
+    if (dueDate === undefined) fields.dueDate = "Must be a ms-epoch integer";
   }
 
   const required = typeof body.required === "boolean" ? body.required : undefined;
@@ -256,8 +257,8 @@ taskRoutes.patch("/tasks/:id", requireOrganizer, csrfJson, async (c) => {
     }
   }
   if (body.dueDate !== undefined) {
-    if (body.dueDate !== null && typeof body.dueDate !== "number") {
-      fields.dueDate = "Must be a ms-epoch number or null";
+    if (body.dueDate !== null && !isEpochMs(body.dueDate)) {
+      fields.dueDate = "Must be a ms-epoch integer";
     } else {
       input.dueDate = body.dueDate;
     }
