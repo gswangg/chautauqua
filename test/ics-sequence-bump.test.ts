@@ -7,7 +7,14 @@ import { describe, expect, it } from "vitest";
 import { bumpIcsSequences } from "../src/server/repo/ics-sequence";
 import { runAutoSchedule, MAX_AUTO_SCHEDULE_PLACEMENTS } from "../src/server/repo/agenda";
 import * as schema from "../src/db/schema";
-import { ID_CHUNK_SIZE } from "../src/lib/chunk";
+import { ID_CHUNK_SIZE, MAX_D1_BOUND_PARAMS } from "../src/lib/chunk";
+
+// DEC-528: scheduleSlot inserts are chunked by bound-parameter budget
+// (columns-per-row derived from the row shape: id, submissionId, roomId,
+// day, startMin, endMin, createdAt, updatedAt = 8 columns), independently
+// of ID_CHUNK_SIZE which still governs the bumpIcsSequences id-list chunks.
+const SCHEDULE_SLOT_COLUMNS = 8;
+const SCHEDULE_SLOT_ROWS_PER_CHUNK = Math.floor((MAX_D1_BOUND_PARAMS - 10) / SCHEDULE_SLOT_COLUMNS);
 import type { Db } from "../src/server/context";
 
 // Minimal fake db that records every select/insert/update statement issued,
@@ -115,9 +122,10 @@ describe("runAutoSchedule write burst (DEC-492: chunked inserts, one bump call)"
     expect(payload).toBeTruthy();
     expect(n).toBeLessThanOrEqual(MAX_AUTO_SCHEDULE_PLACEMENTS);
 
-    const expectedChunks = Math.ceil(n / ID_CHUNK_SIZE);
-    expect(insertCalls).toHaveLength(expectedChunks);
-    expect(updateCalls).toHaveLength(expectedChunks);
+    const expectedInsertChunks = Math.ceil(n / SCHEDULE_SLOT_ROWS_PER_CHUNK);
+    const expectedBumpChunks = Math.ceil(n / ID_CHUNK_SIZE);
+    expect(insertCalls).toHaveLength(expectedInsertChunks);
+    expect(updateCalls).toHaveLength(expectedBumpChunks);
     // Old per-placement loop would have issued exactly n inserts + n updates
     // (2n total); the chunked version issues far fewer statements.
     expect(insertCalls.length + updateCalls.length).toBeLessThan(2 * n);

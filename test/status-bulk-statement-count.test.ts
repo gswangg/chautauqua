@@ -10,7 +10,12 @@
 import { describe, expect, it } from "vitest";
 import * as schema from "../src/db/schema";
 import { updateSubmissionStatuses } from "../src/server/repo/submissions";
-import { chunkIds, ID_CHUNK_SIZE } from "../src/lib/chunk";
+import { chunkIds, ID_CHUNK_SIZE, MAX_D1_BOUND_PARAMS } from "../src/lib/chunk";
+
+// DEC-528: task_assignment inserts are chunked by bound-parameter budget
+// (columns-per-row derived from the row shape: id, taskId, contactId,
+// status, createdAt, updatedAt = 6 columns), not by ID_CHUNK_SIZE.
+const TASK_ASSIGNMENT_ROWS_PER_CHUNK = Math.floor((MAX_D1_BOUND_PARAMS - 10) / 6);
 import { DEFAULT_ONBOARDING_TASKS } from "../src/domain/acceptance";
 import type { Db } from "../src/server/context";
 
@@ -167,17 +172,20 @@ describe("DEC-355 bulk accept is set-based, not per-submission", () => {
     // — it is bounded by chunk count + distinct-title count, not id count.
     expect(totalSelects).toBeLessThan(31);
 
-    // DEC-521: task_assignment rows are inserted via chunked multi-row
-    // values(), not one insert statement per (contact, title) pair — total
-    // ROW count is still N * distinctTitles, but the insert CALL count is
-    // ceil(rows / ID_CHUNK_SIZE).
+    // DEC-521/DEC-528: task_assignment rows are inserted via chunked
+    // multi-row values(), not one insert statement per (contact, title)
+    // pair — total ROW count is still N * distinctTitles, but the insert
+    // CALL count is ceil(rows / TASK_ASSIGNMENT_ROWS_PER_CHUNK), chunked by
+    // bound-parameter budget rather than ID_CHUNK_SIZE.
     const taskAssignmentInsertCalls = insertCalls.filter((c) => c.table === "task_assignment");
     const taskAssignmentRowCount = taskAssignmentInsertCalls.reduce(
       (sum, c) => sum + (Array.isArray(c.value) ? c.value.length : 1),
       0,
     );
     expect(taskAssignmentRowCount).toBe(N * distinctTitles);
-    expect(taskAssignmentInsertCalls.length).toBe(Math.ceil((N * distinctTitles) / ID_CHUNK_SIZE));
+    expect(taskAssignmentInsertCalls.length).toBe(
+      Math.ceil((N * distinctTitles) / TASK_ASSIGNMENT_ROWS_PER_CHUNK),
+    );
 
     // task: one insert per distinct title (getOrCreateTask runs once per title).
     const taskInserts = insertCalls.filter((c) => c.table === "task").length;

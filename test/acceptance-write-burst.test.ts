@@ -8,7 +8,14 @@ import * as schema from "../src/db/schema";
 import { updateSubmissionStatuses } from "../src/server/repo/submissions";
 import { MAX_ACCEPTANCE_TASK_ASSIGNMENTS } from "../src/server/repo/submissions/status";
 import { ApiError } from "../src/server/http";
-import { ID_CHUNK_SIZE } from "../src/lib/chunk";
+import { MAX_D1_BOUND_PARAMS } from "../src/lib/chunk";
+
+// DEC-528: task_assignment inserts are chunked by bound-parameter budget
+// (columns-per-row derived from the row shape: id, taskId, contactId,
+// status, createdAt, updatedAt = 6 columns), not by ID_CHUNK_SIZE (which is
+// sized for one-bind-per-id inArray lists, not multi-row inserts).
+const TASK_ASSIGNMENT_COLUMNS = 6;
+const TASK_ASSIGNMENT_ROWS_PER_CHUNK = Math.floor((MAX_D1_BOUND_PARAMS - 10) / TASK_ASSIGNMENT_COLUMNS);
 import { DEFAULT_ONBOARDING_TASKS } from "../src/domain/acceptance";
 import type { Db } from "../src/server/context";
 
@@ -114,8 +121,7 @@ function contactIds(n: number, prefix: string): string[] {
 }
 
 describe("DEC-521 task_assignment insert is chunked, not one-per-pair", () => {
-  it("issues ceil(N / ID_CHUNK_SIZE) insert calls for N (contact, title) pairs", async () => {
-    // 25 contacts * 5 default templates = 125 pairs -> ceil(125/90) = 2 calls.
+  it("issues ceil(N / rowsPerChunk) insert calls for N (contact, title) pairs", async () => {
     const contacts = contactIds(25, "contact");
     const { db, state, insertCalls } = fakeDb({
       event: [{ id: EVENT_ID, startDate: "2026-06-15" }],
@@ -129,11 +135,11 @@ describe("DEC-521 task_assignment insert is chunked, not one-per-pair", () => {
     expect(state.taskAssignment.length).toBe(expectedPairs);
 
     const taskAssignmentCalls = insertCalls.filter((c) => c.table === schema.taskAssignment);
-    expect(taskAssignmentCalls.length).toBe(Math.ceil(expectedPairs / ID_CHUNK_SIZE));
+    expect(taskAssignmentCalls.length).toBe(Math.ceil(expectedPairs / TASK_ASSIGNMENT_ROWS_PER_CHUNK));
     const totalRows = taskAssignmentCalls.reduce((sum, c) => sum + c.rowCount, 0);
     expect(totalRows).toBe(expectedPairs);
     for (const call of taskAssignmentCalls) {
-      expect(call.rowCount).toBeLessThanOrEqual(ID_CHUNK_SIZE);
+      expect(call.rowCount).toBeLessThanOrEqual(TASK_ASSIGNMENT_ROWS_PER_CHUNK);
     }
   });
 });

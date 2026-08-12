@@ -6,8 +6,12 @@ import { and, eq, inArray } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { newId } from "../../../domain/ids";
-import { chunkIds } from "../../../lib/chunk";
+import { chunkIds, chunkRowsForInsert } from "../../../lib/chunk";
 import { ACTIVE_INVITE_STATUSES } from "../../../domain/acceptance";
+import { ApiError } from "../../http";
+import { DEC_528 } from "../../../decisions";
+
+void DEC_528; // createTaskAssignments below is set-based under MAX_TASK_ASSIGNMENT_WRITES
 
 export type DeliverableKind = "presentation" | "poster" | "handout";
 
@@ -79,6 +83,12 @@ export async function listAcceptedContactIds(db: Db, eventId: string): Promise<s
   return [...new Set(rows.map((r) => r.contactId))];
 }
 
+/** DEC-528: the last per-row task_assignment writer in the product — made
+ * set-based under this cap, checked BEFORE the first write so an oversized
+ * batch (e.g. assignToAllAccepted over a large accepted roster) is refused
+ * loudly instead of silently truncated or run one row at a time. */
+export const MAX_TASK_ASSIGNMENT_WRITES = 5000;
+
 export async function createTaskAssignments(
   db: Db,
   taskId: string,
@@ -96,15 +106,23 @@ export async function createTaskAssignments(
   }
   const already = new Set(existing.map((r) => r.contactId));
   const toCreate = contactIds.filter((id) => !already.has(id));
-  for (const contactId of toCreate) {
-    await db.insert(schema.taskAssignment).values({
-      id: newId(),
-      taskId,
-      contactId,
-      status: "pending",
-      createdAt: now,
-      updatedAt: now,
-    });
+  if (toCreate.length > MAX_TASK_ASSIGNMENT_WRITES) {
+    throw new ApiError(
+      "invalid",
+      `Task assignments to create (${toCreate.length}) exceed the cap of ${MAX_TASK_ASSIGNMENT_WRITES}`,
+      { contactIds: `${toCreate.length} exceeds cap ${MAX_TASK_ASSIGNMENT_WRITES}` },
+    );
+  }
+  const rows = toCreate.map((contactId) => ({
+    id: newId(),
+    taskId,
+    contactId,
+    status: "pending" as const,
+    createdAt: now,
+    updatedAt: now,
+  }));
+  for (const chunk of chunkRowsForInsert(rows)) {
+    await db.insert(schema.taskAssignment).values(chunk);
   }
 }
 
