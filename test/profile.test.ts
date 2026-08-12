@@ -167,8 +167,9 @@ describe("no route surface accepts a foreign contactId — another contact's pro
   it("GET /portal/profile takes no id param: hitting a path with one 404s (falls through to Hono's default not-found)", async () => {
     const app = appWithAuth({ userId: "u1", role: "speaker", orgId: "org1", contactId: "c1" });
     const res = await app.request("/portal/profile/some-other-contact-id");
-    // Only /portal/profile and /portal/profile/headshot are registered —
-    // there is no :contactId-shaped route, so this can only 404.
+    // Only /portal/profile is registered (DEC-574 merged the headshot
+    // route into it) — there is no :contactId-shaped route, so this can
+    // only 404.
     expect(res.status).toBe(404);
   });
 

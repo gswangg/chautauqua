@@ -26,6 +26,7 @@ const PROFILE_WITH_HEADSHOT: ContactProfile = {
 const PROFILE_NO_HEADSHOT: ContactProfile = { ...PROFILE_WITH_HEADSHOT, headshotUrl: null };
 
 const setContactHeadshotMock = vi.fn(async (..._args: unknown[]) => "file-new");
+const updateContactProfileMock = vi.fn(async (..._args: unknown[]) => undefined);
 
 vi.mock("../src/server/repo/profile", async () => {
   const actual = await vi.importActual<typeof import("../src/server/repo/profile")>("../src/server/repo/profile");
@@ -33,6 +34,7 @@ vi.mock("../src/server/repo/profile", async () => {
     ...actual,
     getContactProfile: vi.fn(async () => currentProfile),
     setContactHeadshot: (...args: unknown[]) => setContactHeadshotMock(...args),
+    updateContactProfile: (...args: unknown[]) => updateContactProfileMock(...args),
   };
 });
 
@@ -125,13 +127,15 @@ function fakeFilesBucket() {
   } as unknown as AppEnv["Bindings"]["FILES"];
 }
 
-describe("POST /portal/profile/headshot", () => {
-  function postHeadshot(app: Hono<AppEnv>, file?: File) {
+describe("POST /portal/profile (with a headshot part)", () => {
+  function postProfile(app: Hono<AppEnv>, file?: File) {
     const form = new FormData();
     form.set("chq_csrf", "test-csrf-token");
+    form.set("firstName", "Jane");
+    form.set("lastName", "Doe");
     if (file) form.set("headshot", file);
     return app.request(
-      "/portal/profile/headshot",
+      "/portal/profile",
       {
         method: "POST",
         headers: { cookie: "chq_csrf=test-csrf-token" },
@@ -141,22 +145,107 @@ describe("POST /portal/profile/headshot", () => {
     );
   }
 
-  it("redirects to /portal/profile?headshot=1 on a successful upload (PRG)", async () => {
+  it("redirects to /portal/profile?saved=1&headshot=1 on a successful upload (PRG)", async () => {
     currentProfile = PROFILE_WITH_HEADSHOT;
     const app = buildApp();
     const file = new File([new Uint8Array([1, 2, 3])], "photo.webp", { type: "image/webp" });
-    const res = await postHeadshot(app, file);
+    const res = await postProfile(app, file);
     expect(res.status).toBe(302);
-    expect(res.headers.get("location")).toBe("/portal/profile?headshot=1");
+    expect(res.headers.get("location")).toBe("/portal/profile?saved=1&headshot=1");
+  });
+
+  it("redirects to /portal/profile?saved=1 (no headshot flag) when no file part is submitted", async () => {
+    currentProfile = PROFILE_WITH_HEADSHOT;
+    const app = buildApp();
+    const res = await postProfile(app);
+    expect(res.status).toBe(302);
+    expect(res.headers.get("location")).toBe("/portal/profile?saved=1");
   });
 
   it("rejects an empty-file submit with a clear validation error, not a silent success", async () => {
     currentProfile = PROFILE_WITH_HEADSHOT;
     const app = buildApp();
     const emptyFile = new File([], "photo.webp", { type: "image/webp" });
-    const res = await postHeadshot(app, emptyFile);
+    const res = await postProfile(app, emptyFile);
     expect(res.status).toBe(400);
     const html = await res.text();
     expect(html).toContain("File is empty");
+  });
+});
+
+// DEC-574: one multipart POST must carry both a changed bio and a headshot
+// file, and persist both — the prior split-form design lost the bio when a
+// photo was uploaded.
+describe("POST /portal/profile — merged form persists bio and headshot together", () => {
+  function fakeFileStoreBucket() {
+    const puts: Array<{ key: string; contentType: string | undefined }> = [];
+    return {
+      bucket: {
+        async put(key: string, _value: unknown, contentType?: string) {
+          puts.push({ key, contentType });
+        },
+        async get() {
+          return null;
+        },
+        async delete() {},
+      } as unknown as AppEnv["Bindings"]["FILES"],
+      puts,
+    };
+  }
+
+  it("persists a changed bio and a headshot upload from a single multipart POST", async () => {
+    currentProfile = PROFILE_WITH_HEADSHOT;
+    const app = buildApp();
+    const { bucket, puts } = fakeFileStoreBucket();
+
+    const form = new FormData();
+    form.set("chq_csrf", "test-csrf-token");
+    form.set("firstName", "Jane");
+    form.set("lastName", "Doe");
+    form.set("bio", "A brand new bio written just before the upload.");
+    form.set("headshot", new File([new Uint8Array([1, 2, 3])], "photo.webp", { type: "image/webp" }));
+
+    const res = await app.request(
+      "/portal/profile",
+      {
+        method: "POST",
+        headers: { cookie: "chq_csrf=test-csrf-token" },
+        body: form,
+      },
+      { FILES: bucket } as unknown as AppEnv["Bindings"],
+    );
+
+    expect(res.status).toBe(302);
+    expect(res.headers.get("location")).toBe("/portal/profile?saved=1&headshot=1");
+    // The headshot was actually stored (file store received the upload)...
+    expect(puts.length).toBe(1);
+    expect(setContactHeadshotMock).toHaveBeenCalled();
+    // ...and updateContactProfile was called with the submitted bio, not
+    // silently dropped because a file was also present in the same body.
+    expect(updateContactProfileMock).toHaveBeenCalledWith(
+      expect.anything(),
+      "c1",
+      expect.objectContaining({ bio: "A brand new bio written just before the upload." }),
+    );
+  });
+});
+
+describe("GET /portal/profile — merged form", () => {
+  it("renders exactly one <form> in the details/headshot region (the page's other <form> is the layout's sign-out button)", async () => {
+    currentProfile = PROFILE_WITH_HEADSHOT;
+    const app = buildApp();
+    const res = await app.request("/portal/profile");
+    const html = await res.text();
+    // Isolate the details/headshot region from the layout chrome (which has
+    // its own single-purpose sign-out <form>) before counting <form> tags —
+    // this is what "one form for the whole details+headshot region" means.
+    // The <form> element opens before the "Headshot" section it wraps, so
+    // anchor on its own action attribute rather than the section label.
+    const region = html.slice(html.indexOf('<form method="post" action="/portal/profile"'));
+    const formOpenCount = (region.match(/<form\b/g) ?? []).length;
+    expect(formOpenCount).toBe(1);
+    // Both the file input and a details field live in that one form.
+    expect(region).toContain('name="headshot"');
+    expect(region).toContain('name="firstName"');
   });
 });
