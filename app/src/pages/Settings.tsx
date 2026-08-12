@@ -11,12 +11,12 @@ import { useState, type ComponentType } from 'react';
 import { EventSettingsPanel } from './settings/EventSettingsPanel';
 import { CallForPapersPanel } from './settings/CallForPapersPanel';
 import { TracksRoomsPanel } from './settings/TracksRoomsPanel';
+import { PublicPagesPanel } from './settings/PublicPagesPanel';
 import { PortalSettingsPanel } from './settings/PortalSettingsPanel';
 import { ResourcesPanel } from './settings/ResourcesPanel';
 import { PeopleRolesPanel } from './settings/PeopleRolesPanel';
 import { ApiTokensPanel } from './settings/ApiTokensPanel';
 import { ExportsPanel } from './settings/ExportsPanel';
-import { EmbedsPanel } from './settings/EmbedsPanel';
 import { SessionboardImportPanel } from './settings/SessionboardImportPanel';
 import './settings/settings.css';
 
@@ -26,18 +26,43 @@ interface SettingsSection {
   Panel: ComponentType;
 }
 
-// DEC-588: rail order is Event, Call for papers, Portal, Tracks and rooms,
-// Resources, People and roles, API tokens, Exports, Embeds.
+// DEC-691: 'Speaker portal' composes the existing PortalSettingsPanel and
+// ResourcesPanel into one section (both are the portal's own configuration
+// -- welcome message/branding and the resources shown inside it); neither
+// panel's save endpoint, upload flow or delete-reference guard changes.
+function SpeakerPortalSection() {
+  return (
+    <>
+      <PortalSettingsPanel />
+      <ResourcesPanel />
+    </>
+  );
+}
+
+// DEC-691: 'Your data' composes the existing ExportsPanel and
+// ApiTokensPanel into one section (both are ways to get this event's data
+// out); neither panel's export/token-reveal-once flow changes.
+function YourDataSection() {
+  return (
+    <>
+      <ExportsPanel />
+      <ApiTokensPanel />
+    </>
+  );
+}
+
+// DEC-691: rail converges on the mock's seven sections (docs/design/
+// Chautauqua Settings.dc.html lines 61-215), in this order. 'Import from
+// Sessionboard' has no mock section -- it stays as an eighth, honestly
+// labelled extra rather than being folded into one of the seven or cut.
 const SECTIONS: SettingsSection[] = [
   { key: 'event', label: 'Event', Panel: EventSettingsPanel },
   { key: 'cfp', label: 'Call for papers', Panel: CallForPapersPanel },
-  { key: 'portal', label: 'Portal', Panel: PortalSettingsPanel },
   { key: 'tracks', label: 'Tracks and rooms', Panel: TracksRoomsPanel },
-  { key: 'resources', label: 'Resources', Panel: ResourcesPanel },
+  { key: 'public-pages', label: 'Public pages and embeds', Panel: PublicPagesPanel },
+  { key: 'portal', label: 'Speaker portal', Panel: SpeakerPortalSection },
   { key: 'people', label: 'People and roles', Panel: PeopleRolesPanel },
-  { key: 'tokens', label: 'API tokens', Panel: ApiTokensPanel },
-  { key: 'exports', label: 'Exports', Panel: ExportsPanel },
-  { key: 'embeds', label: 'Embeds', Panel: EmbedsPanel },
+  { key: 'your-data', label: 'Your data', Panel: YourDataSection },
   { key: 'sessionboard-import', label: 'Import from Sessionboard', Panel: SessionboardImportPanel },
 ];
 

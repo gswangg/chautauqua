@@ -1,8 +1,10 @@
-// DEC-144 layer-2 harness (batch B, task-w3-e): component-render smoke test
-// for the Settings page. Mounts the real SettingsPage against mocked fetch
-// routes for every panel it renders unconditionally (event settings,
-// tracks/rooms, portal settings, resources, API tokens, exports, embeds)
-// and asserts each panel's heading renders without throwing.
+// DEC-144 layer-2 harness (batch B, task-w3-e; converged w15-e/DEC-691):
+// component-render smoke test for the Settings page. Mounts the real
+// SettingsPage against mocked fetch routes for every panel it renders
+// unconditionally (event settings, tracks/rooms, public pages, speaker
+// portal [portal settings + resources], people and roles, your data
+// [exports + API tokens]) and asserts each panel's heading renders without
+// throwing.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor, fireEvent, cleanup, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
@@ -58,6 +60,7 @@ function mockAllSections() {
       closeDate: null,
       tracks: [],
     },
+    [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([]),
     'GET /api/v1/me': { userId: 'u-self', email: 'self@example.com', name: null, role: 'organizer', orgId: 'org1' },
     'GET /api/v1/users': listEnvelope([{ id: 'u-self', email: 'self@example.com', role: 'organizer' }]),
     'GET /api/v1/tokens': listEnvelope([{ id: 'tok1', name: 'CI pipeline', tokenPrefix: 'chq_abcd', lastUsedAt: null }]),
@@ -91,36 +94,39 @@ describe('SettingsPage render smoke', () => {
       expect(screen.getByDisplayValue('Tell us about your talk.')).toBeInTheDocument();
     });
 
+    // Public pages and embeds panel.
+    expect(screen.getByRole('heading', { name: 'Public pages and embeds' })).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText(`/e/devcon-2026/sessions`)).toBeInTheDocument();
+    });
+    expect(screen.getByText(`/submit/devcon-2026`)).toBeInTheDocument();
+
+    // Speaker portal section (Portal settings + Resources composed).
+    expect(screen.getByRole('heading', { name: 'Portal settings' })).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('Welcome, speakers!')).toBeInTheDocument();
+    });
+    expect(screen.getByRole('heading', { name: 'Resources' })).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('Travel info')).toBeInTheDocument();
+    });
+
     // People and roles panel.
     expect(screen.getByRole('heading', { name: 'People and roles' })).toBeInTheDocument();
     await waitFor(() => {
       expect(screen.getByText('self@example.com')).toBeInTheDocument();
     });
 
-    // Portal settings panel.
-    expect(screen.getByRole('heading', { name: 'Portal settings' })).toBeInTheDocument();
-    await waitFor(() => {
-      expect(screen.getByDisplayValue('Welcome, speakers!')).toBeInTheDocument();
-    });
-
-    // Resources panel.
-    expect(screen.getByRole('heading', { name: 'Resources' })).toBeInTheDocument();
-    await waitFor(() => {
-      expect(screen.getByText('Travel info')).toBeInTheDocument();
-    });
-
-    // API tokens panel.
-    expect(screen.getByRole('heading', { name: 'API Tokens' })).toBeInTheDocument();
-    await waitFor(() => {
-      expect(screen.getByText('CI pipeline')).toBeInTheDocument();
-    });
-
-    // Exports panel (renders synchronously once eventId resolves).
+    // Your data section (Exports + API tokens composed).
     expect(screen.getByRole('heading', { name: 'Exports' })).toBeInTheDocument();
     expect(screen.getAllByRole('link', { name: 'Download CSV' })[0]).toHaveAttribute(
       'href',
       `/api/v1/events/${EVENT_ID}/export/submissions?format=csv`,
     );
+    expect(screen.getByRole('heading', { name: 'API Tokens' })).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('CI pipeline')).toBeInTheDocument();
+    });
 
     // Sessionboard import panel (renders synchronously once eventId
     // resolves; makes no GET requests of its own).
@@ -144,10 +150,10 @@ describe('SettingsPage render smoke', () => {
     const historyLengthBefore = window.history.length;
 
     const rail = screen.getByRole('navigation', { name: 'Settings sections' });
-    const resourcesLink = within(rail).getByRole('button', { name: 'Resources' });
-    fireEvent.click(resourcesLink);
+    const peopleLink = within(rail).getByRole('button', { name: 'People and roles' });
+    fireEvent.click(peopleLink);
 
-    expect(resourcesLink).toHaveClass('chq-settings-rail-link-active');
+    expect(peopleLink).toHaveClass('chq-settings-rail-link-active');
     expect(
       window.location.pathname + window.location.search + window.location.hash,
     ).toBe(pathBefore);
@@ -156,16 +162,17 @@ describe('SettingsPage render smoke', () => {
     const backButton = screen.getByRole('button', { name: '‹ Settings' });
     fireEvent.click(backButton);
 
-    expect(resourcesLink).not.toHaveClass('chq-settings-rail-link-active');
+    expect(peopleLink).not.toHaveClass('chq-settings-rail-link-active');
     expect(
       window.location.pathname + window.location.search + window.location.hash,
     ).toBe(pathBefore);
     expect(window.history.length).toBe(historyLengthBefore);
   });
 
-  // DEC-588: rail order is Event, Call for papers, Portal, Tracks and
-  // rooms, Resources, People and roles, API tokens, Exports, Embeds.
-  it('renders the rail sections in DEC-588 order', async () => {
+  // DEC-691: rail converges on the mock's seven sections (docs/design/
+  // Chautauqua Settings.dc.html lines 61-215), in this order, plus the
+  // honestly-labelled 'Import from Sessionboard' extra.
+  it('renders the rail sections in DEC-691 order', async () => {
     mockAllSections();
 
     render(<SettingsPage />);
@@ -182,13 +189,11 @@ describe('SettingsPage render smoke', () => {
     expect(labels).toEqual([
       'Event',
       'Call for papers',
-      'Portal',
       'Tracks and rooms',
-      'Resources',
+      'Public pages and embeds',
+      'Speaker portal',
       'People and roles',
-      'API tokens',
-      'Exports',
-      'Embeds',
+      'Your data',
       'Import from Sessionboard',
     ]);
   });
