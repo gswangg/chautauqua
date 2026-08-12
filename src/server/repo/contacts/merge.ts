@@ -2,7 +2,7 @@
 // (contention decomposition, no behavior change). See repo/contacts.ts for
 // the module-level contract notes.
 
-import { and, asc, eq, inArray, notInArray, sql } from "drizzle-orm";
+import { asc, eq, inArray, sql } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { chunkIds } from "../../../lib/chunk";
@@ -77,6 +77,22 @@ export async function findDuplicateGroupsForOrg(db: Db, orgId: string): Promise<
   return out;
 }
 
+/** DEC-565: pure predicate for the (b2) email-conflict pre-check. `owner
+ * ContactId` is the contactId of whatever user row already owns the merged
+ * email (null for an organizer/reviewer login, which has no contact). A
+ * null ownerContactId always conflicts — this is exactly the staff-login
+ * case that a SQL `contact_id NOT IN (:keepId, :mergeId)` predicate used to
+ * skip, since SQLite's NOT IN evaluates to NULL (not TRUE) whenever the
+ * column being compared is NULL, silently letting the merge proceed until
+ * it later crashed on the user_email_idx UNIQUE constraint mid-write. */
+export function emailConflictsWithOtherAccount(
+  ownerContactId: string | null,
+  keepId: string,
+  mergeId: string,
+): boolean {
+  return ownerContactId !== keepId && ownerContactId !== mergeId;
+}
+
 /** Applies DEC-026/DEC-101/DEC-282/DEC-456/DEC-479 merge, in this exact
  * load-bearing order:
  *  (a) BEFORE any write, load both contacts' user rows; if both have a
@@ -87,7 +103,11 @@ export async function findDuplicateGroupsForOrg(db: Db, orgId: string): Promise<
  *      against merged.email — if some OTHER user row (not keepId's, not
  *      mergeId's) already owns that address, throw a conflict. user_email_
  *      idx is a UNIQUE index (src/db/schema.ts), so this must run before
- *      the write below, not after.
+ *      the write below, not after. DEC-565: this must be evaluated in JS,
+ *      not as a `contact_id NOT IN (...)` SQL predicate — organizer/reviewer
+ *      logins are created with contactId NULL (src/server/repo/users.ts),
+ *      and SQLite's NOT IN evaluates to NULL (not TRUE) whenever the column
+ *      is NULL, so a staff login's email silently passed the old check.
  *  (c) dedupe participant rows the two contacts share a submission on
  *      (deleting mergeId's duplicate row rather than repointing it into a
  *      UNIQUE-violating dupe).
@@ -126,20 +146,20 @@ export async function mergeContacts(db: Db, keepId: string, mergeId: string): Pr
   // (b) planMerge onto the kept row.
   const { merged } = planMerge(toContactRecord(keepRow), toContactRecord(mergeRow));
 
-  // (b2) DEC-479/DEC-456: before any write, reject if merged.email already
-  // belongs to some other login account (neither keepId's nor mergeId's).
+  // (b2) DEC-479/DEC-456/DEC-565: before any write, reject if merged.email
+  // already belongs to some other login account (neither keepId's nor
+  // mergeId's). Evaluated in JS via emailConflictsWithOtherAccount rather
+  // than a SQL `contact_id NOT IN (...)` predicate — see DEC-565 note above
+  // the function docstring for why NOT IN silently skipped NULL contactId
+  // rows (staff logins).
   const mergedEmailLower = merged.email.toLowerCase();
   const emailConflictRows = await db
     .select({ id: schema.user.id, contactId: schema.user.contactId })
     .from(schema.user)
-    .where(
-      and(
-        sql`lower(${schema.user.email}) = ${mergedEmailLower}`,
-        notInArray(schema.user.contactId, [keepId, mergeId]),
-      ),
-    )
+    .where(sql`lower(${schema.user.email}) = ${mergedEmailLower}`)
     .limit(1);
-  if (emailConflictRows.length > 0) {
+  const owner = emailConflictRows[0];
+  if (owner && emailConflictsWithOtherAccount(owner.contactId, keepId, mergeId)) {
     throw new ApiError("conflict", "That email already belongs to another account");
   }
 
