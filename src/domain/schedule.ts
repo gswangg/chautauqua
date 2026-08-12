@@ -3,9 +3,10 @@
  * auto-schedule. Pure module — no node:/cloudflare imports (DEC-002).
  */
 
-import { DEC_130, DEC_476 } from "../decisions";
+import { DEC_130, DEC_476, DEC_615 } from "../decisions";
 void DEC_130;
 void DEC_476;
+void DEC_615;
 
 /** DEC-476: single source of truth for the day boundary in minutes. Every
  * schedule-slot writer and the auto-schedule bounds share this constant so
@@ -57,6 +58,49 @@ export function describeConflict(c: Conflict, labels: ConflictLabels): string {
     (id) => labels.speakerNameByContactId.get(id) ?? id,
   );
   return `Speaker(s) ${speakerNames.join(", ")} double-booked on ${c.day} between "${titleA}" and "${titleB}"`;
+}
+
+/** DEC-615: closed vocabulary for why autoSchedule could not place a
+ * session. The enum never carries prose — describeUnplaced is the ONE
+ * renderer, mirroring describeConflict above. */
+export type UnplacedReason =
+  | "no_rooms_configured"
+  | "duration_exceeds_day"
+  | "no_free_slot"
+  | "speaker_double_booked";
+
+export interface UnplacedSession {
+  submissionId: string;
+  reason: UnplacedReason;
+}
+
+/** DEC-615: label lookups describeUnplaced needs to render an UnplacedReason
+ * as prose. An unresolved id falls back to the raw id rather than blanking,
+ * matching describeConflict's convention. */
+export interface UnplacedLabels {
+  titleBySubmissionId: Map<string, string>;
+  speakerNameByContactId: Map<string, string>;
+}
+
+/** DEC-615: the ONE place an UnplacedReason becomes human-readable prose.
+ * Copy rule: name the constraint, promise nothing — never advice about
+ * widening the day or adding rooms. */
+export function describeUnplaced(
+  reason: UnplacedReason,
+  labels: UnplacedLabels,
+  session: { submissionId: string; durationMin: number },
+): string {
+  const title = labels.titleBySubmissionId.get(session.submissionId) ?? session.submissionId;
+  switch (reason) {
+    case "no_rooms_configured":
+      return `"${title}" not placed: no rooms are configured for this event`;
+    case "duration_exceeds_day":
+      return `"${title}" not placed: its ${session.durationMin}-minute duration exceeds the scheduling day`;
+    case "no_free_slot":
+      return `"${title}" not placed: no free ${session.durationMin}-minute slot in any room on any day`;
+    case "speaker_double_booked":
+      return `"${title}" not placed: every open slot conflicts with a speaker already booked elsewhere`;
+  }
 }
 
 function intersects(a: PlacedSession, b: PlacedSession): boolean {
@@ -195,10 +239,14 @@ export interface AutoScheduleInput {
  * then track, place each into the earliest slot on the grid (scanning
  * days, then start times, then rooms in the given order) that produces
  * zero new conflicts against existing placements plus everything placed
- * so far. Sessions that fit nowhere are left out of the result — an
- * unplaced session is a valid state, never an error.
+ * so far. Sessions that fit nowhere are left out of `placed` — an
+ * unplaced session is a valid state, never an error — and instead appear
+ * in `unplaced` with a reason (DEC-615).
  */
-export function autoSchedule(input: AutoScheduleInput): PlacedSession[] {
+export function autoSchedule(input: AutoScheduleInput): {
+  placed: PlacedSession[];
+  unplaced: UnplacedSession[];
+} {
   const { sessions, rooms, days, dayStartMin, dayEndMin, gridMin, existing } =
     input;
 
@@ -258,8 +306,32 @@ export function autoSchedule(input: AutoScheduleInput): PlacedSession[] {
     }
   }
 
+  const unplaced: UnplacedSession[] = [];
+
   for (const session of ordered) {
     let placedThisSession = false;
+
+    // DEC-615: these two global conditions short-circuit the scan (matching
+    // the loop's own no-op behaviour when rooms is empty or the loop
+    // condition never holds) but earn their own named reason instead of
+    // falling through to the generic 'no_free_slot'.
+    if (rooms.length === 0) {
+      unplaced.push({ submissionId: session.submissionId, reason: "no_rooms_configured" });
+      continue;
+    }
+    if (session.durationMin > dayEndMin - dayStartMin) {
+      unplaced.push({ submissionId: session.submissionId, reason: "duration_exceeds_day" });
+      continue;
+    }
+
+    // DEC-615: true iff some candidate slot ever had a room free (i.e. the
+    // scan reached the speaker check) for this session. Once a room is
+    // free, the ONLY remaining rejection in this loop is a speaker
+    // conflict — if this session still didn't place, every room-free
+    // candidate must have been rejected specifically by the speaker
+    // index, so this single flag is enough to distinguish the two
+    // 'blocked entirely by rooms' vs 'blocked by a speaker' outcomes.
+    let sawRoomAvailableCandidate = false;
 
     for (const day of days) {
       if (placedThisSession) break;
@@ -276,6 +348,8 @@ export function autoSchedule(input: AutoScheduleInput): PlacedSession[] {
           const roomKey = `${day}|${roomId}`;
           const roomBucket = roomIndex.get(roomKey);
           if (roomBucket?.some((i) => overlaps(i, interval))) continue;
+
+          sawRoomAvailableCandidate = true;
 
           let speakerConflict = false;
           for (const contactId of session.speakerContactIds) {
@@ -314,7 +388,14 @@ export function autoSchedule(input: AutoScheduleInput): PlacedSession[] {
         }
       }
     }
+
+    if (!placedThisSession) {
+      unplaced.push({
+        submissionId: session.submissionId,
+        reason: sawRoomAvailableCandidate ? "speaker_double_booked" : "no_free_slot",
+      });
+    }
   }
 
-  return placed;
+  return { placed, unplaced };
 }

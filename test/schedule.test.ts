@@ -181,8 +181,9 @@ describe("autoSchedule", () => {
     const run2 = autoSchedule(input);
     expect(run1).toEqual(run2);
 
-    expect(run1.map((p) => p.submissionId).sort()).toEqual(["s1", "s2", "s3"]);
-    expect(findConflicts(run1)).toEqual([]);
+    expect(run1.placed.map((p) => p.submissionId).sort()).toEqual(["s1", "s2", "s3"]);
+    expect(run1.unplaced).toEqual([]);
+    expect(findConflicts(run1.placed)).toEqual([]);
   });
 
   it("leaves an unsolvable session unplaced without throwing", () => {
@@ -200,9 +201,10 @@ describe("autoSchedule", () => {
     };
 
     const result = autoSchedule(input);
-    const placedIds = result.map((p) => p.submissionId);
+    const placedIds = result.placed.map((p) => p.submissionId);
     expect(placedIds).not.toContain("s2");
-    expect(findConflicts(result)).toEqual([]);
+    expect(result.unplaced).toEqual([{ submissionId: "s2", reason: "duration_exceeds_day" }]);
+    expect(findConflicts(result.placed)).toEqual([]);
   });
 
   it("avoids new conflicts against existing placements", () => {
@@ -228,8 +230,8 @@ describe("autoSchedule", () => {
     };
 
     const result = autoSchedule(input);
-    expect(findConflicts(result)).toEqual([]);
-    const placedS1 = result.find((p) => p.submissionId === "s1");
+    expect(findConflicts(result.placed)).toEqual([]);
+    const placedS1 = result.placed.find((p) => p.submissionId === "s1");
     expect(placedS1).toBeDefined();
     expect(placedS1!.startMin).toBeGreaterThanOrEqual(600);
   });
@@ -257,13 +259,13 @@ describe("autoSchedule", () => {
     };
 
     const result = autoSchedule(input);
-    const placedS1 = result.find((p) => p.submissionId === "s1");
+    const placedS1 = result.placed.find((p) => p.submissionId === "s1");
     expect(placedS1).toBeDefined();
     // Room-a is occupied at 540-600, so s1 must fall back to room-b at the
     // same earliest slot rather than skip ahead to a later start time.
     expect(placedS1!.roomId).toBe("room-b");
     expect(placedS1!.startMin).toBe(540);
-    expect(findConflicts(result)).toEqual([]);
+    expect(findConflicts(result.placed)).toEqual([]);
   });
 
   it("falls back to the next slot when a shared speaker is occupied across rooms", () => {
@@ -291,10 +293,10 @@ describe("autoSchedule", () => {
     };
 
     const result = autoSchedule(input);
-    const placedS1 = result.find((p) => p.submissionId === "s1");
+    const placedS1 = result.placed.find((p) => p.submissionId === "s1");
     expect(placedS1).toBeDefined();
     expect(placedS1!.startMin).toBeGreaterThanOrEqual(600);
-    expect(findConflicts(result)).toEqual([]);
+    expect(findConflicts(result.placed)).toEqual([]);
   });
 
   it("schedules ~400 sessions across 15 rooms/5 days quickly with zero conflicts", () => {
@@ -333,8 +335,8 @@ describe("autoSchedule", () => {
 
     expect(elapsedMs).toBeLessThan(2000);
 
-    const newlyPlacedIds = new Set(result.map((p) => p.submissionId));
-    const conflicts = findConflicts(result).filter(
+    const newlyPlacedIds = new Set(result.placed.map((p) => p.submissionId));
+    const conflicts = findConflicts(result.placed).filter(
       (c) =>
         newlyPlacedIds.has(c.submissionIds[0]) ||
         newlyPlacedIds.has(c.submissionIds[1]),
@@ -368,7 +370,7 @@ describe("autoSchedule", () => {
     });
 
     const byId = (result: typeof inOrder) =>
-      [...result].sort((a, b) => a.submissionId.localeCompare(b.submissionId));
+      [...result.placed].sort((a, b) => a.submissionId.localeCompare(b.submissionId));
 
     expect(byId(reversed)).toEqual(byId(inOrder));
     expect(byId(rotated)).toEqual(byId(inOrder));

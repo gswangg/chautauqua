@@ -268,6 +268,21 @@
   gap: 8px;
 }
 
+.chq-unscheduled-tray-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* DEC-615: the reason auto-schedule could not place this session — name
+   the constraint, promise nothing. */
+.chq-unscheduled-reason {
+  font-size: 11px;
+  color: var(--chq-muted);
+  line-height: 1.4;
+  margin: 0 0 0 2px;
+}
+
 .chq-unscheduled-tray-empty {
   font-size: 13px;
   color: var(--chq-muted);

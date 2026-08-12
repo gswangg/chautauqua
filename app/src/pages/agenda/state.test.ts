@@ -18,6 +18,7 @@ function basePayload(): AgendaPayload {
       },
     ],
     conflicts: [],
+    unplacedReasons: [],
     summary: { unplaced: 1, conflicts: 0 },
   };
 }

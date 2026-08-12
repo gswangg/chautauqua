@@ -50,6 +50,10 @@ export function placeOptimistically(
     ...state,
     unscheduled: state.unscheduled.filter((s) => s.submissionId !== submissionId),
     placed: [...state.placed.filter((s) => s.submissionId !== submissionId), placedSession],
+    // DEC-615: a session that just got placed no longer has an unplaced
+    // reason — stale reasons would otherwise still render under a card
+    // that has since moved into the grid.
+    unplacedReasons: state.unplacedReasons.filter((u) => u.submissionId !== submissionId),
   };
 }
 

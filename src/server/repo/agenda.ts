@@ -15,6 +15,7 @@ import { visibleSessionConditions } from "./public/gates";
 import {
   autoSchedule,
   describeConflict,
+  describeUnplaced,
   findConflicts,
   MINUTES_PER_DAY,
   scheduleSummary,
@@ -22,11 +23,18 @@ import {
   type Conflict,
   type ConflictLabels,
   type PlacedSession,
+  type UnplacedLabels,
+  type UnplacedSession,
 } from "../../domain/schedule";
 
 /** DEC-557: a Conflict plus its rendered prose, produced by describeConflict
  * — the ONE place a conflict becomes human-readable text. */
 export type DescribedConflict = Conflict & { detail: string };
+
+/** DEC-615: an UnplacedSession plus its rendered prose from describeUnplaced
+ * and the duration that reason was computed against — the agenda payload's
+ * one place an auto-schedule run's unplaced reasons become human-readable. */
+export type DescribedUnplaced = UnplacedSession & { durationMin: number; detail: string };
 
 // ---------------------------------------------------------------------------
 // Pure helpers (unit-tested directly, no I/O)
@@ -104,6 +112,12 @@ export interface AgendaPayload {
   placed: PlacedAgendaSession[];
   unscheduled: UnscheduledAgendaSession[];
   conflicts: DescribedConflict[];
+  /** DEC-615: per-item reasons from the most recent auto-schedule run —
+   * only runAutoSchedule populates this (getAgendaPayload's plain GET has
+   * never run the placer, so it has no reasons to report). summary.unplaced
+   * always counts ALL unplaced accepted sessions (DEC-021), a superset of
+   * this list whenever a session has never been through auto-schedule. */
+  unplacedReasons: DescribedUnplaced[];
   summary: { unplaced: number; conflicts: number };
 }
 
@@ -355,6 +369,7 @@ export async function getAgendaPayload(db: Db, eventId: string, event: EventInfo
     placed,
     unscheduled,
     conflicts: describeConflicts(conflicts, labels),
+    unplacedReasons: [],
     summary,
   };
 }
@@ -528,15 +543,15 @@ export async function runAutoSchedule(
     }));
   const existingIds = new Set(existing.map((s) => s.submissionId));
 
-  const unplaced = accepted.filter((s) => s.slot === null);
-  const sessions: AutoScheduleSessionInput[] = unplaced.map((s) => ({
+  const unscheduledAccepted = accepted.filter((s) => s.slot === null);
+  const sessions: AutoScheduleSessionInput[] = unscheduledAccepted.map((s) => ({
     submissionId: s.submissionId,
     durationMin: params.defaultDurationMin,
     track: s.trackIds[0] ?? null,
     speakerContactIds: s.speakerContactIds,
   }));
 
-  const result = autoSchedule({
+  const { placed: result, unplaced: unplacedFromRun } = autoSchedule({
     sessions,
     rooms,
     days,
@@ -571,5 +586,27 @@ export async function runAutoSchedule(
     );
   }
 
-  return getAgendaPayload(db, eventId, event);
+  const payload = await getAgendaPayload(db, eventId, event);
+
+  // DEC-615: render this run's per-item reasons using the SAME title
+  // lookup buildConflictLabels already builds — titleBySubmissionId
+  // never desyncs from the conflicts renderer's.
+  const durationMinBySubmissionId = new Map(sessions.map((s) => [s.submissionId, s.durationMin]));
+  const titleBySubmissionId = new Map(accepted.map((s) => [s.submissionId, s.title]));
+  const speakerNameByContactId = new Map<string, string>();
+  for (const s of accepted) {
+    for (const speaker of s.speakers) speakerNameByContactId.set(speaker.contactId, speaker.name);
+  }
+  const unplacedLabels: UnplacedLabels = { titleBySubmissionId, speakerNameByContactId };
+  const unplacedReasons: DescribedUnplaced[] = unplacedFromRun.map((u) => {
+    const durationMin = durationMinBySubmissionId.get(u.submissionId) ?? params.defaultDurationMin;
+    const sessionForCopy = { submissionId: u.submissionId, durationMin };
+    return {
+      ...u,
+      durationMin,
+      detail: describeUnplaced(u.reason, unplacedLabels, sessionForCopy),
+    };
+  });
+
+  return { ...payload, unplacedReasons };
 }

@@ -138,5 +138,8 @@ describe("getAgendaPayload unscheduled tray (AIA-08: accepted-only)", () => {
     const payload = await getAgendaPayload(db, "event1", event);
     expect(payload.unscheduled).toHaveLength(1);
     expect(payload.unscheduled[0]?.submissionId).toBe("sub-accepted");
+    // DEC-615: a plain GET never runs the placer, so it has no per-item
+    // reasons to report — only runAutoSchedule populates this.
+    expect(payload.unplacedReasons).toEqual([]);
   });
 });

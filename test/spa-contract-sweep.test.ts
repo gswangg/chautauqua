@@ -384,6 +384,7 @@ const AGENDA_PAYLOAD = {
       detail: "overlap",
     },
   ],
+  unplacedReasons: [],
   summary: { unplaced: 1, conflicts: 1 },
 };
 
@@ -412,7 +413,16 @@ describe("DEC-239: GET /api/v1/events/:eventId/agenda vs AgendaPayload", () => {
     const res = await app.request("/api/v1/events/event-1/agenda");
     expect(res.status).toBe(200);
     const body = (await res.json()) as Record<string, unknown>;
-    expect(keysOf(body)).toEqual(["conflicts", "days", "placed", "rooms", "summary", "tracks", "unscheduled"]);
+    expect(keysOf(body)).toEqual([
+      "conflicts",
+      "days",
+      "placed",
+      "rooms",
+      "summary",
+      "tracks",
+      "unplacedReasons",
+      "unscheduled",
+    ]);
     const placed = first(body.placed as Record<string, unknown>[]);
     expect(keysOf(placed)).toEqual(["day", "endMin", "ref", "roomId", "speakers", "startMin", "submissionId", "title", "trackIds"]);
     expect(keysOf(first(placed.speakers as Record<string, unknown>[]))).toEqual(["contactId", "name"]);
