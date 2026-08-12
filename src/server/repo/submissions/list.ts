@@ -36,7 +36,7 @@ export interface ListSubmissionsResult {
 
 /** ORDER BY clause for each sort, with a seq tiebreaker (DEC-335) so OFFSET
  * paging stays stable when createdAt/title values tie across rows. */
-function orderByForSort(sort: SortOrder) {
+export function orderByForSort(sort: SortOrder) {
   switch (sort) {
     case "oldest":
       return sql`${schema.submission.createdAt} asc, ${schema.submission.seq} asc`;
@@ -54,18 +54,12 @@ function orderByForSort(sort: SortOrder) {
   }
 }
 
-export async function listSubmissions(
-  db: Db,
-  eventId: string,
-  params: ParsedListQuery,
-): Promise<ListSubmissionsResult> {
-  const eventRows = await db
-    .select({ recordPrefix: schema.event.recordPrefix })
-    .from(schema.event)
-    .where(eq(schema.event.id, eventId))
-    .limit(1);
-  const recordPrefix = eventRows[0]?.recordPrefix ?? "SES";
-
+/** WHERE conditions for the submissions list (eventId + status +
+ * contentStatus + the correlated q/trackId EXISTS subqueries), extracted so
+ * exportSubmissions can apply the identical filter (DEC-649: an export is
+ * the same WHERE clause as the list beside it, or the file lies). Pure
+ * extraction from listSubmissions below — no behavior change. */
+export function submissionListConditions(eventId: string, params: ParsedListQuery) {
   const conditions = [eq(schema.submission.eventId, eventId)];
   if (params.status.length > 0) {
     conditions.push(inArray(schema.submission.status, params.status));
@@ -96,6 +90,23 @@ export async function listSubmissions(
       )!,
     );
   }
+
+  return conditions;
+}
+
+export async function listSubmissions(
+  db: Db,
+  eventId: string,
+  params: ParsedListQuery,
+): Promise<ListSubmissionsResult> {
+  const eventRows = await db
+    .select({ recordPrefix: schema.event.recordPrefix })
+    .from(schema.event)
+    .where(eq(schema.event.id, eventId))
+    .limit(1);
+  const recordPrefix = eventRows[0]?.recordPrefix ?? "SES";
+
+  const conditions = submissionListConditions(eventId, params);
 
   const offset = (params.page - 1) * params.perPage;
   const whereExpr = and(...conditions);

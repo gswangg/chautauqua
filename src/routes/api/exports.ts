@@ -14,12 +14,14 @@ import { ApiError } from "../../server/http";
 import * as schema from "../../db/schema";
 import { toCsv } from "../../lib/csv";
 import { buildExport, buildShowflowExport, isExportKind } from "../../server/repo/exports";
-import { DEC_011, DEC_025, DEC_027, DEC_055 } from "../../decisions";
+import { isValidStatusLiteral, parseListQuery } from "../../server/repo/submissions/query";
+import { DEC_011, DEC_025, DEC_027, DEC_055, DEC_649 } from "../../decisions";
 
 void DEC_011;
 void DEC_025;
 void DEC_027;
 void DEC_055;
+void DEC_649;
 
 export const exportsRoutes = new Hono<AppEnv>();
 
@@ -70,7 +72,25 @@ exportsRoutes.get("/api/v1/events/:eventId/export/:kind", requireOrganizer, asyn
     throw new ApiError("invalid", "format must be 'csv' or 'json'");
   }
 
-  const table = await buildExport(c.var.db, eventId, kind, orgId);
+  // DEC-649: the 'submissions' export honours the list's own filter (q/
+  // status/trackId/sort) via the EXISTING parseListQuery — not a
+  // reimplementation. `status` is repeatable on the query string; each
+  // token is validated with isValidStatusLiteral (the existing write-path
+  // validator) so an unrecognised status literal fails loudly as a 400
+  // rather than silently degrading like a plain list filter would.
+  let submissionsListParams: ReturnType<typeof parseListQuery> | undefined;
+  if (kind === "submissions") {
+    const statusTokens = c.req.queries("status") ?? [];
+    for (const token of statusTokens) {
+      if (!isValidStatusLiteral(token)) {
+        throw new ApiError("invalid", `Unknown status '${token}'`);
+      }
+    }
+    const raw = c.req.query();
+    submissionsListParams = parseListQuery({ ...raw, status: statusTokens.join(",") });
+  }
+
+  const table = await buildExport(c.var.db, eventId, kind, orgId, submissionsListParams);
 
   if (format === "json") {
     c.header("Content-Disposition", `attachment; filename="${kind}.json"`);
