@@ -73,7 +73,7 @@ export function AgendaWorkSection({ payload, setPayload, setError, refetch }: Ag
             <div className="chq-overview-row-meta">{conflict.roomName}</div>
           </div>
           <div>
-            <div className="chq-overview-row-late">{conflictKindLabel(conflict.kind)}</div>
+            <div className="chq-overview-row-late">{conflictKindLabel(conflict.kind, conflict.entries.length)}</div>
             {conflict.entries.map((entry) => (
               <div key={entry.submissionId}>
                 {entry.title} <span className="chq-overview-row-meta">— {entry.speakerName} · {entry.ref}</span>
