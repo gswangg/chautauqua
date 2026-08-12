@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { apiList, apiPostBlob, ApiError } from '../../lib/api';
 import { DELIVERABLE_KINDS, DELIVERABLE_LABELS, type DeliverableKind, type EventFileChainItem } from './types';
-import { formatDateTime } from './format';
+import { formatDateTime } from '../../lib/dates';
 
 interface FilesLibraryProps {
   eventId: string;

@@ -1,10 +1,7 @@
 import { useEffect, useState } from 'react';
 import { apiList, ApiError } from '../../lib/api';
+import { formatDateTime } from '../../lib/dates';
 import type { EmailLogRow } from './types';
-
-function formatSentAt(ms: number): string {
-  return new Date(ms).toLocaleString();
-}
 
 export function HistoryTab({ eventId }: { eventId: string }) {
   const [q, setQ] = useState('');
@@ -52,7 +49,7 @@ export function HistoryTab({ eventId }: { eventId: string }) {
       {!loading &&
         items.map((row) => (
           <div key={row.id} className="chq-comms-history-row">
-            <span className="chq-comms-history-when">{formatSentAt(row.sentAt)}</span>
+            <span className="chq-comms-history-when">{formatDateTime(row.sentAt)}</span>
             <span className="chq-comms-history-subject">{row.subject}</span>
             <span>{row.toEmail}</span>
             <span className="chq-meta">{row.status}</span>

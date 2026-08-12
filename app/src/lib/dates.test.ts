@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dateInputToMs, formatDate, formatDateOnly, msToDateInput } from './dates';
+import { dateInputToMs, formatDate, formatDateOnly, formatDateTime, formatDateTimeInZone, msToDateInput } from './dates';
 
 describe('msToDateInput', () => {
   it('returns empty string for null', () => {
@@ -75,5 +75,40 @@ describe('formatDateOnly', () => {
       day: 'numeric',
     }).format(new Date(ms));
     expect(formatDateOnly(ms)).toBe(expected);
+  });
+});
+
+describe('formatDateTime', () => {
+  it('returns em dash for null', () => {
+    expect(formatDateTime(null)).toBe('—');
+  });
+
+  it('returns em dash for undefined', () => {
+    expect(formatDateTime(undefined)).toBe('—');
+  });
+
+  it('returns em dash for NaN', () => {
+    expect(formatDateTime(NaN)).toBe('—');
+  });
+
+  it('returns em dash for an invalid date value', () => {
+    expect(formatDateTime(new Date('x').getTime())).toBe('—');
+  });
+
+  it('formats a valid timestamp matching toLocaleString', () => {
+    const ms = Date.UTC(2026, 0, 15, 13, 30);
+    expect(formatDateTime(ms)).toBe(new Date(ms).toLocaleString());
+  });
+});
+
+describe('formatDateTimeInZone', () => {
+  it('formats a fixed instant in a given IANA zone', () => {
+    const iso = '2026-01-15T13:30:00.000Z';
+    const expected = new Date(iso).toLocaleString(undefined, {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+      timeZone: 'America/Los_Angeles',
+    });
+    expect(formatDateTimeInZone(iso, 'America/Los_Angeles')).toBe(expected);
   });
 });

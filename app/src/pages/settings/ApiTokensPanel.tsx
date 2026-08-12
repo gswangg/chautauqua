@@ -2,6 +2,7 @@
 // The plaintext token is only ever returned once, at creation time.
 import { useEffect, useState, type FormEvent } from 'react';
 import { apiList, apiPost, apiDelete, ApiError } from '../../lib/api';
+import { formatDateTime } from '../../lib/dates';
 
 interface ApiTokenItem {
   id: string;
@@ -12,7 +13,7 @@ interface ApiTokenItem {
 
 function formatDate(ms: number | null): string {
   if (ms === null) return 'Never';
-  return new Date(ms).toLocaleString();
+  return formatDateTime(ms);
 }
 
 export function ApiTokensPanel() {

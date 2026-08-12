@@ -1,4 +1,5 @@
-import { formatBytes, formatDateTime } from './format';
+import { formatBytes } from './format';
+import { formatDateTime } from '../../lib/dates';
 import { orderVersionChains } from './version-chain';
 import type { DeliverableFile } from './types';
 

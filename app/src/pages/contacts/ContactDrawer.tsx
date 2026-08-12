@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type MouseEvent } from 'react';
 import { apiGet, apiPatch, apiUpload, ApiError } from '../../lib/api';
 import { useEscapeKey } from '../../lib/useEscapeKey';
+import { formatDateTime } from '../../lib/dates';
 import type { ContactDetail } from './types';
 import { fromRows, toRows, travelValue, type CustomFieldRow } from './customFields';
 
@@ -345,7 +346,7 @@ export function ContactDrawer({ contactId, onClose, onSaved }: Props) {
               <ul>
                 {contact.history.emails.map((e) => (
                   <li key={e.id}>
-                    {new Date(e.sentAt).toLocaleString()} — {e.subject} ({e.toEmail})
+                    {formatDateTime(e.sentAt)} — {e.subject} ({e.toEmail})
                   </li>
                 ))}
                 {contact.history.emails.length === 0 && <li>No emails.</li>}

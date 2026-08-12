@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { apiList, apiGet, ApiError, apiPost } from '../../lib/api';
+import { formatDate } from '../../lib/dates';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { BulkActionBar } from './BulkActionBar';
 import { chunkSelection } from './bulk';
@@ -21,11 +22,6 @@ import {
 } from './types';
 import { applyViewConfig, type SavedViewConfig } from './views';
 import { ViewsDropdown } from './ViewsDropdown';
-
-function formatDate(ms: number | null): string {
-  if (ms === null) return '—';
-  return new Date(ms).toLocaleDateString();
-}
 
 /** DEC-243: render track NAMES, not the raw count of trackIds. */
 function trackNames(trackIds: string[], tracks: Track[]): string {

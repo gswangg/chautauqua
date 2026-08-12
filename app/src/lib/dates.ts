@@ -62,3 +62,27 @@ export function formatDateOnly(ms: number | null | undefined): string {
     day: 'numeric',
   }).format(date);
 }
+
+/**
+ * Format an epoch-ms timestamp as a locale date+time string for display;
+ * '—' for null/undefined/NaN/invalid. Use for true instants (createdAt,
+ * updatedAt, sentAt, uploadedAt, etc.) rendered in the viewer's local
+ * timezone. DEC-545: this is the ONE date-time formatter in the SPA --
+ * pages must never call toLocaleString directly.
+ */
+export function formatDateTime(ms: number | null | undefined): string {
+  if (ms === null || ms === undefined || Number.isNaN(ms)) return '—';
+  const date = new Date(ms);
+  if (Number.isNaN(date.getTime())) return '—';
+  return date.toLocaleString();
+}
+
+/**
+ * Format a timestamp (epoch-ms or ISO-8601 string) in an explicit IANA
+ * timeZone, e.g. an event's own timezone rather than the viewer's ambient
+ * machine zone (DEC-494). The ONE legitimately zone-explicit call site is
+ * app/src/pages/comms/icsChip.ts.
+ */
+export function formatDateTimeInZone(value: number | string, timeZone: string): string {
+  return new Date(value).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short', timeZone });
+}

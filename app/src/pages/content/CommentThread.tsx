@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { formatDateTime } from './format';
+import { formatDateTime } from '../../lib/dates';
 import type { FileComment } from './types';
 
 interface CommentThreadProps {

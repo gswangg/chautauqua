@@ -10,7 +10,3 @@ export function formatBytes(bytes: number): string {
   }
   return `${value.toFixed(1)} ${units[unitIndex]}`;
 }
-
-export function formatDateTime(ms: number): string {
-  return new Date(ms).toLocaleString();
-}

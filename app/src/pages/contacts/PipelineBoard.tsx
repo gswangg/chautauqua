@@ -14,6 +14,7 @@
 import { useEffect, useState, type MouseEvent } from 'react';
 import { apiGet, apiList, apiPost, apiPatch, ApiError } from '../../lib/api';
 import { useEscapeKey } from '../../lib/useEscapeKey';
+import { formatDateTime } from '../../lib/dates';
 import type { ContactListItem, PipelineEntry, PipelineEntryDetail, PipelineStage } from './types';
 import { PIPELINE_STAGES, PIPELINE_STAGE_LABELS } from './types';
 import './contacts-panels.css';
@@ -382,7 +383,7 @@ function EntryDetailPanel({ entryId, onClose, onChanged }: EntryDetailPanelProps
                     <span>Note: {a.body}</span>
                   )}
                   {' — '}
-                  {a.authorName}, {new Date(a.createdAt).toLocaleString()}
+                  {a.authorName}, {formatDateTime(a.createdAt)}
                 </li>
               ))}
               {detail.activity.length === 0 && <li className="chq-empty">No activity yet.</li>}

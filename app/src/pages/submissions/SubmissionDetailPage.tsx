@@ -4,7 +4,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { apiGet, apiList, apiPatch, apiPost, ApiError } from '../../lib/api';
-import { formatDate as formatTimestamp } from '../../lib/dates';
+import { formatDate as formatTimestamp, formatDateTime } from '../../lib/dates';
 import type { CfpForm } from '../forms/types';
 import { buildAnswerRows, resolveAnswerFields } from './detailRows';
 import './detail.css';
@@ -18,11 +18,6 @@ import {
   type SubmissionStatus,
   type Track,
 } from './types';
-
-function formatDate(ms: number | null): string {
-  if (ms === null) return '—';
-  return new Date(ms).toLocaleString();
-}
 
 const INVITE_STATUS_LABELS: Record<InviteStatus, string> = {
   none: 'None',
@@ -540,9 +535,9 @@ export function SubmissionDetailPage() {
           <section className="chq-detail-section">
             <h2 className="chq-detail-section-title">Meta</h2>
             <div className="chq-detail-section-body">
-              <p>Created: {formatDate(detail.createdAt)}</p>
-              <p>Updated: {formatDate(detail.updatedAt)}</p>
-              <p>Accepted: {formatDate(detail.acceptedAt)}</p>
+              <p>Created: {formatDateTime(detail.createdAt)}</p>
+              <p>Updated: {formatDateTime(detail.updatedAt)}</p>
+              <p>Accepted: {formatDateTime(detail.acceptedAt)}</p>
             </div>
           </section>
         </div>
