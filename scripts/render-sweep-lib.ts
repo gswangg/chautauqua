@@ -11,6 +11,7 @@ export interface RouteResult {
   bodyNonEmpty: boolean;
   consoleErrors: string[];
   pageErrors: string[];
+  clipOffenders: string[];
   ok: boolean;
   failureReason?: string;
 }
@@ -27,9 +28,21 @@ export function isNonEmptyText(text: string): boolean {
  */
 export function evaluateRoute(
   entry: RouteManifestEntry,
-  observed: { status: number; bodyText: string; consoleErrors: string[]; pageErrors: string[] },
+  observed: {
+    status: number;
+    bodyText: string;
+    consoleErrors: string[];
+    pageErrors: string[];
+    /** DEC-620: structural descriptors (never text content, same convention
+     * as overflowOffenders) for elements whose scrollHeight exceeds their
+     * clientHeight while overflow-y computes to visible|hidden — the class
+     * of bug that let agenda cards bleed past their own boxes unseen.
+     * Already filtered against KNOWN_CLIP_EXCEPTIONS by the caller. */
+    clipOffenders?: string[];
+  },
 ): RouteResult {
   const bodyNonEmpty = isNonEmptyText(observed.bodyText);
+  const clipOffenders = observed.clipOffenders ?? [];
   const reasons: string[] = [];
   if (observed.status !== 200) reasons.push(`status ${observed.status} !== 200`);
   if (!bodyNonEmpty) reasons.push("empty rendered text");
@@ -39,12 +52,16 @@ export function evaluateRoute(
   if (observed.pageErrors.length > 0) {
     reasons.push(`${observed.pageErrors.length} pageerror(s): ${observed.pageErrors.join(" | ")}`);
   }
+  if (clipOffenders.length > 0) {
+    reasons.push(`${clipOffenders.length} vertical clip offender(s): ${clipOffenders.join(" | ")}`);
+  }
   return {
     entry,
     status: observed.status,
     bodyNonEmpty,
     consoleErrors: observed.consoleErrors,
     pageErrors: observed.pageErrors,
+    clipOffenders,
     ok: reasons.length === 0,
     failureReason: reasons.length > 0 ? reasons.join("; ") : undefined,
   };
@@ -60,6 +77,7 @@ export function routeErrorResult(entry: RouteManifestEntry, message: string): Ro
     bodyNonEmpty: false,
     consoleErrors: [],
     pageErrors: [],
+    clipOffenders: [],
     ok: false,
     failureReason: message,
   };
@@ -134,6 +152,13 @@ export interface MobileObservation {
   /** DEC-401: structural descriptor (class list / tag) of the element that
    * produced minControlHeight, or null if there is no such control. */
   minControlSelector: string | null;
+  /** DEC-620: structural descriptors (never text content) for up to 5
+   * elements, worst-first, whose scrollHeight exceeds their clientHeight by
+   * more than 2px while overflow-y computes to visible|hidden (a deliberate
+   * scroll container — overflow-y auto|scroll — is excluded, same convention
+   * as overflowOffenders excluding overflow-x scrollers). Already filtered
+   * against KNOWN_CLIP_EXCEPTIONS by the caller. */
+  clipOffenders: string[];
 }
 
 export interface MobileRouteResult {
@@ -175,6 +200,9 @@ export function evaluateMobileRoute(entry: MobileRouteEntry, observed: MobileObs
     }
     reasons.push(reason);
   }
+  if (observed.clipOffenders.length > 0) {
+    reasons.push(`${observed.clipOffenders.length} vertical clip offender(s): ${observed.clipOffenders.join(" | ")}`);
+  }
   return {
     entry,
     status: observed.status,
@@ -212,6 +240,7 @@ export const EMPTY_MOBILE_OBSERVATION: MobileObservation = {
   maxElementRight: 0,
   overflowOffenders: [],
   minControlSelector: null,
+  clipOffenders: [],
 };
 
 /** True if every mobile route result passed. */
@@ -397,4 +426,32 @@ export function allFontFloorPassed(results: readonly FontFloorResult[]): boolean
 export function formatFontFloorSummary(results: readonly FontFloorResult[]): string {
   const passed = results.filter((r) => r.ok).length;
   return `${passed}/${results.length} font-floor checks passed`;
+}
+
+// ---------------------------------------------------------------------------
+// DEC-620 vertical-clip pass: the render-sweep in-page probe (see
+// scripts/render-sweep.ts's measureClipOffenders) collects visible elements
+// where scrollHeight > clientHeight + 2 AND computed overflow-y is
+// visible|hidden — a deliberate scroll container (overflow-y auto|scroll) is
+// excluded by that condition already, same convention as overflowOffenders
+// excluding overflow-x scrollers. Offenders known to belong to a route/file
+// another in-flight branch owns are named here (never silently absorbed into
+// tolerance) and filtered out before evaluateRoute/evaluateMobileRoute see
+// them, so they never fail the gate.
+// ---------------------------------------------------------------------------
+
+/** Filters clipOffenders collected for `path` against KNOWN_CLIP_EXCEPTIONS
+ * (keyed `${path}::${selector}`, selector = the offender string's leading
+ * "tag.class.class" token before " clip="). Pure so it stays unit-testable
+ * without a browser. */
+export function filterKnownClipExceptions(
+  path: string,
+  offenders: readonly string[],
+  exceptions: Readonly<Record<string, string>>,
+): string[] {
+  return offenders.filter((offender) => {
+    const selector = offender.split(" clip=")[0];
+    const key = `${path}::${selector}`;
+    return !(key in exceptions);
+  });
 }
