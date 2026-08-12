@@ -5,7 +5,7 @@
 // list renders a conditional-rule field's condition summary, opens
 // FieldModal (create), and asserts FormSettings renders.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { FormsPage } from './FormsPage';
 import { listEnvelope, mockApi } from '../../test-utils/mockApi';
@@ -92,5 +92,11 @@ describe('FormsPage render smoke', () => {
     screen.getByRole('button', { name: 'Add a question' }).click();
     const dialog = await screen.findByRole('dialog', { name: 'New field' });
     expect(dialog).toBeInTheDocument();
+
+    // DEC-378: Escape closes the dialog.
+    fireEvent.keyDown(window, { key: 'Escape' });
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: 'New field' })).not.toBeInTheDocument();
+    });
   });
 });

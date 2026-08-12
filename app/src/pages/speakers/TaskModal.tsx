@@ -1,5 +1,6 @@
-import { useState, type FormEvent } from 'react';
+import { useState, type FormEvent, type MouseEvent } from 'react';
 import { DELIVERABLE_KINDS, TASK_KINDS, type DeliverableKind, type NewTaskInput, type TaskKind } from './types';
+import { useEscapeKey } from '../../lib/useEscapeKey';
 
 interface TaskModalProps {
   onCancel: () => void;
@@ -56,8 +57,14 @@ export function TaskModal({ onCancel, onSubmit }: TaskModalProps) {
     }
   }
 
+  useEscapeKey(true, onCancel);
+
+  function handleScrimClick(e: MouseEvent<HTMLDivElement>) {
+    if (e.target === e.currentTarget && !submitting) onCancel();
+  }
+
   return (
-    <div className="chq-modal-overlay" role="dialog" aria-modal="true" aria-label="New task">
+    <div className="chq-scrim" role="dialog" aria-modal="true" aria-label="New task" onClick={handleScrimClick}>
       <form className="chq-modal chq-speakers-modal" onSubmit={handleSubmit}>
         <div className="chq-speakers-modal-head">
           <div className="chq-speakers-modal-head-titles">

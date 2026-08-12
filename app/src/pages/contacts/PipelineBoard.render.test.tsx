@@ -176,6 +176,13 @@ describe('PipelineBoard render smoke (CRM-07/08)', () => {
       expect(screen.getByText('Note: Left voicemail.')).toBeInTheDocument();
     });
 
+    // DEC-378: Escape closes the pipeline card detail dialog.
+    expect(screen.getByRole('dialog', { name: 'Pipeline card detail' })).toBeInTheDocument();
+    fireEvent.keyDown(window, { key: 'Escape' });
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: 'Pipeline card detail' })).not.toBeInTheDocument();
+    });
+
     expect(consoleErrorSpy).not.toHaveBeenCalled();
   });
 });

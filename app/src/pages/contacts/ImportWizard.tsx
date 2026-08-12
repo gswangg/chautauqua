@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
 import { apiPost, ApiError } from '../../lib/api';
 import { expandFullNameMapping, mapImportRow, parseCsv, suggestMapping, toCsv, FULL_NAME_TARGET, STANDARD_IMPORT_FIELDS } from './csv';
+import { useEscapeKey } from '../../lib/useEscapeKey';
 import type { ImportResult } from './types';
 import './contacts-panels.css';
 
@@ -96,8 +97,16 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
     }
   }
 
+  useEscapeKey(true, () => {
+    if (!busy) onClose();
+  });
+
+  function handleScrimClick(e: MouseEvent<HTMLDivElement>) {
+    if (e.target === e.currentTarget && !busy) onClose();
+  }
+
   return (
-    <div className="chq-modal-backdrop" role="dialog" aria-label="Import contacts">
+    <div className="chq-scrim" role="dialog" aria-modal="true" aria-label="Import contacts" onClick={handleScrimClick}>
       <div className="chq-modal chq-contacts-import">
         <button type="button" className="chq-btn-tertiary" onClick={onClose} aria-label="Close">
           ×

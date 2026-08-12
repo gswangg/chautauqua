@@ -2,7 +2,8 @@
 // required, description + optional speaker email/first/last, posts to the
 // landed POST /api/v1/events/:eventId/submissions.
 
-import { useState, type FormEvent } from 'react';
+import { useState, type FormEvent, type MouseEvent } from 'react';
+import { useEscapeKey } from '../../lib/useEscapeKey';
 
 export interface NewSubmissionInput {
   title: string;
@@ -48,8 +49,14 @@ export function NewSubmissionModal({ onCancel, onCreate }: NewSubmissionModalPro
     }
   }
 
+  useEscapeKey(true, onCancel);
+
+  function handleScrimClick(e: MouseEvent<HTMLDivElement>) {
+    if (e.target === e.currentTarget && !pending) onCancel();
+  }
+
   return (
-    <div className="chq-modal-overlay" role="dialog" aria-modal="true" aria-label="New submission">
+    <div className="chq-scrim" role="dialog" aria-modal="true" aria-label="New submission" onClick={handleScrimClick}>
       <form className="chq-modal" onSubmit={submit}>
         <h2>New submission</h2>
         {error && <div className="chq-error">{error}</div>}
