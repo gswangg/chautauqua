@@ -26,6 +26,45 @@ function NameSearchForm(props: { action: string; q: string | null; limit: number
   );
 }
 
+/** One card, shared by the directory (SpeakersContent) and the gallery
+ * (GalleryContent), per DEC-593: both surfaces carry headshot, name, job
+ * title and company (participant.title_at_time/org_at_time, DEC-258) — the
+ * only difference is whether the directory additionally lists sessions.
+ * A missing headshot renders the same `.chq-pub-headshot-fallback` block in
+ * both places so the grid never collapses (EMB-12 graceful degradation). */
+function SpeakerCard(props: { event: PublicEvent; sp: PublicSpeakerWithSessions; surface: "speakers" | "gallery"; showSessions: boolean }) {
+  const { event, sp, surface, showSessions } = props;
+  const href = speakerDetailPath(event, sp.contactId, surface);
+  return (
+    <div class="chq-pub-speaker-card">
+      <a href={href}>
+        {sp.headshotUrl ? (
+          <img
+            src={sp.headshotUrl}
+            alt={`${sp.firstName} ${sp.lastName}`}
+            loading="lazy"
+            width="96"
+            height="96"
+          />
+        ) : (
+          <div class="chq-pub-headshot-fallback" />
+        )}
+      </a>
+      <a class="chq-pub-speaker-name" href={href}>
+        {sp.firstName} {sp.lastName}
+      </a>
+      <p class="chq-pub-speaker-role">{[sp.title, sp.company].filter(Boolean).join(", ")}</p>
+      {showSessions ? (
+        <ul class="chq-pub-speaker-sessions">
+          {sp.sessions.map((s) => (
+            <li>{s.title}</li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
+  );
+}
+
 export function SpeakersContent(props: {
   event: PublicEvent;
   speakers: PublicSpeakerWithSessions[];
@@ -57,30 +96,7 @@ export function SpeakersContent(props: {
           </p>
           <div class="chq-pub-speaker-grid">
             {speakers.map((sp) => (
-              <div class="chq-pub-speaker-card">
-                <a href={speakerDetailPath(event, sp.contactId, "speakers")}>
-                  {sp.headshotUrl ? (
-                    <img
-                      src={sp.headshotUrl}
-                      alt={`${sp.firstName} ${sp.lastName}`}
-                      loading="lazy"
-                      width="96"
-                      height="96"
-                    />
-                  ) : (
-                    <div class="chq-pub-headshot-fallback" />
-                  )}
-                </a>
-                <a class="chq-pub-speaker-name" href={speakerDetailPath(event, sp.contactId, "speakers")}>
-                  {sp.firstName} {sp.lastName}
-                </a>
-                <p class="chq-pub-speaker-role">{[sp.title, sp.company].filter(Boolean).join(", ")}</p>
-                <ul class="chq-pub-speaker-sessions">
-                  {sp.sessions.map((s) => (
-                    <li>{s.title}</li>
-                  ))}
-                </ul>
-              </div>
+              <SpeakerCard event={event} sp={sp} surface="speakers" showSessions={true} />
             ))}
           </div>
         </>
@@ -112,29 +128,13 @@ export function GalleryContent(props: {
   return (
     <>
       <h2>Speaker gallery</h2>
-      <p>Headshots only, no session details.</p>
       <NameSearchForm action={basePath} q={q} limit={limit ?? null} />
       <p>
         {speakers.length} of {total} speaker(s)
       </p>
-      <div class="chq-pub-gallery-grid">
+      <div class="chq-pub-speaker-grid chq-pub-gallery-grid">
         {speakers.map((sp) => (
-          <a href={speakerDetailPath(event, sp.contactId, "gallery")}>
-            <div class="chq-pub-gallery-tile">
-              {sp.headshotUrl ? (
-                <img
-                  src={sp.headshotUrl}
-                  alt={`${sp.firstName} ${sp.lastName}`}
-                  loading="lazy"
-                  width="96"
-                  height="96"
-                />
-              ) : null}
-            </div>
-            <span class="chq-pub-gallery-name">
-              {sp.firstName} {sp.lastName}
-            </span>
-          </a>
+          <SpeakerCard event={event} sp={sp} surface="gallery" showSessions={false} />
         ))}
       </div>
       {hasMore ? (
