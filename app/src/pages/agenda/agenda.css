@@ -128,6 +128,18 @@
   outline-offset: -2px;
 }
 
+/* DEC-701/J9 warn-never-block: an occupied cell still accepts a click-to-place
+   through the accessible path (its accessible name states the clash count),
+   so it stays a real button instead of the inert div occupied cells used to
+   render. The dashed ink border is the type-not-colour warning treatment
+   (DEC-367: no red/third accent) — visible in the sliver of the cell a
+   placed card's lane doesn't cover, and via the focus outline when tabbed to
+   directly. */
+.chq-day-grid-cell-btn-clash {
+  border: 1px dashed var(--chq-ink);
+  background: transparent;
+}
+
 .chq-day-grid-placed-card {
   align-self: stretch;
   justify-self: start;

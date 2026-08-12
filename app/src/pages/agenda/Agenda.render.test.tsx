@@ -333,6 +333,76 @@ describe('AgendaPage render smoke', () => {
     });
   });
 
+  // DEC-701/J9 warn-never-block: an occupied cell must still accept a
+  // placement through the accessible (click) path, not just drag-drop --
+  // it's a real button whose accessible name states the clash count.
+  it('arms a session, exposes an occupied cell as a clash-naming button, and places it there on click', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/agenda`]: agendaPayload(),
+      'PUT /api/v1/submissions/sub-3/slot': { status: 200, body: { conflicts: [], summary: { unplaced: 0, conflicts: 3 } } },
+    });
+
+    render(<AgendaPage />);
+    await waitFor(() => {
+      expect(screen.getByText('Overlapping Talk A')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'S-003: Unplaced Talk' }));
+    expect(screen.getByText(/Placing S-003 — Esc to cancel/)).toBeInTheDocument();
+
+    // sub-1 (10:00-11:00) and sub-2 (10:30-11:30) both cover 10:30am in
+    // Main Hall, so the occupied cell there must name a two-session clash.
+    const clashButton = screen.getByRole('button', {
+      name: 'Place S-003 at 10:30am in Main Hall — will clash with 2 sessions',
+    });
+    expect(clashButton).toHaveClass('chq-day-grid-cell-btn-clash');
+
+    fireEvent.click(clashButton);
+
+    await waitFor(() => {
+      expect(document.querySelector('.chq-unscheduled-tray-header')?.textContent).toBe('Unscheduled (0)');
+    });
+    expect(screen.queryByText(/Placing S-003/)).toBeNull();
+  });
+
+  // DEC-701: assignLanes already proves a room can hold N > 2 overlapping
+  // sessions -- the conflict caption must count them instead of assuming a
+  // pair, and every overlapping card must still render as its own card.
+  it('renders three overlapping placements as three cards with a three-session caption', async () => {
+    const payload = agendaPayload();
+    payload.placed.push({
+      submissionId: 'sub-4',
+      ref: 'S-004',
+      title: 'Overlapping Talk C',
+      trackIds: [],
+      speakers: [],
+      roomId: 'room-1',
+      day: '2026-06-01',
+      startMin: 645,
+      endMin: 705,
+    });
+    payload.conflicts = [
+      { kind: 'room_overlap', submissionIds: ['sub-1', 'sub-2'], detail: 'A and B overlap in Main Hall.' },
+      { kind: 'room_overlap', submissionIds: ['sub-1', 'sub-4'], detail: 'A and C overlap in Main Hall.' },
+      { kind: 'room_overlap', submissionIds: ['sub-2', 'sub-4'], detail: 'B and C overlap in Main Hall.' },
+    ];
+
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/agenda`]: payload,
+    });
+
+    render(<AgendaPage />);
+    await waitFor(() => {
+      expect(screen.getByText('Overlapping Talk A')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('Overlapping Talk B')).toBeInTheDocument();
+    expect(screen.getByText('Overlapping Talk C')).toBeInTheDocument();
+
+    const captions = screen.getAllByText('Three sessions in one room');
+    expect(captions.length).toBe(3);
+  });
+
   it('never renders the literal text "undefined" anywhere in the tree', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/agenda`]: agendaPayload(),

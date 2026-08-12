@@ -87,12 +87,13 @@ export function DayGrid({
     onDropPlace(submissionId, roomId, startMin, startMin + duration);
   }
 
-  /** A room/startMin cell is occupied when a placed session in that room
-   * covers this 15-minute row (DEC-570: only truly empty cells become
-   * click-to-place buttons — an occupied cell's placed card is the click
-   * target instead, via handleCardSelect). */
-  function isOccupied(roomId: string | null, minutes: number): boolean {
-    return dayPlaced.some((s) => roomKey(s.roomId) === roomKey(roomId) && s.startMin <= minutes && minutes < s.endMin);
+  /** Counts placed sessions in this room covering this 15-minute row (DEC-570
+   * occupied-cell detection; DEC-701 returns the count, not a boolean, so an
+   * armed placement onto an occupied slot can name exactly how many sessions
+   * it will clash with — never assumes a pair, since assignLanes already
+   * proves a room can hold N > 2 overlapping sessions). */
+  function occupancyCount(roomId: string | null, minutes: number): number {
+    return dayPlaced.filter((s) => roomKey(s.roomId) === roomKey(roomId) && s.startMin <= minutes && minutes < s.endMin).length;
   }
 
   function handleCardSelect(session: PlacedAgendaSession) {
@@ -137,17 +138,38 @@ export function DayGrid({
           const roomId = colId === '__tbd__' ? TBD_ROOM_ID : colId;
           const roomName = colId === '__tbd__' ? 'TBD' : (roomNameById.get(colId) ?? colId);
           const cellStyle = { gridColumn: colIdx + 2, gridRow: rowIdx + 2 };
-          if (armed && !isOccupied(roomId, minutes)) {
+          if (armed) {
+            const clashCount = occupancyCount(roomId, minutes);
+            if (clashCount === 0) {
+              return (
+                <button
+                  key={`cell-${colId}-${minutes}`}
+                  type="button"
+                  className="chq-day-grid-cell-btn"
+                  style={cellStyle}
+                  onDragOver={handleDragOver}
+                  onDrop={(e) => handleDrop(e, roomId, minutes)}
+                  onClick={() => onPlaceAt(roomId, minutes)}
+                  aria-label={`Place ${armed.ref} at ${formatMinutes(minutes)} in ${roomName}`}
+                  data-room-id={colId}
+                  data-start-min={minutes}
+                />
+              );
+            }
+            // DEC-701/J9 warn-never-block: an occupied cell must still
+            // accept a placement through the accessible (keyboard/click)
+            // path, not just drag-drop — the accessible name states the
+            // consequence up front instead of silently discarding the click.
             return (
               <button
                 key={`cell-${colId}-${minutes}`}
                 type="button"
-                className="chq-day-grid-cell-btn"
+                className="chq-day-grid-cell-btn chq-day-grid-cell-btn-clash"
                 style={cellStyle}
                 onDragOver={handleDragOver}
                 onDrop={(e) => handleDrop(e, roomId, minutes)}
                 onClick={() => onPlaceAt(roomId, minutes)}
-                aria-label={`Place ${armed.ref} at ${formatMinutes(minutes)} in ${roomName}`}
+                aria-label={`Place ${armed.ref} at ${formatMinutes(minutes)} in ${roomName} — will clash with ${clashCount} session${clashCount === 1 ? '' : 's'}`}
                 data-room-id={colId}
                 data-start-min={minutes}
               />
