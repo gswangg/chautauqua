@@ -410,3 +410,12 @@ compare phone frames pixel-for-pixel.
 30. r2-Account dispositions: demo prefill DONE (keep); still open — login "NO
     ACCOUNT?" CTA block + event-named subheading, phone password Cancel + fixed
     footer, label/placeholder minors. (Password desktop caption FIXED.)
+
+31. r2-Home: hub verdict mostly-faithful; six SMALL fixes: (a) remove stray "⚙"
+    literal before the footer GitHub mark; (b) add the "API docs" right-aligned footer
+    link (/docs/api); (c) remove the extra "Speakers" button from the open-CFP row —
+    design shows ONE action; (d) date formats to the mock's British pattern
+    ("12–14 May 2027", "CLOSES SUN 16 AUG · N DAYS LEFT" — no commas, no repeated
+    month); (e) spell out small counts in the tagline ("One call for papers"); (f)
+    text-decoration:none on .chq-home-signin and .chq-home-footer-link. Redirects,
+    masthead, grouping, privacy filter all verified CORRECT — do not disturb.
