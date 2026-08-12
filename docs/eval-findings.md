@@ -483,3 +483,15 @@ compare phone frames pixel-for-pixel.
     subtitle echoes ACTUAL active filters + sharing becomes the mock's opt-in
     checkbox; "Columns: <state>" label; "DECLINE QUEUE" no-wrap; combined name field
     per mock.
+
+39. r2-Settings dispositions: KEEP: the two new sections, inset scroll fix,
+    copy-snippet fix, styled file inputs. THE KEY REBUILD: desktop Settings becomes
+    the mock's READ-ONLY SUMMARY pattern (text values + "Edit the form"/"Change"/
+    "Replace" drill-ins) instead of landing in edit-everything forms. ALSO: converge
+    the rail to the mock's 7 sections (re-merge Your data; Portal+Resources as one
+    "Speaker portal" section; RESTORE the "Public pages" section — simple live-page
+    list w/ View + Embed code — with the Embeds builder reachable from it, not
+    replacing it; Sessionboard import may stay as an extra section but introduced
+    honestly); People-and-roles gains SCOPE display + a Change action; render
+    Markdown in wiki resources (raw "##" showing — bug); phone subscreens per mock
+    (URL-addressable), not accordion.
