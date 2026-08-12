@@ -314,4 +314,28 @@ export const PORTAL_CSS = `
     .chq-portal-actions { flex-direction: column; }
     .chq-portal-actions .chq-btn { width: 100%; }
   }
+
+  /* DEC-696: chq-cfp-option vocabulary shared with src/routes/public/cfp.css.ts
+     so /portal/edit's track fieldset and /submit/:slug's track fieldset use
+     the identical option class + copy. Also styles renderMarkdown's output
+     inside .chq-portal-detail (wiki resource bodies, DEC-696). */
+  .chq-cfp-fieldset { border: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+  .chq-cfp-fieldset legend { font-size: 11px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--chq-muted); padding: 0; }
+  .chq-cfp-fieldset .help { font-size: 12px; color: var(--chq-muted); margin: 0; }
+  .chq-cfp-option {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    border: 1px solid var(--chq-border);
+    border-radius: 4px;
+    background: var(--chq-surface);
+    min-height: 46px;
+    padding: 0 14px;
+    font-size: 14px;
+    font-weight: 500;
+  }
+  .chq-cfp-option input { flex-shrink: 0; }
+  .chq-portal-detail h2, .chq-portal-detail h3 { color: var(--chq-ink); margin: 0 0 6px; }
+  .chq-portal-detail p, .chq-portal-detail ul { margin: 0 0 10px; }
+  .chq-portal-detail ul { padding-left: 20px; }
 `;

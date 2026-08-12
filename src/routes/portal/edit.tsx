@@ -112,7 +112,11 @@ function extractTrackIds(body: Record<string, unknown>): string[] {
   return [String(raw)];
 }
 
-function EditPage(props: {
+// Exported so a render-parity test (DEC-696) can assert the track fieldset
+// uses the same option-class vocabulary and copy as the public CFP form's
+// TrackChoices (src/routes/public/submit-views.tsx) without going through a
+// full HTTP round trip.
+export function EditPage(props: {
   branding: { eventName: string; welcomeMessage: string | null; accentColor: string | null; logoUrl: string | null };
   submissionId: string;
   data: EditableSubmissionData;
@@ -152,10 +156,11 @@ function EditPage(props: {
         <div class="chq-section-label">Session</div>
         <FormFieldsSection fields={data.fields} section="session" answers={answers} errors={errors} isVisible={isVisible} />
         {tracksEditable ? (
-          <fieldset>
-            <legend class="chq-portal-field-label">Track *</legend>
+          <fieldset class="chq-cfp-fieldset">
+            <legend>Tracks *</legend>
+            <p class="help">Choose all that apply.</p>
             {offeredTracks.map((track) => (
-              <label>
+              <label class="chq-cfp-option">
                 <input type="checkbox" name="trackIds" value={track.id} checked={selectedTrackIds.includes(track.id)} />
                 {track.name}
               </label>

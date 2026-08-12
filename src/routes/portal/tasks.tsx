@@ -65,8 +65,9 @@ import {
   isSecureRequest,
   CSRF_COOKIE_NAME,
 } from "../../auth/cookies";
-import { DEC_016, DEC_020, DEC_023, DEC_028, DEC_029, DEC_240, DEC_242, DEC_244, DEC_605, DEC_657 } from "../../decisions";
+import { DEC_016, DEC_020, DEC_023, DEC_028, DEC_029, DEC_240, DEC_242, DEC_244, DEC_605, DEC_657, DEC_696 } from "../../decisions";
 import { formatCalendarDate, formatEventDate, formatEventDateTime } from "../../lib/event-time";
+import { renderMarkdown } from "../../lib/markdown";
 
 export const portalTasksRoutes = new Hono<AppEnv>();
 
@@ -81,6 +82,7 @@ void DEC_242;
 void DEC_244;
 void DEC_605;
 void DEC_657;
+void DEC_696;
 
 // DEC-244: comment body cap on the portal reply endpoint (matches no
 // existing forms/validate.ts constant since file comments aren't a form
@@ -372,7 +374,7 @@ function ResourcesPage(props: {
               <div class="chq-portal-row">
                 <span class="chq-portal-row-title">{r.title}</span>
                 {r.kind === "wiki" ? (
-                  (r.content ?? "").split(/\n{2,}/).map((para) => <p class="chq-portal-detail">{para}</p>)
+                  <div class="chq-portal-detail" dangerouslySetInnerHTML={{ __html: renderMarkdown(r.content ?? "") }} />
                 ) : (
                   <div class="chq-portal-actions">
                     <a href={`/portal/resources/${r.id}/download`} class="chq-btn chq-btn-secondary">Download</a>
