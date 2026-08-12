@@ -170,3 +170,16 @@ export function formatMobileSummary(results: readonly MobileRouteResult[]): stri
   const passed = results.filter((r) => r.ok).length;
   return `${passed}/${results.length} mobile routes passed`;
 }
+
+// ---------------------------------------------------------------------------
+// DEC-387 admin mobile pass (390x844, advisory): reuses evaluateMobileRoute/
+// formatMobileResultsTable/formatMobileSummary above (no parallel evaluator)
+// against the organizer + reviewer entries of ROUTE_MANIFEST. See
+// scripts/render-sweep.ts's ADMIN_MOBILE_ROUTE_MANIFEST for the route list.
+// ---------------------------------------------------------------------------
+
+/** DEC-387 flip rule (verbatim): "it becomes true in the wave after the pass first reads all-PASS."
+ * Until then the admin mobile pass is advisory — it prints its own
+ * PASS/FAIL table and summary but never contributes to the render-sweep
+ * gate's exit code. */
+export const ADMIN_MOBILE_PASS_BLOCKING = false;
