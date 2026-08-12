@@ -563,3 +563,7 @@ export const DEC_557 = "A schedule conflict is rendered by its kind, in the name
 export const DEC_558 = "DEC-534's total-order rule extends to every LIMITed admin worklist and to the JS 'best row' reducers beside them";
 export const DEC_559 = "The J6 reminder carries the recipient's portal link, resolved by the ONE shared portal-link rule — a notification with nothing to click is half-built";
 export const DEC_560 = "Every export is deterministically ordered — rows totally ordered, and every list-valued cell in a declared order";
+export const DEC_561 = "The reviewer's submission view shows the submission — named speakers, the CFP's custom answers in form order, and their own stored evaluation; the queue keeps completed items instead of erasing them";
+export const DEC_562 = "A submission's people and its answers have ONE order, expressed in SQL, at every surface that renders them";
+export const DEC_563 = "Room and track order is the producer's — assigned on create, totally ordered on every read, and honored by the public day grid and the auto-scheduler that both invent their own today";
+export const DEC_564 = "The notify pipeline is reproducible: recipients, reviewer-feedback numbering and reminder task lists each carry a declared order";

@@ -22,39 +22,34 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   manifests desync -- enumerate in a test; ONE likeContains escape-only incl.
   unauth search; export dropping custom answers is the lock-in forbidden;
   order checks read MERGED post-patch state.
-- STAGE1-CLOSE w30-33 (DEC-520..545, compacted): chunk multi-row VALUES by
-  BOUND PARAMETERS not row count; date-only field is a DAY LABEL, display its
-  day (read UTC), expand to event-local instant at HARD gates; documented-
-  forbidden routes can still be live if mount order lets them -- test
-  ADVERSARIAL order; batch per-recipient lookups, contract-test both
-  directions; conditional visibility is a FIXED POINT (hidden monotone,
-  cycles settle hidden); prove a JS-twin rewrite of an index/SQL agg vs a
-  NAIVE REFERENCE; offset-paged ORDER BY always ends in a unique column;
-  event-range slot gate lives in the JOIN ON, not a downstream WHERE;
-  hand-copied vocabularies drift -- IMPORT them; raw NUL makes a file BINARY
-  to ripgrep, invisible to globbed guards; a "pure helper" with zero src
-  callers tests NOTHING.
-- STAGE1-CLOSE w34-35 (DEC-546..555, compacted): a "PUBLIC BY DESIGN" verdict
-  is only as good as its premise -- re-read the RATIONALE. A fallback reached
-  by OMISSION is not a decision: lead positive, throw on the rest. LIMIT
-  obliges a TOTAL order-by + truthful count; authz population chosen by a
-  column. A markdown authz manifest desyncs -- enumerate the app's OWN route
-  table, probe both directions. Forced Content-Type is advisory until nosniff
-  ships. A uniqueIndex is a CONTRACT -- sweep ALL SELECT-then-INSERT sites,
-  derive ON CONFLICT target from schema object. A partial-patch upsert needs
-  no read. A feed nobody can fetch cross-origin isn't a feed -- ACAO where the
-  cache stores it, never the cookie-authed API. Derive a scan's projection+cap
-  from its pure consumer; refuse above cap; a client store rebuilt from
-  RENDERED rows deletes what a filter hid -- merge, don't overwrite.
-- STAGE1-CLOSE w36 (DEC-556..560): a uniqueness invariant JS implements but
-  schema declares nowhere is enforced nowhere -- add the uniqueIndex + ON
-  CONFLICT; a merge's dedupe stays -- it picks a WINNER, a constraint can't.
-  Parity tests checking an index EXISTS don't check it's UNIQUE. Two surfaces
-  rendering one fact, one in names one in raw ids, means the id one is wrong
-  -- render by KIND from ONE describe*(). DEC-534's total order extends to
-  every LIMITed ADMIN worklist and the JS "best row" reducers beside them --
-  prove via re-run shuffled. A notification with nothing to click is
-  half-built: reuse the ONE portal-link resolver, never email alone; a cron
-  has no request -- give it its own origin entry point that THROWS. An
-  export you can't diff is weak own-your-data -- total-order rows AND every
-  LIST-valued cell.
+- STAGE1-CLOSE w30-33 (DEC-520..545, compacted): chunk VALUES by BOUND
+  PARAMS not row count; date-only field is a DAY LABEL (read UTC, expand
+  event-local at hard gates); test mount-order ADVERSARIALLY; conditional
+  visibility is a FIXED POINT; offset-paged ORDER BY ends in a unique
+  column; slot gate lives in JOIN ON not WHERE; hand-copied vocabularies
+  drift -- IMPORT them; raw NUL makes a file invisible to grepped guards;
+  a helper with zero src callers tests NOTHING.
+- STAGE1-CLOSE w34-36 (DEC-546..560, compacted): re-read the RATIONALE
+  before trusting a "PUBLIC BY DESIGN" verdict; a fallback by OMISSION is
+  not a decision -- lead positive, throw on the rest. LIMIT obliges a
+  TOTAL order-by + truthful count. A uniqueIndex is a CONTRACT -- sweep
+  every SELECT-then-INSERT, derive ON CONFLICT from the schema object; a
+  merge's dedupe picks a WINNER, a constraint can't. Two surfaces
+  rendering one fact where one uses raw ids means the id one is wrong --
+  render by KIND from ONE describe*(). A notification with nothing to
+  click is half-built -- reuse the ONE portal-link resolver, never email
+  alone. A cron has no request -- give it its own origin entry point that
+  THROWS. An export you can't diff is weak own-your-data -- total-order
+  rows AND every list-valued cell.
+- STAGE1-CLOSE w37 (DEC-561..564): a render test whose MOCK is invented
+  proves NOTHING -- pin the SPA type to the server's OWN payload, then
+  correct the mock, never the assertion; assert no rendered surface says
+  "undefined". A queue that ERASES what you finished can never show it
+  stored -- keep completed rows, sort them last. A `position` column
+  nobody sets on create is a dead column: assign max+1 INSIDE the insert.
+  A grid that derives columns from FIRST APPEARANCE invents an order the
+  producer already declared. A greedy placer's input order IS its
+  output. DEC-534's total order extends to every LIST A HUMAN READS:
+  speakers (order, contact.id), answers (position, id), feedback
+  (createdAt, id) -- chunking dissolves a SQL order, so the JS sort
+  becomes the tiebreak of record.
