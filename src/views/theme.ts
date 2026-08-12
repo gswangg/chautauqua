@@ -119,6 +119,94 @@ export const THEME_CSS = `
     padding: 0.4rem 0.6rem;
   }
 
+  /* DEC-585: every remaining browser-default control on an SSR surface --
+     file pickers, date inputs, checkboxes/radios and native selects -- gets
+     the same paper/olive/ink metrics as the text inputs above, plus an
+     explicit :focus-visible so appearance:none never ships without one. */
+  input[type=date] {
+    max-width: 100%;
+    box-sizing: border-box;
+    min-height: 44px;
+    font-size: 1rem;
+    font-family: inherit;
+    color: var(--chq-ink);
+    background: var(--chq-surface);
+    border: 1px solid var(--chq-border);
+    border-radius: 4px;
+    padding: 0.4rem 0.6rem;
+  }
+
+  input[type=file] {
+    max-width: 100%;
+    box-sizing: border-box;
+    min-height: 44px;
+    font-size: 1rem;
+    font-family: inherit;
+    color: var(--chq-ink-2);
+    background: transparent;
+    border: none;
+    padding: 0.4rem 0;
+  }
+  /* Both the standard ::file-selector-button and the -webkit- prefixed
+     ::-webkit-file-upload-button are required -- Safari only recognizes the
+     prefixed form, Chrome/Firefox the standard one. Styled as a secondary
+     button on the frozen palette. */
+  input[type=file]::file-selector-button,
+  input[type=file]::-webkit-file-upload-button {
+    min-height: 44px;
+    margin-right: 0.75rem;
+    padding: 0.5rem 1rem;
+    font-size: 1rem;
+    font-family: 'Figtree', system-ui, sans-serif;
+    font-weight: 600;
+    color: var(--chq-ink-strong);
+    background: var(--chq-surface-sunk);
+    border: 1px solid var(--chq-border-strong);
+    border-radius: 4px;
+    cursor: pointer;
+  }
+
+  /* Explicit box size keeps the visual control small; the 44px phone tap
+     floor is met by padding on the surrounding label, not by inflating the
+     box itself (that lives in the page/surface markup, not this shared
+     sheet). */
+  input[type=checkbox], input[type=radio] {
+    accent-color: var(--chq-brand);
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    flex-shrink: 0;
+  }
+
+  select {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    max-width: 100%;
+    box-sizing: border-box;
+    min-height: 44px;
+    font-size: 1rem;
+    font-family: inherit;
+    color: var(--chq-ink);
+    background-color: var(--chq-surface);
+    background-image: linear-gradient(45deg, transparent 50%, var(--chq-ink) 50%), linear-gradient(135deg, var(--chq-ink) 50%, transparent 50%);
+    background-position: calc(100% - 18px) calc(50% - 3px), calc(100% - 13px) calc(50% - 3px);
+    background-size: 5px 5px, 5px 5px;
+    background-repeat: no-repeat;
+    border: 1px solid var(--chq-border);
+    border-radius: 4px;
+    padding: 0.4rem 2rem 0.4rem 0.6rem;
+  }
+
+  input[type=date]:focus-visible,
+  input[type=file]:focus-visible,
+  input[type=checkbox]:focus-visible,
+  input[type=radio]:focus-visible,
+  select:focus-visible {
+    outline: 2px solid var(--chq-brand);
+    outline-offset: 2px;
+  }
+
   button, input[type=submit], .chq-btn {
     min-height: 44px;
     padding: 0.5rem 1rem;
