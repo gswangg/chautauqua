@@ -44,7 +44,7 @@ describe('ContentApp / SessionList render smoke: always-visible content-status c
       [`POST /api/v1/submissions/sub-1/content-status`]: contentStatusMock,
     });
 
-    render(
+    const { container } = render(
       <MemoryRouter>
         <ContentApp />
       </MemoryRouter>,
@@ -57,7 +57,7 @@ describe('ContentApp / SessionList render smoke: always-visible content-status c
     fireEvent.click(screen.getByRole('tab', { name: 'All' }));
 
     await waitFor(() => {
-      expect(screen.getByText('A Talk With No Files Yet')).toBeInTheDocument();
+      expect(container.querySelector('.chq-content-row-title')).toHaveTextContent('A Talk With No Files Yet');
     });
 
     // w1-h reskin: DEC-370's binding copy for this action is "Ask for
@@ -98,8 +98,10 @@ describe('ContentApp reskin (DEC-366..368)', () => {
 // CNT-07b regression: deliverable counts on the worklist come straight from
 // the DEC-341 list payload's deliverableCounts field (server-hydrated via a
 // chain-roots-only grouped query, DEC-247) — no per-row files fan-out.
+// w4-h: counts now render as chips inside the single Deliverables cell
+// (DEC-609), not their own header column.
 describe('ContentApp worklist deliverable counts (DEC-247 chain roots)', () => {
-  it('renders the server-reported chain-root count for a replaced presentation file', async () => {
+  it('renders the server-reported chain-root count for a replaced presentation file, and an explicit absent state for kinds with none', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([
         {
@@ -119,7 +121,7 @@ describe('ContentApp worklist deliverable counts (DEC-247 chain roots)', () => {
       ]),
     });
 
-    render(
+    const { container } = render(
       <MemoryRouter>
         <ContentApp />
       </MemoryRouter>,
@@ -127,15 +129,23 @@ describe('ContentApp worklist deliverable counts (DEC-247 chain roots)', () => {
 
     fireEvent.click(await screen.findByRole('tab', { name: 'All' }));
 
-    const row = (await screen.findByText('A Talk With A Replaced File')).closest('tr');
+    await waitFor(() => {
+      expect(container.querySelector('.chq-content-row-title')).toHaveTextContent('A Talk With A Replaced File');
+    });
+
+    const row = container.querySelector('tr.chq-content-row');
     if (!row) throw new Error('worklist row not found');
 
-    const headerCells = Array.from(row.closest('table')!.querySelectorAll('thead th'));
-    const presentationColIndex = headerCells.findIndex((th) => th.textContent === 'Presentation');
-    expect(presentationColIndex).toBeGreaterThanOrEqual(0);
+    const chips = Array.from(row.querySelectorAll('.chq-content-deliverable-chip'));
+    const presentationChip = chips.find((c) => c.textContent?.startsWith('Presentation'));
+    expect(presentationChip?.textContent).toBe('Presentation · 1');
+    expect(presentationChip).not.toHaveClass('is-absent');
 
-    const rowCells = Array.from(row.querySelectorAll('td'));
-    expect(rowCells[presentationColIndex]?.textContent).toBe('1');
+    // Poster and handout have zero uploads — shown as an explicit absent
+    // chip, never a bare "0".
+    const posterChip = chips.find((c) => c.textContent?.startsWith('Poster'));
+    expect(posterChip).toHaveClass('is-absent');
+    expect(posterChip?.textContent).not.toContain('0');
   });
 });
 
