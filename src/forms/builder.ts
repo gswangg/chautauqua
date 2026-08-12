@@ -85,9 +85,10 @@ export function validateRuleReference(
  * DEC-008 FormFieldDef shape. `existingFields` is every field currently on
  * the form (used for rule-reference + cycle checks); `existing` is set when
  * validating an edit to an already-existing field (its id + stored kind —
- * PATCH never sends `kind`, so the dropdown-options rule must be checked
- * against the field's *effective* kind, not just a supplied one, otherwise
- * `{"options": []}` silently bricks a live dropdown — DEC-500).
+ * PATCH may omit `kind` (unchanged) or send it (DEC-505 kind change), so the
+ * dropdown-options rule must be checked against the field's *effective*
+ * kind, not just a supplied one, otherwise `{"options": []}` silently bricks
+ * a live dropdown — DEC-500).
  */
 export function validateFieldDefInput(
   input: FieldDefInput,
