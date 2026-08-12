@@ -5,7 +5,15 @@
 import { describe, expect, it } from "vitest";
 import { Hono } from "hono";
 import { publicRoutes } from "../src/routes/public";
-import { parseDay, parseLimit, parseCardFields, parseAccent, ALL_CARD_FIELDS } from "../src/routes/public/query";
+import {
+  parseDay,
+  parseLimit,
+  parseCardFields,
+  parseAccent,
+  parsePage,
+  MAX_PUBLIC_PAGE,
+  ALL_CARD_FIELDS,
+} from "../src/routes/public/query";
 import { registerErrorHandler } from "../src/server/http";
 import type { AppEnv } from "../src/server/env";
 
@@ -232,6 +240,18 @@ describe("query.ts pure parsers (DEC-289 allowlists — never throw)", () => {
       speaker: false,
       description: false,
     });
+  });
+
+  it("parsePage (DEC-433): non-integer/non-finite/<1 falls back to 1, above the cap clamps down to MAX_PUBLIC_PAGE", () => {
+    expect(parsePage(undefined)).toBe(1);
+    expect(parsePage("0")).toBe(1);
+    expect(parsePage("-1")).toBe(1);
+    expect(parsePage("abc")).toBe(1);
+    expect(parsePage("1e308")).toBe(MAX_PUBLIC_PAGE);
+    expect(parsePage("1e400")).toBe(1); // Number("1e400") is Infinity, not Number.isInteger -> falls back to 1
+    expect(parsePage("99999")).toBe(MAX_PUBLIC_PAGE);
+    expect(parsePage("3")).toBe(3);
+    expect(parsePage(String(MAX_PUBLIC_PAGE))).toBe(MAX_PUBLIC_PAGE);
   });
 
   it("ALL_CARD_FIELDS is exactly the DEC-289 allowlist", () => {

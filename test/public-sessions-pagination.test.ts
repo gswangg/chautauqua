@@ -123,6 +123,20 @@ describe("getPublicSessions (DEC-418): SQL-bound pagination", () => {
     expect(hasMore).toBe(true);
   });
 
+  it("DEC-433: LIMIT never exceeds MAX_PUBLIC_ROWS even for a large page*perPage", async () => {
+    const { db, idRecord } = buildDb([{ id: "a" }], 1, ["a"]);
+    await getPublicSessions(db, EVENT, { trackId: null, page: 50, perPage: 100, q: null });
+    expect(idRecord.limit).toBe(600);
+    expect(Number.isFinite(idRecord.limit)).toBe(true);
+  });
+
+  it("DEC-433: a non-finite page throws instead of reaching db.limit()", async () => {
+    const { db } = buildDb([{ id: "a" }], 1, ["a"]);
+    await expect(
+      getPublicSessions(db, EVENT, { trackId: null, page: Infinity, perPage: 12, q: null }),
+    ).rejects.toThrow();
+  });
+
   it("applies the identical keyword (q) condition to both the id query and the count query", async () => {
     const { db, idRecord, countRecord } = buildDb([{ id: "a" }], 5, ["a"]);
     await getPublicSessions(db, EVENT, { trackId: null, page: 1, perPage: 12, q: "Ada" });

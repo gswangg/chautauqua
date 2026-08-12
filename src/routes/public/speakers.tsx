@@ -4,6 +4,7 @@
 
 import type { PublicEvent, PublicSpeakerWithSessions } from "../../server/repo/public";
 import { speakerDetailPath, surfacePath } from "./shell";
+import { MAX_PUBLIC_PAGE } from "./query";
 
 /** Plain GET name-search form (DEC-151): JS-free, preserves the page's other
  * query semantics by resubmitting only `q` — page param is intentionally
@@ -29,7 +30,9 @@ export function SpeakersContent(props: {
   q: string | null;
 }) {
   const { event, speakers, total, page, q } = props;
-  const hasMore = speakers.length < total;
+  // DEC-433: parsePage clamps to MAX_PUBLIC_PAGE; stop offering 'Show more'
+  // once there is no further page to link to.
+  const hasMore = speakers.length < total && page < MAX_PUBLIC_PAGE;
   const basePath = surfacePath(event, "speakers");
   return (
     <>
@@ -89,7 +92,8 @@ export function GalleryContent(props: {
   q: string | null;
 }) {
   const { event, speakers, total, page, q } = props;
-  const hasMore = speakers.length < total;
+  // DEC-433: see SpeakersContent above.
+  const hasMore = speakers.length < total && page < MAX_PUBLIC_PAGE;
   const basePath = surfacePath(event, "gallery");
   return (
     <>

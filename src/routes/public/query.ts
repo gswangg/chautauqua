@@ -3,9 +3,16 @@
 // itinerary.ts). Split out of the former monolithic src/routes/public.tsx
 // (contention decomposition) — no behavior change.
 
+// DEC-433: each distinct page value mints its own caches.default entry via
+// versionedCacheKey (src/server/pubcache.ts:60), so an unbounded page param
+// is an unbounded cache-cardinality (and, downstream, LIMIT-size) attack
+// surface — clamp to [1, MAX_PUBLIC_PAGE] rather than merely rejecting.
+export const MAX_PUBLIC_PAGE = 50;
+
 export function parsePage(raw: string | undefined): number {
   const n = Number(raw);
-  return Number.isInteger(n) && n > 0 ? n : 1;
+  if (!Number.isInteger(n) || n < 1) return 1;
+  return n > MAX_PUBLIC_PAGE ? MAX_PUBLIC_PAGE : n;
 }
 
 export function parseTrackId(raw: string | undefined): string | null {

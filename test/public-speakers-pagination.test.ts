@@ -182,6 +182,28 @@ describe("getPublicSpeakers (DEC-418 part 2)", () => {
     expect(items[0]!.sessions).toHaveLength(12);
   });
 
+  it("DEC-433: LIMIT never exceeds MAX_PUBLIC_ROWS even for ?limit=100&page=50", async () => {
+    const rowsByContact = new Map<string, FakeSpeakerRow[]>([
+      ["c1", [{ ...BASE_ROW, contactId: "c1", submissionId: "s1", submissionTitle: "Talk 1" }]],
+    ]);
+    const { db, calls } = fakeDb({ idOrder: ["c1"], total: 1, rowsByContact });
+
+    await getPublicSpeakers(db, "ev1", { page: 50, perPage: 100 });
+
+    const idCall = calls().find((c) => c.kind === "selectDistinct");
+    expect(idCall!.limitArg).toBe(600);
+    expect(Number.isFinite(idCall!.limitArg)).toBe(true);
+  });
+
+  it("DEC-433: a non-finite page throws instead of reaching db.limit()", async () => {
+    const rowsByContact = new Map<string, FakeSpeakerRow[]>([
+      ["c1", [{ ...BASE_ROW, contactId: "c1", submissionId: "s1", submissionTitle: "Talk 1" }]],
+    ]);
+    const { db } = fakeDb({ idOrder: ["c1"], total: 1, rowsByContact });
+
+    await expect(getPublicSpeakers(db, "ev1", { page: Infinity, perPage: 20 })).rejects.toThrow();
+  });
+
   it("applies the q filter to both the id query and the count query", async () => {
     const rowsByContact = new Map<string, FakeSpeakerRow[]>([
       ["c1", [{ ...BASE_ROW, contactId: "c1", submissionId: "s1", submissionTitle: "Talk 1" }]],
