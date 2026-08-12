@@ -353,6 +353,7 @@ describe("portal-edit locked-field sync appends a submission_revision (DEC-158)"
       "c1",
       { title: "New Title", description: "New description" },
       null,
+      [],
     );
 
     const revisionInsert = inserts.find((i) => i.table === schema.submissionRevision);
@@ -378,6 +379,7 @@ describe("portal-edit locked-field sync appends a submission_revision (DEC-158)"
       "c1",
       { title: "Same Title", description: "Same description" },
       null,
+      [],
     );
 
     expect(inserts.find((i) => i.table === schema.submissionRevision)).toBeUndefined();

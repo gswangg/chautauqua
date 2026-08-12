@@ -140,6 +140,7 @@ describe("saveSubmissionEdits (DEC-121 contact sync)", () => {
       "c1",
       { title: "T", description: "D", first_name: "NewFirst", last_name: "NewLast", email: "attacker@example.test" },
       null,
+      [],
     );
     const contactUpdate = updates.find((u) => u.table === schema.contact);
     expect(contactUpdate).toBeDefined();
@@ -152,7 +153,7 @@ describe("saveSubmissionEdits (DEC-121 contact sync)", () => {
 
   it("does not touch the contact row when neither name field is present", async () => {
     const { db, updates } = makeFakeDb({ mainRows: [], contactRows: [], fieldRows: [] });
-    await saveSubmissionEdits(db, "s1", "c1", { title: "T", description: "D" }, null);
+    await saveSubmissionEdits(db, "s1", "c1", { title: "T", description: "D" }, null, []);
     expect(updates.find((u) => u.table === schema.contact)).toBeUndefined();
   });
 });

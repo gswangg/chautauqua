@@ -18,6 +18,7 @@ import { LOCKED_SESSION_FIELDS, LOCKED_SPEAKER_FIELDS, lockedFieldName, projectF
 import type { SubmissionStatus } from "../../domain/status";
 import { resolveOfferedTrackIds } from "../../lib/submit-core";
 import { ACTIVE_INVITE_STATUSES } from "../../domain/acceptance";
+import { chunkIds } from "../../lib/chunk";
 
 export interface EditableSubmission {
   id: string;
@@ -188,6 +189,7 @@ export async function saveSubmissionEdits(
   contactId: string,
   cleanedAnswers: AnswerMap,
   trackIds: string[] | null,
+  hiddenFieldIds: string[],
 ): Promise<void> {
   const now = new Date();
   const title = cleanedAnswers[LOCKED_SESSION_FIELDS[0]];
@@ -295,6 +297,27 @@ export async function saveSubmissionEdits(
         createdAt: now,
         updatedAt: now,
       });
+    }
+  }
+
+  // DEC-501: a rule can hide a field that previously had an answer (e.g.
+  // switching format from Workshop -> Talk hides workshop_length). Deleting
+  // only from the upsert loop above would leave that stale answer behind —
+  // still visible in the organizer detail view, reviewer sessionAnswers,
+  // and CSV/JSON exports. Delete stale answers for hidden fields here,
+  // excluding locked built-ins (never rule-hidden, never stored as
+  // submission_answer rows in the first place).
+  const hiddenCustomFieldIds = hiddenFieldIds.filter((fieldId) => lockedFieldName(fieldId) === null);
+  if (hiddenCustomFieldIds.length > 0) {
+    for (const batch of chunkIds(hiddenCustomFieldIds)) {
+      await db
+        .delete(schema.submissionAnswer)
+        .where(
+          and(
+            eq(schema.submissionAnswer.submissionId, submissionId),
+            inArray(schema.submissionAnswer.formFieldId, batch),
+          ),
+        );
     }
   }
 

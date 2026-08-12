@@ -99,6 +99,7 @@ describe("saveSubmissionEdits (DEC-415 job_title/company/bio persistence)", () =
         bio: "Loves TypeScript.",
       },
       null,
+      [],
     );
     const contactUpdate = updates.find((u) => u.table === schema.contact);
     expect(contactUpdate).toBeDefined();
@@ -113,7 +114,7 @@ describe("saveSubmissionEdits (DEC-415 job_title/company/bio persistence)", () =
 
   it("bio submitted as empty string clears the stored bio to null", async () => {
     const { db, updates } = makeFakeDb({});
-    await saveSubmissionEdits(db, "s1", "c1", { title: "T", description: "D", bio: "" }, null);
+    await saveSubmissionEdits(db, "s1", "c1", { title: "T", description: "D", bio: "" }, null, []);
     const contactUpdate = updates.find((u) => u.table === schema.contact);
     expect(contactUpdate).toBeDefined();
     expect(contactUpdate!.values.bio).toBeNull();
@@ -121,7 +122,7 @@ describe("saveSubmissionEdits (DEC-415 job_title/company/bio persistence)", () =
 
   it("also trims whitespace-only job_title to null (matches profile.tsx semantics)", async () => {
     const { db, updates } = makeFakeDb({});
-    await saveSubmissionEdits(db, "s1", "c1", { title: "T", description: "D", job_title: "   " }, null);
+    await saveSubmissionEdits(db, "s1", "c1", { title: "T", description: "D", job_title: "   " }, null, []);
     const contactUpdate = updates.find((u) => u.table === schema.contact);
     expect(contactUpdate!.values.title).toBeNull();
   });
@@ -134,6 +135,7 @@ describe("saveSubmissionEdits (DEC-415 job_title/company/bio persistence)", () =
       "c1",
       { title: "T", description: "D", company: "Acme" },
       null,
+      [],
     );
     const contactUpdate = updates.find((u) => u.table === schema.contact);
     expect(contactUpdate).toBeDefined();
@@ -150,6 +152,7 @@ describe("saveSubmissionEdits (DEC-415 job_title/company/bio persistence)", () =
       "c1",
       { title: "T", description: "D", job_title: "Engineer", company: "Acme", bio: "Bio text" },
       null,
+      [],
     );
     expect(updates.find((u) => u.table === schema.participant)).toBeUndefined();
   });
@@ -162,6 +165,7 @@ describe("saveSubmissionEdits (DEC-415 job_title/company/bio persistence)", () =
       "c1",
       { title: "T", description: "D", job_title: "Engineer", company: "Acme", bio: "Bio text" },
       null,
+      [],
     );
     expect(updates.find((u) => u.table === schema.submissionAnswer)).toBeUndefined();
     expect(inserts.find((i) => i.table === schema.submissionAnswer)).toBeUndefined();

@@ -275,6 +275,13 @@ portalEditRoutes.post("/submissions/:id/edit", csrfForm, async (c) => {
     );
   }
 
-  await saveSubmissionEdits(c.var.db, submissionId, contactId, validation.cleaned, tracksEditable ? selectedTrackIds : null);
+  await saveSubmissionEdits(
+    c.var.db,
+    submissionId,
+    contactId,
+    validation.cleaned,
+    tracksEditable ? selectedTrackIds : null,
+    validation.hiddenFieldIds,
+  );
   return c.redirect(`/portal/submissions/${submissionId}`, 302);
 });
