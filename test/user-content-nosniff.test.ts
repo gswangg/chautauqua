@@ -9,24 +9,17 @@
 // (fileServeRoutes), test/files-archive-route.test.ts (fileApiRoutes), and
 // test/headshot-gate.test.ts (headshotServeRoutes).
 //
-// Part (b) is a static guard over this task's owned surface (src/routes/
-// files.ts, src/routes/portal/profile.tsx): for every handler whose
-// response body comes from makeFileStore(...).get(...), assert the
-// response literal that follows also sets "X-Content-Type-Options" — so a
-// fourth such route can't land in these two files without the header.
-// Files are read with an explicit utf-8 decode (never assume a glob
-// silently skips a binary/NUL file — DEC-546 field-guide lesson) and the
-// enumerated file count is asserted non-zero so an empty match set can't
-// pass the test vacuously.
-//
-// NOTE (scope gap, flagged not fixed): src/routes/portal/tasks.tsx has two
-// additional GET .../download handlers that also serve bytes read via
-// makeFileStore(...).get(...) without this header. They weren't among this
-// task's three named call sites and portal/tasks.tsx isn't in "FILES YOU
-// OWN" for this task, so they're left untouched here — a full-repo version
-// of this guard would fail until a follow-up task adds nosniff there too.
+// Part (b) is a static guard over the WHOLE repo (src/routes/**/*.ts and
+// src/routes/**/*.tsx, enumerated, never hand-listed): for every handler
+// whose response body comes from makeFileStore(...).get(...), assert the
+// response literal that follows also sets "X-Content-Type-Options" — so no
+// future handler anywhere under src/routes can stream a stored object
+// without the header. Files are read with an explicit utf-8 decode (never
+// assume a glob silently skips a binary/NUL file — DEC-546 field-guide
+// lesson) and the enumerated file count is asserted non-zero so an empty
+// match set can't pass the test vacuously.
 
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
@@ -178,21 +171,27 @@ describe("DEC-551: nosniff on stored-user-content responses", () => {
 // land silently missing the header.
 // -----------------------------------------------------------------------
 
-// Scoped to this task's owned surface (src/routes/files.ts and
-// src/routes/portal/profile.tsx — see task FILES YOU OWN): full-repo
-// enumeration also matches two pre-existing routes in
-// src/routes/portal/tasks.tsx (GET /tasks/.../download and
-// GET /resources/:resourceId/download) that read via
-// makeFileStore(...).get(...) but were never in scope for DEC-551's three
-// named call sites and are out of this task's "change nothing else"
-// mandate — flagged separately rather than silently expanded or silently
-// left unguarded.
-const NOSNIFF_GUARD_SCOPE = [join("src", "routes", "files.ts"), join("src", "routes", "portal", "profile.tsx")];
+// Repo-wide enumeration (DEC-657): every .ts/.tsx file under src/routes,
+// walked recursively — never a hand-listed set that can desync as new route
+// files land.
+function enumerateRouteFiles(dir: string): string[] {
+  const out: string[] = [];
+  for (const entry of readdirSync(dir)) {
+    const full = join(dir, entry);
+    const stat = statSync(full);
+    if (stat.isDirectory()) {
+      out.push(...enumerateRouteFiles(full));
+    } else if (entry.endsWith(".ts") || entry.endsWith(".tsx")) {
+      out.push(full);
+    }
+  }
+  return out;
+}
 
-describe("DEC-551 static guard: every makeFileStore(...).get(...) body response carries nosniff", () => {
-  it("enumerates the owned surface (src/routes/files.ts, src/routes/portal/profile.tsx) and asserts every such handler sets X-Content-Type-Options", () => {
+describe("DEC-551/DEC-657 static guard: every makeFileStore(...).get(...) body response carries nosniff", () => {
+  it("enumerates src/routes/**/*.ts(x) and asserts every such handler sets X-Content-Type-Options", () => {
     const repoRoot = join(__dirname, "..");
-    const files = NOSNIFF_GUARD_SCOPE.map((rel) => join(repoRoot, rel));
+    const files = enumerateRouteFiles(join(repoRoot, "src", "routes"));
     expect(files.length).toBeGreaterThan(0);
 
     const offenders: string[] = [];
