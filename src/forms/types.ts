@@ -70,3 +70,13 @@ export function lockedFieldName(id: string): string | null {
   const name = idx === -1 ? id : id.slice(idx + 1);
   return ALL_LOCKED_NAMES.has(name) ? name : null;
 }
+
+// DEC-475: a rule's fieldId must be re-keyed exactly like the field's own id
+// (lockedFieldName(...) ?? id) — the builder stores rules against the raw
+// per-form PK ('<formId>:description'), but answers/visibility checks are
+// keyed by the short locked name. Without this normalization, an eq/ne rule
+// referencing a locked trigger field silently and permanently evaluates
+// against undefined.
+export function normalizeRuleFieldId(rule: FormFieldRule): FormFieldRule {
+  return { ...rule, fieldId: lockedFieldName(rule.fieldId) ?? rule.fieldId };
+}

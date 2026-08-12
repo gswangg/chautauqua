@@ -14,7 +14,7 @@ import type { Db } from "../context";
 import { newId } from "../../domain/ids";
 import { appendSubmissionRevision } from "./revisions";
 import type { FormFieldDef, FormFieldKind, FormFieldSection, FormFieldRule, AnswerMap } from "../../forms/types";
-import { LOCKED_SESSION_FIELDS, LOCKED_SPEAKER_FIELDS, lockedFieldName } from "../../forms/types";
+import { LOCKED_SESSION_FIELDS, LOCKED_SPEAKER_FIELDS, lockedFieldName, normalizeRuleFieldId } from "../../forms/types";
 import type { SubmissionStatus } from "../../domain/status";
 import { resolveOfferedTrackIds } from "../../lib/submit-core";
 import { ACTIVE_INVITE_STATUSES } from "../../domain/acceptance";
@@ -107,6 +107,9 @@ export async function loadEditableSubmission(
       // DEC-050: locked rows carry a per-form PK; normalize to the short
       // locked name so the shared renderer/validator/answer-map keying
       // matches the public submit path.
+      // DEC-475: normalize the rule's own fieldId the same way — it too is
+      // a reference into the answer map, and left unmapped a rule keyed on
+      // a locked trigger field is silently and permanently dead.
       id: lockedFieldName(f.id) ?? f.id,
       section: f.section as FormFieldSection,
       kind: f.kind as FormFieldKind,
@@ -115,7 +118,7 @@ export async function loadEditableSubmission(
       required: f.required,
       position: f.position,
       options: f.optionsJson ? (JSON.parse(f.optionsJson) as string[]) : undefined,
-      rule: f.ruleJson ? (JSON.parse(f.ruleJson) as FormFieldRule) : undefined,
+      rule: f.ruleJson ? normalizeRuleFieldId(JSON.parse(f.ruleJson) as FormFieldRule) : undefined,
     }))
     .sort((a, b) => a.position - b.position);
 
