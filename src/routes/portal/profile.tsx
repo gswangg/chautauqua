@@ -143,35 +143,35 @@ function ProfilePage(props: {
       {props.saved ? <p role="status">Profile saved.</p> : null}
       <p><a href="/account/password">Change password</a></p>
 
-      <section aria-label="Headshot" class="chq-section chq-portal-profile-head">
-        {/* DEC-245: headshot success renders its own 'Headshot uploaded.'
-            status, distinct from the details form's 'Profile saved.' */}
-        {profile.headshotUrl ? (
-          <img src={profile.headshotUrl} alt="" width={64} height={64} class="chq-portal-avatar" />
-        ) : (
-          <div class="chq-portal-avatar" />
-        )}
-        <div class="chq-portal-facts" style="flex:1; min-width:200px">
-          <h3 style="margin:0 0 4px">Headshot</h3>
-          {props.headshotSavedMessage ? <p role="status">{props.headshotSavedMessage}</p> : null}
-          {!profile.headshotUrl ? <p>No headshot uploaded yet.</p> : null}
-          <form method="post" action="/portal/profile/headshot" enctype="multipart/form-data">
-            <input type="hidden" name={CSRF_COOKIE_NAME} value={props.csrfToken} />
+      {/* DEC-574: ONE form for details + headshot — a speaker who edits the
+          bio and then picks a new photo must not lose either. The headshot
+          <input> lives inside this same multipart form; POST /portal/profile
+          saves both fields and photo (if provided) in a single act. */}
+      <form method="post" action="/portal/profile" enctype="multipart/form-data">
+        <input type="hidden" name={CSRF_COOKIE_NAME} value={props.csrfToken} />
+
+        <section aria-label="Headshot" class="chq-section chq-portal-profile-head">
+          {/* DEC-245: headshot success renders its own 'Headshot uploaded.'
+              status, distinct from the details form's 'Profile saved.' */}
+          {profile.headshotUrl ? (
+            <img src={profile.headshotUrl} alt="" width={64} height={64} class="chq-portal-avatar" />
+          ) : (
+            <div class="chq-portal-avatar" />
+          )}
+          <div class="chq-portal-facts" style="flex:1; min-width:200px">
+            <h3 style="margin:0 0 4px">Headshot</h3>
+            {props.headshotSavedMessage ? <p role="status">{props.headshotSavedMessage}</p> : null}
+            {!profile.headshotUrl ? <p>No headshot uploaded yet.</p> : null}
             <label>
               Upload a new headshot
-              <input type="file" name="headshot" accept=".png,.jpg,.jpeg,.webp" required />
+              <input type="file" name="headshot" accept=".png,.jpg,.jpeg,.webp" />
             </label>
             <p class="chq-portal-sub">{HEADSHOT_HELP_TEXT}</p>
-            <button type="submit" class="chq-btn chq-btn-secondary">Upload headshot</button>
-          </form>
-          <script dangerouslySetInnerHTML={{ __html: HEADSHOT_DOWNSCALE_JS }} />
-        </div>
-      </section>
+          </div>
+        </section>
 
-      <section aria-label="Profile details" class="chq-section">
-        <div class="chq-section-label">Details</div>
-        <form method="post" action="/portal/profile">
-          <input type="hidden" name={CSRF_COOKIE_NAME} value={props.csrfToken} />
+        <section aria-label="Profile details" class="chq-section">
+          <div class="chq-section-label">Details</div>
           <div class="chq-portal-field">
             <label class="chq-portal-field-label" for="firstName">First name</label>
             <input class="chq-input" type="text" id="firstName" name="firstName" value={profile.firstName} required />
@@ -211,8 +211,9 @@ function ProfilePage(props: {
           <div class="chq-portal-actions">
             <button type="submit" class="chq-btn chq-btn-primary">Save profile</button>
           </div>
-        </form>
-      </section>
+        </section>
+      </form>
+      <script dangerouslySetInnerHTML={{ __html: HEADSHOT_DOWNSCALE_JS }} />
     </PortalLayout>
   );
 }
@@ -250,6 +251,13 @@ portalProfileRoutes.get("/profile", async (c) => {
   );
 });
 
+// DEC-574: ONE multipart POST carries the details fields and the optional
+// headshot file together, so a speaker who edits the bio and then picks a
+// new photo never loses either — the previous split into
+// POST /portal/profile (details) + POST /portal/profile/headshot (photo,
+// its own PRG redirect) meant an upload discarded any unsaved bio edit.
+// The now-redundant POST /portal/profile/headshot route is deleted rather
+// than kept as a shim (house rule: no back-compat).
 portalProfileRoutes.post("/profile", csrfForm, async (c) => {
   const auth = c.var.auth!;
   const contactId = assertSpeakerContactId(auth);
@@ -257,15 +265,6 @@ portalProfileRoutes.post("/profile", csrfForm, async (c) => {
 
   const firstName = String(body.firstName ?? "").trim();
   const lastName = String(body.lastName ?? "").trim();
-  if (!firstName || !lastName) {
-    const { branding, profile } = await loadProfile(c);
-    const { token: csrfToken } = ensureCsrfCookie(c);
-    return c.html(
-      <ProfilePage branding={branding} profile={profile} csrfToken={csrfToken} error="First and last name are required." />,
-      400,
-    );
-  }
-
   const socialLinks: SocialLinks = {
     twitter: String(body.twitter ?? ""),
     linkedin: String(body.linkedin ?? ""),
@@ -275,6 +274,27 @@ portalProfileRoutes.post("/profile", csrfForm, async (c) => {
   const title = String(body.title ?? "").trim();
   const company = String(body.company ?? "").trim();
   const bio = String(body.bio ?? "").trim();
+
+  // Re-render on any validation failure with what the speaker just typed,
+  // not the previously stored row — losing typed-but-unsaved edits on a
+  // rejected submit would be its own data-loss path.
+  const { branding, profile: storedProfile } = await loadProfile(c);
+  const { token: csrfToken } = ensureCsrfCookie(c);
+  const submittedProfile: ContactProfile = {
+    ...storedProfile,
+    firstName,
+    lastName,
+    title: title || null,
+    company: company || null,
+    bio: bio || null,
+    socialLinks,
+  };
+  const renderError = (error: string) =>
+    c.html(<ProfilePage branding={branding} profile={submittedProfile} csrfToken={csrfToken} error={error} />, 400);
+
+  if (!firstName || !lastName) {
+    return renderError("First and last name are required.");
+  }
 
   // DEC-422: bound every free-text field before it reaches updateContactProfile
   // (portal profile had no length limit at all — an unbounded write to
@@ -292,13 +312,60 @@ portalProfileRoutes.post("/profile", csrfForm, async (c) => {
   ];
   for (const [field, value, max] of capped) {
     if (value.length > max) {
-      const { branding, profile } = await loadProfile(c);
-      const { token: csrfToken } = ensureCsrfCookie(c);
-      return c.html(
-        <ProfilePage branding={branding} profile={profile} csrfToken={csrfToken} error={`${field} is too long.`} />,
-        400,
-      );
+      return renderError(`${field} is too long.`);
     }
+  }
+
+  // Optional headshot part: an <input type="file"> with nothing chosen
+  // still submits a File with an empty name in multipart bodies — that's
+  // "no file provided", not a validation failure. A File with a real name
+  // is a deliberate upload attempt and runs the same gates the old
+  // POST /portal/profile/headshot route ran.
+  const headshotPart = body["headshot"];
+  const hasHeadshot = headshotPart instanceof File && headshotPart.name !== "";
+  let uploadedHeadshot = false;
+
+  if (hasHeadshot) {
+    const headshot = headshotPart as File;
+    const validation = validateHeadshotUpload({ filename: headshot.name, sizeBytes: headshot.size });
+    if (!validation.ok) {
+      return renderError(validation.message);
+    }
+
+    const buf = await headshot.arrayBuffer();
+
+    // DEC-084: server-side dimension gate, amending DEC-059's client-only
+    // downscale — a client can always be bypassed. PNG/JPEG are the only
+    // types we can sniff headers for; webp remains governed by the existing
+    // size cap above (DEC-084 note: webp dimension sniffing is out of scope).
+    if (validation.servedContentType === "image/png" || validation.servedContentType === "image/jpeg") {
+      let dims: { width: number; height: number };
+      try {
+        dims = readImageDims(new Uint8Array(buf), validation.servedContentType);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Headshot image could not be read";
+        return renderError(message);
+      }
+      if (dims.width > MAX_HEADSHOT_EDGE_PX || dims.height > MAX_HEADSHOT_EDGE_PX) {
+        return renderError(
+          "Headshot is larger than 2048px on its longest edge — please upload a smaller image (the portal resizes automatically in modern browsers).",
+        );
+      }
+    }
+
+    const sanitized = sanitizeFilenameForKey(headshot.name);
+    const r2Key = `headshot/${contactId}/${newId()}-${sanitized}`;
+    const store = makeFileStore(c.env.FILES);
+    await store.put(r2Key, buf, validation.servedContentType);
+
+    await setContactHeadshot(c.var.db, contactId, {
+      filename: headshot.name,
+      r2Key,
+      sizeBytes: headshot.size,
+      contentType: validation.servedContentType,
+      uploadedByContactId: contactId,
+    });
+    uploadedHeadshot = true;
   }
 
   await updateContactProfile(c.var.db, contactId, {
@@ -310,84 +377,12 @@ portalProfileRoutes.post("/profile", csrfForm, async (c) => {
     socialLinks,
   });
 
-  const { branding, profile } = await loadProfile(c);
-  const { token: csrfToken } = ensureCsrfCookie(c);
-  return c.html(<ProfilePage branding={branding} profile={profile} csrfToken={csrfToken} saved />);
-});
-
-portalProfileRoutes.post("/profile/headshot", csrfForm, async (c) => {
-  const auth = c.var.auth!;
-  const contactId = assertSpeakerContactId(auth);
-  const body = await c.req.parseBody();
-  const headshot = body["headshot"];
-
-  if (!(headshot instanceof File)) {
-    throw new ApiError("invalid", "headshot is required", { headshot: "Required" });
-  }
-
-  const validation = validateHeadshotUpload({ filename: headshot.name, sizeBytes: headshot.size });
-  if (!validation.ok) {
-    const { branding, profile } = await loadProfile(c);
-    const { token: csrfToken } = ensureCsrfCookie(c);
-    return c.html(
-      <ProfilePage branding={branding} profile={profile} csrfToken={csrfToken} error={validation.message} />,
-      400,
-    );
-  }
-
-  const sanitized = sanitizeFilenameForKey(headshot.name);
-  const r2Key = `headshot/${contactId}/${newId()}-${sanitized}`;
-  const store = makeFileStore(c.env.FILES);
-  const buf = await headshot.arrayBuffer();
-
-  // DEC-084: server-side dimension gate, amending DEC-059's client-only
-  // downscale — a client can always be bypassed. PNG/JPEG are the only
-  // types we can sniff headers for; webp remains governed by the existing
-  // size cap above (DEC-084 note: webp dimension sniffing is out of scope).
-  if (validation.servedContentType === "image/png" || validation.servedContentType === "image/jpeg") {
-    let dims: { width: number; height: number };
-    try {
-      dims = readImageDims(new Uint8Array(buf), validation.servedContentType);
-    } catch (err) {
-      const { branding, profile } = await loadProfile(c);
-      const { token: csrfToken } = ensureCsrfCookie(c);
-      const message = err instanceof Error ? err.message : "Headshot image could not be read";
-      return c.html(
-        <ProfilePage branding={branding} profile={profile} csrfToken={csrfToken} error={message} />,
-        400,
-      );
-    }
-    if (dims.width > MAX_HEADSHOT_EDGE_PX || dims.height > MAX_HEADSHOT_EDGE_PX) {
-      const { branding, profile } = await loadProfile(c);
-      const { token: csrfToken } = ensureCsrfCookie(c);
-      return c.html(
-        <ProfilePage
-          branding={branding}
-          profile={profile}
-          csrfToken={csrfToken}
-          error="Headshot is larger than 2048px on its longest edge — please upload a smaller image (the portal resizes automatically in modern browsers)."
-        />,
-        400,
-      );
-    }
-  }
-
-  await store.put(r2Key, buf, validation.servedContentType);
-
-  await setContactHeadshot(c.var.db, contactId, {
-    filename: headshot.name,
-    r2Key,
-    sizeBytes: headshot.size,
-    contentType: validation.servedContentType,
-    uploadedByContactId: contactId,
-  });
-
   // Redirect (PRG) rather than re-rendering directly: a fresh GET picks up
-  // the newly-set headshotUrl and the ?headshot=1 flag renders the
-  // 'Headshot uploaded.' success notice (DEC-245, distinct from the
-  // details form's 'Profile saved.'), so a page reload after upload
-  // doesn't silently drop the confirmation or resubmit the file.
-  return c.redirect("/portal/profile?headshot=1", 302);
+  // the newly-saved fields and headshot, and ?saved=1 (plus ?headshot=1
+  // when a photo was part of this submit) renders the right success notice
+  // (DEC-245's 'Headshot uploaded.' stays distinct from 'Profile saved.').
+  const redirectUrl = uploadedHeadshot ? "/portal/profile?saved=1&headshot=1" : "/portal/profile?saved=1";
+  return c.redirect(redirectUrl, 302);
 });
 
 // -----------------------------------------------------------------------

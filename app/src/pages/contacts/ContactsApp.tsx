@@ -195,6 +195,12 @@ export function ContactsApp() {
             setOpenContactId(null);
             reload();
           }}
+          onContactChanged={() => {
+            // DEC-574: reload the list (fresh headshot thumbnail) WITHOUT
+            // closing the drawer — an upload must not discard unsaved
+            // bio/notes/custom-field edits sitting in the still-open drawer.
+            reload();
+          }}
         />
       )}
 

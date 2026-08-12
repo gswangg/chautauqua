@@ -156,6 +156,52 @@ describe('ContactsApp render smoke: ContactDrawer', () => {
   });
 });
 
+describe('ContactsApp: headshot upload does not discard unsaved drawer edits (DEC-574)', () => {
+  it('keeps the drawer mounted and a typed-but-unsaved bio after a successful headshot upload', async () => {
+    mockApi({
+      ...baseRoutes(),
+      'GET /api/v1/contacts/ct1': FULL_CONTACT,
+      'POST /api/v1/contacts/ct1/headshot': {
+        ...FULL_CONTACT,
+        headshotUrl: 'https://files.example/ada-headshot-new.png',
+      },
+    });
+
+    render(<ContactsApp />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Ada Lovelace' })).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Ada Lovelace' }));
+
+    const dialog = await screen.findByRole('dialog', { name: 'Contact detail' });
+    await waitFor(() => {
+      expect(within(dialog).getByLabelText('Bio')).toHaveValue(FULL_CONTACT.bio);
+    });
+
+    // Type a bio edit that is never saved.
+    const bioField = within(dialog).getByLabelText('Bio');
+    fireEvent.change(bioField, { target: { value: 'An unsaved edit written just before the upload.' } });
+    expect(bioField).toHaveValue('An unsaved edit written just before the upload.');
+
+    const fileInput = within(dialog).getByLabelText('Upload headshot') as HTMLInputElement;
+    const file = new File([new Uint8Array([1, 2, 3])], 'new-headshot.png', { type: 'image/png' });
+    fireEvent.change(fileInput, { target: { files: [file] } });
+
+    // The drawer must still be mounted with the headshot updated...
+    await waitFor(() => {
+      expect(within(dialog).getByAltText('Ada Lovelace headshot')).toHaveAttribute(
+        'src',
+        'https://files.example/ada-headshot-new.png',
+      );
+    });
+    // ...and the unsaved bio edit must still be there — not discarded by a
+    // drawer close-and-reload.
+    expect(screen.getByRole('dialog', { name: 'Contact detail' })).toBeInTheDocument();
+    expect(within(dialog).getByLabelText('Bio')).toHaveValue('An unsaved edit written just before the upload.');
+  });
+});
+
 describe('ContactsApp render smoke: ImportWizard', () => {
   it('renders the first step (upload/paste CSV)', async () => {
     mockApi(baseRoutes());

@@ -9,11 +9,15 @@ interface Props {
   contactId: string;
   onClose: () => void;
   onSaved: () => void;
+  // DEC-574: distinct from onSaved — a headshot upload must refresh the
+  // list's headshot thumbnail WITHOUT closing the drawer or discarding any
+  // bio/notes/custom-field edits the speaker has typed but not yet saved.
+  onContactChanged: () => void;
 }
 
 type Tab = 'submissions' | 'emails' | 'events';
 
-export function ContactDrawer({ contactId, onClose, onSaved }: Props) {
+export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }: Props) {
   const [contact, setContact] = useState<ContactDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -120,7 +124,10 @@ export function ContactDrawer({ contactId, onClose, onSaved }: Props) {
       const updated = await apiUpload<ContactDetail>(`/contacts/${contactId}/headshot`, form);
       setHeadshotUrl(updated.headshotUrl ?? null);
       if (headshotInputRef.current) headshotInputRef.current.value = '';
-      onSaved();
+      // DEC-574: refresh the list's thumbnail without closing this drawer —
+      // onSaved() closes on save-and-navigate-away, which would discard any
+      // bio/notes/custom-field edits typed but not yet saved.
+      onContactChanged();
     } catch (err) {
       setHeadshotError(err instanceof ApiError ? err.message : 'Failed to upload headshot');
     } finally {
