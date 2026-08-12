@@ -374,6 +374,23 @@ async function main(): Promise<void> {
       },
     },
     {
+      // task-w22-c: DEC-477 raised MAX_PUBLIC_PAGE to 100 (MAX_PUBLIC_ROWS
+      // 1200) so the top of SPEC.md:73-76's 200-800 speaker range is
+      // reachable — measure the deepest reachable page, not just page 1.
+      name: "public speakers page at row ceiling",
+      cls: "public",
+      run: async () => {
+        const res = await fetch(`${PERF_URL}/e/${PERF_EVENT_SLUG}/speakers?page=100`);
+        if (res.ok) {
+          const body = await res.clone().text();
+          if (body.length === 0) {
+            throw new Error("public speakers page at row ceiling: expected non-empty rendered body");
+          }
+        }
+        return res;
+      },
+    },
+    {
       // task-w17-d: DEC-331 fifth public surface — the gallery page.
       name: "public gallery page",
       cls: "public",

@@ -191,7 +191,7 @@ describe("getPublicSpeakers (DEC-418 part 2)", () => {
     await getPublicSpeakers(db, "ev1", { page: 50, perPage: 100 });
 
     const idCall = calls().find((c) => c.kind === "selectDistinct");
-    expect(idCall!.limitArg).toBe(600);
+    expect(idCall!.limitArg).toBe(1200);
     expect(Number.isFinite(idCall!.limitArg)).toBe(true);
   });
 
