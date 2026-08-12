@@ -1,36 +1,93 @@
-/* CFP form builder (DEC-033, redesign DEC-366..368). Page-lane styling
-   only — never redefines a shared .chq-* class (DEC-368). Colour values
-   fall back to the DEC-367 tokens so this renders correctly whether or
-   not the shell lane has landed the shared :root custom properties yet. */
+/* CFP form builder (DEC-033, redesign DEC-366..368, DEC-650 mock rebuild:
+   docs/design/Chautauqua Submissions.dc.html lines 358-414 desktop /
+   424-445 phone). Page-lane styling only — never redefines a shared
+   .chq-* class (DEC-368). Colour values fall back to the DEC-367 tokens so
+   this renders correctly whether or not the shell lane has landed the
+   shared :root custom properties yet. */
 
 .chq-forms-page {
   font-family: var(--chq-font-body, 'Figtree', 'Helvetica Neue', Arial, sans-serif);
   color: var(--chq-ink);
 }
 
+/* Header band: breadcrumb + h1 on the left, Preview/Save right-aligned. */
+.chq-forms-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--chq-ink);
+}
+
+.chq-forms-header-titles {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.chq-forms-back {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.chq-forms-header-titles h1 {
+  margin: 0;
+  font-family: var(--chq-font-display, 'Familjen Grotesk', 'Figtree', sans-serif);
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+
+.chq-forms-header-actions {
+  display: flex;
+  gap: 9px;
+}
+
 .chq-forms-content {
   display: flex;
   flex-direction: column;
-  gap: 26px;
+  gap: 24px;
+  padding-top: 22px;
   /* Required measure for form-shaped content: 660-760px. */
   max-width: 720px;
 }
 
-.chq-forms-content h1 {
-  margin: 0.25rem 0 0;
-  font-family: var(--chq-font-display, 'Familjen Grotesk', 'Figtree', sans-serif);
-  font-size: 30px;
+/* Opens / Closes / Received three-cell strip. */
+.chq-forms-strip {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border-top: 1px solid var(--chq-rule, #d3cfc0);
+  border-bottom: 1px solid var(--chq-rule, #d3cfc0);
+}
+
+.chq-forms-strip-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 13px 14px;
+  border-left: 1px solid var(--chq-rule, #d3cfc0);
+}
+
+.chq-forms-strip-cell:first-child {
+  padding-left: 0;
+  border-left: none;
+}
+
+.chq-forms-strip-label {
+  font-size: 10px;
   font-weight: 700;
-  letter-spacing: -0.03em;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--chq-muted);
 }
 
-/* Numbered sections with a 2px ink rule under the section title. */
-.chq-forms-content {
-  counter-reset: chq-forms-section;
-}
-
-.chq-forms-section {
-  counter-increment: chq-forms-section;
+.chq-forms-strip-value {
+  font-family: var(--chq-font-display, 'Familjen Grotesk', 'Figtree', sans-serif);
+  font-size: 22px;
+  font-weight: 400;
+  line-height: 1.2;
 }
 
 .chq-forms-section-title {
@@ -48,11 +105,6 @@
   text-transform: uppercase;
 }
 
-.chq-forms-section-title::before {
-  content: counter(chq-forms-section, decimal-leading-zero) ' \2014 ';
-  color: var(--chq-muted);
-}
-
 .chq-forms-section-title h2 {
   margin: 0;
   font: inherit;
@@ -65,7 +117,58 @@
 }
 
 .chq-forms-field-list-header {
-  border: none;
+  border-bottom: 2px solid var(--chq-ink);
+}
+
+/* Field list: flat rows (DEC-650), not a table. Grid columns mirror the
+   mock's 20px/1fr/150px/108px/auto rhythm. */
+.chq-forms-field-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.chq-forms-field-row {
+  display: grid;
+  grid-template-columns: 20px 1fr 150px 108px auto;
+  gap: 16px;
+  align-items: center;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--chq-hairline);
+}
+
+.chq-forms-field-list .chq-forms-field-row:last-child {
+  border-bottom: none;
+}
+
+.chq-forms-field-drag {
+  color: var(--chq-muted);
+  font-size: 14px;
+  width: 20px;
+}
+
+.chq-forms-field-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.chq-forms-field-label-text {
+  font-family: var(--chq-font-display, 'Familjen Grotesk', 'Figtree', sans-serif);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.chq-forms-field-help,
+.chq-forms-field-condition {
+  font-size: 12px;
+  color: var(--chq-muted);
+}
+
+.chq-forms-field-kind {
+  font-size: 13px;
+  color: var(--chq-ink-2, var(--chq-ink));
 }
 
 /* Field kind, required marker, and conditional rule read as text, not
@@ -93,12 +196,14 @@
   color: var(--chq-muted);
 }
 
-/* Drag affordance glyph (DEC-367: no icons/images/SVG). Purely decorative
-   -- real reordering stays on the accessible move-up/move-down buttons. */
-.chq-forms-field-drag {
-  color: var(--chq-muted);
-  font-size: 14px;
-  width: 20px;
+.chq-forms-field-move {
+  display: flex;
+  gap: 4px;
+}
+
+.chq-forms-field-actions {
+  display: flex;
+  gap: 12px;
 }
 
 .chq-forms-field-modal {
@@ -106,10 +211,10 @@
   max-width: 520px;
 }
 
-/* Form settings strip layout. .chq-field/.chq-input/.chq-textarea/.chq-pill/
-   .chq-chipstrip/.chq-btn/.chq-error-banner/.chq-section-head/.chq-section-
-   label are shared classes (styles.css) — this scopes spacing only and never
-   redefines their rules (DEC-368). */
+/* Form settings panel (DEC-650: secondary panel below the field list).
+   .chq-field/.chq-input/.chq-textarea/.chq-pill/.chq-chipstrip/.chq-btn/
+   .chq-error-banner are shared classes (styles.css) — this scopes spacing
+   only and never redefines their rules (DEC-368). */
 .chq-forms-settings {
   display: flex;
   flex-direction: column;
@@ -128,6 +233,11 @@
 }
 
 .chq-forms-settings-title {
+  color: var(--chq-muted);
+}
+
+.chq-forms-settings-saving {
+  font-size: 12px;
   color: var(--chq-muted);
 }
 
@@ -150,19 +260,49 @@
   flex: 1;
 }
 
+/* Phone-only fixed footer (mock 390px frame): hidden at desktop, becomes
+   the flex-shrink:0 footer of the phone shell below 700px. Second markup,
+   not a text swap over the desktop header actions (DEC-390 phone-selector
+   precedent: display:none or absent). */
+.chq-forms-phone-footer {
+  display: none;
+}
+
 /* Phone frame (DEC-385: the one phone switch, 700px, for every stylesheet).
-   Field list becomes a card stack on the SAME markup -- thead hidden,
-   tr/td become flex blocks, no cell dropped, no duplicated phone DOM
-   (DEC-386). Ambiguous cells (Section/Kind/Condition, which read as bare
-   text with no visual context once the header row is gone) get a
-   data-label mirrored from their own th and rendered via td::before, per
-   DEC-390; everything else needs no markup change. */
+   Fixed-header / scrolling-body / fixed-footer shell (mock 424-445):
+   .chq-forms-header stays in-flow flex-shrink:0, .chq-forms-content
+   becomes the page's own scrolling region (flex:1; min-height:0;
+   overflow-y:auto — nested inside .chq-main, which per DEC-576 stays the
+   outer scroller; the same page-scoped shell already used by
+   .chq-phone-agenda/.chq-phone-footer in agenda.css), and
+   .chq-forms-phone-footer becomes the visible flex-shrink:0 footer
+   carrying "Save the form" + "Preview". */
 @media (max-width: 700px) {
-  .chq-forms-content h1 {
-    font-size: 27px;
+  .chq-forms-page {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    gap: 0;
   }
 
-  .chq-forms-content,
+  .chq-forms-header {
+    flex-shrink: 0;
+    padding-bottom: 12px;
+  }
+
+  .chq-forms-header-titles h1 {
+    font-size: 25px;
+  }
+
+  .chq-forms-content {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    max-width: none;
+    padding-top: 16px;
+    padding-bottom: 16px;
+  }
+
   .chq-forms-settings {
     max-width: none;
   }
@@ -171,96 +311,40 @@
     max-width: none;
   }
 
-  /* Table -> cards. */
-  .chq-forms-field-list thead {
-    display: none;
+  .chq-forms-field-row {
+    grid-template-columns: 16px 1fr auto;
+    grid-template-areas:
+      'drag label move'
+      'drag kind actions'
+      'drag required actions';
+    row-gap: 6px;
   }
 
-  .chq-forms-field-list,
-  .chq-forms-field-list tbody {
-    display: block;
-    width: 100%;
+  .chq-forms-field-drag {
+    grid-area: drag;
   }
 
-  .chq-forms-field-list tbody tr {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 8px;
-    padding: 16px 0;
-    border-bottom: 1px solid var(--chq-hairline);
+  .chq-forms-field-label {
+    grid-area: label;
   }
 
-  .chq-forms-field-list tbody tr:first-child {
-    padding-top: 0;
+  .chq-forms-field-move {
+    grid-area: move;
+    align-self: start;
   }
 
-  .chq-forms-field-list tbody tr:last-child {
-    border-bottom: none;
+  .chq-forms-field-kind {
+    grid-area: kind;
   }
 
-  .chq-forms-field-list tbody td {
-    display: block;
-    padding: 0;
-    border-bottom: none;
+  .chq-forms-field-required,
+  .chq-forms-field-optional {
+    grid-area: required;
   }
 
-  /* Drag glyph: decorative, no header text -- stays first, unchanged. */
-  .chq-forms-field-list tbody td.chq-forms-field-drag {
-    order: 1;
-  }
-
-  /* Move up/down buttons. */
-  .chq-forms-field-list tbody td:nth-child(2) {
-    order: 2;
-    display: flex;
-    gap: 8px;
-    align-self: flex-end;
-  }
-
-  /* Label (with locked tag). */
-  .chq-forms-field-list tbody td:nth-child(3) {
-    order: 3;
-    font-size: 15px;
-    font-weight: 600;
-  }
-
-  /* Section. */
-  .chq-forms-field-list tbody td:nth-child(4) {
-    order: 4;
-  }
-
-  /* Kind. */
-  .chq-forms-field-list tbody td:nth-child(5) {
-    order: 5;
-  }
-
-  /* Required / Optional. */
-  .chq-forms-field-list tbody td:nth-child(6) {
-    order: 6;
-  }
-
-  /* Condition. */
-  .chq-forms-field-list tbody td:nth-child(7) {
-    order: 7;
-  }
-
-  /* Edit / Delete actions. */
-  .chq-forms-field-list tbody td:nth-child(8) {
-    order: 8;
-    display: flex;
-    gap: 8px;
-  }
-
-  .chq-forms-field-list tbody td[data-label]::before {
-    content: attr(data-label);
-    display: block;
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: var(--chq-muted);
-    margin-bottom: 3px;
+  .chq-forms-field-actions {
+    grid-area: actions;
+    align-self: start;
   }
 
   /* Every interactive control in the field list reaches 44px via a
@@ -272,7 +356,6 @@
     align-items: center;
     justify-content: center;
     border-radius: var(--chq-r-ctl-phone);
-    flex: 1;
   }
 
   .chq-forms-public-link {
@@ -308,5 +391,30 @@
 
   .chq-forms-settings .chq-btn {
     justify-content: center;
+  }
+
+  /* Header actions move into the fixed footer at phone width -- the
+     desktop Preview/Save pair in the header band is redundant chrome once
+     the footer carries the primary action. */
+  .chq-forms-header-actions {
+    display: none;
+  }
+
+  .chq-forms-phone-footer {
+    flex-shrink: 0;
+    border-top: 1px solid var(--chq-ink);
+    background: var(--chq-surface-sunk);
+    padding: 12px 0 0;
+    display: flex;
+    gap: 8px;
+  }
+
+  .chq-forms-phone-footer .chq-btn {
+    flex: 1;
+    min-height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--chq-r-ctl-phone);
   }
 }
