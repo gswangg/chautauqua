@@ -310,6 +310,30 @@
   font-weight: 600;
 }
 
+/* Tracks section editor (DEC-638): multi-select checkbox list, not radios
+   -- multi-track per submission per DEC-579. */
+.chq-detail-track-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.chq-detail-track-options {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.chq-detail-track-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
 .chq-answers-list {
   margin: 0;
   display: flex;

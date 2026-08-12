@@ -67,7 +67,7 @@ export const ROUTE_GROUPS: { title: string; rows: Row[] }[] = [
     rows: [
       { method: "GET", path: "/api/v1/events/:eventId/submissions", role: "organizer" },
       { method: "GET", path: "/api/v1/submissions/:id", role: "organizer" },
-      { method: "PATCH", path: "/api/v1/submissions/:id", role: "organizer (edit title/description)" },
+      { method: "PATCH", path: "/api/v1/submissions/:id", role: "organizer (edit title/description/trackIds)" },
       { method: "POST", path: "/api/v1/events/:eventId/submissions", role: "organizer" },
       { method: "POST", path: "/api/v1/submissions/:id/clone", role: "organizer" },
       { method: "POST", path: "/api/v1/events/:eventId/submissions/status", role: "organizer (bulk status change)" },

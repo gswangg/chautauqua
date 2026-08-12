@@ -9,7 +9,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { SubmissionDetailPage } from './SubmissionDetailPage';
-import { mockApi } from '../../test-utils/mockApi';
+import { mockApi, errorEnvelope } from '../../test-utils/mockApi';
 
 const SUB_ID = 'sub-render-1';
 
@@ -23,7 +23,7 @@ function baseDetail(overrides: Partial<Record<string, unknown>> = {}) {
     status: 'pending',
     contentStatus: 'pending',
     trackId: null,
-    trackIds: [],
+    trackIds: [] as string[],
     formId: null,
     acceptedAt: null,
     icsSequence: 0,
@@ -246,5 +246,153 @@ describe('SubmissionDetailPage render: Reviews section + segmented decision butt
     expect(declinedBtn).toHaveClass('chq-btn-secondary');
     // No native <select> for status any more.
     expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+  });
+});
+
+// DEC-638/DEC-598: the Tracks section becomes an editable multi-select
+// (checkbox list, not radios per DEC-579) with a Save action that PATCHes
+// the FULL trackIds set, including the legal empty-array clear.
+describe('SubmissionDetailPage render: editable Tracks section', () => {
+  it('adds a track by PATCHing the full id set and renders the result', async () => {
+    let currentDetail = baseDetail({ trackIds: ['t1'] });
+    // mockApi route handlers take no arguments (the fetch stub does not
+    // parse the request body into them), so the response is hardcoded to
+    // the expected next state; the actual PATCH body is asserted separately
+    // below via the raw fetchMock call.
+    const patchMock = vi.fn(() => {
+      currentDetail = { ...currentDetail, trackIds: ['t1', 't2'] };
+      return currentDetail;
+    });
+    const fetchMock = mockApi({
+      [`GET /api/v1/submissions/${SUB_ID}`]: () => currentDetail,
+      [`GET /api/v1/events/evt-1/tracks`]: {
+        items: [
+          { id: 't1', name: 'Frontend' },
+          { id: 't2', name: 'Backend' },
+        ],
+        total: 2,
+        page: 1,
+        perPage: 20,
+      },
+      [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`PATCH /api/v1/submissions/${SUB_ID}`]: patchMock,
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('Frontend')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit tracks' }));
+
+    const backendCheckbox = screen.getByRole('checkbox', { name: 'Backend' });
+    fireEvent.click(backendCheckbox);
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => {
+      expect(patchMock).toHaveBeenCalled();
+    });
+    const patchCall = fetchMock.mock.calls.find(([input, init]) => {
+      const url = typeof input === 'string' ? input : (input as Request | URL).toString();
+      return url.includes(`/submissions/${SUB_ID}`) && init?.method === 'PATCH';
+    })!;
+    expect(JSON.parse(patchCall[1]!.body as string)).toEqual({ trackIds: ['t1', 't2'] });
+    await waitFor(() => {
+      expect(screen.getAllByText('Backend').length).toBeGreaterThan(0);
+    });
+  });
+
+  it('clears every track by PATCHing an empty array and renders the empty state', async () => {
+    let currentDetail = baseDetail({ trackIds: ['t1'] });
+    // See note above: the handler's response is hardcoded to the expected
+    // next state; the actual PATCH body is asserted via fetchMock below.
+    const patchMock = vi.fn(() => {
+      currentDetail = { ...currentDetail, trackIds: [] };
+      return currentDetail;
+    });
+    const fetchMock = mockApi({
+      [`GET /api/v1/submissions/${SUB_ID}`]: () => currentDetail,
+      [`GET /api/v1/events/evt-1/tracks`]: {
+        items: [{ id: 't1', name: 'Frontend' }],
+        total: 1,
+        page: 1,
+        perPage: 20,
+      },
+      [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`PATCH /api/v1/submissions/${SUB_ID}`]: patchMock,
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('Frontend')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit tracks' }));
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Frontend' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => {
+      expect(patchMock).toHaveBeenCalled();
+    });
+    const patchCall = fetchMock.mock.calls.find(([input, init]) => {
+      const url = typeof input === 'string' ? input : (input as Request | URL).toString();
+      return url.includes(`/submissions/${SUB_ID}`) && init?.method === 'PATCH';
+    })!;
+    expect(JSON.parse(patchCall[1]!.body as string)).toEqual({ trackIds: [] });
+    await waitFor(() => {
+      expect(screen.getByText('No tracks assigned.')).toBeInTheDocument();
+    });
+  });
+
+  it('surfaces a failed PATCH and restores the server set', async () => {
+    const currentDetail = baseDetail({ trackIds: ['t1'] });
+    mockApi({
+      [`GET /api/v1/submissions/${SUB_ID}`]: () => currentDetail,
+      [`GET /api/v1/events/evt-1/tracks`]: {
+        items: [
+          { id: 't1', name: 'Frontend' },
+          { id: 't2', name: 'Backend' },
+        ],
+        total: 2,
+        page: 1,
+        perPage: 20,
+      },
+      [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`PATCH /api/v1/submissions/${SUB_ID}`]: {
+        status: 422,
+        body: errorEnvelope('invalid', 'Tracks belong to a different event', {
+          trackIds: 'Tracks belong to a different event',
+        }),
+      },
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('Frontend')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit tracks' }));
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Backend' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Tracks belong to a different event')).toBeInTheDocument();
+    });
+    // Rolled back to the server's actual (refetched) set: only Frontend is
+    // checked, Backend reverts to unchecked -- the editor stays open (same
+    // pattern as the title/description editor) so the organiser sees the
+    // error and can retry.
+    await waitFor(() => {
+      expect(screen.getByRole('checkbox', { name: 'Frontend' })).toBeChecked();
+      expect(screen.getByRole('checkbox', { name: 'Backend' })).not.toBeChecked();
+    });
   });
 });
