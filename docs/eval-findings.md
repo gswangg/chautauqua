@@ -325,3 +325,9 @@ mock shows criteria but not their editing flow; prod's invented flow is unintuit
     render viewport-only in fullPage captures. The backdrop is fine in a real browser.
     Do NOT change it. (General note for verification agents: never judge
     fixed-position elements from fullPage screenshots; use viewport captures.)
+
+22. (User QA) Contacts directory: the search field is misplaced — prod buries it mid-page
+    (below the KPI strip and "Where they work") instead of the mock's toolbar position
+    directly under the title between the 1px rules (the standard toolbar pattern every
+    other list page uses). Part of the Directory layout rebuild (table + sidebar,
+    item in SYNTHESIS Tier 3): search belongs first, filters beside it.
