@@ -7,7 +7,7 @@
 // verifying ownership first) — see assertSpeakerContactId and
 // isOwnedByContact.
 
-import { and, desc, eq, gte, inArray, lte } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, lte } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { formatRef } from "../../domain/ids";
@@ -273,7 +273,8 @@ export async function getPortalSubmissionDetail(
     })
     .from(schema.submissionAnswer)
     .innerJoin(schema.formField, eq(schema.submissionAnswer.formFieldId, schema.formField.id))
-    .where(eq(schema.submissionAnswer.submissionId, submissionId));
+    .where(eq(schema.submissionAnswer.submissionId, submissionId))
+    .orderBy(asc(schema.formField.position), asc(schema.formField.id));
 
   const answers: PortalSubmissionAnswer[] = answerRows.map((a) => ({
     fieldId: a.fieldId,

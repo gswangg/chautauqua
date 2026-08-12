@@ -191,12 +191,13 @@ export async function listEventDeliverableFiles(
   // Lead speaker: ONE query over the page's submission ids, min participant
   // order among role='speaker' rows — single pass, no per-row .find (DEC-344
   // deletes the old O(n^2) loop).
-  const leadBySubmission = new Map<string, { order: number; name: string }>();
+  const leadBySubmission = new Map<string, { order: number; contactId: string; name: string }>();
   for (const batch of chunkIds(submissionIds)) {
     const batchRows = await db
       .select({
         submissionId: schema.participant.submissionId,
         order: schema.participant.order,
+        contactId: schema.contact.id,
         firstName: schema.contact.firstName,
         lastName: schema.contact.lastName,
       })
@@ -206,8 +207,12 @@ export async function listEventDeliverableFiles(
     for (const p of batchRows) {
       if (!p.submissionId) continue;
       const existing = leadBySubmission.get(p.submissionId);
-      if (!existing || p.order < existing.order) {
-        leadBySubmission.set(p.submissionId, { order: p.order, name: `${p.firstName} ${p.lastName}`.trim() });
+      if (!existing || p.order < existing.order || (p.order === existing.order && p.contactId < existing.contactId)) {
+        leadBySubmission.set(p.submissionId, {
+          order: p.order,
+          contactId: p.contactId,
+          name: `${p.firstName} ${p.lastName}`.trim(),
+        });
       }
     }
   }

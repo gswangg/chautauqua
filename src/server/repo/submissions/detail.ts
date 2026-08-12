@@ -2,7 +2,7 @@
 // repo/submissions.ts (contention decomposition, no behavior change). See
 // repo/submissions.ts for the module-level contract notes.
 
-import { eq } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { formatRef } from "../../../domain/ids";
@@ -129,7 +129,7 @@ export async function getSubmissionDetail(db: Db, submissionId: string): Promise
     .from(schema.participant)
     .innerJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
     .where(eq(schema.participant.submissionId, submissionId))
-    .orderBy(schema.participant.order);
+    .orderBy(asc(schema.participant.order), asc(schema.contact.id));
 
   const trackRows = await db
     .select({ trackId: schema.submissionTrack.trackId })

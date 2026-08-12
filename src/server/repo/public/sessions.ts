@@ -263,7 +263,7 @@ export async function hydrateSessions(
       .from(schema.participant)
       .innerJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
       .where(and(inArray(schema.participant.submissionId, batch), visibleParticipantConditions()))
-      .orderBy(asc(schema.participant.order));
+      .orderBy(asc(schema.participant.order), asc(schema.contact.id));
     speakerRows.push(...batchRows);
   }
   const speakersBySubmission = new Map<string, PublicSpeaker[]>();
