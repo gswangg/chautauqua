@@ -3,7 +3,7 @@
 // behavior change). See repo/contacts.ts for the module-level contract
 // notes.
 
-import { desc, eq } from "drizzle-orm";
+import { asc, desc, eq } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { formatRef } from "../../../domain/ids";
@@ -43,7 +43,10 @@ export async function getContactHistory(db: Db, contactId: string): Promise<Cont
     .from(schema.participant)
     .innerJoin(schema.submission, eq(schema.submission.id, schema.participant.submissionId))
     .innerJoin(schema.event, eq(schema.event.id, schema.submission.eventId))
-    .where(eq(schema.participant.contactId, contactId));
+    .where(eq(schema.participant.contactId, contactId))
+    // DEC-534: unforced row order was arbitrary — order the per-contact
+    // history panel deterministically by submission creation then id.
+    .orderBy(asc(schema.submission.createdAt), asc(schema.submission.id));
 
   const submissions: ContactHistorySubmission[] = submissionRows.map((r) => ({
     id: r.id,
@@ -63,7 +66,9 @@ export async function getContactHistory(db: Db, contactId: string): Promise<Cont
     })
     .from(schema.emailLog)
     .where(eq(schema.emailLog.contactId, contactId))
-    .orderBy(desc(schema.emailLog.sentAt))
+    // DEC-534: sentAt alone is not unique — tiebreak on id so "last 20
+    // emails" is a stable 20 rather than an arbitrary subset.
+    .orderBy(desc(schema.emailLog.sentAt), asc(schema.emailLog.id))
     .limit(20);
 
   const emails: ContactHistoryEmail[] = emailRows.map((r) => ({ ...r, sentAt: r.sentAt.getTime() }));

@@ -78,7 +78,10 @@ export async function getPublicSpeakers(
     .innerJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
     .innerJoin(schema.submission, eq(schema.participant.submissionId, schema.submission.id))
     .where(and(...conditions))
-    .orderBy(asc(schema.contact.lastName), asc(schema.contact.firstName))
+    // DEC-534: lastName/firstName alone are not unique — two speakers
+    // sharing a name would break the J10 directory's paging. contact.id is
+    // already the selected column.
+    .orderBy(asc(schema.contact.lastName), asc(schema.contact.firstName), asc(schema.contact.id))
     .limit(limit);
   const idRows = await (offset > 0 ? idQuery.offset(offset) : idQuery);
   const orderedIds = idRows.map((r) => r.contactId);

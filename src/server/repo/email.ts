@@ -2,7 +2,7 @@
 // types). Backs both /dev/mailbox (dev-only sink viewer, DEC-005/DEC-006)
 // and GET /api/v1/events/:eventId/email-log (J5 per-recipient history).
 
-import { and, desc, eq, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, or, sql } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { likeContains } from "./like";
@@ -103,7 +103,10 @@ export async function listEmailLog(db: Db, params: EmailLogListParams): Promise<
 
   const filtered = where ? base.where(where) : base;
   const rows = await filtered
-    .orderBy(desc(schema.emailLog.sentAt))
+    // DEC-534: sentAt alone is not unique — a bulk compose send writes many
+    // rows in the same millisecond, so page 2 could repeat/drop rows
+    // without a unique tiebreak.
+    .orderBy(desc(schema.emailLog.sentAt), asc(schema.emailLog.id))
     .limit(params.perPage)
     .offset((params.page - 1) * params.perPage);
 
