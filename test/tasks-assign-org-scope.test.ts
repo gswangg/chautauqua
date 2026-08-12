@@ -5,7 +5,7 @@
 // test/task-file-access.test.ts (Hono app mounted directly with a stamped
 // auth var, no D1/wrangler dependency in stage 1).
 
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
 import { registerErrorHandler } from "../src/server/http";
 import type { AppEnv, AuthInfo } from "../src/server/env";
@@ -79,6 +79,18 @@ vi.mock("../src/server/repo/contacts", async () => {
     ),
   };
 });
+
+// buildApp() dynamically imports the route module, and that first import pays
+// the whole transform cost of src/routes/tasks.ts + its repo barrel (~3s on an
+// idle machine). Billed inside the first `it`, that alone can exceed vitest's
+// 5s default testTimeout when the full suite runs its files in parallel -- and
+// a timed-out request still resolves later, pushing into assignTaskCalls after
+// afterEach cleared it and failing the *next* test. Warm the module registry
+// here, in a hook with its own generous timeout, so each test only measures
+// request handling.
+beforeAll(async () => {
+  await import("../src/routes/tasks");
+}, 60_000);
 
 afterEach(() => {
   vi.clearAllMocks();
