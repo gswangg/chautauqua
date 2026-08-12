@@ -402,3 +402,9 @@ export const DEC_396 = "compose/preview and compose/send take a bounded id array
 export const DEC_397 = "A preview never mints credentials: in preview mode the portal link for a userless contact renders a fixed placeholder, and only the send path issues claim tokens";
 export const DEC_398 = "A form task's form is picked from the event's own forms and validated server-side; findFormForEvent means the DEFAULT form";
 export const DEC_399 = "The global public-cache bump stays CLOSED -- third and final reaffirmation of DEC-201/333/348";
+export const DEC_400 = "The overview endpoint's wire keys are DEC-370's, not the repo's private ones: `triage` is the v2 rows section and the v1 aggregate ships as `triage-counts`; a repo-level contract test pins them to the SPA type";
+export const DEC_401 = "The mobile pass measures the truth and names the offender: max element right edge as well as scrollWidth, plus the widest overflowing elements and the shortest control's selector";
+export const DEC_402 = "Every `<table className=\"chq-table\">` in the admin SPA carries a page-prefixed class, and the import preview table gets the phone card it never had";
+export const DEC_403 = "Whatever the mobile pass visits, the desktop pass visits: routeManifest is the union of SPA routes and every no-login surface";
+export const DEC_404 = "At phone width no user-supplied string may widen the page: `overflow-wrap: anywhere` belongs to the shell's one 700px block, in the SPA and the SSR theme both";
+export const DEC_405 = "No stylesheet hides horizontal overflow at the document level; a region that must be wider than the viewport gets its own scroller";
