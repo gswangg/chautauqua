@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
 import { apiPost, ApiError } from '../../lib/api';
 import { expandFullNameMapping, mapImportRow, parseCsv, suggestMapping, toCsv, FULL_NAME_TARGET, STANDARD_IMPORT_FIELDS } from './csv';
 import { useEscapeKey } from '../../lib/useEscapeKey';
-import type { ImportResult } from './types';
+import type { ImportPlan, ImportPlanRow, ImportResult } from './types';
 import './contacts-panels.css';
 
 interface Props {
@@ -20,12 +20,34 @@ interface Props {
 // call are untouched by this redesign (w2-e) -- restyled with the shared
 // .chq-steps strip (mock "Import CSV · step 2 of 3") plus .chq-contacts-
 // import-* layout classes.
+//
+// DEC-663: the flow now runs a dry-run POST (dryRun: true) before ever
+// committing. The dry run's rows -- and the exact {csvText, mapping,
+// eventId?} body that produced them -- are shown to the organizer on a
+// Review step; the commit POST reuses that exact body plus `skipLines`
+// (the checked "skip this row" boxes), never a body reconstructed from
+// possibly-since-edited mapping state.
 
 const PREVIEW_ROWS = 5;
+
+interface PlannedRequest {
+  csvText: string;
+  mapping: Record<string, string>;
+  eventId?: string;
+}
+
+function actionLabel(row: ImportPlanRow): string {
+  if (row.action === 'create') return 'Create';
+  if (row.action === 'update') return 'Update';
+  return `Skip — ${row.reason ?? 'no reason given'}`;
+}
 
 export function ImportWizard({ onClose, onImported, eventId }: Props) {
   const [csvText, setCsvText] = useState('');
   const [mapping, setMapping] = useState<Record<string, string>>({});
+  const [plan, setPlan] = useState<ImportPlan | null>(null);
+  const [plannedRequest, setPlannedRequest] = useState<PlannedRequest | null>(null);
+  const [skipLines, setSkipLines] = useState<Set<number>>(new Set());
   const [result, setResult] = useState<ImportResult | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -64,10 +86,11 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
   const previewRows = dataRows.slice(0, PREVIEW_ROWS);
   const previewMapped = previewRows.map((row) => mapImportRow(mapping, header, row));
 
-  // Step strip (mock "Import CSV · step 2 of 3"): 1 = choose a file, 2 =
-  // map columns, 3 = done. Display-only -- does not gate the real flow,
-  // which stays driven by csvText/header/result exactly as before.
-  const step = result ? 3 : header.length > 0 ? 2 : 1;
+  // Step strip (mock "Import CSV · step 3 of 4"): 1 = choose a file, 2 =
+  // map columns, 3 = review the dry run, 4 = done. Display-only -- does
+  // not gate the real flow, which stays driven by
+  // csvText/header/plan/result exactly as before.
+  const step = result ? 4 : plan ? 3 : header.length > 0 ? 2 : 1;
 
   function handleFile(file: File) {
     const reader = new FileReader();
@@ -75,7 +98,7 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
     reader.readAsText(file);
   }
 
-  async function runImport() {
+  async function runPreview() {
     setBusy(true);
     setError(null);
     try {
@@ -83,10 +106,42 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
       // server ever sees it (see expandFullNameMapping in ./csv.ts).
       const expanded = expandFullNameMapping(header, dataRows, mapping);
       const expandedCsvText = toCsv([expanded.header, ...expanded.rows]);
-      const res = await apiPost<ImportResult>('/contacts/import', {
+      const request: PlannedRequest = {
         csvText: expandedCsvText,
         mapping: expanded.mapping,
         ...(eventId ? { eventId } : {}),
+      };
+      const res = await apiPost<ImportPlan>('/contacts/import', { ...request, dryRun: true });
+      setPlan(res);
+      setPlannedRequest(request);
+      setSkipLines(new Set());
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Preview failed');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function toggleSkipLine(line: number) {
+    setSkipLines((prev) => {
+      const next = new Set(prev);
+      if (next.has(line)) {
+        next.delete(line);
+      } else {
+        next.add(line);
+      }
+      return next;
+    });
+  }
+
+  async function runCommit() {
+    if (!plannedRequest) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await apiPost<ImportResult>('/contacts/import', {
+        ...plannedRequest,
+        skipLines: [...skipLines],
       });
       setResult(res);
       onImported();
@@ -116,12 +171,13 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
         <ol className="chq-steps" aria-label="Import steps">
           <li className={`chq-step${step > 1 ? ' is-done' : step === 1 ? ' is-current' : ''}`}>Choose file</li>
           <li className={`chq-step${step > 2 ? ' is-done' : step === 2 ? ' is-current' : ''}`}>Match columns</li>
-          <li className={`chq-step${step === 3 ? ' is-current' : ''}`}>Done</li>
+          <li className={`chq-step${step > 3 ? ' is-done' : step === 3 ? ' is-current' : ''}`}>Review</li>
+          <li className={`chq-step${step === 4 ? ' is-current' : ''}`}>Done</li>
         </ol>
 
         {error && <div className="chq-error">{error}</div>}
 
-        {!result && (
+        {!plan && !result && (
           <div className="chq-contacts-import-drop">
             <label className="chq-contacts-import-field">
               Upload a CSV file
@@ -220,13 +276,78 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
                 </table>
 
                 <div className="chq-contacts-import-actions">
-                  <button type="button" className="chq-btn chq-btn-primary" disabled={busy} onClick={runImport}>
-                    Import {dataRows.length} row(s)
+                  <button type="button" className="chq-btn chq-btn-primary" disabled={busy} onClick={runPreview}>
+                    Preview {dataRows.length} row(s)
                   </button>
                   <span className="chq-contacts-pipeline-caption">{dataRows.length} data row(s) total.</span>
                 </div>
               </>
             )}
+          </div>
+        )}
+
+        {plan && !result && (
+          <div className="chq-contacts-import-review">
+            <h3 className="chq-section-label">Review before import</h3>
+            <table className="chq-table chq-contacts-import-review-table">
+              <thead>
+                <tr>
+                  <th>Line</th>
+                  <th>Email</th>
+                  <th>Action</th>
+                  <th>Skip this row</th>
+                </tr>
+              </thead>
+              <tbody>
+                {plan.rows.map((row) => {
+                  const decorated = (row.overwrites?.length ?? 0) > 0 || (row.possibleDuplicates?.length ?? 0) > 0;
+                  return (
+                    <tr key={row.line}>
+                      <td>{row.line}</td>
+                      <td>{row.email}</td>
+                      <td>
+                        {actionLabel(row)}
+                        {decorated && (
+                          <ul className="chq-contacts-import-review-detail">
+                            {(row.overwrites ?? []).map((ow, i) => (
+                              <li key={`ow-${i}`}>
+                                {ow.field}: "{ow.from}" → "{ow.to}"
+                              </li>
+                            ))}
+                            {(row.possibleDuplicates ?? []).map((dup) => (
+                              <li key={`dup-${dup.contactId}`}>
+                                May be a duplicate of {dup.name} ({dup.email}) — a different email address.
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </td>
+                      <td>
+                        {decorated && (
+                          <label className="chq-contacts-import-review-skip">
+                            <input
+                              type="checkbox"
+                              checked={skipLines.has(row.line)}
+                              onChange={() => toggleSkipLine(row.line)}
+                              aria-label={`Skip line ${row.line}`}
+                            />
+                          </label>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+
+            <div className="chq-contacts-import-actions">
+              <button type="button" className="chq-btn chq-btn-primary" disabled={busy} onClick={runCommit}>
+                Import {plan.rows.length - skipLines.size} row(s)
+              </button>
+              <span className="chq-contacts-pipeline-caption">
+                {skipLines.size} row(s) marked to skip.
+              </span>
+            </div>
           </div>
         )}
 
