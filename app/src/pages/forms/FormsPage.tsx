@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { apiDelete, apiGet, apiList, apiPatch, apiPost, ApiError } from '../../lib/api';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { FieldList } from './FieldList';
 import { FieldModal, type FieldModalInput } from './FieldModal';
 import { FormSettings, type FormSettingsPatch } from './FormSettings';
@@ -15,6 +16,11 @@ interface EventSummary {
 
 type ModalState = { mode: 'create' } | { mode: 'edit'; field: FormField } | null;
 
+// DEC-631: the field's own delete confirm, and (if the server reports a
+// 409 conflict) a second confirm rendering the server's message with a
+// "Delete anyway" retry that cascades.
+type DeleteConfirmState = { field: FormField; conflictMessage?: string } | null;
+
 /** J1 form builder SPA (DEC-033): loads the event's default CFP form and
  * renders its settings strip + ordered field list. Zero new server code —
  * every call goes through the landed w2-c forms API via api.ts. */
@@ -28,6 +34,7 @@ export function FormsPage() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [modal, setModal] = useState<ModalState>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<DeleteConfirmState>(null);
 
   const load = useCallback(() => {
     if (!eventId) return;
@@ -72,24 +79,35 @@ export function FormsPage() {
     setModal(null);
   }
 
-  async function handleDeleteField(field: FormField) {
+  function handleDeleteField(field: FormField) {
     if (!form) return;
     guardEditableField(field, 'delete');
-    if (!window.confirm(`Delete the "${field.label}" field? This cannot be undone.`)) return;
+    setDeleteConfirm({ field });
+  }
+
+  async function confirmDeleteField() {
+    if (!form || !deleteConfirm) return;
+    const { field, conflictMessage } = deleteConfirm;
     setBusy(true);
     try {
-      try {
-        await apiDelete(`/fields/${field.id}`);
-      } catch (err) {
-        if (err instanceof ApiError && err.code === 'conflict' && window.confirm(err.message)) {
-          await apiDelete(`/fields/${field.id}?cascade=1`);
-        } else {
+      if (conflictMessage) {
+        await apiDelete(`/fields/${field.id}?cascade=1`);
+      } else {
+        try {
+          await apiDelete(`/fields/${field.id}`);
+        } catch (err) {
+          if (err instanceof ApiError && err.code === 'conflict') {
+            setDeleteConfirm({ field, conflictMessage: err.message });
+            return;
+          }
           throw err;
         }
       }
       setForm({ ...form, fields: form.fields.filter((f) => f.id !== field.id) });
+      setDeleteConfirm(null);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to delete field');
+      setDeleteConfirm(null);
     } finally {
       setBusy(false);
     }
@@ -187,6 +205,29 @@ export function FormsPage() {
           allFields={form.fields}
           onCancel={() => setModal(null)}
           onSubmit={(input) => handleEditField(modal.field, input)}
+        />
+      )}
+
+      {deleteConfirm && !deleteConfirm.conflictMessage && (
+        <ConfirmDialog
+          title="Delete field"
+          body={`Delete the "${deleteConfirm.field.label}" field? This cannot be undone.`}
+          confirmLabel="Delete"
+          destructive
+          pending={busy}
+          onConfirm={confirmDeleteField}
+          onCancel={() => setDeleteConfirm(null)}
+        />
+      )}
+      {deleteConfirm?.conflictMessage && (
+        <ConfirmDialog
+          title="Delete field"
+          body={deleteConfirm.conflictMessage}
+          confirmLabel="Delete anyway"
+          destructive
+          pending={busy}
+          onConfirm={confirmDeleteField}
+          onCancel={() => setDeleteConfirm(null)}
         />
       )}
     </div>
