@@ -25,8 +25,13 @@ export interface ImportResult {
   contactIds: string[];
 }
 
-/** Hard cap on rows per CSV import (DEC-356): protects against an unbounded
- * per-row write burst. Producers must split larger files client-side. */
+/** Hard cap on rows per CSV import (DEC-356, DEC-478): protects against an
+ * unbounded per-row write burst — applyImportRows below issues one D1
+ * statement per row (see the createContact/patchContact calls in the loop),
+ * so this is a real per-request write-burst bound, not an arbitrary number.
+ * This is the ONE MAX_IMPORT_ROWS in the product (DEC-478); the route layer
+ * imports it from here rather than declaring its own. Producers must split
+ * larger files client-side. */
 export const MAX_IMPORT_ROWS = 2000;
 
 /** Applies parsed+mapped rows to the org's contacts, one row already resolved

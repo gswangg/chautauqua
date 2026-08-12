@@ -205,6 +205,7 @@ describe("mergeContacts (DEC-101 participant dedupe + six-table FK repoint)", ()
       [contactRaw(MERGE_ID, "merge@example.com")], // findContactById(mergeId)
       [], // user rows for keepId
       [], // user rows for mergeId
+      [], // (b2) DEC-479 email conflict pre-check
       [], // mergeParticipants (none)
       [], // keepParticipants (none)
       [], // task_assignment rows for mergeId
@@ -217,14 +218,16 @@ describe("mergeContacts (DEC-101 participant dedupe + six-table FK repoint)", ()
     const result = await mergeContacts(db, KEEP_ID, MERGE_ID);
     expect(result.id).toBe(KEEP_ID);
 
-    // 1 contact-fields update (planMerge) + 7 FK repoints (DEC-282) = 8 updates.
-    expect(updates).toHaveLength(8);
+    // 1 contact-fields update (planMerge) + 7 FK repoints (DEC-282) + 1
+    // DEC-479 user.email cascade (unconditional, mirroring patchContact) = 9.
+    expect(updates).toHaveLength(9);
     expect(updates.some((u) => u.table === schema.file && (u.vals as any).uploadedByContactId === KEEP_ID)).toBe(true);
     expect(updates.some((u) => u.table === schema.fileComment && (u.vals as any).authorContactId === KEEP_ID)).toBe(true);
     expect(updates.some((u) => u.table === schema.participant && (u.vals as any).contactId === KEEP_ID)).toBe(true);
     expect(updates.some((u) => u.table === schema.taskAssignment && (u.vals as any).contactId === KEEP_ID)).toBe(true);
     expect(updates.some((u) => u.table === schema.emailLog && (u.vals as any).contactId === KEEP_ID)).toBe(true);
     expect(updates.some((u) => u.table === schema.user && (u.vals as any).contactId === KEEP_ID)).toBe(true);
+    expect(updates.some((u) => u.table === schema.user && (u.vals as any).email === "keep@example.com")).toBe(true);
 
     // Only the merged contact row is deleted; no participant dedupe-delete
     // fires because the two contacts shared no submissions.
@@ -238,6 +241,7 @@ describe("mergeContacts (DEC-101 participant dedupe + six-table FK repoint)", ()
       [contactRaw(MERGE_ID, "merge@example.com")], // findContactById(mergeId)
       [], // user rows for keepId
       [], // user rows for mergeId
+      [], // (b2) DEC-479 email conflict pre-check
       [
         { id: "part_shared_merge", submissionId: "sub_shared" },
         { id: "part_distinct_merge", submissionId: "sub_only_merge" },
@@ -279,6 +283,7 @@ describe("mergeContacts (DEC-101 participant dedupe + six-table FK repoint)", ()
       [mergeRaw], // findContactById(mergeId)
       [], // user rows for keepId
       [], // user rows for mergeId
+      [], // (b2) DEC-479 email conflict pre-check
       [], // mergeParticipants (none)
       [], // keepParticipants (none)
       [], // task_assignment rows for mergeId

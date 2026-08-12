@@ -22,9 +22,16 @@ import {
   CONTACT_FK_TABLES,
   mergeContacts,
   mergedPipelineStage,
+  toContactRecord,
+  toRow,
 } from "../src/server/repo/contacts";
+import { planMerge } from "../src/domain/contacts";
 import { ApiError } from "../src/server/http";
 import type { Db } from "../src/server/context";
+
+function contactRawToRecord(raw: ReturnType<typeof contactRaw>) {
+  return toContactRecord(toRow(raw));
+}
 
 const ORG_A = "org-a";
 
@@ -118,6 +125,7 @@ describe("mergeContacts pipeline reconciliation (DEC-282)", () => {
       [MERGE], // findContactById(mergeId)
       [], // user rows for keepId
       [], // user rows for mergeId
+      [], // (b2) DEC-479 email conflict pre-check
       [], // mergeParticipants
       [], // keepParticipants
       [], // task_assignment rows for mergeId
@@ -145,6 +153,7 @@ describe("mergeContacts pipeline reconciliation (DEC-282)", () => {
       [MERGE], // findContactById(mergeId)
       [], // user rows for keepId
       [], // user rows for mergeId
+      [], // (b2) DEC-479 email conflict pre-check
       [], // mergeParticipants
       [], // keepParticipants
       [], // task_assignment rows for mergeId
@@ -176,6 +185,7 @@ describe("mergeContacts task_assignment dedupe (DEC-282)", () => {
       [MERGE], // findContactById(mergeId)
       [], // user rows for keepId
       [], // user rows for mergeId
+      [], // (b2) DEC-479 email conflict pre-check
       [], // mergeParticipants
       [], // keepParticipants
       [{ id: "assign-merge", taskId: "task-1", status: "complete" }], // task_assignment for mergeId
@@ -212,6 +222,90 @@ describe("mergeContacts login-account conflict guard (DEC-282)", () => {
     expect(caught).toBeInstanceOf(ApiError);
     expect((caught as ApiError).code).toBe("conflict");
 
+    expect(updates).toEqual([]);
+    expect(deletes).toEqual([]);
+  });
+});
+
+describe("mergeContacts user.email cascade (DEC-479)", () => {
+  it("keep has no account, merge has an account -> surviving user row's email becomes the merged contact's email", async () => {
+    const keep = contactRaw("contact-keep", "a@example.com", "Jane", "Doe");
+    const merge = contactRaw("contact-merge", "b@example.com", "Jane", "Doe");
+    const { db, updates } = fakeDb([
+      [keep], // findContactById(keepId)
+      [merge], // findContactById(mergeId)
+      [], // user rows for keepId (no account)
+      [{ id: "user-merge" }], // user rows for mergeId (has account)
+      [], // (b2) email conflict pre-check
+      [], // mergeParticipants
+      [], // keepParticipants
+      [], // task_assignment for mergeId
+      [], // task_assignment for keepId
+      [], // pipelineEntry for keepId
+      [], // pipelineEntry for mergeId
+      [keep], // findContactById(keepId) after merge
+    ]);
+
+    await mergeContacts(db, keep.id, merge.id);
+
+    const { merged } = planMerge(contactRawToRecord(keep), contactRawToRecord(merge));
+
+    const userUpdate = updates.find((u) => u.table === schema.user && (u.vals as { email?: string }).email !== undefined);
+    expect(userUpdate).toBeDefined();
+    expect((userUpdate!.vals as { email: string }).email).toBe(merged.email.toLowerCase());
+
+    // Also repoints the user row's contactId onto keepId, per (f).
+    const contactIdUpdate = updates.find((u) => u.table === schema.user && (u.vals as { contactId?: string }).contactId);
+    expect(contactIdUpdate).toBeDefined();
+    expect((contactIdUpdate!.vals as { contactId: string }).contactId).toBe(keep.id);
+  });
+
+  it("keep has an account, merge has none -> the kept user row's email is repointed to the merged contact's email", async () => {
+    const keep = contactRaw("contact-keep", "a@example.com", "Jane", "Doe");
+    const merge = contactRaw("contact-merge", "b@example.com", "Jane", "Doe");
+    const { db, updates } = fakeDb([
+      [keep], // findContactById(keepId)
+      [merge], // findContactById(mergeId)
+      [{ id: "user-keep" }], // user rows for keepId (has account)
+      [], // user rows for mergeId (no account)
+      [], // (b2) email conflict pre-check
+      [], // mergeParticipants
+      [], // keepParticipants
+      [], // task_assignment for mergeId
+      [], // task_assignment for keepId
+      [], // pipelineEntry for keepId
+      [], // pipelineEntry for mergeId
+      [keep], // findContactById(keepId) after merge
+    ]);
+
+    await mergeContacts(db, keep.id, merge.id);
+
+    const { merged } = planMerge(contactRawToRecord(keep), contactRawToRecord(merge));
+
+    const userUpdate = updates.find((u) => u.table === schema.user && (u.vals as { email?: string }).email !== undefined);
+    expect(userUpdate).toBeDefined();
+    expect((userUpdate!.vals as { email: string }).email).toBe(merged.email.toLowerCase());
+  });
+
+  it("some OTHER user already owns merged.email -> conflict thrown before any write", async () => {
+    const keep = contactRaw("contact-keep", "a@example.com", "Jane", "Doe");
+    const merge = contactRaw("contact-merge", "b@example.com", "Jane", "Doe");
+    const { db, updates, deletes } = fakeDb([
+      [keep], // findContactById(keepId)
+      [merge], // findContactById(mergeId)
+      [], // user rows for keepId
+      [], // user rows for mergeId
+      [{ id: "user-other", contactId: "contact-other" }], // (b2) conflict: a third contact already owns merged.email
+    ]);
+
+    let caught: unknown;
+    try {
+      await mergeContacts(db, keep.id, merge.id);
+    } catch (err) {
+      caught = err;
+    }
+    expect(caught).toBeInstanceOf(ApiError);
+    expect((caught as ApiError).code).toBe("conflict");
     expect(updates).toEqual([]);
     expect(deletes).toEqual([]);
   });
