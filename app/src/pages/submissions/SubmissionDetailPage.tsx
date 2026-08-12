@@ -75,6 +75,10 @@ export function SubmissionDetailPage() {
   const [restoringId, setRestoringId] = useState<string | null>(null);
   const [evaluations, setEvaluations] = useState<SubmissionEvaluation[]>([]);
   const [evaluationsError, setEvaluationsError] = useState<string | null>(null);
+  const [editingTracks, setEditingTracks] = useState(false);
+  const [trackSelection, setTrackSelection] = useState<string[]>([]);
+  const [savingTracks, setSavingTracks] = useState(false);
+  const [tracksError, setTracksError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -161,6 +165,50 @@ export function SubmissionDetailPage() {
       setError(err instanceof ApiError ? `Edit failed: ${err.message}` : 'Edit failed');
     } finally {
       setSavingEdit(false);
+    }
+  }
+
+  function startEditingTracks() {
+    if (!detail) return;
+    setTracksError(null);
+    setTrackSelection(detail.trackIds);
+    setEditingTracks(true);
+  }
+
+  function toggleTrackSelection(trackId: string) {
+    setTrackSelection((prev) => (prev.includes(trackId) ? prev.filter((t) => t !== trackId) : [...prev, trackId]));
+  }
+
+  // DEC-638/DEC-598: trackIds is a full-set replace -- an empty array is a
+  // legal clear, never a validation error. On failure, roll back loudly by
+  // refetching the detail rather than restoring a stale in-memory snapshot.
+  async function saveTracks() {
+    if (!detail || !id) return;
+    const nextIds = trackSelection;
+    const previous = detail;
+    setSavingTracks(true);
+    setTracksError(null);
+    // Optimistic update.
+    setDetail({ ...detail, trackIds: nextIds });
+    try {
+      const updated = await apiPatch<SubmissionDetail>(`/submissions/${id}`, { trackIds: nextIds });
+      setDetail(updated);
+      setEditingTracks(false);
+    } catch (err) {
+      // Loud rollback: refetch the server's actual set rather than trusting
+      // the pre-write snapshot, which may itself be stale.
+      setDetail(previous);
+      setTracksError(err instanceof ApiError ? err.message : 'Track update failed');
+      try {
+        const refetched = await apiGet<SubmissionDetail>(`/submissions/${id}`);
+        setDetail(refetched);
+        setTrackSelection(refetched.trackIds);
+      } catch {
+        // Keep the pre-write snapshot if the refetch itself fails; the
+        // error banner above already communicates the failure.
+      }
+    } finally {
+      setSavingTracks(false);
     }
   }
 
@@ -428,16 +476,60 @@ export function SubmissionDetailPage() {
           <section className="chq-detail-section">
             <h2 className="chq-detail-section-title">Tracks</h2>
             <div className="chq-detail-section-body">
-              {trackNames.length === 0 ? (
-                <p>No tracks assigned.</p>
+              {tracksError && <div className="chq-error-banner">{tracksError}</div>}
+              {!editingTracks ? (
+                <>
+                  {trackNames.length === 0 ? (
+                    <p>No tracks assigned.</p>
+                  ) : (
+                    <ul className="chq-track-chips">
+                      {trackNames.map((name, i) => (
+                        <li key={detail.trackIds[i]} className="chq-track-chip">
+                          {name}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <button type="button" className="chq-btn chq-btn-tertiary" onClick={startEditingTracks}>
+                    Edit tracks
+                  </button>
+                </>
               ) : (
-                <ul className="chq-track-chips">
-                  {trackNames.map((name, i) => (
-                    <li key={detail.trackIds[i]} className="chq-track-chip">
-                      {name}
-                    </li>
-                  ))}
-                </ul>
+                <div className="chq-detail-track-editor">
+                  {tracks.length === 0 ? (
+                    <p>No tracks configured for this event.</p>
+                  ) : (
+                    <ul className="chq-detail-track-options">
+                      {tracks.map((track) => (
+                        <li key={track.id}>
+                          <label className="chq-detail-track-option">
+                            <input
+                              type="checkbox"
+                              className="chq-check"
+                              checked={trackSelection.includes(track.id)}
+                              disabled={savingTracks}
+                              onChange={() => toggleTrackSelection(track.id)}
+                            />
+                            {track.name}
+                          </label>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <div className="chq-detail-edit-form-actions">
+                    <button type="button" className="chq-btn chq-btn-primary" disabled={savingTracks} onClick={saveTracks}>
+                      Save
+                    </button>
+                    <button
+                      type="button"
+                      className="chq-btn chq-btn-secondary"
+                      disabled={savingTracks}
+                      onClick={() => setEditingTracks(false)}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
               )}
             </div>
           </section>
