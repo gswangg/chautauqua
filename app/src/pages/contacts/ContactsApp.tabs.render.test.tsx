@@ -148,11 +148,18 @@ describe('ContactsApp render smoke: ContactDrawer', () => {
 
     const dialog = await screen.findByRole('dialog', { name: 'Contact detail' });
     await waitFor(() => {
-      expect(within(dialog).getByLabelText('Bio')).toHaveValue(FULL_CONTACT.bio);
+      expect(within(dialog).getByText(FULL_CONTACT.bio as string)).toBeInTheDocument();
     });
-    expect(within(dialog).getByLabelText('Twitter')).toHaveValue('@ada');
-    expect(within(dialog).getByLabelText('LinkedIn')).toHaveValue('ada-lovelace');
+    expect(within(dialog).getByText('@ada')).toBeInTheDocument();
+    expect(within(dialog).getByText('ada-lovelace')).toBeInTheDocument();
     expect(within(dialog).getByAltText('Ada Lovelace headshot')).toHaveAttribute('src', FULL_CONTACT.headshotUrl);
+
+    // Click-to-edit (DEC-616): the value renders as plain text by default;
+    // clicking it swaps in an input on the SAME row.
+    fireEvent.click(within(dialog).getByText(FULL_CONTACT.bio as string));
+    expect((within(dialog).getByDisplayValue(FULL_CONTACT.bio as string) as HTMLTextAreaElement).value).toBe(
+      FULL_CONTACT.bio,
+    );
   });
 });
 
@@ -176,11 +183,13 @@ describe('ContactsApp: headshot upload does not discard unsaved drawer edits (DE
 
     const dialog = await screen.findByRole('dialog', { name: 'Contact detail' });
     await waitFor(() => {
-      expect(within(dialog).getByLabelText('Bio')).toHaveValue(FULL_CONTACT.bio);
+      expect(within(dialog).getByText(FULL_CONTACT.bio as string)).toBeInTheDocument();
     });
 
-    // Type a bio edit that is never saved.
-    const bioField = within(dialog).getByLabelText('Bio');
+    // Click into the Bio row (DEC-616: value -> input on the SAME row), then
+    // type an edit that is never saved.
+    fireEvent.click(within(dialog).getByText(FULL_CONTACT.bio as string));
+    const bioField = within(dialog).getByDisplayValue(FULL_CONTACT.bio as string);
     fireEvent.change(bioField, { target: { value: 'An unsaved edit written just before the upload.' } });
     expect(bioField).toHaveValue('An unsaved edit written just before the upload.');
 
@@ -198,7 +207,7 @@ describe('ContactsApp: headshot upload does not discard unsaved drawer edits (DE
     // ...and the unsaved bio edit must still be there — not discarded by a
     // drawer close-and-reload.
     expect(screen.getByRole('dialog', { name: 'Contact detail' })).toBeInTheDocument();
-    expect(within(dialog).getByLabelText('Bio')).toHaveValue('An unsaved edit written just before the upload.');
+    expect(within(dialog).getByDisplayValue('An unsaved edit written just before the upload.')).toBeInTheDocument();
   });
 });
 
