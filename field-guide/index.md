@@ -7,42 +7,27 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   (never hand-edit). House invariants: fail loudly; status changes
   never auto-email; authz every route, server-side visibility.
 - STAGE1 (DEC-002..365, COMPLETE): pure-core src/{auth,domain,forms,
-  mail,lib} import nothing node:/cf; 004 hash 'pbkdf2$v1$100000$salt$
-  hash'; 012/013 route files export Hono sub-apps, errors
-  {error:{code,message,fields?}}; bulk ops set-based/CLOSED, LOG-ONLY.
-- REDESIGN w1-10 (DEC-366..419, FUNCTION FROZEN): tokens frozen, NO
-  RED/shadows/new deps; styles.css+theme.ts=ONE lane; ONE dialog
-  contract, phone @700px, 44px controls; D1 binds PRIMITIVES (epoch-ms
-  NUMBER); 2px olive focus ring; dates via event-time.ts OWNING
-  EVENT's tz never toISOString; ONE parseBoundedText, 400 never 500;
+  mail,lib} import nothing node:/cf; 012/013 route files export Hono
+  sub-apps, errors {error:{code,message,fields?}}; bulk ops set-based.
+- REDESIGN w1-10 (DEC-366..419, FUNCTION FROZEN): tokens frozen, ONE
+  dialog contract, phone @700px; D1 binds PRIMITIVES (epoch-ms
+  NUMBER); dates via event-time.ts OWNING EVENT's tz never toISOString;
   public lists LIMIT+COUNT(DISTINCT).
-- STAGE1-CLOSE w11-20 (DEC-420..470, compacted): 426 WCAG AA THIRD; 433
-  public ?page= TWO bounds; 434 ONE isDevMode(env); 438/447/448 ledger
-  names its sha, FAIL-unowned vs PENDING-OWNED, closing wave = ONE
-  source lane + ledger behind it, PASS is evidence about ITS OWN sha
-  only; 452/453 fix waves cut NO ledger, never grade MEASURED from code
-  presence; 454/456/467 ONE email rule everywhere, account lookup is
-  findAccountUserId(contactId OR email) NEVER email alone; 457 KV keys
-  never carry raw input; 459 universal rows graded from ENUMERATION
-  never sample; 460/466 pagination hand lists went SHORT twice,
-  criterion now MECHANICAL; 461 ONE shape `page?:{limit,offset}`+
-  count*+`id asc`; 465 ONE listPerPage(raw), five clampPerPage copies
-  deleted; 468 a cap the UI can't see LIES, render `total`; w20 only
-  task-w20-c actually merged (see 472).
-- STAGE1-CLOSE w21-22 (DEC-471..480, compacted): 472 A BRANCH IS NOT A
-  LANDING; grade every row from file:line at the sha or `git
-  merge-base --is-ancestor`, never a DEC doc or this guide;
-  unmerged-but-owned = NOT PASS -- w20/w21 guide narrated 465..469 as
-  done when only task-w20-c merged. 473 enumeration = re-runnable
-  ARTIFACT, not prose. w22 re-read post-472 and found ALL five w20
-  merges ARE ancestors of bf56ba7 after all -- distrust narration,
-  INCLUDING this guide, always. 475 a rule's fieldId is
-  re-keyed like the field's id or the rule is silently dead. 476 slot
-  minutes day-bounded at isValidSlotInput. 477 MAX_PUBLIC_ROWS =
-  MAX_PUBLIC_PAGE x PER_PAGE, MEASURED not asserted. 478 ONE import
-  cap. 479 merge owes 456's user-email cascade. 480 hand-enumerated
-  populations go stale in two waves -- "every list endpoint" now
-  graded by an executable enumeration test.
+- STAGE1-CLOSE w11-20 (DEC-420..470, compacted): ledger names its sha,
+  FAIL-unowned vs PENDING-OWNED, PASS is evidence about ITS OWN sha
+  only; ONE email rule everywhere via findAccountUserId(contactId OR
+  email) NEVER email alone; universal rows graded from ENUMERATION
+  never sample; pagination ONE shape `page?:{limit,offset}`+count*+
+  `id asc`, ONE listPerPage(raw); a cap the UI can't see LIES, render
+  `total`.
+- STAGE1-CLOSE w21-22 (DEC-471..480, compacted): A BRANCH IS NOT A
+  LANDING -- grade every row from file:line at the sha or `git
+  merge-base --is-ancestor`, never a DEC doc or this guide (w20/w21
+  guide narrated merges that weren't in); enumeration = re-runnable
+  ARTIFACT not prose; a rule's fieldId re-keyed like the field's id or
+  silently dead; MAX_PUBLIC_ROWS = MAX_PUBLIC_PAGE x PER_PAGE,
+  MEASURED not asserted; ONE import cap; "every list endpoint" graded
+  by an executable enumeration test.
 - STAGE1-CLOSE w23 (DEC-481..487): w22 planned 5 source lanes; at w23's
   read of main only 476 is in and 479 is HALF in -- merge.ts:50-74
   DOCUMENTS an email cascade that :202-203 never performs. 481: a doc
@@ -58,3 +43,18 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   projection for form fields (id + rule.fieldId in one expression),
   ONE home for public page constants (MAX_PUBLIC_ROWS derived). w23 =
   5 fix lanes + 1 measured lane, NO ledger (452/470); w24 owns ledger.
+- STAGE1-CLOSE w24 (DEC-488..492): w23's premise inverted TWICE inside one
+  planning pass -- 484 and 487 landed while this plan was being written, so
+  two planned lanes were dropped mid-read. Re-read the file, not the grep
+  you ran ten minutes ago. 488 the LAST w21-f FAIL-unowned closes: a form's
+  fields get MAX_FORM_FIELDS=200 (also the reorder write/echo bound) and the
+  enumeration ALLOWLIST ENTRY IS DELETED -- an allowlist rationale nothing
+  enforces is narration (481) wearing a test's clothes. 489/490 a knob the
+  URL advertises and the query ignores is a lie: ONE surface->knob table,
+  honored by the HTML and the .json twin alike, offered by the builder only
+  where true. 491 a bound stated in the wrong unit is not a bound -- the
+  import comment said 1 statement/row, reality was up to 4; per-row cost is
+  now COUNTED by a test. 492 two implementations of one invariant means one
+  of them is wrong: the atomic `col + 1` won, the read-then-write bump died,
+  auto-schedule's unbounded 2N-statement loop went set-based and capped.
+  w24 = 5 fix lanes, NO ledger (452/470); w25 owns the closing ledger.
