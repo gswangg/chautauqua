@@ -354,3 +354,9 @@ mock shows criteria but not their editing flow; prod's invented flow is unintuit
     is dead space. Apply the system form pattern — labels above, inputs at the modal's
     full measure — ideally as a shared FormRow within ModalFrame (DEC-651) so every
     dialog's form inherits it. Keep the existing honesty captions.
+
+26. (User priority signal) The user CONFIRMS the fidelity pass's Settings verdict:
+    **Settings is the most divergent surface in the app** — treat Tier-2 item 13
+    (content-row redesign, the two MISSING sections "Call for papers" + "People and
+    roles", phone subscreens instead of accordions, the tab-bar overlap) as the top
+    remaining Tier-2 priority after the agenda desktop rebuild.
