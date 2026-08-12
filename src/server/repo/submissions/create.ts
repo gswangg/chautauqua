@@ -8,7 +8,8 @@ import * as schema from "../../../db/schema";
 import { newId } from "../../../domain/ids";
 import { submissionSeqSubquery } from "./seq";
 import { normalizeEmail } from "../../../domain/email";
-import { DEC_258, DEC_275 } from "../../../decisions";
+import { DEC_258, DEC_275, DEC_542 } from "../../../decisions";
+import { chunkRowsForInsert } from "../../../lib/chunk";
 
 // Compile-checked dependency marker: createSubmission's participant insert
 // below snapshots DEC-258's title_at_time/org_at_time.
@@ -16,6 +17,9 @@ void DEC_258;
 // Compile-checked dependency marker: cloneSubmission's participant copy
 // below implements DEC-275 (active-only, invite_status reset to 'none').
 void DEC_275;
+// Compile-checked dependency marker: cloneSubmission's child-row inserts
+// below are set-based (chunkRowsForInsert), not per-row loops (DEC-542).
+void DEC_542;
 
 export interface CreateSubmissionInput {
   title: string;
@@ -169,27 +173,29 @@ export async function cloneSubmission(db: Db, submissionId: string): Promise<str
     .select({ trackId: schema.submissionTrack.trackId })
     .from(schema.submissionTrack)
     .where(eq(schema.submissionTrack.submissionId, submissionId));
-  for (const t of trackRows) {
-    await db.insert(schema.submissionTrack).values({
-      submissionId: newSubmissionId,
-      trackId: t.trackId,
-      createdAt: now,
-    });
+  const newTrackRows = trackRows.map((t) => ({
+    submissionId: newSubmissionId,
+    trackId: t.trackId,
+    createdAt: now,
+  }));
+  for (const chunk of chunkRowsForInsert(newTrackRows)) {
+    await db.insert(schema.submissionTrack).values(chunk);
   }
 
   const answerRows = await db
     .select({ formFieldId: schema.submissionAnswer.formFieldId, valueJson: schema.submissionAnswer.valueJson })
     .from(schema.submissionAnswer)
     .where(eq(schema.submissionAnswer.submissionId, submissionId));
-  for (const a of answerRows) {
-    await db.insert(schema.submissionAnswer).values({
-      id: newId(),
-      submissionId: newSubmissionId,
-      formFieldId: a.formFieldId,
-      valueJson: a.valueJson,
-      createdAt: now,
-      updatedAt: now,
-    });
+  const newAnswerRows = answerRows.map((a) => ({
+    id: newId(),
+    submissionId: newSubmissionId,
+    formFieldId: a.formFieldId,
+    valueJson: a.valueJson,
+    createdAt: now,
+    updatedAt: now,
+  }));
+  for (const chunk of chunkRowsForInsert(newAnswerRows)) {
+    await db.insert(schema.submissionAnswer).values(chunk);
   }
 
   const participantRows = await db
@@ -205,21 +211,23 @@ export async function cloneSubmission(db: Db, submissionId: string): Promise<str
     })
     .from(schema.participant)
     .where(eq(schema.participant.submissionId, submissionId));
-  for (const p of participantRows) {
-    if (p.inviteStatus !== "none" && p.inviteStatus !== "accepted") continue;
-    await db.insert(schema.participant).values({
+  const newParticipantRows = participantRows
+    .filter((p) => p.inviteStatus === "none" || p.inviteStatus === "accepted")
+    .map((p) => ({
       id: newId(),
       submissionId: newSubmissionId,
       contactId: p.contactId,
       role: p.role,
       order: p.order,
       visible: p.visible,
-      inviteStatus: "none",
+      inviteStatus: "none" as const,
       titleAtTime: p.titleAtTime,
       orgAtTime: p.orgAtTime,
       createdAt: now,
       updatedAt: now,
-    });
+    }));
+  for (const chunk of chunkRowsForInsert(newParticipantRows)) {
+    await db.insert(schema.participant).values(chunk);
   }
 
   return newSubmissionId;
