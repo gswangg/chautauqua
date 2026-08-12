@@ -104,3 +104,12 @@ export interface NewTaskInput {
   deliverableKind?: DeliverableKind;
   assignToAllAccepted?: boolean;
 }
+
+// DEC-398: one entry of the `forms` list additively returned by
+// GET /api/v1/events/:eventId/forms — everything the form-task picker
+// (TaskModal) needs to let a producer choose a form BY NAME, never by id.
+export interface EventForm {
+  id: string;
+  title: string;
+  isDefault: boolean;
+}

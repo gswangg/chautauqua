@@ -63,6 +63,12 @@ describe('SpeakersPage render smoke (OnboardingGrid)', () => {
   it('renders mixed task-assignment states with a UTC-formatted due date, and opens the New task modal', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/onboarding`]: GRID,
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: {
+        forms: [
+          { id: 'form-1', title: 'Speaker agreement form', isDefault: true },
+          { id: 'form-2', title: 'Hotel stay requirement form', isDefault: false },
+        ],
+      },
     });
 
     render(<SpeakersPage />);

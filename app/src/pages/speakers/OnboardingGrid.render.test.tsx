@@ -63,6 +63,7 @@ describe('OnboardingGrid: DEC-291 view-response control', () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/onboarding`]: GRID,
       'GET /api/v1/task-assignments/as2/response': DETAIL,
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
     });
 
     render(<OnboardingGrid />);
