@@ -537,3 +537,17 @@ compare phone frames pixel-for-pixel.
     Edit/Delete → 44px controls; per-recipient SCHEDULED/NO-SLOT tags + "N have no
     slot" advisory in Preview; make Templates/History bookmarkable routes; phone
     fixed-shell here too.
+
+44. r2-Overview (source-verified): KEEP the many fixes (tokens, switcher, fixed phone
+    shell, DEC-652 suggestions, humanized copy, buttons). FIX: (a) **"Remind all 9"
+    sends only the 5 ROW_CAP'd rows — functional honesty bug**; send a server-side
+    all-overdue scope (or taskIds beyond the cap) and add the "N more overdue"
+    indicator per the §04 pattern; (b) .chq-overview-row-actions-stacked must actually
+    be column (conflict action lines run together); (c) deadline strip: FIXED column
+    order (CFP/Tasks/Review wave N/Doors), bold-nearest only — remove the sort; (d)
+    mount modals at root via ModalFrame + real typography on chq-modal-title/sub and
+    chq-field (current New-event ALL-CAPS is inherited by accident); (e) "Review wave"
+    needs its number; (f) resolve "· min ·" (derive duration from session format or
+    drop clause) + implement "waiting N days"; (g) Public pages as the mock's single
+    summary row; (h) verify the four identical "Place at 9:00" suggestions are
+    room-distinct.
