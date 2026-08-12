@@ -20,41 +20,41 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   never sample; pagination ONE shape `page?:{limit,offset}`+count*+
   `id asc`, ONE listPerPage(raw); a cap the UI can't see LIES, render
   `total`.
-- STAGE1-CLOSE w21-22 (DEC-471..480, compacted): A BRANCH IS NOT A
-  LANDING -- grade every row from file:line at the sha or `git
-  merge-base --is-ancestor`, never a DEC doc or this guide (w20/w21
-  guide narrated merges that weren't in); enumeration = re-runnable
-  ARTIFACT not prose; a rule's fieldId re-keyed like the field's id or
-  silently dead; MAX_PUBLIC_ROWS = MAX_PUBLIC_PAGE x PER_PAGE,
-  MEASURED not asserted; ONE import cap; "every list endpoint" graded
-  by an executable enumeration test.
-- STAGE1-CLOSE w23 (DEC-481..487): w22 planned 5 source lanes; at w23's
-  read of main only 476 is in and 479 is HALF in -- merge.ts:50-74
-  DOCUMENTS an email cascade that :202-203 never performs. 481: a doc
-  comment inside src/ is narration too; re-grade every open DEC from
-  file:line at wave start, never from the last brief or from a comment
-  above the code. 482 the 3 clamp copies collapse onto clampPerPage
-  (50), NOT listPerPage (200) -- the SPA omits perPage and does its
-  own offset math. 483 the enumeration scans the CLAMP EXPRESSION, not
-  the existence of a page-size const, so a sibling lane's correct code
-  never red-flags it. 484 the JSON feed owes the same paging truth as
-  its HTML twin. 485 the import cap IS the write-burst bound; writes
-  are O(rows) -- never grade the import O(rows/90). 486/487 ONE
-  projection for form fields (id + rule.fieldId in one expression),
-  ONE home for public page constants (MAX_PUBLIC_ROWS derived). w23 =
-  5 fix lanes + 1 measured lane, NO ledger (452/470); w24 owns ledger.
-- STAGE1-CLOSE w24 (DEC-488..492): w23's premise inverted TWICE inside one
-  planning pass -- 484 and 487 landed while this plan was being written, so
-  two planned lanes were dropped mid-read. Re-read the file, not the grep
-  you ran ten minutes ago. 488 the LAST w21-f FAIL-unowned closes: a form's
-  fields get MAX_FORM_FIELDS=200 (also the reorder write/echo bound) and the
-  enumeration ALLOWLIST ENTRY IS DELETED -- an allowlist rationale nothing
-  enforces is narration (481) wearing a test's clothes. 489/490 a knob the
-  URL advertises and the query ignores is a lie: ONE surface->knob table,
-  honored by the HTML and the .json twin alike, offered by the builder only
-  where true. 491 a bound stated in the wrong unit is not a bound -- the
-  import comment said 1 statement/row, reality was up to 4; per-row cost is
-  now COUNTED by a test. 492 two implementations of one invariant means one
-  of them is wrong: the atomic `col + 1` won, the read-then-write bump died,
-  auto-schedule's unbounded 2N-statement loop went set-based and capped.
-  w24 = 5 fix lanes, NO ledger (452/470); w25 owns the closing ledger.
+- STAGE1-CLOSE w21-22 (DEC-471..480, compacted): A BRANCH IS NOT A LANDING --
+  grade every row from file:line at the sha or `git merge-base
+  --is-ancestor`, never a DEC doc or this guide; enumeration = re-runnable
+  ARTIFACT not prose; fieldId re-keyed like the field's id or silently dead;
+  MAX_PUBLIC_ROWS = MAX_PUBLIC_PAGE x PER_PAGE, MEASURED not asserted; ONE
+  import cap; every list endpoint graded by executable enumeration test.
+- STAGE1-CLOSE w23-24 (DEC-481..492, compacted): re-grade from file:line at
+  wave start, never a doc comment (481) or a brief written before mid-plan
+  merges (w23/w24 both had planned lanes land mid-read -- re-read the FILE,
+  not an old grep). Clamps collapse onto clampPerPage(50) not listPerPage
+  (482); enumeration scans the CLAMP EXPRESSION not a const's existence
+  (483); JSON feeds owe HTML's paging truth (484); import cap IS the
+  write-burst bound, O(rows) (485); ONE projection/ONE constants-home beats
+  duplication (486/487); FAIL-unowned closes need the enumeration entry
+  DELETED not just relaxed (488); a knob the URL advertises must be honored
+  by HTML and .json alike, offered only where true (489/490); a bound is
+  stated in real units, COUNTED by a test (491); two implementations of one
+  invariant means one is wrong -- atomic SQL beats read-then-write, and
+  unbounded per-row loops go set-based and capped (492). No ledger either
+  wave (452/470); w25 owns the closing ledger.
+- STAGE1-CLOSE w25 (DEC-493..498): the tree moved AGAIN mid-plan -- w24-a/b/c/d
+  merged between two greps of ONE planning pass (488/489/490/491 IN on re-read,
+  492 still out), so re-read the FILE before you write the task, never the grep
+  from ten minutes ago. 493 the walkthrough harness is product evidence:
+  resolve the seeded event by SLUG (items[0] of a desc(startDate) list is a
+  throwaway event) and fill a locked field by the product's own rule -- a
+  harness failing for its own reasons reads exactly like a product failing.
+  494 an event-clock string carries its event's tz or it lies; formatIcsChip
+  takes a REQUIRED timeZone (live repro: "12:00 PM" for a 09:00 Pacific
+  session), while audit timestamps stay viewer-local. 495 a ceiling that is
+  never filled is not a measurement -- the perf seed reaches SPEC's 800-speaker
+  top end via co-speakers, not more sessions. 496 the closing ledger grades at
+  file:line at ITS OWN sha, classifies a missing fix by ancestor-check on the
+  OWNING branch (PENDING-OWNED(task-w24-e), not FAIL-unowned), and STRIKES
+  w21-f open item #1: its own cited source reads "Neither row is
+  UNMEASURABLE-BY-CONSTRUCTION at this sha." 497 phone evidence predating the
+  embed rework is not evidence about it. 498 five evidence lanes share one
+  machine: own your assigned port, kill only the PID you spawned, never pkill -f.
