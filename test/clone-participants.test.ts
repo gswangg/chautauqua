@@ -62,7 +62,14 @@ function fakeDb(opts: {
     insert(table: unknown) {
       return {
         values(values: unknown) {
-          inserts.push({ table, values });
+          // DEC-542: cloneSubmission's child-table inserts are now
+          // chunked/set-based (chunkRowsForInsert), so .values() may
+          // receive an array of rows in one call rather than one row per
+          // call. Flatten to one `inserts` entry per row so downstream
+          // per-row assertions in this file stay valid regardless of how
+          // many rows landed in a single insert statement.
+          const rows = Array.isArray(values) ? values : [values];
+          for (const row of rows) inserts.push({ table, values: row });
           return Promise.resolve(undefined);
         },
       };
