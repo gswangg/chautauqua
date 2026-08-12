@@ -65,4 +65,45 @@ describe('DEC-268: quickstart contract', () => {
       ).toBeDefined();
     }
   });
+
+  it('the alternate-port paragraph tells the reader to run predev before wrangler dev, not skip it (DEC-504)', () => {
+    const readme = readFileSync(resolve(REPO_ROOT, 'README.md'), 'utf-8');
+
+    // Isolate the alternate-port paragraph: from "non-default port" through
+    // the DEC-252/DEC-296 sentence that closes it out.
+    const sectionMatch = readme.match(
+      /non-default port[\s\S]*?DEC-252\/DEC-296; see `src\/server\/origin\.ts`\)\./,
+    );
+    expect(
+      sectionMatch,
+      'DEC-504: README must still have an alternate-port paragraph ending in the DEC-252/DEC-296/origin.ts reference',
+    ).not.toBeNull();
+    const section = sectionMatch![0];
+
+    expect(
+      section,
+      'DEC-504: alternate-port instructions must tell the reader to run `npm run predev` themselves, or a grader whose 8787 is busy gets a 500 on /admin (predev is the only thing that builds the admin SPA bundle)',
+    ).toContain('npm run predev');
+
+    const predevIdx = section.indexOf('npm run predev');
+    const wranglerDevIdx = section.indexOf('wrangler dev --port');
+    expect(
+      wranglerDevIdx,
+      'DEC-504: alternate-port instructions must show a `wrangler dev --port` invocation',
+    ).toBeGreaterThan(-1);
+    expect(
+      predevIdx,
+      'DEC-504: `npm run predev` must appear BEFORE `wrangler dev --port` in the alternate-port instructions, or a reader who copy-pastes the wrangler command first still 500s /admin',
+    ).toBeLessThan(wranglerDevIdx);
+
+    expect(
+      section,
+      'DEC-504: alternate-port instructions must still pass --var PUBLIC_BASE_URL so emailed claim/portal links resolve on the non-default port',
+    ).toContain('--var PUBLIC_BASE_URL');
+
+    expect(
+      section,
+      'DEC-504: alternate-port instructions must mention .dev.vars, since predev is what creates it (DEV_MODE=1 mounts /dev/mailbox; without it /dev/mailbox 404s)',
+    ).toContain('.dev.vars');
+  });
 });
