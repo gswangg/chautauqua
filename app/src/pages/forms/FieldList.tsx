@@ -65,14 +65,21 @@ export function FieldList({ fields, busy, onEdit, onDelete, onMove }: FieldListP
               )}
               {field.label}
             </td>
-            <td>{field.section}</td>
-            <td>{kindLabel(field.kind)}</td>
+            {/* Section/Kind/Condition read as bare text with no visual
+                context once the phone card drops the header row; mirror
+                the th string into data-label so td::before can render it
+                (DEC-390). Required/Optional and Label/Actions are already
+                self-labelling, so they get no attribute. */}
+            <td data-label="Section">{field.section}</td>
+            <td data-label="Kind">{kindLabel(field.kind)}</td>
             <td>
               <span className={field.required ? 'chq-forms-field-required' : 'chq-forms-field-optional'}>
                 {field.required ? 'Required' : 'Optional'}
               </span>
             </td>
-            <td>{field.rule ? `if ${field.rule.fieldId} ${field.rule.op} ${JSON.stringify(field.rule.value)}` : '—'}</td>
+            <td data-label="Condition">
+              {field.rule ? `if ${field.rule.fieldId} ${field.rule.op} ${JSON.stringify(field.rule.value)}` : '—'}
+            </td>
             <td>
               <button
                 type="button"
