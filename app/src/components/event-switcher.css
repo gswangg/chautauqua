@@ -1,0 +1,26 @@
+/* EventSwitcher (w3-d, DEC-368/378/379). Layout only — control chrome
+   (.chq-select, .chq-input, .chq-btn, .chq-scrim, .chq-modal, .chq-field,
+   .chq-field-error, .chq-modal-title, .chq-modal-actions, .chq-error-banner)
+   comes from the shared vocabulary in app/src/styles.css; nothing here
+   redefines a shared class. */
+
+.chq-eventswitcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* DEC-369: right-aligned event name in the header reads 13px/600, matching
+   the identity block beside it. */
+.chq-eventswitcher-select {
+  font-size: 13px;
+  font-weight: 600;
+  min-width: 0;
+  max-width: 220px;
+}
+
+@media (max-width: 390px) {
+  .chq-eventswitcher-select {
+    max-width: 140px;
+  }
+}

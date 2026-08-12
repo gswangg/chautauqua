@@ -1,12 +1,14 @@
-// Event switcher + 'New event…' modal (w6-c, DEC-046). Nav-mounted: lists
-// GET /api/v1/events (shape at src/routes/api/events.ts:118), shows the
-// current event by 'chq.currentEventId' (falling back to items[0], mirroring
+// Event switcher + 'New event…' modal (w6-c, DEC-046; restyled w3-d, DEC-378/
+// 379). Nav-mounted: lists GET /api/v1/events (shape at
+// src/routes/api/events.ts:118), shows the current event by
+// 'chq.currentEventId' (falling back to items[0], mirroring
 // useCurrentEvent.ts), switching writes that key and reloads /admin. 'New
 // event…' opens a modal posting POST /api/v1/events; server field errors
 // (error.fields) are shown per-field per DEC-013's ApiError contract.
 
 import { useEffect, useState, type FormEvent } from 'react';
 import { apiList, apiPost, ApiError } from '../lib/api';
+import { useEscapeKey } from '../lib/useEscapeKey';
 import {
   buildNewEventPayload,
   mergeFieldErrors,
@@ -15,6 +17,7 @@ import {
   type NewEventForm,
   type NewEventFormErrors,
 } from './eventSwitcherState';
+import './event-switcher.css';
 
 const STORAGE_KEY = 'chq.currentEventId';
 
@@ -37,6 +40,8 @@ function NewEventModal({ onCancel, onCreated }: { onCancel: () => void; onCreate
   const [errors, setErrors] = useState<NewEventFormErrors>({});
   const [banner, setBanner] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+
+  useEscapeKey(!pending, onCancel);
 
   function setField<K extends keyof NewEventForm>(key: K, value: NewEventForm[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -69,34 +74,57 @@ function NewEventModal({ onCancel, onCreated }: { onCancel: () => void; onCreate
   }
 
   return (
-    <div className="chq-modal-overlay" role="dialog" aria-modal="true" aria-label="New event">
-      <form className="chq-modal" onSubmit={submit}>
-        <h2>New event</h2>
+    <div className="chq-scrim">
+      <form className="chq-modal" role="dialog" aria-modal="true" aria-label="New event" onSubmit={submit}>
+        <h2 className="chq-modal-title">New event</h2>
         {banner && <div className="chq-error-banner">{banner}</div>}
 
-        <label>
+        <label className="chq-field">
           Name
-          <input value={form.name} onChange={(e) => setField('name', e.target.value)} required />
+          <input
+            className="chq-input"
+            value={form.name}
+            onChange={(e) => setField('name', e.target.value)}
+            required
+          />
           {errors.name && <span className="chq-field-error">{errors.name}</span>}
         </label>
-        <label>
+        <label className="chq-field">
           Slug
-          <input value={form.slug} onChange={(e) => setField('slug', e.target.value)} required />
+          <input
+            className="chq-input"
+            value={form.slug}
+            onChange={(e) => setField('slug', e.target.value)}
+            required
+          />
           {errors.slug && <span className="chq-field-error">{errors.slug}</span>}
         </label>
-        <label>
+        <label className="chq-field">
           Start date
-          <input type="date" value={form.startDate} onChange={(e) => setField('startDate', e.target.value)} required />
+          <input
+            className="chq-input"
+            type="date"
+            value={form.startDate}
+            onChange={(e) => setField('startDate', e.target.value)}
+            required
+          />
           {errors.startDate && <span className="chq-field-error">{errors.startDate}</span>}
         </label>
-        <label>
+        <label className="chq-field">
           End date
-          <input type="date" value={form.endDate} onChange={(e) => setField('endDate', e.target.value)} required />
+          <input
+            className="chq-input"
+            type="date"
+            value={form.endDate}
+            onChange={(e) => setField('endDate', e.target.value)}
+            required
+          />
           {errors.endDate && <span className="chq-field-error">{errors.endDate}</span>}
         </label>
-        <label>
+        <label className="chq-field">
           Timezone
           <input
+            className="chq-input"
             value={form.timezone}
             onChange={(e) => setField('timezone', e.target.value)}
             placeholder="America/Chicago"
@@ -104,17 +132,17 @@ function NewEventModal({ onCancel, onCreated }: { onCancel: () => void; onCreate
           />
           {errors.timezone && <span className="chq-field-error">{errors.timezone}</span>}
         </label>
-        <label>
+        <label className="chq-field">
           Location (optional)
-          <input value={form.location} onChange={(e) => setField('location', e.target.value)} />
+          <input className="chq-input" value={form.location} onChange={(e) => setField('location', e.target.value)} />
           {errors.location && <span className="chq-field-error">{errors.location}</span>}
         </label>
 
         <div className="chq-modal-actions">
-          <button type="button" onClick={onCancel} disabled={pending}>
+          <button type="button" className="chq-btn chq-btn-secondary" onClick={onCancel} disabled={pending}>
             Cancel
           </button>
-          <button type="submit" disabled={pending}>
+          <button type="submit" className="chq-btn chq-btn-primary" disabled={pending}>
             Create
           </button>
         </div>
@@ -150,9 +178,10 @@ export function EventSwitcher() {
   }
 
   return (
-    <div className="chq-event-switcher">
+    <div className="chq-eventswitcher">
       {error && <span className="chq-field-error">{error}</span>}
       <select
+        className="chq-select chq-eventswitcher-select"
         aria-label="Current event"
         value={current?.id ?? ''}
         onChange={(e) => {
