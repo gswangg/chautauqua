@@ -54,12 +54,13 @@ export async function exportSpeakers(db: Db, eventId: string): Promise<ExportTab
     .where(eq(schema.submission.eventId, eventId));
 
   interface Agg {
+    contactId: string;
     firstName: string;
     lastName: string;
     email: string;
     company: string | null;
     title: string | null;
-    acceptedRefs: string[];
+    acceptedSeqs: number[];
     visible: boolean;
     bio: string | null;
     headshotUrl: string | null;
@@ -69,31 +70,43 @@ export async function exportSpeakers(db: Db, eventId: string): Promise<ExportTab
   for (const r of rows) {
     const existing = byContact.get(r.contactId);
     const agg: Agg = existing ?? {
+      contactId: r.contactId,
       firstName: r.firstName,
       lastName: r.lastName,
       email: r.email,
       company: r.company,
       title: r.title,
-      acceptedRefs: [],
+      acceptedSeqs: [],
       visible: false,
       bio: r.bio,
       headshotUrl: r.headshotUrl,
       socialLinksJson: r.socialLinksJson,
     };
-    if (r.status === "accepted") agg.acceptedRefs.push(formatRef(recordPrefix, r.seq));
+    if (r.status === "accepted") agg.acceptedSeqs.push(r.seq);
     if (r.visible) agg.visible = true;
     byContact.set(r.contactId, agg);
   }
 
-  const outRows = [...byContact.values()].map((a) => {
+  // DEC-560: total order by (lastName, firstName, contactId); each speaker's
+  // accepted-session list is a Set-derived cell, so it is sorted (by
+  // submission seq, the ref's numeric ordering) before joining.
+  const sorted = [...byContact.values()].sort(
+    (a, b) =>
+      a.lastName.localeCompare(b.lastName) ||
+      a.firstName.localeCompare(b.firstName) ||
+      (a.contactId < b.contactId ? -1 : a.contactId > b.contactId ? 1 : 0),
+  );
+
+  const outRows = sorted.map((a) => {
     const social = parseSocialLinks(a.socialLinksJson);
+    const acceptedRefs = [...a.acceptedSeqs].sort((x, y) => x - y).map((seq) => formatRef(recordPrefix, seq));
     return [
       a.firstName,
       a.lastName,
       a.email,
       a.company ?? "",
       a.title ?? "",
-      a.acceptedRefs.join("; "),
+      acceptedRefs.join("; "),
       a.visible ? "true" : "false",
       a.bio ?? "",
       a.headshotUrl ?? "",

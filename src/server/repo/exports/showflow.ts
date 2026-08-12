@@ -4,7 +4,7 @@
 // day/start/room, unscheduled accepted rows last with empty schedule
 // columns (never dropped).
 
-import { and, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { formatRef } from "../../../domain/ids";
@@ -42,10 +42,14 @@ export interface ShowflowExportInput {
   speakers: string[];
   deckFile: string;
   deckUrl: string;
+  /** submission.seq: DEC-560's tiebreak for both scheduled (room ties) and
+   * unscheduled rows — not rendered. */
+  seq: number;
 }
 
-/** Sorts scheduled rows by day, start, room; unscheduled rows (day === null)
- * are appended last, in the input's given order. Never drops a row. */
+/** Sorts scheduled rows by day, start, room, submission seq; unscheduled
+ * rows (day === null) are appended last, ordered by submission seq. Never
+ * drops a row. */
 export function shapeShowflowExport(inputs: ShowflowExportInput[]): ExportTable {
   const scheduled = inputs
     .filter((i) => i.day !== null)
@@ -54,9 +58,10 @@ export function shapeShowflowExport(inputs: ShowflowExportInput[]): ExportTable 
       if (a.startMin !== b.startMin) return (a.startMin ?? 0) - (b.startMin ?? 0);
       const ra = a.room ?? "";
       const rb = b.room ?? "";
-      return ra === rb ? 0 : ra < rb ? -1 : 1;
+      if (ra !== rb) return ra < rb ? -1 : 1;
+      return a.seq - b.seq;
     });
-  const unscheduled = inputs.filter((i) => i.day === null);
+  const unscheduled = inputs.filter((i) => i.day === null).sort((a, b) => a.seq - b.seq);
 
   const rows = [...scheduled, ...unscheduled].map((s) => [
     s.ref,
@@ -94,7 +99,9 @@ function latestDeckBySubmission(
   }
   const result = new Map<string, { fileId: string; filename: string; versionNumber: number }>();
   for (const [submissionId, arr] of bySubmission) {
-    arr.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    // DEC-560: createdAt tiebroken by file id so "latest" is deterministic
+    // even when two versions share a timestamp.
+    arr.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime() || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
     const latest = arr[0]!;
     result.set(submissionId, { fileId: latest.id, filename: latest.filename, versionNumber: arr.length });
   }
@@ -112,7 +119,8 @@ export async function buildShowflowExport(db: Db, eventId: string): Promise<Expo
       description: schema.submission.description,
     })
     .from(schema.submission)
-    .where(and(eq(schema.submission.eventId, eventId), eq(schema.submission.status, "accepted")));
+    .where(and(eq(schema.submission.eventId, eventId), eq(schema.submission.status, "accepted")))
+    .orderBy(asc(schema.submission.seq));
 
   if (submissions.length === 0) return shapeShowflowExport([]);
   const ids = submissions.map((s) => s.id);
@@ -149,12 +157,13 @@ export async function buildShowflowExport(db: Db, eventId: string): Promise<Expo
     trackJoinRows.push(...batchRows);
   }
 
-  const participantRows: { submissionId: string; order: number; firstName: string; lastName: string }[] = [];
+  const participantRows: { submissionId: string; order: number; contactId: string; firstName: string; lastName: string }[] = [];
   for (const batch of chunkIds(ids)) {
     const batchRows = await db
       .select({
         submissionId: schema.participant.submissionId,
         order: schema.participant.order,
+        contactId: schema.contact.id,
         firstName: schema.contact.firstName,
         lastName: schema.contact.lastName,
       })
@@ -193,13 +202,15 @@ export async function buildShowflowExport(db: Db, eventId: string): Promise<Expo
     tracksBySubmission.set(t.submissionId, set);
   }
 
-  const speakersBySubmission = new Map<string, { name: string; order: number }[]>();
+  const speakersBySubmission = new Map<string, { name: string; order: number; contactId: string }[]>();
   for (const p of participantRows) {
     const arr = speakersBySubmission.get(p.submissionId) ?? [];
-    arr.push({ name: `${p.firstName} ${p.lastName}`.trim(), order: p.order });
+    arr.push({ name: `${p.firstName} ${p.lastName}`.trim(), order: p.order, contactId: p.contactId });
     speakersBySubmission.set(p.submissionId, arr);
   }
-  for (const arr of speakersBySubmission.values()) arr.sort((a, b) => a.order - b.order);
+  for (const arr of speakersBySubmission.values()) {
+    arr.sort((a, b) => a.order - b.order || (a.contactId < b.contactId ? -1 : a.contactId > b.contactId ? 1 : 0));
+  }
 
   const deckBySubmission = latestDeckBySubmission(presentationFiles);
 
@@ -214,10 +225,11 @@ export async function buildShowflowExport(db: Db, eventId: string): Promise<Expo
       startMin: slot?.startMin ?? null,
       endMin: slot?.endMin ?? null,
       room: slot?.roomName ?? null,
-      tracks: [...(tracksBySubmission.get(s.id) ?? [])],
+      tracks: [...(tracksBySubmission.get(s.id) ?? [])].sort((a, b) => a.localeCompare(b)),
       speakers: (speakersBySubmission.get(s.id) ?? []).map((sp) => sp.name),
       deckFile: deck ? `${deck.filename} (v${deck.versionNumber})` : "",
       deckUrl: deck ? `/files/${deck.fileId}` : "",
+      seq: s.seq,
     };
   });
 
