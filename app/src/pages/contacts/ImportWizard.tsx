@@ -326,6 +326,7 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
                         {decorated && (
                           <label className="chq-contacts-import-review-skip">
                             <input
+                              className="chq-check"
                               type="checkbox"
                               checked={skipLines.has(row.line)}
                               onChange={() => toggleSkipLine(row.line)}
