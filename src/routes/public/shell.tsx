@@ -179,6 +179,15 @@ export function EmbedShell(props: { event: PublicEvent; title: string; children:
       </head>
       <body style={`--chq-brandable-accent: ${accent};`}>
         <main class="chq-pub-main">{props.children as any}</main>
+        {/* DEC-617: pairs with public/embed.js -- posts this document's
+            height to window.parent on load/resize, echoing back the
+            `embed_id` query param the <chq-embed> element appended to this
+            page's own src, so a resize message can be matched to instance. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){var id=new URLSearchParams(location.search).get("embed_id");if(!id)return;function post(){parent.postMessage({type:"chq-embed-height",id:id,height:document.documentElement.scrollHeight},"*");}window.addEventListener("load",post);window.addEventListener("resize",post);post();})();`,
+          }}
+        />
       </body>
     </html>
   );

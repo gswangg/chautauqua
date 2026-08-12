@@ -9,7 +9,10 @@
 export const EMBED_SURFACES = ['sessions', 'speakers', 'agenda', 'schedule', 'gallery'] as const;
 export type EmbedSurface = (typeof EMBED_SURFACES)[number];
 
-export const EMBED_FORMATS = ['iframe', 'link', 'json', 'ics'] as const;
+// DEC-617: 'element' is the hardened <chq-embed> custom-element upgrade —
+// same URL/path rules as 'iframe', a different copyable snippet. The plain
+// iframe snippet stays the default; this is additive, never a replacement.
+export const EMBED_FORMATS = ['iframe', 'element', 'link', 'json', 'ics'] as const;
 export type EmbedFormat = (typeof EMBED_FORMATS)[number];
 
 // DEC-289: `fields` allowlist — sessions surface cards only. Title and its
@@ -47,7 +50,7 @@ export const EMBED_KNOBS_BY_SURFACE: Record<EmbedSurface, readonly EmbedKnob[]> 
 export function buildEmbedUrl(origin: string, slug: string, surface: EmbedSurface, opts: EmbedOptions): string {
   const { format } = opts;
   let path: string;
-  if (format === 'iframe' || format === 'link') {
+  if (format === 'iframe' || format === 'link' || format === 'element') {
     path = `/embed/${slug}/${surface}`;
   } else if (format === 'json') {
     path = `/embed/${slug}/${surface}.json`;
@@ -86,6 +89,13 @@ export function buildEmbedUrl(origin: string, slug: string, surface: EmbedSurfac
 export function buildSnippet(url: string, surface: EmbedSurface, format: EmbedFormat): string {
   if (format === 'iframe') {
     return `<iframe src="${url}" style="width:100%;min-height:600px;border:0" loading="lazy" title="${surface}"></iframe>`;
+  }
+  // DEC-617: the hardened <chq-embed> custom element -- loads /embed.js from
+  // the same origin as `url`, then declares the element with that url as its
+  // src. embed.js itself refuses a src whose origin differs from its own.
+  if (format === 'element') {
+    const origin = new URL(url).origin;
+    return `<script src="${origin}/embed.js"></script>\n<chq-embed src="${url}"></chq-embed>`;
   }
   if (format === 'link') {
     return `<a href="${url}">${surface}</a>`;
