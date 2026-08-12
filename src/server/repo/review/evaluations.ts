@@ -1,10 +1,11 @@
 // Evaluations (DEC-018): the recorded scores/comments a reviewer submits for
 // a submission within a plan round.
 
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { newId } from "../../../domain/ids";
+import { chunkIds } from "../../../lib/chunk";
 
 export interface EvaluationRecord {
   id: string;
@@ -107,17 +108,36 @@ export async function countEvaluationsForSubmission(
   return Number(rows[0]?.count ?? 0);
 }
 
-/** DEC-346: per-submission evaluation counts for a plan+round, via SQL
- * `count(*) ... group by submission_id` -- replaces loading every evaluation
- * row for the round and reducing in JS (the reviewer queue's prior
- * approach). */
-export async function countEvaluationsBySubmission(db: Db, planId: string, round: number): Promise<Map<string, number>> {
-  const rows = await db
-    .select({ submissionId: schema.evaluation.submissionId, count: sql<number>`count(*)` })
-    .from(schema.evaluation)
-    .where(and(eq(schema.evaluation.planId, planId), eq(schema.evaluation.round, round)))
-    .groupBy(schema.evaluation.submissionId);
-  return new Map(rows.map((r) => [r.submissionId, Number(r.count)]));
+/** DEC-346/DEC-439: per-submission evaluation counts for a plan+round, via
+ * SQL `count(*) ... group by submission_id` -- replaces loading every
+ * evaluation row for the round and reducing in JS (the reviewer queue's
+ * prior approach). An optional `submissionIds` restricts the count to a
+ * caller's already-scoped id set (chunked per DEC-078) so the query scales
+ * with that slice rather than the whole plan/round. */
+export async function countEvaluationsBySubmission(
+  db: Db,
+  planId: string,
+  round: number,
+  submissionIds?: string[],
+): Promise<Map<string, number>> {
+  if (submissionIds && submissionIds.length === 0) return new Map();
+  const result = new Map<string, number>();
+  const idChunks = submissionIds ? chunkIds(submissionIds) : [undefined];
+  for (const idChunk of idChunks) {
+    const rows = await db
+      .select({ submissionId: schema.evaluation.submissionId, count: sql<number>`count(*)` })
+      .from(schema.evaluation)
+      .where(
+        and(
+          eq(schema.evaluation.planId, planId),
+          eq(schema.evaluation.round, round),
+          idChunk ? inArray(schema.evaluation.submissionId, idChunk) : undefined,
+        ),
+      )
+      .groupBy(schema.evaluation.submissionId);
+    for (const r of rows) result.set(r.submissionId, Number(r.count));
+  }
+  return result;
 }
 
 /** DEC-346: the set of submission ids a single reviewer has already rated in

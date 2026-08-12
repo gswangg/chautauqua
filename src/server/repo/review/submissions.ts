@@ -2,13 +2,12 @@
 // can see, plus the summary/speaker/answer data reviewers need to render a
 // submission (DEC-078/DEC-081/DEC-016/DEC-017/DEC-346).
 
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, exists, inArray, or, sql } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { formatRef } from "../../../domain/ids";
-import { resolveAssignments } from "../../../domain/evaluation";
 import type { PlanRecord } from "./plans";
-import { listReviewerRowsForPlan } from "./reviewers";
+import { chunkIds } from "../../../lib/chunk";
 
 /** DEC-346: the narrow shape every plan-scoped whole-set load returns --
  * `description` is never selected for these (list/queue/results/progress),
@@ -113,18 +112,110 @@ export async function listPlanFilteredSubmissions(
   }));
 }
 
-/** Resolves the submissions a reviewer's plan_reviewer rows grant access to
- * (DEC-017 scope semantics), intersected with the plan's own track filters.
- * One set-based load plus the pure resolveAssignments core (DEC-081). */
+/** Resolves the submissions a single reviewer's plan_reviewer rows grant
+ * access to (DEC-017 scope semantics), intersected with the plan's own
+ * track filters -- DEC-439: cost scales with THIS reviewer's slice, not the
+ * whole plan. Loads only this (plan,userId)'s plan_reviewer rows, then
+ * issues one scoped `submission` query (EXISTS subqueries over
+ * submission_track, never a whole-event track scan) whose semantics match
+ * `resolveAssignments` (src/domain/evaluation.ts) exactly: an unrestricted
+ * row (trackId and submissionId both null) grants every plan-filtered
+ * submission; otherwise the union of explicit submissionId scopes and
+ * submissions matching any trackId scope, always intersected with the
+ * plan's own filters_json trackIds. A userId with no rows returns []. */
 export async function resolveReviewerSubmissions(
   db: Db,
   plan: PlanRecord,
   userId: string,
 ): Promise<PlanSubmissionRef[]> {
-  const all = await listPlanFilteredSubmissions(db, plan);
-  const reviewerRows = await listReviewerRowsForPlan(db, plan.id);
-  const assignments = resolveAssignments(all, reviewerRows);
-  return assignments.get(userId) ?? [];
+  const reviewerRows = await db
+    .select({ trackId: schema.planReviewer.trackId, submissionId: schema.planReviewer.submissionId })
+    .from(schema.planReviewer)
+    .where(and(eq(schema.planReviewer.planId, plan.id), eq(schema.planReviewer.userId, userId)));
+  if (reviewerRows.length === 0) return [];
+
+  const unrestricted = reviewerRows.some((r) => r.trackId === null && r.submissionId === null);
+  const submissionScopes = [
+    ...new Set(reviewerRows.filter((r) => r.submissionId !== null).map((r) => r.submissionId as string)),
+  ];
+  const trackScopes = [...new Set(reviewerRows.filter((r) => r.trackId !== null).map((r) => r.trackId as string))];
+  if (!unrestricted && submissionScopes.length === 0 && trackScopes.length === 0) return [];
+
+  const filterTracks = plan.filters?.trackIds;
+  const conditions = [eq(schema.submission.eventId, plan.eventId)];
+
+  if (!unrestricted) {
+    const scopeConds = [];
+    if (submissionScopes.length > 0) scopeConds.push(inArray(schema.submission.id, submissionScopes));
+    if (trackScopes.length > 0) {
+      scopeConds.push(
+        exists(
+          db
+            .select({ one: sql`1` })
+            .from(schema.submissionTrack)
+            .where(
+              and(
+                eq(schema.submissionTrack.submissionId, schema.submission.id),
+                inArray(schema.submissionTrack.trackId, trackScopes),
+              ),
+            ),
+        ),
+      );
+    }
+    const scopeCond = scopeConds.length > 1 ? or(...scopeConds) : scopeConds[0];
+    if (scopeCond) conditions.push(scopeCond);
+  }
+
+  if (filterTracks && filterTracks.length > 0) {
+    conditions.push(
+      exists(
+        db
+          .select({ one: sql`1` })
+          .from(schema.submissionTrack)
+          .where(
+            and(
+              eq(schema.submissionTrack.submissionId, schema.submission.id),
+              inArray(schema.submissionTrack.trackId, filterTracks),
+            ),
+          ),
+      ),
+    );
+  }
+
+  const matched = await db
+    .select({ id: schema.submission.id, seq: schema.submission.seq, title: schema.submission.title })
+    .from(schema.submission)
+    .where(and(...conditions));
+  if (matched.length === 0) return [];
+
+  const eventRows = await db
+    .select({ recordPrefix: schema.event.recordPrefix })
+    .from(schema.event)
+    .where(eq(schema.event.id, plan.eventId))
+    .limit(1);
+  const recordPrefix = eventRows[0]?.recordPrefix ?? "SES";
+
+  // trackIds for the matched (reviewer-scoped, not whole-event) set only,
+  // chunked per DEC-078.
+  const trackMap = new Map<string, string[]>();
+  for (const idChunk of chunkIds(matched.map((m) => m.id))) {
+    const trackRows = await db
+      .select({ submissionId: schema.submissionTrack.submissionId, trackId: schema.submissionTrack.trackId })
+      .from(schema.submissionTrack)
+      .where(inArray(schema.submissionTrack.submissionId, idChunk));
+    for (const row of trackRows) {
+      const list = trackMap.get(row.submissionId) ?? [];
+      list.push(row.trackId);
+      trackMap.set(row.submissionId, list);
+    }
+  }
+
+  return matched.map((row) => ({
+    id: row.id,
+    ref: formatRef(recordPrefix, row.seq),
+    title: row.title,
+    trackIds: trackMap.get(row.id) ?? [],
+  }));
 }
 
 /** Targeted per-submission scope check for the reviewer GET/PUT endpoints
