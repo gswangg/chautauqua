@@ -48,7 +48,7 @@ export interface RouteManifestEntry {
   readonly params?: Record<string, string>;
 }
 
-const EVENT_SLUG = "devflow-conf-2027";
+export const EVENT_SLUG = "devflow-conf-2027";
 const SUBMISSION_ID = "seed_submission_0001";
 const REVIEWER_SUBMISSION_ID = "seed_submission_0002";
 const PLAN_ID = "seed_evaluation_plan_0001";

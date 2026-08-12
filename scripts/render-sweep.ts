@@ -81,7 +81,7 @@ import { ensureDevVars } from "./ensure-dev-vars";
 // seed_submission_0001/seed_contact_0001 — the seed's index-0 accepted +
 // content-approved + visible submission/contact, DEC-108 — so the session
 // and speaker detail drill-ins resolve against `npm run seed` data).
-const MOBILE_EVENT_SLUG = "devflow-conf-2027";
+export const MOBILE_EVENT_SLUG = "devflow-conf-2027";
 const MOBILE_SESSION_ID = "seed_submission_0001";
 const MOBILE_SPEAKER_ID = "seed_contact_0001";
 const MOBILE_TASK_ASSIGNMENT_ID = "seed_task_assignment_0001";
@@ -98,6 +98,8 @@ export const MOBILE_ROUTE_MANIFEST: readonly MobileRouteEntry[] = [
   { path: `/embed/${MOBILE_EVENT_SLUG}/sessions`, role: "public" },
   { path: `/embed/${MOBILE_EVENT_SLUG}/agenda`, role: "public" },
   { path: `/embed/${MOBILE_EVENT_SLUG}/speakers`, role: "public" },
+  { path: `/embed/${MOBILE_EVENT_SLUG}/schedule`, role: "public" },
+  { path: `/embed/${MOBILE_EVENT_SLUG}/gallery`, role: "public" },
   { path: "/login", role: "public" },
   { path: "/portal", role: "speaker" },
   // DEC-411: widen the mobile pass from the single /portal route to the
