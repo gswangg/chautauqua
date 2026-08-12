@@ -174,6 +174,40 @@ export const PUBLIC_CSS = `
     padding: 0.4rem 0.6rem;
     font-size: 0.85rem;
   }
+  /* DEC-584: phone (<700px) list markup for a single agenda day, rendered
+     from the SAME items array as AgendaDayGrid and switched with the
+     desktop grid purely via display:none below (breakpoint block) so
+     exactly one copy is in the accessibility tree at a time. Hidden by
+     default (desktop-first source order); the 700px breakpoint flips
+     which of the two is visible. */
+  .chq-pub-agenda-list { display: none; list-style: none; margin: 0 0 1.5rem; padding: 0; }
+  .chq-pub-agenda-list-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--chq-hairline);
+  }
+  .chq-pub-agenda-list-time { font-family: var(--chq-font-display); font-size: 15px; font-weight: 700; color: var(--chq-ink); }
+  .chq-pub-agenda-list-title {
+    font-family: var(--chq-font-display);
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: var(--chq-ink);
+    text-decoration: none;
+  }
+  /* Room name is rendered as text (not colour alone) so it stays legible
+     without relying on the track swatch dot. */
+  .chq-pub-agenda-list-room {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--chq-muted);
+  }
+  .chq-pub-agenda-list-speakers { font-size: 13px; color: var(--chq-ink-2); }
+
   .chq-pub-day-switcher { display: flex; gap: 8px; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 4px; }
   .chq-pub-day-pill {
     flex-shrink: 0;
@@ -237,5 +271,11 @@ export const PUBLIC_CSS = `
     }
     .chq-pub-itinerary-cta { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
     .chq-pub-agenda-day-scroll { max-width: 100%; }
+
+    /* DEC-584: exactly one of the two agenda markups is in the a11y tree
+       at a time -- the desktop room-grid wrapper hides below 700px and the
+       phone list takes over. */
+    .chq-pub-agenda-desktop { display: none; }
+    .chq-pub-agenda-list { display: block; }
   }
 `;

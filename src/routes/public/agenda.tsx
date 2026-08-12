@@ -3,7 +3,7 @@
 // decomposition) — no behavior change.
 
 import type { PublicAgendaItem, PublicEvent } from "../../server/repo/public";
-import { itineraryStorageKey, mergeItinerarySelection } from "../../lib/itinerary";
+import { itineraryStorageKey, mergeItinerarySelection, mirrorItineraryCheckboxes } from "../../lib/itinerary";
 import { assignLanes } from "../../lib/overlap-lanes";
 import { sessionDetailPath, type Surface } from "./shell";
 import { TrackChips, SpeakerNames, formatDay, formatMinutes } from "./cards";
@@ -111,6 +111,73 @@ export function AgendaDayGrid(props: { day: string; items: PublicAgendaItem[]; e
   );
 }
 
+/** DEC-584: phone (<700px) markup for a single agenda day. AgendaDayGrid's
+ * absolutely-positioned room-column grid is unreadable as a horizontal
+ * scroll-wall at 390px, so the phone breakpoint renders the SAME `items`
+ * array as a single vertical list instead — start-time order, then room
+ * position (DEC-563's producer-owned ordering, same tiebreak as the desktop
+ * grid's room columns), then id. Room and track are rendered as visible
+ * text/chip content here (not colour alone), same as the desktop grid. */
+function AgendaPhoneList(props: { day: string; items: PublicAgendaItem[]; event: PublicEvent; from: Surface; itinerary?: boolean }) {
+  const { day, items, event, from, itinerary } = props;
+  const sorted = [...items].sort((a, b) => {
+    if (a.startMin !== b.startMin) return a.startMin - b.startMin;
+    const posA = a.roomId ? (a.roomPosition ?? Number.POSITIVE_INFINITY) : Number.POSITIVE_INFINITY;
+    const posB = b.roomId ? (b.roomPosition ?? Number.POSITIVE_INFINITY) : Number.POSITIVE_INFINITY;
+    if (posA !== posB) return posA - posB;
+    return a.submissionId.localeCompare(b.submissionId);
+  });
+  return (
+    <section aria-label={`Agenda for ${day}, phone list`} class="chq-pub-agenda-list-wrap">
+      <h3>{day}</h3>
+      <ol class="chq-pub-agenda-list">
+        {sorted.map((item) => (
+          <li class="chq-pub-agenda-list-item" id={`chq-agenda-list-${item.submissionId}`}>
+            <div class="chq-pub-agenda-list-time">
+              {formatMinutes(item.startMin)}–{formatMinutes(item.endMin)}
+            </div>
+            <div>
+              <strong>
+                <a class="chq-pub-agenda-list-title" href={sessionDetailPath(event, item.submissionId, from)}>
+                  {item.title}
+                </a>
+              </strong>
+            </div>
+            <div class="chq-pub-agenda-list-room">{item.roomName ?? "TBD"}</div>
+            <div>
+              <TrackChips tracks={item.tracks} />
+            </div>
+            <div class="chq-pub-agenda-list-speakers">
+              <SpeakerNames speakers={item.speakers} />
+            </div>
+            {itinerary ? (
+              <label class="chq-pub-itinerary-row">
+                <input type="checkbox" class="chq-itinerary-toggle" value={item.submissionId} />
+                Add to itinerary
+              </label>
+            ) : null}
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+
+/** DEC-584: renders BOTH the desktop grid and the phone list for one day
+ * from the same `items` array, switched at the 700px breakpoint purely by
+ * CSS `display:none` (public.css.ts) so exactly one is in the a11y tree at
+ * a time. */
+function AgendaDay(props: { day: string; items: PublicAgendaItem[]; event: PublicEvent; from: Surface; itinerary?: boolean }) {
+  return (
+    <div id={`chq-day-${props.day}`}>
+      <div class="chq-pub-agenda-desktop">
+        <AgendaDayGrid {...props} />
+      </div>
+      <AgendaPhoneList {...props} />
+    </div>
+  );
+}
+
 export function groupByDay(items: PublicAgendaItem[]): Map<string, PublicAgendaItem[]> {
   const map = new Map<string, PublicAgendaItem[]>();
   for (const item of items) {
@@ -154,9 +221,7 @@ export function AgendaContent(props: { event: PublicEvent; items: PublicAgendaIt
           ) : null}
           <DaySwitcher days={days} />
           {days.map((day) => (
-            <div id={`chq-day-${day}`}>
-              <AgendaDayGrid day={day} items={byDay.get(day) ?? []} event={props.event} from="agenda" />
-            </div>
+            <AgendaDay day={day} items={byDay.get(day) ?? []} event={props.event} from="agenda" />
           ))}
         </>
       )}
@@ -171,12 +236,21 @@ function ItineraryScript(props: { eventSlug: string }) {
   const storageKey = itineraryStorageKey(props.eventSlug);
   const js = `(function(){
   var __chqMerge = (${mergeItinerarySelection.toString()});
+  var __chqMirror = (${mirrorItineraryCheckboxes.toString()});
   var key = ${JSON.stringify(storageKey)};
   var slug = ${JSON.stringify(props.eventSlug)};
   var stored = [];
   try { stored = JSON.parse(localStorage.getItem(key) || '[]'); } catch (e) { stored = []; }
   var boxes = document.querySelectorAll('.chq-itinerary-toggle');
-  var allRenderedIds = Array.prototype.map.call(boxes, function(b){ return b.value; });
+  // DEC-584: the desktop grid and the phone list both render a
+  // '.chq-itinerary-toggle' for every session (one is display:none at a
+  // time, but both stay in the DOM), so the SAME submission id appears
+  // twice in the raw NodeList -- dedupe before this list reaches
+  // __chqMerge, or the itinerary is not the set of unique rendered ids.
+  var allRenderedIds = [];
+  Array.prototype.forEach.call(boxes, function(b){
+    if (allRenderedIds.indexOf(b.value) === -1) { allRenderedIds.push(b.value); }
+  });
   function currentIds(){
     return Array.prototype.filter.call(boxes, function(b){ return b.checked; }).map(function(b){ return b.value; });
   }
@@ -193,6 +267,14 @@ function ItineraryScript(props: { eventSlug: string }) {
   updateLink(stored);
   document.addEventListener('change', function(e){
     if (!e.target || !e.target.classList || !e.target.classList.contains('chq-itinerary-toggle')) return;
+    // THE TRAP (DEC-584): currentIds() below is "every checked box" across
+    // BOTH copies. Without mirroring first, unchecking only the visible
+    // copy leaves the hidden copy's box still checked, so the id never
+    // leaves currentIds() and the uncheck never persists. Mirror every box
+    // sharing the changed input's value to its new checked state first.
+    var states = Array.prototype.map.call(boxes, function(b){ return { value: b.value, checked: b.checked }; });
+    var mirrored = __chqMirror(states, e.target.value, e.target.checked);
+    Array.prototype.forEach.call(boxes, function(b, i){ b.checked = mirrored[i].checked; });
     var latestStored = [];
     try { latestStored = JSON.parse(localStorage.getItem(key) || '[]'); } catch (err) { latestStored = []; }
     var ids = __chqMerge(latestStored, allRenderedIds, currentIds());
@@ -232,15 +314,7 @@ export function ScheduleContent(props: { event: PublicEvent; items: PublicAgenda
           ) : null}
           <DaySwitcher days={days} />
           {days.map((day) => (
-            <div id={`chq-day-${day}`}>
-              <AgendaDayGrid
-                day={day}
-                items={byDay.get(day) ?? []}
-                event={props.event}
-                from="schedule"
-                itinerary
-              />
-            </div>
+            <AgendaDay day={day} items={byDay.get(day) ?? []} event={props.event} from="schedule" itinerary />
           ))}
         </>
       )}

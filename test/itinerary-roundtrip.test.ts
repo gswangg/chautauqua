@@ -148,9 +148,16 @@ describe("DEC-140 itinerary id round-trip (schedule HTML -> schedule.ics)", () =
     expect(scheduleRes.status).toBe(200);
     const html = await scheduleRes.text();
 
-    const ids = [...html.matchAll(/class="chq-itinerary-toggle" value="([^"]+)"/g)].map((m) => m[1]!);
-    expect(ids.length).toBeGreaterThan(0);
-    expect(new Set(ids).size).toBe(ids.length); // no accidental dupes
+    // DEC-584: the phone list and the desktop grid each render their own
+    // .chq-itinerary-toggle for every session (one is display:none at a
+    // time, both stay in the DOM), so the raw scrape now legitimately
+    // contains the same submission id twice — dedupe the same way
+    // ItineraryScript's `allRenderedIds` does before treating it as "the
+    // set of rendered ids".
+    const rawIds = [...html.matchAll(/class="chq-itinerary-toggle" value="([^"]+)"/g)].map((m) => m[1]!);
+    expect(rawIds.length).toBeGreaterThan(0);
+    expect(rawIds.length).toBe(new Set(rawIds).size * 2); // exactly two copies (desktop + phone) of each id
+    const ids = [...new Set(rawIds)];
 
     const icsRes = await app.request(`/e/conf/schedule.ics?ids=${ids.join(",")}`);
 

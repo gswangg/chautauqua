@@ -42,6 +42,27 @@ export function parseItineraryIds(raw: string | null | undefined): string[] {
  *
  * Pure, DOM-free: `renderedIds` is the full set of `.chq-itinerary-toggle`
  * values on the current page; `checkedIds` is the subset currently checked. */
+/** Mirrors an itinerary checkbox change across every rendered copy that
+ * shares the same `value` (DEC-584: phone list and desktop grid render the
+ * SAME session as two separate `.chq-itinerary-toggle` inputs below/above
+ * the 700px breakpoint, and only one is visible at a time, but both stay in
+ * the DOM). `ItineraryScript`'s change handler computes the new selection as
+ * "every currently-checked box" (`currentIds`), so unchecking the visible
+ * copy while the hidden copy is still checked leaves that id selected and
+ * the removal never persists. This is the pure state transform the inline
+ * script actually calls (embedded via `.toString()`, same pattern as
+ * `mergeItinerarySelection`) before it re-derives `currentIds()` — every
+ * box whose value matches `changedValue` is forced to `changedChecked`,
+ * every other box passes through unchanged. Pure/DOM-free so it's
+ * unit-testable without jsdom. */
+export function mirrorItineraryCheckboxes<T extends { value: string; checked: boolean }>(
+  boxes: T[],
+  changedValue: string,
+  changedChecked: boolean,
+): T[] {
+  return boxes.map((b) => (b.value === changedValue && b.checked !== changedChecked ? { ...b, checked: changedChecked } : b));
+}
+
 export function mergeItinerarySelection(
   stored: string[],
   renderedIds: string[],

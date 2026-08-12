@@ -8,6 +8,7 @@ import { Hono } from "hono";
 import { publicRoutes } from "../src/routes/public";
 import { registerErrorHandler } from "../src/server/http";
 import { validAccent } from "../src/routes/public/shell";
+import { PUBLIC_CSS } from "../src/routes/public/public.css";
 import type { AppEnv } from "../src/server/env";
 
 function makeChain(rows: unknown[]) {
@@ -94,6 +95,19 @@ describe("validAccent (DEC-374 accent guard)", () => {
     expect(validAccent("red;background:url(x)")).toBe("#4E5C31");
     expect(validAccent("not-a-color")).toBe("#4E5C31");
     expect(validAccent(undefined)).toBe("#4E5C31");
+  });
+});
+
+describe("PUBLIC_CSS phone breakpoint (DEC-584)", () => {
+  it("switches the agenda desktop grid and phone list at the single 700px breakpoint, exactly one visible at a time", () => {
+    const media700 = PUBLIC_CSS.match(/@media \(max-width: 700px\) \{([\s\S]*)\}\s*$/);
+    expect(media700).toBeTruthy();
+    const block = media700![1]!;
+    expect(block).toMatch(/\.chq-pub-agenda-desktop\s*\{\s*display:\s*none;\s*\}/);
+    expect(block).toMatch(/\.chq-pub-agenda-list\s*\{\s*display:\s*block;\s*\}/);
+    // outside the 700px block, the list starts hidden (desktop-first source order)
+    const beforeMedia = PUBLIC_CSS.slice(0, PUBLIC_CSS.indexOf("@media (max-width: 700px)"));
+    expect(beforeMedia).toMatch(/\.chq-pub-agenda-list\s*\{\s*display:\s*none;/);
   });
 });
 
