@@ -549,7 +549,7 @@ export function SubmissionDetailPage() {
                     // detail.participants, no extra API field/endpoint.
                     const hiddenCount = detail.participants.filter((p) => !p.visible).length;
                     return hiddenCount > 0 ? (
-                      <p className="chq-hint">
+                      <p className="chq-detail-participants-note">
                         {hiddenCount} speaker(s) on this session are not on the public site yet — tick Visible to
                         publish them.
                       </p>

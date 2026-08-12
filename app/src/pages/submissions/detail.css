@@ -293,6 +293,16 @@
   color: var(--chq-muted);
 }
 
+/* DEC-656: a speaker-added co-presenter is recorded, not published, so the
+   participants table can hold rows the public site does not show. Same quiet
+   register as the decision note above it. */
+.chq-detail-participants-note {
+  margin: 0 0 8px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--chq-muted);
+}
+
 .chq-track-chips {
   display: flex;
   flex-wrap: wrap;
@@ -493,6 +503,7 @@
 
   .chq-track-chips,
   .chq-detail-decision-note,
+  .chq-detail-participants-note,
   .chq-content-status {
     overflow-wrap: anywhere;
   }
