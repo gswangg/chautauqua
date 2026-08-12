@@ -508,3 +508,6 @@ export const DEC_501 = "An answer never outlives the rule that made it askable: 
 export const DEC_502 = "A paged JSON feed returns ONE page window; HTML's cumulative show-more is not the feed's contract";
 export const DEC_503 = "The phone manifest covers every surface the desktop manifest covers, proven by an executable test";
 export const DEC_504 = "The README's alternate-port procedure runs the same predev the default path runs";
+export const DEC_505 = "A field's kind and section are patchable, and a kind change is refused while answers exist";
+export const DEC_506 = "ONE likeContains, escape-only and never case-folding, paired with ESCAPE '\\' at every LIKE call site including the unauthenticated public search boxes";
+export const DEC_507 = "Wave 27 is the stage-1 exit wave: every evidence lane re-measures at a sha containing the wave-26 fixes, and verification-log filenames carry the -stage1 suffix";
