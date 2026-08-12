@@ -14,47 +14,47 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   NUMBER); dates via event-time.ts OWNING EVENT's tz never toISOString;
   public lists LIMIT+COUNT(DISTINCT).
 - STAGE1-CLOSE w11-20 (DEC-420..470, compacted): ledger names its sha,
-  FAIL-unowned vs PENDING-OWNED, PASS is evidence about ITS OWN sha
-  only; ONE email rule everywhere via findAccountUserId(contactId OR
-  email) NEVER email alone; universal rows graded from ENUMERATION
-  never sample; pagination ONE shape `page?:{limit,offset}`+count*+
-  `id asc`, ONE listPerPage(raw); a cap the UI can't see LIES, render
-  `total`.
-- STAGE1-CLOSE w21-22 (DEC-471..480, compacted): A BRANCH IS NOT A LANDING --
+  FAIL-unowned vs PENDING-OWNED; ONE email rule via findAccountUserId
+  (contactId OR email) NEVER email alone; universal rows graded from
+  ENUMERATION never sample; pagination ONE shape `page?:{limit,offset}`
+  +count*+`id asc`; a cap the UI can't see LIES, render `total`.
+- STAGE1-CLOSE w21-24 (DEC-471..492, compacted): A BRANCH IS NOT A LANDING --
   grade every row from file:line at the sha or `git merge-base
-  --is-ancestor`, never a DEC doc or this guide; enumeration = re-runnable
-  ARTIFACT not prose; fieldId re-keyed like the field's id or silently dead;
-  MAX_PUBLIC_ROWS = MAX_PUBLIC_PAGE x PER_PAGE, MEASURED not asserted; ONE
-  import cap; every list endpoint graded by executable enumeration test.
-- STAGE1-CLOSE w23-24 (DEC-481..492, compacted): re-grade from file:line at
-  wave start, never a doc comment (481) or a brief written before mid-plan
-  merges (w23/w24 both had planned lanes land mid-read -- re-read the FILE,
-  not an old grep). Clamps collapse onto clampPerPage(50) not listPerPage
-  (482); enumeration scans the CLAMP EXPRESSION not a const's existence
-  (483); JSON feeds owe HTML's paging truth (484); import cap IS the
-  write-burst bound, O(rows) (485); ONE projection/ONE constants-home beats
-  duplication (486/487); FAIL-unowned closes need the enumeration entry
-  DELETED not just relaxed (488); a knob the URL advertises must be honored
-  by HTML and .json alike, offered only where true (489/490); a bound is
-  stated in real units, COUNTED by a test (491); two implementations of one
-  invariant means one is wrong -- atomic SQL beats read-then-write, and
-  unbounded per-row loops go set-based and capped (492). No ledger either
-  wave (452/470); w25 owns the closing ledger.
-- STAGE1-CLOSE w25 (DEC-493..498): the tree moved AGAIN mid-plan -- w24-a/b/c/d
-  merged between two greps of ONE planning pass (488/489/490/491 IN on re-read,
-  492 still out), so re-read the FILE before you write the task, never the grep
-  from ten minutes ago. 493 the walkthrough harness is product evidence:
-  resolve the seeded event by SLUG (items[0] of a desc(startDate) list is a
-  throwaway event) and fill a locked field by the product's own rule -- a
-  harness failing for its own reasons reads exactly like a product failing.
-  494 an event-clock string carries its event's tz or it lies; formatIcsChip
-  takes a REQUIRED timeZone (live repro: "12:00 PM" for a 09:00 Pacific
-  session), while audit timestamps stay viewer-local. 495 a ceiling that is
-  never filled is not a measurement -- the perf seed reaches SPEC's 800-speaker
-  top end via co-speakers, not more sessions. 496 the closing ledger grades at
-  file:line at ITS OWN sha, classifies a missing fix by ancestor-check on the
-  OWNING branch (PENDING-OWNED(task-w24-e), not FAIL-unowned), and STRIKES
-  w21-f open item #1: its own cited source reads "Neither row is
-  UNMEASURABLE-BY-CONSTRUCTION at this sha." 497 phone evidence predating the
-  embed rework is not evidence about it. 498 five evidence lanes share one
-  machine: own your assigned port, kill only the PID you spawned, never pkill -f.
+  --is-ancestor`, never a DEC doc or this guide, and re-read the FILE not an
+  old grep (planned lanes land mid-read). Enumeration = re-runnable ARTIFACT
+  scanning the CLAMP EXPRESSION not a const's existence; fieldId re-keyed
+  like the field's id or silently dead; MAX_PUBLIC_ROWS = MAX_PUBLIC_PAGE x
+  PER_PAGE, MEASURED not asserted; clamps collapse onto clampPerPage(50);
+  JSON feeds owe HTML's paging truth; import cap IS the write-burst bound;
+  ONE projection/ONE constants-home beats duplication; FAIL-unowned closes
+  need the enumeration entry DELETED not relaxed; a knob the URL advertises
+  must be honored by HTML and .json alike; two implementations of one
+  invariant means one is wrong -- atomic SQL beats read-then-write.
+- STAGE1-CLOSE w25 (DEC-493..498, compacted): walkthrough harness resolves
+  the seeded event by SLUG, fills locked fields by the product's own rule.
+  Event-clock strings carry their event's tz (formatIcsChip REQUIRED
+  timeZone); audit timestamps stay viewer-local. A ceiling never filled is
+  not a measurement -- perf seed reaches SPEC's top end via co-speakers.
+  Closing ledger grades at file:line at ITS OWN sha, ancestor-checks a
+  missing fix to its OWNING branch (PENDING-OWNED not FAIL-unowned), strikes
+  an open item whose own cited source contradicts it. Phone/render evidence
+  predating a rework is not evidence about it. Evidence lanes each own a
+  port, kill only the PID you spawned, never pkill -f.
+- STAGE1-CLOSE w26 (DEC-499..504): the tree moved mid-plan for the THIRD wave
+  running -- w25-b/c/e landed between two greps of ONE pass (the first grep saw
+  icsChip with no timeZone and no coSpeaker export; the second saw both). Read
+  the FILE, then read it AGAIN before you write the task. 499 iCalendar PARAM
+  values are sanitized at the SERIALIZER, not upstream: CN strips DQUOTE +
+  every CTL (a public CFP name injects CRLF into every published .ics), while
+  `;`/`:` stay legal -- over-stripping is its own bug. 500 options are
+  validated against the EFFECTIVE kind (patch ?? stored): a rule nested under
+  `if (input.kind !== undefined)` is DEAD on a PATCH that never sends kind,
+  and `{"options":[]}` bricks a live dropdown silently. 501 an answer never
+  outlives the rule that made it askable -- the validator strips hidden
+  answers, so the WRITER must delete them, from the same computed set. 502 a
+  paged JSON feed returns ONE window; HTML's cumulative show-more is not the
+  feed's contract. 503 two hand-listed manifests of one set desync, and the
+  one that desynced was the PHONE pass -- enumerate SURFACES in a test. 504 a
+  quickstart that works only on the default port is not a quickstart. Ledger
+  still owed: PENDING-OWNED (task-w25-f); w27 grades these six at their own
+  sha.
