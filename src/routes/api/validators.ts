@@ -53,3 +53,23 @@ export function isDateOrderValid(startDate: string, endDate: string): boolean {
   if (Number.isNaN(start) || Number.isNaN(end)) return false;
   return start <= end;
 }
+
+/**
+ * DEC-517: the ONE ms-epoch boundary predicate (mirrors DEC-510's isIsoDate
+ * for ISO date strings). Deliberately narrow: an integer, nothing else --
+ * no coercion of numeric strings, no float truncation.
+ */
+export function isEpochMs(value: unknown): value is number {
+  return Number.isInteger(value);
+}
+
+/**
+ * DEC-517: true whenever either side is null/undefined (nothing to compare
+ * yet, e.g. only one of openDate/closeDate is set); otherwise true only when
+ * open <= close. Used at both the CFP form and evaluation plan surfaces so a
+ * close-before-open date is refused identically on each.
+ */
+export function isEpochOrderValid(open: number | null | undefined, close: number | null | undefined): boolean {
+  if (open === null || open === undefined || close === null || close === undefined) return true;
+  return open <= close;
+}
