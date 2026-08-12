@@ -50,6 +50,7 @@ export function SubmissionsTable() {
   const [showNewModal, setShowNewModal] = useState(false);
   const [refreshToken, setRefreshToken] = useState(0);
   const [cloningId, setCloningId] = useState<string | null>(null);
+  const [triagingId, setTriagingId] = useState<string | null>(null);
 
   const columns: ColumnDef[] = useMemo(() => deriveColumnsFromFormFields(formFields), [formFields]);
   const shownColumns = useMemo(() => visibleColumns(columns, visibleFieldIds), [columns, visibleFieldIds]);
@@ -162,6 +163,27 @@ export function SubmissionsTable() {
     }
   }
 
+  // Phone-width per-row triage (docs/mandates/SYNTHESIS.md Tier 3: 'phone
+  // triage actions GONE'). Mirrors Overview.tsx's handleTriageAction mapping
+  // (Accept -> accepted, Decline -> declined, Waitlist -> accept_queue) and
+  // applyBulkStatus's optimistic-update / loud-rollback shape, but against a
+  // single id via the same POST /submissions/status endpoint.
+  async function applyRowTriage(id: string, status: SubmissionStatus) {
+    if (!eventId) return;
+    setTriagingId(id);
+    setError(null);
+    const previous = items;
+    setItems((prev) => prev.map((item) => (item.id === id ? { ...item, status } : item)));
+    try {
+      await apiPost<{ updated: number }>(`/events/${eventId}/submissions/status`, { ids: [id], status });
+    } catch (err) {
+      setItems(previous);
+      setError(err instanceof ApiError ? `Status update failed: ${err.message}` : 'Status update failed');
+    } finally {
+      setTriagingId(null);
+    }
+  }
+
   if (!eventId) {
     return (
       <div className="chq-page">
@@ -257,19 +279,20 @@ export function SubmissionsTable() {
                 <th key={col.fieldId}>{col.label}</th>
               ))}
               <th></th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
             {loading && (
               <tr>
-                <td className="chq-submissions-loading" colSpan={8 + shownColumns.length}>
+                <td className="chq-submissions-loading" colSpan={9 + shownColumns.length}>
                   Loading...
                 </td>
               </tr>
             )}
             {!loading && items.length === 0 && (
               <tr>
-                <td className="chq-submissions-empty" colSpan={8 + shownColumns.length}>
+                <td className="chq-submissions-empty" colSpan={9 + shownColumns.length}>
                   No submissions match the current filters.
                 </td>
               </tr>
@@ -310,6 +333,36 @@ export function SubmissionsTable() {
                     >
                       Clone
                     </button>
+                  </td>
+                  <td>
+                    {item.status === 'pending' && (
+                      <div className="chq-submissions-row-triage" role="group" aria-label={`Triage ${item.ref}`}>
+                        <button
+                          type="button"
+                          className="chq-btn chq-btn-primary"
+                          disabled={triagingId === item.id}
+                          onClick={() => applyRowTriage(item.id, 'accepted')}
+                        >
+                          Accept
+                        </button>
+                        <button
+                          type="button"
+                          className="chq-btn chq-btn-secondary"
+                          disabled={triagingId === item.id}
+                          onClick={() => applyRowTriage(item.id, 'declined')}
+                        >
+                          Decline
+                        </button>
+                        <button
+                          type="button"
+                          className="chq-btn chq-btn-tertiary"
+                          disabled={triagingId === item.id}
+                          onClick={() => applyRowTriage(item.id, 'accept_queue')}
+                        >
+                          Waitlist
+                        </button>
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))}

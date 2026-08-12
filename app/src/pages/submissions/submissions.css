@@ -329,6 +329,15 @@
   color: var(--chq-muted);
 }
 
+/* Phone-only per-row triage action group (DEC-610): a row awaiting triage
+   (status 'pending') gets an Accept/Decline/Waitlist group in its own cell.
+   Hidden above 700px -- desktop triage happens via the bulk-action bar
+   above, not a per-row control -- so this is display:none by default and
+   only switched on inside the phone media query below. */
+.chq-submissions-row-triage {
+  display: none;
+}
+
 /* Modal form fields */
 .chq-submissions-modal-field {
   display: flex;
@@ -454,5 +463,20 @@
   .chq-submissions-views-panel {
     max-width: calc(100vw - 32px);
     box-sizing: border-box;
+  }
+
+  /* Per-row triage cell: full-width own line, buttons wrap to a shared
+     min 44px tap target, ordered after the fixed 1-7 columns and the
+     dynamic custom columns/Clone cell (both fall to the default order:10
+     above) so it reads last on the card. */
+  .chq-submissions-row-triage {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
+  .chq-submissions-row-triage .chq-btn {
+    min-height: 44px;
   }
 }
