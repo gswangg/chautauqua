@@ -290,7 +290,7 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
       overrides.event ?? [{ recordPrefix: "DFC", startDate: "2027-03-10" }],
       overrides.statusRows ?? [],
       overrides.planCount ?? [{ count: 0 }],
-      overrides.evaluationsSubmitted ?? [{ count: 0 }],
+      overrides.evaluationsAgg ?? [{ expected: 0, submitted: 0 }],
       overrides.planClose ?? [{ closeDate: null }],
       overrides.formClose ?? [{ closeDate: null }],
       overrides.speakerAgg ?? [{ outstandingContacts: 0, overdue: 0, nextDue: null }],
@@ -312,7 +312,7 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
 
     // v1 keys, unchanged shape/values (nav badge + app/src/pages/overview/cards.ts).
     expect(payload["triage-counts"]).toEqual({ pending: 0, accept_queue: 0, decline_queue: 0 });
-    expect(payload.review).toEqual({ plans: 0, evaluationsSubmitted: 0 });
+    expect(payload.review).toEqual({ plans: 0, evaluationsSubmitted: 0, evaluationsExpected: 0 });
     expect(payload.speakers).toEqual({ contactsOwing: 0, overdueAssignments: 0 });
     expect(payload.content).toEqual({ awaitingApproval: 0 });
     expect(payload.agenda).toEqual({ unplaced: 0, conflicts: 0 });
@@ -428,7 +428,7 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
       [{ recordPrefix: "DFC", startDate: "2027-03-10" }], // event
       [], // statusRows
       [{ count: 0 }], // planCount
-      [{ count: 0 }], // evaluationsSubmitted
+      [{ expected: 0, submitted: 0 }], // evaluationsAgg
       [{ closeDate: null }], // planClose
       [{ closeDate: null }], // formClose
       [], // speakerAgg
@@ -566,7 +566,7 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
 
     await getOverviewPayload(db, "event-1", now);
 
-    // Call order: 0=event, 1=statusRows, 2=planCount, 3=evaluationsSubmitted,
+    // Call order: 0=event, 1=statusRows, 2=planCount, 3=evaluationsAgg,
     // 4=planClose, 5=formClose, 6=speakerAgg, 7=overdueDetail,
     // 8=triageDetail, 9=contentAgg, 10=contentDetail, 11=accepted, 12=comms
     // (no track/file/slot/lead-speaker/room queries fire on this all-empty

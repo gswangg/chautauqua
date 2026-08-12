@@ -109,13 +109,19 @@ export interface NoActionRow {
 export function buildNoActionRows(payload: OverviewPayload, now: number): NoActionRow[] {
   const rows: NoActionRow[] = [];
 
+  // DEC-589: the numerator (evaluations submitted) and denominator
+  // (evaluations expected — every evaluator×plan assignment row, submitted
+  // or not) must be counted over the SAME set, never plans-vs-evaluations.
+  // A numerator taken outside its own denominator can exceed it.
   rows.push({
     key: 'review',
     title: 'Review',
     detail:
       payload.review.plans === 0
         ? 'No evaluation plans set up yet.'
-        : `${payload.review.evaluationsSubmitted} of ${payload.review.plans} evaluation ${pluralize(payload.review.plans, 'plan')} in.`,
+        : payload.review.evaluationsExpected === 0
+          ? 'No evaluations assigned yet.'
+          : `${payload.review.evaluationsSubmitted} of ${payload.review.evaluationsExpected} ${pluralize(payload.review.evaluationsExpected, 'evaluation')} in.`,
   });
 
   const daysSinceSend =

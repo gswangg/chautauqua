@@ -21,11 +21,9 @@ import type { OverviewPayload as ClientOverviewPayload } from "../app/src/pages/
 // also fails today on pre-existing, DEC-400-unrelated nested-field
 // differences the two lanes chose independently — e.g. client TriageRow.
 // format is `string` where the server's is `string | null` (an
-// intentionally flagged open gap, see TriageQueueRow above), and client
-// AgendaConflict.kind is `string` where the server's ConflictRow.kind is
-// the narrower union. Neither of those is a wire-key mismatch, and fixing
-// them is out of this task's scope (app/src/pages/overview/types.ts is not
-// owned by this lane). `KeysMatch` below fails to compile if either side
+// intentionally flagged open gap, see TriageQueueRow above). That is not a
+// wire-key mismatch, and fixing it is out of this task's scope.
+// `KeysMatch` below fails to compile if either side
 // gains, loses, or renames a top-level key relative to the other, in
 // either direction.
 type KeysMatch<A, B> = [keyof A] extends [keyof B] ? ([keyof B] extends [keyof A] ? true : false) : false;
@@ -59,7 +57,7 @@ function emptyResponses() {
     [{ recordPrefix: "DFC", startDate: "2027-03-10" }], // event
     [], // statusRows
     [{ count: 0 }], // planCount
-    [{ count: 0 }], // evaluationsSubmitted
+    [{ expected: 0, submitted: 0 }], // evaluationsAgg
     [{ closeDate: null }], // planClose
     [{ closeDate: null }], // formClose
     [], // pendingAssignments
