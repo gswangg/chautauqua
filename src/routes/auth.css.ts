@@ -107,7 +107,7 @@ export const AUTH_CSS = `
   }
   .chq-auth-demo-label { font-size: 13px; color: var(--chq-muted); }
   .chq-auth-demo-buttons { display: flex; flex-wrap: wrap; gap: 10px; }
-  .chq-auth-demo-buttons .chq-auth-demo-btn { width: auto; min-height: 40px; padding: 0 16px; }
+  .chq-auth-demo-buttons .chq-auth-demo-btn { width: auto; min-height: 44px; padding: 0 16px; }
 
   @media (max-width: 700px) {
     body { padding: 0; }
