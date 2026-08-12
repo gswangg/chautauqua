@@ -271,14 +271,45 @@ async function visitMobileRoute(
   }
 
   const measured = await page.evaluate((selector: string) => {
+    // DEC-401: structural-only descriptor — tag + up to 3 classes, never
+    // text content (gate logs must not carry seed or user data).
+    const describe = (el: Element): string => {
+      const tag = el.tagName.toLowerCase();
+      const classes = Array.from(el.classList).slice(0, 3);
+      return classes.length > 0 ? `${tag}.${classes.join(".")}` : tag;
+    };
+
     const scrollWidth = document.scrollingElement ? document.scrollingElement.scrollWidth : document.body.scrollWidth;
     const viewportWidth = window.innerWidth;
+
+    const allElements = Array.from(document.body.querySelectorAll("*")) as HTMLElement[];
+    const visibleElements = allElements.filter((el) => el.offsetParent !== null); // visible only (not display:none)
+
+    let maxElementRight = 0;
+    const overflowing: { el: HTMLElement; right: number }[] = [];
+    for (const el of visibleElements) {
+      const rect = el.getBoundingClientRect();
+      if (rect.right > maxElementRight) maxElementRight = rect.right;
+      if (rect.right > viewportWidth + 1) overflowing.push({ el, right: rect.right });
+    }
+    overflowing.sort((a, b) => b.right - a.right);
+    const overflowOffenders = overflowing
+      .slice(0, 3)
+      .map(({ el, right }) => `${describe(el)} w=${Math.round(el.getBoundingClientRect().width)}px right=${Math.round(right)}px`);
+
     const controls = Array.from(document.querySelectorAll(selector)) as HTMLElement[];
-    const heights = controls
-      .filter((el) => el.offsetParent !== null) // visible only (not display:none)
-      .map((el) => el.getBoundingClientRect().height);
-    const minControlHeight = heights.length > 0 ? Math.min(...heights) : null;
-    return { scrollWidth, viewportWidth, minControlHeight };
+    let minControlHeight: number | null = null;
+    let minControlSelector: string | null = null;
+    for (const el of controls) {
+      if (el.offsetParent === null) continue; // visible only (not display:none)
+      const height = el.getBoundingClientRect().height;
+      if (minControlHeight === null || height < minControlHeight) {
+        minControlHeight = height;
+        minControlSelector = describe(el);
+      }
+    }
+
+    return { scrollWidth, viewportWidth, minControlHeight, maxElementRight, overflowOffenders, minControlSelector };
   }, controlSelector);
 
   await page.close();

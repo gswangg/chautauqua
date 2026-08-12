@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   ADMIN_MOBILE_PASS_BLOCKING,
+  EMPTY_MOBILE_OBSERVATION,
   allMobilePassed,
   allPassed,
   evaluateMobileRoute,
@@ -118,6 +119,7 @@ describe("evaluateMobileRoute (DEC-253)", () => {
 
   it("passes with no overflow and a >= 44px control", () => {
     const result = evaluateMobileRoute(ENTRY, {
+      ...EMPTY_MOBILE_OBSERVATION,
       status: 200,
       scrollWidth: 390,
       viewportWidth: 390,
@@ -130,6 +132,7 @@ describe("evaluateMobileRoute (DEC-253)", () => {
 
   it("tolerates 1px of sub-pixel rounding", () => {
     const result = evaluateMobileRoute(ENTRY, {
+      ...EMPTY_MOBILE_OBSERVATION,
       status: 200,
       scrollWidth: 391,
       viewportWidth: 390,
@@ -140,6 +143,7 @@ describe("evaluateMobileRoute (DEC-253)", () => {
 
   it("fails on horizontal overflow beyond the tolerance", () => {
     const result = evaluateMobileRoute(ENTRY, {
+      ...EMPTY_MOBILE_OBSERVATION,
       status: 200,
       scrollWidth: 620,
       viewportWidth: 390,
@@ -152,6 +156,7 @@ describe("evaluateMobileRoute (DEC-253)", () => {
 
   it("fails on a sub-44px primary control", () => {
     const result = evaluateMobileRoute(ENTRY, {
+      ...EMPTY_MOBILE_OBSERVATION,
       status: 200,
       scrollWidth: 390,
       viewportWidth: 390,
@@ -163,6 +168,7 @@ describe("evaluateMobileRoute (DEC-253)", () => {
 
   it("fails on a 42px control now that the DEC-393 floor is 44px", () => {
     const result = evaluateMobileRoute(ENTRY, {
+      ...EMPTY_MOBILE_OBSERVATION,
       status: 200,
       scrollWidth: 390,
       viewportWidth: 390,
@@ -174,6 +180,7 @@ describe("evaluateMobileRoute (DEC-253)", () => {
 
   it("passes when a route has no measurable controls (minControlHeight null)", () => {
     const result = evaluateMobileRoute(ENTRY, {
+      ...EMPTY_MOBILE_OBSERVATION,
       status: 200,
       scrollWidth: 390,
       viewportWidth: 390,
@@ -184,6 +191,7 @@ describe("evaluateMobileRoute (DEC-253)", () => {
 
   it("fails on non-200 status", () => {
     const result = evaluateMobileRoute(ENTRY, {
+      ...EMPTY_MOBILE_OBSERVATION,
       status: 404,
       scrollWidth: 390,
       viewportWidth: 390,
@@ -195,6 +203,7 @@ describe("evaluateMobileRoute (DEC-253)", () => {
 
   it("combines overflow + control-height failure reasons", () => {
     const result = evaluateMobileRoute(ENTRY, {
+      ...EMPTY_MOBILE_OBSERVATION,
       status: 200,
       scrollWidth: 620,
       viewportWidth: 390,
@@ -204,16 +213,89 @@ describe("evaluateMobileRoute (DEC-253)", () => {
     expect(result.failureReason).toMatch(/horizontal overflow/);
     expect(result.failureReason).toMatch(/control height/);
   });
+
+  it("reports overflow from a clipped element even when scrollWidth equals viewportWidth", () => {
+    const result = evaluateMobileRoute(ENTRY, {
+      ...EMPTY_MOBILE_OBSERVATION,
+      status: 200,
+      scrollWidth: 390,
+      viewportWidth: 390,
+      maxElementRight: 460,
+      overflowOffenders: ["div.chq-foo w=200px right=460px"],
+    });
+    expect(result.ok).toBe(false);
+    expect(result.overflowPx).toBe(70);
+    expect(result.failureReason).toMatch(/horizontal overflow 70px/);
+  });
+
+  it("includes offenders in the failure reason, widest first", () => {
+    const result = evaluateMobileRoute(ENTRY, {
+      ...EMPTY_MOBILE_OBSERVATION,
+      status: 200,
+      scrollWidth: 620,
+      viewportWidth: 390,
+      maxElementRight: 620,
+      overflowOffenders: ["div.chq-a w=230px right=620px", "span.chq-b w=100px right=490px"],
+    });
+    expect(result.ok).toBe(false);
+    expect(result.failureReason).toMatch(
+      /widest: div\.chq-a w=230px right=620px \| span\.chq-b w=100px right=490px/,
+    );
+  });
+
+  it("appends the offending control's selector to the control-height reason", () => {
+    const result = evaluateMobileRoute(ENTRY, {
+      ...EMPTY_MOBILE_OBSERVATION,
+      status: 200,
+      scrollWidth: 390,
+      viewportWidth: 390,
+      minControlHeight: 24,
+      minControlSelector: "button.chq-nav-tab",
+    });
+    expect(result.ok).toBe(false);
+    expect(result.failureReason).toMatch(/control height 24px < 44px \(button\.chq-nav-tab\)/);
+  });
+
+  it("a passing route (no offenders, no clipped elements) is unchanged", () => {
+    const result = evaluateMobileRoute(ENTRY, {
+      ...EMPTY_MOBILE_OBSERVATION,
+      status: 200,
+      scrollWidth: 390,
+      viewportWidth: 390,
+      maxElementRight: 390,
+      minControlHeight: 44,
+      minControlSelector: "button.chq-nav-tab",
+    });
+    expect(result.ok).toBe(true);
+    expect(result.overflowPx).toBe(0);
+    expect(result.failureReason).toBeUndefined();
+  });
+
+  it("the offender string carries no free text — only tag/class/geometry tokens", () => {
+    const result = evaluateMobileRoute(ENTRY, {
+      ...EMPTY_MOBILE_OBSERVATION,
+      status: 200,
+      scrollWidth: 620,
+      viewportWidth: 390,
+      maxElementRight: 620,
+      overflowOffenders: ["div.chq-agenda-row w=230px right=620px"],
+    });
+    expect(result.failureReason).toBeDefined();
+    const widestPart = (result.failureReason as string).split("widest: ")[1];
+    // Only [a-z0-9.-] tokens, whitespace, '=', 'px', and '|' separators —
+    // nothing resembling rendered text (e.g. no quotes, no capitalized words).
+    expect(widestPart).toMatch(/^[a-z0-9.\-=\s|px]+$/);
+  });
 });
 
 describe("allMobilePassed / formatMobileSummary / formatMobileResultsTable", () => {
   const passing = evaluateMobileRoute(
     { path: "/submit/devflow-conf-2027", role: "public" },
-    { status: 200, scrollWidth: 390, viewportWidth: 390, minControlHeight: 44 },
+    { ...EMPTY_MOBILE_OBSERVATION, status: 200, scrollWidth: 390, viewportWidth: 390, minControlHeight: 44 },
   );
   const failing = evaluateMobileRoute(
     { path: "/e/devflow-conf-2027/agenda", role: "public" },
-    { status: 200, scrollWidth: 900, viewportWidth: 390, minControlHeight: 44 },
+    { ...EMPTY_MOBILE_OBSERVATION, status: 200, scrollWidth: 900, viewportWidth: 390, minControlHeight: 44 },
   );
 
   it("allMobilePassed is true only when every result passed", () => {
