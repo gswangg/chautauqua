@@ -3,6 +3,7 @@
 // reference its constant here so the dependency is compile-checked.
 // Do not edit by hand below this header.
 export const DECISIONS_INDEX = true;
+
 export const DEC_001 = "Single-package repo layout, toolchain, and bindings";
 export const DEC_002 = "Pure-core + ports architecture; plain-vitest testability";
 export const DEC_003 = "Canonical D1 schema: table names, ID strategy, enum literals";
@@ -133,7 +134,7 @@ export const DEC_127 = "Wave-15 five-gate battery at the post-wave-14 sha: lanes
 export const DEC_128 = "Wave-16 contingency mirror gate battery: confirm-else-run semantics, fresh ports 8861/8862/8863, duplicates harmless, completion stays a planner grep";
 export const DEC_129 = "Wave-17 dual redundant triage-closure lanes; first-campaign homonym sections never satisfy the exit grep (validity requires `git merge-base --is-ancestor 675219f <cited-sha>`)";
 export const DEC_130 = "autoSchedule uses incremental day-indexed conflict checks, never per-candidate findConflicts over the full trial";
-export const DEC_131 = "ics escapeText normalizes CR before escaping: CRLF and lone CR become \n, so no raw CR ever appears inside a content line";
+export const DEC_131 = "ics escapeText normalizes CR before escaping: CRLF and lone CR become \\n, so no raw CR ever appears inside a content line";
 export const DEC_132 = "Public submit ignores rule-hidden file fields entirely: no upload validation error, no R2 put, no file row, no answer row";
 export const DEC_133 = "Bulk submission status change enforces a DEC-122-style full-set id match before any side effect: unknown/foreign ids yield 400 invalid naming the missing ids";
 export const DEC_134 = "Third code barrier: DEC-130..133 fix lanes void every 675219f gate section; wave 19 re-runs the DEC-069 five-gate battery at the new DEC-114 sha";
@@ -456,3 +457,9 @@ export const DEC_450 = "The Airtable sync serves exactly one org, named by AIRTA
 export const DEC_451 = "\"Every Drizzle read carries a WHERE\" becomes a scanning test with an empty, deliberate allowlist";
 export const DEC_452 = "Wave 17 is a fix wave, not a closing wave: it dispatches two source fixes and ships no completion ledger";
 export const DEC_453 = "A completion ledger may not grade a measured budget from code presence, and must re-read every evidence log that landed after the previous ledger's sha";
+export const DEC_454 = "One canonical email rule (src/domain/email.ts), applied at every contact.email write and every lookup by email";
+export const DEC_455 = "\"Required\" means non-blank: a string answer whose trim is empty is ABSENT to validateAnswers";
+export const DEC_456 = "\"Does this person already have an account?\" is answered by contact_id (OR email), never by email alone; contact.email writes cascade to the linked user row or fail with 409";
+export const DEC_457 = "KV keys never carry raw external input: scopedRateLimitKey bounds its id at construction";
+export const DEC_458 = "Wave 18 is a three-fix wave and cuts NO ledger; DEC-452's schedule is superseded";
+export const DEC_459 = "A ledger row phrased with a universal quantifier is graded from an enumeration of the whole population, never from a sample";
