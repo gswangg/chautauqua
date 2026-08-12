@@ -36,7 +36,7 @@ import {
   isSecureRequest,
   CSRF_COOKIE_NAME,
 } from "../../auth/cookies";
-import { loadEditableSubmission } from "../../server/repo/portal-edit";
+import { loadEditableSubmission, getPortalParticipants, type PortalParticipant } from "../../server/repo/portal-edit";
 import { canEditSubmission } from "../../domain/edit-lock";
 import { ensureOnboardingTasks, getSubmissionStatusForParticipant } from "../../server/repo/submissions";
 
@@ -293,8 +293,9 @@ function SubmissionDetailPage(props: {
   detail: PortalSubmissionDetail;
   editable: boolean;
   csrfToken: string;
+  participants: PortalParticipant[];
 }) {
-  const { detail, editable } = props;
+  const { detail, editable, participants } = props;
   return (
     <PortalLayout branding={props.branding} csrfToken={props.csrfToken}>
       <a href="/portal" class="chq-portal-back">&larr; Back to My Submissions</a>
@@ -311,6 +312,18 @@ function SubmissionDetailPage(props: {
       ) : null}
       <p class="chq-portal-sub">Submitted: {formatEventDate(detail.submittedAt, detail.timezone)}</p>
       {detail.description ? <p>{detail.description}</p> : null}
+      <h3 class="chq-section-label">Participants</h3>
+      {participants.length === 0 ? (
+        <p>No participants yet.</p>
+      ) : (
+        <ul>
+          {participants.map((p) => (
+            <li>
+              {p.name} — <span class="chq-flag">{p.roleLabel}</span>
+            </li>
+          ))}
+        </ul>
+      )}
       <h3 class="chq-section-label">Answers</h3>
       {detail.answers.length === 0 ? (
         <p>No additional answers.</p>
@@ -367,9 +380,18 @@ portalRoutes.get("/submissions/:id", async (c) => {
   const editable = editData
     ? canEditSubmission(editData.submission.status, editData.form.closeDate, Date.now(), editData.form.timezone)
     : false;
+  const participants = await getPortalParticipants(c.var.db, id);
   const { token: csrfToken, setCookieIfNew } = ensureCsrfCookie(c);
   if (setCookieIfNew) c.header("Set-Cookie", setCookieIfNew, { append: true });
-  return c.html(<SubmissionDetailPage branding={data.branding} detail={detail} editable={editable} csrfToken={csrfToken} />);
+  return c.html(
+    <SubmissionDetailPage
+      branding={data.branding}
+      detail={detail}
+      editable={editable}
+      csrfToken={csrfToken}
+      participants={participants}
+    />,
+  );
 });
 
 // POST /portal/invitations/:participantId { action: 'accept'|'decline' } —

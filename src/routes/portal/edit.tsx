@@ -15,7 +15,10 @@ import {
 import {
   loadEditableSubmission,
   saveSubmissionEdits,
+  getPortalParticipants,
+  addCoPresenter,
   type EditableSubmissionData,
+  type PortalParticipant,
 } from "../../server/repo/portal-edit";
 import { canEditSubmission, canEditTracks } from "../../domain/edit-lock";
 import { validateAnswers } from "../../forms/validate";
@@ -30,8 +33,9 @@ import {
   isSecureRequest,
   CSRF_COOKIE_NAME,
 } from "../../auth/cookies";
-import { DEC_041, DEC_074, DEC_109, DEC_121 } from "../../decisions";
+import { DEC_041, DEC_074, DEC_109, DEC_121, DEC_604 } from "../../decisions";
 import { validateTrackChoice } from "../../lib/submit-core";
+import { CO_PRESENTER_ROLE_VALUES, PARTICIPANT_ROLE_OPTIONS } from "../../domain/participant-roles";
 
 export const portalEditRoutes = new Hono<AppEnv>();
 
@@ -40,6 +44,7 @@ void DEC_041;
 void DEC_074;
 void DEC_109;
 void DEC_121;
+void DEC_604;
 
 portalEditRoutes.use("*", speakerGate);
 
@@ -118,8 +123,11 @@ function EditPage(props: {
   trackError?: string;
   editable: boolean;
   tracksEditable: boolean;
+  participants: PortalParticipant[];
+  participantErrors?: Record<string, string>;
+  participantValues?: { firstName: string; lastName: string; email: string; role: string };
 }) {
-  const { data, answers, selectedTrackIds, csrfToken, errors, trackError, editable, tracksEditable } = props;
+  const { data, answers, selectedTrackIds, csrfToken, errors, trackError, editable, tracksEditable, participants, participantErrors, participantValues } = props;
   if (!editable) {
     return (
       <PortalLayout branding={props.branding} csrfToken={csrfToken}>
@@ -191,7 +199,96 @@ function EditPage(props: {
         </div>
       </form>
       <FieldRulesScript fields={data.fields} />
+      <ParticipantsSection
+        submissionId={props.submissionId}
+        csrfToken={csrfToken}
+        participants={participants}
+        errors={participantErrors}
+        values={participantValues}
+      />
     </PortalLayout>
+  );
+}
+
+// DEC-604: a speaker may self-add a co-presenter to their own submission.
+// Resolution against the org's contacts and the invite-free write are
+// server-side only (src/server/repo/portal-edit.ts:addCoPresenter) — this
+// component is presentation only.
+function ParticipantsSection(props: {
+  submissionId: string;
+  csrfToken: string;
+  participants: PortalParticipant[];
+  errors?: Record<string, string>;
+  values?: { firstName: string; lastName: string; email: string; role: string };
+}) {
+  const { submissionId, csrfToken, participants, errors, values } = props;
+  return (
+    <section aria-label="Participants" class="chq-section">
+      <div class="chq-section-label">Participants</div>
+      {participants.length === 0 ? (
+        <p>No participants yet.</p>
+      ) : (
+        <ul>
+          {participants.map((p) => (
+            <li>
+              {p.name} — <span class="chq-flag">{p.roleLabel}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      <h3 class="chq-portal-field-label">Add a co-presenter</h3>
+      <p class="chq-portal-sub">
+        Adding a co-presenter records them on this submission. They will not receive an email or invitation.
+      </p>
+      <form method="post" action={`/portal/submissions/${submissionId}/participants`}>
+        <input type="hidden" name={CSRF_COOKIE_NAME} value={csrfToken} />
+        <label class="chq-portal-field-label" for="cp-first-name">
+          First name
+        </label>
+        <input id="cp-first-name" type="text" name="firstName" value={values?.firstName ?? ""} />
+        {errors?.firstName ? (
+          <p role="alert" class="field-error">
+            {errors.firstName}
+          </p>
+        ) : null}
+        <label class="chq-portal-field-label" for="cp-last-name">
+          Last name
+        </label>
+        <input id="cp-last-name" type="text" name="lastName" value={values?.lastName ?? ""} />
+        {errors?.lastName ? (
+          <p role="alert" class="field-error">
+            {errors.lastName}
+          </p>
+        ) : null}
+        <label class="chq-portal-field-label" for="cp-email">
+          Email
+        </label>
+        <input id="cp-email" type="email" name="email" value={values?.email ?? ""} />
+        {errors?.email ? (
+          <p role="alert" class="field-error">
+            {errors.email}
+          </p>
+        ) : null}
+        <label class="chq-portal-field-label" for="cp-role">
+          Role
+        </label>
+        <select id="cp-role" name="role">
+          {PARTICIPANT_ROLE_OPTIONS.filter((o) => CO_PRESENTER_ROLE_VALUES.includes(o.value)).map((o) => (
+            <option value={o.value} selected={(values?.role ?? CO_PRESENTER_ROLE_VALUES[0]) === o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+        {errors?.role ? (
+          <p role="alert" class="field-error">
+            {errors.role}
+          </p>
+        ) : null}
+        <div class="chq-portal-actions">
+          <button type="submit" class="chq-btn chq-btn-secondary">Add co-presenter</button>
+        </div>
+      </form>
+    </section>
   );
 }
 
@@ -207,6 +304,7 @@ portalEditRoutes.get("/submissions/:id/edit", async (c) => {
   const { token: csrfToken, setCookieIfNew } = ensureCsrfCookie(c);
   if (setCookieIfNew) c.header("Set-Cookie", setCookieIfNew, { append: true });
   const portalData = await getPortalData(c.var.db, contactId, auth.orgId);
+  const participants = await getPortalParticipants(c.var.db, submissionId);
 
   return c.html(
     <EditPage
@@ -218,6 +316,7 @@ portalEditRoutes.get("/submissions/:id/edit", async (c) => {
       csrfToken={csrfToken}
       editable={editable}
       tracksEditable={tracksEditable}
+      participants={participants}
     />,
   );
 });
@@ -261,6 +360,7 @@ portalEditRoutes.post("/submissions/:id/edit", csrfForm, async (c) => {
     const { token: csrfToken, setCookieIfNew } = ensureCsrfCookie(c);
     if (setCookieIfNew) c.header("Set-Cookie", setCookieIfNew, { append: true });
     const portalData = await getPortalData(c.var.db, contactId, auth.orgId);
+    const participants = await getPortalParticipants(c.var.db, submissionId);
     return c.html(
       <EditPage
         branding={portalData.branding}
@@ -273,6 +373,7 @@ portalEditRoutes.post("/submissions/:id/edit", csrfForm, async (c) => {
         trackError={trackError}
         editable={true}
         tracksEditable={tracksEditable}
+        participants={participants}
       />,
       400,
     );
@@ -287,4 +388,70 @@ portalEditRoutes.post("/submissions/:id/edit", csrfForm, async (c) => {
     validation.hiddenFieldIds,
   );
   return c.redirect(`/portal/submissions/${submissionId}`, 302);
+});
+
+interface AddCoPresenterBody {
+  firstName?: unknown;
+  lastName?: unknown;
+  email?: unknown;
+  role?: unknown;
+}
+
+// POST /portal/submissions/:id/participants — DEC-604: a speaker self-adds
+// a co-presenter to their own submission. Nothing here sends email; the
+// page states that the co-presenter is recorded but not notified.
+portalEditRoutes.post("/submissions/:id/participants", csrfForm, async (c) => {
+  const auth = c.var.auth!;
+  const contactId = assertSpeakerContactId(auth);
+  const submissionId = c.req.param("id");
+  const data = await loadEditableSubmission(c.var.db, contactId, submissionId);
+  if (!data) return c.text("Not found", 404);
+
+  // Server-side re-check — never trust the hidden form (DEC-041/DEC-604): a
+  // client could POST here after the edit window closes.
+  const editable = canEditSubmission(data.submission.status, data.form.closeDate, Date.now(), data.form.timezone);
+  if (!editable) {
+    throw new ApiError("forbidden", "This submission can no longer be edited");
+  }
+  const tracksEditable = canEditTracks(data.form.closeDate, Date.now(), data.form.timezone);
+
+  const body = (await c.req.parseBody()) as AddCoPresenterBody;
+  const firstName = typeof body.firstName === "string" ? body.firstName : "";
+  const lastName = typeof body.lastName === "string" ? body.lastName : "";
+  const email = typeof body.email === "string" ? body.email : "";
+  const role = typeof body.role === "string" ? body.role : "";
+
+  const result = await addCoPresenter(c.var.db, {
+    submissionId,
+    orgId: auth.orgId,
+    firstName,
+    lastName,
+    email,
+    role,
+  });
+
+  if (!result.ok) {
+    const { token: csrfToken, setCookieIfNew } = ensureCsrfCookie(c);
+    if (setCookieIfNew) c.header("Set-Cookie", setCookieIfNew, { append: true });
+    const portalData = await getPortalData(c.var.db, contactId, auth.orgId);
+    const participants = await getPortalParticipants(c.var.db, submissionId);
+    return c.html(
+      <EditPage
+        branding={portalData.branding}
+        submissionId={submissionId}
+        data={data}
+        answers={data.answers}
+        selectedTrackIds={data.selectedTrackIds}
+        csrfToken={csrfToken}
+        editable={true}
+        tracksEditable={tracksEditable}
+        participants={participants}
+        participantErrors={result.errors}
+        participantValues={{ firstName, lastName, email, role }}
+      />,
+      400,
+    );
+  }
+
+  return c.redirect(`/portal/submissions/${submissionId}/edit`, 302);
 });

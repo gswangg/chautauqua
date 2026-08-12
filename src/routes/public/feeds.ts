@@ -22,6 +22,7 @@ const CARD_FIELD_KEYS: Record<CardField, readonly string[]> = {
   room: ["roomName"],
   speaker: ["speakers"],
   description: ["description"],
+  format: ["format"],
 };
 
 /** Projects one feed item down to `id`/`title` plus whichever

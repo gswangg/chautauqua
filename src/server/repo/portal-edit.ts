@@ -8,18 +8,25 @@
 // foreign org) resolves to null, which the caller renders as a 404. Never
 // trust a :id path param without this check.
 
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import * as schema from "../../db/schema";
 import type { Db } from "../context";
 import { appendSubmissionRevision } from "./revisions";
 import { bumpIcsSequences } from "./ics-sequence";
-import { upsertSubmissionAnswers, replaceSubmissionTracks } from "./submit";
+import { upsertSubmissionAnswers, replaceSubmissionTracks, findContactByEmail, createContact } from "./submit";
 import type { FormFieldDef, FormFieldKind, FormFieldSection, FormFieldRule, AnswerMap } from "../../forms/types";
 import { LOCKED_SESSION_FIELDS, LOCKED_SPEAKER_FIELDS, lockedFieldName, projectFieldForAnswers } from "../../forms/types";
 import type { SubmissionStatus } from "../../domain/status";
 import { resolveOfferedTrackIds } from "../../lib/submit-core";
-import { ACTIVE_INVITE_STATUSES } from "../../domain/acceptance";
+import { ACTIVE_INVITE_STATUSES, PORTAL_VISIBLE_INVITE_STATUSES } from "../../domain/acceptance";
 import { chunkIds } from "../../lib/chunk";
+import { newId } from "../../domain/ids";
+import { isValidEmail, normalizeEmail } from "../../domain/email";
+import { isCoPresenterRoleValue, participantRoleLabel } from "../../domain/participant-roles";
+import { DEC_604 } from "../../decisions";
+
+// touch DEC constant so the dependency is compile-checked (field guide convention)
+void DEC_604;
 
 export interface EditableSubmission {
   id: string;
@@ -311,4 +318,156 @@ export async function saveSubmissionEdits(
   if (trackIds !== null) {
     await replaceSubmissionTracks(db, submissionId, trackIds);
   }
+}
+
+// ---------------------------------------------------------------------------
+// DEC-604: speaker self-add of a co-presenter. Bounded by the same edit-lock
+// canEditSubmission check the caller runs before saveSubmissionEdits — this
+// module performs no edit-lock check of its own, matching the rest of this
+// file's convention that the route handler is the single place the lock is
+// enforced.
+// ---------------------------------------------------------------------------
+
+export interface PortalParticipant {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  roleLabel: string;
+}
+
+/** Current participants on one of the speaker's own submissions, in display
+ * order. Caller is expected to have already scoped submissionId via
+ * loadEditableSubmission — this performs no ownership check of its own.
+ * Filters through PORTAL_VISIBLE_INVITE_STATUSES (mirrors
+ * getPortalSubmissionDetail) so a declined invitation never shows here. */
+export async function getPortalParticipants(db: Db, submissionId: string): Promise<PortalParticipant[]> {
+  const rows = await db
+    .select({
+      id: schema.participant.id,
+      firstName: schema.contact.firstName,
+      lastName: schema.contact.lastName,
+      email: schema.contact.email,
+      role: schema.participant.role,
+      order: schema.participant.order,
+    })
+    .from(schema.participant)
+    .innerJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
+    .where(
+      and(
+        eq(schema.participant.submissionId, submissionId),
+        inArray(schema.participant.inviteStatus, PORTAL_VISIBLE_INVITE_STATUSES),
+      ),
+    )
+    .orderBy(schema.participant.order);
+  return rows.map((r) => ({
+    id: r.id,
+    name: `${r.firstName} ${r.lastName}`.trim(),
+    email: r.email,
+    role: r.role,
+    roleLabel: participantRoleLabel(r.role),
+  }));
+}
+
+// DEC-604: 1 original submitter + up to 5 self-added co-presenters. The
+// spec text is "cap at 5 co-presenters per submission" — read narrowly as a
+// cap of 5 participant rows ADDED THROUGH THIS ENDPOINT, so the submission
+// (which starts with exactly one participant: the CFP submitter) may never
+// exceed 6 participant rows via this path. Organizer-side invites
+// (POST /api/v1/submissions/:id/participants) are a separate, uncapped
+// path and are not counted differently here — this cap is a simple total
+// row-count check against the submission's existing participant rows.
+export const MAX_PARTICIPANTS_PER_SUBMISSION = 6;
+
+export interface AddCoPresenterInput {
+  submissionId: string;
+  orgId: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  role: string;
+}
+
+export type AddCoPresenterResult =
+  | { ok: true }
+  | { ok: false; errors: Record<string, string> };
+
+/** Adds a co-presenter to one of the speaker's own submissions. Caller must
+ * have already verified canEditSubmission and that submissionId/orgId scope
+ * to this speaker's own contact. Resolves the email against the org's
+ * contacts case-insensitively (the same findContactByEmail the CFP submit
+ * path uses, src/routes/public/submit.tsx) and — per DEC-604 — writes NO
+ * field onto a matched existing contact; a fresh email creates a contact
+ * carrying first/last/email only. The (submission_id, contact_id)
+ * uniqueIndex (migrations/0019_join_table_uniqueness.sql) is the duplicate
+ * contract: a conflicting insert is caught via onConflictDoNothing and
+ * surfaced as a field error, never a 500. */
+export async function addCoPresenter(db: Db, input: AddCoPresenterInput): Promise<AddCoPresenterResult> {
+  const firstName = input.firstName.trim();
+  const lastName = input.lastName.trim();
+  const email = normalizeEmail(input.email);
+  const errors: Record<string, string> = {};
+  if (!firstName) errors.firstName = "First name is required";
+  if (!lastName) errors.lastName = "Last name is required";
+  if (!isValidEmail(email)) errors.email = "Enter a valid email address";
+  if (!isCoPresenterRoleValue(input.role)) errors.role = "Choose a role";
+  if (Object.keys(errors).length > 0) return { ok: false, errors };
+
+  const countRows = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(schema.participant)
+    .where(eq(schema.participant.submissionId, input.submissionId));
+  const count = countRows[0]?.count ?? 0;
+  if (count >= MAX_PARTICIPANTS_PER_SUBMISSION) {
+    return {
+      ok: false,
+      errors: { role: "This submission already has the maximum number of co-presenters (5)" },
+    };
+  }
+
+  const existing = await findContactByEmail(db, input.orgId, email);
+  let contactId: string;
+  let titleAtTime: string | null;
+  let orgAtTime: string | null;
+  if (existing) {
+    // DEC-604: an existing contact is never written to from this path.
+    contactId = existing.id;
+    titleAtTime = existing.title;
+    orgAtTime = existing.company;
+  } else {
+    contactId = await createContact(db, { orgId: input.orgId, firstName, lastName, email });
+    titleAtTime = null;
+    orgAtTime = null;
+  }
+
+  const now = new Date();
+  // order = max(order)+1 computed INSIDE the insert (field guide: a
+  // position/order column nobody sets on create is dead), mirroring
+  // src/server/repo/participants.ts:inviteParticipant.
+  const nextOrderSql = sql<number>`(SELECT COALESCE(MAX(${schema.participant.order}), -1) + 1 FROM ${schema.participant} WHERE ${schema.participant.submissionId} = ${input.submissionId})`;
+  const inserted = await db
+    .insert(schema.participant)
+    .values({
+      id: newId(),
+      submissionId: input.submissionId,
+      contactId,
+      role: input.role,
+      order: nextOrderSql,
+      visible: true,
+      // DEC-604: recorded but not notified — no invitation/accept-decline
+      // flow for a speaker-self-added co-presenter, so this participant is
+      // immediately active (mirrors the original CFP submitter's
+      // createParticipant, which also uses 'none').
+      inviteStatus: "none",
+      titleAtTime,
+      orgAtTime,
+      createdAt: now,
+      updatedAt: now,
+    })
+    .onConflictDoNothing({ target: [schema.participant.submissionId, schema.participant.contactId] })
+    .returning({ id: schema.participant.id });
+  if (!inserted[0]) {
+    return { ok: false, errors: { email: "This person is already a participant on this submission" } };
+  }
+  return { ok: true };
 }
