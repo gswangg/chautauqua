@@ -30,6 +30,7 @@ import {
   requestIpFromHeaders,
 } from "../lib/rate-limit";
 import { ThemeStyles } from "../views/theme";
+import { AUTH_CSS } from "./auth.css";
 
 const AUTH_RATE_LIMIT_WINDOW_SECONDS = 900;
 const AUTH_RATE_LIMIT_MAX = 20;
@@ -55,71 +56,16 @@ function ensureCsrfCookie(c: {
   };
 }
 
-// DEC-367/371: /login and /claim/:token are SSR surfaces re-skinned to the
-// paper-card auth pattern from docs/design/Chautauqua Account.dc.html
-// ("One door, three roles" + the 390 mobile frame) — a centred card on
-// --chq-paper, 660px measure on desktop, full-width on phone, wordmark,
-// one filled primary button, error text as plain type (no red banner:
-// DEC-367 forbids red anywhere). ThemeStyles() supplies the shared
-// tokens/reset/button/input rules; this local block only adds the
-// auth-card layout that no other SSR surface needs.
-const AUTH_CARD_STYLE = `
-  body { display: flex; justify-content: center; padding: 40px 20px; }
-  .chq-auth-card {
-    width: 100%;
-    max-width: 660px;
-    background: var(--chq-paper);
-    border: 1px solid var(--chq-rule);
-    border-radius: 6px;
-    padding: 44px 44px 40px;
-    display: flex;
-    flex-direction: column;
-    gap: 26px;
-  }
-  .chq-auth-wordmark {
-    font-family: 'Familjen Grotesk', system-ui, sans-serif;
-    font-size: 28px;
-    font-weight: 700;
-    letter-spacing: -0.04em;
-    line-height: 1;
-    color: var(--chq-ink);
-  }
-  .chq-auth-subtitle { font-size: 14px; color: var(--chq-muted); margin-top: 6px; }
-  .chq-auth-fields { display: flex; flex-direction: column; gap: 14px; }
-  .chq-auth-label {
-    display: block;
-    font-size: 11px;
-    font-weight: 800;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--chq-muted);
-    margin-bottom: 6px;
-  }
-  .chq-auth-error {
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--chq-ink);
-  }
-  .chq-auth-card input[type=email], .chq-auth-card input[type=password] {
-    display: block;
-    width: 100%;
-  }
-  .chq-auth-card button[type=submit] { width: 100%; min-height: 48px; }
-  .chq-auth-footer {
-    border-top: 1px solid var(--chq-rule);
-    padding-top: 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-  .chq-auth-footer-links { display: flex; gap: 16px; flex-wrap: wrap; }
-  .chq-auth-footer-links a { font-size: 14px; font-weight: 700; min-height: 44px; display: inline-flex; align-items: center; }
-  @media (max-width: 480px) {
-    body { padding: 0; }
-    .chq-auth-card { max-width: none; border: none; border-radius: 0; padding: 28px 20px 20px; }
-  }
-`;
-
+// DEC-367/371/373/374: /login and /claim/:token are SSR surfaces
+// re-skinned to the paper-card auth pattern from docs/design/Chautauqua
+// Account.dc.html ("One door, three roles" + the 390 mobile frame) — a
+// centred card on --chq-paper, 660px measure on desktop, full-width on
+// phone, wordmark, one filled primary button, error text as plain type
+// (no red banner: DEC-367 forbids red anywhere). ThemeStyles() supplies
+// the shared tokens/reset/button/input rules; AUTH_CSS (src/routes/
+// auth.css.ts) adds the auth-card layout that no other SSR surface
+// needs. Both are injected via dangerouslySetInnerHTML, never as a JSX
+// text child (DEC-374 escaping trap).
 function AuthHead(props: { title: string }) {
   return (
     <head>
@@ -127,7 +73,7 @@ function AuthHead(props: { title: string }) {
       <meta name="viewport" content="width=device-width, initial-scale=1" />
       <title>{props.title}</title>
       <ThemeStyles />
-      <style>{AUTH_CARD_STYLE}</style>
+      <style dangerouslySetInnerHTML={{ __html: AUTH_CSS }} />
     </head>
   );
 }
@@ -156,11 +102,11 @@ function LoginPage(props: { csrfToken: string; error?: string }) {
             <input type="hidden" name={CSRF_COOKIE_NAME} value={props.csrfToken} />
             <label>
               <span className="chq-auth-label">Email</span>
-              <input type="email" name="email" required autofocus />
+              <input className="chq-input" type="email" name="email" required autofocus />
             </label>
             <label>
               <span className="chq-auth-label">Password</span>
-              <input type="password" name="password" required />
+              <input className="chq-input" type="password" name="password" required />
             </label>
             <button type="submit" id="chq-login-submit" className="chq-btn-primary">
               Sign in
@@ -191,7 +137,7 @@ function ClaimPage(props: { csrfToken: string; error?: string }) {
             <input type="hidden" name={CSRF_COOKIE_NAME} value={props.csrfToken} />
             <label>
               <span className="chq-auth-label">Password</span>
-              <input type="password" name="password" minlength={8} required />
+              <input className="chq-input" type="password" name="password" minlength={8} required />
             </label>
             <button type="submit" className="chq-btn-primary">
               Create password
