@@ -686,3 +686,16 @@ the middleware itself still throws; every authenticated /admin load 500s on a fr
 checkout. This is the FIRST item of the entire mandate: no deploy can happen until it
 lands. The verified fix shape is in item 28 (try/set → clone → retry). Fix framing.ts
 AND audit noStoreByDefault + any other header-stamping middleware for the same throw.
+
+55. (User QA + orchestrator side-by-side — SUPERSEDES the directory part of item 45)
+    **Contacts directory must be rebuilt as the mock's TWO-COLUMN architecture**:
+    LEFT = the table (columns NAME AND EMAIL / COMPANY w/ title line / LABELS as
+    small-caps chips / per-row "Open") with pagination; RIGHT RAIL = three stacked
+    sections: "Where they work" (company + count per row), "Saved segments" (name +
+    rule caption + count, "Save current filters" as the section action on the rule),
+    "Possible duplicates · N" (pair + reason + inline Merge / Keep both buttons).
+    Tab chips carry counts ("Duplicates · 6", "Segments · 5"); search + "Segment:
+    none ▾" sit ON the tab row right. DELETE: the KPI stat trio, the full-width
+    Where-they-work section, the FIELD/OPERATOR/VALUE builder, the # SUBMISSIONS
+    column. The rail is what makes the page a CRM instead of a list — it's the core
+    of the design, not an accessory.
