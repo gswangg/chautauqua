@@ -34,9 +34,9 @@ const plan = {
 // paging" implementation would misrank: ranked (unsorted) order by
 // average desc is C(5), A(4), B(3); alphabetically by ref it's A, B, C.
 const submissions = [
-  { id: "sub-a", ref: "A-1", title: "Alpha", description: null, trackIds: [] },
-  { id: "sub-b", ref: "B-2", title: "Bravo", description: null, trackIds: [] },
-  { id: "sub-c", ref: "C-3", title: "Charlie", description: null, trackIds: [] },
+  { id: "sub-a", ref: "A-1", title: "Alpha", description: null, trackIds: [], status: "pending" },
+  { id: "sub-b", ref: "B-2", title: "Bravo", description: null, trackIds: [], status: "accepted" },
+  { id: "sub-c", ref: "C-3", title: "Charlie", description: null, trackIds: [], status: "pending" },
 ];
 
 const evaluations = [
@@ -161,6 +161,22 @@ describe("DEC-345: results sort + paging", () => {
     const [, ...dataLines] = csv.trim().split(/\r?\n/);
     expect(dataLines).toHaveLength(3);
     expect(dataLines.map((line) => line.split(",")[0])).toEqual(["C-3", "B-2", "A-1"]);
+  });
+
+  // DEC-632/DEC-633: the CSV export and the screen must agree -- a Status
+  // column, right after Title, carrying each submission's decision state.
+  it("?format=csv gains a Status column right after Title", async () => {
+    const app = await buildApp(organizer);
+    const res = await app.request(`/api/v1/plans/${plan.id}/results?format=csv&sort=ref&dir=asc`);
+    expect(res.status).toBe(200);
+    const csv = await res.text();
+    const [header, ...dataLines] = csv.trim().split(/\r?\n/);
+    const headerCols = header!.split(",");
+    expect(headerCols[0]).toBe("ref");
+    expect(headerCols[1]).toBe("title");
+    expect(headerCols[2]).toBe("Status");
+    const rows = dataLines.map((line) => line.split(","));
+    expect(rows.map((r) => r[2])).toEqual(["pending", "accepted", "pending"]);
   });
 
   it("rejects an unknown sort column", async () => {

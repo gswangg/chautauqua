@@ -16,6 +16,7 @@ export interface PlanSubmissionRef {
   ref: string;
   title: string;
   trackIds: string[];
+  status: string;
 }
 
 export interface SubmissionSummary extends PlanSubmissionRef {
@@ -57,7 +58,7 @@ export async function listPlanFilteredSubmissions(
 
   // (a) Matched submissions -- {id, seq, title} only (DEC-346: description
   // dropped -- no plan-scoped whole-set load needs it).
-  let matched: { id: string; seq: number; title: string }[];
+  let matched: { id: string; seq: number; title: string; status: string }[];
   if (filterTracks && filterTracks.length > 0) {
     // filterTracks is organizer-authored plan config (a handful of track
     // ids), not a request-scale id list -- this inArray is exempt from the
@@ -67,6 +68,7 @@ export async function listPlanFilteredSubmissions(
         id: schema.submission.id,
         seq: schema.submission.seq,
         title: schema.submission.title,
+        status: schema.submission.status,
       })
       .from(schema.submission)
       .innerJoin(schema.submissionTrack, eq(schema.submissionTrack.submissionId, schema.submission.id))
@@ -77,6 +79,7 @@ export async function listPlanFilteredSubmissions(
         id: schema.submission.id,
         seq: schema.submission.seq,
         title: schema.submission.title,
+        status: schema.submission.status,
       })
       .from(schema.submission)
       .where(eq(schema.submission.eventId, plan.eventId));
@@ -108,6 +111,7 @@ export async function listPlanFilteredSubmissions(
     ref: formatRef(recordPrefix, row.seq),
     title: row.title,
     trackIds: trackMap.get(row.id) ?? [],
+    status: row.status,
   }));
 }
 
@@ -382,6 +386,7 @@ export async function getSubmissionSummaryInEvent(
     title: row.title,
     description: row.description,
     trackIds,
+    status: row.status,
   };
 }
 

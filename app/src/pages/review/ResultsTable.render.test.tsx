@@ -35,7 +35,7 @@ function plan() {
   };
 }
 
-function resultsRow() {
+function resultsRow(overrides: Partial<{ status: string }> = {}) {
   return {
     submissionId: 'sub-1',
     ref: 'S-001',
@@ -44,6 +44,7 @@ function resultsRow() {
     average: 4.5,
     perCriterion: { c1: 4.5 },
     perDropdown: { c2: { counts: { Yes: 2, No: 1 }, modal: 'Yes' } },
+    status: overrides.status ?? 'pending',
   };
 }
 
@@ -154,5 +155,63 @@ describe('ResultsTable inline decision (DEC-587)', () => {
     await waitFor(() => {
       expect(statusCalls).toBe(1);
     });
+  });
+});
+
+// DEC-632/DEC-633: the results screen tells the truth about decisions
+// (server `status`, never a stale blank pair of buttons) and shows the
+// reviews behind them (DEC-596 evaluations endpoint), rendering an
+// anonymized reviewer as '(anonymized)' rather than a blank cell.
+describe('ResultsTable decision truth + reviews drawer (DEC-632/DEC-633)', () => {
+  it('renders a decided row\'s server status after a fresh load, not decision buttons', async () => {
+    mockApi({
+      [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
+      [`GET /api/v1/plans/${PLAN_ID}/results`]: listEnvelope([resultsRow({ status: 'accepted' })]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}/results`]}>
+        <Routes>
+          <Route path="/review/plans/:planId/results" element={<ResultsTable />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText('A Great Talk')).toBeInTheDocument();
+    expect(screen.getByText('Accepted')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Accept' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Decline' })).not.toBeInTheDocument();
+  });
+
+  it('expanding a row fetches and renders a comment plus an anonymized reviewer', async () => {
+    mockApi({
+      [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
+      [`GET /api/v1/plans/${PLAN_ID}/results`]: listEnvelope([resultsRow()]),
+      [`GET /api/v1/submissions/sub-1/evaluations`]: listEnvelope([
+        {
+          planId: PLAN_ID,
+          planName: 'Track Review',
+          round: 1,
+          reviewerName: null,
+          scores: { c1: 4 },
+          comment: 'Strong proposal, well scoped.',
+          submittedAt: 1700000000000,
+        },
+      ]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}/results`]}>
+        <Routes>
+          <Route path="/review/plans/:planId/results" element={<ResultsTable />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText('A Great Talk')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Reviews \(3\)/ }));
+
+    expect(await screen.findByText('Strong proposal, well scoped.')).toBeInTheDocument();
+    expect(screen.getByText('(anonymized)')).toBeInTheDocument();
   });
 });

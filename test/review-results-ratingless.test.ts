@@ -50,7 +50,7 @@ interface FakeEvaluation {
 let store: FakeEvaluation[] = [];
 let nextId = 1;
 
-const submission = { id: "sub-1", ref: "S-1", title: "Talk", description: null, trackIds: [] };
+const submission = { id: "sub-1", ref: "S-1", title: "Talk", description: null, trackIds: [], status: "pending" };
 
 vi.mock("../src/server/repo/review", async () => {
   const actual = await vi.importActual<typeof import("../src/server/repo/review")>(
@@ -205,7 +205,7 @@ describe("DEC-212: rating-less scorecard results (task w22-b)", () => {
     // No rating criteria, so no rating columns -- but DEC-241 adds one CSV
     // column per dropdown option, so the sole 'decision' criterion appears
     // as its two option columns instead of a rating column.
-    expect(header).toBe("ref,title,count,average,Decision: advance,Decision: reject");
-    expect(dataLines[0]).toBe("S-1,Talk,1,0,0,1");
+    expect(header).toBe("ref,title,Status,count,average,Decision: advance,Decision: reject");
+    expect(dataLines[0]).toBe("S-1,Talk,pending,1,0,0,1");
   });
 });

@@ -1,13 +1,21 @@
-import { useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { apiGet, apiList, apiPost, ApiError } from '../../lib/api';
 import './review.css';
 import { buildResultsCsvHref } from './resultsCsv';
-import type { EvaluationPlan, ResultsRow } from './types';
+import type { EvaluationPlan, ResultsRow, SubmissionEvaluationItem } from './types';
+import { STATUS_LABELS, type SubmissionStatus } from '../submissions/types';
 
 // DEC-587: the submissions table's own status endpoint -- reused verbatim
 // rather than inventing a second "decide" endpoint.
 type SubmissionDecision = 'accepted' | 'declined';
+
+// DEC-632/DEC-633: a row whose server status is already 'accepted' or
+// 'declined' has been decided -- it shows its state, never a blank pair of
+// decision buttons.
+function isDecidedStatus(status: string): status is 'accepted' | 'declined' {
+  return status === 'accepted' || status === 'declined';
+}
 
 // DEC-345: mirrors src/domain/evaluation.ts's ResultsSortKey/SortDirection
 // (the pure-core sort now lives server-side, so the SPA only needs the wire
@@ -73,6 +81,13 @@ export function ResultsTable() {
   const [decisions, setDecisions] = useState<Record<string, SubmissionDecision>>({});
   const [decidingId, setDecidingId] = useState<string | null>(null);
   const [decideError, setDecideError] = useState<string | null>(null);
+  // DEC-632/DEC-633: per-row "Reviews (n)" expansion -- expandedId is the
+  // one row currently open; evaluations are fetched lazily on expand and
+  // cached by submissionId so re-collapsing/re-expanding doesn't re-fetch.
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [evaluationsById, setEvaluationsById] = useState<Record<string, SubmissionEvaluationItem[]>>({});
+  const [evaluationsLoadingId, setEvaluationsLoadingId] = useState<string | null>(null);
+  const [evaluationsError, setEvaluationsError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!planId) return;
@@ -109,6 +124,10 @@ export function ResultsTable() {
       .then((resultsRes) => {
         setRows(resultsRes.items);
         setTotal(resultsRes.total);
+        // DEC-632/DEC-633: rows just came from the server, so any transient
+        // optimistic overlay is stale -- clear it, whether this is a fresh
+        // load, a page/sort change, or the DEC-193 error-path refetch.
+        setDecisions({});
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load results'));
   }, [planId, round, sort, page, refreshToken]);
@@ -142,6 +161,28 @@ export function ResultsTable() {
     }
   }
 
+  // DEC-632/DEC-633/DEC-596: expand a row's "Reviews (n)" toggle, fetching
+  // the organiser-facing evaluations-for-submission endpoint on first
+  // expand only (cached in evaluationsById thereafter).
+  async function toggleExpand(submissionId: string) {
+    if (expandedId === submissionId) {
+      setExpandedId(null);
+      return;
+    }
+    setExpandedId(submissionId);
+    if (evaluationsById[submissionId]) return;
+    setEvaluationsLoadingId(submissionId);
+    setEvaluationsError(null);
+    try {
+      const res = await apiList<SubmissionEvaluationItem>(`/submissions/${submissionId}/evaluations`);
+      setEvaluationsById((prev) => ({ ...prev, [submissionId]: res.items }));
+    } catch (err) {
+      setEvaluationsError(err instanceof ApiError ? err.message : 'Failed to load reviews');
+    } finally {
+      setEvaluationsLoadingId(null);
+    }
+  }
+
   const handleSort = (key: ResultsSortKey) => {
     setSort((prev) => {
       if (prev && sortKeysEqual(prev.key, key)) {
@@ -168,7 +209,7 @@ export function ResultsTable() {
     );
   }
 
-  const columnCount = 5 + ratingCriteria.length + dropdownCriteria.length;
+  const columnCount = 6 + ratingCriteria.length + dropdownCriteria.length;
 
   return (
     <div className="chq-page chq-review-page">
@@ -266,12 +307,20 @@ export function ResultsTable() {
                   />
                 </th>
               ))}
+              <th>Reviews</th>
               <th>Decision</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => (
-              <tr key={row.submissionId}>
+            {rows.map((row) => {
+              const overlay = decisions[row.submissionId];
+              const effectiveStatus: string | undefined = overlay ?? row.status;
+              const decided = effectiveStatus !== undefined && isDecidedStatus(effectiveStatus);
+              const evaluations = evaluationsById[row.submissionId];
+              const expanded = expandedId === row.submissionId;
+              return (
+              <Fragment key={row.submissionId}>
+              <tr>
                 <td data-label="Ref">{row.ref}</td>
                 <td className="chq-review-results-title" data-label="Title">
                   {row.title}
@@ -316,33 +365,86 @@ export function ResultsTable() {
                     </td>
                   );
                 })}
+                <td data-label="Reviews">
+                  <button
+                    type="button"
+                    className="chq-btn chq-btn-secondary chq-review-reviews-toggle"
+                    onClick={() => void toggleExpand(row.submissionId)}
+                  >
+                    {expanded ? '▾' : '▸'} Reviews ({row.count})
+                  </button>
+                </td>
                 <td data-label="Decision">
-                  <div className="chq-review-decision-actions">
-                    <button
-                      type="button"
-                      className="chq-btn chq-btn-primary"
-                      disabled={decidingId === row.submissionId}
-                      onClick={() => void decide(row.submissionId, 'accepted')}
-                    >
-                      Accept
-                    </button>
-                    <button
-                      type="button"
-                      className="chq-btn chq-btn-secondary"
-                      disabled={decidingId === row.submissionId}
-                      onClick={() => void decide(row.submissionId, 'declined')}
-                    >
-                      Decline
-                    </button>
-                  </div>
-                  {decisions[row.submissionId] && (
-                    <span className="chq-review-plan-meta">
-                      {decisions[row.submissionId] === 'accepted' ? 'Accepted' : 'Declined'}
+                  {decided ? (
+                    // DEC-632/DEC-633: a decided row shows its state, not a
+                    // blank pair of decision buttons -- server truth after a
+                    // fresh load, an optimistic overlay right after a
+                    // successful decide().
+                    <span className="chq-review-decided-status">
+                      {STATUS_LABELS[effectiveStatus as SubmissionStatus] ?? effectiveStatus}
                     </span>
+                  ) : (
+                    <div className="chq-review-decision-actions">
+                      <button
+                        type="button"
+                        className="chq-btn chq-btn-primary"
+                        disabled={decidingId === row.submissionId}
+                        onClick={() => void decide(row.submissionId, 'accepted')}
+                      >
+                        Accept
+                      </button>
+                      <button
+                        type="button"
+                        className="chq-btn chq-btn-secondary"
+                        disabled={decidingId === row.submissionId}
+                        onClick={() => void decide(row.submissionId, 'declined')}
+                      >
+                        Decline
+                      </button>
+                    </div>
                   )}
                 </td>
               </tr>
-            ))}
+              {expanded && (
+                <tr className="chq-review-reviews-row">
+                  <td colSpan={columnCount} className="chq-review-reviews-detail">
+                    {evaluationsLoadingId === row.submissionId && <p>Loading reviews…</p>}
+                    {evaluationsError && !evaluations && evaluationsLoadingId !== row.submissionId && (
+                      <div className="chq-error" role="alert">
+                        {evaluationsError}
+                      </div>
+                    )}
+                    {evaluations && evaluations.length === 0 && <p>No evaluations yet.</p>}
+                    {evaluations && evaluations.length > 0 && (
+                      <ul className="chq-review-reviews-list">
+                        {evaluations.map((ev, i) => (
+                          <li key={`${ev.planId}-${ev.round}-${i}`} className="chq-review-reviews-item">
+                            <div className="chq-review-reviews-item-head">
+                              <span className="chq-review-reviews-reviewer">
+                                {ev.reviewerName ?? '(anonymized)'}
+                              </span>
+                              <span className="chq-review-reviews-plan-round">
+                                {ev.planName} · Round {ev.round}
+                              </span>
+                            </div>
+                            <div className="chq-review-reviews-scores">
+                              {Object.entries(ev.scores).map(([criterionId, value]) => (
+                                <span key={criterionId} className="chq-review-reviews-score-chip">
+                                  {criterionId}: {String(value)}
+                                </span>
+                              ))}
+                            </div>
+                            {ev.comment && <p className="chq-review-reviews-comment">{ev.comment}</p>}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </td>
+                </tr>
+              )}
+              </Fragment>
+              );
+            })}
             {rows.length === 0 && (
               <tr>
                 <td colSpan={columnCount} className="chq-empty">

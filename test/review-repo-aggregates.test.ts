@@ -35,9 +35,9 @@ describe("DEC-346: PlanSubmissionRef vs SubmissionSummary", () => {
     expectTypeOf<SubmissionSummary["description"]>().toEqualTypeOf<string | null>();
   });
 
-  it("a PlanSubmissionRef-shaped row satisfies the row-shape contract with exactly id/ref/title/trackIds", () => {
-    const row: PlanSubmissionRef = { id: "sub-1", ref: "S-001", title: "Talk", trackIds: ["t1"] };
-    expect(Object.keys(row).sort()).toEqual(["id", "ref", "title", "trackIds"]);
+  it("a PlanSubmissionRef-shaped row satisfies the row-shape contract with exactly id/ref/status/title/trackIds", () => {
+    const row: PlanSubmissionRef = { id: "sub-1", ref: "S-001", title: "Talk", trackIds: ["t1"], status: "pending" };
+    expect(Object.keys(row).sort()).toEqual(["id", "ref", "status", "title", "trackIds"]);
     expect((row as unknown as Record<string, unknown>).description).toBeUndefined();
   });
 });

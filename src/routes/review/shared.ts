@@ -292,6 +292,10 @@ export interface ResultsRow {
   // DEC-241: dropdown criteria never fold into the rating-only Average; each
   // gets its own per-option distribution + modal here instead.
   perDropdown: Record<string, { counts: Record<string, number>; modal: string | null }>;
+  // DEC-632/DEC-633: the submission's decision state, so the results screen
+  // (and its CSV export) tell the truth about accept/reject/waitlist rather
+  // than always rendering a pair of pending decision buttons.
+  status: string;
 }
 
 export async function buildResults(
@@ -337,6 +341,7 @@ export async function buildResults(
       average: agg.average,
       perCriterion: agg.perCriterion,
       perDropdown,
+      status: sub.status,
     };
   });
   return buildResultsRows(rows);

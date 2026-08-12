@@ -112,6 +112,23 @@ export interface ResultsRow {
   // DEC-241: per-dropdown-criterion option counts + modal option, keyed by
   // criterion id. Never folded into `average`/`perCriterion` (rating-only).
   perDropdown: Record<string, { counts: Record<string, number>; modal: string | null }>;
+  // DEC-632/DEC-633: the submission's decision state (DEC-003 literal),
+  // server truth for whether this row has already been decided.
+  status: string;
+}
+
+// GET /api/v1/submissions/:id/evaluations item (DEC-596/DEC-622/DEC-632/
+// DEC-633): the organiser-facing "reviews behind a decision" drawer.
+// reviewerName is null exactly when the owning plan is anonymized -- the
+// server decides anonymity, the client only renders '(anonymized)'.
+export interface SubmissionEvaluationItem {
+  planId: string;
+  planName: string;
+  round: number;
+  reviewerName: string | null;
+  scores: Record<string, number | string>;
+  comment: string | null;
+  submittedAt: number | null;
 }
 
 // GET /api/v1/review/plans/:id/queue item. DEC-561: the queue keeps
