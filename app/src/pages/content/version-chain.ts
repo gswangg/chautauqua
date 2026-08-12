@@ -1,4 +1,4 @@
-import { DELIVERABLE_KINDS, type DeliverableFile, type DeliverableKind } from './types';
+import { FILE_KINDS, type DeliverableFile, type FileKind } from './types';
 
 /**
  * Orders a flat list of files belonging to ONE version chain newest-first,
@@ -62,9 +62,9 @@ export function orderVersionChains(files: DeliverableFile[]): DeliverableFile[][
  * newest-first via orderVersionsNewestFirst. Always returns all three kinds
  * (possibly empty) so the detail view can render three groups unconditionally.
  */
-export function groupByKindNewestFirst(files: DeliverableFile[]): Record<DeliverableKind, DeliverableFile[]> {
-  const result = {} as Record<DeliverableKind, DeliverableFile[]>;
-  for (const kind of DELIVERABLE_KINDS) {
+export function groupByKindNewestFirst(files: DeliverableFile[]): Record<FileKind, DeliverableFile[]> {
+  const result = {} as Record<FileKind, DeliverableFile[]>;
+  for (const kind of FILE_KINDS) {
     result[kind] = orderVersionsNewestFirst(files.filter((f) => f.kind === kind));
   }
   return result;

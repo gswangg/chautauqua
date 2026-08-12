@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { apiList, apiPostBlob, ApiError } from '../../lib/api';
-import { DELIVERABLE_KINDS, DELIVERABLE_LABELS, type DeliverableKind, type EventFileChainItem } from './types';
+import { FILE_KINDS, DELIVERABLE_LABELS, type FileKind, type EventFileChainItem } from './types';
 import { formatDateTime } from '../../lib/dates';
 import { formatBytes } from './format';
 
@@ -23,7 +23,7 @@ export function FilesLibrary({ eventId, onSelectSubmission }: FilesLibraryProps)
   const [items, setItems] = useState<EventFileChainItem[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [kind, setKind] = useState<DeliverableKind | ''>('');
+  const [kind, setKind] = useState<FileKind | ''>('');
   const [q, setQ] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
@@ -123,12 +123,12 @@ export function FilesLibrary({ eventId, onSelectSubmission }: FilesLibraryProps)
             aria-label="Filter by kind"
             value={kind}
             onChange={(e) => {
-              setKind(e.target.value as DeliverableKind | '');
+              setKind(e.target.value as FileKind | '');
               setPage(1);
             }}
           >
             <option value="">All</option>
-            {DELIVERABLE_KINDS.map((k) => (
+            {FILE_KINDS.map((k) => (
               <option key={k} value={k}>
                 {DELIVERABLE_LABELS[k]}
               </option>

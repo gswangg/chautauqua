@@ -1,6 +1,6 @@
 import {
   CONTENT_STATUS_LABELS,
-  DELIVERABLE_KINDS,
+  FILE_KINDS,
   DELIVERABLE_LABELS,
   type ContentStatus,
   type ContentSubmissionListItem,
@@ -65,7 +65,7 @@ export function SessionList({
         ))}
       </div>
 
-      {/* DEC-609: four fixed columns regardless of DELIVERABLE_KINDS count —
+      {/* DEC-609: four fixed columns regardless of FILE_KINDS count —
           Session (ref/title/speakers stacked), Deliverables (one chip per
           kind, absent kinds shown explicitly rather than as a bare 0),
           Content status, Actions. A kind never gets its own header/column,
@@ -105,7 +105,7 @@ export function SessionList({
                   </div>
                 </td>
                 <td className="chq-content-deliverables">
-                  {DELIVERABLE_KINDS.map((kind) => {
+                  {FILE_KINDS.map((kind) => {
                     const count = item.deliverableCounts[kind];
                     return count > 0 ? (
                       <span key={kind} className="chq-content-deliverable-chip">

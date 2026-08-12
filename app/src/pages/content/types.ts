@@ -1,6 +1,9 @@
 // Shared shapes for the Content SPA (J8 content review loop, DEC-020).
 // Kept dependency-free so pure helpers stay unit-testable without a DOM.
 
+import type { FileKind } from '../../../../src/domain/files';
+import { FILE_KINDS } from '../../../../src/domain/files';
+
 // DEC-003 content-status literals.
 export type ContentStatus = 'pending' | 'approved' | 'changes_requested';
 
@@ -14,12 +17,12 @@ export const CONTENT_STATUS_LABELS: Record<ContentStatus, string> = {
 // surface first, approved sinks to the bottom.
 export const CONTENT_STATUS_PRIORITY: readonly ContentStatus[] = ['changes_requested', 'pending', 'approved'];
 
-// DEC-003 deliverable kind literals.
-export type DeliverableKind = 'presentation' | 'poster' | 'handout';
+// DEC-003 file kind literals — imported from the pure core (src/domain/files.ts)
+// so the SPA's kind union can never drift from the server's.
+export type { FileKind };
+export { FILE_KINDS };
 
-export const DELIVERABLE_KINDS: readonly DeliverableKind[] = ['presentation', 'poster', 'handout'];
-
-export const DELIVERABLE_LABELS: Record<DeliverableKind, string> = {
+export const DELIVERABLE_LABELS: Record<FileKind, string> = {
   presentation: 'Presentation',
   poster: 'Poster',
   handout: 'Handout',
@@ -33,7 +36,7 @@ export interface ContentSubmissionListItem {
   title: string;
   contentStatus: ContentStatus;
   speakers: { contactId: string; name: string }[];
-  deliverableCounts: Record<DeliverableKind, number>;
+  deliverableCounts: Record<FileKind, number>;
 }
 
 // GET /api/v1/submissions/:id/files item (DEC-020: flat file rows; the SPA
@@ -41,7 +44,7 @@ export interface ContentSubmissionListItem {
 export interface DeliverableFile {
   id: string;
   submissionId: string;
-  kind: DeliverableKind;
+  kind: FileKind;
   filename: string;
   sizeBytes: number;
   contentType: string;
@@ -57,7 +60,7 @@ export interface EventFileChainItem {
   rootFileId: string;
   latestFileId: string;
   filename: string;
-  kind: DeliverableKind;
+  kind: FileKind;
   submissionId: string;
   submissionRef: string;
   submissionTitle: string;

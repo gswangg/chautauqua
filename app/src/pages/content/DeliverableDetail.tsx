@@ -6,11 +6,11 @@ import { UploadZone } from './UploadZone';
 import { VersionList } from './VersionList';
 import {
   CONTENT_STATUS_LABELS,
-  DELIVERABLE_KINDS,
+  FILE_KINDS,
   DELIVERABLE_LABELS,
   type ContentStatus,
   type DeliverableFile,
-  type DeliverableKind,
+  type FileKind,
   type FileComment,
 } from './types';
 
@@ -82,14 +82,14 @@ export function DeliverableDetail({
   }
 
   useEffect(() => {
-    for (const kind of DELIVERABLE_KINDS) {
+    for (const kind of FILE_KINDS) {
       const latest = grouped[kind][0];
       if (latest) void loadComments(latest.id);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [files]);
 
-  async function handleUpload(file: File, kind: DeliverableKind, replacesFileId?: string) {
+  async function handleUpload(file: File, kind: FileKind, replacesFileId?: string) {
     const form = new FormData();
     form.set('file', file);
     form.set('kind', kind);
@@ -162,7 +162,7 @@ export function DeliverableDetail({
       )}
 
       {!loading &&
-        DELIVERABLE_KINDS.map((kind) => {
+        FILE_KINDS.map((kind) => {
           const versions = grouped[kind];
           const latest = versions[0];
           return (
