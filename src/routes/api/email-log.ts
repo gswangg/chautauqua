@@ -7,7 +7,7 @@ import { Hono } from "hono";
 import { eq } from "drizzle-orm";
 import type { AppEnv } from "../../server/env";
 import { requireOrganizer } from "../../server/middleware";
-import { listEmailLog } from "../../server/repo/email";
+import { listEmailBatches, listEmailLog } from "../../server/repo/email";
 import { clampPage, clampPerPage } from "../../lib/pagination";
 import { ApiError } from "../../server/http";
 import * as schema from "../../db/schema";
@@ -35,12 +35,23 @@ emailLogRoutes.get("/api/v1/events/:eventId/email-log", requireOrganizer, async 
   const contactId = c.req.query("contactId") || undefined;
   const status = c.req.query("status") || undefined;
   const q = c.req.query("q") || undefined;
+  const batchId = c.req.query("batchId") || undefined;
+
+  // DEC-603: ?groupBy=batch collapses a fan-out send's recipient rows into
+  // one row (when/subject/N recipients/status tally); ?batchId= drills into
+  // one batch's recipients (flat shape, same as the default), keeping
+  // contactId's existing per-contact filter behavior intact alongside it.
+  if (c.req.query("groupBy") === "batch") {
+    const { items, total } = await listEmailBatches(c.var.db, { eventId, q, page, perPage });
+    return c.json({ items, total, page, perPage });
+  }
 
   const { items, total } = await listEmailLog(c.var.db, {
     eventId,
     contactId,
     status,
     q,
+    batchKey: batchId,
     page,
     perPage,
   });

@@ -9,6 +9,10 @@ export interface RenderedEmail {
   templateId?: string;
   eventId: string;
   contactId: string | null;
+  // DEC-603: one id minted per fan-out call, shared by every recipient of the
+  // same send, so the comms history tab can group them into one batch row.
+  // undefined on single sends (submit.tsx, users.ts).
+  batchId?: string;
 }
 
 export interface Mailer {
@@ -21,6 +25,8 @@ export interface EmailLogEntry {
   eventId: string;
   contactId: string | null;
   templateId?: string;
+  // DEC-603: threaded from RenderedEmail.batchId into the stored row.
+  batchId?: string | null;
   toEmail: string;
   toName: string;
   subject: string;

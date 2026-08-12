@@ -50,3 +50,15 @@ export interface EmailLogRow {
   status: string;
   sentAt: number;
 }
+
+// DEC-603: one row per batch (a fan-out send's shared batch_id, or a legacy/
+// NULL-batch row's own id) — mirrors src/server/repo/email.ts EmailBatchRow.
+// GET .../email-log?groupBy=batch returns these; ?batchId=<batchKey> drills
+// into that batch's EmailLogRow recipients.
+export interface EmailBatchRow {
+  batchKey: string;
+  subject: string;
+  sentAt: number;
+  recipientCount: number;
+  statusCounts: Record<string, number>;
+}

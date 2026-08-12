@@ -26,6 +26,7 @@ export function d1EmailLogWriter(db: Db): EmailLogWriter {
         eventId: row.eventId,
         templateId: row.templateId ?? null,
         contactId: row.contactId ?? null,
+        batchId: row.batchId ?? null,
         toEmail: row.toEmail,
         subject: row.subject,
         bodyText: row.bodyText,

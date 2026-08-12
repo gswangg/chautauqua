@@ -15,6 +15,7 @@ export class DevSinkMailer implements Mailer {
       eventId: m.eventId,
       contactId: m.contactId,
       templateId: m.templateId,
+      batchId: m.batchId ?? null,
       toEmail: m.to.email,
       toName: m.to.name,
       subject: m.subject,

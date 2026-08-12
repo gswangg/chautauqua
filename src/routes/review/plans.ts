@@ -10,6 +10,7 @@ import { csrfJson, requireOrganizer } from "../../server/middleware";
 import { ApiError } from "../../server/http";
 import { MAX_NAME_LENGTH, MAX_LONG_TEXT_LENGTH } from "../../forms/validate"; // DEC-417
 import { makeMailer } from "../../server/context";
+import { newId } from "../../domain/ids";
 import { textToHtml } from "../../mail/render";
 import {
   resolveAssignments,
@@ -449,6 +450,10 @@ reviewPlansRoutes.post("/api/v1/plans/:id/remind", requireOrganizer, csrfJson, a
   // DEC-535: bound the batch the same way DEC-319 bounds the J6 sibling.
   const { items: capped, remaining } = capById(laggards, (l) => l.userId, MAX_REVIEWER_REMINDER_BATCH);
 
+  // DEC-603: one id per fan-out call, shared by every recipient in this
+  // loop, so the comms history tab can group the batch into one row.
+  const batchId = newId();
+
   const reminded: string[] = [];
   const failed: { email: string; message: string }[] = [];
   for (const laggard of capped) {
@@ -464,6 +469,7 @@ reviewPlansRoutes.post("/api/v1/plans/:id/remind", requireOrganizer, csrfJson, a
         ),
         eventId: plan.eventId,
         contactId: null,
+        batchId,
       });
       reminded.push(laggard.userId);
     } catch (err) {

@@ -25,6 +25,7 @@ import { DEC_122, DEC_252 } from "../decisions";
 import { MAX_NAME_LENGTH, MAX_TEXT_LENGTH, MAX_RICH_TEXT_LENGTH } from "../forms/validate"; // DEC-417
 import { resolveBaseUrl } from "../server/origin";
 import { clampPage, listPerPage } from "../lib/pagination";
+import { newId } from "../domain/ids";
 
 void DEC_252;
 
@@ -424,6 +425,9 @@ commsRoutes.post("/api/v1/events/:eventId/compose/send", requireOrganizer, csrfJ
   const templateId = typeof body.templateId === "string" ? body.templateId : undefined;
   const { makeMailer } = await import("../server/context");
   const mailer = makeMailer(c.var.db, c.env);
+  // DEC-603: one id per fan-out call, shared by every recipient in this
+  // loop, so the comms history tab can group the batch into one row.
+  const batchId = newId();
   // DEC-238 class 2 (organizer-triggered batch): a bad recipient must not
   // abort the whole send — catch per-recipient, keep going, and report the
   // partial outcome in the 200 response rather than surfacing a 500.
@@ -463,6 +467,7 @@ commsRoutes.post("/api/v1/events/:eventId/compose/send", requireOrganizer, csrfJ
         templateId,
         eventId,
         contactId: rendered.contactId,
+        batchId,
       });
     } catch (err) {
       console.error("compose send failed for", rendered.email, err);

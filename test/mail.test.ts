@@ -257,6 +257,7 @@ describe("DevSinkMailer", () => {
       eventId: "evt_1",
       contactId: "ct_1",
       templateId: "acceptance",
+      batchId: null,
       toEmail: "ada@example.com",
       toName: "Ada Lovelace",
       subject: "You're accepted",
