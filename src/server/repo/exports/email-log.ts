@@ -1,6 +1,6 @@
 // email-log export (J12, DEC-027).
 
-import { eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { type ExportTable, buildTable } from "./table";
@@ -15,9 +15,11 @@ export async function exportEmailLog(db: Db, eventId: string): Promise<ExportTab
       subject: schema.emailLog.subject,
       status: schema.emailLog.status,
       templateId: schema.emailLog.templateId,
+      id: schema.emailLog.id,
     })
     .from(schema.emailLog)
-    .where(eq(schema.emailLog.eventId, eventId));
+    .where(eq(schema.emailLog.eventId, eventId))
+    .orderBy(desc(schema.emailLog.sentAt), desc(schema.emailLog.id));
 
   const outRows = rows.map((r) => [r.sentAt.toISOString(), r.toEmail, r.subject, r.status, r.templateId ?? ""]);
 

@@ -191,6 +191,7 @@ describe("shapeAgendaExport — CSV column snapshot", () => {
       title: "Afternoon talk",
       speakers: ["Grace Hopper"],
       tracks: ["Platform"],
+      seq: 10,
     },
     {
       day: "2026-06-01",
@@ -201,6 +202,7 @@ describe("shapeAgendaExport — CSV column snapshot", () => {
       title: "Morning talk",
       speakers: [],
       tracks: [],
+      seq: 5,
     },
   ];
 
@@ -263,6 +265,7 @@ describe("shapeShowflowExport (DEC-055)", () => {
         speakers: [],
         deckFile: "",
         deckUrl: "",
+        seq: 3,
       },
       {
         ref: "SES-002",
@@ -276,6 +279,7 @@ describe("shapeShowflowExport (DEC-055)", () => {
         speakers: ["Ada Lovelace"],
         deckFile: "slides.pptx (v2)",
         deckUrl: "/files/f2",
+        seq: 2,
       },
       {
         ref: "SES-001",
@@ -289,6 +293,7 @@ describe("shapeShowflowExport (DEC-055)", () => {
         speakers: ["Grace Hopper", "Alan Turing"],
         deckFile: "",
         deckUrl: "",
+        seq: 1,
       },
       {
         ref: "SES-004",
@@ -302,6 +307,7 @@ describe("shapeShowflowExport (DEC-055)", () => {
         speakers: [],
         deckFile: "",
         deckUrl: "",
+        seq: 4,
       },
     ];
 
@@ -362,7 +368,7 @@ describe("shapeShowflowExport (DEC-055)", () => {
   });
 
   it("multiple unscheduled rows keep their given relative order (never dropped)", () => {
-    const mk = (ref: string): ShowflowExportInput => ({
+    const mk = (ref: string, seq: number): ShowflowExportInput => ({
       ref,
       title: ref,
       description: "",
@@ -374,8 +380,9 @@ describe("shapeShowflowExport (DEC-055)", () => {
       speakers: [],
       deckFile: "",
       deckUrl: "",
+      seq,
     });
-    const table = shapeShowflowExport([mk("SES-A"), mk("SES-B")]);
+    const table = shapeShowflowExport([mk("SES-A", 1), mk("SES-B", 2)]);
     expect(table.rows.map((r) => r[0])).toEqual(["SES-A", "SES-B"]);
   });
 });

@@ -1,6 +1,6 @@
 // evaluations export (J12, DEC-027, DEC-529).
 
-import { eq } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { formatRef } from "../../../domain/ids";
@@ -141,7 +141,8 @@ export async function exportEvaluations(db: Db, eventId: string): Promise<Export
     .innerJoin(schema.evaluationPlan, eq(schema.evaluation.planId, schema.evaluationPlan.id))
     .innerJoin(schema.submission, eq(schema.evaluation.submissionId, schema.submission.id))
     .innerJoin(schema.user, eq(schema.evaluation.reviewerId, schema.user.id))
-    .where(eq(schema.evaluationPlan.eventId, eventId));
+    .where(eq(schema.evaluationPlan.eventId, eventId))
+    .orderBy(asc(schema.submission.seq), asc(schema.evaluation.reviewerId), asc(schema.evaluation.round), asc(schema.evaluation.id));
 
   const labelsByPlan = new Map<string, Map<string, string>>();
   const planNames = new Map<string, string>();

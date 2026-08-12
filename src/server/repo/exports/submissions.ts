@@ -2,7 +2,7 @@
 // submission_track (DEC-017) — submission.trackId/additionalTrackIdsJson
 // are frozen legacy and never read here.
 
-import { eq, inArray } from "drizzle-orm";
+import { asc, eq, inArray } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { formatRef } from "../../../domain/ids";
@@ -102,7 +102,8 @@ export async function exportSubmissions(db: Db, eventId: string): Promise<Export
       createdAt: schema.submission.createdAt,
     })
     .from(schema.submission)
-    .where(eq(schema.submission.eventId, eventId));
+    .where(eq(schema.submission.eventId, eventId))
+    .orderBy(asc(schema.submission.seq));
 
   if (submissions.length === 0) return shapeSubmissionsExport([]);
   const ids = submissions.map((s) => s.id);
@@ -120,6 +121,7 @@ export async function exportSubmissions(db: Db, eventId: string): Promise<Export
   const participantRows: {
     submissionId: string;
     order: number;
+    contactId: string;
     firstName: string;
     lastName: string;
     email: string;
@@ -129,6 +131,7 @@ export async function exportSubmissions(db: Db, eventId: string): Promise<Export
       .select({
         submissionId: schema.participant.submissionId,
         order: schema.participant.order,
+        contactId: schema.contact.id,
         firstName: schema.contact.firstName,
         lastName: schema.contact.lastName,
         email: schema.contact.email,
@@ -146,13 +149,18 @@ export async function exportSubmissions(db: Db, eventId: string): Promise<Export
     tracksBySubmission.set(t.submissionId, set);
   }
 
-  const speakersBySubmission = new Map<string, { name: string; email: string; order: number }[]>();
+  const speakersBySubmission = new Map<
+    string,
+    { name: string; email: string; order: number; contactId: string }[]
+  >();
   for (const p of participantRows) {
     const arr = speakersBySubmission.get(p.submissionId) ?? [];
-    arr.push({ name: `${p.firstName} ${p.lastName}`.trim(), email: p.email, order: p.order });
+    arr.push({ name: `${p.firstName} ${p.lastName}`.trim(), email: p.email, order: p.order, contactId: p.contactId });
     speakersBySubmission.set(p.submissionId, arr);
   }
-  for (const arr of speakersBySubmission.values()) arr.sort((a, b) => a.order - b.order);
+  for (const arr of speakersBySubmission.values()) {
+    arr.sort((a, b) => a.order - b.order || (a.contactId < b.contactId ? -1 : a.contactId > b.contactId ? 1 : 0));
+  }
 
   // DEC-515: enumerate every non-locked-built-in form_field belonging to
   // this event's forms, ordered by (form, position) and deduped by field
@@ -210,7 +218,7 @@ export async function exportSubmissions(db: Db, eventId: string): Promise<Export
       title: s.title,
       status: s.status,
       contentStatus: s.contentStatus,
-      tracks: [...(tracksBySubmission.get(s.id) ?? [])],
+      tracks: [...(tracksBySubmission.get(s.id) ?? [])].sort((a, b) => a.localeCompare(b)),
       speakers: speakers.map((sp) => sp.name),
       speakerEmails: speakers.map((sp) => sp.email),
       createdAt: s.createdAt.toISOString(),

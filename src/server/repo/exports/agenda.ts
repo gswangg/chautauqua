@@ -1,6 +1,6 @@
 // agenda export (J12, DEC-027).
 
-import { eq, inArray } from "drizzle-orm";
+import { asc, eq, inArray } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { formatRef } from "../../../domain/ids";
@@ -19,11 +19,26 @@ export interface AgendaExportInput {
   title: string;
   speakers: string[];
   tracks: string[];
+  /** submission.seq: DEC-560's tiebreak, not rendered — the total order is
+   * (day, startMin, room name, submission seq). */
+  seq: number;
 }
 
-/** Sorts by day then start time, then shapes into the fixed CSV/JSON columns. */
+// DEC-560: total order (day, startMin, room name, submission seq) — matches
+// the SQL ORDER BY in exportAgenda so the pure shaper and the query agree.
+function compareAgendaRows(a: AgendaExportInput, b: AgendaExportInput): number {
+  if (a.day !== b.day) return a.day < b.day ? -1 : 1;
+  if (a.startMin !== b.startMin) return a.startMin - b.startMin;
+  const aRoom = a.room ?? "";
+  const bRoom = b.room ?? "";
+  if (aRoom !== bRoom) return aRoom < bRoom ? -1 : 1;
+  return a.seq - b.seq;
+}
+
+/** Sorts by (day, startMin, room, submission seq), then shapes into the
+ * fixed CSV/JSON columns. */
 export function shapeAgendaExport(inputs: AgendaExportInput[]): ExportTable {
-  const sorted = [...inputs].sort((a, b) => (a.day === b.day ? a.startMin - b.startMin : a.day < b.day ? -1 : 1));
+  const sorted = [...inputs].sort(compareAgendaRows);
   const rows = sorted.map((s) => [
     s.day,
     minutesToClock(s.startMin),
@@ -53,7 +68,13 @@ export async function exportAgenda(db: Db, eventId: string): Promise<ExportTable
     .from(schema.scheduleSlot)
     .innerJoin(schema.submission, eq(schema.scheduleSlot.submissionId, schema.submission.id))
     .leftJoin(schema.room, eq(schema.scheduleSlot.roomId, schema.room.id))
-    .where(eq(schema.submission.eventId, eventId));
+    .where(eq(schema.submission.eventId, eventId))
+    .orderBy(
+      asc(schema.scheduleSlot.day),
+      asc(schema.scheduleSlot.startMin),
+      asc(schema.room.name),
+      asc(schema.submission.seq),
+    );
 
   if (slotRows.length === 0) return shapeAgendaExport([]);
   const ids = slotRows.map((r) => r.submissionId);
@@ -68,12 +89,13 @@ export async function exportAgenda(db: Db, eventId: string): Promise<ExportTable
     trackJoinRows.push(...batchRows);
   }
 
-  const participantRows: { submissionId: string; order: number; firstName: string; lastName: string }[] = [];
+  const participantRows: { submissionId: string; order: number; contactId: string; firstName: string; lastName: string }[] = [];
   for (const batch of chunkIds(ids)) {
     const batchRows = await db
       .select({
         submissionId: schema.participant.submissionId,
         order: schema.participant.order,
+        contactId: schema.contact.id,
         firstName: schema.contact.firstName,
         lastName: schema.contact.lastName,
       })
@@ -90,13 +112,15 @@ export async function exportAgenda(db: Db, eventId: string): Promise<ExportTable
     tracksBySubmission.set(t.submissionId, set);
   }
 
-  const speakersBySubmission = new Map<string, { name: string; order: number }[]>();
+  const speakersBySubmission = new Map<string, { name: string; order: number; contactId: string }[]>();
   for (const p of participantRows) {
     const arr = speakersBySubmission.get(p.submissionId) ?? [];
-    arr.push({ name: `${p.firstName} ${p.lastName}`.trim(), order: p.order });
+    arr.push({ name: `${p.firstName} ${p.lastName}`.trim(), order: p.order, contactId: p.contactId });
     speakersBySubmission.set(p.submissionId, arr);
   }
-  for (const arr of speakersBySubmission.values()) arr.sort((a, b) => a.order - b.order);
+  for (const arr of speakersBySubmission.values()) {
+    arr.sort((a, b) => a.order - b.order || (a.contactId < b.contactId ? -1 : a.contactId > b.contactId ? 1 : 0));
+  }
 
   const inputs: AgendaExportInput[] = slotRows.map((s) => ({
     day: s.day,
@@ -106,7 +130,8 @@ export async function exportAgenda(db: Db, eventId: string): Promise<ExportTable
     ref: formatRef(recordPrefix, s.seq),
     title: s.title,
     speakers: (speakersBySubmission.get(s.submissionId) ?? []).map((sp) => sp.name),
-    tracks: [...(tracksBySubmission.get(s.submissionId) ?? [])],
+    tracks: [...(tracksBySubmission.get(s.submissionId) ?? [])].sort((a, b) => a.localeCompare(b)),
+    seq: s.seq,
   }));
 
   return shapeAgendaExport(inputs);
