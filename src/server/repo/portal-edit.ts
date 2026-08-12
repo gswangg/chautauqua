@@ -11,9 +11,9 @@
 import { and, eq, inArray } from "drizzle-orm";
 import * as schema from "../../db/schema";
 import type { Db } from "../context";
-import { newId } from "../../domain/ids";
 import { appendSubmissionRevision } from "./revisions";
 import { bumpIcsSequences } from "./ics-sequence";
+import { upsertSubmissionAnswers } from "./submit";
 import type { FormFieldDef, FormFieldKind, FormFieldSection, FormFieldRule, AnswerMap } from "../../forms/types";
 import { LOCKED_SESSION_FIELDS, LOCKED_SPEAKER_FIELDS, lockedFieldName, projectFieldForAnswers } from "../../forms/types";
 import type { SubmissionStatus } from "../../domain/status";
@@ -282,31 +282,10 @@ export async function saveSubmissionEdits(
     }
   }
 
-  const customEntries = Object.entries(cleanedAnswers).filter(([fieldId]) => lockedFieldName(fieldId) === null);
-  for (const [fieldId, value] of customEntries) {
-    const existing = await db
-      .select({ id: schema.submissionAnswer.id })
-      .from(schema.submissionAnswer)
-      .where(
-        and(eq(schema.submissionAnswer.submissionId, submissionId), eq(schema.submissionAnswer.formFieldId, fieldId)),
-      )
-      .limit(1);
-    if (existing[0]) {
-      await db
-        .update(schema.submissionAnswer)
-        .set({ valueJson: JSON.stringify(value), updatedAt: now })
-        .where(eq(schema.submissionAnswer.id, existing[0].id));
-    } else {
-      await db.insert(schema.submissionAnswer).values({
-        id: newId(),
-        submissionId,
-        formFieldId: fieldId,
-        valueJson: JSON.stringify(value),
-        createdAt: now,
-        updatedAt: now,
-      });
-    }
-  }
+  // DEC-541: one set-based, atomic upsert (ON CONFLICT DO UPDATE against the
+  // (submissionId, formFieldId) uniqueIndex) — never a per-field
+  // read-then-write loop.
+  await upsertSubmissionAnswers(db, submissionId, cleanedAnswers);
 
   // DEC-501: a rule can hide a field that previously had an answer (e.g.
   // switching format from Workshop -> Talk hides workshop_length). Deleting

@@ -21,7 +21,7 @@ import {
   createSubmission,
   createParticipant,
   createSubmissionTracks,
-  createSubmissionAnswers,
+  upsertSubmissionAnswers,
   insertAttachmentFile,
   type EventRow,
   type FormRow,
@@ -742,7 +742,7 @@ publicSubmitRoutes.post("/submit/:eventSlug", csrfForm, async (c) => {
     cleaned[field.id] = fileId;
   }
 
-  await createSubmissionAnswers(db, submission.id, cleaned);
+  await upsertSubmissionAnswers(db, submission.id, cleaned);
 
   // Delete the KV draft — drafts never survive a successful submit (DEC-014).
   const cookies = parseCookies(c.req.header("cookie") ?? null);
