@@ -127,65 +127,85 @@ export function ContactDrawer({ contactId, onClose, onSaved }: Props) {
   }
 
   return (
-    <div className="chq-drawer-backdrop" role="dialog" aria-label="Contact detail">
-      <div className="chq-drawer">
-        <button type="button" className="chq-drawer-close" onClick={onClose} aria-label="Close">
-          ×
-        </button>
+    <div className="chq-scrim" role="dialog" aria-label="Contact detail">
+      <div className="chq-drawer chq-contacts-drawer">
+        <div className="chq-contacts-drawer-head">
+          {!loading && contact && (
+            <div className="chq-contacts-drawer-heading">
+              <span className="chq-contacts-drawer-name">
+                {firstName} {lastName}
+              </span>
+              {(company || title) && (
+                <span className="chq-meta">
+                  {company}
+                  {company && title ? ' · ' : ''}
+                  {title}
+                </span>
+              )}
+            </div>
+          )}
+          <button type="button" className="chq-btn-tertiary chq-drawer-close" onClick={onClose} aria-label="Close">
+            Close
+          </button>
+        </div>
 
         {loading && <p>Loading...</p>}
-        {error && <div className="chq-error-banner">{error}</div>}
+        {error && <div className="chq-error">{error}</div>}
 
         {!loading && contact && (
           <>
-            <h2>Contact detail</h2>
+            <h2 className="chq-contacts-drawer-section-title">Contact detail</h2>
 
-            <label htmlFor="chq-contact-first-name">
-              First name
-              <input id="chq-contact-first-name" value={firstName} onChange={(e) => setFirstName(e.target.value)} />
-            </label>
-            <label htmlFor="chq-contact-last-name">
-              Last name
-              <input id="chq-contact-last-name" value={lastName} onChange={(e) => setLastName(e.target.value)} />
-            </label>
-            <label htmlFor="chq-contact-email">
-              Email
-              <input id="chq-contact-email" value={email} onChange={(e) => setEmail(e.target.value)} />
-            </label>
-            <label htmlFor="chq-contact-company">
-              Company
-              <input id="chq-contact-company" value={company} onChange={(e) => setCompany(e.target.value)} />
-            </label>
-            <label htmlFor="chq-contact-title">
-              Title
-              <input id="chq-contact-title" value={title} onChange={(e) => setTitle(e.target.value)} />
-            </label>
-            <label htmlFor="chq-contact-phone">
-              Phone
-              <input id="chq-contact-phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
-            </label>
-            <label htmlFor="chq-contact-notes">
-              Notes
-              <textarea id="chq-contact-notes" rows={4} value={notes} onChange={(e) => setNotes(e.target.value)} />
-            </label>
-            <label htmlFor="chq-contact-travel">
-              Travel &amp; logistics
-              <textarea
-                id="chq-contact-travel"
-                rows={3}
-                placeholder='e.g. "Arrival May 11, aisle seat; dietary: Vegetarian"'
-                value={travel}
-                onChange={(e) => setTravel(e.target.value)}
-              />
-            </label>
+            <div className="chq-kv">
+              <label className="chq-kv-row" htmlFor="chq-contact-first-name">
+                <span className="chq-kv-label">First name</span>
+                <input className="chq-input" id="chq-contact-first-name" value={firstName} onChange={(e) => setFirstName(e.target.value)} />
+              </label>
+              <label className="chq-kv-row" htmlFor="chq-contact-last-name">
+                <span className="chq-kv-label">Last name</span>
+                <input className="chq-input" id="chq-contact-last-name" value={lastName} onChange={(e) => setLastName(e.target.value)} />
+              </label>
+              <label className="chq-kv-row" htmlFor="chq-contact-email">
+                <span className="chq-kv-label">Email</span>
+                <input className="chq-input" id="chq-contact-email" value={email} onChange={(e) => setEmail(e.target.value)} />
+              </label>
+              <label className="chq-kv-row" htmlFor="chq-contact-company">
+                <span className="chq-kv-label">Company</span>
+                <input className="chq-input" id="chq-contact-company" value={company} onChange={(e) => setCompany(e.target.value)} />
+              </label>
+              <label className="chq-kv-row" htmlFor="chq-contact-title">
+                <span className="chq-kv-label">Title</span>
+                <input className="chq-input" id="chq-contact-title" value={title} onChange={(e) => setTitle(e.target.value)} />
+              </label>
+              <label className="chq-kv-row" htmlFor="chq-contact-phone">
+                <span className="chq-kv-label">Phone</span>
+                <input className="chq-input" id="chq-contact-phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
+              </label>
+              <label className="chq-kv-row" htmlFor="chq-contact-notes">
+                <span className="chq-kv-label">Notes</span>
+                <textarea className="chq-textarea" id="chq-contact-notes" rows={4} value={notes} onChange={(e) => setNotes(e.target.value)} />
+              </label>
+              <label className="chq-kv-row" htmlFor="chq-contact-travel">
+                <span className="chq-kv-label">Travel &amp; logistics</span>
+                <textarea
+                  className="chq-textarea"
+                  id="chq-contact-travel"
+                  rows={3}
+                  placeholder='e.g. "Arrival May 11, aisle seat; dietary: Vegetarian"'
+                  value={travel}
+                  onChange={(e) => setTravel(e.target.value)}
+                />
+              </label>
+            </div>
 
-            <div className="chq-contact-custom-fields" aria-label="Custom fields">
-              <h3>Custom fields</h3>
+            <div className="chq-contacts-custom-fields" aria-label="Custom fields">
+              <h3 className="chq-contacts-drawer-section-title">Custom fields</h3>
               {customFieldRows.map((row, index) => (
-                <div className="chq-contact-custom-field-row" key={index}>
+                <div className="chq-contacts-custom-field-row" key={index}>
                   <label htmlFor={`chq-contact-custom-field-key-${index}`}>
                     Key
                     <input
+                      className="chq-input"
                       id={`chq-contact-custom-field-key-${index}`}
                       value={row.key}
                       onChange={(e) => updateRow(index, { key: e.target.value })}
@@ -194,17 +214,18 @@ export function ContactDrawer({ contactId, onClose, onSaved }: Props) {
                   <label htmlFor={`chq-contact-custom-field-value-${index}`}>
                     Value
                     <input
+                      className="chq-input"
                       id={`chq-contact-custom-field-value-${index}`}
                       value={row.value}
                       onChange={(e) => updateRow(index, { value: e.target.value })}
                     />
                   </label>
-                  <button type="button" onClick={() => removeRow(index)}>
+                  <button type="button" className="chq-btn chq-btn-secondary" onClick={() => removeRow(index)}>
                     Remove
                   </button>
                 </div>
               ))}
-              <button type="button" onClick={addRow}>
+              <button type="button" className="chq-btn chq-btn-secondary" onClick={addRow}>
                 Add field
               </button>
             </div>
@@ -213,18 +234,18 @@ export function ContactDrawer({ contactId, onClose, onSaved }: Props) {
                 headshot, social links — kept visually separate from the CRM
                 fields above since it round-trips through the same portal
                 profile plumbing a speaker's own edits use. */}
-            <section aria-label="Speaker profile" className="chq-contact-profile-section">
-              <h3>Speaker profile</h3>
+            <section aria-label="Speaker profile" className="chq-contacts-profile-section">
+              <h3 className="chq-contacts-drawer-section-title">Speaker profile</h3>
 
               <label htmlFor="chq-contact-bio">
                 Bio
-                <textarea id="chq-contact-bio" rows={4} value={bio} onChange={(e) => setBio(e.target.value)} />
+                <textarea className="chq-textarea" id="chq-contact-bio" rows={4} value={bio} onChange={(e) => setBio(e.target.value)} />
               </label>
 
-              <div className="chq-contact-headshot-field">
+              <div className="chq-contacts-headshot-field">
                 {headshotUrl ? (
                   <img
-                    className="chq-contact-headshot"
+                    className="chq-contacts-headshot"
                     src={headshotUrl}
                     alt={`${firstName} ${lastName} headshot`}
                     width={120}
@@ -245,39 +266,57 @@ export function ContactDrawer({ contactId, onClose, onSaved }: Props) {
                   />
                 </label>
                 {headshotUploading && <p>Uploading...</p>}
-                {headshotError && <div className="chq-error-banner">{headshotError}</div>}
+                {headshotError && <div className="chq-error">{headshotError}</div>}
               </div>
 
               <label htmlFor="chq-contact-twitter">
                 Twitter
-                <input id="chq-contact-twitter" value={twitter} onChange={(e) => setTwitter(e.target.value)} />
+                <input className="chq-input" id="chq-contact-twitter" value={twitter} onChange={(e) => setTwitter(e.target.value)} />
               </label>
               <label htmlFor="chq-contact-linkedin">
                 LinkedIn
-                <input id="chq-contact-linkedin" value={linkedin} onChange={(e) => setLinkedin(e.target.value)} />
+                <input className="chq-input" id="chq-contact-linkedin" value={linkedin} onChange={(e) => setLinkedin(e.target.value)} />
               </label>
               <label htmlFor="chq-contact-github">
                 GitHub
-                <input id="chq-contact-github" value={github} onChange={(e) => setGithub(e.target.value)} />
+                <input className="chq-input" id="chq-contact-github" value={github} onChange={(e) => setGithub(e.target.value)} />
               </label>
               <label htmlFor="chq-contact-website">
                 Website
-                <input id="chq-contact-website" value={website} onChange={(e) => setWebsite(e.target.value)} />
+                <input className="chq-input" id="chq-contact-website" value={website} onChange={(e) => setWebsite(e.target.value)} />
               </label>
             </section>
 
-            <button type="button" disabled={saving} onClick={save}>
+            <button type="button" className="chq-btn chq-btn-primary" disabled={saving} onClick={save}>
               Save
             </button>
 
-            <div className="chq-drawer-tabs">
-              <button type="button" className={tab === 'submissions' ? 'chq-tab-active' : ''} onClick={() => setTab('submissions')}>
+            <div className="chq-chipstrip chq-contacts-drawer-tabs" role="tablist" aria-label="Contact history">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={tab === 'submissions'}
+                className={tab === 'submissions' ? 'chq-pill is-active' : 'chq-pill'}
+                onClick={() => setTab('submissions')}
+              >
                 Submissions
               </button>
-              <button type="button" className={tab === 'emails' ? 'chq-tab-active' : ''} onClick={() => setTab('emails')}>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={tab === 'emails'}
+                className={tab === 'emails' ? 'chq-pill is-active' : 'chq-pill'}
+                onClick={() => setTab('emails')}
+              >
                 Emails
               </button>
-              <button type="button" className={tab === 'events' ? 'chq-tab-active' : ''} onClick={() => setTab('events')}>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={tab === 'events'}
+                className={tab === 'events' ? 'chq-pill is-active' : 'chq-pill'}
+                onClick={() => setTab('events')}
+              >
                 Events
               </button>
             </div>

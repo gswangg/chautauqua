@@ -61,7 +61,7 @@ describe('ContactsApp + SegmentsPanel: deleting the applied segment (w1-c P3, DE
     });
 
     // Delete that segment from the Segments tab.
-    fireEvent.click(screen.getByRole('button', { name: 'Segments' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Segments' }));
     await waitFor(() => {
       expect(screen.getByText('VIP speakers', { exact: false })).toBeInTheDocument();
     });

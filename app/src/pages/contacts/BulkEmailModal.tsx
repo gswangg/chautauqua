@@ -102,14 +102,20 @@ export function BulkEmailModal({ contactIds, eventId, onClose }: Props) {
   }
 
   return (
-    <div className="chq-modal-backdrop" role="dialog" aria-label="Bulk email">
-      <div className="chq-modal chq-bulk-email-modal">
-        <button type="button" className="chq-modal-close" onClick={onClose} aria-label="Close">
-          ×
-        </button>
-        <h2>Bulk email</h2>
+    <div className="chq-scrim" role="dialog" aria-label="Bulk email">
+      <div className="chq-modal chq-contacts-bulk-email-modal">
+        <div className="chq-contacts-modal-head">
+          <div className="chq-contacts-modal-heading">
+            <h2>
+              Email {contactIds.length} contact{contactIds.length === 1 ? '' : 's'}
+            </h2>
+          </div>
+          <button type="button" className="chq-btn-tertiary" onClick={onClose} aria-label="Close">
+            Close
+          </button>
+        </div>
 
-        {error && <div className="chq-error-banner">{error}</div>}
+        {error && <div className="chq-error">{error}</div>}
 
         {step === 'compose' && (
           <>
@@ -125,7 +131,7 @@ export function BulkEmailModal({ contactIds, eventId, onClose }: Props) {
             {templates.length > 0 && (
               <label>
                 Template
-                <select value={templateId} onChange={(e) => applyTemplate(e.target.value)}>
+                <select className="chq-select" value={templateId} onChange={(e) => applyTemplate(e.target.value)}>
                   <option value="">Custom (no template)</option>
                   {templates.map((t) => (
                     <option key={t.id} value={t.id}>
@@ -137,22 +143,29 @@ export function BulkEmailModal({ contactIds, eventId, onClose }: Props) {
             )}
             <label>
               Subject
-              <input value={subject} onChange={(e) => setSubject(e.target.value)} />
+              <input className="chq-input" value={subject} onChange={(e) => setSubject(e.target.value)} />
             </label>
             <label>
               Body
-              <textarea rows={8} value={bodyText} onChange={(e) => setBodyText(e.target.value)} />
+              <textarea className="chq-textarea" rows={8} value={bodyText} onChange={(e) => setBodyText(e.target.value)} />
             </label>
-            <p className="chq-merge-field-hint">
-              Available merge fields: {BULK_EMAIL_MERGE_FIELDS.map((f) => `{${f}}`).join(', ')}
+            <p className="chq-meta chq-merge-field-hint">
+              Sent one at a time · logged in Comms history · merge fields:{' '}
+              {BULK_EMAIL_MERGE_FIELDS.map((f) => `{${f}}`).join(', ')}
             </p>
-            <button
-              type="button"
-              disabled={busy || overCap || contactIds.length === 0 || subject.trim() === '' || bodyText.trim() === ''}
-              onClick={goToPreview}
-            >
-              Preview
-            </button>
+            <div className="chq-contacts-modal-actions">
+              <button
+                type="button"
+                className="chq-btn chq-btn-primary"
+                disabled={busy || overCap || contactIds.length === 0 || subject.trim() === '' || bodyText.trim() === ''}
+                onClick={goToPreview}
+              >
+                Preview
+              </button>
+              <button type="button" className="chq-btn chq-btn-secondary" onClick={onClose} disabled={busy}>
+                Cancel
+              </button>
+            </div>
           </>
         )}
 
@@ -171,20 +184,24 @@ export function BulkEmailModal({ contactIds, eventId, onClose }: Props) {
                 </li>
               ))}
             </ul>
-            <button type="button" onClick={() => setStep('compose')} disabled={busy}>
-              Back to edit
-            </button>
-            <button type="button" disabled={busy} onClick={send}>
-              Send to {contactIds.length} recipient{contactIds.length === 1 ? '' : 's'}
-            </button>
+            <div className="chq-contacts-modal-actions">
+              <button type="button" className="chq-btn chq-btn-secondary" onClick={() => setStep('compose')} disabled={busy}>
+                Back to edit
+              </button>
+              <button type="button" className="chq-btn chq-btn-primary" disabled={busy} onClick={send}>
+                Send to {contactIds.length} recipient{contactIds.length === 1 ? '' : 's'}
+              </button>
+            </div>
           </>
         )}
 
         {step === 'sent' && sent !== null && (
           <div className="chq-bulk-email-result">
-            <p>Sent {sent} email{sent === 1 ? '' : 's'}.</p>
+            <p>
+              Sent {sent} email{sent === 1 ? '' : 's'}.
+            </p>
             <a href="/admin/comms">View in Comms history</a>
-            <button type="button" onClick={onClose}>
+            <button type="button" className="chq-btn chq-btn-secondary" onClick={onClose}>
               Close
             </button>
           </div>

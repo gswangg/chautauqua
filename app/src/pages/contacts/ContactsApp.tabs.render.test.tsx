@@ -105,7 +105,7 @@ describe('ContactsApp render smoke: duplicates tab', () => {
 
     render(<ContactsApp />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Duplicates' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Duplicates' }));
 
     await waitFor(() => {
       expect(screen.getByText('Possible duplicates')).toBeInTheDocument();
@@ -124,7 +124,7 @@ describe('ContactsApp render smoke: segments tab', () => {
 
     render(<ContactsApp />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Segments' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Segments' }));
 
     await waitFor(() => {
       expect(screen.getByText('VIP speakers', { exact: false })).toBeInTheDocument();
