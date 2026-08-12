@@ -336,3 +336,14 @@ mock shows criteria but not their editing flow; prod's invented flow is unintuit
     "Import from CSV" modal's raw "Choose File" control. The sweep (item 7) must cover
     ALL file inputs: Content deliverable zones, Settings resources, CSV import, portal
     headshot — one styled file-picker component, scan-locked like buttons/dialogs.
+
+24. (User QA — DOWNGRADES the fidelity pass's "best frame" verdict) **Contact merge
+    must be the mock's dedicated PAGE, not a modal.** The agent scored merge MINOR on
+    content fidelity (struck-through discards etc. are right) but prod presents it as
+    a modal-over-list; the mock (08-contacts merge frames, desktop + phone) designs a
+    full-screen surface — appropriate to an irreversible decision. Rebuild the
+    container: route to a merge page from the Duplicates tab, keep the faithful
+    KEEP/DISCARD content, mock's footer actions. User verdict: "does not track the
+    mock well" — implementer should compare frame-by-frame, not inherit the MINOR
+    rating. (Note: DEC-629 made merge set-based since the fidelity pass — re-verify
+    the UI against the mock AFTER that change too.)
