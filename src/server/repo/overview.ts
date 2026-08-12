@@ -1,8 +1,13 @@
 // Overview worklist repo (DEC-030, DEC-370, DEC-400). Builds the single GET
 // .../events/:eventId/overview payload with joined/grouped queries; repo
 // functions are the only code here that touch drizzle row types (DEC-012).
-// The aggregation logic below is split into pure helpers (given row arrays)
-// so it is unit-testable without a database — see test/overview.test.ts.
+// Decomposed from a single 800+ line file to reduce merge contention:
+// pure aggregation helpers live in overview/aggregate.ts, pure schedule/
+// conflict helpers live in overview/scheduling.ts, and payload types live
+// in overview/types.ts. This file re-exports all of them so behavior and
+// public import paths (`repo/overview`) are unchanged — callers should not
+// need to change their imports. See test/overview.test.ts for the pure
+// helpers' unit tests, exercised without a database.
 //
 // DEC-400 (wire keys): the v1 aggregate {pending, accept_queue,
 // decline_queue} ships under the key `triage-counts` (the nav badge and
@@ -17,398 +22,23 @@
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
-import { findConflicts, nextFreeSlot, type Conflict, type PlacedSession } from "../../domain/schedule";
+import { findConflicts, type PlacedSession } from "../../domain/schedule";
 import { formatRef } from "../../domain/ids";
 import { chunkIds } from "../../lib/chunk";
 import { DEFAULT_AUTO_SCHEDULE_PARAMS } from "./agenda";
-import { DEC_370, DEC_531, DEC_652 } from "../../decisions";
+import { DEC_370, DEC_531 } from "../../decisions";
 void DEC_370;
 void DEC_531;
-void DEC_652;
 
-const DAY_MS = 24 * 60 * 60 * 1000;
+export * from "./overview/types";
+export * from "./overview/aggregate";
+export * from "./overview/scheduling";
+
+import type { ConflictSessionInfo, FileRowForPick, LeadSpeakerRow, OverviewPayload, OverviewPayloadV2 } from "./overview/types";
+import { aggregateTriageCounts, buildOverdueTaskRows, computeAgendaSummary, pickLatestFilePerSubmission, pickLeadSpeakerPerSubmission } from "./overview/aggregate";
+import { buildConflictResolutionFor, buildConflictRows, buildPlacementSuggestion } from "./overview/scheduling";
+
 const ROW_CAP = 5;
-
-export interface OverviewPayload {
-  "triage-counts": { pending: number; accept_queue: number; decline_queue: number };
-  review: { plans: number; evaluationsSubmitted: number; evaluationsExpected: number };
-  speakers: { contactsOwing: number; overdueAssignments: number };
-  content: { awaitingApproval: number };
-  agenda: { unplaced: number; conflicts: number };
-  comms: { sentLast7Days: number; lastSentAt: number | null };
-}
-
-export interface OverviewDeadlines {
-  formCloseDate: number | null;
-  nextTaskDueDate: number | null;
-  planCloseDate: number | null;
-  eventStartDate: number | null;
-}
-
-export interface OverdueTaskRow {
-  assignmentId: string;
-  contactId: string;
-  contactName: string;
-  company: string | null;
-  taskId: string;
-  taskTitle: string;
-  dueDate: number;
-  daysLate: number;
-}
-
-export interface TriageQueueRow {
-  submissionId: string;
-  ref: string;
-  title: string;
-  speakerName: string;
-  trackName: string | null;
-  // No schema field backs a per-submission "format" (Talk/Workshop/...);
-  // DEC-370 names the key but nothing stores the value (SPEC.md's only
-  // mention of "format" is a hypothetical CFP form field, not a fixed
-  // column). Always null — flagged as an open gap, never fabricated.
-  format: string | null;
-  submittedAt: number;
-}
-
-export interface ContentApprovalRow {
-  submissionId: string;
-  ref: string;
-  title: string;
-  speakerName: string;
-  fileName: string;
-  uploadedAt: number;
-  reuploaded: boolean;
-}
-
-/** DEC-652: the concrete "move it" suggestion for a conflict's later entry
- * — a real slot nextFreeSlot found, never invented prose. Null whenever
- * nextFreeSlot couldn't find one (e.g. no other room to move into). */
-export interface ConflictResolution {
-  submissionId: string;
-  ref: string;
-  day: string;
-  startMin: number;
-  roomId: string;
-  roomName: string;
-  label: string;
-}
-
-export interface ConflictRow {
-  day: string;
-  startMin: number;
-  endMin: number;
-  roomName: string | null;
-  kind: Conflict["kind"];
-  entries: { submissionId: string; ref: string; title: string; speakerName: string }[];
-  resolution: ConflictResolution | null;
-}
-
-/** DEC-652: the concrete "place it" suggestion for an unplaced row — a real
- * slot nextFreeSlot found, never invented prose. Null whenever nextFreeSlot
- * couldn't find one (e.g. no rooms in use yet). */
-export interface PlacementSuggestion {
-  day: string;
-  startMin: number;
-  roomId: string;
-  roomName: string;
-  label: string;
-}
-
-export interface UnplacedRow {
-  submissionId: string;
-  ref: string;
-  title: string;
-  speakerName: string;
-  // No stored per-submission session length (autoSchedule takes an
-  // organizer-supplied defaultDurationMin at call time, never persisted) —
-  // always null, flagged as an open gap rather than fabricated.
-  durationMin: number | null;
-  suggestion: PlacementSuggestion | null;
-}
-
-/** DEC-652: "10:00" / "11:30" — the plain (unpadded-hour, zero-padded
- * minute) 24h clock label the mock uses for §04's suggestion/resolution
- * buttons. Distinct from src/routes/public/cards.tsx's 12h AM/PM formatter
- * (a different surface's convention) and app/src/pages/agenda/gridMath.ts's
- * 12h am/pm formatter (the grid's own convention) — each rendering context
- * owns its own clock format per this file's existing per-context pattern. */
-export function formatClockLabel(min: number): string {
-  const h = Math.floor(min / 60);
-  const m = min % 60;
-  return `${h}:${String(m).padStart(2, "0")}`;
-}
-
-export interface OverviewPayloadV2 extends OverviewPayload {
-  deadlines: OverviewDeadlines;
-  overdueTasks: { total: number; rows: OverdueTaskRow[] };
-  triage: { total: number; oldestSubmittedAt: number | null; rows: TriageQueueRow[] };
-  contentApproval: { total: number; reuploadedCount: number; rows: ContentApprovalRow[] };
-  agendaWork: {
-    unplacedTotal: number;
-    conflictTotal: number;
-    conflicts: ConflictRow[];
-    unplaced: UnplacedRow[];
-  };
-}
-
-// ---------------------------------------------------------------------------
-// Pure aggregation helpers (no I/O) — unit-tested directly against row
-// arrays.
-// ---------------------------------------------------------------------------
-
-/** Reduces a grouped `status -> count` query result into the three DEC-030
- * triage buckets. Unknown/other statuses (e.g. accepted, declined) are
- * dropped — the triage card only tracks statuses still awaiting a decision.
- */
-export function aggregateTriageCounts(
-  rows: { status: string; n: number }[],
-): OverviewPayload["triage-counts"] {
-  const byStatus = new Map(rows.map((r) => [r.status, r.n]));
-  return {
-    pending: byStatus.get("pending") ?? 0,
-    accept_queue: byStatus.get("accept_queue") ?? 0,
-    decline_queue: byStatus.get("decline_queue") ?? 0,
-  };
-}
-
-/** Agenda numbers: unplaced accepted submissions + schedule conflicts
- * (delegated to src/domain/schedule.ts findConflicts, DEC-010). */
-export function computeAgendaSummary(
-  acceptedSubmissionIds: string[],
-  placed: PlacedSession[],
-): OverviewPayload["agenda"] {
-  const placedIds = new Set(placed.map((p) => p.submissionId));
-  return {
-    unplaced: acceptedSubmissionIds.filter((id) => !placedIds.has(id)).length,
-    conflicts: findConflicts(placed).length,
-  };
-}
-
-/** Smallest non-null/non-undefined value, or null if every value is
- * missing — used across the DEC-370 deadlines strip (each cell tolerates a
- * null source independently). */
-export function minNonNull(values: (number | null | undefined)[]): number | null {
-  let min: number | null = null;
-  for (const v of values) {
-    if (v === null || v === undefined) continue;
-    if (min === null || v < min) min = v;
-  }
-  return min;
-}
-
-/** DEC-370 overdueTasks rows: attaches `daysLate` (whole days late, clamped
- * to zero) to each already-overdue assignment row. */
-export function buildOverdueTaskRows(
-  rows: Omit<OverdueTaskRow, "daysLate">[],
-  now: number,
-): OverdueTaskRow[] {
-  return rows.map((r) => ({
-    ...r,
-    daysLate: Math.max(0, Math.floor((now - r.dueDate) / DAY_MS)),
-  }));
-}
-
-export interface ConflictSessionInfo {
-  day: string;
-  startMin: number;
-  endMin: number;
-  roomId: string | null;
-  ref: string;
-  title: string;
-  speakerName: string;
-}
-
-/** DEC-370 agendaWork.conflicts rows: one row per findConflicts() pair
- * (never re-derives conflicts itself), capped to ROW_CAP, resolved against
- * a pre-loaded session/room lookup — never queries inside the loop.
- * `resolution` is attached separately by attachConflictResolutions (DEC-652)
- * so this function and its existing unit tests stay untouched. */
-export function buildConflictRows(
-  conflicts: Conflict[],
-  sessionById: Map<string, ConflictSessionInfo>,
-  roomNameById: Map<string, string>,
-  cap = ROW_CAP,
-): Omit<ConflictRow, "resolution">[] {
-  const rows: Omit<ConflictRow, "resolution">[] = [];
-  for (const c of conflicts.slice(0, cap)) {
-    const [aId, bId] = c.submissionIds;
-    const a = sessionById.get(aId);
-    const b = sessionById.get(bId);
-    if (!a || !b) {
-      throw new Error(`buildConflictRows: session ${aId}/${bId} not in the loaded set`);
-    }
-    rows.push({
-      day: a.day,
-      startMin: a.startMin,
-      endMin: a.endMin,
-      roomName: a.roomId ? (roomNameById.get(a.roomId) ?? null) : null,
-      kind: c.kind,
-      entries: [
-        { submissionId: aId, ref: a.ref, title: a.title, speakerName: a.speakerName },
-        { submissionId: bId, ref: b.ref, title: b.title, speakerName: b.speakerName },
-      ],
-    });
-  }
-  return rows;
-}
-
-export interface NextFreeSlotParams {
-  dayStartMin: number;
-  dayEndMin: number;
-  gridMin: number;
-  defaultDurationMin: number;
-}
-
-/** DEC-652: the concrete "place it" suggestion for one unplaced submission
- * — delegates to nextFreeSlot (the SAME candidate scan autoSchedule runs),
- * searching only the rooms/days already in use on the event's placed
- * sessions (no extra room/date query — getOverviewPayload's own `placed`
- * array already carries every room and day the event has scheduled into).
- * Null whenever nextFreeSlot finds nothing — never invented. */
-export function buildPlacementSuggestion(
-  leadSpeakerContactId: string | null,
-  placed: PlacedSession[],
-  rooms: string[],
-  days: string[],
-  roomNameById: Map<string, string>,
-  params: NextFreeSlotParams,
-): PlacementSuggestion | null {
-  const slot = nextFreeSlot({
-    session: {
-      durationMin: params.defaultDurationMin,
-      speakerContactIds: leadSpeakerContactId ? [leadSpeakerContactId] : [],
-    },
-    rooms,
-    days,
-    dayStartMin: params.dayStartMin,
-    dayEndMin: params.dayEndMin,
-    gridMin: params.gridMin,
-    existing: placed,
-  });
-  if (!slot) return null;
-  return {
-    day: slot.day,
-    startMin: slot.startMin,
-    roomId: slot.roomId,
-    roomName: roomNameById.get(slot.roomId) ?? slot.roomId,
-    label: `Place at ${formatClockLabel(slot.startMin)}`,
-  };
-}
-
-/** DEC-652: which of a conflict's pair is the one a resolution should move
- * — the LATER of the two (larger startMin; a same-startMin tie always
- * picks the pair's second/`b` entry, a fixed deterministic choice). */
-export function pickLaterConflictEntry(
-  aId: string,
-  aStartMin: number,
-  bId: string,
-  bStartMin: number,
-): string {
-  return aStartMin > bStartMin ? aId : bId;
-}
-
-/** DEC-652: the concrete "move it" resolution for one conflict — moves the
- * LATER of the clashing pair (see pickLaterConflictEntry) into its own next
- * free slot via nextFreeSlot, searched in the SAME room it currently
- * occupies (falling back to every room already in use on the event when it
- * has none), excluding the moving submission itself from `existing` so it
- * never blocks its own search. Null whenever nextFreeSlot finds nothing. */
-export function buildConflictResolutionFor(
-  conflict: Conflict,
-  sessionById: Map<string, ConflictSessionInfo>,
-  placedById: Map<string, PlacedSession>,
-  placed: PlacedSession[],
-  fallbackRooms: string[],
-  days: string[],
-  roomNameById: Map<string, string>,
-  params: NextFreeSlotParams,
-): ConflictResolution | null {
-  const [aId, bId] = conflict.submissionIds;
-  const a = sessionById.get(aId);
-  const b = sessionById.get(bId);
-  if (!a || !b) {
-    throw new Error(`buildConflictResolutionFor: session ${aId}/${bId} not in the loaded set`);
-  }
-  const laterId = pickLaterConflictEntry(aId, a.startMin, bId, b.startMin);
-  const laterInfo = laterId === aId ? a : b;
-  const laterPlacement = placedById.get(laterId);
-  if (!laterPlacement) {
-    throw new Error(`buildConflictResolutionFor: placement missing for ${laterId}`);
-  }
-
-  const rooms = laterPlacement.roomId ? [laterPlacement.roomId] : fallbackRooms;
-  const slot = nextFreeSlot({
-    session: { durationMin: laterPlacement.endMin - laterPlacement.startMin, speakerContactIds: laterPlacement.speakerContactIds },
-    rooms,
-    days,
-    dayStartMin: params.dayStartMin,
-    dayEndMin: params.dayEndMin,
-    gridMin: params.gridMin,
-    existing: placed.filter((p) => p.submissionId !== laterId),
-  });
-  if (!slot) return null;
-
-  return {
-    submissionId: laterId,
-    ref: laterInfo.ref,
-    day: slot.day,
-    startMin: slot.startMin,
-    roomId: slot.roomId,
-    roomName: roomNameById.get(slot.roomId) ?? slot.roomId,
-    label: `Move ${laterInfo.ref} to ${formatClockLabel(slot.startMin)}`,
-  };
-}
-
-export interface FileRowForPick {
-  id: string;
-  submissionId: string;
-  filename: string;
-  previousFileId: string | null;
-  createdAt: number;
-}
-
-/** DEC-558: picks the "latest file" per submission from a flat row list —
- * highest createdAt wins, ties broken by file.id ascending (a total order,
- * so re-feeding the same rows in any order yields byte-identical output).
- * Callers group rows by submissionId first; this picks within one group. */
-export function pickLatestFilePerSubmission(rows: FileRowForPick[]): FileRowForPick | null {
-  let best: FileRowForPick | null = null;
-  for (const r of rows) {
-    if (
-      !best ||
-      r.createdAt > best.createdAt ||
-      (r.createdAt === best.createdAt && r.id < best.id)
-    ) {
-      best = r;
-    }
-  }
-  return best;
-}
-
-export interface LeadSpeakerRow {
-  submissionId: string;
-  order: number;
-  contactId: string;
-  name: string;
-}
-
-/** DEC-558: picks the "lead speaker" per submission from a flat row list —
- * lowest participant.order wins, ties broken by contactId ascending (a
- * total order). Callers group rows by submissionId first; this picks
- * within one group. */
-export function pickLeadSpeakerPerSubmission(rows: LeadSpeakerRow[]): LeadSpeakerRow | null {
-  let best: LeadSpeakerRow | null = null;
-  for (const r of rows) {
-    if (
-      !best ||
-      r.order < best.order ||
-      (r.order === best.order && r.contactId < best.contactId)
-    ) {
-      best = r;
-    }
-  }
-  return best;
-}
 
 // ---------------------------------------------------------------------------
 // I/O: builds the full payload from joined/grouped queries.
@@ -731,7 +361,7 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number): 
   const contentApproval = {
     total: content.awaitingApproval,
     reuploadedCount,
-    rows: contentDetailRows.map((r): ContentApprovalRow => {
+    rows: contentDetailRows.map((r) => {
       const latest = latestFileBySubmission.get(r.id);
       return {
         submissionId: r.id,
@@ -786,22 +416,20 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number): 
   const agendaWork = {
     unplacedTotal: agenda.unplaced,
     conflictTotal: agenda.conflicts,
-    conflicts: buildConflictRows(conflicts, sessionById, roomNameById).map(
-      (row, idx): ConflictRow => ({
-        ...row,
-        resolution: buildConflictResolutionFor(
-          cappedConflicts[idx]!,
-          sessionById,
-          placedById,
-          placed,
-          placedRoomIds,
-          placedDays,
-          roomNameById,
-          nextFreeSlotParams,
-        ),
-      }),
-    ),
-    unplaced: unplacedCappedIds.map((id): UnplacedRow => {
+    conflicts: buildConflictRows(conflicts, sessionById, roomNameById).map((row, idx) => ({
+      ...row,
+      resolution: buildConflictResolutionFor(
+        cappedConflicts[idx]!,
+        sessionById,
+        placedById,
+        placed,
+        placedRoomIds,
+        placedDays,
+        roomNameById,
+        nextFreeSlotParams,
+      ),
+    })),
+    unplaced: unplacedCappedIds.map((id) => {
       const submission = acceptedById.get(id);
       if (!submission) throw new Error(`getOverviewPayload: unplaced submission ${id} not in the loaded accepted set`);
       return {
@@ -825,6 +453,7 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number): 
   // --- Comms: one aggregate query, never the whole email_log table
   // (DEC-333/DEC-334: card numbers are SQL aggregates, not materialized
   // rows spread into Math.max).
+  const DAY_MS = 24 * 60 * 60 * 1000;
   const SEVEN_DAYS_MS = 7 * DAY_MS;
   const cutoffMs = now - SEVEN_DAYS_MS;
   const commsRows = await db
