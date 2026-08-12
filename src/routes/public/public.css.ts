@@ -278,4 +278,9 @@ export const PUBLIC_CSS = `
     .chq-pub-agenda-desktop { display: none; }
     .chq-pub-agenda-list { display: block; }
   }
+
+  /* DEC-593: gallery reuses the directory's SpeakerCard markup
+     (.chq-pub-speaker-grid/-card/-name) but keeps its own tighter,
+     headshot-first column width via the .chq-pub-gallery-grid modifier. */
+  .chq-pub-gallery-grid { grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 10px; }
 `;
