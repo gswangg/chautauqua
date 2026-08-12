@@ -94,13 +94,18 @@ export function FilesLibrary({ eventId, onSelectSubmission }: FilesLibraryProps)
   }
 
   return (
-    <div className="chq-files-library" data-testid="files-library">
-      {error && <div className="chq-error-banner">{error}</div>}
+    <div className="chq-files-library chq-content-files-library" data-testid="files-library">
+      {error && (
+        <div className="chq-error" role="alert">
+          {error}
+        </div>
+      )}
 
-      <div className="chq-files-library-toolbar">
+      <div className="chq-files-library-toolbar chq-content-files-toolbar">
         <label>
           Kind{' '}
           <select
+            className="chq-select"
             aria-label="Filter by kind"
             value={kind}
             onChange={(e) => {
@@ -118,6 +123,7 @@ export function FilesLibrary({ eventId, onSelectSubmission }: FilesLibraryProps)
         </label>
         <input
           type="search"
+          className="chq-input"
           aria-label="Search files"
           placeholder="Search filename, session, or speaker"
           value={q}
@@ -126,22 +132,28 @@ export function FilesLibrary({ eventId, onSelectSubmission }: FilesLibraryProps)
             setPage(1);
           }}
         />
-        <button type="button" disabled={selected.size === 0 || overArchiveLimit || downloading} onClick={downloadZip}>
+        <button
+          type="button"
+          className="chq-btn chq-btn-primary"
+          disabled={selected.size === 0 || overArchiveLimit || downloading}
+          onClick={downloadZip}
+        >
           Download ZIP ({selected.size})
         </button>
         {overArchiveLimit && (
-          <span className="chq-error-inline" role="alert">
+          <span className="chq-error chq-content-archive-limit" role="alert">
             Select at most {MAX_ARCHIVE_FILES} files to download as a ZIP.
           </span>
         )}
       </div>
 
-      <table className="chq-content-table">
+      <table className="chq-table chq-content-table">
         <thead>
           <tr>
             <th>
               <input
                 type="checkbox"
+                className="chq-check"
                 aria-label="Select all files on this page"
                 checked={items.length > 0 && selected.size === items.length}
                 onChange={toggleAll}
@@ -163,7 +175,9 @@ export function FilesLibrary({ eventId, onSelectSubmission }: FilesLibraryProps)
           )}
           {!loading && items.length === 0 && (
             <tr>
-              <td colSpan={7}>No deliverable files yet.</td>
+              <td colSpan={7} className="chq-empty">
+                No deliverable files yet.
+              </td>
             </tr>
           )}
           {!loading &&
@@ -172,12 +186,13 @@ export function FilesLibrary({ eventId, onSelectSubmission }: FilesLibraryProps)
                 <td onClick={(e) => e.stopPropagation()}>
                   <input
                     type="checkbox"
+                    className="chq-check"
                     aria-label={`Select ${item.filename}`}
                     checked={selected.has(item.rootFileId)}
                     onChange={() => toggle(item.rootFileId)}
                   />
                 </td>
-                <td>
+                <td className="chq-content-row-title">
                   {item.submissionId ? (
                     <button
                       type="button"
@@ -209,7 +224,7 @@ export function FilesLibrary({ eventId, onSelectSubmission }: FilesLibraryProps)
                   )}
                 </td>
                 <td>{item.speakerName}</td>
-                <td>{formatDateTime(item.uploadedAt)}</td>
+                <td className="chq-meta">{formatDateTime(item.uploadedAt)}</td>
                 <td>
                   {item.submissionId ? (
                     <button
@@ -229,14 +244,19 @@ export function FilesLibrary({ eventId, onSelectSubmission }: FilesLibraryProps)
         </tbody>
       </table>
 
-      <div className="chq-files-library-pager">
-        <button type="button" disabled={page <= 1 || loading} onClick={() => setPage((p) => p - 1)}>
+      <div className="chq-files-library-pager chq-content-files-pager">
+        <button type="button" className="chq-btn chq-btn-secondary" disabled={page <= 1 || loading} onClick={() => setPage((p) => p - 1)}>
           Previous
         </button>
         <span>
           Page {page} &middot; {total} total
         </span>
-        <button type="button" disabled={page * PER_PAGE >= total || loading} onClick={() => setPage((p) => p + 1)}>
+        <button
+          type="button"
+          className="chq-btn chq-btn-secondary"
+          disabled={page * PER_PAGE >= total || loading}
+          onClick={() => setPage((p) => p + 1)}
+        >
           Next
         </button>
       </div>

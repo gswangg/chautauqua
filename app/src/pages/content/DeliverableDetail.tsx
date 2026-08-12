@@ -112,22 +112,36 @@ export function DeliverableDetail({
   }
 
   return (
-    <div className="chq-deliverable-detail">
-      <button type="button" onClick={onBack}>
+    <div className="chq-deliverable-detail chq-content-detail">
+      <button type="button" className="chq-btn chq-btn-tertiary" onClick={onBack}>
         &larr; Back to worklist
       </button>
-      <h2>{title}</h2>
-      <div className="chq-content-status-bar">
-        <span className={`chq-status-pill chq-content-status-${pill}`}>{CONTENT_STATUS_LABELS[pill]}</span>
-        <button type="button" disabled={statusPending} onClick={() => void handleStatusChange('approved')}>
-          Approve
-        </button>
-        <button type="button" disabled={statusPending} onClick={() => void handleStatusChange('changes_requested')}>
-          Request changes
-        </button>
+      <div className="chq-content-detail-head">
+        <h2 className="chq-page-title chq-content-detail-title">{title}</h2>
+        <div className="chq-content-status-bar">
+          <span className={pill === 'changes_requested' ? 'chq-flag' : 'chq-flag chq-content-status-muted'}>
+            {CONTENT_STATUS_LABELS[pill]}
+          </span>
+          <button
+            type="button"
+            className="chq-btn chq-btn-primary"
+            disabled={statusPending}
+            onClick={() => void handleStatusChange('approved')}
+          >
+            Approve
+          </button>
+          <button
+            type="button"
+            className="chq-btn chq-btn-secondary"
+            disabled={statusPending}
+            onClick={() => void handleStatusChange('changes_requested')}
+          >
+            Ask for changes
+          </button>
+        </div>
       </div>
 
-      {error && <div className="chq-error-banner">{error}</div>}
+      {error && <div className="chq-error" role="alert">{error}</div>}
       {loading && <p>Loading deliverables...</p>}
 
       {!loading &&
@@ -135,16 +149,24 @@ export function DeliverableDetail({
           const versions = grouped[kind];
           const latest = versions[0];
           return (
-            <section key={kind} className="chq-deliverable-group">
-              <h3>{DELIVERABLE_LABELS[kind]}</h3>
-              <VersionList versions={versions} />
-              <UploadZone kind={kind} replacesFileId={latest?.id} onUpload={handleUpload} />
-              {latest && (
-                <CommentThread
-                  comments={commentsByFile[latest.id] ?? []}
-                  onPost={(body) => handlePostComment(latest.id, body)}
-                />
-              )}
+            <section key={kind} className="chq-deliverable-group chq-content-group">
+              <div className="chq-section-head">
+                <span className="chq-section-label">{DELIVERABLE_LABELS[kind]}</span>
+              </div>
+              <div className="chq-content-group-body">
+                <div className="chq-content-files-col">
+                  <VersionList versions={versions} />
+                  <UploadZone kind={kind} replacesFileId={latest?.id} onUpload={handleUpload} />
+                </div>
+                <div className="chq-content-comments-col">
+                  {latest && (
+                    <CommentThread
+                      comments={commentsByFile[latest.id] ?? []}
+                      onPost={(body) => handlePostComment(latest.id, body)}
+                    />
+                  )}
+                </div>
+              </div>
             </section>
           );
         })}

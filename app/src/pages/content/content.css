@@ -1,0 +1,279 @@
+/* app/src/pages/content/content.css — Content page lane (DEC-368). Classes
+   prefixed .chq-content-*; shared .chq-* classes from app/src/styles.css
+   (table, pill, chipstrip, btn, flag, section, error) are reused, never
+   redefined here. Visual language: DEC-367 tokens, docs/design/
+   Chautauqua Content.dc.html + screens/05-content.png. */
+
+.chq-content-page {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.chq-content-summary-row {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Worklist                                                                */
+/* ---------------------------------------------------------------------- */
+
+.chq-content-worklist {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.chq-content-table thead th {
+  white-space: nowrap;
+}
+
+.chq-content-row {
+  cursor: pointer;
+}
+
+.chq-content-row:hover {
+  background: var(--chq-surface-sunk);
+}
+
+.chq-content-row-title {
+  font-family: var(--chq-font-display);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--chq-ink);
+}
+
+/* Content-status flag: changes_requested stays bold ink ("needs a
+   decision" — type, never colour, per DEC-367); pending/approved sink to
+   muted weight. */
+.chq-content-status-muted {
+  color: var(--chq-muted);
+  font-weight: 600;
+}
+
+.chq-content-actions {
+  display: flex;
+  gap: 9px;
+  white-space: nowrap;
+}
+
+.chq-content-pager {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 13px;
+  color: var(--chq-muted);
+}
+
+/* ---------------------------------------------------------------------- */
+/* Deliverable detail                                                      */
+/* ---------------------------------------------------------------------- */
+
+.chq-content-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.chq-content-detail-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.chq-content-detail-title {
+  font-size: 28px;
+}
+
+.chq-content-status-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.chq-content-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.chq-content-group-body {
+  display: grid;
+  grid-template-columns: 1.35fr 1fr;
+  gap: 26px;
+  padding-top: 16px;
+}
+
+@media (max-width: 900px) {
+  .chq-content-group-body {
+    grid-template-columns: 1fr;
+  }
+}
+
+.chq-content-files-col {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Version list                                                            */
+/* ---------------------------------------------------------------------- */
+
+.chq-content-version-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.chq-content-version-item {
+  display: grid;
+  grid-template-columns: 48px 1fr auto;
+  align-items: baseline;
+  gap: 14px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--chq-hairline);
+}
+
+.chq-content-version-tag {
+  font-family: var(--chq-font-display);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--chq-ink);
+}
+
+.chq-content-version-item:not(.is-current) .chq-content-version-tag {
+  font-weight: 600;
+  color: var(--chq-muted);
+}
+
+.chq-content-version-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.chq-content-version-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--chq-ink);
+  overflow-wrap: anywhere;
+}
+
+.chq-content-version-download {
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Upload zone                                                             */
+/* ---------------------------------------------------------------------- */
+
+.chq-content-upload-zone {
+  border: 1px dashed var(--chq-border);
+  border-radius: var(--chq-r-card);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.chq-content-upload-zone.drag-over {
+  border-color: var(--chq-brand);
+  background: var(--chq-surface-sunk);
+}
+
+.chq-content-upload-caps {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--chq-muted);
+}
+
+/* ---------------------------------------------------------------------- */
+/* Comment thread                                                          */
+/* ---------------------------------------------------------------------- */
+
+.chq-content-comment-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.chq-content-comment-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.chq-content-comment-head {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+}
+
+.chq-content-comment-author {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--chq-ink);
+}
+
+.chq-content-comment-body {
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--chq-ink-2);
+}
+
+.chq-content-comment-composer {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 14px;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Files library                                                           */
+/* ---------------------------------------------------------------------- */
+
+.chq-content-files-library {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.chq-content-files-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+
+.chq-content-files-pager {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 13px;
+  color: var(--chq-muted);
+}
+
+/* Archive limit messages must stay loud and legible (DEC-353's 40MB
+   total-byte guard, and the client's own 50-file pre-check). */
+.chq-content-archive-limit {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--chq-ink);
+}

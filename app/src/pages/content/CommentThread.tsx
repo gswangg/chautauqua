@@ -30,30 +30,41 @@ export function CommentThread({ comments, onPost }: CommentThreadProps) {
 
   return (
     <div className="chq-comment-thread">
-      <ul className="chq-comment-list">
+      <ul className="chq-comment-list chq-content-comment-list">
         {comments.map((c) => (
-          <li key={c.id} className="chq-comment-item">
-            <span className="chq-comment-author">
-              {c.authorName} <span className="chq-role-label">({c.authorRole})</span>
-            </span>
-            <span className="chq-comment-body">{c.body}</span>
-            <span className="chq-comment-date">{formatDateTime(c.createdAt)}</span>
+          <li key={c.id} className="chq-comment-item chq-content-comment-item">
+            <div className="chq-content-comment-head">
+              <span className="chq-comment-author chq-content-comment-author">{c.authorName}</span>
+              <span className="chq-role-label chq-meta">({c.authorRole})</span>
+              <span className="chq-comment-date chq-meta">{formatDateTime(c.createdAt)}</span>
+            </div>
+            <span className="chq-comment-body chq-content-comment-body">{c.body}</span>
           </li>
         ))}
         {comments.length === 0 && <li className="chq-empty">No comments yet.</li>}
       </ul>
-      <div className="chq-comment-composer">
+      <div className="chq-comment-composer chq-content-comment-composer">
         <textarea
+          className="chq-textarea"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           placeholder="Add a comment..."
           disabled={pending}
         />
-        <button type="button" disabled={pending || draft.trim().length === 0} onClick={() => void submit()}>
+        <button
+          type="button"
+          className="chq-btn chq-btn-primary"
+          disabled={pending || draft.trim().length === 0}
+          onClick={() => void submit()}
+        >
           Post
         </button>
       </div>
-      {error && <div className="chq-error-inline">{error}</div>}
+      {error && (
+        <div className="chq-error" role="alert">
+          {error}
+        </div>
+      )}
     </div>
   );
 }

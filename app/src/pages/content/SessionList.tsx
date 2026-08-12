@@ -7,7 +7,7 @@ import {
 } from './types';
 import { WORKLIST_TABS, type WorklistTab } from './worklist';
 
-const TAB_LABELS: Record<WorklistTab, string> = {
+export const TAB_LABELS: Record<WorklistTab, string> = {
   all: 'All',
   changes_requested: 'Changes requested',
   pending: 'Pending',
@@ -50,14 +50,14 @@ export function SessionList({
 
   return (
     <div className="chq-content-worklist">
-      <div className="chq-tab-bar" role="tablist">
+      <div className="chq-chipstrip" role="tablist" aria-label="Content status">
         {WORKLIST_TABS.map((t) => (
           <button
             key={t}
             type="button"
             role="tab"
             aria-selected={tab === t}
-            className={tab === t ? 'chq-tab active' : 'chq-tab'}
+            className={tab === t ? 'chq-pill is-active' : 'chq-pill'}
             onClick={() => onTabChange(t)}
           >
             {TAB_LABELS[t]}
@@ -65,7 +65,7 @@ export function SessionList({
         ))}
       </div>
 
-      <table className="chq-content-table">
+      <table className="chq-table chq-content-table">
         <thead>
           <tr>
             <th>Ref</th>
@@ -86,23 +86,30 @@ export function SessionList({
           )}
           {!loading && visible.length === 0 && (
             <tr>
-              <td colSpan={5 + DELIVERABLE_KINDS.length}>No submissions in this view.</td>
+              <td colSpan={5 + DELIVERABLE_KINDS.length} className="chq-empty">
+                No submissions in this view.
+              </td>
             </tr>
           )}
           {!loading &&
             visible.map((item) => (
-              <tr key={item.id} className="chq-content-row" onClick={() => onSelect(item.id)} style={{ cursor: 'pointer' }}>
+              <tr key={item.id} className="chq-content-row" onClick={() => onSelect(item.id)}>
                 <td>{item.ref}</td>
-                <td>{item.title}</td>
+                <td className="chq-content-row-title">{item.title}</td>
                 <td>{item.speakers.map((s) => s.name).join(', ')}</td>
                 <td>
-                  <span className={`chq-status-pill chq-content-status-${item.contentStatus}`}>
+                  <span
+                    className={
+                      item.contentStatus === 'changes_requested' ? 'chq-flag' : 'chq-flag chq-content-status-muted'
+                    }
+                  >
                     {CONTENT_STATUS_LABELS[item.contentStatus]}
                   </span>
                 </td>
-                <td onClick={(e) => e.stopPropagation()}>
+                <td onClick={(e) => e.stopPropagation()} className="chq-content-actions">
                   <button
                     type="button"
+                    className="chq-btn chq-btn-primary"
                     disabled={item.contentStatus === 'approved'}
                     onClick={() => onContentStatusChange(item.id, 'approved')}
                   >
@@ -110,10 +117,11 @@ export function SessionList({
                   </button>
                   <button
                     type="button"
+                    className="chq-btn chq-btn-secondary"
                     disabled={item.contentStatus === 'changes_requested'}
                     onClick={() => onContentStatusChange(item.id, 'changes_requested')}
                   >
-                    Request changes
+                    Ask for changes
                   </button>
                 </td>
                 {DELIVERABLE_KINDS.map((kind) => (
@@ -125,13 +133,18 @@ export function SessionList({
       </table>
 
       <div className="chq-content-pager">
-        <button type="button" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>
+        <button type="button" className="chq-btn chq-btn-secondary" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>
           Previous
         </button>
         <span>
           Showing {rangeStart}-{rangeEnd} of {total}
         </span>
-        <button type="button" disabled={page * perPage >= total} onClick={() => onPageChange(page + 1)}>
+        <button
+          type="button"
+          className="chq-btn chq-btn-secondary"
+          disabled={page * perPage >= total}
+          onClick={() => onPageChange(page + 1)}
+        >
           Next
         </button>
       </div>

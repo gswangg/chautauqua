@@ -34,9 +34,13 @@ export function UploadZone({ kind, replacesFileId, onUpload }: UploadZoneProps) 
     }
   }
 
+  // CNT-12: the accepted-types + size-cap text must be visible verbatim on
+  // the upload zone, not hidden behind a tooltip or validation-only error.
+  const uploadHintText = `Accepted: ${formatAcceptedTypesMessage()}`;
+
   return (
     <div
-      className={dragOver ? 'chq-upload-zone drag-over' : 'chq-upload-zone'}
+      className={dragOver ? 'chq-upload-zone chq-content-upload-zone drag-over' : 'chq-upload-zone chq-content-upload-zone'}
       onDragOver={(e) => {
         e.preventDefault();
         setDragOver(true);
@@ -48,7 +52,7 @@ export function UploadZone({ kind, replacesFileId, onUpload }: UploadZoneProps) 
         void handleFile(e.dataTransfer.files[0]);
       }}
     >
-      <p className="chq-upload-caps">Accepted: {formatAcceptedTypesMessage()}</p>
+      <p className="chq-upload-caps chq-content-upload-caps">{uploadHintText}</p>
       <input
         ref={inputRef}
         type="file"
@@ -57,7 +61,11 @@ export function UploadZone({ kind, replacesFileId, onUpload }: UploadZoneProps) 
         onChange={(e) => void handleFile(e.target.files?.[0])}
       />
       {pending && <span>Uploading…</span>}
-      {message && <span className="chq-error-inline">{message}</span>}
+      {message && (
+        <span className="chq-error" role="alert">
+          {message}
+        </span>
+      )}
     </div>
   );
 }
