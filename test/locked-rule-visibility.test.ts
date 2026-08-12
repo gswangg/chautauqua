@@ -10,7 +10,7 @@
 import { describe, expect, it } from "vitest";
 import { Hono } from "hono";
 import { projectFieldForAnswers, type FormFieldDef } from "../src/forms/types";
-import { isVisible } from "../src/forms/visibility";
+import { isVisible, resolveHiddenFieldIds } from "../src/forms/visibility";
 import { validateAnswers } from "../src/forms/validate";
 import { publicSubmitRoutes } from "../src/routes/public/submit";
 import { registerErrorHandler } from "../src/server/http";
@@ -146,6 +146,108 @@ describe("isVisible + validateAnswers with a locked trigger field (DEC-475)", ()
     const result = validateAnswers(fields, answers);
     expect(result.ok).toBe(true);
     if (result.ok) expect(result.cleaned.extra_notes).toBeUndefined();
+  });
+});
+
+describe("resolveHiddenFieldIds: a locked built-in is never hidden (DEC-625)", () => {
+  it("a rule that is false on the locked 'title' field still leaves it visible", () => {
+    // 'title' itself is normally rule-free, but simulate a stray/legacy
+    // rule on a locked field (e.g. pre-DEC-625 data) whose condition is
+    // false against the current answers -- it must NOT end up in the
+    // hidden set.
+    const fields: FormFieldDef[] = [
+      {
+        id: "title",
+        section: "session",
+        kind: "text",
+        label: "Title",
+        required: true,
+        position: 0,
+        rule: { fieldId: "extra_notes", op: "eq", value: "show title" },
+      },
+      {
+        id: "extra_notes",
+        section: "session",
+        kind: "text",
+        label: "Extra notes",
+        required: false,
+        position: 1,
+      },
+    ];
+    const answers = { extra_notes: "does not match" };
+    const hidden = resolveHiddenFieldIds(fields, answers);
+    expect(hidden.has("title")).toBe(false);
+  });
+
+  it("a locked 'email' field with a rule pointing at a missing field is still never hidden", () => {
+    const fields: FormFieldDef[] = [
+      {
+        id: "email",
+        section: "speaker",
+        kind: "text",
+        label: "Email",
+        required: true,
+        position: 0,
+        rule: { fieldId: "no_such_field", op: "eq", value: "x" },
+      },
+    ];
+    const hidden = resolveHiddenFieldIds(fields, {});
+    expect(hidden.has("email")).toBe(false);
+  });
+
+  it("also holds for a raw per-form-PK locked id ('form-1:title')", () => {
+    const fields: FormFieldDef[] = [
+      {
+        id: "form-1:title",
+        section: "session",
+        kind: "text",
+        label: "Title",
+        required: true,
+        position: 0,
+        rule: { fieldId: "extra_notes", op: "eq", value: "show title" },
+      },
+      {
+        id: "extra_notes",
+        section: "session",
+        kind: "text",
+        label: "Extra notes",
+        required: false,
+        position: 1,
+      },
+    ];
+    const hidden = resolveHiddenFieldIds(fields, { extra_notes: "no match" });
+    expect(hidden.has("form-1:title")).toBe(false);
+  });
+});
+
+describe("validateAnswers: a locked email field with a false-evaluating rule is still validated (DEC-625)", () => {
+  it("an invalid email on a locked 'email' field with a rule fails validation instead of being stripped as hidden", () => {
+    const fields: FormFieldDef[] = [
+      {
+        id: "extra_notes",
+        section: "session",
+        kind: "text",
+        label: "Extra notes",
+        required: false,
+        position: 0,
+      },
+      {
+        id: "email",
+        section: "speaker",
+        kind: "text",
+        label: "Email",
+        required: true,
+        position: 1,
+        // Rule condition is false against the given answers -- if the
+        // locked field were hideable, this would strip it and the bad
+        // email would never be validated.
+        rule: { fieldId: "extra_notes", op: "eq", value: "show email" },
+      },
+    ];
+    const answers = { extra_notes: "does not match", email: "not-an-email" };
+    const result = validateAnswers(fields, answers);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.errors.email).toBe("must be a valid email address");
   });
 });
 
