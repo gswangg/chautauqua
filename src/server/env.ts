@@ -15,7 +15,7 @@ export type Bindings = {
   PUBLIC_BASE_URL?: string;
   // Stage 2: Cloudflare Email Service binding + sender identity. Optional so
   // test env fixtures and pre-deploy local dev stay green; makeMailer only
-  // selects the real mailer when EMAIL is bound and DEV_MODE is unset.
+  // selects the real mailer when EMAIL is bound and isDevMode(env) is false.
   EMAIL?: import("../mail/email-binding").EmailSender;
   MAIL_FROM_EMAIL?: string;
   MAIL_FROM_NAME?: string;
@@ -48,3 +48,14 @@ export type AppEnv = {
     auth?: AuthInfo;
   };
 };
+
+/** DEC-434: the ONE dev-mode predicate. `DEV_MODE === "1"` is the ONLY value
+ * that means dev mode — every other value (unset, "", "0", "true", "yes",
+ * ...) means production/non-dev. Every gate in the codebase (makeMailer's
+ * mailer selection, shouldMountDevMailbox, resolveBaseUrl's loopback
+ * sniffing) MUST delegate to this function rather than re-spelling the
+ * comparison, so DEV_MODE="0" can never silently select dev behavior in one
+ * place (truthiness) while a strict-equality check elsewhere disagrees. */
+export function isDevMode(env: Pick<Bindings, "DEV_MODE">): boolean {
+  return env.DEV_MODE === "1";
+}
