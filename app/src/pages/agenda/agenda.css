@@ -1,0 +1,225 @@
+/* app/src/pages/agenda/agenda.css — page lane for the Agenda area
+   (DEC-368): classes prefixed .chq-agenda-* / .chq-day-grid-* /
+   .chq-session-card-* / .chq-unscheduled-tray-* / .chq-conflict-caption.
+   Imported by Agenda.tsx only. Never redefines a shared .chq-* class from
+   app/src/styles.css. Desktop day grid only (DEC-366..369); phone
+   tap-to-place is a later wave. */
+
+.chq-agenda-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.chq-agenda-toolbar {
+  gap: 16px;
+}
+
+.chq-agenda-summary strong {
+  color: var(--chq-ink);
+}
+
+.chq-agenda-day-tabs {
+  align-items: center;
+}
+
+.chq-agenda-clash-note {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--chq-muted);
+  white-space: nowrap;
+}
+
+.chq-agenda-layout {
+  display: grid;
+  grid-template-columns: 1fr 268px;
+  gap: 18px;
+  align-items: start;
+  margin-top: 18px;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Day grid: time down the left, rooms across the top                     */
+/* ---------------------------------------------------------------------- */
+
+.chq-day-grid {
+  display: grid;
+  border: 1px solid var(--chq-rule);
+  border-radius: var(--chq-r-card);
+  background: var(--chq-surface);
+  overflow: auto;
+}
+
+.chq-day-grid-corner {
+  border-bottom: 1px solid var(--chq-ink);
+  background: var(--chq-surface);
+  position: sticky;
+  top: 0;
+  left: 0;
+  z-index: 2;
+}
+
+.chq-day-grid-room-header {
+  border-bottom: 1px solid var(--chq-ink);
+  border-left: 1px solid var(--chq-hairline);
+  padding: 10px 10px;
+  font-family: var(--chq-font-display);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--chq-ink);
+  background: var(--chq-surface);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.chq-day-grid-time-label {
+  padding: 7px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--chq-muted);
+  border-bottom: 1px solid var(--chq-hairline);
+  position: sticky;
+  left: 0;
+  background: var(--chq-surface);
+}
+
+.chq-day-grid-cell {
+  border-bottom: 1px solid var(--chq-hairline);
+  border-left: 1px solid var(--chq-hairline);
+}
+
+.chq-day-grid-placed-card {
+  align-self: stretch;
+  justify-self: start;
+  height: 100%;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Session card                                                           */
+/* ---------------------------------------------------------------------- */
+
+.chq-session-card {
+  background: var(--chq-surface);
+  border: 1px solid var(--chq-rule);
+  border-left: 3px solid var(--chq-border);
+  border-radius: var(--chq-r-ctl);
+  padding: 7px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  cursor: grab;
+}
+
+.chq-session-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.chq-session-card-ref {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--chq-muted);
+}
+
+.chq-session-card-handle {
+  font-size: 12px;
+  line-height: 1;
+  color: var(--chq-muted);
+  letter-spacing: 0.05em;
+}
+
+.chq-session-card-title {
+  font-family: var(--chq-font-display);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--chq-ink);
+}
+
+.chq-session-card-speakers {
+  font-size: 11px;
+  color: var(--chq-muted);
+}
+
+/* Conflicted card: inverts to ink/on-ink — no red chip, no track accent
+   (DEC-367: no red, lateness/clash are type, never colour). The write is
+   never blocked (DEC-010). */
+.chq-session-card-conflict {
+  background: var(--chq-ink);
+  border-color: var(--chq-ink);
+  border-left: 1px solid var(--chq-ink);
+  color: var(--chq-on-ink);
+}
+
+.chq-session-card-conflict .chq-session-card-ref,
+.chq-session-card-conflict .chq-session-card-speakers,
+.chq-session-card-conflict .chq-session-card-handle {
+  color: var(--chq-on-ink-muted);
+}
+
+.chq-session-card-conflict .chq-session-card-title {
+  color: var(--chq-on-ink);
+}
+
+.chq-conflict-caption {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--chq-on-ink);
+  border-bottom: 2px solid var(--chq-on-ink);
+  align-self: flex-start;
+  margin-top: 2px;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Unscheduled tray                                                       */
+/* ---------------------------------------------------------------------- */
+
+.chq-unscheduled-tray {
+  border: 1px dashed var(--chq-border);
+  border-radius: var(--chq-r-card);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.chq-unscheduled-tray-header {
+  font-family: var(--chq-font-display);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--chq-ink);
+}
+
+.chq-unscheduled-tray-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.chq-unscheduled-tray-empty {
+  font-size: 13px;
+  color: var(--chq-muted);
+}
+
+.chq-unscheduled-tray-hint {
+  font-size: 11px;
+  color: var(--chq-muted);
+  line-height: 1.5;
+  margin: 0;
+}
+
+@media (max-width: 900px) {
+  .chq-agenda-layout {
+    grid-template-columns: 1fr;
+  }
+}

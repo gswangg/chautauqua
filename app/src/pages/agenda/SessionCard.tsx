@@ -24,13 +24,19 @@ interface SessionCardProps {
    * target as an empty cell. */
   onDragOver?: (e: DragEvent<HTMLDivElement>) => void;
   onDrop?: (e: DragEvent<HTMLDivElement>) => void;
+  /** Shows the ⋮⋮ drag affordance in the card header (the unscheduled
+   * tray's list-of-cards presentation; placed day-grid cards omit it). */
+  dragHandle?: boolean;
 }
 
 /** Drag-drop source card for a session; track colors render as a left
- * accent border (DEC-021). Draggable via HTML5 DnD, carrying the submission
- * id as plain text + a scoped MIME type. */
-export function SessionCard({ session, tracks, conflicts, style, className, onDragOver, onDrop }: SessionCardProps) {
+ * accent border on an unconflicted card only (DEC-021, DEC-367/369 redesign:
+ * a conflicted card inverts to ink/on-ink instead of carrying a track
+ * accent). Draggable via HTML5 DnD, carrying the submission id as plain
+ * text + a scoped MIME type. */
+export function SessionCard({ session, tracks, conflicts, style, className, onDragOver, onDrop, dragHandle }: SessionCardProps) {
   const accentColor = tracks.find((t) => session.trackIds.includes(t.id))?.color ?? undefined;
+  const conflicted = conflicts.some((c) => c.submissionIds.includes(session.submissionId));
 
   function handleDragStart(e: DragEvent<HTMLDivElement>) {
     e.dataTransfer.setData(AGENDA_DRAG_MIME, session.submissionId);
@@ -44,15 +50,23 @@ export function SessionCard({ session, tracks, conflicts, style, className, onDr
 
   return (
     <div
-      className={`chq-session-card${className ? ` ${className}` : ''}`}
-      style={{ borderLeftColor: accentColor ?? 'var(--chq-border)', ...style }}
+      className={`chq-session-card${conflicted ? ' chq-session-card-conflict' : ''}${className ? ` ${className}` : ''}`}
+      style={{ ...(conflicted ? {} : { borderLeftColor: accentColor ?? 'var(--chq-border)' }), ...style }}
       draggable
       onDragStart={handleDragStart}
       onDragOver={onDragOver}
       onDrop={onDrop}
       data-submission-id={session.submissionId}
+      data-conflict={conflicted ? 'true' : undefined}
     >
-      <div className="chq-session-card-ref">{session.ref}</div>
+      <div className="chq-session-card-head">
+        <div className="chq-session-card-ref">{session.ref}</div>
+        {dragHandle && (
+          <span className="chq-session-card-handle" aria-hidden="true">
+            ⋮⋮
+          </span>
+        )}
+      </div>
       <div className="chq-session-card-title">{session.title}</div>
       {session.speakers.length > 0 && (
         <div className="chq-session-card-speakers">

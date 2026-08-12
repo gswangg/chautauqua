@@ -28,9 +28,10 @@ export function UnscheduledTray({ sessions, tracks, conflicts, onDropUnschedule 
       <div className="chq-unscheduled-tray-list">
         {sessions.length === 0 && <p className="chq-unscheduled-tray-empty">All accepted sessions are placed.</p>}
         {sessions.map((session) => (
-          <SessionCard key={session.submissionId} session={session} tracks={tracks} conflicts={conflicts} />
+          <SessionCard key={session.submissionId} session={session} tracks={tracks} conflicts={conflicts} dragHandle />
         ))}
       </div>
+      <p className="chq-unscheduled-tray-hint">Drag to a slot &middot; drag back to unschedule</p>
     </div>
   );
 }

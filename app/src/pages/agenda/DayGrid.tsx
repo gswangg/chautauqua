@@ -1,7 +1,7 @@
 import type { DragEvent } from 'react';
 import type { AgendaConflict, AgendaRoom, AgendaTrack, PlacedAgendaSession } from './types';
 import { SessionCard } from './SessionCard';
-import { formatMinutes, gridRowEnd, minutesToGridRow, snapToGrid, totalGridRows } from './gridMath';
+import { assignLanes, formatMinutes, gridRowEnd, minutesToGridRow, snapToGrid, totalGridRows } from './gridMath';
 
 interface DayGridProps {
   day: string;
@@ -35,6 +35,18 @@ export function DayGrid({
   const rows = totalGridRows(dayStartMin, dayEndMin, gridMin);
   const columns = [...rooms.map((r) => r.id), '__tbd__'];
   const dayPlaced = placed.filter((s) => s.day === day);
+
+  // Overlapping blocks in the same room column render side-by-side via
+  // assignLanes (DEC-140 pattern) so every card stays an independent drop
+  // target for the pointer instead of the top card eating the click.
+  const roomKey = (roomId: string | null) => roomId ?? '__tbd__';
+  const lanesByRoom = new Map<string, ReturnType<typeof assignLanes<{ id: string; startMin: number; endMin: number }>>>();
+  for (const key of new Set(dayPlaced.map((s) => roomKey(s.roomId)))) {
+    const items = dayPlaced
+      .filter((s) => roomKey(s.roomId) === key)
+      .map((s) => ({ id: s.submissionId, startMin: s.startMin, endMin: s.endMin }));
+    lanesByRoom.set(key, assignLanes(items));
+  }
 
   function durationForDrag(e: DragEvent<HTMLDivElement>): number {
     const raw = e.dataTransfer.getData('application/x-chq-duration-min');
@@ -106,6 +118,9 @@ export function DayGrid({
         if (colIdx < 0) return null;
         const rowStart = minutesToGridRow(session.startMin, dayStartMin, gridMin);
         const rowEnd = gridRowEnd(session.endMin, dayStartMin, gridMin);
+        const laned = lanesByRoom.get(roomKey(session.roomId))?.find((l) => l.item.id === session.submissionId);
+        const lane = laned?.lane ?? 0;
+        const laneCount = laned?.laneCount ?? 1;
         return (
           <SessionCard
             key={session.submissionId}
@@ -113,7 +128,12 @@ export function DayGrid({
             tracks={tracks}
             conflicts={conflicts}
             className="chq-day-grid-placed-card"
-            style={{ gridColumn: colIdx + 2, gridRow: `${rowStart} / ${rowEnd}` }}
+            style={{
+              gridColumn: colIdx + 2,
+              gridRow: `${rowStart} / ${rowEnd}`,
+              width: `calc(100% / ${laneCount})`,
+              marginInlineStart: `calc(100% / ${laneCount} * ${lane})`,
+            }}
             onDragOver={handleDragOver}
             onDrop={(e) => handleDrop(e, session.roomId, session.startMin)}
           />

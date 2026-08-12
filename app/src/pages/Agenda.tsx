@@ -5,6 +5,7 @@ import { DayGrid } from './agenda/DayGrid';
 import { UnscheduledTray } from './agenda/UnscheduledTray';
 import { placeOptimistically, reconcileConflictsSummary, unscheduleOptimistically } from './agenda/state';
 import type { AgendaPayload, RefreshedConflictsSummary } from './agenda/types';
+import './agenda/agenda.css';
 
 const DAY_START_MIN = 540;
 const DAY_END_MIN = 1080;
@@ -124,7 +125,9 @@ export function AgendaPage() {
 
   return (
     <div className="chq-page chq-agenda-page">
-      <h1>Agenda</h1>
+      <div className="chq-agenda-head">
+        <h1 className="chq-page-title">Agenda</h1>
+      </div>
 
       {error && <div className="chq-error-banner">{error}</div>}
       {toast && (
@@ -136,14 +139,14 @@ export function AgendaPage() {
         </div>
       )}
 
-      <div className="chq-agenda-toolbar">
-        <div className="chq-agenda-summary">
+      <div className="chq-toolbar chq-agenda-toolbar">
+        <div className="chq-summary chq-agenda-summary">
           <strong>{agenda?.summary.unplaced ?? 0}</strong> unplaced &middot; <strong>{agenda?.summary.conflicts ?? 0}</strong> conflicts
         </div>
-        <button type="button" onClick={handleAutoSchedule} disabled={autoScheduling || !agenda}>
+        <button type="button" className="chq-btn chq-btn-secondary" onClick={handleAutoSchedule} disabled={autoScheduling || !agenda}>
           {autoScheduling ? 'Auto-scheduling...' : 'Auto-schedule'}
         </button>
-        <button type="button" onClick={handlePublish} disabled={publishing || !agenda}>
+        <button type="button" className="chq-btn chq-btn-primary" onClick={handlePublish} disabled={publishing || !agenda}>
           {publishing ? 'Publishing...' : 'Publish schedule'}
         </button>
       </div>
@@ -152,7 +155,7 @@ export function AgendaPage() {
 
       {!loading && agenda && (
         <>
-          <div className="chq-agenda-day-tabs" role="tablist">
+          <div className="chq-agenda-day-tabs chq-chipstrip" role="tablist">
             {agenda.days.map((day) => (
               <button
                 key={day}
@@ -165,6 +168,7 @@ export function AgendaPage() {
                 {day}
               </button>
             ))}
+            <span className="chq-agenda-clash-note">Clashes are flagged, not blocked</span>
           </div>
 
           <div className="chq-agenda-layout">
