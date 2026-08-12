@@ -11,6 +11,16 @@ import { errorEnvelope, mockApi } from '../test-utils/mockApi';
 import type { OverviewPayload } from './overview/types';
 
 const EVENT_ID = 'evt-render-2';
+const EVENT_SLUG = 'devflow-conf-2027';
+
+function eventsListEnvelope() {
+  return {
+    items: [{ id: EVENT_ID, slug: EVENT_SLUG }],
+    total: 1,
+    page: 1,
+    perPage: 20,
+  };
+}
 
 function payload(): OverviewPayload {
   return {
@@ -117,6 +127,7 @@ describe('OverviewPage render smoke (DEC-370)', () => {
   it('renders named rows in every section', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/overview`]: payload(),
+      'GET /api/v1/events': eventsListEnvelope(),
     });
 
     render(
@@ -141,11 +152,62 @@ describe('OverviewPage render smoke (DEC-370)', () => {
     expect(screen.getByText('Two sessions in one room')).toBeInTheDocument();
     expect(screen.getByText('Speaker double-booked')).toBeInTheDocument();
     expect(document.body.textContent).not.toMatch(/[A-Z]+_[A-Z]+/);
+
+    // DEC-611: toolbar actions beside the headline.
+    const exportLink = screen.getByRole('link', { name: 'Export submissions' });
+    expect(exportLink).toHaveAttribute('href', `/api/v1/events/${EVENT_ID}/export/submissions`);
+    const newSubmissionLink = screen.getByRole('link', { name: 'New submission' });
+    expect(newSubmissionLink).toHaveAttribute('href', '/submissions');
+
+    // DEC-611: Public pages section — one row per surface, linked by the
+    // event's real slug (resolved from GET /api/v1/events), never a guessed
+    // slugification of the name.
+    await waitFor(() => {
+      expect(screen.getByText('Public pages')).toBeInTheDocument();
+    });
+    expect(screen.getByText('Sessions')).toBeInTheDocument();
+    expect(screen.getByText('Speakers')).toBeInTheDocument();
+    expect(screen.getByText('Gallery')).toBeInTheDocument();
+    expect(screen.getByText('Agenda')).toBeInTheDocument();
+    expect(screen.getByText('Schedule')).toBeInTheDocument();
+    expect(screen.getByText('CFP form')).toBeInTheDocument();
+
+    const openLinks = await screen.findAllByRole('link', { name: 'Open' });
+    const hrefs = openLinks.map((link) => link.getAttribute('href'));
+    expect(hrefs).toEqual([
+      `/e/${EVENT_SLUG}/sessions`,
+      `/e/${EVENT_SLUG}/speakers`,
+      `/e/${EVENT_SLUG}/gallery`,
+      `/e/${EVENT_SLUG}/agenda`,
+      `/e/${EVENT_SLUG}/schedule`,
+      `/submit/${EVENT_SLUG}`,
+    ]);
+  });
+
+  it('renders unlinked public-page names with a reason when the slug cannot be resolved', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/overview`]: payload(),
+      'GET /api/v1/events': { items: [], total: 0, page: 1, perPage: 20 },
+    });
+
+    render(
+      <MemoryRouter>
+        <OverviewPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(screen.getByText('Public pages')).toBeInTheDocument());
+    await waitFor(() => {
+      expect(screen.getAllByText('Event not found in the events list').length).toBe(6);
+    });
+    expect(screen.getByText('Sessions')).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Open' })).not.toBeInTheDocument();
   });
 
   it('fires the accept endpoint and removes the row optimistically', async () => {
     const fetchMock = mockApi({
       [`GET /api/v1/events/${EVENT_ID}/overview`]: payload(),
+      'GET /api/v1/events': eventsListEnvelope(),
       [`POST /api/v1/events/${EVENT_ID}/submissions/status`]: { updated: 1 },
     });
 
@@ -173,6 +235,7 @@ describe('OverviewPage render smoke (DEC-370)', () => {
   it('rolls back loudly when an action fails', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/overview`]: payload(),
+      'GET /api/v1/events': eventsListEnvelope(),
       [`POST /api/v1/events/${EVENT_ID}/submissions/status`]: {
         status: 409,
         body: errorEnvelope('conflict', 'Submission already decided'),
