@@ -430,3 +430,26 @@ compare phone frames pixel-for-pixel.
     its own container not the page; phone tab bar to fixed bottom + 44px pills;
     New-task Kind labels per mock (Upload/Form/Acknowledge), styled date; roster phone
     screen still missing entirely.
+
+## APPENDED: SECOND P0 REGRESSION on main — FIX FIRST (2026-08-12 night)
+
+33. **P0: REVIEWER ROLE IS FULLY BROKEN.** Reviewer login → every /admin/* route
+    renders a BLANK PAGE: the shared shell's badge counts unconditionally fetch the
+    organizer-only /api/v1/events/:id/overview → 403 → unhandled TypeError
+    (undefined.length) in the SPA → empty body. 3/3 deterministic. TWO fixes, both
+    required: (a) the shell fetches role-appropriate data only (no organizer
+    endpoints for reviewers); (b) THE CLASS: an API error in shell/page data may
+    NEVER yield a blank page — fail loudly with a rendered error state (this is the
+    third undefined.length blank-page bug: Overview DEC-370, now the shell). Add a
+    render-sweep assertion: every route × every role renders non-empty or a designed
+    error/role-boundary state. **Run the per-role render sweep EARLY in the next
+    wave, not only at exit — two P0s (this + framing headers) shipped mid-round and
+    only outside QA caught them.**
+34. r2-Review dispositions: KEEP (resolved, done well): organiser three-region landing
+    (DEC-632/633), inline Accept/Decline results, DEC-596 evaluations expansion.
+    STILL TO BUILD: plan editor + the ENTIRE v4 criteria spec (freeze state verified
+    absent on a closed 20/24 plan); results table needs SPEAKER + TRACK columns and
+    the blended SCORE shape; visible Edit affordance on plan rows; de-duplicate the
+    reviewer-progress section headers; mock copy ("Remind the 4 not started" as
+    tertiary, three-state DONE/NOT STARTED/N TO GO, full page summary, page-level
+    Export results CSV).
