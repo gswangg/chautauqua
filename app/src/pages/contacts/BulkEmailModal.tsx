@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { apiList, apiPost, ApiError } from '../../lib/api';
 import { ModalFrame } from '../../components/ModalFrame';
 import { BULK_EMAIL_MERGE_FIELDS, MAX_COMPOSE_RECIPIENTS as BULK_EMAIL_RECIPIENT_CAP } from '../../lib/merge-fields';
+import { describeSendResult, type SendResult } from '../../lib/sendResult';
 
 interface Props {
   contactIds: string[];
@@ -35,7 +36,7 @@ export function BulkEmailModal({ contactIds, eventId, onClose }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [step, setStep] = useState<Step>('compose');
   const [preview, setPreview] = useState<PreviewItem[]>([]);
-  const [sent, setSent] = useState<number | null>(null);
+  const [sendResult, setSendResult] = useState<SendResult | null>(null);
 
   const overCap = contactIds.length > BULK_EMAIL_RECIPIENT_CAP;
 
@@ -87,13 +88,13 @@ export function BulkEmailModal({ contactIds, eventId, onClose }: Props) {
     setBusy(true);
     setError(null);
     try {
-      const res = await apiPost<{ sent: number }>('/contacts/bulk-email', {
+      const res = await apiPost<SendResult>('/contacts/bulk-email', {
         contactIds,
         eventId,
         subject,
         bodyText,
       });
-      setSent(res.sent);
+      setSendResult(res);
       setStep('sent');
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Bulk email failed');
@@ -132,7 +133,7 @@ export function BulkEmailModal({ contactIds, eventId, onClose }: Props) {
         </button>
       </>
     );
-  } else if (step === 'sent' && sent !== null) {
+  } else if (step === 'sent' && sendResult !== null) {
     actions = (
       <button type="button" className="chq-btn chq-btn-primary" onClick={onClose}>
         Done
@@ -219,11 +220,16 @@ export function BulkEmailModal({ contactIds, eventId, onClose }: Props) {
         </>
       )}
 
-      {step === 'sent' && sent !== null && (
+      {step === 'sent' && sendResult && (
         <div className="chq-bulk-email-result">
-          <p>
-            Sent {sent} email{sent === 1 ? '' : 's'}.
-          </p>
+          <p>{describeSendResult(sendResult, { one: 'email', many: 'emails' })}</p>
+          {sendResult.failed && sendResult.failed.length > 0 && (
+            <ul>
+              {sendResult.failed.map((f) => (
+                <li key={f.email}>{f.email}</li>
+              ))}
+            </ul>
+          )}
           <a href="/admin/comms">View in Comms history</a>
         </div>
       )}

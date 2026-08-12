@@ -148,6 +148,39 @@ describe('ComposeWizard recipient picker', () => {
     }
   });
 
+  // DEC-677: the compose send step renders the server's SendResult through
+  // describeSendResult (one reporter), not a hand-built "Sent N" sentence,
+  // and lists the failed addresses the server already reports.
+  it('renders one sentence naming sent and failed counts, and lists the failed address', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope(page1(), { total: 340, page: 1, perPage: 50 }),
+      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
+      [`POST /api/v1/events/${EVENT_ID}/compose/preview`]: { items: [] },
+      [`POST /api/v1/events/${EVENT_ID}/compose/send`]: {
+        sent: 2,
+        failed: [{ email: 'bad@example.com', message: 'bounced' }],
+        items: [],
+      },
+    });
+
+    render(<ComposeWizard eventId={EVENT_ID} />);
+
+    await screen.findByText('Talk number 1');
+    fireEvent.click(screen.getByLabelText('Select Talk number 1'));
+    fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
+
+    const subject = await screen.findByLabelText('Subject');
+    fireEvent.change(subject, { target: { value: 'Hello' } });
+    fireEvent.change(screen.getByLabelText('Body'), { target: { value: 'Body text' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Next: preview' }));
+
+    await screen.findByText(/Preview/);
+    fireEvent.click(screen.getByRole('button', { name: /Send \d+ emails?/ }));
+
+    expect(await screen.findByText('Sent to 2 emails. 1 failure.')).toBeInTheDocument();
+    expect(screen.getByText('bad@example.com')).toBeInTheDocument();
+  });
+
   it('carries chq-input/chq-textarea on step 2 subject/body and shell classes on its buttons', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope(page1(), { total: 340, page: 1, perPage: 50 }),

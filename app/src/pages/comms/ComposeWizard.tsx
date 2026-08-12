@@ -3,6 +3,7 @@ import { apiList, apiPost, ApiError } from '../../lib/api';
 import { buildSubmissionsQuery } from '../submissions/filters';
 import { DEFAULT_FILTER_STATE, STATUS_LABELS, SUBMISSION_STATUSES, type SubmissionListItem, type SubmissionStatus } from '../submissions/types';
 import { PreviewPane } from './PreviewPane';
+import { describeSendResult, type SendResult } from '../../lib/sendResult';
 import type { EmailTemplate, RenderedRecipient } from './types';
 
 // J5's decide != notify: the picker defaults to the two decided statuses so
@@ -53,7 +54,7 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
   // attachIcs was requested. Surfaced literally next to the toggle — never
   // pre-filtered client-side, since that would hide the server's contract.
   const [icsUnscheduledIds, setIcsUnscheduledIds] = useState<string[] | null>(null);
-  const [sentCount, setSentCount] = useState<number | null>(null);
+  const [sendResult, setSendResult] = useState<SendResult | null>(null);
 
   useEffect(() => {
     setLoadingSubmissions(true);
@@ -167,8 +168,8 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
     setError(null);
     setIcsUnscheduledIds(null);
     try {
-      const res = await apiPost<{ sent: number }>(`/events/${eventId}/compose/send`, composeBody());
-      setSentCount(res.sent);
+      const res = await apiPost<SendResult>(`/events/${eventId}/compose/send`, composeBody());
+      setSendResult(res);
       setStep('sent');
     } catch (err) {
       if (err instanceof ApiError) {
@@ -199,7 +200,7 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
     setAttachIcs(false);
     setPreview([]);
     setPreviewIndex(0);
-    setSentCount(null);
+    setSendResult(null);
     setCapMessage(null);
     setIcsUnscheduledIds(null);
     setError(null);
@@ -508,7 +509,14 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
           <div className="chq-section-head">
             <span className="chq-section-label">Sent</span>
           </div>
-          <p>Sent {sentCount} email{sentCount === 1 ? '' : 's'}.</p>
+          {sendResult && <p>{describeSendResult(sendResult, { one: 'email', many: 'emails' })}</p>}
+          {sendResult?.failed && sendResult.failed.length > 0 && (
+            <ul>
+              {sendResult.failed.map((f) => (
+                <li key={f.email}>{f.email}</li>
+              ))}
+            </ul>
+          )}
           <button type="button" className="chq-btn chq-btn-primary" onClick={reset}>
             Compose another
           </button>
