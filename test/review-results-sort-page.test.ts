@@ -56,6 +56,9 @@ vi.mock("../src/server/repo/review", async () => {
       planId === plan.id && orgId === ORG_A ? plan : null,
     ),
     listPlanFilteredSubmissions: vi.fn(async () => submissions),
+    // DEC-703: batched speaker/track lookups -- no fixtures here.
+    listSpeakerNamesForSubmissions: vi.fn(async () => new Map()),
+    listTrackNamesForSubmissions: vi.fn(async () => new Map()),
     listEvaluationsForPlan: vi.fn(async (_db: unknown, planId: string, round: number) =>
       evaluations.filter((e) => e.planId === planId && e.round === round),
     ),
@@ -164,8 +167,9 @@ describe("DEC-345: results sort + paging", () => {
   });
 
   // DEC-632/DEC-633: the CSV export and the screen must agree -- a Status
-  // column, right after Title, carrying each submission's decision state.
-  it("?format=csv gains a Status column right after Title", async () => {
+  // column carrying each submission's decision state. DEC-703 inserts
+  // Speaker/Track between Title and Status, so Status now sits at index 4.
+  it("?format=csv gains a Status column after Title/Speaker/Track", async () => {
     const app = await buildApp(organizer);
     const res = await app.request(`/api/v1/plans/${plan.id}/results?format=csv&sort=ref&dir=asc`);
     expect(res.status).toBe(200);
@@ -174,9 +178,11 @@ describe("DEC-345: results sort + paging", () => {
     const headerCols = header!.split(",");
     expect(headerCols[0]).toBe("ref");
     expect(headerCols[1]).toBe("title");
-    expect(headerCols[2]).toBe("Status");
+    expect(headerCols[2]).toBe("Speaker");
+    expect(headerCols[3]).toBe("Track");
+    expect(headerCols[4]).toBe("Status");
     const rows = dataLines.map((line) => line.split(","));
-    expect(rows.map((r) => r[2])).toEqual(["pending", "accepted", "pending"]);
+    expect(rows.map((r) => r[4])).toEqual(["pending", "accepted", "pending"]);
   });
 
   it("rejects an unknown sort column", async () => {

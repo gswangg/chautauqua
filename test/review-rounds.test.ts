@@ -93,6 +93,8 @@ vi.mock("../src/server/repo/review", async () => {
     ]),
     getUsersByIds: vi.fn(async () => [{ userId: "rev-1", email: "rev1@org.test" }]),
     listPlanFilteredSubmissions: vi.fn(async () => [submission]),
+    listSpeakerNamesForSubmissions: vi.fn(async () => new Map()),
+    listTrackNamesForSubmissions: vi.fn(async () => new Map()),
     resolveReviewerSubmissions: vi.fn(async () => [submission]),
     // DEC-087: real round-scoped filtering, exercising the unique-index
     // semantics via the in-memory store rather than a caller-side re-filter.

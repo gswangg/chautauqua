@@ -26,9 +26,10 @@ import * as repo from "../../server/repo/review";
 import { roundCriteriaJsonOf } from "../../server/repo/review";
 import type { PlanRecord } from "../../server/repo/review";
 import { isEpochMs, isEpochOrderValid } from "../api/validators"; // DEC-517
-import { DEC_676 } from "../../decisions";
+import { DEC_676, DEC_703 } from "../../decisions";
 
 void DEC_676; // parseCriteriaList's guidance passthrough below
+void DEC_703; // buildResults' speakers/trackNames columns below
 
 export function asRecord(body: unknown): Record<string, unknown> {
   if (typeof body !== "object" || body === null) {
@@ -311,6 +312,11 @@ export interface ResultsRow {
   // (and its CSV export) tell the truth about accept/reject/waitlist rather
   // than always rendering a pair of pending decision buttons.
   status: string;
+  // DEC-703: who this is and where it goes, so the one screen an organizer
+  // decides the programme from doesn't require leaving the page. Visible-
+  // participant order (speakers) / track.position order (trackNames).
+  speakers: string[];
+  trackNames: string[];
 }
 
 export async function buildResults(
@@ -339,6 +345,14 @@ export async function buildResults(
     evalsBySubmission.set(e.submissionId, list);
   }
 
+  // DEC-703: SPEAKER and TRACK for the results row -- ONE batched query
+  // each, keyed to this call's own submission id set (never a per-row read,
+  // never an unscoped full-table scan). Shared by both the paginated JSON
+  // response and the CSV export, so the two never disagree.
+  const submissionIds = submissions.map((sub) => sub.id);
+  const speakersBySubmission = await repo.listSpeakerNamesForSubmissions(c.var.db, submissionIds);
+  const trackNamesBySubmission = await repo.listTrackNamesForSubmissions(c.var.db, submissionIds);
+
   const rows: ResultsRow[] = submissions.map((sub) => {
     const subEvals = evalsBySubmission.get(sub.id) ?? [];
     const evals = subEvals.map((e) => ({ scores: e.scores as unknown as EvaluationScores }));
@@ -357,6 +371,8 @@ export async function buildResults(
       perCriterion: agg.perCriterion,
       perDropdown,
       status: sub.status,
+      speakers: speakersBySubmission.get(sub.id) ?? [],
+      trackNames: trackNamesBySubmission.get(sub.id) ?? [],
     };
   });
   return buildResultsRows(rows);

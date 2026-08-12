@@ -118,7 +118,7 @@ describe('ReviewPage render smoke: organizer', () => {
       [`GET /api/v1/plans/plan-b/progress`]: listEnvelope([]),
       [`GET /api/v1/plans/${PLAN_ID}`]: planWithNullDates(),
       [`GET /api/v1/plans/${PLAN_ID}/results`]: listEnvelope([
-        { submissionId: 'sub-1', ref: 'S-001', title: 'A Talk', count: 2, average: 4.5, perCriterion: { c1: 4.5 } },
+        { submissionId: 'sub-1', ref: 'S-001', title: 'A Talk', count: 2, average: 4.5, perCriterion: { c1: 4.5 }, perDropdown: {}, status: 'pending', speakers: [], trackNames: [] },
       ]),
     });
 
@@ -248,7 +248,7 @@ describe('ReviewPage render smoke: organizer', () => {
       'GET /api/v1/me': organizerMe(),
       [`GET /api/v1/plans/${PLAN_ID}`]: planWithNullDates(),
       [`GET /api/v1/plans/${PLAN_ID}/results`]: listEnvelope([
-        { submissionId: 'sub-1', ref: 'S-001', title: 'A Talk', count: 2, average: 4.5, perCriterion: { c1: 4.5 } },
+        { submissionId: 'sub-1', ref: 'S-001', title: 'A Talk', count: 2, average: 4.5, perCriterion: { c1: 4.5 }, perDropdown: {}, status: 'pending', speakers: [], trackNames: [] },
       ]),
     });
 
