@@ -73,7 +73,7 @@ export function FieldModal({ field, allFields, onCancel, onSubmit }: FieldModalP
 
   return (
     <div className="chq-modal-overlay" role="dialog" aria-label={field ? 'Edit field' : 'New field'}>
-      <form className="chq-modal" onSubmit={handleSubmit}>
+      <form className="chq-modal chq-forms-field-modal" onSubmit={handleSubmit}>
         <h2>{field ? 'Edit field' : 'New field'}</h2>
 
         {error && <div className="chq-error-banner">{error}</div>}

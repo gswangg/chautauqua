@@ -7,6 +7,7 @@ import { apiGet, apiList, apiPatch, apiPost, ApiError } from '../../lib/api';
 import { formatDate as formatTimestamp } from '../../lib/dates';
 import type { CfpForm } from '../forms/types';
 import { buildAnswerRows, resolveAnswerFields } from './detailRows';
+import './detail.css';
 import {
   STATUS_LABELS,
   SUBMISSION_STATUSES,
@@ -280,8 +281,10 @@ export function SubmissionDetailPage() {
 
   if (loading) {
     return (
-      <div className="chq-page chq-submission-detail-page">
-        <Link to="/submissions">&larr; Back to submissions</Link>
+      <div className="chq-page chq-detail-page">
+        <Link to="/submissions" className="chq-detail-back">
+          &larr; All submissions
+        </Link>
         <p>Loading...</p>
       </div>
     );
@@ -289,8 +292,10 @@ export function SubmissionDetailPage() {
 
   if (!detail) {
     return (
-      <div className="chq-page chq-submission-detail-page">
-        <Link to="/submissions">&larr; Back to submissions</Link>
+      <div className="chq-page chq-detail-page">
+        <Link to="/submissions" className="chq-detail-back">
+          &larr; All submissions
+        </Link>
         {error && <div className="chq-error-banner">{error}</div>}
         {!error && <p>Submission not found.</p>}
       </div>
@@ -301,240 +306,272 @@ export function SubmissionDetailPage() {
   const answerRows = buildAnswerRows(detail.answers, resolveAnswerFields(form, detail.formId));
 
   return (
-    <div className="chq-page chq-submission-detail-page">
-      <Link to="/submissions">&larr; Back to submissions</Link>
-
-      <h1>
-        {detail.ref}: {detail.title}
-      </h1>
+    <div className="chq-page chq-detail-page">
+      <div className="chq-detail-topbar">
+        <Link to="/submissions" className="chq-detail-back">
+          &larr; All submissions
+        </Link>
+      </div>
 
       {error && <div className="chq-error-banner">{error}</div>}
 
-      <div className="chq-submission-detail-toolbar">
-        <label>
-          Status
-          <select
-            value={detail.status}
-            disabled={statusPending}
-            onChange={(e) => changeStatus(e.target.value as SubmissionStatus)}
-          >
-            {SUBMISSION_STATUSES.map((status) => (
-              <option key={status} value={status}>
-                {STATUS_LABELS[status]}
-              </option>
-            ))}
-          </select>
-        </label>
-        <span className="chq-content-status">Content: {detail.contentStatus}</span>
-        <button
-          type="button"
-          disabled={contentStatusPending || detail.contentStatus === 'approved'}
-          onClick={() => changeContentStatus('approved')}
-        >
-          Approve content
-        </button>
-        <button
-          type="button"
-          disabled={contentStatusPending || detail.contentStatus === 'changes_requested'}
-          onClick={() => changeContentStatus('changes_requested')}
-        >
-          Request changes
-        </button>
-        <button type="button" disabled={cloning} onClick={cloneSubmission}>
-          Clone
-        </button>
-      </div>
+      <header className="chq-detail-heading">
+        <h1>
+          {detail.ref}: {detail.title}
+        </h1>
+      </header>
 
-      <section>
-        <h2>Session details</h2>
-        {!editing ? (
-          <>
-            {detail.description && <p>{detail.description}</p>}
-            <button type="button" onClick={startEditing}>
-              Edit
-            </button>
-          </>
-        ) : (
-          <div className="chq-submission-edit-form">
-            <label>
-              Title
-              <input
-                type="text"
-                value={editTitle}
-                disabled={savingEdit}
-                onChange={(e) => setEditTitle(e.target.value)}
-              />
-            </label>
-            <label>
-              Abstract
-              <textarea
-                value={editDescription}
-                disabled={savingEdit}
-                onChange={(e) => setEditDescription(e.target.value)}
-              />
-            </label>
-            <button type="button" disabled={savingEdit} onClick={saveEdit}>
-              Save
-            </button>
-            <button type="button" disabled={savingEdit} onClick={() => setEditing(false)}>
-              Cancel
-            </button>
-          </div>
-        )}
-      </section>
-
-      <section className="chq-submission-history">
-        <h2>
-          <button type="button" onClick={toggleHistory}>
-            {historyOpen ? 'Hide history' : 'Show history'}
-          </button>
-        </h2>
-        {historyOpen && (
-          <>
-            {historyError && <div className="chq-error-banner">{historyError}</div>}
-            {historyLoading ? (
-              <p>Loading history...</p>
-            ) : historyEntries.length === 0 ? (
-              <p>No edits recorded yet.</p>
-            ) : (
-              <ul className="chq-submission-history-list">
-                {historyEntries.map((entry) => (
-                  <li key={entry.id} className="chq-submission-history-entry">
-                    <div>
-                      <strong>{entry.editorName}</strong> &mdash; {formatTimestamp(entry.createdAt)}
-                    </div>
-                    <div>{entry.title}</div>
-                    <button
-                      type="button"
-                      disabled={restoringId === entry.id}
-                      onClick={() => restoreRevision(entry.id)}
-                    >
-                      Restore
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </>
-        )}
-      </section>
-
-      <section>
-        <h2>Tracks</h2>
-        {trackNames.length === 0 ? (
-          <p>No tracks assigned.</p>
-        ) : (
-          <ul className="chq-track-chips">
-            {trackNames.map((name, i) => (
-              <li key={detail.trackIds[i]} className="chq-track-chip">
-                {name}
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      <section>
-        <h2>Participants</h2>
-        {participantsError && <div className="chq-error-banner">{participantsError}</div>}
-        {detail.participants.length === 0 ? (
-          <p>No participants.</p>
-        ) : (
-          <table className="chq-participants-table">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Role</th>
-                <th>Visible</th>
-                <th>Invite status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {detail.participants.map((p) => (
-                <tr key={p.id}>
-                  <td>{p.name}</td>
-                  <td>{p.email}</td>
-                  <td>{p.role}</td>
-                  <td>
-                    <label className="chq-visible-toggle">
-                      <input
-                        type="checkbox"
-                        checked={p.visible}
-                        disabled={visiblePending === p.id}
-                        onChange={() => toggleParticipantVisible(p)}
-                        aria-label={`Visible: ${p.name}`}
-                      />
-                    </label>
-                  </td>
-                  <td>
-                    <InviteStatusChip status={p.inviteStatus} />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-
-        <div className="chq-add-co-presenter">
-          <label>
-            Add co-presenter
-            <input
-              type="search"
-              aria-label="Search contacts"
-              placeholder="Search contacts by name or email..."
-              value={coPresenterQuery}
-              onChange={(e) => setCoPresenterQuery(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  searchCoPresenters();
-                }
-              }}
-            />
-          </label>
-          <button type="button" disabled={coPresenterSearching} onClick={searchCoPresenters}>
-            Search
-          </button>
-          {coPresenterResults.length > 0 && (
-            <ul className="chq-co-presenter-results">
-              {coPresenterResults.map((contact) => (
-                <li key={contact.id}>
-                  <span>
-                    {contact.firstName} {contact.lastName} ({contact.email})
-                  </span>
-                  <button type="button" disabled={addingContactId === contact.id} onClick={() => addCoPresenter(contact)}>
-                    Add
+      <div className="chq-detail-layout">
+        <div className="chq-detail-main">
+          <section className="chq-detail-section">
+            <h2 className="chq-detail-section-title">Session details</h2>
+            <div className="chq-detail-section-body">
+              {!editing ? (
+                <>
+                  {detail.description && <p className="chq-detail-abstract">{detail.description}</p>}
+                  <button type="button" onClick={startEditing}>
+                    Edit
                   </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      </section>
+                </>
+              ) : (
+                <div className="chq-submission-edit-form">
+                  <label>
+                    Title
+                    <input
+                      type="text"
+                      value={editTitle}
+                      disabled={savingEdit}
+                      onChange={(e) => setEditTitle(e.target.value)}
+                    />
+                  </label>
+                  <label>
+                    Abstract
+                    <textarea
+                      value={editDescription}
+                      disabled={savingEdit}
+                      onChange={(e) => setEditDescription(e.target.value)}
+                    />
+                  </label>
+                  <button type="button" disabled={savingEdit} onClick={saveEdit}>
+                    Save
+                  </button>
+                  <button type="button" disabled={savingEdit} onClick={() => setEditing(false)}>
+                    Cancel
+                  </button>
+                </div>
+              )}
+            </div>
+          </section>
 
-      <section>
-        <h2>Answers</h2>
-        {answerRows.length === 0 ? (
-          <p>No custom answers.</p>
-        ) : (
-          <dl className="chq-answers-list">
-            {answerRows.map((row) => (
-              <div key={row.fieldId} className="chq-answer-row">
-                <dt>{row.label}</dt>
-                <dd>{row.displayValue}</dd>
+          <section className="chq-detail-section chq-submission-history">
+            <h2 className="chq-detail-section-title">
+              <button type="button" className="chq-detail-history-toggle" onClick={toggleHistory}>
+                {historyOpen ? 'Hide history' : 'Show history'}
+              </button>
+            </h2>
+            {historyOpen && (
+              <div className="chq-detail-section-body">
+                {historyError && <div className="chq-error-banner">{historyError}</div>}
+                {historyLoading ? (
+                  <p>Loading history...</p>
+                ) : historyEntries.length === 0 ? (
+                  <p>No edits recorded yet.</p>
+                ) : (
+                  <ul className="chq-submission-history-list">
+                    {historyEntries.map((entry) => (
+                      <li key={entry.id} className="chq-submission-history-entry">
+                        <div>
+                          <strong>{entry.editorName}</strong> &mdash; {formatTimestamp(entry.createdAt)}
+                        </div>
+                        <div>{entry.title}</div>
+                        <button
+                          type="button"
+                          disabled={restoringId === entry.id}
+                          onClick={() => restoreRevision(entry.id)}
+                        >
+                          Restore
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
-            ))}
-          </dl>
-        )}
-      </section>
+            )}
+          </section>
 
-      <section>
-        <h2>Meta</h2>
-        <p>Created: {formatDate(detail.createdAt)}</p>
-        <p>Updated: {formatDate(detail.updatedAt)}</p>
-        <p>Accepted: {formatDate(detail.acceptedAt)}</p>
-      </section>
+          <section className="chq-detail-section">
+            <h2 className="chq-detail-section-title">Tracks</h2>
+            <div className="chq-detail-section-body">
+              {trackNames.length === 0 ? (
+                <p>No tracks assigned.</p>
+              ) : (
+                <ul className="chq-track-chips">
+                  {trackNames.map((name, i) => (
+                    <li key={detail.trackIds[i]} className="chq-track-chip">
+                      {name}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </section>
+
+          <section className="chq-detail-section">
+            <h2 className="chq-detail-section-title">Participants</h2>
+            <div className="chq-detail-section-body">
+              {participantsError && <div className="chq-error-banner">{participantsError}</div>}
+              {detail.participants.length === 0 ? (
+                <p>No participants.</p>
+              ) : (
+                <table className="chq-table chq-participants-table">
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Email</th>
+                      <th>Role</th>
+                      <th>Visible</th>
+                      <th>Invite status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {detail.participants.map((p) => (
+                      <tr key={p.id}>
+                        <td>{p.name}</td>
+                        <td>{p.email}</td>
+                        <td>{p.role}</td>
+                        <td>
+                          <label className="chq-visible-toggle">
+                            <input
+                              type="checkbox"
+                              checked={p.visible}
+                              disabled={visiblePending === p.id}
+                              onChange={() => toggleParticipantVisible(p)}
+                              aria-label={`Visible: ${p.name}`}
+                            />
+                          </label>
+                        </td>
+                        <td>
+                          <InviteStatusChip status={p.inviteStatus} />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+
+              <div className="chq-add-co-presenter">
+                <label>
+                  Add co-presenter
+                  <input
+                    type="search"
+                    aria-label="Search contacts"
+                    placeholder="Search contacts by name or email..."
+                    value={coPresenterQuery}
+                    onChange={(e) => setCoPresenterQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        searchCoPresenters();
+                      }
+                    }}
+                  />
+                </label>
+                <button type="button" disabled={coPresenterSearching} onClick={searchCoPresenters}>
+                  Search
+                </button>
+                {coPresenterResults.length > 0 && (
+                  <ul className="chq-co-presenter-results">
+                    {coPresenterResults.map((contact) => (
+                      <li key={contact.id}>
+                        <span>
+                          {contact.firstName} {contact.lastName} ({contact.email})
+                        </span>
+                        <button
+                          type="button"
+                          disabled={addingContactId === contact.id}
+                          onClick={() => addCoPresenter(contact)}
+                        >
+                          Add
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          </section>
+
+          <section className="chq-detail-section">
+            <h2 className="chq-detail-section-title">Answers</h2>
+            <div className="chq-detail-section-body">
+              {answerRows.length === 0 ? (
+                <p>No custom answers.</p>
+              ) : (
+                <dl className="chq-answers-list">
+                  {answerRows.map((row) => (
+                    <div key={row.fieldId} className="chq-answer-row">
+                      <dt>{row.label}</dt>
+                      <dd>{row.displayValue}</dd>
+                    </div>
+                  ))}
+                </dl>
+              )}
+            </div>
+          </section>
+
+          <section className="chq-detail-section">
+            <h2 className="chq-detail-section-title">Meta</h2>
+            <div className="chq-detail-section-body">
+              <p>Created: {formatDate(detail.createdAt)}</p>
+              <p>Updated: {formatDate(detail.updatedAt)}</p>
+              <p>Accepted: {formatDate(detail.acceptedAt)}</p>
+            </div>
+          </section>
+        </div>
+
+        <aside className="chq-detail-aside">
+          <section className="chq-detail-section chq-detail-decision">
+            <h2 className="chq-detail-section-title">Decision</h2>
+            <div className="chq-detail-section-body chq-detail-decision-body">
+              <label className="chq-detail-decision-status">
+                Status
+                <select
+                  value={detail.status}
+                  disabled={statusPending}
+                  onChange={(e) => changeStatus(e.target.value as SubmissionStatus)}
+                >
+                  {SUBMISSION_STATUSES.map((status) => (
+                    <option key={status} value={status}>
+                      {STATUS_LABELS[status]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <span className="chq-content-status">Content: {detail.contentStatus}</span>
+              <div className="chq-detail-decision-actions">
+                <button
+                  type="button"
+                  disabled={contentStatusPending || detail.contentStatus === 'approved'}
+                  onClick={() => changeContentStatus('approved')}
+                >
+                  Approve content
+                </button>
+                <button
+                  type="button"
+                  disabled={contentStatusPending || detail.contentStatus === 'changes_requested'}
+                  onClick={() => changeContentStatus('changes_requested')}
+                >
+                  Request changes
+                </button>
+                <button type="button" disabled={cloning} onClick={cloneSubmission}>
+                  Clone
+                </button>
+              </div>
+              <p className="chq-detail-decision-note">Deciding never sends email. Notify the speaker from Comms.</p>
+            </div>
+          </section>
+        </aside>
+      </div>
     </div>
   );
 }

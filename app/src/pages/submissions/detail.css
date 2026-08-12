@@ -1,0 +1,192 @@
+/* Submission detail page (DEC-045, redesign DEC-366..368). Page-lane
+   styling only — never redefines a shared .chq-* class (DEC-368). Colour
+   values fall back to the DEC-367 tokens so this renders correctly whether
+   or not the shell lane has landed the shared :root custom properties yet. */
+
+.chq-detail-page {
+  font-family: var(--chq-font-body, 'Figtree', 'Helvetica Neue', Arial, sans-serif);
+  color: var(--chq-ink, #1b1d17);
+}
+
+.chq-detail-topbar {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.chq-detail-back {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.chq-detail-heading h1 {
+  margin: 0.25rem 0 1.25rem;
+  font-family: var(--chq-font-display, 'Familjen Grotesk', 'Figtree', sans-serif);
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+}
+
+/* Desktop: main column (form-shaped content) + decision aside. */
+.chq-detail-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 720px) 320px;
+  gap: 34px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .chq-detail-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.chq-detail-main {
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+  /* Required measure for form-shaped content: 660-760px. */
+  max-width: 720px;
+  min-width: 0;
+}
+
+.chq-detail-aside {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* Numbered sections with a 2px ink rule under the section title. */
+.chq-detail-main,
+.chq-detail-aside {
+  counter-reset: chq-detail-section;
+}
+
+.chq-detail-section {
+  counter-increment: chq-detail-section;
+}
+
+.chq-detail-section-title {
+  margin: 0;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--chq-ink, #1b1d17);
+  font-family: var(--chq-font-display, 'Familjen Grotesk', 'Figtree', sans-serif);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.chq-detail-section-title::before {
+  content: counter(chq-detail-section, decimal-leading-zero) ' \2014 ';
+  color: var(--chq-muted, #565a4b);
+}
+
+.chq-detail-section-title button {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.chq-detail-section-body {
+  padding-top: 14px;
+}
+
+/* Abstracts, reviewer comments and bios keep full length: no truncation
+   rules here (copy rule 6) -- line-height only, never -webkit-line-clamp,
+   max-height, or text-overflow. */
+.chq-detail-abstract {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.7;
+  color: var(--chq-ink, #1b1d17);
+}
+
+.chq-detail-decision {
+  border: 1px solid var(--chq-rule, #d3cfc0);
+  border-radius: 6px;
+  padding: 16px 18px 18px;
+  background: var(--chq-sunk, #efebdf);
+}
+
+.chq-detail-decision-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.chq-detail-decision-status {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--chq-muted, #565a4b);
+}
+
+.chq-detail-decision-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* States plainly that deciding never emails; notification is a separate,
+   explicit action taken from Comms (house invariant). */
+.chq-detail-decision-note {
+  margin: 4px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--chq-muted, #565a4b);
+}
+
+.chq-track-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chq-track-chip {
+  border: 1px solid var(--chq-border, #bab6a6);
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.chq-answers-list {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.chq-answer-row {
+  display: grid;
+  grid-template-columns: 190px 1fr;
+  gap: 20px;
+  align-items: baseline;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--chq-hairline, #e1ddce);
+}
+
+.chq-answer-row dt {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--chq-muted, #565a4b);
+}
+
+.chq-answer-row dd {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.6;
+}
