@@ -387,3 +387,6 @@ export const DEC_381 = "The phone tab bar's five destinations are Overview, Subm
 export const DEC_382 = "The three operator surfaces (/, /docs/api, /dev/mailbox) share one TOOLS_CSS module and the shell pattern; they are chrome, not designed screens";
 export const DEC_383 = "Page and surface stylesheets carry no colour literal at all; one allowlisted exception; no drop shadow anywhere";
 export const DEC_384 = "The wave-3 render-sweep gate is log-only; its open items become wave-4 tasks, never in-lane patches";
+export const DEC_385 = "One phone switch (max-width: 700px) and one set of phone metrics for every stylesheet in the product";
+export const DEC_386 = "Phone cards come from CSS on the same markup, and a phone card shows exactly the desktop row's cells";
+export const DEC_387 = "The render sweep gains an admin mobile pass, advisory in the wave that introduces it";
