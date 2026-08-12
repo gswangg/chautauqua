@@ -115,7 +115,7 @@ function findItemsEnvelopeSites(source: string, file: string): EnvelopeSite[] {
 // deliberate reviewed act -- see the file-header comment above for why each
 // one is exempt.
 const ENVELOPE_ALLOWLIST = new Set<string>([
-  "src/routes/comms.ts:383",
+  "src/routes/comms.ts:384",
   "src/routes/api/contacts/bulk-email.ts:189",
 ]);
 

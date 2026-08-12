@@ -105,15 +105,16 @@ describe("PUT /submissions/:id/slot (DEC-073 room-ownership gate)", () => {
     // select #2: roomBelongsToEvent -> found
     // select #3: getEventInfo (DEC-277: moved above the write for range check)
     // select #4: upsertSlot's existing-slot lookup -> none, so it inserts
-    // select #5: bumpIcsSequence's submission lookup
-    // select #6: getConflictsAndSummary -> loadAcceptedSessions submissionRows
-    // select #7/#8/#9: track/participant/slot rows for loadAcceptedSessions
+    // (DEC-492: ics_sequence bump is now one atomic set-based UPDATE with no
+    // preceding select, so the old "bumpIcsSequence's submission lookup"
+    // select is gone)
+    // select #5: getConflictsAndSummary -> loadAcceptedSessions submissionRows
+    // select #6/#7/#8: track/participant/slot rows for loadAcceptedSessions
     const app = appWithDb([
       [{ eventId: "event1", orgId: "org1", status: "accepted" }],
       [{ id: "room1" }],
       [{ orgId: "org1", startDate: "2026-08-10", endDate: "2026-08-10", recordPrefix: "EV" }],
       [],
-      [{ icsSequence: 0 }],
       [],
       [],
       [],

@@ -9,6 +9,8 @@ import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { formatRef, newId } from "../../domain/ids";
 import { chunkIds } from "../../lib/chunk";
+import { ID_CHUNK_SIZE } from "../../lib/chunk";
+import { bumpIcsSequences } from "./ics-sequence";
 import {
   autoSchedule,
   findConflicts,
@@ -414,26 +416,12 @@ export async function upsertSlot(db: Db, submissionId: string, input: SlotInput)
     });
   }
 
-  await bumpIcsSequence(db, submissionId, now);
+  await bumpIcsSequences(db, [submissionId]);
 }
 
 export async function unscheduleSlot(db: Db, submissionId: string): Promise<void> {
-  const now = new Date();
   await db.delete(schema.scheduleSlot).where(eq(schema.scheduleSlot.submissionId, submissionId));
-  await bumpIcsSequence(db, submissionId, now);
-}
-
-async function bumpIcsSequence(db: Db, submissionId: string, now: Date): Promise<void> {
-  const rows = await db
-    .select({ icsSequence: schema.submission.icsSequence })
-    .from(schema.submission)
-    .where(eq(schema.submission.id, submissionId))
-    .limit(1);
-  const current = rows[0]?.icsSequence ?? 0;
-  await db
-    .update(schema.submission)
-    .set({ icsSequence: current + 1, updatedAt: now })
-    .where(eq(schema.submission.id, submissionId));
+  await bumpIcsSequences(db, [submissionId]);
 }
 
 // ---------------------------------------------------------------------------
@@ -446,6 +434,12 @@ export interface AutoScheduleParams {
   defaultDurationMin: number;
   gridMin: number;
 }
+
+// Per-request write-burst bound (DEC-492) for runAutoSchedule's persisted
+// placements. J9 auto-schedule only warns on unplaced sessions, it never
+// blocks — so overflow beyond this cap simply stays unplaced and is already
+// surfaced via getAgendaPayload's unplaced count, never thrown.
+export const MAX_AUTO_SCHEDULE_PLACEMENTS = 2000;
 
 /** Runs autoSchedule() over unplaced accepted sessions and persists any new
  * placements (schedule_slot insert + ics_sequence bump), then returns the
@@ -497,9 +491,12 @@ export async function runAutoSchedule(
   });
 
   const now = new Date();
-  for (const placement of result) {
-    if (existingIds.has(placement.submissionId)) continue;
-    await db.insert(schema.scheduleSlot).values({
+  const newPlacements = result
+    .filter((placement) => !existingIds.has(placement.submissionId))
+    .slice(0, MAX_AUTO_SCHEDULE_PLACEMENTS);
+
+  if (newPlacements.length > 0) {
+    const rows = newPlacements.map((placement) => ({
       id: newId(),
       submissionId: placement.submissionId,
       roomId: placement.roomId,
@@ -508,8 +505,14 @@ export async function runAutoSchedule(
       endMin: placement.endMin,
       createdAt: now,
       updatedAt: now,
-    });
-    await bumpIcsSequence(db, placement.submissionId, now);
+    }));
+    for (let i = 0; i < rows.length; i += ID_CHUNK_SIZE) {
+      await db.insert(schema.scheduleSlot).values(rows.slice(i, i + ID_CHUNK_SIZE));
+    }
+    await bumpIcsSequences(
+      db,
+      newPlacements.map((p) => p.submissionId),
+    );
   }
 
   return getAgendaPayload(db, eventId, event);

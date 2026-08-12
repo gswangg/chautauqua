@@ -300,15 +300,3 @@ export async function loadIcsScheduleData(db: Db, submissionIds: string[]): Prom
   return map;
 }
 
-/** Bumps submission.ics_sequence by exactly 1 for each given submission id
- * (DEC-051: once per submission per send call — never on preview, and never
- * more than once even when a submission has multiple recipients). */
-export async function bumpIcsSequences(db: Db, submissionIds: string[]): Promise<void> {
-  const unique = [...new Set(submissionIds)];
-  for (const id of unique) {
-    await db
-      .update(schema.submission)
-      .set({ icsSequence: sql`${schema.submission.icsSequence} + 1` })
-      .where(eq(schema.submission.id, id));
-  }
-}
