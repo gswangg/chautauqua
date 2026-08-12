@@ -139,9 +139,12 @@ function makeFakeDb(data: FakeDbData) {
     },
     insert(table: unknown) {
       return {
-        values(values: Record<string, unknown>) {
-          inserts.push({ table, values });
-          return Promise.resolve();
+        values(rows: Record<string, unknown> | Record<string, unknown>[]) {
+          const asArray = Array.isArray(rows) ? rows : [rows];
+          for (const values of asArray) inserts.push({ table, values });
+          return {
+            onConflictDoUpdate: () => Promise.resolve(),
+          };
         },
       };
     },

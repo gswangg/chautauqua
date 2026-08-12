@@ -91,8 +91,12 @@ function fakeDb(selectQueue: unknown[][]) {
       return makeChain(rows);
     },
     insert: () => ({
-      values: async (vals: unknown) => {
+      values: (vals: unknown) => {
         inserts.push(vals);
+        return {
+          then: (resolve: (v: unknown) => unknown) => Promise.resolve().then(resolve),
+          onConflictDoUpdate: async () => {},
+        };
       },
     }),
   };

@@ -279,8 +279,12 @@ export async function createSubmissionTracks(
 }
 
 /** Only custom (non-locked) fields get submission_answer rows — locked
- * built-ins persist to real columns instead (DEC-016). */
-export async function createSubmissionAnswers(
+ * built-ins persist to real columns instead (DEC-016). DEC-541: one
+ * set-based, atomic upsert per chunk — schema.ts declares a uniqueIndex over
+ * (submissionId, formFieldId), so a fresh create is just an upsert that
+ * cannot conflict; this same function serves both create and edit paths.
+ * Zero-statement no-op on empty input, and never reads before writing. */
+export async function upsertSubmissionAnswers(
   db: Db,
   submissionId: string,
   answers: AnswerMap,
@@ -299,7 +303,12 @@ export async function createSubmissionAnswers(
   if (rows.length === 0) return;
   // DEC-528: chunked by bound-parameter budget (columns-per-row derived).
   for (const chunk of chunkRowsForInsert(rows)) {
-    await db.insert(schema.submissionAnswer).values(chunk);
+    await db
+      .insert(schema.submissionAnswer).values(chunk)
+      .onConflictDoUpdate({
+        target: [schema.submissionAnswer.submissionId, schema.submissionAnswer.formFieldId],
+        set: { valueJson: sql`excluded.value_json`, updatedAt: now },
+      });
   }
 }
 
