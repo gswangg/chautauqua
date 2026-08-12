@@ -20,7 +20,7 @@ export const importRoutes = new Hono<AppEnv>();
 // unsafe once mounted under /api/v1 alongside sibling sub-apps.
 importRoutes.use("/events/:eventId/import/sessionboard", requireOrganizer);
 
-const SB_ENTITIES: readonly SbEntity[] = ["contacts", "submissions", "tracks"];
+const SB_ENTITIES: readonly SbEntity[] = ["contacts", "submissions", "tracks", "participants"];
 
 function isSbEntity(v: unknown): v is SbEntity {
   return typeof v === "string" && (SB_ENTITIES as readonly string[]).includes(v);
@@ -49,7 +49,9 @@ importRoutes.post("/events/:eventId/import/sessionboard", csrfJson, async (c) =>
     });
   }
   if (!isSbEntity(body.entity)) {
-    throw new ApiError("invalid", "Validation failed", { entity: "must be one of contacts, submissions, tracks" });
+    throw new ApiError("invalid", "Validation failed", {
+      entity: "must be one of contacts, submissions, tracks, participants",
+    });
   }
   const entity = body.entity;
   if (!isPlainObject(body.mapping)) {

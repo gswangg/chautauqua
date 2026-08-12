@@ -11,7 +11,8 @@ import { newId } from "../../../domain/ids";
 import { chunkIds } from "../../../lib/chunk";
 import { isValidEmail } from "../../../domain/email";
 import { submissionSeqSubquery } from "../submissions/seq";
-import type { SbEntity, SbRowPlan } from "../../../domain/sessionboard";
+import { findContactByEmail } from "../submit";
+import { SESSIONBOARD_SOURCE, externalRef, type SbEntity, type SbRowPlan } from "../../../domain/sessionboard";
 
 export interface SbApplySkip {
   row: number;
@@ -100,6 +101,73 @@ async function loadTrackNameMap(db: Db, eventId: string): Promise<Map<string, st
   return out;
 }
 
+/** Resolves submission external_refs (already namespaced) -> submission id,
+ * scoped to eventId. Chunked over the distinct refs referenced by this
+ * batch, never the whole table. */
+async function loadSubmissionIdsByRef(db: Db, eventId: string, refs: string[]): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
+  if (refs.length === 0) return out;
+  for (const batch of chunkIds(refs)) {
+    const rows = await db
+      .select({ id: schema.submission.id, externalRef: schema.submission.externalRef })
+      .from(schema.submission)
+      .where(and(eq(schema.submission.eventId, eventId), inArray(schema.submission.externalRef, batch)));
+    for (const r of rows) {
+      if (r.externalRef) out.set(r.externalRef, r.id);
+    }
+  }
+  return out;
+}
+
+/** Resolves contact external_refs (already namespaced) -> id/title/company,
+ * scoped to orgId. Chunked over the distinct refs referenced by this batch.
+ * title/company are the LIVE contact values -- the caller snapshots them
+ * onto a newly-created participant row (DEC-258). */
+async function loadContactsByRef(
+  db: Db,
+  orgId: string,
+  refs: string[],
+): Promise<Map<string, { id: string; title: string | null; company: string | null }>> {
+  const out = new Map<string, { id: string; title: string | null; company: string | null }>();
+  if (refs.length === 0) return out;
+  for (const batch of chunkIds(refs)) {
+    const rows = await db
+      .select({
+        id: schema.contact.id,
+        externalRef: schema.contact.externalRef,
+        title: schema.contact.title,
+        company: schema.contact.company,
+      })
+      .from(schema.contact)
+      .where(and(eq(schema.contact.orgId, orgId), inArray(schema.contact.externalRef, batch)));
+    for (const r of rows) {
+      if (r.externalRef) out.set(r.externalRef, { id: r.id, title: r.title, company: r.company });
+    }
+  }
+  return out;
+}
+
+/** Existing (submission_id, contact_id) participant pairs among the given
+ * submission ids, chunked. Keyed by the same `${submissionId}:${contactId}`
+ * shape the (submission_id, contact_id) uniqueIndex already names
+ * (schema.ts:289) -- no third namespace, no migration (DEC-639). */
+async function loadExistingParticipantPairs(db: Db, submissionIds: string[]): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
+  if (submissionIds.length === 0) return out;
+  for (const batch of chunkIds(submissionIds)) {
+    const rows = await db
+      .select({
+        id: schema.participant.id,
+        submissionId: schema.participant.submissionId,
+        contactId: schema.participant.contactId,
+      })
+      .from(schema.participant)
+      .where(inArray(schema.participant.submissionId, batch));
+    for (const r of rows) out.set(`${r.submissionId}:${r.contactId}`, r.id);
+  }
+  return out;
+}
+
 export async function applySessionboardPlans(db: Db, args: ApplySessionboardPlansArgs): Promise<SbApplyResult> {
   const { orgId, eventId, entity, plans, dryRun } = args;
 
@@ -111,6 +179,113 @@ export async function applySessionboardPlans(db: Db, args: ApplySessionboardPlan
   let updated = 0;
   const skipped: SbApplySkip[] = [];
   const now = () => new Date();
+
+  if (entity === "participants") {
+    const sessionRefs = [
+      ...new Set(
+        plans
+          .map((p) => p.values.sessionExternalId)
+          .filter((v): v is string => v !== undefined)
+          .map((v) => externalRef(SESSIONBOARD_SOURCE, v)),
+      ),
+    ];
+    const speakerRefs = [
+      ...new Set(
+        plans
+          .map((p) => p.values.speakerExternalId)
+          .filter((v): v is string => v !== undefined)
+          .map((v) => externalRef(SESSIONBOARD_SOURCE, v)),
+      ),
+    ];
+    const submissionIdByRef = await loadSubmissionIdsByRef(db, eventId, sessionRefs);
+    const contactByRef = await loadContactsByRef(db, orgId, speakerRefs);
+    const submissionIds = [...new Set([...submissionIdByRef.values()])];
+    const pairMap = await loadExistingParticipantPairs(db, submissionIds);
+
+    for (const plan of plans) {
+      const v = plan.values;
+
+      const sessionRef = v.sessionExternalId ? externalRef(SESSIONBOARD_SOURCE, v.sessionExternalId) : null;
+      const submissionId = sessionRef ? submissionIdByRef.get(sessionRef) : undefined;
+      if (!submissionId) {
+        skipped.push({
+          row: plan.row,
+          reason: `Unresolved session reference: ${v.sessionExternalId ?? "(missing)"}`,
+        });
+        continue;
+      }
+
+      let contactId: string | undefined;
+      let titleAtTime: string | null = null;
+      let orgAtTime: string | null = null;
+      if (v.speakerExternalId) {
+        const speakerRef = externalRef(SESSIONBOARD_SOURCE, v.speakerExternalId);
+        const contact = contactByRef.get(speakerRef);
+        if (contact) {
+          contactId = contact.id;
+          titleAtTime = contact.title;
+          orgAtTime = contact.company;
+        }
+      }
+      if (!contactId && v.speakerEmail) {
+        const contact = await findContactByEmail(db, orgId, v.speakerEmail);
+        if (contact) {
+          contactId = contact.id;
+          titleAtTime = contact.title;
+          orgAtTime = contact.company;
+        }
+      }
+      if (!contactId) {
+        skipped.push({
+          row: plan.row,
+          reason: `Unresolved speaker reference: ${v.speakerExternalId ?? v.speakerEmail ?? "(missing)"}`,
+        });
+        continue;
+      }
+
+      const pairKey = `${submissionId}:${contactId}`;
+      const existingId = pairMap.get(pairKey);
+
+      if (existingId === undefined) {
+        const id = newId();
+        if (!dryRun) {
+          const ts = now();
+          const nextOrderSql = sql<number>`(SELECT COALESCE(MAX(${schema.participant.order}), -1) + 1 FROM ${schema.participant} WHERE ${schema.participant.submissionId} = ${submissionId})`;
+          await db.insert(schema.participant).values({
+            id,
+            submissionId,
+            contactId,
+            role: v.role ?? "speaker",
+            order: v.order !== undefined ? Number.parseInt(v.order, 10) : nextOrderSql,
+            visible: true,
+            inviteStatus: "none",
+            titleAtTime,
+            orgAtTime,
+            createdAt: ts,
+            updatedAt: ts,
+          });
+        }
+        pairMap.set(pairKey, id);
+        created++;
+        continue;
+      }
+
+      if (!dryRun) {
+        const ts = now();
+        await db
+          .update(schema.participant)
+          .set({
+            ...(v.role !== undefined ? { role: v.role } : {}),
+            ...(v.order !== undefined ? { order: Number.parseInt(v.order, 10) } : {}),
+            updatedAt: ts,
+          })
+          .where(eq(schema.participant.id, existingId));
+      }
+      updated++;
+    }
+
+    return { created, updated, skipped };
+  }
 
   for (const plan of plans) {
     if (!plan.externalRef) {

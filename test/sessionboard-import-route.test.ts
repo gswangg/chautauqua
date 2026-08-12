@@ -38,18 +38,47 @@ vi.mock("drizzle-orm", async (importOriginal) => {
   };
 });
 
-// Imported after the mock so importRoutes -> repo/events.ts + repo/import/
-// sessionboard.ts pick up the mocked eq/and/inArray.
+// findContactByEmail's own lookup uses a raw sql`lower(...) = lower(...)`
+// fragment this fake's structural evalCond cannot interpret (it only knows
+// eq/and/inArray markers) -- mocked directly against the currently-active
+// fake rows instead of going through db.select, so the participants
+// speakerEmail fallback path is still exercised end to end.
+let currentFakeRows: FakeRows | null = null;
+
+vi.mock("../src/server/repo/submit", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../src/server/repo/submit")>();
+  return {
+    ...actual,
+    findContactByEmail: async (_db: unknown, orgId: string, email: string) => {
+      const rows = currentFakeRows;
+      if (!rows) return null;
+      const match = rows.contact.find(
+        (c) => c.orgId === orgId && String(c.email).toLowerCase() === email.toLowerCase(),
+      );
+      if (!match) return null;
+      return {
+        id: match.id as string,
+        title: (match.title as string | null) ?? null,
+        company: (match.company as string | null) ?? null,
+        bio: (match.bio as string | null) ?? null,
+      };
+    },
+  };
+});
+
+// Imported after the mocks so importRoutes -> repo/events.ts + repo/import/
+// sessionboard.ts pick up the mocked eq/and/inArray/findContactByEmail.
 const { importRoutes } = await import("../src/routes/api/import");
 const { MAX_IMPORT_CSV_BYTES, MAX_IMPORT_ROWS } = await import("../src/routes/api/contacts/import");
 
-type TableTag = "event" | "contact" | "submission" | "track";
+type TableTag = "event" | "contact" | "submission" | "track" | "participant";
 
 const TABLES: Record<TableTag, unknown> = {
   event: schema.event,
   contact: schema.contact,
   submission: schema.submission,
   track: schema.track,
+  participant: schema.participant,
 };
 
 function tableTag(table: unknown): TableTag {
@@ -92,6 +121,7 @@ interface FakeRows {
   contact: Record<string, unknown>[];
   submission: Record<string, unknown>[];
   track: Record<string, unknown>[];
+  participant: Record<string, unknown>[];
 }
 
 function makeFakeDb() {
@@ -100,7 +130,9 @@ function makeFakeDb() {
     contact: [],
     submission: [],
     track: [],
+    participant: [],
   };
+  currentFakeRows = rows;
 
   const db = {
     select(fields?: Record<string, unknown>) {
@@ -189,6 +221,45 @@ function seedEvent(rows: FakeRows, id: string, orgId: string) {
     timezone: "UTC",
     recordPrefix: "SES",
     brandingJson: null,
+    createdAt: now,
+    updatedAt: now,
+  });
+}
+
+function seedContact(
+  rows: FakeRows,
+  params: { id: string; orgId: string; externalRef: string | null; email: string; title?: string | null; company?: string | null },
+) {
+  const now = new Date();
+  rows.contact.push({
+    id: params.id,
+    orgId: params.orgId,
+    firstName: "First",
+    lastName: "Last",
+    email: params.email,
+    phone: null,
+    company: params.company ?? null,
+    title: params.title ?? null,
+    bio: null,
+    externalRef: params.externalRef,
+    createdAt: now,
+    updatedAt: now,
+  });
+}
+
+function seedSubmission(rows: FakeRows, params: { id: string; eventId: string; externalRef: string | null; title: string }) {
+  const now = new Date();
+  rows.submission.push({
+    id: params.id,
+    eventId: params.eventId,
+    formId: null,
+    seq: 1,
+    title: params.title,
+    description: null,
+    trackId: null,
+    status: "pending",
+    contentStatus: "pending",
+    externalRef: params.externalRef,
     createdAt: now,
     updatedAt: now,
   });
@@ -301,5 +372,144 @@ describe("POST /api/v1/events/:eventId/import/sessionboard", () => {
     const body = (await res.json()) as { error: { code: string; message: string } };
     expect(body.error.code).toBe("invalid");
     expect(body.error.message).toContain(String(MAX_IMPORT_ROWS));
+  });
+});
+
+describe("POST .../import/sessionboard, entity=participants (DEC-639/DEC-640)", () => {
+  const PARTICIPANT_CSV =
+    "Session ID,Speaker ID,Speaker Email,Role,Order\nsb-sess-1,sb-spk-1,,speaker,0\n";
+
+  function seedFixture(rows: FakeRows) {
+    seedEvent(rows, "ev1", "org-1");
+    seedSubmission(rows, { id: "sub-1", eventId: "ev1", externalRef: "sessionboard:sb-sess-1", title: "Talk" });
+    seedContact(rows, {
+      id: "con-1",
+      orgId: "org-1",
+      externalRef: "sessionboard:sb-spk-1",
+      email: "speaker@example.com",
+      title: "Engineer",
+      company: "Acme",
+    });
+  }
+
+  it("dry run and real run report identical created/updated counts", async () => {
+    const { db, rows } = makeFakeDb();
+    seedFixture(rows);
+    const app = appWithDbAndAuth(db, ORGANIZER);
+
+    const dryRes = await app.request("/api/v1/events/ev1/import/sessionboard", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-chq-csrf": "1" },
+      body: JSON.stringify({ entity: "participants", csvText: PARTICIPANT_CSV, mapping: {}, dryRun: true }),
+    });
+    const dryBody = (await dryRes.json()) as { created: number; updated: number; skipped: unknown[] };
+    expect(dryBody).toMatchObject({ created: 1, updated: 0, skipped: [] });
+    expect(rows.participant).toHaveLength(0);
+
+    const realRes = await app.request("/api/v1/events/ev1/import/sessionboard", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-chq-csrf": "1" },
+      body: JSON.stringify({ entity: "participants", csvText: PARTICIPANT_CSV, mapping: {}, dryRun: false }),
+    });
+    const realBody = (await realRes.json()) as { created: number; updated: number; skipped: unknown[] };
+    expect(realBody).toMatchObject({ created: dryBody.created, updated: dryBody.updated });
+    expect(rows.participant).toHaveLength(1);
+  });
+
+  it("writes title_at_time/org_at_time from the resolved contact's live fields on create", async () => {
+    const { db, rows } = makeFakeDb();
+    seedFixture(rows);
+    const app = appWithDbAndAuth(db, ORGANIZER);
+
+    await app.request("/api/v1/events/ev1/import/sessionboard", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-chq-csrf": "1" },
+      body: JSON.stringify({ entity: "participants", csvText: PARTICIPANT_CSV, mapping: {}, dryRun: false }),
+    });
+    expect(rows.participant).toHaveLength(1);
+    expect(rows.participant[0]).toMatchObject({
+      submissionId: "sub-1",
+      contactId: "con-1",
+      titleAtTime: "Engineer",
+      orgAtTime: "Acme",
+      visible: true,
+      inviteStatus: "none",
+    });
+  });
+
+  it("a re-import of the same pair updates rather than duplicates", async () => {
+    const { db, rows } = makeFakeDb();
+    seedFixture(rows);
+    const app = appWithDbAndAuth(db, ORGANIZER);
+
+    const first = await app.request("/api/v1/events/ev1/import/sessionboard", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-chq-csrf": "1" },
+      body: JSON.stringify({ entity: "participants", csvText: PARTICIPANT_CSV, mapping: {}, dryRun: false }),
+    });
+    expect((await first.json()) as unknown).toMatchObject({ created: 1, updated: 0 });
+    expect(rows.participant).toHaveLength(1);
+
+    const second = await app.request("/api/v1/events/ev1/import/sessionboard", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-chq-csrf": "1" },
+      body: JSON.stringify({ entity: "participants", csvText: PARTICIPANT_CSV, mapping: {}, dryRun: false }),
+    });
+    expect((await second.json()) as unknown).toMatchObject({ created: 0, updated: 1 });
+    expect(rows.participant).toHaveLength(1);
+  });
+
+  it("skips an unresolved session reference by name, never creating a placeholder submission", async () => {
+    const { db, rows } = makeFakeDb();
+    seedEvent(rows, "ev1", "org-1");
+    seedContact(rows, { id: "con-1", orgId: "org-1", externalRef: "sessionboard:sb-spk-1", email: "speaker@example.com" });
+    const app = appWithDbAndAuth(db, ORGANIZER);
+
+    const res = await app.request("/api/v1/events/ev1/import/sessionboard", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-chq-csrf": "1" },
+      body: JSON.stringify({ entity: "participants", csvText: PARTICIPANT_CSV, mapping: {}, dryRun: false }),
+    });
+    const body = (await res.json()) as { created: number; skipped: { row: number; reason: string }[] };
+    expect(body.created).toBe(0);
+    expect(rows.submission).toHaveLength(0);
+    expect(rows.participant).toHaveLength(0);
+    expect(body.skipped).toEqual([{ row: 2, reason: "Unresolved session reference: sb-sess-1" }]);
+  });
+
+  it("skips an unresolved speaker (by ref) by name, never creating a placeholder contact", async () => {
+    const { db, rows } = makeFakeDb();
+    seedEvent(rows, "ev1", "org-1");
+    seedSubmission(rows, { id: "sub-1", eventId: "ev1", externalRef: "sessionboard:sb-sess-1", title: "Talk" });
+    const app = appWithDbAndAuth(db, ORGANIZER);
+
+    const res = await app.request("/api/v1/events/ev1/import/sessionboard", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-chq-csrf": "1" },
+      body: JSON.stringify({ entity: "participants", csvText: PARTICIPANT_CSV, mapping: {}, dryRun: false }),
+    });
+    const body = (await res.json()) as { created: number; skipped: { row: number; reason: string }[] };
+    expect(body.created).toBe(0);
+    expect(rows.contact).toHaveLength(0);
+    expect(rows.participant).toHaveLength(0);
+    expect(body.skipped).toEqual([{ row: 2, reason: "Unresolved speaker reference: sb-spk-1" }]);
+  });
+
+  it("resolves the speaker by speakerEmail when speakerExternalId is absent", async () => {
+    const { db, rows } = makeFakeDb();
+    seedEvent(rows, "ev1", "org-1");
+    seedSubmission(rows, { id: "sub-1", eventId: "ev1", externalRef: "sessionboard:sb-sess-1", title: "Talk" });
+    seedContact(rows, { id: "con-1", orgId: "org-1", externalRef: null, email: "byemail@example.com", title: "CTO", company: "Beta" });
+    const app = appWithDbAndAuth(db, ORGANIZER);
+
+    const csv = "Session ID,Speaker ID,Speaker Email,Role,Order\nsb-sess-1,,byemail@example.com,speaker,0\n";
+    const res = await app.request("/api/v1/events/ev1/import/sessionboard", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-chq-csrf": "1" },
+      body: JSON.stringify({ entity: "participants", csvText: csv, mapping: {}, dryRun: false }),
+    });
+    const body = (await res.json()) as { created: number; skipped: unknown[] };
+    expect(body).toMatchObject({ created: 1, skipped: [] });
+    expect(rows.participant[0]).toMatchObject({ submissionId: "sub-1", contactId: "con-1", titleAtTime: "CTO", orgAtTime: "Beta" });
   });
 });

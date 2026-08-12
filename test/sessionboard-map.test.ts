@@ -128,3 +128,61 @@ describe("planSessionboardRows", () => {
     expect(plans[0]!.externalRef).toBe(`${SESSIONBOARD_SOURCE}:999`);
   });
 });
+
+describe("participants (DEC-639: no externalId of its own)", () => {
+  it("has no externalId in SB_TARGET_FIELDS.participants", () => {
+    expect(SB_TARGET_FIELDS.participants).not.toContain("externalId");
+    expect(SB_TARGET_FIELDS.participants).toEqual([
+      "sessionExternalId",
+      "speakerExternalId",
+      "speakerEmail",
+      "role",
+      "order",
+    ]);
+  });
+
+  it("auto-maps session id / speaker id / speaker email / role / order headers", () => {
+    const header = ["Session ID", "Speaker ID", "Speaker Email", "Role", "Order"];
+    const mapping = autoMapSessionboardColumns("participants", header);
+    expect(mapping).toEqual({
+      "Session ID": "sessionExternalId",
+      "Speaker ID": "speakerExternalId",
+      "Speaker Email": "speakerEmail",
+      Role: "role",
+      Order: "order",
+    });
+  });
+
+  it("never emits a 'Missing external id' issue; externalRef is always null", () => {
+    const header = ["Session ID", "Speaker ID"];
+    const mapping = autoMapSessionboardColumns("participants", header);
+    const { plans, issues } = planSessionboardRows("participants", header, [["sb-sess-1", "sb-spk-1"]], mapping);
+    expect(plans).toEqual([
+      { row: 2, externalRef: null, values: { sessionExternalId: "sb-sess-1", speakerExternalId: "sb-spk-1" } },
+    ]);
+    expect(issues).toEqual([]);
+  });
+
+  it("raises an issue when sessionExternalId is absent", () => {
+    const header = ["Session ID", "Speaker ID"];
+    const mapping = autoMapSessionboardColumns("participants", header);
+    const { issues } = planSessionboardRows("participants", header, [["", "sb-spk-1"]], mapping);
+    expect(issues).toEqual([{ row: 2, field: "sessionExternalId", message: "Missing session external id" }]);
+  });
+
+  it("raises an issue when BOTH speakerExternalId and speakerEmail are absent", () => {
+    const header = ["Session ID", "Speaker ID", "Speaker Email"];
+    const mapping = autoMapSessionboardColumns("participants", header);
+    const { issues } = planSessionboardRows("participants", header, [["sb-sess-1", "", ""]], mapping);
+    expect(issues).toEqual([
+      { row: 2, field: "speakerExternalId", message: "Missing speaker external id or speaker email" },
+    ]);
+  });
+
+  it("does not raise the speaker issue when only speakerEmail is present", () => {
+    const header = ["Session ID", "Speaker ID", "Speaker Email"];
+    const mapping = autoMapSessionboardColumns("participants", header);
+    const { issues } = planSessionboardRows("participants", header, [["sb-sess-1", "", "a@example.com"]], mapping);
+    expect(issues).toEqual([]);
+  });
+});
