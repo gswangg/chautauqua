@@ -275,6 +275,64 @@ describe('AgendaPage render smoke', () => {
     expect(screen.queryByText(/held back/)).toBeNull();
   });
 
+  // DEC-667/SPEC J9: the scheduler warns, never blocks. The toast must not
+  // read as though this run created the reported conflicts, and it must
+  // mention a positive placement count only when the run left conflicts
+  // pre-existing.
+  it('auto-schedule toast states pre-existing conflicts were left in place, not caused by this run', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/agenda`]: agendaPayload(),
+      [`POST /api/v1/events/${EVENT_ID}/agenda/auto-schedule`]: {
+        ...agendaPayload(),
+        unscheduled: [],
+        unplacedReasons: [],
+        summary: { unplaced: 0, conflicts: 1 },
+      },
+    });
+
+    render(<AgendaPage />);
+    await waitFor(() => {
+      expect(screen.getByText('Overlapping Talk A')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Auto-schedule' }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('Auto-schedule placed 1 session(s). 0 unplaced. 1 pre-existing conflict(s) left in place.'),
+      ).toBeInTheDocument();
+    });
+  });
+
+  // DEC-667: when a run places nothing, the toast must name why from the
+  // typed unplacedReasons the run computed, never report a bare "0
+  // session(s)" as though nothing needed explaining.
+  it('auto-schedule toast names why when the run places nothing', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/agenda`]: agendaPayload(),
+      [`POST /api/v1/events/${EVENT_ID}/agenda/auto-schedule`]: {
+        ...agendaPayload(),
+        summary: { unplaced: 1, conflicts: 1 },
+        unplacedReasons: [
+          { submissionId: 'sub-3', reason: 'no_rooms_configured', durationMin: 30, detail: 'No rooms configured.' },
+        ],
+      },
+    });
+
+    render(<AgendaPage />);
+    await waitFor(() => {
+      expect(screen.getByText('Overlapping Talk A')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Auto-schedule' }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('Auto-schedule placed no sessions: 1 no rooms configured. 1 pre-existing conflict(s) left in place.'),
+      ).toBeInTheDocument();
+    });
+  });
+
   it('never renders the literal text "undefined" anywhere in the tree', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/agenda`]: agendaPayload(),
