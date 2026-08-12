@@ -5,6 +5,7 @@ import { and, asc, eq, sql } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { newId } from "../../../domain/ids";
+import { resolveReviewerIdentity } from "../../../domain/review-identity";
 
 export interface EvaluationRecord {
   id: string;
@@ -223,9 +224,12 @@ export async function listEvaluationsForSubmission(db: Db, submissionId: string)
     planId: r.planId,
     planName: r.planName,
     round: r.round,
-    reviewerName: r.anonymized
-      ? null
-      : (r.contactFirstName && r.contactLastName ? `${r.contactFirstName} ${r.contactLastName}`.trim() : r.userEmail),
+    reviewerName: resolveReviewerIdentity({
+      anonymized: r.anonymized,
+      firstName: r.contactFirstName,
+      lastName: r.contactLastName,
+      email: r.userEmail,
+    }),
     scores: JSON.parse(r.scoresJson) as Record<string, number | string>,
     comment: r.comment,
     submittedAt: r.submittedAt ? r.submittedAt.getTime() : null,
