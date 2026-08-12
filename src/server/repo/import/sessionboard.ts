@@ -14,6 +14,20 @@ import { submissionSeqSubquery } from "../submissions/seq";
 import { findContactByEmail } from "../submit";
 import { SESSIONBOARD_SOURCE, externalRef, type SbEntity, type SbRowPlan } from "../../../domain/sessionboard";
 
+// DEC-675: the planner (src/domain/sessionboard.ts) is the ONE place that
+// validates a submission status / participant order against the product's
+// vocabulary and drops the key on an out-of-vocabulary value -- by the time
+// a plan reaches this writer, `values.order` is either absent or already a
+// validated non-negative base-10 integer string. Parsing an unvalidated
+// string here would silently write NaN into the column, so this asserts the
+// invariant instead of re-deriving it (fail loudly, no silent fallback).
+function parseValidatedOrder(value: string): number {
+  if (!/^\d+$/.test(value)) {
+    throw new Error(`Unvalidated participant order reached the writer: "${value}" (planner should have dropped it)`);
+  }
+  return Number.parseInt(value, 10);
+}
+
 export interface SbApplySkip {
   row: number;
   reason: string;
@@ -256,8 +270,12 @@ export async function applySessionboardPlans(db: Db, args: ApplySessionboardPlan
             submissionId,
             contactId,
             role: v.role ?? "speaker",
-            order: v.order !== undefined ? Number.parseInt(v.order, 10) : nextOrderSql,
-            visible: true,
+            order: v.order !== undefined ? parseValidatedOrder(v.order) : nextOrderSql,
+            // DEC-675/DEC-656: an imported co-presenter is RECORDED, not
+            // published -- it reaches the public site only through the
+            // organizer's existing Visible checkbox on the submission-detail
+            // participants table, same as any other participant.
+            visible: false,
             inviteStatus: "none",
             titleAtTime,
             orgAtTime,
@@ -276,7 +294,7 @@ export async function applySessionboardPlans(db: Db, args: ApplySessionboardPlan
           .update(schema.participant)
           .set({
             ...(v.role !== undefined ? { role: v.role } : {}),
-            ...(v.order !== undefined ? { order: Number.parseInt(v.order, 10) } : {}),
+            ...(v.order !== undefined ? { order: parseValidatedOrder(v.order) } : {}),
             updatedAt: ts,
           })
           .where(eq(schema.participant.id, existingId));
@@ -351,6 +369,10 @@ export async function applySessionboardPlans(db: Db, args: ApplySessionboardPlan
             title,
             description: plan.values.description ?? null,
             trackId,
+            // DEC-675: the planner already dropped any status outside
+            // SUBMISSION_STATUSES, so `values.status` here is either absent
+            // (writer default: pending) or already a validated
+            // SubmissionStatus literal -- never an unchecked pass-through.
             status: plan.values.status ?? "pending",
             contentStatus: "pending",
             externalRef: plan.externalRef,

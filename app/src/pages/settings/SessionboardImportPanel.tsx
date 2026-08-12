@@ -182,6 +182,10 @@ export function SessionboardImportPanel() {
         Import in order: tracks, then contacts, then submissions, then participants — a participants dry run
         before its sessions exist will honestly report those rows as unresolved, not skip them silently.
       </p>
+      <p className="chq-settings-sessionboard-visibility-note">
+        Imported speakers are added hidden. Each one must be made visible individually, from the Visible
+        checkbox on its submission&apos;s participants table, before it appears on the public site.
+      </p>
 
       {eventLoading && <p>Loading…</p>}
       {eventError && (

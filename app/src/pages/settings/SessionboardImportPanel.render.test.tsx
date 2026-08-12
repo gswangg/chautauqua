@@ -43,6 +43,11 @@ describe('SessionboardImportPanel', () => {
     }
   });
 
+  it('states plainly that imported speakers are added hidden (DEC-675/DEC-656)', () => {
+    render(<SessionboardImportPanel />);
+    expect(screen.getByText(/Imported speakers are added hidden/)).toBeInTheDocument();
+  });
+
   it('uses a styled file input, not a raw one, and a styled pill picker, not a bare select', () => {
     render(<SessionboardImportPanel />);
 

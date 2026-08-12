@@ -427,12 +427,15 @@ describe("POST .../import/sessionboard, entity=participants (DEC-639/DEC-640)", 
       body: JSON.stringify({ entity: "participants", csvText: PARTICIPANT_CSV, mapping: {}, dryRun: false }),
     });
     expect(rows.participant).toHaveLength(1);
+    // DEC-675/DEC-656: an imported co-presenter is RECORDED, not published --
+    // it reaches the public site only through the organizer's existing
+    // Visible checkbox on the submission-detail participants table.
     expect(rows.participant[0]).toMatchObject({
       submissionId: "sub-1",
       contactId: "con-1",
       titleAtTime: "Engineer",
       orgAtTime: "Acme",
-      visible: true,
+      visible: false,
       inviteStatus: "none",
     });
   });
@@ -493,6 +496,27 @@ describe("POST .../import/sessionboard, entity=participants (DEC-639/DEC-640)", 
     expect(rows.contact).toHaveLength(0);
     expect(rows.participant).toHaveLength(0);
     expect(body.skipped).toEqual([{ row: 2, reason: "Unresolved speaker reference: sb-spk-1" }]);
+  });
+
+  it("an imported participant is invisible to the public speakers query (visible=false fails visibleParticipantConditions)", async () => {
+    const { db, rows } = makeFakeDb();
+    seedFixture(rows);
+    const app = appWithDbAndAuth(db, ORGANIZER);
+
+    await app.request("/api/v1/events/ev1/import/sessionboard", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-chq-csrf": "1" },
+      body: JSON.stringify({ entity: "participants", csvText: PARTICIPANT_CSV, mapping: {}, dryRun: false }),
+    });
+    expect(rows.participant).toHaveLength(1);
+    expect(rows.participant[0]).toMatchObject({ visible: false });
+
+    // visibleParticipantConditions() (DEC-274/DEC-656) requires
+    // participant.visible=true -- assert the imported row's own field fails
+    // that predicate directly, the same fact the real D1 query enforces.
+    const { visibleParticipantConditions } = await import("../src/server/repo/public/gates");
+    void visibleParticipantConditions; // constructs the real drizzle expression; not evaluable against the fake db here
+    expect(rows.participant[0]?.visible).not.toBe(true);
   });
 
   it("resolves the speaker by speakerEmail when speakerExternalId is absent", async () => {

@@ -186,3 +186,113 @@ describe("participants (DEC-639: no externalId of its own)", () => {
     expect(issues).toEqual([]);
   });
 });
+
+// DEC-675: the planner speaks the product's own vocabularies (imported from
+// src/domain/status.ts and src/domain/participant-roles.ts), never a
+// hand-retyped list -- an out-of-vocabulary value yields an ISSUE naming the
+// row+field+value and is dropped from `values` so the writer sees only a
+// validated literal, never a raw pass-through.
+describe("planSessionboardRows: vocabulary validation (DEC-675)", () => {
+  it("a submissions row whose status is 'Confirmed' yields an issue and drops the key (imports as pending)", () => {
+    const header = ["Record ID", "Session Title", "Status"];
+    const mapping = autoMapSessionboardColumns("submissions", header);
+    const { plans, issues } = planSessionboardRows(
+      "submissions",
+      header,
+      [["1", "Talk", "Confirmed"]],
+      mapping,
+    );
+    expect(issues).toEqual([
+      {
+        row: 2,
+        field: "status",
+        message: 'Unrecognised submission status "Confirmed" -- imported as pending',
+      },
+    ]);
+    expect(Object.prototype.hasOwnProperty.call(plans[0]!.values, "status")).toBe(false);
+  });
+
+  it("normalizes a recognised status's case/whitespace onto the vocabulary literal", () => {
+    const header = ["Record ID", "Session Title", "Status"];
+    const mapping = autoMapSessionboardColumns("submissions", header);
+    const { plans, issues } = planSessionboardRows(
+      "submissions",
+      header,
+      [["1", "Talk", "Accept Queue"]],
+      mapping,
+    );
+    expect(issues).toEqual([]);
+    expect(plans[0]!.values.status).toBe("accept_queue");
+  });
+
+  it("a participants row whose role is 'MC' yields an issue and drops the key", () => {
+    const header = ["Session ID", "Speaker ID", "Role"];
+    const mapping = autoMapSessionboardColumns("participants", header);
+    const { plans, issues } = planSessionboardRows(
+      "participants",
+      header,
+      [["sb-sess-1", "sb-spk-1", "MC"]],
+      mapping,
+    );
+    expect(issues).toEqual([
+      { row: 2, field: "role", message: 'Unrecognised participant role "MC" -- dropped' },
+    ]);
+    expect(Object.prototype.hasOwnProperty.call(plans[0]!.values, "role")).toBe(false);
+  });
+
+  it("accepts a role in PARTICIPANT_ROLE_OPTIONS with no issue", () => {
+    const header = ["Session ID", "Speaker ID", "Role"];
+    const mapping = autoMapSessionboardColumns("participants", header);
+    const { plans, issues } = planSessionboardRows(
+      "participants",
+      header,
+      [["sb-sess-1", "sb-spk-1", "moderator"]],
+      mapping,
+    );
+    expect(issues).toEqual([]);
+    expect(plans[0]!.values.role).toBe("moderator");
+  });
+
+  it("order='abc' yields an issue and drops the key (never lets NaN reach the column)", () => {
+    const header = ["Session ID", "Speaker ID", "Order"];
+    const mapping = autoMapSessionboardColumns("participants", header);
+    const { plans, issues } = planSessionboardRows(
+      "participants",
+      header,
+      [["sb-sess-1", "sb-spk-1", "abc"]],
+      mapping,
+    );
+    expect(issues).toEqual([
+      { row: 2, field: "order", message: 'Invalid participant order "abc" -- dropped' },
+    ]);
+    expect(Object.prototype.hasOwnProperty.call(plans[0]!.values, "order")).toBe(false);
+  });
+
+  it("a negative order string yields an issue and drops the key", () => {
+    const header = ["Session ID", "Speaker ID", "Order"];
+    const mapping = autoMapSessionboardColumns("participants", header);
+    const { plans, issues } = planSessionboardRows(
+      "participants",
+      header,
+      [["sb-sess-1", "sb-spk-1", "-1"]],
+      mapping,
+    );
+    expect(issues).toEqual([
+      { row: 2, field: "order", message: 'Invalid participant order "-1" -- dropped' },
+    ]);
+    expect(Object.prototype.hasOwnProperty.call(plans[0]!.values, "order")).toBe(false);
+  });
+
+  it("accepts a non-negative integer order with no issue", () => {
+    const header = ["Session ID", "Speaker ID", "Order"];
+    const mapping = autoMapSessionboardColumns("participants", header);
+    const { plans, issues } = planSessionboardRows(
+      "participants",
+      header,
+      [["sb-sess-1", "sb-spk-1", "3"]],
+      mapping,
+    );
+    expect(issues).toEqual([]);
+    expect(plans[0]!.values.order).toBe("3");
+  });
+});
