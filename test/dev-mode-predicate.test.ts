@@ -86,3 +86,28 @@ describe("isDevMode (DEC-434): one predicate, every gate agrees", () => {
     expect(mailer).not.toBeInstanceOf(DevSinkMailer);
   });
 });
+
+describe("makeMailer (DEC-547): never silently selects the dev sink", () => {
+  it("DEV_MODE='1' with no EMAIL bound selects DevSinkMailer", () => {
+    const mailer = makeMailer(stubDb, {
+      EMAIL: undefined,
+      DEV_MODE: "1",
+      MAIL_FROM_EMAIL: undefined,
+      MAIL_FROM_NAME: undefined,
+    });
+    expect(mailer).toBeInstanceOf(DevSinkMailer);
+  });
+
+  for (const devMode of [undefined, "", "0", "true", "yes"]) {
+    it(`DEV_MODE=${JSON.stringify(devMode)} with no EMAIL bound throws naming DEV_MODE and EMAIL`, () => {
+      expect(() =>
+        makeMailer(stubDb, {
+          EMAIL: undefined,
+          DEV_MODE: devMode,
+          MAIL_FROM_EMAIL: undefined,
+          MAIL_FROM_NAME: undefined,
+        }),
+      ).toThrowError(/DEV_MODE.*EMAIL|EMAIL.*DEV_MODE/);
+    });
+  }
+});

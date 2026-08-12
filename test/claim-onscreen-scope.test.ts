@@ -142,6 +142,7 @@ async function run(db: AppEnv["Variables"]["db"], email: string) {
   const res = await app.request(submitForm(email), undefined, {
     KV: fakeKv(),
     FILES: {} as unknown,
+    DEV_MODE: "1",
   } as unknown as AppEnv["Bindings"]);
   return res;
 }

@@ -293,6 +293,7 @@ async function run(db: AppEnv["Variables"]["db"], req: Request) {
   return app.request(req, undefined, {
     KV: fakeKv(),
     FILES: fakeFilesBucket(),
+    DEV_MODE: "1",
   } as unknown as AppEnv["Bindings"]);
 }
 

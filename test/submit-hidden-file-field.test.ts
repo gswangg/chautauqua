@@ -179,6 +179,7 @@ async function run(db: AppEnv["Variables"]["db"], req: Request, filesBucket: R2B
   const res = await app.request(req, undefined, {
     KV: fakeKv(),
     FILES: filesBucket,
+    DEV_MODE: "1",
   } as unknown as AppEnv["Bindings"]);
   return res;
 }
