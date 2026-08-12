@@ -199,16 +199,14 @@ function Header() {
               )}
             </NavLink>
           ))}
-          {moreSections.length > 0 && (
-            <button type="button" className="chq-nav-link" onClick={() => setMoreOpen(true)}>
-              More
-              {anyBadgeLive && <span className="chq-dot" aria-hidden="true" />}
-            </button>
-          )}
+          <button type="button" className="chq-nav-link" onClick={() => setMoreOpen(true)}>
+            More
+            {anyBadgeLive && <span className="chq-dot" aria-hidden="true" />}
+          </button>
         </nav>
       )}
 
-      {moreSections.length > 0 && moreOpen && (
+      {moreOpen && (
         <div
           className="chq-scrim"
           onClick={(e) => {
