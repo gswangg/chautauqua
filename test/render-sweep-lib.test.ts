@@ -1,6 +1,9 @@
+import { readFileSync } from "node:fs";
+
 import { describe, expect, it } from "vitest";
 
 import {
+  ADMIN_MOBILE_PASS_BLOCKING,
   allMobilePassed,
   allPassed,
   evaluateMobileRoute,
@@ -12,6 +15,7 @@ import {
   isNonEmptyText,
   type MobileRouteEntry,
 } from "../scripts/render-sweep-lib";
+import { ADMIN_MOBILE_ROUTE_MANIFEST } from "../scripts/render-sweep";
 import type { RouteManifestEntry } from "../app/src/routeManifest";
 
 const ENTRY: RouteManifestEntry = { path: "/admin/overview", role: "organizer" };
@@ -215,5 +219,40 @@ describe("allMobilePassed / formatMobileSummary / formatMobileResultsTable", () 
     expect(table).toContain("PASS");
     expect(table).toContain("/e/devflow-conf-2027/agenda");
     expect(table).toContain("FAIL");
+  });
+});
+
+describe("ADMIN_MOBILE_ROUTE_MANIFEST (DEC-387)", () => {
+  it("is non-empty", () => {
+    expect(ADMIN_MOBILE_ROUTE_MANIFEST.length).toBeGreaterThan(0);
+  });
+
+  it("only contains organizer or reviewer entries", () => {
+    for (const entry of ADMIN_MOBILE_ROUTE_MANIFEST) {
+      expect(["organizer", "reviewer"]).toContain(entry.role);
+    }
+  });
+
+  it("excludes the /admin/* catch-all", () => {
+    expect(ADMIN_MOBILE_ROUTE_MANIFEST.some((entry) => entry.path === "/admin/*")).toBe(false);
+  });
+
+  it("has no duplicate path+role pairs", () => {
+    const seen = new Set<string>();
+    for (const entry of ADMIN_MOBILE_ROUTE_MANIFEST) {
+      const key = `${entry.path}::${entry.role}`;
+      expect(seen.has(key)).toBe(false);
+      seen.add(key);
+    }
+  });
+});
+
+describe("ADMIN_MOBILE_PASS_BLOCKING (DEC-387)", () => {
+  it("is false on landing, with the flip rule documented on the constant", () => {
+    expect(ADMIN_MOBILE_PASS_BLOCKING).toBe(false);
+    const source = readFileSync(new URL("../scripts/render-sweep-lib.ts", import.meta.url), "utf-8");
+    // DEC-387 verbatim: "it becomes true in the wave after the pass first
+    // reads all-PASS."
+    expect(source).toContain("it becomes true in the wave after the pass first reads all-PASS");
   });
 });

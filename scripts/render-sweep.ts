@@ -40,6 +40,7 @@ import { chromium, type Browser, type BrowserContext, type ConsoleMessage } from
 
 import { ROUTE_MANIFEST, type RouteManifestEntry } from "../app/src/routeManifest";
 import {
+  ADMIN_MOBILE_PASS_BLOCKING,
   allMobilePassed,
   allPassed,
   evaluateMobileRoute,
@@ -93,6 +94,29 @@ const MOBILE_CONTROL_SELECTOR = [
   "form button[type='submit']",
   "form input[type='submit']",
   "header form button",
+].join(", ");
+
+// DEC-387: admin mobile pass (390x844, advisory) — the organizer + reviewer
+// entries of ROUTE_MANIFEST, with the "/admin/*" catch-all excluded (it's
+// not a real page, just App.tsx's fallback route). This is the instrument
+// that makes DEC-385's phone-frame redesign checkable; it lands advisory
+// (see ADMIN_MOBILE_PASS_BLOCKING in render-sweep-lib.ts) because these
+// routes have never been measured at 390px before.
+export const ADMIN_MOBILE_ROUTE_MANIFEST: readonly MobileRouteEntry[] = ROUTE_MANIFEST.filter(
+  (entry) => (entry.role === "organizer" || entry.role === "reviewer") && entry.path !== "/admin/*",
+).map((entry) => ({ path: entry.path, role: entry.role }));
+
+/** DEC-387 control selector: the redesign's phone-bar/primary-control
+ * vocabulary (tabbar links/buttons, .chq-btn, .chq-input, .chq-select,
+ * header nav links), visible only — same `offsetParent !== null` filter as
+ * the public mobile pass. */
+const ADMIN_MOBILE_CONTROL_SELECTOR = [
+  ".chq-tabbar a",
+  ".chq-tabbar button",
+  ".chq-btn",
+  ".chq-input",
+  ".chq-select",
+  "header nav a",
 ].join(", ");
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
@@ -233,6 +257,7 @@ async function visitMobileRoute(
   context: BrowserContext,
   baseUrl: string,
   entry: MobileRouteEntry,
+  controlSelector: string = MOBILE_CONTROL_SELECTOR,
 ): Promise<MobileRouteResult> {
   const page = await context.newPage();
   let status = 0;
@@ -252,7 +277,7 @@ async function visitMobileRoute(
       .map((el) => el.getBoundingClientRect().height);
     const minControlHeight = heights.length > 0 ? Math.min(...heights) : null;
     return { scrollWidth, viewportWidth, minControlHeight };
-  }, MOBILE_CONTROL_SELECTOR);
+  }, controlSelector);
 
   await page.close();
   return evaluateMobileRoute(entry, { status, ...measured });
@@ -347,6 +372,39 @@ async function main(): Promise<void> {
       failed = true;
     }
 
+    // DEC-387: admin mobile pass (390x844, advisory). Organizer + reviewer
+    // contexts logged in fresh (viewport is fixed per-context) and visited
+    // at the same 390x844 viewport as the public mobile pass, evaluated with
+    // the same evaluateMobileRoute but the redesign's own control selector
+    // (ADMIN_MOBILE_CONTROL_SELECTOR). Failures only flip the exit code when
+    // ADMIN_MOBILE_PASS_BLOCKING is true (false on landing; see its comment
+    // in render-sweep-lib.ts for the flip rule).
+    console.log("");
+    console.log("render-sweep: admin mobile pass (390x844, advisory)...");
+    const adminMobileContextByRole = new Map<"organizer" | "reviewer", BrowserContext>();
+    for (const role of ["organizer", "reviewer"] as const) {
+      const persona = personaForRole(role, fixture.identities);
+      if (!persona) throw new Error(`render-sweep: fixture is missing the ${role} identity`);
+      adminMobileContextByRole.set(role, await loginContext(browser, baseUrl, persona, { viewport: MOBILE_VIEWPORT }));
+    }
+
+    const adminMobileResults: MobileRouteResult[] = [];
+    for (const entry of ADMIN_MOBILE_ROUTE_MANIFEST) {
+      const context = adminMobileContextByRole.get(entry.role as "organizer" | "reviewer");
+      if (!context) throw new Error(`render-sweep: no admin mobile browser context for role '${entry.role}'`);
+      adminMobileResults.push(await visitMobileRoute(context, baseUrl, entry, ADMIN_MOBILE_CONTROL_SELECTOR));
+    }
+    for (const ctx of adminMobileContextByRole.values()) await ctx.close();
+
+    console.log("");
+    console.log(formatMobileResultsTable(adminMobileResults));
+    console.log("");
+    console.log(formatMobileSummary(adminMobileResults));
+
+    if (!allMobilePassed(adminMobileResults) && ADMIN_MOBILE_PASS_BLOCKING) {
+      failed = true;
+    }
+
     if (!failed) {
       console.log("gate:render-sweep OK");
     }
@@ -362,7 +420,14 @@ async function main(): Promise<void> {
   if (failed) process.exitCode = 1;
 }
 
-main().catch((err) => {
-  console.error(err);
-  process.exitCode = 1;
-});
+// Only run when executed directly (`tsx scripts/render-sweep.ts` /
+// `npm run gate:render-sweep`), not when imported — test/render-sweep-lib.test.ts
+// imports ADMIN_MOBILE_ROUTE_MANIFEST from this module for unit testing and
+// must not trigger a full wrangler-dev boot as a side effect of that import.
+const isMainModule = process.argv[1] !== undefined && import.meta.url === `file://${process.argv[1]}`;
+if (isMainModule) {
+  main().catch((err) => {
+    console.error(err);
+    process.exitCode = 1;
+  });
+}
