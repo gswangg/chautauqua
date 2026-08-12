@@ -87,6 +87,7 @@ export const THEME_CSS = `
   img { max-width: 100%; height: auto; }
   a { color: var(--chq-brand); }
   a:hover { color: var(--chq-brand-hover); }
+  :focus-visible { outline: 2px solid var(--chq-brand); outline-offset: 2px; }
 
   /* Every interactive element is >=44px tall on phone (min-height, not
      padding) -- DEC-367. Attribute selectors stay unquoted here for
