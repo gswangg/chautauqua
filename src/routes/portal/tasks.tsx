@@ -50,7 +50,14 @@ import { validateAnswers } from "../../forms/validate";
 import { makeVisibilityPredicate } from "../../forms/visibility";
 import type { AnswerMap } from "../../forms/types";
 import { FormFieldsSection, FieldRulesScript, fieldInputName } from "../../views/form-render";
-import { isImageContentType, isValidFileKind, sanitizeFilenameForKey, validateUpload } from "../../domain/files";
+import {
+  ALLOWED_UPLOAD_EXTENSIONS,
+  isImageContentType,
+  isValidFileKind,
+  sanitizeFilenameForKey,
+  uploadHintText,
+  validateUpload,
+} from "../../domain/files";
 import {
   parseCookies,
   newCsrfToken,
@@ -58,7 +65,7 @@ import {
   isSecureRequest,
   CSRF_COOKIE_NAME,
 } from "../../auth/cookies";
-import { DEC_016, DEC_020, DEC_023, DEC_028, DEC_029, DEC_240, DEC_242, DEC_244, DEC_605 } from "../../decisions";
+import { DEC_016, DEC_020, DEC_023, DEC_028, DEC_029, DEC_240, DEC_242, DEC_244, DEC_605, DEC_657 } from "../../decisions";
 import { formatCalendarDate, formatEventDate, formatEventDateTime } from "../../lib/event-time";
 
 export const portalTasksRoutes = new Hono<AppEnv>();
@@ -73,6 +80,7 @@ void DEC_240;
 void DEC_242;
 void DEC_244;
 void DEC_605;
+void DEC_657;
 
 // DEC-244: comment body cap on the portal reply endpoint (matches no
 // existing forms/validate.ts constant since file comments aren't a form
@@ -218,11 +226,13 @@ function TaskRow(props: {
           {t.kind === "file_request" ? (
             <form method="post" action={`/portal/tasks/${t.id}/upload`} enctype="multipart/form-data">
               <input type="hidden" name={CSRF_COOKIE_NAME} value={csrfToken} />
-              <p class="chq-portal-detail">
-                Accepted types: pdf, ppt, pptx, key, odp, zip (25 MB max); png, jpg, jpeg, webp, gif (8 MB max); txt,
-                md (25 MB max).
-              </p>
-              <input type="file" name="file" required />
+              <p class="chq-portal-detail">{uploadHintText()}</p>
+              <input
+                type="file"
+                name="file"
+                required
+                accept={ALLOWED_UPLOAD_EXTENSIONS.map((e) => `.${e}`).join(",")}
+              />
               <button type="submit" class="chq-btn chq-btn-primary">Upload</button>
             </form>
           ) : null}
@@ -243,7 +253,13 @@ function TaskRow(props: {
           </p>
           <form method="post" action={`/portal/tasks/${t.id}/upload`} enctype="multipart/form-data">
             <input type="hidden" name={CSRF_COOKIE_NAME} value={csrfToken} />
-            <input type="file" name="file" required />
+            <p class="chq-portal-detail">{uploadHintText()}</p>
+            <input
+              type="file"
+              name="file"
+              required
+              accept={ALLOWED_UPLOAD_EXTENSIONS.map((e) => `.${e}`).join(",")}
+            />
             <button type="submit" class="chq-btn chq-btn-secondary">Replace file</button>
           </form>
           <VersionHistory assignmentId={t.id} versions={fileExtras.versions} timezone={fileExtras.timezone} />
@@ -709,6 +725,7 @@ portalTasksRoutes.get("/tasks/:assignmentId/file", async (c) => {
   const safeName = latest.filename.replace(/[\r\n"]/g, "");
   return c.body(obj.body, 200, {
     "Content-Type": obj.contentType ?? latest.contentType,
+    "X-Content-Type-Options": "nosniff",
     "Content-Disposition": `attachment; filename="${safeName}"`,
   });
 });
@@ -748,6 +765,7 @@ portalTasksRoutes.get("/tasks/:assignmentId/file/:fileId", async (c) => {
   const safeName = target.filename.replace(/[\r\n"]/g, "");
   return c.body(obj.body, 200, {
     "Content-Type": obj.contentType ?? target.contentType,
+    "X-Content-Type-Options": "nosniff",
     "Content-Disposition": `attachment; filename="${safeName}"`,
   });
 });
@@ -784,7 +802,10 @@ portalTasksRoutes.get("/resources/:resourceId/download", async (c) => {
   if (!obj) throw new ApiError("not_found", "File contents not found");
 
   const contentType = obj.contentType ?? scope.contentType;
-  const headers: Record<string, string> = { "Content-Type": contentType };
+  const headers: Record<string, string> = {
+    "Content-Type": contentType,
+    "X-Content-Type-Options": "nosniff",
+  };
   if (!isImageContentType(contentType)) {
     const safeName = scope.filename.replace(/[\r\n"]/g, "");
     headers["Content-Disposition"] = `attachment; filename="${safeName}"`;
