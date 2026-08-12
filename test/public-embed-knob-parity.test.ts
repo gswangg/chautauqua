@@ -263,8 +263,11 @@ describe("DEC-489: agenda/schedule `day` behaves identically on HTML and .json",
     const htmlApp = buildAgendaApp();
     const htmlRes = await htmlApp.request("/embed/conf/schedule?day=2026-08-11", {}, TEST_ENV);
     const html = await htmlRes.text();
-    expect(html).toContain("chq-agenda-sub2");
-    expect(html).not.toContain("chq-agenda-sub1");
+    // DEC-602: /schedule renders the itinerary list (`chq-agenda-list-<id>`),
+    // never the room-column grid's blocks (`chq-agenda-<id>`) — assert the
+    // day filter against the markup /schedule actually emits.
+    expect(html).toContain("chq-agenda-list-sub2");
+    expect(html).not.toContain("chq-agenda-list-sub1");
 
     installFakeCaches();
     const jsonApp = buildAgendaApp();
