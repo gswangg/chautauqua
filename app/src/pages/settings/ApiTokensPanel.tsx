@@ -113,10 +113,10 @@ export function ApiTokensPanel() {
             {tokens.map((t) => (
               <tr key={t.id}>
                 <td>{t.name}</td>
-                <td>
+                <td data-label="Token">
                   <code>{t.tokenPrefix}…</code>
                 </td>
-                <td>{formatDate(t.lastUsedAt)}</td>
+                <td data-label="Last used">{formatDate(t.lastUsedAt)}</td>
                 <td>
                   <button type="button" className="chq-link-button" onClick={() => handleDelete(t.id)}>
                     Revoke
