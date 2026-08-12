@@ -34,5 +34,8 @@ reviewEvaluationsRoutes.get("/api/v1/submissions/:id/evaluations", requireOrgani
     comment: r.comment,
     submittedAt: r.submittedAt,
   }));
-  return c.json({ items });
+  // DEC-461(a) list envelope. This read is unpaginated on purpose -- one
+  // submission's evaluations are bounded by (plans x reviewers), so the whole
+  // set is always one page.
+  return c.json({ items, total: items.length, page: 1, perPage: items.length });
 });

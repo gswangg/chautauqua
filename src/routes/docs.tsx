@@ -118,6 +118,11 @@ export const ROUTE_GROUPS: { title: string; rows: Row[] }[] = [
       { method: "GET", path: "/api/v1/review/plans", role: "reviewer" },
       { method: "GET", path: "/api/v1/review/plans/:id/queue", role: "reviewer" },
       { method: "GET", path: "/api/v1/review/submissions/:id", role: "reviewer" },
+      {
+        method: "GET",
+        path: "/api/v1/submissions/:id/evaluations",
+        role: "organizer (DEC-596: every evaluation of one submission, across plans; reviewerName null when the plan is anonymized)",
+      },
       { method: "PUT", path: "/api/v1/review/plans/:planId/evaluations/:submissionId", role: "reviewer" },
       { method: "POST", path: "/api/v1/review/plans/:planId/recusals/:submissionId", role: "reviewer" },
       { method: "DELETE", path: "/api/v1/review/plans/:planId/recusals/:submissionId", role: "reviewer" },

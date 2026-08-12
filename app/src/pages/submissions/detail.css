@@ -202,7 +202,12 @@
 }
 
 /* Speaker card: name, title/company, email -- same numbered-section rule
-   treatment as every other aside/main section. */
+   treatment as every other aside/main section. min-width:0 lets the long
+   email actually shrink (and so wrap) inside the aside's flex column. */
+.chq-detail-speaker {
+  min-width: 0;
+}
+
 .chq-detail-speaker-body {
   display: flex;
   flex-direction: column;
@@ -220,7 +225,13 @@
   overflow-wrap: anywhere;
 }
 
-/* Reviews: each evaluation keeps its full comment length (copy rule 6). */
+/* Reviews: each evaluation keeps its full comment length (copy rule 6);
+   min-width:0 keeps long comments wrapping inside the main column's measure
+   instead of widening it. */
+.chq-detail-reviews {
+  min-width: 0;
+}
+
 .chq-review-list {
   margin: 0;
   padding: 0;

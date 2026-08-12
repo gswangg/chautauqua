@@ -625,7 +625,7 @@ export function SubmissionDetailPage() {
                     <button
                       key={status}
                       type="button"
-                      className={`chq-btn ${detail.status === status ? 'chq-btn-primary' : 'chq-btn-secondary'}`}
+                      className={detail.status === status ? 'chq-btn chq-btn-primary' : 'chq-btn chq-btn-secondary'}
                       disabled={statusPending}
                       aria-pressed={detail.status === status}
                       onClick={() => changeStatus(status)}
