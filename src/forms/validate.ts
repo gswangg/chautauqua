@@ -1,9 +1,13 @@
-import type { AnswerMap, FormFieldDef } from "./types";
+import { lockedFieldName, type AnswerMap, type FormFieldDef } from "./types";
 import { isVisible } from "./visibility";
-import { DEC_124 } from "../decisions";
+import { isValidEmail, normalizeEmail } from "../domain/email";
+import { DEC_124, DEC_454, DEC_455 } from "../decisions";
 
 // Referenced for compile-checked dependency per DEC-124.
 void DEC_124;
+// Referenced for compile-checked dependency per DEC-454/DEC-455.
+void DEC_454;
+void DEC_455;
 
 export const MAX_TEXT_LENGTH = 2000;
 export const MAX_LONG_TEXT_LENGTH = 20000;
@@ -45,7 +49,9 @@ export function validateAnswers(
       continue;
     }
 
-    if (!hasAnswer || value === undefined || value === null || value === "") {
+    // DEC-455: a string whose trim is empty is ABSENT, not just "".
+    const isBlankString = typeof value === "string" && value.trim() === "";
+    if (!hasAnswer || value === undefined || value === null || value === "" || isBlankString) {
       if (field.required) {
         errors[field.id] = "required";
       }
@@ -63,6 +69,17 @@ export function validateAnswers(
         if (value.length > cap) {
           errors[field.id] = `Too long (max ${cap} characters)`;
           continue;
+        }
+        // DEC-454: the locked email field is validated/normalized here so
+        // every path through validateAnswers (public CFP, admin edits)
+        // enforces the same canonical email rule.
+        if (field.kind === "text" && lockedFieldName(field.id) === "email") {
+          if (!isValidEmail(value)) {
+            errors[field.id] = "must be a valid email address";
+            continue;
+          }
+          cleaned[field.id] = normalizeEmail(value);
+          break;
         }
         cleaned[field.id] = value;
         break;
