@@ -329,16 +329,17 @@ export function SubmissionDetailPage() {
               {!editing ? (
                 <>
                   {detail.description && <p className="chq-detail-abstract">{detail.description}</p>}
-                  <button type="button" onClick={startEditing}>
+                  <button type="button" className="chq-btn chq-btn-tertiary" onClick={startEditing}>
                     Edit
                   </button>
                 </>
               ) : (
-                <div className="chq-submission-edit-form">
+                <div className="chq-detail-edit-form">
                   <label>
                     Title
                     <input
                       type="text"
+                      className="chq-input"
                       value={editTitle}
                       disabled={savingEdit}
                       onChange={(e) => setEditTitle(e.target.value)}
@@ -347,17 +348,25 @@ export function SubmissionDetailPage() {
                   <label>
                     Abstract
                     <textarea
+                      className="chq-textarea"
                       value={editDescription}
                       disabled={savingEdit}
                       onChange={(e) => setEditDescription(e.target.value)}
                     />
                   </label>
-                  <button type="button" disabled={savingEdit} onClick={saveEdit}>
-                    Save
-                  </button>
-                  <button type="button" disabled={savingEdit} onClick={() => setEditing(false)}>
-                    Cancel
-                  </button>
+                  <div className="chq-detail-edit-form-actions">
+                    <button type="button" className="chq-btn chq-btn-primary" disabled={savingEdit} onClick={saveEdit}>
+                      Save
+                    </button>
+                    <button
+                      type="button"
+                      className="chq-btn chq-btn-secondary"
+                      disabled={savingEdit}
+                      onClick={() => setEditing(false)}
+                    >
+                      Cancel
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
@@ -386,6 +395,7 @@ export function SubmissionDetailPage() {
                         <div>{entry.title}</div>
                         <button
                           type="button"
+                          className="chq-btn chq-btn-tertiary"
                           disabled={restoringId === entry.id}
                           onClick={() => restoreRevision(entry.id)}
                         >
@@ -443,6 +453,7 @@ export function SubmissionDetailPage() {
                           <label className="chq-visible-toggle">
                             <input
                               type="checkbox"
+                              className="chq-check"
                               checked={p.visible}
                               disabled={visiblePending === p.id}
                               onChange={() => toggleParticipantVisible(p)}
@@ -459,11 +470,12 @@ export function SubmissionDetailPage() {
                 </table>
               )}
 
-              <div className="chq-add-co-presenter">
+              <div className="chq-add-co-presenter chq-detail-copresenter-search">
                 <label>
                   Add co-presenter
                   <input
                     type="search"
+                    className="chq-input"
                     aria-label="Search contacts"
                     placeholder="Search contacts by name or email..."
                     value={coPresenterQuery}
@@ -476,7 +488,12 @@ export function SubmissionDetailPage() {
                     }}
                   />
                 </label>
-                <button type="button" disabled={coPresenterSearching} onClick={searchCoPresenters}>
+                <button
+                  type="button"
+                  className="chq-btn chq-btn-secondary"
+                  disabled={coPresenterSearching}
+                  onClick={searchCoPresenters}
+                >
                   Search
                 </button>
                 {coPresenterResults.length > 0 && (
@@ -488,6 +505,7 @@ export function SubmissionDetailPage() {
                         </span>
                         <button
                           type="button"
+                          className="chq-btn chq-btn-primary"
                           disabled={addingContactId === contact.id}
                           onClick={() => addCoPresenter(contact)}
                         >
@@ -536,6 +554,7 @@ export function SubmissionDetailPage() {
               <label className="chq-detail-decision-status">
                 Status
                 <select
+                  className="chq-select"
                   value={detail.status}
                   disabled={statusPending}
                   onChange={(e) => changeStatus(e.target.value as SubmissionStatus)}
@@ -551,6 +570,7 @@ export function SubmissionDetailPage() {
               <div className="chq-detail-decision-actions">
                 <button
                   type="button"
+                  className="chq-btn chq-btn-primary"
                   disabled={contentStatusPending || detail.contentStatus === 'approved'}
                   onClick={() => changeContentStatus('approved')}
                 >
@@ -558,12 +578,13 @@ export function SubmissionDetailPage() {
                 </button>
                 <button
                   type="button"
+                  className="chq-btn chq-btn-secondary"
                   disabled={contentStatusPending || detail.contentStatus === 'changes_requested'}
                   onClick={() => changeContentStatus('changes_requested')}
                 >
                   Request changes
                 </button>
-                <button type="button" disabled={cloning} onClick={cloneSubmission}>
+                <button type="button" className="chq-btn chq-btn-secondary" disabled={cloning} onClick={cloneSubmission}>
                   Clone
                 </button>
               </div>

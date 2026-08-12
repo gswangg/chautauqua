@@ -108,6 +108,56 @@
   color: var(--chq-ink);
 }
 
+/* Edit form (title/abstract) and its Save/Cancel action row. */
+.chq-detail-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.chq-detail-edit-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--chq-muted);
+}
+
+.chq-detail-edit-form .chq-input,
+.chq-detail-edit-form .chq-textarea {
+  width: 100%;
+}
+
+.chq-detail-edit-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Co-presenter search field + Search button row. */
+.chq-detail-copresenter-search {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.chq-detail-copresenter-search label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--chq-muted);
+  flex: 1 1 240px;
+}
+
+.chq-detail-copresenter-search .chq-input {
+  width: 100%;
+}
+
 .chq-detail-decision {
   border: 1px solid var(--chq-rule);
   border-radius: 6px;
@@ -230,16 +280,35 @@
     overflow-wrap: anywhere;
   }
 
-  /* Decision panel buttons: full-width, 44px, phone control radius. */
-  .chq-detail-decision-body select,
-  .chq-detail-decision-actions button {
+  /* Decision panel buttons: full-width, phone control radius. */
+  .chq-detail-decision-body .chq-select,
+  .chq-detail-decision-actions .chq-btn {
     width: 100%;
-    min-height: 44px;
     border-radius: var(--chq-r-ctl-phone);
   }
 
   .chq-detail-decision-actions {
     flex-direction: column;
+  }
+
+  /* Edit form + co-presenter search: stack full-width on phone. */
+  .chq-detail-edit-form-actions .chq-btn {
+    width: 100%;
+    border-radius: var(--chq-r-ctl-phone);
+  }
+
+  .chq-detail-edit-form-actions {
+    flex-direction: column;
+  }
+
+  .chq-detail-copresenter-search {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .chq-detail-copresenter-search .chq-btn {
+    width: 100%;
+    border-radius: var(--chq-r-ctl-phone);
   }
 
   /* Participant list stacks: table markup unchanged, cells become
@@ -297,9 +366,8 @@
     padding-bottom: 10px;
   }
 
-  .chq-co-presenter-results button,
-  .chq-submission-history-entry button {
-    min-height: 44px;
+  .chq-co-presenter-results .chq-btn,
+  .chq-submission-history-entry .chq-btn {
     border-radius: var(--chq-r-ctl-phone);
   }
 
