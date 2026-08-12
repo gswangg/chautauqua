@@ -187,20 +187,12 @@ export async function upsertEvaluation(
     comment?: string | null;
   },
 ): Promise<EvaluationRecord> {
-  const existing = await getEvaluation(db, input.planId, input.submissionId, input.reviewerId, input.round);
   const now = new Date();
-  if (existing) {
-    await db
-      .update(schema.evaluation)
-      .set({
-        scoresJson: JSON.stringify(input.scores),
-        comment: input.comment ?? null,
-        submittedAt: now,
-        updatedAt: now,
-      })
-      .where(eq(schema.evaluation.id, existing.id));
-  } else {
-    await db.insert(schema.evaluation).values({
+  // DEC-552: one atomic statement -- no read-then-write over the
+  // evaluation_plan_submission_reviewer_round_idx uniqueIndex.
+  await db
+    .insert(schema.evaluation)
+    .values({
       id: newId(),
       planId: input.planId,
       submissionId: input.submissionId,
@@ -211,8 +203,21 @@ export async function upsertEvaluation(
       submittedAt: now,
       createdAt: now,
       updatedAt: now,
+    })
+    .onConflictDoUpdate({
+      target: [
+        schema.evaluation.planId,
+        schema.evaluation.submissionId,
+        schema.evaluation.reviewerId,
+        schema.evaluation.round,
+      ],
+      set: {
+        scoresJson: JSON.stringify(input.scores),
+        comment: input.comment ?? null,
+        submittedAt: now,
+        updatedAt: now,
+      },
     });
-  }
   const saved = await getEvaluation(db, input.planId, input.submissionId, input.reviewerId, input.round);
   if (!saved) throw new Error("upsertEvaluation: row missing after write");
   return saved;
