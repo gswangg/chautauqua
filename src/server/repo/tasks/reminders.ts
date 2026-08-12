@@ -11,6 +11,7 @@ import type { Mailer } from "../../../mail/types";
 import { renderTemplate, textToHtml } from "../../../mail/render";
 import type { ReminderAssignment } from "../../../domain/reminders";
 import { capReminderGroups, planManualReminders, planReminders } from "../../../domain/reminders";
+import { formatEventDate } from "../../../lib/event-time";
 
 interface OutstandingRow {
   assignmentId: string;
@@ -25,6 +26,7 @@ interface OutstandingRow {
   email: string;
   eventId: string;
   eventName: string;
+  timezone: string;
 }
 
 /** One joined query for every non-complete assignment in the event (or
@@ -53,6 +55,7 @@ async function listOutstandingForEvent(
       email: schema.contact.email,
       eventId: schema.event.id,
       eventName: schema.event.name,
+      timezone: schema.event.timezone,
     })
     .from(schema.taskAssignment)
     .innerJoin(schema.task, eq(schema.taskAssignment.taskId, schema.task.id))
@@ -74,11 +77,6 @@ function toReminderAssignment(r: OutstandingRow): ReminderAssignment {
   };
 }
 
-function formatDueDate(ms: number | null): string {
-  if (ms === null) return "No due date";
-  return new Date(ms).toISOString().slice(0, 10);
-}
-
 /** Sends one reminder email per contact via `mailer`, stamps
  * last_reminded_at on every assignment included in that email. Used by
  * both the bulk 'remind now' endpoint (taskIds optional filter, ignores the
@@ -90,6 +88,7 @@ async function sendReminderEmails(
   mailer: Mailer,
   eventId: string,
   eventName: string,
+  eventTimezone: string,
   groups: { contactId: string; assignments: ReminderAssignment[] }[],
   outstandingByContact: Map<string, OutstandingRow[]>,
   now: Date,
@@ -106,20 +105,15 @@ async function sendReminderEmails(
     if (rows.length === 0) continue;
     const first = rows[0];
     if (!first) continue;
-    const taskList = group.assignments.map((a) => a.taskTitle).join(", ");
-    const nextDue = group.assignments
-      .map((a) => a.dueDate)
-      .filter((d): d is number => d !== null)
-      .sort((a, b) => a - b)[0];
 
-    const reminderText = renderTemplate(
-      "You have outstanding tasks for {event_name}: {task_list} (due {due_date}).",
-      {
-        event_name: eventName,
-        task_list: taskList,
-        due_date: formatDueDate(nextDue ?? null),
-      },
-    );
+    const header = renderTemplate("You have outstanding tasks for {event_name}:", {
+      event_name: eventName,
+    });
+    const taskLines = group.assignments.map((a) => {
+      if (a.dueDate === null) return `- ${a.taskTitle} — No due date`;
+      return `- ${a.taskTitle} — due ${formatEventDate(a.dueDate, eventTimezone)}`;
+    });
+    const reminderText = [header, ...taskLines].join("\n");
 
     try {
       await mailer.send({
@@ -164,6 +158,7 @@ export async function remindNow(
   const outstanding = await listOutstandingForEvent(db, eventId, taskIds);
   if (outstanding.length === 0) return { sent: 0, failed: [], skipped: 0, remaining: 0 };
   const eventName = outstanding[0]?.eventName ?? "";
+  const eventTimezone = outstanding[0]?.timezone ?? "";
 
   const outstandingByContact = new Map<string, OutstandingRow[]>();
   for (const r of outstanding) {
@@ -178,7 +173,16 @@ export async function remindNow(
   });
   if (plan.groups.length === 0) return { sent: 0, failed: [], skipped: plan.skipped, remaining: plan.remaining };
 
-  const result = await sendReminderEmails(db, mailer, eventId, eventName, plan.groups, outstandingByContact, now);
+  const result = await sendReminderEmails(
+    db,
+    mailer,
+    eventId,
+    eventName,
+    eventTimezone,
+    plan.groups,
+    outstandingByContact,
+    now,
+  );
   return { ...result, skipped: plan.skipped, remaining: plan.remaining };
 }
 
@@ -189,6 +193,7 @@ export async function sendDueRemindersForEvent(db: Db, mailer: Mailer, eventId: 
   const outstanding = await listOutstandingForEvent(db, eventId);
   if (outstanding.length === 0) return 0;
   const eventName = outstanding[0]?.eventName ?? "";
+  const eventTimezone = outstanding[0]?.timezone ?? "";
 
   const outstandingByContact = new Map<string, OutstandingRow[]>();
   for (const r of outstanding) {
@@ -208,7 +213,16 @@ export async function sendDueRemindersForEvent(db: Db, mailer: Mailer, eventId: 
   // tick — the next tick picks up the `remaining` contacts.
   const { groups: cappedGroups } = capReminderGroups(plan.groups);
 
-  const result = await sendReminderEmails(db, mailer, eventId, eventName, cappedGroups, outstandingByContact, now);
+  const result = await sendReminderEmails(
+    db,
+    mailer,
+    eventId,
+    eventName,
+    eventTimezone,
+    cappedGroups,
+    outstandingByContact,
+    now,
+  );
   return result.sent;
 }
 
