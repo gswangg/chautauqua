@@ -313,3 +313,9 @@ mock shows criteria but not their editing flow; prod's invented flow is unintuit
     (chq-btn tier classes), migrate every button to it, and lock with a source scan —
     no inline button styling, no per-page button CSS. The 44px phone floor applies to
     every tier (the ~22px Edit/Delete links in phone Templates are the worst case).
+
+20. (User QA, generalizes item 18's pipeline flash) **One loading-state policy,
+    app-wide**: fast operations flash "Loading…" for a frame and read as flicker
+    (seen: Comms search; pipeline board). Rule: loading indicators appear only after a
+    ~250ms delay (CSS animation-delay or timer), and empty-states never render while a
+    load is in flight. One shared helper/class, applied everywhere a list fetches.
