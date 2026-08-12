@@ -11,6 +11,12 @@
   gap: 20px;
 }
 
+/* DEC-621: wraps the regular head+tab content so the phone landing swap
+   (below) can hide it with one modifier class instead of unmounting it. */
+.chq-comms-main {
+  display: contents;
+}
+
 .chq-comms-head {
   display: flex;
   align-items: flex-end;
@@ -46,6 +52,14 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
+  /* DEC-621: without an explicit flex-basis, this item's shrink floor is
+     its content min-size, which .chq-main's `overflow-wrap: anywhere`
+     collapses to ~1 character -- flex then renders the label one letter
+     per line at 390px. flex:1 + min-width:0 sizes it from the row's
+     available space instead of from its own (collapsed) content min-size,
+     so it wraps normal words. */
+  flex: 1;
+  min-width: 0;
 }
 
 .chq-comms-step-title {
@@ -347,6 +361,29 @@
   padding-top: 4px;
 }
 
+/* DEC-621: the Subject/Name text inputs sit inside .chq-comms-editor's
+   flex column as children of a bare <label> (an inline element blockified
+   by flex, but the <input> inside is not itself a flex item and so keeps
+   its browser-default intrinsic width) -- min-width:auto lets that
+   default width win over any surrounding stretch, clipping longer values.
+   One rule for both inputs, not a per-input inline style. */
+.chq-comms-editor input.chq-input {
+  width: 100%;
+  min-width: 0;
+}
+
+/* ------------------------------------------------------------------ */
+/* Phone landing (DEC-621): names the three things Comms does instead   */
+/* of dropping straight into compose step 1. Hidden at desktop by       */
+/* default (top-level display:none, verified below by conformance       */
+/* test) -- only shown inside the 700px query, and only while the       */
+/* visitor hasn't picked a destination yet (chq-comms-phone-landing-show)*/
+/* ------------------------------------------------------------------ */
+
+.chq-comms-phone-landing {
+  display: none;
+}
+
 @media (max-width: 900px) {
   .chq-comms-review,
   .chq-comms-templates {
@@ -521,5 +558,48 @@
      already run full width; tighten the panel's gutter to match. */
   .chq-comms-panel {
     margin-top: 16px;
+  }
+
+  /* DEC-621: phone landing swap -- while the visitor hasn't chosen a
+     destination yet, hide the regular head+tab content and show the
+     landing choices instead; once chosen, the JS flag drops both
+     modifier classes and the base rules (main visible, landing
+     display:none) take back over. */
+  .chq-comms-main-landing {
+    display: none;
+  }
+
+  .chq-comms-phone-landing-show {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .chq-comms-phone-landing-intro {
+    font-size: 14px;
+    color: var(--chq-muted);
+  }
+
+  .chq-comms-phone-landing-choices {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .chq-comms-phone-landing-choice {
+    min-height: 56px;
+    display: flex;
+    align-items: center;
+    padding: 0 18px;
+    border: 1px solid var(--chq-border);
+    border-radius: var(--chq-r-card);
+    background: var(--chq-surface);
+    font: inherit;
+    font-family: var(--chq-font-display);
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--chq-ink);
+    text-align: left;
+    cursor: pointer;
   }
 }
