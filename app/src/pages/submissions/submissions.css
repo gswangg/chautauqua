@@ -343,3 +343,116 @@
   text-transform: uppercase;
   color: var(--chq-muted);
 }
+
+/* Phone (DEC-385/386): one markup tree, no duplicated DOM. The table body
+   rows become cards purely through CSS -- `td`s are reflowed onto separate
+   lines with the `order` property (DOM order in the document is untouched;
+   only the *visual* order changes), and the ref/status pair is pulled onto
+   one shared line via a shared flex line + `justify-content: space-between`. */
+@media (max-width: 700px) {
+  .chq-submissions-table-wrap {
+    overflow-x: visible;
+  }
+
+  .chq-submissions-table thead {
+    display: none;
+  }
+
+  .chq-submissions-table,
+  .chq-submissions-table tbody {
+    display: block;
+    width: 100%;
+  }
+
+  .chq-submissions-table tbody tr {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    row-gap: 9px;
+    column-gap: 10px;
+    padding: 16px 0;
+    border-bottom: 1px solid var(--chq-hairline);
+  }
+
+  .chq-submissions-table tbody tr:last-child {
+    border-bottom: none;
+  }
+
+  .chq-submissions-table tbody td {
+    display: block;
+    width: 100%;
+    order: 10;
+    padding: 0;
+    border-bottom: none;
+    vertical-align: baseline;
+  }
+
+  /* Select checkbox: keeps a >=44px tap area, sits on its own top line. */
+  .chq-submissions-table tbody td:nth-child(1) {
+    order: 1;
+    width: auto;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+  }
+
+  /* Ref + status pill share one baseline line (space-between comes from
+     the shared flex line on the row above). */
+  .chq-submissions-table tbody td:nth-child(2),
+  .chq-submissions-table tbody td:nth-child(6) {
+    order: 2;
+    width: auto;
+  }
+
+  .chq-submissions-table tbody td:nth-child(3) {
+    order: 3;
+  }
+
+  .chq-submissions-table tbody td:nth-child(4) {
+    order: 4;
+  }
+
+  .chq-submissions-table tbody td:nth-child(5) {
+    order: 5;
+  }
+
+  .chq-submissions-table tbody td:nth-child(7) {
+    order: 6;
+  }
+
+  .chq-submissions-table-title {
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+
+  .chq-submissions-table-muted {
+    font-size: 13px;
+  }
+
+  /* Status filter pills + the toolbar's columns row: keep every pill
+     reachable by scrolling instead of wrapping/clipping. */
+  .chq-submissions-status-row,
+  .chq-submissions-filterbar .chq-status-pills {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .chq-submissions-status-row > *,
+  .chq-submissions-filterbar .chq-status-pills > * {
+    flex-shrink: 0;
+  }
+
+  .chq-submissions-pagination {
+    flex-wrap: wrap;
+    row-gap: 10px;
+  }
+
+  .chq-submissions-columnpicker-panel,
+  .chq-submissions-views-panel {
+    max-width: calc(100vw - 32px);
+    box-sizing: border-box;
+  }
+}
