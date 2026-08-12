@@ -10,48 +10,51 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   mail,lib} import nothing node:/cf; 012/013 route files export Hono
   sub-apps, errors {error:{code,message,fields?}}; bulk ops set-based.
 - REDESIGN w1-10 (DEC-366..419, FUNCTION FROZEN): tokens frozen, ONE
-  dialog contract, phone @700px; D1 binds PRIMITIVES (epoch-ms
-  NUMBER); dates via event-time.ts OWNING EVENT's tz never toISOString;
-  public lists LIMIT+COUNT(DISTINCT).
-- STAGE1-CLOSE w11-33 (DEC-420..545, compacted): ledger names its sha; ONE
+  dialog contract, phone @700px; D1 binds PRIMITIVES (epoch-ms NUMBER);
+  dates via event-time.ts OWNING EVENT's tz never toISOString; public
+  lists LIMIT+COUNT(DISTINCT).
+- STAGE1-CLOSE w11-38 (DEC-420..569, compacted): ledger names its sha; ONE
   email rule via findAccountUserId; universal rows graded from ENUMERATION
   never sample; pagination ONE shape `page?:{limit,offset}`+count*+`id asc`;
   a cap the UI can't see LIES, render `total`; atomic SQL beats
   read-then-write; event-clock strings carry their event's tz; hand-listed
-  manifests desync -- enumerate in a test; export dropping custom answers is
-  the lock-in forbidden; chunk VALUES by BOUND PARAMS not row count;
-  date-only field is a DAY LABEL; conditional visibility is a FIXED POINT;
-  offset-paged ORDER BY ends in a unique column; hand-copied vocabularies
-  drift -- IMPORT them; a helper with zero src callers tests NOTHING.
-- STAGE1-CLOSE w34-38 (DEC-546..569, compacted): re-read the RATIONALE
-  before trusting a "PUBLIC BY DESIGN" verdict. LIMIT obliges a TOTAL
-  order-by + truthful count. A uniqueIndex is a CONTRACT -- sweep every
-  SELECT-then-INSERT. A notification with nothing to click is half-built.
-  A cron has no request -- give it its own origin entry point that THROWS.
-  A render test whose MOCK is invented proves NOTHING -- pin the SPA type
-  to the server's OWN payload. A `position`/`order` column nobody sets on
-  create is dead: assign max+1 INSIDE the insert. A nullable column inside
-  a NEGATED set predicate (NOT IN / !=) silently skips its NULL rows --
-  decide in JS, export as a PURE fn. Two functions claiming "the same
-  semantics" must END in the same helper. A completion count taken OUTSIDE
-  the assigned set can exceed its own denominator. Feedback a speaker reads
-  is the round that DECIDED THEM, never every round stacked.
-- FINDINGS ROUND w1 (DEC-570..580): full suites are SERIALIZED through
-  scripts/with-test-lock.sh; workers run TARGETED tests only. A `div
-  draggable` is invisible to the a11y tree — the judge drives that tree, so
-  every card is a real <button> and cell targets appear only while armed
-  (tab order is not a place to be generous). A card with `height:100%` and
-  no `overflow` bleeds into the next row. Colour alone may not carry track
-  identity; olive or ink, and NAME the track in type. A fan-out with no
-  count is a cap the UI can't see: preview and queue must END in one
-  predicate builder. A comment thread belongs to the version CHAIN, not a
-  file row — a re-upload must not orphan the feedback that caused it. An
-  upload that navigates DISCARDS the form around it: one form, one submit,
-  or keep the panel mounted. A blank CSV cell is ABSENT DATA, never an
-  instruction to delete — and a JSON blob patch deletes every key the file
-  didn't mention. Guessed bottom padding under a fixed bar always clips
-  somewhere: `flex:1; min-height:0; overflow-y:auto` removes the guess. A
-  drill-in must resolve its own subject; trusting the loaded list makes the
-  button a no-op from any other view. A fidelity report is an OBSERVATION,
-  not a spec — "single-track data model" was wrong, and implementing it
-  literally would have been the round's fourth data-loss path.
+  manifests desync -- enumerate in a test; date-only field is a DAY
+  LABEL; conditional visibility is a FIXED POINT; offset-paged ORDER BY
+  ends in a unique column; hand-copied vocabularies drift -- IMPORT
+  them; a helper with zero src callers tests NOTHING; a uniqueIndex is a
+  CONTRACT -- sweep every SELECT-then-INSERT; a cron has no request --
+  own origin entry point that THROWS; a `position`/`order` column
+  nobody sets on create is dead -- assign max+1 INSIDE the insert; a
+  nullable column inside a NEGATED set predicate (NOT IN / !=) silently
+  skips NULL rows; two functions claiming "the same semantics" END in
+  the same helper; a completion count taken OUTSIDE the assigned set can
+  exceed its denominator.
+- FINDINGS ROUND w1 (DEC-570..580, compacted): full suites SERIALIZED via
+  scripts/with-test-lock.sh, workers run TARGETED tests only. A `div
+  draggable` is invisible to the a11y tree -- use a real <button>. A card
+  with `height:100%` and no `overflow` bleeds into the next row. Colour
+  alone may not carry track identity -- NAME it in type. A fan-out with
+  no count is a cap the UI can't see: preview/queue END in one predicate
+  builder. A comment thread belongs to the version CHAIN, not a file
+  row. An upload that navigates DISCARDS the form; a blank CSV cell is
+  ABSENT DATA, never delete. `flex:1; min-height:0; overflow-y:auto`
+  beats guessed bottom padding under a fixed bar. A drill-in must
+  resolve its own subject; a fidelity report is an OBSERVATION, not spec.
+- FINDINGS ROUND w2 (DEC-581..590): verify before you trust -- w2 was
+  planned against a tree where w1 had NOT landed; read main. GET / is an
+  ANONYMOUS hub: signed-in visitors redirect by role, and what a
+  stranger may read is a PURE predicate (src/lib/home-hub.ts), never a
+  WHERE clause -- would you mind a competitor reading it? Credentials
+  copied by hand drift -- IMPORT them, assert against the fixture; a
+  password renders only when those exact seeded accounts exist. SSR
+  can't know the viewport, so a phone layout is a SECOND markup switched
+  with display:none (visibility/opacity leave it in the a11y tree) --
+  duplicated inputs sharing a value must MIRROR each other or unchecking
+  silently fails. One shared stylesheet per layer: THEME_CSS owns bare
+  control selectors for every SSR surface (DEC-585) as app/src/styles.css
+  does for the SPA (DEC-577); a surface module styles .chq-* only. A
+  picker between a person and their work is an administrative noun -- a
+  reviewer lands on the queue. A ratio whose numerator/denominator count
+  different KINDS of thing is a sentence that cannot be true. A branch
+  comparing against a copied-wrong vocabulary never fires and prints the
+  raw enum -- import the label from whoever owns the vocabulary.
