@@ -112,6 +112,7 @@ describe("sendDueRemindersForEvent (DEC-023 due-date cron path, invoked per-even
         email: "sbek-speaker2@example.com",
         eventId: "event_1",
         eventName: "DevFlow Conf 2027",
+        timezone: "America/Los_Angeles",
       },
     ];
     const { db } = fakeDb(rows);
