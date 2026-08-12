@@ -669,3 +669,13 @@ compare phone frames pixel-for-pixel.
      ink/caps is the urgency modifier. Implement the shapes exactly so the family
      resemblance carries the meaning: an outlined overdue cell visibly belongs to the
      same "not done" family as pending.
+
+54. (User QA) **Uploaded content files cannot be deleted — no delete affordance
+    anywhere in Content.** A wrong upload (wrong deck, accidentally sensitive file)
+    is permanent. The mock under-specifies this; proposed semantics honoring the
+    version-chain model: ORGANIZER may delete any version (confirm dialog via
+    ModalFrame; chain re-links across the gap; deletion recorded in the file's
+    history); SPEAKER may delete only their own LATEST version while its content
+    status is still pending review. R2 object deleted too, not just the row.
+    Conditional-and-quiet affordance per the rules: a "Delete" tertiary on the
+    version row, never on the section.
