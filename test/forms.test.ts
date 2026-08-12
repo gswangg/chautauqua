@@ -150,7 +150,7 @@ describe("validateAnswers", () => {
 
   it("passes when visible required fields are answered", () => {
     const result = validateAnswers([titleField], { title: "My talk" });
-    expect(result).toEqual({ ok: true, cleaned: { title: "My talk" } });
+    expect(result).toEqual({ ok: true, cleaned: { title: "My talk" }, hiddenFieldIds: [] });
   });
 
   it("does not block on a hidden required field (conditional case)", () => {
@@ -206,7 +206,7 @@ describe("validateAnswers", () => {
 
   it("accepts a valid dropdown value", () => {
     const result = validateAnswers([formatField], { format: "Panel" });
-    expect(result).toEqual({ ok: true, cleaned: { format: "Panel" } });
+    expect(result).toEqual({ ok: true, cleaned: { format: "Panel" }, hiddenFieldIds: [] });
   });
 
   it("coerces checkbox values to boolean", () => {
@@ -243,12 +243,12 @@ describe("validateAnswers", () => {
 
   it("DEC-227: accepts a checked required checkbox and cleans it to true", () => {
     const result = validateAnswers([requiredAgreeField], { required_agree: true });
-    expect(result).toEqual({ ok: true, cleaned: { required_agree: true } });
+    expect(result).toEqual({ ok: true, cleaned: { required_agree: true }, hiddenFieldIds: [] });
   });
 
   it("DEC-227: a non-required unchecked checkbox still cleans to false without error", () => {
     const result = validateAnswers([agreeField], { agree: false });
-    expect(result).toEqual({ ok: true, cleaned: { agree: false } });
+    expect(result).toEqual({ ok: true, cleaned: { agree: false }, hiddenFieldIds: [] });
   });
 
   it("validates numeric fields and rejects non-numeric input", () => {
@@ -267,7 +267,7 @@ describe("validateAnswers", () => {
 
   it("carries an opaque file-id string for file fields", () => {
     const result = validateAnswers([slidesField], { slides: "file_abc123" });
-    expect(result).toEqual({ ok: true, cleaned: { slides: "file_abc123" } });
+    expect(result).toEqual({ ok: true, cleaned: { slides: "file_abc123" }, hiddenFieldIds: [] });
   });
 
   it("rejects unknown answer keys", () => {

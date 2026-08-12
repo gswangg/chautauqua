@@ -16,7 +16,7 @@ export const MAX_NAME_LENGTH = 200;
 export const MAX_RICH_TEXT_LENGTH = 100000;
 
 export type ValidateResult =
-  | { ok: true; cleaned: AnswerMap }
+  | { ok: true; cleaned: AnswerMap; hiddenFieldIds: string[] }
   | { ok: false; errors: Record<string, string> };
 
 // Server-side validation of submitted answers against a form's field defs.
@@ -31,6 +31,7 @@ export function validateAnswers(
 ): ValidateResult {
   const errors: Record<string, string> = {};
   const cleaned: AnswerMap = {};
+  const hiddenFieldIds: string[] = [];
 
   const knownIds = new Set(fields.map((f) => f.id));
   for (const key of Object.keys(answers)) {
@@ -46,6 +47,9 @@ export function validateAnswers(
 
     if (!visible) {
       // Hidden-field answers are stripped from cleaned and never validated.
+      // DEC-501: record hidden field ids so the caller can delete stale
+      // answers, not just omit them from this save's upsert.
+      hiddenFieldIds.push(field.id);
       continue;
     }
 
@@ -130,5 +134,5 @@ export function validateAnswers(
   if (Object.keys(errors).length > 0) {
     return { ok: false, errors };
   }
-  return { ok: true, cleaned };
+  return { ok: true, cleaned, hiddenFieldIds };
 }
