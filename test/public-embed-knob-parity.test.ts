@@ -4,10 +4,12 @@
 //   speakers/gallery = q, limit, accent
 //   agenda/schedule  = day, accent
 // This file asserts HTML/.json parity for the paging/filtering knobs (limit,
-// day) and that `day` — not in the sessions knob table — filters nothing on
-// sessions and is never advertised in its Show-more link. Reuses the
-// fake-db-chain harness established in test/public.test.ts / test/
-// public-embed-config.test.ts.
+// day). DEC-594 (EMB-5) closed a gap in the original DEC-489 knob table:
+// `day` is now ALSO honored on the sessions surface (an accepted param must
+// never silently no-op just because it wasn't in the original table) — it
+// still isn't advertised in sessions' Show-more link, since sessions has no
+// day-scoped "show more" concept. Reuses the fake-db-chain harness
+// established in test/public.test.ts / test/public-embed-config.test.ts.
 
 import { describe, expect, it } from "vitest";
 import { Hono } from "hono";
@@ -273,7 +275,8 @@ describe("DEC-489: agenda/schedule `day` behaves identically on HTML and .json",
   });
 });
 
-// -- sessions: `day` is NOT in the sessions knob table (DEC-489) ----------
+// -- sessions: `day` IS honored (DEC-594/EMB-5), never advertised in the
+// Show-more link (sessions has no day-scoped "show more" concept) ---------
 function buildSessionsApp() {
   let selectCall = 0;
   const SESSION_ROWS = Array.from({ length: 5 }, (_, i) => ({
@@ -283,6 +286,9 @@ function buildSessionsApp() {
     description: "A description long enough to show up in the card body.",
     icsSequence: 0,
   }));
+  // Only sub1 is scheduled on 2026-08-10; the rest are unscheduled (no slot
+  // row at all), so a day filter must keep exactly sub1.
+  const SLOT_ROWS = [{ submissionId: "sub1", day: "2026-08-10", startMin: 540, endMin: 600, roomName: null }];
   const db = {
     select: () => {
       selectCall += 1;
@@ -291,22 +297,30 @@ function buildSessionsApp() {
       if (selectCall === 3) return makeChain(SESSION_ROWS); // hydrateSessions subRows
       if (selectCall === 4) return makeChain([]); // hydrateSessions trackRows
       if (selectCall === 5) return makeChain([]); // hydrateSessions speakerRows
-      return makeChain([]); // hydrateSessions EMB-01 slotRows
+      return makeChain(SLOT_ROWS); // hydrateSessions EMB-01 slotRows
     },
     selectDistinct: () => makeChain(SESSION_ROWS.map((s) => ({ id: s.id, title: s.title }))),
   } as unknown as AppEnv["Variables"]["db"];
   return mountApp(db);
 }
 
-describe("DEC-489: sessions?day= filters nothing, and the URL stops advertising it", () => {
-  it("sessions?day=<d> renders the same 5 sessions as no day at all", async () => {
+describe("DEC-594 (EMB-5): sessions?day= filters by scheduled day, URL still doesn't advertise it", () => {
+  it("sessions?day=<d> renders only the session scheduled on that day", async () => {
     installFakeCaches();
     const withDayApp = buildSessionsApp();
-    const withDay = await withDayApp.request("/embed/conf/sessions?day=2026-08-10&limit=1", {}, TEST_ENV);
+    const withDay = await withDayApp.request("/embed/conf/sessions?day=2026-08-10", {}, TEST_ENV);
     const html = await withDay.text();
-    // day carries no filtering weight — with limit=1 only sub1 renders,
-    // exactly as it would with no day param at all.
     expect(html).toContain('id="chq-session-sub1"');
+    expect(html).not.toContain('id="chq-session-sub2"');
+  });
+
+  it("sessions?day=<unscheduled day> renders no sessions", async () => {
+    installFakeCaches();
+    const app = buildSessionsApp();
+    const res = await app.request("/embed/conf/sessions?day=2026-08-11", {}, TEST_ENV);
+    const html = await res.text();
+    expect(html).not.toContain('id="chq-session-sub1"');
+    expect(html).toContain("0 of 0 session(s)");
   });
 
   it("sessions emits no day param in its Show-more link, even when one was supplied", async () => {

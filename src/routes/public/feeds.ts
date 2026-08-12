@@ -8,6 +8,38 @@ import type { PublicEvent, PublicAgendaItem } from "../../server/repo/public";
 import type { Surface } from "./shell";
 import type { IcsEventInput } from "../../mail/ics";
 import { zonedMinutesToUtc } from "../../lib/timezone";
+import { ALL_CARD_FIELDS, type CardField, type CardFields } from "./query";
+
+// DEC-594 (EMB-6): `fields=` was already honored by the HTML card renderer
+// (SessionCard/SessionSchedule in ./cards) but silently ignored by the
+// .json twin — the same param must never be honored by one rendering and
+// dropped by the other. The key groups below map each ALL_CARD_FIELDS name
+// (imported, never re-listed) to the PublicSession keys it controls; `id`
+// and `title` are outside the allowlist and always survive the projection.
+const CARD_FIELD_KEYS: Record<CardField, readonly string[]> = {
+  track: ["tracks"],
+  time: ["day", "startMin", "endMin"],
+  room: ["roomName"],
+  speaker: ["speakers"],
+  description: ["description"],
+};
+
+/** Projects one feed item down to `id`/`title` plus whichever
+ * ALL_CARD_FIELDS keys are on in `fields` — driven entirely by
+ * ALL_CARD_FIELDS/CARD_FIELD_KEYS above, not a second hand-copied field
+ * list. Used by getSurfaceFeedPage's sessions branch (index.tsx). */
+export function projectCardFields(item: Record<string, unknown>, fields: CardFields): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  if ("id" in item) out.id = item.id;
+  if ("title" in item) out.title = item.title;
+  for (const field of ALL_CARD_FIELDS) {
+    if (!fields[field]) continue;
+    for (const key of CARD_FIELD_KEYS[field]) {
+      if (key in item) out[key] = item[key];
+    }
+  }
+  return out;
+}
 
 /** DEC-289/DEC-484 envelope: { event, surface, generatedAt, page, perPage,
  * total, items }. `items` is whatever the surface's existing repo shape

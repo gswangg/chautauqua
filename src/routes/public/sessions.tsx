@@ -5,6 +5,7 @@
 import type { PublicEvent, PublicSession, PublicTrack } from "../../server/repo/public";
 import { SessionCard } from "./cards";
 import { type CardFields } from "./query";
+import { surfacePath } from "./shell";
 import { PUBLIC_PER_PAGE, hasMorePages } from "../../server/repo/public/bounds";
 
 export function SessionsContent(props: {
@@ -18,8 +19,12 @@ export function SessionsContent(props: {
   perPage?: number;
   limit?: number | null;
   fields?: CardFields;
+  // DEC-594: chromeless /embed rendering — the search form, track-filter
+  // pills and 'Show more' link must all stay inside /embed/... instead of
+  // pointing at the full-chrome /e/... surface.
+  embed?: boolean;
 }) {
-  const { event, tracks, activeTrackId, q, items, total, page, perPage, limit, fields } = props;
+  const { event, tracks, activeTrackId, q, items, total, page, perPage, limit, fields, embed } = props;
   // DEC-433/477/487: parsePage clamps page to MAX_PUBLIC_PAGE, so once we're
   // at the cap there is no page+1 to link to — stop rendering 'Show more'
   // even if items.length < total. Also stop once the cumulative row ceiling
@@ -27,7 +32,7 @@ export function SessionsContent(props: {
   // embed can hit it well before page reaches MAX_PUBLIC_PAGE, and linking
   // past it would point at a page identical to the current one.
   const hasMore = hasMorePages(items.length, total, page, perPage ?? PUBLIC_PER_PAGE);
-  const basePath = `/e/${event.slug}/sessions`;
+  const basePath = surfacePath(event, "sessions", embed ? "/embed" : "/e");
   // DEC-289/DEC-489: embed configuration params carried forward across the
   // search form and 'Show more' link exactly like trackId/q, so a configured
   // embed does not lose its configuration on page 2. `day` is not part of
@@ -66,7 +71,7 @@ export function SessionsContent(props: {
         {items.length} of {total} session(s)
       </p>
       {items.map((s) => (
-        <SessionCard session={s} event={event} from="sessions" fields={fields} />
+        <SessionCard session={s} event={event} from="sessions" fields={fields} embed={embed} />
       ))}
       {hasMore ? (
         <p>
