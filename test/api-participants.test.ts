@@ -49,8 +49,13 @@ function makeChain(rows: unknown[]) {
 }
 
 /** Feeds successive db.select() calls the queued row sets, in order, and
- * records every insert()/update() write. */
-function fakeDb(selectQueue: unknown[][]) {
+ * records every insert()/update() write. `insertReturning`, when given,
+ * simulates the DB-computed row (id/order) an
+ * INSERT ... ON CONFLICT DO NOTHING ... RETURNING call yields — DEC-556's
+ * inviteParticipant no longer computes `order` in JS, so the fake db is
+ * what decides what the atomic insert "returns". An empty array simulates
+ * the ON CONFLICT branch firing (duplicate). */
+function fakeDb(selectQueue: unknown[][], insertReturning?: unknown[]) {
   let call = 0;
   const inserts: any[] = [];
   const updates: any[] = [];
@@ -61,8 +66,13 @@ function fakeDb(selectQueue: unknown[][]) {
       return makeChain(rows);
     },
     insert: () => ({
-      values: async (vals: unknown) => {
+      values: (vals: unknown) => {
         inserts.push(vals);
+        return {
+          onConflictDoNothing: () => ({
+            returning: async () => insertReturning ?? [],
+          }),
+        };
       },
     }),
     update: () => ({
@@ -109,12 +119,13 @@ function patchRequest(path: string, body: unknown) {
 
 describe("POST /api/v1/submissions/:id/participants (DEC-070 invite)", () => {
   it("invites a contact onto the submission: visible=true, inviteStatus='invited', order=max+1", async () => {
-    const { db, inserts } = fakeDb([
-      [SUBMISSION_ORG_A], // getSubmissionOwnership
-      [CONTACT_ORG_A], // findContactForOrg
-      [], // duplicate check: none
-      [{ maxOrder: 2 }], // existing participants, highest order 2
-    ]);
+    const { db, inserts } = fakeDb(
+      [
+        [SUBMISSION_ORG_A], // getSubmissionOwnership
+        [CONTACT_ORG_A], // findContactForOrg
+      ],
+      [{ id: "p-new", order: 3 }], // DB-computed via the ON CONFLICT ... RETURNING (order=max+1=3)
+    );
     const app = appWithDbAndAuth(db, ORGANIZER_A);
 
     const res = await app.request(jsonRequest("/api/v1/submissions/sub-1/participants", { contactId: "contact-1" }));
@@ -122,6 +133,7 @@ describe("POST /api/v1/submissions/:id/participants (DEC-070 invite)", () => {
     expect(res.status).toBe(201);
     const json = (await res.json()) as any;
     expect(json).toMatchObject({
+      id: "p-new",
       contactId: "contact-1",
       name: "Ada Lovelace",
       email: "ada@example.com",
@@ -130,20 +142,18 @@ describe("POST /api/v1/submissions/:id/participants (DEC-070 invite)", () => {
       visible: true,
       inviteStatus: "invited",
     });
-    expect(json.id).toBeTruthy();
     expect(inserts).toHaveLength(1);
     expect(inserts[0]).toMatchObject({
       submissionId: "sub-1",
       contactId: "contact-1",
       role: "speaker",
-      order: 3,
       visible: true,
       inviteStatus: "invited",
     });
   });
 
   it("accepts an explicit role, overriding the 'speaker' default", async () => {
-    const { db, inserts } = fakeDb([[SUBMISSION_ORG_A], [CONTACT_ORG_A], [], []]);
+    const { db, inserts } = fakeDb([[SUBMISSION_ORG_A], [CONTACT_ORG_A]], [{ id: "p-new", order: 0 }]);
     const app = appWithDbAndAuth(db, ORGANIZER_A);
 
     const res = await app.request(
@@ -155,11 +165,13 @@ describe("POST /api/v1/submissions/:id/participants (DEC-070 invite)", () => {
   });
 
   it("rejects a duplicate (submissionId, contactId) pair with ApiError('invalid', fields.contactId)", async () => {
-    const { db, inserts } = fakeDb([
-      [SUBMISSION_ORG_A], // getSubmissionOwnership
-      [CONTACT_ORG_A], // findContactForOrg
-      [{ id: "existing-participant" }], // duplicate check: already present
-    ]);
+    const { db, inserts } = fakeDb(
+      [
+        [SUBMISSION_ORG_A], // getSubmissionOwnership
+        [CONTACT_ORG_A], // findContactForOrg
+      ],
+      [], // ON CONFLICT DO NOTHING fired: RETURNING is empty
+    );
     const app = appWithDbAndAuth(db, ORGANIZER_A);
 
     const res = await app.request(jsonRequest("/api/v1/submissions/sub-1/participants", { contactId: "contact-1" }));
@@ -168,7 +180,7 @@ describe("POST /api/v1/submissions/:id/participants (DEC-070 invite)", () => {
     const json = (await res.json()) as any;
     expect(json.error.code).toBe("invalid");
     expect(json.error.fields.contactId).toBeTruthy();
-    expect(inserts).toHaveLength(0);
+    expect(inserts).toHaveLength(1);
   });
 
   it("rejects a contact from a different org with ApiError('invalid', fields.contactId)", async () => {

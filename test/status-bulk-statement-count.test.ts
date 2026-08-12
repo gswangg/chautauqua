@@ -118,7 +118,7 @@ function fakeDb() {
     },
     insert(table: unknown) {
       return {
-        values: async (value: unknown) => {
+        values: (value: unknown) => {
           const name =
             table === schema.task
               ? "task"
@@ -130,6 +130,13 @@ function fakeDb() {
                     ? "form_field"
                     : "other";
           insertCalls.push({ table: name, value });
+          return {
+            then: (resolve: (v: unknown) => void) => resolve(undefined),
+            // DEC-556: task_assignment inserts target the real (task_id,
+            // contact_id) unique index; this fake db has no uniqueness of
+            // its own, so onConflictDoNothing is a no-op passthrough.
+            onConflictDoNothing: () => Promise.resolve(undefined),
+          };
         },
       };
     },

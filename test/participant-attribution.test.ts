@@ -43,8 +43,18 @@ function fakeDb(selectQueue: unknown[][]) {
       return makeChain(rows);
     },
     insert: () => ({
-      values: async (vals: unknown) => {
+      values: (vals: unknown) => {
         inserts.push(vals);
+        return {
+          // Plain awaited insert (createParticipant's CFP-submit path).
+          then: (resolve: (v: unknown) => void) => resolve(undefined),
+          // DEC-556: inviteParticipant's atomic ON CONFLICT DO NOTHING
+          // path — this fake db has no uniqueness of its own, so it
+          // always "succeeds" and returns the row it was given.
+          onConflictDoNothing: () => ({
+            returning: async (_sel?: unknown) => [{ id: "p-new", order: 0 }],
+          }),
+        };
       },
     }),
   };
