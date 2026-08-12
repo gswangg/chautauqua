@@ -548,3 +548,9 @@ export const DEC_542 = "Cloning a session is a set-based copy: one chunked multi
 export const DEC_543 = "A list endpoint never selects a column none of its renderers display: the email-log list and the email-log detail read have separate projections";
 export const DEC_544 = "The CSRF double-submit rule has exactly one implementation, and it is the one the middleware calls -- a test-only twin tests nothing";
 export const DEC_545 = "The admin SPA has ONE date-time formatter, in app/src/lib/dates.ts, and the ban on page-level toLocale* is enforced by a globbed scan rather than by a comment";
+export const DEC_546 = "/dev/mailbox is organizer-only and scoped to the viewer's org -- the wave-18 \"public by design\" disposition rested on a false premise";
+export const DEC_547 = "makeMailer selects the dev sink ONLY in dev mode; every other configuration must present an EMAIL binding or throw";
+export const DEC_548 = "The public agenda is a bounded query like every other public list: ?day= filters in SQL, the scan carries LIMIT + a truthful COUNT, and its ORDER BY totally orders the row";
+export const DEC_549 = "A task upload becomes a session deliverable only when its task declares deliverable_kind; a task with no declared kind produces a file private to its assignee";
+export const DEC_550 = "Every GET route is authz-gated or on a declared public-by-design list, proven by an anonymous probe over the composed app's own route table -- not by a markdown inventory";
+export const DEC_551 = "Every route that streams stored user content sets X-Content-Type-Options: nosniff";

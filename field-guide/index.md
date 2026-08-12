@@ -27,34 +27,34 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   incl. unauth search; ONE isIsoDate home; credentials contract-tested vs
   vendored fixture both directions; export dropping custom answers is the
   lock-in forbidden; order checks read MERGED post-patch state.
-- STAGE1-CLOSE w30-31 (DEC-520..531, compacted): default task set owes a
-  default due-date schedule; chunk multi-row VALUES by BOUND PARAMETERS
-  (derive columns-per-row from rows), never by row count; date-only field
-  is a DAY LABEL not an instant -- display as its day (read UTC), expand
-  to event-local instant at every HARD gate; documented-forbidden routes
-  can still be live, inert only by mount order -- test ADVERSARIAL order;
-  ONE date-input<->epoch home; a nudge and its sibling dashboard must count
-  identically; glob boundary validators rather than hand-picking call sites;
-  an opaque-id export column is a lock-in -- derive columns from KEYS
-  PRESENT; batch per-recipient lookups, contract-test vs singular both
-  directions; delete a losing duplicate implementation, don't keep it unused.
-- STAGE1-CLOSE w32-33 (DEC-532..545, compacted): tree moved mid-plan a TENTH
-  consecutive wave -- verify prior claims in the FILE; verify a reviewer finding
-  is still open before planning it (pubcache '*' bump CLOSED 4x, do not re-raise).
-  Conditional visibility is a FIXED POINT (hidden monotone, cycles settle hidden);
-  findConflicts/cron sweep/aggregateSpeakerCounts were slow JS twins of an index
-  or SQL agg proven elsewhere -- prove rewrites vs a NAIVE REFERENCE; offset-paged
-  ORDER BY always ends in a unique column (glob it); a nudge shares its sibling's
-  cap, deferred halves DOCUMENTED not forgotten; event-range slot gate lives in
-  the JOIN ON, not a WHERE bolted on downstream; hand-copied enums/vocabularies
-  drift -- IMPORT them; raw NUL makes a file BINARY to ripgrep, invisible to every
-  globbed guard -- guard the guards. iCalendar sanitization at DEC-499 covered
-  PARAMs only -- TEXT VALUES need the same serializer-side strip, proven per-byte;
-  a uniqueIndex the schema declares makes read-then-write loops an atomic ON
-  CONFLICT DO UPDATE (create = upsert-that-cannot-conflict, delete the twin); the
-  last per-row insert loop is now chunked, and a cap whose fan-out is one row's
-  own children is a number with no failure mode -- say so; a list SELECTing a
-  column no renderer shows is oversized payload, derive projection from renderers;
-  a "pure helper for tests" with zero src callers tests NOTHING -- scan for the
-  copy; a formatter module that bans toLocale* but ships no date-TIME variant
-  gets copies -- add the helper AND glob the ban.
+- STAGE1-CLOSE w30-33 (DEC-520..545, compacted): chunk multi-row VALUES by
+  BOUND PARAMETERS not row count; date-only field is a DAY LABEL, display as
+  its day (read UTC), expand to event-local instant at HARD gates; documented-
+  forbidden routes can still be live if mount order lets them -- test
+  ADVERSARIAL order; glob boundary validators, don't hand-pick call sites;
+  batch per-recipient lookups, contract-test both directions; delete a losing
+  duplicate, don't keep it unused; verify prior claims/reviewer findings in
+  the FILE before replanning; conditional visibility is a FIXED POINT (hidden
+  monotone, cycles settle hidden); prove a JS-twin rewrite of an index/SQL agg
+  vs a NAIVE REFERENCE; offset-paged ORDER BY always ends in a unique column;
+  event-range slot gate lives in the JOIN ON, not a downstream WHERE; hand-
+  copied enums/vocabularies drift -- IMPORT them; raw NUL makes a file BINARY
+  to ripgrep, invisible to every globbed guard -- guard the guards; iCalendar
+  TEXT values need the serializer-side strip DEC-499 gave PARAMs; a
+  uniqueIndex makes read-then-write loops an atomic ON CONFLICT DO UPDATE; a
+  cap whose fan-out is one row's own children has no failure mode -- say so; a
+  list SELECTing a column no renderer shows is oversized, derive projection
+  from renderers; a "pure helper" with zero src callers tests NOTHING; a
+  formatter banning toLocale* but shipping no date-TIME variant gets copies.
+- STAGE1-CLOSE w34 (DEC-546..551): a "PUBLIC BY DESIGN" verdict is only as good
+  as its premise -- /dev/mailbox was ruled safe as "no secrets in stage 1"
+  while rendering every /claim/<token>; re-read the RATIONALE, not the verdict.
+  A fallback reached by OMISSION (no binding + no flag) is not a decision:
+  lead with the positive predicate, throw on the rest -- optional env is how
+  `undefined` came to mean "dev". A filter the SQL could take, it must take;
+  LIMIT obliges a TOTAL order-by + truthful count. Authz population is chosen
+  by a column: an upload with no declared deliverable_kind must not look like
+  a session deliverable. A markdown authz manifest desyncs silently --
+  enumerate the app's OWN route table, probe anonymously vs a THROWING db,
+  assert allowlist exact both directions. A forced Content-Type is advisory
+  until nosniff ships with it.
