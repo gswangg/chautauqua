@@ -1,9 +1,10 @@
-// DEC-291 render smoke test: the OnboardingGrid's per-cell "View response"
-// control only appears on kind='form' columns, and clicking it fetches
-// GET /api/v1/task-assignments/:id/response and opens ResponseModal with the
-// fetched fields.
+// DEC-291 render smoke test: the OnboardingGrid's per-cell "Response"
+// control (DEC-662: renamed from "View response", a quiet text link) only
+// appears on kind='form' columns AND only once that cell is complete --
+// clicking it fetches GET /api/v1/task-assignments/:id/response and opens
+// ResponseModal with the fetched fields.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, cleanup } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { OnboardingGrid } from './OnboardingGrid';
 import { mockApi } from '../../test-utils/mockApi';
@@ -24,11 +25,20 @@ const GRID: OnboardingGridResponse = {
         { taskId: 'task-2', assignmentId: 'as2', status: 'complete', completedAt: 1700000000000, fileId: null, lastRemindedAt: null },
       ],
     },
+    {
+      // DEC-662: a pending form-kind cell renders no control at all --
+      // "Response" only appears once the cell is complete.
+      contact: { id: 'ct2', name: 'Grace Hopper', email: 'grace@example.com', company: 'Navy', hasAccount: false },
+      cells: [
+        { taskId: 'task-1', assignmentId: 'as3', status: 'pending', completedAt: null, fileId: null, lastRemindedAt: null },
+        { taskId: 'task-2', assignmentId: 'as4', status: 'pending', completedAt: null, fileId: null, lastRemindedAt: null },
+      ],
+    },
   ],
-  total: 1,
+  total: 2,
   page: 1,
   perPage: 50,
-  counts: { speakers: 1, outstandingRequired: 0, overdue: 0, outstandingContacts: 0 },
+  counts: { speakers: 2, outstandingRequired: 1, overdue: 0, outstandingContacts: 1 },
 };
 
 const DETAIL: AssignmentResponseDetail = {
@@ -52,21 +62,22 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  cleanup();
   expect(consoleErrorSpy).not.toHaveBeenCalled();
   consoleErrorSpy.mockRestore();
   window.localStorage.clear();
   vi.unstubAllGlobals();
 });
 
-describe('OnboardingGrid: DEC-291 view-response control', () => {
-  it('shows the control only on form columns, and opens the modal with fetched fields', async () => {
+describe('OnboardingGrid: DEC-291/DEC-662 Response control', () => {
+  it('shows the control only on a complete form cell (never on a pending one), and opens the modal with fetched fields', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/onboarding`]: GRID,
       'GET /api/v1/task-assignments/as2/response': DETAIL,
       [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
     });
 
-    render(<OnboardingGrid />);
+    render(<OnboardingGrid onAddSpeaker={vi.fn()} onImportCsv={vi.fn()} />);
 
     // Re-skinned OnboardingGrid renders the desktop grid AND the phone-width
     // card list simultaneously in the DOM (they're toggled by a CSS media
@@ -74,11 +85,27 @@ describe('OnboardingGrid: DEC-291 view-response control', () => {
     await waitFor(() => {
       expect(screen.getAllByText('Ada Lovelace').length).toBeGreaterThan(0);
     });
+    expect(screen.getAllByText('Grace Hopper').length).toBeGreaterThan(0);
 
-    const viewResponseButtons = screen.getAllByRole('button', { name: 'View response' });
-    expect(viewResponseButtons).toHaveLength(1);
+    // DEC-662: no email text in the grid row -- emails stay in the contact
+    // drawer, the row meta is company + a Has account pill only.
+    expect(screen.queryByText('ada@example.com')).not.toBeInTheDocument();
+    expect(screen.queryByText('grace@example.com')).not.toBeInTheDocument();
 
-    viewResponseButtons[0]!.click();
+    // Ada's task-2 cell is complete -- one "Response" control on the desktop
+    // grid and one on the phone card list (toggled by CSS, both in the DOM).
+    const responseButtons = screen.getAllByRole('button', { name: 'Response' });
+    expect(responseButtons).toHaveLength(2);
+
+    // Grace's task-2 cell is pending -- the toggle still renders (task
+    // completion is independent of the form-response control), but no
+    // control at all, not even disabled: an affordance with nothing to
+    // show renders nothing.
+    expect(
+      screen.getAllByRole('button', { name: 'Toggle Hotel stay requirement form for Grace Hopper' }).length,
+    ).toBeGreaterThan(0);
+
+    responseButtons[0]!.click();
 
     const dialog = await screen.findByRole('dialog', { name: 'Task response' });
     expect(dialog).toBeInTheDocument();
@@ -120,10 +147,10 @@ describe('OnboardingGrid: DEC-599 reopen from response modal', () => {
       'PATCH /api/v1/task-assignments/as2': { body: {} },
     });
 
-    render(<OnboardingGrid />);
+    render(<OnboardingGrid onAddSpeaker={vi.fn()} onImportCsv={vi.fn()} />);
 
     await waitFor(() => screen.getAllByText('Ada Lovelace').length > 0);
-    screen.getAllByRole('button', { name: 'View response' })[0]!.click();
+    screen.getAllByRole('button', { name: 'Response' })[0]!.click();
 
     await screen.findByRole('dialog', { name: 'Task response' });
     await waitFor(() => expect(screen.getByText('Hotel name')).toBeInTheDocument());
@@ -157,10 +184,10 @@ describe('OnboardingGrid: DEC-599 reopen from response modal', () => {
       'PATCH /api/v1/task-assignments/as2': { status: 500, body: { error: { code: 'internal', message: 'boom' } } },
     });
 
-    render(<OnboardingGrid />);
+    render(<OnboardingGrid onAddSpeaker={vi.fn()} onImportCsv={vi.fn()} />);
 
     await waitFor(() => screen.getAllByText('Ada Lovelace').length > 0);
-    screen.getAllByRole('button', { name: 'View response' })[0]!.click();
+    screen.getAllByRole('button', { name: 'Response' })[0]!.click();
 
     await screen.findByRole('dialog', { name: 'Task response' });
     await waitFor(() => expect(screen.getByText('Hotel name')).toBeInTheDocument());
