@@ -1,4 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { execFileSync } from "node:child_process";
+import { existsSync, readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+import { beforeAll, describe, expect, it } from "vitest";
 import {
   PERF_CO_SPEAKERS_PER_ACCEPTED,
   PERF_EMAIL_LOG_COUNT,
@@ -21,16 +26,21 @@ import {
   PERF_TASKS,
   PERF_TOPICS,
   contactIndexForSubmission,
+  contactsPerTask,
   coSpeakerContactIndexesForAccepted,
+  isDeliberatelyOverdueAssignment,
   isTaskAssignmentComplete,
+  overdueAssignmentCount,
   perfFileSpecs,
   perfOrgUserEmail,
   perfOrgUserRole,
+  perfPlanId,
   perfReviewerEmail,
   perfSubmissionStatuses,
   pipelineStageIndexForEntry,
   sentAtForEmailLogRow,
   slotPlacementForAccepted,
+  slotPlacementForAcceptedWithConflicts,
   topicForSubmission,
   totalPerfAnswerRows,
   trackIndexForSubmission,
@@ -168,8 +178,16 @@ describe("DEC-088 pinned literals", () => {
 });
 
 describe("slotPlacementForAccepted", () => {
+  // `default` profile numbers throughout — DEC-645 parameterized this
+  // helper (was module-constant-only), but the `default` profile's own
+  // placements must stay bit-for-bit identical to the pre-DEC-645 hardcoded
+  // 3-day/100-per-day/10-room contract.
+  const ROOMS = PERF_ROOM_COUNT;
+  const DAYS = 3;
+  const ACCEPTED = 300;
+
   it("places the first submission at day 1, 09:00, room 0", () => {
-    expect(slotPlacementForAccepted(0)).toEqual({
+    expect(slotPlacementForAccepted(0, ROOMS, DAYS, ACCEPTED)).toEqual({
       day: "2028-06-01",
       startMin: 540,
       endMin: 570,
@@ -178,26 +196,29 @@ describe("slotPlacementForAccepted", () => {
   });
 
   it("rolls to day 2 after 100 sessions and rotates rooms", () => {
-    expect(slotPlacementForAccepted(100)).toEqual({
+    expect(slotPlacementForAccepted(100, ROOMS, DAYS, ACCEPTED)).toEqual({
       day: "2028-06-02",
       startMin: 540,
       endMin: 570,
       roomIndex: 0,
     });
-    expect(slotPlacementForAccepted(101).roomIndex).toBe(1);
+    expect(slotPlacementForAccepted(101, ROOMS, DAYS, ACCEPTED).roomIndex).toBe(1);
   });
 
   it("rolls to day 3 for the last block and spans 10 rooms x 10 time slots per day", () => {
-    const last = slotPlacementForAccepted(299);
+    const last = slotPlacementForAccepted(299, ROOMS, DAYS, ACCEPTED);
     expect(last.day).toBe("2028-06-03");
     expect(last.startMin).toBe(540 + 30 * 9);
     expect(last.roomIndex).toBe(9);
   });
 
   it("is deterministic and rejects negative/non-integer input", () => {
-    expect(slotPlacementForAccepted(42)).toEqual(slotPlacementForAccepted(42));
-    expect(() => slotPlacementForAccepted(-1)).toThrow();
-    expect(() => slotPlacementForAccepted(1.5)).toThrow();
+    expect(slotPlacementForAccepted(42, ROOMS, DAYS, ACCEPTED)).toEqual(slotPlacementForAccepted(42, ROOMS, DAYS, ACCEPTED));
+    expect(() => slotPlacementForAccepted(-1, ROOMS, DAYS, ACCEPTED)).toThrow();
+    expect(() => slotPlacementForAccepted(1.5, ROOMS, DAYS, ACCEPTED)).toThrow();
+    expect(() => slotPlacementForAccepted(0, 0, DAYS, ACCEPTED)).toThrow();
+    expect(() => slotPlacementForAccepted(0, ROOMS, 0, ACCEPTED)).toThrow();
+    expect(() => slotPlacementForAccepted(0, ROOMS, DAYS, 0)).toThrow();
   });
 
   it("distributes 300 accepted submissions evenly: 3 days x 10 rooms x 10 slots", () => {
@@ -205,7 +226,7 @@ describe("slotPlacementForAccepted", () => {
     const roomCounts: Record<number, number> = {};
     const slotKeyCounts: Record<string, number> = {};
     for (let j = 0; j < 300; j++) {
-      const p = slotPlacementForAccepted(j);
+      const p = slotPlacementForAccepted(j, ROOMS, DAYS, ACCEPTED);
       days.add(p.day);
       roomCounts[p.roomIndex] = (roomCounts[p.roomIndex] ?? 0) + 1;
       const key = `${p.day}|${p.startMin}|${p.roomIndex}`;
@@ -220,6 +241,71 @@ describe("slotPlacementForAccepted", () => {
     for (const count of Object.values(slotKeyCounts)) {
       expect(count).toBe(1);
     }
+  });
+});
+
+describe("DEC-645 aie schedule placement: 250 accepted over 4 days x 10 rooms", () => {
+  const aie = PERF_PROFILES.aie;
+  const ACCEPTED = aie.statusCounts.accepted!;
+
+  it("spans exactly aie.dayCount distinct days", () => {
+    const days = new Set<string>();
+    for (let j = 0; j < ACCEPTED; j++) {
+      days.add(slotPlacementForAccepted(j, aie.roomCount, aie.dayCount, ACCEPTED).day);
+    }
+    expect(days.size).toBe(aie.dayCount);
+    expect(aie.dayCount).toBe(4);
+  });
+
+  it("never collides on the same day/time/room", () => {
+    const slotKeyCounts: Record<string, number> = {};
+    for (let j = 0; j < ACCEPTED; j++) {
+      const p = slotPlacementForAccepted(j, aie.roomCount, aie.dayCount, ACCEPTED);
+      const key = `${p.day}|${p.startMin}|${p.roomIndex}`;
+      slotKeyCounts[key] = (slotKeyCounts[key] ?? 0) + 1;
+    }
+    for (const count of Object.values(slotKeyCounts)) {
+      expect(count).toBe(1);
+    }
+  });
+});
+
+describe("DEC-645 slotPlacementForAcceptedWithConflicts", () => {
+  const ROOMS = 10;
+  const DAYS = 3;
+  const ACCEPTED = 300;
+
+  it("with deliberateConflictCount 0, always matches the plain placement (default profile, bit-for-bit)", () => {
+    for (let j = 0; j < 20; j++) {
+      expect(slotPlacementForAcceptedWithConflicts(j, ROOMS, DAYS, ACCEPTED, 0)).toEqual(
+        slotPlacementForAccepted(j, ROOMS, DAYS, ACCEPTED),
+      );
+    }
+  });
+
+  it("places exactly deliberateConflictCount overlapping pairs, deterministically", () => {
+    const deliberateConflictCount = 12;
+    const placements = Array.from({ length: ACCEPTED }, (_, j) =>
+      slotPlacementForAcceptedWithConflicts(j, ROOMS, DAYS, ACCEPTED, deliberateConflictCount),
+    );
+    const keyCounts: Record<string, number> = {};
+    for (const p of placements) {
+      const key = `${p.day}|${p.startMin}|${p.roomIndex}`;
+      keyCounts[key] = (keyCounts[key] ?? 0) + 1;
+    }
+    const overlappingPairs = Object.values(keyCounts).filter((c) => c === 2).length;
+    const tripleOrMore = Object.values(keyCounts).filter((c) => c > 2).length;
+    expect(overlappingPairs).toBe(deliberateConflictCount);
+    expect(tripleOrMore).toBe(0);
+    // Second run is identical (deterministic).
+    const placementsAgain = Array.from({ length: ACCEPTED }, (_, j) =>
+      slotPlacementForAcceptedWithConflicts(j, ROOMS, DAYS, ACCEPTED, deliberateConflictCount),
+    );
+    expect(placementsAgain).toEqual(placements);
+  });
+
+  it("rejects a negative deliberateConflictCount", () => {
+    expect(() => slotPlacementForAcceptedWithConflicts(0, ROOMS, DAYS, ACCEPTED, -1)).toThrow();
   });
 });
 
@@ -473,5 +559,200 @@ describe("DEC-469 extra org user scale (org user directory perf check)", () => {
   it("rejects negative or non-integer indices", () => {
     expect(() => perfOrgUserRole(-1)).toThrow();
     expect(() => perfOrgUserRole(1.5)).toThrow();
+  });
+});
+
+describe("DEC-645 perfPlanId", () => {
+  it("planIndex 1 returns basePlanId unchanged (default profile bit-for-bit)", () => {
+    expect(perfPlanId("seed_perf_plan_0001", 1)).toBe("seed_perf_plan_0001");
+  });
+
+  it("planIndex > 1 suffixes _<planIndex>", () => {
+    expect(perfPlanId("seed_perf_aie_plan_0001", 2)).toBe("seed_perf_aie_plan_0001_2");
+    expect(perfPlanId("seed_perf_aie_plan_0001", 3)).toBe("seed_perf_aie_plan_0001_3");
+  });
+
+  it("aie profile's 3 plan ids are all distinct", () => {
+    const aie = PERF_PROFILES.aie;
+    const ids = Array.from({ length: aie.planCount }, (_, i) => perfPlanId(aie.planId, i + 1));
+    expect(new Set(ids).size).toBe(aie.planCount);
+    expect(aie.planCount).toBe(3);
+  });
+
+  it("rejects an empty basePlanId or a non-positive/non-integer planIndex", () => {
+    expect(() => perfPlanId("", 1)).toThrow();
+    expect(() => perfPlanId("x", 0)).toThrow();
+    expect(() => perfPlanId("x", -1)).toThrow();
+    expect(() => perfPlanId("x", 1.5)).toThrow();
+  });
+});
+
+describe("DEC-645 contactsPerTask", () => {
+  it("default profile: 4000 / 5 = 800 (matches PERF_CONTACT_COUNT, unchanged)", () => {
+    expect(contactsPerTask(PERF_PROFILES.default.taskCount, PERF_TASK_COUNT)).toBe(PERF_CONTACT_COUNT);
+    expect(contactsPerTask(4000, 5)).toBe(800);
+  });
+
+  it("aie profile: 400 / 5 = 80", () => {
+    expect(contactsPerTask(PERF_PROFILES.aie.taskCount, PERF_TASK_COUNT)).toBe(80);
+  });
+
+  it("throws when taskCount does not divide evenly by taskDefCount", () => {
+    expect(() => contactsPerTask(11, 5)).toThrow();
+  });
+
+  it("rejects negative/non-integer input", () => {
+    expect(() => contactsPerTask(-1, 5)).toThrow();
+    expect(() => contactsPerTask(10, 0)).toThrow();
+    expect(() => contactsPerTask(1.5, 5)).toThrow();
+  });
+});
+
+describe("DEC-645 overdueAssignmentCount + isDeliberatelyOverdueAssignment", () => {
+  it("default profile: overdueTaskFraction 0 => 0 deliberately-overdue rows", () => {
+    expect(overdueAssignmentCount(PERF_PROFILES.default.taskCount, PERF_PROFILES.default.overdueTaskFraction)).toBe(0);
+    for (let taskIdx = 0; taskIdx < 2; taskIdx++) {
+      for (let c = 0; c < 5; c++) {
+        expect(isDeliberatelyOverdueAssignment(taskIdx, c, 0)).toBe(false);
+      }
+    }
+  });
+
+  it("aie profile: ~15% of 400 => exactly 60 deliberately-overdue rows, all on task index 0", () => {
+    const aie = PERF_PROFILES.aie;
+    const count = overdueAssignmentCount(aie.taskCount, aie.overdueTaskFraction);
+    expect(count).toBe(60);
+    expect(count / aie.taskCount).toBeCloseTo(0.15, 5);
+    const contactsPerTaskCount = contactsPerTask(aie.taskCount, PERF_TASK_COUNT);
+    let overdueTotal = 0;
+    for (let taskIdx = 0; taskIdx < PERF_TASK_COUNT; taskIdx++) {
+      for (let c = 0; c < contactsPerTaskCount; c++) {
+        if (isDeliberatelyOverdueAssignment(taskIdx, c, count)) {
+          expect(taskIdx).toBe(0);
+          overdueTotal++;
+        }
+      }
+    }
+    expect(overdueTotal).toBe(60);
+  });
+
+  it("rejects negative/non-integer input and an out-of-range fraction", () => {
+    expect(() => overdueAssignmentCount(-1, 0.15)).toThrow();
+    expect(() => overdueAssignmentCount(10, -0.1)).toThrow();
+    expect(() => overdueAssignmentCount(10, 1.1)).toThrow();
+    expect(() => isDeliberatelyOverdueAssignment(-1, 0, 0)).toThrow();
+    expect(() => isDeliberatelyOverdueAssignment(0, -1, 0)).toThrow();
+    expect(() => isDeliberatelyOverdueAssignment(0, 0, -1)).toThrow();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// DEC-645: runs the actual perf-seed.ts script (tsx subprocess, same as
+// `npm run perf:seed:aie`'s first step) with --profile=aie and inspects the
+// generated .perf-seed.sql output, so this fails if the real script's
+// output ever regresses — never applied against a real D1 (no wrangler
+// step), matching seed.ts's own DEC-145 pattern in test/seed.test.ts.
+// ---------------------------------------------------------------------------
+describe("perf-seed.ts --profile=aie output (DEC-645)", () => {
+  const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
+  const REPO_ROOT = join(SCRIPT_DIR, "..");
+  const OUTPUT_PATH = join(REPO_ROOT, ".perf-seed.sql");
+
+  let sql: string;
+  let lines: string[];
+
+  beforeAll(() => {
+    execFileSync("npx", ["tsx", "scripts/perf-seed.ts", "--profile=aie"], { cwd: REPO_ROOT, stdio: "inherit" });
+    expect(existsSync(OUTPUT_PATH)).toBe(true);
+    sql = readFileSync(OUTPUT_PATH, "utf-8");
+    lines = sql.split("\n");
+  }, 120_000);
+
+  const aie = PERF_PROFILES.aie;
+
+  it("seeds exactly aie.roomCount room rows", () => {
+    const count = lines.filter((l) => l.startsWith("INSERT INTO room ")).length;
+    expect(count).toBe(aie.roomCount);
+    expect(count).toBe(10);
+  });
+
+  it("schedule_slot rows span exactly aie.dayCount distinct days", () => {
+    const slotLines = lines.filter((l) => l.startsWith("INSERT INTO schedule_slot "));
+    expect(slotLines).toHaveLength(aie.statusCounts.accepted!);
+    const days = new Set(slotLines.map((l) => l.match(/'(2028-06-\d{2})'/)?.[1]));
+    expect(days.size).toBe(aie.dayCount);
+    expect(aie.dayCount).toBe(4);
+  });
+
+  it("seeds exactly aie.planCount evaluation_plan rows and aie.planCount * aie.reviewerCount plan_reviewer rows", () => {
+    const planCount = lines.filter((l) => l.startsWith("INSERT INTO evaluation_plan ")).length;
+    const planReviewerCount = lines.filter((l) => l.startsWith("INSERT INTO plan_reviewer ")).length;
+    expect(planCount).toBe(aie.planCount);
+    expect(planReviewerCount).toBe(aie.planCount * aie.reviewerCount);
+    expect(planReviewerCount).toBe(45);
+  });
+
+  it("seeds exactly aie.reviewerCount reviewer users under aie's reviewer email prefix", () => {
+    const prefixEmails = new Set(
+      Array.from(sql.matchAll(new RegExp(`'${aie.reviewerEmailPrefix}\\.(\\d+)@example-perf\\.test'`, "g"))).map(
+        (m) => m[0],
+      ),
+    );
+    expect(prefixEmails.size).toBe(aie.reviewerCount);
+    expect(prefixEmails.size).toBe(15);
+  });
+
+  it("seeds exactly aie.taskCount task_assignment rows, with exactly overdueAssignmentCount(aie) rows " +
+    "deliberately pending against task index 0's past due_date", () => {
+    const taskLines = lines.filter((l) => l.startsWith("INSERT INTO task "));
+    const assignmentLines = lines.filter((l) => l.startsWith("INSERT INTO task_assignment "));
+    expect(assignmentLines).toHaveLength(aie.taskCount);
+    expect(aie.taskCount).toBe(400);
+
+    // Task index 0's id + its due_date (must be in the past).
+    const firstTask = taskLines[0]!;
+    const firstTaskId = firstTask.match(/VALUES \('([^']+)'/)![1];
+    const firstTaskDueDate = Number(firstTask.match(/, (\d+), 0, NULL,/)![1]);
+    expect(firstTaskDueDate).toBeLessThan(Date.now());
+
+    const expectedOverdue = overdueAssignmentCount(aie.taskCount, aie.overdueTaskFraction);
+    expect(expectedOverdue).toBe(60);
+
+    // Every one of the first `expectedOverdue` contacts assigned to task 0
+    // must be seeded 'pending' (never 'complete') — the deliberate-overdue
+    // contract; verified against the real per-contact ordering the script
+    // writes (first contactsPerTask contacts for task index 0).
+    const contactsPerTaskCount = contactsPerTask(aie.taskCount, PERF_TASK_COUNT);
+    const task0Assignments = assignmentLines.filter((l) => l.includes(`'${firstTaskId}',`));
+    expect(task0Assignments).toHaveLength(contactsPerTaskCount);
+    for (let c = 0; c < expectedOverdue; c++) {
+      expect(task0Assignments[c]).toContain("'pending'");
+    }
+  });
+
+  it("places exactly aie.deliberateConflictCount overlapping schedule_slot pairs (same day/start_min/room)", () => {
+    const slotLines = lines.filter((l) => l.startsWith("INSERT INTO schedule_slot "));
+    const keyCounts = new Map<string, number>();
+    for (const l of slotLines) {
+      const m = l.match(/'(seed_perf_room_\d+)', '(2028-06-\d{2})', (\d+), (\d+)/);
+      expect(m).toBeTruthy();
+      const key = `${m![2]}|${m![3]}|${m![1]}`;
+      keyCounts.set(key, (keyCounts.get(key) ?? 0) + 1);
+    }
+    const pairCount = Array.from(keyCounts.values()).filter((c) => c === 2).length;
+    const tripleOrMoreCount = Array.from(keyCounts.values()).filter((c) => c > 2).length;
+    expect(pairCount).toBe(aie.deliberateConflictCount);
+    expect(pairCount).toBeGreaterThanOrEqual(12);
+    expect(tripleOrMoreCount).toBe(0);
+  });
+
+  it("the idempotent DELETE prologue covers every profile's plan ids (never orphans a switched --profile= run)", () => {
+    const evalPlanDelete = lines.find((l) => l.startsWith("DELETE FROM evaluation_plan "));
+    expect(evalPlanDelete).toBeTruthy();
+    for (const profile of Object.values(PERF_PROFILES)) {
+      for (let i = 1; i <= profile.planCount; i++) {
+        expect(evalPlanDelete).toContain(`'${perfPlanId(profile.planId, i)}'`);
+      }
+    }
   });
 });

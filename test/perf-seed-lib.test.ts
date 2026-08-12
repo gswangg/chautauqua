@@ -43,6 +43,28 @@ describe("PERF_PROFILES.aie (docs/mandates/scale-mandate.md)", () => {
       aie.submissionCount * aie.answersPerSubmission,
     );
   });
+
+  // DEC-645: docs/mandates/scale-mandate.md's remaining scale volumes
+  // (agenda/review/onboarding surfaces) — 10 rooms, 4 days, 15 reviewers,
+  // 3 plans, 400 speaker tasks at ~15% overdue, >=12 deliberate conflicts.
+  it("matches DEC-645's agenda/review/onboarding volumes", () => {
+    expect(aie.roomCount).toBe(10);
+    expect(aie.dayCount).toBe(4);
+    expect(aie.reviewerCount).toBe(15);
+    expect(aie.planCount).toBe(3);
+    expect(aie.taskCount).toBe(400);
+    expect(aie.overdueTaskFraction).toBeCloseTo(0.15, 5);
+    expect(aie.deliberateConflictCount).toBeGreaterThanOrEqual(12);
+  });
+
+  it("has a distinct planId from the default profile, still inside the seed_perf_ namespace", () => {
+    expect(aie.planId).not.toBe(PERF_PROFILES.default.planId);
+    expect(aie.planId.startsWith("seed_perf_")).toBe(true);
+  });
+
+  it("has a distinct reviewer email prefix from the default profile", () => {
+    expect(aie.reviewerEmailPrefix).not.toBe(PERF_PROFILES.default.reviewerEmailPrefix);
+  });
 });
 
 describe("every PERF_PROFILES entry", () => {
@@ -68,6 +90,23 @@ describe("every PERF_PROFILES entry", () => {
       decline_queue: 100,
       declined: 100,
     });
+  });
+
+  // DEC-645: the default profile's newly-threaded volumes must reproduce
+  // today's PERF_ROOM_COUNT / PERF_REVIEWER_COUNT / plan literals exactly,
+  // so existing perf budgets stay comparable across the change.
+  it("the default profile's DEC-645 volumes reproduce today's DEC-088/DEC-338 literals bit-for-bit", () => {
+    const def = PERF_PROFILES.default;
+    expect(def.roomCount).toBe(10);
+    expect(def.dayCount).toBe(3);
+    expect(def.reviewerCount).toBe(12);
+    expect(def.planCount).toBe(1);
+    expect(def.planId).toBe("seed_perf_plan_0001");
+    expect(def.reviewerEmailPrefix).toBe("perf.reviewer");
+    expect(def.reviewerPassword).toBe("PerfReviewer!2027");
+    expect(def.taskCount).toBe(4000);
+    expect(def.overdueTaskFraction).toBe(0);
+    expect(def.deliberateConflictCount).toBe(0);
   });
 });
 
