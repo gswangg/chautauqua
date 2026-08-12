@@ -75,11 +75,50 @@ export function guardEditableField(field: Pick<FormField, 'locked'>, action: 'ed
 }
 
 /** Fields eligible as a conditional-rule reference target for `field`: every
- * other field on the form ordered earlier (lower position) than it. When
- * `field` is undefined (creating a brand-new field, appended at the end),
- * every existing field qualifies. */
+ * other field on the form ordered earlier (lower position) than it, and
+ * never a file-kind field (a file upload cannot be a trigger -- there is
+ * no canonical serialization of "what file was uploaded" to compare
+ * against). When `field` is undefined (creating a brand-new field,
+ * appended at the end), every existing non-file field qualifies. */
 export function ruleReferenceCandidates(fields: FormField[], field?: Pick<FormField, 'id' | 'position'>): FormField[] {
   return fields
+    .filter((f) => f.kind !== 'file')
     .filter((f) => (field ? f.id !== field.id && f.position < field.position : true))
     .sort((a, b) => a.position - b.position);
+}
+
+/** The kind of UI control the rule-builder's value field must render, keyed
+ * by the SELECTED trigger field's kind (DEC-681: a rule's value is typed by
+ * its trigger, not free text) so the authored value is always something the
+ * trigger can actually match:
+ *  - checkbox trigger -> boolean control (Yes/No, canonical 'true'/'false')
+ *  - number trigger -> number control (a decimal string)
+ *  - dropdown trigger -> options control (one of the trigger's own options)
+ *  - anything else (text/long_text; file triggers are excluded from
+ *    ruleReferenceCandidates) -> free text
+ * `trigger` is undefined when no field is selected yet (rule.fieldId ===
+ * ''), which also falls back to 'text'. */
+export type RuleValueControl = 'boolean' | 'number' | 'options' | 'text';
+
+export function ruleValueControl(trigger: Pick<FormField, 'kind'> | undefined): RuleValueControl {
+  if (!trigger) return 'text';
+  switch (trigger.kind) {
+    case 'checkbox':
+      return 'boolean';
+    case 'number':
+      return 'number';
+    case 'dropdown':
+      return 'options';
+    default:
+      return 'text';
+  }
+}
+
+/** The value a rule-builder value control resets to whenever its control
+ * kind changes (trigger swap or op swap) -- never a stale value the new
+ * control can't represent. 'false' for boolean (an unchecked/"No" default
+ * mirrors DEC-681's canonicalization of an unchecked checkbox), '' for
+ * everything else (number/options/text all treat '' as "not yet chosen"). */
+export function defaultRuleValue(control: RuleValueControl): string {
+  return control === 'boolean' ? 'false' : '';
 }

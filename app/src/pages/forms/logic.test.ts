@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
+  defaultRuleValue,
   deserializeRule,
   EMPTY_RULE_STATE,
   guardEditableField,
   isLockedField,
   moveId,
   ruleReferenceCandidates,
+  ruleValueControl,
   serializeRule,
 } from './logic';
 import type { FormField } from './types';
@@ -118,5 +120,43 @@ describe('ruleReferenceCandidates', () => {
   it('offers only earlier-positioned fields, excluding self, when editing', () => {
     expect(ruleReferenceCandidates(fields, fields[2]).map((f) => f.id)).toEqual(['a', 'b']);
     expect(ruleReferenceCandidates(fields, fields[0]).map((f) => f.id)).toEqual([]);
+  });
+
+  it('excludes file-kind fields (a file field cannot be a trigger)', () => {
+    const withFile: FormField[] = [
+      ...fields,
+      { id: 'd', section: 'session', kind: 'file', label: 'Slides', required: false, position: 3, locked: false },
+    ];
+    expect(ruleReferenceCandidates(withFile).map((f) => f.id)).toEqual(['a', 'b', 'c']);
+    expect(
+      ruleReferenceCandidates(withFile, { id: 'e', position: 4 }).map((f) => f.id),
+    ).toEqual(['a', 'b', 'c']);
+  });
+});
+
+describe('ruleValueControl', () => {
+  it('maps checkbox/number/dropdown triggers to their typed control', () => {
+    expect(ruleValueControl({ kind: 'checkbox' })).toBe('boolean');
+    expect(ruleValueControl({ kind: 'number' })).toBe('number');
+    expect(ruleValueControl({ kind: 'dropdown' })).toBe('options');
+  });
+
+  it('falls back to text for text/long_text/file triggers and no trigger selected', () => {
+    expect(ruleValueControl({ kind: 'text' })).toBe('text');
+    expect(ruleValueControl({ kind: 'long_text' })).toBe('text');
+    expect(ruleValueControl({ kind: 'file' })).toBe('text');
+    expect(ruleValueControl(undefined)).toBe('text');
+  });
+});
+
+describe('defaultRuleValue', () => {
+  it('resets a boolean control to false', () => {
+    expect(defaultRuleValue('boolean')).toBe('false');
+  });
+
+  it('resets number/options/text controls to the empty string', () => {
+    expect(defaultRuleValue('number')).toBe('');
+    expect(defaultRuleValue('options')).toBe('');
+    expect(defaultRuleValue('text')).toBe('');
   });
 });

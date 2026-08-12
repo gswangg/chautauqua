@@ -1,5 +1,12 @@
 import { useState, type FormEvent } from 'react';
-import { deserializeRule, ruleReferenceCandidates, serializeRule, type RuleBuilderState } from './logic';
+import {
+  defaultRuleValue,
+  deserializeRule,
+  ruleReferenceCandidates,
+  ruleValueControl,
+  serializeRule,
+  type RuleBuilderState,
+} from './logic';
 import { FIELD_KINDS, RULE_OPS, kindLabel, type FormField, type FormFieldKind, type FormFieldSection } from './types';
 import { ModalFrame } from '../../components/ModalFrame';
 
@@ -37,6 +44,33 @@ export function FieldModal({ field, allFields, onCancel, onSubmit }: FieldModalP
   const [error, setError] = useState<string | null>(null);
 
   const candidates = ruleReferenceCandidates(allFields, field);
+  const trigger = candidates.find((c) => c.id === rule.fieldId);
+  const valueControl = ruleValueControl(trigger);
+
+  /** Trigger and op both determine what values are matchable (DEC-681), so
+   * changing either resets the value to the new control's default rather
+   * than carrying over a value the new control can't represent. */
+  function setTrigger(fieldId: string) {
+    const nextTrigger = candidates.find((c) => c.id === fieldId);
+    setRule({ fieldId, op: rule.op, value: defaultRuleValue(ruleValueControl(nextTrigger)) });
+  }
+
+  function setOp(op: RuleBuilderState['op']) {
+    setRule({ fieldId: rule.fieldId, op, value: defaultRuleValue(valueControl) });
+  }
+
+  function toggleOptionValue(option: string, checked: boolean) {
+    const selected = new Set(
+      rule.value
+        .split(',')
+        .map((v) => v.trim())
+        .filter((v) => v.length > 0),
+    );
+    if (checked) selected.add(option);
+    else selected.delete(option);
+    const ordered = (trigger?.options ?? []).filter((o) => selected.has(o));
+    setRule({ ...rule, value: ordered.join(', ') });
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -155,7 +189,7 @@ export function FieldModal({ field, allFields, onCancel, onSubmit }: FieldModalP
           <legend>Show this field when...</legend>
           <label className="chq-field">
             Field
-            <select className="chq-select" value={rule.fieldId} onChange={(e) => setRule({ ...rule, fieldId: e.target.value })}>
+            <select className="chq-select" value={rule.fieldId} onChange={(e) => setTrigger(e.target.value)}>
               <option value="">Always visible</option>
               {candidates.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -171,7 +205,7 @@ export function FieldModal({ field, allFields, onCancel, onSubmit }: FieldModalP
                 <select
                   className="chq-select"
                   value={rule.op}
-                  onChange={(e) => setRule({ ...rule, op: e.target.value as RuleBuilderState['op'] })}
+                  onChange={(e) => setOp(e.target.value as RuleBuilderState['op'])}
                 >
                   {RULE_OPS.map((op) => (
                     <option key={op} value={op}>
@@ -180,16 +214,86 @@ export function FieldModal({ field, allFields, onCancel, onSubmit }: FieldModalP
                   ))}
                 </select>
               </label>
-              <label className="chq-field">
-                Value{rule.op === 'in' ? ' (comma-separated)' : ''}
-                <input
-                  className="chq-input"
-                  type="text"
-                  value={rule.value}
-                  onChange={(e) => setRule({ ...rule, value: e.target.value })}
-                  placeholder="Keynote"
-                />
-              </label>
+
+              {valueControl === 'boolean' && (
+                <label className="chq-field">
+                  Value
+                  <select
+                    className="chq-select"
+                    value={rule.value}
+                    onChange={(e) => setRule({ ...rule, value: e.target.value })}
+                  >
+                    <option value="true">Yes</option>
+                    <option value="false">No</option>
+                  </select>
+                </label>
+              )}
+
+              {valueControl === 'number' && (
+                <label className="chq-field">
+                  Value
+                  <input
+                    className="chq-input"
+                    type="number"
+                    value={rule.value}
+                    onChange={(e) => setRule({ ...rule, value: e.target.value })}
+                  />
+                </label>
+              )}
+
+              {valueControl === 'options' && rule.op !== 'in' && (
+                <label className="chq-field">
+                  Value
+                  <select
+                    className="chq-select"
+                    value={rule.value}
+                    onChange={(e) => setRule({ ...rule, value: e.target.value })}
+                  >
+                    <option value="">Select an option</option>
+                    {(trigger?.options ?? []).map((o) => (
+                      <option key={o} value={o}>
+                        {o}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+
+              {valueControl === 'options' && rule.op === 'in' && (
+                <fieldset className="chq-field chq-forms-rule-options">
+                  <legend>Value (any of)</legend>
+                  {(trigger?.options ?? []).map((o) => {
+                    const selected = rule.value
+                      .split(',')
+                      .map((v) => v.trim())
+                      .filter((v) => v.length > 0);
+                    return (
+                      <label key={o} className="chq-checkbox-label">
+                        <input
+                          className="chq-check"
+                          type="checkbox"
+                          checked={selected.includes(o)}
+                          onChange={(e) => toggleOptionValue(o, e.target.checked)}
+                        />
+                        {o}
+                      </label>
+                    );
+                  })}
+                </fieldset>
+              )}
+
+              {valueControl === 'text' && (
+                <label className="chq-field">
+                  Value{rule.op === 'in' ? ' (comma-separated)' : ''}
+                  <input
+                    className="chq-input"
+                    type="text"
+                    value={rule.value}
+                    onChange={(e) => setRule({ ...rule, value: e.target.value })}
+                    placeholder="Keynote"
+                  />
+                </label>
+              )}
             </>
           )}
         </fieldset>
