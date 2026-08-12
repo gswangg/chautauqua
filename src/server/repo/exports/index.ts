@@ -16,6 +16,7 @@ import { exportEvaluations } from "./evaluations";
 import { exportAgenda } from "./agenda";
 import { exportEmailLog } from "./email-log";
 import { exportContacts } from "./contacts";
+import type { ParsedContactListQuery } from "../contacts/query";
 import { type ExportTable } from "./table";
 
 export { EXPORT_KINDS, type ExportKind, isExportKind } from "./kinds";
@@ -42,6 +43,7 @@ export async function buildExport(
   kind: ExportKind,
   orgId?: string,
   submissionsListParams?: ParsedListQuery,
+  contactsListParams?: ParsedContactListQuery,
 ): Promise<ExportTable> {
   switch (kind) {
     case "submissions":
@@ -56,6 +58,6 @@ export async function buildExport(
       return exportEmailLog(db, eventId);
     case "contacts":
       if (!orgId) throw new Error("buildExport: orgId is required for kind 'contacts'");
-      return exportContacts(db, orgId);
+      return exportContacts(db, orgId, contactsListParams);
   }
 }

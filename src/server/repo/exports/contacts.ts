@@ -20,10 +20,59 @@ import { asc, eq } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { type ExportTable, buildTable } from "./table";
+import { selectFilteredContactRows } from "../contacts/crud";
+import type { ParsedContactListQuery } from "../contacts/query";
+import type { ContactRow } from "../contacts/rows";
 
 export const CONTACTS_HEADER = ["id", "firstName", "lastName", "email", "company", "title", "tags", "created"] as const;
 
-export async function exportContacts(db: Db, orgId: string): Promise<ExportTable> {
+function rowToCsvRow(r: { id: string; firstName: string; lastName: string; email: string; company: string | null; title: string | null; createdAt: string }): string[] {
+  return [
+    r.id,
+    r.firstName,
+    r.lastName,
+    r.email,
+    r.company ?? "",
+    r.title ?? "",
+    "", // tags: no data-model support yet (see module note)
+    r.createdAt,
+  ];
+}
+
+/** DEC-671: when `params` is supplied, the export carries the directory's
+ * own filter (q/segmentId/rules) via selectFilteredContactRows — the same
+ * row-selection predicate the list endpoint uses, minus the page window.
+ * Without params (e.g. internal/unfiltered callers), every org contact is
+ * exported, as before. */
+export async function exportContacts(db: Db, orgId: string, params?: ParsedContactListQuery): Promise<ExportTable> {
+  if (params) {
+    const rows: ContactRow[] = await selectFilteredContactRows(db, orgId, params);
+    // (lastName, firstName, id) ordering to match the unfiltered path —
+    // selectFilteredContactRows's default branch already sorts this way in
+    // SQL, but the segment/rules scan branch sorts by the requested
+    // params.sort, so re-sort here for a stable export ordering regardless
+    // of which branch produced the rows.
+    const sorted = [...rows].sort((a, b) => {
+      const last = a.lastName.localeCompare(b.lastName);
+      if (last !== 0) return last;
+      const first = a.firstName.localeCompare(b.firstName);
+      if (first !== 0) return first;
+      return a.id.localeCompare(b.id);
+    });
+    const outRows = sorted.map((r) =>
+      rowToCsvRow({
+        id: r.id,
+        firstName: r.firstName,
+        lastName: r.lastName,
+        email: r.email,
+        company: r.company,
+        title: r.title,
+        createdAt: new Date(r.createdAt).toISOString(),
+      }),
+    );
+    return buildTable([...CONTACTS_HEADER], outRows);
+  }
+
   const rows = await db
     .select({
       id: schema.contact.id,
@@ -38,16 +87,7 @@ export async function exportContacts(db: Db, orgId: string): Promise<ExportTable
     .where(eq(schema.contact.orgId, orgId))
     .orderBy(asc(schema.contact.lastName), asc(schema.contact.firstName), asc(schema.contact.id));
 
-  const outRows = rows.map((r) => [
-    r.id,
-    r.firstName,
-    r.lastName,
-    r.email,
-    r.company ?? "",
-    r.title ?? "",
-    "", // tags: no data-model support yet (see module note)
-    r.createdAt.toISOString(),
-  ]);
+  const outRows = rows.map((r) => rowToCsvRow({ ...r, createdAt: r.createdAt.toISOString() }));
 
   return buildTable([...CONTACTS_HEADER], outRows);
 }

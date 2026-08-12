@@ -178,43 +178,31 @@ function orderByForSort(sort: "name" | "recent") {
   return sql`lower(${schema.contact.lastName}) asc, lower(${schema.contact.firstName}) asc, ${schema.contact.id} asc`;
 }
 
-/** DEC-026 list: q (DEC-266 AND-tokens x OR-columns over name/email/company,
- * DEC-336 pushed fully into SQL — no JS filter/sort/slice on the default
- * directory path), segmentId/rules (DEC-149, matchesSegment over the pure
- * core — the one documented whole-directory load, DEC-336), sort
- * name|recent, DEC-013 paging. */
-export async function listContactsForOrg(db: Db, orgId: string, params: ParsedContactListQuery): Promise<ContactListResult> {
+/** Shared q-tokenization SQL predicate (DEC-266/DEC-336), reused by both the
+ * paged list (listContactsForOrg) and the unpaged export row selection
+ * (selectFilteredContactRows) so the two never drift. */
+function buildContactWhereExpr(orgId: string, params: ParsedContactListQuery) {
   const conditions = [eq(schema.contact.orgId, orgId)];
   const tokens = params.q ? tokenizeContactQuery(params.q) : [];
   if (tokens.length > 0) {
     conditions.push(and(...tokens.map(tokenCondition))!);
   }
-  const whereExpr = and(...conditions)!;
+  return and(...conditions)!;
+}
 
-  if (params.segmentId === null && params.rules.length === 0) {
-    // Default directory/search/sort/paging path: two SQL statements, no
-    // whole-org materialization (DEC-333 scale rule).
-    const totalRows = await db.select({ count: sql<number>`count(*)` }).from(schema.contact).where(whereExpr);
-    const total = Number(totalRows[0]?.count ?? 0);
+interface ScanRecord extends ContactRecord {
+  updatedAt: number;
+}
 
-    const offset = (params.page - 1) * params.perPage;
-    const rows = await db
-      .select()
-      .from(schema.contact)
-      .where(whereExpr)
-      .orderBy(orderByForSort(params.sort))
-      .limit(params.perPage)
-      .offset(offset);
-    return { items: rows.map(toRow), total };
-  }
-
-  // DEC-336/DEC-554: the one documented whole-directory path — segmentId/
-  // rules evaluate matchesSegment (including custom.* JSON fields, which SQL
-  // can't express) over every row the SQL q predicate above matched, then
-  // sort/page in JS. The scan itself is bounded and narrow (DEC-554): it
-  // projects only the columns matchesSegment/compareContacts read, refuses
-  // above MAX_CONTACT_DIRECTORY_SCAN rather than silently truncating, and
-  // only the final page's full rows are re-hydrated from the db.
+/** DEC-336/DEC-554: the segmentId/rules whole-directory scan — bounded and
+ * narrow (MAX_CONTACT_DIRECTORY_SCAN guard, refuse rather than truncate),
+ * projecting only the columns matchesSegment/compareContacts read. Returns
+ * every matching record, sorted, with NO page window — callers that need a
+ * page slice it themselves; callers that need every row (export) use it as
+ * is. Shared by listContactsForOrg's scan branch and
+ * selectFilteredContactRows so the guard/predicate is one piece of code. */
+async function scanAndFilterContacts(db: Db, orgId: string, params: ParsedContactListQuery): Promise<ScanRecord[]> {
+  const whereExpr = buildContactWhereExpr(orgId, params);
   const scanRows = await db
     .select({
       id: schema.contact.id,
@@ -238,7 +226,7 @@ export async function listContactsForOrg(db: Db, orgId: string, params: ParsedCo
     );
   }
 
-  const scanRecords = scanRows.map((r) => ({
+  const scanRecords: ScanRecord[] = scanRows.map((r) => ({
     id: r.id,
     email: r.email,
     firstName: r.firstName,
@@ -260,7 +248,72 @@ export async function listContactsForOrg(db: Db, orgId: string, params: ParsedCo
     filtered = filtered.filter((r) => matchesSegment(params.rules, r as ContactRecord));
   }
 
-  const sorted = [...filtered].sort(compareContacts(params.sort));
+  return [...filtered].sort(compareContacts(params.sort));
+}
+
+/** DEC-671: the export row-selection half of listContactsForOrg — same q
+ * predicate, same segmentId/rules matchesSegment pass, same
+ * MAX_CONTACT_DIRECTORY_SCAN guard (fail loudly rather than silently
+ * exporting an unfiltered file), but returns EVERY matching row, never a
+ * page window. */
+export async function selectFilteredContactRows(db: Db, orgId: string, params: ParsedContactListQuery): Promise<ContactRow[]> {
+  if (params.segmentId === null && params.rules.length === 0) {
+    const whereExpr = buildContactWhereExpr(orgId, params);
+    const rows = await db.select().from(schema.contact).where(whereExpr).orderBy(orderByForSort(params.sort));
+    return rows.map(toRow);
+  }
+
+  const sorted = await scanAndFilterContacts(db, orgId, params);
+  const ids = sorted.map((r) => r.id);
+  const fullRowsById = new Map<string, ContactRow>();
+  for (const batch of chunkIds(ids)) {
+    const rows = await db.select().from(schema.contact).where(inArray(schema.contact.id, batch));
+    for (const row of rows) {
+      const mapped = toRow(row);
+      fullRowsById.set(mapped.id, mapped);
+    }
+  }
+  return ids.map((id) => {
+    const row = fullRowsById.get(id);
+    if (!row) throw new Error(`contact ${id} not found during segment scan re-hydration`);
+    return row;
+  });
+}
+
+/** DEC-026 list: q (DEC-266 AND-tokens x OR-columns over name/email/company,
+ * DEC-336 pushed fully into SQL — no JS filter/sort/slice on the default
+ * directory path), segmentId/rules (DEC-149, matchesSegment over the pure
+ * core — the one documented whole-directory load, DEC-336), sort
+ * name|recent, DEC-013 paging. */
+export async function listContactsForOrg(db: Db, orgId: string, params: ParsedContactListQuery): Promise<ContactListResult> {
+  const whereExpr = buildContactWhereExpr(orgId, params);
+
+  if (params.segmentId === null && params.rules.length === 0) {
+    // Default directory/search/sort/paging path: two SQL statements, no
+    // whole-org materialization (DEC-333 scale rule).
+    const totalRows = await db.select({ count: sql<number>`count(*)` }).from(schema.contact).where(whereExpr);
+    const total = Number(totalRows[0]?.count ?? 0);
+
+    const offset = (params.page - 1) * params.perPage;
+    const rows = await db
+      .select()
+      .from(schema.contact)
+      .where(whereExpr)
+      .orderBy(orderByForSort(params.sort))
+      .limit(params.perPage)
+      .offset(offset);
+    return { items: rows.map(toRow), total };
+  }
+
+  // DEC-336/DEC-554: the one documented whole-directory path — segmentId/
+  // rules evaluate matchesSegment (including custom.* JSON fields, which SQL
+  // can't express) over every row the SQL q predicate above matched, then
+  // sort/page in JS. The scan itself is bounded and narrow (DEC-554,
+  // scanAndFilterContacts): it projects only the columns
+  // matchesSegment/compareContacts read, refuses above
+  // MAX_CONTACT_DIRECTORY_SCAN rather than silently truncating, and only the
+  // final page's full rows are re-hydrated from the db.
+  const sorted = await scanAndFilterContacts(db, orgId, params);
   const total = sorted.length;
   const start = (params.page - 1) * params.perPage;
   const page = sorted.slice(start, start + params.perPage);
