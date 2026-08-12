@@ -275,7 +275,7 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
     const payload = await getOverviewPayload(db, "event-1", now);
 
     // v1 keys, unchanged shape/values (nav badge + app/src/pages/overview/cards.ts).
-    expect(payload.triage).toEqual({ pending: 0, accept_queue: 0, decline_queue: 0 });
+    expect(payload["triage-counts"]).toEqual({ pending: 0, accept_queue: 0, decline_queue: 0 });
     expect(payload.review).toEqual({ plans: 0, evaluationsSubmitted: 0 });
     expect(payload.speakers).toEqual({ contactsOwing: 0, overdueAssignments: 0 });
     expect(payload.content).toEqual({ awaitingApproval: 0 });
@@ -290,7 +290,7 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
       eventStartDate: new Date("2027-03-10T00:00:00Z").getTime(),
     });
     expect(payload.overdueTasks).toEqual({ total: 0, rows: [] });
-    expect(payload.triageQueue).toEqual({ total: 0, oldestSubmittedAt: null, rows: [] });
+    expect(payload.triage).toEqual({ total: 0, oldestSubmittedAt: null, rows: [] });
     expect(payload.contentApproval).toEqual({ total: 0, reuploadedCount: 0, rows: [] });
     expect(payload.agendaWork).toEqual({ unplacedTotal: 0, conflictTotal: 0, conflicts: [], unplaced: [] });
   });
@@ -350,7 +350,7 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
     ]);
   });
 
-  it("triageQueue.total can exceed the 5-row cap while rows stay capped", async () => {
+  it("triage.total can exceed the 5-row cap while rows stay capped", async () => {
     const now = 1_735_999_999_999;
     const createdAt = (n: number) => new Date(1_700_000_000_000 + n);
     const rows = Array.from({ length: 5 }, (_, i) => ({
@@ -373,11 +373,11 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
       ),
     );
     const payload = await getOverviewPayload(db, "event-1", now);
-    expect(payload.triage.pending).toBe(12);
-    expect(payload.triageQueue.total).toBe(12); // total exceeds the 5 returned rows
-    expect(payload.triageQueue.rows).toHaveLength(5);
-    expect(payload.triageQueue.oldestSubmittedAt).toBe(createdAt(0).getTime());
-    expect(payload.triageQueue.rows[0]).toMatchObject({ submissionId: "s0", ref: "DFC-001", title: "Talk 0", trackName: null });
+    expect(payload["triage-counts"].pending).toBe(12);
+    expect(payload.triage.total).toBe(12); // total exceeds the 5 returned rows
+    expect(payload.triage.rows).toHaveLength(5);
+    expect(payload.triage.oldestSubmittedAt).toBe(createdAt(0).getTime());
+    expect(payload.triage.rows[0]).toMatchObject({ submissionId: "s0", ref: "DFC-001", title: "Talk 0", trackName: null });
   });
 
   it("contentApproval.total/reuploadedCount can exceed the 5 returned rows", async () => {

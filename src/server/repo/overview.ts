@@ -1,19 +1,18 @@
-// Overview worklist repo (DEC-030, DEC-370). Builds the single GET
+// Overview worklist repo (DEC-030, DEC-370, DEC-400). Builds the single GET
 // .../events/:eventId/overview payload with joined/grouped queries; repo
 // functions are the only code here that touch drizzle row types (DEC-012).
 // The aggregation logic below is split into pure helpers (given row arrays)
 // so it is unit-testable without a database — see test/overview.test.ts.
 //
-// DEC-370 (payload v2): every v1 aggregate key (triage/review/speakers/
-// content/agenda/comms) is retained byte-for-byte on the returned object so
-// the nav badge (DEC-369) and app/src/pages/overview/cards.ts keep reading
-// `payload.triage.pending` etc. unchanged. DEC-370's prose names the new
-// "submissions awaiting triage" rows section `triage` too, which collides
-// with the retained v1 counts key of the same name — that collision isn't
-// resolvable without renaming one of them, and the v1 key is the one pinned
-// by name in this task's brief ("RETAINING every existing key ... byte for
-// byte"), so the new rows section is exposed here as `triageQueue` instead.
-// Flagged for the client lane (task w1-d) and the scribe.
+// DEC-400 (wire keys): the v1 aggregate {pending, accept_queue,
+// decline_queue} ships under the key `triage-counts` (the nav badge and
+// app/src/pages/overview/cards.ts read `payload['triage-counts'].pending`),
+// and the v2 "submissions awaiting triage" rows section ships under the
+// plain key `triage` (per DEC-370's prose). This resolves the DEC-370
+// collision between the two sections that both wanted the name `triage`;
+// app/src/pages/overview/types.ts is the client-side contract of record for
+// these wire keys and is pinned against this file by
+// test/overview-payload-contract.test.ts.
 
 import { and, eq, inArray, sql } from "drizzle-orm";
 import type { Db } from "../context";
@@ -28,7 +27,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const ROW_CAP = 5;
 
 export interface OverviewPayload {
-  triage: { pending: number; accept_queue: number; decline_queue: number };
+  "triage-counts": { pending: number; accept_queue: number; decline_queue: number };
   review: { plans: number; evaluationsSubmitted: number };
   speakers: { contactsOwing: number; overdueAssignments: number };
   content: { awaitingApproval: number };
@@ -101,7 +100,7 @@ export interface UnplacedRow {
 export interface OverviewPayloadV2 extends OverviewPayload {
   deadlines: OverviewDeadlines;
   overdueTasks: { total: number; rows: OverdueTaskRow[] };
-  triageQueue: { total: number; oldestSubmittedAt: number | null; rows: TriageQueueRow[] };
+  triage: { total: number; oldestSubmittedAt: number | null; rows: TriageQueueRow[] };
   contentApproval: { total: number; reuploadedCount: number; rows: ContentApprovalRow[] };
   agendaWork: {
     unplacedTotal: number;
@@ -122,7 +121,7 @@ export interface OverviewPayloadV2 extends OverviewPayload {
  */
 export function aggregateTriageCounts(
   rows: { status: string; n: number }[],
-): OverviewPayload["triage"] {
+): OverviewPayload["triage-counts"] {
   const byStatus = new Map(rows.map((r) => [r.status, r.n]));
   return {
     pending: byStatus.get("pending") ?? 0,
@@ -613,7 +612,7 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number): 
   };
 
   return {
-    triage,
+    "triage-counts": triage,
     review: { plans, evaluationsSubmitted },
     speakers,
     content,
@@ -621,7 +620,7 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number): 
     comms,
     deadlines: { formCloseDate, nextTaskDueDate, planCloseDate, eventStartDate },
     overdueTasks,
-    triageQueue,
+    triage: triageQueue,
     contentApproval,
     agendaWork,
   };
