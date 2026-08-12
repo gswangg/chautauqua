@@ -93,12 +93,44 @@ Three visible tiers, one filled primary per row:
 
 Nav underline uses `box-shadow: inset 0 -2px 0 #4E5C31`, **not** `border-bottom` — a border adds 2px below the text box and knocks the item off the row's baseline.
 
+## Open decisions
+
+**DEC-382 vs. the home page.** `src/routes/tools.css.ts` records that the three operator surfaces (`GET /`, `/docs/api`, `/dev/mailbox`) "are chrome, not designed screens" sharing one `TOOLS_CSS` module. This bundle designs `GET /` as a real public surface, which revises that decision for `/` only — `/docs/api` and `/dev/mailbox` stay chrome. The home page should draw on the public CSS family (`public.css.ts`), not `TOOLS_CSS`.
+
+**`GET /` is an anonymous event hub, and needs more data than it reads today.** Decisions taken: one org per deployment, so the hub is simply "our events"; a signed-in organiser or reviewer **redirects to `/admin`** and a speaker to `/portal`, so this page only ever renders for anonymous visitors — all of which is new work. `GET /` does not read `c.var.auth` today; it renders the same landing page for everyone. The redirects that already exist are on `/admin` (anonymous → `/login`, speaker → `/portal`) and do not fire on `/`; and it lists **only events with an open CFP or a published programme** — never an unannounced future event, since `/` has no auth.
+
+The route currently calls only `getFirstEventSlug()`. It now needs a list of the org's events with, per event: name, slug, dates, location, the default form's window via `formWindowState(openDate, closeDate, now, timezone)`, and a published-session count. Rows carry public-safe facts only — dates, venue, CFP deadline, session count. Deliberately excluded: submission counts, review progress and speaker-task health, which are internal and would leak an event's health to anyone.
+
+Listed: an event whose CFP is open (`formWindowState` → `open`), or one with published sessions. Hidden: `not_yet_open` CFPs (announcing a date you have not announced), events with no published sessions (a link to an empty page), and the gap between a CFP closing and a programme going up. The test for any new field is one question — would you mind a competitor reading it?
+
+Kept off every row deliberately: submission count, review progress, speaker-task health, acceptance rate, last activity. Each describes how well an event is *going* rather than what a visitor can *do*, and a thin CFP or a stalled review wave is the organiser's business.
+
+"Published programme" stays true after an event ends, so a finished event would sit at the top of a flat list forever. Rows are therefore grouped **Open for submissions / Programme published / Already happened**, which fixes that and matches what a visitor arrived to find out. Within a group: soonest deadline first, then soonest event; past events newest first.
+
+**Every state is drawn at both widths.** Desktop lays an event out as a three-column row — dates, name and state, action. Phone stacks the same fields into a card with a full-width button. Both keep all three groups on screen; a chip strip that showed one group at a time was tried and rejected, because each group holds one to three rows and filtering left the phone showing fewer events than the desktop.
+
+**Three states, not two.** A published programme stays published, so once an org has run a single event the hub always has something to show:
+
+1. **Full hub** — an open CFP, an upcoming published programme, and an archive.
+2. **Between cycles** — no open CFP and nothing upcoming, but past programmes are still up. The archive *leads* the page rather than sitting at the bottom under two empty headings.
+3. **Fresh deploy** — nothing has ever been published. This is the only genuinely empty state, and the only one that shows just a sign-in.
+
+The masthead carries the **org's** name, not the product's — matching the public event pages, which lead with the event name. Chautauqua is named once, in the footer, as a GitHub attribution link; that is the only place the product appears on a customer-facing surface. The design file carries a "Rules you can't see on the page" panel alongside the frames with the same reasoning.
+
+**Dates are not reconciled with the seed — do not treat them as fixture-accurate.** The mocks show the CFP closing 16 August; `scripts/seed.ts` seeds `close_date: Date.UTC(2027, 2, 1, 23, 59)` — **1 March 2027** — corroborated by the comment in `src/lib/submit-core.ts`. The seeded form has no `open_date` (so it opens immediately), and the form's `description` is `"Default CFP form for DevFlow Conf 2027"`, an internal label rather than public intro copy. Two further consequences, unresolved at time of writing:
+
+- The deadline strip's "Doors open" and "Review wave 2" values derive from an implied "today" that the seed does not support. Recompute both from whichever "today" you adopt: doors are `event.startDate` = 12 May 2027, and the seeded evaluation plan closes `Date.UTC(2027, 4, 20)` = 20 May 2027.
+- **Under the seed, "CFP closes in 6 days" and "3 speaker tasks overdue" cannot both be true.** Every seeded task is due between 1 April and 1 May 2027, all after the 1 March close. Overview currently shows both. Pick a single "today" and let every countdown and status follow it — mid-April 2027 keeps the overdue worklist and closes the CFP; late February keeps the CFP open and empties the overdue section.
+
+The screens are correct as *design*; the numbers on them are illustrative until that one decision is made.
+
 ## Screens
 
 All 33 routes in `app/src/routeManifest.ts` are covered. File → routes:
 
 | File | Routes / views |
 |---|---|
+| `Chautauqua Home.dc.html` | `GET /` — the org's event hub, anonymous only: three states (full hub, between cycles, fresh deploy), each at 900 and 390 |
 | `Chautauqua Overview.dc.html` | `/admin/overview` (desktop + phone), New event modal |
 | `Chautauqua Submissions.dc.html` | `/admin/submissions`, `/admin/submissions/:id`, `/admin/submissions/forms` (+ phone), New submission and Save-view modals |
 | `Chautauqua Review.dc.html` | `/admin/review` organiser tree, reviewer queue, reviewer scorecard, `/review/plans/:id` (+ phone) |
@@ -175,6 +207,37 @@ These were the most-revised part of the design. Hold them:
 
 One meaning each, consistent across all files: 47 submissions · 23 accepted submissions · **12 accepted speakers** (one speaker can hold several accepted talks) · 6 unplaced · 17 placed (74%) · 2 clashes · 318 contacts · 8 CFP questions (3 built-in + Track + 4 custom) · 3 tracks · 4 rooms. Names and titles come from `docs/fixtures/sample-data.json`.
 
+## Open decisions
+
+**DEC-382 vs. the home page.** `src/routes/tools.css.ts` records that the three operator surfaces (`GET /`, `/docs/api`, `/dev/mailbox`) "are chrome, not designed screens" sharing one `TOOLS_CSS` module. This bundle designs `GET /` as a real public surface, which revises that decision for `/` only — `/docs/api` and `/dev/mailbox` stay chrome. The home page should draw on the public CSS family (`public.css.ts`), not `TOOLS_CSS`.
+
+**`GET /` is an anonymous event hub, and needs more data than it reads today.** Decisions taken: one org per deployment, so the hub is simply "our events"; a signed-in organiser or reviewer **redirects to `/admin`** and a speaker to `/portal`, so this page only ever renders for anonymous visitors — all of which is new work. `GET /` does not read `c.var.auth` today; it renders the same landing page for everyone. The redirects that already exist are on `/admin` (anonymous → `/login`, speaker → `/portal`) and do not fire on `/`; and it lists **only events with an open CFP or a published programme** — never an unannounced future event, since `/` has no auth.
+
+The route currently calls only `getFirstEventSlug()`. It now needs a list of the org's events with, per event: name, slug, dates, location, the default form's window via `formWindowState(openDate, closeDate, now, timezone)`, and a published-session count. Rows carry public-safe facts only — dates, venue, CFP deadline, session count. Deliberately excluded: submission counts, review progress and speaker-task health, which are internal and would leak an event's health to anyone.
+
+Listed: an event whose CFP is open (`formWindowState` → `open`), or one with published sessions. Hidden: `not_yet_open` CFPs (announcing a date you have not announced), events with no published sessions (a link to an empty page), and the gap between a CFP closing and a programme going up. The test for any new field is one question — would you mind a competitor reading it?
+
+Kept off every row deliberately: submission count, review progress, speaker-task health, acceptance rate, last activity. Each describes how well an event is *going* rather than what a visitor can *do*, and a thin CFP or a stalled review wave is the organiser's business.
+
+"Published programme" stays true after an event ends, so a finished event would sit at the top of a flat list forever. Rows are therefore grouped **Open for submissions / Programme published / Already happened**, which fixes that and matches what a visitor arrived to find out. Within a group: soonest deadline first, then soonest event; past events newest first.
+
+**Every state is drawn at both widths.** Desktop lays an event out as a three-column row — dates, name and state, action. Phone stacks the same fields into a card with a full-width button. Both keep all three groups on screen; a chip strip that showed one group at a time was tried and rejected, because each group holds one to three rows and filtering left the phone showing fewer events than the desktop.
+
+**Three states, not two.** A published programme stays published, so once an org has run a single event the hub always has something to show:
+
+1. **Full hub** — an open CFP, an upcoming published programme, and an archive.
+2. **Between cycles** — no open CFP and nothing upcoming, but past programmes are still up. The archive *leads* the page rather than sitting at the bottom under two empty headings.
+3. **Fresh deploy** — nothing has ever been published. This is the only genuinely empty state, and the only one that shows just a sign-in.
+
+The masthead carries the **org's** name, not the product's — matching the public event pages, which lead with the event name. Chautauqua is named once, in the footer, as a GitHub attribution link; that is the only place the product appears on a customer-facing surface. The design file carries a "Rules you can't see on the page" panel alongside the frames with the same reasoning.
+
+**Dates are not reconciled with the seed — do not treat them as fixture-accurate.** The mocks show the CFP closing 16 August; `scripts/seed.ts` seeds `close_date: Date.UTC(2027, 2, 1, 23, 59)` — **1 March 2027** — corroborated by the comment in `src/lib/submit-core.ts`. The seeded form has no `open_date` (so it opens immediately), and the form's `description` is `"Default CFP form for DevFlow Conf 2027"`, an internal label rather than public intro copy. Two further consequences, unresolved at time of writing:
+
+- The deadline strip's "Doors open" and "Review wave 2" values derive from an implied "today" that the seed does not support. Recompute both from whichever "today" you adopt: doors are `event.startDate` = 12 May 2027, and the seeded evaluation plan closes `Date.UTC(2027, 4, 20)` = 20 May 2027.
+- **Under the seed, "CFP closes in 6 days" and "3 speaker tasks overdue" cannot both be true.** Every seeded task is due between 1 April and 1 May 2027, all after the 1 March close. Overview currently shows both. Pick a single "today" and let every countdown and status follow it — mid-April 2027 keeps the overdue worklist and closes the CFP; late February keeps the CFP open and empties the overdue section.
+
+The screens are correct as *design*; the numbers on them are illustrative until that one decision is made.
+
 ## Screenshots
 
 `screens/` holds one full-canvas capture per file, showing every frame in that file side by side:
@@ -183,6 +246,7 @@ One meaning each, consistent across all files: 47 submissions · 23 accepted sub
 |---|---|
 | `00-before-current-ui.png` | **Before** — today's unstyled admin across 7 screens |
 | `01-overview.png` | Overview desktop + phone, New event modal |
+| `12-home.png` | Home — three states at both widths, plus the design-notes panel |
 | `02-submissions.png` | Table, submission detail (desktop + phone), form builder (desktop + phone), 2 modals |
 | `03-review.png` | Organiser view, reviewer scorecard, reviewer queue, plan editor (desktop + phone) |
 | `04-speakers.png` | Onboarding grid + phone, roster phone, New task and Task response modals |
@@ -198,7 +262,7 @@ Captures are of the design canvas, so each frame carries its title label and, wh
 
 ## Assets
 
-None. No icons, no images, no SVG. Status dots are `border-radius:50%` divs; drag affordances are the `⋮⋮` character. Image placeholders are `repeating-linear-gradient(135deg, #E1DDCE 0 6px, #D8D3C2 6px 12px)` with a 10px monospace label naming the drop ("headshot", "speaker headshot") — replace with real headshots from R2.
+One: the **GitHub mark** in the home page footer attribution (14px, `fill="currentColor"`, official 16×16 mark path) — the single icon in the whole set, and the only SVG. Everything else: no icons, no images, no SVG. Status dots are `border-radius:50%` divs; drag affordances are the `⋮⋮` character. Image placeholders are `repeating-linear-gradient(135deg, #E1DDCE 0 6px, #D8D3C2 6px 12px)` with a 10px monospace label naming the drop ("headshot", "speaker headshot") — replace with real headshots from R2.
 
 Fonts: `https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@400;500;600;700&family=Figtree:wght@400;500;600;700;800&display=swap`. Self-host to avoid a third-party request from the Worker.
 

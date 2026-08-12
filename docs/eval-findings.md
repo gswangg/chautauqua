@@ -1,81 +1,115 @@
-# MANDATE — implement the design redesign (2026-08-11)
+# MANDATE — verified-current findings round (2026-08-12, ~11h to submission)
 
-The functional findings are closed (see `docs/design/` history below for the prior round's
-record). **This round is a visual redesign.** A complete design handoff now lives in
-`docs/design/` — read `docs/design/README.md` FIRST; it is authoritative over everything
-here and over the images.
+Every item below was verified against THIS build (main @ the commit vendoring this file)
+in the last three hours: an 11-agent design-fidelity pass against the deployed prod
+(evidence: `chautauqua-research/fidelity/*/report.md` + screenshots), and a defect
+re-verification pass against a seeded local snapshot (`docs/mandates/defect-reverify.md`
+— 12 previously-known defects are FIXED and are NOT listed here; do not re-fix). Detail
+files live in `docs/mandates/`. The design handoff in `docs/design/` is **v2** —
+re-vendored, includes the new `Chautauqua Home.dc.html` + README §Open decisions.
 
-## What this is
+Work the tiers in order. Every fix needs a test that would fail without it. Gates
+unchanged (`build`, `test`, `gate:render-sweep`, `walkthrough`, `perf:smoke`) — but see
+"Test policy" at the bottom before running suites.
 
-A high-fidelity redesign of **every route in `app/src/routeManifest.ts`** plus the modals,
-at desktop (1240px) and phone (390px) — 72 frames across 11 `.dc.html` files, with
-full-canvas screenshots in `docs/design/screens/`.
+## Tier 0 — judge-blocking (P0)
 
-It is a **re-skin plus exactly two structural changes**, NOT a rewrite:
+1. **Agenda desktop a11y (UNCHANGED WCAG 2.1.1 failure, twice-verified)**: the grid
+   exposes ZERO interactive elements — cards are `div draggable`, a 40-press Tab walk
+   never reaches one. The phone view already solved this (every card/clash item is a
+   real `<button>`) — port that pattern to desktop cells/cards and add per-item
+   accessible placement ("Place at HH:MM" menu/buttons per the Overview §04 design).
+   The sbek judge drives via the a11y tree: this single item gates every scheduling
+   rubric point.
+2. **Agenda desktop card clipping**: card boxes shorter than content + overflow visible;
+   12/12 placed cards bleed into the next row (29–190px, worst on conflict cards). One
+   CSS fix (clip/size to slot). Also strip blue/amber/green track borders (olive only)
+   and prefer the mock's full-width conflict panel.
+3. **Assign-by-track fan-out (ABS-S2-D1)**: assigns every submission in the track with
+   no preview/confirm. Add count-preview + confirm, allow bounded selection.
+4. **Files-library "versions and comments" button**: WIRING fix — button only mutates
+   URL; the panel it should open already works from the submission-detail page.
+5. **Comment loss across file versions (CONFIRMED server-side)** + **headshot upload
+   discards unsaved bio edits (both portal and admin)** + **CSV import silently
+   overwrites bio**: three confirmed data-loss paths.
 
-1. **Overview becomes the work itself**, not a directory of counts: named speakers with
-   Remind on the row, named submissions with Accept/Decline, sessions with Approve. The
-   sidebar/nav carries destinations only, with a badge solely when something is wrong.
-2. **The agenda works on a phone** via one-room-in-view + tap-to-place (not a shrunken
-   grid). This maps onto the existing `PUT /submissions/:id/slot` body
-   `{day, startMin, endMin, roomId}` — dragging was only ever the desktop's way of naming
-   those four values.
+## Tier 1 — systemic design fixes (fix once, apply everywhere)
 
-## Hard rules
+6. **Phone fixed tab bar clips content on EVERY page family** (Settings sections,
+   Content files pagination, Submissions detail + form builder). Adopt the README's
+   fixed-header / `flex:1; min-height:0; overflow-y:auto` body / fixed-footer shell as
+   ONE shared phone layout component.
+7. **Style the native controls**: `input[type=file]` (deliverable zones, Resources),
+   `input[type=date]`, and every native `<select>` where the design specifies
+   pills/segmented/buttons (decision panel, task Kind, add-to-event, pipeline moves).
+8. **One shared header shell**: Overview has the new single-row shell; Comms, Speakers,
+   Contacts, Content still render the old two-band. Event name as plain text, user as
+   "JORDAN A. · SIGN OUT" (derive initials from the seeded name).
 
-- **Do NOT port `support.js` or copy inline styles out of the `.dc.html` files.** Those are
-  design references built on a streaming component runtime. (`support.js` has been removed
-  from the bundle on purpose.) Recreate the designs in our existing environment: React 18 +
-  React Router v6 + Vite for the admin SPA (`app/src/`), Hono JSX SSR for portal and public
-  (`src/routes/`). The design needs **no CSS framework**.
-- **Styling goes in `app/src/styles.css`** (already uses the `--chq-*` convention): replace
-  the token values with the handoff's, add the new component classes. Portal/public SSR
-  pages get their own styling pass against the same tokens.
-- **Preserve behavior exactly.** Optimistic updates with loud rollback; bulk selection
-  spanning pages sent in batches of 100 (`chunkSelection`, DEC-193 refetch-don't-restore);
-  conflicts surfaced never blocked; reminders bulk-per-event with the
-  `MANUAL_DEDUPE_WINDOW_MS` caption next to the send button; **deciding never emails**;
-  reviewers confined to `/review`; task status `pending|complete` only; itinerary in
-  `localStorage` → `schedule.ics?ids=`; drafts in KV. The handoff's "Interactions &
-  behaviour" section restates these — it changes none of them.
-- **Copy rules are binding** (handoff §Copy rules): no explanatory clauses in chrome, never
-  promise time, never assert what no endpoint stores, state the constraint you need before
-  acting, plain section names from the app's own vocabulary.
-- **Fonts are already vendored** at `public/fonts/FamiljenGrotesk-var.woff2` and
-  `Figtree-var.woff2` — 44 KB total, both **variable**, so `@font-face` must declare weight
-  *ranges* (`400 700` / `400 800`) with `format('woff2-variations')`. See
-  `public/fonts/README.md`. Do not add a Google Fonts network request.
-- **No new colours.** There is no red and no third accent; lateness/clashes/not-reviewed are
-  set in type (weight 800, uppercase, tracked), in Ink. Do not reintroduce a semantic red.
-- **Accessibility is part of done**: WCAG AA on every text/background pair, 10px type floor,
-  44px tap targets on phone, meaning never carried by colour alone.
+## Tier 2 — surfaces never redesigned (design order steps 6–7; docs/design v2 is authoritative)
 
-## Order (follow it — it degrades gracefully)
+9. **Speaker portal — all routes** ("Two things to do" worklist; demote Sign out; fix
+   the two ACTIVE overlap bugs on hotel-stay + edit-session forms).
+10. **Public CFP form + confirmation** (most judge-visible surface; currently default
+    controls). Fix Track: radios not checkboxes (single-track data model).
+11. **Public agenda + my-schedule at 390px** (raw grid today; needs the phone list).
+12. **Review**: queue-first reviewer flow (remove the plan-picker landing); organiser
+    landing worklist w/ inline progress + ranked results incl. Accept/Decline; plan
+    editor per mock.
+13. **Settings**: redesign content rows; ADD the two missing sections ("Call for
+    papers", "People and roles" — even a minimal honest version); phone subscreens.
+14. **Home page — NEW surface**: implement `docs/mandates/homepage-mandate.md` +
+    `Chautauqua Home.dc.html` (anonymous event hub, three states, redirects for
+    signed-in users, org masthead, footer attribution; login-page demo-credential
+    prefill links, seed-conditional).
 
-The handoff's suggested order is deliberate: each step must land **green and deployable**,
-because we may ship at any point before the deadline.
+## Tier 3 — per-page deviations (details in docs/mandates/SYNTHESIS.md + fidelity reports)
 
-1. Tokens + the shell (header, nav, section pattern) in `styles.css`
-2. **Overview** — biggest behavioural change, proves the row pattern
-3. Submissions (table + detail + form builder) — highest-traffic admin screen
-4. Speakers, Content, Comms, Contacts, Review, Settings
-5. Agenda desktop, then phone tap-to-place
-6. Public surfaces + portal (server-rendered — separate styling pass)
-7. Login, password, not-found
+Submissions (phone triage actions; decision buttons; detail Speaker card + Reviews;
+Save-view modal is currently `window.prompt`) · Contacts (drawer→designed record view;
+import wizard; add-to-event modal; New contact + Export CSV CTAs) · Content (4-col
+worklist IA; files size column; Task-response modal needs "Mark complete"/"Ask for
+more") · Overview (fixed deadline-strip order; Export/New submission buttons; humanize
+`ROOM_OVERLAP`; "Place at" rows; Public pages row; New-event modal) · Comms (phone
+landing; batched history; template input clipping; per-recipient SCHEDULED/NO-SLOT tags)
+· Account (login CTA block; password captions + phone Cancel; not-found copy) ·
+EMB still-open items from `docs/mandates/defect-reverify.md` (Format field everywhere
+incl. JSON API, day/fields params, time gutter, chromeless framing).
 
-## Gates (unchanged, all must stay green)
+## Tier 4 — features (independently shippable; stop anywhere and main stays green)
 
-`npm run build` · `npm test` · `npm run gate:render-sweep` (desktop **and** mobile routes) ·
-`npm run walkthrough` · `npm run perf:smoke`. A restyle that breaks a walkthrough step or a
-render-sweep route is a failed task, not a tradeoff. **Add** to the render-sweep (or a new
-sibling gate) two cheap design invariants that this round makes checkable:
+15. **Sessionboard importer** (`docs/mandates/steal-mandate.md` §5): Layer 1 CSV/XLSX
+    export import w/ dry-run + idempotent external_ref upsert. The one differentiator
+    nobody in the field has.
+16. Steal-mandate §1–3 (auto-scheduler per-item reasons; anonymization snapshot at
+    assignment; hardened embed element). §4 (AUDIT.md) — update it with this round's
+    reality in the same commit.
+17. **Scale test** (`docs/mandates/scale-mandate.md`): aie seed profile + functional
+    and design-at-scale bars.
 
-- no computed `font-size` below 10px anywhere in the rendered admin/portal/public routes;
-- every interactive element at 390px width has a ≥44px tap target.
+## Seed & data
 
-## Scope discipline
+18. Seed wipe list must be SCHEMA-DERIVED (hand-list missed pipeline_entry etc. and
+    silently broke the remote reseed). A source-scanning test in the DEC-518 style.
+19. **Canonical demo "today"** (README §Open decisions): pick one, move seeded CFP
+    close_date ~2-3 weeks after it, keep some tasks overdue behind it — so open CFP,
+    populated worklists, and coherent countdowns are all true at once (Overview
+    currently says "19 things need your attention" — tune to credible).
+20. Fix "40 of 3 evaluation plans in", "Unknown uploader", pipeline stray concatenated
+    row.
 
-Nothing outside the redesign. No new features, no new dependencies, no CSS framework, no
-refactors of working data-fetching or role gating. If a design frame implies an endpoint we
-do not have, render what the existing endpoints actually return and note the gap in the wave
-summary rather than inventing an API.
+## Test policy (NEW — supersedes any earlier full-suite habit)
+
+Workers run TARGETED tests only (`vitest related` + their area's test files). The FULL
+suite runs once per merge-train batch and always on verification/exit waves. Full-suite
+invocations must be serialized via the lock wrapper (first mechanical task: add
+`scripts/with-test-lock.sh` — mkdir-spinlock on /tmp/chq-test.lock — and route the
+train/exit `npm test` through it). `VITEST_MAX_THREADS=2` is set in the environment.
+Rationale: concurrent full suites (~1GB/worker × 11) swamped the 16GB machine twice.
+
+## Continuing thread
+
+The DEC-5xx hardening thread (silent-death traps, invariant lock-in, boundary
+validation) remains IN SCOPE and should continue as capacity allows — after the tiers
+above, never instead of them. The DEC-514 rule stands: the round closes only with a
+verification-only exit wave re-measuring everything at a sha containing every fix.
