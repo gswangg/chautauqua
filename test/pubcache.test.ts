@@ -9,7 +9,8 @@ import {
   PUBVER_KEY,
   bumpIfMutating,
   bumpPublicVersionMiddleware,
-  isIcsPath,
+  isUncacheableIcsRequest,
+  publicCacheMiddleware,
   readPublicVersion,
   servePublicGet,
   versionedCacheKey,
@@ -84,10 +85,16 @@ describe("versionedCacheKey", () => {
   });
 });
 
-describe("isIcsPath", () => {
-  it("matches schedule.ics paths only", () => {
-    expect(isIcsPath("/e/foo/schedule.ics")).toBe(true);
-    expect(isIcsPath("/e/foo/sessions")).toBe(false);
+describe("isUncacheableIcsRequest", () => {
+  it("is true only for schedule.ics requests carrying ?ids=", () => {
+    expect(isUncacheableIcsRequest("https://x.test/e/foo/schedule.ics?ids=a,b")).toBe(true);
+    expect(isUncacheableIcsRequest("https://x.test/e/foo/schedule.ics")).toBe(false);
+    expect(isUncacheableIcsRequest("https://x.test/e/foo/sessions")).toBe(false);
+    expect(isUncacheableIcsRequest("https://x.test/e/foo/agenda.ics")).toBe(false);
+  });
+
+  it("even an empty ids value still counts as per-user (stays uncacheable)", () => {
+    expect(isUncacheableIcsRequest("https://x.test/e/foo/schedule.ics?ids=")).toBe(true);
   });
 });
 
@@ -219,11 +226,63 @@ describe("bumpIfMutating", () => {
   });
 });
 
-describe("schedule.ics bypass (via isIcsPath, exercised as the middleware would)", () => {
-  it("schedule.ics is never routed through servePublicGet", () => {
-    const path = "/e/foo/schedule.ics?ids=1,2,3";
-    const url = new URL(`https://x.test${path}`);
-    expect(isIcsPath(url.pathname)).toBe(true);
+describe("publicCacheMiddleware: schedule.ics (DEC-442)", () => {
+  function buildApp(cache: CacheLike, kv: KVStore) {
+    const app = new Hono<AppEnv>();
+    app.use("*", publicCacheMiddleware(() => cache));
+    let calls = 0;
+    app.get("/e/:slug/schedule.ics", (c) => {
+      calls += 1;
+      return c.text(`ics-${calls}`, 200, { "Cache-Control": "public, max-age=60, stale-while-revalidate=300" });
+    });
+    return { app, env: { KV: kv } as unknown as AppEnv["Bindings"], getCalls: () => calls };
+  }
+
+  it("a bare schedule.ics request is stored and served from cache on the second call, with client-facing Cache-Control restored", async () => {
+    const cache = fakeCache();
+    const kv = fakeKv();
+    const { app, env, getCalls } = buildApp(cache, kv);
+
+    const first = await app.request("/e/foo/schedule.ics", {}, env);
+    expect(await first.text()).toBe("ics-1");
+    expect(getCalls()).toBe(1);
+    expect(cache.store.size).toBe(1);
+
+    const second = await app.request("/e/foo/schedule.ics", {}, env);
+    expect(await second.text()).toBe("ics-1"); // served from cache, handler not called again
+    expect(getCalls()).toBe(1);
+    expect(second.headers.get("Cache-Control")).toBe(CLIENT_CACHE_CONTROL);
+  });
+
+  it("a schedule.ics request with ?ids= is never stored", async () => {
+    const cache = fakeCache();
+    const kv = fakeKv();
+    const { app, env, getCalls } = buildApp(cache, kv);
+
+    await app.request("/e/foo/schedule.ics?ids=1,2,3", {}, env);
+    await app.request("/e/foo/schedule.ics?ids=1,2,3", {}, env);
+
+    expect(getCalls()).toBe(2); // handler called every time, never cached
+    expect(cache.store.size).toBe(0);
+  });
+
+  it("a mutation that bumps the public version makes a previously stored bare .ics unreachable", async () => {
+    const cache = fakeCache();
+    const kv = fakeKv();
+    const { app, env, getCalls } = buildApp(cache, kv);
+
+    await app.request("/e/foo/schedule.ics", {}, env);
+    expect(getCalls()).toBe(1);
+
+    // still a hit before any bump
+    await app.request("/e/foo/schedule.ics", {}, env);
+    expect(getCalls()).toBe(1);
+
+    await bumpIfMutating(kv, "POST", 200);
+
+    const afterBump = await app.request("/e/foo/schedule.ics", {}, env);
+    expect(getCalls()).toBe(2);
+    expect(await afterBump.text()).toBe("ics-2");
   });
 });
 

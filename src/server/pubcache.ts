@@ -20,6 +20,13 @@
 // Written against CacheLike + the KVStore interface from src/lib/draft.ts
 // (DEC-002 pure-core convention) so the core logic unit-tests with fakes,
 // no real Cache API / KVNamespace required.
+//
+// DEC-442: the ics skip is request-shaped, not path-shaped. Bare
+// schedule.ics (no ?ids=) does identical work to agenda.ics, so it now
+// joins the same version-salted cache key space and gets purged by the
+// same bumpPublicVersionMiddleware swap. Only a schedule.ics request that
+// carries an `ids` query string (even empty — per-user/unbounded
+// cardinality) stays excluded; see isUncacheableIcsRequest.
 
 import type { Context, Next } from "hono";
 import type { AppEnv } from "./env";
@@ -63,8 +70,14 @@ export function versionedCacheKey(url: string, version: string): Request {
   return new Request(keyed.toString());
 }
 
-export function isIcsPath(path: string): boolean {
-  return path.endsWith("/schedule.ics");
+/** DEC-442: request-shaped (not path-shaped) skip. Only a schedule.ics
+ * request carrying an `ids` query string (even empty) is per-user/
+ * unbounded-cardinality and must bypass the cache; the bare whole-agenda
+ * schedule.ics does identical work to agenda.ics and joins the same
+ * version-salted cache as everything else. */
+export function isUncacheableIcsRequest(url: string): boolean {
+  const parsed = new URL(url);
+  return parsed.pathname.endsWith("/schedule.ics") && parsed.searchParams.has("ids");
 }
 
 /** Core GET-path logic, pure against CacheLike + KVStore, so it's callable
@@ -108,9 +121,11 @@ export async function bumpIfMutating(kv: KVStore, method: string, status: number
 }
 
 /** Hono middleware: GET-only, version-salted caches.default read-through
- * for public/embed HTML. Skips schedule.ics (per-user ?ids= query strings
- * would pollute the cache; DEC-083). Missing KV/caches.default binding
- * throws — fail loudly, no silent fallback to uncached serving.
+ * for public/embed HTML and the bare whole-agenda schedule.ics (DEC-442).
+ * Skips only schedule.ics requests carrying an `ids` query string
+ * (per-user selections would pollute the cache; DEC-083/DEC-442). Missing
+ * KV/caches.default binding throws — fail loudly, no silent fallback to
+ * uncached serving.
  *
  * `cache` is a thunk (not a resolved CacheLike) so module-level middleware
  * registration never touches the `caches` global at import time — it's a
@@ -118,7 +133,7 @@ export async function bumpIfMutating(kv: KVStore, method: string, status: number
  * environment, and route sub-app modules must stay importable there. */
 export function publicCacheMiddleware(cache: () => CacheLike) {
   return async (c: Context<AppEnv>, next: Next) => {
-    if (c.req.method !== "GET" || isIcsPath(new URL(c.req.url).pathname)) {
+    if (c.req.method !== "GET" || isUncacheableIcsRequest(c.req.url)) {
       await next();
       return;
     }
