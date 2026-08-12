@@ -18,6 +18,7 @@ afterEach(() => {
 describe('EventSwitcher', () => {
   it('renders the current event as plain text beside a menu button', async () => {
     mockApi({
+      'GET /api/v1/me': { userId: 'u-1', email: 'organizer@example.com', role: 'organizer', orgId: 'org-1' },
       'GET /api/v1/events': listEnvelope([
         { id: 'ev-1', name: 'Alpha Conf' },
         { id: 'ev-2', name: 'Beta Summit' },
@@ -36,6 +37,7 @@ describe('EventSwitcher', () => {
 
   it('the menu button opens a menu listing every event plus "New event…"', async () => {
     mockApi({
+      'GET /api/v1/me': { userId: 'u-1', email: 'organizer@example.com', role: 'organizer', orgId: 'org-1' },
       'GET /api/v1/events': listEnvelope([
         { id: 'ev-1', name: 'Alpha Conf' },
         { id: 'ev-2', name: 'Beta Summit' },
@@ -55,6 +57,7 @@ describe('EventSwitcher', () => {
 
   it('opening "New event…" from the menu shows the dialog inside a .chq-scrim', async () => {
     mockApi({
+      'GET /api/v1/me': { userId: 'u-1', email: 'organizer@example.com', role: 'organizer', orgId: 'org-1' },
       'GET /api/v1/events': listEnvelope([{ id: 'ev-1', name: 'Alpha Conf' }]),
     });
 
@@ -73,6 +76,7 @@ describe('EventSwitcher', () => {
 
   it('a local validation failure renders .chq-field-error', async () => {
     mockApi({
+      'GET /api/v1/me': { userId: 'u-1', email: 'organizer@example.com', role: 'organizer', orgId: 'org-1' },
       'GET /api/v1/events': listEnvelope([{ id: 'ev-1', name: 'Alpha Conf' }]),
     });
 
@@ -104,6 +108,7 @@ describe('EventSwitcher', () => {
 
   it('Escape closes the dialog', async () => {
     mockApi({
+      'GET /api/v1/me': { userId: 'u-1', email: 'organizer@example.com', role: 'organizer', orgId: 'org-1' },
       'GET /api/v1/events': listEnvelope([{ id: 'ev-1', name: 'Alpha Conf' }]),
     });
 
@@ -120,5 +125,38 @@ describe('EventSwitcher', () => {
     await waitFor(() => {
       expect(screen.queryByRole('dialog', { name: 'New event' })).not.toBeInTheDocument();
     });
+  });
+
+  // DEC-608: 'New event…' posts to an organizer-only endpoint; a reviewer
+  // must never see a control whose only possible outcome is a 403.
+  it('hides "New event…" for a reviewer', async () => {
+    mockApi({
+      'GET /api/v1/me': { userId: 'u-2', email: 'reviewer@example.com', role: 'reviewer', orgId: 'org-1' },
+      'GET /api/v1/events': listEnvelope([{ id: 'ev-1', name: 'Alpha Conf' }]),
+    });
+
+    render(<EventSwitcher />);
+
+    await waitFor(() => screen.getByText('Alpha Conf'));
+    fireEvent.click(screen.getByRole('button', { name: 'Switch event' }));
+
+    const menu = await screen.findByRole('menu', { name: 'Events' });
+    expect(within(menu).getByRole('menuitem', { name: 'Alpha Conf' })).toBeInTheDocument();
+    expect(within(menu).queryByRole('menuitem', { name: 'New event…' })).not.toBeInTheDocument();
+  });
+
+  it('shows "New event…" for an organizer', async () => {
+    mockApi({
+      'GET /api/v1/me': { userId: 'u-1', email: 'organizer@example.com', role: 'organizer', orgId: 'org-1' },
+      'GET /api/v1/events': listEnvelope([{ id: 'ev-1', name: 'Alpha Conf' }]),
+    });
+
+    render(<EventSwitcher />);
+
+    await waitFor(() => screen.getByText('Alpha Conf'));
+    fireEvent.click(screen.getByRole('button', { name: 'Switch event' }));
+
+    const menu = await screen.findByRole('menu', { name: 'Events' });
+    expect(within(menu).getByRole('menuitem', { name: 'New event…' })).toBeInTheDocument();
   });
 });

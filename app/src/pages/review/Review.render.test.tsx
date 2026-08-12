@@ -320,3 +320,39 @@ describe('ReviewPage render smoke: reviewer', () => {
     expect(planASection).not.toHaveTextContent('Beta Recused');
   });
 });
+
+// DEC-608: each role's route subtree ends in a catch-all rather than
+// rendering an empty <main> for a URL that belongs to the other role.
+describe('ReviewPage catch-all (DEC-608)', () => {
+  it('an organiser opening a reviewer scorecard URL sees a named boundary panel, not a blank main', async () => {
+    mockApi({
+      'GET /api/v1/me': organizerMe(),
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/plans/${PLAN_ID}/submissions/sub-1`]}>
+        <ReviewPage />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText(/belongs to the reviewer view/)).toBeInTheDocument();
+    const link = screen.getByRole('link', { name: 'Back to Review' });
+    expect(link).toHaveAttribute('href', '/review');
+  });
+
+  it('a reviewer opening an organiser-only URL sees a named boundary panel, not a blank main', async () => {
+    mockApi({
+      'GET /api/v1/me': reviewerMe(),
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/plans/${PLAN_ID}/results`]}>
+        <ReviewPage />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText(/belongs to the organiser view/)).toBeInTheDocument();
+    const link = screen.getByRole('link', { name: 'Back to Review' });
+    expect(link).toHaveAttribute('href', '/review');
+  });
+});
