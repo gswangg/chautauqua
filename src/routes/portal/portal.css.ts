@@ -26,7 +26,12 @@ void DEC_377; // captions below only ever restate fields the portal repo already
 export const PORTAL_CSS = `
   /* --- verbatim starting point (moved from PortalLayout's inline <style>) --- */
   main { max-width: 960px; margin: 0 auto; padding: 0 1rem; }
-  nav a { display: inline-flex; align-items: center; min-height: 40px; }
+  /* DEC-393: the bare "nav a" rule that duplicated the old sub-floor
+     min-height here is gone -- the portal nav markup
+     (src/routes/portal/index.tsx) is nav.chq-nav > a, so THEME_CSS's
+     more specific ".chq-nav a" rule (min-height: 44px) already covers
+     it; duplicating it here at the old, now-stale floor would have been
+     dead weight at best and a regression trap at worst. */
   /* DEC-253: wide data tables (My Submissions/Tasks) scroll inside their
      own container on a phone viewport rather than blowing out page-level
      width. */

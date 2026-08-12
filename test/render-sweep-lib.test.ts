@@ -116,12 +116,12 @@ describe("allPassed / formatSummary / formatResultsTable", () => {
 describe("evaluateMobileRoute (DEC-253)", () => {
   const ENTRY: MobileRouteEntry = { path: "/e/devflow-conf-2027/sessions", role: "public" };
 
-  it("passes with no overflow and a >= 40px control", () => {
+  it("passes with no overflow and a >= 44px control", () => {
     const result = evaluateMobileRoute(ENTRY, {
       status: 200,
       scrollWidth: 390,
       viewportWidth: 390,
-      minControlHeight: 40,
+      minControlHeight: 44,
     });
     expect(result.ok).toBe(true);
     expect(result.overflowPx).toBe(0);
@@ -133,7 +133,7 @@ describe("evaluateMobileRoute (DEC-253)", () => {
       status: 200,
       scrollWidth: 391,
       viewportWidth: 390,
-      minControlHeight: 40,
+      minControlHeight: 44,
     });
     expect(result.ok).toBe(true);
   });
@@ -143,14 +143,14 @@ describe("evaluateMobileRoute (DEC-253)", () => {
       status: 200,
       scrollWidth: 620,
       viewportWidth: 390,
-      minControlHeight: 40,
+      minControlHeight: 44,
     });
     expect(result.ok).toBe(false);
     expect(result.overflowPx).toBe(230);
     expect(result.failureReason).toMatch(/horizontal overflow 230px/);
   });
 
-  it("fails on a sub-40px primary control", () => {
+  it("fails on a sub-44px primary control", () => {
     const result = evaluateMobileRoute(ENTRY, {
       status: 200,
       scrollWidth: 390,
@@ -158,7 +158,18 @@ describe("evaluateMobileRoute (DEC-253)", () => {
       minControlHeight: 24,
     });
     expect(result.ok).toBe(false);
-    expect(result.failureReason).toMatch(/control height 24px < 40px/);
+    expect(result.failureReason).toMatch(/control height 24px < 44px/);
+  });
+
+  it("fails on a 42px control now that the DEC-393 floor is 44px", () => {
+    const result = evaluateMobileRoute(ENTRY, {
+      status: 200,
+      scrollWidth: 390,
+      viewportWidth: 390,
+      minControlHeight: 42,
+    });
+    expect(result.ok).toBe(false);
+    expect(result.failureReason).toMatch(/control height 42px < 44px/);
   });
 
   it("passes when a route has no measurable controls (minControlHeight null)", () => {
@@ -176,7 +187,7 @@ describe("evaluateMobileRoute (DEC-253)", () => {
       status: 404,
       scrollWidth: 390,
       viewportWidth: 390,
-      minControlHeight: 40,
+      minControlHeight: 44,
     });
     expect(result.ok).toBe(false);
     expect(result.failureReason).toMatch(/404/);

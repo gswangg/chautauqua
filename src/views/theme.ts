@@ -179,7 +179,7 @@ export const THEME_CSS = `
   .chq-nav a {
     display: inline-flex;
     align-items: center;
-    min-height: 40px;
+    min-height: 44px;
     padding: 4px 0;
     color: var(--chq-ink-2);
     text-decoration: none;

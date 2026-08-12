@@ -127,13 +127,13 @@ export interface MobileRouteResult {
   failureReason?: string;
 }
 
-const MIN_TAP_TARGET_PX = 40;
+const MIN_TAP_TARGET_PX = 44;
 // 1px slack for sub-pixel layout rounding across engines.
 const OVERFLOW_TOLERANCE_PX = 1;
 
 /** Evaluates one route's mobile-viewport observation: HTTP 200, no
  * page-level horizontal overflow, and every measured primary control
- * meets the >= 40px tap-target height. */
+ * meets the >= 44px tap-target height (DEC-393). */
 export function evaluateMobileRoute(entry: MobileRouteEntry, observed: MobileObservation): MobileRouteResult {
   const overflowPx = observed.scrollWidth - observed.viewportWidth;
   const reasons: string[] = [];
