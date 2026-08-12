@@ -375,8 +375,8 @@ async function runJ2(seededEventId: string): Promise<void> {
   assertTrue("J2 submit page shows event branding/name", getBody.includes("DevFlow Conf"), getBody.slice(0, 300));
   assertTrue(
     "J2 submit page shows a deadline",
-    /Submissions close/i.test(getBody),
-    "expected a 'Submissions close ...' deadline line",
+    /\bcloses\b/i.test(getBody),
+    "expected a 'Call for papers · closes ...' deadline line",
   );
   assertTrue(
     "J2 submit page shows tracks",

@@ -54,6 +54,23 @@ export function formatMissingModulesMessage(missing: readonly string[]): string 
   return `walkthrough: missing module file(s): ${missing.join(", ")}`;
 }
 
+/** A single area's outcome from an orchestrator run (DEC-407): every area
+ * runs regardless of an earlier failure, so the summary can report all
+ * five/six personas rather than aborting at the first non-zero exit. */
+export interface WalkthroughAreaResult {
+  area: string;
+  status: "PASS" | "FAIL";
+}
+
+/**
+ * Render a per-area summary table for the end of a walkthrough run. One
+ * line per result, in the order given, `PASS`/`FAIL` right after the area
+ * name.
+ */
+export function formatSummaryTable(results: readonly WalkthroughAreaResult[]): string {
+  return results.map((r) => `  ${r.status} ${r.area}`).join("\n");
+}
+
 // ---------------------------------------------------------------------------
 // Task w2-e: findings-closure reusable steps (additive, dependency-free pure
 // helpers per the same pattern as above — request/body construction and
