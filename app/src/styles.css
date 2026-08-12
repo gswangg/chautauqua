@@ -965,6 +965,21 @@ a:hover {
   font-size: 14px;
   color: var(--chq-muted);
   text-align: center;
+  /* DEC-678: belt-and-braces -- the DelayedLoading timer already withholds
+     this block for ~250ms, but any render path that reaches this class
+     directly still fades in instead of popping. */
+  animation: chq-loading-fade-in 120ms ease-in;
+  animation-delay: 250ms;
+  animation-fill-mode: backwards;
+}
+
+@keyframes chq-loading-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .chq-card {

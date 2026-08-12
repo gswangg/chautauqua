@@ -257,8 +257,9 @@ describe('ContentApp: Files-library drill-in fetches an out-of-page submission (
       </MemoryRouter>,
     );
 
-    expect(screen.getByText('Loading submission...')).toBeInTheDocument();
-
+    // DEC-678: the loading state is withheld for ~250ms (DelayedLoading),
+    // so no "Loading submission..." text renders on the first frame -- the
+    // heading below is this test's regression signal instead.
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: 'Off-Page Talk' })).toBeInTheDocument();
     });

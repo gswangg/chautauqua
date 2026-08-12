@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { apiList, apiPostBlob, ApiError } from '../../lib/api';
+import { DelayedLoading } from '../../components/DelayedLoading';
 import { FILE_KINDS, DELIVERABLE_LABELS, type FileKind, type EventFileChainItem, type EventHeadshotFileItem } from './types';
 import { formatDateTime } from '../../lib/dates';
 import { formatBytes } from './format';
@@ -30,6 +31,7 @@ export function FilesLibrary({ eventId, onSelectSubmission }: FilesLibraryProps)
   const [q, setQ] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
+  const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
   // CNT-D5: the ZIP download fires a native <a download> click with no
@@ -52,7 +54,10 @@ export function FilesLibrary({ eventId, onSelectSubmission }: FilesLibraryProps)
         setSelected(new Set());
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load files'))
-      .finally(() => setLoading(false));
+      .finally(() => {
+        setLoading(false);
+        setLoaded(true);
+      });
   }, [eventId, page, kind, q]);
 
   useEffect(() => {
@@ -65,6 +70,7 @@ export function FilesLibrary({ eventId, onSelectSubmission }: FilesLibraryProps)
   const [headshotTotal, setHeadshotTotal] = useState(0);
   const [headshotPage, setHeadshotPage] = useState(1);
   const [headshotLoading, setHeadshotLoading] = useState(false);
+  const [headshotLoaded, setHeadshotLoaded] = useState(false);
   const [headshotError, setHeadshotError] = useState<string | null>(null);
 
   const loadHeadshots = useCallback(() => {
@@ -79,7 +85,10 @@ export function FilesLibrary({ eventId, onSelectSubmission }: FilesLibraryProps)
         setHeadshotTotal(res.total);
       })
       .catch((err) => setHeadshotError(err instanceof ApiError ? err.message : 'Failed to load headshots'))
-      .finally(() => setHeadshotLoading(false));
+      .finally(() => {
+        setHeadshotLoading(false);
+        setHeadshotLoaded(true);
+      });
   }, [eventId, headshotPage]);
 
   useEffect(() => {
@@ -179,10 +188,12 @@ export function FilesLibrary({ eventId, onSelectSubmission }: FilesLibraryProps)
             <tbody>
               {headshotLoading && (
                 <tr>
-                  <td colSpan={4}>Loading...</td>
+                  <td colSpan={4}>
+                    <DelayedLoading />
+                  </td>
                 </tr>
               )}
-              {!headshotLoading && headshotItems.length === 0 && (
+              {headshotLoaded && !headshotLoading && headshotItems.length === 0 && (
                 <tr>
                   <td colSpan={4} className="chq-empty">
                     No speaker headshots yet.
@@ -308,10 +319,12 @@ export function FilesLibrary({ eventId, onSelectSubmission }: FilesLibraryProps)
         <tbody>
           {loading && (
             <tr>
-              <td colSpan={8}>Loading...</td>
+              <td colSpan={8}>
+                <DelayedLoading />
+              </td>
             </tr>
           )}
-          {!loading && items.length === 0 && (
+          {loaded && !loading && items.length === 0 && (
             <tr>
               <td colSpan={8} className="chq-empty">
                 No deliverable files yet.

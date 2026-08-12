@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { apiList, ApiError } from '../../lib/api';
 import { formatDateTime } from '../../lib/dates';
+import { DelayedLoading } from '../../components/DelayedLoading';
 import type { EmailBatchRow, EmailLogRow } from './types';
 
 // DEC-603: batch rows collapse a fan-out send's per-recipient rows into one
@@ -34,7 +35,7 @@ function BatchRecipients({ eventId, batchKey }: { eventId: string; batchKey: str
   }, [eventId, batchKey]);
 
   if (error) return <div className="chq-error-banner">{error}</div>;
-  if (!items) return <p>Loading...</p>;
+  if (!items) return <DelayedLoading />;
 
   return (
     <div className="chq-comms-batch-recipients">
@@ -55,6 +56,7 @@ export function HistoryTab({ eventId }: { eventId: string }) {
   const [items, setItems] = useState<EmailBatchRow[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
 
@@ -71,7 +73,10 @@ export function HistoryTab({ eventId }: { eventId: string }) {
         setTotal(res.total);
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load email history'))
-      .finally(() => setLoading(false));
+      .finally(() => {
+        setLoading(false);
+        setLoaded(true);
+      });
   }, [eventId, q]);
 
   return (
@@ -93,8 +98,8 @@ export function HistoryTab({ eventId }: { eventId: string }) {
         <span className="chq-section-label">Recent sends</span>
       </div>
 
-      {loading && <p>Loading...</p>}
-      {!loading && items.length === 0 && <p className="chq-empty">No emails sent yet.</p>}
+      {loading && <DelayedLoading />}
+      {loaded && !loading && items.length === 0 && <p className="chq-empty">No emails sent yet.</p>}
       {!loading &&
         items.map((batch) => {
           const isExpanded = expanded === batch.batchKey;

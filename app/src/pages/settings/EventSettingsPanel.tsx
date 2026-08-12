@@ -2,6 +2,7 @@
 // timezone, record prefix (read-only), branding logo URL + accent color.
 // PATCH /api/v1/events/:id (endpoint landed in w2-b's events.ts).
 import { useEffect, useState } from 'react';
+import { DelayedLoading } from '../../components/DelayedLoading';
 import { apiGet, apiPatch, ApiError } from '../../lib/api';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { buildEventPatch, type EventSettingsForm } from './formState';
@@ -78,7 +79,7 @@ export function EventSettingsPanel() {
   return (
     <section className="chq-settings-panel" aria-label="Event settings">
       <h2>Event settings</h2>
-      {eventLoading ? <p>Loading…</p> : null}
+      {eventLoading ? <DelayedLoading /> : null}
       {eventError || error ? <p role="alert">{eventError ?? error}</p> : null}
       {form ? (
         <form

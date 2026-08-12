@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { apiGet, apiList, apiPost, ApiError } from '../../lib/api';
 import './review.css';
 import { buildResultsCsvHref } from './resultsCsv';
+import { DelayedLoading } from '../../components/DelayedLoading';
 import type { EvaluationPlan, ResultsRow, SubmissionEvaluationItem } from './types';
 import { STATUS_LABELS, type SubmissionStatus } from '../submissions/types';
 
@@ -210,11 +211,11 @@ export function ResultsTable({ planId: planIdProp }: { planId?: string } = {}) {
   const totalPages = Math.max(1, Math.ceil(total / PER_PAGE));
 
   if (loading) {
-    if (embedded) return <p>Loading…</p>;
+    if (embedded) return <DelayedLoading />;
     return (
       <div className="chq-page chq-review-page">
         <h1 className="chq-page-title">Results</h1>
-        <p>Loading…</p>
+        <DelayedLoading />
       </div>
     );
   }
@@ -422,7 +423,7 @@ export function ResultsTable({ planId: planIdProp }: { planId?: string } = {}) {
               {expanded && (
                 <tr className="chq-review-reviews-row">
                   <td colSpan={columnCount} className="chq-review-reviews-detail">
-                    {evaluationsLoadingId === row.submissionId && <p>Loading reviews…</p>}
+                    {evaluationsLoadingId === row.submissionId && <DelayedLoading label="Loading reviews…" />}
                     {evaluationsError && !evaluations && evaluationsLoadingId !== row.submissionId && (
                       <div className="chq-error" role="alert">
                         {evaluationsError}

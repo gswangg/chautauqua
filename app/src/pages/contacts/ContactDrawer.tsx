@@ -6,6 +6,7 @@ import type { ContactDetail, ContactListItem } from './types';
 import { fromRows, toRows, travelValue, type CustomFieldRow } from './customFields';
 import { BulkEmailModal } from './BulkEmailModal';
 import { AddToEventModal } from './AddToEventModal';
+import { DelayedLoading } from '../../components/DelayedLoading';
 
 interface Props {
   contactId: string;
@@ -282,7 +283,7 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
           </button>
         </div>
 
-        {loading && <p>Loading...</p>}
+        {loading && <DelayedLoading />}
         {error && <div className="chq-error">{error}</div>}
 
         {!loading && contact && (

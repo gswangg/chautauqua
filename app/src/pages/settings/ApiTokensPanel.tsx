@@ -1,6 +1,7 @@
 // DEC-032 Settings panel: list/create/delete DEC-027 bearer API tokens.
 // The plaintext token is only ever returned once, at creation time.
 import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { DelayedLoading } from '../../components/DelayedLoading';
 import { apiList, apiPost, apiDelete, ApiError } from '../../lib/api';
 import { formatDateTime } from '../../lib/dates';
 import { copyText } from '../../lib/clipboard';
@@ -139,7 +140,7 @@ export function ApiTokensPanel() {
       </form>
 
       {loading ? (
-        <p>Loading…</p>
+        <DelayedLoading />
       ) : tokens.length === 0 ? (
         <p>No API tokens yet.</p>
       ) : (

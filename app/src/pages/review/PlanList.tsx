@@ -7,6 +7,7 @@ import { overallCompletion, progressTotals } from './progress';
 import { ProgressPanel } from './ProgressPanel';
 import { buildResultsCsvHref } from './resultsCsv';
 import { ResultsTable } from './ResultsTable';
+import { DelayedLoading, useDelayedFlag } from '../../components/DelayedLoading';
 import './review.css';
 import type { EvaluationPlan, ProgressRow } from './types';
 
@@ -40,8 +41,9 @@ function planWindow(plan: EvaluationPlan): string {
  * the denominator). Absent data (fetch still in flight, or nobody assigned
  * yet) reads as "No evaluations assigned yet" rather than a fabricated 0%. */
 function PlanProgress({ rows }: { rows: ProgressRow[] | undefined | null }) {
+  const show = useDelayedFlag(rows === undefined);
   if (rows === undefined) {
-    return <span className="chq-review-plan-meta">Loading progress…</span>;
+    return show ? <span className="chq-review-plan-meta">Loading progress…</span> : null;
   }
   if (rows === null) {
     return <span className="chq-review-plan-meta">Progress unavailable</span>;
@@ -68,6 +70,7 @@ export function PlanList() {
   const [plans, setPlans] = useState<EvaluationPlan[]>([]);
   const [progressByPlan, setProgressByPlan] = useState<Record<string, ProgressRow[] | null>>({});
   const [loading, setLoading] = useState(false);
+  const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // DEC-674: which plan's progress/results render below the list -- defaults
   // to the first plan whose window is open right now, else the first plan,
@@ -103,14 +106,17 @@ export function PlanList() {
         });
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load evaluation plans'))
-      .finally(() => setLoading(false));
+      .finally(() => {
+        setLoading(false);
+        setLoaded(true);
+      });
   }, [eventId]);
 
   if (eventLoading) {
     return (
       <div className="chq-page chq-review-page">
         <h1 className="chq-page-title">Review</h1>
-        <p>Loading…</p>
+        <DelayedLoading />
       </div>
     );
   }
@@ -151,8 +157,8 @@ export function PlanList() {
         <div className="chq-section-head">
           <h2 className="chq-section-label">Evaluation plans</h2>
         </div>
-        {loading && <p>Loading…</p>}
-        {!loading && plans.length === 0 && <p className="chq-empty">No evaluation plans yet.</p>}
+        {loading && <DelayedLoading />}
+        {loaded && !loading && plans.length === 0 && <p className="chq-empty">No evaluation plans yet.</p>}
         {plans.map((plan) => (
           <div key={plan.id} className="chq-review-plan-row">
             <label className="chq-review-plan-select">

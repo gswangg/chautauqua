@@ -4,6 +4,7 @@ import { apiDelete, apiGet, apiList, apiPatch, apiPost, ApiError } from '../../l
 import { formatDateOnly } from '../../lib/dates';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
+import { DelayedLoading } from '../../components/DelayedLoading';
 import { FieldList } from './FieldList';
 import { FieldModal, type FieldModalInput } from './FieldModal';
 import { FormSettings, type FormSettingsHandle, type FormSettingsPatch } from './FormSettings';
@@ -176,7 +177,7 @@ export function FormsPage() {
     return (
       <div className="chq-page">
         <h1>Forms</h1>
-        <p>Loading...</p>
+        <DelayedLoading />
       </div>
     );
   }

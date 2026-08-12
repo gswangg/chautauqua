@@ -1,6 +1,7 @@
 // Portal settings panel (w4-h, DEC-032): portal branding + welcome message
 // + showResources toggle. PUT /api/v1/events/:id/portal-settings (upsert).
 import { useEffect, useState } from 'react';
+import { DelayedLoading } from '../../components/DelayedLoading';
 import { apiGet, apiPut, ApiError } from '../../lib/api';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import {
@@ -70,7 +71,7 @@ export function PortalSettingsPanel() {
   return (
     <section className="chq-settings-panel" aria-label="Portal settings">
       <h2>Portal settings</h2>
-      {eventLoading ? <p>Loading…</p> : null}
+      {eventLoading ? <DelayedLoading /> : null}
       {eventError || error ? <p role="alert">{eventError ?? error}</p> : null}
       {form ? (
         <form

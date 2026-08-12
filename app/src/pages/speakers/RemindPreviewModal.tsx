@@ -5,6 +5,7 @@
 // to the send. Reuses the ONE dialog contract (ModalFrame).
 
 import { ModalFrame } from '../../components/ModalFrame';
+import { DelayedLoading } from '../../components/DelayedLoading';
 import type { ReminderDraft } from './types';
 
 interface RemindPreviewModalProps {
@@ -38,7 +39,7 @@ export function RemindPreviewModal({ loading, error, drafts, sending, onSend, on
         </>
       }
     >
-      {loading && <p>Loading...</p>}
+      {loading && <DelayedLoading />}
       {error && <div className="chq-error">{error}</div>}
 
       {!loading && !error && drafts && (

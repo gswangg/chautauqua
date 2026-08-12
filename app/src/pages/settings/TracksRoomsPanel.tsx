@@ -2,6 +2,7 @@
 // a color swatch input and rooms with capacity. Endpoints landed in w2-b's
 // events.ts (GET/POST /events/:id/tracks|rooms, PATCH/DELETE /tracks|rooms/:id).
 import { useEffect, useState } from 'react';
+import { DelayedLoading } from '../../components/DelayedLoading';
 import { apiDelete, apiList, apiPatch, apiPost, ApiError } from '../../lib/api';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import {
@@ -120,7 +121,7 @@ export function TracksRoomsPanel() {
   return (
     <section className="chq-settings-panel" aria-label="Tracks and rooms">
       <h2>Tracks &amp; rooms</h2>
-      {eventLoading ? <p>Loading…</p> : null}
+      {eventLoading ? <DelayedLoading /> : null}
       {eventError || error ? <p role="alert">{eventError ?? error}</p> : null}
 
       <h3>Tracks</h3>

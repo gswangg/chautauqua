@@ -5,6 +5,7 @@ import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { DeliverableDetail } from './DeliverableDetail';
 import { FilesLibrary } from './FilesLibrary';
 import { SessionList, TAB_LABELS } from './SessionList';
+import { DelayedLoading } from '../../components/DelayedLoading';
 import { type ContentStatus, type ContentSubmissionListItem } from './types';
 import { WORKLIST_TABS, type WorklistTab } from './worklist';
 
@@ -44,6 +45,7 @@ export function ContentApp() {
   const [items, setItems] = useState<ContentSubmissionListItem[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // w1-e: bumping this remounts FilesLibrary (its own load() effect keys on
   // eventId, not on time), which forces a fresh fetch — used on view
@@ -70,7 +72,10 @@ export function ContentApp() {
         setTotal(res.total);
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load submissions'))
-      .finally(() => setLoading(false));
+      .finally(() => {
+        setLoading(false);
+        setLoaded(true);
+      });
   }, [eventId, tab, page]);
 
   useEffect(() => {
@@ -195,7 +200,7 @@ export function ContentApp() {
     return (
       <div className="chq-page">
         <h1 className="chq-page-title">Content</h1>
-        <p>Loading event...</p>
+        <DelayedLoading label="Loading event…" />
       </div>
     );
   }
@@ -262,7 +267,7 @@ export function ContentApp() {
           onUploaded={() => setFilesReloadKey((k) => k + 1)}
         />
       ) : submissionId && submissionFetchLoading ? (
-        <p>Loading submission...</p>
+        <DelayedLoading label="Loading submission…" />
       ) : submissionId && submissionFetchError ? (
         <div className="chq-error" role="alert">
           {submissionFetchError === 'not_found' ? 'Submission not found.' : 'Failed to load submission.'}
@@ -271,7 +276,7 @@ export function ContentApp() {
         // A submissionId is present but not yet resolved (fetch not yet
         // kicked off / in flight before submissionFetchLoading is set) —
         // never fall through to the list view underneath it.
-        <p>Loading submission...</p>
+        <DelayedLoading label="Loading submission…" />
       ) : view === 'files' ? (
         <FilesLibrary key={filesReloadKey} eventId={eventId} onSelectSubmission={selectSubmission} />
       ) : (
@@ -281,6 +286,7 @@ export function ContentApp() {
           onTabChange={changeTab}
           onSelect={selectSubmission}
           loading={loading}
+          loaded={loaded}
           onContentStatusChange={requestContentStatus}
           total={total}
           page={page}

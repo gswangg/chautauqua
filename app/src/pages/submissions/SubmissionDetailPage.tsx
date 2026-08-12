@@ -7,6 +7,7 @@ import { apiGet, apiList, apiPatch, apiPost, ApiError } from '../../lib/api';
 import { formatDate as formatTimestamp, formatDateTime } from '../../lib/dates';
 import type { CfpForm } from '../forms/types';
 import { buildAnswerRows, resolveAnswerFields } from './detailRows';
+import { DelayedLoading } from '../../components/DelayedLoading';
 import './detail.css';
 import {
   STATUS_LABELS,
@@ -346,7 +347,7 @@ export function SubmissionDetailPage() {
         <Link to="/submissions" className="chq-detail-back">
           &larr; All submissions
         </Link>
-        <p>Loading...</p>
+        <DelayedLoading />
       </div>
     );
   }
@@ -446,7 +447,7 @@ export function SubmissionDetailPage() {
               <div className="chq-detail-section-body">
                 {historyError && <div className="chq-error-banner">{historyError}</div>}
                 {historyLoading ? (
-                  <p>Loading history...</p>
+                  <DelayedLoading label="Loading history…" />
                 ) : historyEntries.length === 0 ? (
                   <p>No edits recorded yet.</p>
                 ) : (

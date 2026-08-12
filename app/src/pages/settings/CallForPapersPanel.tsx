@@ -4,6 +4,7 @@
 // dedicated form builder (/admin/submissions/forms); this panel only
 // links there rather than re-implementing it. Zero new server endpoints.
 import { useEffect, useRef, useState } from 'react';
+import { DelayedLoading } from '../../components/DelayedLoading';
 import { apiGet, apiList, apiPatch, ApiError } from '../../lib/api';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { dateInputToMs, msToDateInput } from '../../lib/dates';
@@ -116,7 +117,7 @@ export function CallForPapersPanel() {
           Edit the form
         </a>
       </div>
-      {eventLoading || loading ? <p>Loading…</p> : null}
+      {eventLoading || loading ? <DelayedLoading /> : null}
       {eventError || error ? <p role="alert">{eventError ?? error}</p> : null}
 
       {event ? (

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { apiGet, apiPatch, apiPost, ApiError } from '../../lib/api';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
+import { DelayedLoading } from '../../components/DelayedLoading';
 import { GridFilters } from './GridFilters';
 import { daysLate, isCellOverdue } from './overdue';
 import { TaskModal } from './TaskModal';
@@ -263,7 +264,7 @@ export function OnboardingGrid({ onAddSpeaker, onImportCsv }: OnboardingGridProp
     return (
       <div className="chq-page chq-speakers-page">
         <h1 className="chq-page-title">Speakers</h1>
-        <p>Loading event...</p>
+        <DelayedLoading label="Loading event…" />
       </div>
     );
   }
@@ -323,7 +324,7 @@ export function OnboardingGrid({ onAddSpeaker, onImportCsv }: OnboardingGridProp
         <span className="chq-speakers-toolbar-caption">Skips anyone reminded in the last hour</span>
       </div>
 
-      {loading && <p>Loading...</p>}
+      {loading && <DelayedLoading />}
 
       {!loading && grid && (
         <>
