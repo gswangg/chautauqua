@@ -299,6 +299,7 @@ fileApiRoutes.post("/events/:eventId/files/archive", requireOrganizer, csrfJson,
   return c.body(zip, 200, {
     "Content-Type": "application/zip",
     "Content-Disposition": `attachment; filename="${scope.slug}-files.zip"`,
+    "X-Content-Type-Options": "nosniff",
   });
 });
 
@@ -406,7 +407,10 @@ fileServeRoutes.get("/files/:fileId", async (c) => {
   if (!obj) throw new ApiError("not_found", "File contents not found");
 
   const contentType = obj.contentType ?? scope.contentType;
-  const headers: Record<string, string> = { "Content-Type": contentType };
+  const headers: Record<string, string> = {
+    "Content-Type": contentType,
+    "X-Content-Type-Options": "nosniff",
+  };
   if (!isImageContentType(contentType)) {
     const safeName = scope.filename.replace(/[\r\n"]/g, "");
     headers["Content-Disposition"] = `attachment; filename="${safeName}"`;
