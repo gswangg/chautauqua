@@ -52,3 +52,47 @@ describe("THEME_CSS (DEC-367 tokens)", () => {
     expect(THEME_CSS).toContain("--chq-brandable-accent");
   });
 });
+
+describe("THEME_CSS native control coverage (DEC-585)", () => {
+  it("styles input[type=file] and both the standard and -webkit- file-selector-button pseudo-elements", () => {
+    expect(THEME_CSS).toMatch(/input\[type=file\]\s*\{/);
+    expect(THEME_CSS).toContain("::file-selector-button");
+    expect(THEME_CSS).toContain("::-webkit-file-upload-button");
+  });
+
+  it("styles input[type=date] with the same box metrics as the text inputs", () => {
+    expect(THEME_CSS).toMatch(/input\[type=date\]\s*\{[^}]*min-height:\s*44px[^}]*\}/s);
+    expect(THEME_CSS).toMatch(/input\[type=date\]\s*\{[^}]*border:\s*1px solid var\(--chq-border\)[^}]*\}/s);
+    expect(THEME_CSS).toMatch(/input\[type=date\]\s*\{[^}]*border-radius:\s*4px[^}]*\}/s);
+  });
+
+  it("styles checkbox and radio with accent-color and an explicit box size", () => {
+    expect(THEME_CSS).toMatch(/input\[type=checkbox\], input\[type=radio\]\s*\{[^}]*accent-color:\s*var\(--chq-brand\)[^}]*\}/s);
+    expect(THEME_CSS).toMatch(/input\[type=checkbox\], input\[type=radio\]\s*\{[^}]*width:\s*18px[^}]*\}/s);
+  });
+
+  it("styles select with a CSS-only chevron (no inline SVG data URI) and appearance:none", () => {
+    expect(THEME_CSS).toMatch(/\bselect\s*\{[^}]*appearance:\s*none[^}]*\}/s);
+    expect(THEME_CSS).not.toContain("data:image/svg");
+  });
+
+  it("every appearance:none declaration is paired with a :focus-visible rule for the same selector family", () => {
+    // DEC-585: appearance:none removes the browser's default focus ring on
+    // some engines, so any selector using it must have an explicit
+    // :focus-visible rule elsewhere in THEME_CSS (the global :focus-visible
+    // rule also applies, but this pins the explicit per-control rule too).
+    expect(THEME_CSS).toMatch(/appearance:\s*none/);
+    expect(THEME_CSS).toMatch(/select:focus-visible/);
+  });
+
+  it("declares :focus-visible for file, date, checkbox and radio controls", () => {
+    expect(THEME_CSS).toContain("input[type=date]:focus-visible");
+    expect(THEME_CSS).toContain("input[type=file]:focus-visible");
+    expect(THEME_CSS).toContain("input[type=checkbox]:focus-visible");
+    expect(THEME_CSS).toContain("input[type=radio]:focus-visible");
+  });
+
+  it("has no double-quoted attribute selector among the new control rules either", () => {
+    expect(THEME_CSS).not.toMatch(/\[type="/);
+  });
+});
