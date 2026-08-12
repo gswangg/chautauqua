@@ -22,6 +22,7 @@ import { hashPassword } from "../src/auth/password";
 import { insertStmt, seedId } from "./seed-lib";
 import {
   PERF_ANSWERS_PER_SUBMISSION,
+  PERF_CO_SPEAKERS_PER_ACCEPTED,
   PERF_CONTACT_COUNT,
   PERF_EMAIL_LOG_COUNT,
   PERF_EVALUATION_COUNT,
@@ -39,6 +40,7 @@ import {
   PERF_TASKS,
   PERF_TRACK_COUNT,
   contactIndexForSubmission,
+  coSpeakerContactIndexesForAccepted,
   isTaskAssignmentComplete,
   perfFileSpecs,
   perfOrgUserEmail,
@@ -222,6 +224,29 @@ async function main(): Promise<void> {
         updated_at: ts,
       }),
     );
+
+    // --- DEC-495: co-speaker participants for accepted submissions, so the
+    // public speakers list fills SPEC.md's 800-speaker top end rather than
+    // stalling around the 300 primary-speaker contacts alone.
+    if (isAccepted) {
+      const acceptedIndex = acceptedSubmissionIds.length - 1; // j, 0-based
+      const coSpeakerIndexes = coSpeakerContactIndexesForAccepted(acceptedIndex);
+      coSpeakerIndexes.forEach((contactIndex, k) => {
+        statements.push(
+          insertStmt("participant", {
+            id: seedId("perf_cospeaker", acceptedIndex * PERF_CO_SPEAKERS_PER_ACCEPTED + k + 1),
+            submission_id: submissionId,
+            contact_id: contactIds[contactIndex]!,
+            role: "speaker",
+            order: k + 1,
+            visible: true,
+            invite_status: "accepted",
+            created_at: nextTs(),
+            updated_at: ts,
+          }),
+        );
+      });
+    }
 
     statements.push(
       insertStmt("submission_track", {

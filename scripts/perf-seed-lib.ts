@@ -408,6 +408,65 @@ export function perfOrgUserRole(i: number): "organizer" | "reviewer" {
   return i % 5 === 0 ? "organizer" : "reviewer";
 }
 
+// --------------------------------------------------------------------------
+// DEC-495: fill the top of SPEC.md:73-76's 200-800-speaker range. Today only
+// the 300 accepted submissions' primary speakers are publicly visible
+// (docs/verification-log/task-w23-f-public-ceiling-measured-stage1.md:58-66),
+// topping the public speakers list out around ~300 distinct contacts. Adding
+// co-speaker `participant` rows to each accepted submission spreads visible
+// contacts across the full 800-contact pool without growing
+// PERF_SUBMISSION_COUNT or the 300-accepted count.
+
+/** Extra visible speaker participants attached to each accepted submission,
+ * beyond its primary speaker (DEC-495). */
+export const PERF_CO_SPEAKERS_PER_ACCEPTED = 2;
+
+// perfSubmissionStatuses block-distributes by status (pending, then
+// accept_queue, then accepted, ...), so the accepted submissions are a
+// single contiguous 300-wide block of global submission indexes starting
+// right after the pending + accept_queue counts. contactIndexForSubmission
+// is `i % PERF_CONTACT_COUNT`, so that block's *primary* speaker contacts
+// are themselves one contiguous (circularly-wrapping) window of the
+// 800-contact pool. The co-speaker pool below is that window's exact
+// complement — always contiguous too, for any window narrower than the
+// full contact pool — so co-speaker contacts never collide with a primary
+// speaker's contact by construction (no runtime check needed).
+const ACCEPTED_WINDOW_START = (PERF_STATUS_COUNTS.pending! + PERF_STATUS_COUNTS.accept_queue!) % PERF_CONTACT_COUNT;
+const ACCEPTED_WINDOW_SIZE = PERF_STATUS_COUNTS.accepted!;
+const CO_SPEAKER_POOL_START = (ACCEPTED_WINDOW_START + ACCEPTED_WINDOW_SIZE) % PERF_CONTACT_COUNT;
+const CO_SPEAKER_POOL_SIZE = PERF_CONTACT_COUNT - ACCEPTED_WINDOW_SIZE;
+
+/**
+ * Deterministic 0-based contact indexes (into the PERF_CONTACT_COUNT pool)
+ * for the co-speakers of the j-th (0-based) accepted submission. Drawn from
+ * CO_SPEAKER_POOL_START.. (the contact-pool complement of every accepted
+ * submission's primary-speaker window, see above), a simple sequential walk
+ * so the co-speaker assignments across all 300 accepted submissions sweep
+ * the entire pool at least once, rather than any one contact absorbing a
+ * disproportionate share of co-speaker slots. Together with the 300 (always
+ * distinct) primary-speaker contacts, this puts every one of the 800
+ * PERF_CONTACT_COUNT contacts on at least one publicly visible participant
+ * row somewhere across the accepted submissions (SPEC.md:73-76's top end).
+ */
+export function coSpeakerContactIndexesForAccepted(
+  j: number,
+  coSpeakerCount: number = PERF_CO_SPEAKERS_PER_ACCEPTED,
+): number[] {
+  if (!Number.isInteger(j) || j < 0) {
+    throw new Error(`coSpeakerContactIndexesForAccepted: j must be a non-negative integer, got ${j}`);
+  }
+  if (!Number.isInteger(coSpeakerCount) || coSpeakerCount < 0) {
+    throw new Error(`coSpeakerContactIndexesForAccepted: coSpeakerCount must be a non-negative integer, got ${coSpeakerCount}`);
+  }
+  const out: number[] = [];
+  for (let k = 0; k < coSpeakerCount; k++) {
+    const step = j * coSpeakerCount + k;
+    const idx = (CO_SPEAKER_POOL_START + (step % CO_SPEAKER_POOL_SIZE)) % PERF_CONTACT_COUNT;
+    out.push(idx);
+  }
+  return out;
+}
+
 export function perfFileSpecs(acceptedCount: number): PerfFileRowSpec[] {
   if (!Number.isInteger(acceptedCount) || acceptedCount < 0) {
     throw new Error(`perfFileSpecs: acceptedCount must be a non-negative integer, got ${acceptedCount}`);
