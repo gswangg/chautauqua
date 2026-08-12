@@ -214,3 +214,19 @@ CNT 52% · AIA 88% · EMB 72% · CRM 76% (of judged weight).
    mechanism with the mock's visible VIEW tab row (`Needs triage · All submissions ·
    Accept queue · All track, unread · Save current as view`) — a first-class row above
    the toolbar, not a disclosure. Delete the floating box entirely.
+
+## APPENDED: user manual-QA (2026-08-12, continued)
+
+10. **Seed must include a review round IN MOTION** (refines DEC-591; user + fidelity
+    agent both blocked on this): ≥3-4 reviewers on the active plan with mixed progress
+    — some complete, some partial, some not started (so "Remind the N not started" is
+    real), unscored items in the seeded reviewer's queue (so the scorecard's empty
+    state and "Score this" CTA render), and enough submitted evaluations for the
+    organiser progress/results tables to look like the mock. Without this, the entire
+    Review surface can't be compared or demoed.
+11. **BUG: nav active-state only follows clicks, not the URL.** Navigating directly to
+    a route (deep link, refresh, back button) does not highlight the corresponding nav
+    tab; only clicking the tab does. Derive active state from the router location
+    (NavLink/useLocation), never from click state — fold into the shared-shell rebuild
+    (Tier 1 #8) with a render-sweep assertion: every route's nav highlights its tab on
+    DIRECT load.
