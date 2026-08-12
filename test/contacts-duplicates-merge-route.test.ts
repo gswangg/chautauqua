@@ -137,6 +137,7 @@ describe("POST /api/v1/contacts/merge roundtrip from a duplicates response (DEC-
       [KEEP.id === mergeId ? KEEP : MERGE], // mergeContacts: findContactById(mergeId)
       [], // mergeContacts: user rows for keepId (none)
       [], // mergeContacts: user rows for mergeId (none)
+      [], // mergeContacts: (b2) DEC-479 email conflict pre-check (none)
       [], // mergeParticipants (none)
       [], // keepParticipants (none)
       [], // mergeContacts: task_assignment rows for mergeId (none)

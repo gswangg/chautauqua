@@ -18,10 +18,13 @@ import { currentOrgId, asRecord, isPlainObject } from "./shared";
 // /contacts/import (roster-scoped import) implements DEC-290.
 void DEC_290;
 
-// DEC-417: CSV import request-input bounds, before parseCsv touches an
+// DEC-417: CSV import request-input bound, before parseCsv touches an
 // arbitrarily large body.
 export const MAX_IMPORT_CSV_BYTES = 5_000_000;
-export const MAX_IMPORT_ROWS = 10_000;
+// DEC-478: the row cap lives ONE place, src/server/repo/contacts/import.ts,
+// so this route's bound and message always agree with what applyImportRows
+// actually enforces.
+export const MAX_IMPORT_ROWS = repo.MAX_IMPORT_ROWS;
 
 export function registerImportRoutes(contactsRoutes: Hono<AppEnv>): void {
   contactsRoutes.post("/contacts/import", csrfJson, async (c) => {

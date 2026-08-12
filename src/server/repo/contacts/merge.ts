@@ -2,7 +2,7 @@
 // (contention decomposition, no behavior change). See repo/contacts.ts for
 // the module-level contract notes.
 
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, notInArray, sql } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { chunkIds } from "../../../lib/chunk";
@@ -12,6 +12,9 @@ import { ApiError } from "../../http";
 import { findContactById } from "./crud";
 import { toContactRecord, toRow, type ContactRow } from "./rows";
 import { buildMergeRepointOps, mergedPipelineStage, type PipelineStageLike } from "./query";
+import { DEC_479 } from "../../../decisions";
+
+void DEC_479;
 
 export interface DuplicateGroup {
   contactIds: string[];
@@ -44,11 +47,17 @@ export async function findDuplicateGroupsForOrg(db: Db, orgId: string): Promise<
   return out;
 }
 
-/** Applies DEC-026/DEC-101/DEC-282 merge, in this exact load-bearing order:
+/** Applies DEC-026/DEC-101/DEC-282/DEC-456/DEC-479 merge, in this exact
+ * load-bearing order:
  *  (a) BEFORE any write, load both contacts' user rows; if both have a
  *      login account, throw a conflict (no partial merge — a merge that
  *      silently orphaned one login would be worse than refusing it).
  *  (b) planMerge onto the kept contact row.
+ *  (b2) DEC-479: before any write, re-run DEC-456's own conflict pre-check
+ *      against merged.email — if some OTHER user row (not keepId's, not
+ *      mergeId's) already owns that address, throw a conflict. user_email_
+ *      idx is a UNIQUE index (src/db/schema.ts), so this must run before
+ *      the write below, not after.
  *  (c) dedupe participant rows the two contacts share a submission on
  *      (deleting mergeId's duplicate row rather than repointing it into a
  *      UNIQUE-violating dupe).
@@ -57,7 +66,10 @@ export async function findDuplicateGroupsForOrg(db: Db, orgId: string): Promise<
  *  (e) if both contacts are enrolled in the CRM pipeline, repoint
  *      pipeline_activity onto the kept entry, merge the stage
  *      (mergedPipelineStage), and delete the merged entry.
- *  (f) repoint the seven CONTACT_FK_TABLES from mergeId to keepId.
+ *  (f) repoint the seven CONTACT_FK_TABLES from mergeId to keepId, and
+ *      (DEC-479) set the surviving user row's email to merged.email so
+ *      login identity never drifts from the CRM's record of the contact's
+ *      address (the same DEC-456 invariant patchContact enforces).
  *  (g) delete the merged contact row.
  * Both ids must already be verified org-scoped by the caller. */
 export async function mergeContacts(db: Db, keepId: string, mergeId: string): Promise<ContactRow> {
@@ -83,6 +95,23 @@ export async function mergeContacts(db: Db, keepId: string, mergeId: string): Pr
 
   // (b) planMerge onto the kept row.
   const { merged } = planMerge(toContactRecord(keepRow), toContactRecord(mergeRow));
+
+  // (b2) DEC-479/DEC-456: before any write, reject if merged.email already
+  // belongs to some other login account (neither keepId's nor mergeId's).
+  const mergedEmailLower = merged.email.toLowerCase();
+  const emailConflictRows = await db
+    .select({ id: schema.user.id, contactId: schema.user.contactId })
+    .from(schema.user)
+    .where(
+      and(
+        sql`lower(${schema.user.email}) = ${mergedEmailLower}`,
+        notInArray(schema.user.contactId, [keepId, mergeId]),
+      ),
+    )
+    .limit(1);
+  if (emailConflictRows.length > 0) {
+    throw new ApiError("conflict", "That email already belongs to another account");
+  }
 
   await db
     .update(schema.contact)
@@ -212,6 +241,15 @@ export async function mergeContacts(db: Db, keepId: string, mergeId: string): Pr
       await db.update(schema.pipelineEntry).set({ contactId: op.to }).where(eq(schema.pipelineEntry.contactId, op.from));
     }
   }
+
+  // DEC-479/DEC-456: cascade merged.email onto the surviving user row (if
+  // any), same as patchContact does for a plain edit -- login identity must
+  // never drift from the CRM's record of the contact's address. Conflict
+  // already ruled out by (b2) above.
+  await db
+    .update(schema.user)
+    .set({ email: mergedEmailLower, updatedAt: new Date() })
+    .where(eq(schema.user.contactId, keepId));
 
   // (g) Delete the merged contact row.
   await db.delete(schema.contact).where(eq(schema.contact.id, mergeId));

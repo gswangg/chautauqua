@@ -529,6 +529,7 @@ describe("src/routes/api/contacts.ts", () => {
 
   it("POST /contacts/import rejects more than MAX_IMPORT_ROWS data rows", async () => {
     const { contactsRoutes, MAX_IMPORT_ROWS } = await import("../src/routes/api/contacts");
+    const { MAX_IMPORT_ROWS: repoMaxImportRows } = await import("../src/server/repo/contacts");
     const app = new Hono<AppEnv>();
     (await import("../src/server/http")).registerErrorHandler(app);
     app.use("*", async (c, next) => {
@@ -547,6 +548,12 @@ describe("src/routes/api/contacts.ts", () => {
         mapping: { email: "email", firstName: "firstName", lastName: "lastName" },
       }),
     );
+    // DEC-478: the route's MAX_IMPORT_ROWS IS the repo's MAX_IMPORT_ROWS --
+    // one constant, so the 400 message names the same number the repo layer
+    // would separately enforce if this check were ever bypassed.
+    expect(MAX_IMPORT_ROWS).toBe(repoMaxImportRows);
+    const body = (await res.clone().json()) as { error?: { message?: string } };
+    expect(body.error?.message).toContain(String(repoMaxImportRows));
     await expectInvalid(res, "csvText");
   });
 });
