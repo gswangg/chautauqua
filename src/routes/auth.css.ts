@@ -98,6 +98,17 @@ export const AUTH_CSS = `
   .chq-auth-footer-links { display: flex; gap: 16px; flex-wrap: wrap; }
   .chq-auth-footer-links a { font-size: 14px; font-weight: 700; min-height: 44px; display: inline-flex; align-items: center; }
 
+  .chq-auth-demo {
+    border-top: 1px solid var(--chq-rule);
+    padding-top: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .chq-auth-demo-label { font-size: 13px; color: var(--chq-muted); }
+  .chq-auth-demo-buttons { display: flex; flex-wrap: wrap; gap: 10px; }
+  .chq-auth-demo-buttons .chq-auth-demo-btn { width: auto; min-height: 40px; padding: 0 16px; }
+
   @media (max-width: 700px) {
     body { padding: 0; }
     .chq-auth-card {

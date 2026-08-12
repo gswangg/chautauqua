@@ -213,7 +213,11 @@ describe("GET /login markup carries the pending-state hook", () => {
     const app = new Hono<AppEnv>();
     registerErrorHandler(app);
     app.use("*", async (c, next) => {
-      c.set("db", {} as AppEnv["Variables"]["db"]);
+      // DEC-583: GET /login now queries demoIdentitiesPresent, so it needs a
+      // (empty-result) fake db — this test doesn't care about the demo block.
+      c.set("db", {
+        select: () => ({ from: () => ({ where: () => ({ limit: async () => [] }) }) }),
+      } as unknown as AppEnv["Variables"]["db"]);
       await next();
     });
     app.route("/", authRoutes);

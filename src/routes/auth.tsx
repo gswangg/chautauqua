@@ -32,6 +32,32 @@ import {
 } from "../lib/rate-limit";
 import { ThemeStyles } from "../views/theme";
 import { AUTH_CSS } from "./auth.css";
+import { DEMO_IDENTITIES, type DemoIdentity } from "../lib/demo-identities";
+import { demoIdentitiesPresent } from "../server/repo/demo";
+import { DEC_583 } from "../decisions";
+
+void DEC_583;
+
+// DEC-583: prefill-only, never auto-submitted. One event-delegated click
+// handler reads data-demo-email/data-demo-password off whichever
+// .chq-auth-demo-btn was clicked and writes them into the visible
+// email/password inputs -- no auto-login, no new endpoint, no POST. This
+// script string is a fixed, value-free constant (never interpolated with
+// request/user/identity data -- those live in data- attributes on the
+// buttons themselves, escaped normally by hono/jsx).
+const DEMO_PREFILL_SCRIPT = `
+document.addEventListener('click', function (e) {
+  var target = e.target;
+  var btn = target && target.closest ? target.closest('.chq-auth-demo-btn') : null;
+  if (!btn) return;
+  var email = btn.getAttribute('data-demo-email');
+  var password = btn.getAttribute('data-demo-password');
+  var emailInput = document.querySelector('input[name="email"]');
+  var passwordInput = document.querySelector('input[name="password"]');
+  if (emailInput && email !== null) emailInput.value = email;
+  if (passwordInput && password !== null) passwordInput.value = password;
+});
+`;
 
 const AUTH_RATE_LIMIT_WINDOW_SECONDS = 900;
 const AUTH_RATE_LIMIT_MAX = 20;
@@ -40,6 +66,18 @@ const RATE_LIMIT_ERROR = "Too many attempts. Try again in a few minutes.";
 export const authRoutes = new Hono<AppEnv>();
 
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+
+// DEC-583: the demo-prefill block renders if and only if every DEMO_IDENTITIES
+// email has a real user row in this database -- true on the seeded demo
+// deployment, false (and therefore rendering NOTHING -- no emails, no
+// passwords, anywhere in the HTML) on any real deployment.
+async function loadDemoIdentitiesIfPresent(db: import("../server/context").Db): Promise<DemoIdentity[]> {
+  const present = await demoIdentitiesPresent(
+    db,
+    DEMO_IDENTITIES.map((i) => i.email),
+  );
+  return present ? [...DEMO_IDENTITIES] : [];
+}
 
 function ensureCsrfCookie(c: {
   req: { header(name: string): string | undefined; url: string };
@@ -79,7 +117,8 @@ function AuthHead(props: { title: string }) {
   );
 }
 
-function LoginPage(props: { csrfToken: string; error?: string }) {
+function LoginPage(props: { csrfToken: string; error?: string; demoIdentities?: readonly DemoIdentity[] }) {
+  const demoIdentities = props.demoIdentities ?? [];
   return (
     <html lang="en">
       <AuthHead title="Log in - Chautauqua" />
@@ -113,7 +152,25 @@ function LoginPage(props: { csrfToken: string; error?: string }) {
               Sign in
             </button>
           </form>
+          {demoIdentities.length > 0 ? (
+            <div className="chq-auth-demo">
+              <div className="chq-auth-demo-label">Try it with a seeded demo account</div>
+              <div className="chq-auth-demo-buttons">
+                {demoIdentities.map((identity) => (
+                  <button
+                    type="button"
+                    className="chq-btn-secondary chq-auth-demo-btn"
+                    data-demo-email={identity.email}
+                    data-demo-password={identity.password}
+                  >
+                    {identity.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </div>
+        {demoIdentities.length > 0 ? <script dangerouslySetInnerHTML={{ __html: DEMO_PREFILL_SCRIPT }} /> : null}
       </body>
     </html>
   );
@@ -150,10 +207,11 @@ function ClaimPage(props: { csrfToken: string; error?: string }) {
   );
 }
 
-authRoutes.get("/login", (c) => {
+authRoutes.get("/login", async (c) => {
   const { token: csrfToken, setCookieIfNew } = ensureCsrfCookie(c);
   if (setCookieIfNew) c.header("Set-Cookie", setCookieIfNew);
-  return c.html(<LoginPage csrfToken={csrfToken} />);
+  const demoIdentities = await loadDemoIdentitiesIfPresent(c.var.db);
+  return c.html(<LoginPage csrfToken={csrfToken} demoIdentities={demoIdentities} />);
 });
 
 authRoutes.post("/login", csrfForm, async (c) => {
@@ -183,12 +241,13 @@ authRoutes.post("/login", csrfForm, async (c) => {
     windowSeconds: AUTH_RATE_LIMIT_WINDOW_SECONDS,
     max: 100,
   });
+  const db = c.var.db;
+
   if (!userPeek.ok || !ipPeek.ok) {
     const { token: csrfToken } = ensureCsrfCookie(c);
-    return c.html(<LoginPage csrfToken={csrfToken} error={RATE_LIMIT_ERROR} />, 429);
+    const demoIdentities = await loadDemoIdentitiesIfPresent(db);
+    return c.html(<LoginPage csrfToken={csrfToken} error={RATE_LIMIT_ERROR} demoIdentities={demoIdentities} />, 429);
   }
-
-  const db = c.var.db;
 
   const rows = await db.select().from(schema.user).where(eq(schema.user.email, email)).limit(1);
   const user = rows[0];
@@ -202,7 +261,8 @@ authRoutes.post("/login", csrfForm, async (c) => {
       max: 100,
     });
     const { token: csrfToken } = ensureCsrfCookie(c);
-    return c.html(<LoginPage csrfToken={csrfToken} error="Invalid email or password." />, 401);
+    const demoIdentities = await loadDemoIdentitiesIfPresent(db);
+    return c.html(<LoginPage csrfToken={csrfToken} error="Invalid email or password." demoIdentities={demoIdentities} />, 401);
   }
 
   await resetScopedLimit(kv, "login-user", email, loginNow, AUTH_RATE_LIMIT_WINDOW_SECONDS);
