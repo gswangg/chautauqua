@@ -32,6 +32,8 @@ import {
   parseRoundCriteria,
   parseRounds,
   parseRoundQuery,
+  parseMaxEvaluations,
+  parseEpochMs,
   deepEqual,
   ratingCriteria,
   dropdownCriteria,
@@ -82,20 +84,25 @@ reviewPlansRoutes.post("/api/v1/events/:eventId/plans", requireOrganizer, csrfJs
   const criteria = parseCriteria(body, errors);
   const rounds = body.rounds !== undefined ? parseRounds(body, errors) : 1;
   const roundCriteria = parseRoundCriteria(body, errors, rounds);
+  // DEC-509: maxEvaluations/openDate/closeDate validated at the route --
+  // a bad value must 400, never coerce to null and open the plan silently.
+  const maxEvaluations = parseMaxEvaluations(body, errors);
+  const openDate = parseEpochMs(body, "openDate", errors);
+  const closeDate = parseEpochMs(body, "closeDate", errors);
   if (Object.keys(errors).length > 0) throw new ApiError("invalid", "Invalid plan", errors);
 
   const created = await repo.createPlan(c.var.db, event.id, {
     name: body.name as string,
     instructions: typeof body.instructions === "string" ? body.instructions : null,
-    openDate: typeof body.openDate === "number" ? body.openDate : null,
-    closeDate: typeof body.closeDate === "number" ? body.closeDate : null,
+    openDate: openDate ?? null,
+    closeDate: closeDate ?? null,
     filters: (body.filters as { trackIds?: string[] } | undefined) ?? null,
     anonymized: body.anonymized === true,
     scale: scale!,
     criteria: criteria!,
     rounds: rounds!,
     roundCriteria: roundCriteria ?? null,
-    maxEvaluations: typeof body.maxEvaluations === "number" ? body.maxEvaluations : null,
+    maxEvaluations: maxEvaluations ?? null,
   });
   return c.json(created, 201);
 });
@@ -121,6 +128,12 @@ reviewPlansRoutes.patch("/api/v1/plans/:id", requireOrganizer, csrfJson, async (
   const rounds = body.rounds !== undefined ? parseRounds(body, errors, plan.currentRound) : undefined;
   const roundCriteria =
     body.roundCriteria !== undefined ? parseRoundCriteria(body, errors, rounds ?? plan.rounds) : undefined;
+  // DEC-509: same validation as POST -- PATCH previously did `as number`
+  // casts with no check at all, letting `maxEvaluations: 0` (or a date
+  // string) through verbatim.
+  const maxEvaluations = parseMaxEvaluations(body, errors);
+  const openDate = parseEpochMs(body, "openDate", errors);
+  const closeDate = parseEpochMs(body, "closeDate", errors);
   if (Object.keys(errors).length > 0) throw new ApiError("invalid", "Invalid plan", errors);
 
   // DEC-123: once any evaluation exists on this plan, criteria/scale are
@@ -166,15 +179,15 @@ reviewPlansRoutes.patch("/api/v1/plans/:id", requireOrganizer, csrfJson, async (
   const updated = await repo.updatePlan(c.var.db, plan.id, {
     name: typeof body.name === "string" ? body.name : undefined,
     instructions: body.instructions !== undefined ? (body.instructions === null ? null : String(body.instructions)) : undefined,
-    openDate: body.openDate !== undefined ? (body.openDate === null ? null : (body.openDate as number)) : undefined,
-    closeDate: body.closeDate !== undefined ? (body.closeDate === null ? null : (body.closeDate as number)) : undefined,
+    openDate,
+    closeDate,
     filters: body.filters !== undefined ? (body.filters as { trackIds?: string[] } | null) : undefined,
     anonymized: typeof body.anonymized === "boolean" ? body.anonymized : undefined,
     scale,
     criteria,
     rounds,
     roundCriteria,
-    maxEvaluations: body.maxEvaluations !== undefined ? (body.maxEvaluations === null ? null : (body.maxEvaluations as number)) : undefined,
+    maxEvaluations,
   });
   return c.json(updated);
 });

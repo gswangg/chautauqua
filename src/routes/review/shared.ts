@@ -164,6 +164,34 @@ export function parseRounds(body: Record<string, unknown>, errors: Record<string
   return rounds as number;
 }
 
+/** DEC-509: maxEvaluations must be a positive integer, or explicitly null
+ * (uncapped). Absent means "unchanged" on PATCH / "not set" on POST --
+ * callers distinguish undefined from null themselves. Mirrors parseRounds'
+ * shape/placement/error style. */
+export function parseMaxEvaluations(body: Record<string, unknown>, errors: Record<string, string>): number | null | undefined {
+  const raw = body.maxEvaluations;
+  if (raw === undefined) return undefined;
+  if (raw === null) return null;
+  if (!Number.isInteger(raw) || (raw as number) < 1) {
+    errors.maxEvaluations = "must be an integer >= 1, or null";
+    return undefined;
+  }
+  return raw as number;
+}
+
+/** DEC-509: openDate/closeDate must be a ms-epoch integer, or explicitly
+ * null (unset). Absent means "unchanged" on PATCH / "not set" on POST. */
+export function parseEpochMs(body: Record<string, unknown>, key: string, errors: Record<string, string>): number | null | undefined {
+  const raw = body[key];
+  if (raw === undefined) return undefined;
+  if (raw === null) return null;
+  if (!Number.isInteger(raw)) {
+    errors[key] = "must be a ms-epoch integer, or null";
+    return undefined;
+  }
+  return raw as number;
+}
+
 /** DEC-082: ?round= query param, defaulting to the plan's current round.
  * Any value outside [1, plan.rounds] (or non-integer) is a 400. */
 export function parseRoundQuery(c: { req: { query(name: string): string | undefined } }, plan: PlanRecord): number {
