@@ -274,7 +274,11 @@ describe("GET /embed/:eventSlug/speakers.json paging (DEC-484)", () => {
 
   it("?page=2 advances the window", async () => {
     installFakeCaches();
-    const app = buildSpeakersApp(contactIds(3, 12), 15);
+    // DEC-502: the repo's selectDistinct returns the CUMULATIVE prefix a
+    // real bounded LIMIT would (here: all 15 rows, since boundedRowLimit(2,
+    // 12)=24 exceeds the total) — the route itself must slice out just the
+    // page-2 window (the last 3 rows) from that.
+    const app = buildSpeakersApp(contactIds(15), 15);
     const res = await app.request("/embed/conf/speakers.json?page=2", {}, TEST_ENV);
     expect(res.status).toBe(200);
     const body = (await res.json()) as { total: number; page: number; perPage: number; items: unknown[] };
@@ -324,6 +328,207 @@ describe("GET /embed/:eventSlug/agenda.json (DEC-484 unpaged surface)", () => {
     expect(body.total).toBe(body.items.length);
     expect(body.page).toBe(1);
     expect(body.perPage).toBe(body.items.length);
+  });
+});
+
+// DEC-502: the repo calls behind sessions/speakers/gallery return a
+// CUMULATIVE prefix (bare LIMIT, no OFFSET — see boundedRowLimit), which is
+// correct for the HTML show-more list but wrong for a paged JSON feed. These
+// fakes simulate that by returning the same full N-row set regardless of the
+// requested page/limit (worst case: every page "sees" the whole cumulative
+// set the repo would have accumulated by then) so the assertions below can
+// only pass if getSurfaceFeedPage itself slices to the single requested
+// window rather than trusting the repo's shape.
+describe("GET /embed/:eventSlug/*.json single-page window (DEC-502)", () => {
+  const N = 24;
+  const sessionIds = Array.from({ length: N }, (_, i) => `sub${i}`);
+
+  function buildCumulativeSessionsApp() {
+    let selectCall = 0;
+    const db = {
+      select: () => {
+        selectCall += 1;
+        if (selectCall === 1) return makeChain([EVENT_ROW]);
+        if (selectCall === 2) {
+          return makeChain(
+            sessionIds.map((id, i) => ({
+              id,
+              seq: i + 1,
+              title: `Talk ${i}`,
+              description: null,
+              icsSequence: 0,
+            })),
+          );
+        }
+        if (selectCall === 3) return makeChain([]); // trackRows
+        if (selectCall === 4) return makeChain([]); // speakerRows
+        if (selectCall === 5) return makeChain([]); // slotRows
+        return makeChain([{ count: N }]); // countVisibleSubmissions
+      },
+      selectDistinct: () => makeChain(sessionIds.map((id, i) => ({ id, title: `Talk ${i}` }))),
+    } as unknown as AppEnv["Variables"]["db"];
+
+    const app = new Hono<AppEnv>();
+    app.use("*", async (c, next) => {
+      c.set("db", db);
+      await next();
+    });
+    registerErrorHandler(app);
+    app.route("/", publicRoutes);
+    return app;
+  }
+
+  const speakerIds = Array.from({ length: N }, (_, i) => `c${i}`);
+
+  function buildCumulativeSpeakersApp() {
+    let selectCall = 0;
+    const db = {
+      select: () => {
+        selectCall += 1;
+        if (selectCall === 1) return makeChain([EVENT_ROW]);
+        if (selectCall === 2) return makeChain([{ total: N }]);
+        return makeChain(
+          speakerIds.map((id, i) => ({
+            contactId: id,
+            firstName: "First",
+            lastName: `Last${i}`,
+            title: null,
+            company: null,
+            headshotUrl: null,
+            bio: null,
+            submissionId: `sub-${id}`,
+            submissionTitle: "Talk",
+          })),
+        );
+      },
+      selectDistinct: () => makeChain(speakerIds.map((id) => ({ contactId: id }))),
+    } as unknown as AppEnv["Variables"]["db"];
+
+    const app = new Hono<AppEnv>();
+    app.use("*", async (c, next) => {
+      c.set("db", db);
+      await next();
+    });
+    registerErrorHandler(app);
+    app.route("/", publicRoutes);
+    return app;
+  }
+
+  async function fetchItems(app: Hono<AppEnv>, path: string) {
+    installFakeCaches();
+    const res = await app.request(path, {}, TEST_ENV);
+    expect(res.status).toBe(200);
+    return (await res.json()) as { items: Array<Record<string, unknown>>; total: number; page: number; perPage: number };
+  }
+
+  it("sessions.json: page=1 and page=2 return disjoint 12-item windows whose concatenation is the first 24 rows in order", async () => {
+    const page1 = await fetchItems(buildCumulativeSessionsApp(), "/embed/conf/sessions.json?page=1&limit=12");
+    const page2 = await fetchItems(buildCumulativeSessionsApp(), "/embed/conf/sessions.json?page=2&limit=12");
+    expect(page1.items).toHaveLength(12);
+    expect(page2.items).toHaveLength(12);
+    const titles1 = page1.items.map((i) => i.title);
+    const titles2 = page2.items.map((i) => i.title);
+    expect(titles1).toEqual(sessionIds.slice(0, 12).map((_, i) => `Talk ${i}`));
+    expect(titles2).toEqual(sessionIds.slice(12, 24).map((_, i) => `Talk ${i + 12}`));
+    expect([...titles1, ...titles2]).toEqual(Array.from({ length: 24 }, (_, i) => `Talk ${i}`));
+    expect(page1.total).toBe(page2.total);
+    expect(page1.total).toBe(24);
+  });
+
+  it("speakers.json: page=1 and page=2 return disjoint 12-item windows whose concatenation is the first 24 rows in order", async () => {
+    const page1 = await fetchItems(buildCumulativeSpeakersApp(), "/embed/conf/speakers.json?page=1&limit=12");
+    const page2 = await fetchItems(buildCumulativeSpeakersApp(), "/embed/conf/speakers.json?page=2&limit=12");
+    expect(page1.items).toHaveLength(12);
+    expect(page2.items).toHaveLength(12);
+    const ids1 = page1.items.map((i) => i.contactId);
+    const ids2 = page2.items.map((i) => i.contactId);
+    expect(ids1).toEqual(speakerIds.slice(0, 12));
+    expect(ids2).toEqual(speakerIds.slice(12, 24));
+    expect([...ids1, ...ids2]).toEqual(speakerIds);
+    expect(page1.total).toBe(page2.total);
+    expect(page1.total).toBe(24);
+  });
+
+  it("gallery.json (same repo call as speakers): page=1 and page=2 return disjoint 12-item windows whose concatenation is the first 24 rows in order", async () => {
+    const page1 = await fetchItems(buildCumulativeSpeakersApp(), "/embed/conf/gallery.json?page=1&limit=12");
+    const page2 = await fetchItems(buildCumulativeSpeakersApp(), "/embed/conf/gallery.json?page=2&limit=12");
+    expect(page1.items).toHaveLength(12);
+    expect(page2.items).toHaveLength(12);
+    const ids1 = page1.items.map((i) => i.contactId);
+    const ids2 = page2.items.map((i) => i.contactId);
+    expect([...ids1, ...ids2]).toEqual(speakerIds);
+  });
+
+  it("items.length <= perPage holds for every paged surface, including the last partial page", async () => {
+    for (const surface of ["sessions", "speakers", "gallery"]) {
+      const app = surface === "sessions" ? buildCumulativeSessionsApp() : buildCumulativeSpeakersApp();
+      for (const page of [1, 2, 3]) {
+        const body = await fetchItems(app, `/embed/conf/${surface}.json?page=${page}&limit=12`);
+        expect(body.items.length).toBeLessThanOrEqual(body.perPage);
+      }
+    }
+  });
+
+  it("a page past the end returns items: [] with the true total (honest empty page, not an error)", async () => {
+    const sessionsPast = await fetchItems(buildCumulativeSessionsApp(), "/embed/conf/sessions.json?page=3&limit=12");
+    expect(sessionsPast.items).toEqual([]);
+    expect(sessionsPast.total).toBe(24);
+
+    const speakersPast = await fetchItems(buildCumulativeSpeakersApp(), "/embed/conf/speakers.json?page=3&limit=12");
+    expect(speakersPast.items).toEqual([]);
+    expect(speakersPast.total).toBe(24);
+  });
+
+  function buildCumulativeSessionsAppHtml() {
+    // Same as buildCumulativeSessionsApp, but the HTML dispatch path
+    // (renderSurfaceContent) calls getPublicTracks(db, event.id) before
+    // getPublicSessions, inserting one extra select() call ahead of
+    // hydrateSessions' subRows/trackRows/speakerRows/slotRows.
+    let selectCall = 0;
+    const db = {
+      select: () => {
+        selectCall += 1;
+        if (selectCall === 1) return makeChain([EVENT_ROW]);
+        if (selectCall === 2) return makeChain([]); // getPublicTracks
+        if (selectCall === 3) {
+          return makeChain(
+            sessionIds.map((id, i) => ({
+              id,
+              seq: i + 1,
+              title: `Talk ${i}`,
+              description: null,
+              icsSequence: 0,
+            })),
+          );
+        }
+        if (selectCall === 4) return makeChain([]); // trackRows (hydrate)
+        if (selectCall === 5) return makeChain([]); // speakerRows
+        if (selectCall === 6) return makeChain([]); // slotRows
+        return makeChain([{ count: N }]); // countVisibleSubmissions
+      },
+      selectDistinct: () => makeChain(sessionIds.map((id, i) => ({ id, title: `Talk ${i}` }))),
+    } as unknown as AppEnv["Variables"]["db"];
+
+    const app = new Hono<AppEnv>();
+    app.use("*", async (c, next) => {
+      c.set("db", db);
+      await next();
+    });
+    registerErrorHandler(app);
+    app.route("/", publicRoutes);
+    return app;
+  }
+
+  it("regression: the HTML surface at /e/:slug/sessions?page=2 still renders the cumulative 24 rows (show-more must not change)", async () => {
+    installFakeCaches();
+    const app = buildCumulativeSessionsAppHtml();
+    const res = await app.request("/e/conf/sessions?page=2&limit=12", {}, TEST_ENV);
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    // Cumulative show-more: page 2 of the HTML list still contains page 1's
+    // first item alongside page 2's rows — unlike the .json feed above.
+    expect(html).toContain("Talk 0");
+    expect(html).toContain("Talk 23");
   });
 });
 

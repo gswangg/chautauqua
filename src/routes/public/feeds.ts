@@ -12,10 +12,13 @@ import { zonedMinutesToUtc } from "../../lib/timezone";
 /** DEC-289/DEC-484 envelope: { event, surface, generatedAt, page, perPage,
  * total, items }. `items` is whatever the surface's existing repo shape
  * already is (PublicSession[], PublicSpeakerWithSessions[],
- * PublicAgendaItem[]) — passed through unchanged, never re-shaped here.
+ * PublicAgendaItem[]), windowed to exactly the requested page — DEC-502:
+ * `items` is ONE page window (`items.length <= perPage`), never the
+ * cumulative prefix the repo's LIMIT-only query returns internally.
  * page/perPage/total let a consumer detect truncation instead of silently
- * treating one page as the whole list (DEC-484). Unpaged surfaces (agenda,
- * schedule) report page=1, perPage=total=items.length. */
+ * treating one page as the whole list (DEC-484); `total` is always the full
+ * unwindowed count, even for a past-the-end page (which returns `items: []`).
+ * Unpaged surfaces (agenda, schedule) report page=1, perPage=total=items.length. */
 export interface PublicSurfaceFeed<T> {
   event: {
     slug: string;
