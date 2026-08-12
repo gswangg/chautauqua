@@ -98,37 +98,41 @@ export function mergePortalSettingsInput(
   };
 }
 
-/** Upserts the single portal_settings row for an event (unique index on event_id). */
+/** Upserts the single portal_settings row for an event (DEC-552: one atomic
+ * INSERT ... ON CONFLICT DO UPDATE against the uniqueIndex on event_id at
+ * src/db/schema.ts:505 — never a read-then-write). The `set` clause is built
+ * from only the keys `input` actually defines, reproducing the prior
+ * merge-with-existing semantics (undefined fields left unchanged on update)
+ * without a probe read. */
 export async function upsertPortalSettings(
   db: Db,
   eventId: string,
   input: UpsertPortalSettingsInput,
 ): Promise<PortalSettingsRecord> {
-  const existing = await getPortalSettingsForEvent(db, eventId);
   const now = new Date();
-  const fields = mergePortalSettingsInput(existing, input);
-
-  if (!existing) {
-    const id = newId();
-    await db.insert(schema.portalSettings).values({
-      id,
-      eventId,
-      ...fields,
-      createdAt: now,
-      updatedAt: now,
-    });
-    const created = await getPortalSettingsForEvent(db, eventId);
-    if (!created) throw new Error("upsertPortalSettings: insert did not persist");
-    return created;
-  }
+  const insertFields = mergePortalSettingsInput(null, input);
+  const set: Partial<PortalSettingsWriteFields> & { updatedAt: Date } = { updatedAt: now };
+  if (input.logoUrl !== undefined) set.logoUrl = input.logoUrl;
+  if (input.accentColor !== undefined) set.accentColor = input.accentColor;
+  if (input.welcomeMessage !== undefined) set.welcomeMessage = input.welcomeMessage;
+  if (input.showResources !== undefined) set.showResources = input.showResources;
 
   await db
-    .update(schema.portalSettings)
-    .set({ ...fields, updatedAt: now })
-    .where(eq(schema.portalSettings.eventId, eventId));
+    .insert(schema.portalSettings)
+    .values({
+      id: newId(),
+      eventId,
+      ...insertFields,
+      createdAt: now,
+      updatedAt: now,
+    })
+    .onConflictDoUpdate({
+      target: schema.portalSettings.eventId,
+      set,
+    });
 
   const updated = await getPortalSettingsForEvent(db, eventId);
-  if (!updated) throw new Error("updatePortalSettings: row disappeared after update");
+  if (!updated) throw new Error("upsertPortalSettings: row missing after write");
   return updated;
 }
 

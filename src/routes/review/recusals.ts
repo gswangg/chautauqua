@@ -39,9 +39,8 @@ reviewRecusalRoutes.post("/api/v1/review/plans/:planId/recusals/:submissionId", 
     reason = body.reason;
   }
 
-  const existing = await repo.hasRecusal(c.var.db, plan.id, submissionId, auth.userId);
-  const recusal = await repo.createRecusal(c.var.db, { planId: plan.id, submissionId, userId: auth.userId, reason });
-  return c.json({ recusal: toRecusalOut(recusal) }, existing ? 200 : 201);
+  const { recusal, created } = await repo.createRecusal(c.var.db, { planId: plan.id, submissionId, userId: auth.userId, reason });
+  return c.json({ recusal: toRecusalOut(recusal) }, created ? 201 : 200);
 });
 
 reviewRecusalRoutes.delete("/api/v1/review/plans/:planId/recusals/:submissionId", csrfJson, async (c) => {

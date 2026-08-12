@@ -90,9 +90,6 @@ pipelineRoutes.post("/pipeline", csrfJson, async (c) => {
   const contact = await findContactForOrg(c.var.db, body.contactId, orgId);
   if (!contact) throw new ApiError("not_found", "Contact not found");
 
-  const existing = await repo.findEntryByContact(c.var.db, orgId, contact.id);
-  if (existing) throw new ApiError("invalid", "Contact is already enrolled in the pipeline", { contactId: "already enrolled" });
-
   const authorName = await repo.resolveAuthorName(c.var.db, auth.userId);
   const entry = await repo.enrollContact(c.var.db, orgId, contact.id, stage, { userId: auth.userId, name: authorName });
 

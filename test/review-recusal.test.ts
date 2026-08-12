@@ -123,10 +123,10 @@ vi.mock("../src/server/repo/review", async () => {
         const existing = recusals.find(
           (r) => r.planId === input.planId && r.submissionId === input.submissionId && r.userId === input.userId,
         );
-        if (existing) return existing;
+        if (existing) return { recusal: existing, created: false };
         const created: FakeRecusal = { id: `rc-${nextRecusalId++}`, createdAt: Date.now(), ...input };
         recusals.push(created);
-        return created;
+        return { recusal: created, created: true };
       },
     ),
     deleteRecusal: vi.fn(async (_db: unknown, planId: string, submissionId: string, userId: string) => {

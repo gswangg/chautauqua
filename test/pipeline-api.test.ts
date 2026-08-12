@@ -57,8 +57,11 @@ function makeChain(rows: unknown[]) {
 }
 
 /** Feeds successive db.select() calls the queued row sets, in order, and
- * records every insert()/update() write. */
-function fakeDb(selectQueue: unknown[][]) {
+ * records every insert()/update() write. `pipelineEntryConflict` simulates
+ * the pipeline_entry INSERT ... ON CONFLICT DO NOTHING resolving to an
+ * empty `.returning()` result (a duplicate enrollment), per DEC-552's
+ * atomic upsert on enrollContact — no more findEntryByContact pre-check. */
+function fakeDb(selectQueue: unknown[][], opts: { pipelineEntryConflict?: boolean } = {}) {
   let call = 0;
   const inserts: any[] = [];
   const updates: any[] = [];
@@ -69,8 +72,21 @@ function fakeDb(selectQueue: unknown[][]) {
       return makeChain(rows);
     },
     insert: (table: unknown) => ({
-      values: async (vals: unknown) => {
-        inserts.push({ table, vals });
+      values: (vals: unknown) => {
+        const record = { table, vals };
+        return {
+          onConflictDoNothing: () => ({
+            returning: async () => {
+              if (opts.pipelineEntryConflict) return [];
+              inserts.push(record);
+              return [{ id: (vals as any).id }];
+            },
+          }),
+          then: (resolve: (v: unknown) => void) => {
+            inserts.push(record);
+            resolve(undefined);
+          },
+        };
       },
     }),
     update: (table: unknown) => ({
@@ -150,7 +166,6 @@ describe("POST /api/v1/pipeline (enroll)", () => {
   it("enrolls a contact and appends a 'move' activity from null", async () => {
     const { db, inserts } = fakeDb([
       [CONTACT_ORG_A], // findContactForOrg
-      [], // findEntryByContact: no existing entry
       [ORGANIZER_USER], // resolveAuthorName: user lookup
       [ENTRY_ROW], // findEntryById after insert
     ]);
@@ -172,7 +187,7 @@ describe("POST /api/v1/pipeline (enroll)", () => {
   });
 
   it("defaults to 'identified' when stage is omitted", async () => {
-    const { db, inserts } = fakeDb([[CONTACT_ORG_A], [], [ORGANIZER_USER], [ENTRY_ROW]]);
+    const { db, inserts } = fakeDb([[CONTACT_ORG_A], [ORGANIZER_USER], [ENTRY_ROW]]);
     const app = appWithDbAndAuth(db, ORGANIZER_A);
 
     const res = await app.request(jsonRequest("POST", "/api/v1/pipeline", { contactId: "contact-1" }));
@@ -181,10 +196,13 @@ describe("POST /api/v1/pipeline (enroll)", () => {
   });
 
   it("400s a duplicate enrollment", async () => {
-    const { db, inserts } = fakeDb([
-      [CONTACT_ORG_A], // findContactForOrg
-      [ENTRY_ROW], // findEntryByContact: already enrolled
-    ]);
+    const { db, inserts } = fakeDb(
+      [
+        [CONTACT_ORG_A], // findContactForOrg
+        [ORGANIZER_USER], // resolveAuthorName
+      ],
+      { pipelineEntryConflict: true },
+    );
     const app = appWithDbAndAuth(db, ORGANIZER_A);
 
     const res = await app.request(jsonRequest("POST", "/api/v1/pipeline", { contactId: "contact-1" }));

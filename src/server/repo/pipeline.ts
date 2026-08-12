@@ -8,6 +8,7 @@ import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { newId } from "../../domain/ids";
 import { chunkIds } from "../../lib/chunk";
+import { ApiError } from "../http";
 
 export const PIPELINE_STAGES = ["identified", "contacted", "interested", "confirmed", "declined"] as const;
 export type PipelineStage = (typeof PIPELINE_STAGES)[number];
@@ -191,8 +192,11 @@ export async function listPipelineForOrg(db: Db, orgId: string, page?: { limit: 
 }
 
 /** Enrolls a contact into the org pipeline at `stage`, appending a 'move'
- * activity from null -> stage. Caller must have already checked for an
- * existing entry (duplicate enrollment is a route-level 400, per DEC-157). */
+ * activity from null -> stage. DEC-552: the pipeline_entry insert is atomic
+ * against the (orgId, contactId) uniqueIndex (src/db/schema.ts:669) — on
+ * conflict it throws the same 'invalid' ApiError the caller used to raise
+ * from a pre-check, before ever writing the pipeline_activity row. Callers
+ * no longer need to pre-check for an existing entry. */
 export async function enrollContact(
   db: Db,
   orgId: string,
@@ -202,14 +206,23 @@ export async function enrollContact(
 ): Promise<PipelineEntryRow> {
   const id = newId();
   const now = new Date();
-  await db.insert(schema.pipelineEntry).values({
-    id,
-    orgId,
-    contactId,
-    stage,
-    createdAt: now,
-    updatedAt: now,
-  });
+  const inserted = await db
+    .insert(schema.pipelineEntry)
+    .values({
+      id,
+      orgId,
+      contactId,
+      stage,
+      createdAt: now,
+      updatedAt: now,
+    })
+    .onConflictDoNothing({
+      target: [schema.pipelineEntry.orgId, schema.pipelineEntry.contactId],
+    })
+    .returning({ id: schema.pipelineEntry.id });
+  if (inserted.length === 0) {
+    throw new ApiError("invalid", "Contact is already enrolled in the pipeline", { contactId: "already enrolled" });
+  }
   await db.insert(schema.pipelineActivity).values({
     id: newId(),
     entryId: id,
