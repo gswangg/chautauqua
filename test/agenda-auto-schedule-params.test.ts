@@ -27,6 +27,7 @@ const runAutoScheduleMock = vi.fn(async () => ({
   placed: [],
   unscheduled: [],
   conflicts: [],
+  unplacedReasons: [],
   summary: { unplaced: 0, conflicts: 0 },
 }));
 

@@ -71,6 +71,7 @@ function agendaPayload() {
         detail: 'Overlapping Talk A and Overlapping Talk B overlap in Main Hall.',
       },
     ],
+    unplacedReasons: [],
     summary: { unplaced: 1, conflicts: 1 },
   };
 }

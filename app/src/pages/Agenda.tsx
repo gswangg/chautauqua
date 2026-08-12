@@ -237,6 +237,7 @@ export function AgendaPage() {
                 sessions={agenda.unscheduled}
                 tracks={agenda.tracks}
                 conflicts={agenda.conflicts}
+                unplacedReasons={agenda.unplacedReasons}
                 onDropUnschedule={handleUnschedule}
                 armed={armed}
                 onArm={setArmed}
