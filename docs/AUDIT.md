@@ -92,7 +92,7 @@ returns `unplaced: UnplacedSession[]` (`src/domain/schedule.ts:400`), each item 
 `duration_exceeds_day`, `speaker_double_booked`, `no_free_slot` — rendered to prose by the
 one renderer `describeUnplaced` (`src/domain/schedule.ts:89`). Not a bare count.
 
-## J10 — Publish to the public site (`/e/:eventSlug/sessions`, `/e/:eventSlug/sessions/:sessionId`, `/e/:eventSlug/speakers`, `/e/:eventSlug/speakers/:speakerId`, `/e/:eventSlug/gallery`, `/e/:eventSlug/agenda`, `/e/:eventSlug/schedule`, `/embed/:eventSlug/sessions`, `/embed/:eventSlug/speakers`, `/embed/:eventSlug/gallery`, `/embed/:eventSlug/agenda`, `/embed/:eventSlug/schedule`)
+## J10 — Publish to the public site (`/e/:eventSlug/sessions`, `/e/:eventSlug/sessions/:sessionId`, `/e/:eventSlug/speakers`, `/e/:eventSlug/speakers/:speakerId`, `/e/:eventSlug/gallery`, `/e/:eventSlug/agenda`, `/e/:eventSlug/schedule`, `/embed/:eventSlug/sessions`, `/embed/:eventSlug/speakers`, `/embed/:eventSlug/gallery`, `/embed/:eventSlug/agenda`, `/embed/:eventSlug/schedule`, `/embed/:eventSlug/sessions/:sessionId`, `/embed/:eventSlug/speakers/:speakerId`)
 
 Five public, mobile-friendly, no-login surfaces plus their embed twins (iframe
 snippets from `/admin/settings`'s embeds panel). All public queries filter to

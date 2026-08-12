@@ -247,3 +247,107 @@ describe("DEC-672: every /embed/<slug>/<surface> stays closed inside /embed/", (
     });
   }
 });
+
+// DEC-679: the two /embed detail pages (session/speaker drill-ins,
+// src/routes/public/index.tsx :235/:249) are chromeless twins the same way
+// the five SURFACES pages above are -- DEC-672's own text calls them
+// "/embed pages" too. test/public-embed-detail.test.ts already covers their
+// 200/404/Back-link-prefix behavior via vi.mock(repo); this closes the same
+// gap the SURFACES loop above closes -- every same-origin href on the page,
+// not just the one Back link -- using this file's own fake-db (makeChain)
+// technique so a future speaker/session link added to detail.tsx is swept
+// automatically instead of being checked by hand.
+const SESSION_DETAIL_ROW = { id: "sub1", seq: 1, title: "Talk 1", description: "A description.", icsSequence: 0 };
+
+// getPublicSessionDetail: selectDistinct (visibleRows), then hydrateSessions's
+// five select()s (subRows/trackRows/speakerRows/EMB-01 slotRows/formatRows),
+// then getScheduleInfoForSubmissions's scheduleSlot select (unscheduled here,
+// so roomIds stays empty and no room select follows).
+function buildSessionDetailApp() {
+  let selectCall = 0;
+  const db = {
+    select: () => {
+      selectCall += 1;
+      if (selectCall === 1) return makeChain([EVENT_ROW]); // getPublicEventBySlug
+      if (selectCall === 2) return makeChain([SESSION_DETAIL_ROW]); // hydrateSessions subRows
+      if (selectCall === 3) return makeChain([{ submissionId: "sub1", id: "trk1", name: "Track A", color: "#f00" }]); // trackRows
+      if (selectCall === 4) {
+        return makeChain([
+          {
+            submissionId: "sub1",
+            order: 0,
+            contactId: "c1",
+            firstName: "Ada",
+            lastName: "Lovelace",
+            title: null,
+            company: null,
+            headshotUrl: null,
+            bio: null,
+          },
+        ]); // speakerRows
+      }
+      return makeChain([]); // EMB-01 slotRows / formatRows / getScheduleInfoForSubmissions scheduleSlot
+    },
+    selectDistinct: () => makeChain([{ id: "sub1" }]), // getPublicSessionDetail visibleRows
+  } as unknown as AppEnv["Variables"]["db"];
+  return buildApp(db);
+}
+
+// getPublicSpeakerDetail: select (participant/contact/submission join
+// rows), then a trackRows batch select, then getScheduleInfoForSubmissions's
+// scheduleSlot select (unscheduled here, no follow-up room select).
+function buildSpeakerDetailApp() {
+  let selectCall = 0;
+  const db = {
+    select: () => {
+      selectCall += 1;
+      if (selectCall === 1) return makeChain([EVENT_ROW]); // getPublicEventBySlug
+      if (selectCall === 2) {
+        return makeChain([
+          {
+            contactId: "c1",
+            firstName: "Ada",
+            lastName: "Lovelace",
+            title: null,
+            company: null,
+            bio: "A bio long enough to render.",
+            headshotUrl: null,
+            socialLinksJson: null,
+            submissionId: "sub1",
+            submissionTitle: "Talk 1",
+          },
+        ]); // getPublicSpeakerDetail main rows
+      }
+      return makeChain([]); // trackRows / getScheduleInfoForSubmissions scheduleSlot
+    },
+  } as unknown as AppEnv["Variables"]["db"];
+  return buildApp(db);
+}
+
+describe("DEC-679: /embed detail pages (sessions/:id, speakers/:id) stay closed inside /embed/", () => {
+  it("sessions/:id: every same-origin href begins with /embed/", async () => {
+    installFakeCaches();
+    const app = buildSessionDetailApp();
+    const res = await app.request("/embed/conf/sessions/sub1", {}, TEST_ENV);
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    const links = extractPathLinks(html);
+    expect(links.length).toBeGreaterThan(0);
+    for (const { url } of links) {
+      expect(url.startsWith("/embed/")).toBe(true);
+    }
+  });
+
+  it("speakers/:id: every same-origin href begins with /embed/", async () => {
+    installFakeCaches();
+    const app = buildSpeakerDetailApp();
+    const res = await app.request("/embed/conf/speakers/c1", {}, TEST_ENV);
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    const links = extractPathLinks(html);
+    expect(links.length).toBeGreaterThan(0);
+    for (const { url } of links) {
+      expect(url.startsWith("/embed/")).toBe(true);
+    }
+  });
+});

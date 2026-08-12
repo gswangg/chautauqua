@@ -13,6 +13,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import { ROUTE_MANIFEST, type RouteManifestEntry } from "../app/src/routeManifest";
+import { app as composedApp } from "../src/index";
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const AUDIT_PATH = resolve(REPO_ROOT, "docs/AUDIT.md");
@@ -275,4 +276,143 @@ describe('docs/AUDIT.md "Deliberately not built" absence markers (DEC-642)', () 
       }
     },
   );
+});
+
+// DEC-679: ROUTE_MANIFEST is hand-listed by design (its param values must
+// resolve against real seed data — nothing can derive those), but its
+// COVERAGE of the app's own routes must not be. This walks the REAL
+// composed route table (`app` exported by src/index.ts, DEC-637 — the same
+// enumeration technique test/anonymous-route-probe.test.ts (DEC-550) uses
+// via app.routes) and asserts every registered GET route that renders HTML
+// is either matched by a ROUTE_MANIFEST entry or explicitly named in
+// HTML_ROUTE_EXCLUDED with a reason. This is what caught w12-c's
+// /embed/:eventSlug/sessions/:sessionId + speakers/:contactId desync (DEC-
+// 679's own text) — a future route added to a route file and never added
+// to ROUTE_MANIFEST now fails HERE, by name, instead of gate:render-sweep
+// silently never visiting it.
+
+/** Whether a registered Hono PATTERN (":name" / ":name{regex}" segments
+ * match any single path segment; a trailing bare "*" segment matches the
+ * rest) matches one of ROUTE_MANIFEST's own concrete literal paths. This is
+ * test/anonymous-route-probe.test.ts's literalFor/toRequestPath technique
+ * run in the opposite direction: instead of inventing a literal FOR a
+ * pattern, it checks whether a manifest entry's real seed-derived literal
+ * resolves against the pattern — so coverage is checked against the
+ * manifest's actual entries, never a second hand-written pattern list, and
+ * is immune to a manifest entry using a different param NAME than the
+ * route file does (e.g. ROUTE_MANIFEST's `speakerId` vs the route's own
+ * `:contactId` — both are just "some dynamic segment" here). */
+function patternMatchesManifestPath(pattern: string, concretePath: string): boolean {
+  const pSegs = pattern.split("/");
+  const cSegs = concretePath.split("/");
+  if (pSegs[pSegs.length - 1] === "*") {
+    const prefixLen = pSegs.length - 1;
+    if (cSegs.length < prefixLen) return false;
+    return pSegs.slice(0, prefixLen).every((seg, i) => seg.startsWith(":") || seg === cSegs[i]);
+  }
+  if (pSegs.length !== cSegs.length) return false;
+  return pSegs.every((seg, i) => seg.startsWith(":") || seg === cSegs[i]);
+}
+
+/** Every registered GET route pattern in the composed app, deduped. */
+function enumerateComposedGetPatterns(): string[] {
+  const patterns = new Set<string>();
+  for (const route of composedApp.routes) {
+    if (route.method !== "GET") continue;
+    patterns.add(route.path);
+  }
+  return Array.from(patterns).sort();
+}
+
+// Routes this test deliberately does not require a ROUTE_MANIFEST entry
+// for, each with a reason. Two kinds of reason are legitimate here: (a) the
+// route provably never renders HTML (binary/JSON/ICS payload, or a route
+// that only ever 302-redirects), or (b) a genuine PRE-EXISTING gap this
+// test surfaced that is out of task-w13-e's scope (DEC-679 names the
+// /embed detail-route desync specifically) — flagged here for a follow-up
+// task rather than silently left uncovered.
+const HTML_ROUTE_EXCLUDED: { pattern: string; reason: string }[] = [
+  {
+    pattern: "/e/:eventSlug",
+    reason: "DEC-661: always 302-redirects to /e/:slug/sessions -- never renders HTML itself.",
+  },
+  {
+    pattern: "/embed/:eventSlug",
+    reason: "DEC-661: always 302-redirects to /embed/:slug/sessions -- never renders HTML itself.",
+  },
+  {
+    pattern: "/embed/:eventSlug/:surface{[a-z]+\\.json}",
+    reason: "JSON embed data feed (EMB), not an HTML page.",
+  },
+  { pattern: "/e/:eventSlug/schedule.ics", reason: "iCalendar feed (DEC-007), not HTML." },
+  { pattern: "/e/:eventSlug/agenda.ics", reason: "iCalendar feed (DEC-310), not HTML." },
+  { pattern: "/dev/mailbox/:emailId/ics", reason: "iCalendar attachment download, not HTML." },
+  { pattern: "/files/:fileId", reason: "Binary uploaded-file serve, not HTML." },
+  { pattern: "/headshots/:fileId", reason: "Binary image serve, not HTML." },
+  { pattern: "/portal/tasks/:assignmentId/file", reason: "Binary uploaded-file serve, not HTML." },
+  { pattern: "/portal/tasks/:assignmentId/file/:fileId", reason: "Binary uploaded-file serve, not HTML." },
+  { pattern: "/portal/resources/:resourceId/download", reason: "Binary resource-file serve, not HTML." },
+  {
+    pattern: "/admin",
+    reason:
+      "Bare /admin serves the identical admin-SPA shell as /admin/* -- ROUTE_MANIFEST's concrete /admin/... entries (e.g. /admin/overview) already exercise that shell; visiting the bare route too is redundant, not a coverage gap.",
+  },
+  {
+    pattern: "/claim/:token",
+    reason:
+      "PRE-EXISTING GAP, out of task-w13-e's scope (DEC-679 is the /embed detail-route desync only) -- invite-claim tokens are single-use, so an idempotent render sweep can't safely visit one without burning seed data. Flagged for a follow-up task, not silently swept under EXCLUDED as if it were fine.",
+  },
+  {
+    pattern: "/",
+    reason:
+      "PRE-EXISTING GAP, out of task-w13-e's scope -- the SSR landing page (src/routes/root.tsx) is entirely missing from ROUTE_MANIFEST, so gate:render-sweep has never visited it. Flagged for a follow-up task.",
+  },
+  {
+    pattern: "/dev/mailbox/:emailId",
+    reason:
+      "PRE-EXISTING GAP, out of task-w13-e's scope -- the single sent-email detail view has no ROUTE_MANIFEST entry (scripts/seed.ts does seed email_log rows this could resolve against). Flagged for a follow-up task.",
+  },
+  {
+    pattern: "/portal/resources",
+    reason:
+      "PRE-EXISTING GAP, out of task-w13-e's scope -- the speaker-facing resources list page has no ROUTE_MANIFEST entry. Flagged for a follow-up task.",
+  },
+];
+
+// API routes are JSON by construction (DEC-012), and /health is a JSON
+// liveness probe defined inline in src/server/app.ts -- both filtered by
+// this blanket rule rather than hand-listed one route at a time, so a new
+// /api/v1/... route is automatically out of this HTML-coverage test's scope
+// without anyone maintaining a second list.
+function isKnownNonHtmlByPrefix(path: string): boolean {
+  return path === "/health" || path === "/api/v1" || path.startsWith("/api/v1/");
+}
+
+describe("every registered GET route that renders HTML is in ROUTE_MANIFEST or HTML_ROUTE_EXCLUDED (DEC-679)", () => {
+  const composedPatterns = enumerateComposedGetPatterns().filter((p) => !isKnownNonHtmlByPrefix(p));
+  const manifestPaths = ROUTE_MANIFEST.map((e) => e.path);
+  const excludedPatterns = new Set(HTML_ROUTE_EXCLUDED.map((e) => e.pattern));
+
+  it("enumerates more than a trivial number of composed GET routes (sanity: this check would be vacuous otherwise)", () => {
+    expect(composedPatterns.length).toBeGreaterThan(10);
+  });
+
+  it("every composed HTML-rendering GET route pattern is covered by ROUTE_MANIFEST or named in HTML_ROUTE_EXCLUDED", () => {
+    const missing = composedPatterns.filter(
+      (pattern) =>
+        !excludedPatterns.has(pattern) && !manifestPaths.some((path) => patternMatchesManifestPath(pattern, path)),
+    );
+    expect(
+      missing,
+      `route pattern(s) registered in the app but neither resolved by any app/src/routeManifest.ts ` +
+        `ROUTE_MANIFEST entry nor named in this file's HTML_ROUTE_EXCLUDED: ${missing.join(", ")} -- ` +
+        `add a ROUTE_MANIFEST entry with a concrete seed literal (app/src/routeManifest.ts) so ` +
+        `gate:render-sweep visits it, or add it to HTML_ROUTE_EXCLUDED here with a reason.`,
+    ).toEqual([]);
+  });
+
+  it("every HTML_ROUTE_EXCLUDED entry still matches a currently-registered GET pattern (no stale exclusion)", () => {
+    const stale = HTML_ROUTE_EXCLUDED.filter((e) => !composedPatterns.includes(e.pattern)).map((e) => e.pattern);
+    expect(stale).toEqual([]);
+  });
 });

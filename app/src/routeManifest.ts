@@ -173,6 +173,22 @@ export const ROUTE_MANIFEST: readonly RouteManifestEntry[] = [
   // index.tsx) already support all five.
   { path: `/embed/${EVENT_SLUG}/schedule`, role: "public", params: { eventSlug: EVENT_SLUG } },
   { path: `/embed/${EVENT_SLUG}/gallery`, role: "public", params: { eventSlug: EVENT_SLUG } },
+  // DEC-679 (task-w13-e): the two /embed detail-page twins of the
+  // /e/:eventSlug/sessions/:sessionId and /e/:eventSlug/speakers/:contactId
+  // drill-ins already listed above (src/routes/public/index.tsx :235/:249,
+  // DEC-672) — registered when task-w12-c added the routes but never added
+  // here, so gate:render-sweep never visited them. Same deterministic seed
+  // ids as their /e twins (MOBILE_SESSION_ID / MOBILE_SPEAKER_ID).
+  {
+    path: `/embed/${EVENT_SLUG}/sessions/${MOBILE_SESSION_ID}`,
+    role: "public",
+    params: { eventSlug: EVENT_SLUG, sessionId: MOBILE_SESSION_ID },
+  },
+  {
+    path: `/embed/${EVENT_SLUG}/speakers/${MOBILE_SPEAKER_ID}`,
+    role: "public",
+    params: { eventSlug: EVENT_SLUG, speakerId: MOBILE_SPEAKER_ID },
+  },
   { path: "/login", role: "public" },
   { path: "/docs/api", role: "public" },
   { path: "/dev/mailbox", role: "public" },
