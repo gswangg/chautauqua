@@ -111,7 +111,7 @@ export function PhoneAgenda({
 
   return (
     <div className="chq-phone-agenda">
-      <div className="chq-phone-room-chips chq-chipstrip">
+      <div className="chq-chipstrip">
         {rooms.map((room) => {
           const active = activeRoomId === room.id;
           const conflicted = roomHasConflict(room.id, day, placed, conflicts);
