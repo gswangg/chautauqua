@@ -215,6 +215,14 @@ describe("(c) /login pending-state handler (DEC-245 ratification)", () => {
     const { authRoutes } = await import("../src/routes/auth");
     const app = new Hono<AppEnv>();
     registerErrorHandler(app);
+    // DEC-583: GET /login now queries demoIdentitiesPresent, so it needs a
+    // (empty-result) fake db — this test doesn't care about the demo block.
+    app.use("*", async (c, next) => {
+      c.set("db", {
+        select: () => ({ from: () => ({ where: () => ({ limit: async () => [] }) }) }),
+      } as unknown as AppEnv["Variables"]["db"]);
+      await next();
+    });
     app.route("/", authRoutes);
 
     const res = await app.request("/login");
