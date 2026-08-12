@@ -138,7 +138,7 @@ describe("mergeContacts pipeline reconciliation (DEC-282)", () => {
       [KEEP], // findContactById(keepId) after merge
     ]);
 
-    await mergeContacts(db, KEEP.id, MERGE.id);
+    await mergeContacts(db, KEEP.id, [MERGE.id]);
 
     // No pipeline_entry/pipeline_activity update happened in the (e) step
     // (only one side enrolled) — the generic (f) repoint below is the one
@@ -166,7 +166,7 @@ describe("mergeContacts pipeline reconciliation (DEC-282)", () => {
       [KEEP], // findContactById(keepId) after merge
     ]);
 
-    await mergeContacts(db, KEEP.id, MERGE.id);
+    await mergeContacts(db, KEEP.id, [MERGE.id]);
 
     const activityUpdate = updates.find((u) => u.table === schema.pipelineActivity);
     expect(activityUpdate).toBeDefined();
@@ -198,7 +198,7 @@ describe("mergeContacts task_assignment dedupe (DEC-282)", () => {
       [KEEP], // findContactById(keepId) after merge
     ]);
 
-    await mergeContacts(db, KEEP.id, MERGE.id);
+    await mergeContacts(db, KEEP.id, [MERGE.id]);
 
     const taskAssignmentDeletes = deletes.filter((d) => d.table === schema.taskAssignment);
     // Exactly one delete call over task_assignment (dedupe deletes the
@@ -218,7 +218,7 @@ describe("mergeContacts login-account conflict guard (DEC-282)", () => {
 
     let caught: unknown;
     try {
-      await mergeContacts(db, KEEP.id, MERGE.id);
+      await mergeContacts(db, KEEP.id, [MERGE.id]);
     } catch (err) {
       caught = err;
     }
@@ -249,7 +249,7 @@ describe("mergeContacts user.email cascade (DEC-479)", () => {
       [keep], // findContactById(keepId) after merge
     ]);
 
-    await mergeContacts(db, keep.id, merge.id);
+    await mergeContacts(db, keep.id, [merge.id]);
 
     const { merged } = planMerge(contactRawToRecord(keep), contactRawToRecord(merge));
 
@@ -281,7 +281,7 @@ describe("mergeContacts user.email cascade (DEC-479)", () => {
       [keep], // findContactById(keepId) after merge
     ]);
 
-    await mergeContacts(db, keep.id, merge.id);
+    await mergeContacts(db, keep.id, [merge.id]);
 
     const { merged } = planMerge(contactRawToRecord(keep), contactRawToRecord(merge));
 
@@ -309,7 +309,7 @@ describe("mergeContacts user.email cascade (DEC-479)", () => {
       [{ id: "user-merge" }], // findAccountUserId select below
     ]);
 
-    await mergeContacts(db, keep.id, merge.id);
+    await mergeContacts(db, keep.id, [merge.id]);
 
     const { merged } = planMerge(contactRawToRecord(keep), contactRawToRecord(merge));
     expect(merged.email.toLowerCase()).toBe("a@x.com");
@@ -342,7 +342,7 @@ describe("mergeContacts user.email cascade (DEC-479)", () => {
 
     let caught: unknown;
     try {
-      await mergeContacts(db, keep.id, merge.id);
+      await mergeContacts(db, keep.id, [merge.id]);
     } catch (err) {
       caught = err;
     }
@@ -394,7 +394,7 @@ describe("mergeContacts email conflict guard vs. a staff login (DEC-565)", () =>
 
     let caught: unknown;
     try {
-      await mergeContacts(db, keep.id, merge.id);
+      await mergeContacts(db, keep.id, [merge.id]);
     } catch (err) {
       caught = err;
     }
@@ -410,6 +410,92 @@ describe("mergeContacts email conflict guard vs. a staff login (DEC-565)", () =>
     // broken code; asserting zero writes proves the guard runs first.
     expect(updates).toEqual([]);
     expect(deletes).toEqual([]);
+  });
+});
+
+describe("mergeContacts set-based merge (DEC-629)", () => {
+  it("collapses a 3-contact same-name cluster in one call, and the surviving record carries the merged fields", async () => {
+    const keep = contactRaw("contact-keep", "a@example.com", "Jane", "Doe");
+    const dup1 = contactRaw("contact-dup1", "a@example.com", "Jane", "Doe");
+    const dup2 = { ...contactRaw("contact-dup2", "a@example.com", "Jane", "Doe"), company: "Acme Corp" };
+
+    const { db, updates, deletes } = fakeDb([
+      // Fold 1: mergeOnePair(keep, dup1)
+      [keep], // findContactById(keepId)
+      [dup1], // findContactById(mergeId)
+      [], // user rows for keepId
+      [], // user rows for mergeId
+      [], // (b2) email conflict pre-check
+      [], // mergeParticipants
+      [], // keepParticipants
+      [], // task_assignment for mergeId
+      [], // task_assignment for keepId
+      [], // pipelineEntry for keepId
+      [], // pipelineEntry for mergeId
+      [keep], // findContactById(keepId) after merge
+
+      // Fold 2: mergeOnePair(keep, dup2)
+      [keep], // findContactById(keepId)
+      [dup2], // findContactById(mergeId)
+      [], // user rows for keepId
+      [], // user rows for mergeId
+      [], // (b2) email conflict pre-check
+      [], // mergeParticipants
+      [], // keepParticipants
+      [], // task_assignment for mergeId
+      [], // task_assignment for keepId
+      [], // pipelineEntry for keepId
+      [], // pipelineEntry for mergeId
+      [keep], // findContactById(keepId) after merge
+    ]);
+
+    const survivor = await mergeContacts(db, keep.id, [dup1.id, dup2.id]);
+
+    expect(survivor.id).toBe(keep.id);
+    // Two contact rows deleted (dup1, dup2); one survives.
+    expect(deletes.filter((d) => d.table === schema.contact).length).toBe(2);
+    // The merged fields (company from dup2) reach the contact UPDATE.
+    const companyUpdate = updates.find(
+      (u) => u.table === schema.contact && (u.vals as { company?: string }).company === "Acme Corp",
+    );
+    expect(companyUpdate).toBeDefined();
+  });
+
+  it("dedupes mergeIds and drops keepId if present, still merging every distinct other id", async () => {
+    const keep = contactRaw("contact-keep", "a@example.com", "Jane", "Doe");
+    const dup1 = contactRaw("contact-dup1", "a@example.com", "Jane", "Doe");
+
+    const { db, deletes } = fakeDb([
+      [keep], // findContactById(keepId)
+      [dup1], // findContactById(mergeId)
+      [], // user rows for keepId
+      [], // user rows for mergeId
+      [], // (b2) email conflict pre-check
+      [], // mergeParticipants
+      [], // keepParticipants
+      [], // task_assignment for mergeId
+      [], // task_assignment for keepId
+      [], // pipelineEntry for keepId
+      [], // pipelineEntry for mergeId
+      [keep], // findContactById(keepId) after merge
+    ]);
+
+    // mergeIds contains keepId (a no-op self-reference) and dup1.id twice.
+    await mergeContacts(db, keep.id, [keep.id, dup1.id, dup1.id]);
+
+    expect(deletes.filter((d) => d.table === schema.contact).length).toBe(1);
+  });
+
+  it("empty mergeIds (after dropping keepId) throws ApiError('invalid', ...)", async () => {
+    const { db } = fakeDb([]);
+    let caught: unknown;
+    try {
+      await mergeContacts(db, "contact-keep", []);
+    } catch (err) {
+      caught = err;
+    }
+    expect(caught).toBeInstanceOf(ApiError);
+    expect((caught as ApiError).code).toBe("invalid");
   });
 });
 

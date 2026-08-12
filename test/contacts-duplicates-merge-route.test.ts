@@ -120,7 +120,7 @@ describe("GET /api/v1/contacts/duplicates wire contract (DEC-239)", () => {
 });
 
 describe("POST /api/v1/contacts/merge roundtrip from a duplicates response (DEC-239)", () => {
-  it("merges {keepId,mergeId} drawn from the duplicates payload, returns the merged row, and drops mergeId from a later list", async () => {
+  it("merges {keepId,mergeIds} drawn from the duplicates payload, returns the merged row, and drops mergeId from a later list", async () => {
     // 1) Fetch duplicates.
     const { db: dupDb } = fakeDb([[KEEP, MERGE]]);
     const dupApp = appWithDbAndAuth(dupDb, ORGANIZER_A);
@@ -148,7 +148,9 @@ describe("POST /api/v1/contacts/merge roundtrip from a duplicates response (DEC-
       [KEEP.id === keepId ? KEEP : MERGE], // mergeContacts: findContactById(keepId) after merge
     ]);
     const mergeApp = appWithDbAndAuth(mergeDb, ORGANIZER_A);
-    const mergeRes = await mergeApp.request(jsonRequest("POST", "/api/v1/contacts/merge", { keepId, mergeId }));
+    const mergeRes = await mergeApp.request(
+      jsonRequest("POST", "/api/v1/contacts/merge", { keepId, mergeIds: [mergeId] }),
+    );
     expect(mergeRes.status).toBe(200);
     const mergedJson = (await mergeRes.json()) as { id: string };
     expect(mergedJson.id).toBe(keepId);
@@ -164,5 +166,31 @@ describe("POST /api/v1/contacts/merge roundtrip from a duplicates response (DEC-
     const afterRes = await afterApp.request(new Request("http://local/api/v1/contacts/duplicates"));
     const afterJson = (await afterRes.json()) as { items: unknown[] };
     expect(afterJson.items).toHaveLength(0);
+  });
+});
+
+describe("POST /api/v1/contacts/merge set-based mergeIds (DEC-629)", () => {
+  it("a foreign/unknown mergeId among a valid keepId + mergeIds -> 404, and zero writes are issued", async () => {
+    // requireOwnedContact runs for keepId, then every mergeId, before any
+    // write. The second mergeId in the array resolves to no row for this
+    // org (a foreign/unknown contact), so the whole request fails before
+    // mergeContacts is ever called.
+    const { db, updates, deletes } = fakeDb([
+      [KEEP], // requireOwnedContact(keepId)
+      [MERGE], // requireOwnedContact(mergeIds[0])
+      [], // requireOwnedContact(mergeIds[1]) -- not found in this org
+    ]);
+    const app = appWithDbAndAuth(db, ORGANIZER_A);
+
+    const res = await app.request(
+      jsonRequest("POST", "/api/v1/contacts/merge", {
+        keepId: KEEP.id,
+        mergeIds: [MERGE.id, "contact-foreign"],
+      }),
+    );
+
+    expect(res.status).toBe(404);
+    expect(updates).toEqual([]);
+    expect(deletes).toEqual([]);
   });
 });
