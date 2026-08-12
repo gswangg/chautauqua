@@ -11,6 +11,7 @@ import { formatRef, newId } from "../../domain/ids";
 import { chunkIds } from "../../lib/chunk";
 import { chunkRowsForInsert } from "../../lib/chunk";
 import { bumpIcsSequences } from "./ics-sequence";
+import { visibleSessionConditions } from "./public/gates";
 import {
   autoSchedule,
   describeConflict,
@@ -356,6 +357,25 @@ export async function getAgendaPayload(db: Db, eventId: string, event: EventInfo
     conflicts: describeConflicts(conflicts, labels),
     summary,
   };
+}
+
+/** DEC-595: counts how many of `submissionIds` pass the SAME public
+ * visibility gate (src/server/repo/public/gates.ts's visibleSessionConditions
+ * — accepted + content-approved) every other gated read uses. Placed
+ * sessions are already status='accepted' (loadAcceptedSessions filters on
+ * it), so in practice this narrows on content_status='approved' — but the
+ * gate is imported, never re-derived, per the one-predicate rule. */
+export async function countPubliclyVisible(db: Db, eventId: string, submissionIds: string[]): Promise<number> {
+  if (submissionIds.length === 0) return 0;
+  let total = 0;
+  for (const batch of chunkIds(submissionIds)) {
+    const rows = await db
+      .select({ id: schema.submission.id })
+      .from(schema.submission)
+      .where(and(eq(schema.submission.eventId, eventId), inArray(schema.submission.id, batch), visibleSessionConditions()));
+    total += rows.length;
+  }
+  return total;
 }
 
 /** Refreshed { conflicts, summary } only — used after PUT/DELETE slot writes,

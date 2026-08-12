@@ -9,6 +9,7 @@ import { requireOrganizer, csrfJson } from "../server/middleware";
 import { ApiError } from "../server/http";
 import { MINUTES_PER_DAY } from "../domain/schedule";
 import {
+  countPubliclyVisible,
   DEFAULT_AUTO_SCHEDULE_PARAMS,
   getAgendaPayload,
   getConflictsAndSummary,
@@ -117,7 +118,13 @@ agendaRoutes.post("/events/:eventId/agenda/publish", requireOrganizer, csrfJson,
   if (event.orgId !== auth.orgId) throw new ApiError("forbidden", "Event belongs to a different org");
 
   const payload = await getAgendaPayload(c.var.db, eventId, event);
-  return c.json({ published: payload.placed.length });
+  const placed = payload.placed.length;
+  const publicCount = await countPubliclyVisible(
+    c.var.db,
+    eventId,
+    payload.placed.map((s) => s.submissionId),
+  );
+  return c.json({ placed, public: publicCount, heldBack: placed - publicCount });
 });
 
 interface AutoScheduleBody {
