@@ -116,6 +116,113 @@
   }
 }
 
+/* ---------------------------------------------------------------------- */
+/* Phone (DEC-385 single switch, DEC-386 stacked-card pattern)             */
+/* ---------------------------------------------------------------------- */
+
+@media (max-width: 700px) {
+  .chq-content-page {
+    gap: 16px;
+  }
+
+  .chq-content-detail-head,
+  .chq-content-group-body {
+    gap: 16px;
+  }
+
+  /* Every tappable control on this page gets the phone control radius —
+     scoped under .chq-content-page so the shared .chq-btn rule itself is
+     never redefined (DEC-368). */
+  .chq-content-page .chq-btn {
+    border-radius: var(--chq-r-ctl-phone);
+  }
+
+  /* Worklist rows: same markup, thead hidden, tr/td collapsed to a stacked
+     card (DEC-386 — no duplicate phone-only DOM). */
+  .chq-content-table thead {
+    display: none;
+  }
+
+  .chq-content-table,
+  .chq-content-table tbody,
+  .chq-content-table tr,
+  .chq-content-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .chq-content-table tr.chq-content-row {
+    padding: 16px 0;
+    border-bottom: 1px solid var(--chq-hairline);
+  }
+
+  .chq-content-table td {
+    padding: 2px 0;
+    border-bottom: none;
+  }
+
+  .chq-content-actions {
+    padding-top: 8px;
+    flex-wrap: wrap;
+  }
+
+  .chq-content-actions .chq-btn {
+    flex: 1 1 0;
+  }
+
+  .chq-content-pager {
+    flex-wrap: wrap;
+    row-gap: 10px;
+  }
+
+  /* Version list: single column, meta grows for phone legibility, the
+     download link gets the same 44px tap target as a .chq-btn. */
+  .chq-content-version-item {
+    grid-template-columns: 1fr;
+    gap: 6px;
+    padding: 14px 0;
+  }
+
+  .chq-content-version-list .chq-version-meta {
+    font-size: 13px;
+  }
+
+  .chq-content-version-download {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--chq-border);
+    border-radius: var(--chq-r-ctl-phone);
+  }
+
+  /* Comment thread: meta grows to 13px, composer button keeps a fixed tap
+     target rather than stretching full width. */
+  .chq-content-comment-head {
+    flex-wrap: wrap;
+    row-gap: 4px;
+  }
+
+  .chq-content-comment-item .chq-meta {
+    font-size: 13px;
+  }
+
+  .chq-content-comment-composer .chq-btn {
+    align-self: flex-start;
+  }
+
+  /* Upload zone: accepted-types/size-cap text reflows onto two lines
+     rather than clipping or forcing horizontal scroll on one wide line. */
+  .chq-content-upload-caps {
+    line-height: 1.4;
+  }
+
+  .chq-content-status-bar {
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+}
+
 .chq-content-files-col {
   display: flex;
   flex-direction: column;
