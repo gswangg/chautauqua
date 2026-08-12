@@ -105,3 +105,47 @@
   width: 100%;
   max-width: 520px;
 }
+
+/* Form settings strip layout. .chq-field/.chq-input/.chq-textarea/.chq-pill/
+   .chq-chipstrip/.chq-btn/.chq-error-banner/.chq-section-head/.chq-section-
+   label are shared classes (styles.css) — this scopes spacing only and never
+   redefines their rules (DEC-368). */
+.chq-forms-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  /* Required measure for form-shaped content: 660-760px. */
+  max-width: 720px;
+  min-width: 660px;
+}
+
+.chq-forms-settings .chq-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.chq-forms-settings-title {
+  color: var(--chq-disabled, #8e8a7a);
+}
+
+.chq-forms-settings-tracks {
+  border: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.chq-forms-public-link {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.chq-forms-public-link .chq-input {
+  flex: 1;
+}

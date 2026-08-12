@@ -68,54 +68,61 @@ export function FormSettings({ form, tracks, eventSlug, onSave }: FormSettingsPr
 
   return (
     <section className="chq-forms-settings">
+      <div className="chq-section-head">
+        <h2 className="chq-section-label">Form settings</h2>
+      </div>
+
       {error && <div className="chq-error-banner">{error}</div>}
 
-      <label>
+      <label className="chq-field">
         Title
-        <input type="text" value={form.title} disabled />
+        <input type="text" className="chq-input chq-forms-settings-title" value={form.title} disabled />
       </label>
 
-      <label>
+      <label className="chq-field">
         Intro / description
-        <textarea value={intro} onChange={(e) => setIntro(e.target.value)} />
+        <textarea className="chq-textarea" value={intro} onChange={(e) => setIntro(e.target.value)} />
       </label>
 
-      <label>
+      <label className="chq-field">
         Opens
-        <input type="date" value={openDate} onChange={(e) => setOpenDate(e.target.value)} />
+        <input type="date" className="chq-input" value={openDate} onChange={(e) => setOpenDate(e.target.value)} />
       </label>
 
-      <label>
+      <label className="chq-field">
         Closes
-        <input type="date" value={closeDate} onChange={(e) => setCloseDate(e.target.value)} />
+        <input type="date" className="chq-input" value={closeDate} onChange={(e) => setCloseDate(e.target.value)} />
       </label>
 
-      <fieldset>
-        <legend>Tracks offered</legend>
+      <fieldset className="chq-forms-settings-tracks">
+        <legend className="chq-section-label">Tracks offered</legend>
         {tracks.length === 0 && <p>No tracks configured for this event yet.</p>}
-        {tracks.map((track) => (
-          <label key={track.id} className="chq-checkbox-label">
-            <input
-              type="checkbox"
-              checked={selectedTracks.includes(track.id)}
-              onChange={() => toggleTrack(track.id)}
-            />
-            {track.name}
-          </label>
-        ))}
+        <div className="chq-chipstrip">
+          {tracks.map((track) => (
+            <button
+              key={track.id}
+              type="button"
+              className={selectedTracks.includes(track.id) ? 'chq-pill is-active' : 'chq-pill'}
+              aria-pressed={selectedTracks.includes(track.id)}
+              onClick={() => toggleTrack(track.id)}
+            >
+              {track.name}
+            </button>
+          ))}
+        </div>
       </fieldset>
 
-      <label>
+      <label className="chq-field">
         Public link
         <div className="chq-forms-public-link">
-          <input type="text" value={publicLink} readOnly />
-          <button type="button" onClick={handleCopyLink}>
+          <input type="text" className="chq-input" value={publicLink} readOnly />
+          <button type="button" className="chq-btn chq-btn-secondary" onClick={handleCopyLink}>
             {copied ? 'Copied!' : 'Copy'}
           </button>
         </div>
       </label>
 
-      <button type="button" onClick={handleSave} disabled={saving}>
+      <button type="button" className="chq-btn chq-btn-primary" onClick={handleSave} disabled={saving}>
         {saving ? 'Saving...' : 'Save settings'}
       </button>
     </section>

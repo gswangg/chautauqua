@@ -56,10 +56,10 @@ describe('FormsPage render smoke', () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}`]: { id: EVENT_ID, slug: 'devcon-2026' },
       [`GET /api/v1/events/${EVENT_ID}/forms`]: FORM,
-      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([{ id: 'trk-1', name: 'Frontend' }]),
     });
 
-    render(<FormsPage />);
+    const { container } = render(<FormsPage />);
 
     await waitFor(() => {
       expect(screen.getByText('Co-speaker email')).toBeInTheDocument();
@@ -78,6 +78,15 @@ describe('FormsPage render smoke', () => {
     // FormSettings strip.
     expect(screen.getByDisplayValue('DevCon 2026 CFP')).toBeInTheDocument();
     expect(screen.getByDisplayValue('Submit your talk!')).toBeInTheDocument();
+
+    // The settings strip renders styled .chq-input controls, not bare
+    // elements, and 'Tracks offered' as a pill-toggle chipstrip rather
+    // than raw checkboxes (DEC-367/372/379).
+    expect(container.querySelectorAll('.chq-forms-settings .chq-input').length).toBeGreaterThan(0);
+    const trackToggle = screen.getByRole('button', { name: 'Frontend' });
+    expect(trackToggle).toHaveClass('chq-pill');
+    expect(trackToggle).toHaveAttribute('aria-pressed', 'false');
+    expect(container.querySelector('.chq-forms-settings input[type="checkbox"]')).not.toBeInTheDocument();
 
     // FieldModal (create).
     screen.getByRole('button', { name: 'Add a question' }).click();

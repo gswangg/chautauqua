@@ -40,6 +40,7 @@ export function FieldList({ fields, busy, onEdit, onDelete, onMove }: FieldListP
             <td>
               <button
                 type="button"
+                className="chq-btn chq-btn-tertiary"
                 aria-label={`Move ${field.label} up`}
                 disabled={busy || field.locked || index === 0}
                 onClick={() => onMove(field, -1)}
@@ -48,6 +49,7 @@ export function FieldList({ fields, busy, onEdit, onDelete, onMove }: FieldListP
               </button>
               <button
                 type="button"
+                className="chq-btn chq-btn-tertiary"
                 aria-label={`Move ${field.label} down`}
                 disabled={busy || field.locked || index === ordered.length - 1}
                 onClick={() => onMove(field, 1)}
@@ -72,10 +74,20 @@ export function FieldList({ fields, busy, onEdit, onDelete, onMove }: FieldListP
             </td>
             <td>{field.rule ? `if ${field.rule.fieldId} ${field.rule.op} ${JSON.stringify(field.rule.value)}` : '—'}</td>
             <td>
-              <button type="button" disabled={busy || field.locked} onClick={() => onEdit(field)}>
+              <button
+                type="button"
+                className="chq-btn chq-btn-tertiary"
+                disabled={busy || field.locked}
+                onClick={() => onEdit(field)}
+              >
                 Edit
               </button>
-              <button type="button" disabled={busy || field.locked} onClick={() => onDelete(field)}>
+              <button
+                type="button"
+                className="chq-btn chq-btn-tertiary"
+                disabled={busy || field.locked}
+                onClick={() => onDelete(field)}
+              >
                 Delete
               </button>
             </td>
