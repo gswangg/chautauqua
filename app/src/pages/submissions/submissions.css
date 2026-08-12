@@ -9,24 +9,6 @@
   gap: 20px;
 }
 
-.chq-submissions-tabs {
-  display: flex;
-  justify-content: flex-end;
-}
-
-.chq-submissions-forms-link {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  padding: 0 15px;
-  border: 1px solid var(--chq-border);
-  border-radius: var(--chq-r-ctl, 4px);
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--chq-ink);
-  text-decoration: none;
-}
-
 .chq-submissions-head {
   display: flex;
   align-items: flex-end;
@@ -88,6 +70,14 @@
   flex-wrap: wrap;
 }
 
+.chq-submissions-filterbar-searchsort {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+
 .chq-submissions-filterbar-search {
   min-width: 220px;
   min-height: 44px;
@@ -95,6 +85,13 @@
 
 .chq-submissions-filterbar-select {
   min-height: 44px;
+}
+
+.chq-submissions-filterbar-divider {
+  width: 1px;
+  height: 18px;
+  background: var(--chq-rule);
+  margin: 0 2px;
 }
 
 .chq-submissions-columnpicker {
@@ -273,60 +270,65 @@
   gap: 9px;
 }
 
-.chq-submissions-views {
-  position: relative;
+/* Saved views as a visible tab row (DEC-648) -- replaces the old
+   `.chq-submissions-views` <details> disclosure entirely; there is no
+   floating panel anymore. */
+.chq-submissions-viewtabs {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
-.chq-submissions-views > summary {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  padding: 0 13px;
-  border: 1px solid var(--chq-border);
+.chq-submissions-viewtabs-label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--chq-muted);
+}
+
+.chq-viewtab {
+  background: none;
+  border: none;
+  padding: 7px 13px;
   border-radius: var(--chq-r-ctl, 4px);
   font-size: 13px;
   font-weight: 600;
-  cursor: pointer;
-  list-style: none;
-}
-
-.chq-submissions-views > summary::-webkit-details-marker {
-  display: none;
-}
-
-.chq-submissions-views-panel {
-  position: absolute;
-  z-index: 5;
-  margin-top: 6px;
-  padding: 10px 12px;
-  min-width: 220px;
-  background: var(--chq-paper);
-  border: 1px solid var(--chq-border);
-  border-radius: var(--chq-r-ctl, 4px);
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.chq-submissions-views-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.chq-submissions-views-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.chq-submissions-views-empty {
-  font-size: 12px;
   color: var(--chq-muted);
+  cursor: pointer;
+}
+
+.chq-viewtab.is-active {
+  background: var(--chq-ink);
+  color: var(--chq-on-ink);
+}
+
+.chq-submissions-viewtabs-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.chq-submissions-viewtabs-delete {
+  background: none;
+  border: none;
+  color: var(--chq-muted);
+  cursor: pointer;
+  padding: 4px;
+  font-size: 13px;
+}
+
+.chq-submissions-viewtabs-save {
+  font-weight: 700;
+  color: var(--chq-ink);
+}
+
+.chq-submissions-viewtabs-dialog-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 /* Phone-only per-row triage action group (DEC-610): a row awaiting triage
@@ -440,17 +442,19 @@
     font-size: 13px;
   }
 
-  /* Status filter pills + the toolbar's columns row: keep every pill
-     reachable by scrolling instead of wrapping/clipping. */
-  .chq-submissions-status-row,
-  .chq-submissions-filterbar .chq-status-pills {
+  /* Status filter pills + the view-tab row: same chip-strip treatment --
+     keep every chip reachable by scrolling instead of wrapping/clipping. */
+  .chq-submissions-filterbar,
+  .chq-submissions-filterbar .chq-status-pills,
+  .chq-submissions-viewtabs {
     flex-wrap: nowrap;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
   }
 
-  .chq-submissions-status-row > *,
-  .chq-submissions-filterbar .chq-status-pills > * {
+  .chq-submissions-filterbar > *,
+  .chq-submissions-filterbar .chq-status-pills > *,
+  .chq-submissions-viewtabs > * {
     flex-shrink: 0;
   }
 
@@ -459,8 +463,7 @@
     row-gap: 10px;
   }
 
-  .chq-submissions-columnpicker-panel,
-  .chq-submissions-views-panel {
+  .chq-submissions-columnpicker-panel {
     max-width: calc(100vw - 32px);
     box-sizing: border-box;
   }

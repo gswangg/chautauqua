@@ -11,6 +11,9 @@ import '@testing-library/jest-dom/vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { SubmissionsPage } from '../Submissions';
 import { listEnvelope, mockApi } from '../../test-utils/mockApi';
+import { exportHref, paginationSummary } from './SubmissionsTable';
+import { activeViewKey, builtInViews } from './ViewTabs';
+import { DEFAULT_FILTER_STATE, type SubmissionsFilterState } from './types';
 
 const EVENT_ID = 'evt-render-1';
 
@@ -125,8 +128,7 @@ describe('SubmissionsPage render smoke', () => {
     // nothing.
     expect(screen.queryByRole('columnheader', { name: 'Level' })).not.toBeInTheDocument();
 
-    const [summary] = screen.getAllByText('Columns');
-    fireEvent.click(summary!);
+    fireEvent.click(screen.getByText('Columns', { selector: 'summary' }));
     const checkbox = await screen.findByRole('checkbox', { name: 'Level' });
     fireEvent.click(checkbox);
 
@@ -289,26 +291,28 @@ describe('SubmissionsPage render smoke', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('Views')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Save current as view' })).toBeInTheDocument();
     });
-    fireEvent.click(screen.getByText('Views'));
-    fireEvent.click(screen.getByRole('button', { name: 'Save current as view…' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save current as view' }));
 
     // The ONE dialog contract: scrim + role="dialog" aria-modal, not
-    // window.prompt.
-    const dialog = await screen.findByRole('dialog', { name: 'Name this view' });
+    // window.prompt. DEC-651: the header carries .chq-modal-title + a Close
+    // control and the name input carries the mock's placeholder.
+    const dialog = await screen.findByRole('dialog', { name: 'Save this view' });
     expect(dialog).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Close' })).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('AI track, unread')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save the view' }));
     expect(await screen.findByText('Name is required')).toBeInTheDocument();
     // Empty-name validation must not have posted.
     expect(fetchMock.mock.calls.some(([, init]) => (init as RequestInit | undefined)?.method === 'POST')).toBe(false);
 
     fireEvent.change(screen.getByRole('textbox', { name: 'Name' }), { target: { value: '  My saved view  ' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save the view' }));
 
     await waitFor(() => {
-      expect(screen.queryByRole('dialog', { name: 'Name this view' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('dialog', { name: 'Save this view' })).not.toBeInTheDocument();
     });
 
     const postCall = fetchMock.mock.calls.find(([, init]) => (init as RequestInit | undefined)?.method === 'POST');
@@ -363,5 +367,78 @@ describe('SubmissionsPage render smoke', () => {
       expect(screen.getByText(/Status update failed/)).toBeInTheDocument();
     });
     expect(screen.getByRole('cell', { name: 'Pending' })).toBeInTheDocument();
+  });
+});
+
+describe('paginationSummary', () => {
+  it('renders "Showing {start}-{end} of {total}"', () => {
+    expect(paginationSummary(1, 50, 47)).toBe('Showing 1–47 of 47');
+    expect(paginationSummary(2, 20, 47)).toBe('Showing 21–40 of 47');
+  });
+
+  it('never fabricates a range when there are no results', () => {
+    expect(paginationSummary(1, 50, 0)).toBe('Showing 0 of 0');
+  });
+});
+
+describe('exportHref (DEC-649)', () => {
+  it('carries the current filters minus page/perPage, plus format=csv', () => {
+    const filters: SubmissionsFilterState = {
+      ...DEFAULT_FILTER_STATE,
+      page: 3,
+      perPage: 20,
+      q: 'ai track',
+      status: ['pending'],
+      trackId: 'trk-1',
+    };
+    const href = exportHref('evt-1', filters);
+    const [path, qs] = href.split('?');
+    const params = new URLSearchParams(qs);
+    expect(path).toBe('/api/v1/events/evt-1/export/submissions');
+    expect(params.get('format')).toBe('csv');
+    expect(params.get('q')).toBe('ai track');
+    expect(params.get('status')).toBe('pending');
+    expect(params.get('trackId')).toBe('trk-1');
+    expect(params.has('page')).toBe(false);
+    expect(params.has('perPage')).toBe(false);
+  });
+
+  it('is bare `format=csv` for the default (unfiltered) state', () => {
+    const href = exportHref('evt-1', DEFAULT_FILTER_STATE);
+    expect(href).toBe('/api/v1/events/evt-1/export/submissions?format=csv');
+  });
+});
+
+describe('ViewTabs pure helpers (DEC-648)', () => {
+  it('builtInViews lists Needs triage, All submissions, Accept queue in that order', () => {
+    expect(builtInViews().map((v) => v.name)).toEqual(['Needs triage', 'All submissions', 'Accept queue']);
+  });
+
+  it('activeViewKey derives the active tab from live filter state, never click state', () => {
+    const needsTriageFilters: SubmissionsFilterState = { ...DEFAULT_FILTER_STATE, status: ['pending'] };
+    expect(activeViewKey(needsTriageFilters, new Set(), [])).toBe('builtin-needs-triage');
+
+    const allFilters: SubmissionsFilterState = { ...DEFAULT_FILTER_STATE };
+    expect(activeViewKey(allFilters, new Set(), [])).toBe('builtin-all');
+
+    const acceptQueueFilters: SubmissionsFilterState = { ...DEFAULT_FILTER_STATE, status: ['accept_queue'] };
+    expect(activeViewKey(acceptQueueFilters, new Set(), [])).toBe('builtin-accept-queue');
+
+    // No built-in and no saved view matches a q filter -> no tab is active.
+    const customFilters: SubmissionsFilterState = { ...DEFAULT_FILTER_STATE, q: 'workshop' };
+    expect(activeViewKey(customFilters, new Set(), [])).toBeNull();
+  });
+
+  it('matches a saved view by its id when the config matches exactly', () => {
+    const filters: SubmissionsFilterState = { ...DEFAULT_FILTER_STATE, status: ['declined'] };
+    const savedView = {
+      id: 'view-1',
+      eventId: 'evt-1',
+      name: 'Declined',
+      config: { q: '', status: ['declined'], trackId: null, sort: 'newest' as const, columns: [] },
+      createdAt: 0,
+      updatedAt: 0,
+    };
+    expect(activeViewKey(filters, new Set(), [savedView])).toBe('view-1');
   });
 });
