@@ -610,3 +610,15 @@ compare phone frames pixel-for-pixel.
      already-filed mobile bugs (phone-agenda visibility, tab-bar shell, phone
      wizards) — is LOWER priority than desktop work.** Sequence strictly: desktop
      polish to done, then mobile. No mobile carve-outs.
+
+51. (User QA — OVERRIDES r2's MINOR verdict) **Form-builder rows must match the mock's
+    anatomy, not just its list-ness**: one-line rows — handle · field name + one-line
+    CAPTION under it ("Shown on every public page" / "Up to 1,200 characters" /
+    "Creates or matches a contact" / "Passed to the venue team only") · kind ·
+    REQUIRED/OPTIONAL · Edit/Delete INLINE right. Remove the ↑↓ arrows (drag handle
+    is the reorder affordance) and the second action line (rows are ~2.5× mock
+    height). Built-ins: single "Speaker name and email · Built in" row (not split
+    First/Last/Email), quiet built-in treatment instead of LOCKED pills, "Abstract"
+    naming, mock's field order. Add the footer "Public link · <url> · Copy" row.
+    Dates in the strip as "16 Aug 2026" style; Opens must show the seeded open date
+    (seed currently leaves it blank — DEC-591 tie-in).
