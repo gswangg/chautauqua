@@ -646,3 +646,10 @@ compare phone frames pixel-for-pixel.
     (item 32); (5) submission detail structure (item 38) + Contacts drawer record
     view (item 45). The P0s (items 28/33) and the waitlist regression (35) still
     precede everything.
+
+32b. Priority evidence for item 32: the USER — who commissioned the design — clicked
+     the speaker-grid status pills and could not tell what the click did or why. The
+     v4 affordance trio (footer caption, hover ring + control shape, overdue-as-
+     control) exists precisely to prevent this; treat item 32 as top-tier desktop
+     polish. An interaction that surprises its own designer will certainly surprise a
+     judge.
