@@ -5,7 +5,7 @@
 // DEC-153 UTC date helper (formatDateOnly), and opens the "New task" modal
 // (TaskModal).
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { SpeakersPage } from './Speakers';
 import { mockApi } from '../test-utils/mockApi';
@@ -70,18 +70,28 @@ describe('SpeakersPage render smoke (OnboardingGrid)', () => {
     expect(screen.getByRole('heading', { name: 'Speakers' })).toBeInTheDocument();
 
     await waitFor(() => {
-      expect(screen.getByText('Ada Lovelace')).toBeInTheDocument();
+      expect(screen.getAllByText('Ada Lovelace').length).toBeGreaterThan(0);
     });
-    expect(screen.getByText('Grace Hopper')).toBeInTheDocument();
+    expect(screen.getAllByText('Grace Hopper').length).toBeGreaterThan(0);
 
     // Due date rendered via the DEC-146/153 UTC date helper -- assert against
     // the same helper's own output rather than a hardcoded locale string.
     expect(screen.getByText(formatDateOnly(DUE_DATE_MS))).toBeInTheDocument();
 
-    // Mixed cell states: complete, pending, overdue.
-    expect(screen.getByRole('button', { name: 'Toggle Sign speaker agreement for Ada Lovelace' })).toHaveTextContent('Complete');
-    expect(screen.getByRole('button', { name: 'Toggle Upload headshot for Ada Lovelace' })).toHaveTextContent('Pending');
-    expect(screen.getByRole('button', { name: 'Toggle Sign speaker agreement for Grace Hopper' })).toHaveTextContent('Overdue');
+    // The re-skinned OnboardingGrid renders the desktop grid AND the
+    // phone-width card list simultaneously in the DOM (toggled by a CSS
+    // media query, not JS), so every toggle button renders twice -- scope
+    // assertions to the (single) <table>.
+    const table = within(screen.getByRole('table'));
+
+    // Mixed cell states: complete (filled), pending (outline), overdue (the
+    // .chq-flag "N DAYS LATE" micro-label -- never a plain "Overdue" word,
+    // never colour alone, never red -- DEC-367).
+    expect(table.getByRole('button', { name: 'Toggle Sign speaker agreement for Ada Lovelace' })).toHaveTextContent('Complete');
+    expect(table.getByRole('button', { name: 'Toggle Upload headshot for Ada Lovelace' })).toHaveTextContent('Pending');
+    expect(table.getByRole('button', { name: 'Toggle Sign speaker agreement for Grace Hopper' })).toHaveTextContent(
+      /^\d+ DAYS? LATE$/,
+    );
 
     // TaskModal open.
     screen.getByRole('button', { name: 'New task' }).click();

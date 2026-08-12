@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isCellOverdue } from './overdue';
+import { daysLate, isCellOverdue } from './overdue';
 import type { OnboardingTask } from './types';
 
 const NOW = 1_000_000;
@@ -47,5 +47,19 @@ describe('isCellOverdue', () => {
     expect(
       isCellOverdue({ taskId: 'missing', assignmentId: 'a1', status: 'pending', completedAt: null, fileId: null, lastRemindedAt: null }, undefined, NOW),
     ).toBe(false);
+  });
+});
+
+describe('daysLate', () => {
+  const DAY = 24 * 60 * 60 * 1000;
+
+  it('floors at 1 day for anything less than a full day late', () => {
+    expect(daysLate(NOW - 1, NOW)).toBe(1);
+    expect(daysLate(NOW - DAY + 1, NOW)).toBe(1);
+  });
+
+  it('returns whole days late for multi-day lateness', () => {
+    expect(daysLate(NOW - 3 * DAY, NOW)).toBe(3);
+    expect(daysLate(NOW - 3 * DAY - 1, NOW)).toBe(3);
   });
 });

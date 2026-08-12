@@ -67,8 +67,11 @@ describe('OnboardingGrid: DEC-291 view-response control', () => {
 
     render(<OnboardingGrid />);
 
+    // Re-skinned OnboardingGrid renders the desktop grid AND the phone-width
+    // card list simultaneously in the DOM (they're toggled by a CSS media
+    // query, not JS), so a name renders twice -- assert at least one exists.
     await waitFor(() => {
-      expect(screen.getByText('Ada Lovelace')).toBeInTheDocument();
+      expect(screen.getAllByText('Ada Lovelace').length).toBeGreaterThan(0);
     });
 
     const viewResponseButtons = screen.getAllByRole('button', { name: 'View response' });

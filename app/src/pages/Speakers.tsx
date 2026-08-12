@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { OnboardingGrid } from './speakers/OnboardingGrid';
 import { RosterPanel } from './speakers/RosterPanel';
+import './speakers/speakers.css';
 
 export function SpeakersPage() {
   // Bumping this key forces OnboardingGrid to remount and re-fetch, which is
