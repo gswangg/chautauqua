@@ -399,3 +399,14 @@ compare phone frames pixel-for-pixel.
     no-store, security headers) — audit them all and add a regression test that
     exercises header-stamping over an ASSETS-served response in workerd mode.
     (Verified fix shape on a snapshot: patch restores authed /admin to 200.)
+
+29. **ANTI-PATTERN, fix globally: tests locking in anti-design copy.** NotFound.tsx
+    keeps "Page not found" (vs the mock's "That page isn't here") because a render
+    test asserts the WRONG string — with a code comment declaring the test the source
+    of truth. RULE: where a test contradicts docs/design v4 copy, THE TEST IS WRONG —
+    update the assertion to the mock, then fix the component. Sweep for other
+    instances. Also: unify the SPA NotFound and server not-found.tsx to the mock's
+    copy/links (event-name eyebrow — the data is already in the header context).
+30. r2-Account dispositions: demo prefill DONE (keep); still open — login "NO
+    ACCOUNT?" CTA block + event-named subheading, phone password Cancel + fixed
+    footer, label/placeholder minors. (Password desktop caption FIXED.)
