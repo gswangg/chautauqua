@@ -123,4 +123,50 @@ describe('ComposeWizard recipient picker', () => {
       expect(/[?&]page=1\b/.test(last) || !/[?&]page=/.test(last)).toBe(true);
     });
   });
+
+  // w8-b: DEC-406/DEC-402 re-skin of compose steps 1-2 — the picker table
+  // must carry both the shared .chq-table class and its page-prefixed
+  // second class, and every rendered <button> must carry a shell chq-*
+  // class (no browser-default buttons on this page).
+  it('renders the step-1 picker table with both chq-table classes and every button shell-classed', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope(page1(), { total: 340, page: 1, perPage: 50 }),
+      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
+    });
+
+    render(<ComposeWizard eventId={EVENT_ID} />);
+
+    await screen.findByText('Talk number 1');
+
+    const table = document.querySelector('table');
+    expect(table).not.toBeNull();
+    expect(table).toHaveClass('chq-table');
+    expect(table).toHaveClass('chq-comms-compose-table');
+
+    for (const button of screen.getAllByRole('button')) {
+      expect(button.className).toMatch(/chq-/);
+    }
+  });
+
+  it('carries chq-input/chq-textarea on step 2 subject/body and shell classes on its buttons', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope(page1(), { total: 340, page: 1, perPage: 50 }),
+      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
+    });
+
+    render(<ComposeWizard eventId={EVENT_ID} />);
+
+    await screen.findByText('Talk number 1');
+    fireEvent.click(screen.getByLabelText('Select Talk number 1'));
+    fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
+
+    const subject = await screen.findByLabelText('Subject');
+    const body = screen.getByLabelText('Body');
+    expect(subject).toHaveClass('chq-input');
+    expect(body).toHaveClass('chq-textarea');
+
+    for (const button of screen.getAllByRole('button')) {
+      expect(button.className).toMatch(/chq-/);
+    }
+  });
 });
