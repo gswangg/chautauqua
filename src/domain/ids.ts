@@ -26,6 +26,22 @@ export function formatRef(prefix: string, seq: number): string {
   return `${prefix}-${String(seq).padStart(width, "0")}`;
 }
 
+/**
+ * Inverse of formatRef: parses a human ref like 'SES-014' back to its
+ * integer seq (DEC-623 -- a ref the product prints is a ref the API
+ * accepts). Trims whitespace, matches `^<prefix>-0*(\d+)$` case-
+ * insensitively (prefix regex-escaped). Returns null on anything else --
+ * this handles external/untrusted input, so it never throws.
+ */
+export function parseRef(prefix: string, input: string): number | null {
+  const escapedPrefix = prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const re = new RegExp(`^${escapedPrefix}-0*(\\d+)$`, "i");
+  const match = input.trim().match(re);
+  if (!match) return null;
+  const seq = Number(match[1]);
+  return Number.isInteger(seq) ? seq : null;
+}
+
 function assert(condition: boolean, message: string): asserts condition {
   if (!condition) throw new Error(message);
 }

@@ -50,6 +50,13 @@ vi.mock("../src/server/repo/review", async () => {
         ? { id: submissionId, ref: "S-1", title: "Talk" }
         : null,
     ),
+    // DEC-623: the route resolves body.submissionId through this rather
+    // than getSubmissionSummaryInEvent directly -- mirror the same
+    // in-event/cross-event semantics for id-shaped input (no ref parsing
+    // needed for this file's cases).
+    findSubmissionIdByRefOrId: vi.fn(async (_db: unknown, eventId: string, input: string) =>
+      eventId === planRecord.eventId && input !== "sub-cross-event" ? input : null,
+    ),
     addReviewer: vi.fn(async (_db: unknown, planId: string, input: unknown) => ({
       id: "pr-new",
       planId,

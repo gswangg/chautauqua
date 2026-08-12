@@ -231,6 +231,18 @@ export async function planHasEvaluations(db: Db, planId: string): Promise<boolea
   return rows.length > 0;
 }
 
+/** DEC-624: count of SUBMITTED evaluations (submitted_at not null) on this
+ * plan -- the ratchet guard for PATCH /api/v1/plans/:id turning anonymized
+ * off. Draft (unsubmitted) evaluations don't count -- only a submitted
+ * evaluation was actually recorded under the plan's anonymity promise. */
+export async function countSubmittedEvaluationsForPlan(db: Db, planId: string): Promise<number> {
+  const rows = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(schema.evaluation)
+    .where(and(eq(schema.evaluation.planId, planId), sql`${schema.evaluation.submittedAt} is not null`));
+  return Number(rows[0]?.count ?? 0);
+}
+
 /** DEC-213: distinct rounds that have at least one recorded evaluation, for
  * the PATCH /api/v1/plans/:id per-round freeze guard -- callers resolve
  * effective criteria (before/after) for each of these rounds rather than
