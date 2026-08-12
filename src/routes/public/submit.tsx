@@ -12,7 +12,7 @@
 
 import { Hono } from "hono";
 import type { AppEnv } from "../../server/env";
-import { csrfForm } from "../../server/middleware";
+import { csrfForm, checkDoubleSubmitCsrf } from "../../server/middleware";
 import { ApiError } from "../../server/http";
 import { makeMailer, makeFileStore } from "../../server/context";
 import {
@@ -51,7 +51,7 @@ import {
   type KVStore as DraftKVStore,
 } from "../../lib/draft";
 import { createClaimToken, type KVStore as ClaimKVStore } from "../../auth/claim";
-import { parseCookies, newCsrfToken, buildDraftCookie, isSecureRequest, CSRF_COOKIE_NAME } from "../../auth/cookies";
+import { parseCookies, newCsrfToken, buildCsrfCookie, buildDraftCookie, isSecureRequest, CSRF_COOKIE_NAME } from "../../auth/cookies";
 import { renderTemplate, escapeHtml } from "../../mail/render";
 import { validateUpload, sanitizeFilenameForKey, type ValidUpload } from "../../domain/files";
 import { newId } from "../../domain/ids";
@@ -252,7 +252,14 @@ publicSubmitRoutes.post("/submit/:eventSlug/save-draft", csrfForm, async (c) => 
   return c.redirect(`/submit/${event.slug}?draft=saved`, 302);
 });
 
-publicSubmitRoutes.post("/submit/:eventSlug", csrfForm, async (c) => {
+// DEC-626: this ONE route does its own CSRF check in-body (rather than the
+// csrfForm middleware) so a missing/mismatched cookie can re-render
+// <SubmitPage> with the submitter's parsed answers intact instead of
+// throwing a JSON-shaped ApiError that discards the just-typed form -- the
+// public CFP keeps the submitter's answers. The double-submit comparison
+// itself still delegates to the shared checkDoubleSubmitCsrf predicate
+// (DEC-544); this never re-inlines the comparison.
+publicSubmitRoutes.post("/submit/:eventSlug", async (c) => {
   const db = c.var.db;
   const event = await getEventBySlug(db, c.req.param("eventSlug"));
   if (!event) return c.text("Event not found.", 404);
@@ -267,6 +274,37 @@ publicSubmitRoutes.post("/submit/:eventSlug", csrfForm, async (c) => {
     return c.html(<ClosedPage event={event} form={form} />);
   }
 
+  const fields = await getFormFields(db, form.id);
+  const eventTracks = await getEventTracks(db, event.id);
+  const offeredTrackIds = resolveOfferedTrackIds(form.tracksJson, eventTracks.map((t) => t.id));
+  const tracks = eventTracks.filter((t) => offeredTrackIds.includes(t.id));
+
+  const body = (await c.req.parseBody({ all: true })) as Record<string, unknown>;
+  const answers = extractAnswers(fields, body);
+  const selectedTrackIds = extractTrackIds(body);
+
+  const cookiesForCsrf = parseCookies(c.req.header("cookie") ?? null);
+  const csrfCookieToken = cookiesForCsrf[CSRF_COOKIE_NAME];
+  const csrfFormToken = body[CSRF_COOKIE_NAME];
+  if (!checkDoubleSubmitCsrf(csrfCookieToken, csrfFormToken)) {
+    const freshToken = newCsrfToken();
+    c.header("Set-Cookie", buildCsrfCookie(freshToken, { secure: isSecureRequest(c.req.url) }), { append: true });
+    return c.html(
+      <SubmitPage
+        event={event}
+        form={form}
+        fields={fields}
+        tracks={tracks}
+        answers={answers}
+        selectedTrackIds={selectedTrackIds}
+        hasDraft={false}
+        csrfToken={freshToken}
+        banner="Your session expired — your answers are still here, press Submit again"
+      />,
+      400,
+    );
+  }
+
   // DEC-072: per-IP rate limit, raised from 10 to 60/hour — shared IPs
   // (offices, conference wifi, NAT) legitimately produce bursts of
   // submissions from distinct speakers; the cap exists to stop abuse, not
@@ -279,17 +317,21 @@ publicSubmitRoutes.post("/submit/:eventSlug", csrfForm, async (c) => {
     max: 60,
   });
   if (!rate.ok) {
-    throw new ApiError("invalid", "Too many submissions from this address. Try again later.");
+    return c.html(
+      <SubmitPage
+        event={event}
+        form={form}
+        fields={fields}
+        tracks={tracks}
+        answers={answers}
+        selectedTrackIds={selectedTrackIds}
+        hasDraft={false}
+        csrfToken={csrfCookieToken ?? newCsrfToken()}
+        banner="Too many submissions from this address. Try again later."
+      />,
+      429,
+    );
   }
-
-  const fields = await getFormFields(db, form.id);
-  const eventTracks = await getEventTracks(db, event.id);
-  const offeredTrackIds = resolveOfferedTrackIds(form.tracksJson, eventTracks.map((t) => t.id));
-  const tracks = eventTracks.filter((t) => offeredTrackIds.includes(t.id));
-
-  const body = (await c.req.parseBody({ all: true })) as Record<string, unknown>;
-  const answers = extractAnswers(fields, body);
-  const selectedTrackIds = extractTrackIds(body);
 
   // File-kind answers (DEC-040): pull the uploaded File instances, validate
   // type/size up front (no I/O yet — the submission doesn't exist until

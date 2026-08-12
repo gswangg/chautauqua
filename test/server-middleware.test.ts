@@ -144,8 +144,11 @@ describe.each([
       body: body.toString(),
     });
     expect(res.status).toBe(400);
-    const json = (await res.json()) as { error: { message: string } };
-    expect(json.error.message).toBe("Missing CSRF cookie");
+    // DEC-626: csrfForm/csrfFormOrHeader mark the request htmlSurface as
+    // their first statement, so a thrown ApiError renders HTML, not JSON.
+    expect(res.headers.get("content-type")).toMatch(/text\/html/);
+    const responseBody = await res.text();
+    expect(responseBody).toContain("Missing CSRF cookie");
   });
 
   it("succeeds when the cookie and form field match", async () => {
@@ -174,8 +177,9 @@ describe.each([
       body: body.toString(),
     });
     expect(res.status).toBe(400);
-    const json = (await res.json()) as { error: { message: string } };
-    expect(json.error.message).toBe("CSRF token mismatch");
+    expect(res.headers.get("content-type")).toMatch(/text\/html/);
+    const responseBody = await res.text();
+    expect(responseBody).toContain("CSRF token mismatch");
   });
 
   it("throws 'CSRF token mismatch' when the form field is present but not a string", async () => {
@@ -188,8 +192,9 @@ describe.each([
       body: formData,
     });
     expect(res.status).toBe(400);
-    const json = (await res.json()) as { error: { message: string } };
-    expect(json.error.message).toBe("CSRF token mismatch");
+    expect(res.headers.get("content-type")).toMatch(/text\/html/);
+    const body = await res.text();
+    expect(body).toContain("CSRF token mismatch");
   });
 });
 

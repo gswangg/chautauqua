@@ -190,7 +190,10 @@ describe("POST /submit/:eventSlug/save-draft — DEC-422 per-IP rate limit", () 
     );
 
     expect(res.status).toBe(400);
-    const body = (await res.json()) as { error?: { message?: string } };
-    expect(body.error?.message).toMatch(/Too many/i);
+    // DEC-626: csrfForm-guarded routes mark the request htmlSurface, so a
+    // thrown ApiError renders a minimal HTML page (not the JSON envelope).
+    expect(res.headers.get("content-type")).toMatch(/text\/html/);
+    const body = await res.text();
+    expect(body).toMatch(/Too many/i);
   });
 });
