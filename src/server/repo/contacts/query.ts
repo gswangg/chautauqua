@@ -37,8 +37,13 @@ export function parseContactListQuery(
   return { page, perPage, q, segmentId, sort, rules };
 }
 
+/** DEC-554: structural pick of exactly the fields compareContacts reads, so
+ * the segment/rules scan (crud.ts) can pass its narrow projected row instead
+ * of a full ContactRow — same implementation, no behavior change. */
+export type SortableContactRow = Pick<ContactRow, "updatedAt" | "lastName" | "firstName">;
+
 /** Comparator for the two DEC-026 sort orders: name (last, first) or recent (updatedAt desc). */
-export function compareContacts(sort: "name" | "recent"): (a: ContactRow, b: ContactRow) => number {
+export function compareContacts(sort: "name" | "recent"): (a: SortableContactRow, b: SortableContactRow) => number {
   if (sort === "recent") {
     return (a, b) => b.updatedAt - a.updatedAt;
   }

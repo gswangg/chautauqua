@@ -2,21 +2,23 @@
 // decomposition, no behavior change). See repo/contacts.ts for the
 // module-level contract notes.
 
-import { and, eq, or, sql } from "drizzle-orm";
+import { and, eq, inArray, or, sql } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { newId } from "../../../domain/ids";
-import { matchesSegment, tokenizeContactQuery, type SegmentRule } from "../../../domain/contacts";
+import { matchesSegment, tokenizeContactQuery, type ContactRecord, type SegmentRule } from "../../../domain/contacts";
 import { findSegmentForOrg } from "./segments";
-import { toContactRecord, toRow, type ContactRow } from "./rows";
+import { toRow, MAX_CONTACT_DIRECTORY_SCAN, type ContactRow } from "./rows";
 import { compareContacts, type ParsedContactListQuery } from "./query";
 import { likeContains } from "../like";
 import { backfillNullAttribution } from "../attribution";
 import { ApiError } from "../../http";
-import { DEC_333, DEC_336 } from "../../../decisions";
+import { chunkIds } from "../../../lib/chunk";
+import { DEC_333, DEC_336, DEC_554 } from "../../../decisions";
 
 void DEC_333;
 void DEC_336;
+void DEC_554;
 
 export interface ContactInput {
   firstName: string;
@@ -206,26 +208,79 @@ export async function listContactsForOrg(db: Db, orgId: string, params: ParsedCo
     return { items: rows.map(toRow), total };
   }
 
-  // DEC-336: the one documented whole-directory path — segmentId/rules
-  // evaluate matchesSegment (including custom.* JSON fields, which SQL
+  // DEC-336/DEC-554: the one documented whole-directory path — segmentId/
+  // rules evaluate matchesSegment (including custom.* JSON fields, which SQL
   // can't express) over every row the SQL q predicate above matched, then
-  // sort/page in JS.
-  const rows = (await db.select().from(schema.contact).where(whereExpr)).map(toRow);
+  // sort/page in JS. The scan itself is bounded and narrow (DEC-554): it
+  // projects only the columns matchesSegment/compareContacts read, refuses
+  // above MAX_CONTACT_DIRECTORY_SCAN rather than silently truncating, and
+  // only the final page's full rows are re-hydrated from the db.
+  const scanRows = await db
+    .select({
+      id: schema.contact.id,
+      email: schema.contact.email,
+      firstName: schema.contact.firstName,
+      lastName: schema.contact.lastName,
+      company: schema.contact.company,
+      title: schema.contact.title,
+      customFieldsJson: schema.contact.customFieldsJson,
+      updatedAt: schema.contact.updatedAt,
+    })
+    .from(schema.contact)
+    .where(whereExpr)
+    .orderBy(schema.contact.id)
+    .limit(MAX_CONTACT_DIRECTORY_SCAN + 1);
 
-  let filtered = rows;
+  if (scanRows.length > MAX_CONTACT_DIRECTORY_SCAN) {
+    throw new ApiError(
+      "invalid",
+      `This segment/rules filter would scan more than ${MAX_CONTACT_DIRECTORY_SCAN} contacts — narrow with the search box first (the q filter runs in SQL and composes with segment/rules)`,
+    );
+  }
+
+  const scanRecords = scanRows.map((r) => ({
+    id: r.id,
+    email: r.email,
+    firstName: r.firstName,
+    lastName: r.lastName,
+    ...(r.company ? { company: r.company } : {}),
+    ...(r.title ? { title: r.title } : {}),
+    ...(r.customFieldsJson ? { customFields: JSON.parse(r.customFieldsJson) as Record<string, string> } : {}),
+    updatedAt: r.updatedAt.getTime(),
+  }));
+
+  let filtered = scanRecords;
   if (params.segmentId) {
     const segment = await findSegmentForOrg(db, params.segmentId, orgId);
     if (!segment) throw new Error(`segment ${params.segmentId} not found for org ${orgId}`);
     const segmentRules = JSON.parse(segment.rulesJson) as SegmentRule[];
-    filtered = filtered.filter((r) => matchesSegment(segmentRules, toContactRecord(r)));
+    filtered = filtered.filter((r) => matchesSegment(segmentRules, r as ContactRecord));
   }
   if (params.rules.length > 0) {
-    filtered = filtered.filter((r) => matchesSegment(params.rules, toContactRecord(r)));
+    filtered = filtered.filter((r) => matchesSegment(params.rules, r as ContactRecord));
   }
 
   const sorted = [...filtered].sort(compareContacts(params.sort));
   const total = sorted.length;
   const start = (params.page - 1) * params.perPage;
-  const items = sorted.slice(start, start + params.perPage);
+  const page = sorted.slice(start, start + params.perPage);
+
+  // Re-hydrate only the paged ids' full rows, then re-order to match the
+  // paged order (DEC-554: never widen the scan itself back into full rows).
+  const pageIds = page.map((r) => r.id);
+  const fullRowsById = new Map<string, ContactRow>();
+  for (const batch of chunkIds(pageIds)) {
+    const rows = await db.select().from(schema.contact).where(inArray(schema.contact.id, batch));
+    for (const row of rows) {
+      const mapped = toRow(row);
+      fullRowsById.set(mapped.id, mapped);
+    }
+  }
+  const items = pageIds.map((id) => {
+    const row = fullRowsById.get(id);
+    if (!row) throw new Error(`contact ${id} not found during segment scan re-hydration`);
+    return row;
+  });
+
   return { items, total };
 }
