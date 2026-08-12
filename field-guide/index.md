@@ -20,41 +20,41 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   +count*+`id asc`; a cap the UI can't see LIES, render `total`.
 - STAGE1-CLOSE w21-24 (DEC-471..492, compacted): A BRANCH IS NOT A LANDING --
   grade every row from file:line at the sha or `git merge-base
-  --is-ancestor`, re-read the FILE not an old grep. Enumeration = re-runnable
-  ARTIFACT scanning the CLAMP EXPRESSION not a const's existence; MAX_PUBLIC_
-  ROWS = MAX_PUBLIC_PAGE x PER_PAGE, MEASURED not asserted; JSON feeds owe
-  HTML's paging truth; ONE projection/ONE constants-home beats duplication;
-  two implementations of one invariant means one is wrong -- atomic SQL beats
-  read-then-write.
-- STAGE1-CLOSE w25 (DEC-493..498, compacted): walkthrough harness resolves
-  the seeded event by SLUG. Event-clock strings carry their event's tz
-  (formatIcsChip REQUIRED timeZone); audit timestamps stay viewer-local. A
-  ceiling never filled is not a measurement. Closing ledger grades at
-  file:line at ITS OWN sha, ancestor-checks a missing fix to its OWNING
-  branch (PENDING-OWNED not FAIL-unowned). Phone/render evidence predating a
-  rework is not evidence about it. Evidence lanes kill only their own PID.
+  --is-ancestor`. Enumeration = re-runnable ARTIFACT scanning the CLAMP
+  EXPRESSION not a const's existence; JSON feeds owe HTML's paging truth;
+  two implementations of one invariant means one is wrong -- atomic SQL
+  beats read-then-write.
+- STAGE1-CLOSE w25 (DEC-493..498, compacted): walkthrough resolves the
+  seeded event by SLUG; event-clock strings carry their event's tz. A
+  ceiling never filled is not a measurement. Ledger grades at file:line at
+  ITS OWN sha, ancestor-checks a missing fix (PENDING-OWNED not
+  FAIL-unowned). Evidence predating a rework is not evidence about it;
+  lanes kill only their own PID.
 - STAGE1-CLOSE w26 (DEC-499..504, compacted): tree moves mid-plan -- read the
-  FILE, then read it AGAIN. 499 iCalendar PARAM values sanitized at the
-  SERIALIZER (CN strips DQUOTE+CTL, `;`/`:` stay legal). 500 options
-  validated against the EFFECTIVE kind (patch ?? stored), not a check dead
-  under `if (input.kind !== undefined)`. 501 an answer never outlives the
-  rule that made it askable -- writer deletes what the validator hid, same
-  computed set. 502 paged JSON = ONE window, not HTML's cumulative show-more.
-  503 hand-listed manifests desync -- enumerate SURFACES in a test. 504 a
-  quickstart must run the same predev on every port.
-- STAGE1-CLOSE w27 (DEC-505..507): the tree moved mid-plan for the FOURTH wave
-  -- w26-a/b landed BETWEEN two reads of one pass (builder.ts had no effective-
-  kind rule at read 1, had it at read 2), while c/d/e/f were still absent.
-  Read the FILE, then read it AGAIN. 505 a control the UI offers must be a
-  control the server persists: FieldModal edits kind+section, FieldPatch
-  carried neither, so PATCH returned 200 and changed nothing -- and a kind
-  change is REFUSED (409, DEC-300's shape) while answers exist, because
-  stored answers were validated against the old kind. 506 three LIKE call
-  sites had neither escaping nor ESCAPE '\' while TWO copies of likeContains
-  had both: `?q=%` on the unauthenticated speakers search returned the whole
-  roster. One home, escape-only -- folding the PATTERN without folding the
-  COLUMN is redundant for ASCII and strictly loses non-ASCII matches. 507
-  stage-1 exit: evidence predating the fixes cannot close them, so every lane
-  re-measures at this sha, and verification-log filenames MUST end -stage1 --
-  docs/verification-log/ already holds first-campaign task-w27-*.md that an
-  unsuffixed name overwrites.
+  FILE, then read it AGAIN. 499 iCalendar PARAMs sanitized at SERIALIZER.
+  500 options validated against EFFECTIVE kind. 501 an answer never
+  outlives the rule that made it askable. 502 paged JSON = ONE window.
+  503/504 hand-listed manifests/procedures desync -- enumerate in a test.
+- STAGE1-CLOSE w27 (DEC-505..507, compacted): FOURTH wave the tree moved
+  mid-plan. 505 a control the UI offers must be one the server persists
+  (FieldPatch gained kind+section; kind change REFUSED 409 while answers
+  exist). 506 ONE likeContains home, escape-only, paired with ESCAPE '\' at
+  every site incl. unauthenticated search. 507 stage-1 exit: evidence
+  predating a fix cannot close it -- re-measure at a fresh sha, log names end
+  -stage1.
+- STAGE1-CLOSE w28 (DEC-508..514): FIFTH wave the tree moved mid-plan -- 505
+  AND 506 both landed BETWEEN reads of this pass. Read the FILE, then read
+  it AGAIN, then grade. Three new defects, ONE shape: server accepts what
+  its own UI would never send. 508 opening kind to PATCH (505) re-opened
+  500's hole from the far side -- options required when kind CHANGES to
+  dropdown, not merely when SENT; exemption keys on "already a dropdown".
+  509 plan maxEvaluations/openDate/closeDate reach D1 uncast-checked;
+  max_evaluations=0 empties every reviewer queue in silence though the SPA
+  validator says ">= 1". 510 event dates pass an ORDER check, no FORMAT
+  check, yet computeDays/isDayWithinEventRange assume YYYY-MM-DD -- agenda
+  500s or drops every slot; regex already existed on the READ path. 511 a
+  landed invariant needs a GLOBBED enumeration, not spot checks that let it
+  rot twice. 513 hand-copied credentials desync from the vendored fixture --
+  derive both sides, correct README not docs/. 514: exit wave carries ZERO
+  product tasks -- a lane's HEAD is the wave's BASE sha, so DEC-497 voids
+  evidence of its own fixes; w28 is NOT that wave, claims no closure.
