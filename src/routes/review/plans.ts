@@ -34,6 +34,7 @@ import {
   parseRoundQuery,
   parseMaxEvaluations,
   parseEpochMs,
+  checkEpochOrder,
   deepEqual,
   ratingCriteria,
   dropdownCriteria,
@@ -89,6 +90,9 @@ reviewPlansRoutes.post("/api/v1/events/:eventId/plans", requireOrganizer, csrfJs
   const maxEvaluations = parseMaxEvaluations(body, errors);
   const openDate = parseEpochMs(body, "openDate", errors);
   const closeDate = parseEpochMs(body, "closeDate", errors);
+  // DEC-517: on POST there is no stored record yet, so the effective values
+  // ARE the body values.
+  if (Object.keys(errors).length === 0) checkEpochOrder(openDate, closeDate, errors);
   if (Object.keys(errors).length > 0) throw new ApiError("invalid", "Invalid plan", errors);
 
   const created = await repo.createPlan(c.var.db, event.id, {
@@ -134,6 +138,15 @@ reviewPlansRoutes.patch("/api/v1/plans/:id", requireOrganizer, csrfJson, async (
   const maxEvaluations = parseMaxEvaluations(body, errors);
   const openDate = parseEpochMs(body, "openDate", errors);
   const closeDate = parseEpochMs(body, "closeDate", errors);
+  // DEC-517: order check against the MERGED post-patch state -- whichever
+  // side the body omits falls back to the plan's already-stored value, so a
+  // PATCH touching only closeDate is still checked against the stored
+  // openDate.
+  if (Object.keys(errors).length === 0) {
+    const effectiveOpen = openDate !== undefined ? openDate : plan.openDate;
+    const effectiveClose = closeDate !== undefined ? closeDate : plan.closeDate;
+    checkEpochOrder(effectiveOpen, effectiveClose, errors);
+  }
   if (Object.keys(errors).length > 0) throw new ApiError("invalid", "Invalid plan", errors);
 
   // DEC-123: once any evaluation exists on this plan, criteria/scale are

@@ -23,6 +23,7 @@ import {
 import * as repo from "../../server/repo/review";
 import { roundCriteriaJsonOf } from "../../server/repo/review";
 import type { PlanRecord } from "../../server/repo/review";
+import { isEpochMs, isEpochOrderValid } from "../api/validators"; // DEC-517
 
 export function asRecord(body: unknown): Record<string, unknown> {
   if (typeof body !== "object" || body === null) {
@@ -185,11 +186,28 @@ export function parseEpochMs(body: Record<string, unknown>, key: string, errors:
   const raw = body[key];
   if (raw === undefined) return undefined;
   if (raw === null) return null;
-  if (!Number.isInteger(raw)) {
+  if (!isEpochMs(raw)) {
     errors[key] = "must be a ms-epoch integer, or null";
     return undefined;
   }
-  return raw as number;
+  return raw;
+}
+
+/** DEC-517: refuses a close-before-open date pair, evaluated against the
+ * MERGED post-patch state -- callers pass the effective open/close (body
+ * value if present, else the stored record's value) so a PATCH that only
+ * touches one side is still checked against the other's stored value.
+ * Writes the same error under BOTH openDate and closeDate per the house
+ * error shape. */
+export function checkEpochOrder(
+  open: number | null | undefined,
+  close: number | null | undefined,
+  errors: Record<string, string>,
+): void {
+  if (!isEpochOrderValid(open, close)) {
+    errors.openDate = "openDate must be before or equal to closeDate";
+    errors.closeDate = "closeDate must be after or equal to openDate";
+  }
 }
 
 /** DEC-082: ?round= query param, defaulting to the plan's current round.

@@ -13,6 +13,7 @@ import type { FormFieldDef, FormFieldRule } from "../../forms/types";
 import * as repo from "../../server/repo/forms";
 import type { FormFieldRow } from "../../server/repo/forms";
 import { listTracksForEvent } from "../../server/repo/events";
+import { isEpochMs, isEpochOrderValid } from "./validators"; // DEC-517
 import { DEC_300 } from "../../decisions";
 
 void DEC_300; // DELETE /api/v1/fields/:fieldId cascade-confirm below
@@ -100,15 +101,15 @@ formsRoutes.patch("/api/v1/forms/:formId", requireOrganizer, csrfJson, async (c)
     }
   }
   if (body.openDate !== undefined) {
-    if (body.openDate !== null && typeof body.openDate !== "number") {
-      errors.openDate = "must be a ms-epoch number";
+    if (body.openDate !== null && !isEpochMs(body.openDate)) {
+      errors.openDate = "must be a ms-epoch integer";
     } else {
       patch.openDate = body.openDate;
     }
   }
   if (body.closeDate !== undefined) {
-    if (body.closeDate !== null && typeof body.closeDate !== "number") {
-      errors.closeDate = "must be a ms-epoch number";
+    if (body.closeDate !== null && !isEpochMs(body.closeDate)) {
+      errors.closeDate = "must be a ms-epoch integer";
     } else {
       patch.closeDate = body.closeDate;
     }
@@ -128,6 +129,19 @@ formsRoutes.patch("/api/v1/forms/:formId", requireOrganizer, csrfJson, async (c)
       }
     } else {
       patch.tracks = null;
+    }
+  }
+
+  // DEC-517: order check against the MERGED post-patch state -- whichever
+  // side the body omits falls back to the form's already-stored value, so a
+  // PATCH touching only closeDate is still checked against the stored
+  // openDate.
+  if (Object.keys(errors).length === 0) {
+    const effectiveOpen = patch.openDate !== undefined ? patch.openDate : form.openDate;
+    const effectiveClose = patch.closeDate !== undefined ? patch.closeDate : form.closeDate;
+    if (!isEpochOrderValid(effectiveOpen, effectiveClose)) {
+      errors.openDate = "openDate must be before or equal to closeDate";
+      errors.closeDate = "closeDate must be after or equal to openDate";
     }
   }
 
