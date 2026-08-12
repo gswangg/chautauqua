@@ -10,6 +10,7 @@ import {
   gradePerfCheck,
   joinIcsIds,
   planPerfPages,
+  resolvePerfProfileName,
 } from "../scripts/perf-smoke-lib";
 
 describe("computeP95", () => {
@@ -200,6 +201,37 @@ describe("assertContainsVevent", () => {
     expect(() => assertContainsVevent("schedule.ics 150 ids", "BEGIN:VCALENDAR\nEND:VCALENDAR")).toThrow(
       /schedule\.ics 150 ids/,
     );
+  });
+});
+
+describe("resolvePerfProfileName", () => {
+  it("defaults to 'default' when neither a flag nor env var is set", () => {
+    expect(resolvePerfProfileName([], {})).toBe("default");
+  });
+
+  it("resolves from the --profile= flag", () => {
+    expect(resolvePerfProfileName(["--profile=aie"], {})).toBe("aie");
+  });
+
+  it("resolves from the PERF_PROFILE env var when no flag is present", () => {
+    expect(resolvePerfProfileName([], { PERF_PROFILE: "aie" })).toBe("aie");
+  });
+
+  it("prefers the --profile= flag over the PERF_PROFILE env var", () => {
+    expect(resolvePerfProfileName(["--profile=default"], { PERF_PROFILE: "aie" })).toBe("default");
+  });
+
+  it("ignores unrelated argv entries and still finds the flag", () => {
+    expect(resolvePerfProfileName(["node", "scripts/perf-smoke.ts", "--profile=aie"], {})).toBe("aie");
+  });
+
+  it("throws naming the known profile names on an unknown --profile= value", () => {
+    expect(() => resolvePerfProfileName(["--profile=bogus"], {})).toThrow(/bogus/);
+    expect(() => resolvePerfProfileName(["--profile=bogus"], {})).toThrow(/default, aie/);
+  });
+
+  it("throws naming the known profile names on an unknown PERF_PROFILE env var", () => {
+    expect(() => resolvePerfProfileName([], { PERF_PROFILE: "bogus" })).toThrow(/bogus/);
   });
 });
 
