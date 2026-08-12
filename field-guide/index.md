@@ -13,47 +13,45 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   dialog contract, phone @700px; D1 binds PRIMITIVES (epoch-ms
   NUMBER); dates via event-time.ts OWNING EVENT's tz never toISOString;
   public lists LIMIT+COUNT(DISTINCT).
-- STAGE1-CLOSE w11-29 (DEC-420..519, compacted): ledger names its sha, FAIL-
-  unowned vs PENDING-OWNED; ONE email rule via findAccountUserId NEVER email
-  alone; universal rows graded from ENUMERATION never sample; pagination ONE
-  shape `page?:{limit,offset}`+count*+`id asc`; a cap the UI can't see LIES,
-  render `total`; atomic SQL beats read-then-write; event-clock strings carry
-  their event's tz; iCalendar PARAMs sanitized at SERIALIZER; hand-listed
-  manifests desync -- enumerate in a test; ONE likeContains escape-only incl.
-  unauth search; export dropping custom answers is the lock-in forbidden;
-  order checks read MERGED post-patch state.
-- STAGE1-CLOSE w30-33 (DEC-520..545, compacted): chunk VALUES by BOUND
-  PARAMS not row count; date-only field is a DAY LABEL; test mount-order
-  ADVERSARIALLY; conditional visibility is a FIXED POINT; offset-paged
-  ORDER BY ends in a unique column; slot gate lives in JOIN ON not WHERE;
-  hand-copied vocabularies drift -- IMPORT them; a helper with zero src
-  callers tests NOTHING.
-- STAGE1-CLOSE w34-36 (DEC-546..560, compacted): re-read the RATIONALE
-  before trusting a "PUBLIC BY DESIGN" verdict; a fallback by OMISSION is
-  not a decision. LIMIT obliges a TOTAL order-by + truthful count. A
-  uniqueIndex is a CONTRACT -- sweep every SELECT-then-INSERT; a merge's
-  dedupe picks a WINNER, a constraint can't. Two surfaces rendering one
-  fact where one uses raw ids means the id one is wrong. A notification
-  with nothing to click is half-built. A cron has no request -- give it
-  its own origin entry point that THROWS. An export you can't diff is
-  weak own-your-data.
-- STAGE1-CLOSE w37 (DEC-561..564, compacted): a render test whose MOCK is
-  invented proves NOTHING -- pin the SPA type to the server's OWN payload;
-  assert no rendered surface says "undefined". A queue that ERASES what
-  you finished can never show it stored. A `position`/`order` column
-  nobody sets on create is a dead column: assign max+1 INSIDE the insert.
-  A grid deriving columns from FIRST APPEARANCE invents an order the
-  producer already declared. Total order extends to every LIST A HUMAN
-  READS -- chunking dissolves a SQL order, so the JS sort is the tiebreak
-  of record.
-- STAGE1-CLOSE w38 (DEC-565..569): a nullable column inside a NEGATED set
-  predicate (NOT IN / !=) silently skips its NULL rows — read the row, decide
-  in JS, and export that comparison as a PURE fn, because a fake db doesn't
-  evaluate predicates so a throw-assert would pass on the broken code too.
-  Two functions whose docstring claims "the same semantics" must END in the
-  same helper. A completion count taken OUTSIDE the assigned set can exceed
-  its own denominator and silence the nudge that depends on it. Feedback a
-  speaker reads is the round that DECIDED THEM (max evaluated round per plan),
-  never every round stacked — and "current round" would silently blank the
-  talk dropped in round 1. A one-at-a-time gate in front of every public
-  surface is a volume bug, not a UI gap: bulk the writer, keep the gate.
+- STAGE1-CLOSE w11-33 (DEC-420..545, compacted): ledger names its sha; ONE
+  email rule via findAccountUserId; universal rows graded from ENUMERATION
+  never sample; pagination ONE shape `page?:{limit,offset}`+count*+`id asc`;
+  a cap the UI can't see LIES, render `total`; atomic SQL beats
+  read-then-write; event-clock strings carry their event's tz; hand-listed
+  manifests desync -- enumerate in a test; export dropping custom answers is
+  the lock-in forbidden; chunk VALUES by BOUND PARAMS not row count;
+  date-only field is a DAY LABEL; conditional visibility is a FIXED POINT;
+  offset-paged ORDER BY ends in a unique column; hand-copied vocabularies
+  drift -- IMPORT them; a helper with zero src callers tests NOTHING.
+- STAGE1-CLOSE w34-38 (DEC-546..569, compacted): re-read the RATIONALE
+  before trusting a "PUBLIC BY DESIGN" verdict. LIMIT obliges a TOTAL
+  order-by + truthful count. A uniqueIndex is a CONTRACT -- sweep every
+  SELECT-then-INSERT. A notification with nothing to click is half-built.
+  A cron has no request -- give it its own origin entry point that THROWS.
+  A render test whose MOCK is invented proves NOTHING -- pin the SPA type
+  to the server's OWN payload. A `position`/`order` column nobody sets on
+  create is dead: assign max+1 INSIDE the insert. A nullable column inside
+  a NEGATED set predicate (NOT IN / !=) silently skips its NULL rows --
+  decide in JS, export as a PURE fn. Two functions claiming "the same
+  semantics" must END in the same helper. A completion count taken OUTSIDE
+  the assigned set can exceed its own denominator. Feedback a speaker reads
+  is the round that DECIDED THEM, never every round stacked.
+- FINDINGS ROUND w1 (DEC-570..580): full suites are SERIALIZED through
+  scripts/with-test-lock.sh; workers run TARGETED tests only. A `div
+  draggable` is invisible to the a11y tree — the judge drives that tree, so
+  every card is a real <button> and cell targets appear only while armed
+  (tab order is not a place to be generous). A card with `height:100%` and
+  no `overflow` bleeds into the next row. Colour alone may not carry track
+  identity; olive or ink, and NAME the track in type. A fan-out with no
+  count is a cap the UI can't see: preview and queue must END in one
+  predicate builder. A comment thread belongs to the version CHAIN, not a
+  file row — a re-upload must not orphan the feedback that caused it. An
+  upload that navigates DISCARDS the form around it: one form, one submit,
+  or keep the panel mounted. A blank CSV cell is ABSENT DATA, never an
+  instruction to delete — and a JSON blob patch deletes every key the file
+  didn't mention. Guessed bottom padding under a fixed bar always clips
+  somewhere: `flex:1; min-height:0; overflow-y:auto` removes the guess. A
+  drill-in must resolve its own subject; trusting the loaded list makes the
+  button a no-op from any other view. A fidelity report is an OBSERVATION,
+  not a spec — "single-track data model" was wrong, and implementing it
+  literally would have been the round's fourth data-loss path.
