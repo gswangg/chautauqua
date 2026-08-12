@@ -2,11 +2,13 @@
 // CacheLike + KVStore (src/lib/draft.ts), so it unit-tests with fakes —
 // no real Cache API / KVNamespace required.
 
-import { describe, expect, it } from "vitest";
+import { Hono } from "hono";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   CLIENT_CACHE_CONTROL,
   PUBVER_KEY,
   bumpIfMutating,
+  bumpPublicVersionMiddleware,
   isIcsPath,
   readPublicVersion,
   servePublicGet,
@@ -14,6 +16,7 @@ import {
   type CacheLike,
 } from "../src/server/pubcache";
 import type { KVStore } from "../src/lib/draft";
+import type { AppEnv } from "../src/server/env";
 
 function fakeKv(initial: Record<string, string> = {}): KVStore & { store: Record<string, string> } {
   const store: Record<string, string> = { ...initial };
@@ -24,6 +27,25 @@ function fakeKv(initial: Record<string, string> = {}): KVStore & { store: Record
     },
     async put(key, value) {
       store[key] = value;
+    },
+    async delete(key) {
+      delete store[key];
+    },
+  };
+}
+
+/** DEC-427: a variant fake KV whose `put` always rejects, modeling a KV
+ * write failure at the external IO boundary — the passing `fakeKv` above is
+ * left untouched; this is a separate model. */
+function throwingPutKv(): KVStore & { store: Record<string, string> } {
+  const store: Record<string, string> = {};
+  return {
+    store,
+    async get(key) {
+      return key in store ? store[key]! : null;
+    },
+    async put() {
+      throw new Error("KV put failed (simulated)");
     },
     async delete(key) {
       delete store[key];
@@ -202,5 +224,70 @@ describe("schedule.ics bypass (via isIcsPath, exercised as the middleware would)
     const path = "/e/foo/schedule.ics?ids=1,2,3";
     const url = new URL(`https://x.test${path}`);
     expect(isIcsPath(url.pathname)).toBe(true);
+  });
+});
+
+describe("bumpPublicVersionMiddleware (DEC-427)", () => {
+  function buildApp(kv: KVStore) {
+    const app = new Hono<AppEnv>();
+    app.use("*", bumpPublicVersionMiddleware);
+    app.post("/ok", (c) => c.text("done", 200));
+    app.post("/redirect", (c) => c.redirect("/somewhere", 302));
+    return { app, env: { KV: kv } as unknown as AppEnv["Bindings"] };
+  }
+
+  let errorSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    errorSpy.mockRestore();
+  });
+
+  it("happy path: put succeeds and the version is rewritten", async () => {
+    const kv = fakeKv({ [PUBVER_KEY]: "v0" });
+    const { app, env } = buildApp(kv);
+
+    const res = await app.request("/ok", { method: "POST" }, env);
+
+    expect(res.status).toBe(200);
+    expect(kv.store[PUBVER_KEY]).not.toBe("v0");
+    expect(errorSpy).not.toHaveBeenCalled();
+  });
+
+  it("a failed bump does not turn a 200 into a 500", async () => {
+    const kv = throwingPutKv();
+    const { app, env } = buildApp(kv);
+
+    const res = await app.request("/ok", { method: "POST" }, env);
+
+    expect(res.status).toBe(200);
+    expect(await res.text()).toBe("done");
+    expect(errorSpy).toHaveBeenCalledTimes(1);
+    expect(errorSpy.mock.calls[0]?.[0]).toContain(PUBVER_KEY);
+  });
+
+  it("a failed bump does not clobber a 302 the handler produced", async () => {
+    const kv = throwingPutKv();
+    const { app, env } = buildApp(kv);
+
+    const res = await app.request("/redirect", { method: "POST", redirect: "manual" }, env);
+
+    expect(res.status).toBe(302);
+    expect(errorSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("a missing KV binding still throws (configuration bug, not IO failure)", async () => {
+    const app = new Hono<AppEnv>();
+    app.use("*", bumpPublicVersionMiddleware);
+    app.post("/ok", (c) => c.text("done", 200));
+    app.onError((err, c) => c.text(`error: ${(err as Error).message}`, 500));
+
+    const res = await app.request("/ok", { method: "POST" }, {} as unknown as AppEnv["Bindings"]);
+
+    expect(res.status).toBe(500);
+    expect(await res.text()).toContain("requires the KV binding");
   });
 });
