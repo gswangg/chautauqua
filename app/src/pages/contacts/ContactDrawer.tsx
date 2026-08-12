@@ -217,9 +217,10 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
     label: string,
     value: string,
     setValue: (v: string) => void,
-    opts: { multiline?: boolean; type?: string } = {},
+    opts: { multiline?: boolean; type?: string; placeholder?: string } = {},
   ) {
     const editing = editingField === key;
+    const placeholder = opts.placeholder ?? 'Not set';
     return (
       <RecordRow
         key={key}
@@ -236,6 +237,7 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
               value={value}
               onChange={(e) => setValue(e.target.value)}
               onBlur={() => setEditingField(null)}
+              placeholder={placeholder}
             />
           ) : (
             <input
@@ -245,6 +247,7 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
               value={value}
               onChange={(e) => setValue(e.target.value)}
               onBlur={() => setEditingField(null)}
+              placeholder={placeholder}
             />
           )
         }
@@ -258,7 +261,7 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
         <div className="chq-contacts-drawer-head">
           {!loading && contact && (
             <div className="chq-contacts-drawer-heading">
-              <span className="chq-contacts-drawer-name">
+              <span className="chq-contacts-drawer-name chq-modal-title">
                 {firstName} {lastName}
               </span>
               <span className="chq-meta">
@@ -285,15 +288,18 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
         {!loading && contact && (
           <>
             <div className="chq-contacts-record">
-              {textField('firstName', 'First name', firstName, setFirstName)}
-              {textField('lastName', 'Last name', lastName, setLastName)}
-              {textField('email', 'Email', email, setEmail, { type: 'email' })}
-              {textField('company', 'Company', company, setCompany)}
-              {textField('title', 'Title', title, setTitle)}
-              {textField('phone', 'Phone', phone, setPhone)}
-              {textField('notes', 'Notes', notes, setNotes, { multiline: true })}
-              {textField('bio', 'Bio', bio, setBio, { multiline: true })}
-              {textField('travel', 'Travel & logistics', travel, setTravel, { multiline: true })}
+              {textField('firstName', 'First name', firstName, setFirstName, { placeholder: 'Priya' })}
+              {textField('lastName', 'Last name', lastName, setLastName, { placeholder: 'Raman' })}
+              {textField('email', 'Email', email, setEmail, { type: 'email', placeholder: 'priya.raman@example.com' })}
+              {textField('company', 'Company', company, setCompany, { placeholder: 'Latticework Systems' })}
+              {textField('title', 'Title', title, setTitle, { placeholder: 'Principal Engineer' })}
+              {textField('phone', 'Phone', phone, setPhone, { placeholder: '+1 555 010 1234' })}
+              {textField('notes', 'Notes', notes, setNotes, { multiline: true, placeholder: 'Internal notes about this contact' })}
+              {textField('bio', 'Bio', bio, setBio, { multiline: true, placeholder: 'A short speaker bio' })}
+              {textField('travel', 'Travel & logistics', travel, setTravel, {
+                multiline: true,
+                placeholder: 'Flight details, hotel, dietary needs...',
+              })}
 
               <div className="chq-contacts-record-row">
                 <span className="chq-contacts-record-label">Headshot</span>
@@ -319,6 +325,7 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
                       ref={headshotInputRef}
                       onChange={uploadHeadshot}
                       disabled={headshotUploading}
+                      placeholder="headshot.jpg"
                     />
                   </label>
                   {headshotUploading && <p>Uploading...</p>}
@@ -343,6 +350,7 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
                           aria-label={`Custom field ${index + 1} key`}
                           value={row.key}
                           onChange={(e) => updateRow(index, { key: e.target.value })}
+                          placeholder="T-shirt size"
                         />
                       ) : (
                         row.key || <span className="chq-contacts-record-empty">{EM_DASH}</span>
@@ -356,6 +364,7 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
                           value={row.value}
                           onChange={(e) => updateRow(index, { value: e.target.value })}
                           onBlur={() => setEditingField(null)}
+                          placeholder="Large"
                         />
                         <button type="button" className="chq-btn chq-btn-secondary" onClick={() => removeRow(index)}>
                           Remove

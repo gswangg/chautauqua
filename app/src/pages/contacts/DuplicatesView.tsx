@@ -130,7 +130,12 @@ export function DuplicatesView({ onMerged }: Props) {
       {mergeGroup && keepContact && (
         <div className="chq-scrim" role="dialog" aria-modal="true" aria-label="Merge duplicates" onClick={handleScrimClick}>
           <div className="chq-modal">
-            <h3 className="chq-page-title">Merge contacts</h3>
+            <div className="chq-modal-head">
+              <h3 className="chq-page-title chq-modal-title">Merge contacts</h3>
+              <button type="button" className="chq-btn chq-btn-tertiary" onClick={() => setMergeGroup(null)} disabled={busy}>
+                Close
+              </button>
+            </div>
             <p className="chq-contacts-merge-intro">
               {groupIndex >= 0 ? `${groupIndex + 1} of ${groups.length} pairs · ` : ''}
               Pick which record to keep. History from the other record moves onto the kept record.

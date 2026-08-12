@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent, type MouseEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import {
   DELIVERABLE_KINDS,
   TASK_KINDS,
@@ -7,7 +7,7 @@ import {
   type NewTaskInput,
   type TaskKind,
 } from './types';
-import { useEscapeKey } from '../../lib/useEscapeKey';
+import { ModalFrame } from '../../components/ModalFrame';
 import { dateInputToMs } from '../../lib/dates';
 
 interface TaskModalProps {
@@ -86,26 +86,27 @@ export function TaskModal({ onCancel, onSubmit, forms }: TaskModalProps) {
     }
   }
 
-  useEscapeKey(true, onCancel);
-
-  function handleScrimClick(e: MouseEvent<HTMLDivElement>) {
-    if (e.target === e.currentTarget && !submitting) onCancel();
-  }
-
   return (
-    <div className="chq-scrim" role="dialog" aria-modal="true" aria-label="New task" onClick={handleScrimClick}>
-      <form className="chq-modal chq-speakers-modal" onSubmit={handleSubmit}>
-        <div className="chq-speakers-modal-head">
-          <div className="chq-speakers-modal-head-titles">
-            <h2 className="chq-speakers-modal-title">New task</h2>
-            <span className="chq-summary">Applies to every accepted speaker</span>
-          </div>
-          <button type="button" className="chq-btn chq-btn-tertiary" onClick={onCancel} disabled={submitting}>
-            Close
+    <ModalFrame
+      as="form"
+      onSubmit={handleSubmit}
+      title="New task"
+      subtitle="Applies to every accepted speaker"
+      onClose={onCancel}
+      closeDisabled={submitting}
+      modalClassName="chq-speakers-modal"
+      actions={
+        <>
+          <button type="submit" className="chq-btn chq-btn-primary" disabled={submitting}>
+            {submitting ? 'Creating...' : 'Create the task'}
           </button>
-        </div>
-
-        {error && <div className="chq-error">{error}</div>}
+          <button type="button" className="chq-btn chq-btn-secondary" onClick={onCancel} disabled={submitting}>
+            Cancel
+          </button>
+        </>
+      }
+    >
+      {error && <div className="chq-error">{error}</div>}
 
         <div className="chq-speakers-modal-field">
           <span className="chq-speakers-modal-label" id="task-kind-label">
@@ -128,17 +129,35 @@ export function TaskModal({ onCancel, onSubmit, forms }: TaskModalProps) {
 
         <label className="chq-speakers-modal-field">
           <span className="chq-speakers-modal-label">Task</span>
-          <input className="chq-input" type="text" value={title} onChange={(e) => setTitle(e.target.value)} required />
+          <input
+            className="chq-input"
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Submit your slides"
+            required
+          />
         </label>
 
         <label className="chq-speakers-modal-field">
           <span className="chq-speakers-modal-label">Description</span>
-          <textarea className="chq-textarea" value={description} onChange={(e) => setDescription(e.target.value)} />
+          <textarea
+            className="chq-textarea"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Optional instructions shown to the speaker"
+          />
         </label>
 
         <label className="chq-speakers-modal-field">
           <span className="chq-speakers-modal-label">Due date</span>
-          <input className="chq-input" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+          <input
+            className="chq-input"
+            type="date"
+            value={dueDate}
+            onChange={(e) => setDueDate(e.target.value)}
+            placeholder="2026-05-01"
+          />
         </label>
 
         {kind === 'form' && (
@@ -199,16 +218,6 @@ export function TaskModal({ onCancel, onSubmit, forms }: TaskModalProps) {
           />
           Assign to all accepted speakers
         </label>
-
-        <div className="chq-modal-actions">
-          <button type="submit" className="chq-btn chq-btn-primary" disabled={submitting}>
-            {submitting ? 'Creating...' : 'Create the task'}
-          </button>
-          <button type="button" className="chq-btn chq-btn-secondary" onClick={onCancel} disabled={submitting}>
-            Cancel
-          </button>
-        </div>
-      </form>
-    </div>
+    </ModalFrame>
   );
 }

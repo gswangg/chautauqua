@@ -69,7 +69,16 @@ describe("dialog contract (DEC-631)", () => {
     expect(offenders, `native dialog calls found:\n${offenders.join("\n")}`).toEqual([]);
   });
 
-  it("finds at least 15 dialogs, and every one carries aria-modal + an accessible name", () => {
+  // DEC-651: ModalFrame (app/src/components/ModalFrame.tsx) now owns the
+  // role="dialog" markup for most modals in the app -- callers pass a
+  // title/onClose and no longer write their own chq-scrim/role="dialog"
+  // JSX. That collapses many previously-duplicated per-file occurrences
+  // into ONE (ModalFrame's own tag), so the floor here guards against the
+  // glob matching nothing rather than against per-page duplication; the
+  // remaining still-standalone dialogs (ContactDrawer, PipelineBoard,
+  // ImportWizard, DuplicatesView, PhoneAgenda, ViewsDropdown, App.tsx) plus
+  // ModalFrame itself keep the count comfortably above zero.
+  it("finds at least 8 dialogs, and every one carries aria-modal + an accessible name", () => {
     const dialogTags: string[] = [];
     const violations: string[] = [];
     for (const file of scannedFiles) {
@@ -84,7 +93,7 @@ describe("dialog contract (DEC-631)", () => {
         }
       }
     }
-    expect(dialogTags.length).toBeGreaterThanOrEqual(15);
+    expect(dialogTags.length).toBeGreaterThanOrEqual(8);
     expect(violations, `dialog missing aria-modal/accessible name:\n${violations.join("\n")}`).toEqual([]);
   });
 });

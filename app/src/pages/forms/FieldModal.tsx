@@ -1,7 +1,7 @@
-import { useState, type FormEvent, type MouseEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { deserializeRule, ruleReferenceCandidates, serializeRule, type RuleBuilderState } from './logic';
 import { FIELD_KINDS, RULE_OPS, kindLabel, type FormField, type FormFieldKind, type FormFieldSection } from './types';
-import { useEscapeKey } from '../../lib/useEscapeKey';
+import { ModalFrame } from '../../components/ModalFrame';
 
 export interface FieldModalInput {
   section: FormFieldSection;
@@ -72,24 +72,26 @@ export function FieldModal({ field, allFields, onCancel, onSubmit }: FieldModalP
     }
   }
 
-  useEscapeKey(true, onCancel);
-
-  function handleScrimClick(e: MouseEvent<HTMLDivElement>) {
-    if (e.target === e.currentTarget && !submitting) onCancel();
-  }
-
   return (
-    <div
-      className="chq-scrim"
-      role="dialog"
-      aria-modal="true"
-      aria-label={field ? 'Edit field' : 'New field'}
-      onClick={handleScrimClick}
+    <ModalFrame
+      as="form"
+      onSubmit={handleSubmit}
+      title={field ? 'Edit field' : 'New field'}
+      onClose={onCancel}
+      closeDisabled={submitting}
+      modalClassName="chq-forms-field-modal"
+      actions={
+        <>
+          <button type="submit" className="chq-btn chq-btn-primary" disabled={submitting}>
+            {submitting ? 'Saving...' : 'Save'}
+          </button>
+          <button type="button" className="chq-btn chq-btn-secondary" onClick={onCancel} disabled={submitting}>
+            Cancel
+          </button>
+        </>
+      }
     >
-      <form className="chq-modal chq-forms-field-modal" onSubmit={handleSubmit}>
-        <h2>{field ? 'Edit field' : 'New field'}</h2>
-
-        {error && <div className="chq-error-banner">{error}</div>}
+      {error && <div className="chq-error-banner">{error}</div>}
 
         <label className="chq-field">
           Section
@@ -112,12 +114,24 @@ export function FieldModal({ field, allFields, onCancel, onSubmit }: FieldModalP
 
         <label className="chq-field">
           Label
-          <input className="chq-input" type="text" value={label} onChange={(e) => setLabel(e.target.value)} required />
+          <input
+            className="chq-input"
+            type="text"
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            placeholder="Talk abstract"
+            required
+          />
         </label>
 
         <label className="chq-field">
           Help text
-          <textarea className="chq-textarea" value={helpText} onChange={(e) => setHelpText(e.target.value)} />
+          <textarea
+            className="chq-textarea"
+            value={helpText}
+            onChange={(e) => setHelpText(e.target.value)}
+            placeholder="Shown beneath the field, e.g. 300 words max"
+          />
         </label>
 
         <label className="chq-checkbox-label">
@@ -128,7 +142,12 @@ export function FieldModal({ field, allFields, onCancel, onSubmit }: FieldModalP
         {kind === 'dropdown' && (
           <label className="chq-field">
             Options (one per line)
-            <textarea className="chq-textarea" value={optionsText} onChange={(e) => setOptionsText(e.target.value)} />
+            <textarea
+              className="chq-textarea"
+              value={optionsText}
+              onChange={(e) => setOptionsText(e.target.value)}
+              placeholder={'Beginner\nIntermediate\nAdvanced'}
+            />
           </label>
         )}
 
@@ -163,21 +182,17 @@ export function FieldModal({ field, allFields, onCancel, onSubmit }: FieldModalP
               </label>
               <label className="chq-field">
                 Value{rule.op === 'in' ? ' (comma-separated)' : ''}
-                <input className="chq-input" type="text" value={rule.value} onChange={(e) => setRule({ ...rule, value: e.target.value })} />
+                <input
+                  className="chq-input"
+                  type="text"
+                  value={rule.value}
+                  onChange={(e) => setRule({ ...rule, value: e.target.value })}
+                  placeholder="Keynote"
+                />
               </label>
             </>
           )}
         </fieldset>
-
-        <div className="chq-modal-actions">
-          <button type="button" className="chq-btn chq-btn-secondary" onClick={onCancel} disabled={submitting}>
-            Cancel
-          </button>
-          <button type="submit" className="chq-btn chq-btn-primary" disabled={submitting}>
-            {submitting ? 'Saving...' : 'Save'}
-          </button>
-        </div>
-      </form>
-    </div>
+    </ModalFrame>
   );
 }

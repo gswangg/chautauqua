@@ -1,5 +1,5 @@
-import type { MouseEvent, ReactNode } from 'react';
-import { useEscapeKey } from '../lib/useEscapeKey';
+import type { ReactNode } from 'react';
+import { ModalFrame } from './ModalFrame';
 import './confirm-dialog.css';
 
 interface ConfirmDialogProps {
@@ -14,10 +14,9 @@ interface ConfirmDialogProps {
 }
 
 // DEC-631: the ONE dialog contract for confirmation prompts, replacing
-// window.confirm/prompt/alert everywhere. Matches the shape every other
-// modal already uses (chq-scrim + chq-modal, useEscapeKey, scrim-click
-// cancel) so it composes with the rest of the app rather than inventing a
-// second contract.
+// window.confirm/prompt/alert everywhere. Built on ModalFrame (DEC-651) so
+// it shares the bordered header/Close control and PRIMARY-first action
+// order with every other modal in the app.
 export function ConfirmDialog({
   title,
   body,
@@ -28,21 +27,14 @@ export function ConfirmDialog({
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
-  useEscapeKey(!pending, onCancel);
-
-  function handleScrimClick(e: MouseEvent<HTMLDivElement>) {
-    if (e.target === e.currentTarget && !pending) onCancel();
-  }
-
   return (
-    <div className="chq-scrim" role="dialog" aria-modal="true" aria-label={title} onClick={handleScrimClick}>
-      <div className="chq-modal chq-confirm-modal">
-        <h2 className="chq-modal-title">{title}</h2>
-        {body !== undefined && <div className="chq-confirm-body">{body}</div>}
-        <div className="chq-modal-actions">
-          <button type="button" className="chq-btn chq-btn-secondary" onClick={onCancel} disabled={pending}>
-            {cancelLabel}
-          </button>
+    <ModalFrame
+      title={title}
+      onClose={onCancel}
+      closeDisabled={pending}
+      modalClassName="chq-confirm-modal"
+      actions={
+        <>
           <button
             type="button"
             className={destructive ? 'chq-btn chq-confirm-btn-danger' : 'chq-btn chq-btn-primary'}
@@ -51,8 +43,13 @@ export function ConfirmDialog({
           >
             {confirmLabel}
           </button>
-        </div>
-      </div>
-    </div>
+          <button type="button" className="chq-btn chq-btn-secondary" onClick={onCancel} disabled={pending}>
+            {cancelLabel}
+          </button>
+        </>
+      }
+    >
+      {body !== undefined && <div className="chq-confirm-body">{body}</div>}
+    </ModalFrame>
   );
 }

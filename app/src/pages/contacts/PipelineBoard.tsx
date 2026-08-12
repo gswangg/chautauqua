@@ -261,7 +261,12 @@ function EnrollDialog({ alreadyEnrolledContactIds, onClose, onEnrolled }: Enroll
   return (
     <div className="chq-scrim" role="dialog" aria-modal="true" aria-label="Enroll contact" onClick={handleScrimClick}>
       <div className="chq-modal">
-        <h3 className="chq-page-title">Enroll a contact</h3>
+        <div className="chq-modal-head">
+          <h3 className="chq-page-title chq-modal-title">Enroll a contact</h3>
+          <button type="button" className="chq-btn chq-btn-tertiary" onClick={onClose} disabled={busy}>
+            Close
+          </button>
+        </div>
         {error && <div className="chq-error">{error}</div>}
         <label className="chq-contacts-import-field">
           Contact
@@ -351,7 +356,7 @@ function EntryDetailPanel({ entryId, onClose, onChanged }: EntryDetailPanelProps
         {!detail && <p>Loading...</p>}
         {detail && (
           <>
-            <h3 className="chq-page-title">
+            <h3 className="chq-page-title chq-modal-title">
               {detail.contact.firstName} {detail.contact.lastName}
             </h3>
             <p className="chq-contacts-pipeline-caption">
@@ -363,7 +368,12 @@ function EntryDetailPanel({ entryId, onClose, onChanged }: EntryDetailPanelProps
             <div className="chq-contacts-pipeline-notes">
               <label className="chq-contacts-import-field">
                 Add a note
-                <textarea className="chq-textarea" value={note} onChange={(e) => setNote(e.target.value)} />
+                <textarea
+                  className="chq-textarea"
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  placeholder="Followed up by phone, waiting on their reply"
+                />
               </label>
               <button type="button" className="chq-btn chq-btn-secondary" disabled={busy || note.trim() === ''} onClick={saveNote}>
                 Save note
