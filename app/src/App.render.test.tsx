@@ -33,7 +33,7 @@ describe('App catch-all route', () => {
     render(<App />);
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Page not found' })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: "That page isn't here" })).toBeInTheDocument();
     });
 
     expect(screen.getByText('/this-page-does-not-exist', { exact: false })).toBeInTheDocument();
