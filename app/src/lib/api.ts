@@ -3,6 +3,8 @@
 // ApiError on any error envelope. This is the ONLY module the SPA uses to
 // talk to /api/v1 — page code must never call fetch() directly.
 
+import { bumpMutationVersion } from './mutationSignal';
+
 const API_PREFIX = '/api/v1';
 
 export type ApiErrorCode = 'unauthorized' | 'forbidden' | 'not_found' | 'invalid' | 'conflict' | 'internal';
@@ -81,6 +83,13 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
       throw new ApiError(res.status, body.error.code, body.error.message, body.error.fields);
     }
     throw new ApiError(res.status, 'internal', `Request failed with status ${res.status}`);
+  }
+
+  // DEC-700: a successful mutation bumps the shared signal so any
+  // exception badge derived from server state (e.g. nav's late/clash
+  // counts) knows to refetch. GET never bumps — that would loop.
+  if (method !== 'GET') {
+    bumpMutationVersion();
   }
 
   return body as T;
