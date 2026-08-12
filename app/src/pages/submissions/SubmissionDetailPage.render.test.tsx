@@ -76,10 +76,17 @@ describe('SubmissionDetailPage render smoke: inline edit + content-status contro
 
     fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
     const titleInput = screen.getByLabelText('Title');
-    fireEvent.change(titleInput, { target: { value: 'Updated Title' } });
+    expect(titleInput).toHaveClass('chq-input');
     const abstractInput = screen.getByLabelText('Abstract');
+    expect(abstractInput).toHaveClass('chq-textarea');
+    fireEvent.change(titleInput, { target: { value: 'Updated Title' } });
     fireEvent.change(abstractInput, { target: { value: 'Updated description' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    // DEC-406: every rendered button carries a shell chq- class.
+    for (const button of screen.getAllByRole('button')) {
+      expect(button.className).toEqual(expect.stringContaining('chq-'));
+    }
 
     await waitFor(() => {
       expect(patchMock).toHaveBeenCalled();
@@ -106,7 +113,9 @@ describe('SubmissionDetailPage render smoke: inline edit + content-status contro
       expect(screen.getByText('Content: pending')).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Approve content' }));
+    const approveButton = screen.getByRole('button', { name: 'Approve content' });
+    expect(approveButton).toHaveClass('chq-btn-primary');
+    fireEvent.click(approveButton);
 
     await waitFor(() => {
       expect(contentStatusMock).toHaveBeenCalled();
