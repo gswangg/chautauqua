@@ -38,13 +38,31 @@ function toTemplateRow(row: typeof schema.emailTemplate.$inferSelect): EmailTemp
   };
 }
 
-export async function listTemplates(db: Db, eventId: string): Promise<EmailTemplateRow[]> {
-  const rows = await db
+/** DEC-461: optional trailing page param — absent means today's unbounded
+ * behavior (internal callers unchanged). `id asc` is a deterministic
+ * tiebreak after name for stable pagination across pages. */
+export async function listTemplates(
+  db: Db,
+  eventId: string,
+  page?: { limit: number; offset: number },
+): Promise<EmailTemplateRow[]> {
+  const base = db
     .select()
     .from(schema.emailTemplate)
     .where(eq(schema.emailTemplate.eventId, eventId))
-    .orderBy(asc(schema.emailTemplate.name));
+    .orderBy(asc(schema.emailTemplate.name), asc(schema.emailTemplate.id));
+  const rows = page ? await base.limit(page.limit).offset(page.offset) : await base;
   return rows.map(toTemplateRow);
+}
+
+/** DEC-461 sibling count fn for the true `total` alongside a bounded
+ * listTemplates page. */
+export async function countTemplates(db: Db, eventId: string): Promise<number> {
+  const rows = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(schema.emailTemplate)
+    .where(eq(schema.emailTemplate.eventId, eventId));
+  return Number(rows[0]?.count ?? 0);
 }
 
 export async function findTemplateById(db: Db, id: string): Promise<EmailTemplateRow | null> {
