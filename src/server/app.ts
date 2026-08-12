@@ -9,6 +9,7 @@ import type { AppEnv } from "./env";
 import { makeDb } from "./context";
 import { sessionLoader, noStoreApi } from "./middleware";
 import { registerErrorHandler } from "./http";
+import { registerNotFoundHandler } from "./not-found";
 import { shouldMountDevMailbox } from "../routes/dev/mailbox";
 import { bumpPublicVersionMiddleware } from "./pubcache";
 import { ApiError } from "./http";
@@ -47,6 +48,11 @@ export function createBaseApp(): Hono<AppEnv> {
   app.get("/health", (c) => c.json({ ok: true }));
 
   app.get("/api/v1", (c) => c.json({ name: "chautauqua", version: "v1" }));
+
+  // DEC-635: one 404 handler for the whole app -- last, so every mounted
+  // route sub-app (src/index.ts, DEC-012) still gets first crack at
+  // matching.
+  registerNotFoundHandler(app);
 
   return app;
 }
