@@ -12,6 +12,7 @@ import { textToHtml } from "../../mail/render";
 import { hashPassword } from "../../auth/password";
 import * as repo from "../../server/repo/users";
 import { listEventsForOrg } from "../../server/repo/events";
+import { clampPage, clampPerPage } from "../../lib/pagination";
 import { DEC_239 } from "../../decisions";
 
 export const usersRoutes = new Hono<AppEnv>();
@@ -47,8 +48,13 @@ usersRoutes.get("/api/v1/users", requireOrganizer, async (c) => {
   if (role !== undefined && !ALLOWED_ROLES.has(role)) {
     throw new ApiError("invalid", "role must be 'reviewer' or 'organizer'", { role: "invalid" });
   }
-  const items = await repo.listOrgUsers(c.var.db, auth.orgId, role);
-  return c.json({ items, total: items.length, page: 1, perPage: items.length || 1 });
+  const page = clampPage(c.req.query("page"));
+  const perPage = clampPerPage(c.req.query("perPage") ?? 200);
+  const [items, total] = await Promise.all([
+    repo.listOrgUsers(c.var.db, auth.orgId, role, { limit: perPage, offset: (page - 1) * perPage }),
+    repo.countOrgUsers(c.var.db, auth.orgId, role),
+  ]);
+  return c.json({ items, total, page, perPage });
 });
 
 usersRoutes.post("/api/v1/users", requireOrganizer, csrfJson, async (c) => {

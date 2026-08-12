@@ -49,7 +49,8 @@ function makeChain(rows: unknown[]) {
     innerJoin: () => chain,
     where: () => chain,
     orderBy: () => chain,
-    limit: async () => rows,
+    limit: () => chain,
+    offset: () => chain,
     then: (resolve: (v: unknown[]) => void) => resolve(rows),
   };
   return chain;
@@ -111,6 +112,7 @@ describe("GET /api/v1/pipeline", () => {
   it("lists entries joined with contact fields", async () => {
     const { db } = fakeDb([
       [ENTRY_ROW], // listPipelineForOrg: pipeline_entry rows
+      [{ count: 1 }], // countPipelineForOrg
       [CONTACT_ORG_A], // listPipelineForOrg: contact batch
     ]);
     const app = appWithDbAndAuth(db, ORGANIZER_A);
