@@ -613,7 +613,7 @@
 .chq-review-criteria-locked-notice {
   font-size: 13px;
   color: var(--chq-ink-2);
-  background: var(--chq-surface-2, #f4f2ee);
+  background: var(--chq-surface-sunk);
   border: 1px solid var(--chq-hairline);
   border-radius: 4px;
   padding: 9px 12px;
