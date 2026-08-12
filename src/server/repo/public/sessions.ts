@@ -74,28 +74,66 @@ function searchCondition(q: string) {
   );
 }
 
-/** Distinct, visibility-gated, optionally track-filtered and/or keyword-
+/** DEC-634: day-filter join condition — joins schedule_slot to the
+ * submission being tested and applies the SAME event-window rule
+ * (slotWithinEventRange, DEC-318) that already decides whether a session
+ * reports a day at all in hydrateSessions below, plus the requested day.
+ * A submission with no in-window slot never joins a row here, so it
+ * matches no day filter — identical to how it renders unscheduled. Callers
+ * innerJoin schema.scheduleSlot on this condition (never a post-filter),
+ * so LIMIT/OFFSET and COUNT see the identical predicate. */
+function dayFilterJoinCondition(event: Pick<PublicEvent, "startDate" | "endDate">, day: string) {
+  return and(
+    eq(schema.scheduleSlot.submissionId, schema.submission.id),
+    slotWithinEventRange(event),
+    eq(schema.scheduleSlot.day, day),
+  );
+}
+
+/** Distinct, visibility-gated, optionally track/day-filtered and/or keyword-
  * filtered submission ids for an event, ordered by title — the stable
  * pagination order for the sessions list. Track filtering (DEC-080) is a
  * single innerJoin on submission_track with eq(trackId) in the main query
- * — one bound param, no id list at all. Keyword search (EMB-02) joins
- * contact (already reachable via participant, which every query here joins
- * for the visibility gate) and filters server-side only — the visibility
- * gate conditions are always included alongside it, never bypassed.
+ * — one bound param, no id list at all. Day filtering (DEC-634) is a single
+ * innerJoin on schedule_slot via dayFilterJoinCondition — same event-window
+ * rule as hydrateSessions, so a session with no in-window slot never
+ * matches. Keyword search (EMB-02) joins contact (already reachable via
+ * participant, which every query here joins for the visibility gate) and
+ * filters server-side only — the visibility gate conditions are always
+ * included alongside it, never bypassed.
  * DEC-418: bounded by `limit` (SQL LIMIT, not a JS .slice()) — at SPEC.md:73-76
  * scale the unbounded query would return thousands of rows from D1 to
  * render 24 cards. Callers pair this with countVisibleSubmissions() for the
  * page total. */
 async function getVisibleSubmissionIdsOrdered(
   db: Db,
-  eventId: string,
+  event: Pick<PublicEvent, "id" | "startDate" | "endDate">,
   trackId: string | null,
   q: string | null,
+  day: string | null,
   limit: number,
   offset: number,
 ): Promise<Array<{ id: string }>> {
-  const baseConditions = [eq(schema.submission.eventId, eventId), visibleSessionConditions()];
+  const baseConditions = [eq(schema.submission.eventId, event.id), visibleSessionConditions()];
   if (q) baseConditions.push(searchCondition(q));
+
+  if (trackId && day) {
+    const query = db
+      .selectDistinct({ id: schema.submission.id, title: schema.submission.title })
+      .from(schema.submission)
+      .leftJoin(
+        schema.participant,
+        and(eq(schema.participant.submissionId, schema.submission.id), visibleParticipantConditions()),
+      )
+      .leftJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
+      .innerJoin(schema.submissionTrack, eq(schema.submissionTrack.submissionId, schema.submission.id))
+      .innerJoin(schema.scheduleSlot, dayFilterJoinCondition(event, day))
+      .where(and(...baseConditions, eq(schema.submissionTrack.trackId, trackId)))
+      .orderBy(asc(schema.submission.title), asc(schema.submission.id))
+      .limit(limit);
+    const rows = await (offset > 0 ? query.offset(offset) : query);
+    return rows;
+  }
 
   if (trackId) {
     const query = db
@@ -122,6 +160,23 @@ async function getVisibleSubmissionIdsOrdered(
     return rows;
   }
 
+  if (day) {
+    const query = db
+      .selectDistinct({ id: schema.submission.id, title: schema.submission.title })
+      .from(schema.submission)
+      .leftJoin(
+        schema.participant,
+        and(eq(schema.participant.submissionId, schema.submission.id), visibleParticipantConditions()),
+      )
+      .leftJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
+      .innerJoin(schema.scheduleSlot, dayFilterJoinCondition(event, day))
+      .where(and(...baseConditions))
+      .orderBy(asc(schema.submission.title), asc(schema.submission.id))
+      .limit(limit);
+    const rows = await (offset > 0 ? query.offset(offset) : query);
+    return rows;
+  }
+
   const query = db
     .selectDistinct({ id: schema.submission.id, title: schema.submission.title })
     .from(schema.submission)
@@ -138,19 +193,35 @@ async function getVisibleSubmissionIdsOrdered(
   return rows;
 }
 
-/** Total count of distinct visibility-gated (optionally track/keyword
+/** Total count of distinct visibility-gated (optionally track/day/keyword
  * filtered) submissions for an event — the identical joins and where-
  * conditions as getVisibleSubmissionIdsOrdered(), but a single count(distinct)
  * row instead of materializing every id. Used alongside the bounded id query
  * above to compute the page total without an unbounded scan. */
 async function countVisibleSubmissions(
   db: Db,
-  eventId: string,
+  event: Pick<PublicEvent, "id" | "startDate" | "endDate">,
   trackId: string | null,
   q: string | null,
+  day: string | null,
 ): Promise<number> {
-  const baseConditions = [eq(schema.submission.eventId, eventId), visibleSessionConditions()];
+  const baseConditions = [eq(schema.submission.eventId, event.id), visibleSessionConditions()];
   if (q) baseConditions.push(searchCondition(q));
+
+  if (trackId && day) {
+    const rows = await db
+      .select({ count: sql<number>`count(distinct ${schema.submission.id})` })
+      .from(schema.submission)
+      .leftJoin(
+        schema.participant,
+        and(eq(schema.participant.submissionId, schema.submission.id), visibleParticipantConditions()),
+      )
+      .leftJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
+      .innerJoin(schema.submissionTrack, eq(schema.submissionTrack.submissionId, schema.submission.id))
+      .innerJoin(schema.scheduleSlot, dayFilterJoinCondition(event, day))
+      .where(and(...baseConditions, eq(schema.submissionTrack.trackId, trackId)));
+    return Number(rows[0]?.count ?? 0);
+  }
 
   if (trackId) {
     const rows = await db
@@ -163,6 +234,20 @@ async function countVisibleSubmissions(
       .leftJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
       .innerJoin(schema.submissionTrack, eq(schema.submissionTrack.submissionId, schema.submission.id))
       .where(and(...baseConditions, eq(schema.submissionTrack.trackId, trackId)));
+    return Number(rows[0]?.count ?? 0);
+  }
+
+  if (day) {
+    const rows = await db
+      .select({ count: sql<number>`count(distinct ${schema.submission.id})` })
+      .from(schema.submission)
+      .leftJoin(
+        schema.participant,
+        and(eq(schema.participant.submissionId, schema.submission.id), visibleParticipantConditions()),
+      )
+      .leftJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
+      .innerJoin(schema.scheduleSlot, dayFilterJoinCondition(event, day))
+      .where(and(...baseConditions));
     return Number(rows[0]?.count ?? 0);
   }
 
@@ -370,9 +455,17 @@ export interface PublicSessionsPage {
 export async function getPublicSessions(
   db: Db,
   event: PublicEvent,
-  opts: { trackId: string | null; page: number; perPage: number; q?: string | null; window?: boolean },
+  opts: {
+    trackId: string | null;
+    page: number;
+    perPage: number;
+    q?: string | null;
+    window?: boolean;
+    day?: string | null;
+  },
 ): Promise<PublicSessionsPage> {
   const q = opts.q ?? null;
+  const day = opts.day ?? null;
   // DEC-516: `window` opts into a real one-page LIMIT+OFFSET (boundedWindow)
   // for the paged JSON feeds; defaults to false so every existing HTML call
   // site keeps getting boundedRowLimit's cumulative prefix (pages 1..page
@@ -385,10 +478,10 @@ export async function getPublicSessions(
   // contiguous right after the id query, matching every existing fake-db
   // harness in test/public.test.ts that numbers db.select() calls by
   // position; the count query's separate select() runs last instead.
-  const ordered = await getVisibleSubmissionIdsOrdered(db, event.id, opts.trackId, q, limit, offset);
+  const ordered = await getVisibleSubmissionIdsOrdered(db, event, opts.trackId, q, day, limit, offset);
   const pageIds = ordered.map((r) => r.id);
   const items = await hydrateSessions(db, pageIds, event);
-  const total = await countVisibleSubmissions(db, event.id, opts.trackId, q);
+  const total = await countVisibleSubmissions(db, event, opts.trackId, q, day);
   return { items, total };
 }
 

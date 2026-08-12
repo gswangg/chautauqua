@@ -280,39 +280,49 @@ describe("DEC-489: agenda/schedule `day` behaves identically on HTML and .json",
 
 // -- sessions: `day` IS honored (DEC-594/EMB-5), never advertised in the
 // Show-more link (sessions has no day-scoped "show more" concept) ---------
-function buildSessionsApp() {
+// DEC-634: `day` is now a SQL-level predicate (innerJoin schedule_slot) on
+// getVisibleSubmissionIdsOrdered/countVisibleSubmissions, not a post-page
+// `.filter()` in the route — so, mirroring test/public-agenda-event-range
+// .test.ts's convention, the fake below is built PER requested day and
+// already reflects what the real SQL predicate would have returned (only
+// sub1 is "scheduled" on 2026-08-10; every other day yields zero rows),
+// rather than returning every row unconditionally and relying on a JS
+// filter downstream.
+function buildSessionsApp(day: string | null) {
   let selectCall = 0;
-  const SESSION_ROWS = Array.from({ length: 5 }, (_, i) => ({
+  const ALL_ROWS = Array.from({ length: 5 }, (_, i) => ({
     id: `sub${i + 1}`,
     seq: i + 1,
     title: `Talk ${i + 1}`,
     description: "A description long enough to show up in the card body.",
     icsSequence: 0,
   }));
-  // Only sub1 is scheduled on 2026-08-10; the rest are unscheduled (no slot
-  // row at all), so a day filter must keep exactly sub1.
-  const SLOT_ROWS = [{ submissionId: "sub1", day: "2026-08-10", startMin: 540, endMin: 600, roomName: null }];
+  const matchingRows = day === null ? ALL_ROWS : day === "2026-08-10" ? ALL_ROWS.slice(0, 1) : [];
+  const SLOT_ROWS =
+    day === "2026-08-10" || day === null
+      ? [{ submissionId: "sub1", day: "2026-08-10", startMin: 540, endMin: 600, roomName: null }]
+      : [];
   const db = {
     select: () => {
       selectCall += 1;
       if (selectCall === 1) return makeChain([EVENT_ROW]); // getPublicEventBySlug
       if (selectCall === 2) return makeChain([]); // getPublicTracks
-      if (selectCall === 3) return makeChain(SESSION_ROWS); // hydrateSessions subRows
+      if (selectCall === 3) return makeChain(matchingRows); // hydrateSessions subRows
       if (selectCall === 4) return makeChain([]); // hydrateSessions trackRows
       if (selectCall === 5) return makeChain([]); // hydrateSessions speakerRows
       if (selectCall === 6) return makeChain(SLOT_ROWS); // hydrateSessions EMB-01 slotRows
       if (selectCall === 7) return makeChain([]); // hydrateSessions EMB-01/EMB-08 formatRows
-      return makeChain(SLOT_ROWS); // countVisibleSubmissions
+      return makeChain([{ count: matchingRows.length }]); // countVisibleSubmissions (day-scoped)
     },
-    selectDistinct: () => makeChain(SESSION_ROWS.map((s) => ({ id: s.id, title: s.title }))),
+    selectDistinct: () => makeChain(matchingRows.map((s) => ({ id: s.id, title: s.title }))),
   } as unknown as AppEnv["Variables"]["db"];
   return mountApp(db);
 }
 
-describe("DEC-594 (EMB-5): sessions?day= filters by scheduled day, URL still doesn't advertise it", () => {
+describe("DEC-594/DEC-634 (EMB-5): sessions?day= filters by scheduled day, URL still doesn't advertise it", () => {
   it("sessions?day=<d> renders only the session scheduled on that day", async () => {
     installFakeCaches();
-    const withDayApp = buildSessionsApp();
+    const withDayApp = buildSessionsApp("2026-08-10");
     const withDay = await withDayApp.request("/embed/conf/sessions?day=2026-08-10", {}, TEST_ENV);
     const html = await withDay.text();
     expect(html).toContain('id="chq-session-sub1"');
@@ -321,7 +331,7 @@ describe("DEC-594 (EMB-5): sessions?day= filters by scheduled day, URL still doe
 
   it("sessions?day=<unscheduled day> renders no sessions", async () => {
     installFakeCaches();
-    const app = buildSessionsApp();
+    const app = buildSessionsApp("2026-08-11");
     const res = await app.request("/embed/conf/sessions?day=2026-08-11", {}, TEST_ENV);
     const html = await res.text();
     expect(html).not.toContain('id="chq-session-sub1"');
@@ -330,7 +340,7 @@ describe("DEC-594 (EMB-5): sessions?day= filters by scheduled day, URL still doe
 
   it("sessions emits no day param in its Show-more link, even when one was supplied", async () => {
     installFakeCaches();
-    const app = buildSessionsApp();
+    const app = buildSessionsApp("2026-08-10");
     const res = await app.request("/embed/conf/sessions?day=2026-08-10&limit=1", {}, TEST_ENV);
     const html = await res.text();
     expect(html).not.toContain('name="day"');

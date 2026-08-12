@@ -287,22 +287,22 @@ async function getSurfaceFeedPage(
       // stays the full unwindowed count so a consumer can still detect
       // truncation, and a page past the MAX_PUBLIC_ROWS ceiling honestly
       // returns an empty items array (never an error).
-      const { items: rawItems, total: rawTotal } = await getPublicSessions(db, event, {
+      // DEC-634: `day` is a SQL-level predicate on the repo query (see
+      // dispatch.tsx's mirrored HTML case) — `total` and the LIMIT/OFFSET
+      // window both see the identical predicate, so page 2 of a
+      // day-filtered list returns the next window instead of nothing.
+      const { items: rawItems, total } = await getPublicSessions(db, event, {
         trackId,
         page,
         perPage,
         q,
         window: true,
+        day: query.day,
       });
-      // DEC-594 (EMB-5): mirrors dispatch.tsx's HTML sessions case — `day`
-      // must never no-op here just because it was already honored for
-      // agenda/schedule.
-      const dayFiltered = query.day ? rawItems.filter((s) => s.day === query.day) : rawItems;
-      const total = query.day ? dayFiltered.length : rawTotal;
       // DEC-594 (EMB-6): mirrors the HTML dispatch's SessionCard `fields`
       // projection so the .json twin honors ?fields= too, driven by the
       // ONE ALL_CARD_FIELDS list (query.ts) via projectCardFields (feeds.ts).
-      const items = dayFiltered.map((s) => projectCardFields(s as unknown as Record<string, unknown>, query.fields));
+      const items = rawItems.map((s) => projectCardFields(s as unknown as Record<string, unknown>, query.fields));
       return { items, total, page, perPage };
     }
     case "speakers":
