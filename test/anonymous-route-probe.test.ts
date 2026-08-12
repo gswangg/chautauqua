@@ -1,0 +1,335 @@
+// DEC-550: an enumerating anonymous-GET authz probe. The only authz
+// manifest this codebase previously had was prose
+// (docs/verification-log/task-w18-d-route-authz-inventory-stage1.md) --
+// DEC-546 shows what that costs: three "public by design" entries there
+// were wrong and nothing failed. This file replaces hand-listing with
+// enumeration: it composes every sub-app src/index.ts mounts, at the same
+// prefixes, in the same order (including guardDevMailbox immediately before
+// devMailboxRoutes, exactly as src/index.ts:72-73 does), over a db stub
+// that THROWS on any property access and records that it was touched.
+//
+// Composition deliberately does NOT call src/server/app.ts's
+// createBaseApp() -- that wires the always-on sessionLoader, which is
+// exactly the thing under test (whether a route needs it). Instead this
+// mirrors test/w10-verify-no-blanket-wildcard.test.ts's technique: a bare
+// Hono<AppEnv> + registerErrorHandler + one middleware that sets `db` and
+// sets NO `auth`, so every route sees a genuinely anonymous request. The two
+// meta endpoints createBaseApp() defines inline (GET /health, GET /api/v1)
+// are reproduced here for the same reason -- they are not sub-app mounts,
+// but they are real anonymous-reachable GET surfaces src/index.ts's app
+// serves, so the probe must see them too.
+//
+// env is `{}` -- DEV_MODE unset, so guardDevMailbox 404s every
+// /dev/mailbox* request before it ever reaches devMailboxRoutes' handlers
+// (see shouldMountDevMailbox/isDevMode, DEC-434). DEV_MODE=1 authz for
+// /dev/mailbox (DEC-546: organizer-only, org-scoped) is covered by its own
+// test, test/dev-mailbox.test.ts -- not this file's job.
+//
+// Route enumeration: Hono exposes the composed app's own route table via
+// `app.routes` ({basePath, path, method, handler}[]) -- introspection, not
+// a hand list (field guide: "hand-listed manifests desync -- enumerate in a
+// test"). GET entries are deduped by path (a single `.get(path, mw,
+// handler)` registration produces one RouterRoute per handler in its
+// chain, all sharing the same path). Each unique path is turned into a
+// concrete request path by substituting a literal for every `:param`
+// segment (picking a literal that satisfies an inline `{regex}` constraint
+// when one is present, e.g. embed's `:surface{[a-z]+\.json}`) and for a
+// bare `*` wildcard segment.
+//
+// PUBLIC_BY_DESIGN is the only allowlist, and it is asserted exact in BOTH
+// directions: every enumerated GET path must be either matched by an entry
+// here (with a reason citing the DEC/source comment that documents it as
+// intentionally no-login) or answer without ever touching the db stub; and
+// every PUBLIC_BY_DESIGN entry must match at least one currently-enumerated
+// route, so a deleted public route can't leave a stale hole (DEC-550).
+//
+// Finding from building this probe: none -- every enumerated GET route
+// either matches an entry below (verified against its own source comment)
+// or is guarded by a synchronous auth check (requireAuth/requireOrganizer/
+// requireReviewerOrOrganizer/speakerGate/an inline `!c.var.auth` redirect)
+// that throws or redirects strictly before any db access. If a future
+// change added an ungated route, this file's header would say so instead
+// of silently allowlisting it -- it does not, because there wasn't one to
+// report.
+
+import { describe, expect, it } from "vitest";
+import { Hono } from "hono";
+import type { AppEnv } from "../src/server/env";
+import { registerErrorHandler } from "../src/server/http";
+import { guardDevMailbox } from "../src/server/app";
+
+import { authRoutes } from "../src/routes/auth";
+import { accountRoutes } from "../src/routes/account";
+import { eventsRoutes } from "../src/routes/api/events";
+import { portalConfigRoutes } from "../src/routes/api/portal-config";
+import { emailLogRoutes } from "../src/routes/api/email-log";
+import { formsRoutes } from "../src/routes/api/forms";
+import { submissionsRoutes } from "../src/routes/api/submissions";
+import { contactsRoutes } from "../src/routes/api/contacts";
+import { pipelineRoutes } from "../src/routes/api/pipeline";
+import { overviewRoutes } from "../src/routes/api/overview";
+import { viewsRoutes } from "../src/routes/api/views";
+import { commsRoutes } from "../src/routes/comms";
+import { agendaRoutes } from "../src/routes/agenda";
+import { publicSubmitRoutes } from "../src/routes/public/submit";
+import { portalRoutes } from "../src/routes/portal/index";
+import { publicRoutes } from "../src/routes/public";
+import { portalTasksRoutes } from "../src/routes/portal/tasks";
+import { portalEditRoutes } from "../src/routes/portal/edit";
+import { devMailboxRoutes } from "../src/routes/dev/mailbox";
+import { taskRoutes } from "../src/routes/tasks";
+import { reviewRoutes } from "../src/routes/review";
+import { meRoutes } from "../src/routes/me";
+import { fileApiRoutes, fileServeRoutes } from "../src/routes/files";
+import { portalProfileRoutes, headshotServeRoutes } from "../src/routes/portal/profile";
+import { tokensRoutes } from "../src/routes/api/tokens";
+import { exportsRoutes } from "../src/routes/api/exports";
+import { usersRoutes } from "../src/routes/api/users";
+import { rootRoutes } from "../src/routes/root";
+import { docsRoutes } from "../src/routes/docs";
+
+// ---------------------------------------------------------------------------
+// PUBLIC_BY_DESIGN allowlist -- every entry below was verified against its
+// own route file's source comment before being added here.
+// ---------------------------------------------------------------------------
+
+const PUBLIC_BY_DESIGN: { pattern: string; reason: string }[] = [
+  {
+    pattern: "/health",
+    reason:
+      "Meta liveness endpoint defined inline in createBaseApp() (src/server/app.ts) -- carries no data, needed before any session exists.",
+  },
+  {
+    pattern: "/api/v1",
+    reason:
+      "Meta API-root endpoint defined inline in createBaseApp() (src/server/app.ts) -- returns {name,version} only, no session data.",
+  },
+  {
+    pattern: "/",
+    reason:
+      "DEC-049: 'GET / is an SSR landing so the root URL never 404s for a judge' (src/routes/root.tsx header comment).",
+  },
+  {
+    pattern: "/docs/api",
+    reason:
+      "DEC-056: 'public, no-login API docs page at GET /docs/api ... it documents no secrets so it's safe to be public' (src/routes/docs.tsx header comment).",
+  },
+  {
+    pattern: "/login",
+    reason:
+      "DEC-012: SSR login page, must be reachable while anonymous by definition (src/routes/auth.tsx header comment).",
+  },
+  {
+    pattern: "/claim/:token",
+    reason:
+      "DEC-014: invite-claim landing page -- the token itself is the credential, not a session (src/routes/auth.tsx header comment).",
+  },
+  {
+    pattern: "/submit/:eventSlug",
+    reason:
+      "DEC-005/DEC-012: public CFP submission form (J1 share link) -- no login by design (src/routes/public/submit.tsx header comment).",
+  },
+  {
+    pattern: "/e/:eventSlug/*",
+    reason:
+      "DEC-022: 'the five public surfaces + embeds + itinerary .ics ... no login/session dependence anywhere in this module' (src/routes/public/index.tsx header comment). Covers every /e/:eventSlug/<surface>, the speaker/session detail pages, and the .ics feeds.",
+  },
+  {
+    pattern: "/embed/:eventSlug/*",
+    reason:
+      "DEC-022: same public/index.tsx module as /e/:eventSlug/* above -- embeddable widget surfaces, no login/session dependence.",
+  },
+  {
+    pattern: "/headshots/:fileId",
+    reason:
+      "DEC-028 origin/DEC-067 gate: 'headshots of visible speakers are public content by definition (J10 renders them)' -- the handler itself gates non-visible headshots to a 404 rather than requiring a session (src/routes/portal/profile.tsx comment above headshotServeRoutes).",
+  },
+];
+
+function patternMatches(pattern: string, actualPath: string): boolean {
+  if (pattern.endsWith("/*")) {
+    return actualPath.startsWith(pattern.slice(0, -1));
+  }
+  return pattern === actualPath;
+}
+
+// ---------------------------------------------------------------------------
+// Throwing db stub -- any property access is both recorded and fatal, so a
+// route that reaches for the db before an auth check throws immediately
+// (never silently returns undefined/empty data).
+// ---------------------------------------------------------------------------
+
+function makeThrowingDb(): { db: AppEnv["Variables"]["db"]; touched: () => boolean; reset: () => void } {
+  let touched = false;
+  const db = new Proxy(
+    {},
+    {
+      get(_target, prop) {
+        touched = true;
+        throw new Error(`anonymous-route-probe: db.${String(prop)} accessed by an anonymous request`);
+      },
+    },
+  ) as AppEnv["Variables"]["db"];
+  return {
+    db,
+    touched: () => touched,
+    reset: () => {
+      touched = false;
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// App composition -- mirrors src/index.ts's mount order/prefixes exactly,
+// minus createBaseApp()'s sessionLoader (auth is deliberately never set) and
+// its bumpPublicVersionMiddleware/noStoreApi (cache concerns, out of scope
+// for an authz probe), plus createBaseApp()'s two inline meta routes.
+// ---------------------------------------------------------------------------
+
+function buildAnonymousApp() {
+  const { db, touched, reset } = makeThrowingDb();
+  const app = new Hono<AppEnv>();
+
+  app.use("*", async (c, next) => {
+    c.set("db", db);
+    // Deliberately no c.set("auth", ...) -- every request probed here is
+    // genuinely anonymous.
+    await next();
+  });
+
+  registerErrorHandler(app);
+
+  app.get("/health", (c) => c.json({ ok: true }));
+  app.get("/api/v1", (c) => c.json({ name: "chautauqua", version: "v1" }));
+
+  app.route("/", authRoutes);
+  app.route("/", accountRoutes);
+  app.route("/api/v1", eventsRoutes);
+  app.route("/api/v1", portalConfigRoutes);
+  app.route("/api/v1", submissionsRoutes);
+  app.route("/api/v1", contactsRoutes);
+  app.route("/api/v1", pipelineRoutes);
+  app.route("/api/v1", overviewRoutes);
+  app.route("/api/v1", viewsRoutes);
+  app.route("/api/v1", agendaRoutes);
+  app.route("/api/v1", taskRoutes);
+  app.route("/api/v1", fileApiRoutes);
+  app.route("/", fileServeRoutes);
+  app.route("/", emailLogRoutes);
+  app.route("/", formsRoutes);
+  app.route("/", commsRoutes);
+  app.route("/", publicSubmitRoutes);
+  app.route("/", reviewRoutes);
+  app.route("/", meRoutes);
+  app.route("/", tokensRoutes);
+  app.route("/", exportsRoutes);
+  app.route("/", usersRoutes);
+  app.route("/portal", portalRoutes);
+  app.route("/portal", portalProfileRoutes);
+  app.route("/portal", portalTasksRoutes);
+  app.route("/portal", portalEditRoutes);
+  app.route("/", headshotServeRoutes);
+  app.route("/", publicRoutes);
+  app.route("/", docsRoutes);
+  app.route("/", rootRoutes);
+
+  guardDevMailbox(app);
+  app.route("/", devMailboxRoutes);
+
+  return { app, touched, reset };
+}
+
+// ---------------------------------------------------------------------------
+// Route table enumeration + literal substitution.
+// ---------------------------------------------------------------------------
+
+/** Picks a concrete literal for a `:name` or `:name{regex}` path segment. A
+ * bare `*` wildcard segment gets a fixed literal too. Throws loudly if none
+ * of the small candidate pool satisfies an inline regex constraint, rather
+ * than silently skipping the route (a route this probe can't even request
+ * is a route this probe can't vouch for). */
+function literalFor(segment: string): string {
+  if (segment === "*") return "probe-wildcard";
+  if (!segment.startsWith(":")) return segment;
+  const braceIdx = segment.indexOf("{");
+  if (braceIdx === -1) return "probe-value";
+  const regexSrc = segment.slice(braceIdx + 1, segment.length - 1);
+  const re = new RegExp(`^${regexSrc}$`);
+  const candidates = ["probe.json", "probe-value", "probevalue", "test"];
+  const hit = candidates.find((c) => re.test(c));
+  if (!hit) {
+    throw new Error(
+      `anonymous-route-probe: no candidate literal satisfies param regex /${regexSrc}/ in segment '${segment}'`,
+    );
+  }
+  return hit;
+}
+
+function toRequestPath(routePath: string): string {
+  return routePath
+    .split("/")
+    .map((segment) => literalFor(segment))
+    .join("/");
+}
+
+function enumerateGetPaths(app: Hono<AppEnv>): string[] {
+  const paths = new Set<string>();
+  for (const route of app.routes) {
+    if (route.method !== "GET") continue;
+    paths.add(route.path);
+  }
+  return Array.from(paths).sort();
+}
+
+// ---------------------------------------------------------------------------
+// The probe.
+// ---------------------------------------------------------------------------
+
+describe("anonymous-GET authz probe (DEC-550)", () => {
+  it("enumerates at least the routes this task expects to exist (composition sanity)", () => {
+    const { app } = buildAnonymousApp();
+    const getPaths = enumerateGetPaths(app);
+    // A loose sanity floor, not the authz assertion itself -- proves the
+    // composed app actually mounted every sub-app rather than silently
+    // enumerating zero/few routes.
+    expect(getPaths.length).toBeGreaterThan(40);
+    expect(getPaths).toContain("/health");
+    expect(getPaths).toContain("/api/v1/me");
+  });
+
+  it("every enumerated GET route is authz-gated or an exact, justified PUBLIC_BY_DESIGN entry", async () => {
+    const { app, touched, reset } = buildAnonymousApp();
+    const getPaths = enumerateGetPaths(app);
+    const matchedPatterns = new Set<string>();
+    const failures: string[] = [];
+
+    for (const routePath of getPaths) {
+      const allowlistEntry = PUBLIC_BY_DESIGN.find((entry) => patternMatches(entry.pattern, routePath));
+      if (allowlistEntry) matchedPatterns.add(allowlistEntry.pattern);
+
+      reset();
+      const requestPath = toRequestPath(routePath);
+      // The db stub throws synchronously on first touch; a route that
+      // reaches the db before an auth check surfaces that as a 500 via
+      // registerErrorHandler rather than crashing the probe. env is `{}`
+      // (no bindings at all, not even KV) -- DEV_MODE unset per DEC-550.
+      await app.request(requestPath, {}, {} as unknown as AppEnv["Bindings"]);
+
+      if (!allowlistEntry && touched()) {
+        failures.push(
+          `GET ${routePath} (requested as ${requestPath}) touched the db as an anonymous request and is not in PUBLIC_BY_DESIGN`,
+        );
+      }
+    }
+
+    expect(failures).toEqual([]);
+
+    // Exact in the other direction too: every allowlist entry must still
+    // match a currently-enumerated route (a deleted public route must not
+    // leave a stale, unverifiable hole).
+    const staleEntries = PUBLIC_BY_DESIGN.filter((entry) => !matchedPatterns.has(entry.pattern)).map(
+      (entry) => entry.pattern,
+    );
+    expect(staleEntries).toEqual([]);
+  });
+});
