@@ -70,6 +70,9 @@ export interface EventFileChainItem {
 export interface FileComment {
   id: string;
   fileId: string;
+  // DEC-573: which version in the chain this comment was written against —
+  // v1 is the oldest version.
+  versionNumber: number;
   authorName: string;
   authorRole: string;
   body: string;

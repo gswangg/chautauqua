@@ -317,12 +317,10 @@ async function authzFileRead(c: Context<AppEnv>, fileId: string) {
 fileApiRoutes.get("/files/:fileId/comments", async (c) => {
   const fileId = c.req.param("fileId");
   await authzFileRead(c, fileId);
-  const comments = await listFileComments(c.var.db, fileId);
   const page = clampPage(c.req.query("page"));
   const perPage = listPerPage(c.req.query("perPage"));
-  const start = (page - 1) * perPage;
-  const slice = comments.slice(start, start + perPage);
-  return c.json({ items: slice, total: comments.length, page, perPage });
+  const result = await listFileComments(c.var.db, fileId, { limit: perPage, offset: (page - 1) * perPage });
+  return c.json(result);
 });
 
 fileApiRoutes.post("/files/:fileId/comments", csrfJson, async (c) => {

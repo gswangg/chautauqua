@@ -67,7 +67,19 @@ vi.mock("../src/server/repo/files", async () => {
         : null,
     ),
     canAccessFile: vi.fn(() => true),
-    listFileComments: vi.fn(async (_db: unknown, fileId: string) => (fileId === FILE_ID ? ALL_COMMENTS : [])),
+    listFileComments: vi.fn(
+      async (_db: unknown, fileId: string, page?: { limit: number; offset: number }) => {
+        const all = fileId === FILE_ID ? ALL_COMMENTS : [];
+        const start = page ? page.offset : 0;
+        const end = page ? start + page.limit : all.length;
+        return {
+          items: all.slice(start, end),
+          total: all.length,
+          page: page ? Math.floor(page.offset / page.limit) + 1 : 1,
+          perPage: page ? page.limit : all.length || 1,
+        };
+      },
+    ),
   };
 });
 

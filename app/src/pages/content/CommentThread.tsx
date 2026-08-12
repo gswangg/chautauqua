@@ -36,6 +36,7 @@ export function CommentThread({ comments, onPost }: CommentThreadProps) {
             <div className="chq-content-comment-head">
               <span className="chq-comment-author chq-content-comment-author">{c.authorName}</span>
               <span className="chq-role-label chq-meta">({c.authorRole})</span>
+              <span className="chq-comment-version chq-meta">v{c.versionNumber}</span>
               <span className="chq-comment-date chq-meta">{formatDateTime(c.createdAt)}</span>
             </div>
             <span className="chq-comment-body chq-content-comment-body">{c.body}</span>

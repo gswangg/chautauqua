@@ -103,6 +103,56 @@ export async function resolveTaskFileChainLatest(db: Db, fileId: string): Promis
   return { id: row.id, filename: row.filename, contentType: row.contentType, r2Key: row.r2Key, createdAt: row.createdAt.getTime() };
 }
 
+/** DEC-573: the full version chain for `fileId`, oldest-first — walks BACK
+ * via previous_file_id to the chain root, then FORWARD from the root (the
+ * row whose previous_file_id points at the current one, repeated) to the
+ * newest link. A comment thread belongs to this whole chain, not to one file
+ * row, so callers that need "every comment on this deliverable" must resolve
+ * this first. Guards cycles with a visited set on both walks and throws on a
+ * missing row mid-chain (data corruption, never a normal state) — mirrors
+ * resolveTaskFileChainLatest's forward walk exactly. */
+export async function listFileChainIds(db: Db, fileId: string): Promise<string[]> {
+  // Walk back to the root.
+  let root = fileId;
+  const backVisited = new Set<string>([root]);
+  for (;;) {
+    const rows = await db
+      .select({ previousFileId: schema.file.previousFileId })
+      .from(schema.file)
+      .where(eq(schema.file.id, root))
+      .limit(1);
+    const row = rows[0];
+    if (!row) throw new Error(`listFileChainIds: file ${root} not found mid-chain — data corruption`);
+    if (!row.previousFileId) break;
+    if (backVisited.has(row.previousFileId)) {
+      throw new Error(`listFileChainIds: previous_file_id cycle detected at ${row.previousFileId}`);
+    }
+    backVisited.add(row.previousFileId);
+    root = row.previousFileId;
+  }
+
+  // Walk forward from the root, collecting ids oldest-first.
+  const ids = [root];
+  const forwardVisited = new Set<string>([root]);
+  let current = root;
+  for (;;) {
+    const nextRows = await db
+      .select({ id: schema.file.id })
+      .from(schema.file)
+      .where(eq(schema.file.previousFileId, current))
+      .limit(1);
+    const next = nextRows[0];
+    if (!next) break;
+    if (forwardVisited.has(next.id)) {
+      throw new Error(`listFileChainIds: previous_file_id cycle detected at ${next.id}`);
+    }
+    forwardVisited.add(next.id);
+    ids.push(next.id);
+    current = next.id;
+  }
+  return ids;
+}
+
 // ---------------------------------------------------------------------------
 // Writes
 // ---------------------------------------------------------------------------
