@@ -10,7 +10,8 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { TrackChips } from "../src/routes/public/cards";
-import type { PublicTrack } from "../src/server/repo/public";
+import { AgendaContent, ScheduleContent } from "../src/routes/public/agenda";
+import type { PublicAgendaItem, PublicEvent, PublicTrack } from "../src/server/repo/public";
 
 function track(color: string | null): PublicTrack {
   return { id: "t1", name: "Track A", color, sortOrder: 0 } as PublicTrack;
@@ -18,6 +19,38 @@ function track(color: string | null): PublicTrack {
 
 function renderChip(color: string | null): string {
   return String(TrackChips({ tracks: [track(color)] }));
+}
+
+const EVENT: PublicEvent = {
+  id: "ev1",
+  orgId: "org1",
+  name: "Test Event",
+  slug: "conf",
+  startDate: "2026-08-10",
+  endDate: "2026-08-10",
+  location: null,
+  timezone: "UTC",
+  recordPrefix: "SES",
+  brandingJson: null,
+};
+
+function agendaItem(format: string | null): PublicAgendaItem {
+  return {
+    submissionId: "sub-a",
+    ref: "SES-001",
+    title: "Session A",
+    description: null,
+    day: "2026-08-10",
+    startMin: 540,
+    endMin: 600,
+    roomId: "room-1",
+    roomName: "Room 1",
+    roomPosition: 0,
+    icsSequence: 0,
+    tracks: [],
+    speakers: [],
+    format,
+  };
 }
 
 describe("TrackChips: DEC-374-pattern hex guard on the track colour", () => {
@@ -48,6 +81,30 @@ describe("TrackChips: DEC-374-pattern hex guard on the track colour", () => {
   it("never emits a background: declaration on the chip element", () => {
     const html = renderChip("#123456");
     expect(html).not.toContain("background:");
+  });
+});
+
+describe("FormatChip on /e/:slug/agenda and /e/:slug/schedule (EMB mandate 40e)", () => {
+  it("AgendaContent renders the format chip when format is set", () => {
+    const html = String(AgendaContent({ event: EVENT, items: [agendaItem("Workshop")], total: 1 }));
+    expect(html).toContain('class="chq-pub-format-chip"');
+    expect(html).toContain("Workshop");
+  });
+
+  it("AgendaContent renders no format chip when format is null", () => {
+    const html = String(AgendaContent({ event: EVENT, items: [agendaItem(null)], total: 1 }));
+    expect(html).not.toContain("chq-pub-format-chip");
+  });
+
+  it("ScheduleContent renders the format chip when format is set", () => {
+    const html = String(ScheduleContent({ event: EVENT, items: [agendaItem("Workshop")], total: 1 }));
+    expect(html).toContain('class="chq-pub-format-chip"');
+    expect(html).toContain("Workshop");
+  });
+
+  it("ScheduleContent renders no format chip when format is null", () => {
+    const html = String(ScheduleContent({ event: EVENT, items: [agendaItem(null)], total: 1 }));
+    expect(html).not.toContain("chq-pub-format-chip");
   });
 });
 
