@@ -37,6 +37,9 @@ export interface AgendaTrack {
 export interface AgendaConflict {
   kind: 'room_overlap' | 'speaker_overlap';
   submissionIds: [string, string];
+  day: string;
+  roomId: string | null;
+  speakerContactIds: string[];
   detail: string;
 }
 

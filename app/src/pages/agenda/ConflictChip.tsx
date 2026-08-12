@@ -18,9 +18,20 @@ export function ConflictChip({ conflicts, submissionId }: ConflictChipProps) {
 
   const title = mine.map((c) => c.detail).join('\n');
 
+  // DEC-557: the caption is derived from `kind`, never assumed — a
+  // speaker_overlap must never render the room caption and vice versa.
+  const hasRoom = mine.some((c) => c.kind === 'room_overlap');
+  const hasSpeaker = mine.some((c) => c.kind === 'speaker_overlap');
+  const caption =
+    hasRoom && hasSpeaker
+      ? 'Room & speaker conflict'
+      : hasSpeaker
+        ? 'Speaker double-booked'
+        : 'Two sessions in one room';
+
   return (
     <span className="chq-conflict-caption" title={title}>
-      Two sessions in one room
+      {caption}
     </span>
   );
 }

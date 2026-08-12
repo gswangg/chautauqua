@@ -13,13 +13,19 @@ import { chunkRowsForInsert } from "../../lib/chunk";
 import { bumpIcsSequences } from "./ics-sequence";
 import {
   autoSchedule,
+  describeConflict,
   findConflicts,
   MINUTES_PER_DAY,
   scheduleSummary,
   type AutoScheduleSessionInput,
   type Conflict,
+  type ConflictLabels,
   type PlacedSession,
 } from "../../domain/schedule";
+
+/** DEC-557: a Conflict plus its rendered prose, produced by describeConflict
+ * — the ONE place a conflict becomes human-readable text. */
+export type DescribedConflict = Conflict & { detail: string };
 
 // ---------------------------------------------------------------------------
 // Pure helpers (unit-tested directly, no I/O)
@@ -96,8 +102,33 @@ export interface AgendaPayload {
   tracks: AgendaTrack[];
   placed: PlacedAgendaSession[];
   unscheduled: UnscheduledAgendaSession[];
-  conflicts: Conflict[];
+  conflicts: DescribedConflict[];
   summary: { unplaced: number; conflicts: number };
+}
+
+/** DEC-557: builds the three label maps describeConflict needs from data the
+ * callers already loaded — no extra queries beyond the caller-supplied
+ * roomRows. */
+function buildConflictLabels(
+  roomRows: { id: string; name: string }[],
+  accepted: AcceptedSessionRow[],
+): ConflictLabels {
+  const roomNameById = new Map(roomRows.map((r) => [r.id, r.name]));
+  const titleBySubmissionId = new Map(accepted.map((s) => [s.submissionId, s.title]));
+  const speakerNameByContactId = new Map<string, string>();
+  for (const s of accepted) {
+    for (const speaker of s.speakers) {
+      speakerNameByContactId.set(speaker.contactId, speaker.name);
+    }
+  }
+  return { roomNameById, titleBySubmissionId, speakerNameByContactId };
+}
+
+function describeConflicts(
+  conflicts: Conflict[],
+  labels: ConflictLabels,
+): DescribedConflict[] {
+  return conflicts.map((c) => ({ ...c, detail: describeConflict(c, labels) }));
 }
 
 // ---------------------------------------------------------------------------
@@ -313,6 +344,7 @@ export async function getAgendaPayload(db: Db, eventId: string, event: EventInfo
 
   const conflicts = findConflicts(placedSessions);
   const summary = scheduleSummary(placedSessions, accepted.length, conflicts);
+  const labels = buildConflictLabels(roomRows, accepted);
 
   return {
     days,
@@ -320,18 +352,20 @@ export async function getAgendaPayload(db: Db, eventId: string, event: EventInfo
     tracks: trackRows,
     placed,
     unscheduled,
-    conflicts,
+    conflicts: describeConflicts(conflicts, labels),
     summary,
   };
 }
 
 /** Refreshed { conflicts, summary } only — used after PUT/DELETE slot writes,
- * which per DEC-010 are NEVER blocked by conflicts. */
+ * which per DEC-010 are NEVER blocked by conflicts. DEC-557/DEC-078: one
+ * bounded per-event room-name query (rooms are ~15) so conflicts can be
+ * rendered by name here too. */
 export async function getConflictsAndSummary(
   db: Db,
   eventId: string,
   event: Pick<EventInfo, "startDate" | "endDate" | "recordPrefix">,
-): Promise<{ conflicts: Conflict[]; summary: { unplaced: number; conflicts: number } }> {
+): Promise<{ conflicts: DescribedConflict[]; summary: { unplaced: number; conflicts: number } }> {
   const accepted = await loadAcceptedSessions(db, eventId, event.recordPrefix);
   const placedSessions: PlacedSession[] = accepted
     .filter(
@@ -347,8 +381,13 @@ export async function getConflictsAndSummary(
       speakerContactIds: s.speakerContactIds,
     }));
   const conflicts = findConflicts(placedSessions);
+  const roomRows = await db
+    .select({ id: schema.room.id, name: schema.room.name })
+    .from(schema.room)
+    .where(eq(schema.room.eventId, eventId));
+  const labels = buildConflictLabels(roomRows, accepted);
   return {
-    conflicts,
+    conflicts: describeConflicts(conflicts, labels),
     summary: scheduleSummary(placedSessions, accepted.length, conflicts),
   };
 }

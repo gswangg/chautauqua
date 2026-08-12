@@ -30,7 +30,9 @@ function naiveFindConflicts(placed: PlacedSession[]): Conflict[] {
         conflicts.push({
           kind: "room_overlap",
           submissionIds: [a.submissionId, b.submissionId],
-          detail: `Room "${a.roomId}" double-booked on ${a.day} between submissions ${a.submissionId} and ${b.submissionId}`,
+          day: a.day,
+          roomId: a.roomId,
+          speakerContactIds: [],
         });
       }
 
@@ -41,7 +43,9 @@ function naiveFindConflicts(placed: PlacedSession[]): Conflict[] {
         conflicts.push({
           kind: "speaker_overlap",
           submissionIds: [a.submissionId, b.submissionId],
-          detail: `Speaker(s) ${sharedSpeakers.join(", ")} double-booked on ${a.day} between submissions ${a.submissionId} and ${b.submissionId}`,
+          day: a.day,
+          roomId: null,
+          speakerContactIds: sharedSpeakers,
         });
       }
     }
