@@ -19,43 +19,42 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   manifests desync -- enumerate; conditional visibility is a FIXED
   POINT; hand-copied vocabularies drift -- IMPORT them; a uniqueIndex is
   a CONTRACT; negation skips NULLs.
-- FINDINGS w1-9 (DEC-570..654, compacted): full suites SERIALIZED; real
+- FINDINGS w1-11 (DEC-570..669, compacted): full suites SERIALIZED; real
   <button> not `div draggable`; colour alone isn't track identity -- NAME
   it; blank CSV cell is ABSENT DATA; seed has ONE clock; imported row
   keeps THEIR id via namespaced `external_ref`; a drawer is a RECORD;
-  two readings END in one resolver; anonymity is a RATCHET; merge takes
-  a SET; confirmation is a DIALOG not window.confirm; items+total from
-  ONE where clause; a join row's identity is the PAIR its uniqueIndex
-  names; raw id leaks -- render LABELS; a worklist row carries its action.
-- FINDINGS w10-11 (DEC-655..669, compacted): a scope check skipping the
-  plan's own filter grants what the queue hides -- "in scope?" ends in
-  ONE rule; a guard citing routes it doesn't guard is a desynced
-  manifest -- enumerate. Cacheability is a DEFAULT (no-store) plus "own
-  header wins". A subset vocabulary encoding a server fact must test
-  EQUALS those keys. Import is PLANNED before applied: dry run names
-  REPLACEs+collisions. Every send ends in ONE reporter. A union makes
-  items AND total lie -- a second scope is a second TAB.
-- FINDINGS w12-13 (DEC-670..680, compacted): a capped ANONYMOUS list
+  anonymity is a RATCHET; merge takes a SET; confirmation is a DIALOG
+  not window.confirm; items+total from ONE where clause; join identity
+  is the PAIR its uniqueIndex names; raw id leaks -- render LABELS; a
+  worklist row carries its action; "in scope?" ends in ONE rule; a
+  guard citing routes it doesn't guard is desynced -- enumerate.
+  Cacheability is a DEFAULT (no-store) + "own header wins". Import is
+  PLANNED before applied. Every send ends in ONE reporter. A union
+  makes items AND total lie -- a second scope is a second TAB.
+- FINDINGS w12-14 (DEC-670..686, compacted): a capped ANONYMOUS list
   counts only what it shows; export = same where clause everywhere; a
-  chromeless surface is CLOSED both ways (render + enumerate hrefs); a
-  builder's options are the server's vocabulary IMPORTED via one named
-  boundary module; a worklist whose regions are one nav away is a
-  report. An import is not exempt from closed vocabularies -- validate
-  in the PLANNER; an imported row is RECORDED (visible=false), never
-  published. A server-enforced rule the UI never states is a trap:
-  locked/weighted state renders its reason. ONE reporter means the
-  only one -- scan-lock `failed[]`. Loading is DELAYED (~250ms); empty
-  state never mid-load. `total` is count(*), never `rows.length`.
-- FINDINGS w14 (DEC-681..686): a rule's VALUE is typed by its TRIGGER's
-  kind -- string-vs-boolean/number equality hides the field forever,
-  then the next save DELETES the answer; the browser toggler must
-  compute the SAME fixed point as the server, proven by a parity test
-  over ONE shared case table. A merge var the toggle never populated
-  must be ABSENT (preflight names it), never a polite sentence;
-  attached feedback is plan+round scoped like every evaluation read
-  (DEC-087 has no comms exception). A public list page is list + rail,
-  rail never renders inside /embed. An irreversible action is a PAGE
-  at its own URL, not a modal; list search sits in the toolbar. A
+  chromeless surface is CLOSED both ways; a builder's options are the
+  server's vocabulary IMPORTED via one named boundary module; a
+  worklist whose regions are one nav away is a report. Import is not
+  exempt from closed vocabularies -- validate in the PLANNER; an
+  imported row is RECORDED (visible=false). A server rule the UI never
+  states is a trap: locked/weighted state renders its reason. ONE
+  reporter is the only one; loading is DELAYED (~250ms); `total` is
+  count(*) never `rows.length`. A rule's VALUE is typed by its
+  TRIGGER's kind, proven by a parity test over ONE case table. A merge
+  var the toggle never populated is ABSENT, never a polite sentence. A
+  public list page is list + rail, rail never renders inside /embed.
+  An irreversible action is a PAGE at its own URL, not a modal. A
   dialog's form is ONE FormRow inside ModalFrame. A paged read touches
-  only the page -- aggregates key to page rows, paging in SQL, never
-  a scan sliced in JS.
+  only the page -- aggregates key to page rows, paging in SQL.
+- FINDINGS w15 (DEC-687..696): `.toString()`-embedded fns carry NO
+  closure -- free identifiers travel beside them, proved by EXECUTING
+  the emitted script, never by testing the TS. Tier class ALWAYS wins:
+  no element selector inside a tier rule; .chq-btn anchor is a button
+  (no underline). A hub gives a row ONE action, own calendar grammar.
+  Settings is read-only SUMMARY + drill-in over seven sections; embed
+  builder reached FROM Public pages. A worklist row names the LATEST
+  artefact, two actions only. Test vs docs/design conflict: THE TEST
+  is wrong. A scope param goes on send AND preview, identically. A
+  thrown render is a DESIGNED error state, never blank. Prose renders
+  via ONE escape-FIRST Markdown renderer, closed allow-list.
