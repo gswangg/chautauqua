@@ -24,6 +24,22 @@ export interface EmailLogRow {
   sentAt: number;
 }
 
+// DEC-543: the narrow projection listEmailLog actually returns — derived
+// from the two list renderers (app/src/pages/comms/HistoryTab.tsx and the
+// dev mailbox MailboxListPage in src/routes/dev/mailbox.tsx), neither of
+// which displays bodyText/bodyHtml/icsText/icsFilename. Those fields are
+// capped at MAX_RICH_TEXT_LENGTH and their HTML twin, so shipping them on
+// every list page is an oversized payload (SPEC §7). getEmailLogById keeps
+// the full EmailLogRow for the detail page and its .ics download.
+export interface EmailLogListRow {
+  id: string;
+  eventName: string;
+  toEmail: string;
+  subject: string;
+  status: string;
+  sentAt: number;
+}
+
 export interface EmailLogListParams {
   eventId?: string;
   contactId?: string;
@@ -36,7 +52,7 @@ export interface EmailLogListParams {
 }
 
 export interface EmailLogListResult {
-  items: EmailLogRow[];
+  items: EmailLogListRow[];
   total: number;
 }
 
@@ -58,6 +74,31 @@ function toRow(r: {
 }): EmailLogRow {
   return { ...r, sentAt: r.sentAt.getTime() };
 }
+
+function toListRow(r: {
+  id: string;
+  eventName: string;
+  toEmail: string;
+  subject: string;
+  status: string;
+  sentAt: Date;
+}): EmailLogListRow {
+  return { ...r, sentAt: r.sentAt.getTime() };
+}
+
+// DEC-543: LIST_COLUMNS is the narrow projection backing listEmailLog —
+// exactly the fields the two list renderers display (id, eventName,
+// toEmail, subject, status, sentAt). Kept distinct from SELECTED_COLUMNS
+// (used only by getEmailLogById) so a schema rename can't accidentally
+// widen the list payload back out.
+const LIST_COLUMNS = {
+  id: schema.emailLog.id,
+  eventName: schema.event.name,
+  toEmail: schema.emailLog.toEmail,
+  subject: schema.emailLog.subject,
+  status: schema.emailLog.status,
+  sentAt: schema.emailLog.sentAt,
+} as const;
 
 const SELECTED_COLUMNS = {
   id: schema.emailLog.id,
@@ -97,7 +138,7 @@ export async function listEmailLog(db: Db, params: EmailLogListParams): Promise<
   const where = conditions.length > 0 ? and(...conditions) : undefined;
 
   const base = db
-    .select(SELECTED_COLUMNS)
+    .select(LIST_COLUMNS)
     .from(schema.emailLog)
     .innerJoin(schema.event, eq(schema.event.id, schema.emailLog.eventId));
 
@@ -118,7 +159,7 @@ export async function listEmailLog(db: Db, params: EmailLogListParams): Promise<
   const countRows = await countFiltered;
   const total = Number(countRows[0]?.count ?? 0);
 
-  return { items: rows.map(toRow), total };
+  return { items: rows.map(toListRow), total };
 }
 
 export async function getEmailLogById(db: Db, id: string): Promise<EmailLogRow | null> {

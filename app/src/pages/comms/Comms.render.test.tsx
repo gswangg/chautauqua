@@ -104,17 +104,9 @@ describe('CommsPage render smoke', () => {
       [`GET /api/v1/events/${EVENT_ID}/email-log`]: listEnvelope([
         {
           id: 'log-1',
-          eventId: EVENT_ID,
           eventName: 'Demo Event',
-          templateId: 'tpl-1',
-          contactId: 'c1',
           toEmail: 'ada@example.com',
           subject: 'You are in!',
-          bodyText: 'Congrats',
-          bodyHtml: null,
-          icsText: null,
-          icsFilename: null,
-          provider: 'dev-sink',
           status: 'sent',
           sentAt: 1700000000000,
         },

@@ -38,19 +38,15 @@ export interface RenderedRecipient {
   ics?: RenderedRecipientIcs;
 }
 
+// DEC-543: narrow list projection returned by GET .../email-log — mirrors
+// src/server/repo/email.ts EmailLogListRow. No bodyText/bodyHtml/icsText/
+// icsFilename: HistoryTab.tsx never renders them, and the API no longer
+// sends them on the list endpoint.
 export interface EmailLogRow {
   id: string;
-  eventId: string;
   eventName: string;
-  templateId: string | null;
-  contactId: string | null;
   toEmail: string;
   subject: string;
-  bodyText: string;
-  bodyHtml: string | null;
-  icsText: string | null;
-  icsFilename: string | null;
-  provider: string;
   status: string;
   sentAt: number;
 }
