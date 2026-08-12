@@ -548,7 +548,7 @@ export function PlanEditor() {
               {(activeRound === 0 ? errors : criteriaErrors)[`criterion.${criterion.id}.options`] && (
                 <span className="chq-review-field-error">{(activeRound === 0 ? errors : criteriaErrors)[`criterion.${criterion.id}.options`]}</span>
               )}
-              <button type="button" className="chq-btn-tertiary" onClick={() => setEditingCriteria((c) => removeCriterion(c, criterion.id))}>
+              <button type="button" className="chq-btn chq-btn-tertiary" onClick={() => setEditingCriteria((c) => removeCriterion(c, criterion.id))}>
                 Remove
               </button>
             </div>
@@ -598,7 +598,7 @@ export function PlanEditor() {
                 >
                   {resettingUserId === r.userId ? 'Resetting…' : 'Reset password'}
                 </button>
-                <button type="button" className="chq-btn-tertiary" onClick={() => unassignReviewer(r.id)}>
+                <button type="button" className="chq-btn chq-btn-tertiary" onClick={() => unassignReviewer(r.id)}>
                   Remove
                 </button>
               </div>
@@ -632,7 +632,7 @@ export function PlanEditor() {
                 <button type="button" className="chq-btn chq-btn-secondary" onClick={copyRevealedPassword}>
                   Copy
                 </button>
-                <button type="button" className="chq-btn-tertiary" onClick={() => setRevealedPassword(null)}>
+                <button type="button" className="chq-btn chq-btn-tertiary" onClick={() => setRevealedPassword(null)}>
                   Done
                 </button>
               </div>

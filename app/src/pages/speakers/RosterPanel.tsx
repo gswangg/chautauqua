@@ -83,7 +83,7 @@ export function RosterPanel({ onChanged }: RosterPanelProps) {
       {toast && (
         <div className="chq-error" role="status">
           {toast}
-          <button type="button" className="chq-btn-tertiary" onClick={() => setToast(null)} aria-label="Dismiss">
+          <button type="button" className="chq-btn chq-btn-tertiary" onClick={() => setToast(null)} aria-label="Dismiss">
             &times;
           </button>
         </div>

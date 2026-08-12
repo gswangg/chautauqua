@@ -472,11 +472,17 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
             <div className="chq-section-head">
               <span className="chq-section-label">Preview{currentPreview ? ` · ${currentPreview.name}` : ''}</span>
               <div className="chq-comms-preview-nav">
-                <button type="button" disabled={previewClamped <= 0} onClick={() => setPreviewIndex((i) => i - 1)}>
+                <button
+                  type="button"
+                  className="chq-btn chq-btn-tertiary"
+                  disabled={previewClamped <= 0}
+                  onClick={() => setPreviewIndex((i) => i - 1)}
+                >
                   &lsaquo; Prev
                 </button>
                 <button
                   type="button"
+                  className="chq-btn chq-btn-tertiary"
                   disabled={previewClamped >= preview.length - 1}
                   onClick={() => setPreviewIndex((i) => i + 1)}
                 >

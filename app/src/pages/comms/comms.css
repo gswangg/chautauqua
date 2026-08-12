@@ -424,8 +424,9 @@
   }
 
   /* Preview pane switcher: flex-shrink:0 horizontal strip. The Prev/Next
-     buttons carry no className in ComposeWizard.tsx, so they're addressed
-     structurally, scoped under this page's own .chq-comms-preview-nav. */
+     buttons carry chq-btn chq-btn-tertiary (DEC-410); this element
+     selector still wins on phone via the class+element specificity bump,
+     so the phone chrome is unaffected by that class addition. */
   .chq-comms-preview-nav {
     flex-shrink: 0;
     overflow-x: auto;

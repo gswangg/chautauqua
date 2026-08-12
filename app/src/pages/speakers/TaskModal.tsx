@@ -99,7 +99,7 @@ export function TaskModal({ onCancel, onSubmit, forms }: TaskModalProps) {
             <h2 className="chq-speakers-modal-title">New task</h2>
             <span className="chq-summary">Applies to every accepted speaker</span>
           </div>
-          <button type="button" className="chq-btn-tertiary" onClick={onCancel} disabled={submitting}>
+          <button type="button" className="chq-btn chq-btn-tertiary" onClick={onCancel} disabled={submitting}>
             Close
           </button>
         </div>

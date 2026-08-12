@@ -267,6 +267,7 @@ export function ContactDrawer({ contactId, onClose, onSaved }: Props) {
                   Upload headshot
                   <input
                     id="chq-contact-headshot-upload"
+                    className="chq-input"
                     type="file"
                     accept=".png,.jpg,.jpeg,.webp"
                     ref={headshotInputRef}

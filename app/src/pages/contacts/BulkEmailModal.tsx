@@ -119,7 +119,7 @@ export function BulkEmailModal({ contactIds, eventId, onClose }: Props) {
               Email {contactIds.length} contact{contactIds.length === 1 ? '' : 's'}
             </h2>
           </div>
-          <button type="button" className="chq-btn-tertiary" onClick={onClose} aria-label="Close">
+          <button type="button" className="chq-btn chq-btn-tertiary" onClick={onClose} aria-label="Close">
             Close
           </button>
         </div>
