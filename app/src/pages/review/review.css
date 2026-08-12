@@ -109,6 +109,16 @@
 /* Results                                                                 */
 /* ---------------------------------------------------------------------- */
 
+/* DEC-424: the shared .chq-section-action class is white-space: nowrap
+   (styles.css, shell-owned — never redefined here per DEC-368). This one
+   instance carries a long descriptive sentence rather than a short link
+   label, so on narrow viewports the nowrap text was the actual overflow
+   offender (the section-head flex row, not the results table itself). A
+   page-owned class layered on top wraps it without touching the shell. */
+.chq-review-results-note {
+  white-space: normal;
+}
+
 .chq-review-results-table {
   width: 100%;
   border-collapse: collapse;

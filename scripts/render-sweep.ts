@@ -360,6 +360,20 @@ async function visitMobileRoute(
       return classes.length > 0 ? `${tag}.${classes.join(".")}` : tag;
     };
 
+    // DEC-424: an element deliberately held inside a horizontal scroller
+    // (DEC-414's remedy) is not an overflow bug — walk up to (but not
+    // including) <body>/<html> and exclude elements whose overflow is
+    // contained by an ancestor with overflow-x: auto|scroll.
+    const inHorizontalScroller = (el: Element): boolean => {
+      let p = el.parentElement;
+      while (p && p !== document.body && p !== document.documentElement) {
+        const overflowX = getComputedStyle(p).overflowX;
+        if (overflowX === "auto" || overflowX === "scroll") return true;
+        p = p.parentElement;
+      }
+      return false;
+    };
+
     const scrollWidth = document.scrollingElement ? document.scrollingElement.scrollWidth : document.body.scrollWidth;
     const viewportWidth = window.innerWidth;
 
@@ -369,14 +383,34 @@ async function visitMobileRoute(
     let maxElementRight = 0;
     const overflowing: { el: HTMLElement; right: number }[] = [];
     for (const el of visibleElements) {
+      if (inHorizontalScroller(el)) continue; // DEC-424
       const rect = el.getBoundingClientRect();
       if (rect.right > maxElementRight) maxElementRight = rect.right;
       if (rect.right > viewportWidth + 1) overflowing.push({ el, right: rect.right });
     }
     overflowing.sort((a, b) => b.right - a.right);
-    const overflowOffenders = overflowing
+    let overflowOffenders = overflowing
       .slice(0, 3)
       .map(({ el, right }) => `${describe(el)} w=${Math.round(el.getBoundingClientRect().width)}px right=${Math.round(right)}px`);
+
+    // DEC-424: content-spill attribution — when the page scrollWidth itself
+    // overflows but no single element's rect.right exceeded the viewport
+    // (e.g. a wide inline run bleeding past its ancestors), name the
+    // spilling element(s) directly rather than reporting an empty offender
+    // list.
+    if (overflowOffenders.length === 0 && scrollWidth > viewportWidth + 1) {
+      const spilling: { el: HTMLElement; spill: number; sw: number; cw: number }[] = [];
+      for (const el of visibleElements) {
+        if (inHorizontalScroller(el)) continue;
+        const sw = el.scrollWidth;
+        const cw = el.clientWidth;
+        if (sw > cw + 1) spilling.push({ el, spill: sw - cw, sw, cw });
+      }
+      spilling.sort((a, b) => b.spill - a.spill);
+      overflowOffenders = spilling
+        .slice(0, 3)
+        .map(({ el, spill, sw, cw }) => `${describe(el)} spill=${Math.round(spill)}px (scrollWidth ${Math.round(sw)} > clientWidth ${Math.round(cw)})`);
+    }
 
     const controls = Array.from(document.querySelectorAll(selector)) as HTMLElement[];
     let minControlHeight: number | null = null;

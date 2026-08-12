@@ -116,11 +116,20 @@ export interface MobileObservation {
   minControlHeight: number | null;
   /** DEC-401: maximum getBoundingClientRect().right over every visible
    * element on the page — catches elements clipped by an ancestor's
-   * overflow:hidden that scrollWidth alone would miss. */
+   * overflow:hidden that scrollWidth alone would miss. DEC-424: elements
+   * held inside a deliberate horizontal scroller (an ancestor with
+   * overflow-x: auto|scroll, DEC-414's remedy) are excluded from this
+   * measurement — they are not overflow bugs. */
   maxElementRight: number;
   /** DEC-401: up to 3 structural descriptors (never text content) for the
    * widest-overhanging elements whose rect.right exceeds the viewport,
-   * widest first — e.g. "div.chq-foo w=420px right=460px". */
+   * widest first — e.g. "div.chq-foo w=420px right=460px". DEC-424: excludes
+   * elements held by a horizontal scroller ancestor. If this list is empty
+   * but the page's scrollWidth still overflows the viewport (content-spill
+   * with no single offending rect.right), it is instead populated with up
+   * to 3 visible, non-scroller-held elements whose own
+   * el.scrollWidth > el.clientWidth, sorted by spill magnitude descending —
+   * e.g. "span.chq-foo spill=25px (scrollWidth 415 > clientWidth 390)". */
   overflowOffenders: string[];
   /** DEC-401: structural descriptor (class list / tag) of the element that
    * produced minControlHeight, or null if there is no such control. */

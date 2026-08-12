@@ -296,6 +296,44 @@ describe("evaluateMobileRoute (DEC-253)", () => {
     // nothing resembling rendered text (e.g. no quotes, no capitalized words).
     expect(widestPart).toMatch(/^[a-z0-9.\-=\s|px]+$/);
   });
+
+  // DEC-424: content-spill attribution — a route whose scrollWidth exceeds
+  // the viewport but whose collected element rects never individually
+  // crossed the viewport edge (e.g. scroller-held elements excluded, or a
+  // wide inline spill) still gets an offender string rather than an empty
+  // list.
+  it("(DEC-424) passes when scrollWidth == viewportWidth and maxElementRight == viewportWidth", () => {
+    const result = evaluateMobileRoute(ENTRY, {
+      ...EMPTY_MOBILE_OBSERVATION,
+      status: 200,
+      scrollWidth: 390,
+      viewportWidth: 390,
+      maxElementRight: 390,
+      overflowOffenders: [],
+      minControlHeight: 44,
+    });
+    expect(result.ok).toBe(true);
+    expect(result.overflowPx).toBe(0);
+    expect(result.failureReason).toBeUndefined();
+  });
+
+  it("(DEC-424) fails with a content-spill offender when scrollWidth 415 > viewportWidth 390", () => {
+    const result = evaluateMobileRoute(ENTRY, {
+      ...EMPTY_MOBILE_OBSERVATION,
+      status: 200,
+      scrollWidth: 415,
+      viewportWidth: 390,
+      maxElementRight: 390,
+      overflowOffenders: ["span.chq-foo spill=25px (scrollWidth 415 > clientWidth 390)"],
+      minControlHeight: 44,
+    });
+    expect(result.ok).toBe(false);
+    expect(result.overflowPx).toBe(25);
+    expect(result.failureReason).toMatch(/horizontal overflow 25px \(scrollWidth 415 > viewport 390\)/);
+    expect(result.failureReason).toContain(
+      "span.chq-foo spill=25px (scrollWidth 415 > clientWidth 390)",
+    );
+  });
 });
 
 describe("allMobilePassed / formatMobileSummary / formatMobileResultsTable", () => {
