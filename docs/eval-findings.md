@@ -276,3 +276,32 @@ mock shows criteria but not their editing flow; prod's invented flow is unintuit
     title action row with New task + Remind (no floating band above the title).
     Rationale: the mock's affordance rule is conditional-and-quiet; prod's 84
     mostly-dead buttons destroy scanability the grid exists to provide.
+
+## APPENDED: sbek re-run (84.3%) — NEW defects only; knowns confirmed & omitted (2026-08-12)
+
+13. **CSV import dedupe broken with dishonest reporting (MAJOR)**: report said "Created
+    1, updated 2, skipped 0" but duplicates were actually created; dedupe is strictly
+    by email so a re-import under a different address silently duplicates a person.
+    Fix: name+company fuzzy check surfacing an inline "possible duplicate" choice, and
+    result counts that match what actually happened (count AFTER commit, not intent).
+14. **Pipeline "+ Enroll" contact dropdown programmatically inoperable (MAJOR)**: judge
+    failed 8 consecutive selection attempts though options existed in the DOM — custom
+    dropdown lacks real select semantics. Same family as agenda a11y: every interactive
+    control must be operable via the accessibility tree.
+15. **Plan "Rounds" field is largely decorative (MAJOR)**: rounds=2 only unlocks
+    per-round criteria overrides. Fold into the Review rebuild: either rounds carry
+    real semantics (waves w/ dates + assignments, per the multi-wave mock) or the
+    field goes.
+16. **"TBD" room column leaks to the public agenda** verbatim; and auto-schedule
+    doesn't attempt to resolve pre-existing conflicts (fine — but say so in its result
+    copy: "existing clashes left in place").
+17. Bulk-reminder honesty AGAIN, new instance (content-area dialog: "Send 11
+    reminders" → "sent to 0 contacts"): whatever the send path counts, the toast must
+    count actual sends — one shared result-reporting helper for ALL reminder/send
+    flows.
+18. Small trues: speaker headshots absent from the Files area; portal upload task has
+    no completion signal after upload (stayed PENDING); Content lands on "Changes
+    requested" view by default showing "0 submissions" (default to All/Needs-decision);
+    pipeline board flashes "0 people · Loading…" before data (suppress empty-state
+    until loaded); seed must not mark a submission Accepted while it sits in an open
+    blind round (DEC-591 refinement).
