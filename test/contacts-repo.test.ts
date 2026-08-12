@@ -116,6 +116,45 @@ describe("resolveImportUpsert (DEC-026 CSV import upsert-by-email)", () => {
     const result = resolveImportUpsert(undefined, { email: "b@example.com" });
     expect(result).toEqual({ action: "create", values: { email: "b@example.com", firstName: "", lastName: "" } });
   });
+
+  // DEC-575: a blank-after-trim cell on update means "no value supplied",
+  // never "clear this field" -- the mapped-but-empty column is omitted from
+  // the patch, and customFields merge key-by-key into the stored blob
+  // rather than replacing it.
+  it("omits a mapped-but-blank standard field from the update patch instead of clearing it", () => {
+    const result = resolveImportUpsert("ct_1", { email: "a@example.com", bio: "", company: "Acme" });
+    expect(result).toEqual({
+      action: "update",
+      id: "ct_1",
+      patch: { company: "Acme" },
+    });
+  });
+
+  it("treats a whitespace-only cell as blank on update", () => {
+    const result = resolveImportUpsert("ct_1", { email: "a@example.com", bio: "   ", title: "  \t " });
+    expect(result).toEqual({ action: "update", id: "ct_1", patch: {} });
+  });
+
+  it("merges customFields key-by-key into the existing stored object, skipping blank values", () => {
+    const result = resolveImportUpsert(
+      "ct_1",
+      { email: "a@example.com", customFields: { badge: "", talkTitle: "New Talk" } },
+      { badge: "VIP", dietary: "Vegan" },
+    );
+    expect(result).toEqual({
+      action: "update",
+      id: "ct_1",
+      patch: { customFields: { badge: "VIP", dietary: "Vegan", talkTitle: "New Talk" } },
+    });
+  });
+
+  it("blank cell on create leaves the field unset (create is unaffected by DEC-575)", () => {
+    const result = resolveImportUpsert(undefined, { email: "c@example.com", bio: "" });
+    expect(result).toEqual({
+      action: "create",
+      values: { email: "c@example.com", firstName: "", lastName: "", bio: "" },
+    });
+  });
 });
 
 describe("buildMergeRepointOps (DEC-282 merge repoint plan)", () => {

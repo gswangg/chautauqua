@@ -163,4 +163,33 @@ describe("applyImportRows write-burst bound (DEC-491)", () => {
     expect(counts.contactUpdate).toBe(1);
     expect(counts.participantUpdate).toBe(0);
   });
+
+  // DEC-575: the customFields merge added a pre-pass field (customFieldsJson)
+  // to the same chunked SELECT batch that already builds byEmail -- it must
+  // NOT add a per-row read. The per-row statement budget (DEC-491) stays
+  // exactly IMPORT_MAX_STATEMENTS_PER_ROW in the worst case even when every
+  // row also carries custom fields to merge.
+  it("DEC-575: merging customFields on update does not grow the per-row statement budget", async () => {
+    const N = 25;
+    const seeded = Array.from({ length: N }, (_, i) => ({ id: `contact-${i}`, email: `existing${i}@example.com` }));
+    const { db, counts } = makeCountingDb(seeded);
+    const rows = seeded.map((c, idx) => ({
+      line: idx + 2,
+      parsed: {
+        email: c.email,
+        firstName: "New",
+        lastName: "Name",
+        title: "Chief Widget Officer",
+        company: "Acme Co",
+        customFields: { badge: "VIP" },
+      },
+    }));
+    const result = await applyImportRows(db, ORG_ID, rows);
+
+    expect(result.updated).toBe(N);
+    const totalWrites = counts.contactInsert + counts.contactUpdate + counts.participantUpdate + counts.otherWrite;
+    const statementsPerRow = totalWrites / N;
+    expect(statementsPerRow).toBe(IMPORT_MAX_STATEMENTS_PER_ROW);
+    expect(statementsPerRow).toBeLessThanOrEqual(IMPORT_MAX_STATEMENTS_PER_ROW);
+  });
 });
