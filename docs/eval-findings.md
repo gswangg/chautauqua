@@ -347,3 +347,10 @@ mock shows criteria but not their editing flow; prod's invented flow is unintuit
     mock well" — implementer should compare frame-by-frame, not inherit the MINOR
     rating. (Note: DEC-629 made merge set-based since the fidelity pass — re-verify
     the UI against the mock AFTER that change too.)
+
+25. (User QA, orchestrator-verified w/ screenshot) **Bulk-email modal form layout is
+    unbuilt**: labels render BESIDE inputs at drifting baselines ("Body" floats at its
+    textarea's bottom-left), inputs have arbitrary non-matching widths, half the modal
+    is dead space. Apply the system form pattern — labels above, inputs at the modal's
+    full measure — ideally as a shared FormRow within ModalFrame (DEC-651) so every
+    dialog's form inherits it. Keep the existing honesty captions.
