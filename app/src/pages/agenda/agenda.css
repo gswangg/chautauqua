@@ -36,6 +36,19 @@
   white-space: nowrap;
 }
 
+.chq-agenda-armed-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 14px;
+  border: 1px solid var(--chq-brand);
+  border-radius: var(--chq-r-ctl);
+  background: var(--chq-surface-sunk);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--chq-ink);
+}
+
 .chq-agenda-layout {
   display: grid;
   grid-template-columns: 1fr 268px;
@@ -95,10 +108,32 @@
   border-left: 1px solid var(--chq-hairline);
 }
 
+/* DEC-570: while a session is armed, empty cells become click-to-place
+   buttons (occupied cells stay covered by their placed card instead). */
+.chq-day-grid-cell-btn {
+  border-bottom: 1px solid var(--chq-hairline);
+  border-left: 1px solid var(--chq-hairline);
+  background: transparent;
+  border-top: none;
+  border-right: none;
+  padding: 0;
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+
+.chq-day-grid-cell-btn:focus-visible {
+  outline: 2px solid var(--chq-brand);
+  outline-offset: -2px;
+}
+
 .chq-day-grid-placed-card {
   align-self: stretch;
   justify-self: start;
   height: 100%;
+  overflow: hidden;
+  min-height: 0;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -108,13 +143,29 @@
 .chq-session-card {
   background: var(--chq-surface);
   border: 1px solid var(--chq-rule);
-  border-left: 3px solid var(--chq-border);
+  border-left: 3px solid var(--chq-brand);
   border-radius: var(--chq-r-ctl);
   padding: 7px 8px;
   display: flex;
   flex-direction: column;
   gap: 2px;
   cursor: grab;
+  overflow: hidden;
+  min-height: 0;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+}
+
+.chq-session-card-selected {
+  outline: 2px solid var(--chq-brand);
+  outline-offset: -2px;
+}
+
+.chq-session-card:focus-visible {
+  outline: 2px solid var(--chq-brand);
+  outline-offset: -2px;
 }
 
 .chq-session-card-head {
@@ -144,11 +195,19 @@
   font-weight: 600;
   line-height: 1.25;
   color: var(--chq-ink);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
-.chq-session-card-speakers {
+.chq-session-card-speakers,
+.chq-session-card-tracks {
   font-size: 11px;
   color: var(--chq-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Conflicted card: inverts to ink/on-ink — no red chip, no track accent
@@ -163,6 +222,7 @@
 
 .chq-session-card-conflict .chq-session-card-ref,
 .chq-session-card-conflict .chq-session-card-speakers,
+.chq-session-card-conflict .chq-session-card-tracks,
 .chq-session-card-conflict .chq-session-card-handle {
   color: var(--chq-on-ink-muted);
 }
