@@ -6,6 +6,7 @@
 
 import type { MiddlewareHandler } from "hono";
 import type { AppEnv } from "../../server/env";
+import { ThemeStyles } from "../../views/theme";
 
 export interface PortalBrandingChrome {
   eventName: string;
@@ -40,24 +41,11 @@ export function PortalLayout(props: {
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>{props.branding.eventName} - Speaker Portal</title>
+        <ThemeStyles />
         <style>{`
-          :root { --accent: ${accent}; }
-          *, *::before, *::after { box-sizing: border-box; }
-          html, body { max-width: 100%; overflow-x: hidden; }
-          body { font-family: system-ui, sans-serif; margin: 0; color: #1a1a1a; }
-          main, header { max-width: 960px; margin: 0 auto; padding: 0 1rem; }
-          img { max-width: 100%; height: auto; }
-          h1 { color: var(--accent); }
-          nav[aria-label="Portal navigation"] { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.75rem; }
+          :root { --chq-brandable-accent: ${accent}; }
+          main { max-width: 960px; margin: 0 auto; padding: 0 1rem; }
           nav a { display: inline-flex; align-items: center; min-height: 40px; }
-          button, input[type=submit] { min-height: 40px; padding: 0.4rem 0.9rem; font-size: 1rem; }
-          input[type=text], input[type=email], input[type=tel], input[type=url], input[type=search],
-          input[type=password], select, textarea {
-            max-width: 100%;
-            box-sizing: border-box;
-            min-height: 40px;
-            font-size: 1rem;
-          }
           /* DEC-253: wide data tables (My Submissions/Tasks) scroll inside
              their own container on a phone viewport rather than blowing out
              page-level width. */
@@ -66,17 +54,19 @@ export function PortalLayout(props: {
         `}</style>
       </head>
       <body>
-        <header>
-          {props.branding.logoUrl ? <img src={props.branding.logoUrl} alt="" height={40} /> : null}
-          <h1>{props.branding.eventName}</h1>
-          {props.branding.welcomeMessage ? <p>{props.branding.welcomeMessage}</p> : null}
+        <header class="chq-header">
+          <span class="chq-wordmark">
+            {props.branding.logoUrl ? <img src={props.branding.logoUrl} alt="" height={40} /> : null}
+            {props.branding.eventName}
+          </span>
+          {props.branding.welcomeMessage ? <p class="chq-meta">{props.branding.welcomeMessage}</p> : null}
           {/* DEC-154: sign-out control on every /portal/* page, via the
               shared layout so it's not duplicated per-page. */}
           {/* DEC-181: /logout now requires CSRF proof; the portal form uses
               the double-submit cookie pair. */}
           <form method="post" action="/logout" class="chq-portal-signout">
             <input type="hidden" name="chq_csrf" value={props.csrfToken} />
-            <button type="submit">Sign out</button>
+            <button type="submit" class="chq-btn chq-btn-secondary">Sign out</button>
           </form>
         </header>
         <main>{props.children as any}</main>

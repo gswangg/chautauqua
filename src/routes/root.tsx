@@ -10,6 +10,7 @@ import { getFirstEventSlug } from "../server/repo/events";
 import { shouldMountDevMailbox } from "./dev/mailbox";
 import { ApiError } from "../server/http";
 import { DEC_049, DEC_012, DEC_005, DEC_268, DEC_295 } from "../decisions";
+import { ThemeStyles } from "../views/theme";
 
 export const rootRoutes = new Hono<AppEnv>();
 
@@ -78,7 +79,8 @@ function LandingPage(props: { adminHref: string; portalHref: string; submitHref:
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>Chautauqua</title>
-        <style>{`body { font-family: system-ui, sans-serif; margin: 0; color: #1a1a1a; } main { max-width: 640px; margin: 3rem auto; padding: 1rem; } li { margin-bottom: 0.5rem; }`}</style>
+        <ThemeStyles />
+        <style>{`main { max-width: 640px; margin: 3rem auto; padding: 1rem; } li { margin-bottom: 0.5rem; }`}</style>
       </head>
       <body>
         <main>
