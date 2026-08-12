@@ -32,9 +32,16 @@ function NameSearchForm(props: { action: string; q: string | null; limit: number
  * only difference is whether the directory additionally lists sessions.
  * A missing headshot renders the same `.chq-pub-headshot-fallback` block in
  * both places so the grid never collapses (EMB-12 graceful degradation). */
-function SpeakerCard(props: { event: PublicEvent; sp: PublicSpeakerWithSessions; surface: "speakers" | "gallery"; showSessions: boolean }) {
-  const { event, sp, surface, showSessions } = props;
-  const href = speakerDetailPath(event, sp.contactId, surface);
+function SpeakerCard(props: {
+  event: PublicEvent;
+  sp: PublicSpeakerWithSessions;
+  surface: "speakers" | "gallery";
+  showSessions: boolean;
+  embed?: boolean;
+}) {
+  const { event, sp, surface, showSessions, embed } = props;
+  const base = embed ? "/embed" : "/e";
+  const href = speakerDetailPath(event, sp.contactId, surface, base);
   return (
     <div class="chq-pub-speaker-card">
       <a href={href}>
@@ -73,13 +80,15 @@ export function SpeakersContent(props: {
   q: string | null;
   perPage?: number;
   limit?: number | null;
+  embed?: boolean;
 }) {
-  const { event, speakers, total, page, q, perPage, limit } = props;
+  const { event, speakers, total, page, q, perPage, limit, embed } = props;
   // DEC-433/477: parsePage clamps to MAX_PUBLIC_PAGE; stop offering
   // 'Show more' once there is no further page to link to, or once the
   // cumulative row ceiling (MAX_PUBLIC_ROWS) has already been reached.
   const hasMore = hasMorePages(speakers.length, total, page, perPage ?? PUBLIC_PER_PAGE);
-  const basePath = surfacePath(event, "speakers");
+  const base = embed ? "/embed" : "/e";
+  const basePath = surfacePath(event, "speakers", base);
   // DEC-289/DEC-489: carry `limit` forward exactly like SessionsContent's
   // carryQs, so a configured embed does not lose its page size on page 2.
   const carryQs = limit ? `limit=${limit}&` : "";
@@ -96,7 +105,7 @@ export function SpeakersContent(props: {
           </p>
           <div class="chq-pub-speaker-grid">
             {speakers.map((sp) => (
-              <SpeakerCard event={event} sp={sp} surface="speakers" showSessions={true} />
+              <SpeakerCard event={event} sp={sp} surface="speakers" showSessions={true} embed={embed} />
             ))}
           </div>
         </>
@@ -118,11 +127,13 @@ export function GalleryContent(props: {
   q: string | null;
   perPage?: number;
   limit?: number | null;
+  embed?: boolean;
 }) {
-  const { event, speakers, total, page, q, perPage, limit } = props;
+  const { event, speakers, total, page, q, perPage, limit, embed } = props;
   // DEC-433/477: see SpeakersContent above.
   const hasMore = hasMorePages(speakers.length, total, page, perPage ?? PUBLIC_PER_PAGE);
-  const basePath = surfacePath(event, "gallery");
+  const base = embed ? "/embed" : "/e";
+  const basePath = surfacePath(event, "gallery", base);
   // DEC-289/DEC-489: see SpeakersContent above.
   const carryQs = limit ? `limit=${limit}&` : "";
   return (
@@ -134,7 +145,7 @@ export function GalleryContent(props: {
       </p>
       <div class="chq-pub-speaker-grid chq-pub-gallery-grid">
         {speakers.map((sp) => (
-          <SpeakerCard event={event} sp={sp} surface="gallery" showSessions={false} />
+          <SpeakerCard event={event} sp={sp} surface="gallery" showSessions={false} embed={embed} />
         ))}
       </div>
       {hasMore ? (

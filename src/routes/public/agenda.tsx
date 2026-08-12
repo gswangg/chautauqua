@@ -6,7 +6,7 @@ import type { PublicAgendaItem, PublicEvent } from "../../server/repo/public";
 import { itineraryStorageKey, mergeItinerarySelection, mirrorItineraryCheckboxes } from "../../lib/itinerary";
 import { assignLanes } from "../../lib/overlap-lanes";
 import { publicRoomLabel } from "../../domain/schedule";
-import { sessionDetailPath, type Surface } from "./shell";
+import { sessionDetailPath, type Surface, type SurfaceBase } from "./shell";
 import { TrackChips, SpeakerNames, SessionDescription, formatDay, formatMinutes } from "./cards";
 
 // DEC-602: shared row-map math. The hour-label column (grid-column 1) and
@@ -27,8 +27,8 @@ function formatHourLabel(min: number): string {
 
 /** Per-day time grid (DEC-022): CSS grid, rooms as columns, session blocks
  * positioned by grid-row from start/end minutes. */
-export function AgendaDayGrid(props: { day: string; items: PublicAgendaItem[]; event: PublicEvent; from: Surface }) {
-  const { day, items, event, from } = props;
+export function AgendaDayGrid(props: { day: string; items: PublicAgendaItem[]; event: PublicEvent; from: Surface; base?: SurfaceBase }) {
+  const { day, items, event, from, base } = props;
   const gridMin = 15;
   const dayStart = Math.min(...items.map((i) => i.startMin));
   const dayEnd = Math.max(...items.map((i) => i.endMin));
@@ -121,7 +121,7 @@ export function AgendaDayGrid(props: { day: string; items: PublicAgendaItem[]; e
                 <TrackChips tracks={item.tracks} />
                 <div class="chq-pub-agenda-block-title">
                   <strong>
-                    <a href={sessionDetailPath(event, item.submissionId, from)}>{item.title}</a>
+                    <a href={sessionDetailPath(event, item.submissionId, from, base)}>{item.title}</a>
                   </strong>
                 </div>
                 <div class="chq-pub-agenda-block-speakers">
@@ -158,8 +158,9 @@ function AgendaItemList(props: {
   showDay?: boolean;
   listClass?: string;
   sectionClass?: string;
+  base?: SurfaceBase;
 }) {
-  const { day, items, event, from, itinerary, showDescription, showDay, listClass, sectionClass } = props;
+  const { day, items, event, from, itinerary, showDescription, showDay, listClass, sectionClass, base } = props;
   const sorted = [...items].sort((a, b) => {
     if (a.startMin !== b.startMin) return a.startMin - b.startMin;
     const posA = a.roomId ? (a.roomPosition ?? Number.POSITIVE_INFINITY) : Number.POSITIVE_INFINITY;
@@ -179,7 +180,7 @@ function AgendaItemList(props: {
             </div>
             <div>
               <strong>
-                <a class="chq-pub-agenda-list-title" href={sessionDetailPath(event, item.submissionId, from)}>
+                <a class="chq-pub-agenda-list-title" href={sessionDetailPath(event, item.submissionId, from, base)}>
                   {item.title}
                 </a>
               </strong>
@@ -209,7 +210,7 @@ function AgendaItemList(props: {
  * from the same `items` array, switched at the 700px breakpoint purely by
  * CSS `display:none` (public.css.ts) so exactly one is in the a11y tree at
  * a time. */
-function AgendaDay(props: { day: string; items: PublicAgendaItem[]; event: PublicEvent; from: Surface }) {
+function AgendaDay(props: { day: string; items: PublicAgendaItem[]; event: PublicEvent; from: Surface; base?: SurfaceBase }) {
   return (
     <div id={`chq-day-${props.day}`}>
       <div class="chq-pub-agenda-desktop">
@@ -246,9 +247,10 @@ function DaySwitcher(props: { days: string[] }) {
   );
 }
 
-export function AgendaContent(props: { event: PublicEvent; items: PublicAgendaItem[]; total: number }) {
+export function AgendaContent(props: { event: PublicEvent; items: PublicAgendaItem[]; total: number; embed?: boolean }) {
   const byDay = groupByDay(props.items);
   const days = [...byDay.keys()];
+  const base: SurfaceBase = props.embed ? "/embed" : "/e";
   return (
     <>
       <h2>Agenda</h2>
@@ -263,7 +265,7 @@ export function AgendaContent(props: { event: PublicEvent; items: PublicAgendaIt
           ) : null}
           <DaySwitcher days={days} />
           {days.map((day) => (
-            <AgendaDay day={day} items={byDay.get(day) ?? []} event={props.event} from="agenda" />
+            <AgendaDay day={day} items={byDay.get(day) ?? []} event={props.event} from="agenda" base={base} />
           ))}
         </>
       )}
@@ -355,9 +357,10 @@ function ItineraryScript(props: { eventSlug: string }) {
   return <script dangerouslySetInnerHTML={{ __html: js }} />;
 }
 
-export function ScheduleContent(props: { event: PublicEvent; items: PublicAgendaItem[]; total: number }) {
+export function ScheduleContent(props: { event: PublicEvent; items: PublicAgendaItem[]; total: number; embed?: boolean }) {
   const byDay = groupByDay(props.items);
   const days = [...byDay.keys()];
+  const base: SurfaceBase = props.embed ? "/embed" : "/e";
   return (
     <>
       <h2>My schedule</h2>
@@ -368,6 +371,8 @@ export function ScheduleContent(props: { event: PublicEvent; items: PublicAgenda
           class="chq-pub-itinerary-cta"
           href={`/e/${props.event.slug}/schedule.ics`}
           aria-disabled="true"
+          target={props.embed ? "_blank" : undefined}
+          rel={props.embed ? "noopener" : undefined}
         >
           Download .ics
         </a>{" "}
@@ -404,6 +409,7 @@ export function ScheduleContent(props: { event: PublicEvent; items: PublicAgenda
                 showDay
                 listClass="chq-pub-schedule-list"
                 sectionClass="chq-pub-agenda-list-wrap chq-pub-schedule-day"
+                base={base}
               />
             </div>
           ))}
