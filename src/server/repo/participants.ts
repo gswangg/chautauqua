@@ -57,6 +57,8 @@ export interface ParticipantRow {
   contactId: string;
   name: string;
   email: string;
+  title: string | null;
+  company: string | null;
   role: string;
   order: number;
   visible: boolean;
@@ -104,6 +106,12 @@ export async function inviteParticipant(
     contactId,
     name: `${input.firstName} ${input.lastName}`.trim(),
     email: input.email,
+    // DEC-265: title/company mirror the contact's CURRENT title/company,
+    // the same fields getSubmissionDetail's participant join reads --
+    // titleAtTime/orgAtTime is a separate historical snapshot, not this
+    // display value, but at invite time the two are the same value.
+    title: input.titleAtTime ?? null,
+    company: input.orgAtTime ?? null,
     role,
     order: row.order,
     visible: true,
@@ -152,6 +160,8 @@ export async function getParticipantRow(db: Db, participantId: string): Promise<
       firstName: schema.contact.firstName,
       lastName: schema.contact.lastName,
       email: schema.contact.email,
+      title: schema.contact.title,
+      company: schema.contact.company,
       role: schema.participant.role,
       order: schema.participant.order,
       visible: schema.participant.visible,
@@ -168,6 +178,8 @@ export async function getParticipantRow(db: Db, participantId: string): Promise<
     contactId: row.contactId,
     name: `${row.firstName} ${row.lastName}`.trim(),
     email: row.email,
+    title: row.title,
+    company: row.company,
     role: row.role,
     order: row.order,
     visible: row.visible,

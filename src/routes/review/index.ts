@@ -11,9 +11,11 @@ import type { AppEnv } from "../../server/env";
 import { reviewPlansRoutes } from "./plans";
 import { reviewReviewerRoutes } from "./reviewer";
 import { reviewRecusalRoutes } from "./recusals";
+import { reviewEvaluationsRoutes } from "./evaluations";
 
 export const reviewRoutes = new Hono<AppEnv>();
 
 reviewRoutes.route("/", reviewPlansRoutes);
 reviewRoutes.route("/", reviewReviewerRoutes);
 reviewRoutes.route("/", reviewRecusalRoutes);
+reviewRoutes.route("/", reviewEvaluationsRoutes);

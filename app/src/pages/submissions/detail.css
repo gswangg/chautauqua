@@ -188,6 +188,99 @@
   gap: 8px;
 }
 
+/* DEC-577: the decision status control is a segmented button group, not a
+   <select> -- the active status is the one filled/primary button, the other
+   two stay outline/secondary. */
+.chq-segmented {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chq-segmented .chq-btn {
+  flex: 1 1 auto;
+}
+
+/* Speaker card: name, title/company, email -- same numbered-section rule
+   treatment as every other aside/main section. */
+.chq-detail-speaker-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.chq-detail-speaker-name {
+  font-size: 15px;
+}
+
+.chq-detail-speaker-role,
+.chq-detail-speaker-email {
+  font-size: 13px;
+  color: var(--chq-muted);
+  overflow-wrap: anywhere;
+}
+
+/* Reviews: each evaluation keeps its full comment length (copy rule 6). */
+.chq-review-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.chq-review-entry {
+  border-bottom: 1px solid var(--chq-hairline);
+  padding-bottom: 16px;
+}
+
+.chq-review-entry:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.chq-review-entry-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.chq-review-entry-plan {
+  color: var(--chq-muted);
+}
+
+.chq-review-scores {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 8px 0 0;
+}
+
+.chq-review-score {
+  display: flex;
+  gap: 4px;
+  font-size: 13px;
+}
+
+.chq-review-score dt {
+  color: var(--chq-muted);
+}
+
+.chq-review-score dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+.chq-review-comment {
+  margin: 8px 0 0;
+  font-size: 15px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
 /* States plainly that deciding never emails; notification is a separate,
    explicit action taken from Comms (house invariant). */
 .chq-detail-decision-note {
@@ -281,12 +374,13 @@
   }
 
   /* Decision panel buttons: full-width, phone control radius. */
-  .chq-detail-decision-body .chq-select,
+  .chq-segmented .chq-btn,
   .chq-detail-decision-actions .chq-btn {
     width: 100%;
     border-radius: var(--chq-r-ctl-phone);
   }
 
+  .chq-segmented,
   .chq-detail-decision-actions {
     flex-direction: column;
   }

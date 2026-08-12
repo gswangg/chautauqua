@@ -1,7 +1,7 @@
 // Evaluations (DEC-018): the recorded scores/comments a reviewer submits for
 // a submission within a plan round.
 
-import { and, eq, sql } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { newId } from "../../../domain/ids";
@@ -172,6 +172,64 @@ export async function listCompletedPairsForPlan(
     .from(schema.evaluation)
     .where(and(eq(schema.evaluation.planId, planId), eq(schema.evaluation.round, round)));
   return rows;
+}
+
+export interface SubmissionEvaluationRow {
+  planId: string;
+  planName: string;
+  round: number;
+  reviewerName: string | null;
+  scores: Record<string, number | string>;
+  comment: string | null;
+  submittedAt: number | null;
+}
+
+/** DEC-596: every evaluation recorded for a submission, across every plan it
+ * has ever been scored under -- the organiser reads the SAME evaluation the
+ * reviewer wrote, joined through evaluation_plan (for name/anonymized) and
+ * user -> contact (for the reviewer's display name). reviewerName is null
+ * exactly when the OWNING PLAN is anonymized -- decided here, server-side,
+ * never left for the renderer to infer from an absent contact. Totally
+ * ordered (planName, round, submittedAt, id asc) per DEC-534/558 so a
+ * LIMIT-less list still has one deterministic shape. */
+export async function listEvaluationsForSubmission(db: Db, submissionId: string): Promise<SubmissionEvaluationRow[]> {
+  const rows = await db
+    .select({
+      planId: schema.evaluation.planId,
+      planName: schema.evaluationPlan.name,
+      anonymized: schema.evaluationPlan.anonymized,
+      round: schema.evaluation.round,
+      scoresJson: schema.evaluation.scoresJson,
+      comment: schema.evaluation.comment,
+      submittedAt: schema.evaluation.submittedAt,
+      contactFirstName: schema.contact.firstName,
+      contactLastName: schema.contact.lastName,
+      userEmail: schema.user.email,
+      evaluationId: schema.evaluation.id,
+    })
+    .from(schema.evaluation)
+    .innerJoin(schema.evaluationPlan, eq(schema.evaluation.planId, schema.evaluationPlan.id))
+    .innerJoin(schema.user, eq(schema.evaluation.reviewerId, schema.user.id))
+    .leftJoin(schema.contact, eq(schema.user.contactId, schema.contact.id))
+    .where(eq(schema.evaluation.submissionId, submissionId))
+    .orderBy(
+      asc(schema.evaluationPlan.name),
+      asc(schema.evaluation.round),
+      asc(schema.evaluation.submittedAt),
+      asc(schema.evaluation.id),
+    );
+
+  return rows.map((r) => ({
+    planId: r.planId,
+    planName: r.planName,
+    round: r.round,
+    reviewerName: r.anonymized
+      ? null
+      : (r.contactFirstName && r.contactLastName ? `${r.contactFirstName} ${r.contactLastName}`.trim() : r.userEmail),
+    scores: JSON.parse(r.scoresJson) as Record<string, number | string>,
+    comment: r.comment,
+    submittedAt: r.submittedAt ? r.submittedAt.getTime() : null,
+  }));
 }
 
 /** Upserts a reviewer's evaluation for a submission+round (unique per
