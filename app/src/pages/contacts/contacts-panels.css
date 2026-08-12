@@ -1,0 +1,461 @@
+/* Contacts lane 2 (w2-e, DEC-376): PipelineBoard, DuplicatesView, SegmentsPanel,
+   FilterRulesPanel, ImportWizard. Shared .chq-* classes (page-title, summary,
+   section, section-head, section-label, btn/btn-primary/btn-secondary/
+   btn-tertiary, input/select/textarea, check, table, pill, chipstrip, modal,
+   drawer, empty, error, steps/step) are owned by the shell lane in
+   ../../styles.css -- this file only defines .chq-contacts-* classes specific
+   to these five panels. Lane 1 owns contacts.css (ContactsApp/Table/Stats/
+   Drawer/modals) -- never redefine a class from either.
+
+   DEC-376: the merge screen's discarded value is the ONE off-palette colour
+   in the whole app -- #A8A392, used nowhere else in this file or lane 1's. */
+
+/* ---------------------------------------------------------------------- */
+/* Pipeline board                                                         */
+/* ---------------------------------------------------------------------- */
+
+.chq-contacts-pipeline {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.chq-contacts-pipeline-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.chq-contacts-pipeline-head-titles {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.chq-contacts-pipeline-caption {
+  font-size: 13px;
+  color: var(--chq-muted, #565a4b);
+}
+
+.chq-contacts-pipeline-columns {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.chq-contacts-pipeline-column {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.chq-contacts-pipeline-column-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  border-bottom: 2px solid var(--chq-ink, #1b1d17);
+  padding-bottom: 8px;
+}
+
+.chq-contacts-pipeline-column-name {
+  font-family: var(--chq-font-display, inherit);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.chq-contacts-pipeline-column-count {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--chq-muted, #565a4b);
+}
+
+.chq-contacts-pipeline-column-cards {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.chq-contacts-pipeline-card {
+  border: 1px solid var(--chq-rule, #d3cfc0);
+  border-radius: var(--chq-r-card, 5px);
+  background: var(--chq-surface, #faf8f2);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.chq-contacts-pipeline-card-name {
+  font-family: var(--chq-font-display, inherit);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--chq-ink, #1b1d17);
+  background: none;
+  border: none;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.chq-contacts-pipeline-card-company {
+  font-size: 12px;
+  color: var(--chq-muted, #565a4b);
+}
+
+.chq-contacts-pipeline-card-move {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--chq-muted, #565a4b);
+}
+
+.chq-contacts-pipeline-card-move select {
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 500;
+  min-height: 34px;
+  padding: 0 8px;
+  font-size: 12px;
+}
+
+/* Phone: a single stage at a time, chosen from the shared .chq-pill strip
+   (mock lines 393-396: ink-fill active chip). */
+.chq-contacts-pipeline-phone-stages {
+  display: none;
+}
+
+.chq-contacts-pipeline-notes {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.chq-contacts-pipeline-activity {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.chq-contacts-pipeline-activity li {
+  font-size: 13px;
+  color: var(--chq-ink-2, #3f4237);
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--chq-hairline, #e1ddce);
+}
+
+@media (max-width: 700px) {
+  .chq-contacts-pipeline-columns {
+    display: none;
+  }
+
+  .chq-contacts-pipeline-phone-stages {
+    display: flex;
+  }
+
+  .chq-contacts-pipeline-phone-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .chq-contacts-pipeline-phone-card {
+    padding: 15px 0;
+    border-bottom: 1px solid var(--chq-hairline, #e1ddce);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .chq-contacts-pipeline-phone-card-body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+}
+
+/* ---------------------------------------------------------------------- */
+/* Duplicates + merge                                                     */
+/* ---------------------------------------------------------------------- */
+
+.chq-contacts-duplicates {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.chq-contacts-duplicate-groups {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.chq-contacts-duplicate-group {
+  padding: 14px 0;
+  border-bottom: 1px solid var(--chq-hairline, #e1ddce);
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.chq-contacts-duplicate-names {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.chq-contacts-merge-intro {
+  font-size: 13px;
+  color: var(--chq-muted, #565a4b);
+}
+
+.chq-contacts-merge-picks {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.chq-contacts-merge-pick {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 8px 0;
+}
+
+.chq-contacts-merge-compare-head {
+  display: grid;
+  grid-template-columns: 130px 1fr 1fr;
+  gap: 16px;
+  padding-bottom: 9px;
+  border-bottom: 2px solid var(--chq-ink, #1b1d17);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--chq-muted, #565a4b);
+}
+
+.chq-contacts-merge-compare-row {
+  display: grid;
+  grid-template-columns: 130px 1fr 1fr;
+  gap: 16px;
+  align-items: baseline;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--chq-hairline, #e1ddce);
+}
+
+.chq-contacts-merge-compare-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--chq-ink-2, #3f4237);
+}
+
+.chq-contacts-merge-compare-keep {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* DEC-376: the merge screen's ONE permitted off-palette hex. */
+.chq-contacts-merge-compare-drop {
+  font-size: 13px;
+  color: var(--chq-muted, #565a4b);
+  text-decoration: line-through;
+  text-decoration-color: #a8a392;
+}
+
+.chq-contacts-merge-footnote {
+  font-size: 13px;
+  color: var(--chq-muted, #565a4b);
+}
+
+/* ---------------------------------------------------------------------- */
+/* Segments                                                                */
+/* ---------------------------------------------------------------------- */
+
+.chq-contacts-segments {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.chq-contacts-segments-save {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.chq-contacts-segments-rule {
+  font-size: 12px;
+  color: var(--chq-muted, #565a4b);
+}
+
+.chq-contacts-segment-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.chq-contacts-segment-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--chq-hairline, #e1ddce);
+}
+
+.chq-contacts-segment-row-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.chq-contacts-segment-name {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.chq-contacts-segment-rule {
+  font-size: 12px;
+  color: var(--chq-muted, #565a4b);
+}
+
+/* ---------------------------------------------------------------------- */
+/* Filter rule builder                                                    */
+/* ---------------------------------------------------------------------- */
+
+.chq-contacts-filter-rules {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.chq-contacts-filter-rules-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.chq-contacts-filter-rules-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--chq-muted, #565a4b);
+}
+
+.chq-contacts-filter-rule-chips {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chq-contacts-filter-rule-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--chq-border, #bab6a6);
+  border-radius: var(--chq-r-pill, 99px);
+  padding: 5px 6px 5px 12px;
+  font-size: 12px;
+  color: var(--chq-ink-2, #3f4237);
+  background: var(--chq-surface, #faf8f2);
+}
+
+.chq-contacts-filter-rule-chip button {
+  background: none;
+  border: none;
+  color: var(--chq-muted, #565a4b);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 4px;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Import wizard                                                          */
+/* ---------------------------------------------------------------------- */
+
+.chq-contacts-import {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  max-width: 640px;
+}
+
+.chq-contacts-import-drop {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.chq-contacts-import-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--chq-muted, #565a4b);
+}
+
+.chq-contacts-import-mapping {
+  width: 100%;
+}
+
+.chq-contacts-import-preview-cell-skip {
+  color: var(--chq-disabled, #8e8a7a);
+  font-style: italic;
+}
+
+.chq-contacts-import-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.chq-contacts-import-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.chq-contacts-import-skipped {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+  color: var(--chq-muted, #565a4b);
+}

@@ -1,7 +1,13 @@
+// Saved segments (CRM-02, DEC-149). Behaviour frozen (DEC-366): SegmentRule
+// shape and the persisted rules are untouched — this only restyles the
+// panel. DEC-377: the mock's per-segment count has no backing field on
+// GET /segments (src/routes/api/contacts.ts serializeSegment returns
+// {id, name, rules} only), so that caption is dropped rather than invented.
 import { useState } from 'react';
 import { apiDelete, apiPost, ApiError } from '../../lib/api';
 import { buildSegmentRulesFromFilters, describeRules, type ActiveFilters } from './segments';
 import type { Segment } from './types';
+import './contacts-panels.css';
 
 interface Props {
   segments: Segment[];
@@ -55,31 +61,41 @@ export function SegmentsPanel({ segments, activeFilters, activeSegmentId, onChan
   }
 
   return (
-    <div className="chq-segments-panel">
-      <h2>Segments</h2>
-      {error && <div className="chq-error-banner">{error}</div>}
+    <div className="chq-contacts-segments">
+      <h2 className="chq-section-label">Segments</h2>
+      {error && <div className="chq-error">{error}</div>}
 
-      <div className="chq-save-segment">
-        <label>
+      <div className="chq-contacts-segments-save">
+        <label className="chq-contacts-filter-rules-field">
           Save current filter as segment
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Segment name" />
+          <input
+            className="chq-input"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Segment name"
+          />
         </label>
-        <p>Rules: {describeRules(rules)}</p>
-        <button type="button" disabled={busy || name.trim() === ''} onClick={save}>
-          Save segment
-        </button>
+        <p className="chq-contacts-segments-rule">Rules: {describeRules(rules)}</p>
+        <div>
+          <button type="button" className="chq-btn chq-btn-primary" disabled={busy || name.trim() === ''} onClick={save}>
+            Save segment
+          </button>
+        </div>
       </div>
 
-      <ul className="chq-segment-list">
+      <ul className="chq-contacts-segment-list">
         {segments.map((s) => (
-          <li key={s.id}>
-            <strong>{s.name}</strong> — {describeRules(s.rules)}
-            <button type="button" disabled={busy} onClick={() => remove(s.id)}>
+          <li key={s.id} className="chq-contacts-segment-row">
+            <div className="chq-contacts-segment-row-main">
+              <span className="chq-contacts-segment-name">{s.name}</span>
+              <span className="chq-contacts-segment-rule">{describeRules(s.rules)}</span>
+            </div>
+            <button type="button" className="chq-btn chq-btn-secondary" disabled={busy} onClick={() => remove(s.id)}>
               Delete
             </button>
           </li>
         ))}
-        {segments.length === 0 && <li>No saved segments yet.</li>}
+        {segments.length === 0 && <li className="chq-empty">No saved segments yet.</li>}
       </ul>
     </div>
   );

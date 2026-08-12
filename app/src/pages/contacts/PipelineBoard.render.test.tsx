@@ -3,8 +3,15 @@
 // fetch: initial load renders cards in their stage columns, Move-to select
 // optimistically reconciles against a PATCH response, and opening a card
 // shows the detail panel's notes + activity feed.
+//
+// w2-e redesign note: the board now also renders a phone-width duplicate of
+// each card (CSS-only media-query swap, DEC-375 "client-state swap"), so
+// jsdom (which ignores media queries) sees each entry's name/Move-to select
+// TWICE. Queries below are scoped with `within()` to the desktop
+// `.chq-contacts-pipeline-columns` grid to keep single-match assertions
+// meaningful.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, fireEvent, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { PipelineBoard } from './PipelineBoard';
 import { mockApi, listEnvelope, errorEnvelope } from '../../test-utils/mockApi';
@@ -19,6 +26,10 @@ afterEach(() => {
   cleanup();
   consoleErrorSpy.mockRestore();
 });
+
+function desktopBoard() {
+  return document.querySelector('.chq-contacts-pipeline-columns') as HTMLElement;
+}
 
 const ENTRY_IDENTIFIED = {
   id: 'entry-1',
@@ -51,14 +62,14 @@ describe('PipelineBoard render smoke (CRM-07/08)', () => {
     render(<PipelineBoard />);
 
     await waitFor(() => {
-      expect(screen.getByText('Ada Lovelace')).toBeInTheDocument();
+      expect(within(desktopBoard()).getByText('Ada Lovelace')).toBeInTheDocument();
     });
-    expect(screen.getByText('Grace Hopper')).toBeInTheDocument();
+    expect(within(desktopBoard()).getByText('Grace Hopper')).toBeInTheDocument();
 
     const identifiedColumn = document.querySelector('[data-stage="identified"]') as HTMLElement;
     const contactedColumn = document.querySelector('[data-stage="contacted"]') as HTMLElement;
-    expect(identifiedColumn).toContainElement(screen.getByText('Ada Lovelace'));
-    expect(contactedColumn).toContainElement(screen.getByText('Grace Hopper'));
+    expect(identifiedColumn).toContainElement(within(desktopBoard()).getByText('Ada Lovelace'));
+    expect(contactedColumn).toContainElement(within(desktopBoard()).getByText('Grace Hopper'));
 
     expect(consoleErrorSpy).not.toHaveBeenCalled();
   });
@@ -70,14 +81,14 @@ describe('PipelineBoard render smoke (CRM-07/08)', () => {
     });
 
     render(<PipelineBoard />);
-    await waitFor(() => screen.getByText('Ada Lovelace'));
+    await waitFor(() => within(desktopBoard()).getByText('Ada Lovelace'));
 
-    const select = screen.getByLabelText('Move to') as HTMLSelectElement;
+    const select = within(desktopBoard()).getAllByLabelText('Move to')[0] as HTMLSelectElement;
     fireEvent.change(select, { target: { value: 'contacted' } });
 
     await waitFor(() => {
       const contactedColumn = document.querySelector('[data-stage="contacted"]') as HTMLElement;
-      expect(contactedColumn).toContainElement(screen.getByText('Ada Lovelace'));
+      expect(contactedColumn).toContainElement(within(desktopBoard()).getByText('Ada Lovelace'));
     });
 
     expect(consoleErrorSpy).not.toHaveBeenCalled();
@@ -90,9 +101,9 @@ describe('PipelineBoard render smoke (CRM-07/08)', () => {
     });
 
     render(<PipelineBoard />);
-    await waitFor(() => screen.getByText('Ada Lovelace'));
+    await waitFor(() => within(desktopBoard()).getByText('Ada Lovelace'));
 
-    const select = screen.getByLabelText('Move to') as HTMLSelectElement;
+    const select = within(desktopBoard()).getAllByLabelText('Move to')[0] as HTMLSelectElement;
     fireEvent.change(select, { target: { value: 'contacted' } });
 
     await waitFor(() => {
@@ -100,7 +111,7 @@ describe('PipelineBoard render smoke (CRM-07/08)', () => {
     });
 
     const identifiedColumn = document.querySelector('[data-stage="identified"]') as HTMLElement;
-    expect(identifiedColumn).toContainElement(screen.getByText('Ada Lovelace'));
+    expect(identifiedColumn).toContainElement(within(desktopBoard()).getByText('Ada Lovelace'));
 
     expect(consoleErrorSpy).not.toHaveBeenCalled();
   });
@@ -149,9 +160,9 @@ describe('PipelineBoard render smoke (CRM-07/08)', () => {
     });
 
     render(<PipelineBoard />);
-    await waitFor(() => screen.getByText('Ada Lovelace'));
+    await waitFor(() => within(desktopBoard()).getByText('Ada Lovelace'));
 
-    fireEvent.click(screen.getByRole('button', { name: 'Ada Lovelace' }));
+    fireEvent.click(within(desktopBoard()).getAllByRole('button', { name: 'Ada Lovelace' })[0]!);
 
     await waitFor(() => {
       expect(screen.getByText(/Moved Enrolled/)).toBeInTheDocument();
