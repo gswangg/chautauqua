@@ -33,6 +33,8 @@ describe('FilesLibrary render smoke', () => {
           speakerName: 'Priya Raman',
           uploadedAt: 1700000000000,
           versionCount: 2,
+          sizeBytes: 1234567,
+          uploaderName: 'Priya Raman',
         },
       ]),
     });
@@ -81,6 +83,8 @@ describe('FilesLibrary render smoke', () => {
           speakerName: 'Unknown',
           uploadedAt: 1700000000000,
           versionCount: 1,
+          sizeBytes: 1234567,
+          uploaderName: 'Priya Raman',
         },
       ]),
     });
@@ -148,6 +152,8 @@ describe('FilesLibrary render smoke', () => {
             speakerName: 'Priya Raman',
             uploadedAt: 1700000000000,
             versionCount: 2,
+            sizeBytes: 1234567,
+            uploaderName: 'Priya Raman',
           },
         ],
         { total: 137, page: 1, perPage: 50 },
@@ -175,6 +181,8 @@ describe('FilesLibrary render smoke', () => {
       speakerName: 'Speaker',
       uploadedAt: 1700000000000,
       versionCount: 1,
+      sizeBytes: 1234567,
+      uploaderName: 'Priya Raman',
     }));
 
     mockApi({
@@ -212,6 +220,8 @@ describe('FilesLibrary render smoke', () => {
           speakerName: 'Priya Raman',
           uploadedAt: 1700000000000,
           versionCount: 2,
+          sizeBytes: 1234567,
+          uploaderName: 'Priya Raman',
         },
       ]),
     });
@@ -224,5 +234,110 @@ describe('FilesLibrary render smoke', () => {
     expect(row).toHaveTextContent('SES-014');
     expect(row).toHaveTextContent('Scaling Vector Search');
     expect(row).toHaveTextContent('2');
+    // DEC-601 (3): the size column, formatted with the shared formatBytes
+    // helper (1234567 bytes -> 1.2 MB).
+    expect(row).toHaveTextContent('1.2 MB');
+  });
+
+  it('CNT-D5: reports the ZIP outcome in a role=status live region and shows a busy state while in flight', async () => {
+    const item = {
+      rootFileId: 'file-v1',
+      latestFileId: 'file-v2',
+      filename: 'slides.pdf',
+      kind: 'presentation' as const,
+      submissionId: 'sub-1',
+      submissionRef: 'SES-014',
+      submissionTitle: 'Scaling Vector Search',
+      speakerName: 'Priya Raman',
+      uploadedAt: 1700000000000,
+      versionCount: 2,
+      sizeBytes: 1234567,
+      uploaderName: 'Priya Raman',
+    };
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/files`]: listEnvelope([item]),
+    });
+
+    render(<FilesLibrary eventId={EVENT_ID} onSelectSubmission={() => {}} />);
+    await screen.findByText('slides.pdf');
+    fireEvent.click(screen.getByLabelText(`Select ${item.filename}`));
+
+    // jsdom doesn't implement URL.createObjectURL/revokeObjectURL — stub
+    // them so the post-download <a download> trigger doesn't throw.
+    vi.stubGlobal('URL', { ...URL, createObjectURL: vi.fn(() => 'blob:mock'), revokeObjectURL: vi.fn() });
+
+    // Stub the archive POST directly (apiPostBlob reads headers + a real
+    // Blob body, which mockApi's JSON-only helper doesn't produce).
+    let resolveFetch: (res: Response) => void = () => {};
+    const fetchPromise = new Promise<Response>((resolve) => {
+      resolveFetch = resolve;
+    });
+    const realFetch = globalThis.fetch;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+        const url = typeof input === 'string' ? input : input.toString();
+        if (url.includes('/files/archive')) return fetchPromise;
+        return realFetch(input, init);
+      }),
+    );
+
+    const downloadButton = screen.getByRole('button', { name: 'Download ZIP (1)' });
+    fireEvent.click(downloadButton);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Downloading…' })).toBeDisabled();
+    });
+    expect(screen.getByRole('button', { name: 'Downloading…' })).toHaveAttribute('aria-busy', 'true');
+
+    const zipBytes = new Uint8Array([1, 2, 3, 4]);
+    resolveFetch(
+      new Response(zipBytes, {
+        status: 200,
+        headers: { 'content-disposition': 'attachment; filename="evt-files.zip"' },
+      }),
+    );
+
+    const status = screen.getByRole('status');
+    await waitFor(() => {
+      expect(status).toHaveTextContent('1 file, 4 B downloaded.');
+    });
+    expect(screen.getByRole('button', { name: 'Download ZIP (1)' })).not.toBeDisabled();
+  });
+
+  it('CNT-D5: reports the ApiError message in the live region when the ZIP download fails', async () => {
+    const item = {
+      rootFileId: 'file-v1',
+      latestFileId: 'file-v2',
+      filename: 'slides.pdf',
+      kind: 'presentation' as const,
+      submissionId: 'sub-1',
+      submissionRef: 'SES-014',
+      submissionTitle: 'Scaling Vector Search',
+      speakerName: 'Priya Raman',
+      uploadedAt: 1700000000000,
+      versionCount: 2,
+      sizeBytes: 1234567,
+      uploaderName: 'Priya Raman',
+    };
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/files`]: listEnvelope([item]),
+      [`POST /api/v1/events/${EVENT_ID}/files/archive`]: {
+        status: 400,
+        body: { error: { code: 'invalid', message: 'Requested files total 42.0MB, which exceeds the 40MB archive limit. Select fewer files.' } },
+      },
+    });
+
+    render(<FilesLibrary eventId={EVENT_ID} onSelectSubmission={() => {}} />);
+    await screen.findByText('slides.pdf');
+    fireEvent.click(screen.getByLabelText(`Select ${item.filename}`));
+    fireEvent.click(screen.getByRole('button', { name: 'Download ZIP (1)' }));
+
+    const status = screen.getByRole('status');
+    await waitFor(() => {
+      expect(status).toHaveTextContent(
+        'Requested files total 42.0MB, which exceeds the 40MB archive limit. Select fewer files.',
+      );
+    });
   });
 });

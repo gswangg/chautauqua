@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { apiList, apiPostBlob, ApiError } from '../../lib/api';
 import { DELIVERABLE_KINDS, DELIVERABLE_LABELS, type DeliverableKind, type EventFileChainItem } from './types';
 import { formatDateTime } from '../../lib/dates';
+import { formatBytes } from './format';
 
 interface FilesLibraryProps {
   eventId: string;
@@ -28,6 +29,10 @@ export function FilesLibrary({ eventId, onSelectSubmission }: FilesLibraryProps)
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
+  // CNT-D5: the ZIP download fires a native <a download> click with no
+  // other page feedback — this live region is the only in-page signal that
+  // the request started, finished, or failed.
+  const [downloadStatus, setDownloadStatus] = useState<string | null>(null);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -72,10 +77,12 @@ export function FilesLibrary({ eventId, onSelectSubmission }: FilesLibraryProps)
   async function downloadZip() {
     if (overArchiveLimit) return;
     setError(null);
+    setDownloadStatus(null);
     setDownloading(true);
     try {
       // Latest-version ids: resolveLatestVersions accepts any chain-member
       // id, but the library always surfaces latestFileId per DEC-159.
+      const fileCount = selected.size;
       const fileIds = items.filter((i) => selected.has(i.rootFileId)).map((i) => i.latestFileId);
       const { blob, filename } = await apiPostBlob(`/events/${eventId}/files/archive`, { fileIds });
       const url = URL.createObjectURL(blob);
@@ -86,8 +93,12 @@ export function FilesLibrary({ eventId, onSelectSubmission }: FilesLibraryProps)
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
+      const fileWord = fileCount === 1 ? 'file' : 'files';
+      setDownloadStatus(`${fileCount} ${fileWord}, ${formatBytes(blob.size)} downloaded.`);
     } catch (err) {
+      const message = err instanceof ApiError ? err.message : 'Download failed';
       setError(err instanceof ApiError ? `Download failed: ${err.message}` : 'Download failed');
+      setDownloadStatus(message);
     } finally {
       setDownloading(false);
     }
@@ -136,15 +147,19 @@ export function FilesLibrary({ eventId, onSelectSubmission }: FilesLibraryProps)
           type="button"
           className="chq-btn chq-btn-primary"
           disabled={selected.size === 0 || overArchiveLimit || downloading}
+          aria-busy={downloading}
           onClick={downloadZip}
         >
-          Download ZIP ({selected.size})
+          {downloading ? 'Downloading…' : `Download ZIP (${selected.size})`}
         </button>
         {overArchiveLimit && (
           <span className="chq-error chq-content-archive-limit" role="alert">
             Select at most {MAX_ARCHIVE_FILES} files to download as a ZIP.
           </span>
         )}
+        <span className="chq-content-download-status" role="status">
+          {downloadStatus}
+        </span>
       </div>
 
       <table className="chq-table chq-content-table">
@@ -163,6 +178,7 @@ export function FilesLibrary({ eventId, onSelectSubmission }: FilesLibraryProps)
             <th>Kind</th>
             <th>Session</th>
             <th>Speaker</th>
+            <th>Size</th>
             <th>Uploaded</th>
             <th>Versions</th>
           </tr>
@@ -170,12 +186,12 @@ export function FilesLibrary({ eventId, onSelectSubmission }: FilesLibraryProps)
         <tbody>
           {loading && (
             <tr>
-              <td colSpan={7}>Loading...</td>
+              <td colSpan={8}>Loading...</td>
             </tr>
           )}
           {!loading && items.length === 0 && (
             <tr>
-              <td colSpan={7} className="chq-empty">
+              <td colSpan={8} className="chq-empty">
                 No deliverable files yet.
               </td>
             </tr>
@@ -224,6 +240,7 @@ export function FilesLibrary({ eventId, onSelectSubmission }: FilesLibraryProps)
                   )}
                 </td>
                 <td>{item.speakerName}</td>
+                <td className="chq-meta">{formatBytes(item.sizeBytes)}</td>
                 <td className="chq-meta">{formatDateTime(item.uploadedAt)}</td>
                 <td>
                   {item.submissionId ? (

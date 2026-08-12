@@ -51,6 +51,10 @@ vi.mock("../src/server/repo/files", async () => {
     listSubmissionFiles: vi.fn(async (_db: unknown, submissionId: string) =>
       submissionId === SUBMISSION_ID ? { slides: ALL_VERSIONS } : {},
     ),
+    // DEC-601: route-mocked repo, so the real batchContactNames (which
+    // touches the db) is stubbed out — these bound-checking tests don't
+    // care about uploader names, only pagination shape.
+    batchContactNames: vi.fn(async () => new Map<string, string>()),
     getFileScope: vi.fn(async (_db: unknown, fileId: string) =>
       fileId === FILE_ID
         ? {
