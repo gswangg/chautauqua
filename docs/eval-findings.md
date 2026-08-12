@@ -605,3 +605,8 @@ compare phone frames pixel-for-pixel.
     AND after any successful mutating API call. Add a test: resolve the seeded clash →
     badge disappears without a full page reload. (Design rule at stake: "badge only
     when something is wrong" — a stale badge is a false alarm, the worst kind.)
+
+48b. CORRECTION to item 48 (user, explicit): **ALL mobile work — including the
+     already-filed mobile bugs (phone-agenda visibility, tab-bar shell, phone
+     wizards) — is LOWER priority than desktop work.** Sequence strictly: desktop
+     polish to done, then mobile. No mobile carve-outs.
