@@ -219,17 +219,27 @@ export function ResultsTable() {
           <tbody>
             {rows.map((row) => (
               <tr key={row.submissionId}>
-                <td>{row.ref}</td>
-                <td className="chq-review-results-title">{row.title}</td>
-                <td className="chq-review-results-score">{row.average.toFixed(2)}</td>
-                <td>{row.count}</td>
+                <td data-label="Ref">{row.ref}</td>
+                <td className="chq-review-results-title" data-label="Title">
+                  {row.title}
+                </td>
+                <td className="chq-review-results-score" data-label="Average">
+                  {row.average.toFixed(2)}
+                </td>
+                <td data-label="# Evaluations">{row.count}</td>
                 {ratingCriteria.map((c) => (
-                  <td key={c.id}>{row.perCriterion[c.id] !== undefined ? row.perCriterion[c.id]!.toFixed(2) : '—'}</td>
+                  <td key={c.id} data-label={c.label}>
+                    {row.perCriterion[c.id] !== undefined ? row.perCriterion[c.id]!.toFixed(2) : '—'}
+                  </td>
                 ))}
                 {dropdownCriteria.map((c) => {
                   const agg = row.perDropdown[c.id];
                   if (!agg || agg.modal === null) {
-                    return <td key={c.id}>—</td>;
+                    return (
+                      <td key={c.id} data-label={c.label}>
+                        —
+                      </td>
+                    );
                   }
                   // DEC-241: 'modal xN / next xM' -- modal option first, then
                   // the next-highest-count option (ties broken by the
@@ -240,10 +250,14 @@ export function ResultsTable() {
                     .sort((a, b) => b.count - a.count);
                   const [top, next] = ranked;
                   if (!top) {
-                    return <td key={c.id}>—</td>;
+                    return (
+                      <td key={c.id} data-label={c.label}>
+                        —
+                      </td>
+                    );
                   }
                   return (
-                    <td key={c.id}>
+                    <td key={c.id} data-label={c.label}>
                       {top.option} x{top.count}
                       {next ? ` / ${next.option} x${next.count}` : ''}
                     </td>
