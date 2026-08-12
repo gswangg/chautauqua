@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync, readdirSync, statSync } from "node:fs";
+import { join } from "node:path";
 import { Hono } from "hono";
 import {
   resolveAuth,
@@ -6,9 +8,12 @@ import {
   noStoreApi,
   sessionLoader,
   requireOrganizer,
+  csrfForm,
+  csrfFormOrHeader,
 } from "../src/server/middleware";
 import type { SessionLookup, UserLookup, SessionRow, UserRow } from "../src/server/middleware";
 import { hashToken, newSessionToken, newApiToken } from "../src/auth/tokens";
+import { CSRF_COOKIE_NAME } from "../src/auth/cookies";
 import type { AppEnv } from "../src/server/env";
 import * as schema from "../src/db/schema";
 import { registerErrorHandler } from "../src/server/http";
@@ -112,6 +117,130 @@ describe("checkDoubleSubmitCsrf", () => {
   it("fails when the form field is missing or not a string", () => {
     expect(checkDoubleSubmitCsrf("abc123", undefined)).toBe(false);
     expect(checkDoubleSubmitCsrf("abc123", ["abc123"])).toBe(false);
+  });
+});
+
+// DEC-544: csrfForm and csrfFormOrHeader must delegate their comparison to
+// checkDoubleSubmitCsrf rather than re-inlining it — exercised here through
+// real Hono apps (not the bare helper) so a broken inline copy would fail
+// these tests even if checkDoubleSubmitCsrf itself stayed correct.
+describe.each([
+  ["csrfForm", csrfForm],
+  ["csrfFormOrHeader", csrfFormOrHeader],
+])("%s middleware (DEC-544 delegates to checkDoubleSubmitCsrf)", (_name, middleware) => {
+  function buildApp() {
+    const app = new Hono<AppEnv>();
+    registerErrorHandler(app);
+    app.post("/submit", middleware, (c) => c.json({ ok: true }));
+    return app;
+  }
+
+  it("throws 'Missing CSRF cookie' when there's no cookie", async () => {
+    const app = buildApp();
+    const body = new URLSearchParams({ [CSRF_COOKIE_NAME]: "abc123" });
+    const res = await app.request("/submit", {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: body.toString(),
+    });
+    expect(res.status).toBe(400);
+    const json = (await res.json()) as { error: { message: string } };
+    expect(json.error.message).toBe("Missing CSRF cookie");
+  });
+
+  it("succeeds when the cookie and form field match", async () => {
+    const app = buildApp();
+    const body = new URLSearchParams({ [CSRF_COOKIE_NAME]: "abc123" });
+    const res = await app.request("/submit", {
+      method: "POST",
+      headers: {
+        "content-type": "application/x-www-form-urlencoded",
+        cookie: `${CSRF_COOKIE_NAME}=abc123`,
+      },
+      body: body.toString(),
+    });
+    expect(res.status).toBe(200);
+  });
+
+  it("throws 'CSRF token mismatch' when the cookie and form field differ", async () => {
+    const app = buildApp();
+    const body = new URLSearchParams({ [CSRF_COOKIE_NAME]: "xyz789" });
+    const res = await app.request("/submit", {
+      method: "POST",
+      headers: {
+        "content-type": "application/x-www-form-urlencoded",
+        cookie: `${CSRF_COOKIE_NAME}=abc123`,
+      },
+      body: body.toString(),
+    });
+    expect(res.status).toBe(400);
+    const json = (await res.json()) as { error: { message: string } };
+    expect(json.error.message).toBe("CSRF token mismatch");
+  });
+
+  it("throws 'CSRF token mismatch' when the form field is present but not a string", async () => {
+    const app = buildApp();
+    const formData = new FormData();
+    formData.set(CSRF_COOKIE_NAME, new Blob(["abc123"]), "not-a-string.txt");
+    const res = await app.request("/submit", {
+      method: "POST",
+      headers: { cookie: `${CSRF_COOKIE_NAME}=abc123` },
+      body: formData,
+    });
+    expect(res.status).toBe(400);
+    const json = (await res.json()) as { error: { message: string } };
+    expect(json.error.message).toBe("CSRF token mismatch");
+  });
+});
+
+// DEC-544: the double-submit comparison must live in exactly one place —
+// checkDoubleSubmitCsrf. A source scan guards against a fourth inline copy
+// landing in a future edit to src/server/**.
+describe("DEC-544 source scan: no inline CSRF comparison outside checkDoubleSubmitCsrf", () => {
+  it("finds the comparison only inside checkDoubleSubmitCsrf's own body", () => {
+    const root = join(__dirname, "..", "src", "server");
+    const files: string[] = [];
+    (function walk(dir: string) {
+      for (const entry of readdirSync(dir)) {
+        const full = join(dir, entry);
+        const st = statSync(full);
+        if (st.isDirectory()) walk(full);
+        else if (entry.endsWith(".ts")) files.push(full);
+      }
+    })(root);
+
+    const comparisonPattern = /formToken\s*!==\s*cookieToken|!==\s*cookieToken/;
+    const offenders: string[] = [];
+
+    for (const file of files) {
+      const src = readFileSync(file, "utf8");
+      // Isolate checkDoubleSubmitCsrf's own function body so its legitimate
+      // comparison doesn't trip the scan, then check everything else.
+      const fnStart = src.indexOf("function checkDoubleSubmitCsrf");
+      let outside = src;
+      if (fnStart !== -1) {
+        const bodyStart = src.indexOf("{", fnStart);
+        // Find the matching closing brace for the function body.
+        let depth = 0;
+        let bodyEnd = bodyStart;
+        for (let i = bodyStart; i < src.length; i++) {
+          if (src[i] === "{") depth++;
+          else if (src[i] === "}") {
+            depth--;
+            if (depth === 0) {
+              bodyEnd = i;
+              break;
+            }
+          }
+        }
+        outside = src.slice(0, fnStart) + src.slice(bodyEnd + 1);
+      }
+      if (comparisonPattern.test(outside)) {
+        offenders.push(file);
+      }
+    }
+
+    expect(offenders).toEqual([]);
   });
 });
 

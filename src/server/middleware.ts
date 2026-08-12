@@ -261,7 +261,7 @@ export const csrfForm: MiddlewareHandler<AppEnv> = async (c, next) => {
   }
   const body = await c.req.parseBody();
   const formToken = body[CSRF_COOKIE_NAME];
-  if (typeof formToken !== "string" || formToken !== cookieToken) {
+  if (!checkDoubleSubmitCsrf(cookieToken, formToken)) {
     throw new ApiError("invalid", "CSRF token mismatch");
   }
   await next();
@@ -279,7 +279,10 @@ export const noStoreApi: MiddlewareHandler<AppEnv> = async (c, next) => {
   }
 };
 
-/** Pure helper for tests: same rule csrfForm applies, without a Hono context. */
+/** DEC-544: THE double-submit CSRF comparison rule. csrfForm and
+ * csrfFormOrHeader both delegate to this — it is not a test-only helper,
+ * it is the predicate that actually guards every plain-form CSRF-checked
+ * route. Do not re-inline this comparison anywhere else. */
 export function checkDoubleSubmitCsrf(cookieToken: string | undefined, formToken: unknown): boolean {
   return typeof cookieToken === "string" && cookieToken.length > 0 && formToken === cookieToken;
 }
@@ -301,7 +304,7 @@ export const csrfFormOrHeader: MiddlewareHandler<AppEnv> = async (c, next) => {
   }
   const body = await c.req.parseBody();
   const formToken = body[CSRF_COOKIE_NAME];
-  if (typeof formToken !== "string" || formToken !== cookieToken) {
+  if (!checkDoubleSubmitCsrf(cookieToken, formToken)) {
     throw new ApiError("invalid", "CSRF token mismatch");
   }
   await next();
