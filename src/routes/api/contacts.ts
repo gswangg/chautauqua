@@ -13,7 +13,7 @@ import { listAcceptedContactIds } from "../../server/repo/tasks";
 import { createClaimToken, type KVStore } from "../../auth/claim";
 import { parseCsv } from "../../lib/csv";
 import { mapImportRow, matchesSegment, type ContactRecord, type SegmentRule } from "../../domain/contacts";
-import { preflightRender, type RenderTarget } from "../../domain/compose";
+import { preflightRender, PREVIEW_CLAIM_TOKEN, type RenderTarget } from "../../domain/compose";
 import { textToHtml } from "../../mail/render";
 import type { Db } from "../../server/context";
 import { makeFileStore } from "../../server/context";
@@ -577,9 +577,18 @@ const MAX_BULK_EMAIL_RECIPIENTS = 100;
  * speaker_name/event_name/portal_link resolve; {talk_title}/{feedback} (or
  * any other placeholder) are absent from vars, so preflightRender's
  * MergeFieldError check naturally rejects them as 'invalid'. */
-async function resolvePortalLink(db: Db, kv: KVStore, contactId: string, eventId: string, email: string, origin: string): Promise<string> {
+async function resolvePortalLink(
+  db: Db,
+  kv: KVStore,
+  contactId: string,
+  eventId: string,
+  email: string,
+  origin: string,
+  mintClaimTokens: boolean,
+): Promise<string> {
   const userId = await repo.findUserIdByEmail(db, email);
   if (userId) return `${origin}/portal`;
+  if (!mintClaimTokens) return `${origin}/claim/${PREVIEW_CLAIM_TOKEN}`;
   const token = await createClaimToken(kv, { contactId, eventId });
   return `${origin}/claim/${token}`;
 }
@@ -632,10 +641,11 @@ async function renderBulkEmailTargets(
   contacts: repo.ContactRow[],
   subject: string,
   bodyText: string,
+  mintClaimTokens: boolean,
 ) {
   const targets: RenderTarget[] = [];
   for (const contact of contacts) {
-    const portalLink = await resolvePortalLink(db, kv, contact.id, event.id, contact.email, origin);
+    const portalLink = await resolvePortalLink(db, kv, contact.id, event.id, contact.email, origin, mintClaimTokens);
     targets.push({
       contactId: contact.id,
       submissionId: "",
@@ -666,7 +676,8 @@ contactsRoutes.post("/contacts/bulk-email", csrfJson, async (c) => {
   // first send is attempted; any failure (including a submission-scoped
   // placeholder like {talk_title}/{feedback}, absent from the whitelist
   // above) rejects the whole batch — zero sends.
-  const result = await renderBulkEmailTargets(c.var.db, kv, origin, event, contacts, subject, bodyText);
+  // DEC-397: send mints real claim tokens — pass mintClaimTokens=true.
+  const result = await renderBulkEmailTargets(c.var.db, kv, origin, event, contacts, subject, bodyText, true);
   if (!result.ok) {
     const fields: Record<string, string> = {};
     for (const m of result.missing) fields[m.contactId] = `missing merge field '${m.field}'`;
@@ -715,7 +726,8 @@ contactsRoutes.post("/contacts/bulk-email/preview", csrfJson, async (c) => {
   const origin = resolveBaseUrl(c);
   const previewContacts = contacts.slice(0, BULK_EMAIL_PREVIEW_LIMIT);
 
-  const result = await renderBulkEmailTargets(c.var.db, kv, origin, event, previewContacts, subject, bodyText);
+  // DEC-397: preview never mints credentials — pass mintClaimTokens=false.
+  const result = await renderBulkEmailTargets(c.var.db, kv, origin, event, previewContacts, subject, bodyText, false);
   if (!result.ok) {
     const fields: Record<string, string> = {};
     for (const m of result.missing) fields[m.contactId] = `missing merge field '${m.field}'`;

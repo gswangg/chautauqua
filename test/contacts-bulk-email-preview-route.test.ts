@@ -61,7 +61,10 @@ vi.mock("../src/auth/claim", async () => {
   const actual = await vi.importActual<typeof import("../src/auth/claim")>("../src/auth/claim");
   return {
     ...actual,
-    createClaimToken: vi.fn(async () => "tok123"),
+    // DEC-397 tests below assert on how many times the underlying kv.put is
+    // called, so this delegates to the real implementation (which does call
+    // kv.put) rather than returning a canned token with no KV write.
+    createClaimToken: vi.fn(actual.createClaimToken),
   };
 });
 
@@ -117,7 +120,9 @@ describe("POST /contacts/bulk-email/preview (CRM-11, DEC-150)", () => {
     if (!first) throw new Error("expected a rendered item");
     expect(first.subject).toBe("Hi Speaker1 Test");
     expect(first.bodyText).toContain("DevCon");
-    expect(first.bodyText).toContain("/claim/tok123");
+    // DEC-397: preview never mints credentials — the fixed placeholder
+    // token renders instead of a freshly minted claim token.
+    expect(first.bodyText).toContain("/claim/example-one-time-link");
     expect(mailerSendMock).not.toHaveBeenCalled();
   });
 
@@ -156,5 +161,59 @@ describe("POST /contacts/bulk-email/preview (CRM-11, DEC-150)", () => {
       bodyText: "Body",
     });
     expect(res.status).toBe(404);
+  });
+});
+
+// DEC-397: preview never mints credentials — verify against a fake KV that
+// records every put() call.
+describe("POST /contacts/bulk-email/preview vs /contacts/bulk-email — claim-token minting (DEC-397)", () => {
+  function postJsonWithKv(app: Hono<AppEnv>, path: string, body: unknown, kv: { put: (...a: unknown[]) => unknown }) {
+    return app.request(
+      path,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-chq-csrf": "1" },
+        body: JSON.stringify(body),
+      },
+      { KV: kv },
+    );
+  }
+
+  it("preview performs zero KV puts and renders the fixed placeholder token", async () => {
+    const app = buildApp();
+    const puts: unknown[] = [];
+    const fakeKv = { put: (...args: unknown[]) => puts.push(args) };
+
+    const res = await postJsonWithKv(app, "/contacts/bulk-email/preview", {
+      contactIds: ["ct_1", "ct_2"],
+      eventId: "ev1",
+      subject: "Hi {speaker_name}",
+      bodyText: "See {portal_link}",
+    }, fakeKv);
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { items: { bodyText: string }[] };
+    expect(puts).toHaveLength(0);
+    for (const item of body.items) {
+      expect(item.bodyText).toContain("/claim/example-one-time-link");
+    }
+  });
+
+  it("send mints one claim token per userless recipient", async () => {
+    const app = buildApp();
+    const puts: unknown[] = [];
+    const fakeKv = { put: (...args: unknown[]) => puts.push(args) };
+
+    const res = await postJsonWithKv(app, "/contacts/bulk-email", {
+      contactIds: ["ct_1", "ct_2"],
+      eventId: "ev1",
+      subject: "Hi {speaker_name}",
+      bodyText: "See {portal_link}",
+    }, fakeKv);
+
+    expect(res.status).toBe(200);
+    // findUserIdByEmail mock always returns null, so both recipients are
+    // userless and each mints exactly one claim token.
+    expect(puts).toHaveLength(2);
   });
 });

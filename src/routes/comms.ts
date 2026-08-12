@@ -5,7 +5,7 @@
 import { Hono } from "hono";
 import type { AppEnv } from "../server/env";
 import { csrfJson, requireOrganizer } from "../server/middleware";
-import { ApiError } from "../server/http";
+import { ApiError, parseBoundedIdArray } from "../server/http";
 import * as repo from "../server/repo/comms";
 import { getEventForOrg } from "../server/repo/events";
 import { createClaimToken, type KVStore } from "../auth/claim";
@@ -16,6 +16,8 @@ import {
   buildMergeVars,
   expandRecipients,
   preflightRender,
+  MAX_COMPOSE_RECIPIENTS,
+  PREVIEW_CLAIM_TOKEN,
   type ComposeSubmission,
 } from "../domain/compose";
 import { DEC_122, DEC_252 } from "../decisions";
@@ -155,9 +157,12 @@ async function resolveComposeInput(
   const b = body as Partial<ComposeBody> | null;
   if (!b || typeof b !== "object") throw new ApiError("invalid", "Invalid JSON body");
 
-  if (!Array.isArray(b.submissionIds) || b.submissionIds.length === 0 || !b.submissionIds.every((id) => typeof id === "string")) {
-    throw new ApiError("invalid", "Validation failed", { submissionIds: "must be a non-empty array of submission ids" });
-  }
+  // DEC-396: shared bounded-array validation (id shape + MAX_COMPOSE_RECIPIENTS
+  // cap) instead of a hand-rolled check, so preview/send both fail loudly
+  // before any D1 read on an oversized or malformed submissionIds array.
+  const submissionIds = parseBoundedIdArray(b.submissionIds, "submissionIds", {
+    maxCount: MAX_COMPOSE_RECIPIENTS,
+  });
 
   let subjectTemplate: string;
   let bodyTemplate: string;
@@ -181,7 +186,7 @@ async function resolveComposeInput(
   return {
     subjectTemplate,
     bodyTemplate,
-    submissionIds: b.submissionIds,
+    submissionIds,
     includeFeedback: b.includeFeedback === true,
     attachIcs: b.attachIcs === true,
   };
@@ -252,7 +257,10 @@ function icsPreviewInfoFor(slot: repo.IcsScheduleRow, event: { timezone: string 
 }
 
 /** portal_link (DEC-014/DEC-019): /portal when a user exists for the
- * contact's email, else a freshly minted claim link. */
+ * contact's email, else a claim link. DEC-397 (preview never mints
+ * credentials): when mintClaimTokens is false, a userless contact resolves
+ * to the fixed PREVIEW_CLAIM_TOKEN placeholder with zero KV writes instead
+ * of a freshly minted token. */
 async function resolvePortalLink(
   db: import("../server/context").Db,
   kv: KVStore,
@@ -260,9 +268,11 @@ async function resolvePortalLink(
   eventId: string,
   email: string,
   origin: string,
+  mintClaimTokens: boolean,
 ): Promise<string> {
   const userId = await repo.findUserIdByEmail(db, email);
   if (userId) return `${origin}/portal`;
+  if (!mintClaimTokens) return `${origin}/claim/${PREVIEW_CLAIM_TOKEN}`;
   const token = await createClaimToken(kv, { contactId, eventId });
   return `${origin}/claim/${token}`;
 }
@@ -276,6 +286,7 @@ async function buildRenderTargets(
   event: { id: string; name: string },
   submissions: ComposeSubmission[],
   includeFeedback: boolean,
+  mintClaimTokens: boolean,
 ) {
   const expanded = expandRecipients(submissions);
   if (!expanded.ok) throw new ApiError("invalid", expanded.message);
@@ -289,7 +300,7 @@ async function buildRenderTargets(
     const submission = submissionById.get(recipient.submissionId);
     if (!submission) throw new Error(`recipient references unknown submission ${recipient.submissionId}`);
     const feedbackComments = includeFeedback ? await repo.listFeedbackComments(c.var.db, recipient.submissionId) : [];
-    const portalLink = await resolvePortalLink(c.var.db, kv, recipient.contactId, event.id, recipient.email, origin);
+    const portalLink = await resolvePortalLink(c.var.db, kv, recipient.contactId, event.id, recipient.email, origin, mintClaimTokens);
     const vars = buildMergeVars({
       speakerName: recipient.name,
       talkTitle: submission.title,
@@ -333,7 +344,8 @@ commsRoutes.post("/api/v1/events/:eventId/compose/preview", requireOrganizer, cs
 
   const icsMap = input.attachIcs ? await preflightIcsSchedule(c.var.db, input.submissionIds) : undefined;
 
-  const targets = await buildRenderTargets(c, event, submissions, input.includeFeedback);
+  // DEC-397: preview never mints credentials — pass mintClaimTokens=false.
+  const targets = await buildRenderTargets(c, event, submissions, input.includeFeedback, false);
 
   const result = preflightRender(targets, input.subjectTemplate, input.bodyTemplate);
   if (!result.ok) {
@@ -375,7 +387,8 @@ commsRoutes.post("/api/v1/events/:eventId/compose/send", requireOrganizer, csrfJ
 
   const icsMap = input.attachIcs ? await preflightIcsSchedule(c.var.db, input.submissionIds) : undefined;
 
-  const targets = await buildRenderTargets(c, event, submissions, input.includeFeedback);
+  // DEC-397: send mints real claim tokens — pass mintClaimTokens=true.
+  const targets = await buildRenderTargets(c, event, submissions, input.includeFeedback, true);
 
   const result = preflightRender(targets, input.subjectTemplate, input.bodyTemplate);
   if (!result.ok) {
