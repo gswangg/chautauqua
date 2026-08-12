@@ -240,8 +240,19 @@ export const THEME_CSS = `
     font-weight: 700;
     border-radius: 4px;
     cursor: pointer;
+    text-decoration: none;
   }
-  .chq-btn-primary, button[type=submit] {
+  .chq-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .chq-btn-primary {
+    background: var(--chq-brand);
+    color: var(--chq-on-brand);
+    border: none;
+  }
+  button[type=submit]:not([class*="chq-btn-"]) {
     background: var(--chq-brand);
     color: var(--chq-on-brand);
     border: none;

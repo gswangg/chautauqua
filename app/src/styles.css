@@ -469,6 +469,7 @@ a:hover {
   padding: 10px 16px;
   border: none;
   cursor: pointer;
+  text-decoration: none;
 }
 
 .chq-btn-primary {
