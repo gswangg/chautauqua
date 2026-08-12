@@ -186,7 +186,7 @@ export function OverviewPage() {
           {payload.overdueTasks.total > 0 && (
             <button
               type="button"
-              className="chq-overview-section-action"
+              className="chq-overview-section-action chq-overview-remind-all"
               onClick={() => handleRemind(payload.overdueTasks.rows.map((r) => r.taskId))}
             >
               Remind all {payload.overdueTasks.total}
@@ -237,15 +237,15 @@ export function OverviewPage() {
         </div>
         {payload.triage.rows.length === 0 && <div className="chq-overview-empty">Nothing waiting for triage.</div>}
         {payload.triage.rows.map((row) => (
-          <div key={row.submissionId} className="chq-overview-row" style={{ gridTemplateColumns: '1fr' }}>
+          <div key={row.submissionId} className="chq-overview-row chq-overview-row-single">
             <div>
-              <div className="chq-overview-row-title" style={{ fontSize: 21 }}>
+              <div className="chq-overview-row-title chq-overview-row-title-lg">
                 {row.title}
               </div>
               <div className="chq-overview-row-meta">
                 {row.speakerName} · {row.trackName ?? row.format} · {row.ref}
               </div>
-              <div className="chq-overview-row-actions" style={{ marginTop: 11, alignSelf: 'flex-start' }}>
+              <div className="chq-overview-row-actions chq-overview-row-actions-stacked">
                 <button
                   type="button"
                   className="chq-overview-btn chq-overview-btn-primary"
@@ -287,7 +287,7 @@ export function OverviewPage() {
         {payload.contentApproval.rows.map((row) => (
           <div key={row.submissionId} className="chq-overview-row chq-overview-row-content">
             <div>
-              <div className="chq-overview-row-title" style={{ fontSize: 17 }}>
+              <div className="chq-overview-row-title chq-overview-row-title-md">
                 {row.title}
               </div>
               <div className="chq-overview-row-meta">
@@ -328,7 +328,7 @@ export function OverviewPage() {
         {payload.agendaWork.conflicts.map((conflict, idx) => (
           <div key={`conflict-${idx}`} className="chq-overview-row chq-overview-row-agenda">
             <div>
-              <div className="chq-overview-row-title" style={{ fontSize: 15 }}>
+              <div className="chq-overview-row-title chq-overview-row-title-sm">
                 {conflict.day}
               </div>
               <div className="chq-overview-row-meta">{conflict.roomName}</div>
@@ -348,7 +348,7 @@ export function OverviewPage() {
         ))}
         {payload.agendaWork.unplaced.map((row) => (
           <div key={row.submissionId} className="chq-overview-row chq-overview-row-agenda">
-            <span className="chq-overview-caption" style={{ padding: 0 }}>
+            <span className="chq-overview-caption chq-overview-caption-flush">
               No slot yet
             </span>
             <div>
@@ -370,10 +370,10 @@ export function OverviewPage() {
         </div>
         {noActionRows.map((row) => (
           <div key={row.key} className="chq-overview-row chq-overview-row-quiet">
-            <span className="chq-overview-row-title" style={{ fontSize: 15 }}>
+            <span className="chq-overview-row-title chq-overview-row-title-sm">
               {row.title}
             </span>
-            <span className="chq-overview-row-meta" style={{ fontSize: 14 }}>
+            <span className="chq-overview-row-meta chq-overview-row-meta-sm">
               {row.detail}
             </span>
           </div>
