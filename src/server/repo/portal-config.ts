@@ -3,11 +3,22 @@
 // caller's event so cross-tenant IDs 404 (no IDOR) — mirrors
 // src/server/repo/events.ts's pattern (DEC-012/013).
 
-import { and, eq } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { newId } from "../../domain/ids";
 import { ApiError } from "../http";
+import { DEC_461 } from "../../decisions";
+
+void DEC_461;
+
+/** DEC-461: optional trailing repo page param — see src/server/repo/events.ts
+ * for the same shape. Absent means today's unbounded behavior (the portal
+ * page renders every resource, no paging UI). */
+export interface RepoPage {
+  limit: number;
+  offset: number;
+}
 
 // ---------------------------------------------------------------------------
 // Portal settings
@@ -167,9 +178,22 @@ export function isWikiResource(kind: string): boolean {
   return kind === "wiki";
 }
 
-export async function listResourcesForEvent(db: Db, eventId: string): Promise<ResourceRecord[]> {
-  const rows = await db.select().from(schema.resource).where(eq(schema.resource.eventId, eventId));
-  return rows.map(toResourceRecord).sort((a, b) => a.position - b.position);
+export async function listResourcesForEvent(db: Db, eventId: string, page?: RepoPage): Promise<ResourceRecord[]> {
+  const base = db
+    .select()
+    .from(schema.resource)
+    .where(eq(schema.resource.eventId, eventId))
+    .orderBy(asc(schema.resource.position), asc(schema.resource.id));
+  const rows = page ? await base.limit(page.limit).offset(page.offset) : await base;
+  return rows.map(toResourceRecord);
+}
+
+export async function countResourcesForEvent(db: Db, eventId: string): Promise<number> {
+  const rows = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(schema.resource)
+    .where(eq(schema.resource.eventId, eventId));
+  return Number(rows[0]?.count ?? 0);
 }
 
 export async function createWikiResource(

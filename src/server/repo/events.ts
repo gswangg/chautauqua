@@ -1,16 +1,26 @@
 // Data access for events, tracks, rooms (w2-b). Every lookup-by-id is
 // scoped to the caller's org/event so cross-tenant IDs 404 (no IDOR).
 
-import { and, eq } from "drizzle-orm";
+import { and, asc, desc, eq, sql } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { newId } from "../../domain/ids";
 import { ApiError } from "../http";
 import { findFormForEvent } from "./forms";
 import { listPlansForEvent, listReviewerRowsForPlan } from "./review";
-import { DEC_229 } from "../../decisions";
+import { DEC_229, DEC_461 } from "../../decisions";
 
 void DEC_229; // deleteTrack's referential guard extends to forms/plans/plan_reviewer -- see below
+
+/** DEC-461: optional trailing repo page param — absent means today's
+ * unbounded behavior (internal non-HTTP callers, e.g. the agenda, still
+ * need every row). Present means SQL LIMIT/OFFSET with a deterministic
+ * ORDER BY tiebreak. */
+export interface RepoPage {
+  limit: number;
+  offset: number;
+}
+void DEC_461;
 
 export interface EventBranding {
   logoUrl?: string;
@@ -53,9 +63,22 @@ function toEventRecord(row: typeof schema.event.$inferSelect): EventRecord {
   };
 }
 
-export async function listEventsForOrg(db: Db, orgId: string): Promise<EventRecord[]> {
-  const rows = await db.select().from(schema.event).where(eq(schema.event.orgId, orgId));
+export async function listEventsForOrg(db: Db, orgId: string, page?: RepoPage): Promise<EventRecord[]> {
+  const base = db
+    .select()
+    .from(schema.event)
+    .where(eq(schema.event.orgId, orgId))
+    .orderBy(desc(schema.event.startDate), asc(schema.event.id));
+  const rows = page ? await base.limit(page.limit).offset(page.offset) : await base;
   return rows.map(toEventRecord);
+}
+
+export async function countEventsForOrg(db: Db, orgId: string): Promise<number> {
+  const rows = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(schema.event)
+    .where(eq(schema.event.orgId, orgId));
+  return Number(rows[0]?.count ?? 0);
 }
 
 /** DEC-141: reviewers list events via their plan_reviewer assignments, not
@@ -63,19 +86,39 @@ export async function listEventsForOrg(db: Db, orgId: string): Promise<EventReco
  * scope by orgId (defense in depth against cross-tenant leakage) and dedup
  * by event id (a reviewer may have multiple assignment rows on one plan, or
  * be assigned to more than one plan on the same event). */
-export async function listEventsForReviewer(db: Db, userId: string, orgId: string): Promise<EventRecord[]> {
-  const rows = await db
+export async function listEventsForReviewer(
+  db: Db,
+  userId: string,
+  orgId: string,
+  page?: RepoPage,
+): Promise<EventRecord[]> {
+  const base = db
     .selectDistinct({ event: schema.event })
     .from(schema.planReviewer)
     .innerJoin(schema.evaluationPlan, eq(schema.evaluationPlan.id, schema.planReviewer.planId))
     .innerJoin(schema.event, eq(schema.event.id, schema.evaluationPlan.eventId))
-    .where(and(eq(schema.planReviewer.userId, userId), eq(schema.event.orgId, orgId)));
+    .where(and(eq(schema.planReviewer.userId, userId), eq(schema.event.orgId, orgId)))
+    .orderBy(desc(schema.event.startDate), asc(schema.event.id));
+  const rows = page ? await base.limit(page.limit).offset(page.offset) : await base;
   const seen = new Map<string, EventRecord>();
   for (const row of rows) {
     const record = toEventRecord(row.event);
     seen.set(record.id, record);
   }
   return [...seen.values()];
+}
+
+/** COUNT(DISTINCT event.id) over the same plan_reviewer -> evaluation_plan
+ * -> event join listEventsForReviewer uses, so `total` matches the same
+ * dedup semantics as the item query. */
+export async function countEventsForReviewer(db: Db, userId: string, orgId: string): Promise<number> {
+  const rows = await db
+    .select({ count: sql<number>`count(distinct ${schema.event.id})` })
+    .from(schema.planReviewer)
+    .innerJoin(schema.evaluationPlan, eq(schema.evaluationPlan.id, schema.planReviewer.planId))
+    .innerJoin(schema.event, eq(schema.event.id, schema.evaluationPlan.eventId))
+    .where(and(eq(schema.planReviewer.userId, userId), eq(schema.event.orgId, orgId)));
+  return Number(rows[0]?.count ?? 0);
 }
 
 /** DEC-049: org-agnostic lookup for the root SSR landing page — it links to
@@ -208,9 +251,22 @@ function toTrackRecord(row: typeof schema.track.$inferSelect): TrackRecord {
   };
 }
 
-export async function listTracksForEvent(db: Db, eventId: string): Promise<TrackRecord[]> {
-  const rows = await db.select().from(schema.track).where(eq(schema.track.eventId, eventId));
+export async function listTracksForEvent(db: Db, eventId: string, page?: RepoPage): Promise<TrackRecord[]> {
+  const base = db
+    .select()
+    .from(schema.track)
+    .where(eq(schema.track.eventId, eventId))
+    .orderBy(asc(schema.track.position), asc(schema.track.id));
+  const rows = page ? await base.limit(page.limit).offset(page.offset) : await base;
   return rows.map(toTrackRecord);
+}
+
+export async function countTracksForEvent(db: Db, eventId: string): Promise<number> {
+  const rows = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(schema.track)
+    .where(eq(schema.track.eventId, eventId));
+  return Number(rows[0]?.count ?? 0);
 }
 
 export async function createTrack(
@@ -340,9 +396,22 @@ function toRoomRecord(row: typeof schema.room.$inferSelect): RoomRecord {
   };
 }
 
-export async function listRoomsForEvent(db: Db, eventId: string): Promise<RoomRecord[]> {
-  const rows = await db.select().from(schema.room).where(eq(schema.room.eventId, eventId));
+export async function listRoomsForEvent(db: Db, eventId: string, page?: RepoPage): Promise<RoomRecord[]> {
+  const base = db
+    .select()
+    .from(schema.room)
+    .where(eq(schema.room.eventId, eventId))
+    .orderBy(asc(schema.room.position), asc(schema.room.id));
+  const rows = page ? await base.limit(page.limit).offset(page.offset) : await base;
   return rows.map(toRoomRecord);
+}
+
+export async function countRoomsForEvent(db: Db, eventId: string): Promise<number> {
+  const rows = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(schema.room)
+    .where(eq(schema.room.eventId, eventId));
+  return Number(rows[0]?.count ?? 0);
 }
 
 export async function createRoom(

@@ -9,7 +9,12 @@ import type { AuthInfo } from "../../server/env";
 import { ApiError } from "../../server/http";
 import { MAX_NAME_LENGTH, MAX_TEXT_LENGTH } from "../../forms/validate"; // DEC-417
 import * as schema from "../../db/schema";
+import { clampPage, clampPerPage } from "../../lib/pagination";
 import {
+  countEventsForOrg,
+  countEventsForReviewer,
+  countRoomsForEvent,
+  countTracksForEvent,
   createEvent,
   createRoom,
   createTrack,
@@ -28,6 +33,23 @@ import {
   updateTrack,
   type EventBranding,
 } from "../../server/repo/events";
+
+// DEC-461: these four config-list endpoints had no server-side bound
+// (DEC-460); previously-unpaginated lists default to a larger perPage than
+// the DEC-013 default of 50 so no admin screen loses rows the day this
+// lands (no paging UI exists for them yet).
+const CONFIG_LIST_DEFAULT_PER_PAGE = 200;
+
+/** clampPerPage's own default is 50 (DEC-013's general list default); these
+ * previously-unbounded config lists default to 200 instead (DEC-461a), so
+ * an absent or invalid `perPage` falls back to 200 rather than 50 while the
+ * upper clamp (200) is still enforced by clampPerPage itself. */
+export function clampConfigPerPage(raw: string | undefined): number {
+  if (raw === undefined) return CONFIG_LIST_DEFAULT_PER_PAGE;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || !Number.isInteger(n) || n < 1) return CONFIG_LIST_DEFAULT_PER_PAGE;
+  return clampPerPage(n);
+}
 import { createDefaultForm } from "../../server/repo/forms";
 import { isDateOrderValid, isValidHexColor, isValidSlug, isValidTimezone } from "./validators";
 
@@ -174,15 +196,22 @@ async function roomEventId(db: import("../../server/context").Db, roomId: string
 
 eventsRoutes.get("/events", async (c) => {
   const auth = requireAuth(c);
+  const page = clampPage(c.req.query("page"));
+  const perPage = clampConfigPerPage(c.req.query("perPage"));
+  const repoPage = { limit: perPage, offset: (page - 1) * perPage };
+
   let items;
+  let total;
   if (auth.role === "organizer") {
-    items = await listEventsForOrg(c.var.db, auth.orgId);
+    items = await listEventsForOrg(c.var.db, auth.orgId, repoPage);
+    total = await countEventsForOrg(c.var.db, auth.orgId);
   } else if (auth.role === "reviewer") {
-    items = await listEventsForReviewer(c.var.db, auth.userId, auth.orgId);
+    items = await listEventsForReviewer(c.var.db, auth.userId, auth.orgId, repoPage);
+    total = await countEventsForReviewer(c.var.db, auth.userId, auth.orgId);
   } else {
     throw new ApiError("forbidden", "Requires role 'organizer' or 'reviewer'");
   }
-  return c.json({ items, total: items.length, page: 1, perPage: items.length || 1 });
+  return c.json({ items, total, page, perPage });
 });
 
 eventsRoutes.post("/events", requireOrganizer, csrfJson, async (c) => {
@@ -319,8 +348,11 @@ eventsRoutes.get("/events/:eventId/tracks", async (c) => {
   const orgId = currentOrgId(c);
   const eventId = c.req.param("eventId");
   await requireEvent(c.var.db, orgId, eventId);
-  const items = await listTracksForEvent(c.var.db, eventId);
-  return c.json({ items, total: items.length, page: 1, perPage: items.length || 1 });
+  const page = clampPage(c.req.query("page"));
+  const perPage = clampConfigPerPage(c.req.query("perPage"));
+  const items = await listTracksForEvent(c.var.db, eventId, { limit: perPage, offset: (page - 1) * perPage });
+  const total = await countTracksForEvent(c.var.db, eventId);
+  return c.json({ items, total, page, perPage });
 });
 
 eventsRoutes.post("/events/:eventId/tracks", csrfJson, async (c) => {
@@ -399,8 +431,11 @@ eventsRoutes.get("/events/:eventId/rooms", async (c) => {
   const orgId = currentOrgId(c);
   const eventId = c.req.param("eventId");
   await requireEvent(c.var.db, orgId, eventId);
-  const items = await listRoomsForEvent(c.var.db, eventId);
-  return c.json({ items, total: items.length, page: 1, perPage: items.length || 1 });
+  const page = clampPage(c.req.query("page"));
+  const perPage = clampConfigPerPage(c.req.query("perPage"));
+  const items = await listRoomsForEvent(c.var.db, eventId, { limit: perPage, offset: (page - 1) * perPage });
+  const total = await countRoomsForEvent(c.var.db, eventId);
+  return c.json({ items, total, page, perPage });
 });
 
 eventsRoutes.post("/events/:eventId/rooms", csrfJson, async (c) => {

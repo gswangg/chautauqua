@@ -36,6 +36,10 @@ vi.mock("../src/server/repo/events", async () => {
     listEventsForReviewer: vi.fn(async (_db: unknown, userId: string, orgId: string) =>
       userId === "rev-assigned" && orgId === ORG_A ? [eventA] : [],
     ),
+    countEventsForOrg: vi.fn(async (_db: unknown, orgId: string) => (orgId === ORG_A ? 1 : 0)),
+    countEventsForReviewer: vi.fn(async (_db: unknown, userId: string, orgId: string) =>
+      userId === "rev-assigned" && orgId === ORG_A ? 1 : 0,
+    ),
   };
 });
 
