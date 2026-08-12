@@ -237,6 +237,14 @@ describe("SessionCard schedule rendering (EMB-01: date/time + room)", () => {
     return html.slice(start, nextCard === -1 ? undefined : nextCard);
   }
 
+  function rowOpenTag(html: string, submissionId: string): string {
+    const idIdx = html.indexOf(`id="chq-session-${submissionId}"`);
+    expect(idIdx).toBeGreaterThan(-1);
+    const tagStart = html.lastIndexOf("<div", idIdx);
+    const tagEnd = html.indexOf(">", idIdx);
+    return html.slice(tagStart, tagEnd + 1);
+  }
+
   it("shows formatted time + room for a scheduled session", async () => {
     const app = buildApp();
     installFakeCaches();
@@ -250,13 +258,47 @@ describe("SessionCard schedule rendering (EMB-01: date/time + room)", () => {
     expect(fragment).toContain("Main Hall");
   });
 
-  it("omits date/time/room entirely for an unscheduled session (no dash pile)", async () => {
+  it("DEC-698: still emits an empty .chq-pub-session-when gutter cell for an unscheduled session (no dash pile, no TBD prose) so the row keeps its 126px 1fr auto column count", async () => {
     installFakeCaches();
     const app = buildApp();
     const res = await app.request("/e/conf/sessions", {}, TEST_ENV);
     const html = await res.text();
     const fragment = cardFragment(html, "sub2");
+    const whenMatch = fragment.match(/<div class="chq-pub-session-when"[^>]*>([\s\S]*?)<\/div>/);
+    expect(whenMatch).not.toBeNull();
+    expect((whenMatch as RegExpMatchArray)[1]!.trim()).toBe("");
+    expect(fragment).not.toContain("9:00 AM");
+    expect(fragment).not.toContain("Main Hall");
+    expect(whenMatch![0]).not.toMatch(/TBD|TBC|—/);
+  });
+
+  it("DEC-698: every session row has the same element-cell count whether scheduled or unscheduled", async () => {
+    installFakeCaches();
+    const app = buildApp();
+    const res = await app.request("/e/conf/sessions", {}, TEST_ENV);
+    const html = await res.text();
+    const scheduled = cardFragment(html, "sub1");
+    const unscheduled = cardFragment(html, "sub2");
+    // top-level direct-child cells of each row: chq-pub-session-when + chq-pub-session-body (+ optional action).
+    const cellCount = (frag: string) =>
+      (frag.match(/class="chq-pub-session-when"/g) ?? []).length +
+      (frag.match(/class="chq-pub-session-body"/g) ?? []).length;
+    expect(cellCount(scheduled)).toBe(1 + 1);
+    expect(cellCount(unscheduled)).toBe(1 + 1);
+    expect(rowOpenTag(html, "sub1")).toContain('class="chq-pub-session-row"');
+    expect(rowOpenTag(html, "sub2")).toContain('class="chq-pub-session-row"');
+    expect(rowOpenTag(html, "sub1")).not.toContain("chq-pub-session-row-notime");
+    expect(rowOpenTag(html, "sub2")).not.toContain("chq-pub-session-row-notime");
+  });
+
+  it("DEC-698: drops the .chq-pub-session-when cell entirely and switches to the notime row modifier when the time field is off", async () => {
+    installFakeCaches();
+    const app = buildApp();
+    const res = await app.request("/e/conf/sessions?fields=track,speaker,description,format", {}, TEST_ENV);
+    const html = await res.text();
+    const fragment = cardFragment(html, "sub1");
     expect(fragment).not.toContain("chq-pub-session-when");
+    expect(rowOpenTag(html, "sub1")).toContain("chq-pub-session-row-notime");
   });
 });
 

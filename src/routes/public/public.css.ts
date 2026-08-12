@@ -93,6 +93,11 @@ export const PUBLIC_CSS = `
     padding: 20px 0;
     border-bottom: 1px solid var(--chq-hairline);
   }
+  /* DEC-698: the /embed field toggles can drop the time field entirely --
+     the row then carries no .chq-pub-session-when cell at all, so the
+     126px gutter column must not exist either or the body lands in it
+     and wraps word-per-word. */
+  .chq-pub-session-row-notime { grid-template-columns: 1fr auto; }
   .chq-pub-session-when { display: flex; flex-direction: column; gap: 2px; }
   .chq-pub-session-time { font-family: var(--chq-font-display); font-size: 15px; font-weight: 700; color: var(--chq-ink); }
   .chq-pub-session-room { font-size: 12px; color: var(--chq-muted); }
