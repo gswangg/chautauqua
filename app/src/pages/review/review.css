@@ -504,3 +504,45 @@
   display: flex;
   gap: 9px;
 }
+
+/* DEC-572: the track-assign scope confirm. Nothing is POSTed until a choice
+   in this panel is clicked, so it reads as a sunk, bordered interruption
+   rather than an inline continuation of the form above it. */
+.chq-review-scope-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 14px;
+  background: var(--chq-surface-sunk);
+  border: 1px solid var(--chq-border);
+  border-radius: var(--chq-r-card);
+}
+
+.chq-review-scope-preview-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 220px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+  color: var(--chq-ink-2);
+}
+
+.chq-review-scope-confirm-actions {
+  display: flex;
+  gap: 9px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.chq-review-scope-choose {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 300px;
+  overflow-y: auto;
+}

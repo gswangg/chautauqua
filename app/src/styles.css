@@ -1051,6 +1051,14 @@ a:hover {
   color: var(--chq-muted);
 }
 
+/* DEC-573: comments are pinned to the file version they were written
+   against, so the head carries the version the author was looking at. */
+.chq-comment-version {
+  font-size: 12px;
+  color: var(--chq-muted);
+  font-variant-numeric: tabular-nums;
+}
+
 .chq-comment-body {
   font-size: 14px;
   color: var(--chq-ink-2);

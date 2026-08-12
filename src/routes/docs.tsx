@@ -111,6 +111,7 @@ export const ROUTE_GROUPS: { title: string; rows: Row[] }[] = [
       { method: "POST", path: "/api/v1/plans/:id/reviewers", role: "organizer" },
       { method: "GET", path: "/api/v1/plans/:id/reviewers", role: "organizer" },
       { method: "DELETE", path: "/api/v1/plans/:id/reviewers/:reviewerId", role: "organizer" },
+      { method: "GET", path: "/api/v1/plans/:id/scope-preview", role: "organizer" },
       { method: "GET", path: "/api/v1/plans/:id/progress", role: "organizer" },
       { method: "GET", path: "/api/v1/plans/:id/results", role: "organizer" },
       { method: "POST", path: "/api/v1/plans/:id/remind", role: "organizer" },
