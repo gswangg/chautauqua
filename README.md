@@ -143,6 +143,28 @@ the wave after this pass first reads all-PASS. Route list:
 the manifest and the advisory constant live alongside the public mobile pass's
 tests in `test/render-sweep-lib.test.ts`.
 
+### Dev: scale gate
+
+`npm run gate:scale` turns docs/mandates/scale-mandate.md's "Functional
+bars" section into an executable check against the `aie` perf profile
+(2,500 submissions / 6,000 contacts / 280 accepted sessions — see
+`PERF_PROFILES.aie` in `scripts/perf-seed-lib.ts`). It does NOT reseed
+itself; run these two steps first:
+
+```sh
+npm run perf:seed:aie
+npm run dev   # in another terminal, migrated + running
+npm run gate:scale
+```
+
+It prints PASS/FAIL per bar (bulk status at 500+ selected, auto-schedule
+reason coverage, reminders' `{sent, skipped, remaining}` honesty, Overview's
+row cap, `contacts/duplicates` latency) and exits non-zero on the first
+failing bar with the observed numbers. Evaluators are pure functions in
+`scripts/stress-bars.ts`, unit-tested in `test/stress-bars.test.ts`; the
+walkthrough in `scripts/walkthrough/stress.ts` only gathers observations via
+real HTTP calls and reports them.
+
 ## For evaluators
 
 **[docs/AUDIT.md](docs/AUDIT.md)** is a self-audit: what each SPEC.md area actually does
