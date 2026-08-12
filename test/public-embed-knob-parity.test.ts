@@ -22,10 +22,28 @@ function makeChain(rows: unknown[]) {
     leftJoin: () => chain,
     where: () => chain,
     orderBy: () => chain,
+    // DEC-548: getPublicAgenda ends its count(*) subquery build with .as().
+    as: () => chain,
     limit: async (n: number) => rows.slice(0, n),
     then: (resolve: (v: unknown[]) => void) => resolve(rows),
   };
   return chain;
+}
+
+// Walks a drizzle condition tree collecting bound scalar values (mirrors
+// test/public-agenda-bounds.test.ts's walkCondition) so the agenda fake below
+// can honor a WHERE it can't otherwise see.
+function boundValues(node: unknown, seen = new Set<unknown>(), depth = 0): string[] {
+  if (depth > 12 || node === null || typeof node !== "object") return [];
+  if (seen.has(node)) return [];
+  seen.add(node);
+  const n = node as Record<string, unknown>;
+  const out: string[] = [];
+  if (typeof n.value === "string") out.push(n.value);
+  if (Array.isArray(n.queryChunks)) {
+    for (const c of n.queryChunks) out.push(...boundValues(c, seen, depth + 1));
+  }
+  return out;
 }
 
 function fakeKv() {
@@ -168,21 +186,53 @@ function buildAgendaApp() {
     { id: "sub1", seq: 1, title: "Talk 1", description: "d", icsSequence: 0 },
     { id: "sub2", seq: 2, title: "Talk 2", description: "d", icsSequence: 0 },
   ];
+  const AGENDA_ROWS = [
+    { submissionId: "sub1", day: "2026-08-10", startMin: 540, endMin: 600, roomId: "room1" },
+    { submissionId: "sub2", day: "2026-08-11", startMin: 540, endMin: 600, roomId: "room1" },
+  ];
+  // The event's own range is deliberately WIDER than the two agenda days, so
+  // slotWithinEventRange's gte/lte bind 2026-08-09/2026-08-12 and any *other*
+  // date-shaped value in the WHERE can only have come from DEC-548's added
+  // eq(schedule_slot.day, params.day).
+  const AGENDA_EVENT_ROW = { ...EVENT_ROW, startDate: "2026-08-09", endDate: "2026-08-12" };
+  // DEC-548 moved the ?day= filter out of a post-hoc JS .filter() and into the
+  // SQL WHERE, so this fake has to apply it itself -- otherwise it would hand
+  // back both days no matter what was asked for and the parity assertions
+  // below would be testing the mock, not the route.
+  let matched = AGENDA_ROWS;
+  function agendaChain() {
+    const chain: any = {
+      from: () => chain,
+      innerJoin: () => chain,
+      leftJoin: () => chain,
+      where: (cond: unknown) => {
+        const day = boundValues(cond).find(
+          (v) => /^\d{4}-\d{2}-\d{2}$/.test(v) && v !== AGENDA_EVENT_ROW.startDate && v !== AGENDA_EVENT_ROW.endDate,
+        );
+        matched = day ? AGENDA_ROWS.filter((r) => r.day === day) : AGENDA_ROWS;
+        return chain;
+      },
+      orderBy: () => chain,
+      as: () => chain,
+      limit: async (n: number) => matched.slice(0, n),
+      then: (resolve: (v: unknown[]) => void) => resolve(matched),
+    };
+    return chain;
+  }
   const db = {
     select: () => {
       selectCall += 1;
-      if (selectCall === 1) return makeChain([EVENT_ROW]); // getPublicEventBySlug
-      if (selectCall === 2) return makeChain([{ id: "room1", name: "Main Hall" }]); // roomRows
-      if (selectCall === 3) return makeChain(SESSION_ROWS); // hydrateSessions subRows
-      if (selectCall === 4) return makeChain([]); // hydrateSessions trackRows
-      if (selectCall === 5) return makeChain([]); // hydrateSessions speakerRows
+      if (selectCall === 1) return makeChain([AGENDA_EVENT_ROW]); // getPublicEventBySlug
+      // DEC-548: the unwindowed count(*) over the same filtered join, read
+      // after selectDistinct's .where() has already narrowed `matched`.
+      if (selectCall === 2) return makeChain([{ count: matched.length }]);
+      if (selectCall === 3) return makeChain([{ id: "room1", name: "Main Hall" }]); // roomRows
+      if (selectCall === 4) return makeChain(SESSION_ROWS); // hydrateSessions subRows
+      if (selectCall === 5) return makeChain([]); // hydrateSessions trackRows
+      if (selectCall === 6) return makeChain([]); // hydrateSessions speakerRows
       return makeChain([]); // hydrateSessions EMB-01 slotRows (unused by agenda grid)
     },
-    selectDistinct: () =>
-      makeChain([
-        { submissionId: "sub1", day: "2026-08-10", startMin: 540, endMin: 600, roomId: "room1" },
-        { submissionId: "sub2", day: "2026-08-11", startMin: 540, endMin: 600, roomId: "room1" },
-      ]),
+    selectDistinct: () => agendaChain(),
   } as unknown as AppEnv["Variables"]["db"];
   return mountApp(db);
 }

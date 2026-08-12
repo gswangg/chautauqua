@@ -54,6 +54,10 @@ import { headshotServeRoutes } from "../src/routes/portal/profile";
 // DEC-516: offset() is a real chain step (not merely a terminal after
 // limit()) since the public sessions/speakers repo queries now chain
 // .limit().offset() for a windowed JSON feed page.
+// DEC-548: as() is likewise a real chain step -- getPublicAgenda builds its
+// unwindowed count(*) as a selectDistinct(...).as("agenda_rows") subquery, so
+// a double without it throws a TypeError mid-handler (which this file's whole
+// point is that no hostile input should ever be able to provoke).
 function makeChain(rows: unknown[]) {
   const chain: any = {
     from: () => chain,
@@ -61,6 +65,7 @@ function makeChain(rows: unknown[]) {
     leftJoin: () => chain,
     where: () => chain,
     orderBy: () => chain,
+    as: () => chain,
     limit: () => chain,
     offset: () => chain,
     then: (resolve: (v: unknown[]) => void) => resolve(rows),
