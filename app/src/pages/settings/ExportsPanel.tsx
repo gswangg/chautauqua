@@ -10,6 +10,7 @@ const EXPORT_KINDS: { kind: string; label: string }[] = [
   { kind: 'evaluations', label: 'Evaluations' },
   { kind: 'agenda', label: 'Agenda' },
   { kind: 'email-log', label: 'Email log' },
+  { kind: 'contacts', label: 'Contacts' },
 ];
 
 export function ExportsPanel() {

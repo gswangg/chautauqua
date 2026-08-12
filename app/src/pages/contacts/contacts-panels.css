@@ -145,6 +145,14 @@
   display: none;
 }
 
+/* Phone card list has no desktop rule of its own inside the 700px query
+   below (only .chq-contacts-pipeline-phone-stages did) -- so it rendered
+   unstyled underneath the desktop board (stray concatenated row). display:
+   none (not visibility/opacity) so it also leaves the a11y tree. */
+.chq-contacts-pipeline-phone-list {
+  display: none;
+}
+
 .chq-contacts-pipeline-notes {
   display: flex;
   flex-direction: column;

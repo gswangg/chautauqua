@@ -14,6 +14,7 @@ import { exportSpeakers } from "./speakers";
 import { exportEvaluations } from "./evaluations";
 import { exportAgenda } from "./agenda";
 import { exportEmailLog } from "./email-log";
+import { exportContacts } from "./contacts";
 import { type ExportTable } from "./table";
 
 export { EXPORT_KINDS, type ExportKind, isExportKind } from "./kinds";
@@ -28,8 +29,13 @@ export {
 export { AGENDA_HEADER, type AgendaExportInput, shapeAgendaExport } from "./agenda";
 export { labelByCriterionId, shapeEvaluationsExport } from "./evaluations";
 export { SHOWFLOW_HEADER, type ShowflowExportInput, shapeShowflowExport, buildShowflowExport } from "./showflow";
+export { CONTACTS_HEADER, exportContacts } from "./contacts";
 
-export async function buildExport(db: Db, eventId: string, kind: ExportKind): Promise<ExportTable> {
+// DEC-597: 'contacts' is org-scoped, not event-scoped like every other kind
+// here — `orgId` is required exactly when kind === 'contacts' (the caller,
+// the DEC-027 export route, already resolves it via its object-level event
+// ownership check) and ignored otherwise.
+export async function buildExport(db: Db, eventId: string, kind: ExportKind, orgId?: string): Promise<ExportTable> {
   switch (kind) {
     case "submissions":
       return exportSubmissions(db, eventId);
@@ -41,5 +47,8 @@ export async function buildExport(db: Db, eventId: string, kind: ExportKind): Pr
       return exportAgenda(db, eventId);
     case "email-log":
       return exportEmailLog(db, eventId);
+    case "contacts":
+      if (!orgId) throw new Error("buildExport: orgId is required for kind 'contacts'");
+      return exportContacts(db, orgId);
   }
 }
