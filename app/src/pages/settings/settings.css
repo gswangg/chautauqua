@@ -261,3 +261,13 @@
     min-height: 44px;
   }
 }
+
+/* DEC-402: page-prefixed second classes so each table is addressable by
+   this stylesheet without redefining the shared .chq-table rules above,
+   which already cover both tables' desktop and phone-card treatment via
+   the generic `.chq-settings-panel .chq-table` selectors. Purely additive
+   markers -- no new visual rule needed. */
+.chq-settings-exports-table,
+.chq-settings-tokens-table {
+  margin-top: 0;
+}

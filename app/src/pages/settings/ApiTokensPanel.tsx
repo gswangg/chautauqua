@@ -100,7 +100,7 @@ export function ApiTokensPanel() {
       ) : tokens.length === 0 ? (
         <p>No API tokens yet.</p>
       ) : (
-        <table className="chq-table">
+        <table className="chq-table chq-settings-tokens-table">
           <thead>
             <tr>
               <th>Name</th>
