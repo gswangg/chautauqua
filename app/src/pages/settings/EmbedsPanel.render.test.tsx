@@ -121,4 +121,59 @@ describe('EmbedsPanel', () => {
       expect(Array.from(formatSelect.options).map((o) => o.value)).toContain('ics');
     });
   });
+
+  // DEC-490: the builder only renders controls for knobs the selected
+  // surface actually honors, per DEC-489's surface->knob table.
+  it('hides the Day control for the sessions and speakers surfaces', async () => {
+    mockEvent();
+    render(<EmbedsPanel />);
+
+    await waitFor(() => {
+      expect(screen.getAllByText(/embed\/devcon-2026\/sessions/).length).toBeGreaterThan(0);
+    });
+    expect(screen.queryByLabelText('Day')).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('Surface'), { target: { value: 'speakers' } });
+    await waitFor(() => {
+      expect(screen.getAllByText(/embed\/devcon-2026\/speakers/).length).toBeGreaterThan(0);
+    });
+    expect(screen.queryByLabelText('Day')).not.toBeInTheDocument();
+  });
+
+  it('hides the Track ID control for the agenda surface', async () => {
+    mockEvent();
+    render(<EmbedsPanel />);
+
+    await waitFor(() => {
+      expect(screen.getAllByText(/embed\/devcon-2026\/sessions/).length).toBeGreaterThan(0);
+    });
+    expect(screen.getByLabelText('Track ID')).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('Surface'), { target: { value: 'agenda' } });
+    await waitFor(() => {
+      expect(screen.getAllByText(/embed\/devcon-2026\/agenda/).length).toBeGreaterThan(0);
+    });
+    expect(screen.queryByLabelText('Track ID')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Day')).toBeInTheDocument();
+  });
+
+  it('never leaks a stale trackId into the URL after switching to a surface that ignores it', async () => {
+    mockEvent();
+    render(<EmbedsPanel />);
+
+    await waitFor(() => {
+      expect(screen.getAllByText(/embed\/devcon-2026\/sessions/).length).toBeGreaterThan(0);
+    });
+
+    fireEvent.change(screen.getByLabelText('Track ID'), { target: { value: 'trk-42' } });
+    await waitFor(() => {
+      expect(screen.getAllByText(/trackId=trk-42/).length).toBeGreaterThan(0);
+    });
+
+    fireEvent.change(screen.getByLabelText('Surface'), { target: { value: 'agenda' } });
+    await waitFor(() => {
+      expect(screen.getAllByText(/embed\/devcon-2026\/agenda/).length).toBeGreaterThan(0);
+    });
+    expect(screen.queryAllByText(/trackId=/).length).toBe(0);
+  });
 });

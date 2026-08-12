@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildEmbedUrl, buildSnippet } from './embedSnippet';
+import { buildEmbedUrl, buildSnippet, type EmbedField } from './embedSnippet';
 
 const ORIGIN = 'https://example.org';
 const SLUG = 'devcon-2026';
@@ -48,8 +48,8 @@ describe('buildEmbedUrl', () => {
     expect(url).toBe(`${ORIGIN}/embed/${SLUG}/sessions`);
   });
 
-  it('serializes only the non-default knobs in the stable order trackId, day, limit, fields, accent', () => {
-    const url = buildEmbedUrl(ORIGIN, SLUG, 'agenda', {
+  it('serializes only the non-default knobs in the stable order trackId, day, limit, fields, accent (sessions honors all of them)', () => {
+    const url = buildEmbedUrl(ORIGIN, SLUG, 'sessions', {
       format: 'json',
       accent: '#4f46e5',
       limit: 10,
@@ -57,8 +57,11 @@ describe('buildEmbedUrl', () => {
       trackId: 'trk1',
       fields: ['track', 'time'],
     });
+    // DEC-489: sessions does not honor `day`, so it is dropped even though
+    // it was passed — the stable order trackId, limit, fields, accent holds
+    // for the knobs the surface does honor.
     expect(url).toBe(
-      `${ORIGIN}/embed/${SLUG}/agenda.json?trackId=trk1&day=2026-09-02&limit=10&fields=track%2Ctime&accent=4f46e5`,
+      `${ORIGIN}/embed/${SLUG}/sessions.json?trackId=trk1&limit=10&fields=track%2Ctime&accent=4f46e5`,
     );
   });
 
@@ -71,6 +74,69 @@ describe('buildEmbedUrl', () => {
   it('serializes a partial field subset', () => {
     const url = buildEmbedUrl(ORIGIN, SLUG, 'sessions', { format: 'iframe', fields: ['speaker'] });
     expect(url).toBe(`${ORIGIN}/embed/${SLUG}/sessions?fields=speaker`);
+  });
+});
+
+// DEC-490/DEC-489: a surface's URL must never carry a knob the server
+// doesn't honor for it, even when the caller passes every option.
+describe('buildEmbedUrl knob table (DEC-489/DEC-490)', () => {
+  const ALL_OPTS = {
+    format: 'iframe' as const,
+    trackId: 'trk1',
+    day: '2026-09-02',
+    limit: 10,
+    fields: ['speaker'] as EmbedField[],
+    accent: '#4f46e5',
+  };
+
+  it('sessions honors trackId, limit, fields, accent but drops day', () => {
+    const url = buildEmbedUrl(ORIGIN, SLUG, 'sessions', ALL_OPTS);
+    expect(url).toContain('trackId=trk1');
+    expect(url).toContain('limit=10');
+    expect(url).toContain('fields=speaker');
+    expect(url).toContain('accent=4f46e5');
+    expect(url).not.toContain('day=');
+  });
+
+  it('speakers honors only limit and accent, dropping trackId, day, fields', () => {
+    const url = buildEmbedUrl(ORIGIN, SLUG, 'speakers', ALL_OPTS);
+    expect(url).toContain('limit=10');
+    expect(url).toContain('accent=4f46e5');
+    expect(url).not.toContain('trackId=');
+    expect(url).not.toContain('day=');
+    expect(url).not.toContain('fields=');
+  });
+
+  it('gallery honors only limit and accent, dropping trackId, day, fields', () => {
+    const url = buildEmbedUrl(ORIGIN, SLUG, 'gallery', ALL_OPTS);
+    expect(url).toContain('limit=10');
+    expect(url).toContain('accent=4f46e5');
+    expect(url).not.toContain('trackId=');
+    expect(url).not.toContain('day=');
+    expect(url).not.toContain('fields=');
+  });
+
+  it('agenda honors only day and accent, dropping trackId, limit, fields', () => {
+    const url = buildEmbedUrl(ORIGIN, SLUG, 'agenda', ALL_OPTS);
+    expect(url).toContain('day=2026-09-02');
+    expect(url).toContain('accent=4f46e5');
+    expect(url).not.toContain('trackId=');
+    expect(url).not.toContain('limit=');
+    expect(url).not.toContain('fields=');
+  });
+
+  it('schedule honors only day and accent, dropping trackId, limit, fields', () => {
+    const url = buildEmbedUrl(ORIGIN, SLUG, 'schedule', ALL_OPTS);
+    expect(url).toContain('day=2026-09-02');
+    expect(url).toContain('accent=4f46e5');
+    expect(url).not.toContain('trackId=');
+    expect(url).not.toContain('limit=');
+    expect(url).not.toContain('fields=');
+  });
+
+  it('ics drops every knob, including accent', () => {
+    const url = buildEmbedUrl(ORIGIN, SLUG, 'schedule', { ...ALL_OPTS, format: 'ics' });
+    expect(url).toBe(`${ORIGIN}/e/${SLUG}/agenda.ics`);
   });
 });
 

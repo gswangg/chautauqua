@@ -11,6 +11,7 @@ import {
   buildSnippet,
   EMBED_FIELDS,
   EMBED_FORMATS,
+  EMBED_KNOBS_BY_SURFACE,
   EMBED_SURFACES,
   type EmbedField,
   type EmbedFormat,
@@ -74,6 +75,8 @@ export function EmbedsPanel() {
     window.setTimeout(() => setCopied(false), 2000);
   }
 
+  const knobs = EMBED_KNOBS_BY_SURFACE[surface];
+
   const url = event
     ? buildEmbedUrl(window.location.origin, event.slug, surface, {
         format,
@@ -128,54 +131,62 @@ export function EmbedsPanel() {
             </select>
           </label>
 
-          <label>
-            Track ID
-            <input
-              className="chq-input"
-              type="text"
-              value={trackId}
-              onChange={(e) => setTrackId(e.target.value)}
-              placeholder="(all tracks)"
-            />
-          </label>
+          {knobs.includes('trackId') ? (
+            <label>
+              Track ID
+              <input
+                className="chq-input"
+                type="text"
+                value={trackId}
+                onChange={(e) => setTrackId(e.target.value)}
+                placeholder="(all tracks)"
+              />
+            </label>
+          ) : null}
 
-          <label>
-            Day
-            <input
-              className="chq-input"
-              type="date"
-              value={day}
-              onChange={(e) => setDay(e.target.value)}
-            />
-          </label>
+          {knobs.includes('day') ? (
+            <label>
+              Day
+              <input
+                className="chq-input"
+                type="date"
+                value={day}
+                onChange={(e) => setDay(e.target.value)}
+              />
+            </label>
+          ) : null}
 
-          <label>
-            Limit
-            <input
-              className="chq-input"
-              type="number"
-              min={1}
-              max={100}
-              value={limit}
-              onChange={(e) => setLimit(e.target.value)}
-              placeholder="(no limit)"
-            />
-          </label>
+          {knobs.includes('limit') ? (
+            <label>
+              Limit
+              <input
+                className="chq-input"
+                type="number"
+                min={1}
+                max={100}
+                value={limit}
+                onChange={(e) => setLimit(e.target.value)}
+                placeholder="(no limit)"
+              />
+            </label>
+          ) : null}
 
-          <fieldset>
-            <legend>Fields</legend>
-            {EMBED_FIELDS.map((field) => (
-              <label key={field}>
-                <input
-                  className="chq-check"
-                  type="checkbox"
-                  checked={fields.includes(field)}
-                  onChange={() => toggleField(field)}
-                />
-                {field}
-              </label>
-            ))}
-          </fieldset>
+          {knobs.includes('fields') ? (
+            <fieldset>
+              <legend>Fields</legend>
+              {EMBED_FIELDS.map((field) => (
+                <label key={field}>
+                  <input
+                    className="chq-check"
+                    type="checkbox"
+                    checked={fields.includes(field)}
+                    onChange={() => toggleField(field)}
+                  />
+                  {field}
+                </label>
+              ))}
+            </fieldset>
+          ) : null}
 
           <label>
             Accent color
