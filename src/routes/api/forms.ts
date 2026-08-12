@@ -198,11 +198,36 @@ formsRoutes.patch("/api/v1/fields/:fieldId", requireOrganizer, csrfJson, async (
     throw new ApiError("invalid", "Locked fields' required flag cannot be changed");
   }
 
+  // DEC-505: locked built-in fields also cannot have their kind or section
+  // changed — those are structural properties of the built-in.
+  if (
+    field.locked &&
+    ((body.kind !== undefined && body.kind !== field.kind) ||
+      (body.section !== undefined && body.section !== field.section))
+  ) {
+    throw new ApiError("invalid", "Locked fields' kind and section cannot be changed");
+  }
+
   const siblings = (await repo.listFields(c.var.db, field.formId)).filter((f) => f.id !== fieldId);
   const siblingDefs = toDefList(siblings);
   const result = validateFieldDefInput(body, siblingDefs, { id: fieldId, kind: field.kind });
   if (!result.ok) {
     throw new ApiError("invalid", "Validation failed", result.errors);
+  }
+
+  // DEC-505: a kind change that would orphan already-collected answers is
+  // refused outright — the producer must delete and re-create the question
+  // instead (mirrors DEC-300's field-delete confirm, but kind changes have
+  // no cascade option since the stored answer shape wouldn't fit the new kind).
+  if (typeof body.kind === "string" && body.kind !== field.kind) {
+    const { answerCount } = await repo.describeFieldDependents(c.var.db, field.formId, fieldId);
+    if (answerCount > 0) {
+      throw new ApiError(
+        "conflict",
+        `"${field.label}" has ${answerCount} collected answer(s); changing its kind would orphan them. Delete and re-create the question instead.`,
+        { answers: String(answerCount) },
+      );
+    }
   }
 
   const updated = await repo.patchField(c.var.db, fieldId, {
@@ -211,6 +236,8 @@ formsRoutes.patch("/api/v1/fields/:fieldId", requireOrganizer, csrfJson, async (
     required: field.locked ? undefined : typeof body.required === "boolean" ? body.required : undefined,
     options: body.options !== undefined ? (body.options === null ? null : (body.options as string[])) : undefined,
     rule: body.rule !== undefined ? (body.rule === null ? null : (body.rule as FormFieldRule)) : undefined,
+    section: typeof body.section === "string" ? (body.section as FormFieldDef["section"]) : undefined,
+    kind: typeof body.kind === "string" ? (body.kind as FormFieldDef["kind"]) : undefined,
   });
 
   return c.json(toPublicField(updated));

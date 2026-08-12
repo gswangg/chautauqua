@@ -280,16 +280,31 @@ export interface FieldPatch {
   required?: boolean;
   options?: string[] | null;
   rule?: FormFieldRule | null;
+  section?: FormFieldDef["section"];
+  kind?: FormFieldDef["kind"];
 }
 
 export async function patchField(db: Db, fieldId: string, patch: FieldPatch): Promise<FormFieldRow> {
+  // DEC-500/DEC-505: options exist only on dropdowns. A kind change away
+  // from dropdown must clear stored options in the same UPDATE, unless the
+  // caller is explicitly setting options in this same patch.
+  const clearOptionsForKindChange = patch.kind !== undefined && patch.kind !== "dropdown";
   await db
     .update(schema.formField)
     .set({
       label: patch.label,
       helpText: patch.helpText !== undefined ? patch.helpText : undefined,
       required: patch.required,
-      optionsJson: patch.options !== undefined ? (patch.options ? JSON.stringify(patch.options) : null) : undefined,
+      section: patch.section,
+      kind: patch.kind,
+      optionsJson:
+        patch.options !== undefined
+          ? patch.options
+            ? JSON.stringify(patch.options)
+            : null
+          : clearOptionsForKindChange
+            ? null
+            : undefined,
       ruleJson: patch.rule !== undefined ? (patch.rule ? JSON.stringify(patch.rule) : null) : undefined,
       updatedAt: new Date(),
     })
