@@ -17,6 +17,7 @@ function makeChain(rows: unknown[]) {
     innerJoin: () => chain,
     leftJoin: () => chain,
     where: () => chain,
+    groupBy: () => chain,
     orderBy: () => chain,
     limit: async () => rows,
     then: (resolve: (v: unknown[]) => void) => resolve(rows),

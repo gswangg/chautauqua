@@ -24,7 +24,7 @@ export {
   visibleSubmissionConditions,
 } from "./public/gates";
 
-export { getPublicEventBySlug, getPublicTracks } from "./public/event";
+export { getPublicEventBySlug, getPublicTracks, getPublicCfpWindow } from "./public/event";
 export type { PublicEvent, PublicTrack } from "./public/event";
 
 export { getPublicSessions, getPublicSessionsByIds } from "./public/sessions";
@@ -40,5 +40,5 @@ export type {
   PublicSessionDetail,
 } from "./public/detail";
 
-export { getPublicAgenda, getPublicAgendaByIds } from "./public/agenda";
+export { getPublicAgenda, getPublicAgendaByIds, getPublicScheduleDayCounts } from "./public/agenda";
 export type { PublicAgendaItem } from "./public/agenda";

@@ -19,6 +19,7 @@ function makeChain(rows: unknown[]) {
     innerJoin: () => chain,
     leftJoin: () => chain,
     where: () => chain,
+    groupBy: () => chain,
     orderBy: () => chain,
     limit: async () => rows,
     offset: async () => rows,
@@ -104,7 +105,10 @@ describe("Format on the sessions-list card (/e/:eventSlug/sessions)", () => {
         if (call === 5) return makeChain([]); // speakerRows
         if (call === 6) return makeChain([]); // slotRows
         if (call === 7) return makeChain(formatAnswerRows(hasAnswer)); // formatRows
-        return makeChain([{ count: 1 }]); // countVisibleSubmissions
+        if (call === 8) return makeChain([{ count: 1 }]); // countVisibleSubmissions
+        // DEC-683: !embed sessions rail queries — real (empty) row shapes.
+        if (call === 9) return makeChain([]); // getPublicScheduleDayCounts
+        return makeChain([]); // getPublicCfpWindow
       },
       selectDistinct: () => makeChain([{ id: "sub1", title: "Fireside Chat" }]),
     };

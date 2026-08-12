@@ -34,6 +34,7 @@ function makeChain(rows: unknown[]) {
     innerJoin: () => chain,
     leftJoin: () => chain,
     where: () => chain,
+    groupBy: () => chain,
     orderBy: () => chain,
     limit: (n: number) => {
       lim = n;
@@ -159,7 +160,11 @@ function buildSessionsAppHtml() {
       if (selectCall === 5) return makeChain([]); // speakerRows
       if (selectCall === 6) return makeChain([]); // slotRows
       if (selectCall === 7) return makeChain([]); // formatRows
-      return makeChain([{ count: N }]); // countVisibleSubmissions
+      if (selectCall === 8) return makeChain([{ count: N }]); // countVisibleSubmissions
+      // DEC-683: !embed sessions rail queries — real (empty) row shapes so
+      // DayIndexRailSection/CfpRailSection never see the count-shaped row.
+      if (selectCall === 9) return makeChain([]); // getPublicScheduleDayCounts
+      return makeChain([]); // getPublicCfpWindow
     },
     selectDistinct: () => makeChain(sessionIds.map((id, i) => ({ id, title: `Talk ${i}` }))),
   } as unknown as AppEnv["Variables"]["db"];

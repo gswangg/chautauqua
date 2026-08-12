@@ -360,4 +360,75 @@ export const PUBLIC_CSS = `
     color: var(--chq-muted);
     font-size: 13px;
   }
+
+  /* ===== task-w14-d (DEC-683): sessions list + rail =====
+     Two-column grid (list, then a 300px <aside>) above 700px, single column
+     below it — same breakpoint the rest of this stylesheet already uses. */
+  .chq-pub-sessions-layout {
+    display: grid;
+    grid-template-columns: 1fr 300px;
+    gap: 34px;
+    align-items: start;
+  }
+  .chq-pub-sessions-rail { display: flex; flex-direction: column; gap: 26px; }
+  .chq-pub-rail-section { display: flex; flex-direction: column; }
+  .chq-pub-rail-heading {
+    font-family: var(--chq-font-display);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    border-bottom: 2px solid var(--chq-ink);
+    padding-bottom: 8px;
+    margin: 0;
+  }
+  .chq-pub-rail-body { padding-top: 14px; display: flex; flex-direction: column; gap: 11px; }
+  .chq-pub-rail-caption { font-size: 14px; line-height: 1.6; color: var(--chq-ink-2); }
+  .chq-pub-rail-day-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 12px;
+    align-items: baseline;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--chq-hairline);
+  }
+  .chq-pub-rail-day-row a { font-size: 14px; font-weight: 600; color: var(--chq-ink); text-decoration: none; }
+  .chq-pub-rail-day-count { font-size: 13px; color: var(--chq-muted); }
+  .chq-pub-rail-cfp-link { font-size: 14px; font-weight: 700; color: var(--chq-ink); align-self: flex-start; }
+
+  /* DEC-683: per-row Save/Saved pill. The checkbox itself is visually
+     hidden (never display:none -- that would drop it from the a11y tree)
+     and its accessible name comes from the <label> wrapping both spans;
+     :checked swaps which span shows, same pattern as ONE dialog contract
+     elsewhere in this codebase, no new JS. */
+  .chq-pub-save {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0 14px;
+    border: 1px solid var(--chq-border);
+    border-radius: var(--chq-r-ctl);
+    background: var(--chq-surface-sunk);
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    align-self: center;
+    cursor: pointer;
+  }
+  .chq-pub-save input.chq-itinerary-toggle {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    margin: 0;
+  }
+  .chq-pub-save-on { display: none; }
+  .chq-pub-save input.chq-itinerary-toggle:checked ~ .chq-pub-save-off { display: none; }
+  .chq-pub-save input.chq-itinerary-toggle:checked ~ .chq-pub-save-on { display: inline; }
+
+  @media (max-width: 700px) {
+    .chq-pub-sessions-layout { grid-template-columns: 1fr; gap: 20px; }
+  }
 `;

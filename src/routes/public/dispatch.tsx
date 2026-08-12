@@ -7,6 +7,8 @@ import {
   getPublicSessions,
   getPublicSpeakers,
   getPublicAgenda,
+  getPublicScheduleDayCounts,
+  getPublicCfpWindow,
   type PublicEvent,
 } from "../../server/repo/public";
 import type { Surface } from "./shell";
@@ -39,6 +41,11 @@ export async function renderSurfaceContent(
         q,
         day: query.day ?? null,
       });
+      // DEC-683: the rail (Your schedule / day index / call for papers) is
+      // chromeless-closed — /embed never renders it, so these two extra
+      // queries are skipped entirely rather than fetched-then-hidden.
+      const dayCounts = query.embed ? [] : await getPublicScheduleDayCounts(db, event);
+      const cfpWindow = query.embed ? null : await getPublicCfpWindow(db, event.id);
       return {
         title: `Sessions - ${event.name}`,
         content: (
@@ -54,6 +61,8 @@ export async function renderSurfaceContent(
             limit={query.limit ?? null}
             fields={query.fields}
             embed={query.embed}
+            dayCounts={dayCounts}
+            cfpWindow={cfpWindow}
           />
         ),
       };
