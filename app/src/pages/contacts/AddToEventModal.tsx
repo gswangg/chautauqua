@@ -70,7 +70,7 @@ export function AddToEventModal({ contact, onClose }: Props) {
               {contact.firstName} {contact.lastName}
             </span>
           </div>
-          <button type="button" className="chq-btn-tertiary" onClick={onClose} aria-label="Close">
+          <button type="button" className="chq-btn chq-btn-tertiary" onClick={onClose} aria-label="Close">
             Close
           </button>
         </div>

@@ -136,7 +136,7 @@ export function AgendaPage() {
       {toast && (
         <div className="chq-toast" role="status">
           {toast}
-          <button type="button" onClick={() => setToast(null)} aria-label="Dismiss">
+          <button type="button" className="chq-link-button" onClick={() => setToast(null)} aria-label="Dismiss">
             &times;
           </button>
         </div>

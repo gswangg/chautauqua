@@ -155,7 +155,12 @@ export function OverviewPage() {
       {remindToast && (
         <div className="chq-toast" role="status">
           {remindToast}
-          <button type="button" onClick={() => setRemindToast(null)} aria-label="Dismiss">
+          <button
+            type="button"
+            className="chq-link-button"
+            onClick={() => setRemindToast(null)}
+            aria-label="Dismiss"
+          >
             &times;
           </button>
         </div>

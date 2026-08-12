@@ -152,6 +152,7 @@ export function TracksRoomsPanel() {
           onChange={(e) => setNewTrack({ ...newTrack, name: e.target.value })}
         />
         <input
+          className="chq-input"
           type="color"
           value={newTrack.color || '#4f46e5'}
           onChange={(e) => setNewTrack({ ...newTrack, color: e.target.value })}

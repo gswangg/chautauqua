@@ -110,7 +110,12 @@ export function FilterRulesPanel({ rules, onChange }: Props) {
           {rules.map((r, i) => (
             <li key={`${r.field}-${r.op}-${r.value}-${i}`} className="chq-contacts-filter-rule-chip">
               {r.field} {OP_LABEL[r.op]} &quot;{r.value}&quot;
-              <button type="button" aria-label={`Remove filter ${i + 1}`} onClick={() => removeRule(i)}>
+              <button
+                type="button"
+                className="chq-link-button"
+                aria-label={`Remove filter ${i + 1}`}
+                onClick={() => removeRule(i)}
+              >
                 &times;
               </button>
             </li>
