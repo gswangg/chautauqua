@@ -28,7 +28,8 @@ import { parseItineraryIds, MAX_ITINERARY_IDS } from "../../lib/itinerary";
 import { ApiError, errorEnvelope } from "../../server/http";
 import { publicCacheMiddleware, defaultCache } from "../../server/pubcache";
 import { DEC_022, DEC_007, DEC_017, DEC_005, DEC_012, DEC_080, DEC_083, DEC_151, DEC_289 } from "../../decisions";
-import { SURFACES, isSurface, setCacheHeaders, PublicShell, EmbedShell, isValidFrom, PER_PAGE, type Surface } from "./shell";
+import { SURFACES, isSurface, setCacheHeaders, PublicShell, EmbedShell, isValidFrom, type Surface } from "./shell";
+import { PUBLIC_PER_PAGE } from "../../server/repo/public/bounds";
 import { renderSurfaceContent } from "./dispatch";
 import { SpeakerDetailContent, SessionDetailContent } from "./detail";
 import {
@@ -252,7 +253,7 @@ publicRoutes.get("/e/:eventSlug/agenda.ics", async (c) => {
 // switch but returns the repo's own paged shape instead of rendered markup.
 // Same repo calls, same query params, same visibility gate; no new query.
 // DEC-484: honors ?limit= exactly like the HTML dispatch (query.limit ??
-// PER_PAGE) instead of hard-coding PER_PAGE, and reports page/perPage/total
+// PUBLIC_PER_PAGE) instead of hard-coding it, and reports page/perPage/total
 // so a feed consumer can tell it's looking at a truncated window. Agenda/
 // schedule are unpaged — page=1, perPage=total=items.length.
 async function getSurfaceFeedPage(
@@ -266,7 +267,7 @@ async function getSurfaceFeedPage(
       const trackId = parseTrackId(query.trackId);
       const page = parsePage(query.page);
       const q = parseNameQuery(query.q);
-      const perPage = query.limit ?? PER_PAGE;
+      const perPage = query.limit ?? PUBLIC_PER_PAGE;
       const { items, total } = await getPublicSessions(db, event, { trackId, page, perPage, q });
       return { items, total, page, perPage };
     }
@@ -274,7 +275,7 @@ async function getSurfaceFeedPage(
     case "gallery": {
       const q = parseNameQuery(query.q);
       const page = parsePage(query.page);
-      const perPage = query.limit ?? PER_PAGE;
+      const perPage = query.limit ?? PUBLIC_PER_PAGE;
       const { items, total } = await getPublicSpeakers(db, event.id, { q, page, perPage });
       return { items, total, page, perPage };
     }

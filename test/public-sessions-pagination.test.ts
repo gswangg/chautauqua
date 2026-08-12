@@ -7,6 +7,7 @@
 
 import { describe, expect, it } from "vitest";
 import { getPublicSessions, type PublicEvent } from "../src/server/repo/public";
+import { hasMorePages, MAX_PUBLIC_ROWS, MAX_PUBLIC_PAGE } from "../src/server/repo/public/bounds";
 import type { AppEnv } from "../src/server/env";
 
 // Mirrors test/public.test.ts's makeChain, but also records the bound
@@ -128,6 +129,16 @@ describe("getPublicSessions (DEC-418): SQL-bound pagination", () => {
     await getPublicSessions(db, EVENT, { trackId: null, page: 50, perPage: 100, q: null });
     expect(idRecord.limit).toBe(1200);
     expect(Number.isFinite(idRecord.limit)).toBe(true);
+  });
+
+  it("DEC-477/DEC-487: ?limit=100 stops offering Show-more once page*limit reaches MAX_PUBLIC_ROWS even though page < MAX_PUBLIC_PAGE", () => {
+    const limit = 100;
+    const pageAtRowCeiling = MAX_PUBLIC_ROWS / limit; // 12
+    expect(pageAtRowCeiling).toBeLessThan(MAX_PUBLIC_PAGE);
+    // Just under the row ceiling: still offers another page.
+    expect(hasMorePages(limit, 2000, pageAtRowCeiling - 1, limit)).toBe(true);
+    // Right at the row ceiling: page < MAX_PUBLIC_PAGE, but no more offered.
+    expect(hasMorePages(limit, 2000, pageAtRowCeiling, limit)).toBe(false);
   });
 
   it("DEC-433: a non-finite page throws instead of reaching db.limit()", async () => {

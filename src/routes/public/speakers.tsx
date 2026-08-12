@@ -4,8 +4,7 @@
 
 import type { PublicEvent, PublicSpeakerWithSessions } from "../../server/repo/public";
 import { speakerDetailPath, surfacePath } from "./shell";
-import { MAX_PUBLIC_PAGE } from "./query";
-import { MAX_PUBLIC_ROWS } from "../../server/repo/public/bounds";
+import { PUBLIC_PER_PAGE, hasMorePages } from "../../server/repo/public/bounds";
 
 /** Plain GET name-search form (DEC-151): JS-free, preserves the page's other
  * query semantics by resubmitting only `q` — page param is intentionally
@@ -34,7 +33,7 @@ export function SpeakersContent(props: {
   // DEC-433/477: parsePage clamps to MAX_PUBLIC_PAGE; stop offering
   // 'Show more' once there is no further page to link to, or once the
   // cumulative row ceiling (MAX_PUBLIC_ROWS) has already been reached.
-  const hasMore = speakers.length < total && speakers.length < MAX_PUBLIC_ROWS && page < MAX_PUBLIC_PAGE;
+  const hasMore = hasMorePages(speakers.length, total, page, PUBLIC_PER_PAGE);
   const basePath = surfacePath(event, "speakers");
   return (
     <>
@@ -95,7 +94,7 @@ export function GalleryContent(props: {
 }) {
   const { event, speakers, total, page, q } = props;
   // DEC-433/477: see SpeakersContent above.
-  const hasMore = speakers.length < total && speakers.length < MAX_PUBLIC_ROWS && page < MAX_PUBLIC_PAGE;
+  const hasMore = hasMorePages(speakers.length, total, page, PUBLIC_PER_PAGE);
   const basePath = surfacePath(event, "gallery");
   return (
     <>
