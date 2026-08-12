@@ -478,3 +478,9 @@ export const DEC_471 = "Re-running DEC-466's own criterion found two more list r
 export const DEC_472 = "A branch is not a landing: every graded row cites `git merge-base --is-ancestor`, and a decision doc is evidence of a decision, never of a fix";
 export const DEC_473 = "The list-envelope enumeration is a re-runnable artifact with one row per site in four fixed classes, not prose";
 export const DEC_474 = "Wave 21 = one source lane + four independent evidence lanes + the ledger last; the ledger's PASS requires DEC-465..469 and DEC-471 to be ancestors of its own sha";
+export const DEC_475 = "A conditional rule's fieldId is re-keyed exactly like the field's own id, or the rule is silently dead";
+export const DEC_476 = "Schedule-slot minutes are day-bounded at isValidSlotInput, the single slot write, using the same MINUTES_PER_DAY as AUTO_SCHEDULE_BOUNDS";
+export const DEC_477 = "The public row ceiling is MAX_PUBLIC_PAGE x PER_PAGE and must clear SPEC's top-of-range speaker count -- and the new deepest page is MEASURED, not assumed";
+export const DEC_478 = "ONE import row cap; two constants named MAX_IMPORT_ROWS with different values make the 400 message a lie";
+export const DEC_479 = "mergeContacts owes DEC-456's cascade too: after a merge, user.email equals the surviving contact.email";
+export const DEC_480 = "ONE perPage clamp, and 'every list endpoint' is graded by an executable enumeration test, never by prose";
