@@ -208,7 +208,76 @@ a:hover {
   }
 
   .chq-main {
-    padding-bottom: 84px;
+    padding: 16px 16px 84px;
+  }
+
+  .chq-page-title {
+    font-size: 27px;
+  }
+
+  .chq-page {
+    gap: 22px;
+  }
+
+  .chq-measure {
+    max-width: none;
+  }
+
+  .chq-steps {
+    grid-template-columns: 1fr;
+    border-top: none;
+  }
+
+  .chq-step {
+    border-left: none;
+    border-top: 1px solid var(--chq-rule);
+  }
+
+  .chq-step:first-child {
+    border-top: none;
+  }
+
+  .chq-kv {
+    flex-direction: column;
+  }
+
+  .chq-bulkbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .chq-bulkbar-actions {
+    flex-wrap: wrap;
+  }
+
+  .chq-pager {
+    flex-wrap: wrap;
+  }
+
+  .chq-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .chq-rail {
+    position: static;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .chq-deadlines {
+    grid-template-columns: 1fr;
+    border-top: none;
+  }
+
+  .chq-deadlines > * {
+    border-left: none;
+    border-top: 1px solid var(--chq-rule);
+    padding-left: 0;
+  }
+
+  .chq-deadlines > *:first-child {
+    border-top: none;
   }
 }
 
@@ -532,6 +601,20 @@ a:hover {
   .chq-textarea,
   .chq-btn {
     min-height: 44px;
+  }
+
+  .chq-pill,
+  .chq-rail-link,
+  .chq-checkbox-label,
+  .chq-btn-tertiary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+  }
+
+  .chq-btn-tertiary {
+    border-radius: var(--chq-r-ctl-phone);
   }
 }
 
