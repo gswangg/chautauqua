@@ -6,6 +6,7 @@ import {
   type ContentSubmissionListItem,
 } from './types';
 import { WORKLIST_TABS, type WorklistTab } from './worklist';
+import { DelayedLoading } from '../../components/DelayedLoading';
 
 export const TAB_LABELS: Record<WorklistTab, string> = {
   all: 'All',
@@ -20,6 +21,10 @@ interface SessionListProps {
   onTabChange: (tab: WorklistTab) => void;
   onSelect: (submissionId: string) => void;
   loading: boolean;
+  // Distinct from `loading` (which also flips true on every refetch): only
+  // true once the first load has resolved, so the empty state never renders
+  // ahead of a fetch that simply hasn't started yet (loading starts false).
+  loaded: boolean;
   // CNT-12: always-visible per-row content-status control, so approval
   // doesn't require drilling into a submission's deliverable detail first.
   onContentStatusChange: (submissionId: string, status: ContentStatus) => void;
@@ -38,6 +43,7 @@ export function SessionList({
   onTabChange,
   onSelect,
   loading,
+  loaded,
   onContentStatusChange,
   total,
   page,
@@ -83,10 +89,12 @@ export function SessionList({
         <tbody>
           {loading && (
             <tr>
-              <td colSpan={4}>Loading...</td>
+              <td colSpan={4}>
+                <DelayedLoading />
+              </td>
             </tr>
           )}
-          {!loading && visible.length === 0 && (
+          {loaded && !loading && visible.length === 0 && (
             <tr>
               <td colSpan={4} className="chq-empty">
                 No submissions in this view.

@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { apiGet, apiList, apiPost, ApiError } from '../../lib/api';
 import { reviewersWithIncompleteQueues } from './progress';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
+import { DelayedLoading } from '../../components/DelayedLoading';
 import { describeSendResult, type SendResult } from '../../lib/sendResult';
 import './review.css';
 import type { EvaluationPlan, ProgressRow } from './types';
@@ -80,11 +81,11 @@ export function ProgressPanel({ planId: planIdProp }: { planId?: string } = {}) 
   }
 
   if (loading) {
-    if (embedded) return <p>Loading…</p>;
+    if (embedded) return <DelayedLoading />;
     return (
       <div className="chq-page chq-review-page">
         <h1 className="chq-page-title">Review</h1>
-        <p>Loading…</p>
+        <DelayedLoading />
       </div>
     );
   }

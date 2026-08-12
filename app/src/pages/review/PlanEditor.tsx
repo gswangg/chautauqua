@@ -5,6 +5,7 @@ import { dateInputToMs, msToDateInput } from '../../lib/dates';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { copyText } from '../../lib/clipboard';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
+import { DelayedLoading } from '../../components/DelayedLoading';
 import { addCriterion, removeCriterion, updateCriterion, validateCriteriaList, validatePlanDraft } from './planForm';
 import './review.css';
 import {
@@ -453,7 +454,7 @@ export function PlanEditor() {
     return (
       <div className="chq-page chq-review-page">
         <h1 className="chq-page-title">Evaluation plan</h1>
-        <p>Loading…</p>
+        <DelayedLoading />
       </div>
     );
   }

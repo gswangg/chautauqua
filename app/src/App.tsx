@@ -5,6 +5,7 @@ import { useNavExceptions } from './lib/useNavExceptions';
 import { useEscapeKey } from './lib/useEscapeKey';
 import { identityLabel } from './lib/identity';
 import { EventSwitcher } from './components/EventSwitcher';
+import { DelayedLoading } from './components/DelayedLoading';
 
 // DEC-052: every route page is code-split via React.lazy. Page modules keep
 // their named exports; the thunk map below is reused both to build the lazy
@@ -256,7 +257,7 @@ export function App() {
         <Header />
         <main className="chq-main">
           <RoleGate>
-            <Suspense fallback={<div className="chq-loading">Loading…</div>}>
+            <Suspense fallback={<DelayedLoading />}>
               <Routes>
                 <Route path="/" element={<OverviewPage />} />
                 {NAV_SECTIONS.map((section) => (

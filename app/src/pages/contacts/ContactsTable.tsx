@@ -3,6 +3,7 @@ import type { ContactListItem, Segment, SegmentRule } from './types';
 import { isPageFullySelected, isPagePartiallySelected, selectionReducer, type SelectionState } from './selection';
 import { FilterRulesPanel } from './FilterRulesPanel';
 import { AddToEventModal } from './AddToEventModal';
+import { DelayedLoading } from '../../components/DelayedLoading';
 
 interface Props {
   items: ContactListItem[];
@@ -116,7 +117,9 @@ export function ContactsTable({
         <tbody>
           {loading && (
             <tr>
-              <td colSpan={5}>Loading...</td>
+              <td colSpan={5}>
+                <DelayedLoading />
+              </td>
             </tr>
           )}
           {!loading && items.length === 0 && (

@@ -4,6 +4,7 @@
 // once, same reveal-once treatment as ApiTokensPanel) and reset-password
 // (behind a confirm step). Zero new server endpoints.
 import { useEffect, useState, type FormEvent } from 'react';
+import { DelayedLoading } from '../../components/DelayedLoading';
 import { apiList, apiPost, ApiError } from '../../lib/api';
 import { useMe } from '../../lib/useMe';
 
@@ -153,7 +154,7 @@ export function PeopleRolesPanel() {
       )}
 
       {loading ? (
-        <p>Loading…</p>
+        <DelayedLoading />
       ) : users.length === 0 ? (
         <p>No people yet.</p>
       ) : (

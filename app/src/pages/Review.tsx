@@ -11,6 +11,7 @@
 // landing page. No redirect: bouncing silently would hide the boundary.
 import { Link, Route, Routes } from 'react-router-dom';
 import { useMe } from '../lib/useMe';
+import { DelayedLoading } from '../components/DelayedLoading';
 import { PlanEditor } from './review/PlanEditor';
 import { PlanList } from './review/PlanList';
 import { ProgressPanel } from './review/ProgressPanel';
@@ -38,7 +39,7 @@ export function ReviewPage() {
     return (
       <div className="chq-page chq-review-page">
         <h1 className="chq-page-title">Review</h1>
-        <p>Loading…</p>
+        <DelayedLoading />
       </div>
     );
   }

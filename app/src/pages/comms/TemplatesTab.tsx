@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { apiDelete, apiList, apiPatch, apiPost, ApiError } from '../../lib/api';
 import { COMPOSE_MERGE_FIELDS } from '../../lib/merge-fields';
+import { DelayedLoading } from '../../components/DelayedLoading';
 import type { EmailTemplate } from './types';
 
 interface DraftTemplate {
@@ -14,6 +15,7 @@ const BLANK_DRAFT: DraftTemplate = { name: '', subject: '', bodyText: '' };
 export function TemplatesTab({ eventId }: { eventId: string }) {
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<DraftTemplate>(BLANK_DRAFT);
@@ -25,7 +27,10 @@ export function TemplatesTab({ eventId }: { eventId: string }) {
     apiList<EmailTemplate>(`/events/${eventId}/templates`)
       .then((res) => setTemplates(res.items))
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load templates'))
-      .finally(() => setLoading(false));
+      .finally(() => {
+        setLoading(false);
+        setLoaded(true);
+      });
   }
 
   useEffect(() => {
@@ -78,7 +83,7 @@ export function TemplatesTab({ eventId }: { eventId: string }) {
   return (
     <div className="chq-comms-templates-tab">
       {error && <div className="chq-error-banner">{error}</div>}
-      {loading && <p>Loading templates...</p>}
+      {loading && <DelayedLoading label="Loading templates…" />}
 
       <div className="chq-toolbar">
         <button type="button" className="chq-btn chq-btn-primary" onClick={startNew}>
@@ -118,7 +123,7 @@ export function TemplatesTab({ eventId }: { eventId: string }) {
                   </td>
                 </tr>
               ))}
-              {!loading && templates.length === 0 && (
+              {loaded && !loading && templates.length === 0 && (
                 <tr>
                   <td colSpan={3}>No templates yet.</td>
                 </tr>

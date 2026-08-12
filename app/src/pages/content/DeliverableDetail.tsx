@@ -4,6 +4,7 @@ import { CommentThread } from './CommentThread';
 import { groupByKindNewestFirst } from './version-chain';
 import { UploadZone } from './UploadZone';
 import { VersionList } from './VersionList';
+import { DelayedLoading } from '../../components/DelayedLoading';
 import {
   CONTENT_STATUS_LABELS,
   FILE_KINDS,
@@ -151,7 +152,7 @@ export function DeliverableDetail({
       </div>
 
       {error && <div className="chq-error" role="alert">{error}</div>}
-      {loading && <p>Loading deliverables...</p>}
+      {loading && <DelayedLoading label="Loading deliverables…" />}
       {!loading && files.length < filesTotal && (
         // DEC-468: submissions/:id/files is now server-paginated -- disclose
         // the truncation rather than letting the group view quietly imply

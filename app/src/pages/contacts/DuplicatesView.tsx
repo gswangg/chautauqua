@@ -12,6 +12,7 @@
 import { useEffect, useState, type MouseEvent } from 'react';
 import { apiList, apiPost, ApiError } from '../../lib/api';
 import { useEscapeKey } from '../../lib/useEscapeKey';
+import { DelayedLoading } from '../../components/DelayedLoading';
 import type { DuplicateGroup } from './types';
 import './contacts-panels.css';
 
@@ -109,7 +110,7 @@ export function DuplicatesView({ onMerged }: Props) {
           {mergedNotice}
         </div>
       )}
-      {loading && <p>Loading...</p>}
+      {loading && <DelayedLoading />}
       {!loading && groups.length === 0 && <p className="chq-empty">No duplicate groups found.</p>}
 
       <ul className="chq-contacts-duplicate-groups">

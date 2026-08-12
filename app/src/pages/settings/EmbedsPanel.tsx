@@ -4,6 +4,7 @@
 // snippet. Every knob maps 1:1 onto the query-param contract fixed in
 // decisions/DEC-289.md via embedSnippet.ts's pure builders.
 import { useEffect, useRef, useState } from 'react';
+import { DelayedLoading } from '../../components/DelayedLoading';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { apiGet, apiList, ApiError } from '../../lib/api';
 import { copyText } from '../../lib/clipboard';
@@ -135,7 +136,7 @@ export function EmbedsPanel() {
         Build a share link for a public surface (chromeless, no login required) — pick a surface, an
         output format, and any filters or branding, then copy the URL or snippet below.
       </p>
-      {eventLoading ? <p>Loading…</p> : null}
+      {eventLoading ? <DelayedLoading /> : null}
       {eventError || loadError ? (
         <div className="chq-error" role="alert">
           {eventError ?? loadError}

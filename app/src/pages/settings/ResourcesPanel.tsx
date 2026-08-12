@@ -3,6 +3,7 @@
 // resource" form (multipart -> kind='file', served to organizers via
 // GET /files/:fileId).
 import { useEffect, useState } from 'react';
+import { DelayedLoading } from '../../components/DelayedLoading';
 import { apiDelete, apiList, apiPatch, apiPost, apiUpload, ApiError } from '../../lib/api';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { validateResourceForm, type ResourceForm, type ResourceFormErrors } from './formState';
@@ -123,7 +124,7 @@ export function ResourcesPanel() {
   return (
     <section className="chq-settings-panel" aria-label="Resources">
       <h2>Resources</h2>
-      {eventLoading ? <p>Loading…</p> : null}
+      {eventLoading ? <DelayedLoading /> : null}
       {eventError || error ? <p role="alert">{eventError ?? error}</p> : null}
 
       <ul>

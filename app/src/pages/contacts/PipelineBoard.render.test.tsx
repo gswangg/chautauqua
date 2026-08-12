@@ -262,9 +262,12 @@ describe('PipelineBoard: withholds unmeasured counts during the first load', () 
     render(<PipelineBoard />);
 
     // Synchronously after mount, before the mocked fetch promise resolves:
-    // exactly one loading state, no "people" caption and no stage columns
-    // (which would otherwise render "0" counts against not-yet-loaded data).
-    expect(screen.getByText('Loading...')).toBeInTheDocument();
+    // no "people" caption and no stage columns (which would otherwise
+    // render "0" counts against not-yet-loaded data). DEC-678: the loading
+    // text itself is withheld for ~250ms (DelayedLoading), so it must NOT
+    // be present on this first frame either -- a loading text that popped
+    // in instantly would be exactly the flicker DEC-678 removes.
+    expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
     expect(screen.queryByText(/people$/)).not.toBeInTheDocument();
     expect(document.querySelector('.chq-contacts-pipeline-columns')).not.toBeInTheDocument();
     expect(document.querySelector('.chq-contacts-pipeline-column-count')).not.toBeInTheDocument();

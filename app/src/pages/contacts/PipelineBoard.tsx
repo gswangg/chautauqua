@@ -14,6 +14,7 @@
 import { useEffect, useState, type MouseEvent } from 'react';
 import { apiGet, apiList, apiPost, apiPatch, ApiError } from '../../lib/api';
 import { useEscapeKey } from '../../lib/useEscapeKey';
+import { DelayedLoading } from '../../components/DelayedLoading';
 import { formatDateTime } from '../../lib/dates';
 import type { ContactListItem, PipelineEntry, PipelineEntryDetail, PipelineStage } from './types';
 import { PIPELINE_STAGES, PIPELINE_STAGE_LABELS } from './types';
@@ -97,7 +98,7 @@ export function PipelineBoard() {
         </button>
       </div>
       {error && <div className="chq-error">{error}</div>}
-      {loading && <p className="chq-contacts-pipeline-caption">Loading...</p>}
+      {loading && <DelayedLoading />}
 
       {!loading && (
         <>
@@ -360,7 +361,7 @@ function EntryDetailPanel({ entryId, onClose, onChanged }: EntryDetailPanelProps
     <div className="chq-scrim" role="dialog" aria-modal="true" aria-label="Pipeline card detail" onClick={handleScrimClick}>
       <div className="chq-modal">
         {error && <div className="chq-error">{error}</div>}
-        {!detail && <p>Loading...</p>}
+        {!detail && <DelayedLoading />}
         {detail && (
           <>
             <h3 className="chq-page-title chq-modal-title">

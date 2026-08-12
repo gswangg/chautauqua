@@ -21,6 +21,7 @@
 // the working control -- never rendered as a disabled button, a spinner
 // that never resolves, or a simulator.
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { DelayedLoading } from '../../components/DelayedLoading';
 import { apiPost, ApiError } from '../../lib/api';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { parseCsv } from '../contacts/csv';
@@ -183,7 +184,7 @@ export function SessionboardImportPanel() {
         before its sessions exist will honestly report those rows as unresolved, not skip them silently.
       </p>
 
-      {eventLoading && <p>Loading…</p>}
+      {eventLoading && <DelayedLoading />}
       {eventError && (
         <p role="alert" className="chq-error">
           {eventError}

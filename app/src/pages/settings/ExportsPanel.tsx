@@ -3,6 +3,7 @@
 // the attachment download; cookie session auth covers these GETs (no
 // x-chq-csrf needed for GET requests per DEC-004).
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
+import { DelayedLoading } from '../../components/DelayedLoading';
 
 const EXPORT_KINDS: { kind: string; label: string }[] = [
   { kind: 'submissions', label: 'Submissions' },
@@ -21,7 +22,7 @@ export function ExportsPanel() {
       <h2>Exports</h2>
       <p>Download event data as CSV or JSON.</p>
 
-      {loading && <p>Loading…</p>}
+      {loading && <DelayedLoading />}
       {error && <div className="chq-error" role="alert">{error}</div>}
 
       {eventId && (

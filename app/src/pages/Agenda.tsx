@@ -3,6 +3,7 @@ import { apiDelete, apiGet, apiPost, apiPut, ApiError } from '../lib/api';
 import { useCurrentEvent } from '../lib/useCurrentEvent';
 import { useIsPhone } from '../lib/useIsPhone';
 import { useEscapeKey } from '../lib/useEscapeKey';
+import { DelayedLoading } from '../components/DelayedLoading';
 import { DayGrid, type ArmedAgendaSession } from './agenda/DayGrid';
 import { UnscheduledTray } from './agenda/UnscheduledTray';
 import { PhoneAgenda } from './agenda/PhoneAgenda';
@@ -160,7 +161,7 @@ export function AgendaPage() {
     return (
       <div className="chq-page">
         <h1>Agenda</h1>
-        <p>Loading event...</p>
+        <DelayedLoading label="Loading event…" />
       </div>
     );
   }
@@ -211,7 +212,7 @@ export function AgendaPage() {
         </button>
       </div>
 
-      {loading && <p>Loading agenda...</p>}
+      {loading && <DelayedLoading label="Loading agenda…" />}
 
       {!loading && agenda && (
         <>

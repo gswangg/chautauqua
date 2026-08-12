@@ -9,6 +9,7 @@ import { deriveColumnsFromFormFields, findFormatField, formatAnswerValue, visibl
 import { FilterBar, FilterBarSearchSort } from './FilterBar';
 import { buildSubmissionsQuery } from './filters';
 import { NewSubmissionModal, type NewSubmissionInput } from './NewSubmissionModal';
+import { DelayedLoading } from '../../components/DelayedLoading';
 import { EMPTY_SELECTION, isPageFullySelected, isPagePartiallySelected, selectionReducer } from './selection';
 import {
   DEFAULT_FILTER_STATE,
@@ -66,6 +67,7 @@ export function SubmissionsTable() {
   const [pickerInitialized, setPickerInitialized] = useState(false);
   const [selection, setSelection] = useState(EMPTY_SELECTION);
   const [loading, setLoading] = useState(false);
+  const [loaded, setLoaded] = useState(false);
   const [bulkPending, setBulkPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showNewModal, setShowNewModal] = useState(false);
@@ -112,7 +114,10 @@ export function SubmissionsTable() {
         setTotal(res.total);
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load submissions'))
-      .finally(() => setLoading(false));
+      .finally(() => {
+        setLoading(false);
+        setLoaded(true);
+      });
   }, [eventId, filters, refreshToken]);
 
   // Second, independent parallel fetch for the head summary's "N awaiting
@@ -320,11 +325,11 @@ export function SubmissionsTable() {
             {loading && (
               <tr>
                 <td className="chq-submissions-loading" colSpan={9 + shownColumns.length}>
-                  Loading...
+                  <DelayedLoading />
                 </td>
               </tr>
             )}
-            {!loading && items.length === 0 && (
+            {loaded && !loading && items.length === 0 && (
               <tr>
                 <td className="chq-submissions-empty" colSpan={9 + shownColumns.length}>
                   No submissions match the current filters.

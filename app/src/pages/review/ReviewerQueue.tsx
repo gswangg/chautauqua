@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { apiDelete, apiList, ApiError } from '../../lib/api';
 import './review.css';
 import type { EvaluationPlan, RecusalItem, ReviewerQueueEnvelope, ReviewerQueueItem } from './types';
+import { DelayedLoading } from '../../components/DelayedLoading';
 
 // DEC-586: a reviewer landing on /review sees their queue directly -- no
 // intermediate plan-name-only picker page (that component is deleted, not
@@ -57,7 +58,7 @@ function PlanSection({ planId, planName, showHeading }: { planId: string; planNa
             <h2 className="chq-section-label">{planName}</h2>
           </div>
         )}
-        <p>Loading…</p>
+        <DelayedLoading />
       </section>
     );
   }
@@ -165,7 +166,7 @@ export function ReviewerQueue() {
     return (
       <div className="chq-page chq-review-page">
         <h1 className="chq-page-title">Review</h1>
-        <p>Loading…</p>
+        <DelayedLoading />
       </div>
     );
   }

@@ -3,6 +3,7 @@ import { apiList, apiPost, ApiError } from '../../lib/api';
 import { buildSubmissionsQuery } from '../submissions/filters';
 import { DEFAULT_FILTER_STATE, STATUS_LABELS, SUBMISSION_STATUSES, type SubmissionListItem, type SubmissionStatus } from '../submissions/types';
 import { PreviewPane } from './PreviewPane';
+import { DelayedLoading } from '../../components/DelayedLoading';
 import type { EmailTemplate, RenderedRecipient } from './types';
 
 // J5's decide != notify: the picker defaults to the two decided statuses so
@@ -285,7 +286,7 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
             />
           </label>
 
-          {loadingSubmissions && <p>Loading submissions...</p>}
+          {loadingSubmissions && <DelayedLoading label="Loading submissions…" />}
           <table className="chq-table chq-comms-compose-table">
             <thead>
               <tr>

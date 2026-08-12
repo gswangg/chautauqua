@@ -7,6 +7,7 @@
 
 import { formatDate } from '../../lib/dates';
 import { ModalFrame } from '../../components/ModalFrame';
+import { DelayedLoading } from '../../components/DelayedLoading';
 import type { AssignmentResponseDetail, AssignmentStatus } from './types';
 
 interface ResponseModalProps {
@@ -47,7 +48,7 @@ export function ResponseModal({ contactName, loading, error, detail, onStatusCha
           : undefined
       }
     >
-      {loading && <p>Loading...</p>}
+      {loading && <DelayedLoading />}
       {error && <div className="chq-error">{error}</div>}
 
       {!loading && detail && (

@@ -4,6 +4,7 @@ import { apiDelete, apiGet, apiList, apiPost, apiPut, ApiError } from '../../lib
 import './review.css';
 import { formatAnswerValue } from './answerText';
 import { isEvaluationComplete, scorecardKeyAction } from './scorecardLogic';
+import { DelayedLoading } from '../../components/DelayedLoading';
 import type {
   EvaluationCriterion,
   EvaluationPlan,
@@ -141,7 +142,7 @@ export function Scorecard() {
     return (
       <div className="chq-page chq-review-page">
         <h1 className="chq-page-title">Scorecard</h1>
-        <p>Loading…</p>
+        <DelayedLoading />
       </div>
     );
   }

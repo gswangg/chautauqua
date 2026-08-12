@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useCurrentEvent } from '../lib/useCurrentEvent';
+import { DelayedLoading } from '../components/DelayedLoading';
 import { TemplatesTab } from './comms/TemplatesTab';
 import { ComposeWizard } from './comms/ComposeWizard';
 import { HistoryTab } from './comms/HistoryTab';
@@ -34,7 +35,7 @@ export function CommsPage() {
     return (
       <div className="chq-page">
         <h1 className="chq-page-title">Comms</h1>
-        <p>Loading...</p>
+        <DelayedLoading />
       </div>
     );
   }
