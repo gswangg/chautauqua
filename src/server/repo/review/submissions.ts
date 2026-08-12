@@ -289,9 +289,49 @@ export async function countPlanScopedSubmissions(
   };
 }
 
+/** DEC-655: the ONE "does this submission match the plan's own track
+ * filter" probe -- both the unrestricted and per-submission branches of
+ * isSubmissionInReviewerScope below call this instead of each hand-rolling
+ * an EXISTS(submission_track) check that could silently drift apart. An
+ * empty/absent filterTracks means "no narrowing", i.e. always matches. */
+async function matchesPlanFilterTracks(
+  db: Db,
+  submissionId: string,
+  filterTracks: string[] | undefined,
+): Promise<boolean> {
+  if (!filterTracks || filterTracks.length === 0) return true;
+  const matchRows = await db
+    .select({ trackId: schema.submissionTrack.trackId })
+    .from(schema.submissionTrack)
+    .where(
+      and(eq(schema.submissionTrack.submissionId, submissionId), inArray(schema.submissionTrack.trackId, filterTracks)),
+    )
+    .limit(1);
+  return matchRows.length > 0;
+}
+
+/** DEC-655: does this submission satisfy the plan's OWN filters_json
+ * trackIds (independent of any reviewer's plan_reviewer rows)? Reuses
+ * buildPlanScopeConditions -- the same predicate every plan-scoped query in
+ * this file shares -- rather than re-deriving the EXISTS(submission_track)
+ * check inline at the POST /plans/:id/reviewers call site. */
+export async function submissionMatchesPlanFilters(
+  db: Db,
+  plan: PlanRecord,
+  submissionId: string,
+): Promise<boolean> {
+  const conditions = [eq(schema.submission.id, submissionId), ...buildPlanScopeConditions(db, plan)];
+  const rows = await db.select({ id: schema.submission.id }).from(schema.submission).where(and(...conditions)).limit(1);
+  return rows.length > 0;
+}
+
 /** Targeted per-submission scope check for the reviewer GET/PUT endpoints
  * (DEC-081): no full-set load. Loads only this (plan,user)'s plan_reviewer
- * rows, then does bounded, single-submission-scoped queries. */
+ * rows, then does bounded, single-submission-scoped queries. DEC-655: every
+ * branch (unrestricted, explicit submissionId, track) intersects the plan's
+ * own filters_json trackIds via matchesPlanFilterTracks -- this must agree
+ * with buildPlanScopeConditions/listPlanFilteredSubmissions for the same
+ * plan+reviewer+submission, the two readers never disagree. */
 export async function isSubmissionInReviewerScope(
   db: Db,
   plan: PlanRecord,
@@ -314,15 +354,7 @@ export async function isSubmissionInReviewerScope(
       .where(and(eq(schema.submission.id, submissionId), eq(schema.submission.eventId, plan.eventId)))
       .limit(1);
     if (!subRows[0]) return false;
-    if (!filterTracks || filterTracks.length === 0) return true;
-    const matchRows = await db
-      .select({ trackId: schema.submissionTrack.trackId })
-      .from(schema.submissionTrack)
-      .where(
-        and(eq(schema.submissionTrack.submissionId, submissionId), inArray(schema.submissionTrack.trackId, filterTracks)),
-      )
-      .limit(1);
-    return matchRows.length > 0;
+    return matchesPlanFilterTracks(db, submissionId, filterTracks);
   }
 
   // DEC-354: per-submission assignments must be bounded to plan.eventId
@@ -337,7 +369,11 @@ export async function isSubmissionInReviewerScope(
       .where(and(eq(schema.submission.id, submissionId), eq(schema.submission.eventId, plan.eventId)))
       .limit(1);
     if (!scopedRows[0]) return false;
-    return true;
+    // DEC-655: the explicit-submissionId branch must intersect the plan's
+    // own filters like every other reader (buildPlanScopeConditions,
+    // the unrestricted branch above, the track branch below) instead of
+    // returning true on event match alone.
+    return matchesPlanFilterTracks(db, submissionId, filterTracks);
   }
 
   const trackScopes = [...new Set(rows.filter((r) => r.trackId !== null).map((r) => r.trackId as string))];
