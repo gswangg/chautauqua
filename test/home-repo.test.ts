@@ -4,7 +4,7 @@
 // is wired up in this repo, so every select() call is faked by response
 // position.
 import { describe, expect, it } from "vitest";
-import { getHubOrg, listHubEvents } from "../src/server/repo/public/home";
+import { getHubOrg, listHubEvents, HUB_CANDIDATE_LIMIT } from "../src/server/repo/public/home";
 import type { Db } from "../src/server/context";
 
 function makeChain(rows: unknown[]) {
@@ -37,7 +37,7 @@ describe("getHubOrg", () => {
 });
 
 describe("listHubEvents", () => {
-  it("returns candidate items with a truthful total and per-event published counts, unfiltered", async () => {
+  it("returns candidate items with per-event published counts, unfiltered, and capped=false under the limit", async () => {
     const eventRows = [
       {
         id: "e1",
@@ -62,7 +62,7 @@ describe("listHubEvents", () => {
         closeDate: null,
       },
     ];
-    const responses = [eventRows, [{ count: 5 }], [{ eventId: "e1", count: 2 }]];
+    const responses = [eventRows, [{ eventId: "e1", count: 2 }]];
     let call = 0;
     const db = {
       select: () => {
@@ -74,9 +74,9 @@ describe("listHubEvents", () => {
 
     const page = await listHubEvents(db, "org-1", Date.UTC(2026, 5, 1));
 
-    // total reflects the org's full event count (5), not the length of the
-    // returned (2-row) candidate window — a capped list never hides its cap.
-    expect(page.total).toBe(5);
+    // under HUB_CANDIDATE_LIMIT rows -> never capped, and never a
+    // disclosing org-wide count (DEC-670).
+    expect(page.capped).toBe(false);
     expect(page.items).toHaveLength(2);
 
     const e1 = page.items.find((e) => e.id === "e1")!;
@@ -107,7 +107,7 @@ describe("listHubEvents", () => {
         closeDate: null,
       },
     ];
-    const responses = [eventRows, [{ count: 1 }], []];
+    const responses = [eventRows, []];
     let call = 0;
     const db = {
       select: () => {
@@ -124,5 +124,32 @@ describe("listHubEvents", () => {
     expect(page.items).toHaveLength(1);
     expect(page.items[0]!.cfpOpen).toBe(false);
     expect(page.items[0]!.publishedSessionCount).toBe(0);
+  });
+
+  it("sets capped=true when the candidate window returns exactly HUB_CANDIDATE_LIMIT rows", async () => {
+    const eventRows = Array.from({ length: HUB_CANDIDATE_LIMIT }, (_, i) => ({
+      id: `e${i}`,
+      name: `Event ${i}`,
+      slug: `event-${i}`,
+      startDate: "2026-10-01",
+      endDate: "2026-10-03",
+      location: null,
+      timezone: "UTC",
+      openDate: null,
+      closeDate: null,
+    }));
+    const responses = [eventRows, []];
+    let call = 0;
+    const db = {
+      select: () => {
+        const rows = responses[call] ?? [];
+        call += 1;
+        return makeChain(rows);
+      },
+    } as unknown as Db;
+
+    const page = await listHubEvents(db, "org-1", Date.UTC(2026, 5, 1));
+    expect(page.items).toHaveLength(HUB_CANDIDATE_LIMIT);
+    expect(page.capped).toBe(true);
   });
 });

@@ -20,7 +20,7 @@ import { DEC_049, DEC_012, DEC_005, DEC_268, DEC_295, DEC_581, DEC_582 } from ".
 import { ThemeStyles } from "../views/theme";
 import { PUBLIC_CSS } from "./public/public.css";
 import { HOME_CSS } from "./public/home.css";
-import { getHubOrg, listHubEvents } from "../server/repo/public/home";
+import { getHubOrg, listHubEvents, HUB_CANDIDATE_LIMIT } from "../server/repo/public/home";
 import { groupHubEvents, hubState, type HubEvent, type HubSections, type HubState } from "../lib/home-hub";
 
 export const rootRoutes = new Hono<AppEnv>();
@@ -132,7 +132,7 @@ function OpenCfpRow(props: { event: HubEvent; nowMs: number }) {
   return (
     <div class="chq-home-row">
       <div class="chq-home-when">
-        <span class="chq-home-dates">{dateRange(event.startDate!, event.endDate!)}</span>
+        <span class="chq-home-dates">{dateRange(event.startDate, event.endDate)}</span>
         {event.location ? <span class="chq-home-venue">{event.location}</span> : null}
       </div>
       <div class="chq-home-info">
@@ -161,7 +161,7 @@ function PublishedRow(props: { event: HubEvent }) {
   return (
     <div class="chq-home-row">
       <div class="chq-home-when">
-        <span class="chq-home-dates">{dateRange(event.startDate!, event.endDate!)}</span>
+        <span class="chq-home-dates">{dateRange(event.startDate, event.endDate)}</span>
         {event.location ? <span class="chq-home-venue">{event.location}</span> : null}
       </div>
       <div class="chq-home-info">
@@ -186,7 +186,7 @@ function ArchiveRow(props: { event: HubEvent }) {
   const { event } = props;
   return (
     <div class="chq-home-archive-row">
-      <span class="chq-home-archive-dates">{dateRange(event.startDate!, event.endDate!)}</span>
+      <span class="chq-home-archive-dates">{dateRange(event.startDate, event.endDate)}</span>
       <div class="chq-home-archive-info">
         <a class="chq-home-archive-name" href={`/e/${event.slug}/sessions`}>
           {event.name}
@@ -234,8 +234,8 @@ function Footer() {
   );
 }
 
-function HubPage(props: { orgName: string; sections: HubSections; state: HubState; nowMs: number; total: number; shown: number }) {
-  const { orgName, sections, state, nowMs, total, shown } = props;
+function HubPage(props: { orgName: string; sections: HubSections; state: HubState; nowMs: number; capped: boolean }) {
+  const { orgName, sections, state, nowMs, capped } = props;
   return (
     <html lang="en">
       <head>
@@ -273,7 +273,7 @@ function HubPage(props: { orgName: string; sections: HubSections; state: HubStat
               </div>
             )}
 
-            {total > shown ? <p class="chq-home-cap-note">Showing {shown} of {total} events.</p> : null}
+            {capped ? <p class="chq-home-cap-note">Showing the {HUB_CANDIDATE_LIMIT} most recent events.</p> : null}
 
             {state === "between_cycles" ? (
               <>
@@ -360,5 +360,5 @@ rootRoutes.get("/", async (c) => {
   const sections = groupHubEvents(page.items, nowMs);
   const state = hubState(sections);
 
-  return c.html(<HubPage orgName={org.name} sections={sections} state={state} nowMs={nowMs} total={page.total} shown={page.items.length} />);
+  return c.html(<HubPage orgName={org.name} sections={sections} state={state} nowMs={nowMs} capped={page.capped} />);
 });

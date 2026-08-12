@@ -2,7 +2,8 @@
 // applies nothing but org scope + a bounded window. Grouping/visibility is
 // owned entirely by src/lib/home-hub.ts's groupHubEvents() — this module
 // never filters or groups, it only binds primitives and hands back
-// {items, total}. publishedSessionCount reuses visibleSessionConditions()
+// {items, capped} (DEC-670: never an org-wide count -- GET / is anonymous).
+// publishedSessionCount reuses visibleSessionConditions()
 // (src/server/repo/public/gates.ts), the SAME predicate the public sessions
 // list uses, so "published" never gets redefined a second way here.
 
@@ -36,17 +37,26 @@ export async function getHubOrg(db: Db): Promise<{ id: string; name: string } | 
   return rows[0] ?? null;
 }
 
+/** Hard cap on the number of candidate rows fetched for the home hub —
+ * exported so callers (and their "capped" note) never hand-copy this
+ * number. */
+export const HUB_CANDIDATE_LIMIT = 100;
+
 export interface HubEventsPage {
   items: HubEvent[];
-  total: number;
+  /** True when the candidate window returned exactly HUB_CANDIDATE_LIMIT
+   * rows — i.e. there may be more events in the org than were fetched. This
+   * is NEVER an org-wide count: GET / is an anonymous surface and a
+   * count(*) over every event (including ones the hub deliberately hides)
+   * would disclose organizer-only information to a stranger. */
+  capped: boolean;
 }
 
 /** Candidate rows for the home hub (DEC-581): every event in the org,
- * joined to its default form for the CFP open/close window, LIMIT 100
- * ordered by start_date desc/id asc, alongside a truthful COUNT(*) total —
- * a capped list is never returned without the count that says it's capped.
- * Does NOT filter by cfpOpen/publishedSessionCount — that predicate lives
- * in groupHubEvents(), not here. */
+ * joined to its default form for the CFP open/close window, LIMIT
+ * HUB_CANDIDATE_LIMIT ordered by start_date desc/id asc. Does NOT filter by
+ * cfpOpen/publishedSessionCount — that predicate lives in groupHubEvents(),
+ * not here. */
 export async function listHubEvents(db: Db, orgId: string, nowMs: number): Promise<HubEventsPage> {
   const rows = await db
     .select({
@@ -64,13 +74,7 @@ export async function listHubEvents(db: Db, orgId: string, nowMs: number): Promi
     .leftJoin(schema.form, and(eq(schema.form.eventId, schema.event.id), eq(schema.form.isDefault, true)))
     .where(eq(schema.event.orgId, orgId))
     .orderBy(desc(schema.event.startDate), asc(schema.event.id))
-    .limit(100);
-
-  const totalRows = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(schema.event)
-    .where(eq(schema.event.orgId, orgId));
-  const total = Number(totalRows[0]?.count ?? 0);
+    .limit(HUB_CANDIDATE_LIMIT);
 
   const eventIds = rows.map((r) => r.id);
   const countRows =
@@ -100,5 +104,5 @@ export async function listHubEvents(db: Db, orgId: string, nowMs: number): Promi
     };
   });
 
-  return { items, total };
+  return { items, capped: rows.length === HUB_CANDIDATE_LIMIT };
 }
