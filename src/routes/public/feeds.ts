@@ -22,6 +22,11 @@ const CARD_FIELD_KEYS: Record<CardField, readonly string[]> = {
   room: ["roomName"],
   speaker: ["speakers"],
   description: ["description"],
+  // EMB-01/EMB-08 (DEC-592): `format` joined ALL_CARD_FIELDS with the
+  // format-on-every-public-surface work; the .json twin projects the
+  // PublicSession.format key so `fields=` stays honored identically by
+  // both renderings (DEC-594).
+  format: ["format"],
 };
 
 /** Projects one feed item down to `id`/`title` plus whichever

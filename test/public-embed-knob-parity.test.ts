@@ -297,7 +297,9 @@ function buildSessionsApp() {
       if (selectCall === 3) return makeChain(SESSION_ROWS); // hydrateSessions subRows
       if (selectCall === 4) return makeChain([]); // hydrateSessions trackRows
       if (selectCall === 5) return makeChain([]); // hydrateSessions speakerRows
-      return makeChain(SLOT_ROWS); // hydrateSessions EMB-01 slotRows
+      if (selectCall === 6) return makeChain(SLOT_ROWS); // hydrateSessions EMB-01 slotRows
+      if (selectCall === 7) return makeChain([]); // hydrateSessions EMB-01/EMB-08 formatRows
+      return makeChain(SLOT_ROWS); // countVisibleSubmissions
     },
     selectDistinct: () => makeChain(SESSION_ROWS.map((s) => ({ id: s.id, title: s.title }))),
   } as unknown as AppEnv["Variables"]["db"];

@@ -93,8 +93,9 @@ export function NewSubmissionModal({ tracks, formatField, onCancel, onCreate }: 
           <fieldset className="chq-submissions-modal-field">
             <legend className="chq-submissions-modal-label">Tracks</legend>
             {tracks.map((track) => (
-              <label key={track.id} className="chq-submissions-modal-checkbox">
+              <label key={track.id} className="chq-checkbox-label">
                 <input
+                  className="chq-check"
                   type="checkbox"
                   checked={trackIds.includes(track.id)}
                   onChange={() => toggleTrack(track.id)}

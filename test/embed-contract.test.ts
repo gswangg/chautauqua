@@ -75,9 +75,10 @@ function installFakeCaches(): void {
 const TEST_ENV = { KV: fakeKv() } as unknown as AppEnv["Bindings"];
 
 // db.select() call order for /embed/:slug/sessions (HTML): 1 event,
-// 2 getPublicTracks, 3-6 hydrateSessions (subRows/trackRows/speakerRows/
-// slotRows), 7 countVisibleSubmissions. For /embed/:slug/sessions.json
-// there is no getPublicTracks call, so it shifts down by one.
+// 2 getPublicTracks, 3-7 hydrateSessions (subRows/trackRows/speakerRows/
+// slotRows/formatRows), 8 countVisibleSubmissions. For
+// /embed/:slug/sessions.json there is no getPublicTracks call, so it shifts
+// down by one.
 function buildApp(opts: { html: boolean }) {
   let selectCall = 0;
   const db = {
@@ -90,6 +91,7 @@ function buildApp(opts: { html: boolean }) {
       if (selectCall === 3 + offset) return makeChain(TRACK_ROWS); // hydrateSessions trackRows
       if (selectCall === 4 + offset) return makeChain([]); // hydrateSessions speakerRows
       if (selectCall === 5 + offset) return makeChain(SLOT_ROWS); // hydrateSessions slotRows
+      if (selectCall === 6 + offset) return makeChain([]); // hydrateSessions formatRows
       return makeChain([{ count: SUB_ROWS.length }]); // countVisibleSubmissions
     },
     selectDistinct: () => makeChain(SUB_ROWS.map((r) => ({ id: r.id, title: r.title }))),
