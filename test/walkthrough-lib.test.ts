@@ -7,6 +7,7 @@ import {
   dropdownCriterionExcludedFromAverage,
   duplicatePairStillOpen,
   eventFilesContainsUpload,
+  findEventBySlug,
   formatAreaPass,
   formatFailureMessage,
   formatMissingModulesMessage,
@@ -257,5 +258,36 @@ describe("dropdownCriterionExcludedFromAverage (ABS-10, DEC-241)", () => {
     expect(
       dropdownCriterionExcludedFromAverage({ perCriterion: {}, perDropdown: {} }, "length_fit"),
     ).toBe(false);
+  });
+});
+
+describe("findEventBySlug", () => {
+  it("returns the item whose slug matches, regardless of list position", () => {
+    const items = [
+      { id: "e1", slug: "throwaway-2027" },
+      { id: "e2", slug: "devflow-conf-2027" },
+    ];
+    expect(findEventBySlug(items, "devflow-conf-2027")).toEqual({ id: "e2", slug: "devflow-conf-2027" });
+  });
+
+  it("does not fall back to items[0] when the wanted slug is not first", () => {
+    const items = [
+      { id: "e1", slug: "zzz-later-start-date" },
+      { id: "e2", slug: "devflow-conf-2027" },
+    ];
+    const found = findEventBySlug(items, "devflow-conf-2027");
+    expect(found.id).not.toBe(items[0]!.id);
+    expect(found.id).toBe("e2");
+  });
+
+  it("throws a loud error naming the wanted slug and the slugs actually seen when absent", () => {
+    const items = [{ id: "e1", slug: "throwaway-2027" }];
+    expect(() => findEventBySlug(items, "devflow-conf-2027")).toThrow(
+      /devflow-conf-2027.*throwaway-2027/s,
+    );
+  });
+
+  it("names '(none)' when the items array is empty", () => {
+    expect(() => findEventBySlug([], "devflow-conf-2027")).toThrow(/\(none\)/);
   });
 });

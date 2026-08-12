@@ -14,10 +14,12 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { findEventBySlug } from "../walkthrough-lib";
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(SCRIPT_DIR, "..", "..");
 const FIXTURE_PATH = join(REPO_ROOT, "docs", "fixtures", "sample-data.json");
+const EVENT_SLUG = "devflow-conf-2027";
 
 function argUrl(): string {
   const idx = process.argv.indexOf("--url");
@@ -151,9 +153,8 @@ async function main(): Promise<void> {
   check("fetch seeded event");
   const eventsRes = await fetch(`${BASE_URL}/api/v1/events`, { headers: orgHeaders(orgCookies, false) });
   assertStatus(eventsRes, 200, "GET /api/v1/events");
-  const eventsBody = (await asJson(eventsRes)) as { items: { id: string; name: string }[] };
-  const event = eventsBody.items[0];
-  if (!event) fail("no seeded events found");
+  const eventsBody = (await asJson(eventsRes)) as { items: { id: string; name: string; slug: string }[] };
+  const event = findEventBySlug(eventsBody.items, EVENT_SLUG);
   const eventId = event.id;
 
   // -------------------------------------------------------------------
