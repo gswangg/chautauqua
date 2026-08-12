@@ -102,7 +102,11 @@ async function getVisibleSubmissionIdsOrdered(
       .leftJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
       .innerJoin(schema.submissionTrack, eq(schema.submissionTrack.submissionId, schema.submission.id))
       .where(and(...baseConditions, eq(schema.submissionTrack.trackId, trackId)))
-      .orderBy(asc(schema.submission.title))
+      // DEC-534: title alone is not unique — two sessions sharing a title
+      // would make the show-more list's page order nondeterministic.
+      // submission.id is already in the selectDistinct projection, so
+      // ordering by it is safe under DISTINCT.
+      .orderBy(asc(schema.submission.title), asc(schema.submission.id))
       .limit(limit);
     // DEC-516: offset() is only chained when non-zero — page-1 (offset 0)
     // stays the identical query shape whether windowed or cumulative, so
@@ -121,7 +125,8 @@ async function getVisibleSubmissionIdsOrdered(
     )
     .leftJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
     .where(and(...baseConditions))
-    .orderBy(asc(schema.submission.title))
+    // DEC-534: title alone is not unique (see the trackId branch above).
+    .orderBy(asc(schema.submission.title), asc(schema.submission.id))
     .limit(limit);
   const rows = await (offset > 0 ? query.offset(offset) : query);
   return rows;
