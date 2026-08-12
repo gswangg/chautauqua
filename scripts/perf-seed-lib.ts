@@ -19,6 +19,29 @@ export interface PerfProfile {
   trackCount: number;
   answersPerSubmission: number;
   statusCounts: Readonly<Record<string, number>>;
+  // DEC-645: the remaining scale-mandate volumes (agenda/review/onboarding
+  // surfaces), threaded per-profile so `--profile=aie` builds those surfaces
+  // at mandate scale too, not just submissions/contacts/tracks/answers.
+  /** Rooms in the event's schedule grid. */
+  roomCount: number;
+  /** Days the accepted-session schedule spans. */
+  dayCount: number;
+  /** Reviewer users created for the review plan(s). */
+  reviewerCount: number;
+  /** Evaluation plans created for the event. */
+  planCount: number;
+  /** Base id for this profile's first evaluation plan (see perfPlanId). */
+  planId: string;
+  /** Email local-part prefix for this profile's reviewer users. */
+  reviewerEmailPrefix: string;
+  /** Shared login password for this profile's reviewer users. */
+  reviewerPassword: string;
+  /** Total task_assignment ("speaker task") rows seeded for the event. */
+  taskCount: number;
+  /** Fraction (0..1) of taskCount rows seeded as already-overdue (pending, past due_date). */
+  overdueTaskFraction: number;
+  /** Deliberately-overlapping schedule_slot pairs seeded (room + speaker conflicts). */
+  deliberateConflictCount: number;
 }
 
 /**
@@ -48,6 +71,17 @@ export const PERF_PROFILES: Record<"default" | "aie", PerfProfile> = {
       decline_queue: 100,
       declined: 100,
     },
+    // DEC-088/DEC-338 literals, unchanged bit-for-bit.
+    roomCount: 10,
+    dayCount: 3,
+    reviewerCount: 12,
+    planCount: 1,
+    planId: "seed_perf_plan_0001",
+    reviewerEmailPrefix: "perf.reviewer",
+    reviewerPassword: "PerfReviewer!2027",
+    taskCount: 4000, // 5 tasks x 800 contacts, today's PERF_TASK_ASSIGNMENT_COUNT
+    overdueTaskFraction: 0,
+    deliberateConflictCount: 0,
   },
   aie: {
     name: "aie",
@@ -65,6 +99,18 @@ export const PERF_PROFILES: Record<"default" | "aie", PerfProfile> = {
       decline_queue: 250,
       declined: 125,
     },
+    // DEC-645 (docs/mandates/scale-mandate.md): agenda/review/onboarding
+    // surfaces at AI Engineer scale.
+    roomCount: 10,
+    dayCount: 4,
+    reviewerCount: 15,
+    planCount: 3,
+    planId: "seed_perf_aie_plan_0001",
+    reviewerEmailPrefix: "perf.aie.reviewer",
+    reviewerPassword: "PerfReviewer!2027",
+    taskCount: 400, // "400 speaker tasks"
+    overdueTaskFraction: 0.15, // "~15% overdue"
+    deliberateConflictCount: 12, // ">=12 deliberate conflicts"
   },
 };
 
@@ -238,25 +284,53 @@ export function topicForSubmission(i: number): string {
 // DEC-088: schedule, evaluation plan, and 12-reviewer contract for
 // DEC-086's scale probes.
 
-export const PERF_ROOM_COUNT = 10;
-export const PERF_REVIEWER_COUNT = 12;
-export const PERF_PLAN_ID = "seed_perf_plan_0001";
-export const PERF_REVIEWER_PASSWORD = "PerfReviewer!2027";
+// Derived from PERF_PROFILES.default rather than hand-copied literals, so
+// this module has exactly one source of truth for the `default` profile's
+// DEC-088/DEC-338 volumes (a hand-copied vocabulary drifts).
+export const PERF_ROOM_COUNT = PERF_PROFILES.default.roomCount;
+export const PERF_REVIEWER_COUNT = PERF_PROFILES.default.reviewerCount;
+export const PERF_PLAN_ID = PERF_PROFILES.default.planId;
+export const PERF_REVIEWER_PASSWORD = PERF_PROFILES.default.reviewerPassword;
 // DEC-347: raised from 600 so the plan's current round holds at least 5,000
 // evaluation rows. 6,000 = lcm(PERF_SUBMISSION_COUNT=2000, PERF_REVIEWER_COUNT=12),
 // which keeps the existing (n % submissionCount, n % reviewerCount) round-robin
 // assignment shape while guaranteeing no (plan_id, submission_id, reviewer_id,
 // round) collision across the full n range (the evaluation table's unique
 // index) — a duplicate would require n2 = n1 + 6000, outside [0, 6000).
+// DEC-645 scopes evaluation-row count out of the profile-threaded set (only
+// the round-robin plan/reviewer *identity* changes per profile); every
+// profile's evaluations are still seeded against the profile's first plan.
 export const PERF_EVALUATION_COUNT = 6000;
 
 /** 1-based (per DEC-088's "i unpadded") reviewer email, e.g.
- * perfReviewerEmail(1) === 'perf.reviewer.1@example-perf.test'. */
-export function perfReviewerEmail(i: number): string {
+ * perfReviewerEmail(1) === 'perf.reviewer.1@example-perf.test'. `prefix`
+ * defaults to the `default` profile's own prefix so existing call sites are
+ * unaffected — DEC-645 threads a per-profile prefix through the seeder. */
+export function perfReviewerEmail(i: number, prefix: string = PERF_PROFILES.default.reviewerEmailPrefix): string {
   if (!Number.isInteger(i) || i < 1) {
     throw new Error(`perfReviewerEmail: i must be a positive integer, got ${i}`);
   }
-  return `perf.reviewer.${i}@example-perf.test`;
+  if (!prefix) {
+    throw new Error(`perfReviewerEmail: prefix must be non-empty, got ${JSON.stringify(prefix)}`);
+  }
+  return `${prefix}.${i}@example-perf.test`;
+}
+
+/**
+ * DEC-645: this profile's evaluation-plan id for the planIndex-th (1-based)
+ * plan. planIndex 1 always returns `basePlanId` unchanged (so the `default`
+ * profile's single plan keeps today's exact literal id, e.g.
+ * 'seed_perf_plan_0001'); planIndex > 1 (only reachable for planCount > 1
+ * profiles like `aie`) suffixes `_<planIndex>`.
+ */
+export function perfPlanId(basePlanId: string, planIndex: number): string {
+  if (!basePlanId) {
+    throw new Error(`perfPlanId: basePlanId must be non-empty, got ${JSON.stringify(basePlanId)}`);
+  }
+  if (!Number.isInteger(planIndex) || planIndex < 1) {
+    throw new Error(`perfPlanId: planIndex must be a positive integer, got ${planIndex}`);
+  }
+  return planIndex === 1 ? basePlanId : `${basePlanId}_${planIndex}`;
 }
 
 export interface PerfSlotPlacement {
@@ -268,22 +342,72 @@ export interface PerfSlotPlacement {
 
 /**
  * Deterministic schedule-slot placement for the j-th (0-based) accepted
- * submission: 100 sessions/day across the event's three days
- * (2028-06-01..03), 30-minute slots starting at 09:00 (startMin 540),
- * room assigned round-robin over the 10 rooms.
+ * submission: `acceptedCount` sessions spread evenly (ceil-divided) across
+ * `dayCount` days starting 2028-06-01, 30-minute slots starting at 09:00
+ * (startMin 540), room assigned round-robin over `roomCount` rooms.
+ * DEC-645: parameterized (was module-constant PERF_ROOM_COUNT / a hardcoded
+ * 3-day, 100-sessions/day contract) so `--profile=aie` can place its 4-day,
+ * 10-room schedule through the same helper. For the `default` profile's own
+ * numbers (roomCount=10, dayCount=3, acceptedCount=300) this reproduces
+ * today's placements bit-for-bit (sessionsPerDay = ceil(300/3) = 100, same
+ * as the old hardcoded 100).
  */
-export function slotPlacementForAccepted(j: number): PerfSlotPlacement {
+export function slotPlacementForAccepted(
+  j: number,
+  roomCount: number,
+  dayCount: number,
+  acceptedCount: number,
+): PerfSlotPlacement {
   if (!Number.isInteger(j) || j < 0) {
     throw new Error(`slotPlacementForAccepted: j must be a non-negative integer, got ${j}`);
   }
-  const dayIndex = Math.floor(j / 100); // 0, 1, 2
+  if (!Number.isInteger(roomCount) || roomCount < 1) {
+    throw new Error(`slotPlacementForAccepted: roomCount must be a positive integer, got ${roomCount}`);
+  }
+  if (!Number.isInteger(dayCount) || dayCount < 1) {
+    throw new Error(`slotPlacementForAccepted: dayCount must be a positive integer, got ${dayCount}`);
+  }
+  if (!Number.isInteger(acceptedCount) || acceptedCount < 1) {
+    throw new Error(`slotPlacementForAccepted: acceptedCount must be a positive integer, got ${acceptedCount}`);
+  }
+  const sessionsPerDay = Math.ceil(acceptedCount / dayCount);
+  const dayIndex = Math.floor(j / sessionsPerDay);
   const dayOfMonth = 1 + dayIndex;
-  const day = `2028-06-0${dayOfMonth}`;
-  const withinDay = j % 100;
-  const startMin = 540 + 30 * Math.floor(withinDay / 10);
+  const day = `2028-06-${String(dayOfMonth).padStart(2, "0")}`;
+  const withinDay = j % sessionsPerDay;
+  const startMin = 540 + 30 * Math.floor(withinDay / roomCount);
   const endMin = startMin + 30;
-  const roomIndex = j % PERF_ROOM_COUNT;
+  const roomIndex = j % roomCount;
   return { day, startMin, endMin, roomIndex };
+}
+
+/**
+ * DEC-645: sibling of slotPlacementForAccepted that deliberately overlaps
+ * the first `deliberateConflictCount` (j, j-1) pairs (j odd, j < 2 *
+ * deliberateConflictCount) onto the exact same day/room/time as their
+ * even-indexed partner — a guaranteed room + speaker double-booking, so
+ * findConflicts (src/domain/schedule.ts) always reports at least
+ * `deliberateConflictCount` real conflicts. `deliberateConflictCount === 0`
+ * (the `default` profile) always falls through to the normal placement,
+ * bit-for-bit unchanged.
+ */
+export function slotPlacementForAcceptedWithConflicts(
+  j: number,
+  roomCount: number,
+  dayCount: number,
+  acceptedCount: number,
+  deliberateConflictCount: number,
+): PerfSlotPlacement {
+  if (!Number.isInteger(deliberateConflictCount) || deliberateConflictCount < 0) {
+    throw new Error(
+      `slotPlacementForAcceptedWithConflicts: deliberateConflictCount must be a non-negative integer, got ${deliberateConflictCount}`,
+    );
+  }
+  const conflictSpan = deliberateConflictCount * 2;
+  if (deliberateConflictCount > 0 && j < conflictSpan && j % 2 === 1) {
+    return slotPlacementForAccepted(j - 1, roomCount, dayCount, acceptedCount);
+  }
+  return slotPlacementForAccepted(j, roomCount, dayCount, acceptedCount);
 }
 
 // --------------------------------------------------------------------------
@@ -299,11 +423,14 @@ export function slotPlacementForAccepted(j: number): PerfSlotPlacement {
  * scripts/seed.ts's deliverable_kind convention). */
 export const PERF_TASK_COUNT = 5;
 
-/** task_assignment rows: PERF_TASK_COUNT tasks x the `default` profile's
- * contact count. Out of DEC-619's scope (only submission/contact/track/
- * answer/status counts are threaded per-profile) — task/file/pipeline/
+/** task_assignment rows for the `default` profile: PERF_TASK_COUNT tasks x
+ * the `default` profile's contact count — equal to
+ * PERF_PROFILES.default.taskCount (DEC-645 threads taskCount per-profile;
+ * this constant is kept for existing call sites/tests and always matches
+ * the default profile's own taskCount by construction). File/pipeline/
  * co-speaker fixtures below stay pinned to the `default` profile's scale
- * regardless of which profile is seeded. */
+ * regardless of which profile is seeded (DEC-619's original scope; DEC-645
+ * doesn't extend to those). */
 export const PERF_TASK_ASSIGNMENT_COUNT = PERF_TASK_COUNT * PERF_PROFILES.default.contactCount;
 
 export interface PerfTaskSpec {
@@ -342,6 +469,69 @@ export function isTaskAssignmentComplete(taskIndex: number, contactIndex: number
     throw new Error(`isTaskAssignmentComplete: contactIndex must be a non-negative integer, got ${contactIndex}`);
   }
   return (taskIndex + contactIndex) % 3 !== 0;
+}
+
+/**
+ * DEC-645: number of contacts assigned every one of the PERF_TASK_COUNT
+ * task templates for a `taskCount`-sized task_assignment table (taskCount
+ * must be an exact multiple of taskDefCount — both profiles' taskCount
+ * values are constructed to divide evenly by PERF_TASK_COUNT).
+ */
+export function contactsPerTask(taskCount: number, taskDefCount: number): number {
+  if (!Number.isInteger(taskCount) || taskCount < 0) {
+    throw new Error(`contactsPerTask: taskCount must be a non-negative integer, got ${taskCount}`);
+  }
+  if (!Number.isInteger(taskDefCount) || taskDefCount < 1) {
+    throw new Error(`contactsPerTask: taskDefCount must be a positive integer, got ${taskDefCount}`);
+  }
+  if (taskCount % taskDefCount !== 0) {
+    throw new Error(`contactsPerTask: taskCount (${taskCount}) must be an exact multiple of taskDefCount (${taskDefCount})`);
+  }
+  return taskCount / taskDefCount;
+}
+
+/** DEC-645: round(taskCount * overdueTaskFraction) — how many of a
+ * profile's task_assignment rows should be seeded already-overdue
+ * (pending, past due_date). `overdueTaskFraction` must be in [0, 1]. */
+export function overdueAssignmentCount(taskCount: number, overdueTaskFraction: number): number {
+  if (!Number.isInteger(taskCount) || taskCount < 0) {
+    throw new Error(`overdueAssignmentCount: taskCount must be a non-negative integer, got ${taskCount}`);
+  }
+  if (!Number.isFinite(overdueTaskFraction) || overdueTaskFraction < 0 || overdueTaskFraction > 1) {
+    throw new Error(`overdueAssignmentCount: overdueTaskFraction must be within [0, 1], got ${overdueTaskFraction}`);
+  }
+  return Math.round(taskCount * overdueTaskFraction);
+}
+
+/**
+ * DEC-645: whether the (taskIndex, contactIndexWithinTask) assignment
+ * (both 0-based) should be deliberately seeded overdue. Block-distributed
+ * onto task index 0 only (the first `overdueCount` of its contacts) —
+ * task 0 is given a past due_date by the seeder whenever overdueCount > 0,
+ * so this set of assignments (seeded `pending`, never `complete`) is
+ * genuinely overdue by the product's own overdue rule (status <> complete
+ * AND task.due_date < now — src/server/repo/overview.ts). `overdueCount
+ * === 0` (the `default` profile) always returns false, so
+ * isTaskAssignmentComplete's existing mod-3 split governs every row
+ * unchanged.
+ */
+export function isDeliberatelyOverdueAssignment(
+  taskIndex: number,
+  contactIndexWithinTask: number,
+  overdueCount: number,
+): boolean {
+  if (!Number.isInteger(taskIndex) || taskIndex < 0) {
+    throw new Error(`isDeliberatelyOverdueAssignment: taskIndex must be a non-negative integer, got ${taskIndex}`);
+  }
+  if (!Number.isInteger(contactIndexWithinTask) || contactIndexWithinTask < 0) {
+    throw new Error(
+      `isDeliberatelyOverdueAssignment: contactIndexWithinTask must be a non-negative integer, got ${contactIndexWithinTask}`,
+    );
+  }
+  if (!Number.isInteger(overdueCount) || overdueCount < 0) {
+    throw new Error(`isDeliberatelyOverdueAssignment: overdueCount must be a non-negative integer, got ${overdueCount}`);
+  }
+  return taskIndex === 0 && contactIndexWithinTask < overdueCount;
 }
 
 /** 5,000 email_log rows for the perf event, spread across the last 30 days

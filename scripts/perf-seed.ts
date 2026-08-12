@@ -27,24 +27,24 @@ import {
   PERF_ORG_USER_COUNT,
   PERF_PIPELINE_ENTRY_COUNT,
   PERF_PIPELINE_STAGES,
-  PERF_PLAN_ID,
   PERF_PROFILES,
-  PERF_REVIEWER_COUNT,
-  PERF_REVIEWER_PASSWORD,
-  PERF_ROOM_COUNT,
   PERF_TASK_COUNT,
   PERF_TASKS,
   contactIndexForSubmission,
+  contactsPerTask,
   coSpeakerContactIndexesForAccepted,
+  isDeliberatelyOverdueAssignment,
   isTaskAssignmentComplete,
+  overdueAssignmentCount,
   perfFileSpecs,
   perfOrgUserEmail,
   perfOrgUserRole,
+  perfPlanId,
   perfReviewerEmail,
   perfSubmissionStatuses,
   pipelineStageIndexForEntry,
   sentAtForEmailLogRow,
-  slotPlacementForAccepted,
+  slotPlacementForAcceptedWithConflicts,
   topicForSubmission,
   trackIndexForSubmission,
 } from "./perf-seed-lib";
@@ -67,6 +67,28 @@ const PERF_SUBMISSION_COUNT = PROFILE.submissionCount;
 const PERF_CONTACT_COUNT = PROFILE.contactCount;
 const PERF_TRACK_COUNT = PROFILE.trackCount;
 const PERF_ANSWERS_PER_SUBMISSION = PROFILE.answersPerSubmission;
+// DEC-645: agenda/review/onboarding volumes, threaded per-profile.
+const PERF_ROOM_COUNT = PROFILE.roomCount;
+const PERF_DAY_COUNT = PROFILE.dayCount;
+const PERF_REVIEWER_COUNT = PROFILE.reviewerCount;
+const PERF_PLAN_COUNT = PROFILE.planCount;
+const PERF_REVIEWER_PASSWORD = PROFILE.reviewerPassword;
+const PERF_TASK_ASSIGNMENT_TOTAL = PROFILE.taskCount;
+const PERF_OVERDUE_TASK_FRACTION = PROFILE.overdueTaskFraction;
+const PERF_DELIBERATE_CONFLICT_COUNT = PROFILE.deliberateConflictCount;
+
+/** Every plan id this profile seeds (planIndex 1..planCount), so the
+ * idempotent-delete prologue and the plan/plan_reviewer/evaluation blocks
+ * below share one source of truth. */
+const PROFILE_PLAN_IDS = Array.from({ length: PERF_PLAN_COUNT }, (_, i) => perfPlanId(PROFILE.planId, i + 1));
+const PERF_PLAN_ID = PROFILE_PLAN_IDS[0]!;
+
+// Every plan id across *every* profile (not just the selected one) — the
+// idempotent DELETE prologue below must clean both profiles' plan-scoped
+// rows so switching --profile= between runs never orphans rows (DEC-645).
+const ALL_PROFILE_PLAN_IDS = Object.values(PERF_PROFILES).flatMap((p) =>
+  Array.from({ length: p.planCount }, (_, i) => perfPlanId(p.planId, i + 1)),
+);
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(SCRIPT_DIR, "..");
@@ -101,9 +123,10 @@ async function main(): Promise<void> {
   // `--profile=` between runs still cleans up the previously-seeded
   // profile's event-scoped rows instead of leaving them orphaned.
   const allPerfEventIds = Object.values(PERF_PROFILES).map((p) => `'${p.eventId}'`).join(", ");
-  statements.push(`DELETE FROM evaluation WHERE plan_id = '${PERF_PLAN_ID}';`);
-  statements.push(`DELETE FROM plan_reviewer WHERE plan_id = '${PERF_PLAN_ID}';`);
-  statements.push(`DELETE FROM evaluation_plan WHERE id = '${PERF_PLAN_ID}';`);
+  const allPerfPlanIdsSql = ALL_PROFILE_PLAN_IDS.map((id) => `'${id}'`).join(", ");
+  statements.push(`DELETE FROM evaluation WHERE plan_id IN (${allPerfPlanIdsSql});`);
+  statements.push(`DELETE FROM plan_reviewer WHERE plan_id IN (${allPerfPlanIdsSql});`);
+  statements.push(`DELETE FROM evaluation_plan WHERE id IN (${allPerfPlanIdsSql});`);
   statements.push(`DELETE FROM schedule_slot WHERE submission_id LIKE 'seed_perf_%';`);
   statements.push(`DELETE FROM room WHERE event_id IN (${allPerfEventIds});`);
   // DEC-347: file rows (deliverable chains) before their submission parents —
@@ -292,7 +315,7 @@ async function main(): Promise<void> {
     }
   }
 
-  // --- 10 rooms (DEC-088) ---
+  // --- PERF_ROOM_COUNT rooms (DEC-088; DEC-645 threads room count per-profile) ---
   const roomIds: string[] = [];
   for (let i = 0; i < PERF_ROOM_COUNT; i++) {
     const roomId = seedId("perf_room", i + 1);
@@ -311,10 +334,19 @@ async function main(): Promise<void> {
   }
 
   // --- schedule_slot for every accepted submission (already content_status
-  // approved + participant visible, so they are publicly visible) ---
+  // approved + participant visible, so they are publicly visible). DEC-645:
+  // the first PERF_DELIBERATE_CONFLICT_COUNT (j, j-1) pairs are deliberately
+  // overlapped (see slotPlacementForAcceptedWithConflicts) — 0 for the
+  // `default` profile, so this is bit-for-bit unchanged there. ---
   for (let j = 0; j < acceptedSubmissionIds.length; j++) {
     const submissionId = acceptedSubmissionIds[j]!;
-    const placement = slotPlacementForAccepted(j);
+    const placement = slotPlacementForAcceptedWithConflicts(
+      j,
+      PERF_ROOM_COUNT,
+      PERF_DAY_COUNT,
+      acceptedSubmissionIds.length,
+      PERF_DELIBERATE_CONFLICT_COUNT,
+    );
     const roomId = roomIds[placement.roomIndex]!;
     statements.push(
       insertStmt("schedule_slot", {
@@ -358,35 +390,44 @@ async function main(): Promise<void> {
     );
   }
 
-  // --- one evaluation plan (DEC-088): INSERT never names current_round, so
-  // this works with or without the 0009_review_rounds migration ---
-  statements.push(
-    insertStmt("evaluation_plan", {
-      id: PERF_PLAN_ID,
-      event_id: PERF_EVENT_ID,
-      name: "Perf Review Plan",
-      instructions: null,
-      open_date: null,
-      close_date: null,
-      filters_json: null,
-      anonymized: false,
-      scale_json: JSON.stringify({ min: 1, max: 5 }),
-      // DEC-125: criteria entries must carry kind:'rating' to match the
-      // RatingCriterionDef union arm (src/domain/evaluation.ts:121-137);
-      // without it validateEvaluationScores falls into the dropdown branch
-      // and 400s every rating PUT (task-w11-d perf-smoke FAIL).
-      criteria_json: JSON.stringify([{ id: "overall", label: "Overall", kind: "rating", weight: 1 }]),
-      rounds: 1,
-      max_evaluations: null,
-      created_at: nextTs(),
-      updated_at: ts,
-    }),
-  );
+  // --- PERF_PLAN_COUNT evaluation plans (DEC-088; DEC-645 threads plan
+  // count per-profile): INSERT never names current_round, so this works
+  // with or without the 0009_review_rounds migration ---
+  for (const planId of PROFILE_PLAN_IDS) {
+    statements.push(
+      insertStmt("evaluation_plan", {
+        id: planId,
+        event_id: PERF_EVENT_ID,
+        name: planId === PERF_PLAN_ID ? "Perf Review Plan" : `Perf Review Plan (${planId})`,
+        instructions: null,
+        open_date: null,
+        close_date: null,
+        filters_json: null,
+        anonymized: false,
+        scale_json: JSON.stringify({ min: 1, max: 5 }),
+        // DEC-125: criteria entries must carry kind:'rating' to match the
+        // RatingCriterionDef union arm (src/domain/evaluation.ts:121-137);
+        // without it validateEvaluationScores falls into the dropdown branch
+        // and 400s every rating PUT (task-w11-d perf-smoke FAIL).
+        criteria_json: JSON.stringify([{ id: "overall", label: "Overall", kind: "rating", weight: 1 }]),
+        rounds: 1,
+        max_evaluations: null,
+        created_at: nextTs(),
+        updated_at: ts,
+      }),
+    );
+  }
 
-  // --- 12 reviewer users + 12 all-scope plan_reviewer rows (DEC-088): hash
-  // the reviewer password once, reuse for all 12 users ---
+  // --- PERF_REVIEWER_COUNT reviewer users, each joined (via plan_reviewer)
+  // to every one of the PERF_PLAN_COUNT plans — DEC-088/DEC-645: hash the
+  // reviewer password once, reuse for every reviewer user. Per-reviewer
+  // user-then-its-plan_reviewer-rows interleaving (rather than all users
+  // then all plan_reviewer rows) keeps the `default` profile's single-plan
+  // statement order — and therefore its nextTs() timestamps — bit-for-bit
+  // unchanged from before DEC-645. ---
   const reviewerPasswordHash = await hashPassword(PERF_REVIEWER_PASSWORD);
   const reviewerUserIds: string[] = [];
+  let planReviewerCounter = 0;
   for (let i = 1; i <= PERF_REVIEWER_COUNT; i++) {
     const userId = seedId("perf_reviewer", i);
     reviewerUserIds.push(userId);
@@ -394,7 +435,7 @@ async function main(): Promise<void> {
       insertStmt("user", {
         id: userId,
         org_id: ORG_ID,
-        email: perfReviewerEmail(i),
+        email: perfReviewerEmail(i, PROFILE.reviewerEmailPrefix),
         password_hash: reviewerPasswordHash,
         role: "reviewer",
         contact_id: null,
@@ -402,16 +443,19 @@ async function main(): Promise<void> {
         updated_at: ts,
       }),
     );
-    statements.push(
-      insertStmt("plan_reviewer", {
-        id: seedId("perf_plan_reviewer", i),
-        plan_id: PERF_PLAN_ID,
-        user_id: userId,
-        track_id: null,
-        created_at: nextTs(),
-        updated_at: ts,
-      }),
-    );
+    for (const planId of PROFILE_PLAN_IDS) {
+      planReviewerCounter += 1;
+      statements.push(
+        insertStmt("plan_reviewer", {
+          id: seedId("perf_plan_reviewer", planReviewerCounter),
+          plan_id: planId,
+          user_id: userId,
+          track_id: null,
+          created_at: nextTs(),
+          updated_at: ts,
+        }),
+      );
+    }
   }
 
   // --- 600 round-1 evaluations (DEC-088): reviewers round-robin over the
@@ -435,10 +479,20 @@ async function main(): Promise<void> {
     );
   }
 
-  // --- DEC-338: 5 onboarding tasks (one file_request) with a task_assignment
-  // for every one of the 800 contacts (4,000 assignments total), mixed
-  // pending/complete by index modulo — the onboarding grid's realistic scale
-  // (800 speakers x 5 tasks), which nothing exercised before this ---
+  // --- DEC-338/DEC-645: 5 onboarding tasks (one file_request) with a
+  // task_assignment for every one of PERF_TASK_ASSIGNMENT_TOTAL /
+  // PERF_TASK_COUNT contacts (PROFILE.taskCount assignments total, mixed
+  // pending/complete by index modulo) — the onboarding grid's realistic
+  // scale. DEC-645: task index 0 gets a past due_date whenever the profile's
+  // overdueTaskFraction > 0, and the first overdueAssignmentCount of its
+  // contacts are seeded deliberately pending+overdue (`default`'s
+  // overdueTaskFraction is 0, so this is bit-for-bit unchanged there). ---
+  const contactsPerTaskCount = contactsPerTask(PERF_TASK_ASSIGNMENT_TOTAL, PERF_TASK_COUNT);
+  const overdueCount = overdueAssignmentCount(PERF_TASK_ASSIGNMENT_TOTAL, PERF_OVERDUE_TASK_FRACTION);
+  // Fixed, well-in-the-past anchor (not BASE_TS, which sits after "today" —
+  // see the BASE_TS comment above) so seeded overdue assignments read as
+  // overdue against the real wall clock whenever this fixture is queried.
+  const PERF_OVERDUE_TASK_DUE_DATE = Date.UTC(2020, 0, 1);
   const taskIds: string[] = [];
   for (let i = 0; i < PERF_TASK_COUNT; i++) {
     const spec = PERF_TASKS[i]!;
@@ -451,7 +505,7 @@ async function main(): Promise<void> {
         kind: spec.kind,
         title: spec.title,
         description: null,
-        due_date: null,
+        due_date: i === 0 && overdueCount > 0 ? PERF_OVERDUE_TASK_DUE_DATE : null,
         required: false,
         form_id: null,
         deliverable_kind: spec.deliverableKind,
@@ -464,10 +518,11 @@ async function main(): Promise<void> {
   let taskAssignmentCounter = 0;
   for (let taskIdx = 0; taskIdx < PERF_TASK_COUNT; taskIdx++) {
     const taskId = taskIds[taskIdx]!;
-    for (let contactIdx = 0; contactIdx < PERF_CONTACT_COUNT; contactIdx++) {
+    for (let contactIdx = 0; contactIdx < contactsPerTaskCount; contactIdx++) {
       taskAssignmentCounter += 1;
       const contactId = contactIds[contactIdx]!;
-      const isComplete = isTaskAssignmentComplete(taskIdx, contactIdx);
+      const deliberatelyOverdue = isDeliberatelyOverdueAssignment(taskIdx, contactIdx, overdueCount);
+      const isComplete = deliberatelyOverdue ? false : isTaskAssignmentComplete(taskIdx, contactIdx);
       statements.push(
         insertStmt("task_assignment", {
           id: seedId("perf_task_assignment", taskAssignmentCounter),
