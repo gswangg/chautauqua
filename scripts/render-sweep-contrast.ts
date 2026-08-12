@@ -15,8 +15,13 @@
 /** DEC-387 flip rule (verbatim), reused here per DEC-426: "it becomes true in
  * the wave after the pass first reads all-PASS." Until then the contrast
  * pass is advisory — it prints its own PASS/FAIL table and summary but never
- * contributes to the render-sweep gate's exit code. This is the pass's FIRST
- * reading (task-w12-c), so it lands false. */
+ * contributes to the render-sweep gate's exit code. w13-a fixed the two
+ * named DEC-430 offenders (forms drag glyph, public track chip) but the run
+ * read 41/42, not all-PASS: fixing the drag glyph unmasked a third, previously
+ * -unreported offender on the same /admin/submissions/forms route (td text
+ * in --chq-disabled, ratio 3.06) that DEC-430 did not name and this task did
+ * not scope in. This is still not an all-PASS reading, so it stays false
+ * (docs/verification-log/task-w13-a-render-sweep-stage1.md). */
 export const CONTRAST_BLOCKING = false;
 
 /** WCAG AA minimum contrast ratio for normal text. */

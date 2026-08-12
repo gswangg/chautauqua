@@ -430,9 +430,9 @@ describe("ADMIN_MOBILE_ROUTE_MANIFEST (DEC-387)", () => {
   });
 });
 
-describe("ADMIN_MOBILE_PASS_BLOCKING (DEC-387)", () => {
-  it("is false on landing, with the flip rule documented on the constant", () => {
-    expect(ADMIN_MOBILE_PASS_BLOCKING).toBe(false);
+describe("ADMIN_MOBILE_PASS_BLOCKING (DEC-387/DEC-431)", () => {
+  it("is true after DEC-431's flip (w13-a's own run read 20/20 all-PASS), flip rule stays documented", () => {
+    expect(ADMIN_MOBILE_PASS_BLOCKING).toBe(true);
     const source = readFileSync(new URL("../scripts/render-sweep-lib.ts", import.meta.url), "utf-8");
     // DEC-387 verbatim: "it becomes true in the wave after the pass first
     // reads all-PASS."
@@ -651,14 +651,14 @@ describe("allFontFloorPassed / formatFontFloorSummary / formatFontFloorTable (DE
   });
 });
 
-describe("FONT_FLOOR_BLOCKING (DEC-421)", () => {
-  it("is false on landing (first reading), reusing the DEC-387 flip rule", () => {
-    expect(FONT_FLOOR_BLOCKING).toBe(false);
+describe("FONT_FLOOR_BLOCKING (DEC-421/DEC-431)", () => {
+  it("is true after DEC-431's flip (w13-a's own run read 83/83 all-PASS), reusing the DEC-387 flip rule", () => {
+    expect(FONT_FLOOR_BLOCKING).toBe(true);
     const source = readFileSync(new URL("../scripts/render-sweep-lib.ts", import.meta.url), "utf-8");
     expect(source).toContain("it becomes true in the wave after the pass first reads all-PASS");
   });
 
-  it("never contributes to the gate's exit code while false", () => {
+  it("is gated through the same allFontFloorPassed && FONT_FLOOR_BLOCKING expression now that it's true", () => {
     const source = readFileSync(new URL("../scripts/render-sweep.ts", import.meta.url), "utf-8");
     expect(source).toMatch(/allFontFloorPassed\(fontFloorResults\)\s*&&\s*FONT_FLOOR_BLOCKING/);
   });
