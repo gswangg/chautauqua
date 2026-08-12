@@ -2,7 +2,7 @@
 // files.ts (contention decomposition) — no behavior change, files.ts
 // re-exports everything below for existing callers.
 
-import { eq, inArray } from "drizzle-orm";
+import { asc, eq, inArray } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { newId } from "../../domain/ids";
@@ -30,7 +30,7 @@ export async function listFileComments(db: Db, fileId: string): Promise<FileComm
     })
     .from(schema.fileComment)
     .where(eq(schema.fileComment.fileId, fileId))
-    .orderBy(schema.fileComment.createdAt);
+    .orderBy(schema.fileComment.createdAt, asc(schema.fileComment.id));
 
   const userIds = [...new Set(rows.map((r) => r.authorUserId).filter((x): x is string => !!x))];
   const userMap = new Map<string, { email: string; role: string; contactId: string | null }>();

@@ -202,7 +202,7 @@ describe("DEC-239: GET /api/v1/events/:eventId/files vs EventFileChainItem", () 
 // ---------------------------------------------------------------------------
 // DEC-247: GET /api/v1/submissions/:id/files must be a flat
 // { items: DeliverableFile[] } envelope, not the repo's internal
-// kind-grouped shape.
+// kind-grouped shape. DEC-471: also now carries total/page/perPage.
 // ---------------------------------------------------------------------------
 
 describe("DEC-239/DEC-247: GET /api/v1/submissions/:id/files vs DeliverableFile", () => {
@@ -242,7 +242,9 @@ describe("DEC-239/DEC-247: GET /api/v1/submissions/:id/files vs DeliverableFile"
     const res = await app.request("/api/v1/submissions/sub-1/files");
     expect(res.status).toBe(200);
     const body = (await res.json()) as Record<string, unknown>;
-    expect(keysOf(body)).toEqual(["items"]);
+    // DEC-471: this endpoint now returns the DEC-013/DEC-461 list envelope
+    // ({items,total,page,perPage}), not a bare {items}.
+    expect(keysOf(body)).toEqual(["items", "page", "perPage", "total"].sort());
     expect(keysOf(first(body.items as Record<string, unknown>[]))).toEqual(
       [
         "contentType",

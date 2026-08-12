@@ -35,6 +35,7 @@ export function DeliverableDetail({
   onUploaded,
 }: DeliverableDetailProps) {
   const [files, setFiles] = useState<DeliverableFile[]>([]);
+  const [filesTotal, setFilesTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [commentsByFile, setCommentsByFile] = useState<Record<string, FileComment[]>>({});
@@ -47,6 +48,7 @@ export function DeliverableDetail({
     return apiList<DeliverableFile>(`/submissions/${submissionId}/files`)
       .then((res) => {
         setFiles(res.items);
+        setFilesTotal(res.total);
         return res.items;
       })
       .catch((err) => {
@@ -63,6 +65,13 @@ export function DeliverableDetail({
 
   const grouped = groupByKindNewestFirst(files);
 
+  // DEC-468: /files/:fileId/comments now carries a `total` alongside
+  // `items`, but commentsByFile is keyed per-file with no matching
+  // per-file total slot, and every call site renders the full thread (no
+  // per-thread pagination UI exists yet) -- adding a truncation sentence
+  // here would need a second per-fileId map for no visible behavior change
+  // today, so this is left alone per this task's scope (res.total is
+  // available at this call site if a future task needs it).
   async function loadComments(fileId: string) {
     try {
       const res = await apiList<FileComment>(`/files/${fileId}/comments`);
@@ -143,6 +152,14 @@ export function DeliverableDetail({
 
       {error && <div className="chq-error" role="alert">{error}</div>}
       {loading && <p>Loading deliverables...</p>}
+      {!loading && files.length < filesTotal && (
+        // DEC-468: submissions/:id/files is now server-paginated -- disclose
+        // the truncation rather than letting the group view quietly imply
+        // it holds every version.
+        <p className="chq-meta">
+          Showing first {files.length} of {filesTotal} versions.
+        </p>
+      )}
 
       {!loading &&
         DELIVERABLE_KINDS.map((kind) => {
