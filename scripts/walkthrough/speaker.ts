@@ -478,6 +478,17 @@ async function main(): Promise<void> {
     return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   }
 
+  // DEC-412 repair: /portal/tasks task rows used to render as <li> inside a
+  // <ul> (pre-redesign markup); the redesign (docs/design/'Chautauqua Public
+  // and Portal.dc.html' lines ~179-188, sc-for over `tasks`) moved each row
+  // to a top-level '<div class="chq-portal-row">' with no <li>/<ul> anywhere
+  // in TaskRow (src/routes/portal/tasks.tsx) — function is unchanged, only
+  // the markup token bounding "one row's worth of HTML" changed. Every
+  // per-row regex below is re-pinned from the stale '</li>' boundary to the
+  // start of the *next* row's div, which is the smallest stable token that
+  // still scopes a match to a single row.
+  const NEXT_TASK_ROW = escapeRegex('<div class="chq-portal-row">');
+
   async function completeSelfHealedFormTask(taskTitle: string, expectedBodyText?: string): Promise<void> {
     // Look up the assignment id via the organizer's onboarding grid (DEC-023
     // owns assignment status semantics; the grid's assignmentId is stable
@@ -536,7 +547,7 @@ async function main(): Promise<void> {
         `'${taskTitle}' still shows a 'Fill out form' link after completion`,
       );
       const rowMatch = tasksPage.body.match(
-        new RegExp(`${escapeRegex(taskTitle)}(?:(?!<\\/li>)[\\s\\S])*?(Completed|Pending)`),
+        new RegExp(`${escapeRegex(taskTitle)}(?:(?!${NEXT_TASK_ROW})[\\s\\S])*?(Completed|Pending)`),
       );
       assert(rowMatch, `could not find the '${taskTitle}' row on /portal/tasks after submission`);
       assert(
@@ -553,7 +564,7 @@ async function main(): Promise<void> {
       assert(tasksPage.status === 200, `GET /portal/tasks returned ${tasksPage.status}`);
       const match = tasksPage.body.match(
         new RegExp(
-          `${escapeRegex("Hotel stay requirement form")}(?:(?!<\\/li>)[\\s\\S])*?href="\\/portal\\/tasks\\/([\\w-]+)\\/form"`,
+          `${escapeRegex("Hotel stay requirement form")}(?:(?!${NEXT_TASK_ROW})[\\s\\S])*?href="\\/portal\\/tasks\\/([\\w-]+)\\/form"`,
         ),
       );
       assert(match, "could not find the 'Hotel stay requirement form' task's 'Fill out form' link on /portal/tasks");
@@ -622,7 +633,7 @@ async function main(): Promise<void> {
       const tasksPage = await speaker1.getText("/portal/tasks");
       assert(tasksPage.status === 200, `GET /portal/tasks returned ${tasksPage.status}`);
       const match = tasksPage.body.match(
-        new RegExp(`${escapeRegex(adHocFormTaskTitle)}(?:(?!<\\/li>)[\\s\\S])*?href="\\/portal\\/tasks\\/([\\w-]+)\\/form"`),
+        new RegExp(`${escapeRegex(adHocFormTaskTitle)}(?:(?!${NEXT_TASK_ROW})[\\s\\S])*?href="\\/portal\\/tasks\\/([\\w-]+)\\/form"`),
       );
       assert(match, `could not find the '${adHocFormTaskTitle}' task's 'Fill out form' link on /portal/tasks`);
       return match![1]!;
@@ -699,11 +710,15 @@ async function main(): Promise<void> {
       const tasksPage = await speaker1.getText("/portal/tasks");
       assert(tasksPage.status === 200, `GET /portal/tasks returned ${tasksPage.status}`);
       const rowMatch = tasksPage.body.match(
-        new RegExp(`Finalize bio \\+ headshot(?:(?!<\\/li>)[\\s\\S])*?<\\/li>`),
+        new RegExp(`Finalize bio \\+ headshot(?:(?!${NEXT_TASK_ROW})[\\s\\S])*`),
       );
       assert(rowMatch, "could not find the 'Finalize bio + headshot' task row on /portal/tasks");
       const row = rowMatch![0]!;
-      assert(row.includes('<section aria-label="Uploaded file">'), "row is missing the Uploaded file section");
+      // DEC-412 repair: the redesign added a 'chq-card' class to this
+      // section for styling (src/routes/portal/tasks.tsx TaskRow), so the
+      // exact-attribute-order string match below is re-pinned to just the
+      // stable aria-label token rather than the full opening tag.
+      assert(row.includes('aria-label="Uploaded file"'), "row is missing the Uploaded file section");
       assert(row.includes("walkthrough-bio-photo.jpg"), "row is missing the uploaded filename");
       assert(row.includes("version 1"), "row is missing 'version 1'");
       assert(
@@ -941,10 +956,21 @@ async function main(): Promise<void> {
         assert(res.status === 200, `GET /e/${EVENT_SLUG}/sessions?page=${page} returned ${res.status}`);
         for (const id of wanted) {
           if (found[id]) continue;
+          // DEC-412 repair: public session cards were 'chq-card' pre-
+          // redesign; the redesign renamed the class to
+          // 'chq-pub-session-row' (src/routes/public/cards.tsx SessionCard)
+          // and added a nested 'chq-pub-session-when'/'chq-pub-session-body'
+          // div structure inside the card, so a lazy match to the FIRST
+          // '</div>' no longer captures the whole card (it stops at the
+          // first nested div's close). Bounded instead to the start of the
+          // next card (or end of page) — same technique as the portal
+          // task-row fix above.
           const match = res.body.match(
-            new RegExp(`<div class="chq-card" id="chq-session-${id}">([\\s\\S]*?)<\\/div>`),
+            new RegExp(
+              `<div class="chq-pub-session-row" id="chq-session-${id}">(?:(?!<div class="chq-pub-session-row")[\\s\\S])*`,
+            ),
           );
-          if (match) found[id] = match[1]!;
+          if (match) found[id] = match[0]!;
         }
         if (wanted.every((id) => found[id])) break;
         const hasNextPage = res.body.includes(`page=${page + 1}`);
@@ -982,15 +1008,18 @@ async function main(): Promise<void> {
       const speakerName = fixture.identities.speaker.name;
       const res = await anon.getText(`/e/${EVENT_SLUG}/speakers`);
       assert(res.status === 200, `GET /e/${EVENT_SLUG}/speakers returned ${res.status}`);
-      // DEC-173: the name may be wrapped in an <a href=...> inside the
-      // <strong> (live markup is <strong><a href=...>Name</a></strong>) —
-      // tolerate that optional wrapper.
+      // DEC-412 repair: DEC-173's <strong><a href=...>Name</a></strong>
+      // wrapper is gone post-redesign — src/routes/public/speakers.tsx
+      // SpeakersContent now renders the name as a plain
+      // '<a class="chq-pub-speaker-name" href=...>Name</a>' (no <strong>
+      // anywhere on the card). The sessions list immediately after it is
+      // still a <ul>...</ul>, so that boundary is unchanged.
       const blockMatch = res.body.match(
         new RegExp(
-          `<strong>(?:<a[^>]*>)?${escapeRegex(speakerName)}(?:<\\/a>)?<\\/strong>([\\s\\S]*?)<\\/ul>`,
+          `<a class="chq-pub-speaker-name"[^>]*>\\s*${escapeRegex(speakerName)}\\s*<\\/a>([\\s\\S]*?)<\\/ul>`,
         ),
       );
-      assert(blockMatch, `could not find speaker1's <strong>${speakerName}</strong>...</ul> block on the speakers page`);
+      assert(blockMatch, `could not find speaker1's chq-pub-speaker-name '${speakerName}'...</ul> block on the speakers page`);
       const block = blockMatch![1]!;
       assert(block.includes(inviteTitleA!), `speaker1's speakers-page block is missing A's title '${inviteTitleA}'`);
       assert(
