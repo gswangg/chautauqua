@@ -238,3 +238,10 @@ CNT 52% · AIA 88% · EMB 72% · CRM 76% (of judged weight).
      The render-sweep assertion from item 11 must test BOTH slash variants of every
      route. (Historical note: trailing-slash handling also caused the original
      unreachable-/admin 307 loop — normalize once, at the shell, forever.)
+
+10b. (User-confirmed vs mock, refines items 10 + Tier-2 #12) The organiser Review
+     landing must be rebuilt as the mock's three-region page — plans list w/ progress
+     bars + Export CSV, INLINE reviewer-progress table w/ remind action, INLINE ranked
+     results w/ Accept/Decline — confirmed unimplemented, not data-starved. AND the
+     seed should provide THREE evaluation plans in mixed states (one closed/complete,
+     one open mid-wave, one future) so the rebuilt plans list renders like the mock.
