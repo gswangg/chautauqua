@@ -251,7 +251,17 @@
   color: var(--chq-ink);
 }
 
+/* Phone frame (DEC-385/386, docs/design/Chautauqua Contacts.dc.html "390"
+   frame): the desktop directory table becomes a stack of cards via a
+   pure-CSS transform on the SAME markup (thead hidden, tr/td turned into
+   flex blocks, no cell dropped); the stats strip becomes a horizontal
+   overflow-x:auto tile row; search/segment controls and the bulk bar
+   collapse to full-width, 44px, centred-flex, phone-radius controls. */
 @media (max-width: 700px) {
+  .chq-contacts-page {
+    gap: 16px;
+  }
+
   .chq-contacts-title-row {
     flex-direction: column;
     align-items: flex-start;
@@ -259,9 +269,162 @@
 
   .chq-contacts-title-actions {
     margin-left: 0;
+    width: 100%;
+  }
+
+  .chq-contacts-title-actions .chq-btn {
+    flex: 1;
+  }
+
+  /* Stats strip: KPI tiles scroll horizontally, never wrap/shrink. */
+  .chq-contacts-kpis {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    gap: 18px;
+    padding-bottom: 2px;
+  }
+
+  .chq-stat {
+    flex-shrink: 0;
+  }
+
+  .chq-contacts-table-wrap {
+    gap: 16px;
+  }
+
+  /* Search + segment controls: full-width, 44px, phone control radius,
+     centred flex (DEC-383: no var(--x, #hex) fallbacks). */
+  .chq-contacts-search-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .chq-contacts-search {
+    min-width: 0;
+    width: 100%;
+    border-radius: var(--chq-r-ctl-phone);
   }
 
   .chq-contacts-segment-select {
     margin-left: 0;
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .chq-contacts-segment-select .chq-select {
+    flex: 1;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    border-radius: var(--chq-r-ctl-phone);
+  }
+
+  /* Bulk bar already wraps (shared .chq-bulkbar); stretch its actions so
+     buttons stay 44px, centred, full-width on a narrow viewport. */
+  .chq-contacts-table-wrap .chq-bulkbar-actions {
+    width: 100%;
+  }
+
+  .chq-contacts-table-wrap .chq-bulkbar-actions .chq-btn {
+    flex: 1;
+    justify-content: center;
+  }
+
+  /* Table -> cards: thead hidden, tr/td become flex blocks on the exact
+     same markup tree -- no cell is dropped (DEC-386). */
+  .chq-contacts-table thead {
+    display: none;
+  }
+
+  .chq-contacts-table,
+  .chq-contacts-table tbody {
+    display: block;
+    width: 100%;
+  }
+
+  .chq-contacts-table tbody tr {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding: 16px 0;
+    border-bottom: 1px solid var(--chq-hairline);
+  }
+
+  .chq-contacts-table tbody tr:first-child {
+    padding-top: 0;
+  }
+
+  .chq-contacts-table tbody tr:last-child {
+    border-bottom: none;
+  }
+
+  .chq-contacts-table tbody td {
+    display: block;
+    padding: 0;
+    border-bottom: none;
+  }
+
+  /* Selection checkbox cell sits top-right of the card, 44px tap target. */
+  .chq-contacts-table tbody td:first-child {
+    order: 2;
+    align-self: flex-end;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+  }
+
+  .chq-contacts-table tbody td:nth-child(2) {
+    order: 1;
+  }
+
+  .chq-contacts-table tbody td:nth-child(3) {
+    order: 3;
+  }
+
+  .chq-contacts-table tbody td:nth-child(3)::before {
+    content: 'Company';
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--chq-muted);
+    margin-bottom: 3px;
+  }
+
+  .chq-contacts-table tbody td:nth-child(4) {
+    order: 4;
+    font-size: 13px;
+    color: var(--chq-ink-2);
+  }
+
+  .chq-contacts-table tbody td:nth-child(4)::before {
+    content: '# Submissions: ';
+    font-weight: 600;
+    color: var(--chq-muted);
+  }
+
+  .chq-contacts-table tbody td:nth-child(5) {
+    order: 5;
+  }
+
+  .chq-contacts-table tbody td:nth-child(5) .chq-btn {
+    width: 100%;
+  }
+
+  .chq-contacts-name-cell,
+  .chq-contacts-company-cell {
+    gap: 3px;
+  }
+
+  /* Pager: full-width, wraps, buttons stay 44px via shared rule. */
+  .chq-contacts-table-wrap .chq-pager {
+    flex-wrap: wrap;
+    justify-content: center;
+    text-align: center;
+    gap: 10px;
   }
 }
