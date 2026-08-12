@@ -87,6 +87,40 @@ export interface ImportResult {
   addedToEvent?: number;
 }
 
+// DEC-663: a CSV import is PLANNED before it is applied. A dry-run POST
+// (dryRun: true) returns an ImportPlan naming, per row, what the commit
+// WOULD do -- created/updated/skipped here are INTENT counts, not the
+// post-commit truth (that stays ImportResult, counted after commit, above).
+export interface ImportOverwrite {
+  field: string;
+  from: string;
+  to: string;
+}
+
+export interface ImportPossibleDuplicate {
+  contactId: string;
+  name: string;
+  email: string;
+  company?: string | null;
+}
+
+export interface ImportPlanRow {
+  line: number;
+  email: string;
+  action: 'create' | 'update' | 'skip';
+  reason?: string;
+  contactId?: string;
+  overwrites?: ImportOverwrite[];
+  possibleDuplicates?: ImportPossibleDuplicate[];
+}
+
+export interface ImportPlan {
+  rows: ImportPlanRow[];
+  created: number;
+  updated: number;
+  skipped: number;
+}
+
 // DEC-660: the BULK_EMAIL_MERGE_FIELDS vocabulary and the recipient cap
 // (mirroring src/domain/compose.ts's MAX_COMPOSE_RECIPIENTS) live in
 // ../../lib/merge-fields (the one module that crosses the app/ -> src/
