@@ -196,6 +196,7 @@ export const ROUTE_GROUPS: { title: string; rows: Row[] }[] = [
       { method: "POST", path: "/api/v1/contacts/:id/headshot", role: "organizer" },
       { method: "POST", path: "/api/v1/contacts/:id/add-to-event", role: "organizer" },
       { method: "POST", path: "/api/v1/contacts/import", role: "organizer" },
+      { method: "POST", path: "/api/v1/events/:eventId/import/sessionboard", role: "organizer" },
       { method: "POST", path: "/api/v1/contacts/merge", role: "organizer" },
       { method: "POST", path: "/api/v1/contacts/bulk-email", role: "organizer" },
       { method: "POST", path: "/api/v1/contacts/bulk-email/preview", role: "organizer" },
