@@ -1,0 +1,337 @@
+/* Comms re-skin (w2-c, DEC-366..368/377). Shared .chq-* classes (page,
+   page-title, summary, error, btn, pill, table, flag, section, section-
+   head, section-label, section-action, row, meta, input/select/textarea,
+   check) are owned by the shell lane in ../../styles.css — this file only
+   defines .chq-comms-* layout classes, plus an early, page-lane definition
+   of the not-yet-landed shared .chq-steps/.chq-step/.chq-pager stepper
+   family (DEC-368 allows a page lane to use these before the shell lane
+   lands them; class names/shape match the mock's inline styles 1:1 so a
+   later shell-lane landing is a pure no-op rename). */
+
+.chq-comms-page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.chq-comms-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.chq-comms-head-titles {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.chq-comms-head-actions {
+  display: flex;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Stepper (mock lines 65-75)                                             */
+/* ---------------------------------------------------------------------- */
+
+.chq-steps {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border-top: 1px solid var(--chq-rule, #d3cfc0);
+  border-bottom: 1px solid var(--chq-rule, #d3cfc0);
+}
+
+.chq-step {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 13px 16px;
+  border-left: 1px solid var(--chq-rule, #d3cfc0);
+}
+
+.chq-step:first-child {
+  border-left: none;
+}
+
+.chq-step.is-current {
+  background: var(--chq-surface-sunk, #efebdf);
+}
+
+.chq-step-num {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid var(--chq-border, #bab6a6);
+  color: var(--chq-muted, #565a4b);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.chq-step.is-done .chq-step-num {
+  border: none;
+  background: var(--chq-brand, #4e5c31);
+  color: var(--chq-on-brand, #f7f9f0);
+  font-weight: 700;
+}
+
+.chq-step.is-current .chq-step-num {
+  border: none;
+  background: var(--chq-ink, #1b1d17);
+  color: var(--chq-paper, #f4f1e8);
+  font-weight: 700;
+}
+
+.chq-step-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.chq-step-title {
+  font-family: var(--chq-font-display, 'Familjen Grotesk', sans-serif);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--chq-ink-2, #3f4237);
+}
+
+.chq-step.is-done .chq-step-title,
+.chq-step.is-current .chq-step-title {
+  font-weight: 700;
+  color: var(--chq-ink, #1b1d17);
+}
+
+.chq-step-detail {
+  font-size: 11px;
+  color: var(--chq-muted, #565a4b);
+}
+
+/* ---------------------------------------------------------------------- */
+/* Compose step 3: recipients / attachments / preview                     */
+/* ---------------------------------------------------------------------- */
+
+.chq-comms-review {
+  display: grid;
+  grid-template-columns: 1fr 1.05fr;
+  gap: 26px;
+  align-items: start;
+}
+
+.chq-comms-recipient-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 16px;
+  align-items: baseline;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--chq-hairline, #e1ddce);
+}
+
+.chq-comms-recipient-name {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.chq-comms-recipient-meta {
+  font-size: 12px;
+  color: var(--chq-muted, #565a4b);
+}
+
+.chq-comms-overflow {
+  padding: 13px 0 0;
+  font-size: 13px;
+  color: var(--chq-muted, #565a4b);
+}
+
+.chq-comms-panel {
+  margin-top: 22px;
+  border: 1px solid var(--chq-border, #bab6a6);
+  border-radius: var(--chq-r-card, 5px);
+  background: var(--chq-surface, #faf8f2);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.chq-comms-panel-title {
+  font-family: var(--chq-font-display, 'Familjen Grotesk', sans-serif);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.chq-comms-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--chq-ink-2, #3f4237);
+}
+
+.chq-comms-panel-note {
+  font-size: 12px;
+  color: var(--chq-muted, #565a4b);
+  line-height: 1.5;
+}
+
+.chq-comms-preview-nav {
+  display: flex;
+  gap: 12px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.chq-comms-preview-card {
+  margin-top: 16px;
+  border: 1px solid var(--chq-rule, #d3cfc0);
+  border-radius: var(--chq-r-card, 5px);
+  background: var(--chq-surface, #faf8f2);
+  overflow: hidden;
+}
+
+.chq-comms-preview-field {
+  border-bottom: 1px solid var(--chq-hairline, #e1ddce);
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.chq-comms-preview-field-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--chq-muted, #565a4b);
+}
+
+.chq-comms-preview-field-value {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.chq-comms-preview-subject {
+  font-family: var(--chq-font-display, 'Familjen Grotesk', sans-serif);
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
+.chq-comms-preview-body {
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--chq-ink-2, #3f4237);
+  white-space: pre-wrap;
+  font-family: inherit;
+  margin: 0;
+}
+
+.chq-comms-preview-ics {
+  border-left: 3px solid var(--chq-brand, #4e5c31);
+  padding: 2px 0 2px 13px;
+  font-size: 13px;
+}
+
+.chq-comms-preview-actions {
+  margin-top: 16px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Recent sends / history                                                 */
+/* ---------------------------------------------------------------------- */
+
+.chq-comms-history-row {
+  display: grid;
+  grid-template-columns: 150px 1fr 130px 150px auto;
+  gap: 18px;
+  align-items: baseline;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--chq-hairline, #e1ddce);
+}
+
+.chq-comms-history-when {
+  font-size: 13px;
+  color: var(--chq-muted, #565a4b);
+}
+
+.chq-comms-history-subject {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Templates tab                                                          */
+/* ---------------------------------------------------------------------- */
+
+.chq-comms-templates {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 30px;
+  align-items: start;
+}
+
+.chq-comms-template-name {
+  font-family: var(--chq-font-display, 'Familjen Grotesk', sans-serif);
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: -0.015em;
+}
+
+.chq-comms-template-detail {
+  font-size: 12px;
+  color: var(--chq-muted, #565a4b);
+}
+
+.chq-comms-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+}
+
+.chq-comms-editor-label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--chq-muted, #565a4b);
+  display: block;
+  margin-bottom: 5px;
+}
+
+.chq-comms-merge-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.chq-comms-editor-actions {
+  display: flex;
+  gap: 9px;
+  padding-top: 4px;
+}
+
+@media (max-width: 900px) {
+  .chq-comms-review,
+  .chq-comms-templates {
+    grid-template-columns: 1fr;
+  }
+
+  .chq-steps {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

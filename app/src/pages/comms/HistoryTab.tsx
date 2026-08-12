@@ -29,50 +29,37 @@ export function HistoryTab({ eventId }: { eventId: string }) {
   }, [eventId, q]);
 
   return (
-    <div className="chq-history-tab">
+    <div className="chq-comms-history-tab">
       {error && <div className="chq-error-banner">{error}</div>}
 
-      <input
-        type="search"
-        placeholder="Search subject or recipient..."
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
-        aria-label="Search email history"
-      />
+      <div className="chq-toolbar">
+        <input
+          className="chq-input"
+          type="search"
+          placeholder="Search subject or recipient..."
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          aria-label="Search email history"
+        />
+      </div>
 
-      <table className="chq-history-table">
-        <thead>
-          <tr>
-            <th>Sent</th>
-            <th>To</th>
-            <th>Subject</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {loading && (
-            <tr>
-              <td colSpan={4}>Loading...</td>
-            </tr>
-          )}
-          {!loading && items.length === 0 && (
-            <tr>
-              <td colSpan={4}>No emails sent yet.</td>
-            </tr>
-          )}
-          {!loading &&
-            items.map((row) => (
-              <tr key={row.id}>
-                <td>{formatSentAt(row.sentAt)}</td>
-                <td>{row.toEmail}</td>
-                <td>{row.subject}</td>
-                <td>{row.status}</td>
-              </tr>
-            ))}
-        </tbody>
-      </table>
+      <div className="chq-section-head">
+        <span className="chq-section-label">Recent sends</span>
+      </div>
 
-      <p>{total} total</p>
+      {loading && <p>Loading...</p>}
+      {!loading && items.length === 0 && <p className="chq-empty">No emails sent yet.</p>}
+      {!loading &&
+        items.map((row) => (
+          <div key={row.id} className="chq-comms-history-row">
+            <span className="chq-comms-history-when">{formatSentAt(row.sentAt)}</span>
+            <span className="chq-comms-history-subject">{row.subject}</span>
+            <span>{row.toEmail}</span>
+            <span className="chq-meta">{row.status}</span>
+          </div>
+        ))}
+
+      <p className="chq-summary">{total} total</p>
     </div>
   );
 }

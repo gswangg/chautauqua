@@ -1,45 +1,32 @@
-import { useState } from 'react';
 import { formatIcsChip } from './icsChip';
 import type { RenderedRecipient } from './types';
 
-export function PreviewPane({ items }: { items: RenderedRecipient[] }) {
-  const [index, setIndex] = useState(0);
-
-  if (items.length === 0) {
+// Prev/Next navigation lives on the surrounding "Preview" section header
+// (ComposeWizard.tsx) per the mock's step-3 layout — this component just
+// renders the single current recipient's card.
+export function PreviewPane({ item }: { item: RenderedRecipient | undefined }) {
+  if (!item) {
     return <p>No recipients to preview.</p>;
   }
 
-  const clamped = Math.min(index, items.length - 1);
-  const current = items[clamped];
-  if (!current) return null;
-
   return (
-    <div className="chq-preview-pane">
-      <div className="chq-preview-nav">
-        <button type="button" disabled={clamped <= 0} onClick={() => setIndex((i) => i - 1)}>
-          Previous
-        </button>
-        <span>
-          Recipient {clamped + 1} of {items.length}
+    <div className="chq-comms-preview-card">
+      <div className="chq-comms-preview-field">
+        <span className="chq-comms-preview-field-label">To</span>
+        <span className="chq-comms-preview-field-value">
+          {item.name} &lt;{item.email}&gt;
         </span>
-        <button type="button" disabled={clamped >= items.length - 1} onClick={() => setIndex((i) => i + 1)}>
-          Next
-        </button>
       </div>
-      <div className="chq-preview-card">
-        <div>
-          <strong>To:</strong> {current.name} &lt;{current.email}&gt;
-        </div>
-        <div>
-          <strong>Subject:</strong> {current.subject}
-        </div>
-        {current.ics && (
-          <div className="chq-preview-ics-chip" role="note">
-            Calendar invite: {formatIcsChip(current.ics)}
-          </div>
-        )}
-        <pre className="chq-preview-body">{current.text}</pre>
+      <div className="chq-comms-preview-field">
+        <span className="chq-comms-preview-field-label">Subject</span>
+        <span className="chq-comms-preview-subject">{item.subject}</span>
       </div>
+      <pre className="chq-comms-preview-body">{item.text}</pre>
+      {item.ics && (
+        <div className="chq-comms-preview-field chq-comms-preview-ics" role="note">
+          Calendar invite: {formatIcsChip(item.ics)}
+        </div>
+      )}
     </div>
   );
 }

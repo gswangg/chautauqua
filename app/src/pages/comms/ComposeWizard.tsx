@@ -11,8 +11,18 @@ import type { EmailTemplate, RenderedRecipient } from './types';
 const DECIDED_STATUSES: SubmissionStatus[] = ['accepted', 'declined'];
 
 const PER_PAGE = 50;
+const RECIPIENT_CAP = 100;
+const RECIPIENT_PREVIEW_ROWS = 5;
 
 type Step = 'select' | 'template' | 'preview' | 'sent';
+
+const STEP_ORDER: Step[] = ['select', 'template', 'preview', 'sent'];
+
+interface StepMeta {
+  step: Step;
+  title: string;
+  detail: string;
+}
 
 export function ComposeWizard({ eventId }: { eventId: string }) {
   const [step, setStep] = useState<Step>('select');
@@ -28,12 +38,14 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
 
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [templateId, setTemplateId] = useState<string>('');
+  const [templateName, setTemplateName] = useState<string>('');
   const [subject, setSubject] = useState('');
   const [bodyText, setBodyText] = useState('');
   const [includeFeedback, setIncludeFeedback] = useState(false);
   const [attachIcs, setAttachIcs] = useState(false);
 
   const [preview, setPreview] = useState<RenderedRecipient[]>([]);
+  const [previewIndex, setPreviewIndex] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [capMessage, setCapMessage] = useState<string | null>(null);
@@ -81,11 +93,11 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
     });
   }
 
-  function composeBody(): Record<string, unknown> {
+  function composeBody(overrides?: { includeFeedback?: boolean; attachIcs?: boolean }): Record<string, unknown> {
     const base: Record<string, unknown> = {
       submissionIds: [...selectedIds],
-      includeFeedback,
-      attachIcs,
+      includeFeedback: overrides?.includeFeedback ?? includeFeedback,
+      attachIcs: overrides?.attachIcs ?? attachIcs,
     };
     if (templateId) {
       base.templateId = templateId;
@@ -107,14 +119,15 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
     return ids.length > 0 ? ids : null;
   }
 
-  async function runPreview() {
+  async function runPreview(overrides?: { includeFeedback?: boolean; attachIcs?: boolean }) {
     setBusy(true);
     setError(null);
     setCapMessage(null);
     setIcsUnscheduledIds(null);
     try {
-      const res = await apiPost<{ items: RenderedRecipient[] }>(`/events/${eventId}/compose/preview`, composeBody());
+      const res = await apiPost<{ items: RenderedRecipient[] }>(`/events/${eventId}/compose/preview`, composeBody(overrides));
       setPreview(res.items);
+      setPreviewIndex(0);
       setStep('preview');
     } catch (err) {
       if (err instanceof ApiError && err.code === 'invalid') {
@@ -132,6 +145,21 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
     } finally {
       setBusy(false);
     }
+  }
+
+  // The attachments panel lives on the preview step (mock step 3), so
+  // flipping a toggle there re-renders the merged preview immediately
+  // rather than silently going stale — send-immediately semantics and the
+  // ICS resolution itself are untouched (DEC-051/DEC-366).
+  function handleIncludeFeedbackChange(next: boolean) {
+    setIncludeFeedback(next);
+    void runPreview({ includeFeedback: next });
+  }
+
+  function handleAttachIcsChange(next: boolean) {
+    setAttachIcs(next);
+    setIcsUnscheduledIds(null);
+    void runPreview({ attachIcs: next });
   }
 
   async function send() {
@@ -164,10 +192,13 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
     setPage(1);
     setQ('');
     setTemplateId('');
+    setTemplateName('');
     setSubject('');
     setBodyText('');
+    setIncludeFeedback(false);
     setAttachIcs(false);
     setPreview([]);
+    setPreviewIndex(0);
     setSentCount(null);
     setCapMessage(null);
     setIcsUnscheduledIds(null);
@@ -177,14 +208,53 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
   const rangeStart = total === 0 ? 0 : (page - 1) * PER_PAGE + 1;
   const rangeEnd = total === 0 ? 0 : Math.min(page * PER_PAGE, total);
 
+  const stepMeta: StepMeta[] = [
+    {
+      step: 'select',
+      title: 'Recipients',
+      detail:
+        selectedIds.size === 0 ? 'None selected yet' : `${selectedIds.size} submission${selectedIds.size === 1 ? '' : 's'} selected`,
+    },
+    {
+      step: 'template',
+      title: 'Template',
+      detail: templateId ? templateName || 'Saved template' : subject ? 'Custom message' : 'Not started',
+    },
+    { step: 'preview', title: 'Preview', detail: 'One email per recipient' },
+    { step: 'sent', title: 'Send', detail: 'Logged in History' },
+  ];
+
+  const currentIndex = STEP_ORDER.indexOf(step);
+
+  const noSlotCount = preview.filter((r) => !r.ics).length;
+  const overflowCount = Math.max(0, preview.length - RECIPIENT_PREVIEW_ROWS);
+  const previewClamped = preview.length === 0 ? 0 : Math.min(previewIndex, preview.length - 1);
+  const currentPreview = preview[previewClamped];
+
   return (
     <div className="chq-compose-wizard">
       {error && <div className="chq-error-banner">{error}</div>}
       {capMessage && (
         <div className="chq-error-banner" role="alert">
-          {capMessage} Narrow your submission selection to 100 or fewer recipients and try again.
+          {capMessage} Narrow your submission selection to {RECIPIENT_CAP} or fewer recipients and try again.
         </div>
       )}
+
+      <div className="chq-steps">
+        {stepMeta.map((s, idx) => {
+          const isDone = idx < currentIndex;
+          const isCurrent = idx === currentIndex;
+          return (
+            <div key={s.step} className={`chq-step${isDone ? ' is-done' : ''}${isCurrent ? ' is-current' : ''}`}>
+              <span className="chq-step-num">{isDone ? '✓' : idx + 1}</span>
+              <div className="chq-step-copy">
+                <span className="chq-step-title">{s.title}</span>
+                <span className="chq-step-detail">{s.detail}</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
 
       {step === 'select' && (
         <section>
@@ -271,8 +341,11 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
                 setTemplateId(id);
                 const found = templates.find((t) => t.id === id);
                 if (found) {
+                  setTemplateName(found.name);
                   setSubject(found.subject);
                   setBodyText(found.bodyText);
+                } else {
+                  setTemplateName('');
                 }
               }}
             >
@@ -292,33 +365,12 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
             Body
             <textarea rows={8} value={bodyText} onChange={(e) => setBodyText(e.target.value)} />
           </label>
-          <label>
-            <input type="checkbox" checked={includeFeedback} onChange={(e) => setIncludeFeedback(e.target.checked)} />
-            Include reviewer feedback ({'{feedback}'})
-          </label>
-          <label>
-            <input
-              type="checkbox"
-              checked={attachIcs}
-              onChange={(e) => {
-                setAttachIcs(e.target.checked);
-                setIcsUnscheduledIds(null);
-              }}
-            />
-            Attach calendar invite (.ics)
-          </label>
-          {icsUnscheduledIds && (
-            <div className="chq-error-banner" role="alert">
-              These submissions aren't scheduled yet, so a calendar invite can't be attached: {icsUnscheduledIds.join(', ')}.
-              Schedule them first, or uncheck &quot;Attach calendar invite&quot;.
-            </div>
-          )}
 
           <div>
             <button type="button" onClick={() => setStep('select')}>
               Back
             </button>
-            <button type="button" disabled={busy || (!templateId && (!subject || !bodyText))} onClick={runPreview}>
+            <button type="button" disabled={busy || (!templateId && (!subject || !bodyText))} onClick={() => runPreview()}>
               Next: preview
             </button>
           </div>
@@ -326,23 +378,90 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
       )}
 
       {step === 'preview' && (
-        <section>
-          <h2>3. Preview</h2>
-          {icsUnscheduledIds && (
-            <div className="chq-error-banner" role="alert">
-              Send blocked: "Attach calendar invite" is checked, but these submissions aren't scheduled yet:{' '}
-              {icsUnscheduledIds.join(', ')}. Schedule them first, or go back and uncheck the toggle.
+        <section className="chq-comms-review">
+          <section>
+            <div className="chq-section-head">
+              <span className="chq-section-label">Recipients &middot; {preview.length}</span>
+              <button type="button" className="chq-link-button" onClick={() => setStep('select')}>
+                Change selection
+              </button>
             </div>
-          )}
-          <PreviewPane items={preview} />
-          <div>
-            <button type="button" onClick={() => setStep('template')}>
-              Back
-            </button>
-            <button type="button" disabled={busy} onClick={send}>
-              Send to {preview.length} recipient{preview.length === 1 ? '' : 's'}
-            </button>
-          </div>
+            {preview.slice(0, RECIPIENT_PREVIEW_ROWS).map((r) => (
+              <div key={r.contactId + r.submissionId} className="chq-comms-recipient-row">
+                <div>
+                  <div className="chq-comms-recipient-name">{r.name}</div>
+                  <div className="chq-comms-recipient-meta">{r.email}</div>
+                </div>
+                {attachIcs && <span className="chq-flag">{r.ics ? 'Scheduled' : 'No slot yet'}</span>}
+              </div>
+            ))}
+            {preview.length === 0 && <p>No recipients to preview.</p>}
+            {overflowCount > 0 && (
+              <div className="chq-comms-overflow">
+                {overflowCount} more &middot; {preview.length} is under the {RECIPIENT_CAP}-recipient cap
+              </div>
+            )}
+
+            <div className="chq-comms-panel">
+              <span className="chq-comms-panel-title">Attachments and merge fields</span>
+              <label className="chq-comms-toggle">
+                <input
+                  type="checkbox"
+                  className="chq-check"
+                  checked={includeFeedback}
+                  onChange={(e) => handleIncludeFeedbackChange(e.target.checked)}
+                />
+                Include reviewer feedback
+              </label>
+              <label className="chq-comms-toggle">
+                <input
+                  type="checkbox"
+                  className="chq-check"
+                  checked={attachIcs}
+                  onChange={(e) => handleAttachIcsChange(e.target.checked)}
+                />
+                Attach calendar invite
+              </label>
+              {attachIcs && preview.length > 0 && (
+                <span className="chq-comms-panel-note">
+                  {noSlotCount} of {preview.length} have no slot yet &mdash; those get no invite
+                </span>
+              )}
+              {icsUnscheduledIds && (
+                <div className="chq-error-banner" role="alert">
+                  Send blocked: these submissions aren&apos;t scheduled yet: {icsUnscheduledIds.join(', ')}. Schedule
+                  them first, or uncheck &quot;Attach calendar invite&quot;.
+                </div>
+              )}
+            </div>
+          </section>
+
+          <section>
+            <div className="chq-section-head">
+              <span className="chq-section-label">Preview{currentPreview ? ` · ${currentPreview.name}` : ''}</span>
+              <div className="chq-comms-preview-nav">
+                <button type="button" disabled={previewClamped <= 0} onClick={() => setPreviewIndex((i) => i - 1)}>
+                  &lsaquo; Prev
+                </button>
+                <button
+                  type="button"
+                  disabled={previewClamped >= preview.length - 1}
+                  onClick={() => setPreviewIndex((i) => i + 1)}
+                >
+                  Next &rsaquo;
+                </button>
+              </div>
+            </div>
+            <PreviewPane item={currentPreview} />
+            <div className="chq-comms-preview-actions">
+              <button type="button" className="chq-btn chq-btn-primary" disabled={busy} onClick={send}>
+                Send {preview.length} email{preview.length === 1 ? '' : 's'}
+              </button>
+              <button type="button" className="chq-btn chq-btn-secondary" onClick={() => setStep('template')}>
+                Back to the template
+              </button>
+            </div>
+          </section>
         </section>
       )}
 
