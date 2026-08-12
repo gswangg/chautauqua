@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { apiList, apiPostBlob, ApiError } from '../../lib/api';
-import { FILE_KINDS, DELIVERABLE_LABELS, type FileKind, type EventFileChainItem } from './types';
+import { FILE_KINDS, DELIVERABLE_LABELS, type FileKind, type EventFileChainItem, type EventHeadshotFileItem } from './types';
 import { formatDateTime } from '../../lib/dates';
 import { formatBytes } from './format';
 
@@ -19,7 +19,10 @@ const MAX_ARCHIVE_FILES = 50;
  * and server-filtered (kind + search), with multi-select bulk ZIP download.
  * Row click drills into the same DeliverableDetail used by the worklist, so
  * the version list + comment thread stay one implementation. */
+type FilesTab = 'deliverables' | 'headshots';
+
 export function FilesLibrary({ eventId, onSelectSubmission }: FilesLibraryProps) {
+  const [tab, setTab] = useState<FilesTab>('deliverables');
   const [items, setItems] = useState<EventFileChainItem[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -55,6 +58,33 @@ export function FilesLibrary({ eventId, onSelectSubmission }: FilesLibraryProps)
   useEffect(() => {
     load();
   }, [load]);
+
+  // Headshots tab: a separate, separately-paginated query against the new
+  // endpoint (DEC-669) — never unioned into the deliverable rows above.
+  const [headshotItems, setHeadshotItems] = useState<EventHeadshotFileItem[]>([]);
+  const [headshotTotal, setHeadshotTotal] = useState(0);
+  const [headshotPage, setHeadshotPage] = useState(1);
+  const [headshotLoading, setHeadshotLoading] = useState(false);
+  const [headshotError, setHeadshotError] = useState<string | null>(null);
+
+  const loadHeadshots = useCallback(() => {
+    setHeadshotLoading(true);
+    setHeadshotError(null);
+    const params = new URLSearchParams();
+    params.set('page', String(headshotPage));
+    params.set('perPage', String(PER_PAGE));
+    apiList<EventHeadshotFileItem>(`/events/${eventId}/headshots?${params.toString()}`)
+      .then((res) => {
+        setHeadshotItems(res.items);
+        setHeadshotTotal(res.total);
+      })
+      .catch((err) => setHeadshotError(err instanceof ApiError ? err.message : 'Failed to load headshots'))
+      .finally(() => setHeadshotLoading(false));
+  }, [eventId, headshotPage]);
+
+  useEffect(() => {
+    if (tab === 'headshots') loadHeadshots();
+  }, [tab, loadHeadshots]);
 
   function toggle(rootFileId: string) {
     setSelected((prev) => {
@@ -109,6 +139,95 @@ export function FilesLibrary({ eventId, onSelectSubmission }: FilesLibraryProps)
 
   return (
     <div className="chq-files-library chq-content-files-library" data-testid="files-library">
+      <div className="chq-chipstrip" role="tablist" aria-label="Files view">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === 'deliverables'}
+          className={tab === 'deliverables' ? 'chq-pill is-active' : 'chq-pill'}
+          onClick={() => setTab('deliverables')}
+        >
+          Deliverables
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === 'headshots'}
+          className={tab === 'headshots' ? 'chq-pill is-active' : 'chq-pill'}
+          onClick={() => setTab('headshots')}
+        >
+          Headshots
+        </button>
+      </div>
+
+      {tab === 'headshots' ? (
+        <div className="chq-content-headshots-tab" data-testid="headshots-tab">
+          {headshotError && (
+            <div className="chq-error" role="alert">
+              {headshotError}
+            </div>
+          )}
+          <table className="chq-table chq-content-table">
+            <thead>
+              <tr>
+                <th>Filename</th>
+                <th>Speaker</th>
+                <th>Company</th>
+                <th>Size</th>
+              </tr>
+            </thead>
+            <tbody>
+              {headshotLoading && (
+                <tr>
+                  <td colSpan={4}>Loading...</td>
+                </tr>
+              )}
+              {!headshotLoading && headshotItems.length === 0 && (
+                <tr>
+                  <td colSpan={4} className="chq-empty">
+                    No speaker headshots yet.
+                  </td>
+                </tr>
+              )}
+              {!headshotLoading &&
+                headshotItems.map((item) => (
+                  <tr key={item.fileId} className="chq-content-row">
+                    <td className="chq-content-row-title">
+                      <a href={`/headshots/${item.fileId}`} target="_blank" rel="noreferrer">
+                        {item.filename}
+                      </a>
+                    </td>
+                    <td>{item.contactName}</td>
+                    <td>{item.company ?? ''}</td>
+                    <td className="chq-meta">{formatBytes(item.sizeBytes)}</td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+          <div className="chq-files-library-pager chq-content-files-pager">
+            <button
+              type="button"
+              className="chq-btn chq-btn-secondary"
+              disabled={headshotPage <= 1 || headshotLoading}
+              onClick={() => setHeadshotPage((p) => p - 1)}
+            >
+              Previous
+            </button>
+            <span>
+              Page {headshotPage} &middot; {headshotTotal} total
+            </span>
+            <button
+              type="button"
+              className="chq-btn chq-btn-secondary"
+              disabled={headshotPage * PER_PAGE >= headshotTotal || headshotLoading}
+              onClick={() => setHeadshotPage((p) => p + 1)}
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      ) : (
+        <>
       {error && (
         <div className="chq-error" role="alert">
           {error}
@@ -280,6 +399,8 @@ export function FilesLibrary({ eventId, onSelectSubmission }: FilesLibraryProps)
           Next
         </button>
       </div>
+        </>
+      )}
     </div>
   );
 }

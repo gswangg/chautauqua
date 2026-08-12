@@ -71,6 +71,19 @@ export interface EventFileChainItem {
   uploaderName: string | null;
 }
 
+// GET /api/v1/events/:eventId/headshots item (DEC-669: headshots reach the
+// Files area as a SEPARATE, separately-paginated tab).
+export interface EventHeadshotFileItem {
+  fileId: string;
+  filename: string;
+  sizeBytes: number;
+  contentType: string;
+  createdAt: number;
+  contactId: string;
+  contactName: string;
+  company: string | null;
+}
+
 // GET/POST /api/v1/files/:fileId/comments item (DEC-020: author name + role).
 export interface FileComment {
   id: string;

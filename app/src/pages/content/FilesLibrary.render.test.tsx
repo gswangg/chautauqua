@@ -345,4 +345,50 @@ describe('FilesLibrary render smoke', () => {
       );
     });
   });
+
+  it('DEC-669: switches to a separately-paginated Headshots tab that queries the headshots endpoint', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {
+      throw new Error('console.error called during render');
+    });
+
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/files`]: listEnvelope([]),
+      [`GET /api/v1/events/${EVENT_ID}/headshots`]: listEnvelope([
+        {
+          fileId: 'file-hs-1',
+          filename: 'priya.jpg',
+          sizeBytes: 234567,
+          contentType: 'image/jpeg',
+          createdAt: 1700000000000,
+          contactId: 'contact-1',
+          contactName: 'Priya Raman',
+          company: 'Acme Corp',
+        },
+      ]),
+    });
+
+    render(<FilesLibrary eventId={EVENT_ID} onSelectSubmission={() => {}} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('No deliverable files yet.')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Headshots' }));
+
+    expect(await screen.findByText('priya.jpg')).toBeInTheDocument();
+    const row = screen.getByText('priya.jpg').closest('tr');
+    if (!row) throw new Error('headshot row not found');
+    expect(row).toHaveTextContent('Priya Raman');
+    expect(row).toHaveTextContent('Acme Corp');
+    expect(row).toHaveTextContent('229.1 KB');
+
+    const link = screen.getByRole('link', { name: 'priya.jpg' });
+    expect(link).toHaveAttribute('href', '/headshots/file-hs-1');
+
+    // Bulk-download / select-all controls stay on the deliverables tab only.
+    expect(screen.queryByLabelText('Select all files on this page')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Download ZIP/)).not.toBeInTheDocument();
+
+    consoleError.mockRestore();
+  });
 });
