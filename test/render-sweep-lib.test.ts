@@ -14,6 +14,7 @@ import {
   evaluateFontFloor,
   evaluateMobileRoute,
   evaluateRoute,
+  filterKnownClipExceptions,
   fontFloorErrorResult,
   formatFontFloorSummary,
   formatFontFloorTable,
@@ -27,7 +28,7 @@ import {
   type FontFloorRouteEntry,
   type MobileRouteEntry,
 } from "../scripts/render-sweep-lib";
-import { ADMIN_MOBILE_ROUTE_MANIFEST, MOBILE_ROUTE_MANIFEST } from "../scripts/render-sweep";
+import { ADMIN_MOBILE_ROUTE_MANIFEST, KNOWN_CLIP_EXCEPTIONS, MOBILE_ROUTE_MANIFEST } from "../scripts/render-sweep";
 import { ROUTE_MANIFEST } from "../app/src/routeManifest";
 import type { RouteManifestEntry } from "../app/src/routeManifest";
 
@@ -502,10 +503,11 @@ describe("PAGE_EVALUATE_KEEPNAMES_SHIM (DEC-411)", () => {
 
     // No page.evaluate call site anywhere in the file is reachable without
     // going through one of the two functions checked above, or through the
-    // measureFontFloor() / measureContrast() helpers both functions call
-    // after installing the shim (DEC-421/DEC-426) — the module has no
-    // page.evaluate call sites outside visitRoute, visitMobileRoute,
-    // measureFontFloor, and measureContrast.
+    // measureFontFloor() / measureContrast() / measureClipOffenders()
+    // helpers both functions call after installing the shim
+    // (DEC-421/DEC-426/DEC-620) — the module has no page.evaluate call sites
+    // outside visitRoute, visitMobileRoute, measureFontFloor,
+    // measureContrast, and measureClipOffenders.
     const evaluateCallCount = (source.match(/page\.evaluate\(/g) ?? []).length;
     const evaluateCallsInVisitRouteBody = (visitRouteBody.match(/page\.evaluate\(/g) ?? []).length;
     const evaluateCallsInMobileBody = (visitMobileRouteBody.match(/page\.evaluate\(/g) ?? []).length;
@@ -519,11 +521,17 @@ describe("PAGE_EVALUATE_KEEPNAMES_SHIM (DEC-411)", () => {
     const measureContrastEnd = source.indexOf("\n}\n", measureContrastStart) + 3;
     const measureContrastBody = source.slice(measureContrastStart, measureContrastEnd);
     const evaluateCallsInMeasureContrast = (measureContrastBody.match(/page\.evaluate\(/g) ?? []).length;
+    const measureClipOffendersStart = source.indexOf("async function measureClipOffenders(");
+    expect(measureClipOffendersStart).toBeGreaterThan(-1);
+    const measureClipOffendersEnd = source.indexOf("\n}\n", measureClipOffendersStart) + 3;
+    const measureClipOffendersBody = source.slice(measureClipOffendersStart, measureClipOffendersEnd);
+    const evaluateCallsInMeasureClipOffenders = (measureClipOffendersBody.match(/page\.evaluate\(/g) ?? []).length;
     expect(evaluateCallCount).toBe(
       evaluateCallsInVisitRouteBody +
         evaluateCallsInMobileBody +
         evaluateCallsInMeasureFontFloor +
-        evaluateCallsInMeasureContrast,
+        evaluateCallsInMeasureContrast +
+        evaluateCallsInMeasureClipOffenders,
     );
   });
 });
@@ -661,5 +669,126 @@ describe("FONT_FLOOR_BLOCKING (DEC-421/DEC-431)", () => {
   it("is gated through the same allFontFloorPassed && FONT_FLOOR_BLOCKING expression now that it's true", () => {
     const source = readFileSync(new URL("../scripts/render-sweep.ts", import.meta.url), "utf-8");
     expect(source).toMatch(/allFontFloorPassed\(fontFloorResults\)\s*&&\s*FONT_FLOOR_BLOCKING/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// DEC-620 vertical-clip pass: agenda cards bleeding past their own boxes
+// unseen is scrollHeight > clientHeight with overflow-y visible|hidden; a
+// deliberate scroll container (overflow-y auto|scroll) is not a bug.
+// ---------------------------------------------------------------------------
+
+describe("evaluateRoute clipOffenders (DEC-620)", () => {
+  it("a scroll container is not an offender — passes with an empty clipOffenders list", () => {
+    const result = evaluateRoute(ENTRY, {
+      status: 200,
+      bodyText: "Overview",
+      consoleErrors: [],
+      pageErrors: [],
+      clipOffenders: [],
+    });
+    expect(result.ok).toBe(true);
+    expect(result.clipOffenders).toEqual([]);
+    expect(result.failureReason).toBeUndefined();
+  });
+
+  it("a clipped fixed-height box is an offender — fails with a reason in the overflow-reporting shape", () => {
+    const result = evaluateRoute(ENTRY, {
+      status: 200,
+      bodyText: "Overview",
+      consoleErrors: [],
+      pageErrors: [],
+      clipOffenders: ["div.chq-agenda-card clip=41px (scrollHeight 120 > clientHeight 79)"],
+    });
+    expect(result.ok).toBe(false);
+    expect(result.failureReason).toMatch(/1 vertical clip offender\(s\)/);
+    expect(result.failureReason).toContain(
+      "div.chq-agenda-card clip=41px (scrollHeight 120 > clientHeight 79)",
+    );
+  });
+
+  it("defaults clipOffenders to an empty list when the caller omits it", () => {
+    const result = evaluateRoute(ENTRY, { status: 200, bodyText: "Overview", consoleErrors: [], pageErrors: [] });
+    expect(result.ok).toBe(true);
+    expect(result.clipOffenders).toEqual([]);
+  });
+});
+
+describe("evaluateMobileRoute clipOffenders (DEC-620)", () => {
+  const MOBILE_ENTRY: MobileRouteEntry = { path: "/e/devflow-conf-2027/agenda", role: "public" };
+
+  it("a scroll container is not an offender — passes", () => {
+    const result = evaluateMobileRoute(MOBILE_ENTRY, {
+      ...EMPTY_MOBILE_OBSERVATION,
+      status: 200,
+      scrollWidth: 390,
+      viewportWidth: 390,
+      minControlHeight: 44,
+      clipOffenders: [],
+    });
+    expect(result.ok).toBe(true);
+    expect(result.failureReason).toBeUndefined();
+  });
+
+  it("a clipped fixed-height box is an offender — fails", () => {
+    const result = evaluateMobileRoute(MOBILE_ENTRY, {
+      ...EMPTY_MOBILE_OBSERVATION,
+      status: 200,
+      scrollWidth: 390,
+      viewportWidth: 390,
+      minControlHeight: 44,
+      clipOffenders: ["div.chq-agenda-card clip=41px (scrollHeight 120 > clientHeight 79)"],
+    });
+    expect(result.ok).toBe(false);
+    expect(result.failureReason).toMatch(/1 vertical clip offender\(s\)/);
+    expect(result.failureReason).toContain(
+      "div.chq-agenda-card clip=41px (scrollHeight 120 > clientHeight 79)",
+    );
+  });
+});
+
+describe("filterKnownClipExceptions (DEC-620)", () => {
+  it("passes an offender through unchanged when no exception matches", () => {
+    const offenders = ["div.chq-agenda-card clip=41px (scrollHeight 120 > clientHeight 79)"];
+    expect(filterKnownClipExceptions("/e/devflow-conf-2027/agenda", offenders, {})).toEqual(offenders);
+  });
+
+  it("drops an offender whose route+selector key is present in the exceptions map", () => {
+    const offenders = ["div.chq-agenda-card clip=41px (scrollHeight 120 > clientHeight 79)"];
+    const exceptions = {
+      "/e/devflow-conf-2027/agenda::div.chq-agenda-card": "owned by task-w5-x, agenda route in flight",
+    };
+    expect(filterKnownClipExceptions("/e/devflow-conf-2027/agenda", offenders, exceptions)).toEqual([]);
+  });
+
+  it("only drops the matching selector, leaving other offenders on the same route", () => {
+    const offenders = [
+      "div.chq-agenda-card clip=41px (scrollHeight 120 > clientHeight 79)",
+      "div.chq-other clip=10px (scrollHeight 50 > clientHeight 40)",
+    ];
+    const exceptions = {
+      "/e/devflow-conf-2027/agenda::div.chq-agenda-card": "owned by task-w5-x, agenda route in flight",
+    };
+    expect(filterKnownClipExceptions("/e/devflow-conf-2027/agenda", offenders, exceptions)).toEqual([
+      "div.chq-other clip=10px (scrollHeight 50 > clientHeight 40)",
+    ]);
+  });
+
+  it("an entry present in KNOWN_CLIP_EXCEPTIONS does not fail its route end-to-end", () => {
+    // Exercises the real exported KNOWN_CLIP_EXCEPTIONS map from
+    // scripts/render-sweep.ts together with evaluateRoute — a fabricated
+    // offender for a route+selector we add to a local copy of the map (since
+    // the real map may be empty) must not fail the route once filtered.
+    const path = "/e/devflow-conf-2027/agenda";
+    const selector = "div.chq-known-offender";
+    const localExceptions = { ...KNOWN_CLIP_EXCEPTIONS, [`${path}::${selector}`]: "test fixture exception" };
+    const raw = [`${selector} clip=41px (scrollHeight 120 > clientHeight 79)`];
+    const filtered = filterKnownClipExceptions(path, raw, localExceptions);
+    const result = evaluateRoute(
+      { path, role: "public" },
+      { status: 200, bodyText: "Agenda", consoleErrors: [], pageErrors: [], clipOffenders: filtered },
+    );
+    expect(filtered).toEqual([]);
+    expect(result.ok).toBe(true);
   });
 });

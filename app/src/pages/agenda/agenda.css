@@ -132,7 +132,13 @@
   align-self: stretch;
   justify-self: start;
   height: 100%;
-  overflow: hidden;
+  /* DEC-620: a short-duration card's content (title + track/speaker meta)
+     can need more vertical room than its time-grid row provides — scroll
+     inside the card rather than silently clipping it invisible. Only the
+     vertical axis scrolls (DEC-404/DEC-405 bans clipping the horizontal
+     axis everywhere); horizontal content wraps instead (see the card's own
+     text-overflow/wrap rules below). */
+  overflow-y: auto;
   min-height: 0;
 }
 
@@ -150,7 +156,11 @@
   flex-direction: column;
   gap: 2px;
   cursor: grab;
-  overflow: hidden;
+  /* DEC-620: same rationale as .chq-day-grid-placed-card above — scroll
+     rather than silently clip when a card's own content outgrows its
+     time-grid-driven height. The horizontal axis stays unclipped
+     (DEC-404/DEC-405). */
+  overflow-y: auto;
   min-height: 0;
   width: 100%;
   text-align: left;
@@ -199,6 +209,10 @@
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  /* DEC-620: a flex item whose own overflow != visible defaults to
+     min-height:0 in the flex sizing algorithm, letting a tight card squeeze
+     the title to 0px instead of its clamped 3-line content height. */
+  flex-shrink: 0;
 }
 
 .chq-session-card-speakers,
@@ -208,6 +222,11 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  /* DEC-620: same flex-item-with-overflow-hidden collapse as
+     .chq-session-card-title above — without this these single-line
+     ellipsis rows could be squeezed to 0px instead of their one-line
+     content height. */
+  flex-shrink: 0;
 }
 
 /* Conflicted card: inverts to ink/on-ink — no red chip, no track accent
