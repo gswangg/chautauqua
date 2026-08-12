@@ -6,6 +6,7 @@ import { FieldModal, type FieldModalInput } from './FieldModal';
 import { FormSettings, type FormSettingsPatch } from './FormSettings';
 import { guardEditableField, moveId } from './logic';
 import type { CfpForm, EventTrack, FormField } from './types';
+import './forms.css';
 
 interface EventSummary {
   id: string;
@@ -143,24 +144,34 @@ export function FormsPage() {
 
   return (
     <div className="chq-page chq-forms-page">
-      <h1>Forms</h1>
+      <div className="chq-forms-content">
+        <h1>CFP form</h1>
 
-      <FormSettings form={form} tracks={tracks} eventSlug={event.slug} onSave={handleSaveSettings} />
+        <section className="chq-forms-section">
+          <h2 className="chq-forms-section-title">Settings</h2>
+          <div className="chq-forms-section-body">
+            <FormSettings form={form} tracks={tracks} eventSlug={event.slug} onSave={handleSaveSettings} />
+          </div>
+        </section>
 
-      <div className="chq-forms-field-list-header">
-        <h2>Fields</h2>
-        <button type="button" onClick={() => setModal({ mode: 'create' })} disabled={busy}>
-          Add field
-        </button>
+        <section className="chq-forms-section">
+          <div className="chq-forms-field-list-header chq-forms-section-title">
+            <h2>Fields</h2>
+            <button type="button" onClick={() => setModal({ mode: 'create' })} disabled={busy}>
+              Add a question
+            </button>
+          </div>
+          <div className="chq-forms-section-body">
+            <FieldList
+              fields={form.fields}
+              busy={busy}
+              onEdit={(field) => setModal({ mode: 'edit', field })}
+              onDelete={handleDeleteField}
+              onMove={handleMoveField}
+            />
+          </div>
+        </section>
       </div>
-
-      <FieldList
-        fields={form.fields}
-        busy={busy}
-        onEdit={(field) => setModal({ mode: 'edit', field })}
-        onDelete={handleDeleteField}
-        onMove={handleMoveField}
-      />
 
       {modal?.mode === 'create' && (
         <FieldModal allFields={form.fields} onCancel={() => setModal(null)} onSubmit={handleCreateField} />

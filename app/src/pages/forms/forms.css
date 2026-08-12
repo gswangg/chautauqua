@@ -1,0 +1,107 @@
+/* CFP form builder (DEC-033, redesign DEC-366..368). Page-lane styling
+   only — never redefines a shared .chq-* class (DEC-368). Colour values
+   fall back to the DEC-367 tokens so this renders correctly whether or
+   not the shell lane has landed the shared :root custom properties yet. */
+
+.chq-forms-page {
+  font-family: var(--chq-font-body, 'Figtree', 'Helvetica Neue', Arial, sans-serif);
+  color: var(--chq-ink, #1b1d17);
+}
+
+.chq-forms-content {
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+  /* Required measure for form-shaped content: 660-760px. */
+  max-width: 720px;
+}
+
+.chq-forms-content h1 {
+  margin: 0.25rem 0 0;
+  font-family: var(--chq-font-display, 'Familjen Grotesk', 'Figtree', sans-serif);
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+/* Numbered sections with a 2px ink rule under the section title. */
+.chq-forms-content {
+  counter-reset: chq-forms-section;
+}
+
+.chq-forms-section {
+  counter-increment: chq-forms-section;
+}
+
+.chq-forms-section-title {
+  margin: 0;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--chq-ink, #1b1d17);
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  font-family: var(--chq-font-display, 'Familjen Grotesk', 'Figtree', sans-serif);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.chq-forms-section-title::before {
+  content: counter(chq-forms-section, decimal-leading-zero) ' \2014 ';
+  color: var(--chq-muted, #565a4b);
+}
+
+.chq-forms-section-title h2 {
+  margin: 0;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+}
+
+.chq-forms-section-body {
+  padding-top: 14px;
+}
+
+.chq-forms-field-list-header {
+  border: none;
+}
+
+/* Field kind, required marker, and conditional rule read as text, not
+   colour, per DEC-367. */
+.chq-forms-field-required,
+.chq-forms-field-optional {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.chq-forms-field-optional {
+  font-weight: 600;
+  color: var(--chq-muted, #565a4b);
+}
+
+.chq-forms-field-locked-tag {
+  display: inline-block;
+  margin-right: 6px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--chq-muted, #565a4b);
+}
+
+/* Drag affordance glyph (DEC-367: no icons/images/SVG). Purely decorative
+   -- real reordering stays on the accessible move-up/move-down buttons. */
+.chq-forms-field-drag {
+  color: var(--chq-border, #8e8a7a);
+  font-size: 14px;
+  width: 20px;
+}
+
+.chq-forms-field-modal {
+  width: 100%;
+  max-width: 520px;
+}

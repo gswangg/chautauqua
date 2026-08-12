@@ -61,22 +61,26 @@ describe('FormsPage render smoke', () => {
 
     render(<FormsPage />);
 
-    expect(screen.getByRole('heading', { name: 'Forms' })).toBeInTheDocument();
-
     await waitFor(() => {
       expect(screen.getByText('Co-speaker email')).toBeInTheDocument();
     });
 
+    expect(screen.getByRole('heading', { name: 'CFP form' })).toBeInTheDocument();
+
     // FieldList: locked marker on the built-in, condition summary on the rule field.
     expect(screen.getByLabelText('Locked built-in field')).toBeInTheDocument();
     expect(screen.getByText('if f1 eq "Panel"')).toBeInTheDocument();
+
+    // Required/optional read as text (type), not colour (DEC-367).
+    expect(screen.getAllByText('Required').length).toBeGreaterThan(0);
+    expect(screen.getByText('Optional')).toBeInTheDocument();
 
     // FormSettings strip.
     expect(screen.getByDisplayValue('DevCon 2026 CFP')).toBeInTheDocument();
     expect(screen.getByDisplayValue('Submit your talk!')).toBeInTheDocument();
 
     // FieldModal (create).
-    screen.getByRole('button', { name: 'Add field' }).click();
+    screen.getByRole('button', { name: 'Add a question' }).click();
     const dialog = await screen.findByRole('dialog', { name: 'New field' });
     expect(dialog).toBeInTheDocument();
   });

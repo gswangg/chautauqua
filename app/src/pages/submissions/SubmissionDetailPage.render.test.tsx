@@ -70,6 +70,10 @@ describe('SubmissionDetailPage render smoke: inline edit + content-status contro
       expect(screen.getByText('Original description')).toBeInTheDocument();
     });
 
+    // Decision panel states plainly that deciding never emails (house
+    // invariant): notification is a separate, explicit action from Comms.
+    expect(screen.getByText('Deciding never sends email. Notify the speaker from Comms.')).toBeInTheDocument();
+
     fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
     const titleInput = screen.getByLabelText('Title');
     fireEvent.change(titleInput, { target: { value: 'Updated Title' } });
