@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { apiDelete, apiGet, apiList, apiPatch, apiPost, ApiError } from '../../lib/api';
+import { formatDateOnly } from '../../lib/dates';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { FieldList } from './FieldList';
 import { FieldModal, type FieldModalInput } from './FieldModal';
-import { FormSettings, type FormSettingsPatch } from './FormSettings';
+import { FormSettings, type FormSettingsHandle, type FormSettingsPatch } from './FormSettings';
 import { guardEditableField, moveId } from './logic';
 import type { CfpForm, EventTrack, FormField } from './types';
 import './forms.css';
@@ -21,9 +23,13 @@ type ModalState = { mode: 'create' } | { mode: 'edit'; field: FormField } | null
 // "Delete anyway" retry that cascades.
 type DeleteConfirmState = { field: FormField; conflictMessage?: string } | null;
 
-/** J1 form builder SPA (DEC-033): loads the event's default CFP form and
- * renders its settings strip + ordered field list. Zero new server code —
- * every call goes through the landed w2-c forms API via api.ts. */
+type ReceivedState = { total: number } | 'loading' | 'error';
+
+/** J1 form builder SPA (DEC-033, DEC-650 mock rebuild): loads the event's
+ * default CFP form and renders the header band, the Opens/Closes/Received
+ * strip, the field list (now the page's primary content), and the
+ * settings panel below it. Zero new server code — every call goes through
+ * the landed w2-c forms API via api.ts. */
 export function FormsPage() {
   const { eventId, loading: eventLoading, error: eventError } = useCurrentEvent();
 
@@ -35,6 +41,9 @@ export function FormsPage() {
   const [busy, setBusy] = useState(false);
   const [modal, setModal] = useState<ModalState>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<DeleteConfirmState>(null);
+  const [received, setReceived] = useState<ReceivedState>('loading');
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const settingsRef = useRef<FormSettingsHandle>(null);
 
   const load = useCallback(() => {
     if (!eventId) return;
@@ -58,10 +67,40 @@ export function FormsPage() {
     load();
   }, [load]);
 
+  // Received count: a real read of the submissions list total, never a
+  // fabricated/derived number. '—' while loading or on failure.
+  useEffect(() => {
+    if (!eventId) return;
+    let cancelled = false;
+    setReceived('loading');
+    apiList<unknown>(`/events/${eventId}/submissions?perPage=1`)
+      .then((result) => {
+        if (!cancelled) setReceived({ total: result.total });
+      })
+      .catch(() => {
+        if (!cancelled) setReceived('error');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [eventId]);
+
   async function handleSaveSettings(patch: FormSettingsPatch) {
     if (!form) return;
     const updated = await apiPatch<CfpForm>(`/forms/${form.id}`, patch);
     setForm(updated);
+  }
+
+  async function handleHeaderSave() {
+    setSaveError(null);
+    setBusy(true);
+    try {
+      await settingsRef.current?.save();
+    } catch (err) {
+      setSaveError(err instanceof ApiError ? err.message : 'Failed to save the form');
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function handleCreateField(input: FieldModalInput) {
@@ -160,19 +199,46 @@ export function FormsPage() {
     );
   }
 
+  const receivedText = received === 'loading' || received === 'error' ? '—' : `${received.total} submissions`;
+
   return (
     <div className="chq-page chq-forms-page">
+      <header className="chq-forms-header">
+        <div className="chq-forms-header-titles">
+          <Link to="/submissions" className="chq-forms-back">
+            &lsaquo; Submissions
+          </Link>
+          <h1>CFP form</h1>
+        </div>
+        <div className="chq-forms-header-actions">
+          <a href={`/submit/${event.slug}`} target="_blank" rel="noreferrer" className="chq-btn chq-btn-secondary">
+            Preview
+          </a>
+          <button type="button" className="chq-btn chq-btn-primary" disabled={busy} onClick={() => void handleHeaderSave()}>
+            Save
+          </button>
+        </div>
+      </header>
+
       <div className="chq-forms-content">
-        <h1>CFP form</h1>
+        {saveError && <div className="chq-error-banner">{saveError}</div>}
 
-        <section className="chq-forms-section">
-          <h2 className="chq-forms-section-title">Settings</h2>
-          <div className="chq-forms-section-body">
-            <FormSettings form={form} tracks={tracks} eventSlug={event.slug} onSave={handleSaveSettings} />
+        <div className="chq-forms-strip">
+          <div className="chq-forms-strip-cell">
+            <span className="chq-forms-strip-label">Opens</span>
+            <span className="chq-forms-strip-value">{formatDateOnly(form.openDate)}</span>
           </div>
-        </section>
+          <div className="chq-forms-strip-cell">
+            <span className="chq-forms-strip-label">Closes</span>
+            <span className="chq-forms-strip-value">{formatDateOnly(form.closeDate)}</span>
+          </div>
+          <div className="chq-forms-strip-cell">
+            <span className="chq-forms-strip-label">Received</span>
+            <span className="chq-forms-strip-value">{receivedText}</span>
+          </div>
+        </div>
 
-        <section className="chq-forms-section">
+        <section className="chq-forms-section chq-forms-fields-section">
           <div className="chq-forms-field-list-header chq-forms-section-title">
             <h2>Fields</h2>
             <button
@@ -194,6 +260,33 @@ export function FormsPage() {
             />
           </div>
         </section>
+
+        <section className="chq-forms-section">
+          <div className="chq-forms-section-title">
+            <h2>Settings</h2>
+          </div>
+          <div className="chq-forms-section-body">
+            <FormSettings ref={settingsRef} form={form} tracks={tracks} eventSlug={event.slug} onSave={handleSaveSettings} />
+          </div>
+        </section>
+      </div>
+
+      {/* Phone-only fixed footer (DEC-650 mock, 390px frame): a second,
+          CSS-toggled markup rather than a text swap -- the phone footer's
+          primary action reads "Save the form", not "Save" (display:none
+          at desktop; forms.css switches the pair at 700px). */}
+      <div className="chq-forms-phone-footer">
+        <button
+          type="button"
+          className="chq-btn chq-btn-primary"
+          disabled={busy}
+          onClick={() => void handleHeaderSave()}
+        >
+          Save the form
+        </button>
+        <a href={`/submit/${event.slug}`} target="_blank" rel="noreferrer" className="chq-btn chq-btn-secondary">
+          Preview
+        </a>
       </div>
 
       {modal?.mode === 'create' && (

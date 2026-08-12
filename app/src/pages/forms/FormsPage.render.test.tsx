@@ -5,7 +5,8 @@
 // list renders a conditional-rule field's condition summary, opens
 // FieldModal (create), and asserts FormSettings renders.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, within } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import '@testing-library/jest-dom/vitest';
 import { FormsPage } from './FormsPage';
 import { listEnvelope, mockApi } from '../../test-utils/mockApi';
@@ -57,9 +58,14 @@ describe('FormsPage render smoke', () => {
       [`GET /api/v1/events/${EVENT_ID}`]: { id: EVENT_ID, slug: 'devcon-2026' },
       [`GET /api/v1/events/${EVENT_ID}/forms`]: FORM,
       [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([{ id: 'trk-1', name: 'Frontend' }]),
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([], { total: 47 }),
     });
 
-    const { container } = render(<FormsPage />);
+    const { container } = render(
+      <MemoryRouter>
+        <FormsPage />
+      </MemoryRouter>,
+    );
 
     await waitFor(() => {
       expect(screen.getByText('Co-speaker email')).toBeInTheDocument();
@@ -69,7 +75,13 @@ describe('FormsPage render smoke', () => {
 
     // FieldList: locked marker on the built-in, condition summary on the rule field.
     expect(screen.getByLabelText('Locked built-in field')).toBeInTheDocument();
-    expect(screen.getByText('if f1 eq "Panel"')).toBeInTheDocument();
+    expect(screen.getByText('Shown when Title is "Panel"')).toBeInTheDocument();
+
+    // Received strip cell: a real read of the submissions total (never a
+    // fabricated count), rendered "N submissions".
+    await waitFor(() => {
+      expect(screen.getByText('47 submissions')).toBeInTheDocument();
+    });
 
     // Required/optional read as text (type), not colour (DEC-367).
     expect(screen.getAllByText('Required').length).toBeGreaterThan(0);
@@ -119,7 +131,7 @@ describe('FormsPage render smoke', () => {
     expect(screen.getByLabelText('Value', { selector: 'input' })).toHaveClass('chq-input');
 
     const cancelButton = screen.getByRole('button', { name: 'Cancel' });
-    const saveButton = screen.getByRole('button', { name: 'Save' });
+    const saveButton = within(dialog).getByRole('button', { name: 'Save' });
     expect(cancelButton).toHaveClass('chq-btn', 'chq-btn-secondary');
     expect(cancelButton.parentElement).toHaveClass('chq-modal-actions');
     expect(saveButton).toHaveClass('chq-btn', 'chq-btn-primary');

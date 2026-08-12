@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import type { CfpForm, EventTrack } from './types';
 import { dateInputToMs, msToDateInput } from '../../lib/dates';
 import { copyText } from '../../lib/clipboard';
@@ -10,6 +10,13 @@ export interface FormSettingsPatch {
   tracks?: string[] | null;
 }
 
+export interface FormSettingsHandle {
+  /** Commits the current draft via onSave. Exposed so the page-level header
+   * Save button (DEC-650 mock) can trigger this secondary panel's save
+   * without a separate in-panel button. */
+  save: () => Promise<void>;
+}
+
 interface FormSettingsProps {
   form: CfpForm;
   tracks: EventTrack[];
@@ -17,10 +24,15 @@ interface FormSettingsProps {
   onSave: (patch: FormSettingsPatch) => Promise<void>;
 }
 
-/** Form settings strip: title (read-only — the w2-c API has no title-patch
- * endpoint), intro/description, open/close dates, tracks offered, and the
- * copyable public submission link. */
-export function FormSettings({ form, tracks, eventSlug, onSave }: FormSettingsProps) {
+/** Form settings panel (DEC-650: secondary panel below the field list):
+ * title (read-only — the w2-c API has no title-patch endpoint),
+ * intro/description, open/close dates, tracks offered, and the copyable
+ * public submission link. Saving is triggered by the page header's Save
+ * button via the imperative `save()` handle, not an in-panel button. */
+export const FormSettings = forwardRef<FormSettingsHandle, FormSettingsProps>(function FormSettings(
+  { form, tracks, eventSlug, onSave },
+  ref,
+) {
   const [intro, setIntro] = useState(form.intro ?? '');
   const [openDate, setOpenDate] = useState(msToDateInput(form.openDate));
   const [closeDate, setCloseDate] = useState(msToDateInput(form.closeDate));
@@ -48,10 +60,13 @@ export function FormSettings({ form, tracks, eventSlug, onSave }: FormSettingsPr
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save form settings');
+      throw err;
     } finally {
       setSaving(false);
     }
   }
+
+  useImperativeHandle(ref, () => ({ save: handleSave }), [intro, openDate, closeDate, selectedTracks]);
 
   async function handleCopyLink() {
     const ok = await copyText(publicLink);
@@ -70,11 +85,12 @@ export function FormSettings({ form, tracks, eventSlug, onSave }: FormSettingsPr
 
   return (
     <section className="chq-forms-settings">
-      <div className="chq-section-head">
-        <h2 className="chq-section-label">Form settings</h2>
-      </div>
-
       {error && <div className="chq-error-banner">{error}</div>}
+      {saving && (
+        <div role="status" aria-live="polite" className="chq-forms-settings-saving">
+          Saving...
+        </div>
+      )}
 
       <label className="chq-field">
         Title
@@ -136,10 +152,6 @@ export function FormSettings({ form, tracks, eventSlug, onSave }: FormSettingsPr
           />
         ) : null}
       </label>
-
-      <button type="button" className="chq-btn chq-btn-primary" onClick={handleSave} disabled={saving}>
-        {saving ? 'Saving...' : 'Save settings'}
-      </button>
     </section>
   );
-}
+});
