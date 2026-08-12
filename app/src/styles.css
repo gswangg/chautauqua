@@ -1009,7 +1009,8 @@ a:hover {
 }
 
 .chq-contacts-add-to-event-modal,
-.chq-contacts-bulk-email-modal {
+.chq-contacts-bulk-email-modal,
+.chq-contacts-new-contact-modal {
   gap: 14px;
 }
 

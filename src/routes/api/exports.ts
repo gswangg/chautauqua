@@ -24,8 +24,10 @@ void DEC_055;
 export const exportsRoutes = new Hono<AppEnv>();
 
 // Object-level ownership check shared by both export surfaces below: the
-// event must belong to the caller's org.
-async function requireOwnedEvent(c: Context<AppEnv>, eventId: string): Promise<void> {
+// event must belong to the caller's org. Returns the event's orgId (DEC-597:
+// the 'contacts' kind is org-scoped, and this is where that org id is
+// resolved — the caller's own orgId, already proven to match).
+async function requireOwnedEvent(c: Context<AppEnv>, eventId: string): Promise<string> {
   const auth = c.var.auth;
   if (!auth) throw new ApiError("unauthorized", "Login required");
   const eventRows = await c.var.db
@@ -37,6 +39,7 @@ async function requireOwnedEvent(c: Context<AppEnv>, eventId: string): Promise<v
   if (!eventRow || eventRow.orgId !== auth.orgId) {
     throw new ApiError("not_found", "Event not found");
   }
+  return eventRow.orgId;
 }
 
 // DEC-055: distinct route prefix ('/exports/', singular file) from the
@@ -60,14 +63,14 @@ exportsRoutes.get("/api/v1/events/:eventId/export/:kind", requireOrganizer, asyn
     throw new ApiError("invalid", `Unknown export kind '${kind}'`);
   }
 
-  await requireOwnedEvent(c, eventId);
+  const orgId = await requireOwnedEvent(c, eventId);
 
   const format = (c.req.query("format") ?? "csv").toLowerCase();
   if (format !== "csv" && format !== "json") {
     throw new ApiError("invalid", "format must be 'csv' or 'json'");
   }
 
-  const table = await buildExport(c.var.db, eventId, kind);
+  const table = await buildExport(c.var.db, eventId, kind, orgId);
 
   if (format === "json") {
     c.header("Content-Disposition", `attachment; filename="${kind}.json"`);

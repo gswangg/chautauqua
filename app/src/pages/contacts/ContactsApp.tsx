@@ -6,6 +6,7 @@ import { ContactDrawer } from './ContactDrawer';
 import { ContactsTable } from './ContactsTable';
 import { DuplicatesView } from './DuplicatesView';
 import { ImportWizard } from './ImportWizard';
+import { NewContactModal } from './NewContactModal';
 import { PipelineBoard } from './PipelineBoard';
 import { EMPTY_SELECTION, selectionReducer } from './selection';
 import { SegmentsPanel } from './SegmentsPanel';
@@ -41,6 +42,7 @@ export function ContactsApp() {
 
   const [openContactId, setOpenContactId] = useState<string | null>(null);
   const [showImport, setShowImport] = useState(false);
+  const [showNewContact, setShowNewContact] = useState(false);
   const [showBulkEmail, setShowBulkEmail] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -95,8 +97,19 @@ export function ContactsApp() {
         <h1 className="chq-page-title">Contacts</h1>
         {summary && <span className="chq-summary">{summary}</span>}
         <div className="chq-contacts-title-actions">
+          {eventId && (
+            <a
+              className="chq-btn chq-btn-secondary"
+              href={`/api/v1/events/${eventId}/export/contacts?format=csv`}
+            >
+              Export CSV
+            </a>
+          )}
           <button type="button" className="chq-btn chq-btn-secondary" onClick={() => setShowImport(true)}>
             Import CSV
+          </button>
+          <button type="button" className="chq-btn chq-btn-primary" onClick={() => setShowNewContact(true)}>
+            New contact
           </button>
         </div>
       </div>
@@ -199,6 +212,16 @@ export function ContactsApp() {
             // DEC-574: reload the list (fresh headshot thumbnail) WITHOUT
             // closing the drawer — an upload must not discard unsaved
             // bio/notes/custom-field edits sitting in the still-open drawer.
+            reload();
+          }}
+        />
+      )}
+
+      {showNewContact && (
+        <NewContactModal
+          onClose={() => setShowNewContact(false)}
+          onCreated={() => {
+            setShowNewContact(false);
             reload();
           }}
         />
