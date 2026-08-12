@@ -58,6 +58,8 @@ it watch-rebuilds the Vite bundle that `wrangler dev` serves as static assets.
 
 Run the test suite with `npm test`.
 
+Test policy: workers run targeted tests (`npm run test:targeted -- <paths>`); the full suite is serialized through `scripts/with-test-lock.sh` (`npm test`).
+
 `.dev.vars.example` (copied to your gitignored `.dev.vars` on first `predev`
 run) ships `PUBLIC_BASE_URL=http://localhost:8787` so emailed links
 (claim/portal) resolve on the default port even though `wrangler.jsonc`'s
