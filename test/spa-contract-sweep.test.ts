@@ -497,7 +497,7 @@ describe("DEC-239: GET /api/v1/events/:eventId/email-log vs EmailLogRow", () => 
 
 const OVERVIEW_PAYLOAD = {
   "triage-counts": { pending: 2, accept_queue: 1, decline_queue: 0 },
-  review: { plans: 1, evaluationsSubmitted: 0 },
+  review: { plans: 1, evaluationsSubmitted: 0, evaluationsExpected: 0 },
   speakers: { contactsOwing: 3, overdueAssignments: 1 },
   content: { awaitingApproval: 2 },
   agenda: { unplaced: 1, conflicts: 0 },
@@ -529,7 +529,7 @@ describe("DEC-239: GET /api/v1/events/:eventId/overview vs OverviewPayload", () 
     const body = (await res.json()) as Record<string, unknown>;
     expect(keysOf(body)).toEqual(["agenda", "comms", "content", "review", "speakers", "triage-counts"]);
     expect(keysOf(body["triage-counts"] as Record<string, unknown>)).toEqual(["accept_queue", "decline_queue", "pending"]);
-    expect(keysOf(body.review as Record<string, unknown>)).toEqual(["evaluationsSubmitted", "plans"]);
+    expect(keysOf(body.review as Record<string, unknown>)).toEqual(["evaluationsExpected", "evaluationsSubmitted", "plans"]);
     expect(keysOf(body.speakers as Record<string, unknown>)).toEqual(["contactsOwing", "overdueAssignments"]);
     expect(keysOf(body.content as Record<string, unknown>)).toEqual(["awaitingApproval"]);
     expect(keysOf(body.agenda as Record<string, unknown>)).toEqual(["conflicts", "unplaced"]);

@@ -65,9 +65,37 @@ function payload(): OverviewPayload {
         },
       ],
     },
-    agendaWork: { unplacedTotal: 0, conflictTotal: 0, conflicts: [], unplaced: [] },
+    agendaWork: {
+      unplacedTotal: 0,
+      conflictTotal: 2,
+      conflicts: [
+        {
+          day: '2027-03-11',
+          startMin: 540,
+          endMin: 600,
+          roomName: 'Ballroom',
+          kind: 'room_overlap',
+          entries: [
+            { submissionId: 'sub-3', ref: 'DFC-020', title: 'Room Clash Talk A', speakerName: 'Ada Lovelace' },
+            { submissionId: 'sub-4', ref: 'DFC-021', title: 'Room Clash Talk B', speakerName: 'Grace Hopper' },
+          ],
+        },
+        {
+          day: '2027-03-12',
+          startMin: 660,
+          endMin: 720,
+          roomName: 'Studio B',
+          kind: 'speaker_overlap',
+          entries: [
+            { submissionId: 'sub-5', ref: 'DFC-022', title: 'Speaker Clash Talk A', speakerName: 'Katherine Johnson' },
+            { submissionId: 'sub-6', ref: 'DFC-023', title: 'Speaker Clash Talk B', speakerName: 'Katherine Johnson' },
+          ],
+        },
+      ],
+      unplaced: [],
+    },
     'triage-counts': { pending: 1, accept_queue: 0, decline_queue: 0 },
-    review: { plans: 3, evaluationsSubmitted: 1 },
+    review: { plans: 3, evaluationsSubmitted: 1, evaluationsExpected: 6 },
     speakers: { contactsOwing: 1, overdueAssignments: 1 },
     content: { awaitingApproval: 1 },
     agenda: { unplaced: 0, conflicts: 0 },
@@ -103,9 +131,16 @@ describe('OverviewPage render smoke (DEC-370)', () => {
 
     expect(screen.getByText('Docs That Answer Back')).toBeInTheDocument();
     expect(screen.getByText('Taming 40-Minute CI')).toBeInTheDocument();
-    expect(screen.getByText('3 things need your attention')).toBeInTheDocument();
+    expect(screen.getByText('5 things need your attention')).toBeInTheDocument();
     expect(screen.getByText('Review')).toBeInTheDocument();
     expect(screen.getByText('Comms')).toBeInTheDocument();
+
+    // DEC-589: the conflict caption must render the human wording imported
+    // from agenda/ConflictChip.tsx, never the raw wire-vocabulary enum
+    // ('room_overlap' / 'speaker_overlap').
+    expect(screen.getByText('Two sessions in one room')).toBeInTheDocument();
+    expect(screen.getByText('Speaker double-booked')).toBeInTheDocument();
+    expect(document.body.textContent).not.toMatch(/[A-Z]+_[A-Z]+/);
   });
 
   it('fires the accept endpoint and removes the row optimistically', async () => {

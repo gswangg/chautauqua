@@ -29,7 +29,7 @@ const ROW_CAP = 5;
 
 export interface OverviewPayload {
   "triage-counts": { pending: number; accept_queue: number; decline_queue: number };
-  review: { plans: number; evaluationsSubmitted: number };
+  review: { plans: number; evaluationsSubmitted: number; evaluationsExpected: number };
   speakers: { contactsOwing: number; overdueAssignments: number };
   content: { awaitingApproval: number };
   agenda: { unplaced: number; conflicts: number };
@@ -290,17 +290,21 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number): 
     .where(eq(schema.evaluationPlan.eventId, eventId));
   const plans = Number(planCountRows[0]?.count ?? 0);
 
-  const evaluationsSubmittedRows = await db
-    .select({ count: sql<number>`count(*)` })
+  // DEC-589: submitted vs. expected must come from the SAME join pass over
+  // the event's plans (evaluationsExpected = every assigned evaluation row,
+  // submitted or not) — a numerator counted against an unrelated
+  // denominator (plans) is exactly the "40 of 3 evaluation plans in" bug
+  // this fixes.
+  const evaluationsAggRows = await db
+    .select({
+      expected: sql<number>`count(*)`,
+      submitted: sql<number>`count(case when ${schema.evaluation.submittedAt} is not null then 1 end)`,
+    })
     .from(schema.evaluation)
     .innerJoin(schema.evaluationPlan, eq(schema.evaluation.planId, schema.evaluationPlan.id))
-    .where(
-      and(
-        eq(schema.evaluationPlan.eventId, eventId),
-        sql`${schema.evaluation.submittedAt} IS NOT NULL`,
-      ),
-    );
-  const evaluationsSubmitted = Number(evaluationsSubmittedRows[0]?.count ?? 0);
+    .where(eq(schema.evaluationPlan.eventId, eventId));
+  const evaluationsExpected = Number(evaluationsAggRows[0]?.expected ?? 0);
+  const evaluationsSubmitted = Number(evaluationsAggRows[0]?.submitted ?? 0);
 
   // --- Evaluation plan close date: soonest non-null across the event's
   // plans (DEC-370 deadlines strip).
@@ -662,7 +666,7 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number): 
 
   return {
     "triage-counts": triage,
-    review: { plans, evaluationsSubmitted },
+    review: { plans, evaluationsSubmitted, evaluationsExpected },
     speakers,
     content,
     agenda,

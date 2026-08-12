@@ -14,6 +14,7 @@ import type {
   TriageRow,
 } from './overview/types';
 import { buildDeadlineCells, buildNoActionRows, daysLateLabel, headlineText, pluralize } from './overview/rows';
+import { conflictKindLabel } from './agenda/ConflictChip';
 import './overview/overview.css';
 
 type SubmissionStatus = 'accepted' | 'accept_queue' | 'declined';
@@ -340,7 +341,7 @@ export function OverviewPage() {
             </div>
             <div>
               <div className="chq-overview-row-late">
-                {conflict.kind === 'room' ? 'Two sessions in one room' : conflict.kind}
+                {conflictKindLabel(conflict.kind)}
               </div>
               {conflict.entries.map((entry) => (
                 <div key={entry.submissionId}>

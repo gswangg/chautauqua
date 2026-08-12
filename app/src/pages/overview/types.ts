@@ -52,7 +52,7 @@ export interface AgendaConflict {
   startMin: number;
   endMin: number;
   roomName: string;
-  kind: string;
+  kind: 'room_overlap' | 'speaker_overlap';
   entries: AgendaConflictEntry[];
 }
 
@@ -75,6 +75,7 @@ export interface TriageCountsAggregate {
 export interface ReviewAggregate {
   plans: number;
   evaluationsSubmitted: number;
+  evaluationsExpected: number;
 }
 
 export interface SpeakersAggregate {
