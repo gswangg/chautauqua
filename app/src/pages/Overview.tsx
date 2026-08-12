@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useCurrentEvent } from '../lib/useCurrentEvent';
 import { apiGet, apiList, apiPatch, apiPost, ApiError } from '../lib/api';
+import { describeSendResult, type SendResult } from '../lib/sendResult';
 import type {
   ContentApprovalRow,
   OverdueTaskRow,
@@ -158,13 +159,8 @@ export function OverviewPage() {
     if (!eventId) return;
     setError(null);
     try {
-      const res = await apiPost<{ sent: number; skipped: number; remaining: number }>(
-        `/events/${eventId}/onboarding/remind`,
-        { taskIds },
-      );
-      setRemindToast(
-        `Reminded ${res.sent} contact${res.sent === 1 ? '' : 's'} · skipped ${res.skipped} · ${res.remaining} remaining.`,
-      );
+      const res = await apiPost<SendResult>(`/events/${eventId}/onboarding/remind`, { taskIds });
+      setRemindToast(describeSendResult(res, { one: 'contact', many: 'contacts' }));
     } catch (err) {
       setError(describeApiError(err, 'Could not send reminders'));
     }

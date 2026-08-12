@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { apiGet, apiList, apiPost, ApiError } from '../../lib/api';
 import { reviewersWithIncompleteQueues } from './progress';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
+import { describeSendResult, type SendResult } from '../../lib/sendResult';
 import './review.css';
 import type { EvaluationPlan, ProgressRow } from './types';
 
@@ -13,7 +14,7 @@ export function ProgressPanel() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reminding, setReminding] = useState(false);
-  const [reminded, setReminded] = useState<number | null>(null);
+  const [remindMessage, setRemindMessage] = useState<string | null>(null);
   const [advancing, setAdvancing] = useState(false);
   const [advanceConfirmOpen, setAdvanceConfirmOpen] = useState(false);
 
@@ -37,10 +38,10 @@ export function ProgressPanel() {
     if (!planId) return;
     setReminding(true);
     setError(null);
-    setReminded(null);
+    setRemindMessage(null);
     try {
-      const res = await apiPost<{ sent: number }>(`/plans/${planId}/remind`);
-      setReminded(res.sent);
+      const res = await apiPost<SendResult>(`/plans/${planId}/remind`);
+      setRemindMessage(describeSendResult(res, { one: 'reviewer', many: 'reviewers' }));
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to send reminders');
     } finally {
@@ -98,9 +99,9 @@ export function ProgressPanel() {
           {error}
         </div>
       )}
-      {reminded !== null && (
+      {remindMessage !== null && (
         <div className="chq-error" role="status">
-          Reminder sent to {reminded} reviewer(s).
+          {remindMessage}
         </div>
       )}
 
