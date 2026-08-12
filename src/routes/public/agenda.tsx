@@ -118,7 +118,7 @@ function DaySwitcher(props: { days: string[] }) {
   );
 }
 
-export function AgendaContent(props: { event: PublicEvent; items: PublicAgendaItem[] }) {
+export function AgendaContent(props: { event: PublicEvent; items: PublicAgendaItem[]; total: number }) {
   const byDay = groupByDay(props.items);
   const days = [...byDay.keys()];
   return (
@@ -128,6 +128,11 @@ export function AgendaContent(props: { event: PublicEvent; items: PublicAgendaIt
         <p>No sessions scheduled yet.</p>
       ) : (
         <>
+          {props.items.length < props.total ? (
+            <p>
+              Showing the first {props.items.length} of {props.total} scheduled sessions.
+            </p>
+          ) : null}
           <DaySwitcher days={days} />
           {days.map((day) => (
             <div id={`chq-day-${day}`}>
@@ -175,7 +180,7 @@ function ItineraryScript(props: { eventSlug: string }) {
   return <script dangerouslySetInnerHTML={{ __html: js }} />;
 }
 
-export function ScheduleContent(props: { event: PublicEvent; items: PublicAgendaItem[] }) {
+export function ScheduleContent(props: { event: PublicEvent; items: PublicAgendaItem[]; total: number }) {
   const byDay = groupByDay(props.items);
   const days = [...byDay.keys()];
   return (
@@ -197,6 +202,11 @@ export function ScheduleContent(props: { event: PublicEvent; items: PublicAgenda
         <p>No sessions scheduled yet.</p>
       ) : (
         <>
+          {props.items.length < props.total ? (
+            <p>
+              Showing the first {props.items.length} of {props.total} scheduled sessions.
+            </p>
+          ) : null}
           <DaySwitcher days={days} />
           {days.map((day) => (
             <div id={`chq-day-${day}`}>

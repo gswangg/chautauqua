@@ -61,6 +61,7 @@ function makeChain(rows: unknown[]) {
       off = n;
       return chain;
     },
+    as: () => chain,
     then: (resolve: (v: unknown[]) => void) => {
       const end = lim === undefined ? undefined : off + lim;
       resolve(rows.slice(off, end));
@@ -315,15 +316,17 @@ describe("GET /embed/:eventSlug/agenda.json (DEC-484 unpaged surface)", () => {
         selectCall += 1;
         // 1: getPublicEventBySlug
         if (selectCall === 1) return makeChain([EVENT_ROW]);
-        // 2: hydrateSessions subRows
-        if (selectCall === 2) {
+        // 2: DEC-548 getPublicAgenda's total count(*) subquery
+        if (selectCall === 2) return makeChain([{ count: 1 }]);
+        // 3: hydrateSessions subRows
+        if (selectCall === 3) {
           return makeChain([{ id: "sub1", seq: 1, title: "Visible Talk", description: null, icsSequence: 0 }]);
         }
-        // 3: hydrateSessions trackRows
-        if (selectCall === 3) return makeChain([]);
-        // 4: hydrateSessions speakerRows
+        // 4: hydrateSessions trackRows
         if (selectCall === 4) return makeChain([]);
-        // 5: hydrateSessions slotRows
+        // 5: hydrateSessions speakerRows
+        if (selectCall === 5) return makeChain([]);
+        // 6: hydrateSessions slotRows
         return makeChain([]);
       },
       selectDistinct: () =>
@@ -626,14 +629,54 @@ describe("agendaIcsEvents", () => {
 });
 
 describe("GET /e/:eventSlug/agenda.ics (EMB-15 whole-agenda export)", () => {
-  function buildIcsApp() {
+  // agenda.ics goes through getPublicAgenda (DEC-548: one extra count(*)
+  // select ahead of the room lookup); schedule.ics?ids= goes through
+  // getPublicAgendaByIds, which is untouched — the two call sequences
+  // diverge by that one extra select, hence two builders.
+  function buildAgendaIcsApp() {
     let selectCall = 0;
     const db = {
       select: () => {
         selectCall += 1;
         // 1: getPublicEventBySlug
         if (selectCall === 1) return makeChain([EVENT_ROW]);
-        // 2: getPublicAgenda's room lookup
+        // 2: DEC-548 getPublicAgenda's total count(*) subquery
+        if (selectCall === 2) return makeChain([{ count: 1 }]);
+        // 3: getPublicAgenda's room lookup
+        if (selectCall === 3) return makeChain([{ id: "room1", name: "Main Hall" }]);
+        // 4: hydrateSessions subRows
+        if (selectCall === 4) {
+          return makeChain([{ id: "sub1", seq: 1, title: "Visible Talk", description: null, icsSequence: 0 }]);
+        }
+        // 5: hydrateSessions trackRows
+        if (selectCall === 5) return makeChain([]);
+        // 6: hydrateSessions speakerRows
+        if (selectCall === 6) return makeChain([]);
+        // 7: hydrateSessions slotRows
+        return makeChain([]);
+      },
+      selectDistinct: () =>
+        makeChain([{ submissionId: "sub1", day: "2026-08-10", startMin: 540, endMin: 600, roomId: "room1" }]),
+    } as unknown as AppEnv["Variables"]["db"];
+
+    const app = new Hono<AppEnv>();
+    app.use("*", async (c, next) => {
+      c.set("db", db);
+      await next();
+    });
+    registerErrorHandler(app);
+    app.route("/", publicRoutes);
+    return app;
+  }
+
+  function buildScheduleIcsApp() {
+    let selectCall = 0;
+    const db = {
+      select: () => {
+        selectCall += 1;
+        // 1: getPublicEventBySlug
+        if (selectCall === 1) return makeChain([EVENT_ROW]);
+        // 2: getPublicAgendaByIds' room lookup
         if (selectCall === 2) return makeChain([{ id: "room1", name: "Main Hall" }]);
         // 3: hydrateSessions subRows
         if (selectCall === 3) {
@@ -662,7 +705,7 @@ describe("GET /e/:eventSlug/agenda.ics (EMB-15 whole-agenda export)", () => {
 
   it("returns a VCALENDAR with the same UID schedule.ics would produce for the same session", async () => {
     installFakeCaches();
-    const agendaRes = await buildIcsApp().request("/e/conf/agenda.ics", {}, TEST_ENV);
+    const agendaRes = await buildAgendaIcsApp().request("/e/conf/agenda.ics", {}, TEST_ENV);
     expect(agendaRes.status).toBe(200);
     expect(agendaRes.headers.get("Content-Type")).toContain("text/calendar");
     expect(agendaRes.headers.get("Content-Disposition")).toContain('filename="conf-agenda.ics"');
@@ -672,7 +715,7 @@ describe("GET /e/:eventSlug/agenda.ics (EMB-15 whole-agenda export)", () => {
     expect(agendaUid).toBeTruthy();
 
     installFakeCaches();
-    const scheduleRes = await buildIcsApp().request("/e/conf/schedule.ics?ids=sub1", {}, TEST_ENV);
+    const scheduleRes = await buildScheduleIcsApp().request("/e/conf/schedule.ics?ids=sub1", {}, TEST_ENV);
     const scheduleBody = await scheduleRes.text();
     const scheduleUid = scheduleBody.match(/UID:([^\r\n]+)/)?.[1];
 

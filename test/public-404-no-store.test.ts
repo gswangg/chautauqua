@@ -33,7 +33,7 @@ vi.mock("../src/server/repo/public", async () => {
     getPublicSessions: vi.fn(async () => ({ items: [], total: 0 })),
     getPublicSpeakers: vi.fn(async () => ({ items: [], total: 0 })),
     getPublicSpeakerDetail: vi.fn(async () => null),
-    getPublicAgenda: vi.fn(async () => []),
+    getPublicAgenda: vi.fn(async () => ({ items: [], total: 0 })),
   };
 });
 

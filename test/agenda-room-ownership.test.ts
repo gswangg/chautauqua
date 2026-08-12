@@ -24,6 +24,7 @@ function makeChain(rows: unknown[], onWhere?: (cond: unknown) => void) {
     },
     orderBy: () => chain,
     limit: async () => rows,
+    as: () => chain,
     then: (resolve: (v: unknown[]) => void) => resolve(rows),
   };
   return chain;
@@ -169,15 +170,17 @@ describe("getPublicAgenda room-name resolution (DEC-073: never leak a cross-even
       selectDistinct: () => makeChain(placedRows),
       select: () => {
         selectCall += 1;
-        // call 1: room lookup (scoped by id + eventId)
-        if (selectCall === 1) return makeChain(roomRows, (cond) => (capturedRoomWhere = cond));
-        // call 2: hydrateSessions subRows
-        if (selectCall === 2) return makeChain([subRow]);
-        // call 3: hydrateSessions trackRows
-        if (selectCall === 3) return makeChain([]);
-        // call 4: hydrateSessions speakerRows
+        // call 1: DEC-548 total count(*) subquery over the agenda_rows scan
+        if (selectCall === 1) return makeChain([{ count: placedRows.length }]);
+        // call 2: room lookup (scoped by id + eventId)
+        if (selectCall === 2) return makeChain(roomRows, (cond) => (capturedRoomWhere = cond));
+        // call 3: hydrateSessions subRows
+        if (selectCall === 3) return makeChain([subRow]);
+        // call 4: hydrateSessions trackRows
         if (selectCall === 4) return makeChain([]);
-        // call 5: hydrateSessions slotRows (EMB-01 schedule join)
+        // call 5: hydrateSessions speakerRows
+        if (selectCall === 5) return makeChain([]);
+        // call 6: hydrateSessions slotRows (EMB-01 schedule join)
         return makeChain([]);
       },
     } as unknown as AppEnv["Variables"]["db"];
@@ -200,7 +203,7 @@ describe("getPublicAgenda room-name resolution (DEC-073: never leak a cross-even
       [{ submissionId: "sub1", day: "2026-08-10", startMin: 540, endMin: 600, roomId: "foreign-room" }],
       [], // a correctly event-scoped query returns no rows for a foreign room id
     );
-    const items = await getPublicAgenda(db, event);
+    const { items } = await getPublicAgenda(db, event);
     expect(items).toHaveLength(1);
     const [item] = items;
     expect(item?.roomId).toBe("foreign-room");
@@ -212,7 +215,7 @@ describe("getPublicAgenda room-name resolution (DEC-073: never leak a cross-even
       [{ submissionId: "sub1", day: "2026-08-10", startMin: 540, endMin: 600, roomId: "room1" }],
       [{ id: "room1", name: "Main Hall" }],
     );
-    const items = await getPublicAgenda(db, event);
+    const { items } = await getPublicAgenda(db, event);
     expect(items[0]?.roomName).toBe("Main Hall");
   });
 });

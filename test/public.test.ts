@@ -89,6 +89,7 @@ function makeChain(rows: unknown[], onWhere?: (cond: unknown) => void) {
     },
     orderBy: () => chain,
     limit: async () => rows,
+    as: () => chain,
     then: (resolve: (v: unknown[]) => void) => resolve(rows),
   };
   return chain;
@@ -332,20 +333,22 @@ describe("AgendaContent / ScheduleContent day switcher (EMB-07)", () => {
         selectCall += 1;
         // 1: getPublicEventBySlug
         if (selectCall === 1) return makeChain([EVENT_ROW]);
-        // 2: getPublicAgenda's room lookup
-        if (selectCall === 2) return makeChain([{ id: "room1", name: "Main Hall" }]);
-        // 3: hydrateSessions subRows
-        if (selectCall === 3) {
+        // 2: DEC-548 getPublicAgenda's total count(*) subquery
+        if (selectCall === 2) return makeChain([{ count: 2 }]);
+        // 3: getPublicAgenda's room lookup
+        if (selectCall === 3) return makeChain([{ id: "room1", name: "Main Hall" }]);
+        // 4: hydrateSessions subRows
+        if (selectCall === 4) {
           return makeChain([
             { id: "sub1", seq: 1, title: "Day One Talk", description: null, icsSequence: 0 },
             { id: "sub2", seq: 2, title: "Day Two Talk", description: null, icsSequence: 0 },
           ]);
         }
-        // 4: hydrateSessions trackRows
-        if (selectCall === 4) return makeChain([]);
-        // 5: hydrateSessions speakerRows
+        // 5: hydrateSessions trackRows
         if (selectCall === 5) return makeChain([]);
-        // 6: hydrateSessions slotRows
+        // 6: hydrateSessions speakerRows
+        if (selectCall === 6) return makeChain([]);
+        // 7: hydrateSessions slotRows
         return makeChain([]);
       },
       selectDistinct: () =>

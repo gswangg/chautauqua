@@ -29,9 +29,38 @@ function makeChain(rows: unknown[]) {
     where: () => chain,
     orderBy: () => chain,
     limit: async (n: number) => rows.slice(0, n),
+    as: () => chain,
     then: (resolve: (v: unknown[]) => void) => resolve(rows),
   };
   return chain;
+}
+
+// Walks a drizzle SQL condition tree just enough to pull out an eq()-bound
+// literal day value (DEC-548: the ?day= filter now lives in the SQL WHERE,
+// not a JS .filter() after the fact). Each single comparison node's own
+// queryChunks array holds [op-agnostic prefix, the "day" column, an
+// operator StringChunk (" >= "/" <= "/" = "), the bound Param, suffix] as
+// immediate siblings — an eq() node is the one whose operator chunk is
+// exactly " = " (gte/lte use " >= "/" <= " and must not match).
+function extractDayFilter(node: unknown, depth = 0): string | undefined {
+  if (depth > 12 || node === null || typeof node !== "object") return undefined;
+  const n = node as { queryChunks?: unknown[]; name?: string; value?: unknown };
+  if (Array.isArray(n.queryChunks)) {
+    const chunks = n.queryChunks as { name?: string; value?: unknown }[];
+    const isDayColumn = chunks.some((c) => c && typeof c === "object" && c.name === "day");
+    const isEqOp = chunks.some((c) => c && typeof c === "object" && Array.isArray(c.value) && c.value[0] === " = ");
+    if (isDayColumn && isEqOp) {
+      const param = chunks.find(
+        (c) => c && typeof c === "object" && typeof c.value === "string",
+      ) as { value?: unknown } | undefined;
+      if (param && typeof param.value === "string") return param.value;
+    }
+    for (const c of n.queryChunks) {
+      const found = extractDayFilter(c, depth + 1);
+      if (found) return found;
+    }
+  }
+  return undefined;
 }
 
 function fakeKv() {
@@ -140,18 +169,38 @@ function buildApp() {
 // sequence: selectDistinct() for the scheduleSlot join, then select() for
 // roomRows, then hydrateSessions's four select() calls (sub/track/speaker/
 // EMB-01 slot lookup).
+// getPublicAgenda's shape differs from the sessions surface's query
+// sequence: build sq via selectDistinct() (captures any ?day= eq filter),
+// then select() for the DEC-548 total count(*), then (only when the count
+// is nonzero) a second selectDistinct() for the real windowed scan, then
+// select() for roomRows, then hydrateSessions's four select() calls
+// (sub/track/speaker/EMB-01 slot lookup).
 function buildAgendaApp() {
   let selectCall = 0;
+  let dayFilter: string | undefined;
+  const AGENDA_ROWS = SESSION_ROWS.map((s, i) => ({
+    submissionId: s.id,
+    day: "2026-08-10",
+    startMin: 540 + i * 60,
+    endMin: 600 + i * 60,
+    roomId: "room1",
+  }));
   const db = {
     select: () => {
       selectCall += 1;
       if (selectCall === 1) return makeChain([EVENT_ROW]); // getPublicEventBySlug
-      if (selectCall === 2) return makeChain([{ id: "room1", name: "Main Hall" }]); // roomRows
-      if (selectCall === 3) return makeChain(SESSION_ROWS); // hydrateSessions subRows
-      if (selectCall === 4) {
+      if (selectCall === 2) {
+        // DEC-548 getPublicAgenda's total count(*) subquery — reflects
+        // whatever ?day= filter the just-built sq's where() captured.
+        const filtered = dayFilter ? AGENDA_ROWS.filter((r) => r.day === dayFilter) : AGENDA_ROWS;
+        return makeChain([{ count: filtered.length }]);
+      }
+      if (selectCall === 3) return makeChain([{ id: "room1", name: "Main Hall" }]); // roomRows
+      if (selectCall === 4) return makeChain(SESSION_ROWS); // hydrateSessions subRows
+      if (selectCall === 5) {
         return makeChain(SESSION_ROWS.map((s) => ({ submissionId: s.id, id: "trk1", name: "Track A", color: "#f00" })));
       }
-      if (selectCall === 5) {
+      if (selectCall === 6) {
         return makeChain(
           SESSION_ROWS.map((s) => ({
             submissionId: s.id,
@@ -165,16 +214,28 @@ function buildAgendaApp() {
       }
       return makeChain([]); // hydrateSessions EMB-01 slotRows (unused by the agenda grid itself)
     },
-    selectDistinct: () =>
-      makeChain(
-        SESSION_ROWS.map((s, i) => ({
-          submissionId: s.id,
-          day: "2026-08-10",
-          startMin: 540 + i * 60,
-          endMin: 600 + i * 60,
-          roomId: "room1",
-        })),
-      ),
+    selectDistinct: () => {
+      const chain: any = {
+        from: () => chain,
+        innerJoin: () => chain,
+        where: (cond: unknown) => {
+          const found = extractDayFilter(cond);
+          if (found) dayFilter = found;
+          return chain;
+        },
+        orderBy: () => chain,
+        as: () => chain,
+        limit: async (n: number) => {
+          const filtered = dayFilter ? AGENDA_ROWS.filter((r) => r.day === dayFilter) : AGENDA_ROWS;
+          return filtered.slice(0, n);
+        },
+        then: (resolve: (v: unknown[]) => void) => {
+          const filtered = dayFilter ? AGENDA_ROWS.filter((r) => r.day === dayFilter) : AGENDA_ROWS;
+          resolve(filtered);
+        },
+      };
+      return chain;
+    },
   } as unknown as AppEnv["Variables"]["db"];
 
   const app = new Hono<AppEnv>();

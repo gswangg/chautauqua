@@ -212,7 +212,8 @@ publicRoutes.get("/e/:eventSlug/schedule.ics", async (c) => {
   // or no longer publicly visible, and is silently dropped from the export
   // (a stale itinerary link never leaks a hidden session). DEC-310: scope
   // the query to the requested ids instead of hydrating the whole agenda.
-  const agenda = ids.length > 0 ? await getPublicAgendaByIds(c.var.db, event, ids) : await getPublicAgenda(c.var.db, event);
+  const agenda =
+    ids.length > 0 ? await getPublicAgendaByIds(c.var.db, event, ids) : (await getPublicAgenda(c.var.db, event)).items;
   const agendaById = new Map(agenda.map((a) => [a.submissionId, a]));
 
   // DEC-323: with no ?ids=, this must publish the WHOLE agenda, not filter
@@ -240,7 +241,7 @@ publicRoutes.get("/e/:eventSlug/agenda.ics", async (c) => {
   const event = await getPublicEventBySlug(c.var.db, c.req.param("eventSlug"));
   if (!event) return publicNotFound(c, "Event not found.");
 
-  const agenda = await getPublicAgenda(c.var.db, event);
+  const { items: agenda } = await getPublicAgenda(c.var.db, event);
   const ics = buildIcsCalendar(agendaIcsEvents(event, agenda, new Date()), {
     method: "PUBLISH",
     organizer: { name: event.name, email: ICS_ORGANIZER_EMAIL },
@@ -293,9 +294,8 @@ async function getSurfaceFeedPage(
     }
     case "agenda":
     case "schedule": {
-      let items = await getPublicAgenda(db, event);
-      if (query.day) items = items.filter((i) => i.day === query.day);
-      return { items, total: items.length, page: 1, perPage: items.length };
+      const { items, total } = await getPublicAgenda(db, event, { day: query.day });
+      return { items, total, page: 1, perPage: items.length };
     }
     default: {
       const exhaustive: never = surface;
