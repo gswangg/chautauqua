@@ -83,15 +83,19 @@ export function validateRuleReference(
 /**
  * Validates a create/patch payload for a custom form field against the
  * DEC-008 FormFieldDef shape. `existingFields` is every field currently on
- * the form (used for rule-reference + cycle checks); `ownFieldId` is set
- * when validating an edit to an already-existing field.
+ * the form (used for rule-reference + cycle checks); `existing` is set when
+ * validating an edit to an already-existing field (its id + stored kind —
+ * PATCH never sends `kind`, so the dropdown-options rule must be checked
+ * against the field's *effective* kind, not just a supplied one, otherwise
+ * `{"options": []}` silently bricks a live dropdown — DEC-500).
  */
 export function validateFieldDefInput(
   input: FieldDefInput,
   existingFields: FormFieldDef[],
-  ownFieldId?: string,
+  existing?: { id: string; kind: FormFieldKind },
 ): { ok: true } | { ok: false; errors: FieldErrors } {
   const errors: FieldErrors = {};
+  const ownFieldId = existing?.id;
 
   if (input.section !== undefined && input.section !== "session" && input.section !== "speaker") {
     errors.section = "must be 'session' or 'speaker'";
@@ -100,7 +104,16 @@ export function validateFieldDefInput(
   if (input.kind !== undefined) {
     if (typeof input.kind !== "string" || !FIELD_KINDS.includes(input.kind as FormFieldKind)) {
       errors.kind = `must be one of: ${FIELD_KINDS.join(", ")}`;
-    } else if (input.kind === "dropdown") {
+    }
+  }
+
+  const effectiveKind: FormFieldKind | undefined =
+    typeof input.kind === "string" && FIELD_KINDS.includes(input.kind as FormFieldKind)
+      ? (input.kind as FormFieldKind)
+      : existing?.kind;
+
+  if (effectiveKind === "dropdown") {
+    if (input.options !== undefined || existing === undefined) {
       const options = input.options;
       if (!Array.isArray(options) || options.length === 0 || !options.every((o) => typeof o === "string")) {
         errors.options = "dropdown fields require a non-empty string array of options";
@@ -108,6 +121,8 @@ export function validateFieldDefInput(
         errors.options = `each option must be at most ${MAX_NAME_LENGTH} characters`; // DEC-417
       }
     }
+  } else if (input.options !== undefined && input.options !== null) {
+    errors.options = "options apply only to dropdown fields";
   }
 
   if (input.label !== undefined && (typeof input.label !== "string" || input.label.trim().length === 0)) {

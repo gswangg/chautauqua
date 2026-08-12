@@ -200,7 +200,7 @@ formsRoutes.patch("/api/v1/fields/:fieldId", requireOrganizer, csrfJson, async (
 
   const siblings = (await repo.listFields(c.var.db, field.formId)).filter((f) => f.id !== fieldId);
   const siblingDefs = toDefList(siblings);
-  const result = validateFieldDefInput(body, siblingDefs, fieldId);
+  const result = validateFieldDefInput(body, siblingDefs, { id: fieldId, kind: field.kind });
   if (!result.ok) {
     throw new ApiError("invalid", "Validation failed", result.errors);
   }
