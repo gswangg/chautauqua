@@ -2,7 +2,7 @@
 // drizzle row types (DEC-012) for evaluation_plan. Converts to/from the pure
 // src/domain/evaluation.ts shapes.
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { newId } from "../../../domain/ids";
@@ -76,9 +76,33 @@ export interface PlanInput {
   maxEvaluations?: number | null;
 }
 
-export async function listPlansForEvent(db: Db, eventId: string): Promise<PlanRecord[]> {
-  const rows = await db.select().from(schema.evaluationPlan).where(eq(schema.evaluationPlan.eventId, eventId));
+/** DEC-460/DEC-461: `page` is optional -- absent means the historical
+ * unbounded read every non-HTTP caller (e.g. files-authz.ts's
+ * reviewerCanAccessSubmissionFile, which scans every plan to check
+ * anonymized === false) still needs. Deterministic order (createdAt asc,
+ * id asc tiebreak) so LIMIT/OFFSET pages are stable. */
+export async function listPlansForEvent(
+  db: Db,
+  eventId: string,
+  page?: { limit: number; offset: number },
+): Promise<PlanRecord[]> {
+  const base = db
+    .select()
+    .from(schema.evaluationPlan)
+    .where(eq(schema.evaluationPlan.eventId, eventId))
+    .orderBy(sql`${schema.evaluationPlan.createdAt} asc, ${schema.evaluationPlan.id} asc`);
+  const rows = page ? await base.limit(page.limit).offset(page.offset) : await base;
   return rows.map(toPlanRecord);
+}
+
+/** Sibling count for listPlansForEvent's paged route (DEC-461c): the true
+ * total over the same WHERE, never items.length. */
+export async function countPlansForEvent(db: Db, eventId: string): Promise<number> {
+  const rows = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(schema.evaluationPlan)
+    .where(eq(schema.evaluationPlan.eventId, eventId));
+  return Number(rows[0]?.count ?? 0);
 }
 
 export async function createPlan(db: Db, eventId: string, input: PlanInput): Promise<PlanRecord> {

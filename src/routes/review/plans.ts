@@ -23,7 +23,7 @@ import { clampPage, clampPerPage } from "../../lib/pagination";
 import * as repo from "../../server/repo/review";
 import { roundCriteriaJsonOf } from "../../server/repo/review";
 import * as eventsRepo from "../../server/repo/events";
-import { DEC_015, DEC_123, DEC_146, DEC_147, DEC_148, DEC_213, DEC_238 } from "../../decisions";
+import { DEC_015, DEC_123, DEC_146, DEC_147, DEC_148, DEC_213, DEC_238, DEC_460, DEC_461 } from "../../decisions";
 import {
   asRecord,
   currentAuth,
@@ -41,6 +41,17 @@ import {
 } from "./shared";
 
 export const reviewPlansRoutes = new Hono<AppEnv>();
+
+/** DEC-461(a): these previously-unpaginated list envelopes default perPage
+ * to 200 (MAX_PER_PAGE), not clampPerPage's built-in 50, so no admin screen
+ * that renders every row today silently loses rows the day paging lands.
+ * Reuses clampPerPage's own max clamp for any explicit, valid value. */
+function resolvePerPage(raw: string | undefined): number {
+  if (raw === undefined) return 200;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || !Number.isInteger(n) || n < 1) return 200;
+  return clampPerPage(n);
+}
 void DEC_123; // criteria/scale immutability guard on PATCH /api/v1/plans/:id below
 void DEC_015; // append-only migrations: migrations/0010_round_criteria.sql
 void DEC_146; // PlanEditor.tsx retains the null-safe SPA date guards this task must preserve
@@ -48,13 +59,20 @@ void DEC_147; // per-round scorecards: round_criteria_json + criteriaForRound re
 void DEC_148; // free-text 'text' criterion kind
 void DEC_213; // per-round criteria freeze on PATCH /api/v1/plans/:id below
 void DEC_238; // /plans/:id/remind: per-recipient catch, {sent,failed} 200 below
+void DEC_460; // enforced bound on every /api/v1 list envelope, no exemptions
+void DEC_461; // optional repo page param + sibling count fn + deterministic ORDER BY below
 
 reviewPlansRoutes.get("/api/v1/events/:eventId/plans", requireOrganizer, async (c) => {
   const auth = currentAuth(c);
   const event = await eventsRepo.getEventForOrg(c.var.db, c.req.param("eventId"), auth.orgId);
   if (!event) throw new ApiError("not_found", "Event not found");
-  const items = await repo.listPlansForEvent(c.var.db, event.id);
-  return c.json({ items, total: items.length, page: 1, perPage: items.length || 1 });
+  const page = clampPage(c.req.query("page"));
+  const perPage = resolvePerPage(c.req.query("perPage"));
+  const [items, total] = await Promise.all([
+    repo.listPlansForEvent(c.var.db, event.id, { limit: perPage, offset: (page - 1) * perPage }),
+    repo.countPlansForEvent(c.var.db, event.id),
+  ]);
+  return c.json({ items, total, page, perPage });
 });
 
 reviewPlansRoutes.post("/api/v1/events/:eventId/plans", requireOrganizer, csrfJson, async (c) => {
@@ -220,7 +238,12 @@ reviewPlansRoutes.post("/api/v1/plans/:id/reviewers", requireOrganizer, csrfJson
 
 reviewPlansRoutes.get("/api/v1/plans/:id/reviewers", requireOrganizer, async (c) => {
   const plan = await requireOwnedPlan(c, c.req.param("id"));
-  const rows = await repo.listReviewerRowsForPlan(c.var.db, plan.id);
+  const page = clampPage(c.req.query("page"));
+  const perPage = resolvePerPage(c.req.query("perPage"));
+  const [rows, total] = await Promise.all([
+    repo.listReviewerRowsForPlan(c.var.db, plan.id, { limit: perPage, offset: (page - 1) * perPage }),
+    repo.countReviewerRowsForPlan(c.var.db, plan.id),
+  ]);
   const users = await repo.getUsersByIds(c.var.db, [...new Set(rows.map((r) => r.userId))]);
   const emailByUserId = new Map(users.map((u) => [u.userId, u.email]));
   const items = rows.map((r) => ({
@@ -230,7 +253,7 @@ reviewPlansRoutes.get("/api/v1/plans/:id/reviewers", requireOrganizer, async (c)
     trackId: r.trackId,
     submissionId: r.submissionId,
   }));
-  return c.json({ items, total: items.length, page: 1, perPage: items.length || 1 });
+  return c.json({ items, total, page, perPage });
 });
 
 reviewPlansRoutes.delete("/api/v1/plans/:id/reviewers/:reviewerId", requireOrganizer, csrfJson, async (c) => {

@@ -52,6 +52,7 @@ vi.mock("../src/server/repo/review", async () => {
     listPlansForEvent: vi.fn(async (_db: unknown, eventId: string) =>
       eventId === planRecord.eventId ? [planRecord] : [],
     ),
+    countPlansForEvent: vi.fn(async (_db: unknown, eventId: string) => (eventId === planRecord.eventId ? 1 : 0)),
     listPlanIdsForReviewer: vi.fn(async () => []),
     resolveReviewerSubmissions: vi.fn(async () => []),
     // Default: no reviewer scope granted; individual tests override with
@@ -79,6 +80,7 @@ vi.mock("../src/server/repo/review", async () => {
     listReviewerRowsForPlan: vi.fn(async (_db: unknown, planId: string) =>
       planId === planRecord.id ? [{ id: "pr-1", planId: planRecord.id, userId: "rev-1", trackId: null, submissionId: null }] : [],
     ),
+    countReviewerRowsForPlan: vi.fn(async (_db: unknown, planId: string) => (planId === planRecord.id ? 1 : 0)),
     getUsersByIds: vi.fn(async () => [{ userId: "rev-1", email: "rev1@org.test" }]),
     getReviewerRowById: vi.fn(async (_db: unknown, reviewerId: string) =>
       reviewerId === "pr-1" ? { id: "pr-1", planId: planRecord.id, userId: "rev-1", trackId: null, submissionId: null } : null,
