@@ -69,16 +69,32 @@ function Nav() {
 function PortalPage(props: { data: PortalData; sessions: PortalSession[]; invitations: PortalInvitation[]; csrfToken: string }) {
   const { branding, submissions, tasks } = props.data;
   const { sessions, invitations, csrfToken } = props;
+  // DEC-370-style completion caption: derived from the tasks list the portal
+  // repo already returns (task/complete counts), never a fixture figure
+  // (DEC-377).
+  const doneCount = tasks.filter((t) => t.status === "complete").length;
+  const totalCount = tasks.length;
+  const donePct = totalCount === 0 ? 100 : Math.round((doneCount / totalCount) * 100);
   return (
     <PortalLayout branding={branding} csrfToken={csrfToken}>
       <Nav />
-      <section aria-label="My Submissions">
-        <h2>My Submissions</h2>
+      {totalCount > 0 ? (
+        <div class="chq-portal-progress">
+          <span class="chq-portal-progress-label">
+            {doneCount} of {totalCount} tasks complete
+          </span>
+          <div class="chq-bar">
+            <div class="chq-bar-fill" style={`width: ${donePct}%`}></div>
+          </div>
+        </div>
+      ) : null}
+      <section aria-label="My Submissions" class="chq-section">
+        <div class="chq-section-label">My Submissions</div>
         {submissions.length === 0 ? (
           <p>You haven't submitted anything yet.</p>
         ) : (
           <div class="chq-table-scroll">
-            <table>
+            <table class="chq-table">
               <thead>
                 <tr>
                   <th>Ref</th>
@@ -93,7 +109,9 @@ function PortalPage(props: { data: PortalData; sessions: PortalSession[]; invita
                   <tr>
                     <td>{s.ref}</td>
                     <td>{s.title}</td>
-                    <td>{s.statusLabel}</td>
+                    <td>
+                      <span class="chq-flag">{s.statusLabel}</span>
+                    </td>
                     <td>{new Date(s.submittedAt).toISOString().slice(0, 10)}</td>
                     <td>
                       <a href={`/portal/submissions/${s.id}`}>View</a>
@@ -106,56 +124,63 @@ function PortalPage(props: { data: PortalData; sessions: PortalSession[]; invita
         )}
       </section>
 
-      <section aria-label="My Tasks">
-        <h2>My Tasks</h2>
+      <section aria-label="My Tasks" class="chq-section">
+        <div class="chq-section-label">My Tasks</div>
         {tasks.length === 0 ? (
           <p>No tasks assigned yet.</p>
         ) : (
-          <ul>
-            {tasks.map((t) => (
-              <li>
-                {t.title}
-                {t.required ? <strong> (required)</strong> : null}
-                {t.dueDate ? <span> — due {new Date(t.dueDate).toISOString().slice(0, 10)}</span> : null}
-                {" — "}
-                {t.status}
-              </li>
-            ))}
-          </ul>
+          tasks.map((t) => (
+            <div class="chq-portal-row">
+              <div class="chq-portal-row-head">
+                <span class="chq-portal-row-title">
+                  {t.title}
+                  {t.required ? <strong> (required)</strong> : null}
+                </span>
+                <span class={t.status === "complete" ? "chq-flag chq-portal-flag-done" : "chq-flag"}>
+                  {t.status === "complete" ? "Done" : "To do"}
+                </span>
+              </div>
+              {t.dueDate ? <span class="chq-portal-due">Due {new Date(t.dueDate).toISOString().slice(0, 10)}</span> : null}
+            </div>
+          ))
         )}
         <p>
           <a href="/portal/tasks">View all tasks</a>
         </p>
       </section>
 
-      <section aria-label="Sessions">
-        <h2>Sessions</h2>
-        {invitations.length > 0 ? (
-          <ul>
-            {invitations.map((inv) => (
-              <li>
-                Invited to co-present "{inv.title}" ({inv.ref}) at {inv.eventName}
-                <form method="post" action={`/portal/invitations/${inv.participantId}`} style="display:inline">
-                  <input type="hidden" name={CSRF_COOKIE_NAME} value={csrfToken} />
-                  <input type="hidden" name="action" value="accept" />
-                  <button type="submit">Accept</button>
-                </form>
-                <form method="post" action={`/portal/invitations/${inv.participantId}`} style="display:inline">
-                  <input type="hidden" name={CSRF_COOKIE_NAME} value={csrfToken} />
-                  <input type="hidden" name="action" value="decline" />
-                  <button type="submit">Decline</button>
-                </form>
-              </li>
-            ))}
-          </ul>
-        ) : null}
+      <section aria-label="Sessions" class="chq-section">
+        <div class="chq-section-label">Sessions</div>
+        {invitations.length > 0
+          ? invitations.map((inv) => (
+              <div class="chq-portal-row">
+                <span class="chq-portal-row-title">
+                  Invited to co-present "{inv.title}" ({inv.ref}) at {inv.eventName}
+                </span>
+                <div class="chq-portal-actions">
+                  <form method="post" action={`/portal/invitations/${inv.participantId}`}>
+                    <input type="hidden" name={CSRF_COOKIE_NAME} value={csrfToken} />
+                    <input type="hidden" name="action" value="accept" />
+                    <button type="submit" class="chq-btn chq-btn-primary">Accept</button>
+                  </form>
+                  <form method="post" action={`/portal/invitations/${inv.participantId}`}>
+                    <input type="hidden" name={CSRF_COOKIE_NAME} value={csrfToken} />
+                    <input type="hidden" name="action" value="decline" />
+                    <button type="submit" class="chq-btn chq-btn-secondary">Decline</button>
+                  </form>
+                </div>
+              </div>
+            ))
+          : null}
         {sessions.length === 0 ? (
           <p>No accepted sessions yet.</p>
         ) : (
-          <ul>
-            {sessions.map((s) => (
-              <li>
-                {s.ref}: {s.title} —{" "}
+          sessions.map((s) => (
+            <div class="chq-portal-row">
+              <span class="chq-portal-row-title">
+                {s.ref}: {s.title}
+              </span>
+              <span class="chq-portal-due">
                 {s.day ? (
                   <>
                     {s.day} {minutesToClock(s.startMin)}–{minutesToClock(s.endMin)}
@@ -164,14 +189,14 @@ function PortalPage(props: { data: PortalData; sessions: PortalSession[]; invita
                 ) : (
                   "Not yet scheduled"
                 )}
-              </li>
-            ))}
-          </ul>
+              </span>
+            </div>
+          ))
         )}
       </section>
 
-      <section aria-label="Resources">
-        <h2>Resources</h2>
+      <section aria-label="Resources" class="chq-section">
+        <div class="chq-section-label">Resources</div>
         <p>
           <a href="/portal/resources">View event resources</a>
         </p>
@@ -198,15 +223,21 @@ function SubmissionDetailPage(props: {
   const { detail, editable } = props;
   return (
     <PortalLayout branding={props.branding} csrfToken={props.csrfToken}>
-      <a href="/portal">&larr; Back to My Submissions</a>
-      <h2>
+      <a href="/portal" class="chq-portal-back">&larr; Back to My Submissions</a>
+      <h2 class="chq-portal-hero">
         {detail.ref}: {detail.title}
       </h2>
-      <p>Status: {detail.statusLabel}</p>
-      {editable ? <p><a href={`/portal/submissions/${detail.id}/edit`}>Edit submission</a></p> : null}
-      <p>Submitted: {new Date(detail.submittedAt).toISOString().slice(0, 10)}</p>
+      <p>
+        Status: <span class="chq-flag">{detail.statusLabel}</span>
+      </p>
+      {editable ? (
+        <div class="chq-portal-actions">
+          <a href={`/portal/submissions/${detail.id}/edit`} class="chq-btn chq-btn-secondary">Edit submission</a>
+        </div>
+      ) : null}
+      <p class="chq-portal-sub">Submitted: {new Date(detail.submittedAt).toISOString().slice(0, 10)}</p>
       {detail.description ? <p>{detail.description}</p> : null}
-      <h3>Answers</h3>
+      <h3 class="chq-section-label">Answers</h3>
       {detail.answers.length === 0 ? (
         <p>No additional answers.</p>
       ) : (

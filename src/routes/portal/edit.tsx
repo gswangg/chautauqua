@@ -123,8 +123,8 @@ function EditPage(props: {
   if (!editable) {
     return (
       <PortalLayout branding={props.branding} csrfToken={csrfToken}>
-        <a href={`/portal/submissions/${props.submissionId}`}>&larr; Back to submission</a>
-        <h2>Editing closed</h2>
+        <a href={`/portal/submissions/${props.submissionId}`} class="chq-portal-back">&larr; Back to submission</a>
+        <h2 class="chq-portal-hero">Editing closed</h2>
         <p role="alert">
           This submission can no longer be edited — the form's submission window has closed.
         </p>
@@ -134,15 +134,15 @@ function EditPage(props: {
   const offeredTracks = data.allTracks.filter((t) => data.offeredTrackIds.includes(t.id));
   return (
     <PortalLayout branding={props.branding} csrfToken={csrfToken}>
-      <a href={`/portal/submissions/${props.submissionId}`}>&larr; Back to submission</a>
-      <h2>Edit submission</h2>
+      <a href={`/portal/submissions/${props.submissionId}`} class="chq-portal-back">&larr; Back to submission</a>
+      <h2 class="chq-portal-hero">Edit submission</h2>
       <form method="post" action={`/portal/submissions/${props.submissionId}/edit`}>
         <input type="hidden" name={CSRF_COOKIE_NAME} value={csrfToken} />
-        <h3>Session</h3>
+        <div class="chq-section-label">Session</div>
         <FormFieldsSection fields={data.fields} section="session" answers={answers} errors={errors} isVisible={isVisible} />
         {tracksEditable ? (
           <fieldset>
-            <legend>Track *</legend>
+            <legend class="chq-portal-field-label">Track *</legend>
             {offeredTracks.map((track) => (
               <label>
                 <input type="checkbox" name="trackIds" value={track.id} checked={selectedTrackIds.includes(track.id)} />
@@ -156,12 +156,12 @@ function EditPage(props: {
             ) : null}
           </fieldset>
         ) : (
-          <p>
+          <p class="chq-portal-sub">
             Tracks: {data.allTracks.filter((t) => selectedTrackIds.includes(t.id)).map((t) => t.name).join(", ") || "None"}{" "}
             (editing closed)
           </p>
         )}
-        <h3>Speaker</h3>
+        <div class="chq-section-label">Speaker</div>
         <FormFieldsSection
           fields={data.fields.filter((f) => lockedFieldName(f.id) !== "email")}
           section="speaker"
@@ -172,18 +172,20 @@ function EditPage(props: {
         {data.fields
           .filter((f) => lockedFieldName(f.id) === "email")
           .map((f) => (
-            <p>
+            <p class="chq-portal-sub">
               Email: {String(answers[f.id] ?? "")} (read-only)
             </p>
           ))}
         {data.fields
           .filter((f) => f.kind === "file")
           .map((f) => (
-            <p>
+            <p class="chq-portal-sub">
               {f.label}: {String(answers[f.id] ?? "No file uploaded")} (read-only)
             </p>
           ))}
-        <button type="submit">Save changes</button>
+        <div class="chq-portal-actions">
+          <button type="submit" class="chq-btn chq-btn-primary">Save changes</button>
+        </div>
       </form>
       <FieldRulesScript fields={data.fields} />
     </PortalLayout>

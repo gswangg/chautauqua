@@ -131,8 +131,8 @@ function CommentThread(props: { assignmentId: string; comments: FileCommentRow[]
       )}
       <form method="post" action={`/portal/tasks/${assignmentId}/comments`}>
         <input type="hidden" name={CSRF_COOKIE_NAME} value={csrfToken} />
-        <textarea name="body" required></textarea>
-        <button type="submit">Reply</button>
+        <textarea name="body" class="chq-textarea" required></textarea>
+        <button type="submit" class="chq-btn chq-btn-secondary">Reply</button>
       </form>
     </section>
   );
@@ -146,38 +146,46 @@ function TaskRow(props: {
 }) {
   const { assignment: t, csrfToken, error, fileExtras } = props;
   return (
-    <li>
-      <strong>{t.title}</strong>
-      {t.required ? <em> (required)</em> : null}
-      {t.dueDate ? <span> — due {new Date(t.dueDate).toISOString().slice(0, 10)}</span> : null}
-      {" — "}
-      {t.status === "complete" ? "Completed" : "Pending"}
-      {t.description ? <p>{t.description}</p> : null}
+    <div class="chq-portal-row">
+      <div class="chq-portal-row-head">
+        <span class="chq-portal-row-title">
+          {t.title}
+          {t.required ? <em> (required)</em> : null}
+        </span>
+        {/* Behaviour frozen (DEC-366): the underlying status stays
+            pending|complete — only the on-screen wording grows a
+            .chq-flag, never a red swatch (DEC-367). */}
+        <span class={t.status === "complete" ? "chq-flag chq-portal-flag-done" : "chq-flag"}>
+          {t.status === "complete" ? "Completed" : "Pending"}
+        </span>
+      </div>
+      {t.dueDate ? <span class="chq-portal-due">Due {new Date(t.dueDate).toISOString().slice(0, 10)}</span> : null}
+      {t.description ? <p class="chq-portal-detail">{t.description}</p> : null}
       {error ? (
         <p role="alert" class="field-error">
           {error}
         </p>
       ) : null}
       {t.status === "complete" ? null : (
-        <>
+        <div class="chq-portal-actions">
           {t.kind === "general" ? (
             <form method="post" action={`/portal/tasks/${t.id}/complete`}>
               <input type="hidden" name={CSRF_COOKIE_NAME} value={csrfToken} />
-              <button type="submit">Mark complete</button>
+              <button type="submit" class="chq-btn chq-btn-primary">Mark complete</button>
             </form>
           ) : null}
           {t.kind === "file_request" ? (
             <form method="post" action={`/portal/tasks/${t.id}/upload`} enctype="multipart/form-data">
               <input type="hidden" name={CSRF_COOKIE_NAME} value={csrfToken} />
-              <p>
+              <p class="chq-portal-detail">
                 Accepted types: pdf, ppt, pptx, key, odp, zip (25 MB max); png, jpg, jpeg, webp, gif (8 MB max); txt,
                 md (25 MB max).
               </p>
               <input type="file" name="file" required />
-              <button type="submit">Upload</button>
+              <button type="submit" class="chq-btn chq-btn-primary">Upload</button>
             </form>
           ) : null}
-        </>
+        </div>
       )}
       {/* DEC-244 (implements DEC-242): a completed file_request assignment
           shows the current CHAIN-LATEST file (via the dedicated portal
@@ -187,7 +195,7 @@ function TaskRow(props: {
           speaker must be able to see their own upload without an organizer
           flipping status. */}
       {t.status === "complete" && t.kind === "file_request" && fileExtras ? (
-        <section aria-label="Uploaded file">
+        <section aria-label="Uploaded file" class="chq-card">
           <p>
             <a href={`/portal/tasks/${t.id}/file`}>{fileExtras.filename}</a> (version {fileExtras.version}, uploaded{" "}
             {new Date(fileExtras.uploadedAt).toISOString()})
@@ -195,12 +203,12 @@ function TaskRow(props: {
           <form method="post" action={`/portal/tasks/${t.id}/upload`} enctype="multipart/form-data">
             <input type="hidden" name={CSRF_COOKIE_NAME} value={csrfToken} />
             <input type="file" name="file" required />
-            <button type="submit">Replace file</button>
+            <button type="submit" class="chq-btn chq-btn-secondary">Replace file</button>
           </form>
           <CommentThread assignmentId={t.id} comments={fileExtras.comments} csrfToken={csrfToken} />
         </section>
       ) : null}
-    </li>
+    </div>
   );
 }
 
@@ -215,14 +223,14 @@ function TaskFormPage(props: {
   const { branding, assignment, fields, answers, csrfToken, errors } = props;
   return (
     <PortalLayout branding={branding} csrfToken={csrfToken}>
-      <a href="/portal/tasks">&larr; Back to My Tasks</a>
-      <h2>{assignment.title}</h2>
-      {assignment.description ? <p>{assignment.description}</p> : null}
+      <a href="/portal/tasks" class="chq-portal-back">&larr; Back to My Tasks</a>
+      <h2 class="chq-portal-hero">{assignment.title}</h2>
+      {assignment.description ? <p class="chq-portal-sub">{assignment.description}</p> : null}
       <form method="post" action={`/portal/tasks/${assignment.id}/form`}>
         <input type="hidden" name={CSRF_COOKIE_NAME} value={csrfToken} />
         <FormFieldsSection fields={fields} section="session" answers={answers} errors={errors} isVisible={isVisible} />
         <FormFieldsSection fields={fields} section="speaker" answers={answers} errors={errors} isVisible={isVisible} />
-        <button type="submit">Submit</button>
+        <button type="submit" class="chq-btn chq-btn-primary">Submit</button>
       </form>
       <FieldRulesScript fields={fields} />
     </PortalLayout>
@@ -238,28 +246,46 @@ function TasksPage(props: {
   fileExtrasFor?: (assignmentId: string) => FileRequestExtras | undefined;
 }) {
   const { branding, assignments, csrfToken, formLinkFor, errorFor, fileExtrasFor } = props;
+  const doneCount = assignments.filter((a) => a.status === "complete").length;
   return (
     <PortalLayout branding={branding} csrfToken={csrfToken}>
-      <a href="/portal">&larr; Back to Dashboard</a>
-      <h2>My Tasks</h2>
+      <a href="/portal" class="chq-portal-back">&larr; Back to Dashboard</a>
+      <h2 class="chq-portal-hero">My Tasks</h2>
+      {assignments.length > 0 ? (
+        <div class="chq-portal-progress">
+          <span class="chq-portal-progress-label">
+            {doneCount} of {assignments.length} complete
+          </span>
+          <div class="chq-bar">
+            <div
+              class="chq-bar-fill"
+              style={`width: ${Math.round((doneCount / assignments.length) * 100)}%`}
+            ></div>
+          </div>
+        </div>
+      ) : null}
       {assignments.length === 0 ? (
         <p>No tasks assigned yet.</p>
       ) : (
-        <ul>
-          {assignments.map((t) =>
-            t.kind === "form" && t.status !== "complete" ? (
-              <li>
-                <strong>{t.title}</strong>
-                {t.required ? <em> (required)</em> : null}
-                {t.dueDate ? <span> — due {new Date(t.dueDate).toISOString().slice(0, 10)}</span> : null}
-                {" — Pending — "}
-                <a href={formLinkFor(t) ?? "#"}>Fill out form</a>
-              </li>
-            ) : (
-              <TaskRow assignment={t} csrfToken={csrfToken} error={errorFor?.(t.id)} fileExtras={fileExtrasFor?.(t.id)} />
-            ),
-          )}
-        </ul>
+        assignments.map((t) =>
+          t.kind === "form" && t.status !== "complete" ? (
+            <div class="chq-portal-row">
+              <div class="chq-portal-row-head">
+                <span class="chq-portal-row-title">
+                  {t.title}
+                  {t.required ? <em> (required)</em> : null}
+                </span>
+                <span class="chq-flag">Pending</span>
+              </div>
+              {t.dueDate ? <span class="chq-portal-due">Due {new Date(t.dueDate).toISOString().slice(0, 10)}</span> : null}
+              <div class="chq-portal-actions">
+                <a href={formLinkFor(t) ?? "#"} class="chq-btn chq-btn-primary">Fill out form</a>
+              </div>
+            </div>
+          ) : (
+            <TaskRow assignment={t} csrfToken={csrfToken} error={errorFor?.(t.id)} fileExtras={fileExtrasFor?.(t.id)} />
+          ),
+        )
       )}
     </PortalLayout>
   );
@@ -273,26 +299,26 @@ function ResourcesPage(props: {
   const { branding, groups, csrfToken } = props;
   return (
     <PortalLayout branding={branding} csrfToken={csrfToken}>
-      <a href="/portal">&larr; Back to Dashboard</a>
-      <h2>Resources</h2>
+      <a href="/portal" class="chq-portal-back">&larr; Back to Dashboard</a>
+      <h2 class="chq-portal-hero">Resources</h2>
       {groups.length === 0 ? (
         <p>No resources yet.</p>
       ) : (
         groups.map((group) => (
-          <section aria-label={group.eventName}>
-            <h3>{group.eventName}</h3>
-            <ul>
-              {group.resources.map((r) => (
-                <li>
-                  <strong>{r.title}</strong>
-                  {r.kind === "wiki" ? (
-                    (r.content ?? "").split(/\n{2,}/).map((para) => <p>{para}</p>)
-                  ) : (
-                    <a href={`/portal/resources/${r.id}/download`}>Download</a>
-                  )}
-                </li>
-              ))}
-            </ul>
+          <section aria-label={group.eventName} class="chq-section">
+            <div class="chq-section-label">{group.eventName}</div>
+            {group.resources.map((r) => (
+              <div class="chq-portal-row">
+                <span class="chq-portal-row-title">{r.title}</span>
+                {r.kind === "wiki" ? (
+                  (r.content ?? "").split(/\n{2,}/).map((para) => <p class="chq-portal-detail">{para}</p>)
+                ) : (
+                  <div class="chq-portal-actions">
+                    <a href={`/portal/resources/${r.id}/download`} class="chq-btn chq-btn-secondary">Download</a>
+                  </div>
+                )}
+              </div>
+            ))}
           </section>
         ))
       )}

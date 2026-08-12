@@ -136,71 +136,80 @@ function ProfilePage(props: {
   const { profile } = props;
   return (
     <PortalLayout branding={props.branding} csrfToken={props.csrfToken}>
-      <a href="/portal">&larr; Back to My Submissions</a>
-      <h2>My Profile</h2>
+      <a href="/portal" class="chq-portal-back">&larr; Back to My Submissions</a>
+      <h2 class="chq-portal-hero">My Profile</h2>
       {props.error ? <p role="alert">{props.error}</p> : null}
       {props.saved ? <p role="status">Profile saved.</p> : null}
       <p><a href="/account/password">Change password</a></p>
 
-      <section aria-label="Headshot">
-        <h3>Headshot</h3>
+      <section aria-label="Headshot" class="chq-section chq-portal-profile-head">
         {/* DEC-245: headshot success renders its own 'Headshot uploaded.'
             status, distinct from the details form's 'Profile saved.' */}
-        {props.headshotSavedMessage ? <p role="status">{props.headshotSavedMessage}</p> : null}
-        {profile.headshotUrl ? <img src={profile.headshotUrl} alt="" width={120} height={120} /> : <p>No headshot uploaded yet.</p>}
-        <form method="post" action="/portal/profile/headshot" enctype="multipart/form-data">
-          <input type="hidden" name={CSRF_COOKIE_NAME} value={props.csrfToken} />
-          <label>
-            Upload a new headshot
-            <input type="file" name="headshot" accept=".png,.jpg,.jpeg,.webp" required />
-          </label>
-          <p>{HEADSHOT_HELP_TEXT}</p>
-          <button type="submit">Upload headshot</button>
-        </form>
-        <script dangerouslySetInnerHTML={{ __html: HEADSHOT_DOWNSCALE_JS }} />
+        {profile.headshotUrl ? (
+          <img src={profile.headshotUrl} alt="" width={64} height={64} class="chq-portal-avatar" />
+        ) : (
+          <div class="chq-portal-avatar" />
+        )}
+        <div class="chq-portal-facts" style="flex:1; min-width:200px">
+          <h3 style="margin:0 0 4px">Headshot</h3>
+          {props.headshotSavedMessage ? <p role="status">{props.headshotSavedMessage}</p> : null}
+          {!profile.headshotUrl ? <p>No headshot uploaded yet.</p> : null}
+          <form method="post" action="/portal/profile/headshot" enctype="multipart/form-data">
+            <input type="hidden" name={CSRF_COOKIE_NAME} value={props.csrfToken} />
+            <label>
+              Upload a new headshot
+              <input type="file" name="headshot" accept=".png,.jpg,.jpeg,.webp" required />
+            </label>
+            <p class="chq-portal-sub">{HEADSHOT_HELP_TEXT}</p>
+            <button type="submit" class="chq-btn chq-btn-secondary">Upload headshot</button>
+          </form>
+          <script dangerouslySetInnerHTML={{ __html: HEADSHOT_DOWNSCALE_JS }} />
+        </div>
       </section>
 
-      <section aria-label="Profile details">
-        <h3>Details</h3>
+      <section aria-label="Profile details" class="chq-section">
+        <div class="chq-section-label">Details</div>
         <form method="post" action="/portal/profile">
           <input type="hidden" name={CSRF_COOKIE_NAME} value={props.csrfToken} />
-          <label>
-            First name
-            <input type="text" name="firstName" value={profile.firstName} required />
-          </label>
-          <label>
-            Last name
-            <input type="text" name="lastName" value={profile.lastName} required />
-          </label>
-          <label>
-            Title
-            <input type="text" name="title" value={profile.title ?? ""} />
-          </label>
-          <label>
-            Company
-            <input type="text" name="company" value={profile.company ?? ""} />
-          </label>
-          <label>
-            Bio
-            <textarea name="bio">{profile.bio ?? ""}</textarea>
-          </label>
-          <label>
-            Twitter
-            <input type="text" name="twitter" value={profile.socialLinks.twitter} />
-          </label>
-          <label>
-            LinkedIn
-            <input type="text" name="linkedin" value={profile.socialLinks.linkedin} />
-          </label>
-          <label>
-            GitHub
-            <input type="text" name="github" value={profile.socialLinks.github} />
-          </label>
-          <label>
-            Website
-            <input type="text" name="website" value={profile.socialLinks.website} />
-          </label>
-          <button type="submit">Save profile</button>
+          <div class="chq-portal-field">
+            <label class="chq-portal-field-label" for="firstName">First name</label>
+            <input class="chq-input" type="text" id="firstName" name="firstName" value={profile.firstName} required />
+          </div>
+          <div class="chq-portal-field">
+            <label class="chq-portal-field-label" for="lastName">Last name</label>
+            <input class="chq-input" type="text" id="lastName" name="lastName" value={profile.lastName} required />
+          </div>
+          <div class="chq-portal-field">
+            <label class="chq-portal-field-label" for="title">Title</label>
+            <input class="chq-input" type="text" id="title" name="title" value={profile.title ?? ""} />
+          </div>
+          <div class="chq-portal-field">
+            <label class="chq-portal-field-label" for="company">Company</label>
+            <input class="chq-input" type="text" id="company" name="company" value={profile.company ?? ""} />
+          </div>
+          <div class="chq-portal-field">
+            <label class="chq-portal-field-label" for="bio">Bio</label>
+            <textarea class="chq-textarea" id="bio" name="bio">{profile.bio ?? ""}</textarea>
+          </div>
+          <div class="chq-portal-field">
+            <label class="chq-portal-field-label" for="twitter">Twitter</label>
+            <input class="chq-input" type="text" id="twitter" name="twitter" value={profile.socialLinks.twitter} />
+          </div>
+          <div class="chq-portal-field">
+            <label class="chq-portal-field-label" for="linkedin">LinkedIn</label>
+            <input class="chq-input" type="text" id="linkedin" name="linkedin" value={profile.socialLinks.linkedin} />
+          </div>
+          <div class="chq-portal-field">
+            <label class="chq-portal-field-label" for="github">GitHub</label>
+            <input class="chq-input" type="text" id="github" name="github" value={profile.socialLinks.github} />
+          </div>
+          <div class="chq-portal-field">
+            <label class="chq-portal-field-label" for="website">Website</label>
+            <input class="chq-input" type="text" id="website" name="website" value={profile.socialLinks.website} />
+          </div>
+          <div class="chq-portal-actions">
+            <button type="submit" class="chq-btn chq-btn-primary">Save profile</button>
+          </div>
         </form>
       </section>
     </PortalLayout>
