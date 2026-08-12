@@ -342,12 +342,14 @@ describe("embed config: day filters the agenda's fetched item array", () => {
 });
 
 describe("embed config: accent overrides EmbedShell branding, PublicShell ignores it", () => {
-  it("a valid 6-hex accent lands in --chq-accent on the embed surface", async () => {
+  // DEC-371: the per-event recolour hook is --chq-brandable-accent (was
+  // --chq-accent before THEME_CSS/ThemeStyles wiring, task-w1-b).
+  it("a valid 6-hex accent lands in --chq-brandable-accent on the embed surface", async () => {
     installFakeCaches();
     const app = buildApp();
     const res = await app.request("/embed/conf/sessions?accent=ff0000", {}, TEST_ENV);
     const html = await res.text();
-    expect(html).toContain("--chq-accent: #ff0000;");
+    expect(html).toContain("--chq-brandable-accent: #ff0000;");
   });
 
   it("a garbage accent (CSS injection attempt) never reaches the style block; falls back to event branding", async () => {
@@ -356,7 +358,7 @@ describe("embed config: accent overrides EmbedShell branding, PublicShell ignore
     const res = await app.request("/embed/conf/sessions?accent=red;background:url(x)", {}, TEST_ENV);
     const html = await res.text();
     expect(html).not.toContain("url(x)");
-    expect(html).toContain("--chq-accent: #123456;"); // falls back to EVENT_ROW branding
+    expect(html).toContain("--chq-brandable-accent: #123456;"); // falls back to EVENT_ROW branding
   });
 
   it("PublicShell (/e/...) ignores the accent param entirely", async () => {
@@ -364,7 +366,7 @@ describe("embed config: accent overrides EmbedShell branding, PublicShell ignore
     const app = buildApp();
     const res = await app.request("/e/conf/sessions?accent=ff0000", {}, TEST_ENV);
     const html = await res.text();
-    expect(html).not.toContain("--chq-accent: #ff0000;");
-    expect(html).toContain("--chq-accent: #123456;"); // event branding, unaffected by accent
+    expect(html).not.toContain("--chq-brandable-accent: #ff0000;");
+    expect(html).toContain("--chq-brandable-accent: #123456;"); // event branding, unaffected by accent
   });
 });

@@ -6,6 +6,7 @@
 import { Hono } from "hono";
 import type { AppEnv } from "../server/env";
 import { DEC_056, DEC_012, DEC_013 } from "../decisions";
+import { ThemeStyles } from "../views/theme";
 
 export const docsRoutes = new Hono<AppEnv>();
 
@@ -239,7 +240,8 @@ function DocsPage() {
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>Chautauqua API docs</title>
-        <style>{`body { font-family: system-ui, sans-serif; margin: 0; color: #1a1a1a; } main { max-width: 900px; margin: 2rem auto; padding: 0 1rem 3rem; } h2 { margin-top: 2.5rem; border-bottom: 1px solid #ddd; padding-bottom: 0.25rem; } .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; } table { border-collapse: collapse; width: 100%; min-width: 100%; margin-top: 0.5rem; } th, td { text-align: left; padding: 0.35rem 0.6rem; border-bottom: 1px solid #eee; font-size: 0.92rem; } td code { overflow-wrap: anywhere; } code, pre { background: #f4f4f4; padding: 0.1rem 0.35rem; border-radius: 3px; font-size: 0.92rem; } pre { padding: 0.75rem; overflow-x: auto; }`}</style>
+        <ThemeStyles />
+        <style>{`main { max-width: 900px; margin: 2rem auto; padding: 0 1rem 3rem; } h2 { margin-top: 2.5rem; border-bottom: 1px solid var(--chq-rule); padding-bottom: 0.25rem; } .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; } table { border-collapse: collapse; width: 100%; min-width: 100%; margin-top: 0.5rem; } th, td { text-align: left; padding: 0.35rem 0.6rem; border-bottom: 1px solid var(--chq-hairline); font-size: 0.92rem; } td code { overflow-wrap: anywhere; } code, pre { background: var(--chq-surface-sunk); padding: 0.1rem 0.35rem; border-radius: 3px; font-size: 0.92rem; } pre { padding: 0.75rem; overflow-x: auto; }`}</style>
       </head>
       <body>
         <main>

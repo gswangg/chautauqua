@@ -59,7 +59,7 @@ function ensureCsrfCookie(c: {
 
 function Nav() {
   return (
-    <nav aria-label="Portal navigation">
+    <nav aria-label="Portal navigation" class="chq-nav">
       <a href="/portal">Dashboard</a> | <a href="/portal/profile">Profile</a> |{" "}
       <a href="/portal/tasks">Tasks</a> | <a href="/portal/resources">Resources</a>
     </nav>

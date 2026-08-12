@@ -14,6 +14,7 @@ import type { AppEnv, Bindings } from "../../server/env";
 import { getEmailLogById, listEmailLog } from "../../server/repo/email";
 import { clampPage, clampPerPage } from "../../lib/pagination";
 import { icsDownloadHeaders } from "../../mail/ics";
+import { ThemeStyles } from "../../views/theme";
 
 /** Pure mounting predicate (DEC-005): DEV_MODE must be the exact string
  * '1'. Anything else (unset, 'true', '0', ...) means the routes don't
@@ -43,6 +44,7 @@ function MailboxListPage(props: {
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>Dev mailbox - Chautauqua</title>
+        <ThemeStyles />
         <style>{`.table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; } table { border-collapse: collapse; min-width: 100%; }`}</style>
       </head>
       <body>
@@ -91,6 +93,7 @@ function MailboxDetailPage(props: { row: NonNullable<Awaited<ReturnType<typeof g
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>{row.subject} - Dev mailbox - Chautauqua</title>
+        <ThemeStyles />
         <style>{`pre { overflow-x: auto; white-space: pre-wrap; overflow-wrap: anywhere; }`}</style>
       </head>
       <body>
