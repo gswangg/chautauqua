@@ -1,7 +1,6 @@
 /* DEC-368: page-lane stylesheet, imported by Overview.tsx only. Classes are
    prefixed .chq-overview-* and never redefine a shared .chq-* class from the
-   shell lane's styles.css. Tokens follow DEC-367; falls back to the literal
-   hex so the page still renders before the shell lane lands :root tokens. */
+   shell lane's styles.css. Tokens follow DEC-367 (no hex literals — DEC-383). */
 
 .chq-overview-deadlines {
   display: grid;
@@ -130,9 +129,38 @@
   letter-spacing: -0.015em;
 }
 
+.chq-overview-row-title-lg {
+  font-size: 21px;
+}
+
+.chq-overview-row-title-md {
+  font-size: 17px;
+}
+
+.chq-overview-row-title-sm {
+  font-size: 15px;
+}
+
 .chq-overview-row-meta {
   font-size: 12px;
   color: var(--chq-muted);
+}
+
+.chq-overview-row-meta-sm {
+  font-size: 14px;
+}
+
+.chq-overview-row-single {
+  grid-template-columns: 1fr;
+}
+
+.chq-overview-row-actions-stacked {
+  margin-top: 11px;
+  align-self: flex-start;
+}
+
+.chq-overview-caption-flush {
+  padding: 0;
 }
 
 .chq-overview-row-late {
@@ -189,4 +217,85 @@
   padding: 14px 0;
   color: var(--chq-muted);
   font-size: 13px;
+}
+
+@media (max-width: 700px) {
+  .chq-overview-deadlines {
+    display: flex;
+    grid-template-columns: none;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    gap: 2px;
+  }
+
+  .chq-overview-deadline-cell {
+    flex-shrink: 0;
+    min-height: 44px;
+    justify-content: center;
+  }
+
+  .chq-overview-deadline-value {
+    font-size: 17px;
+  }
+
+  .chq-overview-headline {
+    font-size: 29px;
+  }
+
+  .chq-overview-row-overdue,
+  .chq-overview-row-content,
+  .chq-overview-row-agenda,
+  .chq-overview-row-quiet,
+  .chq-overview-row-single {
+    grid-template-columns: 1fr;
+  }
+
+  .chq-overview-row-actions {
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
+  .chq-overview-row-actions .chq-overview-btn {
+    flex: 1;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--chq-r-ctl-phone);
+    text-align: center;
+  }
+
+  .chq-overview-link-btn {
+    flex: 1;
+    width: 100%;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--chq-border);
+    background: var(--chq-surface-sunk);
+    border-radius: var(--chq-r-ctl-phone);
+    text-align: center;
+    box-sizing: border-box;
+  }
+
+  .chq-overview-section-header {
+    flex-wrap: wrap;
+  }
+
+  .chq-overview-remind-all {
+    flex: 1 0 100%;
+    min-height: 46px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--chq-r-ctl-phone);
+    background: var(--chq-brand);
+    color: var(--chq-on-brand);
+    text-align: center;
+  }
+
+  .chq-overview-caption {
+    text-align: center;
+  }
 }
