@@ -638,3 +638,11 @@ compare phone frames pixel-for-pixel.
     keep. GENERAL RULE (add to the affordance rules): a filled primary button never
     floats in its own band; primaries live on the title row or a form footer, section
     actions are links on the section rule.
+
+53. (User priority, refines directive 48) **Desktop polish order — work these first**:
+    (1) Review plan editor rebuilt to mock WITH the full v4 criteria spec (item 34 —
+    user re-confirmed it's untouched); (2) Review landing layout grammar (item 52);
+    (3) form-builder row anatomy (item 51); (4) Speakers grid v4 interaction rules
+    (item 32); (5) submission detail structure (item 38) + Contacts drawer record
+    view (item 45). The P0s (items 28/33) and the waitlist regression (35) still
+    precede everything.
