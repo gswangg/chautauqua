@@ -74,6 +74,7 @@ export async function renderSurfaceContent(
             q={q}
             perPage={perPage}
             limit={query.limit ?? null}
+            embed={query.embed}
           />
         ),
       };
@@ -94,17 +95,24 @@ export async function renderSurfaceContent(
             q={q}
             perPage={perPage}
             limit={query.limit ?? null}
+            embed={query.embed}
           />
         ),
       };
     }
     case "agenda": {
       const { items, total } = await getPublicAgenda(db, event, { day: query.day });
-      return { title: `Agenda - ${event.name}`, content: <AgendaContent event={event} items={items} total={total} /> };
+      return {
+        title: `Agenda - ${event.name}`,
+        content: <AgendaContent event={event} items={items} total={total} embed={query.embed} />,
+      };
     }
     case "schedule": {
       const { items, total } = await getPublicAgenda(db, event, { day: query.day });
-      return { title: `Schedule - ${event.name}`, content: <ScheduleContent event={event} items={items} total={total} /> };
+      return {
+        title: `Schedule - ${event.name}`,
+        content: <ScheduleContent event={event} items={items} total={total} embed={query.embed} />,
+      };
     }
     default: {
       const exhaustive: never = surface;
