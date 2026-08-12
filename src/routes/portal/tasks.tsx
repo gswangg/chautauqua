@@ -46,7 +46,7 @@ import {
 } from "../../server/repo/portal";
 import { listFields, type FormFieldRow } from "../../server/repo/forms";
 import { validateAnswers } from "../../forms/validate";
-import { isVisible } from "../../forms/visibility";
+import { makeVisibilityPredicate } from "../../forms/visibility";
 import type { AnswerMap } from "../../forms/types";
 import { FormFieldsSection, FieldRulesScript, fieldInputName } from "../../views/form-render";
 import { isImageContentType, isValidFileKind, sanitizeFilenameForKey, validateUpload } from "../../domain/files";
@@ -223,6 +223,9 @@ function TaskFormPage(props: {
   errors?: Record<string, string>;
 }) {
   const { branding, assignment, fields, answers, csrfToken, errors } = props;
+  // DEC-532: one predicate built from the FULL field list (a session field
+  // can gate a speaker field), shared by both sections below.
+  const isVisible = makeVisibilityPredicate(fields, answers);
   return (
     <PortalLayout branding={branding} csrfToken={csrfToken}>
       <a href="/portal/tasks" class="chq-portal-back">&larr; Back to My Tasks</a>

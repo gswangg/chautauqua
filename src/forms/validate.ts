@@ -1,5 +1,5 @@
 import { lockedFieldName, type AnswerMap, type FormFieldDef } from "./types";
-import { isVisible } from "./visibility";
+import { resolveHiddenFieldIds } from "./visibility";
 import { isValidEmail, normalizeEmail } from "../domain/email";
 import { DEC_124, DEC_454, DEC_455 } from "../decisions";
 
@@ -40,8 +40,10 @@ export function validateAnswers(
     }
   }
 
+  const hidden = resolveHiddenFieldIds(fields, answers);
+
   for (const field of fields) {
-    const visible = isVisible(field, answers);
+    const visible = !hidden.has(field.id);
     const hasAnswer = Object.prototype.hasOwnProperty.call(answers, field.id);
     const value = answers[field.id];
 
