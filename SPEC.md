@@ -305,7 +305,7 @@ Invariants (assert, don't paper over):
 
 ## 6. Security
 
-- PBKDF2-SHA256 (≥600k iterations), constant-time compares; session rotation on login.
+- PBKDF2-SHA256 (100,000 iterations, the workerd production ceiling; DEC-004/DEC-237), constant-time compares; session rotation on login.
 - HttpOnly/Secure/SameSite=Lax cookies; CSRF custom-header check on JSON mutations, token
   on plain form posts.
 - Authz middleware on every admin/API route: role + event grant; object-level ownership
