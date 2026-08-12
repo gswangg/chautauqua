@@ -12,7 +12,7 @@
 // modules and tests import from "../routes/public" / "../src/routes/public".
 // No behavior change.
 
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import type { AppEnv } from "../../server/env";
 import {
   getPublicEventBySlug,
@@ -28,7 +28,7 @@ import { parseItineraryIds, MAX_ITINERARY_IDS } from "../../lib/itinerary";
 import { ApiError, errorEnvelope } from "../../server/http";
 import { publicCacheMiddleware, defaultCache } from "../../server/pubcache";
 import { DEC_022, DEC_007, DEC_017, DEC_005, DEC_012, DEC_080, DEC_083, DEC_151, DEC_289, DEC_489, DEC_661, DEC_672 } from "../../decisions";
-import { SURFACES, isSurface, setCacheHeaders, PublicShell, EmbedShell, isValidFrom, type Surface } from "./shell";
+import { SURFACES, isSurface, setCacheHeaders, PublicShell, EmbedShell, BaseStyles, isValidFrom, type Surface } from "./shell";
 import { PUBLIC_PER_PAGE } from "../../server/repo/public/bounds";
 import { renderSurfaceContent } from "./dispatch";
 import { SpeakerDetailContent, SessionDetailContent } from "./detail";
@@ -46,6 +46,40 @@ import type { CardFields } from "./query";
 
 export const publicRoutes = new Hono<AppEnv>();
 
+// DEC-366/367/368/w15-g: the same "That page isn't here" shell as the admin
+// SPA's NotFound page (app/src/pages/NotFound.tsx), re-skinned for the
+// public surface -- no PublicEvent is available at most call sites (the
+// event itself is frequently what's missing), so this owns a minimal
+// event-agnostic shell (ThemeStyles only, no PublicShell/EmbedShell nav)
+// rather than requiring an event to render at all. Links back to the hub
+// (GET /, src/routes/root.tsx) rather than into an unresolved event.
+function PublicNotFoundShell(props: { message: string }) {
+  return (
+    <html lang="en">
+      <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Not found</title>
+        <BaseStyles />
+      </head>
+      <body>
+        <main style="max-width:520px; margin:64px auto; padding:0 20px; display:flex; flex-direction:column; gap:14px;">
+          <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:var(--chq-muted);">
+            Not found
+          </span>
+          <h1 style="font-family:var(--chq-font-display); font-size:28px; font-weight:700; letter-spacing:-0.04em; line-height:1.06; margin:0;">
+            That page isn't here
+          </h1>
+          <p style="font-size:15px; line-height:1.65; color:var(--chq-ink-2); margin:0;">{props.message}</p>
+          <a href="/" style="font-size:14px; font-weight:700;">
+            Back to Chautauqua
+          </a>
+        </main>
+      </body>
+    </html>
+  );
+}
+
 // DEC-297: public surfaces must never emit a cacheable non-200. A 404 (or
 // any other non-200) response must always carry Cache-Control: no-store,
 // even though setCacheHeaders(c) has already set the 60s client cache
@@ -53,9 +87,9 @@ export const publicRoutes = new Hono<AppEnv>();
 // appends, so calling this last wins. Without this, a stale "not found"
 // page (e.g. before an organizer approves a session) could be cached by a
 // browser/proxy for up to max-age=60 after the underlying data changes.
-function publicNotFound(c: { header(name: string, value: string): void; text(body: string, status: 404): Response }, message: string): Response {
+async function publicNotFound(c: Context<AppEnv>, message: string): Promise<Response> {
   c.header("Cache-Control", "no-store");
-  return c.text(message, 404);
+  return await c.html(<PublicNotFoundShell message={message} />, 404);
 }
 
 // touch DEC constants so the dependency is compile-checked (field guide convention)
