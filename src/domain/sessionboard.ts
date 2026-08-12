@@ -12,6 +12,22 @@
 /** Lower-snake source tag for every ref this importer mints. */
 export const SESSIONBOARD_SOURCE = "sessionboard";
 
+// DEC-675: the importer speaks the product's own vocabularies, imported
+// (never retyped) from their single owning modules -- a hand-copied list
+// drifts the moment either module changes.
+import { SUBMISSION_STATUSES } from "./status";
+import { PARTICIPANT_ROLE_OPTIONS } from "./participant-roles";
+
+const SUBMISSION_STATUS_SET = new Set<string>(SUBMISSION_STATUSES);
+const PARTICIPANT_ROLE_SET = new Set<string>(PARTICIPANT_ROLE_OPTIONS.map((o) => o.value));
+
+/** Normalizes a status cell for vocabulary matching: trim, lowercase,
+ * collapse whitespace/hyphens to underscores (e.g. "Accept Queue" ->
+ * "accept_queue"). */
+function normalizeStatusCell(cell: string): string {
+  return cell.trim().toLowerCase().replace(/[\s-]+/g, "_");
+}
+
 /** Builds the namespaced external_ref value: "<source>:<their id>". */
 export function externalRef(source: string, recordId: string): string {
   return `${source}:${recordId}`;
@@ -147,6 +163,48 @@ export function planSessionboardRows(
         continue;
       }
       values[target] = value;
+    }
+
+    // DEC-675: validate against the product's own vocabularies HERE, in the
+    // planner -- the dry run must name the row+field+value the real run
+    // would otherwise corrupt. An unrecognised value yields an issue and the
+    // key is dropped so the row still imports (with the writer's default)
+    // rather than writing an out-of-vocabulary literal into the column.
+    if (entity === "submissions" && values.status !== undefined) {
+      const normalized = normalizeStatusCell(values.status);
+      if (!SUBMISSION_STATUS_SET.has(normalized)) {
+        issues.push({
+          row: rowNumber,
+          field: "status",
+          message: `Unrecognised submission status "${values.status}" -- imported as pending`,
+        });
+        delete values.status;
+      } else {
+        values.status = normalized;
+      }
+    }
+
+    if (entity === "participants" && values.role !== undefined) {
+      if (!PARTICIPANT_ROLE_SET.has(values.role)) {
+        issues.push({
+          row: rowNumber,
+          field: "role",
+          message: `Unrecognised participant role "${values.role}" -- dropped`,
+        });
+        delete values.role;
+      }
+    }
+
+    if (entity === "participants" && values.order !== undefined) {
+      const isNonNegativeInteger = /^\d+$/.test(values.order);
+      if (!isNonNegativeInteger) {
+        issues.push({
+          row: rowNumber,
+          field: "order",
+          message: `Invalid participant order "${values.order}" -- dropped`,
+        });
+        delete values.order;
+      }
     }
 
     if (!targetFields.has("externalId")) {
