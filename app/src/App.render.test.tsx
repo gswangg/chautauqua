@@ -124,3 +124,60 @@ describe('App shell (DEC-369)', () => {
     expect(screen.queryByRole('link', { name: 'Settings' })).not.toBeInTheDocument();
   });
 });
+
+describe('Phone tab bar (DEC-381)', () => {
+  it('shows Overview, Submissions, Speakers and Content for an organizer, not Review', async () => {
+    mockApi({
+      'GET /api/v1/me': { userId: 'u-1', email: 'organizer@example.com', role: 'organizer', orgId: 'org-1' },
+      'GET /api/v1/events': { items: [], total: 0, page: 1, perPage: 50 },
+    });
+
+    render(<App />);
+
+    const tabbar = await screen.findByRole('navigation', { name: 'Primary, phone' });
+    expect(within(tabbar).getByRole('link', { name: /^Overview/ })).toBeInTheDocument();
+    expect(within(tabbar).getByRole('link', { name: /^Submissions/ })).toBeInTheDocument();
+    expect(within(tabbar).getByRole('link', { name: /^Speakers/ })).toBeInTheDocument();
+    expect(within(tabbar).getByRole('link', { name: /^Content/ })).toBeInTheDocument();
+    expect(within(tabbar).queryByRole('link', { name: /^Review/ })).not.toBeInTheDocument();
+    expect(within(tabbar).getByRole('button', { name: /^More/ })).toBeInTheDocument();
+  });
+
+  it('shows Review alone with no More control for a reviewer', async () => {
+    mockApi({
+      'GET /api/v1/me': { userId: 'u-2', email: 'reviewer@example.com', role: 'reviewer', orgId: 'org-1' },
+      'GET /api/v1/events': { items: [], total: 0, page: 1, perPage: 50 },
+    });
+
+    render(<App />);
+
+    await waitFor(() => {
+      const tabbar = screen.getByRole('navigation', { name: 'Primary, phone' });
+      expect(within(tabbar).getByRole('link', { name: /^Review/ })).toBeInTheDocument();
+      expect(within(tabbar).queryByRole('button', { name: /^More/ })).not.toBeInTheDocument();
+    });
+  });
+
+  it('reveals a Sign out control in the More sheet, which stays closed by default', async () => {
+    mockApi({
+      'GET /api/v1/me': { userId: 'u-1', email: 'organizer@example.com', role: 'organizer', orgId: 'org-1' },
+      'GET /api/v1/events': { items: [], total: 0, page: 1, perPage: 50 },
+    });
+
+    render(<App />);
+
+    const tabbar = await screen.findByRole('navigation', { name: 'Primary, phone' });
+    expect(screen.queryByRole('dialog', { name: 'More' })).not.toBeInTheDocument();
+
+    const moreButton = within(tabbar).getByRole('button', { name: /^More/ });
+    moreButton.click();
+
+    const dialog = await screen.findByRole('dialog', { name: 'More' });
+    expect(within(dialog).getByRole('link', { name: 'Review' })).toBeInTheDocument();
+    expect(within(dialog).getByRole('link', { name: 'Agenda' })).toBeInTheDocument();
+    expect(within(dialog).getByRole('link', { name: 'Comms' })).toBeInTheDocument();
+    expect(within(dialog).getByRole('link', { name: 'Contacts' })).toBeInTheDocument();
+    expect(within(dialog).getByRole('link', { name: 'Settings' })).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
+  });
+});

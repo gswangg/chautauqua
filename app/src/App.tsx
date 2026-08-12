@@ -2,6 +2,7 @@ import { lazy, Suspense, useState, type ReactNode } from 'react';
 import { BrowserRouter, Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom';
 import { useMe } from './lib/useMe';
 import { useNavExceptions } from './lib/useNavExceptions';
+import { useEscapeKey } from './lib/useEscapeKey';
 import { EventSwitcher } from './components/EventSwitcher';
 
 // DEC-052: every route page is code-split via React.lazy. Page modules keep
@@ -78,6 +79,12 @@ function isReviewerNav(section: NavSection): boolean {
   return section.path === '/review/*';
 }
 
+// DEC-381: the phone tab bar's four primary destinations, fixed by an
+// explicit ordered path list so the set can never drift with NAV_SECTIONS
+// order (NAV_SECTIONS orders Review third, which previously pushed Content
+// out of the tab bar's `.slice(0, 4)`).
+const PHONE_TAB_PATHS = ['/overview', '/submissions', '/speakers', '/content'] as const;
+
 // DEC-154: sign-out. Mirrors app/src/lib/api.ts's CSRF convention
 // (x-chq-csrf header on mutations, credentials 'include') even though
 // /logout isn't under /api/v1 — it's not routed through api.ts's request()
@@ -138,32 +145,45 @@ function Header() {
   const { me } = useMe();
   const exceptions = useNavExceptions();
   const [moreOpen, setMoreOpen] = useState(false);
-  const sections = me?.role === 'reviewer' ? NAV_SECTIONS.filter(isReviewerNav) : NAV_SECTIONS;
+  const isReviewer = me?.role === 'reviewer';
+  const sections = isReviewer ? NAV_SECTIONS.filter(isReviewerNav) : NAV_SECTIONS;
 
-  // Phone tab bar carries five destinations; anything past those four lives
-  // behind "More" (DEC-369). Reviewers never see the tab bar's non-Review
-  // items since `sections` is already filtered above.
-  const tabSections = sections.filter((s) =>
-    ['/overview', '/submissions', '/speakers', '/content', '/review/*'].includes(s.path),
-  );
-  const primaryTabs = sections.length > 1 ? tabSections.slice(0, 4) : tabSections;
+  // DEC-381: primary tabs are built from an explicit ordered path list
+  // intersected with the role-filtered sections, so the set cannot drift
+  // when NAV_SECTIONS' own order changes. A reviewer has exactly one
+  // section (Review) and shows it alone, with no More control.
+  const primaryTabs = isReviewer
+    ? sections
+    : PHONE_TAB_PATHS.map((path) => sections.find((s) => s.path === path)).filter(
+        (s): s is NavSection => s !== undefined,
+      );
   const moreSections = sections.filter((s) => !primaryTabs.includes(s));
+  const closeMore = () => setMoreOpen(false);
+  useEscapeKey(moreOpen, closeMore);
+  const anyBadgeLive = Boolean(exceptions.late) || Boolean(exceptions.clash);
 
   return (
-    <header className="chq-header">
-      <span className="chq-wordmark">chautauqua</span>
-      <nav className="chq-nav" aria-label="Primary">
-        <NavLinks sections={sections} exceptions={exceptions} />
-      </nav>
-      <div>
-        <EventSwitcher />
-        {me && <span className="chq-meta">{me.email}</span>}
-        <button type="button" className="chq-btn chq-btn-tertiary" onClick={() => void signOut()}>
-          Sign out
-        </button>
-      </div>
+    <>
+      <header className="chq-header">
+        <span className="chq-wordmark">chautauqua</span>
+        <nav className="chq-nav" aria-label="Primary">
+          <NavLinks sections={sections} exceptions={exceptions} />
+        </nav>
+        <div className="chq-header-identity">
+          <EventSwitcher />
+          {me && <span className="chq-meta">{me.email}</span>}
+          <button type="button" className="chq-btn chq-btn-tertiary" onClick={() => void signOut()}>
+            Sign out
+          </button>
+        </div>
+      </header>
 
-      {moreSections.length > 0 && (
+      {/* DEC-381: .chq-tabbar and the More sheet are siblings of <header>
+          inside .chq-shell, not header children — styles.css right-aligns
+          the identity block via `.chq-header > *:last-child`, and the tab
+          bar being a header child silently stole that selector at phone
+          width. */}
+      {primaryTabs.length > 0 && (
         <nav className="chq-tabbar" aria-label="Primary, phone">
           {primaryTabs.map((section) => (
             <NavLink
@@ -171,24 +191,39 @@ function Header() {
               to={section.path.replace(/\*$/, '')}
               className={({ isActive }) => `chq-nav-link${isActive ? ' is-active' : ''}`}
             >
-              {section.label}
+              {({ isActive }) => (
+                <>
+                  {section.label}
+                  {isActive && <span className="chq-dot is-on" aria-hidden="true" />}
+                </>
+              )}
             </NavLink>
           ))}
-          <button type="button" className="chq-nav-link" onClick={() => setMoreOpen(true)}>
-            More
-          </button>
+          {moreSections.length > 0 && (
+            <button type="button" className="chq-nav-link" onClick={() => setMoreOpen(true)}>
+              More
+              {anyBadgeLive && <span className="chq-dot" aria-hidden="true" />}
+            </button>
+          )}
         </nav>
       )}
 
-      {moreOpen && (
-        <div className="chq-modal" role="dialog" aria-modal="true" aria-label="More">
-          <NavLinks sections={moreSections} exceptions={exceptions} onNavigate={() => setMoreOpen(false)} />
-          <button type="button" className="chq-btn chq-btn-secondary" onClick={() => setMoreOpen(false)}>
-            Close
-          </button>
+      {moreSections.length > 0 && moreOpen && (
+        <div
+          className="chq-scrim"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) closeMore();
+          }}
+        >
+          <div className="chq-modal" role="dialog" aria-modal="true" aria-label="More">
+            <NavLinks sections={moreSections} exceptions={exceptions} onNavigate={closeMore} />
+            <button type="button" className="chq-btn chq-btn-secondary" onClick={() => void signOut()}>
+              Sign out
+            </button>
+          </div>
         </div>
       )}
-    </header>
+    </>
   );
 }
 
