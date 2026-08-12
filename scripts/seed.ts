@@ -899,7 +899,7 @@ async function main(): Promise<void> {
     "Approve",
   ] as const;
   let evalCounter = 0;
-  function insertEvaluation(reviewerId: string, submissionId: string): void {
+  function insertEvaluation(reviewerId: string, submissionId: string, planId: string = evalPlanId): void {
     evalCounter += 1;
     const contentScore = 1 + ((evalCounter * 7 + 2) % 5);
     const deliveryScore = 1 + ((evalCounter * 11 + 1) % 5);
@@ -909,7 +909,7 @@ async function main(): Promise<void> {
     statements.push(
       insertStmt("evaluation", {
         id: seedId("evaluation", evalCounter),
-        plan_id: evalPlanId,
+        plan_id: planId,
         submission_id: submissionId,
         reviewer_id: reviewerId,
         round: 1,
@@ -941,6 +941,101 @@ async function main(): Promise<void> {
   for (const submissionId of track1Subs) {
     insertEvaluation(reviewerDUserId, submissionId);
   }
+
+  // --- evaluation plan 2 (DEC-668): closed and fully evaluated, so the
+  // Review landing's plans list has a real 'closed' row whose progress bar
+  // reads 100% -- every plan_reviewer pair it scopes has a matching
+  // evaluation. Distinct criteria weights (1/4 vs plan 1's 2/1) so a
+  // weighted mean visibly differs from a naive mean across plans.
+  const evalPlan2Id = seedId("evaluation_plan", 2);
+  const evalPlan2Criteria = [
+    { id: "content_quality", label: "Content quality & depth", kind: "rating", weight: 1 },
+    { id: "speaker_delivery", label: "Speaker delivery & clarity", kind: "rating", weight: 4 },
+    { id: "recommendation", label: "Recommendation", kind: "dropdown", options: ["Approve", "Maybe", "Deny"] },
+  ] as const;
+  statements.push(
+    insertStmt("evaluation_plan", {
+      id: evalPlan2Id,
+      event_id: eventId,
+      name: "Developer Experience Track Review",
+      instructions: "Score each Developer Experience proposal on content quality and delivery.",
+      // DEC-591/DEC-668: both bounds land before SEED_NOW so this plan
+      // reads as closed regardless of when the seed is run.
+      open_date: SEED_NOW - 60 * DAY_MS,
+      close_date: SEED_NOW - 10 * DAY_MS,
+      filters_json: null,
+      anonymized: false,
+      scale_json: JSON.stringify({ min: 1, max: 5 }),
+      criteria_json: JSON.stringify(evalPlan2Criteria),
+      rounds: 1,
+      max_evaluations: null,
+      created_at: nextTs(),
+      updated_at: ts,
+    }),
+  );
+  const plan2ReviewerAssignments = [
+    { userId: reviewerCUserId, trackIndex: 2 },
+    { userId: reviewerDUserId, trackIndex: 2 },
+  ];
+  plan2ReviewerAssignments.forEach((ra, i) => {
+    statements.push(
+      insertStmt("plan_reviewer", {
+        id: seedId("plan_reviewer", 4 + i + 1),
+        plan_id: evalPlan2Id,
+        user_id: ra.userId,
+        track_id: trackIds[ra.trackIndex]!,
+        created_at: nextTs(),
+        updated_at: ts,
+      }),
+    );
+  });
+  // Every plan_reviewer pair scoped above gets an evaluation for every
+  // submission in its track, so the plan's progress reads 100%.
+  for (const ra of plan2ReviewerAssignments) {
+    for (const submissionId of submissionsByTrackIndex[ra.trackIndex]!) {
+      insertEvaluation(ra.userId, submissionId, evalPlan2Id);
+    }
+  }
+
+  // --- evaluation plan 3 (DEC-668): not yet open -- reviewers assigned so
+  // the plan is ready to run, but its window hasn't opened, so it carries
+  // zero evaluations and reads 'upcoming' on the Review landing.
+  const evalPlan3Id = seedId("evaluation_plan", 3);
+  const evalPlan3Criteria = [
+    { id: "content_quality", label: "Content quality & depth", kind: "rating", weight: 5 },
+    { id: "speaker_delivery", label: "Speaker delivery & clarity", kind: "rating", weight: 2 },
+    { id: "recommendation", label: "Recommendation", kind: "dropdown", options: ["Approve", "Maybe", "Deny"] },
+  ] as const;
+  statements.push(
+    insertStmt("evaluation_plan", {
+      id: evalPlan3Id,
+      event_id: eventId,
+      name: "Late-Stage Program Review",
+      instructions: "Second-pass review of the remaining program once the first round closes.",
+      // DEC-591/DEC-668: open_date lands after SEED_NOW so this plan reads
+      // as not-yet-open regardless of when the seed is run.
+      open_date: SEED_NOW + 15 * DAY_MS,
+      close_date: SEED_NOW + 45 * DAY_MS,
+      filters_json: null,
+      anonymized: false,
+      scale_json: JSON.stringify({ min: 1, max: 5 }),
+      criteria_json: JSON.stringify(evalPlan3Criteria),
+      rounds: 1,
+      max_evaluations: null,
+      created_at: nextTs(),
+      updated_at: ts,
+    }),
+  );
+  statements.push(
+    insertStmt("plan_reviewer", {
+      id: seedId("plan_reviewer", 4 + plan2ReviewerAssignments.length + 1),
+      plan_id: evalPlan3Id,
+      user_id: reviewerUserId,
+      track_id: trackIds[0]!,
+      created_at: nextTs(),
+      updated_at: ts,
+    }),
+  );
 
   // --- onboarding tasks (DEC-009/DEC-023): the 5 canonical default tasks,
   // staggered due dates before the event start, assigned to every accepted
