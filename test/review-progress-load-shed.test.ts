@@ -143,7 +143,10 @@ describe("DEC-351: /progress and /remind load-shedding is wire-identical", () =>
     });
     expect(body.total).toBe(2);
     expect(body.page).toBe(1);
-    expect(body.perPage).toBe(2);
+    // DEC-466/DEC-461(e): /progress is now bounded (was the cosmetic
+    // perPage: items.length shape) -- an absent ?perPage resolves to the
+    // site default of 200 (MAX_PER_PAGE), not the item count.
+    expect(body.perPage).toBe(200);
     expect(body.round).toBe(1);
 
     expect(listEvaluationsForPlan).not.toHaveBeenCalled();
