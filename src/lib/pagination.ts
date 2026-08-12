@@ -24,8 +24,11 @@ export function clampPerPage(raw: string | number | null | undefined): number {
 }
 
 /** DEC-465: the one perPage rule for list endpoints that render every row
- * today (DEC-461(a)) -- absent OR invalid resolves to MAX_PER_PAGE, an
- * explicit valid value gets the normal [1, MAX_PER_PAGE] clamp. */
+ * today (DEC-461(a)), replacing five local per-route copies (three of which
+ * mishandled `?perPage=abc` by falling through to clampPerPage's
+ * DEFAULT_PER_PAGE=50 instead of the site default of 200). Absent, null,
+ * empty-string, or invalid all resolve to MAX_PER_PAGE; an explicit valid
+ * value gets the normal [1, MAX_PER_PAGE] clamp. */
 export function listPerPage(raw: string | number | null | undefined): number {
   if (raw === undefined || raw === null || raw === "") return MAX_PER_PAGE;
   const n = typeof raw === "number" ? raw : Number(raw);

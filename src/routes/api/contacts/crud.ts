@@ -16,7 +16,8 @@ import { sanitizeFilenameForKey, validateHeadshotUpload } from "../../../domain/
 import { readImageDims, MAX_HEADSHOT_EDGE_PX } from "../../../lib/image-dims";
 import { newId } from "../../../domain/ids";
 import { makeFileStore } from "../../../server/context";
-import { DEC_290 } from "../../../decisions";
+import { clampPage, listPerPage } from "../../../lib/pagination";
+import { DEC_290, DEC_461, DEC_466 } from "../../../decisions";
 import {
   currentOrgId,
   asRecord,
@@ -30,6 +31,8 @@ import { parseRulesQueryParam } from "./segments";
 // Compile-checked dependency marker: the optional eventId on POST /contacts
 // (roster-scoped create) implements DEC-290.
 void DEC_290;
+void DEC_461; // optional repo page param + sibling count fn + deterministic ORDER BY
+void DEC_466; // /contacts/duplicates bounded below via the blessed JS-slice (DEC-461(e))
 
 export function registerCrudRoutes(contactsRoutes: Hono<AppEnv>): void {
   contactsRoutes.get("/contacts", async (c) => {
@@ -111,7 +114,17 @@ export function registerCrudRoutes(contactsRoutes: Hono<AppEnv>): void {
   contactsRoutes.get("/contacts/duplicates", async (c) => {
     const orgId = currentOrgId(c);
     const groups = await repo.findDuplicateGroupsForOrg(c.var.db, orgId);
-    return c.json({ items: groups, total: groups.length, page: 1, perPage: groups.length || 1 });
+    // DEC-466/DEC-461(e): blessed JS-slice -- groups is assembled from an
+    // already-materialized array (findDuplicateGroupsForOrg's own order,
+    // which is stably tiebroken by the group's first contact id -- see the
+    // comment at that function's definition), so clamp with a slice and
+    // report the FULL array length as `total`, never the slice's.
+    const page = clampPage(c.req.query("page"));
+    const perPage = listPerPage(c.req.query("perPage"));
+    const total = groups.length;
+    const start = (page - 1) * perPage;
+    const items = groups.slice(start, start + perPage);
+    return c.json({ items, total, page, perPage });
   });
 
   contactsRoutes.get("/contacts/stats", async (c) => {
