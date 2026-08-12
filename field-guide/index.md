@@ -16,45 +16,45 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   email rule via findAccountUserId; universal rows graded from ENUMERATION
   never sample; pagination ONE shape+count*+`id asc`; a cap the UI can't
   see LIES, render `total`; atomic SQL beats read-then-write; hand-listed
-  manifests desync -- enumerate; conditional visibility is a FIXED
-  POINT; hand-copied vocabularies drift -- IMPORT them; a uniqueIndex is
-  a CONTRACT; negation skips NULLs.
-- FINDINGS w1-11 (DEC-570..669, compacted): full suites SERIALIZED; real
-  <button> not `div draggable`; colour alone isn't track identity -- NAME
-  it; blank CSV cell is ABSENT DATA; seed has ONE clock; imported row
-  keeps THEIR id via namespaced `external_ref`; a drawer is a RECORD;
-  anonymity is a RATCHET; merge takes a SET; confirmation is a DIALOG
-  not window.confirm; items+total from ONE where clause; join identity
-  is the PAIR its uniqueIndex names; raw id leaks -- render LABELS; a
-  worklist row carries its action; "in scope?" ends in ONE rule; a
-  guard citing routes it doesn't guard is desynced -- enumerate.
-  Cacheability is a DEFAULT (no-store) + "own header wins". Import is
-  PLANNED before applied. Every send ends in ONE reporter. A union
-  makes items AND total lie -- a second scope is a second TAB.
-- FINDINGS w12-14 (DEC-670..686, compacted): a capped ANONYMOUS list
-  counts only what it shows; export = same where clause everywhere; a
-  chromeless surface is CLOSED both ways; a builder's options are the
-  server's vocabulary IMPORTED via one named boundary module; a
-  worklist whose regions are one nav away is a report. Import is not
-  exempt from closed vocabularies -- validate in the PLANNER; an
-  imported row is RECORDED (visible=false). A server rule the UI never
-  states is a trap: locked/weighted state renders its reason. ONE
-  reporter is the only one; loading is DELAYED (~250ms); `total` is
-  count(*) never `rows.length`. A rule's VALUE is typed by its
-  TRIGGER's kind, proven by a parity test over ONE case table. A merge
-  var the toggle never populated is ABSENT, never a polite sentence. A
-  public list page is list + rail, rail never renders inside /embed.
-  An irreversible action is a PAGE at its own URL, not a modal. A
-  dialog's form is ONE FormRow inside ModalFrame. A paged read touches
-  only the page -- aggregates key to page rows, paging in SQL.
-- FINDINGS w15 (DEC-687..696): `.toString()`-embedded fns carry NO
-  closure -- free identifiers travel beside them, proved by EXECUTING
-  the emitted script, never by testing the TS. Tier class ALWAYS wins:
-  no element selector inside a tier rule; .chq-btn anchor is a button
-  (no underline). A hub gives a row ONE action, own calendar grammar.
-  Settings is read-only SUMMARY + drill-in over seven sections; embed
-  builder reached FROM Public pages. A worklist row names the LATEST
-  artefact, two actions only. Test vs docs/design conflict: THE TEST
-  is wrong. A scope param goes on send AND preview, identically. A
-  thrown render is a DESIGNED error state, never blank. Prose renders
-  via ONE escape-FIRST Markdown renderer, closed allow-list.
+  manifests desync -- enumerate; conditional visibility is a FIXED POINT;
+  hand-copied vocabularies drift -- IMPORT them; uniqueIndex is a
+  CONTRACT; negation skips NULLs.
+- FINDINGS w1-14 (DEC-570..686, compacted): full suites SERIALIZED; real
+  <button> not `div draggable`; colour isn't track identity -- NAME it;
+  blank CSV cell is ABSENT DATA; seed has ONE clock; imported row keeps
+  THEIR id via `external_ref`; drawer is a RECORD; anonymity is a
+  RATCHET; merge takes a SET; confirmation is a DIALOG not
+  window.confirm; items+total from ONE where clause; raw id leaks --
+  render LABELS; worklist row carries its action; guard citing routes
+  it doesn't guard is desynced -- enumerate; cacheability DEFAULT + "own
+  header wins"; every send ends in ONE reporter; union makes items AND
+  total lie -- second scope is a TAB; capped ANONYMOUS list counts only
+  what it shows; export = same where clause everywhere; chromeless
+  surface CLOSED both ways; builder's options IMPORTED via one named
+  boundary module; import not exempt from closed vocabularies --
+  validate in PLANNER; imported row RECORDED (visible=false); server
+  rule the UI never states is a trap; rule's VALUE typed by TRIGGER's
+  kind; merge var toggle never populated is ABSENT; public list is list
+  + rail, never in /embed; irreversible action is a PAGE at its own
+  URL; paged read only touches the page.
+- FINDINGS w15 (DEC-687..696, compacted): `.toString()`-embedded fns carry
+  NO closure -- proved by EXECUTING the emitted script. Tier class
+  ALWAYS wins. Hub gives a row ONE action. Settings is read-only SUMMARY
+  + drill-in; embed builder reached FROM Public pages. Worklist row
+  names the LATEST artefact, two actions only. Test vs docs/design
+  conflict: THE TEST is wrong. Scope param on send AND preview,
+  identically. Thrown render is DESIGNED, never blank. Prose via ONE
+  escape-FIRST Markdown renderer.
+- FINDINGS w16 (DEC-697..705): a response you did NOT construct may have
+  IMMUTABLE headers -- decorate through ONE clone-on-failure helper,
+  proved on a frozen-header response, scan-locked. Grid row's cells are
+  POSITIONAL: absent fact -> EMPTY cell; dropped column re-declares the
+  template. Waitlisted is a HOLD: sixth status, never public/decided,
+  "under review" -- new enum member joins every NEGATIVE predicate,
+  re-read them all. Badge is a live claim: refetch on nav + after every
+  mutating call, from the ONE api module. Warn-never-block covers the
+  KEYBOARD path -- occupied slot offers placement, NAMES the clash, N
+  never "a pair". Seeded prose never says it's seed data. Ranked row
+  names human and track; export carries table's columns/order. Bulk
+  label states scope it SENDS; strip's columns hold still, weight
+  marks nearest. Merge preview is the merge fn's OWN output, per field.
