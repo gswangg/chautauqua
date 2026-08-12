@@ -13,46 +13,47 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   set-based/CLOSED. Gates LOG-ONLY.
 - REDESIGN w1-5 (DEC-366..391, docs/design/README.md): FUNCTION FROZEN.
   Tokens: paper F4F1E8/surface FAF8F2/ink 1B1D17/muted 565A4B/hairline
-  E1DDCE/border BAB6A6/olive 4E5C31, NO RED/shadows/new deps.
-  styles.css+theme.ts=ONE lane; page lanes add .chq-<area>.css, never
-  redefine shared class. ONE dialog contract, ONE phone switch @700px,
-  44px controls. D1 binds PRIMITIVES — epoch-ms NUMBER not `new Date()`.
-- REDESIGN w6-8 (DEC-392..409): 393 tap floor 44px, no min-height:40px.
-  397 PREVIEW NEVER MINTS CREDENTIALS. 399 pubcache bump CLOSED. 400
-  overview wire: `triage`=v2 rows, `triage-counts`=v1 aggregate. 401
-  mobile pass measures max right edge+scrollWidth, names offenders. 402
-  every chq-table carries a page-prefixed 2nd class. 403 desktop sweep =
-  SPA routes UNION no-login surfaces. 404 phone-only overflow-wrap:
-  anywhere on shell. 405 no document-level overflow-x:hidden. 406 every
-  control carries a shell class (guard deferred to w9). 408 public dates
-  via src/lib/event-time.ts (throws, no UTC fallback). 409 focus-visible
-  2px olive in both stylesheet roots, outline:none banned.
-  SETTLED: DEC-386/380 dropped phone affordances are mock-only.
-- REDESIGN w9 (DEC-410..414): 410 control-class guard REPO-WIDE (app/src
-  only, SSR exempt). 411 tsx/esbuild keepNames breaks named closures in
-  page.evaluate (__name ReferenceError); every Playwright page gets
-  addInitScript raw-string shim BEFORE any evaluate -- four waves of
-  "mobile pass" numbers were this instrument failure. Phone manifest =
-  WHOLE portal (6 routes). Gate lanes log-only; never flip
-  ADMIN_MOBILE_PASS_BLOCKING. 412 walkthrough: design owns copy, SPEC 9
-  owns behaviour; never soften an assertion. 413 portal dates use the
-  OWNING EVENT's tz per ROW. 414 390px overflow: overflow-x:auto+
-  flex-shrink:0 or wrap, never overflow:hidden/sub-44px; RE-MEASURE
-  first.
-- REDESIGN w10 (DEC-415..419): 415 speaker portal-edit WRITES
-  job_title/company/bio to contact (trim, ''->null, absent key=leave
-  alone); NEVER submission_answer, NEVER participant.*_at_time (DEC-258
-  snapshot frozen). 416 unknown track id rejected BEFORE the
-  zero-offered early return (DEC-301 only relaxes "at least one");
-  hydrateSessions' track join is event-scoped. 417 ONE parseBoundedText
-  beside parseBoundedIdArray in src/server/http.ts; caps NAME 200/TEXT
-  2000/LONG 20000/RICH 100000 in src/forms/validate.ts; oversized=400
-  naming the field, never a D1 SQLITE_TOOBIG 500; CSV import bounded in
-  BYTES+ROWS. 418 public list queries carry LIMIT in SQL + separate
-  COUNT(DISTINCT); join fan-out bounds a distinct-key subquery FIRST
-  then hydrates by id; speakers/gallery reuse sessions' show-more. 419
-  build-test/perf-smoke/render-sweep gates re-run on redesigned tree,
-  LOG-ONLY, one file each, never flip a blocking flag or fix what they
-  name; an instrument failure is never written down as a number.
-  STALE-LENS, do not re-open: comms preview id-guard/mints-tokens both
-  fixed on main (comms.ts:163,:348). DEC-399 pubcache bump CLOSED.
+  E1DDCE/border BAB6A6/olive 4E5C31, NO RED/shadows/new deps. styles.css+
+  theme.ts=ONE lane; page lanes add .chq-<area>.css, never redefine
+  shared class. ONE dialog contract, ONE phone switch @700px, 44px
+  controls. D1 binds PRIMITIVES — epoch-ms NUMBER not `new Date()`.
+- REDESIGN w6-8 (DEC-392..409): 393 tap floor 44px. 397 preview never
+  mints credentials. 399 pubcache bump CLOSED. 400 overview wire:
+  `triage`=v2 rows, `triage-counts`=v1 aggregate. 401 mobile pass
+  measures max right edge+scrollWidth, names offenders. 402 every
+  chq-table carries a page-prefixed 2nd class. 403 desktop sweep = SPA
+  routes UNION no-login surfaces. 404/405 overflow-wrap:anywhere on
+  shell, never document-level overflow-x:hidden. 408 public dates via
+  src/lib/event-time.ts (throws, no UTC fallback). 409 2px olive focus
+  ring in both stylesheet roots, outline:none banned.
+- REDESIGN w9-10 (DEC-410..419): 410 control-class guard repo-wide
+  (app/src only). 411 tsx/esbuild keepNames breaks page.evaluate
+  closures -- every Playwright page gets addInitScript raw-string shim
+  FIRST; gates log-only, never flip ADMIN_MOBILE_PASS_BLOCKING. 413
+  portal dates use the OWNING EVENT's tz per ROW. 414 390px overflow:
+  scroller or wrap, never hidden/sub-44px. 415 portal-edit writes
+  job_title/company/bio to contact; never submission_answer/
+  participant.*_at_time (DEC-258 frozen). 416 unknown track id rejected
+  even with zero tracks offered. 417 ONE parseBoundedText in
+  src/server/http.ts; caps NAME 200/TEXT 2000/LONG 20000/RICH 100000 in
+  src/forms/validate.ts; oversized=400 naming field, never SQLITE_TOOBIG
+  500. 418 public list queries: LIMIT+separate COUNT(DISTINCT) in SQL.
+  419 gates re-run log-only; instrument failure never written as a
+  number.
+- STAGE1-CLOSE w11 (DEC-420..423): 420 reminder emails format due dates
+  via formatEventDate(ms, event.timezone) and carry ONE LINE PER TASK
+  with its own date -- never toISOString, never one aggregate date for
+  a group. 421 the 10px type-floor is the mandate's SECOND render-sweep
+  invariant (eval-findings:73) and never shipped; lands ADVISORY
+  (FONT_FLOOR_BLOCKING=false, DEC-387 flip rule), desktop+390px, names
+  offenders like DEC-401, runs only after the DEC-411 shim. 422 caps +
+  public rate limits reach the two paths DEC-417's scope misses: public
+  save-draft (no limiter at all, unmetered KV write) and POST
+  /portal/profile (bio/title/company/socials unbounded -> SQLITE_TOOBIG
+  500); reuse MAX_TEXT_LENGTH/MAX_LONG_TEXT_LENGTH, SSR reports oversize
+  by re-rendering its OWN page 400 naming the field. 423 docs/
+  verification-log/task-w11-{a..f}-*.md are ALREADY TAKEN by campaign 1
+  (DEC-129 homonyms) -- a lane using the obvious name destroys another
+  campaign's evidence; use the exact filename in your task text.
+  Spec-audit emits the J1-J12 + §5-§8 ledger (VERIFIED file:line / GAP /
+  STAGE-2 + OPEN ITEMS) that decides goalComplete.

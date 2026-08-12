@@ -422,3 +422,7 @@ export const DEC_416 = "An unknown track id is rejected even when the form offer
 export const DEC_417 = "One shared parseBoundedText caps every admin mutation's free-text field; oversized input is a 400, never a D1 SQLITE_TOOBIG 500";
 export const DEC_418 = "Public list surfaces bound their result set in SQL and count separately -- never a JS slice, and never a LIMIT on fanned-out join rows";
 export const DEC_419 = "Wave 10's three gate lanes re-measure build/test, perf, and the phone sweep against the redesigned tree, log-only";
+export const DEC_420 = "Reminder emails render each outstanding task's OWN due date, in the owning event's timezone";
+export const DEC_421 = "The 10px type-floor becomes a measured, offender-naming render-sweep pass -- advisory on the wave it lands";
+export const DEC_422 = "Free-text caps and the public rate limiter extend to the two write paths DEC-417's scope does not reach";
+export const DEC_423 = "Wave 11's three verification lanes are log-only, must use non-colliding filenames, and the spec-audit lane emits the stage-1 completion ledger";
