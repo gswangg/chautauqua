@@ -1,0 +1,41 @@
+// DEC-604: one exported participant-role vocabulary, imported by both the
+// speaker portal's add-co-presenter form and every place a participant's
+// role is rendered (portal edit page, portal submission detail) — never a
+// second hand-copied list (field guide: "hand-copied vocabularies drift").
+// Pure core (DEC-002): no node:/cloudflare/drizzle imports.
+
+export interface ParticipantRoleOption {
+  value: string;
+  label: string;
+}
+
+// "speaker" is the default role stamped on the original CFP submitter
+// (src/server/repo/submit.ts:createParticipant) and on organizer-invited
+// participants that don't specify a role
+// (src/server/repo/participants.ts:inviteParticipant) — included here so
+// its label resolves through the same table as every other role. The
+// remaining three are the roles a speaker may choose when self-adding a
+// co-presenter.
+export const PARTICIPANT_ROLE_OPTIONS: readonly ParticipantRoleOption[] = [
+  { value: "speaker", label: "Speaker" },
+  { value: "co-presenter", label: "Co-presenter" },
+  { value: "moderator", label: "Moderator" },
+  { value: "panelist", label: "Panelist" },
+];
+
+export const CO_PRESENTER_ROLE_VALUES: readonly string[] = PARTICIPANT_ROLE_OPTIONS.filter(
+  (o) => o.value !== "speaker",
+).map((o) => o.value);
+
+export function isCoPresenterRoleValue(value: string): boolean {
+  return CO_PRESENTER_ROLE_VALUES.includes(value);
+}
+
+/** Resolves a stored participant.role value to its display label. A role
+ * value outside this vocabulary (e.g. a free-text role set by an organizer
+ * via POST /api/v1/submissions/:id/participants, which accepts arbitrary
+ * text) is rendered as-is rather than dropped. */
+export function participantRoleLabel(role: string): string {
+  const found = PARTICIPANT_ROLE_OPTIONS.find((o) => o.value === role);
+  return found ? found.label : role;
+}

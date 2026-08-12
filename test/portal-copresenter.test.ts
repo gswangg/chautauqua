@@ -1,0 +1,148 @@
+// DEC-604: a speaker may self-add a co-presenter to their own submission.
+// Covers the repo layer (src/server/repo/portal-edit.ts:addCoPresenter —
+// validation, existing-contact resolution writes NOTHING to the contact,
+// fresh-contact creation, the 5-co-presenter cap, and the
+// (submission_id, contact_id) uniqueIndex surfacing as a field error never
+// a 500) and the shared role-label vocabulary. Route-layer coverage
+// (csrf/edit-lock/re-render) lives in test/portal-copresenter-route.test.ts
+// — vi.mock is file-scoped/hoisted, so mocking portal-edit there would
+// otherwise shadow the real addCoPresenter this file exercises directly.
+
+import { describe, expect, it } from "vitest";
+import { addCoPresenter, MAX_PARTICIPANTS_PER_SUBMISSION } from "../src/server/repo/portal-edit";
+import { participantRoleLabel, PARTICIPANT_ROLE_OPTIONS } from "../src/domain/participant-roles";
+import type { AppEnv } from "../src/server/env";
+
+function makeChain(rows: unknown[]) {
+  const chain: any = {
+    from: () => chain,
+    where: () => chain,
+    limit: async () => rows,
+    then: (resolve: (v: unknown[]) => void) => resolve(rows),
+  };
+  return chain;
+}
+
+/** Fake db mirroring test/api-participants.test.ts's pattern: a queue of
+ * select() row sets consumed in call order, and every insert()/update()
+ * recorded. Throws on update() — addCoPresenter must never write to an
+ * existing contact (DEC-604). */
+function fakeDb(selectQueue: unknown[][], insertReturning: unknown[]) {
+  let call = 0;
+  const inserts: any[] = [];
+  const db = {
+    select: () => {
+      const rows = selectQueue[call] ?? [];
+      call += 1;
+      return makeChain(rows);
+    },
+    insert: (table: unknown) => ({
+      values: (vals: unknown) => {
+        inserts.push(vals);
+        return {
+          onConflictDoNothing: () => ({
+            returning: async () => insertReturning,
+          }),
+        };
+      },
+    }),
+    update: () => {
+      throw new Error("addCoPresenter must never call db.update() (DEC-604: never writes to an existing contact)");
+    },
+  };
+  return { db: db as unknown as AppEnv["Variables"]["db"], inserts };
+}
+
+const BASE_INPUT = {
+  submissionId: "sub-1",
+  orgId: "org-1",
+  firstName: "Marcus",
+  lastName: "Okafor",
+  email: "Marcus@Example.com",
+  role: "co-presenter",
+};
+
+describe("addCoPresenter repo layer (DEC-604)", () => {
+  it("rejects blank first/last name and invalid email/role without touching the db", async () => {
+    const { db } = fakeDb([], []);
+    const result = await addCoPresenter(db, {
+      submissionId: "sub-1",
+      orgId: "org-1",
+      firstName: "  ",
+      lastName: "",
+      email: "not-an-email",
+      role: "president",
+    });
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error("unreachable");
+    expect(result.errors.firstName).toBeTruthy();
+    expect(result.errors.lastName).toBeTruthy();
+    expect(result.errors.email).toBeTruthy();
+    expect(result.errors.role).toBeTruthy();
+  });
+
+  it("creates a fresh contact (name+email only) when no existing contact matches, case-insensitively", async () => {
+    // select order: [0] participant count, [1] findContactByEmail -> no match
+    const { db, inserts } = fakeDb([[{ count: 1 }], []], [{ id: "participant-1" }]);
+    const result = await addCoPresenter(db, BASE_INPUT);
+    expect(result.ok).toBe(true);
+
+    const contactInsert = inserts.find((v) => "email" in v && "firstName" in v && !("submissionId" in v));
+    expect(contactInsert).toBeTruthy();
+    expect(contactInsert.email).toBe("marcus@example.com"); // normalized
+    expect(contactInsert.firstName).toBe("Marcus");
+    expect(contactInsert.lastName).toBe("Okafor");
+    expect(contactInsert.title ?? null).toBeNull();
+    expect(contactInsert.company ?? null).toBeNull();
+
+    const participantInsert = inserts.find((v) => "submissionId" in v);
+    expect(participantInsert.role).toBe("co-presenter");
+    expect(participantInsert.inviteStatus).toBe("none");
+  });
+
+  it("resolves an existing contact by case-insensitive email and writes NO field onto it", async () => {
+    const existingContact = { id: "contact-9", title: "Staff Engineer", company: "Acme" };
+    // select order: [0] participant count, [1] findContactByEmail -> match
+    const { db, inserts } = fakeDb([[{ count: 1 }], [existingContact]], [{ id: "participant-2" }]);
+    const result = await addCoPresenter(db, BASE_INPUT);
+    expect(result.ok).toBe(true);
+
+    // Only the participant insert should have happened — no contact insert,
+    // and fakeDb.update() throws if it were ever called.
+    expect(inserts.length).toBe(1);
+    expect(inserts[0].contactId).toBe("contact-9");
+    expect(inserts[0].titleAtTime).toBe("Staff Engineer");
+    expect(inserts[0].orgAtTime).toBe("Acme");
+  });
+
+  it("caps at 5 co-presenters and surfaces the cap as a field error, not a crash", async () => {
+    const { db } = fakeDb([[{ count: MAX_PARTICIPANTS_PER_SUBMISSION }]], []);
+    const result = await addCoPresenter(db, BASE_INPUT);
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error("unreachable");
+    expect(Object.values(result.errors).some((m) => /maximum/i.test(m))).toBe(true);
+  });
+
+  it("surfaces the (submission_id, contact_id) uniqueIndex conflict as a validation error, never a 500", async () => {
+    // select order: [0] participant count, [1] findContactByEmail -> match
+    const existingContact = { id: "contact-9", title: null, company: null };
+    // insertReturning=[] simulates onConflictDoNothing firing (duplicate).
+    const { db } = fakeDb([[{ count: 1 }], [existingContact]], []);
+    const result = await addCoPresenter(db, BASE_INPUT);
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error("unreachable");
+    expect(result.errors.email).toBeTruthy();
+  });
+});
+
+describe("participant role vocabulary (DEC-604): one exported source", () => {
+  it("resolves every vocabulary value to its own label", () => {
+    for (const opt of PARTICIPANT_ROLE_OPTIONS) {
+      expect(participantRoleLabel(opt.value)).toBe(opt.label);
+    }
+  });
+
+  it("passes an out-of-vocabulary (organizer free-text) role through unchanged rather than dropping it", () => {
+    expect(participantRoleLabel("keynote wrangler")).toBe("keynote wrangler");
+  });
+});
