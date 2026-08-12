@@ -1,8 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  PERF_ANSWERS_PER_SUBMISSION,
   PERF_CO_SPEAKERS_PER_ACCEPTED,
-  PERF_CONTACT_COUNT,
   PERF_EMAIL_LOG_COUNT,
   PERF_EMAIL_LOG_RECENT_WINDOW_DAYS,
   PERF_EMAIL_LOG_SPREAD_DAYS,
@@ -14,16 +12,14 @@ import {
   PERF_PIPELINE_ENTRY_COUNT,
   PERF_PIPELINE_STAGES,
   PERF_PLAN_ID,
+  PERF_PROFILES,
   PERF_REVIEWER_COUNT,
   PERF_REVIEWER_PASSWORD,
   PERF_ROOM_COUNT,
-  PERF_STATUS_COUNTS,
-  PERF_SUBMISSION_COUNT,
   PERF_TASK_ASSIGNMENT_COUNT,
   PERF_TASK_COUNT,
   PERF_TASKS,
   PERF_TOPICS,
-  PERF_TRACK_COUNT,
   contactIndexForSubmission,
   coSpeakerContactIndexesForAccepted,
   isTaskAssignmentComplete,
@@ -40,9 +36,20 @@ import {
   trackIndexForSubmission,
 } from "../scripts/perf-seed-lib";
 
+// This file exercises the `default` profile end-to-end (today's perf-2k
+// numbers); see test/perf-seed-lib.test.ts for the profile-threading and
+// `aie` volume assertions (DEC-619).
+const {
+  submissionCount: PERF_SUBMISSION_COUNT,
+  contactCount: PERF_CONTACT_COUNT,
+  trackCount: PERF_TRACK_COUNT,
+  answersPerSubmission: PERF_ANSWERS_PER_SUBMISSION,
+  statusCounts: PERF_STATUS_COUNTS,
+} = PERF_PROFILES.default;
+
 describe("perfSubmissionStatuses", () => {
   it("returns 2,000 statuses matching the realistic status mix", () => {
-    const statuses = perfSubmissionStatuses(PERF_SUBMISSION_COUNT);
+    const statuses = perfSubmissionStatuses(PERF_SUBMISSION_COUNT, PERF_STATUS_COUNTS);
     expect(statuses).toHaveLength(2000);
     const counts: Record<string, number> = {};
     for (const s of statuses) counts[s] = (counts[s] ?? 0) + 1;
@@ -51,54 +58,54 @@ describe("perfSubmissionStatuses", () => {
 
   it("only uses DEC-003 submission status literals", () => {
     const allowed = new Set(["pending", "accept_queue", "decline_queue", "accepted", "declined"]);
-    for (const s of perfSubmissionStatuses(PERF_SUBMISSION_COUNT)) {
+    for (const s of perfSubmissionStatuses(PERF_SUBMISSION_COUNT, PERF_STATUS_COUNTS)) {
       expect(allowed.has(s)).toBe(true);
     }
   });
 
   it("throws if count does not match the fixed distribution total", () => {
-    expect(() => perfSubmissionStatuses(10)).toThrow();
+    expect(() => perfSubmissionStatuses(10, PERF_STATUS_COUNTS)).toThrow();
   });
 });
 
 describe("totalPerfAnswerRows", () => {
   it("multiplies by the fixed per-submission answer rate", () => {
-    expect(totalPerfAnswerRows(PERF_SUBMISSION_COUNT)).toBe(PERF_SUBMISSION_COUNT * PERF_ANSWERS_PER_SUBMISSION);
-    expect(totalPerfAnswerRows(0)).toBe(0);
+    expect(totalPerfAnswerRows(PERF_SUBMISSION_COUNT, PERF_ANSWERS_PER_SUBMISSION)).toBe(PERF_SUBMISSION_COUNT * PERF_ANSWERS_PER_SUBMISSION);
+    expect(totalPerfAnswerRows(0, PERF_ANSWERS_PER_SUBMISSION)).toBe(0);
     expect(PERF_ANSWERS_PER_SUBMISSION).toBe(3);
   });
 
   it("rejects negative or non-integer counts", () => {
-    expect(() => totalPerfAnswerRows(-1)).toThrow();
-    expect(() => totalPerfAnswerRows(1.5)).toThrow();
+    expect(() => totalPerfAnswerRows(-1, PERF_ANSWERS_PER_SUBMISSION)).toThrow();
+    expect(() => totalPerfAnswerRows(1.5, PERF_ANSWERS_PER_SUBMISSION)).toThrow();
   });
 });
 
 describe("contactIndexForSubmission", () => {
   it("cycles through the 800-contact pool", () => {
-    expect(contactIndexForSubmission(0)).toBe(0);
-    expect(contactIndexForSubmission(PERF_CONTACT_COUNT - 1)).toBe(PERF_CONTACT_COUNT - 1);
-    expect(contactIndexForSubmission(PERF_CONTACT_COUNT)).toBe(0);
-    expect(contactIndexForSubmission(PERF_SUBMISSION_COUNT - 1)).toBeLessThan(PERF_CONTACT_COUNT);
+    expect(contactIndexForSubmission(0, PERF_CONTACT_COUNT)).toBe(0);
+    expect(contactIndexForSubmission(PERF_CONTACT_COUNT - 1, PERF_CONTACT_COUNT)).toBe(PERF_CONTACT_COUNT - 1);
+    expect(contactIndexForSubmission(PERF_CONTACT_COUNT, PERF_CONTACT_COUNT)).toBe(0);
+    expect(contactIndexForSubmission(PERF_SUBMISSION_COUNT - 1, PERF_CONTACT_COUNT)).toBeLessThan(PERF_CONTACT_COUNT);
   });
 
   it("rejects negative or non-integer indices", () => {
-    expect(() => contactIndexForSubmission(-1)).toThrow();
-    expect(() => contactIndexForSubmission(1.5)).toThrow();
+    expect(() => contactIndexForSubmission(-1, PERF_CONTACT_COUNT)).toThrow();
+    expect(() => contactIndexForSubmission(1.5, PERF_CONTACT_COUNT)).toThrow();
   });
 });
 
 describe("trackIndexForSubmission", () => {
   it("cycles through the 8-track pool", () => {
-    expect(trackIndexForSubmission(0)).toBe(0);
-    expect(trackIndexForSubmission(PERF_TRACK_COUNT - 1)).toBe(PERF_TRACK_COUNT - 1);
-    expect(trackIndexForSubmission(PERF_TRACK_COUNT)).toBe(0);
-    expect(trackIndexForSubmission(PERF_SUBMISSION_COUNT - 1)).toBeLessThan(PERF_TRACK_COUNT);
+    expect(trackIndexForSubmission(0, PERF_TRACK_COUNT)).toBe(0);
+    expect(trackIndexForSubmission(PERF_TRACK_COUNT - 1, PERF_TRACK_COUNT)).toBe(PERF_TRACK_COUNT - 1);
+    expect(trackIndexForSubmission(PERF_TRACK_COUNT, PERF_TRACK_COUNT)).toBe(0);
+    expect(trackIndexForSubmission(PERF_SUBMISSION_COUNT - 1, PERF_TRACK_COUNT)).toBeLessThan(PERF_TRACK_COUNT);
   });
 
   it("rejects negative or non-integer indices", () => {
-    expect(() => trackIndexForSubmission(-1)).toThrow();
-    expect(() => trackIndexForSubmission(1.5)).toThrow();
+    expect(() => trackIndexForSubmission(-1, PERF_TRACK_COUNT)).toThrow();
+    expect(() => trackIndexForSubmission(1.5, PERF_TRACK_COUNT)).toThrow();
   });
 });
 
@@ -413,11 +420,11 @@ describe("DEC-495 coSpeakerContactIndexesForAccepted (public speaker scale)", ()
   });
 
   it("never collides with any accepted submission's own primary-speaker contact", () => {
-    const statuses = perfSubmissionStatuses(PERF_SUBMISSION_COUNT);
+    const statuses = perfSubmissionStatuses(PERF_SUBMISSION_COUNT, PERF_STATUS_COUNTS);
     let j = 0;
     for (let i = 0; i < PERF_SUBMISSION_COUNT; i++) {
       if (statuses[i] !== "accepted") continue;
-      const primary = contactIndexForSubmission(i);
+      const primary = contactIndexForSubmission(i, PERF_CONTACT_COUNT);
       const coIdxs = coSpeakerContactIndexesForAccepted(j);
       expect(coIdxs).not.toContain(primary);
       j++;
@@ -425,12 +432,12 @@ describe("DEC-495 coSpeakerContactIndexesForAccepted (public speaker scale)", ()
   });
 
   it("SPEC.md:73-76 scale: accepted + co-speaker participants cover at least 800 distinct contacts", () => {
-    const statuses = perfSubmissionStatuses(PERF_SUBMISSION_COUNT);
+    const statuses = perfSubmissionStatuses(PERF_SUBMISSION_COUNT, PERF_STATUS_COUNTS);
     const visible = new Set<number>();
     let j = 0;
     for (let i = 0; i < PERF_SUBMISSION_COUNT; i++) {
       if (statuses[i] !== "accepted") continue;
-      visible.add(contactIndexForSubmission(i));
+      visible.add(contactIndexForSubmission(i, PERF_CONTACT_COUNT));
       for (const idx of coSpeakerContactIndexesForAccepted(j)) visible.add(idx);
       j++;
     }

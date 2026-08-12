@@ -2,40 +2,92 @@
 // (same pattern as scripts/seed-lib.ts: dependency-free, no filesystem or D1
 // access, safe to import without side effects). DEC-034.
 
-/** Fixed id for the single synthetic perf event (not padded via seedId — it
- * is a singleton, not a numbered series). Starts with 'seed_perf_' so it is
- * covered by the same idempotent-delete namespace as every other perf row. */
-export const PERF_EVENT_ID = "seed_perf_event";
-export const PERF_EVENT_SLUG = "perf-2k";
-
-export const PERF_SUBMISSION_COUNT = 2000;
-export const PERF_CONTACT_COUNT = 800;
-export const PERF_TRACK_COUNT = 8;
-export const PERF_ANSWERS_PER_SUBMISSION = 3;
-
-/** Realistic status mix across the 2,000 perf submissions (DEC-003 literals),
- * weighted toward 'pending' the way a real, actively-triaged CFP looks. */
-export const PERF_STATUS_COUNTS: Readonly<Record<string, number>> = {
-  pending: 1200,
-  accept_queue: 300,
-  accepted: 300,
-  decline_queue: 100,
-  declined: 100,
-};
 
 /**
- * Deterministic status list for the perf submissions, grouped by status
+ * A named scale profile for the perf seeder (DEC-619): every volume the
+ * seeder needs to build its core submission/contact/track/answer/status
+ * rows, so `perf-seed --profile=<name>` can target a different scale
+ * without a second seeder script (scale-mandate: "Scale is a PROFILE
+ * threaded through the seeder, not a second seeder").
+ */
+export interface PerfProfile {
+  name: string;
+  eventId: string;
+  eventSlug: string;
+  submissionCount: number;
+  contactCount: number;
+  trackCount: number;
+  answersPerSubmission: number;
+  statusCounts: Readonly<Record<string, number>>;
+}
+
+/**
+ * `default`: today's perf-2k numbers, unchanged bit-for-bit (2000
+ * submissions / 800 contacts / 8 tracks / 3 answers each, the same
+ * 'pending'-heavy status mix as before DEC-619).
+ *
+ * `aie`: docs/mandates/scale-mandate.md's "stress test at AI Engineer
+ * scale" volumes — 2,500 submissions across 20 tracks, ~10% accepted,
+ * 6,000 contacts. Distinct event id/slug so it can never collide with the
+ * `default` profile's seed_perf_event singleton; still inside the
+ * seed_perf_ id namespace so the idempotent delete catches it too.
+ */
+export const PERF_PROFILES: Record<"default" | "aie", PerfProfile> = {
+  default: {
+    name: "default",
+    eventId: "seed_perf_event",
+    eventSlug: "perf-2k",
+    submissionCount: 2000,
+    contactCount: 800,
+    trackCount: 8,
+    answersPerSubmission: 3,
+    statusCounts: {
+      pending: 1200,
+      accept_queue: 300,
+      accepted: 300,
+      decline_queue: 100,
+      declined: 100,
+    },
+  },
+  aie: {
+    name: "aie",
+    eventId: "seed_perf_aie_event",
+    eventSlug: "perf-aie",
+    submissionCount: 2500,
+    contactCount: 6000,
+    trackCount: 20,
+    answersPerSubmission: 3,
+    // ~10% accepted (250 / 2500), same pending-heavy shape as `default`.
+    statusCounts: {
+      pending: 1500,
+      accept_queue: 375,
+      accepted: 250,
+      decline_queue: 250,
+      declined: 125,
+    },
+  },
+};
+
+/** Fixed id for the single synthetic perf event (not padded via seedId — it
+ * is a singleton, not a numbered series). Starts with 'seed_perf_' so it is
+ * covered by the same idempotent-delete namespace as every other perf row.
+ * Kept as the `default` profile's own id/slug for existing call sites. */
+export const PERF_EVENT_ID = PERF_PROFILES.default.eventId;
+export const PERF_EVENT_SLUG = PERF_PROFILES.default.eventSlug;
+
+/**
+ * Deterministic status list for `count` perf submissions, grouped by status
  * (block-distributed, not shuffled — deterministic and trivially testable;
  * downstream track/contact assignment is index-modulo so the resulting rows
  * still spread evenly regardless of block order).
  */
-export function perfSubmissionStatuses(count: number): string[] {
-  const total = Object.values(PERF_STATUS_COUNTS).reduce((a, b) => a + b, 0);
+export function perfSubmissionStatuses(count: number, statusCounts: Readonly<Record<string, number>>): string[] {
+  const total = Object.values(statusCounts).reduce((a, b) => a + b, 0);
   if (count !== total) {
     throw new Error(`perfSubmissionStatuses: expected count ${total}, got ${count}`);
   }
   const out: string[] = [];
-  for (const [status, n] of Object.entries(PERF_STATUS_COUNTS)) {
+  for (const [status, n] of Object.entries(statusCounts)) {
     for (let i = 0; i < n; i++) {
       out.push(status);
     }
@@ -43,28 +95,39 @@ export function perfSubmissionStatuses(count: number): string[] {
   return out;
 }
 
-/** Total submission_answer rows for N submissions at the fixed per-submission rate. */
-export function totalPerfAnswerRows(submissionCount: number): number {
+/** Total submission_answer rows for N submissions at the given per-submission rate. */
+export function totalPerfAnswerRows(submissionCount: number, answersPerSubmission: number): number {
   if (!Number.isInteger(submissionCount) || submissionCount < 0) {
     throw new Error(`totalPerfAnswerRows: submissionCount must be a non-negative integer, got ${submissionCount}`);
   }
-  return submissionCount * PERF_ANSWERS_PER_SUBMISSION;
+  if (!Number.isInteger(answersPerSubmission) || answersPerSubmission < 0) {
+    throw new Error(
+      `totalPerfAnswerRows: answersPerSubmission must be a non-negative integer, got ${answersPerSubmission}`,
+    );
+  }
+  return submissionCount * answersPerSubmission;
 }
 
-/** 0-based contact index (into the 800-contact pool) for the i-th (0-based) submission. */
-export function contactIndexForSubmission(i: number): number {
+/** 0-based contact index (into the contactCount-sized contact pool) for the i-th (0-based) submission. */
+export function contactIndexForSubmission(i: number, contactCount: number): number {
   if (!Number.isInteger(i) || i < 0) {
     throw new Error(`contactIndexForSubmission: i must be a non-negative integer, got ${i}`);
   }
-  return i % PERF_CONTACT_COUNT;
+  if (!Number.isInteger(contactCount) || contactCount <= 0) {
+    throw new Error(`contactIndexForSubmission: contactCount must be a positive integer, got ${contactCount}`);
+  }
+  return i % contactCount;
 }
 
-/** 0-based track index (into the 8-track pool) for the i-th (0-based) submission. */
-export function trackIndexForSubmission(i: number): number {
+/** 0-based track index (into the trackCount-sized track pool) for the i-th (0-based) submission. */
+export function trackIndexForSubmission(i: number, trackCount: number): number {
   if (!Number.isInteger(i) || i < 0) {
     throw new Error(`trackIndexForSubmission: i must be a non-negative integer, got ${i}`);
   }
-  return i % PERF_TRACK_COUNT;
+  if (!Number.isInteger(trackCount) || trackCount <= 0) {
+    throw new Error(`trackIndexForSubmission: trackCount must be a positive integer, got ${trackCount}`);
+  }
+  return i % trackCount;
 }
 
 // Topic pool for submission titles: cycling through a wide, fixed set
@@ -236,8 +299,12 @@ export function slotPlacementForAccepted(j: number): PerfSlotPlacement {
  * scripts/seed.ts's deliverable_kind convention). */
 export const PERF_TASK_COUNT = 5;
 
-/** task_assignment rows: PERF_TASK_COUNT tasks x PERF_CONTACT_COUNT contacts. */
-export const PERF_TASK_ASSIGNMENT_COUNT = PERF_TASK_COUNT * PERF_CONTACT_COUNT;
+/** task_assignment rows: PERF_TASK_COUNT tasks x the `default` profile's
+ * contact count. Out of DEC-619's scope (only submission/contact/track/
+ * answer/status counts are threaded per-profile) — task/file/pipeline/
+ * co-speaker fixtures below stay pinned to the `default` profile's scale
+ * regardless of which profile is seeded. */
+export const PERF_TASK_ASSIGNMENT_COUNT = PERF_TASK_COUNT * PERF_PROFILES.default.contactCount;
 
 export interface PerfTaskSpec {
   kind: "general" | "file_request";
@@ -319,7 +386,7 @@ export const PERF_FILE_PRESENTATION_VERSIONS = 3;
 /** Rows contributed per accepted submission: 3 presentation versions + 1 handout. */
 export const PERF_FILE_ROWS_PER_SUBMISSION = PERF_FILE_PRESENTATION_VERSIONS + 1;
 /** Total deliverable `file` rows: 300 accepted submissions x 4 rows each = 1,200. */
-export const PERF_FILE_COUNT = (PERF_STATUS_COUNTS.accepted ?? 0) * PERF_FILE_ROWS_PER_SUBMISSION;
+export const PERF_FILE_COUNT = (PERF_PROFILES.default.statusCounts.accepted ?? 0) * PERF_FILE_ROWS_PER_SUBMISSION;
 
 export interface PerfFileRowSpec {
   /** 1-based index for seedId('perf_file', n) — unique across the whole 1,200-row set. */
@@ -362,7 +429,7 @@ export const PERF_PIPELINE_STAGES = ["identified", "contacted", "interested", "c
  * would grow the pinned 800-contact count another log has already
  * measured against) or violating the unique index.
  */
-export const PERF_PIPELINE_ENTRY_COUNT = PERF_CONTACT_COUNT;
+export const PERF_PIPELINE_ENTRY_COUNT = PERF_PROFILES.default.contactCount;
 
 /** 0-based stage index (into PERF_PIPELINE_STAGES) for the i-th (0-based)
  * pipeline entry — block-distributed like perfSubmissionStatuses, so all
@@ -431,10 +498,13 @@ export const PERF_CO_SPEAKERS_PER_ACCEPTED = 2;
 // complement — always contiguous too, for any window narrower than the
 // full contact pool — so co-speaker contacts never collide with a primary
 // speaker's contact by construction (no runtime check needed).
-const ACCEPTED_WINDOW_START = (PERF_STATUS_COUNTS.pending! + PERF_STATUS_COUNTS.accept_queue!) % PERF_CONTACT_COUNT;
-const ACCEPTED_WINDOW_SIZE = PERF_STATUS_COUNTS.accepted!;
-const CO_SPEAKER_POOL_START = (ACCEPTED_WINDOW_START + ACCEPTED_WINDOW_SIZE) % PERF_CONTACT_COUNT;
-const CO_SPEAKER_POOL_SIZE = PERF_CONTACT_COUNT - ACCEPTED_WINDOW_SIZE;
+const DEFAULT_STATUS_COUNTS = PERF_PROFILES.default.statusCounts;
+const DEFAULT_CONTACT_COUNT = PERF_PROFILES.default.contactCount;
+const ACCEPTED_WINDOW_START =
+  (DEFAULT_STATUS_COUNTS.pending! + DEFAULT_STATUS_COUNTS.accept_queue!) % DEFAULT_CONTACT_COUNT;
+const ACCEPTED_WINDOW_SIZE = DEFAULT_STATUS_COUNTS.accepted!;
+const CO_SPEAKER_POOL_START = (ACCEPTED_WINDOW_START + ACCEPTED_WINDOW_SIZE) % DEFAULT_CONTACT_COUNT;
+const CO_SPEAKER_POOL_SIZE = DEFAULT_CONTACT_COUNT - ACCEPTED_WINDOW_SIZE;
 
 /**
  * Deterministic 0-based contact indexes (into the PERF_CONTACT_COUNT pool)
@@ -461,7 +531,7 @@ export function coSpeakerContactIndexesForAccepted(
   const out: number[] = [];
   for (let k = 0; k < coSpeakerCount; k++) {
     const step = j * coSpeakerCount + k;
-    const idx = (CO_SPEAKER_POOL_START + (step % CO_SPEAKER_POOL_SIZE)) % PERF_CONTACT_COUNT;
+    const idx = (CO_SPEAKER_POOL_START + (step % CO_SPEAKER_POOL_SIZE)) % DEFAULT_CONTACT_COUNT;
     out.push(idx);
   }
   return out;

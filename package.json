@@ -10,6 +10,7 @@
     "db:migrate": "wrangler d1 migrations apply chautauqua --local",
     "seed": "tsx scripts/seed.ts && wrangler d1 execute chautauqua --local --file=.seed.sql && tsx scripts/seed-r2.ts",
     "perf:seed": "tsx scripts/perf-seed.ts && wrangler d1 execute chautauqua --local --file=.perf-seed.sql",
+    "perf:seed:aie": "tsx scripts/perf-seed.ts --profile=aie && wrangler d1 execute chautauqua --local --file=.perf-seed.sql",
     "perf:smoke": "tsx scripts/perf-smoke.ts",
     "bundle:check": "tsx scripts/bundle-check.ts",
     "walkthrough": "tsx scripts/walkthrough.ts",

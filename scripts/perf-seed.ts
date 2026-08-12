@@ -21,24 +21,19 @@ import { fileURLToPath } from "node:url";
 import { hashPassword } from "../src/auth/password";
 import { insertStmt, seedId } from "./seed-lib";
 import {
-  PERF_ANSWERS_PER_SUBMISSION,
   PERF_CO_SPEAKERS_PER_ACCEPTED,
-  PERF_CONTACT_COUNT,
   PERF_EMAIL_LOG_COUNT,
   PERF_EVALUATION_COUNT,
-  PERF_EVENT_ID,
-  PERF_EVENT_SLUG,
   PERF_ORG_USER_COUNT,
   PERF_PIPELINE_ENTRY_COUNT,
   PERF_PIPELINE_STAGES,
   PERF_PLAN_ID,
+  PERF_PROFILES,
   PERF_REVIEWER_COUNT,
   PERF_REVIEWER_PASSWORD,
   PERF_ROOM_COUNT,
-  PERF_SUBMISSION_COUNT,
   PERF_TASK_COUNT,
   PERF_TASKS,
-  PERF_TRACK_COUNT,
   contactIndexForSubmission,
   coSpeakerContactIndexesForAccepted,
   isTaskAssignmentComplete,
@@ -53,6 +48,25 @@ import {
   topicForSubmission,
   trackIndexForSubmission,
 } from "./perf-seed-lib";
+
+/** `--profile=<name>` (default: 'default'); fails loudly on an unknown name
+ * rather than silently falling back — DEC-619. */
+function resolveProfileName(argv: string[]): keyof typeof PERF_PROFILES {
+  const flag = argv.find((a) => a.startsWith("--profile="));
+  const name = flag ? flag.slice("--profile=".length) : "default";
+  if (!(name in PERF_PROFILES)) {
+    throw new Error(`Unknown perf profile '${name}'. Known profiles: ${Object.keys(PERF_PROFILES).join(", ")}`);
+  }
+  return name as keyof typeof PERF_PROFILES;
+}
+
+const PROFILE = PERF_PROFILES[resolveProfileName(process.argv.slice(2))];
+const PERF_EVENT_ID = PROFILE.eventId;
+const PERF_EVENT_SLUG = PROFILE.eventSlug;
+const PERF_SUBMISSION_COUNT = PROFILE.submissionCount;
+const PERF_CONTACT_COUNT = PROFILE.contactCount;
+const PERF_TRACK_COUNT = PROFILE.trackCount;
+const PERF_ANSWERS_PER_SUBMISSION = PROFILE.answersPerSubmission;
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(SCRIPT_DIR, "..");
@@ -82,32 +96,36 @@ async function main(): Promise<void> {
   // --- idempotent delete, children before parents; never a blanket
   // DELETE FROM (that would also wipe the demo seed's rows in these
   // shared tables) --- DEC-088 extends this with schedule/plan/reviewer
-  // rows, also children-before-parents.
+  // rows, also children-before-parents. Event-scoped deletes cover every
+  // profile's event id (not just the one currently selected), so switching
+  // `--profile=` between runs still cleans up the previously-seeded
+  // profile's event-scoped rows instead of leaving them orphaned.
+  const allPerfEventIds = Object.values(PERF_PROFILES).map((p) => `'${p.eventId}'`).join(", ");
   statements.push(`DELETE FROM evaluation WHERE plan_id = '${PERF_PLAN_ID}';`);
   statements.push(`DELETE FROM plan_reviewer WHERE plan_id = '${PERF_PLAN_ID}';`);
   statements.push(`DELETE FROM evaluation_plan WHERE id = '${PERF_PLAN_ID}';`);
   statements.push(`DELETE FROM schedule_slot WHERE submission_id LIKE 'seed_perf_%';`);
-  statements.push(`DELETE FROM room WHERE event_id = 'seed_perf_event';`);
+  statements.push(`DELETE FROM room WHERE event_id IN (${allPerfEventIds});`);
   // DEC-347: file rows (deliverable chains) before their submission parents —
   // scoped by the seed_perf_ id namespace, never a blanket DELETE FROM.
   statements.push(`DELETE FROM file WHERE id LIKE 'seed_perf_%';`);
   statements.push(`DELETE FROM submission_answer WHERE submission_id LIKE 'seed_perf_%';`);
   statements.push(`DELETE FROM submission_track WHERE submission_id LIKE 'seed_perf_%';`);
   statements.push(`DELETE FROM participant WHERE submission_id LIKE 'seed_perf_%';`);
-  statements.push(`DELETE FROM submission WHERE event_id = 'seed_perf_event';`);
-  statements.push(`DELETE FROM track WHERE event_id = 'seed_perf_event';`);
+  statements.push(`DELETE FROM submission WHERE event_id IN (${allPerfEventIds});`);
+  statements.push(`DELETE FROM track WHERE event_id IN (${allPerfEventIds});`);
   // DEC-338: task_assignment (children) before task (parent), email_log is
   // its own leaf table — both scoped to the perf id namespace/event.
   statements.push(`DELETE FROM task_assignment WHERE task_id LIKE 'seed_perf_%';`);
-  statements.push(`DELETE FROM task WHERE event_id = 'seed_perf_event';`);
-  statements.push(`DELETE FROM email_log WHERE event_id = 'seed_perf_event';`);
+  statements.push(`DELETE FROM task WHERE event_id IN (${allPerfEventIds});`);
+  statements.push(`DELETE FROM email_log WHERE event_id IN (${allPerfEventIds});`);
   // DEC-469: pipeline_activity (child) before pipeline_entry (parent),
   // both before contact (pipeline_entry.contact_id references it) — scoped
   // by the same seed_perf_ id namespace.
   statements.push(`DELETE FROM pipeline_activity WHERE entry_id LIKE 'seed_perf_%';`);
   statements.push(`DELETE FROM pipeline_entry WHERE id LIKE 'seed_perf_%';`);
   statements.push(`DELETE FROM contact WHERE id LIKE 'seed_perf_%';`);
-  statements.push(`DELETE FROM event WHERE id = 'seed_perf_event';`);
+  statements.push(`DELETE FROM event WHERE id IN (${allPerfEventIds});`);
   statements.push(`DELETE FROM user WHERE id LIKE 'seed_perf_%';`);
 
   // --- event ---
@@ -175,7 +193,7 @@ async function main(): Promise<void> {
   // --- 2,000 submissions, each with a speaker participant, one primary
   // track (via submission_track — never the frozen submission.track_id
   // column, per DEC-015/DEC-017), and 3 custom-field answers ---
-  const statuses = perfSubmissionStatuses(PERF_SUBMISSION_COUNT);
+  const statuses = perfSubmissionStatuses(PERF_SUBMISSION_COUNT, PROFILE.statusCounts);
   let answerCounter = 0;
   const submissionIds: string[] = [];
   const acceptedSubmissionIds: string[] = [];
@@ -187,12 +205,12 @@ async function main(): Promise<void> {
     submissionIds.push(submissionId);
     const status = statuses[i]!;
     const isAccepted = status === "accepted";
-    const contactId = contactIds[contactIndexForSubmission(i)]!;
+    const contactId = contactIds[contactIndexForSubmission(i, PERF_CONTACT_COUNT)]!;
     if (isAccepted) {
       acceptedSubmissionIds.push(submissionId);
       acceptedContactIds.push(contactId);
     }
-    const trackId = trackIds[trackIndexForSubmission(i)]!;
+    const trackId = trackIds[trackIndexForSubmission(i, PERF_TRACK_COUNT)]!;
     const topic = topicForSubmission(i);
 
     statements.push(
