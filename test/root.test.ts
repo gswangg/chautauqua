@@ -407,3 +407,165 @@ describe("GET / — anonymous hub (DEC-581)", () => {
     expect(body).toContain(`Showing the ${HUB_CANDIDATE_LIMIT} most recent events.`);
   });
 });
+
+// w15-d: closing the six r2-home fixes (mandate item 31).
+describe("GET / — footer (mandate item 31a/31b)", () => {
+  it("never emits a stray gear glyph before the GitHub mark, and links an API docs footer item to /docs/api", async () => {
+    const app = buildApp({ queue: buildQueue({ events: [] }) });
+    const res = await app.request("/", {}, { ASSETS: fakeAssets() });
+    const body = await res.text();
+    expect(body).not.toContain("⚙");
+    expect(body).toContain('href="/docs/api"');
+    expect(body).toContain(">API docs<");
+  });
+});
+
+describe("GET / — open-CFP row has exactly one action (mandate item 31c)", () => {
+  it("never renders a Speakers link in an open-CFP row, even when sessions are published", async () => {
+    const events = [
+      eventRow({
+        id: "e1",
+        startDate: "2027-05-12",
+        endDate: "2027-05-14",
+        openMs: null,
+        closeMs: NOW + 6 * DAY,
+      }),
+    ];
+    const app = buildApp({ queue: buildQueue({ events, countRows: [{ eventId: "e1", count: 4 }] }) });
+    const res = await app.request("/", {}, { ASSETS: fakeAssets() });
+    const body = await res.text();
+    expect(body).toContain('href="/submit/devflow-conf-2027"');
+    expect(body).not.toContain('href="/e/devflow-conf-2027/speakers"');
+  });
+});
+
+describe("GET / — British date grammar (mandate item 31d)", () => {
+  it("renders a same-month range as 'DD–DD Month YYYY' with the month printed once, no comma", async () => {
+    const events = [
+      eventRow({
+        id: "e1",
+        startDate: "2027-05-12",
+        endDate: "2027-05-14",
+        openMs: null,
+        closeMs: NOW + 6 * DAY,
+      }),
+    ];
+    const app = buildApp({ queue: buildQueue({ events }) });
+    const res = await app.request("/", {}, { ASSETS: fakeAssets() });
+    const body = await res.text();
+    expect(body).toContain("12–14 May 2027");
+    expect(body).not.toContain("12 May–14 May 2027");
+  });
+
+  it("renders a cross-month range with the month printed on both ends", async () => {
+    const events = [
+      eventRow({
+        id: "e1",
+        startDate: "2027-04-28",
+        endDate: "2027-05-02",
+        openMs: null,
+        closeMs: NOW + 6 * DAY,
+      }),
+    ];
+    const app = buildApp({ queue: buildQueue({ events }) });
+    const res = await app.request("/", {}, { ASSETS: fakeAssets() });
+    const body = await res.text();
+    expect(body).toContain("28 Apr–2 May 2027");
+  });
+
+  it("renders a single-day event as one date, not a range", async () => {
+    const events = [
+      eventRow({
+        id: "e1",
+        startDate: "2027-05-12",
+        endDate: "2027-05-12",
+        openMs: null,
+        closeMs: NOW + 6 * DAY,
+      }),
+    ];
+    const app = buildApp({ queue: buildQueue({ events }) });
+    const res = await app.request("/", {}, { ASSETS: fakeAssets() });
+    const body = await res.text();
+    expect(body).toContain("12 May 2027");
+    expect(body).not.toContain("–");
+  });
+
+  it("renders the CFP closes line uppercase, no comma: 'CLOSES SUN 16 AUG · N DAYS LEFT'", async () => {
+    // 2026-08-16 is a Sunday; timezone left as America/Los_Angeles (DEC-408
+    // uses the event's own IANA zone) with a close instant safely inside
+    // that calendar day in both UTC and Pacific time.
+    const closeMs = Date.UTC(2026, 7, 16, 20, 0, 0);
+    const events = [
+      eventRow({
+        id: "e1",
+        startDate: "2027-05-12",
+        endDate: "2027-05-14",
+        openMs: null,
+        closeMs,
+      }),
+    ];
+    const app = buildApp({ queue: buildQueue({ events }) });
+    const res = await app.request("/", {}, { ASSETS: fakeAssets() });
+    const body = await res.text();
+    expect(body).toMatch(/CLOSES SUN 16 AUG · \d+ DAYS? LEFT/);
+    expect(body).not.toMatch(/CLOSES SUN, 16 AUG/);
+  });
+});
+
+describe("GET / — hero summary spells counts one through nine (mandate item 31e)", () => {
+  it("spells a single open CFP as 'One'", async () => {
+    const events = [
+      eventRow({ id: "e1", startDate: "2027-05-12", endDate: "2027-05-14", openMs: null, closeMs: NOW + 6 * DAY }),
+    ];
+    const app = buildApp({ queue: buildQueue({ events }) });
+    const res = await app.request("/", {}, { ASSETS: fakeAssets() });
+    const body = await res.text();
+    expect(body).toContain("One call for papers is open.");
+  });
+
+  it("spells nine open CFPs as 'Nine'", async () => {
+    const events = Array.from({ length: 9 }, (_, i) =>
+      eventRow({
+        id: `e${i}`,
+        slug: `event-${i}`,
+        startDate: "2027-05-12",
+        endDate: "2027-05-14",
+        openMs: null,
+        closeMs: NOW + 6 * DAY,
+      }),
+    );
+    const app = buildApp({ queue: buildQueue({ events }) });
+    const res = await app.request("/", {}, { ASSETS: fakeAssets() });
+    const body = await res.text();
+    expect(body).toContain("Nine calls for papers are open.");
+  });
+
+  it("renders ten open CFPs as the numeral '10'", async () => {
+    const events = Array.from({ length: 10 }, (_, i) =>
+      eventRow({
+        id: `e${i}`,
+        slug: `event-${i}`,
+        startDate: "2027-05-12",
+        endDate: "2027-05-14",
+        openMs: null,
+        closeMs: NOW + 6 * DAY,
+      }),
+    );
+    const app = buildApp({ queue: buildQueue({ events }) });
+    const res = await app.request("/", {}, { ASSETS: fakeAssets() });
+    const body = await res.text();
+    expect(body).toContain("10 calls for papers are open.");
+  });
+});
+
+describe("GET / — footer/signin links carry no underline (mandate item 31f)", () => {
+  it("declares text-decoration: none for .chq-home-signin and .chq-home-footer-link in the inlined stylesheet", async () => {
+    const app = buildApp({ queue: buildQueue({ events: [] }) });
+    const res = await app.request("/", {}, { ASSETS: fakeAssets() });
+    const body = await res.text();
+    const blocks = [...body.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)];
+    const css = blocks.map((m) => m[1]).join("\n");
+    expect(css).toMatch(/\.chq-home-signin\s*\{[^}]*text-decoration:\s*none/);
+    expect(css).toMatch(/\.chq-home-footer-link\s*\{[^}]*text-decoration:\s*none/);
+  });
+});

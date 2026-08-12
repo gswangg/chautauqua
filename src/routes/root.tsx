@@ -92,9 +92,11 @@ const GITHUB_MARK = (
 );
 
 /** Day-label formatter (UTC calendar fields, DEC-522: startDate/endDate are
- * DAY LABELS, not instants — never rendered in any timezone but UTC). */
+ * DAY LABELS, not instants — never rendered in any timezone but UTC).
+ * en-GB gives British day-before-month order with no comma, e.g. "12 May" /
+ * "12 May 2027". */
 function dayLabel(ms: number, withYear: boolean): string {
-  return new Date(ms).toLocaleDateString("en-US", {
+  return new Date(ms).toLocaleDateString("en-GB", {
     day: "numeric",
     month: "short",
     year: withYear ? "numeric" : undefined,
@@ -102,21 +104,33 @@ function dayLabel(ms: number, withYear: boolean): string {
   });
 }
 
+/** Day-of-month only, no month/year (for the "12" in "12–14 May 2027" when
+ * both ends share a month — the month is printed exactly once). */
+function dayOnly(ms: number): string {
+  return new Date(ms).toLocaleDateString("en-GB", { day: "numeric", timeZone: "UTC" });
+}
+
 function dateRange(start: number, end: number): string {
-  return start === end ? dayLabel(start, true) : `${dayLabel(start, false)}–${dayLabel(end, true)}`;
+  if (start === end) return dayLabel(start, true);
+  const startDate = new Date(start);
+  const endDate = new Date(end);
+  const sameMonth = startDate.getUTCFullYear() === endDate.getUTCFullYear() && startDate.getUTCMonth() === endDate.getUTCMonth();
+  if (sameMonth) return `${dayOnly(start)}–${dayLabel(end, true)}`;
+  return `${dayLabel(start, false)}–${dayLabel(end, true)}`;
 }
 
 /** CFP close date + "N days left", rendered in the event's own IANA
- * timezone (DEC-408: a real instant, never UTC-bare). */
+ * timezone (DEC-408: a real instant, never UTC-bare). British day-before-
+ * month order (en-GB, no comma), fully uppercased. */
 function closesLine(closeMs: number, timeZone: string, nowMs: number): string {
-  const label = new Date(closeMs).toLocaleDateString("en-US", {
+  const label = new Date(closeMs).toLocaleDateString("en-GB", {
     weekday: "short",
     day: "numeric",
     month: "short",
     timeZone,
   });
   const days = Math.max(0, Math.ceil((closeMs - nowMs) / 86_400_000));
-  return `Closes ${label} · ${days} day${days === 1 ? "" : "s"} left`;
+  return `CLOSES ${label.toUpperCase()} · ${days} DAY${days === 1 ? "" : "S"} LEFT`;
 }
 
 function sessionsLine(count: number): string {
@@ -146,11 +160,6 @@ function OpenCfpRow(props: { event: HubEvent; nowMs: number }) {
         <a class="chq-home-action-primary" href={`/submit/${event.slug}`}>
           Submit a talk
         </a>
-        {event.publishedSessionCount > 0 ? (
-          <a class="chq-home-action-secondary" href={`/e/${event.slug}/speakers`}>
-            Speakers
-          </a>
-        ) : null}
       </div>
     </div>
   );
@@ -200,11 +209,22 @@ function ArchiveRow(props: { event: HubEvent }) {
   );
 }
 
+// Counts one through nine are spelled out in prose; ten and up render as
+// numerals (standard English style-guide rule for running text).
+const SPELLED_COUNTS = ["one", "two", "three", "four", "five", "six", "seven", "eight", "nine"];
+
+function spellCount(count: number): string {
+  if (count < 1 || count > 9) return String(count);
+  const word = SPELLED_COUNTS[count - 1];
+  if (!word) throw new Error(`spellCount: no word for count ${count}`);
+  return word;
+}
+
 function pluralClause(count: number, singularNoun: string, pluralNoun: string, verbSingular: string, verbPlural: string): string {
   if (count === 0) return "";
   const noun = count === 1 ? singularNoun : pluralNoun;
   const verb = count === 1 ? verbSingular : verbPlural;
-  return `${count} ${noun} ${verb}`;
+  return `${spellCount(count)} ${noun} ${verb}`;
 }
 
 /** The full-state hero sentence, e.g. "One call for papers is open. Two
@@ -223,13 +243,16 @@ function Footer() {
   return (
     <div class="chq-home-footer">
       <span class="chq-home-footer-text">
-        Running on ⚙{" "}
+        Running on{" "}
         <a class="chq-home-footer-link" href="https://github.com/chautauqua-project/chautauqua">
           {GITHUB_MARK}
           Chautauqua
         </a>{" "}
         · open-source speaker and event-content management
       </span>
+      <a class="chq-home-footer-link chq-home-footer-link-end" href="/docs/api">
+        API docs
+      </a>
     </div>
   );
 }

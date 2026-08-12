@@ -18,7 +18,7 @@ export const HOME_CSS = `
   .chq-home-shell { max-width: 900px; margin: 0 auto; background: var(--chq-surface); border: 1px solid var(--chq-rule); }
   .chq-home-header { border-bottom: 1px solid var(--chq-ink); padding: 15px 44px; display: flex; align-items: center; gap: 20px; background: var(--chq-paper); }
   .chq-home-org { font-family: var(--chq-font-display); font-size: 20px; font-weight: 700; letter-spacing: -0.03em; }
-  .chq-home-signin { margin-left: auto; font-size: 13px; font-weight: 700; }
+  .chq-home-signin { margin-left: auto; font-size: 13px; font-weight: 700; text-decoration: none; }
 
   .chq-home-body { padding: 36px 44px 40px; display: flex; flex-direction: column; gap: 30px; }
   .chq-home-hero { display: flex; flex-direction: column; gap: 10px; }
@@ -52,7 +52,8 @@ export const HOME_CSS = `
 
   .chq-home-footer { border-top: 1px solid var(--chq-rule); background: var(--chq-surface-sunk); padding: 18px 44px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
   .chq-home-footer-text { font-size: 12px; color: var(--chq-muted); line-height: 1.5; }
-  .chq-home-footer-link { font-weight: 700; color: var(--chq-brand); white-space: nowrap; display: inline-flex; align-items: center; gap: 5px; }
+  .chq-home-footer-link { font-weight: 700; color: var(--chq-brand); white-space: nowrap; display: inline-flex; align-items: center; gap: 5px; text-decoration: none; }
+  .chq-home-footer-link-end { margin-left: auto; }
   .chq-home-github-mark { vertical-align: -2px; }
 
   @media (max-width: 700px) {
