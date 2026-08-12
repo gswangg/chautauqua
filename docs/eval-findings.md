@@ -495,3 +495,23 @@ compare phone frames pixel-for-pixel.
     honestly); People-and-roles gains SCOPE display + a Change action; render
     Markdown in wiki resources (raw "##" showing — bug); phone subscreens per mock
     (URL-addressable), not accordion.
+
+40. **ROOT-CAUSED QUICK WINS (r2 Public/Portal — each comes with its fix):**
+    (a) EMB-10/11 CRITICAL solved: /schedule's inlined itinerary script throws
+    `MAX_ITINERARY_IDS is not defined` (constant lost in SSR serialization) before
+    localStorage ever writes — define the constant in the emitted script; add a
+    browser test that toggles + reloads + asserts persistence.
+    (b) Sign-out demotion: `button[type=submit]` specificity beats .chq-btn-tertiary —
+    fix the cascade so tertiary wins.
+    (c) `<a class="chq-btn">` renders underlined everywhere — add anchors to the base
+    button rule + text-decoration:none.
+    (d) /portal/edit Track fieldset: apply the public form's chq-cfp-option styling +
+    DEC-579's "Tracks * · Choose all that apply" copy (missed here).
+    (e) Format chip markup missing on /agenda + /schedule (present on /sessions).
+41. r2-Public/Portal dispositions: KEEP: DEC-602 phone lists, DEC-590 worklist,
+    DEC-604/605, hotel-stay fix, styled CFP. REBUILD/REPLACE: portal home must REPLACE
+    the old page (remove pipe nav, welcome banner, and the letter-wrapping My
+    Submissions table — the worklist + "Your session" card + footer identity IS the
+    page); portal session detail to the mock (Accepted badge, code+format+track line,
+    date-room, Abstract, Slides card); sessions desktop right-rail + per-row
+    Save/Saved; phone CFP 2-step wizard; schedule Remove-button treatment.
