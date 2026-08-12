@@ -64,7 +64,7 @@ describe("GET /dev/mailbox rendering (DEC-311/253 mobile overflow fix)", () => {
     expect(res.status).toBe(200);
     const body = await res.text();
     expect(body).toContain('<meta name="viewport" content="width=device-width, initial-scale=1"');
-    expect(body).toContain("table-scroll");
+    expect(body).toContain("chq-tool-table-wrap");
     expect(body).toContain("overflow-x: auto");
   });
 

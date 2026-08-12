@@ -5,14 +5,16 @@
 
 import { Hono } from "hono";
 import type { AppEnv } from "../server/env";
-import { DEC_056, DEC_012, DEC_013 } from "../decisions";
+import { DEC_056, DEC_012, DEC_013, DEC_382 } from "../decisions";
 import { ThemeStyles } from "../views/theme";
+import { ToolsStyles } from "./tools.css";
 
 export const docsRoutes = new Hono<AppEnv>();
 
 void DEC_056;
 void DEC_012;
 void DEC_013;
+void DEC_382;
 
 type Row = { method: string; path: string; role: string };
 
@@ -241,51 +243,63 @@ function DocsPage() {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>Chautauqua API docs</title>
         <ThemeStyles />
-        <style>{`main { max-width: 900px; margin: 2rem auto; padding: 0 1rem 3rem; } h2 { margin-top: 2.5rem; border-bottom: 1px solid var(--chq-rule); padding-bottom: 0.25rem; } .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; } table { border-collapse: collapse; width: 100%; min-width: 100%; margin-top: 0.5rem; } th, td { text-align: left; padding: 0.35rem 0.6rem; border-bottom: 1px solid var(--chq-hairline); font-size: 0.92rem; } td code { overflow-wrap: anywhere; } code, pre { background: var(--chq-surface-sunk); padding: 0.1rem 0.35rem; border-radius: 3px; font-size: 0.92rem; } pre { padding: 0.75rem; overflow-x: auto; }`}</style>
+        <ToolsStyles />
       </head>
       <body>
-        <main>
-          <p>
-            <a href="/">Chautauqua</a>
-          </p>
-          <h1>Chautauqua API</h1>
-          <p>
-            All endpoints below are namespaced under <code>/api/v1</code>. This page is public and requires no login.
-          </p>
+        <header class="chq-header">
+          <a class="chq-wordmark" href="/">
+            chautauqua
+          </a>
+        </header>
+        <main class="chq-measure">
+          <div class="chq-section">
+            <div class="chq-section-label">API docs</div>
+            <p>
+              All endpoints below are namespaced under <code class="chq-tool-code">/api/v1</code>. This page is
+              public and requires no login.
+            </p>
+          </div>
 
-          <h2>Authentication</h2>
-          <p>Two ways to authenticate against the API:</p>
-          <ul>
-            <li>
-              <strong>Session cookie</strong> — log in via the browser at <a href="/login">/login</a>; the admin SPA
-              and its JSON calls use the resulting session cookie automatically.
-            </li>
-            <li>
-              <strong>Bearer token</strong> — send <code>Authorization: Bearer chq_&hellip;</code>. Tokens are minted
-              under Admin &rarr; Settings &rarr; API tokens. Minting a token itself requires an active cookie
-              session (tokens cannot mint other tokens).
-            </li>
-          </ul>
+          <div class="chq-section">
+            <div class="chq-section-label">Authentication</div>
+            <p>Two ways to authenticate against the API:</p>
+            <ul>
+              <li>
+                <strong>Session cookie</strong> — log in via the browser at <a href="/login">/login</a>; the admin
+                SPA and its JSON calls use the resulting session cookie automatically.
+              </li>
+              <li>
+                <strong>Bearer token</strong> — send{" "}
+                <code class="chq-tool-code">Authorization: Bearer chq_&hellip;</code>. Tokens are minted under
+                Admin &rarr; Settings &rarr; API tokens. Minting a token itself requires an active cookie session
+                (tokens cannot mint other tokens).
+              </li>
+            </ul>
+          </div>
 
-          <h2>Envelopes</h2>
-          <p>Errors (any non-2xx response) are shaped as:</p>
-          <pre>{`{ "error": { "code": "invalid", "message": "...", "fields": { "name": "required" } } }`}</pre>
-          <p>List endpoints are shaped as:</p>
-          <pre>{`{ "items": [ ... ], "total": 42, "page": 1, "perPage": 20 }`}</pre>
+          <div class="chq-section">
+            <div class="chq-section-label">Envelopes</div>
+            <p>Errors (any non-2xx response) are shaped as:</p>
+            <pre class="chq-tool-pre">{`{ "error": { "code": "invalid", "message": "...", "fields": { "name": "required" } } }`}</pre>
+            <p>List endpoints are shaped as:</p>
+            <pre class="chq-tool-pre">{`{ "items": [ ... ], "total": 42, "page": 1, "perPage": 20 }`}</pre>
+          </div>
 
-          <h2>CSRF</h2>
-          <p>
-            Cookie-authenticated JSON mutations (POST/PATCH/PUT/DELETE) must include the header{" "}
-            <code>x-chq-csrf: 1</code>. This is a same-origin fetch signal, not a secret token. Requests
-            authenticated with a <code>Bearer chq_&hellip;</code> token are exempt from this check.
-          </p>
+          <div class="chq-section">
+            <div class="chq-section-label">CSRF</div>
+            <p>
+              Cookie-authenticated JSON mutations (POST/PATCH/PUT/DELETE) must include the header{" "}
+              <code class="chq-tool-code">x-chq-csrf: 1</code>. This is a same-origin fetch signal, not a secret
+              token. Requests authenticated with a <code class="chq-tool-code">Bearer chq_&hellip;</code> token are
+              exempt from this check.
+            </p>
+          </div>
 
-          <h2>Endpoints</h2>
           {ROUTE_GROUPS.map((group) => (
-            <section>
-              <h2>{group.title}</h2>
-              <div class="table-scroll">
-                <table>
+            <div class="chq-section">
+              <div class="chq-section-label">{group.title}</div>
+              <div class="chq-tool-table-wrap">
+                <table class="chq-table">
                   <thead>
                     <tr>
                       <th>Method</th>
@@ -298,7 +312,7 @@ function DocsPage() {
                       <tr>
                         <td>{row.method}</td>
                         <td>
-                          <code>{row.path}</code>
+                          <code class="chq-tool-code">{row.path}</code>
                         </td>
                         <td>{row.role}</td>
                       </tr>
@@ -306,7 +320,7 @@ function DocsPage() {
                   </tbody>
                 </table>
               </div>
-            </section>
+            </div>
           ))}
         </main>
       </body>

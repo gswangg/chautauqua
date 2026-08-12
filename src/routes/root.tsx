@@ -9,8 +9,9 @@ import type { AppEnv } from "../server/env";
 import { getFirstEventSlug } from "../server/repo/events";
 import { shouldMountDevMailbox } from "./dev/mailbox";
 import { ApiError } from "../server/http";
-import { DEC_049, DEC_012, DEC_005, DEC_268, DEC_295 } from "../decisions";
+import { DEC_049, DEC_012, DEC_005, DEC_268, DEC_295, DEC_382 } from "../decisions";
 import { ThemeStyles } from "../views/theme";
+import { ToolsStyles } from "./tools.css";
 
 export const rootRoutes = new Hono<AppEnv>();
 
@@ -20,6 +21,7 @@ void DEC_012;
 void DEC_005;
 void DEC_268;
 void DEC_295;
+void DEC_382;
 
 /** Fetches a static asset path from the ASSETS binding against the
  * request's own origin — building a fresh Request rather than mutating the
@@ -80,38 +82,45 @@ function LandingPage(props: { adminHref: string; portalHref: string; submitHref:
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>Chautauqua</title>
         <ThemeStyles />
-        <style>{`main { max-width: 640px; margin: 3rem auto; padding: 1rem; } li { margin-bottom: 0.5rem; }`}</style>
+        <ToolsStyles />
       </head>
       <body>
-        <main>
-          <h1>Chautauqua</h1>
-          <p>Speaker &amp; event-content management.</p>
-          <ul>
-            <li>
-              <a href={props.adminHref}>Admin</a>
-            </li>
-            <li>
-              <a href={props.portalHref}>Speaker portal</a>
-            </li>
-            {props.submitHref ? (
-              <li>
-                <a href={props.submitHref}>Submit a proposal</a>
-              </li>
-            ) : null}
-            {props.sessionsHref ? (
-              <li>
-                <a href={props.sessionsHref}>Public sessions</a>
-              </li>
-            ) : null}
-            {props.mailboxHref ? (
-              <li>
-                <a href={props.mailboxHref}>Dev mailbox</a>
-              </li>
-            ) : null}
-            <li>
-              <a href="/docs/api">API docs</a>
-            </li>
-          </ul>
+        <header class="chq-header">
+          <a class="chq-wordmark" href="/">
+            chautauqua
+          </a>
+        </header>
+        <main class="chq-measure">
+          <div class="chq-section">
+            <div class="chq-section-label">Get started</div>
+            <p>Speaker &amp; event-content management.</p>
+            <div class="chq-tool-links">
+              <a class="chq-btn chq-btn-secondary" href={props.adminHref}>
+                Admin
+              </a>
+              <a class="chq-btn chq-btn-secondary" href={props.portalHref}>
+                Speaker portal
+              </a>
+              {props.submitHref ? (
+                <a class="chq-btn chq-btn-secondary" href={props.submitHref}>
+                  Submit a proposal
+                </a>
+              ) : null}
+              {props.sessionsHref ? (
+                <a class="chq-btn chq-btn-secondary" href={props.sessionsHref}>
+                  Public sessions
+                </a>
+              ) : null}
+              {props.mailboxHref ? (
+                <a class="chq-btn chq-btn-secondary" href={props.mailboxHref}>
+                  Dev mailbox
+                </a>
+              ) : null}
+              <a class="chq-btn chq-btn-tertiary" href="/docs/api">
+                API docs
+              </a>
+            </div>
+          </div>
         </main>
       </body>
     </html>

@@ -15,6 +15,7 @@ import { getEmailLogById, listEmailLog } from "../../server/repo/email";
 import { clampPage, clampPerPage } from "../../lib/pagination";
 import { icsDownloadHeaders } from "../../mail/ics";
 import { ThemeStyles } from "../../views/theme";
+import { ToolsStyles } from "../tools.css";
 
 /** Pure mounting predicate (DEC-005): DEV_MODE must be the exact string
  * '1'. Anything else (unset, 'true', '0', ...) means the routes don't
@@ -45,41 +46,52 @@ function MailboxListPage(props: {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>Dev mailbox - Chautauqua</title>
         <ThemeStyles />
-        <style>{`.table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; } table { border-collapse: collapse; min-width: 100%; }`}</style>
+        <ToolsStyles />
       </head>
       <body>
-        <h1>Dev mailbox</h1>
-        <p>{total} message(s) — page {page}</p>
-        <div class="table-scroll">
-          <table>
-            <thead>
-              <tr>
-                <th>Recipient</th>
-                <th>Subject</th>
-                <th>Status</th>
-                <th>Sent</th>
-                <th>Event</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row) => (
-                <tr>
-                  <td>{row.toEmail}</td>
-                  <td>
-                    <a href={`/dev/mailbox/${row.id}`}>{row.subject}</a>
-                  </td>
-                  <td>{row.status}</td>
-                  <td>{formatSentAt(row.sentAt)}</td>
-                  <td>{row.eventName}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <nav>
-          {hasPrev ? <a href={`/dev/mailbox?page=${page - 1}`}>Newer</a> : null}{" "}
-          {hasNext ? <a href={`/dev/mailbox?page=${page + 1}`}>Older</a> : null}
-        </nav>
+        <header class="chq-header">
+          <a class="chq-wordmark" href="/">
+            chautauqua
+          </a>
+        </header>
+        <main class="chq-measure">
+          <div class="chq-section">
+            <div class="chq-section-label">Dev mailbox</div>
+            <p class="chq-tool-meta">
+              {total} message(s) — page {page}
+            </p>
+            <div class="chq-tool-table-wrap">
+              <table class="chq-table">
+                <thead>
+                  <tr>
+                    <th>Recipient</th>
+                    <th>Subject</th>
+                    <th>Status</th>
+                    <th>Sent</th>
+                    <th>Event</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((row) => (
+                    <tr>
+                      <td>{row.toEmail}</td>
+                      <td>
+                        <a href={`/dev/mailbox/${row.id}`}>{row.subject}</a>
+                      </td>
+                      <td>{row.status}</td>
+                      <td>{formatSentAt(row.sentAt)}</td>
+                      <td>{row.eventName}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <nav class="chq-pager">
+              <span>{hasPrev ? <a class="chq-btn chq-btn-tertiary" href={`/dev/mailbox?page=${page - 1}`}>Newer</a> : null}</span>
+              <span>{hasNext ? <a class="chq-btn chq-btn-tertiary" href={`/dev/mailbox?page=${page + 1}`}>Older</a> : null}</span>
+            </nav>
+          </div>
+        </main>
       </body>
     </html>
   );
@@ -94,39 +106,55 @@ function MailboxDetailPage(props: { row: NonNullable<Awaited<ReturnType<typeof g
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>{row.subject} - Dev mailbox - Chautauqua</title>
         <ThemeStyles />
-        <style>{`pre { overflow-x: auto; white-space: pre-wrap; overflow-wrap: anywhere; }`}</style>
+        <ToolsStyles />
       </head>
       <body>
-        <p>
-          <a href="/dev/mailbox">&larr; Back to mailbox</a>
-        </p>
-        <h1>{row.subject}</h1>
-        <dl>
-          <dt>To</dt>
-          <dd>{row.toEmail}</dd>
-          <dt>Status</dt>
-          <dd>{row.status}</dd>
-          <dt>Sent</dt>
-          <dd>{formatSentAt(row.sentAt)}</dd>
-          <dt>Event</dt>
-          <dd>{row.eventName}</dd>
-        </dl>
-        {row.icsText ? (
-          <p>
-            <a href={`/dev/mailbox/${row.id}/ics`}>Download calendar invite ({row.icsFilename ?? "invite.ics"})</a>
-          </p>
-        ) : null}
-        <h2>Text body</h2>
-        <pre>{row.bodyText}</pre>
-        {row.bodyHtml ? (
-          <>
-            <h2>HTML body</h2>
-            {/* Sandboxed: no same-origin, scripts, or top-level navigation —
-                never trust recipient-facing HTML enough to render it inline
-                (SPEC §6). */}
-            <iframe sandbox="" srcdoc={row.bodyHtml} title="HTML email body" />
-          </>
-        ) : null}
+        <header class="chq-header">
+          <a class="chq-wordmark" href="/">
+            chautauqua
+          </a>
+        </header>
+        <main class="chq-measure">
+          <a class="chq-btn chq-btn-tertiary" href="/dev/mailbox">
+            &larr; Back to mailbox
+          </a>
+
+          <div class="chq-section">
+            <div class="chq-section-label">{row.subject}</div>
+            <dl class="chq-kv">
+              <dt>To</dt>
+              <dd>{row.toEmail}</dd>
+              <dt>Status</dt>
+              <dd>{row.status}</dd>
+              <dt>Sent</dt>
+              <dd>{formatSentAt(row.sentAt)}</dd>
+              <dt>Event</dt>
+              <dd>{row.eventName}</dd>
+            </dl>
+            {row.icsText ? (
+              <p>
+                <a class="chq-btn chq-btn-secondary" href={`/dev/mailbox/${row.id}/ics`}>
+                  Download calendar invite ({row.icsFilename ?? "invite.ics"})
+                </a>
+              </p>
+            ) : null}
+          </div>
+
+          <div class="chq-section">
+            <div class="chq-section-label">Text body</div>
+            <pre class="chq-tool-pre">{row.bodyText}</pre>
+          </div>
+
+          {row.bodyHtml ? (
+            <div class="chq-section">
+              <div class="chq-section-label">HTML body</div>
+              {/* Sandboxed: no same-origin, scripts, or top-level navigation —
+                  never trust recipient-facing HTML enough to render it inline
+                  (SPEC §6). */}
+              <iframe class="chq-tool-iframe" sandbox="" srcdoc={row.bodyHtml} title="HTML email body" />
+            </div>
+          ) : null}
+        </main>
       </body>
     </html>
   );
