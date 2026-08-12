@@ -420,3 +420,95 @@
   padding-left: 18px;
   font-size: 13px;
 }
+
+/* w15-e/DEC-691: Public pages and embeds -- mock lines 149-162 row grid
+   (170px name, path, ~108px state, trailing actions). */
+.chq-settings-public-pages-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.chq-settings-public-pages-row {
+  display: grid;
+  grid-template-columns: 170px 1fr 140px auto auto;
+  gap: 16px;
+  align-items: baseline;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--chq-hairline);
+}
+
+.chq-settings-public-pages-row:last-child {
+  border-bottom: none;
+}
+
+.chq-settings-public-pages-name {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.chq-settings-public-pages-path {
+  font-size: 13px;
+  color: var(--chq-ink-2);
+}
+
+.chq-settings-public-pages-state {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--chq-ink-2);
+}
+
+.chq-settings-public-pages-embed {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--chq-hairline);
+}
+
+/* w15-e/DEC-691: People and roles -- mock lines 190-204 4-column row
+   (identity, role, scope, Change). */
+.chq-settings-people-row {
+  display: grid;
+  grid-template-columns: 1fr 150px 190px auto;
+  gap: 16px;
+  align-items: center;
+}
+
+.chq-settings-people-identity {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.chq-settings-people-scope {
+  font-size: 12px;
+  color: var(--chq-ink-2);
+}
+
+.chq-settings-people-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-self: end;
+}
+
+@media (max-width: 700px) {
+  .chq-settings-public-pages-row {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  .chq-settings-people-row {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .chq-settings-people-actions {
+    justify-self: stretch;
+    justify-content: flex-start;
+  }
+}

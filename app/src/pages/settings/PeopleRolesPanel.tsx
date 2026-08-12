@@ -3,6 +3,14 @@
 // endpoints -- list, invite (returns a one-time password shown exactly
 // once, same reveal-once treatment as ApiTokensPanel) and reset-password
 // (behind a confirm step). Zero new server endpoints.
+//
+// w15-e/DEC-691: each row also renders a Scope cell -- users are org-scoped
+// (src/routes/api/users.ts:56 lists by auth.orgId with no per-event row),
+// so every row's honest scope is "All events in this org", not a
+// fabricated per-row value. "Change" (role change) has no server route
+// (only list/invite/reset-password exist) -- it renders disabled with an
+// honest caption rather than a dead control, per the task's own fallback
+// instruction.
 import { useEffect, useState, type FormEvent } from 'react';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { apiList, apiPost, ApiError } from '../../lib/api';
@@ -163,33 +171,46 @@ export function PeopleRolesPanel() {
             {users.map((user) => {
               const isSelf = me?.userId === user.id;
               return (
-                <li key={user.id}>
-                  <div className="chq-settings-row-value">
+                <li key={user.id} className="chq-settings-people-row">
+                  <div className="chq-settings-people-identity">
                     <span>{user.email}</span>
-                    <span className="chq-settings-people-role">{user.role}</span>
                   </div>
-                  {isSelf ? (
-                    <span>(you)</span>
-                  ) : resetTargetId === user.id ? (
-                    <span className="chq-settings-people-confirm">
-                      Reset {user.email}&apos;s password?
-                      <button
-                        type="button"
-                        className="chq-btn chq-btn-primary"
-                        disabled={resetting}
-                        onClick={() => void handleResetConfirm(user)}
-                      >
-                        {resetting ? 'Resetting…' : 'Confirm reset'}
-                      </button>
-                      <button type="button" className="chq-btn chq-btn-secondary" onClick={() => setResetTargetId(null)}>
-                        Cancel
-                      </button>
-                    </span>
-                  ) : (
-                    <button type="button" className="chq-link-button" onClick={() => setResetTargetId(user.id)}>
-                      Reset password
+                  <span className="chq-settings-people-role">{user.role}</span>
+                  <span className="chq-settings-people-scope" data-testid="people-scope">
+                    All events in this org
+                  </span>
+                  <div className="chq-settings-people-actions">
+                    <button
+                      type="button"
+                      className="chq-link-button"
+                      disabled
+                      title="Role changes aren't supported yet -- reset the password and re-invite with a new role instead."
+                    >
+                      Change
                     </button>
-                  )}
+                    {isSelf ? (
+                      <span>(you)</span>
+                    ) : resetTargetId === user.id ? (
+                      <span className="chq-settings-people-confirm">
+                        Reset {user.email}&apos;s password?
+                        <button
+                          type="button"
+                          className="chq-btn chq-btn-primary"
+                          disabled={resetting}
+                          onClick={() => void handleResetConfirm(user)}
+                        >
+                          {resetting ? 'Resetting…' : 'Confirm reset'}
+                        </button>
+                        <button type="button" className="chq-btn chq-btn-secondary" onClick={() => setResetTargetId(null)}>
+                          Cancel
+                        </button>
+                      </span>
+                    ) : (
+                      <button type="button" className="chq-link-button" onClick={() => setResetTargetId(user.id)}>
+                        Reset password
+                      </button>
+                    )}
+                  </div>
                 </li>
               );
             })}

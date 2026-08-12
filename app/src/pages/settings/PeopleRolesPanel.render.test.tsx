@@ -54,6 +54,25 @@ describe('PeopleRolesPanel', () => {
     expect(within(otherRow).getByRole('button', { name: 'Reset password' })).toBeInTheDocument();
   });
 
+  // w15-e/DEC-691: mock's 4-column row (identity, role, scope, Change).
+  it('exposes a scope cell per row and a disabled, honestly captioned Change action', async () => {
+    mockPeople();
+    render(<PeopleRolesPanel />);
+
+    await waitFor(() => {
+      expect(screen.getByText(SELF.email)).toBeInTheDocument();
+    });
+
+    const scopeCells = screen.getAllByTestId('people-scope');
+    expect(scopeCells).toHaveLength(2);
+    scopeCells.forEach((cell) => expect(cell).toHaveTextContent('All events in this org'));
+
+    const otherRow = screen.getByText(OTHER.email).closest('li')!;
+    const changeButton = within(otherRow).getByRole('button', { name: 'Change' });
+    expect(changeButton).toBeDisabled();
+    expect(changeButton).toHaveAttribute('title', expect.stringContaining("aren't supported yet"));
+  });
+
   it('shows the created one-time password exactly once and it is not re-fetchable', async () => {
     const fetchMock = mockPeople({
       'POST /api/v1/users': { status: 201, body: { id: 'u-new', email: 'new@example.com', role: 'reviewer', password: 'ab12-cd34-ef56' } },
