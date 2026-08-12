@@ -27,6 +27,7 @@ function fakeDb(seed: {
   taskAssignment?: unknown[];
   form?: unknown[];
   formField?: unknown[];
+  event?: unknown[];
 }) {
   const state = {
     participant: [...(seed.participant ?? [])] as any[],
@@ -36,6 +37,7 @@ function fakeDb(seed: {
     form: [...(seed.form ?? [])] as any[],
     formField: [...(seed.formField ?? [])] as any[],
     emailLog: [] as any[],
+    event: [...(seed.event ?? [{ id: "event-1", startDate: "2026-06-01" }])] as any[],
   };
   const touchedTables: unknown[] = [];
 
@@ -47,6 +49,7 @@ function fakeDb(seed: {
     if (table === schema.form) return state.form;
     if (table === schema.formField) return state.formField;
     if (table === schema.emailLog) return state.emailLog;
+    if (table === schema.event) return state.event;
     return undefined;
   }
 
@@ -69,9 +72,12 @@ function fakeDb(seed: {
     }),
     insert: (table: unknown) => ({
       values: async (vals: unknown) => {
-        touchedTables.push(table);
-        const arr = stateArrayFor(table);
-        if (arr) arr.push({ ...(vals as object) });
+        const rows = Array.isArray(vals) ? vals : [vals];
+        for (const row of rows) {
+          touchedTables.push(table);
+          const arr = stateArrayFor(table);
+          if (arr) arr.push({ ...(row as object) });
+        }
       },
     }),
     update: (table: unknown) => ({

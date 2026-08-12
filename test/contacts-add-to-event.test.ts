@@ -118,9 +118,12 @@ function fakeDb(seedContacts: unknown[], seedEvents: unknown[]) {
     }),
     insert: (table: unknown) => ({
       values: async (vals: unknown) => {
-        inserts.push({ table, vals });
-        const arr = stateArrayFor(table);
-        if (arr) arr.push({ ...(vals as object) });
+        const rows = Array.isArray(vals) ? vals : [vals];
+        for (const row of rows) {
+          inserts.push({ table, vals: row });
+          const arr = stateArrayFor(table);
+          if (arr) arr.push({ ...(row as object) });
+        }
       },
     }),
     update: (table: unknown) => ({

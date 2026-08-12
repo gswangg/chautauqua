@@ -10,15 +10,22 @@ import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { newId } from "../../../domain/ids";
 import { changeStatus, type SubmissionStatus } from "../../../domain/status";
-import { planAcceptance, FORM_TASK_FIELD_SPECS, isActiveParticipant } from "../../../domain/acceptance";
+import { planAcceptance, FORM_TASK_FIELD_SPECS, isActiveParticipant, onboardingTaskDueDate } from "../../../domain/acceptance";
 import { isValidStatusLiteral } from "./query";
-import { chunkIds } from "../../../lib/chunk";
+import { chunkIds, ID_CHUNK_SIZE } from "../../../lib/chunk";
 import { ApiError } from "../../http";
-import { DEC_079, DEC_111, DEC_133 } from "../../../decisions";
+import { DEC_079, DEC_111, DEC_133, DEC_520, DEC_521 } from "../../../decisions";
 
 void DEC_079; // planning-before-commit acceptance ordering + chunked/batched bulk status changes below
 void DEC_111; // form-task tasks get real backing forms, self-healed when formId is null
 void DEC_133; // full-set id match guard below (mirrors DEC-122's requireFullMatch)
+void DEC_520; // auto-created onboarding tasks get a due date derived from the event start date
+void DEC_521; // task_assignment inserts are chunked, bounded by MAX_ACCEPTANCE_TASK_ASSIGNMENTS
+
+/** DEC-521: a planned set of task_assignment rows above this size is refused
+ * BEFORE any insert — unlike MAX_AUTO_SCHEDULE_PLACEMENTS' silent slice, a
+ * dropped onboarding assignment would be invisible to its producer. */
+export const MAX_ACCEPTANCE_TASK_ASSIGNMENTS = 20000;
 
 /**
  * DEC-111: for a kind='form' template title present in FORM_TASK_FIELD_SPECS,
@@ -70,6 +77,7 @@ async function getOrCreateTask(
   eventId: string,
   template: { title: string; kind: "general" | "file_request" | "form"; required: boolean },
   now: Date,
+  dueDate: number,
 ): Promise<string> {
   const existing = await db
     .select({ id: schema.task.id, formId: schema.task.formId })
@@ -79,6 +87,8 @@ async function getOrCreateTask(
   if (existing[0]) {
     // DEC-111 self-heal: an already-existing 'form' task with a null formId
     // (created before this backing-form logic existed) gets one now.
+    // DEC-520: due dates are NOT self-healed here — an organizer who cleared
+    // a due date via PATCH meant it; this branch never back-fills.
     if (template.kind === "form" && !existing[0].formId) {
       const formId = await getOrCreateFormTaskForm(db, eventId, template.title, now);
       await db.update(schema.task).set({ formId, updatedAt: now }).where(eq(schema.task.id, existing[0].id));
@@ -95,6 +105,7 @@ async function getOrCreateTask(
     title: template.title,
     required: template.required,
     formId,
+    dueDate: new Date(dueDate),
     createdAt: now,
     updatedAt: now,
   });
@@ -120,6 +131,19 @@ async function planAndPersistOnboardingTasks(
 ): Promise<void> {
   if (participantContactIds.length === 0) return;
 
+  // DEC-520: the event's start date is selected ONCE, before the plan loop
+  // — every planned task's due date derives from this single read, not a
+  // per-template/per-contact re-lookup.
+  const eventRows = await db
+    .select({ startDate: schema.event.startDate })
+    .from(schema.event)
+    .where(eq(schema.event.id, eventId))
+    .limit(1);
+  const eventStartDate = eventRows[0]?.startDate;
+  if (!eventStartDate) {
+    throw new Error(`planAndPersistOnboardingTasks: no event found for eventId "${eventId}"`);
+  }
+
   const existingTaskTitlesByContact: Record<string, string[]> = {};
   for (const contactChunk of chunkIds(participantContactIds)) {
     const existingRows = await db
@@ -141,19 +165,37 @@ async function planAndPersistOnboardingTasks(
     existingTaskTitlesByContact,
   });
 
+  if (plan.taskAssignments.length > MAX_ACCEPTANCE_TASK_ASSIGNMENTS) {
+    throw new ApiError(
+      "invalid",
+      `Planned onboarding task assignments (${plan.taskAssignments.length}) exceed the cap of ${MAX_ACCEPTANCE_TASK_ASSIGNMENTS}`,
+      { taskAssignments: `${plan.taskAssignments.length} exceeds cap ${MAX_ACCEPTANCE_TASK_ASSIGNMENTS}` },
+    );
+  }
+
   const taskIdByTitle = new Map<string, string>();
+  const assignmentRows: {
+    id: string;
+    taskId: string;
+    contactId: string;
+    status: "pending";
+    createdAt: Date;
+    updatedAt: Date;
+  }[] = [];
   for (const assignment of plan.taskAssignments) {
     let taskId = taskIdByTitle.get(assignment.taskTitle);
     if (!taskId) {
+      const dueDate = onboardingTaskDueDate(eventStartDate, assignment.dueDaysBeforeEventStart);
       taskId = await getOrCreateTask(
         db,
         eventId,
         { title: assignment.taskTitle, kind: assignment.taskKind, required: assignment.required },
         now,
+        dueDate,
       );
       taskIdByTitle.set(assignment.taskTitle, taskId);
     }
-    await db.insert(schema.taskAssignment).values({
+    assignmentRows.push({
       id: newId(),
       taskId,
       contactId: assignment.contactId,
@@ -161,6 +203,12 @@ async function planAndPersistOnboardingTasks(
       createdAt: now,
       updatedAt: now,
     });
+  }
+
+  // DEC-521: chunked multi-row insert, mirroring agenda.ts's
+  // scheduleSlot insert — not one statement per (contact, task) pair.
+  for (let i = 0; i < assignmentRows.length; i += ID_CHUNK_SIZE) {
+    await db.insert(schema.taskAssignment).values(assignmentRows.slice(i, i + ID_CHUNK_SIZE));
   }
 }
 

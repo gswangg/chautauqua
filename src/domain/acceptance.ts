@@ -8,16 +8,50 @@ export interface OnboardingTaskTemplate {
   title: string;
   kind: TaskKind;
   required: boolean;
+  /** DEC-520: how many days before the event's start date this task is due
+   * — logistics (travel forms) need the most lead time, content next,
+   * promotion closest to the show. */
+  dueDaysBeforeEventStart: number;
 }
 
 /** DEC-009 canonical onboarding task set, in order. */
 export const DEFAULT_ONBOARDING_TASKS: readonly OnboardingTaskTemplate[] = [
-  { title: "Hotel stay requirement form", kind: "form", required: true },
-  { title: "Flight reimbursement form", kind: "form", required: true },
-  { title: "Finalize talk description", kind: "general", required: false },
-  { title: "Finalize bio + headshot", kind: "file_request", required: false },
-  { title: "Announce participation", kind: "general", required: false },
+  { title: "Hotel stay requirement form", kind: "form", required: true, dueDaysBeforeEventStart: 30 },
+  { title: "Flight reimbursement form", kind: "form", required: true, dueDaysBeforeEventStart: 30 },
+  { title: "Finalize talk description", kind: "general", required: false, dueDaysBeforeEventStart: 21 },
+  { title: "Finalize bio + headshot", kind: "file_request", required: false, dueDaysBeforeEventStart: 21 },
+  { title: "Announce participation", kind: "general", required: false, dueDaysBeforeEventStart: 14 },
 ];
+
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * DEC-520/DEC-522: computes an onboarding task's due date as a UTC-midnight
+ * DAY LABEL (not an event-local instant) — `dueDaysBeforeEventStart` days
+ * before the event's start date. `eventStartDate` must be a strict
+ * 'YYYY-MM-DD' string that round-trips through Date.UTC; anything else
+ * throws rather than silently producing a wrong or NaN due date. A result
+ * that already lies in the past is returned as-is (no clamping — DEC-520c).
+ */
+export function onboardingTaskDueDate(eventStartDate: string, dueDaysBeforeEventStart: number): number {
+  if (!ISO_DATE_RE.test(eventStartDate)) {
+    throw new Error(`onboardingTaskDueDate: malformed event start date "${eventStartDate}"`);
+  }
+  const parts = eventStartDate.split("-").map(Number);
+  const year = parts[0]!;
+  const month = parts[1]!;
+  const day = parts[2]!;
+  const ms = Date.UTC(year, month - 1, day);
+  const roundTrip = new Date(ms);
+  if (
+    roundTrip.getUTCFullYear() !== year ||
+    roundTrip.getUTCMonth() !== month - 1 ||
+    roundTrip.getUTCDate() !== day
+  ) {
+    throw new Error(`onboardingTaskDueDate: malformed event start date "${eventStartDate}"`);
+  }
+  return ms - dueDaysBeforeEventStart * 86_400_000;
+}
 
 /** DEC-008 form-field kinds usable in a field spec (no 'file' — the portal
  * task-form POST has no upload path). */
@@ -104,6 +138,7 @@ export interface PlannedTaskAssignment {
   taskTitle: string;
   taskKind: TaskKind;
   required: boolean;
+  dueDaysBeforeEventStart: number;
 }
 
 export interface PlanAcceptanceResult {
@@ -128,6 +163,7 @@ export function planAcceptance(input: PlanAcceptanceInput): PlanAcceptanceResult
         taskTitle: template.title,
         taskKind: template.kind,
         required: template.required,
+        dueDaysBeforeEventStart: template.dueDaysBeforeEventStart,
       });
     }
   }
