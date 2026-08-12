@@ -253,4 +253,38 @@ describe("getContactStats (DEC-432 SQL-side returningSpeakers)", () => {
     expect(stats.eventCount).toBe(2);
     expect(stats.topCompanies).toEqual([{ company: "Acme", count: 2 }]);
   });
+
+  // DEC-558: topCompanies gets a total order — desc(count) with an
+  // asc(company) tiebreak, so tied companies render in a stable order.
+  it("issues topCompanies' orderBy as desc(count) then asc(company)", async () => {
+    const orderByArgsBySelectIndex: unknown[][] = [];
+    let selectIndex = -1;
+    const emptyDb = {
+      select: () => {
+        selectIndex += 1;
+        const myIndex = selectIndex;
+        const chain: any = {
+          from: () => chain,
+          where: () => chain,
+          groupBy: () => chain,
+          innerJoin: () => chain,
+          having: () => chain,
+          as: () => ({ __fakeSubquery: true }),
+          orderBy: (...args: unknown[]) => {
+            orderByArgsBySelectIndex[myIndex] = args;
+            return chain;
+          },
+          limit: () => chain,
+          then: (resolve: (v: unknown[]) => void) => resolve([]),
+        };
+        return chain;
+      },
+    } as unknown as Db;
+    await getContactStats(emptyDb, "org-1");
+    // Call order: 0=total, 1=eventCount, 2=returningSpeakers subquery,
+    // 3=returningSpeakers outer count, 4=companyRows.
+    const companyOrderBy = orderByArgsBySelectIndex[4]!;
+    expect(companyOrderBy).toHaveLength(2);
+    expect((companyOrderBy[0] as Marker).__marker).toBe("desc");
+  });
 });
