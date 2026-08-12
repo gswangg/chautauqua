@@ -17,7 +17,8 @@ export function isSurface(value: string): value is Surface {
   return (SURFACES as readonly string[]).includes(value);
 }
 
-export const PER_PAGE = 12;
+// DEC-477/DEC-487: PER_PAGE moved to src/server/repo/public/bounds.ts as
+// PUBLIC_PER_PAGE — this is the ONE home for public paging constants.
 
 // DEC-022: stage-1 caching, every public/embed GET — bounded 60s staleness
 // is the accepted stage-1 behavior; no purge machinery.

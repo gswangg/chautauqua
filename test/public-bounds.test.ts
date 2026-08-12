@@ -2,7 +2,7 @@
 // passed to db.limit() on the public sessions/speakers list queries.
 
 import { describe, expect, it } from "vitest";
-import { boundedRowLimit, MAX_PUBLIC_ROWS } from "../src/server/repo/public/bounds";
+import { boundedRowLimit, MAX_PUBLIC_ROWS, MAX_PUBLIC_PAGE, PUBLIC_PER_PAGE } from "../src/server/repo/public/bounds";
 
 describe("boundedRowLimit (DEC-433)", () => {
   it("returns page*perPage when under the cap", () => {
@@ -15,8 +15,8 @@ describe("boundedRowLimit (DEC-433)", () => {
     expect(boundedRowLimit(1000, 1000)).toBe(MAX_PUBLIC_ROWS);
   });
 
-  it("MAX_PUBLIC_ROWS is 1200 (DEC-477)", () => {
-    expect(MAX_PUBLIC_ROWS).toBe(1200);
+  it("MAX_PUBLIC_ROWS is the derived MAX_PUBLIC_PAGE x PUBLIC_PER_PAGE, never a second literal (DEC-487)", () => {
+    expect(MAX_PUBLIC_ROWS).toBe(MAX_PUBLIC_PAGE * PUBLIC_PER_PAGE);
   });
 
   it("throws (fail loudly) on non-finite or non-integer page", () => {

@@ -11,9 +11,9 @@ import {
   parseCardFields,
   parseAccent,
   parsePage,
-  MAX_PUBLIC_PAGE,
   ALL_CARD_FIELDS,
 } from "../src/routes/public/query";
+import { MAX_PUBLIC_PAGE } from "../src/server/repo/public/bounds";
 import { registerErrorHandler } from "../src/server/http";
 import type { AppEnv } from "../src/server/env";
 

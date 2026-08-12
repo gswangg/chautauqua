@@ -7,10 +7,10 @@
 // versionedCacheKey (src/server/pubcache.ts:60), so an unbounded page param
 // is an unbounded cache-cardinality (and, downstream, LIMIT-size) attack
 // surface — clamp to [1, MAX_PUBLIC_PAGE] rather than merely rejecting.
-// DEC-477: MAX_PUBLIC_PAGE(100) x PER_PAGE(12) = MAX_PUBLIC_ROWS(1200,
-// src/server/repo/public/bounds.ts) — raised from 50/600 so the top of
-// SPEC.md:73-76's 200-800 speaker range is fully reachable via ?page=.
-export const MAX_PUBLIC_PAGE = 100;
+// DEC-477/DEC-487: MAX_PUBLIC_PAGE now lives in src/server/repo/public/
+// bounds.ts, the ONE home for public paging constants (alongside
+// PUBLIC_PER_PAGE and their derived MAX_PUBLIC_ROWS).
+import { MAX_PUBLIC_PAGE } from "../../server/repo/public/bounds";
 
 export function parsePage(raw: string | undefined): number {
   const n = Number(raw);

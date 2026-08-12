@@ -9,8 +9,9 @@ import {
   getPublicAgenda,
   type PublicEvent,
 } from "../../server/repo/public";
-import { PER_PAGE, type Surface } from "./shell";
+import type { Surface } from "./shell";
 import { parsePage, parseTrackId, parseNameQuery, type CardFields } from "./query";
+import { PUBLIC_PER_PAGE } from "../../server/repo/public/bounds";
 import { SessionsContent } from "./sessions";
 import { SpeakersContent, GalleryContent } from "./speakers";
 import { AgendaContent, ScheduleContent } from "./agenda";
@@ -26,7 +27,7 @@ export async function renderSurfaceContent(
       const trackId = parseTrackId(query.trackId);
       const page = parsePage(query.page);
       const q = parseNameQuery(query.q);
-      const perPage = query.limit ?? PER_PAGE;
+      const perPage = query.limit ?? PUBLIC_PER_PAGE;
       const tracks = await getPublicTracks(db, event.id);
       const { items, total } = await getPublicSessions(db, event, { trackId, page, perPage, q });
       return {
@@ -40,6 +41,7 @@ export async function renderSurfaceContent(
             items={items}
             total={total}
             page={page}
+            perPage={perPage}
             day={query.day ?? null}
             limit={query.limit ?? null}
             fields={query.fields}
@@ -50,7 +52,7 @@ export async function renderSurfaceContent(
     case "speakers": {
       const q = parseNameQuery(query.q);
       const page = parsePage(query.page);
-      const { items, total } = await getPublicSpeakers(db, event.id, { q, page, perPage: PER_PAGE });
+      const { items, total } = await getPublicSpeakers(db, event.id, { q, page, perPage: PUBLIC_PER_PAGE });
       return {
         title: `Speakers - ${event.name}`,
         content: <SpeakersContent event={event} speakers={items} total={total} page={page} q={q} />,
@@ -59,7 +61,7 @@ export async function renderSurfaceContent(
     case "gallery": {
       const q = parseNameQuery(query.q);
       const page = parsePage(query.page);
-      const { items, total } = await getPublicSpeakers(db, event.id, { q, page, perPage: PER_PAGE });
+      const { items, total } = await getPublicSpeakers(db, event.id, { q, page, perPage: PUBLIC_PER_PAGE });
       return {
         title: `Speaker gallery - ${event.name}`,
         content: <GalleryContent event={event} speakers={items} total={total} page={page} q={q} />,

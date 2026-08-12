@@ -9,6 +9,7 @@
 
 import { describe, expect, it } from "vitest";
 import { getPublicSpeakers } from "../src/server/repo/public/speakers";
+import { hasMorePages, MAX_PUBLIC_ROWS, MAX_PUBLIC_PAGE } from "../src/server/repo/public/bounds";
 import type { Db } from "../src/server/context";
 
 /** Recursively collects every bound-parameter value (drizzle `Param` leaf)
@@ -191,8 +192,16 @@ describe("getPublicSpeakers (DEC-418 part 2)", () => {
     await getPublicSpeakers(db, "ev1", { page: 50, perPage: 100 });
 
     const idCall = calls().find((c) => c.kind === "selectDistinct");
-    expect(idCall!.limitArg).toBe(1200);
+    expect(idCall!.limitArg).toBe(MAX_PUBLIC_ROWS);
     expect(Number.isFinite(idCall!.limitArg)).toBe(true);
+  });
+
+  it("DEC-477/DEC-487: ?limit=100 stops offering Show-more once page*limit reaches MAX_PUBLIC_ROWS even though page < MAX_PUBLIC_PAGE", () => {
+    const limit = 100;
+    const pageAtRowCeiling = MAX_PUBLIC_ROWS / limit; // 12
+    expect(pageAtRowCeiling).toBeLessThan(MAX_PUBLIC_PAGE);
+    expect(hasMorePages(limit, 2000, pageAtRowCeiling - 1, limit)).toBe(true);
+    expect(hasMorePages(limit, 2000, pageAtRowCeiling, limit)).toBe(false);
   });
 
   it("DEC-433: a non-finite page throws instead of reaching db.limit()", async () => {

@@ -4,8 +4,8 @@
 
 import type { PublicEvent, PublicSession, PublicTrack } from "../../server/repo/public";
 import { SessionCard } from "./cards";
-import { MAX_PUBLIC_PAGE, type CardFields } from "./query";
-import { MAX_PUBLIC_ROWS } from "../../server/repo/public/bounds";
+import { type CardFields } from "./query";
+import { PUBLIC_PER_PAGE, hasMorePages } from "../../server/repo/public/bounds";
 
 export function SessionsContent(props: {
   event: PublicEvent;
@@ -15,18 +15,19 @@ export function SessionsContent(props: {
   items: PublicSession[];
   total: number;
   page: number;
+  perPage?: number;
   day?: string | null;
   limit?: number | null;
   fields?: CardFields;
 }) {
-  const { event, tracks, activeTrackId, q, items, total, page, day, limit, fields } = props;
-  // DEC-433/477: parsePage clamps page to MAX_PUBLIC_PAGE, so once we're at
-  // the cap there is no page+1 to link to — stop rendering 'Show more' even
-  // if items.length < total. Also stop once the cumulative row ceiling
-  // (boundedRowLimit's MAX_PUBLIC_ROWS) has been reached: a large ?limit=
-  // embed can hit MAX_PUBLIC_ROWS well before page reaches MAX_PUBLIC_PAGE,
-  // and linking past it would point at a page identical to the current one.
-  const hasMore = items.length < total && items.length < MAX_PUBLIC_ROWS && page < MAX_PUBLIC_PAGE;
+  const { event, tracks, activeTrackId, q, items, total, page, perPage, day, limit, fields } = props;
+  // DEC-433/477/487: parsePage clamps page to MAX_PUBLIC_PAGE, so once we're
+  // at the cap there is no page+1 to link to — stop rendering 'Show more'
+  // even if items.length < total. Also stop once the cumulative row ceiling
+  // (MAX_PUBLIC_ROWS) would be reached by the next page: a large ?limit=
+  // embed can hit it well before page reaches MAX_PUBLIC_PAGE, and linking
+  // past it would point at a page identical to the current one.
+  const hasMore = hasMorePages(items.length, total, page, perPage ?? PUBLIC_PER_PAGE);
   const basePath = `/e/${event.slug}/sessions`;
   // DEC-289: embed configuration params carried forward across the search
   // form and 'Show more' link exactly like trackId/q, so a configured embed

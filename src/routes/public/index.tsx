@@ -28,7 +28,8 @@ import { parseItineraryIds, MAX_ITINERARY_IDS } from "../../lib/itinerary";
 import { ApiError, errorEnvelope } from "../../server/http";
 import { publicCacheMiddleware, defaultCache } from "../../server/pubcache";
 import { DEC_022, DEC_007, DEC_017, DEC_005, DEC_012, DEC_080, DEC_083, DEC_151, DEC_289 } from "../../decisions";
-import { SURFACES, isSurface, setCacheHeaders, PublicShell, EmbedShell, isValidFrom, PER_PAGE, type Surface } from "./shell";
+import { SURFACES, isSurface, setCacheHeaders, PublicShell, EmbedShell, isValidFrom, type Surface } from "./shell";
+import { PUBLIC_PER_PAGE } from "../../server/repo/public/bounds";
 import { renderSurfaceContent } from "./dispatch";
 import { SpeakerDetailContent, SessionDetailContent } from "./detail";
 import {
@@ -261,14 +262,14 @@ async function getSurfaceFeedItems(
       const trackId = parseTrackId(query.trackId);
       const page = parsePage(query.page);
       const q = parseNameQuery(query.q);
-      const { items } = await getPublicSessions(db, event, { trackId, page, perPage: PER_PAGE, q });
+      const { items } = await getPublicSessions(db, event, { trackId, page, perPage: PUBLIC_PER_PAGE, q });
       return items;
     }
     case "speakers":
     case "gallery": {
       const q = parseNameQuery(query.q);
       const page = parsePage(query.page);
-      const { items } = await getPublicSpeakers(db, event.id, { q, page, perPage: PER_PAGE });
+      const { items } = await getPublicSpeakers(db, event.id, { q, page, perPage: PUBLIC_PER_PAGE });
       return items;
     }
     case "agenda":
