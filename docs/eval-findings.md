@@ -200,3 +200,8 @@ CNT 52% · AIA 88% · EMB 72% · CRM 76% (of judged weight).
    fixed footer. Current page leads with a "01 — SETTINGS" card and buries the fields
    editor below the fold. Same priority class as the portal and submissions-phone
    rebuilds.
+
+8. (User-confirmed, refines Tier-3 Submissions) New-submission modal: agent's MINOR list
+   stands (Close link, button order, subtitle, "Abstract" label) — ALSO match the
+   mock's placeholder text in every field, and audit placeholders across all modals
+   while there (mocks specify them; prod largely omits them).
