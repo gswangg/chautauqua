@@ -1145,7 +1145,7 @@ a:hover {
 }
 
 .chq-forms-field-locked {
-  color: var(--chq-disabled);
+  color: var(--chq-muted);
 }
 
 .chq-forms-public-link {
