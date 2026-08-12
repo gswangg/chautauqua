@@ -94,8 +94,8 @@ describe("allContrastPassed / formatting", () => {
 });
 
 describe("constants", () => {
-  it("advisory flip rule: CONTRAST_BLOCKING starts false", () => {
-    expect(CONTRAST_BLOCKING).toBe(false);
+  it("flip rule: CONTRAST_BLOCKING flips true once a run reads all-PASS (DEC-444/DEC-445)", () => {
+    expect(CONTRAST_BLOCKING).toBe(true);
   });
 
   it("thresholds match WCAG AA", () => {
