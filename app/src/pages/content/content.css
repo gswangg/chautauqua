@@ -62,7 +62,8 @@
 }
 
 /* ---------------------------------------------------------------------- */
-/* w4-h: four-column worklist IA (DEC-609)                                */
+/* w15-f: five-column worklist IA (DEC-692) — Session, Speaker, Latest     */
+/* file, Status, actions.                                                 */
 /* ---------------------------------------------------------------------- */
 
 .chq-content-row-session {
@@ -71,36 +72,36 @@
   gap: 3px;
 }
 
-.chq-content-row-speakers {
+.chq-content-row-ref {
+  font-size: 12px;
+  color: var(--chq-muted);
+}
+
+.chq-content-row-speaker {
+  font-size: 13px;
+}
+
+.chq-content-row-latest-file {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.chq-content-latest-file-name {
+  font-size: 13px;
+}
+
+.chq-content-latest-file-date {
+  font-size: 11px;
+  color: var(--chq-muted);
+}
+
+.chq-content-latest-file-empty {
   font-size: 13px;
   color: var(--chq-muted);
 }
 
-.chq-content-deliverables {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.chq-content-deliverable-chip {
-  display: inline-flex;
-  align-items: center;
-  border: 1px solid var(--chq-border);
-  border-radius: 99px;
-  padding: 4px 10px;
-  font-size: 12px;
-  font-weight: 600;
-  white-space: nowrap;
-  color: var(--chq-ink);
-}
-
-.chq-content-deliverable-chip.is-absent {
-  color: var(--chq-muted);
-  border-style: dashed;
-  font-weight: 500;
-}
-
-/* end w4-h block */
+/* end w15-f block */
 
 .chq-content-pager {
   display: flex;

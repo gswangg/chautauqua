@@ -39,6 +39,7 @@ describe('ContentApp / SessionList render smoke: always-visible content-status c
           submittedAt: null,
           createdAt: 1700000000000,
           deliverableCounts: { presentation: 0, poster: 0, handout: 0 },
+          latestFile: null,
         },
       ]),
       [`POST /api/v1/submissions/sub-1/content-status`]: contentStatusMock,
@@ -60,9 +61,10 @@ describe('ContentApp / SessionList render smoke: always-visible content-status c
       expect(container.querySelector('.chq-content-row-title')).toHaveTextContent('A Talk With No Files Yet');
     });
 
-    // w1-h reskin: DEC-370's binding copy for this action is "Ask for
-    // changes" (not the old "Request changes"), inline on the worklist row.
-    expect(screen.getByRole('button', { name: 'Ask for changes' })).toBeInTheDocument();
+    // w15-f (DEC-692): the per-row 'Ask for changes' button moved to the
+    // deliverable-detail screen — the worklist row keeps only Approve/Open.
+    expect(screen.queryByRole('button', { name: 'Ask for changes' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Open' })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Approve' }));
 
@@ -95,13 +97,12 @@ describe('ContentApp reskin (DEC-366..368)', () => {
   });
 });
 
-// CNT-07b regression: deliverable counts on the worklist come straight from
-// the DEC-341 list payload's deliverableCounts field (server-hydrated via a
-// chain-roots-only grouped query, DEC-247) — no per-row files fan-out.
-// w4-h: counts now render as chips inside the single Deliverables cell
-// (DEC-609), not their own header column.
-describe('ContentApp worklist deliverable counts (DEC-247 chain roots)', () => {
-  it('renders the server-reported chain-root count for a replaced presentation file, and an explicit absent state for kinds with none', async () => {
+// w15-f (DEC-692): the worklist's Latest file column comes straight from
+// the DEC-341 list payload's latestFile field (server-hydrated, page-scoped
+// per DEC-686) — no per-row files fan-out. A submission with no uploads
+// renders the honest 'No files yet' empty cell, never a bare 0/blank.
+describe('ContentApp worklist latest file column (DEC-686 page-scoped hydration)', () => {
+  it('renders the server-reported latest file name/version for a two-version chain', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([
         {
@@ -114,9 +115,8 @@ describe('ContentApp worklist deliverable counts (DEC-247 chain roots)', () => {
           trackIds: [],
           submittedAt: null,
           createdAt: 1700000000000,
-          // Server already counted only the chain root (1), not the
-          // replaced ancestor.
           deliverableCounts: { presentation: 1, poster: 0, handout: 0 },
+          latestFile: { filename: 'slides-v2.pdf', kind: 'presentation', versionCount: 2, uploadedAt: 1700000100000 },
         },
       ]),
     });
@@ -136,16 +136,45 @@ describe('ContentApp worklist deliverable counts (DEC-247 chain roots)', () => {
     const row = container.querySelector('tr.chq-content-row');
     if (!row) throw new Error('worklist row not found');
 
-    const chips = Array.from(row.querySelectorAll('.chq-content-deliverable-chip'));
-    const presentationChip = chips.find((c) => c.textContent?.startsWith('Presentation'));
-    expect(presentationChip?.textContent).toBe('Presentation · 1');
-    expect(presentationChip).not.toHaveClass('is-absent');
+    const latestFileCell = row.querySelector('.chq-content-row-latest-file');
+    expect(latestFileCell).toHaveTextContent('slides-v2.pdf · v2');
+  });
 
-    // Poster and handout have zero uploads — shown as an explicit absent
-    // chip, never a bare "0".
-    const posterChip = chips.find((c) => c.textContent?.startsWith('Poster'));
-    expect(posterChip).toHaveClass('is-absent');
-    expect(posterChip?.textContent).not.toContain('0');
+  it("renders the honest 'No files yet' empty cell for a submission with no uploads", async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([
+        {
+          id: 'sub-1',
+          ref: 'S-001',
+          title: 'A Talk With No Files',
+          status: 'accepted',
+          contentStatus: 'pending',
+          speakers: [],
+          trackIds: [],
+          submittedAt: null,
+          createdAt: 1700000000000,
+          deliverableCounts: { presentation: 0, poster: 0, handout: 0 },
+          latestFile: null,
+        },
+      ]),
+    });
+
+    const { container } = render(
+      <MemoryRouter>
+        <ContentApp />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(await screen.findByRole('tab', { name: 'All' }));
+
+    await waitFor(() => {
+      expect(container.querySelector('.chq-content-row-title')).toHaveTextContent('A Talk With No Files');
+    });
+
+    const row = container.querySelector('tr.chq-content-row');
+    if (!row) throw new Error('worklist row not found');
+
+    expect(row.querySelector('.chq-content-row-latest-file')).toHaveTextContent('No files yet');
   });
 });
 
@@ -166,6 +195,7 @@ describe('ContentApp: fresh loads on view switch and explicit refresh', () => {
           submittedAt: null,
           createdAt: 1700000000000,
           deliverableCounts: { presentation: 0, poster: 0, handout: 0 },
+          latestFile: null,
         },
       ]),
     );

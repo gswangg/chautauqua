@@ -9,6 +9,12 @@ import { formatRef } from "../../../domain/ids";
 import { FILE_KINDS, type FileKind } from "../../../domain/files";
 import { chunkIds, type ParsedListQuery, type SortOrder } from "./query";
 import { likeContains } from "../like";
+import { findRoot, type DeliverableFileRow } from "../files-library";
+import { DEC_692 } from "../../../decisions";
+
+// DEC-692: a worklist row names the session, the speaker, the LATEST
+// artefact and its status — latestFile is that artefact, computed here.
+void DEC_692;
 
 export interface SubmissionSpeaker {
   contactId: string;
@@ -26,6 +32,7 @@ export interface SubmissionListItem {
   submittedAt: number | null;
   createdAt: number;
   deliverableCounts: { presentation: number; poster: number; handout: number };
+  latestFile: { filename: string; kind: FileKind; versionCount: number; uploadedAt: number } | null;
   answers?: Record<string, unknown>;
 }
 
@@ -199,6 +206,67 @@ export async function listSubmissions(
     deliverableRows.push(...(batchRows as { submissionId: string; kind: string; count: number }[]));
   }
 
+  // latestFile (v4 mock worklist column): ONE batched query per id chunk,
+  // same style/loop as deliverableCounts above — page-scoped WHERE, never a
+  // whole-event scan (DEC-686). Unlike the grouped count query, this needs
+  // full rows (previousFileId/createdAt) so the chain can be walked in
+  // memory via files-library's findRoot rather than re-derived per file.
+  const latestFileCandidateRows: DeliverableFileRow[] = [];
+  for (const batch of idBatches) {
+    const batchRows = await db
+      .select({
+        id: schema.file.id,
+        submissionId: schema.file.submissionId,
+        kind: schema.file.kind,
+        filename: schema.file.filename,
+        previousFileId: schema.file.previousFileId,
+        createdAt: schema.file.createdAt,
+        sizeBytes: schema.file.sizeBytes,
+        uploadedByContactId: schema.file.uploadedByContactId,
+      })
+      .from(schema.file)
+      .where(and(inArray(schema.file.submissionId, batch), inArray(schema.file.kind, FILE_KINDS as unknown as string[])));
+    for (const r of batchRows as DeliverableFileRow[]) {
+      if (r.submissionId) latestFileCandidateRows.push(r);
+    }
+  }
+
+  const latestFileBySubmission = new Map<
+    string,
+    { filename: string; kind: FileKind; versionCount: number; uploadedAt: number }
+  >();
+  {
+    const byId = new Map(latestFileCandidateRows.map((f) => [f.id, f]));
+    // The globally-newest file row for a submission is, by construction of
+    // previous_file_id chaining, always some chain's latest link — no need
+    // to separately resolve "latest per chain" before comparing across
+    // chains.
+    const newestBySubmission = new Map<string, DeliverableFileRow>();
+    for (const f of latestFileCandidateRows) {
+      const existing = newestBySubmission.get(f.submissionId);
+      if (!existing || f.createdAt.getTime() > existing.createdAt.getTime()) {
+        newestBySubmission.set(f.submissionId, f);
+      }
+    }
+    const chainsByRoot = new Map<string, DeliverableFileRow[]>();
+    for (const f of latestFileCandidateRows) {
+      const root = findRoot(f.id, byId);
+      const arr = chainsByRoot.get(root) ?? [];
+      arr.push(f);
+      chainsByRoot.set(root, arr);
+    }
+    for (const [submissionId, newest] of newestBySubmission) {
+      const root = findRoot(newest.id, byId);
+      const chain = chainsByRoot.get(root) ?? [newest];
+      latestFileBySubmission.set(submissionId, {
+        filename: newest.filename,
+        kind: newest.kind as FileKind,
+        versionCount: chain.length,
+        uploadedAt: newest.createdAt.getTime(),
+      });
+    }
+  }
+
   const deliverableCountsBySubmission = new Map<string, Record<FileKind, number>>();
   for (const d of deliverableRows) {
     if (!d.submissionId) continue;
@@ -253,6 +321,7 @@ export async function listSubmissions(
       createdAt: r.createdAt.getTime(),
       deliverableCounts:
         deliverableCountsBySubmission.get(r.id) ?? { presentation: 0, poster: 0, handout: 0 },
+      latestFile: latestFileBySubmission.get(r.id) ?? null,
       ...(params.includeAnswers ? { answers: answersBySubmission.get(r.id) ?? {} } : {}),
     };
   });

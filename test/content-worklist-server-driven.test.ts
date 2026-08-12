@@ -83,6 +83,7 @@ describe("listSubmissions contentStatus filter (DEC-341)", () => {
       [], // participants
       [], // tracks
       [], // deliverable counts
+      [], // latestFile candidates
     ];
     const db = makeFakeDb(responses);
 
@@ -107,6 +108,7 @@ describe("listSubmissions contentStatus filter (DEC-341)", () => {
       [],
       [],
       [],
+      [],
     ];
     const db1 = makeFakeDb(page1Responses);
     const page1 = await listSubmissions(
@@ -122,6 +124,7 @@ describe("listSubmissions contentStatus filter (DEC-341)", () => {
       [{ recordPrefix: "SES" }],
       [{ count: 137 }],
       Array.from({ length: 37 }, (_, i) => submissionRow(`sub-p3-${i}`, 100 + i, `Talk P3 ${i}`)),
+      [],
       [],
       [],
       [],
@@ -143,6 +146,7 @@ describe("listSubmissions sort=worklist (DEC-341)", () => {
       [{ recordPrefix: "SES" }],
       [{ count: 1 }],
       [submissionRow("sub-1", 1, "A Talk")],
+      [],
       [],
       [],
       [],
@@ -174,6 +178,7 @@ describe("listSubmissions deliverableCounts (DEC-341 hydration, DEC-247 chain ro
       [],
       [],
       [{ submissionId: "sub-1", kind: "presentation", count: 1 }],
+      [], // latestFile candidates
     ];
     const db = makeFakeDb(responses);
 
@@ -199,6 +204,7 @@ describe("listSubmissions deliverableCounts (DEC-341 hydration, DEC-247 chain ro
       // previous_file_id is set would never appear here (excluded by the
       // WHERE, not filtered client-side), and poster/handout have none.
       [{ submissionId: "sub-1", kind: "presentation", count: 1 }],
+      [], // latestFile candidates
     ];
     const db = makeFakeDb(responses);
 
@@ -215,11 +221,75 @@ describe("listSubmissions deliverableCounts (DEC-341 hydration, DEC-247 chain ro
       [],
       [],
       [],
+      [], // latestFile candidates
     ];
     const db = makeFakeDb(responses);
 
     const result = await listSubmissions(db, EVENT_ID, baseParams());
 
     expect(result.items[0]!.deliverableCounts).toEqual({ presentation: 0, poster: 0, handout: 0 });
+  });
+});
+
+describe("listSubmissions latestFile (w15-f, DEC-686 page-scoped hydration)", () => {
+  it("reports the most recently uploaded file in a two-version chain, with versionCount from the chain length", async () => {
+    const responses = [
+      [{ recordPrefix: "SES" }],
+      [{ count: 1 }],
+      [submissionRow("sub-1", 1, "A Talk")],
+      [], // participants
+      [], // tracks
+      [{ submissionId: "sub-1", kind: "presentation", count: 1 }], // deliverable counts
+      // latestFile candidates: a v1 replaced by a v2 (previousFileId chain).
+      [
+        {
+          id: "file-v1",
+          submissionId: "sub-1",
+          kind: "presentation",
+          filename: "slides-old.pdf",
+          previousFileId: null,
+          createdAt: new Date(2026, 0, 1),
+          sizeBytes: 100,
+          uploadedByContactId: null,
+        },
+        {
+          id: "file-v2",
+          submissionId: "sub-1",
+          kind: "presentation",
+          filename: "slides-new.pdf",
+          previousFileId: "file-v1",
+          createdAt: new Date(2026, 0, 2),
+          sizeBytes: 200,
+          uploadedByContactId: null,
+        },
+      ],
+    ];
+    const db = makeFakeDb(responses);
+
+    const result = await listSubmissions(db, EVENT_ID, baseParams());
+
+    expect(result.items[0]!.latestFile).toEqual({
+      filename: "slides-new.pdf",
+      kind: "presentation",
+      versionCount: 2,
+      uploadedAt: new Date(2026, 0, 2).getTime(),
+    });
+  });
+
+  it("is null for a submission with no files", async () => {
+    const responses = [
+      [{ recordPrefix: "SES" }],
+      [{ count: 1 }],
+      [submissionRow("sub-1", 1, "A Talk")],
+      [],
+      [],
+      [],
+      [], // latestFile candidates — none
+    ];
+    const db = makeFakeDb(responses);
+
+    const result = await listSubmissions(db, EVENT_ID, baseParams());
+
+    expect(result.items[0]!.latestFile).toBeNull();
   });
 });

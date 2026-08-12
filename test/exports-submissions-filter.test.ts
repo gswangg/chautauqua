@@ -100,10 +100,10 @@ function orderBySqlOf(callLog: { method: string; args: unknown[] }[]) {
 }
 
 // listSubmissions' response queue: event prefix, count, page rows,
-// participants, tracks, deliverable counts (matches
+// participants, tracks, deliverable counts, latestFile candidates (matches
 // test/content-worklist-server-driven.test.ts's ordering).
 function listResponses(rows: unknown[], total: number) {
-  return [[{ recordPrefix: "SES" }], [{ count: total }], rows, [], [], []];
+  return [[{ recordPrefix: "SES" }], [{ count: total }], rows, [], [], [], []];
 }
 
 // exportSubmissions' response queue: recordPrefix, submissions (unpaginated,

@@ -37,6 +37,11 @@ export interface ContentSubmissionListItem {
   contentStatus: ContentStatus;
   speakers: { contactId: string; name: string }[];
   deliverableCounts: Record<FileKind, number>;
+  // v4 mock worklist column (DEC-692): the submission's most-recently
+  // uploaded deliverable, or null when nothing has been uploaded yet — the
+  // absent state renders honestly ('No files yet'), never inferred client
+  // side from deliverableCounts.
+  latestFile: { filename: string; kind: FileKind; versionCount: number; uploadedAt: number } | null;
 }
 
 // GET /api/v1/submissions/:id/files item (DEC-020: flat file rows; the SPA

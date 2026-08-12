@@ -155,6 +155,7 @@ describe("DEC-562: JS re-aggregation sorts gain the contact-id tiebreak (byte-id
         participantRows, // 4: participant enrichment
         [], // 5: track enrichment
         [], // 6: deliverable-count enrichment
+        [], // 7: latestFile candidate enrichment (w15-f)
       ]);
       return listSubmissions(db, EVENT_ID, {
         page: 1,
