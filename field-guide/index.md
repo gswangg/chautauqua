@@ -22,39 +22,38 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   assign max+1 INSIDE the insert; a negated predicate skips NULLs.
 - FINDINGS w1-9 (DEC-570..654, compacted): full suites SERIALIZED; real
   <button> not `div draggable`; colour alone isn't track identity -- NAME
-  it; blank CSV cell is ABSENT DATA; seed has ONE clock -- SEED_NOW; a
-  file id in a URL proves nothing -- walk to root; imported row keeps
-  THEIR id, one namespaced `external_ref` per scope; a drawer is a
-  RECORD: facts, history, action bar; two readings END in one resolver;
-  anonymity is a RATCHET; merge takes a SET; confirmation is a DIALOG
-  not window.confirm; a filter after the page window lies -- items+total
-  from ONE where clause; /api/v1 gets the envelope, a human a page;
-  framing/cache/API-ref lists are CLOSED two-lists; a join row's
-  identity is the PAIR its uniqueIndex names; absence claims are
-  TESTABLE; a disclosure you OPEN to learn which view you're in is
-  state hidden -- tabs visible, ACTIVE from live filters; export = same
-  WHERE as the list; raw id in UI is a handle leaking, render LABELS; a
+  it; blank CSV cell is ABSENT DATA; seed has ONE clock; imported row
+  keeps THEIR id via namespaced `external_ref`; a drawer is a RECORD;
+  two readings END in one resolver; anonymity is a RATCHET; merge takes
+  a SET; confirmation is a DIALOG not window.confirm; a filter after the
+  page window lies -- items+total from ONE where clause; /api/v1 gets
+  the envelope, a human a page; framing/cache/API-ref lists are CLOSED
+  two-lists; a join row's identity is the PAIR its uniqueIndex names;
+  absence claims are TESTABLE; state hidden behind a disclosure toggle
+  should be a visible tab, ACTIVE from live filters; export = same WHERE
+  as the list; raw id in UI is a handle leaking, render LABELS; a
   worklist row carries its action; a scale bar exits non-zero.
-- FINDINGS w10 (DEC-655..661): a scope check that skips the plan's own
-  filter grants what the queue hides -- every reader of "in scope?" ends
-  in ONE rule; a row that could never be scored is refused at WRITE
-  time. The asymmetry between a speaker's and organizer's invite IS the
-  defect -- record and publish it. A guard whose comment names routes it
+- FINDINGS w10-11 (DEC-655..669, compacted): a scope check that skips
+  the plan's own filter grants what the queue hides -- every reader of
+  "in scope?" ends in ONE rule. A guard whose comment names routes it
   doesn't guard is a manifest already desynced: enumerate the repo.
-  Cacheability is a DEFAULT (no-store) plus "own header wins"; a scope
-  row carries its own LABEL, batched per page. A subset vocabulary
-  encodes a server fact -- test it EQUALS those keys. A surface with no
-  root is not guessable.
-- FINDINGS w11 (DEC-662..669): a control on a cell with nothing to
-  show is dead weight -- affordances are CONDITIONAL and QUIET, and a
-  progress row names the person, not their inbox; one page, one title
-  row. An import is PLANNED before it is applied: the dry run names the
-  non-blank fields it will REPLACE and the same-name-same-company
-  contact hiding behind a different address, and the organizer's
-  per-line skips bind the real run. Every send ends in ONE reporter that
-  must account for sent+failed+skipped+remaining, or it lies by
-  omission. A surface never asserts a count it has not measured, and a
-  worklist opens on a view that can hold work. A run says what it did
-  NOT do. An internal shorthand is not public prose -- data stays null,
-  only rendering gets a word. A demo list of one can't show its states.
-  A union makes items AND total lie: a second scope is a second TAB.
+  Cacheability is a DEFAULT (no-store) plus "own header wins". A subset
+  vocabulary encodes a server fact -- test it EQUALS those keys. A
+  surface with no root is not guessable; a dead control on an empty cell
+  should be CONDITIONAL. An import is PLANNED before applied: the dry
+  run names REPLACEs and same-name-same-company collisions. Every send
+  ends in ONE reporter accounting for sent+failed+skipped+remaining. A
+  surface never asserts an unmeasured count. An internal shorthand is
+  not public prose -- data stays null, only rendering gets a word. A
+  union makes items AND total lie: a second scope is a second TAB.
+- FINDINGS w12 (DEC-670..674): a capped ANONYMOUS list may only count
+  what it shows -- a total computed outside the visibility predicate
+  discloses the rows the predicate hid; report the cap as a fact, not a
+  mismatched pair of numbers. Export = same where clause: not per-
+  surface, EVERY filtered list's download inherits it. A chromeless
+  surface is CLOSED both ways -- every link it renders stays inside it,
+  every path it renders has a route; prove it by rendering each page and
+  enumerating hrefs, never by inspection. A builder's option list is the
+  server's vocabulary IMPORTED through one named boundary module, pinned
+  by an equality test; a knob asking for an internal id is not a knob. A
+  worklist whose other regions live one navigation away is a report.
