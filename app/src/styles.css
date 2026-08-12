@@ -1394,6 +1394,14 @@ a:hover {
   flex-wrap: wrap;
 }
 
+/* Headshots tab body (DEC-669): same vertical stack as the deliverables tab
+   so the error banner, table and pager keep the library's 16px rhythm. */
+.chq-content-headshots-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
 .chq-files-library-pager {
   display: flex;
   align-items: center;

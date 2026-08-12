@@ -221,7 +221,9 @@ function makeFakeHeadshotsDb(seed: Seed) {
     const chain: any = {
       from: (table: Record<string, unknown>) => {
         const tableKey = keyOf(table);
-        source = (byTable[tableKey] ?? []).map((r) => ({ [tableKey]: r }) as JoinedRow);
+        // from() seeds rows with a single table; the remaining tables are
+        // filled in by innerJoin() before any condition is evaluated.
+        source = (byTable[tableKey] ?? []).map((r) => ({ [tableKey]: r }) as unknown as JoinedRow);
         return chain;
       },
       innerJoin: (table: Record<string, unknown>, cond: unknown) => {
