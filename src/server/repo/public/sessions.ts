@@ -5,7 +5,7 @@
 // visibleParticipantConditions() directly, since it does not route through
 // visibleSubmissionConditions().
 
-import { and, asc, eq, inArray, like, or } from "drizzle-orm";
+import { and, asc, eq, inArray, like, or, sql } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { formatRef } from "../../../domain/ids";
@@ -70,13 +70,18 @@ function searchCondition(q: string) {
  * — one bound param, no id list at all. Keyword search (EMB-02) joins
  * contact (already reachable via participant, which every query here joins
  * for the visibility gate) and filters server-side only — the visibility
- * gate conditions are always included alongside it, never bypassed. */
+ * gate conditions are always included alongside it, never bypassed.
+ * DEC-418: bounded by `limit` (SQL LIMIT, not a JS .slice()) — at SPEC.md:73-76
+ * scale the unbounded query would return thousands of rows from D1 to
+ * render 24 cards. Callers pair this with countVisibleSubmissions() for the
+ * page total. */
 async function getVisibleSubmissionIdsOrdered(
   db: Db,
   eventId: string,
   trackId: string | null,
   q: string | null,
-): Promise<Array<{ id: string; title: string }>> {
+  limit: number,
+): Promise<Array<{ id: string }>> {
   const baseConditions = [eq(schema.submission.eventId, eventId), visibleSessionConditions()];
   if (q) baseConditions.push(searchCondition(q));
 
@@ -91,7 +96,8 @@ async function getVisibleSubmissionIdsOrdered(
       .leftJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
       .innerJoin(schema.submissionTrack, eq(schema.submissionTrack.submissionId, schema.submission.id))
       .where(and(...baseConditions, eq(schema.submissionTrack.trackId, trackId)))
-      .orderBy(asc(schema.submission.title));
+      .orderBy(asc(schema.submission.title))
+      .limit(limit);
     return rows;
   }
 
@@ -104,8 +110,49 @@ async function getVisibleSubmissionIdsOrdered(
     )
     .leftJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
     .where(and(...baseConditions))
-    .orderBy(asc(schema.submission.title));
+    .orderBy(asc(schema.submission.title))
+    .limit(limit);
   return rows;
+}
+
+/** Total count of distinct visibility-gated (optionally track/keyword
+ * filtered) submissions for an event — the identical joins and where-
+ * conditions as getVisibleSubmissionIdsOrdered(), but a single count(distinct)
+ * row instead of materializing every id. Used alongside the bounded id query
+ * above to compute the page total without an unbounded scan. */
+async function countVisibleSubmissions(
+  db: Db,
+  eventId: string,
+  trackId: string | null,
+  q: string | null,
+): Promise<number> {
+  const baseConditions = [eq(schema.submission.eventId, eventId), visibleSessionConditions()];
+  if (q) baseConditions.push(searchCondition(q));
+
+  if (trackId) {
+    const rows = await db
+      .select({ count: sql<number>`count(distinct ${schema.submission.id})` })
+      .from(schema.submission)
+      .leftJoin(
+        schema.participant,
+        and(eq(schema.participant.submissionId, schema.submission.id), visibleParticipantConditions()),
+      )
+      .leftJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
+      .innerJoin(schema.submissionTrack, eq(schema.submissionTrack.submissionId, schema.submission.id))
+      .where(and(...baseConditions, eq(schema.submissionTrack.trackId, trackId)));
+    return Number(rows[0]?.count ?? 0);
+  }
+
+  const rows = await db
+    .select({ count: sql<number>`count(distinct ${schema.submission.id})` })
+    .from(schema.submission)
+    .leftJoin(
+      schema.participant,
+      and(eq(schema.participant.submissionId, schema.submission.id), visibleParticipantConditions()),
+    )
+    .leftJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
+    .where(and(...baseConditions));
+  return Number(rows[0]?.count ?? 0);
 }
 
 /** Hydrates a set of submission ids (already visibility-checked by the
@@ -272,10 +319,16 @@ export async function getPublicSessions(
   event: PublicEvent,
   opts: { trackId: string | null; page: number; perPage: number; q?: string | null },
 ): Promise<PublicSessionsPage> {
-  const ordered = await getVisibleSubmissionIdsOrdered(db, event.id, opts.trackId, opts.q ?? null);
-  const total = ordered.length;
-  const pageIds = ordered.slice(0, opts.page * opts.perPage).map((r) => r.id);
+  const limit = opts.page * opts.perPage;
+  const q = opts.q ?? null;
+  // Sequenced (not Promise.all'd): hydrateSessions' own select() calls stay
+  // contiguous right after the id query, matching every existing fake-db
+  // harness in test/public.test.ts that numbers db.select() calls by
+  // position; the count query's separate select() runs last instead.
+  const ordered = await getVisibleSubmissionIdsOrdered(db, event.id, opts.trackId, q, limit);
+  const pageIds = ordered.map((r) => r.id);
   const items = await hydrateSessions(db, pageIds, event);
+  const total = await countVisibleSubmissions(db, event.id, opts.trackId, q);
   return { items, total };
 }
 
