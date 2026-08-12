@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
+<link href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@400;500;600;700&family=Figtree:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  body { margin: 0; background: #E9E7E2; font-family: 'Figtree', Helvetica, sans-serif; color: #1B1D17; }
+  * { box-sizing: border-box; }
+  a { color: #4E5C31; text-decoration: none; }
+  a:hover { color: #3C471F; }
+</style>
+</helmet>
+
+<section style="padding:56px; display:flex; flex-wrap:wrap; gap:40px; align-items:flex-start">
+
+  <div style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:center; gap:12px">
+      <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; background:#1B1D17; color:#F4F1E8; padding:5px 10px; border-radius:4px">Comms</span>
+      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Compose · step 3 of 4 · 1240</span>
+      <span style="font-size:11px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B">Deciding and notifying stay separate</span>
+    </div>
+
+    <div style="width:1240px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:6px; overflow:hidden; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+      <header style="border-bottom:1px solid #1B1D17; padding:15px 34px; display:flex; align-items:center; gap:22px">
+        <span style="font-family:'Familjen Grotesk', sans-serif; font-size:22px; font-weight:700; letter-spacing:-0.03em">chautauqua</span>
+        <nav style="display:flex; align-items:center; gap:15px; font-size:13px; font-weight:600; line-height:1">
+          <a href="#" style="color:#565A4B; padding:4px 0">Overview</a>
+          <a href="#" style="color:#565A4B; padding:4px 0">Submissions</a>
+          <a href="#" style="color:#565A4B; padding:4px 0">Review</a>
+          <a href="#" style="color:#565A4B; padding:4px 0">Speakers</a>
+          <a href="#" style="color:#565A4B; padding:4px 0">Content</a>
+          <a href="#" style="color:#565A4B; padding:4px 0">Agenda</a>
+          <span style="padding:4px 0; box-shadow:inset 0 -2px 0 #4E5C31">Comms</span>
+          <a href="#" style="color:#565A4B; padding:4px 0">Contacts</a>
+          <a href="#" style="color:#565A4B; padding:4px 0">Settings</a>
+        </nav>
+        <div style="margin-left:auto; display:flex; align-items:center; gap:14px">
+          <span style="font-size:13px; font-weight:600">DevFlow Conf 2027</span>
+          <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Jordan A.</span>
+        </div>
+      </header>
+
+      <div style="padding:26px 34px 34px; display:flex; flex-direction:column; gap:20px">
+
+        <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:24px">
+          <div style="display:flex; align-items:baseline; gap:14px">
+            <h1 style="margin:0; font-family:'Familjen Grotesk', sans-serif; font-size:36px; font-weight:700; letter-spacing:-0.04em; line-height:1">Comms</h1>
+            <span style="font-size:13px; color:#565A4B">4 sent in 7 days · last Tue 4:12pm</span>
+          </div>
+          <div style="display:flex; gap:9px">
+            <a href="#" style="border:1px solid #BAB6A6; border-radius:4px; padding:9px 15px; font-size:13px; font-weight:600; color:#1B1D17">Templates</a>
+            <a href="#" style="border:1px solid #BAB6A6; border-radius:4px; padding:9px 15px; font-size:13px; font-weight:600; color:#1B1D17">History</a>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns:repeat(4, 1fr); border-top:1px solid #D3CFC0; border-bottom:1px solid #D3CFC0">
+          <sc-for list="{{ steps }}" as="s" hint-placeholder-count="4">
+            <div style="{{ s.wrap }}">
+              <span style="{{ s.num }}">{{ s.n }}</span>
+              <div style="display:flex; flex-direction:column; gap:2px">
+                <span style="{{ s.label }}">{{ s.title }}</span>
+                <span style="font-size:11px; color:#565A4B">{{ s.detail }}</span>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1.05fr; gap:26px; align-items:start">
+
+          <section>
+            <div style="border-bottom:2px solid #1B1D17; padding-bottom:8px; display:flex; align-items:baseline; justify-content:space-between">
+              <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase">Recipients · 23</span>
+              <a href="#" style="font-size:13px; font-weight:700">Change selection</a>
+            </div>
+            <sc-for list="{{ recipients }}" as="r" hint-placeholder-count="5">
+              <div style="display:grid; grid-template-columns:1fr auto; gap:16px; align-items:baseline; padding:13px 0; border-bottom:1px solid #E1DDCE">
+                <div style="display:flex; flex-direction:column; gap:2px">
+                  <span style="font-size:14px; font-weight:600">{{ r.name }}</span>
+                  <span style="font-size:12px; color:#565A4B">{{ r.email }} · {{ r.session }}</span>
+                </div>
+                <span style="{{ r.flagStyle }}">{{ r.flag }}</span>
+              </div>
+            </sc-for>
+            <div style="padding:13px 0 0; font-size:13px; color:#565A4B">18 more · 23 is under the 100-recipient cap</div>
+
+            <div style="margin-top:22px; border:1px solid #BAB6A6; border-radius:5px; background:#FAF8F2; padding:16px; display:flex; flex-direction:column; gap:12px">
+              <span style="font-family:'Familjen Grotesk', sans-serif; font-size:14px; font-weight:700">Attachments and merge fields</span>
+              <label style="display:flex; align-items:center; gap:10px; font-size:13px; color:#3F4237">
+                <span style="width:17px; height:17px; border:1px solid #4E5C31; background:#4E5C31; border-radius:3px; flex-shrink:0"></span>
+                Include reviewer feedback
+              </label>
+              <label style="display:flex; align-items:center; gap:10px; font-size:13px; color:#3F4237">
+                <span style="width:17px; height:17px; border:1px solid #8E8A7A; border-radius:3px; flex-shrink:0"></span>
+                Attach calendar invite
+              </label>
+              <span style="font-size:12px; color:#565A4B; line-height:1.5">3 of 23 have no slot yet — those get no invite</span>
+            </div>
+          </section>
+
+          <section>
+            <div style="border-bottom:2px solid #1B1D17; padding-bottom:8px; display:flex; align-items:baseline; justify-content:space-between">
+              <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase">Preview · Priya Raman</span>
+              <div style="display:flex; gap:12px; font-size:13px; font-weight:700">
+                <a href="#">‹ Prev</a>
+                <a href="#">Next ›</a>
+              </div>
+            </div>
+            <div style="margin-top:16px; border:1px solid #D3CFC0; border-radius:5px; background:#FAF8F2; overflow:hidden">
+              <div style="border-bottom:1px solid #E1DDCE; padding:14px 18px; display:flex; flex-direction:column; gap:5px">
+                <span style="font-size:11px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:#565A4B">To</span>
+                <span style="font-size:14px; font-weight:600">Priya Raman &lt;sbek-speaker@example.com&gt;</span>
+              </div>
+              <div style="border-bottom:1px solid #E1DDCE; padding:14px 18px; display:flex; flex-direction:column; gap:5px">
+                <span style="font-size:11px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:#565A4B">Subject</span>
+                <span style="font-family:'Familjen Grotesk', sans-serif; font-size:17px; font-weight:600; letter-spacing:-0.015em">Your talk has been accepted to DevFlow Conf 2027</span>
+              </div>
+              <div style="padding:18px; display:flex; flex-direction:column; gap:13px; font-size:14px; line-height:1.65; color:#3F4237">
+                <span>Hi Priya,</span>
+                <span>Congratulations — your session <strong>Taming 40-Minute CI: Incremental Builds at Monorepo Scale</strong> has been accepted for DevFlow Conf 2027.</span>
+                <span>Please confirm your participation and complete your speaker profile by 1 April 2027.</span>
+                <div style="border-left:3px solid #4E5C31; padding:2px 0 2px 13px; display:flex; flex-direction:column; gap:6px">
+                  <span style="font-size:11px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:#565A4B">Reviewer feedback, merged</span>
+                  <span style="font-size:13px; line-height:1.6">Strong practical content and a clear narrative arc; abstract could name the specific tooling used.</span>
+                </div>
+                <span>Your speaker portal: <a href="#">chautauqua.cc/portal</a></span>
+                <span>— Jordan Alvarez, DevFlow Conf</span>
+              </div>
+            </div>
+            <div style="margin-top:16px; display:flex; align-items:center; gap:14px">
+              <span style="background:#4E5C31; color:#F7F9F0; border-radius:4px; padding:12px 18px; font-size:14px; font-weight:700">Send 23 emails</span>
+              <a href="#" style="border:1px solid #BAB6A6; border-radius:4px; padding:11px 16px; font-size:13px; font-weight:600; color:#1B1D17">Back to the template</a>
+              
+            </div>
+          </section>
+        </div>
+
+        <section style="padding-top:6px">
+          <div style="border-bottom:2px solid #1B1D17; padding-bottom:8px; display:flex; align-items:baseline; justify-content:space-between">
+            <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase">Recent sends</span>
+            <a href="#" style="font-size:13px; font-weight:700">All history</a>
+          </div>
+          <sc-for list="{{ history }}" as="h" hint-placeholder-count="4">
+            <div style="display:grid; grid-template-columns:150px 1fr 130px 150px auto; gap:18px; align-items:baseline; padding:13px 0; border-bottom:1px solid #E1DDCE">
+              <span style="font-size:13px; color:#565A4B">{{ h.when }}</span>
+              <span style="font-size:14px; font-weight:600">{{ h.subject }}</span>
+              <span style="font-size:13px">{{ h.count }}</span>
+              <span style="font-size:13px; color:#565A4B">{{ h.template }}</span>
+              <a href="#" style="font-size:13px; font-weight:700">Open</a>
+            </div>
+          </sc-for>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:center; gap:12px">
+      <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; background:#1B1D17; color:#F4F1E8; padding:5px 10px; border-radius:4px">390</span>
+      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Comms</span>
+      <span style="font-size:11px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B">Read and check, compose on a laptop</span>
+    </div>
+
+    <div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+      <div style="border-bottom:1px solid #1B1D17; padding:14px 16px; flex-shrink:0; display:flex; flex-direction:column; gap:11px">
+        <div style="display:flex; align-items:center; gap:10px">
+          <span style="font-family:'Familjen Grotesk', sans-serif; font-size:20px; font-weight:700; letter-spacing:-0.03em">chautauqua</span>
+          <span style="margin-left:auto; font-size:12px; font-weight:600; color:#565A4B">DevFlow 2027</span>
+        </div>
+        <h1 style="margin:0; font-family:'Familjen Grotesk', sans-serif; font-size:27px; font-weight:700; letter-spacing:-0.04em; line-height:1">Comms</h1>
+        <span style="font-size:13px; color:#565A4B">4 sent in 7 days · last Tue 4:12pm</span>
+      </div>
+
+      <div style="flex:1; min-height:0; overflow-y:auto; padding:16px">
+        <div style="border:1px solid #BAB6A6; border-radius:6px; background:#FAF8F2; padding:15px; display:flex; flex-direction:column; gap:9px">
+          <span style="font-size:10px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Draft in progress</span>
+          <span style="font-family:'Familjen Grotesk', sans-serif; font-size:17px; font-weight:600; letter-spacing:-0.02em; line-height:1.3">Your talk has been accepted to DevFlow Conf 2027</span>
+          <span style="font-size:13px; color:#565A4B">23 recipients · reviewer feedback merged</span>
+          <span style="font-size:13px; line-height:1.55; color:#3F4237">Better on a laptop</span>
+          <span style="border:1px solid #BAB6A6; border-radius:6px; min-height:44px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600">Read the draft</span>
+        </div>
+
+        <div style="padding:22px 0 8px; border-bottom:2px solid #1B1D17; margin-bottom:4px">
+          <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase">Recent sends</span>
+        </div>
+        <sc-for list="{{ history }}" as="h" hint-placeholder-count="4">
+          <div style="padding:15px 0; border-bottom:1px solid #E1DDCE; display:flex; flex-direction:column; gap:5px">
+            <span style="font-size:12px; color:#565A4B">{{ h.when }} · {{ h.count }}</span>
+            <span style="font-family:'Familjen Grotesk', sans-serif; font-size:15px; font-weight:600; letter-spacing:-0.015em; line-height:1.35">{{ h.subject }}</span>
+            <span style="font-size:12px; color:#565A4B">{{ h.template }}</span>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="flex-shrink:0; border-top:1px solid #1B1D17; background:#EFEBDF; padding:10px 8px 14px; display:flex; gap:2px">
+        <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="5">
+          <div style="flex:1; min-height:44px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px">
+            <span style="{{ t.dot }}"></span>
+            <span style="{{ t.text }}">{{ t.label }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:center; gap:12px">
+      <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; background:#1B1D17; color:#F4F1E8; padding:5px 10px; border-radius:4px">Subscreen</span>
+      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Templates</span>
+    </div>
+
+    <div style="width:900px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:6px; overflow:hidden; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+      <div style="border-bottom:1px solid #1B1D17; padding:20px 32px; display:flex; align-items:flex-end; justify-content:space-between; gap:20px">
+        <div style="display:flex; flex-direction:column; gap:5px">
+          <a href="#" style="font-size:13px; font-weight:700">‹ Comms</a>
+          <span style="font-family:'Familjen Grotesk', sans-serif; font-size:28px; font-weight:700; letter-spacing:-0.04em; line-height:1">Templates</span>
+        </div>
+        <span style="background:#4E5C31; color:#F7F9F0; border-radius:4px; padding:10px 15px; font-size:13px; font-weight:700">New template</span>
+      </div>
+      <div style="padding:22px 32px 34px; display:grid; grid-template-columns:1fr 1fr; gap:30px; align-items:start">
+        <section>
+          <div style="border-bottom:2px solid #1B1D17; padding-bottom:8px">
+            <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase">Saved · 5</span>
+          </div>
+          <sc-for list="{{ templates }}" as="t" hint-placeholder-count="5">
+            <div style="display:grid; grid-template-columns:1fr auto; gap:14px; align-items:baseline; padding:14px 0; border-bottom:1px solid #E1DDCE">
+              <div style="display:flex; flex-direction:column; gap:3px">
+                <span style="{{ t.nameStyle }}">{{ t.name }}</span>
+                <span style="font-size:12px; color:#565A4B">{{ t.detail }}</span>
+              </div>
+              <span style="font-size:12px; color:#565A4B; white-space:nowrap">{{ t.used }}</span>
+            </div>
+          </sc-for>
+        </section>
+        <section>
+          <div style="border-bottom:2px solid #1B1D17; padding-bottom:8px; display:flex; align-items:baseline; justify-content:space-between">
+            <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase">Acceptance</span>
+            <a href="#" style="font-size:13px; font-weight:700">Duplicate</a>
+          </div>
+          <div style="padding:16px 0 0; display:flex; flex-direction:column; gap:13px">
+            <div style="display:flex; flex-direction:column; gap:5px">
+              <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Subject</span>
+              <div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; padding:11px 13px; font-size:14px">Your talk has been accepted to {event_name}</div>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:5px">
+              <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Body</span>
+              <div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; padding:13px; font-size:14px; line-height:1.65; color:#3F4237">Hi {speaker_name}, congratulations. Your session '{talk_title}' has been accepted. Please confirm your participation and complete your profile by {task_due_date}.<br /><br />{portal_link}</div>
+            </div>
+            <div style="display:flex; flex-wrap:wrap; gap:7px">
+              <sc-for list="{{ merge }}" as="m" hint-placeholder-count="6">
+                <span style="border:1px solid #BAB6A6; border-radius:4px; padding:5px 10px; font-size:12px; font-weight:600; background:#EFEBDF">{{ m.tag }}</span>
+              </sc-for>
+            </div>
+            <div style="display:flex; gap:9px; padding-top:4px">
+              <span style="background:#4E5C31; color:#F7F9F0; border-radius:4px; padding:11px 16px; font-size:13px; font-weight:700">Save</span>
+              <span style="border:1px solid #BAB6A6; border-radius:4px; padding:10px 16px; font-size:13px; font-weight:600; background:#EFEBDF">Use in a send</span>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:center; gap:12px">
+      <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; background:#1B1D17; color:#F4F1E8; padding:5px 10px; border-radius:4px">390</span>
+      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Templates · 390</span>
+      <span style="font-size:11px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B">Read, tweak the wording, save</span>
+    </div>
+
+    <div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+      <div style="border-bottom:1px solid #1B1D17; padding:14px 16px; flex-shrink:0; display:flex; flex-direction:column; gap:7px">
+        <a href="#" style="font-size:13px; font-weight:700; min-height:44px; display:flex; align-items:center">‹ Comms</a>
+        <h1 style="margin:0; font-family:'Familjen Grotesk', sans-serif; font-size:25px; font-weight:700; letter-spacing:-0.04em; line-height:1.05">Templates</h1>
+        <span style="font-size:13px; color:#565A4B">5 saved</span>
+      </div><div style="flex:1; min-height:0; overflow-y:auto; padding:14px 16px 16px">
+        <sc-for list="{{ templates }}" as="t" hint-placeholder-count="5">
+          <div style="padding:15px 0; border-bottom:1px solid #E1DDCE; display:flex; align-items:center; gap:12px">
+            <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:3px">
+              <span style="font-family:'Familjen Grotesk', sans-serif; font-size:16px; font-weight:600; letter-spacing:-0.015em">{{ t.name }}</span>
+              <span style="font-size:12px; color:#565A4B">{{ t.detail }}</span>
+              <span style="font-size:11px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B">{{ t.used }}</span>
+            </div>
+            <span style="border:1px solid #BAB6A6; border-radius:6px; background:#EFEBDF; min-height:44px; display:flex; align-items:center; padding:0 14px; font-size:13px; font-weight:600">Open</span>
+          </div>
+        </sc-for>
+        <div style="padding:18px 0 8px; border-bottom:2px solid #1B1D17">
+          <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase">Acceptance · subject</span>
+        </div>
+        <div style="padding:14px 0; display:flex; flex-direction:column; gap:10px">
+          <div style="border:1px solid #BAB6A6; border-radius:6px; background:#FAF8F2; min-height:48px; display:flex; align-items:center; padding:0 13px; font-size:14px">Your talk has been accepted to {event_name}</div>
+          <div style="border:1px solid #BAB6A6; border-radius:6px; background:#FAF8F2; padding:13px; min-height:150px; font-size:14px; line-height:1.6; color:#3F4237">Hi {speaker_name}, congratulations. Your session '{talk_title}' has been accepted. Please confirm your participation by {task_due_date}.</div>
+          <div style="display:flex; gap:7px; flex-wrap:wrap">
+            <sc-for list="{{ merge }}" as="m" hint-placeholder-count="6">
+              <span style="border:1px solid #BAB6A6; border-radius:6px; background:#EFEBDF; min-height:44px; display:flex; align-items:center; padding:0 12px; font-size:12px; font-weight:600">{{ m.tag }}</span>
+            </sc-for>
+          </div>
+        </div></div>
+      <div style="flex-shrink:0; border-top:1px solid #1B1D17; background:#EFEBDF; padding:12px 16px 16px; display:flex; gap:8px">
+        <span style="flex:1; background:#4E5C31; color:#F7F9F0; border-radius:6px; min-height:48px; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700">Save</span>
+        <span style="border:1px solid #BAB6A6; border-radius:6px; min-height:48px; display:flex; align-items:center; padding:0 16px; font-size:13px; font-weight:600">Cancel</span>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:center; gap:12px">
+      <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; background:#1B1D17; color:#F4F1E8; padding:5px 10px; border-radius:4px">390</span>
+      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Send history · 390</span>
+      <span style="font-size:11px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B">Every send, with its recipients</span>
+    </div>
+    <div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+      <div style="border-bottom:1px solid #1B1D17; padding:14px 16px; flex-shrink:0; display:flex; flex-direction:column; gap:7px">
+        <a href="#" style="font-size:13px; font-weight:700; min-height:44px; display:flex; align-items:center">‹ Comms</a>
+        <h1 style="margin:0; font-family:'Familjen Grotesk', sans-serif; font-size:25px; font-weight:700; letter-spacing:-0.04em; line-height:1.05">History</h1>
+        <span style="font-size:13px; color:#565A4B">57 sends · 4 in the last 7 days</span>
+      </div>
+      <div style="flex:1; min-height:0; overflow-y:auto; padding:14px 16px 16px">
+        <sc-for list="{{ history }}" as="h" hint-placeholder-count="4">
+          <div style="padding:15px 0; border-bottom:1px solid #E1DDCE; display:flex; flex-direction:column; gap:6px">
+            <div style="display:flex; align-items:baseline; justify-content:space-between; gap:10px">
+              <span style="font-size:12px; color:#565A4B">{{ h.when }}</span>
+              <span style="font-size:11px; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; color:#4E5C31; white-space:nowrap">{{ h.count }}</span>
+            </div>
+            <span style="font-family:'Familjen Grotesk', sans-serif; font-size:16px; font-weight:600; letter-spacing:-0.015em; line-height:1.35">{{ h.subject }}</span>
+            <span style="font-size:12px; color:#565A4B">{{ h.template }}</span>
+            <span style="border:1px solid #BAB6A6; border-radius:6px; background:#EFEBDF; min-height:44px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600">See the recipients</span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const STEP_DONE = 'display:flex; align-items:center; gap:11px; padding:13px 16px 13px 0';
+const STEP_NOW = 'display:flex; align-items:center; gap:11px; padding:13px 16px; border-left:1px solid #D3CFC0; background:#EFEBDF';
+const STEP_NEXT = 'display:flex; align-items:center; gap:11px; padding:13px 16px; border-left:1px solid #D3CFC0';
+const NUM_DONE = 'width:26px; height:26px; border-radius:50%; background:#4E5C31; color:#F7F9F0; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; flex-shrink:0';
+const NUM_NOW = 'width:26px; height:26px; border-radius:50%; background:#1B1D17; color:#F4F1E8; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; flex-shrink:0';
+const NUM_NEXT = 'width:26px; height:26px; border-radius:50%; border:1px solid #BAB6A6; color:#565A4B; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:600; flex-shrink:0';
+const LBL_ON = 'font-family:\'Familjen Grotesk\', sans-serif; font-size:14px; font-weight:700';
+const LBL_OFF = 'font-family:\'Familjen Grotesk\', sans-serif; font-size:14px; font-weight:500; color:#3F4237';
+const FLAG_OK = 'font-size:10px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B';
+const FLAG_NOTE = 'font-size:10px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#1B1D17';
+const DOT = 'width:8px; height:8px; border-radius:50%; background:#BAB6A6';
+const DOT_ON = 'width:8px; height:8px; border-radius:50%; background:#4E5C31';
+const TXT = 'font-size:11px; font-weight:600; color:#565A4B';
+const TXT_ON = 'font-size:11px; font-weight:700; color:#1B1D17';
+
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      templates: [
+        { name: 'Acceptance', detail: 'Used for accepted submissions', used: 'Last used Tue', nameStyle: 'font-family:\'Familjen Grotesk\', sans-serif; font-size:16px; font-weight:700; letter-spacing:-0.015em' },
+        { name: 'Decline', detail: 'Feedback optional', used: 'Last used Tue', nameStyle: 'font-family:\'Familjen Grotesk\', sans-serif; font-size:16px; font-weight:500; letter-spacing:-0.015em' },
+        { name: 'Waitlist', detail: 'No date promised', used: 'Last used 2 Aug', nameStyle: 'font-family:\'Familjen Grotesk\', sans-serif; font-size:16px; font-weight:500; letter-spacing:-0.015em' },
+        { name: 'Task reminder', detail: 'Also sent by the daily cron', used: 'Last used Fri', nameStyle: 'font-family:\'Familjen Grotesk\', sans-serif; font-size:16px; font-weight:500; letter-spacing:-0.015em' },
+        { name: 'Schedule live', detail: 'Includes the calendar invite', used: 'Last used 5 Aug', nameStyle: 'font-family:\'Familjen Grotesk\', sans-serif; font-size:16px; font-weight:500; letter-spacing:-0.015em' },
+      ],
+      merge: [
+        { tag: '{speaker_name}' }, { tag: '{talk_title}' }, { tag: '{event_name}' },
+        { tag: '{portal_link}' }, { tag: '{task_due_date}' }, { tag: '{feedback}' },
+      ],
+      steps: [
+        { n: '✓', title: 'Recipients', detail: '23 accepted speakers', wrap: STEP_DONE, num: NUM_DONE, label: LBL_OFF },
+        { n: '✓', title: 'Template', detail: 'Acceptance, edited', wrap: STEP_DONE, num: NUM_DONE, label: LBL_OFF },
+        { n: '3', title: 'Preview', detail: 'One email per recipient', wrap: STEP_NOW, num: NUM_NOW, label: LBL_ON },
+        { n: '4', title: 'Send', detail: 'Logged in History', wrap: STEP_NEXT, num: NUM_NEXT, label: LBL_OFF },
+      ],
+      recipients: [
+        { name: 'Priya Raman', email: 'sbek-speaker@example.com', session: 'DFC-014', flag: 'Scheduled', flagStyle: FLAG_OK },
+        { name: 'Marcus Okafor', email: 'sbek-speaker2@example.com', session: 'DFC-021', flag: 'Scheduled', flagStyle: FLAG_OK },
+        { name: 'Nadia Ferrone', email: 'nadia@example.com', session: 'DFC-041', flag: 'No slot yet', flagStyle: FLAG_NOTE },
+        { name: 'Ruth Adeyemi', email: 'ruth@example.com', session: 'DFC-047', flag: 'No slot yet', flagStyle: FLAG_NOTE },
+        { name: 'Iris Bell', email: 'iris@example.com', session: 'DFC-019', flag: 'Scheduled', flagStyle: FLAG_OK },
+      ],
+      history: [
+        { when: 'Tue 11 Aug, 4:12pm', subject: 'Your talk has been accepted to DevFlow Conf 2027', count: '23 sent', template: 'Acceptance' },
+        { when: 'Tue 11 Aug, 4:09pm', subject: 'Thank you for submitting to DevFlow Conf 2027', count: '11 sent', template: 'Decline' },
+        { when: 'Fri 7 Aug, 9:30am', subject: 'Two tasks are waiting in your speaker portal', count: '9 sent', template: 'Task reminder' },
+        { when: 'Wed 5 Aug, 2:15pm', subject: 'Your session is on the published schedule', count: '14 sent', template: 'Schedule live' },
+      ],
+      tabs: [
+        { label: 'Overview', dot: DOT, text: TXT },
+        { label: 'Submissions', dot: DOT, text: TXT },
+        { label: 'Speakers', dot: DOT, text: TXT },
+        { label: 'Comms', dot: DOT_ON, text: TXT_ON },
+        { label: 'More', dot: DOT, text: TXT },
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

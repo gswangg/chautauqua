@@ -1,43 +1,81 @@
-# Eval findings — CLOSED (production verified, 2026-08-11)
+# MANDATE — implement the design redesign (2026-08-11)
 
-All findings from the production browser-eval round are **fixed and verified on the live
-deployment** (https://chautauqua.cc). No open items. This file is retained as the record
-of what was found and how it was closed; new findings should replace this content.
+The functional findings are closed (see `docs/design/` history below for the prior round's
+record). **This round is a visual redesign.** A complete design handoff now lives in
+`docs/design/` — read `docs/design/README.md` FIRST; it is authoritative over everything
+here and over the images.
 
-## Verified fixed on production (independent browser verification, post-deploy)
+## What this is
 
-| Was | Now |
-|---|---|
-| Reviewer assignment always failed "User not found" | Assign works for both scopes; assignment persists across reload and the Progress table increments |
-| Reviewer queue links all pointed to `/submissions/undefined` | Every queue link carries a real submission id; a full review was submitted end-to-end via "Submit and advance", the item left the queue, and the completed count incremented |
-| CRM duplicate merge was a silent no-op | Merge completes with a "Contacts merged." confirmation; total went 32 → 31 and the duplicate pair collapsed to one record after reload |
-| Content deliverables dashboard ignored real uploads (worklist 0/0/0 while Files listed files) | Files tab and worklist counts agree exactly across all 31 sessions |
+A high-fidelity redesign of **every route in `app/src/routeManifest.ts`** plus the modals,
+at desktop (1240px) and phone (390px) — 72 frames across 11 `.dc.html` files, with
+full-canvas screenshots in `docs/design/screens/`.
 
-Also fixed directly and deployed earlier in the same session (both were deploy-only bugs
-invisible to local gates — the reason a production eval exists):
+It is a **re-skin plus exactly two structural changes**, NOT a rewrite:
 
-- **Login 500 in production** — PBKDF2 at 600k iterations exceeds workerd's hard 100k cap.
-  `ITERATIONS = 100_000` (runtime max); DEC-004 amended; seeds regenerated.
-- **Public CFP submit 500** — a confirmation-email failure threw *after* the submission was
-  persisted, so the speaker saw an error page and every retry created a duplicate. The
-  confirmation send is now best-effort (logged with status `error` in `email_log`); the
-  submission always returns its confirmation page. Verified with both a deliverable and a
-  bouncing recipient.
+1. **Overview becomes the work itself**, not a directory of counts: named speakers with
+   Remind on the row, named submissions with Accept/Decline, sessions with Approve. The
+   sidebar/nav carries destinations only, with a badge solely when something is wrong.
+2. **The agenda works on a phone** via one-room-in-view + tap-to-place (not a shrunken
+   grid). This maps onto the existing `PUT /submissions/:id/slot` body
+   `{day, startMin, endMin, roomId}` — dragging was only ever the desktop's way of naming
+   those four values.
 
-## Earlier rounds, also verified fixed in production
-Public widgets (session card date/time/room, keyword search, speaker + gallery detail
-pages, agenda day-nav, real VEVENTs in the itinerary `.ics`, cross-surface consistency);
-per-round scorecards; free-text criterion type; server-side anonymization; speaker portal
-profile round-trip to organizer and public; task completion persistence; content-approval
-gating of public content; agenda builder with warn-not-block conflicts and auto-schedule;
-CRM directory/custom fields/CSV import/segments/pipeline; admin SPA reachable in a real
-browser (the `/admin` redirect loop and the submissions "n is not iterable" crash).
+## Hard rules
 
-## Permanent guards added as a result
-- **Browser render-sweep gate** (`npm run gate:render-sweep`, CI job): boots a seeded
-  server, authenticates per role, loads every enumerated route — desktop and mobile —
-  asserting 200 + non-empty root + zero page errors. This is the gate that would have
-  caught all three SPA render crashes before they shipped.
-- **Component render tests** (jsdom/RTL) that render each admin/portal page against
-  fixture-shaped API mocks, runnable inside a worker's own worktree.
-- Walkthrough gate extended with a **scale** module.
+- **Do NOT port `support.js` or copy inline styles out of the `.dc.html` files.** Those are
+  design references built on a streaming component runtime. (`support.js` has been removed
+  from the bundle on purpose.) Recreate the designs in our existing environment: React 18 +
+  React Router v6 + Vite for the admin SPA (`app/src/`), Hono JSX SSR for portal and public
+  (`src/routes/`). The design needs **no CSS framework**.
+- **Styling goes in `app/src/styles.css`** (already uses the `--chq-*` convention): replace
+  the token values with the handoff's, add the new component classes. Portal/public SSR
+  pages get their own styling pass against the same tokens.
+- **Preserve behavior exactly.** Optimistic updates with loud rollback; bulk selection
+  spanning pages sent in batches of 100 (`chunkSelection`, DEC-193 refetch-don't-restore);
+  conflicts surfaced never blocked; reminders bulk-per-event with the
+  `MANUAL_DEDUPE_WINDOW_MS` caption next to the send button; **deciding never emails**;
+  reviewers confined to `/review`; task status `pending|complete` only; itinerary in
+  `localStorage` → `schedule.ics?ids=`; drafts in KV. The handoff's "Interactions &
+  behaviour" section restates these — it changes none of them.
+- **Copy rules are binding** (handoff §Copy rules): no explanatory clauses in chrome, never
+  promise time, never assert what no endpoint stores, state the constraint you need before
+  acting, plain section names from the app's own vocabulary.
+- **Fonts are already vendored** at `public/fonts/FamiljenGrotesk-var.woff2` and
+  `Figtree-var.woff2` — 44 KB total, both **variable**, so `@font-face` must declare weight
+  *ranges* (`400 700` / `400 800`) with `format('woff2-variations')`. See
+  `public/fonts/README.md`. Do not add a Google Fonts network request.
+- **No new colours.** There is no red and no third accent; lateness/clashes/not-reviewed are
+  set in type (weight 800, uppercase, tracked), in Ink. Do not reintroduce a semantic red.
+- **Accessibility is part of done**: WCAG AA on every text/background pair, 10px type floor,
+  44px tap targets on phone, meaning never carried by colour alone.
+
+## Order (follow it — it degrades gracefully)
+
+The handoff's suggested order is deliberate: each step must land **green and deployable**,
+because we may ship at any point before the deadline.
+
+1. Tokens + the shell (header, nav, section pattern) in `styles.css`
+2. **Overview** — biggest behavioural change, proves the row pattern
+3. Submissions (table + detail + form builder) — highest-traffic admin screen
+4. Speakers, Content, Comms, Contacts, Review, Settings
+5. Agenda desktop, then phone tap-to-place
+6. Public surfaces + portal (server-rendered — separate styling pass)
+7. Login, password, not-found
+
+## Gates (unchanged, all must stay green)
+
+`npm run build` · `npm test` · `npm run gate:render-sweep` (desktop **and** mobile routes) ·
+`npm run walkthrough` · `npm run perf:smoke`. A restyle that breaks a walkthrough step or a
+render-sweep route is a failed task, not a tradeoff. **Add** to the render-sweep (or a new
+sibling gate) two cheap design invariants that this round makes checkable:
+
+- no computed `font-size` below 10px anywhere in the rendered admin/portal/public routes;
+- every interactive element at 390px width has a ≥44px tap target.
+
+## Scope discipline
+
+Nothing outside the redesign. No new features, no new dependencies, no CSS framework, no
+refactors of working data-fetching or role gating. If a design frame implies an endpoint we
+do not have, render what the existing endpoints actually return and note the gap in the wave
+summary rather than inventing an API.

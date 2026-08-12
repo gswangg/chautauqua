@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
+<link href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@400;500;600;700&family=Figtree:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  body { margin: 0; background: #E9E7E2; font-family: 'Figtree', Helvetica, sans-serif; color: #1B1D17; }
+  * { box-sizing: border-box; }
+  a { color: #4E5C31; text-decoration: none; }
+  a:hover { color: #3C471F; }
+</style>
+</helmet>
+
+<section style="padding:56px; display:flex; flex-wrap:wrap; gap:40px; align-items:flex-start">
+
+  <div style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:center; gap:12px">
+      <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; background:#1B1D17; color:#F4F1E8; padding:5px 10px; border-radius:4px">Contacts</span>
+      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Directory · 1240</span>
+      <span style="font-size:11px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B">Org-wide · outlives any one event</span>
+    </div>
+
+    <div style="width:1240px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:6px; overflow:hidden; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+      <header style="border-bottom:1px solid #1B1D17; padding:15px 34px; display:flex; align-items:center; gap:22px">
+        <span style="font-family:'Familjen Grotesk', sans-serif; font-size:22px; font-weight:700; letter-spacing:-0.03em">chautauqua</span>
+        <nav style="display:flex; align-items:center; gap:15px; font-size:13px; font-weight:600; line-height:1">
+          <a href="#" style="color:#565A4B; padding:4px 0">Overview</a>
+          <a href="#" style="color:#565A4B; padding:4px 0">Submissions</a>
+          <a href="#" style="color:#565A4B; padding:4px 0">Review</a>
+          <a href="#" style="color:#565A4B; padding:4px 0">Speakers</a>
+          <a href="#" style="color:#565A4B; padding:4px 0">Content</a>
+          <a href="#" style="color:#565A4B; padding:4px 0">Agenda</a>
+          <a href="#" style="color:#565A4B; padding:4px 0">Comms</a>
+          <span style="padding:4px 0; box-shadow:inset 0 -2px 0 #4E5C31">Contacts</span>
+          <a href="#" style="color:#565A4B; padding:4px 0">Settings</a>
+        </nav>
+        <div style="margin-left:auto; display:flex; align-items:center; gap:14px">
+          <span style="font-size:13px; font-weight:600">DevFlow Conf 2027</span>
+          <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Jordan A.</span>
+        </div>
+      </header>
+
+      <div style="padding:26px 34px 34px; display:flex; flex-direction:column; gap:20px">
+
+        <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:24px">
+          <div style="display:flex; align-items:baseline; gap:14px">
+            <h1 style="margin:0; font-family:'Familjen Grotesk', sans-serif; font-size:36px; font-weight:700; letter-spacing:-0.04em; line-height:1">Contacts</h1>
+            <span style="font-size:13px; color:#565A4B">318 people · 41 speakers · 6 possible duplicates</span>
+          </div>
+          <div style="display:flex; gap:9px">
+            <a href="#" style="border:1px solid #BAB6A6; border-radius:4px; padding:9px 15px; font-size:13px; font-weight:600; color:#1B1D17">Import CSV</a>
+            <a href="#" style="border:1px solid #BAB6A6; border-radius:4px; padding:9px 15px; font-size:13px; font-weight:600; color:#1B1D17">Export CSV</a>
+            <span style="background:#4E5C31; color:#F7F9F0; border-radius:4px; padding:10px 15px; font-size:13px; font-weight:700">New contact</span>
+          </div>
+        </div>
+
+        <div style="display:flex; align-items:center; gap:9px; border-top:1px solid #D3CFC0; border-bottom:1px solid #D3CFC0; padding:12px 0; flex-wrap:wrap">
+          <span style="background:#1B1D17; color:#F4F1E8; border-radius:99px; padding:7px 14px; font-size:13px; font-weight:600">Directory</span>
+          <a href="#" style="border:1px solid #BAB6A6; border-radius:99px; padding:6px 14px; font-size:13px; font-weight:500; color:#3F4237">Duplicates · 6</a>
+          <a href="#" style="border:1px solid #BAB6A6; border-radius:99px; padding:6px 14px; font-size:13px; font-weight:500; color:#3F4237">Segments · 5</a>
+          <a href="#" style="border:1px solid #BAB6A6; border-radius:99px; padding:6px 14px; font-size:13px; font-weight:500; color:#3F4237">Pipeline</a>
+          <div style="margin-left:auto; display:flex; align-items:center; gap:10px">
+            <div style="border:1px solid #BAB6A6; border-radius:4px; padding:8px 12px; font-size:13px; color:#565A4B; background:#FAF8F2; min-width:230px">Search name, email or company…</div>
+            <div style="border:1px solid #BAB6A6; border-radius:4px; padding:8px 12px; font-size:13px; font-weight:600">Segment: none ▾</div>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1.5fr 1fr; gap:26px; align-items:start">
+
+          <section>
+            <div style="display:grid; grid-template-columns:26px 1fr 130px 118px auto; gap:16px; padding:0 0 9px; border-bottom:2px solid #1B1D17; font-size:10px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">
+              <span>☐</span><span>Name and email</span><span>Company</span><span>Tags</span><span></span>
+            </div>
+            <sc-for list="{{ rows }}" as="row" hint-placeholder-count="7">
+              <div style="display:grid; grid-template-columns:26px 1fr 130px 118px auto; gap:16px; align-items:baseline; padding:13px 0; border-bottom:1px solid #E1DDCE">
+                <span style="font-size:13px; color:#565A4B">{{ row.check }}</span>
+                <div style="display:flex; flex-direction:column; gap:2px">
+                  <a href="#" style="font-family:'Familjen Grotesk', sans-serif; font-size:15px; font-weight:600; letter-spacing:-0.015em; color:#1B1D17">{{ row.name }}</a>
+                  <span style="font-size:12px; color:#565A4B">{{ row.email }}</span>
+                </div>
+                <div style="display:flex; flex-direction:column; gap:2px">
+                  <span style="font-size:13px">{{ row.company }}</span>
+                  <span style="font-size:11px; color:#565A4B">{{ row.role }}</span>
+                </div>
+                <span style="font-size:11px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B">{{ row.tags }}</span>
+                <a href="#" style="font-size:12px; font-weight:700; align-self:center">Open</a>
+              </div>
+            </sc-for>
+            <div style="display:flex; align-items:center; gap:16px; padding:15px 0 0">
+              <span style="font-size:13px; color:#565A4B">Showing 1–7 of 318</span>
+              <div style="margin-left:auto; display:flex; gap:9px">
+                <span style="border:1px solid #DDD8C8; border-radius:4px; padding:8px 14px; font-size:13px; font-weight:600; color:#8E8A7A">Previous</span>
+                <span style="border:1px solid #BAB6A6; border-radius:4px; padding:8px 14px; font-size:13px; font-weight:600">Next</span>
+              </div>
+            </div>
+          </section>
+
+          <div style="display:flex; flex-direction:column; gap:24px">
+            <section>
+              <div style="border-bottom:2px solid #1B1D17; padding-bottom:8px">
+                <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase">Where they work</span>
+              </div>
+              <sc-for list="{{ companies }}" as="c" hint-placeholder-count="5">
+                <div style="display:grid; grid-template-columns:1fr 44px; gap:12px; align-items:baseline; padding:11px 0; border-bottom:1px solid #E1DDCE">
+                  <a href="#" style="font-size:14px; color:#1B1D17">{{ c.name }}</a>
+                  <span style="font-family:'Familjen Grotesk', sans-serif; font-size:14px; font-weight:700; text-align:right">{{ c.count }}</span>
+                </div>
+              </sc-for>
+            </section>
+
+            <section>
+              <div style="border-bottom:2px solid #1B1D17; padding-bottom:8px; display:flex; align-items:baseline; justify-content:space-between">
+                <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase">Saved segments</span>
+                <a href="#" style="font-size:13px; font-weight:700">Save current filters</a>
+              </div>
+              <sc-for list="{{ segments }}" as="s" hint-placeholder-count="4">
+                <div style="display:grid; grid-template-columns:1fr auto; gap:12px; align-items:baseline; padding:12px 0; border-bottom:1px solid #E1DDCE">
+                  <div style="display:flex; flex-direction:column; gap:2px">
+                    <a href="#" style="font-size:14px; font-weight:600; color:#1B1D17">{{ s.name }}</a>
+                    <span style="font-size:12px; color:#565A4B">{{ s.rule }}</span>
+                  </div>
+                  <span style="font-family:'Familjen Grotesk', sans-serif; font-size:14px; font-weight:700">{{ s.count }}</span>
+                </div>
+              </sc-for>
+            </section>
+
+            <section>
+              <div style="border-bottom:2px solid #1B1D17; padding-bottom:8px">
+                <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase">Possible duplicates · 6</span>
+              </div>
+              <div style="padding:14px 0 0; display:flex; flex-direction:column; gap:5px">
+                <span style="font-size:14px; font-weight:600">Marcus Okafor · Marcus O.</span>
+                <span style="font-size:12px; color:#565A4B">Same email domain, one has no company</span>
+                <div style="display:flex; gap:9px; padding-top:6px">
+                  <span style="background:#4E5C31; color:#F7F9F0; border-radius:4px; padding:8px 14px; font-size:12px; font-weight:700">Merge</span>
+                  <span style="border:1px solid #BAB6A6; border-radius:4px; padding:7px 14px; font-size:12px; font-weight:600">Keep both</span>
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:center; gap:12px">
+      <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; background:#1B1D17; color:#F4F1E8; padding:5px 10px; border-radius:4px">390</span>
+      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Contacts</span>
+      <span style="font-size:11px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B">Look someone up, call them</span>
+    </div>
+
+    <div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+      <div style="border-bottom:1px solid #1B1D17; padding:14px 16px; flex-shrink:0; display:flex; flex-direction:column; gap:11px">
+        <div style="display:flex; align-items:center; gap:10px">
+          <span style="font-family:'Familjen Grotesk', sans-serif; font-size:20px; font-weight:700; letter-spacing:-0.03em">chautauqua</span>
+          <span style="margin-left:auto; font-size:12px; font-weight:600; color:#565A4B">318 people</span>
+        </div>
+        <h1 style="margin:0; font-family:'Familjen Grotesk', sans-serif; font-size:27px; font-weight:700; letter-spacing:-0.04em; line-height:1">Contacts</h1>
+        <div style="border:1px solid #BAB6A6; border-radius:6px; min-height:44px; display:flex; align-items:center; padding:0 13px; font-size:14px; color:#565A4B; background:#FAF8F2">Search name, email or company…</div>
+        <div style="display:flex; gap:7px; overflow-x:auto; -webkit-overflow-scrolling:touch">
+          <span style="flex-shrink:0; background:#1B1D17; color:#F4F1E8; border-radius:99px; min-height:44px; display:flex; align-items:center; padding:0 14px; font-size:13px; font-weight:600">All</span>
+          <span style="flex-shrink:0; border:1px solid #BAB6A6; border-radius:99px; min-height:44px; display:flex; align-items:center; padding:0 14px; font-size:13px; font-weight:500">Speakers · 41</span>
+          <span style="flex-shrink:0; border:1px solid #BAB6A6; border-radius:99px; min-height:44px; display:flex; align-items:center; padding:0 14px; font-size:13px; font-weight:500">Reviewers</span>
+        </div>
+      </div>
+
+      <div style="flex:1; min-height:0; overflow-y:auto; padding:4px 16px 16px">
+        <sc-for list="{{ rows }}" as="row" hint-placeholder-count="6">
+          <div style="padding:15px 0; border-bottom:1px solid #E1DDCE; display:flex; align-items:center; gap:13px">
+            <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:3px">
+              <span style="font-family:'Familjen Grotesk', sans-serif; font-size:16px; font-weight:600; letter-spacing:-0.02em">{{ row.name }}</span>
+              <span style="font-size:13px; color:#565A4B; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">{{ row.company }} · {{ row.role }}</span>
+              <span style="font-size:11px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B">{{ row.tags }}</span>
+            </div>
+            <span style="border:1px solid #BAB6A6; border-radius:6px; min-height:44px; display:flex; align-items:center; padding:0 14px; font-size:13px; font-weight:600; flex-shrink:0">Email</span>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="flex-shrink:0; border-top:1px solid #1B1D17; background:#EFEBDF; padding:10px 8px 14px; display:flex; gap:2px">
+        <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="5">
+          <div style="flex:1; min-height:44px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px">
+            <span style="{{ t.dot }}"></span>
+            <span style="{{ t.text }}">{{ t.label }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:center; gap:12px">
+      <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; background:#1B1D17; color:#F4F1E8; padding:5px 10px; border-radius:4px">Subscreen</span>
+      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Contact · drawer</span>
+    </div>
+
+    <div style="width:520px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:6px; overflow:hidden; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+      <div style="border-bottom:1px solid #1B1D17; padding:20px 26px; display:flex; align-items:flex-start; justify-content:space-between; gap:16px">
+        <div style="display:flex; flex-direction:column; gap:4px">
+          <span style="font-family:'Familjen Grotesk', sans-serif; font-size:24px; font-weight:700; letter-spacing:-0.035em; line-height:1">Priya Raman</span>
+          <span style="font-size:13px; color:#565A4B">Latticework Systems · Principal Engineer</span>
+        </div>
+        <a href="#" style="font-size:13px; font-weight:700">Close</a>
+      </div>
+      <div style="padding:20px 26px 28px; display:flex; flex-direction:column; gap:22px">
+        <sc-for list="{{ contactFields }}" as="c" hint-placeholder-count="5">
+          <div style="display:grid; grid-template-columns:130px 1fr; gap:16px; align-items:baseline; padding-bottom:12px; border-bottom:1px solid #E1DDCE">
+            <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">{{ c.label }}</span>
+            <span style="font-size:15px; line-height:1.55">{{ c.value }}</span>
+          </div>
+        </sc-for>
+        <section>
+          <div style="border-bottom:2px solid #1B1D17; padding-bottom:8px">
+            <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase">Across your events</span>
+          </div>
+          <sc-for list="{{ contactHistory }}" as="h" hint-placeholder-count="3">
+            <div style="display:grid; grid-template-columns:120px 1fr; gap:14px; align-items:baseline; padding:11px 0; border-bottom:1px solid #E1DDCE">
+              <span style="font-size:13px; font-weight:600">{{ h.event }}</span>
+              <span style="font-size:13px; color:#565A4B">{{ h.what }}</span>
+            </div>
+          </sc-for>
+        </section>
+        <div style="display:flex; gap:9px">
+          <span style="background:#4E5C31; color:#F7F9F0; border-radius:4px; padding:11px 16px; font-size:13px; font-weight:700">Save</span>
+          <span style="border:1px solid #BAB6A6; border-radius:4px; padding:10px 16px; font-size:13px; font-weight:600; background:#EFEBDF">Email</span>
+          <span style="border:1px solid #BAB6A6; border-radius:4px; padding:10px 16px; font-size:13px; font-weight:600; background:#EFEBDF">Add to event</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:center; gap:12px">
+      <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; background:#1B1D17; color:#F4F1E8; padding:5px 10px; border-radius:4px">Subscreen</span>
+      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Import CSV · step 2 of 3</span>
+    </div>
+
+    <div style="width:640px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:6px; overflow:hidden; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+      <div style="border-bottom:1px solid #1B1D17; padding:20px 28px; display:flex; align-items:flex-end; justify-content:space-between; gap:16px">
+        <div style="display:flex; flex-direction:column; gap:4px">
+          <span style="font-family:'Familjen Grotesk', sans-serif; font-size:24px; font-weight:700; letter-spacing:-0.035em; line-height:1">Match the columns</span>
+          <span style="font-size:13px; color:#565A4B">speakers.csv · 214 rows</span>
+        </div>
+        <a href="#" style="font-size:13px; font-weight:700">Cancel</a>
+      </div>
+      <div style="padding:20px 28px 28px; display:flex; flex-direction:column; gap:20px">
+        <sc-for list="{{ mapping }}" as="m" hint-placeholder-count="5">
+          <div style="display:grid; grid-template-columns:1fr 26px 1fr; gap:14px; align-items:center; padding-bottom:12px; border-bottom:1px solid #E1DDCE">
+            <div style="display:flex; flex-direction:column; gap:2px">
+              <span style="font-size:14px; font-weight:600">{{ m.column }}</span>
+              <span style="font-size:12px; color:#565A4B">{{ m.sample }}</span>
+            </div>
+            <span style="font-size:13px; color:#565A4B; text-align:center">→</span>
+            <span style="{{ m.targetStyle }}">{{ m.target }}</span>
+          </div>
+        </sc-for>
+        <div style="display:flex; align-items:center; gap:14px">
+          <span style="background:#4E5C31; color:#F7F9F0; border-radius:4px; padding:11px 17px; font-size:14px; font-weight:700">Import 214 rows</span>
+          <span style="font-size:13px; color:#565A4B">9 rows match existing contacts by email · they will be updated</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:center; gap:12px">
+      <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; background:#1B1D17; color:#F4F1E8; padding:5px 10px; border-radius:4px">Subscreen</span>
+      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Pipeline · invitations for next year</span>
+    </div>
+
+    <div style="width:1100px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:6px; overflow:hidden; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+      <div style="border-bottom:1px solid #1B1D17; padding:20px 32px; display:flex; align-items:flex-end; justify-content:space-between; gap:20px">
+        <div style="display:flex; flex-direction:column; gap:5px">
+          <a href="#" style="font-size:13px; font-weight:700">‹ Contacts</a>
+          <span style="font-family:'Familjen Grotesk', sans-serif; font-size:28px; font-weight:700; letter-spacing:-0.04em; line-height:1">Pipeline</span>
+        </div>
+        <span style="font-size:13px; color:#565A4B">18 people · drag between columns</span>
+      </div>
+      <div style="padding:22px 32px 34px; display:grid; grid-template-columns:repeat(4, 1fr); gap:18px; align-items:start">
+        <sc-for list="{{ pipeline }}" as="col" hint-placeholder-count="4">
+          <div style="display:flex; flex-direction:column; gap:12px">
+            <div style="border-bottom:2px solid #1B1D17; padding-bottom:8px; display:flex; align-items:baseline; justify-content:space-between">
+              <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase">{{ col.name }}</span>
+              <span style="font-size:12px; font-weight:700; color:#565A4B">{{ col.count }}</span>
+            </div>
+            <sc-for list="{{ col.cards }}" as="card" hint-placeholder-count="3">
+              <div style="border:1px solid #D3CFC0; border-radius:5px; background:#FAF8F2; padding:12px; display:flex; flex-direction:column; gap:3px">
+                <span style="font-family:'Familjen Grotesk', sans-serif; font-size:14px; font-weight:600; letter-spacing:-0.01em">{{ card.name }}</span>
+                <span style="font-size:12px; color:#565A4B">{{ card.company }}</span>
+                <span style="font-size:11px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B">{{ card.note }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:center; gap:12px">
+      <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; background:#1B1D17; color:#F4F1E8; padding:5px 10px; border-radius:4px">Subscreen</span>
+      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Duplicates · merge</span>
+    </div>
+
+    <div style="width:760px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:6px; overflow:hidden; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+      <div style="border-bottom:1px solid #1B1D17; padding:20px 28px; display:flex; align-items:flex-end; justify-content:space-between; gap:20px">
+        <div style="display:flex; flex-direction:column; gap:5px">
+          <a href="#" style="font-size:13px; font-weight:700">‹ Contacts</a>
+          <span style="font-family:'Familjen Grotesk', sans-serif; font-size:26px; font-weight:700; letter-spacing:-0.04em; line-height:1">Merge two records</span>
+        </div>
+        <span style="font-size:13px; color:#565A4B">1 of 6 pairs</span>
+      </div>
+      <div style="padding:20px 28px 30px; display:flex; flex-direction:column; gap:16px">
+        <div style="display:grid; grid-template-columns:150px 1fr 1fr; gap:16px; padding-bottom:9px; border-bottom:2px solid #1B1D17">
+          <span style="font-size:10px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Field</span>
+          <span style="font-size:11px; font-weight:800; letter-spacing:0.08em; text-transform:uppercase">Keep this one</span>
+          <span style="font-size:11px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:#565A4B">Marcus O.</span>
+        </div>
+        <sc-for list="{{ mergeRows }}" as="m" hint-placeholder-count="5">
+          <div style="display:grid; grid-template-columns:150px 1fr 1fr; gap:16px; align-items:baseline; padding-bottom:12px; border-bottom:1px solid #E1DDCE">
+            <span style="font-size:13px; font-weight:600; color:#3F4237">{{ m.label }}</span>
+            <span style="{{ m.keepStyle }}">{{ m.keep }}</span>
+            <span style="{{ m.dropStyle }}">{{ m.drop }}</span>
+          </div>
+        </sc-for>
+        <div style="display:flex; align-items:center; gap:14px">
+          <span style="background:#4E5C31; color:#F7F9F0; border-radius:4px; padding:11px 17px; font-size:14px; font-weight:700">Merge</span>
+          <span style="border:1px solid #BAB6A6; border-radius:4px; padding:10px 16px; font-size:13px; font-weight:600; background:#EFEBDF">Not a duplicate</span>
+          <span style="font-size:13px; color:#565A4B">3 submissions and 1 task move to the kept record</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:center; gap:12px">
+      <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; background:#1B1D17; color:#F4F1E8; padding:5px 10px; border-radius:4px">390</span>
+      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Contact · 390</span>
+      <span style="font-size:11px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B">The errand you actually run on a phone</span>
+    </div>
+
+    <div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+      <div style="border-bottom:1px solid #1B1D17; padding:14px 16px; flex-shrink:0; display:flex; flex-direction:column; gap:7px">
+        <a href="#" style="font-size:13px; font-weight:700; min-height:44px; display:flex; align-items:center">‹ Contacts</a>
+        <h1 style="margin:0; font-family:'Familjen Grotesk', sans-serif; font-size:25px; font-weight:700; letter-spacing:-0.04em; line-height:1.05">Priya Raman</h1>
+        <span style="font-size:13px; color:#565A4B">Latticework Systems · Principal Engineer</span>
+      </div><div style="flex:1; min-height:0; overflow-y:auto; padding:14px 16px 16px">
+        <sc-for list="{{ contactFields }}" as="c" hint-placeholder-count="5">
+          <div style="padding:14px 0; border-bottom:1px solid #E1DDCE; display:flex; flex-direction:column; gap:4px">
+            <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">{{ c.label }}</span>
+            <span style="font-size:15px; line-height:1.5; word-break:break-word">{{ c.value }}</span>
+          </div>
+        </sc-for>
+        <div style="padding:18px 0 8px; border-bottom:2px solid #1B1D17">
+          <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase">Across your events</span>
+        </div>
+        <sc-for list="{{ contactHistory }}" as="h" hint-placeholder-count="3">
+          <div style="padding:13px 0; border-bottom:1px solid #E1DDCE; display:flex; flex-direction:column; gap:3px">
+            <span style="font-size:14px; font-weight:600">{{ h.event }}</span>
+            <span style="font-size:13px; color:#565A4B">{{ h.what }}</span>
+          </div>
+        </sc-for></div>
+      <div style="flex-shrink:0; border-top:1px solid #1B1D17; background:#EFEBDF; padding:12px 16px 16px; display:flex; gap:8px">
+        <span style="flex:1; background:#4E5C31; color:#F7F9F0; border-radius:6px; min-height:48px; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700">Email Priya</span>
+        <span style="border:1px solid #BAB6A6; border-radius:6px; min-height:48px; display:flex; align-items:center; padding:0 16px; font-size:13px; font-weight:600">Edit</span>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:center; gap:12px">
+      <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; background:#1B1D17; color:#F4F1E8; padding:5px 10px; border-radius:4px">390</span>
+      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Pipeline · 390</span>
+      <span style="font-size:11px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B">One column at a time</span>
+    </div>
+
+    <div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+      <div style="border-bottom:1px solid #1B1D17; padding:14px 16px; flex-shrink:0; display:flex; flex-direction:column; gap:7px">
+        <a href="#" style="font-size:13px; font-weight:700; min-height:44px; display:flex; align-items:center">‹ Contacts</a>
+        <h1 style="margin:0; font-family:'Familjen Grotesk', sans-serif; font-size:25px; font-weight:700; letter-spacing:-0.04em; line-height:1.05">Pipeline</h1>
+        <span style="font-size:13px; color:#565A4B">18 people</span>
+      </div><div style="flex-shrink:0; border-bottom:1px solid #E1DDCE; padding:12px 16px; display:flex; gap:7px; overflow-x:auto; -webkit-overflow-scrolling:touch">
+        <span style="flex-shrink:0; background:#1B1D17; color:#F4F1E8; border-radius:99px; min-height:44px; display:flex; align-items:center; padding:0 14px; font-size:13px; font-weight:600">Idea · 7</span>
+        <span style="flex-shrink:0; border:1px solid #BAB6A6; border-radius:99px; min-height:44px; display:flex; align-items:center; padding:0 14px; font-size:13px; font-weight:500">Asked · 5</span>
+        <span style="flex-shrink:0; border:1px solid #BAB6A6; border-radius:99px; min-height:44px; display:flex; align-items:center; padding:0 14px; font-size:13px; font-weight:500">Said yes · 4</span>
+        <span style="flex-shrink:0; border:1px solid #BAB6A6; border-radius:99px; min-height:44px; display:flex; align-items:center; padding:0 14px; font-size:13px; font-weight:500">Not this year · 2</span>
+      </div><div style="flex:1; min-height:0; overflow-y:auto; padding:14px 16px 16px">
+        <sc-for list="{{ pipelinePhone }}" as="c" hint-placeholder-count="3">
+          <div style="padding:15px 0; border-bottom:1px solid #E1DDCE; display:flex; align-items:center; gap:12px">
+            <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:3px">
+              <span style="font-family:'Familjen Grotesk', sans-serif; font-size:16px; font-weight:600; letter-spacing:-0.015em">{{ c.name }}</span>
+              <span style="font-size:13px; color:#565A4B">{{ c.company }}</span>
+              <span style="font-size:11px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B">{{ c.note }}</span>
+            </div>
+            <span style="border:1px solid #BAB6A6; border-radius:6px; background:#EFEBDF; min-height:44px; display:flex; align-items:center; padding:0 13px; font-size:13px; font-weight:600">Move ›</span>
+          </div>
+        </sc-for></div>
+      <div style="flex-shrink:0; border-top:1px solid #1B1D17; background:#EFEBDF; padding:12px 16px 16px; display:flex; gap:8px">
+        <span style="flex:1; background:#4E5C31; color:#F7F9F0; border-radius:6px; min-height:48px; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700">Add someone</span>
+        <span style="border:1px solid #BAB6A6; border-radius:6px; min-height:48px; display:flex; align-items:center; padding:0 16px; font-size:13px; font-weight:600">Filter</span>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:center; gap:12px">
+      <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; background:#1B1D17; color:#F4F1E8; padding:5px 10px; border-radius:4px">390</span>
+      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Import CSV · 390</span>
+      <span style="font-size:11px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B">One column per screen</span>
+    </div>
+
+    <div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+      <div style="border-bottom:1px solid #1B1D17; padding:14px 16px; flex-shrink:0; display:flex; flex-direction:column; gap:7px">
+        <a href="#" style="font-size:13px; font-weight:700; min-height:44px; display:flex; align-items:center">‹ Contacts</a>
+        <h1 style="margin:0; font-family:'Familjen Grotesk', sans-serif; font-size:25px; font-weight:700; letter-spacing:-0.04em; line-height:1.05">Match the columns</h1>
+        <span style="font-size:13px; color:#565A4B">speakers.csv · 214 rows · 2 of 5</span>
+      </div><div style="flex:1; min-height:0; overflow-y:auto; padding:14px 16px 16px">
+        <div style="padding:6px 0 16px; display:flex; flex-direction:column; gap:6px">
+          <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Column 2 of 5</span>
+          <span style="font-family:'Familjen Grotesk', sans-serif; font-size:22px; font-weight:700; letter-spacing:-0.03em">email_address</span>
+          <span style="font-size:13px; color:#565A4B">First three values: priya@example.com, marcus@example.com, nadia@example.com</span>
+        </div>
+        <div style="border-bottom:2px solid #1B1D17; padding-bottom:8px">
+          <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase">Import it as</span>
+        </div>
+        <sc-for list="{{ importTargets }}" as="t" hint-placeholder-count="5">
+          <div style="{{ t.style }}">
+            <span style="{{ t.mark }}"></span>
+            {{ t.label }}
+          </div>
+        </sc-for>
+        <div style="padding:16px 0 0; font-size:13px; color:#565A4B; line-height:1.5">9 rows match an existing contact by email · those get updated</div></div>
+      <div style="flex-shrink:0; border-top:1px solid #1B1D17; background:#EFEBDF; padding:12px 16px 16px; display:flex; gap:8px">
+        <span style="flex:1; background:#4E5C31; color:#F7F9F0; border-radius:6px; min-height:48px; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700">Next column</span>
+        <span style="border:1px solid #BAB6A6; border-radius:6px; min-height:48px; display:flex; align-items:center; padding:0 16px; font-size:13px; font-weight:600">Skip</span>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:center; gap:12px">
+      <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; background:#1B1D17; color:#F4F1E8; padding:5px 10px; border-radius:4px">390</span>
+      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Merge · 390</span>
+      <span style="font-size:11px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B">Pick a side, field by field</span>
+    </div>
+
+    <div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+      <div style="border-bottom:1px solid #1B1D17; padding:14px 16px; flex-shrink:0; display:flex; flex-direction:column; gap:7px">
+        <a href="#" style="font-size:13px; font-weight:700; min-height:44px; display:flex; align-items:center">‹ Duplicates</a>
+        <h1 style="margin:0; font-family:'Familjen Grotesk', sans-serif; font-size:25px; font-weight:700; letter-spacing:-0.04em; line-height:1.05">Merge two records</h1>
+        <span style="font-size:13px; color:#565A4B">1 of 6 pairs · Marcus Okafor</span>
+      </div><div style="flex:1; min-height:0; overflow-y:auto; padding:14px 16px 16px">
+        <sc-for list="{{ mergeRows }}" as="m" hint-placeholder-count="5">
+          <div style="padding:15px 0; border-bottom:1px solid #E1DDCE; display:flex; flex-direction:column; gap:8px">
+            <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">{{ m.label }}</span>
+            <div style="border:1px solid #4E5C31; border-radius:6px; background:#FAF8F2; min-height:48px; display:flex; align-items:center; padding:0 13px; font-size:15px; font-weight:600; word-break:break-word">{{ m.keep }}</div>
+            <div style="border:1px solid #BAB6A6; border-radius:6px; min-height:48px; display:flex; align-items:center; padding:0 13px; font-size:15px; color:#565A4B; text-decoration:line-through; text-decoration-color:#A8A392; word-break:break-word">{{ m.drop }}</div>
+          </div>
+        </sc-for>
+        <div style="padding:16px 0 0; font-size:13px; color:#565A4B; line-height:1.5">3 submissions and 1 task move to the record you keep</div></div>
+      <div style="flex-shrink:0; border-top:1px solid #1B1D17; background:#EFEBDF; padding:12px 16px 16px; display:flex; gap:8px">
+        <span style="flex:1; background:#4E5C31; color:#F7F9F0; border-radius:6px; min-height:48px; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700">Merge them</span>
+        <span style="border:1px solid #BAB6A6; border-radius:6px; min-height:48px; display:flex; align-items:center; padding:0 16px; font-size:13px; font-weight:600">Not a duplicate</span>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:center; gap:12px">
+      <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; background:#1B1D17; color:#F4F1E8; padding:5px 10px; border-radius:4px">Modal</span>
+      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Bulk email</span>
+      <span style="font-size:11px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B">2 contacts selected</span>
+    </div>
+    <div style="width:560px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:6px; overflow:hidden; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+      <div style="border-bottom:1px solid #1B1D17; padding:20px 26px; display:flex; align-items:flex-start; justify-content:space-between; gap:16px">
+        <div style="display:flex; flex-direction:column; gap:4px">
+          <span style="font-family:'Familjen Grotesk', sans-serif; font-size:23px; font-weight:700; letter-spacing:-0.035em; line-height:1">Email 2 contacts</span>
+          <span style="font-size:13px; color:#565A4B">Priya Raman, Marcus Okafor</span>
+        </div>
+        <a href="#" style="font-size:13px; font-weight:700">Close</a>
+      </div>
+      <div style="padding:20px 26px 26px; display:flex; flex-direction:column; gap:16px">
+        <div style="display:flex; flex-direction:column; gap:6px">
+          <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Subject</span>
+          <div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; min-height:46px; display:flex; align-items:center; padding:0 13px; font-size:15px; color:#3F4237">A quick question about your session</div>
+        </div><div style="display:flex; flex-direction:column; gap:6px">
+          <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Message</span>
+          <div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; padding:13px; min-height:84px; line-height:1.6; font-size:15px; color:#3F4237">Hi {first_name}, …</div>
+        </div><span style="font-size:13px; color:#565A4B; line-height:1.5">Sent one at a time · logged in Comms history</span>
+        <div style="display:flex; gap:9px; padding-top:4px">
+          <span style="background:#4E5C31; color:#F7F9F0; border-radius:4px; min-height:46px; display:flex; align-items:center; padding:0 18px; font-size:14px; font-weight:700">Send 2 emails</span>
+          <span style="border:1px solid #BAB6A6; border-radius:4px; background:#EFEBDF; min-height:46px; display:flex; align-items:center; padding:0 16px; font-size:13px; font-weight:600">Cancel</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:center; gap:12px">
+      <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; background:#1B1D17; color:#F4F1E8; padding:5px 10px; border-radius:4px">Modal</span>
+      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Add to an event</span>
+      <span style="font-size:11px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B">Puts a contact on this year</span>
+    </div>
+    <div style="width:480px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:6px; overflow:hidden; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+      <div style="border-bottom:1px solid #1B1D17; padding:20px 26px; display:flex; align-items:flex-start; justify-content:space-between; gap:16px">
+        <div style="display:flex; flex-direction:column; gap:4px">
+          <span style="font-family:'Familjen Grotesk', sans-serif; font-size:23px; font-weight:700; letter-spacing:-0.035em; line-height:1">Add to an event</span>
+          <span style="font-size:13px; color:#565A4B">Priya Raman</span>
+        </div>
+        <a href="#" style="font-size:13px; font-weight:700">Close</a>
+      </div>
+      <div style="padding:20px 26px 26px; display:flex; flex-direction:column; gap:16px">
+        <div style="display:flex; flex-direction:column; gap:8px">
+          <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Event</span>
+          <div style="border:1px solid #4E5C31; border-radius:4px; background:#FAF8F2; min-height:46px; display:flex; align-items:center; padding:0 13px; font-size:15px; font-weight:600">DevFlow Conf 2027</div>
+          <div style="border:1px solid #BAB6A6; border-radius:4px; min-height:46px; display:flex; align-items:center; padding:0 13px; font-size:15px; color:#565A4B">DevFlow Conf 2028 · planning</div>
+        </div><div style="display:flex; flex-direction:column; gap:8px">
+          <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">As</span>
+          <div style="display:flex; gap:8px">
+            <span style="border:1px solid #4E5C31; border-radius:4px; background:#FAF8F2; min-height:46px; display:flex; align-items:center; padding:0 15px; font-size:14px; font-weight:700">Speaker</span>
+            <span style="border:1px solid #BAB6A6; border-radius:4px; min-height:46px; display:flex; align-items:center; padding:0 15px; font-size:14px">Reviewer</span>
+            <span style="border:1px solid #BAB6A6; border-radius:4px; min-height:46px; display:flex; align-items:center; padding:0 15px; font-size:14px">Guest</span>
+          </div>
+        </div>
+        <div style="display:flex; gap:9px; padding-top:4px">
+          <span style="background:#4E5C31; color:#F7F9F0; border-radius:4px; min-height:46px; display:flex; align-items:center; padding:0 18px; font-size:14px; font-weight:700">Add them</span>
+          <span style="border:1px solid #BAB6A6; border-radius:4px; background:#EFEBDF; min-height:46px; display:flex; align-items:center; padding:0 16px; font-size:13px; font-weight:600">Cancel</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const DOT = 'width:8px; height:8px; border-radius:50%; background:#BAB6A6';
+const DOT_ON = 'width:8px; height:8px; border-radius:50%; background:#4E5C31';
+const TXT = 'font-size:11px; font-weight:600; color:#565A4B';
+const TXT_ON = 'font-size:11px; font-weight:700; color:#1B1D17';
+const TARGET_SET = 'font-size:14px; font-weight:600; border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; padding:10px 12px';
+const TARGET_SKIP = 'font-size:14px; font-weight:500; color:#565A4B; border:1px dashed #BAB6A6; border-radius:4px; padding:10px 12px';
+const KEEP = 'font-size:15px; font-weight:600';
+const DROP = 'font-size:15px; color:#565A4B; text-decoration:line-through; text-decoration-color:#A8A392';
+
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      rows: [
+        { check: '☑', name: 'Priya Raman', email: 'sbek-speaker@example.com', company: 'Latticework Systems', role: 'Principal Engineer', tags: 'Speaker · 2027' },
+        { check: '☑', name: 'Marcus Okafor', email: 'sbek-speaker2@example.com', company: 'Cloudreach Labs', role: 'Staff Developer Advocate', tags: 'Speaker · 2027' },
+        { check: '☐', name: 'Sam Whitfield', email: 'sbek-reviewer@example.com', company: 'Independent', role: 'Program committee', tags: 'Reviewer' },
+        { check: '☐', name: 'Nadia Ferrone', email: 'nadia@example.com', company: 'Northwind Data', role: 'Research Engineer', tags: 'Speaker' },
+        { check: '☐', name: 'Ruth Adeyemi', email: 'ruth@example.com', company: 'Meridian Tools', role: 'DX Lead', tags: 'Speaker' },
+        { check: '☐', name: 'Iris Bell', email: 'iris@example.com', company: 'Latticework Systems', role: 'Staff Engineer', tags: 'Speaker · 2026' },
+        { check: '☐', name: 'Oskar Vance', email: 'oskar@example.com', company: 'Independent', role: '—', tags: 'Declined 2027' },
+      ],
+      companies: [
+        { name: 'Latticework Systems', count: '7' },
+        { name: 'Cloudreach Labs', count: '5' },
+        { name: 'Northwind Data', count: '4' },
+        { name: 'Meridian Tools', count: '3' },
+        { name: 'Independent', count: '19' },
+      ],
+      segments: [
+        { name: 'Accepted speakers 2027', rule: 'Tag is speaker · status accepted', count: '23' },
+        { name: 'Never submitted', rule: 'No submission in any event', count: '112' },
+        { name: 'Returning from 2026', rule: 'Tag contains 2026', count: '38' },
+        { name: 'Reviewers, all waves', rule: 'Tag is reviewer', count: '9' },
+      ],
+      contactFields: [
+        { label: 'Email', value: 'sbek-speaker@example.com' },
+        { label: 'Company', value: 'Latticework Systems' },
+        { label: 'Title', value: 'Principal Engineer' },
+        { label: 'Tags', value: 'Speaker · 2027 · returning' },
+        { label: 'Dietary', value: 'Vegetarian · T-shirt M' },
+      ],
+      contactHistory: [
+        { event: 'DevFlow 2027', what: 'Accepted · Taming 40-Minute CI' },
+        { event: 'DevFlow 2026', what: 'Spoke · Build Caches in Anger' },
+        { event: 'DevFlow 2025', what: 'Submitted, declined' },
+      ],
+      mapping: [
+        { column: 'full_name', sample: 'Priya Raman', target: 'Name', targetStyle: TARGET_SET },
+        { column: 'email_address', sample: 'priya@example.com', target: 'Email', targetStyle: TARGET_SET },
+        { column: 'org', sample: 'Latticework Systems', target: 'Company', targetStyle: TARGET_SET },
+        { column: 'job_title', sample: 'Principal Engineer', target: 'Title', targetStyle: TARGET_SET },
+        { column: 'internal_notes', sample: 'met at PlatformCon', target: 'Skip this column', targetStyle: TARGET_SKIP },
+      ],
+      pipeline: [
+        { name: 'Idea', count: '7', cards: [
+          { name: 'Aisha Karim', company: 'Vector Foundry', note: 'Suggested by Priya' },
+          { name: 'Tom Vasquez', company: 'Riverbed', note: 'Wrote the CI post' },
+          { name: 'Lena Fischer', company: 'Northwind Data', note: 'Spoke 2025' },
+        ] },
+        { name: 'Asked', count: '5', cards: [
+          { name: 'Ben Aturo', company: 'Cloudreach Labs', note: 'Emailed 2 Aug' },
+          { name: 'Sofia Marchetti', company: 'Latticework', note: 'Emailed 4 Aug' },
+        ] },
+        { name: 'Said yes', count: '4', cards: [
+          { name: 'Dana Whitmore', company: 'Fieldnote Docs', note: 'Wants a workshop' },
+          { name: 'Iris Bell', company: 'Latticework', note: 'Any track' },
+        ] },
+        { name: 'Not this year', count: '2', cards: [
+          { name: 'Oskar Vance', company: 'Independent', note: 'Ask again in 2028' },
+        ] },
+      ],
+      pipelinePhone: [
+        { name: 'Aisha Karim', company: 'Vector Foundry', note: 'Suggested by Priya' },
+        { name: 'Tom Vasquez', company: 'Riverbed', note: 'Wrote the CI post' },
+        { name: 'Lena Fischer', company: 'Northwind Data', note: 'Spoke 2025' },
+      ],
+      importTargets: [
+        { label: 'Email', style: 'display:flex; align-items:center; gap:11px; border:1px solid #4E5C31; border-radius:6px; background:#FAF8F2; min-height:48px; padding:0 14px; font-size:15px; font-weight:700; margin-top:10px', mark: 'width:16px; height:16px; border-radius:50%; border:5px solid #4E5C31; flex-shrink:0' },
+        { label: 'Name', style: 'display:flex; align-items:center; gap:11px; border:1px solid #BAB6A6; border-radius:6px; background:#FAF8F2; min-height:48px; padding:0 14px; font-size:15px; margin-top:10px', mark: 'width:16px; height:16px; border-radius:50%; border:1px solid #8E8A7A; flex-shrink:0' },
+        { label: 'Company', style: 'display:flex; align-items:center; gap:11px; border:1px solid #BAB6A6; border-radius:6px; background:#FAF8F2; min-height:48px; padding:0 14px; font-size:15px; margin-top:10px', mark: 'width:16px; height:16px; border-radius:50%; border:1px solid #8E8A7A; flex-shrink:0' },
+        { label: 'Job title', style: 'display:flex; align-items:center; gap:11px; border:1px solid #BAB6A6; border-radius:6px; background:#FAF8F2; min-height:48px; padding:0 14px; font-size:15px; margin-top:10px', mark: 'width:16px; height:16px; border-radius:50%; border:1px solid #8E8A7A; flex-shrink:0' },
+        { label: 'Skip this column', style: 'display:flex; align-items:center; gap:11px; border:1px dashed #BAB6A6; border-radius:6px; min-height:48px; padding:0 14px; font-size:15px; color:#565A4B; margin-top:10px', mark: 'width:16px; height:16px; border-radius:50%; border:1px solid #8E8A7A; flex-shrink:0' },
+      ],
+      mergeRows: [
+        { label: 'Name', keep: 'Marcus Okafor', drop: 'Marcus O.', keepStyle: KEEP, dropStyle: DROP },
+        { label: 'Email', keep: 'sbek-speaker2@example.com', drop: 'marcus@cloudreach.example', keepStyle: KEEP, dropStyle: DROP },
+        { label: 'Company', keep: 'Cloudreach Labs', drop: '—', keepStyle: KEEP, dropStyle: DROP },
+        { label: 'Title', keep: 'Staff Developer Advocate', drop: 'Developer Advocate', keepStyle: KEEP, dropStyle: DROP },
+        { label: 'Tags', keep: 'Speaker · 2027 · 2026', drop: 'Speaker', keepStyle: KEEP, dropStyle: DROP },
+      ],
+      tabs: [
+        { label: 'Overview', dot: DOT, text: TXT },
+        { label: 'Submissions', dot: DOT, text: TXT },
+        { label: 'Speakers', dot: DOT, text: TXT },
+        { label: 'Contacts', dot: DOT_ON, text: TXT_ON },
+        { label: 'More', dot: DOT, text: TXT },
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
+<link href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@400;500;600;700&family=Figtree:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  body { margin: 0; background: #E9E7E2; font-family: 'Figtree', Helvetica, sans-serif; color: #1B1D17; }
+  * { box-sizing: border-box; }
+  a { color: #4E5C31; text-decoration: none; }
+  a:hover { color: #3C471F; }
+</style>
+</helmet>
+
+<section style="padding:56px; display:flex; flex-wrap:wrap; gap:40px; align-items:flex-start">
+
+  <div style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:center; gap:12px">
+      <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; background:#1B1D17; color:#F4F1E8; padding:5px 10px; border-radius:4px">Agenda</span>
+      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Day grid · 1240</span>
+      <span style="font-size:11px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B">Rooms across, 15-minute rows, drag from the tray</span>
+    </div>
+
+    <div style="width:1240px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:6px; overflow:hidden; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+      <header style="border-bottom:1px solid #1B1D17; padding:15px 34px; display:flex; align-items:center; gap:22px">
+        <span style="font-family:'Familjen Grotesk', sans-serif; font-size:22px; font-weight:700; letter-spacing:-0.03em">chautauqua</span>
+        <nav style="display:flex; align-items:center; gap:15px; font-size:13px; font-weight:600; line-height:1">
+          <a href="#" style="color:#565A4B; padding:4px 0">Overview</a>
+          <a href="#" style="color:#565A4B; padding:4px 0">Submissions</a>
+          <a href="#" style="color:#565A4B; padding:4px 0">Review</a>
+          <a href="#" style="color:#565A4B; padding:4px 0">Speakers</a>
+          <a href="#" style="color:#565A4B; padding:4px 0">Content</a>
+          <span style="padding:4px 0; box-shadow:inset 0 -2px 0 #4E5C31">Agenda</span>
+          <a href="#" style="color:#565A4B; padding:4px 0">Comms</a>
+          <a href="#" style="color:#565A4B; padding:4px 0">Contacts</a>
+          <a href="#" style="color:#565A4B; padding:4px 0">Settings</a>
+        </nav>
+        <div style="margin-left:auto; display:flex; align-items:center; gap:14px">
+          <span style="font-size:13px; font-weight:600">DevFlow Conf 2027</span>
+          <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Jordan A.</span>
+        </div>
+      </header>
+
+      <div style="padding:26px 34px 34px; display:flex; flex-direction:column; gap:18px">
+
+        <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:24px">
+          <div style="display:flex; align-items:baseline; gap:14px">
+            <h1 style="margin:0; font-family:'Familjen Grotesk', sans-serif; font-size:36px; font-weight:700; letter-spacing:-0.04em; line-height:1">Agenda</h1>
+            <span style="font-size:13px; color:#565A4B">6 unplaced · <strong style="color:#1B1D17">2 conflicts</strong> · 74% placed</span>
+          </div>
+          <div style="display:flex; gap:9px">
+            <a href="#" style="border:1px solid #BAB6A6; border-radius:4px; padding:9px 15px; font-size:13px; font-weight:600; color:#1B1D17">Auto-schedule</a>
+            <span style="background:#4E5C31; color:#F7F9F0; border-radius:4px; padding:10px 15px; font-size:13px; font-weight:700">Publish schedule</span>
+          </div>
+        </div>
+
+        <div style="display:flex; align-items:center; gap:10px; border-top:1px solid #D3CFC0; border-bottom:1px solid #D3CFC0; padding:12px 0">
+          <span style="background:#1B1D17; color:#F4F1E8; border-radius:99px; padding:7px 14px; font-size:13px; font-weight:600">Tue 12 May</span>
+          <a href="#" style="border:1px solid #BAB6A6; border-radius:99px; padding:6px 14px; font-size:13px; font-weight:500; color:#3F4237">Wed 13 May</a>
+          <a href="#" style="border:1px solid #BAB6A6; border-radius:99px; padding:6px 14px; font-size:13px; font-weight:500; color:#3F4237">Thu 14 May</a>
+          <span style="margin-left:auto; font-size:11px; font-weight:600; letter-spacing:0.04em; text-transform:uppercase; color:#565A4B">Clashes are flagged, not blocked</span>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 268px; gap:18px; align-items:start">
+
+          <div style="border:1px solid #D3CFC0; border-radius:5px; background:#FAF8F2; overflow:hidden">
+            <div style="display:grid; grid-template-columns:62px repeat(4, 1fr)">
+              <div style="border-bottom:1px solid #1B1D17; padding:10px 8px"></div>
+              <sc-for list="{{ rooms }}" as="r" hint-placeholder-count="4">
+                <div style="border-bottom:1px solid #1B1D17; border-left:1px solid #E1DDCE; padding:10px 10px; font-family:'Familjen Grotesk', sans-serif; font-size:13px; font-weight:700">{{ r.name }}</div>
+              </sc-for>
+
+              <sc-for list="{{ grid }}" as="row" hint-placeholder-count="10">
+                <div style="border-bottom:1px solid #EDE9DD; padding:7px 8px; font-size:11px; font-weight:600; color:#565A4B">{{ row.time }}</div>
+                <sc-for list="{{ row.cells }}" as="cell" hint-placeholder-count="4">
+                  <div style="{{ cell.wrap }}">
+                    <sc-if value="{{ cell.session }}" hint-placeholder-val="{{ false }}">
+                      <div style="{{ cell.card }}">
+                        <span style="font-size:10px; font-weight:700; letter-spacing:0.06em; color:{{ cell.metaColor }}">{{ cell.ref }}</span>
+                        <span style="font-family:'Familjen Grotesk', sans-serif; font-size:13px; font-weight:600; line-height:1.25; color:{{ cell.titleColor }}">{{ cell.title }}</span>
+                        <span style="font-size:11px; color:{{ cell.metaColor }}">{{ cell.speaker }}</span>
+                        <sc-if value="{{ cell.clash }}" hint-placeholder-val="{{ false }}">
+                          <span style="font-size:10px; font-weight:800; letter-spacing:0.09em; text-transform:uppercase; color:#F7F9F0; border-bottom:2px solid #F7F9F0; align-self:flex-start">Room double-booked</span>
+                        </sc-if>
+                      </div>
+                    </sc-if>
+                  </div>
+                </sc-for>
+              </sc-for>
+            </div>
+          </div>
+
+          <div style="border:1px dashed #BAB6A6; border-radius:5px; padding:14px; display:flex; flex-direction:column; gap:12px">
+            <div style="display:flex; align-items:baseline; justify-content:space-between">
+              <span style="font-family:'Familjen Grotesk', sans-serif; font-size:15px; font-weight:700">Unscheduled</span>
+              <span style="font-size:12px; font-weight:600; color:#565A4B">6</span>
+            </div>
+            <sc-for list="{{ tray }}" as="t" hint-placeholder-count="4">
+              <div style="background:#FAF8F2; border:1px solid #D3CFC0; border-radius:4px; padding:10px 11px; display:flex; flex-direction:column; gap:3px">
+                <span style="font-size:10px; font-weight:700; letter-spacing:0.06em; color:#565A4B">{{ t.ref }} · {{ t.length }}</span>
+                <span style="font-family:'Familjen Grotesk', sans-serif; font-size:13px; font-weight:600; line-height:1.3">{{ t.title }}</span>
+                <span style="font-size:11px; color:#565A4B">{{ t.speaker }}</span>
+              </div>
+            </sc-for>
+            <span style="font-size:11px; color:#565A4B; line-height:1.5">Drag to a slot · drag back to unschedule</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:center; gap:12px">
+      <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; background:#1B1D17; color:#F4F1E8; padding:5px 10px; border-radius:4px">390</span>
+      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Agenda</span>
+      <span style="font-size:11px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B">One room · tap to place</span>
+    </div>
+
+    <div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+      <div style="border-bottom:1px solid #1B1D17; padding:14px 16px; flex-shrink:0; display:flex; flex-direction:column; gap:12px">
+        <div style="display:flex; align-items:center; gap:10px">
+          <span style="font-family:'Familjen Grotesk', sans-serif; font-size:20px; font-weight:700; letter-spacing:-0.03em">chautauqua</span>
+          <span style="margin-left:auto; font-size:12px; font-weight:600; color:#565A4B">6 unplaced · 2 clash</span>
+        </div>
+        <h1 style="margin:0; font-family:'Familjen Grotesk', sans-serif; font-size:27px; font-weight:700; letter-spacing:-0.04em; line-height:1">Agenda</h1>
+        <div style="display:flex; gap:7px">
+          <span style="background:#1B1D17; color:#F4F1E8; border-radius:99px; min-height:44px; display:flex; align-items:center; padding:0 13px; font-size:13px; font-weight:600">Tue 12</span>
+          <span style="border:1px solid #BAB6A6; border-radius:99px; min-height:44px; display:flex; align-items:center; padding:0 13px; font-size:13px; font-weight:500">Wed 13</span>
+          <span style="border:1px solid #BAB6A6; border-radius:99px; min-height:44px; display:flex; align-items:center; padding:0 13px; font-size:13px; font-weight:500">Thu 14</span>
+        </div>
+        <div style="display:flex; gap:7px; overflow-x:auto; -webkit-overflow-scrolling:touch">
+          <span style="flex-shrink:0; background:#4E5C31; color:#F7F9F0; border-radius:99px; min-height:44px; display:flex; align-items:center; gap:8px; padding:0 14px; font-size:13px; font-weight:700">Room 2A <span style="font-size:10px; font-weight:800; letter-spacing:0.08em">CLASH</span></span>
+          <span style="flex-shrink:0; border:1px solid #BAB6A6; border-radius:99px; min-height:44px; display:flex; align-items:center; padding:0 14px; font-size:13px; font-weight:500">Main Stage</span>
+          <span style="flex-shrink:0; border:1px solid #BAB6A6; border-radius:99px; min-height:44px; display:flex; align-items:center; padding:0 14px; font-size:13px; font-weight:500">Room 2B</span>
+        </div>
+      </div>
+
+      <div style="flex:1; min-height:0; overflow-y:auto; padding:14px 16px">
+        <sc-for list="{{ phoneSlots }}" as="slot" hint-placeholder-count="8">
+          <div style="display:grid; grid-template-columns:50px 1fr; gap:10px; padding-bottom:8px">
+            <span style="font-size:11px; font-weight:600; color:#565A4B; padding-top:13px">{{ slot.time }}</span>
+
+            <sc-if value="{{ slot.placed }}" hint-placeholder-val="{{ true }}">
+              <div style="background:#FAF8F2; border:1px solid #D3CFC0; border-left:3px solid #4E5C31; border-radius:6px; padding:12px; display:flex; flex-direction:column; gap:3px">
+                <span style="font-size:10px; font-weight:700; letter-spacing:0.06em; color:#565A4B">{{ slot.ref }} · {{ slot.length }}</span>
+                <span style="font-family:'Familjen Grotesk', sans-serif; font-size:14px; font-weight:600; line-height:1.3">{{ slot.title }}</span>
+                <span style="font-size:12px; color:#565A4B">{{ slot.speaker }}</span>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ slot.clash }}" hint-placeholder-val="{{ false }}">
+              <div style="background:#1B1D17; border-radius:6px; padding:13px; display:flex; flex-direction:column; gap:9px; color:#F4F1E8">
+                <span style="font-size:10px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase">Two sessions in this slot</span>
+                <div style="display:flex; flex-direction:column; gap:2px">
+                  <span style="font-family:'Familjen Grotesk', sans-serif; font-size:14px; font-weight:600">Taming 40-Minute CI</span>
+                  <span style="font-size:12px; color:#B6B3A6">Priya Raman · DFC-014</span>
+                </div>
+                <div style="height:1px; background:#3A3D32"></div>
+                <div style="display:flex; flex-direction:column; gap:2px">
+                  <span style="font-family:'Familjen Grotesk', sans-serif; font-size:14px; font-weight:600">Onboarding in 30 Minutes</span>
+                  <span style="font-size:12px; color:#B6B3A6">Ruth Adeyemi · DFC-047</span>
+                </div>
+                <span style="background:#F4F1E8; color:#1B1D17; border-radius:5px; min-height:44px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700">Move DFC-047 to 11:30</span>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ slot.free }}" hint-placeholder-val="{{ false }}">
+              <div style="border:1px dashed #A9AE94; background:#EFF1E4; border-radius:6px; min-height:52px; display:flex; align-items:center; justify-content:center; gap:9px">
+                <span style="font-size:13px; font-weight:700; color:#4E5C31">Place here</span>
+                <span style="font-size:11px; font-weight:600; letter-spacing:0.04em; text-transform:uppercase; color:#5E6B47">{{ slot.length }} free</span>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ slot.blocked }}" hint-placeholder-val="{{ false }}">
+              <div style="border:1px solid #E1DDCE; border-radius:6px; min-height:44px; display:flex; align-items:center; padding:0 12px; font-size:11px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#6B6F5C">{{ slot.note }}</div>
+            </sc-if>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="flex-shrink:0; border-top:1px solid #1B1D17; background:#EFEBDF; padding:13px 16px 16px; display:flex; flex-direction:column; gap:10px">
+        <div style="display:flex; align-items:center; gap:11px">
+          <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:2px">
+            <span style="font-size:10px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#4E5C31">Placing · tap a free slot</span>
+            <span style="font-family:'Familjen Grotesk', sans-serif; font-size:14px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">Docs That Answer Back</span>
+            <span style="font-size:11px; color:#565A4B">DFC-033 · lightning talk, 10 min</span>
+          </div>
+          <span style="border:1px solid #BAB6A6; border-radius:6px; min-height:44px; display:flex; align-items:center; padding:0 14px; font-size:13px; font-weight:600">Cancel</span>
+        </div>
+        <div style="display:flex; gap:8px">
+          <span style="flex:1; border:1px solid #BAB6A6; border-radius:6px; min-height:44px; display:flex; align-items:center; justify-content:center; gap:7px; font-size:13px; font-weight:600">Unscheduled <span style="font-size:11px; font-weight:800">6</span></span>
+          <span style="flex:1; background:#4E5C31; color:#F7F9F0; border-radius:6px; min-height:44px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700">Auto-schedule</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const CELL = 'border-bottom:1px solid #EDE9DD; border-left:1px solid #E1DDCE; min-height:44px; padding:3px';
+const CARD = 'background:#FAF8F2; border:1px solid #D3CFC0; border-left:3px solid #4E5C31; border-radius:4px; padding:7px 8px; display:flex; flex-direction:column; gap:2px; height:100%';
+const CARD_CLASH = 'background:#1B1D17; border-radius:4px; padding:7px 8px; display:flex; flex-direction:column; gap:3px; height:100%';
+
+function empty() { return { wrap: CELL, session: false }; }
+function card(ref, title, speaker, clash) {
+  return {
+    wrap: CELL,
+    session: true,
+    card: clash ? CARD_CLASH : CARD,
+    ref, title, speaker,
+    clash: !!clash,
+    titleColor: clash ? '#F4F1E8' : '#1B1D17',
+    metaColor: clash ? '#B6B3A6' : '#565A4B',
+  };
+}
+
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      rooms: [
+        { name: 'Main Stage' },
+        { name: 'Room 2A' },
+        { name: 'Room 2B' },
+        { name: 'Workshop Lab' },
+      ],
+      grid: [
+        { time: '9:00', cells: [card('DFC-001', 'Opening Keynote', 'Jordan Alvarez'), empty(), empty(), empty()] },
+        { time: '9:30', cells: [empty(), empty(), card('DFC-019', 'Trunk-Based at 400 Engineers', 'Iris Bell'), empty()] },
+        { time: '10:00', cells: [empty(), card('DFC-014', 'Taming 40-Minute CI', 'Priya Raman', true), empty(), card('DFC-041', 'Evaluating Agents', 'Nadia Ferrone')] },
+        { time: '10:30', cells: [card('DFC-021', 'Your AI Pair Programmer Is Lying to You', 'Marcus Okafor'), empty(), empty(), empty()] },
+        { time: '11:00', cells: [empty(), empty(), card('DFC-028', 'Feature Flags Without the Debt', 'Tomas Bell'), empty()] },
+        { time: '11:30', cells: [empty(), empty(), empty(), empty()] },
+        { time: '12:00', cells: [empty(), empty(), empty(), empty()] },
+        { time: '12:30', cells: [card('DFC-006', 'Lunch Panel: Platform Teams', 'Four speakers'), empty(), empty(), empty()] },
+        { time: '13:00', cells: [empty(), card('DFC-030', 'Cheap Load Testing', 'Wei Chen'), empty(), empty()] },
+        { time: '13:30', cells: [empty(), empty(), empty(), empty()] },
+      ],
+      tray: [
+        { ref: 'DFC-033', length: '10 min', title: 'Docs That Answer Back', speaker: 'Dana Whitmore' },
+        { ref: 'DFC-038', length: '30 min', title: 'Zero-Downtime Schema Migrations', speaker: 'Ezra Lindqvist' },
+        { ref: 'DFC-052', length: '45 min', title: 'Observability for LLM Pipelines', speaker: 'Marcus Okafor, Wei Chen' },
+        { ref: 'DFC-057', length: '120 min', title: 'Hands-On: Build Cache From Scratch', speaker: 'Priya Raman' },
+      ],
+      phoneSlots: [
+        { time: '9:00', placed: true, ref: 'DFC-001', length: '45 min', title: 'Opening Keynote', speaker: 'Jordan Alvarez' },
+        { time: '9:45', blocked: true, note: 'Break · 15 min' },
+        { time: '10:00', clash: true },
+        { time: '11:00', placed: true, ref: 'DFC-021', length: '30 min', title: 'Your AI Pair Programmer Is Lying to You', speaker: 'Marcus Okafor' },
+        { time: '11:30', free: true, length: '30 min' },
+        { time: '12:00', blocked: true, note: 'Lunch · 60 min' },
+        { time: '13:00', free: true, length: '30 min' },
+        { time: '13:30', placed: true, ref: 'DFC-041', length: '120 min', title: 'Evaluating Agents: Harnesses, Judges, and Regression Sets', speaker: 'Nadia Ferrone' },
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

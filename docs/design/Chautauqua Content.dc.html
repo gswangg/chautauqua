@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
+<link href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@400;500;600;700&family=Figtree:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  body { margin: 0; background: #E9E7E2; font-family: 'Figtree', Helvetica, sans-serif; color: #1B1D17; }
+  * { box-sizing: border-box; }
+  a { color: #4E5C31; text-decoration: none; }
+  a:hover { color: #3C471F; }
+</style>
+</helmet>
+
+<section style="padding:56px; display:flex; flex-wrap:wrap; gap:40px; align-items:flex-start">
+
+  <div style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:center; gap:12px">
+      <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; background:#1B1D17; color:#F4F1E8; padding:5px 10px; border-radius:4px">Content</span>
+      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Worklist and one open session · 1240</span>
+    </div>
+
+    <div style="width:1240px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:6px; overflow:hidden; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+      <header style="border-bottom:1px solid #1B1D17; padding:15px 34px; display:flex; align-items:center; gap:22px">
+        <span style="font-family:'Familjen Grotesk', sans-serif; font-size:22px; font-weight:700; letter-spacing:-0.03em">chautauqua</span>
+        <nav style="display:flex; align-items:center; gap:15px; font-size:13px; font-weight:600; line-height:1">
+          <a href="#" style="color:#565A4B; padding:4px 0">Overview</a>
+          <a href="#" style="color:#565A4B; padding:4px 0">Submissions</a>
+          <a href="#" style="color:#565A4B; padding:4px 0">Review</a>
+          <a href="#" style="color:#565A4B; padding:4px 0">Speakers</a>
+          <span style="padding:4px 0; box-shadow:inset 0 -2px 0 #4E5C31">Content</span>
+          <a href="#" style="color:#565A4B; padding:4px 0">Agenda</a>
+          <a href="#" style="color:#565A4B; padding:4px 0">Comms</a>
+          <a href="#" style="color:#565A4B; padding:4px 0">Contacts</a>
+          <a href="#" style="color:#565A4B; padding:4px 0">Settings</a>
+        </nav>
+        <div style="margin-left:auto; display:flex; align-items:center; gap:14px">
+          <span style="font-size:13px; font-weight:600">DevFlow Conf 2027</span>
+          <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Jordan A.</span>
+        </div>
+      </header>
+
+      <div style="padding:26px 34px 34px; display:flex; flex-direction:column; gap:22px">
+
+        <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:24px">
+          <div style="display:flex; align-items:baseline; gap:14px">
+            <h1 style="margin:0; font-family:'Familjen Grotesk', sans-serif; font-size:36px; font-weight:700; letter-spacing:-0.04em; line-height:1">Content</h1>
+            <span style="font-size:13px; color:#565A4B">5 need a decision · 2 re-uploaded</span>
+          </div>
+          <div style="display:flex; gap:9px">
+            <a href="#" style="border:1px solid #BAB6A6; border-radius:4px; padding:9px 15px; font-size:13px; font-weight:600; color:#1B1D17">All files</a>
+            <a href="#" style="border:1px solid #BAB6A6; border-radius:4px; padding:9px 15px; font-size:13px; font-weight:600; color:#1B1D17">Refresh</a>
+          </div>
+        </div>
+
+        <div style="display:flex; align-items:center; gap:9px; border-top:1px solid #D3CFC0; border-bottom:1px solid #D3CFC0; padding:12px 0">
+          <span style="background:#1B1D17; color:#F4F1E8; border-radius:99px; padding:7px 14px; font-size:13px; font-weight:600">Needs a decision · 5</span>
+          <a href="#" style="border:1px solid #BAB6A6; border-radius:99px; padding:6px 14px; font-size:13px; font-weight:500; color:#3F4237">Approved · 9</a>
+          <a href="#" style="border:1px solid #BAB6A6; border-radius:99px; padding:6px 14px; font-size:13px; font-weight:500; color:#3F4237">All accepted sessions · 23</a>
+          
+        </div>
+
+        <div>
+          <div style="display:grid; grid-template-columns:1fr 168px 200px 152px auto; gap:18px; padding:0 0 9px; border-bottom:2px solid #1B1D17; font-size:10px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">
+            <span>Session</span><span>Speaker</span><span>Latest file</span><span>Status</span><span></span>
+          </div>
+          <sc-for list="{{ rows }}" as="row" hint-placeholder-count="5">
+            <div style="display:grid; grid-template-columns:1fr 168px 200px 152px auto; gap:18px; align-items:baseline; padding:15px 0; border-bottom:1px solid #E1DDCE">
+              <div style="display:flex; flex-direction:column; gap:3px">
+                <a href="#" style="font-family:'Familjen Grotesk', sans-serif; font-size:16px; font-weight:600; letter-spacing:-0.015em; line-height:1.3; color:#1B1D17">{{ row.title }}</a>
+                <span style="font-size:12px; color:#565A4B">{{ row.ref }} · {{ row.slot }}</span>
+              </div>
+              <span style="font-size:13px">{{ row.speaker }}</span>
+              <div style="display:flex; flex-direction:column; gap:2px">
+                <span style="font-size:13px">{{ row.file }}</span>
+                <span style="font-size:11px; color:#565A4B">{{ row.when }}</span>
+              </div>
+              <span style="{{ row.statusStyle }}">{{ row.status }}</span>
+              <div style="display:flex; gap:9px; align-self:center">
+                <span style="background:#4E5C31; color:#F7F9F0; border-radius:4px; padding:8px 14px; font-size:12px; font-weight:700; white-space:nowrap">Approve</span>
+                <span style="border:1px solid #BAB6A6; border-radius:4px; padding:7px 14px; font-size:12px; font-weight:600; white-space:nowrap">Ask for changes</span>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1.35fr 1fr; gap:26px; padding-top:6px">
+          <section>
+            <div style="border-bottom:2px solid #1B1D17; padding-bottom:8px; display:flex; align-items:baseline; justify-content:space-between">
+              <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase">Files for Taming 40-Minute CI</span>
+              <a href="#" style="font-size:13px; font-weight:700">Back to the list</a>
+            </div>
+            <div style="padding:16px 0 0; display:flex; flex-direction:column; gap:14px">
+              <sc-for list="{{ versions }}" as="v" hint-placeholder-count="3">
+                <div style="display:grid; grid-template-columns:52px 1fr auto; gap:16px; align-items:baseline; padding-bottom:14px; border-bottom:1px solid #E1DDCE">
+                  <span style="font-family:'Familjen Grotesk', sans-serif; font-size:15px; font-weight:700">{{ v.tag }}</span>
+                  <div style="display:flex; flex-direction:column; gap:2px">
+                    <span style="font-size:14px; font-weight:600">{{ v.name }}</span>
+                    <span style="font-size:12px; color:#565A4B">{{ v.meta }}</span>
+                  </div>
+                  <div style="display:flex; align-items:center; gap:13px; font-size:12px; font-weight:700">
+                    <a href="#">Download</a>
+                    <span style="{{ v.markStyle }}">{{ v.mark }}</span>
+                  </div>
+                </div>
+              </sc-for>
+              <div style="border:1px dashed #BAB6A6; border-radius:5px; padding:16px; display:flex; align-items:center; gap:14px">
+                <span style="font-size:13px; color:#3F4237">Drop a file to upload for the speaker</span>
+                <span style="margin-left:auto; font-size:11px; font-weight:600; letter-spacing:0.04em; text-transform:uppercase; color:#565A4B">PDF, Keynote, PowerPoint or MP4</span>
+              </div>
+            </div>
+          </section>
+
+          <section>
+            <div style="border-bottom:2px solid #1B1D17; padding-bottom:8px">
+              <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase">Notes with Priya Raman</span>
+            </div>
+            <div style="padding:16px 0 0; display:flex; flex-direction:column; gap:16px">
+              <sc-for list="{{ comments }}" as="c" hint-placeholder-count="3">
+                <div style="display:flex; flex-direction:column; gap:4px">
+                  <div style="display:flex; align-items:baseline; gap:9px">
+                    <span style="font-size:13px; font-weight:700">{{ c.who }}</span>
+                    <span style="font-size:11px; color:#565A4B">{{ c.when }}</span>
+                  </div>
+                  <span style="font-size:14px; line-height:1.55; color:#3F4237">{{ c.text }}</span>
+                </div>
+              </sc-for>
+              <div style="border:1px solid #BAB6A6; border-radius:5px; background:#FAF8F2; padding:12px; min-height:74px; font-size:13px; color:#565A4B">Write a note — emailed to Priya</div>
+              <span style="background:#4E5C31; color:#F7F9F0; border-radius:4px; padding:10px 15px; font-size:13px; font-weight:700; align-self:flex-start">Send note</span>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:center; gap:12px">
+      <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; background:#1B1D17; color:#F4F1E8; padding:5px 10px; border-radius:4px">390</span>
+      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Content</span>
+    </div>
+
+    <div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+      <div style="border-bottom:1px solid #1B1D17; padding:14px 16px; flex-shrink:0; display:flex; flex-direction:column; gap:11px">
+        <div style="display:flex; align-items:center; gap:10px">
+          <span style="font-family:'Familjen Grotesk', sans-serif; font-size:20px; font-weight:700; letter-spacing:-0.03em">chautauqua</span>
+          <span style="margin-left:auto; font-size:12px; font-weight:600; color:#565A4B">DevFlow 2027</span>
+        </div>
+        <h1 style="margin:0; font-family:'Familjen Grotesk', sans-serif; font-size:27px; font-weight:700; letter-spacing:-0.04em; line-height:1">Content</h1>
+        <span style="font-size:13px; color:#565A4B; line-height:1.5">5 need a decision · 2 re-uploaded</span>
+        <div style="display:flex; gap:7px; overflow-x:auto; -webkit-overflow-scrolling:touch">
+          <span style="flex-shrink:0; background:#1B1D17; color:#F4F1E8; border-radius:99px; min-height:44px; display:flex; align-items:center; padding:0 13px; font-size:13px; font-weight:600">Needs a decision · 5</span>
+          <span style="flex-shrink:0; border:1px solid #BAB6A6; border-radius:99px; min-height:44px; display:flex; align-items:center; padding:0 13px; font-size:13px; font-weight:500">Approved · 9</span>
+        </div>
+      </div>
+
+      <div style="flex:1; min-height:0; overflow-y:auto; padding:4px 16px 16px">
+        <sc-for list="{{ rows }}" as="row" hint-placeholder-count="4">
+          <div style="padding:16px 0; border-bottom:1px solid #E1DDCE; display:flex; flex-direction:column; gap:9px">
+            <span style="{{ row.statusStyleM }}">{{ row.status }}</span>
+            <span style="font-family:'Familjen Grotesk', sans-serif; font-size:17px; font-weight:600; letter-spacing:-0.02em; line-height:1.3">{{ row.title }}</span>
+            <span style="font-size:13px; color:#565A4B; line-height:1.5">{{ row.speaker }} · {{ row.file }}, {{ row.when }}</span>
+            <div style="display:flex; gap:8px; padding-top:2px">
+              <span style="flex:1; background:#4E5C31; color:#F7F9F0; border-radius:6px; min-height:44px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700">Approve</span>
+              <span style="flex:1; border:1px solid #BAB6A6; border-radius:6px; min-height:44px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600">Ask for changes</span>
+              <span style="border:1px solid #BAB6A6; border-radius:6px; min-height:44px; display:flex; align-items:center; padding:0 13px; font-size:13px; font-weight:600">Open</span>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="flex-shrink:0; border-top:1px solid #1B1D17; background:#EFEBDF; padding:10px 8px 14px; display:flex; gap:2px">
+        <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="5">
+          <div style="flex:1; min-height:44px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px">
+            <span style="{{ t.dot }}"></span>
+            <span style="{{ t.text }}">{{ t.label }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:center; gap:12px">
+      <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; background:#1B1D17; color:#F4F1E8; padding:5px 10px; border-radius:4px">Subscreen</span>
+      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Files library</span>
+    </div>
+
+    <div style="width:900px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:6px; overflow:hidden; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+      <div style="border-bottom:1px solid #1B1D17; padding:20px 32px; display:flex; align-items:flex-end; justify-content:space-between; gap:20px">
+        <div style="display:flex; flex-direction:column; gap:5px">
+          <a href="#" style="font-size:13px; font-weight:700">‹ Content</a>
+          <span style="font-family:'Familjen Grotesk', sans-serif; font-size:28px; font-weight:700; letter-spacing:-0.04em; line-height:1">Files</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:12px">
+          <span style="font-size:13px; color:#565A4B">31 files · 412 MB</span>
+          <span style="border:1px solid #BAB6A6; border-radius:4px; padding:9px 15px; font-size:13px; font-weight:600; background:#EFEBDF">Download all</span>
+        </div>
+      </div>
+      <div style="padding:22px 32px 34px; display:flex; flex-direction:column; gap:16px">
+        <div style="display:flex; align-items:center; gap:9px; flex-wrap:wrap">
+          <div style="border:1px solid #BAB6A6; border-radius:4px; padding:8px 12px; font-size:13px; color:#565A4B; background:#FAF8F2; min-width:230px">Search by file or session…</div>
+          <span style="background:#1B1D17; color:#F4F1E8; border-radius:99px; padding:7px 14px; font-size:13px; font-weight:600">All types</span>
+          <a href="#" style="border:1px solid #BAB6A6; border-radius:99px; padding:6px 14px; font-size:13px; font-weight:500; color:#3F4237">Slides · 22</a>
+          <a href="#" style="border:1px solid #BAB6A6; border-radius:99px; padding:6px 14px; font-size:13px; font-weight:500; color:#3F4237">Video · 4</a>
+          <a href="#" style="border:1px solid #BAB6A6; border-radius:99px; padding:6px 14px; font-size:13px; font-weight:500; color:#3F4237">Other · 5</a>
+        </div>
+        <div>
+          <div style="display:grid; grid-template-columns:1fr 190px 108px 92px auto; gap:16px; padding:0 0 9px; border-bottom:2px solid #1B1D17; font-size:10px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">
+            <span>File</span><span>Session</span><span>Version</span><span>Size</span><span></span>
+          </div>
+          <sc-for list="{{ files }}" as="f" hint-placeholder-count="6">
+            <div style="display:grid; grid-template-columns:1fr 190px 108px 92px auto; gap:16px; align-items:baseline; padding:13px 0; border-bottom:1px solid #E1DDCE">
+              <div style="display:flex; flex-direction:column; gap:2px">
+                <span style="font-size:14px; font-weight:600">{{ f.name }}</span>
+                <span style="font-size:12px; color:#565A4B">{{ f.who }}</span>
+              </div>
+              <a href="#" style="font-size:13px; color:#1B1D17">{{ f.session }}</a>
+              <span style="{{ f.verStyle }}">{{ f.ver }}</span>
+              <span style="font-size:13px; color:#565A4B">{{ f.size }}</span>
+              <a href="#" style="font-size:12px; font-weight:700">Download</a>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:center; gap:12px">
+      <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; background:#1B1D17; color:#F4F1E8; padding:5px 10px; border-radius:4px">390</span>
+      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Files · 390</span>
+      <span style="font-size:11px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B">Find one file, send it on</span>
+    </div>
+
+    <div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+      <div style="border-bottom:1px solid #1B1D17; padding:14px 16px; flex-shrink:0; display:flex; flex-direction:column; gap:7px">
+        <a href="#" style="font-size:13px; font-weight:700; min-height:44px; display:flex; align-items:center">‹ Content</a>
+        <h1 style="margin:0; font-family:'Familjen Grotesk', sans-serif; font-size:25px; font-weight:700; letter-spacing:-0.04em; line-height:1.05">Files</h1>
+        <span style="font-size:13px; color:#565A4B">31 files · 412 MB</span>
+      </div><div style="flex-shrink:0; border-bottom:1px solid #E1DDCE; padding:12px 16px; display:flex; gap:7px; overflow-x:auto; -webkit-overflow-scrolling:touch">
+        <span style="flex-shrink:0; background:#1B1D17; color:#F4F1E8; border-radius:99px; min-height:44px; display:flex; align-items:center; padding:0 14px; font-size:13px; font-weight:600">All</span>
+        <span style="flex-shrink:0; border:1px solid #BAB6A6; border-radius:99px; min-height:44px; display:flex; align-items:center; padding:0 14px; font-size:13px; font-weight:500">Slides · 22</span>
+        <span style="flex-shrink:0; border:1px solid #BAB6A6; border-radius:99px; min-height:44px; display:flex; align-items:center; padding:0 14px; font-size:13px; font-weight:500">Video · 4</span>
+      </div><div style="flex:1; min-height:0; overflow-y:auto; padding:14px 16px 16px">
+        <sc-for list="{{ files }}" as="f" hint-placeholder-count="6">
+          <div style="padding:15px 0; border-bottom:1px solid #E1DDCE; display:flex; flex-direction:column; gap:7px">
+            <div style="display:flex; align-items:baseline; justify-content:space-between; gap:10px">
+              <span style="font-size:15px; font-weight:600; word-break:break-all">{{ f.name }}</span>
+              <span style="{{ f.verStyle }}">{{ f.ver }}</span>
+            </div>
+            <span style="font-size:13px; color:#565A4B">{{ f.session }} · {{ f.size }}</span>
+            <span style="font-size:12px; color:#565A4B">{{ f.who }}</span>
+            <span style="border:1px solid #BAB6A6; border-radius:6px; background:#EFEBDF; min-height:44px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600">Download</span>
+          </div>
+        </sc-for></div>
+      <div style="flex-shrink:0; border-top:1px solid #1B1D17; background:#EFEBDF; padding:12px 16px 16px; display:flex; gap:8px">
+        <span style="flex:1; background:#4E5C31; color:#F7F9F0; border-radius:6px; min-height:48px; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700">Download all</span>
+        <span style="border:1px solid #BAB6A6; border-radius:6px; min-height:48px; display:flex; align-items:center; padding:0 16px; font-size:13px; font-weight:600">Search</span>
+      </div>
+    </div>
+  </div>
+
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const SIZE = 'font-size:11px; letter-spacing:0.09em; text-transform:uppercase';
+const ST_AGAIN = SIZE + '; font-weight:800; color:#1B1D17';
+const ST_NEW = SIZE + '; font-weight:600; color:#565A4B';
+const ST_AGAIN_M = ST_AGAIN + '; align-self:flex-start';
+const ST_NEW_M = ST_NEW + '; align-self:flex-start';
+const DOT = 'width:8px; height:8px; border-radius:50%; background:#BAB6A6';
+const DOT_ON = 'width:8px; height:8px; border-radius:50%; background:#4E5C31';
+const TXT = 'font-size:11px; font-weight:600; color:#565A4B';
+const TXT_ON = 'font-size:11px; font-weight:700; color:#1B1D17';
+
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      files: [
+        { name: 'taming-ci-devflow.pdf', who: 'Priya Raman · yesterday', session: 'Taming 40-Minute CI', ver: 'v3', verStyle: 'font-size:12px; font-weight:800; letter-spacing:0.06em; text-transform:uppercase; color:#4E5C31', size: '14 MB' },
+        { name: 'taming-ci-devflow.pdf', who: 'Priya Raman · 8 days ago', session: 'Taming 40-Minute CI', ver: 'v2', verStyle: 'font-size:12px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B', size: '13 MB' },
+        { name: 'verification-patterns.key', who: 'Marcus Okafor · 2 days ago', session: 'Your AI Pair Programmer', ver: 'v1', verStyle: 'font-size:12px; font-weight:800; letter-spacing:0.06em; text-transform:uppercase; color:#4E5C31', size: '8 MB' },
+        { name: 'agents-workshop-pack.zip', who: 'Nadia Ferrone · 3 days ago', session: 'Evaluating Agents', ver: 'v3', verStyle: 'font-size:12px; font-weight:800; letter-spacing:0.06em; text-transform:uppercase; color:#4E5C31', size: '41 MB' },
+        { name: 'trunk-based-400.pdf', who: 'Iris Bell · 4 days ago', session: 'Trunk-Based Development', ver: 'v2', verStyle: 'font-size:12px; font-weight:800; letter-spacing:0.06em; text-transform:uppercase; color:#4E5C31', size: '22 MB' },
+        { name: 'flags-demo.mp4', who: 'Tomas Bell · 6 days ago', session: 'Feature Flags Without the Debt', ver: 'v1', verStyle: 'font-size:12px; font-weight:800; letter-spacing:0.06em; text-transform:uppercase; color:#4E5C31', size: '186 MB' },
+      ],
+      rows: [
+        { title: 'Taming 40-Minute CI: Incremental Builds at Monorepo Scale', ref: 'DFC-014', slot: 'Tue 10:00, Room 2A', speaker: 'Priya Raman', file: 'Slides v3, 14 MB', when: 'yesterday', status: 'Re-uploaded', statusStyle: ST_AGAIN, statusStyleM: ST_AGAIN_M },
+        { title: 'Evaluating Agents: Harnesses, Judges, and Regression Sets', ref: 'DFC-041', slot: 'Tue 10:00, Workshop Lab', speaker: 'Nadia Ferrone', file: 'Workshop pack, 41 MB', when: '3 days ago', status: 'Re-uploaded', statusStyle: ST_AGAIN, statusStyleM: ST_AGAIN_M },
+        { title: 'Your AI Pair Programmer Is Lying to You', ref: 'DFC-021', slot: 'Tue 10:30, Main Stage', speaker: 'Marcus Okafor', file: 'Slides v1, 8 MB', when: '2 days ago', status: 'Not reviewed', statusStyle: ST_NEW, statusStyleM: ST_NEW_M },
+        { title: 'Trunk-Based Development at 400 Engineers', ref: 'DFC-019', slot: 'Tue 9:30, Room 2B', speaker: 'Iris Bell', file: 'Slides v2, 22 MB', when: '4 days ago', status: 'Not reviewed', statusStyle: ST_NEW, statusStyleM: ST_NEW_M },
+        { title: 'Feature Flags Without the Debt', ref: 'DFC-028', slot: 'Tue 11:00, Room 2B', speaker: 'Tomas Bell', file: 'Slides v1, 6 MB', when: '6 days ago', status: 'Not reviewed', statusStyle: ST_NEW, statusStyleM: ST_NEW_M },
+      ],
+      versions: [
+        { tag: 'v3', name: 'taming-ci-devflow.pdf', meta: '14 MB · Priya Raman, yesterday 18:40', mark: 'Newest', markStyle: 'font-size:11px; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; color:#4E5C31' },
+        { tag: 'v2', name: 'taming-ci-devflow.pdf', meta: '13 MB · 8 days ago · changes requested', mark: 'Replaced', markStyle: 'font-size:11px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:#565A4B' },
+        { tag: 'v1', name: 'taming-ci-draft.key', meta: '31 MB · 22 days ago', mark: 'Replaced', markStyle: 'font-size:11px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:#565A4B' },
+      ],
+      comments: [
+        { who: 'You', when: '8 days ago', text: 'Slide 14 has the old benchmark numbers, and the CI diagram is unreadable on a projector. Can you resize both and re-upload?' },
+        { who: 'Priya Raman', when: '2 days ago', text: 'Both fixed. I also cut two slides so this now lands at 27 minutes with time for questions.' },
+        { who: 'Priya Raman', when: 'yesterday', text: 'Uploaded v3 — this is the version I will present.' },
+      ],
+      tabs: [
+        { label: 'Overview', dot: DOT, text: TXT },
+        { label: 'Submissions', dot: DOT, text: TXT },
+        { label: 'Speakers', dot: DOT, text: TXT },
+        { label: 'Content', dot: DOT_ON, text: TXT_ON },
+        { label: 'More', dot: DOT, text: TXT },
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
+<link href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@400;500;600;700&family=Figtree:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  body { margin: 0; background: #E9E7E2; font-family: 'Figtree', Helvetica, sans-serif; color: #1B1D17; }
+  * { box-sizing: border-box; }
+  a { color: #4E5C31; text-decoration: none; }
+  a:hover { color: #3C471F; }
+</style>
+</helmet>
+
+<section style="padding:56px; display:flex; flex-wrap:wrap; gap:40px; align-items:flex-start">
+
+  <div style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:center; gap:12px">
+      <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; background:#1B1D17; color:#F4F1E8; padding:5px 10px; border-radius:4px">Public</span>
+      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Sessions and agenda · 1240</span>
+      <span style="font-size:11px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B">No login · server-rendered · embeddable</span>
+    </div>
+
+    <div style="width:1240px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:6px; overflow:hidden; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+      <header style="border-bottom:1px solid #1B1D17; padding:22px 44px 18px; display:flex; align-items:flex-end; justify-content:space-between; gap:24px">
+        <div style="display:flex; flex-direction:column; gap:6px">
+          <span style="font-size:11px; font-weight:700; letter-spacing:0.14em; text-transform:uppercase; color:#565A4B">12–14 May 2027 · Moscone West, San Francisco</span>
+          <span style="font-family:'Familjen Grotesk', sans-serif; font-size:32px; font-weight:700; letter-spacing:-0.04em; line-height:1">DevFlow Conf 2027</span>
+        </div>
+        <nav style="display:flex; align-items:center; gap:16px; font-size:14px; font-weight:600; line-height:1">
+          <span style="padding:4px 0; box-shadow:inset 0 -2px 0 #4E5C31">Sessions</span>
+          <a href="#" style="color:#565A4B; padding:4px 0">Speakers</a>
+          <a href="#" style="color:#565A4B; padding:4px 0">Agenda</a>
+          <a href="#" style="color:#565A4B; padding:4px 0">My schedule</a>
+          <a href="#" style="color:#565A4B; padding:4px 0">Gallery</a>
+        </nav>
+      </header>
+
+      <div style="padding:26px 44px 40px; display:grid; grid-template-columns:1fr 300px; gap:34px; align-items:start">
+
+        <div>
+          <div style="display:flex; align-items:center; gap:10px; border-bottom:1px solid #D3CFC0; padding-bottom:14px; flex-wrap:wrap">
+            <div style="border:1px solid #BAB6A6; border-radius:4px; padding:9px 13px; font-size:14px; color:#565A4B; background:#FAF8F2; min-width:240px">Search sessions or speakers…</div>
+            <span style="background:#1B1D17; color:#F4F1E8; border-radius:99px; padding:7px 14px; font-size:13px; font-weight:600">All tracks</span>
+            <a href="#" style="border:1px solid #BAB6A6; border-radius:99px; padding:6px 14px; font-size:13px; font-weight:500; color:#3F4237">AI Engineering</a>
+            <a href="#" style="border:1px solid #BAB6A6; border-radius:99px; padding:6px 14px; font-size:13px; font-weight:500; color:#3F4237">Platform &amp; Infra</a>
+            <a href="#" style="border:1px solid #BAB6A6; border-radius:99px; padding:6px 14px; font-size:13px; font-weight:500; color:#3F4237">Developer Experience</a>
+          </div>
+
+          <sc-for list="{{ sessions }}" as="s" hint-placeholder-count="5">
+            <div style="display:grid; grid-template-columns:126px 1fr auto; gap:22px; align-items:baseline; padding:20px 0; border-bottom:1px solid #E1DDCE">
+              <div style="display:flex; flex-direction:column; gap:2px">
+                <span style="font-family:'Familjen Grotesk', sans-serif; font-size:15px; font-weight:700">{{ s.time }}</span>
+                <span style="font-size:12px; color:#565A4B">{{ s.room }}</span>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:7px">
+                <a href="#" style="font-family:'Familjen Grotesk', sans-serif; font-size:21px; font-weight:600; letter-spacing:-0.02em; line-height:1.3; color:#1B1D17">{{ s.title }}</a>
+                <span style="font-size:14px; color:#3F4237">{{ s.speaker }}</span>
+                <div style="display:flex; gap:8px; align-items:center">
+                  <span style="font-size:11px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B">{{ s.track }}</span>
+                  <span style="width:3px; height:3px; border-radius:50%; background:#BAB6A6"></span>
+                  <span style="font-size:11px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B">{{ s.format }}</span>
+                </div>
+              </div>
+              <span style="border:1px solid #BAB6A6; border-radius:4px; padding:9px 14px; font-size:13px; font-weight:600; background:#EFEBDF; white-space:nowrap; align-self:center">{{ s.action }}</span>
+            </div>
+          </sc-for>
+        </div>
+
+        <aside style="display:flex; flex-direction:column; gap:26px">
+          <section>
+            <div style="border-bottom:2px solid #1B1D17; padding-bottom:8px">
+              <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase">Your schedule</span>
+            </div>
+            <div style="padding:14px 0 0; display:flex; flex-direction:column; gap:11px">
+              <span style="font-size:14px; line-height:1.6; color:#3F4237">4 saved in this browser · no account needed</span>
+              <span style="background:#4E5C31; color:#F7F9F0; border-radius:4px; padding:11px 15px; font-size:13px; font-weight:700; align-self:flex-start">Download .ics</span>
+            </div>
+          </section>
+
+          <section>
+            <div style="border-bottom:2px solid #1B1D17; padding-bottom:8px">
+              <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase">Three days</span>
+            </div>
+            <sc-for list="{{ days }}" as="d" hint-placeholder-count="3">
+              <div style="display:grid; grid-template-columns:1fr auto; gap:12px; align-items:baseline; padding:12px 0; border-bottom:1px solid #E1DDCE">
+                <a href="#" style="font-size:14px; font-weight:600; color:#1B1D17">{{ d.name }}</a>
+                <span style="font-size:13px; color:#565A4B">{{ d.count }}</span>
+              </div>
+            </sc-for>
+          </section>
+
+          <section>
+            <div style="border-bottom:2px solid #1B1D17; padding-bottom:8px">
+              <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase">Call for papers</span>
+            </div>
+            <div style="padding:14px 0 0; display:flex; flex-direction:column; gap:10px">
+              <span style="font-size:14px; line-height:1.6; color:#3F4237">Closes Sun 16 Aug · no account needed</span>
+              <a href="#" style="font-size:14px; font-weight:700">Submit a talk ›</a>
+            </div>
+          </section>
+        </aside>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:center; gap:12px">
+      <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; background:#1B1D17; color:#F4F1E8; padding:5px 10px; border-radius:4px">390</span>
+      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Public agenda</span>
+      <span style="font-size:11px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B">Where most attendees actually read it</span>
+    </div>
+
+    <div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+      <div style="border-bottom:1px solid #1B1D17; padding:14px 16px; flex-shrink:0; display:flex; flex-direction:column; gap:11px">
+        <div style="display:flex; flex-direction:column; gap:3px">
+          <span style="font-size:10px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:#565A4B">12–14 May 2027 · Moscone West</span>
+          <span style="font-family:'Familjen Grotesk', sans-serif; font-size:23px; font-weight:700; letter-spacing:-0.035em; line-height:1">DevFlow Conf 2027</span>
+        </div>
+        <div style="display:flex; gap:7px; overflow-x:auto; -webkit-overflow-scrolling:touch">
+          <span style="flex-shrink:0; background:#1B1D17; color:#F4F1E8; border-radius:99px; min-height:44px; display:flex; align-items:center; padding:0 15px; font-size:13px; font-weight:600">Tue 12</span>
+          <span style="flex-shrink:0; border:1px solid #BAB6A6; border-radius:99px; min-height:44px; display:flex; align-items:center; padding:0 15px; font-size:13px; font-weight:500">Wed 13</span>
+          <span style="flex-shrink:0; border:1px solid #BAB6A6; border-radius:99px; min-height:44px; display:flex; align-items:center; padding:0 15px; font-size:13px; font-weight:500">Thu 14</span>
+          <span style="flex-shrink:0; border:1px solid #BAB6A6; border-radius:99px; min-height:44px; display:flex; align-items:center; padding:0 15px; font-size:13px; font-weight:500">My schedule · 4</span>
+        </div>
+      </div>
+
+      <div style="flex:1; min-height:0; overflow-y:auto; padding:6px 16px 16px">
+        <sc-for list="{{ sessions }}" as="s" hint-placeholder-count="5">
+          <div style="padding:16px 0; border-bottom:1px solid #E1DDCE; display:flex; flex-direction:column; gap:8px">
+            <div style="display:flex; align-items:baseline; gap:10px">
+              <span style="font-family:'Familjen Grotesk', sans-serif; font-size:15px; font-weight:700">{{ s.time }}</span>
+              <span style="font-size:12px; color:#565A4B">{{ s.room }}</span>
+              <span style="margin-left:auto; font-size:11px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B">{{ s.format }}</span>
+            </div>
+            <span style="font-family:'Familjen Grotesk', sans-serif; font-size:18px; font-weight:600; letter-spacing:-0.02em; line-height:1.3">{{ s.title }}</span>
+            <span style="font-size:13px; color:#3F4237">{{ s.speaker }} · {{ s.track }}</span>
+            <span style="border:1px solid #BAB6A6; border-radius:6px; background:#EFEBDF; min-height:44px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600; margin-top:2px">{{ s.action }}</span>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="flex-shrink:0; border-top:1px solid #1B1D17; background:#EFEBDF; padding:12px 16px 16px; display:flex; gap:8px">
+        <span style="flex:1; background:#4E5C31; color:#F7F9F0; border-radius:6px; min-height:46px; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700">Download .ics</span>
+        <span style="border:1px solid #BAB6A6; border-radius:6px; min-height:46px; display:flex; align-items:center; padding:0 16px; font-size:13px; font-weight:600">Speakers</span>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:center; gap:12px">
+      <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; background:#1B1D17; color:#F4F1E8; padding:5px 10px; border-radius:4px">390</span>
+      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Speaker portal</span>
+      <span style="font-size:11px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B">What the speaker owes, in order</span>
+    </div>
+
+    <div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+      <div style="border-bottom:1px solid #1B1D17; padding:14px 16px; flex-shrink:0; display:flex; flex-direction:column; gap:10px">
+        <div style="display:flex; align-items:center; gap:10px">
+          <span style="font-family:'Familjen Grotesk', sans-serif; font-size:20px; font-weight:700; letter-spacing:-0.03em">chautauqua</span>
+          <span style="margin-left:auto; font-size:12px; font-weight:600; color:#565A4B">Priya Raman</span>
+        </div>
+        <span style="font-family:'Familjen Grotesk', sans-serif; font-size:25px; font-weight:700; letter-spacing:-0.04em; line-height:1.05">Two things to do</span>
+        <span style="font-size:13px; color:#565A4B; line-height:1.5">DevFlow Conf 2027 · you speak Tue 12 May, 10:00, Room 2A</span>
+      </div>
+
+      <div style="flex:1; min-height:0; overflow-y:auto; padding:16px">
+        <div style="border-bottom:2px solid #1B1D17; padding-bottom:8px">
+          <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase">Waiting on you</span>
+        </div>
+        <sc-for list="{{ tasks }}" as="t" hint-placeholder-count="2">
+          <div style="padding:15px 0; border-bottom:1px solid #E1DDCE; display:flex; flex-direction:column; gap:9px">
+            <div style="display:flex; align-items:baseline; justify-content:space-between; gap:10px">
+              <span style="font-family:'Familjen Grotesk', sans-serif; font-size:17px; font-weight:600; letter-spacing:-0.02em">{{ t.title }}</span>
+              <span style="{{ t.dueStyle }}">{{ t.due }}</span>
+            </div>
+            <span style="font-size:13px; color:#565A4B; line-height:1.5">{{ t.detail }}</span>
+            <span style="background:#4E5C31; color:#F7F9F0; border-radius:6px; min-height:44px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700">{{ t.action }}</span>
+          </div>
+        </sc-for>
+
+        <div style="padding:22px 0 8px; border-bottom:2px solid #1B1D17">
+          <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase">Your session</span>
+        </div>
+        <div style="padding:15px 0; border-bottom:1px solid #E1DDCE; display:flex; flex-direction:column; gap:8px">
+          <span style="font-family:'Familjen Grotesk', sans-serif; font-size:17px; font-weight:600; letter-spacing:-0.02em; line-height:1.3">Taming 40-Minute CI: Incremental Builds at Monorepo Scale</span>
+          <span style="font-size:13px; color:#565A4B">Talk, 30 min · Platform &amp; Infra · accepted 14 Mar</span>
+          <span style="font-size:13px; line-height:1.55; color:#3F4237">Slides v3 · with the organisers</span>
+          <div style="display:flex; gap:8px; padding-top:2px">
+            <span style="flex:1; border:1px solid #BAB6A6; border-radius:6px; background:#EFEBDF; min-height:44px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600">Upload again</span>
+            <span style="flex:1; border:1px solid #BAB6A6; border-radius:6px; background:#EFEBDF; min-height:44px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600">Read notes</span>
+          </div>
+        </div>
+
+        <div style="padding:22px 0 8px; border-bottom:2px solid #1B1D17">
+          <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase">Done</span>
+        </div>
+        <sc-for list="{{ done }}" as="d" hint-placeholder-count="3">
+          <div style="padding:13px 0; border-bottom:1px solid #E1DDCE; display:flex; align-items:baseline; justify-content:space-between; gap:12px">
+            <span style="font-size:14px; color:#3F4237">{{ d.title }}</span>
+            <span style="font-size:11px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:#4E5C31; white-space:nowrap">{{ d.when }}</span>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="flex-shrink:0; border-top:1px solid #1B1D17; background:#EFEBDF; padding:12px 16px 16px; display:flex; align-items:center; gap:12px">
+        <span style="font-size:13px; color:#565A4B">Priya Raman · Latticework Systems</span>
+        <a href="#" style="margin-left:auto; font-size:13px; font-weight:700">Profile</a>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:center; gap:12px">
+      <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; background:#1B1D17; color:#F4F1E8; padding:5px 10px; border-radius:4px">390</span>
+      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Portal · Your tasks</span>
+    </div>
+
+    <div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+      <div style="border-bottom:1px solid #1B1D17; padding:14px 16px; flex-shrink:0; display:flex; flex-direction:column; gap:8px">
+        <a href="#" style="font-size:13px; font-weight:700; min-height:44px; display:flex; align-items:center">‹ Your portal</a>
+        <h1 style="margin:0; font-family:'Familjen Grotesk', sans-serif; font-size:25px; font-weight:700; letter-spacing:-0.04em; line-height:1.05">Your tasks</h1>
+      </div>
+      <div style="flex:1; min-height:0; overflow-y:auto; padding:14px 16px 16px">
+        <sc-for list="{{ portalTasks }}" as="t" hint-placeholder-count="5">
+          <div style="padding:15px 0; border-bottom:1px solid #E1DDCE; display:flex; flex-direction:column; gap:8px">
+            <div style="display:flex; align-items:baseline; justify-content:space-between; gap:10px">
+              <span style="font-family:'Familjen Grotesk', sans-serif; font-size:16px; font-weight:600; letter-spacing:-0.015em">{{ t.title }}</span>
+              <span style="{{ t.stateStyle }}">{{ t.state }}</span>
+            </div>
+            <span style="font-size:13px; color:#565A4B">{{ t.due }}</span>
+            <span style="{{ t.btnStyle }}">{{ t.btn }}</span>
+          </div>
+        </sc-for></div>
+      <div style="flex-shrink:0; border-top:1px solid #1B1D17; background:#EFEBDF; padding:12px 16px 16px; display:flex; gap:8px">
+        <span style="flex:1; background:#4E5C31; color:#F7F9F0; border-radius:6px; min-height:48px; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700">Mark the release signed</span>
+        <span style="border:1px solid #BAB6A6; border-radius:6px; min-height:48px; display:flex; align-items:center; padding:0 16px; font-size:13px; font-weight:600">Later</span>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:center; gap:12px">
+      <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; background:#1B1D17; color:#F4F1E8; padding:5px 10px; border-radius:4px">390</span>
+      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Portal · Hotel stay form</span>
+    </div>
+
+    <div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+      <div style="border-bottom:1px solid #1B1D17; padding:14px 16px; flex-shrink:0; display:flex; flex-direction:column; gap:8px">
+        <a href="#" style="font-size:13px; font-weight:700; min-height:44px; display:flex; align-items:center">‹ Your portal</a>
+        <h1 style="margin:0; font-family:'Familjen Grotesk', sans-serif; font-size:25px; font-weight:700; letter-spacing:-0.04em; line-height:1.05">Hotel stay form</h1>
+      </div>
+      <div style="flex:1; min-height:0; overflow-y:auto; padding:14px 16px 16px">
+        <span style="font-size:13px; color:#565A4B; line-height:1.55">5 questions · used to book your room</span>
+        <sc-for list="{{ formFields }}" as="q" hint-placeholder-count="5">
+          <div style="padding:15px 0; border-bottom:1px solid #E1DDCE; display:flex; flex-direction:column; gap:6px">
+            <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">{{ q.label }}</span>
+            <div style="{{ q.inputStyle }}">{{ q.value }}</div>
+          </div>
+        </sc-for></div>
+      <div style="flex-shrink:0; border-top:1px solid #1B1D17; background:#EFEBDF; padding:12px 16px 16px; display:flex; gap:8px">
+        <span style="flex:1; background:#4E5C31; color:#F7F9F0; border-radius:6px; min-height:48px; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700">Send this in</span>
+        <span style="border:1px solid #BAB6A6; border-radius:6px; min-height:48px; display:flex; align-items:center; padding:0 16px; font-size:13px; font-weight:600">Save draft</span>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:center; gap:12px">
+      <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; background:#1B1D17; color:#F4F1E8; padding:5px 10px; border-radius:4px">390</span>
+      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Portal · Your profile</span>
+    </div>
+
+    <div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+      <div style="border-bottom:1px solid #1B1D17; padding:14px 16px; flex-shrink:0; display:flex; flex-direction:column; gap:8px">
+        <a href="#" style="font-size:13px; font-weight:700; min-height:44px; display:flex; align-items:center">‹ Your portal</a>
+        <h1 style="margin:0; font-family:'Familjen Grotesk', sans-serif; font-size:25px; font-weight:700; letter-spacing:-0.04em; line-height:1.05">Your profile</h1>
+      </div>
+      <div style="flex:1; min-height:0; overflow-y:auto; padding:14px 16px 16px">
+        <div style="padding:4px 0 16px; display:flex; align-items:center; gap:14px; border-bottom:1px solid #E1DDCE">
+          <div style="width:64px; height:64px; border-radius:50%; background:repeating-linear-gradient(135deg, #E1DDCE 0 6px, #D8D3C2 6px 12px); flex-shrink:0; display:grid; place-items:center"><span style="font-family:ui-monospace, monospace; font-size:10px; color:#565A4B">headshot</span></div>
+          <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:4px">
+            <span style="font-size:13px; color:#565A4B">Headshot · shown on the public speakers page</span>
+            <span style="border:1px solid #BAB6A6; border-radius:6px; background:#EFEBDF; min-height:44px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600">Replace</span>
+          </div>
+        </div>
+        <sc-for list="{{ profileFields }}" as="p" hint-placeholder-count="6">
+          <div style="padding:15px 0; border-bottom:1px solid #E1DDCE; display:flex; flex-direction:column; gap:6px">
+            <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">{{ p.label }}</span>
+            <div style="{{ p.inputStyle }}">{{ p.value }}</div>
+          </div>
+        </sc-for></div>
+      <div style="flex-shrink:0; border-top:1px solid #1B1D17; background:#EFEBDF; padding:12px 16px 16px; display:flex; gap:8px">
+        <span style="flex:1; background:#4E5C31; color:#F7F9F0; border-radius:6px; min-height:48px; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700">Save</span>
+        <span style="border:1px solid #BAB6A6; border-radius:6px; min-height:48px; display:flex; align-items:center; padding:0 16px; font-size:13px; font-weight:600">Cancel</span>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:center; gap:12px">
+      <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; background:#1B1D17; color:#F4F1E8; padding:5px 10px; border-radius:4px">390</span>
+      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Portal · Your session</span>
+    </div>
+
+    <div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+      <div style="border-bottom:1px solid #1B1D17; padding:14px 16px; flex-shrink:0; display:flex; flex-direction:column; gap:8px">
+        <a href="#" style="font-size:13px; font-weight:700; min-height:44px; display:flex; align-items:center">‹ Your portal</a>
+        <h1 style="margin:0; font-family:'Familjen Grotesk', sans-serif; font-size:25px; font-weight:700; letter-spacing:-0.04em; line-height:1.05">Your session</h1>
+      </div>
+      <div style="flex:1; min-height:0; overflow-y:auto; padding:14px 16px 16px">
+        <span style="font-size:11px; font-weight:800; letter-spacing:0.09em; text-transform:uppercase; color:#4E5C31">Accepted · 14 Mar</span>
+        <h2 style="margin:10px 0 0; font-family:'Familjen Grotesk', sans-serif; font-size:20px; font-weight:600; letter-spacing:-0.025em; line-height:1.3">Taming 40-Minute CI: Incremental Builds at Monorepo Scale</h2>
+        <span style="display:block; margin-top:6px; font-size:13px; color:#565A4B">DFC-014 · talk, 30 min · Platform &amp; Infra</span>
+        <span style="display:block; margin-top:6px; font-size:13px; color:#565A4B">Tue 12 May, 10:00 · Room 2A</span>
+        <div style="padding:18px 0 8px; border-bottom:2px solid #1B1D17; margin-top:12px">
+          <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase">Abstract</span>
+        </div>
+        <p style="margin:14px 0 0; font-size:15px; line-height:1.65; color:#3F4237">Our monorepo CI took 40 minutes on a good day. This talk walks through how we cut it to 6 minutes with content-addressed caching, remote execution, and a test-selection model — including the two migrations that failed first.</p>
+        <div style="padding:18px 0 8px; border-bottom:2px solid #1B1D17">
+          <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase">Slides</span>
+        </div>
+        <div style="padding:14px 0; border-bottom:1px solid #E1DDCE; display:flex; align-items:center; gap:12px">
+          <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:2px">
+            <span style="font-size:14px; font-weight:600">taming-ci-devflow.pdf</span>
+            <span style="font-size:12px; color:#565A4B">v3 · 14 MB · with the organisers</span>
+          </div>
+          <span style="border:1px solid #BAB6A6; border-radius:6px; background:#EFEBDF; min-height:44px; display:flex; align-items:center; padding:0 14px; font-size:13px; font-weight:600">Replace</span>
+        </div></div>
+      <div style="flex-shrink:0; border-top:1px solid #1B1D17; background:#EFEBDF; padding:12px 16px 16px; display:flex; gap:8px">
+        <span style="flex:1; background:#4E5C31; color:#F7F9F0; border-radius:6px; min-height:48px; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700">Upload slides</span>
+        <span style="border:1px solid #BAB6A6; border-radius:6px; min-height:48px; display:flex; align-items:center; padding:0 16px; font-size:13px; font-weight:600">Edit</span>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:center; gap:12px">
+      <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; background:#1B1D17; color:#F4F1E8; padding:5px 10px; border-radius:4px">390</span>
+      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Portal · Edit your session</span>
+    </div>
+
+    <div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+      <div style="border-bottom:1px solid #1B1D17; padding:14px 16px; flex-shrink:0; display:flex; flex-direction:column; gap:8px">
+        <a href="#" style="font-size:13px; font-weight:700; min-height:44px; display:flex; align-items:center">‹ Your portal</a>
+        <h1 style="margin:0; font-family:'Familjen Grotesk', sans-serif; font-size:25px; font-weight:700; letter-spacing:-0.04em; line-height:1.05">Edit your session</h1>
+      </div>
+      <div style="flex:1; min-height:0; overflow-y:auto; padding:14px 16px 16px">
+        <span style="font-size:13px; color:#565A4B; line-height:1.55">Edits are live on the public pages straight away.</span>
+        <div style="padding:15px 0; border-bottom:1px solid #E1DDCE; display:flex; flex-direction:column; gap:6px">
+          <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Title</span>
+          <div style="border:1px solid #BAB6A6; border-radius:6px; background:#FAF8F2; min-height:48px; display:flex; align-items:center; padding:0 13px; font-size:15px">Taming 40-Minute CI</div>
+        </div>
+        <div style="padding:15px 0; border-bottom:1px solid #E1DDCE; display:flex; flex-direction:column; gap:6px">
+          <div style="display:flex; align-items:baseline; justify-content:space-between">
+            <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Abstract</span>
+            <span style="font-size:12px; color:#565A4B">412 / 1,200</span>
+          </div>
+          <div style="border:1px solid #BAB6A6; border-radius:6px; background:#FAF8F2; padding:13px; min-height:150px; font-size:14px; line-height:1.6; color:#3F4237">Our monorepo CI took 40 minutes on a good day. This talk walks through how we cut it to 6 minutes with content-addressed caching, remote execution, and a test-selection model.</div>
+        </div>
+        <div style="padding:15px 0; border-bottom:1px solid #E1DDCE; display:flex; flex-direction:column; gap:6px">
+          <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Session length</span>
+          <div style="border:1px solid #BAB6A6; border-radius:6px; background:#EFEBDF; min-height:48px; display:flex; align-items:center; padding:0 13px; font-size:15px; color:#565A4B">Talk, 30 min · set by the organisers</div>
+        </div></div>
+      <div style="flex-shrink:0; border-top:1px solid #1B1D17; background:#EFEBDF; padding:12px 16px 16px; display:flex; gap:8px">
+        <span style="flex:1; background:#4E5C31; color:#F7F9F0; border-radius:6px; min-height:48px; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700">Save changes</span>
+        <span style="border:1px solid #BAB6A6; border-radius:6px; min-height:48px; display:flex; align-items:center; padding:0 16px; font-size:13px; font-weight:600">Cancel</span>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:center; gap:12px">
+      <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; background:#1B1D17; color:#F4F1E8; padding:5px 10px; border-radius:4px">Public</span>
+      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Speakers and gallery</span>
+    </div>
+
+    <div style="width:900px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:6px; overflow:hidden; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+      <header style="border-bottom:1px solid #1B1D17; padding:20px 36px; display:flex; align-items:flex-end; justify-content:space-between; gap:20px">
+        <span style="font-family:'Familjen Grotesk', sans-serif; font-size:26px; font-weight:700; letter-spacing:-0.04em; line-height:1">DevFlow Conf 2027</span>
+        <nav style="display:flex; align-items:center; gap:15px; font-size:14px; font-weight:600; line-height:1">
+          <a href="#" style="color:#565A4B; padding:4px 0">Sessions</a>
+          <span style="padding:4px 0; box-shadow:inset 0 -2px 0 #4E5C31">Speakers</span>
+          <a href="#" style="color:#565A4B; padding:4px 0">Agenda</a>
+          <a href="#" style="color:#565A4B; padding:4px 0">Gallery</a>
+        </nav>
+      </header>
+      <div style="padding:24px 36px 34px; display:flex; flex-direction:column; gap:22px">
+        <div style="display:flex; align-items:baseline; justify-content:space-between">
+          <span style="font-size:15px; color:#3F4237">23 speakers across three tracks</span>
+          <div style="border:1px solid #BAB6A6; border-radius:4px; padding:8px 12px; font-size:13px; color:#565A4B; background:#FAF8F2; min-width:220px">Search speakers…</div>
+        </div>
+        <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:20px">
+          <sc-for list="{{ speakerCards }}" as="s" hint-placeholder-count="6">
+            <div style="display:flex; flex-direction:column; gap:9px">
+              <div style="height:150px; border-radius:5px; background:repeating-linear-gradient(135deg, #E1DDCE 0 6px, #D8D3C2 6px 12px); display:grid; place-items:center"><span style="font-family:ui-monospace, monospace; font-size:11px; color:#565A4B">speaker headshot</span></div>
+              <a href="#" style="font-family:'Familjen Grotesk', sans-serif; font-size:17px; font-weight:600; letter-spacing:-0.02em; color:#1B1D17">{{ s.name }}</a>
+              <span style="font-size:13px; color:#565A4B; line-height:1.45">{{ s.role }}</span>
+              <span style="font-size:13px; line-height:1.45">{{ s.session }}</span>
+            </div>
+          </sc-for>
+        </div>
+        <div style="border-top:1px solid #D3CFC0; padding-top:18px; display:flex; align-items:baseline; justify-content:space-between">
+          <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase">Gallery · /gallery</span>
+          <span style="font-size:13px; color:#565A4B">Headshots only, no session details</span>
+        </div>
+        <div style="display:grid; grid-template-columns:repeat(8, 1fr); gap:10px">
+          <sc-for list="{{ galleryTiles }}" as="g" hint-placeholder-count="16">
+            <div style="aspect-ratio:1; border-radius:4px; background:repeating-linear-gradient(135deg, #E1DDCE 0 6px, #D8D3C2 6px 12px); display:grid; place-items:center"><span style="font-family:ui-monospace, monospace; font-size:10px; color:#565A4B">headshot</span></div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:center; gap:12px">
+      <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; background:#1B1D17; color:#F4F1E8; padding:5px 10px; border-radius:4px">390</span>
+      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">My schedule · /schedule</span>
+    </div>
+
+    <div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+      <div style="border-bottom:1px solid #1B1D17; padding:14px 16px; flex-shrink:0; display:flex; flex-direction:column; gap:7px">
+        <span style="font-size:10px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:#565A4B">DevFlow Conf 2027</span>
+        <h1 style="margin:0; font-family:'Familjen Grotesk', sans-serif; font-size:25px; font-weight:700; letter-spacing:-0.04em; line-height:1.05">My schedule</h1>
+        <span style="font-size:13px; color:#565A4B">4 saved in this browser · no account needed</span>
+      </div>
+      <div style="flex:1; min-height:0; overflow-y:auto; padding:14px 16px 16px">
+        <sc-for list="{{ saved }}" as="s" hint-placeholder-count="4">
+          <div style="padding:15px 0; border-bottom:1px solid #E1DDCE; display:flex; flex-direction:column; gap:7px">
+            <div style="display:flex; align-items:baseline; gap:10px">
+              <span style="font-family:'Familjen Grotesk', sans-serif; font-size:15px; font-weight:700">{{ s.time }}</span>
+              <span style="font-size:12px; color:#565A4B">{{ s.room }}</span>
+              <span style="{{ s.clashStyle }}">{{ s.clash }}</span>
+            </div>
+            <span style="font-family:'Familjen Grotesk', sans-serif; font-size:17px; font-weight:600; letter-spacing:-0.02em; line-height:1.3">{{ s.title }}</span>
+            <span style="font-size:13px; color:#565A4B">{{ s.speaker }}</span>
+            <span style="border:1px solid #BAB6A6; border-radius:6px; background:#EFEBDF; min-height:44px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600">Remove</span>
+          </div>
+        </sc-for>
+      </div>
+      <div style="flex-shrink:0; border-top:1px solid #1B1D17; background:#EFEBDF; padding:12px 16px 16px; display:flex; gap:8px">
+        <span style="flex:1; background:#4E5C31; color:#F7F9F0; border-radius:6px; min-height:48px; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700">Download .ics</span>
+        <span style="border:1px solid #BAB6A6; border-radius:6px; min-height:48px; display:flex; align-items:center; padding:0 16px; font-size:13px; font-weight:600">All sessions</span>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:center; gap:12px">
+      <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; background:#1B1D17; color:#F4F1E8; padding:5px 10px; border-radius:4px">Public</span>
+      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Submit a talk · /submit/:slug</span>
+      <span style="font-size:11px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B">No account · the busiest screen in the product</span>
+    </div>
+
+    <div style="width:900px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:6px; overflow:hidden; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+      <header style="border-bottom:1px solid #1B1D17; padding:26px 44px 20px; display:flex; flex-direction:column; gap:7px">
+        <span style="font-size:11px; font-weight:700; letter-spacing:0.14em; text-transform:uppercase; color:#565A4B">12–14 May 2027 · Moscone West, San Francisco</span>
+        <span style="font-family:'Familjen Grotesk', sans-serif; font-size:32px; font-weight:700; letter-spacing:-0.04em; line-height:1">DevFlow Conf 2027</span>
+        <span style="font-size:15px; color:#3F4237">Call for papers · closes Sun 16 Aug, 23:59 Pacific</span>
+      </header>
+
+      <div style="padding:28px 44px 40px; display:flex; flex-direction:column; gap:30px">
+
+        <div style="display:flex; flex-direction:column; gap:11px; max-width:62ch">
+          <h1 style="margin:0; font-family:'Familjen Grotesk', sans-serif; font-size:34px; font-weight:700; letter-spacing:-0.04em; line-height:1.08">Submit a talk</h1>
+          <p style="margin:0; font-size:16px; line-height:1.7; color:#3F4237">Three tracks, five formats, no account needed. We email you a portal link, and you can edit until the form closes.</p>
+        </div>
+
+        <section>
+          <div style="border-bottom:2px solid #1B1D17; padding-bottom:8px">
+            <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase">Your talk</span>
+          </div>
+          <div style="padding:18px 0 0; display:flex; flex-direction:column; gap:20px; max-width:660px">
+            <div style="display:flex; flex-direction:column; gap:6px">
+              <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Title</span>
+              <div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; min-height:48px; display:flex; align-items:center; padding:0 14px; font-size:16px">Taming 40-Minute CI: Incremental Builds at Monorepo Scale</div>
+            </div>
+
+            <div style="display:flex; flex-direction:column; gap:6px">
+              <div style="display:flex; align-items:baseline; justify-content:space-between">
+                <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Abstract</span>
+                <span style="font-size:12px; color:#565A4B">412 of 1,200</span>
+              </div>
+              <div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; padding:14px; min-height:150px; font-size:15px; line-height:1.65; color:#3F4237">Our monorepo CI took 40 minutes on a good day. This talk walks through how we cut it to 6 minutes with content-addressed caching, remote execution, and a test-selection model — including the two migrations that failed first.</div>
+              <span style="font-size:12px; color:#565A4B">Shown on the public sessions page if your talk is accepted</span>
+            </div>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:18px">
+              <div style="display:flex; flex-direction:column; gap:8px">
+                <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Track</span>
+                <sc-for list="{{ tracks }}" as="t" hint-placeholder-count="3">
+                  <label style="{{ t.style }}">
+                    <span style="{{ t.mark }}"></span>
+                    {{ t.name }}
+                  </label>
+                </sc-for>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:8px">
+                <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Format</span>
+                <sc-for list="{{ formats }}" as="f" hint-placeholder-count="5">
+                  <label style="{{ f.style }}">
+                    <span style="{{ f.mark }}"></span>
+                    {{ f.name }}
+                  </label>
+                </sc-for>
+              </div>
+            </div>
+
+            <div style="display:flex; flex-direction:column; gap:6px">
+              <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Audience level</span>
+              <div style="display:flex; gap:8px">
+                <span style="border:1px solid #BAB6A6; border-radius:99px; min-height:44px; display:flex; align-items:center; padding:0 16px; font-size:14px; font-weight:500">Beginner</span>
+                <span style="background:#1B1D17; color:#F4F1E8; border-radius:99px; min-height:44px; display:flex; align-items:center; padding:0 16px; font-size:14px; font-weight:600">Intermediate</span>
+                <span style="border:1px solid #BAB6A6; border-radius:99px; min-height:44px; display:flex; align-items:center; padding:0 16px; font-size:14px; font-weight:500">Advanced</span>
+              </div>
+            </div>
+
+            <div style="display:flex; flex-direction:column; gap:6px">
+              <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Notes for reviewers · optional</span>
+              <div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; padding:14px; min-height:84px; font-size:15px; line-height:1.6; color:#565A4B">Never shown publicly</div>
+            </div>
+
+            <div style="display:flex; flex-direction:column; gap:6px">
+              <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Accessibility needs · optional</span>
+              <div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; min-height:48px; display:flex; align-items:center; padding:0 14px; font-size:15px; color:#565A4B">Goes to the venue team only</div>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <div style="border-bottom:2px solid #1B1D17; padding-bottom:8px">
+            <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase">You</span>
+          </div>
+          <div style="padding:18px 0 0; display:grid; grid-template-columns:1fr 1fr; gap:18px; max-width:660px">
+            <div style="display:flex; flex-direction:column; gap:6px">
+              <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Name</span>
+              <div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; min-height:48px; display:flex; align-items:center; padding:0 14px; font-size:16px">Priya Raman</div>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:6px">
+              <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Email</span>
+              <div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; min-height:48px; display:flex; align-items:center; padding:0 14px; font-size:16px">priya@example.com</div>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:6px">
+              <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Company · optional</span>
+              <div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; min-height:48px; display:flex; align-items:center; padding:0 14px; font-size:16px">Latticework Systems</div>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:6px">
+              <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Job title · optional</span>
+              <div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; min-height:48px; display:flex; align-items:center; padding:0 14px; font-size:16px">Principal Engineer</div>
+            </div>
+            <div style="grid-column:1 / -1; display:flex; flex-direction:column; gap:6px">
+              <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Bio · optional</span>
+              <div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; padding:14px; min-height:96px; font-size:15px; line-height:1.6; color:#3F4237">Priya Raman leads the build-tooling platform team at Latticework Systems. She maintained the open-source task runner gantry.</div>
+              <span style="font-size:12px; color:#565A4B">Shown on the public speakers page · you can edit it later in your portal</span>
+            </div>
+          </div>
+        </section>
+
+        <div style="display:flex; align-items:center; gap:16px; border-top:1px solid #D3CFC0; padding-top:22px">
+          <span style="background:#4E5C31; color:#F7F9F0; border-radius:4px; min-height:50px; display:flex; align-items:center; padding:0 22px; font-size:15px; font-weight:700">Submit this talk</span>
+          <span style="border:1px solid #BAB6A6; border-radius:4px; background:#EFEBDF; min-height:48px; display:flex; align-items:center; padding:0 18px; font-size:14px; font-weight:600">Save draft</span>
+          <span style="font-size:13px; color:#565A4B; line-height:1.5">We email a confirmation with a link to your portal</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:center; gap:12px">
+      <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; background:#1B1D17; color:#F4F1E8; padding:5px 10px; border-radius:4px">390</span>
+      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Submit a talk</span>
+    </div>
+
+    <div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+      <div style="border-bottom:1px solid #1B1D17; padding:14px 16px; flex-shrink:0; display:flex; flex-direction:column; gap:6px">
+        <span style="font-size:10px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:#565A4B">DevFlow Conf 2027 · closes 16 Aug</span>
+        <h1 style="margin:0; font-family:'Familjen Grotesk', sans-serif; font-size:25px; font-weight:700; letter-spacing:-0.04em; line-height:1.05">Submit a talk</h1>
+        <div style="display:flex; align-items:center; gap:8px; padding-top:4px">
+          <span style="font-size:11px; font-weight:800; letter-spacing:0.09em; text-transform:uppercase; color:#565A4B">Step 1 of 2 · your talk</span>
+          <div style="flex:1; height:5px; border-radius:99px; background:#E1DDCE; overflow:hidden">
+            <div style="width:50%; height:100%; background:#4E5C31"></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="flex:1; min-height:0; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:18px">
+        <div style="display:flex; flex-direction:column; gap:6px">
+          <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Title</span>
+          <div style="border:1px solid #BAB6A6; border-radius:6px; background:#FAF8F2; min-height:48px; display:flex; align-items:center; padding:0 13px; font-size:15px">Taming 40-Minute CI</div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:6px">
+          <div style="display:flex; align-items:baseline; justify-content:space-between">
+            <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Abstract</span>
+            <span style="font-size:12px; color:#565A4B">412 / 1,200</span>
+          </div>
+          <div style="border:1px solid #BAB6A6; border-radius:6px; background:#FAF8F2; padding:13px; min-height:132px; font-size:14px; line-height:1.6; color:#3F4237">Our monorepo CI took 40 minutes on a good day. This talk walks through how we cut it to 6 minutes with content-addressed caching, remote execution, and a test-selection model.</div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:8px">
+          <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Track</span>
+          <sc-for list="{{ tracks }}" as="t" hint-placeholder-count="3">
+            <label style="{{ t.styleM }}">
+              <span style="{{ t.mark }}"></span>
+              {{ t.name }}
+            </label>
+          </sc-for>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:8px">
+          <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Format</span>
+          <sc-for list="{{ formats }}" as="f" hint-placeholder-count="5">
+            <label style="{{ f.styleM }}">
+              <span style="{{ f.mark }}"></span>
+              {{ f.name }}
+            </label>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="flex-shrink:0; border-top:1px solid #1B1D17; background:#EFEBDF; padding:12px 16px 16px; display:flex; gap:8px">
+        <span style="flex:1; background:#4E5C31; color:#F7F9F0; border-radius:6px; min-height:48px; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700">Next: about you</span>
+        <span style="border:1px solid #BAB6A6; border-radius:6px; min-height:48px; display:flex; align-items:center; padding:0 16px; font-size:13px; font-weight:600">Draft</span>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:center; gap:12px">
+      <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; background:#1B1D17; color:#F4F1E8; padding:5px 10px; border-radius:4px">390</span>
+      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Submitted</span>
+    </div>
+
+    <div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+      <div style="flex:1; padding:26px 20px; display:flex; flex-direction:column; gap:16px">
+        <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#4E5C31">Submitted · DFC-048</span>
+        <h1 style="margin:0; font-family:'Familjen Grotesk', sans-serif; font-size:27px; font-weight:700; letter-spacing:-0.04em; line-height:1.08">That's in. Check your email.</h1>
+        <div style="border:1px solid #D3CFC0; border-radius:8px; background:#FAF8F2; padding:15px; display:flex; flex-direction:column; gap:5px">
+          <span style="font-family:'Familjen Grotesk', sans-serif; font-size:17px; font-weight:600; letter-spacing:-0.02em; line-height:1.3">Taming 40-Minute CI: Incremental Builds at Monorepo Scale</span>
+          <span style="font-size:13px; color:#565A4B">Talk, 30 min · Platform &amp; Infra · intermediate</span>
+          <span style="font-size:13px; color:#565A4B">Priya Raman · Latticework Systems</span>
+        </div>
+        <span style="font-size:15px; line-height:1.65; color:#3F4237">We emailed priya@example.com a portal link. You can edit this talk until 16 Aug.</span>
+        <span style="font-size:13px; color:#565A4B; line-height:1.55">If it hasn't arrived, check spam.</span>
+        <div style="border-top:1px solid #E1DDCE; padding-top:16px; display:flex; flex-direction:column; gap:11px">
+          <span style="border:1px solid #BAB6A6; border-radius:6px; background:#EFEBDF; min-height:46px; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:600">Submit another talk</span>
+          <a href="#" style="font-size:14px; font-weight:700; min-height:44px; display:flex; align-items:center">Browse the sessions ›</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:center; gap:12px">
+      <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; background:#1B1D17; color:#F4F1E8; padding:5px 10px; border-radius:4px">Public</span>
+      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">CFP closed</span>
+      <span style="font-size:11px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B">Same URL after the close date</span>
+    </div>
+
+    <div style="width:520px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:6px; overflow:hidden; box-shadow:0 18px 44px rgba(27,29,23,0.13); padding:34px 34px 30px; display:flex; flex-direction:column; gap:14px">
+      <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">DevFlow Conf 2027</span>
+      <h1 style="margin:0; font-family:'Familjen Grotesk', sans-serif; font-size:29px; font-weight:700; letter-spacing:-0.04em; line-height:1.08">The call for papers has closed</h1>
+      <span style="font-size:15px; line-height:1.65; color:#3F4237">Submissions closed on 16 August 2027. Thanks for your interest in DevFlow Conf.</span>
+      <div style="display:flex; gap:16px; padding-top:6px">
+        <a href="#" style="font-size:14px; font-weight:700">Browse the sessions ›</a>
+      </div>
+    </div>
+  </div>
+
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const DUE_LATE = 'font-size:10px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; white-space:nowrap';
+const DUE_SOON = 'font-size:10px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B; white-space:nowrap';
+
+class Component extends DCLogic {
+  renderVals() {
+    const OPT = 'display:flex; align-items:center; gap:11px; border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; min-height:46px; padding:0 14px; font-size:14px; font-weight:500';
+    const OPT_ON = 'display:flex; align-items:center; gap:11px; border:1px solid #4E5C31; border-radius:4px; background:#FAF8F2; min-height:46px; padding:0 14px; font-size:14px; font-weight:700';
+    const MARK = 'width:16px; height:16px; border-radius:50%; border:1px solid #8E8A7A; flex-shrink:0';
+    const MARK_ON = 'width:16px; height:16px; border-radius:50%; border:5px solid #4E5C31; flex-shrink:0';
+    const opt = (name, on) => ({ name, style: on ? OPT_ON : OPT, styleM: (on ? OPT_ON : OPT).replace('border-radius:4px', 'border-radius:6px'), mark: on ? MARK_ON : MARK });
+    const CLASH = 'font-size:10px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; margin-left:auto';
+    const NOCLASH = 'display:none';
+    const IN = 'border:1px solid #BAB6A6; border-radius:6px; background:#FAF8F2; min-height:48px; display:flex; align-items:center; padding:0 13px; font-size:15px';
+    const IN_BIG = 'border:1px solid #BAB6A6; border-radius:6px; background:#FAF8F2; padding:13px; min-height:110px; font-size:14px; line-height:1.6; color:#3F4237';
+    const IN_LOCK = 'border:1px solid #BAB6A6; border-radius:6px; background:#EFEBDF; min-height:48px; display:flex; align-items:center; padding:0 13px; font-size:15px; color:#565A4B';
+    const DONE_S = 'font-size:11px; font-weight:700; letter-spacing:0.09em; text-transform:uppercase; color:#4E5C31; white-space:nowrap';
+    const TODO_S = 'font-size:11px; font-weight:800; letter-spacing:0.09em; text-transform:uppercase; white-space:nowrap';
+    const BTN_GO = 'background:#4E5C31; color:#F7F9F0; border-radius:6px; min-height:44px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700';
+    const BTN_SEEN = 'border:1px solid #BAB6A6; background:#EFEBDF; border-radius:6px; min-height:44px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600';
+    return {
+      tracks: [
+        opt('AI Engineering', false),
+        opt('Platform & Infra', true),
+        opt('Developer Experience', false),
+      ],
+      formats: [
+        opt('Keynote, 45 min', false),
+        opt('Talk, 30 min', true),
+        opt('Lightning talk, 10 min', false),
+        opt('Workshop, 120 min', false),
+        opt('Panel, 45 min', false),
+      ],
+      speakerCards: [
+        { name: 'Priya Raman', role: 'Principal Engineer, Latticework Systems', session: 'Taming 40-Minute CI' },
+        { name: 'Marcus Okafor', role: 'Staff Developer Advocate, Cloudreach Labs', session: 'Your AI Pair Programmer Is Lying to You' },
+        { name: 'Nadia Ferrone', role: 'Research Engineer, Northwind Data', session: 'Evaluating Agents' },
+        { name: 'Iris Bell', role: 'Staff Engineer, Latticework Systems', session: 'Trunk-Based Development at 400 Engineers' },
+        { name: 'Tomas Bell', role: 'Platform Engineer, Riverbed', session: 'Feature Flags Without the Debt' },
+        { name: 'Wei Chen', role: 'Data Engineer, Northwind Data', session: 'Cheap Load Testing' },
+      ],
+      galleryTiles: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16].map((n) => ({ n })),
+      saved: [
+        { time: 'Tue 9:00', room: 'Main Stage', title: 'Opening Keynote', speaker: 'Jordan Alvarez', clash: '', clashStyle: NOCLASH },
+        { time: 'Tue 10:00', room: 'Room 2A', title: 'Taming 40-Minute CI', speaker: 'Priya Raman', clash: 'Overlaps the next one', clashStyle: CLASH },
+        { time: 'Tue 10:30', room: 'Main Stage', title: 'Your AI Pair Programmer Is Lying to You', speaker: 'Marcus Okafor', clash: 'Overlaps', clashStyle: CLASH },
+        { time: 'Wed 11:00', room: 'Workshop Lab', title: 'Evaluating Agents', speaker: 'Nadia Ferrone', clash: '', clashStyle: NOCLASH },
+      ],
+      portalTasks: [
+        { title: 'Confirm participation', due: 'Was due 1 Apr', state: 'Done', stateStyle: DONE_S, btn: 'Confirmed 14 Mar', btnStyle: BTN_SEEN },
+        { title: 'Upload headshot', due: 'Was due 10 Apr', state: 'Done', stateStyle: DONE_S, btn: 'Replace it', btnStyle: BTN_SEEN },
+        { title: 'Complete your bio', due: 'Due 10 Apr', state: 'To do', stateStyle: TODO_S, btn: 'Write it now', btnStyle: BTN_GO },
+        { title: 'Sign the speaker release', due: 'Due 20 Apr', state: 'To do', stateStyle: TODO_S, btn: 'Open the form', btnStyle: BTN_GO },
+        { title: 'Hotel stay form', due: 'Due 25 Apr', state: 'To do', stateStyle: TODO_S, btn: 'Answer 5 questions', btnStyle: BTN_GO },
+      ],
+      formFields: [
+        { label: 'Do you need a room?', value: 'Yes, two nights', inputStyle: IN },
+        { label: 'Arriving', value: '11 May 2027', inputStyle: IN },
+        { label: 'Leaving', value: '13 May 2027', inputStyle: IN },
+        { label: 'Accessibility needs', value: 'None', inputStyle: IN },
+        { label: 'Anything else', value: 'Happy to share a hotel with other speakers', inputStyle: IN_BIG },
+      ],
+      profileFields: [
+        { label: 'Name', value: 'Priya Raman', inputStyle: IN },
+        { label: 'Job title', value: 'Principal Engineer', inputStyle: IN },
+        { label: 'Company', value: 'Latticework Systems', inputStyle: IN },
+        { label: 'Bio', value: 'Priya Raman leads the build-tooling platform team at Latticework Systems. She maintained the open-source task runner gantry and speaks on build systems and CI reliability.', inputStyle: IN_BIG },
+        { label: 'Links', value: '@priyabuilds · linkedin.com/in/priya-raman-example', inputStyle: IN },
+        { label: 'Email', value: 'sbek-speaker@example.com · ask an organiser to change this', inputStyle: IN_LOCK },
+      ],
+      sessions: [
+        { time: '9:00', room: 'Main Stage', title: 'Opening Keynote', speaker: 'Jordan Alvarez', track: 'All tracks', format: 'Keynote, 45 min', action: 'Save' },
+        { time: '9:30', room: 'Room 2B', title: 'Trunk-Based Development at 400 Engineers', speaker: 'Iris Bell', track: 'Platform & Infra', format: 'Talk, 30 min', action: 'Save' },
+        { time: '10:00', room: 'Room 2A', title: 'Taming 40-Minute CI: Incremental Builds at Monorepo Scale', speaker: 'Priya Raman', track: 'Platform & Infra', format: 'Talk, 30 min', action: 'Saved' },
+        { time: '10:00', room: 'Workshop Lab', title: 'Evaluating Agents: Harnesses, Judges, and Regression Sets', speaker: 'Nadia Ferrone', track: 'AI Engineering', format: 'Workshop, 120 min', action: 'Save' },
+        { time: '10:30', room: 'Main Stage', title: 'Your AI Pair Programmer Is Lying to You', speaker: 'Marcus Okafor', track: 'AI Engineering', format: 'Talk, 30 min', action: 'Saved' },
+      ],
+      days: [
+        { name: 'Tue 12 May', count: '8 sessions' },
+        { name: 'Wed 13 May', count: '6 sessions' },
+        { name: 'Thu 14 May', count: '3 sessions' },
+      ],
+      tasks: [
+        { title: 'Complete your bio', due: 'Due 10 Apr', dueStyle: DUE_SOON, detail: 'Used on the public speakers page and in the programme.', action: 'Write it now' },
+        { title: 'Sign the speaker release', due: 'Due 20 Apr', dueStyle: DUE_SOON, detail: 'One page, covers recording and photography.', action: 'Open the form' },
+      ],
+      done: [
+        { title: 'Confirmed participation', when: '14 Mar' },
+        { title: 'Uploaded headshot', when: '18 Mar' },
+        { title: 'Uploaded slides v3', when: 'Yesterday' },
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,217 @@
+# Handoff: Chautauqua admin, portal and public redesign
+
+## Overview
+
+Chautauqua is an open-source speaker & event-content management platform (a Sessionboard replacement) — one Cloudflare Worker serving an admin SPA at `/admin`, a speaker portal at `/portal`, server-rendered public event pages at `/e/:slug/*`, and a public CFP form at `/submit/:slug`.
+
+The app is functionally complete but visually unstyled (a single 327-line `app/src/styles.css` with browser-default form controls). This bundle is a full visual redesign of **every route in `app/src/routeManifest.ts`**, plus the modals that never appear in that manifest, at desktop (1240px) and phone (390px) widths — 72 frames across 11 files.
+
+Two structural changes go beyond styling, and both are deliberate:
+
+1. **Overview stopped being a directory.** It used to show six cards, each a count linking to the tab with the same count — while the sidebar showed those counts too. Three copies of one fact. The redesign puts the work itself on Overview: named speakers with Remind on the row, named submissions with Accept/Decline, sessions with Approve. The sidebar carries destinations only, with a badge solely when something is wrong.
+2. **The agenda works on a phone.** Not by shrinking the 5-column × 15-minute grid, but by changing the interaction: one room in view, time down the page, tap-to-place instead of drag. This maps onto the existing `PUT /submissions/:id/slot` body `{day, startMin, endMin, roomId}` — dragging was only ever the desktop's way of naming those four values.
+
+## About the design files
+
+The files in this bundle are **design references created in HTML** — prototypes showing intended look and behaviour. They are **not production code to copy**. They use a streaming component runtime (`support.js`) with inline styles; do not port that runtime.
+
+The task is to **recreate these designs in Chautauqua's existing environment**: React 18 + React Router v6 + Vite for the admin SPA (`app/src/`), and Hono JSX server-rendered components for the portal and public surfaces (`src/routes/`). Keep the existing route structure, data fetching (`app/src/lib/api.ts`), optimistic-update patterns and role gating exactly as they are — this is a re-skin plus the two structural changes above, not a rewrite.
+
+Styling approach: the current `app/src/styles.css` already uses a `--chq-*` custom property convention. Replace those values with the tokens below and add the new component classes there; the design needs no CSS framework.
+
+## Fidelity
+
+**High-fidelity.** Final colours, typography, spacing, and copy. Recreate pixel-perfectly. Every hex, size and weight in this document is the value used in the mocks.
+
+Two caveats: the mocks show static states (no real hover/focus animation), and long-list frames show 3–8 rows where production paginates at 25–50 (`PER_PAGE` in each page module).
+
+## Design tokens
+
+### Colour
+
+| Token | Hex | Use |
+|---|---|---|
+| Paper | `#F4F1E8` | Page ground (oat) |
+| Surface | `#FAF8F2` | Inputs, cards on paper |
+| Surface sunk | `#EFEBDF` | Secondary buttons, footers, bulk bars |
+| Ink | `#1B1D17` | Primary text, 2px section rules, inverted panels |
+| Ink text secondary | `#3F4237` | Body copy |
+| Muted | `#565A4B` | Metadata, labels, captions (5.2:1 on paper — this is the floor) |
+| Disabled | `#8E8A7A` | Inert controls, undeletable rows |
+| Hairline | `#E1DDCE` | Row dividers |
+| Rule | `#D3CFC0` | Table top/bottom rules, frame borders |
+| Border | `#BAB6A6` | Input and secondary-button borders |
+| Border strong | `#CFC7B7` | — |
+| **Brand (olive)** | `#4E5C31` | Primary buttons, links, active nav, positive/complete states |
+| Brand hover | `#3C471F` | Link hover |
+| On-brand | `#F7F9F0` | Text on olive |
+
+**There is no red, and no third accent.** Lateness, clashes and "not reviewed" are set in **type** — 10–11px, weight 800, `letter-spacing: 0.09–0.11em`, uppercase, in Ink. This was a deliberate decision after the palette read as green-and-red (Christmassy) with a red alarm colour. Do not reintroduce a semantic red without revisiting it.
+
+On dark surfaces (`#1B1D17`): text `#F4F1E8`, muted `#B5AFA2` (7:1), hairline `#3A3D32`.
+
+Merge screen only: the discarded value is `#565A4B` with `text-decoration: line-through` in `#A8A392` — legible, because merge is irreversible and the discarded value is the evidence for the decision.
+
+### Typography
+
+Two families, from Google Fonts:
+
+- **Familjen Grotesk** — headings, numerals, row titles, wordmark. Weights 400/500/600/700.
+- **Figtree** — body, labels, metadata, buttons. Weights 400/500/600/700/800.
+
+| Role | Size / weight / tracking |
+|---|---|
+| Page title (desktop) | 36px / 700 / `-0.04em` |
+| Page title (phone) | 25–27px / 700 / `-0.04em` |
+| Overview headline | 44px / 700 / `-0.042em` / lh 1.04 |
+| Section label | 11px / 700 / `0.12em` / uppercase, above a 2px Ink rule |
+| Row title | 15–21px / 600 / `-0.015…-0.02em` |
+| Body | 15–16px / 400 / lh 1.6–1.7 |
+| Metadata | 12–13px / 400–600, Muted |
+| Micro label | 10–11px / 700–800 / `0.09–0.12em` / uppercase |
+| Deadline value | 30px / 400, nearest one 700 |
+
+**10px is the absolute type floor** anywhere in the UI, including placeholder labels.
+
+### Spacing, radius, elevation
+
+- Desktop frame padding `26–34px`; measure max-width `820px` (Overview) / `660–760px` (forms).
+- Section gap `26–36px`; row padding `13–18px` vertical.
+- Radius: `4px` desktop controls, `6px` phone controls, `5–6px` cards, `20px` phone frame, `99px` pills.
+- Borders: `1px` hairlines; `2px solid #1B1D17` under every section label. One `2px` rule per section — that rule *is* the section header.
+- No shadows inside the UI. Frame shadows in the mocks (`0 18px 44px rgba(27,29,23,0.13)`) are canvas presentation only — do not port them.
+
+### Controls
+
+Three visible tiers, one filled primary per row:
+
+- **Primary** — `background:#4E5C31; color:#F7F9F0`, no border, weight 700.
+- **Secondary** — `background:#EFEBDF; border:1px solid #CFC7B7; color:#2E2A24`, weight 600.
+- **Tertiary** — text only in brand olive, weight 700; or Muted with a hairline underline.
+
+**Every interactive element is ≥44px on phone** (`min-height:44px` plus centred flex, not padding). Desktop rows use `padding:8–10px 14–18px`.
+
+Nav underline uses `box-shadow: inset 0 -2px 0 #4E5C31`, **not** `border-bottom` — a border adds 2px below the text box and knocks the item off the row's baseline.
+
+## Screens
+
+All 33 routes in `app/src/routeManifest.ts` are covered. File → routes:
+
+| File | Routes / views |
+|---|---|
+| `Chautauqua Overview.dc.html` | `/admin/overview` (desktop + phone), New event modal |
+| `Chautauqua Submissions.dc.html` | `/admin/submissions`, `/admin/submissions/:id`, `/admin/submissions/forms` (+ phone), New submission and Save-view modals |
+| `Chautauqua Review.dc.html` | `/admin/review` organiser tree, reviewer queue, reviewer scorecard, `/review/plans/:id` (+ phone) |
+| `Chautauqua Speakers.dc.html` | `/admin/speakers` (+ phone), roster (phone), New task and Task response modals |
+| `Chautauqua Content.dc.html` | `/admin/content` worklist + deliverable detail, files library (+ phone) |
+| `Chautauqua Agenda.dc.html` | `/admin/agenda` day grid, phone tap-to-place |
+| `Chautauqua Comms.dc.html` | `/admin/comms` compose step 3, templates, send history (phone) |
+| `Chautauqua Contacts.dc.html` | `/admin/contacts` directory, drawer, import, pipeline, merge (each + phone), Bulk email and Add-to-event modals |
+| `Chautauqua Settings.dc.html` | `/admin/settings` all 7 sections, 7 phone subscreens |
+| `Chautauqua Public and Portal.dc.html` | `/e/:slug/{sessions,speakers,gallery,agenda,schedule}`, `/submit/:slug` + confirmation + closed, `/portal` and its 5 sub-routes |
+| `Chautauqua Account.dc.html` | `/login`, `/account/password`, `/admin/*` not-found (+ phone) |
+| `Chautauqua Current.dc.html` | **Before state** — recreation of today's unstyled UI, for comparison |
+
+### Layout pattern (applies to every admin screen)
+
+```
+header (border-bottom 1px #1B1D17, padding 15px 34px)
+  wordmark "chautauqua" — Familjen Grotesk 22px/700/-0.03em, lowercase
+  nav — 13px/600, gap 15px, line-height 1, each item padding 4px 0
+        active: box-shadow inset 0 -2px 0 #4E5C31
+        no counts; olive/ink badge only for exceptions ("3 LATE", "2 CLASH")
+  right: event name 13px/600 · user 11px/700/0.1em uppercase Muted
+
+main (padding 26px 34px 34px)
+  h1 + one-line factual summary (13px Muted)
+  toolbar between 1px #D3CFC0 rules
+  numbered sections: 11px/700/0.12em uppercase label + 2px #1B1D17 rule,
+                     right-aligned action link, then rows split by 1px #E1DDCE
+```
+
+### Overview (the one to build first)
+
+Deadline table across the top: 4 equal cells between 1px rules, each a link. Cell = 10px/700/0.12em uppercase Muted label + 30px Familjen value. The nearest deadline is weight 700, the rest 400. First cell has no left border. Data: `form.closeDate`, min `task.dueDate`, `plan.closeDate`, `event.startDate`.
+
+Then `<h1>` "Four things need your attention" (44px/700). **No subtext** — and never a time estimate.
+
+Five sections: `01 — Overdue speaker tasks`, `02 — Submissions awaiting triage`, `03 — Session content awaiting approval`, `04 — Unplaced sessions and conflicts`, `No action needed`. Rows carry the real object and its action inline. Section 01's caption reads "Skips anyone reminded in the last hour" — that is `MANUAL_DEDUPE_WINDOW_MS` in `src/domain/reminders.ts`, and it must stay next to the send button.
+
+Row grids align on **first baselines** (`align-items:baseline`), not centre — cells are stacks of differing height, and centring each independently leaves nothing on a shared line. Button groups get `align-self:center`. Never put `align-self` on a cell that should sit on the baseline; it opts the cell out of baseline alignment entirely.
+
+### Phone pattern
+
+`390 × 844`, three regions: fixed header, `flex:1; min-height:0; overflow-y:auto` body, fixed footer with the primary action. Chip strips are `overflow-x:auto; -webkit-overflow-scrolling:touch` with `flex-shrink:0` chips — with `overflow:hidden` the last chip becomes unreachable. Five-item bottom tab bar (Overview, Submissions, Speakers, Content/Contacts, More) with an olive dot on the active item and an exception dot where relevant.
+
+## Interactions & behaviour
+
+Preserve today's behaviour exactly; the redesign changes none of it.
+
+- **Optimistic updates with loud rollback** — task toggles, bulk status, agenda placement all render immediately and revert on `ApiError` (see `OnboardingGrid.toggleCell`, `SubmissionsTable.applyBulkStatus`, `AgendaPage.handlePlace`). Bulk status refetches rather than restoring a stale snapshot, since committed batches must not visually roll back (DEC-193).
+- **Bulk selection spans pages** and is sent in batches of 100 (`chunkSelection`). The bulk bar says so.
+- **Conflicts are surfaced, never blocked** (README J9). Placement writes, then reconciles the server's conflicts summary. A double-booked cell inverts to Ink with the label "Two sessions in one room"; it does not refuse the drop.
+- **Reminders are bulk-per-event** with an optional `taskIds` filter — there is no per-person send. Row action is therefore "Remind this task". The endpoint skips anyone reminded within the hour and caps at 100 contacts, returning `{sent, skipped, remaining}`; surface all three.
+- **Deciding never emails.** Status changes are silent; notification happens in Comms. The submission-detail decision panel states this.
+- **Reviewers are confined to `/review`** (`RoleGate`) and see only queue + scorecard.
+- **Task assignment status is `pending | complete` only** — no "waive".
+- **Public itinerary** lives in `localStorage` under `chq_itinerary_<slug>` and travels to `schedule.ics?ids=` (300 cap) — `src/lib/itinerary.ts`.
+- **Drafts** (public CFP) live in KV and are deleted on successful submit; button label "Save draft".
+
+Hover: rows and nav items get `#EFEBDF`; links go `#4E5C31` → `#3C471F`. Focus: 2px olive outline, 2px offset.
+
+## Copy rules
+
+These were the most-revised part of the design. Hold them:
+
+1. **No explanatory clauses in chrome.** Counts, status and nouns. "5 need a decision · 2 re-uploaded", not "5 sessions need a decision, and 2 were uploaded again after you asked for changes".
+2. **Never promise time.** No "takes about ten minutes", no delivery windows, no notification schedule — the product doesn't know.
+3. **Never assert what no endpoint stores.** Cut during review: "published 4 minutes ago" (`agenda/publish` returns a count only), a scheduled-send countdown (Comms sends immediately), an agenda lock date, an email subject line, "check spam in ten minutes", a notify-me-next-year signup.
+4. **Say the constraint you need before acting**, and only that: "Skips anyone reminded in the last hour", "Kept across pages · sent in batches of 100", "Clashes are flagged, not blocked", "Mean of submitted reviews · recusals excluded".
+5. **Plain section names** from the app's own vocabulary — "Submissions awaiting triage", not "Waiting on your call".
+6. **Sentences are for people, not chrome** — reviewer comments, abstracts and bios keep their full length.
+7. **No feature is desktop-only.** Where a laptop is genuinely easier, say it as a preference ("Better on a laptop"), never as a wall.
+
+## Data figures used across the mocks
+
+One meaning each, consistent across all files: 47 submissions · 23 accepted submissions · **12 accepted speakers** (one speaker can hold several accepted talks) · 6 unplaced · 17 placed (74%) · 2 clashes · 318 contacts · 8 CFP questions (3 built-in + Track + 4 custom) · 3 tracks · 4 rooms. Names and titles come from `docs/fixtures/sample-data.json`.
+
+## Screenshots
+
+`screens/` holds one full-canvas capture per file, showing every frame in that file side by side:
+
+| File | Shows |
+|---|---|
+| `00-before-current-ui.png` | **Before** — today's unstyled admin across 7 screens |
+| `01-overview.png` | Overview desktop + phone, New event modal |
+| `02-submissions.png` | Table, submission detail (desktop + phone), form builder (desktop + phone), 2 modals |
+| `03-review.png` | Organiser view, reviewer scorecard, reviewer queue, plan editor (desktop + phone) |
+| `04-speakers.png` | Onboarding grid + phone, roster phone, New task and Task response modals |
+| `05-content.png` | Worklist + deliverable detail, phone list, files library (desktop + phone) |
+| `06-agenda.png` | Day grid, phone tap-to-place |
+| `07-comms.png` | Compose step 3, templates (desktop + phone), send history phone |
+| `08-contacts.png` | Directory, drawer, import, pipeline, merge — each desktop + phone — and 2 modals |
+| `09-settings.png` | All 7 desktop sections, 7 phone subscreens |
+| `10-public-and-portal.png` | 5 public surfaces, CFP form + confirmation + closed, portal home and 5 sub-routes |
+| `11-account.png` | Login, change password, not-found (desktop + phone) |
+
+Captures are of the design canvas, so each frame carries its title label and, where relevant, a note about intent. Measurements in this README are authoritative over the images.
+
+## Assets
+
+None. No icons, no images, no SVG. Status dots are `border-radius:50%` divs; drag affordances are the `⋮⋮` character. Image placeholders are `repeating-linear-gradient(135deg, #E1DDCE 0 6px, #D8D3C2 6px 12px)` with a 10px monospace label naming the drop ("headshot", "speaker headshot") — replace with real headshots from R2.
+
+Fonts: `https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@400;500;600;700&family=Figtree:wght@400;500;600;700;800&display=swap`. Self-host to avoid a third-party request from the Worker.
+
+## Accessibility
+
+Every text/background pair in the bundle passes WCAG AA. The muted floor is `#565A4B` on paper and `#B5AFA2` on ink — anything lighter failed and was raised during review. Type floor 10px, tap targets 44px. Meaning is never carried by colour alone: lateness is weight and wording, the discarded merge value is struck through, agenda states use fill/outline plus a caption.
+
+## Suggested order
+
+1. Tokens and the shell (header, nav, section pattern) in `styles.css`.
+2. Overview — it is the biggest behavioural change and proves the row pattern.
+3. Submissions (table + detail + form builder) — highest-traffic admin screen.
+4. Speakers, Content, Comms, Contacts, Review, Settings.
+5. Agenda desktop, then the phone tap-to-place flow.
+6. Public surfaces and the portal (server-rendered, so a separate styling pass).
+7. Login, password, not-found.
