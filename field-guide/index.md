@@ -21,40 +21,40 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   orm ^0.45.2; 309 perf p95 MINUS /health; 317 invite=3 gates; 322
   safeExternalUrl allowlist; 323 bare .ics=WHOLE agenda; lens citations
   age out—grep SYMBOL not line.
-- w17-18 (DEC-329..339): 329 probe premise vs binding=defect, narrow
-  FETCH ok weaken ASSERTION never. 335 listSubmissions=ONE stmt+EXISTS+
-  LIKE ESCAPE+seq tiebreak. 336/337 contacts AND-tokens x OR-cols SQL,
-  schema.ts idx w/o migration DOESN'T EXIST.
-- w19-22 (DEC-340..358): 340/341/344/345 J5/J6/J8/results/files/queue
-  server-paged, fan-out+resultsSort.ts+find-in-loop DELETED. 346 plan
-  loads shed `description`. 347 perf BASELINE at pre-fix tip. 353
-  archive=40MB TOTAL-byte guard, buildZip ONCE. 354 plan_reviewer scope
-  validated at WRITE + event guard. 355 bulk accept=set-based SELECTs.
-  356 CSV import=email-scoped chunked+2000-row cap. 357 roster-add=one
-  chunked load+ONE updateSubmissionStatuses. 358 pubcache purge CLOSED
-  (201/333/348); exit set SUPERSEDED by 359-362.
-- w23 (DEC-359..362): 359 EXIT=SIX gates, render-sweep/spec-audit/
-  fresh-clone stale since w15/w11/never. 360 gate lanes LOG-ONLY: own
-  exactly ONE file, never patch product; red=OPEN ITEM file:line w24.
-  361 every gate proves 10 w21/w22 merges ancestors of FROZEN SHA
-  before boot; drift LOGGED never STOP. Ports b=8851 c=8852 d=8853
-  f=8855. 362 goalComplete iff all six task-w23-{a..f}-c3-*.md OPEN
-  ITEMS: 0 + RESULT: PASS (main or worktree, 307).
-- w24 (DEC-363..365): STAGE 1 COMPLETE. All six w23 gates read OPEN
-  ITEMS: 0/RESULT: PASS at FROZEN SHA e3d558e (a-e on main, f in its
-  worktree per 362/307); every commit after e3d558e is a 360 log-only
-  gate merge, so main's code == the certified tree. Re-verified: one-
-  command zero-secret dev (package.json:6-7 -> ensure-dev-vars copies
-  .dev.vars.example), 18 migrations (0011 gap intentional; gate f's
-  "19" is a log typo), smart placement + */15 cron, README For-
-  evaluators + Sessionboard-importer roadmap. 364 gate-e's two "not
-  statically verifiable" items DISCHARGED by sibling live lanes at
-  same sha (d: 2x browser loads /admin/content zero console errors;
-  b: 4-persona walkthrough) — deferral whose lanes ran green is
-  closed, never carried. 365 lens items adjudicated at file:line, all
-  non-defects/already-fixed: perf-smoke bodyUsed guard fine (clone()
-  drain inside run(), inside timed window, perf-smoke.ts:157-170);
-  contacts LIKE escaping live (contacts/query.ts:55 + crud.ts:132-135
-  ESCAPE). pubcache purge CLOSED (201/333/348/358) — read and STOP.
-  Stage 2 (provisioning, deploy, Resend, Airtable, DNS, CI, prod
-  cache/perf) is a separate swarm, never a stage-1 open item.
+- w17-22 (DEC-329..358): 335 listSubmissions=ONE stmt+EXISTS+LIKE
+  ESCAPE+seq tiebreak; 336/337 contacts AND-tokens x OR-cols SQL. J5/J6/
+  J8/results/files/queue server-paged, fan-out/find-in-loop DELETED.
+  353 archive=40MB TOTAL-byte guard, buildZip ONCE. 354 plan_reviewer
+  scope validated at WRITE+event guard. 355-357 bulk ops set-based
+  (accept/CSV-import/roster-add). 358 pubcache purge CLOSED; exit set
+  SUPERSEDED by 359-362.
+- w23-24 (DEC-359..365): STAGE 1 COMPLETE. Six w23 gates all OPEN
+  ITEMS: 0/RESULT: PASS at FROZEN SHA e3d558e; gate lanes LOG-ONLY (own
+  ONE file, never patch product). 364/365 discharge deferred+lens items
+  file:line, all non-defects. Stage 2 (provisioning/deploy/Resend/
+  Airtable/DNS/CI/prod cache) = separate swarm, never a stage-1 item.
+- REDESIGN RUN w1 (DEC-366..371): stage-1 FUNCTION IS FROZEN/COMPLETE
+  (six w23 gates PASS @ e3d558e). New binding mandate = docs/design/
+  README.md + 11 *.dc.html + screens/*.png, ranked just under
+  clarifications.md for visual/layout/copy; SPEC still governs behaviour,
+  authz, data model, perf. Settled items (pubcache 201/333/348/358,
+  ABS-14 272, all stage-2 wiring) are NEVER open items.
+- 367 tokens: --chq-paper F4F1E8 / surface FAF8F2 / sunk EFEBDF / ink
+  1B1D17 / muted 565A4B / hairline E1DDCE / rule D3CFC0 / border BAB6A6
+  / brand olive 4E5C31 / on-brand F7F9F0. NO RED, no third accent —
+  lateness+clash are TYPE (.chq-flag 10-11px/800/.09-.11em/upper/ink).
+  Fonts self-hosted /fonts/*-var.woff2, woff2-variations + weight RANGE.
+  Floors: 10px type, 44px phone tap, AA, no shadows, nav underline =
+  box-shadow inset 0 -2px 0 (never border-bottom). No new deps.
+- 368 CSS ownership: app/src/styles.css = SHELL LANE ONLY (all shared
+  .chq-* classes). Page lanes add co-located <area>.css imported by the
+  page module, classes .chq-<area>-* — never redefine a shared class.
+- 369 chrome: sidebar DELETED; top header (wordmark+horizontal nav+event
+  +user) + phone 5-tab bar; nav = destinations only, badge only for
+  exceptions from overview aggregates. 371 SSR: one THEME_CSS string in
+  src/views/theme.ts inlined by every SSR shell (watch hono/jsx escaping
+  — unquoted attribute selectors); per-event accent recolours only
+  --chq-brandable-accent, never palette/text/buttons.
+- 370 Overview = worklist payload v2 (rows+deadlines, v1 aggregate keys
+  RETAINED, rows capped 5); actions reuse existing endpoints; NO "next
+  free slot"/published-at copy — never assert what no endpoint stores.
