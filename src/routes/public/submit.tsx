@@ -39,6 +39,7 @@ import {
   extractFileAnswers,
 } from "../../lib/submit-core";
 import { checkAndIncrementScopedLimit, requestIpFromHeaders } from "../../lib/rate-limit";
+import { MAX_TEXT_LENGTH, MAX_LONG_TEXT_LENGTH } from "../../forms/validate";
 import {
   saveDraft,
   readDraft,
@@ -477,19 +478,62 @@ publicSubmitRoutes.post("/submit/:eventSlug/save-draft", csrfForm, async (c) => 
     return c.html(<ClosedPage event={event} form={form} />);
   }
 
+  // DEC-422: save-draft is an otherwise-unmetered KV write path — mirror the
+  // final-submit handler's per-IP scoped limiter (DEC-072/DEC-057/DEC-038)
+  // before touching KV.
+  const kv = c.env.KV as unknown as DraftKVStore;
+  const ip = requestIpFromHeaders((name) => c.req.header(name));
+  const rate = await checkAndIncrementScopedLimit(kv, "draft", ip, Date.now(), {
+    windowSeconds: 3600,
+    max: 60,
+  });
+  if (!rate.ok) {
+    throw new ApiError("invalid", "Too many submissions from this address. Try again later.");
+  }
+
   const fields = await getFormFields(db, form.id);
+  const eventTracks = await getEventTracks(db, event.id);
+  const offeredTrackIds = resolveOfferedTrackIds(form.tracksJson, eventTracks.map((t) => t.id));
+  const tracks = eventTracks.filter((t) => offeredTrackIds.includes(t.id));
   const body = (await c.req.parseBody({ all: true })) as Record<string, unknown>;
   const answers = extractAnswers(fields, body);
+  const selectedTrackIds = extractTrackIds(body);
+
+  // DEC-422: reject any answer over its field-kind cap before it ever
+  // reaches saveDraft — never truncate.
+  const fieldCapsById = new Map(fields.map((field) => [field.id, field]));
+  for (const [fieldId, value] of Object.entries(answers)) {
+    if (typeof value !== "string") continue;
+    const field = fieldCapsById.get(fieldId);
+    if (!field) continue;
+    const cap = field.kind === "long_text" ? MAX_LONG_TEXT_LENGTH : MAX_TEXT_LENGTH;
+    if (value.length > cap) {
+      return c.html(
+        <SubmitPage
+          event={event}
+          form={form}
+          fields={fields}
+          tracks={tracks}
+          answers={answers}
+          selectedTrackIds={selectedTrackIds}
+          hasDraft={false}
+          csrfToken={(c.req.header("cookie") && parseCookies(c.req.header("cookie") ?? null)[CSRF_COOKIE_NAME]) || newCsrfToken()}
+          errors={{ [fieldId]: `${field.label} is too long.` }}
+        />,
+        400,
+      );
+    }
+  }
+
   // Track selection is stored in the same draft answers blob under a
   // reserved key so it survives resume, without becoming a fake form field.
-  (answers as Record<string, unknown>).__trackIds = extractTrackIds(body);
+  (answers as Record<string, unknown>).__trackIds = selectedTrackIds;
   // Drafts never persist file selections (DEC-040): file answers are
   // extracted only at final submit, so `answers` here already omits them.
 
   const cookies = parseCookies(c.req.header("cookie") ?? null);
   const cookieName = draftCookieName(form.id);
   const token = cookies[cookieName] ?? newDraftToken();
-  const kv = c.env.KV as unknown as DraftKVStore;
   const savedAt = Date.now();
   await saveDraft(kv, token, { formId: form.id, answers, savedAt });
 
