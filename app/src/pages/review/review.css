@@ -1,0 +1,417 @@
+/* app/src/pages/review/review.css — Review page lane (DEC-368). Classes
+   prefixed .chq-review-*; shared .chq-* classes from app/src/styles.css
+   (page-title, summary, toolbar, section, section-head, section-label,
+   section-action, row, row-title, meta, flag, btn, input/select/textarea,
+   pill, table, error) are reused, never redefined here. Visual language:
+   DEC-367 tokens, docs/design/Chautauqua Review.dc.html +
+   screens/03-review.png.
+
+   .chq-bar/.chq-bar-fill and .chq-pager are part of DEC-368's shared class
+   list but have not landed in styles.css yet at the time of this pass; they
+   are defined here (DEC-368 permits a page lane to use a not-yet-landed
+   shared class early) so review progress bars and paged tables read
+   correctly today. */
+
+.chq-review-page {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.chq-review-summary-row {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.chq-review-back {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Shared progress bar (not-yet-landed DEC-368 class, defined here early)  */
+/* ---------------------------------------------------------------------- */
+
+.chq-bar {
+  height: 5px;
+  border-radius: var(--chq-r-pill);
+  background: var(--chq-hairline);
+  overflow: hidden;
+}
+
+.chq-bar-fill {
+  height: 100%;
+  background: var(--chq-brand);
+}
+
+/* Shared pager (not-yet-landed DEC-368 class, defined here early). */
+.chq-pager {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 13px;
+  color: var(--chq-muted);
+}
+
+/* ---------------------------------------------------------------------- */
+/* Plan list                                                               */
+/* ---------------------------------------------------------------------- */
+
+.chq-review-plan-row {
+  display: grid;
+  grid-template-columns: 1fr 150px 190px 210px auto;
+  gap: 20px;
+  align-items: center;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--chq-hairline);
+}
+
+.chq-review-plan-name {
+  font-family: var(--chq-font-display);
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  color: var(--chq-ink);
+}
+
+.chq-review-plan-meta {
+  font-size: 12px;
+  color: var(--chq-muted);
+}
+
+.chq-review-plan-actions {
+  display: flex;
+  gap: 14px;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  .chq-review-plan-row {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+}
+
+/* ---------------------------------------------------------------------- */
+/* Reviewer progress                                                       */
+/* ---------------------------------------------------------------------- */
+
+.chq-review-progress-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0 34px;
+}
+
+@media (max-width: 900px) {
+  .chq-review-progress-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.chq-review-progress-row {
+  display: grid;
+  grid-template-columns: 1fr 96px 110px;
+  gap: 14px;
+  align-items: center;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--chq-hairline);
+}
+
+.chq-review-progress-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--chq-ink);
+}
+
+/* ---------------------------------------------------------------------- */
+/* Results                                                                 */
+/* ---------------------------------------------------------------------- */
+
+.chq-review-results-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.chq-review-results-table th {
+  text-align: left;
+  padding: 9px 16px 9px 0;
+  border-top: 1px solid var(--chq-rule);
+  border-bottom: 1px solid var(--chq-rule);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--chq-muted);
+}
+
+.chq-review-results-table td {
+  padding: 13px 16px 13px 0;
+  border-bottom: 1px solid var(--chq-hairline);
+  vertical-align: baseline;
+}
+
+.chq-review-results-title {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--chq-ink);
+}
+
+.chq-review-results-score {
+  font-family: var(--chq-font-display);
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--chq-ink);
+}
+
+.chq-review-sort-button {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--chq-muted);
+  cursor: pointer;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Reviewer queue + scorecard                                              */
+/* ---------------------------------------------------------------------- */
+
+.chq-review-queue-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.chq-review-queue-row {
+  padding: 15px 0;
+  border-bottom: 1px solid var(--chq-hairline);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.chq-review-queue-ref {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--chq-muted);
+}
+
+.chq-review-queue-title {
+  font-family: var(--chq-font-display);
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+  color: var(--chq-ink);
+}
+
+.chq-review-recused-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.chq-review-recused-row {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--chq-hairline);
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 13px;
+}
+
+.chq-review-scorecard-head {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--chq-hairline);
+}
+
+.chq-review-scorecard-abstract {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--chq-ink-2);
+}
+
+.chq-review-criterion {
+  padding: 18px 0;
+  border-bottom: 1px solid var(--chq-hairline);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.chq-review-criterion.chq-focused {
+  background: var(--chq-surface-sunk);
+}
+
+.chq-review-criterion-label {
+  font-family: var(--chq-font-display);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.chq-review-recusal {
+  padding: 16px;
+  border: 1px solid var(--chq-rule);
+  border-radius: var(--chq-r-card);
+  background: var(--chq-surface);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.chq-review-hint {
+  font-size: 12px;
+  color: var(--chq-muted);
+}
+
+.chq-review-field-error {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--chq-ink);
+}
+
+.chq-review-token-reveal {
+  padding: 12px 16px;
+  border: 1px solid var(--chq-rule);
+  border-radius: var(--chq-r-card);
+  background: var(--chq-surface-sunk);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 13px;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Plan editor                                                             */
+/* ---------------------------------------------------------------------- */
+
+.chq-review-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+}
+
+.chq-review-editor-dates {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 18px;
+  max-width: 660px;
+}
+
+@media (max-width: 700px) {
+  .chq-review-editor-dates {
+    grid-template-columns: 1fr;
+  }
+}
+
+.chq-review-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--chq-muted);
+}
+
+.chq-review-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 44px;
+  font-size: 14px;
+  color: var(--chq-ink-2);
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.chq-review-criterion-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  gap: 16px;
+  align-items: center;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--chq-hairline);
+}
+
+@media (max-width: 700px) {
+  .chq-review-criterion-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.chq-review-criterion-kind {
+  font-size: 12px;
+  color: var(--chq-muted);
+}
+
+.chq-review-add-criteria {
+  display: flex;
+  gap: 9px;
+  flex-wrap: wrap;
+  padding-top: 14px;
+}
+
+.chq-review-round-tabs {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding-bottom: 14px;
+}
+
+.chq-review-reviewer-row {
+  display: grid;
+  grid-template-columns: 1fr 190px auto auto;
+  gap: 18px;
+  align-items: baseline;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--chq-hairline);
+}
+
+@media (max-width: 700px) {
+  .chq-review-reviewer-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.chq-review-reviewer-email {
+  font-size: 12px;
+  color: var(--chq-muted);
+}
+
+.chq-review-reviewer-form {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+  padding-top: 14px;
+}
+
+.chq-review-editor-actions {
+  display: flex;
+  gap: 9px;
+}

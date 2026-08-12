@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { apiGet, apiList, ApiError } from '../../lib/api';
+import './review.css';
 import { buildResultsCsvHref } from './resultsCsv';
 import type { EvaluationPlan, ResultsRow } from './types';
 
@@ -41,7 +42,7 @@ function SortButton({
   const active = sort !== null && sortKeysEqual(sort.key, columnKey);
   const indicator = active ? (sort!.direction === 'asc' ? ' ▲' : ' ▼') : '';
   return (
-    <button type="button" className="chq-sort-button" onClick={() => onSort(columnKey)}>
+    <button type="button" className="chq-review-sort-button" onClick={() => onSort(columnKey)}>
       {label}
       {indicator}
     </button>
@@ -120,8 +121,8 @@ export function ResultsTable() {
 
   if (loading) {
     return (
-      <div className="chq-page">
-        <h1>Results</h1>
+      <div className="chq-page chq-review-page">
+        <h1 className="chq-page-title">Results</h1>
         <p>Loading…</p>
       </div>
     );
@@ -130,135 +131,160 @@ export function ResultsTable() {
   const columnCount = 4 + ratingCriteria.length + dropdownCriteria.length;
 
   return (
-    <div className="chq-page chq-results-table">
+    <div className="chq-page chq-review-page">
       <p>
-        <Link to="/review">&larr; Back to plans</Link>
+        <Link to="/review" className="chq-review-back">
+          &larr; Back to plans
+        </Link>
       </p>
-      <h1>Results{plan ? `: ${plan.name}` : ''}</h1>
-      {error && <div className="chq-error-banner">{error}</div>}
-      {plan && plan.rounds > 1 && round !== null && (
-        <label className="chq-round-select">
-          Round:{' '}
-          <select value={round} onChange={(e) => setRound(Number(e.target.value))}>
-            {Array.from({ length: plan.rounds }, (_, i) => i + 1).map((r) => (
-              <option key={r} value={r}>
-                {r}
-              </option>
-            ))}
-          </select>
-        </label>
-      )}
-      {planId && (
-        <a
-          href={buildResultsCsvHref(
-            planId,
-            round ?? undefined,
-            sort ? { column: sort.key.column, criterionId: (sort.key as { criterionId?: string }).criterionId, direction: sort.direction } : undefined,
-          )}
-          download
-          className="chq-button"
-        >
-          Download CSV
-        </a>
-      )}
-
-      <table className="chq-results-data-table">
-        <thead>
-          <tr>
-            <th>
-              <SortButton label="Ref" columnKey={{ column: 'ref' }} sort={sort} onSort={handleSort} />
-            </th>
-            <th>
-              <SortButton label="Title" columnKey={{ column: 'title' }} sort={sort} onSort={handleSort} />
-            </th>
-            <th>
-              <SortButton label="Average" columnKey={{ column: 'average' }} sort={sort} onSort={handleSort} />
-            </th>
-            <th>
-              <SortButton label="# Evaluations" columnKey={{ column: 'count' }} sort={sort} onSort={handleSort} />
-            </th>
-            {ratingCriteria.map((c) => (
-              <th key={c.id}>
-                <SortButton
-                  label={c.label}
-                  columnKey={{ column: 'rating', criterionId: c.id }}
-                  sort={sort}
-                  onSort={handleSort}
-                />
-              </th>
-            ))}
-            {dropdownCriteria.map((c) => (
-              <th key={c.id}>
-                <SortButton
-                  label={c.label}
-                  columnKey={{ column: 'dropdown', criterionId: c.id }}
-                  sort={sort}
-                  onSort={handleSort}
-                />
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr key={row.submissionId}>
-              <td>{row.ref}</td>
-              <td>{row.title}</td>
-              <td>{row.average.toFixed(2)}</td>
-              <td>{row.count}</td>
-              {ratingCriteria.map((c) => (
-                <td key={c.id}>{row.perCriterion[c.id] !== undefined ? row.perCriterion[c.id]!.toFixed(2) : '—'}</td>
-              ))}
-              {dropdownCriteria.map((c) => {
-                const agg = row.perDropdown[c.id];
-                if (!agg || agg.modal === null) {
-                  return <td key={c.id}>—</td>;
-                }
-                // DEC-241: 'modal xN / next xM' -- modal option first, then
-                // the next-highest-count option (ties broken by the
-                // criterion's own option order, matching the domain's
-                // aggregateDropdownCriterion tie-break).
-                const ranked = (c.options ?? [])
-                  .map((option) => ({ option, count: agg.counts[option] ?? 0 }))
-                  .sort((a, b) => b.count - a.count);
-                const [top, next] = ranked;
-                if (!top) {
-                  return <td key={c.id}>—</td>;
-                }
-                return (
-                  <td key={c.id}>
-                    {top.option} x{top.count}
-                    {next ? ` / ${next.option} x${next.count}` : ''}
-                  </td>
-                );
-              })}
-            </tr>
-          ))}
-          {rows.length === 0 && (
-            <tr>
-              <td colSpan={columnCount}>No results yet.</td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-
-      {total > 0 && (
-        <div className="chq-pager">
-          <button type="button" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1}>
-            Prev
-          </button>
-          <span>
-            Page {page} of {totalPages}
-          </span>
-          <button
-            type="button"
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            disabled={page >= totalPages}
-          >
-            Next
-          </button>
+      <h1 className="chq-page-title">Results{plan ? `: ${plan.name}` : ''}</h1>
+      {error && (
+        <div className="chq-error" role="alert">
+          {error}
         </div>
       )}
+
+      <div className="chq-toolbar">
+        {plan && plan.rounds > 1 && round !== null && (
+          <label>
+            Round:{' '}
+            <select className="chq-select" value={round} onChange={(e) => setRound(Number(e.target.value))}>
+              {Array.from({ length: plan.rounds }, (_, i) => i + 1).map((r) => (
+                <option key={r} value={r}>
+                  {r}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+        {planId && (
+          <a
+            href={buildResultsCsvHref(
+              planId,
+              round ?? undefined,
+              sort ? { column: sort.key.column, criterionId: (sort.key as { criterionId?: string }).criterionId, direction: sort.direction } : undefined,
+            )}
+            download
+            className="chq-btn chq-btn-secondary"
+          >
+            Download CSV
+          </a>
+        )}
+      </div>
+
+      <section className="chq-section">
+        <div className="chq-section-head">
+          <h2 className="chq-section-label">Ranked results</h2>
+          <span className="chq-section-action" style={{ color: 'var(--chq-muted)' }}>
+            Mean of submitted reviews · recusals excluded
+          </span>
+        </div>
+        <table className="chq-review-results-table">
+          <thead>
+            <tr>
+              <th>
+                <SortButton label="Ref" columnKey={{ column: 'ref' }} sort={sort} onSort={handleSort} />
+              </th>
+              <th>
+                <SortButton label="Title" columnKey={{ column: 'title' }} sort={sort} onSort={handleSort} />
+              </th>
+              <th>
+                <SortButton label="Average" columnKey={{ column: 'average' }} sort={sort} onSort={handleSort} />
+              </th>
+              <th>
+                <SortButton label="# Evaluations" columnKey={{ column: 'count' }} sort={sort} onSort={handleSort} />
+              </th>
+              {ratingCriteria.map((c) => (
+                <th key={c.id}>
+                  <SortButton
+                    label={c.label}
+                    columnKey={{ column: 'rating', criterionId: c.id }}
+                    sort={sort}
+                    onSort={handleSort}
+                  />
+                </th>
+              ))}
+              {dropdownCriteria.map((c) => (
+                <th key={c.id}>
+                  <SortButton
+                    label={c.label}
+                    columnKey={{ column: 'dropdown', criterionId: c.id }}
+                    sort={sort}
+                    onSort={handleSort}
+                  />
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={row.submissionId}>
+                <td>{row.ref}</td>
+                <td className="chq-review-results-title">{row.title}</td>
+                <td className="chq-review-results-score">{row.average.toFixed(2)}</td>
+                <td>{row.count}</td>
+                {ratingCriteria.map((c) => (
+                  <td key={c.id}>{row.perCriterion[c.id] !== undefined ? row.perCriterion[c.id]!.toFixed(2) : '—'}</td>
+                ))}
+                {dropdownCriteria.map((c) => {
+                  const agg = row.perDropdown[c.id];
+                  if (!agg || agg.modal === null) {
+                    return <td key={c.id}>—</td>;
+                  }
+                  // DEC-241: 'modal xN / next xM' -- modal option first, then
+                  // the next-highest-count option (ties broken by the
+                  // criterion's own option order, matching the domain's
+                  // aggregateDropdownCriterion tie-break).
+                  const ranked = (c.options ?? [])
+                    .map((option) => ({ option, count: agg.counts[option] ?? 0 }))
+                    .sort((a, b) => b.count - a.count);
+                  const [top, next] = ranked;
+                  if (!top) {
+                    return <td key={c.id}>—</td>;
+                  }
+                  return (
+                    <td key={c.id}>
+                      {top.option} x{top.count}
+                      {next ? ` / ${next.option} x${next.count}` : ''}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+            {rows.length === 0 && (
+              <tr>
+                <td colSpan={columnCount} className="chq-empty">
+                  No results yet.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+
+        {total > 0 && (
+          <div className="chq-pager">
+            <button
+              type="button"
+              className="chq-btn chq-btn-secondary"
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page <= 1}
+            >
+              Prev
+            </button>
+            <span>
+              Page {page} of {totalPages}
+            </span>
+            <button
+              type="button"
+              className="chq-btn chq-btn-secondary"
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page >= totalPages}
+            >
+              Next
+            </button>
+          </div>
+        )}
+      </section>
     </div>
   );
 }

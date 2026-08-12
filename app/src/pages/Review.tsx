@@ -7,6 +7,7 @@ import { useMe } from '../lib/useMe';
 import { PlanEditor } from './review/PlanEditor';
 import { PlanList } from './review/PlanList';
 import { ProgressPanel } from './review/ProgressPanel';
+import './review/review.css';
 import { ResultsTable } from './review/ResultsTable';
 import { ReviewerQueue } from './review/ReviewerQueue';
 import { Scorecard } from './review/Scorecard';
@@ -16,8 +17,8 @@ export function ReviewPage() {
 
   if (loading) {
     return (
-      <div className="chq-page">
-        <h1>Review</h1>
+      <div className="chq-page chq-review-page">
+        <h1 className="chq-page-title">Review</h1>
         <p>Loading…</p>
       </div>
     );

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { apiGet, apiList, apiPost, ApiError } from '../../lib/api';
 import { reviewersWithIncompleteQueues } from './progress';
+import './review.css';
 import type { EvaluationPlan, ProgressRow } from './types';
 
 export function ProgressPanel() {
@@ -63,63 +64,82 @@ export function ProgressPanel() {
 
   if (loading) {
     return (
-      <div className="chq-page">
-        <h1>Progress</h1>
+      <div className="chq-page chq-review-page">
+        <h1 className="chq-page-title">Review</h1>
         <p>Loading…</p>
       </div>
     );
   }
 
   return (
-    <div className="chq-page chq-progress-panel">
+    <div className="chq-page chq-review-page">
       <p>
-        <Link to="/review">&larr; Back to plans</Link>
+        <Link to="/review" className="chq-review-back">
+          &larr; Back to plans
+        </Link>
       </p>
-      <h1>Reviewer progress</h1>
-      {plan && (
-        <p className="chq-round-status">
-          Round {plan.currentRound} of {plan.rounds}
-        </p>
+      <div className="chq-review-summary-row">
+        <h1 className="chq-page-title">Reviewer progress</h1>
+        {plan && (
+          <span className="chq-summary">
+            Round {plan.currentRound} of {plan.rounds}
+          </span>
+        )}
+      </div>
+      {error && (
+        <div className="chq-error" role="alert">
+          {error}
+        </div>
       )}
-      {error && <div className="chq-error-banner">{error}</div>}
-      {reminded !== null && <div className="chq-success-banner">Reminder sent to {reminded} reviewer(s).</div>}
+      {reminded !== null && (
+        <div className="chq-error" role="status">
+          Reminder sent to {reminded} reviewer(s).
+        </div>
+      )}
 
-      <button type="button" disabled={reminding || laggards.length === 0} onClick={remindLaggards}>
-        Remind laggards ({laggards.length})
-      </button>
-      {plan && plan.currentRound < plan.rounds && (
-        <button type="button" disabled={advancing} onClick={advanceRound}>
-          Advance to round {plan.currentRound + 1}
+      <div className="chq-toolbar">
+        <button
+          type="button"
+          className="chq-btn chq-btn-primary"
+          disabled={reminding || laggards.length === 0}
+          onClick={remindLaggards}
+        >
+          Remind laggards ({laggards.length})
         </button>
-      )}
+        {plan && plan.currentRound < plan.rounds && (
+          <button type="button" className="chq-btn chq-btn-secondary" disabled={advancing} onClick={advanceRound}>
+            Advance to round {plan.currentRound + 1}
+          </button>
+        )}
+      </div>
 
-      <table className="chq-progress-table">
-        <thead>
-          <tr>
-            <th>Reviewer</th>
-            <th>Assigned</th>
-            <th>Completed</th>
-            <th>Recused</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr key={row.userId}>
-              <td>{row.email}</td>
-              <td>{row.assigned}</td>
-              <td>{row.completed}</td>
-              <td>{row.recused}</td>
-              <td>{row.completed >= row.assigned ? 'Done' : 'In progress'}</td>
-            </tr>
-          ))}
-          {rows.length === 0 && (
-            <tr>
-              <td colSpan={5}>No reviewers assigned yet.</td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+      <section className="chq-section">
+        <div className="chq-section-head">
+          <h2 className="chq-section-label">Who has scored</h2>
+        </div>
+        <div className="chq-review-progress-grid">
+          {rows.map((row) => {
+            const done = row.completed >= row.assigned;
+            const fraction = row.assigned === 0 ? 0 : Math.min(1, row.completed / row.assigned);
+            return (
+              <div key={row.userId} className="chq-review-progress-row">
+                <div>
+                  <span className="chq-review-progress-name">{row.email}</span>
+                  {row.recused > 0 && <span className="chq-review-plan-meta"> · {row.recused} recused</span>}
+                </div>
+                <div className="chq-bar">
+                  <div className="chq-bar-fill" style={{ width: `${Math.round(fraction * 100)}%` }} />
+                </div>
+                <span className="chq-flag">
+                  {row.completed} of {row.assigned}
+                  {!done && ' · not done'}
+                </span>
+              </div>
+            );
+          })}
+          {rows.length === 0 && <p className="chq-empty">No reviewers assigned yet.</p>}
+        </div>
+      </section>
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { apiDelete, apiGet, apiList, apiPatch, apiPost, ApiError } from '../../l
 import { dateInputToMs, msToDateInput } from '../../lib/dates';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { addCriterion, removeCriterion, updateCriterion, validateCriteriaList, validatePlanDraft } from './planForm';
+import './review.css';
 import {
   DEFAULT_PLAN_DRAFT,
   type CriterionKind,
@@ -285,349 +286,403 @@ export function PlanEditor() {
 
   if (!eventId) {
     return (
-      <div className="chq-page">
-        <h1>Evaluation plan</h1>
-        <div className="chq-attention-frame">No event selected.</div>
+      <div className="chq-page chq-review-page">
+        <h1 className="chq-page-title">Evaluation plan</h1>
+        <div className="chq-error" role="alert">
+          No event selected.
+        </div>
       </div>
     );
   }
 
   if (loading) {
     return (
-      <div className="chq-page">
-        <h1>Evaluation plan</h1>
+      <div className="chq-page chq-review-page">
+        <h1 className="chq-page-title">Evaluation plan</h1>
         <p>Loading…</p>
       </div>
     );
   }
 
   return (
-    <div className="chq-page chq-plan-editor">
+    <div className="chq-page chq-review-page">
       <p>
-        <Link to="/review">&larr; Back to plans</Link>
+        <Link to="/review" className="chq-review-back">
+          &larr; Back to plans
+        </Link>
       </p>
-      <h1>{isNew ? 'New evaluation plan' : draft.name || 'Evaluation plan'}</h1>
-      {error && <div className="chq-error-banner">{error}</div>}
-      {dateFieldError && <div className="chq-error-banner">{dateFieldError}</div>}
+      <h1 className="chq-page-title" style={{ fontSize: '27px' }}>
+        {isNew ? 'New evaluation plan' : draft.name || 'Evaluation plan'}
+      </h1>
+      {error && (
+        <div className="chq-error" role="alert">
+          {error}
+        </div>
+      )}
+      {dateFieldError && (
+        <div className="chq-error" role="alert">
+          {dateFieldError}
+        </div>
+      )}
 
-      <label>
-        Name
-        <input value={draft.name} onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))} />
-        {errors.name && <span className="chq-field-error">{errors.name}</span>}
-      </label>
-
-      <label>
-        Instructions
-        <textarea
-          value={draft.instructions ?? ''}
-          onChange={(e) => setDraft((d) => ({ ...d, instructions: e.target.value }))}
-        />
-      </label>
-
-      <div className="chq-plan-dates">
-        <label>
-          Opens
+      <div className="chq-review-editor">
+        <label className="chq-review-field">
+          Name
           <input
-            type="date"
-            value={msToDateInput(draft.openAt)}
-            onChange={(e) => setOpenAt(e.target.value)}
+            className="chq-input"
+            value={draft.name}
+            onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
+          />
+          {errors.name && <span className="chq-review-field-error">{errors.name}</span>}
+        </label>
+
+        <label className="chq-review-field">
+          Instructions
+          <textarea
+            className="chq-textarea"
+            value={draft.instructions ?? ''}
+            onChange={(e) => setDraft((d) => ({ ...d, instructions: e.target.value }))}
           />
         </label>
-        <label>
-          Closes
-          <input
-            type="date"
-            value={msToDateInput(draft.closeAt)}
-            onChange={(e) => setCloseAt(e.target.value)}
-          />
-        </label>
-      </div>
 
-      <fieldset>
-        <legend>Track filter</legend>
-        {tracks.map((track) => (
-          <label key={track.id} className="chq-checkbox-label">
+        <div className="chq-review-editor-dates">
+          <label className="chq-review-field">
+            Opens
             <input
-              type="checkbox"
-              checked={draft.trackIds.includes(track.id)}
+              type="date"
+              className="chq-input"
+              value={msToDateInput(draft.openAt)}
+              onChange={(e) => setOpenAt(e.target.value)}
+            />
+          </label>
+          <label className="chq-review-field">
+            Closes
+            <input
+              type="date"
+              className="chq-input"
+              value={msToDateInput(draft.closeAt)}
+              onChange={(e) => setCloseAt(e.target.value)}
+            />
+          </label>
+          <label className="chq-review-field">
+            Rounds
+            <input
+              type="number"
+              className="chq-input"
+              min={1}
+              value={draft.rounds}
+              onChange={(e) => setDraft((d) => ({ ...d, rounds: Number(e.target.value) }))}
+            />
+            {errors.rounds && <span className="chq-review-field-error">{errors.rounds}</span>}
+          </label>
+        </div>
+
+        <fieldset>
+          <legend className="chq-review-field" style={{ marginBottom: '6px' }}>
+            Track filter
+          </legend>
+          {tracks.map((track) => (
+            <label key={track.id} className="chq-review-checkbox-label">
+              <input
+                type="checkbox"
+                className="chq-check"
+                checked={draft.trackIds.includes(track.id)}
+                onChange={(e) =>
+                  setDraft((d) => ({
+                    ...d,
+                    trackIds: e.target.checked ? [...d.trackIds, track.id] : d.trackIds.filter((id) => id !== track.id),
+                  }))
+                }
+              />
+              {track.name}
+            </label>
+          ))}
+          {tracks.length === 0 && <p className="chq-review-plan-meta">No tracks defined; plan covers all submissions.</p>}
+        </fieldset>
+
+        <label className="chq-review-checkbox-label">
+          <input
+            type="checkbox"
+            className="chq-check"
+            checked={draft.anonymized}
+            onChange={(e) => setDraft((d) => ({ ...d, anonymized: e.target.checked }))}
+          />
+          Anonymize speaker identity for reviewers
+        </label>
+
+        <div className="chq-review-editor-dates">
+          <label className="chq-review-field">
+            Scale min
+            <input
+              type="number"
+              className="chq-input"
+              value={draft.scale.min}
+              onChange={(e) => setDraft((d) => ({ ...d, scale: { ...d.scale, min: Number(e.target.value) } }))}
+            />
+          </label>
+          <label className="chq-review-field">
+            Scale max
+            <input
+              type="number"
+              className="chq-input"
+              value={draft.scale.max}
+              onChange={(e) => setDraft((d) => ({ ...d, scale: { ...d.scale, max: Number(e.target.value) } }))}
+            />
+            {errors.scale && <span className="chq-review-field-error">{errors.scale}</span>}
+          </label>
+          <label className="chq-review-field">
+            Max evaluations per submission (optional cap)
+            <input
+              type="number"
+              className="chq-input"
+              min={1}
+              value={draft.maxEvaluationsPerSubmission ?? ''}
               onChange={(e) =>
                 setDraft((d) => ({
                   ...d,
-                  trackIds: e.target.checked ? [...d.trackIds, track.id] : d.trackIds.filter((id) => id !== track.id),
+                  maxEvaluationsPerSubmission: e.target.value === '' ? undefined : Number(e.target.value),
                 }))
               }
             />
-            {track.name}
+            {errors.maxEvaluationsPerSubmission && (
+              <span className="chq-review-field-error">{errors.maxEvaluationsPerSubmission}</span>
+            )}
           </label>
-        ))}
-        {tracks.length === 0 && <p>No tracks defined; plan covers all submissions.</p>}
-      </fieldset>
+        </div>
 
-      <label className="chq-checkbox-label">
-        <input
-          type="checkbox"
-          checked={draft.anonymized}
-          onChange={(e) => setDraft((d) => ({ ...d, anonymized: e.target.checked }))}
-        />
-        Anonymize speaker identity for reviewers
-      </label>
-
-      <div className="chq-plan-scale">
-        <label>
-          Scale min
-          <input
-            type="number"
-            value={draft.scale.min}
-            onChange={(e) => setDraft((d) => ({ ...d, scale: { ...d.scale, min: Number(e.target.value) } }))}
-          />
-        </label>
-        <label>
-          Scale max
-          <input
-            type="number"
-            value={draft.scale.max}
-            onChange={(e) => setDraft((d) => ({ ...d, scale: { ...d.scale, max: Number(e.target.value) } }))}
-          />
-        </label>
-        {errors.scale && <span className="chq-field-error">{errors.scale}</span>}
-      </div>
-
-      <label>
-        Rounds
-        <input
-          type="number"
-          min={1}
-          value={draft.rounds}
-          onChange={(e) => setDraft((d) => ({ ...d, rounds: Number(e.target.value) }))}
-        />
-        {errors.rounds && <span className="chq-field-error">{errors.rounds}</span>}
-      </label>
-
-      <label>
-        Max evaluations per submission (optional cap)
-        <input
-          type="number"
-          min={1}
-          value={draft.maxEvaluationsPerSubmission ?? ''}
-          onChange={(e) =>
-            setDraft((d) => ({
-              ...d,
-              maxEvaluationsPerSubmission: e.target.value === '' ? undefined : Number(e.target.value),
-            }))
-          }
-        />
-        {errors.maxEvaluationsPerSubmission && <span className="chq-field-error">{errors.maxEvaluationsPerSubmission}</span>}
-      </label>
-
-      <fieldset className="chq-criteria-editor">
-        <legend>Weighted criteria</legend>
-
-        {draft.rounds > 1 && (
-          <div className="chq-criteria-round-tabs">
-            <label>
-              Editing criteria for
-              <select value={activeRound} onChange={(e) => setActiveRound(Number(e.target.value))}>
-                <option value={0}>Base (used by any round without an override)</option>
-                {Array.from({ length: draft.rounds }, (_, i) => i + 1).map((r) => (
-                  <option key={r} value={r}>
-                    Round {r}
-                  </option>
-                ))}
-              </select>
-            </label>
-            {activeRound !== 0 &&
-              (activeRoundIsCustomized ? (
-                <button type="button" onClick={revertActiveRoundToBase}>
-                  Revert round {activeRound} to base
-                </button>
-              ) : (
-                <button type="button" onClick={customizeActiveRound}>
-                  Customize round {activeRound} (inherits base until then)
-                </button>
-              ))}
+        <section className="chq-section">
+          <div className="chq-section-head">
+            <h2 className="chq-section-label">Scoring criteria</h2>
           </div>
-        )}
 
-        {(activeRound === 0 ? errors.criteria : criteriaErrors.criteria) && (
-          <span className="chq-field-error">{activeRound === 0 ? errors.criteria : criteriaErrors.criteria}</span>
-        )}
-        {editingCriteria.map((criterion) => (
-          <div key={criterion.id} className="chq-criterion-row">
-            <input
-              placeholder="Label"
-              aria-label="Criterion label"
-              value={criterion.label}
-              onChange={(e) => setEditingCriteria((c) => updateCriterion(c, criterion.id, { label: e.target.value }))}
-            />
-            <span className="chq-criterion-kind">{criterion.kind}</span>
-            {criterion.kind === 'rating' ? (
-              <input
-                type="number"
-                min={0}
-                step="0.1"
-                aria-label={`${criterion.label || 'criterion'} weight`}
-                value={criterion.weight ?? ''}
-                onChange={(e) =>
-                  setEditingCriteria((c) => updateCriterion(c, criterion.id, { weight: Number(e.target.value) }))
-                }
-              />
-            ) : criterion.kind === 'dropdown' ? (
-              <input
-                placeholder="Options (comma-separated)"
-                aria-label={`${criterion.label || 'criterion'} options`}
-                value={(criterion.options ?? []).join(', ')}
-                onChange={(e) =>
-                  setEditingCriteria((c) =>
-                    updateCriterion(c, criterion.id, {
-                      options: e.target.value
-                        .split(',')
-                        .map((o) => o.trim())
-                        .filter((o) => o.length > 0),
-                    }),
-                  )
-                }
-              />
-            ) : (
-              <label className="chq-checkbox-label">
-                <input
-                  type="checkbox"
-                  aria-label={`${criterion.label || 'criterion'} required`}
-                  checked={criterion.required ?? false}
-                  onChange={(e) => setEditingCriteria((c) => updateCriterion(c, criterion.id, { required: e.target.checked }))}
-                />
-                Required
+          {draft.rounds > 1 && (
+            <div className="chq-review-round-tabs">
+              <label>
+                Editing criteria for{' '}
+                <select
+                  className="chq-select"
+                  value={activeRound}
+                  onChange={(e) => setActiveRound(Number(e.target.value))}
+                >
+                  <option value={0}>Base (used by any round without an override)</option>
+                  {Array.from({ length: draft.rounds }, (_, i) => i + 1).map((r) => (
+                    <option key={r} value={r}>
+                      Round {r}
+                    </option>
+                  ))}
+                </select>
               </label>
-            )}
-            {(activeRound === 0 ? errors : criteriaErrors)[`criterion.${criterion.id}.label`] && (
-              <span className="chq-field-error">{(activeRound === 0 ? errors : criteriaErrors)[`criterion.${criterion.id}.label`]}</span>
-            )}
-            {(activeRound === 0 ? errors : criteriaErrors)[`criterion.${criterion.id}.weight`] && (
-              <span className="chq-field-error">{(activeRound === 0 ? errors : criteriaErrors)[`criterion.${criterion.id}.weight`]}</span>
-            )}
-            {(activeRound === 0 ? errors : criteriaErrors)[`criterion.${criterion.id}.options`] && (
-              <span className="chq-field-error">{(activeRound === 0 ? errors : criteriaErrors)[`criterion.${criterion.id}.options`]}</span>
-            )}
-            <button type="button" onClick={() => setEditingCriteria((c) => removeCriterion(c, criterion.id))}>
-              Remove
+              {activeRound !== 0 &&
+                (activeRoundIsCustomized ? (
+                  <button type="button" className="chq-btn chq-btn-secondary" onClick={revertActiveRoundToBase}>
+                    Revert round {activeRound} to base
+                  </button>
+                ) : (
+                  <button type="button" className="chq-btn chq-btn-secondary" onClick={customizeActiveRound}>
+                    Customize round {activeRound} (inherits base until then)
+                  </button>
+                ))}
+            </div>
+          )}
+
+          {(activeRound === 0 ? errors.criteria : criteriaErrors.criteria) && (
+            <span className="chq-review-field-error">{activeRound === 0 ? errors.criteria : criteriaErrors.criteria}</span>
+          )}
+          {editingCriteria.map((criterion) => (
+            <div key={criterion.id} className="chq-review-criterion-row">
+              <input
+                className="chq-input"
+                placeholder="Label"
+                aria-label="Criterion label"
+                value={criterion.label}
+                onChange={(e) => setEditingCriteria((c) => updateCriterion(c, criterion.id, { label: e.target.value }))}
+              />
+              <span className="chq-review-criterion-kind">{criterion.kind}</span>
+              {criterion.kind === 'rating' ? (
+                <input
+                  type="number"
+                  className="chq-input"
+                  min={0}
+                  step="0.1"
+                  aria-label={`${criterion.label || 'criterion'} weight`}
+                  value={criterion.weight ?? ''}
+                  onChange={(e) =>
+                    setEditingCriteria((c) => updateCriterion(c, criterion.id, { weight: Number(e.target.value) }))
+                  }
+                />
+              ) : criterion.kind === 'dropdown' ? (
+                <input
+                  className="chq-input"
+                  placeholder="Options (comma-separated)"
+                  aria-label={`${criterion.label || 'criterion'} options`}
+                  value={(criterion.options ?? []).join(', ')}
+                  onChange={(e) =>
+                    setEditingCriteria((c) =>
+                      updateCriterion(c, criterion.id, {
+                        options: e.target.value
+                          .split(',')
+                          .map((o) => o.trim())
+                          .filter((o) => o.length > 0),
+                      }),
+                    )
+                  }
+                />
+              ) : (
+                <label className="chq-review-checkbox-label">
+                  <input
+                    type="checkbox"
+                    className="chq-check"
+                    aria-label={`${criterion.label || 'criterion'} required`}
+                    checked={criterion.required ?? false}
+                    onChange={(e) => setEditingCriteria((c) => updateCriterion(c, criterion.id, { required: e.target.checked }))}
+                  />
+                  Required
+                </label>
+              )}
+              {(activeRound === 0 ? errors : criteriaErrors)[`criterion.${criterion.id}.label`] && (
+                <span className="chq-review-field-error">{(activeRound === 0 ? errors : criteriaErrors)[`criterion.${criterion.id}.label`]}</span>
+              )}
+              {(activeRound === 0 ? errors : criteriaErrors)[`criterion.${criterion.id}.weight`] && (
+                <span className="chq-review-field-error">{(activeRound === 0 ? errors : criteriaErrors)[`criterion.${criterion.id}.weight`]}</span>
+              )}
+              {(activeRound === 0 ? errors : criteriaErrors)[`criterion.${criterion.id}.options`] && (
+                <span className="chq-review-field-error">{(activeRound === 0 ? errors : criteriaErrors)[`criterion.${criterion.id}.options`]}</span>
+              )}
+              <button type="button" className="chq-btn-tertiary" onClick={() => setEditingCriteria((c) => removeCriterion(c, criterion.id))}>
+                Remove
+              </button>
+            </div>
+          ))}
+          <div className="chq-review-add-criteria">
+            <button type="button" className="chq-btn chq-btn-secondary" onClick={() => setEditingCriteria((c) => addCriterion(c, 'rating' as CriterionKind))}>
+              Add rating criterion
+            </button>
+            <button type="button" className="chq-btn chq-btn-secondary" onClick={() => setEditingCriteria((c) => addCriterion(c, 'dropdown' as CriterionKind))}>
+              Add dropdown criterion
+            </button>
+            <button type="button" className="chq-btn chq-btn-secondary" onClick={() => setEditingCriteria((c) => addCriterion(c, 'text' as CriterionKind))}>
+              Add free text criterion
             </button>
           </div>
-        ))}
-        <div className="chq-criteria-add">
-          <button type="button" onClick={() => setEditingCriteria((c) => addCriterion(c, 'rating' as CriterionKind))}>
-            Add rating criterion
+        </section>
+
+        <div className="chq-review-editor-actions">
+          <button type="button" className="chq-btn chq-btn-primary" disabled={saving} onClick={save}>
+            {isNew ? 'Create plan' : 'Save plan'}
           </button>
-          <button type="button" onClick={() => setEditingCriteria((c) => addCriterion(c, 'dropdown' as CriterionKind))}>
-            Add dropdown criterion
-          </button>
-          <button type="button" onClick={() => setEditingCriteria((c) => addCriterion(c, 'text' as CriterionKind))}>
-            Add free text criterion
-          </button>
+          {!isNew && (
+            <button type="button" className="chq-btn chq-btn-secondary" disabled={saving} onClick={removePlan}>
+              Delete plan
+            </button>
+          )}
         </div>
-      </fieldset>
 
-      <div className="chq-plan-actions">
-        <button type="button" disabled={saving} onClick={save}>
-          {isNew ? 'Create plan' : 'Save plan'}
-        </button>
-        {!isNew && (
-          <button type="button" disabled={saving} onClick={removePlan}>
-            Delete plan
-          </button>
-        )}
-      </div>
-
-      {!isNew && planId && (
-        <fieldset className="chq-reviewer-assignment">
-          <legend>Reviewer assignment</legend>
-          <ul>
+        {!isNew && planId && (
+          <section className="chq-section">
+            <div className="chq-section-head">
+              <h2 className="chq-section-label">Reviewer assignment</h2>
+            </div>
             {reviewers.map((r) => (
-              <li key={r.id}>
-                {r.email ?? r.userId}
-                {r.trackId ? ` — track ${r.trackId}` : r.submissionId ? ` — submission ${r.submissionId}` : ' — all submissions'}
+              <div key={r.id} className="chq-review-reviewer-row">
+                <div>
+                  <div>{r.email ?? r.userId}</div>
+                  <div className="chq-review-reviewer-email">
+                    {r.trackId ? `Track ${r.trackId}` : r.submissionId ? `Submission ${r.submissionId}` : 'All submissions'}
+                  </div>
+                </div>
                 <button
                   type="button"
+                  className="chq-btn chq-btn-secondary"
                   disabled={resettingUserId === r.userId}
                   onClick={() => resetReviewerPassword(r.userId, r.email)}
                 >
                   {resettingUserId === r.userId ? 'Resetting…' : 'Reset password'}
                 </button>
-                <button type="button" onClick={() => unassignReviewer(r.id)}>
+                <button type="button" className="chq-btn-tertiary" onClick={() => unassignReviewer(r.id)}>
                   Remove
                 </button>
-              </li>
+              </div>
             ))}
-            {reviewers.length === 0 && <li>No reviewers assigned yet.</li>}
-          </ul>
+            {reviewers.length === 0 && <p className="chq-empty">No reviewers assigned yet.</p>}
 
-          <div className="chq-reviewer-new-account">
-            <label>
-              New reviewer account (email)
-              <input
-                type="email"
-                placeholder="reviewer@example.com"
-                value={newReviewerEmail}
-                onChange={(e) => setNewReviewerEmail(e.target.value)}
-              />
-            </label>
-            <button type="button" disabled={creatingReviewer || !newReviewerEmail.trim()} onClick={createReviewerAccount}>
-              {creatingReviewer ? 'Creating…' : 'Create reviewer account'}
-            </button>
+            <div className="chq-review-reviewer-form">
+              <label className="chq-review-field">
+                New reviewer account (email)
+                <input
+                  type="email"
+                  className="chq-input"
+                  placeholder="reviewer@example.com"
+                  value={newReviewerEmail}
+                  onChange={(e) => setNewReviewerEmail(e.target.value)}
+                />
+              </label>
+              <button
+                type="button"
+                className="chq-btn chq-btn-secondary"
+                disabled={creatingReviewer || !newReviewerEmail.trim()}
+                onClick={createReviewerAccount}
+              >
+                {creatingReviewer ? 'Creating…' : 'Create reviewer account'}
+              </button>
+            </div>
             {revealedPassword && (
-              <div className="chq-token-reveal" role="alert">
+              <div className="chq-review-token-reveal" role="alert">
                 <strong>Copy this password now — it will not be shown again:</strong>
                 <code>{revealedPassword}</code>
-                <button type="button" onClick={copyRevealedPassword}>
+                <button type="button" className="chq-btn chq-btn-secondary" onClick={copyRevealedPassword}>
                   Copy
                 </button>
-                <button type="button" onClick={() => setRevealedPassword(null)}>
+                <button type="button" className="chq-btn-tertiary" onClick={() => setRevealedPassword(null)}>
                   Done
                 </button>
               </div>
             )}
-          </div>
 
-          <div className="chq-reviewer-assign-form">
-            <select aria-label="Reviewer" value={reviewerUserId} onChange={(e) => setReviewerUserId(e.target.value)}>
-              <option value="">Select a reviewer…</option>
-              {reviewerOptions.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.email}
-                </option>
-              ))}
-            </select>
-            <select
-              aria-label="Assignment scope"
-              value={reviewerScope}
-              onChange={(e) => setReviewerScope(e.target.value as 'all' | 'track' | 'submission')}
-            >
-              <option value="all">All plan submissions</option>
-              <option value="track">One track</option>
-              <option value="submission">One submission</option>
-            </select>
-            {reviewerScope === 'track' && (
-              <select aria-label="Track" value={reviewerTrackId} onChange={(e) => setReviewerTrackId(e.target.value)}>
-                <option value="">Select a track…</option>
-                {tracks.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
+            <div className="chq-review-reviewer-form">
+              <select className="chq-select" aria-label="Reviewer" value={reviewerUserId} onChange={(e) => setReviewerUserId(e.target.value)}>
+                <option value="">Select a reviewer…</option>
+                {reviewerOptions.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.email}
                   </option>
                 ))}
               </select>
-            )}
-            {reviewerScope === 'submission' && (
-              <input
-                placeholder="Submission id"
-                aria-label="Submission id"
-                value={reviewerSubmissionId}
-                onChange={(e) => setReviewerSubmissionId(e.target.value)}
-              />
-            )}
-            <button type="button" onClick={assignReviewer}>
-              Assign
-            </button>
-          </div>
-        </fieldset>
-      )}
+              <select
+                className="chq-select"
+                aria-label="Assignment scope"
+                value={reviewerScope}
+                onChange={(e) => setReviewerScope(e.target.value as 'all' | 'track' | 'submission')}
+              >
+                <option value="all">All plan submissions</option>
+                <option value="track">One track</option>
+                <option value="submission">One submission</option>
+              </select>
+              {reviewerScope === 'track' && (
+                <select className="chq-select" aria-label="Track" value={reviewerTrackId} onChange={(e) => setReviewerTrackId(e.target.value)}>
+                  <option value="">Select a track…</option>
+                  {tracks.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+              {reviewerScope === 'submission' && (
+                <input
+                  className="chq-input"
+                  placeholder="Submission id"
+                  aria-label="Submission id"
+                  value={reviewerSubmissionId}
+                  onChange={(e) => setReviewerSubmissionId(e.target.value)}
+                />
+              )}
+              <button type="button" className="chq-btn chq-btn-primary" onClick={assignReviewer}>
+                Assign
+              </button>
+            </div>
+          </section>
+        )}
+      </div>
     </div>
   );
 }
