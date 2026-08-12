@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { apiList, apiPost, ApiError } from '../../lib/api';
 import { ModalFrame } from '../../components/ModalFrame';
-import { BULK_EMAIL_MERGE_FIELDS, BULK_EMAIL_RECIPIENT_CAP } from './types';
+import { BULK_EMAIL_MERGE_FIELDS, MAX_COMPOSE_RECIPIENTS as BULK_EMAIL_RECIPIENT_CAP } from '../../lib/merge-fields';
 
 interface Props {
   contactIds: string[];

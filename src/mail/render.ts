@@ -14,6 +14,32 @@ export const MERGE_FIELDS = [
 
 export type MergeField = (typeof MERGE_FIELDS)[number];
 
+// DEC-660: one merge-field vocabulary. These are subsets of MERGE_FIELDS,
+// each naming exactly the vars a given send path actually supplies —
+// `readonly MergeField[]` makes a member outside MERGE_FIELDS a compile
+// error, so a UI chip can never offer a placeholder preflightRender would
+// reject as MergeFieldError.
+
+// Matches src/domain/compose.ts buildMergeVars's target vars (speaker_name,
+// talk_title, event_name, portal_link, feedback) — due_date/task_list belong
+// to the DEC-023 reminders pipeline, not compose.
+export const COMPOSE_MERGE_FIELDS: readonly MergeField[] = [
+  "speaker_name",
+  "talk_title",
+  "event_name",
+  "portal_link",
+  "feedback",
+] as const;
+
+// Matches src/routes/api/contacts/bulk-email.ts renderBulkEmailTargets's
+// target vars (speaker_name, event_name, portal_link) — no talk_title/
+// feedback: bulk email is contact-scoped, not submission-scoped.
+export const BULK_EMAIL_MERGE_FIELDS: readonly MergeField[] = [
+  "speaker_name",
+  "event_name",
+  "portal_link",
+] as const;
+
 export class MergeFieldError extends Error {
   constructor(public readonly field: string) {
     super(`Unknown or missing merge field: {${field}}`);
