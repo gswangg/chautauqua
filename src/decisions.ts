@@ -394,3 +394,11 @@ export const DEC_388 = "D1 bind values are primitives: a timestamp comparison in
 export const DEC_389 = "A gate script reports; it never throws";
 export const DEC_390 = "The phone card transform adds no markup by default; ambiguous cells get a data-label mirrored from their own th";
 export const DEC_391 = "The two mock affordances DEC-380 and DEC-386 dropped are settled, not deferred";
+export const DEC_392 = "The admin phone chrome is the tab bar alone: at <=700px the desktop nav strip and the identity text are hidden, and the More control is unconditional so Sign out is always reachable";
+export const DEC_393 = "44px is the phone tap-target floor everywhere, and the render sweep's MIN_TAP_TARGET_PX enforces it rather than a laxer 40";
+export const DEC_394 = "For this wave only, the shared-CSS lane splits by surface: styles.css + event-switcher.css to the SPA shell lane, theme.ts to the SSR floor lane";
+export const DEC_395 = "A reviewer session never requests organizer-only aggregates: the nav-badge hook gates on role, not on catch()";
+export const DEC_396 = "compose/preview and compose/send take a bounded id array: the one bulk endpoint DEC-182 missed";
+export const DEC_397 = "A preview never mints credentials: in preview mode the portal link for a userless contact renders a fixed placeholder, and only the send path issues claim tokens";
+export const DEC_398 = "A form task's form is picked from the event's own forms and validated server-side; findFormForEvent means the DEFAULT form";
+export const DEC_399 = "The global public-cache bump stays CLOSED -- third and final reaffirmation of DEC-201/333/348";
