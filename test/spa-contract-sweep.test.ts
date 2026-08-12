@@ -473,8 +473,9 @@ describe("DEC-239: GET /api/v1/events/:eventId/email-log vs EmailLogRow", () => 
 });
 
 // ---------------------------------------------------------------------------
-// overview cards: GET /api/v1/events/:eventId/overview vs OverviewPayload
-// (app/src/pages/overview/cards.ts derives OverviewCard[] from this).
+// overview cards: GET /api/v1/events/:eventId/overview (v1 wire shape).
+// See DEC-370: the SPA-side consumer of this payload moved to
+// app/src/pages/overview/{types,rows}.ts (v2 contract, shipped separately).
 // ---------------------------------------------------------------------------
 
 const OVERVIEW_PAYLOAD = {
@@ -517,12 +518,11 @@ describe("DEC-239: GET /api/v1/events/:eventId/overview vs OverviewPayload", () 
     expect(keysOf(body.agenda as Record<string, unknown>)).toEqual(["conflicts", "unplaced"]);
     expect(keysOf(body.comms as Record<string, unknown>)).toEqual(["lastSentAt", "sentLast7Days"]);
 
-    // Exercise the actual SPA mapping function against this payload to
-    // confirm buildOverviewCards can dereference every field it needs
-    // without a runtime TypeError -- the strongest possible contract check
-    // for this endpoint short of an end-to-end browser test.
-    const { buildOverviewCards } = await import("../app/src/pages/overview/cards");
-    const cards = buildOverviewCards(body as never);
-    expect(cards.map((card) => card.key)).toEqual(["triage", "review", "speakers", "content", "agenda", "comms"]);
+    // DEC-370 (w1 redesign): the SPA's overview cards module (which used to
+    // be exercised here against this v1 payload) was replaced by the
+    // worklist page in app/src/pages/overview/{types,rows}.ts, built
+    // against the v2 payload contract. The v2 server response is shipped
+    // separately (task-w1-c); this test keeps asserting the v1 wire shape
+    // the live route above still returns.
   });
 });

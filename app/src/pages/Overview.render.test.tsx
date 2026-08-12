@@ -1,39 +1,94 @@
-// DEC-144 layer-2 harness: component-render smoke test for the Overview
-// worklist dashboard. Mounts the real page against a mocked fetch shaped
-// like the real GET .../overview envelope and asserts every worklist card
-// renders without throwing.
+// DEC-144 layer-2 harness: component-render smoke test for the DEC-370
+// Overview worklist page. Mounts the real page against a mocked fetch
+// shaped like the v2 payload and asserts named rows render, an action
+// fires the right endpoint, and a failed action rolls back.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { OverviewPage } from './Overview';
-import { mockApi } from '../test-utils/mockApi';
-import type { OverviewPayload } from './overview/cards';
+import { errorEnvelope, mockApi } from '../test-utils/mockApi';
+import type { OverviewPayload } from './overview/types';
 
 const EVENT_ID = 'evt-render-2';
+
+function payload(): OverviewPayload {
+  return {
+    deadlines: {
+      formCloseDate: Date.now() + 6 * 86_400_000,
+      nextTaskDueDate: Date.now() + 2 * 86_400_000,
+      planCloseDate: Date.now() + 19 * 86_400_000,
+      eventStartDate: Date.now() + 94 * 86_400_000,
+    },
+    overdueTasks: {
+      total: 1,
+      rows: [
+        {
+          assignmentId: 'as-1',
+          contactId: 'c-1',
+          contactName: 'Marcus Okafor',
+          company: 'Cloudreach Labs',
+          taskId: 'task-1',
+          taskTitle: 'Upload headshot',
+          dueDate: Date.now() - 4 * 86_400_000,
+          daysLate: 4,
+        },
+      ],
+    },
+    triage: {
+      total: 1,
+      oldestSubmittedAt: Date.now() - 6 * 86_400_000,
+      rows: [
+        {
+          submissionId: 'sub-1',
+          ref: 'DFC-033',
+          title: 'Docs That Answer Back',
+          speakerName: 'Dana Whitmore',
+          trackName: 'Developer Experience',
+          format: 'talk',
+          submittedAt: Date.now() - 6 * 86_400_000,
+        },
+      ],
+    },
+    contentApproval: {
+      total: 1,
+      reuploadedCount: 1,
+      rows: [
+        {
+          submissionId: 'sub-2',
+          ref: 'DFC-014',
+          title: 'Taming 40-Minute CI',
+          speakerName: 'Priya Raman',
+          fileName: 'slides-v3.pdf',
+          uploadedAt: Date.now() - 86_400_000,
+          reuploaded: true,
+        },
+      ],
+    },
+    agendaWork: { unplacedTotal: 0, conflictTotal: 0, conflicts: [], unplaced: [] },
+    'triage-counts': { pending: 1, accept_queue: 0, decline_queue: 0 },
+    review: { plans: 3, evaluationsSubmitted: 1 },
+    speakers: { contactsOwing: 1, overdueAssignments: 1 },
+    content: { awaitingApproval: 1 },
+    agenda: { unplaced: 0, conflicts: 0 },
+    comms: { sentLast7Days: 4, lastSentAt: Date.now() - 2 * 86_400_000 },
+  };
+}
 
 beforeEach(() => {
   window.localStorage.setItem('chq.currentEventId', EVENT_ID);
 });
 
 afterEach(() => {
+  cleanup();
   window.localStorage.clear();
   vi.unstubAllGlobals();
 });
 
-describe('OverviewPage render smoke', () => {
-  it('mounts without throwing and renders the six worklist cards', async () => {
-    const payload: OverviewPayload = {
-      triage: { pending: 2, accept_queue: 1, decline_queue: 0 },
-      review: { plans: 3, evaluationsSubmitted: 1 },
-      speakers: { contactsOwing: 4, overdueAssignments: 1 },
-      content: { awaitingApproval: 2 },
-      agenda: { unplaced: 1, conflicts: 0 },
-      comms: { sentLast7Days: 5, lastSentAt: null },
-    };
-
+describe('OverviewPage render smoke (DEC-370)', () => {
+  it('renders named rows in every section', async () => {
     mockApi({
-      [`GET /api/v1/events/${EVENT_ID}/overview`]: payload,
+      [`GET /api/v1/events/${EVENT_ID}/overview`]: payload(),
     });
 
     render(
@@ -42,14 +97,68 @@ describe('OverviewPage render smoke', () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByRole('heading', { name: 'Overview' })).toBeInTheDocument();
-
     await waitFor(() => {
-      expect(screen.getByText('Triage')).toBeInTheDocument();
+      expect(screen.getByText('Marcus Okafor')).toBeInTheDocument();
     });
 
-    for (const title of ['Triage', 'Review', 'Speakers', 'Content', 'Agenda', 'Comms']) {
-      expect(screen.getByText(title)).toBeInTheDocument();
-    }
+    expect(screen.getByText('Docs That Answer Back')).toBeInTheDocument();
+    expect(screen.getByText('Taming 40-Minute CI')).toBeInTheDocument();
+    expect(screen.getByText('3 things need your attention')).toBeInTheDocument();
+    expect(screen.getByText('Review')).toBeInTheDocument();
+    expect(screen.getByText('Comms')).toBeInTheDocument();
+  });
+
+  it('fires the accept endpoint and removes the row optimistically', async () => {
+    const fetchMock = mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/overview`]: payload(),
+      [`POST /api/v1/events/${EVENT_ID}/submissions/status`]: { updated: 1 },
+    });
+
+    render(
+      <MemoryRouter>
+        <OverviewPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(screen.getByText('Docs That Answer Back')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Accept' }));
+
+    await waitFor(() => {
+      expect(screen.queryByText('Docs That Answer Back')).not.toBeInTheDocument();
+    });
+
+    const call = fetchMock.mock.calls.find(([input]) => {
+      const url = typeof input === 'string' ? input : (input as Request).toString();
+      return url.includes('/submissions/status');
+    });
+    expect(call).toBeTruthy();
+  });
+
+  it('rolls back loudly when an action fails', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/overview`]: payload(),
+      [`POST /api/v1/events/${EVENT_ID}/submissions/status`]: {
+        status: 409,
+        body: errorEnvelope('conflict', 'Submission already decided'),
+      },
+    });
+
+    render(
+      <MemoryRouter>
+        <OverviewPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(screen.getByText('Docs That Answer Back')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Accept' }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Submission already decided/)).toBeInTheDocument();
+    });
+
+    // Row is back — the optimistic removal rolled back.
+    expect(screen.getByText('Docs That Answer Back')).toBeInTheDocument();
   });
 });

@@ -1,0 +1,192 @@
+/* DEC-368: page-lane stylesheet, imported by Overview.tsx only. Classes are
+   prefixed .chq-overview-* and never redefine a shared .chq-* class from the
+   shell lane's styles.css. Tokens follow DEC-367; falls back to the literal
+   hex so the page still renders before the shell lane lands :root tokens. */
+
+.chq-overview-deadlines {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border-top: 1px solid var(--chq-rule, #d3cfc0);
+  border-bottom: 1px solid var(--chq-rule, #d3cfc0);
+  margin: 20px 0 34px;
+}
+
+.chq-overview-deadline-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 13px 14px;
+  border-left: 1px solid var(--chq-rule, #d3cfc0);
+  color: var(--chq-ink, #1b1d17);
+  text-decoration: none;
+}
+
+.chq-overview-deadline-cell:first-child {
+  padding-left: 0;
+  border-left: none;
+}
+
+.chq-overview-deadline-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--chq-muted, #565a4b);
+}
+
+.chq-overview-deadline-value {
+  font-family: var(--chq-display-font, 'Familjen Grotesk', sans-serif);
+  font-size: 30px;
+  font-weight: 400;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  color: var(--chq-ink, #1b1d17);
+}
+
+.chq-overview-deadline-value.chq-overview-deadline-nearest {
+  font-weight: 700;
+}
+
+.chq-overview-headline {
+  margin: 0 0 34px;
+  font-family: var(--chq-display-font, 'Familjen Grotesk', sans-serif);
+  font-size: 44px;
+  font-weight: 700;
+  letter-spacing: -0.042em;
+  line-height: 1.04;
+  color: var(--chq-ink, #1b1d17);
+}
+
+.chq-overview-section {
+  margin-bottom: 34px;
+}
+
+.chq-overview-section-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 20px;
+  border-bottom: 2px solid var(--chq-ink, #1b1d17);
+  padding-bottom: 8px;
+}
+
+.chq-overview-section-label {
+  font-family: var(--chq-display-font, 'Familjen Grotesk', sans-serif);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--chq-ink, #1b1d17);
+}
+
+.chq-overview-section-action {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--chq-brand, #4e5c31);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.chq-overview-caption {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--chq-muted, #565a4b);
+  padding: 9px 0 0;
+}
+
+.chq-overview-row {
+  display: grid;
+  gap: 20px;
+  align-items: baseline;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--chq-hairline, #e1ddce);
+}
+
+.chq-overview-row-overdue {
+  grid-template-columns: 1fr 1.15fr auto;
+}
+
+.chq-overview-row-content {
+  grid-template-columns: 1fr auto;
+}
+
+.chq-overview-row-agenda {
+  grid-template-columns: 132px 1fr auto;
+}
+
+.chq-overview-row-quiet {
+  grid-template-columns: 200px 1fr;
+}
+
+.chq-overview-row-title {
+  font-family: var(--chq-display-font, 'Familjen Grotesk', sans-serif);
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
+.chq-overview-row-meta {
+  font-size: 12px;
+  color: var(--chq-muted, #565a4b);
+}
+
+.chq-overview-row-late {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--chq-ink, #1b1d17);
+}
+
+.chq-overview-row-actions {
+  display: flex;
+  gap: 14px;
+  align-self: center;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.chq-overview-btn {
+  border: 1px solid var(--chq-border, #bab6a6);
+  border-radius: 4px;
+  padding: 9px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  background: var(--chq-sunk, #efebdf);
+  color: var(--chq-ink, #1b1d17);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.chq-overview-btn-primary {
+  border: none;
+  background: var(--chq-brand, #4e5c31);
+  color: var(--chq-on-brand, #f7f9f0);
+  font-weight: 700;
+}
+
+.chq-overview-link-btn {
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--chq-brand, #4e5c31);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.chq-overview-link-btn.chq-overview-link-muted {
+  color: var(--chq-muted, #565a4b);
+}
+
+.chq-overview-empty {
+  padding: 14px 0;
+  color: var(--chq-muted, #565a4b);
+  font-size: 13px;
+}
