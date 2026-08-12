@@ -94,9 +94,16 @@
   color: var(--chq-ink-2);
 }
 
-/* Phone (< 700px): the rail is a full-width list of section links; picking
-   one hides the list and shows only that section plus a back control.
-   Component state only — see Settings.tsx's `active`/data-drilled. */
+/* Phone (< 700px, DEC-385): the rail is a full-width list of section links;
+   picking one hides the list and shows only that section plus a back
+   control. Component state only — see Settings.tsx's `active`/data-drilled.
+   Inside the active panel, the row-rendering panels (Tracks & rooms,
+   Resources, API tokens, Exports) get a real phone frame instead of the
+   desktop grid/table squeezed narrow: `<li>` rows and `.chq-table` rows
+   become one-column stacks on the SAME markup (thead hidden, tr/td turned
+   into flex blocks, no cell dropped — DEC-386), with a mirrored
+   `data-label` + `td::before` at the 10px floor for cells that are
+   meaningless without their column header (DEC-390). */
 @media (max-width: 700px) {
   .chq-settings-layout {
     display: block;
@@ -137,5 +144,120 @@
 
   .chq-settings-layout[data-drilled='true'] .chq-settings-section-active {
     display: block;
+  }
+
+  /* Controls: full-width, 44px, phone control radius (DEC-383 token, no
+     literal hex). */
+  .chq-settings-panel .chq-input,
+  .chq-settings-panel .chq-select,
+  .chq-settings-panel .chq-textarea {
+    border-radius: var(--chq-r-ctl-phone);
+  }
+
+  /* Tracks/Rooms/Resources lists: each <li> is already, in DOM order,
+     value-control(s) then a trailing action — a column flex direction is a
+     pure reflow of the existing markup, label above value, action on its
+     own 44px line. */
+  .chq-settings-panel ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .chq-settings-panel li {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--chq-hairline);
+  }
+
+  .chq-settings-panel li:last-child {
+    border-bottom: none;
+  }
+
+  .chq-settings-panel li .chq-color-swatch {
+    align-self: flex-start;
+  }
+
+  /* Row actions (Delete/Edit/Save/Revoke) become a boxed 44px tap target,
+     matching the mock's boxed row action. */
+  .chq-settings-panel .chq-link-button {
+    align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0 14px;
+    border: 1px solid var(--chq-border);
+    border-radius: var(--chq-r-ctl-phone);
+    background: var(--chq-surface-sunk);
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--chq-ink);
+  }
+
+  /* API tokens / Exports tables -> card stack on the SAME markup
+     (DEC-386): thead hidden, tr/td become flex blocks, no cell dropped. */
+  .chq-settings-panel .chq-table thead {
+    display: none;
+  }
+
+  .chq-settings-panel .chq-table,
+  .chq-settings-panel .chq-table tbody {
+    display: block;
+    width: 100%;
+  }
+
+  .chq-settings-panel .chq-table tbody tr {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--chq-hairline);
+  }
+
+  .chq-settings-panel .chq-table tbody tr:last-child {
+    border-bottom: none;
+  }
+
+  .chq-settings-panel .chq-table tbody td {
+    display: block;
+    padding: 0;
+    border-bottom: none;
+  }
+
+  .chq-settings-panel .chq-table tbody td:last-child {
+    padding-top: 4px;
+  }
+
+  /* DEC-390 escape hatch: a cell that's meaningless without its column
+     header (a masked token, a last-used date) gets the th string mirrored
+     onto data-label, rendered through td::before at the 10px type floor —
+     no wrapper element, no second copy of the string. */
+  .chq-settings-panel .chq-table tbody td[data-label]::before {
+    content: attr(data-label) ': ';
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--chq-muted);
+  }
+
+  /* Embeds field picker: checkbox rows reach a 44px tap target via
+     centred flex. */
+  .chq-settings-panel fieldset {
+    border: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .chq-settings-panel fieldset label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
   }
 }
