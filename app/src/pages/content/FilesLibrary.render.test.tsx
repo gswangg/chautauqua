@@ -285,6 +285,12 @@ describe('FilesLibrary render smoke', () => {
     const downloadButton = screen.getByRole('button', { name: 'Download ZIP (1)' });
     fireEvent.click(downloadButton);
 
+    const status = screen.getByRole('status');
+    // CNT-14: the live region confirms generation is in flight — the
+    // disabled button state alone is not feedback.
+    await waitFor(() => {
+      expect(status).toHaveTextContent('Preparing ZIP…');
+    });
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Downloading…' })).toBeDisabled();
     });
@@ -298,9 +304,8 @@ describe('FilesLibrary render smoke', () => {
       }),
     );
 
-    const status = screen.getByRole('status');
     await waitFor(() => {
-      expect(status).toHaveTextContent('1 file, 4 B downloaded.');
+      expect(status).toHaveTextContent('evt-files.zip: 1 file, 4 B downloaded.');
     });
     expect(screen.getByRole('button', { name: 'Download ZIP (1)' })).not.toBeDisabled();
   });

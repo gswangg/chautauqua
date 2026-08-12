@@ -77,7 +77,10 @@ export function FilesLibrary({ eventId, onSelectSubmission }: FilesLibraryProps)
   async function downloadZip() {
     if (overArchiveLimit) return;
     setError(null);
-    setDownloadStatus(null);
+    // CNT-14/CNT-D5: the disabled button alone is not feedback — the
+    // live region must confirm generation is in flight before the
+    // native <a download> click ever fires.
+    setDownloadStatus('Preparing ZIP…');
     setDownloading(true);
     try {
       // Latest-version ids: resolveLatestVersions accepts any chain-member
@@ -94,7 +97,7 @@ export function FilesLibrary({ eventId, onSelectSubmission }: FilesLibraryProps)
       a.remove();
       URL.revokeObjectURL(url);
       const fileWord = fileCount === 1 ? 'file' : 'files';
-      setDownloadStatus(`${fileCount} ${fileWord}, ${formatBytes(blob.size)} downloaded.`);
+      setDownloadStatus(`${filename}: ${fileCount} ${fileWord}, ${formatBytes(blob.size)} downloaded.`);
     } catch (err) {
       const message = err instanceof ApiError ? err.message : 'Download failed';
       setError(err instanceof ApiError ? `Download failed: ${err.message}` : 'Download failed');
