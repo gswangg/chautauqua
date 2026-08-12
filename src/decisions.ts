@@ -474,3 +474,7 @@ export const DEC_467 = "user.email is subject to the DEC-454 rule too, and exact
 export const DEC_468 = "A server cap the UI cannot see is a new \"falls through the cracks\" defect: a truncated admin list must report its true total and offer the rest";
 export const DEC_469 = "The CI perf smoke must be able to measure the two lists DEC-460 named as unbounded-over-an-org's-lifetime";
 export const DEC_470 = "Wave 20 is a fix wave and cuts NO ledger; wave 21 closes, and its SPEC.md:353 row is graded from a re-derived mechanical enumeration";
+export const DEC_471 = "Re-running DEC-466's own criterion found two more list reads it never named; `/api/v1/submissions/:id/files` and `/api/v1/files/:fileId/comments` get the DEC-013 envelope";
+export const DEC_472 = "A branch is not a landing: every graded row cites `git merge-base --is-ancestor`, and a decision doc is evidence of a decision, never of a fix";
+export const DEC_473 = "The list-envelope enumeration is a re-runnable artifact with one row per site in four fixed classes, not prose";
+export const DEC_474 = "Wave 21 = one source lane + four independent evidence lanes + the ledger last; the ledger's PASS requires DEC-465..469 and DEC-471 to be ancestors of its own sha";
