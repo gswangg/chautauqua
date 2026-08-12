@@ -50,6 +50,16 @@ function mockAllSections() {
     [`GET /api/v1/events/${EVENT_ID}/resources`]: listEnvelope([
       { id: 'res1', kind: 'wiki', title: 'Travel info', content: 'Fly into AUS.', fileId: null, position: 0 },
     ]),
+    [`GET /api/v1/events/${EVENT_ID}/forms`]: {
+      id: 'form1',
+      eventId: EVENT_ID,
+      intro: 'Tell us about your talk.',
+      openDate: null,
+      closeDate: null,
+      tracks: [],
+    },
+    'GET /api/v1/me': { userId: 'u-self', email: 'self@example.com', name: null, role: 'organizer', orgId: 'org1' },
+    'GET /api/v1/users': listEnvelope([{ id: 'u-self', email: 'self@example.com', role: 'organizer' }]),
     'GET /api/v1/tokens': listEnvelope([{ id: 'tok1', name: 'CI pipeline', tokenPrefix: 'chq_abcd', lastUsedAt: null }]),
   });
 }
@@ -74,6 +84,18 @@ describe('SettingsPage render smoke', () => {
       expect(screen.getByDisplayValue('Keynotes')).toBeInTheDocument();
     });
     expect(screen.getByText(/Main Hall/)).toBeInTheDocument();
+
+    // Call for papers panel.
+    expect(screen.getByRole('heading', { name: 'Call for papers' })).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('Tell us about your talk.')).toBeInTheDocument();
+    });
+
+    // People and roles panel.
+    expect(screen.getByRole('heading', { name: 'People and roles' })).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('self@example.com')).toBeInTheDocument();
+    });
 
     // Portal settings panel.
     expect(screen.getByRole('heading', { name: 'Portal settings' })).toBeInTheDocument();
@@ -134,5 +156,34 @@ describe('SettingsPage render smoke', () => {
       window.location.pathname + window.location.search + window.location.hash,
     ).toBe(pathBefore);
     expect(window.history.length).toBe(historyLengthBefore);
+  });
+
+  // DEC-588: rail order is Event, Call for papers, Portal, Tracks and
+  // rooms, Resources, People and roles, API tokens, Exports, Embeds.
+  it('renders the rail sections in DEC-588 order', async () => {
+    mockAllSections();
+
+    render(<SettingsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('DevCon 2026')).toBeInTheDocument();
+    });
+
+    const rail = screen.getByRole('navigation', { name: 'Settings sections' });
+    const labels = within(rail)
+      .getAllByRole('button')
+      .map((el) => el.textContent);
+
+    expect(labels).toEqual([
+      'Event',
+      'Call for papers',
+      'Portal',
+      'Tracks and rooms',
+      'Resources',
+      'People and roles',
+      'API tokens',
+      'Exports',
+      'Embeds',
+    ]);
   });
 });

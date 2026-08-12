@@ -262,6 +262,107 @@
   }
 }
 
+/* DEC-588: numbered-section header pattern (docs/design/Chautauqua
+   Settings.dc.html lines 79-84) shared by Call for papers and People and
+   roles -- uppercase label + rule, right-aligned action link, rows split
+   by a hairline. Reuses .chq-settings-panel's own bottom-border h2 rule
+   for panels that DON'T need a right-aligned action (existing panels);
+   this variant replaces the plain <h2> border with a head row so the
+   action can sit flush right on the same rule. */
+.chq-settings-numbered .chq-settings-section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  border-bottom: 2px solid var(--chq-ink);
+  padding-bottom: 8px;
+  margin-bottom: 14px;
+}
+
+.chq-settings-numbered .chq-settings-section-head h2 {
+  border-bottom: none;
+  padding-bottom: 0;
+  margin: 0;
+}
+
+.chq-settings-section-action {
+  font-size: 13px;
+  font-weight: 700;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--chq-brand, inherit);
+}
+
+.chq-settings-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--chq-hairline);
+}
+
+.chq-settings-row:last-child {
+  border-bottom: none;
+}
+
+.chq-settings-row-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--chq-ink-2);
+}
+
+.chq-settings-row-value {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.chq-settings-inline-action {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.chq-settings-people-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.chq-settings-people-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--chq-hairline);
+}
+
+.chq-settings-people-list li:last-child {
+  border-bottom: none;
+}
+
+.chq-settings-people-role {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--chq-ink-2);
+}
+
+.chq-settings-people-confirm {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.chq-settings-people-total {
+  font-size: 12px;
+  color: var(--chq-muted, var(--chq-ink-2));
+  margin: 10px 0 0;
+}
+
 /* DEC-402: page-prefixed second classes so each table is addressable by
    this stylesheet without redefining the shared .chq-table rules above,
    which already cover both tables' desktop and phone-card treatment via
