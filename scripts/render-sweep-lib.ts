@@ -114,6 +114,17 @@ export interface MobileObservation {
    * filter/submit controls on the page, or null if the page has none
    * (e.g. a route with no such controls at all). */
   minControlHeight: number | null;
+  /** DEC-401: maximum getBoundingClientRect().right over every visible
+   * element on the page — catches elements clipped by an ancestor's
+   * overflow:hidden that scrollWidth alone would miss. */
+  maxElementRight: number;
+  /** DEC-401: up to 3 structural descriptors (never text content) for the
+   * widest-overhanging elements whose rect.right exceeds the viewport,
+   * widest first — e.g. "div.chq-foo w=420px right=460px". */
+  overflowOffenders: string[];
+  /** DEC-401: structural descriptor (class list / tag) of the element that
+   * produced minControlHeight, or null if there is no such control. */
+  minControlSelector: string | null;
 }
 
 export interface MobileRouteResult {
@@ -135,16 +146,25 @@ const OVERFLOW_TOLERANCE_PX = 1;
  * page-level horizontal overflow, and every measured primary control
  * meets the >= 44px tap-target height (DEC-393). */
 export function evaluateMobileRoute(entry: MobileRouteEntry, observed: MobileObservation): MobileRouteResult {
-  const overflowPx = observed.scrollWidth - observed.viewportWidth;
+  // DEC-401: also consider maxElementRight — an element clipped by an
+  // ancestor's overflow:hidden can widen the visible page without moving
+  // document.scrollingElement.scrollWidth.
+  const overflowPx = Math.round(Math.max(observed.scrollWidth, observed.maxElementRight) - observed.viewportWidth);
   const reasons: string[] = [];
   if (observed.status !== 200) reasons.push(`status ${observed.status} !== 200`);
   if (overflowPx > OVERFLOW_TOLERANCE_PX) {
-    reasons.push(
-      `horizontal overflow ${overflowPx}px (scrollWidth ${observed.scrollWidth} > viewport ${observed.viewportWidth})`,
-    );
+    let reason = `horizontal overflow ${overflowPx}px (scrollWidth ${observed.scrollWidth} > viewport ${observed.viewportWidth})`;
+    if (observed.overflowOffenders.length > 0) {
+      reason += ` — widest: ${observed.overflowOffenders.join(" | ")}`;
+    }
+    reasons.push(reason);
   }
   if (observed.minControlHeight !== null && observed.minControlHeight < MIN_TAP_TARGET_PX) {
-    reasons.push(`control height ${observed.minControlHeight}px < ${MIN_TAP_TARGET_PX}px`);
+    let reason = `control height ${observed.minControlHeight}px < ${MIN_TAP_TARGET_PX}px`;
+    if (observed.minControlSelector) {
+      reason += ` (${observed.minControlSelector})`;
+    }
+    reasons.push(reason);
   }
   return {
     entry,
@@ -172,6 +192,18 @@ export function mobileErrorResult(entry: MobileRouteEntry, message: string): Mob
     failureReason: message,
   };
 }
+
+/** Default MobileObservation for tests that only care about a subset of
+ * fields — spread and override rather than repeating all keys everywhere. */
+export const EMPTY_MOBILE_OBSERVATION: MobileObservation = {
+  status: 200,
+  scrollWidth: 0,
+  viewportWidth: 0,
+  minControlHeight: null,
+  maxElementRight: 0,
+  overflowOffenders: [],
+  minControlSelector: null,
+};
 
 /** True if every mobile route result passed. */
 export function allMobilePassed(results: readonly MobileRouteResult[]): boolean {
