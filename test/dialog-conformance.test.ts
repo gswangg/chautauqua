@@ -81,9 +81,14 @@ describe('dialog conformance (DEC-651)', () => {
   // plus every dialog that still hand-rolls its own scrim/modal markup,
   // which is exactly the set this test needs to hold to the DEC-651
   // contract.
-  it('scanned at least 60 source files and found at least 7 dialog files', () => {
+  // DEC-684 moved contact merge out of DuplicatesView's hand-rolled modal and
+  // into a full page at /admin/contacts/merge, so that file no longer declares
+  // role="dialog" and the hand-rolled set legitimately dropped 7 -> 6. The
+  // floor tracks reality rather than blocking a decision: the per-file contract
+  // assertions below are what actually stop a new dialog opting out.
+  it('scanned at least 60 source files and found at least 6 dialog files', () => {
     expect(scannedFiles.length).toBeGreaterThanOrEqual(60);
-    expect(dialogFiles.length).toBeGreaterThanOrEqual(7);
+    expect(dialogFiles.length).toBeGreaterThanOrEqual(6);
   });
 
   it('every dialog file carries chq-modal-title and a Close control', () => {

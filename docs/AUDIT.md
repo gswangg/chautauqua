@@ -115,6 +115,13 @@ unhardened fallback, not the only option.
 Org-level contact directory, search, segments/rules, merge, CSV import/export across
 events. Built.
 
+**Merge is a page, not a modal (DEC-684):** the KEEP/DISCARD comparison for an
+irreversible merge lives at `/admin/contacts/merge` (`app/src/pages/contacts/MergePage.tsx`),
+reached from the Duplicates tab, with the target set carried in the query string
+(DEC-629's `{keepId, mergeIds}`). A destructive review step that can be linked,
+reloaded, and returned to after an interruption is a correctness property, not a
+nicety — which a modal over the list cannot provide.
+
 **Capped:** `MAX_CONTACT_DIRECTORY_SCAN`=20000 (`src/server/repo/contacts/rows.ts`) —
 segment/rules filters and duplicate-detection scans that would need to walk more than
 20,000 contacts fail loudly (400, "narrow the scope") rather than silently truncate.
