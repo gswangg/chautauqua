@@ -75,83 +75,103 @@ export function TemplatesTab({ eventId }: { eventId: string }) {
   }
 
   return (
-    <div className="chq-templates-tab">
+    <div className="chq-comms-templates-tab">
       {error && <div className="chq-error-banner">{error}</div>}
       {loading && <p>Loading templates...</p>}
 
-      <button type="button" onClick={startNew}>
-        New template
-      </button>
+      <div className="chq-toolbar">
+        <button type="button" className="chq-btn chq-btn-primary" onClick={startNew}>
+          New template
+        </button>
+      </div>
 
-      <table className="chq-templates-table">
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Subject</th>
-            <th />
-          </tr>
-        </thead>
-        <tbody>
-          {templates.map((t) => (
-            <tr key={t.id}>
-              <td>{t.name}</td>
-              <td>{t.subject}</td>
-              <td>
-                <button type="button" onClick={() => startEdit(t)}>
-                  Edit
+      <div className="chq-comms-templates">
+        <section>
+          <div className="chq-section-head">
+            <span className="chq-section-label">Saved &middot; {templates.length}</span>
+          </div>
+          <table className="chq-table chq-comms-templates-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Subject</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {templates.map((t) => (
+                <tr key={t.id}>
+                  <td>
+                    <div className="chq-comms-template-name">{t.name}</div>
+                  </td>
+                  <td>
+                    <div className="chq-comms-template-detail">{t.subject}</div>
+                  </td>
+                  <td>
+                    <button type="button" className="chq-link-button" onClick={() => startEdit(t)}>
+                      Edit
+                    </button>{' '}
+                    <button type="button" className="chq-link-button" onClick={() => remove(t.id)}>
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {!loading && templates.length === 0 && (
+                <tr>
+                  <td colSpan={3}>No templates yet.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </section>
+
+        {editingId && (
+          <section className="chq-comms-editor">
+            <div className="chq-section-head">
+              <span className="chq-section-label">{editingId === 'new' ? 'New template' : 'Edit template'}</span>
+            </div>
+            <label>
+              <span className="chq-comms-editor-label">Subject</span>
+              <input
+                className="chq-input"
+                value={draft.subject}
+                onChange={(e) => setDraft((d) => ({ ...d, subject: e.target.value }))}
+              />
+            </label>
+            <label>
+              <span className="chq-comms-editor-label">Name</span>
+              <input className="chq-input" value={draft.name} onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))} />
+            </label>
+            <label>
+              <span className="chq-comms-editor-label">Body</span>
+              <textarea
+                className="chq-textarea"
+                rows={8}
+                value={draft.bodyText}
+                onChange={(e) => setDraft((d) => ({ ...d, bodyText: e.target.value }))}
+              />
+            </label>
+
+            <div className="chq-comms-merge-chips">
+              {COMPOSE_MERGE_FIELDS.map((field) => (
+                <button key={field} type="button" className="chq-pill" onClick={() => insertChip(field)}>
+                  {`{${field}}`}
                 </button>
-                <button type="button" onClick={() => remove(t.id)}>
-                  Delete
-                </button>
-              </td>
-            </tr>
-          ))}
-          {!loading && templates.length === 0 && (
-            <tr>
-              <td colSpan={3}>No templates yet.</td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+              ))}
+            </div>
 
-      {editingId && (
-        <div className="chq-template-editor">
-          <h2>{editingId === 'new' ? 'New template' : 'Edit template'}</h2>
-          <label>
-            Name
-            <input value={draft.name} onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))} />
-          </label>
-          <label>
-            Subject
-            <input value={draft.subject} onChange={(e) => setDraft((d) => ({ ...d, subject: e.target.value }))} />
-          </label>
-          <label>
-            Body
-            <textarea
-              rows={8}
-              value={draft.bodyText}
-              onChange={(e) => setDraft((d) => ({ ...d, bodyText: e.target.value }))}
-            />
-          </label>
-
-          <div className="chq-merge-field-chips">
-            {COMPOSE_MERGE_FIELDS.map((field) => (
-              <button key={field} type="button" className="chq-chip" onClick={() => insertChip(field)}>
-                {`{${field}}`}
+            <div className="chq-comms-editor-actions">
+              <button type="button" className="chq-btn chq-btn-primary" disabled={saving} onClick={save}>
+                Save
               </button>
-            ))}
-          </div>
-
-          <div className="chq-template-editor-actions">
-            <button type="button" disabled={saving} onClick={save}>
-              Save
-            </button>
-            <button type="button" disabled={saving} onClick={() => setEditingId(null)}>
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
+              <button type="button" className="chq-btn chq-btn-secondary" disabled={saving} onClick={() => setEditingId(null)}>
+                Cancel
+              </button>
+            </div>
+          </section>
+        )}
+      </div>
     </div>
   );
 }

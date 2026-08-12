@@ -75,9 +75,9 @@ describe('CommsPage render smoke', () => {
     fireEvent.change(screen.getByLabelText('Template'), { target: { value: 'tpl-1' } });
     fireEvent.click(screen.getByRole('button', { name: 'Next: preview' }));
 
-    expect(await screen.findByRole('heading', { name: '3. Preview' })).toBeInTheDocument();
+    expect(await screen.findByText('Recipients · 1')).toBeInTheDocument();
     await waitFor(() => {
-      expect(screen.getByText('ada@example.com', { exact: false })).toBeInTheDocument();
+      expect(screen.getAllByText('ada@example.com', { exact: false }).length).toBeGreaterThan(0);
     });
   });
 
@@ -89,7 +89,7 @@ describe('CommsPage render smoke', () => {
 
     render(<CommsPage />);
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Templates' }));
+    fireEvent.click(await screen.findByRole('tab', { name: 'Templates' }));
 
     await waitFor(() => {
       expect(screen.getByText('Acceptance')).toBeInTheDocument();
@@ -123,10 +123,10 @@ describe('CommsPage render smoke', () => {
 
     render(<CommsPage />);
 
-    fireEvent.click(await screen.findByRole('button', { name: 'History' }));
+    fireEvent.click(await screen.findByRole('tab', { name: 'History' }));
 
-    const table = await screen.findByText('You are in!');
-    expect(within(table.closest('tr')!).getByText('ada@example.com')).toBeInTheDocument();
+    const row = await screen.findByText('You are in!');
+    expect(within(row.closest('.chq-comms-history-row')!).getByText('ada@example.com')).toBeInTheDocument();
     expect(screen.getByText('1 total')).toBeInTheDocument();
   });
 });

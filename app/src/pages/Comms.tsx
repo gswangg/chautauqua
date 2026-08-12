@@ -3,6 +3,7 @@ import { useCurrentEvent } from '../lib/useCurrentEvent';
 import { TemplatesTab } from './comms/TemplatesTab';
 import { ComposeWizard } from './comms/ComposeWizard';
 import { HistoryTab } from './comms/HistoryTab';
+import './comms/comms.css';
 
 type Tab = 'compose' | 'templates' | 'history';
 
@@ -19,7 +20,7 @@ export function CommsPage() {
   if (loading) {
     return (
       <div className="chq-page">
-        <h1>Comms</h1>
+        <h1 className="chq-page-title">Comms</h1>
         <p>Loading...</p>
       </div>
     );
@@ -28,23 +29,33 @@ export function CommsPage() {
   if (error || !eventId) {
     return (
       <div className="chq-page">
-        <h1>Comms</h1>
-        <div className="chq-attention-frame">{error ?? 'No event selected.'}</div>
+        <h1 className="chq-page-title">Comms</h1>
+        <div className="chq-error">{error ?? 'No event selected.'}</div>
       </div>
     );
   }
 
   return (
     <div className="chq-page chq-comms-page">
-      <h1>Comms</h1>
-
-      <nav className="chq-tabs">
-        {TABS.map((t) => (
-          <button key={t.id} type="button" className={tab === t.id ? 'active' : ''} onClick={() => setTab(t.id)}>
-            {t.label}
-          </button>
-        ))}
-      </nav>
+      <div className="chq-comms-head">
+        <div className="chq-comms-head-titles">
+          <h1 className="chq-page-title">Comms</h1>
+        </div>
+        <div className="chq-comms-head-actions" role="tablist">
+          {TABS.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              role="tab"
+              aria-selected={tab === t.id}
+              className={tab === t.id ? 'chq-pill is-active' : 'chq-pill'}
+              onClick={() => setTab(t.id)}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {tab === 'compose' && <ComposeWizard eventId={eventId} />}
       {tab === 'templates' && <TemplatesTab eventId={eventId} />}
