@@ -2,7 +2,7 @@
 // render in the event's own IANA timezone, never bare UTC, and there is no
 // silent fallback — an empty or invalid timeZone throws.
 import { describe, expect, it } from "vitest";
-import { formatEventDateTime } from "../src/lib/event-time";
+import { formatCalendarDate, formatEventDateTime } from "../src/lib/event-time";
 
 describe("formatEventDateTime (DEC-408)", () => {
   it("renders a March instant in America/Los_Angeles as PST with the right wall-clock hour", () => {
@@ -40,5 +40,56 @@ describe("formatEventDateTime (DEC-408)", () => {
 
   it("throws on an invalid timeZone (no UTC fallback)", () => {
     expect(() => formatEventDateTime(Date.now(), "Not/AZone")).toThrow();
+  });
+});
+
+// DEC-522: a date-only value (task due date, etc.) is a CALENDAR DAY, not an
+// instant — formatCalendarDate renders it as the same day regardless of
+// viewer/event timezone, unlike formatEventDate/formatEventDateTime above.
+describe("formatCalendarDate (DEC-522)", () => {
+  const DAY_MS = Date.UTC(2027, 2, 1, 0, 0, 0); // 2027-03-01T00:00:00Z (UTC-midnight day label)
+
+  it("renders the same calendar day for a viewer/event in America/Los_Angeles, Asia/Tokyo, and UTC", () => {
+    // formatCalendarDate takes NO timezone parameter — it always reads UTC
+    // calendar fields internally, so the *process*/viewer timezone must not
+    // change its output. Drive process.env.TZ (the ambient "viewer/event"
+    // timezone a caller's environment might run under) through three zones
+    // and confirm the label never moves — the exact regression this DEC
+    // fixes (Los-Angeles rendering "Sun, 28 Feb" while the admin grid, which
+    // is timezone-independent, shows "Mar 1").
+    const originalTz = process.env.TZ;
+    try {
+      const results = new Set<string>();
+      for (const tz of ["America/Los_Angeles", "Asia/Tokyo", "UTC"]) {
+        process.env.TZ = tz;
+        results.add(formatCalendarDate(DAY_MS));
+      }
+      expect(results.size).toBe(1);
+      expect([...results][0]).toBe("Mon, Mar 01, 2027");
+    } finally {
+      process.env.TZ = originalTz;
+    }
+  });
+
+  it("matches formatEventDate(ms, 'UTC') byte-for-byte (same shape, UTC-anchored)", () => {
+    expect(formatCalendarDate(DAY_MS)).toBe("Mon, Mar 01, 2027");
+  });
+
+  it("does not shift the day for a late-UTC label the way a Pacific-timezone re-interpretation would", () => {
+    // 2027-03-02T00:00:00Z: under the old (buggy) formatEventDate(ms,
+    // "America/Los_Angeles") path this would roll back to Mon, Mar 01 (PST).
+    // formatCalendarDate must name Tue, Mar 02 — the same day the stored
+    // label represents — because it never re-interprets into a timezone.
+    const ms = Date.UTC(2027, 2, 2, 0, 0, 0);
+    expect(formatCalendarDate(ms)).toBe("Tue, Mar 02, 2027");
+  });
+
+  it("throws on a NaN input", () => {
+    expect(() => formatCalendarDate(NaN)).toThrow();
+  });
+
+  it("throws on a non-finite input", () => {
+    expect(() => formatCalendarDate(Infinity)).toThrow();
+    expect(() => formatCalendarDate(-Infinity)).toThrow();
   });
 });

@@ -8,7 +8,7 @@
 import { Hono } from "hono";
 import type { AppEnv } from "../../server/env";
 import { speakerGate, PortalLayout } from "./shared";
-import { formatEventDate } from "../../lib/event-time";
+import { formatCalendarDate, formatEventDate } from "../../lib/event-time";
 import { csrfForm } from "../../server/middleware";
 import { ApiError } from "../../server/http";
 import {
@@ -141,7 +141,7 @@ function PortalPage(props: { data: PortalData; sessions: PortalSession[]; invita
                   {t.status === "complete" ? "Done" : "To do"}
                 </span>
               </div>
-              {t.dueDate ? <span class="chq-portal-due">Due {formatEventDate(t.dueDate, t.timezone)}</span> : null}
+              {t.dueDate ? <span class="chq-portal-due">Due {formatCalendarDate(t.dueDate)}</span> : null}
             </div>
           ))
         )}

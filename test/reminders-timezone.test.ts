@@ -1,10 +1,12 @@
-// DEC-420: reminder emails must format due dates via formatEventDate(ms,
-// event.timezone) and carry one line per outstanding task with its own due
-// date — never toISOString, never one aggregate date for a group. This test
-// proves the timezone asymmetry (a UTC date can roll to the prior calendar
-// day in the event's own zone) and the per-task line shape. Same fake-Db
-// harness convention as test/tasks-due-reminders.test.ts (this repo's
-// vitest run is plain node, no D1/miniflare binding).
+// DEC-420 (superseded in its timezone claim by DEC-522): reminder emails
+// carry one line per outstanding task with its own due date — never
+// toISOString, never one aggregate date for a group. DEC-522: a task due
+// date is a DAY LABEL (UTC-midnight), not an instant — buildReminderMessage
+// must format it via formatCalendarDate (no timezone re-interpretation), so
+// the reminder line names the same calendar day the admin grid shows,
+// regardless of the event's own timezone. Same fake-Db harness convention as
+// test/tasks-due-reminders.test.ts (this repo's vitest run is plain node, no
+// D1/miniflare binding).
 import { describe, expect, it } from "vitest";
 import { remindNow } from "../src/server/repo/tasks";
 import type { Db } from "../src/server/context";
@@ -63,12 +65,14 @@ function fakeMailer(): { mailer: Mailer; sent: Array<{ to: { email: string }; su
 
 const NOW = new Date(1_700_000_000_000);
 
-describe("reminder email due dates (DEC-420: formatEventDate per-task, no aggregate date)", () => {
-  it("renders the due date in the event's own timezone, not UTC", async () => {
-    // 2027-03-02T07:30:00Z is 2027-03-01 (Mon, Mar 01, 2027) in
-    // America/Los_Angeles (PST, UTC-8 at that date) — the asymmetry proves
-    // the format goes through the event timezone, not toISOString.
-    const dueMs = Date.parse("2027-03-02T07:30:00Z");
+describe("reminder email due dates (DEC-522: formatCalendarDate per-task, no aggregate date, no timezone re-interpretation)", () => {
+  it("names the same calendar day as the stored UTC-midnight label, for a Pacific-timezone event", async () => {
+    // 2027-03-02T00:00:00Z is the UTC-midnight day label for Mar 02 — under
+    // the old (buggy) formatEventDate(ms, "America/Los_Angeles") path this
+    // would have rolled back to Mon, Mar 01 (PST, UTC-8). DEC-522: the
+    // reminder must name Tue, Mar 02 — the same day the admin grid shows —
+    // regardless of the event's own timezone.
+    const dueMs = Date.parse("2027-03-02T00:00:00Z");
     const rows: OutstandingRowShape[] = [
       {
         assignmentId: "assign_1",
@@ -93,13 +97,13 @@ describe("reminder email due dates (DEC-420: formatEventDate per-task, no aggreg
 
     expect(result.sent).toBe(1);
     expect(sent).toHaveLength(1);
-    expect(sent[0]?.text).toContain("Mon, Mar 01, 2027");
-    expect(sent[0]?.text).not.toContain("2027-03-02");
+    expect(sent[0]?.text).toContain("Tue, Mar 02, 2027");
+    expect(sent[0]?.text).not.toContain("Mon, Mar 01, 2027");
   });
 
   it("gives a contact with two different-due-date tasks both dates, each on its own line", async () => {
-    const dueMsA = Date.parse("2027-03-02T07:30:00Z");
-    const dueMsB = Date.parse("2027-04-15T07:30:00Z");
+    const dueMsA = Date.parse("2027-03-02T00:00:00Z");
+    const dueMsB = Date.parse("2027-04-15T00:00:00Z");
     const rows: OutstandingRowShape[] = [
       {
         assignmentId: "assign_a",
@@ -140,7 +144,7 @@ describe("reminder email due dates (DEC-420: formatEventDate per-task, no aggreg
     expect(result.sent).toBe(1);
     expect(sent).toHaveLength(1);
     const text = sent[0]?.text ?? "";
-    expect(text).toContain("- Bio form — due Mon, Mar 01, 2027");
+    expect(text).toContain("- Bio form — due Tue, Mar 02, 2027");
     expect(text).toContain("- Headshot upload — due Thu, Apr 15, 2027");
   });
 
