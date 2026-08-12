@@ -16,6 +16,7 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { lockedFieldName } from "../../src/forms/types";
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(SCRIPT_DIR, "..", "..");
@@ -653,6 +654,11 @@ async function main(): Promise<void> {
         fields[name] = "true";
       } else if (f.kind === "number") {
         fields[name] = "1";
+      } else if (lockedFieldName(f.id) === "email") {
+        // The locked CFP email field is validated/normalized by
+        // validateAnswers (DEC-454/DEC-455); a fabricated string fails
+        // that check, so reuse the speaker persona's own real address.
+        fields[name] = fixture.identities.speaker.email;
       } else {
         fields[name] = `Walkthrough answer for field ${f.id}`;
       }

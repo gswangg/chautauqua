@@ -159,6 +159,25 @@ export function hasExactFormatDropdownField(
   return fields.some((f) => f.kind === "dropdown" && f.label.trim().toLowerCase() === "format");
 }
 
+/**
+ * w25-a: resolve the seeded event from a GET /api/v1/events `items` array
+ * by slug, not by list position — `desc(startDate), asc(id)` ordering means
+ * items[0] is whichever event has the latest startDate, which is NOT
+ * necessarily the seeded fixture event (e.g. a throwaway event created by
+ * an earlier-running walkthrough module can sort first). Throws loudly,
+ * naming both the slug sought and the slugs actually present, so a probe
+ * of the wrong (empty) event fails at the point of misresolution rather
+ * than downstream as a mysterious "no data rows" failure.
+ */
+export function findEventBySlug<T extends { slug: string }>(items: T[], slug: string): T {
+  const found = items.find((item) => item.slug === slug);
+  if (!found) {
+    const seen = items.map((item) => item.slug).join(", ") || "(none)";
+    throw new Error(`findEventBySlug: no event with slug '${slug}' found; saw slugs: ${seen}`);
+  }
+  return found;
+}
+
 /** ABS-10 / DEC-241: a results row's dropdown criterion id must appear only
  * under perDropdown, never as a key in perCriterion (which feeds the
  * rating-only `average`). */
