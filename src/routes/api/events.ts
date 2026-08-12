@@ -35,7 +35,7 @@ import {
 } from "../../server/repo/events";
 
 import { createDefaultForm } from "../../server/repo/forms";
-import { isDateOrderValid, isValidHexColor, isValidSlug, isValidTimezone } from "./validators";
+import { isDateOrderValid, isIsoDate, isValidHexColor, isValidSlug, isValidTimezone } from "./validators";
 
 export const eventsRoutes = new Hono<AppEnv>();
 
@@ -220,7 +220,27 @@ eventsRoutes.post("/events", requireOrganizer, csrfJson, async (c) => {
   if (timezone !== undefined && !isValidTimezone(timezone)) {
     fields.timezone = "Must be a valid IANA timezone";
   }
-  if (startDate !== undefined && endDate !== undefined && !isDateOrderValid(startDate, endDate)) {
+  // DEC-510: format must be strict ISO YYYY-MM-DD before we even attempt an
+  // order comparison — Date.parse (inside isDateOrderValid) accepts many
+  // non-ISO formats that would otherwise persist verbatim and break
+  // downstream string-based date math.
+  let startFormatValid = true;
+  let endFormatValid = true;
+  if (startDate !== undefined && !isIsoDate(startDate)) {
+    fields.startDate = "Must be YYYY-MM-DD";
+    startFormatValid = false;
+  }
+  if (endDate !== undefined && !isIsoDate(endDate)) {
+    fields.endDate = "Must be YYYY-MM-DD";
+    endFormatValid = false;
+  }
+  if (
+    startFormatValid &&
+    endFormatValid &&
+    startDate !== undefined &&
+    endDate !== undefined &&
+    !isDateOrderValid(startDate, endDate)
+  ) {
     fields.endDate = "Must be on or after startDate";
   }
 
@@ -296,9 +316,28 @@ eventsRoutes.patch("/events/:eventId", csrfJson, async (c) => {
   if (timezone !== undefined && !isValidTimezone(timezone)) {
     fields.timezone = "Must be a valid IANA timezone";
   }
+  // DEC-510: format must be strict ISO YYYY-MM-DD before we attempt an order
+  // comparison. Only the fields actually supplied in this PATCH are
+  // format-checked; the stored value for an unsupplied field is presumed
+  // already ISO (it was validated when written).
+  let startFormatValid = true;
+  let endFormatValid = true;
+  if (startDate !== undefined && !isIsoDate(startDate)) {
+    fields.startDate = "Must be YYYY-MM-DD";
+    startFormatValid = false;
+  }
+  if (endDate !== undefined && !isIsoDate(endDate)) {
+    fields.endDate = "Must be YYYY-MM-DD";
+    endFormatValid = false;
+  }
   const effectiveStart = startDate ?? existing.startDate;
   const effectiveEnd = endDate ?? existing.endDate;
-  if ((startDate !== undefined || endDate !== undefined) && !isDateOrderValid(effectiveStart, effectiveEnd)) {
+  if (
+    startFormatValid &&
+    endFormatValid &&
+    (startDate !== undefined || endDate !== undefined) &&
+    !isDateOrderValid(effectiveStart, effectiveEnd)
+  ) {
     fields.endDate = "Must be on or after startDate";
   }
 
