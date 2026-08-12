@@ -245,3 +245,19 @@ export function formatMobileSummary(results: readonly MobileRouteResult[]): stri
  * PASS/FAIL table and summary but never contributes to the render-sweep
  * gate's exit code. */
 export const ADMIN_MOBILE_PASS_BLOCKING = false;
+
+// ---------------------------------------------------------------------------
+// DEC-411: page.evaluate keepNames shim. tsx runs esbuild with keepNames,
+// which rewrites named function/closure declarations to
+// `__name(fn, "name")` calls. When such a rewritten closure's source text is
+// serialized into a Playwright page.evaluate() call, it executes inside the
+// browser page context, which has no __name — throwing
+// "ReferenceError: __name is not defined" (see
+// docs/verification-log/task-w7-e-render-sweep-redesign.md, all 35 mobile
+// rows). Deliberately a raw string (not a function converted via
+// .toString()): addInitScript({ content }) is never passed through esbuild,
+// so the shim's own source text cannot itself be rewritten into a broken
+// __name(fn, "shim") call — that would be circular.
+// ---------------------------------------------------------------------------
+export const PAGE_EVALUATE_KEEPNAMES_SHIM =
+  "globalThis.__name = globalThis.__name || function (fn) { return fn; };";
