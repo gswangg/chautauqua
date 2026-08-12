@@ -17,44 +17,44 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   unowned vs PENDING-OWNED; ONE email rule via findAccountUserId NEVER email
   alone; universal rows graded from ENUMERATION never sample; pagination ONE
   shape `page?:{limit,offset}`+count*+`id asc`; a cap the UI can't see LIES,
-  render `total`; two implementations of one invariant means one is wrong --
-  atomic SQL beats read-then-write; event-clock strings carry their event's
-  tz; iCalendar PARAMs sanitized at SERIALIZER; hand-listed manifests desync
-  -- enumerate in a test; server accepts what its own UI would never send;
-  ONE likeContains escape-only incl. unauth search; credentials contract-
-  tested vs vendored fixture both directions; export dropping custom answers
-  is the lock-in forbidden; order checks read MERGED post-patch state.
+  render `total`; atomic SQL beats read-then-write; event-clock strings carry
+  their event's tz; iCalendar PARAMs sanitized at SERIALIZER; hand-listed
+  manifests desync -- enumerate in a test; ONE likeContains escape-only incl.
+  unauth search; export dropping custom answers is the lock-in forbidden;
+  order checks read MERGED post-patch state.
 - STAGE1-CLOSE w30-33 (DEC-520..545, compacted): chunk multi-row VALUES by
-  BOUND PARAMETERS not row count; date-only field is a DAY LABEL, display as
-  its day (read UTC), expand to event-local instant at HARD gates; documented-
+  BOUND PARAMETERS not row count; date-only field is a DAY LABEL, display its
+  day (read UTC), expand to event-local instant at HARD gates; documented-
   forbidden routes can still be live if mount order lets them -- test
-  ADVERSARIAL order; glob boundary validators, don't hand-pick call sites;
-  batch per-recipient lookups, contract-test both directions; delete a losing
-  duplicate, don't keep it unused; conditional visibility is a FIXED POINT
-  (hidden monotone, cycles settle hidden); prove a JS-twin rewrite of an
-  index/SQL agg vs a NAIVE REFERENCE; offset-paged ORDER BY always ends in a
-  unique column; event-range slot gate lives in the JOIN ON, not a downstream
-  WHERE; hand-copied enums/vocabularies drift -- IMPORT them; raw NUL makes a
-  file BINARY to ripgrep, invisible to every globbed guard -- guard the
-  guards; a "pure helper" with zero src callers tests NOTHING; a formatter
-  banning toLocale* but shipping no date-TIME variant gets copies.
-- STAGE1-CLOSE w34 (DEC-546..551, compacted): a "PUBLIC BY DESIGN" verdict is
-  only as good as its premise -- re-read the RATIONALE, not the verdict. A
-  fallback reached by OMISSION (no binding + no flag) is not a decision: lead
-  with the positive predicate, throw on the rest. A filter the SQL could
-  take, it must take; LIMIT obliges a TOTAL order-by + truthful count. Authz
-  population is chosen by a column, e.g. deliverable_kind. A markdown authz
-  manifest desyncs silently -- enumerate the app's OWN route table, probe
-  anonymously vs a THROWING db, assert allowlist exact both directions. A
-  forced Content-Type is advisory until nosniff ships with it.
-- STAGE1-CLOSE w35 (DEC-552..555): a uniqueIndex is a CONTRACT -- every
-  SELECT-then-INSERT-or-UPDATE over one is a 500 waiting for two concurrent
-  users; sweep ALL sites, and derive the ON CONFLICT target from the schema
-  object so a rename breaks the compile. A partial-patch upsert needs no
-  read: insert defaults, SET only the keys the caller supplied. A feed
-  nobody can fetch cross-origin is not a feed -- set ACAO where the CACHE
-  STORES it, never on the cookie-authed API. Derive a scan's projection AND
-  its cap from the pure consumer that reads it; refuse above the cap, never
-  truncate. A client-side store rebuilt from the RENDERED rows silently
-  deletes whatever a filter or LIMIT hid -- merge, don't overwrite; ship the
-  one pure function into the page via toString(), never a hand-written twin.
+  ADVERSARIAL order; batch per-recipient lookups, contract-test both
+  directions; conditional visibility is a FIXED POINT (hidden monotone,
+  cycles settle hidden); prove a JS-twin rewrite of an index/SQL agg vs a
+  NAIVE REFERENCE; offset-paged ORDER BY always ends in a unique column;
+  event-range slot gate lives in the JOIN ON, not a downstream WHERE;
+  hand-copied vocabularies drift -- IMPORT them; raw NUL makes a file BINARY
+  to ripgrep, invisible to globbed guards; a "pure helper" with zero src
+  callers tests NOTHING.
+- STAGE1-CLOSE w34-35 (DEC-546..555, compacted): a "PUBLIC BY DESIGN" verdict
+  is only as good as its premise -- re-read the RATIONALE. A fallback reached
+  by OMISSION is not a decision: lead positive, throw on the rest. LIMIT
+  obliges a TOTAL order-by + truthful count; authz population chosen by a
+  column. A markdown authz manifest desyncs -- enumerate the app's OWN route
+  table, probe both directions. Forced Content-Type is advisory until nosniff
+  ships. A uniqueIndex is a CONTRACT -- sweep ALL SELECT-then-INSERT sites,
+  derive ON CONFLICT target from schema object. A partial-patch upsert needs
+  no read. A feed nobody can fetch cross-origin isn't a feed -- ACAO where the
+  cache stores it, never the cookie-authed API. Derive a scan's projection+cap
+  from its pure consumer; refuse above cap; a client store rebuilt from
+  RENDERED rows deletes what a filter hid -- merge, don't overwrite.
+- STAGE1-CLOSE w36 (DEC-556..560): a uniqueness invariant JS implements but
+  schema declares nowhere is enforced nowhere -- add the uniqueIndex + ON
+  CONFLICT; a merge's dedupe stays -- it picks a WINNER, a constraint can't.
+  Parity tests checking an index EXISTS don't check it's UNIQUE. Two surfaces
+  rendering one fact, one in names one in raw ids, means the id one is wrong
+  -- render by KIND from ONE describe*(). DEC-534's total order extends to
+  every LIMITed ADMIN worklist and the JS "best row" reducers beside them --
+  prove via re-run shuffled. A notification with nothing to click is
+  half-built: reuse the ONE portal-link resolver, never email alone; a cron
+  has no request -- give it its own origin entry point that THROWS. An
+  export you can't diff is weak own-your-data -- total-order rows AND every
+  LIST-valued cell.
