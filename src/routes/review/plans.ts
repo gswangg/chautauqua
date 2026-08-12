@@ -399,6 +399,7 @@ reviewPlansRoutes.get("/api/v1/plans/:id/results", requireOrganizer, async (c) =
     const header = [
       "ref",
       "title",
+      "Status",
       "count",
       "average",
       ...criteria.map((cr) => cr.label),
@@ -408,6 +409,7 @@ reviewPlansRoutes.get("/api/v1/plans/:id/results", requireOrganizer, async (c) =
     const dataRows = sortedRows.map((r) => [
       r.ref,
       r.title,
+      r.status,
       r.count,
       Number(r.average.toFixed(2)),
       ...criteria.map((cr) => Number((r.perCriterion[cr.id] ?? 0).toFixed(2))),

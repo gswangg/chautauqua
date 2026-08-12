@@ -83,8 +83,8 @@ describe("DEC-439/DEC-440: buildResults payload width", () => {
     const { db, touched } = fakeDb({
       event: [{ recordPrefix: "S" }],
       submission: [
-        { id: "sub-1", seq: 1, title: "Talk A" },
-        { id: "sub-2", seq: 2, title: "Talk B" },
+        { id: "sub-1", seq: 1, title: "Talk A", status: "pending" },
+        { id: "sub-2", seq: 2, title: "Talk B", status: "pending" },
       ],
       evaluation: [],
       submissionTrack: [{ submissionId: "sub-1", trackId: "track-1" }],
@@ -99,7 +99,7 @@ describe("DEC-439/DEC-440: buildResults payload width", () => {
     const plan = makePlan();
     const { db, touched } = fakeDb({
       event: [{ recordPrefix: "S" }],
-      submission: [{ id: "sub-1", seq: 1, title: "Talk A" }],
+      submission: [{ id: "sub-1", seq: 1, title: "Talk A", status: "pending" }],
       evaluation: [{ submissionId: "sub-1", scoresJson: JSON.stringify({ c1: 4 }) }],
       submissionTrack: [],
     });
@@ -126,8 +126,8 @@ describe("DEC-439/DEC-440: buildResults payload width", () => {
     const { db } = fakeDb({
       event: [{ recordPrefix: "S" }],
       submission: [
-        { id: "sub-1", seq: 1, title: "Talk A" },
-        { id: "sub-2", seq: 2, title: "Talk B" },
+        { id: "sub-1", seq: 1, title: "Talk A", status: "pending" },
+        { id: "sub-2", seq: 2, title: "Talk B", status: "accepted" },
       ],
       evaluation: [
         // sub-1: two evals, average (4+2)/2 = 3.
@@ -150,6 +150,7 @@ describe("DEC-439/DEC-440: buildResults payload width", () => {
         average: 5,
         perCriterion: { c1: 5 },
         perDropdown: { decision: { counts: { advance: 1, reject: 0 }, modal: "advance" } },
+        status: "accepted",
       },
       {
         submissionId: "sub-1",
@@ -159,6 +160,7 @@ describe("DEC-439/DEC-440: buildResults payload width", () => {
         average: 3,
         perCriterion: { c1: 3 },
         perDropdown: { decision: { counts: { advance: 1, reject: 1 }, modal: "advance" } },
+        status: "pending",
       },
     ]);
   });

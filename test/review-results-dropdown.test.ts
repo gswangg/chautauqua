@@ -51,7 +51,7 @@ interface FakeEvaluation {
 let store: FakeEvaluation[] = [];
 let nextId = 1;
 
-const submission = { id: "sub-1", ref: "S-1", title: "Talk", description: null, trackIds: [] };
+const submission = { id: "sub-1", ref: "S-1", title: "Talk", description: null, trackIds: [], status: "pending" };
 
 vi.mock("../src/server/repo/review", async () => {
   const actual = await vi.importActual<typeof import("../src/server/repo/review")>(
@@ -221,8 +221,8 @@ describe("DEC-241: mixed rating+dropdown results (task w1-h)", () => {
     const csv = await csvRes.text();
     const [header, ...dataLines] = csv.trim().split(/\r?\n/);
     expect(header).toBe(
-      "ref,title,count,average,Quality,Talk length: Too short,Talk length: Just right,Talk length: Too long",
+      "ref,title,Status,count,average,Quality,Talk length: Too short,Talk length: Just right,Talk length: Too long",
     );
-    expect(dataLines[0]).toBe("S-1,Talk,2,4,4,1,0,1");
+    expect(dataLines[0]).toBe("S-1,Talk,pending,2,4,4,1,0,1");
   });
 });

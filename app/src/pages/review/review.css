@@ -232,6 +232,92 @@
   }
 }
 
+/* DEC-632/DEC-633: results-row status pill and "Reviews (n)" expand toggle
+   + the reviews-behind-a-decision detail row it opens. DEC-367: decision
+   state is carried by type only (uppercase/weight/letter-spacing), never a
+   colour -- mirrors .chq-flag's own "type only, never colour" contract
+   rather than inventing a green/red pill pair. */
+.chq-review-decided-status {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--chq-ink);
+}
+
+.chq-review-reviews-toggle {
+  white-space: nowrap;
+}
+
+.chq-review-reviews-row {
+  background: var(--chq-surface-sunk);
+}
+
+.chq-review-reviews-detail {
+  background: var(--chq-surface-sunk);
+}
+
+.chq-review-reviews-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.chq-review-reviews-item {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--chq-hairline);
+}
+
+.chq-review-reviews-item:last-child {
+  border-bottom: none;
+}
+
+.chq-review-reviews-item-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--chq-ink);
+}
+
+.chq-review-reviews-reviewer {
+  color: var(--chq-ink);
+}
+
+.chq-review-reviews-plan-round {
+  color: var(--chq-muted);
+  font-weight: 500;
+}
+
+.chq-review-reviews-scores {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.chq-review-reviews-score-chip {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: var(--chq-hairline);
+  color: var(--chq-ink);
+}
+
+.chq-review-reviews-comment {
+  margin: 8px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--chq-ink);
+  white-space: pre-wrap;
+}
+
 /* ---------------------------------------------------------------------- */
 /* Reviewer queue + scorecard                                              */
 /* ---------------------------------------------------------------------- */
