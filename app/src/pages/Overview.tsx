@@ -6,7 +6,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useCurrentEvent } from '../lib/useCurrentEvent';
-import { apiGet, apiPatch, apiPost, ApiError } from '../lib/api';
+import { apiGet, apiList, apiPatch, apiPost, ApiError } from '../lib/api';
 import type {
   ContentApprovalRow,
   OverdueTaskRow,
@@ -20,12 +20,35 @@ import './overview/overview.css';
 type SubmissionStatus = 'accepted' | 'accept_queue' | 'declined';
 type ContentDecision = 'approved' | 'changes_requested';
 
+// DEC-611: Overview names the public surfaces it produces and links to them
+// by the event's own slug, never a guessed slugification of the name. The
+// slug comes from GET /api/v1/events (toEventRecord always returns it) —
+// this extends the local list-item shape with it, matching on eventId.
+interface EventListItem {
+  id: string;
+  slug: string;
+}
+
+// Mirrors src/routes/public/shell.tsx's SURFACES tuple plus the CFP form
+// route (src/routes/public/submit.tsx) — the exhaustive set of public pages
+// an organiser might want to hand out for the current event.
+const PUBLIC_SURFACES: ReadonlyArray<{ key: string; label: string; path: (slug: string) => string }> = [
+  { key: 'sessions', label: 'Sessions', path: (slug) => `/e/${slug}/sessions` },
+  { key: 'speakers', label: 'Speakers', path: (slug) => `/e/${slug}/speakers` },
+  { key: 'gallery', label: 'Gallery', path: (slug) => `/e/${slug}/gallery` },
+  { key: 'agenda', label: 'Agenda', path: (slug) => `/e/${slug}/agenda` },
+  { key: 'schedule', label: 'Schedule', path: (slug) => `/e/${slug}/schedule` },
+  { key: 'cfp', label: 'CFP form', path: (slug) => `/submit/${slug}` },
+];
+
 export function OverviewPage() {
   const { eventId, loading: eventLoading, error: eventError } = useCurrentEvent();
   const [payload, setPayload] = useState<OverviewPayload | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [remindToast, setRemindToast] = useState<string | null>(null);
+  const [eventSlug, setEventSlug] = useState<string | null>(null);
+  const [slugError, setSlugError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!eventId) return;
@@ -35,6 +58,23 @@ export function OverviewPage() {
       .then((res) => setPayload(res))
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load overview'))
       .finally(() => setLoading(false));
+  }, [eventId]);
+
+  useEffect(() => {
+    if (!eventId) return;
+    setSlugError(null);
+    apiList<EventListItem>('/events')
+      .then((res) => {
+        const match = res.items.find((item) => item.id === eventId);
+        if (!match) {
+          setSlugError('Event not found in the events list');
+          return;
+        }
+        setEventSlug(match.slug);
+      })
+      .catch((err) => {
+        setSlugError(err instanceof ApiError ? err.message : 'Could not resolve the public link');
+      });
   }, [eventId]);
 
   function describeApiError(err: unknown, fallback: string): string {
@@ -184,7 +224,20 @@ export function OverviewPage() {
         ))}
       </div>
 
-      <h1 className="chq-overview-headline">{headlineText(payload)}</h1>
+      <div className="chq-overview-headline-row">
+        <h1 className="chq-overview-headline">{headlineText(payload)}</h1>
+        <div className="chq-overview-toolbar">
+          <a
+            className="chq-overview-toolbar-btn"
+            href={`/api/v1/events/${eventId}/export/submissions`}
+          >
+            Export submissions
+          </a>
+          <Link className="chq-overview-toolbar-btn chq-overview-toolbar-btn-primary" to="/submissions">
+            New submission
+          </Link>
+        </div>
+      </div>
 
       <section className="chq-overview-section">
         <div className="chq-overview-section-header">
@@ -382,6 +435,29 @@ export function OverviewPage() {
             <span className="chq-overview-row-meta chq-overview-row-meta-sm">
               {row.detail}
             </span>
+          </div>
+        ))}
+      </section>
+
+      <section className="chq-overview-section">
+        <div className="chq-overview-section-header">
+          <span className="chq-overview-section-label">Public pages</span>
+        </div>
+        {PUBLIC_SURFACES.map((surface) => (
+          <div key={surface.key} className="chq-overview-row chq-overview-row-public">
+            <span className="chq-overview-row-title chq-overview-row-title-sm">{surface.label}</span>
+            {eventSlug ? (
+              <a
+                href={surface.path(eventSlug)}
+                target="_blank"
+                rel="noreferrer"
+                className="chq-overview-link-btn"
+              >
+                Open
+              </a>
+            ) : (
+              <span className="chq-overview-row-meta">{slugError ?? 'Resolving link…'}</span>
+            )}
           </div>
         ))}
       </section>
