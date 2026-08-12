@@ -57,6 +57,7 @@ import {
   CSRF_COOKIE_NAME,
 } from "../../auth/cookies";
 import { renderTemplate, escapeHtml } from "../../mail/render";
+import { formatEventDateTime } from "../../lib/event-time";
 import { validateUpload, sanitizeFilenameForKey, type ValidUpload } from "../../domain/files";
 import { newId } from "../../domain/ids";
 import { FormFieldsSection, FieldRulesScript, fieldInputName } from "../../views/form-render";
@@ -158,7 +159,7 @@ function ClosedPage(props: { event: EventRow; form: FormRow }) {
         <span class="chq-cfp-meta">{props.event.name}</span>
         <h1>The call for papers has closed</h1>
         <p role="alert" class="chq-cfp-closed-body">
-          Submissions for this event closed on {new Date(props.form.closeDate ?? 0).toUTCString()}. Thanks for your
+          Submissions for this event closed on {formatEventDateTime(props.form.closeDate ?? 0, props.event.timezone)}. Thanks for your
           interest — please reach out to the organizers directly if you have questions.
         </p>
       </div>
@@ -173,17 +174,17 @@ function NotYetOpenPage(props: { event: EventRow; form: FormRow }) {
         <span class="chq-cfp-meta">{props.event.name}</span>
         <h1>Submissions aren't open yet</h1>
         <p role="alert" class="chq-cfp-closed-body">
-          Submissions open {new Date(props.form.openDate ?? 0).toUTCString()}. Please check back then.
+          Submissions open {formatEventDateTime(props.form.openDate ?? 0, props.event.timezone)}. Please check back then.
         </p>
       </div>
     </PageShell>
   );
 }
 
-function DraftBanner(props: { formId: string; savedAt: number }) {
+function DraftBanner(props: { formId: string; savedAt: number; timeZone: string }) {
   return (
     <p role="status" class="chq-cfp-actions-note">
-      Resuming your saved draft from {new Date(props.savedAt).toUTCString()}.
+      Resuming your saved draft from {formatEventDateTime(props.savedAt, props.timeZone)}.
     </p>
   );
 }
@@ -244,7 +245,7 @@ function SubmitPage(props: {
           <span class="chq-cfp-meta">{event.name}</span>
           <span class="chq-cfp-title">{form.title}</span>
           {form.closeDate ? (
-            <span class="chq-cfp-sub">Call for papers · closes {new Date(form.closeDate).toUTCString()}</span>
+            <span class="chq-cfp-sub">Call for papers · closes {formatEventDateTime(form.closeDate, event.timezone)}</span>
           ) : null}
         </header>
         <div class="chq-cfp-body">
@@ -254,7 +255,7 @@ function SubmitPage(props: {
           {props.draftSavedNotice ? (
             <DraftSavedNotice />
           ) : props.hasDraft && props.draftSavedAt !== undefined ? (
-            <DraftBanner formId={form.id} savedAt={props.draftSavedAt} />
+            <DraftBanner formId={form.id} savedAt={props.draftSavedAt} timeZone={event.timezone} />
           ) : null}
           <form method="post" action={`/submit/${event.slug}`} enctype="multipart/form-data">
             <input type="hidden" name={CSRF_COOKIE_NAME} value={csrfToken} />
