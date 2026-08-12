@@ -25,6 +25,7 @@ function FieldControl(props: { field: FormFieldDef; value: unknown }) {
       return (
         <input
           type="text"
+          class="chq-input"
           id={name}
           name={name}
           data-field-id={field.id}
@@ -36,6 +37,7 @@ function FieldControl(props: { field: FormFieldDef; value: unknown }) {
     case "long_text":
       return (
         <textarea
+          class="chq-textarea"
           id={name}
           name={name}
           data-field-id={field.id}
@@ -48,6 +50,7 @@ function FieldControl(props: { field: FormFieldDef; value: unknown }) {
     case "dropdown":
       return (
         <select
+          class="chq-select"
           id={name}
           name={name}
           data-field-id={field.id}
@@ -77,6 +80,7 @@ function FieldControl(props: { field: FormFieldDef; value: unknown }) {
       return (
         <input
           type="number"
+          class="chq-input"
           id={name}
           name={name}
           data-field-id={field.id}
@@ -106,16 +110,20 @@ function FieldControl(props: { field: FormFieldDef; value: unknown }) {
 export function FormField(props: { field: FormFieldDef; value: unknown; error?: string; visible: boolean }) {
   const { field, value, error, visible } = props;
   return (
-    <div id={wrapId(field.id)} style={visible ? undefined : "display:none"}>
+    <div id={wrapId(field.id)} class="chq-field" style={visible ? undefined : "display:none"}>
       <label>
-        {field.label}
-        {field.required ? " *" : ""}
+        <span class="chq-field-label">
+          {field.label}
+          {field.required ? " *" : ""}
+        </span>
         <FieldControl field={field} value={value} />
       </label>
       {field.helpText ? <p class="help">{field.helpText}</p> : null}
       {field.kind === "file" ? <p class="help">{uploadHintText()}</p> : null}
       {error ? (
-        <p role="alert" class="field-error">
+        // DEC-367: errors are distinguished by type (weight/marker), never
+        // by colour -- no semantic red anywhere in the palette.
+        <p role="alert" class="chq-field-error">
           {error}
         </p>
       ) : null}
