@@ -578,3 +578,21 @@ compare phone frames pixel-for-pixel.
     fixture-quality abstract (the 'Taming 40-Minute CI' abstract is the model; source
     from docs/fixtures/sample-data.json or write 2-3 sentences each in its voice).
     Fold into the DEC-591 seed rework.
+
+## APPENDED: USER PRIORITY DIRECTIVE + clash capacity (2026-08-12 late)
+
+48. **PRIORITY ORDER FOR ALL REMAINING DESIGN WORK (user directive): DESKTOP FIRST.**
+    Polish the desktop surfaces to "really polished" before spending further waves on
+    mobile enhancements. Mobile P0s already filed (phone-agenda visibility, tab-bar
+    shell) still count as bugs, not enhancements — fix those; but net-new mobile
+    refinement (subscreens, card layouts, wizards) queues BEHIND desktop polish.
+49. **Clash capacity is capped at two (user-found): a room slot cannot take a third
+    talk.** This violates J9 warn-never-block: any occupied slot must accept another
+    placement with a loud warning. Audit all three paths: (a) keyboard placing mode —
+    DEC-652 only turns FREE cells into Place buttons, so the accessible path cannot
+    create any clash: occupied cells need a "Place here — will clash with N sessions"
+    button too; (b) drag path — verify a third drop isn't rejected; (c) conflict
+    RENDERING assumes exactly two (split half-width pair) — must handle N sessions in
+    one slot (stack within the cell, count in the caption: "Three sessions in one
+    room"). findConflicts/domain layer: verify N-way conflicts are detected and
+    counted, not just pairwise-first.
