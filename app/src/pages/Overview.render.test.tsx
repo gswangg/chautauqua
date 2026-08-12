@@ -28,6 +28,7 @@ function payload(): OverviewPayload {
       formCloseDate: Date.now() + 6 * 86_400_000,
       nextTaskDueDate: Date.now() + 2 * 86_400_000,
       planCloseDate: Date.now() + 19 * 86_400_000,
+      planRound: 2,
       eventStartDate: Date.now() + 94 * 86_400_000,
     },
     overdueTasks: {
@@ -184,6 +185,39 @@ describe('OverviewPage render smoke (DEC-370)', () => {
       `/e/${EVENT_SLUG}/schedule`,
       `/submit/${EVENT_SLUG}`,
     ]);
+
+    // DEC-704: the deadlines strip keeps a FIXED reading order (never
+    // reshuffles by nearest date) and names its Review wave round.
+    expect(screen.getByText('CFP closes')).toBeInTheDocument();
+    expect(screen.getByText('Tasks due')).toBeInTheDocument();
+    expect(screen.getByText('Review wave 2')).toBeInTheDocument();
+    expect(screen.getByText('Doors open')).toBeInTheDocument();
+  });
+
+  // DEC-704: "Remind all" must name exactly what it sends — the rendered
+  // rows, never the (possibly ROW_CAP'd) server total.
+  it('labels Remind all with the rendered row count, not the total, and links the overflow', async () => {
+    const p = payload();
+    p.overdueTasks = { total: 5, rows: p.overdueTasks.rows };
+
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/overview`]: p,
+      'GET /api/v1/events': eventsListEnvelope(),
+    });
+
+    render(
+      <MemoryRouter>
+        <OverviewPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(screen.getByText('Marcus Okafor')).toBeInTheDocument());
+
+    expect(screen.getByRole('button', { name: 'Remind all 1' })).toBeInTheDocument();
+    expect(screen.queryByText('Remind all 5')).not.toBeInTheDocument();
+
+    const overflowLink = screen.getByRole('link', { name: '4 more overdue' });
+    expect(overflowLink).toHaveAttribute('href', '/speakers');
   });
 
   it('renders unlinked public-page names with a reason when the slug cannot be resolved', async () => {

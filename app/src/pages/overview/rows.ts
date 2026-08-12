@@ -64,17 +64,23 @@ export function formatDeadlineValue(value: number | null, now: number): string {
   return `${diffDays} ${pluralize(diffDays, 'day')}`;
 }
 
-/** Orders the four deadline cells nearest-first (nulls sort last), so the
- * soonest deadline always lands in the first, border-less cell and is
- * rendered with the "nearest" weight. Pure — Overview.tsx owns the DOM. */
+/** Builds the four deadline cells in a FIXED order (CFP close, next task
+ * due, Review wave, Doors open) — the strip is a stable reading order, not
+ * a ranking, so it never reshuffles as dates change. Only the cell with the
+ * nearest (soonest, non-null) value is marked with the "nearest" weight.
+ * Pure — Overview.tsx owns the DOM. */
 export function buildDeadlineCells(deadlines: OverviewPayload['deadlines'], now: number): DeadlineCell[] {
   const keys = Object.keys(DEADLINE_META) as DeadlineCell['key'][];
   const cells = keys.map((key) => {
     const value = deadlines[key];
     const meta = DEADLINE_META[key];
+    // DEC-704: "Review wave" carries its round number when the server
+    // attributed one to the soonest plan close date; falls back to the
+    // bare label otherwise (no plan, or a plan without a round).
+    const label = key === 'planCloseDate' && deadlines.planRound !== null ? `${meta.label} ${deadlines.planRound}` : meta.label;
     return {
       key,
-      label: meta.label,
+      label,
       href: meta.href,
       value,
       display: formatDeadlineValue(value, now),
@@ -82,16 +88,16 @@ export function buildDeadlineCells(deadlines: OverviewPayload['deadlines'], now:
     };
   });
 
-  cells.sort((a, b) => {
-    if (a.value === null && b.value === null) return 0;
-    if (a.value === null) return 1;
-    if (b.value === null) return -1;
-    return a.value - b.value;
-  });
-
-  const nearest = cells[0];
-  if (nearest !== undefined && nearest.value !== null) {
-    cells[0] = { ...nearest, isNearest: true };
+  let nearestIndex = -1;
+  for (let i = 0; i < cells.length; i++) {
+    const value = cells[i]!.value;
+    if (value === null) continue;
+    if (nearestIndex === -1 || value < (cells[nearestIndex]!.value as number)) {
+      nearestIndex = i;
+    }
+  }
+  if (nearestIndex !== -1) {
+    cells[nearestIndex] = { ...cells[nearestIndex]!, isNearest: true };
   }
 
   return cells;

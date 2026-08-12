@@ -6,6 +6,8 @@ export interface OverviewDeadlines {
   formCloseDate: number | null;
   nextTaskDueDate: number | null;
   planCloseDate: number | null;
+  // DEC-704: round of the plan owning `planCloseDate`, null when absent.
+  planRound: number | null;
   eventStartDate: number | null;
 }
 
