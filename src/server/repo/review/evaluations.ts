@@ -1,11 +1,10 @@
 // Evaluations (DEC-018): the recorded scores/comments a reviewer submits for
 // a submission within a plan round.
 
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { newId } from "../../../domain/ids";
-import { chunkIds } from "../../../lib/chunk";
 
 export interface EvaluationRecord {
   id: string;
@@ -108,35 +107,29 @@ export async function countEvaluationsForSubmission(
   return Number(rows[0]?.count ?? 0);
 }
 
-/** DEC-346/DEC-439: per-submission evaluation counts for a plan+round, via
- * SQL `count(*) ... group by submission_id` -- replaces loading every
+/** DEC-346/DEC-449: per-submission evaluation counts for a plan+round, via
+ * one SQL `count(*) ... group by submission_id` -- replaces loading every
  * evaluation row for the round and reducing in JS (the reviewer queue's
- * prior approach). An optional `submissionIds` restricts the count to a
- * caller's already-scoped id set (chunked per DEC-078) so the query scales
- * with that slice rather than the whole plan/round. */
+ * prior approach). The plan+round WHERE already scopes the aggregate to a
+ * single plan's single round, so this is exactly one D1 round trip
+ * regardless of caller slice size; there is no id-list param to chunk
+ * (DEC-449: the queue route reads the returned whole-round map only via
+ * .get(id) for ids in its own already-scoped set, so this leaks nothing
+ * while eliminating the DEC-078 chunking overhead entirely). This is a
+ * COUNT, not a score aggregation -- DEC-440 governs aggregateSubmission/
+ * aggregateDropdownCriterion only and is unaffected. */
 export async function countEvaluationsBySubmission(
   db: Db,
   planId: string,
   round: number,
-  submissionIds?: string[],
 ): Promise<Map<string, number>> {
-  if (submissionIds && submissionIds.length === 0) return new Map();
+  const rows = await db
+    .select({ submissionId: schema.evaluation.submissionId, count: sql<number>`count(*)` })
+    .from(schema.evaluation)
+    .where(and(eq(schema.evaluation.planId, planId), eq(schema.evaluation.round, round)))
+    .groupBy(schema.evaluation.submissionId);
   const result = new Map<string, number>();
-  const idChunks = submissionIds ? chunkIds(submissionIds) : [undefined];
-  for (const idChunk of idChunks) {
-    const rows = await db
-      .select({ submissionId: schema.evaluation.submissionId, count: sql<number>`count(*)` })
-      .from(schema.evaluation)
-      .where(
-        and(
-          eq(schema.evaluation.planId, planId),
-          eq(schema.evaluation.round, round),
-          idChunk ? inArray(schema.evaluation.submissionId, idChunk) : undefined,
-        ),
-      )
-      .groupBy(schema.evaluation.submissionId);
-    for (const r of rows) result.set(r.submissionId, Number(r.count));
-  }
+  for (const r of rows) result.set(r.submissionId, Number(r.count));
   return result;
 }
 
