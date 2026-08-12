@@ -69,10 +69,36 @@ export async function findEventForOrg(db: Db, eventId: string, orgId: string) {
   return row;
 }
 
+/** The event's DEFAULT form (DEC-398) -- an event may have several forms
+ * (the default CFP form plus one per DEC-111 acceptance form-task title,
+ * created with isDefault:false), so this is never "the first row"; it's
+ * the one row with isDefault = true. */
 export async function findFormForEvent(db: Db, eventId: string): Promise<FormRow | null> {
-  const rows = await db.select().from(schema.form).where(eq(schema.form.eventId, eventId)).limit(1);
+  const rows = await db
+    .select()
+    .from(schema.form)
+    .where(and(eq(schema.form.eventId, eventId), eq(schema.form.isDefault, true)))
+    .limit(1);
   const row = rows[0];
   return row ? toFormRow(row) : null;
+}
+
+/** DEC-398: every form on the event (default CFP form plus any DEC-111
+ * acceptance form-task forms), default first then title ascending -- the
+ * source for the organizer's form-task "pick a form by name" select. */
+export async function listFormsForEvent(
+  db: Db,
+  eventId: string,
+): Promise<{ id: string; title: string; isDefault: boolean }[]> {
+  const rows = await db
+    .select({ id: schema.form.id, title: schema.form.title, isDefault: schema.form.isDefault })
+    .from(schema.form)
+    .where(eq(schema.form.eventId, eventId))
+    .orderBy(asc(schema.form.title));
+  return [...rows].sort((a, b) => {
+    if (a.isDefault !== b.isDefault) return a.isDefault ? -1 : 1;
+    return 0;
+  });
 }
 
 export async function listFields(db: Db, formId: string): Promise<FormFieldRow[]> {

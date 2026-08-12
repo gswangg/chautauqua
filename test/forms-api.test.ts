@@ -172,11 +172,25 @@ vi.mock("../src/server/repo/forms", async () => {
     closeDate: null,
     tracks: null,
   };
+  const ACCEPTANCE_FORM: import("../src/server/repo/forms").FormRow = {
+    id: "form-2",
+    eventId: "event-1",
+    title: "Speaker onboarding form",
+    intro: null,
+    isDefault: false,
+    openDate: null,
+    closeDate: null,
+    tracks: null,
+  };
   return {
     ...actual,
+    findEventForOrg: vi.fn(async (_db: unknown, eventId: string, orgId: string) =>
+      eventId === "event-1" && orgId === "org-1" ? { id: eventId, orgId } : null,
+    ),
     findFormForOrg: vi.fn(async (_db: unknown, formId: string, orgId: string) =>
       formId === "form-1" && orgId === "org-1" ? FORM : null,
     ),
+    getOrCreateForm: vi.fn(async () => ({ form: FORM, fields: [] })),
     patchForm: vi.fn(async (_db: unknown, _formId: string, patch: { tracks?: string[] | null }) => ({
       ...FORM,
       // Mirrors repo.patchForm's real storage coercion: [] and null both
@@ -184,6 +198,12 @@ vi.mock("../src/server/repo/forms", async () => {
       tracks: patch.tracks !== undefined ? (patch.tracks && patch.tracks.length > 0 ? patch.tracks : null) : FORM.tracks,
     })),
     listFields: vi.fn(async () => []),
+    // DEC-398: the event's default form (FORM, isDefault:true) plus a
+    // non-default acceptance form-task form -- default sorts first.
+    listFormsForEvent: vi.fn(async () => [
+      { id: FORM.id, title: FORM.title, isDefault: true },
+      { id: ACCEPTANCE_FORM.id, title: ACCEPTANCE_FORM.title, isDefault: false },
+    ]),
   };
 });
 
@@ -264,5 +284,28 @@ describe("PATCH /api/v1/forms/:formId tracks (DEC-169)", () => {
     expect(res.status).toBe(200);
     const body = (await res.json()) as { tracks: string[] | null };
     expect(body.tracks).toBeNull();
+  });
+});
+
+// GET /api/v1/events/:eventId/forms (DEC-398): the top-level serialized
+// form is always the DEFAULT form, and the response additively carries
+// every form on the event (including non-default acceptance forms) for
+// the organizer's form-task "pick a form by name" select.
+describe("GET /api/v1/events/:eventId/forms (DEC-398)", () => {
+  it("returns the default form at top level plus the full forms list", async () => {
+    const app = await buildFormsApp(ORGANIZER);
+    const res = await app.request("/api/v1/events/event-1/forms");
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      id: string;
+      isDefault: boolean;
+      forms: { id: string; title: string; isDefault: boolean }[];
+    };
+    expect(body.id).toBe("form-1");
+    expect(body.isDefault).toBe(true);
+    expect(body.forms).toEqual([
+      { id: "form-1", title: "CFP", isDefault: true },
+      { id: "form-2", title: "Speaker onboarding form", isDefault: false },
+    ]);
   });
 });
