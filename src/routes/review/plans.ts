@@ -24,7 +24,7 @@ import { clampPage, clampPerPage, listPerPage } from "../../lib/pagination";
 import * as repo from "../../server/repo/review";
 import { roundCriteriaJsonOf } from "../../server/repo/review";
 import * as eventsRepo from "../../server/repo/events";
-import { DEC_015, DEC_123, DEC_146, DEC_147, DEC_148, DEC_213, DEC_238, DEC_460, DEC_461, DEC_466, DEC_535, DEC_572 } from "../../decisions";
+import { DEC_015, DEC_123, DEC_146, DEC_147, DEC_148, DEC_213, DEC_238, DEC_460, DEC_461, DEC_466, DEC_535, DEC_572, DEC_623, DEC_624 } from "../../decisions";
 import { capById, MAX_REVIEWER_REMINDER_BATCH } from "../../domain/reminders";
 import {
   asRecord,
@@ -59,6 +59,8 @@ void DEC_461; // optional repo page param + sibling count fn + deterministic ORD
 void DEC_466; // /plans/:id/progress bounded below via the blessed JS-slice (DEC-461(e))
 void DEC_535; // /plans/:id/remind: laggard list capped via capById below
 void DEC_572; // /plans/:id/scope-preview: true count + bounded preview before a track-scope fan-out below
+void DEC_623; // POST /plans/:id/reviewers: submissionId resolved through findSubmissionIdByRefOrId below
+void DEC_624; // PATCH /plans/:id: anonymity ratchet guard below
 
 reviewPlansRoutes.get("/api/v1/events/:eventId/plans", requireOrganizer, async (c) => {
   const auth = currentAuth(c);
@@ -193,6 +195,19 @@ reviewPlansRoutes.patch("/api/v1/plans/:id", requireOrganizer, csrfJson, async (
     }
   }
 
+  // DEC-624: anonymity is a ratchet -- once at least one evaluation has
+  // been SUBMITTED under an anonymized plan, it can never be switched off.
+  // Turning anonymity ON is always allowed.
+  if (body.anonymized === false && plan.anonymized) {
+    const submittedCount = await repo.countSubmittedEvaluationsForPlan(c.var.db, plan.id);
+    if (submittedCount > 0) {
+      throw new ApiError(
+        "conflict",
+        `${submittedCount} evaluation(s) were submitted under anonymity; anonymity cannot be switched off for this plan.`,
+      );
+    }
+  }
+
   const updated = await repo.updatePlan(c.var.db, plan.id, {
     name: typeof body.name === "string" ? body.name : undefined,
     instructions: body.instructions !== undefined ? (body.instructions === null ? null : String(body.instructions)) : undefined,
@@ -241,11 +256,17 @@ reviewPlansRoutes.post("/api/v1/plans/:id/reviewers", requireOrganizer, csrfJson
       throw new ApiError("invalid", "Invalid reviewer assignment", { trackId: "unknown track for this event" });
     }
   }
-  const submissionId = typeof body.submissionId === "string" && body.submissionId.length > 0 ? body.submissionId : null;
-  if (submissionId !== null) {
-    const submissionOk = await repo.getSubmissionSummaryInEvent(c.var.db, submissionId, plan.eventId);
-    if (!submissionOk) {
-      throw new ApiError("invalid", "Invalid reviewer assignment", { submissionId: "unknown submission for this event" });
+  // DEC-623: accept either the internal id or the printed ref (e.g.
+  // SES-014) -- resolve through findSubmissionIdByRefOrId and store the
+  // resolved internal id, never the ref itself.
+  const rawSubmissionInput = typeof body.submissionId === "string" && body.submissionId.length > 0 ? body.submissionId : null;
+  let submissionId: string | null = null;
+  if (rawSubmissionInput !== null) {
+    submissionId = await repo.findSubmissionIdByRefOrId(c.var.db, plan.eventId, rawSubmissionInput);
+    if (!submissionId) {
+      throw new ApiError("invalid", "Invalid reviewer assignment", {
+        submissionId: "unknown submission for this event — use the ref (e.g. SES-014) or the internal id",
+      });
     }
   }
 

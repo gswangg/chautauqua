@@ -335,7 +335,9 @@ export function PlanEditor() {
       setReviewerUserId('');
       setReviewerSubmissionId('');
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Failed to assign reviewer');
+      // Surface the server's field-specific message verbatim (e.g. the
+      // DEC-623 unknown-ref hint) over the generic top-level message.
+      setError(err instanceof ApiError ? (err.fields?.submissionId ?? err.message) : 'Failed to assign reviewer');
     }
   }
 

@@ -5,7 +5,7 @@
 import { and, asc, eq, exists, inArray, or, sql } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
-import { formatRef } from "../../../domain/ids";
+import { formatRef, parseRef } from "../../../domain/ids";
 import type { PlanRecord } from "./plans";
 
 /** DEC-346: the narrow shape every plan-scoped whole-set load returns --
@@ -383,6 +383,34 @@ export async function getSubmissionSummaryInEvent(
     description: row.description,
     trackIds,
   };
+}
+
+/** DEC-623: resolves either an internal submission id OR a human ref (e.g.
+ * 'SES-014') to the internal id, scoped to eventId. Tries the internal-id
+ * path first (getSubmissionSummaryInEvent); on failure, reads the event's
+ * record_prefix, parseRef()s the input against it, and looks up the
+ * submission by (eventId, seq). Returns null when neither resolves. */
+export async function findSubmissionIdByRefOrId(db: Db, eventId: string, input: string): Promise<string | null> {
+  const byId = await getSubmissionSummaryInEvent(db, input, eventId);
+  if (byId) return input;
+
+  const eventRows = await db
+    .select({ recordPrefix: schema.event.recordPrefix })
+    .from(schema.event)
+    .where(eq(schema.event.id, eventId))
+    .limit(1);
+  const recordPrefix = eventRows[0]?.recordPrefix;
+  if (!recordPrefix) return null;
+
+  const seq = parseRef(recordPrefix, input);
+  if (seq === null) return null;
+
+  const rows = await db
+    .select({ id: schema.submission.id })
+    .from(schema.submission)
+    .where(and(eq(schema.submission.eventId, eventId), eq(schema.submission.seq, seq)))
+    .limit(1);
+  return rows[0]?.id ?? null;
 }
 
 export interface SpeakerSummary {

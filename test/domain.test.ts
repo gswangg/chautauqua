@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatRef, newId } from "../src/domain/ids";
+import { formatRef, newId, parseRef } from "../src/domain/ids";
 import {
   changeStatus,
   isDecided,
@@ -34,6 +34,29 @@ describe("ids", () => {
   it("rejects non-integer or negative seq", () => {
     expect(() => formatRef("SES", -1)).toThrow();
     expect(() => formatRef("SES", 1.5)).toThrow();
+  });
+
+  it("parseRef inverts formatRef, case-insensitively and unpadded", () => {
+    expect(parseRef("SES", "SES-014")).toBe(14);
+    expect(parseRef("SES", "ses-014")).toBe(14);
+    expect(parseRef("SES", "SES-14")).toBe(14);
+    expect(parseRef("SES", "SES-1000")).toBe(1000);
+    expect(parseRef("SES", "  SES-014  ")).toBe(14);
+    expect(parseRef("SES", "SES-000")).toBe(0);
+  });
+
+  it("parseRef returns null on anything that doesn't match, never throws", () => {
+    expect(parseRef("SES", "TLK-014")).toBeNull();
+    expect(parseRef("SES", "SES014")).toBeNull();
+    expect(parseRef("SES", "SES-abc")).toBeNull();
+    expect(parseRef("SES", "not a ref at all")).toBeNull();
+    expect(parseRef("SES", "")).toBeNull();
+    expect(parseRef("SES", "abc123def456ghi789jk")).toBeNull(); // internal id shape
+  });
+
+  it("parseRef regex-escapes the prefix", () => {
+    expect(parseRef("S.S", "S.S-014")).toBe(14);
+    expect(parseRef("S.S", "SXS-014")).toBeNull();
   });
 });
 
