@@ -51,6 +51,9 @@ import { headshotServeRoutes } from "../src/routes/portal/profile";
 // keeping every route's real branches shallow and mock-cheap).
 // ---------------------------------------------------------------------------
 
+// DEC-516: offset() is a real chain step (not merely a terminal after
+// limit()) since the public sessions/speakers repo queries now chain
+// .limit().offset() for a windowed JSON feed page.
 function makeChain(rows: unknown[]) {
   const chain: any = {
     from: () => chain,
@@ -58,7 +61,8 @@ function makeChain(rows: unknown[]) {
     leftJoin: () => chain,
     where: () => chain,
     orderBy: () => chain,
-    limit: async () => rows,
+    limit: () => chain,
+    offset: () => chain,
     then: (resolve: (v: unknown[]) => void) => resolve(rows),
   };
   return chain;

@@ -39,15 +39,32 @@ const EVENT: PublicEvent = {
   brandingJson: null,
 };
 
+// DEC-516: limit()/offset() are real chain steps (not an immediately-
+// resolving terminal) so this fake behaves like a real SQL LIMIT/OFFSET —
+// slicing `rows` at await-time by whatever the production code actually
+// passed. A query that never calls .limit() (e.g. the plain count queries)
+// gets the full `rows` array, matching an unbounded SELECT.
 function makeChain(rows: unknown[]) {
+  let lim: number | undefined;
+  let off = 0;
   const chain: any = {
     from: () => chain,
     innerJoin: () => chain,
     leftJoin: () => chain,
     where: () => chain,
     orderBy: () => chain,
-    limit: async () => rows,
-    then: (resolve: (v: unknown[]) => void) => resolve(rows),
+    limit: (n: number) => {
+      lim = n;
+      return chain;
+    },
+    offset: (n: number) => {
+      off = n;
+      return chain;
+    },
+    then: (resolve: (v: unknown[]) => void) => {
+      const end = lim === undefined ? undefined : off + lim;
+      resolve(rows.slice(off, end));
+    },
   };
   return chain;
 }
@@ -274,10 +291,10 @@ describe("GET /embed/:eventSlug/speakers.json paging (DEC-484)", () => {
 
   it("?page=2 advances the window", async () => {
     installFakeCaches();
-    // DEC-502: the repo's selectDistinct returns the CUMULATIVE prefix a
-    // real bounded LIMIT would (here: all 15 rows, since boundedRowLimit(2,
-    // 12)=24 exceeds the total) — the route itself must slice out just the
-    // page-2 window (the last 3 rows) from that.
+    // DEC-516: the repo now runs a real LIMIT+OFFSET (boundedWindow) — this
+    // fake's selectDistinct holds all 15 underlying rows and the chain's
+    // limit()/offset() slice them, exactly like a real SQL window would
+    // (page 2 of 12 leaves the last 3 rows).
     const app = buildSpeakersApp(contactIds(15), 15);
     const res = await app.request("/embed/conf/speakers.json?page=2", {}, TEST_ENV);
     expect(res.status).toBe(200);
@@ -331,15 +348,14 @@ describe("GET /embed/:eventSlug/agenda.json (DEC-484 unpaged surface)", () => {
   });
 });
 
-// DEC-502: the repo calls behind sessions/speakers/gallery return a
-// CUMULATIVE prefix (bare LIMIT, no OFFSET — see boundedRowLimit), which is
-// correct for the HTML show-more list but wrong for a paged JSON feed. These
-// fakes simulate that by returning the same full N-row set regardless of the
-// requested page/limit (worst case: every page "sees" the whole cumulative
-// set the repo would have accumulated by then) so the assertions below can
-// only pass if getSurfaceFeedPage itself slices to the single requested
-// window rather than trusting the repo's shape.
-describe("GET /embed/:eventSlug/*.json single-page window (DEC-502)", () => {
+// DEC-516: the repo calls behind sessions/speakers/gallery now run a real
+// SQL LIMIT+OFFSET window (boundedWindow) when the JSON feed passes
+// `window: true`, rather than a cumulative prefix sliced at the route. These
+// fakes hold the full N-row underlying set and let the chain's limit()/
+// offset() (see makeChain above) do the actual windowing, exactly like a
+// real SQL engine would — so the assertions below exercise the real
+// windowing path, not a route-level slice.
+describe("GET /embed/:eventSlug/*.json single-page window (DEC-516)", () => {
   const N = 24;
   const sessionIds = Array.from({ length: N }, (_, i) => `sub${i}`);
 
@@ -469,8 +485,33 @@ describe("GET /embed/:eventSlug/*.json single-page window (DEC-502)", () => {
     }
   });
 
+  // page=3&limit=12 windows to offset 24 on a 24-row set, so the id query
+  // returns [] and hydrateSessions short-circuits (ids.length === 0)
+  // without its usual subRows/trackRows/speakerRows/slotRows selects —
+  // countVisibleSubmissions' select() becomes call #2, not #6.
+  function buildSessionsAppPastEnd() {
+    let selectCall = 0;
+    const db = {
+      select: () => {
+        selectCall += 1;
+        if (selectCall === 1) return makeChain([EVENT_ROW]);
+        return makeChain([{ count: N }]);
+      },
+      selectDistinct: () => makeChain(sessionIds.map((id, i) => ({ id, title: `Talk ${i}` }))),
+    } as unknown as AppEnv["Variables"]["db"];
+
+    const app = new Hono<AppEnv>();
+    app.use("*", async (c, next) => {
+      c.set("db", db);
+      await next();
+    });
+    registerErrorHandler(app);
+    app.route("/", publicRoutes);
+    return app;
+  }
+
   it("a page past the end returns items: [] with the true total (honest empty page, not an error)", async () => {
-    const sessionsPast = await fetchItems(buildCumulativeSessionsApp(), "/embed/conf/sessions.json?page=3&limit=12");
+    const sessionsPast = await fetchItems(buildSessionsAppPastEnd(), "/embed/conf/sessions.json?page=3&limit=12");
     expect(sessionsPast.items).toEqual([]);
     expect(sessionsPast.total).toBe(24);
 

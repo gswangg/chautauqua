@@ -14,7 +14,7 @@ import { DEC_258 } from "../../../decisions";
 import { likeContains } from "../like";
 import { visibleParticipantConditions, visibleSessionConditions, slotWithinEventRange } from "./gates";
 import type { PublicEvent, PublicTrack } from "./event";
-import { boundedRowLimit } from "./bounds";
+import { boundedRowLimit, boundedWindow } from "./bounds";
 
 // Compile-checked dependency marker: every speaker title/company read below
 // comes from participant.title_at_time/org_at_time (DEC-258's frozen
@@ -86,12 +86,13 @@ async function getVisibleSubmissionIdsOrdered(
   trackId: string | null,
   q: string | null,
   limit: number,
+  offset: number,
 ): Promise<Array<{ id: string }>> {
   const baseConditions = [eq(schema.submission.eventId, eventId), visibleSessionConditions()];
   if (q) baseConditions.push(searchCondition(q));
 
   if (trackId) {
-    const rows = await db
+    const query = db
       .selectDistinct({ id: schema.submission.id, title: schema.submission.title })
       .from(schema.submission)
       .leftJoin(
@@ -103,10 +104,15 @@ async function getVisibleSubmissionIdsOrdered(
       .where(and(...baseConditions, eq(schema.submissionTrack.trackId, trackId)))
       .orderBy(asc(schema.submission.title))
       .limit(limit);
+    // DEC-516: offset() is only chained when non-zero — page-1 (offset 0)
+    // stays the identical query shape whether windowed or cumulative, so
+    // existing fake-db-chain harnesses that stub .limit() as the terminal
+    // call keep working unmodified.
+    const rows = await (offset > 0 ? query.offset(offset) : query);
     return rows;
   }
 
-  const rows = await db
+  const query = db
     .selectDistinct({ id: schema.submission.id, title: schema.submission.title })
     .from(schema.submission)
     .leftJoin(
@@ -117,6 +123,7 @@ async function getVisibleSubmissionIdsOrdered(
     .where(and(...baseConditions))
     .orderBy(asc(schema.submission.title))
     .limit(limit);
+  const rows = await (offset > 0 ? query.offset(offset) : query);
   return rows;
 }
 
@@ -325,15 +332,22 @@ export interface PublicSessionsPage {
 export async function getPublicSessions(
   db: Db,
   event: PublicEvent,
-  opts: { trackId: string | null; page: number; perPage: number; q?: string | null },
+  opts: { trackId: string | null; page: number; perPage: number; q?: string | null; window?: boolean },
 ): Promise<PublicSessionsPage> {
-  const limit = boundedRowLimit(opts.page, opts.perPage);
   const q = opts.q ?? null;
+  // DEC-516: `window` opts into a real one-page LIMIT+OFFSET (boundedWindow)
+  // for the paged JSON feeds; defaults to false so every existing HTML call
+  // site keeps getting boundedRowLimit's cumulative prefix (pages 1..page
+  // concatenated), which the show-more list depends on to re-render the
+  // whole list-so-far on every click.
+  const { limit, offset } = opts.window
+    ? boundedWindow(opts.page, opts.perPage)
+    : { limit: boundedRowLimit(opts.page, opts.perPage), offset: 0 };
   // Sequenced (not Promise.all'd): hydrateSessions' own select() calls stay
   // contiguous right after the id query, matching every existing fake-db
   // harness in test/public.test.ts that numbers db.select() calls by
   // position; the count query's separate select() runs last instead.
-  const ordered = await getVisibleSubmissionIdsOrdered(db, event.id, opts.trackId, q, limit);
+  const ordered = await getVisibleSubmissionIdsOrdered(db, event.id, opts.trackId, q, limit, offset);
   const pageIds = ordered.map((r) => r.id);
   const items = await hydrateSessions(db, pageIds, event);
   const total = await countVisibleSubmissions(db, event.id, opts.trackId, q);

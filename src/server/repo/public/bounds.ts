@@ -30,6 +30,22 @@ export function boundedRowLimit(page: number, perPage: number): number {
   return Math.min(page * perPage, MAX_PUBLIC_ROWS);
 }
 
+// DEC-516: a real one-page SQL window (LIMIT+OFFSET) instead of the
+// cumulative prefix boundedRowLimit produces (used by the HTML show-more
+// list, which re-fetches pages 1..page every time and needs the whole
+// prefix). Same guards, same MAX_PUBLIC_ROWS ceiling as boundedRowLimit —
+// this file stays the one home for public paging constants (DEC-477/487).
+// An offset at or beyond the ceiling is not an error: it's an honestly
+// empty page (limit 0), since a caller can legally ask for a page past the
+// last real row (e.g. the deepest allowed page number on a small event).
+export function boundedWindow(page: number, perPage: number): { limit: number; offset: number } {
+  assertFiniteIntGte1(page, "page");
+  assertFiniteIntGte1(perPage, "perPage");
+  const offset = (page - 1) * perPage;
+  if (offset >= MAX_PUBLIC_ROWS) return { limit: 0, offset };
+  return { limit: Math.min(perPage, MAX_PUBLIC_ROWS - offset), offset };
+}
+
 // DEC-477/DEC-487: single 'Show more' predicate for every public surface
 // (sessions/speakers/gallery). `shown` is the total item count already
 // rendered across pages 1..page (i.e. what the caller is about to display,
