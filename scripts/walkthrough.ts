@@ -23,8 +23,10 @@ import {
   formatAreaPass,
   formatFailureMessage,
   formatMissingModulesMessage,
+  formatSummaryTable,
   modulePath,
   parseUrlArg,
+  type WalkthroughAreaResult,
 } from "./walkthrough-lib";
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
@@ -46,6 +48,8 @@ function main(): void {
   console.log(`Order: ${WALKTHROUGH_AREAS.join(" -> ")}`);
   console.log("");
 
+  const results: WalkthroughAreaResult[] = [];
+
   for (const area of WALKTHROUGH_AREAS) {
     console.log(`--- ${area} ---`);
     const args = buildSpawnArgs(area, url);
@@ -56,24 +60,30 @@ function main(): void {
     if (result.error) {
       console.error(formatFailureMessage(area));
       console.error(result.error.message);
-      process.exitCode = 1;
-      return;
+      results.push({ area, status: "FAIL" });
+      continue;
     }
     if (result.status !== 0) {
       console.error(formatFailureMessage(area));
-      process.exitCode = 1;
-      return;
+      results.push({ area, status: "FAIL" });
+      continue;
     }
     console.log(formatAreaPass(area));
     console.log("");
+    results.push({ area, status: "PASS" });
   }
 
   console.log("Summary:");
-  for (const area of WALKTHROUGH_AREAS) {
-    console.log(`  ${formatAreaPass(area)}`);
-  }
+  console.log(formatSummaryTable(results));
   console.log("");
-  console.log("walkthrough OK");
+
+  const anyFailed = results.some((r) => r.status === "FAIL");
+  if (anyFailed) {
+    process.exitCode = 1;
+    console.log("walkthrough FAILED");
+  } else {
+    console.log("walkthrough OK");
+  }
 }
 
 main();

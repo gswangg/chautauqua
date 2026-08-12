@@ -10,6 +10,7 @@ import {
   formatAreaPass,
   formatFailureMessage,
   formatMissingModulesMessage,
+  formatSummaryTable,
   hasExactFormatDropdownField,
   modulePath,
   parseUrlArg,
@@ -92,6 +93,36 @@ describe("formatAreaPass / formatFailureMessage / formatMissingModulesMessage", 
     ).toBe(
       "walkthrough: missing module file(s): scripts/walkthrough/producer.ts, scripts/walkthrough/data.ts",
     );
+  });
+});
+
+describe("formatSummaryTable (DEC-407)", () => {
+  it("renders an all-pass summary", () => {
+    expect(
+      formatSummaryTable([
+        { area: "producer", status: "PASS" },
+        { area: "review", status: "PASS" },
+      ]),
+    ).toBe("  PASS producer\n  PASS review");
+  });
+
+  it("renders a mix with one failure", () => {
+    expect(
+      formatSummaryTable([
+        { area: "producer", status: "PASS" },
+        { area: "review", status: "FAIL" },
+        { area: "speaker", status: "PASS" },
+      ]),
+    ).toBe("  PASS producer\n  FAIL review\n  PASS speaker");
+  });
+
+  it("renders an all-fail summary", () => {
+    expect(
+      formatSummaryTable([
+        { area: "producer", status: "FAIL" },
+        { area: "review", status: "FAIL" },
+      ]),
+    ).toBe("  FAIL producer\n  FAIL review");
   });
 });
 
