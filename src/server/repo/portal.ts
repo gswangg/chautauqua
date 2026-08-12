@@ -13,6 +13,7 @@ import * as schema from "../../db/schema";
 import { formatRef } from "../../domain/ids";
 import type { SubmissionStatus } from "../../domain/status";
 import { ACTIVE_INVITE_STATUSES, PORTAL_VISIBLE_INVITE_STATUSES } from "../../domain/acceptance";
+import { chunkIds } from "../../lib/chunk";
 
 // ---------------------------------------------------------------------------
 // Pure helpers (no db/IO) — unit-tested directly against tiny fakes/values.
@@ -683,26 +684,42 @@ export async function getMyResources(db: Db, contactId: string, orgId: string): 
   const eventIds = await getMyEventIds(db, contactId, orgId);
   if (eventIds.length === 0) return [];
 
-  const rows = await db
-    .select({
-      id: schema.resource.id,
-      eventId: schema.resource.eventId,
-      kind: schema.resource.kind,
-      title: schema.resource.title,
-      content: schema.resource.content,
-      fileId: schema.resource.fileId,
-      position: schema.resource.position,
-      eventName: schema.event.name,
-    })
-    .from(schema.resource)
-    .innerJoin(schema.event, eq(schema.resource.eventId, schema.event.id))
-    .where(eq(schema.event.orgId, orgId));
-
-  const relevant = rows.filter((r) => eventIds.includes(r.eventId));
-  relevant.sort((a, b) => a.position - b.position);
+  // DEC-432: scope pushed into WHERE via inArray/chunkIds rather than
+  // fetching every org resource and filtering in JS.
+  const rows: {
+    id: string;
+    eventId: string;
+    kind: (typeof schema.resource.$inferSelect)["kind"];
+    title: string;
+    content: string | null;
+    fileId: string | null;
+    position: number;
+    eventName: string;
+  }[] = [];
+  for (const batch of chunkIds(eventIds)) {
+    const batchRows = await db
+      .select({
+        id: schema.resource.id,
+        eventId: schema.resource.eventId,
+        kind: schema.resource.kind,
+        title: schema.resource.title,
+        content: schema.resource.content,
+        fileId: schema.resource.fileId,
+        position: schema.resource.position,
+        eventName: schema.event.name,
+      })
+      .from(schema.resource)
+      .innerJoin(schema.event, eq(schema.resource.eventId, schema.event.id))
+      .where(and(eq(schema.event.orgId, orgId), inArray(schema.resource.eventId, batch)))
+      .orderBy(schema.resource.position);
+    rows.push(...batchRows);
+  }
+  // Re-sort across chunk boundaries so multi-event/multi-batch speakers see
+  // the same global-by-position ordering the pre-DEC-432 single query gave.
+  rows.sort((a, b) => a.position - b.position);
 
   const groups = new Map<string, PortalResourceGroup>();
-  for (const row of relevant) {
+  for (const row of rows) {
     let group = groups.get(row.eventId);
     if (!group) {
       group = { eventId: row.eventId, eventName: row.eventName, resources: [] };
