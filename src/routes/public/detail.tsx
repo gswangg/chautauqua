@@ -3,13 +3,14 @@
 // behavior change.
 
 import type { PublicEvent, PublicSpeakerDetail, PublicSessionDetail } from "../../server/repo/public";
-import { surfacePath, speakerDetailPath, sessionDetailPath, SURFACE_LABELS, type Surface } from "./shell";
+import { surfacePath, speakerDetailPath, sessionDetailPath, SURFACE_LABELS, type Surface, type SurfaceBase } from "./shell";
 import { TrackChips, FormatChip, SessionDescription, formatMinutes } from "./cards";
 
-export function BackLink(props: { event: PublicEvent; from: Surface }) {
+export function BackLink(props: { event: PublicEvent; from: Surface; base?: SurfaceBase }) {
+  const { event, from, base = "/e" } = props;
   return (
     <p>
-      <a href={surfacePath(props.event, props.from)}>&larr; Back to {SURFACE_LABELS[props.from]}</a>
+      <a href={surfacePath(event, from, base)}>&larr; Back to {SURFACE_LABELS[from]}</a>
     </p>
   );
 }
@@ -19,11 +20,16 @@ export function sessionTimeLabel(day: string | null, startMin: number | null, en
   return `${day}, ${formatMinutes(startMin)}–${formatMinutes(endMin)}`;
 }
 
-export function SpeakerDetailContent(props: { event: PublicEvent; speaker: PublicSpeakerDetail; from: Surface }) {
-  const { event, speaker, from } = props;
+export function SpeakerDetailContent(props: {
+  event: PublicEvent;
+  speaker: PublicSpeakerDetail;
+  from: Surface;
+  base?: SurfaceBase;
+}) {
+  const { event, speaker, from, base = "/e" } = props;
   return (
     <>
-      <BackLink event={event} from={from} />
+      <BackLink event={event} from={from} base={base} />
       <div class="chq-card">
         {speaker.headshotUrl ? (
           <img src={speaker.headshotUrl} alt={`${speaker.firstName} ${speaker.lastName}`} width={160} />
@@ -53,7 +59,7 @@ export function SpeakerDetailContent(props: { event: PublicEvent; speaker: Publi
           const timeLabel = sessionTimeLabel(s.day, s.startMin, s.endMin);
           return (
             <li>
-              <a href={sessionDetailPath(event, s.id, from)}>{s.title}</a>
+              <a href={sessionDetailPath(event, s.id, from, base)}>{s.title}</a>
               {timeLabel ? ` — ${timeLabel}` : ""}
               {s.room ? ` (${s.room})` : ""}
             </li>
@@ -64,12 +70,17 @@ export function SpeakerDetailContent(props: { event: PublicEvent; speaker: Publi
   );
 }
 
-export function SessionDetailContent(props: { event: PublicEvent; session: PublicSessionDetail; from: Surface }) {
-  const { event, session, from } = props;
+export function SessionDetailContent(props: {
+  event: PublicEvent;
+  session: PublicSessionDetail;
+  from: Surface;
+  base?: SurfaceBase;
+}) {
+  const { event, session, from, base = "/e" } = props;
   const timeLabel = sessionTimeLabel(session.day, session.startMin, session.endMin);
   return (
     <>
-      <BackLink event={event} from={from} />
+      <BackLink event={event} from={from} base={base} />
       <div class="chq-card">
         <TrackChips tracks={session.tracks} />
         <FormatChip format={session.format} />
@@ -82,7 +93,7 @@ export function SessionDetailContent(props: { event: PublicEvent; session: Publi
           {session.speakers.map((s, i) => (
             <>
               {i > 0 ? ", " : ""}
-              <a href={speakerDetailPath(event, s.contactId, from)}>
+              <a href={speakerDetailPath(event, s.contactId, from, base)}>
                 {s.firstName} {s.lastName}
               </a>
               {s.title || s.company ? ` (${[s.title, s.company].filter(Boolean).join(", ")})` : ""}

@@ -27,7 +27,7 @@ import { buildIcsCalendar, ICS_ORGANIZER_EMAIL } from "../../mail/ics";
 import { parseItineraryIds, MAX_ITINERARY_IDS } from "../../lib/itinerary";
 import { ApiError, errorEnvelope } from "../../server/http";
 import { publicCacheMiddleware, defaultCache } from "../../server/pubcache";
-import { DEC_022, DEC_007, DEC_017, DEC_005, DEC_012, DEC_080, DEC_083, DEC_151, DEC_289, DEC_489, DEC_661 } from "../../decisions";
+import { DEC_022, DEC_007, DEC_017, DEC_005, DEC_012, DEC_080, DEC_083, DEC_151, DEC_289, DEC_489, DEC_661, DEC_672 } from "../../decisions";
 import { SURFACES, isSurface, setCacheHeaders, PublicShell, EmbedShell, isValidFrom, type Surface } from "./shell";
 import { PUBLIC_PER_PAGE } from "../../server/repo/public/bounds";
 import { renderSurfaceContent } from "./dispatch";
@@ -70,6 +70,7 @@ void DEC_151;
 void DEC_289;
 void DEC_489;
 void DEC_661;
+void DEC_672;
 
 // re-exports: public surface for other modules / tests (unchanged names).
 export type { Surface } from "./shell";
@@ -222,6 +223,43 @@ publicRoutes.get("/embed/:eventSlug/:surface", async (c) => {
   return c.html(
     <EmbedShell event={event} title={title} accentOverride={parseAccent(c.req.query("accent")) ?? undefined}>
       {content as any}
+    </EmbedShell>,
+  );
+});
+
+// DEC-672: chromeless embed twins of the /e/:eventSlug/sessions/:sessionId
+// and /e/:eventSlug/speakers/:contactId drill-ins above — same visibility
+// gate (getPublicSessionDetail / getPublicSpeakerDetail, no new query), but
+// rendered inside EmbedShell (not PublicShell) so a session/speaker deep
+// link opened inside an <iframe> never breaks out into full chrome.
+publicRoutes.get("/embed/:eventSlug/sessions/:sessionId", async (c) => {
+  setCacheHeaders(c);
+  const event = await getPublicEventBySlug(c.var.db, c.req.param("eventSlug"));
+  if (!event) return publicNotFound(c, "Event not found.");
+  const session = await getPublicSessionDetail(c.var.db, event, c.req.param("sessionId"));
+  if (!session) return publicNotFound(c, "Session not found.");
+  const from = isValidFrom(c.req.query("from"), "sessions");
+  return c.html(
+    <EmbedShell event={event} title={`${session.title} - ${event.name}`} accentOverride={parseAccent(c.req.query("accent")) ?? undefined}>
+      <SessionDetailContent event={event} session={session} from={from} base="/embed" />
+    </EmbedShell>,
+  );
+});
+
+publicRoutes.get("/embed/:eventSlug/speakers/:contactId", async (c) => {
+  setCacheHeaders(c);
+  const event = await getPublicEventBySlug(c.var.db, c.req.param("eventSlug"));
+  if (!event) return publicNotFound(c, "Event not found.");
+  const speaker = await getPublicSpeakerDetail(c.var.db, event, c.req.param("contactId"));
+  if (!speaker) return publicNotFound(c, "Speaker not found.");
+  const from = isValidFrom(c.req.query("from"), "speakers");
+  return c.html(
+    <EmbedShell
+      event={event}
+      title={`${speaker.firstName} ${speaker.lastName} - ${event.name}`}
+      accentOverride={parseAccent(c.req.query("accent")) ?? undefined}
+    >
+      <SpeakerDetailContent event={event} speaker={speaker} from={from} base="/embed" />
     </EmbedShell>,
   );
 });
