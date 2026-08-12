@@ -49,6 +49,8 @@ import {
   formatMobileSummary,
   formatResultsTable,
   formatSummary,
+  mobileErrorResult,
+  routeErrorResult,
   type MobileRouteEntry,
   type MobileRouteResult,
   type RouteResult,
@@ -319,19 +321,42 @@ async function main(): Promise<void> {
 
     browser = await chromium.launch();
     const contextByRole = new Map<RouteManifestEntry["role"], BrowserContext>();
+    const loginErrorByRole = new Map<RouteManifestEntry["role"], string>();
     contextByRole.set("public", await browser.newContext());
     for (const role of ["organizer", "reviewer", "speaker"] as const) {
       const persona = personaForRole(role, fixture.identities);
       if (!persona) continue;
       console.log(`render-sweep: logging in as ${role} (${persona.email})...`);
-      contextByRole.set(role, await loginContext(browser, baseUrl, persona));
+      // DEC-389: a login failure (e.g. the dev server died mid-run) marks
+      // every manifest entry for this role FAIL below instead of aborting
+      // the whole gate uncaught.
+      try {
+        contextByRole.set(role, await loginContext(browser, baseUrl, persona));
+      } catch (err) {
+        loginErrorByRole.set(role, err instanceof Error ? err.message : String(err));
+      }
     }
 
     const results: RouteResult[] = [];
     for (const entry of ROUTE_MANIFEST) {
       const context = contextByRole.get(entry.role);
-      if (!context) throw new Error(`render-sweep: no browser context for role '${entry.role}'`);
-      results.push(await visitRoute(context, baseUrl, entry));
+      if (!context) {
+        const loginError = loginErrorByRole.get(entry.role);
+        results.push(
+          routeErrorResult(
+            entry,
+            loginError !== undefined
+              ? `login failed for role '${entry.role}': ${loginError}`
+              : `no browser context for role '${entry.role}'`,
+          ),
+        );
+        continue;
+      }
+      try {
+        results.push(await visitRoute(context, baseUrl, entry));
+      } catch (err) {
+        results.push(routeErrorResult(entry, err instanceof Error ? err.message : String(err)));
+      }
     }
 
     console.log("");
@@ -350,16 +375,38 @@ async function main(): Promise<void> {
     console.log("");
     console.log("render-sweep: mobile pass (390x844)...");
     const mobileContextByRole = new Map<MobileRouteEntry["role"], BrowserContext>();
+    let speakerLoginError: string | undefined;
     mobileContextByRole.set("public", await browser.newContext({ viewport: MOBILE_VIEWPORT }));
     const speakerPersona = personaForRole("speaker", fixture.identities);
     if (!speakerPersona) throw new Error("render-sweep: fixture is missing the speaker identity");
-    mobileContextByRole.set("speaker", await loginContext(browser, baseUrl, speakerPersona, { viewport: MOBILE_VIEWPORT }));
+    try {
+      mobileContextByRole.set(
+        "speaker",
+        await loginContext(browser, baseUrl, speakerPersona, { viewport: MOBILE_VIEWPORT }),
+      );
+    } catch (err) {
+      speakerLoginError = err instanceof Error ? err.message : String(err);
+    }
 
     const mobileResults: MobileRouteResult[] = [];
     for (const entry of MOBILE_ROUTE_MANIFEST) {
       const context = mobileContextByRole.get(entry.role);
-      if (!context) throw new Error(`render-sweep: no mobile browser context for role '${entry.role}'`);
-      mobileResults.push(await visitMobileRoute(context, baseUrl, entry));
+      if (!context) {
+        mobileResults.push(
+          mobileErrorResult(
+            entry,
+            speakerLoginError !== undefined
+              ? `login failed for role '${entry.role}': ${speakerLoginError}`
+              : `no mobile browser context for role '${entry.role}'`,
+          ),
+        );
+        continue;
+      }
+      try {
+        mobileResults.push(await visitMobileRoute(context, baseUrl, entry));
+      } catch (err) {
+        mobileResults.push(mobileErrorResult(entry, err instanceof Error ? err.message : String(err)));
+      }
     }
     for (const ctx of mobileContextByRole.values()) await ctx.close();
 
@@ -382,17 +429,41 @@ async function main(): Promise<void> {
     console.log("");
     console.log("render-sweep: admin mobile pass (390x844, advisory)...");
     const adminMobileContextByRole = new Map<"organizer" | "reviewer", BrowserContext>();
+    const adminLoginErrorByRole = new Map<"organizer" | "reviewer", string>();
     for (const role of ["organizer", "reviewer"] as const) {
       const persona = personaForRole(role, fixture.identities);
       if (!persona) throw new Error(`render-sweep: fixture is missing the ${role} identity`);
-      adminMobileContextByRole.set(role, await loginContext(browser, baseUrl, persona, { viewport: MOBILE_VIEWPORT }));
+      try {
+        adminMobileContextByRole.set(
+          role,
+          await loginContext(browser, baseUrl, persona, { viewport: MOBILE_VIEWPORT }),
+        );
+      } catch (err) {
+        adminLoginErrorByRole.set(role, err instanceof Error ? err.message : String(err));
+      }
     }
 
     const adminMobileResults: MobileRouteResult[] = [];
     for (const entry of ADMIN_MOBILE_ROUTE_MANIFEST) {
-      const context = adminMobileContextByRole.get(entry.role as "organizer" | "reviewer");
-      if (!context) throw new Error(`render-sweep: no admin mobile browser context for role '${entry.role}'`);
-      adminMobileResults.push(await visitMobileRoute(context, baseUrl, entry, ADMIN_MOBILE_CONTROL_SELECTOR));
+      const role = entry.role as "organizer" | "reviewer";
+      const context = adminMobileContextByRole.get(role);
+      if (!context) {
+        const loginError = adminLoginErrorByRole.get(role);
+        adminMobileResults.push(
+          mobileErrorResult(
+            entry,
+            loginError !== undefined
+              ? `login failed for role '${entry.role}': ${loginError}`
+              : `no admin mobile browser context for role '${entry.role}'`,
+          ),
+        );
+        continue;
+      }
+      try {
+        adminMobileResults.push(await visitMobileRoute(context, baseUrl, entry, ADMIN_MOBILE_CONTROL_SELECTOR));
+      } catch (err) {
+        adminMobileResults.push(mobileErrorResult(entry, err instanceof Error ? err.message : String(err)));
+      }
     }
     for (const ctx of adminMobileContextByRole.values()) await ctx.close();
 
