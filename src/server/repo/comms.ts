@@ -3,7 +3,7 @@
 // the compose pipeline. Only this file (and repo/email.ts) touches drizzle
 // row types for comms; src/domain/compose.ts stays pure.
 
-import { and, asc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, or, sql } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { newId } from "../../domain/ids";
@@ -198,14 +198,17 @@ export async function listFeedbackComments(db: Db, submissionId: string): Promis
   return rows.filter((r) => r.submittedAt !== null && r.comment && r.comment.trim() !== "").map((r) => r.comment as string);
 }
 
-/** True when a user row exists for this contact email (case-insensitive) —
- * the portal_link merge var is /portal for existing users, else a fresh
+/** DEC-456: account identity is answered by contact_id OR email, never
+ * email alone — a contact's email can drift out of sync with its linked
+ * user row (e.g. mid-edit, or deliberately after a merge repoint), so a
+ * hit on either key means "this contact already has an account". The
+ * portal_link merge var is /portal for existing users, else a fresh
  * DEC-014 claim link (route layer mints the token). */
-export async function findUserIdByEmail(db: Db, email: string): Promise<string | null> {
+export async function findAccountUserId(db: Db, params: { contactId: string; email: string }): Promise<string | null> {
   const rows = await db
     .select({ id: schema.user.id })
     .from(schema.user)
-    .where(sql`lower(${schema.user.email}) = lower(${email})`)
+    .where(or(eq(schema.user.contactId, params.contactId), sql`lower(${schema.user.email}) = lower(${params.email})`))
     .limit(1);
   return rows[0]?.id ?? null;
 }

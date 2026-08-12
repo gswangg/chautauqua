@@ -43,7 +43,7 @@ vi.mock("../src/server/repo/contacts", async () => {
   return {
     ...actual,
     findContactsForOrg: (...args: Parameters<typeof findContactsForOrgMock>) => findContactsForOrgMock(...args),
-    findUserIdByEmail: vi.fn(async () => null),
+    findAccountUserId: vi.fn(async () => null),
   };
 });
 
@@ -212,7 +212,7 @@ describe("POST /contacts/bulk-email/preview vs /contacts/bulk-email — claim-to
     }, fakeKv);
 
     expect(res.status).toBe(200);
-    // findUserIdByEmail mock always returns null, so both recipients are
+    // findAccountUserId mock always returns null, so both recipients are
     // userless and each mints exactly one claim token.
     expect(puts).toHaveLength(2);
   });

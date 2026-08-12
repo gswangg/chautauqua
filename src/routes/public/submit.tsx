@@ -18,7 +18,6 @@ import {
   findContactByEmail,
   createContact,
   fillContactProfileIfBlank,
-  findUserByEmail,
   createSubmission,
   createParticipant,
   createSubmissionTracks,
@@ -28,6 +27,7 @@ import {
   type FormRow,
   type TrackRow,
 } from "../../server/repo/submit";
+import { findAccountUserId } from "../../server/repo/comms";
 import { validateAnswers } from "../../forms/validate";
 import { isVisible } from "../../forms/visibility";
 import type { AnswerMap, FormFieldDef } from "../../forms/types";
@@ -739,7 +739,7 @@ publicSubmitRoutes.post("/submit/:eventSlug", csrfForm, async (c) => {
   // production `routes`/`custom_domain` entry would otherwise make
   // `new URL(c.req.url).origin` resolve to the live deployed host.
   const origin = resolveBaseUrl(c);
-  const existingUser = await findUserByEmail(db, email);
+  const existingUser = await findAccountUserId(db, { contactId, email });
   let claimPath = "/login";
   if (!existingUser) {
     const claimKv = c.env.KV as unknown as ClaimKVStore;

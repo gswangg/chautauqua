@@ -62,6 +62,7 @@ export {
   type SegmentRow,
 } from "./contacts/segments";
 
-export { findContactsForOrg, findUserIdByEmail } from "./contacts/bulk";
+export { findContactsForOrg } from "./contacts/bulk";
+export { findAccountUserId } from "./comms";
 
 export { pushContactToEvent, pushContactsToEvent } from "./contacts/push";

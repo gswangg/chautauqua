@@ -11,6 +11,7 @@ import { findSegmentForOrg } from "./segments";
 import { toContactRecord, toRow, type ContactRow } from "./rows";
 import { compareContacts, likeContains, type ParsedContactListQuery } from "./query";
 import { backfillNullAttribution } from "../attribution";
+import { ApiError } from "../../http";
 import { DEC_333, DEC_336 } from "../../../decisions";
 
 void DEC_333;
@@ -90,7 +91,29 @@ export async function createContact(db: Db, orgId: string, input: ContactInput):
   return created;
 }
 
+/** DEC-456: when an organizer edits a contact's email onto a value already
+ * owned by a *different* user account, reject before any write — otherwise
+ * the cascade below would silently steal that other account's login
+ * identity. Checked against the contact's stored (pre-patch) email so a
+ * same-contact re-save of its own address is never mistaken for a
+ * conflict. */
 export async function patchContact(db: Db, id: string, patch: ContactPatch): Promise<ContactRow> {
+  if (patch.email !== undefined) {
+    const current = await findContactById(db, id);
+    if (!current) throw new Error(`contact ${id} not found`);
+    const newEmailLower = patch.email.toLowerCase();
+    if (newEmailLower !== current.email.toLowerCase()) {
+      const conflicting = await db
+        .select({ id: schema.user.id, contactId: schema.user.contactId })
+        .from(schema.user)
+        .where(sql`lower(${schema.user.email}) = ${newEmailLower}`)
+        .limit(1);
+      const owner = conflicting[0];
+      if (owner && owner.contactId !== id) {
+        throw new ApiError("conflict", "That email already belongs to another account");
+      }
+    }
+  }
   await db
     .update(schema.contact)
     .set({
@@ -107,6 +130,15 @@ export async function patchContact(db: Db, id: string, patch: ContactPatch): Pro
       updatedAt: new Date(),
     })
     .where(eq(schema.contact.id, id));
+  // DEC-456: cascade the (already-conflict-checked) new email onto this
+  // contact's linked user row, if any, so login identity never drifts out
+  // of sync with the CRM's record of the contact's address.
+  if (patch.email !== undefined) {
+    await db
+      .update(schema.user)
+      .set({ email: patch.email.toLowerCase(), updatedAt: new Date() })
+      .where(eq(schema.user.contactId, id));
+  }
   // DEC-299: repair any never-taken (NULL) attribution snapshot now that an
   // organizer has written a real title/company onto this contact.
   if (patch.title !== undefined || patch.company !== undefined) {

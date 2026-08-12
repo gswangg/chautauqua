@@ -53,7 +53,7 @@ vi.mock("../src/server/repo/comms", async () => {
   return {
     ...actual,
     loadComposeSubmissions: (...args: Parameters<typeof loadComposeSubmissionsMock>) => loadComposeSubmissionsMock(...args),
-    findUserIdByEmail: vi.fn(async () => null),
+    findAccountUserId: vi.fn(async () => null),
     listFeedbackComments: vi.fn(async () => []),
   };
 });

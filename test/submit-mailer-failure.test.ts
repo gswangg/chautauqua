@@ -152,7 +152,7 @@ function submitForm() {
 
 /** select() queue for a successful submit: getEventBySlug, getDefaultForm,
  * getFormFields, getEventTracks, findContactByEmail, nextSubmissionSeq
- * (inside createSubmission), findUserByEmail. */
+ * (inside createSubmission), findAccountUserId. */
 function selectQueueFor() {
   return [[EVENT_ROW], [FORM_ROW], FIELD_ROWS, [TRACK_ROW], [], [{ maxSeq: 0 }], []];
 }
