@@ -312,7 +312,7 @@ export async function getAgendaPayload(db: Db, eventId: string, event: EventInfo
   }
 
   const conflicts = findConflicts(placedSessions);
-  const summary = scheduleSummary(placedSessions, accepted.length);
+  const summary = scheduleSummary(placedSessions, accepted.length, conflicts);
 
   return {
     days,
@@ -346,9 +346,10 @@ export async function getConflictsAndSummary(
       endMin: s.slot.endMin,
       speakerContactIds: s.speakerContactIds,
     }));
+  const conflicts = findConflicts(placedSessions);
   return {
-    conflicts: findConflicts(placedSessions),
-    summary: scheduleSummary(placedSessions, accepted.length),
+    conflicts,
+    summary: scheduleSummary(placedSessions, accepted.length, conflicts),
   };
 }
 
