@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { isReminderDue, planReminders, type ReminderAssignment } from "../src/domain/reminders";
+import { buildReminderMessage } from "../src/server/repo/tasks";
 
 const NOW = 1_700_000_000_000;
 const HOUR = 60 * 60 * 1000;
@@ -86,5 +87,47 @@ describe("planReminders (DEC-023 grouping)", () => {
 
   it("returns an empty group list for no input assignments", () => {
     expect(planReminders({ assignments: [], now: NOW }).groups).toEqual([]);
+  });
+});
+
+describe("buildReminderMessage task line ordering (DEC-564)", () => {
+  const eventName = "DevFlow Conf 2027";
+  const eventTimezone = "America/Los_Angeles";
+  const portalLink = "https://events.example.com/portal";
+
+  // Three assignments: one undated, two sharing a due date with different
+  // titles. Declared order: dueDate asc (null last), then taskTitle asc,
+  // then assignmentId asc.
+  const undated = assignment({ assignmentId: "a_undated", taskTitle: "Zzz task", dueDate: null });
+  const dueEarlyA = assignment({ assignmentId: "a_early_a", taskTitle: "Bravo task", dueDate: NOW });
+  const dueEarlyB = assignment({ assignmentId: "a_early_b", taskTitle: "Alpha task", dueDate: NOW });
+
+  it("renders task lines in the declared order regardless of input order", () => {
+    const forward = buildReminderMessage(eventName, eventTimezone, [undated, dueEarlyA, dueEarlyB], portalLink);
+    const reversed = buildReminderMessage(eventName, eventTimezone, [dueEarlyB, dueEarlyA, undated], portalLink);
+
+    expect(forward.text).toBe(reversed.text);
+    expect(forward.subject).toBe(reversed.subject);
+
+    const lines = forward.text.split("\n");
+    const aliceIdx = lines.findIndex((l) => l.includes("Alpha task"));
+    const bravoIdx = lines.findIndex((l) => l.includes("Bravo task"));
+    const zzzIdx = lines.findIndex((l) => l.includes("Zzz task"));
+    expect(aliceIdx).toBeGreaterThan(-1);
+    expect(bravoIdx).toBeGreaterThan(aliceIdx);
+    expect(zzzIdx).toBeGreaterThan(bravoIdx);
+  });
+
+  it("does not mutate the caller's input array order", () => {
+    const input = [undated, dueEarlyA, dueEarlyB];
+    const before = input.map((a) => a.assignmentId);
+    buildReminderMessage(eventName, eventTimezone, input, portalLink);
+    expect(input.map((a) => a.assignmentId)).toEqual(before);
+  });
+
+  it("keeps the {portal_link} footer, subject, and signature unchanged by ordering", () => {
+    const forward = buildReminderMessage(eventName, eventTimezone, [undated, dueEarlyA, dueEarlyB], portalLink);
+    expect(forward.subject).toBe(`Action needed: outstanding tasks for ${eventName}`);
+    expect(forward.text.endsWith(portalLink)).toBe(true);
   });
 });
