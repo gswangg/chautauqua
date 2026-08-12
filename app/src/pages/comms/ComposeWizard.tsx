@@ -247,9 +247,9 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
           return (
             <div key={s.step} className={`chq-step${isDone ? ' is-done' : ''}${isCurrent ? ' is-current' : ''}`}>
               <span className="chq-step-num">{isDone ? '✓' : idx + 1}</span>
-              <div className="chq-step-copy">
-                <span className="chq-step-title">{s.title}</span>
-                <span className="chq-step-detail">{s.detail}</span>
+              <div className="chq-comms-step-copy">
+                <span className="chq-comms-step-title">{s.title}</span>
+                <span className="chq-comms-step-detail">{s.detail}</span>
               </div>
             </div>
           );
