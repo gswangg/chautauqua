@@ -260,14 +260,16 @@ export interface SegmentRule {
   value: string;
 }
 
-const STANDARD_FIELDS = new Set(["email", "firstName", "lastName", "company", "title"]);
+// DEC-554: exported so the segment/rules whole-directory scan (crud.ts)
+// can derive its SQL projection by enumeration instead of hand-listing.
+export const SEGMENT_STANDARD_FIELDS = new Set(["email", "firstName", "lastName", "company", "title"]);
 
 function fieldValue(contact: ContactRecord, field: string): string {
   if (field.startsWith("custom.")) {
     const key = field.slice("custom.".length);
     return contact.customFields?.[key] ?? "";
   }
-  if (!STANDARD_FIELDS.has(field)) {
+  if (!SEGMENT_STANDARD_FIELDS.has(field)) {
     throw new Error(`matchesSegment: unknown field "${field}"`);
   }
   const value = (contact as unknown as Record<string, unknown>)[field];

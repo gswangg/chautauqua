@@ -6,6 +6,10 @@ import * as schema from "../../../db/schema";
 import type { ContactRecord } from "../../../domain/contacts";
 import { parseSocialLinks } from "../profile";
 
+// DEC-554: bound for a whole-directory contact scan (segment/rules list
+// path in crud.ts) — refuse rather than silently truncate past this size.
+export const MAX_CONTACT_DIRECTORY_SCAN = 20000;
+
 export interface ContactRow {
   id: string;
   orgId: string;
