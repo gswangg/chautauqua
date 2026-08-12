@@ -1,0 +1,86 @@
+// DEC-582: GET / (the anonymous event hub) is styled from the public CSS
+// family, not TOOLS_CSS -- revising DEC-382 for / only. Same shape/inlining
+// convention as cfp.css.ts: tokens live only in THEME_CSS (src/views/
+// theme.ts), this file only adds .chq-home-* layout on top of it. Plain .ts
+// (no JSX), pure Web-safe CSS text: no node:/cloudflare import (DEC-002).
+//
+// DEC-374: value-free module constant, injected verbatim via
+// dangerouslySetInnerHTML by root.tsx's hub renderer -- never interpolated
+// with request/user data here.
+
+import { DEC_373, DEC_374, DEC_582 } from "../../decisions";
+
+void DEC_373;
+void DEC_374;
+void DEC_582;
+
+export const HOME_CSS = `
+  .chq-home-shell { max-width: 900px; margin: 0 auto; background: var(--chq-surface); border: 1px solid var(--chq-rule); }
+  .chq-home-header { border-bottom: 1px solid var(--chq-ink); padding: 15px 44px; display: flex; align-items: center; gap: 20px; background: var(--chq-paper); }
+  .chq-home-org { font-family: var(--chq-font-display); font-size: 20px; font-weight: 700; letter-spacing: -0.03em; }
+  .chq-home-signin { margin-left: auto; font-size: 13px; font-weight: 700; }
+
+  .chq-home-body { padding: 36px 44px 40px; display: flex; flex-direction: column; gap: 30px; }
+  .chq-home-hero { display: flex; flex-direction: column; gap: 10px; }
+  .chq-home-hero h1 { margin: 0; font-family: var(--chq-font-display); font-size: 44px; font-weight: 700; letter-spacing: -0.042em; line-height: 1.04; }
+  .chq-home-hero p { margin: 0; font-size: 16px; line-height: 1.65; color: var(--chq-ink-2); max-width: 54ch; }
+  .chq-home-cap-note { font-size: 13px; color: var(--chq-muted); }
+
+  .chq-home-section-head { border-bottom: 2px solid var(--chq-ink); padding-bottom: 8px; display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+  .chq-home-section-label { font-family: var(--chq-font-display); font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
+  .chq-home-section-caption { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--chq-muted); }
+
+  .chq-home-row { display: grid; grid-template-columns: 158px 1fr auto; gap: 24px; align-items: center; padding: 20px 0; border-bottom: 1px solid var(--chq-hairline); }
+  .chq-home-when { display: flex; flex-direction: column; gap: 3px; }
+  .chq-home-dates { font-family: var(--chq-font-display); font-size: 15px; font-weight: 700; }
+  .chq-home-venue { font-size: 12px; color: var(--chq-muted); line-height: 1.4; }
+  .chq-home-info { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .chq-home-name { font-family: var(--chq-font-display); font-size: 24px; font-weight: 600; letter-spacing: -0.028em; line-height: 1.2; color: var(--chq-ink); text-decoration: none; }
+  .chq-home-state { font-size: 11px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; }
+  .chq-home-meta { font-size: 13px; color: var(--chq-muted); }
+  .chq-home-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+  .chq-home-action-primary { background: var(--chq-brand); color: var(--chq-on-brand); border-radius: var(--chq-r-ctl); min-height: 48px; display: flex; align-items: center; padding: 0 20px; font-size: 15px; font-weight: 700; white-space: nowrap; text-decoration: none; }
+  .chq-home-action-secondary { border: 1px solid var(--chq-border-strong); border-radius: var(--chq-r-ctl); background: var(--chq-surface-sunk); min-height: 46px; display: flex; align-items: center; padding: 0 18px; font-size: 14px; font-weight: 600; color: var(--chq-ink-strong); white-space: nowrap; text-decoration: none; }
+  .chq-home-action-quiet { font-size: 13px; font-weight: 700; white-space: nowrap; min-height: 44px; display: flex; align-items: center; }
+
+  .chq-home-archive-row { display: grid; grid-template-columns: 158px 1fr auto; gap: 24px; align-items: baseline; padding: 16px 0; border-bottom: 1px solid var(--chq-hairline); }
+  .chq-home-archive-dates { font-size: 13px; color: var(--chq-muted); }
+  .chq-home-archive-info { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .chq-home-archive-name { font-family: var(--chq-font-display); font-size: 17px; font-weight: 600; letter-spacing: -0.02em; color: var(--chq-ink); text-decoration: none; }
+
+  .chq-home-signin-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+
+  .chq-home-footer { border-top: 1px solid var(--chq-rule); background: var(--chq-surface-sunk); padding: 18px 44px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .chq-home-footer-text { font-size: 12px; color: var(--chq-muted); line-height: 1.5; }
+  .chq-home-footer-link { font-weight: 700; color: var(--chq-brand); white-space: nowrap; display: inline-flex; align-items: center; gap: 5px; }
+  .chq-home-github-mark { vertical-align: -2px; }
+
+  @media (max-width: 700px) {
+    .chq-home-header { padding: 14px 16px; }
+    .chq-home-body { padding: 20px 16px; gap: 24px; }
+    .chq-home-hero h1 { font-size: 30px; }
+    .chq-home-footer { padding: 12px 16px 16px; }
+
+    .chq-home-row {
+      grid-template-columns: 1fr;
+      gap: 8px;
+      padding: 16px 0;
+    }
+    .chq-home-name { font-size: 20px; }
+    .chq-home-actions { align-items: stretch; width: 100%; }
+    .chq-home-action-primary,
+    .chq-home-action-secondary {
+      width: 100%;
+      justify-content: center;
+      margin-top: 2px;
+    }
+
+    .chq-home-archive-row {
+      grid-template-columns: 1fr auto;
+      gap: 4px 12px;
+      padding: 14px 0;
+      align-items: center;
+    }
+    .chq-home-archive-dates { grid-column: 1 / -1; order: -1; }
+  }
+`;
