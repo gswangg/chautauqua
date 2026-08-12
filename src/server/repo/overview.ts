@@ -17,12 +17,14 @@
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
-import { findConflicts, type Conflict, type PlacedSession } from "../../domain/schedule";
+import { findConflicts, nextFreeSlot, type Conflict, type PlacedSession } from "../../domain/schedule";
 import { formatRef } from "../../domain/ids";
 import { chunkIds } from "../../lib/chunk";
-import { DEC_370, DEC_531 } from "../../decisions";
+import { DEFAULT_AUTO_SCHEDULE_PARAMS } from "./agenda";
+import { DEC_370, DEC_531, DEC_652 } from "../../decisions";
 void DEC_370;
 void DEC_531;
+void DEC_652;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const ROW_CAP = 5;
@@ -78,6 +80,19 @@ export interface ContentApprovalRow {
   reuploaded: boolean;
 }
 
+/** DEC-652: the concrete "move it" suggestion for a conflict's later entry
+ * — a real slot nextFreeSlot found, never invented prose. Null whenever
+ * nextFreeSlot couldn't find one (e.g. no other room to move into). */
+export interface ConflictResolution {
+  submissionId: string;
+  ref: string;
+  day: string;
+  startMin: number;
+  roomId: string;
+  roomName: string;
+  label: string;
+}
+
 export interface ConflictRow {
   day: string;
   startMin: number;
@@ -85,6 +100,18 @@ export interface ConflictRow {
   roomName: string | null;
   kind: Conflict["kind"];
   entries: { submissionId: string; ref: string; title: string; speakerName: string }[];
+  resolution: ConflictResolution | null;
+}
+
+/** DEC-652: the concrete "place it" suggestion for an unplaced row — a real
+ * slot nextFreeSlot found, never invented prose. Null whenever nextFreeSlot
+ * couldn't find one (e.g. no rooms in use yet). */
+export interface PlacementSuggestion {
+  day: string;
+  startMin: number;
+  roomId: string;
+  roomName: string;
+  label: string;
 }
 
 export interface UnplacedRow {
@@ -96,6 +123,19 @@ export interface UnplacedRow {
   // organizer-supplied defaultDurationMin at call time, never persisted) —
   // always null, flagged as an open gap rather than fabricated.
   durationMin: number | null;
+  suggestion: PlacementSuggestion | null;
+}
+
+/** DEC-652: "10:00" / "11:30" — the plain (unpadded-hour, zero-padded
+ * minute) 24h clock label the mock uses for §04's suggestion/resolution
+ * buttons. Distinct from src/routes/public/cards.tsx's 12h AM/PM formatter
+ * (a different surface's convention) and app/src/pages/agenda/gridMath.ts's
+ * 12h am/pm formatter (the grid's own convention) — each rendering context
+ * owns its own clock format per this file's existing per-context pattern. */
+export function formatClockLabel(min: number): string {
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return `${h}:${String(m).padStart(2, "0")}`;
 }
 
 export interface OverviewPayloadV2 extends OverviewPayload {
@@ -180,14 +220,16 @@ export interface ConflictSessionInfo {
 
 /** DEC-370 agendaWork.conflicts rows: one row per findConflicts() pair
  * (never re-derives conflicts itself), capped to ROW_CAP, resolved against
- * a pre-loaded session/room lookup — never queries inside the loop. */
+ * a pre-loaded session/room lookup — never queries inside the loop.
+ * `resolution` is attached separately by attachConflictResolutions (DEC-652)
+ * so this function and its existing unit tests stay untouched. */
 export function buildConflictRows(
   conflicts: Conflict[],
   sessionById: Map<string, ConflictSessionInfo>,
   roomNameById: Map<string, string>,
   cap = ROW_CAP,
-): ConflictRow[] {
-  const rows: ConflictRow[] = [];
+): Omit<ConflictRow, "resolution">[] {
+  const rows: Omit<ConflictRow, "resolution">[] = [];
   for (const c of conflicts.slice(0, cap)) {
     const [aId, bId] = c.submissionIds;
     const a = sessionById.get(aId);
@@ -208,6 +250,113 @@ export function buildConflictRows(
     });
   }
   return rows;
+}
+
+export interface NextFreeSlotParams {
+  dayStartMin: number;
+  dayEndMin: number;
+  gridMin: number;
+  defaultDurationMin: number;
+}
+
+/** DEC-652: the concrete "place it" suggestion for one unplaced submission
+ * — delegates to nextFreeSlot (the SAME candidate scan autoSchedule runs),
+ * searching only the rooms/days already in use on the event's placed
+ * sessions (no extra room/date query — getOverviewPayload's own `placed`
+ * array already carries every room and day the event has scheduled into).
+ * Null whenever nextFreeSlot finds nothing — never invented. */
+export function buildPlacementSuggestion(
+  leadSpeakerContactId: string | null,
+  placed: PlacedSession[],
+  rooms: string[],
+  days: string[],
+  roomNameById: Map<string, string>,
+  params: NextFreeSlotParams,
+): PlacementSuggestion | null {
+  const slot = nextFreeSlot({
+    session: {
+      durationMin: params.defaultDurationMin,
+      speakerContactIds: leadSpeakerContactId ? [leadSpeakerContactId] : [],
+    },
+    rooms,
+    days,
+    dayStartMin: params.dayStartMin,
+    dayEndMin: params.dayEndMin,
+    gridMin: params.gridMin,
+    existing: placed,
+  });
+  if (!slot) return null;
+  return {
+    day: slot.day,
+    startMin: slot.startMin,
+    roomId: slot.roomId,
+    roomName: roomNameById.get(slot.roomId) ?? slot.roomId,
+    label: `Place at ${formatClockLabel(slot.startMin)}`,
+  };
+}
+
+/** DEC-652: which of a conflict's pair is the one a resolution should move
+ * — the LATER of the two (larger startMin; a same-startMin tie always
+ * picks the pair's second/`b` entry, a fixed deterministic choice). */
+export function pickLaterConflictEntry(
+  aId: string,
+  aStartMin: number,
+  bId: string,
+  bStartMin: number,
+): string {
+  return aStartMin > bStartMin ? aId : bId;
+}
+
+/** DEC-652: the concrete "move it" resolution for one conflict — moves the
+ * LATER of the clashing pair (see pickLaterConflictEntry) into its own next
+ * free slot via nextFreeSlot, searched in the SAME room it currently
+ * occupies (falling back to every room already in use on the event when it
+ * has none), excluding the moving submission itself from `existing` so it
+ * never blocks its own search. Null whenever nextFreeSlot finds nothing. */
+export function buildConflictResolutionFor(
+  conflict: Conflict,
+  sessionById: Map<string, ConflictSessionInfo>,
+  placedById: Map<string, PlacedSession>,
+  placed: PlacedSession[],
+  fallbackRooms: string[],
+  days: string[],
+  roomNameById: Map<string, string>,
+  params: NextFreeSlotParams,
+): ConflictResolution | null {
+  const [aId, bId] = conflict.submissionIds;
+  const a = sessionById.get(aId);
+  const b = sessionById.get(bId);
+  if (!a || !b) {
+    throw new Error(`buildConflictResolutionFor: session ${aId}/${bId} not in the loaded set`);
+  }
+  const laterId = pickLaterConflictEntry(aId, a.startMin, bId, b.startMin);
+  const laterInfo = laterId === aId ? a : b;
+  const laterPlacement = placedById.get(laterId);
+  if (!laterPlacement) {
+    throw new Error(`buildConflictResolutionFor: placement missing for ${laterId}`);
+  }
+
+  const rooms = laterPlacement.roomId ? [laterPlacement.roomId] : fallbackRooms;
+  const slot = nextFreeSlot({
+    session: { durationMin: laterPlacement.endMin - laterPlacement.startMin, speakerContactIds: laterPlacement.speakerContactIds },
+    rooms,
+    days,
+    dayStartMin: params.dayStartMin,
+    dayEndMin: params.dayEndMin,
+    gridMin: params.gridMin,
+    existing: placed.filter((p) => p.submissionId !== laterId),
+  });
+  if (!slot) return null;
+
+  return {
+    submissionId: laterId,
+    ref: laterInfo.ref,
+    day: slot.day,
+    startMin: slot.startMin,
+    roomId: slot.roomId,
+    roomName: roomNameById.get(slot.roomId) ?? slot.roomId,
+    label: `Move ${laterInfo.ref} to ${formatClockLabel(slot.startMin)}`,
+  };
 }
 
 export interface FileRowForPick {
@@ -562,7 +711,8 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number): 
     leadSpeakerIds.add(c.submissionIds[0]);
     leadSpeakerIds.add(c.submissionIds[1]);
   }
-  const leadSpeakerNameById = await fetchLeadSpeakerNames(db, [...leadSpeakerIds]);
+  const { nameById: leadSpeakerNameById, contactIdById: leadSpeakerContactIdById } =
+    await fetchLeadSpeakers(db, [...leadSpeakerIds]);
 
   const triageQueue = {
     total: triage.pending,
@@ -595,23 +745,18 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number): 
     }),
   };
 
-  // --- Room names for the capped conflict rows' rooms only (bounded to at
-  // most 2*ROW_CAP ids).
-  const conflictRoomIds = [
-    ...new Set(
-      conflicts
-        .slice(0, ROW_CAP)
-        .flatMap((c) => c.submissionIds)
-        .map((id) => placedById.get(id)?.roomId ?? null)
-        .filter((id): id is string => id !== null),
-    ),
-  ];
+  // --- Room names for every room already in use on the event's placed
+  // sessions (DEC-652: this same bounded set doubles as the room-name
+  // lookup for both the conflict rows' rooms and the nextFreeSlot
+  // suggestion/resolution rooms below — no extra query).
+  const placedRoomIds = [...new Set(placed.map((p) => p.roomId).filter((id): id is string => id !== null))];
+  const placedDays = [...new Set(placed.map((p) => p.day))].sort();
   const roomNameById = new Map<string, string>();
-  if (conflictRoomIds.length > 0) {
+  if (placedRoomIds.length > 0) {
     const roomRows = await db
       .select({ id: schema.room.id, name: schema.room.name })
       .from(schema.room)
-      .where(inArray(schema.room.id, conflictRoomIds));
+      .where(inArray(schema.room.id, placedRoomIds));
     for (const r of roomRows) roomNameById.set(r.id, r.name);
   }
 
@@ -630,10 +775,32 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number): 
     });
   }
 
+  const nextFreeSlotParams = {
+    dayStartMin: DEFAULT_AUTO_SCHEDULE_PARAMS.dayStartMin,
+    dayEndMin: DEFAULT_AUTO_SCHEDULE_PARAMS.dayEndMin,
+    gridMin: DEFAULT_AUTO_SCHEDULE_PARAMS.gridMin,
+    defaultDurationMin: DEFAULT_AUTO_SCHEDULE_PARAMS.defaultDurationMin,
+  };
+  const cappedConflicts = conflicts.slice(0, ROW_CAP);
+
   const agendaWork = {
     unplacedTotal: agenda.unplaced,
     conflictTotal: agenda.conflicts,
-    conflicts: buildConflictRows(conflicts, sessionById, roomNameById),
+    conflicts: buildConflictRows(conflicts, sessionById, roomNameById).map(
+      (row, idx): ConflictRow => ({
+        ...row,
+        resolution: buildConflictResolutionFor(
+          cappedConflicts[idx]!,
+          sessionById,
+          placedById,
+          placed,
+          placedRoomIds,
+          placedDays,
+          roomNameById,
+          nextFreeSlotParams,
+        ),
+      }),
+    ),
     unplaced: unplacedCappedIds.map((id): UnplacedRow => {
       const submission = acceptedById.get(id);
       if (!submission) throw new Error(`getOverviewPayload: unplaced submission ${id} not in the loaded accepted set`);
@@ -643,6 +810,14 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number): 
         title: submission.title,
         speakerName: leadSpeakerNameById.get(id) ?? "",
         durationMin: null,
+        suggestion: buildPlacementSuggestion(
+          leadSpeakerContactIdById.get(id) ?? null,
+          placed,
+          placedRoomIds,
+          placedDays,
+          roomNameById,
+          nextFreeSlotParams,
+        ),
       };
     }),
   };
@@ -680,9 +855,15 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number): 
 }
 
 /** Lead speaker (lowest participant.order among role='speaker') display
- * name per submission id, for the given bounded id set — one chunked query
- * set shared across every DEC-370 row section that needs a speaker name. */
-async function fetchLeadSpeakerNames(db: Db, submissionIds: string[]): Promise<Map<string, string>> {
+ * name AND contact id per submission id, for the given bounded id set — one
+ * chunked query set shared across every DEC-370 row section that needs a
+ * speaker name, plus DEC-652's suggestion/resolution search (which needs
+ * the contact id, not just its display name, to avoid double-booking that
+ * speaker). */
+async function fetchLeadSpeakers(
+  db: Db,
+  submissionIds: string[],
+): Promise<{ nameById: Map<string, string>; contactIdById: Map<string, string> }> {
   const rowsBySubmission = new Map<string, LeadSpeakerRow[]>();
   for (const batch of chunkIds(submissionIds)) {
     if (batch.length === 0) continue;
@@ -704,10 +885,14 @@ async function fetchLeadSpeakerNames(db: Db, submissionIds: string[]): Promise<M
       rowsBySubmission.set(r.submissionId, arr);
     }
   }
-  const out = new Map<string, string>();
+  const nameById = new Map<string, string>();
+  const contactIdById = new Map<string, string>();
   for (const [submissionId, rows] of rowsBySubmission) {
     const picked = pickLeadSpeakerPerSubmission(rows);
-    if (picked) out.set(submissionId, picked.name);
+    if (picked) {
+      nameById.set(submissionId, picked.name);
+      contactIdById.set(submissionId, picked.contactId);
+    }
   }
-  return out;
+  return { nameById, contactIdById };
 }

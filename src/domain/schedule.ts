@@ -109,6 +109,119 @@ function intersects(a: PlacedSession, b: PlacedSession): boolean {
   return a.startMin < b.endMin && b.startMin < a.endMin;
 }
 
+function intervalsOverlap(
+  a: { startMin: number; endMin: number },
+  b: { startMin: number; endMin: number },
+): boolean {
+  return a.startMin < b.endMin && b.startMin < a.endMin;
+}
+
+/** DEC-298: fail loudly on any termination-invariant violation shared by
+ * every candidate-slot scan below (autoSchedule's grid loop and
+ * nextFreeSlot's single-session scan alike). */
+function assertScheduleBounds(dayStartMin: number, dayEndMin: number, gridMin: number): void {
+  if (!Number.isInteger(gridMin) || gridMin <= 0) {
+    throw new Error(`assertScheduleBounds: gridMin must be a positive integer, got ${gridMin}`);
+  }
+  if (!Number.isInteger(dayStartMin) || !Number.isInteger(dayEndMin)) {
+    throw new Error("assertScheduleBounds: dayStartMin/dayEndMin must be integers");
+  }
+  if (dayEndMin <= dayStartMin) {
+    throw new Error(
+      `assertScheduleBounds: dayEndMin (${dayEndMin}) must exceed dayStartMin (${dayStartMin})`,
+    );
+  }
+}
+
+interface CandidateSlot {
+  day: string;
+  startMin: number;
+  endMin: number;
+  roomId: string;
+}
+
+/**
+ * DEC-652: the ONE candidate-slot scan shared by autoSchedule's per-session
+ * loop and nextFreeSlot's single-session lookup — same day/start/room
+ * ordering, same room+speaker occupancy test, so a "next free slot" the UI
+ * offers can never diverge from what autoSchedule itself would have placed.
+ * Does not mutate the given indexes — callers own committing a placement.
+ */
+function scanForFreeSlot(
+  session: { durationMin: number; speakerContactIds: string[] },
+  rooms: string[],
+  days: string[],
+  dayStartMin: number,
+  dayEndMin: number,
+  gridMin: number,
+  roomIndex: Map<string, { startMin: number; endMin: number }[]>,
+  speakerIndex: Map<string, { startMin: number; endMin: number }[]>,
+): { slot: CandidateSlot | null; sawRoomAvailableCandidate: boolean } {
+  if (rooms.length === 0 || session.durationMin > dayEndMin - dayStartMin) {
+    return { slot: null, sawRoomAvailableCandidate: false };
+  }
+
+  let sawRoomAvailableCandidate = false;
+
+  for (const day of days) {
+    for (
+      let startMin = dayStartMin;
+      startMin + session.durationMin <= dayEndMin;
+      startMin += gridMin
+    ) {
+      const endMin = startMin + session.durationMin;
+      const interval = { startMin, endMin };
+
+      for (const roomId of rooms) {
+        const roomKey = `${day}|${roomId}`;
+        const roomBucket = roomIndex.get(roomKey);
+        if (roomBucket?.some((i) => intervalsOverlap(i, interval))) continue;
+
+        sawRoomAvailableCandidate = true;
+
+        let speakerConflict = false;
+        for (const contactId of session.speakerContactIds) {
+          const speakerBucket = speakerIndex.get(`${day}|${contactId}`);
+          if (speakerBucket?.some((i) => intervalsOverlap(i, interval))) {
+            speakerConflict = true;
+            break;
+          }
+        }
+        if (speakerConflict) continue;
+
+        return { slot: { day, startMin, endMin, roomId }, sawRoomAvailableCandidate };
+      }
+    }
+  }
+
+  return { slot: null, sawRoomAvailableCandidate };
+}
+
+function buildOccupancyIndexes(existing: PlacedSession[]): {
+  roomIndex: Map<string, { startMin: number; endMin: number }[]>;
+  speakerIndex: Map<string, { startMin: number; endMin: number }[]>;
+} {
+  const roomIndex = new Map<string, { startMin: number; endMin: number }[]>();
+  const speakerIndex = new Map<string, { startMin: number; endMin: number }[]>();
+
+  for (const p of existing) {
+    if (p.roomId !== null) {
+      const key = `${p.day}|${p.roomId}`;
+      const bucket = roomIndex.get(key) ?? [];
+      bucket.push({ startMin: p.startMin, endMin: p.endMin });
+      roomIndex.set(key, bucket);
+    }
+    for (const contactId of p.speakerContactIds) {
+      const key = `${p.day}|${contactId}`;
+      const bucket = speakerIndex.get(key) ?? [];
+      bucket.push({ startMin: p.startMin, endMin: p.endMin });
+      speakerIndex.set(key, bucket);
+    }
+  }
+
+  return { roomIndex, speakerIndex };
+}
+
 /**
  * Finds room and speaker overlap conflicts across the given placed sessions.
  * Room overlap only applies when both sessions have the same non-null room.
@@ -250,22 +363,9 @@ export function autoSchedule(input: AutoScheduleInput): {
   const { sessions, rooms, days, dayStartMin, dayEndMin, gridMin, existing } =
     input;
 
-  // DEC-298: fail loudly on any termination-invariant violation. The grid
-  // scan below (startMin += gridMin) never terminates unless gridMin is a
-  // positive integer and dayEndMin exceeds dayStartMin; this assertion is
-  // the module's own guarantee against a hung isolate, independent of
-  // whatever validation an upstream caller does or forgets to do.
-  if (!Number.isInteger(gridMin) || gridMin <= 0) {
-    throw new Error(`autoSchedule: gridMin must be a positive integer, got ${gridMin}`);
-  }
-  if (!Number.isInteger(dayStartMin) || !Number.isInteger(dayEndMin)) {
-    throw new Error("autoSchedule: dayStartMin/dayEndMin must be integers");
-  }
-  if (dayEndMin <= dayStartMin) {
-    throw new Error(
-      `autoSchedule: dayEndMin (${dayEndMin}) must exceed dayStartMin (${dayStartMin})`,
-    );
-  }
+  // DEC-298: fail loudly on any termination-invariant violation — see
+  // assertScheduleBounds.
+  assertScheduleBounds(dayStartMin, dayEndMin, gridMin);
 
   const ordered = [...sessions].sort((a, b) => {
     if (b.durationMin !== a.durationMin) return b.durationMin - a.durationMin;
@@ -280,40 +380,14 @@ export function autoSchedule(input: AutoScheduleInput): {
 
   // Incremental occupancy indexes (DEC-130): avoid re-running findConflicts
   // over the full trial set for every candidate placement.
-  const roomIndex = new Map<string, { startMin: number; endMin: number }[]>();
-  const speakerIndex = new Map<
-    string,
-    { startMin: number; endMin: number }[]
-  >();
-
-  const overlaps = (
-    a: { startMin: number; endMin: number },
-    b: { startMin: number; endMin: number },
-  ): boolean => a.startMin < b.endMin && b.startMin < a.endMin;
-
-  for (const p of existing) {
-    if (p.roomId !== null) {
-      const key = `${p.day}|${p.roomId}`;
-      const bucket = roomIndex.get(key) ?? [];
-      bucket.push({ startMin: p.startMin, endMin: p.endMin });
-      roomIndex.set(key, bucket);
-    }
-    for (const contactId of p.speakerContactIds) {
-      const key = `${p.day}|${contactId}`;
-      const bucket = speakerIndex.get(key) ?? [];
-      bucket.push({ startMin: p.startMin, endMin: p.endMin });
-      speakerIndex.set(key, bucket);
-    }
-  }
+  const { roomIndex, speakerIndex } = buildOccupancyIndexes(existing);
 
   const unplaced: UnplacedSession[] = [];
 
   for (const session of ordered) {
-    let placedThisSession = false;
-
     // DEC-615: these two global conditions short-circuit the scan (matching
-    // the loop's own no-op behaviour when rooms is empty or the loop
-    // condition never holds) but earn their own named reason instead of
+    // scanForFreeSlot's own no-op behaviour when rooms is empty or the
+    // duration can never fit) but earn their own named reason instead of
     // falling through to the generic 'no_free_slot'.
     if (rooms.length === 0) {
       unplaced.push({ submissionId: session.submissionId, reason: "no_rooms_configured" });
@@ -324,78 +398,90 @@ export function autoSchedule(input: AutoScheduleInput): {
       continue;
     }
 
-    // DEC-615: true iff some candidate slot ever had a room free (i.e. the
-    // scan reached the speaker check) for this session. Once a room is
-    // free, the ONLY remaining rejection in this loop is a speaker
-    // conflict — if this session still didn't place, every room-free
-    // candidate must have been rejected specifically by the speaker
-    // index, so this single flag is enough to distinguish the two
-    // 'blocked entirely by rooms' vs 'blocked by a speaker' outcomes.
-    let sawRoomAvailableCandidate = false;
+    // DEC-615/DEC-652: the ONE candidate-slot scan, shared with
+    // nextFreeSlot — see scanForFreeSlot.
+    const { slot, sawRoomAvailableCandidate } = scanForFreeSlot(
+      session,
+      rooms,
+      days,
+      dayStartMin,
+      dayEndMin,
+      gridMin,
+      roomIndex,
+      speakerIndex,
+    );
 
-    for (const day of days) {
-      if (placedThisSession) break;
-      for (
-        let startMin = dayStartMin;
-        startMin + session.durationMin <= dayEndMin;
-        startMin += gridMin
-      ) {
-        if (placedThisSession) break;
-        const endMin = startMin + session.durationMin;
-        const interval = { startMin, endMin };
-
-        for (const roomId of rooms) {
-          const roomKey = `${day}|${roomId}`;
-          const roomBucket = roomIndex.get(roomKey);
-          if (roomBucket?.some((i) => overlaps(i, interval))) continue;
-
-          sawRoomAvailableCandidate = true;
-
-          let speakerConflict = false;
-          for (const contactId of session.speakerContactIds) {
-            const speakerBucket = speakerIndex.get(`${day}|${contactId}`);
-            if (speakerBucket?.some((i) => overlaps(i, interval))) {
-              speakerConflict = true;
-              break;
-            }
-          }
-          if (speakerConflict) continue;
-
-          const candidate: PlacedSession = {
-            submissionId: session.submissionId,
-            roomId,
-            day,
-            startMin,
-            endMin,
-            speakerContactIds: session.speakerContactIds,
-          };
-
-          placed.push(candidate);
-
-          const roomBucketForKey = roomIndex.get(roomKey) ?? [];
-          roomBucketForKey.push(interval);
-          roomIndex.set(roomKey, roomBucketForKey);
-
-          for (const contactId of session.speakerContactIds) {
-            const speakerKey = `${day}|${contactId}`;
-            const speakerBucketForKey = speakerIndex.get(speakerKey) ?? [];
-            speakerBucketForKey.push(interval);
-            speakerIndex.set(speakerKey, speakerBucketForKey);
-          }
-
-          placedThisSession = true;
-          break;
-        }
-      }
-    }
-
-    if (!placedThisSession) {
+    if (!slot) {
       unplaced.push({
         submissionId: session.submissionId,
         reason: sawRoomAvailableCandidate ? "speaker_double_booked" : "no_free_slot",
       });
+      continue;
+    }
+
+    const candidate: PlacedSession = {
+      submissionId: session.submissionId,
+      roomId: slot.roomId,
+      day: slot.day,
+      startMin: slot.startMin,
+      endMin: slot.endMin,
+      speakerContactIds: session.speakerContactIds,
+    };
+    placed.push(candidate);
+
+    const roomKey = `${slot.day}|${slot.roomId}`;
+    const roomBucketForKey = roomIndex.get(roomKey) ?? [];
+    roomBucketForKey.push({ startMin: slot.startMin, endMin: slot.endMin });
+    roomIndex.set(roomKey, roomBucketForKey);
+
+    for (const contactId of session.speakerContactIds) {
+      const speakerKey = `${slot.day}|${contactId}`;
+      const speakerBucketForKey = speakerIndex.get(speakerKey) ?? [];
+      speakerBucketForKey.push({ startMin: slot.startMin, endMin: slot.endMin });
+      speakerIndex.set(speakerKey, speakerBucketForKey);
     }
   }
 
   return { placed, unplaced };
+}
+
+export interface NextFreeSlotInput {
+  session: { durationMin: number; speakerContactIds: string[] };
+  rooms: string[];
+  days: string[];
+  dayStartMin: number;
+  dayEndMin: number;
+  gridMin: number;
+  existing: PlacedSession[];
+}
+
+/**
+ * DEC-652: the ONE place Overview §04's "Place at 11:30" / "Move DFC-047 to
+ * 11:30" suggestions are computed — reuses scanForFreeSlot, the SAME
+ * candidate-slot enumeration and room/speaker conflict test autoSchedule
+ * runs, so a suggestion the UI offers is always a slot autoSchedule itself
+ * would have chosen. `existing` should exclude the session being placed (a
+ * conflict's "later" entry moving must not see itself as an occupant).
+ * Returns null when nothing fits — the UI must never invent a time.
+ */
+export function nextFreeSlot(
+  input: NextFreeSlotInput,
+): { day: string; startMin: number; roomId: string } | null {
+  const { session, rooms, days, dayStartMin, dayEndMin, gridMin, existing } = input;
+
+  assertScheduleBounds(dayStartMin, dayEndMin, gridMin);
+
+  const { roomIndex, speakerIndex } = buildOccupancyIndexes(existing);
+  const { slot } = scanForFreeSlot(
+    session,
+    rooms,
+    days,
+    dayStartMin,
+    dayEndMin,
+    gridMin,
+    roomIndex,
+    speakerIndex,
+  );
+  if (!slot) return null;
+  return { day: slot.day, startMin: slot.startMin, roomId: slot.roomId };
 }

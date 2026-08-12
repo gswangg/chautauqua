@@ -89,6 +89,7 @@ function payload(): OverviewPayload {
             { submissionId: 'sub-3', ref: 'DFC-020', title: 'Room Clash Talk A', speakerName: 'Ada Lovelace' },
             { submissionId: 'sub-4', ref: 'DFC-021', title: 'Room Clash Talk B', speakerName: 'Grace Hopper' },
           ],
+          resolution: null,
         },
         {
           day: '2027-03-12',
@@ -100,6 +101,7 @@ function payload(): OverviewPayload {
             { submissionId: 'sub-5', ref: 'DFC-022', title: 'Speaker Clash Talk A', speakerName: 'Katherine Johnson' },
             { submissionId: 'sub-6', ref: 'DFC-023', title: 'Speaker Clash Talk B', speakerName: 'Katherine Johnson' },
           ],
+          resolution: null,
         },
       ],
       unplaced: [],
