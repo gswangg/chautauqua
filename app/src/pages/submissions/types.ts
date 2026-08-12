@@ -3,7 +3,13 @@
 // pure and unit-testable without a DOM.
 
 // DEC-003 submission status literals.
-export type SubmissionStatus = 'pending' | 'accept_queue' | 'decline_queue' | 'accepted' | 'declined';
+export type SubmissionStatus =
+  | 'pending'
+  | 'accept_queue'
+  | 'decline_queue'
+  | 'accepted'
+  | 'declined'
+  | 'waitlisted';
 
 export const SUBMISSION_STATUSES: readonly SubmissionStatus[] = [
   'pending',
@@ -11,6 +17,7 @@ export const SUBMISSION_STATUSES: readonly SubmissionStatus[] = [
   'decline_queue',
   'accepted',
   'declined',
+  'waitlisted',
 ];
 
 // Speaker-facing views never leak internal queue states (field guide); the
@@ -22,6 +29,7 @@ export const STATUS_LABELS: Record<SubmissionStatus, string> = {
   decline_queue: 'Decline queue',
   accepted: 'Accepted',
   declined: 'Declined',
+  waitlisted: 'Waitlisted',
 };
 
 export type SortOrder = 'newest' | 'oldest' | 'title' | 'ref';

@@ -14,6 +14,8 @@ import { formatRef } from "../../domain/ids";
 import type { SubmissionStatus } from "../../domain/status";
 import { ACTIVE_INVITE_STATUSES, PORTAL_VISIBLE_INVITE_STATUSES } from "../../domain/acceptance";
 import { chunkIds } from "../../lib/chunk";
+import { DEC_699 } from "../../decisions";
+void DEC_699;
 
 // ---------------------------------------------------------------------------
 // Pure helpers (no db/IO) — unit-tested directly against tiny fakes/values.
@@ -29,6 +31,7 @@ export function speakerStatusLabel(status: SubmissionStatus): SpeakerStatusLabel
     case "pending":
     case "accept_queue":
     case "decline_queue":
+    case "waitlisted":
       return "Under review";
     case "accepted":
       return "Accepted";

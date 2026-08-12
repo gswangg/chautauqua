@@ -68,6 +68,7 @@ describe("status pipeline", () => {
       "decline_queue",
       "accepted",
       "declined",
+      "waitlisted",
     ]);
   });
 
@@ -77,6 +78,7 @@ describe("status pipeline", () => {
     expect(isDecided("pending")).toBe(false);
     expect(isDecided("accept_queue")).toBe(false);
     expect(isDecided("decline_queue")).toBe(false);
+    expect(isDecided("waitlisted")).toBe(false);
   });
 
   it("fires acceptance exactly once on first entry into accepted", () => {

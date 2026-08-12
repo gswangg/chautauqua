@@ -21,11 +21,13 @@ import {
 } from './types';
 
 // DEC-577: the decision panel's status <select> becomes a segmented button
-// group -- markup surgery scoped to this page. Only the three states an
-// organiser actually DECIDES between are buttons; the pipeline's own
+// group -- markup surgery scoped to this page. Only the states an organiser
+// actually DECIDES between are buttons; the pipeline's own
 // accept_queue/decline_queue intermediate states are set elsewhere (bulk
-// worklist), never from this per-submission decision panel.
-const DECISION_STATUSES: readonly SubmissionStatus[] = ['pending', 'accepted', 'declined'];
+// worklist), never from this per-submission decision panel. DEC-699 restores
+// 'waitlisted' as a fourth decision alongside Accept/Decline (docs/design
+// 'Chautauqua Submissions.dc.html' lines 95-98, 268-272).
+const DECISION_STATUSES: readonly SubmissionStatus[] = ['pending', 'accepted', 'declined', 'waitlisted'];
 
 const INVITE_STATUS_LABELS: Record<InviteStatus, string> = {
   none: 'None',
