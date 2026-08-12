@@ -65,28 +65,30 @@ export function SessionList({
         ))}
       </div>
 
+      {/* DEC-609: four fixed columns regardless of DELIVERABLE_KINDS count —
+          Session (ref/title/speakers stacked), Deliverables (one chip per
+          kind, absent kinds shown explicitly rather than as a bare 0),
+          Content status, Actions. A kind never gets its own header/column,
+          so adding a kind can't widen the table or push counts away from
+          the session they describe. */}
       <table className="chq-table chq-content-table">
         <thead>
           <tr>
-            <th>Ref</th>
-            <th>Title</th>
-            <th>Speakers</th>
+            <th>Session</th>
+            <th>Deliverables</th>
             <th>Content status</th>
             <th>Content actions</th>
-            {DELIVERABLE_KINDS.map((kind) => (
-              <th key={kind}>{DELIVERABLE_LABELS[kind]}</th>
-            ))}
           </tr>
         </thead>
         <tbody>
           {loading && (
             <tr>
-              <td colSpan={5 + DELIVERABLE_KINDS.length}>Loading...</td>
+              <td colSpan={4}>Loading...</td>
             </tr>
           )}
           {!loading && visible.length === 0 && (
             <tr>
-              <td colSpan={5 + DELIVERABLE_KINDS.length} className="chq-empty">
+              <td colSpan={4} className="chq-empty">
                 No submissions in this view.
               </td>
             </tr>
@@ -94,9 +96,28 @@ export function SessionList({
           {!loading &&
             visible.map((item) => (
               <tr key={item.id} className="chq-content-row" onClick={() => onSelect(item.id)}>
-                <td>{item.ref}</td>
-                <td className="chq-content-row-title">{item.title}</td>
-                <td>{item.speakers.map((s) => s.name).join(', ')}</td>
+                <td className="chq-content-row-session">
+                  <div className="chq-content-row-title">
+                    {item.ref} · {item.title}
+                  </div>
+                  <div className="chq-content-row-speakers">
+                    {item.speakers.length > 0 ? item.speakers.map((s) => s.name).join(', ') : 'No speakers'}
+                  </div>
+                </td>
+                <td className="chq-content-deliverables">
+                  {DELIVERABLE_KINDS.map((kind) => {
+                    const count = item.deliverableCounts[kind];
+                    return count > 0 ? (
+                      <span key={kind} className="chq-content-deliverable-chip">
+                        {DELIVERABLE_LABELS[kind]} · {count}
+                      </span>
+                    ) : (
+                      <span key={kind} className="chq-content-deliverable-chip is-absent">
+                        {DELIVERABLE_LABELS[kind]} —
+                      </span>
+                    );
+                  })}
+                </td>
                 <td>
                   <span
                     className={
@@ -124,9 +145,6 @@ export function SessionList({
                     Ask for changes
                   </button>
                 </td>
-                {DELIVERABLE_KINDS.map((kind) => (
-                  <td key={kind}>{item.deliverableCounts[kind]}</td>
-                ))}
               </tr>
             ))}
         </tbody>

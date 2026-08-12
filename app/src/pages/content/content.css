@@ -61,6 +61,47 @@
   white-space: nowrap;
 }
 
+/* ---------------------------------------------------------------------- */
+/* w4-h: four-column worklist IA (DEC-609)                                */
+/* ---------------------------------------------------------------------- */
+
+.chq-content-row-session {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.chq-content-row-speakers {
+  font-size: 13px;
+  color: var(--chq-muted);
+}
+
+.chq-content-deliverables {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chq-content-deliverable-chip {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--chq-border);
+  border-radius: 99px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--chq-ink);
+}
+
+.chq-content-deliverable-chip.is-absent {
+  color: var(--chq-muted);
+  border-style: dashed;
+  font-weight: 500;
+}
+
+/* end w4-h block */
+
 .chq-content-pager {
   display: flex;
   align-items: center;
