@@ -238,7 +238,7 @@ export function FormsPage() {
           </div>
         </div>
 
-        <section className="chq-forms-section chq-forms-fields-section">
+        <section className="chq-forms-section">
           <div className="chq-forms-field-list-header chq-forms-section-title">
             <h2>Fields</h2>
             <button

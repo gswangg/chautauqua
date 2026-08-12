@@ -58,8 +58,8 @@
 .chq-forms-strip {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  border-top: 1px solid var(--chq-rule, #d3cfc0);
-  border-bottom: 1px solid var(--chq-rule, #d3cfc0);
+  border-top: 1px solid var(--chq-rule);
+  border-bottom: 1px solid var(--chq-rule);
 }
 
 .chq-forms-strip-cell {
@@ -67,7 +67,7 @@
   flex-direction: column;
   gap: 2px;
   padding: 13px 14px;
-  border-left: 1px solid var(--chq-rule, #d3cfc0);
+  border-left: 1px solid var(--chq-rule);
 }
 
 .chq-forms-strip-cell:first-child {
@@ -88,6 +88,10 @@
   font-size: 22px;
   font-weight: 400;
   line-height: 1.2;
+}
+
+.chq-forms-section {
+  display: block;
 }
 
 .chq-forms-section-title {
