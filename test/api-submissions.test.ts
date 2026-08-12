@@ -214,6 +214,7 @@ describe("listSubmissions: one paginated statement for q+trackId (DEC-333/335)",
       [], // participant enrichment
       [], // submission_track enrichment
       [], // deliverable-count enrichment (DEC-341)
+      [], // latestFile candidate enrichment (w15-f)
     ];
     const db = makeFakeDb(responses);
 
@@ -228,8 +229,8 @@ describe("listSubmissions: one paginated statement for q+trackId (DEC-333/335)",
       includeAnswers: false,
     });
 
-    // Exactly 6 db.select() calls total: 3 core + 3 enrichment batches.
-    expect(db.calls.length).toBe(6);
+    // Exactly 7 db.select() calls total: 3 core + 4 enrichment batches.
+    expect(db.calls.length).toBe(7);
     expect(result.total).toBe(1);
     expect(result.items[0]!.id).toBe("sub-1");
 
@@ -512,7 +513,8 @@ describe("GET /api/v1/events/:eventId/submissions?includeAnswers=1 (DEC-243 answ
     // (assertEventOwnership), 2) event lookup for recordPrefix, 3) total
     // count, 4) page rows, 5) participant enrichment, 6) track enrichment,
     // 7) answer enrichment (only fetched when includeAnswers=1), 8)
-    // deliverable-count enrichment (DEC-341).
+    // deliverable-count enrichment (DEC-341), 9) latestFile candidate
+    // enrichment (w15-f).
     const db = chain([
       [{ orgId: ORG_A }],
       [{ recordPrefix: "TALK" }],
@@ -521,6 +523,7 @@ describe("GET /api/v1/events/:eventId/submissions?includeAnswers=1 (DEC-243 answ
       [],
       [],
       [{ submissionId: "sub-1", formFieldId: "field-format", valueJson: JSON.stringify("Workshop") }],
+      [],
       [],
     ]);
     const app = appWithDb(db, ORGANIZER_A);
@@ -561,6 +564,7 @@ describe("GET /api/v1/events/:eventId/submissions?includeAnswers=1 (DEC-243 answ
       [],
       // no answers response: includeAnswers=false skips the answers query
       [], // deliverable-count enrichment (DEC-341)
+      [], // latestFile candidate enrichment (w15-f)
     ]);
     const app = appWithDb(db, ORGANIZER_A);
 

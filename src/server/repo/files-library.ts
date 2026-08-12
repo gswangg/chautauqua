@@ -68,7 +68,7 @@ export interface EventDeliverableChainPage {
   perPage: number;
 }
 
-interface DeliverableFileRow {
+export interface DeliverableFileRow {
   id: string;
   submissionId: string;
   kind: string;
@@ -82,8 +82,11 @@ interface DeliverableFileRow {
 /** Follows previous_file_id links to find the oldest ancestor ('root') of
  * `fileId` within `byId` — used to group a submission's files into version
  * chains. Bounded by the number of files loaded into `byId` (never the
- * whole event, per DEC-344), so a plain loop rather than a recursive CTE. */
-function findRoot(fileId: string, byId: Map<string, DeliverableFileRow>): string {
+ * whole event, per DEC-344), so a plain loop rather than a recursive CTE.
+ * Exported so other page-scoped hydration passes (e.g. the submissions list's
+ * latestFile field) reuse this chain-grouping logic rather than re-deriving
+ * it (DEC-686/DEC-344). */
+export function findRoot(fileId: string, byId: Map<string, DeliverableFileRow>): string {
   let current = byId.get(fileId);
   if (!current) throw new Error(`findRoot: file ${fileId} not in the loaded set`);
   const visited = new Set<string>([fileId]);

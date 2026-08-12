@@ -1,12 +1,7 @@
-import {
-  CONTENT_STATUS_LABELS,
-  FILE_KINDS,
-  DELIVERABLE_LABELS,
-  type ContentStatus,
-  type ContentSubmissionListItem,
-} from './types';
+import { CONTENT_STATUS_LABELS, type ContentStatus, type ContentSubmissionListItem } from './types';
 import { WORKLIST_TABS, type WorklistTab } from './worklist';
 import { DelayedLoading } from '../../components/DelayedLoading';
+import { formatDate } from '../../lib/dates';
 
 export const TAB_LABELS: Record<WorklistTab, string> = {
   all: 'All',
@@ -71,90 +66,92 @@ export function SessionList({
         ))}
       </div>
 
-      {/* DEC-609: four fixed columns regardless of FILE_KINDS count —
-          Session (ref/title/speakers stacked), Deliverables (one chip per
-          kind, absent kinds shown explicitly rather than as a bare 0),
-          Content status, Actions. A kind never gets its own header/column,
-          so adding a kind can't widen the table or push counts away from
-          the session they describe. */}
+      {/* v4 mock IA (docs/design/Chautauqua Content.dc.html, DEC-692): five
+          columns — Session, Speaker, Latest file, Status, actions. 'Ask for
+          changes' moved off this row onto the deliverable-detail screen
+          (docs/design/README.md); the row keeps only Approve + Open, Open
+          selecting the submission the same way the row click already does. */}
       <table className="chq-table chq-content-table">
         <thead>
           <tr>
             <th>Session</th>
-            <th>Deliverables</th>
-            <th>Content status</th>
-            <th>Content actions</th>
+            <th>Speaker</th>
+            <th>Latest file</th>
+            <th>Status</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
           {loading && (
             <tr>
-              <td colSpan={4}>
+              <td colSpan={5}>
                 <DelayedLoading />
               </td>
             </tr>
           )}
           {loaded && !loading && visible.length === 0 && (
             <tr>
-              <td colSpan={4} className="chq-empty">
+              <td colSpan={5} className="chq-empty">
                 No submissions in this view.
               </td>
             </tr>
           )}
           {!loading &&
-            visible.map((item) => (
-              <tr key={item.id} className="chq-content-row" onClick={() => onSelect(item.id)}>
-                <td className="chq-content-row-session">
-                  <div className="chq-content-row-title">
-                    {item.ref} · {item.title}
-                  </div>
-                  <div className="chq-content-row-speakers">
-                    {item.speakers.length > 0 ? item.speakers.map((s) => s.name).join(', ') : 'No speakers'}
-                  </div>
-                </td>
-                <td className="chq-content-deliverables">
-                  {FILE_KINDS.map((kind) => {
-                    const count = item.deliverableCounts[kind];
-                    return count > 0 ? (
-                      <span key={kind} className="chq-content-deliverable-chip">
-                        {DELIVERABLE_LABELS[kind]} · {count}
-                      </span>
+            visible.map((item) => {
+              const [firstSpeaker, ...restSpeakers] = item.speakers;
+              return (
+                <tr key={item.id} className="chq-content-row" onClick={() => onSelect(item.id)}>
+                  <td className="chq-content-row-session">
+                    <div className="chq-content-row-title">{item.title}</div>
+                    <div className="chq-content-row-ref">{item.ref}</div>
+                  </td>
+                  <td className="chq-content-row-speaker">
+                    {firstSpeaker ? (
+                      <>
+                        {firstSpeaker.name}
+                        {restSpeakers.length > 0 ? ` +${restSpeakers.length}` : ''}
+                      </>
                     ) : (
-                      <span key={kind} className="chq-content-deliverable-chip is-absent">
-                        {DELIVERABLE_LABELS[kind]} —
-                      </span>
-                    );
-                  })}
-                </td>
-                <td>
-                  <span
-                    className={
-                      item.contentStatus === 'changes_requested' ? 'chq-flag' : 'chq-flag chq-content-status-muted'
-                    }
-                  >
-                    {CONTENT_STATUS_LABELS[item.contentStatus]}
-                  </span>
-                </td>
-                <td onClick={(e) => e.stopPropagation()} className="chq-content-actions">
-                  <button
-                    type="button"
-                    className="chq-btn chq-btn-primary"
-                    disabled={item.contentStatus === 'approved'}
-                    onClick={() => onContentStatusChange(item.id, 'approved')}
-                  >
-                    Approve
-                  </button>
-                  <button
-                    type="button"
-                    className="chq-btn chq-btn-secondary"
-                    disabled={item.contentStatus === 'changes_requested'}
-                    onClick={() => onContentStatusChange(item.id, 'changes_requested')}
-                  >
-                    Ask for changes
-                  </button>
-                </td>
-              </tr>
-            ))}
+                      'No speakers'
+                    )}
+                  </td>
+                  <td className="chq-content-row-latest-file">
+                    {item.latestFile ? (
+                      <>
+                        <div className="chq-content-latest-file-name">
+                          {item.latestFile.filename} · v{item.latestFile.versionCount}
+                        </div>
+                        <div className="chq-content-latest-file-date">{formatDate(item.latestFile.uploadedAt)}</div>
+                      </>
+                    ) : (
+                      <span className="chq-content-latest-file-empty">No files yet</span>
+                    )}
+                  </td>
+                  <td>
+                    <span
+                      className={
+                        item.contentStatus === 'changes_requested' ? 'chq-flag' : 'chq-flag chq-content-status-muted'
+                      }
+                    >
+                      {CONTENT_STATUS_LABELS[item.contentStatus]}
+                    </span>
+                  </td>
+                  <td onClick={(e) => e.stopPropagation()} className="chq-content-actions">
+                    <button
+                      type="button"
+                      className="chq-btn chq-btn-primary"
+                      disabled={item.contentStatus === 'approved'}
+                      onClick={() => onContentStatusChange(item.id, 'approved')}
+                    >
+                      Approve
+                    </button>
+                    <button type="button" className="chq-btn chq-btn-secondary" onClick={() => onSelect(item.id)}>
+                      Open
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
         </tbody>
       </table>
 

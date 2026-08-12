@@ -1,8 +1,10 @@
-// w4-h: DEC-609 four-column worklist IA. Locks in that the table renders
-// exactly four columns regardless of DELIVERABLE_KINDS count, that the
-// Session cell stacks ref/title/speakers, that deliverable chips carry the
-// kind's LABEL and count, and that a zero-count kind renders an explicit
-// absent chip rather than a bare "0".
+// w15-f: v4 mock worklist IA (DEC-692). Locks in that the table renders
+// exactly five columns (Session, Speaker, Latest file, Status, actions),
+// that the Session cell stacks title/ref, that the Speaker cell shows the
+// first speaker plus a '+N' overflow count, that the Latest file cell
+// renders 'filename · vN · date' or an honest 'No files yet' empty state,
+// and that the row's actions are Approve + Open only (no per-row 'Ask for
+// changes' — that action moved to the deliverable-detail screen).
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
@@ -23,14 +25,15 @@ const baseItem: ContentSubmissionListItem = {
     { contactId: 'c2', name: 'Grace Hopper' },
   ],
   deliverableCounts: { presentation: 2, poster: 0, handout: 1 },
+  latestFile: { filename: 'slides.pdf', kind: 'presentation', versionCount: 2, uploadedAt: 1700000000000 },
 };
 
 function noop() {
   // intentionally unused in these render assertions
 }
 
-describe('SessionList: DEC-609 four-column IA', () => {
-  it('renders exactly four column headers', () => {
+describe('SessionList: v4 mock five-column IA (DEC-692)', () => {
+  it('renders exactly five column headers', () => {
     render(
       <SessionList
         items={[baseItem]}
@@ -48,10 +51,10 @@ describe('SessionList: DEC-609 four-column IA', () => {
     );
 
     const headers = screen.getAllByRole('columnheader').map((h) => h.textContent);
-    expect(headers).toEqual(['Session', 'Deliverables', 'Content status', 'Content actions']);
+    expect(headers).toEqual(['Session', 'Speaker', 'Latest file', 'Status', '']);
   });
 
-  it('stacks ref, title and speaker names in the Session cell', () => {
+  it('stacks title and ref in the Session cell', () => {
     const { container } = render(
       <SessionList
         items={[baseItem]}
@@ -70,12 +73,11 @@ describe('SessionList: DEC-609 four-column IA', () => {
 
     const row = container.querySelector('tr.chq-content-row');
     expect(row).not.toBeNull();
-    expect(row).toHaveTextContent('S-001');
     expect(row).toHaveTextContent('A Talk About Testing');
-    expect(row).toHaveTextContent('Ada Lovelace, Grace Hopper');
+    expect(row!.querySelector('.chq-content-row-ref')).toHaveTextContent('S-001');
   });
 
-  it('renders one labelled chip per kind with uploads, and an explicit absent chip for a zero-count kind', () => {
+  it('renders the first speaker plus a +N overflow count', () => {
     const { container } = render(
       <SessionList
         items={[baseItem]}
@@ -92,20 +94,114 @@ describe('SessionList: DEC-609 four-column IA', () => {
       />,
     );
 
-    const row = container.querySelector('tr.chq-content-row');
-    if (!row) throw new Error('row not found');
-    const chips = Array.from(row.querySelectorAll('.chq-content-deliverable-chip'));
-    expect(chips).toHaveLength(3);
+    const speakerCell = container.querySelector('.chq-content-row-speaker');
+    expect(speakerCell).toHaveTextContent('Ada Lovelace +1');
+  });
 
-    const byLabel = Object.fromEntries(chips.map((c) => [c.textContent, c]));
-    expect(byLabel['Presentation · 2']).toBeDefined();
-    expect(byLabel['Presentation · 2']).not.toHaveClass('is-absent');
-    expect(byLabel['Handout · 1']).toBeDefined();
-    expect(byLabel['Handout · 1']).not.toHaveClass('is-absent');
+  it("renders 'No speakers' when the submission has none", () => {
+    const { container } = render(
+      <SessionList
+        items={[{ ...baseItem, speakers: [] }]}
+        tab="all"
+        onTabChange={noop}
+        onSelect={noop}
+        loading={false}
+        loaded={true}
+        onContentStatusChange={noop}
+        total={1}
+        page={1}
+        perPage={20}
+        onPageChange={noop}
+      />,
+    );
 
-    const posterChip = chips.find((c) => c.textContent?.startsWith('Poster'));
-    expect(posterChip).toBeDefined();
-    expect(posterChip).toHaveClass('is-absent');
-    expect(posterChip?.textContent).not.toMatch(/\b0\b/);
+    const speakerCell = container.querySelector('.chq-content-row-speaker');
+    expect(speakerCell).toHaveTextContent('No speakers');
+  });
+
+  it('renders the latest file name, version and date', () => {
+    const { container } = render(
+      <SessionList
+        items={[baseItem]}
+        tab="all"
+        onTabChange={noop}
+        onSelect={noop}
+        loading={false}
+        loaded={true}
+        onContentStatusChange={noop}
+        total={1}
+        page={1}
+        perPage={20}
+        onPageChange={noop}
+      />,
+    );
+
+    const cell = container.querySelector('.chq-content-row-latest-file');
+    expect(cell).toHaveTextContent('slides.pdf · v2');
+  });
+
+  it("renders an honest 'No files yet' empty state when latestFile is null", () => {
+    const { container } = render(
+      <SessionList
+        items={[{ ...baseItem, latestFile: null }]}
+        tab="all"
+        onTabChange={noop}
+        onSelect={noop}
+        loading={false}
+        loaded={true}
+        onContentStatusChange={noop}
+        total={1}
+        page={1}
+        perPage={20}
+        onPageChange={noop}
+      />,
+    );
+
+    const cell = container.querySelector('.chq-content-row-latest-file');
+    expect(cell).toHaveTextContent('No files yet');
+  });
+
+  it('renders only Approve and Open row actions (no per-row "Ask for changes")', () => {
+    render(
+      <SessionList
+        items={[baseItem]}
+        tab="all"
+        onTabChange={noop}
+        onSelect={noop}
+        loading={false}
+        loaded={true}
+        onContentStatusChange={noop}
+        total={1}
+        page={1}
+        perPage={20}
+        onPageChange={noop}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: 'Approve' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Open' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Ask for changes' })).not.toBeInTheDocument();
+  });
+
+  it('Open selects the submission the same way the row click does', () => {
+    const onSelect = vi.fn();
+    render(
+      <SessionList
+        items={[baseItem]}
+        tab="all"
+        onTabChange={noop}
+        onSelect={onSelect}
+        loading={false}
+        loaded={true}
+        onContentStatusChange={noop}
+        total={1}
+        page={1}
+        perPage={20}
+        onPageChange={noop}
+      />,
+    );
+
+    screen.getByRole('button', { name: 'Open' }).click();
+    expect(onSelect).toHaveBeenCalledWith('sub-1');
   });
 });
