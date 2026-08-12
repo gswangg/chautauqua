@@ -188,3 +188,15 @@ CNT 52% · AIA 88% · EMB 72% · CRM 76% (of judged weight).
    squeezed table rows, not the mock's cards with Accept / Decline / Read actions;
    no fixed footer. Rebuild this view to the mock (`02-submissions--01` frame), same
    priority class as the portal rebuild.
+
+## APPENDED: user manual-QA — CFP form builder (2026-08-12) — ELEVATE TO TIER 2
+
+7. **The CFP form builder diverges structurally from the mock — rebuild, don't tweak**
+   (user-confirmed on prod: "very different"). Target = `02-submissions--04` frame +
+   its phone twin: breadcrumb ("Submissions / CFP form"), received-count strip, the
+   QUESTION LIST as the page's primary content (flat rows with drag handles: label,
+   kind, required, condition — not a spreadsheet table below a settings card),
+   Preview button, styled date controls (not native), phone variant with Save/Preview
+   fixed footer. Current page leads with a "01 — SETTINGS" card and buries the fields
+   editor below the fold. Same priority class as the portal and submissions-phone
+   rebuilds.
