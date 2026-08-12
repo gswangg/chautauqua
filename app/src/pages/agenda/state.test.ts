@@ -101,7 +101,16 @@ describe('reconcileConflictsSummary', () => {
   it('replaces conflicts and summary, leaving placement arrays untouched', () => {
     const state = basePayload();
     const next = reconcileConflictsSummary(state, {
-      conflicts: [{ kind: 'room_overlap', submissionIds: ['sub-1', 'sub-2'], detail: 'double-booked' }],
+      conflicts: [
+        {
+          kind: 'room_overlap',
+          submissionIds: ['sub-1', 'sub-2'],
+          day: '2026-09-01',
+          roomId: 'room-1',
+          speakerContactIds: [],
+          detail: 'double-booked',
+        },
+      ],
       summary: { unplaced: 0, conflicts: 1 },
     });
     expect(next.conflicts).toHaveLength(1);

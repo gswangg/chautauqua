@@ -370,7 +370,16 @@ const AGENDA_PAYLOAD = {
       speakers: [],
     },
   ],
-  conflicts: [{ kind: "room_overlap", submissionIds: ["sub-1", "sub-2"], detail: "overlap" }],
+  conflicts: [
+    {
+      kind: "room_overlap",
+      submissionIds: ["sub-1", "sub-2"],
+      day: "2026-09-01",
+      roomId: "room-1",
+      speakerContactIds: [],
+      detail: "overlap",
+    },
+  ],
   summary: { unplaced: 1, conflicts: 1 },
 };
 

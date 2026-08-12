@@ -24,7 +24,39 @@ export interface PlacedSession {
 export interface Conflict {
   kind: "room_overlap" | "speaker_overlap";
   submissionIds: [string, string];
-  detail: string;
+  day: string;
+  roomId: string | null;
+  speakerContactIds: string[];
+}
+
+/** DEC-557: label lookups used by describeConflict to render a Conflict as
+ * prose. An unresolved id falls back to the raw id rather than blanking. */
+export interface ConflictLabels {
+  roomNameById: Map<string, string>;
+  titleBySubmissionId: Map<string, string>;
+  speakerNameByContactId: Map<string, string>;
+}
+
+/** DEC-557: the ONE place a Conflict becomes human-readable prose. Never
+ * emits a raw id when the corresponding label map resolves it. */
+export function describeConflict(c: Conflict, labels: ConflictLabels): string {
+  const titleA =
+    labels.titleBySubmissionId.get(c.submissionIds[0]) ?? c.submissionIds[0];
+  const titleB =
+    labels.titleBySubmissionId.get(c.submissionIds[1]) ?? c.submissionIds[1];
+
+  if (c.kind === "room_overlap") {
+    const roomName =
+      (c.roomId !== null ? labels.roomNameById.get(c.roomId) : undefined) ??
+      c.roomId ??
+      "unknown room";
+    return `Room "${roomName}" double-booked on ${c.day} between "${titleA}" and "${titleB}"`;
+  }
+
+  const speakerNames = c.speakerContactIds.map(
+    (id) => labels.speakerNameByContactId.get(id) ?? id,
+  );
+  return `Speaker(s) ${speakerNames.join(", ")} double-booked on ${c.day} between "${titleA}" and "${titleB}"`;
 }
 
 function intersects(a: PlacedSession, b: PlacedSession): boolean {
@@ -103,7 +135,9 @@ export function findConflicts(placed: PlacedSession[]): Conflict[] {
       conflicts.push({
         kind: "room_overlap",
         submissionIds: [a.submissionId, b.submissionId],
-        detail: `Room "${a.roomId}" double-booked on ${a.day} between submissions ${a.submissionId} and ${b.submissionId}`,
+        day: a.day,
+        roomId: a.roomId,
+        speakerContactIds: [],
       });
     }
 
@@ -114,7 +148,9 @@ export function findConflicts(placed: PlacedSession[]): Conflict[] {
       conflicts.push({
         kind: "speaker_overlap",
         submissionIds: [a.submissionId, b.submissionId],
-        detail: `Speaker(s) ${sharedSpeakers.join(", ")} double-booked on ${a.day} between submissions ${a.submissionId} and ${b.submissionId}`,
+        day: a.day,
+        roomId: null,
+        speakerContactIds: sharedSpeakers,
       });
     }
   }
