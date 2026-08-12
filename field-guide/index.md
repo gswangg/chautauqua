@@ -17,44 +17,45 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   email rule via findAccountUserId; universal rows graded from ENUMERATION
   never sample; pagination ONE shape `page?:{limit,offset}`+count*+`id asc`;
   a cap the UI can't see LIES, render `total`; atomic SQL beats
-  read-then-write; event-clock strings carry their event's tz; hand-listed
-  manifests desync -- enumerate in a test; date-only field is a DAY
-  LABEL; conditional visibility is a FIXED POINT; offset-paged ORDER BY
-  ends in a unique column; hand-copied vocabularies drift -- IMPORT
-  them; a uniqueIndex is a CONTRACT; a cron has no request -- own origin
-  entry point that THROWS; a `position`/`order` column nobody sets on
-  create is dead -- assign max+1 INSIDE the insert; a nullable column
-  inside a NEGATED set predicate (NOT IN/!=) silently skips NULL rows;
-  two functions claiming "the same semantics" END in the same helper.
+  read-then-write; hand-listed manifests desync -- enumerate in a test;
+  conditional visibility is a FIXED POINT; hand-copied vocabularies
+  drift -- IMPORT them; a uniqueIndex is a CONTRACT; a cron has no
+  request -- own origin entry point that THROWS; a `position`/`order`
+  column nobody sets on create is dead -- assign max+1 INSIDE the
+  insert; a nullable column inside a NEGATED set predicate (NOT IN/!=)
+  silently skips NULL rows; two functions claiming "the same semantics"
+  END in the same helper.
 - FINDINGS w1-2 (DEC-570..590, compacted): full suites SERIALIZED via
   with-test-lock.sh, workers run TARGETED tests; verify before trust --
   read main first. Real <button> not `div draggable`; colour alone
   isn't track identity -- NAME it. Fan-out with no count is a hidden
-  cap: preview/queue END in one predicate builder. Comment thread
-  belongs to the version CHAIN. Upload-that-navigates DISCARDS the
-  form; blank CSV cell is ABSENT DATA. `flex:1;min-height:0;overflow-y:
-  auto` beats guessed padding. Drill-in resolves its own subject;
-  fidelity report is OBSERVATION, not spec. GET / is an ANONYMOUS hub,
-  stranger-visible is a PURE predicate (home-hub.ts). Credentials
-  copied by hand drift -- IMPORT, assert against fixture. SSR can't
-  know viewport: phone layout is a SECOND markup via display:none;
-  mirrored inputs must MIRROR. ONE stylesheet per layer: THEME_CSS
-  (SSR)/styles.css (SPA) own bare controls. A ratio whose num/denom
-  count different KINDS is false. Branch against a copied-wrong
-  vocabulary never fires -- import the label.
-- FINDINGS w3 (DEC-591..601): the seed has ONE clock -- SEED_NOW,
-  every instant an offset from it, and a loud assert when the demo's
-  own event has already happened. A value with no column is an ANSWER:
-  name its field id once (SESSION_FORMAT_FIELD_ID) and import it, seed
-  included. Two renderings of one person must not disagree about which
-  facts a person has -- one card, two layouts. A query param that
-  parses and then no-ops is the same lie as a hidden cap: honor it in
-  BOTH the HTML and the .json twin, or delete it; and an embed whose
-  links leave the iframe is not an embed. A count taken at the wrong
-  gate is not a count -- publish reports through the PUBLIC visibility
-  predicate, never through placement, and names what it held back.
-  Anonymity is the plan's fact, decided server-side, never the
-  renderer's. `?? 'Unknown'` in a component is the SERVER forgetting to
-  resolve a name. A phone block with no desktop `display:none` renders
-  TWICE. And a defect report can be wrong: 'Pending' vs 'Under review'
-  is deliberate (DEC-600) -- the speaker must never see the queue.
+  cap: preview/queue END in one predicate builder. Upload-that-navigates
+  DISCARDS the form; blank CSV cell is ABSENT DATA. SSR can't know
+  viewport: phone layout is a SECOND markup via display:none, mirrored
+  inputs MIRROR. ONE stylesheet per layer owns bare controls. A ratio
+  whose num/denom count different KINDS is false.
+- FINDINGS w3 (DEC-591..601, compacted): seed has ONE clock -- SEED_NOW,
+  every instant an offset from it, loud assert if the demo's own event
+  already happened. A value with no column is an ANSWER: name its field
+  id once and import it, seed included. Two renderings of one person
+  must not disagree which facts they have -- one card, two layouts. A
+  query param that parses and no-ops is a hidden cap: honor it in BOTH
+  HTML and .json twin, or delete it; embed links must stay in the
+  iframe. A count taken at the wrong gate isn't a count -- publish
+  through the PUBLIC visibility predicate, name what it held back.
+  Anonymity is server-side, never the renderer's. `?? 'Unknown'` is the
+  SERVER forgetting to resolve a name. A phone block needs desktop
+  `display:none` or it renders TWICE. 'Pending' vs 'Under review' is
+  deliberate (DEC-600) -- speaker must never see the queue.
+- FINDINGS w4 (DEC-602..611): verify the DEFECT, not the report -- three
+  mandate items were already fixed in main. A grid slot has a FIXED
+  height: clip to it, nothing interactive inside, label the gutter from
+  the SAME row map the blocks use. /agenda is the grid; /schedule is
+  the LIST (EMB-09) at every width. A send is a batch at one recipient
+  too -- group by COALESCE(batch_id, id) or NULL rows vanish; id minted
+  ONCE per fan-out. Version CHAIN is speaker-visible; a file id in a
+  URL is never proof of ownership -- walk it to the root. Speaker-side
+  writes must never touch someone else's contact row. A copy can FAIL:
+  say so, reveal the text. A route belonging to another role is neither
+  a 404 nor a blank <main> -- every role subtree ENDS in a catch-all.
+  Never print a total you did not count; never guess a slug you can read.
