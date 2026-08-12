@@ -189,4 +189,34 @@ export const PUBLIC_CSS = `
     color: var(--chq-ink-2);
   }
   .chq-pub-itinerary-cta[aria-disabled=true] { opacity: 0.5; pointer-events: none; }
+
+  /* DEC-385: single phone switch shared by every stylesheet. Collapses
+     the header/main gutters, stacks the session row's when/room line
+     above the title instead of a fixed 126px column, and keeps the
+     agenda day grid scrolling inside its own box rather than widening
+     the document. */
+  @media (max-width: 700px) {
+    .chq-pub-header { padding: 16px; }
+    main.chq-pub-main { padding: 16px; }
+    .chq-pub-header-title { font-size: 25px; }
+    .chq-pub-session-row {
+      grid-template-columns: 1fr;
+      gap: 6px;
+    }
+    .chq-pub-session-when {
+      flex-direction: row;
+      gap: 8px;
+      align-items: baseline;
+      order: -1;
+    }
+    .chq-pub-speaker-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
+    .chq-pub-session-action {
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .chq-pub-itinerary-cta { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
+    .chq-pub-agenda-day-scroll { max-width: 100%; }
+  }
 `;
