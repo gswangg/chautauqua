@@ -67,6 +67,36 @@
 }
 
 /* ---------------------------------------------------------------------- */
+/* Compose steps 1-2: recipient picker / template editor (w8-b)           */
+/* ---------------------------------------------------------------------- */
+
+.chq-comms-status-filter-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--chq-ink-2);
+}
+
+.chq-comms-template-label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 14px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--chq-muted);
+}
+
+.chq-comms-template-actions {
+  display: flex;
+  gap: 9px;
+  padding-top: 14px;
+}
+
+/* ---------------------------------------------------------------------- */
 /* Compose step 3: recipients / attachments / preview                     */
 /* ---------------------------------------------------------------------- */
 
@@ -350,6 +380,41 @@
   .chq-comms-templates-table td {
     padding: 2px 0;
     border: none;
+  }
+
+  /* Compose step-1 submission picker: same CSS-only table-to-card treatment
+     (thead hidden, tr becomes a card) — no cell is hidden, so each cell
+     carries a data-label attribute (from ComposeWizard.tsx) surfaced via
+     td::before, matching DEC-386's ambiguous-cell pattern. */
+  .chq-comms-compose-table thead {
+    display: none;
+  }
+
+  .chq-comms-compose-table,
+  .chq-comms-compose-table tbody,
+  .chq-comms-compose-table tr,
+  .chq-comms-compose-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .chq-comms-compose-table tr {
+    padding: 10px 0;
+    border-bottom: 1px solid var(--chq-hairline);
+  }
+
+  .chq-comms-compose-table td {
+    padding: 4px 0;
+    border: none;
+  }
+
+  .chq-comms-compose-table td[data-label]::before {
+    content: attr(data-label) ': ';
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--chq-muted);
   }
 
   /* Template editor: merge-field chip strip wraps (chq-pill already gets

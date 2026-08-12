@@ -258,19 +258,27 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
 
       {step === 'select' && (
         <section>
-          <h2>1. Pick submissions</h2>
+          <div className="chq-section-head">
+            <span className="chq-section-label">1. Pick submissions</span>
+          </div>
           <div className="chq-status-filter">
             {SUBMISSION_STATUSES.map((status) => (
-              <label key={status}>
-                <input type="checkbox" checked={statusFilter.includes(status)} onChange={() => toggleStatus(status)} />
+              <label key={status} className="chq-comms-status-filter-item">
+                <input
+                  type="checkbox"
+                  className="chq-check"
+                  checked={statusFilter.includes(status)}
+                  onChange={() => toggleStatus(status)}
+                />
                 {STATUS_LABELS[status]}
               </label>
             ))}
           </div>
-          <label>
+          <label className="chq-comms-template-label">
             Search
             <input
               type="text"
+              className="chq-input"
               value={q}
               onChange={(e) => handleSearchChange(e.target.value)}
               placeholder="Search submissions"
@@ -278,7 +286,7 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
           </label>
 
           {loadingSubmissions && <p>Loading submissions...</p>}
-          <table className="chq-compose-submissions-table">
+          <table className="chq-table chq-comms-compose-table">
             <thead>
               <tr>
                 <th />
@@ -290,17 +298,18 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
             <tbody>
               {submissions.map((s) => (
                 <tr key={s.id}>
-                  <td>
+                  <td data-label="Select">
                     <input
                       type="checkbox"
+                      className="chq-check"
                       checked={selectedIds.has(s.id)}
                       onChange={() => toggleSubmission(s.id)}
                       aria-label={`Select ${s.title}`}
                     />
                   </td>
-                  <td>{s.title}</td>
-                  <td>{s.speakers.map((sp) => sp.name).join(', ')}</td>
-                  <td>{STATUS_LABELS[s.status]}</td>
+                  <td data-label="Title">{s.title}</td>
+                  <td data-label="Speakers">{s.speakers.map((sp) => sp.name).join(', ')}</td>
+                  <td data-label="Status">{STATUS_LABELS[s.status]}</td>
                 </tr>
               ))}
               {!loadingSubmissions && submissions.length === 0 && (
@@ -315,15 +324,30 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
             <span>
               Showing {rangeStart}-{rangeEnd} of {total}
             </span>
-            <button type="button" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1}>
+            <button
+              type="button"
+              className="chq-btn chq-btn-secondary"
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page <= 1}
+            >
               Previous
             </button>
-            <button type="button" onClick={() => setPage((p) => p + 1)} disabled={page * PER_PAGE >= total}>
+            <button
+              type="button"
+              className="chq-btn chq-btn-secondary"
+              onClick={() => setPage((p) => p + 1)}
+              disabled={page * PER_PAGE >= total}
+            >
               Next
             </button>
           </div>
 
-          <button type="button" disabled={selectedIds.size === 0} onClick={() => setStep('template')}>
+          <button
+            type="button"
+            className="chq-btn chq-btn-primary"
+            disabled={selectedIds.size === 0}
+            onClick={() => setStep('template')}
+          >
             Next: choose template ({selectedIds.size} submission{selectedIds.size === 1 ? '' : 's'} selected)
           </button>
         </section>
@@ -331,10 +355,13 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
 
       {step === 'template' && (
         <section>
-          <h2>2. Pick or edit a template</h2>
-          <label>
+          <div className="chq-section-head">
+            <span className="chq-section-label">2. Pick or edit a template</span>
+          </div>
+          <label className="chq-comms-template-label">
             Template
             <select
+              className="chq-select"
               value={templateId}
               onChange={(e) => {
                 const id = e.target.value;
@@ -357,20 +384,25 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
               ))}
             </select>
           </label>
-          <label>
+          <label className="chq-comms-template-label">
             Subject
-            <input value={subject} onChange={(e) => setSubject(e.target.value)} />
+            <input className="chq-input" value={subject} onChange={(e) => setSubject(e.target.value)} />
           </label>
-          <label>
+          <label className="chq-comms-template-label">
             Body
-            <textarea rows={8} value={bodyText} onChange={(e) => setBodyText(e.target.value)} />
+            <textarea className="chq-textarea" rows={8} value={bodyText} onChange={(e) => setBodyText(e.target.value)} />
           </label>
 
-          <div>
-            <button type="button" onClick={() => setStep('select')}>
+          <div className="chq-comms-template-actions">
+            <button type="button" className="chq-btn chq-btn-secondary" onClick={() => setStep('select')}>
               Back
             </button>
-            <button type="button" disabled={busy || (!templateId && (!subject || !bodyText))} onClick={() => runPreview()}>
+            <button
+              type="button"
+              className="chq-btn chq-btn-primary"
+              disabled={busy || (!templateId && (!subject || !bodyText))}
+              onClick={() => runPreview()}
+            >
               Next: preview
             </button>
           </div>
@@ -467,9 +499,11 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
 
       {step === 'sent' && (
         <section>
-          <h2>Sent</h2>
+          <div className="chq-section-head">
+            <span className="chq-section-label">Sent</span>
+          </div>
           <p>Sent {sentCount} email{sentCount === 1 ? '' : 's'}.</p>
-          <button type="button" onClick={reset}>
+          <button type="button" className="chq-btn chq-btn-primary" onClick={reset}>
             Compose another
           </button>
         </section>
