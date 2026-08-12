@@ -20,7 +20,13 @@ import './contacts-panels.css';
 
 export function PipelineBoard() {
   const [entries, setEntries] = useState<PipelineEntry[]>([]);
+  // DEC-468: the server caps a page at 200 rows -- `total` is the envelope's
+  // true count, never `entries.length`, so the caption and the "Load more"
+  // control stay honest once a board holds more than one page.
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showEnroll, setShowEnroll] = useState(false);
   const [openEntryId, setOpenEntryId] = useState<string | null>(null);
@@ -29,10 +35,30 @@ export function PipelineBoard() {
   function reload() {
     setLoading(true);
     setError(null);
+    setPage(1);
     return apiList<PipelineEntry>('/pipeline')
-      .then((res) => setEntries(res.items))
+      .then((res) => {
+        setEntries(res.items);
+        setTotal(res.total);
+      })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load pipeline'))
       .finally(() => setLoading(false));
+  }
+
+  function loadMore() {
+    const nextPage = page + 1;
+    setLoadingMore(true);
+    setError(null);
+    return apiList<PipelineEntry>(`/pipeline?page=${nextPage}`)
+      .then((res) => {
+        // DEC-468: append, never replace -- refetching page 1 would drop
+        // any optimistic stage move already reconciled into `entries`.
+        setEntries((prev) => [...prev, ...res.items]);
+        setTotal(res.total);
+        setPage(nextPage);
+      })
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load more people'))
+      .finally(() => setLoadingMore(false));
   }
 
   useEffect(() => {
@@ -60,7 +86,7 @@ export function PipelineBoard() {
       <div className="chq-contacts-pipeline-head">
         <div className="chq-contacts-pipeline-head-titles">
           <h2 className="chq-section-label">Sourcing pipeline</h2>
-          <span className="chq-contacts-pipeline-caption">{entries.length} people</span>
+          <span className="chq-contacts-pipeline-caption">{total} people</span>
         </div>
         <button type="button" className="chq-btn chq-btn-secondary" onClick={() => setShowEnroll(true)}>
           + Enroll
@@ -88,6 +114,20 @@ export function PipelineBoard() {
           </div>
         ))}
       </div>
+
+      {/* DEC-468: entries.length < total means the server truncated the
+          board at its 200-row page cap -- offer the next page rather than
+          silently hiding the rest. */}
+      {entries.length < total && (
+        <button
+          type="button"
+          className="chq-btn chq-btn-secondary chq-contacts-pipeline-load-more"
+          disabled={loadingMore}
+          onClick={loadMore}
+        >
+          {loadingMore ? 'Loading…' : 'Load more'}
+        </button>
+      )}
 
       {/* Phone: one stage at a time via a .chq-pill strip (mock lines 393-396). */}
       <div className="chq-contacts-pipeline-phone-stages chq-chipstrip">

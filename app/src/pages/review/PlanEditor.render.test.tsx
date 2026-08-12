@@ -141,4 +141,55 @@ describe('PlanEditor render smoke', () => {
     });
     expect(screen.queryByText(/user-42/)).not.toBeInTheDocument();
   });
+
+  // DEC-468: /users?role=reviewer is now page-capped -- the picker must
+  // disclose truncation, and stay silent when the first page is everything.
+  it('shows a truncation note when the reviewer roster is page-capped', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
+      [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([]),
+      'GET /api/v1/users': listEnvelope(
+        [{ id: 'user-1', email: 'r1@example.test', role: 'reviewer', contactId: null, createdAt: 0 }],
+        { total: 250 },
+      ),
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId" element={<PlanEditor />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Showing first 1 of 250 reviewers')).toBeInTheDocument();
+    });
+  });
+
+  it('renders no truncation note when the reviewer roster fits in one page', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
+      [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([]),
+      'GET /api/v1/users': listEnvelope([
+        { id: 'user-1', email: 'r1@example.test', role: 'reviewer', contactId: null, createdAt: 0 },
+      ]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId" element={<PlanEditor />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole('option', { name: 'r1@example.test' })).toBeInTheDocument();
+    });
+
+    expect(screen.queryByText(/Showing first/)).not.toBeInTheDocument();
+  });
 });

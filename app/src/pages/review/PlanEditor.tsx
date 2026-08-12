@@ -180,6 +180,10 @@ export function PlanEditor() {
   }
 
   const [reviewerOptions, setReviewerOptions] = useState<ReviewerOption[]>([]);
+  // DEC-468: /users?role=reviewer is now capped at a page -- keep the
+  // envelope's true total so the picker can disclose truncation instead of
+  // silently offering only the first page of reviewers.
+  const [reviewerOptionsTotal, setReviewerOptionsTotal] = useState(0);
   const [reviewerUserId, setReviewerUserId] = useState('');
   const [reviewerScope, setReviewerScope] = useState<'all' | 'track' | 'submission'>('all');
   const [reviewerTrackId, setReviewerTrackId] = useState('');
@@ -194,7 +198,10 @@ export function PlanEditor() {
 
   function loadReviewerOptions() {
     return apiList<ReviewerOption>('/users?role=reviewer')
-      .then((res) => setReviewerOptions(res.items))
+      .then((res) => {
+        setReviewerOptions(res.items);
+        setReviewerOptionsTotal(res.total);
+      })
       .catch(() => {
         // Same non-blocking treatment as the reviewer roster above.
       });
@@ -647,6 +654,14 @@ export function PlanEditor() {
                   </option>
                 ))}
               </select>
+              {reviewerOptions.length < reviewerOptionsTotal && (
+                // DEC-468: the picker only ever shows the first page of
+                // /users?role=reviewer -- disclose the truncation rather
+                // than letting the dropdown quietly imply it's exhaustive.
+                <span className="chq-review-reviewer-truncated">
+                  Showing first {reviewerOptions.length} of {reviewerOptionsTotal} reviewers
+                </span>
+              )}
               <select
                 className="chq-select"
                 aria-label="Assignment scope"
