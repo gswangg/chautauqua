@@ -11,50 +11,48 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   hash'; 012/013 route files export Hono sub-apps, errors {error:
   {code,message,fields?}}; 353 archive 40MB TOTAL-byte guard; bulk ops
   set-based/CLOSED. Gates LOG-ONLY.
-- REDESIGN w1-5 (DEC-366..391, mandate=docs/design/README.md): FUNCTION
-  FROZEN. Tokens: paper F4F1E8/surface FAF8F2/ink 1B1D17/muted 565A4B/
-  hairline E1DDCE/border BAB6A6/olive 4E5C31, NO RED/shadows/new deps.
-  styles.css+theme.ts=ONE lane; page lanes add co-located <area>.css,
-  .chq-<area>-*, never redefine shared class. ONE dialog contract
-  (.chq-scrim/.chq-modal, useEscapeKey.ts). ONE phone switch `@media
-  (max-width:700px)`; 44px controls; phone cards=CSS on same markup.
-  D1 binds are PRIMITIVES — epoch-ms NUMBER never `new Date()`.
-- REDESIGN w6-7 (DEC-392..405): 392 phone chrome=tab bar ALONE. 393 tap
-  floor 44px EVERYWHERE, guard bans `min-height: 40px`. 397 PREVIEW
-  NEVER MINTS CREDENTIALS. 399 pubcache bump CLOSED — stop re-raising.
-  400 overview wire keys: `triage`=v2 rows, `triage-counts`=v1
-  aggregate. 401 mobile pass measures max element right edge +
-  scrollWidth, NAMES offenders + minControl selector. 402 every
-  `<table className="chq-table">` carries a page-prefixed 2nd class.
-  403 desktop sweep = SPA routes UNION every no-login surface. 404
-  phone-only `overflow-wrap: anywhere` on shell. 405 NO document-level
-  `overflow-x: hidden` — wide region gets its own overflow-x:auto
-  scroller.
-- REDESIGN w8 (DEC-406..409): 406 EVERY interactive control carries a
-  shell class; repo-wide source guard deferred to w9 on purpose. 407
-  walkthrough runs ALL five areas + summary; J2 asserts /\bcloses\b/i,
-  never retired chrome copy. 408 public dates use event.timezone via
-  src/lib/event-time.ts (THROWS on bad tz, no UTC fallback). 409
-  :focus-visible 2px olive/2px offset in BOTH stylesheet roots;
-  `outline: none`/`outline: 0` banned everywhere.
-  SETTLED — stop re-raising: DEC-386/380's dropped phone triage/breaks
-  affordances are mock-only, not backlog.
-- REDESIGN w9 (DEC-410..414): 410 control-class guard is REPO-WIDE now
-  (app/src only -- theme.ts styles bare button/input at ELEMENT level,
-  SSR exempt BY DESIGN); the guard's lane fixes what it names, no
-  allowlist. 411 tsx runs esbuild keepNames: a named closure inside
-  page.evaluate becomes __name(fn,"x") and dies in the page context --
-  every Playwright page gets addInitScript({content: raw-string shim})
-  BEFORE any evaluate. Four waves of "mobile pass" numbers were this
-  instrument failure, not measurements. Phone manifest = the WHOLE
-  portal (6 routes), not /portal alone. Gate lanes stay log-only; never
-  flip ADMIN_MOBILE_PASS_BLOCKING (flips the wave AFTER first
-  all-PASS). 412 walkthrough repair: design owns copy (re-pin the
-  assertion to the smallest surviving token), SPEC 9 owns behaviour
-  (fix the product); never delete/soften an assertion; one lane per
-  area, own port each. 413 portal dates use the OWNING EVENT's tz,
-  carried per ROW (portal spans events); all 4 portal queries already
-  join event. 414 a 390px overflow is closed by overflow-x:auto +
-  flex-shrink:0 or wrap -- never overflow:hidden, never a sub-44px
-  control; RE-MEASURE before fixing, a stale offender is how a gate
-  stays red while a lane reports success.
+- REDESIGN w1-5 (DEC-366..391, docs/design/README.md): FUNCTION FROZEN.
+  Tokens: paper F4F1E8/surface FAF8F2/ink 1B1D17/muted 565A4B/hairline
+  E1DDCE/border BAB6A6/olive 4E5C31, NO RED/shadows/new deps.
+  styles.css+theme.ts=ONE lane; page lanes add .chq-<area>.css, never
+  redefine shared class. ONE dialog contract, ONE phone switch @700px,
+  44px controls. D1 binds PRIMITIVES — epoch-ms NUMBER not `new Date()`.
+- REDESIGN w6-8 (DEC-392..409): 393 tap floor 44px, no min-height:40px.
+  397 PREVIEW NEVER MINTS CREDENTIALS. 399 pubcache bump CLOSED. 400
+  overview wire: `triage`=v2 rows, `triage-counts`=v1 aggregate. 401
+  mobile pass measures max right edge+scrollWidth, names offenders. 402
+  every chq-table carries a page-prefixed 2nd class. 403 desktop sweep =
+  SPA routes UNION no-login surfaces. 404 phone-only overflow-wrap:
+  anywhere on shell. 405 no document-level overflow-x:hidden. 406 every
+  control carries a shell class (guard deferred to w9). 408 public dates
+  via src/lib/event-time.ts (throws, no UTC fallback). 409 focus-visible
+  2px olive in both stylesheet roots, outline:none banned.
+  SETTLED: DEC-386/380 dropped phone affordances are mock-only.
+- REDESIGN w9 (DEC-410..414): 410 control-class guard REPO-WIDE (app/src
+  only, SSR exempt). 411 tsx/esbuild keepNames breaks named closures in
+  page.evaluate (__name ReferenceError); every Playwright page gets
+  addInitScript raw-string shim BEFORE any evaluate -- four waves of
+  "mobile pass" numbers were this instrument failure. Phone manifest =
+  WHOLE portal (6 routes). Gate lanes log-only; never flip
+  ADMIN_MOBILE_PASS_BLOCKING. 412 walkthrough: design owns copy, SPEC 9
+  owns behaviour; never soften an assertion. 413 portal dates use the
+  OWNING EVENT's tz per ROW. 414 390px overflow: overflow-x:auto+
+  flex-shrink:0 or wrap, never overflow:hidden/sub-44px; RE-MEASURE
+  first.
+- REDESIGN w10 (DEC-415..419): 415 speaker portal-edit WRITES
+  job_title/company/bio to contact (trim, ''->null, absent key=leave
+  alone); NEVER submission_answer, NEVER participant.*_at_time (DEC-258
+  snapshot frozen). 416 unknown track id rejected BEFORE the
+  zero-offered early return (DEC-301 only relaxes "at least one");
+  hydrateSessions' track join is event-scoped. 417 ONE parseBoundedText
+  beside parseBoundedIdArray in src/server/http.ts; caps NAME 200/TEXT
+  2000/LONG 20000/RICH 100000 in src/forms/validate.ts; oversized=400
+  naming the field, never a D1 SQLITE_TOOBIG 500; CSV import bounded in
+  BYTES+ROWS. 418 public list queries carry LIMIT in SQL + separate
+  COUNT(DISTINCT); join fan-out bounds a distinct-key subquery FIRST
+  then hydrates by id; speakers/gallery reuse sessions' show-more. 419
+  build-test/perf-smoke/render-sweep gates re-run on redesigned tree,
+  LOG-ONLY, one file each, never flip a blocking flag or fix what they
+  name; an instrument failure is never written down as a number.
+  STALE-LENS, do not re-open: comms preview id-guard/mints-tokens both
+  fixed on main (comms.ts:163,:348). DEC-399 pubcache bump CLOSED.
