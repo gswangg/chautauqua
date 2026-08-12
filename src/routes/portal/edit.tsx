@@ -232,13 +232,17 @@ function ParticipantsSection(props: {
           {participants.map((p) => (
             <li>
               {p.name} — <span class="chq-flag">{p.roleLabel}</span>
+              {!p.visible ? (
+                <span class="chq-portal-sub"> — Not yet on the public site. Your organiser publishes co-presenters.</span>
+              ) : null}
             </li>
           ))}
         </ul>
       )}
       <h3 class="chq-portal-field-label">Add a co-presenter</h3>
       <p class="chq-portal-sub">
-        Adding a co-presenter records them on this submission. They will not receive an email or invitation.
+        Added to this session. Your organiser puts co-presenters on the public site. They will not receive an email
+        or invitation.
       </p>
       <form method="post" action={`/portal/submissions/${submissionId}/participants`}>
         <input type="hidden" name={CSRF_COOKIE_NAME} value={csrfToken} />

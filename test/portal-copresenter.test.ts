@@ -98,6 +98,8 @@ describe("addCoPresenter repo layer (DEC-604)", () => {
     const participantInsert = inserts.find((v) => "submissionId" in v);
     expect(participantInsert.role).toBe("co-presenter");
     expect(participantInsert.inviteStatus).toBe("none");
+    // DEC-656 (amends DEC-604): recorded, not published — never visible=true.
+    expect(participantInsert.visible).toBe(false);
   });
 
   it("resolves an existing contact by case-insensitive email and writes NO field onto it", async () => {
