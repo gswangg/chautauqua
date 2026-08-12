@@ -27,6 +27,7 @@ import {
   getFileVersionNumber,
   insertFile,
   insertFileComment,
+  listFileChainVersions,
   listFileComments,
   resolveTaskFileChainLatest,
   type FileCommentRow,
@@ -57,7 +58,7 @@ import {
   isSecureRequest,
   CSRF_COOKIE_NAME,
 } from "../../auth/cookies";
-import { DEC_016, DEC_020, DEC_023, DEC_028, DEC_029, DEC_240, DEC_242, DEC_244 } from "../../decisions";
+import { DEC_016, DEC_020, DEC_023, DEC_028, DEC_029, DEC_240, DEC_242, DEC_244, DEC_605 } from "../../decisions";
 import { formatCalendarDate, formatEventDate, formatEventDateTime } from "../../lib/event-time";
 
 export const portalTasksRoutes = new Hono<AppEnv>();
@@ -71,6 +72,7 @@ void DEC_029;
 void DEC_240;
 void DEC_242;
 void DEC_244;
+void DEC_605;
 
 // DEC-244: comment body cap on the portal reply endpoint (matches no
 // existing forms/validate.ts constant since file comments aren't a form
@@ -110,6 +112,43 @@ export interface FileRequestExtras {
   uploadedAt: number;
   comments: FileCommentRow[];
   timezone: string;
+  // DEC-605: the FULL version chain, oldest to newest, so the completed-task
+  // card doesn't read as an overwrite from the only side (the speaker) that
+  // ever sees this row — a re-upload is a new version, not an erasure.
+  versions: FileVersionRow[];
+}
+
+export interface FileVersionRow {
+  id: string;
+  version: number;
+  filename: string;
+  uploadedAt: number;
+  isCurrent: boolean;
+}
+
+// DEC-605: renders the full chain oldest-first, one row per version, each
+// with its own download link (GET .../file/:fileId, walked back to this
+// assignment's chain root before streaming) — the flat "current file" block
+// above stays untouched (still resolveTaskFileChainLatest via the DEC-244
+// route) so an older test asserting that block's exact shape keeps passing;
+// this is additive.
+function VersionHistory(props: { assignmentId: string; versions: FileVersionRow[]; timezone: string }) {
+  const { assignmentId, versions, timezone } = props;
+  return (
+    <section aria-label="Version history">
+      <h4>Version history</h4>
+      <ul class="chq-portal-versions">
+        {versions.map((v) => (
+          <li class="chq-portal-version-row">
+            <span class="chq-portal-version-num">v{v.version}</span>
+            <a href={`/portal/tasks/${assignmentId}/file/${v.id}`}>{v.filename}</a>
+            <span class="chq-portal-detail">{formatEventDateTime(v.uploadedAt, timezone)}</span>
+            {v.isCurrent ? <span class="chq-flag chq-portal-flag-done">Current</span> : null}
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
 }
 
 function CommentThread(props: { assignmentId: string; comments: FileCommentRow[]; csrfToken: string; timezone: string }) {
@@ -207,6 +246,7 @@ function TaskRow(props: {
             <input type="file" name="file" required />
             <button type="submit" class="chq-btn chq-btn-secondary">Replace file</button>
           </form>
+          <VersionHistory assignmentId={t.id} versions={fileExtras.versions} timezone={fileExtras.timezone} />
           <CommentThread assignmentId={t.id} comments={fileExtras.comments} csrfToken={csrfToken} timezone={fileExtras.timezone} />
         </section>
       ) : null}
@@ -357,16 +397,32 @@ async function loadTasksPageData(c: Context<AppEnv>, contactId: string, orgId: s
   for (const a of assignments) {
     if (a.kind !== "file_request" || a.status !== "complete" || !a.fileId) continue;
     const latest = await resolveTaskFileChainLatest(c.var.db, a.fileId);
-    const [version, commentsPage] = await Promise.all([
+    // DEC-605: full chain oldest-first, one row per version — reuses
+    // getFileVersionNumber (the canonical "1-indexed, oldest=v1" rule) per
+    // id rather than re-deriving numbering from array position, so this
+    // list's numbers can never drift from the single-file block above's
+    // "version N" text.
+    const [version, commentsPage, chain] = await Promise.all([
       getFileVersionNumber(c.var.db, latest.id),
       listFileComments(c.var.db, latest.id),
+      listFileChainVersions(c.var.db, a.fileId),
     ]);
+    const versions: FileVersionRow[] = await Promise.all(
+      chain.map(async (row) => ({
+        id: row.id,
+        version: await getFileVersionNumber(c.var.db, row.id),
+        filename: row.filename,
+        uploadedAt: row.createdAt,
+        isCurrent: row.id === latest.id,
+      })),
+    );
     fileExtrasByAssignmentId.set(a.id, {
       filename: latest.filename,
       version,
       uploadedAt: latest.createdAt,
       comments: commentsPage.items,
       timezone: a.timezone,
+      versions,
     });
   }
 
@@ -653,6 +709,45 @@ portalTasksRoutes.get("/tasks/:assignmentId/file", async (c) => {
   const safeName = latest.filename.replace(/[\r\n"]/g, "");
   return c.body(obj.body, 200, {
     "Content-Type": obj.contentType ?? latest.contentType,
+    "Content-Disposition": `attachment; filename="${safeName}"`,
+  });
+});
+
+// DEC-605: streams ANY version in a completed file_request assignment's
+// chain, not just the chain-latest — same assignment-ownership check as the
+// /file route above, then asserts the requested :fileId actually walks back
+// to THIS assignment's chain root before streaming. An id in the URL is
+// never evidence of ownership by itself: listFileChainVersions is called
+// against the assignment's OWN stored fileId (never the untrusted URL
+// param), and the URL param is only ever used as a membership lookup key
+// against that trusted chain — so a fileId belonging to a different
+// assignment/chain 404s (existence-hiding), never a 403 that would confirm
+// the id is real.
+portalTasksRoutes.get("/tasks/:assignmentId/file/:fileId", async (c) => {
+  const auth = requireAuth(c);
+  const contactId = auth.contactId;
+  if (!contactId) throw new Error("speaker auth session missing contact_id — invariant violated");
+  const assignmentId = c.req.param("assignmentId");
+  const requestedFileId = c.req.param("fileId");
+
+  const scope = await getAssignmentScope(c.var.db, assignmentId);
+  if (!scope || scope.orgId !== auth.orgId) throw new ApiError("not_found", "Task assignment not found");
+  assertOwnAssignmentOr403(scope, contactId);
+  if (scope.kind !== "file_request" || !scope.fileId) {
+    throw new ApiError("not_found", "This task has no uploaded file");
+  }
+
+  const chain = await listFileChainVersions(c.var.db, scope.fileId);
+  const target = chain.find((v) => v.id === requestedFileId);
+  if (!target) throw new ApiError("not_found", "File not found in this task's version history");
+
+  const store = makeFileStore(c.env.FILES);
+  const obj = await store.get(target.r2Key);
+  if (!obj) throw new ApiError("not_found", "File contents not found");
+
+  const safeName = target.filename.replace(/[\r\n"]/g, "");
+  return c.body(obj.body, 200, {
+    "Content-Type": obj.contentType ?? target.contentType,
     "Content-Disposition": `attachment; filename="${safeName}"`,
   });
 });

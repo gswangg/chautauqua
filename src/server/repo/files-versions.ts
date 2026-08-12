@@ -2,7 +2,7 @@
 // DEC-020 contract). Split out of files.ts (contention decomposition) — no
 // behavior change, files.ts re-exports everything below for existing callers.
 
-import { asc, desc, eq } from "drizzle-orm";
+import { asc, desc, eq, inArray } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { newId } from "../../domain/ids";
@@ -151,6 +151,42 @@ export async function listFileChainIds(db: Db, fileId: string): Promise<string[]
     current = next.id;
   }
   return ids;
+}
+
+export interface FileChainVersionRow {
+  id: string;
+  filename: string;
+  contentType: string;
+  r2Key: string;
+  createdAt: number;
+}
+
+/** DEC-605: the full version chain for `fileId`, oldest-first, with the
+ * fields a speaker-side version-history view needs to render a row and
+ * stream a download for each one (portal GET .../file/:fileId). Thin
+ * wrapper over listFileChainIds — a batch fetch keyed by the ids it
+ * returns, so this stays one extra query, not N. Throws (data corruption)
+ * if an id it just resolved is missing from the batch fetch. */
+export async function listFileChainVersions(db: Db, fileId: string): Promise<FileChainVersionRow[]> {
+  const ids = await listFileChainIds(db, fileId);
+  const rows = await db
+    .select({
+      id: schema.file.id,
+      filename: schema.file.filename,
+      contentType: schema.file.contentType,
+      r2Key: schema.file.r2Key,
+      createdAt: schema.file.createdAt,
+    })
+    .from(schema.file)
+    .where(inArray(schema.file.id, ids));
+  const byId = new Map(rows.map((row) => [row.id, row]));
+  return ids.map((id) => {
+    const row = byId.get(id);
+    if (!row) {
+      throw new Error(`listFileChainVersions: file ${id} resolved by listFileChainIds but missing from batch fetch — data corruption`);
+    }
+    return { id: row.id, filename: row.filename, contentType: row.contentType, r2Key: row.r2Key, createdAt: row.createdAt.getTime() };
+  });
 }
 
 // ---------------------------------------------------------------------------
