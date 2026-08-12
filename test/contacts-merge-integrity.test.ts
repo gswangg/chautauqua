@@ -25,6 +25,7 @@ import {
   toContactRecord,
   toRow,
 } from "../src/server/repo/contacts";
+import { emailConflictsWithOtherAccount } from "../src/server/repo/contacts/merge";
 import { planMerge } from "../src/domain/contacts";
 import { ApiError } from "../src/server/http";
 import { findAccountUserId } from "../src/server/repo/comms";
@@ -346,6 +347,66 @@ describe("mergeContacts user.email cascade (DEC-479)", () => {
     }
     expect(caught).toBeInstanceOf(ApiError);
     expect((caught as ApiError).code).toBe("conflict");
+    expect(updates).toEqual([]);
+    expect(deletes).toEqual([]);
+  });
+});
+
+describe("emailConflictsWithOtherAccount (DEC-565)", () => {
+  const KEEP_ID = "contact-keep";
+  const MERGE_ID = "contact-merge";
+
+  it("ownerContactId is keepId -> no conflict", () => {
+    expect(emailConflictsWithOtherAccount(KEEP_ID, KEEP_ID, MERGE_ID)).toBe(false);
+  });
+
+  it("ownerContactId is mergeId -> no conflict", () => {
+    expect(emailConflictsWithOtherAccount(MERGE_ID, KEEP_ID, MERGE_ID)).toBe(false);
+  });
+
+  it("ownerContactId is some third contact -> conflict", () => {
+    expect(emailConflictsWithOtherAccount("contact-other", KEEP_ID, MERGE_ID)).toBe(true);
+  });
+
+  it("ownerContactId is null (staff login, e.g. organizer/reviewer) -> conflict (the DEC-565 regression)", () => {
+    // This is the case a SQL `contact_id NOT IN (:keepId, :mergeId)`
+    // predicate silently missed: SQLite's NOT IN evaluates to NULL (not
+    // TRUE) whenever contact_id IS NULL, so a staff login's email passed
+    // the old pre-check and the merge later crashed on user_email_idx
+    // after already deleting rows. The predicate must treat null as
+    // "conflicts" so the guard actually blocks the merge.
+    expect(emailConflictsWithOtherAccount(null, KEEP_ID, MERGE_ID)).toBe(true);
+  });
+});
+
+describe("mergeContacts email conflict guard vs. a staff login (DEC-565)", () => {
+  it("a staff (organizer/reviewer) login with contactId null already owns merged.email -> conflict thrown before any write", async () => {
+    const keep = contactRaw("contact-keep", "a@example.com", "Jane", "Doe");
+    const merge = contactRaw("contact-merge", "a@example.com", "Jane", "Doe");
+    const { db, updates, deletes } = fakeDb([
+      [keep], // findContactById(keepId)
+      [merge], // findContactById(mergeId)
+      [], // user rows for keepId
+      [], // user rows for mergeId
+      [{ id: "user-staff", contactId: null }], // (b2) email lookup: a staff login, no contact
+    ]);
+
+    let caught: unknown;
+    try {
+      await mergeContacts(db, keep.id, merge.id);
+    } catch (err) {
+      caught = err;
+    }
+    expect(caught).toBeInstanceOf(ApiError);
+    expect((caught as ApiError).code).toBe("conflict");
+    expect((caught as ApiError).message).toBe("That email already belongs to another account");
+
+    // No contact UPDATE/DELETE (nor any other write) was issued -- the
+    // regression let (b) through to write onto the kept contact row and
+    // even delete duplicate participant/task_assignment/pipeline rows
+    // before crashing on user_email_idx. A fake db doesn't evaluate SQL
+    // predicates, so asserting only the throw would also pass on the
+    // broken code; asserting zero writes proves the guard runs first.
     expect(updates).toEqual([]);
     expect(deletes).toEqual([]);
   });
