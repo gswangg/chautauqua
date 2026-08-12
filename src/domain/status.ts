@@ -1,13 +1,17 @@
-// Submission status pipeline (DEC-003 literals, DEC-009 semantics).
+// Submission status pipeline (DEC-003 literals, DEC-009 semantics, DEC-699
+// restores 'waitlisted' as a sixth literal — a HOLD, never decided).
 // Hard invariant: this module contains ZERO email/mailer references — status
 // changes never auto-send email. Callers decide whether to notify, separately.
+import { DEC_699 } from "../decisions";
+void DEC_699;
 
 export type SubmissionStatus =
   | "pending"
   | "accept_queue"
   | "decline_queue"
   | "accepted"
-  | "declined";
+  | "declined"
+  | "waitlisted";
 
 export const SUBMISSION_STATUSES: readonly SubmissionStatus[] = [
   "pending",
@@ -15,6 +19,7 @@ export const SUBMISSION_STATUSES: readonly SubmissionStatus[] = [
   "decline_queue",
   "accepted",
   "declined",
+  "waitlisted",
 ];
 
 /** True for the two final (decided) statuses. */
