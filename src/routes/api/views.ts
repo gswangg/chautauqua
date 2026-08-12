@@ -9,7 +9,7 @@ import { requireOrganizer, csrfJson } from "../../server/middleware";
 import { ApiError, parseBoundedText } from "../../server/http";
 import { MAX_NAME_LENGTH } from "../../forms/validate"; // DEC-417
 import { getEventOrgId } from "../../server/repo/submissions";
-import { clampPage, clampPerPage, MAX_PER_PAGE } from "../../lib/pagination";
+import { clampPage, listPerPage } from "../../lib/pagination";
 import {
   countSavedViews,
   createSavedView,
@@ -18,17 +18,6 @@ import {
   isValidSavedViewConfig,
   listSavedViews,
 } from "../../server/repo/views";
-
-// DEC-460/DEC-461: this list previously returned every row unbounded. The
-// site default here is 200 (not clampPerPage's own 50) — both an absent and
-// an invalid perPage query param resolve to 200; only an explicit valid
-// value gets clampPerPage's normal [1, MAX_PER_PAGE] clamp.
-function perPageWithDefault200(raw: string | undefined): number {
-  if (raw === undefined) return MAX_PER_PAGE;
-  const n = Number(raw);
-  if (!Number.isFinite(n) || !Number.isInteger(n) || n < 1) return MAX_PER_PAGE;
-  return clampPerPage(raw);
-}
 
 export const viewsRoutes = new Hono<AppEnv>();
 
@@ -51,7 +40,7 @@ viewsRoutes.get("/events/:eventId/views", requireOrganizer, async (c) => {
   await assertEventOwnership(c.var.db, eventId, auth.orgId);
 
   const page = clampPage(c.req.query("page"));
-  const perPage = perPageWithDefault200(c.req.query("perPage"));
+  const perPage = listPerPage(c.req.query("perPage")); // DEC-465
   const [items, total] = await Promise.all([
     listSavedViews(c.var.db, eventId, { limit: perPage, offset: (page - 1) * perPage }),
     countSavedViews(c.var.db, eventId),

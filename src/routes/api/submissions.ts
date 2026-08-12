@@ -39,7 +39,7 @@ import {
 import { findContactForOrg } from "../../server/repo/contacts";
 import { appendSubmissionRevision, countRevisions, getRevision, listRevisions } from "../../server/repo/revisions";
 import { isValidEmail, normalizeEmail } from "../../domain/email";
-import { clampPage, clampPerPage } from "../../lib/pagination";
+import { clampPage, listPerPage } from "../../lib/pagination";
 import { DEC_460, DEC_461, DEC_462 } from "../../decisions";
 
 // Compile-checked dependency markers: the contact.email validation below
@@ -47,8 +47,6 @@ import { DEC_460, DEC_461, DEC_462 } from "../../decisions";
 void DEC_460;
 void DEC_461;
 void DEC_462;
-
-const REVISIONS_DEFAULT_PER_PAGE = 200;
 
 export const submissionsRoutes = new Hono<AppEnv>();
 
@@ -212,7 +210,7 @@ submissionsRoutes.get("/submissions/:id/revisions", requireOrganizer, async (c) 
   if (ownership.orgId !== auth.orgId) throw new ApiError("forbidden", "Submission belongs to a different org");
 
   const page = clampPage(c.req.query("page"));
-  const perPage = c.req.query("perPage") ? clampPerPage(c.req.query("perPage")) : REVISIONS_DEFAULT_PER_PAGE;
+  const perPage = listPerPage(c.req.query("perPage")); // DEC-465
 
   const [items, total] = await Promise.all([
     listRevisions(c.var.db, id, { limit: perPage, offset: (page - 1) * perPage }),

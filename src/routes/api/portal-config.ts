@@ -27,20 +27,7 @@ import {
   upsertPortalSettings,
 } from "../../server/repo/portal-config";
 import { isValidHexColor } from "./validators";
-import { clampPage, clampPerPage } from "../../lib/pagination";
-
-// DEC-461: this config-list endpoint had no server-side bound (DEC-460);
-// previously-unpaginated lists default to a larger perPage than the
-// DEC-013 default of 50 (mirrors src/routes/api/events.ts's
-// clampConfigPerPage — no shared pagination.ts edit, per DEC-461a).
-const CONFIG_LIST_DEFAULT_PER_PAGE = 200;
-
-function clampConfigPerPage(raw: string | undefined): number {
-  if (raw === undefined) return CONFIG_LIST_DEFAULT_PER_PAGE;
-  const n = Number(raw);
-  if (!Number.isFinite(n) || !Number.isInteger(n) || n < 1) return CONFIG_LIST_DEFAULT_PER_PAGE;
-  return clampPerPage(n);
-}
+import { clampPage, listPerPage } from "../../lib/pagination";
 
 export const portalConfigRoutes = new Hono<AppEnv>();
 
@@ -154,7 +141,7 @@ portalConfigRoutes.get("/events/:eventId/resources", async (c) => {
   const eventId = c.req.param("eventId");
   await requireEvent(c.var.db, orgId, eventId);
   const page = clampPage(c.req.query("page"));
-  const perPage = clampConfigPerPage(c.req.query("perPage"));
+  const perPage = listPerPage(c.req.query("perPage")); // DEC-465
   const items = await listResourcesForEvent(c.var.db, eventId, { limit: perPage, offset: (page - 1) * perPage });
   const total = await countResourcesForEvent(c.var.db, eventId);
   return c.json({ items, total, page, perPage });

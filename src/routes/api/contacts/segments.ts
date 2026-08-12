@@ -9,7 +9,7 @@ import { ApiError } from "../../../server/http";
 import { MAX_NAME_LENGTH } from "../../../forms/validate"; // DEC-417
 import * as repo from "../../../server/repo/contacts";
 import { matchesSegment, type ContactRecord, type SegmentRule } from "../../../domain/contacts";
-import { clampPage, clampPerPage } from "../../../lib/pagination";
+import { clampPage, listPerPage } from "../../../lib/pagination";
 import { currentOrgId, asRecord, checkLen, serializeSegment, requireOwnedSegment } from "./shared";
 
 function isRuleShape(r: unknown): r is SegmentRule {
@@ -95,7 +95,7 @@ export function registerSegmentRoutes(contactsRoutes: Hono<AppEnv>): void {
   contactsRoutes.get("/segments", async (c) => {
     const orgId = currentOrgId(c);
     const page = clampPage(c.req.query("page"));
-    const perPage = clampPerPage(c.req.query("perPage") ?? 200);
+    const perPage = listPerPage(c.req.query("perPage")); // DEC-465
     const [items, total] = await Promise.all([
       repo.listSegmentsForOrg(c.var.db, orgId, { limit: perPage, offset: (page - 1) * perPage }),
       repo.countSegmentsForOrg(c.var.db, orgId),

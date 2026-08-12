@@ -23,17 +23,7 @@ import {
 import { DEC_122, DEC_252 } from "../decisions";
 import { MAX_NAME_LENGTH, MAX_TEXT_LENGTH, MAX_RICH_TEXT_LENGTH } from "../forms/validate"; // DEC-417
 import { resolveBaseUrl } from "../server/origin";
-import { clampPage, clampPerPage, MAX_PER_PAGE } from "../lib/pagination";
-
-// DEC-460/DEC-461: site default here is 200 (not clampPerPage's own 50) —
-// both an absent and an invalid perPage query param resolve to 200; only an
-// explicit valid value gets clampPerPage's normal [1, MAX_PER_PAGE] clamp.
-function perPageWithDefault200(raw: string | undefined): number {
-  if (raw === undefined) return MAX_PER_PAGE;
-  const n = Number(raw);
-  if (!Number.isFinite(n) || !Number.isInteger(n) || n < 1) return MAX_PER_PAGE;
-  return clampPerPage(raw);
-}
+import { clampPage, listPerPage } from "../lib/pagination";
 
 void DEC_252;
 
@@ -75,7 +65,7 @@ commsRoutes.get("/api/v1/events/:eventId/templates", requireOrganizer, async (c)
   const eventId = c.req.param("eventId");
   await requireOwnedEvent(c, eventId);
   const page = clampPage(c.req.query("page"));
-  const perPage = perPageWithDefault200(c.req.query("perPage"));
+  const perPage = listPerPage(c.req.query("perPage")); // DEC-465
   const [items, total] = await Promise.all([
     repo.listTemplates(c.var.db, eventId, { limit: perPage, offset: (page - 1) * perPage }),
     repo.countTemplates(c.var.db, eventId),
