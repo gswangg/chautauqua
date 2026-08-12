@@ -2,15 +2,15 @@
 // (contention decomposition, no behavior change). See repo/contacts.ts for
 // the module-level contract notes.
 
-import { and, eq, inArray, notInArray, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, notInArray, sql } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { chunkIds } from "../../../lib/chunk";
-import { findDuplicateGroups, planMerge } from "../../../domain/contacts";
+import { findDuplicateGroups, planMerge, type ContactRecord } from "../../../domain/contacts";
 import { serializeSocialLinks } from "../profile";
 import { ApiError } from "../../http";
 import { findContactById } from "./crud";
-import { toContactRecord, toRow, type ContactRow } from "./rows";
+import { toContactRecord, type ContactRow, MAX_CONTACT_DIRECTORY_SCAN } from "./rows";
 import { buildMergeRepointOps, mergedPipelineStage, type PipelineStageLike } from "./query";
 import { DEC_479 } from "../../../decisions";
 
@@ -22,8 +22,38 @@ export interface DuplicateGroup {
 }
 
 export async function findDuplicateGroupsForOrg(db: Db, orgId: string): Promise<DuplicateGroup[]> {
-  const rows = (await db.select().from(schema.contact).where(eq(schema.contact.orgId, orgId))).map(toRow);
-  const records = rows.map(toContactRecord);
+  // DEC-554: project only the columns findDuplicateGroups (via
+  // normalizeEmail/normalizedName/normalizedCompany) and this function's own
+  // output actually read -- id, email, firstName, lastName, company -- not
+  // every persisted contact field. Bounded + deterministically ordered so
+  // page 2+ of GET /api/v1/contacts/duplicates stays meaningful (DEC-466)
+  // and the scan refuses rather than silently truncating past the cap.
+  const scanned = await db
+    .select({
+      id: schema.contact.id,
+      email: schema.contact.email,
+      firstName: schema.contact.firstName,
+      lastName: schema.contact.lastName,
+      company: schema.contact.company,
+    })
+    .from(schema.contact)
+    .where(eq(schema.contact.orgId, orgId))
+    .orderBy(asc(schema.contact.id))
+    .limit(MAX_CONTACT_DIRECTORY_SCAN + 1);
+  if (scanned.length > MAX_CONTACT_DIRECTORY_SCAN) {
+    throw new ApiError(
+      "invalid",
+      `Org has more than ${MAX_CONTACT_DIRECTORY_SCAN} contacts; duplicate detection cannot scan the whole directory at this size. Narrow the scope or raise MAX_CONTACT_DIRECTORY_SCAN.`,
+    );
+  }
+  const rows: { id: string; email: string; firstName: string; lastName: string }[] = scanned;
+  const records: ContactRecord[] = scanned.map((r) => ({
+    id: r.id,
+    email: r.email,
+    firstName: r.firstName,
+    lastName: r.lastName,
+    ...(r.company ? { company: r.company } : {}),
+  }));
   const groups = findDuplicateGroups(records);
   const byId = new Map(rows.map((r) => [r.id, r]));
   const out = groups.map((ids) => ({
