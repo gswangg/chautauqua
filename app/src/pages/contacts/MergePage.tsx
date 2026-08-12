@@ -12,22 +12,30 @@
 // of ids named in the query string, rather than a new by-ids endpoint.
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { apiList, apiPost, ApiError } from '../../lib/api';
+import { apiList, apiGet, apiPost, ApiError } from '../../lib/api';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import type { DuplicateGroup } from './types';
 import './contacts-panels.css';
 
-const COMPARE_FIELDS: { label: string; key: 'name' | 'email' | 'company' }[] = [
-  { label: 'Name', key: 'name' },
-  { label: 'Email', key: 'email' },
-  { label: 'Company', key: 'company' },
-];
+// DEC-705: what the merge will actually write, computed server-side by the
+// SAME pure-core merge fold POST /contacts/merge uses (never re-derived
+// here) -- so this page never lies about a field the compact three-field
+// table above used to hide (blank-fill, appended notes, unioned custom
+// fields).
+interface MergeFieldPreview {
+  key: string;
+  label: string;
+  kept: string;
+  discarded: string[];
+  outcome: 'keep' | 'fill' | 'append' | 'combine';
+}
 
-function fieldValue(c: DuplicateGroup['contacts'][number], key: 'name' | 'email' | 'company'): string {
-  if (key === 'name') return `${c.firstName} ${c.lastName}`.trim();
-  if (key === 'email') return c.email;
-  return c.company ?? '—';
+function outcomeNote(outcome: MergeFieldPreview['outcome']): string | null {
+  if (outcome === 'append') return 'will be appended';
+  if (outcome === 'combine') return 'will be added';
+  if (outcome === 'fill') return 'filled in';
+  return null;
 }
 
 export function MergePage() {
@@ -48,6 +56,8 @@ export function MergePage() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [mergeError, setMergeError] = useState<string | null>(null);
+  const [preview, setPreview] = useState<MergeFieldPreview[] | null>(null);
+  const [previewError, setPreviewError] = useState<string | null>(null);
 
   useEffect(() => {
     if (ids.length < 2) return;
@@ -72,8 +82,19 @@ export function MergePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idsParam]);
 
+  useEffect(() => {
+    if (ids.length < 2 || !keepId) return;
+    setPreview(null);
+    setPreviewError(null);
+    apiGet<{ fields: MergeFieldPreview[] }>(
+      `/contacts/merge/preview?ids=${ids.map(encodeURIComponent).join(',')}&keep=${encodeURIComponent(keepId)}`,
+    )
+      .then((res) => setPreview(res.fields))
+      .catch((err) => setPreviewError(err instanceof ApiError ? err.message : 'Failed to load merge preview'));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [idsParam, keepId]);
+
   const keepContact = group?.contacts.find((c) => c.id === keepId) ?? null;
-  const otherContacts = group ? group.contacts.filter((c) => c.id !== keepId) : [];
 
   async function doMerge() {
     if (!group || !keepId) return;
@@ -141,18 +162,31 @@ export function MergePage() {
             <span>Keep this one</span>
             <span>Discard</span>
           </div>
-          {COMPARE_FIELDS.map((f) => (
-            <div key={f.key} className="chq-contacts-merge-compare-row">
-              <span className="chq-contacts-merge-compare-label">{f.label}</span>
-              <span className="chq-contacts-merge-compare-keep">{fieldValue(keepContact, f.key)}</span>
-              <span className="chq-contacts-merge-compare-drop">
-                {otherContacts
-                  .map((c) => fieldValue(c, f.key))
-                  .filter((v) => v !== fieldValue(keepContact, f.key))
-                  .join(' / ') || '—'}
-              </span>
-            </div>
-          ))}
+          {previewError && <div className="chq-error">{previewError}</div>}
+          {!previewError && !preview && <DelayedLoading />}
+          {preview?.map((f) => {
+            const note = outcomeNote(f.outcome);
+            return (
+              <div key={f.key} className="chq-contacts-merge-compare-row">
+                <span className="chq-contacts-merge-compare-label">{f.label}</span>
+                <span className="chq-contacts-merge-compare-keep">{f.kept || '—'}</span>
+                <span
+                  className={
+                    note
+                      ? 'chq-contacts-merge-compare-combine'
+                      : 'chq-contacts-merge-compare-drop'
+                  }
+                >
+                  {note
+                    ? `${f.discarded.length > 0 ? f.discarded.join(' / ') + ' — ' : ''}${note}`
+                    : f.discarded.join(' / ') || '—'}
+                </span>
+              </div>
+            );
+          })}
+          {preview && preview.length === 0 && (
+            <p className="chq-contacts-merge-compare-empty">Every field already matches — nothing else will change.</p>
+          )}
 
           <div className="chq-contacts-merge-footer">
             <button type="button" className="chq-btn chq-btn-primary" onClick={() => setConfirmOpen(true)}>
