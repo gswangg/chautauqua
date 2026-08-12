@@ -1249,6 +1249,21 @@ a:hover {
   color: var(--chq-muted);
 }
 
+/* DEC-607: the live region every copy-to-clipboard control announces
+   through — success or the "copy failed, here is the text" fallback. Shared
+   by Embeds/ApiTokens/CallForPapers/FormSettings/PlanEditor, so it lives in
+   the shared layer rather than being redefined per page stylesheet. Empty
+   until a copy is attempted; :empty keeps it from adding stray space. */
+.chq-copy-status {
+  font-size: 12px;
+  color: var(--chq-muted);
+  min-height: 1em;
+}
+
+.chq-copy-status:empty {
+  min-height: 0;
+}
+
 .chq-color-swatch {
   width: 22px;
   height: 22px;
