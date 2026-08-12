@@ -396,3 +396,67 @@ describe('SubmissionDetailPage render: editable Tracks section', () => {
     });
   });
 });
+
+// DEC-656: a speaker-added co-presenter lands visible=false — the
+// Participants table caption names the count and the fix (tick Visible),
+// derived from the already-loaded detail.participants (no new endpoint).
+describe('SubmissionDetailPage render: unpublished-participant caption (DEC-656)', () => {
+  function participant(overrides: Partial<Record<string, unknown>> = {}) {
+    return {
+      id: 'p1',
+      contactId: 'c1',
+      name: 'Jamie Speaker',
+      email: 'jamie@example.com',
+      title: null,
+      company: null,
+      role: 'speaker',
+      order: 0,
+      visible: true,
+      inviteStatus: 'accepted',
+      ...overrides,
+    };
+  }
+
+  it('shows the caption naming the count when a participant is not yet visible', async () => {
+    const detail = baseDetail({
+      participants: [
+        participant({ id: 'p1', name: 'Jamie Speaker', visible: true }),
+        participant({ id: 'p2', name: 'Marcus Okafor', email: 'marcus@example.com', visible: false, inviteStatus: 'none' }),
+      ],
+    });
+    mockApi({
+      [`GET /api/v1/submissions/${SUB_ID}`]: detail,
+      [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
+      [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('Marcus Okafor')).toBeInTheDocument();
+    });
+    expect(
+      screen.getByText('1 speaker(s) on this session are not on the public site yet — tick Visible to publish them.'),
+    ).toBeInTheDocument();
+  });
+
+  it('renders no caption when every participant is already visible', async () => {
+    const detail = baseDetail({
+      participants: [participant({ id: 'p1', name: 'Jamie Speaker', visible: true })],
+    });
+    mockApi({
+      [`GET /api/v1/submissions/${SUB_ID}`]: detail,
+      [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
+      [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getAllByText('Jamie Speaker').length).toBeGreaterThan(0);
+    });
+    expect(screen.queryByText(/not on the public site yet/)).not.toBeInTheDocument();
+  });
+});

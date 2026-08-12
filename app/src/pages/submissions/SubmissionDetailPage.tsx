@@ -541,7 +541,21 @@ export function SubmissionDetailPage() {
               {detail.participants.length === 0 ? (
                 <p>No participants.</p>
               ) : (
-                <table className="chq-table chq-participants-table">
+                <>
+                  {(() => {
+                    // DEC-656: a speaker-added co-presenter lands
+                    // visible=false (recorded, not published) — this
+                    // caption is derived from the already-loaded
+                    // detail.participants, no extra API field/endpoint.
+                    const hiddenCount = detail.participants.filter((p) => !p.visible).length;
+                    return hiddenCount > 0 ? (
+                      <p className="chq-hint">
+                        {hiddenCount} speaker(s) on this session are not on the public site yet — tick Visible to
+                        publish them.
+                      </p>
+                    ) : null;
+                  })()}
+                  <table className="chq-table chq-participants-table">
                   <thead>
                     <tr>
                       <th>Name</th>
@@ -575,7 +589,8 @@ export function SubmissionDetailPage() {
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                  </table>
+                </>
               )}
 
               <div className="chq-add-co-presenter chq-detail-copresenter-search">

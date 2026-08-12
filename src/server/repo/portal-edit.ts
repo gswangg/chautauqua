@@ -23,10 +23,11 @@ import { chunkIds } from "../../lib/chunk";
 import { newId } from "../../domain/ids";
 import { isValidEmail, normalizeEmail } from "../../domain/email";
 import { isCoPresenterRoleValue, participantRoleLabel } from "../../domain/participant-roles";
-import { DEC_604 } from "../../decisions";
+import { DEC_604, DEC_656 } from "../../decisions";
 
 // touch DEC constant so the dependency is compile-checked (field guide convention)
 void DEC_604;
+void DEC_656;
 
 export interface EditableSubmission {
   id: string;
@@ -334,6 +335,7 @@ export interface PortalParticipant {
   email: string;
   role: string;
   roleLabel: string;
+  visible: boolean;
 }
 
 /** Current participants on one of the speaker's own submissions, in display
@@ -350,6 +352,7 @@ export async function getPortalParticipants(db: Db, submissionId: string): Promi
       email: schema.contact.email,
       role: schema.participant.role,
       order: schema.participant.order,
+      visible: schema.participant.visible,
     })
     .from(schema.participant)
     .innerJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
@@ -366,6 +369,7 @@ export async function getPortalParticipants(db: Db, submissionId: string): Promi
     email: r.email,
     role: r.role,
     roleLabel: participantRoleLabel(r.role),
+    visible: r.visible,
   }));
 }
 
@@ -453,7 +457,11 @@ export async function addCoPresenter(db: Db, input: AddCoPresenterInput): Promis
       contactId,
       role: input.role,
       order: nextOrderSql,
-      visible: true,
+      // DEC-656 (amends DEC-604): a speaker-added co-presenter is RECORDED,
+      // not PUBLISHED. This participant lands visible=false and reaches the
+      // public site only through the organizer's existing visibility toggle
+      // — no speaker-portal action here publishes a name/email server-side.
+      visible: false,
       // DEC-604: recorded but not notified — no invitation/accept-decline
       // flow for a speaker-self-added co-presenter, so this participant is
       // immediately active (mirrors the original CFP submitter's
