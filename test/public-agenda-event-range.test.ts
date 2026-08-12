@@ -30,6 +30,7 @@ function makeChain(rows: unknown[], onWhere?: (cond: unknown) => void) {
     orderBy: () => chain,
     selectDistinct: () => chain,
     limit: async () => rows,
+    as: () => chain,
     then: (resolve: (v: unknown[]) => void) => resolve(rows),
   };
   return chain;
@@ -79,7 +80,7 @@ describe("getPublicAgenda (DEC-318): schedule_slot bounded to event range", () =
       },
     } as unknown as Db;
 
-    const items = await getPublicAgenda(db, EVENT);
+    const { items } = await getPublicAgenda(db, EVENT);
     expect(items).toEqual([]);
 
     const tokens = walkCondition(capturedWhere);
@@ -97,7 +98,7 @@ describe("getPublicAgenda (DEC-318): schedule_slot bounded to event range", () =
       selectDistinct: () => makeChain([]),
     } as unknown as Db;
 
-    const items = await getPublicAgenda(db, EVENT);
+    const { items } = await getPublicAgenda(db, EVENT);
     expect(items).toEqual([]);
   });
 });

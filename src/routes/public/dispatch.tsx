@@ -89,14 +89,12 @@ export async function renderSurfaceContent(
       };
     }
     case "agenda": {
-      let items = await getPublicAgenda(db, event);
-      if (query.day) items = items.filter((i) => i.day === query.day);
-      return { title: `Agenda - ${event.name}`, content: <AgendaContent event={event} items={items} /> };
+      const { items, total } = await getPublicAgenda(db, event, { day: query.day });
+      return { title: `Agenda - ${event.name}`, content: <AgendaContent event={event} items={items} total={total} /> };
     }
     case "schedule": {
-      let items = await getPublicAgenda(db, event);
-      if (query.day) items = items.filter((i) => i.day === query.day);
-      return { title: `Schedule - ${event.name}`, content: <ScheduleContent event={event} items={items} /> };
+      const { items, total } = await getPublicAgenda(db, event, { day: query.day });
+      return { title: `Schedule - ${event.name}`, content: <ScheduleContent event={event} items={items} total={total} /> };
     }
     default: {
       const exhaustive: never = surface;
