@@ -342,7 +342,9 @@ describe("PATCH /api/v1/submissions/:id (CNT-09 admin session editing)", () => {
     const json = (await res.json()) as any;
     expect(json.title).toBe("New Title");
     expect(json.description).toBe("New description");
-    expect(updates).toHaveLength(1);
+    // DEC-519: a real content change also bumps ics_sequence (second update
+    // call, on top of the title/description field update).
+    expect(updates).toHaveLength(2);
     expect(updates[0]).toMatchObject({ title: "New Title", description: "New description" });
     // DEC-158: a real content change appends exactly one submission_revision row.
     expect(inserts).toHaveLength(1);
