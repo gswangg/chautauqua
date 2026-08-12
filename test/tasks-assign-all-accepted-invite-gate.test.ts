@@ -126,9 +126,13 @@ function fakeDb(seed: { participant?: unknown[]; submission?: unknown[]; task?: 
       from: (table: unknown) => makeChain((stateArrayFor(table) ?? []).map((row) => [{ table, row }])),
     }),
     insert: (table: unknown) => ({
+      // DEC-528: createTaskAssignments now inserts via chunkRowsForInsert,
+      // which passes an array of rows rather than one object at a time.
       values: async (vals: unknown) => {
         const arr = stateArrayFor(table);
-        if (arr) arr.push({ ...(vals as object) });
+        if (!arr) return;
+        const rows = Array.isArray(vals) ? vals : [vals];
+        for (const row of rows) arr.push({ ...(row as object) });
       },
     }),
   };

@@ -12,7 +12,7 @@ import { newId } from "../../../domain/ids";
 import { changeStatus, type SubmissionStatus } from "../../../domain/status";
 import { planAcceptance, FORM_TASK_FIELD_SPECS, isActiveParticipant, onboardingTaskDueDate } from "../../../domain/acceptance";
 import { isValidStatusLiteral } from "./query";
-import { chunkIds, ID_CHUNK_SIZE } from "../../../lib/chunk";
+import { chunkIds, chunkRowsForInsert } from "../../../lib/chunk";
 import { ApiError } from "../../http";
 import { DEC_079, DEC_111, DEC_133, DEC_520, DEC_521 } from "../../../decisions";
 
@@ -207,8 +207,10 @@ async function planAndPersistOnboardingTasks(
 
   // DEC-521: chunked multi-row insert, mirroring agenda.ts's
   // scheduleSlot insert — not one statement per (contact, task) pair.
-  for (let i = 0; i < assignmentRows.length; i += ID_CHUNK_SIZE) {
-    await db.insert(schema.taskAssignment).values(assignmentRows.slice(i, i + ID_CHUNK_SIZE));
+  // DEC-528: chunked by bound-parameter budget (columns-per-row derived),
+  // not by row count.
+  for (const chunk of chunkRowsForInsert(assignmentRows)) {
+    await db.insert(schema.taskAssignment).values(chunk);
   }
 }
 

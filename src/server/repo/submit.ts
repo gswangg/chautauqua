@@ -6,6 +6,7 @@ import { and, asc, eq, sql } from "drizzle-orm";
 import * as schema from "../../db/schema";
 import type { Db } from "../context";
 import { newId } from "../../domain/ids";
+import { chunkRowsForInsert } from "../../lib/chunk";
 import { submissionSeqSubquery } from "./submissions/seq";
 import type { FormFieldDef, FormFieldKind, FormFieldSection, FormFieldRule, AnswerMap } from "../../forms/types";
 import { lockedFieldName, projectFieldForAnswers } from "../../forms/types";
@@ -296,7 +297,10 @@ export async function createSubmissionAnswers(
       updatedAt: now,
     }));
   if (rows.length === 0) return;
-  await db.insert(schema.submissionAnswer).values(rows);
+  // DEC-528: chunked by bound-parameter budget (columns-per-row derived).
+  for (const chunk of chunkRowsForInsert(rows)) {
+    await db.insert(schema.submissionAnswer).values(chunk);
+  }
 }
 
 export interface InsertAttachmentFileInput {

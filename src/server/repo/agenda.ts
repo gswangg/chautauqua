@@ -9,7 +9,7 @@ import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { formatRef, newId } from "../../domain/ids";
 import { chunkIds } from "../../lib/chunk";
-import { ID_CHUNK_SIZE } from "../../lib/chunk";
+import { chunkRowsForInsert } from "../../lib/chunk";
 import { bumpIcsSequences } from "./ics-sequence";
 import {
   autoSchedule,
@@ -506,8 +506,8 @@ export async function runAutoSchedule(
       createdAt: now,
       updatedAt: now,
     }));
-    for (let i = 0; i < rows.length; i += ID_CHUNK_SIZE) {
-      await db.insert(schema.scheduleSlot).values(rows.slice(i, i + ID_CHUNK_SIZE));
+    for (const chunk of chunkRowsForInsert(rows)) {
+      await db.insert(schema.scheduleSlot).values(chunk);
     }
     await bumpIcsSequences(
       db,
