@@ -160,24 +160,6 @@
   margin: 0;
 }
 
-.chq-contacts-drawer-tabs {
-  padding-top: 6px;
-  border-top: 1px solid var(--chq-rule);
-}
-
-.chq-contacts-custom-fields,
-.chq-contacts-profile-section {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.chq-contacts-custom-field-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
 .chq-contacts-headshot-field {
   display: flex;
   flex-direction: column;
@@ -427,4 +409,91 @@
     text-align: center;
     gap: 10px;
   }
+}
+
+/* ---------------------------------------------------------------------- */
+/* DEC-616: drawer-as-record (task-w5-e) — label/value rows on a 130px/1fr */
+/* grid, uppercase tracked labels, an editing surface that swaps in on the */
+/* SAME row (no second edit form), the "Across your events" history list, */
+/* and one bottom action bar (Save / Email / Add to event).                */
+/* ---------------------------------------------------------------------- */
+
+.chq-contacts-record {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.chq-contacts-record-row {
+  display: grid;
+  grid-template-columns: 130px 1fr;
+  gap: 16px;
+  align-items: baseline;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--chq-hairline);
+}
+
+.chq-contacts-record-label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--chq-muted);
+}
+
+.chq-contacts-record-value {
+  font-size: 15px;
+  line-height: 1.55;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: text;
+  color: var(--chq-ink);
+  font-family: inherit;
+}
+
+.chq-contacts-record-empty {
+  color: var(--chq-muted);
+}
+
+.chq-contacts-record-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.chq-contacts-add-field {
+  align-self: flex-start;
+  margin-top: 10px;
+}
+
+.chq-contacts-history {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.chq-contacts-history-row {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 14px;
+  align-items: baseline;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--chq-hairline);
+}
+
+.chq-contacts-history-event {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.chq-contacts-history-what {
+  font-size: 13px;
+  color: var(--chq-muted);
+}
+
+.chq-contacts-drawer-actions {
+  display: flex;
+  gap: 9px;
 }

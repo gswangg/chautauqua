@@ -1,9 +1,11 @@
-import { useEffect, useRef, useState, type MouseEvent } from 'react';
+import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react';
 import { apiGet, apiPatch, apiUpload, ApiError } from '../../lib/api';
 import { useEscapeKey } from '../../lib/useEscapeKey';
 import { formatDateTime } from '../../lib/dates';
-import type { ContactDetail } from './types';
+import type { ContactDetail, ContactListItem } from './types';
 import { fromRows, toRows, travelValue, type CustomFieldRow } from './customFields';
+import { BulkEmailModal } from './BulkEmailModal';
+import { AddToEventModal } from './AddToEventModal';
 
 interface Props {
   contactId: string;
@@ -15,14 +17,68 @@ interface Props {
   onContactChanged: () => void;
 }
 
-type Tab = 'submissions' | 'emails' | 'events';
+const EM_DASH = '—';
+
+// DEC-616: the drawer is a record, not a form. Every fact renders as plain
+// text on a label/value row; clicking (or focusing) a value turns that ONE
+// row into an input. Nothing is saved until the bottom action bar's Save is
+// pressed — this mirrors the pre-existing save() semantics exactly, only
+// the affordance changes.
+function RecordRow({
+  label,
+  editing,
+  onEdit,
+  display,
+  editor,
+}: {
+  label: string;
+  editing: boolean;
+  onEdit: () => void;
+  display: ReactNode;
+  editor: ReactNode;
+}) {
+  return (
+    <div className="chq-contacts-record-row">
+      <span className="chq-contacts-record-label">{label}</span>
+      {editing ? (
+        <div className="chq-contacts-record-editor">{editor}</div>
+      ) : (
+        <button type="button" className="chq-contacts-record-value" onClick={onEdit}>
+          {display}
+        </button>
+      )}
+    </div>
+  );
+}
+
+interface HistoryRow {
+  key: string;
+  event: string;
+  what: string;
+}
+
+function buildHistoryRows(history: ContactDetail['history']): HistoryRow[] {
+  const rows: HistoryRow[] = [];
+  for (const s of history.submissions) {
+    rows.push({ key: `sub-${s.id}`, event: s.eventName, what: `${s.title} (${s.ref}) — ${s.status}` });
+  }
+  for (const e of history.emails) {
+    rows.push({ key: `email-${e.id}`, event: formatDateTime(e.sentAt), what: `${e.subject} → ${e.toEmail}` });
+  }
+  history.events.forEach((name, i) => {
+    rows.push({ key: `event-${name}-${i}`, event: name, what: 'On roster' });
+  });
+  return rows;
+}
 
 export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }: Props) {
   const [contact, setContact] = useState<ContactDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [tab, setTab] = useState<Tab>('submissions');
+  const [editingField, setEditingField] = useState<string | null>(null);
+  const [showEmail, setShowEmail] = useState(false);
+  const [showAddToEvent, setShowAddToEvent] = useState(false);
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -107,10 +163,12 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
 
   function removeRow(index: number) {
     setCustomFieldRows((rows) => rows.filter((_, i) => i !== index));
+    setEditingField(null);
   }
 
   function addRow() {
     setCustomFieldRows((rows) => [...rows, { key: '', value: '' }]);
+    setEditingField(`custom-${customFieldRows.length}`);
   }
 
   async function uploadHeadshot() {
@@ -135,12 +193,63 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
     }
   }
 
-  useEscapeKey(true, () => {
-    if (!saving && !headshotUploading) onClose();
-  });
+  const nestedModalOpen = showEmail || showAddToEvent;
+
+  useEscapeKey(!saving && !headshotUploading && !nestedModalOpen, onClose);
 
   function handleScrimClick(e: MouseEvent<HTMLDivElement>) {
-    if (e.target === e.currentTarget && !saving && !headshotUploading) onClose();
+    if (e.target === e.currentTarget && !saving && !headshotUploading && !nestedModalOpen) onClose();
+  }
+
+  const historyRows = contact ? buildHistoryRows(contact.history) : [];
+
+  const contactListItem: ContactListItem = {
+    id: contactId,
+    firstName,
+    lastName,
+    email,
+    company: company || undefined,
+    title: title || undefined,
+  };
+
+  function textField(
+    key: string,
+    label: string,
+    value: string,
+    setValue: (v: string) => void,
+    opts: { multiline?: boolean; type?: string } = {},
+  ) {
+    const editing = editingField === key;
+    return (
+      <RecordRow
+        key={key}
+        label={label}
+        editing={editing}
+        onEdit={() => setEditingField(key)}
+        display={value || <span className="chq-contacts-record-empty">{EM_DASH}</span>}
+        editor={
+          opts.multiline ? (
+            <textarea
+              className="chq-textarea"
+              autoFocus
+              rows={4}
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              onBlur={() => setEditingField(null)}
+            />
+          ) : (
+            <input
+              className="chq-input"
+              autoFocus
+              type={opts.type ?? 'text'}
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              onBlur={() => setEditingField(null)}
+            />
+          )
+        }
+      />
+    );
   }
 
   return (
@@ -152,13 +261,17 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
               <span className="chq-contacts-drawer-name">
                 {firstName} {lastName}
               </span>
-              {(company || title) && (
-                <span className="chq-meta">
-                  {company}
-                  {company && title ? ' · ' : ''}
-                  {title}
-                </span>
-              )}
+              <span className="chq-meta">
+                {company || title ? (
+                  <>
+                    {company}
+                    {company && title ? ' · ' : ''}
+                    {title}
+                  </>
+                ) : (
+                  EM_DASH
+                )}
+              </span>
             </div>
           )}
           <button type="button" className="chq-btn-tertiary chq-drawer-close" onClick={onClose} aria-label="Close">
@@ -171,205 +284,124 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
 
         {!loading && contact && (
           <>
-            <h2 className="chq-contacts-drawer-section-title">Contact detail</h2>
+            <div className="chq-contacts-record">
+              {textField('firstName', 'First name', firstName, setFirstName)}
+              {textField('lastName', 'Last name', lastName, setLastName)}
+              {textField('email', 'Email', email, setEmail, { type: 'email' })}
+              {textField('company', 'Company', company, setCompany)}
+              {textField('title', 'Title', title, setTitle)}
+              {textField('phone', 'Phone', phone, setPhone)}
+              {textField('notes', 'Notes', notes, setNotes, { multiline: true })}
+              {textField('bio', 'Bio', bio, setBio, { multiline: true })}
+              {textField('travel', 'Travel & logistics', travel, setTravel, { multiline: true })}
 
-            <div className="chq-kv">
-              <label className="chq-kv-row" htmlFor="chq-contact-first-name">
-                <span className="chq-kv-label">First name</span>
-                <input className="chq-input" id="chq-contact-first-name" value={firstName} onChange={(e) => setFirstName(e.target.value)} />
-              </label>
-              <label className="chq-kv-row" htmlFor="chq-contact-last-name">
-                <span className="chq-kv-label">Last name</span>
-                <input className="chq-input" id="chq-contact-last-name" value={lastName} onChange={(e) => setLastName(e.target.value)} />
-              </label>
-              <label className="chq-kv-row" htmlFor="chq-contact-email">
-                <span className="chq-kv-label">Email</span>
-                <input className="chq-input" id="chq-contact-email" value={email} onChange={(e) => setEmail(e.target.value)} />
-              </label>
-              <label className="chq-kv-row" htmlFor="chq-contact-company">
-                <span className="chq-kv-label">Company</span>
-                <input className="chq-input" id="chq-contact-company" value={company} onChange={(e) => setCompany(e.target.value)} />
-              </label>
-              <label className="chq-kv-row" htmlFor="chq-contact-title">
-                <span className="chq-kv-label">Title</span>
-                <input className="chq-input" id="chq-contact-title" value={title} onChange={(e) => setTitle(e.target.value)} />
-              </label>
-              <label className="chq-kv-row" htmlFor="chq-contact-phone">
-                <span className="chq-kv-label">Phone</span>
-                <input className="chq-input" id="chq-contact-phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
-              </label>
-              <label className="chq-kv-row" htmlFor="chq-contact-notes">
-                <span className="chq-kv-label">Notes</span>
-                <textarea className="chq-textarea" id="chq-contact-notes" rows={4} value={notes} onChange={(e) => setNotes(e.target.value)} />
-              </label>
-              <label className="chq-kv-row" htmlFor="chq-contact-travel">
-                <span className="chq-kv-label">Travel &amp; logistics</span>
-                <textarea
-                  className="chq-textarea"
-                  id="chq-contact-travel"
-                  rows={3}
-                  placeholder='e.g. "Arrival May 11, aisle seat; dietary: Vegetarian"'
-                  value={travel}
-                  onChange={(e) => setTravel(e.target.value)}
-                />
-              </label>
-            </div>
-
-            <div className="chq-contacts-custom-fields" aria-label="Custom fields">
-              <h3 className="chq-contacts-drawer-section-title">Custom fields</h3>
-              {customFieldRows.map((row, index) => (
-                <div className="chq-contacts-custom-field-row" key={index}>
-                  <label htmlFor={`chq-contact-custom-field-key-${index}`}>
-                    Key
+              <div className="chq-contacts-record-row">
+                <span className="chq-contacts-record-label">Headshot</span>
+                <div className="chq-contacts-record-editor chq-contacts-headshot-field">
+                  {headshotUrl ? (
+                    <img
+                      className="chq-contacts-headshot"
+                      src={headshotUrl}
+                      alt={`${firstName} ${lastName} headshot`}
+                      width={64}
+                      height={64}
+                    />
+                  ) : (
+                    <span className="chq-contacts-record-empty">{EM_DASH}</span>
+                  )}
+                  <label htmlFor="chq-contact-headshot-upload">
+                    Upload headshot
                     <input
+                      id="chq-contact-headshot-upload"
                       className="chq-input"
-                      id={`chq-contact-custom-field-key-${index}`}
-                      value={row.key}
-                      onChange={(e) => updateRow(index, { key: e.target.value })}
+                      type="file"
+                      accept=".png,.jpg,.jpeg,.webp"
+                      ref={headshotInputRef}
+                      onChange={uploadHeadshot}
+                      disabled={headshotUploading}
                     />
                   </label>
-                  <label htmlFor={`chq-contact-custom-field-value-${index}`}>
-                    Value
-                    <input
-                      className="chq-input"
-                      id={`chq-contact-custom-field-value-${index}`}
-                      value={row.value}
-                      onChange={(e) => updateRow(index, { value: e.target.value })}
-                    />
-                  </label>
-                  <button type="button" className="chq-btn chq-btn-secondary" onClick={() => removeRow(index)}>
-                    Remove
-                  </button>
+                  {headshotUploading && <p>Uploading...</p>}
+                  {headshotError && <div className="chq-error">{headshotError}</div>}
                 </div>
-              ))}
-              <button type="button" className="chq-btn chq-btn-secondary" onClick={addRow}>
+              </div>
+
+              {textField('twitter', 'Twitter', twitter, setTwitter)}
+              {textField('linkedin', 'LinkedIn', linkedin, setLinkedin)}
+              {textField('github', 'GitHub', github, setGithub)}
+              {textField('website', 'Website', website, setWebsite)}
+
+              {customFieldRows.map((row, index) => {
+                const key = `custom-${index}`;
+                const editing = editingField === key;
+                return (
+                  <div className="chq-contacts-record-row" key={key}>
+                    <span className="chq-contacts-record-label">
+                      {editing ? (
+                        <input
+                          className="chq-input"
+                          aria-label={`Custom field ${index + 1} key`}
+                          value={row.key}
+                          onChange={(e) => updateRow(index, { key: e.target.value })}
+                        />
+                      ) : (
+                        row.key || <span className="chq-contacts-record-empty">{EM_DASH}</span>
+                      )}
+                    </span>
+                    {editing ? (
+                      <div className="chq-contacts-record-editor">
+                        <input
+                          className="chq-input"
+                          aria-label={`Custom field ${index + 1} value`}
+                          value={row.value}
+                          onChange={(e) => updateRow(index, { value: e.target.value })}
+                          onBlur={() => setEditingField(null)}
+                        />
+                        <button type="button" className="chq-btn chq-btn-secondary" onClick={() => removeRow(index)}>
+                          Remove
+                        </button>
+                      </div>
+                    ) : (
+                      <button type="button" className="chq-contacts-record-value" onClick={() => setEditingField(key)}>
+                        {row.value || <span className="chq-contacts-record-empty">{EM_DASH}</span>}
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+              <button type="button" className="chq-btn chq-btn-secondary chq-contacts-add-field" onClick={addRow}>
                 Add field
               </button>
             </div>
 
-            {/* CNT-10 (DEC-152/DEC-142/DEC-028): speaker profile section — bio,
-                headshot, social links — kept visually separate from the CRM
-                fields above since it round-trips through the same portal
-                profile plumbing a speaker's own edits use. */}
-            <section aria-label="Speaker profile" className="chq-contacts-profile-section">
-              <h3 className="chq-contacts-drawer-section-title">Speaker profile</h3>
-
-              <label htmlFor="chq-contact-bio">
-                Bio
-                <textarea className="chq-textarea" id="chq-contact-bio" rows={4} value={bio} onChange={(e) => setBio(e.target.value)} />
-              </label>
-
-              <div className="chq-contacts-headshot-field">
-                {headshotUrl ? (
-                  <img
-                    className="chq-contacts-headshot"
-                    src={headshotUrl}
-                    alt={`${firstName} ${lastName} headshot`}
-                    width={120}
-                    height={120}
-                  />
-                ) : (
-                  <p>No headshot uploaded yet.</p>
-                )}
-                <label htmlFor="chq-contact-headshot-upload">
-                  Upload headshot
-                  <input
-                    id="chq-contact-headshot-upload"
-                    className="chq-input"
-                    type="file"
-                    accept=".png,.jpg,.jpeg,.webp"
-                    ref={headshotInputRef}
-                    onChange={uploadHeadshot}
-                    disabled={headshotUploading}
-                  />
-                </label>
-                {headshotUploading && <p>Uploading...</p>}
-                {headshotError && <div className="chq-error">{headshotError}</div>}
-              </div>
-
-              <label htmlFor="chq-contact-twitter">
-                Twitter
-                <input className="chq-input" id="chq-contact-twitter" value={twitter} onChange={(e) => setTwitter(e.target.value)} />
-              </label>
-              <label htmlFor="chq-contact-linkedin">
-                LinkedIn
-                <input className="chq-input" id="chq-contact-linkedin" value={linkedin} onChange={(e) => setLinkedin(e.target.value)} />
-              </label>
-              <label htmlFor="chq-contact-github">
-                GitHub
-                <input className="chq-input" id="chq-contact-github" value={github} onChange={(e) => setGithub(e.target.value)} />
-              </label>
-              <label htmlFor="chq-contact-website">
-                Website
-                <input className="chq-input" id="chq-contact-website" value={website} onChange={(e) => setWebsite(e.target.value)} />
-              </label>
+            <section aria-label="Across your events" className="chq-contacts-history">
+              <h3 className="chq-contacts-drawer-section-title">Across your events</h3>
+              {historyRows.length === 0 && <p className="chq-meta">No history yet.</p>}
+              {historyRows.map((row) => (
+                <div className="chq-contacts-history-row" key={row.key}>
+                  <span className="chq-contacts-history-event">{row.event}</span>
+                  <span className="chq-contacts-history-what">{row.what}</span>
+                </div>
+              ))}
             </section>
 
-            <button type="button" className="chq-btn chq-btn-primary" disabled={saving} onClick={save}>
-              Save
-            </button>
-
-            <div className="chq-chipstrip chq-contacts-drawer-tabs" role="tablist" aria-label="Contact history">
-              <button
-                type="button"
-                role="tab"
-                aria-selected={tab === 'submissions'}
-                className={tab === 'submissions' ? 'chq-pill is-active' : 'chq-pill'}
-                onClick={() => setTab('submissions')}
-              >
-                Submissions
+            <div className="chq-contacts-drawer-actions">
+              <button type="button" className="chq-btn chq-btn-primary" disabled={saving} onClick={save}>
+                Save
               </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={tab === 'emails'}
-                className={tab === 'emails' ? 'chq-pill is-active' : 'chq-pill'}
-                onClick={() => setTab('emails')}
-              >
-                Emails
+              <button type="button" className="chq-btn chq-btn-secondary" onClick={() => setShowEmail(true)}>
+                Email
               </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={tab === 'events'}
-                className={tab === 'events' ? 'chq-pill is-active' : 'chq-pill'}
-                onClick={() => setTab('events')}
-              >
-                Events
+              <button type="button" className="chq-btn chq-btn-secondary" onClick={() => setShowAddToEvent(true)}>
+                Add to event
               </button>
             </div>
-
-            {tab === 'submissions' && (
-              <ul>
-                {contact.history.submissions.map((s) => (
-                  <li key={s.id}>
-                    {s.ref} — {s.title} ({s.eventName}) — {s.status}
-                  </li>
-                ))}
-                {contact.history.submissions.length === 0 && <li>No submissions.</li>}
-              </ul>
-            )}
-            {tab === 'emails' && (
-              <ul>
-                {contact.history.emails.map((e) => (
-                  <li key={e.id}>
-                    {formatDateTime(e.sentAt)} — {e.subject} ({e.toEmail})
-                  </li>
-                ))}
-                {contact.history.emails.length === 0 && <li>No emails.</li>}
-              </ul>
-            )}
-            {tab === 'events' && (
-              <ul>
-                {contact.history.events.map((name) => (
-                  <li key={name}>{name}</li>
-                ))}
-                {contact.history.events.length === 0 && <li>No events.</li>}
-              </ul>
-            )}
           </>
         )}
       </div>
+
+      {showEmail && <BulkEmailModal contactIds={[contactId]} eventId={null} onClose={() => setShowEmail(false)} />}
+      {showAddToEvent && <AddToEventModal contact={contactListItem} onClose={() => setShowAddToEvent(false)} />}
     </div>
   );
 }
