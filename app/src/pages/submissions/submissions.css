@@ -1,0 +1,345 @@
+/* Submissions re-skin (w1-e, DEC-366..368). Shared .chq-* classes (page-title,
+   toolbar, table, pill, flag, btn, modal, input/select, error) are owned by
+   the shell lane in ../../styles.css -- this file only defines the
+   .chq-submissions-* layout classes specific to this screen. */
+
+.chq-submissions-page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.chq-submissions-tabs {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.chq-submissions-forms-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 15px;
+  border: 1px solid var(--chq-border, #bab6a6);
+  border-radius: var(--chq-r-ctl, 4px);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--chq-ink, #1b1d17);
+  text-decoration: none;
+}
+
+.chq-submissions-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.chq-submissions-head-titles {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.chq-submissions-head-actions {
+  display: flex;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+
+/* Toolbar: sits between two 1px --chq-rule rules. */
+.chq-submissions-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border-top: 1px solid var(--chq-rule, #d3cfc0);
+  border-bottom: 1px solid var(--chq-rule, #d3cfc0);
+  padding: 14px 0;
+}
+
+.chq-submissions-toolbar-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.chq-submissions-status-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.chq-submissions-status-label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--chq-muted, #565a4b);
+  margin-right: 4px;
+}
+
+.chq-submissions-filterbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.chq-submissions-filterbar-search {
+  min-width: 220px;
+  min-height: 44px;
+}
+
+.chq-submissions-filterbar-select {
+  min-height: 44px;
+}
+
+.chq-submissions-columnpicker {
+  position: relative;
+}
+
+.chq-submissions-columnpicker > summary {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 13px;
+  border: 1px solid var(--chq-border, #bab6a6);
+  border-radius: var(--chq-r-ctl, 4px);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+}
+
+.chq-submissions-columnpicker > summary::-webkit-details-marker {
+  display: none;
+}
+
+.chq-submissions-columnpicker-panel {
+  position: absolute;
+  z-index: 5;
+  margin-top: 6px;
+  padding: 12px 14px;
+  min-width: 220px;
+  background: var(--chq-paper, #f4f1e8);
+  border: 1px solid var(--chq-border, #bab6a6);
+  border-radius: var(--chq-r-ctl, 4px);
+}
+
+.chq-submissions-columnpicker-panel ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.chq-submissions-columnpicker-panel label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  font-size: 13px;
+}
+
+/* Bulk bar */
+.chq-submissions-bulkbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  background: var(--chq-surface-sunk, #efebdf);
+  border-radius: var(--chq-r-ctl, 4px);
+  padding: 11px 15px;
+}
+
+.chq-submissions-bulkbar-count {
+  font-family: var(--chq-font-display, inherit);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.chq-submissions-bulkbar-note {
+  font-size: 12px;
+  color: var(--chq-muted, #565a4b);
+}
+
+.chq-submissions-bulkbar-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Table */
+.chq-submissions-table-wrap {
+  overflow-x: auto;
+}
+
+.chq-submissions-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.chq-submissions-table thead th {
+  text-align: left;
+  padding: 0 0 9px;
+  border-bottom: 2px solid var(--chq-ink, #1b1d17);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--chq-muted, #565a4b);
+  white-space: nowrap;
+}
+
+.chq-submissions-table thead th:not(:last-child),
+.chq-submissions-table tbody td:not(:last-child) {
+  padding-right: 14px;
+}
+
+.chq-submissions-table tbody td {
+  padding: 13px 0;
+  border-bottom: 1px solid var(--chq-hairline, #e1ddce);
+  vertical-align: baseline;
+  font-size: 13px;
+}
+
+.chq-submissions-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.chq-submissions-table-title {
+  font-family: var(--chq-font-display, inherit);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--chq-ink, #1b1d17);
+  text-decoration: none;
+}
+
+.chq-submissions-table-ref {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--chq-muted, #565a4b);
+}
+
+.chq-submissions-table-muted {
+  font-size: 12px;
+  color: var(--chq-muted, #565a4b);
+}
+
+.chq-submissions-clone {
+  font-size: 12px;
+  font-weight: 700;
+  background: none;
+  border: none;
+  color: var(--chq-brand, #4e5c31);
+  cursor: pointer;
+  padding: 0;
+}
+
+.chq-submissions-clone:disabled {
+  color: var(--chq-disabled, #8e8a7a);
+  cursor: default;
+}
+
+.chq-submissions-empty,
+.chq-submissions-loading {
+  padding: 24px 0;
+  font-size: 13px;
+  color: var(--chq-muted, #565a4b);
+}
+
+.chq-submissions-pagination {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding-top: 6px;
+}
+
+.chq-submissions-pagination-summary {
+  font-size: 13px;
+  color: var(--chq-muted, #565a4b);
+}
+
+.chq-submissions-pagination-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 9px;
+}
+
+.chq-submissions-views {
+  position: relative;
+}
+
+.chq-submissions-views > summary {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 13px;
+  border: 1px solid var(--chq-border, #bab6a6);
+  border-radius: var(--chq-r-ctl, 4px);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+}
+
+.chq-submissions-views > summary::-webkit-details-marker {
+  display: none;
+}
+
+.chq-submissions-views-panel {
+  position: absolute;
+  z-index: 5;
+  margin-top: 6px;
+  padding: 10px 12px;
+  min-width: 220px;
+  background: var(--chq-paper, #f4f1e8);
+  border: 1px solid var(--chq-border, #bab6a6);
+  border-radius: var(--chq-r-ctl, 4px);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.chq-submissions-views-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.chq-submissions-views-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.chq-submissions-views-empty {
+  font-size: 12px;
+  color: var(--chq-muted, #565a4b);
+}
+
+/* Modal form fields */
+.chq-submissions-modal-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.chq-submissions-modal-label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--chq-muted, #565a4b);
+}

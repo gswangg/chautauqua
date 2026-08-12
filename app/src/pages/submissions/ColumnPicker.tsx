@@ -10,9 +10,9 @@ export function ColumnPicker({ columns, visibleFieldIds, onToggle }: ColumnPicke
   if (columns.length === 0) return null;
 
   return (
-    <details className="chq-column-picker">
+    <details className="chq-submissions-columnpicker">
       <summary>Columns</summary>
-      <fieldset>
+      <fieldset className="chq-submissions-columnpicker-panel">
         <legend>Columns</legend>
         <ul>
           {columns.map((col) => {
@@ -22,11 +22,12 @@ export function ColumnPicker({ columns, visibleFieldIds, onToggle }: ColumnPicke
                 <label>
                   <input
                     type="checkbox"
+                    className="chq-check"
                     checked={visibleFieldIds.has(col.fieldId)}
                     onChange={() => onToggle(col.fieldId)}
                     aria-label={label.length === 0 ? `Toggle column ${col.fieldId}` : undefined}
                   />
-                  {label.length === 0 ? ' ' : label}
+                  {label.length === 0 ? ' ' : label}
                 </label>
               </li>
             );

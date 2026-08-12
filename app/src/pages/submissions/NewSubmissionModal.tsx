@@ -52,34 +52,34 @@ export function NewSubmissionModal({ onCancel, onCreate }: NewSubmissionModalPro
     <div className="chq-modal-overlay" role="dialog" aria-modal="true" aria-label="New submission">
       <form className="chq-modal" onSubmit={submit}>
         <h2>New submission</h2>
-        {error && <div className="chq-error-banner">{error}</div>}
+        {error && <div className="chq-error">{error}</div>}
 
-        <label>
-          Title
-          <input value={title} onChange={(e) => setTitle(e.target.value)} required />
+        <label className="chq-submissions-modal-field">
+          <span className="chq-submissions-modal-label">Title</span>
+          <input className="chq-input" value={title} onChange={(e) => setTitle(e.target.value)} required />
         </label>
-        <label>
-          Description
-          <textarea value={description} onChange={(e) => setDescription(e.target.value)} />
+        <label className="chq-submissions-modal-field">
+          <span className="chq-submissions-modal-label">Description</span>
+          <textarea className="chq-textarea" value={description} onChange={(e) => setDescription(e.target.value)} />
         </label>
-        <label>
-          Speaker email (optional)
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+        <label className="chq-submissions-modal-field">
+          <span className="chq-submissions-modal-label">Speaker email (optional)</span>
+          <input className="chq-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
         </label>
-        <label>
-          Speaker first name
-          <input value={firstName} onChange={(e) => setFirstName(e.target.value)} />
+        <label className="chq-submissions-modal-field">
+          <span className="chq-submissions-modal-label">Speaker first name</span>
+          <input className="chq-input" value={firstName} onChange={(e) => setFirstName(e.target.value)} />
         </label>
-        <label>
-          Speaker last name
-          <input value={lastName} onChange={(e) => setLastName(e.target.value)} />
+        <label className="chq-submissions-modal-field">
+          <span className="chq-submissions-modal-label">Speaker last name</span>
+          <input className="chq-input" value={lastName} onChange={(e) => setLastName(e.target.value)} />
         </label>
 
         <div className="chq-modal-actions">
-          <button type="button" onClick={onCancel} disabled={pending}>
+          <button type="button" className="chq-btn chq-btn-secondary" onClick={onCancel} disabled={pending}>
             Cancel
           </button>
-          <button type="submit" disabled={pending}>
+          <button type="submit" className="chq-btn chq-btn-primary" disabled={pending}>
             Create
           </button>
         </div>

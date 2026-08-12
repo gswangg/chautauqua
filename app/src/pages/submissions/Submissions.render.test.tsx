@@ -6,7 +6,7 @@
 // against a mocked fetch shaped like the real wire contract and asserts it
 // renders without throwing.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { SubmissionsPage } from '../Submissions';
@@ -19,6 +19,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  cleanup();
   window.localStorage.clear();
   vi.unstubAllGlobals();
 });
@@ -111,9 +112,11 @@ describe('SubmissionsPage render smoke', () => {
       </MemoryRouter>,
     );
 
-    // Tracks column shows the track NAME, not item.trackIds.length.
+    // Tracks column shows the track NAME, not item.trackIds.length. Scoped
+    // to a table cell since "Keynotes" also appears as a <select> option in
+    // the track filter.
     await waitFor(() => {
-      expect(screen.getByText('Keynotes')).toBeInTheDocument();
+      expect(screen.getByRole('cell', { name: 'Keynotes' })).toBeInTheDocument();
     });
 
     // The custom "Level" column is off by default; toggling it on in the
@@ -175,5 +178,42 @@ describe('SubmissionsPage render smoke', () => {
     await waitFor(() => {
       expect(screen.getByRole('columnheader', { name: 'Session format' })).toBeInTheDocument();
     });
+  });
+
+  it('shows the bulk-bar batch-size constraint copy once a row is selected', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { id: 'form-1', fields: [] },
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([
+        {
+          id: 'sub-1',
+          ref: 'S-001',
+          title: 'A Talk About Testing',
+          status: 'pending',
+          contentStatus: 'pending',
+          speakers: [{ contactId: 'c1', name: 'Ada Lovelace' }],
+          trackIds: [],
+          submittedAt: null,
+          createdAt: 1700000000000,
+        },
+      ]),
+    });
+
+    render(
+      <MemoryRouter>
+        <SubmissionsPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('A Talk About Testing')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByText('Kept across pages · sent in batches of 100')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select S-001' }));
+
+    expect(screen.getByText('Kept across pages · sent in batches of 100')).toBeInTheDocument();
+    expect(screen.getByText('1 selected')).toBeInTheDocument();
   });
 });
