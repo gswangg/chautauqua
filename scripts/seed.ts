@@ -183,10 +183,44 @@ function synthTitle(i: number): string {
   return template.replace("{topic}", topic);
 }
 
-const BASE_TS = Date.UTC(2027, 0, 15, 12, 0, 0); // 2027-01-15T12:00:00Z anchor
+// DEC-591: the seed has ONE clock. SEED_NOW anchors every seeded instant as
+// an offset from itself (never a hardcoded future/past absolute), so a seed
+// run today doesn't emit created_at/sent_at rows dated years in the future.
+// CHQ_SEED_NOW (an ISO string) overrides it for deterministic test runs;
+// an unparseable override throws loudly rather than silently falling back.
+const SEED_NOW: number = process.env.CHQ_SEED_NOW
+  ? (() => {
+      const parsed = Date.parse(process.env.CHQ_SEED_NOW!);
+      if (Number.isNaN(parsed)) {
+        throw new Error(`CHQ_SEED_NOW does not parse as a date: "${process.env.CHQ_SEED_NOW}"`);
+      }
+      return parsed;
+    })()
+  : Date.now();
+const DAY_MS = 86_400_000;
+// BASE_TS anchors created_at/updated_at/sent_at rows 120 days before SEED_NOW,
+// so the seed's history reads as "the past" relative to whenever it's run.
+const BASE_TS = SEED_NOW - 120 * DAY_MS;
 const MINUTE_MS = 60_000;
 
+// The event's own dates are fixture/demo constants, NOT derived from
+// SEED_NOW (DEC-591 scopes the "one clock" to seeded *instants*, not the
+// event's absolute calendar dates/slug — those stay fixed so the demo event
+// is always "DevFlow Conf 2027", May 12-14). Instead we assert SEED_NOW sits
+// safely before it, so a seed run after the event has already happened
+// fails loudly instead of quietly emitting a stale conference.
+const EVENT_START_MS = Date.UTC(2027, 4, 12, 0, 0, 0);
+const MIN_LEAD_DAYS = 60;
+
 async function main(): Promise<void> {
+  if (SEED_NOW > EVENT_START_MS - MIN_LEAD_DAYS * DAY_MS) {
+    throw new Error(
+      `seed: SEED_NOW (${new Date(SEED_NOW).toISOString()}) must be at least ${MIN_LEAD_DAYS} days ` +
+        `before the event start (${new Date(EVENT_START_MS).toISOString()}); the seeded demo event ` +
+        `has already happened or is happening too soon. Set CHQ_SEED_NOW to an earlier date.`,
+    );
+  }
+
   const fixture: FixtureData = JSON.parse(readFileSync(FIXTURE_PATH, "utf-8"));
 
   const statements: string[] = [];
@@ -321,7 +355,7 @@ async function main(): Promise<void> {
       title: "Call for Proposals",
       description: "Default CFP form for " + fixture.event.name,
       is_default: true,
-      close_date: Date.UTC(2027, 2, 1, 23, 59, 0),
+      close_date: SEED_NOW + 18 * DAY_MS,
       created_at: nextTs(),
       updated_at: ts,
     }),
@@ -800,12 +834,11 @@ async function main(): Promise<void> {
       event_id: eventId,
       name: "Program Committee Review",
       instructions: "Score each proposal on content quality, delivery, and session length fit.",
-      // Task w1-d / DEC-145: opens 2026-01-01Z (not tied to Date.now — the
-      // grading window is a fixed date range) so the reviewer window spans
-      // 'now' regardless of when the eval is actually run; close_date is
-      // unchanged (still after the 2027 event dates).
-      open_date: Date.UTC(2026, 0, 1),
-      close_date: Date.UTC(2027, 4, 20, 23, 59, 0),
+      // DEC-591: the grading window is expressed as a SEED_NOW offset (opens
+      // 30 days before, closes 25 days after) so the reviewer window always
+      // spans 'now' regardless of when the seed is actually run.
+      open_date: SEED_NOW - 30 * DAY_MS,
+      close_date: SEED_NOW + 25 * DAY_MS,
       filters_json: null,
       anonymized: false,
       scale_json: JSON.stringify({ min: 1, max: 5 }),
@@ -913,9 +946,16 @@ async function main(): Promise<void> {
   // speaker's contact in mixed pending/complete states. Never reference
   // response_json/file_id/last_reminded_at (wave-3 columns, migration
   // 0002-pending per DEC-017) so this seed works pre- or post-migration.
-  const eventStartMs = Date.UTC(2027, 4, 12, 0, 0, 0);
-  const DAY_MS = 86_400_000;
-  const dueDaysBefore = [35, 28, 21, 14, 7];
+  // DEC-591: task due dates are SEED_NOW offsets (not event-start-relative)
+  // so the onboarding grid always shows a mix of past-due and upcoming work
+  // regardless of when the seed is run — exactly 3 of the 5 default tasks
+  // already past, 2 still upcoming, all still safely before event start
+  // (asserted below).
+  const dueOffsetDaysFromSeedNow = [-12, -6, -2, 9, 23];
+  const pastCount = dueOffsetDaysFromSeedNow.filter((d) => d < 0).length;
+  if (pastCount !== 3) {
+    throw new Error(`seed: expected exactly 3 past-due default onboarding tasks, got ${pastCount}`);
+  }
   // DEC-111/DEC-172: form-kind onboarding tasks need a real backing form
   // (non-default, null open/close so it never surfaces on the public CFP)
   // with FORM_TASK_FIELD_SPECS' fields, mirroring
@@ -966,6 +1006,13 @@ async function main(): Promise<void> {
     // join the content pipeline and the grader sees real Files-library /
     // worklist counts instead of an unlinked 'handout'.
     const deliverableKind = tpl.kind === "file_request" ? "presentation" : null;
+    const dueDate = SEED_NOW + dueOffsetDaysFromSeedNow[i]! * DAY_MS;
+    if (dueDate >= EVENT_START_MS) {
+      throw new Error(
+        `seed: default onboarding task "${tpl.title}" due date (${new Date(dueDate).toISOString()}) ` +
+          `must be before the event start (${new Date(EVENT_START_MS).toISOString()})`,
+      );
+    }
     statements.push(
       insertStmt("task", {
         id: taskId,
@@ -973,7 +1020,7 @@ async function main(): Promise<void> {
         kind: tpl.kind,
         title: tpl.title,
         description: null,
-        due_date: eventStartMs - dueDaysBefore[i]! * DAY_MS,
+        due_date: dueDate,
         required: tpl.required,
         form_id: taskFormId,
         deliverable_kind: deliverableKind,

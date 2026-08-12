@@ -175,15 +175,19 @@ describe("seed.ts output (task w1-d, DEC-145)", () => {
     sql = readFileSync(OUTPUT_PATH, "utf-8");
   }, 60_000);
 
-  it("opens the evaluation plan window at 2026-01-01T00:00:00Z (spans 2026-08-10) without touching close_date", () => {
-    const match = sql.match(/INSERT INTO evaluation_plan \([^)]*\) VALUES \(([^;]*)\);/);
+  it("DEC-591: opens the evaluation plan window before 'now' and closes it after 'now', spanning SEED_NOW", () => {
+    // (id, event_id, name, instructions, open_date, close_date, ...) — the
+    // quoted string columns are consumed by '[^']*' so an embedded comma in
+    // `instructions` can't desync the positional capture.
+    const match = sql.match(
+      /INSERT INTO evaluation_plan \([^)]*\) VALUES \('[^']*', '[^']*', '[^']*', '[^']*', (\d+), (\d+),/,
+    );
     expect(match).toBeTruthy();
-    const values = match![1]!;
-    // open_date is the 5th value (id, event_id, name, instructions, open_date, ...).
-    expect(values).toContain(`${Date.UTC(2026, 0, 1)}`);
-    // close_date must remain the pre-existing 2027-05-20 23:59 UTC value.
-    expect(values).toContain(`${Date.UTC(2027, 4, 20, 23, 59, 0)}`);
-    expect(Date.UTC(2026, 0, 1)).toBeLessThanOrEqual(Date.now());
+    const openDate = Number(match![1]);
+    const closeDate = Number(match![2]);
+    expect(openDate).toBeLessThan(Date.now());
+    expect(closeDate).toBeGreaterThan(Date.now());
+    expect(openDate).toBeLessThan(closeDate);
   });
 
   it("gives the demo speaker (sbek-speaker@example.com, seed_contact_0001) an accepted submission with a visible participant row", () => {
@@ -198,7 +202,7 @@ describe("seed.ts output (task w1-d, DEC-145)", () => {
     );
   });
 
-  it("assigns the demo speaker's contact at least 2 task_assignment rows, including a 'form'-kind and a 'file_request'-kind task, due in 2026-2027", () => {
+  it("DEC-591: assigns the demo speaker's contact at least 2 task_assignment rows, including a 'form'-kind and a 'file_request'-kind task, with exactly 3 of the 5 default task due dates already past and all before the event start", () => {
     const taskAssignmentRows = [
       ...sql.matchAll(
         /INSERT INTO task_assignment \([^)]*\) VALUES \('[^']*', '([^']*)', 'seed_contact_0001', '[^']*', ([^,]*), [^,]*, (\d+), \d+\);/g,
@@ -217,10 +221,16 @@ describe("seed.ts output (task w1-d, DEC-145)", () => {
 
     for (const id of taskIds) {
       const due = dueDateByTaskId.get(id!)!;
-      const year = new Date(due).getUTCFullYear();
-      expect(year).toBeGreaterThanOrEqual(2026);
-      expect(year).toBeLessThanOrEqual(2027);
+      // Event start is 2027-05-12T00:00:00Z (fixed demo calendar date).
+      expect(due).toBeLessThan(Date.UTC(2027, 4, 12, 0, 0, 0));
     }
+
+    // Exactly 3 of the 5 DEFAULT_ONBOARDING_TASKS due dates are already
+    // past relative to 'now' (DEC-591's SEED_NOW offsets: -12,-6,-2,+9,+23).
+    const allTaskDueDates = [...dueDateByTaskId.values()];
+    expect(allTaskDueDates.length).toBe(5);
+    const pastCount = allTaskDueDates.filter((d) => d < Date.now()).length;
+    expect(pastCount).toBe(3);
   });
 
   it("chains a second deliverable version via previous_file_id and threads a file_comment (organizer note + speaker reply)", () => {
