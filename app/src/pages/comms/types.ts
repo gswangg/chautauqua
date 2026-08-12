@@ -23,6 +23,9 @@ export interface RenderedRecipientIcs {
   endUtc: string;
   room?: string | null;
   sequence: number;
+  // DEC-494: the OWNING EVENT's IANA timezone, so the preview chip renders
+  // the session's local time instead of the viewer's ambient machine zone.
+  timeZone: string;
 }
 
 export interface RenderedRecipient {
