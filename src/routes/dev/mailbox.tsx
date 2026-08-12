@@ -32,6 +32,7 @@ function formatSentAt(ms: number): string {
 }
 
 function MailboxListPage(props: {
+  // DEC-543: narrow list projection — no bodyText/bodyHtml/icsText here.
   rows: Awaited<ReturnType<typeof listEmailLog>>["items"];
   total: number;
   page: number;
