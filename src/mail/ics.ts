@@ -96,11 +96,20 @@ function uidFor(submissionId: string): string {
   return `chq-${submissionId}@chautauqua`;
 }
 
-// CN values are quoted-string parameters (RFC 5545 §3.2): embedded double
-// quotes would break out of the quoting, so they're stripped outright
-// rather than escaped.
+// DEC-499: CN values are quoted-string parameters (RFC 5545 §3.2); QSAFE-CHAR
+// is "any character except CTL and DQUOTE", so both DQUOTE and every C0/DEL
+// control character (including CR and LF) are stripped outright rather than
+// escaped — a bare CRLF here would otherwise inject a new content line into
+// the output. This is enforced at the serializer, not upstream, because CN
+// values reach this function from three call sites (organizer name derived
+// from event.name, and attendee name derived from a contact's name or
+// email), one of which — the attendee name on a compose send — originates
+// in unauthenticated public CFP text answers. `;`, `:`, `,`, `\`, and
+// non-ASCII characters are legal inside a quoted parameter value and must
+// survive unchanged.
 function sanitizeCn(name: string): string {
-  return name.replace(/"/g, "");
+  // eslint-disable-next-line no-control-regex
+  return name.replace(/["\x00-\x1f\x7f]/g, "");
 }
 
 function buildVevent(e: IcsEventInput, opts: IcsOptions): string[] {

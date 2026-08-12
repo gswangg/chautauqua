@@ -69,3 +69,89 @@ describe("ics escapeText CR normalization (DEC-131)", () => {
     expect(location).toBe("LOCATION:Room A\\nBuilding B");
   });
 });
+
+// DEC-499: sanitizeCn strips DQUOTE + every CTL char from CN parameter
+// values, so an embedded CRLF (or other control char) in an organizer/
+// attendee name can never inject a new content line into the .ics output.
+describe("ics CN injection hardening (DEC-499)", () => {
+  const KNOWN_LINE_STARTS = [
+    "BEGIN",
+    "END",
+    "VERSION",
+    "PRODID",
+    "METHOD",
+    "UID",
+    "SEQUENCE",
+    "DTSTAMP",
+    "DTSTART",
+    "DTEND",
+    "SUMMARY",
+    "DESCRIPTION",
+    "LOCATION",
+    "ORGANIZER",
+    "ATTENDEE",
+  ];
+
+  function assertNoInjectedLines(ics: string): void {
+    const rawLines = ics.split("\r\n").filter((l) => l.length > 0);
+    for (const line of rawLines) {
+      const isKnownStart = KNOWN_LINE_STARTS.some((name) => line.startsWith(name));
+      const isFoldContinuation = line.startsWith(" ");
+      expect(isKnownStart || isFoldContinuation).toBe(true);
+    }
+    expect(rawLines.some((l) => /^X-EVIL/.test(l))).toBe(false);
+    expect(rawLines.some((l) => /^BEGIN:VALARM/.test(l))).toBe(false);
+  }
+
+  it("REQUEST calendar: strips CRLF/control chars injected via organizer and attendee CN", () => {
+    const opts: IcsOptions = {
+      method: "REQUEST",
+      organizer: { name: "Ada\r\nX-EVIL:1", email: ICS_ORGANIZER_EMAIL },
+      attendee: { name: "Bob\nBEGIN:VALARM", email: "bob@example.com" },
+    };
+    const ics = buildIcsEvent(baseEvent(), opts);
+    assertNoInjectedLines(ics);
+
+    const unfolded = unfold(ics);
+    const organizer = unfolded.find((l) => l.startsWith("ORGANIZER;"));
+    const attendee = unfolded.find((l) => l.startsWith("ATTENDEE;"));
+    expect(organizer).toBe(`ORGANIZER;CN="AdaX-EVIL:1":mailto:${ICS_ORGANIZER_EMAIL}`);
+    expect(attendee).toContain('CN="BobBEGIN:VALARM"');
+  });
+
+  it("strips tab and form-feed control chars from a CN", () => {
+    const opts: IcsOptions = {
+      method: "REQUEST",
+      organizer: { name: "Org", email: ICS_ORGANIZER_EMAIL },
+      attendee: { name: "Bob\tSmith\fJones", email: "bob@example.com" },
+    };
+    const ics = buildIcsEvent(baseEvent(), opts);
+    const unfolded = unfold(ics);
+    const attendee = unfolded.find((l) => l.startsWith("ATTENDEE;"));
+    expect(attendee).toContain('CN="BobSmithJones"');
+  });
+
+  it("keeps legal characters ; and : intact inside a CN", () => {
+    const opts: IcsOptions = {
+      method: "PUBLISH",
+      organizer: { name: "Smith; Jones: Ltd", email: ICS_ORGANIZER_EMAIL },
+    };
+    const ics = buildIcsEvent(baseEvent(), opts);
+    const unfolded = unfold(ics);
+    const organizer = unfolded.find((l) => l.startsWith("ORGANIZER;"));
+    expect(organizer).toBe(`ORGANIZER;CN="Smith; Jones: Ltd":mailto:${ICS_ORGANIZER_EMAIL}`);
+    assertNoInjectedLines(ics);
+  });
+
+  it("PUBLISH calendar (organizer only): strips CRLF injection from CN", () => {
+    const opts: IcsOptions = {
+      method: "PUBLISH",
+      organizer: { name: "Evil\r\nX-EVIL:1", email: ICS_ORGANIZER_EMAIL },
+    };
+    const ics = buildIcsEvent(baseEvent(), opts);
+    assertNoInjectedLines(ics);
+    const unfolded = unfold(ics);
+    const organizer = unfolded.find((l) => l.startsWith("ORGANIZER;"));
+    expect(organizer).toBe(`ORGANIZER;CN="EvilX-EVIL:1":mailto:${ICS_ORGANIZER_EMAIL}`);
+  });
+});
