@@ -13,7 +13,8 @@ import type { Db } from "../server/context";
 import { makeDb, makeMailer } from "../server/context";
 import { requireOrganizer, csrfJson } from "../server/middleware";
 import { ApiError, parseBoundedIdArray } from "../server/http";
-import { DEC_120, DEC_214, DEC_240, DEC_291 } from "../decisions";
+import { DEC_120, DEC_214, DEC_240, DEC_291, DEC_398 } from "../decisions";
+import { findFormById } from "../server/repo/forms";
 import {
   assignTask,
   createTask,
@@ -46,6 +47,9 @@ void DEC_240;
 // DEC-291: organizer-readable form-task response viewer, referenced below so
 // this dependency is compile-checked (see decisions.ts).
 void DEC_291;
+// DEC-398: a form task's formId must resolve to a form on the task's own
+// event -- validated below on both create and patch.
+void DEC_398;
 
 export const taskRoutes = new Hono<AppEnv>();
 
@@ -166,7 +170,7 @@ taskRoutes.post("/events/:eventId/tasks", requireOrganizer, csrfJson, async (c) 
   const required = typeof body.required === "boolean" ? body.required : undefined;
   if (required === undefined) fields.required = "Must be a boolean";
 
-  const formId = body.formId === undefined || body.formId === null
+  let formId: string | null | undefined = body.formId === undefined || body.formId === null
     ? null
     : typeof body.formId === "string"
       ? body.formId
@@ -183,6 +187,24 @@ taskRoutes.post("/events/:eventId/tasks", requireOrganizer, csrfJson, async (c) 
   }
 
   const deliverableKind = parseDeliverableKind(body, fields, kind ?? "");
+
+  // DEC-398: a 'form' task requires a formId that resolves to a form on
+  // this event; any other kind must not carry one. Same message either way
+  // (unknown id vs. cross-event id) -- no existence leak.
+  if (fields.formId === undefined) {
+    if (kind === "form") {
+      if (!formId) {
+        fields.formId = "Required";
+      } else {
+        const form = await findFormById(c.var.db, formId);
+        if (!form || form.eventId !== eventId) {
+          fields.formId = "Must be a form on this event";
+        }
+      }
+    } else if (formId !== null && formId !== undefined) {
+      fields.formId = "Only valid when kind is 'form'";
+    }
+  }
 
   if (Object.keys(fields).length > 0) {
     throw new ApiError("invalid", "Invalid task", fields);
@@ -242,11 +264,27 @@ taskRoutes.patch("/tasks/:id", requireOrganizer, csrfJson, async (c) => {
       input.required = body.required;
     }
   }
+  // DEC-398: a string formId must resolve to a form on the task's own
+  // event; a form-kind task may not have its formId nulled out; a
+  // non-form task may not gain one.
   if (body.formId !== undefined) {
     if (body.formId !== null && typeof body.formId !== "string") {
       fields.formId = "Must be a string or null";
+    } else if (body.formId === null) {
+      if (ownership.kind === "form") {
+        fields.formId = "A form task must have a form";
+      } else {
+        input.formId = null;
+      }
+    } else if (ownership.kind !== "form") {
+      fields.formId = "Only valid when kind is 'form'";
     } else {
-      input.formId = body.formId;
+      const form = await findFormById(c.var.db, body.formId);
+      if (!form || form.eventId !== ownership.eventId) {
+        fields.formId = "Must be a form on this event";
+      } else {
+        input.formId = body.formId;
+      }
     }
   }
   if (body.deliverableKind !== undefined) {

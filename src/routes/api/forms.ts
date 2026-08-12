@@ -27,7 +27,11 @@ function toDefList(fields: FormFieldRow[]): FormFieldDef[] {
   return fields.map(({ formId: _formId, locked: _locked, ...def }) => def);
 }
 
-function serializeForm(form: repo.FormRow, fields: FormFieldRow[]) {
+function serializeForm(
+  form: repo.FormRow,
+  fields: FormFieldRow[],
+  forms: { id: string; title: string; isDefault: boolean }[],
+) {
   return {
     id: form.id,
     eventId: form.eventId,
@@ -38,6 +42,7 @@ function serializeForm(form: repo.FormRow, fields: FormFieldRow[]) {
     closeDate: form.closeDate,
     tracks: form.tracks,
     fields: fields.map(toPublicField),
+    forms,
   };
 }
 
@@ -67,7 +72,8 @@ formsRoutes.get("/api/v1/events/:eventId/forms", requireOrganizer, async (c) => 
   if (!event) throw new ApiError("not_found", "Event not found");
 
   const { form, fields } = await repo.getOrCreateForm(c.var.db, eventId);
-  return c.json(serializeForm(form, fields));
+  const forms = await repo.listFormsForEvent(c.var.db, eventId);
+  return c.json(serializeForm(form, fields, forms));
 });
 
 // PATCH /api/v1/forms/:formId — intro text, openDate, closeDate, tracks
@@ -128,7 +134,8 @@ formsRoutes.patch("/api/v1/forms/:formId", requireOrganizer, csrfJson, async (c)
 
   const updated = await repo.patchForm(c.var.db, formId, patch);
   const fields = await repo.listFields(c.var.db, formId);
-  return c.json(serializeForm(updated, fields));
+  const forms = await repo.listFormsForEvent(c.var.db, updated.eventId);
+  return c.json(serializeForm(updated, fields, forms));
 });
 
 // POST /api/v1/forms/:formId/fields — create a custom field.
