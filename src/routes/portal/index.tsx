@@ -14,6 +14,7 @@ import { ApiError } from "../../server/http";
 import {
   assertSpeakerContactId,
   canTransitionInvite,
+  getLatestDeliverable,
   getMyInvitations,
   getMySessions,
   getMyTaskAssignments,
@@ -24,6 +25,7 @@ import {
   setInviteStatus,
   type InviteAction,
   type PortalData,
+  type PortalDeliverable,
   type PortalInvitation,
   type PortalSession,
   type PortalSubmissionDetail,
@@ -58,15 +60,6 @@ function ensureCsrfCookie(c: {
     token,
     setCookieIfNew: buildCsrfCookie(token, { secure: isSecureRequest(c.req.url) }),
   };
-}
-
-function Nav() {
-  return (
-    <nav aria-label="Portal navigation" class="chq-nav">
-      <a href="/portal">Dashboard</a> | <a href="/portal/profile">Profile</a> |{" "}
-      <a href="/portal/tasks">Tasks</a> | <a href="/portal/resources">Resources</a>
-    </nav>
-  );
 }
 
 // DEC-590: the worklist is exactly two kinds of row — a pending task
@@ -164,34 +157,97 @@ function WorklistInvitationRow(props: { invitation: PortalInvitation; csrfToken:
   );
 }
 
+/** DEC-590/w15-b subline: "<Event name> · you speak <day>, <HH:MM>, <room>"
+ * when the speaker has an accepted session that's actually been placed on
+ * the schedule (day + startMin both set); else the event name alone. The
+ * first such placed session is used — the portal home states one line, not
+ * a per-session list. */
+function scheduledSubline(eventName: string, sessions: PortalSession[]): string {
+  const placed = sessions.find((s) => s.day !== null && s.startMin !== null);
+  if (!placed) return eventName;
+  const room = placed.roomName ? `, ${placed.roomName}` : "";
+  return `${eventName} · you speak ${placed.day}, ${minutesToClock(placed.startMin)}${room}`;
+}
+
+function SessionCard(props: { session: PortalSession; deliverable: PortalDeliverable | null }) {
+  const { session: s, deliverable } = props;
+  const metaParts = [
+    s.trackName,
+    s.acceptedAt !== null ? `accepted ${formatEventDate(s.acceptedAt, s.timezone)}` : null,
+  ].filter((p): p is string => p !== null);
+  return (
+    <div class="chq-portal-row">
+      <span class="chq-portal-row-title">{s.title}</span>
+      {metaParts.length > 0 ? <span class="chq-portal-due">{metaParts.join(" · ")}</span> : null}
+      {deliverable ? (
+        <span class="chq-portal-detail">
+          {deliverable.filename} · uploaded {formatEventDate(deliverable.uploadedAt, s.timezone)}
+        </span>
+      ) : null}
+      <div class="chq-portal-actions">
+        <a href="/portal/tasks" class="chq-btn chq-btn-secondary">Upload again</a>
+        <a href="/portal/resources" class="chq-btn chq-btn-secondary">Read notes</a>
+      </div>
+    </div>
+  );
+}
+
+function DoneRow(props: { task: PortalTaskAssignment }) {
+  const { task: t } = props;
+  return (
+    <div class="chq-portal-row chq-portal-done-row">
+      <span class="chq-portal-row-title">{t.title}</span>
+      <span class="chq-portal-done-when">{t.completedAt !== null ? formatEventDate(t.completedAt, t.timezone) : ""}</span>
+    </div>
+  );
+}
+
 function PortalPage(props: {
   data: PortalData;
   sessions: PortalSession[];
   invitations: PortalInvitation[];
   taskAssignments: PortalTaskAssignment[];
+  deliverables: Map<string, PortalDeliverable | null>;
   csrfToken: string;
 }) {
-  const { branding, submissions } = props.data;
-  const { sessions, invitations, taskAssignments, csrfToken } = props;
+  const { branding, contactName, contactCompany } = props.data;
+  const { sessions, invitations, taskAssignments, deliverables, csrfToken } = props;
   const now = Date.now();
 
   // DEC-590: n is EXACTLY the count of rows rendered below — pending task
   // assignments plus pending co-presenter invitations, nothing else (no
   // completed task, no accepted session, no submission).
   const pendingTasks = taskAssignments.filter((t) => t.status !== "complete");
+  const doneTasks = taskAssignments.filter((t) => t.status === "complete");
   const worklist = sortWorklist([
     ...pendingTasks.map((task): WorklistRow => ({ kind: "task", task })),
     ...invitations.map((invitation): WorklistRow => ({ kind: "invitation", invitation })),
   ]);
   const n = worklist.length;
 
+  const footerExtra = (
+    <div class="chq-portal-footer-band">
+      <span class="chq-portal-footer-who">
+        {contactName}
+        {contactCompany ? ` · ${contactCompany}` : ""}
+      </span>
+      {/* w15-b: /portal/resources must stay reachable even when the
+          speaker has no accepted session (so no "Read notes" link renders
+          in a Your session card) — the footer is the always-present path. */}
+      <a href="/portal/resources" class="chq-portal-footer-resources">Resources</a>
+      <a href="/portal/profile" class="chq-portal-footer-profile">Profile</a>
+    </div>
+  );
+
   return (
-    <PortalLayout branding={branding} csrfToken={csrfToken}>
-      <Nav />
+    <PortalLayout branding={branding} csrfToken={csrfToken} speakerName={contactName} footerExtra={footerExtra}>
       <h1 class="chq-portal-hero">
         {n} {n === 1 ? "thing" : "things"} to do
       </h1>
-      <section aria-label="Worklist" class="chq-section">
+      <p class="chq-portal-sub">{scheduledSubline(branding.eventName, sessions)}</p>
+
+      <section aria-label="Waiting on you" class="chq-section">
+        <div class="chq-section-label">Waiting on you</div>
         {n === 0 ? (
           <p>Nothing pending right now.</p>
         ) : (
@@ -208,72 +264,24 @@ function PortalPage(props: {
         </p>
       </section>
 
-      <section aria-label="My Submissions" class="chq-section">
-        <div class="chq-section-label">My Submissions</div>
-        {submissions.length === 0 ? (
-          <p>You haven't submitted anything yet.</p>
-        ) : (
-          <div class="chq-table-scroll">
-            <table class="chq-table">
-              <thead>
-                <tr>
-                  <th>Ref</th>
-                  <th>Title</th>
-                  <th>Status</th>
-                  <th>Submitted</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {submissions.map((s) => (
-                  <tr>
-                    <td>{s.ref}</td>
-                    <td>{s.title}</td>
-                    <td>
-                      <span class="chq-flag">{s.statusLabel}</span>
-                    </td>
-                    <td>{formatEventDate(s.submittedAt, s.timezone)}</td>
-                    <td>
-                      <a href={`/portal/submissions/${s.id}`}>View</a>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
-
-      <section aria-label="Sessions" class="chq-section">
-        <div class="chq-section-label">Sessions</div>
+      <section aria-label="Your session" class="chq-section">
+        <div class="chq-section-label">Your session</div>
         {sessions.length === 0 ? (
           <p>No accepted sessions yet.</p>
         ) : (
           sessions.map((s) => (
-            <div class="chq-portal-row">
-              <span class="chq-portal-row-title">
-                {s.ref}: {s.title}
-              </span>
-              <span class="chq-portal-due">
-                {s.day ? (
-                  <>
-                    {s.day} {minutesToClock(s.startMin)}–{minutesToClock(s.endMin)}
-                    {s.roomName ? ` in ${s.roomName}` : ""}
-                  </>
-                ) : (
-                  "Not yet scheduled"
-                )}
-              </span>
-            </div>
+            <SessionCard session={s} deliverable={deliverables.get(s.submissionId) ?? null} />
           ))
         )}
       </section>
 
-      <section aria-label="Resources" class="chq-section">
-        <div class="chq-section-label">Resources</div>
-        <p>
-          <a href="/portal/resources">View event resources</a>
-        </p>
+      <section aria-label="Done" class="chq-section">
+        <div class="chq-section-label">Done</div>
+        {doneTasks.length === 0 ? (
+          <p>Nothing completed yet.</p>
+        ) : (
+          doneTasks.map((t) => <DoneRow task={t} />)
+        )}
       </section>
     </PortalLayout>
   );
@@ -350,6 +358,13 @@ portalRoutes.get("/", async (c) => {
     getMyInvitations(c.var.db, contactId, auth.orgId),
     getMyTaskAssignments(c.var.db, contactId, auth.orgId),
   ]);
+  const deliverableEntries = await Promise.all(
+    sessions.map(async (s): Promise<[string, PortalDeliverable | null]> => [
+      s.submissionId,
+      await getLatestDeliverable(c.var.db, s.submissionId),
+    ]),
+  );
+  const deliverables = new Map(deliverableEntries);
   const { token: csrfToken, setCookieIfNew } = ensureCsrfCookie(c);
   if (setCookieIfNew) c.header("Set-Cookie", setCookieIfNew, { append: true });
   return c.html(
@@ -358,6 +373,7 @@ portalRoutes.get("/", async (c) => {
       sessions={sessions}
       invitations={invitations}
       taskAssignments={taskAssignments}
+      deliverables={deliverables}
       csrfToken={csrfToken}
     />,
   );

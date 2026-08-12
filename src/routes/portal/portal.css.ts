@@ -61,6 +61,64 @@ export const PORTAL_CSS = `
     line-height: 1.5;
   }
 
+  /* w15-b: signed-in speaker's name, right-aligned in the header row
+     (docs/design "Speaker portal" mock) -- margin-left:auto pins it to the
+     right within .chq-header's flex row without disturbing the wordmark. */
+  .chq-portal-header-name {
+    margin-left: auto;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--chq-muted);
+  }
+
+  /* w15-b: "<name> · <company>" left, Profile link right, ahead of the
+     (untouched) sign-out control inside .chq-portal-footer. */
+  .chq-portal-footer-band {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding-bottom: 12px;
+    margin-bottom: 12px;
+    border-bottom: 1px solid var(--chq-hairline);
+  }
+  .chq-portal-footer-who {
+    font-size: 13px;
+    color: var(--chq-muted);
+  }
+  .chq-portal-footer-resources {
+    margin-left: auto;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--chq-ink-2);
+    text-decoration: none;
+  }
+  .chq-portal-footer-profile {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--chq-ink);
+    text-decoration: none;
+  }
+
+  /* w15-b: "Done" section row -- title left, uppercase completion date
+     right (docs/design mock's {{ d.when }}). Composes .chq-portal-row's
+     existing rhythm; only the head layout differs (baseline row, not a
+     stacked column). */
+  .chq-portal-done-row {
+    flex-direction: row;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .chq-portal-done-when {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--chq-brand);
+    white-space: nowrap;
+  }
+
   /* Task/session row: title + due date + a .chq-flag state marker, action
      control(s) below. Every control stays >=44px tall down to 390px
      (DEC-367 floor) — buttons in .chq-portal-actions never shrink under

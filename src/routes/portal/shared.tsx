@@ -45,6 +45,14 @@ export function PortalLayout(props: {
   branding: PortalBrandingChrome;
   csrfToken: string;
   children: unknown;
+  // w15-b: the signed-in speaker's display name, right-aligned in the
+  // header (docs/design mock's "Speaker portal" frame). Optional so pages
+  // that haven't been rewired onto PortalData.contactName yet still render.
+  speakerName?: string;
+  // w15-b: extra footer content (name · company, Profile link) rendered
+  // ahead of the sign-out control — placement only, never touching the
+  // sign-out form/button below (a sibling task owns that cascade).
+  footerExtra?: unknown;
 }) {
   const accent = safeAccent(props.branding.accentColor);
   return (
@@ -62,6 +70,7 @@ export function PortalLayout(props: {
             {props.branding.logoUrl ? <img src={props.branding.logoUrl} alt="" height={40} /> : null}
             {props.branding.eventName}
           </span>
+          {props.speakerName ? <span class="chq-portal-header-name">{props.speakerName}</span> : null}
           {props.branding.welcomeMessage ? <p class="chq-meta">{props.branding.welcomeMessage}</p> : null}
         </header>
         <main>{props.children as any}</main>
@@ -70,6 +79,7 @@ export function PortalLayout(props: {
             to a quiet tertiary footer link — placement only, the POST
             semantics and CSRF proof (DEC-181) are unchanged. */}
         <footer class="chq-portal-footer">
+          {props.footerExtra as any}
           <form method="post" action="/logout" class="chq-portal-signout">
             <input type="hidden" name="chq_csrf" value={props.csrfToken} />
             <button type="submit" class="chq-btn chq-btn-tertiary chq-portal-signout-btn">Sign out</button>

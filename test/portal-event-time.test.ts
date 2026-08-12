@@ -84,6 +84,7 @@ describe("portal repo row types carry timezone (DEC-413)", () => {
       fileId: null,
       responseJson: null,
       timezone: "Asia/Tokyo",
+      completedAt: null,
     };
     expect(row.timezone).toBe("Asia/Tokyo");
   });
