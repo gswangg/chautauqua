@@ -514,7 +514,7 @@ export function shapeEvaluationsExport(
   const scoreColumns: EvaluationScoreColumn[] = [];
   for (const r of rows) {
     for (const criterionId of Object.keys(r.scores)) {
-      const key = `${r.planId} ${criterionId}`;
+      const key = `${r.planId}:${criterionId}`;
       if (seen.has(key)) continue;
       seen.add(key);
       const label = labelsByPlan.get(r.planId)?.get(criterionId) ?? criterionId;
