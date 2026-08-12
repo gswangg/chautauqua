@@ -175,7 +175,10 @@ export function ResultsTable() {
       <section className="chq-section">
         <div className="chq-section-head">
           <h2 className="chq-section-label">Ranked results</h2>
-          <span className="chq-section-action" style={{ color: 'var(--chq-muted)' }}>
+          <span
+            className="chq-section-action chq-review-results-note"
+            style={{ color: 'var(--chq-muted)' }}
+          >
             Mean of submitted reviews · recusals excluded
           </span>
         </div>
