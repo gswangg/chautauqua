@@ -220,6 +220,12 @@ function Header() {
           }}
         >
           <div className="chq-modal" role="dialog" aria-modal="true" aria-label="More">
+            <div className="chq-modal-head">
+              <h2 className="chq-modal-title">More</h2>
+              <button type="button" className="chq-btn chq-btn-tertiary" onClick={closeMore}>
+                Close
+              </button>
+            </div>
             <NavLinks sections={moreSections} exceptions={exceptions} onNavigate={closeMore} />
             <button type="button" className="chq-btn chq-btn-secondary" onClick={() => void signOut()}>
               Sign out

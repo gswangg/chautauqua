@@ -1,0 +1,30 @@
+/* ModalFrame (w9-c, DEC-651): the ONE dialog header, shared by every modal
+   in the app. Control chrome (.chq-scrim, .chq-modal, .chq-modal-title,
+   .chq-modal-actions, .chq-btn*, .chq-error) still comes from the shared
+   vocabulary in app/src/styles.css; this file only adds the bordered
+   header row that .chq-modal-title/.chq-modal-sub/Close sit in. */
+
+.chq-modal-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin: -20px -26px 0;
+  padding: 0 26px 16px;
+  border-bottom: 1px solid var(--chq-rule);
+}
+
+.chq-modal-head-titles {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.chq-modal-sub {
+  font-size: 13px;
+  color: var(--chq-muted);
+}
+
+.chq-modal-close-btn {
+  flex-shrink: 0;
+}

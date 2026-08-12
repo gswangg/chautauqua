@@ -69,8 +69,8 @@ describe('EventSwitcher', () => {
     fireEvent.click(within(menu).getByRole('menuitem', { name: 'New event…' }));
 
     const dialog = await screen.findByRole('dialog', { name: 'New event' });
-    expect(dialog).toHaveClass('chq-modal');
-    expect(dialog.parentElement).toHaveClass('chq-scrim');
+    expect(dialog).toHaveClass('chq-scrim');
+    expect(dialog.querySelector('.chq-modal')).toBeInTheDocument();
     expect(screen.getByText('New event')).toHaveClass('chq-modal-title');
   });
 
@@ -98,7 +98,7 @@ describe('EventSwitcher', () => {
     fireEvent.change(screen.getByLabelText('Start date'), { target: { value: '2026-06-01' } });
     fireEvent.change(screen.getByLabelText('End date'), { target: { value: '2026-06-03' } });
     fireEvent.change(screen.getByLabelText('Timezone'), { target: { value: 'Not/A/Zone' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Create' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create the event' }));
 
     await waitFor(() => {
       const errors = dialog.querySelectorAll('.chq-field-error');

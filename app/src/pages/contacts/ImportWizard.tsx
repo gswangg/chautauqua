@@ -111,7 +111,7 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
         <button type="button" className="chq-btn chq-btn-tertiary" onClick={onClose} aria-label="Close">
           ×
         </button>
-        <h2 className="chq-page-title">Import contacts from CSV</h2>
+        <h2 className="chq-page-title chq-modal-title">Import contacts from CSV</h2>
 
         <ol className="chq-steps" aria-label="Import steps">
           <li className={`chq-step${step > 1 ? ' is-done' : step === 1 ? ' is-current' : ''}`}>Choose file</li>
@@ -133,6 +133,7 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
                   const file = e.target.files?.[0];
                   if (file) handleFile(file);
                 }}
+                placeholder="contacts.csv"
               />
             </label>
             <label className="chq-contacts-import-field">

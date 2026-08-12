@@ -1,6 +1,6 @@
-import { useEffect, useState, type MouseEvent } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { apiList, apiPost, ApiError } from '../../lib/api';
-import { useEscapeKey } from '../../lib/useEscapeKey';
+import { ModalFrame } from '../../components/ModalFrame';
 import { BULK_EMAIL_MERGE_FIELDS, BULK_EMAIL_RECIPIENT_CAP } from './types';
 
 interface Props {
@@ -102,120 +102,131 @@ export function BulkEmailModal({ contactIds, eventId, onClose }: Props) {
     }
   }
 
-  useEscapeKey(true, () => {
-    if (!busy) onClose();
-  });
+  const title = `Email ${contactIds.length} contact${contactIds.length === 1 ? '' : 's'}`;
 
-  function handleScrimClick(e: MouseEvent<HTMLDivElement>) {
-    if (e.target === e.currentTarget && !busy) onClose();
+  let actions: ReactNode = null;
+  if (step === 'compose') {
+    actions = (
+      <>
+        <button
+          type="button"
+          className="chq-btn chq-btn-primary"
+          disabled={busy || overCap || contactIds.length === 0 || subject.trim() === '' || bodyText.trim() === ''}
+          onClick={goToPreview}
+        >
+          Preview
+        </button>
+        <button type="button" className="chq-btn chq-btn-secondary" onClick={onClose} disabled={busy}>
+          Cancel
+        </button>
+      </>
+    );
+  } else if (step === 'preview') {
+    actions = (
+      <>
+        <button type="button" className="chq-btn chq-btn-primary" disabled={busy} onClick={send}>
+          Send to {contactIds.length} recipient{contactIds.length === 1 ? '' : 's'}
+        </button>
+        <button type="button" className="chq-btn chq-btn-secondary" onClick={() => setStep('compose')} disabled={busy}>
+          Back to edit
+        </button>
+      </>
+    );
+  } else if (step === 'sent' && sent !== null) {
+    actions = (
+      <button type="button" className="chq-btn chq-btn-primary" onClick={onClose}>
+        Done
+      </button>
+    );
   }
 
   return (
-    <div className="chq-scrim" role="dialog" aria-modal="true" aria-label="Bulk email" onClick={handleScrimClick}>
-      <div className="chq-modal chq-contacts-bulk-email-modal">
-        <div className="chq-contacts-modal-head">
-          <div className="chq-contacts-modal-heading">
-            <h2>
-              Email {contactIds.length} contact{contactIds.length === 1 ? '' : 's'}
-            </h2>
-          </div>
-          <button type="button" className="chq-btn chq-btn-tertiary" onClick={onClose} aria-label="Close">
-            Close
-          </button>
-        </div>
+    <ModalFrame
+      title={title}
+      ariaLabel="Bulk email"
+      onClose={onClose}
+      closeDisabled={busy}
+      modalClassName="chq-contacts-bulk-email-modal"
+      actions={actions}
+    >
+      {error && <div className="chq-error">{error}</div>}
 
-        {error && <div className="chq-error">{error}</div>}
-
-        {step === 'compose' && (
-          <>
-            <p>
-              {contactIds.length} recipient{contactIds.length === 1 ? '' : 's'} selected
-              {overCap && (
-                <strong className="chq-cap-warning">
-                  {' '}
-                  — exceeds the {BULK_EMAIL_RECIPIENT_CAP}-recipient cap; narrow your selection to send.
-                </strong>
-              )}
-            </p>
-            {templates.length > 0 && (
-              <label>
-                Template
-                <select className="chq-select" value={templateId} onChange={(e) => applyTemplate(e.target.value)}>
-                  <option value="">Custom (no template)</option>
-                  {templates.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
+      {step === 'compose' && (
+        <>
+          <p>
+            {contactIds.length} recipient{contactIds.length === 1 ? '' : 's'} selected
+            {overCap && (
+              <strong className="chq-cap-warning">
+                {' '}
+                — exceeds the {BULK_EMAIL_RECIPIENT_CAP}-recipient cap; narrow your selection to send.
+              </strong>
             )}
+          </p>
+          {templates.length > 0 && (
             <label>
-              Subject
-              <input className="chq-input" value={subject} onChange={(e) => setSubject(e.target.value)} />
+              Template
+              <select className="chq-select" value={templateId} onChange={(e) => applyTemplate(e.target.value)}>
+                <option value="">Custom (no template)</option>
+                {templates.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              </select>
             </label>
-            <label>
-              Body
-              <textarea className="chq-textarea" rows={8} value={bodyText} onChange={(e) => setBodyText(e.target.value)} />
-            </label>
-            <p className="chq-meta chq-merge-field-hint">
-              Sent one at a time · logged in Comms history · merge fields:{' '}
-              {BULK_EMAIL_MERGE_FIELDS.map((f) => `{${f}}`).join(', ')}
-            </p>
-            <div className="chq-contacts-modal-actions">
-              <button
-                type="button"
-                className="chq-btn chq-btn-primary"
-                disabled={busy || overCap || contactIds.length === 0 || subject.trim() === '' || bodyText.trim() === ''}
-                onClick={goToPreview}
-              >
-                Preview
-              </button>
-              <button type="button" className="chq-btn chq-btn-secondary" onClick={onClose} disabled={busy}>
-                Cancel
-              </button>
-            </div>
-          </>
-        )}
+          )}
+          <label>
+            Subject
+            <input
+              className="chq-input"
+              value={subject}
+              onChange={(e) => setSubject(e.target.value)}
+              placeholder="A quick question about your session"
+            />
+          </label>
+          <label>
+            Body
+            <textarea
+              className="chq-textarea"
+              rows={8}
+              value={bodyText}
+              onChange={(e) => setBodyText(e.target.value)}
+              placeholder="Hi {first_name}, ..."
+            />
+          </label>
+          <p className="chq-meta chq-merge-field-hint">
+            Sent one at a time · logged in Comms history · merge fields:{' '}
+            {BULK_EMAIL_MERGE_FIELDS.map((f) => `{${f}}`).join(', ')}
+          </p>
+        </>
+      )}
 
-        {step === 'preview' && (
-          <>
-            <p>
-              Previewing {preview.length} of {contactIds.length} recipient{contactIds.length === 1 ? '' : 's'} with
-              merge fields resolved.
-            </p>
-            <ul className="chq-bulk-email-preview-list">
-              {preview.map((item) => (
-                <li key={item.contactId} className="chq-bulk-email-preview-item">
-                  <div className="chq-bulk-email-preview-to">{item.email}</div>
-                  <div className="chq-bulk-email-preview-subject">{item.subject}</div>
-                  <pre className="chq-bulk-email-preview-body">{item.bodyText}</pre>
-                </li>
-              ))}
-            </ul>
-            <div className="chq-contacts-modal-actions">
-              <button type="button" className="chq-btn chq-btn-secondary" onClick={() => setStep('compose')} disabled={busy}>
-                Back to edit
-              </button>
-              <button type="button" className="chq-btn chq-btn-primary" disabled={busy} onClick={send}>
-                Send to {contactIds.length} recipient{contactIds.length === 1 ? '' : 's'}
-              </button>
-            </div>
-          </>
-        )}
+      {step === 'preview' && (
+        <>
+          <p>
+            Previewing {preview.length} of {contactIds.length} recipient{contactIds.length === 1 ? '' : 's'} with
+            merge fields resolved.
+          </p>
+          <ul className="chq-bulk-email-preview-list">
+            {preview.map((item) => (
+              <li key={item.contactId} className="chq-bulk-email-preview-item">
+                <div className="chq-bulk-email-preview-to">{item.email}</div>
+                <div className="chq-bulk-email-preview-subject">{item.subject}</div>
+                <pre className="chq-bulk-email-preview-body">{item.bodyText}</pre>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
 
-        {step === 'sent' && sent !== null && (
-          <div className="chq-bulk-email-result">
-            <p>
-              Sent {sent} email{sent === 1 ? '' : 's'}.
-            </p>
-            <a href="/admin/comms">View in Comms history</a>
-            <button type="button" className="chq-btn chq-btn-secondary" onClick={onClose}>
-              Close
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
+      {step === 'sent' && sent !== null && (
+        <div className="chq-bulk-email-result">
+          <p>
+            Sent {sent} email{sent === 1 ? '' : 's'}.
+          </p>
+          <a href="/admin/comms">View in Comms history</a>
+        </div>
+      )}
+    </ModalFrame>
   );
 }

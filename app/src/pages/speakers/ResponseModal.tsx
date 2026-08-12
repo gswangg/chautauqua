@@ -5,9 +5,8 @@
 // grid that opened this modal owns the write + optimistic reconcile/rollback
 // (matching toggleCell), so this component only calls back up.
 
-import type { MouseEvent } from 'react';
 import { formatDate } from '../../lib/dates';
-import { useEscapeKey } from '../../lib/useEscapeKey';
+import { ModalFrame } from '../../components/ModalFrame';
 import type { AssignmentResponseDetail, AssignmentStatus } from './types';
 
 interface ResponseModalProps {
@@ -20,69 +19,49 @@ interface ResponseModalProps {
 }
 
 export function ResponseModal({ contactName, loading, error, detail, onStatusChange, onClose }: ResponseModalProps) {
-  useEscapeKey(true, onClose);
-
-  function handleScrimClick(e: MouseEvent<HTMLDivElement>) {
-    if (e.target === e.currentTarget) onClose();
-  }
-
   return (
-    <div className="chq-scrim" role="dialog" aria-modal="true" aria-label="Task response" onClick={handleScrimClick}>
-      <div className="chq-modal chq-speakers-modal">
-        <div className="chq-speakers-modal-head">
-          <div className="chq-speakers-modal-head-titles">
-            <h2 className="chq-speakers-modal-title">{detail ? detail.taskTitle : 'Task response'}</h2>
-            <span className="chq-summary">
-              {contactName}
-              {detail && <> &middot; Completed {formatDate(detail.completedAt)}</>}
-            </span>
-          </div>
-        </div>
+    <ModalFrame
+      title={detail ? detail.taskTitle : 'Task response'}
+      subtitle={
+        <>
+          {contactName}
+          {detail && <> &middot; Completed {formatDate(detail.completedAt)}</>}
+        </>
+      }
+      ariaLabel="Task response"
+      onClose={onClose}
+      modalClassName="chq-speakers-modal"
+      actions={
+        !loading && detail
+          ? detail.status === 'pending'
+            ? (
+                <button type="button" className="chq-btn chq-btn-primary" onClick={() => onStatusChange('complete')}>
+                  Mark complete
+                </button>
+              )
+            : (
+                <button type="button" className="chq-btn chq-btn-secondary" onClick={() => onStatusChange('pending')}>
+                  Ask for more
+                </button>
+              )
+          : undefined
+      }
+    >
+      {loading && <p>Loading...</p>}
+      {error && <div className="chq-error">{error}</div>}
 
-        {loading && <p>Loading...</p>}
-        {error && <div className="chq-error">{error}</div>}
+      {!loading && detail && (
+        <dl className="chq-speakers-response-fields">
+          {detail.fields.map((field) => (
+            <div key={field.label} className="chq-speakers-response-field">
+              <dt>{field.label}</dt>
+              <dd>{field.value.length > 0 ? field.value : '—'}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
 
-        {!loading && detail && (
-          <dl className="chq-speakers-response-fields">
-            {detail.fields.map((field) => (
-              <div key={field.label} className="chq-speakers-response-field">
-                <dt>{field.label}</dt>
-                <dd>{field.value.length > 0 ? field.value : '—'}</dd>
-              </div>
-            ))}
-          </dl>
-        )}
-
-        {!loading && detail && (
-          <div className="chq-speakers-response-status">
-            {detail.status === 'pending' && (
-              <button
-                type="button"
-                className="chq-btn chq-btn-primary"
-                onClick={() => onStatusChange('complete')}
-              >
-                Mark complete
-              </button>
-            )}
-            {detail.status === 'complete' && (
-              <button
-                type="button"
-                className="chq-btn chq-btn-secondary"
-                onClick={() => onStatusChange('pending')}
-              >
-                Ask for more
-              </button>
-            )}
-            <span className="chq-summary">Reopening does not email the speaker.</span>
-          </div>
-        )}
-
-        <div className="chq-modal-actions">
-          <button type="button" className="chq-btn chq-btn-primary" onClick={onClose}>
-            Close
-          </button>
-        </div>
-      </div>
-    </div>
+      {!loading && detail && <span className="chq-summary">Reopening does not email the speaker.</span>}
+    </ModalFrame>
   );
 }

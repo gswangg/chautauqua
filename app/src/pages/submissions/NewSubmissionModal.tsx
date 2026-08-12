@@ -10,9 +10,14 @@
 // model). The Format select is populated from the default form's Format
 // dropdown field (same {'format','session format'} label match the
 // Submissions table's default-shown column uses, DEC-243/DEC-249).
+//
+// DEC-651: mock copy at docs/design/Chautauqua Submissions.dc.html:454-480
+// -- title, subtitle, field label ('Abstract'), placeholders and the
+// primary-first ('Create it', then 'Cancel') action order all come from
+// that frame.
 
-import { useState, type FormEvent, type MouseEvent } from 'react';
-import { useEscapeKey } from '../../lib/useEscapeKey';
+import { useState, type FormEvent } from 'react';
+import { ModalFrame } from '../../components/ModalFrame';
 import type { FormField, Track } from './types';
 
 export interface NewSubmissionInput {
@@ -68,80 +73,107 @@ export function NewSubmissionModal({ tracks, formatField, onCancel, onCreate }: 
     }
   }
 
-  useEscapeKey(true, onCancel);
-
-  function handleScrimClick(e: MouseEvent<HTMLDivElement>) {
-    if (e.target === e.currentTarget && !pending) onCancel();
-  }
-
   return (
-    <div className="chq-scrim" role="dialog" aria-modal="true" aria-label="New submission" onClick={handleScrimClick}>
-      <form className="chq-modal" onSubmit={submit}>
-        <h2>New submission</h2>
-        {error && <div className="chq-error">{error}</div>}
-
-        <label className="chq-submissions-modal-field">
-          <span className="chq-submissions-modal-label">Title</span>
-          <input className="chq-input" value={title} onChange={(e) => setTitle(e.target.value)} required />
-        </label>
-        <label className="chq-submissions-modal-field">
-          <span className="chq-submissions-modal-label">Description</span>
-          <textarea className="chq-textarea" value={description} onChange={(e) => setDescription(e.target.value)} />
-        </label>
-
-        {tracks.length > 0 && (
-          <fieldset className="chq-submissions-modal-field">
-            <legend className="chq-submissions-modal-label">Tracks</legend>
-            {tracks.map((track) => (
-              <label key={track.id} className="chq-checkbox-label">
-                <input
-                  className="chq-check"
-                  type="checkbox"
-                  checked={trackIds.includes(track.id)}
-                  onChange={() => toggleTrack(track.id)}
-                />
-                {track.name}
-              </label>
-            ))}
-          </fieldset>
-        )}
-
-        {formatField && (
-          <label className="chq-submissions-modal-field">
-            <span className="chq-submissions-modal-label">{formatField.label}</span>
-            <select className="chq-select" value={format} onChange={(e) => setFormat(e.target.value)}>
-              <option value="">Select...</option>
-              {(formatField.options ?? []).map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
-
-        <label className="chq-submissions-modal-field">
-          <span className="chq-submissions-modal-label">Speaker email (optional)</span>
-          <input className="chq-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-        </label>
-        <label className="chq-submissions-modal-field">
-          <span className="chq-submissions-modal-label">Speaker first name</span>
-          <input className="chq-input" value={firstName} onChange={(e) => setFirstName(e.target.value)} />
-        </label>
-        <label className="chq-submissions-modal-field">
-          <span className="chq-submissions-modal-label">Speaker last name</span>
-          <input className="chq-input" value={lastName} onChange={(e) => setLastName(e.target.value)} />
-        </label>
-
-        <div className="chq-modal-actions">
+    <ModalFrame
+      as="form"
+      onSubmit={submit}
+      title="New submission"
+      subtitle="Invited talks and phone submissions"
+      onClose={onCancel}
+      closeDisabled={pending}
+      modalClassName="chq-submissions-new-modal"
+      actions={
+        <>
+          <button type="submit" className="chq-btn chq-btn-primary" disabled={pending}>
+            Create it
+          </button>
           <button type="button" className="chq-btn chq-btn-secondary" onClick={onCancel} disabled={pending}>
             Cancel
           </button>
-          <button type="submit" className="chq-btn chq-btn-primary" disabled={pending}>
-            Create
-          </button>
-        </div>
-      </form>
-    </div>
+        </>
+      }
+    >
+      {error && <div className="chq-error">{error}</div>}
+
+      <label className="chq-submissions-modal-field">
+        <span className="chq-submissions-modal-label">Title</span>
+        <input
+          className="chq-input"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Opening Keynote"
+          required
+        />
+      </label>
+      <label className="chq-submissions-modal-field">
+        <span className="chq-submissions-modal-label">Abstract</span>
+        <textarea
+          className="chq-textarea"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="Optional — you can fill this in later"
+        />
+      </label>
+
+      {tracks.length > 0 && (
+        <fieldset className="chq-submissions-modal-field">
+          <legend className="chq-submissions-modal-label">Tracks</legend>
+          {tracks.map((track) => (
+            <label key={track.id} className="chq-checkbox-label">
+              <input
+                className="chq-check"
+                type="checkbox"
+                checked={trackIds.includes(track.id)}
+                onChange={() => toggleTrack(track.id)}
+              />
+              {track.name}
+            </label>
+          ))}
+        </fieldset>
+      )}
+
+      {formatField && (
+        <label className="chq-submissions-modal-field">
+          <span className="chq-submissions-modal-label">{formatField.label}</span>
+          <select className="chq-select" value={format} onChange={(e) => setFormat(e.target.value)}>
+            <option value="">Select...</option>
+            {(formatField.options ?? []).map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+
+      <label className="chq-submissions-modal-field">
+        <span className="chq-submissions-modal-label">Speaker name</span>
+        <input
+          className="chq-input"
+          value={firstName}
+          onChange={(e) => setFirstName(e.target.value)}
+          placeholder="Jordan Alvarez"
+        />
+      </label>
+      <label className="chq-submissions-modal-field">
+        <span className="chq-submissions-modal-label">Speaker last name</span>
+        <input
+          className="chq-input"
+          value={lastName}
+          onChange={(e) => setLastName(e.target.value)}
+          placeholder="Alvarez"
+        />
+      </label>
+      <label className="chq-submissions-modal-field">
+        <span className="chq-submissions-modal-label">Speaker email (optional)</span>
+        <input
+          className="chq-input"
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="sbek-organizer@example.com"
+        />
+      </label>
+    </ModalFrame>
   );
 }

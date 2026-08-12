@@ -10,6 +10,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { apiList, apiPost, ApiError } from '../lib/api';
 import { useEscapeKey } from '../lib/useEscapeKey';
 import { useMe } from '../lib/useMe';
+import { ModalFrame } from './ModalFrame';
 import {
   buildNewEventPayload,
   mergeFieldErrors,
@@ -42,8 +43,6 @@ function NewEventModal({ onCancel, onCreated }: { onCancel: () => void; onCreate
   const [banner, setBanner] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
-  useEscapeKey(!pending, onCancel);
-
   function setField<K extends keyof NewEventForm>(key: K, value: NewEventForm[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
@@ -75,80 +74,94 @@ function NewEventModal({ onCancel, onCreated }: { onCancel: () => void; onCreate
   }
 
   return (
-    <div className="chq-scrim">
-      <form className="chq-modal" role="dialog" aria-modal="true" aria-label="New event" onSubmit={submit}>
-        <h2 className="chq-modal-title">New event</h2>
-        {banner && <div className="chq-error-banner">{banner}</div>}
-
-        <label className="chq-field">
-          Name
-          <input
-            className="chq-input"
-            value={form.name}
-            onChange={(e) => setField('name', e.target.value)}
-            required
-          />
-          {errors.name && <span className="chq-field-error">{errors.name}</span>}
-        </label>
-        <label className="chq-field">
-          Slug
-          <input
-            className="chq-input"
-            value={form.slug}
-            onChange={(e) => setField('slug', e.target.value)}
-            required
-          />
-          {errors.slug && <span className="chq-field-error">{errors.slug}</span>}
-        </label>
-        <label className="chq-field">
-          Start date
-          <input
-            className="chq-input"
-            type="date"
-            value={form.startDate}
-            onChange={(e) => setField('startDate', e.target.value)}
-            required
-          />
-          {errors.startDate && <span className="chq-field-error">{errors.startDate}</span>}
-        </label>
-        <label className="chq-field">
-          End date
-          <input
-            className="chq-input"
-            type="date"
-            value={form.endDate}
-            onChange={(e) => setField('endDate', e.target.value)}
-            required
-          />
-          {errors.endDate && <span className="chq-field-error">{errors.endDate}</span>}
-        </label>
-        <label className="chq-field">
-          Timezone
-          <input
-            className="chq-input"
-            value={form.timezone}
-            onChange={(e) => setField('timezone', e.target.value)}
-            placeholder="America/Chicago"
-            required
-          />
-          {errors.timezone && <span className="chq-field-error">{errors.timezone}</span>}
-        </label>
-        <label className="chq-field">
-          Location (optional)
-          <input className="chq-input" value={form.location} onChange={(e) => setField('location', e.target.value)} />
-          {errors.location && <span className="chq-field-error">{errors.location}</span>}
-        </label>
-
-        <div className="chq-modal-actions">
+    <ModalFrame
+      as="form"
+      onSubmit={submit}
+      title="New event"
+      subtitle="You land in its settings afterwards"
+      onClose={onCancel}
+      closeDisabled={pending}
+      actions={
+        <>
+          <button type="submit" className="chq-btn chq-btn-primary" disabled={pending}>
+            Create the event
+          </button>
           <button type="button" className="chq-btn chq-btn-secondary" onClick={onCancel} disabled={pending}>
             Cancel
           </button>
-          <button type="submit" className="chq-btn chq-btn-primary" disabled={pending}>
-            Create
-          </button>
-        </div>
-      </form>
-    </div>
+        </>
+      }
+    >
+      {banner && <div className="chq-error-banner">{banner}</div>}
+
+      <label className="chq-field">
+        Name
+        <input
+          className="chq-input"
+          value={form.name}
+          onChange={(e) => setField('name', e.target.value)}
+          placeholder="DevFlow Conf 2028"
+          required
+        />
+        {errors.name && <span className="chq-field-error">{errors.name}</span>}
+      </label>
+      <label className="chq-field">
+        Slug
+        <input
+          className="chq-input"
+          value={form.slug}
+          onChange={(e) => setField('slug', e.target.value)}
+          placeholder="devflow-conf-2028"
+          required
+        />
+        {errors.slug && <span className="chq-field-error">{errors.slug}</span>}
+      </label>
+      <label className="chq-field">
+        Start date
+        <input
+          className="chq-input"
+          type="date"
+          value={form.startDate}
+          onChange={(e) => setField('startDate', e.target.value)}
+          placeholder="2028-05-11"
+          required
+        />
+        {errors.startDate && <span className="chq-field-error">{errors.startDate}</span>}
+      </label>
+      <label className="chq-field">
+        End date
+        <input
+          className="chq-input"
+          type="date"
+          value={form.endDate}
+          onChange={(e) => setField('endDate', e.target.value)}
+          placeholder="2028-05-13"
+          required
+        />
+        {errors.endDate && <span className="chq-field-error">{errors.endDate}</span>}
+      </label>
+      <label className="chq-field">
+        Timezone
+        <input
+          className="chq-input"
+          value={form.timezone}
+          onChange={(e) => setField('timezone', e.target.value)}
+          placeholder="America/Chicago"
+          required
+        />
+        {errors.timezone && <span className="chq-field-error">{errors.timezone}</span>}
+      </label>
+      <label className="chq-field">
+        Location (optional)
+        <input
+          className="chq-input"
+          value={form.location}
+          onChange={(e) => setField('location', e.target.value)}
+          placeholder="Optional"
+        />
+        {errors.location && <span className="chq-field-error">{errors.location}</span>}
+      </label>
+    </ModalFrame>
   );
 }
 
