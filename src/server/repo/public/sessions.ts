@@ -5,12 +5,13 @@
 // visibleParticipantConditions() directly, since it does not route through
 // visibleSubmissionConditions().
 
-import { and, asc, eq, inArray, like, or, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, or, sql } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { formatRef } from "../../../domain/ids";
 import { chunkIds } from "../../../lib/chunk";
 import { DEC_258 } from "../../../decisions";
+import { likeContains } from "../like";
 import { visibleParticipantConditions, visibleSessionConditions, slotWithinEventRange } from "./gates";
 import type { PublicEvent, PublicTrack } from "./event";
 import { boundedRowLimit } from "./bounds";
@@ -52,15 +53,18 @@ export interface PublicSession {
 
 /** Builds the case-insensitive substring condition for the EMB-02 keyword
  * search: submission title OR either name field of a (still
- * visibility-gated, via the caller's join) participant contact. Sqlite LIKE
- * is case-insensitive over ASCII by default — no LOWER() needed. Always
- * parameterized (Drizzle `like()`), never string-concatenated into SQL. */
+ * visibility-gated, via the caller's join) participant contact. DEC-506:
+ * the search term is escaped via likeContains and paired with
+ * `ESCAPE '\\' COLLATE NOCASE` so a literal `%`/`_` in the query string
+ * can't widen into a wildcard match (unescaped LIKE previously let
+ * `?q=%` return every visible session). Always parameterized (via the
+ * Drizzle `sql` tag), never string-concatenated into SQL. */
 function searchCondition(q: string) {
-  const pattern = `%${q}%`;
+  const like = likeContains(q);
   return or(
-    like(schema.submission.title, pattern),
-    like(schema.contact.firstName, pattern),
-    like(schema.contact.lastName, pattern),
+    sql`${schema.submission.title} LIKE ${like} ESCAPE '\\' COLLATE NOCASE`,
+    sql`${schema.contact.firstName} LIKE ${like} ESCAPE '\\' COLLATE NOCASE`,
+    sql`${schema.contact.lastName} LIKE ${like} ESCAPE '\\' COLLATE NOCASE`,
   );
 }
 

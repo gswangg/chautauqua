@@ -8,7 +8,7 @@ import {
   parseListQuery,
   SORT_ORDERS,
 } from "../src/server/repo/submissions";
-import { likeContains } from "../src/server/repo/submissions/query";
+import { likeContains } from "../src/server/repo/like";
 import { changeStatus } from "../src/domain/status";
 import { planAcceptance } from "../src/domain/acceptance";
 import { submissionsRoutes } from "../src/routes/api/submissions";
@@ -140,9 +140,9 @@ describe("chunkIds (D1 bound-parameter batching for list-page enrichment queries
   });
 });
 
-describe("likeContains (pure LIKE-bind escaping for q/trackId filters, DEC-333/335)", () => {
-  it("lowercases and wraps in %...%", () => {
-    expect(likeContains("Hello World")).toBe("%hello world%");
+describe("likeContains (pure LIKE-bind escaping for q/trackId filters, DEC-333/335/506)", () => {
+  it("wraps in %...% without case-folding", () => {
+    expect(likeContains("Hello World")).toBe("%Hello World%");
   });
 
   it("escapes %, _ and backslash with a leading backslash", () => {

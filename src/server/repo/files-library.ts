@@ -14,7 +14,7 @@ import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { formatRef } from "../../domain/ids";
 import { chunkIds } from "../../lib/chunk";
-import { likeContains } from "./submissions/query";
+import { likeContains } from "./like";
 import { ApiError } from "../http";
 
 export interface EventFilesScope {
@@ -115,7 +115,7 @@ export async function listEventDeliverableFiles(
   if (params.q) {
     const tokens = params.q.split(/\s+/).filter((t) => t.length > 0);
     const tokenConditions = tokens.map((token) => {
-      const like = likeContains(token);
+      const like = likeContains(token.toLowerCase());
       return or(
         sql`lower(${schema.file.filename}) like ${like} escape '\\'`,
         sql`lower(${schema.submission.title}) like ${like} escape '\\'`,
