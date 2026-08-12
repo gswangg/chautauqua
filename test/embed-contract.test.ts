@@ -79,22 +79,32 @@ const TEST_ENV = { KV: fakeKv() } as unknown as AppEnv["Bindings"];
 // slotRows/formatRows), 8 countVisibleSubmissions. For
 // /embed/:slug/sessions.json there is no getPublicTracks call, so it shifts
 // down by one.
-function buildApp(opts: { html: boolean }) {
+// DEC-634: `day` is now a SQL-level predicate (innerJoin schedule_slot) on
+// getVisibleSubmissionIdsOrdered/countVisibleSubmissions rather than a
+// post-page `.filter()` — so, mirroring test/public-agenda-event-range
+// .test.ts's convention, `day` here pre-scopes the fake's rows to what the
+// real SQL predicate would already have returned, instead of returning
+// every row unconditionally for a JS filter downstream to narrow.
+function buildApp(opts: { html: boolean; day?: string }) {
   let selectCall = 0;
+  const subRows = opts.day ? SUB_ROWS.filter((r) => SLOT_ROWS.find((s) => s.submissionId === r.id)?.day === opts.day) : SUB_ROWS;
+  const subIds = new Set(subRows.map((r) => r.id));
+  const trackRows = TRACK_ROWS.filter((r) => subIds.has(r.submissionId));
+  const slotRows = SLOT_ROWS.filter((r) => subIds.has(r.submissionId));
   const db = {
     select: () => {
       selectCall += 1;
       const offset = opts.html ? 1 : 0;
       if (selectCall === 1) return makeChain([EVENT_ROW]);
       if (opts.html && selectCall === 2) return makeChain([]); // getPublicTracks
-      if (selectCall === 2 + offset) return makeChain(SUB_ROWS); // hydrateSessions subRows
-      if (selectCall === 3 + offset) return makeChain(TRACK_ROWS); // hydrateSessions trackRows
+      if (selectCall === 2 + offset) return makeChain(subRows); // hydrateSessions subRows
+      if (selectCall === 3 + offset) return makeChain(trackRows); // hydrateSessions trackRows
       if (selectCall === 4 + offset) return makeChain([]); // hydrateSessions speakerRows
-      if (selectCall === 5 + offset) return makeChain(SLOT_ROWS); // hydrateSessions slotRows
+      if (selectCall === 5 + offset) return makeChain(slotRows); // hydrateSessions slotRows
       if (selectCall === 6 + offset) return makeChain([]); // hydrateSessions formatRows
-      return makeChain([{ count: SUB_ROWS.length }]); // countVisibleSubmissions
+      return makeChain([{ count: subRows.length }]); // countVisibleSubmissions
     },
-    selectDistinct: () => makeChain(SUB_ROWS.map((r) => ({ id: r.id, title: r.title }))),
+    selectDistinct: () => makeChain(subRows.map((r) => ({ id: r.id, title: r.title }))),
   } as unknown as AppEnv["Variables"]["db"];
 
   const app = new Hono<AppEnv>();
@@ -134,7 +144,7 @@ describe("EMB-5: day= honored by the sessions .json twin", () => {
     expect(unfiltered.items.length).toBe(2);
 
     installFakeCaches();
-    const filteredApp = buildApp({ html: false });
+    const filteredApp = buildApp({ html: false, day: "2026-08-10" });
     const filteredRes = await filteredApp.request("/embed/conf/sessions.json?day=2026-08-10", {}, TEST_ENV);
     expect(filteredRes.status).toBe(200);
     const filtered = (await filteredRes.json()) as { items: { id: string; day: string }[]; total: number };

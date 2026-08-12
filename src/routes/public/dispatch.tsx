@@ -29,15 +29,16 @@ export async function renderSurfaceContent(
       const q = parseNameQuery(query.q);
       const perPage = query.limit ?? PUBLIC_PER_PAGE;
       const tracks = await getPublicTracks(db, event.id);
-      const { items: rawItems, total: rawTotal } = await getPublicSessions(db, event, { trackId, page, perPage, q });
-      // DEC-594 (EMB-5): `day` was previously honored for agenda/schedule
-      // only and silently dropped here — an accepted param must never no-op.
-      // Sessions has no SQL-level day filter, so this filters the already
-      // visibility-gated, hydrated page (each item already carries its own
-      // scheduled `day`) and reports `total` as the filtered count so a
-      // consumer never sees a total that disagrees with the rendered items.
-      const items = query.day ? rawItems.filter((s) => s.day === query.day) : rawItems;
-      const total = query.day ? items.length : rawTotal;
+      // DEC-634: `day` is now a SQL-level predicate on the repo query
+      // (joined + counted alongside trackId/q) rather than a post-page
+      // filter — LIMIT/OFFSET and `total` see the identical predicate.
+      const { items, total } = await getPublicSessions(db, event, {
+        trackId,
+        page,
+        perPage,
+        q,
+        day: query.day ?? null,
+      });
       return {
         title: `Sessions - ${event.name}`,
         content: (
