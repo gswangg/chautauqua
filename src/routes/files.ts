@@ -14,7 +14,14 @@ import { MAX_LONG_TEXT_LENGTH } from "../forms/validate"; // DEC-417
 import { makeFileStore } from "../server/context";
 import { newId } from "../domain/ids";
 import { buildZip } from "../lib/zip";
-import { clampPage, clampPerPage } from "../lib/pagination";
+import { clampPage, clampPerPage, listPerPage } from "../lib/pagination";
+import { DEC_013, DEC_461, DEC_465, DEC_468, DEC_471 } from "../decisions";
+
+void DEC_013;
+void DEC_461;
+void DEC_465;
+void DEC_468;
+void DEC_471;
 import {
   FILE_KINDS,
   isImageContentType,
@@ -163,7 +170,11 @@ fileApiRoutes.get("/submissions/:id/files", async (c) => {
       createdAt: v.createdAt,
     })),
   );
-  return c.json({ items });
+  const page = clampPage(c.req.query("page"));
+  const perPage = listPerPage(c.req.query("perPage"));
+  const start = (page - 1) * perPage;
+  const slice = items.slice(start, start + perPage);
+  return c.json({ items: slice, total: items.length, page, perPage });
 });
 
 // -----------------------------------------------------------------------
@@ -306,7 +317,11 @@ fileApiRoutes.get("/files/:fileId/comments", async (c) => {
   const fileId = c.req.param("fileId");
   await authzFileRead(c, fileId);
   const comments = await listFileComments(c.var.db, fileId);
-  return c.json({ items: comments });
+  const page = clampPage(c.req.query("page"));
+  const perPage = listPerPage(c.req.query("perPage"));
+  const start = (page - 1) * perPage;
+  const slice = comments.slice(start, start + perPage);
+  return c.json({ items: slice, total: comments.length, page, perPage });
 });
 
 fileApiRoutes.post("/files/:fileId/comments", csrfJson, async (c) => {

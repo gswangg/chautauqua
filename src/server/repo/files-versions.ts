@@ -2,7 +2,7 @@
 // DEC-020 contract). Split out of files.ts (contention decomposition) — no
 // behavior change, files.ts re-exports everything below for existing callers.
 
-import { desc, eq } from "drizzle-orm";
+import { asc, desc, eq } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { newId } from "../../domain/ids";
@@ -171,7 +171,7 @@ export async function listSubmissionFiles(db: Db, submissionId: string): Promise
     })
     .from(schema.file)
     .where(eq(schema.file.submissionId, submissionId))
-    .orderBy(desc(schema.file.createdAt));
+    .orderBy(desc(schema.file.createdAt), asc(schema.file.id));
 
   const grouped: FilesByKind = {};
   for (const row of rows) {
