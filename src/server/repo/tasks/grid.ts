@@ -103,7 +103,8 @@ export async function getOnboardingGrid(db: Db, eventId: string, params: Onboard
       required: schema.task.required,
     })
     .from(schema.task)
-    .where(eq(schema.task.eventId, eventId));
+    .where(eq(schema.task.eventId, eventId))
+    .orderBy(sql`${schema.task.dueDate} is null`, sql`${schema.task.dueDate} asc`, sql`${schema.task.title} asc`, sql`${schema.task.id} asc`);
 
   const tasks: GridTask[] = taskRows.map((t) => ({
     id: t.id,

@@ -14,7 +14,7 @@
 // these wire keys and is pinned against this file by
 // test/overview-payload-contract.test.ts.
 
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { findConflicts, type Conflict, type PlacedSession } from "../../domain/schedule";
@@ -210,6 +210,57 @@ export function buildConflictRows(
   return rows;
 }
 
+export interface FileRowForPick {
+  id: string;
+  submissionId: string;
+  filename: string;
+  previousFileId: string | null;
+  createdAt: number;
+}
+
+/** DEC-558: picks the "latest file" per submission from a flat row list —
+ * highest createdAt wins, ties broken by file.id ascending (a total order,
+ * so re-feeding the same rows in any order yields byte-identical output).
+ * Callers group rows by submissionId first; this picks within one group. */
+export function pickLatestFilePerSubmission(rows: FileRowForPick[]): FileRowForPick | null {
+  let best: FileRowForPick | null = null;
+  for (const r of rows) {
+    if (
+      !best ||
+      r.createdAt > best.createdAt ||
+      (r.createdAt === best.createdAt && r.id < best.id)
+    ) {
+      best = r;
+    }
+  }
+  return best;
+}
+
+export interface LeadSpeakerRow {
+  submissionId: string;
+  order: number;
+  contactId: string;
+  name: string;
+}
+
+/** DEC-558: picks the "lead speaker" per submission from a flat row list —
+ * lowest participant.order wins, ties broken by contactId ascending (a
+ * total order). Callers group rows by submissionId first; this picks
+ * within one group. */
+export function pickLeadSpeakerPerSubmission(rows: LeadSpeakerRow[]): LeadSpeakerRow | null {
+  let best: LeadSpeakerRow | null = null;
+  for (const r of rows) {
+    if (
+      !best ||
+      r.order < best.order ||
+      (r.order === best.order && r.contactId < best.contactId)
+    ) {
+      best = r;
+    }
+  }
+  return best;
+}
+
 // ---------------------------------------------------------------------------
 // I/O: builds the full payload from joined/grouped queries.
 // ---------------------------------------------------------------------------
@@ -313,7 +364,7 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number): 
         sql`${schema.task.dueDate} is not null and ${schema.task.dueDate} < ${now}`,
       ),
     )
-    .orderBy(schema.task.dueDate)
+    .orderBy(asc(schema.task.dueDate), asc(schema.taskAssignment.id))
     .limit(ROW_CAP);
   const overdueTasks = {
     total: speakers.overdueAssignments,
@@ -345,7 +396,7 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number): 
     })
     .from(schema.submission)
     .where(and(eq(schema.submission.eventId, eventId), eq(schema.submission.status, "pending")))
-    .orderBy(schema.submission.createdAt)
+    .orderBy(asc(schema.submission.createdAt), asc(schema.submission.id))
     .limit(ROW_CAP);
   const oldestSubmittedAt = triageDetailRows[0] ? triageDetailRows[0].createdAt.getTime() : null;
 
@@ -399,7 +450,7 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number): 
         eq(schema.submission.contentStatus, "pending"),
       ),
     )
-    .orderBy(sql`${schema.submission.updatedAt} desc`)
+    .orderBy(desc(schema.submission.updatedAt), asc(schema.submission.id))
     .limit(ROW_CAP);
 
   const contentSubmissionIds = contentDetailRows.map((r) => r.id);
@@ -407,6 +458,7 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number): 
   if (contentSubmissionIds.length > 0) {
     const fileRows = await db
       .select({
+        id: schema.file.id,
         submissionId: schema.file.submissionId,
         filename: schema.file.filename,
         previousFileId: schema.file.previousFileId,
@@ -414,14 +466,20 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number): 
       })
       .from(schema.file)
       .where(inArray(schema.file.submissionId, contentSubmissionIds));
+    const fileRowsBySubmission = new Map<string, FileRowForPick[]>();
     for (const f of fileRows) {
       if (!f.submissionId) continue;
-      const existing = latestFileBySubmission.get(f.submissionId);
-      if (!existing || f.createdAt.getTime() > existing.uploadedAt) {
-        latestFileBySubmission.set(f.submissionId, {
-          filename: f.filename,
-          uploadedAt: f.createdAt.getTime(),
-          reuploaded: f.previousFileId !== null,
+      const arr = fileRowsBySubmission.get(f.submissionId) ?? [];
+      arr.push({ id: f.id, submissionId: f.submissionId, filename: f.filename, previousFileId: f.previousFileId, createdAt: f.createdAt.getTime() });
+      fileRowsBySubmission.set(f.submissionId, arr);
+    }
+    for (const [submissionId, rows] of fileRowsBySubmission) {
+      const picked = pickLatestFilePerSubmission(rows);
+      if (picked) {
+        latestFileBySubmission.set(submissionId, {
+          filename: picked.filename,
+          uploadedAt: picked.createdAt,
+          reuploaded: picked.previousFileId !== null,
         });
       }
     }
@@ -433,7 +491,8 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number): 
   const acceptedRows = await db
     .select({ id: schema.submission.id, seq: schema.submission.seq, title: schema.submission.title })
     .from(schema.submission)
-    .where(and(eq(schema.submission.eventId, eventId), eq(schema.submission.status, "accepted")));
+    .where(and(eq(schema.submission.eventId, eventId), eq(schema.submission.status, "accepted")))
+    .orderBy(asc(schema.submission.seq));
   const acceptedIds = acceptedRows.map((r) => r.id);
   const acceptedById = new Map(acceptedRows.map((r) => [r.id, r]));
 
@@ -620,13 +679,14 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number): 
  * name per submission id, for the given bounded id set — one chunked query
  * set shared across every DEC-370 row section that needs a speaker name. */
 async function fetchLeadSpeakerNames(db: Db, submissionIds: string[]): Promise<Map<string, string>> {
-  const best = new Map<string, { order: number; name: string }>();
+  const rowsBySubmission = new Map<string, LeadSpeakerRow[]>();
   for (const batch of chunkIds(submissionIds)) {
     if (batch.length === 0) continue;
     const rows = await db
       .select({
         submissionId: schema.participant.submissionId,
         order: schema.participant.order,
+        contactId: schema.participant.contactId,
         firstName: schema.contact.firstName,
         lastName: schema.contact.lastName,
       })
@@ -634,13 +694,16 @@ async function fetchLeadSpeakerNames(db: Db, submissionIds: string[]): Promise<M
       .innerJoin(schema.contact, eq(schema.contact.id, schema.participant.contactId))
       .where(and(inArray(schema.participant.submissionId, batch), eq(schema.participant.role, "speaker")));
     for (const r of rows) {
-      const existing = best.get(r.submissionId);
-      if (!existing || r.order < existing.order) {
-        best.set(r.submissionId, { order: r.order, name: `${r.firstName} ${r.lastName}`.trim() });
-      }
+      const name = `${r.firstName} ${r.lastName}`.trim();
+      const arr = rowsBySubmission.get(r.submissionId) ?? [];
+      arr.push({ submissionId: r.submissionId, order: r.order, contactId: r.contactId, name });
+      rowsBySubmission.set(r.submissionId, arr);
     }
   }
   const out = new Map<string, string>();
-  for (const [id, v] of best) out.set(id, v.name);
+  for (const [submissionId, rows] of rowsBySubmission) {
+    const picked = pickLeadSpeakerPerSubmission(rows);
+    if (picked) out.set(submissionId, picked.name);
+  }
   return out;
 }

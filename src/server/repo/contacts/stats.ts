@@ -2,7 +2,7 @@
 // decomposition, no behavior change). See repo/contacts.ts for the
 // module-level contract notes.
 
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, sql } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 
@@ -47,7 +47,7 @@ export async function getContactStats(db: Db, orgId: string): Promise<ContactSta
     .from(schema.contact)
     .where(and(eq(schema.contact.orgId, orgId), sql`${schema.contact.company} is not null and ${schema.contact.company} != ''`))
     .groupBy(schema.contact.company)
-    .orderBy(desc(sql`count(*)`))
+    .orderBy(desc(sql`count(*)`), asc(schema.contact.company))
     .limit(5);
   const topCompanies = companyRows
     .filter((r): r is { company: string; count: number } => r.company !== null)
