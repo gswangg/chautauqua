@@ -17,7 +17,7 @@
 // that frame.
 
 import { useState, type FormEvent } from 'react';
-import { ModalFrame } from '../../components/ModalFrame';
+import { FormRow, ModalFrame } from '../../components/ModalFrame';
 import type { FormField, Track } from './types';
 
 export interface NewSubmissionInput {
@@ -95,25 +95,25 @@ export function NewSubmissionModal({ tracks, formatField, onCancel, onCreate }: 
     >
       {error && <div className="chq-error">{error}</div>}
 
-      <label className="chq-submissions-modal-field">
-        <span className="chq-submissions-modal-label">Title</span>
+      <FormRow label="Title" htmlFor="new-submission-title" required>
         <input
+          id="new-submission-title"
           className="chq-input"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Opening Keynote"
           required
         />
-      </label>
-      <label className="chq-submissions-modal-field">
-        <span className="chq-submissions-modal-label">Abstract</span>
+      </FormRow>
+      <FormRow label="Abstract" htmlFor="new-submission-description">
         <textarea
+          id="new-submission-description"
           className="chq-textarea"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           placeholder="Optional — you can fill this in later"
         />
-      </label>
+      </FormRow>
 
       {tracks.length > 0 && (
         <fieldset className="chq-submissions-modal-field">
@@ -133,9 +133,8 @@ export function NewSubmissionModal({ tracks, formatField, onCancel, onCreate }: 
       )}
 
       {formatField && (
-        <label className="chq-submissions-modal-field">
-          <span className="chq-submissions-modal-label">{formatField.label}</span>
-          <select className="chq-select" value={format} onChange={(e) => setFormat(e.target.value)}>
+        <FormRow label={formatField.label} htmlFor="new-submission-format">
+          <select id="new-submission-format" className="chq-select" value={format} onChange={(e) => setFormat(e.target.value)}>
             <option value="">Select...</option>
             {(formatField.options ?? []).map((option) => (
               <option key={option} value={option}>
@@ -143,37 +142,37 @@ export function NewSubmissionModal({ tracks, formatField, onCancel, onCreate }: 
               </option>
             ))}
           </select>
-        </label>
+        </FormRow>
       )}
 
-      <label className="chq-submissions-modal-field">
-        <span className="chq-submissions-modal-label">Speaker name</span>
+      <FormRow label="Speaker name" htmlFor="new-submission-first-name">
         <input
+          id="new-submission-first-name"
           className="chq-input"
           value={firstName}
           onChange={(e) => setFirstName(e.target.value)}
           placeholder="Jordan Alvarez"
         />
-      </label>
-      <label className="chq-submissions-modal-field">
-        <span className="chq-submissions-modal-label">Speaker last name</span>
+      </FormRow>
+      <FormRow label="Speaker last name" htmlFor="new-submission-last-name">
         <input
+          id="new-submission-last-name"
           className="chq-input"
           value={lastName}
           onChange={(e) => setLastName(e.target.value)}
           placeholder="Alvarez"
         />
-      </label>
-      <label className="chq-submissions-modal-field">
-        <span className="chq-submissions-modal-label">Speaker email (optional)</span>
+      </FormRow>
+      <FormRow label="Speaker email (optional)" htmlFor="new-submission-email">
         <input
+          id="new-submission-email"
           className="chq-input"
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="sbek-organizer@example.com"
         />
-      </label>
+      </FormRow>
     </ModalFrame>
   );
 }

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { apiList, apiPost, ApiError } from '../../lib/api';
-import { ModalFrame } from '../../components/ModalFrame';
+import { FormRow, ModalFrame } from '../../components/ModalFrame';
 import type { ContactListItem } from './types';
 
 interface EventOption {
@@ -83,9 +83,13 @@ export function AddToEventModal({ contact, onClose }: Props) {
           <p>
             Adding {contact.firstName} {contact.lastName} directly as an accepted speaker — no email is sent.
           </p>
-          <label>
-            Event
-            <select className="chq-select" aria-label="Event" value={eventId} onChange={(e) => setEventId(e.target.value)}>
+          <FormRow label="Event" htmlFor="add-to-event-select">
+            <select
+              id="add-to-event-select"
+              className="chq-select"
+              value={eventId}
+              onChange={(e) => setEventId(e.target.value)}
+            >
               {events.length === 0 && <option value="">No events</option>}
               {events.map((ev) => (
                 <option key={ev.id} value={ev.id}>
@@ -93,16 +97,16 @@ export function AddToEventModal({ contact, onClose }: Props) {
                 </option>
               ))}
             </select>
-          </label>
-          <label>
-            Title
+          </FormRow>
+          <FormRow label="Title" htmlFor="add-to-event-title">
             <input
+              id="add-to-event-title"
               className="chq-input"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Invited: Jordan Alvarez"
             />
-          </label>
+          </FormRow>
         </>
       )}
 

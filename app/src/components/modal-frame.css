@@ -28,3 +28,57 @@
 .chq-modal-close-btn {
   flex-shrink: 0;
 }
+
+/* FormRow (DEC-685): the ONE form-row skeleton. Label above the control,
+   full measure, optional help caption, error distinguished by a leading
+   glyph + weight (never colour alone, DEC-367). */
+.chq-form-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.chq-form-row-label {
+  font-family: var(--chq-font-display);
+  font-size: var(--chq-type-section-label-size);
+  font-weight: var(--chq-type-section-label-weight);
+  letter-spacing: var(--chq-type-section-label-tracking);
+  text-transform: uppercase;
+  color: var(--chq-muted);
+}
+
+.chq-form-row-required {
+  color: var(--chq-ink);
+}
+
+.chq-form-row-control {
+  display: flex;
+  flex-direction: column;
+}
+
+.chq-form-row-control > .chq-input,
+.chq-form-row-control > .chq-select,
+.chq-form-row-control > .chq-textarea {
+  width: 100%;
+}
+
+.chq-form-row-help {
+  font-size: 13px;
+  color: var(--chq-muted);
+}
+
+.chq-form-row-error {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--chq-ink);
+}
+
+@media (max-width: 700px) {
+  .chq-form-row-control > .chq-input,
+  .chq-form-row-control > .chq-select,
+  .chq-form-row-control > .chq-textarea {
+    min-height: 44px;
+  }
+}

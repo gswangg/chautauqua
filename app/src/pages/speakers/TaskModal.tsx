@@ -7,7 +7,7 @@ import {
   type NewTaskInput,
   type TaskKind,
 } from './types';
-import { ModalFrame } from '../../components/ModalFrame';
+import { FormRow, ModalFrame } from '../../components/ModalFrame';
 import { dateInputToMs } from '../../lib/dates';
 
 interface TaskModalProps {
@@ -127,9 +127,9 @@ export function TaskModal({ onCancel, onSubmit, forms }: TaskModalProps) {
           </div>
         </div>
 
-        <label className="chq-speakers-modal-field">
-          <span className="chq-speakers-modal-label">Task</span>
+        <FormRow label="Task" htmlFor="task-title">
           <input
+            id="task-title"
             className="chq-input"
             type="text"
             value={title}
@@ -137,60 +137,63 @@ export function TaskModal({ onCancel, onSubmit, forms }: TaskModalProps) {
             placeholder="Submit your slides"
             required
           />
-        </label>
+        </FormRow>
 
-        <label className="chq-speakers-modal-field">
-          <span className="chq-speakers-modal-label">Description</span>
+        <FormRow label="Description" htmlFor="task-description">
           <textarea
+            id="task-description"
             className="chq-textarea"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Optional instructions shown to the speaker"
           />
-        </label>
+        </FormRow>
 
-        <label className="chq-speakers-modal-field">
-          <span className="chq-speakers-modal-label">Due date</span>
+        <FormRow label="Due date" htmlFor="task-due-date">
           <input
+            id="task-due-date"
             className="chq-input"
             type="date"
             value={dueDate}
             onChange={(e) => setDueDate(e.target.value)}
             placeholder="2026-05-01"
           />
-        </label>
+        </FormRow>
 
         {kind === 'form' && (
-          <div className="chq-speakers-modal-field">
-            <label>
-              <span className="chq-speakers-modal-label">Form</span>
-              <select
-                className="chq-select"
-                value={formId}
-                onChange={(e) => setFormId(e.target.value)}
-                disabled={forms.length === 0}
-              >
-                {forms.length === 0 ? (
-                  <option value="">No forms available</option>
-                ) : (
-                  forms.map((f) => (
-                    <option key={f.id} value={f.id}>
-                      {f.title}
-                    </option>
-                  ))
-                )}
-              </select>
-            </label>
-            {forms.length === 0 && (
-              <span className="chq-summary">This event has no forms yet. Add a form before creating a form task.</span>
-            )}
-          </div>
+          <FormRow
+            label="Form"
+            htmlFor="task-form"
+            help={
+              forms.length === 0
+                ? 'This event has no forms yet. Add a form before creating a form task.'
+                : undefined
+            }
+          >
+            <select
+              id="task-form"
+              className="chq-select"
+              value={formId}
+              onChange={(e) => setFormId(e.target.value)}
+              disabled={forms.length === 0}
+            >
+              {forms.length === 0 ? (
+                <option value="">No forms available</option>
+              ) : (
+                forms.map((f) => (
+                  <option key={f.id} value={f.id}>
+                    {f.title}
+                  </option>
+                ))
+              )}
+            </select>
+          </FormRow>
         )}
 
         {kind === 'file_request' && (
-          <label className="chq-speakers-modal-field">
-            <span className="chq-speakers-modal-label">Deliverable kind</span>
+          <FormRow label="Deliverable kind" htmlFor="task-deliverable-kind">
             <select
+              id="task-deliverable-kind"
               className="chq-select"
               value={deliverableKind}
               onChange={(e) => setDeliverableKind(e.target.value as DeliverableKind)}
@@ -201,7 +204,7 @@ export function TaskModal({ onCancel, onSubmit, forms }: TaskModalProps) {
                 </option>
               ))}
             </select>
-          </label>
+          </FormRow>
         )}
 
         <label className="chq-check-label">
