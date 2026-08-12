@@ -160,6 +160,51 @@
   cursor: pointer;
 }
 
+/* Results table -> cards (DEC-386/390): thead hidden, table/tbody/tr/td go
+   block-level on the SAME markup (no cell dropped); each td's data-label
+   attribute (set in ResultsTable.tsx from the same string its <th> uses)
+   renders through ::before as a micro-label. Progress row collapses to a
+   single column alongside it. */
+@media (max-width: 700px) {
+  .chq-review-results-table thead {
+    display: none;
+  }
+
+  .chq-review-results-table,
+  .chq-review-results-table tbody,
+  .chq-review-results-table tr {
+    display: block;
+    width: 100%;
+  }
+
+  .chq-review-results-table tbody tr {
+    padding: 14px 0;
+    border-bottom: 1px solid var(--chq-hairline);
+  }
+
+  .chq-review-results-table td {
+    display: block;
+    padding: 6px 0;
+    border-bottom: none;
+  }
+
+  .chq-review-results-table td::before {
+    content: attr(data-label);
+    display: block;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--chq-muted);
+    margin-bottom: 3px;
+  }
+
+  .chq-review-progress-row {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+}
+
 /* ---------------------------------------------------------------------- */
 /* Reviewer queue + scorecard                                              */
 /* ---------------------------------------------------------------------- */
