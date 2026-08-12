@@ -77,6 +77,7 @@ import {
 import { resolveBaseUrl } from "../../server/origin";
 import { ThemeStyles } from "../../views/theme";
 import { CFP_CSS } from "./cfp.css";
+import { validAccent } from "./shell";
 
 void DEC_252;
 
@@ -95,15 +96,12 @@ void DEC_373;
 void DEC_374;
 void DEC_377;
 
-// DEC-374: strict hex-only guard for the per-event accent -- anything that
-// doesn't match becomes the default brand olive, never interpolated
-// unchecked into a style attribute.
-const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
-const DEFAULT_ACCENT = "#4E5C31";
-
-function safeAccent(accentColor: string | undefined): string {
-  return accentColor && HEX_COLOR_RE.test(accentColor) ? accentColor : DEFAULT_ACCENT;
-}
+// DEC-374: the strict hex-only guard for the per-event accent is the one
+// exported from ./shell (validAccent) -- anything that doesn't match becomes
+// the default brand olive, never interpolated unchecked into a style
+// attribute. Every public SSR surface shares that single guard so the CFP
+// page and the branded event pages can never disagree about what a valid
+// accent is.
 
 function ensureCsrfCookie(c: {
   req: { header(name: string): string | undefined; url: string };
@@ -144,7 +142,7 @@ function PageShell(props: { title: string; accentColor?: string; children: unkno
         <ThemeStyles />
         <style dangerouslySetInnerHTML={{ __html: CFP_CSS }} />
       </head>
-      <body style={`--chq-brandable-accent: ${safeAccent(props.accentColor)};`}>
+      <body style={`--chq-brandable-accent: ${validAccent(props.accentColor)};`}>
         <main class="chq-measure">{props.children as any}</main>
       </body>
     </html>
