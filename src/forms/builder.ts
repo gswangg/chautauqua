@@ -88,7 +88,10 @@ export function validateRuleReference(
  * PATCH may omit `kind` (unchanged) or send it (DEC-505 kind change), so the
  * dropdown-options rule must be checked against the field's *effective*
  * kind, not just a supplied one, otherwise `{"options": []}` silently bricks
- * a live dropdown — DEC-500).
+ * a live dropdown — DEC-500). `options` is required whenever the field is
+ * not ALREADY a dropdown: a create, or a patch that changes kind to
+ * dropdown, must supply options; a patch on a field that is already a
+ * dropdown may omit options (leaving them unchanged) — DEC-508.
  */
 export function validateFieldDefInput(
   input: FieldDefInput,
@@ -114,7 +117,7 @@ export function validateFieldDefInput(
       : existing?.kind;
 
   if (effectiveKind === "dropdown") {
-    if (input.options !== undefined || existing === undefined) {
+    if (input.options !== undefined || existing === undefined || existing.kind !== "dropdown") {
       const options = input.options;
       if (!Array.isArray(options) || options.length === 0 || !options.every((o) => typeof o === "string")) {
         errors.options = "dropdown fields require a non-empty string array of options";
