@@ -10,7 +10,8 @@ import { Hono, type Context } from "hono";
 import type { AppEnv, AuthInfo } from "../../server/env";
 import type { Db } from "../../server/context";
 import { requireOrganizer, csrfJson } from "../../server/middleware";
-import { ApiError, parseBoundedIdArray } from "../../server/http";
+import { ApiError, parseBoundedIdArray, parseBoundedText, parseBoundedOptionalText } from "../../server/http";
+import { MAX_NAME_LENGTH, MAX_LONG_TEXT_LENGTH } from "../../forms/validate"; // DEC-417
 import {
   cloneSubmission,
   createSubmission,
@@ -96,11 +97,10 @@ submissionsRoutes.post("/events/:eventId/submissions", requireOrganizer, csrfJso
   await assertEventOwnership(c.var.db, eventId, auth.orgId);
 
   const body = (await c.req.json().catch(() => ({}))) as CreateSubmissionBody;
-  const title = typeof body.title === "string" ? body.title.trim() : "";
-  if (!title) {
-    throw new ApiError("invalid", "Title is required", { title: "Required" });
-  }
-  const description = typeof body.description === "string" ? body.description : null;
+  const title = parseBoundedText(body.title, "title", { max: MAX_NAME_LENGTH, required: true }); // DEC-417
+  const description = parseBoundedOptionalText(body.description, "description", {
+    max: MAX_LONG_TEXT_LENGTH,
+  }); // DEC-417
 
   let contact: { email: string; firstName: string; lastName: string } | null = null;
   if (body.contact) {
@@ -153,12 +153,12 @@ submissionsRoutes.patch("/submissions/:id", requireOrganizer, csrfJson, async (c
   const fields: { title?: string; description?: string | null } = {};
 
   if (body.title !== undefined) {
-    const title = typeof body.title === "string" ? body.title.trim() : "";
-    if (!title) throw new ApiError("invalid", "Title is required", { title: "Required" });
-    fields.title = title;
+    fields.title = parseBoundedText(body.title, "title", { max: MAX_NAME_LENGTH, required: true }); // DEC-417
   }
   if (body.description !== undefined) {
-    fields.description = typeof body.description === "string" ? body.description : null;
+    fields.description = parseBoundedOptionalText(body.description, "description", {
+      max: MAX_LONG_TEXT_LENGTH,
+    }); // DEC-417
   }
 
   if (Object.keys(fields).length === 0) {

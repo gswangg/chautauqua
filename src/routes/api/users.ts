@@ -6,6 +6,7 @@ import { Hono } from "hono";
 import type { AppEnv } from "../../server/env";
 import { requireOrganizer, csrfJson } from "../../server/middleware";
 import { ApiError } from "../../server/http";
+import { MAX_NAME_LENGTH } from "../../forms/validate"; // DEC-417
 import { makeMailer } from "../../server/context";
 import { textToHtml } from "../../mail/render";
 import { hashPassword } from "../../auth/password";
@@ -58,6 +59,7 @@ usersRoutes.post("/api/v1/users", requireOrganizer, csrfJson, async (c) => {
   const errors: Record<string, string> = {};
   const email = typeof record.email === "string" ? record.email.trim().toLowerCase() : "";
   if (email.length === 0) errors.email = "required";
+  else if (email.length > MAX_NAME_LENGTH) errors.email = `Max ${MAX_NAME_LENGTH}`; // DEC-417
   const role = typeof record.role === "string" ? record.role : "";
   if (!ALLOWED_ROLES.has(role)) errors.role = "must be 'reviewer' or 'organizer'";
   if (Object.keys(errors).length > 0) {

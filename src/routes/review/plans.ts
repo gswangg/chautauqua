@@ -8,6 +8,7 @@ import { Hono } from "hono";
 import type { AppEnv } from "../../server/env";
 import { csrfJson, requireOrganizer } from "../../server/middleware";
 import { ApiError } from "../../server/http";
+import { MAX_NAME_LENGTH, MAX_LONG_TEXT_LENGTH } from "../../forms/validate"; // DEC-417
 import { makeMailer } from "../../server/context";
 import { textToHtml } from "../../mail/render";
 import {
@@ -64,6 +65,10 @@ reviewPlansRoutes.post("/api/v1/events/:eventId/plans", requireOrganizer, csrfJs
   const body = asRecord(await c.req.json());
   const errors: Record<string, string> = {};
   if (typeof body.name !== "string" || body.name.trim().length === 0) errors.name = "required";
+  else if (body.name.length > MAX_NAME_LENGTH) errors.name = `Max ${MAX_NAME_LENGTH}`; // DEC-417
+  if (typeof body.instructions === "string" && body.instructions.length > MAX_LONG_TEXT_LENGTH) {
+    errors.instructions = `Max ${MAX_LONG_TEXT_LENGTH}`; // DEC-417
+  }
   const scale = parseScale(body, errors);
   const criteria = parseCriteria(body, errors);
   const rounds = body.rounds !== undefined ? parseRounds(body, errors) : 1;
@@ -96,6 +101,12 @@ reviewPlansRoutes.patch("/api/v1/plans/:id", requireOrganizer, csrfJson, async (
   const body = asRecord(await c.req.json());
   const errors: Record<string, string> = {};
 
+  if (body.name !== undefined && typeof body.name === "string" && body.name.length > MAX_NAME_LENGTH) {
+    errors.name = `Max ${MAX_NAME_LENGTH}`; // DEC-417
+  }
+  if (body.instructions !== undefined && typeof body.instructions === "string" && body.instructions.length > MAX_LONG_TEXT_LENGTH) {
+    errors.instructions = `Max ${MAX_LONG_TEXT_LENGTH}`; // DEC-417
+  }
   const scale = body.scale !== undefined ? parseScale(body, errors) : undefined;
   const criteria = body.criteria !== undefined ? parseCriteria(body, errors) : undefined;
   const rounds = body.rounds !== undefined ? parseRounds(body, errors, plan.currentRound) : undefined;

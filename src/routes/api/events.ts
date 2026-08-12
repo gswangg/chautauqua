@@ -7,6 +7,7 @@ import type { AppEnv } from "../../server/env";
 import { requireOrganizer, csrfJson } from "../../server/middleware";
 import type { AuthInfo } from "../../server/env";
 import { ApiError } from "../../server/http";
+import { MAX_NAME_LENGTH, MAX_TEXT_LENGTH } from "../../forms/validate"; // DEC-417
 import * as schema from "../../db/schema";
 import {
   createEvent,
@@ -75,14 +76,37 @@ function asRecord(body: unknown): Record<string, unknown> {
   return body as Record<string, unknown>;
 }
 
-function requireString(body: Record<string, unknown>, field: string, fields: Record<string, string>): string | undefined {
+// DEC-417: maxLen defaults to MAX_NAME_LENGTH -- every caller of this helper
+// today is an identifier/name/slug field.
+function requireString(
+  body: Record<string, unknown>,
+  field: string,
+  fields: Record<string, string>,
+  maxLen: number = MAX_NAME_LENGTH,
+): string | undefined {
   const value = body[field];
   if (value === undefined) return undefined;
   if (typeof value !== "string" || value.trim().length === 0) {
     fields[field] = "Must be a non-empty string";
     return undefined;
   }
+  if (value.length > maxLen) {
+    fields[field] = `Max ${maxLen}`;
+    return undefined;
+  }
   return value;
+}
+
+// DEC-417
+function checkOptionalStringLen(
+  value: unknown,
+  field: string,
+  fields: Record<string, string>,
+  maxLen: number,
+): void {
+  if (typeof value === "string" && value.length > maxLen) {
+    fields[field] = `Max ${maxLen}`;
+  }
 }
 
 function parseBranding(body: Record<string, unknown>, fields: Record<string, string>): EventBranding | undefined {
@@ -98,6 +122,8 @@ function parseBranding(body: Record<string, unknown>, fields: Record<string, str
   if (b.logoUrl !== undefined) {
     if (typeof b.logoUrl !== "string") {
       fields["branding.logoUrl"] = "Must be a string";
+    } else if (b.logoUrl.length > MAX_TEXT_LENGTH) {
+      fields["branding.logoUrl"] = `Max ${MAX_TEXT_LENGTH}`; // DEC-417
     } else {
       out.logoUrl = b.logoUrl;
     }
@@ -173,6 +199,7 @@ eventsRoutes.post("/events", requireOrganizer, csrfJson, async (c) => {
   if (location !== undefined && location !== null && typeof location !== "string") {
     fields.location = "Must be a string";
   }
+  checkOptionalStringLen(location, "location", fields, MAX_TEXT_LENGTH); // DEC-417
 
   if (slug !== undefined && !isValidSlug(slug)) {
     fields.slug = "Must match [a-z0-9-]+";
@@ -248,6 +275,7 @@ eventsRoutes.patch("/events/:eventId", csrfJson, async (c) => {
   if (location !== undefined && location !== null && typeof location !== "string") {
     fields.location = "Must be a string";
   }
+  checkOptionalStringLen(location, "location", fields, MAX_TEXT_LENGTH); // DEC-417
 
   if (slug !== undefined && !isValidSlug(slug)) {
     fields.slug = "Must match [a-z0-9-]+";
