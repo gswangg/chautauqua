@@ -199,7 +199,10 @@ provisioning a live deployment:
   to a live Worker.
 - Resend adapter for the mailer port, replacing the dev-sink email
   implementation (`/dev/mailbox`).
-- Airtable one-way sync (contacts/sessions → base).
+- Airtable one-way sync (contacts/sessions → base). Requires
+  `AIRTABLE_TOKEN` + `AIRTABLE_BASE_ID` + `AIRTABLE_ORG_ID`; one base serves
+  exactly one org, so a configured sync without `AIRTABLE_ORG_ID` throws
+  rather than syncing unscoped.
 - Custom domains and CI-driven deploys.
 
 ## Roadmap

@@ -96,11 +96,22 @@ async function upsertBatches(
   return upserted;
 }
 
-/** Env surface the sync needs; both unset => feature off. */
+/** Env surface the sync needs; both AIRTABLE_TOKEN/AIRTABLE_BASE_ID unset =>
+ * feature off. DEC-450: one Airtable base serves exactly one org, so once the
+ * integration IS configured, AIRTABLE_ORG_ID is required to scope every read
+ * — a configured-but-unscoped sync would push one tenant's rows into
+ * another tenant's base. */
 export interface AirtableSyncEnv {
   AIRTABLE_TOKEN?: string;
   AIRTABLE_BASE_ID?: string;
+  AIRTABLE_ORG_ID?: string;
 }
+
+// DEC-450: hard cap on rows read per sync tick. A cap that's silently
+// truncated would drop rows without anyone noticing; instead we throw,
+// naming the table and the cap, so an org that outgrows this needs a real
+// design (pagination, incremental sync) rather than silent data loss.
+export const MAX_SYNC_ROWS = 10_000;
 
 export async function runAirtableSync(
   env: AirtableSyncEnv,
@@ -112,6 +123,15 @@ export async function runAirtableSync(
   const baseId = env.AIRTABLE_BASE_ID;
   if (!token || !baseId) return null; // integration not configured — off, not an error
 
+  const orgId = env.AIRTABLE_ORG_ID;
+  if (!orgId) {
+    throw new Error(
+      "airtable sync: AIRTABLE_ORG_ID is required once AIRTABLE_TOKEN/AIRTABLE_BASE_ID are set — " +
+        "one Airtable base serves exactly one org, and a configured-but-unscoped sync would push " +
+        "one tenant's rows into another tenant's base",
+    );
+  }
+
   const contacts = await db
     .select({
       id: schema.contact.id,
@@ -121,7 +141,12 @@ export async function runAirtableSync(
       company: schema.contact.company,
       title: schema.contact.title,
     })
-    .from(schema.contact);
+    .from(schema.contact)
+    .where(eq(schema.contact.orgId, orgId))
+    .limit(MAX_SYNC_ROWS + 1);
+  if (contacts.length > MAX_SYNC_ROWS) {
+    throw new Error(`airtable sync: contact table exceeds MAX_SYNC_ROWS (${MAX_SYNC_ROWS}) for this org`);
+  }
 
   const subs = await db
     .select({
@@ -133,7 +158,12 @@ export async function runAirtableSync(
       recordPrefix: schema.event.recordPrefix,
     })
     .from(schema.submission)
-    .innerJoin(schema.event, eq(schema.submission.eventId, schema.event.id));
+    .innerJoin(schema.event, eq(schema.submission.eventId, schema.event.id))
+    .where(eq(schema.event.orgId, orgId))
+    .limit(MAX_SYNC_ROWS + 1);
+  if (subs.length > MAX_SYNC_ROWS) {
+    throw new Error(`airtable sync: submission table exceeds MAX_SYNC_ROWS (${MAX_SYNC_ROWS}) for this org`);
+  }
 
   const parts = await db
     .select({
@@ -142,7 +172,10 @@ export async function runAirtableSync(
       lastName: schema.contact.lastName,
     })
     .from(schema.participant)
-    .innerJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id));
+    .innerJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
+    .innerJoin(schema.submission, eq(schema.participant.submissionId, schema.submission.id))
+    .innerJoin(schema.event, eq(schema.submission.eventId, schema.event.id))
+    .where(eq(schema.event.orgId, orgId));
   const speakersBySub = new Map<string, string[]>();
   for (const p of parts) {
     const list = speakersBySub.get(p.submissionId) ?? [];
@@ -156,7 +189,10 @@ export async function runAirtableSync(
       name: schema.track.name,
     })
     .from(schema.submissionTrack)
-    .innerJoin(schema.track, eq(schema.submissionTrack.trackId, schema.track.id));
+    .innerJoin(schema.track, eq(schema.submissionTrack.trackId, schema.track.id))
+    .innerJoin(schema.submission, eq(schema.submissionTrack.submissionId, schema.submission.id))
+    .innerJoin(schema.event, eq(schema.submission.eventId, schema.event.id))
+    .where(eq(schema.event.orgId, orgId));
   const tracksBySub = new Map<string, string[]>();
   for (const t of subTracks) {
     const list = tracksBySub.get(t.submissionId) ?? [];

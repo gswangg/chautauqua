@@ -23,6 +23,9 @@ export type Bindings = {
   // secrets) or the sync is off. Airtable is never a source of truth.
   AIRTABLE_TOKEN?: string;
   AIRTABLE_BASE_ID?: string;
+  // DEC-450: one Airtable base serves exactly one org. Required once
+  // AIRTABLE_TOKEN/AIRTABLE_BASE_ID are set — the sync throws otherwise.
+  AIRTABLE_ORG_ID?: string;
   // DEC-049: /admin is served through the Worker (run_worker_first) so role
   // redirects can happen server-side; ASSETS proxies to the static bundle.
   // Optional so existing test env fixtures that predate this task stay green.
