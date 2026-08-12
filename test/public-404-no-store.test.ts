@@ -31,7 +31,7 @@ vi.mock("../src/server/repo/public", async () => {
     getPublicEventBySlug: vi.fn(async (_db: unknown, slug: string) => (slug === EVENT.slug ? EVENT : null)),
     getPublicTracks: vi.fn(async () => []),
     getPublicSessions: vi.fn(async () => ({ items: [], total: 0 })),
-    getPublicSpeakers: vi.fn(async () => []),
+    getPublicSpeakers: vi.fn(async () => ({ items: [], total: 0 })),
     getPublicSpeakerDetail: vi.fn(async () => null),
     getPublicAgenda: vi.fn(async () => []),
   };
