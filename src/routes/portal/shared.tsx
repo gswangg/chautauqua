@@ -7,6 +7,18 @@
 import type { MiddlewareHandler } from "hono";
 import type { AppEnv } from "../../server/env";
 import { ThemeStyles } from "../../views/theme";
+import { PORTAL_CSS } from "./portal.css";
+import { DEC_374 } from "../../decisions";
+
+void DEC_374;
+
+// DEC-374: strict hex guard on the per-event accent before it ever reaches a
+// rendered attribute — falls back to the brand olive on anything that isn't
+// exactly #RRGGBB.
+const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
+function safeAccent(accentColor: string | null): string {
+  return accentColor && HEX_COLOR_RE.test(accentColor) ? accentColor : "#4E5C31";
+}
 
 export interface PortalBrandingChrome {
   eventName: string;
@@ -34,7 +46,7 @@ export function PortalLayout(props: {
   csrfToken: string;
   children: unknown;
 }) {
-  const accent = props.branding.accentColor ?? "#2b2b2b";
+  const accent = safeAccent(props.branding.accentColor);
   return (
     <html lang="en">
       <head>
@@ -42,18 +54,9 @@ export function PortalLayout(props: {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>{props.branding.eventName} - Speaker Portal</title>
         <ThemeStyles />
-        <style>{`
-          :root { --chq-brandable-accent: ${accent}; }
-          main { max-width: 960px; margin: 0 auto; padding: 0 1rem; }
-          nav a { display: inline-flex; align-items: center; min-height: 40px; }
-          /* DEC-253: wide data tables (My Submissions/Tasks) scroll inside
-             their own container on a phone viewport rather than blowing out
-             page-level width. */
-          .chq-table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-          table { border-collapse: collapse; }
-        `}</style>
+        <style dangerouslySetInnerHTML={{ __html: PORTAL_CSS }} />
       </head>
-      <body>
+      <body style={`--chq-brandable-accent: ${accent}`}>
         <header class="chq-header">
           <span class="chq-wordmark">
             {props.branding.logoUrl ? <img src={props.branding.logoUrl} alt="" height={40} /> : null}
