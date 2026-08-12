@@ -145,6 +145,12 @@ tests in `test/render-sweep-lib.test.ts`.
 
 ## For evaluators
 
+**[docs/AUDIT.md](docs/AUDIT.md)** is a self-audit: what each SPEC.md area actually does
+today, every degraded/capped behavior and its exact limit, what is deliberately not built,
+and what is stage-2 platform wiring rather than a product gap. Its route claims are
+enforced against the real route manifest by `test/audit-claims.test.ts` — it cannot drift
+silently.
+
 | Surface | Route |
 |---|---|
 | Admin SPA (organizer/reviewer console) | `/admin` |
