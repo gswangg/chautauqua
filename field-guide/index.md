@@ -25,37 +25,37 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   a NEGATED predicate (NOT IN/!=) skips NULLs; two functions claiming
   "the same semantics" END in the same helper.
 - FINDINGS w1-4 (DEC-570..611, compacted): full suites SERIALIZED via
-  with-test-lock.sh; verify before trust -- read main first. Real
-  <button> not `div draggable`; colour alone isn't track identity --
-  NAME it. Fan-out with no count is a hidden cap: preview/queue END in
-  one predicate builder, id minted ONCE per fan-out. Upload-that-
-  navigates DISCARDS the form; blank CSV cell is ABSENT DATA; SSR phone
-  layout is a SECOND markup via display:none, mirrored inputs MIRROR;
-  ONE stylesheet per layer owns bare controls. Seed has ONE clock --
-  SEED_NOW, loud assert if the demo's event already happened. A value
-  with no column is an ANSWER: name its field id once, seed included.
-  Two renderings of one person must not disagree which facts they have.
-  A query param that parses and no-ops is a hidden cap: honor it in
-  BOTH HTML and .json twin. A count taken at the wrong gate isn't a
-  count -- publish through the PUBLIC predicate; `?? 'Unknown'` is the
-  SERVER forgetting to resolve a name. A grid slot has a FIXED height:
-  clip to it, label the gutter from the SAME row map. A file id in a
-  URL is never proof of ownership -- walk it to the root. A copy can
-  FAIL: say so, reveal the text. A role's route subtree ENDS in a
-  catch-all. Never print a total you did not count; never guess a slug.
-- FINDINGS w5 (DEC-612..621): an imported row keeps THEIR id -- one
-  namespaced `external_ref` per table, unique inside its own owner
-  scope; SQLite NULLs are distinct so hand-made rows are untouched. Dry
-  run and real run are ONE planner: a preview on a second code path is
-  a lie; counts are of rows PLANNED, never sampled. An untested
-  integration ships as PROSE, never a dead control. An unplaced session
-  gets a reason from a closed enum, one renderer beside
-  describeConflict -- name the constraint, promise nothing. A drawer is
-  a RECORD: labelled facts, one history section, one action bar. Code
-  that runs on someone else's page lives in ONE file its own test
-  EXECUTES -- no TS copy to drift; origin, source and instance id must
-  ALL match. An audit is enumerated by a test or it drifts. Scale is a
-  PROFILE threaded through the seeder, not a second seeder. render-sweep
-  measures vertical clip: scrollHeight > clientHeight with overflow
-  visible/hidden is a bug; a scroll container is not, an unfixed
-  offender is NAMED, never absorbed into tolerance.
+  with-test-lock.sh; verify before trust. Real <button> not `div
+  draggable`; colour alone isn't track identity -- NAME it. Fan-out
+  with no count is a hidden cap: id minted ONCE per fan-out. Upload-
+  that-navigates DISCARDS the form; blank CSV cell is ABSENT DATA; SSR
+  phone layout is a SECOND markup via display:none. Seed has ONE clock
+  -- SEED_NOW. A value with no column is an ANSWER: name its field id.
+  A query param that no-ops is a hidden cap; publish counts through the
+  PUBLIC predicate; `?? 'Unknown'` is the SERVER forgetting a name. A
+  file id in a URL is never proof of ownership -- walk it to the root.
+  A role's route subtree ENDS in a catch-all. Never guess a slug.
+- FINDINGS w5 (DEC-612..621, compacted): an imported row keeps THEIR id
+  -- one namespaced `external_ref` per table, unique inside its own
+  owner scope. Dry run and real run are ONE planner; counts are of rows
+  PLANNED, never sampled. An untested integration ships as PROSE. A
+  drawer is a RECORD: labelled facts, one history section, one action
+  bar. Code that runs on someone else's page lives in ONE file its own
+  test EXECUTES. An audit is enumerated by a test or it drifts. Scale
+  is a PROFILE threaded through the seeder; render-sweep's unfixed
+  clip offender is NAMED, never absorbed into tolerance.
+- FINDINGS w6 (DEC-622..630): two readings of one row must END in one
+  resolver -- the export and the screen cannot disagree about anonymity;
+  a withheld cell says '(anonymized)', never blank. A ref the product
+  PRINTS is a ref the API ACCEPTS, resolved event-scoped server-side.
+  Anonymity is a RATCHET: grantable, never revocable once an evaluation
+  exists under it. A locked built-in is pinned VISIBLE in the fixed
+  point -- a rule that hides it strips the answer unvalidated. A plain-
+  form throw renders a PAGE: the middleware that identifies the surface
+  marks the request, and the CFP re-renders with the answers intact.
+  Purge only what the cached surface renders (/e/*, /embed/* only);
+  unclassified BUMPS, and both lists are enumerated by a test. CSRF and
+  rate limits are enumerated from source, never spot-checked; a scan
+  that could match nothing asserts a floor count. Merge takes a SET, ids
+  all checked before any write, every pair through one core. A phone
+  selector's top-level rule is display:none or it does not exist.
