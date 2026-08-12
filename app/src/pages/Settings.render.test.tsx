@@ -121,6 +121,11 @@ describe('SettingsPage render smoke', () => {
       'href',
       `/api/v1/events/${EVENT_ID}/export/submissions?format=csv`,
     );
+
+    // Sessionboard import panel (renders synchronously once eventId
+    // resolves; makes no GET requests of its own).
+    expect(screen.getByRole('heading', { name: 'Import from Sessionboard' })).toBeInTheDocument();
+    expect(screen.getByText(/API token is not implemented in this build/)).toBeInTheDocument();
   });
 
   // DEC-375: below 700px the rail's section links drill into a single panel
@@ -184,6 +189,7 @@ describe('SettingsPage render smoke', () => {
       'API tokens',
       'Exports',
       'Embeds',
+      'Import from Sessionboard',
     ]);
   });
 });

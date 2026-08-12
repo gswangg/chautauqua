@@ -372,3 +372,35 @@
 .chq-settings-tokens-table {
   margin-top: 0;
 }
+
+/* task-w5-c: Sessionboard import panel (DEC-613/614). */
+.chq-settings-sessionboard-layer2-note {
+  font-size: 13px;
+  color: var(--chq-ink-2);
+  margin: 0 0 16px;
+}
+
+.chq-settings-sessionboard-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.chq-settings-sessionboard-mapping td {
+  vertical-align: middle;
+}
+
+.chq-settings-sessionboard-report {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--chq-hairline);
+}
+
+.chq-settings-sessionboard-issues,
+.chq-settings-sessionboard-skipped {
+  margin: 0 0 12px;
+  padding-left: 18px;
+  font-size: 13px;
+}
