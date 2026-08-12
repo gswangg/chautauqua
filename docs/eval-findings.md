@@ -176,3 +176,15 @@ CNT 52% · AIA 88% · EMB 72% · CRM 76% (of judged weight).
    switcher). Also restore the design's VISIBLE saved-views tab row (`Needs triage /
    All submissions / …`) instead of the collapsed "▶ Views" disclosure — already noted
    by the fidelity agent, elevated here per user QA.
+
+## APPENDED: user manual-QA — Submissions PHONE view (2026-08-12) — ELEVATE TO TIER 2
+
+6. **The Submissions phone view was never actually redesigned — treat it as a Tier-2
+   surface, not a Tier-3 detail.** User verdict: "very little of the submissions phone
+   view looks like the mock — very neglected." Specifics: the desktop toolbar (search +
+   five status chips + track select + sort select + Columns) is stacked vertically down
+   the 390px screen instead of the mock's single horizontally-scrolling chip strip
+   (`overflow-x:auto`, `flex-shrink:0` chips, per README phone pattern); rows are
+   squeezed table rows, not the mock's cards with Accept / Decline / Read actions;
+   no fixed footer. Rebuild this view to the mock (`02-submissions--01` frame), same
+   priority class as the portal rebuild.
