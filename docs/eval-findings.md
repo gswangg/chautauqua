@@ -622,3 +622,19 @@ compare phone frames pixel-for-pixel.
     naming, mock's field order. Add the footer "Public link · <url> · Copy" row.
     Dates in the strip as "16 Aug 2026" style; Opens must show the seeded open date
     (seed currently leaves it blank — DEC-591 tie-in).
+
+52. (User QA + orchestrator-verified) **Review landing button/layout grammar**: section
+    actions belong ON the rules, not in floating bands. (a) Title row gets "Export
+    results CSV" + "New plan" top-right beside the h1 — delete the lone New-plan band;
+    (b) "Remind laggards" becomes the mock's right-aligned TERTIARY link on the
+    REVIEWER PROGRESS rule, copy "Remind the 4 not started"; (c) merge the fragmented
+    headers (kill the stray "Round 1 of 1" line and the WHO HAS SCORED sub-header —
+    one section, one rule); (d) remove the radio circles from plan rows (mock rows are
+    not radio-selected; if plan selection drives the lower sections, select via row
+    click w/ quiet active state); per-row links = Progress · Results · Edit (add
+    Edit, move Export to page level); (e) reviewer rows show NAMES (seed reviewers
+    b/c/d need real names — DEC-591 tie-in) with DONE / N TO GO / NOT STARTED
+    vocabulary, counts on one line. NOTE: three-wave seed from item 10b has landed —
+    keep. GENERAL RULE (add to the affordance rules): a filled primary button never
+    floats in its own band; primaries live on the title row or a form footer, section
+    actions are links on the section rule.
