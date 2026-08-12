@@ -25,12 +25,13 @@ import { apiPost, ApiError } from '../../lib/api';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { parseCsv } from '../contacts/csv';
 
-export type SessionboardEntity = 'contacts' | 'submissions' | 'tracks';
+export type SessionboardEntity = 'contacts' | 'submissions' | 'tracks' | 'participants';
 
 const ENTITIES: { entity: SessionboardEntity; label: string }[] = [
   { entity: 'contacts', label: 'Contacts' },
   { entity: 'submissions', label: 'Submissions' },
   { entity: 'tracks', label: 'Tracks' },
+  { entity: 'participants', label: 'Participants' },
 ];
 
 // Target field vocabularies, one per entity, drawn from the app's own
@@ -44,6 +45,7 @@ const TARGET_FIELDS: Record<SessionboardEntity, string[]> = {
   contacts: ['firstName', 'lastName', 'email', 'company', 'title', 'phone', 'bio'],
   submissions: ['title', 'description', 'trackName', 'status'],
   tracks: ['name', 'color'],
+  participants: ['sessionExternalId', 'speakerExternalId', 'speakerEmail', 'role', 'order'],
 };
 
 const IGNORE_TARGET = '';
@@ -175,6 +177,10 @@ export function SessionboardImportPanel() {
       <p className="chq-settings-sessionboard-layer2-note">
         This build only supports importing your CSV/XLSX export from Sessionboard, below. Connecting a
         Sessionboard API token is not implemented in this build — the export is the supported import path.
+      </p>
+      <p className="chq-settings-sessionboard-order-note">
+        Import in order: tracks, then contacts, then submissions, then participants — a participants dry run
+        before its sessions exist will honestly report those rows as unresolved, not skip them silently.
       </p>
 
       {eventLoading && <p>Loading…</p>}

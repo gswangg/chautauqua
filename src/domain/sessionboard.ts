@@ -17,15 +17,23 @@ export function externalRef(source: string, recordId: string): string {
   return `${source}:${recordId}`;
 }
 
-export type SbEntity = "contacts" | "submissions" | "tracks";
+export type SbEntity = "contacts" | "submissions" | "tracks" | "participants";
 
 /** Canonical target field names per entity. "externalId" is special: it is
  * never written as a `values` key (planSessionboardRows turns it into
- * `externalRef` instead), every other field is a passthrough column. */
+ * `externalRef` instead), every other field is a passthrough column.
+ *
+ * participants deliberately has NO "externalId" (DEC-639): a participant is
+ * a join row identified by the (submission, contact) pair it already names,
+ * never a third namespace of its own. Its identity fields
+ * (sessionExternalId/speakerExternalId/speakerEmail) are ordinary
+ * passthrough `values` instead, resolved against the other entities by the
+ * repo layer. */
 export const SB_TARGET_FIELDS: Record<SbEntity, readonly string[]> = {
   contacts: ["externalId", "email", "firstName", "lastName", "company", "title", "phone", "bio"],
   submissions: ["externalId", "title", "description", "trackName", "status"],
   tracks: ["externalId", "name", "color"],
+  participants: ["sessionExternalId", "speakerExternalId", "speakerEmail", "role", "order"],
 };
 
 export interface SbRowPlan {
@@ -70,6 +78,13 @@ const SB_ALIASES: Record<SbEntity, Record<string, readonly string[]>> = {
     externalId: ["record id", "id", "track id"],
     name: ["name", "track name"],
     color: ["color", "colour", "track color"],
+  },
+  participants: {
+    sessionExternalId: ["session id", "session record id", "submission id"],
+    speakerExternalId: ["speaker id", "speaker record id", "contact id"],
+    speakerEmail: ["speaker email", "email", "email address"],
+    role: ["role", "participant role", "speaker role"],
+    order: ["order", "position", "speaker order"],
   },
 };
 
@@ -132,6 +147,23 @@ export function planSessionboardRows(
         continue;
       }
       values[target] = value;
+    }
+
+    if (!targetFields.has("externalId")) {
+      // participants (DEC-639): no ref of its own to mint. Require a
+      // session ref, and either a speaker ref or a speaker email -- the
+      // repo layer resolves both against the other entities.
+      if (!values.sessionExternalId) {
+        issues.push({ row: rowNumber, field: "sessionExternalId", message: "Missing session external id" });
+      } else if (!values.speakerExternalId && !values.speakerEmail) {
+        issues.push({
+          row: rowNumber,
+          field: "speakerExternalId",
+          message: "Missing speaker external id or speaker email",
+        });
+      }
+      plans.push({ row: rowNumber, externalRef: null, values });
+      return;
     }
 
     if (!externalId) {
