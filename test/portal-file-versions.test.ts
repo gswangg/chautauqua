@@ -137,6 +137,7 @@ describe("GET /portal/tasks — full version chain (DEC-605)", () => {
         fileId: FILE_V1,
         responseJson: null,
         timezone: "UTC",
+        completedAt: null,
       },
     ]);
     vi.mocked(resolveTaskFileChainLatest).mockResolvedValue(CHAIN_LATEST);

@@ -32,10 +32,13 @@ vi.mock("../src/server/repo/portal", async () => {
       },
       submissions: [],
       tasks: [],
+      contactName: "Priya Raman",
+      contactCompany: "Latticework Systems",
     })),
     getMySessions: vi.fn(async () => []),
     getMyInvitations: vi.fn(async () => mockInvitations),
     getMyTaskAssignments: vi.fn(async () => mockTasks),
+    getLatestDeliverable: vi.fn(async () => null),
   };
 });
 
@@ -68,6 +71,7 @@ function taskFixture(overrides: Partial<PortalTaskAssignment>): PortalTaskAssign
     fileId: null,
     responseJson: null,
     timezone: "UTC",
+    completedAt: null,
     ...overrides,
   };
 }
@@ -97,7 +101,11 @@ describe("PortalPage worklist headline (DEC-590)", () => {
     // in the worklist section.
     expect(html).toContain("Sign the W-9");
     expect(html).toContain("Confirm hotel stay");
-    expect(html).not.toContain("Upload headshot");
+    // the completed task renders in "Done" (w15-b), never inside the
+    // "Waiting on you" worklist section — check by position, not absence.
+    const waitingSection = html.slice(html.indexOf("Waiting on you"), html.indexOf("Your session"));
+    expect(waitingSection).not.toContain("Upload headshot");
+    expect(html.slice(html.indexOf(">Done<"))).toContain("Upload headshot");
     // invitation row keeps its existing accept/decline forms + CSRF field.
     expect(html).toContain('<form method="post" action="/portal/invitations/part-1">');
     expect(html).toMatch(/<input type="hidden" name="chq_csrf" value="[^"]+"\s*\/?>/);
@@ -121,6 +129,59 @@ describe("PortalPage worklist headline (DEC-590)", () => {
     const res = await app.request("/portal");
     const html = await res.text();
     expect(html).toMatch(/<h1[^>]*>\s*0 things to do\s*<\/h1>/);
+  });
+});
+
+describe("portal home rebuild to the mock (w15-b)", () => {
+  it("emits no pipe-separated Nav and no <table> — the shell is the mock's card layout, not the old bar+table", async () => {
+    mockTasks = [taskFixture({ id: "a1", title: "Sign the W-9", status: "pending" })];
+    mockInvitations = [];
+    const app = await buildPortalApp();
+    const res = await app.request("/portal");
+    const html = await res.text();
+    expect(html).not.toMatch(/Dashboard<\/a>\s*\|/);
+    expect(html).not.toContain("<table");
+  });
+
+  it("renders the three section labels in order: Waiting on you, Your session, Done", async () => {
+    mockTasks = [taskFixture({ id: "a1", title: "Sign the W-9", status: "pending" })];
+    mockInvitations = [];
+    const app = await buildPortalApp();
+    const res = await app.request("/portal");
+    const html = await res.text();
+    const waitingIdx = html.indexOf("Waiting on you");
+    const sessionIdx = html.indexOf("Your session");
+    const doneIdx = html.indexOf(">Done<");
+    expect(waitingIdx).toBeGreaterThan(-1);
+    expect(sessionIdx).toBeGreaterThan(waitingIdx);
+    expect(doneIdx).toBeGreaterThan(sessionIdx);
+  });
+
+  it("worklist count in the hero still equals exactly the rendered pending rows", async () => {
+    mockTasks = [
+      taskFixture({ id: "a1", title: "Sign the W-9", status: "pending" }),
+      taskFixture({ id: "a2", title: "Upload headshot", kind: "file_request", status: "complete" }),
+    ];
+    mockInvitations = [inviteFixture];
+    const app = await buildPortalApp();
+    const res = await app.request("/portal");
+    const html = await res.text();
+    expect(html).toMatch(/<h1[^>]*>\s*2 things to do\s*<\/h1>/);
+    expect(html).toContain("Sign the W-9");
+    expect(html).toContain(inviteFixture.title);
+    // the completed task shows up in Done, not the worklist count.
+    expect(html).toContain("Upload headshot");
+  });
+
+  it("keeps /portal/tasks, /portal/profile, /portal/resources reachable", async () => {
+    mockTasks = [];
+    mockInvitations = [];
+    const app = await buildPortalApp();
+    const res = await app.request("/portal");
+    const html = await res.text();
+    expect(html).toContain('href="/portal/tasks"');
+    expect(html).toContain('href="/portal/profile"');
+    expect(html).toContain('href="/portal/resources"');
   });
 });
 

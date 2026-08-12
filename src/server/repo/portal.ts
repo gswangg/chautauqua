@@ -97,6 +97,8 @@ export interface PortalData {
   branding: PortalBranding;
   submissions: PortalSubmissionSummary[];
   tasks: PortalTask[];
+  contactName: string;
+  contactCompany: string | null;
 }
 
 const DEFAULT_BRANDING: PortalBranding = {
@@ -115,6 +117,19 @@ const DEFAULT_BRANDING: PortalBranding = {
  * never from an unverified request param.
  */
 export async function getPortalData(db: Db, contactId: string, orgId: string): Promise<PortalData> {
+  const contactRows = await db
+    .select({
+      firstName: schema.contact.firstName,
+      lastName: schema.contact.lastName,
+      company: schema.contact.company,
+    })
+    .from(schema.contact)
+    .where(eq(schema.contact.id, contactId))
+    .limit(1);
+  const contactRow = contactRows[0];
+  const contactName = contactRow ? `${contactRow.firstName} ${contactRow.lastName}`.trim() : "";
+  const contactCompany = contactRow?.company ?? null;
+
   const submissionRows = await db
     .select({
       id: schema.submission.id,
@@ -201,7 +216,7 @@ export async function getPortalData(db: Db, contactId: string, orgId: string): P
       : { ...DEFAULT_BRANDING, eventId: mostRecentEventId, eventName };
   }
 
-  return { branding, submissions, tasks };
+  return { branding, submissions, tasks, contactName, contactCompany };
 }
 
 export interface PortalSubmissionAnswer {
@@ -318,6 +333,7 @@ export interface PortalTaskAssignment {
   fileId: string | null;
   responseJson: string | null;
   timezone: string;
+  completedAt: number | null;
 }
 
 /** Lists every task_assignment belonging to `contactId`, joined through task
@@ -330,6 +346,7 @@ export async function getMyTaskAssignments(db: Db, contactId: string, orgId: str
       status: schema.taskAssignment.status,
       fileId: schema.taskAssignment.fileId,
       responseJson: schema.taskAssignment.responseJson,
+      completedAt: schema.taskAssignment.completedAt,
       kind: schema.task.kind,
       title: schema.task.title,
       description: schema.task.description,
@@ -357,6 +374,7 @@ export async function getMyTaskAssignments(db: Db, contactId: string, orgId: str
     fileId: row.fileId,
     responseJson: row.responseJson,
     timezone: row.timezone,
+    completedAt: row.completedAt ? row.completedAt.getTime() : null,
   }));
 }
 
@@ -596,6 +614,10 @@ export interface PortalSession {
   startMin: number | null;
   endMin: number | null;
   roomName: string | null;
+  trackName: string | null;
+  acceptedAt: number | null;
+  eventName: string;
+  timezone: string;
 }
 
 export async function getMySessions(db: Db, contactId: string, orgId: string): Promise<PortalSession[]> {
@@ -609,10 +631,15 @@ export async function getMySessions(db: Db, contactId: string, orgId: string): P
       startMin: schema.scheduleSlot.startMin,
       endMin: schema.scheduleSlot.endMin,
       roomName: schema.room.name,
+      trackName: schema.track.name,
+      acceptedAt: schema.submission.acceptedAt,
+      eventName: schema.event.name,
+      timezone: schema.event.timezone,
     })
     .from(schema.participant)
     .innerJoin(schema.submission, eq(schema.participant.submissionId, schema.submission.id))
     .innerJoin(schema.event, eq(schema.submission.eventId, schema.event.id))
+    .leftJoin(schema.track, eq(schema.submission.trackId, schema.track.id))
     // DEC-318/DEC-536: a schedule_slot dated outside the event's
     // [startDate, endDate] must never render as a placement. The range
     // predicate lives in the LEFT JOIN's ON clause (not the WHERE) so an
@@ -644,7 +671,31 @@ export async function getMySessions(db: Db, contactId: string, orgId: string): P
     startMin: row.startMin,
     endMin: row.endMin,
     roomName: row.roomName,
+    trackName: row.trackName,
+    acceptedAt: row.acceptedAt ? row.acceptedAt.getTime() : null,
+    eventName: row.eventName,
+    timezone: row.timezone,
   }));
+}
+
+export interface PortalDeliverable {
+  filename: string;
+  uploadedAt: number;
+}
+
+/** Most recently uploaded file linked to `submissionId` (any kind — this is
+ * the portal home's "latest deliverable" line, not a kind-specific list).
+ * Scoped to the caller's own submission — the route resolves submissionId
+ * from the speaker's own PortalSession rows only, never a request param. */
+export async function getLatestDeliverable(db: Db, submissionId: string): Promise<PortalDeliverable | null> {
+  const rows = await db
+    .select({ filename: schema.file.filename, createdAt: schema.file.createdAt })
+    .from(schema.file)
+    .where(eq(schema.file.submissionId, submissionId))
+    .orderBy(desc(schema.file.createdAt))
+    .limit(1);
+  const row = rows[0];
+  return row ? { filename: row.filename, uploadedAt: row.createdAt.getTime() } : null;
 }
 
 // ---------------------------------------------------------------------------
