@@ -22,7 +22,7 @@ import {
 } from "../../domain/evaluation";
 import * as repo from "../../server/repo/review";
 import { roundCriteriaJsonOf } from "../../server/repo/review";
-import type { PlanRecord, EvaluationRecord } from "../../server/repo/review";
+import type { PlanRecord } from "../../server/repo/review";
 
 export function asRecord(body: unknown): Record<string, unknown> {
   if (typeof body !== "object" || body === null) {
@@ -253,8 +253,11 @@ export async function buildResults(
   plan: PlanRecord,
   round: number,
 ): Promise<ResultsRow[]> {
-  const submissions = await repo.listPlanFilteredSubmissions(c.var.db, plan);
-  const evaluations = (await repo.listEvaluationsForPlan(c.var.db, plan.id, round)).filter((e) => e.round === round);
+  // DEC-439: buildResults never reads trackIds, so skip the second
+  // whole-event submission_track scan; DEC-440: only submission_id +
+  // scores_json are read from evaluation, not whole rows.
+  const submissions = await repo.listPlanFilteredSubmissions(c.var.db, plan, { withTrackIds: false });
+  const evaluations = await repo.listEvaluationScoresForPlan(c.var.db, plan.id, round);
   // DEC-147: results aggregate against THIS round's full criteria list -- a
   // round override can drop/add/reweight criteria relative to the base plan.
   const roundCriteria = criteriaForRound(plan.criteria, roundCriteriaJsonOf(plan), round);
@@ -264,7 +267,7 @@ export async function buildResults(
   // DEC-345: index evaluations by submissionId in one pass instead of
   // filtering the whole per-plan evaluation array once per submission
   // (O(submissions x evaluations) -> O(submissions + evaluations)).
-  const evalsBySubmission = new Map<string, EvaluationRecord[]>();
+  const evalsBySubmission = new Map<string, { submissionId: string; scores: Record<string, number | string> }[]>();
   for (const e of evaluations) {
     const list = evalsBySubmission.get(e.submissionId) ?? [];
     list.push(e);

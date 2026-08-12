@@ -39,6 +39,28 @@ export async function listEvaluationsForPlan(db: Db, planId: string, round: numb
   return rows.map(toEvaluationRecord);
 }
 
+/** DEC-439/DEC-440: payload-width twin of listEvaluationsForPlan for the
+ * results endpoint -- selects only submission_id + scores_json (no id,
+ * planId, reviewerId, round, comment, timestamps) since buildResults never
+ * reads those columns. Same WHERE as listEvaluationsForPlan. */
+export async function listEvaluationScoresForPlan(
+  db: Db,
+  planId: string,
+  round: number,
+): Promise<{ submissionId: string; scores: Record<string, number | string> }[]> {
+  const rows = await db
+    .select({
+      submissionId: schema.evaluation.submissionId,
+      scoresJson: schema.evaluation.scoresJson,
+    })
+    .from(schema.evaluation)
+    .where(and(eq(schema.evaluation.planId, planId), eq(schema.evaluation.round, round)));
+  return rows.map((r) => ({
+    submissionId: r.submissionId,
+    scores: JSON.parse(r.scoresJson) as Record<string, number | string>,
+  }));
+}
+
 export async function getEvaluation(
   db: Db,
   planId: string,

@@ -59,6 +59,11 @@ vi.mock("../src/server/repo/review", async () => {
     listEvaluationsForPlan: vi.fn(async (_db: unknown, planId: string, round: number) =>
       evaluations.filter((e) => e.planId === planId && e.round === round),
     ),
+    listEvaluationScoresForPlan: vi.fn(async (_db: unknown, planId: string, round: number) =>
+      evaluations
+        .filter((e) => e.planId === planId && e.round === round)
+        .map((e) => ({ submissionId: e.submissionId, scores: e.scores })),
+    ),
     listCompletedPairsForPlan: vi.fn(async (_db: unknown, planId: string, round: number) =>
       evaluations
         .filter((e) => e.planId === planId && e.round === round)
