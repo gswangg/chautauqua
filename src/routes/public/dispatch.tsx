@@ -42,7 +42,6 @@ export async function renderSurfaceContent(
             total={total}
             page={page}
             perPage={perPage}
-            day={query.day ?? null}
             limit={query.limit ?? null}
             fields={query.fields}
           />
@@ -52,19 +51,41 @@ export async function renderSurfaceContent(
     case "speakers": {
       const q = parseNameQuery(query.q);
       const page = parsePage(query.page);
-      const { items, total } = await getPublicSpeakers(db, event.id, { q, page, perPage: PUBLIC_PER_PAGE });
+      const perPage = query.limit ?? PUBLIC_PER_PAGE;
+      const { items, total } = await getPublicSpeakers(db, event.id, { q, page, perPage });
       return {
         title: `Speakers - ${event.name}`,
-        content: <SpeakersContent event={event} speakers={items} total={total} page={page} q={q} />,
+        content: (
+          <SpeakersContent
+            event={event}
+            speakers={items}
+            total={total}
+            page={page}
+            q={q}
+            perPage={perPage}
+            limit={query.limit ?? null}
+          />
+        ),
       };
     }
     case "gallery": {
       const q = parseNameQuery(query.q);
       const page = parsePage(query.page);
-      const { items, total } = await getPublicSpeakers(db, event.id, { q, page, perPage: PUBLIC_PER_PAGE });
+      const perPage = query.limit ?? PUBLIC_PER_PAGE;
+      const { items, total } = await getPublicSpeakers(db, event.id, { q, page, perPage });
       return {
         title: `Speaker gallery - ${event.name}`,
-        content: <GalleryContent event={event} speakers={items} total={total} page={page} q={q} />,
+        content: (
+          <GalleryContent
+            event={event}
+            speakers={items}
+            total={total}
+            page={page}
+            q={q}
+            perPage={perPage}
+            limit={query.limit ?? null}
+          />
+        ),
       };
     }
     case "agenda": {

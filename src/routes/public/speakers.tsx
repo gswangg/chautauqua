@@ -8,14 +8,18 @@ import { PUBLIC_PER_PAGE, hasMorePages } from "../../server/repo/public/bounds";
 
 /** Plain GET name-search form (DEC-151): JS-free, preserves the page's other
  * query semantics by resubmitting only `q` — page param is intentionally
- * dropped on a new search since the result set changes size. */
-function NameSearchForm(props: { action: string; q: string | null }) {
+ * dropped on a new search since the result set changes size. DEC-289/DEC-489:
+ * a configured embed's `limit` is carried forward as a hidden field, exactly
+ * like SessionsContent's search form, so a search does not lose the embed's
+ * page size. */
+function NameSearchForm(props: { action: string; q: string | null; limit: number | null }) {
   return (
     <form method="get" action={props.action} role="search">
       <label>
         Search by name{" "}
         <input type="search" name="q" value={props.q ?? ""} placeholder="Speaker name" />
       </label>{" "}
+      {props.limit ? <input type="hidden" name="limit" value={String(props.limit)} /> : null}
       <button type="submit">Search</button>
       {props.q ? <a href={props.action}>Clear</a> : null}
     </form>
@@ -28,17 +32,22 @@ export function SpeakersContent(props: {
   total: number;
   page: number;
   q: string | null;
+  perPage?: number;
+  limit?: number | null;
 }) {
-  const { event, speakers, total, page, q } = props;
+  const { event, speakers, total, page, q, perPage, limit } = props;
   // DEC-433/477: parsePage clamps to MAX_PUBLIC_PAGE; stop offering
   // 'Show more' once there is no further page to link to, or once the
   // cumulative row ceiling (MAX_PUBLIC_ROWS) has already been reached.
-  const hasMore = hasMorePages(speakers.length, total, page, PUBLIC_PER_PAGE);
+  const hasMore = hasMorePages(speakers.length, total, page, perPage ?? PUBLIC_PER_PAGE);
   const basePath = surfacePath(event, "speakers");
+  // DEC-289/DEC-489: carry `limit` forward exactly like SessionsContent's
+  // carryQs, so a configured embed does not lose its page size on page 2.
+  const carryQs = limit ? `limit=${limit}&` : "";
   return (
     <>
       <h2>Speakers</h2>
-      <NameSearchForm action={basePath} q={q} />
+      <NameSearchForm action={basePath} q={q} limit={limit ?? null} />
       {speakers.length === 0 ? (
         <p>No speakers to show yet.</p>
       ) : (
@@ -78,7 +87,7 @@ export function SpeakersContent(props: {
       )}
       {hasMore ? (
         <p>
-          <a href={`${basePath}?${q ? `q=${encodeURIComponent(q)}&` : ""}page=${page + 1}`}>Show more</a>
+          <a href={`${basePath}?${q ? `q=${encodeURIComponent(q)}&` : ""}${carryQs}page=${page + 1}`}>Show more</a>
         </p>
       ) : null}
     </>
@@ -91,16 +100,20 @@ export function GalleryContent(props: {
   total: number;
   page: number;
   q: string | null;
+  perPage?: number;
+  limit?: number | null;
 }) {
-  const { event, speakers, total, page, q } = props;
+  const { event, speakers, total, page, q, perPage, limit } = props;
   // DEC-433/477: see SpeakersContent above.
-  const hasMore = hasMorePages(speakers.length, total, page, PUBLIC_PER_PAGE);
+  const hasMore = hasMorePages(speakers.length, total, page, perPage ?? PUBLIC_PER_PAGE);
   const basePath = surfacePath(event, "gallery");
+  // DEC-289/DEC-489: see SpeakersContent above.
+  const carryQs = limit ? `limit=${limit}&` : "";
   return (
     <>
       <h2>Speaker gallery</h2>
       <p>Headshots only, no session details.</p>
-      <NameSearchForm action={basePath} q={q} />
+      <NameSearchForm action={basePath} q={q} limit={limit ?? null} />
       <p>
         {speakers.length} of {total} speaker(s)
       </p>
@@ -126,7 +139,7 @@ export function GalleryContent(props: {
       </div>
       {hasMore ? (
         <p>
-          <a href={`${basePath}?${q ? `q=${encodeURIComponent(q)}&` : ""}page=${page + 1}`}>Show more</a>
+          <a href={`${basePath}?${q ? `q=${encodeURIComponent(q)}&` : ""}${carryQs}page=${page + 1}`}>Show more</a>
         </p>
       ) : null}
     </>

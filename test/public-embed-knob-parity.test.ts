@@ -1,0 +1,270 @@
+// DEC-489: every public embed knob must behave identically on a surface's
+// HTML page and its .json twin. The knob table is fixed by DEC-489:
+//   sessions   = trackId, limit, fields, accent
+//   speakers/gallery = q, limit, accent
+//   agenda/schedule  = day, accent
+// This file asserts HTML/.json parity for the paging/filtering knobs (limit,
+// day) and that `day` — not in the sessions knob table — filters nothing on
+// sessions and is never advertised in its Show-more link. Reuses the
+// fake-db-chain harness established in test/public.test.ts / test/
+// public-embed-config.test.ts.
+
+import { describe, expect, it } from "vitest";
+import { Hono } from "hono";
+import { publicRoutes } from "../src/routes/public";
+import { registerErrorHandler } from "../src/server/http";
+import type { AppEnv } from "../src/server/env";
+
+function makeChain(rows: unknown[]) {
+  const chain: any = {
+    from: () => chain,
+    innerJoin: () => chain,
+    leftJoin: () => chain,
+    where: () => chain,
+    orderBy: () => chain,
+    limit: async (n: number) => rows.slice(0, n),
+    then: (resolve: (v: unknown[]) => void) => resolve(rows),
+  };
+  return chain;
+}
+
+function fakeKv() {
+  return {
+    async get() {
+      return null;
+    },
+    async put() {
+      /* no-op */
+    },
+    async delete() {
+      /* no-op */
+    },
+  };
+}
+
+function installFakeCaches(): void {
+  (globalThis as any).caches = {
+    default: {
+      async match() {
+        return undefined;
+      },
+      async put() {
+        /* no-op */
+      },
+    },
+  };
+}
+
+const TEST_ENV = { KV: fakeKv() } as unknown as AppEnv["Bindings"];
+
+const EVENT_ROW = {
+  id: "ev1",
+  orgId: "org1",
+  name: "Test Event",
+  slug: "conf",
+  startDate: "2026-08-10",
+  endDate: "2026-08-11",
+  location: null,
+  timezone: "UTC",
+  recordPrefix: "SES",
+  brandingJson: JSON.stringify({ accentColor: "#123456" }),
+};
+
+function mountApp(db: unknown) {
+  const app = new Hono<AppEnv>();
+  app.use("*", async (c, next) => {
+    c.set("db", db as AppEnv["Variables"]["db"]);
+    await next();
+  });
+  registerErrorHandler(app);
+  app.route("/", publicRoutes);
+  return app;
+}
+
+// -- speakers/gallery: `limit` -------------------------------------------
+// getPublicSpeakers issues selectDistinct (id page, bounded by
+// boundedRowLimit) + select (count, unbounded) + select (hydration rows for
+// the page's ids, unbounded).
+const SPEAKERS = Array.from({ length: 5 }, (_, i) => ({
+  contactId: `c${i + 1}`,
+  firstName: "First",
+  lastName: `Last${i + 1}`,
+}));
+
+function buildSpeakersApp() {
+  let selectCall = 0;
+  const idRows = SPEAKERS.map((s) => ({ contactId: s.contactId }));
+  const countRows = [{ total: SPEAKERS.length }];
+  const hydrationRows = SPEAKERS.map((s) => ({
+    contactId: s.contactId,
+    firstName: s.firstName,
+    lastName: s.lastName,
+    title: null,
+    company: null,
+    headshotUrl: null,
+    bio: null,
+    submissionId: `sub-${s.contactId}`,
+    submissionTitle: `Talk for ${s.contactId}`,
+  }));
+  const db = {
+    select: (_fields?: unknown) => {
+      selectCall += 1;
+      if (selectCall === 1) return makeChain([EVENT_ROW]); // getPublicEventBySlug
+      if (selectCall % 2 === 0) return makeChain(countRows); // count query
+      return makeChain(hydrationRows); // hydration query
+    },
+    selectDistinct: () => makeChain(idRows),
+  } as unknown as AppEnv["Variables"]["db"];
+  return mountApp(db);
+}
+
+describe("DEC-489: speakers/gallery `limit` behaves identically on HTML and .json", () => {
+  it("speakers?limit=3 returns 3 items on both the HTML page and the .json twin", async () => {
+    installFakeCaches();
+    const htmlApp = buildSpeakersApp();
+    const htmlRes = await htmlApp.request("/embed/conf/speakers?limit=3", {}, TEST_ENV);
+    const html = await htmlRes.text();
+    expect(html).toContain("3 of 5 speaker(s)");
+
+    installFakeCaches();
+    const jsonApp = buildSpeakersApp();
+    const jsonRes = await jsonApp.request("/embed/conf/speakers.json?limit=3", {}, TEST_ENV);
+    const body = (await jsonRes.json()) as { items: unknown[]; total: number; perPage: number };
+    expect(body.items.length).toBe(3);
+    expect(body.total).toBe(5);
+    expect(body.perPage).toBe(3);
+  });
+
+  it("gallery?limit=3 returns 3 items on both the HTML page and the .json twin", async () => {
+    installFakeCaches();
+    const htmlApp = buildSpeakersApp();
+    const htmlRes = await htmlApp.request("/embed/conf/gallery?limit=3", {}, TEST_ENV);
+    const html = await htmlRes.text();
+    expect(html).toContain("3 of 5 speaker(s)");
+
+    installFakeCaches();
+    const jsonApp = buildSpeakersApp();
+    const jsonRes = await jsonApp.request("/embed/conf/gallery.json?limit=3", {}, TEST_ENV);
+    const body = (await jsonRes.json()) as { items: unknown[]; total: number; perPage: number };
+    expect(body.items.length).toBe(3);
+    expect(body.total).toBe(5);
+  });
+
+  it("a configured speakers embed carries `limit` forward on its Show-more link", async () => {
+    installFakeCaches();
+    const app = buildSpeakersApp();
+    const res = await app.request("/embed/conf/speakers?limit=2", {}, TEST_ENV);
+    const html = await res.text();
+    expect(html).toContain('name="limit" value="2"');
+    expect(html).toContain("limit=2&amp;page=2");
+  });
+});
+
+// -- agenda/schedule: `day` ------------------------------------------------
+// Two agenda items on two distinct days.
+function buildAgendaApp() {
+  let selectCall = 0;
+  const SESSION_ROWS = [
+    { id: "sub1", seq: 1, title: "Talk 1", description: "d", icsSequence: 0 },
+    { id: "sub2", seq: 2, title: "Talk 2", description: "d", icsSequence: 0 },
+  ];
+  const db = {
+    select: () => {
+      selectCall += 1;
+      if (selectCall === 1) return makeChain([EVENT_ROW]); // getPublicEventBySlug
+      if (selectCall === 2) return makeChain([{ id: "room1", name: "Main Hall" }]); // roomRows
+      if (selectCall === 3) return makeChain(SESSION_ROWS); // hydrateSessions subRows
+      if (selectCall === 4) return makeChain([]); // hydrateSessions trackRows
+      if (selectCall === 5) return makeChain([]); // hydrateSessions speakerRows
+      return makeChain([]); // hydrateSessions EMB-01 slotRows (unused by agenda grid)
+    },
+    selectDistinct: () =>
+      makeChain([
+        { submissionId: "sub1", day: "2026-08-10", startMin: 540, endMin: 600, roomId: "room1" },
+        { submissionId: "sub2", day: "2026-08-11", startMin: 540, endMin: 600, roomId: "room1" },
+      ]),
+  } as unknown as AppEnv["Variables"]["db"];
+  return mountApp(db);
+}
+
+describe("DEC-489: agenda/schedule `day` behaves identically on HTML and .json", () => {
+  it("agenda?day=<d> renders only that day's HTML section", async () => {
+    installFakeCaches();
+    const app = buildAgendaApp();
+    const res = await app.request("/embed/conf/agenda?day=2026-08-10", {}, TEST_ENV);
+    const html = await res.text();
+    expect(html).toContain("chq-agenda-sub1");
+    expect(html).not.toContain("chq-agenda-sub2");
+  });
+
+  it("agenda.json?day=<d> returns only that day's items and reports the filtered total", async () => {
+    installFakeCaches();
+    const app = buildAgendaApp();
+    const res = await app.request("/embed/conf/agenda.json?day=2026-08-10", {}, TEST_ENV);
+    const body = (await res.json()) as { items: Array<{ submissionId: string }>; total: number };
+    expect(body.items.map((i) => i.submissionId)).toEqual(["sub1"]);
+    expect(body.total).toBe(1);
+  });
+
+  it("schedule.json?day=<d> agrees with schedule's HTML filtering", async () => {
+    installFakeCaches();
+    const htmlApp = buildAgendaApp();
+    const htmlRes = await htmlApp.request("/embed/conf/schedule?day=2026-08-11", {}, TEST_ENV);
+    const html = await htmlRes.text();
+    expect(html).toContain("chq-agenda-sub2");
+    expect(html).not.toContain("chq-agenda-sub1");
+
+    installFakeCaches();
+    const jsonApp = buildAgendaApp();
+    const jsonRes = await jsonApp.request("/embed/conf/schedule.json?day=2026-08-11", {}, TEST_ENV);
+    const body = (await jsonRes.json()) as { items: Array<{ submissionId: string }>; total: number };
+    expect(body.items.map((i) => i.submissionId)).toEqual(["sub2"]);
+    expect(body.total).toBe(1);
+  });
+});
+
+// -- sessions: `day` is NOT in the sessions knob table (DEC-489) ----------
+function buildSessionsApp() {
+  let selectCall = 0;
+  const SESSION_ROWS = Array.from({ length: 5 }, (_, i) => ({
+    id: `sub${i + 1}`,
+    seq: i + 1,
+    title: `Talk ${i + 1}`,
+    description: "A description long enough to show up in the card body.",
+    icsSequence: 0,
+  }));
+  const db = {
+    select: () => {
+      selectCall += 1;
+      if (selectCall === 1) return makeChain([EVENT_ROW]); // getPublicEventBySlug
+      if (selectCall === 2) return makeChain([]); // getPublicTracks
+      if (selectCall === 3) return makeChain(SESSION_ROWS); // hydrateSessions subRows
+      if (selectCall === 4) return makeChain([]); // hydrateSessions trackRows
+      if (selectCall === 5) return makeChain([]); // hydrateSessions speakerRows
+      return makeChain([]); // hydrateSessions EMB-01 slotRows
+    },
+    selectDistinct: () => makeChain(SESSION_ROWS.map((s) => ({ id: s.id, title: s.title }))),
+  } as unknown as AppEnv["Variables"]["db"];
+  return mountApp(db);
+}
+
+describe("DEC-489: sessions?day= filters nothing, and the URL stops advertising it", () => {
+  it("sessions?day=<d> renders the same 5 sessions as no day at all", async () => {
+    installFakeCaches();
+    const withDayApp = buildSessionsApp();
+    const withDay = await withDayApp.request("/embed/conf/sessions?day=2026-08-10&limit=1", {}, TEST_ENV);
+    const html = await withDay.text();
+    // day carries no filtering weight — with limit=1 only sub1 renders,
+    // exactly as it would with no day param at all.
+    expect(html).toContain('id="chq-session-sub1"');
+  });
+
+  it("sessions emits no day param in its Show-more link, even when one was supplied", async () => {
+    installFakeCaches();
+    const app = buildSessionsApp();
+    const res = await app.request("/embed/conf/sessions?day=2026-08-10&limit=1", {}, TEST_ENV);
+    const html = await res.text();
+    expect(html).not.toContain('name="day"');
+    expect(html).not.toContain("day=");
+  });
+});

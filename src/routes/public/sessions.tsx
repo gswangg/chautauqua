@@ -16,11 +16,10 @@ export function SessionsContent(props: {
   total: number;
   page: number;
   perPage?: number;
-  day?: string | null;
   limit?: number | null;
   fields?: CardFields;
 }) {
-  const { event, tracks, activeTrackId, q, items, total, page, perPage, day, limit, fields } = props;
+  const { event, tracks, activeTrackId, q, items, total, page, perPage, limit, fields } = props;
   // DEC-433/477/487: parsePage clamps page to MAX_PUBLIC_PAGE, so once we're
   // at the cap there is no page+1 to link to — stop rendering 'Show more'
   // even if items.length < total. Also stop once the cumulative row ceiling
@@ -29,10 +28,12 @@ export function SessionsContent(props: {
   // past it would point at a page identical to the current one.
   const hasMore = hasMorePages(items.length, total, page, perPage ?? PUBLIC_PER_PAGE);
   const basePath = `/e/${event.slug}/sessions`;
-  // DEC-289: embed configuration params carried forward across the search
-  // form and 'Show more' link exactly like trackId/q, so a configured embed
-  // does not lose its configuration on page 2.
-  const carryQs = `${day ? `day=${encodeURIComponent(day)}&` : ""}${limit ? `limit=${limit}&` : ""}`;
+  // DEC-289/DEC-489: embed configuration params carried forward across the
+  // search form and 'Show more' link exactly like trackId/q, so a configured
+  // embed does not lose its configuration on page 2. `day` is not part of
+  // the sessions surface's knob table (DEC-489) — it filters nothing here,
+  // so the URL must not advertise it.
+  const carryQs = limit ? `limit=${limit}&` : "";
   return (
     <>
       <h2>Sessions</h2>
@@ -44,7 +45,6 @@ export function SessionsContent(props: {
           <input type="search" name="q" value={q ?? ""} placeholder="Title or speaker name" />
         </label>
         {activeTrackId ? <input type="hidden" name="trackId" value={activeTrackId} /> : null}
-        {day ? <input type="hidden" name="day" value={day} /> : null}
         {limit ? <input type="hidden" name="limit" value={String(limit)} /> : null}
         <button type="submit">Search</button>
       </form>
