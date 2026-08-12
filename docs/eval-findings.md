@@ -164,3 +164,15 @@ CNT 52% · AIA 88% · EMB 72% · CRM 76% (of judged weight).
    release 1 day). SEED_NOW placement must yield ≥3 overdue speaker tasks with staggered
    lateness so Overview §01 renders rows and "Remind" is exercisable — the user
    explicitly wants this comparable against the mock.
+
+## APPENDED: user manual-QA — Submissions desktop (2026-08-12)
+
+4. **Title-row actions are stacked vertically** (agent-missed): "Forms" and "New
+   submission" render stacked instead of the design's single action row beside the h1
+   (`Forms · Export CSV · New submission`). Fix the toolbar row layout while adding the
+   missing Export CSV.
+5. **Named native-select instances for the Tier-1 sweep**: the Submissions table's
+   track filter and sort dropdowns (same foreign-to-the-system look as the header event
+   switcher). Also restore the design's VISIBLE saved-views tab row (`Needs triage /
+   All submissions / …`) instead of the collapsed "▶ Views" disclosure — already noted
+   by the fidelity agent, elevated here per user QA.
