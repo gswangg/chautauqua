@@ -13,6 +13,8 @@ import {
   aggregateDropdownCriterion,
   buildResultsRows,
   criteriaForRound,
+  normalizeGuidance,
+  MAX_CRITERION_GUIDANCE_LENGTH,
   type EvaluationCriterion,
   type EvaluationCriterionDef,
   type DropdownCriterionDef,
@@ -24,6 +26,9 @@ import * as repo from "../../server/repo/review";
 import { roundCriteriaJsonOf } from "../../server/repo/review";
 import type { PlanRecord } from "../../server/repo/review";
 import { isEpochMs, isEpochOrderValid } from "../api/validators"; // DEC-517
+import { DEC_676 } from "../../decisions";
+
+void DEC_676; // parseCriteriaList's guidance passthrough below
 
 export function asRecord(body: unknown): Record<string, unknown> {
   if (typeof body !== "object" || body === null) {
@@ -91,20 +96,30 @@ export function parseCriteriaList(
       errors[errKey] = `criterion "${c.id}" label must be at most ${MAX_NAME_LENGTH} characters`; // DEC-417
       return undefined;
     }
+    // DEC-676: optional one-line guidance, bounded so it stays a hint.
+    if (c.guidance !== undefined && typeof c.guidance !== "string") {
+      errors[errKey] = `criterion "${c.id}" guidance must be a string`;
+      return undefined;
+    }
+    if (typeof c.guidance === "string" && c.guidance.length > MAX_CRITERION_GUIDANCE_LENGTH) {
+      errors[errKey] = `criterion "${c.id}" guidance must be at most ${MAX_CRITERION_GUIDANCE_LENGTH} characters`;
+      return undefined;
+    }
+    const guidance = normalizeGuidance(typeof c.guidance === "string" ? c.guidance : undefined);
     if (c.kind === "rating") {
       if (typeof c.weight !== "number" || c.weight <= 0) {
         errors[errKey] = `criterion "${c.id}" (rating) requires weight > 0`;
         return undefined;
       }
-      out.push({ id: c.id, label: c.label, kind: "rating", weight: c.weight });
+      out.push({ id: c.id, label: c.label, kind: "rating", weight: c.weight, guidance });
     } else if (c.kind === "dropdown") {
       if (!Array.isArray(c.options) || c.options.length === 0 || !c.options.every((o) => typeof o === "string")) {
         errors[errKey] = `criterion "${c.id}" (dropdown) requires non-empty string options`;
         return undefined;
       }
-      out.push({ id: c.id, label: c.label, kind: "dropdown", options: c.options as string[] });
+      out.push({ id: c.id, label: c.label, kind: "dropdown", options: c.options as string[], guidance });
     } else if (c.kind === "text") {
-      out.push({ id: c.id, label: c.label, kind: "text", required: c.required === true });
+      out.push({ id: c.id, label: c.label, kind: "text", required: c.required === true, guidance });
     } else {
       errors[errKey] = `criterion "${c.id}" kind must be 'rating', 'dropdown', or 'text'`;
       return undefined;

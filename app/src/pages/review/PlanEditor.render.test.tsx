@@ -252,4 +252,128 @@ describe('PlanEditor render smoke', () => {
     // No 26-character ULID anywhere in the rendered reviewer list.
     expect(container.textContent ?? '').not.toMatch(/\b[0-9A-Za-z]{26}\b/);
   });
+
+  // DEC-676: a brand-new plan prefills three editable default criteria
+  // instead of starting from an empty (invalid) list.
+  it('prefills a brand-new plan with the three default criteria', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+      'GET /api/v1/users': listEnvelope([]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/review/plans/new']}>
+        <Routes>
+          <Route path="/review/plans/new" element={<PlanEditor />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('New evaluation plan')).toBeInTheDocument();
+    });
+    expect(screen.getAllByPlaceholderText('Label').map((el) => (el as HTMLInputElement).value)).toEqual([
+      'Relevance',
+      'Depth',
+      'Speaker readiness',
+    ]);
+    // Each default carries its own one-line guidance.
+    const guidanceInputs = screen.getAllByPlaceholderText('Guidance (optional, one line)') as HTMLInputElement[];
+    expect(guidanceInputs.every((el) => el.value.length > 0)).toBe(true);
+  });
+
+  // DEC-676: weights are relative and plan-wide; the editor renders the
+  // derived integer percentage share beside each weight.
+  it('renders the computed weight share next to each rating criterion', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}`]: {
+        ...plan(),
+        criteria: [
+          { id: 'c1', label: 'Content', kind: 'rating', weight: 3 },
+          { id: 'c2', label: 'Delivery', kind: 'rating', weight: 1 },
+        ],
+      },
+      [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([]),
+      'GET /api/v1/users': listEnvelope([]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId" element={<PlanEditor />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Weight 3 · 75%')).toBeInTheDocument();
+    });
+    expect(screen.getByText('Weight 1 · 25%')).toBeInTheDocument();
+    // Section caption states how weights are used, never forcing sum-to-100.
+    expect(screen.getByText('Scores average by weight.')).toBeInTheDocument();
+  });
+
+  // DEC-676: soft cap at 7 criteria -- Add disables with an honest caption,
+  // never a silent no-op.
+  it('disables Add and states the reason once the criteria list hits the soft cap', async () => {
+    const sevenCriteria = Array.from({ length: 7 }, (_, i) => ({
+      id: `c${i}`,
+      label: `Criterion ${i}`,
+      kind: 'rating' as const,
+      weight: 1,
+    }));
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}`]: { ...plan(), criteria: sevenCriteria },
+      [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([]),
+      'GET /api/v1/users': listEnvelope([]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId" element={<PlanEditor />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Maximum 7 criteria — remove one to add another.')).toBeInTheDocument();
+    });
+    expect(screen.getByRole('button', { name: 'Add rating criterion' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Add dropdown criterion' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Add free text criterion' })).toBeDisabled();
+  });
+
+  // DEC-676/DEC-213: surfaces the server-side freeze -- a round that already
+  // has recorded evaluations renders its criterion rows read-only, names
+  // the reason and count, and disables Add/Delete for that round.
+  it('renders a locked criteria row with its reason and count once the round has evaluations', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}`]: {
+        ...plan(),
+        criteria: [{ id: 'c1', label: 'Content', kind: 'rating', weight: 1 }],
+        evaluationCountsByRound: { '1': 3 },
+      },
+      [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([]),
+      'GET /api/v1/users': listEnvelope([]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId" element={<PlanEditor />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Locked — 3 reviews scored against these criteria.')).toBeInTheDocument();
+    });
+    expect(screen.getByPlaceholderText('Label')).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Add rating criterion' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Remove' })).toBeDisabled();
+  });
 });

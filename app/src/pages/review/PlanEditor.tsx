@@ -19,10 +19,22 @@ import {
   type ScopePreview,
   type Track,
 } from './types';
+// DEC-676: the plan editor's weighted-share display and new-plan defaults
+// are computed by the same pure domain functions the server uses -- no
+// re-derivation of the weight-share math client-side.
+import { criterionWeightShares, DEFAULT_PLAN_CRITERIA } from '../../../../src/domain/evaluation';
 
 // DEC-572: batches per-submission plan_reviewer POSTs to at most this many
 // concurrent requests per wave, mirroring the server's own bound.
 const SCOPE_ASSIGN_BATCH_SIZE = 100;
+
+// DEC-676: soft cap on the criteria list -- Add disables with an honest
+// caption once reached, never a silent no-op.
+const MAX_CRITERIA = 7;
+
+function defaultDraftCriteria(): EvaluationCriterion[] {
+  return DEFAULT_PLAN_CRITERIA.map((c) => ({ ...c }));
+}
 
 function chunk<T>(items: T[], size: number): T[][] {
   const out: T[][] = [];
@@ -36,7 +48,15 @@ export function PlanEditor() {
   const navigate = useNavigate();
   const { eventId } = useCurrentEvent();
 
-  const [draft, setDraft] = useState<PlanDraft>(DEFAULT_PLAN_DRAFT);
+  // DEC-676: a brand-new plan prefills the three editable defaults instead
+  // of an empty criteria list (isNew is stable for the component's life --
+  // planId only changes via a route remount).
+  const [draft, setDraft] = useState<PlanDraft>(
+    isNew ? { ...DEFAULT_PLAN_DRAFT, criteria: defaultDraftCriteria() } : DEFAULT_PLAN_DRAFT,
+  );
+  // DEC-676: recorded-evaluation count per round (GET /plans/:id only) --
+  // read-only server truth, never re-derived from draft state.
+  const [evaluationCountsByRound, setEvaluationCountsByRound] = useState<Record<string, number>>({});
   const [tracks, setTracks] = useState<Track[]>([]);
   const [reviewers, setReviewers] = useState<PlanReviewer[]>([]);
   const [loading, setLoading] = useState(!isNew);
@@ -84,6 +104,25 @@ export function PlanEditor() {
   const activeRoundIsCustomized = activeRound !== 0 && roundOverride !== null;
   const criteriaErrors = validateCriteriaList(editingCriteria);
 
+  // DEC-676/DEC-213: the currently-edited round is locked once it already
+  // carries submitted evaluations -- read the count from the plan's own
+  // evaluationCountsByRound (server truth), never re-derive the freeze rule
+  // here. Editing round 0 ("Base") edits any round that has no override of
+  // its own (DEC-147 fallback), so Base is locked when ANY such round is
+  // locked; a specific round tab is locked purely by its own count, because
+  // any edit made while viewing it writes an override scoped to that round
+  // alone (see setEditingCriteria above).
+  const lockedRounds =
+    activeRound === 0
+      ? Array.from({ length: draft.rounds }, (_, i) => i + 1).filter(
+          (r) => !draft.roundCriteria?.[String(r)] && (evaluationCountsByRound[String(r)] ?? 0) > 0,
+        )
+      : (evaluationCountsByRound[String(activeRound)] ?? 0) > 0
+        ? [activeRound]
+        : [];
+  const activeRoundLockedCount = lockedRounds.reduce((sum, r) => sum + (evaluationCountsByRound[String(r)] ?? 0), 0);
+  const activeRoundIsLocked = lockedRounds.length > 0;
+
   function setOpenAt(value: string) {
     try {
       const ms = dateInputToMs(value);
@@ -129,6 +168,7 @@ export function PlanEditor() {
           roundCriteria: plan.roundCriteria ?? null,
           maxEvaluationsPerSubmission: plan.maxEvaluations ?? undefined,
         });
+        setEvaluationCountsByRound(plan.evaluationCountsByRound ?? {});
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load plan'))
       .finally(() => setLoading(false));
@@ -609,6 +649,16 @@ export function PlanEditor() {
           <div className="chq-section-head">
             <h2 className="chq-section-label">Scoring criteria</h2>
           </div>
+          {/* DEC-676: weights stay relative and plan-wide -- never forced to
+              sum to 100 -- so the section states how they're used. */}
+          <p className="chq-review-section-caption">Scores average by weight.</p>
+
+          {activeRoundIsLocked && (
+            <p className="chq-review-criteria-locked-notice" role="status">
+              Locked — {activeRoundLockedCount} review{activeRoundLockedCount === 1 ? '' : 's'} scored against these
+              criteria.
+            </p>
+          )}
 
           {draft.rounds > 1 && (
             <div className="chq-review-round-tabs">
@@ -629,11 +679,21 @@ export function PlanEditor() {
               </label>
               {activeRound !== 0 &&
                 (activeRoundIsCustomized ? (
-                  <button type="button" className="chq-btn chq-btn-secondary" onClick={revertActiveRoundToBase}>
+                  <button
+                    type="button"
+                    className="chq-btn chq-btn-secondary"
+                    disabled={activeRoundIsLocked}
+                    onClick={revertActiveRoundToBase}
+                  >
                     Revert round {activeRound} to base
                   </button>
                 ) : (
-                  <button type="button" className="chq-btn chq-btn-secondary" onClick={customizeActiveRound}>
+                  <button
+                    type="button"
+                    className="chq-btn chq-btn-secondary"
+                    disabled={activeRoundIsLocked}
+                    onClick={customizeActiveRound}
+                  >
                     Customize round {activeRound} (inherits base until then)
                   </button>
                 ))}
@@ -643,82 +703,138 @@ export function PlanEditor() {
           {(activeRound === 0 ? errors.criteria : criteriaErrors.criteria) && (
             <span className="chq-review-field-error">{activeRound === 0 ? errors.criteria : criteriaErrors.criteria}</span>
           )}
-          {editingCriteria.map((criterion) => (
-            <div key={criterion.id} className="chq-review-criterion-row">
-              <input
-                className="chq-input"
-                placeholder="Label"
-                aria-label="Criterion label"
-                value={criterion.label}
-                onChange={(e) => setEditingCriteria((c) => updateCriterion(c, criterion.id, { label: e.target.value }))}
-              />
-              <span className="chq-review-criterion-kind">{criterion.kind}</span>
-              {criterion.kind === 'rating' ? (
-                <input
-                  type="number"
-                  className="chq-input"
-                  min={0}
-                  step="0.1"
-                  aria-label={`${criterion.label || 'criterion'} weight`}
-                  value={criterion.weight ?? ''}
-                  onChange={(e) =>
-                    setEditingCriteria((c) => updateCriterion(c, criterion.id, { weight: Number(e.target.value) }))
-                  }
-                />
-              ) : criterion.kind === 'dropdown' ? (
-                <input
-                  className="chq-input"
-                  placeholder="Options (comma-separated)"
-                  aria-label={`${criterion.label || 'criterion'} options`}
-                  value={(criterion.options ?? []).join(', ')}
-                  onChange={(e) =>
-                    setEditingCriteria((c) =>
-                      updateCriterion(c, criterion.id, {
-                        options: e.target.value
-                          .split(',')
-                          .map((o) => o.trim())
-                          .filter((o) => o.length > 0),
-                      }),
-                    )
-                  }
-                />
-              ) : (
-                <label className="chq-review-checkbox-label">
-                  <input
-                    type="checkbox"
-                    className="chq-check"
-                    aria-label={`${criterion.label || 'criterion'} required`}
-                    checked={criterion.required ?? false}
-                    onChange={(e) => setEditingCriteria((c) => updateCriterion(c, criterion.id, { required: e.target.checked }))}
-                  />
-                  Required
-                </label>
-              )}
-              {(activeRound === 0 ? errors : criteriaErrors)[`criterion.${criterion.id}.label`] && (
-                <span className="chq-review-field-error">{(activeRound === 0 ? errors : criteriaErrors)[`criterion.${criterion.id}.label`]}</span>
-              )}
-              {(activeRound === 0 ? errors : criteriaErrors)[`criterion.${criterion.id}.weight`] && (
-                <span className="chq-review-field-error">{(activeRound === 0 ? errors : criteriaErrors)[`criterion.${criterion.id}.weight`]}</span>
-              )}
-              {(activeRound === 0 ? errors : criteriaErrors)[`criterion.${criterion.id}.options`] && (
-                <span className="chq-review-field-error">{(activeRound === 0 ? errors : criteriaErrors)[`criterion.${criterion.id}.options`]}</span>
-              )}
-              <button type="button" className="chq-btn chq-btn-tertiary" onClick={() => setEditingCriteria((c) => removeCriterion(c, criterion.id))}>
-                Remove
-              </button>
-            </div>
-          ))}
-          <div className="chq-review-add-criteria">
-            <button type="button" className="chq-btn chq-btn-secondary" onClick={() => setEditingCriteria((c) => addCriterion(c, 'rating' as CriterionKind))}>
-              Add rating criterion
-            </button>
-            <button type="button" className="chq-btn chq-btn-secondary" onClick={() => setEditingCriteria((c) => addCriterion(c, 'dropdown' as CriterionKind))}>
-              Add dropdown criterion
-            </button>
-            <button type="button" className="chq-btn chq-btn-secondary" onClick={() => setEditingCriteria((c) => addCriterion(c, 'text' as CriterionKind))}>
-              Add free text criterion
-            </button>
-          </div>
+          {(() => {
+            // DEC-676: shares are computed over the whole editing list --
+            // dropdown/text rows have no weight and get no share entry.
+            const shares = criterionWeightShares(editingCriteria);
+            const atCap = editingCriteria.length >= MAX_CRITERIA;
+            return (
+              <>
+                {editingCriteria.map((criterion) => (
+                  <div key={criterion.id} className="chq-review-criterion-row">
+                    <input
+                      className="chq-input"
+                      placeholder="Label"
+                      aria-label="Criterion label"
+                      value={criterion.label}
+                      disabled={activeRoundIsLocked}
+                      onChange={(e) => setEditingCriteria((c) => updateCriterion(c, criterion.id, { label: e.target.value }))}
+                    />
+                    <input
+                      className="chq-input"
+                      placeholder="Guidance (optional, one line)"
+                      aria-label={`${criterion.label || 'criterion'} guidance`}
+                      value={criterion.guidance ?? ''}
+                      disabled={activeRoundIsLocked}
+                      onChange={(e) =>
+                        setEditingCriteria((c) => updateCriterion(c, criterion.id, { guidance: e.target.value }))
+                      }
+                    />
+                    <span className="chq-review-criterion-kind">{criterion.kind}</span>
+                    {criterion.kind === 'rating' ? (
+                      <span className="chq-review-criterion-weight">
+                        <input
+                          type="number"
+                          className="chq-input"
+                          min={0}
+                          step="0.1"
+                          aria-label={`${criterion.label || 'criterion'} weight`}
+                          value={criterion.weight ?? ''}
+                          disabled={activeRoundIsLocked}
+                          onChange={(e) =>
+                            setEditingCriteria((c) => updateCriterion(c, criterion.id, { weight: Number(e.target.value) }))
+                          }
+                        />
+                        {shares[criterion.id] !== undefined && (
+                          <span className="chq-review-criterion-share">
+                            Weight {criterion.weight} · {shares[criterion.id]}%
+                          </span>
+                        )}
+                      </span>
+                    ) : criterion.kind === 'dropdown' ? (
+                      <input
+                        className="chq-input"
+                        placeholder="Options (comma-separated)"
+                        aria-label={`${criterion.label || 'criterion'} options`}
+                        value={(criterion.options ?? []).join(', ')}
+                        disabled={activeRoundIsLocked}
+                        onChange={(e) =>
+                          setEditingCriteria((c) =>
+                            updateCriterion(c, criterion.id, {
+                              options: e.target.value
+                                .split(',')
+                                .map((o) => o.trim())
+                                .filter((o) => o.length > 0),
+                            }),
+                          )
+                        }
+                      />
+                    ) : (
+                      <label className="chq-review-checkbox-label">
+                        <input
+                          type="checkbox"
+                          className="chq-check"
+                          aria-label={`${criterion.label || 'criterion'} required`}
+                          checked={criterion.required ?? false}
+                          disabled={activeRoundIsLocked}
+                          onChange={(e) => setEditingCriteria((c) => updateCriterion(c, criterion.id, { required: e.target.checked }))}
+                        />
+                        Required
+                      </label>
+                    )}
+                    {(activeRound === 0 ? errors : criteriaErrors)[`criterion.${criterion.id}.label`] && (
+                      <span className="chq-review-field-error">{(activeRound === 0 ? errors : criteriaErrors)[`criterion.${criterion.id}.label`]}</span>
+                    )}
+                    {(activeRound === 0 ? errors : criteriaErrors)[`criterion.${criterion.id}.weight`] && (
+                      <span className="chq-review-field-error">{(activeRound === 0 ? errors : criteriaErrors)[`criterion.${criterion.id}.weight`]}</span>
+                    )}
+                    {(activeRound === 0 ? errors : criteriaErrors)[`criterion.${criterion.id}.options`] && (
+                      <span className="chq-review-field-error">{(activeRound === 0 ? errors : criteriaErrors)[`criterion.${criterion.id}.options`]}</span>
+                    )}
+                    <button
+                      type="button"
+                      className="chq-btn chq-btn-tertiary"
+                      disabled={activeRoundIsLocked}
+                      onClick={() => setEditingCriteria((c) => removeCriterion(c, criterion.id))}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+                <div className="chq-review-add-criteria">
+                  <button
+                    type="button"
+                    className="chq-btn chq-btn-secondary"
+                    disabled={activeRoundIsLocked || atCap}
+                    onClick={() => setEditingCriteria((c) => addCriterion(c, 'rating' as CriterionKind))}
+                  >
+                    Add rating criterion
+                  </button>
+                  <button
+                    type="button"
+                    className="chq-btn chq-btn-secondary"
+                    disabled={activeRoundIsLocked || atCap}
+                    onClick={() => setEditingCriteria((c) => addCriterion(c, 'dropdown' as CriterionKind))}
+                  >
+                    Add dropdown criterion
+                  </button>
+                  <button
+                    type="button"
+                    className="chq-btn chq-btn-secondary"
+                    disabled={activeRoundIsLocked || atCap}
+                    onClick={() => setEditingCriteria((c) => addCriterion(c, 'text' as CriterionKind))}
+                  >
+                    Add free text criterion
+                  </button>
+                </div>
+                {atCap && !activeRoundIsLocked && (
+                  <p className="chq-review-criteria-cap-notice">
+                    Maximum {MAX_CRITERIA} criteria — remove one to add another.
+                  </p>
+                )}
+              </>
+            );
+          })()}
         </section>
 
         <div className="chq-review-editor-actions">

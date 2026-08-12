@@ -80,6 +80,9 @@ vi.mock("../src/server/repo/review", async () => {
       return plan;
     }),
     planHasEvaluations: vi.fn(async () => false),
+    // DEC-676: GET /api/v1/plans/:id surfaces this alongside the plan --
+    // no evaluations recorded in these fixtures.
+    countEvaluationsByRound: vi.fn(async () => ({})),
     advancePlanRound: vi.fn(async (_db: unknown, planId: string) => {
       if (planId !== plan.id) throw new Error("unknown plan");
       plan = { ...plan, currentRound: plan.currentRound + 1 };

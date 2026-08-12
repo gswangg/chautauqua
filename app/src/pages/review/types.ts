@@ -14,6 +14,9 @@ export interface EvaluationCriterion {
   weight?: number;
   options?: string[];
   required?: boolean;
+  // DEC-676: optional one-line guidance shown under the criterion's label
+  // (editor row + reviewer scorecard). Absent/blank renders nothing.
+  guidance?: string;
 }
 
 export interface EvaluationScale {
@@ -46,6 +49,11 @@ export interface EvaluationPlan {
   roundCriteria?: Record<string, EvaluationCriterion[]> | null;
   maxEvaluations: number | null;
   createdAt: number;
+  // DEC-676: GET /api/v1/plans/:id only -- recorded-evaluation count per
+  // round, keyed by round number as a string. Surfaces DEC-213's
+  // server-side criteria freeze in the editor; the SPA reads this rather
+  // than re-deriving the freeze rule itself.
+  evaluationCountsByRound?: Record<string, number>;
 }
 
 // PlanDraft keeps the SPA-internal field names (openAt/closeAt/trackIds/

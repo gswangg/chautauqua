@@ -7,7 +7,7 @@
 // here only as a render assertion, not a re-derivation of criteriaForRound
 // itself.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, cleanup } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { Scorecard } from './Scorecard';
@@ -52,6 +52,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  cleanup();
   vi.unstubAllGlobals();
   consoleErrorSpy.mockRestore();
 });
@@ -117,5 +118,37 @@ describe('Scorecard render smoke', () => {
     // or the shape of an un-stringified object.
     expect(document.body.textContent).not.toContain('undefined');
     expect(document.body.textContent).not.toContain('[object Object]');
+  });
+
+  // DEC-676: each criterion's guidance renders under its label; nothing
+  // renders for a criterion that has none.
+  it('renders criterion guidance under the label, and nothing when absent', async () => {
+    mockApi({
+      'GET /api/v1/review/plans': listEnvelope([plan()]),
+      [`GET /api/v1/review/submissions/${SUBMISSION_ID}`]: {
+        id: SUBMISSION_ID,
+        ref: 'S-010',
+        title: 'A Deeply Nested Talk',
+        sessionAnswers: [],
+        myEvaluation: undefined,
+        criteria: [
+          { id: 'c1', label: 'Quality', kind: 'rating', weight: 1, guidance: 'Rate the depth of the argument.' },
+          { id: 'c2', label: 'Fit', kind: 'dropdown', options: ['Poor', 'OK', 'Great'] },
+        ],
+      },
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}/submissions/${SUBMISSION_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId/submissions/:submissionId" element={<Scorecard />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText('Rate the depth of the argument.')).toBeInTheDocument();
+    // 'Fit' has no guidance -- nothing renders for it beyond its label.
+    const fitRow = screen.getByText('Fit').closest('div')!;
+    expect(fitRow.querySelector('.chq-review-criterion-guidance')).toBeNull();
   });
 });

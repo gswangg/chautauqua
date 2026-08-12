@@ -825,8 +825,20 @@ async function main(): Promise<void> {
   // (with one doubled-up on track 1 for reviewer-overlap realism).
   const evalPlanId = seedId("evaluation_plan", 1);
   const evalCriteria = [
-    { id: "content_quality", label: "Content quality & depth", kind: "rating", weight: 2 },
-    { id: "speaker_delivery", label: "Speaker delivery & clarity", kind: "rating", weight: 1 },
+    {
+      id: "content_quality",
+      label: "Content quality & depth",
+      kind: "rating",
+      weight: 2,
+      guidance: "Original insight, not a rehash of the docs.",
+    },
+    {
+      id: "speaker_delivery",
+      label: "Speaker delivery & clarity",
+      kind: "rating",
+      weight: 1,
+      guidance: "Clear structure and a confident, well-paced delivery.",
+    },
     { id: "recommendation", label: "Recommendation", kind: "dropdown", options: ["Approve", "Maybe", "Deny"] },
   ] as const;
   statements.push(
@@ -949,8 +961,20 @@ async function main(): Promise<void> {
   // weighted mean visibly differs from a naive mean across plans.
   const evalPlan2Id = seedId("evaluation_plan", 2);
   const evalPlan2Criteria = [
-    { id: "content_quality", label: "Content quality & depth", kind: "rating", weight: 1 },
-    { id: "speaker_delivery", label: "Speaker delivery & clarity", kind: "rating", weight: 4 },
+    {
+      id: "content_quality",
+      label: "Content quality & depth",
+      kind: "rating",
+      weight: 1,
+      guidance: "Original insight, not a rehash of the docs.",
+    },
+    {
+      id: "speaker_delivery",
+      label: "Speaker delivery & clarity",
+      kind: "rating",
+      weight: 4,
+      guidance: "Clear structure and a confident, well-paced delivery.",
+    },
     { id: "recommendation", label: "Recommendation", kind: "dropdown", options: ["Approve", "Maybe", "Deny"] },
   ] as const;
   statements.push(
@@ -1002,8 +1026,20 @@ async function main(): Promise<void> {
   // zero evaluations and reads 'upcoming' on the Review landing.
   const evalPlan3Id = seedId("evaluation_plan", 3);
   const evalPlan3Criteria = [
-    { id: "content_quality", label: "Content quality & depth", kind: "rating", weight: 5 },
-    { id: "speaker_delivery", label: "Speaker delivery & clarity", kind: "rating", weight: 2 },
+    {
+      id: "content_quality",
+      label: "Content quality & depth",
+      kind: "rating",
+      weight: 5,
+      guidance: "Original insight, not a rehash of the docs.",
+    },
+    {
+      id: "speaker_delivery",
+      label: "Speaker delivery & clarity",
+      kind: "rating",
+      weight: 2,
+      guidance: "Clear structure and a confident, well-paced delivery.",
+    },
     { id: "recommendation", label: "Recommendation", kind: "dropdown", options: ["Approve", "Maybe", "Deny"] },
   ] as const;
   statements.push(
