@@ -203,3 +203,72 @@ describe('ComposeWizard recipient picker', () => {
     }
   });
 });
+
+// DEC-682: the "include reviewer feedback" toggle must be paired with a
+// plan picker naming exactly which plan+round to attach — never left to the
+// server to guess, and never silently omitted from the compose request.
+describe('ComposeWizard feedback plan picker (DEC-682)', () => {
+  function plan(id: string, name: string, currentRound: number, rounds = 3) {
+    return { id, eventId: EVENT_ID, name, openDate: null, closeDate: null, filters: null, anonymized: false, scale: { min: 1, max: 5 }, criteria: [], rounds, currentRound };
+  }
+
+  async function goToPreview(fetchMock: ReturnType<typeof mockApi>) {
+    render(<ComposeWizard eventId={EVENT_ID} />);
+    await screen.findByText('Talk number 1');
+    fireEvent.click(screen.getByLabelText('Select Talk number 1'));
+    fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
+
+    const subject = await screen.findByLabelText('Subject');
+    fireEvent.change(subject, { target: { value: 'Hello' } });
+    fireEvent.change(screen.getByLabelText('Body'), { target: { value: 'Body text' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Next: preview' }));
+
+    await screen.findByText(/Preview/);
+    return fetchMock;
+  }
+
+  it('shows a required plan select naming "Round N of <plan name>" once the feedback toggle is on, and hides it while off', async () => {
+    const fetchMock = mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope(page1(), { total: 340, page: 1, perPage: 50 }),
+      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
+      [`GET /api/v1/events/${EVENT_ID}/plans`]: listEnvelope([plan('plan-a', 'Track A Review', 2)]),
+      [`POST /api/v1/events/${EVENT_ID}/compose/preview`]: { items: [] },
+    });
+
+    await goToPreview(fetchMock);
+
+    expect(screen.queryByText(/Evaluation plan/)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText('Include reviewer feedback'));
+
+    const select = await screen.findByLabelText('Evaluation plan');
+    expect(select).toBeRequired();
+
+    fireEvent.change(select, { target: { value: 'plan-a' } });
+    expect(await screen.findByText('Round 2 of Track A Review')).toBeInTheDocument();
+  });
+
+  it('sends feedbackPlanId in the compose preview body and re-runs the preview when the plan changes', async () => {
+    const fetchMock = mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope(page1(), { total: 340, page: 1, perPage: 50 }),
+      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
+      [`GET /api/v1/events/${EVENT_ID}/plans`]: listEnvelope([plan('plan-a', 'Track A Review', 2), plan('plan-b', 'Track B Review', 1)]),
+      [`POST /api/v1/events/${EVENT_ID}/compose/preview`]: { items: [] },
+    });
+
+    await goToPreview(fetchMock);
+    fireEvent.click(screen.getByLabelText('Include reviewer feedback'));
+    const select = await screen.findByLabelText('Evaluation plan');
+
+    fireEvent.change(select, { target: { value: 'plan-b' } });
+    await screen.findByText('Round 1 of Track B Review');
+
+    await waitFor(() => {
+      const previewCalls = fetchMock.mock.calls.filter((call) => String(call[0]).includes('/compose/preview'));
+      expect(previewCalls.length).toBeGreaterThan(0);
+      const lastBody = JSON.parse(String(previewCalls[previewCalls.length - 1]?.[1]?.body ?? '{}'));
+      expect(lastBody.feedbackPlanId).toBe('plan-b');
+      expect(lastBody.includeFeedback).toBe(true);
+    });
+  });
+});

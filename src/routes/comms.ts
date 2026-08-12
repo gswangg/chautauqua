@@ -9,6 +9,7 @@ import { ApiError, parseBoundedIdArray } from "../server/http";
 import * as repo from "../server/repo/comms";
 import { bumpIcsSequences } from "../server/repo/ics-sequence";
 import { getEventForOrg } from "../server/repo/events";
+import { getPlanById } from "../server/repo/review/plans";
 import type { KVStore } from "../auth/claim";
 import { resolvePortalLink } from "../server/repo/portal-link";
 import { textToHtml } from "../mail/render";
@@ -155,7 +156,38 @@ interface ComposeBody {
   bodyText?: string;
   submissionIds: string[];
   includeFeedback?: boolean;
+  feedbackPlanId?: string;
+  feedbackRound?: number;
   attachIcs?: boolean;
+}
+
+/** DEC-682: when includeFeedback is set, the caller must name exactly which
+ * plan+round's comments to attach — never "whatever this submission has
+ * ever collected". Returns null when includeFeedback is false (feedback not
+ * attached at all). */
+async function resolveFeedbackScope(
+  c: { var: { db: import("../server/context").Db; auth?: { orgId: string } } },
+  eventId: string,
+  b: Partial<ComposeBody>,
+): Promise<{ planId: string; round: number } | null> {
+  if (b.includeFeedback !== true) return null;
+
+  if (typeof b.feedbackPlanId !== "string" || b.feedbackPlanId.trim() === "") {
+    throw new ApiError("invalid", "Choose which evaluation plan's feedback to attach", {
+      feedbackPlanId: "Choose which evaluation plan's feedback to attach",
+    });
+  }
+  const plan = await getPlanById(c.var.db, b.feedbackPlanId);
+  if (!plan || plan.eventId !== eventId) throw new ApiError("not_found", "Evaluation plan not found");
+
+  const round = b.feedbackRound !== undefined ? b.feedbackRound : plan.currentRound;
+  if (typeof round !== "number" || !Number.isInteger(round) || round < 1 || round > plan.rounds) {
+    throw new ApiError("invalid", `feedbackRound must be an integer between 1 and ${plan.rounds}`, {
+      feedbackRound: `must be between 1 and ${plan.rounds}`,
+    });
+  }
+
+  return { planId: plan.id, round };
 }
 
 async function resolveComposeInput(
@@ -166,7 +198,7 @@ async function resolveComposeInput(
   subjectTemplate: string;
   bodyTemplate: string;
   submissionIds: string[];
-  includeFeedback: boolean;
+  feedback: { planId: string; round: number } | null;
   attachIcs: boolean;
 }> {
   const b = body as Partial<ComposeBody> | null;
@@ -209,11 +241,13 @@ async function resolveComposeInput(
     bodyTemplate = b.bodyText;
   }
 
+  const feedback = await resolveFeedbackScope(c, eventId, b);
+
   return {
     subjectTemplate,
     bodyTemplate,
     submissionIds,
-    includeFeedback: b.includeFeedback === true,
+    feedback,
     attachIcs: b.attachIcs === true,
   };
 }
@@ -297,7 +331,7 @@ export async function buildRenderTargets(
   },
   event: { id: string; name: string },
   submissions: ComposeSubmission[],
-  includeFeedback: boolean,
+  feedback: { planId: string; round: number } | null,
   mintClaimTokens: boolean,
 ) {
   const expanded = expandRecipients(submissions);
@@ -310,10 +344,11 @@ export async function buildRenderTargets(
   // DEC-530: resolve the feedback-comment and account-identity lookups once
   // for the whole expanded recipient set instead of per-recipient — at the
   // DEC-019 100-recipient cap this collapses up to 200 sequential D1
-  // round trips into 2.
+  // round trips into 2. DEC-682: feedback is scoped to exactly the
+  // composing plan+round — never the submission's entire comment history.
   const submissionIds = [...new Set(expanded.recipients.map((r) => r.submissionId))];
-  const feedbackMap = includeFeedback
-    ? await repo.listFeedbackCommentsForSubmissions(c.var.db, submissionIds)
+  const feedbackMap = feedback
+    ? await repo.listFeedbackCommentsForSubmissions(c.var.db, submissionIds, feedback)
     : new Map<string, string[]>();
   const accountMap = await repo.findAccountUserIds(
     c.var.db,
@@ -324,7 +359,7 @@ export async function buildRenderTargets(
   for (const recipient of expanded.recipients) {
     const submission = submissionById.get(recipient.submissionId);
     if (!submission) throw new Error(`recipient references unknown submission ${recipient.submissionId}`);
-    const feedbackComments = includeFeedback ? feedbackMap.get(recipient.submissionId) ?? [] : [];
+    const feedbackComments = feedback ? feedbackMap.get(recipient.submissionId) ?? [] : null;
     const userId = accountMap.get(recipient.contactId) ?? null;
     const portalLink = await resolvePortalLink(kv, recipient.contactId, event.id, userId, origin, mintClaimTokens);
     const vars = buildMergeVars({
@@ -371,7 +406,7 @@ commsRoutes.post("/api/v1/events/:eventId/compose/preview", requireOrganizer, cs
   const icsMap = input.attachIcs ? await preflightIcsSchedule(c.var.db, input.submissionIds) : undefined;
 
   // DEC-397: preview never mints credentials — pass mintClaimTokens=false.
-  const targets = await buildRenderTargets(c, event, submissions, input.includeFeedback, false);
+  const targets = await buildRenderTargets(c, event, submissions, input.feedback, false);
 
   const result = preflightRender(targets, input.subjectTemplate, input.bodyTemplate);
   if (!result.ok) {
@@ -414,7 +449,7 @@ commsRoutes.post("/api/v1/events/:eventId/compose/send", requireOrganizer, csrfJ
   const icsMap = input.attachIcs ? await preflightIcsSchedule(c.var.db, input.submissionIds) : undefined;
 
   // DEC-397: send mints real claim tokens — pass mintClaimTokens=true.
-  const targets = await buildRenderTargets(c, event, submissions, input.includeFeedback, true);
+  const targets = await buildRenderTargets(c, event, submissions, input.feedback, true);
 
   const result = preflightRender(targets, input.subjectTemplate, input.bodyTemplate);
   if (!result.ok) {

@@ -94,7 +94,7 @@ describe("buildMergeVars", () => {
     });
   });
 
-  it("uses the stated no-feedback value when no comments are given", () => {
+  it("uses the stated no-feedback value when no comments are given but feedback WAS attached (empty array)", () => {
     const vars = buildMergeVars({
       speakerName: "Ada",
       talkTitle: "Title",
@@ -103,6 +103,23 @@ describe("buildMergeVars", () => {
       feedbackComments: [],
     });
     expect(vars.feedback).toBe(NO_FEEDBACK_TEXT);
+  });
+
+  it("DEC-682: omits the feedback key entirely when feedback was NOT attached (null)", () => {
+    const vars = buildMergeVars({
+      speakerName: "Ada",
+      talkTitle: "Title",
+      eventName: "DevCon",
+      portalLink: "/portal",
+      feedbackComments: null,
+    });
+    expect(vars).toEqual({
+      speaker_name: "Ada",
+      talk_title: "Title",
+      event_name: "DevCon",
+      portal_link: "/portal",
+    });
+    expect("feedback" in vars).toBe(false);
   });
 });
 
@@ -156,5 +173,17 @@ describe("preflightRender", () => {
     // (speaker_name, the first placeholder in bodyTemplate).
     const fields = result.missing.map((m) => m.field).sort();
     expect(fields).toEqual(["speaker_name", "talk_title"]);
+  });
+
+  it("DEC-682: a {feedback} template sent with the feedback toggle off (vars built from feedbackComments: null) names 'feedback' as missing, never a silently-invented value", () => {
+    // Mirrors buildMergeVars({ ..., feedbackComments: null }): the merge
+    // vars map for this recipient simply has no `feedback` key.
+    const noFeedbackVars = target({
+      vars: { talk_title: "On Engines", speaker_name: "Ada Lovelace", portal_link: "/portal" },
+    });
+    const result = preflightRender([noFeedbackVars], subjectTemplate, bodyTemplate);
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error("expected rejection");
+    expect(result.missing).toEqual([{ contactId: "ct_1", submissionId: "sub_1", field: "feedback" }]);
   });
 });
