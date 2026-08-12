@@ -357,7 +357,7 @@ async function loadTasksPageData(c: Context<AppEnv>, contactId: string, orgId: s
   for (const a of assignments) {
     if (a.kind !== "file_request" || a.status !== "complete" || !a.fileId) continue;
     const latest = await resolveTaskFileChainLatest(c.var.db, a.fileId);
-    const [version, comments] = await Promise.all([
+    const [version, commentsPage] = await Promise.all([
       getFileVersionNumber(c.var.db, latest.id),
       listFileComments(c.var.db, latest.id),
     ]);
@@ -365,7 +365,7 @@ async function loadTasksPageData(c: Context<AppEnv>, contactId: string, orgId: s
       filename: latest.filename,
       version,
       uploadedAt: latest.createdAt,
-      comments,
+      comments: commentsPage.items,
       timezone: a.timezone,
     });
   }

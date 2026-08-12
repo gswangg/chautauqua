@@ -60,7 +60,7 @@ vi.mock("../src/server/repo/files", async () => {
     ...actual,
     resolveTaskFileChainLatest: vi.fn(),
     getFileVersionNumber: vi.fn(async () => 2),
-    listFileComments: vi.fn(async () => []),
+    listFileComments: vi.fn(async () => ({ items: [], total: 0, page: 1, perPage: 1 })),
     insertFileComment: vi.fn(async () => "comment-new-1"),
   };
 });
@@ -107,9 +107,22 @@ describe("GET /portal/tasks — completed file_request assignment (DEC-242)", ()
       },
     ]);
     vi.mocked(resolveTaskFileChainLatest).mockResolvedValue(CHAIN_LATEST);
-    vi.mocked(listFileComments).mockResolvedValue([
-      { id: "c1", body: "Looks great", authorName: "Pat Organizer", authorRole: "organizer", createdAt: Date.now() },
-    ]);
+    vi.mocked(listFileComments).mockResolvedValue({
+      items: [
+        {
+          id: "c1",
+          fileId: FILE_ID,
+          versionNumber: 2,
+          body: "Looks great",
+          authorName: "Pat Organizer",
+          authorRole: "organizer",
+          createdAt: Date.now(),
+        },
+      ],
+      total: 1,
+      page: 1,
+      perPage: 1,
+    });
 
     const app = await buildPortalApp(SPEAKER_A);
     const res = await app.request("http://test.local/portal/tasks");
