@@ -11,6 +11,11 @@
 // bounds.ts, the ONE home for public paging constants (alongside
 // PUBLIC_PER_PAGE and their derived MAX_PUBLIC_ROWS).
 import { MAX_PUBLIC_PAGE } from "../../server/repo/public/bounds";
+// DEC-510: isIsoDate is the ONE home for the YYYY-MM-DD format+round-trip
+// rule; both this module and src/routes/api/events.ts are route-layer, so
+// importing from ../api/validators is legal (no cycle: validators.ts has no
+// imports of its own).
+import { isIsoDate } from "../api/validators";
 
 export function parsePage(raw: string | undefined): number {
   const n = Number(raw);
@@ -33,12 +38,12 @@ export function parseNameQuery(raw: string | undefined): string | null {
 // DEC-289: embed configuration params — all optional, all degrade to
 // today's behavior on absence or bad input, none of them ever throw.
 
-const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
 const HEX3_OR_6_RE = /^[0-9a-fA-F]{3}$|^[0-9a-fA-F]{6}$/;
 
-/** `day` = agenda/schedule filter, /^\d{4}-\d{2}-\d{2}$/ or null. */
+/** `day` = agenda/schedule filter, strict YYYY-MM-DD (DEC-510 isIsoDate) or
+ * null. Never throws. */
 export function parseDay(raw: string | undefined): string | null {
-  return raw && DAY_RE.test(raw) ? raw : null;
+  return raw && isIsoDate(raw) ? raw : null;
 }
 
 /** `limit` = sessions-surface page size override, integer 1..100, else null

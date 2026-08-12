@@ -28,6 +28,24 @@ export function isValidTimezone(timezone: string): boolean {
   }
 }
 
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * DEC-510: event.startDate / event.endDate must be strict ISO YYYY-MM-DD at
+ * the API boundary. Date.parse (used by isDateOrderValid) accepts many
+ * non-ISO formats ('August 5, 2026', '2026-8-5'), which then break
+ * downstream string-based date math (agenda.ts computeDays /
+ * isDayWithinEventRange) that assumes YYYY-MM-DD. True only when the value
+ * matches the pattern AND round-trips through Date/toISOString, which
+ * rejects calendar-invalid dates like 2026-02-30 or 2026-13-01.
+ */
+export function isIsoDate(value: string): boolean {
+  if (!ISO_DATE_RE.test(value)) return false;
+  const parsed = new Date(`${value}T00:00:00Z`);
+  if (Number.isNaN(parsed.getTime())) return false;
+  return parsed.toISOString().slice(0, 10) === value;
+}
+
 /** True when startDate <= endDate, both parseable ISO date strings. */
 export function isDateOrderValid(startDate: string, endDate: string): boolean {
   const start = Date.parse(startDate);
