@@ -12,6 +12,7 @@ import { makeFileStore } from "../../server/context";
 import { assertSpeakerContactId, getPortalData } from "../../server/repo/portal";
 import { DEC_067, DEC_084 } from "../../decisions";
 import { readImageDims, MAX_HEADSHOT_EDGE_PX } from "../../lib/image-dims";
+import { MAX_TEXT_LENGTH, MAX_LONG_TEXT_LENGTH } from "../../forms/validate";
 void DEC_067; // DEC-067: /headshots/:fileId gate — see headshotServeRoutes below.
 void DEC_084; // DEC-084: server-side PNG/JPEG dimension gate on headshot upload — see below.
 import {
@@ -271,13 +272,41 @@ portalProfileRoutes.post("/profile", csrfForm, async (c) => {
     github: String(body.github ?? ""),
     website: String(body.website ?? ""),
   };
+  const title = String(body.title ?? "").trim();
+  const company = String(body.company ?? "").trim();
+  const bio = String(body.bio ?? "").trim();
+
+  // DEC-422: bound every free-text field before it reaches updateContactProfile
+  // (portal profile had no length limit at all — an unbounded write to
+  // `contact` could otherwise hit SQLITE_TOOBIG as a 500).
+  const capped: Array<[string, string, number]> = [
+    ["firstName", firstName, MAX_TEXT_LENGTH],
+    ["lastName", lastName, MAX_TEXT_LENGTH],
+    ["title", title, MAX_TEXT_LENGTH],
+    ["company", company, MAX_TEXT_LENGTH],
+    ["twitter", socialLinks.twitter, MAX_TEXT_LENGTH],
+    ["linkedin", socialLinks.linkedin, MAX_TEXT_LENGTH],
+    ["github", socialLinks.github, MAX_TEXT_LENGTH],
+    ["website", socialLinks.website, MAX_TEXT_LENGTH],
+    ["bio", bio, MAX_LONG_TEXT_LENGTH],
+  ];
+  for (const [field, value, max] of capped) {
+    if (value.length > max) {
+      const { branding, profile } = await loadProfile(c);
+      const { token: csrfToken } = ensureCsrfCookie(c);
+      return c.html(
+        <ProfilePage branding={branding} profile={profile} csrfToken={csrfToken} error={`${field} is too long.`} />,
+        400,
+      );
+    }
+  }
 
   await updateContactProfile(c.var.db, contactId, {
     firstName,
     lastName,
-    title: String(body.title ?? "").trim() || null,
-    company: String(body.company ?? "").trim() || null,
-    bio: String(body.bio ?? "").trim() || null,
+    title: title || null,
+    company: company || null,
+    bio: bio || null,
     socialLinks,
   });
 
