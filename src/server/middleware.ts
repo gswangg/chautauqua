@@ -254,6 +254,7 @@ export const csrfJson: MiddlewareHandler<AppEnv> = async (c, next) => {
 /** Plain HTML form posts (public CFP, portal, /login, /claim): double-submit
  * cookie 'chq_csrf' compared against a same-named hidden form field. */
 export const csrfForm: MiddlewareHandler<AppEnv> = async (c, next) => {
+  c.set("htmlSurface", true);
   const cookies = parseCookies(c.req.header("cookie") ?? null);
   const cookieToken = cookies[CSRF_COOKIE_NAME];
   if (!cookieToken) {
@@ -293,6 +294,7 @@ export function checkDoubleSubmitCsrf(cookieToken: string | undefined, formToken
  * server-rendered portal/auth sign-out forms). Closes the /logout CSRF hole
  * without forcing every caller onto one shape. */
 export const csrfFormOrHeader: MiddlewareHandler<AppEnv> = async (c, next) => {
+  c.set("htmlSurface", true);
   if (c.req.header(CSRF_HEADER) === "1") {
     await next();
     return;

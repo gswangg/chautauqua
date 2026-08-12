@@ -149,6 +149,9 @@ export function SubmitPage(props: {
   errors?: Record<string, string>;
   trackError?: string;
   draftSavedNotice?: boolean;
+  // DEC-626: a top-of-form banner for a re-rendered request (expired CSRF
+  // session, rate limit) -- distinct from field-level `errors`.
+  banner?: string;
 }) {
   const { event, form, fields, tracks, answers, selectedTrackIds, csrfToken, errors, trackError } = props;
   const accentColor = branding(event).accentColor;
@@ -173,6 +176,11 @@ export function SubmitPage(props: {
           <div class="chq-cfp-intro">
             <h1>Submit a talk</h1>
           </div>
+          {props.banner ? (
+            <p role="alert" class="chq-cfp-actions-note">
+              {props.banner}
+            </p>
+          ) : null}
           {props.draftSavedNotice ? (
             <DraftSavedNotice />
           ) : props.hasDraft && props.draftSavedAt !== undefined ? (

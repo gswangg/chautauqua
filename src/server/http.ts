@@ -122,14 +122,60 @@ export function parseBoundedOptionalText(
   return text.length === 0 ? null : text;
 }
 
+// DEC-626: a minimal self-contained HTML error page for requests marked
+// htmlSurface (plain form posts) -- an HTML form post never ends as a JSON
+// blob. Same status as the JSON envelope would have used; message is the
+// visible text; 'Go back' links to the referring path (same-origin only)
+// or '/'.
+function renderHtmlError(message: string, referer: string | undefined): string {
+  const safeMessage = escapeHtmlText(message);
+  const backHref = safeReferrerPath(referer);
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Error</title></head><body><p role="alert">${safeMessage}</p><p><a href="${backHref}">Go back</a></p></body></html>`;
+}
+
+function escapeHtmlText(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+// Only a same-origin path is ever used as the back link -- an absolute or
+// cross-origin referer is discarded in favor of '/', never interpolated
+// unchecked into an href.
+function safeReferrerPath(referer: string | undefined): string {
+  if (!referer) return "/";
+  try {
+    const url = new URL(referer);
+    return url.pathname + url.search || "/";
+  } catch {
+    return "/";
+  }
+}
+
 /** Registers the shared onError handler; call once on the top-level app. */
 export function registerErrorHandler(app: Hono<AppEnv>): void {
   app.onError((err, c) => {
+    const htmlSurface = c.var.htmlSurface === true;
     if (err instanceof ApiError) {
+      if (htmlSurface) {
+        return c.html(
+          renderHtmlError(err.message, c.req.header("referer") ?? undefined),
+          err.status as 400 | 401 | 403 | 404 | 409,
+        );
+      }
       return c.json(errorEnvelope(err), err.status as 400 | 401 | 403 | 404 | 409);
     }
     // Fail loudly: unexpected errors are never swallowed, always logged.
     console.error("unhandled error", err);
+    if (htmlSurface) {
+      return c.html(
+        renderHtmlError("Internal server error", c.req.header("referer") ?? undefined),
+        500,
+      );
+    }
     return c.json({ error: { code: "internal", message: "Internal server error" } }, 500);
   });
 }

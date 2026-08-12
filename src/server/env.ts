@@ -49,6 +49,11 @@ export type AppEnv = {
   Variables: {
     db: Db;
     auth?: AuthInfo;
+    // DEC-626: set by csrfForm/csrfFormOrHeader before any validation/throw
+    // -- marks the request as originating from a plain HTML form post, so
+    // registerErrorHandler renders a minimal HTML page (same status) instead
+    // of the JSON error envelope on a thrown ApiError.
+    htmlSurface?: boolean;
   };
 };
 
