@@ -23,8 +23,11 @@ function makeChain(rows: unknown[]) {
     innerJoin: () => chain,
     where: () => chain,
     orderBy: () => chain,
-    limit: async () => rows,
-    then: (resolve: (v: unknown[]) => void) => resolve(rows),
+    limit: () => chain,
+    offset: () => chain,
+    $dynamic: () => chain,
+    then: (resolve: (v: unknown[]) => void, reject?: (e: unknown) => void) =>
+      Promise.resolve(rows).then(resolve, reject),
   };
   return chain;
 }
@@ -177,13 +180,13 @@ describe("GET /api/v1/submissions/:id/revisions (DEC-158)", () => {
       { id: "rev-2", editorName: "organizer@example.com", title: "Edit Two Title", description: "d2", createdAt: new Date(2000) },
       { id: "rev-1", editorName: "organizer@example.com", title: "Edit One Title", description: "d1", createdAt: new Date(1000) },
     ];
-    const { db } = fakeDb([[SUBMISSION_ORG_A], items]);
+    const { db } = fakeDb([[SUBMISSION_ORG_A], items, [{ count: 2 }]]);
     const res = await appWithDbAndAuth(db, ORGANIZER_A).request(
       new Request("http://local/api/v1/submissions/sub-1/revisions"),
     );
     expect(res.status).toBe(200);
     const json = (await res.json()) as any;
-    expect(json).toMatchObject({ total: 2, page: 1, perPage: 2 });
+    expect(json).toMatchObject({ total: 2, page: 1, perPage: 200 });
     expect(json.items).toHaveLength(2);
   });
 
@@ -193,6 +196,23 @@ describe("GET /api/v1/submissions/:id/revisions (DEC-158)", () => {
       new Request("http://local/api/v1/submissions/sub-1/revisions"),
     );
     expect(res.status).toBe(403);
+  });
+
+  // DEC-460/461: the true row count (from countRevisions) is reported even
+  // when the caller requests a perPage far beyond MAX_PER_PAGE — the bound
+  // caps what's returned, not what's counted.
+  it("caps perPage at 200 (MAX_PER_PAGE) and reports the true total", async () => {
+    const items = [
+      { id: "rev-1", editorName: "organizer@example.com", title: "T", description: "d", createdAt: new Date(1000) },
+    ];
+    const { db } = fakeDb([[SUBMISSION_ORG_A], items, [{ count: 500 }]]);
+    const res = await appWithDbAndAuth(db, ORGANIZER_A).request(
+      new Request("http://local/api/v1/submissions/sub-1/revisions?perPage=100000"),
+    );
+    expect(res.status).toBe(200);
+    const json = (await res.json()) as any;
+    expect(json.perPage).toBe(200);
+    expect(json.total).toBe(500);
   });
 });
 

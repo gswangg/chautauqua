@@ -7,6 +7,7 @@ import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { newId } from "../../../domain/ids";
 import { submissionSeqSubquery } from "./seq";
+import { normalizeEmail } from "../../../domain/email";
 import { DEC_258, DEC_275 } from "../../../decisions";
 
 // Compile-checked dependency marker: createSubmission's participant insert
@@ -43,7 +44,7 @@ export async function findOrCreateContact(
   input: { email: string; firstName: string; lastName: string },
   now: Date,
 ): Promise<FoundOrCreatedContact> {
-  const email = input.email.trim().toLowerCase();
+  const email = normalizeEmail(input.email);
   const existing = await db
     .select({ id: schema.contact.id, title: schema.contact.title, company: schema.contact.company })
     .from(schema.contact)
