@@ -1,8 +1,9 @@
 // DEC-032 Settings panel: list/create/delete DEC-027 bearer API tokens.
 // The plaintext token is only ever returned once, at creation time.
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { apiList, apiPost, apiDelete, ApiError } from '../../lib/api';
 import { formatDateTime } from '../../lib/dates';
+import { copyText } from '../../lib/clipboard';
 
 interface ApiTokenItem {
   id: string;
@@ -23,6 +24,8 @@ export function ApiTokensPanel() {
   const [newName, setNewName] = useState('');
   const [creating, setCreating] = useState(false);
   const [revealedToken, setRevealedToken] = useState<string | null>(null);
+  const [copyResult, setCopyResult] = useState<{ ok: boolean; text: string } | null>(null);
+  const failedCopyRef = useRef<HTMLInputElement | null>(null);
 
   function load() {
     setLoading(true);
@@ -54,6 +57,22 @@ export function ApiTokensPanel() {
     }
   }
 
+  async function handleCopyToken() {
+    if (!revealedToken) return;
+    const ok = await copyText(revealedToken);
+    setCopyResult({ ok, text: revealedToken });
+    if (ok) {
+      window.setTimeout(() => setCopyResult(null), 2000);
+    }
+  }
+
+  useEffect(() => {
+    if (copyResult && !copyResult.ok) {
+      failedCopyRef.current?.focus();
+      failedCopyRef.current?.select();
+    }
+  }, [copyResult]);
+
   async function handleDelete(id: string) {
     setError(null);
     try {
@@ -75,9 +94,32 @@ export function ApiTokensPanel() {
         <div className="chq-token-reveal" role="alert">
           <strong>Copy this token now — it will not be shown again:</strong>
           <code>{revealedToken}</code>
-          <button type="button" className="chq-btn chq-btn-secondary" onClick={() => setRevealedToken(null)}>
+          <button type="button" className="chq-btn chq-btn-secondary" onClick={() => void handleCopyToken()}>
+            {copyResult?.ok ? 'Copied!' : 'Copy'}
+          </button>
+          <button
+            type="button"
+            className="chq-btn chq-btn-secondary"
+            onClick={() => {
+              setRevealedToken(null);
+              setCopyResult(null);
+            }}
+          >
             Done
           </button>
+          <div role="status" aria-live="polite" className="chq-copy-status">
+            {copyResult ? (copyResult.ok ? 'Copied' : 'Copy failed — select the text and copy it manually') : null}
+          </div>
+          {copyResult && !copyResult.ok ? (
+            <input
+              ref={failedCopyRef}
+              className="chq-input"
+              readOnly
+              value={copyResult.text}
+              onFocus={(e) => e.currentTarget.select()}
+              aria-label="API token to copy manually"
+            />
+          ) : null}
         </div>
       )}
 

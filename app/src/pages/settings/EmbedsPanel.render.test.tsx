@@ -51,6 +51,48 @@ describe('EmbedsPanel', () => {
     expect(screen.getByLabelText('Track ID')).toHaveClass('chq-input');
   });
 
+  it('announces a successful copy via the live status region (DEC-607)', async () => {
+    mockEvent();
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } });
+    render(<EmbedsPanel />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/^<iframe/)).toBeInTheDocument();
+    });
+
+    const status = screen.getByRole('status');
+    expect(status).toHaveAttribute('aria-live', 'polite');
+    expect(status).toHaveTextContent('');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Copy snippet' }));
+
+    await waitFor(() => {
+      expect(status).toHaveTextContent('Copied');
+    });
+  });
+
+  it('announces a failed copy and exposes the text in a focusable manual-copy field', async () => {
+    mockEvent();
+    const writeText = vi.fn().mockRejectedValue(new Error('denied'));
+    vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } });
+    render(<EmbedsPanel />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/^<iframe/)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Copy snippet' }));
+
+    const status = screen.getByRole('status');
+    await waitFor(() => {
+      expect(status).toHaveTextContent('Copy failed — select the text and copy it manually');
+    });
+
+    const manualField = screen.getByLabelText('Snippet to copy manually') as HTMLInputElement;
+    expect(manualField).toHaveFocus();
+  });
+
   it('updates the snippet when the format changes to link', async () => {
     mockEvent();
     render(<EmbedsPanel />);

@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { apiDelete, apiGet, apiList, apiPatch, apiPost, ApiError } from '../../lib/api';
 import { dateInputToMs, msToDateInput } from '../../lib/dates';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
+import { copyText } from '../../lib/clipboard';
 import { addCriterion, removeCriterion, updateCriterion, validateCriteriaList, validatePlanDraft } from './planForm';
 import './review.css';
 import {
@@ -249,6 +250,8 @@ export function PlanEditor() {
   const [newReviewerEmail, setNewReviewerEmail] = useState('');
   const [creatingReviewer, setCreatingReviewer] = useState(false);
   const [revealedPassword, setRevealedPassword] = useState<string | null>(null);
+  const [copyResult, setCopyResult] = useState<{ ok: boolean; text: string } | null>(null);
+  const failedCopyRef = useRef<HTMLInputElement | null>(null);
   // DEC-215: tracks the userId whose "Reset password" request is in flight,
   // so only that row's button disables (pattern: creatingReviewer above).
   const [resettingUserId, setResettingUserId] = useState<string | null>(null);
@@ -288,14 +291,21 @@ export function PlanEditor() {
     }
   }
 
-  function copyRevealedPassword() {
-    if (revealedPassword && navigator.clipboard) {
-      navigator.clipboard.writeText(revealedPassword).catch(() => {
-        // Clipboard access can be denied by the browser; the password is
-        // still visible on-screen for manual copy.
-      });
+  async function copyRevealedPassword() {
+    if (!revealedPassword) return;
+    const ok = await copyText(revealedPassword);
+    setCopyResult({ ok, text: revealedPassword });
+    if (ok) {
+      window.setTimeout(() => setCopyResult(null), 2000);
     }
   }
+
+  useEffect(() => {
+    if (copyResult && !copyResult.ok) {
+      failedCopyRef.current?.focus();
+      failedCopyRef.current?.select();
+    }
+  }, [copyResult]);
 
   async function postReviewerAssignment(body: { userId: string; trackId?: string; submissionId?: string }) {
     const created = await apiPost<PlanReviewer>(`/plans/${planId}/reviewers`, body);
@@ -755,12 +765,36 @@ export function PlanEditor() {
               <div className="chq-review-token-reveal" role="alert">
                 <strong>Copy this password now — it will not be shown again:</strong>
                 <code>{revealedPassword}</code>
-                <button type="button" className="chq-btn chq-btn-secondary" onClick={copyRevealedPassword}>
-                  Copy
+                <button type="button" className="chq-btn chq-btn-secondary" onClick={() => void copyRevealedPassword()}>
+                  {copyResult?.ok ? 'Copied!' : 'Copy'}
                 </button>
-                <button type="button" className="chq-btn chq-btn-tertiary" onClick={() => setRevealedPassword(null)}>
+                <button
+                  type="button"
+                  className="chq-btn chq-btn-tertiary"
+                  onClick={() => {
+                    setRevealedPassword(null);
+                    setCopyResult(null);
+                  }}
+                >
                   Done
                 </button>
+                <div role="status" aria-live="polite" className="chq-copy-status">
+                  {copyResult
+                    ? copyResult.ok
+                      ? 'Copied'
+                      : 'Copy failed — select the text and copy it manually'
+                    : null}
+                </div>
+                {copyResult && !copyResult.ok ? (
+                  <input
+                    ref={failedCopyRef}
+                    className="chq-input"
+                    readOnly
+                    value={copyResult.text}
+                    onFocus={(e) => e.currentTarget.select()}
+                    aria-label="Reviewer password to copy manually"
+                  />
+                ) : null}
               </div>
             )}
 

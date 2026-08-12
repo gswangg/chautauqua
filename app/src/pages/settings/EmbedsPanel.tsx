@@ -3,9 +3,10 @@
 // field selection) and a branding accent, then copies the resulting URL or
 // snippet. Every knob maps 1:1 onto the query-param contract fixed in
 // decisions/DEC-289.md via embedSnippet.ts's pure builders.
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { apiGet, ApiError } from '../../lib/api';
+import { copyText } from '../../lib/clipboard';
 import {
   buildEmbedUrl,
   buildSnippet,
@@ -37,7 +38,10 @@ export function EmbedsPanel() {
   const { eventId, loading: eventLoading, error: eventError } = useCurrentEvent();
   const [event, setEvent] = useState<EventDetail | null>(null);
   const [loadError, setLoadError] = useState<string | undefined>(undefined);
-  const [copied, setCopied] = useState(false);
+  const [copyResult, setCopyResult] = useState<{ target: 'url' | 'snippet'; ok: boolean; text: string } | null>(
+    null,
+  );
+  const failedCopyRef = useRef<HTMLInputElement | null>(null);
 
   const [surface, setSurface] = useState<EmbedSurface>('sessions');
   const [format, setFormat] = useState<EmbedFormat>('iframe');
@@ -69,11 +73,20 @@ export function EmbedsPanel() {
     );
   }
 
-  async function handleCopy(text: string) {
-    await navigator.clipboard.writeText(text);
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 2000);
+  async function handleCopy(target: 'url' | 'snippet', text: string) {
+    const ok = await copyText(text);
+    setCopyResult({ target, ok, text });
+    if (ok) {
+      window.setTimeout(() => setCopyResult((current) => (current?.target === target ? null : current)), 2000);
+    }
   }
+
+  useEffect(() => {
+    if (copyResult && !copyResult.ok) {
+      failedCopyRef.current?.focus();
+      failedCopyRef.current?.select();
+    }
+  }, [copyResult]);
 
   const knobs = EMBED_KNOBS_BY_SURFACE[surface];
 
@@ -204,13 +217,37 @@ export function EmbedsPanel() {
               <strong>URL</strong>
             </p>
             <code>{url}</code>
+            <button type="button" className="chq-btn chq-btn-secondary" onClick={() => void handleCopy('url', url)}>
+              {copyResult?.target === 'url' && copyResult.ok ? 'Copied!' : 'Copy URL'}
+            </button>
             <p>
               <strong>Snippet</strong>
             </p>
             <code>{snippet}</code>
-            <button type="button" className="chq-btn chq-btn-primary" onClick={() => handleCopy(snippet)}>
-              {copied ? 'Copied!' : 'Copy snippet'}
+            <button
+              type="button"
+              className="chq-btn chq-btn-primary"
+              onClick={() => void handleCopy('snippet', snippet)}
+            >
+              {copyResult?.target === 'snippet' && copyResult.ok ? 'Copied!' : 'Copy snippet'}
             </button>
+            <div role="status" aria-live="polite" className="chq-copy-status">
+              {copyResult
+                ? copyResult.ok
+                  ? 'Copied'
+                  : 'Copy failed — select the text and copy it manually'
+                : null}
+            </div>
+            {copyResult && !copyResult.ok ? (
+              <input
+                ref={failedCopyRef}
+                className="chq-input"
+                readOnly
+                value={copyResult.text}
+                onFocus={(e) => e.currentTarget.select()}
+                aria-label={`${copyResult.target === 'url' ? 'URL' : 'Snippet'} to copy manually`}
+              />
+            ) : null}
             <p className="chq-embeds-note">
               This embed is chromeless and needs no login — anyone with the URL can view it.
             </p>

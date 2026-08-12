@@ -3,10 +3,11 @@
 // tracks -- via the landed w2-c forms API. Field editing stays in the
 // dedicated form builder (/admin/submissions/forms); this panel only
 // links there rather than re-implementing it. Zero new server endpoints.
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { apiGet, apiList, apiPatch, ApiError } from '../../lib/api';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { dateInputToMs, msToDateInput } from '../../lib/dates';
+import { copyText } from '../../lib/clipboard';
 
 interface EventSummary {
   id: string;
@@ -40,7 +41,8 @@ export function CallForPapersPanel() {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [copyResult, setCopyResult] = useState<{ ok: boolean; text: string } | null>(null);
+  const failedCopyRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     if (!eventId) return;
@@ -90,10 +92,19 @@ export function CallForPapersPanel() {
   }
 
   async function handleCopyLink(publicLink: string) {
-    await navigator.clipboard.writeText(publicLink);
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 2000);
+    const ok = await copyText(publicLink);
+    setCopyResult({ ok, text: publicLink });
+    if (ok) {
+      window.setTimeout(() => setCopyResult(null), 2000);
+    }
   }
+
+  useEffect(() => {
+    if (copyResult && !copyResult.ok) {
+      failedCopyRef.current?.focus();
+      failedCopyRef.current?.select();
+    }
+  }, [copyResult]);
 
   const publicLink = event ? `${window.location.origin}/submit/${event.slug}` : '';
 
@@ -117,9 +128,22 @@ export function CallForPapersPanel() {
               Open
             </a>
             <button type="button" className="chq-link-button" onClick={() => void handleCopyLink(publicLink)}>
-              {copied ? 'Copied!' : 'Copy'}
+              {copyResult?.ok ? 'Copied!' : 'Copy'}
             </button>
           </div>
+          <div role="status" aria-live="polite" className="chq-copy-status">
+            {copyResult ? (copyResult.ok ? 'Copied' : 'Copy failed — select the text and copy it manually') : null}
+          </div>
+          {copyResult && !copyResult.ok ? (
+            <input
+              ref={failedCopyRef}
+              className="chq-input"
+              readOnly
+              value={copyResult.text}
+              onFocus={(e) => e.currentTarget.select()}
+              aria-label="Public link to copy manually"
+            />
+          ) : null}
         </div>
       ) : null}
 
