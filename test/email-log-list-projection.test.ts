@@ -112,7 +112,7 @@ describe("DEC-543: email-log list vs detail projection", () => {
       detailRow,
     });
 
-    const row = await getEmailLogById(db, "log-1");
+    const row = await getEmailLogById(db, "log-1", "org-1");
 
     const detailColumns = selectedColumnObjects[0]!;
     for (const field of RICH_FIELDS) {
