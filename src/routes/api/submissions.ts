@@ -37,7 +37,18 @@ import {
   setParticipantVisible,
 } from "../../server/repo/participants";
 import { findContactForOrg } from "../../server/repo/contacts";
-import { appendSubmissionRevision, getRevision, listRevisions } from "../../server/repo/revisions";
+import { appendSubmissionRevision, countRevisions, getRevision, listRevisions } from "../../server/repo/revisions";
+import { isValidEmail, normalizeEmail } from "../../domain/email";
+import { clampPage, clampPerPage } from "../../lib/pagination";
+import { DEC_460, DEC_461, DEC_462 } from "../../decisions";
+
+// Compile-checked dependency markers: the contact.email validation below
+// implements DEC-462; the revisions pagination below implements DEC-460/461.
+void DEC_460;
+void DEC_461;
+void DEC_462;
+
+const REVISIONS_DEFAULT_PER_PAGE = 200;
 
 export const submissionsRoutes = new Hono<AppEnv>();
 
@@ -104,13 +115,13 @@ submissionsRoutes.post("/events/:eventId/submissions", requireOrganizer, csrfJso
 
   let contact: { email: string; firstName: string; lastName: string } | null = null;
   if (body.contact) {
-    const email = typeof body.contact.email === "string" ? body.contact.email.trim() : "";
+    const rawEmail = typeof body.contact.email === "string" ? body.contact.email : "";
     const firstName = typeof body.contact.firstName === "string" ? body.contact.firstName.trim() : "";
     const lastName = typeof body.contact.lastName === "string" ? body.contact.lastName.trim() : "";
-    if (!email) {
-      throw new ApiError("invalid", "Contact email is required", { "contact.email": "Required" });
+    if (!isValidEmail(rawEmail)) {
+      throw new ApiError("invalid", "Validation failed", { "contact.email": "must be a valid email address" });
     }
-    contact = { email, firstName, lastName };
+    contact = { email: normalizeEmail(rawEmail), firstName, lastName };
   }
 
   const id = await createSubmission(c.var.db, eventId, auth.orgId, { title, description, contact });
@@ -200,8 +211,15 @@ submissionsRoutes.get("/submissions/:id/revisions", requireOrganizer, async (c) 
   if (!ownership) throw new ApiError("not_found", "Submission not found");
   if (ownership.orgId !== auth.orgId) throw new ApiError("forbidden", "Submission belongs to a different org");
 
-  const items = await listRevisions(c.var.db, id);
-  return c.json({ items, total: items.length, page: 1, perPage: items.length || 1 });
+  const page = clampPage(c.req.query("page"));
+  const perPage = c.req.query("perPage") ? clampPerPage(c.req.query("perPage")) : REVISIONS_DEFAULT_PER_PAGE;
+
+  const [items, total] = await Promise.all([
+    listRevisions(c.var.db, id, { limit: perPage, offset: (page - 1) * perPage }),
+    countRevisions(c.var.db, id),
+  ]);
+
+  return c.json({ items, total, page, perPage });
 });
 
 // POST /api/v1/submissions/:id/revisions/:revisionId/restore — organizer-only.

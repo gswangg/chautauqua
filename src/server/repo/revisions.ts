@@ -4,7 +4,7 @@
 // paths already hold the pre-edit values before calling
 // updateSubmissionFields/saveSubmissionEdits).
 
-import { and, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, sql } from "drizzle-orm";
 import * as schema from "../../db/schema";
 import type { Db } from "../context";
 import { newId } from "../../domain/ids";
@@ -40,9 +40,15 @@ export async function appendSubmissionRevision(db: Db, input: AppendRevisionInpu
   return id;
 }
 
-/** Newest-first history for a submission. */
-export async function listRevisions(db: Db, submissionId: string): Promise<RevisionSummary[]> {
-  const rows = await db
+/** Newest-first history for a submission. `page` (DEC-461) is optional —
+ * absent preserves today's unbounded behavior for internal callers; the
+ * route layer (src/routes/api/submissions.ts) always supplies it. */
+export async function listRevisions(
+  db: Db,
+  submissionId: string,
+  page?: { limit: number; offset: number },
+): Promise<RevisionSummary[]> {
+  let query = db
     .select({
       id: schema.submissionRevision.id,
       editorName: schema.submissionRevision.editorName,
@@ -52,7 +58,14 @@ export async function listRevisions(db: Db, submissionId: string): Promise<Revis
     })
     .from(schema.submissionRevision)
     .where(eq(schema.submissionRevision.submissionId, submissionId))
-    .orderBy(desc(schema.submissionRevision.createdAt));
+    .orderBy(desc(schema.submissionRevision.createdAt), asc(schema.submissionRevision.id))
+    .$dynamic();
+
+  if (page) {
+    query = query.limit(page.limit).offset(page.offset);
+  }
+
+  const rows = await query;
 
   return rows.map((r) => ({
     id: r.id,
@@ -61,6 +74,16 @@ export async function listRevisions(db: Db, submissionId: string): Promise<Revis
     description: r.description,
     createdAt: r.createdAt.getTime(),
   }));
+}
+
+/** Sibling of listRevisions (DEC-461): the true total row count, independent
+ * of any page bound. */
+export async function countRevisions(db: Db, submissionId: string): Promise<number> {
+  const rows = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(schema.submissionRevision)
+    .where(eq(schema.submissionRevision.submissionId, submissionId));
+  return Number(rows[0]?.count ?? 0);
 }
 
 /** A single revision, scoped to its submission (returns null if the
