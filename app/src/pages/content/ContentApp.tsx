@@ -1,12 +1,22 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { apiList, apiPost, ApiError } from '../../lib/api';
+import { apiGet, apiList, apiPost, ApiError } from '../../lib/api';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { DeliverableDetail } from './DeliverableDetail';
 import { FilesLibrary } from './FilesLibrary';
 import { SessionList, TAB_LABELS } from './SessionList';
 import { type ContentStatus, type ContentSubmissionListItem } from './types';
 import type { WorklistTab } from './worklist';
+
+// CNT-D1: shape carried by GET /api/v1/submissions/:id (SubmissionDetail in
+// src/server/repo/submissions/detail.ts) — only the fields DeliverableDetail
+// actually needs, since a submission opened from the Files library is almost
+// never present in the current worklist page.
+interface SubmissionLookup {
+  id: string;
+  title: string;
+  contentStatus: ContentStatus;
+}
 
 type ContentView = 'worklist' | 'files';
 
@@ -57,6 +67,35 @@ export function ContentApp() {
   useEffect(() => {
     loadWorklist();
   }, [loadWorklist]);
+
+  // CNT-D1: the worklist's current page almost never contains the submission
+  // a Files-library click resolves to (different sort, different tab filter,
+  // possibly a different page) — so a submissionId not in `items` must be
+  // fetched directly rather than silently falling through to the list.
+  const [fetchedSubmission, setFetchedSubmission] = useState<SubmissionLookup | null>(null);
+  const [fetchedSubmissionId, setFetchedSubmissionId] = useState<string | null>(null);
+  const [submissionFetchLoading, setSubmissionFetchLoading] = useState(false);
+  const [submissionFetchError, setSubmissionFetchError] = useState<'not_found' | 'other' | null>(null);
+
+  const worklistMatch = submissionId ? items.find((i) => i.id === submissionId) : undefined;
+
+  useEffect(() => {
+    if (!submissionId || worklistMatch) return;
+    if (fetchedSubmissionId === submissionId) return;
+    setSubmissionFetchLoading(true);
+    setSubmissionFetchError(null);
+    apiGet<SubmissionLookup>(`/submissions/${submissionId}`)
+      .then((detail) => {
+        setFetchedSubmission(detail);
+        setFetchedSubmissionId(submissionId);
+      })
+      .catch((err) => {
+        setFetchedSubmission(null);
+        setFetchedSubmissionId(submissionId);
+        setSubmissionFetchError(err instanceof ApiError && err.status === 404 ? 'not_found' : 'other');
+      })
+      .finally(() => setSubmissionFetchLoading(false));
+  }, [submissionId, worklistMatch, fetchedSubmissionId]);
 
   function selectSubmission(id: string) {
     setSearchParams((prev) => {
@@ -161,7 +200,8 @@ export function ContentApp() {
     );
   }
 
-  const selected = submissionId ? items.find((i) => i.id === submissionId) : undefined;
+  const selected: SubmissionLookup | undefined =
+    worklistMatch ?? (submissionId && fetchedSubmissionId === submissionId ? (fetchedSubmission ?? undefined) : undefined);
 
   return (
     <div className="chq-page chq-content-page">
@@ -212,6 +252,17 @@ export function ContentApp() {
           onContentStatusChange={onContentStatusChange}
           onUploaded={() => setFilesReloadKey((k) => k + 1)}
         />
+      ) : submissionId && submissionFetchLoading ? (
+        <p>Loading submission...</p>
+      ) : submissionId && submissionFetchError ? (
+        <div className="chq-error" role="alert">
+          {submissionFetchError === 'not_found' ? 'Submission not found.' : 'Failed to load submission.'}
+        </div>
+      ) : submissionId ? (
+        // A submissionId is present but not yet resolved (fetch not yet
+        // kicked off / in flight before submissionFetchLoading is set) —
+        // never fall through to the list view underneath it.
+        <p>Loading submission...</p>
       ) : view === 'files' ? (
         <FilesLibrary key={filesReloadKey} eventId={eventId} onSelectSubmission={selectSubmission} />
       ) : (

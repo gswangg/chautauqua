@@ -9,7 +9,7 @@ import { cleanup, render, screen, waitFor, fireEvent } from '@testing-library/re
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { ContentApp } from './ContentApp';
-import { listEnvelope, mockApi } from '../../test-utils/mockApi';
+import { errorEnvelope, listEnvelope, mockApi } from '../../test-utils/mockApi';
 
 const EVENT_ID = 'evt-content-render-1';
 
@@ -208,5 +208,130 @@ describe('ContentApp: fresh loads on view switch and explicit refresh', () => {
     await waitFor(() => {
       expect(filesMock).toHaveBeenCalledTimes(2);
     });
+  });
+});
+
+// CNT-D1: a submission opened from the Files library is almost never in the
+// current worklist page (different sort/tab/page) — the old code silently
+// no-opped instead of opening the drill-in. selectSubmission must fetch the
+// submission directly when it isn't already present in `items`.
+describe('ContentApp: Files-library drill-in fetches an out-of-page submission (CNT-D1)', () => {
+  it('renders the deliverable detail for a submissionId not present in the worklist page', async () => {
+    const submissionMock = vi.fn(() => ({
+      id: 'sub-99',
+      eventId: EVENT_ID,
+      ref: 'S-099',
+      title: 'Off-Page Talk',
+      description: null,
+      status: 'accepted',
+      contentStatus: 'approved',
+      trackId: null,
+      trackIds: [],
+      formId: null,
+      acceptedAt: null,
+      icsSequence: 0,
+      createdAt: 1700000000000,
+      updatedAt: 1700000000000,
+      participants: [],
+      answers: {},
+    }));
+    mockApi({
+      // The worklist page (default tab) never contains sub-99.
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([]),
+      [`GET /api/v1/submissions/sub-99`]: submissionMock,
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/?view=files&submissionId=sub-99']}>
+        <ContentApp />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText('Loading submission...')).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Off-Page Talk' })).toBeInTheDocument();
+    });
+    expect(screen.getByRole('button', { name: /Back to worklist/ })).toBeInTheDocument();
+    expect(submissionMock).toHaveBeenCalledTimes(1);
+
+    // A rerender (e.g. from the worklist poll finishing) must not re-fire
+    // the fetch for the same id.
+    await waitFor(() => {
+      expect(submissionMock).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('renders a loud not-found error instead of the list when the submission fetch 404s', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([]),
+      [`GET /api/v1/submissions/sub-missing`]: { status: 404, body: errorEnvelope('not_found', 'Submission not found') },
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/?view=files&submissionId=sub-missing']}>
+        <ContentApp />
+      </MemoryRouter>,
+    );
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('Submission not found.');
+    expect(alert).toHaveClass('chq-error');
+
+    // Must never fall through to rendering the Files/worklist views.
+    expect(screen.queryByRole('tab', { name: 'Worklist' })).not.toBeInTheDocument();
+    expect(screen.queryByTestId('files-library')).not.toBeInTheDocument();
+  });
+
+  it('reaches the deliverable detail by clicking a Files-library "Open ... versions and comments" button', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([]),
+      [`GET /api/v1/events/${EVENT_ID}/files`]: listEnvelope([
+        {
+          rootFileId: 'file-v1',
+          latestFileId: 'file-v2',
+          filename: 'slides.pdf',
+          kind: 'presentation',
+          submissionId: 'sub-99',
+          submissionRef: 'S-099',
+          submissionTitle: 'Off-Page Talk',
+          speakerName: 'Priya Raman',
+          uploadedAt: 1700000000000,
+          versionCount: 2,
+        },
+      ]),
+      [`GET /api/v1/submissions/sub-99`]: {
+        id: 'sub-99',
+        eventId: EVENT_ID,
+        ref: 'S-099',
+        title: 'Off-Page Talk',
+        description: null,
+        status: 'accepted',
+        contentStatus: 'approved',
+        trackId: null,
+        trackIds: [],
+        formId: null,
+        acceptedAt: null,
+        icsSequence: 0,
+        createdAt: 1700000000000,
+        updatedAt: 1700000000000,
+        participants: [],
+        answers: {},
+      },
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/?view=files']}>
+        <ContentApp />
+      </MemoryRouter>,
+    );
+
+    const openButtons = await screen.findAllByRole('button', { name: 'Open slides.pdf versions and comments' });
+    fireEvent.click(openButtons[0]!);
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Off-Page Talk' })).toBeInTheDocument();
+    });
+    expect(screen.getByRole('button', { name: /Back to worklist/ })).toBeInTheDocument();
   });
 });
