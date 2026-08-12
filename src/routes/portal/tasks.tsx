@@ -58,7 +58,7 @@ import {
   CSRF_COOKIE_NAME,
 } from "../../auth/cookies";
 import { DEC_016, DEC_020, DEC_023, DEC_028, DEC_029, DEC_240, DEC_242, DEC_244 } from "../../decisions";
-import { formatEventDate, formatEventDateTime } from "../../lib/event-time";
+import { formatCalendarDate, formatEventDate, formatEventDateTime } from "../../lib/event-time";
 
 export const portalTasksRoutes = new Hono<AppEnv>();
 
@@ -161,7 +161,7 @@ function TaskRow(props: {
           {t.status === "complete" ? "Completed" : "Pending"}
         </span>
       </div>
-      {t.dueDate ? <span class="chq-portal-due">Due {formatEventDate(t.dueDate, t.timezone)}</span> : null}
+      {t.dueDate ? <span class="chq-portal-due">Due {formatCalendarDate(t.dueDate)}</span> : null}
       {t.description ? <p class="chq-portal-detail">{t.description}</p> : null}
       {error ? (
         <p role="alert" class="field-error">
@@ -279,7 +279,7 @@ function TasksPage(props: {
                 </span>
                 <span class="chq-flag">Pending</span>
               </div>
-              {t.dueDate ? <span class="chq-portal-due">Due {formatEventDate(t.dueDate, t.timezone)}</span> : null}
+              {t.dueDate ? <span class="chq-portal-due">Due {formatCalendarDate(t.dueDate)}</span> : null}
               <div class="chq-portal-actions">
                 <a href={formLinkFor(t) ?? "#"} class="chq-btn chq-btn-primary">Fill out form</a>
               </div>

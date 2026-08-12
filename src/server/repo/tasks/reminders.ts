@@ -11,7 +11,7 @@ import type { Mailer } from "../../../mail/types";
 import { renderTemplate, textToHtml } from "../../../mail/render";
 import type { ReminderAssignment } from "../../../domain/reminders";
 import { capReminderGroups, planManualReminders, planReminders } from "../../../domain/reminders";
-import { formatEventDate } from "../../../lib/event-time";
+import { formatCalendarDate } from "../../../lib/event-time";
 
 interface OutstandingRow {
   assignmentId: string;
@@ -90,7 +90,11 @@ export function buildReminderMessage(
   });
   const taskLines = assignments.map((a) => {
     if (a.dueDate === null) return `- ${a.taskTitle} — No due date`;
-    return `- ${a.taskTitle} — due ${formatEventDate(a.dueDate, eventTimezone)}`;
+    // DEC-522: dueDate is a day label (UTC-midnight), not an instant — it
+    // renders as the same calendar day for every reader regardless of the
+    // event's timezone, so eventTimezone is unused here (kept in the
+    // signature; still used by callers for other purposes).
+    return `- ${a.taskTitle} — due ${formatCalendarDate(a.dueDate)}`;
   });
   const text = [header, ...taskLines].join("\n");
   return { subject: `Action needed: outstanding tasks for ${eventName}`, text };

@@ -55,3 +55,27 @@ export function formatEventDate(ms: number, timeZone: string): string {
   }
   return formatter.format(new Date(ms));
 }
+
+/** Formats a UTC-midnight day label (epoch ms) as a date-only string, e.g.
+ * "Sun, 01 Mar 2026" — DEC-522: a date-only value (task due date, etc.) is a
+ * CALENDAR DAY, not an instant. It must render as the same day everywhere,
+ * regardless of viewer or event timezone, so this takes NO timezone
+ * parameter and always reads the UTC calendar fields of `ms` (the value is
+ * expected to already be UTC-midnight for that day). Use this ONLY for day
+ * labels. True instants (createdAt, sentAt, submittedAt, uploadedAt) must
+ * keep using formatEventDate/formatEventDateTime, which render in the
+ * owning event's IANA timezone. Throws on a NaN/non-finite `ms`, matching
+ * the fail-loudly contract of its neighbours above. */
+export function formatCalendarDate(ms: number): string {
+  if (!Number.isFinite(ms)) {
+    throw new Error("formatCalendarDate: ms must be a finite number");
+  }
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: "UTC",
+    weekday: "short",
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+  return formatter.format(new Date(ms));
+}
