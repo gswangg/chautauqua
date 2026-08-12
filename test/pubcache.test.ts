@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   CLIENT_CACHE_CONTROL,
   PUBVER_KEY,
+  affectsPublicOutput,
   bumpIfMutating,
   bumpPublicVersionMiddleware,
   isUncacheableIcsRequest,
@@ -172,7 +173,7 @@ describe("servePublicGet", () => {
     await servePublicGet(cache, kv, req(), next);
     expect(calls).toBe(1);
 
-    await bumpIfMutating(kv, "POST", 200);
+    await bumpIfMutating(kv, "POST", "/api/v1/contacts", 200);
 
     const afterBump = await servePublicGet(cache, kv, req(), next);
     expect(calls).toBe(2);
@@ -183,44 +184,44 @@ describe("servePublicGet", () => {
 describe("bumpIfMutating", () => {
   it("bumps on a successful POST", async () => {
     const kv = fakeKv();
-    await bumpIfMutating(kv, "POST", 200);
+    await bumpIfMutating(kv, "POST", "/api/v1/contacts", 200);
     expect(kv.store[PUBVER_KEY]).toBeTruthy();
   });
 
   it("does not bump on GET", async () => {
     const kv = fakeKv();
-    await bumpIfMutating(kv, "GET", 200);
+    await bumpIfMutating(kv, "GET", "/api/v1/contacts", 200);
     expect(kv.store[PUBVER_KEY]).toBeUndefined();
   });
 
   it("does not bump on HEAD or OPTIONS", async () => {
     const kv = fakeKv();
-    await bumpIfMutating(kv, "HEAD", 200);
-    await bumpIfMutating(kv, "OPTIONS", 200);
+    await bumpIfMutating(kv, "HEAD", "/api/v1/contacts", 200);
+    await bumpIfMutating(kv, "OPTIONS", "/api/v1/contacts", 200);
     expect(kv.store[PUBVER_KEY]).toBeUndefined();
   });
 
   it("does not bump when status >= 400", async () => {
     const kv = fakeKv();
-    await bumpIfMutating(kv, "PUT", 400);
-    await bumpIfMutating(kv, "DELETE", 500);
+    await bumpIfMutating(kv, "PUT", "/api/v1/contacts", 400);
+    await bumpIfMutating(kv, "DELETE", "/api/v1/contacts", 500);
     expect(kv.store[PUBVER_KEY]).toBeUndefined();
   });
 
   it("mutation bump only fires on non-GET success (integration-style check)", async () => {
     const kv = fakeKv();
-    await bumpIfMutating(kv, "GET", 200);
-    await bumpIfMutating(kv, "POST", 404);
+    await bumpIfMutating(kv, "GET", "/api/v1/contacts", 200);
+    await bumpIfMutating(kv, "POST", "/api/v1/contacts", 404);
     expect(kv.store[PUBVER_KEY]).toBeUndefined();
-    await bumpIfMutating(kv, "POST", 201);
+    await bumpIfMutating(kv, "POST", "/api/v1/contacts", 201);
     expect(kv.store[PUBVER_KEY]).toBeTruthy();
   });
 
   it("uses a random token, not a counter (two bumps differ)", async () => {
     const kv = fakeKv();
-    await bumpIfMutating(kv, "POST", 200);
+    await bumpIfMutating(kv, "POST", "/api/v1/contacts", 200);
     const first = kv.store[PUBVER_KEY];
-    await bumpIfMutating(kv, "POST", 200);
+    await bumpIfMutating(kv, "POST", "/api/v1/contacts", 200);
     const second = kv.store[PUBVER_KEY];
     expect(first).not.toBe(second);
   });
@@ -278,7 +279,7 @@ describe("publicCacheMiddleware: schedule.ics (DEC-442)", () => {
     await app.request("/e/foo/schedule.ics", {}, env);
     expect(getCalls()).toBe(1);
 
-    await bumpIfMutating(kv, "POST", 200);
+    await bumpIfMutating(kv, "POST", "/api/v1/contacts", 200);
 
     const afterBump = await app.request("/e/foo/schedule.ics", {}, env);
     expect(getCalls()).toBe(2);
@@ -348,5 +349,110 @@ describe("bumpPublicVersionMiddleware (DEC-427)", () => {
 
     expect(res.status).toBe(500);
     expect(await res.text()).toContain("requires the KV binding");
+  });
+});
+
+describe("affectsPublicOutput (DEC-627)", () => {
+  it("is always false for GET/HEAD/OPTIONS, regardless of path", () => {
+    expect(affectsPublicOutput("GET", "/api/v1/events/e1/submissions/status")).toBe(false);
+    expect(affectsPublicOutput("HEAD", "/portal/profile")).toBe(false);
+    expect(affectsPublicOutput("OPTIONS", "/login")).toBe(false);
+  });
+
+  it("NEVER-PUBLIC: login/logout/claim/account/tokens/views/plans/review/templates/tasks/users never bump", () => {
+    expect(affectsPublicOutput("POST", "/login")).toBe(false);
+    expect(affectsPublicOutput("POST", "/logout")).toBe(false);
+    expect(affectsPublicOutput("POST", "/claim/tok123")).toBe(false);
+    expect(affectsPublicOutput("POST", "/account/password")).toBe(false);
+    expect(affectsPublicOutput("DELETE", "/api/v1/tokens/t1")).toBe(false);
+    expect(affectsPublicOutput("DELETE", "/api/v1/views/v1")).toBe(false);
+    expect(affectsPublicOutput("POST", "/api/v1/events/e1/views")).toBe(false);
+    expect(affectsPublicOutput("PATCH", "/api/v1/plans/p1")).toBe(false);
+    expect(affectsPublicOutput("POST", "/api/v1/events/e1/plans")).toBe(false);
+    expect(affectsPublicOutput("PUT", "/api/v1/review/plans/p1/evaluations/s1")).toBe(false);
+    expect(affectsPublicOutput("DELETE", "/api/v1/review/plans/p1/recusals/s1")).toBe(false);
+    expect(affectsPublicOutput("PATCH", "/api/v1/templates/t1")).toBe(false);
+    expect(affectsPublicOutput("POST", "/api/v1/events/e1/compose/send")).toBe(false);
+    expect(affectsPublicOutput("POST", "/api/v1/contacts/bulk-email")).toBe(false);
+    expect(affectsPublicOutput("POST", "/api/v1/segments")).toBe(false);
+    expect(affectsPublicOutput("PATCH", "/api/v1/pipeline/p1")).toBe(false);
+    expect(affectsPublicOutput("POST", "/api/v1/events/e1/tasks")).toBe(false);
+    expect(affectsPublicOutput("PATCH", "/api/v1/tasks/t1")).toBe(false);
+    expect(affectsPublicOutput("PATCH", "/api/v1/task-assignments/a1")).toBe(false);
+    expect(affectsPublicOutput("POST", "/api/v1/events/e1/onboarding/remind")).toBe(false);
+    expect(affectsPublicOutput("PUT", "/api/v1/events/e1/portal-settings")).toBe(false);
+    expect(affectsPublicOutput("POST", "/api/v1/events/e1/resources")).toBe(false);
+    expect(affectsPublicOutput("DELETE", "/api/v1/resources/r1")).toBe(false);
+    expect(affectsPublicOutput("POST", "/api/v1/files/f1/comments")).toBe(false);
+    expect(affectsPublicOutput("POST", "/api/v1/events/e1/files/archive")).toBe(false);
+    expect(affectsPublicOutput("POST", "/api/v1/submissions/s1/files")).toBe(false);
+    expect(affectsPublicOutput("PATCH", "/api/v1/forms/f1")).toBe(false);
+    expect(affectsPublicOutput("DELETE", "/api/v1/fields/fl1")).toBe(false);
+    expect(affectsPublicOutput("POST", "/api/v1/users")).toBe(false);
+    expect(affectsPublicOutput("POST", "/portal/tasks/a1/complete")).toBe(false);
+  });
+
+  it("PUBLIC-AFFECTING: events/tracks/rooms/submissions/agenda/contacts/portal-submission writes bump", () => {
+    expect(affectsPublicOutput("POST", "/api/v1/events")).toBe(true);
+    expect(affectsPublicOutput("PATCH", "/api/v1/tracks/t1")).toBe(true);
+    expect(affectsPublicOutput("POST", "/api/v1/events/e1/rooms")).toBe(true);
+    expect(affectsPublicOutput("PATCH", "/api/v1/submissions/s1")).toBe(true);
+    expect(affectsPublicOutput("POST", "/api/v1/submissions/s1/clone")).toBe(true);
+    expect(affectsPublicOutput("POST", "/api/v1/events/e1/submissions/status")).toBe(true);
+    expect(affectsPublicOutput("POST", "/api/v1/submissions/s1/content-status")).toBe(true);
+    expect(affectsPublicOutput("PUT", "/api/v1/submissions/s1/slot")).toBe(true);
+    expect(affectsPublicOutput("POST", "/api/v1/events/e1/agenda/publish")).toBe(true);
+    expect(affectsPublicOutput("POST", "/api/v1/events/e1/agenda/auto-schedule")).toBe(true);
+    expect(affectsPublicOutput("POST", "/api/v1/contacts/c1/headshot")).toBe(true);
+    expect(affectsPublicOutput("POST", "/api/v1/contacts/import")).toBe(true);
+    expect(affectsPublicOutput("POST", "/api/v1/contacts/merge")).toBe(true);
+    expect(affectsPublicOutput("POST", "/api/v1/contacts/c1/add-to-event")).toBe(true);
+    expect(affectsPublicOutput("POST", "/portal/submissions/s1/edit")).toBe(true);
+    expect(affectsPublicOutput("POST", "/portal/profile")).toBe(true);
+    expect(affectsPublicOutput("POST", "/portal/invitations/p1")).toBe(true);
+  });
+
+  it("fail-safe: an unclassified mutating path bumps by default", () => {
+    expect(affectsPublicOutput("POST", "/api/v1/some-new-endpoint-nobody-classified-yet")).toBe(true);
+  });
+});
+
+describe("DEC-627: publish-affecting classification through the real middleware", () => {
+  function buildApp(kv: KVStore) {
+    const app = new Hono<AppEnv>();
+    app.use("*", bumpPublicVersionMiddleware);
+    app.post("/login", (c) => c.text("ok", 200));
+    app.put("/api/v1/review/plans/:planId/evaluations/:submissionId", (c) => c.text("ok", 200));
+    app.post("/api/v1/events/:eventId/submissions/status", (c) => c.text("ok", 200));
+    app.post("/portal/profile", (c) => c.text("ok", 200));
+    return { app, env: { KV: kv } as unknown as AppEnv["Bindings"] };
+  }
+
+  it("POST /login leaves chq:pubver untouched", async () => {
+    const kv = fakeKv({ [PUBVER_KEY]: "v0" });
+    const { app, env } = buildApp(kv);
+    await app.request("/login", { method: "POST" }, env);
+    expect(kv.store[PUBVER_KEY]).toBe("v0");
+  });
+
+  it("a reviewer evaluation PUT leaves chq:pubver untouched", async () => {
+    const kv = fakeKv({ [PUBVER_KEY]: "v0" });
+    const { app, env } = buildApp(kv);
+    await app.request("/api/v1/review/plans/p1/evaluations/s1", { method: "PUT" }, env);
+    expect(kv.store[PUBVER_KEY]).toBe("v0");
+  });
+
+  it("a submission status write bumps chq:pubver", async () => {
+    const kv = fakeKv({ [PUBVER_KEY]: "v0" });
+    const { app, env } = buildApp(kv);
+    await app.request("/api/v1/events/e1/submissions/status", { method: "POST" }, env);
+    expect(kv.store[PUBVER_KEY]).not.toBe("v0");
+  });
+
+  it("a portal profile save bumps chq:pubver", async () => {
+    const kv = fakeKv({ [PUBVER_KEY]: "v0" });
+    const { app, env } = buildApp(kv);
+    await app.request("/portal/profile", { method: "POST" }, env);
+    expect(kv.store[PUBVER_KEY]).not.toBe("v0");
   });
 });

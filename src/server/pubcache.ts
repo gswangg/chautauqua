@@ -31,6 +31,9 @@
 import type { Context, Next } from "hono";
 import type { AppEnv } from "./env";
 import type { KVStore } from "../lib/draft";
+import { DEC_627 } from "../decisions";
+
+void DEC_627;
 
 export const PUBVER_KEY = "chq:pubver";
 
@@ -110,13 +113,151 @@ export async function servePublicGet(
   return response;
 }
 
-/** After any successful (status < 400) non-GET/HEAD/OPTIONS request, bump
- * the public version to a fresh random token — never a counter, per
- * DEC-083 (race-proof: no lost-update window from concurrent bumps). */
-export async function bumpIfMutating(kv: KVStore, method: string, status: number): Promise<void> {
+/** DEC-627: a single path pattern in one of the two closed lists below.
+ * `:seg` matches exactly one non-empty path segment; a trailing `*`
+ * (whether or not preceded by `/`) matches any suffix (including none) —
+ * i.e. it's a plain string-prefix match on the pattern with the `*`
+ * stripped. Every other segment must match literally. */
+type PathPattern = string;
+
+function matchPattern(pattern: PathPattern, path: string): boolean {
+  const isWildcard = pattern.endsWith("*");
+  let corePattern = isWildcard ? pattern.slice(0, -1) : pattern;
+  // A trailing "/*" (e.g. "/api/v1/tasks/*") leaves a dangling "/" once the
+  // "*" is stripped ("/api/v1/tasks/") — drop it so segment-splitting lines
+  // up 1:1 with a bare "/api/v1/tokens*" (no slash before the "*").
+  if (isWildcard && corePattern.endsWith("/") && corePattern !== "/") corePattern = corePattern.slice(0, -1);
+  const patternSegs = corePattern.split("/");
+  const pathSegs = path.split("/");
+  if (isWildcard ? pathSegs.length < patternSegs.length : pathSegs.length !== patternSegs.length) return false;
+  return patternSegs.every((seg, i) => seg.startsWith(":") || seg === pathSegs[i]);
+}
+
+/** DEC-627: routes that never affect what /e/* or /embed/* render (the
+ * ONLY two cached public prefixes — src/routes/public/index.tsx:85-86;
+ * everything else, including /submit/* and /portal/* pages other than the
+ * ones below, is never cached in the first place). A bump here would be
+ * pure overhead, not a correctness bug, but keeping this list exhaustive
+ * (enforced by the source-scanning test) is what makes the PUBLIC-
+ * AFFECTING list trustworthy as "everything not here bumps".
+ *
+ * /api/v1/submissions/:id/files (raw attachment upload) is here, not in
+ * PUBLIC-AFFECTING: no public route ever renders a submission's files —
+ * only submission content-status (separately listed below, PUBLIC-
+ * AFFECTING) gates whether approved content is publicly visible.
+ * /api/v1/forms/* and /api/v1/fields/* (CFP form-builder) are here too:
+ * the /submit/:eventSlug page that renders them is never behind the
+ * cache (only /e/* and /embed/* are), so editing the form structure has
+ * nothing cached to invalidate. */
+const NEVER_PUBLIC: PathPattern[] = [
+  "/login",
+  "/logout",
+  "/claim/*",
+  "/account/*",
+  "/api/v1/tokens*",
+  "/api/v1/views*",
+  "/api/v1/events/:id/views",
+  "/api/v1/plans*",
+  "/api/v1/events/:id/plans",
+  "/api/v1/review/*",
+  "/api/v1/events/:id/templates",
+  "/api/v1/templates/*",
+  "/api/v1/events/:id/compose/*",
+  "/api/v1/contacts/bulk-email*",
+  "/api/v1/segments*",
+  "/api/v1/pipeline*",
+  "/api/v1/events/:id/tasks",
+  "/api/v1/tasks/*",
+  "/api/v1/task-assignments/*",
+  "/api/v1/events/:id/onboarding/*",
+  "/api/v1/events/:id/portal-settings",
+  "/api/v1/events/:id/resources",
+  "/api/v1/resources/*",
+  "/api/v1/files/:id/comments",
+  "/api/v1/events/:id/files/archive",
+  "/api/v1/submissions/:id/files",
+  "/api/v1/forms/*",
+  "/api/v1/fields/*",
+  "/api/v1/users*",
+  "/portal/tasks/*",
+  // /submit/:eventSlug[/save-draft] (public CFP submission create/draft) is
+  // never-public too: a freshly-created submission starts in a non-public
+  // status and only becomes visible once an organizer accepts it, which
+  // happens through /api/v1/events/:id/submissions/status (already
+  // PUBLIC-AFFECTING below) — the create/draft write itself never changes
+  // what any accepted/visible/approved row renders.
+  "/submit/*",
+];
+
+/** DEC-627: routes whose write can change what a subsequent GET to /e/*
+ * or /embed/* renders, so the version must bump. `/portal/invitations/*`
+ * (invitation accept/decline) is here, not omitted: accepting/declining
+ * writes participant.invite_status, and visibleParticipantConditions()
+ * (src/server/repo/public/gates.ts) gates public speaker visibility on
+ * invite_status IN ('none','accepted') — so this write can flip a
+ * speaker's public visibility directly. */
+const PUBLIC_AFFECTING: PathPattern[] = [
+  "/api/v1/events",
+  "/api/v1/events/:id",
+  "/api/v1/events/:id/tracks",
+  "/api/v1/tracks/:id",
+  "/api/v1/events/:id/rooms",
+  "/api/v1/rooms/:id",
+  "/api/v1/events/:id/submissions",
+  "/api/v1/events/:id/submissions/status",
+  "/api/v1/submissions/:id",
+  "/api/v1/submissions/:id/clone",
+  "/api/v1/submissions/:id/revisions/:revisionId/restore",
+  "/api/v1/submissions/:id/participants",
+  "/api/v1/submissions/:id/participants/:participantId",
+  "/api/v1/submissions/:id/content-status",
+  "/api/v1/events/:id/agenda/publish",
+  "/api/v1/events/:id/agenda/auto-schedule",
+  "/api/v1/submissions/:id/slot",
+  "/api/v1/contacts",
+  "/api/v1/contacts/:id",
+  "/api/v1/contacts/:id/headshot",
+  "/api/v1/contacts/:id/add-to-event",
+  "/api/v1/contacts/import",
+  "/api/v1/contacts/merge",
+  "/portal/submissions/*",
+  "/portal/profile",
+  "/portal/invitations/*",
+];
+
+/** DEC-627: GET/HEAD/OPTIONS never mutate, so they're always false without
+ * consulting either list. For any other method, the two closed lists
+ * above are consulted; anything matching neither BUMPS (fail-safe — a
+ * stale public page is worse than a cold cache). The source-scanning test
+ * in test/pubcache.test.ts requires every registered .post/.patch/.put/
+ * .delete route under src/routes/** to match exactly one of the two
+ * lists, so this fail-safe default is never exercised in practice. */
+export function affectsPublicOutput(method: string, path: string): boolean {
   const upper = method.toUpperCase();
-  if (upper === "GET" || upper === "HEAD" || upper === "OPTIONS") return;
+  if (upper === "GET" || upper === "HEAD" || upper === "OPTIONS") return false;
+  return classifyMutatingPath(path) !== "never-public";
+}
+
+/** Which of DEC-627's two closed lists a (non-GET/HEAD/OPTIONS) path
+ * matches — "unclassified" is the fail-safe-bump case that the source-
+ * scanning test (test/pubcache-purge-classification.test.ts) asserts
+ * never actually occurs for a real registered route. Exported (rather than
+ * inlined into affectsPublicOutput) so that test can tell "matched
+ * PUBLIC_AFFECTING" apart from "matched neither list" — both bump, but
+ * only the former is a closed-list member. */
+export function classifyMutatingPath(path: string): "never-public" | "public-affecting" | "unclassified" {
+  if (NEVER_PUBLIC.some((p) => matchPattern(p, path))) return "never-public";
+  if (PUBLIC_AFFECTING.some((p) => matchPattern(p, path))) return "public-affecting";
+  return "unclassified";
+}
+
+/** After any successful (status < 400) non-GET/HEAD/OPTIONS request whose
+ * path affectsPublicOutput (DEC-627), bump the public version to a fresh
+ * random token — never a counter, per DEC-083 (race-proof: no lost-update
+ * window from concurrent bumps). */
+export async function bumpIfMutating(kv: KVStore, method: string, path: string, status: number): Promise<void> {
   if (status >= 400) return;
+  if (!affectsPublicOutput(method, path)) return;
   await kv.put(PUBVER_KEY, crypto.randomUUID());
 }
 
@@ -163,7 +304,8 @@ export async function bumpPublicVersionMiddleware(c: Context<AppEnv>, next: Next
   await next();
   if (!c.env.KV) throw new Error("bumpPublicVersionMiddleware requires the KV binding");
   try {
-    await bumpIfMutating(c.env.KV, c.req.method, c.res.status);
+    const path = new URL(c.req.url).pathname;
+    await bumpIfMutating(c.env.KV, c.req.method, path, c.res.status);
   } catch (err) {
     console.error(`bumpPublicVersionMiddleware: failed to bump ${PUBVER_KEY}`, err);
   }
