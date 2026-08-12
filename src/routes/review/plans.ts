@@ -269,6 +269,19 @@ reviewPlansRoutes.post("/api/v1/plans/:id/reviewers", requireOrganizer, csrfJson
         submissionId: "unknown submission for this event — use the ref (e.g. SES-014) or the internal id",
       });
     }
+    // DEC-655: the plan's own filters_json trackIds narrow every other
+    // scope reader (buildPlanScopeConditions, isSubmissionInReviewerScope,
+    // listPlanFilteredSubmissions) -- a submissionId the plan's filters
+    // exclude must be refused here too, not silently granted scope. A plan
+    // with no track filter narrows nothing, so skip the extra round trip.
+    if (plan.filters?.trackIds && plan.filters.trackIds.length > 0) {
+      const inFilters = await repo.submissionMatchesPlanFilters(c.var.db, plan, submissionId);
+      if (!inFilters) {
+        throw new ApiError("invalid", "Invalid reviewer assignment", {
+          submissionId: "not inside this plan's tracks -- widen the plan's filters or assign by track",
+        });
+      }
+    }
   }
 
   const created = await repo.addReviewer(c.var.db, plan.id, {
