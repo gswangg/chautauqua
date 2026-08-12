@@ -65,6 +65,9 @@ const ORG_ID = seedId("org", 1);
 
 const TRACK_COLORS = ["#2563eb", "#16a34a", "#d97706", "#dc2626", "#7c3aed", "#0891b2", "#059669", "#ea580c"];
 
+// DEC-591 scopes the "seed has ONE clock" fix to scripts/seed.ts (the actual
+// dev-seed script); this is a separate perf-fixture generator with its own
+// fixed anchor, out of that task's scope — left as an absolute date here.
 const BASE_TS = Date.UTC(2027, 0, 1, 0, 0, 0);
 const MINUTE_MS = 60_000;
 
