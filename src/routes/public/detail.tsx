@@ -4,7 +4,7 @@
 
 import type { PublicEvent, PublicSpeakerDetail, PublicSessionDetail } from "../../server/repo/public";
 import { surfacePath, speakerDetailPath, sessionDetailPath, SURFACE_LABELS, type Surface } from "./shell";
-import { TrackChips, SessionDescription, formatMinutes } from "./cards";
+import { TrackChips, FormatChip, SessionDescription, formatMinutes } from "./cards";
 
 export function BackLink(props: { event: PublicEvent; from: Surface }) {
   return (
@@ -72,6 +72,7 @@ export function SessionDetailContent(props: { event: PublicEvent; session: Publi
       <BackLink event={event} from={from} />
       <div class="chq-card">
         <TrackChips tracks={session.tracks} />
+        <FormatChip format={session.format} />
         <h2>{session.title}</h2>
         <p>
           {timeLabel ?? "Not yet scheduled"}

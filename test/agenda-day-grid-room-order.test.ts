@@ -37,6 +37,7 @@ function item(overrides: Partial<PublicAgendaItem>): PublicAgendaItem {
     icsSequence: 0,
     tracks: [],
     speakers: [],
+    format: null,
     ...overrides,
   };
 }

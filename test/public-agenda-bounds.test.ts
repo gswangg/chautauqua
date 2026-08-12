@@ -140,6 +140,7 @@ describe("getPublicAgenda truncation (DEC-548): items.length caps at MAX_PUBLIC_
       title: `Talk ${i}`,
       description: null,
       icsSequence: 0,
+      valueJson: JSON.stringify(null),
     }));
 
     let selectCall = 0;
@@ -150,12 +151,15 @@ describe("getPublicAgenda truncation (DEC-548): items.length caps at MAX_PUBLIC_
         if (selectCall === 1) return makeChain([{ count: TOTAL_AVAILABLE }]);
         // 2: room lookup — every row in this fixture shares one roomId.
         if (selectCall === 2) return makeChain([{ id: "room1", name: "Main Hall" }]);
-        // hydrateSessions' sub/track/speaker/EMB-01-slot batches: returning
-        // the same sub-row-shaped data on every call is harmless for the
-        // non-subRows consumers (they only read fields that happen to be
-        // undefined on this shape, producing empty track/speaker/slot maps)
-        // and guarantees every one of the TOTAL_AVAILABLE ids resolves to a
-        // session, regardless of hydrateSessions' internal chunkIds batching.
+        // hydrateSessions' sub/track/speaker/EMB-01-slot/format batches:
+        // returning the same sub-row-shaped data on every call is harmless
+        // for the non-subRows consumers (they only read fields that happen
+        // to be undefined on this shape, producing empty track/speaker/slot
+        // maps) and guarantees every one of the TOTAL_AVAILABLE ids
+        // resolves to a session, regardless of hydrateSessions' internal
+        // chunkIds batching. SUB_ROWS carries a JSON.stringify(null)
+        // valueJson so the formatRows consumer (which JSON.parses it) stays
+        // equally harmless — parses to null, same as no answer.
         return makeChain(SUB_ROWS);
       },
       selectDistinct: () => makeChain(AGENDA_ROWS),

@@ -11,6 +11,7 @@ import * as schema from "../../../db/schema";
 import { formatRef } from "../../../domain/ids";
 import { chunkIds } from "../../../lib/chunk";
 import { DEC_258 } from "../../../decisions";
+import { SESSION_FORMAT_FIELD_ID } from "../../../forms/types";
 import { likeContains } from "../like";
 import { visibleParticipantConditions, visibleSessionConditions, slotWithinEventRange } from "./gates";
 import type { PublicEvent, PublicTrack } from "./event";
@@ -49,6 +50,11 @@ export interface PublicSession {
   startMin: number | null;
   endMin: number | null;
   roomName: string | null;
+  // EMB-01/EMB-08: the submission's answer to the SESSION_FORMAT_FIELD_ID
+  // dropdown, when the event's form has that field and an answer was given.
+  // null when either is absent — cards/detail render nothing (never a
+  // labelled blank) in that case.
+  format: string | null;
 }
 
 /** Builds the case-insensitive substring condition for the EMB-02 keyword
@@ -307,6 +313,32 @@ export async function hydrateSessions(
   }
   const slotBySubmission = new Map(slotRows.map((r) => [r.submissionId, r]));
 
+  // EMB-01/EMB-08: format is hydrated in ONE batched query over
+  // submission_answer per id chunk (never per row) — mirrors the
+  // tracks/speakers/slot batches above. An event whose form has no
+  // field_session_format field simply yields zero rows here.
+  const formatRows: { submissionId: string; valueJson: string }[] = [];
+  for (const batch of chunkIds(ids)) {
+    const batchRows = await db
+      .select({
+        submissionId: schema.submissionAnswer.submissionId,
+        valueJson: schema.submissionAnswer.valueJson,
+      })
+      .from(schema.submissionAnswer)
+      .where(
+        and(
+          inArray(schema.submissionAnswer.submissionId, batch),
+          eq(schema.submissionAnswer.formFieldId, SESSION_FORMAT_FIELD_ID),
+        ),
+      );
+    formatRows.push(...batchRows);
+  }
+  const formatBySubmission = new Map<string, string | null>();
+  for (const r of formatRows) {
+    const parsed: unknown = JSON.parse(r.valueJson);
+    formatBySubmission.set(r.submissionId, typeof parsed === "string" && parsed.length > 0 ? parsed : null);
+  }
+
   return ids
     .map((id) => subById.get(id))
     .filter((row): row is NonNullable<typeof row> => row !== undefined)
@@ -322,6 +354,7 @@ export async function hydrateSessions(
       startMin: slotBySubmission.get(row.id)?.startMin ?? null,
       endMin: slotBySubmission.get(row.id)?.endMin ?? null,
       roomName: slotBySubmission.get(row.id)?.roomName ?? null,
+      format: formatBySubmission.get(row.id) ?? null,
     }));
 }
 

@@ -195,6 +195,8 @@ export interface PublicSessionDetail {
   roomId: string | null;
   roomName: string | null;
   speakers: PublicSpeaker[];
+  // EMB-01/EMB-08: see PublicSession.format — same null-means-absent rule.
+  format: string | null;
 }
 
 /** Session drill-in (DEC-151, EMB-08): visibility-gated exactly like
@@ -232,5 +234,6 @@ export async function getPublicSessionDetail(
     roomId: slot?.roomId ?? null,
     roomName: slot?.roomName ?? null,
     speakers: session.speakers,
+    format: session.format,
   };
 }

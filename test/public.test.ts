@@ -204,9 +204,13 @@ describe("SessionCard schedule rendering (EMB-01: date/time + room)", () => {
         // 5: hydrateSessions speakerRows
         if (selectCall === 5) return makeChain([]);
         // 6: hydrateSessions slotRows (EMB-01) — only sub1 has a slot
-        return makeChain([
-          { submissionId: "sub1", day: "2026-08-10", startMin: 540, endMin: 600, roomName: "Main Hall" },
-        ]);
+        if (selectCall === 6) {
+          return makeChain([
+            { submissionId: "sub1", day: "2026-08-10", startMin: 540, endMin: 600, roomName: "Main Hall" },
+          ]);
+        }
+        // 7: hydrateSessions formatRows
+        return makeChain([]);
       },
       selectDistinct: () =>
         makeChain([

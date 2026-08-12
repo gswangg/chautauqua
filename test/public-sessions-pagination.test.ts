@@ -82,14 +82,15 @@ function buildDb(idRows: { id: string }[], countValue: number, ids: string[]) {
     selectDistinct: () => makeChain(idRows, idRecord),
     select: () => {
       selectCall += 1;
-      // hydrateSessions' 4 batched selects (subRows/trackRows/speakerRows/
-      // slotRows), then the count query last.
+      // hydrateSessions' 5 batched selects (subRows/trackRows/speakerRows/
+      // slotRows/formatRows), then the count query last.
       if (selectCall === 1) {
         return makeChain(ids.map((id) => ({ id, seq: 1, title: id, description: null, icsSequence: 0 })));
       }
       if (selectCall === 2) return makeChain([]);
       if (selectCall === 3) return makeChain([]);
       if (selectCall === 4) return makeChain([]);
+      if (selectCall === 5) return makeChain([]);
       return makeChain([{ count: countValue }], countRecord);
     },
   } as unknown as AppEnv["Variables"]["db"];

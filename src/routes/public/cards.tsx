@@ -6,7 +6,14 @@ import type { PublicSession, PublicTrack } from "../../server/repo/public";
 import { sessionDetailPath, type Surface } from "./shell";
 import type { CardFields } from "./query";
 
-const ALL_FIELDS_ON: CardFields = { track: true, time: true, room: true, speaker: true, description: true };
+const ALL_FIELDS_ON: CardFields = {
+  track: true,
+  time: true,
+  room: true,
+  speaker: true,
+  description: true,
+  format: true,
+};
 
 // DEC-430/DEC-374 pattern: the track colour is organizer-supplied data and never
 // reaches the rendered attribute unless it is a strict 3- or 6-digit hex value --
@@ -26,6 +33,14 @@ export function TrackChips(props: { tracks: PublicTrack[] }) {
       ))}
     </>
   );
+}
+
+// EMB-01/EMB-08: format is a session's answer to the SESSION_FORMAT_FIELD_ID
+// dropdown (see PublicSession.format). null (no field on this event's form,
+// or no answer given) renders NOTHING — never a labelled blank chip.
+export function FormatChip(props: { format: string | null }) {
+  if (!props.format) return null;
+  return <span class="chq-pub-format-chip">{props.format}</span>;
 }
 
 export function SpeakerNames(props: { speakers: PublicSession["speakers"] }) {
@@ -122,9 +137,10 @@ export function SessionCard(props: {
             <SpeakerNames speakers={session.speakers} />
           </p>
         ) : null}
-        {fields.track ? (
+        {fields.track || fields.format ? (
           <div class="chq-pub-session-tags">
-            <TrackChips tracks={session.tracks} />
+            {fields.track ? <TrackChips tracks={session.tracks} /> : null}
+            {fields.format ? <FormatChip format={session.format} /> : null}
           </div>
         ) : null}
         {fields.description ? <SessionDescription description={session.description} /> : null}

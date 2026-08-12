@@ -141,7 +141,8 @@ describe("hydrateSessions slot query (DEC-318): session-card slot fields", () =>
         if (call === 3) return makeChain([]); // speakerRows
         // slotRows: real SQL excludes the out-of-range row; the fake never
         // hands it back, matching the WHERE this test also captures.
-        return makeChain([], (cond) => (capturedSlotWhere = cond));
+        if (call === 4) return makeChain([], (cond) => (capturedSlotWhere = cond));
+        return makeChain([]); // formatRows
       },
       selectDistinct: () => makeChain([{ id: "sub1" }]),
     } as unknown as Db;

@@ -53,6 +53,13 @@ export const LOCKED_SPEAKER_FIELDS = [
 
 const ALL_LOCKED_NAMES = new Set<string>([...LOCKED_SESSION_FIELDS, ...LOCKED_SPEAKER_FIELDS]);
 
+// DEC-592: the ONE id for the "Session format" custom field the seed and
+// public-surface hydration both key on (submission_answer.form_field_id).
+// Not a locked field (organizers may rename/remove it) — but its id is a
+// named constant, not a hand-copied literal, so seed and repo code can't
+// drift apart on the string.
+export const SESSION_FORMAT_FIELD_ID = "field_session_format";
+
 // DEC-050: locked form_field rows get a per-form PK (`${formId}:${name}`)
 // so a second event's default form doesn't collide with the first event's
 // (formField.id is a global PK). lockedFieldId mints that PK for new rows;

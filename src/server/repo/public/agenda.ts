@@ -24,6 +24,8 @@ export interface PublicAgendaItem {
   icsSequence: number;
   tracks: PublicTrack[];
   speakers: PublicSpeaker[];
+  // EMB-01/EMB-08: see PublicSession.format — same null-means-absent rule.
+  format: string | null;
 }
 
 /** Agenda/schedule surface (DEC-022): visibility-gated scheduled sessions,
@@ -117,6 +119,7 @@ export async function getPublicAgenda(
         icsSequence: session.icsSequence,
         tracks: session.tracks,
         speakers: session.speakers,
+        format: session.format,
       };
       return item;
     })
@@ -205,6 +208,7 @@ export async function getPublicAgendaByIds(
         icsSequence: session.icsSequence,
         tracks: session.tracks,
         speakers: session.speakers,
+        format: session.format,
       };
       return item;
     })

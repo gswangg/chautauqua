@@ -53,14 +53,21 @@ export function parseLimit(raw: string | undefined): number | null {
   return Number.isInteger(n) && n >= 1 && n <= 100 ? n : null;
 }
 
-export const ALL_CARD_FIELDS = ["track", "time", "room", "speaker", "description"] as const;
+export const ALL_CARD_FIELDS = ["track", "time", "room", "speaker", "description", "format"] as const;
 export type CardField = (typeof ALL_CARD_FIELDS)[number];
 export type CardFields = Record<CardField, boolean>;
 
-const ALL_CARD_FIELDS_ON: CardFields = { track: true, time: true, room: true, speaker: true, description: true };
+const ALL_CARD_FIELDS_ON: CardFields = {
+  track: true,
+  time: true,
+  room: true,
+  speaker: true,
+  description: true,
+  format: true,
+};
 
 /** `fields` = comma list from ALL_CARD_FIELDS; unknown names ignored;
- * absent-or-empty == all five on (title is not part of this allowlist and
+ * absent-or-empty == all six on (title is not part of this allowlist and
  * always renders). */
 export function parseCardFields(raw: string | undefined): CardFields {
   if (!raw || raw.trim().length === 0) return { ...ALL_CARD_FIELDS_ON };
@@ -76,6 +83,7 @@ export function parseCardFields(raw: string | undefined): CardFields {
     room: named.has("room"),
     speaker: named.has("speaker"),
     description: named.has("description"),
+    format: named.has("format"),
   };
 }
 
