@@ -13,6 +13,8 @@ import {
   formatResultsTable,
   formatSummary,
   isNonEmptyText,
+  mobileErrorResult,
+  routeErrorResult,
   type MobileRouteEntry,
 } from "../scripts/render-sweep-lib";
 import { ADMIN_MOBILE_ROUTE_MANIFEST } from "../scripts/render-sweep";
@@ -219,6 +221,46 @@ describe("allMobilePassed / formatMobileSummary / formatMobileResultsTable", () 
     expect(table).toContain("PASS");
     expect(table).toContain("/e/devflow-conf-2027/agenda");
     expect(table).toContain("FAIL");
+  });
+});
+
+describe("routeErrorResult (DEC-389)", () => {
+  it("produces a FAIL row carrying the error message", () => {
+    const result = routeErrorResult(ENTRY, "navigation error: net::ERR_CONNECTION_REFUSED");
+    expect(result.ok).toBe(false);
+    expect(result.entry).toBe(ENTRY);
+    expect(result.status).toBe(0);
+    expect(result.bodyNonEmpty).toBe(false);
+    expect(result.failureReason).toBe("navigation error: net::ERR_CONNECTION_REFUSED");
+  });
+
+  it("appears as FAIL in formatResultsTable and drops allPassed to false", () => {
+    const result = routeErrorResult(ENTRY, "dev server died mid-run");
+    const table = formatResultsTable([result]);
+    expect(table).toContain("FAIL");
+    expect(table).toContain("dev server died mid-run");
+    expect(allPassed([result])).toBe(false);
+  });
+});
+
+describe("mobileErrorResult (DEC-389)", () => {
+  const MOBILE_ENTRY: MobileRouteEntry = { path: "/portal", role: "speaker" };
+
+  it("produces a FAIL row carrying the error message", () => {
+    const result = mobileErrorResult(MOBILE_ENTRY, "login failed for role 'speaker': still on /login after submit");
+    expect(result.ok).toBe(false);
+    expect(result.entry).toBe(MOBILE_ENTRY);
+    expect(result.status).toBe(0);
+    expect(result.minControlHeight).toBeNull();
+    expect(result.failureReason).toBe("login failed for role 'speaker': still on /login after submit");
+  });
+
+  it("appears as FAIL in formatMobileResultsTable and drops allMobilePassed to false", () => {
+    const result = mobileErrorResult(MOBILE_ENTRY, "navigation error: net::ERR_CONNECTION_REFUSED");
+    const table = formatMobileResultsTable([result]);
+    expect(table).toContain("FAIL");
+    expect(table).toContain("navigation error: net::ERR_CONNECTION_REFUSED");
+    expect(allMobilePassed([result])).toBe(false);
   });
 });
 

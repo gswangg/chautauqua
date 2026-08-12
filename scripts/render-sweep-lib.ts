@@ -50,6 +50,21 @@ export function evaluateRoute(
   };
 }
 
+/** DEC-389: builds a FAIL RouteResult for an entry whose navigation threw
+ * (e.g. page.goto rejected because the dev server died mid-run) rather than
+ * letting the error propagate out of the sweep and abort the whole gate. */
+export function routeErrorResult(entry: RouteManifestEntry, message: string): RouteResult {
+  return {
+    entry,
+    status: 0,
+    bodyNonEmpty: false,
+    consoleErrors: [],
+    pageErrors: [],
+    ok: false,
+    failureReason: message,
+  };
+}
+
 /** Renders a PASS/FAIL table for the collected route results, one line per route. */
 export function formatResultsTable(results: readonly RouteResult[]): string {
   const pathWidth = Math.max(...results.map((r) => r.entry.path.length), "path".length);
@@ -140,6 +155,21 @@ export function evaluateMobileRoute(entry: MobileRouteEntry, observed: MobileObs
     minControlHeight: observed.minControlHeight,
     ok: reasons.length === 0,
     failureReason: reasons.length > 0 ? reasons.join("; ") : undefined,
+  };
+}
+
+/** DEC-389: builds a FAIL MobileRouteResult for an entry whose navigation or
+ * login threw, rather than letting the error abort the whole mobile pass. */
+export function mobileErrorResult(entry: MobileRouteEntry, message: string): MobileRouteResult {
+  return {
+    entry,
+    status: 0,
+    scrollWidth: 0,
+    viewportWidth: 0,
+    overflowPx: 0,
+    minControlHeight: null,
+    ok: false,
+    failureReason: message,
   };
 }
 
