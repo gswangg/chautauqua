@@ -261,3 +261,129 @@ export const ADMIN_MOBILE_PASS_BLOCKING = false;
 // ---------------------------------------------------------------------------
 export const PAGE_EVALUATE_KEEPNAMES_SHIM =
   "globalThis.__name = globalThis.__name || function (fn) { return fn; };";
+
+// ---------------------------------------------------------------------------
+// DEC-421 type-floor pass (advisory): docs/eval-findings.md:70-74 and
+// docs/design/README.md:74/:207 name "no computed font-size below 10px
+// anywhere in the rendered admin/portal/public routes" as the mandate's
+// second render-sweep invariant, alongside the DEC-393 44px tap-target pass
+// above. Reuses the desktop pass's ROUTE_MANIFEST visits and the mobile
+// pass's MOBILE_ROUTE_MANIFEST visits (see scripts/render-sweep.ts) rather
+// than adding a third route list — every visited page gets one extra
+// page.evaluate measuring the smallest getComputedStyle(el).fontSize among
+// elements that actually render text.
+// ---------------------------------------------------------------------------
+
+export const MIN_FONT_PX = 10;
+
+/** DEC-387 flip rule (verbatim), reused here per DEC-421: "it becomes true in
+ * the wave after the pass first reads all-PASS." Until then the type-floor
+ * pass is advisory — it prints its own PASS/FAIL table and summary but never
+ * contributes to the render-sweep gate's exit code. This is the pass's FIRST
+ * reading (task-w11-b), so it lands false. */
+export const FONT_FLOOR_BLOCKING = false;
+
+export interface FontFloorRouteEntry {
+  readonly path: string;
+  readonly role: string;
+}
+
+/** Raw in-page measurement: the smallest getComputedStyle(el).fontSize among
+ * elements with a non-empty direct text node and a non-zero rendered box, or
+ * null if the page has no such elements (e.g. a blank/loading state). */
+export interface FontFloorObservation {
+  minFontPx: number | null;
+  /** Up to 3 structural descriptors (tag + class list + the px value, never
+   * text content — same DEC-401 convention as overflowOffenders) for
+   * elements under MIN_FONT_PX, smallest first. */
+  offenders: string[];
+}
+
+export interface FontFloorResult {
+  path: string;
+  role: string;
+  viewport: "desktop" | "mobile";
+  minFontPx: number | null;
+  ok: boolean;
+  failureReason?: string;
+}
+
+/** Evaluates one route+viewport's font-floor observation: every measured
+ * text element must render at >= MIN_FONT_PX. A page with no measurable text
+ * (minFontPx null) passes vacuously, same convention as
+ * evaluateMobileRoute's minControlHeight null case. */
+export function evaluateFontFloor(
+  entry: FontFloorRouteEntry,
+  viewport: "desktop" | "mobile",
+  observed: FontFloorObservation,
+): FontFloorResult {
+  const reasons: string[] = [];
+  if (observed.minFontPx !== null && observed.minFontPx < MIN_FONT_PX) {
+    let reason = `min font-size ${observed.minFontPx}px < ${MIN_FONT_PX}px`;
+    if (observed.offenders.length > 0) {
+      reason += ` — smallest: ${observed.offenders.join(" | ")}`;
+    }
+    reasons.push(reason);
+  }
+  return {
+    path: entry.path,
+    role: entry.role,
+    viewport,
+    minFontPx: observed.minFontPx,
+    ok: reasons.length === 0,
+    failureReason: reasons.length > 0 ? reasons.join("; ") : undefined,
+  };
+}
+
+/** DEC-389-style FAIL row for a route+viewport whose in-page measurement
+ * threw (e.g. the DEC-411 keepNames shim wasn't applied and page.evaluate
+ * raised "__name is not defined") — reported as instrument-blocked rather
+ * than recording a false minFontPx of 0/null. */
+export function fontFloorErrorResult(
+  entry: FontFloorRouteEntry,
+  viewport: "desktop" | "mobile",
+  message: string,
+): FontFloorResult {
+  return {
+    path: entry.path,
+    role: entry.role,
+    viewport,
+    minFontPx: null,
+    ok: false,
+    failureReason: `instrument-blocked: ${message}`,
+  };
+}
+
+/** Renders a PASS/FAIL table for the collected font-floor results, one line
+ * per route+viewport (mirrors formatMobileResultsTable's shape). */
+export function formatFontFloorTable(results: readonly FontFloorResult[]): string {
+  const pathWidth = Math.max(...results.map((r) => r.path.length), "path".length);
+  const roleWidth = Math.max(...results.map((r) => r.role.length), "role".length);
+  const lines: string[] = [];
+  lines.push(
+    `${"path".padEnd(pathWidth)}  ${"role".padEnd(roleWidth)}  viewport  minFontPx  status`,
+  );
+  for (const r of results) {
+    const mark = r.ok ? "PASS" : "FAIL";
+    const detail = r.ok ? "" : `  (${r.failureReason})`;
+    lines.push(
+      `${r.path.padEnd(pathWidth)}  ${r.role.padEnd(roleWidth)}  ${r.viewport.padEnd(7)}  ${String(
+        r.minFontPx ?? "-",
+      ).padStart(9)}  ${mark}${detail}`,
+    );
+  }
+  return lines.join("\n");
+}
+
+/** True if every font-floor result passed; kept for symmetry with
+ * allPassed/allMobilePassed even though FONT_FLOOR_BLOCKING keeps this out
+ * of the gate's exit code for now. */
+export function allFontFloorPassed(results: readonly FontFloorResult[]): boolean {
+  return results.every((r) => r.ok);
+}
+
+/** Summary line: "N/M font-floor checks passed". */
+export function formatFontFloorSummary(results: readonly FontFloorResult[]): string {
+  const passed = results.filter((r) => r.ok).length;
+  return `${passed}/${results.length} font-floor checks passed`;
+}
