@@ -8,6 +8,7 @@
 import { Hono } from "hono";
 import type { AppEnv } from "../../server/env";
 import { speakerGate, PortalLayout } from "./shared";
+import { formatEventDate } from "../../lib/event-time";
 import { csrfForm } from "../../server/middleware";
 import { ApiError } from "../../server/http";
 import {
@@ -112,7 +113,7 @@ function PortalPage(props: { data: PortalData; sessions: PortalSession[]; invita
                     <td>
                       <span class="chq-flag">{s.statusLabel}</span>
                     </td>
-                    <td>{new Date(s.submittedAt).toISOString().slice(0, 10)}</td>
+                    <td>{formatEventDate(s.submittedAt, s.timezone)}</td>
                     <td>
                       <a href={`/portal/submissions/${s.id}`}>View</a>
                     </td>
@@ -140,7 +141,7 @@ function PortalPage(props: { data: PortalData; sessions: PortalSession[]; invita
                   {t.status === "complete" ? "Done" : "To do"}
                 </span>
               </div>
-              {t.dueDate ? <span class="chq-portal-due">Due {new Date(t.dueDate).toISOString().slice(0, 10)}</span> : null}
+              {t.dueDate ? <span class="chq-portal-due">Due {formatEventDate(t.dueDate, t.timezone)}</span> : null}
             </div>
           ))
         )}
@@ -235,7 +236,7 @@ function SubmissionDetailPage(props: {
           <a href={`/portal/submissions/${detail.id}/edit`} class="chq-btn chq-btn-secondary">Edit submission</a>
         </div>
       ) : null}
-      <p class="chq-portal-sub">Submitted: {new Date(detail.submittedAt).toISOString().slice(0, 10)}</p>
+      <p class="chq-portal-sub">Submitted: {formatEventDate(detail.submittedAt, detail.timezone)}</p>
       {detail.description ? <p>{detail.description}</p> : null}
       <h3 class="chq-section-label">Answers</h3>
       {detail.answers.length === 0 ? (

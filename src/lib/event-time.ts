@@ -31,3 +31,27 @@ export function formatEventDateTime(ms: number, timeZone: string): string {
   }
   return formatter.format(new Date(ms));
 }
+
+/** Formats a UTC instant (epoch ms) as a date-only string (no time-of-day)
+ * in the given IANA timeZone, e.g. "Tue, 02 Mar 2027" — DEC-413: the speaker
+ * portal renders every date in the owning event's timezone, not UTC. Throws
+ * if `timeZone` is empty or not a valid IANA zone identifier — there is no
+ * UTC fallback, same contract as formatEventDateTime (DEC-408). */
+export function formatEventDate(ms: number, timeZone: string): string {
+  if (!timeZone) {
+    throw new Error("formatEventDate: timeZone must not be empty");
+  }
+  let formatter: Intl.DateTimeFormat;
+  try {
+    formatter = new Intl.DateTimeFormat("en-US", {
+      timeZone,
+      weekday: "short",
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+  } catch (err) {
+    throw new Error(`formatEventDate: invalid timeZone '${timeZone}': ${(err as Error).message}`);
+  }
+  return formatter.format(new Date(ms));
+}

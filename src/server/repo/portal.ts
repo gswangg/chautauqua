@@ -71,6 +71,7 @@ export interface PortalSubmissionSummary {
   status: SubmissionStatus;
   statusLabel: SpeakerStatusLabel;
   submittedAt: number;
+  timezone: string;
 }
 
 export interface PortalTask {
@@ -79,6 +80,7 @@ export interface PortalTask {
   dueDate: number | null;
   required: boolean;
   status: string;
+  timezone: string;
 }
 
 export interface PortalBranding {
@@ -122,6 +124,7 @@ export async function getPortalData(db: Db, contactId: string, orgId: string): P
       eventId: schema.event.id,
       eventName: schema.event.name,
       recordPrefix: schema.event.recordPrefix,
+      timezone: schema.event.timezone,
     })
     .from(schema.participant)
     .innerJoin(schema.submission, eq(schema.participant.submissionId, schema.submission.id))
@@ -144,6 +147,7 @@ export async function getPortalData(db: Db, contactId: string, orgId: string): P
       status,
       statusLabel: speakerStatusLabel(status),
       submittedAt: row.createdAt.getTime(),
+      timezone: row.timezone,
     };
   });
 
@@ -155,6 +159,7 @@ export async function getPortalData(db: Db, contactId: string, orgId: string): P
       dueDate: schema.task.dueDate,
       required: schema.task.required,
       eventOrgId: schema.event.orgId,
+      timezone: schema.event.timezone,
     })
     .from(schema.taskAssignment)
     .innerJoin(schema.task, eq(schema.taskAssignment.taskId, schema.task.id))
@@ -167,6 +172,7 @@ export async function getPortalData(db: Db, contactId: string, orgId: string): P
     dueDate: row.dueDate ? row.dueDate.getTime() : null,
     required: row.required,
     status: row.status,
+    timezone: row.timezone,
   }));
 
   // Branding: portal_settings for the event of the speaker's most recent
@@ -211,6 +217,7 @@ export interface PortalSubmissionDetail {
   status: SubmissionStatus;
   statusLabel: SpeakerStatusLabel;
   submittedAt: number;
+  timezone: string;
   answers: PortalSubmissionAnswer[];
 }
 
@@ -236,6 +243,7 @@ export async function getPortalSubmissionDetail(
       createdAt: schema.submission.createdAt,
       recordPrefix: schema.event.recordPrefix,
       eventOrgId: schema.event.orgId,
+      timezone: schema.event.timezone,
     })
     .from(schema.submission)
     .innerJoin(schema.event, eq(schema.submission.eventId, schema.event.id))
@@ -281,6 +289,7 @@ export async function getPortalSubmissionDetail(
     status,
     statusLabel: speakerStatusLabel(status),
     submittedAt: row.createdAt.getTime(),
+    timezone: row.timezone,
     answers,
   };
 }
@@ -306,6 +315,7 @@ export interface PortalTaskAssignment {
   formId: string | null;
   fileId: string | null;
   responseJson: string | null;
+  timezone: string;
 }
 
 /** Lists every task_assignment belonging to `contactId`, joined through task
@@ -325,6 +335,7 @@ export async function getMyTaskAssignments(db: Db, contactId: string, orgId: str
       required: schema.task.required,
       formId: schema.task.formId,
       eventOrgId: schema.event.orgId,
+      timezone: schema.event.timezone,
     })
     .from(schema.taskAssignment)
     .innerJoin(schema.task, eq(schema.taskAssignment.taskId, schema.task.id))
@@ -343,6 +354,7 @@ export async function getMyTaskAssignments(db: Db, contactId: string, orgId: str
     formId: row.formId,
     fileId: row.fileId,
     responseJson: row.responseJson,
+    timezone: row.timezone,
   }));
 }
 
