@@ -14,7 +14,7 @@ import type {
   TriageRow,
 } from './overview/types';
 import { buildDeadlineCells, buildNoActionRows, daysLateLabel, headlineText, pluralize } from './overview/rows';
-import { conflictKindLabel } from './agenda/ConflictChip';
+import { AgendaWorkSection } from './overview/AgendaWorkSection';
 import './overview/overview.css';
 
 type SubmissionStatus = 'accepted' | 'accept_queue' | 'declined';
@@ -50,12 +50,17 @@ export function OverviewPage() {
   const [eventSlug, setEventSlug] = useState<string | null>(null);
   const [slugError, setSlugError] = useState<string | null>(null);
 
+  async function loadPayload() {
+    if (!eventId) return;
+    const res = await apiGet<OverviewPayload>(`/events/${eventId}/overview`);
+    setPayload(res);
+  }
+
   useEffect(() => {
     if (!eventId) return;
     setLoading(true);
     setError(null);
-    apiGet<OverviewPayload>(`/events/${eventId}/overview`)
-      .then((res) => setPayload(res))
+    loadPayload()
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load overview'))
       .finally(() => setLoading(false));
   }, [eventId]);
@@ -138,6 +143,14 @@ export function OverviewPage() {
     } catch (err) {
       setPayload(previous);
       setError(describeApiError(err, 'Could not mark the task complete'));
+    }
+  }
+
+  async function refetchOverview() {
+    try {
+      await loadPayload();
+    } catch (err) {
+      setError(describeApiError(err, 'Failed to refresh the overview'));
     }
   }
 
@@ -374,54 +387,7 @@ export function OverviewPage() {
         ))}
       </section>
 
-      <section className="chq-overview-section">
-        <div className="chq-overview-section-header">
-          <span className="chq-overview-section-label">04 — Unplaced sessions and conflicts</span>
-          <Link to="/agenda" className="chq-overview-section-action">
-            Open the grid
-          </Link>
-        </div>
-        {payload.agendaWork.conflicts.length === 0 && payload.agendaWork.unplaced.length === 0 && (
-          <div className="chq-overview-empty">Every accepted session is placed with no clashes.</div>
-        )}
-        {payload.agendaWork.conflicts.map((conflict, idx) => (
-          <div key={`conflict-${idx}`} className="chq-overview-row chq-overview-row-agenda">
-            <div>
-              <div className="chq-overview-row-title chq-overview-row-title-sm">
-                {conflict.day}
-              </div>
-              <div className="chq-overview-row-meta">{conflict.roomName}</div>
-            </div>
-            <div>
-              <div className="chq-overview-row-late">
-                {conflictKindLabel(conflict.kind)}
-              </div>
-              {conflict.entries.map((entry) => (
-                <div key={entry.submissionId}>
-                  {entry.title} <span className="chq-overview-row-meta">— {entry.speakerName} · {entry.ref}</span>
-                </div>
-              ))}
-            </div>
-            <div />
-          </div>
-        ))}
-        {payload.agendaWork.unplaced.map((row) => (
-          <div key={row.submissionId} className="chq-overview-row chq-overview-row-agenda">
-            <span className="chq-overview-caption chq-overview-caption-flush">
-              No slot yet
-            </span>
-            <div>
-              <div>{row.title}</div>
-              <div className="chq-overview-row-meta">
-                {row.speakerName} · {row.durationMin} min · {row.ref}
-              </div>
-            </div>
-            <Link to="/agenda" className="chq-overview-link-btn">
-              Place it
-            </Link>
-          </div>
-        ))}
-      </section>
+      <AgendaWorkSection payload={payload} setPayload={setPayload} setError={setError} refetch={refetchOverview} />
 
       <section className="chq-overview-section">
         <div className="chq-overview-section-header">

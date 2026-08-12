@@ -47,6 +47,18 @@ export interface AgendaConflictEntry {
   speakerName: string;
 }
 
+// DEC-652: the concrete "move it" resolution for a conflict's later entry —
+// a real slot the server's nextFreeSlot found, never invented by the UI.
+export interface ConflictResolution {
+  submissionId: string;
+  ref: string;
+  day: string;
+  startMin: number;
+  roomId: string;
+  roomName: string;
+  label: string;
+}
+
 export interface AgendaConflict {
   day: string;
   startMin: number;
@@ -54,6 +66,17 @@ export interface AgendaConflict {
   roomName: string;
   kind: 'room_overlap' | 'speaker_overlap';
   entries: AgendaConflictEntry[];
+  resolution: ConflictResolution | null;
+}
+
+// DEC-652: the concrete "place it" suggestion for an unplaced row — a real
+// slot the server's nextFreeSlot found, never invented by the UI.
+export interface PlacementSuggestion {
+  day: string;
+  startMin: number;
+  roomId: string;
+  roomName: string;
+  label: string;
 }
 
 export interface UnplacedRow {
@@ -62,6 +85,7 @@ export interface UnplacedRow {
   title: string;
   speakerName: string;
   durationMin: number;
+  suggestion: PlacementSuggestion | null;
 }
 
 // v1 aggregate keys, RETAINED verbatim per DEC-370. `triage` collides with
