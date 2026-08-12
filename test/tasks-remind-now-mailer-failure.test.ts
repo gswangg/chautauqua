@@ -8,6 +8,22 @@ import { describe, expect, it } from "vitest";
 import { remindNow } from "../src/server/repo/tasks";
 import type { Db } from "../src/server/context";
 import type { Mailer } from "../src/mail/types";
+import type { KVStore } from "../src/auth/claim";
+
+class InMemoryKV implements KVStore {
+  private readonly store = new Map<string, string>();
+  async get(key: string): Promise<string | null> {
+    return this.store.get(key) ?? null;
+  }
+  async put(key: string, value: string): Promise<void> {
+    this.store.set(key, value);
+  }
+  async delete(key: string): Promise<void> {
+    this.store.delete(key);
+  }
+}
+
+const ORIGIN = "https://events.example.com";
 
 interface OutstandingRowShape {
   assignmentId: string;
@@ -37,6 +53,7 @@ function fakeDb(rows: OutstandingRowShape[]): { db: Db; updateCalls: unknown[] }
             }),
           }),
         }),
+        where: async () => [],
       }),
     }),
     update: () => ({
@@ -103,7 +120,7 @@ describe("remindNow (DEC-238 class 2 organizer batch, partial mailer failure)", 
     const { db, updateCalls } = fakeDb(rows);
     const { mailer, sent } = throwingForEmail("bad@example.com");
 
-    const result = await remindNow(db, mailer, "event_1", undefined, NOW);
+    const result = await remindNow(db, mailer, "event_1", undefined, NOW, new InMemoryKV(), ORIGIN);
 
     expect(result.sent).toBe(1);
     expect(result.failed).toHaveLength(1);

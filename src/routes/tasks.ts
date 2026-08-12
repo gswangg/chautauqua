@@ -38,6 +38,8 @@ import {
 } from "../server/repo/tasks";
 import { findContactsForOrg } from "../server/repo/contacts";
 import { clampPage, clampPerPage, DEFAULT_PER_PAGE } from "../lib/pagination";
+import { resolveBaseUrl, resolveBaseUrlForCron } from "../server/origin";
+import type { KVStore } from "../auth/claim";
 
 // DEC-120: task-assign contact org-scoping is referenced below so this
 // dependency is compile-checked (see decisions.ts).
@@ -450,7 +452,8 @@ taskRoutes.post("/events/:eventId/onboarding/remind", requireOrganizer, csrfJson
   const taskIds = body.taskIds === undefined ? undefined : parseBoundedIdArray(body.taskIds, "taskIds");
 
   const mailer = makeMailer(c.var.db, c.env);
-  const result = await remindNow(c.var.db, mailer, eventId, taskIds, new Date());
+  const kv = c.env.KV as unknown as KVStore;
+  const result = await remindNow(c.var.db, mailer, eventId, taskIds, new Date(), kv, resolveBaseUrl(c));
   return c.json(result);
 });
 
@@ -466,7 +469,8 @@ taskRoutes.post("/events/:eventId/onboarding/remind/preview", requireOrganizer, 
   const body = asRecord(await c.req.json().catch(() => ({})));
   const taskIds = body.taskIds === undefined ? undefined : parseBoundedIdArray(body.taskIds, "taskIds");
 
-  const result = await previewRemindNow(c.var.db, eventId, taskIds, new Date());
+  const kv = c.env.KV as unknown as KVStore;
+  const result = await previewRemindNow(c.var.db, eventId, taskIds, new Date(), kv, resolveBaseUrl(c));
   return c.json(result);
 });
 
@@ -480,12 +484,14 @@ export async function runDueReminders(env: Bindings): Promise<void> {
   const db = makeDb(env);
   const mailer = makeMailer(db, env);
   const now = new Date();
+  const kv = env.KV as unknown as KVStore;
+  const origin = resolveBaseUrlForCron(env);
   const eventIds = await listEventIdsWithOutstandingAssignments(db);
   for (const eventId of eventIds) {
     // DEC-238 class 1 (cron): one event's failure (bad row, mailer outage,
     // etc.) must not abort the tick for every other event.
     try {
-      await sendDueRemindersForEvent(db, mailer, eventId, now);
+      await sendDueRemindersForEvent(db, mailer, eventId, now, kv, origin);
     } catch (err) {
       console.error("due-reminder pass failed for event", eventId, err);
     }
