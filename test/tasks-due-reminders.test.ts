@@ -25,6 +25,7 @@ interface OutstandingRowShape {
   email: string;
   eventId: string;
   eventName: string;
+  timezone: string;
 }
 
 function fakeDb(rows: OutstandingRowShape[]): { db: Db; updateCalls: unknown[] } {
@@ -81,6 +82,7 @@ describe("sendDueRemindersForEvent (DEC-023 due-date cron path, invoked per-even
         email: "sbek-speaker@example.com",
         eventId: "event_1",
         eventName: "DevFlow Conf 2027",
+        timezone: "America/Los_Angeles",
       },
     ];
     const { db, updateCalls } = fakeDb(rows);
