@@ -66,7 +66,12 @@ export interface FileScope {
 /** Loads a file's authz scope (submission ownership, participants, uploader)
  * for GET /files/:fileId and the comment endpoints — null if not found or
  * the file isn't attached to a submission (stage-1 J8 scope is submission
- * deliverables only). */
+ * deliverables only). Per DEC-549, a task upload only lands in this
+ * submission-linked population when its task.deliverable_kind was declared
+ * (non-null) at upload time; uploads from a task with deliverable_kind
+ * NULL always have file.submissionId null and are served by
+ * getTaskFileScope below instead — the two populations are disjoint on
+ * that discriminator. */
 export async function getFileScope(db: Db, fileId: string): Promise<FileScope | null> {
   const fileRows = await db
     .select({
@@ -236,10 +241,13 @@ export interface TaskFileScope {
  * upload: DEC-248 population is submissionId-null + referenced by
  * task_assignment.fileId, of ANY kind (not restricted to 'handout') —
  * reverse-joined via task_assignment.fileId -> its task -> event, for orgId.
- * Submission-linked task uploads are a disjoint population served through
- * getFileScope, not here. Returns null when no task_assignment row
- * references the file (not this population) — mirrors getResourceFileScope's
- * disjointness with getFileScope. */
+ * Per DEC-549 the discriminator is the uploading task's deliverable_kind at
+ * upload time: task.deliverable_kind NULL means the resulting file always
+ * has submissionId null and is served here; task.deliverable_kind declared
+ * (non-null) means the file links to the uploader's submission and is a
+ * disjoint population served through getFileScope, not here. Returns null
+ * when no task_assignment row references the file (not this population) —
+ * mirrors getResourceFileScope's disjointness with getFileScope. */
 export async function getTaskFileScope(db: Db, fileId: string): Promise<TaskFileScope | null> {
   const fileRows = await db
     .select({
