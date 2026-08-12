@@ -43,6 +43,12 @@ describe('EmbedsPanel', () => {
       expect(screen.getAllByText(/embed\/devcon-2026\/sessions/).length).toBeGreaterThan(0);
     });
     expect(screen.getByText(/^<iframe/)).toBeInTheDocument();
+
+    // Re-skin (w2-f, DEC-368): one shared .chq-btn-primary per section, and
+    // form controls use the shared .chq-select/.chq-input classes.
+    expect(screen.getByRole('button', { name: 'Copy snippet' })).toHaveClass('chq-btn-primary');
+    expect(screen.getByLabelText('Surface')).toHaveClass('chq-select');
+    expect(screen.getByLabelText('Track ID')).toHaveClass('chq-input');
   });
 
   it('updates the snippet when the format changes to link', async () => {

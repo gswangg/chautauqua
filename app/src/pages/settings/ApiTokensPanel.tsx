@@ -64,7 +64,7 @@ export function ApiTokensPanel() {
   }
 
   return (
-    <section className="chq-panel" aria-label="API tokens">
+    <section className="chq-settings-panel" aria-label="API tokens">
       <h2>API Tokens</h2>
       <p>Bearer tokens authenticate scripts/integrations against the same /api/v1 the app uses.</p>
 
@@ -74,7 +74,7 @@ export function ApiTokensPanel() {
         <div className="chq-token-reveal" role="alert">
           <strong>Copy this token now — it will not be shown again:</strong>
           <code>{revealedToken}</code>
-          <button type="button" onClick={() => setRevealedToken(null)}>
+          <button type="button" className="chq-btn chq-btn-secondary" onClick={() => setRevealedToken(null)}>
             Done
           </button>
         </div>
@@ -84,12 +84,13 @@ export function ApiTokensPanel() {
         <label htmlFor="api-token-name">Token name</label>
         <input
           id="api-token-name"
+          className="chq-input"
           type="text"
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
           placeholder="e.g. CI pipeline"
         />
-        <button type="submit" disabled={creating || newName.trim().length === 0}>
+        <button type="submit" className="chq-btn chq-btn-primary" disabled={creating || newName.trim().length === 0}>
           {creating ? 'Creating…' : 'Create token'}
         </button>
       </form>
@@ -99,7 +100,7 @@ export function ApiTokensPanel() {
       ) : tokens.length === 0 ? (
         <p>No API tokens yet.</p>
       ) : (
-        <table>
+        <table className="chq-table">
           <thead>
             <tr>
               <th>Name</th>
@@ -117,7 +118,7 @@ export function ApiTokensPanel() {
                 </td>
                 <td>{formatDate(t.lastUsedAt)}</td>
                 <td>
-                  <button type="button" onClick={() => handleDelete(t.id)}>
+                  <button type="button" className="chq-link-button" onClick={() => handleDelete(t.id)}>
                     Revoke
                   </button>
                 </td>

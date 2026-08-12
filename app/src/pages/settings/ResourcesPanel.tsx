@@ -135,18 +135,20 @@ export function ResourcesPanel() {
               {editForm && resource.kind === 'wiki' ? (
                 <div>
                   <input
+                    className="chq-input"
                     value={editForm.title}
                     onChange={(e) =>
                       setEditing((prev) => ({ ...prev, [resource.id]: { ...editForm, title: e.target.value } }))
                     }
                   />
                   <textarea
+                    className="chq-textarea"
                     value={editForm.content}
                     onChange={(e) =>
                       setEditing((prev) => ({ ...prev, [resource.id]: { ...editForm, content: e.target.value } }))
                     }
                   />
-                  <button type="button" onClick={() => void saveEdit(resource)}>
+                  <button type="button" className="chq-btn chq-btn-secondary" onClick={() => void saveEdit(resource)}>
                     Save
                   </button>
                 </div>
@@ -161,11 +163,11 @@ export function ResourcesPanel() {
                     <p>{resource.content}</p>
                   )}
                   {resource.kind === 'wiki' ? (
-                    <button type="button" onClick={() => startEdit(resource)}>
+                    <button type="button" className="chq-link-button" onClick={() => startEdit(resource)}>
                       Edit
                     </button>
                   ) : null}
-                  <button type="button" onClick={() => void deleteResource(resource)}>
+                  <button type="button" className="chq-link-button" onClick={() => void deleteResource(resource)}>
                     Delete
                   </button>
                 </div>
@@ -178,18 +180,20 @@ export function ResourcesPanel() {
       <h3>Add a wiki page</h3>
       <div>
         <input
+          className="chq-input"
           placeholder="Title"
           value={newResource.title}
           onChange={(e) => setNewResource({ ...newResource, title: e.target.value })}
         />
         {fieldErrors.title ? <span role="alert">{fieldErrors.title}</span> : null}
         <textarea
+          className="chq-textarea"
           placeholder="Content"
           value={newResource.content}
           onChange={(e) => setNewResource({ ...newResource, content: e.target.value })}
         />
         {fieldErrors.content ? <span role="alert">{fieldErrors.content}</span> : null}
-        <button type="button" onClick={() => void addResource()}>
+        <button type="button" className="chq-btn chq-btn-primary" onClick={() => void addResource()}>
           Add resource
         </button>
       </div>
@@ -197,6 +201,7 @@ export function ResourcesPanel() {
       <h3>Upload file resource</h3>
       <div>
         <input
+          className="chq-input"
           placeholder="Title"
           value={fileTitle}
           onChange={(e) => setFileTitle(e.target.value)}
@@ -206,7 +211,7 @@ export function ResourcesPanel() {
           onChange={(e) => setFileToUpload(e.target.files?.[0] ?? null)}
         />
         {fileError ? <span role="alert">{fileError}</span> : null}
-        <button type="button" onClick={() => void uploadFileResource()}>
+        <button type="button" className="chq-btn chq-btn-secondary" onClick={() => void uploadFileResource()}>
           Upload file resource
         </button>
       </div>

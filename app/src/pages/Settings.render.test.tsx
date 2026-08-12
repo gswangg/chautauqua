@@ -4,7 +4,7 @@
 // tracks/rooms, portal settings, resources, API tokens, exports, embeds)
 // and asserts each panel's heading renders without throwing.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, cleanup, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { SettingsPage } from './Settings';
 import { listEnvelope, mockApi } from '../test-utils/mockApi';
@@ -23,35 +23,40 @@ afterEach(() => {
   consoleErrorSpy.mockRestore();
   window.localStorage.clear();
   vi.unstubAllGlobals();
+  cleanup();
 });
+
+function mockAllSections() {
+  mockApi({
+    [`GET /api/v1/events/${EVENT_ID}`]: {
+      id: EVENT_ID,
+      slug: 'devcon-2026',
+      name: 'DevCon 2026',
+      startDate: '2026-09-01',
+      endDate: '2026-09-03',
+      location: 'Austin, TX',
+      timezone: 'America/Chicago',
+      recordPrefix: 'DC26',
+      branding: { logoUrl: '', accentColor: '' },
+    },
+    [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([{ id: 'trk1', name: 'Keynotes', color: '#4f46e5' }]),
+    [`GET /api/v1/events/${EVENT_ID}/rooms`]: listEnvelope([{ id: 'rm1', name: 'Main Hall', capacity: 500 }]),
+    [`GET /api/v1/events/${EVENT_ID}/portal-settings`]: {
+      logoUrl: null,
+      accentColor: null,
+      welcomeMessage: 'Welcome, speakers!',
+      showResources: true,
+    },
+    [`GET /api/v1/events/${EVENT_ID}/resources`]: listEnvelope([
+      { id: 'res1', kind: 'wiki', title: 'Travel info', content: 'Fly into AUS.', fileId: null, position: 0 },
+    ]),
+    'GET /api/v1/tokens': listEnvelope([{ id: 'tok1', name: 'CI pipeline', tokenPrefix: 'chq_abcd', lastUsedAt: null }]),
+  });
+}
 
 describe('SettingsPage render smoke', () => {
   it('mounts every panel without throwing', async () => {
-    mockApi({
-      [`GET /api/v1/events/${EVENT_ID}`]: {
-        id: EVENT_ID,
-        slug: 'devcon-2026',
-        name: 'DevCon 2026',
-        startDate: '2026-09-01',
-        endDate: '2026-09-03',
-        location: 'Austin, TX',
-        timezone: 'America/Chicago',
-        recordPrefix: 'DC26',
-        branding: { logoUrl: '', accentColor: '' },
-      },
-      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([{ id: 'trk1', name: 'Keynotes', color: '#4f46e5' }]),
-      [`GET /api/v1/events/${EVENT_ID}/rooms`]: listEnvelope([{ id: 'rm1', name: 'Main Hall', capacity: 500 }]),
-      [`GET /api/v1/events/${EVENT_ID}/portal-settings`]: {
-        logoUrl: null,
-        accentColor: null,
-        welcomeMessage: 'Welcome, speakers!',
-        showResources: true,
-      },
-      [`GET /api/v1/events/${EVENT_ID}/resources`]: listEnvelope([
-        { id: 'res1', kind: 'wiki', title: 'Travel info', content: 'Fly into AUS.', fileId: null, position: 0 },
-      ]),
-      'GET /api/v1/tokens': listEnvelope([{ id: 'tok1', name: 'CI pipeline', tokenPrefix: 'chq_abcd', lastUsedAt: null }]),
-    });
+    mockAllSections();
 
     render(<SettingsPage />);
 
@@ -94,5 +99,40 @@ describe('SettingsPage render smoke', () => {
       'href',
       `/api/v1/events/${EVENT_ID}/export/submissions?format=csv`,
     );
+  });
+
+  // DEC-375: below 700px the rail's section links drill into a single panel
+  // via component state only — no URL change, no history entry, no new
+  // route. The tertiary back control clears the selection.
+  it('drills into a section via the rail and back again without touching the route', async () => {
+    mockAllSections();
+
+    render(<SettingsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('DevCon 2026')).toBeInTheDocument();
+    });
+
+    const pathBefore = window.location.pathname + window.location.search + window.location.hash;
+    const historyLengthBefore = window.history.length;
+
+    const rail = screen.getByRole('navigation', { name: 'Settings sections' });
+    const resourcesLink = within(rail).getByRole('button', { name: 'Resources' });
+    fireEvent.click(resourcesLink);
+
+    expect(resourcesLink).toHaveClass('chq-settings-rail-link-active');
+    expect(
+      window.location.pathname + window.location.search + window.location.hash,
+    ).toBe(pathBefore);
+    expect(window.history.length).toBe(historyLengthBefore);
+
+    const backButton = screen.getByRole('button', { name: '‹ Settings' });
+    fireEvent.click(backButton);
+
+    expect(resourcesLink).not.toHaveClass('chq-settings-rail-link-active');
+    expect(
+      window.location.pathname + window.location.search + window.location.hash,
+    ).toBe(pathBefore);
+    expect(window.history.length).toBe(historyLengthBefore);
   });
 });

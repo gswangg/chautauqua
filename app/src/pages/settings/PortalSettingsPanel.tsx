@@ -81,29 +81,35 @@ export function PortalSettingsPanel() {
         >
           <label>
             Logo URL
-            <input value={form.logoUrl} onChange={(e) => update('logoUrl', e.target.value)} />
+            <input className="chq-input" value={form.logoUrl} onChange={(e) => update('logoUrl', e.target.value)} />
           </label>
           <label>
             Accent color
-            <input value={form.accentColor} onChange={(e) => update('accentColor', e.target.value)} />
+            <input
+              className="chq-input"
+              value={form.accentColor}
+              onChange={(e) => update('accentColor', e.target.value)}
+            />
           </label>
           {fieldErrors.accentColor ? <span role="alert">{fieldErrors.accentColor}</span> : null}
           <label>
             Welcome message
             <textarea
+              className="chq-textarea"
               value={form.welcomeMessage}
               onChange={(e) => update('welcomeMessage', e.target.value)}
             />
           </label>
           <label>
             <input
+              className="chq-check"
               type="checkbox"
               checked={form.showResources}
               onChange={(e) => update('showResources', e.target.checked)}
             />
             Show resources in portal
           </label>
-          <button type="submit" disabled={saving}>
+          <button type="submit" className="chq-btn chq-btn-primary" disabled={saving}>
             {saving ? 'Saving…' : 'Save'}
           </button>
           {saved ? <span role="status"> Saved.</span> : null}

@@ -1,0 +1,141 @@
+/* app/src/pages/settings/settings.css — page lane for Settings (DEC-368,
+   DEC-375, DEC-377). Classes prefixed .chq-settings-* only; never redefines
+   a shared .chq-* class from app/src/styles.css. Imported by Settings.tsx
+   only. Mirrors docs/design/Chautauqua Settings.dc.html: desktop is a
+   sticky 196px rail beside a 760px-max scrolling column (mock lines
+   51-61); below 700px the rail becomes a full-width list and picking a
+   section swaps in just that panel with a tertiary back control (mock's
+   phone subscreens, lines 280-539). Falls back to literal hex so the page
+   still renders before the shell lane lands :root tokens. */
+
+.chq-settings-account-link {
+  margin: 0 0 20px;
+  font-size: 13px;
+}
+
+.chq-settings-layout {
+  display: grid;
+  grid-template-columns: 196px 1fr;
+  gap: 34px;
+  align-items: start;
+}
+
+.chq-settings-rail {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.chq-settings-rail-link {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 8px 0 8px 11px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--chq-ink-2, #3f4237);
+  box-shadow: inset 2px 0 0 transparent;
+  cursor: pointer;
+}
+
+.chq-settings-rail-link:hover {
+  color: var(--chq-ink, #1b1d17);
+}
+
+.chq-settings-rail-link-active {
+  font-weight: 700;
+  color: var(--chq-ink, #1b1d17);
+  box-shadow: inset 2px 0 0 var(--chq-brand, #4e5c31);
+}
+
+.chq-settings-content {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  max-width: 760px;
+}
+
+.chq-settings-back {
+  display: none;
+  align-self: flex-start;
+}
+
+.chq-settings-section {
+  display: block;
+}
+
+.chq-settings-panel h2 {
+  border-bottom: 2px solid var(--chq-ink, #1b1d17);
+  padding-bottom: 8px;
+  font-family: var(--chq-font-display, 'Familjen Grotesk', sans-serif);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.chq-settings-panel form,
+.chq-settings-panel > div {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.chq-settings-panel label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--chq-ink-2, #3f4237);
+}
+
+/* Phone (< 700px): the rail is a full-width list of section links; picking
+   one hides the list and shows only that section plus a back control.
+   Component state only — see Settings.tsx's `active`/data-drilled. */
+@media (max-width: 699px) {
+  .chq-settings-layout {
+    display: block;
+  }
+
+  .chq-settings-rail {
+    position: static;
+    gap: 0;
+  }
+
+  .chq-settings-rail-link {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid var(--chq-hairline, #e1ddce);
+  }
+
+  .chq-settings-content {
+    display: none;
+    max-width: none;
+  }
+
+  .chq-settings-section {
+    display: none;
+  }
+
+  .chq-settings-layout[data-drilled='true'] .chq-settings-rail {
+    display: none;
+  }
+
+  .chq-settings-layout[data-drilled='true'] .chq-settings-content {
+    display: flex;
+  }
+
+  .chq-settings-layout[data-drilled='true'] .chq-settings-back {
+    display: inline-flex;
+  }
+
+  .chq-settings-layout[data-drilled='true'] .chq-settings-section-active {
+    display: block;
+  }
+}

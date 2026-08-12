@@ -133,11 +133,12 @@ export function TracksRoomsPanel() {
               aria-hidden="true"
             />
             <input
+              className="chq-input"
               value={track.name}
               onChange={(e) => renameTrack(track, e.target.value)}
               aria-label={`Track name for ${track.name}`}
             />
-            <button type="button" onClick={() => deleteTrack(track)}>
+            <button type="button" className="chq-link-button" onClick={() => deleteTrack(track)}>
               Delete
             </button>
           </li>
@@ -145,6 +146,7 @@ export function TracksRoomsPanel() {
       </ul>
       <div>
         <input
+          className="chq-input"
           placeholder="New track name"
           value={newTrack.name}
           onChange={(e) => setNewTrack({ ...newTrack, name: e.target.value })}
@@ -154,7 +156,7 @@ export function TracksRoomsPanel() {
           value={newTrack.color || '#4f46e5'}
           onChange={(e) => setNewTrack({ ...newTrack, color: e.target.value })}
         />
-        <button type="button" onClick={() => void addTrack()}>
+        <button type="button" className="chq-btn chq-btn-primary" onClick={() => void addTrack()}>
           Add track
         </button>
         {trackFieldErrors.name ? <span role="alert">{trackFieldErrors.name}</span> : null}
@@ -166,7 +168,7 @@ export function TracksRoomsPanel() {
         {rooms.map((room) => (
           <li key={room.id}>
             {room.name} {room.capacity !== null ? `(capacity ${room.capacity})` : ''}
-            <button type="button" onClick={() => deleteRoom(room)}>
+            <button type="button" className="chq-link-button" onClick={() => deleteRoom(room)}>
               Delete
             </button>
           </li>
@@ -174,16 +176,18 @@ export function TracksRoomsPanel() {
       </ul>
       <div>
         <input
+          className="chq-input"
           placeholder="New room name"
           value={newRoom.name}
           onChange={(e) => setNewRoom({ ...newRoom, name: e.target.value })}
         />
         <input
+          className="chq-input"
           placeholder="Capacity"
           value={newRoom.capacity}
           onChange={(e) => setNewRoom({ ...newRoom, capacity: e.target.value })}
         />
-        <button type="button" onClick={() => void addRoom()}>
+        <button type="button" className="chq-btn chq-btn-secondary" onClick={() => void addRoom()}>
           Add room
         </button>
         {roomFieldErrors.name ? <span role="alert">{roomFieldErrors.name}</span> : null}

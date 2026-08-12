@@ -16,7 +16,7 @@ export function ExportsPanel() {
   const { eventId, loading, error } = useCurrentEvent();
 
   return (
-    <section className="chq-panel" aria-label="Exports">
+    <section className="chq-settings-panel" aria-label="Exports">
       <h2>Exports</h2>
       <p>Download event data as CSV or JSON.</p>
 
@@ -24,7 +24,7 @@ export function ExportsPanel() {
       {error && <div className="chq-error" role="alert">{error}</div>}
 
       {eventId && (
-        <table>
+        <table className="chq-table">
           <thead>
             <tr>
               <th>Data</th>
