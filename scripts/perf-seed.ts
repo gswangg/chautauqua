@@ -27,6 +27,9 @@ import {
   PERF_EVALUATION_COUNT,
   PERF_EVENT_ID,
   PERF_EVENT_SLUG,
+  PERF_ORG_USER_COUNT,
+  PERF_PIPELINE_ENTRY_COUNT,
+  PERF_PIPELINE_STAGES,
   PERF_PLAN_ID,
   PERF_REVIEWER_COUNT,
   PERF_REVIEWER_PASSWORD,
@@ -38,8 +41,11 @@ import {
   contactIndexForSubmission,
   isTaskAssignmentComplete,
   perfFileSpecs,
+  perfOrgUserEmail,
+  perfOrgUserRole,
   perfReviewerEmail,
   perfSubmissionStatuses,
+  pipelineStageIndexForEntry,
   sentAtForEmailLogRow,
   slotPlacementForAccepted,
   topicForSubmission,
@@ -90,6 +96,11 @@ async function main(): Promise<void> {
   statements.push(`DELETE FROM task_assignment WHERE task_id LIKE 'seed_perf_%';`);
   statements.push(`DELETE FROM task WHERE event_id = 'seed_perf_event';`);
   statements.push(`DELETE FROM email_log WHERE event_id = 'seed_perf_event';`);
+  // DEC-469: pipeline_activity (child) before pipeline_entry (parent),
+  // both before contact (pipeline_entry.contact_id references it) — scoped
+  // by the same seed_perf_ id namespace.
+  statements.push(`DELETE FROM pipeline_activity WHERE entry_id LIKE 'seed_perf_%';`);
+  statements.push(`DELETE FROM pipeline_entry WHERE id LIKE 'seed_perf_%';`);
   statements.push(`DELETE FROM contact WHERE id LIKE 'seed_perf_%';`);
   statements.push(`DELETE FROM event WHERE id = 'seed_perf_event';`);
   statements.push(`DELETE FROM user WHERE id LIKE 'seed_perf_%';`);
@@ -451,6 +462,62 @@ async function main(): Promise<void> {
         status: "sent",
         sent_at: sentAtForEmailLogRow(n, emailLogNowMs),
         created_at: emailLogNowMs,
+      }),
+    );
+  }
+
+  // --- DEC-469: pipeline_entry rows, one per perf contact (capped at
+  // PERF_PIPELINE_ENTRY_COUNT === PERF_CONTACT_COUNT by pipeline_entry's
+  // UNIQUE(org_id, contact_id) index — see perf-seed-lib.ts's comment),
+  // spread evenly across all five PIPELINE_STAGES values, each with one
+  // 'move' pipeline_activity row so the pipeline board's notes/activity
+  // feed at this contact's entry isn't empty.
+  const perfOrganizerAuthorId = seedId("perf_reviewer", 1); // any perf user id works as an author fk-free label
+  for (let i = 0; i < PERF_PIPELINE_ENTRY_COUNT; i++) {
+    const entryId = seedId("perf_pipeline_entry", i + 1);
+    const contactId = contactIds[i]!;
+    const stage = PERF_PIPELINE_STAGES[pipelineStageIndexForEntry(i)]!;
+    statements.push(
+      insertStmt("pipeline_entry", {
+        id: entryId,
+        org_id: ORG_ID,
+        contact_id: contactId,
+        stage,
+        created_at: nextTs(),
+        updated_at: ts,
+      }),
+    );
+    statements.push(
+      insertStmt("pipeline_activity", {
+        id: seedId("perf_pipeline_activity", i + 1),
+        entry_id: entryId,
+        kind: "move",
+        body: null,
+        from_stage: "identified",
+        to_stage: stage,
+        author_user_id: perfOrganizerAuthorId,
+        author_name: "Perf Harness",
+        created_at: nextTs(),
+      }),
+    );
+  }
+
+  // --- DEC-469: PERF_ORG_USER_COUNT extra org `user` rows (mixed
+  // reviewer/organizer) on top of the demo seed's ~19 users and the
+  // PERF_REVIEWER_COUNT reviewers above, so GET /api/v1/users has a
+  // realistic-scale roster to page through. Reuses the same
+  // reviewerPasswordHash computed above (nobody logs in as these). ---
+  for (let i = 0; i < PERF_ORG_USER_COUNT; i++) {
+    statements.push(
+      insertStmt("user", {
+        id: seedId("perf_orguser", i + 1),
+        org_id: ORG_ID,
+        email: perfOrgUserEmail(i + 1),
+        password_hash: reviewerPasswordHash,
+        role: perfOrgUserRole(i),
+        contact_id: null,
+        created_at: nextTs(),
+        updated_at: ts,
       }),
     );
   }

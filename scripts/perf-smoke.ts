@@ -494,6 +494,20 @@ async function main(): Promise<void> {
       cls: "read",
       run: () => fetch(`${PERF_URL}/api/v1/plans/${PERF_PLAN_ID}/results?page=1&perPage=50`, { headers }),
     },
+    {
+      // task-w20-e: DEC-469 — CRM pipeline board at perf scale (~800
+      // pipeline_entry rows spread across all five stages).
+      name: "pipeline list (page 1)",
+      cls: "read",
+      run: () => fetch(`${PERF_URL}/api/v1/pipeline?page=1&perPage=50`, { headers }),
+    },
+    {
+      // task-w20-e: DEC-469 — org user directory at perf scale (104 users:
+      // 7 demo + 12 reviewers + 85 extra perf org users).
+      name: "org users list (page 1)",
+      cls: "read",
+      run: () => fetch(`${PERF_URL}/api/v1/users?page=1&perPage=50`, { headers }),
+    },
   ];
 
   const results: ReturnType<typeof gradePerfCheck>[] = [];

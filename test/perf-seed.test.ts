@@ -9,6 +9,9 @@ import {
   PERF_FILE_COUNT,
   PERF_FILE_PRESENTATION_VERSIONS,
   PERF_FILE_ROWS_PER_SUBMISSION,
+  PERF_ORG_USER_COUNT,
+  PERF_PIPELINE_ENTRY_COUNT,
+  PERF_PIPELINE_STAGES,
   PERF_PLAN_ID,
   PERF_REVIEWER_COUNT,
   PERF_REVIEWER_PASSWORD,
@@ -23,8 +26,11 @@ import {
   contactIndexForSubmission,
   isTaskAssignmentComplete,
   perfFileSpecs,
+  perfOrgUserEmail,
+  perfOrgUserRole,
   perfReviewerEmail,
   perfSubmissionStatuses,
+  pipelineStageIndexForEntry,
   sentAtForEmailLogRow,
   slotPlacementForAccepted,
   topicForSubmission,
@@ -356,5 +362,62 @@ describe("DEC-347 perfFileSpecs (deliverable file chains at scale)", () => {
 
   it("returns an empty array for 0 accepted submissions", () => {
     expect(perfFileSpecs(0)).toEqual([]);
+  });
+});
+
+describe("DEC-469 pipeline_entry scale (pipeline board perf check)", () => {
+  it("caps entry count at PERF_CONTACT_COUNT (pipeline_entry's UNIQUE(org_id, contact_id) index)", () => {
+    expect(PERF_PIPELINE_ENTRY_COUNT).toBe(PERF_CONTACT_COUNT);
+    expect(PERF_PIPELINE_ENTRY_COUNT).toBeGreaterThan(100);
+  });
+
+  it("spreads entries evenly across all five PIPELINE_STAGES", () => {
+    expect(PERF_PIPELINE_STAGES).toEqual(["identified", "contacted", "interested", "confirmed", "declined"]);
+    const counts: Record<number, number> = {};
+    for (let i = 0; i < PERF_PIPELINE_ENTRY_COUNT; i++) {
+      const idx = pipelineStageIndexForEntry(i);
+      counts[idx] = (counts[idx] ?? 0) + 1;
+    }
+    expect(Object.keys(counts).length).toBe(PERF_PIPELINE_STAGES.length);
+    for (const idx of Object.keys(counts).map(Number)) {
+      expect(idx).toBeGreaterThanOrEqual(0);
+      expect(idx).toBeLessThan(PERF_PIPELINE_STAGES.length);
+    }
+  });
+
+  it("is deterministic and rejects negative/non-integer input", () => {
+    expect(pipelineStageIndexForEntry(42)).toBe(pipelineStageIndexForEntry(42));
+    expect(() => pipelineStageIndexForEntry(-1)).toThrow();
+    expect(() => pipelineStageIndexForEntry(1.5)).toThrow();
+  });
+});
+
+describe("DEC-469 extra org user scale (org user directory perf check)", () => {
+  it("adds enough rows that the shared org clears a 100-row exercised-scale floor " +
+    "(7 demo + 12 PERF_REVIEWER_COUNT + PERF_ORG_USER_COUNT)", () => {
+    expect(7 + PERF_REVIEWER_COUNT + PERF_ORG_USER_COUNT).toBeGreaterThan(100);
+  });
+
+  it("formats unique, distinct-from-reviewer emails with a 1-based index", () => {
+    expect(perfOrgUserEmail(1)).toBe("perf.orguser.1@example-perf.test");
+    expect(perfOrgUserEmail(85)).toBe("perf.orguser.85@example-perf.test");
+  });
+
+  it("rejects non-positive or non-integer indices", () => {
+    expect(() => perfOrgUserEmail(0)).toThrow();
+    expect(() => perfOrgUserEmail(-1)).toThrow();
+    expect(() => perfOrgUserEmail(1.5)).toThrow();
+  });
+
+  it("mixes reviewer and organizer roles, both present across PERF_ORG_USER_COUNT rows", () => {
+    const roles = Array.from({ length: PERF_ORG_USER_COUNT }, (_, i) => perfOrgUserRole(i));
+    expect(roles.some((r) => r === "organizer")).toBe(true);
+    expect(roles.some((r) => r === "reviewer")).toBe(true);
+    expect(roles.every((r) => r === "organizer" || r === "reviewer")).toBe(true);
+  });
+
+  it("rejects negative or non-integer indices", () => {
+    expect(() => perfOrgUserRole(-1)).toThrow();
+    expect(() => perfOrgUserRole(1.5)).toThrow();
   });
 });

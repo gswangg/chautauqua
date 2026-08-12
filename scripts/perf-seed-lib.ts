@@ -340,6 +340,74 @@ export interface PerfFileRowSpec {
  * chaining newer -> older, root null) plus a 1-version `handout` chain
  * (n = base+4, previous_file_id null), where base = j * PERF_FILE_ROWS_PER_SUBMISSION.
  */
+// --------------------------------------------------------------------------
+// DEC-469: the two hot admin screens DEC-460 ranked most at risk that this
+// harness still doesn't measure — the CRM pipeline board and the org user
+// directory. Additive on top of the DEC-034/088/338/347 fixtures above;
+// none of those existing row counts change.
+
+// Mirrors src/server/repo/pipeline.ts's PIPELINE_STAGES exactly (DEC-157).
+// Hardcoded locally rather than imported, matching scripts/perf-smoke.ts's
+// existing DEC-089 file-disjoint-split convention of duplicating small
+// literal contracts instead of reaching into src/server/repo from a second
+// scripts/ file.
+export const PERF_PIPELINE_STAGES = ["identified", "contacted", "interested", "confirmed", "declined"] as const;
+
+/**
+ * Pipeline-entry count: pipeline_entry has a UNIQUE(org_id, contact_id)
+ * index (migrations/0012_pipeline.sql), so at most one entry can exist per
+ * perf contact within the shared perf org — capping this at
+ * PERF_CONTACT_COUNT (800) rather than the "roughly 1,000" target, since
+ * that target isn't reachable without either adding new contacts (which
+ * would grow the pinned 800-contact count another log has already
+ * measured against) or violating the unique index.
+ */
+export const PERF_PIPELINE_ENTRY_COUNT = PERF_CONTACT_COUNT;
+
+/** 0-based stage index (into PERF_PIPELINE_STAGES) for the i-th (0-based)
+ * pipeline entry — block-distributed like perfSubmissionStatuses, so all
+ * five stages get an equal (160-row) share of the 800 entries. */
+export function pipelineStageIndexForEntry(i: number): number {
+  if (!Number.isInteger(i) || i < 0) {
+    throw new Error(`pipelineStageIndexForEntry: i must be a non-negative integer, got ${i}`);
+  }
+  const perStage = Math.ceil(PERF_PIPELINE_ENTRY_COUNT / PERF_PIPELINE_STAGES.length);
+  return Math.min(Math.floor(i / perStage), PERF_PIPELINE_STAGES.length - 1);
+}
+
+/** Additional org `user` rows seeded on top of scripts/seed.ts's demo
+ * users (7, not the ~19 estimated when this constant was scoped) + the 12
+ * PERF_REVIEWER_COUNT reviewers above, for the org user directory
+ * (GET /api/v1/users) perf check. Raised from a "roughly 60" starting
+ * point to 85 so the shared org's total user count (7 + 12 + 85 = 104)
+ * clears the 100-row exercised-scale floor this task verifies against —
+ * 60 alone (7 + 12 + 60 = 79) would not have. */
+export const PERF_ORG_USER_COUNT = 85;
+
+/** 1-based (matching perfReviewerEmail's convention) email for the extra
+ * org-user perf rows, distinct from both the demo seed's and the
+ * PERF_REVIEWER_COUNT reviewers' emails. */
+export function perfOrgUserEmail(i: number): string {
+  if (!Number.isInteger(i) || i < 1) {
+    throw new Error(`perfOrgUserEmail: i must be a positive integer, got ${i}`);
+  }
+  return `perf.orguser.${i}@example-perf.test`;
+}
+
+/**
+ * Deterministic role for the i-th (0-based) extra org-user row: a
+ * realistic mix skewed toward reviewer (every 5th row is an organizer —
+ * 17 organizers / 68 reviewers across the 85 PERF_ORG_USER_COUNT rows),
+ * the way a real org's account roster looks (few organizers, many
+ * reviewers).
+ */
+export function perfOrgUserRole(i: number): "organizer" | "reviewer" {
+  if (!Number.isInteger(i) || i < 0) {
+    throw new Error(`perfOrgUserRole: i must be a non-negative integer, got ${i}`);
+  }
+  return i % 5 === 0 ? "organizer" : "reviewer";
+}
+
 export function perfFileSpecs(acceptedCount: number): PerfFileRowSpec[] {
   if (!Number.isInteger(acceptedCount) || acceptedCount < 0) {
     throw new Error(`perfFileSpecs: acceptedCount must be a non-negative integer, got ${acceptedCount}`);
