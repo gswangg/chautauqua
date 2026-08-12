@@ -107,9 +107,11 @@ function Queue({ planId }: { planId: string }) {
         </div>
       )}
       {/*
-        The API already orders this fewest-ratings-first (buildReviewerQueue,
-        DEC-018) so coverage closes across the committee -- this list is
-        rendered exactly as delivered and must never be re-sorted here.
+        The API already orders this fewest-ratings-first, completed-last
+        (buildReviewerQueue, DEC-018/DEC-561) so coverage closes across the
+        committee and finished work sinks to the bottom instead of
+        vanishing -- this list is rendered exactly as delivered and must
+        never be re-sorted here.
       */}
       {!open && !error && <p className="chq-empty">This review plan is not currently open.</p>}
       {open && items.length === 0 && !error && <p className="chq-empty">Nothing left in your queue. Nicely done.</p>}
@@ -120,6 +122,7 @@ function Queue({ planId }: { planId: string }) {
             <Link to={`/review/plans/${planId}/submissions/${item.submissionId}`} className="chq-review-queue-title">
               {item.ref} — {item.title}
             </Link>
+            {item.alreadyRatedByMe && <span className="chq-pill chq-review-queue-complete-pill">Complete</span>}
             <span className="chq-review-plan-meta">
               {item.ratingsCount} rating{item.ratingsCount === 1 ? '' : 's'} so far
             </span>

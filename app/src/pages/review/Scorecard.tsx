@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { apiDelete, apiGet, apiList, apiPost, apiPut, ApiError } from '../../lib/api';
 import './review.css';
+import { formatAnswerValue } from './answerText';
 import { isEvaluationComplete, scorecardKeyAction } from './scorecardLogic';
 import type {
   EvaluationCriterion,
@@ -174,6 +175,38 @@ export function Scorecard() {
         {submission.description && <p className="chq-review-scorecard-abstract">{submission.description}</p>}
       </div>
 
+      {submission.sessionAnswers.length > 0 && (
+        <section className="chq-review-answers">
+          <h2 className="chq-section-label">Submission answers</h2>
+          <dl className="chq-review-answer-list">
+            {submission.sessionAnswers.map((a) => (
+              <div key={a.fieldId} className="chq-review-answer-row">
+                <dt>{a.label}</dt>
+                <dd>{formatAnswerValue(a.value)}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+      )}
+
+      {submission.speakerAnswers && submission.speakerAnswers.length > 0 && (
+        <section className="chq-review-answers">
+          <h2 className="chq-section-label">Speaker answers</h2>
+          <dl className="chq-review-answer-list">
+            {submission.speakerAnswers.map((a) => (
+              <div key={a.fieldId} className="chq-review-answer-row">
+                <dt>{a.label}</dt>
+                <dd>{formatAnswerValue(a.value)}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+      )}
+
+      {submission.myEvaluation && (
+        <p className="chq-review-already-rated">You already rated this submission. Submitting again updates your rating.</p>
+      )}
+
       {error && (
         <div className="chq-error" role="alert">
           {error}
@@ -265,7 +298,7 @@ export function Scorecard() {
 
       <div className="chq-review-editor-actions">
         <button type="button" className="chq-btn chq-btn-primary" disabled={submitting || !!recusal} onClick={() => void submitAndAdvance()}>
-          Submit and advance
+          {submission.myEvaluation ? 'Update rating' : 'Submit and advance'}
         </button>
       </div>
     </div>

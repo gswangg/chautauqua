@@ -65,8 +65,12 @@ describe('Scorecard render smoke', () => {
         ref: 'S-010',
         title: 'A Deeply Nested Talk',
         description: 'A talk about testing scorecards.',
-        speakers: [{ contactId: 'c1', name: 'Ada Lovelace' }],
-        answers: {},
+        speakers: [{ contactId: 'c1', name: 'Ada Lovelace', company: 'Analytical Engines', title: 'Founder' }],
+        sessionAnswers: [
+          { fieldId: 'f1', label: 'Talk length', kind: 'dropdown', value: '45 minutes' },
+          { fieldId: 'f2', label: 'AV needs', kind: 'text', value: null },
+        ],
+        speakerAnswers: [{ fieldId: 'f3', label: 'Bio', kind: 'text', value: 'Mathematician and writer.' }],
         myEvaluation: undefined,
         // Server-resolved via criteriaForRound for the plan's active round.
         criteria: [
@@ -97,5 +101,21 @@ describe('Scorecard render smoke', () => {
     // free-text criterion -> textarea
     expect(screen.getByLabelText('Notes')).toBeInTheDocument();
     expect(screen.getByLabelText('Notes').tagName).toBe('TEXTAREA');
+
+    // sessionAnswers render as label + formatted value, in delivered order.
+    expect(screen.getByText('Talk length')).toBeInTheDocument();
+    expect(screen.getByText('45 minutes')).toBeInTheDocument();
+    expect(screen.getByText('AV needs')).toBeInTheDocument();
+    expect(screen.getByText('—')).toBeInTheDocument();
+
+    // speakerAnswers render under their own heading.
+    expect(screen.getByRole('heading', { name: 'Speaker answers' })).toBeInTheDocument();
+    expect(screen.getByText('Bio')).toBeInTheDocument();
+    expect(screen.getByText('Mathematician and writer.')).toBeInTheDocument();
+
+    // DEC-561 regression bar: no rendered surface may contain "undefined"
+    // or the shape of an un-stringified object.
+    expect(document.body.textContent).not.toContain('undefined');
+    expect(document.body.textContent).not.toContain('[object Object]');
   });
 });

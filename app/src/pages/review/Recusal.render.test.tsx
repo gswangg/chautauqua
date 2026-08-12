@@ -42,8 +42,8 @@ function submissionDetail() {
     ref: 'S-020',
     title: 'A Conflicted Talk',
     description: 'A talk with a conflict.',
-    speakers: [{ contactId: 'c1', name: 'Ada Lovelace' }],
-    answers: {},
+    speakers: [{ contactId: 'c1', name: 'Ada Lovelace', company: null, title: null }],
+    sessionAnswers: [],
     myEvaluation: undefined,
     criteria: [{ id: 'c1', label: 'Quality', kind: 'rating', weight: 1 }],
   };

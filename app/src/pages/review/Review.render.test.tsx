@@ -208,8 +208,8 @@ describe('ReviewPage render smoke: reviewer', () => {
       'GET /api/v1/me': reviewerMe(),
       [`GET /api/v1/review/plans/${PLAN_ID}/queue`]: {
         ...listEnvelope([
-          { submissionId: 'sub-1', ref: 'S-001', title: 'A Talk About Testing', ratingsCount: 0 },
-          { submissionId: 'sub-2', ref: 'S-002', title: 'Another Talk', ratingsCount: 1 },
+          { submissionId: 'sub-1', ref: 'S-001', title: 'A Talk About Testing', ratingsCount: 0, alreadyRatedByMe: false },
+          { submissionId: 'sub-2', ref: 'S-002', title: 'Another Talk', ratingsCount: 1, alreadyRatedByMe: true },
         ]),
         open: true,
         recused: [],
@@ -227,5 +227,13 @@ describe('ReviewPage render smoke: reviewer', () => {
     });
     expect(screen.getByRole('link', { name: /A Talk About Testing/ })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Another Talk/ })).toBeInTheDocument();
+
+    // DEC-561: completed items keep their spot in the delivered (never
+    // re-sorted) order, rendered with a Complete pill.
+    const rows = screen.getAllByRole('listitem');
+    expect(rows[0]).toHaveTextContent('A Talk About Testing');
+    expect(rows[0]).not.toHaveTextContent('Complete');
+    expect(rows[1]).toHaveTextContent('Another Talk');
+    expect(rows[1]).toHaveTextContent('Complete');
   });
 });
