@@ -160,7 +160,7 @@ function submitForm(fields: Record<string, string>) {
 
 /** select() queue for a fresh-contact submit: getEventBySlug, getDefaultForm,
  * getFormFields, getEventTracks, findContactByEmail (none), nextSubmissionSeq
- * (inside createSubmission), findUserByEmail. */
+ * (inside createSubmission), findAccountUserId. */
 function selectQueueFresh() {
   return [[EVENT_ROW], [FORM_ROW], FIELD_ROWS, [TRACK_ROW], [], [{ maxSeq: 0 }], []];
 }

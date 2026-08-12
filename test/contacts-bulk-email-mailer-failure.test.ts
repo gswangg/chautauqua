@@ -43,7 +43,7 @@ vi.mock("../src/server/repo/contacts", async () => {
   return {
     ...actual,
     findContactsForOrg: (...args: Parameters<typeof findContactsForOrgMock>) => findContactsForOrgMock(...args),
-    findUserIdByEmail: vi.fn(async () => null),
+    findAccountUserId: vi.fn(async () => null),
   };
 });
 

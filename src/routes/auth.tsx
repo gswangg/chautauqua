@@ -22,6 +22,7 @@ import {
   SESSION_COOKIE_NAME,
 } from "../auth/cookies";
 import { consumeClaimToken, readClaimToken, type KVStore } from "../auth/claim";
+import { findAccountUserId } from "../server/repo/comms";
 import {
   checkAndIncrementScopedLimit,
   peekScopedLimit,
@@ -286,14 +287,12 @@ authRoutes.post("/claim/:token", csrfForm, async (c) => {
     throw new ApiError("not_found", "Contact not found for this claim link.");
   }
 
-  // DEC-014: if a user already exists for this contact's email, don't create
-  // a duplicate — send them to /login instead. The token stays unconsumed.
-  const existingRows = await db
-    .select()
-    .from(schema.user)
-    .where(eq(schema.user.email, contact.email.toLowerCase()))
-    .limit(1);
-  if (existingRows[0]) {
+  // DEC-014/DEC-456: if a user already exists for this contact (by
+  // contact_id OR email — a contact's email can drift out of sync with its
+  // linked user row), don't create a duplicate — send them to /login
+  // instead. The token stays unconsumed.
+  const existingUserId = await findAccountUserId(db, { contactId: contact.id, email: contact.email });
+  if (existingUserId) {
     return c.redirect("/login", 302);
   }
 

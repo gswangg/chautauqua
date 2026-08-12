@@ -31,7 +31,7 @@ async function resolvePortalLink(
   origin: string,
   mintClaimTokens: boolean,
 ): Promise<string> {
-  const userId = await repo.findUserIdByEmail(db, email);
+  const userId = await repo.findAccountUserId(db, { contactId, email });
   if (userId) return `${origin}/portal`;
   if (!mintClaimTokens) return `${origin}/claim/${PREVIEW_CLAIM_TOKEN}`;
   const token = await createClaimToken(kv, { contactId, eventId });

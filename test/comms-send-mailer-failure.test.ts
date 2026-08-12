@@ -67,7 +67,7 @@ vi.mock("../src/server/repo/comms", async () => {
   return {
     ...actual,
     loadComposeSubmissions: vi.fn(async () => existingSubmissions),
-    findUserIdByEmail: vi.fn(async () => null),
+    findAccountUserId: vi.fn(async () => null),
     listFeedbackComments: vi.fn(async () => []),
   };
 });

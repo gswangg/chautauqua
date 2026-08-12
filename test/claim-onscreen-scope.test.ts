@@ -124,7 +124,7 @@ function submitForm(email: string) {
 
 /** Standard select() queue for a successful submit: getEventBySlug,
  * getDefaultForm, getFormFields, getEventTracks, findContactByEmail,
- * nextSubmissionSeq (inside createSubmission), findUserByEmail. */
+ * nextSubmissionSeq (inside createSubmission), findAccountUserId. */
 function selectQueueFor(contactRow: unknown[], userRow: unknown[]) {
   return [
     [EVENT_ROW],

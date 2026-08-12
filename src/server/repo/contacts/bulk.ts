@@ -3,7 +3,7 @@
 // behavior change). See repo/contacts.ts for the module-level contract
 // notes.
 
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { chunkIds } from "../../../lib/chunk";
@@ -20,13 +20,4 @@ export async function findContactsForOrg(db: Db, ids: string[], orgId: string): 
     rows.push(...batchRows);
   }
   return rows.map(toRow);
-}
-
-export async function findUserIdByEmail(db: Db, email: string): Promise<string | null> {
-  const rows = await db
-    .select({ id: schema.user.id })
-    .from(schema.user)
-    .where(sql`lower(${schema.user.email}) = lower(${email})`)
-    .limit(1);
-  return rows[0]?.id ?? null;
 }

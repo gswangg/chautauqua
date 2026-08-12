@@ -192,15 +192,6 @@ export async function fillContactProfileIfBlank(
   return resolved;
 }
 
-export async function findUserByEmail(db: Db, email: string): Promise<{ id: string } | null> {
-  const rows = await db
-    .select({ id: schema.user.id })
-    .from(schema.user)
-    .where(sql`lower(${schema.user.email}) = lower(${email})`)
-    .limit(1);
-  return rows[0] ?? null;
-}
-
 export interface CreateSubmissionParams {
   eventId: string;
   formId: string;

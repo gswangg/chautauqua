@@ -66,7 +66,7 @@ vi.mock("../src/server/repo/comms", async () => {
         participants: [{ contactId: "ct-new", firstName: "Bea", lastName: "Byte", email: "bea@example.com" }],
       },
     ]),
-    findUserIdByEmail: vi.fn(async (_db: unknown, email: string) => (email === "ada@example.com" ? "user-ada" : null)),
+    findAccountUserId: vi.fn(async (_db: unknown, params: { email: string }) => (params.email === "ada@example.com" ? "user-ada" : null)),
     listFeedbackComments: vi.fn(async () => []),
   };
 });
@@ -111,7 +111,7 @@ vi.mock("../src/server/repo/contacts", async () => {
         updatedAt: 0,
       },
     ]),
-    findUserIdByEmail: vi.fn(async (_db: unknown, email: string) => (email === "ada@example.com" ? "user-ada" : null)),
+    findAccountUserId: vi.fn(async (_db: unknown, params: { email: string }) => (params.email === "ada@example.com" ? "user-ada" : null)),
   };
 });
 
