@@ -128,7 +128,7 @@
 }
 
 .chq-forms-settings-title {
-  color: var(--chq-disabled, #8e8a7a);
+  color: var(--chq-disabled);
 }
 
 .chq-forms-settings-tracks {
