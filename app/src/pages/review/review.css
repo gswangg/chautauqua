@@ -6,11 +6,10 @@
    DEC-367 tokens, docs/design/Chautauqua Review.dc.html +
    screens/03-review.png.
 
-   .chq-bar/.chq-bar-fill and .chq-pager are part of DEC-368's shared class
-   list but have not landed in styles.css yet at the time of this pass; they
-   are defined here (DEC-368 permits a page lane to use a not-yet-landed
-   shared class early) so review progress bars and paged tables read
-   correctly today. */
+   .chq-bar/.chq-bar-fill (ProgressPanel) and .chq-pager (ResultsTable) are
+   shared classes owned by the shell lane in ../../styles.css; they landed
+   there while this lane was in flight, so this file consumes them without
+   defining them (DEC-368). */
 
 .chq-review-page {
   display: flex;
@@ -30,30 +29,9 @@
   font-weight: 700;
 }
 
-/* ---------------------------------------------------------------------- */
-/* Shared progress bar (not-yet-landed DEC-368 class, defined here early)  */
-/* ---------------------------------------------------------------------- */
-
-.chq-bar {
-  height: 5px;
-  border-radius: var(--chq-r-pill);
-  background: var(--chq-hairline);
-  overflow: hidden;
-}
-
-.chq-bar-fill {
-  height: 100%;
-  background: var(--chq-brand);
-}
-
-/* Shared pager (not-yet-landed DEC-368 class, defined here early). */
-.chq-pager {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  font-size: 13px;
-  color: var(--chq-muted);
-}
+/* The progress bar (.chq-bar/.chq-bar-fill) and pager (.chq-pager) this
+   page uses are shell-owned shared classes defined in ../../styles.css —
+   per DEC-368 a page stylesheet may not redefine or override them. */
 
 /* ---------------------------------------------------------------------- */
 /* Plan list                                                               */
