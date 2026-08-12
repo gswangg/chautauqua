@@ -34,6 +34,7 @@ function makePlan(overrides: Partial<Record<string, unknown>> = {}) {
       ],
     },
     maxEvaluations: null,
+    timezone: "UTC",
     ...overrides,
   };
 }

@@ -37,6 +37,7 @@ function makePlan(n: number): PlanRecord {
     maxEvaluations: null,
     createdAt: n,
     updatedAt: n,
+    timezone: "UTC",
   };
 }
 

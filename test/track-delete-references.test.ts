@@ -12,6 +12,7 @@ import type { AppEnv } from "../src/server/env";
 function makeChain(rows: unknown[]) {
   const chain: any = {
     from: () => chain,
+    innerJoin: () => chain,
     where: () => chain,
     orderBy: () => chain,
     limit: async () => rows,
@@ -109,7 +110,7 @@ describe("deleteTrack referential guard (DEC-229, never cascades)", () => {
       [],
       [],
       [], // no form
-      [planRow({ filtersJson: JSON.stringify({ trackIds: ["track1"] }) })], // listPlansForEvent
+      [{ plan: planRow({ filtersJson: JSON.stringify({ trackIds: ["track1"] }) }), timezone: "UTC" }], // listPlansForEvent
     ]);
     await expect(deleteTrack(db, "track1", "event1")).rejects.toMatchObject({ status: 409 });
   });
@@ -120,7 +121,7 @@ describe("deleteTrack referential guard (DEC-229, never cascades)", () => {
       [],
       [],
       [], // no form
-      [planRow()], // one plan, no filter reference
+      [{ plan: planRow(), timezone: "UTC" }], // one plan, no filter reference
       [{ id: "pr1", planId: "plan1", userId: "u1", trackId: "track1", submissionId: null }], // listReviewerRowsForPlan
     ]);
     await expect(deleteTrack(db, "track1", "event1")).rejects.toMatchObject({ status: 409 });
@@ -132,7 +133,7 @@ describe("deleteTrack referential guard (DEC-229, never cascades)", () => {
       [],
       [],
       [], // no form
-      [planRow()], // one plan, no filter reference
+      [{ plan: planRow(), timezone: "UTC" }], // one plan, no filter reference
       [], // no reviewer rows scoped to this track
     ]);
     await expect(deleteTrack(db, "track1", "event1")).resolves.toBeUndefined();

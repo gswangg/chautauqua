@@ -27,6 +27,7 @@ const planRecord = {
   rounds: 1,
   currentRound: 1,
   maxEvaluations: null,
+  timezone: "UTC",
 };
 
 const SUBMISSIONS = [

@@ -72,6 +72,7 @@ function makePlan(overrides: Partial<PlanRecord> = {}): PlanRecord {
     maxEvaluations: null,
     createdAt: 0,
     updatedAt: 0,
+    timezone: "UTC",
     ...overrides,
   };
 }

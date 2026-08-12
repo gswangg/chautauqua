@@ -4,6 +4,10 @@
 // DEC-425: caps the last uncapped free-text write paths; reuses the
 // existing MAX_LONG_TEXT_LENGTH constant rather than introducing a new one.
 import { MAX_LONG_TEXT_LENGTH } from "../forms/validate";
+// DEC-522: openDate/closeDate are day labels (UTC midnight of the intended
+// calendar day), not instants -- expand through the owning event's timezone
+// at this hard gate, same class of fix as the CFP open/close window.
+import { dayLabelStartInstant, dayLabelEndInstant } from "../lib/timezone";
 
 export interface EvaluationCriterion {
   id: string;
@@ -309,14 +313,23 @@ export function criteriaForRound(
 /**
  * True when `now` falls within the plan's open/close window (DEC-018 queue
  * gating). A null openDate/closeDate means unbounded on that side.
+ *
+ * DEC-522: openDate/closeDate are day labels (UTC midnight of the intended
+ * calendar day), not instants -- a present openDate is expanded through
+ * dayLabelStartInstant (start of that day in `timeZone`) and a present
+ * closeDate through dayLabelEndInstant (end of that day in `timeZone`), so a
+ * plan set to close 2027-03-01 for a Pacific-timezone event stays open
+ * through end-of-day Pacific on 2027-03-01, not UTC midnight.
  */
 export function isPlanOpen(
   openDate: number | null | undefined,
   closeDate: number | null | undefined,
   now: number,
+  timeZone: string,
 ): boolean {
-  if (openDate !== null && openDate !== undefined && now < openDate) return false;
-  if (closeDate !== null && closeDate !== undefined && now > closeDate) return false;
+  if (!timeZone) throw new Error("isPlanOpen requires a non-empty timeZone");
+  if (openDate !== null && openDate !== undefined && now < dayLabelStartInstant(openDate, timeZone)) return false;
+  if (closeDate !== null && closeDate !== undefined && now > dayLabelEndInstant(closeDate, timeZone)) return false;
   return true;
 }
 

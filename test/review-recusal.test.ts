@@ -26,6 +26,7 @@ const plan = {
   currentRound: 1,
   roundCriteria: null,
   maxEvaluations: null,
+  timezone: "UTC",
 };
 
 const SUB_1 = { id: "sub-1", ref: "S-001", title: "Talk One", description: null, trackIds: [] };

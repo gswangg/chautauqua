@@ -70,7 +70,7 @@ reviewReviewerRoutes.get("/api/v1/review/plans/:id/queue", async (c) => {
   const page = clampPage(c.req.query("page"));
   const perPage = listPerPage(c.req.query("perPage"));
 
-  if (!isPlanOpen(plan.openDate, plan.closeDate, Date.now())) {
+  if (!isPlanOpen(plan.openDate, plan.closeDate, Date.now(), plan.timezone)) {
     return c.json({ items: [], total: 0, page, perPage, open: false });
   }
 
@@ -186,7 +186,7 @@ reviewReviewerRoutes.put("/api/v1/review/plans/:planId/evaluations/:submissionId
   const inEvent = await repo.getSubmissionSummaryInEvent(c.var.db, submissionId, plan.eventId);
   if (!inEvent) throw new ApiError("not_found", "Submission not found");
 
-  if (!isPlanOpen(plan.openDate, plan.closeDate, Date.now())) {
+  if (!isPlanOpen(plan.openDate, plan.closeDate, Date.now(), plan.timezone)) {
     throw new ApiError("conflict", "This review plan is not currently open");
   }
 

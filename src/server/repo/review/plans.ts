@@ -30,6 +30,11 @@ export interface PlanRecord {
   maxEvaluations: number | null;
   createdAt: number;
   updatedAt: number;
+  // DEC-522: the owning event's IANA timezone, joined in at read time so
+  // isPlanOpen's day-label expansion is impossible to call without it (no
+  // extra round trip -- every loader already needs the event row for the
+  // org-ownership join).
+  timezone: string;
 }
 
 /** DEC-147: PlanRecord.roundCriteria is already parsed JSON; criteriaForRound
@@ -39,7 +44,7 @@ export function roundCriteriaJsonOf(plan: PlanRecord): string | null {
   return plan.roundCriteria ? JSON.stringify(plan.roundCriteria) : null;
 }
 
-function toPlanRecord(row: typeof schema.evaluationPlan.$inferSelect): PlanRecord {
+function toPlanRecord(row: typeof schema.evaluationPlan.$inferSelect, timezone: string): PlanRecord {
   return {
     id: row.id,
     eventId: row.eventId,
@@ -59,6 +64,7 @@ function toPlanRecord(row: typeof schema.evaluationPlan.$inferSelect): PlanRecor
     maxEvaluations: row.maxEvaluations,
     createdAt: row.createdAt.getTime(),
     updatedAt: row.updatedAt.getTime(),
+    timezone,
   };
 }
 
@@ -87,12 +93,13 @@ export async function listPlansForEvent(
   page?: { limit: number; offset: number },
 ): Promise<PlanRecord[]> {
   const base = db
-    .select()
+    .select({ plan: schema.evaluationPlan, timezone: schema.event.timezone })
     .from(schema.evaluationPlan)
+    .innerJoin(schema.event, eq(schema.evaluationPlan.eventId, schema.event.id))
     .where(eq(schema.evaluationPlan.eventId, eventId))
     .orderBy(sql`${schema.evaluationPlan.createdAt} asc, ${schema.evaluationPlan.id} asc`);
   const rows = page ? await base.limit(page.limit).offset(page.offset) : await base;
-  return rows.map(toPlanRecord);
+  return rows.map((r) => toPlanRecord(r.plan, r.timezone));
 }
 
 /** Sibling count for listPlansForEvent's paged route (DEC-461c): the true
@@ -131,9 +138,14 @@ export async function createPlan(db: Db, eventId: string, input: PlanInput): Pro
 }
 
 export async function getPlanById(db: Db, planId: string): Promise<PlanRecord | null> {
-  const rows = await db.select().from(schema.evaluationPlan).where(eq(schema.evaluationPlan.id, planId)).limit(1);
+  const rows = await db
+    .select({ plan: schema.evaluationPlan, timezone: schema.event.timezone })
+    .from(schema.evaluationPlan)
+    .innerJoin(schema.event, eq(schema.evaluationPlan.eventId, schema.event.id))
+    .where(eq(schema.evaluationPlan.id, planId))
+    .limit(1);
   const row = rows[0];
-  return row ? toPlanRecord(row) : null;
+  return row ? toPlanRecord(row.plan, row.timezone) : null;
 }
 
 /** Ownership check: does this plan belong to the given org (via its event)? */

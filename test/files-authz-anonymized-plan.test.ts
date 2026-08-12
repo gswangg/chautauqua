@@ -98,7 +98,7 @@ describe("reviewerCanAccessSubmissionFile / canAccessFile — DEC-170 anonymized
     // regression (it would resolve to [] and still fail scope, but the
     // point of this case is that reviewerCanAccessSubmissionFile returns
     // false without ever consulting submission scope for an anonymized plan).
-    const db = makeQueueDb([[{ planId: ANON_PLAN }], [evaluationPlanRow(ANON_PLAN, true)]]);
+    const db = makeQueueDb([[{ planId: ANON_PLAN }], [{ plan: evaluationPlanRow(ANON_PLAN, true), timezone: "UTC" }]]);
 
     const inScope = await reviewerCanAccessSubmissionFile(db, USER_ID, EVENT_ID, SUBMISSION_ID);
     expect(inScope).toBe(false);
@@ -117,7 +117,7 @@ describe("reviewerCanAccessSubmissionFile / canAccessFile — DEC-170 anonymized
     const OPEN_PLAN = "plan-open";
     const db = makeQueueDb([
       [{ planId: OPEN_PLAN }], // assigned plan ids for this reviewer/event
-      [evaluationPlanRow(OPEN_PLAN, false)], // full plan roster: one non-anonymized plan
+      [{ plan: evaluationPlanRow(OPEN_PLAN, false), timezone: "UTC" }], // full plan roster: one non-anonymized plan
       [UNRESTRICTED_ASSIGNMENT_ROW], // isSubmissionInReviewerScope: this reviewer's plan_reviewer rows on OPEN_PLAN
       [{ id: SUBMISSION_ID }], // submission exists in plan.eventId
     ]);
@@ -142,7 +142,10 @@ describe("reviewerCanAccessSubmissionFile / canAccessFile — DEC-170 anonymized
       // full plan roster: order matches how listPlansForEvent would return them;
       // candidatePlans filters to anonymized === false, i.e. only OPEN_PLAN,
       // regardless of ANON_PLAN's position or presence in assignedPlanIds.
-      [evaluationPlanRow(ANON_PLAN, true), evaluationPlanRow(OPEN_PLAN, false)],
+      [
+        { plan: evaluationPlanRow(ANON_PLAN, true), timezone: "UTC" },
+        { plan: evaluationPlanRow(OPEN_PLAN, false), timezone: "UTC" },
+      ],
       // isSubmissionInReviewerScope is only ever invoked for OPEN_PLAN —
       // the anonymized plan is filtered out before the loop, so no queue
       // entries for it are needed.
