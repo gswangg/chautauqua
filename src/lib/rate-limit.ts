@@ -7,8 +7,34 @@
 
 import type { KVStore } from "./draft";
 
+// DEC-457: KV keys must never carry unbounded external input directly — a
+// caller-supplied id (email, x-forwarded-for) can be arbitrarily long, and
+// Cloudflare KV rejects keys over 512 UTF-8 bytes. boundRateLimitId caps the
+// id portion of the key at MAX_RATE_LIMIT_ID_BYTES, leaving every real
+// email/IP (well under the cap) byte-for-byte unchanged so no live counter
+// bucket shifts, while an oversized id is deterministically collapsed to a
+// short hash-derived token instead of ever reaching KV unbounded.
+export const MAX_RATE_LIMIT_ID_BYTES = 128;
+
+/** Pure FNV-1a-32 hash (no crypto.subtle — sync, dependency-free, DEC-002). */
+function fnv1a32(input: string): number {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < input.length; i++) {
+    hash ^= input.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return hash >>> 0;
+}
+
+export function boundRateLimitId(id: string): string {
+  const byteLen = new TextEncoder().encode(id).length;
+  if (byteLen <= MAX_RATE_LIMIT_ID_BYTES) return id;
+  const hex8 = fnv1a32(id).toString(16).padStart(8, "0");
+  return `x${hex8}-${byteLen}`;
+}
+
 export function scopedRateLimitKey(scope: string, id: string, windowStartMs: number): string {
-  return `ratelimit:${scope}:${id}:${windowStartMs}`;
+  return `ratelimit:${scope}:${boundRateLimitId(id)}:${windowStartMs}`;
 }
 
 export interface ScopedRateLimitResult {
