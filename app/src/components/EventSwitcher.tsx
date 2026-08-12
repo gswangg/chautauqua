@@ -9,6 +9,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { apiList, apiPost, ApiError } from '../lib/api';
 import { useEscapeKey } from '../lib/useEscapeKey';
+import { useMe } from '../lib/useMe';
 import {
   buildNewEventPayload,
   mergeFieldErrors,
@@ -152,6 +153,7 @@ function NewEventModal({ onCancel, onCreated }: { onCancel: () => void; onCreate
 }
 
 export function EventSwitcher() {
+  const { me } = useMe();
   const [items, setItems] = useState<EventListItem[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [showNewEvent, setShowNewEvent] = useState(false);
@@ -214,17 +216,23 @@ export function EventSwitcher() {
               {item.name}
             </button>
           ))}
-          <button
-            type="button"
-            role="menuitem"
-            className="chq-eventswitcher-menu-item"
-            onClick={() => {
-              closeMenu();
-              setShowNewEvent(true);
-            }}
-          >
-            New event…
-          </button>
+          {/* DEC-608: creating an event is organizer-only server-side
+              (POST /api/v1/events would 403 for any other role) -- a
+              reviewer must never see a control whose only outcome is a
+              rejected request. */}
+          {me?.role === 'organizer' && (
+            <button
+              type="button"
+              role="menuitem"
+              className="chq-eventswitcher-menu-item"
+              onClick={() => {
+                closeMenu();
+                setShowNewEvent(true);
+              }}
+            >
+              New event…
+            </button>
+          )}
         </div>
       )}
 
