@@ -25,20 +25,29 @@ export function VersionList({ versions }: VersionListProps) {
   const chains = orderVersionChains(versions);
 
   return (
-    <ul className="chq-version-list">
+    <ul className="chq-version-list chq-content-version-list">
       {chains.map((chain, chainIdx) =>
-        chain.map((v, idxInChain) => (
-          <li key={v.id} className="chq-version-item">
-            <a href={`/files/${v.id}`} target="_blank" rel="noreferrer">
-              {v.filename}
-            </a>
-            <span className="chq-version-meta">
-              {chainIdx === 0 && idxInChain === 0 ? 'Latest' : `v${chain.length - idxInChain}`} &middot;{' '}
-              {v.uploaderName ?? 'Unknown uploader'} &middot; {formatDateTime(v.createdAt)} &middot;{' '}
-              {formatBytes(v.sizeBytes)}
-            </span>
-          </li>
-        )),
+        chain.map((v, idxInChain) => {
+          const isCurrent = chainIdx === 0 && idxInChain === 0;
+          const tag = isCurrent ? 'Latest' : `v${chain.length - idxInChain}`;
+          return (
+            <li key={v.id} className={isCurrent ? 'chq-version-item chq-content-version-item is-current' : 'chq-version-item chq-content-version-item'}>
+              <span className="chq-content-version-tag">{tag}</span>
+              <div className="chq-content-version-info">
+                <a href={`/files/${v.id}`} target="_blank" rel="noreferrer" className="chq-content-version-name">
+                  {v.filename}
+                </a>
+                <span className="chq-version-meta chq-meta">
+                  {v.uploaderName ?? 'Unknown uploader'} &middot; {formatDateTime(v.createdAt)} &middot;{' '}
+                  {formatBytes(v.sizeBytes)}
+                </span>
+              </div>
+              <a href={`/files/${v.id}`} download className="chq-content-version-download">
+                Download
+              </a>
+            </li>
+          );
+        }),
       )}
     </ul>
   );

@@ -60,11 +60,38 @@ describe('ContentApp / SessionList render smoke: always-visible content-status c
       expect(screen.getByText('A Talk With No Files Yet')).toBeInTheDocument();
     });
 
+    // w1-h reskin: DEC-370's binding copy for this action is "Ask for
+    // changes" (not the old "Request changes"), inline on the worklist row.
+    expect(screen.getByRole('button', { name: 'Ask for changes' })).toBeInTheDocument();
+
     fireEvent.click(screen.getByRole('button', { name: 'Approve' }));
 
     await waitFor(() => {
       expect(contentStatusMock).toHaveBeenCalled();
     });
+  });
+});
+
+// w1-h reskin smoke: page shell uses the shared DEC-367/368 tokens/classes
+// rather than the old unstyled chq-page/chq-tab markup.
+describe('ContentApp reskin (DEC-366..368)', () => {
+  it('renders the page title and view tabs with the shared shell classes', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([]),
+    });
+
+    render(
+      <MemoryRouter>
+        <ContentApp />
+      </MemoryRouter>,
+    );
+
+    const heading = await screen.findByRole('heading', { name: 'Content' });
+    expect(heading).toHaveClass('chq-page-title');
+
+    const worklistTab = screen.getByRole('tab', { name: 'Worklist' });
+    expect(worklistTab).toHaveClass('chq-pill');
+    expect(worklistTab).toHaveClass('is-active');
   });
 });
 

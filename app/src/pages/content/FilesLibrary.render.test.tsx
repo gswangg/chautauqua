@@ -191,6 +191,38 @@ describe('FilesLibrary render smoke', () => {
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Download ZIP (51)' })).toBeDisabled();
     });
-    expect(screen.getByRole('alert')).toHaveTextContent('Select at most 50 files to download as a ZIP.');
+    // w1-h reskin: the archive-limit message must stay loud and legible
+    // (shared .chq-error, bold, role=alert) rather than a quiet inline span.
+    const alert = screen.getByRole('alert');
+    expect(alert).toHaveTextContent('Select at most 50 files to download as a ZIP.');
+    expect(alert).toHaveClass('chq-error');
+  });
+
+  it('renders session/speaker/date/version metadata columns for a file row', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/files`]: listEnvelope([
+        {
+          rootFileId: 'file-v1',
+          latestFileId: 'file-v2',
+          filename: 'slides.pdf',
+          kind: 'presentation',
+          submissionId: 'sub-1',
+          submissionRef: 'SES-014',
+          submissionTitle: 'Scaling Vector Search',
+          speakerName: 'Priya Raman',
+          uploadedAt: 1700000000000,
+          versionCount: 2,
+        },
+      ]),
+    });
+
+    render(<FilesLibrary eventId={EVENT_ID} onSelectSubmission={() => {}} />);
+
+    const row = (await screen.findByText('slides.pdf')).closest('tr');
+    if (!row) throw new Error('file row not found');
+    expect(row).toHaveTextContent('Priya Raman');
+    expect(row).toHaveTextContent('SES-014');
+    expect(row).toHaveTextContent('Scaling Vector Search');
+    expect(row).toHaveTextContent('2');
   });
 });

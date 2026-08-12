@@ -4,7 +4,7 @@ import { apiList, apiPost, ApiError } from '../../lib/api';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { DeliverableDetail } from './DeliverableDetail';
 import { FilesLibrary } from './FilesLibrary';
-import { SessionList } from './SessionList';
+import { SessionList, TAB_LABELS } from './SessionList';
 import { type ContentStatus, type ContentSubmissionListItem } from './types';
 import type { WorklistTab } from './worklist';
 
@@ -146,7 +146,7 @@ export function ContentApp() {
   if (eventLoading) {
     return (
       <div className="chq-page">
-        <h1>Content</h1>
+        <h1 className="chq-page-title">Content</h1>
         <p>Loading event...</p>
       </div>
     );
@@ -155,8 +155,8 @@ export function ContentApp() {
   if (!eventId) {
     return (
       <div className="chq-page">
-        <h1>Content</h1>
-        <div className="chq-attention-frame">{eventError ?? 'No event selected. Append ?eventId=<id> to the URL.'}</div>
+        <h1 className="chq-page-title">Content</h1>
+        <div className="chq-error">{eventError ?? 'No event selected. Append ?eventId=<id> to the URL.'}</div>
       </div>
     );
   }
@@ -165,17 +165,24 @@ export function ContentApp() {
 
   return (
     <div className="chq-page chq-content-page">
-      <h1>Content</h1>
-      {error && <div className="chq-error-banner">{error}</div>}
+      <div className="chq-content-summary-row">
+        <h1 className="chq-page-title">Content</h1>
+        {!submissionId && (
+          <span className="chq-summary">
+            {total} {total === 1 ? 'submission' : 'submissions'} &middot; {TAB_LABELS[tab]} view
+          </span>
+        )}
+      </div>
+      {error && <div className="chq-error" role="alert">{error}</div>}
 
       {!submissionId && (
-        <div className="chq-content-view-bar">
-          <div className="chq-tab-bar" role="tablist" aria-label="Content view">
+        <div className="chq-toolbar">
+          <div className="chq-chipstrip" role="tablist" aria-label="Content view">
             <button
               type="button"
               role="tab"
               aria-selected={view === 'worklist'}
-              className={view === 'worklist' ? 'chq-tab active' : 'chq-tab'}
+              className={view === 'worklist' ? 'chq-pill is-active' : 'chq-pill'}
               onClick={() => changeView('worklist')}
             >
               Worklist
@@ -184,13 +191,13 @@ export function ContentApp() {
               type="button"
               role="tab"
               aria-selected={view === 'files'}
-              className={view === 'files' ? 'chq-tab active' : 'chq-tab'}
+              className={view === 'files' ? 'chq-pill is-active' : 'chq-pill'}
               onClick={() => changeView('files')}
             >
               Files
             </button>
           </div>
-          <button type="button" aria-label="Refresh" onClick={refresh}>
+          <button type="button" className="chq-btn chq-btn-secondary" aria-label="Refresh" onClick={refresh}>
             Refresh
           </button>
         </div>

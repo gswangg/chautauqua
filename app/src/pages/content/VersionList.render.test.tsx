@@ -62,4 +62,21 @@ describe('VersionList', () => {
     render(<VersionList versions={[]} />);
     expect(screen.getByText('No versions uploaded yet.')).toBeInTheDocument();
   });
+
+  // w1-h reskin: every version, including prior ones, must stay downloadable
+  // and the current version must be marked distinctly (via type, DEC-367).
+  it('keeps a Download link on every version and marks only the current one is-current', () => {
+    const v1 = file({ id: 'v1', filename: 'slides-v1.pdf', createdAt: 100, previousFileId: null });
+    const v2 = file({ id: 'v2', filename: 'slides-v2.pdf', createdAt: 200, previousFileId: 'v1' });
+    render(<VersionList versions={[v2, v1]} />);
+
+    const items = screen.getAllByRole('listitem');
+    expect(items[0]).toHaveClass('is-current');
+    expect(items[1]).not.toHaveClass('is-current');
+
+    const downloadLinks = screen.getAllByRole('link', { name: 'Download' });
+    expect(downloadLinks).toHaveLength(2);
+    expect(downloadLinks[0]).toHaveAttribute('href', '/files/v2');
+    expect(downloadLinks[1]).toHaveAttribute('href', '/files/v1');
+  });
 });
