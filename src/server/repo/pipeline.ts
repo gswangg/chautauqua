@@ -3,7 +3,7 @@
 // src/routes/api/pipeline.ts call these. Never imports a mailer (DEC-157:
 // pipeline moves/notes never send email).
 
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { newId } from "../../domain/ids";
@@ -130,11 +130,29 @@ export interface PipelineListItem {
   updatedAt: number;
 }
 
-/** Lists every pipeline entry for an org, joined (in application code, per
+/** Counts pipeline entries for an org (same WHERE as listPipelineForOrg),
+ * used for the route's `total` alongside a bounded page (DEC-460/461). */
+export async function countPipelineForOrg(db: Db, orgId: string): Promise<number> {
+  const rows = await db.select({ count: sql<number>`count(*)` }).from(schema.pipelineEntry).where(eq(schema.pipelineEntry.orgId, orgId));
+  return Number(rows[0]?.count ?? 0);
+}
+
+/** Lists pipeline entries for an org, joined (in application code, per
  * this repo's chunkIds/inArray convention elsewhere) against contact rows
- * for the card fields the board needs. */
-export async function listPipelineForOrg(db: Db, orgId: string): Promise<PipelineListItem[]> {
-  const entries = (await db.select().from(schema.pipelineEntry).where(eq(schema.pipelineEntry.orgId, orgId))).map(toEntryRow);
+ * for the card fields the board needs. Deterministic order: updatedAt desc,
+ * id asc. `page` absent means today's unbounded behavior (internal callers
+ * are unaffected); when present, only that page's rows are hydrated against
+ * contacts, not the whole org's entries (DEC-460/461). */
+export async function listPipelineForOrg(db: Db, orgId: string, page?: { limit: number; offset: number }): Promise<PipelineListItem[]> {
+  let query = db
+    .select()
+    .from(schema.pipelineEntry)
+    .where(eq(schema.pipelineEntry.orgId, orgId))
+    .orderBy(desc(schema.pipelineEntry.updatedAt), asc(schema.pipelineEntry.id));
+  if (page) {
+    query = query.limit(page.limit).offset(page.offset) as typeof query;
+  }
+  const entries = (await query).map(toEntryRow);
   if (entries.length === 0) return [];
 
   const contactIds = [...new Set(entries.map((e) => e.contactId))];
@@ -169,8 +187,7 @@ export async function listPipelineForOrg(db: Db, orgId: string): Promise<Pipelin
         stage: e.stage,
         updatedAt: e.updatedAt,
       };
-    })
-    .sort((a, b) => b.updatedAt - a.updatedAt);
+    });
 }
 
 /** Enrolls a contact into the org pipeline at `stage`, appending a 'move'

@@ -2,7 +2,7 @@
 // accounts here. user_email_idx (schema.ts) is globally unique across orgs —
 // a duplicate email anywhere fails loudly as a 409 conflict.
 
-import { and, eq, sql } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { newId } from "../../domain/ids";
@@ -28,13 +28,24 @@ function toOrgUserRecord(row: typeof schema.user.$inferSelect): OrgUserRecord {
   };
 }
 
-/** Lists users in an org, optionally narrowed by role. */
-export async function listOrgUsers(db: Db, orgId: string, role?: string): Promise<OrgUserRecord[]> {
-  const rows = await db
-    .select()
-    .from(schema.user)
-    .where(role ? and(eq(schema.user.orgId, orgId), eq(schema.user.role, role)) : eq(schema.user.orgId, orgId));
+/** Lists users in an org, optionally narrowed by role, ordered deterministically
+ * by id asc. `page` absent means today's unbounded behavior (internal callers
+ * are unaffected) — see countOrgUsers for the matching total (DEC-460/461). */
+export async function listOrgUsers(db: Db, orgId: string, role?: string, page?: { limit: number; offset: number }): Promise<OrgUserRecord[]> {
+  const whereExpr = role ? and(eq(schema.user.orgId, orgId), eq(schema.user.role, role)) : eq(schema.user.orgId, orgId);
+  let query = db.select().from(schema.user).where(whereExpr).orderBy(asc(schema.user.id));
+  if (page) {
+    query = query.limit(page.limit).offset(page.offset) as typeof query;
+  }
+  const rows = await query;
   return rows.map(toOrgUserRecord);
+}
+
+/** Counts org users under the same optional role filter as listOrgUsers. */
+export async function countOrgUsers(db: Db, orgId: string, role?: string): Promise<number> {
+  const whereExpr = role ? and(eq(schema.user.orgId, orgId), eq(schema.user.role, role)) : eq(schema.user.orgId, orgId);
+  const rows = await db.select({ count: sql<number>`count(*)` }).from(schema.user).where(whereExpr);
+  return Number(rows[0]?.count ?? 0);
 }
 
 export interface CreateUserInput {

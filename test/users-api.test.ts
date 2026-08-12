@@ -24,6 +24,11 @@ vi.mock("../src/server/repo/users", async () => {
       const all = [createdUser, { ...createdUser, id: "user-2", role: "organizer" }];
       return role ? all.filter((u) => u.role === role) : all;
     }),
+    countOrgUsers: vi.fn(async (_db: unknown, orgId: string, role?: string) => {
+      if (orgId !== ORG_A) return 0;
+      const all = [createdUser, { ...createdUser, id: "user-2", role: "organizer" }];
+      return (role ? all.filter((u) => u.role === role) : all).length;
+    }),
     createUser: vi.fn(async (_db: unknown, input: { orgId: string; email: string; role: string }) => ({
       ...createdUser,
       orgId: input.orgId,

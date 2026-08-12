@@ -55,6 +55,7 @@ export { getContactStats, type ContactStats } from "./contacts/stats";
 
 export {
   listSegmentsForOrg,
+  countSegmentsForOrg,
   findSegmentForOrg,
   createSegment,
   patchSegment,

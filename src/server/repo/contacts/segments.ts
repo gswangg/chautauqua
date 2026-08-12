@@ -2,7 +2,7 @@
 // Split out of repo/contacts.ts (contention decomposition, no behavior
 // change). See repo/contacts.ts for the module-level contract notes.
 
-import { and, eq } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { newId } from "../../../domain/ids";
@@ -28,9 +28,22 @@ function toSegmentRow(r: typeof schema.segment.$inferSelect): SegmentRow {
   };
 }
 
-export async function listSegmentsForOrg(db: Db, orgId: string): Promise<SegmentRow[]> {
-  const rows = await db.select().from(schema.segment).where(eq(schema.segment.orgId, orgId));
+/** Lists an org's segments, ordered deterministically by id asc. `page`
+ * absent means today's unbounded behavior (internal callers are unaffected)
+ * — see countSegmentsForOrg for the matching total (DEC-460/461). */
+export async function listSegmentsForOrg(db: Db, orgId: string, page?: { limit: number; offset: number }): Promise<SegmentRow[]> {
+  let query = db.select().from(schema.segment).where(eq(schema.segment.orgId, orgId)).orderBy(asc(schema.segment.id));
+  if (page) {
+    query = query.limit(page.limit).offset(page.offset) as typeof query;
+  }
+  const rows = await query;
   return rows.map(toSegmentRow);
+}
+
+/** Counts an org's segments (same WHERE as listSegmentsForOrg). */
+export async function countSegmentsForOrg(db: Db, orgId: string): Promise<number> {
+  const rows = await db.select({ count: sql<number>`count(*)` }).from(schema.segment).where(eq(schema.segment.orgId, orgId));
+  return Number(rows[0]?.count ?? 0);
 }
 
 export async function findSegmentForOrg(db: Db, id: string, orgId: string): Promise<SegmentRow | null> {
