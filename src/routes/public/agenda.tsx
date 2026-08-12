@@ -15,8 +15,27 @@ export function AgendaDayGrid(props: { day: string; items: PublicAgendaItem[]; e
   const gridMin = 15;
   const dayStart = Math.min(...items.map((i) => i.startMin));
   const dayEnd = Math.max(...items.map((i) => i.endMin));
-  const rooms = [...new Set(items.map((i) => i.roomId ?? "tbd"))];
   const roomNames = new Map(items.map((i) => [i.roomId ?? "tbd", i.roomName ?? "TBD"]));
+  const roomPositions = new Map(items.map((i) => [i.roomId ?? "tbd", i.roomId ? i.roomPosition : null]));
+  // DEC-563: a room column's position is a producer-owned fact (schema
+  // `room.position`), not the accident of which item happened to appear
+  // first in the query result. The TBD/null-room column (no roomId) has no
+  // producer-owned position and always sorts last.
+  const rooms = [...new Set(items.map((i) => i.roomId ?? "tbd"))].sort((a, b) => {
+    if (a === "tbd" && b === "tbd") return 0;
+    if (a === "tbd") return 1;
+    if (b === "tbd") return -1;
+    const posA = roomPositions.get(a) ?? null;
+    const posB = roomPositions.get(b) ?? null;
+    if (posA !== posB) {
+      if (posA === null) return 1;
+      if (posB === null) return -1;
+      return posA - posB;
+    }
+    const nameCmp = (roomNames.get(a) ?? "").localeCompare(roomNames.get(b) ?? "");
+    if (nameCmp !== 0) return nameCmp;
+    return a.localeCompare(b);
+  });
 
   // DEC-140: overlapping sessions in the same room column must render
   // side-by-side (lanes) rather than stacked, or the top block eats the
