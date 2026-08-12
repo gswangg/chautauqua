@@ -16,6 +16,7 @@ import {
   canTransitionInvite,
   getMyInvitations,
   getMySessions,
+  getMyTaskAssignments,
   getParticipantScope,
   getPortalData,
   getPortalSubmissionDetail,
@@ -26,6 +27,7 @@ import {
   type PortalInvitation,
   type PortalSession,
   type PortalSubmissionDetail,
+  type PortalTaskAssignment,
 } from "../../server/repo/portal";
 import {
   parseCookies,
@@ -67,28 +69,145 @@ function Nav() {
   );
 }
 
-function PortalPage(props: { data: PortalData; sessions: PortalSession[]; invitations: PortalInvitation[]; csrfToken: string }) {
-  const { branding, submissions, tasks } = props.data;
-  const { sessions, invitations, csrfToken } = props;
-  // DEC-370-style completion caption: derived from the tasks list the portal
-  // repo already returns (task/complete counts), never a fixture figure
-  // (DEC-377).
-  const doneCount = tasks.filter((t) => t.status === "complete").length;
-  const totalCount = tasks.length;
-  const donePct = totalCount === 0 ? 100 : Math.round((doneCount / totalCount) * 100);
+// DEC-590: the worklist is exactly two kinds of row — a pending task
+// assignment and a pending co-presenter invitation. Nothing else may ever
+// contribute to its count or its rendering.
+type WorklistRow =
+  | { kind: "task"; task: PortalTaskAssignment }
+  | { kind: "invitation"; invitation: PortalInvitation };
+
+function rowRequired(row: WorklistRow): boolean {
+  return row.kind === "task" ? row.task.required : false;
+}
+
+function rowDueDate(row: WorklistRow): number | null {
+  return row.kind === "task" ? row.task.dueDate : null;
+}
+
+/** Required rows first, then by due date ascending (no due date sorts
+ * last within its required/not-required bucket) — ties keep the original
+ * (stable) order. DEC-590: overdue is stated as weight/wording on the row
+ * itself, never as a sort-breaking colour channel. */
+function sortWorklist(rows: WorklistRow[]): WorklistRow[] {
+  return rows
+    .map((row, index) => ({ row, index }))
+    .sort((a, b) => {
+      const requiredDelta = Number(rowRequired(b.row)) - Number(rowRequired(a.row));
+      if (requiredDelta !== 0) return requiredDelta;
+      const dueA = rowDueDate(a.row);
+      const dueB = rowDueDate(b.row);
+      if (dueA === null && dueB === null) return a.index - b.index;
+      if (dueA === null) return 1;
+      if (dueB === null) return -1;
+      if (dueA !== dueB) return dueA - dueB;
+      return a.index - b.index;
+    })
+    .map((entry) => entry.row);
+}
+
+function taskActionHref(t: PortalTaskAssignment): string {
+  return t.kind === "form" ? `/portal/tasks/${t.id}/form` : `/portal/tasks#task-${t.id}`;
+}
+
+function taskActionLabel(t: PortalTaskAssignment): string {
+  if (t.kind === "form") return "Fill out form";
+  if (t.kind === "file_request") return "Upload file";
+  return "Open task";
+}
+
+function WorklistTaskRow(props: { task: PortalTaskAssignment; now: number }) {
+  const { task: t, now } = props;
+  const overdue = t.dueDate !== null && t.dueDate < now;
+  return (
+    <div class="chq-portal-row">
+      <div class="chq-portal-row-head">
+        <span class="chq-portal-row-title">
+          {t.title}
+          {t.required ? <strong> (required)</strong> : null}
+        </span>
+        {/* DEC-367/DEC-590: overdue is carried by weight + wording, never a
+            red swatch. */}
+        {overdue ? <strong class="chq-flag">Overdue</strong> : null}
+      </div>
+      {t.dueDate ? <span class="chq-portal-due">Due {formatCalendarDate(t.dueDate)}</span> : null}
+      <div class="chq-portal-actions">
+        <a href={taskActionHref(t)} class="chq-btn chq-btn-primary">
+          {taskActionLabel(t)}
+        </a>
+      </div>
+    </div>
+  );
+}
+
+function WorklistInvitationRow(props: { invitation: PortalInvitation; csrfToken: string }) {
+  const { invitation: inv, csrfToken } = props;
+  return (
+    <div class="chq-portal-row">
+      <div class="chq-portal-row-head">
+        <span class="chq-portal-row-title">
+          Invited to co-present "{inv.title}" ({inv.ref}) at {inv.eventName}
+        </span>
+      </div>
+      <div class="chq-portal-actions">
+        <form method="post" action={`/portal/invitations/${inv.participantId}`}>
+          <input type="hidden" name={CSRF_COOKIE_NAME} value={csrfToken} />
+          <input type="hidden" name="action" value="accept" />
+          <button type="submit" class="chq-btn chq-btn-primary">Accept</button>
+        </form>
+        <form method="post" action={`/portal/invitations/${inv.participantId}`}>
+          <input type="hidden" name={CSRF_COOKIE_NAME} value={csrfToken} />
+          <input type="hidden" name="action" value="decline" />
+          <button type="submit" class="chq-btn chq-btn-secondary">Decline</button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function PortalPage(props: {
+  data: PortalData;
+  sessions: PortalSession[];
+  invitations: PortalInvitation[];
+  taskAssignments: PortalTaskAssignment[];
+  csrfToken: string;
+}) {
+  const { branding, submissions } = props.data;
+  const { sessions, invitations, taskAssignments, csrfToken } = props;
+  const now = Date.now();
+
+  // DEC-590: n is EXACTLY the count of rows rendered below — pending task
+  // assignments plus pending co-presenter invitations, nothing else (no
+  // completed task, no accepted session, no submission).
+  const pendingTasks = taskAssignments.filter((t) => t.status !== "complete");
+  const worklist = sortWorklist([
+    ...pendingTasks.map((task): WorklistRow => ({ kind: "task", task })),
+    ...invitations.map((invitation): WorklistRow => ({ kind: "invitation", invitation })),
+  ]);
+  const n = worklist.length;
+
   return (
     <PortalLayout branding={branding} csrfToken={csrfToken}>
       <Nav />
-      {totalCount > 0 ? (
-        <div class="chq-portal-progress">
-          <span class="chq-portal-progress-label">
-            {doneCount} of {totalCount} tasks complete
-          </span>
-          <div class="chq-bar">
-            <div class="chq-bar-fill" style={`width: ${donePct}%`}></div>
-          </div>
-        </div>
-      ) : null}
+      <h1 class="chq-portal-hero">
+        {n} {n === 1 ? "thing" : "things"} to do
+      </h1>
+      <section aria-label="Worklist" class="chq-section">
+        {n === 0 ? (
+          <p>Nothing pending right now.</p>
+        ) : (
+          worklist.map((row) =>
+            row.kind === "task" ? (
+              <WorklistTaskRow task={row.task} now={now} />
+            ) : (
+              <WorklistInvitationRow invitation={row.invitation} csrfToken={csrfToken} />
+            ),
+          )
+        )}
+        <p>
+          <a href="/portal/tasks">View all tasks</a>
+        </p>
+      </section>
+
       <section aria-label="My Submissions" class="chq-section">
         <div class="chq-section-label">My Submissions</div>
         {submissions.length === 0 ? (
@@ -125,54 +244,8 @@ function PortalPage(props: { data: PortalData; sessions: PortalSession[]; invita
         )}
       </section>
 
-      <section aria-label="My Tasks" class="chq-section">
-        <div class="chq-section-label">My Tasks</div>
-        {tasks.length === 0 ? (
-          <p>No tasks assigned yet.</p>
-        ) : (
-          tasks.map((t) => (
-            <div class="chq-portal-row">
-              <div class="chq-portal-row-head">
-                <span class="chq-portal-row-title">
-                  {t.title}
-                  {t.required ? <strong> (required)</strong> : null}
-                </span>
-                <span class={t.status === "complete" ? "chq-flag chq-portal-flag-done" : "chq-flag"}>
-                  {t.status === "complete" ? "Done" : "To do"}
-                </span>
-              </div>
-              {t.dueDate ? <span class="chq-portal-due">Due {formatCalendarDate(t.dueDate)}</span> : null}
-            </div>
-          ))
-        )}
-        <p>
-          <a href="/portal/tasks">View all tasks</a>
-        </p>
-      </section>
-
       <section aria-label="Sessions" class="chq-section">
         <div class="chq-section-label">Sessions</div>
-        {invitations.length > 0
-          ? invitations.map((inv) => (
-              <div class="chq-portal-row">
-                <span class="chq-portal-row-title">
-                  Invited to co-present "{inv.title}" ({inv.ref}) at {inv.eventName}
-                </span>
-                <div class="chq-portal-actions">
-                  <form method="post" action={`/portal/invitations/${inv.participantId}`}>
-                    <input type="hidden" name={CSRF_COOKIE_NAME} value={csrfToken} />
-                    <input type="hidden" name="action" value="accept" />
-                    <button type="submit" class="chq-btn chq-btn-primary">Accept</button>
-                  </form>
-                  <form method="post" action={`/portal/invitations/${inv.participantId}`}>
-                    <input type="hidden" name={CSRF_COOKIE_NAME} value={csrfToken} />
-                    <input type="hidden" name="action" value="decline" />
-                    <button type="submit" class="chq-btn chq-btn-secondary">Decline</button>
-                  </form>
-                </div>
-              </div>
-            ))
-          : null}
         {sessions.length === 0 ? (
           <p>No accepted sessions yet.</p>
         ) : (
@@ -258,14 +331,23 @@ function SubmissionDetailPage(props: {
 portalRoutes.get("/", async (c) => {
   const auth = c.var.auth!;
   const contactId = assertSpeakerContactId(auth);
-  const [data, sessions, invitations] = await Promise.all([
+  const [data, sessions, invitations, taskAssignments] = await Promise.all([
     getPortalData(c.var.db, contactId, auth.orgId),
     getMySessions(c.var.db, contactId, auth.orgId),
     getMyInvitations(c.var.db, contactId, auth.orgId),
+    getMyTaskAssignments(c.var.db, contactId, auth.orgId),
   ]);
   const { token: csrfToken, setCookieIfNew } = ensureCsrfCookie(c);
   if (setCookieIfNew) c.header("Set-Cookie", setCookieIfNew, { append: true });
-  return c.html(<PortalPage data={data} sessions={sessions} invitations={invitations} csrfToken={csrfToken} />);
+  return c.html(
+    <PortalPage
+      data={data}
+      sessions={sessions}
+      invitations={invitations}
+      taskAssignments={taskAssignments}
+      csrfToken={csrfToken}
+    />,
+  );
 });
 
 portalRoutes.get("/submissions/:id", async (c) => {

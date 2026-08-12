@@ -63,16 +63,18 @@ export function PortalLayout(props: {
             {props.branding.eventName}
           </span>
           {props.branding.welcomeMessage ? <p class="chq-meta">{props.branding.welcomeMessage}</p> : null}
-          {/* DEC-154: sign-out control on every /portal/* page, via the
-              shared layout so it's not duplicated per-page. */}
-          {/* DEC-181: /logout now requires CSRF proof; the portal form uses
-              the double-submit cookie pair. */}
-          <form method="post" action="/logout" class="chq-portal-signout">
-            <input type="hidden" name="chq_csrf" value={props.csrfToken} />
-            <button type="submit" class="chq-btn chq-btn-secondary">Sign out</button>
-          </form>
         </header>
         <main>{props.children as any}</main>
+        {/* DEC-154: sign-out control on every /portal/* page, via the
+            shared layout so it's not duplicated per-page. w2-g demotes it
+            to a quiet tertiary footer link — placement only, the POST
+            semantics and CSRF proof (DEC-181) are unchanged. */}
+        <footer class="chq-portal-footer">
+          <form method="post" action="/logout" class="chq-portal-signout">
+            <input type="hidden" name="chq_csrf" value={props.csrfToken} />
+            <button type="submit" class="chq-btn chq-btn-tertiary chq-portal-signout-btn">Sign out</button>
+          </form>
+        </footer>
       </body>
     </html>
   );

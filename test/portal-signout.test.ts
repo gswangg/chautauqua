@@ -27,6 +27,7 @@ vi.mock("../src/server/repo/portal", async () => {
     })),
     getMySessions: vi.fn(async () => []),
     getMyInvitations: vi.fn(async () => []),
+    getMyTaskAssignments: vi.fn(async () => []),
   };
 });
 
@@ -55,5 +56,15 @@ describe("portal shell sign-out", () => {
     expect(html).toMatch(/Sign out/);
     // DEC-181: the sign-out form now carries a CSRF double-submit field.
     expect(html).toMatch(/<input type="hidden" name="chq_csrf" value="[^"]+"\s*\/?>/);
+    // w2-g (DEC-590): demoted out of the masthead into a quiet tertiary
+    // footer link -- placement only, the POST target/CSRF proof above is
+    // unchanged. Assert the sign-out form now lives inside <footer>, after
+    // </main> closes, not inside <header>.
+    const mainCloseIndex = html.indexOf("</main>");
+    const footerIndex = html.indexOf("<footer");
+    const formIndex = html.indexOf('<form method="post" action="/logout"');
+    expect(mainCloseIndex).toBeGreaterThan(-1);
+    expect(footerIndex).toBeGreaterThan(mainCloseIndex);
+    expect(formIndex).toBeGreaterThan(footerIndex);
   });
 });

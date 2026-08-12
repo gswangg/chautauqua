@@ -148,7 +148,7 @@ function TaskRow(props: {
 }) {
   const { assignment: t, csrfToken, error, fileExtras } = props;
   return (
-    <div class="chq-portal-row">
+    <div class="chq-portal-row" id={`task-${t.id}`}>
       <div class="chq-portal-row-head">
         <span class="chq-portal-row-title">
           {t.title}
@@ -274,7 +274,7 @@ function TasksPage(props: {
       ) : (
         assignments.map((t) =>
           t.kind === "form" && t.status !== "complete" ? (
-            <div class="chq-portal-row">
+            <div class="chq-portal-row" id={`task-${t.id}`}>
               <div class="chq-portal-row-head">
                 <span class="chq-portal-row-title">
                   {t.title}
