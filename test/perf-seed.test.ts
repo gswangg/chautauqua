@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   PERF_ANSWERS_PER_SUBMISSION,
+  PERF_CO_SPEAKERS_PER_ACCEPTED,
   PERF_CONTACT_COUNT,
   PERF_EMAIL_LOG_COUNT,
   PERF_EMAIL_LOG_RECENT_WINDOW_DAYS,
@@ -24,6 +25,7 @@ import {
   PERF_TOPICS,
   PERF_TRACK_COUNT,
   contactIndexForSubmission,
+  coSpeakerContactIndexesForAccepted,
   isTaskAssignmentComplete,
   perfFileSpecs,
   perfOrgUserEmail,
@@ -389,6 +391,51 @@ describe("DEC-469 pipeline_entry scale (pipeline board perf check)", () => {
     expect(pipelineStageIndexForEntry(42)).toBe(pipelineStageIndexForEntry(42));
     expect(() => pipelineStageIndexForEntry(-1)).toThrow();
     expect(() => pipelineStageIndexForEntry(1.5)).toThrow();
+  });
+});
+
+describe("DEC-495 coSpeakerContactIndexesForAccepted (public speaker scale)", () => {
+  it("returns PERF_CO_SPEAKERS_PER_ACCEPTED distinct indexes for a single call", () => {
+    const idxs = coSpeakerContactIndexesForAccepted(0);
+    expect(idxs).toHaveLength(PERF_CO_SPEAKERS_PER_ACCEPTED);
+    expect(new Set(idxs).size).toBe(idxs.length);
+    for (const idx of idxs) {
+      expect(idx).toBeGreaterThanOrEqual(0);
+      expect(idx).toBeLessThan(PERF_CONTACT_COUNT);
+    }
+  });
+
+  it("is deterministic and rejects negative/non-integer input", () => {
+    expect(coSpeakerContactIndexesForAccepted(42)).toEqual(coSpeakerContactIndexesForAccepted(42));
+    expect(() => coSpeakerContactIndexesForAccepted(-1)).toThrow();
+    expect(() => coSpeakerContactIndexesForAccepted(1.5)).toThrow();
+    expect(() => coSpeakerContactIndexesForAccepted(0, -1)).toThrow();
+  });
+
+  it("never collides with any accepted submission's own primary-speaker contact", () => {
+    const statuses = perfSubmissionStatuses(PERF_SUBMISSION_COUNT);
+    let j = 0;
+    for (let i = 0; i < PERF_SUBMISSION_COUNT; i++) {
+      if (statuses[i] !== "accepted") continue;
+      const primary = contactIndexForSubmission(i);
+      const coIdxs = coSpeakerContactIndexesForAccepted(j);
+      expect(coIdxs).not.toContain(primary);
+      j++;
+    }
+  });
+
+  it("SPEC.md:73-76 scale: accepted + co-speaker participants cover at least 800 distinct contacts", () => {
+    const statuses = perfSubmissionStatuses(PERF_SUBMISSION_COUNT);
+    const visible = new Set<number>();
+    let j = 0;
+    for (let i = 0; i < PERF_SUBMISSION_COUNT; i++) {
+      if (statuses[i] !== "accepted") continue;
+      visible.add(contactIndexForSubmission(i));
+      for (const idx of coSpeakerContactIndexesForAccepted(j)) visible.add(idx);
+      j++;
+    }
+    expect(j).toBe(300);
+    expect(visible.size).toBeGreaterThanOrEqual(800);
   });
 });
 
