@@ -4,6 +4,9 @@ import { apiList, ApiError } from '../../lib/api';
 import { formatDateOnly } from '../../lib/dates';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { overallCompletion, progressTotals } from './progress';
+import { ProgressPanel } from './ProgressPanel';
+import { buildResultsCsvHref } from './resultsCsv';
+import { ResultsTable } from './ResultsTable';
 import './review.css';
 import type { EvaluationPlan, ProgressRow } from './types';
 
@@ -14,6 +17,16 @@ function planState(plan: EvaluationPlan, now: number): string {
   if (plan.closeDate !== null && plan.closeDate < now) return 'Closed';
   if (plan.openDate !== null && plan.openDate > now) return `Opens ${formatDateOnly(plan.openDate)}`;
   return 'Open now';
+}
+
+/** DEC-674: a plan's window is "open" iff now falls inside [openDate,
+ * closeDate], treating a null bound as unbounded on that side -- the same
+ * three-state read as planState()'s 'Open now' branch, factored out so the
+ * landing page's default selection uses exactly this rule. */
+function isWindowOpen(plan: EvaluationPlan, now: number): boolean {
+  if (plan.closeDate !== null && plan.closeDate < now) return false;
+  if (plan.openDate !== null && plan.openDate > now) return false;
+  return true;
 }
 
 function planWindow(plan: EvaluationPlan): string {
@@ -56,6 +69,12 @@ export function PlanList() {
   const [progressByPlan, setProgressByPlan] = useState<Record<string, ProgressRow[] | null>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // DEC-674: which plan's progress/results render below the list -- defaults
+  // to the first plan whose window is open right now, else the first plan,
+  // else none (empty list). A previously-selected plan that's still present
+  // after a refetch keeps its selection rather than snapping back to the
+  // default.
+  const [selected, setSelected] = useState<string | null>(null);
 
   useEffect(() => {
     if (!eventId) return;
@@ -64,6 +83,12 @@ export function PlanList() {
     apiList<EvaluationPlan>(`/events/${eventId}/plans`)
       .then((res) => {
         setPlans(res.items);
+        setSelected((prev) => {
+          if (prev && res.items.some((p) => p.id === prev)) return prev;
+          const now = Date.now();
+          const openPlan = res.items.find((p) => isWindowOpen(p, now));
+          return (openPlan ?? res.items[0])?.id ?? null;
+        });
         // DEC-587: fetch every plan's progress aggregate in parallel so the
         // inline bar/count is populated without a request per row-click. A
         // plan whose progress fetch fails reads "Progress unavailable"
@@ -100,6 +125,7 @@ export function PlanList() {
   }
 
   const now = Date.now();
+  const selectedPlan = plans.find((p) => p.id === selected) ?? null;
 
   return (
     <div className="chq-page chq-review-page">
@@ -129,6 +155,15 @@ export function PlanList() {
         {!loading && plans.length === 0 && <p className="chq-empty">No evaluation plans yet.</p>}
         {plans.map((plan) => (
           <div key={plan.id} className="chq-review-plan-row">
+            <label className="chq-review-plan-select">
+              <input
+                type="radio"
+                name="chq-review-plan-select"
+                aria-label={`Show ${plan.name} below`}
+                checked={selected === plan.id}
+                onChange={() => setSelected(plan.id)}
+              />
+            </label>
             <div>
               <Link to={`/review/plans/${plan.id}`} className="chq-review-plan-name">
                 {plan.name}
@@ -148,10 +183,38 @@ export function PlanList() {
             <div className="chq-review-plan-actions">
               <Link to={`/review/plans/${plan.id}/progress`}>Progress</Link>
               <Link to={`/review/plans/${plan.id}/results`}>Results</Link>
+              {/* DEC-674: reuses ResultsTable's own CSV mechanism
+                 (resultsCsv.ts's buildResultsCsvHref) -- not a second export
+                 implementation. */}
+              <a
+                href={buildResultsCsvHref(plan.id, plan.currentRound)}
+                download
+                className="chq-review-plan-export"
+              >
+                Export CSV
+              </a>
             </div>
           </div>
         ))}
       </section>
+
+      {selectedPlan && (
+        <>
+          <section className="chq-section chq-review-landing-progress">
+            <div className="chq-section-head">
+              <h2 className="chq-section-label">{selectedPlan.name} · reviewer progress</h2>
+            </div>
+            <ProgressPanel planId={selectedPlan.id} />
+          </section>
+
+          <section className="chq-section chq-review-landing-results">
+            <div className="chq-section-head">
+              <h2 className="chq-section-label">{selectedPlan.name} results · ranked</h2>
+            </div>
+            <ResultsTable planId={selectedPlan.id} />
+          </section>
+        </>
+      )}
     </div>
   );
 }

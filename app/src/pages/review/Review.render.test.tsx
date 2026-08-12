@@ -84,6 +84,8 @@ describe('ReviewPage render smoke: organizer', () => {
       [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([
         { userId: 'u-1', email: 'rev1@example.com', assigned: 4, completed: 1, recused: 0 },
       ]),
+      [`GET /api/v1/plans/${PLAN_ID}`]: planWithNullDates(),
+      [`GET /api/v1/plans/${PLAN_ID}/results`]: listEnvelope([]),
     });
 
     render(
@@ -100,6 +102,55 @@ describe('ReviewPage render smoke: organizer', () => {
     await waitFor(() => {
       expect(screen.getByText('1 of 4 evaluations in')).toBeInTheDocument();
     });
+  });
+
+  // DEC-674: the landing page composes the plan list with the reviewer
+  // progress and ranked results regions for the selected plan, all on one
+  // page -- no navigation required to see any of the three regions.
+  it('renders the plan list, reviewer-progress region, and ranked-results region together, without navigation', async () => {
+    const planB = { ...planWithNullDates(), id: 'plan-b', name: 'Lightning Talks' };
+    mockApi({
+      'GET /api/v1/me': organizerMe(),
+      [`GET /api/v1/events/${EVENT_ID}/plans`]: listEnvelope([planWithNullDates(), planB]),
+      [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([
+        { userId: 'u-1', email: 'rev1@example.com', assigned: 4, completed: 1, recused: 0 },
+      ]),
+      [`GET /api/v1/plans/plan-b/progress`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}`]: planWithNullDates(),
+      [`GET /api/v1/plans/${PLAN_ID}/results`]: listEnvelope([
+        { submissionId: 'sub-1', ref: 'S-001', title: 'A Talk', count: 2, average: 4.5, perCriterion: { c1: 4.5 } },
+      ]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <ReviewPage />
+      </MemoryRouter>,
+    );
+
+    // Region one: the plans list.
+    expect(await screen.findByRole('heading', { name: 'Evaluation plans' })).toBeInTheDocument();
+    expect(await screen.findByRole('link', { name: 'Keynote Track Review' })).toBeInTheDocument();
+
+    // Region two: the selected plan's reviewer-progress table, embedded
+    // (no navigation) with its 'Remind laggards' control present.
+    await waitFor(() => {
+      expect(screen.getByText('rev1@example.com')).toBeInTheDocument();
+    });
+    expect(screen.getByRole('button', { name: /Remind laggards/ })).toBeInTheDocument();
+
+    // Region three: the selected plan's ranked-results table, embedded (no
+    // navigation) with an Accept control present.
+    await waitFor(() => {
+      expect(screen.getByText('A Talk')).toBeInTheDocument();
+    });
+    expect(screen.getByRole('button', { name: 'Accept' })).toBeInTheDocument();
+
+    // Embedded regions never render their own standalone page title/back
+    // link chrome -- only the landing page's own "Review" title.
+    expect(screen.queryByRole('heading', { name: 'Reviewer progress' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: /^Results/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /Back to plans/ })).not.toBeInTheDocument();
   });
 
   it('renders plan detail for a plan with NULL open/close dates without throwing (DEC-146)', async () => {
@@ -183,7 +234,10 @@ describe('ReviewPage render smoke: organizer', () => {
       </MemoryRouter>,
     );
 
+    // DEC-674: the standalone route still renders its own page title and
+    // back-link chrome unchanged -- deep links aren't broken by embedding.
     expect(await screen.findByRole('heading', { name: 'Reviewer progress' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Back to plans/ })).toBeInTheDocument();
     await waitFor(() => {
       expect(screen.getByText('rev1@example.com')).toBeInTheDocument();
     });
