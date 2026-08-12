@@ -2,7 +2,6 @@
 import { describe, expect, it } from "vitest";
 import {
   aggregateTriageCounts,
-  aggregateSpeakerCounts,
   computeAgendaSummary,
   minNonNull,
   buildOverdueTaskRows,
@@ -10,7 +9,9 @@ import {
   getOverviewPayload,
   type ConflictSessionInfo,
 } from "../src/server/repo/overview";
+import { getOnboardingGrid } from "../src/server/repo/tasks";
 import { findConflicts, type PlacedSession } from "../src/domain/schedule";
+import type { Db } from "../src/server/context";
 
 describe("aggregateTriageCounts (DEC-030 triage card)", () => {
   it("maps grouped status rows to the three triage buckets", () => {
@@ -27,27 +28,6 @@ describe("aggregateTriageCounts (DEC-030 triage card)", () => {
 
   it("defaults missing buckets to zero", () => {
     expect(aggregateTriageCounts([])).toEqual({ pending: 0, accept_queue: 0, decline_queue: 0 });
-  });
-});
-
-describe("aggregateSpeakerCounts (DEC-030 speakers card)", () => {
-  const now = 1_000_000;
-
-  it("dedupes contactsOwing by contactId and counts overdue assignments", () => {
-    expect(
-      aggregateSpeakerCounts(
-        [
-          { contactId: "c1", dueDate: now - 1000 }, // overdue
-          { contactId: "c1", dueDate: now + 1000 }, // same contact, not overdue
-          { contactId: "c2", dueDate: null }, // no due date, never overdue
-        ],
-        now,
-      ),
-    ).toEqual({ contactsOwing: 2, overdueAssignments: 1 });
-  });
-
-  it("returns zeros when there are no pending assignments", () => {
-    expect(aggregateSpeakerCounts([], now)).toEqual({ contactsOwing: 0, overdueAssignments: 0 });
   });
 });
 
@@ -241,7 +221,7 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
 
   // Call order inside getOverviewPayload: event lookup, triage status rows,
   // plan count, evaluations-submitted count, plan close-date min, default
-  // form close date, pending-assignment rows, overdue detail rows, triage
+  // form close date, speakers conditional-aggregate row, overdue detail rows, triage
   // detail rows, (track names — skipped when no trackIds), content agg
   // (total+reuploaded), content detail rows, (file rows — skipped when no
   // content rows), accepted-submission rows, then — only when the inputs
@@ -257,7 +237,7 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
       overrides.evaluationsSubmitted ?? [{ count: 0 }],
       overrides.planClose ?? [{ closeDate: null }],
       overrides.formClose ?? [{ closeDate: null }],
-      overrides.pendingAssignments ?? [],
+      overrides.speakerAgg ?? [{ outstandingContacts: 0, overdue: 0, nextDue: null }],
       overrides.overdueDetail ?? [],
       overrides.triageDetail ?? [],
       overrides.contentAgg ?? [{ total: 0, reuploaded: 0 }],
@@ -318,7 +298,7 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
     const overdueDueDate = new Date(now - 2 * 24 * 60 * 60 * 1000);
     const db = makeFakeDb(
       emptyResponses({
-        pendingAssignments: [{ contactId: "c1", dueDate: overdueDueDate }],
+        speakerAgg: [{ outstandingContacts: 1, overdue: 1, nextDue: overdueDueDate.getTime() }],
         overdueDetail: [
           {
             assignmentId: "a1",
@@ -395,7 +375,7 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
       [{ count: 0 }], // evaluationsSubmitted
       [{ closeDate: null }], // planClose
       [{ closeDate: null }], // formClose
-      [], // pendingAssignments
+      [], // speakerAgg
       [], // overdueDetail
       [], // triageDetail
       [{ total: 9, reuploaded: 4 }], // contentAgg
@@ -411,5 +391,84 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
     expect(payload.contentApproval.reuploadedCount).toBe(4);
     expect(payload.contentApproval.rows).toHaveLength(1);
     expect(payload.agendaWork.unplaced).toHaveLength(1);
+  });
+
+  // DEC-531: the row-materializing aggregateSpeakerCounts helper is gone —
+  // speakers.contactsOwing/overdueAssignments/nextTaskDueDate now come
+  // straight from ONE conditional-aggregate query (see
+  // src/server/repo/overview.ts's speakerAggRows), the same SQL shape as
+  // src/server/repo/tasks/grid.ts's counts query. This worked-by-hand
+  // fixture is what that SQL would return for: a contact (c1) owing two
+  // pending, past-due assignments (counted once in contactsOwing, twice in
+  // overdueAssignments); a contact (c2) with a null-due-date pending
+  // assignment (counted in contactsOwing only, excluded from
+  // overdueAssignments/nextTaskDueDate); and a contact (c3) whose only
+  // assignment is complete-but-overdue (excluded from both).
+  it("speakers counts match the worked-by-hand aggregate for a mixed pending/null-due/completed fixture", async () => {
+    const now = 1_735_999_999_999;
+    const soonestPendingDue = now - 1000; // c1's earlier overdue assignment
+    const db = makeFakeDb(
+      emptyResponses({
+        speakerAgg: [{ outstandingContacts: 2, overdue: 2, nextDue: soonestPendingDue }],
+      }),
+    );
+    const payload = await getOverviewPayload(db, "event-1", now);
+    expect(payload.speakers).toEqual({ contactsOwing: 2, overdueAssignments: 2 });
+    expect(payload.deadlines.nextTaskDueDate).toBe(soonestPendingDue);
+  });
+
+  // DEC-531: the two surfaces that both count "outstanding contacts" /
+  // "overdue assignments" for the same event — the overview card and the
+  // J6 grid's event-wide counts — must never drift, since they're built
+  // from the textually-identical CASE expression. This feeds the same
+  // aggregate-row values through both repo functions and asserts they
+  // resolve to the same numbers.
+  it("overview speakers counts equal the J6 grid's counts.outstandingContacts/overdue on the same aggregate values", async () => {
+    const now = 1_735_999_999_999;
+
+    const overviewDb = makeFakeDb(
+      emptyResponses({ speakerAgg: [{ outstandingContacts: 3, overdue: 1, nextDue: now - 5000 }] }),
+    );
+    const overview = await getOverviewPayload(overviewDb, "event-1", now);
+
+    function fakeGridDb(selectQueue: unknown[][]): Db {
+      let call = 0;
+      const select = () => {
+        const rows = selectQueue[call] ?? [];
+        call += 1;
+        const chain: any = {
+          from: () => chain,
+          leftJoin: () => chain,
+          innerJoin: () => chain,
+          where: () => chain,
+          orderBy: () => chain,
+          limit: () => chain,
+          offset: () => chain,
+          then: (resolve: (v: unknown[]) => void) => resolve(rows),
+        };
+        return chain;
+      };
+      return { select } as unknown as Db;
+    }
+
+    const TASK_ROWS = [{ id: "task-1", kind: "general", title: "Sign W9", dueDate: null, required: true }];
+    const gridDb = fakeGridDb([
+      TASK_ROWS, // tasks
+      [{ count: 0 }], // total
+      [], // contacts page (empty; unrelated to the counts aggregate)
+      [{ speakers: 5, outstandingRequired: 0, overdue: 1, outstandingContacts: 3 }], // counts
+    ]);
+    const grid = await getOnboardingGrid(gridDb, "event-1", {
+      page: 1,
+      perPage: 50,
+      q: null,
+      taskId: null,
+      status: null,
+      overdueOnly: false,
+      now,
+    });
+
+    expect(overview.speakers.contactsOwing).toBe(grid.counts.outstandingContacts);
+    expect(overview.speakers.overdueAssignments).toBe(grid.counts.overdue);
   });
 });

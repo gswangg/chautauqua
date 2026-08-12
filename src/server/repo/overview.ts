@@ -20,8 +20,9 @@ import * as schema from "../../db/schema";
 import { findConflicts, type Conflict, type PlacedSession } from "../../domain/schedule";
 import { formatRef } from "../../domain/ids";
 import { chunkIds } from "../../lib/chunk";
-import { DEC_370 } from "../../decisions";
+import { DEC_370, DEC_531 } from "../../decisions";
 void DEC_370;
+void DEC_531;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const ROW_CAP = 5;
@@ -128,20 +129,6 @@ export function aggregateTriageCounts(
     accept_queue: byStatus.get("accept_queue") ?? 0,
     decline_queue: byStatus.get("decline_queue") ?? 0,
   };
-}
-
-/** Speaker contacts with at least one pending task_assignment in the event,
- * deduped by contactId, plus a count of pending assignments overdue
- * (due_date < now). */
-export function aggregateSpeakerCounts(
-  pendingAssignments: { contactId: string; dueDate: number | null }[],
-  now: number,
-): OverviewPayload["speakers"] {
-  const contactsOwing = new Set(pendingAssignments.map((a) => a.contactId)).size;
-  const overdueAssignments = pendingAssignments.filter(
-    (a) => a.dueDate !== null && a.dueDate < now,
-  ).length;
-  return { contactsOwing, overdueAssignments };
 }
 
 /** Agenda numbers: unplaced accepted submissions + schedule conflicts
@@ -281,25 +268,28 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number): 
     .limit(1);
   const formCloseDate = formRows[0]?.closeDate ? formRows[0].closeDate.getTime() : null;
 
-  // --- Speakers: pending task_assignment rows joined to task for event
-  // scoping + due_date.
-  const pendingAssignmentRows = await db
+  // --- Speakers: one conditional-aggregate query over every
+  // task_assignment joined to task for event scoping (never row-materialize
+  // — matches src/server/repo/tasks/grid.ts's outstandingContacts/overdue
+  // aggregate verbatim so the two surfaces can't drift; DEC-531).
+  const speakerAggRows = await db
     .select({
-      contactId: schema.taskAssignment.contactId,
-      dueDate: schema.task.dueDate,
+      outstandingContacts: sql<number>`count(distinct case when ${schema.taskAssignment.status} <> 'complete' then ${schema.taskAssignment.contactId} end)`,
+      overdue: sql<number>`count(distinct case when ${schema.taskAssignment.status} <> 'complete' and ${schema.task.dueDate} is not null and ${schema.task.dueDate} < ${now} then ${schema.taskAssignment.id} end)`,
+      nextDue: sql<number | null>`min(case when ${schema.taskAssignment.status} <> 'complete' then ${schema.task.dueDate} end)`,
     })
     .from(schema.taskAssignment)
     .innerJoin(schema.task, eq(schema.taskAssignment.taskId, schema.task.id))
-    .where(and(eq(schema.task.eventId, eventId), eq(schema.taskAssignment.status, "pending")));
-  const pendingAssignmentsForAgg = pendingAssignmentRows.map((r) => ({
-    contactId: r.contactId,
-    dueDate: r.dueDate ? r.dueDate.getTime() : null,
-  }));
-  const speakers = aggregateSpeakerCounts(pendingAssignmentsForAgg, now);
-  const nextTaskDueDate = minNonNull(pendingAssignmentsForAgg.map((a) => a.dueDate));
+    .where(eq(schema.task.eventId, eventId));
+  const speakers: OverviewPayload["speakers"] = {
+    contactsOwing: Number(speakerAggRows[0]?.outstandingContacts ?? 0),
+    overdueAssignments: Number(speakerAggRows[0]?.overdue ?? 0),
+  };
+  const nextTaskDueDate =
+    speakerAggRows[0]?.nextDue == null ? null : Number(speakerAggRows[0].nextDue);
 
   // --- Overdue task rows (DEC-370 section 01): capped detail rows for the
-  // same pending+overdue set aggregateSpeakerCounts already counted above
+  // same pending+overdue set the speakers aggregate above already counted
   // (overdueTasks.total reuses speakers.overdueAssignments — no second
   // count query).
   const overdueDetailRows = await db
