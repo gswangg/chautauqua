@@ -8,6 +8,7 @@ import {
   type TaskKind,
 } from './types';
 import { useEscapeKey } from '../../lib/useEscapeKey';
+import { dateInputToMs } from '../../lib/dates';
 
 interface TaskModalProps {
   onCancel: () => void;
@@ -72,7 +73,7 @@ export function TaskModal({ onCancel, onSubmit, forms }: TaskModalProps) {
         kind,
         title: title.trim(),
         description: description.trim().length > 0 ? description.trim() : undefined,
-        dueDate: dueDate.length > 0 ? new Date(dueDate).getTime() : undefined,
+        dueDate: dateInputToMs(dueDate) ?? undefined,
         required,
         formId: kind === 'form' ? formId : undefined,
         deliverableKind: kind === 'file_request' ? deliverableKind : undefined,
