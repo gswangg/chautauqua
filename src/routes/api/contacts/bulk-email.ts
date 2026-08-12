@@ -15,6 +15,7 @@ import { textToHtml } from "../../../mail/render";
 import type { Db } from "../../../server/context";
 import { resolveBaseUrl } from "../../../server/origin";
 import { currentOrgId, asRecord } from "./shared";
+import { newId } from "../../../domain/ids";
 
 const MAX_BULK_EMAIL_RECIPIENTS = 100;
 
@@ -149,6 +150,9 @@ export function registerBulkEmailRoutes(contactsRoutes: Hono<AppEnv>): void {
 
     const { makeMailer } = await import("../../../server/context");
     const mailer = makeMailer(c.var.db, c.env);
+    // DEC-603: one id per fan-out call, shared by every recipient in this
+    // loop, so the comms history tab can group the batch into one row.
+    const batchId = newId();
     // DEC-238 class 2 (organizer-triggered batch): a bad recipient must not
     // abort the whole send — catch per-recipient, keep going, and report the
     // partial outcome in the 200 response rather than surfacing a 500.
@@ -162,6 +166,7 @@ export function registerBulkEmailRoutes(contactsRoutes: Hono<AppEnv>): void {
           html: textToHtml(rendered.text),
           eventId: event.id,
           contactId: rendered.contactId,
+          batchId,
         });
       } catch (err) {
         console.error("CRM bulk email failed for", rendered.email, err);

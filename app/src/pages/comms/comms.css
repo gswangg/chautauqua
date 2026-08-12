@@ -256,6 +256,46 @@
   font-weight: 600;
 }
 
+/* DEC-603: one batch (its toggle row + expanded recipients, when open). */
+.chq-comms-batch {
+  display: block;
+}
+
+/* DEC-603: batch rows are a <button> (real, not div[onClick]) since they
+   toggle an expanded per-recipient drill-in -- same grid as the recipient
+   rows above so when/subject/count/status columns line up. */
+.chq-comms-batch-row {
+  display: grid;
+  grid-template-columns: 150px 1fr 130px 150px auto;
+  gap: 18px;
+  align-items: baseline;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--chq-hairline);
+  width: 100%;
+  background: none;
+  border-left: none;
+  border-right: none;
+  border-top: none;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.chq-comms-batch-row:hover {
+  background: var(--chq-surface-sunk);
+}
+
+.chq-comms-batch-recipients {
+  padding-left: 18px;
+  border-bottom: 1px solid var(--chq-hairline);
+}
+
+.chq-comms-batch-recipients .chq-comms-history-row {
+  border-bottom: none;
+  padding: 9px 0;
+}
+
 /* ---------------------------------------------------------------------- */
 /* Templates tab                                                          */
 /* ---------------------------------------------------------------------- */
@@ -356,6 +396,32 @@
     font-weight: 800;
     letter-spacing: 0.08em;
     text-transform: uppercase;
+  }
+
+  /* DEC-603: batch rows stack the same way (when / subject / recipient
+     count / status tally), matching .chq-comms-history-row's card layout. */
+  .chq-comms-batch-row {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 14px 0;
+  }
+
+  .chq-comms-batch-row > span:nth-child(3) {
+    font-size: 13px;
+    color: var(--chq-ink-2);
+  }
+
+  .chq-comms-batch-row .chq-meta {
+    margin-top: 2px;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .chq-comms-batch-recipients {
+    padding-left: 12px;
   }
 
   /* Templates list: CSS-only table-to-card (thead hidden, td block) — no

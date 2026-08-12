@@ -2,7 +2,7 @@
 // types). Backs both /dev/mailbox (dev-only sink viewer, DEC-005/DEC-006)
 // and GET /api/v1/events/:eventId/email-log (J5 per-recipient history).
 
-import { and, asc, desc, eq, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, or, sql, type SQL } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { likeContains } from "./like";
@@ -49,6 +49,10 @@ export interface EmailLogListParams {
   /** Case-insensitive substring match over subject or recipient email
    * (J5 Comms history tab search — DEC-013 ?q convention). */
   q?: string;
+  /** DEC-603: filters to one batch's recipient rows, matching on the same
+   * COALESCE(batch_id, id) expression listEmailBatches groups by — so a
+   * legacy/NULL-batch row's own id is a valid batchKey too. */
+  batchKey?: string;
   page: number;
   perPage: number;
 }
@@ -87,6 +91,13 @@ function toListRow(r: {
 }): EmailLogListRow {
   return { ...r, sentAt: r.sentAt.getTime() };
 }
+
+// DEC-603: the totally-ordered batch key every send's recipient rows share —
+// the fan-out's minted batch_id when present, else the row's own id (a
+// legacy/NULL-batch row or a single send is its own one-row batch). Both
+// listEmailBatches' GROUP BY and listEmailLog's ?batchId= filter match on
+// this exact expression so the two stay in agreement.
+const BATCH_KEY = sql<string>`coalesce(${schema.emailLog.batchId}, ${schema.emailLog.id})`;
 
 // DEC-543: LIST_COLUMNS is the narrow projection backing listEmailLog —
 // exactly the fields the two list renderers display (id, eventName,
@@ -127,6 +138,7 @@ export async function listEmailLog(db: Db, params: EmailLogListParams): Promise<
   if (params.contactId) conditions.push(eq(schema.emailLog.contactId, params.contactId));
   if (params.status) conditions.push(eq(schema.emailLog.status, params.status));
   if (params.orgId) conditions.push(eq(schema.event.orgId, params.orgId));
+  if (params.batchKey) conditions.push(eq(BATCH_KEY, params.batchKey));
   if (params.q && params.q.trim() !== "") {
     // DEC-506: escape via likeContains + ESCAPE '\\' so a literal `%`/`_`
     // in the query string can't widen into a wildcard match.
@@ -177,4 +189,104 @@ export async function getEmailLogById(db: Db, id: string, orgId: string): Promis
     .limit(1);
   const row = rows[0];
   return row ? toRow(row) : null;
+}
+
+// DEC-603: one row per batch (a fan-out send's shared batch_id, or a legacy/
+// NULL-batch row's own id), so the comms history tab shows "sent to N
+// recipients" instead of N identical-looking rows.
+export interface EmailBatchRow {
+  batchKey: string;
+  subject: string;
+  sentAt: number;
+  recipientCount: number;
+  statusCounts: Record<string, number>;
+}
+
+export interface EmailBatchListParams {
+  eventId: string;
+  q?: string;
+  page: number;
+  perPage: number;
+}
+
+export interface EmailBatchListResult {
+  items: EmailBatchRow[];
+  total: number;
+}
+
+function batchWhere(params: Pick<EmailBatchListParams, "eventId" | "q">) {
+  const conditions: (SQL<unknown> | undefined)[] = [eq(schema.emailLog.eventId, params.eventId)];
+  if (params.q && params.q.trim() !== "") {
+    const like = likeContains(params.q.trim());
+    conditions.push(
+      or(
+        sql`${schema.emailLog.subject} LIKE ${like} ESCAPE '\\' COLLATE NOCASE`,
+        sql`${schema.emailLog.toEmail} LIKE ${like} ESCAPE '\\' COLLATE NOCASE`,
+      ),
+    );
+  }
+  return and(...conditions);
+}
+
+/** Lists email_log rows grouped by BATCH_KEY, newest-batch-first, with
+ * DEC-013 pagination. A second grouped-by-(batchKey,status) query supplies
+ * each batch's per-status tally (statusCounts) — bounded by the same
+ * eventId/q filter, not by the page, since a batch's rows can't be split
+ * across pages. */
+export async function listEmailBatches(db: Db, params: EmailBatchListParams): Promise<EmailBatchListResult> {
+  const where = batchWhere(params);
+
+  const rows = await db
+    .select({
+      batchKey: BATCH_KEY,
+      subject: sql<string>`min(${schema.emailLog.subject})`,
+      sentAt: sql<number>`max(${schema.emailLog.sentAt})`,
+      recipientCount: sql<number>`count(*)`,
+    })
+    .from(schema.emailLog)
+    .where(where)
+    .groupBy(BATCH_KEY)
+    // DEC-534-style total order: sentAt alone repeats across batches sent in
+    // the same request, so batchKey breaks the tie -- and MIN(id) breaks
+    // BATCH_KEY itself for good measure, since it's the same expression
+    // GROUP BY collapsed rows on.
+    .orderBy(desc(sql`max(${schema.emailLog.sentAt})`), asc(BATCH_KEY), asc(sql`min(${schema.emailLog.id})`))
+    .limit(params.perPage)
+    .offset((params.page - 1) * params.perPage);
+
+  const countRows = await db
+    .select({ count: sql<number>`count(distinct ${BATCH_KEY})` })
+    .from(schema.emailLog)
+    .where(where);
+  const total = Number(countRows[0]?.count ?? 0);
+
+  const batchKeys = rows.map((r) => r.batchKey);
+  const statusCountsByBatch = new Map<string, Record<string, number>>();
+  if (batchKeys.length > 0) {
+    const statusRows = await db
+      .select({
+        batchKey: BATCH_KEY,
+        status: schema.emailLog.status,
+        n: sql<number>`count(*)`,
+      })
+      .from(schema.emailLog)
+      .where(where)
+      .groupBy(BATCH_KEY, schema.emailLog.status);
+    for (const r of statusRows) {
+      if (!batchKeys.includes(r.batchKey)) continue;
+      const counts = statusCountsByBatch.get(r.batchKey) ?? {};
+      counts[r.status] = Number(r.n);
+      statusCountsByBatch.set(r.batchKey, counts);
+    }
+  }
+
+  const items: EmailBatchRow[] = rows.map((r) => ({
+    batchKey: r.batchKey,
+    subject: r.subject,
+    sentAt: Number(r.sentAt),
+    recipientCount: Number(r.recipientCount),
+    statusCounts: statusCountsByBatch.get(r.batchKey) ?? {},
+  }));
+
+  return { items, total };
 }

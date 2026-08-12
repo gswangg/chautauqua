@@ -736,6 +736,11 @@ export const emailLog = sqliteTable(
     eventId: text("event_id").notNull(),
     templateId: text("template_id"),
     contactId: text("contact_id"),
+    // DEC-603: one id minted per fan-out call, shared by every recipient row
+    // of the same send (compose/bulk-email/reminders/reviewer-remind); null
+    // on single sends (submit.tsx claim email, users.ts invite), which
+    // render as their own one-row batch via COALESCE(batch_id, id).
+    batchId: text("batch_id"),
     toEmail: text("to_email").notNull(),
     // rendered content inline — DEC-006
     subject: text("subject").notNull(),
@@ -756,5 +761,10 @@ export const emailLog = sqliteTable(
     email_log_contact_id_idx: index("email_log_contact_id_idx").on(t.contactId),
     // DEC-337 (w18): composite covering this wave's event email log queries.
     email_log_event_id_sent_at_idx: index("email_log_event_id_sent_at_idx").on(t.eventId, t.sentAt),
+    // DEC-603: batch history grouping/filtering scoped by event.
+    email_log_event_id_batch_id_idx: index("email_log_event_id_batch_id_idx").on(t.eventId, t.batchId),
+    // DEC-267: batch_id must also lead some index on its own so a bare
+    // COALESCE(batch_id, id) lookup isn't a full-table scan.
+    email_log_batch_id_idx: index("email_log_batch_id_idx").on(t.batchId),
   }),
 );

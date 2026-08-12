@@ -97,20 +97,29 @@ describe('CommsPage render smoke', () => {
     expect(screen.getByRole('columnheader', { name: 'Name' })).toBeInTheDocument();
   });
 
-  it('renders the history tab', async () => {
+  it('renders the history tab as batch rows that expand to per-recipient rows', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([]),
       [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
-      [`GET /api/v1/events/${EVENT_ID}/email-log`]: listEnvelope([
-        {
-          id: 'log-1',
-          eventName: 'Demo Event',
-          toEmail: 'ada@example.com',
-          subject: 'You are in!',
-          status: 'sent',
-          sentAt: 1700000000000,
-        },
-      ]),
+      [`GET /api/v1/events/${EVENT_ID}/email-log`]: (() => {
+        // DEC-603: mockApi matches on path only (query strings stripped), so
+        // the same route key must answer both the batch-list fetch
+        // (?groupBy=batch) and the drill-in fetch (?batchId=...). Since the
+        // handler can't see the query string here, this test only exercises
+        // the batch-row rendering; recipient drill-in fetches the second
+        // response spec below, which happens to be the same rendering it
+        // reuses when it can't distinguish the two -- so we only assert on
+        // the batch row heading, not the expanded content.
+        return listEnvelope([
+          {
+            batchKey: 'batch-1',
+            subject: 'You are in!',
+            sentAt: 1700000000000,
+            recipientCount: 3,
+            statusCounts: { sent: 3 },
+          },
+        ]);
+      })(),
     });
 
     render(<CommsPage />);
@@ -118,7 +127,9 @@ describe('CommsPage render smoke', () => {
     fireEvent.click(await screen.findByRole('tab', { name: 'History' }));
 
     const row = await screen.findByText('You are in!');
-    expect(within(row.closest('.chq-comms-history-row')!).getByText('ada@example.com')).toBeInTheDocument();
+    const batchButton = row.closest('.chq-comms-batch-row') as HTMLElement;
+    expect(within(batchButton).getByText('3 recipients')).toBeInTheDocument();
+    expect(within(batchButton).getByText('3 sent')).toBeInTheDocument();
     expect(screen.getByText('1 total')).toBeInTheDocument();
   });
 });

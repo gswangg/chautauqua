@@ -7,6 +7,7 @@ import { and, eq, inArray, isNull } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { chunkIds } from "../../../lib/chunk";
+import { newId } from "../../../domain/ids";
 import type { Mailer } from "../../../mail/types";
 import { renderTemplate, textToHtml } from "../../../mail/render";
 import type { ReminderAssignment } from "../../../domain/reminders";
@@ -148,6 +149,11 @@ async function sendReminderEmails(
   // instead of a 500.
   const failed: { email: string; message: string }[] = [];
 
+  // DEC-603: one id per fan-out call (this function), shared by every
+  // recipient in the loop below, so the comms history tab can group the
+  // batch into one row.
+  const batchId = newId();
+
   // DEC-530: resolve every recipient's account identity in one batched query
   // instead of per-recipient (the capped group is bounded, so this stays a
   // single round trip regardless of group count).
@@ -183,6 +189,7 @@ async function sendReminderEmails(
         html: textToHtml(reminderText),
         eventId,
         contactId: group.contactId,
+        batchId,
       });
     } catch (err) {
       console.error("reminder email failed for", first.email, err);
