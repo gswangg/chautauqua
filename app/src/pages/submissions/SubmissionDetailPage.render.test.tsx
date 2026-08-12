@@ -61,6 +61,7 @@ describe('SubmissionDetailPage render smoke: inline edit + content-status contro
       [`GET /api/v1/submissions/${SUB_ID}`]: () => currentDetail,
       [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
       [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
       [`PATCH /api/v1/submissions/${SUB_ID}`]: patchMock,
     });
 
@@ -104,6 +105,7 @@ describe('SubmissionDetailPage render smoke: inline edit + content-status contro
       [`GET /api/v1/submissions/${SUB_ID}`]: detail,
       [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
       [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
       [`POST /api/v1/submissions/${SUB_ID}/content-status`]: contentStatusMock,
     });
 
@@ -139,6 +141,7 @@ describe('SubmissionDetailPage render smoke: inline edit + content-status contro
       [`GET /api/v1/submissions/${SUB_ID}`]: () => currentDetail,
       [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
       [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
       [`GET /api/v1/submissions/${SUB_ID}/revisions`]: { items: revisions, total: 2, page: 1, perPage: 2 },
       [`POST /api/v1/submissions/${SUB_ID}/revisions/rev-1/restore`]: restoreMock,
     });
@@ -164,5 +167,84 @@ describe('SubmissionDetailPage render smoke: inline edit + content-status contro
     await waitFor(() => {
       expect(screen.getByText('First edit')).toBeInTheDocument();
     });
+  });
+});
+
+// DEC-596/DEC-577 (task w3-f): the numbered Reviews section renders every
+// recorded evaluation's scores + full comment text, hiding the reviewer name
+// for an anonymized plan; the decision panel is a segmented button group,
+// not a <select>.
+describe('SubmissionDetailPage render: Reviews section + segmented decision buttons', () => {
+  it('renders each evaluation, hides the reviewer name for an anonymized plan, and shows the Speaker card', async () => {
+    const detail = baseDetail({
+      status: 'pending',
+      participants: [
+        {
+          id: 'p1',
+          contactId: 'c1',
+          name: 'Jamie Speaker',
+          email: 'jamie@example.com',
+          title: 'Principal Engineer',
+          company: 'Acme Corp',
+          role: 'speaker',
+          order: 0,
+          visible: true,
+          inviteStatus: 'accepted',
+        },
+      ],
+    });
+    mockApi({
+      [`GET /api/v1/submissions/${SUB_ID}`]: detail,
+      [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
+      [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: {
+        items: [
+          {
+            planId: 'plan-1',
+            planName: 'Round 1 review',
+            round: 1,
+            reviewerName: 'Jamie Reviewer',
+            scores: { c1: 4 },
+            comment: 'Solid proposal, would love more detail on the demo.',
+            submittedAt: 1700000000000,
+          },
+          {
+            planId: 'plan-2',
+            planName: 'Blind review',
+            round: 1,
+            reviewerName: null,
+            scores: { c1: 2 },
+            comment: 'Scope is too broad for the slot.',
+            submittedAt: 1700000100000,
+          },
+        ],
+      },
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('Solid proposal, would love more detail on the demo.')).toBeInTheDocument();
+    });
+    expect(screen.getByText('Jamie Reviewer')).toBeInTheDocument();
+    expect(screen.getByText('Anonymous reviewer')).toBeInTheDocument();
+    expect(screen.getByText('Scope is too broad for the slot.')).toBeInTheDocument();
+
+    // Speaker card (name also appears in the Participants table row, so
+    // assert at least one instance rather than requiring uniqueness).
+    expect(screen.getAllByText('Jamie Speaker').length).toBeGreaterThan(0);
+    expect(screen.getByText('Principal Engineer, Acme Corp')).toBeInTheDocument();
+    expect(screen.getAllByText('jamie@example.com').length).toBeGreaterThan(0);
+
+    // Segmented decision buttons: three buttons, one filled primary
+    // (the current status), the other two secondary/outline.
+    const pendingBtn = screen.getByRole('button', { name: 'Pending' });
+    const acceptedBtn = screen.getByRole('button', { name: 'Accepted' });
+    const declinedBtn = screen.getByRole('button', { name: 'Declined' });
+    expect(pendingBtn).toHaveClass('chq-btn-primary');
+    expect(acceptedBtn).toHaveClass('chq-btn-secondary');
+    expect(declinedBtn).toHaveClass('chq-btn-secondary');
+    // No native <select> for status any more.
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
   });
 });

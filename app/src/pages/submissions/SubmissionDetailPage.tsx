@@ -10,14 +10,21 @@ import { buildAnswerRows, resolveAnswerFields } from './detailRows';
 import './detail.css';
 import {
   STATUS_LABELS,
-  SUBMISSION_STATUSES,
   type ContactSearchResult,
   type InviteStatus,
   type SubmissionDetail,
   type SubmissionDetailParticipant,
+  type SubmissionEvaluation,
   type SubmissionStatus,
   type Track,
 } from './types';
+
+// DEC-577: the decision panel's status <select> becomes a segmented button
+// group -- markup surgery scoped to this page. Only the three states an
+// organiser actually DECIDES between are buttons; the pipeline's own
+// accept_queue/decline_queue intermediate states are set elsewhere (bulk
+// worklist), never from this per-submission decision panel.
+const DECISION_STATUSES: readonly SubmissionStatus[] = ['pending', 'accepted', 'declined'];
 
 const INVITE_STATUS_LABELS: Record<InviteStatus, string> = {
   none: 'None',
@@ -66,6 +73,8 @@ export function SubmissionDetailPage() {
   const [historyEntries, setHistoryEntries] = useState<RevisionEntry[]>([]);
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [restoringId, setRestoringId] = useState<string | null>(null);
+  const [evaluations, setEvaluations] = useState<SubmissionEvaluation[]>([]);
+  const [evaluationsError, setEvaluationsError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -75,6 +84,15 @@ export function SubmissionDetailPage() {
       .then(setDetail)
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load submission'))
       .finally(() => setLoading(false));
+  }, [id]);
+
+  // DEC-596: the organiser reads the same evaluation the reviewer wrote.
+  useEffect(() => {
+    if (!id) return;
+    setEvaluationsError(null);
+    apiList<SubmissionEvaluation>(`/submissions/${id}/evaluations`)
+      .then((res) => setEvaluations(res.items))
+      .catch((err) => setEvaluationsError(err instanceof ApiError ? err.message : 'Failed to load reviews'));
   }, [id]);
 
   useEffect(() => {
@@ -299,6 +317,9 @@ export function SubmissionDetailPage() {
 
   const trackNames = detail.trackIds.map((trackId) => tracks.find((t) => t.id === trackId)?.name ?? trackId);
   const answerRows = buildAnswerRows(detail.answers, resolveAnswerFields(form, detail.formId));
+  // Speaker card: the named 'speaker' role participant, falling back to the
+  // first (order asc) participant when no role is literally 'speaker'.
+  const speaker = detail.participants.find((p) => p.role === 'speaker') ?? detail.participants[0] ?? null;
 
   return (
     <div className="chq-page chq-detail-page">
@@ -532,6 +553,42 @@ export function SubmissionDetailPage() {
             </div>
           </section>
 
+          <section className="chq-detail-section chq-detail-reviews">
+            <h2 className="chq-detail-section-title">Reviews</h2>
+            <div className="chq-detail-section-body">
+              {evaluationsError && <div className="chq-error-banner">{evaluationsError}</div>}
+              {evaluations.length === 0 ? (
+                <p>No reviews recorded yet.</p>
+              ) : (
+                <ul className="chq-review-list">
+                  {evaluations.map((ev, i) => (
+                    <li key={`${ev.planId}-${ev.round}-${i}`} className="chq-review-entry">
+                      <div className="chq-review-entry-meta">
+                        <strong>{ev.reviewerName ?? 'Anonymous reviewer'}</strong>
+                        <span className="chq-review-entry-plan">
+                          {ev.planName} &middot; Round {ev.round}
+                        </span>
+                      </div>
+                      {Object.keys(ev.scores).length > 0 && (
+                        <dl className="chq-review-scores">
+                          {Object.entries(ev.scores).map(([criterionId, value]) => (
+                            <div key={criterionId} className="chq-review-score">
+                              <dt>{criterionId}</dt>
+                              <dd>{value}</dd>
+                            </div>
+                          ))}
+                        </dl>
+                      )}
+                      {/* Copy rule 6: sentences are for people -- the full
+                          comment text, never truncated. */}
+                      {ev.comment && <p className="chq-review-comment">{ev.comment}</p>}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </section>
+
           <section className="chq-detail-section">
             <h2 className="chq-detail-section-title">Meta</h2>
             <div className="chq-detail-section-body">
@@ -543,24 +600,41 @@ export function SubmissionDetailPage() {
         </div>
 
         <aside className="chq-detail-aside">
+          {speaker && (
+            <section className="chq-detail-section chq-detail-speaker">
+              <h2 className="chq-detail-section-title">Speaker</h2>
+              <div className="chq-detail-section-body chq-detail-speaker-body">
+                <strong className="chq-detail-speaker-name">{speaker.name}</strong>
+                {(speaker.title || speaker.company) && (
+                  <span className="chq-detail-speaker-role">
+                    {[speaker.title, speaker.company].filter(Boolean).join(', ')}
+                  </span>
+                )}
+                <span className="chq-detail-speaker-email">{speaker.email}</span>
+              </div>
+            </section>
+          )}
+
           <section className="chq-detail-section chq-detail-decision">
             <h2 className="chq-detail-section-title">Decision</h2>
             <div className="chq-detail-section-body chq-detail-decision-body">
-              <label className="chq-detail-decision-status">
+              <div className="chq-detail-decision-status">
                 Status
-                <select
-                  className="chq-select"
-                  value={detail.status}
-                  disabled={statusPending}
-                  onChange={(e) => changeStatus(e.target.value as SubmissionStatus)}
-                >
-                  {SUBMISSION_STATUSES.map((status) => (
-                    <option key={status} value={status}>
+                <div className="chq-segmented" role="group" aria-label="Status">
+                  {DECISION_STATUSES.map((status) => (
+                    <button
+                      key={status}
+                      type="button"
+                      className={`chq-btn ${detail.status === status ? 'chq-btn-primary' : 'chq-btn-secondary'}`}
+                      disabled={statusPending}
+                      aria-pressed={detail.status === status}
+                      onClick={() => changeStatus(status)}
+                    >
                       {STATUS_LABELS[status]}
-                    </option>
+                    </button>
                   ))}
-                </select>
-              </label>
+                </div>
+              </div>
               <span className="chq-content-status">Content: {detail.contentStatus}</span>
               <div className="chq-detail-decision-actions">
                 <button

@@ -12,6 +12,8 @@ export interface SubmissionDetailParticipant {
   contactId: string;
   name: string;
   email: string;
+  title: string | null;
+  company: string | null;
   role: string;
   order: number;
   visible: boolean;
@@ -121,6 +123,8 @@ export async function getSubmissionDetail(db: Db, submissionId: string): Promise
       firstName: schema.contact.firstName,
       lastName: schema.contact.lastName,
       email: schema.contact.email,
+      title: schema.contact.title,
+      company: schema.contact.company,
       role: schema.participant.role,
       order: schema.participant.order,
       visible: schema.participant.visible,
@@ -167,6 +171,8 @@ export async function getSubmissionDetail(db: Db, submissionId: string): Promise
       contactId: p.contactId,
       name: `${p.firstName} ${p.lastName}`.trim(),
       email: p.email,
+      title: p.title,
+      company: p.company,
       role: p.role,
       order: p.order,
       visible: p.visible,

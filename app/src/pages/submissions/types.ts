@@ -84,10 +84,23 @@ export interface SubmissionDetailParticipant {
   contactId: string;
   name: string;
   email: string;
+  title: string | null;
+  company: string | null;
   role: string;
   order: number;
   visible: boolean;
   inviteStatus: InviteStatus;
+}
+
+// GET /api/v1/submissions/:id/evaluations item (DEC-596).
+export interface SubmissionEvaluation {
+  planId: string;
+  planName: string;
+  round: number;
+  reviewerName: string | null;
+  scores: Record<string, number | string>;
+  comment: string | null;
+  submittedAt: number | null;
 }
 
 // GET /api/v1/contacts item, as returned by src/routes/api/contacts.ts
