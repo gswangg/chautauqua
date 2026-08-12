@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { apiList, apiGet, ApiError, apiPost } from '../../lib/api';
+import { apiList, apiGet, ApiError, apiPatch, apiPost } from '../../lib/api';
 import { formatDate } from '../../lib/dates';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { BulkActionBar } from './BulkActionBar';
@@ -104,11 +104,19 @@ export function SubmissionsTable() {
 
   async function createSubmission(input: NewSubmissionInput) {
     if (!eventId) return;
-    await apiPost(`/events/${eventId}/submissions`, {
+    const created = await apiPost<{ id: string }>(`/events/${eventId}/submissions`, {
       title: input.title,
       description: input.description || null,
       contact: input.contact,
     });
+    // DEC-598 (closes CNT-D6): the create endpoint doesn't take trackIds
+    // directly — apply the organizer's track selection through the same
+    // full-set-replace PATCH the detail page's track editor uses, so a
+    // submission created here can be track-scoped from the start instead of
+    // never being assignable to a track.
+    if (input.trackIds.length > 0) {
+      await apiPatch(`/submissions/${created.id}`, { trackIds: input.trackIds });
+    }
     setShowNewModal(false);
     setRefreshToken((n) => n + 1);
   }
@@ -180,7 +188,12 @@ export function SubmissionsTable() {
       {error && <div className="chq-error">{error}</div>}
 
       {showNewModal && (
-        <NewSubmissionModal onCancel={() => setShowNewModal(false)} onCreate={createSubmission} />
+        <NewSubmissionModal
+          tracks={tracks}
+          formatField={findFormatField(formFields)}
+          onCancel={() => setShowNewModal(false)}
+          onCreate={createSubmission}
+        />
       )}
 
       <div className="chq-submissions-toolbar">

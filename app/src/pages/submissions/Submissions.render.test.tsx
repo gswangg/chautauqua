@@ -180,6 +180,62 @@ describe('SubmissionsPage render smoke', () => {
     });
   });
 
+  it('New submission modal (DEC-598, closes CNT-D6) renders Track checkboxes (multi-select, DEC-579) and a Format select', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([
+        { id: 'trk1', name: 'Keynotes', color: '#4f46e5' },
+        { id: 'trk2', name: 'Workshops', color: '#16a34a' },
+      ]),
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: {
+        id: 'form-1',
+        fields: [
+          {
+            id: 'f-format',
+            section: 'session',
+            kind: 'dropdown',
+            label: 'Session format',
+            required: false,
+            position: 0,
+            options: ['Talk', 'Workshop'],
+          },
+        ],
+      },
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([]),
+    });
+
+    render(
+      <MemoryRouter>
+        <SubmissionsPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'New submission' })).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'New submission' }));
+
+    expect(await screen.findByRole('dialog', { name: 'New submission' })).toBeInTheDocument();
+
+    // Tracks render as checkboxes, NOT radios (DEC-579: multi-track data
+    // model — the reported "bug" was the label, not the model), one per
+    // event track, both togglable independently.
+    const keynotes = screen.getByRole('checkbox', { name: 'Keynotes' });
+    const workshops = screen.getByRole('checkbox', { name: 'Workshops' });
+    expect(keynotes).toBeInTheDocument();
+    expect(workshops).toBeInTheDocument();
+    fireEvent.click(keynotes);
+    fireEvent.click(workshops);
+    expect(keynotes).toBeChecked();
+    expect(workshops).toBeChecked();
+
+    // Format select is populated from the default form's Format dropdown
+    // field's own options.
+    const formatSelect = screen.getByRole('combobox', { name: 'Session format' });
+    expect(formatSelect).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Talk' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Workshop' })).toBeInTheDocument();
+  });
+
   it('shows the bulk-bar batch-size constraint copy once a row is selected', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),

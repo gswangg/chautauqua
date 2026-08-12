@@ -13,7 +13,7 @@ import * as schema from "../../db/schema";
 import type { Db } from "../context";
 import { appendSubmissionRevision } from "./revisions";
 import { bumpIcsSequences } from "./ics-sequence";
-import { upsertSubmissionAnswers } from "./submit";
+import { upsertSubmissionAnswers, replaceSubmissionTracks } from "./submit";
 import type { FormFieldDef, FormFieldKind, FormFieldSection, FormFieldRule, AnswerMap } from "../../forms/types";
 import { LOCKED_SESSION_FIELDS, LOCKED_SPEAKER_FIELDS, lockedFieldName, projectFieldForAnswers } from "../../forms/types";
 import type { SubmissionStatus } from "../../domain/status";
@@ -309,11 +309,6 @@ export async function saveSubmissionEdits(
   }
 
   if (trackIds !== null) {
-    await db.delete(schema.submissionTrack).where(eq(schema.submissionTrack.submissionId, submissionId));
-    if (trackIds.length > 0) {
-      await db.insert(schema.submissionTrack).values(
-        trackIds.map((trackId) => ({ submissionId, trackId, createdAt: now })),
-      );
-    }
+    await replaceSubmissionTracks(db, submissionId, trackIds);
   }
 }
