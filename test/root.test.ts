@@ -15,6 +15,7 @@
 import { describe, expect, it } from "vitest";
 import { Hono } from "hono";
 import { rootRoutes } from "../src/routes/root";
+import { HUB_CANDIDATE_LIMIT } from "../src/server/repo/public/home";
 import type { AppEnv, AuthInfo } from "../src/server/env";
 import type { Db } from "../src/server/context";
 import { registerErrorHandler } from "../src/server/http";
@@ -105,14 +106,12 @@ function eventRow(overrides: {
   };
 }
 
-/** Builds the [orgRows, eventRows, totalRows, countRows] queue
- * listHubEvents/getHubOrg consume, in call order. `countRows` may be
- * omitted for a zero-event fixture (listHubEvents skips that query when
- * eventIds is empty). */
+/** Builds the [orgRows, eventRows, countRows] queue listHubEvents/getHubOrg
+ * consume, in call order. `countRows` may be omitted for a zero-event
+ * fixture (listHubEvents skips that query when eventIds is empty). */
 function buildQueue(opts: { events: ReturnType<typeof eventRow>[]; countRows?: { eventId: string; count: number }[] }): unknown[][] {
-  const totalRows = [{ count: opts.events.length }];
   const countRows = opts.events.length > 0 ? (opts.countRows ?? []) : [];
-  return [[ORG], opts.events, totalRows, countRows];
+  return [[ORG], opts.events, countRows];
 }
 
 function buildApp(opts: { auth?: AuthInfo; queue?: unknown[][] }) {
@@ -349,5 +348,62 @@ describe("GET / — anonymous hub (DEC-581)", () => {
     expect(css).not.toContain("&#39;");
     expect(css).not.toContain("&quot;");
     expect(css).not.toContain("&gt;");
+  });
+
+  // DEC-670: capped is a fact about the fetched window, never a disclosing
+  // org-wide count -- an org with hidden (no open CFP, no published
+  // sessions) events beyond the 2 visible ones must never leak that hidden
+  // count anywhere in the page, and under the candidate limit there is no
+  // cap note at all.
+  it("renders no cap note, and never a digit equal to the hidden-event count, when under the candidate limit", async () => {
+    const HIDDEN_COUNT = 7;
+    const hidden = Array.from({ length: HIDDEN_COUNT }, (_, i) =>
+      eventRow({
+        id: `hidden-${i}`,
+        name: `Hidden Event ${i}`,
+        slug: `hidden-event-${i}`,
+        startDate: "2028-01-01",
+        endDate: "2028-01-02",
+        openMs: NOW + 60 * DAY,
+        closeMs: NOW + 90 * DAY,
+      }),
+    );
+    const visible = [
+      eventRow({ id: "v1", slug: "visible-one", startDate: "2027-05-12", endDate: "2027-05-14", openMs: null, closeMs: NOW + 6 * DAY }),
+      eventRow({ id: "v2", slug: "visible-two", startDate: "2027-06-12", endDate: "2027-06-14", openMs: null, closeMs: NOW + 6 * DAY }),
+    ];
+    const events = [...visible, ...hidden];
+    const app = buildApp({ queue: buildQueue({ events }) });
+    const res = await app.request("/", {}, { ASSETS: fakeAssets() });
+    const body = await res.text();
+    // the stylesheet unconditionally defines .chq-home-cap-note (it's also
+    // used by the between_cycles sign-in row) -- what must never render is
+    // the note element itself, i.e. the "Showing ..." sentence.
+    expect(body).not.toContain("Showing");
+    const total = events.length; // N+2
+    expect(body).not.toContain(`of ${total}`);
+    // scope the digit check to the rendered body content (footer/scripts/CSS
+    // legitimately contain stray digits, e.g. the GitHub SVG path data) --
+    // the count would only ever be disclosed inside the hub body.
+    const bodyOnly = body.split('class="chq-home-body"')[1]?.split("chq-home-footer")[0] ?? "";
+    expect(bodyOnly).not.toMatch(new RegExp(`\\b${HIDDEN_COUNT}\\b`));
+  });
+
+  it("renders the capped note when the candidate set returns exactly HUB_CANDIDATE_LIMIT rows", async () => {
+    const events = Array.from({ length: HUB_CANDIDATE_LIMIT }, (_, i) =>
+      eventRow({
+        id: `e${i}`,
+        slug: `event-${i}`,
+        startDate: "2027-05-12",
+        endDate: "2027-05-14",
+        openMs: null,
+        closeMs: NOW + 6 * DAY,
+      }),
+    );
+    const app = buildApp({ queue: buildQueue({ events }) });
+    const res = await app.request("/", {}, { ASSETS: fakeAssets() });
+    const body = await res.text();
+    expect(body).toContain("chq-home-cap-note");
+    expect(body).toContain(`Showing the ${HUB_CANDIDATE_LIMIT} most recent events.`);
   });
 });
