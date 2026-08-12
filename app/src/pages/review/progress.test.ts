@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { overallCompletion, reviewersWithIncompleteQueues } from './progress';
+import { overallCompletion, progressTotals, reviewersWithIncompleteQueues } from './progress';
 import type { ProgressRow } from './types';
 
 const rows: ProgressRow[] = [
@@ -26,5 +26,15 @@ describe('overallCompletion', () => {
   it('is 0 when nobody is assigned', () => {
     expect(overallCompletion([])).toBe(0);
     expect(overallCompletion([{ userId: 'u3', email: 'c@example.com', assigned: 0, completed: 0, recused: 0 }])).toBe(0);
+  });
+});
+
+describe('progressTotals', () => {
+  it('sums completed and assigned across all reviewers (never a plan count)', () => {
+    expect(progressTotals(rows)).toEqual({ completed: 13, assigned: 18 });
+  });
+
+  it('is {0, 0} for an empty reviewer list', () => {
+    expect(progressTotals([])).toEqual({ completed: 0, assigned: 0 });
   });
 });

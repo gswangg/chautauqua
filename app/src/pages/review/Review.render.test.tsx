@@ -81,6 +81,9 @@ describe('ReviewPage render smoke: organizer', () => {
     mockApi({
       'GET /api/v1/me': organizerMe(),
       [`GET /api/v1/events/${EVENT_ID}/plans`]: listEnvelope([planWithNullDates()]),
+      [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([
+        { userId: 'u-1', email: 'rev1@example.com', assigned: 4, completed: 1, recused: 0 },
+      ]),
     });
 
     render(
@@ -91,6 +94,12 @@ describe('ReviewPage render smoke: organizer', () => {
 
     expect(await screen.findByRole('heading', { name: 'Evaluation plans' })).toBeInTheDocument();
     expect(await screen.findByRole('link', { name: 'Keynote Track Review' })).toBeInTheDocument();
+
+    // DEC-587: inline row progress reads from the SAME /plans/:id/progress
+    // aggregate the Progress page consumes -- 1 of 4 evaluations in here.
+    await waitFor(() => {
+      expect(screen.getByText('1 of 4 evaluations in')).toBeInTheDocument();
+    });
   });
 
   it('renders plan detail for a plan with NULL open/close dates without throwing (DEC-146)', async () => {
@@ -235,5 +244,79 @@ describe('ReviewPage render smoke: reviewer', () => {
     expect(rows[0]).not.toHaveTextContent('Complete');
     expect(rows[1]).toHaveTextContent('Another Talk');
     expect(rows[1]).toHaveTextContent('Complete');
+  });
+
+  it('landing on /review with exactly one plan shows the queue directly, no plan-name-only picker', async () => {
+    mockApi({
+      'GET /api/v1/me': reviewerMe(),
+      'GET /api/v1/review/plans': listEnvelope([{ ...planWithNullDates(), id: PLAN_ID, name: 'Solo Plan' }]),
+      [`GET /api/v1/review/plans/${PLAN_ID}/queue`]: {
+        ...listEnvelope([
+          { submissionId: 'sub-1', ref: 'S-001', title: 'Only Talk', ratingsCount: 0, alreadyRatedByMe: false },
+        ]),
+        open: true,
+        recused: [],
+      },
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <ReviewPage />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('link', { name: /Only Talk/ })).toBeInTheDocument();
+    // No picker: the single plan's name never renders as its own heading.
+    expect(screen.queryByRole('heading', { name: 'Solo Plan' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Your evaluation plans' })).not.toBeInTheDocument();
+  });
+
+  it('landing on /review with several plans renders one section per plan, in list order, without merging or re-sorting items', async () => {
+    const planA = { ...planWithNullDates(), id: 'plan-a', name: 'Plan A' };
+    const planB = { ...planWithNullDates(), id: 'plan-b', name: 'Plan B' };
+    mockApi({
+      'GET /api/v1/me': reviewerMe(),
+      'GET /api/v1/review/plans': listEnvelope([planA, planB]),
+      'GET /api/v1/review/plans/plan-a/queue': {
+        ...listEnvelope([
+          { submissionId: 'a-1', ref: 'A-001', title: 'Alpha First', ratingsCount: 0, alreadyRatedByMe: false },
+          { submissionId: 'a-2', ref: 'A-002', title: 'Alpha Second', ratingsCount: 1, alreadyRatedByMe: true },
+        ]),
+        open: true,
+        recused: [],
+      },
+      'GET /api/v1/review/plans/plan-b/queue': {
+        ...listEnvelope([
+          { submissionId: 'b-1', ref: 'B-001', title: 'Beta First', ratingsCount: 0, alreadyRatedByMe: false },
+        ]),
+        open: true,
+        recused: [{ submissionId: 'b-2', ref: 'B-002', title: 'Beta Recused', reason: 'conflict' }],
+      },
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <ReviewPage />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('heading', { name: 'Plan A' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Plan B' })).toBeInTheDocument();
+
+    const headings = screen.getAllByRole('heading', { level: 2 });
+    const headingNames = headings.map((h) => h.textContent);
+    expect(headingNames.indexOf('Plan A')).toBeLessThan(headingNames.indexOf('Plan B'));
+
+    // Item order within each section is delivered exactly as the server
+    // sent it -- never re-sorted, and never merged across plan sections.
+    const planASection = screen.getByRole('heading', { name: 'Plan A' }).closest('section')!;
+    const planARows = planASection.querySelectorAll('li.chq-review-queue-row');
+    expect(planARows[0]).toHaveTextContent('Alpha First');
+    expect(planARows[1]).toHaveTextContent('Alpha Second');
+
+    // The recusal stays attached to its own plan (Plan B), never Plan A.
+    const planBSection = screen.getByRole('heading', { name: 'Plan B' }).closest('section')!;
+    expect(planBSection).toHaveTextContent('Beta Recused');
+    expect(planASection).not.toHaveTextContent('Beta Recused');
   });
 });
