@@ -250,10 +250,11 @@ export function formatMobileSummary(results: readonly MobileRouteResult[]): stri
 // ---------------------------------------------------------------------------
 
 /** DEC-387 flip rule (verbatim): "it becomes true in the wave after the pass first reads all-PASS."
- * Until then the admin mobile pass is advisory — it prints its own
- * PASS/FAIL table and summary but never contributes to the render-sweep
- * gate's exit code. */
-export const ADMIN_MOBILE_PASS_BLOCKING = false;
+ * w12-a's Reading 2 (re-confirmed on w13-a's own tree, docs/verification-log/
+ * task-w13-a-render-sweep-stage1.md) read 20/20 all-PASS — DEC-431 fires the
+ * flip here. The admin mobile pass now contributes to the render-sweep gate's
+ * exit code. */
+export const ADMIN_MOBILE_PASS_BLOCKING = true;
 
 // ---------------------------------------------------------------------------
 // DEC-411: page.evaluate keepNames shim. tsx runs esbuild with keepNames,
@@ -286,11 +287,12 @@ export const PAGE_EVALUATE_KEEPNAMES_SHIM =
 export const MIN_FONT_PX = 10;
 
 /** DEC-387 flip rule (verbatim), reused here per DEC-421: "it becomes true in
- * the wave after the pass first reads all-PASS." Until then the type-floor
- * pass is advisory — it prints its own PASS/FAIL table and summary but never
- * contributes to the render-sweep gate's exit code. This is the pass's FIRST
- * reading (task-w11-b), so it lands false. */
-export const FONT_FLOOR_BLOCKING = false;
+ * the wave after the pass first reads all-PASS." w12-a's Reading 2 read
+ * 42/42 all-PASS and re-confirmed all-PASS on w13-a's own tree (83/83,
+ * docs/verification-log/task-w13-a-render-sweep-stage1.md) — DEC-431 fires
+ * the flip here. The type-floor pass now contributes to the render-sweep
+ * gate's exit code. */
+export const FONT_FLOOR_BLOCKING = true;
 
 export interface FontFloorRouteEntry {
   readonly path: string;

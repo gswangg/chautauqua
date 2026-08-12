@@ -109,11 +109,30 @@ export const PUBLIC_CSS = `
   .chq-pub-session-speaker { font-size: 14px; color: var(--chq-ink-2); margin: 0; }
   .chq-pub-session-tags { display: flex; gap: 8px; align-items: center; }
   .chq-pub-session-tag { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--chq-muted); }
-  /* w3-h: chip text sits on a per-event accent background set inline (safeExternalUrl-
-     free style attribute, DEC-322 territory but not colour palette); no token models
-     "text on an arbitrary accent fill", so on-brand (the closest light/on-dark ink) is
-     the nearest DEC-367 substitute for the removed literal #fff. */
-  .chq-pub-track-chip { display: inline-block; padding: 0.1rem 0.5rem; border-radius: var(--chq-r-pill); color: var(--chq-on-brand); font-size: 0.8rem; margin-right: 0.25rem; }
+  /* DEC-430: organizer-supplied track colour is untrusted for text-on-fill contrast
+     (measured 3.00-3.10:1 against --chq-on-brand) -- the chip now renders ink-on-
+     surface always, and carries the track colour only as a bounded swatch dot fed
+     by the --chq-track-color custom property (strict hex-guarded, cards.tsx). */
+  .chq-pub-track-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35em;
+    padding: 0.1rem 0.5rem;
+    border-radius: var(--chq-r-pill);
+    color: var(--chq-ink);
+    background: var(--chq-surface);
+    border: 1px solid var(--chq-hairline);
+    font-size: 0.8rem;
+    margin-right: 0.25rem;
+  }
+  .chq-pub-track-chip::before {
+    content: "";
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--chq-track-color, var(--chq-hairline));
+  }
   .chq-pub-session-action { white-space: nowrap; align-self: center; }
 
   /* Speaker grid (speakers.tsx / gallery). */

@@ -96,7 +96,7 @@
 /* Drag affordance glyph (DEC-367: no icons/images/SVG). Purely decorative
    -- real reordering stays on the accessible move-up/move-down buttons. */
 .chq-forms-field-drag {
-  color: var(--chq-border);
+  color: var(--chq-muted);
   font-size: 14px;
   width: 20px;
 }

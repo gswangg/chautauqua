@@ -8,11 +8,19 @@ import type { CardFields } from "./query";
 
 const ALL_FIELDS_ON: CardFields = { track: true, time: true, room: true, speaker: true, description: true };
 
+// DEC-430/DEC-374 pattern: the track colour is organizer-supplied data and never
+// reaches the rendered attribute unless it is a strict 3- or 6-digit hex value --
+// anything else (CSS injection, `var(...)`, keywords) emits no custom property.
+const HEX_COLOR_RE = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
+
 export function TrackChips(props: { tracks: PublicTrack[] }) {
   return (
     <>
       {props.tracks.map((t) => (
-        <span class="chq-pub-track-chip" style={`background:${t.color ?? "#666"}`}>
+        <span
+          class="chq-pub-track-chip"
+          style={t.color && HEX_COLOR_RE.test(t.color) ? `--chq-track-color:${t.color}` : undefined}
+        >
           {t.name}
         </span>
       ))}
