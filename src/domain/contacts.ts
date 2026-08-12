@@ -3,6 +3,9 @@
 // already-parsed CSV rows (parseCsv lives in src/lib/csv.ts, DEC-011); it
 // never imports the CSV parser itself.
 
+// DEC-467: exactly one normalizeEmail survives in the product (src/domain/email.ts).
+import { normalizeEmail } from "./email";
+
 export interface SocialLinks {
   twitter: string;
   linkedin: string;
@@ -47,10 +50,6 @@ export function safeExternalUrl(raw: string | null | undefined): string | null {
   }
 }
 
-function normalizedEmail(email: string): string {
-  return email.trim().toLowerCase();
-}
-
 function normalizedName(first: string, last: string): string {
   return `${first} ${last}`
     .toLowerCase()
@@ -81,7 +80,7 @@ export function findDuplicateGroups(contacts: ContactRecord[]): string[][] {
   const noEmail: ContactRecord[] = [];
 
   for (const contact of contacts) {
-    const email = normalizedEmail(contact.email);
+    const email = normalizeEmail(contact.email);
     if (email === "") {
       noEmail.push(contact);
       continue;
@@ -166,7 +165,7 @@ function alreadyInMultiEmailGroup(
   contact: ContactRecord,
   byEmail: Map<string, ContactRecord[]>,
 ): boolean {
-  const email = normalizedEmail(contact.email);
+  const email = normalizeEmail(contact.email);
   if (email === "") return false;
   const bucket = byEmail.get(email);
   return !!bucket && bucket.length > 1;
