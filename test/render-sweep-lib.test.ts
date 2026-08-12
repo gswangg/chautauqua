@@ -5,11 +5,18 @@ import { describe, expect, it } from "vitest";
 import {
   ADMIN_MOBILE_PASS_BLOCKING,
   EMPTY_MOBILE_OBSERVATION,
+  FONT_FLOOR_BLOCKING,
+  MIN_FONT_PX,
   PAGE_EVALUATE_KEEPNAMES_SHIM,
+  allFontFloorPassed,
   allMobilePassed,
   allPassed,
+  evaluateFontFloor,
   evaluateMobileRoute,
   evaluateRoute,
+  fontFloorErrorResult,
+  formatFontFloorSummary,
+  formatFontFloorTable,
   formatMobileResultsTable,
   formatMobileSummary,
   formatResultsTable,
@@ -17,6 +24,7 @@ import {
   isNonEmptyText,
   mobileErrorResult,
   routeErrorResult,
+  type FontFloorRouteEntry,
   type MobileRouteEntry,
 } from "../scripts/render-sweep-lib";
 import { ADMIN_MOBILE_ROUTE_MANIFEST, MOBILE_ROUTE_MANIFEST } from "../scripts/render-sweep";
@@ -455,12 +463,21 @@ describe("PAGE_EVALUATE_KEEPNAMES_SHIM (DEC-411)", () => {
     }
 
     // No page.evaluate call site anywhere in the file is reachable without
-    // going through one of the two functions checked above (the module has
-    // exactly two page.evaluate call sites total, both inside
-    // visitMobileRoute; visitRoute has none but is still guarded above).
+    // going through one of the two functions checked above, or through the
+    // measureFontFloor() helper both functions call after installing the
+    // shim (DEC-421) — the module has no page.evaluate call sites outside
+    // visitRoute, visitMobileRoute, and measureFontFloor.
     const evaluateCallCount = (source.match(/page\.evaluate\(/g) ?? []).length;
+    const evaluateCallsInVisitRouteBody = (visitRouteBody.match(/page\.evaluate\(/g) ?? []).length;
     const evaluateCallsInMobileBody = (visitMobileRouteBody.match(/page\.evaluate\(/g) ?? []).length;
-    expect(evaluateCallCount).toBe(evaluateCallsInMobileBody);
+    const measureFontFloorStart = source.indexOf("async function measureFontFloor(");
+    expect(measureFontFloorStart).toBeGreaterThan(-1);
+    const measureFontFloorEnd = source.indexOf("\n}\n", measureFontFloorStart) + 3;
+    const measureFontFloorBody = source.slice(measureFontFloorStart, measureFontFloorEnd);
+    const evaluateCallsInMeasureFontFloor = (measureFontFloorBody.match(/page\.evaluate\(/g) ?? []).length;
+    expect(evaluateCallCount).toBe(
+      evaluateCallsInVisitRouteBody + evaluateCallsInMobileBody + evaluateCallsInMeasureFontFloor,
+    );
   });
 });
 
@@ -495,5 +512,107 @@ describe("MOBILE_ROUTE_MANIFEST (DEC-411 superset)", () => {
     expect(
       MOBILE_ROUTE_MANIFEST.some((e) => e.path === "/account/password" && e.role === "speaker"),
     ).toBe(true);
+  });
+});
+
+describe("evaluateFontFloor (DEC-421)", () => {
+  const ENTRY: FontFloorRouteEntry = { path: "/admin/overview", role: "organizer" };
+
+  it("fails when the smallest measured font is below the 10px floor", () => {
+    const result = evaluateFontFloor(ENTRY, "desktop", { minFontPx: 9, offenders: ["span.chq-label 9px"] });
+    expect(result.ok).toBe(false);
+    expect(result.minFontPx).toBe(9);
+    expect(result.path).toBe(ENTRY.path);
+    expect(result.role).toBe(ENTRY.role);
+    expect(result.viewport).toBe("desktop");
+    expect(result.failureReason).toMatch(/min font-size 9px < 10px/);
+    expect(result.failureReason).toMatch(/smallest: span\.chq-label 9px/);
+  });
+
+  it("passes when the smallest measured font is exactly at the floor", () => {
+    const result = evaluateFontFloor(ENTRY, "mobile", { minFontPx: MIN_FONT_PX, offenders: [] });
+    expect(result.ok).toBe(true);
+    expect(result.minFontPx).toBe(10);
+    expect(result.viewport).toBe("mobile");
+    expect(result.failureReason).toBeUndefined();
+  });
+
+  it("passes when the smallest measured font is above the floor", () => {
+    const result = evaluateFontFloor(ENTRY, "desktop", { minFontPx: 14, offenders: [] });
+    expect(result.ok).toBe(true);
+    expect(result.failureReason).toBeUndefined();
+  });
+
+  it("passes vacuously when the page has no measurable text (minFontPx null)", () => {
+    const result = evaluateFontFloor(ENTRY, "desktop", { minFontPx: null, offenders: [] });
+    expect(result.ok).toBe(true);
+    expect(result.minFontPx).toBeNull();
+    expect(result.failureReason).toBeUndefined();
+  });
+
+  it("includes up to 3 offenders, smallest first, in the failure reason", () => {
+    const result = evaluateFontFloor(ENTRY, "desktop", {
+      minFontPx: 8,
+      offenders: ["span.chq-a 8px", "div.chq-b 9px"],
+    });
+    expect(result.failureReason).toMatch(/smallest: span\.chq-a 8px \| div\.chq-b 9px/);
+  });
+});
+
+describe("fontFloorErrorResult (DEC-421)", () => {
+  const ENTRY: FontFloorRouteEntry = { path: "/portal", role: "speaker" };
+
+  it("produces a FAIL row prefixed instrument-blocked, carrying the error message", () => {
+    const result = fontFloorErrorResult(ENTRY, "mobile", "__name is not defined");
+    expect(result.ok).toBe(false);
+    expect(result.minFontPx).toBeNull();
+    expect(result.path).toBe(ENTRY.path);
+    expect(result.viewport).toBe("mobile");
+    expect(result.failureReason).toBe("instrument-blocked: __name is not defined");
+  });
+});
+
+describe("allFontFloorPassed / formatFontFloorSummary / formatFontFloorTable (DEC-421)", () => {
+  const passing = evaluateFontFloor({ path: "/admin/overview", role: "organizer" }, "desktop", {
+    minFontPx: 14,
+    offenders: [],
+  });
+  const failing = evaluateFontFloor({ path: "/e/devflow-conf-2027/sessions", role: "public" }, "mobile", {
+    minFontPx: 8,
+    offenders: ["span.chq-label 8px"],
+  });
+
+  it("allFontFloorPassed is true only when every result passed", () => {
+    expect(allFontFloorPassed([passing])).toBe(true);
+    expect(allFontFloorPassed([passing, failing])).toBe(false);
+  });
+
+  it("formatFontFloorSummary reports the passed/total count", () => {
+    expect(formatFontFloorSummary([passing, failing])).toBe("1/2 font-floor checks passed");
+    expect(formatFontFloorSummary([passing])).toBe("1/1 font-floor checks passed");
+  });
+
+  it("formatFontFloorTable includes PASS and FAIL markers with the path, role, and viewport", () => {
+    const table = formatFontFloorTable([passing, failing]);
+    expect(table).toContain("/admin/overview");
+    expect(table).toContain("organizer");
+    expect(table).toContain("desktop");
+    expect(table).toContain("PASS");
+    expect(table).toContain("/e/devflow-conf-2027/sessions");
+    expect(table).toContain("mobile");
+    expect(table).toContain("FAIL");
+  });
+});
+
+describe("FONT_FLOOR_BLOCKING (DEC-421)", () => {
+  it("is false on landing (first reading), reusing the DEC-387 flip rule", () => {
+    expect(FONT_FLOOR_BLOCKING).toBe(false);
+    const source = readFileSync(new URL("../scripts/render-sweep-lib.ts", import.meta.url), "utf-8");
+    expect(source).toContain("it becomes true in the wave after the pass first reads all-PASS");
+  });
+
+  it("never contributes to the gate's exit code while false", () => {
+    const source = readFileSync(new URL("../scripts/render-sweep.ts", import.meta.url), "utf-8");
+    expect(source).toMatch(/allFontFloorPassed\(fontFloorResults\)\s*&&\s*FONT_FLOOR_BLOCKING/);
   });
 });

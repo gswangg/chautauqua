@@ -36,15 +36,21 @@ import { createServer } from "node:net";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { chromium, type Browser, type BrowserContext, type ConsoleMessage } from "playwright";
+import { chromium, type Browser, type BrowserContext, type ConsoleMessage, type Page } from "playwright";
 
 import { ROUTE_MANIFEST, type RouteManifestEntry } from "../app/src/routeManifest";
 import {
   ADMIN_MOBILE_PASS_BLOCKING,
+  allFontFloorPassed,
   allMobilePassed,
   allPassed,
+  evaluateFontFloor,
   evaluateMobileRoute,
   evaluateRoute,
+  FONT_FLOOR_BLOCKING,
+  fontFloorErrorResult,
+  formatFontFloorSummary,
+  formatFontFloorTable,
   formatMobileResultsTable,
   formatMobileSummary,
   formatResultsTable,
@@ -52,6 +58,7 @@ import {
   mobileErrorResult,
   PAGE_EVALUATE_KEEPNAMES_SHIM,
   routeErrorResult,
+  type FontFloorResult,
   type MobileRouteEntry,
   type MobileRouteResult,
   type RouteResult,
@@ -226,7 +233,53 @@ async function loginContext(
   return context;
 }
 
-async function visitRoute(context: BrowserContext, baseUrl: string, entry: RouteManifestEntry): Promise<RouteResult> {
+// DEC-421: walks every rendered element, keeping only those with a non-empty
+// direct text node and a non-zero rendered box, and returns the smallest
+// getComputedStyle(el).fontSize plus up to 3 structural (never text-content)
+// descriptors for elements under MIN_FONT_PX, smallest first. Runs inside
+// the browser page context — must only be called on a page that already had
+// PAGE_EVALUATE_KEEPNAMES_SHIM applied via addInitScript (DEC-411).
+const FONT_FLOOR_MIN_PX = 10;
+
+async function measureFontFloor(page: Page): Promise<{ minPx: number | null; offenders: string[] }> {
+  return page.evaluate((minFontPx: number) => {
+    const hasNonEmptyDirectText = (el: Element): boolean => {
+      for (const node of Array.from(el.childNodes)) {
+        if (node.nodeType === Node.TEXT_NODE && (node.textContent ?? "").trim().length > 0) return true;
+      }
+      return false;
+    };
+    const describe = (el: Element, px: number): string => {
+      const tag = el.tagName.toLowerCase();
+      const classes = Array.from(el.classList).slice(0, 3);
+      const base = classes.length > 0 ? `${tag}.${classes.join(".")}` : tag;
+      return `${base} ${px}px`;
+    };
+
+    const elements = Array.from(document.querySelectorAll("*"));
+    let minPx: number | null = null;
+    const under: { el: Element; px: number }[] = [];
+    for (const el of elements) {
+      if (!hasNonEmptyDirectText(el)) continue;
+      const rect = el.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) continue;
+      const px = parseFloat(getComputedStyle(el).fontSize);
+      if (Number.isNaN(px)) continue;
+      if (minPx === null || px < minPx) minPx = px;
+      if (px < minFontPx) under.push({ el, px });
+    }
+    under.sort((a, b) => a.px - b.px);
+    const offenders = under.slice(0, 3).map(({ el, px }) => describe(el, Math.round(px)));
+    return { minPx, offenders };
+  }, FONT_FLOOR_MIN_PX);
+}
+
+async function visitRoute(
+  context: BrowserContext,
+  baseUrl: string,
+  entry: RouteManifestEntry,
+  fontFloorResults?: FontFloorResult[],
+): Promise<RouteResult> {
   const page = await context.newPage();
   // DEC-411: must run before any in-page evaluation on this page.
   await page.addInitScript({ content: PAGE_EVALUATE_KEEPNAMES_SHIM });
@@ -260,6 +313,18 @@ async function visitRoute(context: BrowserContext, baseUrl: string, entry: Route
     bodyText = "";
   }
 
+  // DEC-421: advisory type-floor measurement, same page/session — never lets
+  // an instrument failure (e.g. a missed keepNames shim) fail the desktop
+  // render-sweep pass above.
+  if (fontFloorResults) {
+    try {
+      const { minPx, offenders } = await measureFontFloor(page);
+      fontFloorResults.push(evaluateFontFloor(entry, "desktop", { minFontPx: minPx, offenders }));
+    } catch (err) {
+      fontFloorResults.push(fontFloorErrorResult(entry, "desktop", err instanceof Error ? err.message : String(err)));
+    }
+  }
+
   await page.close();
   return evaluateRoute(entry, { status, bodyText, consoleErrors, pageErrors });
 }
@@ -273,6 +338,7 @@ async function visitMobileRoute(
   baseUrl: string,
   entry: MobileRouteEntry,
   controlSelector: string = MOBILE_CONTROL_SELECTOR,
+  fontFloorResults?: FontFloorResult[],
 ): Promise<MobileRouteResult> {
   const page = await context.newPage();
   // DEC-411: must run before the in-page evaluation below.
@@ -326,6 +392,16 @@ async function visitMobileRoute(
 
     return { scrollWidth, viewportWidth, minControlHeight, maxElementRight, overflowOffenders, minControlSelector };
   }, controlSelector);
+
+  // DEC-421: advisory type-floor measurement at this route's viewport.
+  if (fontFloorResults) {
+    try {
+      const { minPx, offenders } = await measureFontFloor(page);
+      fontFloorResults.push(evaluateFontFloor(entry, "mobile", { minFontPx: minPx, offenders }));
+    } catch (err) {
+      fontFloorResults.push(fontFloorErrorResult(entry, "mobile", err instanceof Error ? err.message : String(err)));
+    }
+  }
 
   await page.close();
   return evaluateMobileRoute(entry, { status, ...measured });
@@ -383,6 +459,11 @@ async function main(): Promise<void> {
       }
     }
 
+    // DEC-421: collects font-floor readings from every visitRoute/
+    // visitMobileRoute call below into one flat list for the advisory
+    // type-floor table printed after the three existing passes.
+    const fontFloorResults: FontFloorResult[] = [];
+
     const results: RouteResult[] = [];
     for (const entry of ROUTE_MANIFEST) {
       const context = contextByRole.get(entry.role);
@@ -399,7 +480,7 @@ async function main(): Promise<void> {
         continue;
       }
       try {
-        results.push(await visitRoute(context, baseUrl, entry));
+        results.push(await visitRoute(context, baseUrl, entry, fontFloorResults));
       } catch (err) {
         results.push(routeErrorResult(entry, err instanceof Error ? err.message : String(err)));
       }
@@ -449,7 +530,7 @@ async function main(): Promise<void> {
         continue;
       }
       try {
-        mobileResults.push(await visitMobileRoute(context, baseUrl, entry));
+        mobileResults.push(await visitMobileRoute(context, baseUrl, entry, MOBILE_CONTROL_SELECTOR, fontFloorResults));
       } catch (err) {
         mobileResults.push(mobileErrorResult(entry, err instanceof Error ? err.message : String(err)));
       }
@@ -506,7 +587,9 @@ async function main(): Promise<void> {
         continue;
       }
       try {
-        adminMobileResults.push(await visitMobileRoute(context, baseUrl, entry, ADMIN_MOBILE_CONTROL_SELECTOR));
+        adminMobileResults.push(
+          await visitMobileRoute(context, baseUrl, entry, ADMIN_MOBILE_CONTROL_SELECTOR, fontFloorResults),
+        );
       } catch (err) {
         adminMobileResults.push(mobileErrorResult(entry, err instanceof Error ? err.message : String(err)));
       }
@@ -519,6 +602,23 @@ async function main(): Promise<void> {
     console.log(formatMobileSummary(adminMobileResults));
 
     if (!allMobilePassed(adminMobileResults) && ADMIN_MOBILE_PASS_BLOCKING) {
+      failed = true;
+    }
+
+    // DEC-421: type-floor pass (advisory) — one reading per route+viewport
+    // already visited above (desktop ROUTE_MANIFEST + mobile/admin-mobile
+    // MOBILE_ROUTE_MANIFEST/ADMIN_MOBILE_ROUTE_MANIFEST passes), no separate
+    // route list or extra page visits. Failures never flip the exit code
+    // while FONT_FLOOR_BLOCKING is false (see its flip-rule comment in
+    // render-sweep-lib.ts).
+    console.log("");
+    console.log("render-sweep: type-floor pass (10px minimum, advisory)...");
+    console.log("");
+    console.log(formatFontFloorTable(fontFloorResults));
+    console.log("");
+    console.log(formatFontFloorSummary(fontFloorResults));
+
+    if (!allFontFloorPassed(fontFloorResults) && FONT_FLOOR_BLOCKING) {
       failed = true;
     }
 
