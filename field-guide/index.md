@@ -14,47 +14,47 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   NUMBER); dates via event-time.ts OWNING EVENT's tz never toISOString;
   public lists LIMIT+COUNT(DISTINCT).
 - STAGE1-CLOSE w11-29 (DEC-420..519, compacted): ledger names its sha, FAIL-
-  unowned vs PENDING-OWNED via `git merge-base --is-ancestor`; ONE email
-  rule via findAccountUserId NEVER email alone; universal rows graded from
-  ENUMERATION never sample; pagination ONE shape `page?:{limit,offset}`
-  +count*+`id asc`; a cap the UI can't see LIES, render `total`; two
-  implementations of one invariant means one is wrong -- atomic SQL beats
-  read-then-write; event-clock strings carry their event's tz; lanes kill
-  only own PID; tree moves mid-plan -- read the FILE, then AGAIN; iCalendar
-  PARAMs sanitized at SERIALIZER; hand-listed manifests desync -- enumerate
-  in a test; server accepts what its own UI would never send; FieldPatch
-  kind change REFUSED 409 while answers exist; ONE likeContains escape-only
-  incl. unauth search; ONE isIsoDate home; credentials contract-tested vs
-  vendored fixture both directions; export dropping custom answers is the
-  lock-in forbidden; order checks read MERGED post-patch state.
+  unowned vs PENDING-OWNED; ONE email rule via findAccountUserId NEVER email
+  alone; universal rows graded from ENUMERATION never sample; pagination ONE
+  shape `page?:{limit,offset}`+count*+`id asc`; a cap the UI can't see LIES,
+  render `total`; two implementations of one invariant means one is wrong --
+  atomic SQL beats read-then-write; event-clock strings carry their event's
+  tz; iCalendar PARAMs sanitized at SERIALIZER; hand-listed manifests desync
+  -- enumerate in a test; server accepts what its own UI would never send;
+  ONE likeContains escape-only incl. unauth search; credentials contract-
+  tested vs vendored fixture both directions; export dropping custom answers
+  is the lock-in forbidden; order checks read MERGED post-patch state.
 - STAGE1-CLOSE w30-33 (DEC-520..545, compacted): chunk multi-row VALUES by
   BOUND PARAMETERS not row count; date-only field is a DAY LABEL, display as
   its day (read UTC), expand to event-local instant at HARD gates; documented-
   forbidden routes can still be live if mount order lets them -- test
   ADVERSARIAL order; glob boundary validators, don't hand-pick call sites;
   batch per-recipient lookups, contract-test both directions; delete a losing
-  duplicate, don't keep it unused; verify prior claims/reviewer findings in
-  the FILE before replanning; conditional visibility is a FIXED POINT (hidden
-  monotone, cycles settle hidden); prove a JS-twin rewrite of an index/SQL agg
-  vs a NAIVE REFERENCE; offset-paged ORDER BY always ends in a unique column;
-  event-range slot gate lives in the JOIN ON, not a downstream WHERE; hand-
-  copied enums/vocabularies drift -- IMPORT them; raw NUL makes a file BINARY
-  to ripgrep, invisible to every globbed guard -- guard the guards; iCalendar
-  TEXT values need the serializer-side strip DEC-499 gave PARAMs; a
-  uniqueIndex makes read-then-write loops an atomic ON CONFLICT DO UPDATE; a
-  cap whose fan-out is one row's own children has no failure mode -- say so; a
-  list SELECTing a column no renderer shows is oversized, derive projection
-  from renderers; a "pure helper" with zero src callers tests NOTHING; a
-  formatter banning toLocale* but shipping no date-TIME variant gets copies.
-- STAGE1-CLOSE w34 (DEC-546..551): a "PUBLIC BY DESIGN" verdict is only as good
-  as its premise -- /dev/mailbox was ruled safe as "no secrets in stage 1"
-  while rendering every /claim/<token>; re-read the RATIONALE, not the verdict.
-  A fallback reached by OMISSION (no binding + no flag) is not a decision:
-  lead with the positive predicate, throw on the rest -- optional env is how
-  `undefined` came to mean "dev". A filter the SQL could take, it must take;
-  LIMIT obliges a TOTAL order-by + truthful count. Authz population is chosen
-  by a column: an upload with no declared deliverable_kind must not look like
-  a session deliverable. A markdown authz manifest desyncs silently --
-  enumerate the app's OWN route table, probe anonymously vs a THROWING db,
-  assert allowlist exact both directions. A forced Content-Type is advisory
-  until nosniff ships with it.
+  duplicate, don't keep it unused; conditional visibility is a FIXED POINT
+  (hidden monotone, cycles settle hidden); prove a JS-twin rewrite of an
+  index/SQL agg vs a NAIVE REFERENCE; offset-paged ORDER BY always ends in a
+  unique column; event-range slot gate lives in the JOIN ON, not a downstream
+  WHERE; hand-copied enums/vocabularies drift -- IMPORT them; raw NUL makes a
+  file BINARY to ripgrep, invisible to every globbed guard -- guard the
+  guards; a "pure helper" with zero src callers tests NOTHING; a formatter
+  banning toLocale* but shipping no date-TIME variant gets copies.
+- STAGE1-CLOSE w34 (DEC-546..551, compacted): a "PUBLIC BY DESIGN" verdict is
+  only as good as its premise -- re-read the RATIONALE, not the verdict. A
+  fallback reached by OMISSION (no binding + no flag) is not a decision: lead
+  with the positive predicate, throw on the rest. A filter the SQL could
+  take, it must take; LIMIT obliges a TOTAL order-by + truthful count. Authz
+  population is chosen by a column, e.g. deliverable_kind. A markdown authz
+  manifest desyncs silently -- enumerate the app's OWN route table, probe
+  anonymously vs a THROWING db, assert allowlist exact both directions. A
+  forced Content-Type is advisory until nosniff ships with it.
+- STAGE1-CLOSE w35 (DEC-552..555): a uniqueIndex is a CONTRACT -- every
+  SELECT-then-INSERT-or-UPDATE over one is a 500 waiting for two concurrent
+  users; sweep ALL sites, and derive the ON CONFLICT target from the schema
+  object so a rename breaks the compile. A partial-patch upsert needs no
+  read: insert defaults, SET only the keys the caller supplied. A feed
+  nobody can fetch cross-origin is not a feed -- set ACAO where the CACHE
+  STORES it, never on the cookie-authed API. Derive a scan's projection AND
+  its cap from the pure consumer that reads it; refuse above the cap, never
+  truncate. A client-side store rebuilt from the RENDERED rows silently
+  deletes whatever a filter or LIMIT hid -- merge, don't overwrite; ship the
+  one pure function into the page via toString(), never a hand-written twin.
