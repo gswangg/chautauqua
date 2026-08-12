@@ -41,7 +41,8 @@ import {
   parseCardFields,
   parseAccent,
 } from "./query";
-import { buildSurfaceFeed, agendaIcsEvents } from "./feeds";
+import { buildSurfaceFeed, agendaIcsEvents, projectCardFields } from "./feeds";
+import type { CardFields } from "./query";
 
 export const publicRoutes = new Hono<AppEnv>();
 
@@ -171,6 +172,7 @@ publicRoutes.get("/embed/:eventSlug/:surface{[a-z]+\\.json}", async (c) => {
     q: c.req.query("q"),
     limit: parseLimit(c.req.query("limit")),
     day: parseDay(c.req.query("day")),
+    fields: parseCardFields(c.req.query("fields")),
   });
   return c.json(buildSurfaceFeed(event, surfaceParam, paged, new Date()));
 });
@@ -188,6 +190,11 @@ publicRoutes.get("/embed/:eventSlug/:surface", async (c) => {
     day: parseDay(c.req.query("day")),
     limit: parseLimit(c.req.query("limit")),
     fields: parseCardFields(c.req.query("fields")),
+    // DEC-594 (EMB-7): every link/form rendered by this dispatch (currently
+    // sessions' search form, track-filter pills, and drill-in title links)
+    // must stay inside /embed/... rather than breaking out to the
+    // full-chrome /e/... surface.
+    embed: true,
   });
   // No frame-blocking headers are ever set in this file — embeds stay
   // frameable by construction (DEC-022).
@@ -266,7 +273,7 @@ async function getSurfaceFeedPage(
   db: Parameters<typeof getPublicSessions>[0],
   event: Parameters<typeof getPublicSessions>[1],
   surface: Surface,
-  query: { trackId?: string; page?: string; q?: string; limit: number | null; day: string | null },
+  query: { trackId?: string; page?: string; q?: string; limit: number | null; day: string | null; fields: CardFields },
 ): Promise<{ items: unknown; total: number; page: number; perPage: number }> {
   switch (surface) {
     case "sessions": {
@@ -280,7 +287,22 @@ async function getSurfaceFeedPage(
       // stays the full unwindowed count so a consumer can still detect
       // truncation, and a page past the MAX_PUBLIC_ROWS ceiling honestly
       // returns an empty items array (never an error).
-      const { items, total } = await getPublicSessions(db, event, { trackId, page, perPage, q, window: true });
+      const { items: rawItems, total: rawTotal } = await getPublicSessions(db, event, {
+        trackId,
+        page,
+        perPage,
+        q,
+        window: true,
+      });
+      // DEC-594 (EMB-5): mirrors dispatch.tsx's HTML sessions case — `day`
+      // must never no-op here just because it was already honored for
+      // agenda/schedule.
+      const dayFiltered = query.day ? rawItems.filter((s) => s.day === query.day) : rawItems;
+      const total = query.day ? dayFiltered.length : rawTotal;
+      // DEC-594 (EMB-6): mirrors the HTML dispatch's SessionCard `fields`
+      // projection so the .json twin honors ?fields= too, driven by the
+      // ONE ALL_CARD_FIELDS list (query.ts) via projectCardFields (feeds.ts).
+      const items = dayFiltered.map((s) => projectCardFields(s as unknown as Record<string, unknown>, query.fields));
       return { items, total, page, perPage };
     }
     case "speakers":

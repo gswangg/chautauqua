@@ -107,6 +107,9 @@ export function SessionCard(props: {
   from?: Surface;
   itinerary?: boolean;
   fields?: CardFields;
+  // DEC-594: chromeless /embed rendering — the title link must stay inside
+  // /embed/... rather than break out to the full-chrome /e/... page.
+  embed?: boolean;
 }) {
   const { session, event } = props;
   const fields = props.fields ?? ALL_FIELDS_ON;
@@ -114,7 +117,10 @@ export function SessionCard(props: {
     <div class="chq-pub-session-row" id={`chq-session-${session.id}`}>
       <SessionSchedule session={session} fields={fields} />
       <div class="chq-pub-session-body">
-        <a class="chq-pub-session-title" href={sessionDetailPath(event, session.id, props.from)}>
+        <a
+          class="chq-pub-session-title"
+          href={sessionDetailPath(event, session.id, props.from, props.embed ? "/embed" : "/e")}
+        >
           {session.title}
         </a>
         {fields.speaker ? (

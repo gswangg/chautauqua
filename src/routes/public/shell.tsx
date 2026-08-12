@@ -56,18 +56,25 @@ export function validAccent(color: string | undefined): string {
   return color && HEX_COLOR_RE.test(color) ? color : DEFAULT_ACCENT;
 }
 
-export function surfacePath(event: PublicEvent, surface: Surface): string {
-  return `/e/${event.slug}/${surface}`;
+// DEC-594: every path helper below takes an explicit `base` ("/e" or
+// "/embed"), defaulting to "/e" so every existing call site (PublicShell nav,
+// agenda/speakers/detail surfaces) keeps producing full-chrome links
+// unchanged. The chromeless /embed dispatch is the only caller that passes
+// "/embed" — an embed's own links must never break out of its iframe.
+export type SurfaceBase = "/e" | "/embed";
+
+export function surfacePath(event: PublicEvent, surface: Surface, base: SurfaceBase = "/e"): string {
+  return `${base}/${event.slug}/${surface}`;
 }
 
 /** Drill-in detail links (DEC-151) carry ?from=<surface> so the detail
  * page's Back link returns to whichever surface it was reached from. */
-export function sessionDetailPath(event: PublicEvent, sessionId: string, from?: Surface): string {
-  return `/e/${event.slug}/sessions/${sessionId}${from ? `?from=${from}` : ""}`;
+export function sessionDetailPath(event: PublicEvent, sessionId: string, from?: Surface, base: SurfaceBase = "/e"): string {
+  return `${base}/${event.slug}/sessions/${sessionId}${from ? `?from=${from}` : ""}`;
 }
 
-export function speakerDetailPath(event: PublicEvent, contactId: string, from?: Surface): string {
-  return `/e/${event.slug}/speakers/${contactId}${from ? `?from=${from}` : ""}`;
+export function speakerDetailPath(event: PublicEvent, contactId: string, from?: Surface, base: SurfaceBase = "/e"): string {
+  return `${base}/${event.slug}/speakers/${contactId}${from ? `?from=${from}` : ""}`;
 }
 
 export function isValidFrom(raw: string | undefined, fallback: Surface): Surface {
