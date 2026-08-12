@@ -9,6 +9,7 @@
 // attacker-supplied Origin/Referer header must never end up in a mailed
 // claim link — the loopback branch is gated on DEV_MODE === "1").
 import { DEC_252, DEC_296 } from "../decisions";
+import { isDevMode } from "./env";
 
 void DEC_252;
 void DEC_296;
@@ -94,11 +95,11 @@ export type OriginRequestLike = {
  */
 export function resolveBaseUrl(c: OriginRequestLike): string {
   const publicBaseUrl = c.env.PUBLIC_BASE_URL;
-  const isDevMode = c.env.DEV_MODE === "1";
+  const devMode = isDevMode(c.env);
 
   if (publicBaseUrl) {
     const parsedPublicBaseUrl = parseAbsoluteHttpOrigin(publicBaseUrl);
-    if (!isDevMode || !isLoopbackOrigin(parsedPublicBaseUrl)) {
+    if (!devMode || !isLoopbackOrigin(parsedPublicBaseUrl)) {
       return parsedPublicBaseUrl;
     }
     // DEC-296: dev-only exception — a loopback PUBLIC_BASE_URL is a
@@ -110,7 +111,7 @@ export function resolveBaseUrl(c: OriginRequestLike): string {
 
   const requestOrigin = new URL(c.req.url).origin;
 
-  if (isDevMode) {
+  if (devMode) {
     const loopbackCandidate = firstLoopbackCandidate(c);
     if (loopbackCandidate) return loopbackCandidate;
   }

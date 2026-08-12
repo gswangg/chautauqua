@@ -10,18 +10,19 @@
 // scripting/navigation), not injected into the mailbox page's own DOM.
 
 import { Hono } from "hono";
-import type { AppEnv, Bindings } from "../../server/env";
+import { isDevMode, type AppEnv, type Bindings } from "../../server/env";
 import { getEmailLogById, listEmailLog } from "../../server/repo/email";
 import { clampPage, clampPerPage } from "../../lib/pagination";
 import { icsDownloadHeaders } from "../../mail/ics";
 import { ThemeStyles } from "../../views/theme";
 import { ToolsStyles } from "../tools.css";
 
-/** Pure mounting predicate (DEC-005): DEV_MODE must be the exact string
- * '1'. Anything else (unset, 'true', '0', ...) means the routes don't
- * exist at all. */
+/** Pure mounting predicate (DEC-005, DEC-434): delegates to the one
+ * isDevMode(env) predicate — DEV_MODE must be the exact string '1'.
+ * Anything else (unset, 'true', '0', ...) means the routes don't exist at
+ * all. */
 export function shouldMountDevMailbox(env: Pick<Bindings, "DEV_MODE">): boolean {
-  return env.DEV_MODE === "1";
+  return isDevMode(env);
 }
 
 export const devMailboxRoutes = new Hono<AppEnv>();
