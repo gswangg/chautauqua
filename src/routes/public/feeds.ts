@@ -9,10 +9,13 @@ import type { Surface } from "./shell";
 import type { IcsEventInput } from "../../mail/ics";
 import { zonedMinutesToUtc } from "../../lib/timezone";
 
-/** DEC-289 envelope: { event, surface, generatedAt, items }. `items` is
- * whatever the surface's existing repo shape already is (PublicSession[],
- * PublicSpeakerWithSessions[], PublicAgendaItem[]) — passed through
- * unchanged, never re-shaped here. */
+/** DEC-289/DEC-484 envelope: { event, surface, generatedAt, page, perPage,
+ * total, items }. `items` is whatever the surface's existing repo shape
+ * already is (PublicSession[], PublicSpeakerWithSessions[],
+ * PublicAgendaItem[]) — passed through unchanged, never re-shaped here.
+ * page/perPage/total let a consumer detect truncation instead of silently
+ * treating one page as the whole list (DEC-484). Unpaged surfaces (agenda,
+ * schedule) report page=1, perPage=total=items.length. */
 export interface PublicSurfaceFeed<T> {
   event: {
     slug: string;
@@ -23,13 +26,16 @@ export interface PublicSurfaceFeed<T> {
   };
   surface: Surface;
   generatedAt: string;
+  page: number;
+  perPage: number;
+  total: number;
   items: T;
 }
 
 export function buildSurfaceFeed<T>(
   event: PublicEvent,
   surface: Surface,
-  items: T,
+  paged: { items: T; total: number; page: number; perPage: number },
   now: Date,
 ): PublicSurfaceFeed<T> {
   return {
@@ -42,7 +48,10 @@ export function buildSurfaceFeed<T>(
     },
     surface,
     generatedAt: now.toISOString(),
-    items,
+    page: paged.page,
+    perPage: paged.perPage,
+    total: paged.total,
+    items: paged.items,
   };
 }
 

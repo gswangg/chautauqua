@@ -163,12 +163,13 @@ publicRoutes.get("/embed/:eventSlug/:surface{[a-z]+\\.json}", async (c) => {
   if (!isSurface(surfaceParam)) return publicNotFound(c, "Unknown embed surface.");
   const event = await getPublicEventBySlug(c.var.db, c.req.param("eventSlug"));
   if (!event) return publicNotFound(c, "Event not found.");
-  const items = await getSurfaceFeedItems(c.var.db, event, surfaceParam, {
+  const paged = await getSurfaceFeedPage(c.var.db, event, surfaceParam, {
     trackId: c.req.query("trackId"),
     page: c.req.query("page"),
     q: c.req.query("q"),
+    limit: parseLimit(c.req.query("limit")),
   });
-  return c.json(buildSurfaceFeed(event, surfaceParam, items, new Date()));
+  return c.json(buildSurfaceFeed(event, surfaceParam, paged, new Date()));
 });
 
 publicRoutes.get("/embed/:eventSlug/:surface", async (c) => {
@@ -247,33 +248,41 @@ publicRoutes.get("/e/:eventSlug/agenda.ics", async (c) => {
   });
 });
 
-// Raw (non-JSX) items for a surface's JSON feed — mirrors renderSurfaceContent's
-// switch but returns the repo's own item shape instead of rendered markup.
+// Raw (non-JSX) page for a surface's JSON feed — mirrors renderSurfaceContent's
+// switch but returns the repo's own paged shape instead of rendered markup.
 // Same repo calls, same query params, same visibility gate; no new query.
-async function getSurfaceFeedItems(
+// DEC-484: honors ?limit= exactly like the HTML dispatch (query.limit ??
+// PER_PAGE) instead of hard-coding PER_PAGE, and reports page/perPage/total
+// so a feed consumer can tell it's looking at a truncated window. Agenda/
+// schedule are unpaged — page=1, perPage=total=items.length.
+async function getSurfaceFeedPage(
   db: Parameters<typeof getPublicSessions>[0],
   event: Parameters<typeof getPublicSessions>[1],
   surface: Surface,
-  query: { trackId?: string; page?: string; q?: string },
-): Promise<unknown> {
+  query: { trackId?: string; page?: string; q?: string; limit: number | null },
+): Promise<{ items: unknown; total: number; page: number; perPage: number }> {
   switch (surface) {
     case "sessions": {
       const trackId = parseTrackId(query.trackId);
       const page = parsePage(query.page);
       const q = parseNameQuery(query.q);
-      const { items } = await getPublicSessions(db, event, { trackId, page, perPage: PER_PAGE, q });
-      return items;
+      const perPage = query.limit ?? PER_PAGE;
+      const { items, total } = await getPublicSessions(db, event, { trackId, page, perPage, q });
+      return { items, total, page, perPage };
     }
     case "speakers":
     case "gallery": {
       const q = parseNameQuery(query.q);
       const page = parsePage(query.page);
-      const { items } = await getPublicSpeakers(db, event.id, { q, page, perPage: PER_PAGE });
-      return items;
+      const perPage = query.limit ?? PER_PAGE;
+      const { items, total } = await getPublicSpeakers(db, event.id, { q, page, perPage });
+      return { items, total, page, perPage };
     }
     case "agenda":
-    case "schedule":
-      return getPublicAgenda(db, event);
+    case "schedule": {
+      const items = await getPublicAgenda(db, event);
+      return { items, total: items.length, page: 1, perPage: items.length };
+    }
     default: {
       const exhaustive: never = surface;
       throw new Error(`Unknown public surface '${exhaustive}'`);
