@@ -387,25 +387,11 @@ export function isValidSlotInput(body: unknown): body is SlotInput {
  * route's job — this function assumes the accepted-only check already ran. */
 export async function upsertSlot(db: Db, submissionId: string, input: SlotInput): Promise<void> {
   const now = new Date();
-  const existing = await db
-    .select({ id: schema.scheduleSlot.id })
-    .from(schema.scheduleSlot)
-    .where(eq(schema.scheduleSlot.submissionId, submissionId))
-    .limit(1);
-
-  if (existing[0]) {
-    await db
-      .update(schema.scheduleSlot)
-      .set({
-        roomId: input.roomId ?? null,
-        day: input.day,
-        startMin: input.startMin,
-        endMin: input.endMin,
-        updatedAt: now,
-      })
-      .where(eq(schema.scheduleSlot.submissionId, submissionId));
-  } else {
-    await db.insert(schema.scheduleSlot).values({
+  // DEC-552: one atomic statement -- no read-then-write over the
+  // schedule_slot_submission_id_idx uniqueIndex.
+  await db
+    .insert(schema.scheduleSlot)
+    .values({
       id: newId(),
       submissionId,
       roomId: input.roomId ?? null,
@@ -414,8 +400,17 @@ export async function upsertSlot(db: Db, submissionId: string, input: SlotInput)
       endMin: input.endMin,
       createdAt: now,
       updatedAt: now,
+    })
+    .onConflictDoUpdate({
+      target: schema.scheduleSlot.submissionId,
+      set: {
+        roomId: input.roomId ?? null,
+        day: input.day,
+        startMin: input.startMin,
+        endMin: input.endMin,
+        updatedAt: now,
+      },
     });
-  }
 
   await bumpIcsSequences(db, [submissionId]);
 }
