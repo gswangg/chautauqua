@@ -21,6 +21,20 @@ const GROUP = {
   ],
 };
 
+// DEC-705: what GET /contacts/merge/preview would report for this pair —
+// a plain discard for Company, and a combine/append outcome for Notes that
+// must render WITHOUT strikethrough (it's incorporated, not thrown away).
+const PREVIEW_FIELDS = [
+  { key: 'company', label: 'Company', kept: 'Acme', discarded: ['Acme Corp'], outcome: 'keep' },
+  {
+    key: 'notes',
+    label: 'Notes',
+    kept: 'Met at PlatformCon.\n\n---\n\nPrefers Tuesday.',
+    discarded: [],
+    outcome: 'append',
+  },
+];
+
 afterEach(() => {
   cleanup();
 });
@@ -52,6 +66,7 @@ describe('MergePage render (DEC-684)', () => {
   it('renders the field-by-field KEEP/DISCARD comparison from ?ids=, then posts /contacts/merge {keepId, mergeIds} after confirming', async () => {
     const fetchMock = mockApi({
       'GET /api/v1/contacts/duplicates': listEnvelope([GROUP]),
+      'GET /api/v1/contacts/merge/preview': { fields: PREVIEW_FIELDS },
       'POST /api/v1/contacts/merge': { id: 'ct-keep', firstName: 'Jane', lastName: 'Doe', email: 'jane@example.com' },
     });
 
@@ -62,8 +77,20 @@ describe('MergePage render (DEC-684)', () => {
     });
 
     // Field comparison rows: kept value in ink, discarded value struck through.
-    expect(screen.getByText('Acme')).toBeInTheDocument();
-    expect(screen.getByText('Acme Corp')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('Acme')).toBeInTheDocument();
+    });
+    const discardCell = screen.getByText('Acme Corp');
+    expect(discardCell).toHaveClass('chq-contacts-merge-compare-drop');
+    expect(discardCell).not.toHaveClass('chq-contacts-merge-compare-combine');
+
+    // Notes is a combine/append outcome: labelled as what will happen,
+    // never rendered as a struck-through discard.
+    const notesRow = screen.getByText('Notes').closest('.chq-contacts-merge-compare-row') as HTMLElement;
+    expect(within(notesRow).getByText(/Met at PlatformCon\..*Prefers Tuesday\./s)).toBeInTheDocument();
+    const notesCombineCell = within(notesRow).getByText(/will be appended/);
+    expect(notesCombineCell).toHaveClass('chq-contacts-merge-compare-combine');
+    expect(notesCombineCell).not.toHaveClass('chq-contacts-merge-compare-drop');
 
     fireEvent.click(screen.getByRole('button', { name: 'Merge' }));
 
@@ -74,8 +101,10 @@ describe('MergePage render (DEC-684)', () => {
       expect(screen.getByText('Contacts landing')).toBeInTheDocument();
     });
 
-    const mergeCall = fetchMock.mock.calls.find(([input]) =>
-      (typeof input === 'string' ? input : input.toString()).includes('/contacts/merge'),
+    const mergeCall = fetchMock.mock.calls.find(
+      ([input], i, calls) =>
+        (typeof input === 'string' ? input : input.toString()).endsWith('/contacts/merge') &&
+        (calls[i]![1] as RequestInit | undefined)?.method === 'POST',
     );
     expect(mergeCall).toBeDefined();
     const body = JSON.parse((mergeCall![1] as RequestInit).body as string);

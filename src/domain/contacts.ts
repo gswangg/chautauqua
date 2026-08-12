@@ -304,6 +304,113 @@ export function planMerge(primary: ContactRecord, duplicate: ContactRecord): Mer
   return { merged, duplicateId: duplicate.id };
 }
 
+export interface MergeFieldPreview {
+  key: string;
+  label: string;
+  kept: string;
+  discarded: string[];
+  outcome: "keep" | "fill" | "append" | "combine";
+}
+
+const MERGE_PREVIEW_STANDARD_FIELDS: { key: "firstName" | "lastName" | "email" | "phone" | "company" | "title" | "bio"; label: string }[] = [
+  { key: "firstName", label: "First name" },
+  { key: "lastName", label: "Last name" },
+  { key: "email", label: "Email" },
+  { key: "phone", label: "Phone" },
+  { key: "company", label: "Company" },
+  { key: "title", label: "Title" },
+  { key: "bio", label: "Bio" },
+];
+
+/**
+ * DEC-705: pure preview of what mergeContacts will actually write, computed
+ * by folding planMerge over `duplicates` in the exact same order the repo's
+ * mergeOnePair chain does (primary, then each duplicate in turn, survivor
+ * becoming the next primary) -- this is the ONLY place that reasons about
+ * merge rules besides planMerge itself; it never re-derives them.
+ *
+ * Reports one entry per field that differs from the running primary or is
+ * combined from a duplicate, across all standard fields, notes, and every
+ * custom field key touched by any duplicate. `kept` is the field's final
+ * value after every fold; `discarded` collects the distinct dropped values
+ * (never populated for 'fill'/'append'/'combine' -- nothing is lost there,
+ * it's incorporated into `kept`, not thrown away).
+ */
+export function previewMerge(primary: ContactRecord, duplicates: ContactRecord[]): MergeFieldPreview[] {
+  const outcomeByKey = new Map<string, MergeFieldPreview["outcome"]>();
+  const discardedByKey = new Map<string, string[]>();
+  const labelByKey = new Map<string, string>();
+
+  let survivor = primary;
+  for (const duplicate of duplicates) {
+    const before = survivor;
+    const { merged } = planMerge(before, duplicate);
+
+    for (const { key, label } of MERGE_PREVIEW_STANDARD_FIELDS) {
+      labelByKey.set(key, label);
+      const beforeVal = (before[key] ?? "").trim();
+      const dupVal = (duplicate[key] ?? "").trim();
+      if (dupVal === "" || dupVal === beforeVal) continue;
+      if (beforeVal === "") {
+        if (!outcomeByKey.has(key)) outcomeByKey.set(key, "fill");
+      } else {
+        outcomeByKey.set(key, "keep");
+        const list = discardedByKey.get(key) ?? [];
+        if (!list.includes(dupVal)) list.push(dupVal);
+        discardedByKey.set(key, list);
+      }
+    }
+
+    // Notes: DEC-167 always appends duplicate-only notes text onto the
+    // running primary's notes rather than filling/discarding, whether or
+    // not the primary already had notes of its own.
+    labelByKey.set("notes", "Notes");
+    const beforeNotes = (before.notes ?? "").trim();
+    const dupNotes = (duplicate.notes ?? "").trim();
+    if (dupNotes !== "" && dupNotes !== beforeNotes) {
+      outcomeByKey.set("notes", "append");
+    }
+
+    // Custom fields: union, primary wins on key collision (a 'keep'), a
+    // duplicate-only key is added by the union (a 'combine').
+    for (const [fieldKey, dupValue] of Object.entries(duplicate.customFields ?? {})) {
+      const key = `customFields.${fieldKey}`;
+      labelByKey.set(key, fieldKey);
+      const beforeValue = before.customFields?.[fieldKey];
+      if (beforeValue === undefined) {
+        if (!outcomeByKey.has(key)) outcomeByKey.set(key, "combine");
+      } else if (beforeValue !== dupValue) {
+        outcomeByKey.set(key, "keep");
+        const list = discardedByKey.get(key) ?? [];
+        if (!list.includes(dupValue)) list.push(dupValue);
+        discardedByKey.set(key, list);
+      }
+    }
+
+    survivor = merged;
+  }
+
+  const keptValue = (key: string): string => {
+    if (key === "notes") return (survivor.notes ?? "").trim();
+    if (key.startsWith("customFields.")) {
+      return survivor.customFields?.[key.slice("customFields.".length)] ?? "";
+    }
+    return (survivor[key as keyof ContactRecord] as string | undefined)?.trim() ?? "";
+  };
+
+  const out: MergeFieldPreview[] = [];
+  for (const [key, outcome] of outcomeByKey) {
+    out.push({
+      key,
+      label: labelByKey.get(key) ?? key,
+      kept: keptValue(key),
+      discarded: discardedByKey.get(key) ?? [],
+      outcome,
+    });
+  }
+  return out;
+}
+
 /**
  * Splits a free-text contact search query into lowercase, whitespace-
  * separated tokens (DEC-266). Empty/whitespace-only input yields [] (the

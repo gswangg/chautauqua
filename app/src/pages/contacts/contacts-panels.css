@@ -301,6 +301,20 @@
   text-decoration-color: #a8a392;
 }
 
+/* DEC-705: fill/append/combine outcomes describe what WILL HAPPEN to the
+   duplicate's value (it's incorporated, not thrown away) — no
+   strikethrough, unlike a plain discard above. */
+.chq-contacts-merge-compare-combine {
+  font-size: 13px;
+  color: var(--chq-ink-2);
+  font-weight: 600;
+}
+
+.chq-contacts-merge-compare-empty {
+  font-size: 13px;
+  color: var(--chq-muted);
+}
+
 .chq-contacts-merge-footnote {
   font-size: 13px;
   color: var(--chq-muted);
