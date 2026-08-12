@@ -185,4 +185,66 @@ describe('PipelineBoard render smoke (CRM-07/08)', () => {
 
     expect(consoleErrorSpy).not.toHaveBeenCalled();
   });
+
+  // DEC-468: with a 200-row server page cap, entries.length can be less
+  // than the envelope's true total -- the caption must read the total, and
+  // a "Load more" control must fetch and append the next page.
+  it('captions the true total and appends a second page from Load more', async () => {
+    const page1 = [ENTRY_IDENTIFIED, ENTRY_CONTACTED];
+    const page2 = [
+      { ...ENTRY_IDENTIFIED, id: 'entry-3', firstName: 'Alan', lastName: 'Turing' },
+      { ...ENTRY_CONTACTED, id: 'entry-4', firstName: 'Katherine', lastName: 'Johnson' },
+    ];
+    let call = 0;
+    const fetchMock = mockApi({
+      'GET /api/v1/pipeline': () => {
+        call += 1;
+        return call === 1 ? listEnvelope(page1, { total: 7 }) : listEnvelope(page2, { total: 7, page: 2 });
+      },
+    });
+
+    render(<PipelineBoard />);
+
+    await waitFor(() => {
+      expect(screen.getByText('7 people')).toBeInTheDocument();
+    });
+
+    const loadMore = screen.getByRole('button', { name: 'Load more' });
+    expect(loadMore).toBeInTheDocument();
+
+    fireEvent.click(loadMore);
+
+    await waitFor(() => {
+      expect(within(desktopBoard()).getByText('Alan Turing')).toBeInTheDocument();
+    });
+
+    const calls = fetchMock.mock.calls.map((call) => String(call[0]));
+    expect(calls.some((u) => /[?&]page=2\b/.test(u))).toBe(true);
+
+    // Four items rendered after appending (2 + 2), still short of total 7,
+    // so the caption still reads the true total and Load more stays.
+    expect(within(desktopBoard()).getByText('Ada Lovelace')).toBeInTheDocument();
+    expect(within(desktopBoard()).getByText('Grace Hopper')).toBeInTheDocument();
+    expect(within(desktopBoard()).getByText('Alan Turing')).toBeInTheDocument();
+    expect(within(desktopBoard()).getByText('Katherine Johnson')).toBeInTheDocument();
+    expect(screen.getByText('7 people')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Load more' })).toBeInTheDocument();
+
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
+  });
+
+  it('renders no Load more control when the first page already covers the total', async () => {
+    mockApi({
+      'GET /api/v1/pipeline': listEnvelope([ENTRY_IDENTIFIED, ENTRY_CONTACTED]),
+    });
+
+    render(<PipelineBoard />);
+
+    await waitFor(() => {
+      expect(screen.getByText('2 people')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByRole('button', { name: 'Load more' })).not.toBeInTheDocument();
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
+  });
 });

@@ -132,6 +132,13 @@
   font-size: 12px;
 }
 
+/* DEC-468: appears under the board once entries.length < total (the 200-row
+   page cap has hidden rows) -- reuses .chq-btn/.chq-btn-secondary sizing
+   and focus ring, only self-aligns so it doesn't stretch full width. */
+.chq-contacts-pipeline-load-more {
+  align-self: flex-start;
+}
+
 /* Phone: a single stage at a time, chosen from the shared .chq-pill strip
    (mock lines 393-396: ink-fill active chip). */
 .chq-contacts-pipeline-phone-stages {
