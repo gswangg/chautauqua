@@ -503,11 +503,12 @@ describe("PAGE_EVALUATE_KEEPNAMES_SHIM (DEC-411)", () => {
 
     // No page.evaluate call site anywhere in the file is reachable without
     // going through one of the two functions checked above, or through the
-    // measureFontFloor() / measureContrast() / measureClipOffenders()
-    // helpers both functions call after installing the shim
-    // (DEC-421/DEC-426/DEC-620) — the module has no page.evaluate call sites
-    // outside visitRoute, visitMobileRoute, measureFontFloor,
-    // measureContrast, and measureClipOffenders.
+    // measureFontFloor() / measureContrast() / measureClipOffenders() /
+    // measureTypeRoles() helpers those functions call after installing the
+    // shim (DEC-421/DEC-426/DEC-620/DEC-643) — the module has no
+    // page.evaluate call sites outside visitRoute, visitMobileRoute,
+    // measureFontFloor, measureContrast, measureClipOffenders, and
+    // measureTypeRoles.
     const evaluateCallCount = (source.match(/page\.evaluate\(/g) ?? []).length;
     const evaluateCallsInVisitRouteBody = (visitRouteBody.match(/page\.evaluate\(/g) ?? []).length;
     const evaluateCallsInMobileBody = (visitMobileRouteBody.match(/page\.evaluate\(/g) ?? []).length;
@@ -526,12 +527,18 @@ describe("PAGE_EVALUATE_KEEPNAMES_SHIM (DEC-411)", () => {
     const measureClipOffendersEnd = source.indexOf("\n}\n", measureClipOffendersStart) + 3;
     const measureClipOffendersBody = source.slice(measureClipOffendersStart, measureClipOffendersEnd);
     const evaluateCallsInMeasureClipOffenders = (measureClipOffendersBody.match(/page\.evaluate\(/g) ?? []).length;
+    const measureTypeRolesStart = source.indexOf("async function measureTypeRoles(");
+    expect(measureTypeRolesStart).toBeGreaterThan(-1);
+    const measureTypeRolesEnd = source.indexOf("\n}\n", measureTypeRolesStart) + 3;
+    const measureTypeRolesBody = source.slice(measureTypeRolesStart, measureTypeRolesEnd);
+    const evaluateCallsInMeasureTypeRoles = (measureTypeRolesBody.match(/page\.evaluate\(/g) ?? []).length;
     expect(evaluateCallCount).toBe(
       evaluateCallsInVisitRouteBody +
         evaluateCallsInMobileBody +
         evaluateCallsInMeasureFontFloor +
         evaluateCallsInMeasureContrast +
-        evaluateCallsInMeasureClipOffenders,
+        evaluateCallsInMeasureClipOffenders +
+        evaluateCallsInMeasureTypeRoles,
     );
   });
 });

@@ -44,9 +44,12 @@ import {
   allFontFloorPassed,
   allMobilePassed,
   allPassed,
+  allTypeRolePassed,
+  evaluateDeadlineNearestWeights,
   evaluateFontFloor,
   evaluateMobileRoute,
   evaluateRoute,
+  evaluateTypeRoleResult,
   filterKnownClipExceptions,
   FONT_FLOOR_BLOCKING,
   fontFloorErrorResult,
@@ -56,13 +59,18 @@ import {
   formatMobileSummary,
   formatResultsTable,
   formatSummary,
+  formatTypeRoleTable,
   mobileErrorResult,
+  OVERVIEW_TYPE_ROLES,
   PAGE_EVALUATE_KEEPNAMES_SHIM,
   routeErrorResult,
+  TYPE_ROLE_BLOCKING,
+  typeRoleSummaryLine,
   type FontFloorResult,
   type MobileRouteEntry,
   type MobileRouteResult,
   type RouteResult,
+  type TypeRoleResult,
 } from "./render-sweep-lib";
 import {
   allContrastPassed,
@@ -363,6 +371,50 @@ async function measureFontFloor(page: Page): Promise<{ minPx: number | null; off
   }, FONT_FLOOR_MIN_PX);
 }
 
+// DEC-643: measures getComputedStyle(fontSize/fontWeight/letterSpacing) for
+// every OVERVIEW_TYPE_ROLES selector on the current page (only meaningful on
+// /admin/overview desktop — see the call site below), plus the observed
+// font-weight of every ".chq-overview-deadline-value" cell for the
+// deadline-strip group rule. letter-spacing "normal" (unset) reports as
+// undefined rather than NaN so evaluateTypeRoleResult reports it as
+// "not measured" instead of a false numeric mismatch.
+async function measureTypeRoles(
+  page: Page,
+  selectors: readonly string[],
+): Promise<{ bySelector: Record<string, { fontSizePx?: number; fontWeight?: number; letterSpacingEm?: number }>; deadlineWeights: number[] }> {
+  return page.evaluate((sels: string[]) => {
+    const readOne = (el: Element): { fontSizePx?: number; fontWeight?: number; letterSpacingEm?: number } => {
+      const style = getComputedStyle(el);
+      const fontSizePx = parseFloat(style.fontSize);
+      const fontWeight = parseInt(style.fontWeight, 10);
+      const fontSizeForEm = Number.isNaN(fontSizePx) ? 16 : fontSizePx;
+      let letterSpacingEm: number | undefined;
+      if (style.letterSpacing !== "normal") {
+        const raw = parseFloat(style.letterSpacing); // computed value comes back in px
+        letterSpacingEm = Number.isNaN(raw) ? undefined : raw / fontSizeForEm;
+      }
+      return {
+        fontSizePx: Number.isNaN(fontSizePx) ? undefined : fontSizePx,
+        fontWeight: Number.isNaN(fontWeight) ? undefined : fontWeight,
+        letterSpacingEm,
+      };
+    };
+
+    const bySelector: Record<string, { fontSizePx?: number; fontWeight?: number; letterSpacingEm?: number }> = {};
+    for (const sel of sels) {
+      const el = document.querySelector(sel);
+      if (el) bySelector[sel] = readOne(el);
+    }
+
+    const deadlineWeights = Array.from(document.querySelectorAll(".chq-overview-deadline-value")).map((el) => {
+      const w = parseInt(getComputedStyle(el).fontWeight, 10);
+      return Number.isNaN(w) ? 0 : w;
+    });
+
+    return { bySelector, deadlineWeights };
+  }, selectors as string[]);
+}
+
 // DEC-620: walks every visible element, keeping those whose scrollHeight
 // exceeds their clientHeight by more than 2px while their own computed
 // overflow-y is visible|hidden — a deliberate scroll container
@@ -504,6 +556,7 @@ async function visitRoute(
   entry: RouteManifestEntry,
   fontFloorResults?: FontFloorResult[],
   contrastResults?: ContrastResult[],
+  typeRoleResults?: TypeRoleResult[],
 ): Promise<RouteResult> {
   const page = await context.newPage();
   // DEC-411: must run before any in-page evaluation on this page.
@@ -568,6 +621,40 @@ async function visitRoute(
       contrastResults.push(evaluateContrast(entry, { minRatio, offenders }));
     } catch (err) {
       contrastResults.push(contrastErrorResult(entry, err instanceof Error ? err.message : String(err)));
+    }
+  }
+
+  // DEC-643: advisory type-role measurement, /admin/overview desktop only —
+  // same page/session, never lets an instrument failure fail the desktop
+  // render-sweep pass above.
+  if (typeRoleResults && entry.path === "/admin/overview") {
+    try {
+      const selectors = OVERVIEW_TYPE_ROLES.map((r) => r.selector);
+      const { bySelector, deadlineWeights } = await measureTypeRoles(page, selectors);
+      for (const roleEntry of OVERVIEW_TYPE_ROLES) {
+        const observed = bySelector[roleEntry.selector] ?? {};
+        const { ok, failureReason } = evaluateTypeRoleResult(observed, roleEntry.expected);
+        typeRoleResults.push({ selector: roleEntry.selector, role: roleEntry.role, ok, failureReason, observed, expected: roleEntry.expected });
+      }
+      const nearest = evaluateDeadlineNearestWeights(deadlineWeights);
+      typeRoleResults.push({
+        selector: ".chq-overview-deadline-value (group)",
+        role: "deadline-strip-nearest",
+        ok: nearest.ok,
+        failureReason: nearest.failureReason,
+        observed: {},
+        expected: {},
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      typeRoleResults.push({
+        selector: "(all)",
+        role: "type-role",
+        ok: false,
+        failureReason: `instrument-blocked: ${message}`,
+        observed: {},
+        expected: {},
+      });
     }
   }
 
@@ -759,6 +846,10 @@ async function main(): Promise<void> {
     // printed after the type-floor pass.
     const contrastResults: ContrastResult[] = [];
 
+    // DEC-643: collects type-role readings from the /admin/overview desktop
+    // visit only (visitRoute is a no-op for every other path).
+    const typeRoleResults: TypeRoleResult[] = [];
+
     const results: RouteResult[] = [];
     for (const entry of ROUTE_MANIFEST) {
       const context = contextByRole.get(entry.role);
@@ -775,7 +866,7 @@ async function main(): Promise<void> {
         continue;
       }
       try {
-        results.push(await visitRoute(context, baseUrl, entry, fontFloorResults, contrastResults));
+        results.push(await visitRoute(context, baseUrl, entry, fontFloorResults, contrastResults, typeRoleResults));
       } catch (err) {
         results.push(routeErrorResult(entry, err instanceof Error ? err.message : String(err)));
       }
@@ -914,6 +1005,23 @@ async function main(): Promise<void> {
     console.log(formatFontFloorSummary(fontFloorResults));
 
     if (!allFontFloorPassed(fontFloorResults) && FONT_FLOOR_BLOCKING) {
+      failed = true;
+    }
+
+    // DEC-643: type-role pass (advisory) — /admin/overview desktop only, one
+    // reading per OVERVIEW_TYPE_ROLES selector plus the deadline-strip group
+    // rule, collected during the desktop ROUTE_MANIFEST visit above (no
+    // separate route list or extra page visits). Failures never flip the
+    // exit code while TYPE_ROLE_BLOCKING is false (see its flip-rule comment
+    // in render-sweep-lib.ts).
+    console.log("");
+    console.log("render-sweep: type-role pass (/admin/overview desktop, advisory)...");
+    console.log("");
+    console.log(formatTypeRoleTable(typeRoleResults));
+    console.log("");
+    console.log(typeRoleSummaryLine(typeRoleResults));
+
+    if (!allTypeRolePassed(typeRoleResults) && TYPE_ROLE_BLOCKING) {
       failed = true;
     }
 

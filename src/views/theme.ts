@@ -53,6 +53,31 @@ export const THEME_CSS = `
     --chq-r-pill: 99px;
     --chq-font-display: 'Familjen Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
     --chq-font-ui: 'Figtree', -apple-system, BlinkMacSystemFont, sans-serif;
+    --chq-type-page-title-size: 36px;
+    --chq-type-page-title-weight: 700;
+    --chq-type-page-title-tracking: -0.04em;
+    --chq-type-page-title-phone-size: 25px;
+    --chq-type-overview-headline-size: 44px;
+    --chq-type-overview-headline-weight: 700;
+    --chq-type-overview-headline-tracking: -0.042em;
+    --chq-type-overview-headline-line-height: 1.04;
+    --chq-type-section-label-size: 11px;
+    --chq-type-section-label-weight: 700;
+    --chq-type-section-label-tracking: 0.12em;
+    --chq-type-deadline-label-size: 10px;
+    --chq-type-deadline-label-weight: 700;
+    --chq-type-deadline-label-tracking: 0.12em;
+    --chq-type-deadline-value-size: 30px;
+    --chq-type-deadline-value-weight: 400;
+    --chq-type-deadline-value-weight-nearest: 700;
+    --chq-type-row-title-weight: 600;
+    --chq-type-row-title-tracking: -0.015em;
+    --chq-type-body-size: 15px;
+    --chq-type-body-weight: 400;
+    --chq-type-meta-size: 13px;
+    --chq-type-micro-size: 10px;
+    --chq-type-micro-weight: 800;
+    --chq-type-micro-tracking: 0.11em;
   }
 
   @font-face {
