@@ -13,7 +13,7 @@ import { asc, eq, inArray, sql } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { newId } from "../../domain/ids";
-import { chunkIds } from "../../lib/chunk";
+import { chunkIds, ID_CHUNK_SIZE } from "../../lib/chunk";
 import { listFileChainIds } from "./files-versions";
 import { DEC_573 } from "../../decisions";
 
@@ -66,15 +66,26 @@ export async function listFileComments(
     total += Number(countRows[0]?.count ?? 0);
   }
 
-  const allRows: {
+  type RawCommentRow = {
     id: string;
     fileId: string;
     body: string;
     createdAt: Date;
     authorUserId: string | null;
-  }[] = [];
-  for (const batch of chunkIds(chainIds)) {
-    const rows = await db
+  };
+
+  let pageRows: RawCommentRow[];
+  if (page) {
+    // DEC-686: a paged read touches only the page — a chain long enough to
+    // outgrow ID_CHUNK_SIZE can't be paged within a single inArray chunk
+    // (SQL LIMIT/OFFSET over one chunk would silently miss rows in later
+    // chunks), so that's a bug to surface loudly, not a case to support.
+    if (chainIds.length > ID_CHUNK_SIZE) {
+      throw new Error(
+        `listFileComments: version chain of ${chainIds.length} files exceeds ID_CHUNK_SIZE (${ID_CHUNK_SIZE}) — cannot page`,
+      );
+    }
+    pageRows = await db
       .select({
         id: schema.fileComment.id,
         fileId: schema.fileComment.fileId,
@@ -83,15 +94,32 @@ export async function listFileComments(
         authorUserId: schema.fileComment.authorUserId,
       })
       .from(schema.fileComment)
-      .where(inArray(schema.fileComment.fileId, batch))
-      .orderBy(asc(schema.fileComment.createdAt), asc(schema.fileComment.id));
-    allRows.push(...rows);
+      .where(inArray(schema.fileComment.fileId, chainIds))
+      .orderBy(asc(schema.fileComment.createdAt), asc(schema.fileComment.id))
+      .limit(page.limit)
+      .offset(page.offset);
+  } else {
+    // No page requested (e.g. the portal tasks list rendering a full
+    // thread) — today's unbounded behavior, still chunked for D1's bound-
+    // parameter ceiling.
+    const allRows: RawCommentRow[] = [];
+    for (const batch of chunkIds(chainIds)) {
+      const rows = await db
+        .select({
+          id: schema.fileComment.id,
+          fileId: schema.fileComment.fileId,
+          body: schema.fileComment.body,
+          createdAt: schema.fileComment.createdAt,
+          authorUserId: schema.fileComment.authorUserId,
+        })
+        .from(schema.fileComment)
+        .where(inArray(schema.fileComment.fileId, batch))
+        .orderBy(asc(schema.fileComment.createdAt), asc(schema.fileComment.id));
+      allRows.push(...rows);
+    }
+    allRows.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime() || a.id.localeCompare(b.id));
+    pageRows = allRows;
   }
-  allRows.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime() || a.id.localeCompare(b.id));
-
-  const start = page ? page.offset : 0;
-  const end = page ? start + page.limit : allRows.length;
-  const pageRows = allRows.slice(start, end);
 
   const userIds = [...new Set(pageRows.map((r) => r.authorUserId).filter((x): x is string => !!x))];
   const userMap = new Map<string, { email: string; role: string; contactId: string | null }>();

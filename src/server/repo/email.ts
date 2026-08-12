@@ -2,10 +2,11 @@
 // types). Backs both /dev/mailbox (dev-only sink viewer, DEC-005/DEC-006)
 // and GET /api/v1/events/:eventId/email-log (J5 per-recipient history).
 
-import { and, asc, desc, eq, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, or, sql, type SQL } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { likeContains } from "./like";
+import { chunkIds } from "../../lib/chunk";
 
 export interface EmailLogRow {
   id: string;
@@ -230,9 +231,10 @@ function batchWhere(params: Pick<EmailBatchListParams, "eventId" | "q">) {
 
 /** Lists email_log rows grouped by BATCH_KEY, newest-batch-first, with
  * DEC-013 pagination. A second grouped-by-(batchKey,status) query supplies
- * each batch's per-status tally (statusCounts) — bounded by the same
- * eventId/q filter, not by the page, since a batch's rows can't be split
- * across pages. */
+ * each batch's per-status tally (statusCounts) — scoped to the page's own
+ * batch keys (DEC-686), not the whole event, since a batch's rows can't be
+ * split across pages but the event can have far more batches than fit on
+ * one page. */
 export async function listEmailBatches(db: Db, params: EmailBatchListParams): Promise<EmailBatchListResult> {
   const where = batchWhere(params);
 
@@ -263,20 +265,21 @@ export async function listEmailBatches(db: Db, params: EmailBatchListParams): Pr
   const batchKeys = rows.map((r) => r.batchKey);
   const statusCountsByBatch = new Map<string, Record<string, number>>();
   if (batchKeys.length > 0) {
-    const statusRows = await db
-      .select({
-        batchKey: BATCH_KEY,
-        status: schema.emailLog.status,
-        n: sql<number>`count(*)`,
-      })
-      .from(schema.emailLog)
-      .where(where)
-      .groupBy(BATCH_KEY, schema.emailLog.status);
-    for (const r of statusRows) {
-      if (!batchKeys.includes(r.batchKey)) continue;
-      const counts = statusCountsByBatch.get(r.batchKey) ?? {};
-      counts[r.status] = Number(r.n);
-      statusCountsByBatch.set(r.batchKey, counts);
+    for (const batch of chunkIds(batchKeys)) {
+      const statusRows = await db
+        .select({
+          batchKey: BATCH_KEY,
+          status: schema.emailLog.status,
+          n: sql<number>`count(*)`,
+        })
+        .from(schema.emailLog)
+        .where(and(where, inArray(BATCH_KEY, batch)))
+        .groupBy(BATCH_KEY, schema.emailLog.status);
+      for (const r of statusRows) {
+        const counts = statusCountsByBatch.get(r.batchKey) ?? {};
+        counts[r.status] = Number(r.n);
+        statusCountsByBatch.set(r.batchKey, counts);
+      }
     }
   }
 
