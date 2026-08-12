@@ -264,3 +264,15 @@ mock shows criteria but not their editing flow; prod's invented flow is unintuit
 - Scorecard renders each criterion as label + guidance + rating pills; overall is the
   computed weighted mean, displayed not editable.
 - Seed: plans carry 3 criteria with DISTINCT weights so weighted ≠ naive mean.
+
+## APPENDED: user QA — Speakers onboarding grid treatment (2026-08-12)
+
+12. **Strip the grid back to the mock's density; keep the capability, fix the form**:
+    (a) DELETE the per-cell "View response" buttons — render a quiet "Response" text
+    link (styled like the mock's "File" link) ONLY on completed form-task cells;
+    nothing on pending cells; file-kind tasks keep "File" only. (b) Remove email
+    addresses from grid rows — speaker line is "Company · has account" per mock;
+    emails live in the contact drawer. (c) Move Add speaker + Import CSV onto the
+    title action row with New task + Remind (no floating band above the title).
+    Rationale: the mock's affordance rule is conditional-and-quiet; prod's 84
+    mostly-dead buttons destroy scanability the grid exists to provide.
