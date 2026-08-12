@@ -117,7 +117,7 @@ export async function createTask(db: Db, eventId: string, input: CreateTaskInput
     kind: input.kind,
     title: input.title,
     description: input.description ?? null,
-    dueDate: input.dueDate ? new Date(input.dueDate) : null,
+    dueDate: input.dueDate !== null && input.dueDate !== undefined ? new Date(input.dueDate) : null,
     required: input.required,
     formId: input.formId ?? null,
     deliverableKind: input.deliverableKind ?? null,
@@ -153,7 +153,7 @@ export async function updateTask(db: Db, taskId: string, input: UpdateTaskInput)
     .set({
       ...(input.title !== undefined ? { title: input.title } : {}),
       ...(input.description !== undefined ? { description: input.description } : {}),
-      ...(input.dueDate !== undefined ? { dueDate: input.dueDate ? new Date(input.dueDate) : null } : {}),
+      ...(input.dueDate !== undefined ? { dueDate: input.dueDate !== null && input.dueDate !== undefined ? new Date(input.dueDate) : null } : {}),
       ...(input.required !== undefined ? { required: input.required } : {}),
       ...(input.formId !== undefined ? { formId: input.formId } : {}),
       ...(input.deliverableKind !== undefined ? { deliverableKind: input.deliverableKind } : {}),
