@@ -87,7 +87,7 @@ export function EmbedsPanel() {
   const snippet = event ? buildSnippet(url, surface, format) : '';
 
   return (
-    <section className="chq-panel chq-embeds-panel" aria-label="Embeds">
+    <section className="chq-settings-panel chq-embeds-panel" aria-label="Embeds">
       <h2>Embeds</h2>
       <p>
         Build a share link for a public surface (chromeless, no login required) — pick a surface, an
@@ -104,7 +104,11 @@ export function EmbedsPanel() {
         <div className="chq-embeds-form">
           <label>
             Surface
-            <select value={surface} onChange={(e) => setSurface(e.target.value as EmbedSurface)}>
+            <select
+              className="chq-select"
+              value={surface}
+              onChange={(e) => setSurface(e.target.value as EmbedSurface)}
+            >
               {EMBED_SURFACES.map((s) => (
                 <option key={s} value={s}>
                   {s[0]!.toUpperCase() + s.slice(1)}
@@ -115,7 +119,7 @@ export function EmbedsPanel() {
 
           <label>
             Format
-            <select value={format} onChange={(e) => setFormat(e.target.value as EmbedFormat)}>
+            <select className="chq-select" value={format} onChange={(e) => setFormat(e.target.value as EmbedFormat)}>
               {formatsFor(surface).map((f) => (
                 <option key={f} value={f}>
                   {f}
@@ -127,6 +131,7 @@ export function EmbedsPanel() {
           <label>
             Track ID
             <input
+              className="chq-input"
               type="text"
               value={trackId}
               onChange={(e) => setTrackId(e.target.value)}
@@ -137,6 +142,7 @@ export function EmbedsPanel() {
           <label>
             Day
             <input
+              className="chq-input"
               type="date"
               value={day}
               onChange={(e) => setDay(e.target.value)}
@@ -146,6 +152,7 @@ export function EmbedsPanel() {
           <label>
             Limit
             <input
+              className="chq-input"
               type="number"
               min={1}
               max={100}
@@ -160,6 +167,7 @@ export function EmbedsPanel() {
             {EMBED_FIELDS.map((field) => (
               <label key={field}>
                 <input
+                  className="chq-check"
                   type="checkbox"
                   checked={fields.includes(field)}
                   onChange={() => toggleField(field)}
@@ -172,6 +180,7 @@ export function EmbedsPanel() {
           <label>
             Accent color
             <input
+              className="chq-input"
               type="text"
               value={accent}
               onChange={(e) => setAccent(e.target.value)}
@@ -188,7 +197,7 @@ export function EmbedsPanel() {
               <strong>Snippet</strong>
             </p>
             <code>{snippet}</code>
-            <button type="button" onClick={() => handleCopy(snippet)}>
+            <button type="button" className="chq-btn chq-btn-primary" onClick={() => handleCopy(snippet)}>
               {copied ? 'Copied!' : 'Copy snippet'}
             </button>
             <p className="chq-embeds-note">

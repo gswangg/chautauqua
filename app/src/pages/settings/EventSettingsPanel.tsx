@@ -89,41 +89,55 @@ export function EventSettingsPanel() {
         >
           <label>
             Name
-            <input value={form.name} onChange={(e) => update('name', e.target.value)} />
+            <input className="chq-input" value={form.name} onChange={(e) => update('name', e.target.value)} />
           </label>
           <label>
             Slug
-            <input value={form.slug} onChange={(e) => update('slug', e.target.value)} />
+            <input className="chq-input" value={form.slug} onChange={(e) => update('slug', e.target.value)} />
           </label>
           <label>
             Start date
-            <input type="date" value={form.startDate} onChange={(e) => update('startDate', e.target.value)} />
+            <input
+              className="chq-input"
+              type="date"
+              value={form.startDate}
+              onChange={(e) => update('startDate', e.target.value)}
+            />
           </label>
           <label>
             End date
-            <input type="date" value={form.endDate} onChange={(e) => update('endDate', e.target.value)} />
+            <input
+              className="chq-input"
+              type="date"
+              value={form.endDate}
+              onChange={(e) => update('endDate', e.target.value)}
+            />
           </label>
           <label>
             Location
-            <input value={form.location} onChange={(e) => update('location', e.target.value)} />
+            <input className="chq-input" value={form.location} onChange={(e) => update('location', e.target.value)} />
           </label>
           <label>
             Timezone
-            <input value={form.timezone} onChange={(e) => update('timezone', e.target.value)} />
+            <input className="chq-input" value={form.timezone} onChange={(e) => update('timezone', e.target.value)} />
           </label>
           <label>
             Record prefix
-            <input value={form.recordPrefix} readOnly disabled />
+            <input className="chq-input" value={form.recordPrefix} readOnly disabled />
           </label>
           <label>
             Logo URL
-            <input value={form.logoUrl} onChange={(e) => update('logoUrl', e.target.value)} />
+            <input className="chq-input" value={form.logoUrl} onChange={(e) => update('logoUrl', e.target.value)} />
           </label>
           <label>
             Accent color
-            <input value={form.accentColor} onChange={(e) => update('accentColor', e.target.value)} />
+            <input
+              className="chq-input"
+              value={form.accentColor}
+              onChange={(e) => update('accentColor', e.target.value)}
+            />
           </label>
-          <button type="submit" disabled={saving}>
+          <button type="submit" className="chq-btn chq-btn-primary" disabled={saving}>
             {saving ? 'Saving…' : 'Save'}
           </button>
           {saved ? <span role="status"> Saved.</span> : null}
