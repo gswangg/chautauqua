@@ -109,10 +109,18 @@ export function DraftSavedNotice() {
   );
 }
 
+// DEC-579: this STAYS a multi-select checkbox group posting a repeating
+// trackIds field -- submission_track is a join table, and swapping in
+// radios would silently truncate any submission that already holds more
+// than one track the next time its owner edited it. The fidelity report's
+// actual defect was the singular legend over a multi-select control, so
+// the fix is copy only: "Tracks *" plus an explicit "choose all that
+// apply" help line, never a change of input type or name.
 export function TrackChoices(props: { tracks: TrackRow[]; selected: string[] }) {
   return (
     <fieldset class="chq-cfp-fieldset">
-      <legend>Track *</legend>
+      <legend>Tracks *</legend>
+      <p class="help">Choose all that apply.</p>
       {props.tracks.map((track) => (
         <label class="chq-cfp-option">
           <input
