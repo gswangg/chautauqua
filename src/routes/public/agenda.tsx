@@ -280,12 +280,16 @@ export function AgendaContent(props: { event: PublicEvent; items: PublicAgendaIt
  * query in sync with the checked set. */
 export function ItineraryScript(props: { eventSlug: string }) {
   const storageKey = itineraryStorageKey(props.eventSlug);
+  // EMB-10/11: mergeItinerarySelection's own body references MAX_ITINERARY_IDS
+  // as a free identifier -- .toString() embeds only the function's SOURCE,
+  // never its closed-over module-level const, so the const must be emitted into
+  // the IIFE below too. Without it every change handler throws before
+  // localStorage.setItem ever runs and no pick persists.
+  // NB: keep this explanation OUT of the emitted `js` string. The hostile-input
+  // surface test (test/public-surface-hostile-input.test.ts) asserts no public
+  // response body ever names a raw exception type, so a comment naming one
+  // would fail it once shipped inside the inline script.
   const js = `(function(){
-  // EMB-10/11: mergeItinerarySelection's own body references
-  // MAX_ITINERARY_IDS as a free identifier -- .toString() embeds only the
-  // function's SOURCE, never its closed-over module-level const, so it must
-  // be emitted into this IIFE too or every change handler throws
-  // ReferenceError before localStorage.setItem ever runs (no pick persists).
   var MAX_ITINERARY_IDS = ${MAX_ITINERARY_IDS};
   var __chqMerge = (${mergeItinerarySelection.toString()});
   var __chqMirror = (${mirrorItineraryCheckboxes.toString()});
