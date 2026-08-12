@@ -87,21 +87,32 @@ export interface MergeVarsInput {
   talkTitle: string;
   eventName: string;
   portalLink: string;
-  /** Raw (non-anonymized-yet) evaluation comments for this recipient's submission. */
-  feedbackComments: string[];
+  /** Raw (non-anonymized-yet) evaluation comments for this recipient's
+   * submission. DEC-682: `null` means feedback was NOT attached to this
+   * compose (the "include reviewer feedback" toggle is off, or no plan+round
+   * scope was given) — the `feedback` merge key is omitted entirely in that
+   * case, so a template referencing {feedback} fails preflightRender loudly
+   * instead of silently inventing/leaking text. An empty array means
+   * feedback WAS attached but this recipient's submission has zero
+   * qualifying comments — that still renders NO_FEEDBACK_TEXT. */
+  feedbackComments: string[] | null;
 }
 
 /** Builds the DEC-006 merge vars for one recipient (speaker_name, talk_title,
  * event_name, portal_link, feedback). Does not include due_date/task_list —
- * those belong to the reminders pipeline (DEC-023), not compose. */
+ * those belong to the reminders pipeline (DEC-023), not compose. DEC-682:
+ * the `feedback` key is omitted entirely when feedbackComments is null. */
 export function buildMergeVars(input: MergeVarsInput): Record<string, string> {
-  return {
+  const vars: Record<string, string> = {
     speaker_name: input.speakerName,
     talk_title: input.talkTitle,
     event_name: input.eventName,
     portal_link: input.portalLink,
-    feedback: formatFeedback(input.feedbackComments),
   };
+  if (input.feedbackComments !== null) {
+    vars.feedback = formatFeedback(input.feedbackComments);
+  }
+  return vars;
 }
 
 export interface RenderTarget {

@@ -214,25 +214,20 @@ export async function loadComposeSubmissions(
   }));
 }
 
-/** Non-empty evaluation comments for a submission, oldest-first, for
- * formatFeedback's 'Reviewer N' anonymized ordering. */
-export async function listFeedbackComments(db: Db, submissionId: string): Promise<string[]> {
-  const rows = await db
-    .select({ comment: schema.evaluation.comment, submittedAt: schema.evaluation.submittedAt })
-    .from(schema.evaluation)
-    .where(eq(schema.evaluation.submissionId, submissionId))
-    .orderBy(asc(schema.evaluation.createdAt), asc(schema.evaluation.id));
-  return rows.filter((r) => r.submittedAt !== null && r.comment && r.comment.trim() !== "").map((r) => r.comment as string);
-}
-
-/** DEC-530: batched sibling of listFeedbackComments — one chunked query
- * pass for an arbitrary set of submissions instead of one query per
- * submission (compose preview/send re-queries the SAME submission once per
- * co-speaker otherwise). Same filter (submittedAt not null, non-blank
- * comment) and the same asc(createdAt) ordering per submission; a
- * submission with zero qualifying comments is simply absent from the
- * returned map. */
-export async function listFeedbackCommentsForSubmissions(db: Db, submissionIds: string[]): Promise<Map<string, string[]>> {
+/** DEC-530/DEC-682: batched loader — one chunked query pass for an
+ * arbitrary set of submissions instead of one query per submission (compose
+ * preview/send re-queries the SAME submission once per co-speaker
+ * otherwise). Scoped to exactly the composing plan's round (DEC-682: a
+ * decision mailer must never leak another plan's or an earlier/later
+ * round's comments alongside the composing round's) — same filter
+ * (submittedAt not null, non-blank comment) and the same asc(createdAt),
+ * asc(id) ordering per submission; a submission with zero qualifying
+ * comments in that plan+round is simply absent from the returned map. */
+export async function listFeedbackCommentsForSubmissions(
+  db: Db,
+  submissionIds: string[],
+  scope: { planId: string; round: number },
+): Promise<Map<string, string[]>> {
   const map = new Map<string, string[]>();
   if (submissionIds.length === 0) return map;
   for (const batch of chunkIds(submissionIds)) {
@@ -243,7 +238,13 @@ export async function listFeedbackCommentsForSubmissions(db: Db, submissionIds: 
         submittedAt: schema.evaluation.submittedAt,
       })
       .from(schema.evaluation)
-      .where(inArray(schema.evaluation.submissionId, batch))
+      .where(
+        and(
+          inArray(schema.evaluation.submissionId, batch),
+          eq(schema.evaluation.planId, scope.planId),
+          eq(schema.evaluation.round, scope.round),
+        ),
+      )
       .orderBy(asc(schema.evaluation.createdAt), asc(schema.evaluation.id));
     for (const row of rows) {
       if (row.submittedAt === null || !row.comment || row.comment.trim() === "") continue;

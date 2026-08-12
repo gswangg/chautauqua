@@ -6,6 +6,7 @@ import { PreviewPane } from './PreviewPane';
 import { describeSendResult, type SendResult } from '../../lib/sendResult';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import type { EmailTemplate, RenderedRecipient } from './types';
+import type { EvaluationPlan } from '../review/types';
 
 // J5's decide != notify: the picker defaults to the two decided statuses so
 // organizers compose against the submissions they've already ruled on, but
@@ -44,6 +45,12 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
   const [subject, setSubject] = useState('');
   const [bodyText, setBodyText] = useState('');
   const [includeFeedback, setIncludeFeedback] = useState(false);
+  // DEC-682: a decision mailer must never invent/leak another plan's or
+  // round's feedback -- the organizer names exactly which plan (and,
+  // implicitly, its current round) to attach before includeFeedback is
+  // honored server-side.
+  const [plans, setPlans] = useState<EvaluationPlan[]>([]);
+  const [feedbackPlanId, setFeedbackPlanId] = useState<string>('');
   const [attachIcs, setAttachIcs] = useState(false);
 
   const [preview, setPreview] = useState<RenderedRecipient[]>([]);
@@ -76,6 +83,12 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
       .catch(() => undefined);
   }, [eventId]);
 
+  useEffect(() => {
+    apiList<EvaluationPlan>(`/events/${eventId}/plans`)
+      .then((res) => setPlans(res.items))
+      .catch(() => undefined);
+  }, [eventId]);
+
   function toggleStatus(status: SubmissionStatus) {
     setStatusFilter((prev) => (prev.includes(status) ? prev.filter((s) => s !== status) : [...prev, status]));
     setPage(1);
@@ -95,12 +108,17 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
     });
   }
 
-  function composeBody(overrides?: { includeFeedback?: boolean; attachIcs?: boolean }): Record<string, unknown> {
+  function composeBody(overrides?: { includeFeedback?: boolean; feedbackPlanId?: string; attachIcs?: boolean }): Record<string, unknown> {
+    const effectiveIncludeFeedback = overrides?.includeFeedback ?? includeFeedback;
+    const effectiveFeedbackPlanId = overrides?.feedbackPlanId ?? feedbackPlanId;
     const base: Record<string, unknown> = {
       submissionIds: [...selectedIds],
-      includeFeedback: overrides?.includeFeedback ?? includeFeedback,
+      includeFeedback: effectiveIncludeFeedback,
       attachIcs: overrides?.attachIcs ?? attachIcs,
     };
+    if (effectiveIncludeFeedback && effectiveFeedbackPlanId) {
+      base.feedbackPlanId = effectiveFeedbackPlanId;
+    }
     if (templateId) {
       base.templateId = templateId;
     } else {
@@ -121,7 +139,7 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
     return ids.length > 0 ? ids : null;
   }
 
-  async function runPreview(overrides?: { includeFeedback?: boolean; attachIcs?: boolean }) {
+  async function runPreview(overrides?: { includeFeedback?: boolean; feedbackPlanId?: string; attachIcs?: boolean }) {
     setBusy(true);
     setError(null);
     setCapMessage(null);
@@ -156,6 +174,11 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
   function handleIncludeFeedbackChange(next: boolean) {
     setIncludeFeedback(next);
     void runPreview({ includeFeedback: next });
+  }
+
+  function handleFeedbackPlanChange(next: string) {
+    setFeedbackPlanId(next);
+    if (includeFeedback) void runPreview({ feedbackPlanId: next });
   }
 
   function handleAttachIcsChange(next: boolean) {
@@ -198,6 +221,7 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
     setSubject('');
     setBodyText('');
     setIncludeFeedback(false);
+    setFeedbackPlanId('');
     setAttachIcs(false);
     setPreview([]);
     setPreviewIndex(0);
@@ -447,6 +471,33 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
                 />
                 Include reviewer feedback
               </label>
+              {includeFeedback && (
+                <label className="chq-comms-template-label">
+                  Evaluation plan
+                  <select
+                    className="chq-select"
+                    value={feedbackPlanId}
+                    required
+                    onChange={(e) => handleFeedbackPlanChange(e.target.value)}
+                  >
+                    <option value="">Choose a plan&hellip;</option>
+                    {plans.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
+                  {feedbackPlanId &&
+                    (() => {
+                      const selectedPlan = plans.find((p) => p.id === feedbackPlanId);
+                      return selectedPlan ? (
+                        <span className="chq-comms-panel-note">
+                          Round {selectedPlan.currentRound} of {selectedPlan.name}
+                        </span>
+                      ) : null;
+                    })()}
+                </label>
+              )}
               <label className="chq-comms-toggle">
                 <input
                   type="checkbox"

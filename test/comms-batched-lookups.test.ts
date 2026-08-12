@@ -146,6 +146,7 @@ describe("findAccountUserIds contract-matches findAccountUserId (DEC-456)", () =
 // ---------------------------------------------------------------------------
 
 const event = { id: "evt-1", name: "DevCon" };
+const feedbackScope = { planId: "plan-1", round: 1 };
 
 const submissions: ComposeSubmission[] = [
   {
@@ -228,7 +229,7 @@ describe("buildRenderTargets batches per-request, not per-recipient (DEC-530)", 
     const { db, getFeedbackCalls, getAccountCalls, getSelectCalls } = makeComposeDb();
     const c = fakeContext(db, new InMemoryKV());
 
-    const targets = await buildRenderTargets(c as never, event, submissions, /* includeFeedback */ true, /* mintClaimTokens */ false);
+    const targets = await buildRenderTargets(c as never, event, submissions, /* feedback */ feedbackScope, /* mintClaimTokens */ false);
 
     expect(targets).toHaveLength(5);
     expect(getFeedbackCalls()).toBe(1);
@@ -240,7 +241,7 @@ describe("buildRenderTargets batches per-request, not per-recipient (DEC-530)", 
     const { db } = makeComposeDb();
     const c = fakeContext(db, new InMemoryKV());
 
-    const targets = await buildRenderTargets(c as never, event, submissions, true, false);
+    const targets = await buildRenderTargets(c as never, event, submissions, feedbackScope, false);
 
     const grace = targets.find((t) => t.contactId === "ct-2");
     const radia = targets.find((t) => t.contactId === "ct-3");
@@ -258,7 +259,7 @@ describe("buildRenderTargets batches per-request, not per-recipient (DEC-530)", 
     const { db, getFeedbackCalls, getAccountCalls } = makeComposeDb();
     const c = fakeContext(db, new InMemoryKV());
 
-    await buildRenderTargets(c as never, event, submissions, false, false);
+    await buildRenderTargets(c as never, event, submissions, null, false);
 
     expect(getFeedbackCalls()).toBe(0);
     expect(getAccountCalls()).toBe(1);

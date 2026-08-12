@@ -1,7 +1,8 @@
 // DEC-564: the notify pipeline must reproduce the same order across
 // requests. loadComposeSubmissions' two reads are DEC-078-chunked (so SQL
-// order alone can't survive across batches), and listFeedbackComments{,
-// ForSubmissions} number reviewers positionally — so this file pins:
+// order alone can't survive across batches), and
+// listFeedbackCommentsForSubmissions numbers reviewers positionally — so
+// this file pins:
 //   1. loadComposeSubmissions -> expandRecipients yields an identical
 //      recipient order regardless of the shuffled row order a chunked DB
 //      read hands back (submissions by seq asc, participants by
@@ -13,7 +14,7 @@ import { describe, expect, it } from "vitest";
 import { asc } from "drizzle-orm";
 import * as schema from "../src/db/schema";
 import type { AppEnv } from "../src/server/env";
-import { loadComposeSubmissions, listFeedbackComments, listFeedbackCommentsForSubmissions } from "../src/server/repo/comms";
+import { loadComposeSubmissions, listFeedbackCommentsForSubmissions } from "../src/server/repo/comms";
 import { expandRecipients, formatFeedback } from "../src/domain/compose";
 
 type Db = AppEnv["Variables"]["db"];
@@ -111,12 +112,14 @@ describe("loadComposeSubmissions reproducible order (DEC-564)", () => {
   });
 });
 
-describe("listFeedbackComments / listFeedbackCommentsForSubmissions order (DEC-564)", () => {
-  it("listFeedbackComments orders by createdAt asc THEN id asc (a real tiebreak for createdAt ties)", async () => {
+describe("listFeedbackCommentsForSubmissions order (DEC-564)", () => {
+  const scope = { planId: "plan-1", round: 1 };
+
+  it("orders by createdAt asc THEN id asc (a real tiebreak for createdAt ties)", async () => {
     const orderByLog: unknown[][] = [];
     const db = makeFeedbackDb([], orderByLog);
 
-    await listFeedbackComments(db, "sub-x");
+    await listFeedbackCommentsForSubmissions(db, ["sub-x"], scope);
 
     expect(orderByLog).toHaveLength(1);
     const orderByArgs = orderByLog[0]!;
@@ -125,19 +128,6 @@ describe("listFeedbackComments / listFeedbackCommentsForSubmissions order (DEC-5
     expect(cols).toEqual([schema.evaluation.createdAt, schema.evaluation.id]);
     expect(orderByArgs[0]).toEqual(asc(schema.evaluation.createdAt));
     expect(orderByArgs[1]).toEqual(asc(schema.evaluation.id));
-  });
-
-  it("listFeedbackCommentsForSubmissions also appends the id tiebreak", async () => {
-    const orderByLog: unknown[][] = [];
-    const db = makeFeedbackDb([], orderByLog);
-
-    await listFeedbackCommentsForSubmissions(db, ["sub-x"]);
-
-    expect(orderByLog).toHaveLength(1);
-    const orderByArgs = orderByLog[0]!;
-    expect(orderByArgs).toHaveLength(2);
-    const cols = (orderByArgs as any[]).map((o) => o.queryChunks[1]);
-    expect(cols).toEqual([schema.evaluation.createdAt, schema.evaluation.id]);
   });
 
   it("numbers Reviewer N from whatever order the (now tiebreak-stable) query hands back, unmodified", async () => {
@@ -152,7 +142,7 @@ describe("listFeedbackComments / listFeedbackCommentsForSubmissions order (DEC-5
     ];
     const db = makeFeedbackDb(stableRows);
 
-    const map = await listFeedbackCommentsForSubmissions(db, ["sub-x"]);
+    const map = await listFeedbackCommentsForSubmissions(db, ["sub-x"], scope);
 
     expect(formatFeedback(map.get("sub-x") ?? [])).toBe(
       "Reviewer 1: First comment\nReviewer 2: Second comment (tied createdAt, lower id)\nReviewer 3: Third comment (tied createdAt, higher id)",
