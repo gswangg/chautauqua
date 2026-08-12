@@ -189,4 +189,123 @@
   margin: 0;
   font-size: 15px;
   line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+/* Phone frame (DEC-385): single 700px switch. 900px above stays the
+   intermediate one-column collapse; this block layers phone-only
+   metrics on top of it. */
+@media (max-width: 700px) {
+  .chq-detail-heading h1 {
+    font-size: 24px;
+  }
+
+  .chq-detail-layout {
+    gap: 20px;
+  }
+
+  .chq-detail-main,
+  .chq-detail-aside {
+    gap: 20px;
+    max-width: none;
+  }
+
+  /* Answer/meta rows collapse to a single column: 13px muted label
+     above the value, no more fixed 190px label rail. */
+  .chq-answer-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+    padding: 12px 0;
+  }
+
+  .chq-answer-row dt {
+    font-size: 13px;
+  }
+
+  .chq-answer-row dd {
+    font-size: 14px;
+  }
+
+  .chq-detail-section-body p {
+    overflow-wrap: anywhere;
+  }
+
+  /* Decision panel buttons: full-width, 44px, phone control radius. */
+  .chq-detail-decision-body select,
+  .chq-detail-decision-actions button {
+    width: 100%;
+    min-height: 44px;
+    border-radius: var(--chq-r-ctl-phone);
+  }
+
+  .chq-detail-decision-actions {
+    flex-direction: column;
+  }
+
+  /* Participant list stacks: table markup unchanged, cells become
+     block rows inside a bordered card — no cell hidden (DEC-386). */
+  .chq-detail-page .chq-participants-table,
+  .chq-detail-page .chq-participants-table thead,
+  .chq-detail-page .chq-participants-table tbody,
+  .chq-detail-page .chq-participants-table tr,
+  .chq-detail-page .chq-participants-table th,
+  .chq-detail-page .chq-participants-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .chq-detail-page .chq-participants-table thead {
+    display: none;
+  }
+
+  .chq-detail-page .chq-participants-table tbody tr {
+    border: 1px solid var(--chq-hairline);
+    border-radius: 6px;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+  }
+
+  .chq-detail-page .chq-participants-table tbody tr:last-child {
+    margin-bottom: 0;
+  }
+
+  .chq-detail-page .chq-participants-table td {
+    border-bottom: none;
+    padding: 4px 0;
+    overflow-wrap: anywhere;
+  }
+
+  /* Co-presenter search results: same stacked-list treatment, refs
+     and emails wrap instead of forcing horizontal scroll. */
+  .chq-co-presenter-results,
+  .chq-submission-history-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .chq-co-presenter-results li,
+  .chq-submission-history-entry {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overflow-wrap: anywhere;
+    border-bottom: 1px solid var(--chq-hairline);
+    padding-bottom: 10px;
+  }
+
+  .chq-co-presenter-results button,
+  .chq-submission-history-entry button {
+    min-height: 44px;
+    border-radius: var(--chq-r-ctl-phone);
+  }
+
+  .chq-track-chips,
+  .chq-detail-decision-note,
+  .chq-content-status {
+    overflow-wrap: anywhere;
+  }
 }
