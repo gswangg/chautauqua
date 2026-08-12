@@ -5,6 +5,7 @@
 import type { PublicAgendaItem, PublicEvent } from "../../server/repo/public";
 import { itineraryStorageKey, mergeItinerarySelection, mirrorItineraryCheckboxes } from "../../lib/itinerary";
 import { assignLanes } from "../../lib/overlap-lanes";
+import { publicRoomLabel } from "../../domain/schedule";
 import { sessionDetailPath, type Surface } from "./shell";
 import { TrackChips, SpeakerNames, SessionDescription, formatDay, formatMinutes } from "./cards";
 
@@ -37,7 +38,7 @@ export function AgendaDayGrid(props: { day: string; items: PublicAgendaItem[]; e
   for (let h = Math.ceil(dayStart / 60) * 60; h <= dayEnd; h += 60) {
     hourMarks.push(h);
   }
-  const roomNames = new Map(items.map((i) => [i.roomId ?? "tbd", i.roomName ?? "TBD"]));
+  const roomNames = new Map(items.map((i) => [i.roomId ?? "tbd", publicRoomLabel(i.roomName)]));
   const roomPositions = new Map(items.map((i) => [i.roomId ?? "tbd", i.roomId ? i.roomPosition : null]));
   // DEC-563: a room column's position is a producer-owned fact (schema
   // `room.position`), not the accident of which item happened to appear
@@ -183,7 +184,7 @@ function AgendaItemList(props: {
                 </a>
               </strong>
             </div>
-            <div class="chq-pub-agenda-list-room">{item.roomName ?? "TBD"}</div>
+            <div class="chq-pub-agenda-list-room">{publicRoomLabel(item.roomName)}</div>
             <div>
               <TrackChips tracks={item.tracks} />
             </div>

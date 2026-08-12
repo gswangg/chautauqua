@@ -103,6 +103,19 @@ export function describeUnplaced(
   }
 }
 
+/** DEC-666: the ONE public-facing word for a session with no room. The
+ * internal "tbd" map key (used to bucket unrooted sessions for the roomless
+ * column, which always sorts last per DEC-563) is an implementation detail
+ * — it must never leak into rendered markup as the literal "TBD". */
+export const ROOM_TBA_LABEL = "To be announced";
+
+/** DEC-666: the ONE place a nullable room name becomes public-facing prose.
+ * Both the desktop grid's column header and the phone list's room field
+ * call this so they can never drift apart. */
+export function publicRoomLabel(roomName: string | null): string {
+  return roomName ?? ROOM_TBA_LABEL;
+}
+
 function intersects(a: PlacedSession, b: PlacedSession): boolean {
   if (a.day !== b.day) return false;
   // Touching intervals (a.endMin === b.startMin) do NOT conflict.

@@ -81,6 +81,8 @@ describe("DEC-563: AgendaDayGrid room column order is producer-owned, not array 
     ];
 
     const html = String(AgendaDayGrid({ day: "2026-08-10", items, event: EVENT, from: "agenda" }));
-    expect(headerOrder(html)).toEqual(["Beta Hall", "Alpha Hall", "TBD"]);
+    // DEC-666: sort key is still the internal "tbd" bucket (always last);
+    // only the RENDERED word changed to "To be announced".
+    expect(headerOrder(html)).toEqual(["Beta Hall", "Alpha Hall", "To be announced"]);
   });
 });
