@@ -1,7 +1,7 @@
 // Public/embed repo layer (J10, DEC-022, DEC-274): event / tracks lookups
 // shared across every public surface.
 
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 
@@ -40,6 +40,30 @@ export interface PublicTrack {
   id: string;
   name: string;
   color: string | null;
+}
+
+/** DEC-683: the sessions rail's "Call for papers" card needs the event's
+ * default form's open/close window, nothing else off the form row. Whether
+ * that window is currently open is decided ONLY by src/lib/submit-core.ts's
+ * formWindowState (the same resolver the home hub uses, src/server/repo/
+ * public/home.ts) — never a second date comparison here. A null return
+ * means the event has no default form at all (never happens post-seed, but
+ * an org can delete every form), which callers treat as "no CFP card". */
+export async function getPublicCfpWindow(
+  db: Db,
+  eventId: string,
+): Promise<{ openDate: number | null; closeDate: number | null } | null> {
+  const rows = await db
+    .select({ openDate: schema.form.openDate, closeDate: schema.form.closeDate })
+    .from(schema.form)
+    .where(and(eq(schema.form.eventId, eventId), eq(schema.form.isDefault, true)))
+    .limit(1);
+  const row = rows[0];
+  if (!row) return null;
+  return {
+    openDate: row.openDate ? row.openDate.getTime() : null,
+    closeDate: row.closeDate ? row.closeDate.getTime() : null,
+  };
 }
 
 export async function getPublicTracks(db: Db, eventId: string): Promise<PublicTrack[]> {

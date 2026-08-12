@@ -27,6 +27,7 @@ function makeChain(rows: unknown[]) {
     innerJoin: () => chain,
     leftJoin: () => chain,
     where: () => chain,
+    groupBy: () => chain,
     orderBy: () => chain,
     limit: async (n: number) => rows.slice(0, n),
     as: () => chain,

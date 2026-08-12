@@ -276,7 +276,7 @@ export function AgendaContent(props: { event: PublicEvent; items: PublicAgendaIt
 /** Itinerary picker inline vanilla JS (DEC-022): reads/writes
  * localStorage chq_itinerary_<slug>, keeps the .ics download link's ?ids=
  * query in sync with the checked set. */
-function ItineraryScript(props: { eventSlug: string }) {
+export function ItineraryScript(props: { eventSlug: string }) {
   const storageKey = itineraryStorageKey(props.eventSlug);
   const js = `(function(){
   var __chqMerge = (${mergeItinerarySelection.toString()});

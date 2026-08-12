@@ -36,6 +36,11 @@ vi.mock("../src/server/repo/public", async () => {
     getPublicSpeakerDetail: vi.fn(async () => null),
     getPublicAgenda: vi.fn(async () => ({ items: [], total: 0 })),
     getPublicAgendaByIds: vi.fn(async () => []),
+    // DEC-683: dispatch.tsx's sessions case fetches these two unconditionally
+    // for !embed — mocked here like every other repo call in this file so
+    // an unmocked real query never runs against the {} test db.
+    getPublicScheduleDayCounts: vi.fn(async () => []),
+    getPublicCfpWindow: vi.fn(async () => null),
   };
 });
 

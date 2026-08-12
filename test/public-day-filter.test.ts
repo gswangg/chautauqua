@@ -179,6 +179,7 @@ function makeWindowChain(rows: unknown[]) {
     innerJoin: () => chain,
     leftJoin: () => chain,
     where: () => chain,
+    groupBy: () => chain,
     orderBy: () => chain,
     limit: (n: number) => {
       lim = n;
@@ -292,7 +293,13 @@ function buildSessionsAppDayAHtml() {
       if (selectCall === 5) return makeWindowChain([]); // speakerRows
       if (selectCall === 6) return makeWindowChain([]); // slotRows
       if (selectCall === 7) return makeWindowChain([]); // formatRows
-      return makeWindowChain([{ count: DAY_A_IDS.length }]); // countVisibleSubmissions
+      if (selectCall === 8) return makeWindowChain([{ count: DAY_A_IDS.length }]); // countVisibleSubmissions
+      // DEC-683: dispatch.tsx's !embed sessions case also fetches these two
+      // rail queries — real row shapes here (never the count-shaped
+      // fallback) so DayIndexRailSection's formatDay(d.day) never sees an
+      // undefined day.
+      if (selectCall === 9) return makeWindowChain([]); // getPublicScheduleDayCounts
+      return makeWindowChain([]); // getPublicCfpWindow (no default form)
     },
     selectDistinct: () => makeWindowChain(DAY_A_IDS.map((id, i) => ({ id, title: DAY_A_TITLES[i] }))),
   } as unknown as AppEnv["Variables"]["db"];

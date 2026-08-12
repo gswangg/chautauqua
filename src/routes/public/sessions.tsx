@@ -1,12 +1,84 @@
 // Sessions surface (EMB-02 keyword search + track filter). Split out of the
 // former monolithic src/routes/public.tsx (contention decomposition) — no
 // behavior change.
+//
+// DEC-683: rebuilt to the mock's list + rail layout. The rail (Your
+// schedule / day index / Call for papers) and the per-row Save control both
+// stay OUT of /embed — a chromeless surface is closed both ways (DEC-672):
+// no rail markup, no .chq-itinerary-toggle, no ItineraryScript, and no
+// /submit or /e/ href anywhere in the embed output.
 
 import type { PublicEvent, PublicSession, PublicTrack } from "../../server/repo/public";
-import { SessionCard } from "./cards";
+import { formWindowState } from "../../lib/submit-core";
+import { formatEventDateTime } from "../../lib/event-time";
+import { dayLabelEndInstant } from "../../lib/timezone";
+import { SessionCard, formatDay } from "./cards";
+import { ItineraryScript } from "./agenda";
 import { type CardFields } from "./query";
 import { surfacePath } from "./shell";
 import { PUBLIC_PER_PAGE, hasMorePages } from "../../server/repo/public/bounds";
+
+function ScheduleRailSection(props: { event: PublicEvent }) {
+  const { event } = props;
+  return (
+    <section class="chq-pub-rail-section">
+      <h3 class="chq-pub-rail-heading">Your schedule</h3>
+      <div class="chq-pub-rail-body">
+        <span class="chq-pub-rail-caption">
+          <span id="chq-ics-count">0 picked</span> · saved in this browser, no account needed
+        </span>
+        <a id="chq-ics-link" class="chq-pub-itinerary-cta" href={`/e/${event.slug}/schedule.ics`} aria-disabled="true">
+          Download .ics
+        </a>
+      </div>
+    </section>
+  );
+}
+
+function DayIndexRailSection(props: { event: PublicEvent; dayCounts: { day: string; count: number }[] }) {
+  const { event, dayCounts } = props;
+  if (dayCounts.length === 0) return null;
+  return (
+    <section class="chq-pub-rail-section">
+      <h3 class="chq-pub-rail-heading">Days</h3>
+      <div class="chq-pub-rail-body">
+        {dayCounts.map((d) => (
+          <div class="chq-pub-rail-day-row">
+            <a href={`/e/${event.slug}/agenda?day=${d.day}`}>{formatDay(d.day)}</a>
+            <span class="chq-pub-rail-day-count">
+              {d.count} session{d.count === 1 ? "" : "s"}
+            </span>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function CfpRailSection(props: { event: PublicEvent; cfpWindow: { openDate: number | null; closeDate: number | null } | null }) {
+  const { event, cfpWindow } = props;
+  if (!cfpWindow) return null;
+  // DEC-683: "is the CFP open" goes through the SAME formWindowState
+  // resolver the home hub uses (src/server/repo/public/home.ts) — never a
+  // second date comparison here.
+  const isOpen = formWindowState(cfpWindow.openDate, cfpWindow.closeDate, Date.now(), event.timezone) === "open";
+  if (!isOpen) return null;
+  return (
+    <section class="chq-pub-rail-section">
+      <h3 class="chq-pub-rail-heading">Call for papers</h3>
+      <div class="chq-pub-rail-body">
+        <span class="chq-pub-rail-caption">
+          {cfpWindow.closeDate
+            ? `Closes ${formatEventDateTime(dayLabelEndInstant(cfpWindow.closeDate, event.timezone), event.timezone)}`
+            : "Open now · no close date set"}
+        </span>
+        <a class="chq-pub-rail-cfp-link" href={`/submit/${event.slug}`}>
+          Submit a talk ›
+        </a>
+      </div>
+    </section>
+  );
+}
 
 export function SessionsContent(props: {
   event: PublicEvent;
@@ -23,8 +95,12 @@ export function SessionsContent(props: {
   // pills and 'Show more' link must all stay inside /embed/... instead of
   // pointing at the full-chrome /e/... surface.
   embed?: boolean;
+  // DEC-683: rail data. Both are only ever supplied when !embed — dispatch.tsx
+  // skips the queries entirely for /embed rather than fetching-then-hiding.
+  dayCounts?: { day: string; count: number }[];
+  cfpWindow?: { openDate: number | null; closeDate: number | null } | null;
 }) {
-  const { event, tracks, activeTrackId, q, items, total, page, perPage, limit, fields, embed } = props;
+  const { event, tracks, activeTrackId, q, items, total, page, perPage, limit, fields, embed, dayCounts, cfpWindow } = props;
   // DEC-433/477/487: parsePage clamps page to MAX_PUBLIC_PAGE, so once we're
   // at the cap there is no page+1 to link to — stop rendering 'Show more'
   // even if items.length < total. Also stop once the cumulative row ceiling
@@ -42,48 +118,62 @@ export function SessionsContent(props: {
   return (
     <>
       <h2>Sessions</h2>
-      {/* EMB-02: plain GET search form, preserves the active track filter as
-          a hidden field so search + track filtering compose. */}
-      <form method="get" action={basePath} role="search">
-        <label>
-          Search
-          <input type="search" name="q" value={q ?? ""} placeholder="Title or speaker name" />
-        </label>
-        {activeTrackId ? <input type="hidden" name="trackId" value={activeTrackId} /> : null}
-        {limit ? <input type="hidden" name="limit" value={String(limit)} /> : null}
-        <button type="submit">Search</button>
-      </form>
-      <nav aria-label="Track filters" class="chq-pub-filter-bar">
-        <a class="chq-pub-pill" href={basePath} aria-current={activeTrackId === null ? "true" : undefined}>
-          All tracks
-        </a>
-        {tracks.map((t) => (
-          <a
-            class="chq-pub-pill"
-            href={`${basePath}?trackId=${t.id}`}
-            aria-current={activeTrackId === t.id ? "true" : undefined}
-          >
-            {t.name}
-          </a>
-        ))}
-      </nav>
-      <p>
-        {items.length} of {total} session(s)
-      </p>
-      {items.map((s) => (
-        <SessionCard session={s} event={event} from="sessions" fields={fields} embed={embed} />
-      ))}
-      {hasMore ? (
-        <p>
-          <a
-            href={`${basePath}?${activeTrackId ? `trackId=${activeTrackId}&` : ""}${
-              q ? `q=${encodeURIComponent(q)}&` : ""
-            }${carryQs}page=${page + 1}`}
-          >
-            Show more
-          </a>
-        </p>
-      ) : null}
+      <div class="chq-pub-sessions-layout">
+        <div class="chq-pub-sessions-list">
+          {/* EMB-02: plain GET search form, preserves the active track filter as
+              a hidden field so search + track filtering compose. */}
+          <form method="get" action={basePath} role="search">
+            <label>
+              Search
+              <input type="search" name="q" value={q ?? ""} placeholder="Title or speaker name" />
+            </label>
+            {activeTrackId ? <input type="hidden" name="trackId" value={activeTrackId} /> : null}
+            {limit ? <input type="hidden" name="limit" value={String(limit)} /> : null}
+            <button type="submit">Search</button>
+          </form>
+          <nav aria-label="Track filters" class="chq-pub-filter-bar">
+            <a class="chq-pub-pill" href={basePath} aria-current={activeTrackId === null ? "true" : undefined}>
+              All tracks
+            </a>
+            {tracks.map((t) => (
+              <a
+                class="chq-pub-pill"
+                href={`${basePath}?trackId=${t.id}`}
+                aria-current={activeTrackId === t.id ? "true" : undefined}
+              >
+                {t.name}
+              </a>
+            ))}
+          </nav>
+          <p>
+            {items.length} of {total} session(s)
+          </p>
+          {items.map((s) => (
+            <SessionCard session={s} event={event} from="sessions" fields={fields} embed={embed} itinerary={!embed} />
+          ))}
+          {hasMore ? (
+            <p>
+              <a
+                href={`${basePath}?${activeTrackId ? `trackId=${activeTrackId}&` : ""}${
+                  q ? `q=${encodeURIComponent(q)}&` : ""
+                }${carryQs}page=${page + 1}`}
+              >
+                Show more
+              </a>
+            </p>
+          ) : null}
+        </div>
+        {/* DEC-672/DEC-683: the rail is chromeless-closed — /embed renders
+            none of it (no <aside>, no /submit or /e/ hrefs). */}
+        {!embed ? (
+          <aside class="chq-pub-sessions-rail">
+            <ScheduleRailSection event={event} />
+            <DayIndexRailSection event={event} dayCounts={dayCounts ?? []} />
+            <CfpRailSection event={event} cfpWindow={cfpWindow ?? null} />
+          </aside>
+        ) : null}
+      </div>
+      {!embed ? <ItineraryScript eventSlug={event.slug} /> : null}
     </>
   );
 }

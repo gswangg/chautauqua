@@ -87,6 +87,7 @@ function makeChain(rows: unknown[], onWhere?: (cond: unknown) => void) {
       onWhere?.(cond);
       return chain;
     },
+    groupBy: () => chain,
     orderBy: () => chain,
     limit: async () => rows,
     as: () => chain,
@@ -515,5 +516,161 @@ describe("sessionTimeLabel", () => {
 
   it("formats a scheduled session's day + time range", () => {
     expect(sessionTimeLabel("2027-05-12", 540, 600)).toBe("2027-05-12, 9:00 AM–10:00 AM");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// DEC-683: sessions list + rail (Your schedule / day index / Call for
+// papers) + per-row Save control. Closed both ways in /embed.
+// ---------------------------------------------------------------------------
+
+describe("DEC-683: sessions rail + Save control", () => {
+  const FUTURE_CLOSE = Date.UTC(2099, 0, 1);
+  const PAST_CLOSE = Date.UTC(2000, 0, 1);
+
+  function buildApp(opts: { embed: boolean; closeDate: number | null }) {
+    let selectCall = 0;
+    const db = {
+      select: () => {
+        selectCall += 1;
+        // 1: getPublicEventBySlug
+        if (selectCall === 1) return makeChain([EVENT_ROW]);
+        // 2: getPublicTracks
+        if (selectCall === 2) return makeChain([]);
+        // 3: hydrateSessions subRows
+        if (selectCall === 3) {
+          return makeChain([{ id: "sub1", seq: 1, title: "Scheduled Talk", description: null, icsSequence: 0 }]);
+        }
+        // 4: hydrateSessions trackRows
+        if (selectCall === 4) return makeChain([]);
+        // 5: hydrateSessions speakerRows
+        if (selectCall === 5) return makeChain([]);
+        // 6: hydrateSessions slotRows
+        if (selectCall === 6) {
+          return makeChain([
+            { submissionId: "sub1", day: "2026-08-10", startMin: 540, endMin: 600, roomName: "Main Hall" },
+          ]);
+        }
+        // 7: hydrateSessions formatRows
+        if (selectCall === 7) return makeChain([]);
+        // 8: countVisibleSubmissions
+        if (selectCall === 8) return makeChain([{ count: 1 }]);
+        // 9: getPublicScheduleDayCounts (only reached when !embed)
+        if (selectCall === 9) {
+          return makeChain([
+            { day: "2026-08-10", count: 2 },
+            { day: "2026-08-11", count: 1 },
+          ]);
+        }
+        // 10: getPublicCfpWindow (only reached when !embed) — form.open_date/
+        // close_date are timestamp_ms columns, so drizzle hands back Date
+        // objects, not raw numbers.
+        return makeChain([{ openDate: null, closeDate: opts.closeDate === null ? null : new Date(opts.closeDate) }]);
+      },
+      selectDistinct: () => makeChain([{ id: "sub1", title: "Scheduled Talk" }]),
+    } as unknown as AppEnv["Variables"]["db"];
+
+    const app = new Hono<AppEnv>();
+    app.use("*", async (c, next) => {
+      c.set("db", db);
+      await next();
+    });
+    registerErrorHandler(app);
+    app.route("/", publicRoutes);
+    return app;
+  }
+
+  it("renders all three rail sections on /e/<slug>/sessions", async () => {
+    installFakeCaches();
+    const app = buildApp({ embed: false, closeDate: FUTURE_CLOSE });
+    const res = await app.request("/e/conf/sessions", {}, TEST_ENV);
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    // 1: Your schedule
+    expect(html).toContain('class="chq-pub-sessions-rail"');
+    expect(html).toContain('id="chq-ics-count"');
+    expect(html).toContain('id="chq-ics-link"');
+    // 2: day index, linking to /e/<slug>/agenda?day=YYYY-MM-DD
+    expect(html).toContain('href="/e/conf/agenda?day=2026-08-10"');
+    expect(html).toContain('href="/e/conf/agenda?day=2026-08-11"');
+    expect(html).toContain("2 sessions");
+    // 3: Call for papers, open window
+    expect(html).toContain("Call for papers");
+    expect(html).toContain('href="/submit/conf"');
+    expect(html).toContain("Submit a talk");
+  });
+
+  it("renders a Save checkbox per row", async () => {
+    installFakeCaches();
+    const app = buildApp({ embed: false, closeDate: FUTURE_CLOSE });
+    const res = await app.request("/e/conf/sessions", {}, TEST_ENV);
+    const html = await res.text();
+    expect(html).toContain('class="chq-pub-save"');
+    expect(html).toContain('class="chq-itinerary-toggle"');
+    expect(html).toContain('value="sub1"');
+    expect(html).toContain('class="chq-pub-save-off"');
+    expect(html).toContain('class="chq-pub-save-on"');
+  });
+
+  it("the CFP card is absent when the window is closed", async () => {
+    installFakeCaches();
+    const app = buildApp({ embed: false, closeDate: PAST_CLOSE });
+    const res = await app.request("/e/conf/sessions", {}, TEST_ENV);
+    const html = await res.text();
+    expect(html).not.toContain("Call for papers");
+    expect(html).not.toContain("Submit a talk");
+    // the rest of the rail still renders
+    expect(html).toContain('class="chq-pub-sessions-rail"');
+  });
+
+  it("/embed/<slug>/sessions renders none of the rail/Save and emits no href outside /embed", async () => {
+    installFakeCaches();
+    const app = buildApp({ embed: true, closeDate: FUTURE_CLOSE });
+    const res = await app.request("/embed/conf/sessions", {}, TEST_ENV);
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    // Assertions target rendered MARKUP (element context), not bare class
+    // names — the <style> block legitimately defines .chq-pub-sessions-rail
+    // etc. for every surface regardless of embed, so a bare substring check
+    // would false-negative against the stylesheet text itself.
+    expect(html).not.toContain('<aside class="chq-pub-sessions-rail"');
+    expect(html).not.toContain('class="chq-itinerary-toggle"');
+    expect(html).not.toContain('id="chq-ics-link"');
+    expect(html).not.toContain('id="chq-ics-count"');
+    expect(html).not.toContain('class="chq-pub-save"');
+    expect(html).not.toContain("Call for papers");
+    expect(html).not.toContain("Submit a talk");
+    // DEC-672: chromeless surface is closed both ways -- no href may point
+    // at the full-chrome /e/... surface or at /submit/...
+    const hrefs = [...html.matchAll(/href="([^"]+)"/g)].map((m) => m[1] ?? "");
+    for (const href of hrefs) {
+      expect(href.startsWith("/e/") || href.startsWith("/submit/")).toBe(false);
+    }
+  });
+});
+
+describe("getPublicScheduleDayCounts (DEC-683)", () => {
+  it("returns a grouped, day-ordered session count per day", async () => {
+    let capturedWhere: unknown;
+    const db = {
+      select: () =>
+        makeChain(
+          [
+            { day: "2026-08-10", count: 2 },
+            { day: "2026-08-11", count: 1 },
+          ],
+          (cond) => (capturedWhere = cond),
+        ),
+    } as unknown as AppEnv["Variables"]["db"];
+    const { getPublicScheduleDayCounts } = await import("../src/server/repo/public/agenda");
+    const rows = await getPublicScheduleDayCounts(db as any, EVENT);
+    expect(rows).toEqual([
+      { day: "2026-08-10", count: 2 },
+      { day: "2026-08-11", count: 1 },
+    ]);
+    // the session visibility gate is still ANDed into the query
+    const tokens = walkCondition(capturedWhere);
+    expect(tokens).toContain('val:"accepted"');
+    expect(tokens).toContain('val:"approved"');
   });
 });

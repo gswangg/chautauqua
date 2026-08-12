@@ -128,6 +128,31 @@ export async function getPublicAgenda(
   return { items, total };
 }
 
+/** DEC-683: rail day index for the sessions surface — day label + session
+ * count, ONE grouped `count(*)` (never a materialized scan/JS reduce of
+ * getPublicAgenda's rows). Reuses the exact same predicate as
+ * getPublicAgenda (visibleSessionConditions() + slotWithinEventRange(event))
+ * so a day's count here never disagrees with what /agenda?day=<day> would
+ * actually show. Counts DISTINCT submissionId per day, not raw
+ * schedule_slot rows, so a session spanning multiple slots the same day is
+ * still one session in the count. */
+export async function getPublicScheduleDayCounts(
+  db: Db,
+  event: PublicEvent,
+): Promise<{ day: string; count: number }[]> {
+  const rows = await db
+    .select({
+      day: schema.scheduleSlot.day,
+      count: sql<number>`count(distinct ${schema.scheduleSlot.submissionId})`,
+    })
+    .from(schema.scheduleSlot)
+    .innerJoin(schema.submission, eq(schema.scheduleSlot.submissionId, schema.submission.id))
+    .where(and(eq(schema.submission.eventId, event.id), visibleSessionConditions(), slotWithinEventRange(event)))
+    .groupBy(schema.scheduleSlot.day)
+    .orderBy(asc(schema.scheduleSlot.day));
+  return rows.map((r) => ({ day: r.day, count: Number(r.count) }));
+}
+
 /** Id-scoped agenda lookup (DEC-078, DEC-310): mirrors getPublicAgenda's
  * column set, join, visibility gate, room lookup and hydration exactly, but
  * scopes the scheduleSlot scan to the requested submission ids (chunked per

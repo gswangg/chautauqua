@@ -152,9 +152,15 @@ export function SessionCard(props: {
         {fields.description ? <SessionDescription description={session.description} /> : null}
       </div>
       {props.itinerary ? (
-        <label class="chq-pub-itinerary-row">
+        // DEC-683: the sessions list's per-row action is "Save"/"Saved" —
+        // the SAME .chq-itinerary-toggle checkbox + storage key as
+        // /schedule's .chq-pub-itinerary-row (agenda.tsx), just styled as a
+        // pill with the two labels swapped by :checked (public.css.ts). No
+        // second store, no new JS — ItineraryScript already drives this.
+        <label class="chq-pub-save">
           <input type="checkbox" class="chq-itinerary-toggle" value={session.id} />
-          Add to my itinerary
+          <span class="chq-pub-save-off">Save</span>
+          <span class="chq-pub-save-on">Saved</span>
         </label>
       ) : null}
     </div>
