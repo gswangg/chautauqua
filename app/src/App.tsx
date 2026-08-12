@@ -1,6 +1,7 @@
-import { lazy, Suspense, type ReactNode } from 'react';
+import { lazy, Suspense, useState, type ReactNode } from 'react';
 import { BrowserRouter, Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom';
 import { useMe } from './lib/useMe';
+import { useNavExceptions } from './lib/useNavExceptions';
 import { EventSwitcher } from './components/EventSwitcher';
 
 // DEC-052: every route page is code-split via React.lazy. Page modules keep
@@ -35,17 +36,36 @@ const SettingsPage = lazy(pageLoaders.settings);
 const SubmissionDetailPage = lazy(pageLoaders.submissionDetail);
 const NotFoundPage = lazy(pageLoaders.notFound);
 
+// DEC-369: nav badge source. Each entry that can carry an exception names
+// which useNavExceptions() field drives its badge and the word that follows
+// the count ("3 LATE", "2 CLASH"). Sections with no badgeKey never show one.
 const NAV_SECTIONS = [
   { label: 'Overview', path: '/overview', element: <OverviewPage />, loader: pageLoaders.overview },
   { label: 'Submissions', path: '/submissions', element: <SubmissionsPage />, loader: pageLoaders.submissions },
   { label: 'Review', path: '/review/*', element: <ReviewPage />, loader: pageLoaders.review },
-  { label: 'Speakers', path: '/speakers', element: <SpeakersPage />, loader: pageLoaders.speakers },
+  {
+    label: 'Speakers',
+    path: '/speakers',
+    element: <SpeakersPage />,
+    loader: pageLoaders.speakers,
+    badgeKey: 'late',
+    badgeWord: 'LATE',
+  },
   { label: 'Content', path: '/content', element: <ContentPage />, loader: pageLoaders.content },
-  { label: 'Agenda', path: '/agenda', element: <AgendaPage />, loader: pageLoaders.agenda },
+  {
+    label: 'Agenda',
+    path: '/agenda',
+    element: <AgendaPage />,
+    loader: pageLoaders.agenda,
+    badgeKey: 'clash',
+    badgeWord: 'CLASH',
+  },
   { label: 'Comms', path: '/comms', element: <CommsPage />, loader: pageLoaders.comms },
   { label: 'Contacts', path: '/contacts', element: <ContactsPage />, loader: pageLoaders.contacts },
   { label: 'Settings', path: '/settings', element: <SettingsPage />, loader: pageLoaders.settings },
 ] as const;
+
+type NavSection = (typeof NAV_SECTIONS)[number];
 
 // Module-level map of path -> import thunk, used to prefetch a page's chunk
 // on nav-link hover/focus before the user actually navigates (SPEC §7).
@@ -54,7 +74,7 @@ const prefetchByPath = new Map<string, () => Promise<unknown>>(
 );
 
 // DEC-024: reviewers see only the Review nav section and land on /review.
-function isReviewerNav(section: (typeof NAV_SECTIONS)[number]): boolean {
+function isReviewerNav(section: NavSection): boolean {
   return section.path === '/review/*';
 }
 
@@ -71,37 +91,104 @@ async function signOut(): Promise<void> {
   window.location.assign('/login');
 }
 
-function Nav() {
-  const { me } = useMe();
-  const sections = me?.role === 'reviewer' ? NAV_SECTIONS.filter(isReviewerNav) : NAV_SECTIONS;
+function badgeFor(section: NavSection, exceptions: { late: number | null; clash: number | null }): string | null {
+  if (!('badgeKey' in section)) return null;
+  const count = exceptions[section.badgeKey as 'late' | 'clash'];
+  if (!count) return null;
+  return `${count} ${section.badgeWord}`;
+}
 
+function NavLinks({
+  sections,
+  exceptions,
+  onNavigate,
+}: {
+  sections: readonly NavSection[];
+  exceptions: { late: number | null; clash: number | null };
+  onNavigate?: () => void;
+}) {
   const prefetch = (path: string) => {
     const loader = prefetchByPath.get(path);
     if (loader) void loader();
   };
 
   return (
-    <nav className="chq-nav">
-      <div className="chq-nav-title">Chautauqua</div>
-      <EventSwitcher />
-      <ul className="chq-nav-list">
-        {sections.map((section) => (
-          <li key={section.path}>
+    <>
+      {sections.map((section) => {
+        const badge = badgeFor(section, exceptions);
+        return (
+          <NavLink
+            key={section.path}
+            to={section.path.replace(/\*$/, '')}
+            className={({ isActive }) => `chq-nav-link${isActive ? ' is-active' : ''}`}
+            onMouseEnter={() => prefetch(section.path)}
+            onFocus={() => prefetch(section.path)}
+            onClick={onNavigate}
+          >
+            {section.label}
+            {badge && <span className="chq-nav-badge">{badge}</span>}
+          </NavLink>
+        );
+      })}
+    </>
+  );
+}
+
+function Header() {
+  const { me } = useMe();
+  const exceptions = useNavExceptions();
+  const [moreOpen, setMoreOpen] = useState(false);
+  const sections = me?.role === 'reviewer' ? NAV_SECTIONS.filter(isReviewerNav) : NAV_SECTIONS;
+
+  // Phone tab bar carries five destinations; anything past those four lives
+  // behind "More" (DEC-369). Reviewers never see the tab bar's non-Review
+  // items since `sections` is already filtered above.
+  const tabSections = sections.filter((s) =>
+    ['/overview', '/submissions', '/speakers', '/content', '/review/*'].includes(s.path),
+  );
+  const primaryTabs = sections.length > 1 ? tabSections.slice(0, 4) : tabSections;
+  const moreSections = sections.filter((s) => !primaryTabs.includes(s));
+
+  return (
+    <header className="chq-header">
+      <span className="chq-wordmark">chautauqua</span>
+      <nav className="chq-nav" aria-label="Primary">
+        <NavLinks sections={sections} exceptions={exceptions} />
+      </nav>
+      <div>
+        <EventSwitcher />
+        {me && <span className="chq-meta">{me.email}</span>}
+        <button type="button" className="chq-btn chq-btn-tertiary" onClick={() => void signOut()}>
+          Sign out
+        </button>
+      </div>
+
+      {moreSections.length > 0 && (
+        <nav className="chq-tabbar" aria-label="Primary, phone">
+          {primaryTabs.map((section) => (
             <NavLink
+              key={section.path}
               to={section.path.replace(/\*$/, '')}
-              className={({ isActive }) => (isActive ? 'active' : '')}
-              onMouseEnter={() => prefetch(section.path)}
-              onFocus={() => prefetch(section.path)}
+              className={({ isActive }) => `chq-nav-link${isActive ? ' is-active' : ''}`}
             >
               {section.label}
             </NavLink>
-          </li>
-        ))}
-      </ul>
-      <button type="button" className="chq-nav-signout" onClick={() => void signOut()}>
-        Sign out
-      </button>
-    </nav>
+          ))}
+          <button type="button" className="chq-nav-link" onClick={() => setMoreOpen(true)}>
+            More
+          </button>
+        </nav>
+      )}
+
+      {moreOpen && (
+        <div className="chq-modal" role="dialog" aria-modal="true" aria-label="More">
+          <NavLinks sections={moreSections} exceptions={exceptions} onNavigate={() => setMoreOpen(false)} />
+          <button type="button" className="chq-btn chq-btn-secondary" onClick={() => setMoreOpen(false)}>
+            Close
+          </button>
+        </div>
+      )}
+    </header>
   );
 }
 
@@ -120,8 +207,8 @@ function RoleGate({ children }: { children: ReactNode }) {
 export function App() {
   return (
     <BrowserRouter basename="/admin">
-      <div className="chq-app">
-        <Nav />
+      <div className="chq-shell">
+        <Header />
         <main className="chq-main">
           <RoleGate>
             <Suspense fallback={<div className="chq-loading">Loading…</div>}>
