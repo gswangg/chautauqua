@@ -4,6 +4,11 @@
 // parse/authz -> repo -> pure core -> response), DEC-014 (drafts + claim
 // token), DEC-016 (locked fields persist to real columns). Route files
 // export a named Hono sub-app; only src/index.ts mounts it (DEC-012).
+//
+// View components (SubmitPage, ConfirmationPage, etc.) live in
+// ./submit-views.tsx and request-parsing helpers live in ./submit-body.ts —
+// split out of this file purely to reduce merge contention; no behavior
+// change (all route paths and exports are unchanged).
 
 import { Hono } from "hono";
 import type { AppEnv } from "../../server/env";
@@ -23,14 +28,11 @@ import {
   createSubmissionTracks,
   upsertSubmissionAnswers,
   insertAttachmentFile,
-  type EventRow,
-  type FormRow,
-  type TrackRow,
 } from "../../server/repo/submit";
 import { findAccountUserId } from "../../server/repo/comms";
 import { validateAnswers } from "../../forms/validate";
 import { makeVisibilityPredicate } from "../../forms/visibility";
-import type { AnswerMap, FormFieldDef } from "../../forms/types";
+import type { AnswerMap } from "../../forms/types";
 import { LOCKED_SESSION_FIELDS, LOCKED_SPEAKER_FIELDS } from "../../forms/types";
 import {
   formWindowState,
@@ -49,20 +51,11 @@ import {
   type KVStore as DraftKVStore,
 } from "../../lib/draft";
 import { createClaimToken, type KVStore as ClaimKVStore } from "../../auth/claim";
-import {
-  parseCookies,
-  newCsrfToken,
-  buildCsrfCookie,
-  buildDraftCookie,
-  isSecureRequest,
-  CSRF_COOKIE_NAME,
-} from "../../auth/cookies";
+import { parseCookies, newCsrfToken, buildDraftCookie, isSecureRequest, CSRF_COOKIE_NAME } from "../../auth/cookies";
 import { renderTemplate, escapeHtml } from "../../mail/render";
-import { formatEventDateTime } from "../../lib/event-time";
-import { dayLabelEndInstant, dayLabelStartInstant } from "../../lib/timezone";
 import { validateUpload, sanitizeFilenameForKey, type ValidUpload } from "../../domain/files";
 import { newId } from "../../domain/ids";
-import { FormFieldsSection, FieldRulesScript, fieldInputName } from "../../views/form-render";
+import { fieldInputName } from "../../views/form-render";
 import {
   DEC_014,
   DEC_016,
@@ -78,9 +71,14 @@ import {
   DEC_377,
 } from "../../decisions";
 import { resolveBaseUrl } from "../../server/origin";
-import { ThemeStyles } from "../../views/theme";
-import { CFP_CSS } from "./cfp.css";
-import { validAccent } from "./shell";
+import {
+  ClosedPage,
+  ConfirmationPage,
+  NotYetOpenPage,
+  SubmitPage,
+  type ConfirmationState,
+} from "./submit-views";
+import { ensureCsrfCookie, extractAnswers, extractTrackIds } from "./submit-body";
 
 void DEC_252;
 
@@ -105,319 +103,6 @@ void DEC_377;
 // attribute. Every public SSR surface shares that single guard so the CFP
 // page and the branded event pages can never disagree about what a valid
 // accent is.
-
-function ensureCsrfCookie(c: {
-  req: { header(name: string): string | undefined; url: string };
-}): {
-  token: string;
-  setCookieIfNew: string | null;
-} {
-  const cookies = parseCookies(c.req.header("cookie") ?? null);
-  const existing = cookies[CSRF_COOKIE_NAME];
-  if (existing) return { token: existing, setCookieIfNew: null };
-  const token = newCsrfToken();
-  return {
-    token,
-    setCookieIfNew: buildCsrfCookie(token, { secure: isSecureRequest(c.req.url) }),
-  };
-}
-
-function branding(event: EventRow): { logoUrl?: string; accentColor?: string } {
-  if (!event.brandingJson) return {};
-  const parsed = JSON.parse(event.brandingJson) as { logoUrl?: string; accentColor?: string };
-  return { logoUrl: parsed.logoUrl, accentColor: parsed.accentColor };
-}
-
-// DEC-371/DEC-374: THEME_CSS (tokens/resets, shared by every SSR surface)
-// followed by this surface's own CFP_CSS, both inlined via
-// dangerouslySetInnerHTML as value-free module constants -- never the
-// ad-hoc per-page <style> template literal this used to be. The per-event
-// accent is the one piece of request data involved, and it lands in a
-// validated style ATTRIBUTE on <body>, never interpolated into either CSS
-// string (DEC-374).
-function PageShell(props: { title: string; accentColor?: string; children: unknown }) {
-  return (
-    <html lang="en">
-      <head>
-        <meta charset="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <title>{props.title}</title>
-        <ThemeStyles />
-        <style dangerouslySetInnerHTML={{ __html: CFP_CSS }} />
-      </head>
-      <body style={`--chq-brandable-accent: ${validAccent(props.accentColor)};`}>
-        <main class="chq-measure">{props.children as any}</main>
-      </body>
-    </html>
-  );
-}
-
-// DEC-366/DEC-377: the closed/not-yet-open copy is unchanged behavior, just
-// re-skinned into the .chq-cfp-closed card frame from the design mock.
-function ClosedPage(props: { event: EventRow; form: FormRow }) {
-  return (
-    <PageShell title={`Submissions closed - ${props.event.name}`} accentColor={branding(props.event).accentColor}>
-      <div class="chq-cfp-closed">
-        <span class="chq-cfp-meta">{props.event.name}</span>
-        <h1>The call for papers has closed</h1>
-        <p role="alert" class="chq-cfp-closed-body">
-          Submissions for this event closed on{" "}
-          {formatEventDateTime(
-            props.form.closeDate ? dayLabelEndInstant(props.form.closeDate, props.event.timezone) : 0,
-            props.event.timezone,
-          )}
-          . Thanks for your
-          interest — please reach out to the organizers directly if you have questions.
-        </p>
-      </div>
-    </PageShell>
-  );
-}
-
-function NotYetOpenPage(props: { event: EventRow; form: FormRow }) {
-  return (
-    <PageShell title={`Submissions not yet open - ${props.event.name}`} accentColor={branding(props.event).accentColor}>
-      <div class="chq-cfp-closed">
-        <span class="chq-cfp-meta">{props.event.name}</span>
-        <h1>Submissions aren't open yet</h1>
-        <p role="alert" class="chq-cfp-closed-body">
-          Submissions open{" "}
-          {formatEventDateTime(
-            props.form.openDate ? dayLabelStartInstant(props.form.openDate, props.event.timezone) : 0,
-            props.event.timezone,
-          )}
-          . Please check back then.
-        </p>
-      </div>
-    </PageShell>
-  );
-}
-
-function DraftBanner(props: { formId: string; savedAt: number; timeZone: string }) {
-  return (
-    <p role="status" class="chq-cfp-actions-note">
-      Resuming your saved draft from {formatEventDateTime(props.savedAt, props.timeZone)}.
-    </p>
-  );
-}
-
-// DEC-245: the save-draft POST redirects to ?draft=saved so the browser's
-// address bar and back/forward history reflect the saved state, and the
-// GET handler renders this distinct notice above the form — separate from
-// the DraftBanner shown when merely resuming an earlier draft.
-function DraftSavedNotice() {
-  return (
-    <p role="status" class="chq-cfp-actions-note">
-      Draft saved — you can return later to finish and submit.
-    </p>
-  );
-}
-
-function TrackChoices(props: { tracks: TrackRow[]; selected: string[] }) {
-  return (
-    <fieldset class="chq-cfp-fieldset">
-      <legend>Track *</legend>
-      {props.tracks.map((track) => (
-        <label class="chq-cfp-option">
-          <input
-            type="checkbox"
-            name="trackIds"
-            value={track.id}
-            checked={props.selected.includes(track.id)}
-          />
-          {track.name}
-        </label>
-      ))}
-    </fieldset>
-  );
-}
-
-function SubmitPage(props: {
-  event: EventRow;
-  form: FormRow;
-  fields: FormFieldDef[];
-  tracks: TrackRow[];
-  answers: AnswerMap;
-  selectedTrackIds: string[];
-  hasDraft: boolean;
-  draftSavedAt?: number;
-  csrfToken: string;
-  errors?: Record<string, string>;
-  trackError?: string;
-  draftSavedNotice?: boolean;
-}) {
-  const { event, form, fields, tracks, answers, selectedTrackIds, csrfToken, errors, trackError } = props;
-  const accentColor = branding(event).accentColor;
-  const logoUrl = branding(event).logoUrl;
-  // DEC-532: one predicate built from the FULL field list (a session field
-  // can gate a speaker field), shared by both sections below.
-  const isVisible = makeVisibilityPredicate(fields, answers);
-  return (
-    <PageShell title={`Submit a session - ${event.name}`} accentColor={accentColor}>
-      <div class="chq-cfp-shell">
-        <header class="chq-cfp-header">
-          {logoUrl ? <img src={logoUrl} alt={`${event.name} logo`} height={32} /> : null}
-          <span class="chq-cfp-meta">{event.name}</span>
-          <span class="chq-cfp-title">{form.title}</span>
-          {form.closeDate ? (
-            <span class="chq-cfp-sub">
-              Call for papers · closes {formatEventDateTime(dayLabelEndInstant(form.closeDate, event.timezone), event.timezone)}
-            </span>
-          ) : null}
-        </header>
-        <div class="chq-cfp-body">
-          <div class="chq-cfp-intro">
-            <h1>Submit a talk</h1>
-          </div>
-          {props.draftSavedNotice ? (
-            <DraftSavedNotice />
-          ) : props.hasDraft && props.draftSavedAt !== undefined ? (
-            <DraftBanner formId={form.id} savedAt={props.draftSavedAt} timeZone={event.timezone} />
-          ) : null}
-          <form method="post" action={`/submit/${event.slug}`} enctype="multipart/form-data">
-            <input type="hidden" name={CSRF_COOKIE_NAME} value={csrfToken} />
-            <section>
-              <div class="chq-cfp-section-label">Your talk</div>
-              <div class="chq-cfp-fields">
-                <FormFieldsSection
-                  fields={fields}
-                  section="session"
-                  answers={answers}
-                  errors={errors}
-                  isVisible={isVisible}
-                />
-                {trackError ? (
-                  <p role="alert" class="chq-field-error">
-                    {trackError}
-                  </p>
-                ) : null}
-                {/* DEC-301: a form offering zero tracks renders no Track
-                    fieldset — once validateTrackChoice's membership check
-                    clears (DEC-416: it runs even when nothing is offered,
-                    rejecting any foreign track id), an empty offered set
-                    only relaxes the "must pick one" requirement, so an
-                    empty required-looking block would be unactionable and
-                    misleading. */}
-                {tracks.length > 0 ? <TrackChoices tracks={tracks} selected={selectedTrackIds} /> : null}
-              </div>
-            </section>
-            <section>
-              <div class="chq-cfp-section-label">You</div>
-              <div class="chq-cfp-fields">
-                <FormFieldsSection
-                  fields={fields}
-                  section="speaker"
-                  answers={answers}
-                  errors={errors}
-                  isVisible={isVisible}
-                />
-              </div>
-            </section>
-            <div class="chq-cfp-actions">
-              <button type="submit" class="chq-btn chq-btn-primary">
-                Submit this talk
-              </button>
-              <button
-                type="submit"
-                class="chq-btn chq-btn-secondary"
-                formaction={`/submit/${event.slug}/save-draft`}
-                formnovalidate
-              >
-                Save draft
-              </button>
-              <span class="chq-cfp-actions-note">We email a confirmation with a link to your portal</span>
-            </div>
-          </form>
-          <FieldRulesScript fields={fields} />
-        </div>
-      </div>
-    </PageShell>
-  );
-}
-
-// DEC-098: the on-screen claim link is only safe to render when the
-// contact was freshly created by *this* submit request — anyone can type
-// an existing CRM contact's email into the public form, so rendering that
-// contact's claim URL on screen would let them take over the portal. Three
-// states:
-//  - "fresh": no user, contact created by this request -> claim link shown
-//    (byte-compatible with the pre-DEC-098 markup: walkthrough/scale
-//    scripts scrape `href="...(/claim/...)"` from this exact case).
-//  - "pending-existing-contact": no user, but the contact already existed
-//    -> no claim URL anywhere in the HTML; copy points at the emailed
-//    password-setup link plus a /login fallback.
-//  - "has-account": a user already exists for this email -> /login, as
-//    before.
-type ConfirmationState = "fresh" | "pending-existing-contact" | "has-account";
-
-function ConfirmationPage(props: { event: EventRow; title: string; claimPath: string; state: ConfirmationState }) {
-  return (
-    <PageShell title={`Submission received - ${props.event.name}`}>
-      <div class="chq-cfp-confirm">
-        <span class="chq-cfp-confirm-flag">Submitted</span>
-        <h1>Thanks for your submission!</h1>
-        <div class="chq-cfp-confirm-card">
-          <span class="chq-cfp-title" style="font-size:17px">
-            {props.title}
-          </span>
-        </div>
-        {/* DEC-377: no delivery-window or "check spam" timing promise here —
-            the earlier copy asserted arrival timing the confirmation email
-            send (a best-effort side effect) can't actually guarantee. */}
-        <p class="chq-cfp-confirm-body">We've emailed a confirmation for "{props.title}" to the address you provided.</p>
-        <div class="chq-cfp-confirm-actions">
-          {props.state === "has-account" ? (
-            <p>
-              <a href="/login">Log in</a> to track your submission.
-            </p>
-          ) : props.state === "pending-existing-contact" ? (
-            <p>
-              A password-setup link was emailed to the address you submitted. <a href="/login">Log in</a> if you
-              already have a password.
-            </p>
-          ) : (
-            // DEC-252: same-origin on-page links are RELATIVE — they never
-            // depend on origin inference. Only the emailed copy (built with
-            // resolveBaseUrl below) is absolute.
-            <p>
-              <a href={props.claimPath}>Create a password to track your submission</a>
-            </p>
-          )}
-        </div>
-      </div>
-    </PageShell>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Body parsing helpers
-// ---------------------------------------------------------------------------
-
-function extractAnswers(fields: FormFieldDef[], body: Record<string, unknown>): AnswerMap {
-  const answers: AnswerMap = {};
-  for (const field of fields) {
-    // File-kind answers are handled separately (extractFileAnswers) since
-    // they need async upload + a repo write before they become an answer
-    // value — never stringified here (DEC-040).
-    if (field.kind === "file") continue;
-    const name = fieldInputName(field.id);
-    if (field.kind === "checkbox") {
-      answers[field.id] = body[name] !== undefined;
-      continue;
-    }
-    const raw = body[name];
-    if (raw === undefined) continue;
-    answers[field.id] = typeof raw === "string" ? raw : String(raw);
-  }
-  return answers;
-}
-
-function extractTrackIds(body: Record<string, unknown>): string[] {
-  const raw = body.trackIds;
-  if (raw === undefined) return [];
-  if (Array.isArray(raw)) return raw.map(String);
-  return [String(raw)];
-}
 
 // ---------------------------------------------------------------------------
 // Routes
