@@ -8,6 +8,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, waitFor, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
+import { MemoryRouter } from 'react-router-dom';
 import { ContactsApp } from './ContactsApp';
 import { mockApi, listEnvelope } from '../../test-utils/mockApi';
 import type { ContactListItem, Segment } from './types';
@@ -44,7 +45,11 @@ describe('ContactsApp + SegmentsPanel: deleting the applied segment (w1-c P3, DE
       'DELETE /api/v1/segments/seg1': { ok: true },
     });
 
-    render(<ContactsApp />);
+    render(
+      <MemoryRouter initialEntries={['/contacts']}>
+        <ContactsApp />
+      </MemoryRouter>,
+    );
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Ada Lovelace' })).toBeInTheDocument();

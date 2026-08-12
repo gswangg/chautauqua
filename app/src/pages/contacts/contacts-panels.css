@@ -306,6 +306,47 @@
   color: var(--chq-muted);
 }
 
+/* DEC-684: the merge page itself — full-page surface (NO chq-scrim/
+   ModalFrame), mock "Duplicates · merge" (desktop) / "Merge · 390" (phone)
+   frames. Breadcrumb back to Contacts · Duplicates, page title, the same
+   field-by-field KEEP/DISCARD comparison above, then a primary Merge /
+   secondary Cancel footer action row. */
+.chq-contacts-merge-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.chq-contacts-merge-topbar {
+  display: flex;
+  align-items: center;
+}
+
+.chq-contacts-merge-back {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.chq-contacts-merge-footer {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding-top: 6px;
+}
+
+/* Phone: merge compare grid stacks to one column (label, then kept value,
+   then discarded value) inside .chq-contacts-merge-page too. */
+@media (max-width: 700px) {
+  .chq-contacts-merge-footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .chq-contacts-merge-footer .chq-btn {
+    min-height: 48px;
+  }
+}
+
 /* ---------------------------------------------------------------------- */
 /* Segments                                                                */
 /* ---------------------------------------------------------------------- */
