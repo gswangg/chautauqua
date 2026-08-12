@@ -435,3 +435,9 @@ export const DEC_429 = "Stage-1 dependency-advisory policy: devDependency adviso
 export const DEC_430 = "WCAG AA remedies change the pixels, never the instrument's scope: the drag glyph moves to --chq-muted and the public track chip stops using data-supplied colour as a text background";
 export const DEC_431 = "DEC-387's flip fires for the two passes that have now read all-PASS; contrast stays advisory one more wave";
 export const DEC_432 = "Event scope belongs in the WHERE: the two surviving JS post-filters over unbounded row sets move into SQL";
+export const DEC_433 = "The public ?page= parameter gets two bounds, because one number endangers two different things";
+export const DEC_434 = "One dev-mode predicate: DEV_MODE === \"1\" and nothing else, spelled once";
+export const DEC_435 = "formatRef is the only place a record ref is built; the Airtable sync's hardcoded SES- prefix is a stage-1 SPEC §5 repair, not stage-2 wiring";
+export const DEC_436 = "CONTRAST_BLOCKING's flip is wave 14's, and only from wave 14's own reading";
+export const DEC_437 = "SPEC §10 items 2, 3 and 4 are deferred by decision, not missing";
+export const DEC_438 = "The completion ledger names the sha it audited and splits open items into FAIL-unowned versus PENDING-OWNED";
