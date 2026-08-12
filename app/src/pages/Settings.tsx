@@ -9,9 +9,11 @@
 // embed-snippet generation exactly as-is.
 import { useState, type ComponentType } from 'react';
 import { EventSettingsPanel } from './settings/EventSettingsPanel';
+import { CallForPapersPanel } from './settings/CallForPapersPanel';
 import { TracksRoomsPanel } from './settings/TracksRoomsPanel';
 import { PortalSettingsPanel } from './settings/PortalSettingsPanel';
 import { ResourcesPanel } from './settings/ResourcesPanel';
+import { PeopleRolesPanel } from './settings/PeopleRolesPanel';
 import { ApiTokensPanel } from './settings/ApiTokensPanel';
 import { ExportsPanel } from './settings/ExportsPanel';
 import { EmbedsPanel } from './settings/EmbedsPanel';
@@ -23,11 +25,15 @@ interface SettingsSection {
   Panel: ComponentType;
 }
 
+// DEC-588: rail order is Event, Call for papers, Portal, Tracks and rooms,
+// Resources, People and roles, API tokens, Exports, Embeds.
 const SECTIONS: SettingsSection[] = [
   { key: 'event', label: 'Event', Panel: EventSettingsPanel },
+  { key: 'cfp', label: 'Call for papers', Panel: CallForPapersPanel },
   { key: 'portal', label: 'Portal', Panel: PortalSettingsPanel },
   { key: 'tracks', label: 'Tracks and rooms', Panel: TracksRoomsPanel },
   { key: 'resources', label: 'Resources', Panel: ResourcesPanel },
+  { key: 'people', label: 'People and roles', Panel: PeopleRolesPanel },
   { key: 'tokens', label: 'API tokens', Panel: ApiTokensPanel },
   { key: 'exports', label: 'Exports', Panel: ExportsPanel },
   { key: 'embeds', label: 'Embeds', Panel: EmbedsPanel },
