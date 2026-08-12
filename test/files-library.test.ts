@@ -330,6 +330,7 @@ function baseSeed(): Seed {
         contentType: "application/pdf",
         r2Key: "r2/file-v1",
         createdAt: now,
+        sizeBytes: 1000000,
       },
       {
         id: "file-v2",
@@ -340,6 +341,7 @@ function baseSeed(): Seed {
         contentType: "application/pdf",
         r2Key: "r2/file-v2",
         createdAt: later,
+        sizeBytes: 1234567,
       },
     ],
     participant: [
@@ -370,6 +372,9 @@ describe("listEventDeliverableFiles (DEC-159/344)", () => {
       submissionTitle: "Scaling Vector Search",
       speakerName: "Priya Raman",
       versionCount: 2,
+      // DEC-606: the CHAIN's latest version's size, not the root/oldest
+      // version's — file-v2 (the later upload) is 1234567 bytes.
+      sizeBytes: 1234567,
     });
     expect(chain?.uploadedAt).toBe(new Date("2026-01-06T00:00:00Z").getTime());
   });
