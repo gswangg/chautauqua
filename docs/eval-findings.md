@@ -596,3 +596,12 @@ compare phone frames pixel-for-pixel.
     one slot (stack within the cell, count in the caption: "Three sessions in one
     room"). findConflicts/domain layer: verify N-way conflicts are detected and
     counted, not just pairwise-first.
+
+50. (User QA) **Nav exception badges ("1 CLASH", "N LATE") go stale — they don't clear
+    when the underlying condition is resolved.** Badge counts appear to be fetched
+    once at shell mount and never invalidated. Fix: re-derive badge data after any
+    mutation that can change it (placement/unplacement, task completion, reminder
+    flows) — simplest correct rule: refetch shell badge counts on every route change
+    AND after any successful mutating API call. Add a test: resolve the seeded clash →
+    badge disappears without a full page reload. (Design rule at stake: "badge only
+    when something is wrong" — a stale badge is a false alarm, the worst kind.)
