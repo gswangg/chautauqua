@@ -7,6 +7,7 @@ import { TaskModal } from './TaskModal';
 import { ResponseModal } from './ResponseModal';
 import { RemindPreviewModal } from './RemindPreviewModal';
 import { formatDateOnly } from '../../lib/dates';
+import { describeSendResult, type SendResult } from '../../lib/sendResult';
 import {
   DEFAULT_GRID_FILTERS,
   type AssignmentResponseDetail,
@@ -177,20 +178,8 @@ export function OnboardingGrid() {
     setReminding(true);
     setError(null);
     try {
-      const res = await apiPost<{ sent: number; skipped: number; remaining: number }>(
-        `/events/${eventId}/onboarding/remind`,
-        {},
-      );
-      const parts = [`Reminder sent to ${res.sent} contact${res.sent === 1 ? '' : 's'}.`];
-      if (res.skipped > 0) {
-        parts.push(`${res.skipped} contact${res.skipped === 1 ? '' : 's'} skipped (reminded recently).`);
-      }
-      if (res.remaining > 0) {
-        parts.push(
-          `${res.remaining} contact${res.remaining === 1 ? '' : 's'} still outstanding — click Remind again to continue.`,
-        );
-      }
-      setToast(parts.join(' '));
+      const res = await apiPost<SendResult>(`/events/${eventId}/onboarding/remind`, {});
+      setToast(describeSendResult(res, { one: 'contact', many: 'contacts' }));
       closeRemindReview();
       await loadGrid(eventId, filters, page);
     } catch (err) {
