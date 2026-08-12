@@ -1,15 +1,20 @@
-// DEC-382: the three operator surfaces (landing, /docs/api, dev mailbox
-// list + detail) share TOOLS_CSS and the shell pattern (header + wordmark,
+// DEC-382: the operator surfaces (/docs/api, dev mailbox list + detail)
+// share TOOLS_CSS and the shell pattern (header + wordmark,
 // <main class="chq-measure">, etc). This pins the DEC-374 escaping trap --
 // TOOLS_CSS (like THEME_CSS) must be inlined via dangerouslySetInnerHTML,
 // never as a hono/jsx text child, or quoted CSS values round-trip as HTML
 // entities -- and confirms each page uses the shared shell.
+//
+// DEC-582 revised DEC-382 for GET / ALONE: the landing page is no longer
+// operator chrome but the anonymous event hub, drawing ThemeStyles + the
+// public CSS family + HOME_CSS, with the ORG's name in the masthead rather
+// than the product wordmark. It is therefore not listed below; its own
+// shell + DEC-374 escaping guard live in test/root.test.ts. /docs/api and
+// /dev/mailbox stay chrome under DEC-382 unchanged.
 
 import { describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
 import type { AppEnv } from "../src/server/env";
-import { registerErrorHandler } from "../src/server/http";
-import { rootRoutes } from "../src/routes/root";
 import { docsRoutes } from "../src/routes/docs";
 
 const EMAIL_LOG_ROW = {
@@ -40,37 +45,6 @@ vi.mock("../src/server/repo/email", async () => {
 
 const { devMailboxRoutes } = await import("../src/routes/dev/mailbox");
 
-function fakeAssets(): Fetcher {
-  return {
-    async fetch() {
-      return new Response("<html>admin shell</html>", { status: 200, headers: { "content-type": "text/html" } });
-    },
-  } as unknown as Fetcher;
-}
-
-function fakeDbWithSlug(slug: string | null) {
-  return {
-    select: () => ({
-      from: () => ({
-        orderBy: () => ({
-          limit: async () => (slug ? [{ slug }] : []),
-        }),
-      }),
-    }),
-  } as unknown as import("../src/server/context").Db;
-}
-
-function buildRootApp() {
-  const app = new Hono<AppEnv>();
-  app.use("*", async (c, next) => {
-    c.set("db", fakeDbWithSlug(null));
-    await next();
-  });
-  app.route("/", rootRoutes);
-  registerErrorHandler(app);
-  return app;
-}
-
 function buildDocsApp() {
   const app = new Hono<AppEnv>();
   app.route("/", docsRoutes);
@@ -97,10 +71,6 @@ function styleText(body: string): string {
 }
 
 const PAGES: { name: string; fetch: () => Promise<Response> }[] = [
-  {
-    name: "landing (/)",
-    fetch: async () => buildRootApp().request("/", {}, { ASSETS: fakeAssets() }),
-  },
   {
     name: "docs (/docs/api)",
     fetch: async () => buildDocsApp().request("/docs/api"),

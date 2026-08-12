@@ -331,4 +331,23 @@ describe("GET / — anonymous hub (DEC-581)", () => {
     const beforeFooter = body.split("chq-home-footer")[0] ?? "";
     expect(beforeFooter.toLowerCase()).not.toContain("chautauqua");
   });
+
+  // DEC-374 escaping trap, inherited from test/tools-surfaces.test.ts when
+  // DEC-582 moved / off the DEC-382 operator-chrome list: every inlined CSS
+  // module (ThemeStyles, PUBLIC_CSS, HOME_CSS) must go in via
+  // dangerouslySetInnerHTML, never as a hono/jsx text child, or quoted CSS
+  // values round-trip as HTML entities and the stylesheet silently breaks.
+  it("inlines every style block unescaped (DEC-374)", async () => {
+    const app = buildApp({ queue: buildQueue({ events: [] }) });
+    const res = await app.request("/", {}, { ASSETS: fakeAssets() });
+    expect(res.status).toBe(200);
+    const body = await res.text();
+    const blocks = [...body.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)];
+    expect(blocks.length).toBeGreaterThan(0);
+    const css = blocks.map((m) => m[1]).join("\n");
+    expect(css).toContain("Familjen Grotesk");
+    expect(css).not.toContain("&#39;");
+    expect(css).not.toContain("&quot;");
+    expect(css).not.toContain("&gt;");
+  });
 });
