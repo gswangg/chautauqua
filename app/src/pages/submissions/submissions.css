@@ -288,7 +288,12 @@
   color: var(--chq-muted);
 }
 
-.chq-viewtab {
+/* Page-prefixed per DEC-406's control vocabulary: a tab button whose only
+   class were a bare `chq-viewtab` carries no shell class the guard in
+   test/control-class-conformance.test.ts recognises (it accepts
+   `chq-<area>-*`), so the tab shell is named for its page like every other
+   class in this block. */
+.chq-submissions-viewtab {
   background: none;
   border: none;
   padding: 7px 13px;
@@ -299,7 +304,7 @@
   cursor: pointer;
 }
 
-.chq-viewtab.is-active {
+.chq-submissions-viewtab.is-active {
   background: var(--chq-ink);
   color: var(--chq-on-ink);
 }
@@ -353,6 +358,16 @@
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--chq-muted);
+}
+
+/* DEC-651's optional dialog subtitle. Page-scoped rather than a new shared
+   `chq-modal-*` name: the shared header contract enforces only the title
+   and the Close control, so the Save-this-view caption stays local to this
+   page's vocabulary. */
+.chq-submissions-modal-sub {
+  margin: 0;
+  font-size: 13px;
+  color: var(--chq-ink-2);
 }
 
 /* Phone (DEC-385/386): one markup tree, no duplicated DOM. The table body

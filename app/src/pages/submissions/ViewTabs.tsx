@@ -132,7 +132,7 @@ function SaveViewDialog({ filters, pending, onCancel, onSave }: SaveViewDialogPr
             &times;
           </button>
         </div>
-        <p className="chq-modal-sub">{summarizeFilters(filters)}</p>
+        <p className="chq-submissions-modal-sub">{summarizeFilters(filters)}</p>
         {error && <div className="chq-error">{error}</div>}
         <label className="chq-submissions-modal-field">
           <span className="chq-submissions-modal-label">Name</span>
@@ -145,7 +145,7 @@ function SaveViewDialog({ filters, pending, onCancel, onSave }: SaveViewDialogPr
             disabled={pending}
           />
         </label>
-        <p className="chq-modal-sub">Shared with every organiser on this event.</p>
+        <p className="chq-submissions-modal-sub">Shared with every organiser on this event.</p>
         <div className="chq-modal-actions">
           <button type="submit" className="chq-btn chq-btn-primary" disabled={pending}>
             Save the view
@@ -216,7 +216,7 @@ export function ViewTabs({ eventId, filters, visibleFieldIds, onApply }: ViewTab
         <button
           key={view.key}
           type="button"
-          className={active === view.key ? 'chq-viewtab is-active' : 'chq-viewtab'}
+          className={active === view.key ? 'chq-submissions-viewtab is-active' : 'chq-submissions-viewtab'}
           aria-current={active === view.key ? 'true' : undefined}
           onClick={() => onApply(view.config)}
         >
@@ -227,7 +227,7 @@ export function ViewTabs({ eventId, filters, visibleFieldIds, onApply }: ViewTab
         <span key={view.id} className="chq-submissions-viewtabs-item">
           <button
             type="button"
-            className={active === view.id ? 'chq-viewtab is-active' : 'chq-viewtab'}
+            className={active === view.id ? 'chq-submissions-viewtab is-active' : 'chq-submissions-viewtab'}
             aria-current={active === view.id ? 'true' : undefined}
             onClick={() => onApply(view.config)}
           >
@@ -245,7 +245,7 @@ export function ViewTabs({ eventId, filters, visibleFieldIds, onApply }: ViewTab
       ))}
       <button
         type="button"
-        className="chq-viewtab chq-submissions-viewtabs-save"
+        className="chq-submissions-viewtab chq-submissions-viewtabs-save"
         disabled={saving}
         onClick={() => setShowSaveDialog(true)}
       >
