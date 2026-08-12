@@ -53,13 +53,21 @@ function formatIcsDate(d: Date): string {
   );
 }
 
-// DEC-131: normalize CR before escaping so a lone CR (or CRLF) in source
-// text never survives as a bare CR inside a content line; both become \n
-// like a normal line break, then get escaped to the literal "\n" below.
-function escapeText(s: string): string {
+// DEC-131 / DEC-540: normalize CR before escaping so a lone CR (or CRLF) in
+// source text never survives as a bare CR inside a content line; both become
+// \n like a normal line break. Then, matching sanitizeCn's rule (DEC-499),
+// every remaining C0 control byte (0x00-0x1f, including HTAB) and DEL
+// (0x7f) is stripped outright — except LF, which is escaped to the literal
+// "\n" below along with backslash, ';', and ','. TEXT values reach this
+// function from public, unauthenticated CFP text (title/description) and
+// room names (location), so control bytes must never survive into SUMMARY,
+// DESCRIPTION or LOCATION content lines.
+export function sanitizeIcsText(s: string): string {
   return s
     .replace(/\r\n/g, "\n")
     .replace(/\r/g, "\n")
+    // eslint-disable-next-line no-control-regex
+    .replace(/[\x00-\x09\x0b-\x1f\x7f]/g, "")
     .replace(/\\/g, "\\\\")
     .replace(/;/g, "\\;")
     .replace(/,/g, "\\,")
@@ -120,12 +128,12 @@ function buildVevent(e: IcsEventInput, opts: IcsOptions): string[] {
   lines.push(`DTSTAMP:${formatIcsDate(e.dtstamp)}`);
   lines.push(`DTSTART:${formatIcsDate(e.startUtc)}`);
   lines.push(`DTEND:${formatIcsDate(e.endUtc)}`);
-  lines.push(`SUMMARY:${escapeText(e.title)}`);
+  lines.push(`SUMMARY:${sanitizeIcsText(e.title)}`);
   if (e.description !== undefined) {
-    lines.push(`DESCRIPTION:${escapeText(e.description)}`);
+    lines.push(`DESCRIPTION:${sanitizeIcsText(e.description)}`);
   }
   if (e.location !== undefined) {
-    lines.push(`LOCATION:${escapeText(e.location)}`);
+    lines.push(`LOCATION:${sanitizeIcsText(e.location)}`);
   }
   lines.push(`ORGANIZER;CN="${sanitizeCn(opts.organizer.name)}":mailto:${opts.organizer.email}`);
   if (opts.method === "REQUEST") {
