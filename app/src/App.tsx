@@ -6,6 +6,7 @@ import { useEscapeKey } from './lib/useEscapeKey';
 import { identityLabel } from './lib/identity';
 import { EventSwitcher } from './components/EventSwitcher';
 import { DelayedLoading } from './components/DelayedLoading';
+import { RouteErrorBoundary } from './components/RouteErrorBoundary';
 
 // DEC-052: every route page is code-split via React.lazy. Page modules keep
 // their named exports; the thunk map below is reused both to build the lazy
@@ -252,6 +253,39 @@ function RoleGate({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
+// DEC-695 (mandate item 33): the routed region is wrapped in ONE
+// RouteErrorBoundary keyed on the router location, so a throw during a
+// route's render surfaces a designed error state instead of unmounting the
+// whole shell, and navigating away from the failed route (a location-key
+// change) remounts the boundary and clears the error.
+function RoutedContent() {
+  const location = useLocation();
+  return (
+    <RouteErrorBoundary key={location.pathname}>
+      <Suspense fallback={<DelayedLoading />}>
+        <Routes>
+          <Route path="/" element={<OverviewPage />} />
+          {NAV_SECTIONS.map((section) => (
+            <Route key={section.path} path={section.path} element={section.element} />
+          ))}
+          {/* DEC-684: contact merge lives under Contacts (route only — no
+              new top-nav section, mirrors /submissions/forms below). */}
+          <Route path="/contacts/merge" element={<ContactsMergePage />} />
+          {/* DEC-033: form builder lives under Submissions (route only — no new top-nav section). */}
+          <Route path="/submissions/forms" element={<FormsPage />} />
+          {/* DEC-045: submission detail. React Router v6 ranks the static
+              /submissions/forms route above this dynamic :id segment, so
+              declaration order here doesn't matter, but forms stays
+              first for readability. */}
+          <Route path="/submissions/:id" element={<SubmissionDetailPage />} />
+          {/* DEC-154: admin catch-all, must stay last so specific routes win. */}
+          <Route path="*" element={<NotFoundPage />} />
+        </Routes>
+      </Suspense>
+    </RouteErrorBoundary>
+  );
+}
+
 export function App() {
   return (
     <BrowserRouter basename="/admin">
@@ -259,26 +293,7 @@ export function App() {
         <Header />
         <main className="chq-main">
           <RoleGate>
-            <Suspense fallback={<DelayedLoading />}>
-              <Routes>
-                <Route path="/" element={<OverviewPage />} />
-                {NAV_SECTIONS.map((section) => (
-                  <Route key={section.path} path={section.path} element={section.element} />
-                ))}
-                {/* DEC-684: contact merge lives under Contacts (route only — no
-                    new top-nav section, mirrors /submissions/forms below). */}
-                <Route path="/contacts/merge" element={<ContactsMergePage />} />
-                {/* DEC-033: form builder lives under Submissions (route only — no new top-nav section). */}
-                <Route path="/submissions/forms" element={<FormsPage />} />
-                {/* DEC-045: submission detail. React Router v6 ranks the static
-                    /submissions/forms route above this dynamic :id segment, so
-                    declaration order here doesn't matter, but forms stays
-                    first for readability. */}
-                <Route path="/submissions/:id" element={<SubmissionDetailPage />} />
-                {/* DEC-154: admin catch-all, must stay last so specific routes win. */}
-                <Route path="*" element={<NotFoundPage />} />
-              </Routes>
-            </Suspense>
+            <RoutedContent />
           </RoleGate>
         </main>
       </div>
