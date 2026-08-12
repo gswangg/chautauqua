@@ -78,6 +78,10 @@ export const contact = sqliteTable(
     socialLinksJson: text("social_links_json"),
     notes: text("notes"),
     customFieldsJson: text("custom_fields_json"),
+    // DEC-612: namespaced "<source>:<their id>" ref for idempotent import
+    // re-runs; nullable, SQLite treats NULLs as distinct so hand-created
+    // rows are untouched by the uniqueIndex below.
+    externalRef: text("external_ref"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -89,6 +93,11 @@ export const contact = sqliteTable(
       t.orgId,
       t.lastName,
       t.firstName,
+    ),
+    // DEC-612: external_ref uniqueness scoped to the row's own owner.
+    contact_org_id_external_ref_idx: uniqueIndex("contact_org_id_external_ref_idx").on(
+      t.orgId,
+      t.externalRef,
     ),
   }),
 );
@@ -193,6 +202,9 @@ export const submission = sqliteTable(
     acceptedAt: integer("accepted_at", { mode: "timestamp_ms" }),
     // bumped by the caller on schedule-affecting changes — DEC-007
     icsSequence: integer("ics_sequence").notNull().default(0),
+    // DEC-612: namespaced "<source>:<their id>" ref for idempotent import
+    // re-runs; nullable, SQLite treats NULLs as distinct.
+    externalRef: text("external_ref"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -204,6 +216,11 @@ export const submission = sqliteTable(
     submission_event_id_seq_idx: uniqueIndex("submission_event_id_seq_idx").on(t.eventId, t.seq),
     // DEC-337 (w18): composite covering this wave's paginated submissions list.
     submission_event_id_created_at_idx: index("submission_event_id_created_at_idx").on(t.eventId, t.createdAt),
+    // DEC-612: external_ref uniqueness scoped to the row's own owner.
+    submission_event_id_external_ref_idx: uniqueIndex("submission_event_id_external_ref_idx").on(
+      t.eventId,
+      t.externalRef,
+    ),
   }),
 );
 
@@ -395,11 +412,19 @@ export const track = sqliteTable(
     name: text("name").notNull(),
     color: text("color"),
     position: integer("position").notNull().default(0),
+    // DEC-612: namespaced "<source>:<their id>" ref for idempotent import
+    // re-runs; nullable, SQLite treats NULLs as distinct.
+    externalRef: text("external_ref"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
   (t) => ({
     track_event_id_idx: index("track_event_id_idx").on(t.eventId),
+    // DEC-612: external_ref uniqueness scoped to the row's own owner.
+    track_event_id_external_ref_idx: uniqueIndex("track_event_id_external_ref_idx").on(
+      t.eventId,
+      t.externalRef,
+    ),
   }),
 );
 

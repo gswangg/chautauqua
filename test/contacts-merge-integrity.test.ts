@@ -52,6 +52,7 @@ function contactRaw(id: string, email: string, firstName: string, lastName: stri
     socialLinksJson: null,
     notes: null,
     customFieldsJson: null,
+    externalRef: null,
     createdAt: new Date(1000),
     updatedAt: new Date(1000),
   };
