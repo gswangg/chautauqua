@@ -321,7 +321,7 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number): 
       and(
         eq(schema.task.eventId, eventId),
         eq(schema.taskAssignment.status, "pending"),
-        sql`${schema.task.dueDate} is not null and ${schema.task.dueDate} < ${new Date(now)}`,
+        sql`${schema.task.dueDate} is not null and ${schema.task.dueDate} < ${now}`,
       ),
     )
     .orderBy(schema.task.dueDate)
