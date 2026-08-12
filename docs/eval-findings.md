@@ -564,3 +564,17 @@ compare phone frames pixel-for-pixel.
     pipeline card captions ("Added N days ago", "No reply · N days" bold past 30,
     declined reason); bulk-email FormRow (labels above, full measure); dedicated phone
     screens per mock.
+
+46. (User QA + orchestrator-verified, fullPage evidence) **Public /sessions: unscheduled
+    sessions render BROKEN** — all row content (title/speaker/chips/description) is
+    crammed into the ~90px time-gutter column, wrapping word-per-word, row body empty.
+    Scheduled rows render correctly. Likely grid misplacement: rows without a time
+    cell flow content into the gutter column — give unscheduled rows an explicit empty
+    gutter cell (or full-width layout) so content lands in the body column. Add a
+    render-sweep assertion: no text container narrower than 200px on public surfaces.
+47. **Seed abstracts: replace the synthetic filler.** Most public sessions show "A
+    synthetic seed submission proposing… Generated for local development…" — visible
+    to judges on the most public surface. Every seeded session needs a real,
+    fixture-quality abstract (the 'Taming 40-Minute CI' abstract is the model; source
+    from docs/fixtures/sample-data.json or write 2-3 sentences each in its voice).
+    Fold into the DEC-591 seed rework.
