@@ -10,7 +10,7 @@
 import { describe, expect, it } from "vitest";
 import * as schema from "../src/db/schema";
 import { updateSubmissionStatuses } from "../src/server/repo/submissions";
-import { chunkIds } from "../src/lib/chunk";
+import { chunkIds, ID_CHUNK_SIZE } from "../src/lib/chunk";
 import { DEFAULT_ONBOARDING_TASKS } from "../src/domain/acceptance";
 import type { Db } from "../src/server/context";
 
@@ -88,6 +88,11 @@ function fakeDb() {
                 selectCalls.push({ table: "form", joined });
                 return makeResult([]);
               }
+              if (table === schema.event) {
+                // DEC-520: single event-start-date read, before the plan loop.
+                selectCalls.push({ table: "event", joined });
+                return makeResult([{ startDate: "2026-06-01" }]);
+              }
               throw new Error("unexpected select().from() table in fake Db");
             },
           };
@@ -156,14 +161,23 @@ describe("DEC-355 bulk accept is set-based, not per-submission", () => {
     expect(formSelects).toBe(formTitles);
 
     const totalSelects = selectCalls.length;
-    expect(totalSelects).toBe(expectedChunks * 3 + distinctTitles + formTitles);
+    // +1 for the single DEC-520 event-start-date read.
+    expect(totalSelects).toBe(expectedChunks * 3 + distinctTitles + formTitles + 1);
     // The load-bearing assertion: total SELECT count is nowhere near N (200)
     // — it is bounded by chunk count + distinct-title count, not id count.
-    expect(totalSelects).toBeLessThan(30);
+    expect(totalSelects).toBeLessThan(31);
 
-    // task_assignment: one insert per (contact, title) pair = N * distinctTitles.
-    const taskAssignmentInserts = insertCalls.filter((c) => c.table === "task_assignment").length;
-    expect(taskAssignmentInserts).toBe(N * distinctTitles);
+    // DEC-521: task_assignment rows are inserted via chunked multi-row
+    // values(), not one insert statement per (contact, title) pair — total
+    // ROW count is still N * distinctTitles, but the insert CALL count is
+    // ceil(rows / ID_CHUNK_SIZE).
+    const taskAssignmentInsertCalls = insertCalls.filter((c) => c.table === "task_assignment");
+    const taskAssignmentRowCount = taskAssignmentInsertCalls.reduce(
+      (sum, c) => sum + (Array.isArray(c.value) ? c.value.length : 1),
+      0,
+    );
+    expect(taskAssignmentRowCount).toBe(N * distinctTitles);
+    expect(taskAssignmentInsertCalls.length).toBe(Math.ceil((N * distinctTitles) / ID_CHUNK_SIZE));
 
     // task: one insert per distinct title (getOrCreateTask runs once per title).
     const taskInserts = insertCalls.filter((c) => c.table === "task").length;

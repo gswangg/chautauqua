@@ -97,11 +97,11 @@ describe("status pipeline", () => {
 describe("acceptance planning", () => {
   it("DEFAULT_ONBOARDING_TASKS matches DEC-009 exactly", () => {
     expect(DEFAULT_ONBOARDING_TASKS).toEqual([
-      { title: "Hotel stay requirement form", kind: "form", required: true },
-      { title: "Flight reimbursement form", kind: "form", required: true },
-      { title: "Finalize talk description", kind: "general", required: false },
-      { title: "Finalize bio + headshot", kind: "file_request", required: false },
-      { title: "Announce participation", kind: "general", required: false },
+      { title: "Hotel stay requirement form", kind: "form", required: true, dueDaysBeforeEventStart: 30 },
+      { title: "Flight reimbursement form", kind: "form", required: true, dueDaysBeforeEventStart: 30 },
+      { title: "Finalize talk description", kind: "general", required: false, dueDaysBeforeEventStart: 21 },
+      { title: "Finalize bio + headshot", kind: "file_request", required: false, dueDaysBeforeEventStart: 21 },
+      { title: "Announce participation", kind: "general", required: false, dueDaysBeforeEventStart: 14 },
     ]);
   });
 
