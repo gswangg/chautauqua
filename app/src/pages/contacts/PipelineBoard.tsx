@@ -3,11 +3,19 @@
 // <select> (no drag-and-drop dependency — DEC-157 explicitly prefers a
 // select since persistence is what's graded), and a card-detail panel with
 // a notes composer + activity log.
+//
+// Redesign (w2-e, DEC-366..368/372/376/377): restyled with the shared
+// .chq-* component classes plus .chq-contacts-pipeline-* (contacts-panels
+// .css). At phone width the four-column board collapses to one column at a
+// time, chosen from a .chq-pill strip (ink active state, DEC-372) — that is
+// a client-side display filter only, the Move-to select below each card is
+// still what persists a stage change.
 
 import { useEffect, useState } from 'react';
 import { apiGet, apiList, apiPost, apiPatch, ApiError } from '../../lib/api';
 import type { ContactListItem, PipelineEntry, PipelineEntryDetail, PipelineStage } from './types';
 import { PIPELINE_STAGES, PIPELINE_STAGE_LABELS } from './types';
+import './contacts-panels.css';
 
 export function PipelineBoard() {
   const [entries, setEntries] = useState<PipelineEntry[]>([]);
@@ -15,6 +23,7 @@ export function PipelineBoard() {
   const [error, setError] = useState<string | null>(null);
   const [showEnroll, setShowEnroll] = useState(false);
   const [openEntryId, setOpenEntryId] = useState<string | null>(null);
+  const [phoneStage, setPhoneStage] = useState<PipelineStage>(PIPELINE_STAGES[0]);
 
   function reload() {
     setLoading(true);
@@ -46,45 +55,80 @@ export function PipelineBoard() {
   }
 
   return (
-    <div className="chq-pipeline-board">
-      <div className="chq-pipeline-toolbar">
-        <h2>Sourcing pipeline</h2>
-        <button type="button" onClick={() => setShowEnroll(true)}>
+    <div className="chq-contacts-pipeline">
+      <div className="chq-contacts-pipeline-head">
+        <div className="chq-contacts-pipeline-head-titles">
+          <h2 className="chq-section-label">Sourcing pipeline</h2>
+          <span className="chq-contacts-pipeline-caption">{entries.length} people</span>
+        </div>
+        <button type="button" className="chq-btn chq-btn-secondary" onClick={() => setShowEnroll(true)}>
           + Enroll
         </button>
       </div>
-      {error && <div className="chq-error-banner">{error}</div>}
-      {loading && <p>Loading...</p>}
+      {error && <div className="chq-error">{error}</div>}
+      {loading && <p className="chq-contacts-pipeline-caption">Loading...</p>}
 
-      <div className="chq-pipeline-columns">
+      <div className="chq-contacts-pipeline-columns">
         {PIPELINE_STAGES.map((stage) => (
-          <div key={stage} className="chq-pipeline-column" data-stage={stage}>
-            <h3>{PIPELINE_STAGE_LABELS[stage]}</h3>
-            <ul>
+          <div key={stage} className="chq-contacts-pipeline-column" data-stage={stage}>
+            <div className="chq-contacts-pipeline-column-head">
+              <span className="chq-contacts-pipeline-column-name">{PIPELINE_STAGE_LABELS[stage]}</span>
+              <span className="chq-contacts-pipeline-column-count">
+                {entries.filter((e) => e.stage === stage).length}
+              </span>
+            </div>
+            <ul className="chq-contacts-pipeline-column-cards">
               {entries
                 .filter((e) => e.stage === stage)
                 .map((entry) => (
-                  <li key={entry.id} className="chq-pipeline-card">
-                    <button type="button" className="chq-pipeline-card-name" onClick={() => setOpenEntryId(entry.id)}>
-                      {entry.firstName} {entry.lastName}
-                    </button>
-                    {entry.company && <div className="chq-pipeline-card-company">{entry.company}</div>}
-                    <label>
-                      Move to
-                      <select value={entry.stage} onChange={(e) => moveTo(entry, e.target.value as PipelineStage)}>
-                        {PIPELINE_STAGES.map((s) => (
-                          <option key={s} value={s}>
-                            {PIPELINE_STAGE_LABELS[s]}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                  </li>
+                  <PipelineCard key={entry.id} entry={entry} onOpen={() => setOpenEntryId(entry.id)} onMove={moveTo} />
                 ))}
             </ul>
           </div>
         ))}
       </div>
+
+      {/* Phone: one stage at a time via a .chq-pill strip (mock lines 393-396). */}
+      <div className="chq-contacts-pipeline-phone-stages chq-chipstrip">
+        {PIPELINE_STAGES.map((stage) => (
+          <button
+            key={stage}
+            type="button"
+            className={`chq-pill${stage === phoneStage ? ' is-active' : ''}`}
+            onClick={() => setPhoneStage(stage)}
+          >
+            {PIPELINE_STAGE_LABELS[stage]} · {entries.filter((e) => e.stage === stage).length}
+          </button>
+        ))}
+      </div>
+      <ul className="chq-contacts-pipeline-phone-list">
+        {entries
+          .filter((e) => e.stage === phoneStage)
+          .map((entry) => (
+            <li key={entry.id} className="chq-contacts-pipeline-phone-card">
+              <div className="chq-contacts-pipeline-phone-card-body">
+                <button type="button" className="chq-contacts-pipeline-card-name" onClick={() => setOpenEntryId(entry.id)}>
+                  {entry.firstName} {entry.lastName}
+                </button>
+                {entry.company && <span className="chq-contacts-pipeline-card-company">{entry.company}</span>}
+              </div>
+              <label className="chq-contacts-pipeline-card-move">
+                Move to
+                <select
+                  className="chq-select"
+                  value={entry.stage}
+                  onChange={(e) => moveTo(entry, e.target.value as PipelineStage)}
+                >
+                  {PIPELINE_STAGES.map((s) => (
+                    <option key={s} value={s}>
+                      {PIPELINE_STAGE_LABELS[s]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </li>
+          ))}
+      </ul>
 
       {showEnroll && (
         <EnrollDialog
@@ -99,6 +143,33 @@ export function PipelineBoard() {
 
       {openEntryId && <EntryDetailPanel entryId={openEntryId} onClose={() => setOpenEntryId(null)} onChanged={reload} />}
     </div>
+  );
+}
+
+interface PipelineCardProps {
+  entry: PipelineEntry;
+  onOpen: () => void;
+  onMove: (entry: PipelineEntry, stage: PipelineStage) => void;
+}
+
+function PipelineCard({ entry, onOpen, onMove }: PipelineCardProps) {
+  return (
+    <li className="chq-contacts-pipeline-card">
+      <button type="button" className="chq-contacts-pipeline-card-name" onClick={onOpen}>
+        {entry.firstName} {entry.lastName}
+      </button>
+      {entry.company && <div className="chq-contacts-pipeline-card-company">{entry.company}</div>}
+      <label className="chq-contacts-pipeline-card-move">
+        Move to
+        <select className="chq-select" value={entry.stage} onChange={(e) => onMove(entry, e.target.value as PipelineStage)}>
+          {PIPELINE_STAGES.map((s) => (
+            <option key={s} value={s}>
+              {PIPELINE_STAGE_LABELS[s]}
+            </option>
+          ))}
+        </select>
+      </label>
+    </li>
   );
 }
 
@@ -140,11 +211,11 @@ function EnrollDialog({ alreadyEnrolledContactIds, onClose, onEnrolled }: Enroll
   return (
     <div className="chq-modal-backdrop" role="dialog" aria-label="Enroll contact">
       <div className="chq-modal">
-        <h3>Enroll a contact</h3>
-        {error && <div className="chq-error-banner">{error}</div>}
-        <label>
+        <h3 className="chq-page-title">Enroll a contact</h3>
+        {error && <div className="chq-error">{error}</div>}
+        <label className="chq-contacts-import-field">
           Contact
-          <select value={contactId} onChange={(e) => setContactId(e.target.value)}>
+          <select className="chq-select" value={contactId} onChange={(e) => setContactId(e.target.value)}>
             <option value="">Select a contact...</option>
             {available.map((c) => (
               <option key={c.id} value={c.id}>
@@ -153,9 +224,9 @@ function EnrollDialog({ alreadyEnrolledContactIds, onClose, onEnrolled }: Enroll
             ))}
           </select>
         </label>
-        <label>
+        <label className="chq-contacts-import-field">
           Starting stage
-          <select value={stage} onChange={(e) => setStage(e.target.value as PipelineStage)}>
+          <select className="chq-select" value={stage} onChange={(e) => setStage(e.target.value as PipelineStage)}>
             {PIPELINE_STAGES.map((s) => (
               <option key={s} value={s}>
                 {PIPELINE_STAGE_LABELS[s]}
@@ -163,12 +234,14 @@ function EnrollDialog({ alreadyEnrolledContactIds, onClose, onEnrolled }: Enroll
             ))}
           </select>
         </label>
-        <button type="button" onClick={onClose}>
-          Cancel
-        </button>
-        <button type="button" disabled={busy || !contactId} onClick={enroll}>
-          Enroll
-        </button>
+        <div className="chq-contacts-import-actions">
+          <button type="button" className="chq-btn chq-btn-primary" disabled={busy || !contactId} onClick={enroll}>
+            Enroll
+          </button>
+          <button type="button" className="chq-btn chq-btn-secondary" onClick={onClose}>
+            Cancel
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -216,31 +289,31 @@ function EntryDetailPanel({ entryId, onClose, onChanged }: EntryDetailPanelProps
   return (
     <div className="chq-modal-backdrop" role="dialog" aria-label="Pipeline card detail">
       <div className="chq-modal">
-        {error && <div className="chq-error-banner">{error}</div>}
+        {error && <div className="chq-error">{error}</div>}
         {!detail && <p>Loading...</p>}
         {detail && (
           <>
-            <h3>
+            <h3 className="chq-page-title">
               {detail.contact.firstName} {detail.contact.lastName}
             </h3>
-            <p>
+            <p className="chq-contacts-pipeline-caption">
               {detail.contact.email}
               {detail.contact.company ? ` — ${detail.contact.company}` : ''}
             </p>
             <p>Stage: {PIPELINE_STAGE_LABELS[detail.entry.stage]}</p>
 
-            <div className="chq-pipeline-notes">
-              <label>
+            <div className="chq-contacts-pipeline-notes">
+              <label className="chq-contacts-import-field">
                 Add a note
-                <textarea value={note} onChange={(e) => setNote(e.target.value)} />
+                <textarea className="chq-textarea" value={note} onChange={(e) => setNote(e.target.value)} />
               </label>
-              <button type="button" disabled={busy || note.trim() === ''} onClick={saveNote}>
+              <button type="button" className="chq-btn chq-btn-secondary" disabled={busy || note.trim() === ''} onClick={saveNote}>
                 Save note
               </button>
             </div>
 
-            <h4>Activity</h4>
-            <ul className="chq-pipeline-activity">
+            <h4 className="chq-section-label">Activity</h4>
+            <ul className="chq-contacts-pipeline-activity">
               {detail.activity.map((a, i) => (
                 <li key={i}>
                   {a.kind === 'move' ? (
@@ -255,11 +328,11 @@ function EntryDetailPanel({ entryId, onClose, onChanged }: EntryDetailPanelProps
                   {a.authorName}, {new Date(a.createdAt).toLocaleString()}
                 </li>
               ))}
-              {detail.activity.length === 0 && <li>No activity yet.</li>}
+              {detail.activity.length === 0 && <li className="chq-empty">No activity yet.</li>}
             </ul>
           </>
         )}
-        <button type="button" onClick={onClose}>
+        <button type="button" className="chq-btn chq-btn-secondary" onClick={onClose}>
           Close
         </button>
       </div>
