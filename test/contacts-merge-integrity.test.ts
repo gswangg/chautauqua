@@ -27,6 +27,7 @@ import {
 } from "../src/server/repo/contacts";
 import { planMerge } from "../src/domain/contacts";
 import { ApiError } from "../src/server/http";
+import { findAccountUserId } from "../src/server/repo/comms";
 import type { Db } from "../src/server/context";
 
 function contactRawToRecord(raw: ReturnType<typeof contactRaw>) {
@@ -285,6 +286,45 @@ describe("mergeContacts user.email cascade (DEC-479)", () => {
     const userUpdate = updates.find((u) => u.table === schema.user && (u.vals as { email?: string }).email !== undefined);
     expect(userUpdate).toBeDefined();
     expect((userUpdate!.vals as { email: string }).email).toBe(merged.email.toLowerCase());
+  });
+
+  it("keep A(a@x, no account) + merge B(b@x, with account) -> surviving user row ends contactId=keepId, email=a@x, and an account lookup by a@x resolves it", async () => {
+    const keep = contactRaw("contact-keep", "a@x.com", "Jane", "Doe");
+    const merge = contactRaw("contact-merge", "b@x.com", "Jane", "Doe");
+    const { db, updates } = fakeDb([
+      [keep], // findContactById(keepId)
+      [merge], // findContactById(mergeId)
+      [], // user rows for keepId (no account)
+      [{ id: "user-merge" }], // user rows for mergeId (has account)
+      [], // (b2) email conflict pre-check
+      [], // mergeParticipants
+      [], // keepParticipants
+      [], // task_assignment for mergeId
+      [], // task_assignment for keepId
+      [], // pipelineEntry for keepId
+      [], // pipelineEntry for mergeId
+      [keep], // findContactById(keepId) after merge
+      [{ id: "user-merge" }], // findAccountUserId select below
+    ]);
+
+    await mergeContacts(db, keep.id, merge.id);
+
+    const { merged } = planMerge(contactRawToRecord(keep), contactRawToRecord(merge));
+    expect(merged.email.toLowerCase()).toBe("a@x.com");
+
+    const emailUpdate = updates.find((u) => u.table === schema.user && (u.vals as { email?: string }).email !== undefined);
+    expect(emailUpdate).toBeDefined();
+    expect((emailUpdate!.vals as { email: string }).email).toBe("a@x.com");
+    const contactIdUpdate = updates.find((u) => u.table === schema.user && (u.vals as { contactId?: string }).contactId);
+    expect(contactIdUpdate).toBeDefined();
+    expect((contactIdUpdate!.vals as { contactId: string }).contactId).toBe(keep.id);
+
+    // The surviving user row (repointed to keepId, email cascaded to a@x) is
+    // still resolvable by an account lookup on the surviving address -- the
+    // CRM's record of the contact's email and login identity never drift
+    // apart post-merge (DEC-479, DEC-456).
+    const accountUserId = await findAccountUserId(db, { contactId: keep.id, email: "a@x.com" });
+    expect(accountUserId).toBe("user-merge");
   });
 
   it("some OTHER user already owns merged.email -> conflict thrown before any write", async () => {
