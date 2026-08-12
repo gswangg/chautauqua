@@ -9,7 +9,7 @@ import * as schema from "../../db/schema";
 import { newId } from "../../domain/ids";
 import type { ComposeSubmission } from "../../domain/compose";
 export type { ComposeSubmission } from "../../domain/compose";
-import { chunkIds } from "../../lib/chunk";
+import { chunkIds, ID_CHUNK_SIZE } from "../../lib/chunk";
 import { ACTIVE_INVITE_STATUSES } from "../../domain/acceptance";
 
 // ---------------------------------------------------------------------------
@@ -216,6 +216,36 @@ export async function listFeedbackComments(db: Db, submissionId: string): Promis
   return rows.filter((r) => r.submittedAt !== null && r.comment && r.comment.trim() !== "").map((r) => r.comment as string);
 }
 
+/** DEC-530: batched sibling of listFeedbackComments — one chunked query
+ * pass for an arbitrary set of submissions instead of one query per
+ * submission (compose preview/send re-queries the SAME submission once per
+ * co-speaker otherwise). Same filter (submittedAt not null, non-blank
+ * comment) and the same asc(createdAt) ordering per submission; a
+ * submission with zero qualifying comments is simply absent from the
+ * returned map. */
+export async function listFeedbackCommentsForSubmissions(db: Db, submissionIds: string[]): Promise<Map<string, string[]>> {
+  const map = new Map<string, string[]>();
+  if (submissionIds.length === 0) return map;
+  for (const batch of chunkIds(submissionIds)) {
+    const rows = await db
+      .select({
+        submissionId: schema.evaluation.submissionId,
+        comment: schema.evaluation.comment,
+        submittedAt: schema.evaluation.submittedAt,
+      })
+      .from(schema.evaluation)
+      .where(inArray(schema.evaluation.submissionId, batch))
+      .orderBy(asc(schema.evaluation.createdAt));
+    for (const row of rows) {
+      if (row.submittedAt === null || !row.comment || row.comment.trim() === "") continue;
+      const existing = map.get(row.submissionId);
+      if (existing) existing.push(row.comment);
+      else map.set(row.submissionId, [row.comment]);
+    }
+  }
+  return map;
+}
+
 /** DEC-456: account identity is answered by contact_id OR email, never
  * email alone — a contact's email can drift out of sync with its linked
  * user row (e.g. mid-edit, or deliberately after a merge repoint), so a
@@ -229,6 +259,51 @@ export async function findAccountUserId(db: Db, params: { contactId: string; ema
     .where(or(eq(schema.user.contactId, params.contactId), sql`lower(${schema.user.email}) = lower(${params.email})`))
     .limit(1);
   return rows[0]?.id ?? null;
+}
+
+// Each row of this lookup binds TWO columns (contact_id, lower(email)), so
+// its batch size is derived from chunkIds' single-column ID_CHUNK_SIZE
+// halved (DEC-528: derive columns-per-row from the rows, never hand-declare
+// a fresh magic number) rather than reusing chunkIds directly.
+const ACCOUNT_LOOKUP_COLUMNS_PER_ROW = 2;
+const ACCOUNT_LOOKUP_BATCH_SIZE = Math.floor(ID_CHUNK_SIZE / ACCOUNT_LOOKUP_COLUMNS_PER_ROW);
+
+/** DEC-530 batched sibling of findAccountUserId, expressing the SAME
+ * predicate (DEC-456: contact_id OR lower(email), never email alone) in one
+ * chunked query pass instead of one query per recipient. Keyed by
+ * contactId in the returned map; every requested contactId is present
+ * (null when neither key hit). Associates hits back by contactId first,
+ * then by lowercased email, so a batch can never quietly narrow to
+ * email-only — that would mint claim links for contacts who already have
+ * logins. */
+export async function findAccountUserIds(db: Db, params: { contactId: string; email: string }[]): Promise<Map<string, string | null>> {
+  const result = new Map<string, string | null>();
+  for (const p of params) result.set(p.contactId, null);
+  if (params.length === 0) return result;
+
+  const rows: { id: string; contactId: string | null; email: string }[] = [];
+  for (let i = 0; i < params.length; i += ACCOUNT_LOOKUP_BATCH_SIZE) {
+    const batch = params.slice(i, i + ACCOUNT_LOOKUP_BATCH_SIZE);
+    const contactIds = [...new Set(batch.map((p) => p.contactId))];
+    const emails = [...new Set(batch.map((p) => p.email.toLowerCase()))];
+    const batchRows = await db
+      .select({ id: schema.user.id, contactId: schema.user.contactId, email: schema.user.email })
+      .from(schema.user)
+      .where(or(inArray(schema.user.contactId, contactIds), inArray(sql`lower(${schema.user.email})`, emails)));
+    rows.push(...batchRows);
+  }
+
+  const byContactId = new Map<string, string>();
+  const byEmail = new Map<string, string>();
+  for (const row of rows) {
+    if (row.contactId) byContactId.set(row.contactId, row.id);
+    byEmail.set(row.email.toLowerCase(), row.id);
+  }
+  for (const p of params) {
+    const hit = byContactId.get(p.contactId) ?? byEmail.get(p.email.toLowerCase()) ?? null;
+    result.set(p.contactId, hit);
+  }
+  return result;
 }
 
 // ---------------------------------------------------------------------------

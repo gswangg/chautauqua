@@ -44,6 +44,7 @@ vi.mock("../src/server/repo/contacts", async () => {
     ...actual,
     findContactsForOrg: (...args: Parameters<typeof findContactsForOrgMock>) => findContactsForOrgMock(...args),
     findAccountUserId: vi.fn(async () => null),
+    findAccountUserIds: vi.fn(async (_db: unknown, params: { contactId: string }[]) => new Map(params.map((p) => [p.contactId, null]))),
   };
 });
 

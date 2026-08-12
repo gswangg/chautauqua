@@ -54,11 +54,21 @@ vi.mock("../src/server/repo/events", async () => {
 
 vi.mock("../src/server/repo/comms", async () => {
   const actual = await vi.importActual<typeof import("../src/server/repo/comms")>("../src/server/repo/comms");
+  const findAccountUserIdMock = vi.fn(actual.findAccountUserId);
   return {
     ...actual,
     loadComposeSubmissions: vi.fn(async () => []),
     listFeedbackComments: vi.fn(async () => []),
-    findAccountUserId: vi.fn(actual.findAccountUserId),
+    listFeedbackCommentsForSubmissions: vi.fn(async () => new Map()),
+    findAccountUserId: findAccountUserIdMock,
+    // Batched sibling delegates to the (per-test-overridable) singular mock
+    // above so every existing findAccountUserId.mockImplementation(...) in
+    // this file drives both code paths identically (DEC-530).
+    findAccountUserIds: vi.fn(async (db: unknown, params: { contactId: string; email: string }[]) => {
+      const map = new Map<string, string | null>();
+      for (const p of params) map.set(p.contactId, await findAccountUserIdMock(db as never, p));
+      return map;
+    }),
   };
 });
 

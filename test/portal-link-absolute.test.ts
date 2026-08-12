@@ -67,7 +67,11 @@ vi.mock("../src/server/repo/comms", async () => {
       },
     ]),
     findAccountUserId: vi.fn(async (_db: unknown, params: { email: string }) => (params.email === "ada@example.com" ? "user-ada" : null)),
+    findAccountUserIds: vi.fn(async (_db: unknown, params: { contactId: string; email: string }[]) =>
+      new Map(params.map((p) => [p.contactId, p.email === "ada@example.com" ? "user-ada" : null])),
+    ),
     listFeedbackComments: vi.fn(async () => []),
+    listFeedbackCommentsForSubmissions: vi.fn(async () => new Map()),
   };
 });
 
@@ -112,6 +116,9 @@ vi.mock("../src/server/repo/contacts", async () => {
       },
     ]),
     findAccountUserId: vi.fn(async (_db: unknown, params: { email: string }) => (params.email === "ada@example.com" ? "user-ada" : null)),
+    findAccountUserIds: vi.fn(async (_db: unknown, params: { contactId: string; email: string }[]) =>
+      new Map(params.map((p) => [p.contactId, p.email === "ada@example.com" ? "user-ada" : null])),
+    ),
   };
 });
 

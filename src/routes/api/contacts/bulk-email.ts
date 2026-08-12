@@ -21,17 +21,18 @@ const MAX_BULK_EMAIL_RECIPIENTS = 100;
 /** DEC-026: bulk email is contact-scoped, not submission-scoped — only
  * speaker_name/event_name/portal_link resolve; {talk_title}/{feedback} (or
  * any other placeholder) are absent from vars, so preflightRender's
- * MergeFieldError check naturally rejects them as 'invalid'. */
+ * MergeFieldError check naturally rejects them as 'invalid'. `userId` is
+ * resolved once per batch (DEC-530: repo.findAccountUserIds) and passed in
+ * rather than re-queried per contact — claim-token minting itself stays
+ * per-recipient (DEC-397: a KV write with real side effects). */
 async function resolvePortalLink(
-  db: Db,
   kv: KVStore,
   contactId: string,
   eventId: string,
-  email: string,
+  userId: string | null,
   origin: string,
   mintClaimTokens: boolean,
 ): Promise<string> {
-  const userId = await repo.findAccountUserId(db, { contactId, email });
   if (userId) return `${origin}/portal`;
   if (!mintClaimTokens) return `${origin}/claim/${PREVIEW_CLAIM_TOKEN}`;
   const token = await createClaimToken(kv, { contactId, eventId });
@@ -94,9 +95,17 @@ async function renderBulkEmailTargets(
   bodyText: string,
   mintClaimTokens: boolean,
 ) {
+  // DEC-530: resolve account identity once for the whole contact batch
+  // instead of once per contact.
+  const accountMap = await repo.findAccountUserIds(
+    db,
+    contacts.map((c) => ({ contactId: c.id, email: c.email })),
+  );
+
   const targets: RenderTarget[] = [];
   for (const contact of contacts) {
-    const portalLink = await resolvePortalLink(db, kv, contact.id, event.id, contact.email, origin, mintClaimTokens);
+    const userId = accountMap.get(contact.id) ?? null;
+    const portalLink = await resolvePortalLink(kv, contact.id, event.id, userId, origin, mintClaimTokens);
     targets.push({
       contactId: contact.id,
       submissionId: "",
