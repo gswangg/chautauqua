@@ -185,6 +185,67 @@ describe('AgendaPage render smoke', () => {
       expect(document.querySelector('.chq-unscheduled-tray-header')?.textContent).toBe('Unscheduled (0)');
     });
   });
+
+  // DEC-570: every placed session and every unscheduled tray card is a real
+  // <button> reachable by role, not an invisible `div[draggable]`.
+  it('resolves every placed card and the unscheduled tray card via getAllByRole("button")', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/agenda`]: agendaPayload(),
+    });
+
+    render(<AgendaPage />);
+    await waitFor(() => {
+      expect(screen.getByText('Overlapping Talk A')).toBeInTheDocument();
+    });
+
+    const buttons = screen.getAllByRole('button');
+    const names = buttons.map((b) => b.getAttribute('aria-label')).filter(Boolean);
+    expect(names).toEqual(expect.arrayContaining(['S-001: Overlapping Talk A (conflict)', 'S-002: Overlapping Talk B (conflict)', 'S-003: Unplaced Talk']));
+  });
+
+  // DEC-570: clicking an unscheduled card arms it, revealing empty-cell
+  // click-to-place buttons; clicking one fires the same PUT as drag-drop.
+  it('arms a session by click and places it via a keyboard-operable cell button', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/agenda`]: agendaPayload(),
+      'PUT /api/v1/submissions/sub-3/slot': { status: 200, body: { conflicts: [], summary: { unplaced: 0, conflicts: 1 } } },
+    });
+
+    render(<AgendaPage />);
+    await waitFor(() => {
+      expect(screen.getByText('Overlapping Talk A')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'S-003: Unplaced Talk' }));
+
+    expect(screen.getByText(/Placing S-003 — Esc to cancel/)).toBeInTheDocument();
+
+    const placeButtons = screen.getAllByRole('button', { name: /^Place S-003 at \d{1,2}:\d{2}[ap]m in /i });
+    expect(placeButtons.length).toBeGreaterThan(0);
+    // TBD column reads "in TBD" specifically.
+    expect(placeButtons.some((b) => b.getAttribute('aria-label')?.endsWith('in TBD'))).toBe(true);
+
+    fireEvent.click(placeButtons[0]!);
+
+    await waitFor(() => {
+      expect(document.querySelector('.chq-unscheduled-tray-header')?.textContent).toBe('Unscheduled (0)');
+    });
+    // Placing bar is dismissed after placement.
+    expect(screen.queryByText(/Placing S-003/)).toBeNull();
+  });
+
+  it('never renders the literal text "undefined" anywhere in the tree', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/agenda`]: agendaPayload(),
+    });
+
+    render(<AgendaPage />);
+    await waitFor(() => {
+      expect(screen.getByText('Overlapping Talk A')).toBeInTheDocument();
+    });
+
+    expect(document.body.textContent).not.toMatch(/undefined/);
+  });
 });
 
 /** Minimal jsdom-safe MediaQueryList stand-in so useIsPhone's

@@ -3,6 +3,13 @@ import type { AgendaConflict, AgendaRoom, AgendaTrack, PlacedAgendaSession } fro
 import { SessionCard } from './SessionCard';
 import { assignLanes, formatMinutes, gridRowEnd, minutesToGridRow, snapToGrid, totalGridRows } from './gridMath';
 
+export interface ArmedAgendaSession {
+  submissionId: string;
+  ref: string;
+  title: string;
+  durationMin: number;
+}
+
 interface DayGridProps {
   day: string;
   rooms: AgendaRoom[];
@@ -13,6 +20,15 @@ interface DayGridProps {
   dayEndMin: number;
   gridMin: number;
   onDropPlace: (submissionId: string, roomId: string | null, startMin: number, endMin: number) => void;
+  /** Keyboard/click placement path (DEC-570): the session currently armed
+   * for click-to-place, if any. */
+  armed: ArmedAgendaSession | null;
+  /** Arms a placed card as the placement source (only fires when nothing is
+   * currently armed — see handleCardSelect). */
+  onArm: (session: ArmedAgendaSession) => void;
+  /** Writes the currently-armed session into the given room/startMin slot
+   * (empty cell button, or clicking an already-placed card while armed). */
+  onPlaceAt: (roomId: string | null, startMin: number) => void;
 }
 
 const TBD_ROOM_ID = null;
@@ -31,10 +47,14 @@ export function DayGrid({
   dayEndMin,
   gridMin,
   onDropPlace,
+  armed,
+  onArm,
+  onPlaceAt,
 }: DayGridProps) {
   const rows = totalGridRows(dayStartMin, dayEndMin, gridMin);
   const columns = [...rooms.map((r) => r.id), '__tbd__'];
   const dayPlaced = placed.filter((s) => s.day === day);
+  const roomNameById = new Map(rooms.map((r) => [r.id, r.name]));
 
   // Overlapping blocks in the same room column render side-by-side via
   // assignLanes (DEC-140 pattern) so every card stays an independent drop
@@ -48,23 +68,39 @@ export function DayGrid({
     lanesByRoom.set(key, assignLanes(items));
   }
 
-  function durationForDrag(e: DragEvent<HTMLDivElement>): number {
+  function durationForDrag(e: DragEvent<Element>): number {
     const raw = e.dataTransfer.getData('application/x-chq-duration-min');
     const parsed = Number(raw);
     return Number.isFinite(parsed) && parsed > 0 ? parsed : 30;
   }
 
-  function handleDragOver(e: DragEvent<HTMLDivElement>) {
+  function handleDragOver(e: DragEvent<Element>) {
     e.preventDefault();
   }
 
-  function handleDrop(e: DragEvent<HTMLDivElement>, roomId: string | null, rowStartMin: number) {
+  function handleDrop(e: DragEvent<Element>, roomId: string | null, rowStartMin: number) {
     e.preventDefault();
     const submissionId = e.dataTransfer.getData('text/plain');
     if (!submissionId) return;
     const duration = durationForDrag(e);
     const startMin = snapToGrid(rowStartMin, dayStartMin, dayEndMin - duration, gridMin);
     onDropPlace(submissionId, roomId, startMin, startMin + duration);
+  }
+
+  /** A room/startMin cell is occupied when a placed session in that room
+   * covers this 15-minute row (DEC-570: only truly empty cells become
+   * click-to-place buttons — an occupied cell's placed card is the click
+   * target instead, via handleCardSelect). */
+  function isOccupied(roomId: string | null, minutes: number): boolean {
+    return dayPlaced.some((s) => roomKey(s.roomId) === roomKey(roomId) && s.startMin <= minutes && minutes < s.endMin);
+  }
+
+  function handleCardSelect(session: PlacedAgendaSession) {
+    if (armed) {
+      onPlaceAt(session.roomId, session.startMin);
+    } else {
+      onArm({ submissionId: session.submissionId, ref: session.ref, title: session.title, durationMin: session.endMin - session.startMin });
+    }
   }
 
   const gridTemplateColumns = `80px repeat(${columns.length}, minmax(140px, 1fr))`;
@@ -99,11 +135,29 @@ export function DayGrid({
       {timeRowLabels.map((minutes, rowIdx) =>
         columns.map((colId, colIdx) => {
           const roomId = colId === '__tbd__' ? TBD_ROOM_ID : colId;
+          const roomName = colId === '__tbd__' ? 'TBD' : (roomNameById.get(colId) ?? colId);
+          const cellStyle = { gridColumn: colIdx + 2, gridRow: rowIdx + 2 };
+          if (armed && !isOccupied(roomId, minutes)) {
+            return (
+              <button
+                key={`cell-${colId}-${minutes}`}
+                type="button"
+                className="chq-day-grid-cell-btn"
+                style={cellStyle}
+                onDragOver={handleDragOver}
+                onDrop={(e) => handleDrop(e, roomId, minutes)}
+                onClick={() => onPlaceAt(roomId, minutes)}
+                aria-label={`Place ${armed.ref} at ${formatMinutes(minutes)} in ${roomName}`}
+                data-room-id={colId}
+                data-start-min={minutes}
+              />
+            );
+          }
           return (
             <div
               key={`cell-${colId}-${minutes}`}
               className="chq-day-grid-cell"
-              style={{ gridColumn: colIdx + 2, gridRow: rowIdx + 2 }}
+              style={cellStyle}
               onDragOver={handleDragOver}
               onDrop={(e) => handleDrop(e, roomId, minutes)}
               data-room-id={colId}
@@ -136,6 +190,8 @@ export function DayGrid({
             }}
             onDragOver={handleDragOver}
             onDrop={(e) => handleDrop(e, session.roomId, session.startMin)}
+            onSelect={() => handleCardSelect(session)}
+            selected={armed?.submissionId === session.submissionId}
           />
         );
       })}

@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { apiDelete, apiGet, apiPost, apiPut, ApiError } from '../lib/api';
 import { useCurrentEvent } from '../lib/useCurrentEvent';
 import { useIsPhone } from '../lib/useIsPhone';
-import { DayGrid } from './agenda/DayGrid';
+import { useEscapeKey } from '../lib/useEscapeKey';
+import { DayGrid, type ArmedAgendaSession } from './agenda/DayGrid';
 import { UnscheduledTray } from './agenda/UnscheduledTray';
 import { PhoneAgenda } from './agenda/PhoneAgenda';
 import { placeOptimistically, reconcileConflictsSummary, unscheduleOptimistically } from './agenda/state';
@@ -24,6 +25,9 @@ export function AgendaPage() {
   const [autoScheduling, setAutoScheduling] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [armed, setArmed] = useState<ArmedAgendaSession | null>(null);
+
+  useEscapeKey(armed !== null, () => setArmed(null));
 
   function loadAgenda(id: string) {
     setLoading(true);
@@ -60,6 +64,13 @@ export function AgendaPage() {
       setAgenda(previous);
       setError(err instanceof ApiError ? `Placement failed: ${err.message}` : 'Placement failed');
     }
+  }
+
+  function handlePlaceAt(roomId: string | null, startMin: number) {
+    if (!armed) return;
+    const current = armed;
+    setArmed(null);
+    void handlePlace(current.submissionId, roomId, startMin, startMin + current.durationMin);
   }
 
   async function handleUnschedule(submissionId: string) {
@@ -131,6 +142,15 @@ export function AgendaPage() {
       <div className="chq-agenda-head">
         <h1 className="chq-page-title">Agenda</h1>
       </div>
+
+      {armed && (
+        <div className="chq-agenda-armed-bar" role="status">
+          Placing {armed.ref} — Esc to cancel
+          <button type="button" className="chq-link-button" onClick={() => setArmed(null)}>
+            Cancel
+          </button>
+        </div>
+      )}
 
       {error && <div className="chq-error-banner">{error}</div>}
       {toast && (
@@ -204,6 +224,9 @@ export function AgendaPage() {
                   dayEndMin={DAY_END_MIN}
                   gridMin={GRID_MIN}
                   onDropPlace={handlePlace}
+                  armed={armed}
+                  onArm={setArmed}
+                  onPlaceAt={handlePlaceAt}
                 />
               )}
               <UnscheduledTray
@@ -211,6 +234,8 @@ export function AgendaPage() {
                 tracks={agenda.tracks}
                 conflicts={agenda.conflicts}
                 onDropUnschedule={handleUnschedule}
+                armed={armed}
+                onArm={setArmed}
               />
             </div>
           )}

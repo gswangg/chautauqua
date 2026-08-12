@@ -22,23 +22,34 @@ interface SessionCardProps {
    * actually be created through the UI). DayGrid passes its own
    * onDragOver/onDrop through so an occupied card is just as valid a drop
    * target as an empty cell. */
-  onDragOver?: (e: DragEvent<HTMLDivElement>) => void;
-  onDrop?: (e: DragEvent<HTMLDivElement>) => void;
+  onDragOver?: (e: DragEvent<HTMLButtonElement>) => void;
+  onDrop?: (e: DragEvent<HTMLButtonElement>) => void;
   /** Shows the ⋮⋮ drag affordance in the card header (the unscheduled
    * tray's list-of-cards presentation; placed day-grid cards omit it). */
   dragHandle?: boolean;
+  /** Keyboard/click placement path (DEC-570): clicking a card arms it
+   * (nothing armed) or places the currently-armed session into this card's
+   * slot (something armed). Optional so read-only presentations of a card
+   * are unaffected. */
+  onSelect?: () => void;
+  /** True while this card is the currently-armed placement source. */
+  selected?: boolean;
 }
 
-/** Drag-drop source card for a session; track colors render as a left
- * accent border on an unconflicted card only (DEC-021, DEC-367/369 redesign:
- * a conflicted card inverts to ink/on-ink instead of carrying a track
- * accent). Draggable via HTML5 DnD, carrying the submission id as plain
- * text + a scoped MIME type. */
-export function SessionCard({ session, tracks, conflicts, style, className, onDragOver, onDrop, dragHandle }: SessionCardProps) {
-  const accentColor = tracks.find((t) => session.trackIds.includes(t.id))?.color ?? undefined;
+/** Drag-drop AND keyboard-operable source card for a session (DEC-570/571):
+ * the root is a real `<button>` so it's reachable by Tab and has an
+ * accessible name, not just a `div[draggable]` invisible to the a11y tree.
+ * The left accent is always the brand color; a conflicted card inverts to
+ * ink/on-ink instead (DEC-367/369/571 — track identity is carried by the
+ * track NAME rendered as text, never by a track color swatch). Draggable
+ * via HTML5 DnD, carrying the submission id as plain text + a scoped MIME
+ * type. */
+export function SessionCard({ session, tracks, conflicts, style, className, onDragOver, onDrop, dragHandle, onSelect, selected }: SessionCardProps) {
   const conflicted = conflicts.some((c) => c.submissionIds.includes(session.submissionId));
+  const trackNames = tracks.filter((t) => session.trackIds.includes(t.id)).map((t) => t.name);
+  const accessibleName = `${session.ref}: ${session.title}${conflicted ? ' (conflict)' : ''}`;
 
-  function handleDragStart(e: DragEvent<HTMLDivElement>) {
+  function handleDragStart(e: DragEvent<HTMLButtonElement>) {
     e.dataTransfer.setData(AGENDA_DRAG_MIME, session.submissionId);
     e.dataTransfer.setData('text/plain', session.submissionId);
     if ('startMin' in session && 'endMin' in session) {
@@ -49,13 +60,17 @@ export function SessionCard({ session, tracks, conflicts, style, className, onDr
   }
 
   return (
-    <div
-      className={`chq-session-card${conflicted ? ' chq-session-card-conflict' : ''}${className ? ` ${className}` : ''}`}
-      style={{ ...(conflicted ? {} : { borderLeftColor: accentColor ?? 'var(--chq-border)' }), ...style }}
+    <button
+      type="button"
+      className={`chq-session-card${conflicted ? ' chq-session-card-conflict' : ''}${selected ? ' chq-session-card-selected' : ''}${className ? ` ${className}` : ''}`}
+      style={style}
       draggable
       onDragStart={handleDragStart}
       onDragOver={onDragOver}
       onDrop={onDrop}
+      onClick={onSelect}
+      aria-label={accessibleName}
+      aria-pressed={selected ? true : undefined}
       data-submission-id={session.submissionId}
       data-conflict={conflicted ? 'true' : undefined}
     >
@@ -68,12 +83,15 @@ export function SessionCard({ session, tracks, conflicts, style, className, onDr
         )}
       </div>
       <div className="chq-session-card-title">{session.title}</div>
+      {trackNames.length > 0 && (
+        <div className="chq-session-card-tracks">{trackNames.join(', ')}</div>
+      )}
       {session.speakers.length > 0 && (
         <div className="chq-session-card-speakers">
           {session.speakers.map((s) => s.name).join(', ')}
         </div>
       )}
       <ConflictChip conflicts={conflicts} submissionId={session.submissionId} />
-    </div>
+    </button>
   );
 }
