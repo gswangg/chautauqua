@@ -26,6 +26,20 @@ export interface EmbedOptions {
   accent?: string;
 }
 
+// DEC-490 / DEC-489: the knobs a given public surface actually honors, per
+// DEC-489's fixed surface->knob table. buildEmbedUrl consults this so it
+// never serializes a param the surface ignores, and EmbedsPanel.tsx consults
+// it so it never renders a control for a knob the surface ignores.
+export type EmbedKnob = 'trackId' | 'day' | 'limit' | 'fields' | 'accent';
+
+export const EMBED_KNOBS_BY_SURFACE: Record<EmbedSurface, readonly EmbedKnob[]> = {
+  sessions: ['trackId', 'limit', 'fields', 'accent'],
+  speakers: ['limit', 'accent'],
+  gallery: ['limit', 'accent'],
+  agenda: ['day', 'accent'],
+  schedule: ['day', 'accent'],
+};
+
 /** Builds the public embed URL for a surface + format + filter/branding
  * options, per DEC-289. `origin` is expected to be `window.location.origin`
  * (or an equivalent) supplied by the caller — this module never reads
@@ -45,14 +59,22 @@ export function buildEmbedUrl(origin: string, slug: string, surface: EmbedSurfac
     throw new Error(`Unknown embed format: ${String(format)}`);
   }
 
+  // DEC-490: only serialize knobs the surface's table lists — never a param
+  // the server ignores for this surface.
+  const knobs = format === 'ics' ? [] : EMBED_KNOBS_BY_SURFACE[surface];
   const params = new URLSearchParams();
-  if (opts.trackId) params.set('trackId', opts.trackId);
-  if (opts.day) params.set('day', opts.day);
-  if (opts.limit !== undefined) params.set('limit', String(opts.limit));
-  if (opts.fields && opts.fields.length > 0 && opts.fields.length < EMBED_FIELDS.length) {
+  if (knobs.includes('trackId') && opts.trackId) params.set('trackId', opts.trackId);
+  if (knobs.includes('day') && opts.day) params.set('day', opts.day);
+  if (knobs.includes('limit') && opts.limit !== undefined) params.set('limit', String(opts.limit));
+  if (
+    knobs.includes('fields') &&
+    opts.fields &&
+    opts.fields.length > 0 &&
+    opts.fields.length < EMBED_FIELDS.length
+  ) {
     params.set('fields', opts.fields.join(','));
   }
-  if (opts.accent) params.set('accent', opts.accent.replace(/^#/, ''));
+  if (knobs.includes('accent') && opts.accent) params.set('accent', opts.accent.replace(/^#/, ''));
 
   const qs = params.toString();
   return `${origin}${path}${qs ? `?${qs}` : ''}`;
