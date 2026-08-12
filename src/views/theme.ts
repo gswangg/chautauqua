@@ -72,7 +72,7 @@ export const THEME_CSS = `
   }
 
   *, *::before, *::after { box-sizing: border-box; }
-  html, body { max-width: 100%; overflow-x: hidden; }
+  html, body { max-width: 100%; }
   body {
     margin: 0;
     font-family: 'Figtree', system-ui, sans-serif;
@@ -297,6 +297,10 @@ export const THEME_CSS = `
     justify-content: space-between;
     gap: 16px;
     padding: 15px 0 0;
+  }
+
+  @media (max-width: 700px) {
+    body { overflow-wrap: anywhere; }
   }
 `;
 

@@ -218,6 +218,13 @@ a:hover {
 
   .chq-main {
     padding: 16px 16px 84px;
+    overflow-wrap: anywhere;
+  }
+
+  .chq-row > *,
+  .chq-section-head > *,
+  .chq-kv > * {
+    min-width: 0;
   }
 
   .chq-page-title {
