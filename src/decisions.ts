@@ -408,3 +408,7 @@ export const DEC_402 = "Every `<table className=\"chq-table\">` in the admin SPA
 export const DEC_403 = "Whatever the mobile pass visits, the desktop pass visits: routeManifest is the union of SPA routes and every no-login surface";
 export const DEC_404 = "At phone width no user-supplied string may widen the page: `overflow-wrap: anywhere` belongs to the shell's one 700px block, in the SPA and the SSR theme both";
 export const DEC_405 = "No stylesheet hides horizontal overflow at the document level; a region that must be wider than the viewport gets its own scroller";
+export const DEC_406 = "Every interactive control in the admin SPA carries a shell class; three surfaces never got the redesign's control tiers, and each gets its own lane before any repo-wide guard";
+export const DEC_407 = "The walkthrough runs every area and prints a summary; one area's failure never hides another's, and J2 asserts the word the shipped copy keeps";
+export const DEC_408 = "Public dates render in the event's own timezone, never UTC; one pure helper, and it throws rather than falling back";
+export const DEC_409 = "The 2px olive focus ring is declared in both stylesheet roots, and no rule may remove an outline";
