@@ -15,7 +15,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { PERF_EVENT_ID, PERF_EVENT_SLUG, PERF_TOPICS } from "./perf-seed-lib";
+import { PERF_PROFILES, PERF_TOPICS } from "./perf-seed-lib";
 import { MAX_PUBLIC_PAGE, MAX_PUBLIC_ROWS } from "../src/server/repo/public/bounds";
 import {
   PERF_P95_BUDGET_MS,
@@ -26,8 +26,16 @@ import {
   gradePerfCheck,
   joinIcsIds,
   planPerfPages,
+  resolvePerfProfileName,
   type PerfClass,
 } from "./perf-smoke-lib";
+
+// DEC-644: the profile threaded through the seeder (DEC-619/DEC-645) must be
+// the same one this harness measures — `--profile=<name>` / PERF_PROFILE,
+// defaulting to `default`, resolved once at module load.
+const PERF_PROFILE = PERF_PROFILES[resolvePerfProfileName(process.argv, process.env)];
+const PERF_EVENT_ID = PERF_PROFILE.eventId;
+const PERF_EVENT_SLUG = PERF_PROFILE.eventSlug;
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(SCRIPT_DIR, "..");
@@ -40,6 +48,11 @@ const MEASURED_ITERATIONS = 30;
 // DEC-088 is the single source for these literals (the perf-seed task owns
 // scripts/perf-seed-lib.ts; this file hardcodes them locally per DEC-089's
 // file-disjoint split rather than importing new exports from that module).
+// DEC-644/DEC-645: these are `default`-profile-only literals today — the
+// `aie` profile does not seed a plan/reviewer fixture set, so the plan-
+// progress/rating-PUT/reviewer-queue checks below are SKIPPED (not run,
+// not silently omitted) whenever a non-`default` profile is resolved.
+// DEC-645's lane is expected to make these profile-resolved.
 const PERF_PLAN_ID = "seed_perf_plan_0001";
 const PERF_REVIEWER_EMAIL = "perf.reviewer.1@example-perf.test";
 const PERF_REVIEWER_PASSWORD = "PerfReviewer!2027";
@@ -238,11 +251,21 @@ async function measureOverheadFloor(): Promise<number> {
 }
 
 async function main(): Promise<void> {
+  console.log(
+    `perf:smoke profile=${PERF_PROFILE.name} event=${PERF_EVENT_SLUG} submissions=${PERF_PROFILE.submissionCount} contacts=${PERF_PROFILE.contactCount}`,
+  );
+
   await waitForHealth();
   const overheadFloorMs = await measureOverheadFloor();
   const fixture: FixtureData = JSON.parse(readFileSync(FIXTURE_PATH, "utf-8"));
   const cookies = await login(fixture.identities.organizer.email, fixture.identities.organizer.password);
   const headers = { cookie: cookieHeader(cookies) };
+  // DEC-644: PERF_PLAN_ID/PERF_REVIEWER_EMAIL are `default`-profile-only
+  // fixtures (see the comment on their declarations above) — only log in as
+  // the reviewer, and only run the plan/reviewer-scoped checks below, when
+  // the resolved profile is `default`.
+  const isDefaultProfile = PERF_PROFILE.name === "default";
+  const skippedChecks: string[] = [];
 
   // DEC-089 one-shot untimed assertion: 301 ids on the public, unauthenticated
   // schedule.ics route must be rejected with exactly 400 (DEC-080 cap). Uses
@@ -288,8 +311,9 @@ async function main(): Promise<void> {
   const icsQuery = joinIcsIds(icsIds);
   const ratingSubmissionId = icsIds[0]!;
 
-  const reviewerCookies = await login(PERF_REVIEWER_EMAIL, PERF_REVIEWER_PASSWORD);
-  const reviewerHeaders = { cookie: cookieHeader(reviewerCookies) };
+  const reviewerHeaders = isDefaultProfile
+    ? { cookie: cookieHeader(await login(PERF_REVIEWER_EMAIL, PERF_REVIEWER_PASSWORD)) }
+    : null;
 
   const checks: TimedCheck[] = [
     {
@@ -486,11 +510,6 @@ async function main(): Promise<void> {
       },
     },
     {
-      name: "plan progress (12 reviewers)",
-      cls: "read",
-      run: () => fetch(`${PERF_URL}/api/v1/plans/${PERF_PLAN_ID}/progress`, { headers }),
-    },
-    {
       // DEC-266 q search against the 800-contact perf pool (SPEC's top-of-
       // range speaker network); every seeded contact's firstName is
       // 'Perf<n>', so q=perf matches every row and exercises the
@@ -500,18 +519,31 @@ async function main(): Promise<void> {
       run: () => fetch(`${PERF_URL}/api/v1/contacts?q=perf&page=1&perPage=50`, { headers }),
     },
     {
+      // DEC-644: `default`-profile-only (reviewerHeaders is only ever built
+      // when isDefaultProfile — see the DEFAULT_ONLY_CHECK_NAMES filter
+      // below, which drops this check before it can run against a null
+      // reviewerHeaders).
       name: "rating PUT",
       cls: "write",
       run: () =>
         fetch(`${PERF_URL}/api/v1/review/plans/${PERF_PLAN_ID}/evaluations/${ratingSubmissionId}`, {
           method: "PUT",
           headers: {
-            ...reviewerHeaders,
+            ...reviewerHeaders!,
             "content-type": "application/json",
             "x-chq-csrf": "1",
           },
           body: JSON.stringify({ scores: { overall: 4 } }),
         }),
+    },
+    {
+      // DEC-644: verifies the scale mandate's called-out "O(n) hashing —
+      // verify, don't assume" bar (contacts/duplicates, src/routes/api/
+      // contacts/crud.ts:114) as a timed read rather than an assumption.
+      // Runs against every profile.
+      name: "contacts duplicates",
+      cls: "read",
+      run: () => fetch(`${PERF_URL}/api/v1/contacts/duplicates?page=1&perPage=50`, { headers }),
     },
     {
       // task-w18-d: DEC-338 — onboarding grid at perf scale (800 speakers x
@@ -524,9 +556,10 @@ async function main(): Promise<void> {
     {
       // task-w18-d: DEC-338 — reviewer queue against the DEC-088 12-reviewer/
       // 600-evaluation seed, using the reviewer cookies already built above.
+      // DEC-644: `default`-profile-only, see the "rating PUT" comment above.
       name: "reviewer queue",
       cls: "read",
-      run: () => fetch(`${PERF_URL}/api/v1/review/plans/${PERF_PLAN_ID}/queue`, { headers: reviewerHeaders }),
+      run: () => fetch(`${PERF_URL}/api/v1/review/plans/${PERF_PLAN_ID}/queue`, { headers: reviewerHeaders! }),
     },
     {
       // task-w18-d: DEC-338 — email log list at perf scale (5,000 rows).
@@ -564,10 +597,32 @@ async function main(): Promise<void> {
     },
   ];
 
+  // DEC-644: PERF_PLAN_ID/PERF_REVIEWER_EMAIL are `default`-profile-only
+  // fixtures today (DEC-645's lane is making those profile-resolved) — a
+  // non-`default` profile reports these as an explicit SKIPPED row naming
+  // the reason, never silently omitting them.
+  const DEFAULT_ONLY_CHECK_NAMES = new Set([
+    "plan progress (12 reviewers)",
+    "rating PUT",
+    "reviewer queue",
+    "plan results (page 1)",
+  ]);
+  const runnableChecks = isDefaultProfile
+    ? checks
+    : checks.filter((c) => {
+        if (DEFAULT_ONLY_CHECK_NAMES.has(c.name)) {
+          skippedChecks.push(
+            `${c.name}: SKIPPED — PERF_PLAN_ID/PERF_REVIEWER_EMAIL are \`default\`-profile-only fixtures today (DEC-644; DEC-645's lane is making those profile-resolved)`,
+          );
+          return false;
+        }
+        return true;
+      });
+
   const results: ReturnType<typeof gradePerfCheck>[] = [];
   let overBudget = false;
 
-  for (const check of checks) {
+  for (const check of runnableChecks) {
     const samples = await timeCheck(check);
     if (samples === null) continue;
     const rawP95 = computeP95(samples);
@@ -590,6 +645,9 @@ async function main(): Promise<void> {
     if (!r.ok && r.reason) {
       console.log(`      ${r.reason}`);
     }
+  }
+  for (const skipped of skippedChecks) {
+    console.log(`  ${"SKIPPED".padEnd(nameWidth)}  ${skipped}`);
   }
   console.log("");
 

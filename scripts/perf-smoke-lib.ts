@@ -172,3 +172,31 @@ export function assertMinCsvLines(name: string, body: string, minLines: number):
     throw new Error(`${name}: expected >= ${minLines} CSV lines, got ${n}`);
   }
 }
+
+/** The known perf profile names — kept as a local literal union rather than
+ * importing PERF_PROFILES's keys here, matching this file's existing
+ * dependency-free/DOM-IO-free contract (no scripts/perf-seed-lib import). */
+const KNOWN_PERF_PROFILE_NAMES = ["default", "aie"] as const;
+export type PerfProfileName = (typeof KNOWN_PERF_PROFILE_NAMES)[number];
+
+/**
+ * Resolves which perf profile scripts/perf-smoke.ts should measure against,
+ * mirroring scripts/perf-seed.ts's own resolveProfileName precedence (DEC-644):
+ * a `--profile=<name>` argv flag wins, else the PERF_PROFILE env var, else
+ * "default". Throws naming the known profile names on anything else — a
+ * mistyped/unknown profile must fail loudly, not silently fall back to
+ * `default` and measure the wrong event.
+ */
+export function resolvePerfProfileName(
+  argv: readonly string[],
+  env: Record<string, string | undefined>,
+): PerfProfileName {
+  const flag = argv.find((a) => a.startsWith("--profile="));
+  const name = flag ? flag.slice("--profile=".length) : (env.PERF_PROFILE ?? "default");
+  if (!(KNOWN_PERF_PROFILE_NAMES as readonly string[]).includes(name)) {
+    throw new Error(
+      `resolvePerfProfileName: unknown perf profile '${name}'. Known profiles: ${KNOWN_PERF_PROFILE_NAMES.join(", ")}`,
+    );
+  }
+  return name as PerfProfileName;
+}

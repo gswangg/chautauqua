@@ -12,6 +12,7 @@
     "perf:seed": "tsx scripts/perf-seed.ts && wrangler d1 execute chautauqua --local --file=.perf-seed.sql",
     "perf:seed:aie": "tsx scripts/perf-seed.ts --profile=aie && wrangler d1 execute chautauqua --local --file=.perf-seed.sql",
     "perf:smoke": "tsx scripts/perf-smoke.ts",
+    "perf:smoke:aie": "tsx scripts/perf-smoke.ts --profile=aie",
     "bundle:check": "tsx scripts/bundle-check.ts",
     "walkthrough": "tsx scripts/walkthrough.ts",
     "gate:render-sweep": "tsx scripts/render-sweep.ts",
