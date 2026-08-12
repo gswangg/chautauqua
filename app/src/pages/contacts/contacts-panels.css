@@ -530,4 +530,34 @@
     align-items: center;
     border-radius: var(--chq-r-ctl-phone);
   }
+
+  .chq-contacts-import-preview thead {
+    display: none;
+  }
+
+  .chq-contacts-import-preview,
+  .chq-contacts-import-preview tbody {
+    display: block;
+    width: 100%;
+  }
+
+  .chq-contacts-import-preview tbody tr {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--chq-hairline);
+  }
+
+  .chq-contacts-import-preview tbody tr:first-child {
+    padding-top: 0;
+  }
+
+  .chq-contacts-import-preview tbody td {
+    display: block;
+    padding: 0;
+    border-bottom: none;
+    overflow-wrap: anywhere;
+  }
 }

@@ -24,7 +24,7 @@ export function ExportsPanel() {
       {error && <div className="chq-error" role="alert">{error}</div>}
 
       {eventId && (
-        <table className="chq-table">
+        <table className="chq-table chq-settings-exports-table">
           <thead>
             <tr>
               <th>Data</th>

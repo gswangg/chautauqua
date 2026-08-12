@@ -194,7 +194,7 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
                 </table>
 
                 <h3 className="chq-section-label">Preview (first {PREVIEW_ROWS} rows)</h3>
-                <table className="chq-table">
+                <table className="chq-table chq-contacts-import-preview">
                   <thead>
                     <tr>
                       <th>Email</th>
