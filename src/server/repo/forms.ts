@@ -1,7 +1,7 @@
 // CFP form-builder repo layer (DEC-012): the only code here that touches
 // drizzle row types. Converts to/from the pure src/forms/types.ts shapes.
 
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { newId } from "../../domain/ids";
@@ -245,6 +245,10 @@ export interface CreateFieldInput {
   rule?: FormFieldRule;
 }
 
+// Per-form question ceiling AND the write/echo burst bound for
+// reorderFields below (it issues one UPDATE per field).
+export const MAX_FORM_FIELDS = 200;
+
 export async function createField(db: Db, formId: string, input: CreateFieldInput): Promise<FormFieldRow> {
   const existing = await listFields(db, formId);
   const maxPosition = existing.reduce((max, f) => Math.max(max, f.position), -1);
@@ -307,12 +311,13 @@ export async function describeFieldDependents(
   const siblings = await listFields(db, formId);
   const dependentLabels = siblings.filter((f) => f.id !== fieldId && f.rule?.fieldId === fieldId).map((f) => f.label);
 
-  const answerRows = await db
-    .select({ id: schema.submissionAnswer.id })
+  const countRows = await db
+    .select({ count: sql<number>`count(*)` })
     .from(schema.submissionAnswer)
     .where(eq(schema.submissionAnswer.formFieldId, fieldId));
+  const answerCount = Number(countRows[0]?.count ?? 0);
 
-  return { dependentLabels, answerCount: answerRows.length };
+  return { dependentLabels, answerCount };
 }
 
 /** DEC-300: declared cascade — clears dependent siblings' rules (they become
@@ -331,15 +336,16 @@ export async function deleteFieldCascade(
     await db.update(schema.formField).set({ ruleJson: null, updatedAt: new Date() }).where(eq(schema.formField.id, dependent.id));
   }
 
-  const answerRows = await db
-    .select({ id: schema.submissionAnswer.id })
+  const countRows = await db
+    .select({ count: sql<number>`count(*)` })
     .from(schema.submissionAnswer)
     .where(eq(schema.submissionAnswer.formFieldId, fieldId));
+  const deletedAnswers = Number(countRows[0]?.count ?? 0);
   await db.delete(schema.submissionAnswer).where(eq(schema.submissionAnswer.formFieldId, fieldId));
 
   await db.delete(schema.formField).where(eq(schema.formField.id, fieldId));
 
-  return { clearedRules: dependents.length, deletedAnswers: answerRows.length };
+  return { clearedRules: dependents.length, deletedAnswers };
 }
 
 export async function reorderFields(db: Db, formId: string, orderedIds: string[]): Promise<FormFieldRow[]> {
