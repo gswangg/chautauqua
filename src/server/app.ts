@@ -7,7 +7,7 @@
 import { Hono } from "hono";
 import type { AppEnv } from "./env";
 import { makeDb } from "./context";
-import { sessionLoader, noStoreApi } from "./middleware";
+import { sessionLoader, noStoreByDefault } from "./middleware";
 import { registerErrorHandler } from "./http";
 import { registerNotFoundHandler } from "./not-found";
 import { shouldMountDevMailbox } from "../routes/dev/mailbox";
@@ -37,12 +37,15 @@ export function createBaseApp(): Hono<AppEnv> {
   // ahead of every route sub-app mount (src/index.ts is the only place
   // that mounts routes, per DEC-012).
   app.use("*", bumpPublicVersionMiddleware);
-  // w1-e: every /api/v1 response is request-fresh (no edge/browser caching
-  // of admin/API data) — scoped to the /api/v1 prefix so public SSR
-  // surfaces (which own their own Cache-Control via pubcache.ts) are
-  // untouched.
-  app.use("/api/v1", noStoreApi);
-  app.use("/api/v1/*", noStoreApi);
+  // DEC-658 (was w1-e, /api/v1-only): app-wide default — every response is
+  // request-fresh ('Cache-Control: no-store') UNLESS the handler already
+  // set its own Cache-Control, in which case that value survives untouched.
+  // This is a default, not a prefix allowlist, so it never needs
+  // re-auditing when a new route lands. Public SSR surfaces that
+  // intentionally own a stronger opinion (pubcache.ts, routes/public's
+  // setCacheHeaders, the portal headshot header, the ASSETS binding) keep
+  // their own header because they set it before this runs.
+  app.use("*", noStoreByDefault);
   // DEC-636: deny framing everywhere except /embed/*.
   registerFramingHeaders(app);
 
