@@ -205,3 +205,12 @@ CNT 52% · AIA 88% · EMB 72% · CRM 76% (of judged weight).
    stands (Close link, button order, subtitle, "Abstract" label) — ALSO match the
    mock's placeholder text in every field, and audit placeholders across all modals
    while there (mocks specify them; prod largely omits them).
+
+9. (User re-flagged — STRONGER than item 5's phrasing) **The Views control is poorly
+   BUILT, not merely unintuitive**: expanding "▼ Views (1)" renders a half-anchored
+   box that OVERLAPS the filter toolbar (evidence:
+   chautauqua-research/fidelity/02-submissions/supporting--01-views-disclosure-expanded.png)
+   — neither a popover nor tabs, colliding with adjacent controls. Replace the whole
+   mechanism with the mock's visible VIEW tab row (`Needs triage · All submissions ·
+   Accept queue · All track, unread · Save current as view`) — a first-class row above
+   the toolbar, not a disclosure. Delete the floating box entirely.
