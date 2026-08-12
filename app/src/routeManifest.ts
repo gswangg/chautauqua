@@ -4,6 +4,15 @@
 // (scripts/seed.ts / scripts/seed-lib.ts's seedId helper) so every entry
 // resolves against `npm run seed` data — never invented values.
 //
+// DEC-403: this manifest is the UNION of the SPA's own routes (below) and
+// every no-login surface the mobile pass (scripts/render-sweep.ts's
+// MOBILE_ROUTE_MANIFEST) visits, so the desktop sweep covers everything the
+// mobile sweep covers. The extra entries appended at the bottom of
+// ROUTE_MANIFEST reuse the exact same deterministic seed ids/slug as the
+// mobile manifest (MOBILE_EVENT_SLUG / MOBILE_SESSION_ID / MOBILE_SPEAKER_ID
+// in scripts/render-sweep.ts — same values as EVENT_SLUG/SUBMISSION_ID
+// below, restated here as their own constants for clarity of provenance).
+//
 // Enumerated from:
 //  - app/src/App.tsx (organizer SPA nav routes + submissions/forms +
 //    submissions/:id)
@@ -44,6 +53,9 @@ const SUBMISSION_ID = "seed_submission_0001";
 const REVIEWER_SUBMISSION_ID = "seed_submission_0002";
 const PLAN_ID = "seed_evaluation_plan_0001";
 const TASK_ASSIGNMENT_ID = "seed_task_assignment_0001";
+// Same seed ids as scripts/render-sweep.ts's MOBILE_SESSION_ID / MOBILE_SPEAKER_ID.
+const MOBILE_SESSION_ID = SUBMISSION_ID;
+const MOBILE_SPEAKER_ID = "seed_contact_0001";
 
 export const ROUTE_MANIFEST: readonly RouteManifestEntry[] = [
   // --- Organizer SPA (app/src/App.tsx NAV_SECTIONS + extra Routes) ---
@@ -135,4 +147,24 @@ export const ROUTE_MANIFEST: readonly RouteManifestEntry[] = [
   // wildcard segment; noted in w2-g's task text as an expected merge-train
   // touch on this file.
   { path: "/admin/*", role: "organizer" },
+
+  // --- DEC-403: no-login surfaces the mobile pass visits, not otherwise
+  // reachable from App.tsx's own <Route> tree, added so the desktop sweep
+  // covers everything the mobile sweep covers. ---
+  {
+    path: `/e/${EVENT_SLUG}/sessions/${MOBILE_SESSION_ID}`,
+    role: "public",
+    params: { eventSlug: EVENT_SLUG, sessionId: MOBILE_SESSION_ID },
+  },
+  {
+    path: `/e/${EVENT_SLUG}/speakers/${MOBILE_SPEAKER_ID}`,
+    role: "public",
+    params: { eventSlug: EVENT_SLUG, speakerId: MOBILE_SPEAKER_ID },
+  },
+  { path: `/embed/${EVENT_SLUG}/sessions`, role: "public", params: { eventSlug: EVENT_SLUG } },
+  { path: `/embed/${EVENT_SLUG}/agenda`, role: "public", params: { eventSlug: EVENT_SLUG } },
+  { path: `/embed/${EVENT_SLUG}/speakers`, role: "public", params: { eventSlug: EVENT_SLUG } },
+  { path: "/login", role: "public" },
+  { path: "/docs/api", role: "public" },
+  { path: "/dev/mailbox", role: "public" },
 ] as const;
