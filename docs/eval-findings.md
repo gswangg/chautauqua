@@ -319,3 +319,9 @@ mock shows criteria but not their editing flow; prod's invented flow is unintuit
     (seen: Comms search; pipeline board). Rule: loading indicators appear only after a
     ~250ms delay (CSS animation-delay or timer), and empty-states never render while a
     load is in flight. One shared helper/class, applied everywhere a list fetches.
+
+21. RETRACTION (user-verified live): the Contacts drawer "dim backdrop doesn't cover
+    full page height" finding is a SCREENSHOT ARTIFACT — fixed-position overlays
+    render viewport-only in fullPage captures. The backdrop is fine in a real browser.
+    Do NOT change it. (General note for verification agents: never judge
+    fixed-position elements from fullPage screenshots; use viewport captures.)
