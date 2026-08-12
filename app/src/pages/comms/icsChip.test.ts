@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { formatIcsChip } from './icsChip';
 
 describe('formatIcsChip', () => {
@@ -8,6 +8,7 @@ describe('formatIcsChip', () => {
       endUtc: '2026-09-01T18:00:00.000Z',
       room: 'Main Hall',
       sequence: 0,
+      timeZone: 'America/Los_Angeles',
     });
     expect(chip).toContain('Main Hall');
     expect(chip).not.toContain('update #');
@@ -19,6 +20,7 @@ describe('formatIcsChip', () => {
       endUtc: '2026-09-01T18:00:00.000Z',
       room: null,
       sequence: 0,
+      timeZone: 'America/Los_Angeles',
     });
     expect(chip).toContain('room TBD');
   });
@@ -29,6 +31,7 @@ describe('formatIcsChip', () => {
       endUtc: '2026-09-01T18:00:00.000Z',
       room: '   ',
       sequence: 0,
+      timeZone: 'America/Los_Angeles',
     });
     expect(chip).toContain('room TBD');
   });
@@ -39,6 +42,7 @@ describe('formatIcsChip', () => {
       endUtc: '2026-09-01T18:00:00.000Z',
       room: 'Main Hall',
       sequence: 0,
+      timeZone: 'America/Los_Angeles',
     });
     expect(chip).not.toMatch(/update #/);
   });
@@ -49,6 +53,7 @@ describe('formatIcsChip', () => {
       endUtc: '2026-09-01T18:00:00.000Z',
       room: 'Main Hall',
       sequence: 1,
+      timeZone: 'America/Los_Angeles',
     });
     expect(chip).toContain('update #1');
   });
@@ -59,7 +64,43 @@ describe('formatIcsChip', () => {
       endUtc: '2026-09-01T18:00:00.000Z',
       room: 'Main Hall',
       sequence: 3,
+      timeZone: 'America/Los_Angeles',
     });
     expect(chip).toContain('update #3');
+  });
+
+  // DEC-494 live repro: an organizer on EDT proofreading a notification for a
+  // 09:00 Pacific session must see the event's own local time (with zone
+  // abbreviation), never their own machine's ambient zone. Proven here by
+  // asserting the SAME literal chip text under two distinct ambient
+  // process.env.TZ values, neither of which is the event's zone.
+  describe('is independent of the ambient machine timezone (DEC-494)', () => {
+    const originalTz = process.env.TZ;
+
+    afterEach(() => {
+      if (originalTz === undefined) delete process.env.TZ;
+      else process.env.TZ = originalTz;
+    });
+
+    const ics = {
+      startUtc: '2027-05-12T16:00:00.000Z', // 09:00 America/Los_Angeles (PDT)
+      endUtc: '2027-05-12T16:45:00.000Z',
+      room: 'Main Stage',
+      sequence: 0,
+      timeZone: 'America/Los_Angeles',
+    };
+
+    it('renders the same chip text under America/New_York and Asia/Tokyo ambient zones', () => {
+      process.env.TZ = 'America/New_York';
+      const underEastern = formatIcsChip(ics);
+
+      process.env.TZ = 'Asia/Tokyo';
+      const underTokyo = formatIcsChip(ics);
+
+      expect(underEastern).toBe(underTokyo);
+      expect(underEastern).toContain('9:00');
+      expect(underEastern).toMatch(/PDT/);
+      expect(underEastern).not.toContain('12:00'); // the ambient-zone bug this closes
+    });
   });
 });

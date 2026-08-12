@@ -2,11 +2,14 @@
 // unscheduled-rejection field shape, use-then-bump SEQUENCE semantics, and
 // LOCATION omission when no room is assigned yet.
 
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { Hono } from "hono";
 import { unscheduledIcsFields } from "../src/routes/comms";
 import { chunkIds } from "../src/lib/chunk";
 import type { IcsScheduleRow } from "../src/server/repo/comms";
 import { buildIcsEvent, ICS_ORGANIZER_EMAIL, type IcsOptions } from "../src/mail/ics";
+import { registerErrorHandler } from "../src/server/http";
+import type { AppEnv, AuthInfo } from "../src/server/env";
 
 const requestOpts: IcsOptions = {
   method: "REQUEST",
@@ -149,5 +152,115 @@ describe("chunkIds (D1 bound-parameter batching for compose data loading)", () =
     const batches = chunkIds(ids);
     expect(batches.every((b: string[]) => b.length <= 90)).toBe(true);
     expect(batches.flat()).toEqual(ids);
+  });
+});
+
+// DEC-494: the compose-preview payload's per-item ics.timeZone must equal
+// the OWNING EVENT's stored timezone, not UTC/undefined — the SPA renders
+// the calendar chip from this field instead of the viewer's ambient zone.
+//
+// vi.mock is hoisted above all module-scope declarations, so the mock
+// factories below reference only module-scope `const`/`function` bindings
+// declared above them at file scope (never a variable local to the
+// describe block) to avoid a TDZ ReferenceError at hoist time.
+const ICS_TZ_ORG_A = "org-a";
+const ICS_TZ_ORIGIN = "https://events.example.com";
+
+const icsTzEvent = {
+  id: "evt-1",
+  orgId: ICS_TZ_ORG_A,
+  name: "DevCon",
+  slug: "devcon",
+  startDate: "2027-05-12",
+  endDate: "2027-05-13",
+  location: null,
+  timezone: "America/Los_Angeles",
+  recordPrefix: "DEV",
+  branding: null,
+  createdAt: 0,
+  updatedAt: 0,
+};
+
+function icsTzSubmissionFixture(id: string, contactId: string, email: string) {
+  return {
+    id,
+    title: `Talk ${id}`,
+    participants: [{ contactId, firstName: "Ada", lastName: "Lovelace", email }],
+  };
+}
+
+vi.mock("../src/server/repo/events", async () => {
+  const actual = await vi.importActual<typeof import("../src/server/repo/events")>("../src/server/repo/events");
+  return {
+    ...actual,
+    getEventForOrg: vi.fn(async () => icsTzEvent),
+  };
+});
+
+vi.mock("../src/server/repo/comms", async () => {
+  const actual = await vi.importActual<typeof import("../src/server/repo/comms")>("../src/server/repo/comms");
+  return {
+    ...actual,
+    loadComposeSubmissions: vi.fn(async (_db: unknown, _eventId: string, ids: string[]) =>
+      ids.map((id) => icsTzSubmissionFixture(id, `ct-${id}`, `${id}@example.com`)),
+    ),
+    loadIcsScheduleData: vi.fn(
+      async (_db: unknown, ids: string[]) =>
+        new Map(
+          ids.map((id) => [
+            id,
+            { submissionId: id, day: "2027-05-12", startMin: 540, endMin: 585, roomName: "Main Stage", icsSequence: 0 },
+          ]),
+        ),
+    ),
+    findAccountUserId: vi.fn(async () => null),
+    listFeedbackComments: vi.fn(async () => []),
+  };
+});
+
+describe("compose/preview ics.timeZone (DEC-494)", () => {
+  const ORG_A = ICS_TZ_ORG_A;
+  const ORIGIN = ICS_TZ_ORIGIN;
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const organizerAuth: AuthInfo = { userId: "u-1", role: "organizer", orgId: ORG_A };
+
+  async function buildApp() {
+    const { commsRoutes } = await import("../src/routes/comms");
+    const app = new Hono<AppEnv>();
+    registerErrorHandler(app);
+    app.use("*", async (c, next) => {
+      c.set("auth", organizerAuth);
+      c.set("db", {} as never);
+      await next();
+    });
+    app.route("/", commsRoutes);
+    return app;
+  }
+
+  it("stamps every previewed item's ics.timeZone with the event's stored timezone", async () => {
+    const app = await buildApp();
+    const res = await app.request(
+      `${ORIGIN}/api/v1/events/evt-1/compose/preview`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-chq-csrf": "1" },
+        body: JSON.stringify({
+          submissionIds: ["sub-a"],
+          subject: "Update",
+          bodyText: "Hi {speaker_name}",
+          attachIcs: true,
+        }),
+      },
+      { KV: { put: vi.fn() } },
+    );
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { items: { ics?: { timeZone: string } }[] };
+    expect(body.items).toHaveLength(1);
+    expect(body.items[0]?.ics?.timeZone).toBe("America/Los_Angeles");
   });
 });

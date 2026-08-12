@@ -270,6 +270,9 @@ interface IcsPreviewInfo {
   endUtc: string;
   room: string | null;
   sequence: number;
+  /** DEC-494: the OWNING EVENT's IANA timezone, so the compose preview chip
+   * renders the session's local time instead of the viewer's ambient zone. */
+  timeZone: string;
 }
 
 function icsPreviewInfoFor(slot: repo.IcsScheduleRow, event: { timezone: string }): IcsPreviewInfo {
@@ -278,6 +281,7 @@ function icsPreviewInfoFor(slot: repo.IcsScheduleRow, event: { timezone: string 
     endUtc: zonedMinutesToUtc(slot.day, slot.endMin, event.timezone).toISOString(),
     room: slot.roomName,
     sequence: slot.icsSequence,
+    timeZone: event.timezone,
   };
 }
 
