@@ -7,6 +7,7 @@ import type { AppEnv } from "../../../server/env";
 import { csrfJson } from "../../../server/middleware";
 import { ApiError } from "../../../server/http";
 import { MAX_NAME_LENGTH, MAX_TEXT_LENGTH, MAX_LONG_TEXT_LENGTH } from "../../../forms/validate"; // DEC-417
+import { isValidEmail, normalizeEmail } from "../../../domain/email"; // DEC-454
 import * as repo from "../../../server/repo/contacts";
 import { getEventForOrg } from "../../../server/repo/events";
 import { listAcceptedContactIds } from "../../../server/repo/tasks";
@@ -57,7 +58,10 @@ export function registerCrudRoutes(contactsRoutes: Hono<AppEnv>): void {
     if (typeof body.lastName !== "string" || body.lastName.trim() === "") fields.lastName = "required";
     else checkLen(body.lastName, "lastName", MAX_NAME_LENGTH, fields); // DEC-417
     if (typeof body.email !== "string" || body.email.trim() === "") fields.email = "required";
-    else checkLen(body.email, "email", MAX_NAME_LENGTH, fields); // DEC-417
+    else {
+      checkLen(body.email, "email", MAX_NAME_LENGTH, fields); // DEC-417
+      if (!fields.email && !isValidEmail(body.email)) fields.email = "must be a valid email address"; // DEC-454
+    }
     if (typeof body.phone === "string") checkLen(body.phone, "phone", MAX_NAME_LENGTH, fields); // DEC-417
     if (typeof body.company === "string") checkLen(body.company, "company", MAX_NAME_LENGTH, fields); // DEC-417
     if (typeof body.title === "string") checkLen(body.title, "title", MAX_NAME_LENGTH, fields); // DEC-417
@@ -85,7 +89,7 @@ export function registerCrudRoutes(contactsRoutes: Hono<AppEnv>): void {
     const created = await repo.createContact(c.var.db, orgId, {
       firstName: body.firstName as string,
       lastName: body.lastName as string,
-      email: body.email as string,
+      email: normalizeEmail(body.email as string), // DEC-454
       phone: typeof body.phone === "string" ? body.phone : undefined,
       company: typeof body.company === "string" ? body.company : undefined,
       title: typeof body.title === "string" ? body.title : undefined,
@@ -142,7 +146,11 @@ export function registerCrudRoutes(contactsRoutes: Hono<AppEnv>): void {
     }
     if (body.email !== undefined) {
       if (typeof body.email !== "string" || body.email.trim() === "") fields.email = "must be a non-empty string";
-      else { checkLen(body.email, "email", MAX_NAME_LENGTH, fields); patch.email = body.email; } // DEC-417
+      else {
+        checkLen(body.email, "email", MAX_NAME_LENGTH, fields); // DEC-417
+        if (!fields.email && !isValidEmail(body.email)) fields.email = "must be a valid email address"; // DEC-454
+        if (!fields.email) patch.email = normalizeEmail(body.email); // DEC-454
+      }
     }
     if (body.phone !== undefined) {
       patch.phone = body.phone === null ? null : String(body.phone);

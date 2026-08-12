@@ -10,6 +10,7 @@ import { ApiError } from "../../http";
 import { chunkIds } from "../../../lib/chunk";
 import { createContact, patchContact } from "./crud";
 import { resolveImportUpsert } from "./query";
+import { isValidEmail, normalizeEmail } from "../../../domain/email"; // DEC-454
 
 export interface ImportSkip {
   line: number;
@@ -51,8 +52,8 @@ export async function applyImportRows(
   const fileEmails = new Set<string>();
   for (const { parsed } of rows) {
     const email = typeof parsed.email === "string" ? parsed.email : undefined;
-    if (!email || email.trim() === "") continue;
-    fileEmails.add(email.trim().toLowerCase());
+    if (!email || email.trim() === "" || !isValidEmail(email)) continue;
+    fileEmails.add(normalizeEmail(email));
   }
 
   const byEmail = new Map<string, string>();
@@ -67,7 +68,7 @@ export async function applyImportRows(
           inArray(sql`lower(${schema.contact.email})`, batch),
         ),
       );
-    for (const r of existing) byEmail.set(r.email.trim().toLowerCase(), r.id);
+    for (const r of existing) byEmail.set(normalizeEmail(r.email), r.id);
   }
 
   let created = 0;
@@ -89,9 +90,14 @@ export async function applyImportRows(
       skipped.push({ line, reason: "missing email" });
       continue;
     }
-    const key = email.trim().toLowerCase();
+    if (!isValidEmail(email)) {
+      skipped.push({ line, reason: "invalid email" });
+      continue;
+    }
+    const key = normalizeEmail(email);
     const existingId = byEmail.get(key);
-    const decision = resolveImportUpsert(existingId, parsed as Partial<ContactRecord>);
+    const normalizedParsed = { ...parsed, email: key };
+    const decision = resolveImportUpsert(existingId, normalizedParsed as Partial<ContactRecord>);
     if (decision.action === "create") {
       const row = await createContact(db, orgId, decision.values);
       byEmail.set(key, row.id);
