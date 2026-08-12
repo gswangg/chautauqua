@@ -168,6 +168,65 @@ export const PORTAL_CSS = `
     color: var(--chq-muted);
   }
 
+  /* w2-g: sign-out demoted from the masthead to a quiet tertiary link in a
+     page footer (DEC-590) — placement only, .chq-btn-tertiary is the
+     existing frozen tertiary token (THEME_CSS), never a new button style. */
+  .chq-portal-footer {
+    max-width: 960px;
+    margin: 24px auto 0;
+    padding: 16px 1rem 40px;
+    border-top: 1px solid var(--chq-hairline);
+  }
+  .chq-portal-signout-btn { min-height: 44px; }
+
+  /* form-render.tsx's shared FormField output renders un-wrapped on both
+     portal surfaces that use it (the hotel-stay-style task form at
+     /portal/tasks/:id/form and the submission edit "session" form) --
+     unlike the CFP surface it has no .chq-cfp-fields container to hang
+     layout off of. Without an explicit rule here .chq-field's single
+     <label> lets its caption span and its control sit on one inline line
+     and overlap (Tier 2 item 9). Fix: single-column flow, one explicit row
+     gap, every label/control block-level with min-width:0 so a long value
+     can't force the row wider than its column -- no float, no absolute
+     positioning, no negative margin anywhere in this block. */
+  .chq-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 15px 0;
+    border-bottom: 1px solid var(--chq-hairline);
+    min-width: 0;
+  }
+  .chq-field label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+  }
+  .chq-field-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--chq-muted);
+    min-width: 0;
+  }
+  .chq-field .chq-input,
+  .chq-field .chq-select,
+  .chq-field .chq-textarea {
+    display: block;
+    width: 100%;
+    min-width: 0;
+  }
+  .chq-field .help {
+    font-size: 12px;
+    color: var(--chq-muted);
+    margin: 0;
+  }
+  .chq-field-error { font-size: 12px; font-weight: 800; margin: 0; }
+  .chq-field-error::before { content: "! "; }
+
   @media (max-width: 700px) {
     .chq-portal-row-head { align-items: flex-start; }
     .chq-portal-actions { flex-direction: column; }

@@ -237,11 +237,14 @@ describe("GET /portal/profile — merged form", () => {
     const res = await app.request("/portal/profile");
     const html = await res.text();
     // Isolate the details/headshot region from the layout chrome (which has
-    // its own single-purpose sign-out <form>) before counting <form> tags —
-    // this is what "one form for the whole details+headshot region" means.
-    // The <form> element opens before the "Headshot" section it wraps, so
-    // anchor on its own action attribute rather than the section label.
-    const region = html.slice(html.indexOf('<form method="post" action="/portal/profile"'));
+    // its own single-purpose sign-out <form>, demoted to a page footer by
+    // w2-g/DEC-590 — still outside <main>, just after it instead of before)
+    // before counting <form> tags — this is what "one form for the whole
+    // details+headshot region" means. The <form> element opens before the
+    // "Headshot" section it wraps, so anchor on its own action attribute
+    // rather than the section label, and stop at </main> so the footer's
+    // sign-out form is excluded.
+    const region = html.slice(html.indexOf('<form method="post" action="/portal/profile"'), html.indexOf("</main>"));
     const formOpenCount = (region.match(/<form\b/g) ?? []).length;
     expect(formOpenCount).toBe(1);
     // Both the file input and a details field live in that one form.
