@@ -227,6 +227,30 @@ export const PORTAL_CSS = `
   .chq-field-error { font-size: 12px; font-weight: 800; margin: 0; }
   .chq-field-error::before { content: "! "; }
 
+  /* DEC-605: full version-chain history on a completed file_request task —
+     one row per version, oldest to newest. Composes .chq-flag/.chq-portal-
+     flag-done for the "Current" marker rather than a new state token. */
+  .chq-portal-versions {
+    list-style: none;
+    margin: 8px 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .chq-portal-version-row {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 8px;
+    font-size: 13px;
+  }
+  .chq-portal-version-num {
+    font-weight: 700;
+    color: var(--chq-muted);
+    min-width: 28px;
+  }
+
   @media (max-width: 700px) {
     .chq-portal-row-head { align-items: flex-start; }
     .chq-portal-actions { flex-direction: column; }

@@ -61,6 +61,7 @@ vi.mock("../src/server/repo/files", async () => {
     resolveTaskFileChainLatest: vi.fn(),
     getFileVersionNumber: vi.fn(async () => 2),
     listFileComments: vi.fn(async () => ({ items: [], total: 0, page: 1, perPage: 1 })),
+    listFileChainVersions: vi.fn(async () => [CHAIN_LATEST]),
     insertFileComment: vi.fn(async () => "comment-new-1"),
   };
 });
