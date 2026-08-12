@@ -22,11 +22,24 @@ const SUBMIT_PATH = resolve(fileURLToPath(import.meta.url), "../../src/routes/pu
 const CSRF_MIDDLEWARE = ["csrfJson", "csrfForm", "csrfFormOrHeader"];
 
 /** Deliberate exceptions to the "every mutating route carries CSRF
- * middleware" rule. Empty today (DEC-628: no such route currently exists);
- * each future entry must be `{ file, line, reason }` with a stated reason —
- * never silent. `file` is relative to src/routes, `line` is the 1-based
- * line the route registration's call starts on. */
-export const CSRF_EXEMPT: Array<{ file: string; line: number; reason: string }> = [];
+ * middleware" rule. Each entry must be `{ file, line, reason }` with a
+ * stated reason — never silent (DEC-628). `file` is relative to src/routes,
+ * `line` is the 1-based line the route registration's call starts on. An
+ * edit that shifts that line makes this test fail loudly rather than
+ * silently widening the exemption. */
+export const CSRF_EXEMPT: Array<{ file: string; line: number; reason: string }> = [
+  {
+    file: "public/submit.tsx",
+    line: 262,
+    reason:
+      "DEC-626: the public CFP post checks CSRF in-body via the shared " +
+      "checkDoubleSubmitCsrf predicate (DEC-544) instead of the csrfForm " +
+      "middleware, so a missing/mismatched cookie re-renders the form with " +
+      "the submitter's answers and a fresh token rather than throwing away " +
+      "what they typed. Protection is present, only its location differs — " +
+      "asserted below.",
+  },
+];
 
 /** Recursively lists every .ts/.tsx file under `dir`. */
 function listSourceFiles(dir: string): string[] {
@@ -118,8 +131,27 @@ describe("SPEC §6: every mutating route registration carries CSRF middleware (D
     expect(failures).toEqual([]);
   });
 
-  it("CSRF_EXEMPT is empty (no route in this repo currently needs an exception)", () => {
-    expect(CSRF_EXEMPT).toEqual([]);
+  it("every CSRF_EXEMPT entry names a real registration and states a reason", () => {
+    for (const exempt of CSRF_EXEMPT) {
+      expect(exempt.reason.length).toBeGreaterThan(0);
+      const match = allRegistrations.find(
+        (reg) => relative(ROUTES_DIR, reg.file) === exempt.file && reg.line === exempt.line,
+      );
+      expect(match, `CSRF_EXEMPT names ${exempt.file}:${exempt.line}, which is not a route registration`).toBeDefined();
+    }
+  });
+
+  // DEC-628 allows exceptions only with a stated reason — but an exemption
+  // must never become a hole. The one exempt route (DEC-626) still performs
+  // the double-submit comparison, just inside its handler; assert that here
+  // so deleting the in-body check fails this test rather than passing on the
+  // strength of the allowlist entry alone.
+  it("the exempt public CFP post still performs an in-body double-submit CSRF check", () => {
+    expect(CSRF_EXEMPT.map((e) => e.file)).toEqual(["public/submit.tsx"]);
+    const submitSource = readFileSync(SUBMIT_PATH, "utf-8");
+    const slice = submitSource.slice(submitSource.indexOf('.post("/submit/:eventSlug"'));
+    expect(slice).toMatch(/\bcheckDoubleSubmitCsrf\b/);
+    expect(slice).toMatch(/\bCSRF_COOKIE_NAME\b/);
   });
 });
 

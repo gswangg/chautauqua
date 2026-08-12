@@ -162,8 +162,15 @@ describe("POST /logout (route-level, DEC-181)", () => {
     });
 
     expect(res.status).toBe(400);
-    const body = (await res.json()) as { error: { code: string } };
-    expect(body.error.code).toBe("invalid");
+    // DEC-626: /logout is a plain-form surface (the portal/auth sign-out
+    // forms post to it), so csrfFormOrHeader marks the request htmlSurface
+    // and the shared error handler answers with a rendered page, never a
+    // JSON blob. The status and the "session survives" invariant are
+    // unchanged; only the media type of the refusal is.
+    expect(res.headers.get("content-type")).toMatch(/text\/html/);
+    const body = await res.text();
+    expect(body).toMatch(/^<!doctype html>/i);
+    expect(body).not.toMatch(/\{"error"/);
     expect(wasDeleted()).toBe(false);
   });
 

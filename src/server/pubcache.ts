@@ -220,6 +220,12 @@ const PUBLIC_AFFECTING: PathPattern[] = [
   "/api/v1/contacts/:id/add-to-event",
   "/api/v1/contacts/import",
   "/api/v1/contacts/merge",
+  // Sessionboard import (DEC-612/DEC-613) writes tracks, submissions
+  // (title/description/track/status) and contacts in bulk — the same rows
+  // /api/v1/events/:id/tracks, /api/v1/events/:id/submissions and
+  // /api/v1/contacts/import already bump for, so it is public-affecting
+  // for exactly their reasons.
+  "/api/v1/events/:id/import/sessionboard",
   "/portal/submissions/*",
   "/portal/profile",
   "/portal/invitations/*",
