@@ -52,14 +52,21 @@ export function AddToEventModal({ contact, onClose }: Props) {
   }
 
   return (
-    <div className="chq-modal-backdrop" role="dialog" aria-label="Add to event">
-      <div className="chq-modal chq-add-to-event-modal">
-        <button type="button" className="chq-modal-close" onClick={onClose} aria-label="Close">
-          ×
-        </button>
-        <h2>Add to event</h2>
+    <div className="chq-scrim" role="dialog" aria-label="Add to event">
+      <div className="chq-modal chq-contacts-add-to-event-modal">
+        <div className="chq-contacts-modal-head">
+          <div className="chq-contacts-modal-heading">
+            <h2>Add to an event</h2>
+            <span className="chq-meta">
+              {contact.firstName} {contact.lastName}
+            </span>
+          </div>
+          <button type="button" className="chq-btn-tertiary" onClick={onClose} aria-label="Close">
+            Close
+          </button>
+        </div>
 
-        {error && <div className="chq-error-banner">{error}</div>}
+        {error && <div className="chq-error">{error}</div>}
 
         {submissionId === null && (
           <>
@@ -68,7 +75,7 @@ export function AddToEventModal({ contact, onClose }: Props) {
             </p>
             <label>
               Event
-              <select aria-label="Event" value={eventId} onChange={(e) => setEventId(e.target.value)}>
+              <select className="chq-select" aria-label="Event" value={eventId} onChange={(e) => setEventId(e.target.value)}>
                 {events.length === 0 && <option value="">No events</option>}
                 {events.map((ev) => (
                   <option key={ev.id} value={ev.id}>
@@ -79,11 +86,16 @@ export function AddToEventModal({ contact, onClose }: Props) {
             </label>
             <label>
               Title
-              <input value={title} onChange={(e) => setTitle(e.target.value)} />
+              <input className="chq-input" value={title} onChange={(e) => setTitle(e.target.value)} />
             </label>
-            <button type="button" disabled={busy || !eventId} onClick={confirm}>
-              Add to event
-            </button>
+            <div className="chq-contacts-modal-actions">
+              <button type="button" className="chq-btn chq-btn-primary" disabled={busy || !eventId} onClick={confirm}>
+                Add them
+              </button>
+              <button type="button" className="chq-btn chq-btn-secondary" onClick={onClose}>
+                Cancel
+              </button>
+            </div>
           </>
         )}
 
@@ -93,7 +105,7 @@ export function AddToEventModal({ contact, onClose }: Props) {
               {contact.firstName} {contact.lastName} was added as an accepted speaker.
             </p>
             <a href="/admin/speakers">View in Speakers</a>
-            <button type="button" onClick={onClose}>
+            <button type="button" className="chq-btn chq-btn-secondary" onClick={onClose}>
               Close
             </button>
           </div>

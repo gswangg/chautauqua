@@ -1,0 +1,267 @@
+/* app/src/pages/contacts/contacts.css — Contacts page lane, lane 1 of 2
+   (DEC-376: this lane owns ContactsApp/ContactsTable/StatsStrip/
+   ContactDrawer/BulkEmailModal/AddToEventModal; PipelineBoard/
+   DuplicatesView/SegmentsPanel/FilterRulesPanel/ImportWizard are lane 2's
+   files and are NOT restyled here). Classes prefixed .chq-contacts-*;
+   shared .chq-* classes from app/src/styles.css (page-title, summary,
+   toolbar, table, pill, chipstrip, bulkbar, pager, drawer, kv, modal,
+   scrim, btn, input/select/textarea, check, link-button, meta, error,
+   section-head/label) are reused, never redefined here (DEC-368/372).
+   Visual language: DEC-367 tokens, docs/design/Chautauqua Contacts.dc.html
+   + screens/08-contacts.png. */
+
+.chq-contacts-page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.chq-contacts-title-row {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.chq-contacts-title-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 9px;
+}
+
+.chq-contacts-tabstrip-row {
+  gap: 0;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Directory: stats + table                                               */
+/* ---------------------------------------------------------------------- */
+
+.chq-contacts-stats-strip {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.chq-contacts-kpis {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.chq-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.chq-stat-value {
+  font-family: var(--chq-font-display);
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--chq-ink);
+}
+
+.chq-stat-label {
+  font-size: 12px;
+  color: var(--chq-muted);
+}
+
+.chq-contacts-company-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.chq-contacts-company-row {
+  padding: 11px 0;
+  border-bottom: 1px solid var(--chq-hairline);
+  font-size: 14px;
+}
+
+.chq-contacts-table-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.chq-contacts-search-toolbar {
+  justify-content: flex-start;
+  gap: 14px;
+}
+
+.chq-contacts-search {
+  min-width: 230px;
+}
+
+.chq-contacts-segment-select {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--chq-ink-2);
+  margin-left: auto;
+}
+
+.chq-contacts-name-cell,
+.chq-contacts-company-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.chq-contacts-name {
+  font-family: var(--chq-font-display);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Drawer                                                                  */
+/* ---------------------------------------------------------------------- */
+
+.chq-contacts-drawer {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.chq-contacts-drawer-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--chq-ink);
+}
+
+.chq-contacts-drawer-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.chq-contacts-drawer-name {
+  font-family: var(--chq-font-display);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.chq-contacts-drawer-section-title {
+  font-family: var(--chq-font-display);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.chq-contacts-drawer-tabs {
+  padding-top: 6px;
+  border-top: 1px solid var(--chq-rule);
+}
+
+.chq-contacts-custom-fields,
+.chq-contacts-profile-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.chq-contacts-custom-field-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.chq-contacts-headshot-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.chq-contacts-headshot {
+  border-radius: var(--chq-r-card);
+  object-fit: cover;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Modals (Bulk email / Add to event)                                     */
+/* ---------------------------------------------------------------------- */
+
+.chq-contacts-modal-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.chq-contacts-modal-heading h2 {
+  margin: 0;
+  font-family: var(--chq-font-display);
+  font-size: 23px;
+  font-weight: 700;
+  letter-spacing: -0.035em;
+}
+
+.chq-contacts-modal-actions {
+  display: flex;
+  gap: 9px;
+}
+
+.chq-bulk-email-preview-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.chq-bulk-email-preview-item {
+  border: 1px solid var(--chq-border);
+  border-radius: var(--chq-r-card);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.chq-bulk-email-preview-to {
+  font-size: 12px;
+  color: var(--chq-muted);
+}
+
+.chq-bulk-email-preview-subject {
+  font-weight: 600;
+}
+
+.chq-bulk-email-preview-body {
+  white-space: pre-wrap;
+  font-family: inherit;
+  font-size: 13px;
+  margin: 0;
+}
+
+.chq-cap-warning {
+  color: var(--chq-ink);
+}
+
+@media (max-width: 700px) {
+  .chq-contacts-title-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .chq-contacts-title-actions {
+    margin-left: 0;
+  }
+
+  .chq-contacts-segment-select {
+    margin-left: 0;
+  }
+}

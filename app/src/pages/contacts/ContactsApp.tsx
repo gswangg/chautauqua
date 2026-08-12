@@ -16,6 +16,13 @@ const PER_PAGE = 25;
 
 type Panel = 'directory' | 'duplicates' | 'segments' | 'pipeline';
 
+const PANEL_LABELS: Record<Panel, string> = {
+  directory: 'Directory',
+  duplicates: 'Duplicates',
+  segments: 'Segments',
+  pipeline: 'Pipeline',
+};
+
 export function ContactsApp() {
   const { eventId } = useCurrentEvent();
 
@@ -73,31 +80,45 @@ export function ContactsApp() {
 
   const selectedIds = [...selection.selectedIds];
 
+  // Factual, endpoint-backed summary (DEC-377): only counts GET
+  // /contacts/stats actually returns — no fabricated "N speakers" or
+  // "N possible duplicates" figures the way the design mock illustrates.
+  const summary = stats
+    ? `${stats.total} ${stats.total === 1 ? 'contact' : 'contacts'} · ${stats.eventCount} ${
+        stats.eventCount === 1 ? 'event' : 'events'
+      } · ${stats.returningSpeakers} returning ${stats.returningSpeakers === 1 ? 'speaker' : 'speakers'}`
+    : null;
+
   return (
     <div className="chq-page chq-contacts-page">
-      <h1>Contacts</h1>
-      {error && <div className="chq-error-banner">{error}</div>}
+      <div className="chq-contacts-title-row">
+        <h1 className="chq-page-title">Contacts</h1>
+        {summary && <span className="chq-summary">{summary}</span>}
+        <div className="chq-contacts-title-actions">
+          <button type="button" className="chq-btn chq-btn-secondary" onClick={() => setShowImport(true)}>
+            Import CSV
+          </button>
+        </div>
+      </div>
 
-      <nav className="chq-contacts-subnav">
-        <button type="button" className={panel === 'directory' ? 'chq-tab-active' : ''} onClick={() => setPanel('directory')}>
-          Directory
-        </button>
-        <button type="button" className={panel === 'duplicates' ? 'chq-tab-active' : ''} onClick={() => setPanel('duplicates')}>
-          Duplicates
-        </button>
-        <button type="button" className={panel === 'segments' ? 'chq-tab-active' : ''} onClick={() => setPanel('segments')}>
-          Segments
-        </button>
-        <button type="button" className={panel === 'pipeline' ? 'chq-tab-active' : ''} onClick={() => setPanel('pipeline')}>
-          Pipeline
-        </button>
-        <button type="button" onClick={() => setShowImport(true)}>
-          Import CSV
-        </button>
-        <button type="button" disabled={selectedIds.length === 0} onClick={() => setShowBulkEmail(true)}>
-          Bulk email ({selectedIds.length})
-        </button>
-      </nav>
+      {error && <div className="chq-error" role="alert">{error}</div>}
+
+      <div className="chq-toolbar chq-contacts-tabstrip-row">
+        <div className="chq-chipstrip" role="tablist" aria-label="Contacts view">
+          {(Object.keys(PANEL_LABELS) as Panel[]).map((key) => (
+            <button
+              key={key}
+              type="button"
+              role="tab"
+              aria-selected={panel === key}
+              className={panel === key ? 'chq-pill is-active' : 'chq-pill'}
+              onClick={() => setPanel(key)}
+            >
+              {PANEL_LABELS[key]}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {panel === 'directory' && (
         <>
@@ -138,6 +159,7 @@ export function ContactsApp() {
             onChangePage={setPage}
             onSelectionChange={setSelection}
             onOpenContact={setOpenContactId}
+            onBulkEmail={() => setShowBulkEmail(true)}
           />
         </>
       )}
