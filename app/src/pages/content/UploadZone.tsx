@@ -56,7 +56,7 @@ export function UploadZone({ kind, replacesFileId, onUpload }: UploadZoneProps) 
       <input
         ref={inputRef}
         type="file"
-        className="chq-input"
+        className="chq-file"
         aria-label={replacesFileId ? `Replace ${kind}` : `Upload ${kind}`}
         disabled={pending}
         onChange={(e) => void handleFile(e.target.files?.[0])}

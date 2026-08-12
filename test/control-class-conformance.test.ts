@@ -189,6 +189,9 @@ const DIRECT_CLASSES = new Set([
   "chq-check",
   "chq-checkbox-label",
   "chq-pill",
+  // DEC-577 (w1-i): input[type=file]'s shared shell class -- the
+  // ::file-selector-button treatment lives in app/src/styles.css.
+  "chq-file",
 ]);
 const PAGE_PREFIXED_RE = /^chq-[a-z]+-[a-z0-9-]+$/;
 

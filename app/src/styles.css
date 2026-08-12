@@ -1355,3 +1355,83 @@ a:hover {
   text-transform: uppercase;
   color: var(--chq-muted);
 }
+
+/* ---------------------------------------------------------------------- */
+/* Native control styling (DEC-577) -- file / date / select               */
+/* w1-i: the first sighting of a page must never be a browser-default     */
+/* control sitting next to a fully designed table. Kept in its own        */
+/* section, separate from any other lane's edits to this file.            */
+/* ---------------------------------------------------------------------- */
+
+/* input[type=file]: the pseudo-element file-selector-button gets the
+   secondary-button tier; the remaining "no file chosen" text is Muted. */
+.chq-file {
+  font-family: var(--chq-font-ui);
+  font-size: 13px;
+  color: var(--chq-muted);
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.chq-file::file-selector-button {
+  font-family: var(--chq-font-ui);
+  font-size: 13px;
+  font-weight: 600;
+  background: var(--chq-surface-sunk);
+  color: var(--chq-ink-strong);
+  border: 1px solid var(--chq-border-strong);
+  border-radius: var(--chq-r-ctl);
+  min-height: 44px;
+  padding: 0 16px;
+  margin-right: 12px;
+  cursor: pointer;
+}
+
+.chq-file::file-selector-button:hover {
+  background: var(--chq-surface);
+}
+
+@media (max-width: 700px) {
+  .chq-file,
+  .chq-file::file-selector-button {
+    min-height: 44px;
+  }
+
+  .chq-file::file-selector-button {
+    border-radius: var(--chq-r-ctl-phone);
+  }
+}
+
+/* input[type=date]: same border/radius/height/typography as .chq-input
+   (already applied via that shared class); this only tunes the native
+   calendar indicator so it doesn't sit as an unstyled browser-blue glyph. */
+.chq-input[type='date']::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.55;
+}
+
+.chq-input[type='date']::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
+
+/* select: appearance reset + a CSS-only caret (no SVG asset). */
+.chq-select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  padding-right: 36px;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--chq-ink-2) 50%),
+    linear-gradient(135deg, var(--chq-ink-2) 50%, transparent 50%);
+  background-position:
+    calc(100% - 20px) center,
+    calc(100% - 14px) center;
+  background-size: 6px 6px, 6px 6px;
+  background-repeat: no-repeat;
+}
+
+.chq-select:focus-visible {
+  outline: 2px solid var(--chq-brand);
+  outline-offset: 2px;
+}
