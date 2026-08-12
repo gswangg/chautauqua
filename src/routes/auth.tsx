@@ -29,6 +29,7 @@ import {
   resetScopedLimit,
   requestIpFromHeaders,
 } from "../lib/rate-limit";
+import { ThemeStyles } from "../views/theme";
 
 const AUTH_RATE_LIMIT_WINDOW_SECONDS = 900;
 const AUTH_RATE_LIMIT_MAX = 20;
@@ -54,59 +55,118 @@ function ensureCsrfCookie(c: {
   };
 }
 
-// DEC-253 mobile bar: /login is one of the tested no-login surfaces.
-// Styling-only (viewport meta + tap-target sizing) — no markup/behavior
-// change. Shared inline rather than importing src/routes/public/shell.tsx
-// to avoid coupling this unrelated route's chrome to the public-surface
-// shell's styles.
-const AUTH_MOBILE_STYLE = `
-  *, *::before, *::after { box-sizing: border-box; }
-  html, body { max-width: 100%; overflow-x: hidden; }
-  body { font-family: system-ui, sans-serif; margin: 0; padding: 1rem; color: #1a1a1a; }
-  form { max-width: 420px; }
-  label { display: block; margin-bottom: 0.75rem; }
-  input[type=email], input[type=password] {
+// DEC-367/371: /login and /claim/:token are SSR surfaces re-skinned to the
+// paper-card auth pattern from docs/design/Chautauqua Account.dc.html
+// ("One door, three roles" + the 390 mobile frame) — a centred card on
+// --chq-paper, 660px measure on desktop, full-width on phone, wordmark,
+// one filled primary button, error text as plain type (no red banner:
+// DEC-367 forbids red anywhere). ThemeStyles() supplies the shared
+// tokens/reset/button/input rules; this local block only adds the
+// auth-card layout that no other SSR surface needs.
+const AUTH_CARD_STYLE = `
+  body { display: flex; justify-content: center; padding: 40px 20px; }
+  .chq-auth-card {
+    width: 100%;
+    max-width: 660px;
+    background: var(--chq-paper);
+    border: 1px solid var(--chq-rule);
+    border-radius: 6px;
+    padding: 44px 44px 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 26px;
+  }
+  .chq-auth-wordmark {
+    font-family: 'Familjen Grotesk', system-ui, sans-serif;
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.04em;
+    line-height: 1;
+    color: var(--chq-ink);
+  }
+  .chq-auth-subtitle { font-size: 14px; color: var(--chq-muted); margin-top: 6px; }
+  .chq-auth-fields { display: flex; flex-direction: column; gap: 14px; }
+  .chq-auth-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--chq-muted);
+    margin-bottom: 6px;
+  }
+  .chq-auth-error {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--chq-ink);
+  }
+  .chq-auth-card input[type=email], .chq-auth-card input[type=password] {
     display: block;
     width: 100%;
-    max-width: 100%;
-    box-sizing: border-box;
-    min-height: 40px;
-    font-size: 1rem;
-    margin-top: 0.25rem;
   }
-  button[type=submit] { min-height: 40px; padding: 0.4rem 0.9rem; font-size: 1rem; }
+  .chq-auth-card button[type=submit] { width: 100%; min-height: 48px; }
+  .chq-auth-footer {
+    border-top: 1px solid var(--chq-rule);
+    padding-top: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .chq-auth-footer-links { display: flex; gap: 16px; flex-wrap: wrap; }
+  .chq-auth-footer-links a { font-size: 14px; font-weight: 700; min-height: 44px; display: inline-flex; align-items: center; }
+  @media (max-width: 480px) {
+    body { padding: 0; }
+    .chq-auth-card { max-width: none; border: none; border-radius: 0; padding: 28px 20px 20px; }
+  }
 `;
+
+function AuthHead(props: { title: string }) {
+  return (
+    <head>
+      <meta charset="utf-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1" />
+      <title>{props.title}</title>
+      <ThemeStyles />
+      <style>{AUTH_CARD_STYLE}</style>
+    </head>
+  );
+}
 
 function LoginPage(props: { csrfToken: string; error?: string }) {
   return (
     <html lang="en">
-      <head>
-        <meta charset="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <title>Log in - Chautauqua</title>
-        <style>{AUTH_MOBILE_STYLE}</style>
-      </head>
+      <AuthHead title="Log in - Chautauqua" />
       <body>
-        <h1>Log in</h1>
-        {props.error ? <p role="alert">{props.error}</p> : null}
-        <form
-          method="post"
-          action="/login"
-          onsubmit="var b=document.getElementById('chq-login-submit');if(b){b.disabled=true;b.textContent='Signing in…';}"
-        >
-          <input type="hidden" name={CSRF_COOKIE_NAME} value={props.csrfToken} />
-          <label>
-            Email
-            <input type="email" name="email" required autofocus />
-          </label>
-          <label>
-            Password
-            <input type="password" name="password" required />
-          </label>
-          <button type="submit" id="chq-login-submit">
-            Log in
-          </button>
-        </form>
+        <div className="chq-auth-card">
+          <div>
+            <span className="chq-auth-wordmark">chautauqua</span>
+            <div className="chq-auth-subtitle">Sign in to your account</div>
+          </div>
+          {props.error ? (
+            <p className="chq-auth-error" role="alert">
+              {props.error}
+            </p>
+          ) : null}
+          <form
+            className="chq-auth-fields"
+            method="post"
+            action="/login"
+            onsubmit="var b=document.getElementById('chq-login-submit');if(b){b.disabled=true;b.textContent='Signing in…';}"
+          >
+            <input type="hidden" name={CSRF_COOKIE_NAME} value={props.csrfToken} />
+            <label>
+              <span className="chq-auth-label">Email</span>
+              <input type="email" name="email" required autofocus />
+            </label>
+            <label>
+              <span className="chq-auth-label">Password</span>
+              <input type="password" name="password" required />
+            </label>
+            <button type="submit" id="chq-login-submit" className="chq-btn-primary">
+              Sign in
+            </button>
+          </form>
+        </div>
       </body>
     </html>
   );
@@ -115,23 +175,29 @@ function LoginPage(props: { csrfToken: string; error?: string }) {
 function ClaimPage(props: { csrfToken: string; error?: string }) {
   return (
     <html lang="en">
-      <head>
-        <meta charset="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <title>Create your password - Chautauqua</title>
-        <style>{AUTH_MOBILE_STYLE}</style>
-      </head>
+      <AuthHead title="Create your password - Chautauqua" />
       <body>
-        <h1>Create a password to track your submission</h1>
-        {props.error ? <p role="alert">{props.error}</p> : null}
-        <form method="post">
-          <input type="hidden" name={CSRF_COOKIE_NAME} value={props.csrfToken} />
-          <label>
-            Password
-            <input type="password" name="password" minlength={8} required />
-          </label>
-          <button type="submit">Create password</button>
-        </form>
+        <div className="chq-auth-card">
+          <div>
+            <span className="chq-auth-wordmark">chautauqua</span>
+            <div className="chq-auth-subtitle">Create a password to track your submission</div>
+          </div>
+          {props.error ? (
+            <p className="chq-auth-error" role="alert">
+              {props.error}
+            </p>
+          ) : null}
+          <form className="chq-auth-fields" method="post">
+            <input type="hidden" name={CSRF_COOKIE_NAME} value={props.csrfToken} />
+            <label>
+              <span className="chq-auth-label">Password</span>
+              <input type="password" name="password" minlength={8} required />
+            </label>
+            <button type="submit" className="chq-btn-primary">
+              Create password
+            </button>
+          </form>
+        </div>
       </body>
     </html>
   );
