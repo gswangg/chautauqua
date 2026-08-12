@@ -221,10 +221,12 @@ describe("multi-round lifecycle (task w2-a)", () => {
     expect(store).toHaveLength(1);
     expect(store[0]?.round).toBe(1);
 
-    // Queue no longer offers it in round 1 (already rated by me).
+    // DEC-561: the queue keeps the already-rated item (sunk to the bottom,
+    // alreadyRatedByMe: true) instead of erasing it.
     const queueR1 = await reviewerApp.request(`/api/v1/review/plans/${plan.id}/queue`);
-    const queueR1Body = (await queueR1.json()) as { items: unknown[] };
-    expect(queueR1Body.items).toHaveLength(0);
+    const queueR1Body = (await queueR1.json()) as { items: { submissionId: string; alreadyRatedByMe: boolean }[] };
+    expect(queueR1Body.items).toHaveLength(1);
+    expect(queueR1Body.items[0]).toMatchObject({ submissionId: submission.id, alreadyRatedByMe: true });
 
     // Organizer advances the plan to round 2.
     const organizerApp = await buildApp(organizer);
