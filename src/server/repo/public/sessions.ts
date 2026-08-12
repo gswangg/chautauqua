@@ -13,6 +13,7 @@ import { chunkIds } from "../../../lib/chunk";
 import { DEC_258 } from "../../../decisions";
 import { visibleParticipantConditions, visibleSessionConditions, slotWithinEventRange } from "./gates";
 import type { PublicEvent, PublicTrack } from "./event";
+import { boundedRowLimit } from "./bounds";
 
 // Compile-checked dependency marker: every speaker title/company read below
 // comes from participant.title_at_time/org_at_time (DEC-258's frozen
@@ -322,7 +323,7 @@ export async function getPublicSessions(
   event: PublicEvent,
   opts: { trackId: string | null; page: number; perPage: number; q?: string | null },
 ): Promise<PublicSessionsPage> {
-  const limit = opts.page * opts.perPage;
+  const limit = boundedRowLimit(opts.page, opts.perPage);
   const q = opts.q ?? null;
   // Sequenced (not Promise.all'd): hydrateSessions' own select() calls stay
   // contiguous right after the id query, matching every existing fake-db

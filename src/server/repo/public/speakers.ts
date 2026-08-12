@@ -8,6 +8,7 @@ import { DEC_258, DEC_418 } from "../../../decisions";
 import { chunkIds } from "../../../lib/chunk";
 import { visibleSubmissionConditions } from "./gates";
 import type { PublicSpeaker } from "./sessions";
+import { boundedRowLimit } from "./bounds";
 
 // Compile-checked dependency marker: every speaker title/company read below
 // comes from participant.title_at_time/org_at_time (DEC-258's frozen
@@ -64,7 +65,7 @@ export async function getPublicSpeakers(
     .innerJoin(schema.submission, eq(schema.participant.submissionId, schema.submission.id))
     .where(and(...conditions))
     .orderBy(asc(schema.contact.lastName), asc(schema.contact.firstName))
-    .limit(opts.page * opts.perPage);
+    .limit(boundedRowLimit(opts.page, opts.perPage));
   const orderedIds = idRows.map((r) => r.contactId);
 
   const countRows = await db

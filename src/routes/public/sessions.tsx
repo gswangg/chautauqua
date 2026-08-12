@@ -4,7 +4,7 @@
 
 import type { PublicEvent, PublicSession, PublicTrack } from "../../server/repo/public";
 import { SessionCard } from "./cards";
-import type { CardFields } from "./query";
+import { MAX_PUBLIC_PAGE, type CardFields } from "./query";
 
 export function SessionsContent(props: {
   event: PublicEvent;
@@ -19,7 +19,10 @@ export function SessionsContent(props: {
   fields?: CardFields;
 }) {
   const { event, tracks, activeTrackId, q, items, total, page, day, limit, fields } = props;
-  const hasMore = items.length < total;
+  // DEC-433: parsePage clamps page to MAX_PUBLIC_PAGE, so once we're at the
+  // cap there is no page+1 to link to — stop rendering 'Show more' even if
+  // items.length < total.
+  const hasMore = items.length < total && page < MAX_PUBLIC_PAGE;
   const basePath = `/e/${event.slug}/sessions`;
   // DEC-289: embed configuration params carried forward across the search
   // form and 'Show more' link exactly like trackId/q, so a configured embed
