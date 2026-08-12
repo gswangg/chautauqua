@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { CfpForm, EventTrack } from './types';
+import { dateInputToMs, msToDateInput } from '../../lib/dates';
 
 export interface FormSettingsPatch {
   intro?: string | null;
@@ -15,23 +16,13 @@ interface FormSettingsProps {
   onSave: (patch: FormSettingsPatch) => Promise<void>;
 }
 
-function toDateInputValue(ms: number | null | undefined): string {
-  if (ms === null || ms === undefined) return '';
-  return new Date(ms).toISOString().slice(0, 10);
-}
-
-function fromDateInputValue(value: string): number | null {
-  if (value.length === 0) return null;
-  return new Date(`${value}T00:00:00.000Z`).getTime();
-}
-
 /** Form settings strip: title (read-only — the w2-c API has no title-patch
  * endpoint), intro/description, open/close dates, tracks offered, and the
  * copyable public submission link. */
 export function FormSettings({ form, tracks, eventSlug, onSave }: FormSettingsProps) {
   const [intro, setIntro] = useState(form.intro ?? '');
-  const [openDate, setOpenDate] = useState(toDateInputValue(form.openDate));
-  const [closeDate, setCloseDate] = useState(toDateInputValue(form.closeDate));
+  const [openDate, setOpenDate] = useState(msToDateInput(form.openDate));
+  const [closeDate, setCloseDate] = useState(msToDateInput(form.closeDate));
   const [selectedTracks, setSelectedTracks] = useState<string[]>(form.tracks ?? []);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -49,8 +40,8 @@ export function FormSettings({ form, tracks, eventSlug, onSave }: FormSettingsPr
     try {
       await onSave({
         intro: intro.trim().length > 0 ? intro : null,
-        openDate: fromDateInputValue(openDate),
-        closeDate: fromDateInputValue(closeDate),
+        openDate: dateInputToMs(openDate),
+        closeDate: dateInputToMs(closeDate),
         tracks: selectedTracks,
       });
     } catch (err) {
