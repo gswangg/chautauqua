@@ -11,6 +11,10 @@ const DEDUPE_WINDOW_MS = 24 * 60 * 60 * 1000; // 24h
 export const MAX_REMINDER_BATCH = 100;
 export const MANUAL_DEDUPE_WINDOW_MS = 60 * 60 * 1000; // 1h
 
+// DEC-535: bounds the J4 bulk reviewer nudge the same way DEC-319 bounds its
+// J6 sibling above -- matching DEC-019's 100-recipient compose cap.
+export const MAX_REVIEWER_REMINDER_BATCH = 100;
+
 export interface ReminderAssignment {
   assignmentId: string;
   contactId: string;
@@ -68,19 +72,33 @@ export function planReminders(input: PlanRemindersInput): PlanRemindersResult {
 }
 
 /**
+ * DEC-535: generic "sort ascending by id, slice to max, report the
+ * remainder" rule -- the single implementation shared by every caller that
+ * needs a deterministic, resumable batch cap (a second pass over the same
+ * outstanding set advances to the next slice rather than repeating the
+ * first `max`).
+ */
+export function capById<T>(items: T[], idOf: (t: T) => string, max: number): { items: T[]; remaining: number } {
+  const sorted = [...items].sort((a, b) => {
+    const ai = idOf(a);
+    const bi = idOf(b);
+    return ai < bi ? -1 : ai > bi ? 1 : 0;
+  });
+  const capped = sorted.slice(0, max);
+  const remaining = sorted.length - capped.length;
+  return { items: capped, remaining };
+}
+
+/**
  * DEC-319: caps a list of per-contact reminder groups at `max` (default
- * MAX_REMINDER_BATCH), sorting by contactId ascending first so repeat calls
- * are deterministic — a second pass over the same outstanding set advances
- * to the next slice's contacts rather than repeating the first `max`.
+ * MAX_REMINDER_BATCH). Thin delegate over capById (DEC-535).
  */
 export function capReminderGroups<T extends { contactId: string }>(
   groups: T[],
   max: number = MAX_REMINDER_BATCH,
 ): { groups: T[]; remaining: number } {
-  const sorted = [...groups].sort((a, b) => (a.contactId < b.contactId ? -1 : a.contactId > b.contactId ? 1 : 0));
-  const capped = sorted.slice(0, max);
-  const remaining = sorted.length - capped.length;
-  return { groups: capped, remaining };
+  const { items, remaining } = capById(groups, (g) => g.contactId, max);
+  return { groups: items, remaining };
 }
 
 /**
