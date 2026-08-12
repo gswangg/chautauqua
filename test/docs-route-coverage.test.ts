@@ -1,60 +1,79 @@
 // Regression for task-w1-h: GET /docs/api is hand-maintained SSR (DEC-056),
 // which means it can silently drift from the routes src/index.ts actually
-// mounts. This test mounts every real sub-app under the exact same prefixes
-// src/index.ts uses (DEC-012: only src/index.ts calls app.route(), so we
-// mirror its mounting order here rather than importing it, since its default
-// export only exposes `fetch`/`scheduled`, not the underlying Hono app) and
-// diffs the resulting /api/v1 route table against docs.tsx's ROUTE_GROUPS.
+// mounts. DEC-518: rather than hand-mirroring src/index.ts's app.route()
+// calls (which drifted from the real file more than once, see field guide
+// w27-28/w29 entries), this test DERIVES the mounted-route list straight
+// from src/index.ts's own source: it extracts every `app.route("<prefix>",
+// <identifier>)` call in file order, resolves each identifier through that
+// same file's `import { ... } from "..."` statements, dynamically imports
+// the resolved module, and rebuilds an app from the exact list it found.
+// Any new sub-app src/index.ts mounts is automatically picked up; any
+// identifier this test can't resolve fails loudly by name instead of
+// silently passing.
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, beforeAll } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve, dirname } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { Hono } from "hono";
 import type { AppEnv } from "../src/server/env";
 import { ROUTE_GROUPS } from "../src/routes/docs";
 
-import { eventsRoutes } from "../src/routes/api/events";
-import { portalConfigRoutes } from "../src/routes/api/portal-config";
-import { emailLogRoutes } from "../src/routes/api/email-log";
-import { formsRoutes } from "../src/routes/api/forms";
-import { submissionsRoutes } from "../src/routes/api/submissions";
-import { contactsRoutes } from "../src/routes/api/contacts";
-import { pipelineRoutes } from "../src/routes/api/pipeline";
-import { overviewRoutes } from "../src/routes/api/overview";
-import { viewsRoutes } from "../src/routes/api/views";
-import { commsRoutes } from "../src/routes/comms";
-import { agendaRoutes } from "../src/routes/agenda";
-import { taskRoutes } from "../src/routes/tasks";
-import { reviewRoutes } from "../src/routes/review";
-import { meRoutes } from "../src/routes/me";
-import { fileApiRoutes } from "../src/routes/files";
-import { tokensRoutes } from "../src/routes/api/tokens";
-import { exportsRoutes } from "../src/routes/api/exports";
-import { usersRoutes } from "../src/routes/api/users";
+const INDEX_PATH = resolve(fileURLToPath(import.meta.url), "../../src/index.ts");
+const INDEX_DIR = dirname(INDEX_PATH);
 
-// Mirrors src/index.ts's mounting for every sub-app that can register an
-// /api/v1/* route (DEC-012). Non-API surfaces (auth, portal, public, docs,
-// root, dev mailbox) are intentionally omitted — docs.tsx's page states
-// "All endpoints below are namespaced under /api/v1", so only those matter.
-function buildApiApp(): Hono<AppEnv> {
-  const app = new Hono<AppEnv>();
-  app.route("/api/v1", eventsRoutes);
-  app.route("/api/v1", portalConfigRoutes);
-  app.route("/api/v1", submissionsRoutes);
-  app.route("/api/v1", contactsRoutes);
-  app.route("/api/v1", pipelineRoutes);
-  app.route("/api/v1", overviewRoutes);
-  app.route("/api/v1", viewsRoutes);
-  app.route("/api/v1", agendaRoutes);
-  app.route("/api/v1", taskRoutes);
-  app.route("/api/v1", fileApiRoutes);
-  app.route("/", emailLogRoutes);
-  app.route("/", formsRoutes);
-  app.route("/", commsRoutes);
-  app.route("/", reviewRoutes);
-  app.route("/", meRoutes);
-  app.route("/", tokensRoutes);
-  app.route("/", exportsRoutes);
-  app.route("/", usersRoutes);
-  return app;
+interface ImportBinding {
+  /** The name exported by the module (left side of `as`, or the name itself). */
+  exportedName: string;
+  /** Module specifier as written in the import statement. */
+  modulePath: string;
+}
+
+/** Parses every `import { a, b as c } from "./mod"` statement in `source`
+ * into a map from local identifier -> { exportedName, modulePath }. */
+function parseImportBindings(source: string): Map<string, ImportBinding> {
+  const bindings = new Map<string, ImportBinding>();
+  const importRegex = /import\s*\{([^}]*)\}\s*from\s*["']([^"']+)["']/g;
+  let m: RegExpExecArray | null;
+  while ((m = importRegex.exec(source))) {
+    const namesGroup = m[1];
+    const modulePath = m[2];
+    if (namesGroup === undefined || modulePath === undefined) continue;
+    const names = namesGroup
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    for (const raw of names) {
+      const parts = raw.split(/\s+as\s+/).map((s) => s.trim());
+      const exportedName = parts[0];
+      if (!exportedName) continue;
+      const localName = parts[1] ?? exportedName;
+      bindings.set(localName, { exportedName, modulePath });
+    }
+  }
+  return bindings;
+}
+
+interface RouteCall {
+  prefix: string;
+  identifier: string;
+}
+
+/** Extracts every literal `app.route("<prefix>", <identifier>)` call, in
+ * source order. Deliberately narrow (a fixed string prefix + a bare
+ * identifier) so a call this can't parse fails the resolution step below
+ * rather than being silently skipped. */
+function parseRouteCalls(source: string): RouteCall[] {
+  const calls: RouteCall[] = [];
+  const routeCallRegex = /app\.route\(\s*(["'])((?:(?!\1).)*)\1\s*,\s*([A-Za-z_$][A-Za-z0-9_$]*)\s*\)/g;
+  let m: RegExpExecArray | null;
+  while ((m = routeCallRegex.exec(source))) {
+    const prefix = m[2];
+    const identifier = m[3];
+    if (prefix === undefined || identifier === undefined) continue;
+    calls.push({ prefix, identifier });
+  }
+  return calls;
 }
 
 /** Hono route patterns use e.g. ":id{[^/]+}" for some params; normalize to
@@ -63,27 +82,86 @@ function normalizePath(path: string): string {
   return path.replace(/:([a-zA-Z0-9_]+)(\{[^}]*\})?/g, ":$1");
 }
 
-describe("docs.tsx ROUTE_GROUPS vs the real mounted /api/v1 routes", () => {
-  const app = buildApiApp();
-  const actual = new Set(
-    app.routes
-      .filter((r) => r.path.startsWith("/api/v1/") || r.path === "/api/v1")
-      .filter((r) => r.method !== "ALL")
-      .map((r) => `${r.method} ${normalizePath(r.path)}`),
-  );
+describe("docs.tsx ROUTE_GROUPS vs the real mounted /api/v1 routes (derived from src/index.ts)", () => {
+  let app: Hono<AppEnv>;
 
-  // docs.tsx paths sometimes carry a documented query string
-  // (?format=csv|json) that isn't part of the route pattern itself.
-  const documented = new Set(
-    ROUTE_GROUPS.flatMap((g) => g.rows).map((r) => `${r.method} ${r.path.split("?")[0]}`),
-  );
+  beforeAll(async () => {
+    const source = readFileSync(INDEX_PATH, "utf-8");
+    const bindings = parseImportBindings(source);
+    const routeCalls = parseRouteCalls(source);
+
+    expect(routeCalls.length).toBeGreaterThan(0);
+
+    const moduleCache = new Map<string, Record<string, unknown>>();
+    async function loadModule(modulePath: string): Promise<Record<string, unknown>> {
+      let mod = moduleCache.get(modulePath);
+      if (!mod) {
+        const resolved = resolve(INDEX_DIR, modulePath);
+        mod = (await import(pathToFileURL(resolved).href)) as Record<string, unknown>;
+        moduleCache.set(modulePath, mod);
+      }
+      return mod;
+    }
+
+    app = new Hono<AppEnv>();
+    for (const { prefix, identifier } of routeCalls) {
+      const binding = bindings.get(identifier);
+      if (!binding) {
+        throw new Error(
+          `src/index.ts calls app.route("${prefix}", ${identifier}) but ${identifier} is not ` +
+            `bound by any import statement in that file — this test can't resolve it and refuses ` +
+            `to silently skip it (DEC-518).`,
+        );
+      }
+      const mod = await loadModule(binding.modulePath);
+      const subApp = mod[binding.exportedName];
+      if (!subApp) {
+        throw new Error(
+          `src/index.ts imports ${identifier} (as ${binding.exportedName}) from ` +
+            `"${binding.modulePath}", but that module has no such export.`,
+        );
+      }
+      app.route(prefix, subApp as Hono<AppEnv>);
+    }
+  });
+
+  it("resolved at least one app.route() call from src/index.ts's own source", () => {
+    expect(app).toBeDefined();
+  });
 
   it("documents every real /api/v1 route (nothing mounted is missing from the page)", () => {
+    // Derived predicate over the mounted app's ACTUAL route table, not a
+    // hand-listed set of module names: any route whose path doesn't start
+    // under /api/v1 (auth, account, portal*, public*, root, docs, dev
+    // mailbox, file/headshot serve, ...) is a non-API surface and out of
+    // scope for docs.tsx, whichever sub-app happens to register it.
+    const actual = new Set(
+      app.routes
+        .filter((r) => r.path.startsWith("/api/v1/") || r.path === "/api/v1")
+        .filter((r) => r.method !== "ALL")
+        .map((r) => `${r.method} ${normalizePath(r.path)}`),
+    );
+    // docs.tsx paths sometimes carry a documented query string
+    // (?format=csv|json) that isn't part of the route pattern itself.
+    const documented = new Set(
+      ROUTE_GROUPS.flatMap((g) => g.rows).map((r) => `${r.method} ${r.path.split("?")[0]}`),
+    );
+
     const undocumented = [...actual].filter((r) => !documented.has(r));
     expect(undocumented).toEqual([]);
   });
 
   it("never documents a route that isn't actually mounted (no stale entries)", () => {
+    const actual = new Set(
+      app.routes
+        .filter((r) => r.path.startsWith("/api/v1/") || r.path === "/api/v1")
+        .filter((r) => r.method !== "ALL")
+        .map((r) => `${r.method} ${normalizePath(r.path)}`),
+    );
+    const documented = new Set(
+      ROUTE_GROUPS.flatMap((g) => g.rows).map((r) => `${r.method} ${r.path.split("?")[0]}`),
+    );
+
     const stale = [...documented].filter((r) => !actual.has(r));
     expect(stale).toEqual([]);
   });
