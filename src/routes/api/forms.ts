@@ -222,6 +222,14 @@ formsRoutes.patch("/api/v1/fields/:fieldId", requireOrganizer, csrfJson, async (
     throw new ApiError("invalid", "Locked fields' kind and section cannot be changed");
   }
 
+  // DEC-625: a locked built-in field can never be given a visibility rule
+  // (it can never be hidden, so a rule on it would be dead/misleading).
+  if (field.locked && body.rule !== undefined) {
+    throw new ApiError("invalid", "Locked built-in fields cannot be given a visibility rule", {
+      rule: "Not allowed on a locked field",
+    });
+  }
+
   const siblings = (await repo.listFields(c.var.db, field.formId)).filter((f) => f.id !== fieldId);
   const siblingDefs = toDefList(siblings);
   const result = validateFieldDefInput(body, siblingDefs, { id: fieldId, kind: field.kind });

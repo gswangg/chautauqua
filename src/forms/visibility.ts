@@ -1,3 +1,4 @@
+import { lockedFieldName } from "./types";
 import type { AnswerMap, FormFieldDef } from "./types";
 
 // A field with no rule is always visible. A field with a rule is visible
@@ -52,6 +53,12 @@ export function resolveHiddenFieldIds(
 
     for (const field of fields) {
       if (hidden.has(field.id)) continue;
+      // DEC-625: a locked built-in field can never be hidden and can never
+      // be given a visibility rule — skip it in both fixed-point branches
+      // (missing-rule-target and rule-evaluates-false) regardless of
+      // whether field.id arrives raw ('<formId>:title') or already short
+      // ('title'); lockedFieldName handles both forms.
+      if (lockedFieldName(field.id) !== null) continue;
       const rule = field.rule;
       if (rule && !ids.has(rule.fieldId)) {
         hidden.add(field.id);
