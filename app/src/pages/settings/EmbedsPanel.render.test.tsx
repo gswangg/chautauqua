@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor, fireEvent, cleanup } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { EmbedsPanel } from './EmbedsPanel';
-import { mockApi } from '../../test-utils/mockApi';
+import { mockApi, listEnvelope } from '../../test-utils/mockApi';
 
 const EVENT_ID = 'evt-embeds-render';
 
@@ -30,6 +30,10 @@ function mockEvent() {
       slug: 'devcon-2026',
       name: 'DevCon 2026',
     },
+    [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([
+      { id: 'trk-42', name: 'Keynotes', color: null },
+      { id: 'trk-99', name: 'Workshops', color: null },
+    ]),
   });
 }
 
@@ -48,7 +52,7 @@ describe('EmbedsPanel', () => {
     // form controls use the shared .chq-select/.chq-input classes.
     expect(screen.getByRole('button', { name: 'Copy snippet' })).toHaveClass('chq-btn-primary');
     expect(screen.getByLabelText('Surface')).toHaveClass('chq-select');
-    expect(screen.getByLabelText('Track ID')).toHaveClass('chq-input');
+    expect(screen.getByRole('combobox', { name: 'Track' })).toHaveClass('chq-select');
   });
 
   it('announces a successful copy via the live status region (DEC-607)', async () => {
@@ -101,7 +105,7 @@ describe('EmbedsPanel', () => {
       expect(screen.getByText(/^<iframe/)).toBeInTheDocument();
     });
 
-    fireEvent.change(screen.getByLabelText('Format'), { target: { value: 'link' } });
+    fireEvent.change(screen.getByRole('combobox', { name: 'Format' }), { target: { value: 'link' } });
 
     await waitFor(() => {
       expect(screen.getByText(/^<a href=/)).toBeInTheDocument();
@@ -109,7 +113,7 @@ describe('EmbedsPanel', () => {
     expect(screen.queryByText(/^<iframe/)).not.toBeInTheDocument();
   });
 
-  it('reflects a trackId knob in the live URL, and drops it back out when cleared', async () => {
+  it('reflects a trackId knob in the live URL, and drops it back out when cleared (DEC-659: a select of track names, never a typed ULID)', async () => {
     mockEvent();
     render(<EmbedsPanel />);
 
@@ -117,12 +121,19 @@ describe('EmbedsPanel', () => {
       expect(screen.getAllByText(/embed\/devcon-2026\/sessions/).length).toBeGreaterThan(0);
     });
 
-    fireEvent.change(screen.getByLabelText('Track ID'), { target: { value: 'trk-42' } });
+    const trackSelect = (await screen.findByRole('combobox', { name: 'Track' })) as HTMLSelectElement;
+    expect(Array.from(trackSelect.options).map((o) => o.textContent)).toEqual([
+      '(all tracks)',
+      'Keynotes',
+      'Workshops',
+    ]);
+
+    fireEvent.change(trackSelect, { target: { value: 'trk-42' } });
     await waitFor(() => {
       expect(screen.getAllByText(/trackId=trk-42/).length).toBeGreaterThan(0);
     });
 
-    fireEvent.change(screen.getByLabelText('Track ID'), { target: { value: '' } });
+    fireEvent.change(trackSelect, { target: { value: '' } });
     await waitFor(() => {
       expect(screen.queryAllByText(/trackId=/).length).toBe(0);
     });
@@ -136,12 +147,12 @@ describe('EmbedsPanel', () => {
       expect(screen.getAllByText(/embed\/devcon-2026\/sessions/).length).toBeGreaterThan(0);
     });
 
-    fireEvent.click(screen.getByRole('checkbox', { name: 'speaker' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Speaker' }));
     await waitFor(() => {
-      expect(screen.getAllByText(/fields=track%2Ctime%2Croom%2Cdescription/).length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/fields=track%2Ctime%2Croom%2Cdescription%2Cformat/).length).toBeGreaterThan(0);
     });
 
-    fireEvent.click(screen.getByRole('checkbox', { name: 'speaker' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Speaker' }));
     await waitFor(() => {
       expect(screen.queryAllByText(/fields=/).length).toBe(0);
     });
@@ -155,7 +166,7 @@ describe('EmbedsPanel', () => {
       expect(screen.getAllByText(/embed\/devcon-2026\/sessions/).length).toBeGreaterThan(0);
     });
 
-    const formatSelect = screen.getByLabelText('Format') as HTMLSelectElement;
+    const formatSelect = screen.getByRole('combobox', { name: 'Format' }) as HTMLSelectElement;
     expect(Array.from(formatSelect.options).map((o) => o.value)).not.toContain('ics');
 
     fireEvent.change(screen.getByLabelText('Surface'), { target: { value: 'agenda' } });
@@ -164,16 +175,17 @@ describe('EmbedsPanel', () => {
     });
   });
 
-  // DEC-490: the builder only renders controls for knobs the selected
-  // surface actually honors, per DEC-489's surface->knob table.
-  it('hides the Day control for the sessions and speakers surfaces', async () => {
+  // DEC-490/DEC-634: the builder only renders controls for knobs the
+  // selected surface actually honors, per DEC-489's surface->knob table
+  // (DEC-634 made `day` a real predicate on sessions too).
+  it('shows the Day control for sessions (DEC-634) but hides it for speakers', async () => {
     mockEvent();
     render(<EmbedsPanel />);
 
     await waitFor(() => {
       expect(screen.getAllByText(/embed\/devcon-2026\/sessions/).length).toBeGreaterThan(0);
     });
-    expect(screen.queryByLabelText('Day')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Day')).toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText('Surface'), { target: { value: 'speakers' } });
     await waitFor(() => {
@@ -182,20 +194,20 @@ describe('EmbedsPanel', () => {
     expect(screen.queryByLabelText('Day')).not.toBeInTheDocument();
   });
 
-  it('hides the Track ID control for the agenda surface', async () => {
+  it('hides the Track control for the agenda surface', async () => {
     mockEvent();
     render(<EmbedsPanel />);
 
     await waitFor(() => {
       expect(screen.getAllByText(/embed\/devcon-2026\/sessions/).length).toBeGreaterThan(0);
     });
-    expect(screen.getByLabelText('Track ID')).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'Track' })).toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText('Surface'), { target: { value: 'agenda' } });
     await waitFor(() => {
       expect(screen.getAllByText(/embed\/devcon-2026\/agenda/).length).toBeGreaterThan(0);
     });
-    expect(screen.queryByLabelText('Track ID')).not.toBeInTheDocument();
+    expect(screen.queryByRole('combobox', { name: 'Track' })).not.toBeInTheDocument();
     expect(screen.getByLabelText('Day')).toBeInTheDocument();
   });
 
@@ -207,7 +219,7 @@ describe('EmbedsPanel', () => {
       expect(screen.getAllByText(/embed\/devcon-2026\/sessions/).length).toBeGreaterThan(0);
     });
 
-    fireEvent.change(screen.getByLabelText('Track ID'), { target: { value: 'trk-42' } });
+    fireEvent.change(await screen.findByRole('combobox', { name: 'Track' }), { target: { value: 'trk-42' } });
     await waitFor(() => {
       expect(screen.getAllByText(/trackId=trk-42/).length).toBeGreaterThan(0);
     });
@@ -217,5 +229,19 @@ describe('EmbedsPanel', () => {
       expect(screen.getAllByText(/embed\/devcon-2026\/agenda/).length).toBeGreaterThan(0);
     });
     expect(screen.queryAllByText(/trackId=/).length).toBe(0);
+  });
+
+  it('reflects a q knob in the live URL for sessions', async () => {
+    mockEvent();
+    render(<EmbedsPanel />);
+
+    await waitFor(() => {
+      expect(screen.getAllByText(/embed\/devcon-2026\/sessions/).length).toBeGreaterThan(0);
+    });
+
+    fireEvent.change(screen.getByLabelText('Search'), { target: { value: 'ai ethics' } });
+    await waitFor(() => {
+      expect(screen.getAllByText(/q=ai\+ethics/).length).toBeGreaterThan(0);
+    });
   });
 });

@@ -5,7 +5,7 @@
 // decisions/DEC-289.md via embedSnippet.ts's pure builders.
 import { useEffect, useRef, useState } from 'react';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
-import { apiGet, ApiError } from '../../lib/api';
+import { apiGet, apiList, ApiError } from '../../lib/api';
 import { copyText } from '../../lib/clipboard';
 import {
   buildEmbedUrl,
@@ -25,6 +25,26 @@ interface EventDetail {
   name: string;
 }
 
+interface Track {
+  id: string;
+  name: string;
+  color: string | null;
+}
+
+// Human-readable labels for the raw field-vocabulary keys (EMBED_FIELDS),
+// per DEC-673: an internal shorthand is not public prose.
+const FIELD_LABELS: Record<EmbedField, string> = {
+  track: 'Track',
+  time: 'Time',
+  room: 'Room',
+  speaker: 'Speaker',
+  description: 'Description',
+  format: 'Format',
+};
+
+// design system default accent (app/src/styles.css --chq-brandable-accent).
+const DEFAULT_ACCENT_PLACEHOLDER = '4e5c31';
+
 // DEC-289: ics is the fixed full-agenda feed — only meaningful from the
 // agenda/schedule surfaces. json is available from every surface.
 function formatsFor(surface: EmbedSurface): EmbedFormat[] {
@@ -37,6 +57,7 @@ function formatsFor(surface: EmbedSurface): EmbedFormat[] {
 export function EmbedsPanel() {
   const { eventId, loading: eventLoading, error: eventError } = useCurrentEvent();
   const [event, setEvent] = useState<EventDetail | null>(null);
+  const [tracks, setTracks] = useState<Track[]>([]);
   const [loadError, setLoadError] = useState<string | undefined>(undefined);
   const [copyResult, setCopyResult] = useState<{ target: 'url' | 'snippet'; ok: boolean; text: string } | null>(
     null,
@@ -47,6 +68,7 @@ export function EmbedsPanel() {
   const [format, setFormat] = useState<EmbedFormat>('iframe');
   const [trackId, setTrackId] = useState('');
   const [day, setDay] = useState('');
+  const [q, setQ] = useState('');
   const [limit, setLimit] = useState('');
   const [fields, setFields] = useState<EmbedField[]>([...EMBED_FIELDS]);
   const [accent, setAccent] = useState('');
@@ -56,6 +78,9 @@ export function EmbedsPanel() {
     apiGet<EventDetail>(`/events/${eventId}`)
       .then(setEvent)
       .catch((err) => setLoadError(err instanceof ApiError ? err.message : 'Failed to load event'));
+    apiList<Track>(`/events/${eventId}/tracks`)
+      .then((res) => setTracks(res.items))
+      .catch((err) => setLoadError(err instanceof ApiError ? err.message : 'Failed to load tracks'));
   }, [eventId]);
 
   // Keep the format valid whenever the surface changes away from
@@ -95,6 +120,7 @@ export function EmbedsPanel() {
         format,
         trackId: trackId || undefined,
         day: day || undefined,
+        q: q || undefined,
         limit: limit ? Number(limit) : undefined,
         fields,
         accent: accent || undefined,
@@ -146,14 +172,19 @@ export function EmbedsPanel() {
 
           {knobs.includes('trackId') ? (
             <label>
-              Track ID
-              <input
-                className="chq-input"
-                type="text"
+              Track
+              <select
+                className="chq-select"
                 value={trackId}
                 onChange={(e) => setTrackId(e.target.value)}
-                placeholder="(all tracks)"
-              />
+              >
+                <option value="">(all tracks)</option>
+                {tracks.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              </select>
             </label>
           ) : null}
 
@@ -165,6 +196,19 @@ export function EmbedsPanel() {
                 type="date"
                 value={day}
                 onChange={(e) => setDay(e.target.value)}
+              />
+            </label>
+          ) : null}
+
+          {knobs.includes('q') ? (
+            <label>
+              Search
+              <input
+                className="chq-input"
+                type="text"
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="(no search)"
               />
             </label>
           ) : null}
@@ -195,7 +239,7 @@ export function EmbedsPanel() {
                     checked={fields.includes(field)}
                     onChange={() => toggleField(field)}
                   />
-                  {field}
+                  {FIELD_LABELS[field]}
                 </label>
               ))}
             </fieldset>
@@ -208,7 +252,7 @@ export function EmbedsPanel() {
               type="text"
               value={accent}
               onChange={(e) => setAccent(e.target.value)}
-              placeholder="#4f46e5"
+              placeholder={`#${DEFAULT_ACCENT_PLACEHOLDER}`}
             />
           </label>
 
