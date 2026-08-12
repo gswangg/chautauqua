@@ -95,14 +95,20 @@ export function SessionDescription(props: { description: string | null }) {
   );
 }
 
-/** EMB-01: date/time + room, only when a schedule_slot exists. Cards for an
- * unscheduled session render nothing here (no dash pile) — the caller
- * threads day/startMin/endMin/roomName as null-together in that case. */
+/** EMB-01/DEC-698: date/time + room cell. When the `time` field is enabled
+ * the row ALWAYS has this gutter cell (grid-template-columns: 126px 1fr auto
+ * in public.css.ts depends on it) — an unscheduled session renders an EMPTY
+ * .chq-pub-session-when (no dash pile, no placeholder prose per DEC-666)
+ * rather than omitting the cell and collapsing the body into the gutter
+ * column. Only when the `time` field is off entirely does the caller drop
+ * the cell and switch the row to the notime grid template. */
 export function SessionSchedule(props: { session: PublicSession; fields?: CardFields }) {
   const { session } = props;
   const fields = props.fields ?? ALL_FIELDS_ON;
   if (!fields.time) return null;
-  if (session.day === null || session.startMin === null || session.endMin === null) return null;
+  if (session.day === null || session.startMin === null || session.endMin === null) {
+    return <div class="chq-pub-session-when" />;
+  }
   return (
     <div class="chq-pub-session-when">
       <span class="chq-pub-session-time">
@@ -128,8 +134,9 @@ export function SessionCard(props: {
 }) {
   const { session, event } = props;
   const fields = props.fields ?? ALL_FIELDS_ON;
+  const rowClass = fields.time ? "chq-pub-session-row" : "chq-pub-session-row chq-pub-session-row-notime";
   return (
-    <div class="chq-pub-session-row" id={`chq-session-${session.id}`}>
+    <div class={rowClass} id={`chq-session-${session.id}`}>
       <SessionSchedule session={session} fields={fields} />
       <div class="chq-pub-session-body">
         <a
