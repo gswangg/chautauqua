@@ -115,7 +115,10 @@ describe("POST /portal/profile — DEC-422 field caps", () => {
     const twitter = "y".repeat(MAX_TEXT_LENGTH);
     const res = await postProfile(app, { bio, twitter });
 
-    expect(res.status).toBe(200);
+    // DEC-574: a successful save is a PRG redirect carrying ?saved=1, not an
+    // inline 200 — no headshot part here, so no &headshot=1.
+    expect(res.status).toBe(302);
+    expect(res.headers.get("location")).toBe("/portal/profile?saved=1");
     expect(updateContactProfileMock).toHaveBeenCalledTimes(1);
     const callArgs = updateContactProfileMock.mock.calls[0]!;
     const payload = callArgs[2] as { bio: string | null; socialLinks: { twitter: string } };

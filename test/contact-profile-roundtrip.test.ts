@@ -180,8 +180,13 @@ describe("SPK-08/CNT-10 organizer<->speaker profile round trip (DEC-142)", () =>
         twitter: "https://twitter.com/ada",
       }).toString(),
     });
-    expect(postRes.status).toBe(200);
-    expect(await postRes.text()).toContain("Profile saved.");
+    // DEC-574: the save is a PRG redirect; the 'Profile saved.' notice now
+    // renders on the followed GET under ?saved=1 rather than in the POST body.
+    expect(postRes.status).toBe(302);
+    expect(postRes.headers.get("location")).toBe("/portal/profile?saved=1");
+    const savedRes = await app.request("/portal/profile?saved=1");
+    expect(savedRes.status).toBe(200);
+    expect(await savedRes.text()).toContain("Profile saved.");
 
     const admin = adminApp(organizerAuth);
     const detailRes = await admin.request("/api/v1/contacts/c-1");
