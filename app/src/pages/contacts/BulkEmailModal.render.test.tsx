@@ -62,4 +62,36 @@ describe('BulkEmailModal render smoke (CRM-11 template + preview)', () => {
 
     expect(screen.getByRole('button', { name: /Send to 1 recipient/ })).toBeInTheDocument();
   });
+
+  // DEC-677: the bulk-email send result renders one sentence naming sent
+  // and failed counts via describeSendResult, not a hand-built "Sent N"
+  // sentence, and lists the failed addresses.
+  it('renders one sentence naming sent and failed counts, and lists the failed address', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
+      'POST /api/v1/contacts/bulk-email/preview': {
+        items: [{ contactId: 'ct1', email: 'ada@example.com', subject: 'Hi', bodyText: 'Body' }],
+      },
+      'POST /api/v1/contacts/bulk-email': {
+        sent: 1,
+        failed: [{ email: 'bad@example.com', message: 'bounced' }],
+        items: [],
+      },
+    });
+
+    render(<BulkEmailModal contactIds={['ct1', 'ct2']} eventId={EVENT_ID} onClose={() => {}} />);
+
+    fireEvent.change(await screen.findByLabelText('Subject'), { target: { value: 'Hi' } });
+    fireEvent.change(screen.getByLabelText('Body'), { target: { value: 'Body' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('ada@example.com')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /Send to 2 recipients/ }));
+
+    expect(await screen.findByText('Sent to 1 email. 1 failure.')).toBeInTheDocument();
+    expect(screen.getByText('bad@example.com')).toBeInTheDocument();
+  });
 });
