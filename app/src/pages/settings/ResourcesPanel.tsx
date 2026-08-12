@@ -207,7 +207,7 @@ export function ResourcesPanel() {
           onChange={(e) => setFileTitle(e.target.value)}
         />
         <input
-          className="chq-input"
+          className="chq-file"
           type="file"
           onChange={(e) => setFileToUpload(e.target.files?.[0] ?? null)}
         />
