@@ -5,7 +5,7 @@ import { Hono } from "hono";
 import {
   resolveAuth,
   checkDoubleSubmitCsrf,
-  noStoreApi,
+  noStoreByDefault,
   sessionLoader,
   requireOrganizer,
   csrfForm,
@@ -249,15 +249,15 @@ describe("DEC-544 source scan: no inline CSRF comparison outside checkDoubleSubm
   });
 });
 
-// w1-e: every /api/v1 GET response carries Cache-Control: no-store, mirroring
-// src/server/app.ts's `app.use("/api/v1", noStoreApi)` / `app.use("/api/v1/*",
-// noStoreApi)` registration — admin/API data must never be edge- or
-// browser-cached; that staleness class is why the Files library P3 (rows
-// appearing "10 min later") reproduced.
-describe("noStoreApi", () => {
-  it("adds Cache-Control: no-store to a GET response that doesn't set one", async () => {
+// DEC-658: every response app-wide carries Cache-Control: no-store unless it
+// already set its own — see test/cache-control-default.test.ts for the
+// full app-wide coverage (mirrors src/server/app.ts's single
+// `app.use("*", noStoreByDefault)` registration). This staleness class is
+// why the Files library P3 (rows appearing "10 min later") reproduced.
+describe("noStoreByDefault", () => {
+  it("adds Cache-Control: no-store to a response that doesn't set one", async () => {
     const app = new Hono<AppEnv>();
-    app.use("/api/v1/*", noStoreApi);
+    app.use("*", noStoreByDefault);
     app.get("/api/v1/widgets", (c) => c.json({ items: [] }));
 
     const res = await app.request("/api/v1/widgets");
@@ -267,7 +267,7 @@ describe("noStoreApi", () => {
 
   it("does not override a route's own explicit Cache-Control", async () => {
     const app = new Hono<AppEnv>();
-    app.use("/api/v1/*", noStoreApi);
+    app.use("*", noStoreByDefault);
     app.get("/api/v1/special", (c) => {
       c.header("Cache-Control", "public, max-age=60");
       return c.json({ ok: true });

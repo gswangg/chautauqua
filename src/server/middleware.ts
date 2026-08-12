@@ -268,12 +268,16 @@ export const csrfForm: MiddlewareHandler<AppEnv> = async (c, next) => {
   await next();
 };
 
-/** w1-e: every /api/v1 response is 'Cache-Control: no-store' (added only
- * when absent, so a route that has an intentional stronger opinion isn't
- * overridden) — API data is always request-fresh; publish-affecting edge
- * caching belongs solely to the public SSR surfaces gated by
- * publicCacheMiddleware in ./pubcache.ts, which this must never touch. */
-export const noStoreApi: MiddlewareHandler<AppEnv> = async (c, next) => {
+/** DEC-658: app-wide default — every response is 'Cache-Control: no-store'
+ * (added only when the handler hasn't already set its own Cache-Control) so
+ * that no route can accidentally go uncached-by-default. Public SSR surfaces
+ * that intentionally own a stronger opinion (pubcache.ts's
+ * publicCacheMiddleware / CLIENT_CACHE_CONTROL restore, setCacheHeaders in
+ * routes/public/index.tsx, the portal headshot long-lived header, whatever
+ * the ASSETS binding returns) are unaffected because they set the header
+ * themselves before this runs its post-next() check. One default, one
+ * exception rule — no per-prefix allowlist to keep in sync as routes land. */
+export const noStoreByDefault: MiddlewareHandler<AppEnv> = async (c, next) => {
   await next();
   if (!c.res.headers.has("Cache-Control")) {
     c.res.headers.set("Cache-Control", "no-store");
