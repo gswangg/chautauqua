@@ -433,5 +433,6 @@ headshotServeRoutes.get("/headshots/:fileId", async (c) => {
   return c.body(obj.body, 200, {
     "Content-Type": contentType,
     "Cache-Control": cacheControl,
+    "X-Content-Type-Options": "nosniff",
   });
 });
