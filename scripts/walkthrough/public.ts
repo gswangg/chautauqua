@@ -428,7 +428,10 @@ async function main(): Promise<void> {
   await check("J10 /sessions: cards + track filter nav present", async () => {
     const res = await fetch(`${BASE_URL}/e/${EVENT_SLUG}/sessions`);
     sessionsHtml = await res.text();
-    assert(sessionsHtml.includes('class="chq-card"'), "no session cards found");
+    // DEC-412 repair: session cards were 'chq-card' pre-redesign; the
+    // redesign renamed the class to 'chq-pub-session-row'
+    // (src/routes/public/cards.tsx SessionCard) — behavior unchanged.
+    assert(sessionsHtml.includes('class="chq-pub-session-row"'), "no session cards found");
     assert(sessionsHtml.includes("Track filters"), "no track filter nav found");
   });
 
@@ -436,19 +439,22 @@ async function main(): Promise<void> {
     const res = await fetch(`${BASE_URL}/e/${EVENT_SLUG}/speakers`);
     const html = await res.text();
     assert(res.status === 200, `-> ${res.status}`);
-    // Speaker names render as "<strong>First Last</strong>" (or, since
-    // DEC-173, "<strong><a href=...>First Last</a></strong>") inside the
-    // chq-speaker-grid region — scope extraction there so a looser tag
-    // pattern can't accidentally catch unrelated <strong> markup elsewhere
-    // on the page.
-    const gridMatch = html.match(/<div class="chq-speaker-grid">([\s\S]*)$/);
+    // DEC-412 repair: speaker names used to render as
+    // "<strong>First Last</strong>" (DEC-173: "<strong><a href=...>...
+    // </a></strong>") inside a 'chq-speaker-grid' region. The redesign
+    // (src/routes/public/speakers.tsx SpeakersContent) dropped the
+    // <strong> wrapper entirely and renders the name as
+    // '<a class="chq-pub-speaker-name" href=...>First Last</a>' inside
+    // 'chq-pub-speaker-grid' > 'chq-pub-speaker-card' — function unchanged
+    // (still one link per speaker), only the token changed.
+    const gridMatch = html.match(/<div class="chq-pub-speaker-grid">([\s\S]*)$/);
     const gridHtml = gridMatch ? gridMatch[1]! : html;
-    const names = extractAll(gridHtml, /<strong>\s*(?:<a[^>]*>)?\s*([^<]+?)\s*(?:<\/a>)?\s*<\/strong>/g);
+    const names = extractAll(gridHtml, /<a class="chq-pub-speaker-name"[^>]*>\s*([^<]+?)\s*<\/a>/g);
     assert(names.length >= 2, "expected at least 2 speakers to check ordering");
     const surnames = names.map((n) => n.trim().split(/\s+/).slice(-1)[0]!.toLowerCase());
     const sorted = [...surnames].sort((a, b) => a.localeCompare(b));
     assert(JSON.stringify(surnames) === JSON.stringify(sorted), `speakers not sorted by surname: ${surnames.join(", ")}`);
-    assert(html.includes("chq-headshot-fallback") || html.includes("<img"), "expected headshot img or fallback markup");
+    assert(html.includes("chq-pub-headshot-fallback") || html.includes("<img"), "expected headshot img or fallback markup");
     assert(html.includes("Software Engineer") || /,\s*\S/.test(html), "expected title/company text near speaker names");
   });
 
@@ -457,7 +463,9 @@ async function main(): Promise<void> {
     const res = await fetch(`${BASE_URL}/e/${EVENT_SLUG}/agenda`);
     const html = await res.text();
     assert(res.status === 200, `-> ${res.status}`);
-    assert(html.includes("chq-agenda-day"), "no per-day agenda grid found");
+    // DEC-412 repair: renamed 'chq-agenda-day' -> 'chq-pub-agenda-day'
+    // (src/routes/public/agenda.tsx).
+    assert(html.includes("chq-pub-agenda-day"), "no per-day agenda grid found");
     for (const t of agenda.tracks) {
       if (t.color && html.includes(t.color)) {
         agendaTrackColorFound = true;
@@ -480,7 +488,11 @@ async function main(): Promise<void> {
     const res = await fetch(`${BASE_URL}/e/${EVENT_SLUG}/gallery`);
     const html = await res.text();
     assert(res.status === 200, `-> ${res.status}`);
-    assert(html.includes("chq-speaker-grid"), "no gallery grid found");
+    // DEC-412 repair: the gallery surface (src/routes/public/speakers.tsx
+    // GalleryContent) is its own 'chq-pub-gallery-grid', distinct from the
+    // speakers-page 'chq-pub-speaker-grid' — pre-redesign both apparently
+    // shared 'chq-speaker-grid'.
+    assert(html.includes("chq-pub-gallery-grid"), "no gallery grid found");
   });
 
   await check("J10 schedule.ics downloads twice with identical UID lines", async () => {
@@ -517,10 +529,23 @@ async function main(): Promise<void> {
   await check("J10 Settings embed-generator snippet URLs match live /embed routes", async () => {
     // The embed URL builder was decomposed out of Settings.tsx (DEC-289):
     // app/src/pages/settings/embedSnippet.ts now owns buildEmbedUrl, and
-    // app/src/pages/settings/EmbedsPanel.tsx renders it. Settings.tsx only
-    // mounts <EmbedsPanel />.
+    // app/src/pages/settings/EmbedsPanel.tsx renders it. DEC-412 repair:
+    // the redesign (DEC-375) turned Settings.tsx's rail of literal
+    // `<XPanel />` mounts into a `SECTIONS: {key,label,Panel}[]` config
+    // array rendered as `<Panel />` inside a shared `.map()` — EmbedsPanel
+    // is still imported and still mounted (as `Panel = section.Panel`
+    // where `section.key === 'embeds'`), just never spelled `<EmbedsPanel`
+    // as a JSX tag anymore. Re-pinned to the still-stable importing/wiring
+    // tokens instead of the literal (now-gone) tag spelling.
     const settingsSrc = readFileSync(join(REPO_ROOT, "app", "src", "pages", "Settings.tsx"), "utf-8");
-    assert(settingsSrc.includes("<EmbedsPanel"), "Settings.tsx no longer mounts <EmbedsPanel />");
+    assert(
+      settingsSrc.includes("import { EmbedsPanel } from './settings/EmbedsPanel'"),
+      "Settings.tsx no longer imports EmbedsPanel",
+    );
+    assert(
+      /\{\s*key:\s*'embeds',\s*label:\s*'Embeds',\s*Panel:\s*EmbedsPanel\s*\}/.test(settingsSrc),
+      "Settings.tsx no longer wires EmbedsPanel into its SECTIONS config",
+    );
 
     const embedSnippetSrc = readFileSync(
       join(REPO_ROOT, "app", "src", "pages", "settings", "embedSnippet.ts"),
