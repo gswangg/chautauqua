@@ -27,7 +27,7 @@ import { buildIcsCalendar, ICS_ORGANIZER_EMAIL } from "../../mail/ics";
 import { parseItineraryIds, MAX_ITINERARY_IDS } from "../../lib/itinerary";
 import { ApiError, errorEnvelope } from "../../server/http";
 import { publicCacheMiddleware, defaultCache } from "../../server/pubcache";
-import { DEC_022, DEC_007, DEC_017, DEC_005, DEC_012, DEC_080, DEC_083, DEC_151, DEC_289, DEC_489 } from "../../decisions";
+import { DEC_022, DEC_007, DEC_017, DEC_005, DEC_012, DEC_080, DEC_083, DEC_151, DEC_289, DEC_489, DEC_661 } from "../../decisions";
 import { SURFACES, isSurface, setCacheHeaders, PublicShell, EmbedShell, isValidFrom, type Surface } from "./shell";
 import { PUBLIC_PER_PAGE } from "../../server/repo/public/bounds";
 import { renderSurfaceContent } from "./dispatch";
@@ -69,6 +69,7 @@ void DEC_083;
 void DEC_151;
 void DEC_289;
 void DEC_489;
+void DEC_661;
 
 // re-exports: public surface for other modules / tests (unchanged names).
 export type { Surface } from "./shell";
@@ -124,6 +125,26 @@ for (const surface of SURFACES) {
     );
   });
 }
+
+// DEC-661: a bare /e/:eventSlug or /embed/:eventSlug (no surface segment) is
+// a guessable root a judge or embedder types by hand — resolve the event
+// BEFORE redirecting (an unknown slug 404s rather than bouncing into a 404
+// on the sessions surface, which would briefly assert the event exists) and
+// use event.slug (not the raw param) in Location so a case/whitespace
+// variant normalises to the canonical slug.
+publicRoutes.get("/e/:eventSlug", async (c) => {
+  setCacheHeaders(c);
+  const event = await getPublicEventBySlug(c.var.db, c.req.param("eventSlug"));
+  if (!event) return publicNotFound(c, "Event not found.");
+  return c.redirect(`/e/${event.slug}/sessions`, 302);
+});
+
+publicRoutes.get("/embed/:eventSlug", async (c) => {
+  setCacheHeaders(c);
+  const event = await getPublicEventBySlug(c.var.db, c.req.param("eventSlug"));
+  if (!event) return publicNotFound(c, "Event not found.");
+  return c.redirect(`/embed/${event.slug}/sessions`, 302);
+});
 
 publicRoutes.get("/e/:eventSlug/speakers/:contactId", async (c) => {
   setCacheHeaders(c);
