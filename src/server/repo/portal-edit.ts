@@ -223,9 +223,30 @@ export async function saveSubmissionEdits(
   // submission_answer. Email is intentionally never synced from this path.
   const firstName = cleanedAnswers[LOCKED_SPEAKER_FIELDS[0]];
   const lastName = cleanedAnswers[LOCKED_SPEAKER_FIELDS[1]];
-  const contactUpdate: Partial<{ firstName: string; lastName: string; updatedAt: Date }> = {};
+  const contactUpdate: Partial<{
+    firstName: string;
+    lastName: string;
+    title: string | null;
+    company: string | null;
+    bio: string | null;
+    updatedAt: Date;
+  }> = {};
   if (typeof firstName === "string" && firstName.length > 0) contactUpdate.firstName = firstName;
   if (typeof lastName === "string" && lastName.length > 0) contactUpdate.lastName = lastName;
+  // DEC-415 (J7): job_title/company/bio are locked speaker fields (DEC-321)
+  // rendered and validated by the portal edit form, but saveSubmissionEdits
+  // was silently discarding them — they never landed on the contact row and
+  // never went through submission_answer either. Mirror the exact semantics
+  // of POST /portal/profile (src/routes/portal/profile.tsx:278-280): trim,
+  // empty string clears to null. A key that's entirely absent from
+  // cleanedAnswers means "not submitted this request" and must leave the
+  // stored column untouched — only a present key (including "") writes.
+  const jobTitle = cleanedAnswers[LOCKED_SPEAKER_FIELDS[3]];
+  const company = cleanedAnswers[LOCKED_SPEAKER_FIELDS[4]];
+  const bio = cleanedAnswers[LOCKED_SPEAKER_FIELDS[5]];
+  if (typeof jobTitle === "string") contactUpdate.title = jobTitle.trim() || null;
+  if (typeof company === "string") contactUpdate.company = company.trim() || null;
+  if (typeof bio === "string") contactUpdate.bio = bio.trim() || null;
   if (Object.keys(contactUpdate).length > 0) {
     contactUpdate.updatedAt = now;
     await db.update(schema.contact).set(contactUpdate).where(eq(schema.contact.id, contactId));
