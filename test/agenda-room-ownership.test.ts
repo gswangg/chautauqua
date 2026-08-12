@@ -56,6 +56,9 @@ describe("PUT /submissions/:id/slot (DEC-073 room-ownership gate)", () => {
     const writeChain: any = {
       values: () => writeChain,
       set: () => writeChain,
+      // DEC-552: upsertSlot is now one INSERT ... ON CONFLICT DO UPDATE, so the
+      // insert chain must terminate on onConflictDoUpdate.
+      onConflictDoUpdate: async () => undefined,
       where: async () => undefined,
     };
     const db = {
@@ -105,12 +108,12 @@ describe("PUT /submissions/:id/slot (DEC-073 room-ownership gate)", () => {
     // select #1: getSubmissionOwnership
     // select #2: roomBelongsToEvent -> found
     // select #3: getEventInfo (DEC-277: moved above the write for range check)
-    // select #4: upsertSlot's existing-slot lookup -> none, so it inserts
-    // (DEC-492: ics_sequence bump is now one atomic set-based UPDATE with no
-    // preceding select, so the old "bumpIcsSequence's submission lookup"
-    // select is gone)
-    // select #5: getConflictsAndSummary -> loadAcceptedSessions submissionRows
-    // select #6/#7/#8: track/participant/slot rows for loadAcceptedSessions
+    // (DEC-552: upsertSlot no longer reads before writing -- it is one
+    // INSERT ... ON CONFLICT DO UPDATE -- so its old existing-slot lookup
+    // select is gone. DEC-492: the ics_sequence bump is one atomic set-based
+    // UPDATE with no preceding select, so that select is gone too.)
+    // select #4: getConflictsAndSummary -> loadAcceptedSessions submissionRows
+    // select #5/#6/#7: track/participant/slot rows for loadAcceptedSessions
     const app = appWithDb([
       [{ eventId: "event1", orgId: "org1", status: "accepted" }],
       [{ id: "room1" }],

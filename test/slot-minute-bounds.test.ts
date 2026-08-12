@@ -57,6 +57,9 @@ describe("PUT /submissions/:id/slot (DEC-476 minute bounds)", () => {
         updated = true;
         return writeChain;
       },
+      // DEC-552: upsertSlot is now one INSERT ... ON CONFLICT DO UPDATE, so the
+      // insert chain must terminate on onConflictDoUpdate.
+      onConflictDoUpdate: async () => undefined,
       where: async () => undefined,
     };
     const db = {
