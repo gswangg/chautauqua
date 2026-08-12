@@ -3,7 +3,7 @@
 // src/routes/api/views.ts call these. config_json shape validation is pure
 // (no I/O) and unit-tested directly.
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { newId } from "../../domain/ids";
@@ -77,13 +77,31 @@ function toRecord(row: {
   };
 }
 
-export async function listSavedViews(db: Db, eventId: string): Promise<SavedViewRecord[]> {
-  const rows = await db
+/** DEC-461: optional trailing page param — absent means today's unbounded
+ * behavior (internal callers unchanged). `id asc` is a deterministic
+ * tiebreak after createdAt for stable pagination across pages. */
+export async function listSavedViews(
+  db: Db,
+  eventId: string,
+  page?: { limit: number; offset: number },
+): Promise<SavedViewRecord[]> {
+  const base = db
     .select()
     .from(schema.savedView)
     .where(eq(schema.savedView.eventId, eventId))
-    .orderBy(schema.savedView.createdAt);
+    .orderBy(schema.savedView.createdAt, schema.savedView.id);
+  const rows = page ? await base.limit(page.limit).offset(page.offset) : await base;
   return rows.map(toRecord);
+}
+
+/** DEC-461 sibling count fn for the true `total` alongside a bounded
+ * listSavedViews page. */
+export async function countSavedViews(db: Db, eventId: string): Promise<number> {
+  const rows = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(schema.savedView)
+    .where(eq(schema.savedView.eventId, eventId));
+  return Number(rows[0]?.count ?? 0);
 }
 
 export async function createSavedView(

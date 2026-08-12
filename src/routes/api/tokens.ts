@@ -4,7 +4,7 @@
 // export a named Hono sub-app; only src/index.ts mounts it (DEC-012).
 
 import { Hono } from "hono";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import type { AppEnv } from "../../server/env";
 import { requireOrganizer, csrfJson } from "../../server/middleware";
 import { ApiError } from "../../server/http";
@@ -13,10 +13,21 @@ import { newId } from "../../domain/ids";
 import { hashToken, newApiToken, apiTokenDisplayPrefix } from "../../auth/tokens";
 import { DEC_027 } from "../../decisions";
 import { MAX_NAME_LENGTH } from "../../forms/validate"; // DEC-425
+import { clampPage, clampPerPage, MAX_PER_PAGE } from "../../lib/pagination";
 
 void DEC_027;
 
 export const tokensRoutes = new Hono<AppEnv>();
+
+// DEC-460/DEC-461: site default here is 200 (not clampPerPage's own 50) —
+// both an absent and an invalid perPage query param resolve to 200; only an
+// explicit valid value gets clampPerPage's normal [1, MAX_PER_PAGE] clamp.
+function perPageWithDefault200(raw: string | undefined): number {
+  if (raw === undefined) return MAX_PER_PAGE;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || !Number.isInteger(n) || n < 1) return MAX_PER_PAGE;
+  return clampPerPage(raw);
+}
 
 function assertCookieSession(auth: { viaBearer?: boolean } | undefined): void {
   if (!auth) throw new ApiError("unauthorized", "Login required");
@@ -30,6 +41,9 @@ tokensRoutes.get("/api/v1/tokens", requireOrganizer, async (c) => {
   assertCookieSession(auth);
   const orgId = auth!.orgId;
 
+  const page = clampPage(c.req.query("page"));
+  const perPage = perPageWithDefault200(c.req.query("perPage"));
+
   const rows = await c.var.db
     .select({
       id: schema.apiToken.id,
@@ -39,7 +53,15 @@ tokensRoutes.get("/api/v1/tokens", requireOrganizer, async (c) => {
     })
     .from(schema.apiToken)
     .where(eq(schema.apiToken.orgId, orgId))
-    .orderBy(schema.apiToken.createdAt);
+    .orderBy(schema.apiToken.createdAt, schema.apiToken.id)
+    .limit(perPage)
+    .offset((page - 1) * perPage);
+
+  const countRows = await c.var.db
+    .select({ count: sql<number>`count(*)` })
+    .from(schema.apiToken)
+    .where(eq(schema.apiToken.orgId, orgId));
+  const total = Number(countRows[0]?.count ?? 0);
 
   return c.json({
     items: rows.map((r) => ({
@@ -48,9 +70,9 @@ tokensRoutes.get("/api/v1/tokens", requireOrganizer, async (c) => {
       tokenPrefix: r.tokenPrefix,
       lastUsedAt: r.lastUsedAt ? r.lastUsedAt.getTime() : null,
     })),
-    total: rows.length,
-    page: 1,
-    perPage: rows.length,
+    total,
+    page,
+    perPage,
   });
 });
 
