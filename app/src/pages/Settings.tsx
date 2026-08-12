@@ -17,6 +17,7 @@ import { PeopleRolesPanel } from './settings/PeopleRolesPanel';
 import { ApiTokensPanel } from './settings/ApiTokensPanel';
 import { ExportsPanel } from './settings/ExportsPanel';
 import { EmbedsPanel } from './settings/EmbedsPanel';
+import { SessionboardImportPanel } from './settings/SessionboardImportPanel';
 import './settings/settings.css';
 
 interface SettingsSection {
@@ -37,6 +38,7 @@ const SECTIONS: SettingsSection[] = [
   { key: 'tokens', label: 'API tokens', Panel: ApiTokensPanel },
   { key: 'exports', label: 'Exports', Panel: ExportsPanel },
   { key: 'embeds', label: 'Embeds', Panel: EmbedsPanel },
+  { key: 'sessionboard-import', label: 'Import from Sessionboard', Panel: SessionboardImportPanel },
 ];
 
 export function SettingsPage() {
