@@ -40,6 +40,95 @@ export function deleteAllStmt(table: string): string {
   return `DELETE FROM ${table};`;
 }
 
+// ---------------------------------------------------------------------------
+// DEC-578: the explicit FK-safe DELETE order below is real knowledge the
+// schema itself does not encode (drizzle-orm doesn't declare FK constraints
+// on these sqlite tables, so there's nothing to topologically sort from) —
+// it stays hand-curated, children before parents. But the *set* of tables it
+// wipes must always equal the full set src/db/schema.ts exports; a table
+// added to the schema without updating this list would survive every
+// reseed, as pipeline_entry once silently did. seed.ts calls
+// assertDeleteOrderCoversSchema against the live schema before writing any
+// DELETE statement, and test/seed-delete-order.test.ts pins the same check.
+export const TABLES_IN_DELETE_ORDER: readonly string[] = [
+  "email_log",
+  "email_template",
+  "file_comment",
+  "file",
+  "resource",
+  "portal_settings",
+  "task_assignment",
+  "task",
+  "schedule_slot",
+  // DEC-271: review_recusal references evaluation_plan/submission/user.
+  "review_recusal",
+  "evaluation",
+  "plan_reviewer",
+  "evaluation_plan",
+  "participant",
+  "submission_track",
+  "submission_answer",
+  // DEC-158: submission_revision references submission and (nullably) user.
+  "submission_revision",
+  "submission",
+  "form_field",
+  "form",
+  "room",
+  "track",
+  // CRM-07/08 (DEC-157): pipeline_activity references pipeline_entry and
+  // user; pipeline_entry references contact and org. Both must clear before
+  // contact/user/org below.
+  "pipeline_activity",
+  "pipeline_entry",
+  "contact",
+  "auth_session",
+  "user",
+  "saved_view",
+  "event",
+  "segment",
+  "api_token",
+  "org",
+];
+
+/**
+ * Fails loudly, BY NAME, when the hand-curated delete-order list and the
+ * schema's actual table set diverge in either direction: a schema table the
+ * list omits (would survive a reseed), or a list entry naming a table the
+ * schema no longer has (dead/typo'd entry). Also rejects a duplicate entry,
+ * which would silently mask a missing one via a length-only comparison.
+ */
+export function assertDeleteOrderCoversSchema(
+  deleteOrder: readonly string[],
+  schemaTableNames: readonly string[],
+): void {
+  const seen = new Set<string>();
+  const dupes = new Set<string>();
+  for (const t of deleteOrder) {
+    if (seen.has(t)) dupes.add(t);
+    seen.add(t);
+  }
+  if (dupes.size > 0) {
+    throw new Error(
+      `seed TABLES_IN_DELETE_ORDER lists duplicate table(s): ${[...dupes].sort().join(", ")}`,
+    );
+  }
+
+  const deleteSet = new Set(deleteOrder);
+  const schemaSet = new Set(schemaTableNames);
+  const missing = schemaTableNames.filter((t) => !deleteSet.has(t)).sort();
+  const extra = deleteOrder.filter((t) => !schemaSet.has(t)).sort();
+  if (missing.length > 0 || extra.length > 0) {
+    const parts: string[] = [];
+    if (missing.length > 0) {
+      parts.push(`schema table(s) missing from TABLES_IN_DELETE_ORDER: ${missing.join(", ")}`);
+    }
+    if (extra.length > 0) {
+      parts.push(`TABLES_IN_DELETE_ORDER names table(s) not in src/db/schema.ts: ${extra.join(", ")}`);
+    }
+    throw new Error(`seed delete order is out of sync with src/db/schema.ts — ${parts.join("; ")}`);
+  }
+}
+
 export const ADDITIONAL_SUBMISSION_STATUS_COUNTS: Readonly<Record<string, number>> = {
   pending: 15,
   accept_queue: 4,
