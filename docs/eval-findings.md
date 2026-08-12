@@ -331,3 +331,8 @@ mock shows criteria but not their editing flow; prod's invented flow is unintuit
     directly under the title between the 1px rules (the standard toolbar pattern every
     other list page uses). Part of the Directory layout rebuild (table + sidebar,
     item in SYNTHESIS Tier 3): search belongs first, filters beside it.
+
+23. (User QA) Third named instance for the Tier-1 native-file-input sweep: the Contacts
+    "Import from CSV" modal's raw "Choose File" control. The sweep (item 7) must cover
+    ALL file inputs: Content deliverable zones, Settings resources, CSV import, portal
+    headshot — one styled file-picker component, scan-locked like buttons/dialogs.
