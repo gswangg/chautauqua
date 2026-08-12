@@ -5,8 +5,9 @@
 # until the lock is free. If the lock is found to be older than
 # STALE_MINUTES (45), it is loudly declared stale and stolen. The lock is
 # always released on exit (normal, INT, or TERM) via `rmdir`. Once the
-# lock is held, this script `exec`s its arguments, replacing this process
-# and forwarding the wrapped command's exit code verbatim.
+# lock is held, this script runs its arguments as a child process and
+# forwards the wrapped command's exit code verbatim (see the note below
+# on why it does not `exec`).
 #
 # Usage: sh scripts/with-test-lock.sh <command> [args...]
 
