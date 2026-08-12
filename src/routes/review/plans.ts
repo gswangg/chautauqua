@@ -23,7 +23,8 @@ import { clampPage, clampPerPage, listPerPage } from "../../lib/pagination";
 import * as repo from "../../server/repo/review";
 import { roundCriteriaJsonOf } from "../../server/repo/review";
 import * as eventsRepo from "../../server/repo/events";
-import { DEC_015, DEC_123, DEC_146, DEC_147, DEC_148, DEC_213, DEC_238, DEC_460, DEC_461, DEC_466 } from "../../decisions";
+import { DEC_015, DEC_123, DEC_146, DEC_147, DEC_148, DEC_213, DEC_238, DEC_460, DEC_461, DEC_466, DEC_535 } from "../../decisions";
+import { capById, MAX_REVIEWER_REMINDER_BATCH } from "../../domain/reminders";
 import {
   asRecord,
   currentAuth,
@@ -55,6 +56,7 @@ void DEC_238; // /plans/:id/remind: per-recipient catch, {sent,failed} 200 below
 void DEC_460; // enforced bound on every /api/v1 list envelope, no exemptions
 void DEC_461; // optional repo page param + sibling count fn + deterministic ORDER BY below
 void DEC_466; // /plans/:id/progress bounded below via the blessed JS-slice (DEC-461(e))
+void DEC_535; // /plans/:id/remind: laggard list capped via capById below
 
 reviewPlansRoutes.get("/api/v1/events/:eventId/plans", requireOrganizer, async (c) => {
   const auth = currentAuth(c);
@@ -415,28 +417,37 @@ reviewPlansRoutes.post("/api/v1/plans/:id/remind", requireOrganizer, csrfJson, a
     completedByReviewer.set(e.reviewerId, set);
   }
 
-  const reminded: string[] = [];
-  const failed: { email: string; message: string }[] = [];
+  const laggards: { userId: string; email: string; assignedCount: number; completed: number }[] = [];
   for (const user of users) {
     const assigned = assignedExcludingRecused(assignments.get(user.userId) ?? [], recusedByUser.get(user.userId) ?? new Set());
     const completed = completedByReviewer.get(user.userId)?.size ?? 0;
     if (completed >= assigned.length) continue;
+    laggards.push({ userId: user.userId, email: user.email, assignedCount: assigned.length, completed });
+  }
 
+  // DEC-535: bound the batch the same way DEC-319 bounds the J6 sibling.
+  const { items: capped, remaining } = capById(laggards, (l) => l.userId, MAX_REVIEWER_REMINDER_BATCH);
+
+  const reminded: string[] = [];
+  const failed: { email: string; message: string }[] = [];
+  for (const laggard of capped) {
     try {
       // DEC-191: reviewers are users, not contacts; per-contact email history
       // intentionally excludes rows like this one.
       await mailer.send({
-        to: { email: user.email, name: user.email },
+        to: { email: laggard.email, name: laggard.email },
         subject: `Reminder: ${plan.name} review queue`,
-        text: `You have ${assigned.length - completed} submission(s) left to review in "${plan.name}".`,
-        html: textToHtml(`You have ${assigned.length - completed} submission(s) left to review in "${plan.name}".`),
+        text: `You have ${laggard.assignedCount - laggard.completed} submission(s) left to review in "${plan.name}".`,
+        html: textToHtml(
+          `You have ${laggard.assignedCount - laggard.completed} submission(s) left to review in "${plan.name}".`,
+        ),
         eventId: plan.eventId,
         contactId: null,
       });
-      reminded.push(user.userId);
+      reminded.push(laggard.userId);
     } catch (err) {
-      failed.push({ email: user.email, message: err instanceof Error ? err.message : String(err) });
+      failed.push({ email: laggard.email, message: err instanceof Error ? err.message : String(err) });
     }
   }
-  return c.json({ reminded, sent: reminded.length, failed });
+  return c.json({ reminded, sent: reminded.length, failed, remaining });
 });
