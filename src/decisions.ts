@@ -441,3 +441,8 @@ export const DEC_435 = "formatRef is the only place a record ref is built; the A
 export const DEC_436 = "CONTRAST_BLOCKING's flip is wave 14's, and only from wave 14's own reading";
 export const DEC_437 = "SPEC §10 items 2, 3 and 4 are deferred by decision, not missing";
 export const DEC_438 = "The completion ledger names the sha it audited and splits open items into FAIL-unowned versus PENDING-OWNED";
+export const DEC_439 = "The three measured SPEC §7 budget misses are stage-1 product defects, and each is fixed by shrinking what one request loads";
+export const DEC_440 = "buildResults keeps its JS aggregation: aggregateSubmission's fail-loudly throws must not be laundered into SQL";
+export const DEC_441 = "SPEC §10 #3 (assisted chasing) ships now; #2 (decision-meeting view) waits exactly one more wave, because its natural implementation reuses the function this wave is rewriting";
+export const DEC_442 = "A public GET joins the edge cache exactly when its URL carries no per-user parameter: bare schedule.ics is cacheable, ?ids= is not";
+export const DEC_443 = "CONTRAST_BLOCKING's flip passes to wave 15's build/test lane under DEC-436's unchanged rule";
