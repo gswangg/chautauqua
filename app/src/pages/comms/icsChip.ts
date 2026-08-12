@@ -5,6 +5,8 @@
 // (never the viewer's ambient machine zone) so an organizer proofreading a
 // notification sees the same wall-clock time the speaker will see.
 
+import { formatDateTimeInZone } from '../../lib/dates';
+
 export interface IcsChipInfo {
   startUtc: string;
   endUtc: string;
@@ -14,7 +16,7 @@ export interface IcsChipInfo {
 }
 
 function formatLocal(iso: string, timeZone: string): string {
-  return new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short', timeZone });
+  return formatDateTimeInZone(iso, timeZone);
 }
 
 // ECMA-402 rejects combining dateStyle/timeStyle with timeZoneName in one
