@@ -114,12 +114,15 @@ export interface ResultsRow {
   perDropdown: Record<string, { counts: Record<string, number>; modal: string | null }>;
 }
 
-// GET /api/v1/review/plans/:id/queue item.
+// GET /api/v1/review/plans/:id/queue item. DEC-561: the queue keeps
+// already-rated items instead of erasing them, so `alreadyRatedByMe` tells
+// the SPA to render a completed pill rather than a live count.
 export interface ReviewerQueueItem {
   submissionId: string;
   ref: string;
   title: string;
   ratingsCount: number;
+  alreadyRatedByMe: boolean;
 }
 
 // DEC-271: a submission this reviewer has recused themselves from (conflict
@@ -165,16 +168,33 @@ export interface MyEvaluation {
   comment?: string;
 }
 
-// GET /api/v1/review/submissions/:id?planId= response. When plan.anonymized
-// the server has already stripped speaker fields -- never re-applied
-// client-side.
+// A single CFP custom-answer entry, session or speaker side. DEC-561:
+// `value` is rendered through formatAnswerValue -- never assumed to be a
+// string.
+export interface SubmissionAnswer {
+  fieldId: string;
+  label: string;
+  kind: string;
+  value: unknown;
+}
+
+// GET /api/v1/review/submissions/:id?planId= response (DEC-561 wire
+// contract). When plan.anonymized the server has already stripped
+// `speakers`/`speakerAnswers` entirely (no key at all) -- never
+// re-applied/re-stripped client-side.
 export interface ReviewerSubmissionDetail {
   id: string;
   ref: string;
   title: string;
   description?: string;
-  speakers?: { contactId: string; name: string }[];
-  answers?: Record<string, unknown>;
+  speakers?: { contactId: string; name: string; company: string | null; title: string | null }[];
+  // The CFP's custom answers for the session itself, in form order
+  // (form_field.position asc) -- rendered in the order delivered, never
+  // re-sorted.
+  sessionAnswers: SubmissionAnswer[];
+  // The CFP's custom answers on the speaker record(s), when the plan isn't
+  // anonymized. Same shape/order guarantee as sessionAnswers.
+  speakerAnswers?: SubmissionAnswer[];
   // This reviewer's own prior rating on this submission, if any. Reviewers
   // never see the aggregate/other reviewers' scores (DEC-018) -- only this.
   myEvaluation?: MyEvaluation;
