@@ -67,6 +67,16 @@
   white-space: nowrap;
 }
 
+/* DEC-587: inline plan-row progress (evaluations in / evaluations expected),
+   the same shape as ProgressPanel's own row -- .chq-bar/.chq-bar-fill are
+   shared classes owned by the shell lane (../../styles.css), consumed here
+   without redefinition per DEC-368. */
+.chq-review-plan-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
 @media (max-width: 900px) {
   .chq-review-plan-row {
     grid-template-columns: 1fr;
@@ -155,6 +165,13 @@
   font-size: 17px;
   font-weight: 600;
   color: var(--chq-ink);
+}
+
+/* DEC-587: inline Accept/Decline on a ranked results row. */
+.chq-review-decision-actions {
+  display: flex;
+  gap: 9px;
+  flex-wrap: wrap;
 }
 
 .chq-review-sort-button {

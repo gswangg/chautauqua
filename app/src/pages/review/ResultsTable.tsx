@@ -1,9 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { apiGet, apiList, ApiError } from '../../lib/api';
+import { apiGet, apiList, apiPost, ApiError } from '../../lib/api';
 import './review.css';
 import { buildResultsCsvHref } from './resultsCsv';
 import type { EvaluationPlan, ResultsRow } from './types';
+
+// DEC-587: the submissions table's own status endpoint -- reused verbatim
+// rather than inventing a second "decide" endpoint.
+type SubmissionDecision = 'accepted' | 'declined';
 
 // DEC-345: mirrors src/domain/evaluation.ts's ResultsSortKey/SortDirection
 // (the pure-core sort now lives server-side, so the SPA only needs the wire
@@ -62,6 +66,13 @@ export function ResultsTable() {
   // client-side re-sort of a single page (that class of bug is DEC-341's).
   const [sort, setSort] = useState<{ key: ResultsSortKey; direction: SortDirection } | null>(null);
   const [page, setPage] = useState(1);
+  const [refreshToken, setRefreshToken] = useState(0);
+  // DEC-587/DEC-193: optimistic per-submission decision, keyed by
+  // submissionId. A failed write rolls this back and refetches server
+  // truth instead of restoring the stale pre-update snapshot.
+  const [decisions, setDecisions] = useState<Record<string, SubmissionDecision>>({});
+  const [decidingId, setDecidingId] = useState<string | null>(null);
+  const [decideError, setDecideError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!planId) return;
@@ -100,7 +111,36 @@ export function ResultsTable() {
         setTotal(resultsRes.total);
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load results'));
-  }, [planId, round, sort, page]);
+  }, [planId, round, sort, page, refreshToken]);
+
+  // DEC-587: Accept/Decline reuse the submissions table's own status
+  // endpoint (POST /events/:eventId/submissions/status) -- deciding never
+  // sends email (product principle 4); notification is a separate, explicit
+  // action elsewhere.
+  async function decide(submissionId: string, status: SubmissionDecision) {
+    if (!plan) return;
+    setDecidingId(submissionId);
+    setDecideError(null);
+    const previous = decisions[submissionId];
+    setDecisions((prev) => ({ ...prev, [submissionId]: status }));
+    try {
+      await apiPost(`/events/${plan.eventId}/submissions/status`, { ids: [submissionId], status });
+    } catch (err) {
+      // DEC-193: batches already committed on the server must not be
+      // visually rolled back; a failed write refetches server truth
+      // instead of restoring the stale pre-update snapshot.
+      setDecisions((prev) => {
+        const next = { ...prev };
+        if (previous) next[submissionId] = previous;
+        else delete next[submissionId];
+        return next;
+      });
+      setDecideError(err instanceof ApiError ? err.message : 'Failed to update status');
+      setRefreshToken((n) => n + 1);
+    } finally {
+      setDecidingId(null);
+    }
+  }
 
   const handleSort = (key: ResultsSortKey) => {
     setSort((prev) => {
@@ -128,7 +168,7 @@ export function ResultsTable() {
     );
   }
 
-  const columnCount = 4 + ratingCriteria.length + dropdownCriteria.length;
+  const columnCount = 5 + ratingCriteria.length + dropdownCriteria.length;
 
   return (
     <div className="chq-page chq-review-page">
@@ -141,6 +181,11 @@ export function ResultsTable() {
       {error && (
         <div className="chq-error" role="alert">
           {error}
+        </div>
+      )}
+      {decideError && (
+        <div className="chq-error" role="alert">
+          {decideError}
         </div>
       )}
 
@@ -182,6 +227,10 @@ export function ResultsTable() {
             Mean of submitted reviews · recusals excluded
           </span>
         </div>
+        {/* DEC-587/product principle 4: said once here, not per row -- a
+           decision never triggers email; notifying speakers is a separate,
+           explicit action elsewhere. */}
+        <p className="chq-review-hint">Deciding here never sends email — notify speakers separately.</p>
         <table className="chq-review-results-table">
           <thead>
             <tr>
@@ -217,6 +266,7 @@ export function ResultsTable() {
                   />
                 </th>
               ))}
+              <th>Decision</th>
             </tr>
           </thead>
           <tbody>
@@ -266,6 +316,31 @@ export function ResultsTable() {
                     </td>
                   );
                 })}
+                <td data-label="Decision">
+                  <div className="chq-review-decision-actions">
+                    <button
+                      type="button"
+                      className="chq-btn chq-btn-primary"
+                      disabled={decidingId === row.submissionId}
+                      onClick={() => void decide(row.submissionId, 'accepted')}
+                    >
+                      Accept
+                    </button>
+                    <button
+                      type="button"
+                      className="chq-btn chq-btn-secondary"
+                      disabled={decidingId === row.submissionId}
+                      onClick={() => void decide(row.submissionId, 'declined')}
+                    >
+                      Decline
+                    </button>
+                  </div>
+                  {decisions[row.submissionId] && (
+                    <span className="chq-review-plan-meta">
+                      {decisions[row.submissionId] === 'accepted' ? 'Accepted' : 'Declined'}
+                    </span>
+                  )}
+                </td>
               </tr>
             ))}
             {rows.length === 0 && (

@@ -4,50 +4,15 @@ import { apiDelete, apiList, ApiError } from '../../lib/api';
 import './review.css';
 import type { EvaluationPlan, RecusalItem, ReviewerQueueEnvelope, ReviewerQueueItem } from './types';
 
-function PlanPicker() {
-  const [plans, setPlans] = useState<EvaluationPlan[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    apiList<EvaluationPlan>('/review/plans')
-      .then((res) => setPlans(res.items))
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load your plans'))
-      .finally(() => setLoading(false));
-  }, []);
-
-  if (loading) {
-    return (
-      <div className="chq-page chq-review-page">
-        <h1 className="chq-page-title">Review</h1>
-        <p>Loading…</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="chq-page chq-review-page">
-      <h1 className="chq-page-title">Your evaluation plans</h1>
-      {error && (
-        <div className="chq-error" role="alert">
-          {error}
-        </div>
-      )}
-      {plans.length === 0 && !error && <p className="chq-empty">You have no assigned evaluation plans yet.</p>}
-      <section className="chq-section">
-        {plans.map((plan) => (
-          <div key={plan.id} className="chq-row">
-            <Link to={`/review/plans/${plan.id}`} className="chq-row-title">
-              {plan.name}
-            </Link>
-          </div>
-        ))}
-      </section>
-    </div>
-  );
-}
-
-function Queue({ planId }: { planId: string }) {
+// DEC-586: a reviewer landing on /review sees their queue directly -- no
+// intermediate plan-name-only picker page (that component is deleted, not
+// hidden behind a route). With exactly one assigned plan the section below
+// renders with no heading at all; with several, each plan gets its own
+// section in the order GET /review/plans returned them. Items are never
+// merged or re-sorted across (or within) plans -- a recusal is scoped to
+// its own plan-and-submission pair, so it stays attached to that plan's
+// section.
+function PlanSection({ planId, planName, showHeading }: { planId: string; planName?: string; showHeading: boolean }) {
   const [items, setItems] = useState<ReviewerQueueItem[]>([]);
   const [recused, setRecused] = useState<RecusalItem[]>([]);
   const [open, setOpen] = useState(true);
@@ -86,21 +51,24 @@ function Queue({ planId }: { planId: string }) {
 
   if (loading) {
     return (
-      <div className="chq-page chq-review-page">
-        <h1 className="chq-page-title">Review</h1>
+      <section className="chq-section">
+        {showHeading && (
+          <div className="chq-section-head">
+            <h2 className="chq-section-label">{planName}</h2>
+          </div>
+        )}
         <p>Loading…</p>
-      </div>
+      </section>
     );
   }
 
   return (
-    <div className="chq-page chq-review-page">
-      <p>
-        <Link to="/review" className="chq-review-back">
-          &larr; Your plans
-        </Link>
-      </p>
-      <h1 className="chq-page-title">Your queue</h1>
+    <section className="chq-section">
+      {showHeading && (
+        <div className="chq-section-head">
+          <h2 className="chq-section-label">{planName}</h2>
+        </div>
+      )}
       {error && (
         <div className="chq-error" role="alert">
           {error}
@@ -155,12 +123,66 @@ function Queue({ planId }: { planId: string }) {
           </ul>
         </section>
       )}
-    </div>
+    </section>
   );
 }
 
 export function ReviewerQueue() {
-  const { planId } = useParams<{ planId: string }>();
-  if (!planId) return <PlanPicker />;
-  return <Queue planId={planId} />;
+  const { planId: routePlanId } = useParams<{ planId: string }>();
+  const [plans, setPlans] = useState<EvaluationPlan[] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    // A deep link to a single plan (/review/plans/:planId) shows that plan
+    // alone -- it never needs the reviewer's full plan list.
+    if (routePlanId) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    apiList<EvaluationPlan>('/review/plans')
+      .then((res) => setPlans(res.items))
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load your plans'))
+      .finally(() => setLoading(false));
+  }, [routePlanId]);
+
+  if (routePlanId) {
+    return (
+      <div className="chq-page chq-review-page">
+        <p>
+          <Link to="/review" className="chq-review-back">
+            &larr; Your plans
+          </Link>
+        </p>
+        <h1 className="chq-page-title">Your queue</h1>
+        <PlanSection planId={routePlanId} showHeading={false} />
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="chq-page chq-review-page">
+        <h1 className="chq-page-title">Review</h1>
+        <p>Loading…</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="chq-page chq-review-page">
+      <h1 className="chq-page-title">Your queue</h1>
+      {error && (
+        <div className="chq-error" role="alert">
+          {error}
+        </div>
+      )}
+      {plans && plans.length === 0 && !error && <p className="chq-empty">You have no assigned evaluation plans yet.</p>}
+      {plans &&
+        plans.map((plan) => (
+          <PlanSection key={plan.id} planId={plan.id} planName={plan.name} showHeading={plans.length > 1} />
+        ))}
+    </div>
+  );
 }
