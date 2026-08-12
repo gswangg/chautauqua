@@ -1,8 +1,11 @@
-// DEC-439 regression coverage: resolveReviewerSubmissions must cost-scale
-// with ONE reviewer's slice (load only that reviewer's plan_reviewer rows,
-// then one scoped `submission` query using EXISTS subqueries over
-// submission_track) instead of loading the whole plan's matched submissions
-// plus every reviewer's rows and recomputing all assignments in JS.
+// DEC-439/DEC-449 regression coverage: resolveReviewerSubmissions must
+// cost-scale with ONE reviewer's slice (load only that reviewer's
+// plan_reviewer rows, then one scoped `submission` query using EXISTS
+// subqueries over submission_track) instead of loading the whole plan's
+// matched submissions plus every reviewer's rows and recomputing all
+// assignments in JS. DEC-449: this fn no longer performs any trackIds
+// lookup at all (its one caller, the reviewer queue route, never reads
+// trackIds) -- returns id/ref/title only.
 //
 // No local sqlite/D1 test driver is wired up in stage 1 (see
 // test/review-repo-aggregates.test.ts) so this test fakes the drizzle
@@ -16,7 +19,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import * as schema from "../src/db/schema";
 import { resolveAssignments, type ReviewerScopeRow } from "../src/domain/evaluation";
-import type { PlanSubmissionRef } from "../src/server/repo/review/submissions";
+import type { ReviewerScopedSubmission } from "../src/server/repo/review/submissions";
 
 const TAG = Symbol("cond-tag");
 
@@ -197,7 +200,7 @@ function trackIdsFor(submissionId: string): string[] {
   return SUBMISSION_TRACK_ROWS.filter((t) => t.submission_id === submissionId).map((t) => t.track_id);
 }
 
-function allPlanFiltered(filterTracks: string[] | undefined): PlanSubmissionRef[] {
+function allPlanFiltered(filterTracks: string[] | undefined): (ReviewerScopedSubmission & { trackIds: string[] })[] {
   return SUBMISSION_ROWS.filter((s) => s.event_id === "event-1")
     .filter((s) => !filterTracks || filterTracks.length === 0 || trackIdsFor(s.id).some((t) => filterTracks.includes(t)))
     .map((s) => ({ id: s.id, ref: `TALK-${String(s.seq).padStart(3, "0")}`, title: s.title, trackIds: trackIdsFor(s.id) }));
@@ -224,7 +227,7 @@ function planRecord(filters: { trackIds?: string[] } | null) {
   };
 }
 
-function sortedIds(rows: PlanSubmissionRef[]): string[] {
+function sortedIds(rows: { id: string }[]): string[] {
   return [...rows.map((r) => r.id)].sort();
 }
 
@@ -256,13 +259,13 @@ describe("DEC-439: resolveReviewerSubmissions scales with one reviewer's slice",
       const actual = await resolveReviewerSubmissions(db as never, plan as never, userId);
       const expectedForUser = expected.get(userId) ?? [];
       expect(sortedIds(actual)).toEqual(sortedIds(expectedForUser));
-      // trackIds/ref/title also match exactly, not just ids.
+      // ref/title also match exactly, not just ids (DEC-449: no trackIds on
+      // this result -- resolveReviewerSubmissions never looks them up).
       const byId = new Map(actual.map((r) => [r.id, r]));
       for (const exp of expectedForUser) {
         const got = byId.get(exp.id);
         expect(got?.ref).toBe(exp.ref);
         expect(got?.title).toBe(exp.title);
-        expect([...(got?.trackIds ?? [])].sort()).toEqual([...exp.trackIds].sort());
       }
     }
   });
@@ -319,7 +322,7 @@ describe("DEC-439: resolveReviewerSubmissions scales with one reviewer's slice",
     expect(result).toEqual([]);
   });
 
-  it("(c) never issues a submission_track query that isn't restricted to a bounded submission-id set", async () => {
+  it("(c) DEC-449: never issues any submission_track query at all -- this fn's only caller never reads trackIds", async () => {
     const { resolveReviewerSubmissions } = await import("../src/server/repo/review/submissions");
     PLAN_REVIEWER_ROWS = reviewerFixture([{ user_id: "rev-track", track_id: "t1", submission_id: null }]);
     const submissionTrackQueries: CondTag[] = [];
@@ -328,19 +331,8 @@ describe("DEC-439: resolveReviewerSubmissions scales with one reviewer's slice",
 
     expect(sortedIds(result)).toEqual(["sub-1", "sub-3"]);
 
-    // Every top-level submission_track query (the trackIds-for-matched-set
-    // load) must be an inArray on submission_id, restricted to exactly the
-    // matched (reviewer-scoped) set -- never an unconditional/whole-event
-    // scan (which would show up as a tag with no inArray(submission_id, ...)
-    // at all, or one covering ids outside the matched set, e.g. sub-9).
-    expect(submissionTrackQueries.length).toBeGreaterThan(0);
-    for (const tag of submissionTrackQueries) {
-      expect(tag.kind).toBe("inArray");
-      expect(tag.col).toBe("submission_id");
-      const vals = tag.vals as string[];
-      expect(vals.length).toBeLessThanOrEqual(result.length);
-      expect(vals).not.toContain("sub-9"); // foreign-event id never requested
-      for (const v of vals) expect(sortedIds(result)).toContain(v);
-    }
+    // DEC-449: the chunked trackIds-for-matched-set load was deleted (the
+    // route never read it) -- zero submission_track round trips.
+    expect(submissionTrackQueries.length).toBe(0);
   });
 });

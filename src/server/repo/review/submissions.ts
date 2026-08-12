@@ -7,7 +7,6 @@ import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { formatRef } from "../../../domain/ids";
 import type { PlanRecord } from "./plans";
-import { chunkIds } from "../../../lib/chunk";
 
 /** DEC-346: the narrow shape every plan-scoped whole-set load returns --
  * `description` is never selected for these (list/queue/results/progress),
@@ -112,6 +111,15 @@ export async function listPlanFilteredSubmissions(
   }));
 }
 
+/** DEC-346-style narrow shape for resolveReviewerSubmissions' single caller
+ * (the reviewer queue route), which never reads trackIds -- no track-id
+ * lookup is performed for this result at all (DEC-449). */
+export interface ReviewerScopedSubmission {
+  id: string;
+  ref: string;
+  title: string;
+}
+
 /** Resolves the submissions a single reviewer's plan_reviewer rows grant
  * access to (DEC-017 scope semantics), intersected with the plan's own
  * track filters -- DEC-439: cost scales with THIS reviewer's slice, not the
@@ -122,12 +130,15 @@ export async function listPlanFilteredSubmissions(
  * row (trackId and submissionId both null) grants every plan-filtered
  * submission; otherwise the union of explicit submissionId scopes and
  * submissions matching any trackId scope, always intersected with the
- * plan's own filters_json trackIds. A userId with no rows returns []. */
+ * plan's own filters_json trackIds. A userId with no rows returns [].
+ * DEC-449: this fn's only caller (the reviewer queue route) never reads
+ * trackIds, so no track-id lookup is issued here at all -- callers that
+ * need trackIds should use listPlanFilteredSubmissions instead. */
 export async function resolveReviewerSubmissions(
   db: Db,
   plan: PlanRecord,
   userId: string,
-): Promise<PlanSubmissionRef[]> {
+): Promise<ReviewerScopedSubmission[]> {
   const reviewerRows = await db
     .select({ trackId: schema.planReviewer.trackId, submissionId: schema.planReviewer.submissionId })
     .from(schema.planReviewer)
@@ -195,26 +206,10 @@ export async function resolveReviewerSubmissions(
     .limit(1);
   const recordPrefix = eventRows[0]?.recordPrefix ?? "SES";
 
-  // trackIds for the matched (reviewer-scoped, not whole-event) set only,
-  // chunked per DEC-078.
-  const trackMap = new Map<string, string[]>();
-  for (const idChunk of chunkIds(matched.map((m) => m.id))) {
-    const trackRows = await db
-      .select({ submissionId: schema.submissionTrack.submissionId, trackId: schema.submissionTrack.trackId })
-      .from(schema.submissionTrack)
-      .where(inArray(schema.submissionTrack.submissionId, idChunk));
-    for (const row of trackRows) {
-      const list = trackMap.get(row.submissionId) ?? [];
-      list.push(row.trackId);
-      trackMap.set(row.submissionId, list);
-    }
-  }
-
   return matched.map((row) => ({
     id: row.id,
     ref: formatRef(recordPrefix, row.seq),
     title: row.title,
-    trackIds: trackMap.get(row.id) ?? [],
   }));
 }
 

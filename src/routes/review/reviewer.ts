@@ -62,12 +62,7 @@ reviewReviewerRoutes.get("/api/v1/review/plans/:id/queue", async (c) => {
   // cap or "already rated" state. SQL aggregates replace the whole-round
   // evaluation load + JS reduce, restricted to this reviewer's already-
   // scoped submission ids so the counts query scales with the slice too.
-  const countsBySubmission = await repo.countEvaluationsBySubmission(
-    c.var.db,
-    plan.id,
-    plan.currentRound,
-    scoped.map((s) => s.id),
-  );
+  const countsBySubmission = await repo.countEvaluationsBySubmission(c.var.db, plan.id, plan.currentRound);
   const ratedByMe = await repo.listSubmissionIdsRatedBy(c.var.db, plan.id, plan.currentRound, auth.userId);
 
   // DEC-271: recused submissions are dropped from the actionable queue and
