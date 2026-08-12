@@ -113,3 +113,32 @@ The DEC-5xx hardening thread (silent-death traps, invariant lock-in, boundary
 validation) remains IN SCOPE and should continue as capacity allows — after the tiers
 above, never instead of them. The DEC-514 rule stands: the round closes only with a
 verification-only exit wave re-measuring everything at a sha containing every fix.
+
+## APPENDED: real sbek harness results (run 2026-08-12T18-00-39, official kit, Opus judge)
+
+**Context for reading the score**: Overall 66% at 80.8% coverage — BUT the run hit a
+deployment fault, not a code fault: three D1 migrations (0019 join-table uniqueness,
+0020 email_batch, 0021 external_ref) were missing from remote, so EVERY write touching
+the new ON CONFLICT indexes 500'd (add speaker, CSV import commit, add co-presenter,
+add-to-event, status→Accepted). Those scenario chains died and dragged ABS/SPK/CNT/AIA/CRM
+scores down. The migrations are now applied and the write path is verified healed —
+**do NOT chase "Internal server error" reports from this run; they are fixed.**
+A clean re-run happens after this round.
+
+**Real code findings from the run (add to the tiers):**
+- **Reviewer comments are write-only (judge called it MAJOR)**: scorecard captures
+  free-text comments but no organizer surface OR API returns them — submission detail
+  has no evaluations section, Results shows numerics only. (Fidelity's Review report
+  says the same: organiser landing needs inline evaluations per DEC-596/mock.)
+- **Public itinerary does not persist (judge called it CRITICAL, EMB-10/11)**: checking
+  "Add to itinerary" then reloading loses the selections while the page claims "Your
+  picks are saved in this browser and survive a reload" — data loss + dishonest copy.
+  localStorage `chq_itinerary_<slug>` per the design README; verify the SSR checkbox
+  wiring actually writes/reads it.
+- CNT-06: upload control states no accepted-type/size constraints (covered by Tier-1
+  native-controls work — include help text per mock).
+- 34 PARTIAL verdicts largely trace to the write-500 chain breakage and to items this
+  mandate already covers (EMB params, Format, gallery fields); re-run will re-judge.
+
+Per-area (for calibration only, deflated by the fault): CFP 82% · ABS 50% · SPK 57% ·
+CNT 52% · AIA 88% · EMB 72% · CRM 76% (of judged weight).
