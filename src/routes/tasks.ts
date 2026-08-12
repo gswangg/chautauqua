@@ -26,6 +26,7 @@ import {
   getOnboardingGrid,
   getTaskOwnership,
   listEventIdsWithOutstandingAssignments,
+  previewRemindNow,
   remindNow,
   sendDueRemindersForEvent,
   updateAssignmentStatus,
@@ -454,6 +455,22 @@ taskRoutes.post("/events/:eventId/onboarding/remind", requireOrganizer, csrfJson
 
   const mailer = makeMailer(c.var.db, c.env);
   const result = await remindNow(c.var.db, mailer, eventId, taskIds, new Date());
+  return c.json(result);
+});
+
+// POST /api/v1/events/:eventId/onboarding/remind/preview
+// SPEC §10 #3 (DEC-441): assisted chasing — a read-only preview of exactly
+// what "remind now" would send, rendered from the same buildReminderMessage
+// builder as the real send. Never calls the mailer, never writes a row.
+taskRoutes.post("/events/:eventId/onboarding/remind/preview", requireOrganizer, csrfJson, async (c) => {
+  const auth = requireAuth(c);
+  const eventId = c.req.param("eventId");
+  await assertEventOwnership(c.var.db, eventId, auth.orgId);
+
+  const body = asRecord(await c.req.json().catch(() => ({})));
+  const taskIds = body.taskIds === undefined ? undefined : parseBoundedIdArray(body.taskIds, "taskIds");
+
+  const result = await previewRemindNow(c.var.db, eventId, taskIds, new Date());
   return c.json(result);
 });
 

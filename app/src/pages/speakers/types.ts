@@ -113,3 +113,14 @@ export interface EventForm {
   title: string;
   isDefault: boolean;
 }
+
+// SPEC §10 #3 (DEC-441): one rendered draft returned by
+// POST /api/v1/events/:eventId/onboarding/remind/preview — subject/text
+// are byte-identical to what the real send would produce for that contact.
+export interface ReminderDraft {
+  contactId: string;
+  email: string;
+  name: string;
+  subject: string;
+  text: string;
+}

@@ -1,0 +1,174 @@
+// SPEC §10 #3 (DEC-441): assisted chasing — previewRemindNow must never send
+// (no mailer call) and never write (no task_assignment touch), and each
+// draft it renders must equal buildReminderMessage's output for the same
+// input, byte for byte, since it is the ONE builder used by both the real
+// send and the preview. Fake-db harness convention follows
+// test/reminders-timezone.test.ts (query-chain) and
+// test/spec9-invariants.test.ts (touched-tables recording).
+
+import { describe, expect, it } from "vitest";
+import * as schema from "../src/db/schema";
+import { buildReminderMessage, previewRemindNow, remindNow } from "../src/server/repo/tasks";
+import type { Db } from "../src/server/context";
+import type { Mailer } from "../src/mail/types";
+import type { ReminderAssignment } from "../src/domain/reminders";
+
+interface OutstandingRowShape {
+  assignmentId: string;
+  taskId: string;
+  taskTitle: string;
+  dueDate: Date | null;
+  status: string;
+  lastRemindedAt: Date | null;
+  contactId: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  eventId: string;
+  eventName: string;
+  timezone: string;
+}
+
+/** Records every table touched by update()/insert() — a preview must
+ * touch neither task_assignment nor any other row. */
+function fakeDb(rows: OutstandingRowShape[]): { db: Db; touchedTables: unknown[] } {
+  const touchedTables: unknown[] = [];
+  const db = {
+    select: () => ({
+      from: () => ({
+        innerJoin: () => ({
+          innerJoin: () => ({
+            innerJoin: () => ({
+              where: async () => rows,
+            }),
+          }),
+        }),
+      }),
+    }),
+    update(table: unknown) {
+      touchedTables.push(table);
+      return {
+        set: () => ({
+          where: async () => undefined,
+        }),
+      };
+    },
+    insert(table: unknown) {
+      touchedTables.push(table);
+      throw new Error("unexpected insert during a preview (read-only)");
+    },
+  } as unknown as Db;
+  return { db, touchedTables };
+}
+
+/** A mailer whose send() records every call — a preview must never invoke
+ * it (0 calls). */
+function fakeMailer(): { mailer: Mailer; sendCalls: unknown[] } {
+  const sendCalls: unknown[] = [];
+  const mailer: Mailer = {
+    async send(m) {
+      sendCalls.push(m);
+    },
+  };
+  return { mailer, sendCalls };
+}
+
+const NOW = new Date(1_700_000_000_000);
+
+const ROWS: OutstandingRowShape[] = [
+  {
+    assignmentId: "assign_1",
+    taskId: "task_1",
+    taskTitle: "Hotel stay requirement form",
+    dueDate: new Date(Date.parse("2027-03-02T07:30:00Z")),
+    status: "pending",
+    lastRemindedAt: null,
+    contactId: "contact_1",
+    firstName: "Priya",
+    lastName: "Raman",
+    email: "speaker@example.com",
+    eventId: "event_1",
+    eventName: "DevFlow Conf 2027",
+    timezone: "America/Los_Angeles",
+  },
+  {
+    assignmentId: "assign_2",
+    taskId: "task_2",
+    taskTitle: "Speaker agreement",
+    dueDate: null,
+    status: "pending",
+    lastRemindedAt: null,
+    contactId: "contact_2",
+    firstName: "Jamal",
+    lastName: "Okoye",
+    email: "jamal@example.com",
+    eventId: "event_1",
+    eventName: "DevFlow Conf 2027",
+    timezone: "America/Los_Angeles",
+  },
+];
+
+describe("previewRemindNow (SPEC §10 #3, DEC-441)", () => {
+  it("never invokes the mailer's send", async () => {
+    const { db } = fakeDb(ROWS);
+    const { mailer, sendCalls } = fakeMailer();
+    void mailer; // previewRemindNow takes no mailer at all -- see signature below
+
+    const result = await previewRemindNow(db, "event_1", undefined, NOW);
+
+    expect(result.drafts.length).toBe(2);
+    expect(sendCalls).toHaveLength(0);
+  });
+
+  it("never touches task_assignment (or any table) via update/insert", async () => {
+    const { db, touchedTables } = fakeDb(ROWS);
+
+    await previewRemindNow(db, "event_1", undefined, NOW);
+
+    expect(touchedTables).not.toContain(schema.taskAssignment);
+    expect(touchedTables).toHaveLength(0);
+  });
+
+  it("renders each draft's subject/text identically to buildReminderMessage's own output", async () => {
+    const { db } = fakeDb(ROWS);
+
+    const result = await previewRemindNow(db, "event_1", undefined, NOW);
+
+    const eventName = "DevFlow Conf 2027";
+    const eventTimezone = "America/Los_Angeles";
+
+    for (const draft of result.drafts) {
+      const row = ROWS.find((r) => r.contactId === draft.contactId);
+      expect(row).toBeDefined();
+      const assignments: ReminderAssignment[] = ROWS.filter((r) => r.contactId === draft.contactId).map((r) => ({
+        assignmentId: r.assignmentId,
+        contactId: r.contactId,
+        status: r.status,
+        dueDate: r.dueDate ? r.dueDate.getTime() : null,
+        lastRemindedAt: r.lastRemindedAt ? r.lastRemindedAt.getTime() : null,
+        taskId: r.taskId,
+        taskTitle: r.taskTitle,
+      }));
+      const expected = buildReminderMessage(eventName, eventTimezone, assignments);
+      expect(draft.subject).toBe(expected.subject);
+      expect(draft.text).toBe(expected.text);
+    }
+  });
+
+  it("matches remindNow's own sent text for the same input (send path uses the same builder)", async () => {
+    const { db: previewDb } = fakeDb(ROWS);
+    const { db: sendDb } = fakeDb(ROWS);
+    const { mailer, sendCalls } = fakeMailer();
+
+    const preview = await previewRemindNow(previewDb, "event_1", undefined, NOW);
+    await remindNow(sendDb, mailer, "event_1", undefined, NOW);
+
+    expect(sendCalls).toHaveLength(2);
+    for (const call of sendCalls as { to: { email: string }; subject: string; text: string }[]) {
+      const draft = preview.drafts.find((d) => d.email === call.to.email);
+      expect(draft).toBeDefined();
+      expect(draft?.subject).toBe(call.subject);
+      expect(draft?.text).toBe(call.text);
+    }
+  });
+});

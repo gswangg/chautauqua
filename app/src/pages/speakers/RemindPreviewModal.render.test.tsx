@@ -1,0 +1,108 @@
+// SPEC §10 #3 (DEC-441): pure component test for the bulk-remind review
+// dialog -- it shows the recipient count, each recipient's email, and the
+// first draft's rendered text, then either sends (calling onSend) or
+// cancels (calling onCancel) without ever sending on its own.
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import '@testing-library/jest-dom/vitest';
+import { RemindPreviewModal } from './RemindPreviewModal';
+import type { ReminderDraft } from './types';
+
+const DRAFTS: ReminderDraft[] = [
+  {
+    contactId: 'contact_1',
+    email: 'priya@example.com',
+    name: 'Priya Raman',
+    subject: 'Action needed: outstanding tasks for DevFlow Conf 2027',
+    text: 'You have outstanding tasks for DevFlow Conf 2027:\n- Hotel stay requirement form — due Mon, Mar 01, 2027',
+  },
+  {
+    contactId: 'contact_2',
+    email: 'jamal@example.com',
+    name: 'Jamal Okoye',
+    subject: 'Action needed: outstanding tasks for DevFlow Conf 2027',
+    text: 'You have outstanding tasks for DevFlow Conf 2027:\n- Speaker agreement — No due date',
+  },
+];
+
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
+
+describe('RemindPreviewModal (SPEC §10 #3, DEC-441)', () => {
+  it('shows a loading state before drafts arrive', () => {
+    render(
+      <RemindPreviewModal loading={true} error={null} drafts={null} sending={false} onSend={vi.fn()} onCancel={vi.fn()} />,
+    );
+    const dialog = screen.getByRole('dialog', { name: 'Review reminders' });
+    expect(dialog).toBeInTheDocument();
+    expect(screen.getAllByText('Loading...').length).toBeGreaterThan(0);
+  });
+
+  it('lists recipient count, emails, and the first draft text, and calls onSend on click', () => {
+    const onSend = vi.fn();
+    render(
+      <RemindPreviewModal
+        loading={false}
+        error={null}
+        drafts={DRAFTS}
+        sending={false}
+        onSend={onSend}
+        onCancel={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText('2 recipients')).toBeInTheDocument();
+    expect(screen.getByText(/priya@example\.com/)).toBeInTheDocument();
+    expect(screen.getByText(/jamal@example\.com/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Hotel stay requirement form — due Mon, Mar 01, 2027/),
+    ).toBeInTheDocument();
+    // Second recipient's draft is not shown -- only the first draft renders.
+    expect(screen.queryByText(/Speaker agreement — No due date/)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Send 2 reminders' }));
+    expect(onSend).toHaveBeenCalledTimes(1);
+  });
+
+  it('calls onCancel on Cancel click and never calls onSend itself', () => {
+    const onSend = vi.fn();
+    const onCancel = vi.fn();
+    render(
+      <RemindPreviewModal
+        loading={false}
+        error={null}
+        drafts={DRAFTS}
+        sending={false}
+        onSend={onSend}
+        onCancel={onCancel}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(onCancel).toHaveBeenCalledTimes(1);
+    expect(onSend).not.toHaveBeenCalled();
+  });
+
+  it('surfaces a send error loudly instead of closing silently', () => {
+    render(
+      <RemindPreviewModal
+        loading={false}
+        error="Send failed: mailer outage"
+        drafts={DRAFTS}
+        sending={false}
+        onSend={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('Send failed: mailer outage')).toBeInTheDocument();
+  });
+
+  it('disables Send with zero recipients', () => {
+    render(
+      <RemindPreviewModal loading={false} error={null} drafts={[]} sending={false} onSend={vi.fn()} onCancel={vi.fn()} />,
+    );
+    expect(screen.getByRole('button', { name: 'Send 0 reminders' })).toBeDisabled();
+  });
+});

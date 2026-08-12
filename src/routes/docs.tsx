@@ -141,6 +141,7 @@ export const ROUTE_GROUPS: { title: string; rows: Row[] }[] = [
       { method: "PATCH", path: "/api/v1/task-assignments/:id", role: "organizer or assigned speaker" },
       { method: "GET", path: "/api/v1/task-assignments/:id/response", role: "organizer (kind='form' only)" },
       { method: "POST", path: "/api/v1/events/:eventId/onboarding/remind", role: "organizer" },
+      { method: "POST", path: "/api/v1/events/:eventId/onboarding/remind/preview", role: "organizer" },
     ],
   },
   {

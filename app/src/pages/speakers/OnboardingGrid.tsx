@@ -5,6 +5,7 @@ import { GridFilters } from './GridFilters';
 import { daysLate, isCellOverdue } from './overdue';
 import { TaskModal } from './TaskModal';
 import { ResponseModal } from './ResponseModal';
+import { RemindPreviewModal } from './RemindPreviewModal';
 import { formatDateOnly } from '../../lib/dates';
 import {
   DEFAULT_GRID_FILTERS,
@@ -14,6 +15,7 @@ import {
   type GridFilterState,
   type NewTaskInput,
   type OnboardingGridResponse,
+  type ReminderDraft,
 } from './types';
 
 function nextStatus(status: AssignmentStatus): AssignmentStatus {
@@ -53,7 +55,10 @@ export function OnboardingGrid() {
   const [page, setPage] = useState(1);
   const [showNewTask, setShowNewTask] = useState(false);
   const [taskForms, setTaskForms] = useState<EventForm[]>([]);
-  const [confirmingRemind, setConfirmingRemind] = useState(false);
+  const [reviewingRemind, setReviewingRemind] = useState(false);
+  const [remindPreviewLoading, setRemindPreviewLoading] = useState(false);
+  const [remindPreviewError, setRemindPreviewError] = useState<string | null>(null);
+  const [remindDrafts, setRemindDrafts] = useState<ReminderDraft[] | null>(null);
   const [reminding, setReminding] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [viewingResponse, setViewingResponse] = useState<{ contactName: string } | null>(null);
@@ -106,7 +111,6 @@ export function OnboardingGrid() {
   const now = Date.now();
   const counts = grid?.counts ?? null;
   const visibleRows = grid?.rows ?? [];
-  const remindCount = counts?.outstandingContacts ?? 0;
   const total = grid?.total ?? 0;
   const rangeStart = total === 0 ? 0 : (page - 1) * PER_PAGE + 1;
   const rangeEnd = total === 0 ? 0 : Math.min(page * PER_PAGE, total);
@@ -138,6 +142,34 @@ export function OnboardingGrid() {
     }
   }
 
+  // SPEC §10 #3 (DEC-441): "Remind all outstanding" no longer sends
+  // directly — it opens a review dialog fed by the read-only preview
+  // endpoint, rendered from the identical builder the real send uses.
+  async function openRemindReview() {
+    if (!eventId) return;
+    setReviewingRemind(true);
+    setRemindPreviewLoading(true);
+    setRemindPreviewError(null);
+    setRemindDrafts(null);
+    try {
+      const res = await apiPost<{ drafts: ReminderDraft[]; skipped: number; remaining: number }>(
+        `/events/${eventId}/onboarding/remind/preview`,
+        {},
+      );
+      setRemindDrafts(res.drafts);
+    } catch (err) {
+      setRemindPreviewError(err instanceof ApiError ? err.message : 'Failed to load reminder preview');
+    } finally {
+      setRemindPreviewLoading(false);
+    }
+  }
+
+  function closeRemindReview() {
+    setReviewingRemind(false);
+    setRemindPreviewError(null);
+    setRemindDrafts(null);
+  }
+
   async function handleRemind() {
     if (!eventId) return;
     setReminding(true);
@@ -157,10 +189,12 @@ export function OnboardingGrid() {
         );
       }
       setToast(parts.join(' '));
-      setConfirmingRemind(false);
+      closeRemindReview();
       await loadGrid(eventId, filters, page);
     } catch (err) {
-      setError(err instanceof ApiError ? `Remind failed: ${err.message}` : 'Remind failed');
+      // Not optimistic: a bulk send failure must surface loudly in the
+      // review dialog rather than closing silently.
+      setRemindPreviewError(err instanceof ApiError ? `Send failed: ${err.message}` : 'Send failed');
     } finally {
       setReminding(false);
     }
@@ -240,7 +274,7 @@ export function OnboardingGrid() {
           <button
             type="button"
             className="chq-btn chq-btn-primary"
-            onClick={() => setConfirmingRemind(true)}
+            onClick={openRemindReview}
             disabled={!grid || grid.rows.length === 0}
           >
             Remind all outstanding
@@ -252,28 +286,6 @@ export function OnboardingGrid() {
         {grid && <GridFilters tasks={grid.tasks} filters={filters} onChange={handleFiltersChange} />}
         <span className="chq-speakers-toolbar-caption">Skips anyone reminded in the last hour</span>
       </div>
-
-      {confirmingRemind && (
-        <div className="chq-speakers-remind-confirm">
-          <p>
-            This will email <strong>{remindCount}</strong> contact{remindCount === 1 ? '' : 's'} with outstanding
-            tasks. Continue?
-          </p>
-          <div className="chq-modal-actions">
-            <button type="button" className="chq-btn chq-btn-primary" onClick={handleRemind} disabled={reminding}>
-              {reminding ? 'Sending...' : 'Confirm and send'}
-            </button>
-            <button
-              type="button"
-              className="chq-btn chq-btn-secondary"
-              onClick={() => setConfirmingRemind(false)}
-              disabled={reminding}
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
 
       {loading && <p>Loading...</p>}
 
@@ -455,6 +467,17 @@ export function OnboardingGrid() {
 
       {showNewTask && (
         <TaskModal onCancel={() => setShowNewTask(false)} onSubmit={handleCreateTask} forms={taskForms} />
+      )}
+
+      {reviewingRemind && (
+        <RemindPreviewModal
+          loading={remindPreviewLoading}
+          error={remindPreviewError}
+          drafts={remindDrafts}
+          sending={reminding}
+          onSend={handleRemind}
+          onCancel={closeRemindReview}
+        />
       )}
 
       {viewingResponse && (
