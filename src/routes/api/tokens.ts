@@ -13,21 +13,11 @@ import { newId } from "../../domain/ids";
 import { hashToken, newApiToken, apiTokenDisplayPrefix } from "../../auth/tokens";
 import { DEC_027 } from "../../decisions";
 import { MAX_NAME_LENGTH } from "../../forms/validate"; // DEC-425
-import { clampPage, clampPerPage, MAX_PER_PAGE } from "../../lib/pagination";
+import { clampPage, listPerPage } from "../../lib/pagination";
 
 void DEC_027;
 
 export const tokensRoutes = new Hono<AppEnv>();
-
-// DEC-460/DEC-461: site default here is 200 (not clampPerPage's own 50) —
-// both an absent and an invalid perPage query param resolve to 200; only an
-// explicit valid value gets clampPerPage's normal [1, MAX_PER_PAGE] clamp.
-function perPageWithDefault200(raw: string | undefined): number {
-  if (raw === undefined) return MAX_PER_PAGE;
-  const n = Number(raw);
-  if (!Number.isFinite(n) || !Number.isInteger(n) || n < 1) return MAX_PER_PAGE;
-  return clampPerPage(raw);
-}
 
 function assertCookieSession(auth: { viaBearer?: boolean } | undefined): void {
   if (!auth) throw new ApiError("unauthorized", "Login required");
@@ -42,7 +32,7 @@ tokensRoutes.get("/api/v1/tokens", requireOrganizer, async (c) => {
   const orgId = auth!.orgId;
 
   const page = clampPage(c.req.query("page"));
-  const perPage = perPageWithDefault200(c.req.query("perPage"));
+  const perPage = listPerPage(c.req.query("perPage")); // DEC-465
 
   const rows = await c.var.db
     .select({

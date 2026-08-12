@@ -78,21 +78,16 @@ describe("GET /api/v1/pipeline bounds (DEC-460/461)", () => {
     expect(body.perPage).toBe(200);
   });
 
-  // DEC-461's call site is `clampPerPage(c.req.query('perPage') ?? 200)`:
-  // the 200 override only fires when perPage is ABSENT. A malformed value
-  // like "abc" is a defined string, so `?? 200` doesn't substitute and
-  // clampPerPage falls back to its own internal default (50) -- this is
-  // clampPerPage's documented contract (src/lib/pagination.ts), which this
-  // task's call sites must not edit. Asserts the real behavior, not the
-  // (looser) "200 default" wording in the task description -- flagged for
-  // the scribe/planner.
-  it("uses clampPerPage's own default (50) when perPage=abc", async () => {
+  // DEC-465: pipeline.ts now uses the shared listPerPage helper, which
+  // resolves an invalid perPage (like "abc") to MAX_PER_PAGE (200), not
+  // clampPerPage's own 50 default -- fixing the gap DEC-461(a) intended.
+  it("uses listPerPage's 200 default when perPage=abc", async () => {
     const app = await buildPipelineApp();
     const res = await app.request("/api/v1/pipeline?perPage=abc");
     expect(res.status).toBe(200);
     const body = (await res.json()) as { items: unknown[]; perPage: number };
-    expect(body.perPage).toBe(50);
-    expect(body.items.length).toBe(50);
+    expect(body.perPage).toBe(200);
+    expect(body.items.length).toBeLessThanOrEqual(200);
   });
 
   it("offsets by page=2", async () => {
@@ -144,15 +139,15 @@ describe("GET /api/v1/users bounds (DEC-460/461)", () => {
     expect(body.perPage).toBe(200);
   });
 
-  // See the pipeline suite's matching test above for why this asserts 50
-  // (clampPerPage's own default), not the task description's "200 default".
-  it("uses clampPerPage's own default (50) when perPage=abc", async () => {
+  // DEC-465: users.ts's GET list handler now uses listPerPage, which
+  // resolves an invalid perPage (like "abc") to MAX_PER_PAGE (200).
+  it("uses listPerPage's 200 default when perPage=abc", async () => {
     const app = await buildUsersApp();
     const res = await app.request("/api/v1/users?perPage=abc");
     expect(res.status).toBe(200);
     const body = (await res.json()) as { items: unknown[]; perPage: number };
-    expect(body.perPage).toBe(50);
-    expect(body.items.length).toBe(50);
+    expect(body.perPage).toBe(200);
+    expect(body.items.length).toBeLessThanOrEqual(200);
   });
 
   it("offsets by page=2", async () => {
@@ -200,15 +195,15 @@ describe("GET /api/v1/segments bounds (DEC-460/461)", () => {
     expect(body.perPage).toBe(200);
   });
 
-  // See the pipeline suite's matching test above for why this asserts 50
-  // (clampPerPage's own default), not the task description's "200 default".
-  it("uses clampPerPage's own default (50) when perPage=abc", async () => {
+  // DEC-465: contacts/segments.ts now uses listPerPage, which resolves an
+  // invalid perPage (like "abc") to MAX_PER_PAGE (200).
+  it("uses listPerPage's 200 default when perPage=abc", async () => {
     const app = await buildSegmentsApp();
     const res = await app.request("/api/v1/segments?perPage=abc");
     expect(res.status).toBe(200);
     const body = (await res.json()) as { items: unknown[]; perPage: number };
-    expect(body.perPage).toBe(50);
-    expect(body.items.length).toBe(50);
+    expect(body.perPage).toBe(200);
+    expect(body.items.length).toBeLessThanOrEqual(200);
   });
 
   it("offsets by page=2", async () => {

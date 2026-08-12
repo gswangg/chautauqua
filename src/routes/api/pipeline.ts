@@ -11,7 +11,7 @@ import { csrfJson, requireOrganizer } from "../../server/middleware";
 import { ApiError } from "../../server/http";
 import * as repo from "../../server/repo/pipeline";
 import { findContactForOrg } from "../../server/repo/contacts";
-import { clampPage, clampPerPage } from "../../lib/pagination";
+import { clampPage, listPerPage } from "../../lib/pagination";
 
 export const pipelineRoutes = new Hono<AppEnv>();
 
@@ -64,7 +64,7 @@ async function requireOwnedEntry(c: { var: { db: AppEnv["Variables"]["db"] } }, 
 pipelineRoutes.get("/pipeline", async (c) => {
   const orgId = currentOrgId(c);
   const page = clampPage(c.req.query("page"));
-  const perPage = clampPerPage(c.req.query("perPage") ?? 200);
+  const perPage = listPerPage(c.req.query("perPage")); // DEC-465
   const [items, total] = await Promise.all([
     repo.listPipelineForOrg(c.var.db, orgId, { limit: perPage, offset: (page - 1) * perPage }),
     repo.countPipelineForOrg(c.var.db, orgId),
