@@ -114,9 +114,9 @@
   display: flex;
   flex-direction: column;
   gap: 18px;
-  /* Required measure for form-shaped content: 660-760px. */
+  /* Required measure for form-shaped content: 660-760px. min-width removed
+     (DEC-385) -- it forced horizontal overflow at the 390px phone frame. */
   max-width: 720px;
-  min-width: 660px;
 }
 
 .chq-forms-settings .chq-field {
@@ -148,4 +148,165 @@
 
 .chq-forms-public-link .chq-input {
   flex: 1;
+}
+
+/* Phone frame (DEC-385: the one phone switch, 700px, for every stylesheet).
+   Field list becomes a card stack on the SAME markup -- thead hidden,
+   tr/td become flex blocks, no cell dropped, no duplicated phone DOM
+   (DEC-386). Ambiguous cells (Section/Kind/Condition, which read as bare
+   text with no visual context once the header row is gone) get a
+   data-label mirrored from their own th and rendered via td::before, per
+   DEC-390; everything else needs no markup change. */
+@media (max-width: 700px) {
+  .chq-forms-content h1 {
+    font-size: 27px;
+  }
+
+  .chq-forms-content,
+  .chq-forms-settings {
+    max-width: none;
+  }
+
+  .chq-forms-field-modal {
+    max-width: none;
+  }
+
+  /* Table -> cards. */
+  .chq-forms-field-list thead {
+    display: none;
+  }
+
+  .chq-forms-field-list,
+  .chq-forms-field-list tbody {
+    display: block;
+    width: 100%;
+  }
+
+  .chq-forms-field-list tbody tr {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding: 16px 0;
+    border-bottom: 1px solid var(--chq-hairline);
+  }
+
+  .chq-forms-field-list tbody tr:first-child {
+    padding-top: 0;
+  }
+
+  .chq-forms-field-list tbody tr:last-child {
+    border-bottom: none;
+  }
+
+  .chq-forms-field-list tbody td {
+    display: block;
+    padding: 0;
+    border-bottom: none;
+  }
+
+  /* Drag glyph: decorative, no header text -- stays first, unchanged. */
+  .chq-forms-field-list tbody td.chq-forms-field-drag {
+    order: 1;
+  }
+
+  /* Move up/down buttons. */
+  .chq-forms-field-list tbody td:nth-child(2) {
+    order: 2;
+    display: flex;
+    gap: 8px;
+    align-self: flex-end;
+  }
+
+  /* Label (with locked tag). */
+  .chq-forms-field-list tbody td:nth-child(3) {
+    order: 3;
+    font-size: 15px;
+    font-weight: 600;
+  }
+
+  /* Section. */
+  .chq-forms-field-list tbody td:nth-child(4) {
+    order: 4;
+  }
+
+  /* Kind. */
+  .chq-forms-field-list tbody td:nth-child(5) {
+    order: 5;
+  }
+
+  /* Required / Optional. */
+  .chq-forms-field-list tbody td:nth-child(6) {
+    order: 6;
+  }
+
+  /* Condition. */
+  .chq-forms-field-list tbody td:nth-child(7) {
+    order: 7;
+  }
+
+  /* Edit / Delete actions. */
+  .chq-forms-field-list tbody td:nth-child(8) {
+    order: 8;
+    display: flex;
+    gap: 8px;
+  }
+
+  .chq-forms-field-list tbody td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--chq-muted);
+    margin-bottom: 3px;
+  }
+
+  /* Every interactive control in the field list reaches 44px via a
+     centred flex box, never padding (DEC-385), with the phone control
+     radius (DEC-383 token, no literal hex). */
+  .chq-forms-field-list .chq-btn {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--chq-r-ctl-phone);
+    flex: 1;
+  }
+
+  .chq-forms-public-link {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .chq-forms-public-link .chq-btn {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--chq-r-ctl-phone);
+  }
+
+  .chq-forms-public-link .chq-input {
+    min-height: 44px;
+    border-radius: var(--chq-r-ctl-phone);
+  }
+
+  .chq-forms-settings .chq-input,
+  .chq-forms-settings .chq-textarea,
+  .chq-forms-settings .chq-btn {
+    border-radius: var(--chq-r-ctl-phone);
+  }
+
+  .chq-forms-settings .chq-input,
+  .chq-forms-settings .chq-btn {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+  }
+
+  .chq-forms-settings .chq-btn {
+    justify-content: center;
+  }
 }
