@@ -515,3 +515,15 @@ compare phone frames pixel-for-pixel.
     page); portal session detail to the mock (Accepted badge, code+format+track line,
     date-room, Abstract, Slides card); sessions desktop right-rail + per-row
     Save/Saved; phone CFP 2-step wizard; schedule Remove-button treatment.
+
+42. r2-Agenda: **Tier-0 items 1 and 2 substantially CLOSED — do not disturb** (cards
+    are buttons w/ accessible names; DEC-652 keyboard placing verified end-to-end;
+    olive-only borders; ghosting gone). REMAINING: (a) NEW REGRESSION — phone agenda
+    invisible: the unconditional display:none over the ~20 chq-phone-* classes is only
+    re-enabled for .chq-phone-agenda in the ≤700px media block; extend the override to
+    the full family (DOM is complete and correct). (b) Card content now HARD-CLIPS
+    (conflict cards hide their caption): size cards to content or add a designed
+    truncation w/ the full text on the card's accessible name (already there) — no
+    silent mid-glyph cuts. (c) Focus should land on Cancel/first placement cell when
+    placing mode opens (currently <body>). (d) Conflict layout: prefer the mock's
+    full-column treatment or justify the split pair as a deliberate decision in a DEC.
