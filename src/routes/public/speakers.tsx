@@ -30,26 +30,21 @@ export function SpeakersContent(props: { event: PublicEvent; speakers: PublicSpe
       {speakers.length === 0 ? (
         <p>No speakers to show yet.</p>
       ) : (
-        <div class="chq-speaker-grid">
+        <div class="chq-pub-speaker-grid">
           {speakers.map((sp) => (
-            <div>
+            <div class="chq-pub-speaker-card">
               <a href={speakerDetailPath(event, sp.contactId, "speakers")}>
                 {sp.headshotUrl ? (
                   <img src={sp.headshotUrl} alt={`${sp.firstName} ${sp.lastName}`} />
                 ) : (
-                  <div class="chq-headshot-fallback" />
+                  <div class="chq-pub-headshot-fallback" />
                 )}
               </a>
-              <p>
-                <strong>
-                  <a href={speakerDetailPath(event, sp.contactId, "speakers")}>
-                    {sp.firstName} {sp.lastName}
-                  </a>
-                </strong>
-                <br />
-                {[sp.title, sp.company].filter(Boolean).join(", ")}
-              </p>
-              <ul>
+              <a class="chq-pub-speaker-name" href={speakerDetailPath(event, sp.contactId, "speakers")}>
+                {sp.firstName} {sp.lastName}
+              </a>
+              <p class="chq-pub-speaker-role">{[sp.title, sp.company].filter(Boolean).join(", ")}</p>
+              <ul class="chq-pub-speaker-sessions">
                 {sp.sessions.map((s) => (
                   <li>{s.title}</li>
                 ))}
@@ -67,21 +62,18 @@ export function GalleryContent(props: { event: PublicEvent; speakers: PublicSpea
   return (
     <>
       <h2>Speaker gallery</h2>
+      <p>Headshots only, no session details.</p>
       <NameSearchForm action={surfacePath(event, "gallery")} q={q} />
-      <div class="chq-speaker-grid">
+      <div class="chq-pub-gallery-grid">
         {speakers.map((sp) => (
-          <div>
-            <a href={speakerDetailPath(event, sp.contactId, "gallery")}>
-              {sp.headshotUrl ? (
-                <img src={sp.headshotUrl} alt={`${sp.firstName} ${sp.lastName}`} />
-              ) : (
-                <div class="chq-headshot-fallback" />
-              )}
-              <p>
-                {sp.firstName} {sp.lastName}
-              </p>
-            </a>
-          </div>
+          <a href={speakerDetailPath(event, sp.contactId, "gallery")}>
+            <div class="chq-pub-gallery-tile">
+              {sp.headshotUrl ? <img src={sp.headshotUrl} alt={`${sp.firstName} ${sp.lastName}`} /> : null}
+            </div>
+            <span class="chq-pub-gallery-name">
+              {sp.firstName} {sp.lastName}
+            </span>
+          </a>
         ))}
       </div>
     </>

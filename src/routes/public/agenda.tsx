@@ -36,9 +36,9 @@ export function AgendaDayGrid(props: { day: string; items: PublicAgendaItem[]; e
   return (
     <section aria-label={`Agenda for ${day}`}>
       <h3>{day}</h3>
-      <div class="chq-agenda-day-scroll">
+      <div class="chq-pub-agenda-day-scroll">
         <div
-          class="chq-agenda-day"
+          class="chq-pub-agenda-day"
           style={`grid-template-columns: 70px repeat(${rooms.length}, minmax(140px, 1fr)); grid-template-rows: auto repeat(${Math.ceil(
             (dayEnd - dayStart) / gridMin,
           )}, 22px);`}
@@ -61,7 +61,7 @@ export function AgendaDayGrid(props: { day: string; items: PublicAgendaItem[]; e
                 : "";
             return (
               <div
-                class="chq-agenda-block"
+                class="chq-pub-agenda-block"
                 style={`grid-column:${col};grid-row:${rowStart} / span ${rowSpan};${laneStyle}`}
                 id={`chq-agenda-${item.submissionId}`}
               >
@@ -78,7 +78,7 @@ export function AgendaDayGrid(props: { day: string; items: PublicAgendaItem[]; e
                   <SpeakerNames speakers={item.speakers} />
                 </div>
                 {itinerary ? (
-                  <label>
+                  <label class="chq-pub-itinerary-row">
                     <input type="checkbox" class="chq-itinerary-toggle" value={item.submissionId} />
                     Add to itinerary
                   </label>
@@ -108,12 +108,11 @@ export function groupByDay(items: PublicAgendaItem[]): Map<string, PublicAgendaI
 function DaySwitcher(props: { days: string[] }) {
   if (props.days.length <= 1) return null;
   return (
-    <nav aria-label="Jump to day" class="chq-day-switcher">
-      {props.days.map((day, i) => (
-        <>
-          {i > 0 ? " · " : ""}
-          <a href={`#chq-day-${day}`}>{formatDay(day)}</a>
-        </>
+    <nav aria-label="Jump to day" class="chq-pub-day-switcher">
+      {props.days.map((day) => (
+        <a class="chq-pub-day-pill" href={`#chq-day-${day}`}>
+          {formatDay(day)}
+        </a>
       ))}
     </nav>
   );
@@ -184,7 +183,12 @@ export function ScheduleContent(props: { event: PublicEvent; items: PublicAgenda
       <h2>My schedule</h2>
       <p>
         Check sessions to build a personal itinerary. Your picks are saved in this browser and survive a reload.{" "}
-        <a id="chq-ics-link" href={`/e/${props.event.slug}/schedule.ics`} aria-disabled="true">
+        <a
+          id="chq-ics-link"
+          class="chq-pub-itinerary-cta"
+          href={`/e/${props.event.slug}/schedule.ics`}
+          aria-disabled="true"
+        >
           Download .ics
         </a>{" "}
         (<span id="chq-ics-count">0 picked</span>)

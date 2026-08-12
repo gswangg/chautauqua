@@ -238,7 +238,7 @@ describe("SessionCard schedule rendering (EMB-01: date/time + room)", () => {
     expect(res.status).toBe(200);
     const html = await res.text();
     const fragment = cardFragment(html, "sub1");
-    expect(fragment).toContain("chq-session-when");
+    expect(fragment).toContain("chq-pub-session-when");
     expect(fragment).toContain("9:00 AM");
     expect(fragment).toContain("10:00 AM");
     expect(fragment).toContain("Main Hall");
@@ -250,7 +250,7 @@ describe("SessionCard schedule rendering (EMB-01: date/time + room)", () => {
     const res = await app.request("/e/conf/sessions", {}, TEST_ENV);
     const html = await res.text();
     const fragment = cardFragment(html, "sub2");
-    expect(fragment).not.toContain("chq-session-when");
+    expect(fragment).not.toContain("chq-pub-session-when");
   });
 });
 

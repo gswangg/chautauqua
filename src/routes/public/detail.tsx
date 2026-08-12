@@ -28,7 +28,7 @@ export function SpeakerDetailContent(props: { event: PublicEvent; speaker: Publi
         {speaker.headshotUrl ? (
           <img src={speaker.headshotUrl} alt={`${speaker.firstName} ${speaker.lastName}`} width={160} />
         ) : (
-          <div class="chq-headshot-fallback" style="width:160px" />
+          <div class="chq-pub-headshot-fallback" style="width:160px" />
         )}
         <h2>
           {speaker.firstName} {speaker.lastName}

@@ -40,17 +40,18 @@ export function SessionsContent(props: {
         {limit ? <input type="hidden" name="limit" value={String(limit)} /> : null}
         <button type="submit">Search</button>
       </form>
-      <nav aria-label="Track filters">
-        <a href={basePath} aria-current={activeTrackId === null ? "true" : undefined}>
-          All
+      <nav aria-label="Track filters" class="chq-pub-filter-bar">
+        <a class="chq-pub-pill" href={basePath} aria-current={activeTrackId === null ? "true" : undefined}>
+          All tracks
         </a>
         {tracks.map((t) => (
-          <>
-            {" · "}
-            <a href={`${basePath}?trackId=${t.id}`} aria-current={activeTrackId === t.id ? "true" : undefined}>
-              {t.name}
-            </a>
-          </>
+          <a
+            class="chq-pub-pill"
+            href={`${basePath}?trackId=${t.id}`}
+            aria-current={activeTrackId === t.id ? "true" : undefined}
+          >
+            {t.name}
+          </a>
         ))}
       </nav>
       <p>
