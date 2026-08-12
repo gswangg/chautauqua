@@ -22,8 +22,19 @@ export function isSurface(value: string): value is Surface {
 
 // DEC-022: stage-1 caching, every public/embed GET — bounded 60s staleness
 // is the accepted stage-1 behavior; no purge machinery.
+//
+// DEC-553: these surfaces are already anonymous and already deliberately
+// frameable (DEC-022), so a wildcard Access-Control-Allow-Origin exposes
+// nothing an <iframe> doesn't already render -- it's what makes the JSON
+// feed the embed builder advertises (/embed/:slug/sessions.json) actually
+// fetchable cross-origin from a page like ai.engineer. Set here (rather
+// than in a middleware) so it's present on the copy publicCacheMiddleware
+// stores in caches.default too, so cache hits carry it. A simple
+// cross-origin GET never preflights, so no OPTIONS handler / Allow-
+// Credentials / Allow-Headers is needed.
 export function setCacheHeaders(c: { header(name: string, value: string): void }): void {
   c.header("Cache-Control", "public, max-age=60, stale-while-revalidate=300");
+  c.header("Access-Control-Allow-Origin", "*");
 }
 
 export function branding(event: PublicEvent): { logoUrl?: string; accentColor?: string } {
