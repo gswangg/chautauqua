@@ -29,3 +29,32 @@ export function parseItineraryIds(raw: string | null | undefined): string[] {
   }
   return ids;
 }
+
+/** Merges a checkbox-page toggle into the full stored itinerary (DEC-555).
+ *
+ * The schedule surface applies a `?day=` filter (DEC-489) before render, so
+ * any given page only renders (and can only checkbox-toggle) a subset of the
+ * full itinerary. Persisting `checkedIds` alone — the checked subset of the
+ * boxes rendered on THIS page — silently wipes every pick from every other
+ * day. This function keeps stored picks whose id was never rendered on the
+ * current page untouched, and for the rendered subset takes exactly what the
+ * page's checkboxes say now (so unchecking a rendered id removes it).
+ *
+ * Pure, DOM-free: `renderedIds` is the full set of `.chq-itinerary-toggle`
+ * values on the current page; `checkedIds` is the subset currently checked. */
+export function mergeItinerarySelection(
+  stored: string[],
+  renderedIds: string[],
+  checkedIds: string[],
+): string[] {
+  const rendered = new Set(renderedIds);
+  const kept = stored.filter((id) => !rendered.has(id));
+  const seen = new Set(kept);
+  const merged = [...kept];
+  for (const id of checkedIds) {
+    if (seen.has(id)) continue;
+    seen.add(id);
+    merged.push(id);
+  }
+  return merged.slice(0, MAX_ITINERARY_IDS);
+}
