@@ -14,6 +14,7 @@
 import { eq } from "drizzle-orm";
 import * as schema from "../db/schema";
 import type { Db } from "../server/context";
+import { formatRef } from "../domain/ids";
 
 const BATCH = 10;
 const API = "https://api.airtable.com/v0";
@@ -129,8 +130,10 @@ export async function runAirtableSync(
       title: schema.submission.title,
       status: schema.submission.status,
       eventId: schema.submission.eventId,
+      recordPrefix: schema.event.recordPrefix,
     })
-    .from(schema.submission);
+    .from(schema.submission)
+    .innerJoin(schema.event, eq(schema.submission.eventId, schema.event.id));
 
   const parts = await db
     .select({
@@ -166,7 +169,7 @@ export async function runAirtableSync(
     submissionRecord(
       {
         id: s.id,
-        ref: `SES-${String(s.seq).padStart(3, "0")}`,
+        ref: formatRef(s.recordPrefix, s.seq),
         title: s.title,
         status: s.status,
         speakers: (speakersBySub.get(s.id) ?? []).join(", "),
