@@ -163,7 +163,7 @@ export const PORTAL_CSS = `
     color: var(--chq-muted);
   }
 
-  @media (max-width: 480px) {
+  @media (max-width: 700px) {
     .chq-portal-row-head { align-items: flex-start; }
     .chq-portal-actions { flex-direction: column; }
     .chq-portal-actions .chq-btn { width: 100%; }

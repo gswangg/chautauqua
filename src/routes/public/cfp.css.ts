@@ -87,7 +87,7 @@ export const CFP_CSS = `
   .chq-cfp-closed h1 { font-family: var(--chq-font-display); font-size: 29px; font-weight: 700; letter-spacing: -0.04em; line-height: 1.08; margin: 0; }
   .chq-cfp-closed-body { font-size: 15px; line-height: 1.65; color: var(--chq-ink-2); }
 
-  @media (max-width: 640px) {
+  @media (max-width: 700px) {
     .chq-cfp-header, .chq-cfp-body { padding-left: 16px; padding-right: 16px; }
     .chq-cfp-grid { grid-template-columns: 1fr; }
   }
