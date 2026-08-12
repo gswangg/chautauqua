@@ -249,8 +249,12 @@ describe("POST /portal/tasks/:assignmentId/upload (DEC-240)", () => {
     expect(html).toMatch(/isn(&#39;|')t allowed|not an accepted/i);
   });
 
-  it("falls back to 'handout' when the task has no deliverableKind set", async () => {
-    const { getAssignmentScope } = await import("../src/server/repo/portal");
+  // DEC-549: a task with no declared deliverable_kind is a plain 'handout'
+  // request — the resulting file has no submission link and
+  // resolveDeliverableSubmissionId is not even called (never joins the
+  // content pipeline this describe block otherwise exercises).
+  it("falls back to 'handout' with no submission link when the task has no deliverableKind set (DEC-549)", async () => {
+    const { getAssignmentScope, resolveDeliverableSubmissionId } = await import("../src/server/repo/portal");
     const { insertFile } = await import("../src/server/repo/files");
     vi.mocked(getAssignmentScope).mockResolvedValue({
       id: ASSIGNMENT_ID,
@@ -269,7 +273,8 @@ describe("POST /portal/tasks/:assignmentId/upload (DEC-240)", () => {
     const res = await app.request(uploadRequest("tok-3", "handout.pdf"));
     expect(res.status).toBe(302);
     const call = vi.mocked(insertFile).mock.calls[0]![1];
-    expect(call).toMatchObject({ kind: "handout" });
+    expect(call).toMatchObject({ kind: "handout", submissionId: null });
+    expect(resolveDeliverableSubmissionId).not.toHaveBeenCalled();
   });
 });
 

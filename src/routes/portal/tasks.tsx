@@ -539,19 +539,30 @@ portalTasksRoutes.post("/tasks/:assignmentId/upload", csrfForm, async (c) => {
     return reRenderWithError("file is required");
   }
 
-  // DEC-240 (supersedes DEC-029's submission_id-null/'handout'-only rule):
-  // task_assignment uploads use the task's own deliverable_kind when set
-  // (falling back to 'handout'), link to the uploader's own submission in
-  // the task's event when one resolves, and chain previous_file_id on
-  // re-upload instead of minting an unlinked file each time.
-  const kind = scope.deliverableKind ?? "handout";
+  // DEC-240 (supersedes DEC-029's submission_id-null/'handout'-only rule),
+  // amended by DEC-549: a task upload is a session deliverable ONLY when the
+  // task opts in by declaring deliverable_kind. When scope.deliverableKind
+  // is set, behavior is exactly DEC-240's: kind = that value, and the
+  // upload links to the uploader's own submission in the task's event
+  // (resolveDeliverableSubmissionId), chaining previous_file_id on
+  // re-upload instead of minting an unlinked file each time. When it is
+  // null, the task is a plain 'handout' request with NO submission link —
+  // submissionId is null and resolveDeliverableSubmissionId is not called,
+  // so the file never joins a submission's deliverable-authz population.
+  let kind: string;
+  let submissionId: string | null;
+  if (scope.deliverableKind != null) {
+    kind = scope.deliverableKind;
+    submissionId = await resolveDeliverableSubmissionId(c.var.db, contactId, scope.eventId);
+  } else {
+    kind = "handout";
+    submissionId = null;
+  }
   if (!isValidFileKind(kind)) throw new Error(`invalid task.deliverable_kind persisted: ${kind}`);
   const validation = validateUpload({ filename: file.name, sizeBytes: file.size, kind });
   if (!validation.ok) {
     return reRenderWithError(validation.message);
   }
-
-  const submissionId = await resolveDeliverableSubmissionId(c.var.db, contactId, scope.eventId);
 
   const sanitized = sanitizeFilenameForKey(file.name);
   const r2Key = `task/${assignmentId}/${newId()}-${sanitized}`;
