@@ -116,7 +116,7 @@ export function TaskModal({ onCancel, onSubmit, forms }: TaskModalProps) {
               <button
                 key={k}
                 type="button"
-                className={`chq-btn ${kind === k ? 'chq-btn-primary' : 'chq-btn-secondary'}`}
+                className={kind === k ? 'chq-btn chq-btn-primary' : 'chq-btn chq-btn-secondary'}
                 aria-pressed={kind === k}
                 onClick={() => setKind(k)}
               >
