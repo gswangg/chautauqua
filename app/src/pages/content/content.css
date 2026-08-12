@@ -384,3 +384,10 @@
   font-weight: 700;
   color: var(--chq-ink);
 }
+
+/* CNT-D5 (DEC-601): the only in-page feedback for the silent native ZIP
+   download — a role=status live region reporting the outcome. */
+.chq-content-download-status {
+  font-size: 13px;
+  color: var(--chq-muted);
+}

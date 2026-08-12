@@ -2,11 +2,12 @@
 // DEC-020 contract). Split out of files.ts (contention decomposition) — no
 // behavior change, files.ts re-exports everything below for existing callers.
 
-import { asc, desc, eq } from "drizzle-orm";
+import { asc, desc, eq, inArray } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { newId } from "../../domain/ids";
 import type { FileKind } from "../../domain/files";
+import { chunkIds } from "../../lib/chunk";
 
 // ---------------------------------------------------------------------------
 // Version-chain lookups
@@ -187,6 +188,29 @@ export async function insertFile(db: Db, input: InsertFileInput): Promise<string
     updatedAt: now,
   });
   return id;
+}
+
+// ---------------------------------------------------------------------------
+// DEC-601: a file version's uploader name, resolved server-side
+// ---------------------------------------------------------------------------
+
+/** ONE batched contact lookup for `contactIds` (deduped, chunked for D1's
+ * bound-parameter ceiling) -- callers pass only the ids present on the page
+ * being returned, never the whole table. A contact id with no matching row
+ * is simply absent from the returned map (deleted contact); callers treat a
+ * missing map entry the same as a null uploadedByContactId. */
+export async function batchContactNames(db: Db, contactIds: string[]): Promise<Map<string, string>> {
+  const uniqueIds = [...new Set(contactIds)];
+  const out = new Map<string, string>();
+  for (const batch of chunkIds(uniqueIds)) {
+    if (batch.length === 0) continue;
+    const rows = await db
+      .select({ id: schema.contact.id, firstName: schema.contact.firstName, lastName: schema.contact.lastName })
+      .from(schema.contact)
+      .where(inArray(schema.contact.id, batch));
+    for (const c of rows) out.set(c.id, `${c.firstName} ${c.lastName}`.trim());
+  }
+  return out;
 }
 
 // ---------------------------------------------------------------------------

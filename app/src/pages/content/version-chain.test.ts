@@ -12,6 +12,7 @@ function file(overrides: Partial<DeliverableFile> = {}): DeliverableFile {
     contentType: 'application/pdf',
     previousFileId: null,
     uploadedByContactId: 'c1',
+    uploaderName: null,
     createdAt: 1000,
     ...overrides,
   };

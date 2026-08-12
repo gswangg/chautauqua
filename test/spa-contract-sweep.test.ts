@@ -227,6 +227,9 @@ describe("DEC-239/DEC-247: GET /api/v1/submissions/:id/files vs DeliverableFile"
             },
           ],
         })),
+        // DEC-601: the route batches a contact-name lookup for the page's
+        // uploader ids — stub it out here, this test only cares about shape.
+        batchContactNames: vi.fn(async () => new Map<string, string>([["ct-1", "Priya Raman"]])),
       };
     });
     const { fileApiRoutes } = await import("../src/routes/files");
@@ -256,6 +259,7 @@ describe("DEC-239/DEC-247: GET /api/v1/submissions/:id/files vs DeliverableFile"
         "sizeBytes",
         "submissionId",
         "uploadedByContactId",
+        "uploaderName",
       ].sort(),
     );
   });

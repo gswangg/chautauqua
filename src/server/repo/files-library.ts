@@ -16,6 +16,7 @@ import { formatRef } from "../../domain/ids";
 import { chunkIds } from "../../lib/chunk";
 import { likeContains } from "./like";
 import { ApiError } from "../http";
+import { batchContactNames } from "./files-versions";
 
 export interface EventFilesScope {
   orgId: string;
@@ -44,6 +45,8 @@ export interface EventDeliverableChain {
   speakerName: string;
   uploadedAt: number;
   versionCount: number;
+  sizeBytes: number;
+  uploaderName: string | null;
 }
 
 export interface EventFilesQuery {
@@ -67,6 +70,8 @@ interface DeliverableFileRow {
   filename: string;
   previousFileId: string | null;
   createdAt: Date;
+  sizeBytes: number;
+  uploadedByContactId: string | null;
 }
 
 /** Follows previous_file_id links to find the oldest ancestor ('root') of
@@ -171,6 +176,8 @@ export async function listEventDeliverableFiles(
         filename: schema.file.filename,
         previousFileId: schema.file.previousFileId,
         createdAt: schema.file.createdAt,
+        sizeBytes: schema.file.sizeBytes,
+        uploadedByContactId: schema.file.uploadedByContactId,
       })
       .from(schema.file)
       .where(inArray(schema.file.submissionId, batch));
@@ -217,7 +224,10 @@ export async function listEventDeliverableFiles(
     }
   }
 
-  const items: EventDeliverableChain[] = rows.map((row) => {
+  // DEC-601: latest-version rows for the page, resolved so uploaderName can
+  // be batched in ONE lookup below (never per-row).
+  const latestByRoot = new Map<string, DeliverableFileRow>();
+  for (const row of rows) {
     const chain = chains.get(row.id);
     if (!chain || chain.length === 0) {
       // Fail loudly (DEC-344): the root row selected by the page query must
@@ -229,6 +239,20 @@ export async function listEventDeliverableFiles(
     for (const f of chain) {
       if (f.createdAt.getTime() > latest.createdAt.getTime()) latest = f;
     }
+    latestByRoot.set(row.id, latest);
+  }
+
+  // DEC-601: one batched contact lookup scoped to this page's uploader ids.
+  const uploaderContactIds = [
+    ...new Set([...latestByRoot.values()].map((f) => f.uploadedByContactId).filter((id): id is string => !!id)),
+  ];
+  const nameById = await batchContactNames(db, uploaderContactIds);
+
+  const items: EventDeliverableChain[] = rows.map((row) => {
+    const latest = latestByRoot.get(row.id);
+    if (!latest) throw new Error(`listEventDeliverableFiles: latest version for chain root ${row.id} not resolved`);
+    const chain = chains.get(row.id);
+    if (!chain) throw new Error(`listEventDeliverableFiles: chain root ${row.id} not resolved in per-page hydration`);
     const lead = row.submissionId ? leadBySubmission.get(row.submissionId) : undefined;
     return {
       rootFileId: row.id,
@@ -241,6 +265,8 @@ export async function listEventDeliverableFiles(
       speakerName: lead?.name ?? "",
       uploadedAt: latest.createdAt.getTime(),
       versionCount: chain.length,
+      sizeBytes: latest.sizeBytes,
+      uploaderName: latest.uploadedByContactId ? (nameById.get(latest.uploadedByContactId) ?? null) : null,
     };
   });
 
@@ -278,6 +304,7 @@ export async function resolveLatestVersions(
         contentType: schema.file.contentType,
         r2Key: schema.file.r2Key,
         sizeBytes: schema.file.sizeBytes,
+        uploadedByContactId: schema.file.uploadedByContactId,
       })
       .from(schema.file)
       .where(inArray(schema.file.id, batch));
@@ -331,6 +358,7 @@ export async function resolveLatestVersions(
         contentType: schema.file.contentType,
         r2Key: schema.file.r2Key,
         sizeBytes: schema.file.sizeBytes,
+        uploadedByContactId: schema.file.uploadedByContactId,
       })
       .from(schema.file)
       .where(inArray(schema.file.submissionId, batch));

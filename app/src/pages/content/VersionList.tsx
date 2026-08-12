@@ -39,7 +39,7 @@ export function VersionList({ versions }: VersionListProps) {
                   {v.filename}
                 </a>
                 <span className="chq-version-meta chq-meta">
-                  {v.uploaderName ?? 'Unknown uploader'} &middot; {formatDateTime(v.createdAt)} &middot;{' '}
+                  {v.uploaderName ?? 'Uploaded in the admin'} &middot; {formatDateTime(v.createdAt)} &middot;{' '}
                   {formatBytes(v.sizeBytes)}
                 </span>
               </div>

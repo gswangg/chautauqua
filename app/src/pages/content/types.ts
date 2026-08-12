@@ -47,7 +47,7 @@ export interface DeliverableFile {
   contentType: string;
   previousFileId: string | null;
   uploadedByContactId: string | null;
-  uploaderName?: string;
+  uploaderName: string | null;
   createdAt: number;
 }
 
@@ -64,6 +64,8 @@ export interface EventFileChainItem {
   speakerName: string;
   uploadedAt: number;
   versionCount: number;
+  sizeBytes: number;
+  uploaderName: string | null;
 }
 
 // GET/POST /api/v1/files/:fileId/comments item (DEC-020: author name + role).

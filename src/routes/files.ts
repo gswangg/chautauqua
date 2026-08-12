@@ -41,6 +41,7 @@ import {
   getResourceFileScope,
   getSubmissionScope,
   getTaskFileScope,
+  batchContactNames,
   insertFile,
   insertFileComment,
   isValidContentStatus,
@@ -174,7 +175,17 @@ fileApiRoutes.get("/submissions/:id/files", async (c) => {
   const perPage = listPerPage(c.req.query("perPage"));
   const start = (page - 1) * perPage;
   const slice = items.slice(start, start + perPage);
-  return c.json({ items: slice, total: items.length, page, perPage });
+
+  // DEC-601: one batched contact lookup scoped to this page's uploader ids
+  // — never the whole grouped list, never per-row.
+  const contactIds = [...new Set(slice.map((v) => v.uploadedByContactId).filter((id): id is string => !!id))];
+  const nameById = await batchContactNames(c.var.db, contactIds);
+  const slicedWithNames = slice.map((v) => ({
+    ...v,
+    uploaderName: v.uploadedByContactId ? (nameById.get(v.uploadedByContactId) ?? null) : null,
+  }));
+
+  return c.json({ items: slicedWithNames, total: items.length, page, perPage });
 });
 
 // -----------------------------------------------------------------------
