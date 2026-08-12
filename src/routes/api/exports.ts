@@ -15,13 +15,16 @@ import * as schema from "../../db/schema";
 import { toCsv } from "../../lib/csv";
 import { buildExport, buildShowflowExport, isExportKind } from "../../server/repo/exports";
 import { isValidStatusLiteral, parseListQuery } from "../../server/repo/submissions/query";
-import { DEC_011, DEC_025, DEC_027, DEC_055, DEC_649 } from "../../decisions";
+import { parseContactListQuery } from "../../server/repo/contacts/query";
+import { parseRulesQueryParam } from "./contacts/segments";
+import { DEC_011, DEC_025, DEC_027, DEC_055, DEC_649, DEC_671 } from "../../decisions";
 
 void DEC_011;
 void DEC_025;
 void DEC_027;
 void DEC_055;
 void DEC_649;
+void DEC_671;
 
 export const exportsRoutes = new Hono<AppEnv>();
 
@@ -90,7 +93,18 @@ exportsRoutes.get("/api/v1/events/:eventId/export/:kind", requireOrganizer, asyn
     submissionsListParams = parseListQuery({ ...raw, status: statusTokens.join(",") });
   }
 
-  const table = await buildExport(c.var.db, eventId, kind, orgId, submissionsListParams);
+  // DEC-671: the 'contacts' export honours the directory's own filter (q/
+  // segmentId/rules) via the EXISTING parseContactListQuery + rules-param
+  // validator — not a reimplementation. An unparseable rules payload 400s,
+  // same as the list.
+  let contactsListParams: ReturnType<typeof parseContactListQuery> | undefined;
+  if (kind === "contacts") {
+    const query = c.req.query();
+    const rules = parseRulesQueryParam(query.rules);
+    contactsListParams = parseContactListQuery(query as Record<string, string | undefined>, rules);
+  }
+
+  const table = await buildExport(c.var.db, eventId, kind, orgId, submissionsListParams, contactsListParams);
 
   if (format === "json") {
     c.header("Content-Disposition", `attachment; filename="${kind}.json"`);

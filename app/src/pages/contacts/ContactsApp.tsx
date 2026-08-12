@@ -15,6 +15,21 @@ import type { ContactListItem, ContactStats, Segment, SegmentRule } from './type
 
 const PER_PAGE = 25;
 
+/** DEC-671: the CSV export sits beside a filtered directory, so it must
+ * carry the same q/segmentId/rules filter the directory table is showing —
+ * mirrors SubmissionsTable.tsx's exportHref for the submissions list. */
+function contactsExportHref(
+  eventId: string,
+  filters: { q: string; segmentId: string; rules: SegmentRule[] },
+): string {
+  const params = new URLSearchParams();
+  if (filters.q.trim() !== '') params.set('q', filters.q.trim());
+  if (filters.segmentId !== '') params.set('segmentId', filters.segmentId);
+  if (filters.rules.length > 0) params.set('rules', JSON.stringify(filters.rules));
+  params.set('format', 'csv');
+  return `/api/v1/events/${eventId}/export/contacts?${params.toString()}`;
+}
+
 type Panel = 'directory' | 'duplicates' | 'segments' | 'pipeline';
 
 const PANEL_LABELS: Record<Panel, string> = {
@@ -100,7 +115,7 @@ export function ContactsApp() {
           {eventId && (
             <a
               className="chq-btn chq-btn-secondary"
-              href={`/api/v1/events/${eventId}/export/contacts?format=csv`}
+              href={contactsExportHref(eventId, { q, segmentId, rules })}
             >
               Export CSV
             </a>
