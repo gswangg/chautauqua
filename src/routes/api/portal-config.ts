@@ -28,14 +28,25 @@ import {
 } from "../../server/repo/portal-config";
 import { isValidHexColor } from "./validators";
 import { clampPage, listPerPage } from "../../lib/pagination";
+import { DEC_523 } from "../../decisions";
+
+// Compile-checked dependency marker: the explicit route-shape middleware
+// below (replacing the forbidden `/events/*` wildcard) implements DEC-523.
+void DEC_523;
 
 export const portalConfigRoutes = new Hono<AppEnv>();
 
-// NOTE: see events.ts for why a blanket `.use("*", requireOrganizer)` is
-// unsafe once mounted under /api/v1 alongside sibling sub-apps — scope to
-// this router's own path prefixes instead (DEC-060 w8-d finding).
-portalConfigRoutes.use("/events/*", requireOrganizer);
-portalConfigRoutes.use("/resources/*", requireOrganizer);
+// NOTE: a `/events/*` wildcard here would ALSO match the bare `/api/v1/events`
+// list route once this sub-app is composed under the shared "/api/v1" prefix
+// (Hono's `*` matches zero-or-more trailing segments and does not respect
+// sub-app boundaries) — that route is the DEC-141 exception eventsRoutes
+// intentionally keeps reviewer-reachable via its own inline role check, so a
+// wildcard here would silently 403 reviewers on it. It is inert today only
+// because src/index.ts:42-43 happens to mount eventsRoutes before
+// portalConfigRoutes; list this router's actual shapes explicitly instead.
+portalConfigRoutes.use("/events/:eventId/portal-settings", requireOrganizer);
+portalConfigRoutes.use("/events/:eventId/resources", requireOrganizer);
+portalConfigRoutes.use("/resources/:resourceId", requireOrganizer);
 
 function currentOrgId(c: { var: { auth?: { orgId: string } } }): string {
   const auth = c.var.auth;
