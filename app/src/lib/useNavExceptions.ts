@@ -7,9 +7,11 @@
 // the hook returns nulls; callers render no badge, which is "no known
 // exception", not a swallowed error surfaced to the user.
 import { useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { apiGet } from './api';
 import { useCurrentEvent } from './useCurrentEvent';
 import { useMe } from './useMe';
+import { useMutationVersion } from './mutationSignal';
 
 interface OverviewAggregatesPayload {
   speakers: { overdueAssignments: number };
@@ -26,6 +28,8 @@ const EMPTY: NavExceptions = { late: null, clash: null };
 export function useNavExceptions(): NavExceptions {
   const { eventId } = useCurrentEvent();
   const { me, loading: meLoading } = useMe();
+  const mutationVersion = useMutationVersion();
+  const { pathname } = useLocation();
   const [exceptions, setExceptions] = useState<NavExceptions>(EMPTY);
 
   useEffect(() => {
@@ -51,7 +55,10 @@ export function useNavExceptions(): NavExceptions {
     return () => {
       cancelled = true;
     };
-  }, [eventId, meLoading, me?.role]);
+    // DEC-700: refetch whenever a mutation elsewhere resolved (mutationVersion)
+    // or the user navigated (pathname) — either can invalidate the badge's
+    // stale answer, not just an eventId/role change.
+  }, [eventId, meLoading, me?.role, mutationVersion, pathname]);
 
   return exceptions;
 }
