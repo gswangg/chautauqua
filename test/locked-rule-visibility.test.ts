@@ -97,7 +97,7 @@ describe("isVisible + validateAnswers with a locked trigger field (DEC-475)", ()
   it("op 'eq': visible-and-absent now reports required (previously silently dropped)", () => {
     const fields = fieldsFor("eq", "Show it");
     const answers = { title: "Show it" };
-    expect(isVisible(fields[1], answers)).toBe(true);
+    expect(isVisible(fields[1], answers, "text")).toBe(true);
     const result = validateAnswers(fields, answers);
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.errors.extra_notes).toBe("required");
@@ -106,7 +106,7 @@ describe("isVisible + validateAnswers with a locked trigger field (DEC-475)", ()
   it("op 'eq': hidden answers are stripped from cleaned, not validated", () => {
     const fields = fieldsFor("eq", "Show it");
     const answers = { title: "Do not show", extra_notes: "should be stripped" };
-    expect(isVisible(fields[1], answers)).toBe(false);
+    expect(isVisible(fields[1], answers, "text")).toBe(false);
     const result = validateAnswers(fields, answers);
     expect(result.ok).toBe(true);
     if (result.ok) expect(result.cleaned.extra_notes).toBeUndefined();
@@ -115,7 +115,7 @@ describe("isVisible + validateAnswers with a locked trigger field (DEC-475)", ()
   it("op 'ne': visible-and-absent reports required", () => {
     const fields = fieldsFor("ne", "Hide it");
     const answers = { title: "Show it" };
-    expect(isVisible(fields[1], answers)).toBe(true);
+    expect(isVisible(fields[1], answers, "text")).toBe(true);
     const result = validateAnswers(fields, answers);
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.errors.extra_notes).toBe("required");
@@ -124,7 +124,7 @@ describe("isVisible + validateAnswers with a locked trigger field (DEC-475)", ()
   it("op 'ne': matching trigger value hides and strips", () => {
     const fields = fieldsFor("ne", "Hide it");
     const answers = { title: "Hide it", extra_notes: "should be stripped" };
-    expect(isVisible(fields[1], answers)).toBe(false);
+    expect(isVisible(fields[1], answers, "text")).toBe(false);
     const result = validateAnswers(fields, answers);
     expect(result.ok).toBe(true);
     if (result.ok) expect(result.cleaned.extra_notes).toBeUndefined();
@@ -133,7 +133,7 @@ describe("isVisible + validateAnswers with a locked trigger field (DEC-475)", ()
   it("op 'in': visible-and-absent reports required", () => {
     const fields = fieldsFor("in", ["A", "B"]);
     const answers = { title: "A" };
-    expect(isVisible(fields[1], answers)).toBe(true);
+    expect(isVisible(fields[1], answers, "text")).toBe(true);
     const result = validateAnswers(fields, answers);
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.errors.extra_notes).toBe("required");
@@ -142,7 +142,7 @@ describe("isVisible + validateAnswers with a locked trigger field (DEC-475)", ()
   it("op 'in': non-matching trigger value hides and strips", () => {
     const fields = fieldsFor("in", ["A", "B"]);
     const answers = { title: "C", extra_notes: "should be stripped" };
-    expect(isVisible(fields[1], answers)).toBe(false);
+    expect(isVisible(fields[1], answers, "text")).toBe(false);
     const result = validateAnswers(fields, answers);
     expect(result.ok).toBe(true);
     if (result.ok) expect(result.cleaned.extra_notes).toBeUndefined();

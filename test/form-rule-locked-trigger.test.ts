@@ -191,7 +191,7 @@ describe("regression: normalized rule correctly gates isVisible + validateAnswer
 
   it("shows and requires the dependent field when the trigger answer matches", () => {
     const answers = { description: "x" };
-    expect(isVisible(dependentField, answers)).toBe(true);
+    expect(isVisible(dependentField, answers, "long_text")).toBe(true);
 
     const result = validateAnswers(fields, { description: "x" });
     expect(result.ok).toBe(false);
@@ -202,7 +202,7 @@ describe("regression: normalized rule correctly gates isVisible + validateAnswer
 
   it("hides and skips the dependent field when the trigger answer does not match", () => {
     const answers = { description: "y" };
-    expect(isVisible(dependentField, answers)).toBe(false);
+    expect(isVisible(dependentField, answers, "long_text")).toBe(false);
 
     const result = validateAnswers(fields, { description: "y" });
     expect(result.ok).toBe(true);

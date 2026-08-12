@@ -55,7 +55,7 @@ describe("resolveHiddenFieldIds — three-deep chain with a stale middle answer"
     // Without the fixed point, the raw (naive) single-pass check would find
     // projector visible, since it only looks at workshopLength's stale
     // answer — this is exactly the bug DEC-532 closes.
-    expect(isVisible(projectorField, answers)).toBe(true);
+    expect(isVisible(projectorField, answers, "dropdown")).toBe(true);
   });
 
   it("a required grandchild no longer produces a required error once transitively hidden", () => {
