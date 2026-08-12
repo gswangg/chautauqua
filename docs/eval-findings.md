@@ -551,3 +551,16 @@ compare phone frames pixel-for-pixel.
     drop clause) + implement "waiting N days"; (g) Public pages as the mock's single
     summary row; (h) verify the four identical "Place at 9:00" suggestions are
     room-distinct.
+
+45. r2-Contacts: KEEP: CTAs, 4-step import w/ Review, stage names, duplicates tab,
+    a11y-operable enroll. FIX: **merge diff must render ALL differing fields (Title/
+    Labels/Notes never appear — DEC-266 combine/append unverifiable) with the design's
+    fixed-primary + per-field keep mechanic and footer**; **add-to-event needs the
+    ROLE control (Speaker/Reviewer/Guest) — currently absent, role hardcoded**, drop
+    the explanatory sentence, unclip Title; drawer → read-only record view (history +
+    action bar already exist — reorder page around them); directory search to toolbar,
+    "Where they work" to sidebar, drop FIELD/OPERATOR/VALUE row; import: split
+    choose-file/match-columns steps or keep CTA above fold, unclip phone step tabs;
+    pipeline card captions ("Added N days ago", "No reply · N days" bold past 30,
+    declined reason); bulk-email FormRow (labels above, full measure); dedicated phone
+    screens per mock.
