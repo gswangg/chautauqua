@@ -5,7 +5,7 @@
 // DEC-153 UTC date helper (formatDateOnly), and opens the "New task" modal
 // (TaskModal).
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { render, screen, waitFor, within, cleanup } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { SpeakersPage } from './Speakers';
 import { mockApi } from '../test-utils/mockApi';
@@ -53,6 +53,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  cleanup();
   expect(consoleErrorSpy).not.toHaveBeenCalled();
   consoleErrorSpy.mockRestore();
   window.localStorage.clear();
@@ -73,6 +74,9 @@ describe('SpeakersPage render smoke (OnboardingGrid)', () => {
 
     render(<SpeakersPage />);
 
+    // DEC-662: exactly one <h1> on the page -- RosterPanel no longer owns
+    // its own header band.
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
     expect(screen.getByRole('heading', { name: 'Speakers' })).toBeInTheDocument();
 
     await waitFor(() => {
@@ -103,5 +107,32 @@ describe('SpeakersPage render smoke (OnboardingGrid)', () => {
     screen.getByRole('button', { name: 'New task' }).click();
     const dialog = await screen.findByRole('dialog', { name: 'New task' });
     expect(dialog).toBeInTheDocument();
+  });
+
+  // DEC-662: the "Add speaker" and "Import CSV" triggers moved from
+  // RosterPanel's own header band into OnboardingGrid's single title action
+  // row -- both reachable from the same row as "New task"/"Remind all
+  // outstanding".
+  it('opens Add speaker and Import CSV from the single title action row', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: GRID,
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+    });
+
+    render(<SpeakersPage />);
+
+    await waitFor(() => {
+      expect(screen.getAllByText('Ada Lovelace').length).toBeGreaterThan(0);
+    });
+
+    screen.getByRole('button', { name: 'Add speaker' }).click();
+    expect(await screen.findByLabelText('First name')).toBeInTheDocument();
+    screen.getByRole('button', { name: 'Cancel' }).click();
+    await waitFor(() => {
+      expect(screen.queryByLabelText('First name')).not.toBeInTheDocument();
+    });
+
+    screen.getByRole('button', { name: 'Import CSV' }).click();
+    expect(await screen.findByRole('dialog', { name: 'Import contacts' })).toBeInTheDocument();
   });
 });

@@ -46,7 +46,15 @@ function lateLabel(dueDate: number, now: number): string {
   return `${d} DAY${d === 1 ? '' : 'S'} LATE`;
 }
 
-export function OnboardingGrid() {
+// DEC-662: the roster's Add-speaker/Import-CSV triggers live here now (see
+// RosterPanel), beside New task/Remind all outstanding, so the page renders
+// exactly one title action row.
+interface OnboardingGridProps {
+  onAddSpeaker: () => void;
+  onImportCsv: () => void;
+}
+
+export function OnboardingGrid({ onAddSpeaker, onImportCsv }: OnboardingGridProps) {
   const { eventId, loading: eventLoading, error: eventError } = useCurrentEvent();
 
   const [grid, setGrid] = useState<OnboardingGridResponse | null>(null);
@@ -290,6 +298,12 @@ export function OnboardingGrid() {
           </span>
         </div>
         <div className="chq-speakers-head-actions">
+          <button type="button" className="chq-btn chq-btn-secondary" onClick={onAddSpeaker}>
+            Add speaker
+          </button>
+          <button type="button" className="chq-btn chq-btn-secondary" onClick={onImportCsv}>
+            Import CSV
+          </button>
           <button type="button" className="chq-btn chq-btn-secondary" onClick={() => setShowNewTask(true)}>
             New task
           </button>
@@ -340,9 +354,12 @@ export function OnboardingGrid() {
                     <td>
                       <div className="chq-row-title">{row.contact.name}</div>
                       <div className="chq-meta">
-                        {row.contact.company ?? '—'} &middot; {row.contact.email}
+                        {row.contact.company ?? '—'}
                         {row.contact.hasAccount && (
-                          <span className="chq-pill chq-speakers-has-account">Has account</span>
+                          <>
+                            {' '}
+                            &middot; <span className="chq-pill chq-speakers-has-account">Has account</span>
+                          </>
                         )}
                       </div>
                     </td>
@@ -389,13 +406,13 @@ export function OnboardingGrid() {
                                 File
                               </a>
                             )}
-                            {task.kind === 'form' && (
+                            {task.kind === 'form' && cell.status === 'complete' && (
                               <button
                                 type="button"
-                                className="chq-btn-tertiary chq-speakers-view-response"
+                                className="chq-link-button chq-speakers-response-link"
                                 onClick={() => openResponse(cell.assignmentId, row.contact.name)}
                               >
-                                View response
+                                Response
                               </button>
                             )}
                           </div>
@@ -415,7 +432,13 @@ export function OnboardingGrid() {
                 <div className="chq-speakers-card-head">
                   <span className="chq-row-title">{row.contact.name}</span>
                   <span className="chq-meta">
-                    {row.contact.company ?? '—'} &middot; {row.contact.email}
+                    {row.contact.company ?? '—'}
+                    {row.contact.hasAccount && (
+                      <>
+                        {' '}
+                        &middot; <span className="chq-pill chq-speakers-has-account">Has account</span>
+                      </>
+                    )}
                   </span>
                 </div>
                 <div className="chq-speakers-card-tasks">
@@ -439,18 +462,41 @@ export function OnboardingGrid() {
                     return (
                       <div key={task.id} className="chq-speakers-card-task">
                         <span className="chq-speakers-card-task-label">{task.title}</span>
-                        <button
-                          type="button"
-                          className={cellClass}
-                          onClick={() => toggleCell(cell.assignmentId, cell.status)}
-                          aria-label={`Toggle ${task.title} for ${row.contact.name}`}
-                        >
-                          {cell.status === 'complete'
-                            ? 'Complete'
-                            : overdue && task.dueDate !== null
-                              ? lateLabel(task.dueDate, now)
-                              : 'Pending'}
-                        </button>
+                        <div className="chq-speakers-cell">
+                          <button
+                            type="button"
+                            className={cellClass}
+                            onClick={() => toggleCell(cell.assignmentId, cell.status)}
+                            aria-label={`Toggle ${task.title} for ${row.contact.name}`}
+                          >
+                            {cell.status === 'complete'
+                              ? 'Complete'
+                              : overdue && task.dueDate !== null
+                                ? lateLabel(task.dueDate, now)
+                                : 'Pending'}
+                          </button>
+                          {cell.fileId && (
+                            <a
+                              href={`/files/${cell.fileId}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="chq-speakers-file-link"
+                              aria-label="Has file"
+                              title="Has file"
+                            >
+                              File
+                            </a>
+                          )}
+                          {task.kind === 'form' && cell.status === 'complete' && (
+                            <button
+                              type="button"
+                              className="chq-link-button chq-speakers-response-link"
+                              onClick={() => openResponse(cell.assignmentId, row.contact.name)}
+                            >
+                              Response
+                            </button>
+                          )}
+                        </div>
                       </div>
                     );
                   })}
