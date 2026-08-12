@@ -58,6 +58,7 @@ import {
   CSRF_COOKIE_NAME,
 } from "../../auth/cookies";
 import { DEC_016, DEC_020, DEC_023, DEC_028, DEC_029, DEC_240, DEC_242, DEC_244 } from "../../decisions";
+import { formatEventDate, formatEventDateTime } from "../../lib/event-time";
 
 export const portalTasksRoutes = new Hono<AppEnv>();
 
@@ -108,10 +109,11 @@ export interface FileRequestExtras {
   version: number;
   uploadedAt: number;
   comments: FileCommentRow[];
+  timezone: string;
 }
 
-function CommentThread(props: { assignmentId: string; comments: FileCommentRow[]; csrfToken: string }) {
-  const { assignmentId, comments, csrfToken } = props;
+function CommentThread(props: { assignmentId: string; comments: FileCommentRow[]; csrfToken: string; timezone: string }) {
+  const { assignmentId, comments, csrfToken, timezone } = props;
   return (
     <section aria-label="Comments">
       <h4>Comments</h4>
@@ -123,7 +125,7 @@ function CommentThread(props: { assignmentId: string; comments: FileCommentRow[]
             <li>
               <strong>{cm.authorName}</strong>
               {" — "}
-              {new Date(cm.createdAt).toISOString()}
+              {formatEventDateTime(cm.createdAt, timezone)}
               <p>{cm.body}</p>
             </li>
           ))}
@@ -159,7 +161,7 @@ function TaskRow(props: {
           {t.status === "complete" ? "Completed" : "Pending"}
         </span>
       </div>
-      {t.dueDate ? <span class="chq-portal-due">Due {new Date(t.dueDate).toISOString().slice(0, 10)}</span> : null}
+      {t.dueDate ? <span class="chq-portal-due">Due {formatEventDate(t.dueDate, t.timezone)}</span> : null}
       {t.description ? <p class="chq-portal-detail">{t.description}</p> : null}
       {error ? (
         <p role="alert" class="field-error">
@@ -198,14 +200,14 @@ function TaskRow(props: {
         <section aria-label="Uploaded file" class="chq-card">
           <p>
             <a href={`/portal/tasks/${t.id}/file`}>{fileExtras.filename}</a> (version {fileExtras.version}, uploaded{" "}
-            {new Date(fileExtras.uploadedAt).toISOString()})
+            {formatEventDateTime(fileExtras.uploadedAt, fileExtras.timezone)})
           </p>
           <form method="post" action={`/portal/tasks/${t.id}/upload`} enctype="multipart/form-data">
             <input type="hidden" name={CSRF_COOKIE_NAME} value={csrfToken} />
             <input type="file" name="file" required />
             <button type="submit" class="chq-btn chq-btn-secondary">Replace file</button>
           </form>
-          <CommentThread assignmentId={t.id} comments={fileExtras.comments} csrfToken={csrfToken} />
+          <CommentThread assignmentId={t.id} comments={fileExtras.comments} csrfToken={csrfToken} timezone={fileExtras.timezone} />
         </section>
       ) : null}
     </div>
@@ -277,7 +279,7 @@ function TasksPage(props: {
                 </span>
                 <span class="chq-flag">Pending</span>
               </div>
-              {t.dueDate ? <span class="chq-portal-due">Due {new Date(t.dueDate).toISOString().slice(0, 10)}</span> : null}
+              {t.dueDate ? <span class="chq-portal-due">Due {formatEventDate(t.dueDate, t.timezone)}</span> : null}
               <div class="chq-portal-actions">
                 <a href={formLinkFor(t) ?? "#"} class="chq-btn chq-btn-primary">Fill out form</a>
               </div>
@@ -356,7 +358,13 @@ async function loadTasksPageData(c: Context<AppEnv>, contactId: string, orgId: s
       getFileVersionNumber(c.var.db, latest.id),
       listFileComments(c.var.db, latest.id),
     ]);
-    fileExtrasByAssignmentId.set(a.id, { filename: latest.filename, version, uploadedAt: latest.createdAt, comments });
+    fileExtrasByAssignmentId.set(a.id, {
+      filename: latest.filename,
+      version,
+      uploadedAt: latest.createdAt,
+      comments,
+      timezone: a.timezone,
+    });
   }
 
   return { data, assignments, fileExtrasByAssignmentId };

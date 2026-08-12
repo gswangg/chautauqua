@@ -103,6 +103,7 @@ describe("GET /portal/tasks — completed file_request assignment (DEC-242)", ()
         formId: null,
         fileId: FILE_ID,
         responseJson: null,
+        timezone: "UTC",
       },
     ]);
     vi.mocked(resolveTaskFileChainLatest).mockResolvedValue(CHAIN_LATEST);
