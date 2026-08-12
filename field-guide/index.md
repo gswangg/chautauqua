@@ -15,47 +15,45 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   lists LIMIT+COUNT(DISTINCT).
 - STAGE1-CLOSE w11-38 (DEC-420..569, compacted): ledger names its sha; ONE
   email rule via findAccountUserId; universal rows graded from ENUMERATION
-  never sample; pagination ONE shape `page?:{limit,offset}`+count*+`id asc`;
-  a cap the UI can't see LIES, render `total`; atomic SQL beats
-  read-then-write; hand-listed manifests desync -- enumerate in a test;
-  conditional visibility is a FIXED POINT; hand-copied vocabularies drift
-  -- IMPORT them; a uniqueIndex is a CONTRACT; a cron has no request --
-  own origin entry point that THROWS; a `position` column nobody sets on
-  create is dead -- assign max+1 INSIDE the insert; a nullable column in
-  a NEGATED predicate (NOT IN/!=) skips NULLs; two functions claiming
-  "the same semantics" END in the same helper.
+  never sample; pagination ONE shape+count*+`id asc`; a cap the UI can't
+  see LIES, render `total`; atomic SQL beats read-then-write; hand-listed
+  manifests desync -- enumerate in a test; conditional visibility is a
+  FIXED POINT; hand-copied vocabularies drift -- IMPORT them; a
+  uniqueIndex is a CONTRACT; a `position` column nobody sets is dead --
+  assign max+1 INSIDE the insert; a negated predicate (NOT IN/!=) skips
+  NULLs; "same semantics" claims END in the same helper.
 - FINDINGS w1-4 (DEC-570..611, compacted): full suites SERIALIZED via
-  with-test-lock.sh; verify before trust. Real <button> not `div
-  draggable`; colour alone isn't track identity -- NAME it. Fan-out
-  with no count is a hidden cap: id minted ONCE per fan-out. Upload-
-  that-navigates DISCARDS the form; blank CSV cell is ABSENT DATA; SSR
-  phone layout is a SECOND markup via display:none. Seed has ONE clock
-  -- SEED_NOW. A value with no column is an ANSWER: name its field id.
-  A query param that no-ops is a hidden cap; publish counts through the
-  PUBLIC predicate; `?? 'Unknown'` is the SERVER forgetting a name. A
-  file id in a URL is never proof of ownership -- walk it to the root.
-  A role's route subtree ENDS in a catch-all. Never guess a slug.
+  with-test-lock.sh; real <button> not `div draggable`; colour alone
+  isn't track identity -- NAME it. Fan-out with no count is a hidden
+  cap; upload-that-navigates DISCARDS the form; blank CSV cell is
+  ABSENT DATA; SSR phone layout is a SECOND markup via display:none.
+  Seed has ONE clock -- SEED_NOW. Publish counts through the PUBLIC
+  predicate; a file id in a URL is never proof of ownership -- walk it
+  to the root. A role's route subtree ENDS in a catch-all.
 - FINDINGS w5 (DEC-612..621, compacted): an imported row keeps THEIR id
-  -- one namespaced `external_ref` per table, unique inside its own
-  owner scope. Dry run and real run are ONE planner; counts are of rows
-  PLANNED, never sampled. An untested integration ships as PROSE. A
-  drawer is a RECORD: labelled facts, one history section, one action
-  bar. Code that runs on someone else's page lives in ONE file its own
-  test EXECUTES. An audit is enumerated by a test or it drifts. Scale
-  is a PROFILE threaded through the seeder; render-sweep's unfixed
-  clip offender is NAMED, never absorbed into tolerance.
-- FINDINGS w6 (DEC-622..630): two readings of one row must END in one
-  resolver -- the export and the screen cannot disagree about anonymity;
-  a withheld cell says '(anonymized)', never blank. A ref the product
-  PRINTS is a ref the API ACCEPTS, resolved event-scoped server-side.
-  Anonymity is a RATCHET: grantable, never revocable once an evaluation
-  exists under it. A locked built-in is pinned VISIBLE in the fixed
-  point -- a rule that hides it strips the answer unvalidated. A plain-
-  form throw renders a PAGE: the middleware that identifies the surface
-  marks the request, and the CFP re-renders with the answers intact.
-  Purge only what the cached surface renders (/e/*, /embed/* only);
-  unclassified BUMPS, and both lists are enumerated by a test. CSRF and
-  rate limits are enumerated from source, never spot-checked; a scan
-  that could match nothing asserts a floor count. Merge takes a SET, ids
-  all checked before any write, every pair through one core. A phone
-  selector's top-level rule is display:none or it does not exist.
+  -- one namespaced `external_ref`, unique per owner scope. Dry run and
+  real run are ONE planner; counts are of rows PLANNED, never sampled.
+  A drawer is a RECORD: facts, history, action bar. Code on someone
+  else's page lives in ONE file its own test EXECUTES. An audit is
+  enumerated by a test or it drifts.
+- FINDINGS w6 (DEC-622..630, compacted): two readings of one row END in
+  one resolver -- a withheld cell says '(anonymized)', never blank. A
+  ref the product PRINTS is a ref the API ACCEPTS, server-side. Anonymity
+  is a RATCHET, never revocable once an evaluation exists. A plain-form
+  throw renders a PAGE with answers intact. Cache purge is a closed
+  two-list (/e/*, /embed/*). CSRF/rate limits enumerated from source,
+  floor-counted. Merge takes a SET. A phone selector's top-level rule
+  is display:none or it does not exist.
+- FINDINGS w7 (DEC-631..638): a confirmation is a DIALOG in our own
+  contract -- window.confirm is browser chrome the design never saw, and
+  the ban is a scan with a floor count, not a habit. A row that shows a
+  decision must CARRY it: optimistic state with no server field forgets
+  on reload, and a refetch cannot restore what the wire shape omits. A
+  filter applied AFTER the page window lies twice -- items and total come
+  from ONE where clause, and the predicate ends in the same helper as the
+  fact it filters. A request the router cannot answer is still our
+  response: /api/v1 gets the envelope, a human gets a page. Framing is a
+  closed two-list -- /embed/* frames, everything else DENIES. A
+  hand-listed API reference is enumerated from app.routes or it drifts.
+  A capability the API has and no screen exposes is a DEAD endpoint.
+  Re-grep before you conclude something is missing: main moves mid-wave.
