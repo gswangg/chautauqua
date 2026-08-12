@@ -24,7 +24,7 @@ import { clampPage, clampPerPage, listPerPage } from "../../lib/pagination";
 import * as repo from "../../server/repo/review";
 import { roundCriteriaJsonOf } from "../../server/repo/review";
 import * as eventsRepo from "../../server/repo/events";
-import { DEC_015, DEC_123, DEC_146, DEC_147, DEC_148, DEC_213, DEC_238, DEC_460, DEC_461, DEC_466, DEC_535, DEC_572, DEC_623, DEC_624 } from "../../decisions";
+import { DEC_015, DEC_123, DEC_146, DEC_147, DEC_148, DEC_213, DEC_238, DEC_460, DEC_461, DEC_466, DEC_535, DEC_572, DEC_623, DEC_624, DEC_659 } from "../../decisions";
 import { capById, MAX_REVIEWER_REMINDER_BATCH } from "../../domain/reminders";
 import {
   asRecord,
@@ -61,6 +61,7 @@ void DEC_535; // /plans/:id/remind: laggard list capped via capById below
 void DEC_572; // /plans/:id/scope-preview: true count + bounded preview before a track-scope fan-out below
 void DEC_623; // POST /plans/:id/reviewers: submissionId resolved through findSubmissionIdByRefOrId below
 void DEC_624; // PATCH /plans/:id: anonymity ratchet guard below
+void DEC_659; // GET /plans/:id/reviewers: trackName/submissionRef/submissionTitle labels below
 
 reviewPlansRoutes.get("/api/v1/events/:eventId/plans", requireOrganizer, async (c) => {
   const auth = currentAuth(c);
@@ -308,12 +309,24 @@ reviewPlansRoutes.get("/api/v1/plans/:id/reviewers", requireOrganizer, async (c)
   ]);
   const users = await repo.getUsersByIds(c.var.db, [...new Set(rows.map((r) => r.userId))]);
   const emailByUserId = new Map(users.map((u) => [u.userId, u.email]));
+  // DEC-659: reviewer assignment scope speaks in names, not ULIDs -- ONE
+  // batched query over the page's distinct non-null trackIds and ONE over
+  // the distinct non-null submissionIds (never a query per row).
+  const trackNameById = await repo.getTrackNamesByIds(c.var.db, [
+    ...new Set(rows.map((r) => r.trackId).filter((id): id is string => id !== null)),
+  ]);
+  const submissionLabelById = await repo.getSubmissionLabelsByIds(c.var.db, [
+    ...new Set(rows.map((r) => r.submissionId).filter((id): id is string => id !== null)),
+  ]);
   const items = rows.map((r) => ({
     id: r.id,
     userId: r.userId,
     email: emailByUserId.get(r.userId) ?? "",
     trackId: r.trackId,
     submissionId: r.submissionId,
+    trackName: r.trackId !== null ? (trackNameById.get(r.trackId) ?? null) : null,
+    submissionRef: r.submissionId !== null ? (submissionLabelById.get(r.submissionId)?.ref ?? null) : null,
+    submissionTitle: r.submissionId !== null ? (submissionLabelById.get(r.submissionId)?.title ?? null) : null,
   }));
   return c.json({ items, total, page, perPage });
 });
