@@ -19,6 +19,7 @@ import { getTableName, isTable } from "drizzle-orm";
 import { hashPassword } from "../src/auth/password";
 import { MERGE_FIELDS } from "../src/mail/render";
 import { DEFAULT_ONBOARDING_TASKS, FORM_TASK_FIELD_SPECS } from "../src/domain/acceptance";
+import { SESSION_FORMAT_FIELD_ID } from "../src/forms/types";
 import * as schema from "../src/db/schema";
 import {
   DEC_003,
@@ -379,7 +380,7 @@ async function main(): Promise<void> {
   }> = [
     { id: "title", section: "session", kind: "text", label: "Title", helpText: null, required: true, position: 0, options: null, locked: true },
     { id: "description", section: "session", kind: "long_text", label: "Description", helpText: null, required: true, position: 1, options: null, locked: true },
-    { id: "field_session_format", section: "session", kind: "dropdown", label: "Session format", helpText: null, required: true, position: 2, options: fixture.event.session_formats, locked: false },
+    { id: SESSION_FORMAT_FIELD_ID, section: "session", kind: "dropdown", label: "Session format", helpText: null, required: true, position: 2, options: fixture.event.session_formats, locked: false },
     { id: "field_audience_level", section: "session", kind: "dropdown", label: "Audience level", helpText: null, required: true, position: 3, options: audienceLevels, locked: false },
     { id: "field_notes_for_reviewers", section: "session", kind: "long_text", label: "Notes for reviewers", helpText: "Optional context for the program committee.", required: false, position: 4, options: null, locked: false },
     { id: "first_name", section: "speaker", kind: "text", label: "First name", helpText: null, required: true, position: 0, options: null, locked: true },

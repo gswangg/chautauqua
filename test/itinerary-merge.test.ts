@@ -91,6 +91,7 @@ describe("DEC-555: the schedule page ships the one implementation, not a copy", 
           icsSequence: 0,
           tracks: [],
           speakers: [],
+          format: null,
         },
       ];
       return {

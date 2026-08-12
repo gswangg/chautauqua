@@ -141,16 +141,20 @@ function buildApp() {
           })),
         );
       }
-      // hydrateSessions slotRows (EMB-01)
-      return makeChain(
-        SESSION_ROWS.map((s, i) => ({
-          submissionId: s.id,
-          day: "2026-08-10",
-          startMin: 540 + i * 60,
-          endMin: 600 + i * 60,
-          roomName: "Main Hall",
-        })),
-      );
+      if (selectCall === 6) {
+        // hydrateSessions slotRows (EMB-01)
+        return makeChain(
+          SESSION_ROWS.map((s, i) => ({
+            submissionId: s.id,
+            day: "2026-08-10",
+            startMin: 540 + i * 60,
+            endMin: 600 + i * 60,
+            roomName: "Main Hall",
+          })),
+        );
+      }
+      // hydrateSessions formatRows
+      return makeChain([]);
     },
     selectDistinct: () => makeChain(SESSION_ROWS.map((s) => ({ id: s.id, title: s.title }))),
   } as unknown as AppEnv["Variables"]["db"];
@@ -212,7 +216,8 @@ function buildAgendaApp() {
           })),
         );
       }
-      return makeChain([]); // hydrateSessions EMB-01 slotRows (unused by the agenda grid itself)
+      if (selectCall === 7) return makeChain([]); // hydrateSessions EMB-01 slotRows (unused by the agenda grid itself)
+      return makeChain([]); // hydrateSessions formatRows
     },
     selectDistinct: () => {
       const chain: any = {
@@ -277,29 +282,31 @@ describe("query.ts pure parsers (DEC-289 allowlists — never throw)", () => {
   });
 
   it("parseCardFields: absent/empty is all-on", () => {
-    expect(parseCardFields(undefined)).toEqual({ track: true, time: true, room: true, speaker: true, description: true });
-    expect(parseCardFields("")).toEqual({ track: true, time: true, room: true, speaker: true, description: true });
+    expect(parseCardFields(undefined)).toEqual({ track: true, time: true, room: true, speaker: true, description: true, format: true });
+    expect(parseCardFields("")).toEqual({ track: true, time: true, room: true, speaker: true, description: true, format: true });
   });
 
   it("parseCardFields: an explicit list turns on only the named, recognized fields", () => {
-    expect(parseCardFields("track")).toEqual({ track: true, time: false, room: false, speaker: false, description: false });
+    expect(parseCardFields("track")).toEqual({ track: true, time: false, room: false, speaker: false, description: false, format: false });
     expect(parseCardFields("speaker,description")).toEqual({
       track: false,
       time: false,
       room: false,
       speaker: true,
       description: true,
+      format: false,
     });
   });
 
   it("parseCardFields: an unknown field name is ignored (does not resurrect all-on)", () => {
-    expect(parseCardFields("bogus")).toEqual({ track: false, time: false, room: false, speaker: false, description: false });
+    expect(parseCardFields("bogus")).toEqual({ track: false, time: false, room: false, speaker: false, description: false, format: false });
     expect(parseCardFields("track,bogus")).toEqual({
       track: true,
       time: false,
       room: false,
       speaker: false,
       description: false,
+      format: false,
     });
   });
 
@@ -316,7 +323,7 @@ describe("query.ts pure parsers (DEC-289 allowlists — never throw)", () => {
   });
 
   it("ALL_CARD_FIELDS is exactly the DEC-289 allowlist", () => {
-    expect([...ALL_CARD_FIELDS].sort()).toEqual(["description", "room", "speaker", "time", "track"]);
+    expect([...ALL_CARD_FIELDS].sort()).toEqual(["description", "format", "room", "speaker", "time", "track"]);
   });
 
   it("parseAccent: valid 6-hex normalizes to lowercase #rrggbb", () => {

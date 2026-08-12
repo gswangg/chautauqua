@@ -283,4 +283,18 @@ export const PUBLIC_CSS = `
      (.chq-pub-speaker-grid/-card/-name) but keeps its own tighter,
      headshot-first column width via the .chq-pub-gallery-grid modifier. */
   .chq-pub-gallery-grid { grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 10px; }
+
+  /* EMB-01/EMB-08: Format chip, styled like a track chip but without the
+     colour dot (format has no organizer-assigned colour). */
+  .chq-pub-format-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.1rem 0.5rem;
+    border-radius: var(--chq-r-pill);
+    color: var(--chq-ink);
+    background: var(--chq-surface);
+    border: 1px solid var(--chq-hairline);
+    font-size: 0.8rem;
+    margin-right: 0.25rem;
+  }
 `;

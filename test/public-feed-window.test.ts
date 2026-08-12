@@ -98,6 +98,7 @@ function buildSessionsApp() {
       if (selectCall === 3) return makeChain([]); // trackRows
       if (selectCall === 4) return makeChain([]); // speakerRows
       if (selectCall === 5) return makeChain([]); // slotRows
+      if (selectCall === 6) return makeChain([]); // formatRows
       return makeChain([{ count: N }]); // countVisibleSubmissions
     },
     selectDistinct: () => makeChain(sessionIds.map((id, i) => ({ id, title: `Talk ${i}` }))),
@@ -157,6 +158,7 @@ function buildSessionsAppHtml() {
       if (selectCall === 4) return makeChain([]); // trackRows
       if (selectCall === 5) return makeChain([]); // speakerRows
       if (selectCall === 6) return makeChain([]); // slotRows
+      if (selectCall === 7) return makeChain([]); // formatRows
       return makeChain([{ count: N }]); // countVisibleSubmissions
     },
     selectDistinct: () => makeChain(sessionIds.map((id, i) => ({ id, title: `Talk ${i}` }))),

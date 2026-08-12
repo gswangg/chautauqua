@@ -41,6 +41,7 @@ function item(overrides: Partial<PublicAgendaItem>): PublicAgendaItem {
     icsSequence: 0,
     tracks: [{ id: "t1", name: "Track One", color: "#123456" }],
     speakers: [{ contactId: "sp1", firstName: "Ada", lastName: "Lovelace", title: null, company: null, headshotUrl: null, bio: null }],
+    format: null,
     ...overrides,
   };
 }

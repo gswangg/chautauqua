@@ -31,6 +31,7 @@ function session(i: number): PublicSession {
     startMin: null,
     endMin: null,
     roomName: null,
+    format: null,
   };
 }
 

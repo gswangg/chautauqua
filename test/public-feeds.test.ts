@@ -129,6 +129,8 @@ function buildHtmlApp() {
       // 5: hydrateSessions speakerRows
       if (selectCall === 5) return makeChain([]);
       // 6: hydrateSessions slotRows
+      if (selectCall === 6) return makeChain([]);
+      // 7: hydrateSessions formatRows
       return makeChain([]);
     },
     selectDistinct: () => makeChain([{ id: "sub1", title: "Visible Talk" }]),
@@ -160,6 +162,8 @@ function buildJsonApp() {
       // 4: hydrateSessions speakerRows
       if (selectCall === 4) return makeChain([]);
       // 5: hydrateSessions slotRows
+      if (selectCall === 5) return makeChain([]);
+      // 6: hydrateSessions formatRows
       return makeChain([]);
     },
     selectDistinct: () => makeChain([{ id: "sub1", title: "Visible Talk" }]),
@@ -327,6 +331,8 @@ describe("GET /embed/:eventSlug/agenda.json (DEC-484 unpaged surface)", () => {
         // 5: hydrateSessions speakerRows
         if (selectCall === 5) return makeChain([]);
         // 6: hydrateSessions slotRows
+        if (selectCall === 6) return makeChain([]);
+        // 7: hydrateSessions formatRows
         return makeChain([]);
       },
       selectDistinct: () =>
@@ -376,12 +382,20 @@ describe("GET /embed/:eventSlug/*.json single-page window (DEC-516)", () => {
               title: `Talk ${i}`,
               description: null,
               icsSequence: 0,
+              // This shape leaks into later requests' formatRows position
+              // when this db/app is reused across several fetchItems()
+              // calls (its selectCall counter never resets) — carrying a
+              // harmless valueJson keeps JSON.parse from throwing in that
+              // case, same as every other field on this shape being
+              // harmlessly undefined to the non-subRows consumers.
+              valueJson: JSON.stringify(null),
             })),
           );
         }
         if (selectCall === 3) return makeChain([]); // trackRows
         if (selectCall === 4) return makeChain([]); // speakerRows
         if (selectCall === 5) return makeChain([]); // slotRows
+        if (selectCall === 6) return makeChain([]); // formatRows
         return makeChain([{ count: N }]); // countVisibleSubmissions
       },
       selectDistinct: () => makeChain(sessionIds.map((id, i) => ({ id, title: `Talk ${i}` }))),
@@ -480,8 +494,13 @@ describe("GET /embed/:eventSlug/*.json single-page window (DEC-516)", () => {
 
   it("items.length <= perPage holds for every paged surface, including the last partial page", async () => {
     for (const surface of ["sessions", "speakers", "gallery"]) {
-      const app = surface === "sessions" ? buildCumulativeSessionsApp() : buildCumulativeSpeakersApp();
       for (const page of [1, 2, 3]) {
+        // A fresh app/db per page (rather than one shared instance across
+        // all three requests) — the fake's selectCall counter is keyed to
+        // one request's own call sequence and never resets between
+        // app.request() calls, so reusing it across pages misaligns which
+        // branch answers which query on page >= 2.
+        const app = surface === "sessions" ? buildCumulativeSessionsApp() : buildCumulativeSpeakersApp();
         const body = await fetchItems(app, `/embed/conf/${surface}.json?page=${page}&limit=12`);
         expect(body.items.length).toBeLessThanOrEqual(body.perPage);
       }
@@ -548,6 +567,7 @@ describe("GET /embed/:eventSlug/*.json single-page window (DEC-516)", () => {
         if (selectCall === 4) return makeChain([]); // trackRows (hydrate)
         if (selectCall === 5) return makeChain([]); // speakerRows
         if (selectCall === 6) return makeChain([]); // slotRows
+        if (selectCall === 7) return makeChain([]); // formatRows
         return makeChain([{ count: N }]); // countVisibleSubmissions
       },
       selectDistinct: () => makeChain(sessionIds.map((id, i) => ({ id, title: `Talk ${i}` }))),
@@ -611,6 +631,7 @@ describe("agendaIcsEvents", () => {
         icsSequence: 3,
         tracks: [],
         speakers: [],
+        format: null,
       },
     ];
     const [ev] = agendaIcsEvents(EVENT, agendaItems, now);

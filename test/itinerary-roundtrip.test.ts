@@ -45,6 +45,7 @@ vi.mock("../src/server/repo/public", async () => {
       icsSequence: 0,
       tracks: [],
       speakers: [],
+      format: null,
     },
     {
       submissionId: "sub-b",
@@ -60,6 +61,7 @@ vi.mock("../src/server/repo/public", async () => {
       icsSequence: 0,
       tracks: [],
       speakers: [],
+      format: null,
     },
     {
       submissionId: "sub-c",
@@ -75,6 +77,7 @@ vi.mock("../src/server/repo/public", async () => {
       icsSequence: 0,
       tracks: [],
       speakers: [],
+      format: null,
     },
   ];
 
