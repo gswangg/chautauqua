@@ -464,9 +464,10 @@ describe("PAGE_EVALUATE_KEEPNAMES_SHIM (DEC-411)", () => {
 
     // No page.evaluate call site anywhere in the file is reachable without
     // going through one of the two functions checked above, or through the
-    // measureFontFloor() helper both functions call after installing the
-    // shim (DEC-421) — the module has no page.evaluate call sites outside
-    // visitRoute, visitMobileRoute, and measureFontFloor.
+    // measureFontFloor() / measureContrast() helpers both functions call
+    // after installing the shim (DEC-421/DEC-426) — the module has no
+    // page.evaluate call sites outside visitRoute, visitMobileRoute,
+    // measureFontFloor, and measureContrast.
     const evaluateCallCount = (source.match(/page\.evaluate\(/g) ?? []).length;
     const evaluateCallsInVisitRouteBody = (visitRouteBody.match(/page\.evaluate\(/g) ?? []).length;
     const evaluateCallsInMobileBody = (visitMobileRouteBody.match(/page\.evaluate\(/g) ?? []).length;
@@ -475,8 +476,16 @@ describe("PAGE_EVALUATE_KEEPNAMES_SHIM (DEC-411)", () => {
     const measureFontFloorEnd = source.indexOf("\n}\n", measureFontFloorStart) + 3;
     const measureFontFloorBody = source.slice(measureFontFloorStart, measureFontFloorEnd);
     const evaluateCallsInMeasureFontFloor = (measureFontFloorBody.match(/page\.evaluate\(/g) ?? []).length;
+    const measureContrastStart = source.indexOf("async function measureContrast(");
+    expect(measureContrastStart).toBeGreaterThan(-1);
+    const measureContrastEnd = source.indexOf("\n}\n", measureContrastStart) + 3;
+    const measureContrastBody = source.slice(measureContrastStart, measureContrastEnd);
+    const evaluateCallsInMeasureContrast = (measureContrastBody.match(/page\.evaluate\(/g) ?? []).length;
     expect(evaluateCallCount).toBe(
-      evaluateCallsInVisitRouteBody + evaluateCallsInMobileBody + evaluateCallsInMeasureFontFloor,
+      evaluateCallsInVisitRouteBody +
+        evaluateCallsInMobileBody +
+        evaluateCallsInMeasureFontFloor +
+        evaluateCallsInMeasureContrast,
     );
   });
 });
