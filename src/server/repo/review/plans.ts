@@ -255,6 +255,21 @@ export async function listRoundsWithEvaluations(db: Db, planId: string): Promise
   return rows.map((r) => r.round);
 }
 
+/** DEC-676: recorded-evaluation count per round, keyed by round number as a
+ * string -- surfaces DEC-213's existing server-side freeze in the plan
+ * editor UI (a locked round names its own count) without the SPA
+ * re-deriving listRoundsWithEvaluations' rule itself. */
+export async function countEvaluationsByRound(db: Db, planId: string): Promise<Record<string, number>> {
+  const rows = await db
+    .select({ round: schema.evaluation.round, count: sql<number>`count(*)` })
+    .from(schema.evaluation)
+    .where(eq(schema.evaluation.planId, planId))
+    .groupBy(schema.evaluation.round);
+  const out: Record<string, number> = {};
+  for (const r of rows) out[String(r.round)] = Number(r.count);
+  return out;
+}
+
 export async function deletePlan(db: Db, planId: string): Promise<void> {
   await db.delete(schema.planReviewer).where(eq(schema.planReviewer.planId, planId));
   await db.delete(schema.evaluation).where(eq(schema.evaluation.planId, planId));

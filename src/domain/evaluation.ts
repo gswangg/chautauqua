@@ -8,6 +8,12 @@ import { MAX_LONG_TEXT_LENGTH } from "../forms/validate";
 // calendar day), not instants -- expand through the owning event's timezone
 // at this hard gate, same class of fix as the CFP open/close window.
 import { dayLabelStartInstant, dayLabelEndInstant } from "../lib/timezone";
+// DEC-676: criteria carry optional one-line guidance, a plan-wide weighted
+// share display, and default-plan criteria -- see normalizeGuidance,
+// criterionWeightShares, DEFAULT_PLAN_CRITERIA below.
+import { DEC_676 } from "../decisions";
+
+void DEC_676;
 
 export interface EvaluationCriterion {
   id: string;
@@ -135,12 +141,18 @@ export function aggregateSubmission(
 // list) criteria; free text lives outside scores as evaluation.comment.
 // ---------------------------------------------------------------------------
 
+// DEC-676: a criterion may carry a one-line guidance string shown to
+// reviewers under its label and to organizers in the plan editor -- bounded
+// length so it stays a hint, not a second instructions field.
+export const MAX_CRITERION_GUIDANCE_LENGTH = 140;
+
 export interface RatingCriterionDef {
   id: string;
   label: string;
   kind: "rating";
   weight: number;
   options?: undefined;
+  guidance?: string;
 }
 
 export interface DropdownCriterionDef {
@@ -149,6 +161,7 @@ export interface DropdownCriterionDef {
   kind: "dropdown";
   weight?: undefined;
   options: string[];
+  guidance?: string;
 }
 
 /** DEC-148: free-text criterion. Stored in the same scores map as a string,
@@ -160,9 +173,23 @@ export interface TextCriterionDef {
   weight?: undefined;
   options?: undefined;
   required?: boolean;
+  guidance?: string;
 }
 
 export type EvaluationCriterionDef = RatingCriterionDef | DropdownCriterionDef | TextCriterionDef;
+
+/**
+ * DEC-676: normalizes a criterion's optional one-line guidance -- trims
+ * surrounding whitespace and collapses a blank string to `undefined` (never
+ * stored as `""`). Callers that accept untrusted input still bound the
+ * length themselves against MAX_CRITERION_GUIDANCE_LENGTH (this stays a pure
+ * normalizer, not a route error reporter -- it never throws).
+ */
+export function normalizeGuidance(raw: string | undefined | null): string | undefined {
+  if (raw === undefined || raw === null) return undefined;
+  const trimmed = raw.trim();
+  return trimmed.length === 0 ? undefined : trimmed;
+}
 
 export type EvaluationScoreValue = number | string;
 
@@ -242,6 +269,53 @@ export function validateEvaluationScores(
   }
   return { ok: true };
 }
+
+/**
+ * DEC-676: each rating criterion's integer percentage share of the total
+ * rating weight -- weights stay relative and plan-wide (never forced to sum
+ * to 100 by the editor), but the editor renders the derived share so
+ * "Weight 3" reads as "Weight 3 · 30%". Non-weighted kinds (dropdown/text,
+ * or a rating row with no/zero weight yet) get no entry. Empty input or a
+ * zero total weight yields an empty map rather than dividing by zero.
+ */
+export function criterionWeightShares(criteria: { id: string; weight?: number }[]): Record<string, number> {
+  const weighted = criteria.filter((c) => typeof c.weight === "number" && c.weight > 0);
+  const totalWeight = weighted.reduce((sum, c) => sum + (c.weight as number), 0);
+  const shares: Record<string, number> = {};
+  if (totalWeight <= 0) return shares;
+  for (const c of weighted) {
+    shares[c.id] = Math.round(((c.weight as number) / totalWeight) * 100);
+  }
+  return shares;
+}
+
+// DEC-676: a brand-new plan prefills these three editable defaults (equal
+// weights, one-line guidance each) instead of an empty criteria list --
+// organizers start from a sane baseline rather than a blank "at least one
+// criterion is required" error.
+export const DEFAULT_PLAN_CRITERIA: EvaluationCriterionDef[] = [
+  {
+    id: "relevance",
+    label: "Relevance",
+    kind: "rating",
+    weight: 1,
+    guidance: "How well does this fit the event's theme and audience?",
+  },
+  {
+    id: "depth",
+    label: "Depth",
+    kind: "rating",
+    weight: 1,
+    guidance: "Does the proposal go beyond a surface-level treatment?",
+  },
+  {
+    id: "speaker-readiness",
+    label: "Speaker readiness",
+    kind: "rating",
+    weight: 1,
+    guidance: "Has this speaker delivered before, with materials that look ready?",
+  },
+];
 
 /**
  * DEC-241: aggregates a dropdown criterion's answers into per-option counts

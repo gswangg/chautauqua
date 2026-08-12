@@ -252,6 +252,8 @@ export function Scorecard() {
             {criterion.label}
             {criterion.kind === 'text' && criterion.required && ' *'}
           </label>
+          {/* DEC-676: guidance renders under the label; nothing when absent. */}
+          {criterion.guidance && <p className="chq-review-criterion-guidance">{criterion.guidance}</p>}
           {criterion.kind === 'rating' ? (
             <input
               type="number"

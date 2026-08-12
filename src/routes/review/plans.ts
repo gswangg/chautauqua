@@ -24,7 +24,7 @@ import { clampPage, clampPerPage, listPerPage } from "../../lib/pagination";
 import * as repo from "../../server/repo/review";
 import { roundCriteriaJsonOf } from "../../server/repo/review";
 import * as eventsRepo from "../../server/repo/events";
-import { DEC_015, DEC_123, DEC_146, DEC_147, DEC_148, DEC_213, DEC_238, DEC_460, DEC_461, DEC_466, DEC_535, DEC_572, DEC_623, DEC_624, DEC_659 } from "../../decisions";
+import { DEC_015, DEC_123, DEC_146, DEC_147, DEC_148, DEC_213, DEC_238, DEC_460, DEC_461, DEC_466, DEC_535, DEC_572, DEC_623, DEC_624, DEC_659, DEC_676 } from "../../decisions";
 import { capById, MAX_REVIEWER_REMINDER_BATCH } from "../../domain/reminders";
 import {
   asRecord,
@@ -62,6 +62,7 @@ void DEC_572; // /plans/:id/scope-preview: true count + bounded preview before a
 void DEC_623; // POST /plans/:id/reviewers: submissionId resolved through findSubmissionIdByRefOrId below
 void DEC_624; // PATCH /plans/:id: anonymity ratchet guard below
 void DEC_659; // GET /plans/:id/reviewers: trackName/submissionRef/submissionTitle labels below
+void DEC_676; // GET /plans/:id: evaluationCountsByRound surfaces DEC-213's freeze reason below
 
 reviewPlansRoutes.get("/api/v1/events/:eventId/plans", requireOrganizer, async (c) => {
   const auth = currentAuth(c);
@@ -120,7 +121,10 @@ reviewPlansRoutes.post("/api/v1/events/:eventId/plans", requireOrganizer, csrfJs
 
 reviewPlansRoutes.get("/api/v1/plans/:id", requireOrganizer, async (c) => {
   const plan = await requireOwnedPlan(c, c.req.param("id"));
-  return c.json(plan);
+  // DEC-676: the plan editor names DEC-213's freeze reason/count per round
+  // instead of re-deriving listRoundsWithEvaluations' rule client-side.
+  const evaluationCountsByRound = await repo.countEvaluationsByRound(c.var.db, plan.id);
+  return c.json({ ...plan, evaluationCountsByRound });
 });
 
 reviewPlansRoutes.patch("/api/v1/plans/:id", requireOrganizer, csrfJson, async (c) => {
