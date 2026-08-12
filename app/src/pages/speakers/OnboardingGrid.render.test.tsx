@@ -134,12 +134,13 @@ describe('OnboardingGrid: DEC-291/DEC-662 Response control', () => {
   });
 });
 
-// DEC-599: the response modal's 'Ask for more' writes the assignment back
-// to pending via the existing PATCH /task-assignments/:id -- reconciled
-// optimistically against the grid cell (matching toggleCell), with a loud
-// visible rollback if the PATCH fails.
-describe('OnboardingGrid: DEC-599 reopen from response modal', () => {
-  it('PATCHes status back to pending on Ask for more and updates the grid cell', async () => {
+// DEC-599/DEC-694 (design v4): the response modal offers exactly ONE
+// action, 'Reopen this task', which writes the assignment back to pending
+// via the existing PATCH /task-assignments/:id -- reconciled optimistically
+// against the grid cell (matching toggleCell), with a loud visible rollback
+// if the PATCH fails.
+describe('OnboardingGrid: DEC-599/DEC-694 reopen from response modal', () => {
+  it('PATCHes status back to pending on Reopen this task and updates the grid cell', async () => {
     const fetchMock = mockApi({
       [`GET /api/v1/events/${EVENT_ID}/onboarding`]: GRID,
       'GET /api/v1/task-assignments/as2/response': DETAIL,
@@ -155,9 +156,9 @@ describe('OnboardingGrid: DEC-599 reopen from response modal', () => {
     await screen.findByRole('dialog', { name: 'Task response' });
     await waitFor(() => expect(screen.getByText('Hotel name')).toBeInTheDocument());
 
-    const askForMore = screen.getByRole('button', { name: 'Ask for more' });
+    const reopen = screen.getByRole('button', { name: 'Reopen this task' });
     expect(screen.getByText('Reopening does not email the speaker.')).toBeInTheDocument();
-    fireEvent.click(askForMore);
+    fireEvent.click(reopen);
 
     await waitFor(() => {
       const calls = fetchMock.mock.calls.filter(([input, init]) => {
@@ -168,12 +169,11 @@ describe('OnboardingGrid: DEC-599 reopen from response modal', () => {
       expect(JSON.parse(calls[0]![1]!.body as string)).toEqual({ status: 'pending' });
     });
 
-    // The dialog now offers 'Mark complete' instead -- the modal's own
-    // status flipped in lockstep with the PATCH.
+    // The dialog offers no action once pending -- 'Reopen this task' is the
+    // ONE action, only shown against a completed response (design v4).
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Mark complete' })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Reopen this task' })).not.toBeInTheDocument();
     });
-    expect(screen.queryByRole('button', { name: 'Ask for more' })).not.toBeInTheDocument();
   });
 
   it('rolls back visibly when the reopen PATCH fails', async () => {
@@ -192,18 +192,72 @@ describe('OnboardingGrid: DEC-599 reopen from response modal', () => {
     await screen.findByRole('dialog', { name: 'Task response' });
     await waitFor(() => expect(screen.getByText('Hotel name')).toBeInTheDocument());
 
-    fireEvent.click(screen.getByRole('button', { name: 'Ask for more' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Reopen this task' }));
 
-    // Optimistic flip happens first...
+    // Optimistic flip happens first: the action disappears (status is now
+    // pending, which renders no action).
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Mark complete' })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Reopen this task' })).not.toBeInTheDocument();
     });
 
     // ...then rolls back visibly on the failed PATCH: the modal reverts to
-    // 'Ask for more' and an error surfaces, not a silent no-op.
+    // showing 'Reopen this task' again and an error surfaces, not a silent
+    // no-op.
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Ask for more' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Reopen this task' })).toBeInTheDocument();
     });
     expect(screen.getByText(/Update failed/)).toBeInTheDocument();
+  });
+});
+
+// DEC-694: a per-row 'Remind ‹first name›' quiet tertiary control runs the
+// identical preview->confirm->send flow scoped to contactIds:[thatContactId],
+// and reports the outcome through the shared describeSendResult -- never a
+// locally composed sentence.
+describe('OnboardingGrid: DEC-694 per-row remind', () => {
+  it('previews and sends scoped to contactIds:[thatContactId], reporting through describeSendResult', async () => {
+    const fetchMock = mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: GRID,
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+      [`POST /api/v1/events/${EVENT_ID}/onboarding/remind/preview`]: {
+        drafts: [{ contactId: 'ct1', email: 'ada@example.com', name: 'Ada Lovelace', subject: 'Action needed', text: 'body' }],
+        skipped: 0,
+        remaining: 0,
+      },
+      [`POST /api/v1/events/${EVENT_ID}/onboarding/remind`]: { sent: 1, failed: [], skipped: 0, remaining: 0 },
+    });
+
+    render(<OnboardingGrid onAddSpeaker={vi.fn()} onImportCsv={vi.fn()} />);
+
+    await waitFor(() => screen.getAllByText('Ada Lovelace').length > 0);
+    screen.getAllByRole('button', { name: 'Remind Ada' })[0]!.click();
+
+    const dialog = await screen.findByRole('dialog', { name: 'Review reminders' });
+    expect(dialog).toBeInTheDocument();
+
+    await waitFor(() => expect(screen.getAllByText(/Ada Lovelace/).length).toBeGreaterThan(0));
+
+    const previewCall = fetchMock.mock.calls.find(([input]) =>
+      (typeof input === 'string' ? input : (input as Request | URL).toString()).includes('/onboarding/remind/preview'),
+    );
+    expect(previewCall).toBeDefined();
+    expect(JSON.parse(previewCall![1]!.body as string)).toEqual({ contactIds: ['ct1'] });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Send 1 reminder' }));
+
+    await waitFor(() => {
+      const sendCall = fetchMock.mock.calls.find(([input, init]) => {
+        const url = typeof input === 'string' ? input : (input as Request | URL).toString();
+        return url.endsWith('/onboarding/remind') && init?.method === 'POST';
+      });
+      expect(sendCall).toBeDefined();
+      expect(JSON.parse(sendCall![1]!.body as string)).toEqual({ contactIds: ['ct1'] });
+    });
+
+    // Reported through the shared describeSendResult, never a locally
+    // composed "Sent N ..." sentence.
+    await waitFor(() => {
+      expect(screen.getByText('Sent to 1 contact.')).toBeInTheDocument();
+    });
   });
 });

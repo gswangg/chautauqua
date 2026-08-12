@@ -40,10 +40,14 @@ async function listOutstandingForEvent(
   db: Db,
   eventId: string,
   taskIds?: string[],
+  contactIds?: string[],
 ): Promise<OutstandingRow[]> {
   const conditions = [eq(schema.task.eventId, eventId), eq(schema.taskAssignment.status, "pending")];
   if (taskIds && taskIds.length > 0) {
     conditions.push(inArray(schema.taskAssignment.taskId, taskIds));
+  }
+  if (contactIds && contactIds.length > 0) {
+    conditions.push(inArray(schema.taskAssignment.contactId, contactIds));
   }
   const rows = await db
     .select({
@@ -223,8 +227,9 @@ export async function remindNow(
   now: Date,
   kv: KVStore,
   origin: string,
+  contactIds?: string[],
 ): Promise<{ sent: number; failed: { email: string; message: string }[]; skipped: number; remaining: number }> {
-  const outstanding = await listOutstandingForEvent(db, eventId, taskIds);
+  const outstanding = await listOutstandingForEvent(db, eventId, taskIds, contactIds);
   if (outstanding.length === 0) return { sent: 0, failed: [], skipped: 0, remaining: 0 };
   const eventName = outstanding[0]?.eventName ?? "";
   const eventTimezone = outstanding[0]?.timezone ?? "";
@@ -270,12 +275,13 @@ export async function previewRemindNow(
   now: Date,
   kv: KVStore,
   origin: string,
+  contactIds?: string[],
 ): Promise<{
   drafts: { contactId: string; email: string; name: string; subject: string; text: string }[];
   skipped: number;
   remaining: number;
 }> {
-  const outstanding = await listOutstandingForEvent(db, eventId, taskIds);
+  const outstanding = await listOutstandingForEvent(db, eventId, taskIds, contactIds);
   if (outstanding.length === 0) return { drafts: [], skipped: 0, remaining: 0 };
   const eventName = outstanding[0]?.eventName ?? "";
   const eventTimezone = outstanding[0]?.timezone ?? "";

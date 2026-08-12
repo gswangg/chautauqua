@@ -1,9 +1,9 @@
 // DEC-291: viewer for a kind='form' task_assignment's saved answers, opened
-// from the OnboardingGrid's 'View response' cell control. DEC-599: no longer
-// read-only -- 'Mark complete' and 'Ask for more' both write the existing
-// PATCH /task-assignments/:id status (pending|complete, no 'waive'). The
-// grid that opened this modal owns the write + optimistic reconcile/rollback
-// (matching toggleCell), so this component only calls back up.
+// from the OnboardingGrid's 'View response' cell control. DEC-599/DEC-694
+// (design v4): exactly one action, 'Reopen this task', writing the existing
+// PATCH /task-assignments/:id status back to pending. The grid that opened
+// this modal owns the write + optimistic reconcile/rollback (matching
+// toggleCell), so this component only calls back up.
 
 import { formatDate } from '../../lib/dates';
 import { ModalFrame } from '../../components/ModalFrame';
@@ -33,19 +33,11 @@ export function ResponseModal({ contactName, loading, error, detail, onStatusCha
       onClose={onClose}
       modalClassName="chq-speakers-modal"
       actions={
-        !loading && detail
-          ? detail.status === 'pending'
-            ? (
-                <button type="button" className="chq-btn chq-btn-primary" onClick={() => onStatusChange('complete')}>
-                  Mark complete
-                </button>
-              )
-            : (
-                <button type="button" className="chq-btn chq-btn-secondary" onClick={() => onStatusChange('pending')}>
-                  Ask for more
-                </button>
-              )
-          : undefined
+        !loading && detail && detail.status !== 'pending' ? (
+          <button type="button" className="chq-btn chq-btn-secondary" onClick={() => onStatusChange('pending')}>
+            Reopen this task
+          </button>
+        ) : undefined
       }
     >
       {loading && <DelayedLoading />}

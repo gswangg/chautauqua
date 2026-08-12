@@ -47,6 +47,10 @@ function lateLabel(dueDate: number, now: number): string {
   return `${d} DAY${d === 1 ? '' : 'S'} LATE`;
 }
 
+function firstNameOf(fullName: string): string {
+  return fullName.trim().split(/\s+/)[0] ?? fullName;
+}
+
 // DEC-662: the roster's Add-speaker/Import-CSV triggers live here now (see
 // RosterPanel), beside New task/Remind all outstanding, so the page renders
 // exactly one title action row.
@@ -70,6 +74,10 @@ export function OnboardingGrid({ onAddSpeaker, onImportCsv }: OnboardingGridProp
   const [remindPreviewError, setRemindPreviewError] = useState<string | null>(null);
   const [remindDrafts, setRemindDrafts] = useState<ReminderDraft[] | null>(null);
   const [reminding, setReminding] = useState(false);
+  // DEC-694: undefined => "Remind all outstanding" (today's behaviour);
+  // a one-element array => the per-row "Remind ‹first name›" quiet control.
+  // Both paths share the identical preview->confirm->send flow/dialog.
+  const [remindContactIds, setRemindContactIds] = useState<string[] | undefined>(undefined);
   const [toast, setToast] = useState<string | null>(null);
   const [viewingResponse, setViewingResponse] = useState<{ assignmentId: string; contactName: string } | null>(
     null,
@@ -157,8 +165,9 @@ export function OnboardingGrid({ onAddSpeaker, onImportCsv }: OnboardingGridProp
   // SPEC §10 #3 (DEC-441): "Remind all outstanding" no longer sends
   // directly — it opens a review dialog fed by the read-only preview
   // endpoint, rendered from the identical builder the real send uses.
-  async function openRemindReview() {
+  async function openRemindReview(contactIds?: string[]) {
     if (!eventId) return;
+    setRemindContactIds(contactIds);
     setReviewingRemind(true);
     setRemindPreviewLoading(true);
     setRemindPreviewError(null);
@@ -166,7 +175,7 @@ export function OnboardingGrid({ onAddSpeaker, onImportCsv }: OnboardingGridProp
     try {
       const res = await apiPost<{ drafts: ReminderDraft[]; skipped: number; remaining: number }>(
         `/events/${eventId}/onboarding/remind/preview`,
-        {},
+        contactIds ? { contactIds } : {},
       );
       setRemindDrafts(res.drafts);
     } catch (err) {
@@ -180,6 +189,7 @@ export function OnboardingGrid({ onAddSpeaker, onImportCsv }: OnboardingGridProp
     setReviewingRemind(false);
     setRemindPreviewError(null);
     setRemindDrafts(null);
+    setRemindContactIds(undefined);
   }
 
   async function handleRemind() {
@@ -187,7 +197,10 @@ export function OnboardingGrid({ onAddSpeaker, onImportCsv }: OnboardingGridProp
     setReminding(true);
     setError(null);
     try {
-      const res = await apiPost<SendResult>(`/events/${eventId}/onboarding/remind`, {});
+      const res = await apiPost<SendResult>(
+        `/events/${eventId}/onboarding/remind`,
+        remindContactIds ? { contactIds: remindContactIds } : {},
+      );
       setToast(describeSendResult(res, { one: 'contact', many: 'contacts' }));
       closeRemindReview();
       await loadGrid(eventId, filters, page);
@@ -221,9 +234,9 @@ export function OnboardingGrid({ onAddSpeaker, onImportCsv }: OnboardingGridProp
     setResponseError(null);
   }
 
-  // DEC-599: 'Mark complete' / 'Ask for more' in the response modal write
-  // the same PATCH /task-assignments/:id status the grid cells write, and
-  // reconcile optimistically with loud rollback on ApiError (matching
+  // DEC-599/DEC-694: 'Reopen this task' in the response modal writes the
+  // same PATCH /task-assignments/:id status the grid cells write, and
+  // reconciles optimistically with loud rollback on ApiError (matching
   // toggleCell) -- the grid row AND the open modal's status must agree.
   async function changeResponseStatus(assignmentId: string, desired: AssignmentStatus) {
     if (!grid) return;
@@ -311,7 +324,7 @@ export function OnboardingGrid({ onAddSpeaker, onImportCsv }: OnboardingGridProp
           <button
             type="button"
             className="chq-btn chq-btn-primary"
-            onClick={openRemindReview}
+            onClick={() => openRemindReview()}
             disabled={!grid || grid.rows.length === 0}
           >
             Remind all outstanding
@@ -363,6 +376,13 @@ export function OnboardingGrid({ onAddSpeaker, onImportCsv }: OnboardingGridProp
                           </>
                         )}
                       </div>
+                      <button
+                        type="button"
+                        className="chq-btn chq-btn-tertiary chq-speakers-remind-one"
+                        onClick={() => openRemindReview([row.contact.id])}
+                      >
+                        Remind {firstNameOf(row.contact.name)}
+                      </button>
                     </td>
                     {grid.tasks.map((task) => {
                       const cell = row.cells.find((c) => c.taskId === task.id);
@@ -441,6 +461,13 @@ export function OnboardingGrid({ onAddSpeaker, onImportCsv }: OnboardingGridProp
                       </>
                     )}
                   </span>
+                  <button
+                    type="button"
+                    className="chq-btn chq-btn-tertiary chq-speakers-remind-one"
+                    onClick={() => openRemindReview([row.contact.id])}
+                  >
+                    Remind {firstNameOf(row.contact.name)}
+                  </button>
                 </div>
                 <div className="chq-speakers-card-tasks">
                   {grid.tasks.map((task) => {
