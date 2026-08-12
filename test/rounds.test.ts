@@ -80,6 +80,13 @@ vi.mock("../src/server/repo/review", async () => {
     listPlanFilteredSubmissions: vi.fn(async () => [submission]),
     resolveReviewerSubmissions: vi.fn(async () => [submission]),
     listEvaluationsForPlan: vi.fn(async () => evaluations),
+    // DEC-439: buildResults now round-filters server-side, so this fake must
+    // filter too (the redundant JS re-filter in buildResults was removed).
+    listEvaluationScoresForPlan: vi.fn(async (_db: unknown, planId: string, round: number) =>
+      evaluations
+        .filter((e) => e.planId === planId && e.round === round)
+        .map((e) => ({ submissionId: e.submissionId, scores: e.scores })),
+    ),
     listCompletedPairsForPlan: vi.fn(async (_db: unknown, planId: string, round: number) =>
       evaluations
         .filter((e) => e.planId === planId && e.round === round)

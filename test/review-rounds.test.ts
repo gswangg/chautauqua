@@ -98,6 +98,12 @@ vi.mock("../src/server/repo/review", async () => {
     listEvaluationsForPlan: vi.fn(async (_db: unknown, planId: string, round: number) =>
       store.filter((e) => e.planId === planId && e.round === round),
     ),
+    // DEC-439: buildResults' payload-narrow read (submissionId + scores only).
+    listEvaluationScoresForPlan: vi.fn(async (_db: unknown, planId: string, round: number) =>
+      store
+        .filter((e) => e.planId === planId && e.round === round)
+        .map((e) => ({ submissionId: e.submissionId, scores: e.scores })),
+    ),
     listCompletedPairsForPlan: vi.fn(async (_db: unknown, planId: string, round: number) =>
       store
         .filter((e) => e.planId === planId && e.round === round)
@@ -310,7 +316,7 @@ describe("multi-round lifecycle (task w2-a)", () => {
     expect(body.error.fields?.rounds).toBeTruthy();
   });
 
-  it("every listEvaluationsForPlan call site passes the DEC-087-required round arg", async () => {
+  it("every listEvaluationScoresForPlan call site passes the DEC-087-required round arg", async () => {
     const repo = await import("../src/server/repo/review");
     const app = await buildApp(organizer);
     await app.request(`/api/v1/plans/${plan.id}/progress`);
@@ -321,11 +327,12 @@ describe("multi-round lifecycle (task w2-a)", () => {
     // listSubmissionIdsRatedBy instead. DEC-351: /progress and /remind no
     // longer call listEvaluationsForPlan either -- they source completed
     // pairs from listCompletedPairsForPlan (asserted below). Only /results
-    // (buildResults, DEC-345) still needs the full scored rows.
+    // (buildResults, DEC-345/DEC-439) still needs the scored rows, now via
+    // the payload-narrow listEvaluationScoresForPlan.
     const reviewerApp = await buildApp(reviewer);
     await reviewerApp.request(`/api/v1/review/plans/${plan.id}/queue`);
 
-    const calls = (repo.listEvaluationsForPlan as unknown as { mock: { calls: unknown[][] } }).mock.calls;
+    const calls = (repo.listEvaluationScoresForPlan as unknown as { mock: { calls: unknown[][] } }).mock.calls;
     expect(calls.length).toBeGreaterThanOrEqual(1);
     for (const call of calls) {
       expect(typeof call[2]).toBe("number");

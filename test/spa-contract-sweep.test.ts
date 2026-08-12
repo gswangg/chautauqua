@@ -85,6 +85,12 @@ async function buildReviewApp() {
       listReviewerRowsForPlan: vi.fn(async () => REVIEWER_ROWS),
       getUsersByIds: vi.fn(async () => USERS),
       listEvaluationsForPlan: vi.fn(async () => EVALUATIONS),
+      listEvaluationScoresForPlan: vi.fn(async (_db: unknown, planId: string, round: number) =>
+        EVALUATIONS.filter((e) => e.planId === planId && e.round === round).map((e) => ({
+          submissionId: e.submissionId,
+          scores: e.scores,
+        })),
+      ),
       listCompletedPairsForPlan: vi.fn(async (_db: unknown, planId: string, round: number) =>
         EVALUATIONS.filter((e) => e.planId === planId && e.round === round).map((e) => ({
           reviewerId: e.reviewerId,

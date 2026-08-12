@@ -42,7 +42,12 @@ async function submissionTrackIdsForOne(db: Db, submissionId: string): Promise<s
  * over submission ids; (b) full trackIds for every submission in the event,
  * joined against submission by eventId (again no id-list binding), grouped
  * in JS against the matched set. */
-export async function listPlanFilteredSubmissions(db: Db, plan: PlanRecord): Promise<PlanSubmissionRef[]> {
+export async function listPlanFilteredSubmissions(
+  db: Db,
+  plan: PlanRecord,
+  opts?: { withTrackIds?: boolean },
+): Promise<PlanSubmissionRef[]> {
+  const withTrackIds = opts?.withTrackIds ?? true;
   const eventRows = await db
     .select({ recordPrefix: schema.event.recordPrefix })
     .from(schema.event)
@@ -80,20 +85,24 @@ export async function listPlanFilteredSubmissions(db: Db, plan: PlanRecord): Pro
   }
 
   // (b) Full trackIds per matched submission, joined by event -- no id
-  // binding at all, grouped against the matched set in JS.
-  const trackRows = await db
-    .select({ submissionId: schema.submissionTrack.submissionId, trackId: schema.submissionTrack.trackId })
-    .from(schema.submissionTrack)
-    .innerJoin(schema.submission, eq(schema.submission.id, schema.submissionTrack.submissionId))
-    .where(eq(schema.submission.eventId, plan.eventId));
-
-  const matchedIds = new Set(matched.map((m) => m.id));
+  // binding at all, grouped against the matched set in JS. Skipped entirely
+  // when withTrackIds is false (DEC-439: callers that never read trackIds
+  // shouldn't pay for this second whole-event scan).
   const trackMap = new Map<string, string[]>();
-  for (const row of trackRows) {
-    if (!matchedIds.has(row.submissionId)) continue;
-    const list = trackMap.get(row.submissionId) ?? [];
-    list.push(row.trackId);
-    trackMap.set(row.submissionId, list);
+  if (withTrackIds) {
+    const trackRows = await db
+      .select({ submissionId: schema.submissionTrack.submissionId, trackId: schema.submissionTrack.trackId })
+      .from(schema.submissionTrack)
+      .innerJoin(schema.submission, eq(schema.submission.id, schema.submissionTrack.submissionId))
+      .where(eq(schema.submission.eventId, plan.eventId));
+
+    const matchedIds = new Set(matched.map((m) => m.id));
+    for (const row of trackRows) {
+      if (!matchedIds.has(row.submissionId)) continue;
+      const list = trackMap.get(row.submissionId) ?? [];
+      list.push(row.trackId);
+      trackMap.set(row.submissionId, list);
+    }
   }
 
   return matched.map((row) => ({
