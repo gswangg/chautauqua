@@ -134,9 +134,22 @@ export function publicCacheMiddleware(cache: () => CacheLike) {
 
 /** Registered once in createBaseApp (DEC-083), ahead of every route sub-app
  * mount, so any successful mutating request anywhere in the app bumps the
- * public cache version. */
+ * public cache version.
+ *
+ * DEC-427: a missing KV *binding* is a configuration bug (a violated
+ * internal invariant) and still throws — fail loudly. But the KV *write*
+ * itself runs after the handler's mutation has already committed, so a
+ * rejection from that write is IO failure at an external boundary: it is
+ * caught and logged loudly (console.error, naming PUBVER_KEY and the
+ * error) rather than propagated, and the response keeps whatever status
+ * the handler produced. Failing the request here would turn a successful,
+ * already-committed write into a false failure for the caller. */
 export async function bumpPublicVersionMiddleware(c: Context<AppEnv>, next: Next): Promise<void> {
   await next();
   if (!c.env.KV) throw new Error("bumpPublicVersionMiddleware requires the KV binding");
-  await bumpIfMutating(c.env.KV, c.req.method, c.res.status);
+  try {
+    await bumpIfMutating(c.env.KV, c.req.method, c.res.status);
+  } catch (err) {
+    console.error(`bumpPublicVersionMiddleware: failed to bump ${PUBVER_KEY}`, err);
+  }
 }
