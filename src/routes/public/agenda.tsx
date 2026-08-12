@@ -3,11 +3,11 @@
 // decomposition) — no behavior change.
 
 import type { PublicAgendaItem, PublicEvent } from "../../server/repo/public";
-import { itineraryStorageKey, mergeItinerarySelection, mirrorItineraryCheckboxes } from "../../lib/itinerary";
+import { MAX_ITINERARY_IDS, itineraryStorageKey, mergeItinerarySelection, mirrorItineraryCheckboxes } from "../../lib/itinerary";
 import { assignLanes } from "../../lib/overlap-lanes";
 import { publicRoomLabel } from "../../domain/schedule";
 import { sessionDetailPath, type Surface, type SurfaceBase } from "./shell";
-import { TrackChips, SpeakerNames, SessionDescription, formatDay, formatMinutes } from "./cards";
+import { TrackChips, FormatChip, SpeakerNames, SessionDescription, formatDay, formatMinutes } from "./cards";
 
 // DEC-602: shared row-map math. The hour-label column (grid-column 1) and
 // every session block are positioned from the SAME dayStart/gridMin
@@ -119,6 +119,7 @@ export function AgendaDayGrid(props: { day: string; items: PublicAgendaItem[]; e
                   {formatMinutes(item.startMin)}–{formatMinutes(item.endMin)}
                 </div>
                 <TrackChips tracks={item.tracks} />
+                <FormatChip format={item.format} />
                 <div class="chq-pub-agenda-block-title">
                   <strong>
                     <a href={sessionDetailPath(event, item.submissionId, from, base)}>{item.title}</a>
@@ -188,6 +189,7 @@ function AgendaItemList(props: {
             <div class="chq-pub-agenda-list-room">{publicRoomLabel(item.roomName)}</div>
             <div>
               <TrackChips tracks={item.tracks} />
+              <FormatChip format={item.format} />
             </div>
             {showDescription ? <SessionDescription description={item.description} /> : null}
             <div class="chq-pub-agenda-list-speakers">
@@ -279,6 +281,12 @@ export function AgendaContent(props: { event: PublicEvent; items: PublicAgendaIt
 export function ItineraryScript(props: { eventSlug: string }) {
   const storageKey = itineraryStorageKey(props.eventSlug);
   const js = `(function(){
+  // EMB-10/11: mergeItinerarySelection's own body references
+  // MAX_ITINERARY_IDS as a free identifier -- .toString() embeds only the
+  // function's SOURCE, never its closed-over module-level const, so it must
+  // be emitted into this IIFE too or every change handler throws
+  // ReferenceError before localStorage.setItem ever runs (no pick persists).
+  var MAX_ITINERARY_IDS = ${MAX_ITINERARY_IDS};
   var __chqMerge = (${mergeItinerarySelection.toString()});
   var __chqMirror = (${mirrorItineraryCheckboxes.toString()});
   var key = ${JSON.stringify(storageKey)};
