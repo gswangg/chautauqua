@@ -118,6 +118,9 @@ describe("POST /api/v1/plans/:id/remind logs contactId: null (DEC-191)", () => {
           { id: "pr-1", planId: plan.id, userId: "rev-1", trackId: null, submissionId: null },
         ]),
         getUsersByIds: vi.fn(async () => [{ userId: "rev-1", email: "rev1@org.test" }]),
+        // DEC-526: /remind now excludes recused submissions the same way
+        // /progress does (assignedExcludingRecused) -- no recusals here.
+        listRecusalsForPlan: vi.fn(async () => []),
         listEvaluationsForPlan: vi.fn(async () => []),
         listCompletedPairsForPlan: vi.fn(async () => []),
         listPlanFilteredSubmissions: vi.fn(async () => [submission]),

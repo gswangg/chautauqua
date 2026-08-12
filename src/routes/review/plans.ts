@@ -391,6 +391,18 @@ reviewPlansRoutes.post("/api/v1/plans/:id/remind", requireOrganizer, csrfJson, a
   const assignments = resolveAssignments(submissions, reviewerRows);
   const mailer = makeMailer(c.var.db, c.env);
 
+  // DEC-271/DEC-526: a recused submission never counts toward a reviewer's
+  // assigned total -- the reminder's denominator must agree with the
+  // progress panel's (:301-307), or the two dashboards contradict each
+  // other for the exact same reviewer.
+  const planRecusals = await repo.listRecusalsForPlan(c.var.db, plan.id);
+  const recusedByUser = new Map<string, Set<string>>();
+  for (const r of planRecusals) {
+    const set = recusedByUser.get(r.userId) ?? new Set<string>();
+    set.add(r.submissionId);
+    recusedByUser.set(r.userId, set);
+  }
+
   // DEC-238 class 2: this is an organizer-triggered batch send -- a single
   // reviewer's mail failure must not 500 the whole reminder run or hide the
   // other reviewers' outcomes. Per-recipient catch, structured summary.
@@ -406,7 +418,7 @@ reviewPlansRoutes.post("/api/v1/plans/:id/remind", requireOrganizer, csrfJson, a
   const reminded: string[] = [];
   const failed: { email: string; message: string }[] = [];
   for (const user of users) {
-    const assigned = assignments.get(user.userId) ?? [];
+    const assigned = assignedExcludingRecused(assignments.get(user.userId) ?? [], recusedByUser.get(user.userId) ?? new Set());
     const completed = completedByReviewer.get(user.userId)?.size ?? 0;
     if (completed >= assigned.length) continue;
 
