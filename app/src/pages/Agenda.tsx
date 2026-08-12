@@ -7,12 +7,33 @@ import { DayGrid, type ArmedAgendaSession } from './agenda/DayGrid';
 import { UnscheduledTray } from './agenda/UnscheduledTray';
 import { PhoneAgenda } from './agenda/PhoneAgenda';
 import { placeOptimistically, reconcileConflictsSummary, unscheduleOptimistically } from './agenda/state';
-import type { AgendaPayload, RefreshedConflictsSummary } from './agenda/types';
+import type { AgendaPayload, DescribedUnplaced, RefreshedConflictsSummary, UnplacedReason } from './agenda/types';
 import './agenda/agenda.css';
 
 const DAY_START_MIN = 540;
 const DAY_END_MIN = 1080;
 const GRID_MIN = 15;
+
+// DEC-615/DEC-667: closed vocabulary mirroring UnplacedReason — used only to
+// summarize why nothing got placed this run, never to invent a reason the
+// server didn't compute.
+const UNPLACED_REASON_LABELS: Record<UnplacedReason, string> = {
+  no_rooms_configured: 'no rooms configured',
+  duration_exceeds_day: 'longer than the day',
+  no_free_slot: 'no free slot available',
+  speaker_double_booked: 'speaker already booked elsewhere',
+};
+
+/** DEC-667: when a run places nothing, name why from the typed reasons the
+ * run itself computed rather than reporting a bare "0 session(s)". */
+function describeUnplaced(reasons: DescribedUnplaced[]): string {
+  if (reasons.length === 0) return 'nothing to place';
+  const counts = new Map<UnplacedReason, number>();
+  for (const r of reasons) counts.set(r.reason, (counts.get(r.reason) ?? 0) + 1);
+  return Array.from(counts.entries())
+    .map(([reason, count]) => `${count} ${UNPLACED_REASON_LABELS[reason]}`)
+    .join(', ');
+}
 
 export function AgendaPage() {
   const { eventId, loading: eventLoading, error: eventError } = useCurrentEvent();
@@ -96,8 +117,20 @@ export function AgendaPage() {
       const result = await apiPost<AgendaPayload>(`/events/${eventId}/agenda/auto-schedule`, {});
       setAgenda(result);
       setActiveDay((prev) => (prev && result.days.includes(prev) ? prev : (result.days[0] ?? null)));
-      const placedCount = before - result.summary.unplaced;
-      setToast(`Auto-schedule placed ${Math.max(placedCount, 0)} session(s). ${result.summary.unplaced} unplaced, ${result.summary.conflicts} conflict(s).`);
+      const placedCount = Math.max(before - result.summary.unplaced, 0);
+      // DEC-667/SPEC J9: the scheduler warns, never blocks — conflicts
+      // reported here were already on the agenda before this run, not
+      // created by it, and this run left them in place rather than
+      // resolving them.
+      const conflictsClause =
+        result.summary.conflicts > 0
+          ? ` ${result.summary.conflicts} pre-existing conflict(s) left in place.`
+          : '';
+      const placedClause =
+        placedCount > 0
+          ? `Auto-schedule placed ${placedCount} session(s). ${result.summary.unplaced} unplaced.`
+          : `Auto-schedule placed no sessions: ${describeUnplaced(result.unplacedReasons)}.`;
+      setToast(`${placedClause}${conflictsClause}`);
     } catch (err) {
       setError(err instanceof ApiError ? `Auto-schedule failed: ${err.message}` : 'Auto-schedule failed');
     } finally {

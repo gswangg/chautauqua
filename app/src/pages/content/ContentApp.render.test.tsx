@@ -50,11 +50,11 @@ describe('ContentApp / SessionList render smoke: always-visible content-status c
       </MemoryRouter>,
     );
 
-    // Default tab is 'changes_requested' — switch to 'All' to see the row.
+    // w11-e: default tab is 'all' (DEC-665) — the row is visible without
+    // switching tabs.
     await waitFor(() => {
-      expect(screen.getByRole('tab', { name: 'All' })).toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: 'All' })).toHaveClass('is-active');
     });
-    fireEvent.click(screen.getByRole('tab', { name: 'All' }));
 
     await waitFor(() => {
       expect(container.querySelector('.chq-content-row-title')).toHaveTextContent('A Talk With No Files Yet');

@@ -6,7 +6,7 @@ import { DeliverableDetail } from './DeliverableDetail';
 import { FilesLibrary } from './FilesLibrary';
 import { SessionList, TAB_LABELS } from './SessionList';
 import { type ContentStatus, type ContentSubmissionListItem } from './types';
-import type { WorklistTab } from './worklist';
+import { WORKLIST_TABS, type WorklistTab } from './worklist';
 
 // CNT-D1: shape carried by GET /api/v1/submissions/:id (SubmissionDetail in
 // src/server/repo/submissions/detail.ts) — only the fields DeliverableDetail
@@ -22,12 +22,21 @@ type ContentView = 'worklist' | 'files';
 
 const PER_PAGE = 50;
 
+// w11-e (DEC-665): WORKLIST_TABS[0] is 'all' -- named here (rather than
+// indexed inline) since noUncheckedIndexedAccess types a bare array index
+// as possibly undefined.
+const DEFAULT_WORKLIST_TAB: WorklistTab = WORKLIST_TABS[0] ?? 'all';
+
 /** J8 content review loop entry point: worklist -> per-session deliverable detail. */
 export function ContentApp() {
   const { eventId, loading: eventLoading, error: eventError } = useCurrentEvent();
   const [searchParams, setSearchParams] = useSearchParams();
   const submissionId = searchParams.get('submissionId');
-  const tab = (searchParams.get('tab') as WorklistTab | null) ?? 'changes_requested';
+  // w11-e: default to the unfiltered worklist (DEC-665) — opening on
+  // 'changes_requested' reads '0 submissions' on a populated event whenever
+  // nothing needs changes yet; needs-decision stays one click away via the
+  // tab row.
+  const tab = (searchParams.get('tab') as WorklistTab | null) ?? DEFAULT_WORKLIST_TAB;
   const view = (searchParams.get('view') as ContentView | null) ?? 'worklist';
   const pageParam = Number(searchParams.get('page'));
   const page = Number.isInteger(pageParam) && pageParam > 0 ? pageParam : 1;

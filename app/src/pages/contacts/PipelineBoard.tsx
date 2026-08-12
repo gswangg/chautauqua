@@ -87,7 +87,10 @@ export function PipelineBoard() {
       <div className="chq-contacts-pipeline-head">
         <div className="chq-contacts-pipeline-head-titles">
           <h2 className="chq-section-label">Sourcing pipeline</h2>
-          <span className="chq-contacts-pipeline-caption">{total} people</span>
+          {/* w11-e (DEC-665): the count is a measurement, not a starting
+              value -- withhold it until the first load resolves so the
+              page never pairs a "0 people" claim with the loading state. */}
+          {!loading && <span className="chq-contacts-pipeline-caption">{total} people</span>}
         </div>
         <button type="button" className="chq-btn chq-btn-secondary" onClick={() => setShowEnroll(true)}>
           + Enroll
@@ -96,81 +99,85 @@ export function PipelineBoard() {
       {error && <div className="chq-error">{error}</div>}
       {loading && <p className="chq-contacts-pipeline-caption">Loading...</p>}
 
-      <div className="chq-contacts-pipeline-columns">
-        {PIPELINE_STAGES.map((stage) => (
-          <div key={stage} className="chq-contacts-pipeline-column" data-stage={stage}>
-            <div className="chq-contacts-pipeline-column-head">
-              <span className="chq-contacts-pipeline-column-name">{PIPELINE_STAGE_LABELS[stage]}</span>
-              <span className="chq-contacts-pipeline-column-count">
-                {entries.filter((e) => e.stage === stage).length}
-              </span>
-            </div>
-            <ul className="chq-contacts-pipeline-column-cards">
-              {entries
-                .filter((e) => e.stage === stage)
-                .map((entry) => (
-                  <PipelineCard key={entry.id} entry={entry} onOpen={() => setOpenEntryId(entry.id)} onMove={moveTo} />
-                ))}
-            </ul>
-          </div>
-        ))}
-      </div>
-
-      {/* DEC-468: entries.length < total means the server truncated the
-          board at its 200-row page cap -- offer the next page rather than
-          silently hiding the rest. */}
-      {entries.length < total && (
-        <button
-          type="button"
-          className="chq-btn chq-btn-secondary chq-contacts-pipeline-load-more"
-          disabled={loadingMore}
-          onClick={loadMore}
-        >
-          {loadingMore ? 'Loading…' : 'Load more'}
-        </button>
-      )}
-
-      {/* Phone: one stage at a time via a .chq-pill strip (mock lines 393-396). */}
-      <div className="chq-contacts-pipeline-phone-stages chq-chipstrip">
-        {PIPELINE_STAGES.map((stage) => (
-          <button
-            key={stage}
-            type="button"
-            className={`chq-pill${stage === phoneStage ? ' is-active' : ''}`}
-            onClick={() => setPhoneStage(stage)}
-          >
-            {PIPELINE_STAGE_LABELS[stage]} · {entries.filter((e) => e.stage === stage).length}
-          </button>
-        ))}
-      </div>
-      <ul className="chq-contacts-pipeline-phone-list">
-        {entries
-          .filter((e) => e.stage === phoneStage)
-          .map((entry) => (
-            <li key={entry.id} className="chq-contacts-pipeline-phone-card">
-              <div className="chq-contacts-pipeline-phone-card-body">
-                <button type="button" className="chq-contacts-pipeline-card-name" onClick={() => setOpenEntryId(entry.id)}>
-                  {entry.firstName} {entry.lastName}
-                </button>
-                {entry.company && <span className="chq-contacts-pipeline-card-company">{entry.company}</span>}
+      {!loading && (
+        <>
+          <div className="chq-contacts-pipeline-columns">
+            {PIPELINE_STAGES.map((stage) => (
+              <div key={stage} className="chq-contacts-pipeline-column" data-stage={stage}>
+                <div className="chq-contacts-pipeline-column-head">
+                  <span className="chq-contacts-pipeline-column-name">{PIPELINE_STAGE_LABELS[stage]}</span>
+                  <span className="chq-contacts-pipeline-column-count">
+                    {entries.filter((e) => e.stage === stage).length}
+                  </span>
+                </div>
+                <ul className="chq-contacts-pipeline-column-cards">
+                  {entries
+                    .filter((e) => e.stage === stage)
+                    .map((entry) => (
+                      <PipelineCard key={entry.id} entry={entry} onOpen={() => setOpenEntryId(entry.id)} onMove={moveTo} />
+                    ))}
+                </ul>
               </div>
-              <label className="chq-contacts-pipeline-card-move">
-                Move to
-                <select
-                  className="chq-select"
-                  value={entry.stage}
-                  onChange={(e) => moveTo(entry, e.target.value as PipelineStage)}
-                >
-                  {PIPELINE_STAGES.map((s) => (
-                    <option key={s} value={s}>
-                      {PIPELINE_STAGE_LABELS[s]}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </li>
-          ))}
-      </ul>
+            ))}
+          </div>
+
+          {/* DEC-468: entries.length < total means the server truncated the
+              board at its 200-row page cap -- offer the next page rather than
+              silently hiding the rest. */}
+          {entries.length < total && (
+            <button
+              type="button"
+              className="chq-btn chq-btn-secondary chq-contacts-pipeline-load-more"
+              disabled={loadingMore}
+              onClick={loadMore}
+            >
+              {loadingMore ? 'Loading…' : 'Load more'}
+            </button>
+          )}
+
+          {/* Phone: one stage at a time via a .chq-pill strip (mock lines 393-396). */}
+          <div className="chq-contacts-pipeline-phone-stages chq-chipstrip">
+            {PIPELINE_STAGES.map((stage) => (
+              <button
+                key={stage}
+                type="button"
+                className={`chq-pill${stage === phoneStage ? ' is-active' : ''}`}
+                onClick={() => setPhoneStage(stage)}
+              >
+                {PIPELINE_STAGE_LABELS[stage]} · {entries.filter((e) => e.stage === stage).length}
+              </button>
+            ))}
+          </div>
+          <ul className="chq-contacts-pipeline-phone-list">
+            {entries
+              .filter((e) => e.stage === phoneStage)
+              .map((entry) => (
+                <li key={entry.id} className="chq-contacts-pipeline-phone-card">
+                  <div className="chq-contacts-pipeline-phone-card-body">
+                    <button type="button" className="chq-contacts-pipeline-card-name" onClick={() => setOpenEntryId(entry.id)}>
+                      {entry.firstName} {entry.lastName}
+                    </button>
+                    {entry.company && <span className="chq-contacts-pipeline-card-company">{entry.company}</span>}
+                  </div>
+                  <label className="chq-contacts-pipeline-card-move">
+                    Move to
+                    <select
+                      className="chq-select"
+                      value={entry.stage}
+                      onChange={(e) => moveTo(entry, e.target.value as PipelineStage)}
+                    >
+                      {PIPELINE_STAGES.map((s) => (
+                        <option key={s} value={s}>
+                          {PIPELINE_STAGE_LABELS[s]}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </li>
+              ))}
+          </ul>
+        </>
+      )}
 
       {showEnroll && (
         <EnrollDialog

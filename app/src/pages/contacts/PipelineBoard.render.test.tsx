@@ -248,3 +248,32 @@ describe('PipelineBoard render smoke (CRM-07/08)', () => {
     expect(consoleErrorSpy).not.toHaveBeenCalled();
   });
 });
+
+// w11-e (DEC-665): the caption and per-stage counts are measurements, not
+// starting values -- before the first GET /pipeline resolves, the board
+// must show exactly one loading state and never a "0 people" / "0" count
+// beside it.
+describe('PipelineBoard: withholds unmeasured counts during the first load', () => {
+  it('shows only the loading caption, never a zero-count claim, before the first load resolves', async () => {
+    mockApi({
+      'GET /api/v1/pipeline': listEnvelope([ENTRY_IDENTIFIED, ENTRY_CONTACTED]),
+    });
+
+    render(<PipelineBoard />);
+
+    // Synchronously after mount, before the mocked fetch promise resolves:
+    // exactly one loading state, no "people" caption and no stage columns
+    // (which would otherwise render "0" counts against not-yet-loaded data).
+    expect(screen.getByText('Loading...')).toBeInTheDocument();
+    expect(screen.queryByText(/people$/)).not.toBeInTheDocument();
+    expect(document.querySelector('.chq-contacts-pipeline-columns')).not.toBeInTheDocument();
+    expect(document.querySelector('.chq-contacts-pipeline-column-count')).not.toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getByText('2 people')).toBeInTheDocument();
+    });
+    expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
+
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
+  });
+});
