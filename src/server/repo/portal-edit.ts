@@ -13,6 +13,7 @@ import * as schema from "../../db/schema";
 import type { Db } from "../context";
 import { newId } from "../../domain/ids";
 import { appendSubmissionRevision } from "./revisions";
+import { bumpIcsSequences } from "./ics-sequence";
 import type { FormFieldDef, FormFieldKind, FormFieldSection, FormFieldRule, AnswerMap } from "../../forms/types";
 import { LOCKED_SESSION_FIELDS, LOCKED_SPEAKER_FIELDS, lockedFieldName, projectFieldForAnswers } from "../../forms/types";
 import type { SubmissionStatus } from "../../domain/status";
@@ -271,6 +272,7 @@ export async function saveSubmissionEdits(
         title: newTitle,
         description: newDescription,
       });
+      await bumpIcsSequences(db, [submissionId]); // DEC-519: title/description are VEVENT fields
     }
   }
 

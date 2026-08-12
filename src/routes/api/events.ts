@@ -35,7 +35,13 @@ import {
 } from "../../server/repo/events";
 
 import { createDefaultForm } from "../../server/repo/forms";
+import { bumpIcsSequencesForRoom } from "../../server/repo/ics-sequence";
 import { isDateOrderValid, isIsoDate, isValidHexColor, isValidSlug, isValidTimezone } from "./validators";
+import { DEC_519 } from "../../decisions";
+
+// Compile-checked dependency marker: the room-rename ics_sequence bump
+// below implements DEC-519.
+void DEC_519;
 
 export const eventsRoutes = new Hono<AppEnv>();
 
@@ -509,10 +515,17 @@ eventsRoutes.patch("/rooms/:roomId", csrfJson, async (c) => {
     throw new ApiError("invalid", "Invalid room", fields);
   }
 
+  const before = await getRoomForEvent(db, roomId, eventId);
   const updated = await updateRoom(db, roomId, eventId, {
     name,
     capacity: capacity === undefined ? undefined : (capacity as number | null),
   });
+  // DEC-519: the room name is serialized into every scheduled submission's
+  // VEVENT LOCATION — bump only when the name actually changed (a rename to
+  // the same string is a no-op) so subscribers' calendars pick up the text.
+  if (name !== undefined && before && name !== before.name) {
+    await bumpIcsSequencesForRoom(db, roomId);
+  }
   return c.json(updated);
 });
 

@@ -238,7 +238,9 @@ describe("POST /api/v1/submissions/:id/revisions/:revisionId/restore (DEC-158)",
     expect(json.title).toBe("Edit One Title");
     expect(json.description).toBe("Edit one description");
 
-    expect(updates).toHaveLength(1);
+    // DEC-519: a real content change also bumps ics_sequence (second update
+    // call, on top of the title/description field update).
+    expect(updates).toHaveLength(2);
     expect(updates[0]).toMatchObject({ title: "Edit One Title", description: "Edit one description" });
 
     // The restore itself lands its own history row, attributed to the

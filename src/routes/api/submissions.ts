@@ -40,7 +40,12 @@ import { findContactForOrg } from "../../server/repo/contacts";
 import { appendSubmissionRevision, countRevisions, getRevision, listRevisions } from "../../server/repo/revisions";
 import { isValidEmail, normalizeEmail } from "../../domain/email";
 import { clampPage, listPerPage } from "../../lib/pagination";
-import { DEC_460, DEC_461, DEC_462 } from "../../decisions";
+import { bumpIcsSequences } from "../../server/repo/ics-sequence";
+import { DEC_460, DEC_461, DEC_462, DEC_519 } from "../../decisions";
+
+// Compile-checked dependency marker: the ics_sequence bumps on title/
+// description writes below implement DEC-519.
+void DEC_519;
 
 // Compile-checked dependency markers: the contact.email validation below
 // implements DEC-462; the revisions pagination below implements DEC-460/461.
@@ -194,6 +199,7 @@ submissionsRoutes.patch("/submissions/:id", requireOrganizer, csrfJson, async (c
       title: newTitle,
       description: newDescription,
     });
+    await bumpIcsSequences(c.var.db, [id]); // DEC-519: title/description are VEVENT fields
   }
 
   const detail = await getSubmissionDetail(c.var.db, id);
@@ -253,6 +259,7 @@ submissionsRoutes.post(
         title: revision.title,
         description: revision.description,
       });
+      await bumpIcsSequences(c.var.db, [id]); // DEC-519: title/description are VEVENT fields
     }
 
     const detail = await getSubmissionDetail(c.var.db, id);
