@@ -147,9 +147,12 @@ tests in `test/render-sweep-lib.test.ts`.
 
 **[docs/AUDIT.md](docs/AUDIT.md)** is a self-audit: what each SPEC.md area actually does
 today, every degraded/capped behavior and its exact limit, what is deliberately not built,
-and what is stage-2 platform wiring rather than a product gap. Its route claims are
-enforced against the real route manifest by `test/audit-claims.test.ts` — it cannot drift
-silently.
+and what is stage-2 platform wiring rather than a product gap. `test/audit-claims.test.ts`
+mechanically enforces two things it names: every route path in backticks resolves against
+the real route manifest (DEC-618), and every bullet in the "Deliberately not built" section
+carries an HTML-comment absence marker (`file:`/`symbol:`/`route:`) that the test resolves
+against the tree and fails on if the named artefact turns out to exist (DEC-642). Nothing
+else in the document is machine-checked — read it, don't just trust the badge.
 
 | Surface | Route |
 |---|---|
