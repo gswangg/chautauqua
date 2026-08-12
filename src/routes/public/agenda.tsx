@@ -3,7 +3,7 @@
 // decomposition) — no behavior change.
 
 import type { PublicAgendaItem, PublicEvent } from "../../server/repo/public";
-import { itineraryStorageKey } from "../../lib/itinerary";
+import { itineraryStorageKey, mergeItinerarySelection } from "../../lib/itinerary";
 import { assignLanes } from "../../lib/overlap-lanes";
 import { sessionDetailPath, type Surface } from "./shell";
 import { TrackChips, SpeakerNames, formatDay, formatMinutes } from "./cards";
@@ -151,11 +151,13 @@ export function AgendaContent(props: { event: PublicEvent; items: PublicAgendaIt
 function ItineraryScript(props: { eventSlug: string }) {
   const storageKey = itineraryStorageKey(props.eventSlug);
   const js = `(function(){
+  var __chqMerge = (${mergeItinerarySelection.toString()});
   var key = ${JSON.stringify(storageKey)};
   var slug = ${JSON.stringify(props.eventSlug)};
   var stored = [];
   try { stored = JSON.parse(localStorage.getItem(key) || '[]'); } catch (e) { stored = []; }
   var boxes = document.querySelectorAll('.chq-itinerary-toggle');
+  var allRenderedIds = Array.prototype.map.call(boxes, function(b){ return b.value; });
   function currentIds(){
     return Array.prototype.filter.call(boxes, function(b){ return b.checked; }).map(function(b){ return b.value; });
   }
@@ -172,7 +174,9 @@ function ItineraryScript(props: { eventSlug: string }) {
   updateLink(stored);
   document.addEventListener('change', function(e){
     if (!e.target || !e.target.classList || !e.target.classList.contains('chq-itinerary-toggle')) return;
-    var ids = currentIds();
+    var latestStored = [];
+    try { latestStored = JSON.parse(localStorage.getItem(key) || '[]'); } catch (err) { latestStored = []; }
+    var ids = __chqMerge(latestStored, allRenderedIds, currentIds());
     localStorage.setItem(key, JSON.stringify(ids));
     updateLink(ids);
   });
