@@ -233,4 +233,25 @@ describe("listEmailBatches (DEC-603)", () => {
     expect(whereSql).toContain("coalesce");
     expect(whereSql).toContain(groupBySql.match(/coalesce\([^)]*\)/i)?.[0]?.toLowerCase());
   });
+
+  // DEC-686: the per-status tally query used to GROUP BY the whole event and
+  // filter the JS result to the page's batchKeys — scanning every batch in
+  // the event even for a one-row page. It must now bind the page's own
+  // batch keys into the WHERE clause via inArray over BATCH_KEY.
+  it("scopes the per-status tally query's WHERE to the page's own batch keys", async () => {
+    const aggregateRows = [{ batchKey: "batch-xyz", subject: "You are in!", sentAt: 1_700_000_100_000, recipientCount: 3 }];
+    const countRows = [{ count: 5 }];
+    const statusRows = [{ batchKey: "batch-xyz", status: "sent", n: 3 }];
+    const { db, calls } = makeFakeDb([aggregateRows, countRows, statusRows]);
+
+    await listEmailBatches(db, { eventId: "ev1", page: 1, perPage: 1 });
+
+    // calls[0] = main aggregate query, calls[1] = count query, calls[2] = status tally query.
+    const statusCall = calls[2]!;
+    const whereCall = statusCall.find((c) => c.method === "where")!;
+    const whereSql = dialect.sqlToQuery(whereCall.args[0] as any).sql;
+    expect(whereSql).toContain("coalesce");
+    expect(whereSql).toContain("in (");
+    expect(whereSql).toContain("event_id");
+  });
 });

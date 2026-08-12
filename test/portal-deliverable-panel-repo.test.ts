@@ -195,7 +195,19 @@ function makeChainDb(data: Record<TableKey, Record<string, unknown>[]>) {
           return chain;
         },
         orderBy: () => chain,
-        limit: async (n: number) => run().slice(0, n),
+        limit: (n: number) => {
+          const limited: any = {
+            offset: (m: number) => run().slice(m, m + n),
+            then: (resolve: (v: unknown[]) => void, reject: (e: unknown) => void) => {
+              try {
+                resolve(run().slice(0, n));
+              } catch (e) {
+                reject(e);
+              }
+            },
+          };
+          return limited;
+        },
         then: (resolve: (v: unknown[]) => void, reject: (e: unknown) => void) => {
           try {
             resolve(run());
