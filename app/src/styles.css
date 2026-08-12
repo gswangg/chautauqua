@@ -34,6 +34,7 @@
   --chq-brand: #4e5c31;
   --chq-brand-hover: #3c471f;
   --chq-on-brand: #f7f9f0;
+  --chq-brandable-accent: #4e5c31;
   --chq-on-ink: #f4f1e8;
   --chq-on-ink-muted: #b5afa2;
   --chq-on-ink-hairline: #3a3d32;
@@ -431,9 +432,9 @@ a:hover {
 
 .chq-pill.is-active,
 .chq-pill.active {
-  border-color: var(--chq-brand);
-  background: var(--chq-brand);
-  color: var(--chq-on-brand);
+  border-color: var(--chq-ink);
+  background: var(--chq-ink);
+  color: var(--chq-on-ink);
 }
 
 .chq-chipstrip {
@@ -528,4 +529,185 @@ a:hover {
   .chq-btn {
     min-height: 44px;
   }
+}
+
+/* ---------------------------------------------------------------------- */
+/* Shared component classes (DEC-368)                                    */
+/* ---------------------------------------------------------------------- */
+
+.chq-steps {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border-top: 1px solid var(--chq-rule);
+  border-bottom: 1px solid var(--chq-rule);
+}
+
+.chq-step {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 13px 16px;
+  border-left: 1px solid var(--chq-rule);
+}
+
+.chq-step:first-child {
+  border-left: none;
+}
+
+.chq-step-num {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid var(--chq-border);
+  color: var(--chq-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.chq-step-label {
+  font-family: var(--chq-font-display);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--chq-ink-2);
+}
+
+.chq-step.is-done .chq-step-num {
+  background: var(--chq-brand);
+  color: var(--chq-on-brand);
+  border: none;
+  font-weight: 700;
+}
+
+.chq-step.is-done .chq-step-label {
+  color: var(--chq-ink-2);
+  font-weight: 500;
+}
+
+.chq-step.is-current {
+  background: var(--chq-surface-sunk);
+}
+
+.chq-step.is-current .chq-step-num {
+  background: var(--chq-ink);
+  color: var(--chq-on-ink);
+  border: none;
+  font-weight: 700;
+}
+
+.chq-step.is-current .chq-step-label {
+  color: var(--chq-ink);
+  font-weight: 700;
+}
+
+.chq-bar {
+  height: 5px;
+  border-radius: var(--chq-r-pill);
+  background: var(--chq-hairline);
+  overflow: hidden;
+}
+
+.chq-bar-fill {
+  height: 100%;
+  background: var(--chq-brand);
+}
+
+.chq-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--chq-border);
+}
+
+.chq-dot.is-on {
+  background: var(--chq-brand);
+}
+
+.chq-bulkbar {
+  background: var(--chq-surface-sunk);
+  border-radius: var(--chq-r-ctl);
+  padding: 11px 15px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.chq-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  position: sticky;
+  top: 0;
+}
+
+.chq-rail-link {
+  font-size: 14px;
+  font-weight: 500;
+  padding: 8px 0 8px 11px;
+  color: var(--chq-ink-2);
+}
+
+.chq-rail-link.is-active {
+  font-weight: 700;
+  box-shadow: inset 2px 0 0 var(--chq-brand);
+  color: var(--chq-ink);
+}
+
+.chq-panel {
+  background: var(--chq-ink);
+  color: var(--chq-on-ink);
+  border-radius: var(--chq-r-card);
+  padding: 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.chq-panel-rule {
+  height: 1px;
+  background: var(--chq-on-ink-hairline);
+}
+
+.chq-panel-meta {
+  color: var(--chq-on-ink-muted);
+}
+
+.chq-kv {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.chq-kv dt {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--chq-muted);
+  margin: 0;
+}
+
+.chq-kv dd {
+  font-size: 15px;
+  color: var(--chq-ink-2);
+  margin: 0;
+}
+
+.chq-pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 15px 0 0;
+}
+
+.chq-scrim {
+  position: fixed;
+  inset: 0;
+  background: rgba(27, 29, 23, 0.5);
+  z-index: 19;
 }
