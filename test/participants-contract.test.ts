@@ -59,8 +59,16 @@ function fakeDb(selectQueue: unknown[][]) {
       return makeChain(rows);
     },
     insert: () => ({
-      values: async (vals: unknown) => {
+      values: (vals: unknown) => {
         inserts.push(vals);
+        return {
+          // DEC-556: inviteParticipant's atomic ON CONFLICT DO NOTHING
+          // path — this fake db always "succeeds" and returns the
+          // DB-computed id/order (order=0, no prior participants seeded).
+          onConflictDoNothing: () => ({
+            returning: async (_sel?: unknown) => [{ id: "p-new", order: 0 }],
+          }),
+        };
       },
     }),
     update: () => ({

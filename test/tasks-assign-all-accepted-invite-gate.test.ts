@@ -128,11 +128,21 @@ function fakeDb(seed: { participant?: unknown[]; submission?: unknown[]; task?: 
     insert: (table: unknown) => ({
       // DEC-528: createTaskAssignments now inserts via chunkRowsForInsert,
       // which passes an array of rows rather than one object at a time.
-      values: async (vals: unknown) => {
-        const arr = stateArrayFor(table);
-        if (!arr) return;
-        const rows = Array.isArray(vals) ? vals : [vals];
-        for (const row of rows) arr.push({ ...(row as object) });
+      values: (vals: unknown) => {
+        const write = async () => {
+          const arr = stateArrayFor(table);
+          if (!arr) return;
+          const rows = Array.isArray(vals) ? vals : [vals];
+          for (const row of rows) arr.push({ ...(row as object) });
+        };
+        return {
+          then: (resolve: (v: unknown) => void, reject?: (e: unknown) => void) => write().then(resolve, reject),
+          // DEC-556: task_assignment inserts target the real (task_id,
+          // contact_id) unique index — this fake db has no uniqueness of
+          // its own, so onConflictDoNothing is a no-op passthrough onto
+          // the same write.
+          onConflictDoNothing: () => write(),
+        };
       },
     }),
   };

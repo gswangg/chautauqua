@@ -170,4 +170,48 @@ describe("migration parity", () => {
     const missing = declared.filter((name) => !created.has(name));
     expect(missing, `indexes in schema.ts with no creating migration:\n${missing.join("\n")}`).toEqual([]);
   });
+
+  it("every uniqueIndex declared in src/db/schema.ts is created as CREATE UNIQUE INDEX, not a plain index (DEC-556)", () => {
+    // Derive the set of index names schema.ts declares unique via
+    // getTableConfig — never hand-listed.
+    const declaredUnique: string[] = [];
+    for (const exportName of Object.keys(schema)) {
+      const candidate = (schema as Record<string, unknown>)[exportName];
+      let config: ReturnType<typeof getTableConfig>;
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        config = getTableConfig(candidate as any);
+      } catch {
+        continue;
+      }
+      if (!config || !config.name || !Array.isArray(config.indexes)) continue;
+      for (const idx of config.indexes) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const anyIdx = idx as any;
+        const name = anyIdx.config?.name ?? anyIdx.name;
+        const unique = anyIdx.config?.unique ?? anyIdx.unique;
+        if (name && unique) declaredUnique.push(name);
+      }
+    }
+    expect(declaredUnique.length, "expected at least one declared uniqueIndex in schema.ts").toBeGreaterThan(0);
+
+    // Collect index names created via CREATE UNIQUE INDEX specifically
+    // (not plain CREATE INDEX) across migrations/*.sql.
+    const createdUnique = new Set<string>();
+    const files = readdirSync(MIGRATIONS_DIR).filter((f) => f.endsWith(".sql"));
+    const uniqueIndexRe = /CREATE\s+UNIQUE\s+INDEX\s+(?:IF NOT EXISTS\s+)?([`"'\w]+)/gi;
+    for (const file of files) {
+      const sql = readFileSync(join(MIGRATIONS_DIR, file), "utf8");
+      let m: RegExpExecArray | null;
+      while ((m = uniqueIndexRe.exec(sql)) !== null) {
+        createdUnique.add(unquote(m[1]!));
+      }
+    }
+
+    const missing = declaredUnique.filter((name) => !createdUnique.has(name));
+    expect(
+      missing,
+      `uniqueIndex()es in schema.ts with no CREATE UNIQUE INDEX in migrations/:\n${missing.join("\n")}`,
+    ).toEqual([]);
+  });
 });

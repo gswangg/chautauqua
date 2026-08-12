@@ -71,13 +71,23 @@ function fakeDb(seed: {
       },
     }),
     insert: (table: unknown) => ({
-      values: async (vals: unknown) => {
+      values: (vals: unknown) => {
         const rows = Array.isArray(vals) ? vals : [vals];
-        for (const row of rows) {
-          touchedTables.push(table);
-          const arr = stateArrayFor(table);
-          if (arr) arr.push({ ...(row as object) });
-        }
+        const write = async () => {
+          for (const row of rows) {
+            touchedTables.push(table);
+            const arr = stateArrayFor(table);
+            if (arr) arr.push({ ...(row as object) });
+          }
+        };
+        return {
+          then: (resolve: (v: unknown) => void, reject?: (e: unknown) => void) => write().then(resolve, reject),
+          // DEC-556: task_assignment inserts target the real (task_id,
+          // contact_id) unique index; this fake db has no uniqueness
+          // enforcement of its own, so onConflictDoNothing is a no-op
+          // passthrough onto the same write.
+          onConflictDoNothing: () => write(),
+        };
       },
     }),
     update: (table: unknown) => ({

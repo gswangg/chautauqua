@@ -7,11 +7,11 @@
 // source-scan test in test/api-participants.test.ts (DEC-009-style
 // tripwire).
 
-import { and, eq, sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { newId } from "../../domain/ids";
-import { DEC_070, DEC_258 } from "../../decisions";
+import { DEC_070, DEC_258, DEC_556 } from "../../decisions";
 
 // Compile-checked dependency marker: this module implements DEC_070's
 // endpoint contract (invite shape, duplicate rejection, visibility toggle).
@@ -19,6 +19,11 @@ void DEC_070;
 // inviteParticipant below snapshots DEC-258's title_at_time/org_at_time
 // from the caller-supplied contact attribution.
 void DEC_258;
+// DEC-556: (submission_id, contact_id) uniqueness is a real database
+// constraint (migrations/0019_join_table_uniqueness.sql); inviteParticipant
+// below is a single INSERT ... ON CONFLICT DO NOTHING, never a
+// select-then-insert.
+void DEC_556;
 
 /** Sentinel returned by inviteParticipant when the (submissionId, contactId)
  * pair already has a participant row — callers surface this as an
@@ -71,42 +76,36 @@ export async function inviteParticipant(
   const { submissionId, contactId } = input;
   const role = input.role && input.role.trim() ? input.role : "speaker";
 
-  const existing = await db
-    .select({ id: schema.participant.id })
-    .from(schema.participant)
-    .where(and(eq(schema.participant.submissionId, submissionId), eq(schema.participant.contactId, contactId)))
-    .limit(1);
-  if (existing[0]) return DUPLICATE_PARTICIPANT;
-
-  const existingOrderRows = await db
-    .select({ maxOrder: sql<number>`max(${schema.participant.order})` })
-    .from(schema.participant)
-    .where(eq(schema.participant.submissionId, submissionId));
-  const nextOrder = (existingOrderRows[0]?.maxOrder ?? -1) + 1;
-
   const now = new Date();
   const id = newId();
-  await db.insert(schema.participant).values({
-    id,
-    submissionId,
-    contactId,
-    role,
-    order: nextOrder,
-    visible: true,
-    inviteStatus: "invited",
-    titleAtTime: input.titleAtTime ?? null,
-    orgAtTime: input.orgAtTime ?? null,
-    createdAt: now,
-    updatedAt: now,
-  });
+  const nextOrderSql = sql<number>`(SELECT COALESCE(MAX(${schema.participant.order}), -1) + 1 FROM ${schema.participant} WHERE ${schema.participant.submissionId} = ${submissionId})`;
+  const inserted = await db
+    .insert(schema.participant)
+    .values({
+      id,
+      submissionId,
+      contactId,
+      role,
+      order: nextOrderSql,
+      visible: true,
+      inviteStatus: "invited",
+      titleAtTime: input.titleAtTime ?? null,
+      orgAtTime: input.orgAtTime ?? null,
+      createdAt: now,
+      updatedAt: now,
+    })
+    .onConflictDoNothing({ target: [schema.participant.submissionId, schema.participant.contactId] })
+    .returning({ id: schema.participant.id, order: schema.participant.order });
+  const row = inserted[0];
+  if (!row) return DUPLICATE_PARTICIPANT;
 
   return {
-    id,
+    id: row.id,
     contactId,
     name: `${input.firstName} ${input.lastName}`.trim(),
     email: input.email,
     role,
-    order: nextOrder,
+    order: row.order,
     visible: true,
     inviteStatus: "invited",
   };

@@ -117,13 +117,32 @@ function fakeDb(seedContacts: unknown[], seedEvents: unknown[]) {
       from: (table: unknown) => makeChain(rowsFor(table)),
     }),
     insert: (table: unknown) => ({
-      values: async (vals: unknown) => {
+      values: (vals: unknown) => {
         const rows = Array.isArray(vals) ? vals : [vals];
-        for (const row of rows) {
-          inserts.push({ table, vals: row });
-          const arr = stateArrayFor(table);
-          if (arr) arr.push({ ...(row as object) });
-        }
+        const write = async () => {
+          for (const row of rows) {
+            inserts.push({ table, vals: row });
+            const arr = stateArrayFor(table);
+            if (arr) arr.push({ ...(row as object) });
+          }
+        };
+        return {
+          then: (resolve: (v: unknown) => void, reject?: (e: unknown) => void) => write().then(resolve, reject),
+          // DEC-556: inviteParticipant's atomic ON CONFLICT DO NOTHING
+          // path (chained with .returning()) and the task_assignment
+          // ON CONFLICT DO NOTHING path (awaited directly, no
+          // .returning()) — this fake db has no uniqueness of its own,
+          // so both always "succeed": the write runs either way.
+          onConflictDoNothing: () => {
+            const p = write();
+            return Object.assign(p, {
+              returning: async (_sel?: unknown) => {
+                await p;
+                return rows.map((row: any) => ({ id: row.id, order: 0 }));
+              },
+            });
+          },
+        };
       },
     }),
     update: (table: unknown) => ({

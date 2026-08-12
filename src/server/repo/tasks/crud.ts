@@ -9,9 +9,13 @@ import { newId } from "../../../domain/ids";
 import { chunkIds, chunkRowsForInsert } from "../../../lib/chunk";
 import { ACTIVE_INVITE_STATUSES } from "../../../domain/acceptance";
 import { ApiError } from "../../http";
-import { DEC_528 } from "../../../decisions";
+import { DEC_528, DEC_556 } from "../../../decisions";
 
 void DEC_528; // createTaskAssignments below is set-based under MAX_TASK_ASSIGNMENT_WRITES
+// DEC-556: the (task_id, contact_id) uniqueIndex backs the insert below's
+// ON CONFLICT target, belt-and-suspenders alongside the existing
+// existence-check pre-read (kept for DEC-528's write-burst cap).
+void DEC_556;
 
 export type DeliverableKind = "presentation" | "poster" | "handout";
 
@@ -122,7 +126,10 @@ export async function createTaskAssignments(
     updatedAt: now,
   }));
   for (const chunk of chunkRowsForInsert(rows)) {
-    await db.insert(schema.taskAssignment).values(chunk);
+    await db
+      .insert(schema.taskAssignment)
+      .values(chunk)
+      .onConflictDoNothing({ target: [schema.taskAssignment.taskId, schema.taskAssignment.contactId] });
   }
 }
 

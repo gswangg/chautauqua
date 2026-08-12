@@ -267,6 +267,12 @@ export const participant = sqliteTable(
   (t) => ({
     participant_submission_id_idx: index("participant_submission_id_idx").on(t.submissionId),
     participant_contact_id_idx: index("participant_contact_id_idx").on(t.contactId),
+    // DEC-556: one participant per (submission, contact) pair, enforced by
+    // the database — see migrations/0019_join_table_uniqueness.sql.
+    participant_submission_id_contact_id_idx: uniqueIndex("participant_submission_id_contact_id_idx").on(
+      t.submissionId,
+      t.contactId,
+    ),
   }),
 );
 
@@ -486,6 +492,12 @@ export const taskAssignment = sqliteTable(
     task_assignment_task_id_idx: index("task_assignment_task_id_idx").on(t.taskId),
     task_assignment_contact_id_idx: index("task_assignment_contact_id_idx").on(t.contactId),
     task_assignment_file_id_idx: index("task_assignment_file_id_idx").on(t.fileId),
+    // DEC-556: one assignment per (task, contact) pair, enforced by the
+    // database — see migrations/0019_join_table_uniqueness.sql.
+    task_assignment_task_id_contact_id_idx: uniqueIndex("task_assignment_task_id_contact_id_idx").on(
+      t.taskId,
+      t.contactId,
+    ),
   }),
 );
 

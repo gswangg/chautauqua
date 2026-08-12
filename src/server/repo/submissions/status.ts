@@ -14,13 +14,14 @@ import { planAcceptance, FORM_TASK_FIELD_SPECS, isActiveParticipant, onboardingT
 import { isValidStatusLiteral } from "./query";
 import { chunkIds, chunkRowsForInsert } from "../../../lib/chunk";
 import { ApiError } from "../../http";
-import { DEC_079, DEC_111, DEC_133, DEC_520, DEC_521 } from "../../../decisions";
+import { DEC_079, DEC_111, DEC_133, DEC_520, DEC_521, DEC_556 } from "../../../decisions";
 
 void DEC_079; // planning-before-commit acceptance ordering + chunked/batched bulk status changes below
 void DEC_111; // form-task tasks get real backing forms, self-healed when formId is null
 void DEC_133; // full-set id match guard below (mirrors DEC-122's requireFullMatch)
 void DEC_520; // auto-created onboarding tasks get a due date derived from the event start date
 void DEC_521; // task_assignment inserts are chunked, bounded by MAX_ACCEPTANCE_TASK_ASSIGNMENTS
+void DEC_556; // task_assignment insert below targets the real (task_id, contact_id) unique index
 
 /** DEC-521: a planned set of task_assignment rows above this size is refused
  * BEFORE any insert — unlike MAX_AUTO_SCHEDULE_PLACEMENTS' silent slice, a
@@ -209,8 +210,14 @@ async function planAndPersistOnboardingTasks(
   // scheduleSlot insert — not one statement per (contact, task) pair.
   // DEC-528: chunked by bound-parameter budget (columns-per-row derived),
   // not by row count.
+  // DEC-556: (task_id, contact_id) is a real UNIQUE index — ON CONFLICT DO
+  // NOTHING alongside the existence pre-read above (kept for DEC-521's
+  // write-burst cap).
   for (const chunk of chunkRowsForInsert(assignmentRows)) {
-    await db.insert(schema.taskAssignment).values(chunk);
+    await db
+      .insert(schema.taskAssignment)
+      .values(chunk)
+      .onConflictDoNothing({ target: [schema.taskAssignment.taskId, schema.taskAssignment.contactId] });
   }
 }
 

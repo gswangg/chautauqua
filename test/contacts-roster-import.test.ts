@@ -77,10 +77,24 @@ function fakeDb(seedContacts: unknown[], seedEvents: unknown[]) {
       from: (table: unknown) => makeChain([...(stateArrayFor(table) ?? [])]),
     }),
     insert: (table: unknown) => ({
-      values: async (vals: unknown) => {
-        inserts.push({ table, vals });
-        const arr = stateArrayFor(table);
-        if (arr) arr.push({ ...(vals as object) });
+      values: (vals: unknown) => {
+        const write = async () => {
+          inserts.push({ table, vals });
+          const arr = stateArrayFor(table);
+          if (arr) arr.push({ ...(vals as object) });
+        };
+        return {
+          then: (resolve: (v: unknown) => void, reject?: (e: unknown) => void) => write().then(resolve, reject),
+          // DEC-556: inviteParticipant's atomic ON CONFLICT DO NOTHING
+          // path — this fake db has no uniqueness of its own, so it
+          // always "succeeds" and returns the row it was given.
+          onConflictDoNothing: () => ({
+            returning: async (_sel?: unknown) => {
+              await write();
+              return [{ id: (vals as any).id, order: 0 }];
+            },
+          }),
+        };
       },
     }),
     update: (table: unknown) => ({
