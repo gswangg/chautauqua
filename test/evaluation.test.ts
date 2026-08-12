@@ -110,12 +110,14 @@ describe("aggregateSubmission", () => {
 });
 
 describe("buildReviewerQueue", () => {
-  it("excludes items already rated by the reviewer", () => {
+  // DEC-561: already-rated items are no longer excluded -- they sink to the
+  // bottom of the queue instead of vanishing, so a reviewer can reopen them.
+  it("keeps items already rated by the reviewer, sunk to the bottom", () => {
     const queue = buildReviewerQueue([
       { submissionId: "a", ratingsCount: 0, alreadyRatedByMe: true },
       { submissionId: "b", ratingsCount: 0, alreadyRatedByMe: false },
     ]);
-    expect(queue).toEqual(["b"]);
+    expect(queue).toEqual(["b", "a"]);
   });
 
   it("orders fewest-ratings-first so coverage closes", () => {
@@ -136,11 +138,21 @@ describe("buildReviewerQueue", () => {
     expect(queue).toEqual(["a", "m", "z"]);
   });
 
-  it("returns an empty queue when everything is already rated", () => {
+  it("returns a single-item queue when everything is already rated", () => {
     const queue = buildReviewerQueue([
       { submissionId: "a", ratingsCount: 0, alreadyRatedByMe: true },
     ]);
-    expect(queue).toEqual([]);
+    expect(queue).toEqual(["a"]);
+  });
+
+  it("orders rated items last (fewest-ratings-first preserved within each group), fewest-ratings-first preserved among unrated", () => {
+    const queue = buildReviewerQueue([
+      { submissionId: "z", ratingsCount: 1, alreadyRatedByMe: true },
+      { submissionId: "a", ratingsCount: 5, alreadyRatedByMe: true },
+      { submissionId: "b", ratingsCount: 3, alreadyRatedByMe: false },
+      { submissionId: "c", ratingsCount: 1, alreadyRatedByMe: false },
+    ]);
+    expect(queue).toEqual(["c", "b", "z", "a"]);
   });
 });
 

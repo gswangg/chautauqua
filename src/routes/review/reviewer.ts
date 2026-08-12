@@ -162,12 +162,18 @@ reviewReviewerRoutes.get("/api/v1/review/submissions/:id", async (c) => {
   // plan.criteria, so a round override actually takes effect client-side.
   const criteria = criteriaForRound(plan.criteria, roundCriteriaJsonOf(plan), plan.currentRound);
 
+  // DEC-561: this reviewer's own stored evaluation for the plan's ACTIVE
+  // round, omitted entirely (property absent, not null) when there's no row
+  // yet -- lets a reviewer reopen/revise a submitted review.
+  const myEvaluationRecord = await repo.getEvaluation(c.var.db, plan.id, submissionId, auth.userId, plan.currentRound);
+
   const detail = {
     ...summary,
     speakers: speakers as repo.SpeakerSummary[] | undefined,
     speakerAnswers: answers.filter((a) => a.section === "speaker") as repo.SubmissionAnswerRow[] | undefined,
     sessionAnswers: answers.filter((a) => a.section === "session"),
     criteria,
+    ...(myEvaluationRecord ? { myEvaluation: { scores: myEvaluationRecord.scores, comment: myEvaluationRecord.comment } } : {}),
   };
 
   // DEC-018: server-side anonymization only, never client-side.

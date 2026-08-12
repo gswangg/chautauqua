@@ -2,7 +2,7 @@
 // can see, plus the summary/speaker/answer data reviewers need to render a
 // submission (DEC-078/DEC-081/DEC-016/DEC-017/DEC-346).
 
-import { and, eq, exists, inArray, or, sql } from "drizzle-orm";
+import { and, asc, eq, exists, inArray, or, sql } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { formatRef } from "../../../domain/ids";
@@ -315,27 +315,35 @@ export async function getSubmissionSummaryInEvent(
 
 export interface SpeakerSummary {
   contactId: string;
-  firstName: string;
-  lastName: string;
-  email: string;
+  name: string;
   company: string | null;
   title: string | null;
 }
 
+/** DEC-561/DEC-562: reviewers never see contact.email through this endpoint
+ * (organizers use the admin submission detail for that); `name` is derived
+ * server-side so the reviewer surface never has to reassemble it. Ordered
+ * (participant.order asc, contact.id asc) -- DEC-562's canonical people
+ * order for any list of a submission's people. */
 export async function listSpeakersForSubmission(db: Db, submissionId: string): Promise<SpeakerSummary[]> {
   const rows = await db
     .select({
       contactId: schema.contact.id,
       firstName: schema.contact.firstName,
       lastName: schema.contact.lastName,
-      email: schema.contact.email,
       company: schema.contact.company,
       title: schema.contact.title,
     })
     .from(schema.participant)
     .innerJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
-    .where(eq(schema.participant.submissionId, submissionId));
-  return rows;
+    .where(eq(schema.participant.submissionId, submissionId))
+    .orderBy(asc(schema.participant.order), asc(schema.contact.id));
+  return rows.map((r) => ({
+    contactId: r.contactId,
+    name: `${r.firstName} ${r.lastName}`.trim(),
+    company: r.company,
+    title: r.title,
+  }));
 }
 
 export interface SubmissionAnswerRow {
@@ -347,7 +355,8 @@ export interface SubmissionAnswerRow {
 }
 
 /** All answers for a submission (custom fields only, per DEC-016), joined to
- * their field def so callers can filter by section. */
+ * their field def so callers can filter by section. Ordered (form_field.
+ * position asc, form_field.id asc) -- DEC-562's canonical answer order. */
 export async function listAnswersForSubmission(db: Db, submissionId: string): Promise<SubmissionAnswerRow[]> {
   const rows = await db
     .select({
@@ -359,7 +368,8 @@ export async function listAnswersForSubmission(db: Db, submissionId: string): Pr
     })
     .from(schema.submissionAnswer)
     .innerJoin(schema.formField, eq(schema.submissionAnswer.formFieldId, schema.formField.id))
-    .where(eq(schema.submissionAnswer.submissionId, submissionId));
+    .where(eq(schema.submissionAnswer.submissionId, submissionId))
+    .orderBy(asc(schema.formField.position), asc(schema.formField.id));
   return rows.map((r) => ({
     fieldId: r.fieldId,
     section: r.section as "session" | "speaker",

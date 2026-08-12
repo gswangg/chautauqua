@@ -340,15 +340,19 @@ export interface ReviewerQueueItem {
 }
 
 /**
- * Builds a reviewer's queue: excludes submissions already rated by this
- * reviewer, ordered fewest-ratings-first so coverage closes (SPEC J4), and
- * stable by submissionId for ties.
+ * Builds a reviewer's queue ordering: returns EVERY item's id (DEC-561 --
+ * completed work sinks to the bottom instead of vanishing), sorted by
+ * (alreadyRatedByMe ? 1 : 0) asc first, then ratingsCount asc, then
+ * submissionId asc, then original index -- so everything actionable stays
+ * fewest-ratings-first ahead of everything already rated by this reviewer.
  */
 export function buildReviewerQueue(items: ReviewerQueueItem[]): string[] {
   return items
-    .filter((item) => !item.alreadyRatedByMe)
     .map((item, index) => ({ item, index }))
     .sort((a, b) => {
+      const aRated = a.item.alreadyRatedByMe ? 1 : 0;
+      const bRated = b.item.alreadyRatedByMe ? 1 : 0;
+      if (aRated !== bRated) return aRated - bRated;
       if (a.item.ratingsCount !== b.item.ratingsCount) {
         return a.item.ratingsCount - b.item.ratingsCount;
       }

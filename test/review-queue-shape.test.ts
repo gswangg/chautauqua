@@ -48,6 +48,8 @@ vi.mock("../src/server/repo/review", async () => {
     getPlanForOrg: vi.fn(async (_db: unknown, planId: string, orgId: string) =>
       planId === planRecord.id && orgId === ORG_A ? planRecord : null,
     ),
+    getPlanById: vi.fn(async (_db: unknown, planId: string) => (planId === planRecord.id ? planRecord : null)),
+    listPlanIdsForReviewer: vi.fn(async () => [planRecord.id]),
     resolveReviewerSubmissions: vi.fn(async () => SUBMISSIONS),
     listEvaluationsForPlan: vi.fn(async () => [
       { submissionId: "sub-1", reviewerId: "someone-else", round: 1 },
@@ -104,5 +106,24 @@ describe("DEC-239: reviewer queue item wire shape", () => {
     const bySubmission = new Map(body.items.map((i) => [i.submissionId, i]));
     expect(bySubmission.get("sub-2")?.ratingsCount).toBe(0);
     expect(bySubmission.get("sub-1")?.ratingsCount).toBe(1);
+  });
+
+  // DEC-561: a reviewer who has already rated one of two in-scope
+  // submissions still sees BOTH -- the rated one sinks to the bottom instead
+  // of vanishing, and `total` counts both.
+  it("keeps an already-rated submission in the queue, sunk to the bottom", async () => {
+    const { listSubmissionIdsRatedBy } = await import("../src/server/repo/review");
+    vi.mocked(listSubmissionIdsRatedBy).mockResolvedValueOnce(new Set(["sub-1"]));
+    const app = await buildApp({ userId: "r1", role: "reviewer", orgId: ORG_A });
+    const res = await app.request(`/api/v1/review/plans/${planRecord.id}/queue`);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      items: { submissionId: string; ratingsCount: number; alreadyRatedByMe: boolean }[];
+      total: number;
+    };
+    expect(body.items.map((i) => i.submissionId)).toEqual(["sub-2", "sub-1"]);
+    expect(body.items.find((i) => i.submissionId === "sub-1")?.alreadyRatedByMe).toBe(true);
+    expect(body.items.find((i) => i.submissionId === "sub-2")?.alreadyRatedByMe).toBe(false);
+    expect(body.total).toBe(2);
   });
 });
