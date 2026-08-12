@@ -157,7 +157,12 @@ export function FormsPage() {
         <section className="chq-forms-section">
           <div className="chq-forms-field-list-header chq-forms-section-title">
             <h2>Fields</h2>
-            <button type="button" onClick={() => setModal({ mode: 'create' })} disabled={busy}>
+            <button
+              type="button"
+              className="chq-btn chq-btn-secondary"
+              onClick={() => setModal({ mode: 'create' })}
+              disabled={busy}
+            >
               Add a question
             </button>
           </div>

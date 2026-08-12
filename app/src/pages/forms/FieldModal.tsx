@@ -91,17 +91,17 @@ export function FieldModal({ field, allFields, onCancel, onSubmit }: FieldModalP
 
         {error && <div className="chq-error-banner">{error}</div>}
 
-        <label>
+        <label className="chq-field">
           Section
-          <select value={section} onChange={(e) => setSection(e.target.value as FormFieldSection)}>
+          <select className="chq-select" value={section} onChange={(e) => setSection(e.target.value as FormFieldSection)}>
             <option value="session">Session</option>
             <option value="speaker">Speaker</option>
           </select>
         </label>
 
-        <label>
+        <label className="chq-field">
           Kind
-          <select value={kind} onChange={(e) => setKind(e.target.value as FormFieldKind)}>
+          <select className="chq-select" value={kind} onChange={(e) => setKind(e.target.value as FormFieldKind)}>
             {FIELD_KINDS.map((k) => (
               <option key={k} value={k}>
                 {kindLabel(k)}
@@ -110,33 +110,33 @@ export function FieldModal({ field, allFields, onCancel, onSubmit }: FieldModalP
           </select>
         </label>
 
-        <label>
+        <label className="chq-field">
           Label
-          <input type="text" value={label} onChange={(e) => setLabel(e.target.value)} required />
+          <input className="chq-input" type="text" value={label} onChange={(e) => setLabel(e.target.value)} required />
         </label>
 
-        <label>
+        <label className="chq-field">
           Help text
-          <textarea value={helpText} onChange={(e) => setHelpText(e.target.value)} />
+          <textarea className="chq-textarea" value={helpText} onChange={(e) => setHelpText(e.target.value)} />
         </label>
 
         <label className="chq-checkbox-label">
-          <input type="checkbox" checked={required} onChange={(e) => setRequired(e.target.checked)} />
+          <input className="chq-check" type="checkbox" checked={required} onChange={(e) => setRequired(e.target.checked)} />
           Required
         </label>
 
         {kind === 'dropdown' && (
-          <label>
+          <label className="chq-field">
             Options (one per line)
-            <textarea value={optionsText} onChange={(e) => setOptionsText(e.target.value)} />
+            <textarea className="chq-textarea" value={optionsText} onChange={(e) => setOptionsText(e.target.value)} />
           </label>
         )}
 
         <fieldset className="chq-forms-rule-builder">
           <legend>Show this field when...</legend>
-          <label>
+          <label className="chq-field">
             Field
-            <select value={rule.fieldId} onChange={(e) => setRule({ ...rule, fieldId: e.target.value })}>
+            <select className="chq-select" value={rule.fieldId} onChange={(e) => setRule({ ...rule, fieldId: e.target.value })}>
               <option value="">Always visible</option>
               {candidates.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -147,9 +147,13 @@ export function FieldModal({ field, allFields, onCancel, onSubmit }: FieldModalP
           </label>
           {rule.fieldId.length > 0 && (
             <>
-              <label>
+              <label className="chq-field">
                 Condition
-                <select value={rule.op} onChange={(e) => setRule({ ...rule, op: e.target.value as RuleBuilderState['op'] })}>
+                <select
+                  className="chq-select"
+                  value={rule.op}
+                  onChange={(e) => setRule({ ...rule, op: e.target.value as RuleBuilderState['op'] })}
+                >
                   {RULE_OPS.map((op) => (
                     <option key={op} value={op}>
                       {op}
@@ -157,19 +161,19 @@ export function FieldModal({ field, allFields, onCancel, onSubmit }: FieldModalP
                   ))}
                 </select>
               </label>
-              <label>
+              <label className="chq-field">
                 Value{rule.op === 'in' ? ' (comma-separated)' : ''}
-                <input type="text" value={rule.value} onChange={(e) => setRule({ ...rule, value: e.target.value })} />
+                <input className="chq-input" type="text" value={rule.value} onChange={(e) => setRule({ ...rule, value: e.target.value })} />
               </label>
             </>
           )}
         </fieldset>
 
         <div className="chq-modal-actions">
-          <button type="button" onClick={onCancel} disabled={submitting}>
+          <button type="button" className="chq-btn chq-btn-secondary" onClick={onCancel} disabled={submitting}>
             Cancel
           </button>
-          <button type="submit" disabled={submitting}>
+          <button type="submit" className="chq-btn chq-btn-primary" disabled={submitting}>
             {submitting ? 'Saving...' : 'Save'}
           </button>
         </div>

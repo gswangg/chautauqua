@@ -89,9 +89,41 @@ describe('FormsPage render smoke', () => {
     expect(container.querySelector('.chq-forms-settings input[type="checkbox"]')).not.toBeInTheDocument();
 
     // FieldModal (create).
-    screen.getByRole('button', { name: 'Add a question' }).click();
+    const addButton = screen.getByRole('button', { name: 'Add a question' });
+    expect(addButton).toHaveClass('chq-btn', 'chq-btn-secondary');
+    addButton.click();
     const dialog = await screen.findByRole('dialog', { name: 'New field' });
     expect(dialog).toBeInTheDocument();
+
+    // ONE dialog contract (DEC-368/378): [role=dialog] IS the .chq-scrim
+    // wrapper, with .chq-modal as a STATIC (single) child.
+    expect(dialog).toHaveClass('chq-scrim');
+    expect(dialog.children).toHaveLength(1);
+    expect(dialog.firstElementChild).toHaveClass('chq-modal');
+
+    // Reveal the dropdown-options textarea and the conditional-rule
+    // op/value selects so every DEC-406 shell class gets asserted, not
+    // just the always-mounted controls.
+    fireEvent.change(screen.getByLabelText('Kind'), { target: { value: 'dropdown' } });
+    const fieldSelect = screen.getByLabelText('Field', { selector: 'select' });
+    fireEvent.change(fieldSelect, { target: { value: 'f1' } });
+
+    expect(screen.getByLabelText('Section', { selector: 'select' })).toHaveClass('chq-select');
+    expect(screen.getByLabelText('Kind', { selector: 'select' })).toHaveClass('chq-select');
+    expect(screen.getByLabelText('Label', { selector: 'input' })).toHaveClass('chq-input');
+    expect(screen.getByLabelText('Help text', { selector: 'textarea' })).toHaveClass('chq-textarea');
+    expect(screen.getByLabelText('Required', { selector: 'input' })).toHaveClass('chq-check');
+    expect(screen.getByLabelText('Options (one per line)', { selector: 'textarea' })).toHaveClass('chq-textarea');
+    expect(fieldSelect).toHaveClass('chq-select');
+    expect(screen.getByLabelText('Condition', { selector: 'select' })).toHaveClass('chq-select');
+    expect(screen.getByLabelText('Value', { selector: 'input' })).toHaveClass('chq-input');
+
+    const cancelButton = screen.getByRole('button', { name: 'Cancel' });
+    const saveButton = screen.getByRole('button', { name: 'Save' });
+    expect(cancelButton).toHaveClass('chq-btn', 'chq-btn-secondary');
+    expect(cancelButton.parentElement).toHaveClass('chq-modal-actions');
+    expect(saveButton).toHaveClass('chq-btn', 'chq-btn-primary');
+    expect(saveButton.parentElement).toHaveClass('chq-modal-actions');
 
     // DEC-378: Escape closes the dialog.
     fireEvent.keyDown(window, { key: 'Escape' });
