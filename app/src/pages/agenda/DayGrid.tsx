@@ -344,6 +344,7 @@ export function DayGrid({
             onDrop={(e) => handleDrop(e, session.roomId, session.startMin)}
             onSelect={() => handleCardSelect(session)}
             selected={armed?.submissionId === session.submissionId}
+            placed
           />
         );
       })}

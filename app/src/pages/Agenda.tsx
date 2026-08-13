@@ -10,6 +10,7 @@ import { PhoneAgenda } from './agenda/PhoneAgenda';
 import { placeOptimistically, reconcileConflictsSummary, unscheduleOptimistically } from './agenda/state';
 import type { AgendaPayload, DescribedUnplaced, RefreshedConflictsSummary, UnplacedReason } from './agenda/types';
 import { formatDayLabel } from '../lib/dates';
+import { formatMinutes } from './agenda/gridMath';
 import './agenda/agenda.css';
 
 const DAY_START_MIN = 540;
@@ -25,6 +26,26 @@ const UNPLACED_REASON_LABELS: Record<UnplacedReason, string> = {
   no_free_slot: 'no free slot available',
   speaker_double_booked: 'speaker already booked elsewhere',
 };
+
+/** Finds a session's ref (placed or unscheduled) for toast copy — the click
+ * that triggers a placement/move/unschedule always originates from a card
+ * already present in the current state, so this is only ever missing on a
+ * genuine bug (fall back to the id itself rather than throw mid-toast). */
+function findSessionRef(state: AgendaPayload, submissionId: string): string {
+  return (
+    state.placed.find((s) => s.submissionId === submissionId)?.ref ??
+    state.unscheduled.find((s) => s.submissionId === submissionId)?.ref ??
+    submissionId
+  );
+}
+
+/** DEC-853/DEC-724: room name resolved the same way DayGrid resolves it
+ * (name lookup, falling back to the raw id) — except the room-less slot,
+ * which is named 'no room yet', never 'TBD'. */
+function resolveRoomName(rooms: AgendaPayload['rooms'], roomId: string | null): string {
+  if (roomId === null) return 'no room yet';
+  return rooms.find((r) => r.id === roomId)?.name ?? roomId;
+}
 
 /** DEC-667: when a run places nothing, name why from the typed reasons the
  * run itself computed rather than reporting a bare "0 session(s)". */
@@ -73,6 +94,7 @@ export function AgendaPage() {
   async function handlePlace(submissionId: string, roomId: string | null, startMin: number, endMin: number) {
     if (!agenda) return;
     const previous = agenda;
+    const ref = findSessionRef(previous, submissionId);
     setAgenda(placeOptimistically(agenda, submissionId, { day: activeDay ?? previous.days[0] ?? '', startMin, endMin, roomId }));
     setError(null);
     try {
@@ -83,6 +105,15 @@ export function AgendaPage() {
         roomId,
       });
       setAgenda((current) => (current ? reconcileConflictsSummary(current, refreshed) : current));
+      // DEC-853/SPEC §2.3 warn-never-block: a placement/move can create a new
+      // clash — allowed, but never unannounced. The delta comes from the
+      // server's own before/after conflict counts, never re-derived
+      // client-side.
+      const roomName = resolveRoomName(previous.rooms, roomId);
+      const clashDelta = refreshed.summary.conflicts - previous.summary.conflicts;
+      const clashClause =
+        clashDelta > 0 ? ` ${clashDelta} new clash${clashDelta === 1 ? '' : 'es'} — flagged, not blocked.` : '';
+      setToast(`Placed ${ref} in ${roomName} at ${formatMinutes(startMin)}.${clashClause}`);
     } catch (err) {
       setAgenda(previous);
       setError(err instanceof ApiError ? `Placement failed: ${err.message}` : 'Placement failed');
@@ -99,11 +130,13 @@ export function AgendaPage() {
   async function handleUnschedule(submissionId: string) {
     if (!agenda) return;
     const previous = agenda;
+    const ref = findSessionRef(previous, submissionId);
     setAgenda(unscheduleOptimistically(agenda, submissionId));
     setError(null);
     try {
       const refreshed = await apiDelete<RefreshedConflictsSummary>(`/submissions/${submissionId}/slot`);
       setAgenda((current) => (current ? reconcileConflictsSummary(current, refreshed) : current));
+      setToast(`Unscheduled ${ref}.`);
     } catch (err) {
       setAgenda(previous);
       setError(err instanceof ApiError ? `Unschedule failed: ${err.message}` : 'Unschedule failed');

@@ -34,6 +34,12 @@ interface SessionCardProps {
   onSelect?: () => void;
   /** True while this card is the currently-armed placement source. */
   selected?: boolean;
+  /** True for cards already on the day grid (DEC-853): the click-to-select
+   * gesture on these cards MOVES the session to a different slot, not an
+   * initial placement — the accessible name says so. Unscheduled-tray cards
+   * omit this (undefined), keeping the "choose a time slot" wording for a
+   * first placement. */
+  placed?: boolean;
 }
 
 /** Drag-drop AND keyboard-operable source card for a session (DEC-570/571):
@@ -44,14 +50,16 @@ interface SessionCardProps {
  * track NAME rendered as text, never by a track color swatch). Draggable
  * via HTML5 DnD, carrying the submission id as plain text + a scoped MIME
  * type. */
-export function SessionCard({ session, tracks, conflicts, style, className, onDragOver, onDrop, dragHandle, onSelect, selected }: SessionCardProps) {
+export function SessionCard({ session, tracks, conflicts, style, className, onDragOver, onDrop, dragHandle, onSelect, selected, placed }: SessionCardProps) {
   const conflicted = conflicts.some((c) => c.submissionIds.includes(session.submissionId));
   const trackNames = tracks.filter((t) => session.trackIds.includes(t.id)).map((t) => t.name);
   // The placement path is click-to-arm (DEC-570), but nothing in the a11y tree
   // said so — both sbek runs never found manual placement (mandate coverage
   // item #1). Selectable cards now state the action in their accessible name.
+  // DEC-853: a card already on the grid is a MOVE, not a first placement —
+  // "choose a new slot" rather than "choose a time slot".
   const accessibleName = `${session.ref}: ${session.title}${conflicted ? ' (conflict)' : ''}${
-    onSelect ? ' — click to select, then choose a time slot' : ''
+    onSelect ? (placed ? ' — click to select, then choose a new slot' : ' — click to select, then choose a time slot') : ''
   }`;
 
   function handleDragStart(e: DragEvent<HTMLButtonElement>) {
