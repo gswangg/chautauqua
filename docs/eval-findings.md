@@ -109,51 +109,36 @@ RESTORE seed_saved_view_0001 (concurrent agent deleted it).**
 (Gate-2 closures: segmented buttons, OVERALL, weights, PII clamp, RANK table,
 queue anatomy, compact hub, locked read-only, criteria headers.)
 
-**Speakers — GATE-1 FLEET: FAIL (report fidelity-gate1/04-speakers/report.md)**:
-BROKEN: `.chq-participation-menu-trigger { border: none }` (speakers.css:211)
-strips the pill from 3 of 4 participation states (only filled Confirmed
-survives) — scope the reset; one line, restores DEC-730 vocabulary.
-MAJOR: participation filter → ONE "Any participation ▾" dropdown (frame +
-design README:291; DEC-789's four pills overridden by design authority; returns
-SKIPS copy inline right) · Add speaker → centered ~740px MODAL in the section's
-chq-form-row language (now a full-bleed inline panel displacing the page) ·
-task-response modal date "sent 2 Apr" grammar (raw US locale now).
-MINOR: reopen caption below button w/ frame copy · KIND selected = outlined
-chip not solid primary · DELIVERABLE KIND select undesigned (+ default
-mismatch) · "SPEAKER · PARTICIPATION" header · task column headers title-case
-body-size · menu: panel header (name + company · portal state), tinted current
-+ NOW, accent-green action · menu a11y (focus, arrows, outside-click,
-aria-checked) · "has account" plain lowercase (no chip, no dangling ·) ·
-identity column stacked · inline Send-portal-invite ONLY on NOT-INVITED rows ·
-copy EMAILED + en dash · SEED: response text-fields get "SFO" for date-labelled
-fields (seed.ts:1569) · import wizard green Close.
-(Probe-5 closures stand: DEC-830 semantics, DEC-827, Add-speaker function,
-DEC-730 grid family + ring.)
+**Speakers — GATE-2: FAIL, REGRESSION** (report fidelity-gate2/04-speakers/
+report.md): **P1-adjacent — CONFIRMED participation pill INVISIBLE on all 9
+seeded rows** (trigger reset speakers.css:216 background:none/padding:0/
+font:inherit after the DEC-730 modifiers; 3rd collision on this rule). FIX
+SHAPE MANDATED: reduce the reset to appearance+cursor (or :where()-scope) +
+computed-style render test for ALL FOUR states. ALSO REGRESSED: column header
+lost its second axis — restore "SPEAKER · PARTICIPATION". FIXED this gate:
+Any-participation dropdown, Add-speaker modal E2E, date grammar, filename link,
+accent invite, menuitemradio. STILL-OPEN batch: reopen caption ·
+KIND outlined-chip selected · DELIVERABLE KIND styling/default · task headers
+title-case · menu header line + tinted current + NOW treatment · menu
+focus/arrows/outside-click · has-account plain text · identity stacking ·
+invite link NOT-INVITED-only · EMAILED copy · en dash · import Close + file
+input · SEED SFO dates.
+**P2 — DELETE ROUND-TRIP DOESN'T CLOSE**: session delete leaves task_assignment
+orphans (DEC-921 ownership) → contact delete 409s AND orphans permanently
+inflate roster stats. DEC-886 prose contradicts implementation. Resolve the
+cascade or offer assignment cleanup on contact delete.
 
-**Content — GATE-1 FLEET: FAIL (full report fidelity-gate1/05-content/report.md)**:
-BROKEN: worklist row separators STAGGERED — td's carry display:flex
-(content.css L58/69/84) → per-column borders at different y + misaligned
-baselines on all rows; wrap cell contents in divs · "(unknown)" author-role
-leaks on every speaker note (files-comments.ts:204) — hide unknown role.
-MAJOR: organizer's own notes labeled "You · relative-time" (now raw email +
-"(organizer)" + absolute timestamp) · detail version list: newest row shows its
-version_no (now "Latest" w/o number) + REPLACED/changes-requested annotations ·
-style the drop zone (native Choose-File shows) + ADD .mp4 to accept (Recording
-deliverable currently un-uploadable) · "N re-uploaded" semantics wrong (counts
-changes_requested; no row can show RE-UPLOADED) — adopt frame vocabulary NOT
-REVIEWED/RE-UPLOADED or count real re-uploads · detail header rebuild: left back
-link above title, session title as H1 w/ "‹ Content" breadcrumb, subtitle
-"Speaker · CODE · slot, Room", CONTENT STATUS sunk band w/ when/by-whom,
-DELIVERABLES section rule · worklist default tab = "Needs a decision"
-(DEFAULT_WORKLIST_TAB ContentApp.tsx:42).
-MINOR: decision buttons — Ask-for-changes primary, helper below · relative
-timestamps everywhere · library header (breadcrumb + H1 Files + stat on header
-row) · library VERSION column = file's version; trim columns to frame; size col
-width · search left of chips · hide zero-count kind chips · headshot rows sort ·
-notes heading copy + rule + textarea placeholder · per-version Delete vs frame
-(DEC) · add a changes_requested→pending revert affordance (no UI path exists).
-(Probe closures stand: DEC-773 unified library, Download-all, version chaining,
-chips/counts, note paths.)
+**Content — GATE-2: FAIL, narrow** (same report; staggered rows, role leak,
+"You", version_no, DEC-881, header rebuild, default tab, library structure all
+CLOSED): NEW — duplicate H1 "Content" + dead pill-row chrome above every
+detail/library view (~200px; one H1 per page) · **version chain not unique per
+deliverable** (SES-005 shows two v1 roots as one "2 versions" chain — chain per
+deliverable kind, restore REPLACED tag) · heading alignment + heavy rules ·
+"v2 · Latest" wrap. STILL-OPEN: decision buttons inverted + helper below · one
+time convention (relative) · library trim columns/ZIP(0)/placeholder/headshot
+sort · per-version Delete DEC · changes_requested→pending path · styled drop
+zone w/ frame copy (mp4 half done) · SEED: one re-uploaded PENDING row so the
+signature state can demo.
 
 **Agenda (desktop) — GATE-2: FAIL, narrow** (same report; tray eviction,
 ring contrast 4.29:1, hover labels, N-way merge, title-row head, %-placed all
