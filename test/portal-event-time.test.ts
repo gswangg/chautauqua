@@ -58,6 +58,7 @@ describe("portal repo row types carry timezone (DEC-413)", () => {
   it("PortalSubmissionDetail requires timezone", () => {
     const row: PortalSubmissionDetail = {
       id: "s1",
+      eventId: "evt-1",
       ref: "T-0001",
       title: "Talk",
       description: null,
@@ -80,6 +81,7 @@ describe("portal repo row types carry timezone (DEC-413)", () => {
     const row: PortalTaskAssignment = {
       id: "a1",
       taskId: "t1",
+      eventId: "evt-1",
       kind: "general",
       title: "Do a thing",
       description: null,

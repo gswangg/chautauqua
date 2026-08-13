@@ -81,7 +81,9 @@ export async function getMySessions(db: Db, contactId: string, orgId: string): P
 }
 
 export interface PortalDeliverable {
+  id: string;
   filename: string;
+  sizeBytes: number;
   uploadedAt: number;
 }
 
@@ -91,11 +93,16 @@ export interface PortalDeliverable {
  * from the speaker's own PortalSession rows only, never a request param. */
 export async function getLatestDeliverable(db: Db, submissionId: string): Promise<PortalDeliverable | null> {
   const rows = await db
-    .select({ filename: schema.file.filename, createdAt: schema.file.createdAt })
+    .select({
+      id: schema.file.id,
+      filename: schema.file.filename,
+      sizeBytes: schema.file.sizeBytes,
+      createdAt: schema.file.createdAt,
+    })
     .from(schema.file)
     .where(eq(schema.file.submissionId, submissionId))
     .orderBy(desc(schema.file.createdAt))
     .limit(1);
   const row = rows[0];
-  return row ? { filename: row.filename, uploadedAt: row.createdAt.getTime() } : null;
+  return row ? { id: row.id, filename: row.filename, sizeBytes: row.sizeBytes, uploadedAt: row.createdAt.getTime() } : null;
 }

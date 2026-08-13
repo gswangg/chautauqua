@@ -14,6 +14,7 @@ export type PortalTaskKind = "general" | "file_request" | "form";
 export interface PortalTaskAssignment {
   id: string;
   taskId: string;
+  eventId: string;
   kind: PortalTaskKind;
   title: string;
   description: string | null;
@@ -34,6 +35,7 @@ export async function getMyTaskAssignments(db: Db, contactId: string, orgId: str
     .select({
       id: schema.taskAssignment.id,
       taskId: schema.taskAssignment.taskId,
+      eventId: schema.task.eventId,
       status: schema.taskAssignment.status,
       fileId: schema.taskAssignment.fileId,
       responseJson: schema.taskAssignment.responseJson,
@@ -55,6 +57,7 @@ export async function getMyTaskAssignments(db: Db, contactId: string, orgId: str
   return rows.map((row) => ({
     id: row.id,
     taskId: row.taskId,
+    eventId: row.eventId,
     kind: row.kind as PortalTaskKind,
     title: row.title,
     description: row.description,
