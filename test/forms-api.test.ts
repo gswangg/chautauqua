@@ -287,6 +287,25 @@ describe("PATCH /api/v1/forms/:formId tracks (DEC-169)", () => {
   });
 });
 
+// PATCH /api/v1/forms/:formId open/close order (DEC-517/DEC-731): the
+// server's validator is the ONE place close-before-open is refused, with
+// an ApiError carrying `fields` so the SPA can surface it inline at the
+// Opens/Closes field rather than a quiet banner.
+describe("PATCH /api/v1/forms/:formId openDate/closeDate order (DEC-517/DEC-731)", () => {
+  it("400s with a field error when closeDate is before openDate", async () => {
+    const app = await buildFormsApp(ORGANIZER);
+    const res = await app.request("/api/v1/forms/form-1", {
+      method: "PATCH",
+      headers: { "content-type": "application/json", "x-chq-csrf": "1" },
+      body: JSON.stringify({ openDate: Date.UTC(2026, 5, 1), closeDate: Date.UTC(2026, 4, 1) }),
+    });
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: { fields?: Record<string, string> } };
+    expect(body.error.fields?.openDate).toBeDefined();
+    expect(body.error.fields?.closeDate).toBeDefined();
+  });
+});
+
 // GET /api/v1/events/:eventId/forms (DEC-398): the top-level serialized
 // form is always the DEFAULT form, and the response additively carries
 // every form on the event (including non-default acceptance forms) for

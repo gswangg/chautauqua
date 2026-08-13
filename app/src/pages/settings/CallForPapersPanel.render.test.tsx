@@ -25,7 +25,7 @@ afterEach(() => {
 
 function mockCfp() {
   mockApi({
-    [`GET /api/v1/events/${EVENT_ID}`]: { id: EVENT_ID, slug: 'devcon-2026' },
+    [`GET /api/v1/events/${EVENT_ID}`]: { id: EVENT_ID, slug: 'devcon-2026', timezone: 'UTC' },
     [`GET /api/v1/events/${EVENT_ID}/forms`]: {
       id: 'form1',
       eventId: EVENT_ID,
@@ -66,6 +66,11 @@ describe('CallForPapersPanel', () => {
     // toISOString directly.
     expect(screen.getByDisplayValue('2026-01-01')).toBeInTheDocument();
     expect(screen.getByDisplayValue('2026-02-01')).toBeInTheDocument();
+
+    // DEC-731: the call's live state, derived from open/close dates -- this
+    // fixture's window (Jan-Feb 2026) is in the past relative to the test
+    // clock, so the derived state is "Closed".
+    expect(screen.getByText('Closed')).toBeInTheDocument();
 
     // Offered tracks: the one already on the form is selected.
     const keynotes = screen.getByRole('button', { name: 'Keynotes' });

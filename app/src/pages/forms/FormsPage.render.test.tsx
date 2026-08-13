@@ -55,7 +55,7 @@ afterEach(() => {
 describe('FormsPage render smoke', () => {
   it('renders the field list with a conditional-rule field, opens FieldModal, and renders FormSettings', async () => {
     mockApi({
-      [`GET /api/v1/events/${EVENT_ID}`]: { id: EVENT_ID, slug: 'devcon-2026' },
+      [`GET /api/v1/events/${EVENT_ID}`]: { id: EVENT_ID, slug: 'devcon-2026', timezone: 'UTC' },
       [`GET /api/v1/events/${EVENT_ID}/forms`]: FORM,
       [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([{ id: 'trk-1', name: 'Frontend' }]),
       [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([], { total: 47 }),
