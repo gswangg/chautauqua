@@ -13,7 +13,7 @@ import { renderTemplate, textToHtml } from "../../../mail/render";
 import type { ReminderAssignment } from "../../../domain/reminders";
 import { capReminderGroups, formatTaskLines, planManualReminders, planReminders } from "../../../domain/reminders";
 import type { KVStore } from "../../../auth/claim";
-import { resolvePortalLink } from "../portal-link";
+import { resolvePortalLinks } from "../portal-link";
 import { findAccountUserIds } from "../comms";
 import { effectiveAssignmentDueDate } from "../../../domain/task-due";
 
@@ -178,14 +178,25 @@ async function sendReminderEmails(
     }),
   );
 
+  // DEC-530 wave-46 amendment: resolve every recipient's portal link (and
+  // mint any claim tokens needed) through ONE batched Promise.all before the
+  // send loop, instead of an await-per-recipient KV round trip inside it.
+  const portalLinkMap = await resolvePortalLinks(
+    kv,
+    groups.map((group) => ({ contactId: group.contactId, userId: accountMap.get(group.contactId) ?? null })),
+    eventId,
+    origin,
+    mintClaimTokens,
+  );
+
   for (const group of groups) {
     const rows = outstandingByContact.get(group.contactId) ?? [];
     if (rows.length === 0) continue;
     const first = rows[0];
     if (!first) continue;
 
-    const userId = accountMap.get(group.contactId) ?? null;
-    const portalLink = await resolvePortalLink(kv, group.contactId, eventId, userId, origin, mintClaimTokens);
+    const portalLink = portalLinkMap.get(group.contactId);
+    if (!portalLink) throw new Error(`no portal link resolved for contactId ${group.contactId}`);
     const { subject, text: reminderText } = buildReminderMessage(
       eventName,
       eventTimezone,
@@ -318,13 +329,24 @@ export async function previewRemindNow(
     }),
   );
 
+  // DEC-530 wave-46 amendment: batched resolution above the preview loop —
+  // mintClaimTokens=false, so this never touches KV regardless of group
+  // count (userless contacts resolve to PREVIEW_CLAIM_TOKEN).
+  const portalLinkMap = await resolvePortalLinks(
+    kv,
+    plan.groups.map((group) => ({ contactId: group.contactId, userId: accountMap.get(group.contactId) ?? null })),
+    eventId,
+    origin,
+    false,
+  );
+
   const drafts: { contactId: string; email: string; name: string; subject: string; text: string }[] = [];
   for (const group of plan.groups) {
     const rows = outstandingByContact.get(group.contactId) ?? [];
     const first = rows[0];
     if (!first) continue;
-    const userId = accountMap.get(group.contactId) ?? null;
-    const portalLink = await resolvePortalLink(kv, group.contactId, eventId, userId, origin, false);
+    const portalLink = portalLinkMap.get(group.contactId);
+    if (!portalLink) throw new Error(`no portal link resolved for contactId ${group.contactId}`);
     const { subject, text } = buildReminderMessage(eventName, eventTimezone, group.assignments, portalLink);
     drafts.push({
       contactId: group.contactId,

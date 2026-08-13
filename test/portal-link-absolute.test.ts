@@ -1,7 +1,7 @@
 // DEC-071 regression: {portal_link} must render an absolute URL
 // (`${origin}/portal` or `${origin}/claim/:token`) in every email — relative
 // links are dead once opened outside the app's own origin. Covers both
-// resolvePortalLink call sites: src/routes/comms.ts (compose preview/send)
+// resolvePortalLinks call sites: src/routes/comms.ts (compose preview/send)
 // and src/routes/api/contacts.ts (bulk-email), for both branches (existing
 // user -> /portal, no user -> freshly minted /claim/:token).
 
