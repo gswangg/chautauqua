@@ -152,7 +152,7 @@ export function PublicPagesPanel() {
       {eventError || error ? <p role="alert">{eventError ?? error}</p> : null}
       <SummarySection
         sectionKey={SECTION_KEY}
-        label="Public pages and embeds"
+        label="Public pages"
         rows={summaryRows}
         actionLabel="Change"
         editing={editing}

@@ -50,7 +50,7 @@ describe('PublicPagesPanel', () => {
       </MemoryRouter>,
     );
 
-    const section = await screen.findByRole('region', { name: 'Public pages and embeds' });
+    const section = await screen.findByRole('region', { name: 'Public pages' });
     await waitFor(() => {
       expect(within(section).getByText('Sessions')).toBeInTheDocument();
     });
@@ -99,7 +99,7 @@ describe('PublicPagesPanel', () => {
       </MemoryRouter>,
     );
 
-    const section = await screen.findByRole('region', { name: 'Public pages and embeds' });
+    const section = await screen.findByRole('region', { name: 'Public pages' });
     await waitFor(() => {
       expect(within(section).getByText('Sessions')).toBeInTheDocument();
     });

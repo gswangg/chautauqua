@@ -173,7 +173,7 @@ export function EventSettingsPanel() {
       ) : null}
       <SummarySection
         sectionKey={SECTION_KEY}
-        label="Event settings"
+        label="Event"
         rows={rows}
         actionLabel="Change"
         editing={editing}

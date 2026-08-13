@@ -44,7 +44,7 @@ export const SECTIONS: SettingsSection[] = [
   { key: 'event', label: 'Event', Panel: EventSettingsPanel },
   { key: 'cfp', label: 'Call for papers', Panel: CallForPapersPanel },
   { key: 'tracks', label: 'Tracks and rooms', Panel: TracksRoomsPanel },
-  { key: 'public-pages', label: 'Public pages and embeds', Panel: PublicPagesPanel },
+  { key: 'public-pages', label: 'Public pages', Panel: PublicPagesPanel },
   { key: 'portal', label: 'Speaker portal', Panel: PortalSettingsPanel },
   { key: 'people', label: 'People and roles', Panel: PeopleRolesPanel },
   { key: 'your-data', label: 'Your data', Panel: YourDataPanel },
