@@ -8,12 +8,18 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
-import { SessionList } from './SessionList';
+import { SessionList, TAB_LABELS } from './SessionList';
 import type { ContentSubmissionListItem } from './types';
+import { WORKLIST_TABS, type WorklistTab } from './worklist';
 
 afterEach(() => {
   cleanup();
 });
+
+// DEC-825: chips render '· N' only once their own count has resolved — most
+// of this file's tests aren't exercising the chip strip, so every count is
+// withheld (null) unless a test overrides it.
+const NO_COUNTS: Record<WorklistTab, number | null> = { needs_decision: null, approved: null, all: null };
 
 const baseItem: ContentSubmissionListItem = {
   id: 'sub-1',
@@ -48,6 +54,7 @@ describe('SessionList: v4 mock five-column IA (DEC-692)', () => {
         perPage={20}
         onPageChange={noop}
         now={1700000200000}
+        counts={NO_COUNTS}
       />,
     );
 
@@ -70,6 +77,7 @@ describe('SessionList: v4 mock five-column IA (DEC-692)', () => {
         perPage={20}
         onPageChange={noop}
         now={1700000200000}
+        counts={NO_COUNTS}
       />,
     );
 
@@ -94,6 +102,7 @@ describe('SessionList: v4 mock five-column IA (DEC-692)', () => {
         perPage={20}
         onPageChange={noop}
         now={1700000200000}
+        counts={NO_COUNTS}
       />,
     );
 
@@ -116,6 +125,7 @@ describe('SessionList: v4 mock five-column IA (DEC-692)', () => {
         perPage={20}
         onPageChange={noop}
         now={1700000200000}
+        counts={NO_COUNTS}
       />,
     );
 
@@ -138,6 +148,7 @@ describe('SessionList: v4 mock five-column IA (DEC-692)', () => {
         perPage={20}
         onPageChange={noop}
         now={1700000200000}
+        counts={NO_COUNTS}
       />,
     );
 
@@ -160,6 +171,7 @@ describe('SessionList: v4 mock five-column IA (DEC-692)', () => {
         perPage={20}
         onPageChange={noop}
         now={1700000200000}
+        counts={NO_COUNTS}
       />,
     );
 
@@ -182,6 +194,7 @@ describe('SessionList: v4 mock five-column IA (DEC-692)', () => {
         perPage={20}
         onPageChange={noop}
         now={1700000200000}
+        counts={NO_COUNTS}
       />,
     );
 
@@ -206,6 +219,7 @@ describe('SessionList: v4 mock five-column IA (DEC-692)', () => {
         perPage={20}
         onPageChange={noop}
         now={1700000200000}
+        counts={NO_COUNTS}
       />,
     );
 
@@ -232,6 +246,7 @@ describe('SessionList: Approve is absent, not disabled, once a row is approved',
         perPage={20}
         onPageChange={noop}
         now={1700000200000}
+        counts={NO_COUNTS}
       />,
     );
 
@@ -254,6 +269,7 @@ describe('SessionList: Approve is absent, not disabled, once a row is approved',
         perPage={20}
         onPageChange={noop}
         now={1700000200000}
+        counts={NO_COUNTS}
       />,
     );
 
@@ -281,6 +297,7 @@ describe('SessionList: Latest file column renders a relative date', () => {
         perPage={20}
         onPageChange={noop}
         now={now}
+        counts={NO_COUNTS}
       />,
     );
 
@@ -303,6 +320,7 @@ describe('SessionList: Latest file column renders a relative date', () => {
         perPage={20}
         onPageChange={noop}
         now={now}
+        counts={NO_COUNTS}
       />,
     );
 
@@ -325,9 +343,66 @@ describe('SessionList: Latest file column renders a relative date', () => {
         perPage={20}
         onPageChange={noop}
         now={now}
+        counts={NO_COUNTS}
       />,
     );
 
     expect(container.querySelector('.chq-content-latest-file-date')).toHaveTextContent('2 days ago');
+  });
+});
+
+// DEC-825: the worklist renders exactly the mock's three chips, in the
+// mock's order, each counted by its own predicate (worklist.ts
+// WORKLIST_TAB_CONTENT_STATUS) rather than a shared/derived number.
+describe('SessionList: three DEC-825 chips, in order, each with its own count', () => {
+  it('renders Needs a decision / Approved / All accepted sessions in that order with their counts', () => {
+    render(
+      <SessionList
+        items={[baseItem]}
+        tab="all"
+        onTabChange={noop}
+        onSelect={noop}
+        loading={false}
+        loaded={true}
+        onContentStatusChange={noop}
+        total={1}
+        page={1}
+        perPage={20}
+        onPageChange={noop}
+        now={1700000200000}
+        counts={{ needs_decision: 3, approved: 5, all: 8 }}
+      />,
+    );
+
+    expect(WORKLIST_TABS).toEqual(['needs_decision', 'approved', 'all']);
+    const chips = screen.getAllByRole('tab');
+    expect(chips.map((c) => c.textContent)).toEqual([
+      `${TAB_LABELS.needs_decision} · 3`,
+      `${TAB_LABELS.approved} · 5`,
+      `${TAB_LABELS.all} · 8`,
+    ]);
+  });
+
+  it("withholds a chip's count (renders no '· N') until its own read has resolved", () => {
+    render(
+      <SessionList
+        items={[baseItem]}
+        tab="all"
+        onTabChange={noop}
+        onSelect={noop}
+        loading={false}
+        loaded={true}
+        onContentStatusChange={noop}
+        total={1}
+        page={1}
+        perPage={20}
+        onPageChange={noop}
+        now={1700000200000}
+        counts={NO_COUNTS}
+      />,
+    );
+
+    expect(screen.getByRole('tab', { name: TAB_LABELS.needs_decision })).toHaveTextContent(TAB_LABELS.needs_decision);
+    expect(screen.getByRole('tab', { name: TAB_LABELS.needs_decision }).textContent).not.toMatch(/·/);
   });
 });
