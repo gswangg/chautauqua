@@ -598,7 +598,7 @@ describe('AgendaPage armed self-clash and top-layer click-to-place (DEC-769)', (
     });
 
     // Arm sub-1 (Main Hall, 10:00-10:30) by clicking its own placed card.
-    fireEvent.click(screen.getByRole('button', { name: 'S-001: Solo Talk A' }));
+    fireEvent.click(screen.getByRole('button', { name: 'S-001: Solo Talk A — click to select, then choose a time slot' }));
     expect(screen.getByText(/Placing S-001 — Esc to cancel/)).toBeInTheDocument();
 
     // sub-5 occupies Room B 10:00-10:30. Click the 10:15am row -- inside
@@ -632,7 +632,7 @@ describe('AgendaPage armed self-clash and top-layer click-to-place (DEC-769)', (
       expect(screen.getByText('Solo Talk A')).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'S-001: Solo Talk A' }));
+    fireEvent.click(screen.getByRole('button', { name: 'S-001: Solo Talk A — click to select, then choose a time slot' }));
 
     // sub-1's own slot (Main Hall, 10:00am) — excluded from its own
     // occupancy count, so it renders as an ordinary (non-clash) button.
@@ -662,7 +662,7 @@ describe('AgendaPage armed self-clash and top-layer click-to-place (DEC-769)', (
       expect(screen.getByText('Solo Talk A')).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'S-001: Solo Talk A' }));
+    fireEvent.click(screen.getByRole('button', { name: 'S-001: Solo Talk A — click to select, then choose a time slot' }));
     const clashButton = screen.getByRole('button', {
       name: 'Place S-001 at 10:15am in Room B — will clash with 1 session',
     });

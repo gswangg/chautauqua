@@ -23,6 +23,9 @@ function makeChain(rows: unknown[]) {
     innerJoin: () => chain,
     leftJoin: () => chain,
     where: () => chain,
+    // DEC-768: a ?day=-filtered agenda/schedule also asks for the full day
+    // list (getPublicScheduleDayCounts), which groups by schedule_slot.day.
+    groupBy: () => chain,
     orderBy: () => chain,
     // DEC-548: getPublicAgenda ends its count(*) subquery build with .as().
     as: () => chain,

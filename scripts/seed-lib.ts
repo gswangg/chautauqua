@@ -80,6 +80,9 @@ export const TABLES_IN_DELETE_ORDER: readonly string[] = [
   // contact/user/org below.
   "pipeline_activity",
   "pipeline_entry",
+  // DEC-770: contact_duplicate_dismissal references org and two contacts, so
+  // it must clear before contact/org below.
+  "contact_duplicate_dismissal",
   "contact",
   "auth_session",
   "user",

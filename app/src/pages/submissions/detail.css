@@ -45,7 +45,10 @@
   padding-top: 0.5rem;
   font-size: 13px;
   font-weight: 600;
-  color: var(--chq-ink-muted, #565a4b);
+  /* --chq-ink-muted is not a token that exists; the literal fallback was the
+     one actually rendering. It is byte-identical to --chq-muted, so this is
+     the same colour through the real token (DEC-383: no hex literals). */
+  color: var(--chq-muted);
 }
 
 .chq-detail-position-prev,

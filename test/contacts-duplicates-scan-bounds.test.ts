@@ -27,12 +27,23 @@ function makeFakeDb(rows: FakeRow[]) {
 
   const db = {
     select(projection: Record<string, unknown>) {
-      capturedProjection = projection;
+      // DEC-770 added a SECOND select inside findDuplicateGroupsForOrg (the
+      // dismissed-pair lookup, which stops at .where() and is awaited
+      // directly). Only the FIRST select -- the contact-directory scan this
+      // DEC-554 guard is about -- is the one whose projection/limit/orderBy
+      // we assert on.
+      capturedProjection ??= projection;
       return {
         from(_table: unknown) {
           return {
+            // Awaiting the .where() result (the dismissal query shape) yields
+            // no dismissed pairs, so this guard sees the unfiltered groups it
+            // has always asserted on.
             where(_cond: unknown) {
               return {
+                then(resolve: (rows: unknown[]) => void) {
+                  resolve([]);
+                },
                 orderBy(_ord: unknown) {
                   orderByCalled = true;
                   return {

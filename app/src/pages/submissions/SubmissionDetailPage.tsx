@@ -497,7 +497,7 @@ export function SubmissionDetailPage() {
                 &lsaquo;
               </Link>
             )}
-            <span className="chq-detail-position-count">
+            <span>
               {listPosition.position} of {listPosition.total}
             </span>
             {listPosition.nextId && (

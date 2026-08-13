@@ -164,6 +164,9 @@ export const NEVER_PUBLIC: PathPattern[] = [
   "/api/v1/templates/*",
   "/api/v1/events/:id/compose/*",
   "/api/v1/contacts/bulk-email*",
+  // DEC-770: dismissing a duplicate pair records an organizer-side judgement
+  // about two contact rows; no public page renders the duplicate list.
+  "/api/v1/contacts/duplicates/dismiss",
   "/api/v1/segments*",
   "/api/v1/pipeline*",
   "/api/v1/events/:id/tasks",
