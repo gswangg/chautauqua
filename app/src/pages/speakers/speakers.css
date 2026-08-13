@@ -284,12 +284,12 @@
 }
 
 .chq-participation-menu-now {
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.04em;
   padding: 1px 5px;
   border-radius: 3px;
-  color: #fff;
+  color: var(--chq-on-brand);
   background: var(--chq-brand);
 }
 
