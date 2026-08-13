@@ -31,26 +31,31 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   is null for a row with no user. A disabled input must look disabled; a
   status picker is not a decision. A toggle needing a companion choice
   REVEALS it and WAITS. An absent image is a DRAWN placeholder. A
-  deterministic TIE-BREAK answers "which row do we join" but not "which
-  of your talks is this" — when data admits two, ASK. A timeline the data
-  already implies needs a UNION not a migration; a fact stored twice
-  drifts. Number() parses JS literals: "1e999" is Infinity, lands null in
-  a REQUIRED column. A gate skipped for one content type is not a gate. A
+  deterministic TIE-BREAK answers "which row" but not "which of your
+  talks" — when data admits two, ASK. A timeline the data already
+  implies needs a UNION not a migration; a fact stored twice drifts.
+  Number() parses JS literals: "1e999" is Infinity, lands null in a
+  REQUIRED column. A gate skipped for one content type is not a gate. A
   generalisation already computed and thrown away is the cheapest fix in
-  the tree. A caption standing in for a checkbox is a decision made
-  silently. Nine date complaints on six pages are one toLocaleDateString.
-  A page's actions belong to its title row.
-- FINDINGS w20 (DEC-908..914): 18 of ~22 headline mandate items probed this
-  wave were ALREADY CLOSED in code. GREP BEFORE YOU TASK; cite a line
-  number or drop the item. What was actually open was never in a
-  headline: a page whose SECTIONS are right but whose ORDER is wrong; a
-  count written as a negation over an open set ("not an organiser" =
-  reviewer + speaker); several c.text 404s on one surface while its
-  sibling had a designed card; a flag gated on the checkbox for a
-  DIFFERENT question because the server only resolved the fact when the
-  checkbox was on; four requests to print four numbers about one filtered
-  set; a link whose label and href name different routes. Rules: an
-  asterisk is a legend the page never prints — say "· optional"; a field
-  with a maximum shows the count. A page that states a fact twice (Meta
-  vs History) will drift — delete one. A back-link string written per
-  page drifts the next route move — one table, throw on unknown.
+  the tree. A caption for a checkbox is a silent decision. Nine date
+  complaints on six pages are one toLocaleDateString. A page's actions
+  belong to its title row.
+- FINDINGS w20 (DEC-908..914, compacted): mostly ALREADY CLOSED — grep
+  before tasking. Open items: section order wrong though sections right;
+  count as negation over open set; c.text 404s beside a designed sibling;
+  flag gated on wrong checkbox; N requests for N numbers on one filtered
+  set; link label/href naming different routes. Asterisk is a legend the
+  page never prints — say "· optional". A fact stated twice will drift —
+  delete one. A back-link string per page drifts — use one table.
+- FINDINGS w21 (DEC-915..920): ~28 of ~30 mandate items ALREADY CLOSED —
+  mandate file is mostly archaeology now; grep first, cite a line, drop
+  otherwise. A prop that renders nothing is a decision callers still
+  believe in — delete, don't document. A grammar fixed on one renderer
+  gets fixed on its SIBLINGS same wave. A comment stating the output
+  while code uses a different locale is a bug with an alibi — a scan
+  test holds the formatter, not the docstring. Three surfaces answering
+  "narrow this list" with pills/select/nothing are three products. An
+  onChange that writes to the server writes N times and races its own
+  reload — a row is a DRAFT until Save. A drilled edit view with no Done
+  is a trap; check siblings' exit grammar first. A link saying "File" is
+  a missing join wearing a noun.
