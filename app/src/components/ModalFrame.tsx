@@ -54,12 +54,6 @@ export function FormRow({ label, htmlFor, help, error, required = false, childre
     <div className="chq-form-row">
       <label className="chq-form-row-label" htmlFor={htmlFor}>
         {label}
-        {required && (
-          <span className="chq-form-row-required" aria-hidden="true">
-            {' '}
-            *
-          </span>
-        )}
       </label>
       <div className="chq-form-row-control">{children}</div>
       {help !== undefined && <div className="chq-form-row-help">{help}</div>}
@@ -71,6 +65,15 @@ export function FormRow({ label, htmlFor, help, error, required = false, childre
       ) : null}
     </div>
   );
+}
+
+// DEC-897: the ONE paired-row layout -- exactly two FormRow children share
+// one row of the modal's form grid (equal columns), stacking below the
+// modal's narrow breakpoint. Used for date/time ranges (e.g. Starts/Ends)
+// so the pairing itself, not a caption, is what makes a close-before-open
+// relationship legible.
+export function FormRowPair({ children }: { children: ReactNode }) {
+  return <div className="chq-form-row-pair">{children}</div>;
 }
 
 // DEC-651: the ONE dialog frame. Renders the existing .chq-scrim + .chq-modal
