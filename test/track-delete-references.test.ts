@@ -1,8 +1,14 @@
 // DEC-229: deleteTrack extends its 409-never-cascades guard beyond
 // submissions to form.tracks_json, evaluation_plan.filters_json track
-// filters, and plan_reviewer.track_id scope rows. A minimal fake db stands
-// in for D1, mirroring the sequential select() calls made by deleteTrack
-// (see test/agenda-repo.test.ts / test/agenda-room-ownership.test.ts for the
+// filters, and plan_reviewer.track_id scope rows. DEC-931 additionally
+// names the blocking rows in each refusal's `fields` map (see
+// test/track-room-delete-blockers.test.ts for the message-content
+// coverage) -- this file exercises the pass/fail branch shape against
+// deleteTrack's new query sequence: track lookup, submissionCount agg,
+// event ref-fields lookup, submissionTrack join (limit 5), form lookup,
+// plan list, plan_reviewer join (limit 5). A minimal fake db stands in for
+// D1, mirroring those sequential select() calls (see
+// test/agenda-repo.test.ts / test/agenda-room-ownership.test.ts for the
 // established pattern — no local sqlite/D1 test driver is wired up here).
 
 import { describe, expect, it } from "vitest";
@@ -50,6 +56,8 @@ const trackRow = {
   updatedAt: now,
 };
 
+const eventRefFields = { recordPrefix: "TALK", timezone: "UTC" };
+
 function planRow(overrides: Partial<Record<string, unknown>> = {}) {
   return {
     id: "plan1",
@@ -93,7 +101,9 @@ describe("deleteTrack referential guard (DEC-229, never cascades)", () => {
     const db = fakeDb([
       [trackRow], // getTrackForEvent row lookup
       [], // getTrackForEvent's submissionCount grouped aggregate (DEC-916)
-      [{ id: "sub1" }],
+      [eventRefFields], // getEventRefFields (DEC-931)
+      [{ seq: 1, title: "Talk" }], // submissionTrack join submission (limit 5)
+      [{ count: 1 }], // bounded COUNT
     ]);
     await expect(deleteTrack(db, "track1", "event1")).rejects.toMatchObject({ status: 409 });
   });
@@ -102,7 +112,8 @@ describe("deleteTrack referential guard (DEC-229, never cascades)", () => {
     const db = fakeDb([
       [trackRow], // getTrackForEvent row lookup
       [], // getTrackForEvent's submissionCount grouped aggregate (DEC-916)
-      [], // submissionTrack join refs (DEC-855: the only submission-track guard query now)
+      [eventRefFields], // getEventRefFields (DEC-931)
+      [], // submissionTrack join refs (limit 5, none)
       [formRow({ tracksJson: JSON.stringify(["track1", "track2"]) })], // findFormForEvent
     ]);
     await expect(deleteTrack(db, "track1", "event1")).rejects.toMatchObject({ status: 409 });
@@ -112,6 +123,7 @@ describe("deleteTrack referential guard (DEC-229, never cascades)", () => {
     const db = fakeDb([
       [trackRow],
       [], // getTrackForEvent's submissionCount grouped aggregate (DEC-916)
+      [eventRefFields], // getEventRefFields (DEC-931)
       [],
       [], // no form
       [{ plan: planRow({ filtersJson: JSON.stringify({ trackIds: ["track1"] }) }), timezone: "UTC" }], // listPlansForEvent
@@ -123,10 +135,12 @@ describe("deleteTrack referential guard (DEC-229, never cascades)", () => {
     const db = fakeDb([
       [trackRow],
       [], // getTrackForEvent's submissionCount grouped aggregate (DEC-916)
+      [eventRefFields], // getEventRefFields (DEC-931)
       [],
       [], // no form
       [{ plan: planRow(), timezone: "UTC" }], // one plan, no filter reference
-      [{ id: "pr1", planId: "plan1", userId: "u1", trackId: "track1", submissionId: null }], // listReviewerRowsForPlan
+      [{ email: "reviewer@example.com", planName: "Plan" }], // plan_reviewer join evaluation_plan join user (DEC-931, limit 5)
+      [{ count: 1 }], // bounded COUNT
     ]);
     await expect(deleteTrack(db, "track1", "event1")).rejects.toMatchObject({ status: 409 });
   });
@@ -135,6 +149,7 @@ describe("deleteTrack referential guard (DEC-229, never cascades)", () => {
     const db = fakeDb([
       [trackRow],
       [], // getTrackForEvent's submissionCount grouped aggregate (DEC-916)
+      [eventRefFields], // getEventRefFields (DEC-931)
       [],
       [], // no form
       [{ plan: planRow(), timezone: "UTC" }], // one plan, no filter reference

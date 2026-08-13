@@ -4,11 +4,14 @@
 import { and, asc, desc, eq, sql } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
-import { newId } from "../../domain/ids";
+import { newId, formatRef } from "../../domain/ids";
 import { ApiError } from "../http";
 import { findFormForEvent } from "./forms";
-import { listPlansForEvent, listReviewerRowsForPlan } from "./review";
-import { DEC_229, DEC_461 } from "../../decisions";
+import { listPlansForEvent } from "./review";
+import { formatScheduleSlotLabel } from "../../lib/event-time";
+import { DEC_229, DEC_461, DEC_931 } from "../../decisions";
+
+void DEC_931; // delete-refusal fields name their blocking rows -- see deleteTrack/deleteRoom below
 
 void DEC_229; // deleteTrack's referential guard extends to forms/plans/plan_reviewer -- see below
 
@@ -353,18 +356,56 @@ export async function updateTrack(
   return updated;
 }
 
-/** 409 conflict (never cascades) when the track is referenced by a submission. */
+/** DEC-931: appends "... and N more" once `total` exceeds the already-
+ * bounded (<=5) `names` list the caller read via a `limit(5)` SELECT. */
+function namesWithMore(names: string[], total: number): string[] {
+  if (total <= names.length) return names;
+  return [...names, `... and ${total - names.length} more`];
+}
+
+/** Event row fields every DEC-931 delete-refusal message needs to name its
+ * blockers by human handle: `recordPrefix` for formatRef, `timezone` for
+ * schedule-slot labels. Never falls back to the server's own zone. */
+async function getEventRefFields(db: Db, eventId: string): Promise<{ recordPrefix: string; timezone: string }> {
+  const rows = await db
+    .select({ recordPrefix: schema.event.recordPrefix, timezone: schema.event.timezone })
+    .from(schema.event)
+    .where(eq(schema.event.id, eventId))
+    .limit(1);
+  const row = rows[0];
+  if (!row) throw new Error(`getEventRefFields: event ${eventId} not found`);
+  return row;
+}
+
+/** 409 conflict (never cascades, DEC-229) when the track is referenced by a
+ * submission, the event's form, an evaluation plan's track filter, or a
+ * reviewer's track scope. DEC-931: each refusal's `fields` map names up to
+ * five blocking rows plus "... and N more" -- every blocker read is bounded
+ * (limit 5 + a separate COUNT), never an unbounded fetch, and the
+ * reviewer-scope check is ONE query joining plan_reviewer to
+ * evaluation_plan on eventId, never a query per plan. */
 export async function deleteTrack(db: Db, trackId: string, eventId: string): Promise<void> {
   const existing = await getTrackForEvent(db, trackId, eventId);
   if (!existing) throw new ApiError("not_found", "Track not found");
 
-  const joinRefs = await db
-    .select({ submissionId: schema.submissionTrack.submissionId })
+  const { recordPrefix } = await getEventRefFields(db, eventId);
+
+  const subRows = await db
+    .select({ seq: schema.submission.seq, title: schema.submission.title })
     .from(schema.submissionTrack)
+    .innerJoin(schema.submission, eq(schema.submission.id, schema.submissionTrack.submissionId))
     .where(eq(schema.submissionTrack.trackId, trackId))
-    .limit(1);
-  if (joinRefs.length > 0) {
-    throw new ApiError("conflict", "Track is referenced by one or more submissions");
+    .limit(5);
+  if (subRows.length > 0) {
+    const countRows = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(schema.submissionTrack)
+      .where(eq(schema.submissionTrack.trackId, trackId));
+    const total = Number(countRows[0]?.count ?? 0);
+    const names = subRows.map((r) => `${formatRef(recordPrefix, r.seq)} - ${r.title}`);
+    throw new ApiError("conflict", "Track is referenced by one or more submissions", {
+      submissions: namesWithMore(names, total).join("; "),
+    });
   }
 
   // DEC-229: never cascade -- also reject when a form's tracks_json, a
@@ -373,20 +414,41 @@ export async function deleteTrack(db: Db, trackId: string, eventId: string): Pro
   // review.ts rather than re-parsing the raw JSON columns here.
   const form = await findFormForEvent(db, eventId);
   if (form && form.tracks && form.tracks.includes(trackId)) {
-    throw new ApiError("conflict", "Track is referenced by a form's track selection");
+    throw new ApiError("conflict", "Track is referenced by a form's track selection", {
+      form: form.title,
+    });
   }
 
   const plans = await listPlansForEvent(db, eventId);
-  const filterPlan = plans.find((p) => p.filters?.trackIds?.includes(trackId));
-  if (filterPlan) {
-    throw new ApiError("conflict", "Track is referenced by an evaluation plan's track filter");
+  const filterPlans = plans.filter((p) => p.filters?.trackIds?.includes(trackId));
+  if (filterPlans.length > 0) {
+    const names = filterPlans.slice(0, 5).map((p) => p.name);
+    throw new ApiError("conflict", "Track is referenced by an evaluation plan's track filter", {
+      plans: namesWithMore(names, filterPlans.length).join("; "),
+    });
   }
 
-  for (const plan of plans) {
-    const reviewers = await listReviewerRowsForPlan(db, plan.id);
-    if (reviewers.some((r) => r.trackId === trackId)) {
-      throw new ApiError("conflict", "Track is referenced by a reviewer's track scope");
-    }
+  // DEC-931: ONE query joining plan_reviewer to evaluation_plan on eventId
+  // and filtering trackId -- never a query per plan (the previous shape
+  // iterated `plans` and called listReviewerRowsForPlan once per row).
+  const reviewerRows = await db
+    .select({ email: schema.user.email, planName: schema.evaluationPlan.name })
+    .from(schema.planReviewer)
+    .innerJoin(schema.evaluationPlan, eq(schema.evaluationPlan.id, schema.planReviewer.planId))
+    .innerJoin(schema.user, eq(schema.user.id, schema.planReviewer.userId))
+    .where(and(eq(schema.evaluationPlan.eventId, eventId), eq(schema.planReviewer.trackId, trackId)))
+    .limit(5);
+  if (reviewerRows.length > 0) {
+    const countRows = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(schema.planReviewer)
+      .innerJoin(schema.evaluationPlan, eq(schema.evaluationPlan.id, schema.planReviewer.planId))
+      .where(and(eq(schema.evaluationPlan.eventId, eventId), eq(schema.planReviewer.trackId, trackId)));
+    const total = Number(countRows[0]?.count ?? 0);
+    const names = reviewerRows.map((r) => `${r.email} in '${r.planName}'`);
+    throw new ApiError("conflict", "Track is referenced by a reviewer's track scope", {
+      reviewers: namesWithMore(names, total).join("; "),
+    });
   }
 
   await db.delete(schema.track).where(eq(schema.track.id, trackId));
@@ -494,18 +556,41 @@ export async function updateRoom(
 /** 409 conflict (never cascades) when the room is referenced by a schedule
  * slot — DEC-519: deletion never mutates or clears an existing placement's
  * room_id, it is refused outright while any schedule_slot still references
- * this room, so there is no ics_sequence bump to make here. */
+ * this room, so there is no ics_sequence bump to make here. DEC-931: the
+ * refusal's `fields.slots` names up to five blocking sessions as "REF -
+ * Title (Wed 12, 10:00, Room name)", the day/time formatted through
+ * src/lib/event-time.ts against the OWNING event's timezone (never the
+ * server's) — bounded via a limit-5 SELECT plus a separate COUNT. */
 export async function deleteRoom(db: Db, roomId: string, eventId: string): Promise<void> {
   const existing = await getRoomForEvent(db, roomId, eventId);
   if (!existing) throw new ApiError("not_found", "Room not found");
 
-  const refs = await db
-    .select({ id: schema.scheduleSlot.id })
+  const { recordPrefix, timezone } = await getEventRefFields(db, eventId);
+
+  const slotRows = await db
+    .select({
+      seq: schema.submission.seq,
+      title: schema.submission.title,
+      day: schema.scheduleSlot.day,
+      startMin: schema.scheduleSlot.startMin,
+    })
     .from(schema.scheduleSlot)
+    .innerJoin(schema.submission, eq(schema.submission.id, schema.scheduleSlot.submissionId))
     .where(eq(schema.scheduleSlot.roomId, roomId))
-    .limit(1);
-  if (refs.length > 0) {
-    throw new ApiError("conflict", "Room is referenced by one or more schedule slots");
+    .limit(5);
+  if (slotRows.length > 0) {
+    const countRows = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(schema.scheduleSlot)
+      .where(eq(schema.scheduleSlot.roomId, roomId));
+    const total = Number(countRows[0]?.count ?? 0);
+    const names = slotRows.map(
+      (r) =>
+        `${formatRef(recordPrefix, r.seq)} - ${r.title} (${formatScheduleSlotLabel(r.day, r.startMin, timezone)}, ${existing.name})`,
+    );
+    throw new ApiError("conflict", "Room is referenced by one or more schedule slots", {
+      slots: namesWithMore(names, total).join("; "),
+    });
   }
 
   await db.delete(schema.room).where(eq(schema.room.id, roomId));

@@ -94,6 +94,10 @@ export function TracksRoomsPanel() {
   const [roomRowErrors, setRoomRowErrors] = useState<Record<string, RoomFormErrors>>({});
   const [savingTrackId, setSavingTrackId] = useState<string | null>(null);
   const [savingRoomId, setSavingRoomId] = useState<string | null>(null);
+  // DEC-931: a delete refusal's ApiError.fields names the blocking rows --
+  // rendered as a list under the failing row instead of the bare message.
+  const [trackDeleteBlockers, setTrackDeleteBlockers] = useState<Record<string, Record<string, string>>>({});
+  const [roomDeleteBlockers, setRoomDeleteBlockers] = useState<Record<string, Record<string, string>>>({});
 
   function reload(id: string) {
     apiList<Track>(`/events/${id}/tracks`)
@@ -205,9 +209,14 @@ export function TracksRoomsPanel() {
     if (!eventId) return;
     try {
       await apiDelete(`/tracks/${track.id}`);
+      setTrackDeleteBlockers((prev) => ({ ...prev, [track.id]: {} }));
       reload(eventId);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Failed to delete track');
+      if (err instanceof ApiError && err.fields) {
+        setTrackDeleteBlockers((prev) => ({ ...prev, [track.id]: err.fields! }));
+      } else {
+        setError(err instanceof ApiError ? err.message : 'Failed to delete track');
+      }
     }
   }
 
@@ -258,9 +267,14 @@ export function TracksRoomsPanel() {
     if (!eventId) return;
     try {
       await apiDelete(`/rooms/${room.id}`);
+      setRoomDeleteBlockers((prev) => ({ ...prev, [room.id]: {} }));
       reload(eventId);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Failed to delete room');
+      if (err instanceof ApiError && err.fields) {
+        setRoomDeleteBlockers((prev) => ({ ...prev, [room.id]: err.fields! }));
+      } else {
+        setError(err instanceof ApiError ? err.message : 'Failed to delete room');
+      }
     }
   }
 
@@ -373,6 +387,16 @@ export function TracksRoomsPanel() {
                   </span>
                   {rowErrors.name ? <span role="alert">{rowErrors.name}</span> : null}
                   {rowErrors.color ? <span role="alert">{rowErrors.color}</span> : null}
+                  {Object.entries(trackDeleteBlockers[track.id] ?? {}).map(([key, value]) => (
+                    <div key={key} role="alert" className="chq-settings-delete-blockers">
+                      <p>Can&apos;t delete — referenced by {key}:</p>
+                      <ul>
+                        {value.split('; ').map((name) => (
+                          <li key={name}>{name}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
                 </li>
               );
             })}
@@ -462,6 +486,16 @@ export function TracksRoomsPanel() {
                   </span>
                   {rowErrors.name ? <span role="alert">{rowErrors.name}</span> : null}
                   {rowErrors.capacity ? <span role="alert">{rowErrors.capacity}</span> : null}
+                  {Object.entries(roomDeleteBlockers[room.id] ?? {}).map(([key, value]) => (
+                    <div key={key} role="alert" className="chq-settings-delete-blockers">
+                      <p>Can&apos;t delete — referenced by {key}:</p>
+                      <ul>
+                        {value.split('; ').map((name) => (
+                          <li key={name}>{name}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
                 </li>
               );
             })}
