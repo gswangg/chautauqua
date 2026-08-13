@@ -158,7 +158,7 @@ export function EditPage(props: {
         <FormFieldsSection fields={data.fields} section="session" answers={answers} errors={errors} isVisible={isVisible} />
         {tracksEditable ? (
           <fieldset class="chq-cfp-fieldset">
-            <legend>Tracks *</legend>
+            <legend>Tracks</legend>
             <p class="help">Choose all that apply.</p>
             {offeredTracks.map((track) => (
               <label class="chq-cfp-option">

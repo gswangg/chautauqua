@@ -879,6 +879,15 @@ async function main(): Promise<void> {
 
   let seq = 0;
   let submissionCounter = 0;
+  // DEC-986: the public CFP now picks ONE track (radios, not checkboxes),
+  // so a modulo rule that implied a fraction of submissions arrived
+  // multi-track via that form would misstate what the surface that
+  // created them can produce. An explicit, exactly-two set keeps the
+  // many-to-many model, the admin multi-track rendering and the public
+  // track facets all exercised against real data without implying the
+  // public form is capable of it — these rows are only reachable via
+  // /portal/edit's checkbox group or an admin composition path.
+  const MULTI_TRACK_SUBMISSION_COUNTERS = new Set([5, 15]);
 
   // Per-track submission id lists (for evaluation-plan assignment) and the
   // set of accepted submissions (for scheduling/onboarding/email seeding).
@@ -977,9 +986,9 @@ async function main(): Promise<void> {
         created_at: nextTs(),
       }),
     );
-    // Every 4th submission also belongs to a second track, so multi-track
-    // membership is exercised.
-    if (submissionCounter % 4 === 0) {
+    // Exactly two submissions also belong to a second track, so multi-track
+    // membership stays exercised.
+    if (MULTI_TRACK_SUBMISSION_COUNTERS.has(submissionCounter)) {
       const secondaryTrackId = trackIds[(opts.trackIndex + 1) % trackIds.length]!;
       statements.push(
         insertStmt("submission_track", {

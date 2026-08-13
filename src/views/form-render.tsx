@@ -159,9 +159,16 @@ export function FormFieldsSection(props: {
   answers: AnswerMap;
   errors?: Record<string, string>;
   isVisible: (field: FormFieldDef, answers: AnswerMap) => boolean;
+  // DEC-986: lets one caller (the public CFP) pull a single field id out of
+  // the default per-kind rendering to draw it itself (a radio-card group
+  // instead of FieldControl's <select>) while every other field/caller
+  // keeps this section's ordinary markup untouched.
+  excludeIds?: string[];
 }) {
-  const { fields, section, answers, errors, isVisible } = props;
-  const sectionFields = fields.filter((f) => f.section === section).sort((a, b) => a.position - b.position);
+  const { fields, section, answers, errors, isVisible, excludeIds } = props;
+  const sectionFields = fields
+    .filter((f) => f.section === section && !excludeIds?.includes(f.id))
+    .sort((a, b) => a.position - b.position);
   return (
     <>
       {sectionFields.map((field) => (

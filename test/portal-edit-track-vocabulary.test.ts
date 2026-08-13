@@ -1,14 +1,17 @@
 // DEC-696: /portal/edit's track fieldset must apply the SAME chq-cfp-option
-// class vocabulary and the same "Choose all that apply" caption as the
-// public CFP form's TrackChoices (src/routes/public/submit-views.tsx) — a
-// render assertion so the two never drift back apart.
+// class vocabulary as the public CFP form's TrackChoices
+// (src/routes/public/submit-views.tsx) — a render assertion so the two
+// never drift back apart. Parity is about the option CHROME, not the input
+// type or the caption: DEC-986 makes the public form single-select
+// (radios, "Choose one.") while /portal/edit stays multi-select (checkboxes,
+// "Choose all that apply.") because it edits an existing row that may
+// already hold several tracks.
 //
 // DEC-951 retired the public CFP's "Tracks *" asterisk (the last asterisk
 // marker in the product's optionality grammar, DEC-917) but was scoped to
-// src/routes/public/submit-views.tsx only; src/routes/portal/edit.tsx's
-// own literal "Tracks *" legend is untouched pending a follow-up task to
-// reconcile it, so the legend text is asserted per-surface below instead
-// of as one shared literal.
+// src/routes/public/submit-views.tsx only; DEC-986 finishes the job by
+// dropping /portal/edit's own leftover "Tracks *" legend too, so both
+// surfaces now read the identical bare "Tracks" legend.
 
 import { describe, expect, it } from "vitest";
 import { EditPage } from "../src/routes/portal/edit";
@@ -62,14 +65,16 @@ describe("track fieldset render parity (DEC-696)", () => {
     expect(editClasses).toEqual(submitClasses);
   });
 
-  it("edit and submit pages use the same caption copy", () => {
-    for (const html of [editHtml, submitHtml]) {
-      expect(html).toContain("Choose all that apply.");
-    }
+  it("captions differ by design: edit stays multi-select, submit is single-select (DEC-986)", () => {
+    expect(editHtml).toContain("Choose all that apply.");
+    expect(submitHtml).toContain("Choose one.");
+    expect(editHtml).not.toContain("Choose one.");
+    expect(submitHtml).not.toContain("Choose all that apply.");
   });
 
-  it("submit page's legend carries no asterisk (DEC-951); edit page's is unchanged pending follow-up", () => {
+  it("both surfaces' legends carry no asterisk (DEC-951/DEC-986 finish the optionality grammar)", () => {
     expect(submitHtml).toContain("<legend>Tracks</legend>");
-    expect(editHtml).toContain("Tracks *");
+    expect(editHtml).toContain("<legend>Tracks</legend>");
+    expect(editHtml).not.toContain("Tracks *");
   });
 });

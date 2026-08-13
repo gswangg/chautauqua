@@ -8,10 +8,11 @@
 // confirmation copy).
 
 import type { AnswerMap, FormFieldDef } from "../../forms/types";
+import { SESSION_FORMAT_FIELD_ID } from "../../forms/types";
 import { makeVisibilityPredicate } from "../../forms/visibility";
 import { formatEventDateTime } from "../../lib/event-time";
 import { dayLabelEndInstant, dayLabelStartInstant } from "../../lib/timezone";
-import { FormFieldsSection, FieldRulesScript } from "../../views/form-render";
+import { FormFieldsSection, FieldRulesScript, fieldInputName } from "../../views/form-render";
 import { ThemeStyles } from "../../views/theme";
 import { CFP_CSS } from "./cfp.css";
 import { validAccent } from "./shell";
@@ -117,24 +118,27 @@ export function DraftSavedNotice() {
   );
 }
 
-// DEC-579/DEC-951: this STAYS a multi-select checkbox group posting a
-// repeating trackIds field -- submission_track is a join table, and
-// swapping in radios would silently truncate any submission that already
-// holds more than one track the next time its owner edited it. DEC-951
-// refused the v5 frame's radio-group redraw with reason and instead
-// retired the last "Tracks *" asterisk: the product's one optionality
-// grammar (DEC-917) marks nothing on required rows and only ever appends
-// the shared ' · optional' suffix (src/domain/form-copy.ts) on skippable
-// ones, so this required, multi-select fieldset carries no marker at all.
+// DEC-986 (supersedes DEC-951's refusal, per the user's 2026-08-13 decision
+// in docs/eval-findings.md): the public CFP picks ONE track. The truncation
+// risk DEC-951 refused the v5 radio redraw over was never this create
+// form's -- a brand-new submission has no prior tracks to lose -- it
+// belonged to the EDIT form (src/routes/portal/edit.tsx), which keeps its
+// checkbox group. Underneath, nothing moves: submission_track stays a join
+// table, `trackIds` stays a repeating array field on the wire, and every
+// server validation (src/lib/submit-core.ts) is untouched -- a radio group
+// simply posts exactly one member of that same array. DEC-696's fieldset/
+// option parity is about the chq-cfp-option chrome, not the input type, so
+// the shared classes stay; only the caption differs from the edit surface's
+// "Choose all that apply."
 export function TrackChoices(props: { tracks: TrackRow[]; selected: string[] }) {
   return (
     <fieldset class="chq-cfp-fieldset">
       <legend>Tracks</legend>
-      <p class="help">Choose all that apply.</p>
+      <p class="help">Choose one.</p>
       {props.tracks.map((track) => (
         <label class="chq-cfp-option">
           <input
-            type="checkbox"
+            type="radio"
             name="trackIds"
             value={track.id}
             checked={props.selected.includes(track.id)}
@@ -142,6 +146,34 @@ export function TrackChoices(props: { tracks: TrackRow[]; selected: string[] }) 
           {track.name}
         </label>
       ))}
+    </fieldset>
+  );
+}
+
+// DEC-986: the Session-format dropdown draws as a radio-card group on this
+// surface only, scoped by SESSION_FORMAT_FIELD_ID -- FormFieldsSection's
+// default <select> control (src/views/form-render.tsx) stays for every
+// other dropdown-kind field, including this same field on /portal/edit.
+// Reuses the chq-cfp-option chrome for the same reason TrackChoices does:
+// parity is about the option chrome, not the input type.
+export function FormatChoices(props: { field: FormFieldDef; value: unknown; error?: string }) {
+  const { field, value, error } = props;
+  const name = fieldInputName(field.id);
+  return (
+    <fieldset class="chq-cfp-fieldset">
+      <legend>{field.label}</legend>
+      {field.helpText ? <p class="help">{field.helpText}</p> : null}
+      {(field.options ?? []).map((opt) => (
+        <label class="chq-cfp-option">
+          <input type="radio" name={name} data-field-id={field.id} value={opt} checked={value === opt} required={field.required} />
+          {opt}
+        </label>
+      ))}
+      {error ? (
+        <p role="alert" class="chq-field-error">
+          {error}
+        </p>
+      ) : null}
     </fieldset>
   );
 }
@@ -169,6 +201,10 @@ export function SubmitPage(props: {
   // DEC-532: one predicate built from the FULL field list (a session field
   // can gate a speaker field), shared by both sections below.
   const isVisible = makeVisibilityPredicate(fields, answers);
+  // DEC-986: the Session-format field, when the default form defines it, is
+  // pulled out of FormFieldsSection's normal <select> rendering and drawn
+  // as a radio-card group instead (FormatChoices, below).
+  const formatField = fields.find((f) => f.id === SESSION_FORMAT_FIELD_ID);
   return (
     <PageShell title={`Submit a session - ${event.name}`} accentColor={accentColor}>
       <div class="chq-cfp-shell">
@@ -213,7 +249,11 @@ export function SubmitPage(props: {
                   answers={answers}
                   errors={errors}
                   isVisible={isVisible}
+                  excludeIds={formatField ? [SESSION_FORMAT_FIELD_ID] : undefined}
                 />
+                {formatField ? (
+                  <FormatChoices field={formatField} value={answers[formatField.id]} error={errors?.[formatField.id]} />
+                ) : null}
                 {trackError ? (
                   <p role="alert" class="chq-field-error">
                     {trackError}
