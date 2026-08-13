@@ -149,6 +149,17 @@ export async function setParticipantVisible(db: Db, participantId: string, visib
     .where(eq(schema.participant.id, participantId));
 }
 
+/** DEC-789 write half: organizer-only invite-status write, validated by the
+ * caller against the closed none|invited|accepted|declined set before this
+ * function is reached. Bumps updatedAt like every other participant write
+ * in this module. */
+export async function setParticipantInviteStatus(db: Db, participantId: string, inviteStatus: string): Promise<void> {
+  await db
+    .update(schema.participant)
+    .set({ inviteStatus, updatedAt: new Date() })
+    .where(eq(schema.participant.id, participantId));
+}
+
 /** Fetches a single participant row in the same shape inviteParticipant
  * returns, for endpoints (like the PATCH visibility toggle) that mutate a
  * participant and then need to serialize the current state. */

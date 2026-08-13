@@ -23,10 +23,15 @@ import {
   type Track,
 } from './types';
 // DEC-761: code that depends on a decision must reference its constant.
-import { DEC_733, DEC_761 } from '../../../../src/decisions';
+import { DEC_733, DEC_761, DEC_784 } from '../../../../src/decisions';
+// DEC-784/DEC-604: role is picked from the SAME imported vocabulary
+// AddToEventModal.tsx uses -- never a hand-written list -- and rendered
+// through participantRoleLabel, never the raw stored value.
+import { PARTICIPANT_ROLE_OPTIONS, participantRoleLabel } from '../../../../src/domain/participant-roles';
 
 void DEC_733;
 void DEC_761;
+void DEC_784;
 
 // DEC-577: the decision panel's status <select> becomes a segmented button
 // group -- markup surgery scoped to this page. Only the states an organiser
@@ -143,6 +148,9 @@ export function SubmissionDetailPage() {
   const [participantsError, setParticipantsError] = useState<string | null>(null);
   const [visiblePending, setVisiblePending] = useState<string | null>(null);
   const [coPresenterQuery, setCoPresenterQuery] = useState('');
+  // DEC-784: role is picked HERE, at add time -- never defaulted silently
+  // server-side -- from the same imported vocabulary as every other picker.
+  const [coPresenterRole, setCoPresenterRole] = useState(PARTICIPANT_ROLE_OPTIONS[0]!.value);
   const [coPresenterResults, setCoPresenterResults] = useState<ContactSearchResult[]>([]);
   const [coPresenterSearching, setCoPresenterSearching] = useState(false);
   const [addingContactId, setAddingContactId] = useState<string | null>(null);
@@ -419,6 +427,7 @@ export function SubmissionDetailPage() {
     try {
       const created = await apiPost<SubmissionDetailParticipant>(`/submissions/${id}/participants`, {
         contactId: contact.id,
+        role: coPresenterRole,
       });
       setDetail((prev) => (prev ? { ...prev, participants: [...prev.participants, created] } : prev));
       setCoPresenterResults([]);
@@ -774,7 +783,7 @@ export function SubmissionDetailPage() {
                       <tr key={p.id}>
                         <td>{p.name}</td>
                         <td>{p.email}</td>
-                        <td>{p.role}</td>
+                        <td>{participantRoleLabel(p.role)}</td>
                         <td>
                           <label className="chq-visible-toggle">
                             <input
@@ -814,6 +823,21 @@ export function SubmissionDetailPage() {
                       }
                     }}
                   />
+                </label>
+                <label>
+                  Role
+                  <select
+                    className="chq-select"
+                    aria-label="Role"
+                    value={coPresenterRole}
+                    onChange={(e) => setCoPresenterRole(e.target.value)}
+                  >
+                    {PARTICIPANT_ROLE_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
                 </label>
                 <button
                   type="button"
