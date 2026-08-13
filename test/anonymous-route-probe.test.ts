@@ -33,7 +33,8 @@
 // chain, all sharing the same path). Each unique path is turned into a
 // concrete request path by substituting a literal for every `:param`
 // segment (picking a literal that satisfies an inline `{regex}` constraint
-// when one is present, e.g. embed's `:surface{[a-z]+\.json}`) and for a
+// when one is present, e.g. embed's `:surface{[a-z]+\.json}` /
+// `:surface{[a-z]+\.xml}`) and for a
 // bare `*` wildcard segment.
 //
 // PUBLIC_BY_DESIGN is the only allowlist, and it is asserted exact in BOTH
@@ -255,7 +256,11 @@ function literalFor(segment: string): string {
   if (braceIdx === -1) return "probe-value";
   const regexSrc = segment.slice(braceIdx + 1, segment.length - 1);
   const re = new RegExp(`^${regexSrc}$`);
-  const candidates = ["probe.json", "probe-value", "probevalue", "test"];
+  // Suffixed candidates first: a suffix-constrained param (embed's
+  // `.json`/`.xml` feed routes, DEC-289/DEC-775) is the only kind that a
+  // plain literal can't satisfy, and adding a new suffix route without
+  // adding its candidate here makes this probe throw by design.
+  const candidates = ["probe.json", "probe.xml", "probe-value", "probevalue", "test"];
   const hit = candidates.find((c) => re.test(c));
   if (!hit) {
     throw new Error(
