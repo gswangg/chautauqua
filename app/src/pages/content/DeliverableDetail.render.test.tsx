@@ -182,7 +182,10 @@ describe('DeliverableDetail render smoke', () => {
     expect(chipB).not.toHaveClass('is-active');
     expect(screen.getByText('keynote-a.pdf')).toBeInTheDocument();
     expect(screen.queryByText('keynote-b.pdf')).not.toBeInTheDocument();
-    expect(screen.getByText('note on a')).toBeInTheDocument();
+    // The note thread is a second request fired only once the selected chain
+    // is known, so it lands a tick after the chip strip -- await it rather
+    // than racing the chip render (this assertion was intermittently flaky).
+    expect(await screen.findByText('note on a')).toBeInTheDocument();
 
     fireEvent.click(chipB);
 
@@ -190,7 +193,7 @@ describe('DeliverableDetail render smoke', () => {
       expect(screen.getByText('keynote-b.pdf')).toBeInTheDocument();
     });
     expect(screen.queryByText('keynote-a.pdf')).not.toBeInTheDocument();
-    expect(screen.getByText('note on b')).toBeInTheDocument();
+    expect(await screen.findByText('note on b')).toBeInTheDocument();
     expect(screen.queryByText('note on a')).not.toBeInTheDocument();
   });
 
