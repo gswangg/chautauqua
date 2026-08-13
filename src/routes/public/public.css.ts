@@ -235,9 +235,31 @@ export const PUBLIC_CSS = `
      width). */
   .chq-pub-agenda-day-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 1.5rem; }
   .chq-pub-agenda-day { display: grid; gap: 1px; background: var(--chq-hairline); margin-bottom: 0; }
+  /* DEC-999: a block is a content-sized box in its own lane -- column
+     flexbox so title/speakers/chips stack and the box's own height is the
+     content's height (the minmax(22px, auto) row track below then grows to
+     fit it, never the other way round). min-width/min-height:0 override the
+     flex-item default min-size:auto, which would otherwise refuse to shrink
+     below its content's intrinsic size and blow out the grid column. Lane
+     geometry (width/margin-inline-start) reads --chq-lane/--chq-lane-count,
+     published by agenda.tsx's laneStyleFor -- both default so the ordinary
+     single-lane block needs no inline style at all. NO overflow clipping,
+     NO -webkit-line-clamp: DEC-768 already established that a fixed-height
+     clipped block was the bug, not the fix. */
   .${ACCENT_BOUND_CLASSES[0]} {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    min-height: 0;
+    box-sizing: border-box;
+    width: calc((100% - (var(--chq-lane-count, 1) - 1) * 4px) / var(--chq-lane-count, 1));
+    margin-inline-start: calc(
+      var(--chq-lane, 0) * ((100% - (var(--chq-lane-count, 1) - 1) * 4px) / var(--chq-lane-count, 1) + 4px)
+    );
     background: var(--chq-surface);
     border-left: 3px solid var(--chq-brandable-accent);
+    border-radius: var(--chq-r-card);
     padding: 0.4rem 0.6rem;
     font-size: 0.85rem;
   }
