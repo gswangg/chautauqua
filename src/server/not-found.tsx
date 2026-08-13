@@ -23,8 +23,7 @@ import type { Db } from "./context";
 import { ThemeStyles } from "../views/theme";
 import { AUTH_CSS } from "../routes/auth.css";
 import { getHubOrg, listHubEvents } from "./repo/public/home";
-
-const API_PREFIX = "/api/v1";
+import { isApiPath } from "./http";
 
 async function resolveEyebrow(db: Db): Promise<string> {
   const org = await getHubOrg(db);
@@ -70,7 +69,7 @@ function NotFoundPage(props: { eyebrow: string }) {
 export function registerNotFoundHandler(app: Hono<AppEnv>): void {
   app.notFound(async (c) => {
     const path = new URL(c.req.url).pathname;
-    if (path === API_PREFIX || path.startsWith(`${API_PREFIX}/`)) {
+    if (isApiPath(path)) {
       return c.json(
         { error: { code: "not_found", message: `No route matches ${c.req.method} ${path}` } },
         404,
