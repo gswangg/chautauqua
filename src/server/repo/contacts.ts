@@ -63,9 +63,11 @@ export {
 
 export {
   findDuplicateGroupsForOrg,
+  findDuplicateCandidatesForOrg,
   mergeContacts,
   dismissDuplicatePair,
   type DuplicateGroup,
+  type DuplicateCandidateMatch,
 } from "./contacts/merge";
 
 export { getContactStats, type ContactStats } from "./contacts/stats";

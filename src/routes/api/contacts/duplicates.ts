@@ -10,8 +10,28 @@ import { csrfJson } from "../../../server/middleware";
 import { ApiError } from "../../../server/http";
 import * as repo from "../../../server/repo/contacts";
 import { currentOrgId, asRecord, requireOwnedContact } from "./shared";
+import { DEC_788 } from "../../../decisions";
+
+void DEC_788;
 
 export function registerDuplicatesRoutes(contactsRoutes: Hono<AppEnv>): void {
+  // DEC-788: create-time duplicate check for "New contact" -- a pure read,
+  // never a write/dismissal side effect, sharing the exact predicate GET
+  // /contacts/duplicates itself uses (findDuplicateCandidatesForOrg wraps
+  // the same findDuplicateGroups + dismissal rule, not a restatement of it).
+  contactsRoutes.get("/contacts/duplicates/check", async (c) => {
+    const orgId = currentOrgId(c);
+    const query = c.req.query();
+    const candidate = {
+      firstName: query.firstName ?? "",
+      lastName: query.lastName ?? "",
+      email: query.email ?? "",
+      company: query.company ?? undefined,
+    };
+    const items = await repo.findDuplicateCandidatesForOrg(c.var.db, orgId, candidate);
+    return c.json({ items });
+  });
+
   contactsRoutes.post("/contacts/duplicates/dismiss", csrfJson, async (c) => {
     const orgId = currentOrgId(c);
     const body = asRecord(await c.req.json().catch(() => {

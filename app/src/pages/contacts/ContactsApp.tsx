@@ -127,6 +127,26 @@ export function ContactsApp() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // DEC-788: a "Possible duplicate: <Name>" hint on the New contact modal
+  // links to `?openContact=<id>` so the link survives a full reload rather
+  // than depending on in-memory drawer state — read once on mount, same
+  // one-shot pattern as navState above, then stripped from the URL.
+  useEffect(() => {
+    const openContact = searchParams.get('openContact');
+    if (openContact) {
+      setOpenContactId(openContact);
+      setSearchParams(
+        (prev) => {
+          const params = new URLSearchParams(prev);
+          params.delete('openContact');
+          return params;
+        },
+        { replace: true },
+      );
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     apiGet<ContactStats>('/contacts/stats')
       .then(setStats)

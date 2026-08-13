@@ -1109,6 +1109,15 @@ a:hover {
   gap: 14px;
 }
 
+/* DEC-788: quiet inline duplicate hint above the New-contact submit row --
+   advisory, never a save blocker, so it reads smaller/muted rather than as
+   a validation error. */
+.chq-contacts-new-contact-duplicate-hint {
+  margin: 0;
+  font-size: 13px;
+  color: var(--chq-muted);
+}
+
 .chq-add-to-event-result,
 .chq-bulk-email-result {
   font-size: 13px;

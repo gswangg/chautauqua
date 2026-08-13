@@ -13,7 +13,7 @@ import { join } from "node:path";
  *
  * (a) Every `return c.json({ items ...` site under src/routes/**\/*.{ts,tsx}
  *     must carry `total`, `page`, and `perPage` in the same returned object
- *     literal -- the DEC-461(a) list-envelope contract. Three sites are
+ *     literal -- the DEC-461(a) list-envelope contract. Four sites are
  *     deliberately not list-GET envelopes and are named exceptions, each
  *     read at file:line before being allowlisted:
  *       - src/routes/comms.ts:423 (POST .../compose/preview) returns a
@@ -31,6 +31,11 @@ import { join } from "node:path";
  *         round-robin's proposed pairs plus a per-reviewer load summary,
  *         bounded by the plan's own submission x reviewer set and writing
  *         nothing -- a preview payload, not a list GET.
+ *       - src/routes/api/contacts/duplicates.ts:32 (GET
+ *         /contacts/duplicates/check, DEC-788) is a bounded (cap 5),
+ *         deterministically-ordered near-duplicate lookup for a
+ *         not-yet-created contact: no page/perPage query param feeds it and
+ *         the cap is a constant -- a lookup payload, not a list GET.
  *
  * (b) src/lib/pagination.ts must be the ONLY file under src/routes/** or
  *     src/server/repo/** that declares a constant named like
@@ -129,6 +134,11 @@ const ENVELOPE_ALLOWLIST = new Set<string>([
   // fan-out would produce), and writes nothing -- a preview payload, not a
   // paginated list GET, exactly like the two sites above.
   "src/routes/review/plans.ts:463",
+  // DEC-788: GET /contacts/duplicates/check is a bounded (cap 5),
+  // deterministically-ordered lookup for a not-yet-created candidate, not a
+  // paginated list -- same shape-exception class as the bulk-email preview
+  // above.
+  "src/routes/api/contacts/duplicates.ts:32",
 ]);
 
 describe("DEC-480: list-envelope enumeration (executable, not prose)", () => {
