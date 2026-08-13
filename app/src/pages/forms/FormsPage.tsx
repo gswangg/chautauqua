@@ -178,7 +178,7 @@ export function FormsPage() {
 
   if (eventLoading || loading) {
     return (
-      <div className="chq-page">
+      <div className="chq-page chq-measure">
         <h1>Forms</h1>
         <DelayedLoading />
       </div>
@@ -187,7 +187,7 @@ export function FormsPage() {
 
   if (!eventId) {
     return (
-      <div className="chq-page">
+      <div className="chq-page chq-measure">
         <h1>Forms</h1>
         <div className="chq-attention-frame">{eventError ?? 'No event selected. Append ?eventId=<id> to the URL.'}</div>
       </div>
@@ -196,7 +196,7 @@ export function FormsPage() {
 
   if (error || !form || !event) {
     return (
-      <div className="chq-page">
+      <div className="chq-page chq-measure">
         <h1>Forms</h1>
         <div className="chq-attention-frame">{error ?? 'Failed to load the form.'}</div>
       </div>
@@ -215,7 +215,7 @@ export function FormsPage() {
   }
 
   return (
-    <div className="chq-page chq-forms-page">
+    <div className="chq-page chq-forms-page chq-measure">
       <header className="chq-forms-header">
         <div className="chq-forms-header-titles">
           <Link to="/submissions" className="chq-forms-back">

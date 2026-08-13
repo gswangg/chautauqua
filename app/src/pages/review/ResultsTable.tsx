@@ -263,7 +263,7 @@ export function ResultsTable({
   if (loading) {
     if (embedded) return <DelayedLoading />;
     return (
-      <div className="chq-page chq-review-page">
+      <div className="chq-page chq-review-page chq-measure-table">
         <h1 className="chq-page-title">Results</h1>
         <DelayedLoading />
       </div>
@@ -276,7 +276,7 @@ export function ResultsTable({
   // job, not this table's).
   const columnCount = 7;
   const Wrapper = embedded ? Fragment : 'div';
-  const wrapperProps = embedded ? {} : { className: 'chq-page chq-review-page' };
+  const wrapperProps = embedded ? {} : { className: 'chq-page chq-review-page chq-measure-table' };
 
   return (
     <Wrapper {...wrapperProps}>

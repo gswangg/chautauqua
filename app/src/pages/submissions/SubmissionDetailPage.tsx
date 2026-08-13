@@ -527,7 +527,7 @@ export function SubmissionDetailPage() {
 
   if (loading) {
     return (
-      <div className="chq-page chq-detail-page">
+      <div className="chq-page chq-detail-page chq-measure-wide">
         <Link to="/submissions" className="chq-detail-back">
           &larr; All submissions
         </Link>
@@ -538,7 +538,7 @@ export function SubmissionDetailPage() {
 
   if (!detail) {
     return (
-      <div className="chq-page chq-detail-page">
+      <div className="chq-page chq-detail-page chq-measure-wide">
         <Link to="/submissions" className="chq-detail-back">
           &larr; All submissions
         </Link>
@@ -582,7 +582,7 @@ export function SubmissionDetailPage() {
     : '';
 
   return (
-    <div className="chq-page chq-detail-page">
+    <div className="chq-page chq-detail-page chq-measure-wide">
       {/* DEC-908 ref row: back link, then the muted '<ref> · N of M' string
           (absent -- not blank -- when this page's own list query hasn't
           resolved a position, e.g. a stale/shared link), then the

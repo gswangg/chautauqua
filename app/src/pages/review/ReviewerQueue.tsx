@@ -262,7 +262,7 @@ export function ReviewerQueue() {
     const subtitle = scope ? [scope, closesLabel].filter((v): v is string => v !== null).join(' · ') : null;
 
     return (
-      <div className="chq-page chq-review-page">
+      <div className="chq-page chq-review-page chq-measure">
         <p>
           <Link to="/review" className="chq-review-back">
             &larr; Your plans
@@ -316,7 +316,7 @@ export function ReviewerQueue() {
 
   if (loading) {
     return (
-      <div className="chq-page chq-review-page">
+      <div className="chq-page chq-review-page chq-measure">
         <h1 className="chq-page-title">Review</h1>
         <DelayedLoading />
       </div>
@@ -339,7 +339,7 @@ export function ReviewerQueue() {
   // no header that is true.
   if (plans && plans.length > 1) {
     return (
-      <div className="chq-page chq-review-page">
+      <div className="chq-page chq-review-page chq-measure">
         <h1 className="chq-page-title">Your plans</h1>
         {error && (
           <div className="chq-error" role="alert">
@@ -356,7 +356,7 @@ export function ReviewerQueue() {
   }
 
   return (
-    <div className="chq-page chq-review-page">
+    <div className="chq-page chq-review-page chq-measure">
       <h1 className="chq-page-title">Your queue</h1>
       {error && (
         <div className="chq-error" role="alert">

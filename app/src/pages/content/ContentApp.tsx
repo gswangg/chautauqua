@@ -242,7 +242,7 @@ export function ContentApp() {
 
   if (eventLoading) {
     return (
-      <div className="chq-page">
+      <div className="chq-page chq-measure-table">
         <h1 className="chq-page-title">Content</h1>
         <DelayedLoading label="Loading event…" />
       </div>
@@ -251,7 +251,7 @@ export function ContentApp() {
 
   if (!eventId) {
     return (
-      <div className="chq-page">
+      <div className="chq-page chq-measure-table">
         <h1 className="chq-page-title">Content</h1>
         <div className="chq-error">{eventError ?? 'No event selected. Append ?eventId=<id> to the URL.'}</div>
       </div>
@@ -270,7 +270,7 @@ export function ContentApp() {
   const showOwnHeading = submissionId ? !selected : view !== 'files';
 
   return (
-    <div className="chq-page chq-content-page">
+    <div className="chq-page chq-content-page chq-measure-table">
       {showOwnHeading && (
         <div className="chq-content-summary-row">
           <h1 className="chq-page-title">Content</h1>

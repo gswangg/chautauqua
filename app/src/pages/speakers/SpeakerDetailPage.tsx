@@ -60,7 +60,7 @@ export function SpeakerDetailPage() {
 
   if (eventLoading) {
     return (
-      <div className="chq-page chq-speaker-detail-page">
+      <div className="chq-page chq-speaker-detail-page chq-measure">
         <DelayedLoading label="Loading event…" />
       </div>
     );
@@ -68,7 +68,7 @@ export function SpeakerDetailPage() {
 
   if (eventError || !eventId) {
     return (
-      <div className="chq-page chq-speaker-detail-page">
+      <div className="chq-page chq-speaker-detail-page chq-measure">
         <h1 className="chq-page-title">Speaker</h1>
         <div className="chq-error">{eventError ?? 'No event selected.'}</div>
       </div>
@@ -76,7 +76,7 @@ export function SpeakerDetailPage() {
   }
 
   return (
-    <div className="chq-page chq-speaker-detail-page">
+    <div className="chq-page chq-speaker-detail-page chq-measure">
       <div className="chq-speaker-detail-topbar">
         <Link className="chq-link-button chq-speaker-detail-back" to="/speakers">
           &lsaquo; Speakers

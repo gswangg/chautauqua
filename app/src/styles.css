@@ -90,10 +90,14 @@
   --chq-r-card: 5px;
   --chq-r-pill: 99px;
 
-  /* Layout (DEC-744): the shared desktop page-content measure. Subscreens
-     that clamp their own max-width reference this token instead of
-     hand-copying the px value so the whole product moves together. */
+  /* Layout (DEC-744/DEC-989): the shared desktop page-content measures.
+     Subscreens that clamp their own max-width reference these tokens
+     instead of hand-copying the px value so the whole product moves
+     together. Three container classes (docs/design/README.md "Widths"):
+     reading (820), reading+rail/wide (1180), table (1440). */
   --chq-measure: 820px;
+  --chq-measure-wide: 1180px;
+  --chq-measure-table: 1440px;
 }
 
 * {
@@ -366,6 +370,16 @@ a:hover {
 
 .chq-measure {
   max-width: var(--chq-measure);
+  margin: 0 auto;
+}
+
+.chq-measure-wide {
+  max-width: var(--chq-measure-wide);
+  margin: 0 auto;
+}
+
+.chq-measure-table {
+  max-width: var(--chq-measure-table);
   margin: 0 auto;
 }
 

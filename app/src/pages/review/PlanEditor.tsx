@@ -702,7 +702,7 @@ export function PlanEditor() {
 
   if (!eventId) {
     return (
-      <div className="chq-page chq-review-page">
+      <div className="chq-page chq-review-page chq-measure">
         <h1 className="chq-page-title">Evaluation plan</h1>
         <div className="chq-error" role="alert">
           No event selected.
@@ -713,7 +713,7 @@ export function PlanEditor() {
 
   if (loading) {
     return (
-      <div className="chq-page chq-review-page">
+      <div className="chq-page chq-review-page chq-measure">
         <h1 className="chq-page-title">Evaluation plan</h1>
         <DelayedLoading />
       </div>
@@ -721,7 +721,7 @@ export function PlanEditor() {
   }
 
   return (
-    <div className="chq-page chq-review-page">
+    <div className="chq-page chq-review-page chq-measure">
       {/* DEC-745: the v4 title row -- a '‹ Review' back-link over the plan's
           own NAME rendered as an editable title input (renaming survives now
           that the old labelled Name field row is gone), with Duplicate/Save

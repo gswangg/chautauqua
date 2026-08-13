@@ -119,7 +119,10 @@
 }
 
 .chq-speakers-grid {
-  min-width: 640px;
+  /* DEC-989/v6: the matrix's columns are bounded by the event's task list,
+     so it sits at the table measure and scrolls horizontally below its own
+     minimum rather than gaining width forever. */
+  min-width: 1060px;
 }
 
 .chq-speakers-task-due {

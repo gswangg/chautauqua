@@ -124,7 +124,7 @@ export function CommsPage() {
 
   if (loading) {
     return (
-      <div className="chq-page">
+      <div className="chq-page chq-measure-table">
         <h1 className="chq-page-title">Comms</h1>
         <DelayedLoading />
       </div>
@@ -133,7 +133,7 @@ export function CommsPage() {
 
   if (error || !eventId) {
     return (
-      <div className="chq-page">
+      <div className="chq-page chq-measure-table">
         <h1 className="chq-page-title">Comms</h1>
         <div className="chq-error">{error ?? 'No event selected.'}</div>
       </div>
@@ -141,7 +141,7 @@ export function CommsPage() {
   }
 
   return (
-    <div className="chq-page chq-comms-page">
+    <div className="chq-page chq-comms-page chq-measure-table">
       <div className={phoneEntered ? 'chq-comms-main' : 'chq-comms-main chq-comms-main-landing'}>
         <div className="chq-comms-head">
           <div className="chq-comms-head-titles">
