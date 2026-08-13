@@ -17,6 +17,7 @@ import { fileURLToPath } from "node:url";
 import { getTableName, isTable } from "drizzle-orm";
 
 import { hashPassword } from "../src/auth/password";
+import { newApiToken, hashToken, apiTokenDisplayPrefix } from "../src/auth/tokens";
 import { MERGE_FIELDS, renderTemplate } from "../src/mail/render";
 import { formatCalendarDate } from "../src/lib/event-time";
 import { DEFAULT_ONBOARDING_TASKS, FORM_TASK_FIELD_SPECS } from "../src/domain/acceptance";
@@ -370,6 +371,12 @@ async function main(): Promise<void> {
   });
 
   // --- rooms ---
+  // DEC-887 (task w17-e): capacities from docs/design 'Chautauqua
+  // Settings.dc.html' rooms frame (Main Stage 900 / Room 2A 220 / Room 2B
+  // 220 / Workshop Lab 60 seats), in the same order as fixture.event.rooms
+  // -- previously every room read capacity: null, leaving the "N seats"
+  // column unrepresentable in seeded data.
+  const ROOM_CAPACITIES = [900, 220, 220, 60];
   const roomIds = fixture.event.rooms.map((name, i) => {
     const roomId = seedId("room", i + 1);
     statements.push(
@@ -377,7 +384,7 @@ async function main(): Promise<void> {
         id: roomId,
         event_id: eventId,
         name,
-        capacity: null,
+        capacity: ROOM_CAPACITIES[i] ?? null,
         position: i,
         created_at: nextTs(),
         updated_at: ts,
@@ -396,6 +403,17 @@ async function main(): Promise<void> {
       description: "Default CFP form for " + fixture.event.name,
       is_default: true,
       close_date: SEED_NOW + 18 * DAY_MS,
+      // DEC-887 (task w17-e): PublicPagesPanel derives the CFP submit page's
+      // state from open_date/close_date (app/src/pages/settings/
+      // PublicPagesPanel.tsx's cfpState) -- with every other seeded surface
+      // (Sessions/Agenda/Schedule/Speakers/Gallery, all driven by
+      // src/server/repo/public/counts.ts) already non-zero, this was the
+      // only column able to flip exactly one row to a not-yet-published
+      // state without emptying an entire, rubric-tuned surface category.
+      // The CFP-S1 rubric scenario has the organizer explicitly re-set the
+      // submission window as a graded step regardless of the seed's
+      // starting value, so this doesn't block that walkthrough.
+      open_date: SEED_NOW + 1 * DAY_MS,
       created_at: nextTs(),
       updated_at: ts,
     }),
@@ -582,6 +600,30 @@ async function main(): Promise<void> {
   const reviewerBContactId = seedId("contact", 6);
   const reviewerCContactId = seedId("contact", 7);
   const reviewerDContactId = seedId("contact", 8);
+  // DEC-887 (task w17-e): the organizer user (Jordan Alvarez) previously had
+  // contact_id null, so resolveActorName (src/server/repo/users.ts) fell
+  // back to their raw email on every file comment / session-history /
+  // attribution surface. Names from fixture.identities.organizer.
+  const organizerContactId = seedId("contact", 9);
+  statements.push(
+    insertStmt("contact", {
+      id: organizerContactId,
+      org_id: orgId,
+      first_name: "Jordan",
+      last_name: "Alvarez",
+      email: organizer.email,
+      phone: null,
+      company: null,
+      title: null,
+      bio: null,
+      headshot_url: null,
+      social_links_json: null,
+      notes: null,
+      custom_fields_json: null,
+      created_at: nextTs(),
+      updated_at: ts,
+    }),
+  );
   statements.push(
     insertStmt("contact", {
       id: reviewerContactId,
@@ -666,7 +708,7 @@ async function main(): Promise<void> {
       email: organizer.email,
       password_hash: await hashPassword(organizer.password),
       role: "organizer",
-      contact_id: null,
+      contact_id: organizerContactId,
       created_at: nextTs(),
       updated_at: ts,
     }),
@@ -732,6 +774,82 @@ async function main(): Promise<void> {
       }),
     );
   }
+
+  // --- saved embeds (DEC-887, task w17-e): SavedEmbedsPanel's list, its
+  // 'N on · M off' count, and the disabled -> empty-200 public route path
+  // (test/saved-embed-route.test.ts) all need real rows. One enabled
+  // (AI track sessions, matching docs/design 'Chautauqua Settings.dc.html'
+  // exactly: Sessions · iframe · AI Engineering · 6 fields) and one
+  // disabled (Last year's speakers), per the design's savedEmbeds frame.
+  statements.push(
+    insertStmt("embed", {
+      id: seedId("embed", 1),
+      org_id: orgId,
+      event_id: eventId,
+      name: "AI track sessions",
+      surface: "sessions",
+      format: "iframe",
+      options_json: JSON.stringify({
+        trackId: trackIds[0]!,
+        fields: ["track", "time", "room", "speaker", "description", "format"],
+      }),
+      enabled: true,
+      created_at: nextTs(),
+      updated_at: ts,
+    }),
+  );
+  statements.push(
+    insertStmt("embed", {
+      id: seedId("embed", 2),
+      org_id: orgId,
+      event_id: eventId,
+      name: "Last year's speakers",
+      surface: "speakers",
+      format: "iframe",
+      options_json: JSON.stringify({}),
+      enabled: false,
+      created_at: nextTs(),
+      updated_at: ts,
+    }),
+  );
+
+  // --- API tokens (DEC-887, task w17-e): two bearer tokens so the Your
+  // Data panel's list has real rows. Reuses the SAME primitives the live
+  // POST /api/v1/tokens route uses (src/auth/tokens.ts) so the hash format
+  // is real, not invented -- the plaintext is generated at seed time and
+  // immediately discarded (never stored, never a hash of a known constant
+  // that would function as a checked-in credential). Only tokenHash /
+  // tokenPrefix / name / createdByUserId / lastUsedAt (on one row) are
+  // populated, matching the design's 'Airtable sync' / 'Website build'
+  // rows -- one shows a real last-used time, the other has never been used.
+  const airtableSyncTokenPlaintext = newApiToken();
+  const websiteBuildTokenPlaintext = newApiToken();
+  statements.push(
+    insertStmt("api_token", {
+      id: seedId("api_token", 1),
+      org_id: orgId,
+      name: "Airtable sync",
+      token_hash: await hashToken(airtableSyncTokenPlaintext),
+      token_prefix: apiTokenDisplayPrefix(airtableSyncTokenPlaintext),
+      created_by_user_id: organizerUserId,
+      last_used_at: SEED_NOW - 2 * 60 * 60 * 1000,
+      created_at: nextTs(),
+      updated_at: ts,
+    }),
+  );
+  statements.push(
+    insertStmt("api_token", {
+      id: seedId("api_token", 2),
+      org_id: orgId,
+      name: "Website build",
+      token_hash: await hashToken(websiteBuildTokenPlaintext),
+      token_prefix: apiTokenDisplayPrefix(websiteBuildTokenPlaintext),
+      created_by_user_id: organizerUserId,
+      last_used_at: null,
+      created_at: nextTs(),
+      updated_at: ts,
+    }),
+  );
 
   // --- submissions: 3 fixture (status 'pending', seq 1..3) + ~27 synthetic ---
   function trackIdFor(name: string): string {
