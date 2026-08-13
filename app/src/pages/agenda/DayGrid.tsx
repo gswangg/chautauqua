@@ -171,9 +171,17 @@ export function DayGrid({
    * occupied-cell detection; DEC-701 returns the count, not a boolean, so an
    * armed placement onto an occupied slot can name exactly how many sessions
    * it will clash with — never assumes a pair, since assignLanes already
-   * proves a room can hold N > 2 overlapping sessions). */
+   * proves a room can hold N > 2 overlapping sessions). DEC-769: the armed
+   * session itself never counts against its own cell — placing it back onto
+   * the slot it already occupies is not a clash, it's a no-op landing spot. */
   function occupancyCount(roomId: string | null, minutes: number): number {
-    return dayPlaced.filter((s) => roomKey(s.roomId) === roomKey(roomId) && s.startMin <= minutes && minutes < s.endMin).length;
+    return dayPlaced.filter(
+      (s) =>
+        s.submissionId !== armed?.submissionId &&
+        roomKey(s.roomId) === roomKey(roomId) &&
+        s.startMin <= minutes &&
+        minutes < s.endMin,
+    ).length;
   }
 
   // Focus management (DEC-724): after a successful click-to-place, focus

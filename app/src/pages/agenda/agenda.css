@@ -108,8 +108,12 @@
   border-left: 1px solid var(--chq-hairline);
 }
 
-/* DEC-570: while a session is armed, empty cells become click-to-place
-   buttons (occupied cells stay covered by their placed card instead). */
+/* DEC-570: while a session is armed, every cell in the grid (occupied or
+   not) becomes a click-to-place button. DEC-769: it sits ABOVE the placed
+   SessionCards it shares a grid area with — grid items paint in z-index
+   order regardless of `position`, and the cards are later in DOM order, so
+   without this the card would intercept the click and place at the card's
+   own startMin instead of the row the organiser aimed at. */
 .chq-day-grid-cell-btn {
   border-bottom: 1px solid var(--chq-hairline);
   border-left: 1px solid var(--chq-hairline);
@@ -121,6 +125,8 @@
   width: 100%;
   height: 100%;
   cursor: pointer;
+  position: relative;
+  z-index: 3;
 }
 
 .chq-day-grid-cell-btn:focus-visible {
