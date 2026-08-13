@@ -54,7 +54,13 @@ C. **Verify-then-close list** (commits claim these landed — external probe con
 ## Per-surface open items (desktop)
 
 **Overview** (DEC-735 class split CLOSED — §02 inline AND §04 stacked both verified;
-room-named suggestions CLOSED): kill dangling "· ·" on triage rows ("Marcus Okafor
+room-named suggestions CLOSED): USER: event-switcher caret sits in its own
+OUTLINED rounded box next to the event name — drop the outline; the switcher
+should read as one quiet control (name + bare ▾), border only on hover/open per
+affordance grammar · USER: /admin renders Overview WITHOUT redirecting to
+/admin/overview, so the Overview nav tab never highlights on landing — redirect
+/admin → /admin/overview (same class as the earlier <tab> vs <tab>/ highlight
+fix; check reviewer-role redirect to /admin/review still wins) · kill dangling "· ·" on triage rows ("Marcus Okafor
 · · SES-002 · waiting 120 days" — empty track slot between separators; drop empty
 segments) · New-event modal → root ModalFrame portal + own typography (ALL-CAPS is
 inherited), styled dates, labels STARTS/ENDS/TIME ZONE/VENUE · Public pages as
