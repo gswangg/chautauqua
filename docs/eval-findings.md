@@ -119,10 +119,20 @@ Approve on approved rows · worklist header "N need a decision · M re-uploaded"
 pill chips WITH counts (now "30 submissions · All view", chips uncounted) · relative
 dates in LATEST FILE · SEED: worklist too sparse (28/30 rows "No files yet").
 
-**Agenda (desktop)**: conflict cell — content hidden behind inner scroll; size to
-content or designed reveal; decide lane-split vs mock full-width card in a DEC · TBD
-column conditional + "No room yet" · focus → Cancel/first cell on placing entry ·
-verify a 3rd-placement round-trip persists.
+**Agenda (desktop)**: **P2 (AIA grader): click-to-place into an OCCUPIED slot is a
+silent no-op** — button says "will clash with 1 session" and banner says "Clashes are
+flagged, not blocked", but the click does nothing (existing card likely intercepts
+it); make place-anyway work · **P2: invited-placeholder sessions ("Invited: Priya
+Raman") are invisible to double-booking detection** despite displaying speaker names
+— auto-schedule stacked them over the speakers' real sessions with zero flags ·
+auto-schedule ignores format durations (Keynote 45/Workshop 120/Lightning 10 all
+placed as 30-min blocks) · slot previews pre-announce room clashes but not speaker
+double-bookings · "1 conflicts" grammar; a session's own slot counts itself ("will
+clash with 1 session") · public agenda renders day headings twice (second empty) ·
+conflict cell — content hidden behind inner scroll; size to content or designed
+reveal; decide lane-split vs mock full-width card in a DEC · TBD column conditional +
+"No room yet" (DEC-724 claims landed — probe verifies) · focus → Cancel/first cell on
+placing entry · verify a 3rd-placement round-trip persists.
 
 **Comms** (DEC-710 + history count CLOSED by probe): per-recipient SCHEDULED/NO-SLOT
 tags + "N have no slot" advisory in Preview · persistent Recent sends under Compose
