@@ -227,7 +227,10 @@ describe("public submit: mailer failure is best-effort (DEC-237/DEC-238)", () =>
     // error response to the speaker.
     expect(res.status).toBe(200);
     const html = await res.text();
-    expect(html).toContain("Check your email.");
+    // DEC-006 wave-51 amendment: a send failure must not claim delivery — the
+    // page names the failure instead of asserting "Check your email."
+    expect(html).not.toContain("Check your email.");
+    expect(html).toContain("We couldn&#39;t send your confirmation email.");
 
     // The submission row itself was persisted regardless of the mail outcome.
     // Matched on "description" too (not just "title") since DEC-321's
@@ -277,7 +280,8 @@ describe("public submit: mailer failure is best-effort (DEC-237/DEC-238)", () =>
 
     expect(res.status).toBe(200);
     const html = await res.text();
-    expect(html).toContain("Check your email.");
+    expect(html).not.toContain("Check your email.");
+    expect(html).toContain("We couldn&#39;t send your confirmation email.");
 
     const submissionInserts = inserts.filter(
       (v) => typeof v === "object" && v !== null && !Array.isArray(v) && "title" in (v as object) && "description" in (v as object),
