@@ -64,11 +64,13 @@ describe("task-w1-e (DEC-768): exactly one heading per day", () => {
     expect(h3Count).toBe(1);
   });
 
-  it("ScheduleContent renders exactly one <h3> for a single day", () => {
+  it("ScheduleContent renders exactly one day heading for a single day", () => {
+    // DEC-952: the surface's own <h1> ('My schedule') demoted this day
+    // heading to <h2> so the page has one heading naming the surface.
     const items = [item({ submissionId: "s1" })];
     const html = String(ScheduleContent({ event: EVENT, items, total: items.length }));
-    const h3Count = (html.match(/<h3>/g) ?? []).length;
-    expect(h3Count).toBe(1);
+    const h2Count = (html.match(/<h2 class="chq-pub-section-title">/g) ?? []).length;
+    expect(h2Count).toBe(1);
   });
 
   it("the day heading is a formatted, non-ISO label (never the raw 'YYYY-MM-DD' string)", () => {

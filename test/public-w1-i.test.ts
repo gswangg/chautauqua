@@ -296,11 +296,13 @@ describe("w1-i: honest dates via the shared formatDay helper", () => {
   });
 
   it("the schedule surface's day heading is not a raw ISO date", async () => {
+    // DEC-952: this day heading is an <h2> (demoted below the surface's own
+    // <h1> 'My schedule'), not an <h3> — see test/public-page-headings.test.ts.
     const app = buildApp();
     const res = await app.request(`/e/${EVENT.slug}/schedule`);
     const html = await res.text();
-    expect(html).not.toContain("<h3>2026-08-10</h3>");
-    expect(html).toMatch(/<h3>[^<]*Aug 10[^<]*<\/h3>/);
+    expect(html).not.toContain(">2026-08-10<");
+    expect(html).toMatch(/<h2 class="chq-pub-section-title">[^<]*Aug 10[^<]*<\/h2>/);
   });
 });
 

@@ -23,7 +23,7 @@ function ScheduleRailSection(props: { event: PublicEvent }) {
   const { event } = props;
   return (
     <section class="chq-pub-rail-section">
-      <h3 class="chq-pub-rail-heading">Your schedule</h3>
+      <h2 class="chq-pub-rail-heading">Your schedule</h2>
       <div class="chq-pub-rail-body">
         <span class="chq-pub-rail-caption">
           <span id="chq-ics-count">0 picked</span> · saved in this browser, no account needed
@@ -41,7 +41,7 @@ function DayIndexRailSection(props: { event: PublicEvent; dayCounts: { day: stri
   if (dayCounts.length === 0) return null;
   return (
     <section class="chq-pub-rail-section">
-      <h3 class="chq-pub-rail-heading">Days</h3>
+      <h2 class="chq-pub-rail-heading">Days</h2>
       <div class="chq-pub-rail-body">
         {dayCounts.map((d) => (
           <div class="chq-pub-rail-day-row">
@@ -66,7 +66,7 @@ function CfpRailSection(props: { event: PublicEvent; cfpWindow: { openDate: numb
   if (!isOpen) return null;
   return (
     <section class="chq-pub-rail-section">
-      <h3 class="chq-pub-rail-heading">Call for papers</h3>
+      <h2 class="chq-pub-rail-heading">Call for papers</h2>
       <div class="chq-pub-rail-body">
         <span class="chq-pub-rail-caption">
           {cfpWindow.closeDate
@@ -158,7 +158,7 @@ export function SessionsContent(props: {
   }
   return (
     <>
-      <h2>Sessions</h2>
+      <h1 class="chq-pub-surface-title">Sessions</h1>
       <div class="chq-pub-sessions-layout">
         <div class="chq-pub-sessions-list">
           {/* EMB-02/DEC-919: the one PublicSearchBox markup, preserving the

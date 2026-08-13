@@ -88,7 +88,7 @@ export function SpeakersContent(props: {
   const carryQs = limit ? `limit=${limit}&` : "";
   return (
     <>
-      <h2>Speakers</h2>
+      <h1 class="chq-pub-surface-title">Speakers</h1>
       <PublicSearchBox
         action={basePath}
         q={q}
@@ -138,7 +138,7 @@ export function GalleryContent(props: {
   const carryQs = limit ? `limit=${limit}&` : "";
   return (
     <>
-      <h2>Speaker gallery</h2>
+      <h1 class="chq-pub-surface-title">Speaker gallery</h1>
       <PublicSearchBox
         action={basePath}
         q={q}

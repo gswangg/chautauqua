@@ -556,4 +556,25 @@ export const PUBLIC_CSS = `
   .${ACCENT_BOUND_CLASSES[2]} {
     color: var(--chq-brandable-accent);
   }
+
+  /* ===== task-w27-a (DEC-952): public event surfaces name themselves =====
+     No element-level h1/h2/h3 rule exists anywhere in this file, so
+     promoting the top-of-content heading on each surface up a level (and
+     stepping the level below it down one) would otherwise resize the
+     page. These two classes pin the same sizes the former headings
+     already rendered at (the browser UA default for those tags), so the
+     tag change is invisible. */
+  .chq-pub-surface-title {
+    font-family: var(--chq-font-display);
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    margin: 0 0 18px;
+  }
+  .chq-pub-section-title {
+    font-family: var(--chq-font-display);
+    font-size: 19px;
+    font-weight: 700;
+    margin: 0 0 10px;
+  }
 `;
