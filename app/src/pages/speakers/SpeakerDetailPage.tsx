@@ -24,6 +24,21 @@ const TASK_STATUS_LABELS: Record<SpeakerDetailTaskStatus, string> = {
   complete: 'Complete',
 };
 
+// DEC-930 (wave 54 amendment): session/content status have no decided
+// complete/pending/overdue meaning (richer enums than the invite/task-done
+// axis), so both share the one added neutral modifier -- the label text,
+// not the pill shape, carries the distinction (DEC-367).
+function neutralStatusClass(): string {
+  return 'chq-speakers-status chq-speakers-status-neutral';
+}
+
+// Task status is the SAME binary domain TaskCell.tsx's onboarding grid cells
+// already use ('pending' | 'complete'), so it reuses those two modifiers
+// directly rather than the neutral one above.
+function taskStatusClass(status: SpeakerDetailTaskStatus): string {
+  return `chq-speakers-status chq-speakers-status-${status}`;
+}
+
 function formatBytes(sizeBytes: number): string {
   if (sizeBytes < 1024) return `${sizeBytes} B`;
   if (sizeBytes < 1024 * 1024) return `${(sizeBytes / 1024).toFixed(1)} KB`;
@@ -130,10 +145,10 @@ export function SpeakerDetailPage() {
                         </Link>
                       </td>
                       <td>
-                        <span className="chq-flag">{STATUS_LABELS[session.status]}</span>
+                        <span className={neutralStatusClass()}>{STATUS_LABELS[session.status]}</span>
                       </td>
                       <td>
-                        <span className="chq-flag">{CONTENT_STATUS_LABELS[session.contentStatus]}</span>
+                        <span className={neutralStatusClass()}>{CONTENT_STATUS_LABELS[session.contentStatus]}</span>
                       </td>
                       <td>{scheduledLabel(session.scheduled)}</td>
                     </tr>
@@ -174,7 +189,7 @@ export function SpeakerDetailPage() {
                       </td>
                       <td>{formatDateOnly(task.dueDate)}</td>
                       <td>
-                        <span className="chq-flag">{TASK_STATUS_LABELS[task.status]}</span>
+                        <span className={taskStatusClass(task.status)}>{TASK_STATUS_LABELS[task.status]}</span>
                       </td>
                       <td>
                         {/* DEC-920/DEC-930: a deliverable link is named by the
