@@ -63,8 +63,11 @@ vi.mock("../src/server/repo/files", async () => {
   return {
     ...actual,
     resolveTaskFileChainLatest: vi.fn(),
+    resolveTaskFileChainLatestMany: vi.fn(async () => new Map([[FILE_ID, CHAIN_LATEST]])),
     listFileComments: vi.fn(async () => ({ items: [], total: 0, page: 1, perPage: 1 })),
+    listFileCommentsForFiles: vi.fn(async () => new Map()),
     listFileChainVersions: vi.fn(async () => [CHAIN_LATEST]),
+    listFileChainVersionsMany: vi.fn(async () => new Map([[FILE_ID, [CHAIN_LATEST]]])),
     insertFileComment: vi.fn(async () => "comment-new-1"),
   };
 });
@@ -93,7 +96,9 @@ const SPEAKER_B: AuthInfo = { userId: "u2", role: "speaker", orgId: ORG_A, conta
 describe("GET /portal/tasks — completed file_request assignment (DEC-242)", () => {
   it("renders the download link, replace-file form, version, and comment thread instead of collapsing to plain text", async () => {
     const { getMyTaskAssignments } = await import("../src/server/repo/portal");
-    const { resolveTaskFileChainLatest, listFileComments } = await import("../src/server/repo/files");
+    const { resolveTaskFileChainLatest, listFileComments, listFileCommentsForFiles } = await import(
+      "../src/server/repo/files"
+    );
     vi.mocked(getMyTaskAssignments).mockResolvedValue([
       {
         id: ASSIGNMENT_ID,
@@ -115,23 +120,18 @@ describe("GET /portal/tasks — completed file_request assignment (DEC-242)", ()
       },
     ]);
     vi.mocked(resolveTaskFileChainLatest).mockResolvedValue(CHAIN_LATEST);
-    vi.mocked(listFileComments).mockResolvedValue({
-      items: [
-        {
-          id: "c1",
-          fileId: FILE_ID,
-          versionNumber: 2,
-          body: "Looks great",
-          authorName: "Pat Organizer",
-          authorRole: "organizer",
-          authorUserId: "user-organizer",
-          createdAt: Date.now(),
-        },
-      ],
-      total: 1,
-      page: 1,
-      perPage: 1,
-    });
+    const comment = {
+      id: "c1",
+      fileId: FILE_ID,
+      versionNumber: 2,
+      body: "Looks great",
+      authorName: "Pat Organizer",
+      authorRole: "organizer",
+      authorUserId: "user-organizer",
+      createdAt: Date.now(),
+    };
+    vi.mocked(listFileComments).mockResolvedValue({ items: [comment], total: 1, page: 1, perPage: 1 });
+    vi.mocked(listFileCommentsForFiles).mockResolvedValue(new Map([[FILE_ID, [comment]]]));
 
     const app = await buildPortalApp(SPEAKER_A);
     const res = await app.request("http://test.local/portal/tasks");

@@ -216,6 +216,127 @@ export async function listFileComments(
   };
 }
 
+/** DEC-530 (wave 48 amendment): batched form of listFileComments' unbounded
+ * ("no page") branch — for the portal /tasks page, which already resolves
+ * every task's full version-chain id set up front (files-versions.ts's
+ * *Many readers), this avoids re-walking `listFileChainIds` per assignment.
+ * Callers pass the UNION of every chain's file ids across the whole page;
+ * this issues ONE chunked query for each of versionNo-by-id and comment
+ * rows (not one per file id), then groups rows in JS keyed by the comment's
+ * OWN fileId column — same author/contact resolution and the same
+ * createdAt-asc/id-asc tiebreak listFileComments uses, so a caller that
+ * flattens several ids' buckets together and re-sorts by the same key
+ * reproduces listFileComments' ordering exactly. A file id present in the
+ * input with no comments maps to an empty array, never a missing key. */
+export async function listFileCommentsForFiles(db: Db, fileIds: string[]): Promise<Map<string, FileCommentRow[]>> {
+  const out = new Map<string, FileCommentRow[]>();
+  const uniqueIds = [...new Set(fileIds)];
+  if (uniqueIds.length === 0) return out;
+  for (const id of uniqueIds) out.set(id, []);
+
+  const versionByFileId = new Map<string, number>();
+  for (const batch of chunkIds(uniqueIds)) {
+    if (batch.length === 0) continue;
+    const rows = await db
+      .select({ id: schema.file.id, versionNo: schema.file.versionNo })
+      .from(schema.file)
+      .where(inArray(schema.file.id, batch));
+    for (const row of rows) {
+      if (row.versionNo === null || row.versionNo === undefined) {
+        throw new Error(`listFileCommentsForFiles: file ${row.id} has no stored version_no — data corruption`);
+      }
+      versionByFileId.set(row.id, row.versionNo);
+    }
+  }
+
+  type RawCommentRow = {
+    id: string;
+    fileId: string;
+    body: string;
+    createdAt: Date;
+    authorUserId: string | null;
+    authorContactId: string | null;
+  };
+  const allRows: RawCommentRow[] = [];
+  for (const batch of chunkIds(uniqueIds)) {
+    if (batch.length === 0) continue;
+    const rows = await db
+      .select({
+        id: schema.fileComment.id,
+        fileId: schema.fileComment.fileId,
+        body: schema.fileComment.body,
+        createdAt: schema.fileComment.createdAt,
+        authorUserId: schema.fileComment.authorUserId,
+        authorContactId: schema.fileComment.authorContactId,
+      })
+      .from(schema.fileComment)
+      .where(inArray(schema.fileComment.fileId, batch))
+      .orderBy(asc(schema.fileComment.createdAt), asc(schema.fileComment.id));
+    allRows.push(...rows);
+  }
+  allRows.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime() || a.id.localeCompare(b.id));
+
+  const userIds = [...new Set(allRows.map((r) => r.authorUserId).filter((x): x is string => !!x))];
+  const userMap = new Map<string, { email: string; role: string; contactId: string | null }>();
+  if (userIds.length > 0) {
+    for (const batch of chunkIds(userIds)) {
+      const userRows = await db
+        .select({ id: schema.user.id, email: schema.user.email, role: schema.user.role, contactId: schema.user.contactId })
+        .from(schema.user)
+        .where(inArray(schema.user.id, batch));
+      for (const u of userRows) userMap.set(u.id, { email: u.email, role: u.role, contactId: u.contactId });
+    }
+  }
+
+  const contactIds = [
+    ...new Set([
+      ...allRows.map((r) => r.authorContactId).filter((x): x is string => !!x),
+      ...[...userMap.values()].map((u) => u.contactId).filter((x): x is string => !!x),
+    ]),
+  ];
+  const contactMap = new Map<string, string>();
+  if (contactIds.length > 0) {
+    for (const batch of chunkIds(contactIds)) {
+      const contactRows = await db
+        .select({ id: schema.contact.id, firstName: schema.contact.firstName, lastName: schema.contact.lastName })
+        .from(schema.contact)
+        .where(inArray(schema.contact.id, batch));
+      for (const c of contactRows) contactMap.set(c.id, `${c.firstName} ${c.lastName}`.trim());
+    }
+  }
+
+  for (const row of allRows) {
+    const user = row.authorUserId ? userMap.get(row.authorUserId) : undefined;
+    if (row.authorUserId && !user) {
+      throw new Error(`listFileCommentsForFiles: comment ${row.id} references unknown author user ${row.authorUserId}`);
+    }
+    const authorName =
+      (row.authorContactId && contactMap.get(row.authorContactId)) ||
+      (user?.contactId && contactMap.get(user.contactId)) ||
+      user?.email;
+    if (!authorName) {
+      throw new Error(`listFileCommentsForFiles: comment ${row.id} has no resolvable author name`);
+    }
+    const versionNumber = versionByFileId.get(row.fileId);
+    if (versionNumber === undefined) {
+      throw new Error(`listFileCommentsForFiles: comment ${row.id} references file ${row.fileId} outside the requested id set`);
+    }
+    const item: FileCommentRow = {
+      id: row.id,
+      fileId: row.fileId,
+      versionNumber,
+      body: row.body,
+      authorName,
+      authorRole: user?.role ?? null,
+      authorUserId: row.authorUserId,
+      createdAt: row.createdAt.getTime(),
+    };
+    (out.get(row.fileId) as FileCommentRow[]).push(item);
+  }
+
+  return out;
+}
+
 export async function insertFileComment(
   db: Db,
   input: { fileId: string; body: string; authorUserId: string; authorContactId: string | null },
