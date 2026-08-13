@@ -853,3 +853,17 @@ AND audit noStoreByDefault + any other header-stamping middleware for the same t
      spans the standard measure). Item 67's sweep list is now: submission detail,
      Content session detail, Review plan editor, CFP form builder — audit ALL
      admin routes for container-width consistency in one pass, not page by page.
+
+70. CFP grader (prod, 33/39 pass): **(a) P1-class: pending submissions invisible to
+    their submitter** — the portal worklist shows only ACCEPTED sessions; a speaker
+    cannot view/track/edit a pending submission and never learns of a decline. This
+    resurrects the original wave-1 P1 through the portal rebuild. Fix WITH item 63's
+    nav gap: the portal lists ALL the speaker's submissions (pending/accepted/
+    declined, linked, with status), worklist on top. (b) P2: Comms History tab reads
+    "0 total" on prod despite successful sends incrementing the Overview counter —
+    the batch-grouped query/display miscounts; fix the count + add a history row
+    assertion post-send. (c) P3s: public CFP form renders TWO track selectors
+    (leftover custom dropdown beside the built-in group — dedupe); label the New-event
+    Timezone field; give the CFP an explicit publish affordance; close-before-open
+    validation must be loud at the field, not a quiet banner. (Reviewer lockout
+    re-confirmed on prod — item 65 stands.)
