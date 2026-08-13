@@ -253,35 +253,27 @@ paragraphs, nav overflow at 1240, editor preselect/header/NAME input/token
 parity, History header count + search width + miss copy + de-noise).
 (Probe closures stand: DEC-792/793/796/751 + history CTA.)
 
-**Contacts** (probe-4: P1 main path CLOSED — event default proven w/ planted 2028
-event · roster advisory verbatim, keyed to selected event · born-overdue killed by
-DEC-801's single pure rule (7-day grace, all 4 surfaces read it: badge/cell/
-filter/email cannot disagree) · role named in confirmation · session consequence
-labeled pre-submit · DEC-802 merge truth (keeper values render, plain — no strike
-on never-present, real drops still struck) · discard column headed by record name ·
-merge impact line present · DEC-800 named duplicate reasons incl. "Same name,
-different company" · duplicate hint at creation (debounced check + advisory) ·
-contact delete in drawer w/ honest 409 merge-instead guidance DEC-758):
-
-(probe-5 CLOSED: fabrication fallback GONE server-side DEC-810 — sessionTitle
-required on all eventId paths, 0 fabricated rows · dup-hint link fixed
-(openContact drawer opens) · DEC-834 merge header disambiguation for identical
-names · DEC-823 seed ships 3 duplicate pairs w/ named reasons · DEC-821 pipeline
-fit behavior: migration + dialog fields + within-column ranking + activity write,
-no mailer)
-**Merge disambiguation case bug**: namesCollide compares raw names
-case-SENSITIVELY (MergePage.tsx:129) while headers render CSS-uppercased —
-"PARKER anders" vs "Parker Anders" shows two identical PARKER ANDERS columns; use
-the detector's normalizedName.
-Residue: effective (grace) deadline invisible until breached — surface it before
-overdue (e.g. tooltip/inline "counts from assignment: due 20 Aug") ·
-participant.invite_status written 'none' on add-to-event (write the real state) ·
-no row-level or bulk delete (drawer-only is fine if mock agrees — check at gate) ·
-drawer read-only reorder · import step panels/CTA · pipeline fit PRESENTATION vs
-frame (dialog lacks "writes a move to the activity feed · no email is sent"
-footer + helper texts; Stage/Fit as selects not pill rows; title "Enroll a
-contact" vs "Add to the pipeline"; Fit pill neutral cream not olive — frame wants
-scorecard-family olive).
+**Contacts — GATE-1 FLEET: FAIL (report fidelity-gate1/08-contacts/report.md;
+headline items — full ranked list there)**:
+BROKEN: new-contact modal unstyled (no chq-form-row) · drawer headshot row raw
+file input overflowing panel · import × centered · dup-tab row wrapping.
+MAJOR: DEC-868 rules row to frame grammar (MATCHING ALL OF, inline chip groups,
+Add a rule, N-of-M counter, Save-as-segment in row; drop the permanent
+FIELD/OPERATOR/VALUE form) · rail duplicates reason line + Keep both · merge
+view renders the 6 identity rows ALWAYS (strike only dropped) + header/footer
+composition · pipeline page header + DRAG-AND-DROP (Move-to selects pre-select
+current stage) · add-to-event option set/selected-state/event-cards (v5 frame:
+Speaker/Reviewer/Guest — fold into the role DEC) · contact-scoped
+add-to-pipeline from drawer · import wizard stepwise w/ sample values + dup
+footer + visible required batch-title · bulk email subtitle + terminal Send
+primary + MESSAGE · drawer ACROSS YOUR EVENTS as event→status table.
+**PRODUCT GAP DEC: no submission/session delete route — every import/add
+permanently pollutes (fleet left 5+ test sessions; judges will too). Decide:
+delete route w/ guard, or archive.**
+SEED: rated Fit entries + rationales for the pipeline board.
+MINOR batch in report.
+(Closures stand: DEC-823 pairs w/ reasons · dup hint + fixed link · DEC-802
+truth · dismissal persistence · 409 guidance · DEC-800 · DEC-821 mechanics.)
 
 **Settings — GATE-1 FLEET: FAIL, worst section (report
 fidelity-gate1/09-settings/report.md)**:
