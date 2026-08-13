@@ -25,6 +25,7 @@ import * as schema from "../../db/schema";
 import { findConflicts, type PlacedSession } from "../../domain/schedule";
 import { formatRef } from "../../domain/ids";
 import { chunkIds } from "../../lib/chunk";
+import { loadTrackNamesBySubmission } from "./submission-tracks";
 import { DEFAULT_AUTO_SCHEDULE_PARAMS } from "./agenda";
 import { overdueAssignmentConditions } from "./tasks/crud";
 import { DEC_370, DEC_531, DEC_704, DEC_776 } from "../../decisions";
@@ -193,7 +194,6 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number): 
       id: schema.submission.id,
       seq: schema.submission.seq,
       title: schema.submission.title,
-      trackId: schema.submission.trackId,
       createdAt: schema.submission.createdAt,
     })
     .from(schema.submission)
@@ -202,15 +202,10 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number): 
     .limit(ROW_CAP);
   const oldestSubmittedAt = triageDetailRows[0] ? triageDetailRows[0].createdAt.getTime() : null;
 
-  const triageTrackIds = [...new Set(triageDetailRows.map((r) => r.trackId).filter((id): id is string => !!id))];
-  const trackNameById = new Map<string, string>();
-  if (triageTrackIds.length > 0) {
-    const trackRows = await db
-      .select({ id: schema.track.id, name: schema.track.name })
-      .from(schema.track)
-      .where(inArray(schema.track.id, triageTrackIds));
-    for (const t of trackRows) trackNameById.set(t.id, t.name);
-  }
+  const triageTrackNames = await loadTrackNamesBySubmission(
+    db,
+    triageDetailRows.map((r) => r.id),
+  );
 
   // --- Content approval (DEC-370 section 03): accepted + content_status
   // pending. One conditional-aggregate query gives both the total (also
@@ -371,7 +366,7 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number): 
       ref: formatRef(recordPrefix, r.seq),
       title: r.title,
       speakerName: leadSpeakerNameById.get(r.id) ?? "",
-      trackName: r.trackId ? (trackNameById.get(r.trackId) ?? null) : null,
+      trackName: triageTrackNames.get(r.id)?.[0] ?? null,
       format: null,
       submittedAt: r.createdAt.getTime(),
     })),

@@ -329,15 +329,6 @@ export async function deleteTrack(db: Db, trackId: string, eventId: string): Pro
   const existing = await getTrackForEvent(db, trackId, eventId);
   if (!existing) throw new ApiError("not_found", "Track not found");
 
-  const primaryRefs = await db
-    .select({ id: schema.submission.id })
-    .from(schema.submission)
-    .where(eq(schema.submission.trackId, trackId))
-    .limit(1);
-  if (primaryRefs.length > 0) {
-    throw new ApiError("conflict", "Track is referenced by one or more submissions");
-  }
-
   const joinRefs = await db
     .select({ submissionId: schema.submissionTrack.submissionId })
     .from(schema.submissionTrack)

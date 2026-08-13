@@ -14,6 +14,7 @@ import { formatRef } from "../../../domain/ids";
 import type { SubmissionStatus } from "../../../domain/status";
 import { SESSION_FORMAT_FIELD_ID } from "../../../forms/types";
 import { speakerStatusLabel, type SpeakerStatusLabel } from "./shared";
+import { loadTrackNamesBySubmission } from "../submission-tracks";
 
 export interface PortalSubmissionListItem {
   id: string;
@@ -37,12 +38,10 @@ export async function getMySubmissions(db: Db, contactId: string, orgId: string)
       status: schema.submission.status,
       createdAt: schema.submission.createdAt,
       recordPrefix: schema.event.recordPrefix,
-      trackName: schema.track.name,
     })
     .from(schema.participant)
     .innerJoin(schema.submission, eq(schema.participant.submissionId, schema.submission.id))
     .innerJoin(schema.event, eq(schema.submission.eventId, schema.event.id))
-    .leftJoin(schema.track, eq(schema.submission.trackId, schema.track.id))
     .where(and(eq(schema.participant.contactId, contactId), eq(schema.event.orgId, orgId)))
     .orderBy(desc(schema.submission.createdAt));
 
@@ -64,13 +63,15 @@ export async function getMySubmissions(db: Db, contactId: string, orgId: string)
     }
   }
 
+  const trackNames = await loadTrackNamesBySubmission(db, ids);
+
   return rows.map((row) => ({
     id: row.id,
     ref: formatRef(row.recordPrefix, row.seq),
     title: row.title,
     statusLabel: speakerStatusLabel(row.status as SubmissionStatus),
     submittedAt: row.createdAt.getTime(),
-    trackName: row.trackName,
+    trackName: trackNames.get(row.id)?.[0] ?? null,
     format: formatBySubmission.get(row.id) ?? null,
   }));
 }

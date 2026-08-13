@@ -10,6 +10,7 @@ import type { SubmissionStatus } from "../../../domain/status";
 import { PORTAL_VISIBLE_INVITE_STATUSES } from "../../../domain/acceptance";
 import { SESSION_FORMAT_FIELD_ID } from "../../../forms/types";
 import { isOwnedByContact, speakerStatusLabel, type SpeakerStatusLabel } from "./shared";
+import { loadTrackNamesBySubmission } from "../submission-tracks";
 
 export interface PortalSubmissionSummary {
   id: string;
@@ -215,7 +216,6 @@ export async function getPortalSubmissionDetail(
       eventId: schema.event.id,
       eventOrgId: schema.event.orgId,
       timezone: schema.event.timezone,
-      trackName: schema.track.name,
       // DEC-318/DEC-536: same out-of-range-slot-nulls-placement rule as
       // getMySessions — the range predicate lives in the LEFT JOIN's ON
       // clause, not the WHERE, so an out-of-range slot never drops the row.
@@ -226,7 +226,6 @@ export async function getPortalSubmissionDetail(
     })
     .from(schema.submission)
     .innerJoin(schema.event, eq(schema.submission.eventId, schema.event.id))
-    .leftJoin(schema.track, eq(schema.submission.trackId, schema.track.id))
     .leftJoin(
       schema.scheduleSlot,
       and(
@@ -283,6 +282,9 @@ export async function getPortalSubmissionDetail(
     value: JSON.parse(a.valueJson),
   }));
 
+  const trackNames = await loadTrackNamesBySubmission(db, [submissionId]);
+  const trackName = trackNames.get(submissionId)?.[0] ?? null;
+
   const status = row.status as SubmissionStatus;
   return {
     id: row.id,
@@ -295,7 +297,7 @@ export async function getPortalSubmissionDetail(
     submittedAt: row.createdAt.getTime(),
     timezone: row.timezone,
     answers,
-    trackName: row.trackName,
+    trackName,
     format,
     day: row.day,
     startMin: row.startMin,

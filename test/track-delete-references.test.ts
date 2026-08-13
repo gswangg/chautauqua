@@ -97,8 +97,7 @@ describe("deleteTrack referential guard (DEC-229, never cascades)", () => {
   it("409s when a form's tracks_json still lists the track", async () => {
     const db = fakeDb([
       [trackRow], // getTrackForEvent
-      [], // submission primary refs
-      [], // submissionTrack join refs
+      [], // submissionTrack join refs (DEC-855: the only submission-track guard query now)
       [formRow({ tracksJson: JSON.stringify(["track1", "track2"]) })], // findFormForEvent
     ]);
     await expect(deleteTrack(db, "track1", "event1")).rejects.toMatchObject({ status: 409 });
@@ -107,7 +106,6 @@ describe("deleteTrack referential guard (DEC-229, never cascades)", () => {
   it("409s when a plan's filters_json track filter still lists the track", async () => {
     const db = fakeDb([
       [trackRow],
-      [],
       [],
       [], // no form
       [{ plan: planRow({ filtersJson: JSON.stringify({ trackIds: ["track1"] }) }), timezone: "UTC" }], // listPlansForEvent
@@ -119,7 +117,6 @@ describe("deleteTrack referential guard (DEC-229, never cascades)", () => {
     const db = fakeDb([
       [trackRow],
       [],
-      [],
       [], // no form
       [{ plan: planRow(), timezone: "UTC" }], // one plan, no filter reference
       [{ id: "pr1", planId: "plan1", userId: "u1", trackId: "track1", submissionId: null }], // listReviewerRowsForPlan
@@ -130,7 +127,6 @@ describe("deleteTrack referential guard (DEC-229, never cascades)", () => {
   it("deletes cleanly when the track is wholly unreferenced", async () => {
     const db = fakeDb([
       [trackRow],
-      [],
       [],
       [], // no form
       [{ plan: planRow(), timezone: "UTC" }], // one plan, no filter reference
