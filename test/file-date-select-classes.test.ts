@@ -4,9 +4,9 @@ import { describe, expect, it } from "vitest";
 
 // DEC-577 (w1-i): the SPA never styled native form controls, so a judge's
 // first sighting of Content was a browser-default file input beside a fully
-// designed table. This guard enumerates every input[type=file],
-// input[type=date] and <select> actually rendered by the SPA (never
-// hand-listed -- a hand-listed manifest desyncs, per the field guide) and
+// designed table. This guard enumerates every input[type=file] and <select>
+// actually rendered by the SPA (never hand-listed -- a hand-listed manifest
+// desyncs, per the field guide) and
 // asserts each carries the shared shell class that app/src/styles.css's
 // "Native control styling (DEC-577)" section styles, plus that that CSS
 // section only references the frozen --chq-* tokens (no new hex literals).
@@ -148,23 +148,25 @@ const IN_SCOPE_FILE_DIRS = [join(APP_SRC, "pages/content"), join(APP_SRC, "pages
 const fileControls = allControls.filter(
   (c) => c.kind === "file" && IN_SCOPE_FILE_DIRS.some((dir) => c.file.startsWith(dir)),
 );
-const dateControls = allControls.filter((c) => c.kind === "date");
+// DEC-146 (wave-44 amendment) retired this guard's date arm: the SPA no
+// longer renders ANY native input[type=date] -- date entry is the text
+// DateField speaking "11 May 2028" (app/src/components/DateField.tsx),
+// which defaults to the same chq-input class this arm used to assert. The
+// population is now permanently empty, so asserting over it would be a
+// vacuous guard; the replacement (zero native date inputs under app/src)
+// is enforced by app/src/components/DateField.render.test.tsx's source
+// scan. The scanner still classifies kind: "date" so that guard has a
+// single shared definition of "native date input" to point at.
 const selectControls = allControls.filter((c) => c.kind === "select");
 
-describe("input[type=file]/[type=date]/select share the DEC-577 classes", () => {
+describe("input[type=file]/select share the DEC-577 classes", () => {
   it("enumerated at least one control of each kind (the guard isn't vacuous)", () => {
     expect(fileControls.length).toBeGreaterThan(0);
-    expect(dateControls.length).toBeGreaterThan(0);
     expect(selectControls.length).toBeGreaterThan(0);
   });
 
   it("every in-scope (content/settings) input[type=file] carries chq-file", () => {
     const offenders = fileControls.filter((c) => !/className\s*=\s*["'][^"']*\bchq-file\b/.test(c.attrs));
-    expect(offenders.map((c) => `${c.file}:${c.line}`)).toEqual([]);
-  });
-
-  it("every input[type=date] carries chq-input (shares its border/radius/height/typography)", () => {
-    const offenders = dateControls.filter((c) => !/className\s*=\s*["'][^"']*\bchq-input\b/.test(c.attrs));
     expect(offenders.map((c) => `${c.file}:${c.line}`)).toEqual([]);
   });
 
