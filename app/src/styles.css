@@ -87,6 +87,11 @@
   --chq-r-ctl-phone: 6px;
   --chq-r-card: 5px;
   --chq-r-pill: 99px;
+
+  /* Layout (DEC-744): the shared desktop page-content measure. Subscreens
+     that clamp their own max-width reference this token instead of
+     hand-copying the px value so the whole product moves together. */
+  --chq-measure: 820px;
 }
 
 * {
@@ -358,7 +363,7 @@ a:hover {
 }
 
 .chq-measure {
-  max-width: 820px;
+  max-width: var(--chq-measure);
   margin: 0 auto;
 }
 
