@@ -162,6 +162,26 @@ REVERT SHAPE (mint a superseding DEC):
 - Reserved-domain recipients (example.com) failing at send is CORRECT honest behavior, not a bug.
 This ships with the gate-4 deploy; deploy procedure keeps the secrets/bindings parity check.
 
+**P1 · USER-FILED (2026-08-13): reviewer queue rows use PHONE anatomy on desktop.** Screenshot
+evidence: each queue row renders ref/status line, title, meta, then a FULL-WIDTH 820px olive
+"Score this" block button — reads as the phone view. Root cause: the only v6 reviewer-queue
+frames (10--01/02) are 390px phone frames, so fleet passes graded the full-width action as
+frame-faithful; there is NO desktop frame for this surface. Desktop anatomy therefore follows
+the affordance grammar (primaries never float in their own band): "Score this" is a normal
+intrinsic-width button right-aligned on the row (vertically centered against the title/meta
+block), same for outlined "Change your score" on scored rows. Keep the phone full-width
+treatment for the mobile round only (additive reflow). Fidelity agents: do not re-grade the
+desktop queue against the 390px frames' block-button pattern.
+
+**P1 · USER DECISION (2026-08-13, supersedes delta-probe item 14 AND v6 frame 10--00's nav row):
+DROP "Gallery" from the public nav.** The user observed the List/Grid toggle jumping the nav
+highlight between two top-level entries ("a view switch that presents as leaving the section").
+Ruling: Speakers is ONE nav section (DEC-990 one-page-two-views); the toggle owns the List/Grid
+switch; /gallery keeps resolving as the Grid URL for deep links and embeds but has no nav entry
+and never renders a nav-active state of its own — when on /gallery, the nav highlights
+"Speakers". Fidelity agents: frame 10--00's nav row is SUPERSEDED on this one point; do not
+re-file the missing Gallery nav entry.
+
 ## DELTA PROBE w49 (2026-08-13, snapshot 2cfc855a) — DISPOSITIONS OVER THE GATE-3 REDS BELOW
 
 28 P1 items measured: **16 FIXED · 8 PARTIAL · 4 STILL-PRESENT · 0 BROKEN.** Verified FIXED (hands off, red-block clauses below are DEAD for these): reviewer CTA contrast (6.8:1); plan editor + /plans/new on table measure with full-bleed title row; CFP builder Track field; Columns: Format + populated column; plan status pills (open filled / opens outlined / closed bare); scorecard reconciliation line; **plan-editor unsaved-draft guard ("Leave without saving?" dialog)**; public 1180 pair layout (x130/1180, 778+300); speakers List view + 6×172px gallery grid; joined List/Grid toggle on the title row; /submit OPEN with full-bleed header, TRACK|FORMAT 2-up, audience pills, single name, real textareas; import org→Company automap + named preview blocker; compose ICS note per-recipient (single flag + honest aggregate); pill/button font Figtree everywhere; mail boundary = UnconfiguredMailer with failed log rows + guarded construction at ALL 8 send sites + /api/v1/mail-status Settings read; auth 732/820 borderless flex-start; /e/bad-slug 404 designed card at real 404.
