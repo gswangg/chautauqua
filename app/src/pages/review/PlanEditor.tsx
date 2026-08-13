@@ -745,11 +745,11 @@ export function PlanEditor() {
 
   async function postReviewerAssignment(body: { userId: string; trackId?: string; submissionId?: string }) {
     const created = await apiPost<PlanReviewer>(`/plans/${planId}/reviewers`, body);
-    // The create response doesn't carry an email (PlanReviewerRecord has no
-    // such column); resolve it from the already-loaded reviewer options so
-    // the row doesn't flash the raw userId until the next reload.
-    const resolvedEmail = reviewerOptions.find((r) => r.id === created.userId)?.email;
-    setReviewers((prev) => [...prev, { ...created, email: created.email ?? resolvedEmail }]);
+    // The server decorates the create response with the same email/
+    // trackName/submissionRef/submissionTitle labels the list mapper
+    // computes (DEC-659 amendment), so the row never flashes a raw id or a
+    // "(removed)" label before the next reload.
+    setReviewers((prev) => [...prev, created]);
     return created;
   }
 
@@ -809,12 +809,10 @@ export function PlanEditor() {
         userId: reviewerUserId.trim(),
         submissionIds: [...chosenSubmissionIds],
       });
-      // The create response doesn't carry an email (PlanReviewerRecord has
-      // no such column); resolve it from the already-loaded reviewer
-      // options so the rows don't flash the raw userId until the next
-      // reload (mirrors postReviewerAssignment above).
-      const resolvedEmail = reviewerOptions.find((r) => r.id === reviewerUserId.trim())?.email;
-      setReviewers((prev) => [...prev, ...items.map((item) => ({ ...item, email: item.email ?? resolvedEmail }))]);
+      // Server-decorated response (mirrors postReviewerAssignment above) --
+      // every item already carries email/trackName/submissionRef/
+      // submissionTitle, so no client-side patching is needed.
+      setReviewers((prev) => [...prev, ...items]);
       setReviewerUserId('');
       resetScopeConfirm();
       setScopePreview(null);
