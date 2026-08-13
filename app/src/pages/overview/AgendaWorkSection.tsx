@@ -8,9 +8,20 @@
 // `Place it` link to /agenda — the UI never invents a time.
 import { Link } from 'react-router-dom';
 import { apiPut, ApiError } from '../../lib/api';
+import { formatDayLabel } from '../../lib/dates';
 import { conflictKindLabel } from '../agenda/ConflictChip';
-import { joinSegments } from './rows';
+import { joinSegments, pluralize } from './rows';
 import type { OverviewPayload } from './types';
+
+// DEC-828 (schedule.ts): render minutes-from-midnight as a zero-padded
+// HH:MM clock time — never a raw ISO string, never Intl's browser-locale
+// default. A conflict's day/startMin are already event-local at the schema
+// level (schedule_slot), so no timezone conversion happens here.
+function formatClockTime(minutesFromMidnight: number): string {
+  const h = Math.floor(minutesFromMidnight / 60);
+  const m = minutesFromMidnight % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
 
 // DEC-652: mirrors src/server/repo/agenda.ts's DEFAULT_AUTO_SCHEDULE_PARAMS
 // .defaultDurationMin — the same default the server's nextFreeSlot used to
@@ -19,6 +30,20 @@ import type { OverviewPayload } from './types';
 // one place the client independently knows the duration a suggested slot
 // was sized for, for the PUT's endMin).
 const DEFAULT_UNPLACED_DURATION_MIN = 30;
+
+// DEC-877: §04's overflow — unplaced rows and conflict rows the payload
+// truncated (server total exceeds the rows actually sent) — collapsed into
+// ONE below-the-list summary sentence, joined through the page's one
+// joinSegments so a section with only one kind of overflow never leaves a
+// dangling separator.
+function agendaOverflowLine(payload: OverviewPayload): string {
+  const extraUnplaced = payload.agendaWork.unplacedTotal - payload.agendaWork.unplaced.length;
+  const extraConflicts = payload.agendaWork.conflictTotal - payload.agendaWork.conflicts.length;
+  return joinSegments([
+    extraUnplaced > 0 ? `${extraUnplaced} more unplaced` : null,
+    extraConflicts > 0 ? `${extraConflicts} more ${pluralize(extraConflicts, 'conflict')}` : null,
+  ]);
+}
 
 interface AgendaWorkSectionProps {
   payload: OverviewPayload;
@@ -70,7 +95,11 @@ export function AgendaWorkSection({ payload, setPayload, setError, refetch }: Ag
       {payload.agendaWork.conflicts.map((conflict, idx) => (
         <div key={`conflict-${idx}`} className="chq-overview-row chq-overview-row-agenda">
           <div>
-            <div className="chq-overview-row-title chq-overview-row-title-sm">{conflict.day}</div>
+            {/* DEC-877: a raw ISO day with no time never renders — weekday +
+                day-of-month, then the start time, then the room (below). */}
+            <div className="chq-overview-row-title chq-overview-row-title-sm">
+              {formatDayLabel(conflict.day)}, {formatClockTime(conflict.startMin)}
+            </div>
             <div className="chq-overview-row-meta">{conflict.roomName}</div>
           </div>
           <div>
@@ -155,6 +184,12 @@ export function AgendaWorkSection({ payload, setPayload, setError, refetch }: Ag
           )}
         </div>
       ))}
+      {/* DEC-877: overflow is a summary line BELOW the list — the same
+          shape §01 uses for its own overflow. Never invents a duration
+          clause the payload doesn't carry (row.durationMin is always the
+          server's null default — see DEFAULT_UNPLACED_DURATION_MIN above);
+          only the counts the server actually sent are named. */}
+      {agendaOverflowLine(payload) && <div className="chq-overview-overflow">{agendaOverflowLine(payload)}</div>}
     </section>
   );
 }

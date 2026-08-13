@@ -143,6 +143,9 @@ describe('OverviewPage render smoke (DEC-370)', () => {
       expect(screen.getByText('Marcus Okafor')).toBeInTheDocument();
     });
 
+    // DEC-877: the loaded page's root carries the shared measure clamp.
+    expect(document.querySelector('.chq-page')).toHaveClass('chq-measure');
+
     expect(screen.getByText('Docs That Answer Back')).toBeInTheDocument();
     expect(screen.getByText('Taming 40-Minute CI')).toBeInTheDocument();
     expect(screen.getByText('5 things need your attention')).toBeInTheDocument();
@@ -162,35 +165,20 @@ describe('OverviewPage render smoke (DEC-370)', () => {
     const newSubmissionLink = screen.getByRole('link', { name: 'New submission' });
     expect(newSubmissionLink).toHaveAttribute('href', '/submissions');
 
-    // DEC-611: Public pages section — one row per surface, linked by the
-    // event's real slug (resolved from GET /api/v1/events), never a guessed
-    // slugification of the name.
+    // DEC-877: Public pages is ONE summary sentence naming every live
+    // surface, with the event's own public root as the ONLY link (never a
+    // chip per surface).
     await waitFor(() => {
       expect(screen.getByText('Public pages')).toBeInTheDocument();
     });
-    expect(screen.getByText('Sessions')).toBeInTheDocument();
-    expect(screen.getByText('Speakers')).toBeInTheDocument();
-    expect(screen.getByText('Gallery')).toBeInTheDocument();
-    expect(screen.getByText('Agenda')).toBeInTheDocument();
-    expect(screen.getByText('Schedule')).toBeInTheDocument();
-    expect(screen.getByText('CFP form')).toBeInTheDocument();
-
-    // DEC-735: Public pages renders as ONE summary row (not one row per
-    // surface) — every surface still links out, named by its own label.
-    const sessionsLink = screen.getByRole('link', { name: 'Sessions' });
-    const speakersLink = screen.getByRole('link', { name: 'Speakers' });
-    const galleryLink = screen.getByRole('link', { name: 'Gallery' });
-    const agendaLink = screen.getByRole('link', { name: 'Agenda' });
-    const scheduleLink = screen.getByRole('link', { name: 'Schedule' });
-    const cfpLink = screen.getByRole('link', { name: 'CFP form' });
-    expect(sessionsLink).toHaveAttribute('href', `/e/${EVENT_SLUG}/sessions`);
-    expect(speakersLink).toHaveAttribute('href', `/e/${EVENT_SLUG}/speakers`);
-    expect(galleryLink).toHaveAttribute('href', `/e/${EVENT_SLUG}/gallery`);
-    expect(agendaLink).toHaveAttribute('href', `/e/${EVENT_SLUG}/agenda`);
-    expect(scheduleLink).toHaveAttribute('href', `/e/${EVENT_SLUG}/schedule`);
-    expect(cfpLink).toHaveAttribute('href', `/submit/${EVENT_SLUG}`);
-    // Every surface link lives inside the SAME single row.
-    expect(sessionsLink.closest('.chq-overview-row-public')).toBe(cfpLink.closest('.chq-overview-row-public'));
+    const publicRootLink = screen.getByRole('link', { name: `/e/${EVENT_SLUG}` });
+    expect(publicRootLink).toHaveAttribute('href', `/e/${EVENT_SLUG}`);
+    const publicRow = publicRootLink.closest('.chq-overview-row-public')!;
+    expect(publicRow.textContent).toBe(
+      `Public pagesSessions · Speakers · Gallery · Agenda · Schedule · CFP form are live at /e/${EVENT_SLUG}.`,
+    );
+    // Exactly one link in the row — the public root, not a chip per surface.
+    expect(publicRow.querySelectorAll('a').length).toBe(1);
     expect(document.querySelectorAll('.chq-overview-row-public').length).toBe(1);
 
     // DEC-704: the deadlines strip keeps a FIXED reading order (never
@@ -248,7 +236,7 @@ describe('OverviewPage render smoke (DEC-370)', () => {
 
   // DEC-704: "Remind all" must name exactly what it sends — the rendered
   // rows, never the (possibly ROW_CAP'd) server total.
-  it('labels Remind all with the rendered row count, not the total, and links the overflow', async () => {
+  it('labels Remind all with the rendered row count, not the total, and shows the overflow summary below the list', async () => {
     const p = payload();
     p.overdueTasks = { total: 5, rows: p.overdueTasks.rows };
 
@@ -268,8 +256,12 @@ describe('OverviewPage render smoke (DEC-370)', () => {
     expect(screen.getByRole('button', { name: 'Remind all 1' })).toBeInTheDocument();
     expect(screen.queryByText('Remind all 5')).not.toBeInTheDocument();
 
-    const overflowLink = screen.getByRole('link', { name: '4 more overdue' });
-    expect(overflowLink).toHaveAttribute('href', '/speakers');
+    // DEC-877: overflow is a below-the-list summary line, never a nav link.
+    expect(screen.queryByRole('link', { name: '4 more overdue' })).not.toBeInTheDocument();
+    const overflow = screen.getByText('4 more overdue');
+    expect(overflow).toHaveClass('chq-overview-overflow');
+    const overdueRow = screen.getByText('Marcus Okafor').closest('.chq-overview-row-overdue')!;
+    expect(overdueRow.compareDocumentPosition(overflow) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('renders unlinked public-page names with a reason when the slug cannot be resolved', async () => {

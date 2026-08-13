@@ -33,14 +33,16 @@ interface EventListItem {
 
 // Mirrors src/routes/public/shell.tsx's SURFACES tuple plus the CFP form
 // route (src/routes/public/submit.tsx) — the exhaustive set of public pages
-// an organiser might want to hand out for the current event.
-const PUBLIC_SURFACES: ReadonlyArray<{ key: string; label: string; path: (slug: string) => string }> = [
-  { key: 'sessions', label: 'Sessions', path: (slug) => `/e/${slug}/sessions` },
-  { key: 'speakers', label: 'Speakers', path: (slug) => `/e/${slug}/speakers` },
-  { key: 'gallery', label: 'Gallery', path: (slug) => `/e/${slug}/gallery` },
-  { key: 'agenda', label: 'Agenda', path: (slug) => `/e/${slug}/agenda` },
-  { key: 'schedule', label: 'Schedule', path: (slug) => `/e/${slug}/schedule` },
-  { key: 'cfp', label: 'CFP form', path: (slug) => `/submit/${slug}` },
+// an organiser might want to hand out for the current event. DEC-877: the
+// row no longer links each surface individually — it names them in one
+// sentence and links only the event's own public root.
+const PUBLIC_SURFACES: ReadonlyArray<{ label: string }> = [
+  { label: 'Sessions' },
+  { label: 'Speakers' },
+  { label: 'Gallery' },
+  { label: 'Agenda' },
+  { label: 'Schedule' },
+  { label: 'CFP form' },
 ];
 
 // DEC-735: a dangling clause with no computed value must never render — this
@@ -178,7 +180,7 @@ export function OverviewPage() {
 
   if (eventLoading) {
     return (
-      <div className="chq-page">
+      <div className="chq-page chq-measure">
         <DelayedLoading label="Loading event…" />
       </div>
     );
@@ -186,7 +188,7 @@ export function OverviewPage() {
 
   if (eventError || !eventId) {
     return (
-      <div className="chq-page">
+      <div className="chq-page chq-measure">
         <div className="chq-attention-frame">{eventError ?? 'No event selected.'}</div>
       </div>
     );
@@ -194,7 +196,7 @@ export function OverviewPage() {
 
   if (loading || !payload) {
     return (
-      <div className="chq-page">
+      <div className="chq-page chq-measure">
         {error && <div className="chq-error-banner">{error}</div>}
         {!error && <DelayedLoading label="Loading overview…" />}
       </div>
@@ -210,7 +212,7 @@ export function OverviewPage() {
       : null;
 
   return (
-    <div className="chq-page">
+    <div className="chq-page chq-measure">
       {error && <div className="chq-error-banner">{error}</div>}
       {remindToast && (
         <div className="chq-toast" role="status">
@@ -277,13 +279,6 @@ export function OverviewPage() {
         {payload.overdueTasks.rows.length === 0 && (
           <div className="chq-overview-empty">No overdue speaker tasks.</div>
         )}
-        {payload.overdueTasks.total > payload.overdueTasks.rows.length && (
-          <div className="chq-overview-overflow">
-            <Link to="/speakers">
-              {payload.overdueTasks.total - payload.overdueTasks.rows.length} more overdue
-            </Link>
-          </div>
-        )}
         {payload.overdueTasks.rows.map((row) => (
           <div key={row.assignmentId} className="chq-overview-row chq-overview-row-overdue">
             <div>
@@ -308,6 +303,13 @@ export function OverviewPage() {
             </div>
           </div>
         ))}
+        {/* DEC-877: overflow is a summary line BELOW the list, never a nav
+            link above it — the same shape §04 uses for its own overflow. */}
+        {payload.overdueTasks.total > payload.overdueTasks.rows.length && (
+          <div className="chq-overview-overflow">
+            {payload.overdueTasks.total - payload.overdueTasks.rows.length} more overdue
+          </div>
+        )}
       </section>
 
       <section className="chq-overview-section">
@@ -415,26 +417,21 @@ export function OverviewPage() {
             </span>
           </div>
         ))}
-        {/* DEC-735: the mock renders Public pages as ONE summary row inside
-            "No action needed", not a separate section listing every surface
-            — every surface still links out, from this single row's action
-            list rather than a stacked list of rows. */}
+        {/* DEC-877: Public pages is ONE summary sentence, not a chip per
+            surface — the sentence names every live surface but the event's
+            own public root (`/e/<slug>`) is the only link, matching the
+            frame's convention that a row states its fact in prose and links
+            out exactly once. */}
         <div className="chq-overview-row chq-overview-row-public">
           <span className="chq-overview-row-title chq-overview-row-title-sm">Public pages</span>
           {eventSlug ? (
-            <div className="chq-overview-row-actions-inline">
-              {PUBLIC_SURFACES.map((surface) => (
-                <a
-                  key={surface.key}
-                  href={surface.path(eventSlug)}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="chq-overview-link-btn"
-                >
-                  {surface.label}
-                </a>
-              ))}
-            </div>
+            <span className="chq-overview-row-meta">
+              {joinSegments(PUBLIC_SURFACES.map((s) => s.label))} are live at{' '}
+              <a href={`/e/${eventSlug}`} target="_blank" rel="noreferrer" className="chq-overview-link-btn">
+                /e/{eventSlug}
+              </a>
+              .
+            </span>
           ) : (
             <span className="chq-overview-row-meta">{slugError ?? 'Resolving link…'}</span>
           )}

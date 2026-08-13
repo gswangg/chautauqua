@@ -93,6 +93,11 @@ describe('AgendaWorkSection (DEC-652)', () => {
 
     expect(screen.getByText('Taming 40-Minute CI')).toBeInTheDocument();
     expect(screen.getByText('Onboarding in 30 Minutes')).toBeInTheDocument();
+    // DEC-877: the conflict's left column names weekday + day-of-month, the
+    // start time, then the room — never the raw ISO day string with no
+    // time. conflict.day is '2027-03-11' (a Thursday), startMin 600 = 10:00.
+    expect(screen.getByText('Thu 11 Mar, 10:00')).toBeInTheDocument();
+    expect(document.body.textContent).not.toMatch(/2027-03-11/);
     expect(screen.getByRole('button', { name: 'Move DFC-047 to 11:30' })).toBeInTheDocument();
     expect(screen.getByText('Next free slot in Room 2A')).toBeInTheDocument();
     // DEC-735: the suggestion names the room it would fill.
@@ -213,6 +218,28 @@ describe('AgendaWorkSection (DEC-652)', () => {
       endMin: 750, // conflict duration (660-600=60) carried onto the moved slot
       roomId: 'room-2a',
     });
+  });
+
+  // DEC-877: §04's overflow is a summary line BELOW the list, joined
+  // through the page's one joinSegments — never inventing a duration clause
+  // the payload doesn't carry.
+  it('renders a below-the-list overflow summary when the server total exceeds the rendered rows', () => {
+    mockApi({});
+    const payload = basePayload();
+    payload.agendaWork.unplacedTotal = 4;
+    payload.agendaWork.conflictTotal = 3;
+    render(<Harness payload={payload} refetch={vi.fn()} />);
+
+    const overflow = screen.getByText('3 more unplaced · 2 more conflicts');
+    expect(overflow).toHaveClass('chq-overview-overflow');
+    const unplacedRow = screen.getByText('Docs That Answer Back').closest('.chq-overview-row-agenda')!;
+    expect(unplacedRow.compareDocumentPosition(overflow) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('renders no overflow line when the rendered rows already cover the totals', () => {
+    mockApi({});
+    render(<Harness payload={basePayload()} refetch={vi.fn()} />);
+    expect(document.querySelector('.chq-overview-overflow')).not.toBeInTheDocument();
   });
 
   it('loudly refetches (never a silent rollback) when the placement PUT fails', async () => {
