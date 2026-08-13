@@ -11,7 +11,7 @@
 // a client-side display filter only, the Move-to select below each card is
 // still what persists a stage change.
 
-import { useEffect, useState, type FormEvent, type MouseEvent } from 'react';
+import { useEffect, useState, type DragEvent, type FormEvent, type MouseEvent } from 'react';
 import { apiGet, apiList, apiPost, apiPatch, ApiError } from '../../lib/api';
 import { useEscapeKey } from '../../lib/useEscapeKey';
 import { DelayedLoading } from '../../components/DelayedLoading';
@@ -40,6 +40,8 @@ export function PipelineBoard() {
   // card holding this state is the one awaiting that prompt; nothing moves
   // until it's submitted.
   const [declinePrompt, setDeclinePrompt] = useState<PipelineEntry | null>(null);
+  // DEC-898: the column currently under a drag, for the over-state affordance.
+  const [dragOverStage, setDragOverStage] = useState<PipelineStage | null>(null);
 
   function reload() {
     setLoading(true);
@@ -99,6 +101,31 @@ export function PipelineBoard() {
     void doMove(entry, stage);
   }
 
+  // DEC-898: drag-and-drop reuses the exact same stage-change path as the
+  // per-card select (moveTo -> doMove) -- a drop is never a second write
+  // path, and dropping on the entry's own column is the same no-op the
+  // select already has (moveTo's `stage === entry.stage` guard).
+  function handleColumnDragOver(e: DragEvent<HTMLDivElement>, stage: PipelineStage) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (dragOverStage !== stage) setDragOverStage(stage);
+  }
+
+  function handleColumnDragLeave(e: DragEvent<HTMLDivElement>) {
+    if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
+    setDragOverStage(null);
+  }
+
+  function handleColumnDrop(e: DragEvent<HTMLDivElement>, stage: PipelineStage) {
+    e.preventDefault();
+    setDragOverStage(null);
+    const entryId = e.dataTransfer.getData('text/plain');
+    if (!entryId) return;
+    const entry = entries.find((en) => en.id === entryId);
+    if (!entry) return;
+    moveTo(entry, stage);
+  }
+
   return (
     <div className="chq-contacts-pipeline">
       <div className="chq-contacts-pipeline-head">
@@ -120,7 +147,15 @@ export function PipelineBoard() {
         <>
           <div className="chq-contacts-pipeline-columns">
             {PIPELINE_STAGES.map((stage) => (
-              <div key={stage} className="chq-contacts-pipeline-column" data-stage={stage}>
+              <div
+                key={stage}
+                className={`chq-contacts-pipeline-column${dragOverStage === stage ? ' chq-contacts-pipeline-column-drag-over' : ''}`}
+                data-stage={stage}
+                aria-label={`${PIPELINE_STAGE_LABELS[stage]} column`}
+                onDragOver={(e) => handleColumnDragOver(e, stage)}
+                onDragLeave={handleColumnDragLeave}
+                onDrop={(e) => handleColumnDrop(e, stage)}
+              >
                 <div className="chq-contacts-pipeline-column-head">
                   <span className="chq-contacts-pipeline-column-name">{PIPELINE_STAGE_LABELS[stage]}</span>
                   <span className="chq-contacts-pipeline-column-count">
@@ -290,8 +325,14 @@ interface PipelineCardProps {
 
 function PipelineCard({ entry, onOpen, onMove }: PipelineCardProps) {
   const age = pipelineCardAge(entry.stage, entry.stageSince, Date.now());
+  // DEC-898: reuses the agenda DayGrid drag contract verbatim -- the
+  // dragged entry's id in `text/plain`, effectAllowed 'move'.
+  function handleDragStart(e: DragEvent<HTMLLIElement>) {
+    e.dataTransfer.setData('text/plain', entry.id);
+    e.dataTransfer.effectAllowed = 'move';
+  }
   return (
-    <li className="chq-contacts-pipeline-card">
+    <li className="chq-contacts-pipeline-card" draggable onDragStart={handleDragStart}>
       <button type="button" className="chq-contacts-pipeline-card-name" onClick={onOpen}>
         {entry.firstName} {entry.lastName}
       </button>
