@@ -231,6 +231,13 @@
   cursor: not-allowed;
 }
 
+/* DEC-903: dragging a row over a valid drop target must show WHERE it will
+   land, not just accept the drop silently. A top rule on the hovered row
+   reads as the insertion point the dropped row will take. */
+.chq-forms-field-row-drop-target {
+  border-top: 2px solid var(--chq-ink);
+}
+
 .chq-forms-field-modal {
   width: 100%;
   max-width: 520px;
