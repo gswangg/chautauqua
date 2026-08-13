@@ -424,6 +424,55 @@ describe('PipelineBoard: fit score + rationale (DEC-821)', () => {
   });
 });
 
+// DEC-980: fit is editable after enrolment -- the edit dialog PATCHes
+// without a `stage` key, and the card's pill updates in place with no
+// reload (no second GET /pipeline call).
+describe('PipelineBoard: fit edit after enrolment (DEC-980)', () => {
+  it('rates an Unrated card via the edit dialog, PATCHing without a stage and updating in place', async () => {
+    const fetchMock = mockApi({
+      'GET /api/v1/pipeline': listEnvelope([ENTRY_IDENTIFIED]),
+      'PATCH /api/v1/pipeline/entry-1': {
+        ...ENTRY_IDENTIFIED,
+        fitScore: 3,
+        rationale: 'Solid keynote track record',
+      },
+    });
+
+    render(<PipelineBoard />);
+    await waitFor(() => within(desktopBoard()).getByText('Ada Lovelace'));
+
+    const identifiedColumn = document.querySelector('[data-stage="identified"]') as HTMLElement;
+    expect(within(identifiedColumn).getByText('Unrated')).toBeInTheDocument();
+
+    fireEvent.click(within(identifiedColumn).getByRole('button', { name: 'Rate' }));
+
+    const dialog = await screen.findByRole('dialog', { name: 'Rate fit' });
+    fireEvent.click(within(dialog).getByRole('button', { name: '3' }));
+    fireEvent.change(within(dialog).getByLabelText(/Why them/), {
+      target: { value: 'Solid keynote track record' },
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => {
+      expect(within(desktopBoard()).getByText('Fit 3')).toBeInTheDocument();
+    });
+    expect(within(desktopBoard()).queryByText('Unrated')).not.toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: 'Rate fit' })).not.toBeInTheDocument();
+
+    const getCalls = fetchMock.mock.calls.filter(([, init]) => (init as RequestInit | undefined)?.method === 'GET');
+    // Only the initial GET /pipeline load -- no reload triggered by the edit.
+    expect(getCalls).toHaveLength(1);
+
+    const patchCall = fetchMock.mock.calls.find(([, init]) => (init as RequestInit | undefined)?.method === 'PATCH');
+    expect(patchCall).toBeDefined();
+    const patchBody = JSON.parse(String((patchCall![1] as RequestInit).body));
+    expect(patchBody).toEqual({ fitScore: 3, rationale: 'Solid keynote track record' });
+    expect(patchBody.stage).toBeUndefined();
+
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
+  });
+});
+
 // DEC-859: the add-to-the-pipeline dialog is the frame's dialog (ModalFrame,
 // not a hand-rolled scrim), with the title/trigger vocabulary aligned and
 // the Starting stage / Fit controls built on the shared .chq-segmented

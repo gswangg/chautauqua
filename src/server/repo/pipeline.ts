@@ -297,7 +297,10 @@ export async function enrollContact(
 }
 
 /** Moves an entry to a new stage, appending a 'move' activity (this table
- * IS the stage history, per DEC-157). */
+ * IS the stage history, per DEC-157). Callers must only invoke this for a
+ * REAL stage change (toStage !== entry.stage) -- DEC-980: a same-stage or
+ * fit-only PATCH must never reach here, since every call writes an activity
+ * row and bumps updatedAt (which IS stageSince, DEC-803). */
 export async function moveEntry(
   db: Db,
   entry: PipelineEntryRow,
@@ -324,6 +327,26 @@ export async function moveEntry(
   const updated = await findEntryById(db, entry.id);
   if (!updated) throw new Error(`pipeline_entry ${entry.id} not found after update`);
   return updated;
+}
+
+/** Newest move-to-declined activity's body for a single entry, or null if
+ * it has none (DEC-803). Single-entry counterpart of listPipelineForOrg's
+ * chunked declineReasonByEntryId lookup, for callers (the PATCH route) that
+ * already have one entry in hand and never invent this value. */
+export async function declineReasonForEntry(db: Db, entryId: string): Promise<string | null> {
+  const rows = await db
+    .select({ body: schema.pipelineActivity.body, createdAt: schema.pipelineActivity.createdAt })
+    .from(schema.pipelineActivity)
+    .where(
+      and(
+        eq(schema.pipelineActivity.entryId, entryId),
+        eq(schema.pipelineActivity.kind, "move"),
+        eq(schema.pipelineActivity.toStage, "declined"),
+      ),
+    )
+    .orderBy(desc(schema.pipelineActivity.createdAt))
+    .limit(1);
+  return rows[0]?.body ?? null;
 }
 
 /** Updates an entry's fit score and/or rationale (DEC-821). Does not touch
