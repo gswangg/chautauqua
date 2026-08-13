@@ -96,12 +96,12 @@ describe("auth surface card shape (DEC-944)", () => {
   });
 });
 
-describe("AUTH_CSS card metrics (DEC-944/DEC-945)", () => {
+describe("AUTH_CSS card metrics (DEC-944/DEC-945 v6 amendment)", () => {
   it("declares the frames' card, narrow-card, title and input numbers", () => {
-    expect(AUTH_CSS).toContain("max-width: 640px");
-    expect(AUTH_CSS).toContain("max-width: 520px");
+    expect(AUTH_CSS).toContain("max-width: 732px");
+    expect(AUTH_CSS).toContain("max-width: 820px");
     expect(AUTH_CSS).toContain("padding: 35px");
-    expect(AUTH_CSS).toContain("max-width: 450px");
+    expect(AUTH_CSS).not.toContain("max-width: 450px");
     expect(AUTH_CSS).toMatch(/\.chq-auth-title\s*\{[^}]*font-size:\s*28px/);
     expect(AUTH_CSS).toMatch(/input\[type=password\]\s*\{[^}]*min-height:\s*48px/);
   });
