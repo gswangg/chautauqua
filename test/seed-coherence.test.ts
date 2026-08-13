@@ -644,6 +644,60 @@ describe("seed coherence (DEC-875 wave-42 amendment): the review machinery and a
     }
   });
 
+  it("(DEC-739 amendment, task w45-c) every seeded form-task response answers its own field's label, never a kind-only lie", () => {
+    // ENUMERATE every seeded form-task response field/value pair (never
+    // sample): join task_assignment.response_json (keyed by form_field.id)
+    // against form_field.label so a text field's seeded answer is checked
+    // against what it actually asks, not just its `kind`.
+    const fieldRows = parseInserts(sql, "form_field");
+    const labelById = new Map(fieldRows.map((f) => [f.id!, f.label!]));
+    expect(labelById.size).toBeGreaterThan(0);
+
+    const assignmentRows = parseInserts(sql, "task_assignment");
+    const responseAssignments = assignmentRows.filter((r) => r.response_json);
+    expect(responseAssignments.length).toBeGreaterThan(0);
+
+    // The app's own single day-range grammar (formatEventDayRange with equal
+    // start/end): "D Mon YYYY", e.g. "11 May 2027" — day-of-month with no
+    // leading zero, short month, four-digit year.
+    const DATE_GRAMMAR_RE = /^\d{1,2} [A-Za-z]{3} \d{4}$/;
+    // US "Mon D, YYYY" grammar (e.g. "May 11, 2027") must never appear.
+    const US_DATE_RE = /^[A-Za-z]{3,9} \d{1,2}, \d{4}$/;
+
+    let dateAnswerCount = 0;
+    for (const assignment of responseAssignments) {
+      const response = JSON.parse(assignment.response_json!) as Record<string, unknown>;
+      for (const [fieldId, value] of Object.entries(response)) {
+        const label = labelById.get(fieldId);
+        expect(label, `response field ${fieldId} on task_assignment ${assignment.id} has no matching form_field row`).toBeTruthy();
+        const isDateLabel = /check-?in|check-?out|arrival|departure|\bdate\b/i.test(label!);
+
+        if (typeof value === "string") {
+          expect(
+            US_DATE_RE.test(value),
+            `field "${label}" (${fieldId}) on task_assignment ${assignment.id} carries US date grammar "${value}"`,
+          ).toBe(false);
+        }
+
+        if (isDateLabel) {
+          expect(
+            typeof value,
+            `date-labeled field "${label}" (${fieldId}) on task_assignment ${assignment.id} carries a non-string value ${JSON.stringify(value)}`,
+          ).toBe("string");
+          expect(
+            DATE_GRAMMAR_RE.test(value as string),
+            `date-labeled field "${label}" (${fieldId}) on task_assignment ${assignment.id} carries "${value}", not "D Mon YYYY" grammar`,
+          ).toBe(true);
+          dateAnswerCount += 1;
+        }
+      }
+    }
+    // Sanity: the enumeration actually exercised at least one date-labeled
+    // field (Check-in date / Check-out date on the "Book travel" task), or
+    // this test would pass vacuously.
+    expect(dateAnswerCount).toBeGreaterThan(0);
+  });
+
   it("no two adjacent ranked averages tie in plan 1's results (enumerated over every seeded evaluation)", () => {
     const planRows = parseInserts(sql, "evaluation_plan");
     const plan1 = planRows.find((r) => r.id === "seed_evaluation_plan_0001")!;
