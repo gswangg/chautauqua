@@ -1312,7 +1312,7 @@ a:hover {
 /* DEC-681: the multi-select value control for an `in` rule, whose trigger is
    a select/radio field. A fieldset (so the legend labels the checkbox group)
    that must not draw the browser's default box — it sits inside the rule
-   builder's own stack and borrows .chq-field's column layout. */
+   builder's own column stack. */
 .chq-forms-rule-options {
   border: none;
   padding: 0;
