@@ -517,7 +517,7 @@ portalTasksRoutes.get("/tasks/:assignmentId/file", async (c) => {
 
   const safeName = latest.filename.replace(/[\r\n"]/g, "");
   return c.body(obj.body, 200, {
-    "Content-Type": obj.contentType ?? latest.contentType,
+    "Content-Type": latest.contentType,
     "X-Content-Type-Options": "nosniff",
     "Content-Disposition": `attachment; filename="${safeName}"`,
   });
@@ -557,7 +557,7 @@ portalTasksRoutes.get("/tasks/:assignmentId/file/:fileId", async (c) => {
 
   const safeName = target.filename.replace(/[\r\n"]/g, "");
   return c.body(obj.body, 200, {
-    "Content-Type": obj.contentType ?? target.contentType,
+    "Content-Type": target.contentType,
     "X-Content-Type-Options": "nosniff",
     "Content-Disposition": `attachment; filename="${safeName}"`,
   });

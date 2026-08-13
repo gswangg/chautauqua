@@ -439,7 +439,7 @@ headshotServeRoutes.get("/headshots/:fileId", async (c) => {
   const obj = await store.get(scope.r2Key);
   if (!obj) throw new ApiError("not_found", "Headshot contents not found");
 
-  const contentType = obj.contentType ?? scope.contentType;
+  const contentType = scope.contentType;
   return c.body(obj.body, 200, {
     "Content-Type": contentType,
     "Cache-Control": cacheControl,
