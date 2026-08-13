@@ -42,7 +42,33 @@
 //      (desktop-first standing rule) and has its own guard,
 //      app/src/phone-block-visibility.test.ts.
 //
-// All three scans ENUMERATE every *.css / *.tsx file under app/src via
+//   E) (DEC-937 amendment, wave 39) every `font-family` declaration in any
+//      app/src *.css file resolves through a `var(--chq-font-…)` reference
+//      or is exactly `inherit` — a bare literal family name (or a fallback
+//      chain ending in one) silently diverges from the app's two typefaces
+//      the moment a token is renamed. Exempt: @font-face bodies (they
+//      DECLARE a family, not consume one) and the single `monospace` code
+//      face in styles.css. This invariant also asserts the global
+//      `button, input, select, textarea, optgroup { font-family: inherit; }`
+//      reset (added alongside this amendment) is present verbatim — without
+//      it, form controls silently fall back to the platform UI font next to
+//      Figtree-styled surrounding text.
+//
+//   F) (DEC-937 amendment, wave 39) WITHDRAWS (A)'s fallback exemption: a
+//      `var(--chq-foo, <fallback>)` call whose `--chq-foo` is declared
+//      neither in :root nor in the referencing file is an offender, exactly
+//      like a bare undeclared token. The wave 39 audit found several
+//      "phantom" tokens (--chq-display-font, --chq-font-body, plus stale
+//      fallback chains on --chq-font-display/--chq-font-ui) that had
+//      silently survived on their fallback value for multiple waves — the
+//      fallback argument turned out to be hiding exactly the kind of typo
+//      (A) exists to catch, not a deliberate default. A token set
+//      dynamically from TSX via an inline `style` prop (never declared in
+//      any CSS file) is a legitimate exception and must be named in
+//      DYNAMIC_CSS_PROPS below with its setter file — never an allowlist
+//      populated from the failure output.
+//
+// All scans ENUMERATE every *.css / *.tsx file under app/src via
 // readdirSync (mirroring page-measure.test.ts / DEC-808) rather than a
 // hand-listed manifest, so a new page's markup and CSS are checked
 // automatically.
@@ -113,6 +139,42 @@ function referencedTokens(css: string): string[] {
     if (name) out.add(name);
   }
   return [...out];
+}
+
+/**
+ * Every distinct `--chq-…` custom-property name referenced via a
+ * var(--chq-foo, <fallback>) call (WITH a fallback argument) in the given
+ * css text -- the mirror of referencedTokens above, used by invariant (F)
+ * which withdraws (A)'s fallback exemption.
+ */
+function referencedTokensWithFallback(css: string): string[] {
+  const out = new Set<string>();
+  const re = /var\(\s*(--chq-[A-Za-z0-9-]+)\s*,/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(stripComments(css))) !== null) {
+    const name = m[1];
+    if (name) out.add(name);
+  }
+  return [...out];
+}
+
+/**
+ * Every `font-family: <value>;` declaration in the given css text, paired
+ * with the enclosing top-level (or @media-nested) selector, so invariant
+ * (E) can tell an @font-face body (which DECLARES a family) apart from a
+ * rule that CONSUMES one.
+ */
+function fontFamilyDeclarations(css: string): Array<{ selector: string; value: string }> {
+  const out: Array<{ selector: string; value: string }> = [];
+  for (const { selector, body } of allRulesIncludingMedia(css)) {
+    const re = /font-family\s*:\s*([^;]+);/g;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(body)) !== null) {
+      const value = m[1];
+      if (value) out.push({ selector, value: value.trim() });
+    }
+  }
+  return out;
 }
 
 /** Whether `token` is declared (as `token:`) anywhere in the given css text. */
@@ -282,6 +344,21 @@ const DYNAMIC_CLASS_TOKENS = new Set<string>([
   'chq-speakers-status-none',
 ]);
 
+/**
+ * Named exceptions to (F): a `--chq-…` custom property that is legitimately
+ * never declared in any CSS file because it is set dynamically from TSX via
+ * an inline `style` prop (e.g. `style={{ '--chq-foo': value }}`). One named
+ * entry per token, with its setter file written beside it -- never a list
+ * populated from the failure output.
+ */
+const DYNAMIC_CSS_PROPS = new Set<string>([
+  // Set inline in app/src/pages/review/Scorecard.tsx as
+  // `style={{ '--chq-review-scale-steps': ratingScaleStepCount }}` so the
+  // rating grid's column count tracks the event's configured scale; the
+  // `, 5)` fallback in review.css covers the unmounted/pre-hydration case.
+  '--chq-review-scale-steps',
+]);
+
 describe('CSS token + button-face contract (DEC-937)', () => {
   it('found more than one CSS file to scan', () => {
     // Guards the enumeration itself: if readdirSync ever returned nothing,
@@ -404,6 +481,55 @@ describe('CSS token + button-face contract (DEC-937)', () => {
     expect(
       offenders,
       `dead CSS rules (chq-… token unused in app/src *.ts/*.tsx, excluding tests):\n${offenders.join('\n')}`,
+    ).toEqual([]);
+  });
+
+  it('every font-family declaration resolves through var(--chq-font-…) or is inherit (E)', () => {
+    const offenders: string[] = [];
+    for (const path of CSS_FILES) {
+      const css = stripComments(readFileSync(path, 'utf-8'));
+      const label = relative(HERE, path);
+      for (const { selector, value } of fontFamilyDeclarations(css)) {
+        if (selector.trim() === '@font-face') continue; // declares a family, doesn't consume one
+        if (value === 'monospace') continue; // the single named code-face exemption
+        if (value === 'inherit') continue;
+        if (/^var\(--chq-font-[A-Za-z0-9-]+\)$/.test(value)) continue;
+        offenders.push(`${label}: "${selector}" font-family: ${value}`);
+      }
+    }
+    expect(
+      offenders,
+      `font-family declarations bypassing the --chq-font-… token contract:\n${offenders.join('\n')}`,
+    ).toEqual([]);
+
+    // The global element reset (added alongside this amendment) must exist
+    // verbatim -- it is what makes <button>/<input>/etc. inherit the
+    // surrounding Figtree/Familjen Grotesk face instead of the browser's
+    // Arial default.
+    const resetRe =
+      /button,\s*\n\s*input,\s*\n\s*select,\s*\n\s*textarea,\s*\n\s*optgroup\s*\{\s*\n\s*font-family:\s*inherit;\s*\n\s*\}/;
+    expect(resetRe.test(STYLES_CSS), 'global form-control font-family: inherit reset not found in styles.css').toBe(
+      true,
+    );
+  });
+
+  it('every var(--chq-foo, <fallback>) call also resolves to a real declaration (F)', () => {
+    const offenders: string[] = [];
+    for (const path of CSS_FILES) {
+      const css = readFileSync(path, 'utf-8');
+      const label = relative(HERE, path);
+      for (const token of referencedTokensWithFallback(css)) {
+        if (DYNAMIC_CSS_PROPS.has(token)) continue;
+        const declaredGlobally = isDeclaredIn(ROOT_BODY, token);
+        const declaredLocally = isDeclaredIn(css, token);
+        if (!declaredGlobally && !declaredLocally) {
+          offenders.push(`${label}: ${token}`);
+        }
+      }
+    }
+    expect(
+      offenders,
+      `var(--chq-foo, fallback) calls whose token is declared nowhere:\n${offenders.join('\n')}`,
     ).toEqual([]);
   });
 });

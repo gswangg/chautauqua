@@ -34,7 +34,7 @@
 }
 
 .chq-overview-deadline-value {
-  font-family: var(--chq-display-font, 'Familjen Grotesk', sans-serif);
+  font-family: var(--chq-font-display);
   font-size: var(--chq-type-deadline-value-size);
   font-weight: var(--chq-type-deadline-value-weight);
   letter-spacing: -0.03em;
@@ -56,7 +56,7 @@
 
 .chq-overview-headline {
   margin: 0;
-  font-family: var(--chq-display-font, 'Familjen Grotesk', sans-serif);
+  font-family: var(--chq-font-display);
   font-size: var(--chq-type-overview-headline-size);
   font-weight: var(--chq-type-overview-headline-weight);
   letter-spacing: var(--chq-type-overview-headline-tracking);
@@ -108,7 +108,7 @@
 }
 
 .chq-overview-section-label {
-  font-family: var(--chq-display-font, 'Familjen Grotesk', sans-serif);
+  font-family: var(--chq-font-display);
   font-size: var(--chq-type-section-label-size);
   font-weight: var(--chq-type-section-label-weight);
   letter-spacing: var(--chq-type-section-label-tracking);
@@ -171,7 +171,7 @@
 }
 
 .chq-overview-row-title {
-  font-family: var(--chq-display-font, 'Familjen Grotesk', sans-serif);
+  font-family: var(--chq-font-display);
   font-size: 18px;
   font-weight: var(--chq-type-row-title-weight);
   letter-spacing: var(--chq-type-row-title-tracking);
