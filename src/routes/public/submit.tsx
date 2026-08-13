@@ -73,6 +73,7 @@ import {
   DEC_377,
 } from "../../decisions";
 import { resolveBaseUrl } from "../../server/origin";
+import { publicNotFound } from "./not-found";
 import {
   ClosedPage,
   ConfirmationPage,
@@ -113,9 +114,9 @@ void DEC_377;
 publicSubmitRoutes.get("/submit/:eventSlug", async (c) => {
   const db = c.var.db;
   const event = await getEventBySlug(db, c.req.param("eventSlug"));
-  if (!event) return c.text("Event not found.", 404);
+  if (!event) return publicNotFound(c, "Event not found.");
   const form = await getDefaultForm(db, event.id);
-  if (!form) return c.text("This event is not accepting submissions yet.", 404);
+  if (!form) return publicNotFound(c, "This event is not accepting submissions yet.");
 
   const windowState = formWindowState(form.openDate, form.closeDate, Date.now(), event.timezone);
   if (windowState === "not_yet_open") {
@@ -169,9 +170,9 @@ publicSubmitRoutes.get("/submit/:eventSlug", async (c) => {
 publicSubmitRoutes.post("/submit/:eventSlug/save-draft", csrfForm, async (c) => {
   const db = c.var.db;
   const event = await getEventBySlug(db, c.req.param("eventSlug"));
-  if (!event) return c.text("Event not found.", 404);
+  if (!event) return publicNotFound(c, "Event not found.");
   const form = await getDefaultForm(db, event.id);
-  if (!form) return c.text("This event is not accepting submissions yet.", 404);
+  if (!form) return publicNotFound(c, "This event is not accepting submissions yet.");
 
   const windowState = formWindowState(form.openDate, form.closeDate, Date.now(), event.timezone);
   if (windowState === "not_yet_open") {
@@ -264,9 +265,9 @@ publicSubmitRoutes.post("/submit/:eventSlug/save-draft", csrfForm, async (c) => 
 publicSubmitRoutes.post("/submit/:eventSlug", async (c) => {
   const db = c.var.db;
   const event = await getEventBySlug(db, c.req.param("eventSlug"));
-  if (!event) return c.text("Event not found.", 404);
+  if (!event) return publicNotFound(c, "Event not found.");
   const form = await getDefaultForm(db, event.id);
-  if (!form) return c.text("This event is not accepting submissions yet.", 404);
+  if (!form) return publicNotFound(c, "This event is not accepting submissions yet.");
 
   const windowState = formWindowState(form.openDate, form.closeDate, Date.now(), event.timezone);
   if (windowState === "not_yet_open") {
