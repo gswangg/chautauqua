@@ -38,7 +38,6 @@ function renderPanel(form: CfpForm) {
     <FormSettings
       form={form}
       tracks={[]}
-      eventSlug="test-conf"
       timezone="UTC"
       onSave={async () => {}}
     />,

@@ -5,8 +5,15 @@ import { kindLabel, type FormField } from './types';
 // builder's captions can never drift from the rule that actually enforces
 // them -- e.g. the Abstract caption below always names the REAL
 // MAX_LONG_TEXT_LENGTH, never a hand-copied number.
-import { lockedFieldName } from '../../../../src/forms/types';
+import { lockedFieldName, SESSION_FORMAT_FIELD_ID } from '../../../../src/forms/types';
 import { MAX_LONG_TEXT_LENGTH } from '../../../../src/forms/validate';
+
+// DEC-592/DEC-762: the ONE id for the seeded session-format field is the
+// SAME id the API/seed use, so the builder's "Format" display label is
+// derived from that id once here rather than sprinkled per label string.
+const DISPLAY_LABEL_OVERRIDES: Record<string, string> = {
+  [SESSION_FORMAT_FIELD_ID]: 'Format',
+};
 
 interface FieldListProps {
   fields: FormField[];
@@ -104,7 +111,7 @@ function buildRows(fields: FormField[]): DisplayRow[] {
     rows.push({
       key: field.id,
       field,
-      label: field.label,
+      label: DISPLAY_LABEL_OVERRIDES[field.id] ?? field.label,
       caption: field.helpText,
       condition: field.rule ? describeCondition(field.rule, fieldsById) : undefined,
       kindText: kindLabel(field.kind),
