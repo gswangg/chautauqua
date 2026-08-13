@@ -107,9 +107,12 @@ function alreadyInvited(contact: { participations: readonly { inviteStatus: Invi
 
 // DEC-662/DEC-746: the roster's Add-speaker trigger lives here now (see
 // RosterPanel), beside New task/Remind all outstanding, so the page renders
-// exactly one title action row -- Import CSV is the Contacts page's job, not
-// this row's. DEC-827: the toolbar below carries a quiet link into that
-// importer (/admin/contacts?import=1) instead.
+// exactly one title action row -- Import CSV stays the Contacts page's job,
+// this row never grows a second importer. DEC-662 amendment (wave 55): that
+// left the roster with no way IN to the importer at all, so a single quiet
+// link joins this same title-action row (no new band) and carries the
+// current event id (/contacts?import=1&eventId=<id>) so the wizard lands
+// with this event preselected instead of making the organizer re-pick it.
 interface OnboardingGridProps {
   onAddSpeaker: () => void;
 }
@@ -499,14 +502,25 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
           >
             Remind all outstanding
           </button>
+          {/* DEC-662/DEC-827 amendment (wave 55): the roster's only mention
+              of import is a quiet link, not a second importer -- it joins
+              this same title-action row rather than opening a new band, and
+              carries the current event id so the Contacts import wizard
+              preselects this event rather than making the organizer
+              re-pick it. */}
+          {eventId && (
+            <Link
+              to={`/contacts?import=1&eventId=${encodeURIComponent(eventId)}`}
+              className="chq-link-button chq-speakers-import-link"
+            >
+              Import speakers from a CSV
+            </Link>
+          )}
         </div>
       </div>
 
       <div className="chq-speakers-toolbar">
         {grid && <GridFilters tasks={grid.tasks} filters={filters} onChange={handleFiltersChange} />}
-        <a href="/admin/contacts?import=1" className="chq-link-button chq-speakers-import-link">
-          Import speakers from a CSV
-        </a>
         <span className="chq-speakers-toolbar-caption">Skips anyone reminded in the last hour</span>
       </div>
 
