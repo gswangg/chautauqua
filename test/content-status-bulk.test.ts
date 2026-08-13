@@ -12,7 +12,7 @@
 // bulk write's repo module) via a source-scan tripwire, same style as
 // test/pipeline-api.test.ts's "product principle 4" check.
 
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { Hono } from "hono";
 import * as schema from "../src/db/schema";
 import { updateContentStatuses } from "../src/server/repo/files-content-status";
@@ -139,42 +139,64 @@ describe("updateContentStatuses repo function (DEC-568)", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Route layer
+// Route layer — POST /api/v1/events/:eventId/submissions/content-status,
+// mounted from src/routes/api/submissions.ts (mirrors the .../status route
+// immediately above it; see test/api-submissions.test.ts's fakeDb pattern).
 // ---------------------------------------------------------------------------
 
-vi.mock("../src/server/repo/files", async () => {
-  const actual = await vi.importActual<typeof import("../src/server/repo/files")>("../src/server/repo/files");
-  return {
-    ...actual,
-    getEventFilesScope: vi.fn(async (_db: unknown, eventId: string) =>
-      eventId === "event-1" ? { orgId: "org-1", slug: "demo-event" } : null,
-    ),
-    updateContentStatuses: vi.fn(async (_db: unknown, _eventId: string, ids: string[], contentStatus: string) => {
-      void contentStatus;
-      return { updated: ids.length };
+function makeRouteChain(rows: unknown[]) {
+  const chain: any = {
+    from: () => chain,
+    where: () => chain,
+    limit: async () => rows,
+    then: (resolve: (v: unknown[]) => void) => resolve(rows),
+  };
+  return chain;
+}
+
+function fakeRouteDb(selectQueue: unknown[][]) {
+  let call = 0;
+  const updates: unknown[] = [];
+  const db = {
+    select: () => {
+      const rows = selectQueue[call] ?? [];
+      call += 1;
+      return makeRouteChain(rows);
+    },
+    update: () => ({
+      set: (vals: unknown) => ({
+        where: async () => {
+          updates.push(vals);
+        },
+      }),
     }),
   };
-});
+  return { db: db as unknown as Db, updates };
+}
 
-async function buildApp(auth: AuthInfo) {
-  const { fileApiRoutes } = await import("../src/routes/files");
+async function buildApp(db: Db, auth: AuthInfo) {
+  const { submissionsRoutes } = await import("../src/routes/api/submissions");
   const app = new Hono<AppEnv>();
   registerErrorHandler(app);
   app.use("*", async (c, next) => {
     c.set("auth", auth);
-    c.set("db", {} as never);
+    c.set("db", db);
     await next();
   });
-  app.route("/api/v1", fileApiRoutes);
+  app.route("/api/v1", submissionsRoutes);
   return app;
 }
 
 const ORGANIZER_A: AuthInfo = { userId: "u1", role: "organizer", orgId: "org-1" };
 const ORGANIZER_B: AuthInfo = { userId: "u2", role: "organizer", orgId: "org-2" };
 
-describe("POST /api/v1/events/:eventId/submissions/content-status (DEC-568)", () => {
+describe("POST /api/v1/events/:eventId/submissions/content-status (DEC-568/DEC-825 amendment)", () => {
   it("returns {updated} for a valid organizer request", async () => {
-    const app = await buildApp(ORGANIZER_A);
+    const { db } = fakeRouteDb([
+      [{ orgId: "org-1" }], // getEventOrgId (assertEventOwnership)
+      [{ id: "s1" }, { id: "s2" }, { id: "s3" }], // updateContentStatuses preflight select
+    ]);
+    const app = await buildApp(db, ORGANIZER_A);
     const res = await app.request("/api/v1/events/event-1/submissions/content-status", {
       method: "POST",
       headers: { "content-type": "application/json", "x-chq-csrf": "1" },
@@ -185,7 +207,8 @@ describe("POST /api/v1/events/:eventId/submissions/content-status (DEC-568)", ()
   });
 
   it("404s when the event does not exist", async () => {
-    const app = await buildApp(ORGANIZER_A);
+    const { db } = fakeRouteDb([[]]); // getEventOrgId finds nothing
+    const app = await buildApp(db, ORGANIZER_A);
     const res = await app.request("/api/v1/events/event-missing/submissions/content-status", {
       method: "POST",
       headers: { "content-type": "application/json", "x-chq-csrf": "1" },
@@ -195,7 +218,8 @@ describe("POST /api/v1/events/:eventId/submissions/content-status (DEC-568)", ()
   });
 
   it("403s when the event belongs to a different org", async () => {
-    const app = await buildApp(ORGANIZER_B);
+    const { db } = fakeRouteDb([[{ orgId: "org-1" }]]); // getEventOrgId
+    const app = await buildApp(db, ORGANIZER_B);
     const res = await app.request("/api/v1/events/event-1/submissions/content-status", {
       method: "POST",
       headers: { "content-type": "application/json", "x-chq-csrf": "1" },
@@ -207,7 +231,8 @@ describe("POST /api/v1/events/:eventId/submissions/content-status (DEC-568)", ()
   });
 
   it("400s with an invalid contentStatus literal", async () => {
-    const app = await buildApp(ORGANIZER_A);
+    const { db } = fakeRouteDb([[{ orgId: "org-1" }]]); // getEventOrgId only; body invalid before preflight select
+    const app = await buildApp(db, ORGANIZER_A);
     const res = await app.request("/api/v1/events/event-1/submissions/content-status", {
       method: "POST",
       headers: { "content-type": "application/json", "x-chq-csrf": "1" },
@@ -217,6 +242,23 @@ describe("POST /api/v1/events/:eventId/submissions/content-status (DEC-568)", ()
     const body = (await res.json()) as { error: { code: string; fields?: Record<string, string> } };
     expect(body.error.code).toBe("invalid");
     expect(body.error.fields).toEqual({ contentStatus: "Invalid value" });
+  });
+
+  it("400s (loud unknown-id preflight) when an id does not belong to the event, before any UPDATE", async () => {
+    const { db, updates } = fakeRouteDb([
+      [{ orgId: "org-1" }], // getEventOrgId
+      [{ id: "s1" }], // preflight select — s2 is missing
+    ]);
+    const app = await buildApp(db, ORGANIZER_A);
+    const res = await app.request("/api/v1/events/event-1/submissions/content-status", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-chq-csrf": "1" },
+      body: JSON.stringify({ ids: ["s1", "s2"], contentStatus: "approved" }),
+    });
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: { code: string } };
+    expect(body.error.code).toBe("invalid");
+    expect(updates).toHaveLength(0);
   });
 });
 

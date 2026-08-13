@@ -50,7 +50,6 @@ import {
   resolveLatestVersions,
   reviewerCanAccessSubmissionFile,
   updateContentStatus,
-  updateContentStatuses,
 } from "../server/repo/files";
 
 // Mounted at /api/v1 (submission-scoped file/comment/content-status
@@ -197,29 +196,6 @@ fileApiRoutes.post("/submissions/:id/content-status", requireOrganizer, csrfJson
 
   await updateContentStatus(c.var.db, submissionId, body.contentStatus);
   return c.json({ id: submissionId, contentStatus: body.contentStatus });
-});
-
-// -----------------------------------------------------------------------
-// POST /api/v1/events/:eventId/submissions/content-status — DEC-568 bulk
-// content-approval write, organizer-only.
-// -----------------------------------------------------------------------
-fileApiRoutes.post("/events/:eventId/submissions/content-status", requireOrganizer, csrfJson, async (c) => {
-  const auth = requireAuth(c);
-  const eventId = c.req.param("eventId");
-  const scope = await getEventFilesScope(c.var.db, eventId);
-  if (!scope) throw new ApiError("not_found", "Event not found");
-  if (scope.orgId !== auth.orgId) throw new ApiError("forbidden", "Event belongs to a different org");
-
-  const body = (await c.req.json().catch(() => ({}))) as { ids?: unknown; contentStatus?: unknown };
-  const ids = parseBoundedIdArray(body.ids, "ids");
-  if (!isValidContentStatus(body.contentStatus)) {
-    throw new ApiError("invalid", "contentStatus must be one of pending, approved, changes_requested", {
-      contentStatus: "Invalid value",
-    });
-  }
-
-  const result = await updateContentStatuses(c.var.db, eventId, ids, body.contentStatus);
-  return c.json(result);
 });
 
 // -----------------------------------------------------------------------

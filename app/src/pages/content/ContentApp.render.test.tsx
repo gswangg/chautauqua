@@ -5,7 +5,7 @@
 // POST /api/v1/submissions/:id/content-status. Mirrors the DEC-144
 // layer-2 harness pattern used by Submissions.render.test.tsx.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, fireEvent, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { ContentApp } from './ContentApp';
@@ -136,6 +136,85 @@ describe('ContentApp worklist deliverable counts (DEC-247 chain roots)', () => {
 
     const rowCells = Array.from(row.querySelectorAll('td'));
     expect(rowCells[presentationColIndex]?.textContent).toBe('1');
+  });
+});
+
+// DEC-825 amendment: set-based bulk content-approval — selecting rows on
+// the worklist surfaces a .chq-bulkbar (shared vocabulary, DEC-825) with
+// Approve/Request changes/Mark pending, sending one POST carrying every
+// selected id and reloading the worklist on success.
+describe('ContentApp worklist bulk content-status (DEC-825 amendment)', () => {
+  function twoRowEnvelope() {
+    return listEnvelope([
+      {
+        id: 'sub-1',
+        ref: 'S-001',
+        title: 'Talk One',
+        status: 'accepted',
+        contentStatus: 'pending',
+        speakers: [],
+        trackIds: [],
+        submittedAt: null,
+        createdAt: 1700000000000,
+        deliverableCounts: { presentation: 0, poster: 0, handout: 0 },
+      },
+      {
+        id: 'sub-2',
+        ref: 'S-002',
+        title: 'Talk Two',
+        status: 'accepted',
+        contentStatus: 'pending',
+        speakers: [],
+        trackIds: [],
+        submittedAt: null,
+        createdAt: 1700000001000,
+        deliverableCounts: { presentation: 0, poster: 0, handout: 0 },
+      },
+    ]);
+  }
+
+  it('shows a selection count and sends one POST carrying every selected id, then reloads', async () => {
+    const submissionsMock = vi.fn(() => twoRowEnvelope());
+    const fetchMock = mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: submissionsMock,
+      [`POST /api/v1/events/${EVENT_ID}/submissions/content-status`]: { updated: 2 },
+    });
+
+    render(
+      <MemoryRouter>
+        <ContentApp />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(await screen.findByRole('tab', { name: 'All' }));
+    await screen.findByText('Talk One');
+    await screen.findByText('Talk Two');
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select all on page' }));
+
+    expect(await screen.findByText('2 selected')).toBeInTheDocument();
+
+    const callsBeforeBulk = submissionsMock.mock.calls.length;
+
+    const bulkbar = screen.getByRole('toolbar', { name: 'Bulk content actions' });
+    fireEvent.click(within(bulkbar).getByRole('button', { name: 'Approve' }));
+
+    await waitFor(() => {
+      const bulkCalls = fetchMock.mock.calls.filter(
+        ([input]) => String(input).includes('/submissions/content-status'),
+      );
+      expect(bulkCalls).toHaveLength(1);
+    });
+    const [, init] = fetchMock.mock.calls.find(([input]) => String(input).includes('/submissions/content-status'))!;
+    const body = JSON.parse((init as RequestInit).body as string) as { ids: string[]; contentStatus: string };
+    expect(body.contentStatus).toBe('approved');
+    expect(body.ids.sort()).toEqual(['sub-1', 'sub-2']);
+
+    // Selection clears and the worklist reloads.
+    await waitFor(() => {
+      expect(submissionsMock.mock.calls.length).toBeGreaterThan(callsBeforeBulk);
+    });
+    expect(screen.queryByText('2 selected')).not.toBeInTheDocument();
   });
 });
 

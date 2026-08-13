@@ -30,6 +30,10 @@ interface SessionListProps {
   page: number;
   perPage: number;
   onPageChange: (page: number) => void;
+  // DEC-825 amendment: set-based bulk content-approval selection, scoped to
+  // the current page (same pattern as the row-level approve/changes controls).
+  selectedIds: Set<string>;
+  onSelectionChange: (selectedIds: Set<string>) => void;
 }
 
 export function SessionList({
@@ -43,10 +47,32 @@ export function SessionList({
   page,
   perPage,
   onPageChange,
+  selectedIds,
+  onSelectionChange,
 }: SessionListProps) {
   const visible = items;
   const rangeStart = total === 0 ? 0 : (page - 1) * perPage + 1;
   const rangeEnd = Math.min(page * perPage, total);
+  const pageIds = visible.map((item) => item.id);
+  const allSelected = pageIds.length > 0 && pageIds.every((id) => selectedIds.has(id));
+  const someSelected = pageIds.some((id) => selectedIds.has(id));
+
+  function toggleRow(id: string) {
+    const next = new Set(selectedIds);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    onSelectionChange(next);
+  }
+
+  function togglePage() {
+    const next = new Set(selectedIds);
+    if (allSelected) {
+      for (const id of pageIds) next.delete(id);
+    } else {
+      for (const id of pageIds) next.add(id);
+    }
+    onSelectionChange(next);
+  }
 
   return (
     <div className="chq-content-worklist">
@@ -68,6 +94,18 @@ export function SessionList({
       <table className="chq-table chq-content-table">
         <thead>
           <tr>
+            <th>
+              <input
+                className="chq-check"
+                type="checkbox"
+                aria-label="Select all on page"
+                checked={allSelected}
+                ref={(el) => {
+                  if (el) el.indeterminate = !allSelected && someSelected;
+                }}
+                onChange={togglePage}
+              />
+            </th>
             <th>Ref</th>
             <th>Title</th>
             <th>Speakers</th>
@@ -81,12 +119,12 @@ export function SessionList({
         <tbody>
           {loading && (
             <tr>
-              <td colSpan={5 + DELIVERABLE_KINDS.length}>Loading...</td>
+              <td colSpan={6 + DELIVERABLE_KINDS.length}>Loading...</td>
             </tr>
           )}
           {!loading && visible.length === 0 && (
             <tr>
-              <td colSpan={5 + DELIVERABLE_KINDS.length} className="chq-empty">
+              <td colSpan={6 + DELIVERABLE_KINDS.length} className="chq-empty">
                 No submissions in this view.
               </td>
             </tr>
@@ -94,6 +132,15 @@ export function SessionList({
           {!loading &&
             visible.map((item) => (
               <tr key={item.id} className="chq-content-row" onClick={() => onSelect(item.id)}>
+                <td onClick={(e) => e.stopPropagation()}>
+                  <input
+                    className="chq-check"
+                    type="checkbox"
+                    aria-label={`Select ${item.title}`}
+                    checked={selectedIds.has(item.id)}
+                    onChange={() => toggleRow(item.id)}
+                  />
+                </td>
                 <td>{item.ref}</td>
                 <td className="chq-content-row-title">{item.title}</td>
                 <td>{item.speakers.map((s) => s.name).join(', ')}</td>

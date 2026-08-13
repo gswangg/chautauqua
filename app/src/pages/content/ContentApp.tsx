@@ -26,6 +26,9 @@ export function ContentApp() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // DEC-825 amendment: set-based bulk content-approval selection.
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkPending, setBulkPending] = useState(false);
   // w1-e: bumping this remounts FilesLibrary (its own load() effect keys on
   // eventId, not on time), which forces a fresh fetch — used on view
   // switch, the explicit Refresh button, and after a deliverable upload so
@@ -57,6 +60,12 @@ export function ContentApp() {
   useEffect(() => {
     loadWorklist();
   }, [loadWorklist]);
+
+  // A page/tab change means the visible row set changed under the
+  // selection — clear it rather than carrying stale ids across views.
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [tab, page]);
 
   function selectSubmission(id: string) {
     setSearchParams((prev) => {
@@ -143,6 +152,29 @@ export function ContentApp() {
     }
   }
 
+  // DEC-825 amendment: set-based bulk content-approval — approve, request
+  // changes, or mark pending across every selected row in one round trip
+  // (DEC-568's bulk write). Loud failure surfaced the same way
+  // requestContentStatus's single-row rollback does; no optimistic update
+  // here since a failed preflight leaves every row untouched server-side.
+  async function bulkContentStatus(status: ContentStatus) {
+    if (!eventId || selectedIds.size === 0) return;
+    setError(null);
+    setBulkPending(true);
+    try {
+      await apiPost(`/events/${eventId}/submissions/content-status`, {
+        ids: [...selectedIds],
+        contentStatus: status,
+      });
+      setSelectedIds(new Set());
+      loadWorklist();
+    } catch (err) {
+      setError(err instanceof ApiError ? `Bulk content status update failed: ${err.message}` : 'Bulk content status update failed');
+    } finally {
+      setBulkPending(false);
+    }
+  }
+
   if (eventLoading) {
     return (
       <div className="chq-page">
@@ -203,6 +235,46 @@ export function ContentApp() {
         </div>
       )}
 
+      {!submissionId && view === 'worklist' && selectedIds.size > 0 && (
+        <div className="chq-bulkbar" role="toolbar" aria-label="Bulk content actions">
+          <span className="chq-bulkbar-count">{selectedIds.size} selected</span>
+          <div className="chq-bulkbar-actions">
+            <button
+              type="button"
+              className="chq-btn chq-btn-primary"
+              disabled={bulkPending}
+              onClick={() => bulkContentStatus('approved')}
+            >
+              Approve
+            </button>
+            <button
+              type="button"
+              className="chq-btn chq-btn-secondary"
+              disabled={bulkPending}
+              onClick={() => bulkContentStatus('changes_requested')}
+            >
+              Request changes
+            </button>
+            <button
+              type="button"
+              className="chq-btn chq-btn-secondary"
+              disabled={bulkPending}
+              onClick={() => bulkContentStatus('pending')}
+            >
+              Mark pending
+            </button>
+            <button
+              type="button"
+              className="chq-btn chq-btn-tertiary"
+              disabled={bulkPending}
+              onClick={() => setSelectedIds(new Set())}
+            >
+              Clear selection
+            </button>
+          </div>
+        </div>
+      )}
+
       {submissionId && selected ? (
         <DeliverableDetail
           submissionId={selected.id}
@@ -226,6 +298,8 @@ export function ContentApp() {
           page={page}
           perPage={PER_PAGE}
           onPageChange={changePage}
+          selectedIds={selectedIds}
+          onSelectionChange={setSelectedIds}
         />
       )}
     </div>
