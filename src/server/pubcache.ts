@@ -215,6 +215,13 @@ export const PUBLIC_AFFECTING: PathPattern[] = [
   "/api/v1/submissions/:id/participants",
   "/api/v1/submissions/:id/participants/:participantId",
   "/api/v1/submissions/:id/content-status",
+  // DEC-741: the content note endpoint posts to the chain thread AND (when
+  // requestChanges) performs the very same content_status write that
+  // /api/v1/submissions/:id/content-status above bumps for, so it is
+  // public-affecting for exactly that route's reasons. The note/mail half
+  // alone would be never-public (cf. /api/v1/files/:id/comments), but a
+  // route is classified by its most public-reaching write.
+  "/api/v1/submissions/:id/content-note",
   "/api/v1/events/:id/agenda/publish",
   "/api/v1/events/:id/agenda/auto-schedule",
   "/api/v1/submissions/:id/slot",

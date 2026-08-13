@@ -179,6 +179,7 @@ export const ROUTE_GROUPS: { title: string; rows: Row[] }[] = [
       { method: "POST", path: "/api/v1/submissions/:id/files", role: "organizer or submission's speaker" },
       { method: "GET", path: "/api/v1/submissions/:id/files", role: "organizer or submission's speaker" },
       { method: "POST", path: "/api/v1/submissions/:id/content-status", role: "organizer" },
+      { method: "POST", path: "/api/v1/submissions/:id/content-note", role: "organizer" },
       { method: "GET", path: "/api/v1/events/:eventId/files", role: "organizer" },
       { method: "GET", path: "/api/v1/events/:eventId/headshots", role: "organizer" },
       { method: "POST", path: "/api/v1/events/:eventId/files/archive", role: "organizer" },
