@@ -12,6 +12,7 @@ import { MAX_NAME_LENGTH, MAX_TEXT_LENGTH, MAX_LONG_TEXT_LENGTH } from "../../..
 import { isValidEmail, normalizeEmail } from "../../../domain/email"; // DEC-454
 import * as repo from "../../../server/repo/contacts";
 import { contactLabels } from "../../../domain/contact-labels";
+import { plural } from "../../../domain/count-copy"; // DEC-957
 import { getEventForOrg } from "../../../server/repo/events";
 import { listAcceptedContactIds } from "../../../server/repo/tasks";
 import { setContactHeadshot, serializeSocialLinks, type SocialLinks } from "../../../server/repo/profile";
@@ -304,8 +305,10 @@ export function registerCrudRoutes(contactsRoutes: Hono<AppEnv>): void {
     const parts: string[] = [];
     const fields: Record<string, string> = {};
 
+    let submissionCount = 0;
     if (refs.submissions.length > 0) {
       const total = refs.submissions.length + refs.more.submissions;
+      submissionCount = total;
       fields.participants = String(total);
       const named = refs.submissions
         .slice(0, 5)
@@ -324,7 +327,8 @@ export function registerCrudRoutes(contactsRoutes: Hono<AppEnv>): void {
       const message =
         `${parts.join(", ")}. ` +
         "To delete this contact, merge this record into the one you are keeping, " +
-        "or remove them from the named session(s) in the submission editor, " +
+        // DEC-957: the count phrase goes through plural(), never a raw '(s)'.
+        `or remove them from the named ${plural(submissionCount, "session")} in the submission editor, ` +
         "or delete the login in Settings > People.";
       throw new ApiError("conflict", message, fields);
     }
