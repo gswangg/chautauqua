@@ -146,6 +146,10 @@ vi.mock("../src/server/repo/review", async () => {
       recusals.filter((r) => r.planId === planId && r.userId === userId),
     ),
     listRecusalsForPlan: vi.fn(async (_db: unknown, planId: string) => recusals.filter((r) => r.planId === planId)),
+    // DEC-845: the queue envelope's scopeTrackName resolution -- no track
+    // scoping in this fixture set.
+    getReviewerScopeTrackId: vi.fn(async () => null),
+    getTrackNamesByIds: vi.fn(async () => new Map()),
   };
 });
 

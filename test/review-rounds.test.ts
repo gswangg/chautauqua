@@ -171,6 +171,10 @@ vi.mock("../src/server/repo/review", async () => {
     getSubmissionSummaryInEvent: vi.fn(async (_db: unknown, submissionId: string, eventId: string) =>
       submissionId === submission.id && eventId === plan.eventId ? submission : null,
     ),
+    // DEC-845: the queue envelope's scopeTrackName resolution -- no track
+    // scoping in this fixture set.
+    getReviewerScopeTrackId: vi.fn(async () => null),
+    getTrackNamesByIds: vi.fn(async () => new Map()),
   };
 });
 

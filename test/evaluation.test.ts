@@ -119,7 +119,7 @@ describe("buildReviewerQueue", () => {
       { submissionId: "a", ratingsCount: 0, alreadyRatedByMe: true },
       { submissionId: "b", ratingsCount: 0, alreadyRatedByMe: false },
     ]);
-    expect(queue).toEqual(["b", "a"]);
+    expect(queue.map((i) => i.submissionId)).toEqual(["b", "a"]);
   });
 
   it("orders fewest-ratings-first so coverage closes", () => {
@@ -128,7 +128,7 @@ describe("buildReviewerQueue", () => {
       { submissionId: "b", ratingsCount: 1, alreadyRatedByMe: false },
       { submissionId: "c", ratingsCount: 2, alreadyRatedByMe: false },
     ]);
-    expect(queue).toEqual(["b", "c", "a"]);
+    expect(queue.map((i) => i.submissionId)).toEqual(["b", "c", "a"]);
   });
 
   it("breaks ties stably by submissionId", () => {
@@ -137,14 +137,14 @@ describe("buildReviewerQueue", () => {
       { submissionId: "a", ratingsCount: 1, alreadyRatedByMe: false },
       { submissionId: "m", ratingsCount: 1, alreadyRatedByMe: false },
     ]);
-    expect(queue).toEqual(["a", "m", "z"]);
+    expect(queue.map((i) => i.submissionId)).toEqual(["a", "m", "z"]);
   });
 
   it("returns a single-item queue when everything is already rated", () => {
     const queue = buildReviewerQueue([
       { submissionId: "a", ratingsCount: 0, alreadyRatedByMe: true },
     ]);
-    expect(queue).toEqual(["a"]);
+    expect(queue.map((i) => i.submissionId)).toEqual(["a"]);
   });
 
   it("orders rated items last (fewest-ratings-first preserved within each group), fewest-ratings-first preserved among unrated", () => {
@@ -154,7 +154,23 @@ describe("buildReviewerQueue", () => {
       { submissionId: "b", ratingsCount: 3, alreadyRatedByMe: false },
       { submissionId: "c", ratingsCount: 1, alreadyRatedByMe: false },
     ]);
-    expect(queue).toEqual(["c", "b", "z", "a"]);
+    expect(queue.map((i) => i.submissionId)).toEqual(["c", "b", "z", "a"]);
+  });
+
+  // DEC-845: each ordered item carries the reviewer's OWN blended score
+  // through verbatim -- null when they have not scored the submission yet,
+  // never re-derived or dropped by the sort/map pass.
+  it("carries myScore through per item, null when unscored", () => {
+    const queue = buildReviewerQueue([
+      { submissionId: "a", ratingsCount: 0, alreadyRatedByMe: true, myScore: 4.5 },
+      { submissionId: "b", ratingsCount: 0, alreadyRatedByMe: false },
+      { submissionId: "c", ratingsCount: 0, alreadyRatedByMe: false, myScore: null },
+    ]);
+    expect(queue).toEqual([
+      { submissionId: "b", myScore: null },
+      { submissionId: "c", myScore: null },
+      { submissionId: "a", myScore: 4.5 },
+    ]);
   });
 });
 

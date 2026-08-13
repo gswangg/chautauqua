@@ -221,6 +221,13 @@ export interface ReviewerQueueEnvelope {
   perPage: number;
   open: boolean;
   recused: RecusalItem[];
+  // DEC-845: the plan's own facts, carried on the queue envelope so the
+  // scoped header renders from this one fetch. scopeTrackName is the
+  // CALLER's own plan_reviewer.track_id resolved to a name (null = all
+  // tracks) -- not the plan-wide filters.trackIds.
+  planName: string;
+  scopeTrackName: string | null;
+  closeDate: number | null;
 }
 
 // PUT /api/v1/review/plans/:planId/evaluations/:submissionId body/response.
