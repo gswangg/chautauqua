@@ -152,6 +152,13 @@ describe('CommsPage render smoke', () => {
     expect(within(batchButton).getByText('3 recipients')).toBeInTheDocument();
     expect(within(batchButton).getByText('3 sent')).toBeInTheDocument();
     expect(screen.getByText('1 total')).toBeInTheDocument();
+
+    // DEC-732 (eval-findings 59): expansion is an explicit bordered
+    // control, not the whole row silently doubling as a toggle.
+    const toggle = within(batchButton).getByRole('button', { name: 'See the recipients' });
+    expect(toggle).toHaveClass('chq-btn');
+    fireEvent.click(toggle);
+    expect(within(batchButton).getByRole('button', { name: 'Hide the recipients' })).toBeInTheDocument();
   });
 });
 

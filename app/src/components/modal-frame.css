@@ -4,6 +4,32 @@
    vocabulary in app/src/styles.css; this file only adds the bordered
    header row that .chq-modal-title/.chq-modal-sub/Close sit in. */
 
+/* DEC-732: the portal (ModalFrame.tsx) already moves the dialog out from
+   under any ancestor that might set text-transform/letter-spacing/weight
+   (e.g. EventSwitcher's New-event modal used to render inline under the
+   ALL-CAPS .chq-header-identity block, so .chq-modal-title/.chq-modal-sub/
+   .chq-field silently inherited it) -- .chq-scrim resets those inheriting
+   properties at the root too, belt-and-braces, so a future portal target
+   with its own ambient styles can't reintroduce the same bug. Real
+   typography per element still comes from the base rules in styles.css
+   (.chq-modal-title/.chq-modal-sub) and this file (.chq-field below);
+   this reset just guarantees nothing above the root overrides them. */
+.chq-scrim {
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 400;
+}
+
+/* .chq-field (styles.css: flex column, gap) never carried its own type —
+   every caller left it to inherit ambient text, which is exactly what let
+   the ALL-CAPS bug through. Real typography: 13px/600 label text, matching
+   FormRow's sibling controls' scale. */
+.chq-scrim .chq-field {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--chq-ink-2);
+}
+
 .chq-modal-head {
   display: flex;
   align-items: flex-start;

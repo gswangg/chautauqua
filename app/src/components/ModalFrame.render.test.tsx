@@ -76,3 +76,29 @@ describe('ModalFrame: FormRow', () => {
     expect(screen.getByRole('button', { name: 'Close' })).toBeInTheDocument();
   });
 });
+
+describe('ModalFrame: root portal (DEC-732)', () => {
+  it('renders the dialog as a child of document.body, not of the caller-supplied React tree', () => {
+    // An ancestor that sets text-transform: uppercase -- the exact shape of
+    // the bug (eval-findings 25): EventSwitcher's "New event…" trigger sits
+    // inside .chq-header-identity, which does this for real. Without a
+    // portal the dialog would render as this div's DOM descendant and
+    // silently inherit the transform.
+    const { container } = render(
+      <div style={{ textTransform: 'uppercase' }} data-testid="uppercase-ancestor">
+        <ModalFrame title="Portaled" onClose={vi.fn()}>
+          <p>Body</p>
+        </ModalFrame>
+      </div>,
+    );
+
+    const ancestor = screen.getByTestId('uppercase-ancestor');
+    const dialog = screen.getByRole('dialog', { name: 'Portaled' });
+
+    expect(ancestor).not.toContainElement(dialog);
+    expect(dialog.parentElement).toBe(document.body);
+    // The render-root container itself only holds the ancestor div — the
+    // dialog escaped it entirely via the portal.
+    expect(container.querySelector('.chq-scrim')).toBeNull();
+  });
+});

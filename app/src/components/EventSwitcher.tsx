@@ -10,7 +10,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { apiList, apiPost, ApiError } from '../lib/api';
 import { useEscapeKey } from '../lib/useEscapeKey';
 import { useMe } from '../lib/useMe';
-import { ModalFrame } from './ModalFrame';
+import { FormRow, ModalFrame } from './ModalFrame';
 import {
   buildNewEventPayload,
   mergeFieldErrors,
@@ -94,31 +94,30 @@ function NewEventModal({ onCancel, onCreated }: { onCancel: () => void; onCreate
     >
       {banner && <div className="chq-error-banner">{banner}</div>}
 
-      <label className="chq-field">
-        Name
+      <FormRow label="Name" htmlFor="new-event-name" required error={errors.name}>
         <input
+          id="new-event-name"
           className="chq-input"
           value={form.name}
           onChange={(e) => setField('name', e.target.value)}
           placeholder="DevFlow Conf 2028"
           required
         />
-        {errors.name && <span className="chq-field-error">{errors.name}</span>}
-      </label>
-      <label className="chq-field">
-        Slug
+      </FormRow>
+      <FormRow label="Slug" htmlFor="new-event-slug" required error={errors.slug}>
         <input
+          id="new-event-slug"
           className="chq-input"
           value={form.slug}
           onChange={(e) => setField('slug', e.target.value)}
           placeholder="devflow-conf-2028"
           required
         />
-        {errors.slug && <span className="chq-field-error">{errors.slug}</span>}
-      </label>
-      <label className="chq-field">
-        Start date
+      </FormRow>
+      {/* Per the mock: STARTS / ENDS / TIME ZONE / VENUE (eval-findings 25). */}
+      <FormRow label="Starts" htmlFor="new-event-start" required error={errors.startDate}>
         <input
+          id="new-event-start"
           className="chq-input"
           type="date"
           value={form.startDate}
@@ -126,11 +125,10 @@ function NewEventModal({ onCancel, onCreated }: { onCancel: () => void; onCreate
           placeholder="2028-05-11"
           required
         />
-        {errors.startDate && <span className="chq-field-error">{errors.startDate}</span>}
-      </label>
-      <label className="chq-field">
-        End date
+      </FormRow>
+      <FormRow label="Ends" htmlFor="new-event-end" required error={errors.endDate}>
         <input
+          id="new-event-end"
           className="chq-input"
           type="date"
           value={form.endDate}
@@ -138,29 +136,26 @@ function NewEventModal({ onCancel, onCreated }: { onCancel: () => void; onCreate
           placeholder="2028-05-13"
           required
         />
-        {errors.endDate && <span className="chq-field-error">{errors.endDate}</span>}
-      </label>
-      <label className="chq-field">
-        Timezone
+      </FormRow>
+      <FormRow label="Time zone" htmlFor="new-event-timezone" required error={errors.timezone}>
         <input
+          id="new-event-timezone"
           className="chq-input"
           value={form.timezone}
           onChange={(e) => setField('timezone', e.target.value)}
           placeholder="America/Chicago"
           required
         />
-        {errors.timezone && <span className="chq-field-error">{errors.timezone}</span>}
-      </label>
-      <label className="chq-field">
-        Location (optional)
+      </FormRow>
+      <FormRow label="Venue" htmlFor="new-event-location" error={errors.location}>
         <input
+          id="new-event-location"
           className="chq-input"
           value={form.location}
           onChange={(e) => setField('location', e.target.value)}
           placeholder="Optional"
         />
-        {errors.location && <span className="chq-field-error">{errors.location}</span>}
-      </label>
+      </FormRow>
     </ModalFrame>
   );
 }
