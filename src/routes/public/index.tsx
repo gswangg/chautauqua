@@ -40,6 +40,7 @@ import {
   parseDay,
   parseLimit,
   parseCardFields,
+  parseSessionListFields,
   parseAccent,
   parseFormat,
   parseRoomId,
@@ -117,7 +118,10 @@ for (const surface of SURFACES) {
       q: c.req.query("q"),
       day: parseDay(c.req.query("day")),
       limit: parseLimit(c.req.query("limit")),
-      fields: parseCardFields(c.req.query("fields")),
+      // DEC-968: the sessions list row drops the abstract by default
+      // (SESSION_LIST_DEFAULT_FIELDS) -- every other surface still defaults
+      // to all six fields via parseCardFields.
+      fields: surface === "sessions" ? parseSessionListFields(c.req.query("fields")) : parseCardFields(c.req.query("fields")),
       format: c.req.query("format"),
       roomId: c.req.query("roomId"),
     });
@@ -240,7 +244,8 @@ publicRoutes.get("/embed/:eventSlug/:surface", async (c) => {
     q: c.req.query("q"),
     day: parseDay(c.req.query("day")),
     limit: parseLimit(c.req.query("limit")),
-    fields: parseCardFields(c.req.query("fields")),
+    // DEC-968: same sessions-only default as the /e/ HTML route above.
+    fields: surfaceParam === "sessions" ? parseSessionListFields(c.req.query("fields")) : parseCardFields(c.req.query("fields")),
     format: c.req.query("format"),
     roomId: c.req.query("roomId"),
     // DEC-594 (EMB-7): every link/form rendered by this dispatch (currently

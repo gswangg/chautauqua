@@ -44,6 +44,28 @@ export function FormatChip(props: { format: string | null }) {
   return <span class="chq-pub-format-chip">{props.format}</span>;
 }
 
+// DEC-968: the sessions-list row's meta line is a single caps line -- one or
+// more track names joined by ', ', a dot separator, then the format -- rendered
+// through .chq-pub-session-tag (the SAME class the frame draws both clauses
+// with). Each clause renders only when its CardFields flag is on, and the
+// dot is dropped whenever either clause is absent (never a dangling dot).
+// TrackChips/FormatChip (below) stay exported unchanged for the agenda
+// blocks and the session detail page, which keep the colour-swatch chips.
+export function SessionTagLine(props: { tracks: PublicTrack[]; format: string | null; fields: CardFields }) {
+  const { fields } = props;
+  const trackNames = fields.track ? props.tracks.map((t) => t.name).join(", ") : "";
+  const showTrack = fields.track && trackNames.length > 0;
+  const showFormat = Boolean(fields.format && props.format);
+  if (!showTrack && !showFormat) return null;
+  return (
+    <div class="chq-pub-session-tags">
+      {showTrack ? <span class="chq-pub-session-tag">{trackNames}</span> : null}
+      {showTrack && showFormat ? <span class="chq-pub-session-tag-dot" /> : null}
+      {showFormat ? <span class="chq-pub-session-tag">{props.format}</span> : null}
+    </div>
+  );
+}
+
 export function SpeakerNames(props: { speakers: PublicSession["speakers"] }) {
   return (
     <>
@@ -199,12 +221,7 @@ export function SessionCard(props: {
             <SpeakerNames speakers={session.speakers} />
           </p>
         ) : null}
-        {fields.track || fields.format ? (
-          <div class="chq-pub-session-tags">
-            {fields.track ? <TrackChips tracks={session.tracks} /> : null}
-            {fields.format ? <FormatChip format={session.format} /> : null}
-          </div>
-        ) : null}
+        <SessionTagLine tracks={session.tracks} format={session.format} fields={fields} />
         {fields.description ? <SessionDescription description={session.description} /> : null}
       </div>
       {props.itinerary ? (

@@ -38,3 +38,24 @@ export function parseCardFields(raw: string | undefined): CardFields {
     format: named.has("format"),
   };
 }
+
+// DEC-968: the sessions LIST row (as opposed to every other surface, which
+// still defaults to all six fields via parseCardFields) drops the abstract
+// by default -- the row shows track/time/room/speaker/format but never the
+// description, which the reader gets by drilling into the session's detail
+// page (or by naming it explicitly with ?fields=...,description).
+export const SESSION_LIST_DEFAULT_FIELDS: CardFields = {
+  track: true,
+  time: true,
+  room: true,
+  speaker: true,
+  description: false,
+  format: true,
+};
+
+/** Same grammar as parseCardFields, but an absent/empty `raw` yields
+ * SESSION_LIST_DEFAULT_FIELDS (description off) instead of all six on. */
+export function parseSessionListFields(raw: string | undefined): CardFields {
+  if (!raw || raw.trim().length === 0) return { ...SESSION_LIST_DEFAULT_FIELDS };
+  return parseCardFields(raw);
+}

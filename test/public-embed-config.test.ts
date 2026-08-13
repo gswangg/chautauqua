@@ -373,22 +373,28 @@ describe("embed config: fields param gates card content (title always renders)",
     expect(fragment).toContain("Talk 1"); // title anchor always renders
     expect(fragment).not.toContain("Ada");
     expect(fragment).not.toContain("chq-pub-session-when");
-    expect(fragment).not.toContain("chq-pub-track-chip");
+    expect(fragment).not.toContain("chq-pub-session-tag");
     expect(fragment).not.toContain("A description long enough");
   });
 
+  // DEC-968: the sessions-list row's meta line renders through the shared
+  // .chq-pub-session-tag class (not the colour-swatch .chq-pub-track-chip,
+  // which stays for the agenda blocks and detail page).
   it("an unknown field name alongside a real one only turns on the recognized one", async () => {
     installFakeCaches();
     const app = buildApp();
     const res = await app.request("/embed/conf/sessions?fields=track,bogus", {}, TEST_ENV);
     const html = await res.text();
     const fragment = cardFragment(html, "sub1");
-    expect(fragment).toContain("chq-pub-track-chip");
+    expect(fragment).toContain('class="chq-pub-session-tag"');
     expect(fragment).not.toContain("chq-pub-session-when");
     expect(fragment).not.toContain("Ada");
   });
 
-  it("every param absent reproduces today's output byte-for-byte (all fields on)", async () => {
+  // DEC-968: an absent ?fields= on the sessions surface now defaults to
+  // SESSION_LIST_DEFAULT_FIELDS (all six minus description) rather than all
+  // six on -- the abstract only reappears when named explicitly.
+  it("every param absent uses the sessions-list default (all fields but description)", async () => {
     installFakeCaches();
     const app = buildApp();
     const res = await app.request("/embed/conf/sessions", {}, TEST_ENV);
@@ -397,8 +403,18 @@ describe("embed config: fields param gates card content (title always renders)",
     expect(fragment).toContain("Talk 1");
     expect(fragment).toContain("Ada");
     expect(fragment).toContain("chq-pub-session-when");
-    expect(fragment).toContain("chq-pub-track-chip");
+    expect(fragment).toContain('class="chq-pub-session-tag"');
+    expect(fragment).not.toContain("A description long enough");
+  });
+
+  it("?fields=track,description restores the description alongside the default track/format meta line", async () => {
+    installFakeCaches();
+    const app = buildApp();
+    const res = await app.request("/embed/conf/sessions?fields=track,description", {}, TEST_ENV);
+    const html = await res.text();
+    const fragment = cardFragment(html, "sub1");
     expect(fragment).toContain("A description long enough");
+    expect(fragment).toContain('class="chq-pub-session-tag"');
   });
 });
 

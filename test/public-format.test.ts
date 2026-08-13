@@ -116,13 +116,16 @@ describe("Format on the sessions-list card (/e/:eventSlug/sessions)", () => {
     };
   }
 
+  // DEC-968: the list row's format renders through the shared
+  // .chq-pub-session-tag meta line, not the colour-swatch .chq-pub-format-chip
+  // (which stays for the agenda blocks and the detail page below).
   it("a session with the answer shows it on the card", async () => {
     installFakeCaches();
     const app = withDb(buildApp(), db(true));
     const res = await app.request("/e/conf/sessions", {}, TEST_ENV);
     expect(res.status).toBe(200);
     const html = await res.text();
-    expect(html).toContain('class="chq-pub-format-chip"');
+    expect(html).toContain('class="chq-pub-session-tag"');
     expect(html).toContain("Workshop");
   });
 
@@ -132,7 +135,7 @@ describe("Format on the sessions-list card (/e/:eventSlug/sessions)", () => {
     const res = await app.request("/e/conf/sessions", {}, TEST_ENV);
     expect(res.status).toBe(200);
     const html = await res.text();
-    expect(html).not.toContain('class="chq-pub-format-chip"');
+    expect(html).not.toContain("Workshop");
   });
 });
 

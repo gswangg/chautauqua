@@ -67,7 +67,14 @@ export function parseLimit(raw: string | undefined): number | null {
 
 // DEC-673: the card-field vocabulary moved to src/lib/card-fields.ts (pure
 // core); re-exported here so every existing import site keeps compiling.
-export { ALL_CARD_FIELDS, parseCardFields, type CardField, type CardFields } from "../../lib/card-fields";
+export {
+  ALL_CARD_FIELDS,
+  parseCardFields,
+  SESSION_LIST_DEFAULT_FIELDS,
+  parseSessionListFields,
+  type CardField,
+  type CardFields,
+} from "../../lib/card-fields";
 
 /** `accent` = 3- or 6-digit hex, with ONE optional leading '#' tolerated
  * (DEC-817: the embed builder's own placeholder shows the '#' form, and a
