@@ -1,11 +1,12 @@
 // Evaluations (DEC-018): the recorded scores/comments a reviewer submits for
 // a submission within a plan round.
 
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { newId } from "../../../domain/ids";
 import { resolveReviewerIdentity } from "../../../domain/review-identity";
+import type { EvaluationCriterionDef } from "../../../domain/evaluation";
 
 export interface EvaluationRecord {
   id: string;
@@ -179,26 +180,25 @@ export interface SubmissionEvaluationRow {
   planId: string;
   planName: string;
   round: number;
-  reviewerName: string | null;
+  reviewerName: string;
   scores: Record<string, number | string>;
   comment: string | null;
   submittedAt: number | null;
 }
 
-/** DEC-596: every evaluation recorded for a submission, across every plan it
- * has ever been scored under -- the organiser reads the SAME evaluation the
- * reviewer wrote, joined through evaluation_plan (for name/anonymized) and
- * user -> contact (for the reviewer's display name). reviewerName is null
- * exactly when the OWNING PLAN is anonymized -- decided here, server-side,
- * never left for the renderer to infer from an absent contact. Totally
- * ordered (planName, round, submittedAt, id asc) per DEC-534/558 so a
- * LIMIT-less list still has one deterministic shape. */
+/** DEC-596/DEC-736: every evaluation recorded for a submission, across every
+ * plan it has ever been scored under -- the organiser reads the SAME
+ * evaluation the reviewer wrote, joined through evaluation_plan (for name)
+ * and user -> contact (for the reviewer's display name). The organiser is
+ * always told who reviewed -- anonymization (DEC-736) hides the speaker
+ * from the reviewer, never the reviewer's identity from the organiser.
+ * Totally ordered (planName, round, submittedAt, id asc) per DEC-534/558 so
+ * a LIMIT-less list still has one deterministic shape. */
 export async function listEvaluationsForSubmission(db: Db, submissionId: string): Promise<SubmissionEvaluationRow[]> {
   const rows = await db
     .select({
       planId: schema.evaluation.planId,
       planName: schema.evaluationPlan.name,
-      anonymized: schema.evaluationPlan.anonymized,
       round: schema.evaluation.round,
       scoresJson: schema.evaluation.scoresJson,
       comment: schema.evaluation.comment,
@@ -225,7 +225,6 @@ export async function listEvaluationsForSubmission(db: Db, submissionId: string)
     planName: r.planName,
     round: r.round,
     reviewerName: resolveReviewerIdentity({
-      anonymized: r.anonymized,
       firstName: r.contactFirstName,
       lastName: r.contactLastName,
       email: r.userEmail,
@@ -234,6 +233,38 @@ export async function listEvaluationsForSubmission(db: Db, submissionId: string)
     comment: r.comment,
     submittedAt: r.submittedAt ? r.submittedAt.getTime() : null,
   }));
+}
+
+export interface PlanCriteriaInfo {
+  criteria: EvaluationCriterionDef[];
+  roundCriteriaJson: string | null;
+  scale: { min: number; max: number };
+}
+
+/** DEC-723: batched plan lookup for an evaluations-for-submission read --
+ * one `IN (...)` query over the DISTINCT planIds in the row set, never a
+ * per-row plan fetch. Callers resolve each row's own round through
+ * criteriaForRound(info.criteria, info.roundCriteriaJson, row.round). */
+export async function listPlanCriteriaByIds(db: Db, planIds: string[]): Promise<Map<string, PlanCriteriaInfo>> {
+  if (planIds.length === 0) return new Map();
+  const rows = await db
+    .select({
+      id: schema.evaluationPlan.id,
+      criteriaJson: schema.evaluationPlan.criteriaJson,
+      roundCriteriaJson: schema.evaluationPlan.roundCriteriaJson,
+      scaleJson: schema.evaluationPlan.scaleJson,
+    })
+    .from(schema.evaluationPlan)
+    .where(inArray(schema.evaluationPlan.id, planIds));
+  const result = new Map<string, PlanCriteriaInfo>();
+  for (const r of rows) {
+    result.set(r.id, {
+      criteria: JSON.parse(r.criteriaJson) as EvaluationCriterionDef[],
+      roundCriteriaJson: r.roundCriteriaJson,
+      scale: JSON.parse(r.scaleJson) as { min: number; max: number },
+    });
+  }
+  return result;
 }
 
 /** Upserts a reviewer's evaluation for a submission+round (unique per
