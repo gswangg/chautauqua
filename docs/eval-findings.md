@@ -1,4 +1,4 @@
-# MANDATE — desktop-polish oscillation (compacted 2026-08-13; full history in docs/mandates/findings-archive-2026-08-12.md)
+# MANDATE — desktop-polish oscillation (gate-3 pruned 2026-08-13, snapshot 9b78f61e; full history in docs/mandates/findings-archive-2026-08-12.md)
 
 **This file lists ONLY open items, priority-ordered.** Closed items were pruned so
 nothing here is stale — if a commit fixes an item, it comes OFF this list at the next
@@ -21,8 +21,42 @@ title row or form footer; section actions are links on the section rule · one s
 vocabulary + scan-lock beats per-page fixes (dialogs=ModalFrame, buttons, send
 reporting, page measure).
 
-## GATE-3 EARLY REDS (fleet re-audit vs v6 in progress; snapshot 9b78f61e; full
-## dispositions + prune when all 6 pair reports land — DO NOT prune other sections yet)
+## P0 — CLOSED (probe-2 verified end-to-end 2026-08-13)
+
+Reviewer lockout FIXED and externally verified: sbek-reviewer login → /admin/review
+renders → scorecard reached through the UI → rating inputs live. Regression test
+guards the closed-plan envelope shape (test/review-queue-shape.test.ts) — re-verified
+live at gate-3 (closed-plan queue returns 200 with `recused` present; no lockout).
+Residue (small, filed under Review): shell still fires one non-fatal 403 organizer
+overview fetch right after reviewer login — make the shell skip it for reviewers.
+
+## GATE-3 FLEET VERDICTS (all 6 pair reports landed, audited vs design-frames-v6 on snapshot 9b78f61e)
+
+ALL 11 SECTIONS FAIL.
+
+- 01-overview — FAIL, 4 MAJOR
+- 02-submissions — FAIL, 4 MAJOR
+- 03-review — FAIL, 1 BROKEN + 5 MAJOR
+- 04-speakers — FAIL, 3 MAJOR
+- 05-content — FAIL, 8 MAJOR
+- 06-agenda — FAIL, 4 MAJOR
+- 07-comms — FAIL, 4 MAJOR
+- 08-contacts — FAIL, 1 BROKEN + 4 MAJOR
+- 09-settings — FAIL
+- 10-public-portal — FAIL + 1 BROKEN (seed)
+- 11-account — FAIL, 4 MAJOR
+
+Reports: `chautauqua-research/fidelity-gate3/{01-overview,02-submissions,04-speakers,07-comms,09-settings,11-account}/report.md`
+(each covers its pair). These reports are the authority for every disposition below.
+
+## GATE-3 REDS — THE OPEN LIST (measured at gate-3; these supersede any older filing of the same finding)
+
+**Full fleet reports live at chautauqua-research/fidelity-gate3/*/report.md — they carry
+additional MINOR polish findings not promoted here (e.g. 02's "01 —ABSTRACT" section
+counters + 34px detail gutter, 08's header-stat clause count, 11's 46-vs-48 input).
+Scribes/planners: mine them when a surface's P1/P2s run dry, before inventing work.**
+
+**Pair-2 reds (02-submissions FAIL 4 MAJOR · 03-review FAIL 1 BROKEN + 5 MAJOR):**
 
 **P1-BROKEN · Reviewer queue "Score this" CTA illegible.** `a.chq-review-queue-score-action.chq-btn.chq-btn-primary` computes `color: rgb(27,29,23)` on olive `rgb(78,92,49)` — 2.40:1. A queue-scoped anchor color rule overrides the primary token (the same `.chq-btn-primary` on the scorecard is correct cream `rgb(247,249,240)`). One CSS line; add a computed-style render test for anchor-primaries inside the queue scope. This is the reviewer's single primary action.
 
@@ -136,310 +170,270 @@ reporting, page measure).
 
 (Verified fixed at gate-3, hands off: accept-primary pair+caption, save-view modal, drag handles on builder rows, review segment fill olive+equal spans, scorecard measure, recusal placement, RANK-led results 1dp, recused-envelope closed-plan queue — regression test passed live. Pair-3 verified fixed: participation-pill 4-state (guard test in speakers-css.test.ts), add-speaker E2E 201, menu focus/arrows/escape, DEC-920 filename links on detail, DEC-990 one-page-two-views with /e/…/gallery as Grid URL.)
 
-## P0 — CLOSED (probe-2 verified end-to-end 2026-08-13)
-
-Reviewer lockout FIXED and externally verified: sbek-reviewer login → /admin/review
-renders → scorecard reached through the UI → rating inputs live. Regression test
-guards the closed-plan envelope shape (test/review-queue-shape.test.ts). Swarm has
-since refactored into a shared closed/open envelope shaper — test covers it.
-Residue (small, filed under Review): shell still fires one non-fatal 403 organizer
-overview fetch right after reviewer login — make the shell skip it for reviewers.
-
 ## Cross-cutting sweeps (each closes a class)
 
-A. **Page-measure — probe-4: MOSTLY CLOSED (DEC-808)**: submission detail
-   (1018+320=1372) and plan editor now full-width; builder + Settings clamp to a
-   deliberate --chq-measure:820px with a scan test. REMAINING DECISION: the v5
-   mock renders the BUILDER field list across the full content width — mock is
-   authority, exempt the builder from the measure (Settings reading-column clamp:
-   verify against the 09-settings mock before changing).
-B. **customFields/Labels UI surface** (mostly landed — probe 2: directory column AND
-   drawer chips w/ label variety verified): remaining — Labels row in the MERGE view
-   renders raw lowercase custom-field keys; apply the server-side formatting there
-   (detail under Contacts).
-C. **Verify-then-close list** (commits claim these landed — external probe confirms,
+A. **customFields/Labels UI surface** — remaining: Labels row in the MERGE view renders
+   raw lowercase custom-field keys; apply the server-side formatting there.
+   **(unverified at gate-3** — the 08 report dispositions the merge screen's rows and
+   composition but never the Labels key formatting.)
+B. **Verify-then-close list** (commits claim these landed — external probe confirms,
    then delete the line): data-loss trio REMAINDER (headshot-upload-discards-bio,
-   CSV bio overwrite).
-   CLOSED by probe 2026-08-13 (snapshot e254eca): Contacts DirectoryRail DEC-710/711
-   (real two-column, rail sections per mock) · stale nav badges (mutation updated
-   badge immediately, correct across navs + reload) · form-builder row anatomy DEC-715
-   (all 7 sub-points verified in DOM) · Review landing grammar DEC-706/707/708
-   (5 of 7 sub-points; residue moved to Review section) · assign-by-track
-   preview/confirm (zero non-GET before confirm) · Comms Body-width + URL-state tabs
-   DEC-710 (Subject=Body=1372px; ?tab= survives reload + direct nav) · History count
-   ("3 total" matches rows) · content file-version delete DEC-713 (DELETE 200,
-   survives reload, audit comment) · comment-loss across versions (persists through
-   upload/delete/reload — NEW small item: comment version TAGS renumber after a
-   version delete; store-vs-display drift, no content loss) · content file-input
-   styling (.chq-file styles verified applied).
+   CSV bio overwrite) **(unverified at gate-3)** · comment version TAGS renumber after
+   a version delete (store-vs-display drift, no content loss) **(unverified at
+   gate-3)**.
+   CLOSED by probe 2026-08-13 (snapshot e254eca), retained as the closure ledger:
+   Contacts DirectoryRail DEC-710/711 · stale nav badges · form-builder row anatomy
+   DEC-715 · Review landing grammar DEC-706/707/708 (residue moved to Review) ·
+   assign-by-track preview/confirm · Comms Body-width + URL-state tabs DEC-710 ·
+   History count · content file-version delete DEC-713 · comment-loss across versions ·
+   content file-input styling.
 
-## Per-surface open items (desktop)
+## Per-surface open items (desktop) — residue AFTER the gate-3 reds above
 
-**Overview — GATE-2: FAIL, narrow** (report fidelity-gate2/01-overview/
-report.md; measure/modal/public-row/date-anatomy/overflow all CLOSED):
-NEW ROOT CAUSES — **define `--chq-sunk`** (token never defined; secondary
-buttons resolve transparent across overview + submissions detail; one line
-closes a cross-section item) · **section buttons render in ARIAL** (no
-font-family, overview.css:246; same class on agenda no-room btn) · stat-band
-bold inconsistency · §04 clash ref wraps mid-token (nowrap) · VENUE label/
-placeholder duplication · "JORDAN A." header grammar.
-Remaining: public-row copy to count-grammar ("17 sessions live, with speakers
-and schedule") · §03 artifact meta · drop month + zero-pad in §04 times ·
-" in <room>" suffix · event-name title-case · "Next free slot" 13px sentence ·
-modal (near-black rule, 21.5 title, #3F4237 placeholders, human dates) ·
-"Export" · spelled small numbers · metrics/spacing batch (59/35/76/72).
+**Overview — gate-3: FAIL, 4 MAJOR** (report fidelity-gate3/01-overview/report.md;
+the 4 MAJORs are in the Pair-1 red block. `--chq-sunk`, the 820 measure, modal
+side-by-side dates/46px actions/no-asterisks, the single public-pages row, the
+overflow-below convention and §04 distinct suggestion times are all FIXED and
+re-verified holding):
+- **stat-band nearest-cell bold ties arbitrarily** — v6 does bold the nearest cell, so
+  the rule is right, but with two cells reading "Today" `--chq-type-deadline-value-weight-nearest: 700`
+  lands on cell 3 (REVIEW WAVE 1) while cell 2 (TASKS DUE) stays 400.
+- **"J. ALVAREZ" header grammar** — frame is "JORDAN A." (and no "· SIGN OUT" in header).
+- **§04 two-line date anatomy** — app "Wed 12 May, 09:00"; frame grammar "Tue 12, 10:00"
+  (drop month, unpadded hour).
+- **" in \<room\>" suffix** — "Place at 9:00 in Room 2A"; frame is "Place at 11:30".
+- **modal residue** — title 21.5px (app 20px, ink 186 vs frame 200 @2x); placeholder
+  colour is the UA default `rgb(117,117,117)`, not a brand token.
+- **metrics/spacing batch** — 35px section buttons + 129.3 "New submission" width
+  landed; still off: top toolbar buttons 42.8px vs frame 37.0 (vertical padding only),
+  "No action needed" row pitch 58.4 vs frame 51.
 
-**Submissions — GATE-2: PASS w/ reservations ✓** (report
-fidelity-gate2/02-submissions/report.md): remaining — FORM ANSWERS add
-Notes-for-reviewers + Accessibility, label "Format" · review rows LIGHTER
-(one-line "Name 4.0 date" + comment; keep plan label; rubric detail behind
-disclosure) · builder field set (add Track + Accessibility, drop
-Job-title/Company/Bio) + "1,200 characters" + strip protocol + SETTINGS DEC ·
-modal extra TRACKS/SESSION-FORMAT + drop unframed "· OPTIONAL" suffixes ·
-global count under filter · TRACK/SENT/FORMAT labels · filter controls at chip
-height · view-tab × · triage preset ships columns:[] (fix the client preset) ·
-Add-a-question back to green link (regressed) · builder locked rows: grey only
-Delete, not field names · bulk-bar Delete… DEC · speaker rail history line ·
-‹ glyph.
+**Submissions — gate-3: FAIL, 4 MAJOR** (report fidelity-gate3/02-submissions/report.md;
+list 1372 + detail 1180 both CONFORM; accept-primary pair+caption, ref line + Next ›,
+builder drag handles + locked styling, save-view modal share round-trip, Notes-for-reviewers
+in FORM ANSWERS all FIXED):
+- **review rows still one line heavier than frame** (frame: `Sam Whitfield 4.0 18 Mar`
+  + comment) and detail scores render 2dp (`5.00`, `1.67`) where every other review
+  surface is 1dp.
+- **"1,200 characters"** — app "Up to 20000 characters" (no thousands separator).
+- **strip protocol on the public link** — app `http://localhost:8882/submit/…`; frame
+  `chautauqua.cc/submit/devflow-conf-2027`.
+- **unframed SETTINGS + TRACKS OFFERED block below the builder fields** (Title/Intro/
+  Not yet open/Opens/Closes/Open the call now/Close the call now) — frame 04 ends at
+  the "Public link" row, and this block duplicates the OPENS/CLOSES strip at the top.
+  SETTINGS DEC.
+- **modal extra TRACKS fieldset + `FORMAT · OPTIONAL` select** not in frame 06, and
+  drop the unframed "· OPTIONAL" label suffixes (the placeholder already carries it).
+- **global count under the filter** — subtitle recomputes to the filtered set
+  ("14 total · 14 awaiting triage"); frame shows the invariant global.
+- **TRACK/SENT labels** — `th` reads TRACKS / SUBMITTED.
+- **filter controls at chip height** — native selects/search at 44.0 tall, radius 4px;
+  frame's `All tracks ▾` is a pill matched to the 26px status chips.
+- **× on view tabs** — `.chq-submissions-viewtabs-delete` follows the saved view; frame
+  00 has none.
+- **Add-a-question back to green link** (regressed to a bordered button).
+- **builder locked rows: grey only `Delete`, not the field names.**
+- **bulk-bar "Delete…" DEC** — not in frame 00.
+- **speaker rail history line** — frame adds "2 submissions this year · spoke in 2026".
+- **‹ glyph** — ref row mixes `← All submissions` with `‹ Previous` / `Next ›`.
 
-**Review — GATE-2: FAIL, much improved** (same report): NEW TOP ITEMS —
-scorecard has NO MEASURE (full-bleed 1740px; extend the 820 card measure to the
-scorecard) · selected rating fill OLIVE not ink + five EQUAL-width segments
-across the measure · recusal below the comment (not above ratings) · one
-criterion renders a sunk band its sibling lacks · aria-pressed on scored
-segments · "7 of 18 done" counter + scoped progress bar/name · 1dp everywhere.
-STILL-OPEN: criteria drag handles ×3 editors · distribute anatomy (3-col
-Name|Track|6→8, caps NOTHING-IS-SAVED right, "Assign these N"/Discard, leftover
-summary line) · WHO-REVIEWS-WHAT control row below rule + "N talks · N reviews
-needed at N each · N reviewers" + "No cap" clip · status pills = real pills
-(now bare caps text) · US dates → "2 Mar – 20 Mar" · hyphen→middot sweep · dup
-results headings/orphan CSV/pagination · "COMMENT TO THE COMMITTEE" ·
-recusal inline checkbox · extras audit (Reset password/Anonymize/Delete
-plan/kbd tip) · landing remind + track subtitles · footer "· Sign out" · queue
-meta audience level + Change-your-score secondary.
-**SEED (top leverage): maxEvaluations on plans 0002-0004 · spread evaluation
-scores (31 rows collapse to 4 values — rank-order arbitrary) · second reviewer
-on plan 0003 · a recusal for the reviewer (RECUSED row never exercised) ·
-RESTORE seed_saved_view_0001 (concurrent agent deleted it).**
-(Gate-2 closures: segmented buttons, OVERALL, weights, PII clamp, RANK table,
-queue anatomy, compact hub, locked read-only, criteria headers.)
+**Review — gate-3: FAIL, 1 BROKEN + 5 MAJOR** (same report; scorecard measure, olive
+equal-span segments, recusal below the comment, OVERALL block, RANK-led 1dp results,
+queue anatomy, compact hub, PII clamp, criterion focus band all FIXED):
+- **aria-pressed on scored segments** — all 10 rating buttons return `aria-pressed === null`.
+- **scorecard "N of N done" counter** — the queue now has the scoped progress bar +
+  "7 of 10 done"; the scorecard header still has none (frame 01 shows it top-right).
+- **criteria drag handles ×3 editors** — zero `[draggable]`/handles on locked, unlocked
+  and new-plan editors; frames 03/06 show `⠿` on every criterion row.
+- **US dates** — plan editor native `input[type=date]` (07/14/2026); frame is text
+  "24 Mar 2027"; detail rail "ACCEPTED · WED, APR 15, 2026".
+- **hyphen→middot sweep** — "Locked - 37 reviews…", "3 of about 7 - more than that…",
+  "5 - 71%", "Track - AI Engineering".
+- **orphan CSV + duplicated results headings + pagination** — `/plans/:id/results`
+  places a bordered `Download CSV` alone between two rules above RANKED RESULTS; the
+  landing repeats it; `.chq-pager` present.
+- **"COMMENT TO THE COMMITTEE"** — app label is `COMMENT`.
+- **recusal inline checkbox** — app renders a 125px bordered card with a checkbox AND a
+  full-width "Declare conflict of interest" button; frame 01 is a bare checkbox + label
+  "Recuse me — conflict of interest".
+- **extras audit** — unframed on the plan editor: `Reset password` per reviewer row,
+  `Anonymize speaker identity for reviewers`, `Delete plan`, the `rating`/`dropdown`
+  kind column, and the scorecard's "Tip: number keys 1-9…" hint.
+- **landing remind + track subtitles** — frame 00 has `Remind the 4 not started`
+  right-aligned in REVIEWER PROGRESS; rows need the track as a subtitle.
+- **footer "· Sign out"** — reviewer footer is only "Scores stay hidden from other
+  reviewers"; frame 02 puts Sign out in the footer with the full name in the header.
+- **queue meta audience level** — rows read "Talk (30 min)"; frame "Talk, 30 min · advanced".
+- **REOPENED at gate-3 (the gate-2 closure list was wrong on these two):** locked-plan
+  editor inverts the frame — no right-aligned `LOCKED — N REVIEWS SCORED AGAINST THESE
+  CRITERIA` eyebrow on the SCORING CRITERIA rule, and the frame's second body sentence
+  ("Wording, weights and the scale are fixed for the rest of this wave…") is absent;
+  criteria headers are `GUIDANCE` not `GUIDANCE FOR REVIEWERS · OPTIONAL`; locked rows
+  print "rating 2" instead of "Weight 3 · 50%".
+- **SEED (top leverage): maxEvaluations still NULL on plans 0002-0004** (landing loses
+  "· N reviews each", editor REVIEWS PER TALK renders empty) · **spread evaluation
+  scores** (results still tie 4.7/4.7, 4.3/4.3, 4.0×3 — rank-order arbitrary) ·
+  **second reviewer on plan 0003** (both `plan_reviewer` rows are the same user, so
+  frame 03's four-reviewer distribute table is unreproducible) · a recusal for the
+  reviewer **(unverified at gate-3)** · RESTORE seed_saved_view_0001 **(unverified at
+  gate-3 — the report only confirms `saved_view` count 1 stable)**.
 
-**Speakers — GATE-2: FAIL, REGRESSION** (report fidelity-gate2/04-speakers/
-report.md): **P1-adjacent — CONFIRMED participation pill INVISIBLE on all 9
-seeded rows** (trigger reset speakers.css:216 background:none/padding:0/
-font:inherit after the DEC-730 modifiers; 3rd collision on this rule). FIX
-SHAPE MANDATED: reduce the reset to appearance+cursor (or :where()-scope) +
-computed-style render test for ALL FOUR states. ALSO REGRESSED: column header
-lost its second axis — restore "SPEAKER · PARTICIPATION". FIXED this gate:
-Any-participation dropdown, Add-speaker modal E2E, date grammar, filename link,
-accent invite, menuitemradio. STILL-OPEN batch: reopen caption ·
-KIND outlined-chip selected · DELIVERABLE KIND styling/default · task headers
-title-case · menu header line + tinted current + NOW treatment · menu
-focus/arrows/outside-click · has-account plain text · identity stacking ·
-invite link NOT-INVITED-only · EMAILED copy · en dash · import Close + file
-input · SEED SFO dates.
-**P2 — DELETE ROUND-TRIP DOESN'T CLOSE**: session delete leaves task_assignment
-orphans (DEC-921 ownership) → contact delete 409s AND orphans permanently
-inflate roster stats. DEC-886 prose contradicts implementation. Resolve the
-cascade or offer assignment cleanup on contact delete.
+**Speakers — gate-3: FAIL, 3 MAJOR** (report fidelity-gate3/04-speakers/report.md;
+matrix 1372 @ table class CONFORMS; participation-pill 4-state regression FIXED with a
+guard test, add-speaker E2E, menu focus/arrows/outside-click, has-account plain text,
+`menuitemradio`, accent invite, DEC-920 filename links all FIXED):
+- **reopen caption** — "Reopening does not email the speaker." renders ABOVE the button;
+  frame puts "Sets it back to pending — the next reminder picks it up" BELOW.
+- **KIND selected = outlined chip** — selected `Upload` is `chq-btn-primary` olive/white;
+  frame is cream fill + dark outline + ink text.
+- **menu panel header line + tinted current row + NOW treatment** — identity is the bare
+  name (frame: "Northwind Data · no portal account"); `.is-current` renders no tint band;
+  NOW is an inline filled green chip inside the label span, not right-aligned text.
+- **SEED SFO date fields** — response modal renders `Check-in date: SFO` /
+  `Check-out date: SFO`; frame shows "11 May 2027" / "13 May 2027".
+- **DELETE ROUND-TRIP — narrowed, not closed.** Gate-3 verified the FRESH path only
+  (add speaker → session delete 200 `refused:[]` → contact DELETE 204 → roster stats
+  restored). NOT re-tested: deleting a SEEDED contact that already carries orphaned
+  `task_assignment` rows (the DEC-921 ownership case that 409s and permanently inflates
+  roster stats; DEC-886 prose contradicts implementation).
 
-**Content — GATE-2: FAIL, narrow** (same report; staggered rows, role leak,
-"You", version_no, DEC-881, header rebuild, default tab, library structure all
-CLOSED): NEW — duplicate H1 "Content" + dead pill-row chrome above every
-detail/library view (~200px; one H1 per page) · **version chain not unique per
-deliverable** (SES-005 shows two v1 roots as one "2 versions" chain — chain per
-deliverable kind, restore REPLACED tag) · heading alignment + heavy rules ·
-"v2 · Latest" wrap. STILL-OPEN: decision buttons inverted + helper below · one
-time convention (relative) · library trim columns/ZIP(0)/placeholder/headshot
-sort · per-version Delete DEC · changes_requested→pending path · styled drop
-zone w/ frame copy (mp4 half done) · SEED: one re-uploaded PENDING row so the
-signature state can demo.
+**Content — gate-3: FAIL, 8 MAJOR.** All eight MAJORs plus every surviving gate-2 item
+on this surface are carried by the Pair-3 red block (`.chq-pill` Arial, the 05-content
+structural batch a–h, and the content polish batch). Nothing else remains open here.
+`changes_requested → pending` is OBSOLETE-VS-V6 (no v6 frame depicts such a control).
 
-**Agenda (desktop) — GATE-2: FAIL, narrow** (same report; tray eviction,
-ring contrast 4.29:1, hover labels, N-way merge, title-row head, %-placed all
-CLOSED): TOP — **replace the armed clash-card opacity with a quieted-ink
-token** (opacity .55 lets the ink outlines strike the card text; 3.56:1 AA
-fail — the one AA failure left) · **lighten the armed lattice** (2px solid ink
-×144 doubles at shared edges; inset/lighter ring) · ONE time grammar (24h
-gutter incl. afternoon, align aria + toasts) · hover label on CLASH cells
-(140/144) · "N MIN FREE" = the slot gap, not end-of-day · Arial no-room button
-(--chq-sunk/font fix pair) · empty-row pitch 44pt (corrected from gate-1) +
-gutter 63 + head→tabs 36 · tray/placed card anatomy (flat tray border, no
-accent/track line, "· N min", right-aligned count; placed keeps accent, drops
-track line) · click/keyboard unschedule (placed-click = move only) · caption
-vocabulary DEC (surface-dependent strings are CORRECT — agenda generalizes
-N-way, overview uses TWO-SESSIONS string; document, don't unify blindly) ·
-no-room toast copy · tray footer copy + unframed ⋮⋮.
+**Agenda (desktop) — gate-3: FAIL, 4 MAJOR** (report fidelity-gate3/01-overview/report.md;
+armed ink lattice, "N MIN FREE" slot-gap clamp, tray eviction, ring contrast, N-way
+merge, armed-bar pinning and the gutter "am" strip are all FIXED):
+- **head→tabs gap 78 vs frame 33** — the delta is the permanently reserved 38px
+  `.chq-agenda-armed-bar`, which is exactly what buys the zero layout shift on arming.
+  DEC: keep the reservation and accept the gap, or reserve it without spending height.
+- **click/keyboard unschedule absent** — clicking a placed card arms a MOVE only; no
+  unschedule path outside dragging.
+- **no-room toast copy** — **(unverified at gate-3: not reproducible; no room-less
+  column exists in this seed.)**
+- **unframed ⋮⋮ drag handles** still on the tray cards.
 
-**Comms — GATE-2: FAIL improved** (report fidelity-gate2/07-comms/report.md;
-DEC-883 both halves + DEC-912 + Templates chrome + stale-sends + overlap all
-CLOSED; send-honesty EXONERATED — DevSinkMailer locally, DEC-923 verified):
-**NEW P1 — ICS slot self-contradiction**: one screen shows SCHEDULED on every
-row AND "No slot yet" preview AND "11 of 11 have no slot" AND raw-DB-id error
-AND enabled Send — unify the slot predicate (DEC-912 flag vs ICS resolver),
-disable send on block, human refs in errors · **P1 {feedback} circular gate**:
-chip offered on step 2, server rejects without includeFeedback which lives on
-step 3 — accept pre-toggle or auto-enable + restore the named-fields banner
-(regressed to silent) · make the merged block reachable on the natural path ·
-BODY textarea (byte-identical 3rd look) · send confirm dialog · history: widen
-the identifying column, stop repeating subject/timestamp ×N · Recent-Sends
-Open/timestamps/template col · templates purpose-copy + editor polish batch.
+**Contacts — gate-3: FAIL, 1 BROKEN + 4 MAJOR** (report fidelity-gate3/07-comms/report.md;
+new-contact modal, import × Close, duplicates-tab wrapping, DEC-950 drawer, DEC-979
+delete cascade, pipeline drag-and-drop, "1 event" plural all FIXED; drawer
+add-to-pipeline entry is OBSOLETE-VS-V6):
+- **DEC-868 rules-row chrome residue** — sentence-case "Matching all of" vs the frame's
+  letterspaced eyebrow `MATCHING ALL OF`; dashed-outline `Add a rule` button vs the
+  frame's green text link; the frame's right-hand "2 of 318 match" and "Save as a
+  segment" are absent from the rule row (count lives in pagination, save in the rail).
+- **ACROSS YOUR EVENTS table grammar** — left column mixes event names and a timestamp
+  ("DevFlow Conf 2027" / "15 Apr, 22:48" / "DevFlow Conf 2027"); frame's left column is
+  uniformly the event.
 
 **USER (drawer action row): "Delete this contact" shows the BROWSER-DEFAULT
-blue-gray focus ring** — .chq-btn-tertiary has no focus-visible treatment, so
-the UA outline shows (off-palette). Give tertiary buttons the design-system
-focus ring (olive, like inputs/status cells); sweep other tertiary/link-button
-classes for the same gap. Also: the drawer action row mixes THREE button
-treatments side by side (primary/secondary/tertiary-with-ring) — check frame
-intent for the row.
+blue-gray focus ring** — `.chq-btn-tertiary` has no focus-visible treatment, so the UA
+outline shows (off-palette). Give tertiary buttons the design-system focus ring (olive,
+like inputs/status cells); sweep other tertiary/link-button classes for the same gap.
+**(unverified at gate-3** — the 09/11 reports confirm the 2px olive `:focus-visible`
+holds on rails, pills and auth controls, and the 11 report finds one `all:unset`
+exception on the demo buttons, but no report dispositions `.chq-btn-tertiary` in the
+contacts drawer.)
 
-**Contacts — GATE-2: FAIL barely-moved — PLANNER: the modal/drawer BROKEN
-batch was never scheduled; schedule it FIRST with Account** (report same):
-UNCHANGED BROKEN ×4: new-contact modal form grammar · headshot raw file input
-past viewport + indigo square · import × (506px centered button) ·
-duplicates-tab wrapping. FIXED: DEC-868 rules row functional (chrome residue:
-one bordered strip, eyebrow leader, no-wrap, text-link save) · pipeline
-drag-and-drop (drop/fix MOVE-TO selects). Remaining majors: rail reasons +
-Keep both · merge 6 identity rows + composition · pipeline header ·
-add-to-event cards + option DEC + selected-state · drawer pipeline entry ·
-import step-2 screen + samples + dup footer + REQUIRED marker + org→Company
-auto-map (silent data loss) · bulk-email names + terminal Send + MESSAGE ·
-ACROSS-YOUR-EVENTS table · SEED fit/rationales/staleness · "1 events".
+**Comms — gate-3: FAIL, 4 MAJOR.** All four MAJORs are in the Pair-4 red block
+(template-editor measure + BODY textarea, preview ICS note, Recent Sends columns, comms
+polish batch). Closed this gate: the `{feedback}` circular gate, the merged
+reviewer-feedback block on the natural path, the send-confirm dialog, step sublabels,
+recipient refs/DEC-912, nav overflow, stale Recent Sends, history overlap, send-status
+honesty. History de-noise/identifying-column work is OBSOLETE-VS-V6 (v6 ships no
+desktop history frame).
 
-**Settings — GATE-2: FAIL improved** (report fidelity-gate2/09-settings/
-report.md; editor/pills/scroll-spy/count/seeds/recipe/eyebrow CLOSED):
-TOP — **embed-row wrap at 1440, THIRD GATE** (pin the row grid; add a width
-test) · builder field toggles = native fieldset again (make the 6 FIELDS SHOWN
-pills; the fieldset defect relocated) · **THE STRUCTURAL TRIO** (one change,
-~7 panels): 3-col definition grid (label ‖ value @455 ‖ right hint) ·
-read-views show the frames' LISTS · section actions right-aligned ON the
-eyebrow. Rest: Edit-the-form links the question builder · portal Change edits
-welcome/pills/tasks · styled resource picker · un-overlap Copy buttons +
-Preview · middle col = where-pasted + caption placement · date grammar + hints
-+ label-drift pairs · CFP orphan row + balanced open/close (show one) ·
-markdown rendered view · SEED: display names, per-track scopes, NOT PUBLISHED
-page, accessibility-needs question · submission-delete DISCOVERABILITY (path
-exists via list bulk bar — add detail-page action).
+**Settings — gate-3: FAIL** (report fidelity-gate3/09-settings/report.md; the 3-col
+page-centered 242/820/242 grid with `justify-self:end` sticky rail is EXACT, scroll-spy
+HOLDS, EDITING eyebrow HOLDS, tracks/rooms editor HOLDS, DEC-910 count + recipe caption
++ near-black portal pills HOLD; the structural trio, tracks-rooms grid width, FIELDS
+SHOWN pills, read-view lists, public-pages 4-col rows, rail order, Dates row, H1
+alignment and the middle-column fix are all in the Pair-5 settings batch):
+- **embed-row wrap at 1440 — THIRD GATE.** In the 820 column the AI-track row's
+  descriptor "Sessions · iframe · AI Engineering · 6 fields" wraps to two lines and the
+  action cluster (ON · Edit · Get code · Turn off · Delete) runs flush to the column's
+  right boundary. Pin the row grid; add a width test.
+- **embed editor is missing `Preview`** — frame has Save changes · Copy snippet ·
+  Preview; the app has no Preview button (Copy no longer overlaps — that half is fixed).
+- **caption placement** — app puts "Turning one off breaks it wherever it is pasted"
+  under "Build an embed"; frame right-flushes it on the SAVED EMBEDS eyebrow and puts
+  "A saved embed keeps its own URL · editing it updates every page that uses it" next
+  to "New embed".
+- **label-drift pairs** — frame "Custom questions — 4 — format, audience level…"
+  (lowercase) vs app title-case; frame eyebrow "EVENT" vs app "EVENT SETTINGS"; frame
+  "Public pages" vs app "Public pages and embeds".
+- **CFP orphan row + unbalanced open/close** — the CFP editor still shows "Open the call
+  now" AND "Close the call now" side by side; show one.
+- **submission-delete: add the detail-page action.** The bulk-bar path is CONFIRMED
+  WORKING end-to-end; discoverability is the open half (and the blast-radius page's
+  double-confirm trap is filed in the Pair-5 block).
+- **Edit-the-form should link the question builder (unverified at gate-3)** ·
+  **portal Change edits welcome/pills/tasks (unverified at gate-3)** · **styled resource
+  picker (unverified at gate-3)** · **markdown rendered view (unverified at gate-3)**.
+- **SEED: display names · per-track scopes · a NOT PUBLISHED page (unverified at
+  gate-3).** (The accessibility-needs question is FIXED — present on the public form and
+  in the app's own CFP field set.)
 
-**Account — GATE-2: FAIL UNCHANGED — ZERO commits touched auth files since
-gate-1; PLANNER: schedule this section FIRST this round** (report
-fidelity-gate2/11-account/report.md): PRIORITY — route /e/<bad-slug> through
-the designed 404 card (publicNotFound() call sites; note the undesigned page
-already carries the frame-correct 28px/15px type — reuse it) · put frame 02's
-520 content-hugging card ON /admin/* (currently on public; admin renders bare
-820 w/ jammed links + code sentence) · cards hug content (viewport-stretch
-leaves 206-526pt dead) · titles 36→28px · demo block per its OWN signed mandate
-wording: three SMALL LINKS in card vocabulary (not 44px buttons) · underline on
-hover only · ‹ Back up-left of indented title · metrics (padding 35, column
-450, inputs 48, card 640) · NEW PASSWORD AGAIN + you@example.com placeholder ·
-h1+main semantics · designed-404 body 15px/24.5.
+**Account — gate-3: FAIL, 4 MAJOR.** All four MAJORs plus every surviving polish item
+are in the Pair-6 red block. Closed this gate: 28px titles, underline-on-hover
+inversion, NEW PASSWORD AGAIN + `you@example.com`, `<main>`+`<h1>` semantics, designed-404
+body 15px/24.45. OBSOLETE-VS-V6: the "520 content-hugging card" premise for frame 02 and
+the gate-2 metric targets (padding 35 / column 450 / inputs 48 / card 640) — v6's
+container is 732 (login) / 820 (everything else).
 
-**Home — GATE-2: strict FAIL, no regression** (same report): drop the extra
-stacked Speakers action (one centred action/row) · shell body → --chq-paper ·
-API docs 12px · main/footer landmarks · published-row meta qualifier · section
-head 4pt · (CORRECTION: bare session counts are frame-legal; gate-1 premise too
-strict).
+**Home — GATE-2: strict FAIL, no regression** (report fidelity-gate2/11-account/report.md):
+drop the extra stacked Speakers action (one centred action/row) · shell body →
+--chq-paper · API docs 12px · main/footer landmarks · published-row meta qualifier ·
+section head 4pt · (CORRECTION: bare session counts are frame-legal; gate-1 premise too
+strict). **(unverified at gate-3 — no gate-3 report covers the marketing home.)**
 
-**USER-TEST FINDING (prod, real submit): EVERY CFP form field is marked
-required** — bio, company, job title, notes-for-reviewers AND both custom
-questions ("Key takeaway", one more). Frames mark several "· OPTIONAL";
-DEC-909's grammar exists but the SEEDED FORM CONFIG requires all. Fix the seed
-form field configs (required only: title, abstract, name, email, track, format)
-+ assert via test. This also inflates grader/judge friction on the first public
-flow.
+**Public/Portal — gate-3: FAIL + 1 BROKEN (seed) — USER-PRIORITY. DECIDED (user,
+2026-08-13): public submit form goes SINGLE-SELECT track radios per the frames; keep the
+many-to-many model underneath; reseed the two 2-track sessions single; format = radio
+cards, audience = 3-pill segment per frame.** (report fidelity-gate3/09-settings/report.md;
+track radios single-choice, format radios, ABSTRACT label, accessibility question,
+CFP-closed escape links, .ics disabled at 0, hatched fallback, DEC-966 optional fields
+all FIXED — the 1180 pair layout, search row, List/Grid batch, CFP form anatomy, agenda
+chips and sessions-list polish are all in the Pair-5 red block; the "speaker tiles
+landscape ~262×152" target is OBSOLETE-VS-V6, superseded by frames 10--08/09):
+- **confirmation residue** — no spam-folder line; the "meta card" is only the title
+  (frame carries track/format meta).
+- **portal-home ISO date (one-line formatter) (unverified at gate-3)** · **overlap
+  indicator — the seed's real double-booking is unflagged (unverified at gate-3)** ·
+  **date restated ×3 per row (unverified at gate-3)** · **portal header on the body grid
+  (unverified at gate-3)** · **task vocab → TO DO/DONE everywhere (unverified at
+  gate-3)**. All five: every v6 portal frame (10--02…10--07, 10--10) is 390px, `/portal`
+  redirects an organizer to /admin/overview, and no speaker credentials were supplied —
+  the fleet could not re-audit them on desktop.
+- **.ics footer CTA (unverified at gate-3.)**
 
-**PENDING v6 HANDOFF (user designing now): Speakers page gains a List/Grid view
-toggle; the standalone Gallery page + nav item GO AWAY. IMPLEMENTATION CONTRACT
-when the handoff lands: /e/<slug>/gallery MUST keep resolving (grader probes the
-path; embed builder lists the surface; EMB-12/13 grade the grid) — it becomes
-the Grid-view URL of the Speakers page (toggle links to it; or 302 to
-/speakers?view=grid, either is fine as long as the photo-grid renders there).
-Grid cards stay CAPTIONED (headshot + name + title + company per EMB-12);
-headshots-only strip is dropped (nothing grades it). Do NOT build against this
-until the v6 frames arrive.**
+**Grader P3s (unverified at gate-3 — no report dispositions these):** label New-event
+Timezone · explicit CFP publish affordance · close-before-open validation loud at the
+field.
 
-**Public/Portal — GATE-2: FAIL improved — PLANNER: SCHEDULE THIS BATCH NEXT
-(user-priority: "the public pages look quite bad" — these are the judge's
-logged-out first impression). DECIDED (user, 2026-08-13): public submit form
-goes SINGLE-SELECT track radios per the v5 frames; keep the many-to-many model
-underneath; reseed the two 2-track sessions single; format = radio cards,
-audience = 3-pill segment per frame.** (same report; DEC-884 casing+tagline,
-3-up grid, hatched fallback, day-pill state, back-links, DEC-862 chrome halves,
-counters/helpers all CLOSED; claim contract HOLDS): TOP — sessions SEARCH ROW
-(compact ~240px inline input at the pill-row head, no button — DEC-835 never
-reached this page) + ONE pill row · session-row anatomy (time+room left gutter,
-drop abstract/▶, caps meta DEC-919) · portal-home ISO date (one-line formatter)
-· overlap indicator (seed's real double-booking unflagged) · CFP-closed page
-needs links · confirmation meta card + edit-until + spam + submit-another +
-browse · **submit-form control DEC — decide this round** (multi-track model vs
-frame radios; checkboxes/selects/two-name/DESCRIPTION/accessibility/1-col all
-hang on it) · .ics footer CTA · date restated ×3 per row · portal header on
-body grid · task vocab → TO DO/DONE everywhere · NEW: speaker tiles landscape
-~262×152 · sessions rail CALL FOR PAPERS block · meta separator concatenation ·
-submit-page single title. Minor tail in report.
+## DESIGN PACK v5 — COLLAPSED to a pointer
 
-**Grader P3s** (two-track-selectors CLOSED by probe 2): label New-event Timezone ·
-explicit CFP publish affordance · close-before-open validation loud at the field.
+v5 is vendored to docs/design/ and is SUPERSEDED by v6 (below); read the v6 README for
+code-level specs. The eight v5 design-backed additions are BUILT — participation-status
+menu, send-portal-invite transition, DEC-868 filter rules, pipeline fit score +
+rationale, assignment tooling (cap + shortfall + "Nothing is saved until you confirm" +
+the DEC-840 "Distribute the unassigned" rename), scoped reviewer queue, password-CTA
+semantics — with the residue folded into the sections above. What is NOT covered
+elsewhere:
 
-## DESIGN PACK v5 LANDED (2026-08-13, vendored to docs/design/ — AUTHORITATIVE,
-supersedes v4 for Contacts/Public-Portal/Review/Settings/Speakers; README carries
-code-level specs — READ IT). Eight design-backed additions, build per mock:
-
-1. **Saved embeds — probe-5: CORE LANDED** (builder saves full recipe; recipe
-   caption matches frame grammar; edit path hydrates + PATCHes; **disabled →
-   empty 200 verified ×2 anon w/ matching headers**; ics restored
-   surface-conditionally per DEC-289). Remaining (wording/small): quick-save form
-   in SavedEmbedsPanel still name+surface hardcoding iframe/{} — drop it or give
-   it the recipe (two save paths, different fidelity) · **saved-embed URL
-   ignores stored FORMAT — a json embed serves text/html; resolver must honor
-   embed.format** · "Save changes" label in edit mode · pills/actions → ON/OFF +
-   Turn on/Turn off · "N on · M off" header count · footer caption · Delete
-   control in UI (API exists).
-2. **Participation status (Speakers, SPK-04 w2) — probe-4: HALF-BUILT WRONG
-   SHAPE**: current control CYCLES states on click (Confirmed→Declined, no menu)
-   — v5 requires a MENU w/ caret (organizer picks a state; "Send portal invite"
-   IS the Not-invited→Invited menu item and the only transition that emails);
-   filter chips exist (vocabulary ok); "Any status" select still not relabeled
-   "Any task status". Replace cycle-on-click with the menu; identity column
-   placement per mock; DEC-730 shapes.
-3. **Send portal invite (Speakers, SPK-06 w2)** — lives IN that menu ("Send
-   portal invite" = the Not invited→Invited transition; emails claim link);
-   footer "Only 'Invited' sends anything…"; rows at Not-invited also get an
-   inline Send-portal-invite link.
-4. **Filter rules (Contacts, CRM-02 w2)** — rules row under the tab row:
-   "Matching all of [field][op][value][Remove] … Add a rule · N of M match ·
-   Save as a segment"; company-rail click WRITES a rule into this row (one
-   mechanism); fields = SEGMENT_STANDARD_FIELDS + custom.<key>.
-5. **Pipeline fit score (Contacts)** — enrol dialog gains fit 1-5 (optional) +
-   one-line "Why them"; cards show "Fit 5" pill (olive, scorecard family) or
-   dashed "Unrated" (must stay visible); NEEDS two nullable columns on
-   pipeline_entry (fit_score int, rationale text); fit ranks WITHIN a column,
-   never reorders stages; dialog states: adding writes activity, no email sent.
-6. **Assignment tooling — probe-5 ESSENTIALLY CLOSED**: cap input (DEC-824) +
-   shortfall block naming each unfillable talk w/ reason + "Nothing is saved
-   until you confirm" (zero non-GET verified); behavior already gap-fills the
-   unassigned pool. Residue: label still "Distribute evenly" (DEC-840 rename
-   landed post-snapshot — verify at gate) · out-of-track rows "unchanged · wrong
-   track" listing not seen.
-7. **Scoped reviewer queue (Review)** — queue headed "Review · ‹plan name›" over
-   the count + "‹scope› · closes in N days" beneath; scorecard back link "‹ ‹plan›
-   queue"; scorecard eyebrow names plan · track · round.
-8. **Password CTA — probe-5: SEMANTICS CLOSED, security assertion HOLDS**
-   (fresh → claim link · CRM-known → ZERO /claim/ in raw HTML, token email-only ·
-   has-account → no token minted; email_log cross-checked). Ensure the
-   no-claim-URL test exists. Chrome residue vs frames 14/15: eyebrow
-   "SUBMITTED · ‹ref›" + "That's in. Check your email." + echo the submitted
-   address + (b) separate "Already have a password? Log in ›" block + (c)
-   primary button "Log in to track it".
-
-Fidelity frames: design-frames-v5 READY (88 frames, manifest.json) — the gate
-fleet and all probes use v5 exclusively. NOTE: v4 phone frames were CLIPPED
-(fixed 844pt shell, up to ~70% of content discarded) — v5 is full-scroll; any
-earlier phone-fidelity judgment made against v4 frames is unreliable and the
-mobile round must re-derive from v5. New frames: 04-speakers--05-participation-
-open · 08-contacts--12-add-to-the-pipeline · 09-settings--09-settings-saved-
-embeds · 10-public-and-portal--14/15 (password-CTA states); assignment tooling
-lives INSIDE the plan-editor frames; filter rules inside 08-contacts--00.
+- Saved embeds: **saved-embed URL ignores the stored FORMAT — a json embed serves
+  text/html; the resolver must honor `embed.format`** · the SavedEmbedsPanel quick-save
+  form still hardcodes iframe/{} instead of carrying the recipe (two save paths,
+  different fidelity) · "N on · M off" header count · footer caption. **(unverified at
+  gate-3.)** (ON/OFF pills, Turn on/Turn off and the Delete control are now live in the
+  embed row cluster.)
+- Speakers footer caption "Only 'Invited' sends anything…" **(unverified at gate-3.)**
+- Scorecard eyebrow should name plan · track · round — app renders "PROGRAM COMMITTEE
+  REVIEW · ALL TRACKS" with no round; frame 01 is "WAVE 2 · AI ENGINEERING · ROUND 1".
+- Password-CTA chrome vs frames 14/15: echo the submitted address · separate "Already
+  have a password? Log in ›" block · primary button "Log in to track it".
+  **(unverified at gate-3;** the eyebrow "SUBMITTED · ‹ref›" and "That's in. Check your
+  email." are confirmed present.)
 
 ## DESIGN PACK v6 LANDED (2026-08-13, vendored to docs/design/ — SUPERSEDES v5;
 frames redrawn at 1600. READ THE README's "Widths" section — it is now the
@@ -464,15 +458,14 @@ page-width AUTHORITY and SUPERSEDES every prior width filing incl. DEC-877's
 - CHROME ALWAYS FULL BLEED: header/toolbar/section rules run edge to edge;
   only content is constrained.
 
-**Other v6 changes:** Speakers = ONE page w/ List/Grid toggle beside search;
-Grid links to /e/:slug/gallery (URL must keep resolving; gallery nav link
-dropped) — supersedes the pending-v6 note · **Merge rebuilt**: column heads
-name BOTH records ("Keeping · Marcus Okafor · added 14 Mar" / "Discarding ·
-Marcus O. · added 2 Aug"), combine rules in a block above the actions, primary
-names its target, "Swap which is kept" beside it · **Merge fields = one
-"Insert a field ▾" dropdown** (open state lists token + sample value) —
-supersedes the six-chip row · markup repairs baked in (three void
-declarations, 16000px frame, doubled cap injection).
+**Other v6 content authority still open:** **Merge rebuilt** — column heads name BOTH
+records ("Keeping · Marcus Okafor · added 14 Mar" / "Discarding · Marcus O. · added
+2 Aug"), combine rules in a block above the actions, primary names its target, "Swap
+which is kept" beside it. (The v6 "Merge fields = one `Insert a field ▾` dropdown"
+change is BUILT — the dropdown is live on compose step 2 and the template editor, all 7
+tokens resolving. The v6 Speakers List/Grid + dropped gallery nav item is now carried by
+the Pair-5 red block; DEC-990's one-page-two-views holds with /e/:slug/gallery
+resolving 200.)
 
 Fidelity frames: design-frames-v6 READY (90 frames, manifest, zero clip; hero
 frames renamed ·1600; 01-overview--03 = the 1800px width exemplar;
@@ -528,12 +521,13 @@ Remaining S-tier:
 - Weighted-score label CLOSED (probe-4); residue: caption under it still says
   "Mean of submitted reviews · recusals excluded" — update to describe the
   weighted blend.
-- CRM KPIs CLOSED (probe-5: "0 returning · 1 events" rendered). Nit: "1 events"
-  pluralization.
+- CRM KPIs CLOSED (probe-5: "0 returning · 1 events" rendered). Pluralization nit
+  FIXED at gate-3 ("1 event" per 08 report).
 - Public-pages Agenda/Schedule rows claim "9 published" but those surfaces render
   5 placed blocks — per-surface counts should reflect what each surface shows.
-- Per-speaker "Send portal invite" (roster has zero invite affordance; read-only
-  pill on submission detail only).
+- Per-speaker "Send portal invite" — STALE at gate-3, defect INVERTED: the roster
+  now shows the invite link on EVERY no-account row (04 report); the fix is
+  NOT-INVITED-rows-only, already carried in the Pair-3 speakers polish batch above.
 - Public CFP visible "Create an account" CTA on /submit (magic-link copy only).
 - Organizer add-co-presenter ROLE picker (row lands as td "speaker"; portal form
   already has PARTICIPANT_ROLE_OPTIONS — reuse).
@@ -597,8 +591,10 @@ capability, not broken behavior — data correctness was flawless)
 - **P2 public agenda grid blocks CLIP content**: short sessions (15-min) show only
   time + track chips, title/speakers cut off (anon /e/…/agenda at 1280×800, 9:15 +
   9:30 day-1 blocks). This is the user-reported "overflowing text in calendar grid".
-- **P2 "LIVE · 16 PUBLISHED" count wrong**: Settings public-pages rows show 16
-  (placed-session count) on all four surfaces incl. Speakers; public reality is 9.
+- **P2 "LIVE · N PUBLISHED" count wrong**: Settings public-pages rows show the
+  placed-session count on all four surfaces incl. Speakers (gate-3 reads
+  "LIVE · 7 PUBLISHED"; still not per-surface reality). Per-surface counts should
+  reflect what each surface shows.
 - Missing-capability shortlist (drove sbek's 72% — triage for cheap wins): Sessions
   facets beyond track (format/location) · itinerary widget ignores ?q=/?trackId= ·
   session DETAIL page lacks the Save/itinerary control its list card has ·
@@ -646,3 +642,5 @@ Contacts section above)
   both · duplicate seeded "Confirm participation" task · Priya has two contact
   records · file-request kinds limited to Presentation/Poster/Handout (no
   headshot/image kind).
+</content>
+</invoke>
