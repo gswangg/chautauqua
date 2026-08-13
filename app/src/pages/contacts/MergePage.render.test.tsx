@@ -16,8 +16,8 @@ import { mockApi, listEnvelope } from '../../test-utils/mockApi';
 const GROUP = {
   contactIds: ['ct-keep', 'ct-merge'],
   contacts: [
-    { id: 'ct-keep', firstName: 'Jane', lastName: 'Doe', email: 'jane@example.com', company: 'Acme' },
-    { id: 'ct-merge', firstName: 'Jane', lastName: 'Doe', email: 'jane@example.com', company: 'Acme Corp' },
+    { id: 'ct-keep', firstName: 'Jane', lastName: 'Doe', email: 'jane@example.com', company: 'Acme', title: 'Principal Engineer' },
+    { id: 'ct-merge', firstName: 'Jane', lastName: 'Doe', email: 'jane@example.com', company: 'Acme Corp', title: 'Developer Advocate' },
   ],
 };
 
@@ -92,6 +92,11 @@ describe('MergePage render (DEC-684)', () => {
     expect(notesCombineCell).toHaveClass('chq-contacts-merge-compare-combine');
     expect(notesCombineCell).not.toHaveClass('chq-contacts-merge-compare-drop');
 
+    // DEC-734: the identity pick rows carry company AND title, drawn from
+    // the same GET /contacts/duplicates payload -- never a second by-ids
+    // fetch.
+    expect(screen.getByText(/Developer Advocate/)).toBeInTheDocument();
+
     fireEvent.click(screen.getByRole('button', { name: 'Merge' }));
 
     const dialog = await screen.findByRole('dialog', { name: 'Merge these records?' });
@@ -109,5 +114,31 @@ describe('MergePage render (DEC-684)', () => {
     expect(mergeCall).toBeDefined();
     const body = JSON.parse((mergeCall![1] as RequestInit).body as string);
     expect(body).toEqual({ keepId: 'ct-keep', mergeIds: ['ct-merge'] });
+  });
+
+  it('DEC-734: the footer\'s "Not a duplicate" navigates back to /contacts with the pair to dismiss, no merge POST', async () => {
+    const fetchMock = mockApi({
+      'GET /api/v1/contacts/duplicates': listEnvelope([GROUP]),
+      'GET /api/v1/contacts/merge/preview': { fields: PREVIEW_FIELDS },
+    });
+
+    renderAt('/contacts/merge?ids=ct-keep,ct-merge&keep=ct-keep');
+
+    await waitFor(() => {
+      expect(screen.getByText('Merge two records')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Not a duplicate' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Contacts landing')).toBeInTheDocument();
+    });
+
+    const mergeCall = fetchMock.mock.calls.find(
+      ([input], i, calls) =>
+        (typeof input === 'string' ? input : input.toString()).endsWith('/contacts/merge') &&
+        (calls[i]![1] as RequestInit | undefined)?.method === 'POST',
+    );
+    expect(mergeCall).toBeUndefined();
   });
 });

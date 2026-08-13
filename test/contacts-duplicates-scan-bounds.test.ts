@@ -16,6 +16,7 @@ interface FakeRow {
   firstName?: string;
   lastName?: string;
   company?: string | null;
+  title?: string | null;
   [key: string]: unknown;
 }
 
@@ -44,7 +45,7 @@ function makeFakeDb(rows: FakeRow[]) {
                       const projected = rows.slice(0, n).map((r) => {
                         const out: Record<string, unknown> = {};
                         for (const k of keys) {
-                          out[k] = r[k] ?? (k === "company" ? null : "");
+                          out[k] = r[k] ?? (k === "company" || k === "title" ? null : "");
                         }
                         return out;
                       });
@@ -74,7 +75,7 @@ describe("findDuplicateGroupsForOrg scan bounds (DEC-554)", () => {
     await findDuplicateGroupsForOrg(db, "org1");
     const projection = getProjection();
     expect(projection).toBeDefined();
-    expect(Object.keys(projection!).sort()).toEqual(["company", "email", "firstName", "id", "lastName"]);
+    expect(Object.keys(projection!).sort()).toEqual(["company", "email", "firstName", "id", "lastName", "title"]);
   });
 
   it("that column set is a superset of every field findDuplicateGroups reads: grouping still works with each other column missing", async () => {
@@ -149,5 +150,31 @@ describe("findDuplicateGroupsForOrg scan bounds (DEC-554)", () => {
     expect(groups[0]!.contactIds.sort()).toEqual(["m5", "m6"]);
     expect(groups[1]!.contactIds.sort()).toEqual(["a1", "z9"]);
     expect(groups[0]!.contacts.map((c) => c.id).sort()).toEqual(["m5", "m6"]);
+  });
+
+  it("DEC-734: each group's contacts carry company and title, not just id/name/email", async () => {
+    const { db } = makeFakeDb([
+      {
+        id: "a",
+        email: "same@example.com",
+        firstName: "Ann",
+        lastName: "Lee",
+        company: "Acme",
+        title: "Principal Engineer",
+      },
+      {
+        id: "b",
+        email: "same@example.com",
+        firstName: "Ann",
+        lastName: "Lee",
+        company: null,
+        title: null,
+      },
+    ]);
+    const groups = await findDuplicateGroupsForOrg(db, "org1");
+    expect(groups.length).toBe(1);
+    const byId = new Map(groups[0]!.contacts.map((c) => [c.id, c]));
+    expect(byId.get("a")).toMatchObject({ company: "Acme", title: "Principal Engineer" });
+    expect(byId.get("b")).toMatchObject({ company: null, title: null });
   });
 });

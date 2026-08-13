@@ -2,6 +2,11 @@ import { useEffect, useState } from 'react';
 import { apiList, apiPost, ApiError } from '../../lib/api';
 import { FormRow, ModalFrame } from '../../components/ModalFrame';
 import type { ContactListItem } from './types';
+// DEC-714: the role control offers the app's OWN role vocabulary, imported
+// -- never a hardcoded Speaker/Reviewer/Guest list, which would be a
+// control that lies about two of its options ('reviewer' is an account
+// role, 'guest' has no representation in the data model).
+import { PARTICIPANT_ROLE_OPTIONS } from '../../../../src/domain/participant-roles';
 
 interface EventOption {
   id: string;
@@ -19,6 +24,9 @@ export function AddToEventModal({ contact, onClose }: Props) {
   const [events, setEvents] = useState<EventOption[]>([]);
   const [eventId, setEventId] = useState('');
   const [title, setTitle] = useState(`Invited: ${contact.firstName} ${contact.lastName}`);
+  // DEC-714: default to the vocabulary's own first option ('speaker') --
+  // never a bare string literal duplicating PARTICIPANT_ROLE_OPTIONS[0].
+  const [role, setRole] = useState(PARTICIPANT_ROLE_OPTIONS[0]!.value);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submissionId, setSubmissionId] = useState<string | null>(null);
@@ -43,6 +51,7 @@ export function AddToEventModal({ contact, onClose }: Props) {
       const res = await apiPost<{ submissionId: string }>(`/contacts/${contact.id}/add-to-event`, {
         eventId,
         title: title.trim() === '' ? undefined : title,
+        role,
       });
       setSubmissionId(res.submissionId);
     } catch (err) {
@@ -80,9 +89,6 @@ export function AddToEventModal({ contact, onClose }: Props) {
 
       {submissionId === null && (
         <>
-          <p>
-            Adding {contact.firstName} {contact.lastName} directly as an accepted speaker — no email is sent.
-          </p>
           <FormRow label="Event" htmlFor="add-to-event-select">
             <select
               id="add-to-event-select"
@@ -97,6 +103,21 @@ export function AddToEventModal({ contact, onClose }: Props) {
                 </option>
               ))}
             </select>
+          </FormRow>
+          <FormRow label="As">
+            <div className="chq-segmented" role="group" aria-label="As">
+              {PARTICIPANT_ROLE_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  className={role === opt.value ? 'chq-btn chq-btn-primary' : 'chq-btn chq-btn-secondary'}
+                  aria-pressed={role === opt.value}
+                  onClick={() => setRole(opt.value)}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
           </FormRow>
           <FormRow label="Title" htmlFor="add-to-event-title">
             <input

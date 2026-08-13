@@ -82,7 +82,17 @@ export interface Segment {
 // try/catch and hang the merge dialog with no visible error.
 export interface DuplicateGroup {
   contactIds: string[];
-  contacts: { id: string; firstName: string; lastName: string; email: string; company?: string | null }[];
+  contacts: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    company?: string | null;
+    // DEC-734: carried so the merge page's identity columns stop rendering
+    // '—' for a field the directory already shows -- never a second by-ids
+    // fetch.
+    title?: string | null;
+  }[];
 }
 
 export interface ImportResult {
