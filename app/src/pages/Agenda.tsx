@@ -140,6 +140,17 @@ export function AgendaPage() {
     void handlePlace(current.submissionId, roomId, startMin, startMin + current.durationMin);
   }
 
+  /** DEC-021 amendment (w55): click/keyboard unschedule for an armed PLACED
+   * session — routes through the same handleUnschedule the drag-drop-onto-
+   * the-tray path already uses (one reader, no second unschedule code
+   * path), then clears the arming so the bar returns to its idle state. */
+  function handleUnscheduleArmed() {
+    if (!armed) return;
+    const submissionId = armed.submissionId;
+    setArmed(null);
+    void handleUnschedule(submissionId);
+  }
+
   async function handleUnschedule(submissionId: string) {
     if (!agenda) return;
     const previous = agenda;
@@ -245,6 +256,14 @@ export function AgendaPage() {
         {armed && (
           <>
             Placing {armed.ref} — Esc to cancel
+            {/* DEC-021 amendment (w55): only when the armed session already
+               has a slot — arming an unscheduled-tray card has nothing to
+               unschedule, so this affordance is absent for that case. */}
+            {agenda?.placed.some((s) => s.submissionId === armed.submissionId) && (
+              <button type="button" className="chq-btn chq-btn-secondary chq-agenda-unschedule-btn" onClick={handleUnscheduleArmed}>
+                Unschedule
+              </button>
+            )}
             <button type="button" className="chq-link-button" onClick={() => setArmed(null)}>
               Cancel
             </button>
