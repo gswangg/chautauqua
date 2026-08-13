@@ -131,6 +131,10 @@ additional MINOR polish findings not promoted here (e.g. 02's "01 —ABSTRACT" s
 counters + 34px detail gutter, 08's header-stat clause count, 11's 46-vs-48 input).
 Scribes/planners: mine them when a surface's P1/P2s run dry, before inventing work.**
 
+**ANONYMIZATION POSTMORTEM (orchestrator repro, 2026-08-13 — supersedes the run-3 "P0 anonymization" filing; read-model is CORRECT, do not touch it):** Verified live on the gate-3 snapshot AND on prod: PATCH anonymized=true → reviewer detail strips `speakers`+`speakerAnswers` per plan; SPA passes the URL's planId; same submission fully identified through a NON-anonymized plan is per-plan semantics BY DESIGN. Prod's sbek-created "Initial Review" plan shows `anonymized:false, anonymizedAt:null` — the eval agent checked the box and NEVER clicked Save (ABS-S2 turn 32→33 jumps straight to Assign-a-reviewer). The scored "critical" was an unsaved draft.
+
+**P1 · Plan editor mixes instant-apply and draft controls — silent draft discard.** Assign-a-reviewer/Distribute fire their own APIs immediately; the anonymize checkbox (and name/dates) are draft state needing Save; navigating away silently discards the draft. A competent agent fell for it and it cost a scored critical — humans will fall for it too. Pick ONE convention for the whole editor (recommended: toggle applies immediately with the DEC-799 ratchet confirm on switch-off; otherwise everything drafted behind one sticky Save + dirty-state navigation guard) and test that a toggled-then-navigated checkbox either persisted or visibly warned.
+
 **Pair-2 reds (02-submissions FAIL 4 MAJOR · 03-review FAIL 1 BROKEN + 5 MAJOR):**
 
 **P1 · Plan editor + New plan are 820 (`.chq-measure`); v6 frames 03/05/06 are table class** — criteria rule spans 1376px (l=112→r=1488 at 1600). Move `/admin/review/plans/:id` and `/plans/new` to `.chq-measure-table`, give the editor title bar (`‹ Review` / name / Duplicate·Save) full-bleed chrome-bar treatment per frames. Fixes the criteria-row cramping (guidance inputs clip mid-word) in the same stroke.
