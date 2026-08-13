@@ -39,6 +39,15 @@ const ENABLED_EMBED = {
 
 const DISABLED_EMBED = { ...ENABLED_EMBED, id: "emb2", enabled: false };
 
+// DEC-635 amendment: the unknown-embed-id 404 routes through publicNotFound,
+// which now resolves its eyebrow via resolveNotFoundEyebrow
+// (src/server/not-found.tsx) -- reads repo/public/home.ts directly, a
+// separate module from repo/public's index mocked below.
+vi.mock("../src/server/repo/public/home", () => ({
+  getHubOrg: vi.fn(async () => null),
+  listHubEvents: vi.fn(async () => ({ items: [], capped: false })),
+}));
+
 vi.mock("../src/server/repo/public", async () => {
   const actual = await vi.importActual<typeof import("../src/server/repo/public")>("../src/server/repo/public");
   return {

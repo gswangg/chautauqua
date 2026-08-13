@@ -5,8 +5,19 @@
 // visibleSessionConditions()/visibleSubmissionConditions() plus this file's
 // "route only returns what the repo hands it" regression below.
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
+
+// DEC-635 amendment: publicNotFound now resolves its eyebrow via
+// resolveNotFoundEyebrow (src/server/not-found.tsx), which reads
+// repo/public/home.ts directly against the real db -- this file's fake db
+// chains only stub the selectCall sequences the surface routes themselves
+// make, not the org/event shape getHubOrg/listHubEvents expect.
+vi.mock("../src/server/repo/public/home", () => ({
+  getHubOrg: vi.fn(async () => null),
+  listHubEvents: vi.fn(async () => ({ items: [], capped: false })),
+}));
+
 import { publicRoutes } from "../src/routes/public";
 import { buildSurfaceFeed, buildSurfaceFeedXml, agendaIcsEvents } from "../src/routes/public/feeds";
 import type { PublicEvent, PublicAgendaItem } from "../src/server/repo/public";
