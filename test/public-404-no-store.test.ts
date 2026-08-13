@@ -8,6 +8,15 @@
 import { describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
 
+// DEC-635 amendment: publicNotFound now resolves its eyebrow via
+// resolveNotFoundEyebrow (src/server/not-found.tsx), which reads
+// repo/public/home.ts directly -- a separate module from repo/public's
+// index below, so it needs its own mock against the {} test db.
+vi.mock("../src/server/repo/public/home", () => ({
+  getHubOrg: vi.fn(async () => null),
+  listHubEvents: vi.fn(async () => ({ items: [], capped: false })),
+}));
+
 vi.mock("../src/server/repo/public", async () => {
   const actual = await vi.importActual<typeof import("../src/server/repo/public")>(
     "../src/server/repo/public",

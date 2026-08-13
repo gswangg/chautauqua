@@ -25,7 +25,12 @@ import { AUTH_CSS } from "../routes/auth.css";
 import { getHubOrg, listHubEvents } from "./repo/public/home";
 import { isApiPath } from "./http";
 
-async function resolveEyebrow(db: Db): Promise<string> {
+/** Resolves the shared 404 card's eyebrow: the deployment's single event
+ * name, falling back to "Not found" when there isn't exactly one. Shared by
+ * every 404 surface (the app.notFound() catch-all below and the public
+ * routes' publicNotFound in src/routes/public/not-found.tsx) so there is
+ * exactly one reader of getHubOrg/listHubEvents for this purpose. */
+export async function resolveNotFoundEyebrow(db: Db): Promise<string> {
   const org = await getHubOrg(db);
   if (!org) return "Not found";
   const page = await listHubEvents(db, org.id, Date.now());
@@ -34,7 +39,12 @@ async function resolveEyebrow(db: Db): Promise<string> {
   return event ? event.name : "Not found";
 }
 
-function NotFoundPage(props: { eyebrow: string }) {
+/** The ONE 404 card markup for the whole app (DEC-635 amendment): every
+ * surface -- the app.notFound() catch-all and the public routes' 404 --
+ * renders this exact document, varying only the eyebrow (resolved via
+ * resolveNotFoundEyebrow) and the body copy. The card element IS the
+ * <main> -- never wrap it in an extra <div>. */
+export function NotFoundDocument(props: { eyebrow: string; body: string }) {
   return (
     <html lang="en">
       <head>
@@ -51,7 +61,7 @@ function NotFoundPage(props: { eyebrow: string }) {
             <span class="chq-auth-label">{props.eyebrow}</span>
             <h1 class="chq-auth-title">That page isn't here</h1>
           </div>
-          <p class="chq-auth-body">The link may be old, or the event may have been switched since it was saved.</p>
+          <p class="chq-auth-body">{props.body}</p>
           <div class="chq-auth-footer-links">
             <a href="/">Go to the homepage &rsaquo;</a>
             <a href="/login">Log in &rsaquo;</a>
@@ -75,7 +85,13 @@ export function registerNotFoundHandler(app: Hono<AppEnv>): void {
         404,
       );
     }
-    const eyebrow = await resolveEyebrow(c.var.db);
-    return c.html(<NotFoundPage eyebrow={eyebrow} />, 404);
+    const eyebrow = await resolveNotFoundEyebrow(c.var.db);
+    return c.html(
+      <NotFoundDocument
+        eyebrow={eyebrow}
+        body="The link may be old, or the event may have been switched since it was saved."
+      />,
+      404,
+    );
   });
 }
