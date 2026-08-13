@@ -1,13 +1,36 @@
 // DEC-868: FilterRulesPanel is one row — "Matching all of" the AND, one
 // editable [field ▾][op ▾][value][Remove] group per rule (writing the
 // whole array back through onChange, never a draft-then-commit form), a
-// dashed "Add a rule" button, and — only once a rule is active — the match
-// count and "Save as a segment" control at the row's end.
+// tertiary-text "Add a rule" link, and — only once a rule is active — the
+// match count and "Save as a segment" control at the row's end.
+// DEC-868 amendment (wave 45): one eyebrow, one control tier — the caption
+// is a section-label (uppercase, CSS-only), and "Add a rule" is
+// .chq-btn-tertiary (no border/background) rather than a dashed button, so
+// Remove and Save as a segment remain the row's only bordered controls.
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { FilterRulesPanel, FILTER_RULE_FIELDS } from './FilterRulesPanel';
 import type { SegmentRule } from './types';
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+const CSS = readFileSync(join(HERE, 'contacts.css'), 'utf-8');
+const SHARED_CSS = readFileSync(join(HERE, '../../styles.css'), 'utf-8');
+
+/** Extracts a top-level (not inside an @media block) rule's declaration
+ * body by selector — same helper as DuplicatesView.render.test.tsx and
+ * shell-geometry.test.ts. */
+function topLevelRuleBody(css: string, selector: string): string {
+  const withoutMedia = css.replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\}[^{}]*)*\}/g, '');
+  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const match = withoutMedia.match(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`));
+  const body = match?.[1];
+  if (body === undefined) throw new Error(`no top-level rule found for ${selector}`);
+  return body;
+}
 
 afterEach(() => {
   cleanup();
@@ -134,5 +157,33 @@ describe('FilterRulesPanel (DEC-868)', () => {
     expect(screen.getByText('41 of 318 match')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Save as a segment' }));
     expect(onSaveAsSegment).toHaveBeenCalledOnce();
+  });
+
+  it('"Add a rule" renders as a tertiary link, not a bordered button', () => {
+    render(<FilterRulesPanel rules={[]} onChange={noop} matchCount={0} totalCount={0} onSaveAsSegment={noop} />);
+    const addRule = screen.getByRole('button', { name: 'Add a rule' });
+    expect(addRule.className).toContain('chq-btn-tertiary');
+    expect(addRule.className).not.toContain('chq-contacts-add-rule');
+  });
+});
+
+// contacts.css: one eyebrow, one control tier (DEC-868 amendment, wave 45).
+// The caption is a section-label eyebrow (uppercase + tracking) and the
+// tertiary "Add a rule" control declares no border of its own, so this row
+// never grows a third hand-styled control tier.
+describe('contacts.css: filter-rules row has one eyebrow, one control tier', () => {
+  it('the caption rule is an uppercase, letterspaced eyebrow', () => {
+    const body = topLevelRuleBody(CSS, '.chq-contacts-filter-rules-caption');
+    expect(body).toMatch(/text-transform:\s*uppercase/);
+    expect(body).toMatch(/letter-spacing:\s*\S+/);
+  });
+
+  it('the dashed .chq-contacts-add-rule tier is gone', () => {
+    expect(CSS).not.toMatch(/\.chq-contacts-add-rule\s*\{/);
+  });
+
+  it('.chq-btn-tertiary (the "Add a rule" control) declares no border of its own', () => {
+    const body = topLevelRuleBody(SHARED_CSS, '.chq-btn-tertiary');
+    expect(body).not.toMatch(/border(?!-radius)/);
   });
 });

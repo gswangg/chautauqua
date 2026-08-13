@@ -143,7 +143,7 @@ export function FilterRulesPanel({ rules, onChange, matchCount, totalCount, onSa
         );
       })}
 
-      <button type="button" className="chq-btn chq-contacts-add-rule" onClick={addRule}>
+      <button type="button" className="chq-btn-tertiary" onClick={addRule}>
         Add a rule
       </button>
 
