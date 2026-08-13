@@ -27,6 +27,7 @@ function makePlan(overrides: Partial<Record<string, unknown>> = {}) {
     rounds: 1,
     currentRound: 1,
     maxEvaluations: null,
+    anonymizedAt: null,
     timezone: "UTC",
     ...overrides,
   };
@@ -34,6 +35,10 @@ function makePlan(overrides: Partial<Record<string, unknown>> = {}) {
 
 let plan = makePlan();
 let submittedEvaluationCount = 0;
+// DEC-799: fixture of submitted-evaluation timestamps, so
+// countSubmittedEvaluationsForPlan's mock can genuinely apply a sinceMs
+// filter rather than just returning a canned count.
+let submittedEvaluationTimestamps: number[] = [];
 
 const submission = { id: "sub-1", ref: "SES-014", title: "Talk", description: null, trackIds: [] };
 
@@ -54,9 +59,13 @@ vi.mock("../src/server/repo/review", async () => {
     }),
     planHasEvaluations: vi.fn(async () => false),
     listRoundsWithEvaluations: vi.fn(async () => []),
-    countSubmittedEvaluationsForPlan: vi.fn(async (_db: unknown, planId: string) =>
-      planId === plan.id ? submittedEvaluationCount : 0,
-    ),
+    countSubmittedEvaluationsForPlan: vi.fn(async (_db: unknown, planId: string, sinceMs?: number) => {
+      if (planId !== plan.id) return 0;
+      if (submittedEvaluationTimestamps.length > 0) {
+        return submittedEvaluationTimestamps.filter((t) => sinceMs === undefined || t >= sinceMs).length;
+      }
+      return submittedEvaluationCount;
+    }),
     requireOrgUser: vi.fn(async () => ({ role: "reviewer", email: "rev@org.test" })),
     trackExistsInEvent: vi.fn(async () => true),
     findSubmissionIdByRefOrId: vi.fn(async (_db: unknown, eventId: string, input: string) => {
@@ -96,6 +105,7 @@ afterEach(() => {
   vi.clearAllMocks();
   plan = makePlan();
   submittedEvaluationCount = 0;
+  submittedEvaluationTimestamps = [];
 });
 
 async function buildApp(auth: AuthInfo) {
@@ -181,6 +191,38 @@ describe("DEC-624: PATCH /api/v1/plans/:id anonymity ratchet", () => {
     expect(res.status).toBe(200);
     const body = (await res.json()) as { anonymized: boolean };
     expect(body.anonymized).toBe(false);
+  });
+
+  it("DEC-799: evaluations submitted BEFORE anonymity was enabled do not block switching it off", async () => {
+    const anonymizedAt = 2_000;
+    plan = makePlan({ anonymized: true, anonymizedAt });
+    // Submitted before the plan was anonymized -- never made under an
+    // anonymity promise, so must not count toward the ratchet.
+    submittedEvaluationTimestamps = [1_000, 1_500];
+    const app = await buildApp(organizer);
+    const res = await app.request(`/api/v1/plans/${plan.id}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json", "x-chq-csrf": "1" },
+      body: JSON.stringify({ anonymized: false }),
+    });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { anonymized: boolean };
+    expect(body.anonymized).toBe(false);
+  });
+
+  it("DEC-799: an evaluation submitted AFTER anonymity was enabled blocks switching it off", async () => {
+    const anonymizedAt = 2_000;
+    plan = makePlan({ anonymized: true, anonymizedAt });
+    submittedEvaluationTimestamps = [1_000, 2_500];
+    const app = await buildApp(organizer);
+    const res = await app.request(`/api/v1/plans/${plan.id}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json", "x-chq-csrf": "1" },
+      body: JSON.stringify({ anonymized: false }),
+    });
+    expect(res.status).toBe(409);
+    const body = (await res.json()) as { error: { message: string } };
+    expect(body.error.message).toContain("1 evaluation(s) were submitted under anonymity");
   });
 
   it("turning anonymized ON is always allowed, even with submitted evaluations", async () => {

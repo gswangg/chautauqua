@@ -206,11 +206,13 @@ reviewPlansRoutes.patch("/api/v1/plans/:id", requireOrganizer, csrfJson, async (
     }
   }
 
-  // DEC-624: anonymity is a ratchet -- once at least one evaluation has
-  // been SUBMITTED under an anonymized plan, it can never be switched off.
-  // Turning anonymity ON is always allowed.
+  // DEC-624/DEC-799: anonymity is a ratchet -- once at least one evaluation
+  // has been SUBMITTED under an anonymized plan, it can never be switched
+  // off. Turning anonymity ON is always allowed. Only evaluations submitted
+  // at/after plan.anonymizedAt (when anonymity actually took effect) count --
+  // evaluations submitted before anonymity was enabled never lock the plan.
   if (body.anonymized === false && plan.anonymized) {
-    const submittedCount = await repo.countSubmittedEvaluationsForPlan(c.var.db, plan.id);
+    const submittedCount = await repo.countSubmittedEvaluationsForPlan(c.var.db, plan.id, plan.anonymizedAt ?? undefined);
     if (submittedCount > 0) {
       throw new ApiError(
         "conflict",

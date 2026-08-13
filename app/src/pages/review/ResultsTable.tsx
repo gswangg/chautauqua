@@ -344,7 +344,7 @@ export function ResultsTable({
               {/* DEC-737: ONE blended score column -- per-criterion detail
                  moved behind the row's ▸ Reviews disclosure. */}
               <th aria-sort={ariaSort({ column: 'average' }, sort)}>
-                <SortButton label="Score" columnKey={{ column: 'average' }} sort={sort} onSort={handleSort} />
+                <SortButton label="Weighted score" columnKey={{ column: 'average' }} sort={sort} onSort={handleSort} />
               </th>
               <th aria-sort={ariaSort({ column: 'count' }, sort)}>
                 <SortButton label="# Evaluations" columnKey={{ column: 'count' }} sort={sort} onSort={handleSort} />
@@ -369,7 +369,7 @@ export function ResultsTable({
                 </td>
                 <td data-label="Speaker">{row.speakers.length > 0 ? row.speakers.join(', ') : '—'}</td>
                 <td data-label="Track">{row.trackNames.length > 0 ? row.trackNames.join(', ') : '—'}</td>
-                <td className="chq-review-results-score" data-label="Score">
+                <td className="chq-review-results-score" data-label="Weighted score">
                   {row.average.toFixed(2)}
                 </td>
                 <td data-label="# Evaluations">{row.count}</td>

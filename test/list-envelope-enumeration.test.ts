@@ -26,7 +26,7 @@ import { join } from "node:path";
  *         BULK_EMAIL_PREVIEW_LIMIT)` (5) before rendering, so it is bounded
  *         by that constant, not by a page/perPage query param -- a preview
  *         payload, not a list GET.
- *       - src/routes/review/plans.ts:463 (GET .../assignments/distribute/
+ *       - src/routes/review/plans.ts:465 (GET .../assignments/distribute/
  *         preview, DEC-786) returns { items, perReviewer }: the pure
  *         round-robin's proposed pairs plus a per-reviewer load summary,
  *         bounded by the plan's own submission x reviewer set and writing
@@ -127,13 +127,13 @@ function findItemsEnvelopeSites(source: string, file: string): EnvelopeSite[] {
 const ENVELOPE_ALLOWLIST = new Set<string>([
   "src/routes/comms.ts:461",
   "src/routes/api/contacts/bulk-email.ts:215",
-  // src/routes/review/plans.ts:463 (GET .../assignments/distribute/preview,
+  // src/routes/review/plans.ts:465 (GET .../assignments/distribute/preview,
   // DEC-786) returns { items, perReviewer }: the pure round-robin's proposed
   // pairs plus a per-reviewer load summary. Bounded by the plan's own
   // submission x reviewer set (never larger than a single POST /reviewers
   // fan-out would produce), and writes nothing -- a preview payload, not a
   // paginated list GET, exactly like the two sites above.
-  "src/routes/review/plans.ts:463",
+  "src/routes/review/plans.ts:465",
   // DEC-788: GET /contacts/duplicates/check is a bounded (cap 5),
   // deterministically-ordered lookup for a not-yet-created candidate, not a
   // paginated list -- same shape-exception class as the bulk-email preview

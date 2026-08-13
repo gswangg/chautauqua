@@ -392,14 +392,14 @@ describe('ResultsTable sort honesty (DEC-737)', () => {
     expect(await screen.findByText('A Great Talk')).toBeInTheDocument();
 
     // First click: sorts by Score (average), descending by default.
-    fireEvent.click(screen.getByRole('button', { name: /^Score/ }));
+    fireEvent.click(screen.getByRole('button', { name: /^Weighted score/ }));
     await waitFor(() => expect(pending.length).toBe(2));
     const firstRequestUrl = pending[1]!.url;
     expect(new URL(firstRequestUrl, 'http://localhost').searchParams.get('dir')).toBe('desc');
 
     // Second click (rapid): toggles Score to ascending -- this is now the
     // newest request.
-    fireEvent.click(screen.getByRole('button', { name: /^Score/ }));
+    fireEvent.click(screen.getByRole('button', { name: /^Weighted score/ }));
     await waitFor(() => expect(pending.length).toBe(3));
     const secondRequestUrl = pending[2]!.url;
     expect(new URL(secondRequestUrl, 'http://localhost').searchParams.get('dir')).toBe('asc');
@@ -430,8 +430,8 @@ describe('ResultsTable sort honesty (DEC-737)', () => {
     expect(screen.queryByText('S-STALE')).not.toBeInTheDocument();
 
     // The arrow reflects the direction actually sent by the newest request.
-    expect(screen.getByRole('button', { name: /^Score/ }).textContent).toContain('▲');
-    const scoreHeader = screen.getByRole('button', { name: /^Score/ }).closest('th')!;
+    expect(screen.getByRole('button', { name: /^Weighted score/ }).textContent).toContain('▲');
+    const scoreHeader = screen.getByRole('button', { name: /^Weighted score/ }).closest('th')!;
     expect(scoreHeader.getAttribute('aria-sort')).toBe('ascending');
 
     // The CSV href's dir matches the arrow.

@@ -2,7 +2,7 @@
 // drizzle row types (DEC-012) for evaluation_plan. Converts to/from the pure
 // src/domain/evaluation.ts shapes.
 
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, gte, sql } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { newId } from "../../../domain/ids";
@@ -28,6 +28,10 @@ export interface PlanRecord {
   // criteriaForRound() -- never re-derive the round-1/fallback logic here.
   roundCriteria: Record<string, EvaluationCriterionDef[]> | null;
   maxEvaluations: number | null;
+  // DEC-799: when `anonymized` last transitioned false -> true (null if
+  // never anonymized, or legitimately switched off since). The ratchet
+  // guard counts only evaluations submitted at/after this timestamp.
+  anonymizedAt: number | null;
   createdAt: number;
   updatedAt: number;
   // DEC-522: the owning event's IANA timezone, joined in at read time so
@@ -62,6 +66,7 @@ function toPlanRecord(row: typeof schema.evaluationPlan.$inferSelect, timezone: 
       ? (JSON.parse(row.roundCriteriaJson) as Record<string, EvaluationCriterionDef[]>)
       : null,
     maxEvaluations: row.maxEvaluations,
+    anonymizedAt: row.anonymizedAt ? row.anonymizedAt.getTime() : null,
     createdAt: row.createdAt.getTime(),
     updatedAt: row.updatedAt.getTime(),
     timezone,
@@ -124,6 +129,8 @@ export async function createPlan(db: Db, eventId: string, input: PlanInput): Pro
     closeDate: input.closeDate ? new Date(input.closeDate) : null,
     filtersJson: input.filters ? JSON.stringify(input.filters) : null,
     anonymized: input.anonymized,
+    // DEC-799: created already anonymized -> the ratchet's clock starts now.
+    anonymizedAt: input.anonymized ? now : null,
     scaleJson: JSON.stringify(input.scale),
     criteriaJson: JSON.stringify(input.criteria),
     rounds: input.rounds ?? 1,
@@ -176,6 +183,21 @@ export interface PlanPatch {
 }
 
 export async function updatePlan(db: Db, planId: string, patch: PlanPatch): Promise<PlanRecord> {
+  // DEC-799: anonymizedAt tracks when `anonymized` last flipped false -> true
+  // (the ratchet's clock start); it clears to null when anonymity is
+  // legitimately switched off. Rereads the current row first (never trusts a
+  // caller-passed stale record, mirroring advancePlanRound) so the
+  // transition is detected against the true stored value, not the patch.
+  let anonymizedAtPatch: Date | null | undefined;
+  if (patch.anonymized !== undefined) {
+    const current = await getPlanById(db, planId);
+    if (!current) throw new ApiError("not_found", "Plan not found");
+    if (patch.anonymized && !current.anonymized) {
+      anonymizedAtPatch = new Date();
+    } else if (!patch.anonymized && current.anonymized) {
+      anonymizedAtPatch = null;
+    }
+  }
   await db
     .update(schema.evaluationPlan)
     .set({
@@ -185,6 +207,7 @@ export async function updatePlan(db: Db, planId: string, patch: PlanPatch): Prom
       closeDate: patch.closeDate !== undefined ? (patch.closeDate === null ? null : new Date(patch.closeDate)) : undefined,
       filtersJson: patch.filters !== undefined ? (patch.filters ? JSON.stringify(patch.filters) : null) : undefined,
       anonymized: patch.anonymized,
+      anonymizedAt: anonymizedAtPatch,
       scaleJson: patch.scale !== undefined ? JSON.stringify(patch.scale) : undefined,
       criteriaJson: patch.criteria !== undefined ? JSON.stringify(patch.criteria) : undefined,
       rounds: patch.rounds,
@@ -231,15 +254,25 @@ export async function planHasEvaluations(db: Db, planId: string): Promise<boolea
   return rows.length > 0;
 }
 
-/** DEC-624: count of SUBMITTED evaluations (submitted_at not null) on this
- * plan -- the ratchet guard for PATCH /api/v1/plans/:id turning anonymized
- * off. Draft (unsubmitted) evaluations don't count -- only a submitted
- * evaluation was actually recorded under the plan's anonymity promise. */
-export async function countSubmittedEvaluationsForPlan(db: Db, planId: string): Promise<number> {
+/** DEC-624/DEC-799: count of SUBMITTED evaluations (submitted_at not null) on
+ * this plan -- the ratchet guard for PATCH /api/v1/plans/:id turning
+ * anonymized off. Draft (unsubmitted) evaluations don't count -- only a
+ * submitted evaluation was actually recorded under the plan's anonymity
+ * promise. When `sinceMs` is given (the plan's anonymizedAt), only
+ * evaluations submitted at/after that timestamp count -- evaluations
+ * submitted BEFORE anonymity was enabled were never made under an anonymity
+ * promise and must not lock the plan into permanent anonymity. */
+export async function countSubmittedEvaluationsForPlan(db: Db, planId: string, sinceMs?: number): Promise<number> {
   const rows = await db
     .select({ count: sql<number>`count(*)` })
     .from(schema.evaluation)
-    .where(and(eq(schema.evaluation.planId, planId), sql`${schema.evaluation.submittedAt} is not null`));
+    .where(
+      and(
+        eq(schema.evaluation.planId, planId),
+        sql`${schema.evaluation.submittedAt} is not null`,
+        sinceMs !== undefined ? gte(schema.evaluation.submittedAt, new Date(sinceMs)) : undefined,
+      ),
+    );
   return Number(rows[0]?.count ?? 0);
 }
 
