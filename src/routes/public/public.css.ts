@@ -77,7 +77,7 @@ export const PUBLIC_CSS = `
     font-size: 28px;
     font-weight: 700;
     letter-spacing: -0.04em;
-    line-height: 1;
+    line-height: 1.2;
     color: var(--chq-ink);
   }
   .chq-pub-header-logo { height: 40px; }
@@ -228,9 +228,6 @@ export const PUBLIC_CSS = `
 
   /* Gallery (headshots only, no session details). */
   .chq-pub-gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 10px; }
-  .chq-pub-gallery-tile { aspect-ratio: 1; border-radius: var(--chq-r-ctl); overflow: hidden; background: var(--chq-surface-sunk); }
-  .chq-pub-gallery-tile img { width: 100%; height: 100%; object-fit: cover; }
-  .chq-pub-gallery-name { display: block; margin-top: 4px; font-size: 12px; color: var(--chq-muted); text-align: center; }
 
   /* Agenda day grid (DEC-253: the day grid itself keeps its legible
      per-room minmax columns and scrolls sideways in its own container

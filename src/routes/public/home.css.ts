@@ -22,7 +22,7 @@ export const HOME_CSS = `
 
   .chq-home-body { padding: 36px 44px 40px; display: flex; flex-direction: column; gap: 34px; }
   .chq-home-hero { display: flex; flex-direction: column; gap: 10px; }
-  .chq-home-hero h1 { margin: 0; font-family: var(--chq-font-display); font-size: 44px; font-weight: 700; letter-spacing: -0.042em; line-height: 1.04; }
+  .chq-home-hero h1 { margin: 0; font-family: var(--chq-font-display); font-size: 44px; font-weight: 700; letter-spacing: -0.042em; line-height: 1.2; }
   .chq-home-hero p { margin: 0; font-size: 16px; line-height: 1.65; color: var(--chq-ink-2); max-width: 54ch; }
   .chq-home-cap-note { font-size: 13px; color: var(--chq-muted); }
 

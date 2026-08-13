@@ -799,3 +799,68 @@ describe("filterKnownClipExceptions (DEC-620)", () => {
     expect(result.ok).toBe(true);
   });
 });
+
+describe("KNOWN_CLIP_EXCEPTIONS (DEC-991)", () => {
+  it("has exactly one entry -- the deliberate agenda-card line-clamp", () => {
+    expect(Object.keys(KNOWN_CLIP_EXCEPTIONS)).toEqual(["/admin/agenda::div.chq-session-card-title"]);
+  });
+
+  it("every reason string names a fact about the element, never a scheduling excuse", () => {
+    for (const reason of Object.values(KNOWN_CLIP_EXCEPTIONS)) {
+      expect(reason).toMatch(/intentional|deliberate|line-clamp/i);
+      expect(reason).not.toMatch(/in-flight|owned by|needs a visual pass|follow-up/i);
+    }
+  });
+});
+
+describe("DEC-991 heading line-heights (>= 1.15)", () => {
+  /** Extracts the numeric line-height declared on a given selector's rule
+   * body within a CSS-text blob (the module's exported template-string
+   * constant, or a whole .css file). Fails loudly if the selector or its
+   * line-height declaration is missing rather than silently skipping. */
+  function lineHeightFor(cssText: string, selector: string): number {
+    const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const ruleMatch = cssText.match(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`));
+    if (!ruleMatch) throw new Error(`selector ${selector} not found in CSS text`);
+    const ruleBody = ruleMatch[1];
+    if (ruleBody === undefined) throw new Error(`selector ${selector} matched with no capture group`);
+    const lineHeightMatch = ruleBody.match(/line-height:\s*([\d.]+)/);
+    if (!lineHeightMatch) throw new Error(`selector ${selector} has no line-height declaration`);
+    const value = lineHeightMatch[1];
+    if (value === undefined) throw new Error(`selector ${selector} matched with no line-height capture`);
+    return Number(value);
+  }
+
+  const cases: Array<{ file: string; selector: string }> = [
+    { file: "../src/routes/portal/portal.css.ts", selector: ".chq-portal-hero" },
+    { file: "../src/routes/public/public.css.ts", selector: ".chq-pub-header-title" },
+    { file: "../src/routes/public/cfp.css.ts", selector: ".chq-cfp-title" },
+    { file: "../src/routes/auth.css.ts", selector: ".chq-auth-title" },
+    { file: "../src/routes/public/home.css.ts", selector: ".chq-home-hero h1" },
+    { file: "../app/src/pages/overview/overview.css", selector: ".chq-overview-headline" },
+  ];
+
+  for (const { file, selector } of cases) {
+    it(`${selector} in ${file} declares line-height >= 1.15`, () => {
+      const source = readFileSync(new URL(file, import.meta.url), "utf-8");
+      expect(lineHeightFor(source, selector)).toBeGreaterThanOrEqual(1.15);
+    });
+  }
+});
+
+describe("dead gallery-tile/name rules removed (DEC-991)", () => {
+  it("public.css.ts no longer defines .chq-pub-gallery-tile / .chq-pub-gallery-name", () => {
+    const source = readFileSync(new URL("../src/routes/public/public.css.ts", import.meta.url), "utf-8");
+    expect(source).not.toMatch(/\.chq-pub-gallery-tile/);
+    expect(source).not.toMatch(/\.chq-pub-gallery-name/);
+  });
+
+  it("no markup in src/ references .chq-pub-gallery-tile / .chq-pub-gallery-name", () => {
+    const shell = readFileSync(new URL("../src/routes/public/shell.tsx", import.meta.url), "utf-8");
+    const speakers = readFileSync(new URL("../src/routes/public/speakers.tsx", import.meta.url), "utf-8");
+    for (const markup of [shell, speakers]) {
+      expect(markup).not.toMatch(/chq-pub-gallery-tile/);
+      expect(markup).not.toMatch(/chq-pub-gallery-name/);
+    }
+  });
+});

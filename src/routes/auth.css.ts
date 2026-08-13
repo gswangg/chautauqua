@@ -61,7 +61,7 @@ export const AUTH_CSS = `
     font-size: 28px;
     font-weight: 700;
     letter-spacing: -0.04em;
-    line-height: 1.05;
+    line-height: 1.2;
     color: var(--chq-ink);
   }
   .chq-auth-subtitle { font-size: 14px; color: var(--chq-muted); margin-top: 6px; }

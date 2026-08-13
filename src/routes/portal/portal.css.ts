@@ -52,8 +52,8 @@ export const PORTAL_CSS = `
     font-size: 25px;
     font-weight: 700;
     letter-spacing: -0.04em;
-    line-height: 1.05;
-    margin: 8px 0 4px;
+    line-height: 1.2;
+    margin: 6px 0 2px;
   }
   .chq-portal-sub {
     font-size: 13px;
