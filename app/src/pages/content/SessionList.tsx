@@ -41,6 +41,10 @@ interface SessionListProps {
   // until its own aggregate read resolves, rendered honestly absent (never
   // a placeholder 0) until then.
   counts: Record<WorklistTab, number | null>;
+  // DEC-825 amendment: set-based bulk content-approval selection, scoped to
+  // the current page (same pattern as the row-level approve/changes controls).
+  selectedIds: Set<string>;
+  onSelectionChange: (selectedIds: Set<string>) => void;
 }
 
 export function SessionList({
@@ -57,10 +61,32 @@ export function SessionList({
   onPageChange,
   now,
   counts,
+  selectedIds,
+  onSelectionChange,
 }: SessionListProps) {
   const visible = items;
   const rangeStart = total === 0 ? 0 : (page - 1) * perPage + 1;
   const rangeEnd = Math.min(page * perPage, total);
+  const pageIds = visible.map((item) => item.id);
+  const allSelected = pageIds.length > 0 && pageIds.every((id) => selectedIds.has(id));
+  const someSelected = pageIds.some((id) => selectedIds.has(id));
+
+  function toggleRow(id: string) {
+    const next = new Set(selectedIds);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    onSelectionChange(next);
+  }
+
+  function togglePage() {
+    const next = new Set(selectedIds);
+    if (allSelected) {
+      for (const id of pageIds) next.delete(id);
+    } else {
+      for (const id of pageIds) next.add(id);
+    }
+    onSelectionChange(next);
+  }
 
   return (
     <div className="chq-content-worklist">
@@ -88,6 +114,21 @@ export function SessionList({
       <table className="chq-table chq-content-table">
         <thead>
           <tr>
+            {/* DEC-825 amendment: selection column leads the DEC-692 column
+                set (Session · Speaker · Latest file · Status · actions) —
+                bulk selection is added TO that IA, it does not replace it. */}
+            <th>
+              <input
+                className="chq-check"
+                type="checkbox"
+                aria-label="Select all on page"
+                checked={allSelected}
+                ref={(el) => {
+                  if (el) el.indeterminate = !allSelected && someSelected;
+                }}
+                onChange={togglePage}
+              />
+            </th>
             <th>Session</th>
             <th>Speaker</th>
             <th>Latest file</th>
@@ -98,7 +139,7 @@ export function SessionList({
         <tbody>
           {loading && (
             <tr>
-              <td colSpan={5}>
+              <td colSpan={6}>
                 <DelayedLoading />
               </td>
             </tr>
@@ -110,7 +151,7 @@ export function SessionList({
               needs-decision queue never reads as an empty event. */}
           {loaded && !loading && visible.length === 0 && tab === 'needs_decision' && (
             <tr>
-              <td colSpan={5} className="chq-empty">
+              <td colSpan={6} className="chq-empty">
                 Nothing needs a decision right now.{' '}
                 <button type="button" className="chq-link-button" onClick={() => onTabChange('all')}>
                   View all accepted sessions
@@ -120,7 +161,7 @@ export function SessionList({
           )}
           {loaded && !loading && visible.length === 0 && tab !== 'needs_decision' && (
             <tr>
-              <td colSpan={5} className="chq-empty">
+              <td colSpan={6} className="chq-empty">
                 No submissions in this view.
               </td>
             </tr>
@@ -130,6 +171,17 @@ export function SessionList({
               const [firstSpeaker, ...restSpeakers] = item.speakers;
               return (
                 <tr key={item.id} className="chq-content-row" onClick={() => onSelect(item.id)}>
+                  {/* DEC-825 amendment: row selection cell — stops propagation
+                      so ticking a box never opens the submission. */}
+                  <td onClick={(e) => e.stopPropagation()}>
+                    <input
+                      className="chq-check"
+                      type="checkbox"
+                      aria-label={`Select ${item.title}`}
+                      checked={selectedIds.has(item.id)}
+                      onChange={() => toggleRow(item.id)}
+                    />
+                  </td>
                   <td>
                     <div className="chq-content-row-session">
                       <div className="chq-content-row-title">{item.title}</div>

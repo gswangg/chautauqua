@@ -42,10 +42,19 @@ function noop() {
   // intentionally unused in these render assertions
 }
 
+// DEC-825 amendment: bulk selection props — these render assertions cover the
+// DEC-692 column IA, not selection, so every case starts with an empty
+// selection and a noop change handler.
+const SELECTION_PROPS = { selectedIds: new Set<string>(), onSelectionChange: noop };
+
 describe('SessionList: v4 mock five-column IA (DEC-692)', () => {
-  it('renders exactly five column headers', () => {
+  // DEC-825 amendment adds a leading selection column (its header carries the
+  // select-all checkbox, so its textContent is empty); the five DEC-692
+  // content columns follow it unchanged.
+  it('renders the selection column plus exactly five content column headers', () => {
     render(
       <SessionList
+        {...SELECTION_PROPS}
         items={[baseItem]}
         tab="all"
         onTabChange={noop}
@@ -63,12 +72,14 @@ describe('SessionList: v4 mock five-column IA (DEC-692)', () => {
     );
 
     const headers = screen.getAllByRole('columnheader').map((h) => h.textContent);
-    expect(headers).toEqual(['Session', 'Speaker', 'Latest file', 'Status', '']);
+    expect(headers).toEqual(['', 'Session', 'Speaker', 'Latest file', 'Status', '']);
+    expect(screen.getByLabelText('Select all on page')).toBeInTheDocument();
   });
 
   it('stacks title and ref in the Session cell', () => {
     const { container } = render(
       <SessionList
+        {...SELECTION_PROPS}
         items={[baseItem]}
         tab="all"
         onTabChange={noop}
@@ -94,6 +105,7 @@ describe('SessionList: v4 mock five-column IA (DEC-692)', () => {
   it('renders the first speaker plus a +N overflow count', () => {
     const { container } = render(
       <SessionList
+        {...SELECTION_PROPS}
         items={[baseItem]}
         tab="all"
         onTabChange={noop}
@@ -121,6 +133,7 @@ describe('SessionList: v4 mock five-column IA (DEC-692)', () => {
   it('renders the stored latestFileVersionNo, never versionCount, in the Latest file cell', () => {
     const { container } = render(
       <SessionList
+        {...SELECTION_PROPS}
         items={[{ ...baseItem, latestFile: { ...baseItem.latestFile!, versionCount: 2 }, latestFileVersionNo: 3 }]}
         tab="all"
         onTabChange={noop}
@@ -145,6 +158,7 @@ describe('SessionList: v4 mock five-column IA (DEC-692)', () => {
   it("renders 'No speakers' when the submission has none", () => {
     const { container } = render(
       <SessionList
+        {...SELECTION_PROPS}
         items={[{ ...baseItem, speakers: [] }]}
         tab="all"
         onTabChange={noop}
@@ -168,6 +182,7 @@ describe('SessionList: v4 mock five-column IA (DEC-692)', () => {
   it('renders the latest file name, version and date', () => {
     const { container } = render(
       <SessionList
+        {...SELECTION_PROPS}
         items={[baseItem]}
         tab="all"
         onTabChange={noop}
@@ -191,6 +206,7 @@ describe('SessionList: v4 mock five-column IA (DEC-692)', () => {
   it("renders an honest 'No files yet' empty state when latestFile is null", () => {
     const { container } = render(
       <SessionList
+        {...SELECTION_PROPS}
         items={[{ ...baseItem, latestFile: null }]}
         tab="all"
         onTabChange={noop}
@@ -214,6 +230,7 @@ describe('SessionList: v4 mock five-column IA (DEC-692)', () => {
   it('renders only Approve and Open row actions (no per-row "Ask for changes")', () => {
     render(
       <SessionList
+        {...SELECTION_PROPS}
         items={[baseItem]}
         tab="all"
         onTabChange={noop}
@@ -239,6 +256,7 @@ describe('SessionList: v4 mock five-column IA (DEC-692)', () => {
     const onSelect = vi.fn();
     render(
       <SessionList
+        {...SELECTION_PROPS}
         items={[baseItem]}
         tab="all"
         onTabChange={noop}
@@ -266,6 +284,7 @@ describe('SessionList: Approve is absent, not disabled, once a row is approved',
   it('renders no Approve button for an approved row', () => {
     render(
       <SessionList
+        {...SELECTION_PROPS}
         items={[{ ...baseItem, contentStatus: 'approved' }]}
         tab="all"
         onTabChange={noop}
@@ -289,6 +308,7 @@ describe('SessionList: Approve is absent, not disabled, once a row is approved',
   it('still renders Approve for a pending row', () => {
     render(
       <SessionList
+        {...SELECTION_PROPS}
         items={[baseItem]}
         tab="all"
         onTabChange={noop}
@@ -317,6 +337,7 @@ describe('SessionList: Latest file column renders a relative date', () => {
     const now = 1700000000000;
     const { container } = render(
       <SessionList
+        {...SELECTION_PROPS}
         items={[{ ...baseItem, latestFile: { ...baseItem.latestFile!, uploadedAt: now } }]}
         tab="all"
         onTabChange={noop}
@@ -340,6 +361,7 @@ describe('SessionList: Latest file column renders a relative date', () => {
     const now = 1700000000000;
     const { container } = render(
       <SessionList
+        {...SELECTION_PROPS}
         items={[{ ...baseItem, latestFile: { ...baseItem.latestFile!, uploadedAt: now - dayMs } }]}
         tab="all"
         onTabChange={noop}
@@ -363,6 +385,7 @@ describe('SessionList: Latest file column renders a relative date', () => {
     const now = 1700000000000;
     const { container } = render(
       <SessionList
+        {...SELECTION_PROPS}
         items={[{ ...baseItem, latestFile: { ...baseItem.latestFile!, uploadedAt: now - 2 * dayMs } }]}
         tab="all"
         onTabChange={noop}
@@ -390,6 +413,7 @@ describe('SessionList: three DEC-825 chips, in order, each with its own count', 
   it('renders Needs a decision / Approved / All accepted sessions in that order with their counts', () => {
     render(
       <SessionList
+        {...SELECTION_PROPS}
         items={[baseItem]}
         tab="all"
         onTabChange={noop}
@@ -418,6 +442,7 @@ describe('SessionList: three DEC-825 chips, in order, each with its own count', 
   it("withholds a chip's count (renders no '· N') until its own read has resolved", () => {
     render(
       <SessionList
+        {...SELECTION_PROPS}
         items={[baseItem]}
         tab="all"
         onTabChange={noop}
@@ -446,6 +471,7 @@ describe('SessionList: status cell renders the DEC-881 worklist label', () => {
   it("renders 'Re-uploaded' for a pending row whose latest file was re-uploaded", () => {
     render(
       <SessionList
+        {...SELECTION_PROPS}
         items={[{ ...baseItem, contentStatus: 'pending', reuploaded: true }]}
         tab="all"
         onTabChange={noop}
@@ -469,6 +495,7 @@ describe('SessionList: status cell renders the DEC-881 worklist label', () => {
   it("renders 'Approved' (never 'Re-uploaded') for an approved row even when reuploaded is true", () => {
     render(
       <SessionList
+        {...SELECTION_PROPS}
         items={[{ ...baseItem, contentStatus: 'approved', reuploaded: true }]}
         tab="all"
         onTabChange={noop}
@@ -493,6 +520,7 @@ describe('SessionList: status cell renders the DEC-881 worklist label', () => {
   it("renders 'Not reviewed' for a pending row that has never been re-uploaded", () => {
     render(
       <SessionList
+        {...SELECTION_PROPS}
         items={[{ ...baseItem, contentStatus: 'pending', reuploaded: false }]}
         tab="all"
         onTabChange={noop}
@@ -522,6 +550,7 @@ describe('SessionList: needs_decision empty state names itself and links to All 
     const onTabChange = vi.fn();
     render(
       <SessionList
+        {...SELECTION_PROPS}
         items={[]}
         tab="needs_decision"
         onTabChange={onTabChange}
@@ -547,6 +576,7 @@ describe('SessionList: needs_decision empty state names itself and links to All 
   it("renders the generic empty state for a non-needs_decision tab with no rows", () => {
     render(
       <SessionList
+        {...SELECTION_PROPS}
         items={[]}
         tab="approved"
         onTabChange={noop}

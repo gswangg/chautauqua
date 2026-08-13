@@ -27,6 +27,7 @@ import {
   updateSubmissionFields,
   updateSubmissionStatuses,
 } from "../../server/repo/submissions";
+import { isValidContentStatus, updateContentStatuses } from "../../server/repo/files-content-status";
 import { isActiveParticipant } from "../../domain/acceptance";
 import { plural } from "../../domain/count-copy";
 import {
@@ -642,3 +643,32 @@ submissionsRoutes.post("/events/:eventId/submissions/delete", requireOrganizer, 
 
   return c.json({ deleted, refused: plan.refused });
 });
+
+interface ContentStatusUpdateBody {
+  ids?: unknown;
+  contentStatus?: unknown;
+}
+
+// POST /api/v1/events/:eventId/submissions/content-status — DEC-825 amendment
+// bulk content-approval write, organizer-only.
+submissionsRoutes.post(
+  "/events/:eventId/submissions/content-status",
+  requireOrganizer,
+  csrfJson,
+  async (c) => {
+    const auth = requireAuth(c);
+    const eventId = c.req.param("eventId");
+    await assertEventOwnership(c.var.db, eventId, auth.orgId);
+
+    const body = (await c.req.json().catch(() => ({}))) as ContentStatusUpdateBody;
+    const ids = parseBoundedIdArray(body.ids, "ids"); // DEC-182
+    if (!isValidContentStatus(body.contentStatus)) {
+      throw new ApiError("invalid", "contentStatus must be one of pending, approved, changes_requested", {
+        contentStatus: "Invalid value",
+      });
+    }
+
+    const result = await updateContentStatuses(c.var.db, eventId, ids, body.contentStatus);
+    return c.json(result);
+  },
+);
