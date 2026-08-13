@@ -485,7 +485,7 @@ describe('OnboardingGrid: DEC-830 participation menu', () => {
 
     fireEvent.click(trigger);
     const menu = table.getByRole('menu', { name: 'Participation status for Ada Lovelace' });
-    fireEvent.click(within(menu).getByRole('menuitem', { name: 'Declined' }));
+    fireEvent.click(within(menu).getByRole('menuitemradio', { name: /^Declined/ }));
 
     // Optimistic: renders the chosen state before the PATCH resolves.
     await waitFor(() => {
@@ -518,7 +518,7 @@ describe('OnboardingGrid: DEC-830 participation menu', () => {
     const table = within(screen.getByRole('table'));
     fireEvent.click(table.getByRole('button', { name: 'Participation status for Ada Lovelace: Confirmed' }));
     const menu = table.getByRole('menu', { name: 'Participation status for Ada Lovelace' });
-    fireEvent.click(within(menu).getByRole('menuitem', { name: 'Declined' }));
+    fireEvent.click(within(menu).getByRole('menuitemradio', { name: /^Declined/ }));
 
     await waitFor(() => {
       expect(table.getByRole('button', { name: 'Participation status for Ada Lovelace: Declined' })).toBeInTheDocument();
