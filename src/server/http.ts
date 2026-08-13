@@ -167,6 +167,33 @@ export async function readOptionalJsonBody(c: Context<AppEnv>): Promise<Record<s
   return parsed as Record<string, unknown>;
 }
 
+// DEC-635 (amendment, wave 52): the REQUIRED-body twin of readOptionalJsonBody
+// above -- a route whose body is genuinely optional (empty == defaults) must
+// keep using readOptionalJsonBody; this one is for routes where a blank or
+// absent body is itself an error (create/update payloads). A blank/absent
+// body, a JSON.parse SyntaxError, or a parsed value that isn't a non-array
+// object each throw the house 400 `invalid` envelope; any other error
+// rethrows -- fail loudly, never swallowed.
+export async function readJsonBody(c: Context<AppEnv>): Promise<Record<string, unknown>> {
+  const raw = await c.req.text();
+  if (raw.trim().length === 0) {
+    throw new ApiError("invalid", "Invalid JSON body");
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (err) {
+    if (err instanceof SyntaxError) {
+      throw new ApiError("invalid", "Invalid JSON body");
+    }
+    throw err;
+  }
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+    throw new ApiError("invalid", "Invalid JSON body");
+  }
+  return parsed as Record<string, unknown>;
+}
+
 // DEC-626/DEC-841: a minimal self-contained HTML error page for requests
 // that want an HTML surface -- either marked htmlSurface (plain form posts,
 // including a form post to an /api/v1 path) or any non-API-path GET

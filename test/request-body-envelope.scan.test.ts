@@ -1,11 +1,13 @@
-// DEC-635 (amendment, wave 50): a two-directional source scan guarding the
-// "one guarded body reader" invariant across every route file.
+// DEC-635 (amendment, wave 50, emptied wave 52): a two-directional source
+// scan guarding the "one guarded body reader" invariant across every route
+// file.
 //
 // (a) No request body may be run through a bare JSON.parse. An optional
-//     body must go through src/server/http.ts's readOptionalJsonBody, which
-//     turns a malformed body into the house 400 `invalid` envelope instead
-//     of an uncaught SyntaxError landing on the generic 500 `internal`
-//     handler. Flags:
+//     body must go through src/server/http.ts's readOptionalJsonBody, and a
+//     required body through its twin readJsonBody -- either turns a
+//     malformed body into the house 400 `invalid` envelope instead of an
+//     uncaught SyntaxError landing on the generic 500 `internal` handler.
+//     Flags:
 //       (a-i)  JSON.parse(<ident>) where <ident> was assigned from
 //              `c.req.text()` earlier in the same handler.
 //       (a-ii) JSON.parse(await c.req.text()) / JSON.parse(c.req.text())
@@ -15,22 +17,15 @@
 //     never touched by c.req.text() and so never match -- no ledger of
 //     exceptions is needed for this direction.
 //
-// (b) Every `c.req.json()` call must be immediately chained with `.catch(`
-//     -- an unguarded call throws a raw SyntaxError on a malformed body,
-//     which the shared onError handler can only report as a 500
-//     `internal`, not the house 400 `invalid` envelope. Direction (b) is a
-//     PRE-EXISTING, repo-wide invariant this lane did not introduce and
-//     does not own the files for (src/routes/review/plans-crud.ts,
-//     plans-reviewers.ts, reviewer.ts; src/routes/api/events.ts;
-//     src/routes/api/portal-config.ts) -- those sites are carried in
-//     KNOWN_MISSING_CATCH below as an explicit, two-directional ledger:
-//     an unlisted violation still fails the scan, and a ledger entry that
-//     no longer matches the source (fixed, moved, or deleted) also fails
-//     the scan, so the ledger cannot silently go stale.
-//
-// This lane's own two routes (plans-progress.ts's /remind,
-// plans-distribute.ts's /assignments/distribute) were converted to
-// readOptionalJsonBody and carry zero entries in either direction.
+// (b) Every `c.req.json()` call anywhere under src/routes must be
+//     immediately chained with `.catch(` -- an unguarded call throws a raw
+//     SyntaxError on a malformed body, which the shared onError handler can
+//     only report as a 500 `internal`, not the house 400 `invalid`
+//     envelope. As of wave 52 this is an absolute invariant with no
+//     exception ledger: every former ledger site (src/routes/review/
+//     plans-crud.ts, plans-reviewers.ts, reviewer.ts; src/routes/api/
+//     events.ts; src/routes/api/portal-config.ts) was converted to the
+//     guarded readJsonBody/readOptionalJsonBody readers.
 
 import fs from "node:fs";
 import path from "node:path";
@@ -129,26 +124,6 @@ describe("DEC-635 amendment: request body must never be parsed with a bare JSON.
   }
 });
 
-// (b) ledger: file:line sites where `c.req.json()` is NOT chained with
-// `.catch(`, as of wave 50. This is a two-directional ledger over a
-// PRE-EXISTING, repo-wide gap this lane does not own the files for -- see
-// header comment. Keep sorted by file then line.
-const KNOWN_MISSING_CATCH: { file: string; line: number }[] = [
-  { file: "api/events.ts", line: 216 },
-  { file: "api/events.ts", line: 312 },
-  { file: "api/events.ts", line: 405 },
-  { file: "api/events.ts", line: 435 },
-  { file: "api/events.ts", line: 488 },
-  { file: "api/events.ts", line: 518 },
-  { file: "api/portal-config.ts", line: 103 },
-  { file: "api/portal-config.ts", line: 250 },
-  { file: "api/portal-config.ts", line: 291 },
-  { file: "review/plans-crud.ts", line: 65 },
-  { file: "review/plans-crud.ts", line: 112 },
-  { file: "review/plans-reviewers.ts", line: 26 },
-  { file: "review/reviewer.ts", line: 295 },
-];
-
 function findUnguardedJsonCalls(content: string): number[] {
   const out: number[] = [];
   const marker = "c.req.json()";
@@ -165,53 +140,17 @@ function findUnguardedJsonCalls(content: string): number[] {
 }
 
 describe("DEC-635 amendment: every c.req.json() call must be chained with .catch(", () => {
-  it("no unlisted unguarded c.req.json() call site exists", () => {
-    const ledgerByFile = new Map<string, Set<number>>();
-    for (const { file, line } of KNOWN_MISSING_CATCH) {
-      const set = ledgerByFile.get(file) ?? new Set<number>();
-      set.add(line);
-      ledgerByFile.set(file, set);
-    }
-
+  it("no unguarded c.req.json() call site exists anywhere under src/routes", () => {
     const unlisted: string[] = [];
     for (const file of files) {
       const rel = path.relative(ROUTES_ROOT, file).split(path.sep).join("/");
       const content = fs.readFileSync(file, "utf8");
-      const lines = ledgerByFile.get(rel) ?? new Set<number>();
       for (const line of findUnguardedJsonCalls(content)) {
-        if (!lines.has(line)) {
-          unlisted.push(
-            `${rel}:${line}: c.req.json() with no .catch( -- add .catch (e.g. .catch(() => ({}))) or, if this body is optional, use readOptionalJsonBody(c)`,
-          );
-        }
+        unlisted.push(
+          `${rel}:${line}: c.req.json() with no .catch( -- add .catch (e.g. .catch(() => ({}))) or use readJsonBody(c)/readOptionalJsonBody(c) from src/server/http.ts`,
+        );
       }
     }
     expect(unlisted, unlisted.join("\n")).toEqual([]);
-  });
-
-  it("every ledgered entry still matches an unguarded call site (no stale ledger lines)", () => {
-    const byFile = new Map<string, number[]>();
-    for (const { file, line } of KNOWN_MISSING_CATCH) {
-      const arr = byFile.get(file) ?? [];
-      arr.push(line);
-      byFile.set(file, arr);
-    }
-
-    const stale: string[] = [];
-    for (const [rel, expectedLines] of byFile) {
-      const abs = path.join(ROUTES_ROOT, rel);
-      if (!fs.existsSync(abs)) {
-        stale.push(`${rel}: file no longer exists -- remove its ledger entries`);
-        continue;
-      }
-      const content = fs.readFileSync(abs, "utf8");
-      const actual = new Set(findUnguardedJsonCalls(content));
-      for (const line of expectedLines) {
-        if (!actual.has(line)) {
-          stale.push(`${rel}:${line}: no longer an unguarded c.req.json() call -- remove this stale ledger entry`);
-        }
-      }
-    }
-    expect(stale, stale.join("\n")).toEqual([]);
   });
 });

@@ -6,7 +6,7 @@ import { eq } from "drizzle-orm";
 import type { AppEnv } from "../../server/env";
 import { requireOrganizer, csrfJson } from "../../server/middleware";
 import type { AuthInfo } from "../../server/env";
-import { ApiError } from "../../server/http";
+import { ApiError, readJsonBody } from "../../server/http";
 import { MAX_NAME_LENGTH, MAX_TEXT_LENGTH } from "../../forms/validate"; // DEC-417
 import * as schema from "../../db/schema";
 import { clampPage, listPerPage } from "../../lib/pagination";
@@ -83,13 +83,6 @@ function currentOrgId(c: { var: { auth?: { orgId: string } } }): string {
   const auth = c.var.auth;
   if (!auth) throw new ApiError("unauthorized", "Login required");
   return auth.orgId;
-}
-
-function asRecord(body: unknown): Record<string, unknown> {
-  if (typeof body !== "object" || body === null) {
-    throw new ApiError("invalid", "Request body must be a JSON object");
-  }
-  return body as Record<string, unknown>;
 }
 
 // DEC-417: maxLen defaults to MAX_NAME_LENGTH -- every caller of this helper
@@ -213,7 +206,7 @@ eventsRoutes.get("/events", async (c) => {
 
 eventsRoutes.post("/events", requireOrganizer, csrfJson, async (c) => {
   const orgId = currentOrgId(c);
-  const body = asRecord(await c.req.json());
+  const body = await readJsonBody(c);
   const fields: Record<string, string> = {};
 
   const name = requireString(body, "name", fields);
@@ -309,7 +302,7 @@ eventsRoutes.patch("/events/:eventId", csrfJson, async (c) => {
   const existing = await requireEvent(c.var.db, orgId, eventId);
   if (!existing) throw new ApiError("not_found", "Event not found");
 
-  const body = asRecord(await c.req.json());
+  const body = await readJsonBody(c);
   const fields: Record<string, string> = {};
 
   const name = requireString(body, "name", fields);
@@ -402,7 +395,7 @@ eventsRoutes.post("/events/:eventId/tracks", csrfJson, async (c) => {
   const eventId = c.req.param("eventId");
   await requireEvent(c.var.db, orgId, eventId);
 
-  const body = asRecord(await c.req.json());
+  const body = await readJsonBody(c);
   const fields: Record<string, string> = {};
   const name = requireString(body, "name", fields);
   if (name === undefined) fields.name ??= "Required";
@@ -432,7 +425,7 @@ eventsRoutes.patch("/tracks/:trackId", csrfJson, async (c) => {
   if (!eventId) throw new ApiError("not_found", "Track not found");
   await requireEvent(db, orgId, eventId);
 
-  const body = asRecord(await c.req.json());
+  const body = await readJsonBody(c);
   const fields: Record<string, string> = {};
   const name = requireString(body, "name", fields);
   const color = body.color;
@@ -485,7 +478,7 @@ eventsRoutes.post("/events/:eventId/rooms", csrfJson, async (c) => {
   const eventId = c.req.param("eventId");
   await requireEvent(c.var.db, orgId, eventId);
 
-  const body = asRecord(await c.req.json());
+  const body = await readJsonBody(c);
   const fields: Record<string, string> = {};
   const name = requireString(body, "name", fields);
   if (name === undefined) fields.name ??= "Required";
@@ -515,7 +508,7 @@ eventsRoutes.patch("/rooms/:roomId", csrfJson, async (c) => {
   if (!eventId) throw new ApiError("not_found", "Room not found");
   await requireEvent(db, orgId, eventId);
 
-  const body = asRecord(await c.req.json());
+  const body = await readJsonBody(c);
   const fields: Record<string, string> = {};
   const name = requireString(body, "name", fields);
   const capacity = body.capacity;

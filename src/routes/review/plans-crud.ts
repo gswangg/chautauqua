@@ -7,7 +7,7 @@
 import { Hono } from "hono";
 import type { AppEnv } from "../../server/env";
 import { csrfJson, requireOrganizer } from "../../server/middleware";
-import { ApiError } from "../../server/http";
+import { ApiError, readJsonBody } from "../../server/http";
 import { MAX_NAME_LENGTH, MAX_LONG_TEXT_LENGTH } from "../../forms/validate"; // DEC-417
 import * as repo from "../../server/repo/review";
 import { roundCriteriaJsonOf } from "../../server/repo/review";
@@ -17,7 +17,6 @@ import { criteriaForRound } from "../../domain/evaluation";
 import { countOf } from "../../domain/count-copy";
 import { clampPage, listPerPage } from "../../lib/pagination";
 import {
-  asRecord,
   currentAuth,
   parseScale,
   parseCriteria,
@@ -62,7 +61,7 @@ reviewPlansCrudRoutes.post("/api/v1/events/:eventId/plans", requireOrganizer, cs
   const event = await eventsRepo.getEventForOrg(c.var.db, c.req.param("eventId"), auth.orgId);
   if (!event) throw new ApiError("not_found", "Event not found");
 
-  const body = asRecord(await c.req.json());
+  const body = await readJsonBody(c);
   const errors: Record<string, string> = {};
   if (typeof body.name !== "string" || body.name.trim().length === 0) errors.name = "required";
   else if (body.name.length > MAX_NAME_LENGTH) errors.name = `Max ${MAX_NAME_LENGTH}`; // DEC-417
@@ -109,7 +108,7 @@ reviewPlansCrudRoutes.get("/api/v1/plans/:id", requireOrganizer, async (c) => {
 
 reviewPlansCrudRoutes.patch("/api/v1/plans/:id", requireOrganizer, csrfJson, async (c) => {
   const plan = await requireOwnedPlan(c, c.req.param("id"));
-  const body = asRecord(await c.req.json());
+  const body = await readJsonBody(c);
   const errors: Record<string, string> = {};
 
   if (body.name !== undefined && typeof body.name === "string" && body.name.length > MAX_NAME_LENGTH) {
