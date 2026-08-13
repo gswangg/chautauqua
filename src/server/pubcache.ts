@@ -163,6 +163,11 @@ export const NEVER_PUBLIC: PathPattern[] = [
   "/api/v1/events/:id/templates",
   "/api/v1/templates/*",
   "/api/v1/events/:id/compose/*",
+  // DEC-805: the per-speaker portal invitation is a send, not a status write —
+  // it mints a claim link, mails it, and logs it; nothing it writes feeds
+  // visibleParticipantConditions() (unlike /portal/invitations/*, which
+  // writes participant.invite_status and is PUBLIC-AFFECTING below).
+  "/api/v1/events/:id/portal-invites",
   "/api/v1/contacts/bulk-email*",
   // DEC-770: dismissing a duplicate pair records an organizer-side judgement
   // about two contact rows; no public page renders the duplicate list.

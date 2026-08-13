@@ -28,7 +28,7 @@ const GRID: OnboardingGridResponse = {
         submissionId: 'sub-ct1',
         inviteStatus: 'accepted',
       },
-      cells: [{ taskId: 'task-1', assignmentId: 'as1', status: 'pending', completedAt: null, fileId: null, lastRemindedAt: null }],
+      cells: [{ taskId: 'task-1', assignmentId: 'as1', status: 'pending', completedAt: null, fileId: null, lastRemindedAt: null, assignedAt: 0 }],
     },
     {
       // Already has an account -- the invite control must NOT render.
@@ -42,7 +42,7 @@ const GRID: OnboardingGridResponse = {
         submissionId: 'sub-ct2',
         inviteStatus: 'accepted',
       },
-      cells: [{ taskId: 'task-1', assignmentId: 'as2', status: 'pending', completedAt: null, fileId: null, lastRemindedAt: null }],
+      cells: [{ taskId: 'task-1', assignmentId: 'as2', status: 'pending', completedAt: null, fileId: null, lastRemindedAt: null, assignedAt: 0 }],
     },
   ],
   total: 2,

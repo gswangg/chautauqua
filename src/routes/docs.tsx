@@ -168,6 +168,7 @@ export const ROUTE_GROUPS: { title: string; rows: Row[] }[] = [
       { method: "DELETE", path: "/api/v1/templates/:templateId", role: "organizer" },
       { method: "POST", path: "/api/v1/events/:eventId/compose/preview", role: "organizer" },
       { method: "POST", path: "/api/v1/events/:eventId/compose/send", role: "organizer" },
+      { method: "POST", path: "/api/v1/events/:eventId/portal-invites", role: "organizer" },
       { method: "GET", path: "/api/v1/events/:eventId/email-log", role: "organizer" },
     ],
   },
