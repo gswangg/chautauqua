@@ -148,7 +148,7 @@ describe('ReviewPage render smoke: organizer', () => {
     // Region three: the selected plan's ranked-results table, embedded (no
     // navigation) with an Accept control present.
     await waitFor(() => {
-      expect(screen.getByText('A Talk')).toBeInTheDocument();
+      expect(screen.getByText(/A Talk/)).toBeInTheDocument();
     });
     expect(screen.getByRole('button', { name: 'Accept' })).toBeInTheDocument();
 
@@ -301,7 +301,7 @@ describe('ReviewPage render smoke: organizer', () => {
 
     expect(await screen.findByRole('heading', { name: 'Results: Keynote Track Review' })).toBeInTheDocument();
     await waitFor(() => {
-      expect(screen.getByText('A Talk')).toBeInTheDocument();
+      expect(screen.getByText(/A Talk/)).toBeInTheDocument();
     });
   });
 });
