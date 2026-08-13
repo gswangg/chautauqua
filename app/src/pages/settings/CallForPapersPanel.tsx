@@ -1,15 +1,24 @@
-// Call for papers settings panel (w2-i, DEC-588 Tier 2 item 13): the
-// event's default CFP form -- intro text, open/close window and offered
-// tracks -- via the landed w2-c forms API. Field editing stays in the
-// dedicated form builder (/admin/submissions/forms); this panel only
-// links there rather than re-implementing it. Zero new server endpoints.
+// Call for papers settings panel (w2-i, DEC-588 Tier 2 item 13; summary-
+// first w2-j, DEC-781): a read-only summary (SummarySection) of the
+// event's default CFP form -- public link, close date/relative state,
+// and custom question count -- with the existing intro/open/close/tracks
+// form living under the drill (`?section=cfp&edit=1`, DEC-728/DEC-710).
+// Field editing itself stays in the dedicated form builder
+// (/admin/submissions/forms); this panel only links there rather than
+// re-implementing it. Zero new server endpoints.
 import { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { apiGet, apiList, apiPatch, ApiError } from '../../lib/api';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
-import { dateInputToMs, msToDateInput } from '../../lib/dates';
+import { dateInputToMs, msToDateInput, formatDateTimeInZone } from '../../lib/dates';
 import { copyText } from '../../lib/clipboard';
 import { formWindowState } from '../../../../src/lib/submit-core';
+import { dayLabelEndInstant } from '../../../../src/lib/timezone';
+import { SummarySection } from './SummarySection';
+
+const SECTION_KEY = 'cfp';
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 interface EventSummary {
   id: string;
@@ -44,9 +53,27 @@ function callStateLabel(openMs: number | null, closeMs: number | null, timezone:
   return closeMs !== null ? `Open · closes ${formatDayMonth(closeMs)}` : 'Open';
 }
 
+/** DEC-781: the summary's right-aligned uppercase relative note next to
+ * the Closes row -- derived from the same pure formWindowState the live
+ * gate uses (never a second, independently-computed "days left"), so the
+ * summary can never disagree with the actual gate. */
+function closesRelativeNote(openMs: number | null, closeMs: number | null, timezone: string): string {
+  const state = formWindowState(openMs, closeMs, Date.now(), timezone);
+  if (state === 'closed') return 'CLOSED';
+  if (closeMs === null) return '';
+  const daysLeft = Math.ceil((dayLabelEndInstant(closeMs, timezone) - Date.now()) / MS_PER_DAY);
+  return `IN ${Math.max(daysLeft, 0)} DAY${daysLeft === 1 ? '' : 'S'}`;
+}
+
 interface EventTrack {
   id: string;
   name: string;
+}
+
+interface CfpField {
+  id: string;
+  label: string;
+  locked: boolean;
 }
 
 interface CfpForm {
@@ -56,10 +83,24 @@ interface CfpForm {
   openDate?: number | null;
   closeDate?: number | null;
   tracks?: string[] | null;
+  fields?: CfpField[];
+}
+
+/** DEC-781: "N — label, label, ..." built from the form's non-core (not
+ * locked) fields, i.e. the questions an organiser actually added. If the
+ * fields list isn't available (fetch failure) the count alone renders,
+ * never a fabricated label list. */
+function customQuestionsSummary(fields: CfpField[] | undefined): string {
+  if (!fields) return '';
+  const custom = fields.filter((f) => !f.locked);
+  if (custom.length === 0) return '0';
+  return `${custom.length} — ${custom.map((f) => f.label).join(', ')}`;
 }
 
 export function CallForPapersPanel() {
   const { eventId, loading: eventLoading, error: eventError } = useCurrentEvent();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const editing = searchParams.get('section') === SECTION_KEY && searchParams.get('edit') === '1';
   const [event, setEvent] = useState<EventSummary | null>(null);
   const [form, setForm] = useState<CfpForm | null>(null);
   const [tracks, setTracks] = useState<EventTrack[]>([]);
@@ -104,6 +145,15 @@ export function CallForPapersPanel() {
     setSaved(false);
   }
 
+  function closeEdit() {
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev);
+      params.delete('section');
+      params.delete('edit');
+      return params;
+    });
+  }
+
   async function handleSave() {
     if (!form) return;
     setSaving(true);
@@ -118,6 +168,7 @@ export function CallForPapersPanel() {
       });
       setForm(updated);
       setSaved(true);
+      closeEdit();
     } catch (err) {
       if (err instanceof ApiError && err.fields) setFieldErrors(err.fields);
       setError(err instanceof ApiError ? err.message : 'Failed to save the CFP form');
@@ -167,45 +218,67 @@ export function CallForPapersPanel() {
 
   const publicLink = event ? `${window.location.origin}/submit/${event.slug}` : '';
 
-  return (
-    <section className="chq-settings-panel chq-settings-numbered" aria-label="Call for papers">
-      <div className="chq-settings-section-head">
-        <h2>Call for papers</h2>
-        <a href="/admin/submissions/forms" className="chq-settings-section-action">
-          Edit the form
-        </a>
+  const publicLinkValue = (
+    <>
+      <span>{publicLink}</span>
+      <a href={publicLink} className="chq-settings-inline-action">
+        Open
+      </a>
+      <button type="button" className="chq-link-button" onClick={() => void handleCopyLink(publicLink)}>
+        {copyResult?.ok ? 'Copied!' : 'Copy'}
+      </button>
+      <div role="status" aria-live="polite" className="chq-copy-status">
+        {copyResult ? (copyResult.ok ? 'Copied' : 'Copy failed — select the text and copy it manually') : null}
       </div>
+      {copyResult && !copyResult.ok ? (
+        <input
+          ref={failedCopyRef}
+          className="chq-input"
+          readOnly
+          value={copyResult.text}
+          onFocus={(e) => e.currentTarget.select()}
+          aria-label="Public link to copy manually"
+        />
+      ) : null}
+    </>
+  );
+
+  const closesValue =
+    event && form ? (
+      <>
+        <span>
+          {formatDateTimeInZone(dayLabelEndInstant(form.closeDate ?? 0, event.timezone), event.timezone)} ·{' '}
+          {event.timezone}
+        </span>
+        <span className="chq-settings-row-note">
+          {closesRelativeNote(form.openDate ?? null, form.closeDate ?? null, event.timezone)}
+        </span>
+      </>
+    ) : null;
+
+  const rows =
+    event && form
+      ? [
+          { label: 'Public link', value: publicLinkValue },
+          {
+            label: 'Closes',
+            value: form.closeDate !== null && form.closeDate !== undefined ? closesValue : 'No close date set',
+          },
+          { label: 'Custom questions', value: customQuestionsSummary(form.fields) },
+        ]
+      : [];
+
+  return (
+    <>
       {eventLoading || loading ? <DelayedLoading /> : null}
       {eventError || error ? <p role="alert">{eventError ?? error}</p> : null}
-
-      {event ? (
-        <div className="chq-settings-row">
-          <span className="chq-settings-row-label">Public link</span>
-          <div className="chq-settings-row-value">
-            <span>{publicLink}</span>
-            <a href={publicLink} className="chq-settings-inline-action">
-              Open
-            </a>
-            <button type="button" className="chq-link-button" onClick={() => void handleCopyLink(publicLink)}>
-              {copyResult?.ok ? 'Copied!' : 'Copy'}
-            </button>
-          </div>
-          <div role="status" aria-live="polite" className="chq-copy-status">
-            {copyResult ? (copyResult.ok ? 'Copied' : 'Copy failed — select the text and copy it manually') : null}
-          </div>
-          {copyResult && !copyResult.ok ? (
-            <input
-              ref={failedCopyRef}
-              className="chq-input"
-              readOnly
-              value={copyResult.text}
-              onFocus={(e) => e.currentTarget.select()}
-              aria-label="Public link to copy manually"
-            />
-          ) : null}
-        </div>
-      ) : null}
-
+      <SummarySection
+        sectionKey={SECTION_KEY}
+        label="Call for papers"
+        rows={rows}
+        actionLabel="Edit the form"
+        editing={editing}
+      >
       {form ? (
         <form
           onSubmit={(e) => {
@@ -291,9 +364,13 @@ export function CallForPapersPanel() {
           <button type="submit" className="chq-btn chq-btn-primary" disabled={saving}>
             {saving ? 'Saving…' : 'Save'}
           </button>
+          <button type="button" className="chq-btn chq-btn-tertiary" onClick={closeEdit} disabled={saving}>
+            Cancel
+          </button>
           {saved ? <span role="status"> Saved.</span> : null}
         </form>
       ) : null}
-    </section>
+      </SummarySection>
+    </>
   );
 }

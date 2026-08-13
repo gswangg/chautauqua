@@ -62,6 +62,10 @@ function mockAllSections() {
       openDate: null,
       closeDate: null,
       tracks: [],
+      fields: [
+        { id: 'f1', label: 'Title', locked: true },
+        { id: 'f2', label: 'Format', locked: false },
+      ],
     },
     [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([]),
     [`GET /api/v1/events/${EVENT_ID}/onboarding`]: { tasks: [], rows: [], total: 0, page: 1, perPage: 1, counts: {} },
@@ -98,11 +102,14 @@ describe('SettingsPage render smoke', () => {
     });
     expect(within(tracksRoomsSection).getByText(/Main Hall/)).toBeInTheDocument();
 
-    // Call for papers panel.
-    expect(screen.getByRole('heading', { name: 'Call for papers' })).toBeInTheDocument();
+    // Call for papers panel — read-only summary (DEC-781) until drilled.
+    const cfpSection = screen.getByRole('region', { name: 'Call for papers' });
+    expect(within(cfpSection).getByRole('heading', { name: 'Call for papers' })).toBeInTheDocument();
     await waitFor(() => {
-      expect(screen.getByDisplayValue('Tell us about your talk.')).toBeInTheDocument();
+      expect(within(cfpSection).getByText(`${window.location.origin}/submit/devcon-2026`)).toBeInTheDocument();
     });
+    expect(within(cfpSection).getByText('1 — Format')).toBeInTheDocument();
+    expect(within(cfpSection).queryByDisplayValue('Tell us about your talk.')).not.toBeInTheDocument();
 
     // Public pages and embeds panel.
     expect(screen.getByRole('heading', { name: 'Public pages and embeds' })).toBeInTheDocument();

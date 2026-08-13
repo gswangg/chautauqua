@@ -111,8 +111,9 @@ export function formatDateOnlyLong(ms: number | null | undefined): string {
 /**
  * Format a timestamp (epoch-ms or ISO-8601 string) in an explicit IANA
  * timeZone, e.g. an event's own timezone rather than the viewer's ambient
- * machine zone (DEC-494). The ONE legitimately zone-explicit call site is
- * app/src/pages/comms/icsChip.ts.
+ * machine zone (DEC-494). Legitimate zone-explicit call sites:
+ * app/src/pages/comms/icsChip.ts and the CFP summary's Closes row
+ * (CallForPapersPanel.tsx, DEC-781).
  */
 export function formatDateTimeInZone(value: number | string, timeZone: string): string {
   return new Date(value).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short', timeZone });
