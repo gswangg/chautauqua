@@ -151,16 +151,15 @@ describe('CommsPage render smoke', () => {
 
     const row = await screen.findByText('You are in!');
     const batchButton = row.closest('.chq-comms-batch-row') as HTMLElement;
-    expect(within(batchButton).getByText('3 recipients')).toBeInTheDocument();
     expect(within(batchButton).getByText('3 sent')).toBeInTheDocument();
     expect(screen.getByText('1 total')).toBeInTheDocument();
 
     // DEC-732 (eval-findings 59): expansion is an explicit bordered
     // control, not the whole row silently doubling as a toggle.
-    const toggle = within(batchButton).getByRole('button', { name: 'See the recipients' });
+    const toggle = within(batchButton).getByRole('button', { name: 'Open' });
     expect(toggle).toHaveClass('chq-btn');
     fireEvent.click(toggle);
-    expect(within(batchButton).getByRole('button', { name: 'Hide the recipients' })).toBeInTheDocument();
+    expect(within(batchButton).getByRole('button', { name: 'Close' })).toBeInTheDocument();
   });
 });
 
@@ -296,12 +295,32 @@ describe('CommsPage Recent sends under Compose (DEC-751)', () => {
 
     // A batch whose statusCounts are all failures still renders -- an
     // attempted send is auditable whatever the transport did.
-    expect(screen.getByText('2 failed')).toBeInTheDocument();
+    expect(screen.getByText('0 sent · 2 failed')).toBeInTheDocument();
 
-    // Read-only under Compose: no recipients disclosure.
-    expect(screen.queryByRole('button', { name: 'See the recipients' })).not.toBeInTheDocument();
+    // Read-only under Compose: no per-row recipients disclosure -- the
+    // trailing "Open" control is a link into History instead (DEC-751
+    // amendment, w41-g), same destination as "All history".
+    fireEvent.click(screen.getAllByRole('button', { name: 'Open' })[0]!);
+    await waitFor(() => {
+      expect(screen.getByTestId('location-search')).toHaveTextContent('?tab=history');
+    });
+  });
 
-    fireEvent.click(screen.getByRole('button', { name: 'All history' }));
+  it('switches ?tab= to history on the "All history" link', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([]),
+      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
+      [`GET /api/v1/events/${EVENT_ID}/email-log`]: listEnvelope([batch(1)]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/comms']}>
+        <CommsPage />
+        <LocationSearchProbe />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: 'All history' }));
 
     await waitFor(() => {
       expect(screen.getByTestId('location-search')).toHaveTextContent('?tab=history');

@@ -89,6 +89,27 @@ export function formatDateTime(ms: number | null | undefined): string {
   return `${day} ${month}, ${hh}:${mm}`;
 }
 
+/**
+ * Format an epoch-ms timestamp as "Tue 11 Aug, 4:12pm" -- weekday, day,
+ * short month, 12-hour clock with a lowercase am/pm suffix (no leading
+ * zero on the hour, no space before am/pm). '—' for null/undefined/NaN/
+ * invalid. w41-g: the Recent Sends timestamp grammar -- callers must go
+ * through this rather than hand-rolling Intl/toLocale* (DEC-963 ban).
+ */
+export function formatDateTimeWeekday(ms: number | null | undefined): string {
+  if (ms === null || ms === undefined || Number.isNaN(ms)) return '—';
+  const date = new Date(ms);
+  if (Number.isNaN(date.getTime())) return '—';
+  const weekday = SHORT_WEEKDAY_NAMES[date.getDay()];
+  const day = date.getDate();
+  const month = SHORT_MONTH_NAMES[date.getMonth()];
+  const hours24 = date.getHours();
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  const meridiem = hours24 >= 12 ? 'pm' : 'am';
+  const hours12 = hours24 % 12 === 0 ? 12 : hours24 % 12;
+  return `${weekday} ${day} ${month}, ${hours12}:${minutes}${meridiem}`;
+}
+
 const SHORT_MONTH_NAMES = [
   'Jan',
   'Feb',

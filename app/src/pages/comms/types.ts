@@ -94,4 +94,8 @@ export interface EmailBatchRow {
   sentAt: number;
   recipientCount: number;
   statusCounts: Record<string, number>;
+  // w41-g (DEC-751 amendment): the template that produced this batch, or
+  // null for a hand-written send with no template. Paired with the
+  // component's templatesById map to name the template, or an em dash.
+  templateId: string | null;
 }

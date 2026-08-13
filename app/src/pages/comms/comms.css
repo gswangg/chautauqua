@@ -304,17 +304,33 @@
   gap: 16px;
 }
 
+/* w41-g (DEC-751 amendment): the section head's own title+subtitle stack,
+   mirroring the page head's .chq-comms-head-titles/-subtitle pattern
+   above but scoped under this component so both mounts share it. */
+.chq-comms-recent-sends-head-titles {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.chq-comms-recent-sends-subtitle {
+  margin: 0;
+  font-size: 13px;
+  color: var(--chq-muted);
+}
+
 /* DEC-603: one batch (its toggle row + expanded recipients, when open). */
 .chq-comms-batch {
   display: block;
 }
 
-/* DEC-732 (eval-findings 59): batch rows are a plain row; the expand/
-   collapse affordance is its own explicit bordered "See the recipients"
-   control (.chq-comms-batch-toggle) rather than the whole row silently
-   doubling as a <button> -- same grid as the recipient rows above so
-   when/subject/count/status columns line up, plus a 5th column for the
-   toggle. */
+/* DEC-732 (eval-findings 59) + DEC-751 amendment (w41-g): batch rows are a
+   plain row; the trailing "Open" control is its own explicit element
+   (.chq-comms-batch-toggle on the History mount, .chq-comms-batch-open on
+   the Compose mount) rather than the whole row silently doubling as a
+   <button>. Exactly five columns: when / subject / N sent / template /
+   Open. */
 .chq-comms-batch-row {
   display: grid;
   grid-template-columns: 150px 1fr 130px 150px auto;
@@ -325,13 +341,30 @@
   width: 100%;
 }
 
-.chq-comms-batch-toggle {
+.chq-comms-batch-template {
+  color: var(--chq-muted);
+  font-size: 13px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chq-comms-batch-toggle,
+.chq-comms-batch-open {
   justify-self: end;
 }
 
 .chq-comms-batch-recipients {
   padding-left: 18px;
   border-bottom: 1px solid var(--chq-hairline);
+}
+
+/* w41-g: the full per-status tally that used to live on the collapsed row
+   now opens the expanded disclosure -- an all-failed batch stays auditable
+   even though the row itself only states the sent/failed summary. */
+.chq-comms-batch-tally {
+  padding: 9px 0;
 }
 
 /* w28-f: the per-recipient row no longer repeats the batch's own subject/
@@ -589,8 +622,12 @@
     text-transform: uppercase;
   }
 
-  /* DEC-603: batch rows stack the same way (when / subject / recipient
-     count / status tally), matching .chq-comms-history-row's card layout. */
+  /* DEC-603 + DEC-751 amendment (w41-g): batch rows stack the same way
+     (when / subject / sent count / template), matching
+     .chq-comms-history-row's card layout. .chq-comms-batch-row .chq-meta
+     no longer matches anything here -- the status tally it used to style
+     moved into the expanded .chq-comms-batch-recipients disclosure, which
+     keeps its own (unscoped) .chq-meta styling. */
   .chq-comms-batch-row {
     display: flex;
     flex-direction: column;
@@ -603,15 +640,12 @@
     color: var(--chq-ink-2);
   }
 
-  .chq-comms-batch-row .chq-meta {
-    margin-top: 2px;
-    font-size: 10px;
-    font-weight: 800;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
+  .chq-comms-batch-template {
+    white-space: normal;
   }
 
-  .chq-comms-batch-toggle {
+  .chq-comms-batch-toggle,
+  .chq-comms-batch-open {
     justify-self: auto;
     align-self: flex-start;
     margin-top: 6px;
