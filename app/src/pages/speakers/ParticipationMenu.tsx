@@ -49,9 +49,26 @@ interface ParticipationMenuProps {
   // with THAT session's ref -- never a single menu ambiguous about which
   // participation it writes.
   label?: string;
+  // Amendment (wave 48)/DEC-694: the v6 frame's panel header identity is
+  // more than the bare name -- it names the contact's company and whether
+  // they already hold a portal account, so the menu's four state choices
+  // (esp. the account-dependent ones) are read against that context instead
+  // of a blank name. Threaded from the roster row the caller already has --
+  // this component never fetches.
+  company?: string | null;
+  hasAccount: boolean;
 }
 
-export function ParticipationMenu({ contactName, status, onSelectStatus, onSendInvite, sendInviteDisabled, label }: ParticipationMenuProps) {
+export function ParticipationMenu({
+  contactName,
+  status,
+  onSelectStatus,
+  onSendInvite,
+  sendInviteDisabled,
+  label,
+  company,
+  hasAccount,
+}: ParticipationMenuProps) {
   const [open, setOpen] = useState(false);
   const close = () => setOpen(false);
   const { containerRef, onPanelKeyDown } = useMenu(open, close);
@@ -79,6 +96,9 @@ export function ParticipationMenu({ contactName, status, onSelectStatus, onSendI
           onKeyDown={onPanelKeyDown}
         >
           <p className="chq-participation-menu-identity">{identity}</p>
+          <p className="chq-participation-menu-identity-sub">
+            {company ?? '—'} &middot; {hasAccount ? 'has account' : 'no portal account'}
+          </p>
           {INVITE_STATUSES.map((candidate) => (
             <button
               key={candidate}

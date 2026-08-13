@@ -124,10 +124,14 @@ describe('TaskModal: DEC-577 segmented Kind control', () => {
       expect(btn).not.toHaveAttribute('tabindex', '-1');
     }
 
-    // Default: 'Upload' (file_request) is active -- filled class +
+    // Default: 'Upload' (file_request) is active -- outlined-chip class +
     // aria-pressed, not a bare CSS colour difference the test can't observe.
+    // v6 frame (Amendment wave 48/DEC-694): the selected chip is its own
+    // cream/outline visual, NOT a spend of the page-primary chq-btn-primary
+    // vocabulary.
     expect(upload).toHaveAttribute('aria-pressed', 'true');
-    expect(upload.className).toContain('chq-btn-primary');
+    expect(upload.className).not.toContain('chq-btn-primary');
+    expect(upload.className).toContain('chq-speakers-kind-selected');
     expect(acknowledge).toHaveAttribute('aria-pressed', 'false');
     expect(acknowledge.className).toContain('chq-btn-secondary');
 
@@ -136,7 +140,8 @@ describe('TaskModal: DEC-577 segmented Kind control', () => {
     fireEvent.click(form);
 
     expect(form).toHaveAttribute('aria-pressed', 'true');
-    expect(form.className).toContain('chq-btn-primary');
+    expect(form.className).not.toContain('chq-btn-primary');
+    expect(form.className).toContain('chq-speakers-kind-selected');
     expect(upload).toHaveAttribute('aria-pressed', 'false');
     expect(upload.className).toContain('chq-btn-secondary');
 

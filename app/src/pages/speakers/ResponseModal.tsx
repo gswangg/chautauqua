@@ -34,9 +34,12 @@ export function ResponseModal({ contactName, loading, error, detail, onStatusCha
       modalClassName="chq-speakers-modal"
       actions={
         !loading && detail && detail.status !== 'pending' ? (
-          <button type="button" className="chq-btn chq-btn-secondary" onClick={() => onStatusChange('pending')}>
-            Reopen this task
-          </button>
+          <>
+            <button type="button" className="chq-btn chq-btn-secondary" onClick={() => onStatusChange('pending')}>
+              Reopen this task
+            </button>
+            <span className="chq-summary">Sets it back to pending — the next reminder picks it up</span>
+          </>
         ) : undefined
       }
     >
@@ -53,8 +56,6 @@ export function ResponseModal({ contactName, loading, error, detail, onStatusCha
           ))}
         </dl>
       )}
-
-      {!loading && detail && <span className="chq-summary">Reopening does not email the speaker.</span>}
     </ModalFrame>
   );
 }

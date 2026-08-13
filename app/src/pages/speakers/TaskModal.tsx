@@ -179,7 +179,7 @@ export function TaskModal({ onCancel, onSubmit, forms, acceptedCount, task = nul
                 <button
                   key={k}
                   type="button"
-                  className={kind === k ? 'chq-btn chq-btn-primary' : 'chq-btn chq-btn-secondary'}
+                  className={kind === k ? 'chq-btn chq-speakers-kind-selected' : 'chq-btn chq-btn-secondary'}
                   aria-pressed={kind === k}
                   onClick={() => setKind(k)}
                 >

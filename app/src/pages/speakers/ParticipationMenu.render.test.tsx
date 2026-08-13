@@ -132,6 +132,29 @@ describe('ParticipationMenu (DEC-830)', () => {
     expect(menu.getByText('Ada Lovelace')).toBeInTheDocument();
   });
 
+  // Amendment (wave 48)/DEC-694: the v6 frame's header line names company +
+  // portal-account state below the bare name -- 'no portal account' when
+  // the contact has none, 'has account' when they do.
+  it('renders the company + no-portal-account line under the name when the contact has no account', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: gridWith('none'),
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+    });
+    const menu = await openMenu();
+    expect(menu.getByText('Acme · no portal account')).toBeInTheDocument();
+  });
+
+  it('renders the company + has-account line under the name when the contact already has an account', async () => {
+    const withAccount: OnboardingGridResponse = gridWith('none');
+    withAccount.rows[0]!.contact.hasAccount = true;
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: withAccount,
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+    });
+    const menu = await openMenu();
+    expect(menu.getByText('Acme · has account')).toBeInTheDocument();
+  });
+
   it.each(INVITE_STATUSES)('the %s item is a menuitemradio rendering its Record caption', async (candidate) => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/onboarding`]: gridWith('none'),
