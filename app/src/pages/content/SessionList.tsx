@@ -124,9 +124,11 @@ export function SessionList({
               const [firstSpeaker, ...restSpeakers] = item.speakers;
               return (
                 <tr key={item.id} className="chq-content-row" onClick={() => onSelect(item.id)}>
-                  <td className="chq-content-row-session">
-                    <div className="chq-content-row-title">{item.title}</div>
-                    <div className="chq-content-row-ref">{item.ref}</div>
+                  <td>
+                    <div className="chq-content-row-session">
+                      <div className="chq-content-row-title">{item.title}</div>
+                      <div className="chq-content-row-ref">{item.ref}</div>
+                    </div>
                   </td>
                   <td className="chq-content-row-speaker">
                     {firstSpeaker ? (
@@ -138,19 +140,21 @@ export function SessionList({
                       'No speakers'
                     )}
                   </td>
-                  <td className="chq-content-row-latest-file">
-                    {item.latestFile ? (
-                      <>
-                        <div className="chq-content-latest-file-name">
-                          {item.latestFile.filename} · v{item.latestFile.versionCount}
-                        </div>
-                        <div className="chq-content-latest-file-date">
-                          {formatRelativeDate(item.latestFile.uploadedAt, now)}
-                        </div>
-                      </>
-                    ) : (
-                      <span className="chq-content-latest-file-empty">No files yet</span>
-                    )}
+                  <td>
+                    <div className="chq-content-row-latest-file">
+                      {item.latestFile ? (
+                        <>
+                          <div className="chq-content-latest-file-name">
+                            {item.latestFile.filename} · v{item.latestFile.versionCount}
+                          </div>
+                          <div className="chq-content-latest-file-date">
+                            {formatRelativeDate(item.latestFile.uploadedAt, now)}
+                          </div>
+                        </>
+                      ) : (
+                        <span className="chq-content-latest-file-empty">No files yet</span>
+                      )}
+                    </div>
                   </td>
                   <td>
                     <span
@@ -161,24 +165,26 @@ export function SessionList({
                       {CONTENT_STATUS_LABELS[item.contentStatus]}
                     </span>
                   </td>
-                  <td onClick={(e) => e.stopPropagation()} className="chq-content-actions">
-                    {/* w1-f: Approve is ABSENT (never disabled) once a row is
-                        already approved — a disabled control implies the
-                        action might apply again later, which it never does
-                        from here (re-review happens via 'Ask for changes'
-                        in the deliverable detail). */}
-                    {item.contentStatus !== 'approved' && (
-                      <button
-                        type="button"
-                        className="chq-btn chq-btn-primary"
-                        onClick={() => onContentStatusChange(item.id, 'approved')}
-                      >
-                        Approve
+                  <td onClick={(e) => e.stopPropagation()}>
+                    <div className="chq-content-actions">
+                      {/* w1-f: Approve is ABSENT (never disabled) once a row is
+                          already approved — a disabled control implies the
+                          action might apply again later, which it never does
+                          from here (re-review happens via 'Ask for changes'
+                          in the deliverable detail). */}
+                      {item.contentStatus !== 'approved' && (
+                        <button
+                          type="button"
+                          className="chq-btn chq-btn-primary"
+                          onClick={() => onContentStatusChange(item.id, 'approved')}
+                        >
+                          Approve
+                        </button>
+                      )}
+                      <button type="button" className="chq-btn chq-btn-secondary" onClick={() => onSelect(item.id)}>
+                        Open
                       </button>
-                    )}
-                    <button type="button" className="chq-btn chq-btn-secondary" onClick={() => onSelect(item.id)}>
-                      Open
-                    </button>
+                    </div>
                   </td>
                 </tr>
               );

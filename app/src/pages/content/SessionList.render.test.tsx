@@ -8,6 +8,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { SessionList, TAB_LABELS } from './SessionList';
 import type { ContentSubmissionListItem } from './types';
 import { WORKLIST_TABS, type WorklistTab } from './worklist';
@@ -404,5 +406,57 @@ describe('SessionList: three DEC-825 chips, in order, each with its own count', 
 
     expect(screen.getByRole('tab', { name: TAB_LABELS.needs_decision })).toHaveTextContent(TAB_LABELS.needs_decision);
     expect(screen.getByRole('tab', { name: TAB_LABELS.needs_decision }).textContent).not.toMatch(/·/);
+  });
+});
+
+// DEC-871: `<td>` must keep table-cell display so per-column borders land on
+// the same baseline across a worklist row — any flex layout for a cell's
+// contents belongs on an inner wrapper div, never on the td itself. This
+// scan enumerates every class actually applied to a `<td>` in this file (no
+// hand-listed trio) and asserts none of them carries `display: flex` in
+// content.css, so a future column can't reintroduce the stagger.
+describe('SessionList: no <td> ever carries display:flex (DEC-871)', () => {
+  it('every class applied to a <td> in SessionList.tsx is flex-free in content.css', () => {
+    // Vitest runs this suite from the repo root, so resolve siblings
+    // relative to process.cwd() rather than import.meta.url (which under
+    // jsdom is not always a `file:` URL usable with fileURLToPath).
+    const sessionListPath = join(process.cwd(), 'app/src/pages/content/SessionList.tsx');
+    const cssPath = join(process.cwd(), 'app/src/pages/content/content.css');
+    const tsxSource = readFileSync(sessionListPath, 'utf-8');
+    const cssSource = readFileSync(cssPath, 'utf-8');
+
+    // Every `<td ...>` opening tag, capturing its className attribute (if any).
+    const tdTagPattern = /<td\b[^>]*>/g;
+    const classNamePattern = /className="([^"]*)"/;
+    const tdClassNames = new Set<string>();
+    for (const tdTag of tsxSource.match(tdTagPattern) ?? []) {
+      const classMatch = classNamePattern.exec(tdTag);
+      if (!classMatch) continue;
+      const classAttr = classMatch[1] ?? '';
+      for (const className of classAttr.split(/\s+/).filter(Boolean)) {
+        tdClassNames.add(className);
+      }
+    }
+
+    // Sanity check: this file does apply at least one className to a <td>
+    // (chq-content-row-speaker), so the scan itself isn't vacuous.
+    expect(tdClassNames.size).toBeGreaterThan(0);
+
+    for (const className of tdClassNames) {
+      // Match `.className { ... }` rule bodies (siblings in a comma list are
+      // covered too, e.g. `.a, .className { display: flex; }`).
+      const rulePattern = new RegExp(
+        `(?:^|[,{}\\s])\\.${className}(?![\\w-])[^{]*\\{([^}]*)\\}`,
+        'g',
+      );
+      let match: RegExpExecArray | null;
+      while ((match = rulePattern.exec(cssSource)) !== null) {
+        const body = match[1] ?? '';
+        expect(
+          /display\s*:\s*flex/.test(body),
+          `.${className} is applied directly to a <td> in SessionList.tsx but content.css sets display:flex on it — move the flex layout to an inner wrapper div (DEC-871).`,
+        ).toBe(false);
+      }
+    }
   });
 });
