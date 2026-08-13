@@ -45,4 +45,9 @@ export const ENVELOPE_ALLOWLIST = new Set<string>([
   // paginated list -- same shape-exception class as the bulk-email preview
   // above.
   "src/routes/api/contacts/duplicates.ts:32",
+  // DEC-924: POST /plans/:id/reviewers's array form answers the set of rows
+  // it just wrote (bounded by the request's own parseBoundedIdArray cap),
+  // never a paginated read -- same shape-exception class as the compose
+  // preview above (comms.ts:511).
+  "src/routes/review/plans-reviewers.ts:70",
 ]);

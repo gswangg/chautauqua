@@ -8,10 +8,10 @@
 import { Hono } from "hono";
 import type { AppEnv } from "../../server/env";
 import { csrfJson, requireOrganizer } from "../../server/middleware";
-import { ApiError } from "../../server/http";
+import { ApiError, parseBoundedIdArray } from "../../server/http";
 import { clampPage, listPerPage } from "../../lib/pagination";
 import * as repo from "../../server/repo/review";
-import { DEC_572, DEC_623, DEC_659 } from "../../decisions";
+import { DEC_572, DEC_623, DEC_659, DEC_924 } from "../../decisions";
 import { asRecord, currentAuth, requireOwnedPlan } from "./shared";
 
 export const reviewPlansReviewersRoutes = new Hono<AppEnv>();
@@ -19,6 +19,7 @@ export const reviewPlansReviewersRoutes = new Hono<AppEnv>();
 void DEC_572; // /plans/:id/scope-preview: true count + bounded preview before a track-scope fan-out below
 void DEC_623; // POST /plans/:id/reviewers: submissionId resolved through findSubmissionIdByRefOrId below
 void DEC_659; // GET /plans/:id/reviewers: trackName/submissionRef/submissionTitle labels below
+void DEC_924; // POST /plans/:id/reviewers: submissionIds[] array form below -- one set-based, all-or-nothing request
 
 reviewPlansReviewersRoutes.post("/api/v1/plans/:id/reviewers", requireOrganizer, csrfJson, async (c) => {
   const plan = await requireOwnedPlan(c, c.req.param("id"));
@@ -27,6 +28,47 @@ reviewPlansReviewersRoutes.post("/api/v1/plans/:id/reviewers", requireOrganizer,
     throw new ApiError("invalid", "Invalid reviewer assignment", { userId: "required" });
   }
   await repo.requireOrgUser(c.var.db, body.userId, currentAuth(c).orgId);
+
+  // DEC-924: the array form -- one set-based, all-or-nothing request that
+  // assigns body.userId to every submission named in submissionIds. Every
+  // ref/id is resolved in ONE query (findSubmissionIdsByRefsOrIds), the
+  // plan's own filters_json trackIds are checked for the WHOLE set in ONE
+  // query (submissionsMatchingPlanFilters), and every plan_reviewer row is
+  // inserted through addReviewers -- an unknown id or an id outside the
+  // plan's filters refuses the entire request (400, fields.submissionIds
+  // naming the offending refs) before anything is written. The existing
+  // single submissionId/trackId forms below are unchanged.
+  if (Array.isArray(body.submissionIds)) {
+    const rawInputs = parseBoundedIdArray(body.submissionIds, "submissionIds");
+    const inputs = [...new Set(rawInputs)];
+    const resolvedByInput = await repo.findSubmissionIdsByRefsOrIds(c.var.db, plan.eventId, inputs);
+    const unknown = inputs.filter((input) => !resolvedByInput.has(input));
+    if (unknown.length > 0) {
+      throw new ApiError("invalid", "Invalid reviewer assignment", {
+        submissionIds: `unknown submission for this event -- use the ref (e.g. SES-014) or the internal id: ${unknown.join(", ")}`,
+      });
+    }
+    if (plan.filters?.trackIds && plan.filters.trackIds.length > 0) {
+      const resolvedIds = inputs.map((input) => resolvedByInput.get(input) as string);
+      const inFilters = await repo.submissionsMatchingPlanFilters(c.var.db, plan, resolvedIds);
+      const outOfScope = inputs.filter((input) => !inFilters.has(resolvedByInput.get(input) as string));
+      if (outOfScope.length > 0) {
+        throw new ApiError("invalid", "Invalid reviewer assignment", {
+          submissionIds: `not inside this plan's tracks -- widen the plan's filters or assign by track: ${outOfScope.join(", ")}`,
+        });
+      }
+    }
+    const created = await repo.addReviewers(
+      c.var.db,
+      plan.id,
+      inputs.map((input) => ({
+        userId: body.userId as string,
+        trackId: null,
+        submissionId: resolvedByInput.get(input) as string,
+      })),
+    );
+    return c.json({ items: created, total: created.length }, 201);
+  }
 
   // DEC-354: reject a trackId/submissionId that does not belong to the
   // plan's own event before any plan_reviewer row is written (mirrors the

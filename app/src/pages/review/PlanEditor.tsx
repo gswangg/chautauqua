@@ -39,10 +39,6 @@ void DEC_882; // locked criteria render as read-only text rows below a CRITERION
 // "Open · N of M reviews in" from progressRows via progressTotals -- never
 // a second count derived here.
 
-// DEC-572: batches per-submission plan_reviewer POSTs to at most this many
-// concurrent requests per wave, mirroring the server's own bound.
-const SCOPE_ASSIGN_BATCH_SIZE = 100;
-
 // DEC-676: soft cap on the criteria list -- Add disables with an honest
 // caption once reached, never a silent no-op.
 const MAX_CRITERIA = 7;
@@ -58,12 +54,6 @@ function isPlanOpenNow(openAt: number | null, closeAt: number | null, now: numbe
   if (closeAt !== null && closeAt < now) return false;
   if (openAt !== null && openAt > now) return false;
   return true;
-}
-
-function chunk<T>(items: T[], size: number): T[][] {
-  const out: T[][] = [];
-  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
-  return out;
 }
 
 // DEC-840: a non-empty shortfall renders as a sentence naming the
@@ -601,24 +591,31 @@ export function PlanEditor() {
     }
   }
 
-  // "Choose submissions": one per-submission plan_reviewer row per checked
-  // item, issued in batches of at most SCOPE_ASSIGN_BATCH_SIZE.
+  // "Choose submissions": DEC-924 -- one set-based, all-or-nothing request
+  // for the whole chosen set (never the old per-submission Promise.all,
+  // which could leave half the rows behind on a mid-batch rejection --
+  // contradicting the DEC-572 "Nothing is saved until you confirm" caption
+  // this same panel prints).
   async function confirmAssignChosen() {
     if (!planId || !reviewerUserId.trim() || chosenSubmissionIds.size === 0) return;
     setError(null);
     setAssigningBatch(true);
     try {
-      const ids = [...chosenSubmissionIds];
-      for (const batch of chunk(ids, SCOPE_ASSIGN_BATCH_SIZE)) {
-        await Promise.all(
-          batch.map((submissionId) => postReviewerAssignment({ userId: reviewerUserId.trim(), submissionId })),
-        );
-      }
+      const { items } = await apiPost<{ items: PlanReviewer[]; total: number }>(`/plans/${planId}/reviewers`, {
+        userId: reviewerUserId.trim(),
+        submissionIds: [...chosenSubmissionIds],
+      });
+      // The create response doesn't carry an email (PlanReviewerRecord has
+      // no such column); resolve it from the already-loaded reviewer
+      // options so the rows don't flash the raw userId until the next
+      // reload (mirrors postReviewerAssignment above).
+      const resolvedEmail = reviewerOptions.find((r) => r.id === reviewerUserId.trim())?.email;
+      setReviewers((prev) => [...prev, ...items.map((item) => ({ ...item, email: item.email ?? resolvedEmail }))]);
       setReviewerUserId('');
       resetScopeConfirm();
       setScopePreview(null);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Failed to assign reviewer');
+      setError(err instanceof ApiError ? (err.fields?.submissionIds ?? err.message) : 'Failed to assign reviewer');
     } finally {
       setAssigningBatch(false);
     }

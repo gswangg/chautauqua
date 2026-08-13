@@ -5,7 +5,7 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { formatRef, newId } from "../../../domain/ids";
-import { chunkIds } from "../../../lib/chunk";
+import { chunkIds, chunkRowsForInsert } from "../../../lib/chunk";
 
 export interface PlanReviewerRecord {
   id: string;
@@ -72,6 +72,41 @@ export async function addReviewer(
   const row = rows[0];
   if (!row) throw new Error("addReviewer: insert did not persist");
   return toPlanReviewerRecord(row);
+}
+
+/** DEC-924: the set-based twin of addReviewer -- inserts every row from
+ * `inputs` (order preserved in the returned array) through
+ * chunkRowsForInsert (DEC-528: chunked only for the D1 bound-parameter
+ * ceiling, never a per-row insert loop), then ONE select keyed to the newly
+ * generated ids. Callers that need all-or-nothing semantics must validate
+ * every input BEFORE calling this -- there is no rollback here. */
+export async function addReviewers(
+  db: Db,
+  planId: string,
+  inputs: { userId: string; trackId?: string | null; submissionId?: string | null }[],
+): Promise<PlanReviewerRecord[]> {
+  if (inputs.length === 0) return [];
+  const now = new Date();
+  const rows = inputs.map((input) => ({
+    id: newId(),
+    planId,
+    userId: input.userId,
+    trackId: input.trackId ?? null,
+    submissionId: input.submissionId ?? null,
+    createdAt: now,
+    updatedAt: now,
+  }));
+  for (const batch of chunkRowsForInsert(rows)) {
+    await db.insert(schema.planReviewer).values(batch);
+  }
+  const ids = rows.map((r) => r.id);
+  const inserted = await db.select().from(schema.planReviewer).where(inArray(schema.planReviewer.id, ids));
+  const byId = new Map(inserted.map((row) => [row.id, toPlanReviewerRecord(row)]));
+  return ids.map((id) => {
+    const record = byId.get(id);
+    if (!record) throw new Error("addReviewers: insert did not persist row " + id);
+    return record;
+  });
 }
 
 /** Looks up a single plan_reviewer row by its own id (DEC-043/044: the
