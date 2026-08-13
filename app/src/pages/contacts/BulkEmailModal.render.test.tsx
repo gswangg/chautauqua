@@ -113,7 +113,7 @@ describe('BulkEmailModal render smoke (CRM-11 template + preview)', () => {
       'POST /api/v1/contacts/bulk-email/preview': {
         items: [{ contactId: 'ct1', email: 'ada@example.com', subject: 'Hi Ada', bodyText: 'Body' }],
       },
-      'POST /api/v1/contacts/bulk-email': { sent: 1, failed: [], items: [] },
+      'POST /api/v1/contacts/bulk-email': { sent: 1, failed: [] },
     });
 
     render(<BulkEmailModal contactIds={['ct1']} eventId={EVENT_ID} onClose={() => {}} />);

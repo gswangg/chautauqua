@@ -165,7 +165,10 @@ export function registerBulkEmailRoutes(contactsRoutes: Hono<AppEnv>): void {
       }
     }
 
-    return c.json({ sent: result.rendered.length - failed.length, failed, items: result.rendered });
+    // DEC-949 amendment: the send response must never carry rendered bodies
+    // (they contain live claim tokens minted above) -- only the SPA-consumed
+    // counts. The preview handler below legitimately returns `items`.
+    return c.json({ sent: result.rendered.length - failed.length, failed });
   });
 
   /** CRM-11 (DEC-150): preview uses the exact same merge-field rendering

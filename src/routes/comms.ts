@@ -610,7 +610,10 @@ commsRoutes.post("/api/v1/events/:eventId/compose/send", requireOrganizer, csrfJ
     await bumpIcsSequences(c.var.db, input.submissionIds);
   }
 
-  return c.json({ sent: result.rendered.length - failed.length, failed, items: result.rendered });
+  // DEC-949 amendment: the send response must never carry rendered bodies
+  // (they contain live claim tokens minted above) -- only the SPA-consumed
+  // counts. Preview handlers legitimately return `items`; send never does.
+  return c.json({ sent: result.rendered.length - failed.length, failed });
 });
 
 // ---------------------------------------------------------------------------
