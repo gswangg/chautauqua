@@ -76,13 +76,18 @@ vi.mock("../src/server/repo/review", async () => {
     getUsersByIds: vi.fn(async (_db: unknown, userIds: string[]) =>
       userIds.map((id) => ({ userId: id, email: `${id}@example.com` })),
     ),
-    addReviewer: vi.fn(async (_db: unknown, planId: string, input: { userId: string; submissionId?: string | null }) => {
-      if (planId !== plan.id) throw new Error("unknown plan");
-      const row = { id: `new-${addedRows.length}`, planId, userId: input.userId, trackId: null, submissionId: input.submissionId ?? null };
-      addedRows.push({ userId: input.userId, submissionId: input.submissionId ?? null });
-      reviewerRows.push(row);
-      return row;
-    }),
+    addReviewers: vi.fn(
+      async (_db: unknown, planId: string, inputs: { userId: string; trackId?: string | null; submissionId?: string | null }[]) => {
+        if (planId !== plan.id) throw new Error("unknown plan");
+        const rows = inputs.map((input) => {
+          const row = { id: `new-${addedRows.length}`, planId, userId: input.userId, trackId: input.trackId ?? null, submissionId: input.submissionId ?? null };
+          addedRows.push({ userId: input.userId, submissionId: input.submissionId ?? null });
+          reviewerRows.push(row);
+          return row;
+        });
+        return rows;
+      },
+    ),
   };
 });
 

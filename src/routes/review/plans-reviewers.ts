@@ -107,11 +107,12 @@ reviewPlansReviewersRoutes.post("/api/v1/plans/:id/reviewers", requireOrganizer,
     }
   }
 
-  const created = await repo.addReviewer(c.var.db, plan.id, {
-    userId: body.userId,
-    trackId,
-    submissionId,
-  });
+  // DEC-924 (amendment, wave 47): addReviewer (singular) is retired -- the
+  // single-pair path routes through the same set-based addReviewers with a
+  // one-element array, keeping the wire contract (a single created object,
+  // not an array) unchanged.
+  const [created] = await repo.addReviewers(c.var.db, plan.id, [{ userId: body.userId, trackId, submissionId }]);
+  if (!created) throw new Error("addReviewers: insert did not persist");
   return c.json(created, 201);
 });
 

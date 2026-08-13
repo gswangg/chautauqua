@@ -57,11 +57,13 @@ vi.mock("../src/server/repo/review", async () => {
     findSubmissionIdByRefOrId: vi.fn(async (_db: unknown, eventId: string, input: string) =>
       eventId === planRecord.eventId && input !== "sub-cross-event" ? input : null,
     ),
-    addReviewer: vi.fn(async (_db: unknown, planId: string, input: unknown) => ({
-      id: "pr-new",
-      planId,
-      ...(input as Record<string, unknown>),
-    })),
+    addReviewers: vi.fn(async (_db: unknown, planId: string, inputs: unknown[]) =>
+      inputs.map((input) => ({
+        id: "pr-new",
+        planId,
+        ...(input as Record<string, unknown>),
+      })),
+    ),
   };
 });
 
@@ -102,7 +104,7 @@ describe("DEC-354: POST reviewers rejects foreign-event track/submission ids", (
     const body = (await res.json()) as { error: { code: string; fields?: Record<string, string> } };
     expect(body.error.code).toBe("invalid");
     expect(body.error.fields?.trackId).toBeDefined();
-    expect(vi.mocked(reviewRepo.addReviewer)).not.toHaveBeenCalled();
+    expect(vi.mocked(reviewRepo.addReviewers)).not.toHaveBeenCalled();
   });
 
   it("400s and writes no row for a submissionId from a different event", async () => {
@@ -114,7 +116,7 @@ describe("DEC-354: POST reviewers rejects foreign-event track/submission ids", (
     const body = (await res.json()) as { error: { code: string; fields?: Record<string, string> } };
     expect(body.error.code).toBe("invalid");
     expect(body.error.fields?.submissionId).toBeDefined();
-    expect(vi.mocked(reviewRepo.addReviewer)).not.toHaveBeenCalled();
+    expect(vi.mocked(reviewRepo.addReviewers)).not.toHaveBeenCalled();
   });
 
   it("succeeds and writes a row for a valid in-event trackId", async () => {
@@ -123,7 +125,7 @@ describe("DEC-354: POST reviewers rejects foreign-event track/submission ids", (
       { userId: "rev-1", trackId: "track-1" },
     );
     expect(res.status).toBe(201);
-    expect(vi.mocked(reviewRepo.addReviewer)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(reviewRepo.addReviewers)).toHaveBeenCalledTimes(1);
   });
 
   it("succeeds and writes a row for a valid in-event submissionId", async () => {
@@ -132,7 +134,7 @@ describe("DEC-354: POST reviewers rejects foreign-event track/submission ids", (
       { userId: "rev-1", submissionId: "sub-1" },
     );
     expect(res.status).toBe(201);
-    expect(vi.mocked(reviewRepo.addReviewer)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(reviewRepo.addReviewers)).toHaveBeenCalledTimes(1);
   });
 
   it("succeeds and writes a row with no trackId/submissionId (unrestricted assignment)", async () => {
@@ -141,7 +143,7 @@ describe("DEC-354: POST reviewers rejects foreign-event track/submission ids", (
       { userId: "rev-1" },
     );
     expect(res.status).toBe(201);
-    expect(vi.mocked(reviewRepo.addReviewer)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(reviewRepo.addReviewers)).toHaveBeenCalledTimes(1);
   });
 });
 
