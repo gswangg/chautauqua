@@ -3,12 +3,18 @@ import { useSearchParams } from 'react-router-dom';
 import { useCurrentEvent } from '../lib/useCurrentEvent';
 import { DelayedLoading } from '../components/DelayedLoading';
 import { apiList } from '../lib/api';
+import { useMutationVersion } from '../lib/mutationSignal';
+import { formatDate } from '../lib/dates';
 import { TemplatesTab } from './comms/TemplatesTab';
 import { ComposeWizard } from './comms/ComposeWizard';
 import { HistoryTab } from './comms/HistoryTab';
 import { RecentSends } from './comms/RecentSends';
-import type { EmailBatchRow } from './comms/types';
+import type { EmailBatchRow, EmailLogRow } from './comms/types';
 import './comms/comms.css';
+
+// DEC-905: the send rhythm the head states — "N sent in the last 7 days" —
+// windows on the wall-clock, not on the batches page under Compose.
+const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
 // DEC-751: Recent sends is capped to four rows under Compose so an
 // organiser composing a send can see what already went out (the context
@@ -47,22 +53,57 @@ export function CommsPage() {
   // the 700px media query in comms.css).
   const [phoneEntered, setPhoneEntered] = useState(false);
 
-  // DEC-751: fed by the same GET .../email-log?groupBy=batch call History
-  // uses; this mount is capped and read-only, so it fetches independently
-  // of HistoryTab (which mounts only while tab === 'history').
+  // DEC-700/DEC-905: every successful non-GET already bumps this counter in
+  // api.ts -- subscribing here means both the Recent Sends mount and the
+  // head's send-rhythm subtitle hold one current answer, refetched the
+  // moment a send succeeds rather than staying on whatever was true before
+  // the organizer's last action.
+  const mutationVersion = useMutationVersion();
+
+  // DEC-751/DEC-905: fed by the same GET .../email-log?groupBy=batch call
+  // History uses. Previously gated on tab === 'compose' so the head (which
+  // needs the latest batch's date for its subtitle) never saw it while on
+  // another tab -- the fetch now runs regardless of which tab is active.
   const [recentBatches, setRecentBatches] = useState<EmailBatchRow[]>([]);
+  const [batchesLoaded, setBatchesLoaded] = useState(false);
   useEffect(() => {
-    if (!eventId || tab !== 'compose') return;
+    if (!eventId) return;
     let cancelled = false;
     apiList<EmailBatchRow>(`/events/${eventId}/email-log?groupBy=batch`)
       .then((res) => {
-        if (!cancelled) setRecentBatches(res.items);
+        if (!cancelled) {
+          setRecentBatches(res.items);
+          setBatchesLoaded(true);
+        }
       })
       .catch(() => undefined);
     return () => {
       cancelled = true;
     };
-  }, [eventId, tab]);
+  }, [eventId, mutationVersion]);
+
+  // DEC-905: the head's "N sent in the last 7 days" reads its OWN request's
+  // envelope total under the new `since` filter -- never a sum over a page
+  // of batches, which would go wrong the moment the batch list is paginated
+  // or capped.
+  const [sentLast7Days, setSentLast7Days] = useState(0);
+  const [sentLast7DaysLoaded, setSentLast7DaysLoaded] = useState(false);
+  useEffect(() => {
+    if (!eventId) return;
+    let cancelled = false;
+    const since = Date.now() - SEVEN_DAYS_MS;
+    apiList<EmailLogRow>(`/events/${eventId}/email-log?since=${since}&perPage=1`)
+      .then((res) => {
+        if (!cancelled) {
+          setSentLast7Days(res.total);
+          setSentLast7DaysLoaded(true);
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [eventId, mutationVersion]);
 
   function goToHistory() {
     setSearchParams((prev) => {
@@ -105,6 +146,16 @@ export function CommsPage() {
         <div className="chq-comms-head">
           <div className="chq-comms-head-titles">
             <h1 className="chq-page-title">Comms</h1>
+            {/* DEC-905: states the send rhythm -- a count windowed on the
+                wall-clock (never a sum over a page of batches) plus the most
+                recent send's date, taken from the same all-time batch list
+                Recent Sends renders. */}
+            {sentLast7DaysLoaded && batchesLoaded && (
+              <p className="chq-comms-head-subtitle">
+                {sentLast7Days} sent in the last 7 days
+                {recentBatches[0] ? ` · last ${formatDate(recentBatches[0].sentAt)}` : ''}
+              </p>
+            )}
           </div>
           <div className="chq-comms-head-actions" role="tablist">
             {TABS.map((t) => (

@@ -32,6 +32,14 @@
   flex-wrap: wrap;
 }
 
+/* DEC-905: the head's send-rhythm subtitle ("N sent in the last 7 days ·
+   last <date>"), sitting on the title's baseline. */
+.chq-comms-head-subtitle {
+  margin: 0;
+  font-size: 13px;
+  color: var(--chq-muted);
+}
+
 .chq-comms-head-actions {
   display: flex;
   gap: 9px;
@@ -263,13 +271,36 @@
 /* Recent sends / history                                                 */
 /* ---------------------------------------------------------------------- */
 
+/* DEC-905 nit: History's search box defaulted to the browser's intrinsic
+   <input type=search> width (~20ch) inside a flex .chq-toolbar that never
+   stretched it -- widened to the frame's own measure (the shared
+   --chq-measure token every page's content column uses) instead of a
+   bespoke pixel value. */
+.chq-comms-history-search {
+  width: 100%;
+  max-width: var(--chq-measure);
+}
+
+/* DEC-905 nit: BatchRecipients (RecentSends.tsx) renders five children --
+   when / subject / email / status / disclosure -- but this grid only ever
+   declared four column tracks, so the 5th (the "Show what was sent"
+   disclosure) rode inside the 4th (status) track and overlapped its text.
+   One explicit track per child, with the email cell given a min-width so a
+   long address truncates instead of colliding with status. */
 .chq-comms-history-row {
   display: grid;
-  grid-template-columns: 150px 1fr 130px 150px auto;
+  grid-template-columns: 150px 1fr minmax(0, 170px) 130px auto;
   gap: 18px;
   align-items: baseline;
   padding: 13px 0;
   border-bottom: 1px solid var(--chq-hairline);
+}
+
+.chq-comms-history-row > span:nth-child(3) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .chq-comms-history-when {
