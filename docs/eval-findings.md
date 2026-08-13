@@ -208,13 +208,16 @@ explicit CFP publish affordance · close-before-open validation loud at the fiel
 RULE: a capability ships working-and-tested or not at all; half-built scores worse
 than absent.)
 
-**#1 HIGHEST LEVERAGE — agenda click-to-place is BUILT but UNDISCOVERABLE**: the
-only hint reads "Drag to a slot · drag back to unschedule" (UnscheduledTray.tsx:76)
-and cells become buttons only after arming — BOTH sbek runs failed manual placement
-(AIA-03 w3 partial; AIA-04 w3 + AIA-06 w2 cannot_judge = 8/18 of the area's item
-weight) while our probes, told where to click, succeeded. Fix: hint copy names the
-click path ("Click a card, then click a slot…"); consider a visible affordance on
-cells pre-arm. [being shipped via manual-qa]
+**#1 click-to-place discoverability — SHIPPED (manual-qa 44da4e0)**: tray hint now
+names the click path; selectable tray cards state "click to select, then choose a
+time slot" in their accessible name (what a11y-tree agents read). Tests added
+(PlacementAffordance.render.test.tsx). Probe 3 re-verifies via a11y snapshot.
+
+**FLAKY TEST ON MAIN (train hazard — fix soon)**: MergePage.render.test.tsx
+(DEC-748 struck-empty/Labels/pair-counter test) is ORDER-DEPENDENT — passes alone,
+fails in the full app run (1/792). Likely leaked DOM or mock state from another
+test file (missing cleanup()). A flaky red randomly breaks merge-train validation —
+root-cause the pollution, don't just retry.
 
 **S-tier (compose from existing patterns — no new design):**
 - DaySwitcher → ?day= links (agenda.tsx:244; parseDay already wired end-to-end;
