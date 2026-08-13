@@ -54,6 +54,21 @@ function brandingSummary(form: EventSettingsForm): string {
   return parts.length > 0 ? parts.join(' · ') : 'Not set';
 }
 
+// DEC-996 amendment (wave 43): mail configuration is a first-class READ,
+// surfaced here so a missing key is discoverable in Settings rather than
+// only as a 500 when a speaker submits.
+interface MailStatus {
+  provider: 'dev-sink' | 'resend' | 'none';
+  configured: boolean;
+  fromEmail: string | null;
+}
+
+function mailStatusSummary(status: MailStatus): string {
+  if (status.provider === 'dev-sink') return 'Dev mailbox (/dev/mailbox)';
+  if (status.configured && status.fromEmail) return `Sending as ${status.fromEmail}`;
+  return 'NOT CONFIGURED — sends will fail';
+}
+
 export function EventSettingsPanel() {
   const { eventId, loading: eventLoading, error: eventError } = useCurrentEvent();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -64,6 +79,7 @@ export function EventSettingsPanel() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [unscheduledNotice, setUnscheduledNotice] = useState<EventDetail['unscheduledByWindow'] | null>(null);
+  const [mailStatus, setMailStatus] = useState<MailStatus | null>(null);
 
   useEffect(() => {
     if (!eventId) return;
@@ -75,6 +91,12 @@ export function EventSettingsPanel() {
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load event'));
   }, [eventId]);
+
+  useEffect(() => {
+    apiGet<MailStatus>('/mail-status')
+      .then((status) => setMailStatus(status))
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load mail status'));
+  }, []);
 
   function update<K extends keyof EventSettingsForm>(key: K, value: EventSettingsForm[K]) {
     setForm((prev) => (prev ? { ...prev, [key]: value } : prev));
@@ -132,6 +154,7 @@ export function EventSettingsPanel() {
         { label: 'Venue', value: form.location || 'Not set' },
         { label: 'Record prefix', value: form.recordPrefix },
         { label: 'Branding', value: brandingSummary(form) },
+        ...(mailStatus ? [{ label: 'Email', value: mailStatusSummary(mailStatus) }] : []),
       ]
     : [];
 
