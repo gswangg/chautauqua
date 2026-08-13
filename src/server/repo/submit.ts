@@ -64,6 +64,13 @@ export interface EventRow {
   recordPrefix: string;
   timezone: string;
   brandingJson: string | null;
+  // DEC-986 (wave 40 amendment): the public CFP header's date·venue
+  // eyebrow is built from these three -- same columns PublicEvent
+  // (src/server/repo/public/event.ts) already exposes for the sessions/
+  // speakers/agenda header.
+  startDate: string;
+  endDate: string;
+  location: string | null;
 }
 
 export interface FormRow {
@@ -93,6 +100,9 @@ export async function getEventBySlug(db: Db, slug: string): Promise<EventRow | n
     recordPrefix: row.recordPrefix,
     timezone: row.timezone,
     brandingJson: row.brandingJson,
+    startDate: row.startDate,
+    endDate: row.endDate,
+    location: row.location,
   };
 }
 

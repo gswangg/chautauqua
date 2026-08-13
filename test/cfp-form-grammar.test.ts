@@ -115,12 +115,14 @@ describe("GET /submit/:eventSlug form grammar (DEC-951)", () => {
       expect(text).not.toContain("*");
     }
 
-    // (b) exactly one <h1>
+    // (b) exactly one <h1> -- DEC-986 (wave 40 amendment): the full-bleed
+    // header carries no <h1> of its own any more (event name lives in a
+    // <span class="chq-cfp-title">); the page's one <h1> is the literal
+    // "Submit a talk" heading above the form, inside the reading column.
     const h1Matches = body.match(/<h1[\s>]/g) ?? [];
     expect(h1Matches.length).toBe(1);
-    expect(body).toContain(`<h1 class="chq-cfp-title">${FORM_ROW.title}</h1>`);
-    // the intro's second heading is gone, but its lede paragraph survives
-    expect(body).not.toContain("<h1>Submit a talk</h1>");
+    expect(body).toContain("<h1>Submit a talk</h1>");
+    expect(body).toContain(`<span class="chq-cfp-title">${EVENT_ROW.name}</span>`);
     expect(body).toContain("Already have an account?");
 
     // (c) track inputs are type=radio named trackIds (DEC-986: the public

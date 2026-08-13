@@ -71,7 +71,11 @@ export function validateTrackChoice(
     return { ok: true };
   }
   if (selectedTrackIds.length === 0) {
-    return { ok: false, error: "Select at least one track." };
+    // DEC-986 (wave 40 amendment): the public CFP picks ONE track via a
+    // radio group, so "at least one" reads oddly there -- "Select a track"
+    // is the shared copy for both the single-choice public form and the
+    // multi-select portal edit checkbox group.
+    return { ok: false, error: "Select a track" };
   }
   return { ok: true };
 }

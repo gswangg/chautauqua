@@ -14,17 +14,18 @@ void DEC_373;
 void DEC_374;
 
 export const CFP_CSS = `
-  /* 660-760px measure for the form body (DEC-367/design frames: 660px
-     inner column on the 900px desktop frame). */
-  .chq-cfp-shell { margin: 0 auto; background: var(--chq-surface); border: 1px solid var(--chq-rule); }
-  /* DEC-371: --chq-brandable-accent is the only per-event recolour hook --
-     it never repoints --chq-brand/--chq-ink or button colours, so a
-     thin top rule on the header is the only place the CFP page recolours
-     with the event's accent (DEC-374: the value itself lives on <body>,
-     validated by the caller, not interpolated into this file). */
+  /* DEC-986 (wave 40 amendment): chrome is never constrained -- the header
+     below is a sibling of PageShell's <main class="chq-measure">, so it
+     spans the true viewport width with its own padding rather than the
+     reading column's measure. DEC-371: --chq-brandable-accent is the only
+     per-event recolour hook -- it never repoints --chq-brand/--chq-ink or
+     button colours, so a thin top rule on the header is the only place the
+     CFP page recolours with the event's accent (DEC-374: the value itself
+     lives on <body>, validated by the caller, not interpolated into this
+     file). */
   .chq-cfp-header { border-top: 3px solid var(--chq-brandable-accent); border-bottom: 1px solid var(--chq-ink); padding: 26px 44px 20px; display: flex; flex-direction: column; gap: 7px; }
   .chq-cfp-meta { font-size: 11px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--chq-muted); }
-  .chq-cfp-title { font-family: var(--chq-font-display); font-size: 32px; font-weight: 700; letter-spacing: -0.04em; line-height: 1.2; margin: 0; }
+  .chq-cfp-title { font-family: var(--chq-font-display); font-size: 32px; font-weight: 700; letter-spacing: -0.04em; line-height: 1.2; margin: 0; display: flex; align-items: center; gap: 10px; }
   .chq-cfp-sub { font-size: 15px; color: var(--chq-ink-2); }
   .chq-cfp-body { padding: 28px 44px 40px; display: flex; flex-direction: column; gap: 30px; }
   .chq-cfp-intro { display: flex; flex-direction: column; gap: 11px; max-width: 62ch; }
@@ -32,6 +33,30 @@ export const CFP_CSS = `
   .chq-cfp-intro p { margin: 0; font-size: 16px; line-height: 1.7; color: var(--chq-ink-2); }
   .chq-cfp-section-label { font-family: var(--chq-font-display); font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; border-bottom: 2px solid var(--chq-ink); padding-bottom: 8px; }
   .chq-cfp-fields { padding: 18px 0 0; display: flex; flex-direction: column; gap: 20px; max-width: 760px; min-width: 0; }
+
+  /* DEC-986 (wave 40 amendment): Track and Format sit side by side right
+     under the abstract. A field offered alone (no tracks, or no format
+     field on this form) still occupies its own grid cell -- the grid never
+     collapses to one column, matching every other 2-up row on this
+     surface. */
+  .chq-cfp-track-format-row { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: start; }
+
+  /* DEC-986 (wave 40 amendment): the YOU section pairs Name|Email, then
+     Company|Job title, then Bio full-width. .chq-cfp-you-names is itself
+     ONE grid cell holding the two locked name fields side by side (DEC-986
+     defers collapsing first/last name into one control -- this is a layout
+     pairing only, the two inputs stay two FormFieldDefs). */
+  .chq-cfp-you-grid.chq-cfp-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .chq-cfp-you-names { display: flex; gap: 12px; min-width: 0; }
+  .chq-cfp-you-names .chq-field { flex: 1; min-width: 0; }
+  .chq-cfp-you-bio { grid-column: 1 / -1; }
+
+  /* DEC-986 (wave 40 amendment): the Audience-level three-pill segment --
+     reuses .chq-cfp-option's border/label chrome (below) but lays the
+     options out in a row instead of TrackChoices'/FormatChoices' column,
+     each pill sized to its own content rather than stretching full width. */
+  .chq-cfp-segment { display: flex; flex-direction: row; flex-wrap: wrap; gap: 8px; }
+  .chq-cfp-option.chq-cfp-pill { width: auto; border-radius: 99px; min-height: 44px; }
 
   /* form-render.tsx's shared FormField output (used by both this CFP page
      and the portal edit forms): .chq-field wraps each labeled control,
@@ -107,5 +132,8 @@ export const CFP_CSS = `
 
   @media (max-width: 700px) {
     .chq-cfp-header, .chq-cfp-body { padding-left: 16px; padding-right: 16px; }
+    .chq-cfp-track-format-row,
+    .chq-cfp-you-grid.chq-cfp-fields { grid-template-columns: 1fr; }
+    .chq-cfp-you-names { flex-direction: column; }
   }
 `;

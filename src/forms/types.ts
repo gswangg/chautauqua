@@ -66,6 +66,14 @@ const ALL_LOCKED_NAMES = new Set<string>([...LOCKED_SESSION_FIELDS, ...LOCKED_SP
 // drift apart on the string.
 export const SESSION_FORMAT_FIELD_ID = "field_session_format";
 
+// DEC-986 (wave 40 amendment): same pattern as SESSION_FORMAT_FIELD_ID above
+// -- the seed's "Audience level" dropdown field id, named here so the public
+// CFP's excludeIds pull-out (submit-views.tsx) and the seed can't drift
+// apart on the string. Not a locked field; an event whose audience-level
+// field carries a different id (hand-added via the builder) simply falls
+// back to the generic <select> rendering.
+export const AUDIENCE_LEVEL_FIELD_ID = "field_audience_level";
+
 // DEC-050: locked form_field rows get a per-form PK (`${formId}:${name}`)
 // so a second event's default form doesn't collide with the first event's
 // (formField.id is a global PK). lockedFieldId mints that PK for new rows;

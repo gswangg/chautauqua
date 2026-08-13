@@ -5,6 +5,7 @@
 // progressive enhancement only, never the source of truth.
 
 import type { FormFieldDef, AnswerMap } from "../forms/types";
+import { lockedFieldName } from "../forms/types";
 import { ALLOWED_UPLOAD_EXTENSIONS, uploadHintText } from "../domain/files";
 import { RULE_MATCH_JS } from "../forms/rule-match";
 import { MAX_LONG_TEXT_LENGTH } from "../forms/validate";
@@ -25,9 +26,11 @@ function FieldControl(props: { field: FormFieldDef; value: unknown }) {
   const name = fieldInputName(field.id);
   switch (field.kind) {
     case "text":
+      // DEC-986 (wave 40 amendment): the locked email field gets a real
+      // type="email" control -- every other text field stays type="text".
       return (
         <input
-          type="text"
+          type={lockedFieldName(field.id) === "email" ? "email" : "text"}
           class="chq-input"
           id={name}
           name={name}
@@ -38,6 +41,10 @@ function FieldControl(props: { field: FormFieldDef; value: unknown }) {
         />
       );
     case "long_text":
+      // DEC-986 (wave 40 amendment): the locked Abstract field (the
+      // "description" built-in) gets ~5 rows so it reads as a real
+      // multi-line composer, not a one-liner -- every other long_text
+      // field keeps the browser's default textarea sizing.
       return (
         <textarea
           class="chq-textarea"
@@ -46,6 +53,7 @@ function FieldControl(props: { field: FormFieldDef; value: unknown }) {
           data-field-id={field.id}
           required={field.required}
           data-required={field.required ? "true" : "false"}
+          rows={lockedFieldName(field.id) === "description" ? 5 : undefined}
         >
           {typeof value === "string" ? value : ""}
         </textarea>

@@ -194,7 +194,7 @@ describe("validateTrackChoice", () => {
 
   it("DEC-301: still rejects an empty selection when tracks are offered", () => {
     const result = validateTrackChoice([], available);
-    expect(result).toEqual({ ok: false, error: "Select at least one track." });
+    expect(result).toEqual({ ok: false, error: "Select a track" });
   });
 
   it("DEC-301: unknown-track rejection is unchanged", () => {
