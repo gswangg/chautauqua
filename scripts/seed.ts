@@ -19,6 +19,7 @@ import { getTableName, isTable } from "drizzle-orm";
 import { hashPassword } from "../src/auth/password";
 import { MERGE_FIELDS } from "../src/mail/render";
 import { DEFAULT_ONBOARDING_TASKS, FORM_TASK_FIELD_SPECS } from "../src/domain/acceptance";
+import type { FormTaskFieldKind } from "../src/domain/acceptance";
 import { SESSION_FORMAT_FIELD_ID } from "../src/forms/types";
 import * as schema from "../src/db/schema";
 import {
@@ -807,6 +808,8 @@ async function main(): Promise<void> {
   const baseStatuses = additionalSubmissionStatuses(additionalCount);
   const bumpToAccepted = new Set([0, 1, 2]);
   const statuses = baseStatuses.map((s, i) => (bumpToAccepted.has(i) ? "accepted" : s));
+  // Captured for the DEC-739 comms fan-out batch below.
+  const synthContacts: { contactId: string; email: string }[] = [];
   for (let i = 0; i < additionalCount; i++) {
     const { first, last } = synthName(i);
     const email = `${first.toLowerCase()}.${last.toLowerCase().replace(/[^a-z]/g, "")}@example-speakers.test`;
@@ -853,7 +856,27 @@ async function main(): Promise<void> {
       titleAtTime: "Software Engineer",
       orgAtTime: company,
     });
+    synthContacts.push({ contactId, email });
   }
+
+  // --- contact Labels (task w2-c/DEC-739): custom_fields_json drives the
+  // Labels column ('role speaker · year 2027'-style rendering). Speaker
+  // contacts carry role+year; one contact carries a lone 'reviewer' role
+  // (single key, so the '·' join isn't exercised there); a handful of
+  // synthetic contacts carry a second key too, so multi-key rendering isn't
+  // a one-off; several contacts are left with the default NULL so the '—'
+  // path stays real.
+  function setContactCustomFields(contactId: string, fields: Record<string, string>): void {
+    statements.push(
+      `UPDATE contact SET "custom_fields_json" = ${sqlQuote(JSON.stringify(fields))} WHERE "id" = ${sqlQuote(contactId)};`,
+    );
+  }
+  setContactCustomFields(speakerContactId, { role: "speaker", year: "2027" });
+  setContactCustomFields(speaker2ContactId, { role: "speaker", year: "2027" });
+  setContactCustomFields(priyaDupContactId, { role: "reviewer" });
+  setContactCustomFields(synthContacts[4]!.contactId, { role: "speaker", year: "2027" });
+  setContactCustomFields(synthContacts[9]!.contactId, { role: "speaker", year: "2026" });
+  setContactCustomFields(synthContacts[14]!.contactId, { role: "speaker", year: "2027" });
 
   // --- evaluation plan (DEC-018): 5-point scale, two weighted rating
   // criteria + one dropdown criterion; plan_reviewer scopes the reviewer
@@ -1111,9 +1134,7 @@ async function main(): Promise<void> {
 
   // --- onboarding tasks (DEC-009/DEC-023): the 5 canonical default tasks,
   // staggered due dates before the event start, assigned to every accepted
-  // speaker's contact in mixed pending/complete states. Never reference
-  // response_json/file_id/last_reminded_at (wave-3 columns, migration
-  // 0002-pending per DEC-017) so this seed works pre- or post-migration.
+  // speaker's contact in mixed pending/complete states.
   // DEC-591: task due dates are SEED_NOW offsets (not event-start-relative)
   // so the onboarding grid always shows a mix of past-due and upcoming work
   // regardless of when the seed is run — exactly 3 of the 5 default tasks
@@ -1141,6 +1162,14 @@ async function main(): Promise<void> {
   // src/server/repo/submissions/status.ts's getOrCreateFormTaskForm — the
   // seed bypasses that repo helper, so it must replicate its shape here.
   let taskFormCounter = 0;
+  // DEC-739: the ids/kind/options minted for each form-kind task's fields,
+  // keyed by taskId, so a completed task_assignment's response_json can be
+  // built with EXACTLY the same field ids the organiser's response modal
+  // joins answers by (never re-derived independently).
+  const taskFormFieldsByTaskId = new Map<
+    string,
+    Array<{ id: string; kind: FormTaskFieldKind; options: string[] | null }>
+  >();
   const taskIds = DEFAULT_ONBOARDING_TASKS.map((tpl, i) => {
     const taskId = seedId("task", i + 1);
     let taskFormId: string | null = null;
@@ -1160,10 +1189,13 @@ async function main(): Promise<void> {
         }),
       );
       const specs = FORM_TASK_FIELD_SPECS[tpl.title] ?? [];
+      const mintedFields: Array<{ id: string; kind: FormTaskFieldKind; options: string[] | null }> = [];
       specs.forEach((spec, fieldIdx) => {
+        const fieldId = seedId(`task_form_${taskFormCounter}_field`, fieldIdx + 1);
+        mintedFields.push({ id: fieldId, kind: spec.kind, options: spec.options ?? null });
         statements.push(
           insertStmt("form_field", {
-            id: seedId(`task_form_${taskFormCounter}_field`, fieldIdx + 1),
+            id: fieldId,
             form_id: taskFormId,
             section: spec.section,
             kind: spec.kind,
@@ -1179,6 +1211,7 @@ async function main(): Promise<void> {
           }),
         );
       });
+      taskFormFieldsByTaskId.set(taskId, mintedFields);
     }
     // DEC-240 (task w1-d): the sole file_request default task ("Finalize
     // bio + headshot") gets deliverable_kind 'presentation' so its uploads
@@ -1210,10 +1243,86 @@ async function main(): Promise<void> {
     return taskId;
   });
 
+  // DEC-739: plausible per-kind values for a completed form-kind task's
+  // response_json, keyed by field id (never sampled — every field the task's
+  // form actually carries gets a real answer, so the organiser's response
+  // modal never renders an em-dash for a field it can join by id).
+  function plausibleFormFieldValue(
+    field: { kind: FormTaskFieldKind; options: string[] | null },
+    variant: number,
+  ): string | number | boolean {
+    switch (field.kind) {
+      case "dropdown": {
+        const options = field.options ?? [];
+        if (options.length === 0) {
+          throw new Error("plausibleFormFieldValue: dropdown field has no options");
+        }
+        return options[variant % options.length]!;
+      }
+      case "text":
+        return variant % 2 === 0 ? "SFO" : "May 11, 2027";
+      case "long_text":
+        return "Aisle seat if possible, and please let me know the AV setup ahead of time.";
+      case "number":
+        return 250 + variant * 25;
+      case "checkbox":
+        return variant % 2 === 0;
+      default: {
+        const exhaustive: never = field.kind;
+        throw new Error(`plausibleFormFieldValue: unhandled field kind ${String(exhaustive)}`);
+      }
+    }
+  }
+
+  function buildFormTaskResponse(taskId: string, variant: number): Record<string, string | number | boolean> {
+    const fields = taskFormFieldsByTaskId.get(taskId);
+    if (!fields || fields.length === 0) {
+      throw new Error(`buildFormTaskResponse: no form fields minted for task ${taskId}`);
+    }
+    const response: Record<string, string | number | boolean> = {};
+    for (const field of fields) {
+      response[field.id] = plausibleFormFieldValue(field, variant);
+    }
+    return response;
+  }
+
+  // DEC-739: every complete file_request assignment gets a real file_id — a
+  // completed upload task with nothing attached is the same lie as an empty
+  // response_json. One deliverable file per (contact, file_request task)
+  // pair, minted lazily so it lands right before the task_assignment row
+  // that references it.
+  let taskFileCounter = 0;
+  function mintTaskDeliverableFile(opts: {
+    contactId: string;
+    submissionId: string;
+    deliverableKind: string | null;
+  }): string {
+    taskFileCounter += 1;
+    const fileId = seedId("task_file", taskFileCounter);
+    const r2Key = `sub/${opts.submissionId}/${fileId}-onboarding-deliverable.pdf`;
+    statements.push(
+      insertStmt("file", {
+        id: fileId,
+        submission_id: opts.submissionId,
+        kind: opts.deliverableKind ?? "presentation",
+        filename: "onboarding-deliverable.pdf",
+        r2_key: r2Key,
+        size_bytes: registerPdfAsset(r2Key),
+        content_type: "application/pdf",
+        previous_file_id: null,
+        uploaded_by_contact_id: opts.contactId,
+        created_at: nextTs(),
+        updated_at: ts,
+      }),
+    );
+    return fileId;
+  }
+
   let taskAssignmentCounter = 0;
   acceptedSubmissions.forEach((acc, contactIdx) => {
     taskIds.forEach((taskId, taskIdx) => {
       taskAssignmentCounter += 1;
+      const tpl = DEFAULT_ONBOARDING_TASKS[taskIdx]!;
       // Roughly two-thirds complete, one-third still pending, mixed per
       // contact/task so the grid shows a realistic in-progress state.
       // DEC-174: force contactIdx 0 / taskIdx 4 ("Announce participation",
@@ -1223,6 +1332,21 @@ async function main(): Promise<void> {
       // keep the original formula (this does not disturb DEC-172's pin of
       // seed_task_assignment_0001 = contactIdx 0/taskIdx 0, already pending).
       const isComplete = contactIdx === 0 && taskIdx === 4 ? false : (contactIdx + taskIdx) % 3 !== 0;
+
+      // DEC-739: a complete form-kind assignment carries a response_json
+      // keyed by exactly this task's minted form-field ids; a complete
+      // file_request assignment carries a real file_id.
+      const responseJson =
+        isComplete && tpl.kind === "form" ? JSON.stringify(buildFormTaskResponse(taskId, contactIdx + taskIdx)) : null;
+      const fileId =
+        isComplete && tpl.kind === "file_request"
+          ? mintTaskDeliverableFile({
+              contactId: acc.contactId,
+              submissionId: acc.submissionId,
+              deliverableKind: tpl.kind === "file_request" ? "presentation" : null,
+            })
+          : null;
+
       statements.push(
         insertStmt("task_assignment", {
           id: seedId("task_assignment", taskAssignmentCounter),
@@ -1231,6 +1355,9 @@ async function main(): Promise<void> {
           status: isComplete ? "complete" : "pending",
           completed_at: isComplete ? nextTs() : null,
           completed_by: isComplete ? organizerUserId : null,
+          response_json: responseJson,
+          file_id: fileId,
+          last_reminded_at: null,
           created_at: nextTs(),
           updated_at: ts,
         }),
@@ -1658,6 +1785,75 @@ async function main(): Promise<void> {
     }),
   );
 
+  // --- 4 more email_template rows (task w2-d, DEC-739): decline, schedule
+  // confirmation, content reminder, final logistics. Every {merge_field}
+  // token used below is validated against the DEC-006 MERGE_FIELDS
+  // whitelist rather than hand-checked per template, so a typo'd token
+  // fails the seed run loudly instead of shipping a broken placeholder.
+  function assertOnlyWhitelistedMergeFields(text: string): void {
+    for (const m of text.matchAll(/\{(\w+)\}/g)) {
+      const field = m[1]!;
+      if (!(MERGE_FIELDS as readonly string[]).includes(field)) {
+        throw new Error(`merge field '${field}' is not in the DEC-006 whitelist`);
+      }
+    }
+  }
+  // Bodies deliberately use a literal space (never a real "\n" newline
+  // character) between sentences — seed.ts writes one statement per output
+  // line, and a raw newline embedded in a quoted value would split an
+  // INSERT across lines, breaking every line-anchored tool (grep, and this
+  // test file's own per-line SQL parser) that assumes one statement/line.
+  const ADDITIONAL_EMAIL_TEMPLATES: Array<{ name: string; subject: string; bodyText: string }> = [
+    {
+      name: "Decline Notification",
+      subject: "Update on your submission to {event_name}",
+      bodyText:
+        "Hi {speaker_name}, thank you for submitting \"{talk_title}\" to {event_name}. After careful review, " +
+        "we're not able to include it in this year's program. We hope you'll consider submitting again next time. " +
+        "Thank you, The {event_name} Team",
+    },
+    {
+      name: "Schedule Confirmation",
+      subject: "Your session is scheduled — {event_name}",
+      bodyText:
+        "Hi {speaker_name}, your session \"{talk_title}\" is now scheduled for {event_name}. You can view the " +
+        "full details, including room and time, in your speaker portal: {portal_link}. See you there!",
+    },
+    {
+      name: "Content Reminder",
+      subject: "Reminder: {task_list} due {due_date}",
+      bodyText:
+        "Hi {speaker_name}, this is a friendly reminder that the following onboarding tasks are due " +
+        "{due_date}: {task_list}. Please complete them via the speaker portal: {portal_link}. Thanks!",
+    },
+    {
+      name: "Final Logistics",
+      subject: "Final logistics for {event_name}",
+      bodyText:
+        "Hi {speaker_name}, as {event_name} approaches, here's everything you need for the big day: parking, " +
+        "AV setup, and check-in instructions are all in your speaker portal: {portal_link}. See you soon!",
+    },
+  ];
+  const additionalTemplateIds = ADDITIONAL_EMAIL_TEMPLATES.map((tpl, i) => {
+    assertOnlyWhitelistedMergeFields(tpl.subject);
+    assertOnlyWhitelistedMergeFields(tpl.bodyText);
+    const templateId = seedId("email_template", 2 + i);
+    statements.push(
+      insertStmt("email_template", {
+        id: templateId,
+        event_id: eventId,
+        name: tpl.name,
+        subject: tpl.subject,
+        body_text: tpl.bodyText,
+        body_html: null,
+        created_at: nextTs(),
+        updated_at: ts,
+      }),
+    );
+    return templateId;
+  });
+  const contentReminderTemplateId = additionalTemplateIds[2]!; // "Content Reminder"
+
   // --- email log (dev sink history, DEC-006): a few 'sent' acceptance
   // notifications so Comms history renders with real rows.
   acceptedSubmissions.slice(0, 3).forEach((acc, i) => {
@@ -1676,6 +1872,51 @@ async function main(): Promise<void> {
         provider: "dev",
         status: "sent",
         sent_at: nextTs(),
+        created_at: ts,
+      }),
+    );
+  });
+
+  // --- comms fan-out batch (task w2-d, DEC-739): ~23 recipients sharing ONE
+  // batch_id, same subject/sent_at cluster, so the Comms batch row's status
+  // tally is non-trivial (mostly 'sent', a couple 'failed'). Recipients are
+  // every accepted-submission contact plus as many synthetic contacts as
+  // needed, deduped by contact id.
+  const emailBatchId = seedId("email_batch", 1);
+  const batchRecipientMap = new Map<string, { contactId: string; email: string }>();
+  for (const acc of acceptedSubmissions) {
+    batchRecipientMap.set(acc.contactId, { contactId: acc.contactId, email: acc.email });
+  }
+  for (const c of synthContacts) {
+    batchRecipientMap.set(c.contactId, c);
+  }
+  const BATCH_SIZE = 23;
+  const batchRecipients = [...batchRecipientMap.values()].slice(0, BATCH_SIZE);
+  if (batchRecipients.length < 20) {
+    throw new Error(
+      `seed: comms fan-out batch needs >=20 recipients to seed a non-trivial batch, got ${batchRecipients.length}`,
+    );
+  }
+  const contentReminderTemplate = ADDITIONAL_EMAIL_TEMPLATES[2]!;
+  const batchSentAt = nextTs();
+  const FAILED_BATCH_INDEXES = new Set([3, 17]);
+  batchRecipients.forEach((r, i) => {
+    statements.push(
+      insertStmt("email_log", {
+        id: seedId("email_log", 4 + i),
+        event_id: eventId,
+        template_id: contentReminderTemplateId,
+        contact_id: r.contactId,
+        batch_id: emailBatchId,
+        to_email: r.email,
+        subject: contentReminderTemplate.subject,
+        body_text: contentReminderTemplate.bodyText,
+        body_html: null,
+        ics_text: null,
+        ics_filename: null,
+        provider: "dev",
+        status: FAILED_BATCH_INDEXES.has(i) ? "failed" : "sent",
+        sent_at: batchSentAt,
         created_at: ts,
       }),
     );
