@@ -102,8 +102,8 @@ describe('CallForPapersPanel', () => {
     await waitFor(() => {
       expect(within(section).getByDisplayValue('Tell us about your talk.')).toBeInTheDocument();
     });
-    expect(within(section).getByDisplayValue('2026-01-01')).toBeInTheDocument();
-    expect(within(section).getByDisplayValue('2026-02-01')).toBeInTheDocument();
+    expect(within(section).getByDisplayValue('1 Jan 2026')).toBeInTheDocument();
+    expect(within(section).getByDisplayValue('1 Feb 2026')).toBeInTheDocument();
     expect(within(section).getByText('Closed')).toBeInTheDocument();
     const keynotes = within(section).getByRole('button', { name: 'Keynotes' });
     expect(keynotes).toHaveAttribute('aria-pressed', 'true');

@@ -75,7 +75,8 @@ describe('EventSettingsPanel unscheduled-by-window notice (DEC-844)', () => {
     renderPanel();
 
     const endDateInput = await screen.findByLabelText('End date');
-    fireEvent.change(endDateInput, { target: { value: '2026-06-05' } });
+    fireEvent.change(endDateInput, { target: { value: '5 Jun 2026' } });
+    fireEvent.blur(endDateInput);
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
     const notice = await screen.findByRole('status');

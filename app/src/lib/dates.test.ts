@@ -6,9 +6,11 @@ import {
   formatDateOnly,
   formatDateTime,
   formatDateTimeInZone,
+  formatDayInput,
   formatDayLabel,
   formatRelative,
   msToDateInput,
+  parseDayInput,
 } from './dates';
 import { dayLabelEndInstant } from '../../../src/lib/timezone';
 
@@ -198,5 +200,57 @@ describe('formatDateTimeInZone', () => {
   it('formats a fixed instant in a given IANA zone', () => {
     const iso = '2026-01-15T13:30:00.000Z';
     expect(formatDateTimeInZone(iso, 'America/Los_Angeles')).toBe('15 Jan 2026, 05:30');
+  });
+});
+
+describe('formatDayInput (DEC-146 amendment)', () => {
+  it('formats a yyyy-mm-dd string as "D Mon YYYY"', () => {
+    expect(formatDayInput('2028-05-11')).toBe('11 May 2028');
+  });
+
+  it('returns empty string for empty input', () => {
+    expect(formatDayInput('')).toBe('');
+  });
+
+  it('returns empty string for an invalid calendar date', () => {
+    expect(formatDayInput('2028-02-30')).toBe('');
+  });
+
+  it('returns empty string for a malformed string', () => {
+    expect(formatDayInput('05/11/2028')).toBe('');
+  });
+});
+
+describe('parseDayInput (DEC-146 amendment)', () => {
+  it('parses "11 May 2028"', () => {
+    expect(parseDayInput('11 May 2028')).toBe('2028-05-11');
+  });
+
+  it('parses "11 may 2028" (lowercase month)', () => {
+    expect(parseDayInput('11 may 2028')).toBe('2028-05-11');
+  });
+
+  it('parses "2028-05-11" (the wire format itself)', () => {
+    expect(parseDayInput('2028-05-11')).toBe('2028-05-11');
+  });
+
+  it('rejects an empty string', () => {
+    expect(parseDayInput('')).toBeNull();
+  });
+
+  it('rejects garbage text', () => {
+    expect(parseDayInput('not a date')).toBeNull();
+  });
+
+  it('rejects a US-locale slash format', () => {
+    expect(parseDayInput('05/11/2028')).toBeNull();
+  });
+
+  it('rejects an out-of-range calendar date', () => {
+    expect(parseDayInput('30 Feb 2028')).toBeNull();
+  });
+
+  it('rejects an unknown month name', () => {
+    expect(parseDayInput('11 Zzz 2028')).toBeNull();
   });
 });

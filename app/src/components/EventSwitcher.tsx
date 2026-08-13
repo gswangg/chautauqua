@@ -10,6 +10,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { apiList, apiPost, ApiError } from '../lib/api';
 import { useMenu } from '../lib/useMenu';
 import { useMe } from '../lib/useMe';
+import { DateField } from './DateField';
 import { FormRow, FormRowPair, ModalFrame } from './ModalFrame';
 import {
   buildNewEventPayload,
@@ -119,24 +120,18 @@ function NewEventModal({ onCancel, onCreated }: { onCancel: () => void; onCreate
           what makes close-before-open validation legible. */}
       <FormRowPair>
         <FormRow label="Starts" htmlFor="new-event-start" error={errors.startDate}>
-          <input
+          <DateField
             id="new-event-start"
-            className="chq-input"
-            type="date"
             value={form.startDate}
-            onChange={(e) => setField('startDate', e.target.value)}
-            placeholder="2028-05-11"
+            onChange={(next) => setField('startDate', next)}
             required
           />
         </FormRow>
         <FormRow label="Ends" htmlFor="new-event-end" error={errors.endDate}>
-          <input
+          <DateField
             id="new-event-end"
-            className="chq-input"
-            type="date"
             value={form.endDate}
-            onChange={(e) => setField('endDate', e.target.value)}
-            placeholder="2028-05-13"
+            onChange={(next) => setField('endDate', next)}
             required
           />
         </FormRow>

@@ -8,6 +8,7 @@
 // re-implementing it. Zero new server endpoints.
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { DateField } from '../../components/DateField';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { apiGet, apiList, apiPatch, ApiError } from '../../lib/api';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
@@ -307,14 +308,13 @@ export function CallForPapersPanel() {
             </p>
           ) : null}
           <div className="chq-settings-row">
-            <label>
+            <label htmlFor="cfp-open-date">
               Opens
-              <input
-                className="chq-input"
-                type="date"
+              <DateField
+                id="cfp-open-date"
                 value={openDate}
-                onChange={(e) => {
-                  setOpenDate(e.target.value);
+                onChange={(next) => {
+                  setOpenDate(next);
                   setSaved(false);
                   setFieldErrors((prev) => ({ ...prev, openDate: '' }));
                 }}
@@ -323,14 +323,13 @@ export function CallForPapersPanel() {
             </label>
           </div>
           <div className="chq-settings-row">
-            <label>
+            <label htmlFor="cfp-close-date">
               Closes
-              <input
-                className="chq-input"
-                type="date"
+              <DateField
+                id="cfp-close-date"
                 value={closeDate}
-                onChange={(e) => {
-                  setCloseDate(e.target.value);
+                onChange={(next) => {
+                  setCloseDate(next);
                   setSaved(false);
                   setFieldErrors((prev) => ({ ...prev, closeDate: '' }));
                 }}
