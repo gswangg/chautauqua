@@ -499,6 +499,68 @@ function LocationProbe() {
   return <div data-testid="location-search">{location.search}</div>;
 }
 
+// DEC-952: exactly one <h1> in every state — ContentApp hands the heading
+// off to the child view that owns it (FilesLibrary, DeliverableDetail) and
+// only renders its own <h1>Content</h1> where no child view mounts.
+describe('ContentApp (DEC-952): exactly one h1 in every state', () => {
+  it('renders exactly one h1 reading "Content" on the worklist', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([]),
+    });
+
+    const { container } = renderContentApp();
+
+    await waitFor(() => {
+      const h1s = container.querySelectorAll('h1');
+      expect(h1s).toHaveLength(1);
+      expect(h1s[0]).toHaveTextContent('Content');
+    });
+  });
+
+  it('renders exactly one h1 reading "Files" at ?view=files', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([]),
+      [`GET /api/v1/events/${EVENT_ID}/files`]: listEnvelope([]),
+    });
+
+    const { container } = renderContentApp('/content?view=files');
+
+    await waitFor(() => {
+      const h1s = container.querySelectorAll('h1');
+      expect(h1s).toHaveLength(1);
+      expect(h1s[0]).toHaveTextContent('Files');
+    });
+  });
+
+  it('renders exactly one h1 reading the session title at a resolved /content/:submissionId', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([
+        {
+          id: 'sub-1',
+          ref: 'S-001',
+          title: 'A Talk With No Files Yet',
+          status: 'accepted',
+          contentStatus: 'pending',
+          speakers: [],
+          trackIds: [],
+          submittedAt: null,
+          createdAt: 1700000000000,
+          deliverableCounts: { presentation: 0, poster: 0, handout: 0 },
+          latestFile: null,
+        },
+      ]),
+    });
+
+    const { container } = renderContentApp('/content/sub-1');
+
+    await waitFor(() => {
+      const h1s = container.querySelectorAll('h1');
+      expect(h1s).toHaveLength(1);
+      expect(h1s[0]).toHaveTextContent('A Talk With No Files Yet');
+    });
+  });
+});
+
 describe('ContentApp worklist tab (DEC-825): ?tab= round-trips through the new vocabulary', () => {
   it('reads an explicit ?tab=approved from the URL and marks that chip active', async () => {
     mockApi({
