@@ -134,6 +134,9 @@ export function registerCrudRoutes(contactsRoutes: Hono<AppEnv>): void {
           sessionTitle: "required to name the session this contact is added to the event with",
         });
       }
+      if (body.sessionTitle.length > MAX_NAME_LENGTH) {
+        throw new ApiError("invalid", "Validation failed", { sessionTitle: `Max ${MAX_NAME_LENGTH}` }); // DEC-417
+      }
       sessionTitle = body.sessionTitle.trim();
     }
 
@@ -443,6 +446,9 @@ export function registerCrudRoutes(contactsRoutes: Hono<AppEnv>): void {
     // rejected rather than silently falling back to 'Invited: <name>'.
     if (typeof body.title !== "string" || body.title.trim() === "") {
       throw new ApiError("invalid", "Validation failed", { title: "required" });
+    }
+    if (body.title.length > MAX_NAME_LENGTH) {
+      throw new ApiError("invalid", "Validation failed", { title: `Max ${MAX_NAME_LENGTH}` }); // DEC-417
     }
     const title = body.title;
 

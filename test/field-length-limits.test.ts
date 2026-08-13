@@ -8,6 +8,9 @@
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
+import { readFileSync, readdirSync, statSync } from "node:fs";
+import { join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { parseBoundedText, parseBoundedOptionalText } from "../src/server/http";
 import {
   MAX_NAME_LENGTH,
@@ -555,5 +558,189 @@ describe("src/routes/api/contacts.ts", () => {
     const body = (await res.clone().json()) as { error?: { message?: string } };
     expect(body.error?.message).toContain(String(repoMaxImportRows));
     await expectInvalid(res, "csvText");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// DEC-417 (wave 46 amendment): the sample above walks one over-cap request
+// per route FILE. This block is the enumeration the field guide's own rule
+// requires — every hand-rolled `typeof body.<name> !== "string"` occurrence
+// under src/routes must sit inside a handler that also applies a length
+// bound (a MAX_*_LENGTH / *_MAX_LEN reference, a parseBoundedText/
+// parseBoundedOptionalText call naming the same field, or an inline
+// `<field>.length > <number literal>` check), or the field must be named on
+// UNBOUNDED_STRING_FIELDS below with a stated reason. Silence is a defect;
+// this scan turns it into a named file:line:field failure. Pattern is the
+// DEC-628 source-scan shape already used by test/security-invariants.test.ts.
+// ---------------------------------------------------------------------------
+
+const ROUTES_DIR = resolve(fileURLToPath(import.meta.url), "../../src/routes");
+
+/** Deliberate exceptions to "every typeof body.<field> !== 'string' check
+ * sits behind a length bound" (DEC-417). Each entry must state WHY the field
+ * is exempt — an id, an enum value validated against a closed set, or a
+ * payload capped in its own units (bytes, not chars) — never silence. */
+export const UNBOUNDED_STRING_FIELDS: Array<{ file: string; field: string; reason: string }> = [
+  { file: "content-notes.ts", field: "fileId", reason: "an id looked up against the DB, not free text" },
+  { file: "tasks.ts", field: "formId", reason: "an id looked up against the DB, not free text" },
+  { file: "api/pipeline.ts", field: "contactId", reason: "an id looked up against the DB, not free text" },
+  {
+    file: "api/contacts/bulk-email.ts",
+    field: "eventId",
+    reason: "an id looked up against the DB, not free text",
+  },
+  { file: "api/contacts/merge.ts", field: "keepId", reason: "an id looked up against the DB, not free text" },
+  {
+    file: "api/submissions.ts",
+    field: "inviteStatus",
+    reason: "enum validated against the closed INVITE_STATUS_VALUES set",
+  },
+  {
+    file: "review/plans-reviewers.ts",
+    field: "userId",
+    reason: "an id looked up against the DB, not free text",
+  },
+  { file: "api/contacts/crud.ts", field: "eventId", reason: "an id looked up against the DB, not free text" },
+  {
+    file: "api/contacts/crud.ts",
+    field: "role",
+    reason: "enum validated against the closed PARTICIPANT_ROLE_OPTIONS set",
+  },
+  { file: "api/embeds.ts", field: "surface", reason: "enum validated against isSurface's closed set" },
+  { file: "api/embeds.ts", field: "format", reason: "enum validated against the closed EMBED_FORMATS set" },
+  {
+    file: "api/import.ts",
+    field: "csvText",
+    reason: "bounded in bytes via MAX_IMPORT_CSV_BYTES (TextEncoder), not chars",
+  },
+  {
+    file: "api/contacts/import.ts",
+    field: "csvText",
+    reason: "bounded in bytes via MAX_IMPORT_CSV_BYTES (TextEncoder), not chars",
+  },
+  {
+    file: "api/contacts/import.ts",
+    field: "eventId",
+    reason: "an id looked up against the DB, not free text",
+  },
+];
+
+function listAllSourceFiles(dir: string): string[] {
+  const out: string[] = [];
+  for (const entry of readdirSync(dir)) {
+    const full = join(dir, entry);
+    const st = statSync(full);
+    if (st.isDirectory()) out.push(...listAllSourceFiles(full));
+    else if (/\.(ts|tsx)$/.test(entry)) out.push(full);
+  }
+  return out;
+}
+
+interface StringCheckOccurrence {
+  file: string;
+  relFile: string;
+  line: number;
+  field: string;
+  handlerSlice: string;
+}
+
+/** From `startIdx`, finds the nearest preceding `(c) => {` / `async (c) =>
+ * {` arrow-handler opener, then returns the source slice from that opener to
+ * its matching closing brace (found by brace-balancing) — i.e. the full
+ * enclosing handler body, so a bound applied ANYWHERE in the handler counts,
+ * not just on the same line. */
+function enclosingHandlerSlice(source: string, startIdx: number): string {
+  const openerRegex = /\(c\)\s*=>\s*\{/g;
+  let lastOpenerEnd = -1;
+  let m: RegExpExecArray | null;
+  while ((m = openerRegex.exec(source))) {
+    if (m.index > startIdx) break;
+    lastOpenerEnd = m.index + m[0].length;
+  }
+  if (lastOpenerEnd === -1) {
+    // No enclosing arrow handler found — fall back to a generous forward
+    // window so a bound placed just below the check is still seen; a
+    // failure to find ANY bound in that window is a real finding.
+    return source.slice(startIdx, Math.min(source.length, startIdx + 4000));
+  }
+  let depth = 1;
+  let i = lastOpenerEnd;
+  while (i < source.length && depth > 0) {
+    if (source[i] === "{") depth++;
+    else if (source[i] === "}") depth--;
+    i++;
+  }
+  return source.slice(lastOpenerEnd, i);
+}
+
+function isBounded(handlerSlice: string, field: string): boolean {
+  const escaped = field.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  // A named cap constant (MAX_*_LENGTH or *_MAX_LEN) referenced anywhere in
+  // the handler, alongside the field's own name somewhere in the handler --
+  // conservative (doesn't prove they're wired together on the SAME line),
+  // but a false negative here is caught by the field's own route-level test
+  // above; this scan exists to catch outright silence, not verify wiring.
+  const hasNamedCap = /\bMAX_[A-Z0-9_]*_LENGTH\b|\b[A-Z0-9_]*_MAX_LEN\b/.test(handlerSlice);
+  const fieldMentionedWithBound = new RegExp(`\\b${escaped}\\b[\\s\\S]{0,120}?(MAX_[A-Z0-9_]*_LENGTH|[A-Z0-9_]*_MAX_LEN)`).test(
+    handlerSlice,
+  );
+  const parseBoundedCall = new RegExp(
+    `parseBounded(?:Optional)?Text\\(\\s*body\\.${escaped}\\b`,
+  ).test(handlerSlice);
+  const inlineNumericBound = new RegExp(`\\bbody\\.${escaped}\\.length\\s*[><]\\s*\\d+`).test(handlerSlice);
+  return (hasNamedCap && fieldMentionedWithBound) || parseBoundedCall || inlineNumericBound;
+}
+
+describe("DEC-417 (wave 46 amendment): every typeof body.<field> !== 'string' check is length-bounded or allowlisted", () => {
+  const files = listAllSourceFiles(ROUTES_DIR);
+  expect(files.length).toBeGreaterThan(0);
+
+  const occurrences: StringCheckOccurrence[] = [];
+  const checkRegex = /typeof\s+body\.([A-Za-z0-9_]+)\s*!==\s*"string"/g;
+  for (const file of files) {
+    const source = readFileSync(file, "utf-8");
+    let m: RegExpExecArray | null;
+    checkRegex.lastIndex = 0;
+    while ((m = checkRegex.exec(source))) {
+      const field = m[1]!;
+      const line = source.slice(0, m.index).split("\n").length;
+      const relFile = file.slice(ROUTES_DIR.length + 1).split("\\").join("/");
+      occurrences.push({
+        file,
+        relFile,
+        line,
+        field,
+        handlerSlice: enclosingHandlerSlice(source, m.index),
+      });
+    }
+  }
+
+  it("found at least 30 occurrences (a broken regex must fail loudly, not pass vacuously)", () => {
+    expect(occurrences.length).toBeGreaterThanOrEqual(30);
+  });
+
+  it("every occurrence is length-bounded in its handler, or named on UNBOUNDED_STRING_FIELDS with a reason", () => {
+    const failures: string[] = [];
+    for (const occ of occurrences) {
+      if (isBounded(occ.handlerSlice, occ.field)) continue;
+      const exempt = UNBOUNDED_STRING_FIELDS.find((e) => e.file === occ.relFile && e.field === occ.field);
+      if (exempt) {
+        expect(exempt.reason.length).toBeGreaterThan(0);
+        continue;
+      }
+      failures.push(`${occ.relFile}:${occ.line}: field '${occ.field}' has no length bound and no allowlist entry`);
+    }
+    expect(failures).toEqual([]);
+  });
+
+  it("every UNBOUNDED_STRING_FIELDS entry names a real occurrence and states a reason", () => {
+    for (const exempt of UNBOUNDED_STRING_FIELDS) {
+      expect(exempt.reason.length).toBeGreaterThan(0);
+      const match = occurrences.find((occ) => occ.relFile === exempt.file && occ.field === exempt.field);
+      expect(
+        match,
+        `UNBOUNDED_STRING_FIELDS names ${exempt.file}:${exempt.field}, which is not a 'typeof body.<field> !== "string"' occurrence`,
+      ).toBeDefined();
+    }
   });
 });
