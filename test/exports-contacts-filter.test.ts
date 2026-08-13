@@ -63,7 +63,7 @@ function makeRealDb(rows: RawContact[]): Db {
 
   const dialect = new SQLiteSyncDialect();
 
-  function runSelect(whereExpr: SQL, orderExprs: SQL[]) {
+  function runSelect(whereExpr: SQL, orderExprs: SQL[], limitN: number | undefined) {
     const whereQ = dialect.sqlToQuery(whereExpr);
     let sqlText = `SELECT * FROM contact WHERE ${whereQ.sql}`;
     const params = [...whereQ.params];
@@ -75,6 +75,9 @@ function makeRealDb(rows: RawContact[]): Db {
         params.push(...q.params);
       }
       sqlText += ` ORDER BY ${orderParts.join(", ")}`;
+    }
+    if (limitN !== undefined) {
+      sqlText += ` LIMIT ${limitN}`;
     }
     const stmt = sqliteDb.prepare(sqlText);
     const raw = stmt.all(...(params as (string | number)[])) as Record<string, unknown>[];
@@ -100,17 +103,20 @@ function makeRealDb(rows: RawContact[]): Db {
     );
   }
 
-  function chain(whereExpr: SQL | undefined, orderExprs: SQL[]) {
+  function chain(whereExpr: SQL | undefined, orderExprs: SQL[], limitN: number | undefined) {
     const c: Record<string, unknown> = {
       where(expr: SQL) {
-        return chain(expr, orderExprs);
+        return chain(expr, orderExprs, limitN);
       },
       orderBy(...exprs: SQL[]) {
-        return chain(whereExpr, exprs);
+        return chain(whereExpr, exprs, limitN);
+      },
+      limit(n: number) {
+        return chain(whereExpr, orderExprs, n);
       },
       then(resolve: (v: unknown) => unknown, reject?: (e: unknown) => unknown) {
         if (!whereExpr) throw new Error("fake db: select ran without a where() call");
-        return Promise.resolve(runSelect(whereExpr, orderExprs)).then(resolve, reject);
+        return Promise.resolve(runSelect(whereExpr, orderExprs, limitN)).then(resolve, reject);
       },
     };
     return c;
@@ -121,7 +127,7 @@ function makeRealDb(rows: RawContact[]): Db {
       return {
         from(table: unknown) {
           if (table !== schema.contact) throw new Error("fake db: unexpected table");
-          return chain(undefined, []);
+          return chain(undefined, [], undefined);
         },
       };
     },

@@ -401,16 +401,30 @@ export async function countContactsForSegmentRules(db: Db, orgId: string, ruleSe
  * predicate, same segmentId/rules matchesSegment pass, same
  * MAX_CONTACT_DIRECTORY_SCAN guard (fail loudly rather than silently
  * exporting an unfiltered file), but returns EVERY matching row, never a
- * page window. */
-export async function selectFilteredContactRows(db: Db, orgId: string, params: ParsedContactListQuery): Promise<ContactRow[]> {
+ * page window.
+ *
+ * DEC-027 amendment (wave 50): `limit`, when supplied, bounds the row query
+ * itself (never a post-fetch slice) — the caller (exportContacts) passes
+ * EXPORT_MAX_ROWS + 1 so an overflow can be detected from the returned
+ * array length. The segment/rules scan branch is already bounded by
+ * MAX_CONTACT_DIRECTORY_SCAN independently of this `limit`; when `limit` is
+ * smaller, the scanned/filtered set is truncated to `limit + 1` too so the
+ * two branches agree on what "overflow" means to the caller. */
+export async function selectFilteredContactRows(
+  db: Db,
+  orgId: string,
+  params: ParsedContactListQuery,
+  limit?: number,
+): Promise<ContactRow[]> {
   if (params.segmentId === null && params.rules.length === 0) {
     const whereExpr = buildContactWhereExpr(orgId, params);
-    const rows = await db.select().from(schema.contact).where(whereExpr).orderBy(orderByForSort(params.sort));
+    const baseQuery = db.select().from(schema.contact).where(whereExpr).orderBy(orderByForSort(params.sort));
+    const rows = limit !== undefined ? await baseQuery.limit(limit) : await baseQuery;
     return rows.map(toRow);
   }
 
   const sorted = await scanAndFilterContacts(db, orgId, params);
-  const ids = sorted.map((r) => r.id);
+  const ids = (limit !== undefined ? sorted.slice(0, limit) : sorted).map((r) => r.id);
   const fullRowsById = new Map<string, ContactRow>();
   for (const batch of chunkIds(ids)) {
     const rows = await db.select().from(schema.contact).where(inArray(schema.contact.id, batch));

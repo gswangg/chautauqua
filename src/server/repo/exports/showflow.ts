@@ -10,7 +10,7 @@ import * as schema from "../../../db/schema";
 import { formatRef } from "../../../domain/ids";
 import { chunkIds } from "../../../lib/chunk";
 import { DEC_055 } from "../../../decisions";
-import { type ExportTable, buildTable, minutesToClock } from "./table";
+import { type ExportTable, EXPORT_MAX_ROWS, buildTable, minutesToClock } from "./table";
 import { getRecordPrefix } from "./common";
 
 void DEC_055;
@@ -120,7 +120,15 @@ export async function buildShowflowExport(db: Db, eventId: string): Promise<Expo
     })
     .from(schema.submission)
     .where(and(eq(schema.submission.eventId, eventId), eq(schema.submission.status, "accepted")))
-    .orderBy(asc(schema.submission.seq));
+    .orderBy(asc(schema.submission.seq))
+    .limit(EXPORT_MAX_ROWS + 1);
+
+  // DEC-027 amendment (wave 50): bound on the query — cap+1 accepted
+  // submissions proves overflow before the per-submission join fetches
+  // below (slots/tracks/participants/deck files).
+  if (submissions.length > EXPORT_MAX_ROWS) {
+    return buildTable([...SHOWFLOW_HEADER], [], true);
+  }
 
   if (submissions.length === 0) return shapeShowflowExport([]);
   const ids = submissions.map((s) => s.id);

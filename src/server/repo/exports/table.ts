@@ -3,14 +3,37 @@
 // records-view helper, minutesToClock, and the dynamic-custom-column naming
 // helper shared by submissions.ts and evaluations.ts (DEC-529).
 
+// DEC-027 amendment (wave 50): the bound lives on the QUERY, not on a check
+// after rows are already in memory. Derivation, modelled on DEC-353's
+// archive-cap arithmetic (src/routes/files.ts:324-333):
+//   - average serialized row width: ~500 bytes (a wide submissions/contacts
+//     row with several dynamic custom-field/score columns, each cell
+//     duplicated once as a CSV string cell and once as a JSON record value)
+//   - peak multiplier: 3x — the driving SELECT's row objects, the shaped
+//     string[][]/records[] view (buildTable holds both simultaneously), and
+//     the toCsv-joined single string/JSON-stringified body all live in the
+//     isolate at once for format=csv or format=json respectively
+//   - EXPORT_MAX_ROWS x 500 bytes x 3 = 20,000 x 1,500 bytes = 30,000,000
+//     bytes (~28.6 MB), which is comfortably under 0.75 x 128 MB (96 MB) of
+//     ISOLATE_MEMORY_BUDGET_BYTES (see test/exports-bounds.test.ts) even
+//     before accounting for query/route overhead already running in the
+//     isolate.
+export const EXPORT_MAX_ROWS = 20000;
+
 export interface ExportTable {
   header: string[];
   rows: string[][];
   /** Same records as an array of objects keyed by header, for format=json. */
   records: Record<string, string>[];
+  /** True when the driving row query came back with EXPORT_MAX_ROWS + 1 rows
+   * (the extra row proving there is more data than the cap allows) — the
+   * extra row itself is always dropped, never shaped into `rows`/`records`.
+   * The route refuses (ApiError) rather than shipping a silently-truncated
+   * file. */
+  truncated: boolean;
 }
 
-export function buildTable(header: string[], rows: string[][]): ExportTable {
+export function buildTable(header: string[], rows: string[][], truncated = false): ExportTable {
   const records = rows.map((row) => {
     const rec: Record<string, string> = {};
     header.forEach((h, i) => {
@@ -18,7 +41,7 @@ export function buildTable(header: string[], rows: string[][]): ExportTable {
     });
     return rec;
   });
-  return { header, rows, records };
+  return { header, rows, records, truncated };
 }
 
 export function minutesToClock(min: number): string {

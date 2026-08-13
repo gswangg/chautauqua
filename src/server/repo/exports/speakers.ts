@@ -6,7 +6,7 @@ import * as schema from "../../../db/schema";
 import { formatRef } from "../../../domain/ids";
 import { parseSocialLinks } from "../profile";
 import { DEC_258 } from "../../../decisions";
-import { type ExportTable, buildTable } from "./table";
+import { type ExportTable, EXPORT_MAX_ROWS, buildTable } from "./table";
 import { getRecordPrefix } from "./common";
 
 // exportSpeakers below reads participant.title_at_time/org_at_time (DEC-258
@@ -51,7 +51,15 @@ export async function exportSpeakers(db: Db, eventId: string): Promise<ExportTab
     .from(schema.participant)
     .innerJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
     .innerJoin(schema.submission, eq(schema.participant.submissionId, schema.submission.id))
-    .where(eq(schema.submission.eventId, eventId));
+    .where(eq(schema.submission.eventId, eventId))
+    .limit(EXPORT_MAX_ROWS + 1);
+
+  // DEC-027 amendment (wave 50): bound on the query — the driving
+  // participant/contact/submission join is the row query this kind selects,
+  // so cap+1 rows here (before per-contact aggregation) proves overflow.
+  if (rows.length > EXPORT_MAX_ROWS) {
+    return buildTable(header, [], true);
+  }
 
   interface Agg {
     contactId: string;
