@@ -12,10 +12,10 @@ import { listEnvelope, mockApi } from '../../test-utils/mockApi';
 
 const EVENT_ID = 'evt-saved-embeds';
 
-function renderPanel(initialEntries: string[] = ['/settings']) {
+function renderPanel(initialEntries: string[] = ['/settings'], onBuild?: () => void) {
   return render(
     <MemoryRouter initialEntries={initialEntries}>
-      <SavedEmbedsPanel />
+      <SavedEmbedsPanel onBuild={onBuild} />
     </MemoryRouter>,
   );
 }
@@ -153,5 +153,77 @@ describe('SavedEmbedsPanel', () => {
     expect(within(row).getByRole('link', { name: 'Edit' })).toHaveAttribute('href', '/settings?embed=emb1');
 
     expect(screen.getByText('Turning one off breaks it wherever it is pasted')).toBeInTheDocument();
+  });
+
+  // DEC-860: one save path for a saved embed -- the quick-save form here is
+  // gone, replaced by a single "Build an embed" disclosure into the shared
+  // builder (the same one Edit opens into).
+  it('has no quick-save create form, and offers "Build an embed" only when onBuild is provided', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/embeds`]: listEnvelope([]),
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+    });
+    renderPanel();
+
+    await waitFor(() => {
+      expect(screen.getByText('No saved embeds yet.')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByRole('button', { name: 'Save embed' })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Name')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Surface')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Build an embed' })).not.toBeInTheDocument();
+
+    cleanup();
+
+    const onBuild = vi.fn();
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/embeds`]: listEnvelope([]),
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+    });
+    renderPanel(['/settings'], onBuild);
+
+    await waitFor(() => {
+      expect(screen.getByText('No saved embeds yet.')).toBeInTheDocument();
+    });
+
+    const buildButton = screen.getByRole('button', { name: 'Build an embed' });
+    fireEvent.click(buildButton);
+    expect(onBuild).toHaveBeenCalledTimes(1);
+  });
+
+  // DEC-860: Delete on the row that lists it, routed through the shared
+  // ConfirmDialog and only DELETEing after the user confirms.
+  it('deletes a saved embed only after confirming through the shared dialog', async () => {
+    const fetchMock = mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/embeds`]: () =>
+        listEnvelope([
+          { id: 'emb1', name: 'Homepage widget', surface: 'sessions', format: 'iframe', options: {}, enabled: true },
+        ]),
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+      [`DELETE /api/v1/embeds/emb1`]: { status: 204, body: null },
+    });
+    renderPanel();
+
+    await waitFor(() => {
+      expect(screen.getByText('Homepage widget')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+
+    const dialog = await screen.findByRole('dialog');
+    expect(
+      fetchMock.mock.calls.find(([input]) => String(input).includes('/api/v1/embeds/emb1')),
+    ).toBeUndefined();
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
+
+    await waitFor(() => {
+      const [, deleteInit] =
+        fetchMock.mock.calls.find(
+          ([input, init]) => String(input).includes('/api/v1/embeds/emb1') && (init as RequestInit)?.method === 'DELETE',
+        ) ?? [];
+      expect(deleteInit).toMatchObject({ method: 'DELETE' });
+    });
   });
 });

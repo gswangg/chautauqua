@@ -9,13 +9,14 @@
 // public effect (the field guide: "a control whose effect dies on reload is
 // decoration") — that public 404 is proven by test/saved-embed-route.test.ts,
 // not by this render test.
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { DelayedLoading } from '../../components/DelayedLoading';
-import { apiList, apiPatch, apiPost, ApiError } from '../../lib/api';
+import { apiDelete, apiList, apiPatch, ApiError } from '../../lib/api';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
-import { buildSnippet, EMBED_SURFACES, type EmbedFormat, type EmbedOptions, type EmbedSurface } from './embedSnippet';
+import { buildSnippet, type EmbedFormat, type EmbedOptions, type EmbedSurface } from './embedSnippet';
 import { formatEmbedRecipe } from './embedRecipe';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
 
 // DEC-839: the wire contract — `options` is the PARSED object a saved-embed
 // row carries over the wire, never the stored JSON string.
@@ -33,16 +34,19 @@ interface Track {
   name: string;
 }
 
-export function SavedEmbedsPanel() {
+interface Props {
+  onBuild?: () => void;
+}
+
+export function SavedEmbedsPanel({ onBuild }: Props) {
   const { eventId } = useCurrentEvent();
   const [searchParams] = useSearchParams();
   const [embeds, setEmbeds] = useState<SavedEmbed[] | null>(null);
   const [tracks, setTracks] = useState<Track[]>([]);
   const [error, setError] = useState<string | undefined>(undefined);
-  const [name, setName] = useState('');
-  const [surface, setSurface] = useState<EmbedSurface>('sessions');
-  const [creating, setCreating] = useState(false);
   const [codeOpenId, setCodeOpenId] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<SavedEmbed | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   function load() {
     if (!eventId) return;
@@ -67,27 +71,25 @@ export function SavedEmbedsPanel() {
     return `?${params.toString()}`;
   }
 
-  async function handleCreate(e: FormEvent) {
-    e.preventDefault();
-    if (!eventId || !name.trim()) return;
-    setCreating(true);
-    try {
-      await apiPost(`/events/${eventId}/embeds`, { name: name.trim(), surface, format: 'iframe', options: {} });
-      setName('');
-      load();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Failed to save embed');
-    } finally {
-      setCreating(false);
-    }
-  }
-
   async function handleToggle(embed: SavedEmbed) {
     try {
       await apiPatch(`/embeds/${embed.id}`, { enabled: !embed.enabled });
       load();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to update saved embed');
+    }
+  }
+
+  async function handleDelete(embed: SavedEmbed) {
+    setDeleting(true);
+    try {
+      await apiDelete(`/embeds/${embed.id}`);
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Failed to delete saved embed');
+    } finally {
+      setDeleting(false);
+      setPendingDelete(null);
     }
   }
 
@@ -149,6 +151,9 @@ export function SavedEmbedsPanel() {
                 <button type="button" className="chq-link-button" onClick={() => void handleToggle(embed)}>
                   {embed.enabled ? 'Turn off' : 'Turn on'}
                 </button>
+                <button type="button" className="chq-link-button" onClick={() => setPendingDelete(embed)}>
+                  Delete
+                </button>
                 {codeOpenId === embed.id ? <code>{snippet}</code> : null}
               </li>
             );
@@ -156,34 +161,25 @@ export function SavedEmbedsPanel() {
         </ul>
       )}
 
-      <form onSubmit={(e) => void handleCreate(e)}>
-        <label>
-          Name
-          <input
-            className="chq-input"
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. Homepage sessions widget"
-            required
-          />
-        </label>
-        <label>
-          Surface
-          <select className="chq-select" value={surface} onChange={(e) => setSurface(e.target.value as EmbedSurface)}>
-            {EMBED_SURFACES.map((s) => (
-              <option key={s} value={s}>
-                {s[0]!.toUpperCase() + s.slice(1)}
-              </option>
-            ))}
-          </select>
-        </label>
-        <button type="submit" className="chq-btn chq-btn-primary" disabled={creating || !name.trim()}>
-          Save embed
+      {onBuild ? (
+        <button type="button" className="chq-link-button" onClick={onBuild}>
+          Build an embed
         </button>
-      </form>
+      ) : null}
 
       <p className="chq-settings-note">Turning one off breaks it wherever it is pasted</p>
+
+      {pendingDelete ? (
+        <ConfirmDialog
+          title={`Delete "${pendingDelete.name}"`}
+          body="Anywhere this embed is pasted will break, and this cannot be undone."
+          confirmLabel="Delete"
+          destructive
+          pending={deleting}
+          onConfirm={() => void handleDelete(pendingDelete)}
+          onCancel={() => setPendingDelete(null)}
+        />
+      ) : null}
     </section>
   );
 }
