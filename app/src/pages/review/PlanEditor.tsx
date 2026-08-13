@@ -10,7 +10,7 @@ import { addCriterion, removeCriterion, updateCriterion, validateCriteriaList, v
 // DEC-708: the same name-or-email resolver ProgressPanel uses -- a plan
 // reviewer row names a person by their resolved contact, never a
 // fabricated name, falling back to the bare email.
-import { reviewerDisplayLabel } from './progress';
+import { progressTotals, reviewerDisplayLabel } from './progress';
 import './review.css';
 import {
   DEFAULT_PLAN_DRAFT,
@@ -29,11 +29,15 @@ import {
 // are computed by the same pure domain functions the server uses -- no
 // re-derivation of the weight-share math client-side.
 import { criterionWeightShares, DEFAULT_PLAN_CRITERIA } from '../../../../src/domain/evaluation';
-import { DEC_745, DEC_786, DEC_824 } from '../../../../src/decisions';
+import { DEC_745, DEC_786, DEC_824, DEC_882 } from '../../../../src/decisions';
 
 void DEC_745; // v4 shell: title-row NAME/Duplicate/Save, 2x2 field grid, "Who reviews what" below
 void DEC_786; // "Distribute evenly" link below: preview-then-confirm, zero non-GET requests before confirm
 void DEC_824; // cap-per-reviewer input + shortfall/note rendering in the confirm dialog below
+void DEC_882; // locked criteria render as read-only text rows below a CRITERION|GUIDANCE|WEIGHT
+// header, lock card moved below the rows, and the open-plan header reads
+// "Open · N of M reviews in" from progressRows via progressTotals -- never
+// a second count derived here.
 
 // DEC-572: batches per-submission plan_reviewer POSTs to at most this many
 // concurrent requests per wave, mirroring the server's own bound.
@@ -45,6 +49,15 @@ const MAX_CRITERIA = 7;
 
 function defaultDraftCriteria(): EvaluationCriterion[] {
   return DEFAULT_PLAN_CRITERIA.map((c) => ({ ...c }));
+}
+
+// DEC-674 (mirrored from PlanList's isWindowOpen): a plan's window is "open"
+// iff now falls inside [openAt, closeAt], treating a null bound as
+// unbounded on that side.
+function isPlanOpenNow(openAt: number | null, closeAt: number | null, now: number): boolean {
+  if (closeAt !== null && closeAt < now) return false;
+  if (openAt !== null && openAt > now) return false;
+  return true;
 }
 
 function chunk<T>(items: T[], size: number): T[][] {
@@ -178,6 +191,12 @@ export function PlanEditor() {
         : [];
   const activeRoundLockedCount = lockedRounds.reduce((sum, r) => sum + (evaluationCountsByRound[String(r)] ?? 0), 0);
   const activeRoundIsLocked = lockedRounds.length > 0;
+
+  // DEC-882: the page header's "Open · N of M reviews in" reads the SAME
+  // progress aggregate ProgressPanel/PlanList already read (progressRows via
+  // progressTotals) -- never a second count derived in this component.
+  const planIsOpen = !isNew && isPlanOpenNow(draft.openAt, draft.closeAt, Date.now());
+  const { completed: reviewsCompleted, assigned: reviewsAssigned } = progressTotals(progressRows);
 
   function setOpenAt(value: string) {
     try {
@@ -694,6 +713,14 @@ export function PlanEditor() {
           />
           {nameTouched && errors.name && <span className="chq-review-field-error">{errors.name}</span>}
           {isNew && <p className="chq-review-field-caption">Nothing is sent to reviewers until you open it.</p>}
+          {/* DEC-882: the open-plan header states both numbers from the
+              progress aggregate already loaded into progressRows -- never a
+              second count derived here. */}
+          {planIsOpen && (
+            <p className="chq-review-plan-open-status">
+              Open · {reviewsCompleted} of {reviewsAssigned} reviews in
+            </p>
+          )}
         </div>
         <div className="chq-review-editor-title-actions">
           {isNew ? (
@@ -807,28 +834,6 @@ export function PlanEditor() {
               sum to 100 -- so the section states how they're used. */}
           <p className="chq-review-section-caption">Scores average by weight.</p>
 
-          {activeRoundIsLocked && (
-            <div className="chq-review-criteria-locked-notice" role="status">
-              <div className="chq-review-criteria-locked-text">
-                <p className="chq-review-criteria-locked-headline">
-                  Locked - {activeRoundLockedCount} review{activeRoundLockedCount === 1 ? '' : 's'} scored against
-                  these criteria
-                </p>
-                <p className="chq-review-criteria-locked-reason">Changing these would rescore work already done</p>
-              </div>
-              {!isNew && planId && (
-                <button
-                  type="button"
-                  className="chq-btn chq-btn-primary"
-                  disabled={startingWave}
-                  onClick={() => void startNewWave()}
-                >
-                  {startingWave ? 'Starting…' : 'Start a new wave'}
-                </button>
-              )}
-            </div>
-          )}
-
           {draft.rounds > 1 && (
             <div className="chq-review-round-tabs">
               <label>
@@ -872,11 +877,62 @@ export function PlanEditor() {
           {(activeRound === 0 ? errors.criteria : criteriaErrors.criteria) && (
             <span className="chq-review-field-error">{activeRound === 0 ? errors.criteria : criteriaErrors.criteria}</span>
           )}
+          {/* DEC-882: the criteria list names its columns, in the
+              section-label type this page already uses, aligned to the
+              existing criterion row's grid columns. */}
+          <div className="chq-review-criteria-head-row" aria-hidden="true">
+            <span className="chq-review-criteria-head-cell">Criterion </span>
+            <span className="chq-review-criteria-head-cell">Guidance </span>
+            <span> </span>
+            <span className="chq-review-criteria-head-cell">Weight </span>
+            <span> </span>
+          </div>
           {(() => {
             // DEC-676: shares are computed over the whole editing list --
             // dropdown/text rows have no weight and get no share entry.
             const shares = criterionWeightShares(editingCriteria);
             const atCap = editingCriteria.length >= MAX_CRITERIA;
+            if (activeRoundIsLocked) {
+              // DEC-882: a locked round reads as TEXT, not disabled inputs --
+              // zero form controls render for its criteria. Raw weight only
+              // (no percentage-share formatter here -- that vocabulary
+              // belongs to the reviewer scorecard, a concurrent lane).
+              return (
+                <>
+                  {editingCriteria.map((criterion) => (
+                    <div key={criterion.id} className="chq-review-criterion-row chq-review-criterion-row-readonly">
+                      <span>{criterion.label}</span>
+                      <span>{criterion.guidance ?? ''}</span>
+                      <span className="chq-review-criterion-kind">{criterion.kind}</span>
+                      <span>{criterion.kind === 'rating' ? criterion.weight : ''}</span>
+                      <span />
+                    </div>
+                  ))}
+                  {/* DEC-882: the lock card sits BELOW the rows -- a reader
+                      sees what the criteria ARE before being told why they
+                      cannot change. */}
+                  <div className="chq-review-criteria-locked-notice" role="status">
+                    <div className="chq-review-criteria-locked-text">
+                      <p className="chq-review-criteria-locked-headline">
+                        Locked - {activeRoundLockedCount} review{activeRoundLockedCount === 1 ? '' : 's'} scored
+                        against these criteria
+                      </p>
+                      <p className="chq-review-criteria-locked-reason">Changing these would rescore work already done</p>
+                    </div>
+                    {!isNew && planId && (
+                      <button
+                        type="button"
+                        className="chq-btn chq-btn-primary"
+                        disabled={startingWave}
+                        onClick={() => void startNewWave()}
+                      >
+                        {startingWave ? 'Starting…' : 'Start a new wave'}
+                      </button>
+                    )}
+                  </div>
+                </>
+              );
+            }
             return (
               <>
                 {editingCriteria.map((criterion) => (
