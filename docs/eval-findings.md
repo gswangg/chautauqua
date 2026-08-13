@@ -21,6 +21,59 @@ title row or form footer; section actions are links on the section rule · one s
 vocabulary + scan-lock beats per-page fixes (dialogs=ModalFrame, buttons, send
 reporting, page measure).
 
+## CLOSED-VERIFIED (wave 43)
+
+Each item below was re-verified today by opening the named file:line FIRST (not by
+trusting the prior mandate text) and confirming the fix is live on `main`. Moved off
+the open list.
+
+- **Reviewer-queue "Score this" contrast** — `app/src/pages/review/review.css:451`
+  (`.chq-review-queue-score-action`, no `color` declared) + guard test
+  `app/src/pages/review/review-primary-contrast.test.ts` (parses real token values,
+  asserts no offending rule exists).
+- **Per-round anonymization enforced server-side** — `src/routes/review/reviewer.ts:264`
+  (`plan.anonymized ? anonymizeForReviewer(detail) : detail`) +
+  `src/domain/evaluation.ts:609` (`anonymizeForReviewer` strips speaker/speakerAnswers);
+  the submission summary itself carries no speaker field
+  (`src/server/repo/review/submissions.ts:410-429`).
+- **Co-presenters visible to the conflict engine** — `src/server/repo/agenda.ts:239-259`
+  (DEC-974: loads ALL `ACTIVE_INVITE_STATUSES` participants, not just the primary
+  speaker) feeds `src/domain/schedule.ts:269` (buckets by `${day}|contactId`,
+  independent of room) — a co-presenter can trigger a speaker-overlap conflict.
+  (Co-presenter visibility on the agenda CARD DISPLAY is a separate, still-open claim
+  — left in the Conflict engine gaps item below.)
+- **Speaker deliverable writes are status/close-date locked** —
+  `src/routes/files.ts:109-118` (`authzSubmissionWrite` calls `canEditSubmission`
+  for the speaker role) is the guard actually used by the upload route
+  (`src/routes/files.ts:125`).
+- **Comms History and Recent Sends are one reader** —
+  `app/src/pages/comms/HistoryTab.tsx:30` and `app/src/pages/Comms.tsx:72` both call
+  `GET /events/:id/email-log?groupBy=batch`.
+- **Saved-embed honours its stored format** — `src/routes/public/saved-embed.tsx:60-75`
+  (DEC-850: json/xml redirect to the per-surface `.json`/`.xml` route, ics redirects to
+  the fixed whole-agenda route).
+- **Per-surface published counts** — `app/src/pages/settings/PublicPagesPanel.tsx:115-130`
+  (DEC-816: Sessions reads `sessionCount`, Agenda/Schedule read `scheduledCount`,
+  Speakers/Gallery read `speakerCount` — three distinct counts, not one shared total).
+- **`/schedule` renders the search + track + format controls** —
+  `src/routes/public/dispatch.tsx:185-221` parses `q`/`trackId`/`format` and passes
+  `formatOptions`/`format` into `ScheduleContent`, which renders `ItinerarySearchForm`
+  (`src/routes/public/agenda.tsx:375-420`) — a `PublicSearchBox` plus track and format
+  `PublicFilterBar`s.
+- **New-submission dialog sends format and PATCH accepts it** —
+  `app/src/pages/submissions/NewSubmissionModal.tsx:87` includes `format` in
+  `onCreate`; `src/routes/api/submissions.ts:231-233` (POST create writes it via
+  `upsertSubmissionAnswers`) and `:295-296`/`:337-339` (PATCH parses and writes it).
+- **`createTask` has no assign-to-all opt-out** — `src/server/repo/tasks/crud.ts:229-232`
+  (DEC-746: always expands to every accepted-with-active-invite contact); the UI has
+  no such checkbox anymore (`app/src/pages/speakers/TaskModal.render.test.tsx:35`
+  asserts it's absent) — an orphaned task cannot be created.
+- **Organizer add-co-presenter validates role against `PARTICIPANT_ROLE_OPTIONS`** —
+  `src/routes/api/submissions.ts:445-461` (DEC-784: unknown role is a loud field
+  error); the UI offers the real picker
+  (`app/src/pages/submissions/SubmissionDetailPage.tsx:988`) and displays the actual
+  role via `participantRoleLabel` (`:939`), not a hardcoded "speaker".
+
 ## P0 — CLOSED (probe-2 verified end-to-end 2026-08-13)
 
 Reviewer lockout FIXED and externally verified: sbek-reviewer login → /admin/review
@@ -32,19 +85,17 @@ overview fetch right after reviewer login — make the shell skip it for reviewe
 
 ## SBEK RUN 3 (2026-08-13, prod, gate-3 SHA): 87.4% — DOWN from 91.5%. ROOT CAUSE IS CONFIG, NOT UI.
 
+**w43-h note: the mailer P0 below and its downstream '0 total' audit-trail finding (SPK grader additions, "P2 Comms audit trail") are being closed by tasks w43-a/b/c — do not re-file until their landing is verified.**
+
 Areas: CFP 90.7@71c · ABS 91.7@86c · SPK 88.3@91c · CNT 72.0@81c · AIA 86.1@100c · EMB 91.4@100c · CRM 94.4@95c. 10 of 19 scenarios died at the 70-turn cap (many burned turns retrying 500s below). Full report: killmysaas-evals/runs/2026-08-13T16-55-22/.
 
 **P0 · EVERY send path on prod returns 500 — makeMailer throws on missing RESEND_API_KEY.** DEC-996 switched prod mail to Resend; prod has no RESEND_API_KEY secret (verified: `wrangler secret list` shows only Airtable). `makeMailer` (context.ts, DEC-547) throws per-request → 500 on: public CFP submit (proposal persists, then confirmation dispatch throws — submitter sees "Internal server error"!), decision notifications, bulk email, single+bulk reminders, remind-laggards, organizer note replies ("Send note only"/"Ask for changes"). Sbek filed 5 criticals across 4 areas on this one cause. FIX SHAPE (respecting fail-loudly): mail dispatch is an external-IO boundary — catch at the send boundary, record per-recipient status "failed" with the reason ("mail provider not configured"), surface an honest banner ("N failed — mail provider not configured"), and NEVER fail the enclosing request after its own mutation persisted (CFP submit returns its confirmation regardless of email fate). Missing-config stays loud via a startup/health surface (Settings "Email" row shows NOT CONFIGURED), not via 500s on user actions. Keep DevSinkMailer behavior for dev. NOTE: actually delivering real mail needs the user to mint a Resend key + verify the chautauqua.cc domain — USER DECISION, filed separately; the code fix restores honest non-500 behavior without it.
 
-**P0 · Per-round anonymization configured but NOT ENFORCED** (sbek critical, ABS): with "Anonymize speaker identity for reviewers" checked on the plan, reviewer surfaces still expose the speaker identity. Enforce in the reviewer read model (single reader), test both states.
-
 **P0 · "Replace file" DESTROYS the previous version** (sbek critical, CNT): version history shows a single v1 after replace instead of v1+v2; comments attached to the file are silently lost. Versions are append-only; replace = new version row; comments ride the deliverable, not the blob. This also blocks the frame's "3 versions" chip and the RE-UPLOADED demo.
-
-**P1 · Comms History "0 total" while Recent sends shows 4** (two-reader class, filed by sbek in TWO areas): History tab reader and compose Recent-sends reader disagree over the same log. Single reader rule.
 
 **P1 · Conditional field logic not applied on the public form** (CFP): "Show when Format eq Workshop" saves and displays in the builder but the public form always shows the field.
 
-**P1 · Conflict engine gaps** (AIA): speaker double-booking flagged on one pair but MISSED on another same-slot different-room pair (SES-033/SES-003 vs SES-031); co-presenters (Participants) invisible to both agenda card display and the conflict engine; conflict label attaches to only one of the two clashing cards.
+**P1 · Conflict engine gaps** (AIA): speaker double-booking flagged on one pair but MISSED on another same-slot different-room pair (SES-033/SES-003 vs SES-031); co-presenters (Participants) invisible to the agenda card display; conflict label attaches to only one of the two clashing cards.
 
 **P1 · "Remind laggards (N)" 500** — same mailer P0; verify it heals with the boundary fix. **"Submission (removed)"** label renders for a live assignment on the who-reviews-what list.
 
@@ -81,8 +132,6 @@ counters + 34px detail gutter, 08's header-stat clause count, 11's 46-vs-48 inpu
 Scribes/planners: mine them when a surface's P1/P2s run dry, before inventing work.**
 
 **Pair-2 reds (02-submissions FAIL 4 MAJOR · 03-review FAIL 1 BROKEN + 5 MAJOR):**
-
-**P1-BROKEN · Reviewer queue "Score this" CTA illegible.** `a.chq-review-queue-score-action.chq-btn.chq-btn-primary` computes `color: rgb(27,29,23)` on olive `rgb(78,92,49)` — 2.40:1. A queue-scoped anchor color rule overrides the primary token (the same `.chq-btn-primary` on the scorecard is correct cream `rgb(247,249,240)`). One CSS line; add a computed-style render test for anchor-primaries inside the queue scope. This is the reviewer's single primary action.
 
 **P1 · Plan editor + New plan are 820 (`.chq-measure`); v6 frames 03/05/06 are table class** — criteria rule spans 1376px (l=112→r=1488 at 1600). Move `/admin/review/plans/:id` and `/plans/new` to `.chq-measure-table`, give the editor title bar (`‹ Review` / name / Duplicate·Save) full-bleed chrome-bar treatment per frames. Fixes the criteria-row cramping (guidance inputs clip mid-word) in the same stroke.
 
@@ -445,12 +494,10 @@ the DEC-840 "Distribute the unassigned" rename), scoped reviewer queue, password
 semantics — with the residue folded into the sections above. What is NOT covered
 elsewhere:
 
-- Saved embeds: **saved-embed URL ignores the stored FORMAT — a json embed serves
-  text/html; the resolver must honor `embed.format`** · the SavedEmbedsPanel quick-save
-  form still hardcodes iframe/{} instead of carrying the recipe (two save paths,
-  different fidelity) · "N on · M off" header count · footer caption. **(unverified at
-  gate-3.)** (ON/OFF pills, Turn on/Turn off and the Delete control are now live in the
-  embed row cluster.)
+- Saved embeds: the SavedEmbedsPanel quick-save form still hardcodes iframe/{} instead
+  of carrying the recipe (two save paths, different fidelity) · "N on · M off" header
+  count · footer caption. **(unverified at gate-3.)** (ON/OFF pills, Turn on/Turn off
+  and the Delete control are now live in the embed row cluster.)
 - Speakers footer caption "Only 'Invited' sends anything…" **(unverified at gate-3.)**
 - Scorecard eyebrow should name plan · track · round — app renders "PROGRAM COMMITTEE
   REVIEW · ALL TRACKS" with no round; frame 01 is "WAVE 2 · AI ENGINEERING · ROUND 1".
@@ -540,21 +587,15 @@ Feed-format parity test: picker options == live feed suffixes.
 Remaining S-tier:
 - Default /agenda day pills still #anchors — emit ?day= links on the default view
   too (the parameterized view is fixed).
-- Itinerary /schedule: params work (?q=/?trackId=, case-insensitive) but NO search
-  box renders — add the input; also honor ?format= like /sessions.
 - Weighted-score label CLOSED (probe-4); residue: caption under it still says
   "Mean of submitted reviews · recusals excluded" — update to describe the
   weighted blend.
 - CRM KPIs CLOSED (probe-5: "0 returning · 1 events" rendered). Pluralization nit
   FIXED at gate-3 ("1 event" per 08 report).
-- Public-pages Agenda/Schedule rows claim "9 published" but those surfaces render
-  5 placed blocks — per-surface counts should reflect what each surface shows.
 - Per-speaker "Send portal invite" — STALE at gate-3, defect INVERTED: the roster
   now shows the invite link on EVERY no-account row (04 report); the fix is
   NOT-INVITED-rows-only, already carried in the Pair-3 speakers polish batch above.
 - Public CFP visible "Create an account" CTA on /submit (magic-link copy only).
-- Organizer add-co-presenter ROLE picker (row lands as td "speaker"; portal form
-  already has PARTICIPANT_ROLE_OPTIONS — reuse).
 - Agenda "+ Add room / track" link into Settings.
 - **RECONCILE (DEC needed): Speakers Import CSV** — OnboardingGrid.tsx:76 says
   "Import CSV is the Contacts page's job" (DEC-662/746), but SPK-03 (w2) looks for
@@ -589,14 +630,10 @@ Submissions triage cards' verbose fields, Settings subscreens as routes, phone C
 media rule). All under the additive-reflow rule.
 
 ## ABS grader additions — ALL CLOSED by probe 2 (sort DEC-737, labels DEC-723,
-anonymity DEC-736, pending-submissions) except: co-presenter organizer-only w/
-generic role label (still open, ties to Contacts add-to-event role work).
+anonymity DEC-736, pending-submissions).
 
 ## SPK grader additions (2026-08-13, prod — 3/3 scenarios PASS, defects below)
 
-- **P2 orphaned task**: New Task with "Assign to all accepted speakers" UNCHECKED
-  creates a permanently unassigned task with no recovery UI — either require an
-  assignee or provide an assign-later surface.
 - **P2 task assignment misses portal-linked rows**: with assign-to-all CHECKED, the
   "Has account" roster row (Marcus) did NOT receive the new tasks while his duplicate
   non-account row did — assignment keys on the wrong record.
@@ -615,10 +652,6 @@ capability, not broken behavior — data correctness was flawless)
 - **P2 public agenda grid blocks CLIP content**: short sessions (15-min) show only
   time + track chips, title/speakers cut off (anon /e/…/agenda at 1280×800, 9:15 +
   9:30 day-1 blocks). This is the user-reported "overflowing text in calendar grid".
-- **P2 "LIVE · N PUBLISHED" count wrong**: Settings public-pages rows show the
-  placed-session count on all four surfaces incl. Speakers (gate-3 reads
-  "LIVE · 7 PUBLISHED"; still not per-surface reality). Per-surface counts should
-  reflect what each surface shows.
 - Missing-capability shortlist (drove sbek's 72% — triage for cheap wins): Sessions
   facets beyond track (format/location) · itinerary widget ignores ?q=/?trackId= ·
   session DETAIL page lacks the Save/itinerary control its list card has ·
@@ -655,9 +688,6 @@ Contacts section above)
 
 ## CNT grader additions (2026-08-13, prod — 3/3 scenarios PASS, defects below)
 
-- **P3 Session format dropped on create**: New-submission dialog discards the selected
-  Session format (created session has none), and NO surface — detail view or detail
-  Edit — exposes a format field to fix it afterward.
 - **P3 attribution by raw email**: file comments + session history show
   "sbek-organizer@example.com" instead of the display name; history entries date-only,
   no time.
