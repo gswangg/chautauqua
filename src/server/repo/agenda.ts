@@ -423,6 +423,52 @@ export async function getAgendaPayload(db: Db, eventId: string, event: EventInfo
   };
 }
 
+/** DEC-844: narrowing an event's window (PATCH /events/:eventId) must name
+ * every placed session it unschedules. Composes the SAME day-range predicate
+ * (isDayWithinEventRange) that getAgendaPayload/getConflictsAndSummary own —
+ * a slot is "outside window" iff that predicate is false for the NEW dates.
+ * Returns the true total count plus at most `limit` named rows (ordered by
+ * submission id for determinism), so callers can report "N sessions, showing
+ * the first `limit`" without a second query. */
+export async function listSlotsOutsideWindow(
+  db: Db,
+  eventId: string,
+  startDate: string,
+  endDate: string,
+  limit = 20,
+): Promise<{ count: number; sessions: { submissionId: string; ref: string; title: string; day: string }[] }> {
+  const eventRows = await db
+    .select({ recordPrefix: schema.event.recordPrefix })
+    .from(schema.event)
+    .where(eq(schema.event.id, eventId))
+    .limit(1);
+  const recordPrefix = eventRows[0]?.recordPrefix;
+  if (recordPrefix === undefined) return { count: 0, sessions: [] };
+
+  const rows = await db
+    .select({
+      submissionId: schema.scheduleSlot.submissionId,
+      day: schema.scheduleSlot.day,
+      seq: schema.submission.seq,
+      title: schema.submission.title,
+    })
+    .from(schema.scheduleSlot)
+    .innerJoin(schema.submission, eq(schema.scheduleSlot.submissionId, schema.submission.id))
+    .where(and(eq(schema.submission.eventId, eventId), eq(schema.submission.status, "accepted")))
+    .orderBy(asc(schema.scheduleSlot.submissionId));
+
+  const outside = rows.filter((r) => !isDayWithinEventRange(r.day, startDate, endDate));
+  return {
+    count: outside.length,
+    sessions: outside.slice(0, limit).map((r) => ({
+      submissionId: r.submissionId,
+      ref: formatRef(recordPrefix, r.seq),
+      title: r.title,
+      day: r.day,
+    })),
+  };
+}
+
 /** DEC-595: counts how many of `submissionIds` pass the SAME public
  * visibility gate (src/server/repo/public/gates.ts's visibleSessionConditions
  * — accepted + content-approved) every other gated read uses. Placed

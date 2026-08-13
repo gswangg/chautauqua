@@ -37,7 +37,8 @@ import {
 import { createDefaultForm } from "../../server/repo/forms";
 import { bumpIcsSequencesForRoom } from "../../server/repo/ics-sequence";
 import { isDateOrderValid, isIsoDate, isValidHexColor, isValidSlug, isValidTimezone } from "./validators";
-import { DEC_519 } from "../../decisions";
+import { listSlotsOutsideWindow } from "../../server/repo/agenda";
+import { DEC_519, DEC_844 } from "../../decisions";
 
 // Compile-checked dependency marker: the room-rename ics_sequence bump
 // below implements DEC-519.
@@ -366,7 +367,13 @@ eventsRoutes.patch("/events/:eventId", csrfJson, async (c) => {
     timezone,
     branding,
   });
-  return c.json(updated);
+
+  // DEC-844: narrowing the window never blocks the write, but names every
+  // placed session it unschedules — computed AFTER the update succeeds,
+  // against the NEW (now-persisted) window.
+  void DEC_844;
+  const unscheduledByWindow = await listSlotsOutsideWindow(c.var.db, eventId, updated.startDate, updated.endDate);
+  return c.json({ ...updated, unscheduledByWindow });
 });
 
 // ---------------------------------------------------------------------------

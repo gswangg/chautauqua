@@ -55,6 +55,19 @@ vi.mock("../src/server/repo/events", async () => {
   };
 });
 
+vi.mock("../src/server/repo/agenda", async () => {
+  const actual = await vi.importActual<typeof import("../src/server/repo/agenda")>(
+    "../src/server/repo/agenda",
+  );
+  return {
+    ...actual,
+    // DEC-844: the PATCH route now also queries listSlotsOutsideWindow against
+    // the real db after a successful update; this suite's db is a bare `{}`
+    // mock, so stub it out (unrelated to what this file covers).
+    listSlotsOutsideWindow: vi.fn(async () => ({ count: 0, sessions: [] })),
+  };
+});
+
 vi.mock("../src/server/repo/forms", async () => {
   const actual = await vi.importActual<typeof import("../src/server/repo/forms")>(
     "../src/server/repo/forms",
