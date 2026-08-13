@@ -13,11 +13,17 @@ import react from "@vitejs/plugin-react";
 export default defineConfig({
   plugins: [react()],
   test: {
-    // Machine-protection caps (mandate item 72): the full suite spawned 6+
-    // multi-GB workers and swamped the 16GB host twice. maxWorkers binds both
-    // the threads and forks pools; keep at 2 regardless of environment.
+    // Machine-protection caps (mandate item 72/73): the full suite spawned 6+
+    // multi-GB workers and swamped the 16GB host twice. maxWorkers alone does
+    // not bind the forks pool (vitest's default pool) -- poolOptions.forks
+    // and poolOptions.threads must be capped explicitly too, or a run that
+    // falls back to threads/forks ignores the top-level maxWorkers.
     maxWorkers: 2,
     minWorkers: 1,
+    poolOptions: {
+      forks: { maxForks: 2 },
+      threads: { maxThreads: 2 },
+    },
     environment: "node",
     environmentMatchGlobs: [
       ["app/src/**/*.render.test.tsx", "jsdom"],
