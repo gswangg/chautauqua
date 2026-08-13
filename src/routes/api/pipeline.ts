@@ -12,6 +12,7 @@ import { ApiError } from "../../server/http";
 import * as repo from "../../server/repo/pipeline";
 import { findContactForOrg } from "../../server/repo/contacts";
 import { clampPage, listPerPage } from "../../lib/pagination";
+import { PIPELINE_FIT_MIN, PIPELINE_FIT_MAX, PIPELINE_RATIONALE_MAX_LEN } from "../../domain/pipeline-fit";
 
 export const pipelineRoutes = new Hono<AppEnv>();
 
@@ -22,6 +23,34 @@ function currentOrgId(c: { var: { auth?: { orgId: string } } }): string {
   const auth = c.var.auth;
   if (!auth) throw new ApiError("unauthorized", "Login required");
   return auth.orgId;
+}
+
+// DEC-821: fitScore is an integer 1-5 or null; rationale is bounded text or
+// null. Neither field is ever coerced -- an out-of-range number, a non-
+// integer, or an over-length string is a loud, named field error.
+export function validateFitScore(value: unknown): number | null {
+  if (value === undefined || value === null) return null;
+  if (typeof value !== "number" || !Number.isInteger(value) || value < PIPELINE_FIT_MIN || value > PIPELINE_FIT_MAX) {
+    throw new ApiError("invalid", "Validation failed", {
+      fitScore: `must be an integer ${PIPELINE_FIT_MIN}-${PIPELINE_FIT_MAX}, or null`,
+    });
+  }
+  return value;
+}
+
+export function validateRationale(value: unknown): string | null {
+  if (value === undefined || value === null) return null;
+  if (typeof value !== "string") {
+    throw new ApiError("invalid", "Validation failed", { rationale: "must be text, or null" });
+  }
+  const trimmed = value.trim();
+  if (trimmed === "") return null;
+  if (trimmed.length > PIPELINE_RATIONALE_MAX_LEN) {
+    throw new ApiError("invalid", "Validation failed", {
+      rationale: `must be ${PIPELINE_RATIONALE_MAX_LEN} characters or fewer`,
+    });
+  }
+  return trimmed;
 }
 
 function asRecord(body: unknown): Record<string, unknown> {
@@ -45,6 +74,9 @@ function serializeEntry(row: repo.PipelineListItem) {
     // is null for every non-declined entry.
     stageSince: row.stageSince,
     declineReason: row.declineReason,
+    // DEC-821: absence is a visible 'Unrated' state, never an implied zero.
+    fitScore: row.fitScore,
+    rationale: row.rationale,
   };
 }
 
@@ -91,11 +123,14 @@ pipelineRoutes.post("/pipeline", csrfJson, async (c) => {
     throw new ApiError("invalid", "Validation failed", { stage: `must be one of ${repo.PIPELINE_STAGES.join(", ")}` });
   }
 
+  const fitScore = validateFitScore(body.fitScore);
+  const rationale = validateRationale(body.rationale);
+
   const contact = await findContactForOrg(c.var.db, body.contactId, orgId);
   if (!contact) throw new ApiError("not_found", "Contact not found");
 
   const authorName = await repo.resolveAuthorName(c.var.db, auth.userId);
-  const entry = await repo.enrollContact(c.var.db, orgId, contact.id, stage, { userId: auth.userId, name: authorName });
+  const entry = await repo.enrollContact(c.var.db, orgId, contact.id, stage, { userId: auth.userId, name: authorName }, { fitScore, rationale });
 
   return c.json(
     serializeEntry({
@@ -109,6 +144,8 @@ pipelineRoutes.post("/pipeline", csrfJson, async (c) => {
       updatedAt: entry.updatedAt,
       stageSince: entry.updatedAt,
       declineReason: null,
+      fitScore: entry.fitScore,
+      rationale: entry.rationale,
     }),
     201,
   );
@@ -159,6 +196,14 @@ pipelineRoutes.patch("/pipeline/:id", csrfJson, async (c) => {
     throw new ApiError("invalid", "Validation failed", { reason: "required when declining" });
   }
 
+  // DEC-821: fit fields are optional on a stage-move PATCH -- when present
+  // they're validated and persisted alongside the move, but fit never
+  // itself moves a card between stages.
+  const hasFitScore = "fitScore" in body;
+  const hasRationale = "rationale" in body;
+  const fitScore = validateFitScore(body.fitScore);
+  const rationale = validateRationale(body.rationale);
+
   const authorName = await repo.resolveAuthorName(c.var.db, auth.userId);
   const updated = await repo.moveEntry(
     c.var.db,
@@ -168,21 +213,31 @@ pipelineRoutes.patch("/pipeline/:id", csrfJson, async (c) => {
     body.stage === "declined" ? reason : undefined,
   );
 
-  const contact = await findContactForOrg(c.var.db, updated.contactId, orgId);
+  const withFit =
+    hasFitScore || hasRationale
+      ? await repo.updateEntryFit(c.var.db, updated.id, {
+          ...(hasFitScore ? { fitScore } : {}),
+          ...(hasRationale ? { rationale } : {}),
+        })
+      : updated;
+
+  const contact = await findContactForOrg(c.var.db, withFit.contactId, orgId);
   if (!contact) throw new ApiError("not_found", "Contact not found");
 
   return c.json(
     serializeEntry({
-      id: updated.id,
+      id: withFit.id,
       contactId: contact.id,
       firstName: contact.firstName,
       lastName: contact.lastName,
       company: contact.company,
       email: contact.email,
-      stage: updated.stage,
-      updatedAt: updated.updatedAt,
+      stage: withFit.stage,
+      updatedAt: withFit.updatedAt,
       stageSince: updated.updatedAt,
-      declineReason: updated.stage === "declined" ? reason : null,
+      declineReason: withFit.stage === "declined" ? reason : null,
+      fitScore: withFit.fitScore,
+      rationale: withFit.rationale,
     }),
   );
 });

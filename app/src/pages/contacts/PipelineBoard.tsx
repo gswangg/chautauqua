@@ -18,6 +18,7 @@ import { DelayedLoading } from '../../components/DelayedLoading';
 import { ModalFrame, FormRow } from '../../components/ModalFrame';
 import { formatDateTime } from '../../lib/dates';
 import { pipelineCardAge } from './pipeline-age';
+import { sortByFit } from '../../../../src/domain/pipeline-fit';
 import type { ContactListItem, PipelineEntry, PipelineEntryDetail, PipelineStage } from './types';
 import { PIPELINE_STAGES, PIPELINE_STAGE_LABELS } from './types';
 import './contacts-panels.css';
@@ -127,11 +128,9 @@ export function PipelineBoard() {
                   </span>
                 </div>
                 <ul className="chq-contacts-pipeline-column-cards">
-                  {entries
-                    .filter((e) => e.stage === stage)
-                    .map((entry) => (
-                      <PipelineCard key={entry.id} entry={entry} onOpen={() => setOpenEntryId(entry.id)} onMove={moveTo} />
-                    ))}
+                  {sortByFit(entries.filter((e) => e.stage === stage)).map((entry) => (
+                    <PipelineCard key={entry.id} entry={entry} onOpen={() => setOpenEntryId(entry.id)} onMove={moveTo} />
+                  ))}
                 </ul>
               </div>
             ))}
@@ -303,6 +302,14 @@ function PipelineCard({ entry, onOpen, onMove }: PipelineCardProps) {
       {entry.stage === 'declined' && entry.declineReason && (
         <div className="chq-contacts-pipeline-card-decline-reason">{entry.declineReason}</div>
       )}
+      {/* DEC-821: fit is a visible state, never blank -- an unrated card
+          still says so, rather than implying a zero. */}
+      {entry.fitScore !== null ? (
+        <span className="chq-pill chq-contacts-pipeline-card-fit">Fit {entry.fitScore}</span>
+      ) : (
+        <span className="chq-pill chq-contacts-pipeline-card-fit chq-contacts-pipeline-card-fit-unrated">Unrated</span>
+      )}
+      {entry.rationale && <div className="chq-contacts-pipeline-card-rationale">{entry.rationale}</div>}
       <label className="chq-contacts-pipeline-card-move">
         Move to
         <select className="chq-select" value={entry.stage} onChange={(e) => onMove(entry, e.target.value as PipelineStage)}>
@@ -327,6 +334,10 @@ function EnrollDialog({ alreadyEnrolledContactIds, onClose, onEnrolled }: Enroll
   const [contacts, setContacts] = useState<ContactListItem[]>([]);
   const [contactId, setContactId] = useState('');
   const [stage, setStage] = useState<PipelineStage>('identified');
+  // DEC-821: fit is optional at enroll time -- '' means "unrated", never a
+  // silently-assumed score.
+  const [fitScore, setFitScore] = useState('');
+  const [rationale, setRationale] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -343,7 +354,12 @@ function EnrollDialog({ alreadyEnrolledContactIds, onClose, onEnrolled }: Enroll
     setBusy(true);
     setError(null);
     try {
-      await apiPost('/pipeline', { contactId, stage });
+      await apiPost('/pipeline', {
+        contactId,
+        stage,
+        fitScore: fitScore === '' ? null : Number(fitScore),
+        rationale: rationale.trim() === '' ? null : rationale.trim(),
+      });
       onEnrolled();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to enroll contact');
@@ -390,6 +406,27 @@ function EnrollDialog({ alreadyEnrolledContactIds, onClose, onEnrolled }: Enroll
               </option>
             ))}
           </select>
+        </label>
+        <label className="chq-contacts-import-field">
+          Fit (1–5, optional)
+          <select className="chq-select" value={fitScore} onChange={(e) => setFitScore(e.target.value)}>
+            <option value="">Unrated</option>
+            {[1, 2, 3, 4, 5].map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="chq-contacts-import-field">
+          Why them
+          <input
+            type="text"
+            className="chq-input"
+            value={rationale}
+            onChange={(e) => setRationale(e.target.value)}
+            placeholder="Keynoted a similar event last year"
+          />
         </label>
         <div className="chq-contacts-import-actions">
           <button type="button" className="chq-btn chq-btn-primary" disabled={busy || !contactId} onClick={enroll}>

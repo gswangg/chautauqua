@@ -181,6 +181,11 @@ export interface PipelineEntry {
   // reason recorded when it was declined -- null for every other stage.
   stageSince: number;
   declineReason: string | null;
+  // DEC-821: fit score (1-5) and a one-line rationale, both nullable --
+  // absence is a visible 'Unrated' state, never an implied zero. Fit ranks
+  // cards WITHIN a stage column only; it never crosses stages.
+  fitScore: number | null;
+  rationale: string | null;
 }
 
 export interface PipelineActivity {
