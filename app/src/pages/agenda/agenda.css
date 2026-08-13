@@ -140,13 +140,12 @@
   background: transparent;
 }
 
-/* DEC-742: a same-room pair of sessions that overlap in time merges into
-   ONE inverted card instead of two side-by-side lanes — no inner scroll (the
-   DEC-620 rule on .chq-day-grid-placed-card below is deliberately not
-   repeated here) so the card grows to its content and the shared
-   minmax(24px, auto) row track grows with it instead of clipping either
-   session invisible. Ink fill + caption is the only clash signal (DEC-367:
-   no red/third accent). */
+/* DEC-742/DEC-759: a same-room pair of sessions that overlap in time merges
+   into ONE inverted card instead of two side-by-side lanes — no inner scroll
+   here, same as .chq-day-grid-placed-card below, so the card grows to its
+   content and the shared minmax(24px, auto) row track grows with it instead
+   of clipping either session invisible. Ink fill + caption is the only
+   clash signal (DEC-367: no red/third accent). */
 .chq-day-grid-clash-card {
   align-self: stretch;
   justify-self: start;
@@ -220,13 +219,13 @@
   align-self: stretch;
   justify-self: start;
   height: 100%;
-  /* DEC-620: a short-duration card's content (title + track/speaker meta)
-     can need more vertical room than its time-grid row provides — scroll
-     inside the card rather than silently clipping it invisible. Only the
-     vertical axis scrolls (DEC-404/DEC-405 bans clipping the horizontal
-     axis everywhere); horizontal content wraps instead (see the card's own
-     text-overflow/wrap rules below). */
-  overflow-y: auto;
+  /* DEC-759: a short-duration card's content (title + track/speaker meta)
+     can need more vertical room than its time-grid row provides — the ROW
+     grows to fit it (see .chq-day-grid's `minmax(24px, auto)` row template)
+     instead of scrolling inside the card, which hid the conflict caption
+     behind a scrollbar (DEC-620, superseded). The horizontal axis stays
+     unclipped (DEC-404/DEC-405); horizontal content wraps instead (see the
+     card's own text-overflow/wrap rules below). */
   min-height: 0;
 }
 
@@ -244,11 +243,10 @@
   flex-direction: column;
   gap: 2px;
   cursor: grab;
-  /* DEC-620: same rationale as .chq-day-grid-placed-card above — scroll
-     rather than silently clip when a card's own content outgrows its
-     time-grid-driven height. The horizontal axis stays unclipped
-     (DEC-404/DEC-405). */
-  overflow-y: auto;
+  /* DEC-759: same rationale as .chq-day-grid-placed-card above — the row
+     grows rather than the card scrolling internally, so a tight card's own
+     conflict caption stays visible at rest. The horizontal axis stays
+     unclipped (DEC-404/DEC-405). */
   min-height: 0;
   width: 100%;
   text-align: left;
