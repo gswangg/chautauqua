@@ -8,7 +8,8 @@ import { formatDate as formatTimestamp, formatDateTime } from '../../lib/dates';
 import { formatEventDate } from '../../../../src/lib/event-time';
 import { SESSION_FORMAT_FIELD_ID } from '../../../../src/forms/types';
 import type { CfpForm } from '../forms/types';
-import { buildAnswerRows, formatPlacementLine, resolveAnswerFields } from './detailRows';
+import { buildAnswerRows, resolveAnswerFields } from './detailRows';
+import { formatSubmissionScheduleLine } from './schedule';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { buildSubmissionsQuery, parseSubmissionsQuery } from './filters';
 import './detail.css';
@@ -530,10 +531,14 @@ export function SubmissionDetailPage() {
           <h1>
             {detail.ref}: {detail.title}
           </h1>
-          {/* DEC-780: only rendered once the session has an actual agenda
+          {/* DEC-828: only rendered once the session has an actual agenda
               placement -- schedule_slot has at most one row per submission,
               null means "not scheduled yet", never a blank/placeholder line. */}
-          {detail.slot && <p className="chq-detail-placement">{formatPlacementLine(detail.slot)}</p>}
+          {detail.slot && (
+            <p className="chq-detail-placement">
+              <Link to="/agenda">{formatSubmissionScheduleLine(detail.slot)}</Link>
+            </p>
+          )}
         </div>
         {listPosition && (
           <div className="chq-detail-position" aria-label="Position in list">

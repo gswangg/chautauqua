@@ -662,7 +662,9 @@ describe('SubmissionDetailPage render: placement + format (DEC-780)', () => {
     await waitFor(() => {
       expect(screen.getByText('Original description')).toBeInTheDocument();
     });
-    expect(screen.getByText('Tue 12 May, 10:00–10:30 · Room 2A')).toBeInTheDocument();
+    const placementLink = screen.getByText('Tue 12 May · 10:00–10:30 · Room 2A');
+    expect(placementLink).toBeInTheDocument();
+    expect(placementLink.closest('a')).toHaveAttribute('href', '/agenda');
   });
 
   it('renders no placement line when slot is null (not yet scheduled)', async () => {
