@@ -126,6 +126,9 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
   // Both paths share the identical preview->confirm->send flow/dialog.
   const [remindContactIds, setRemindContactIds] = useState<string[] | undefined>(undefined);
   const [toast, setToast] = useState<string | null>(null);
+  // DEC-805: tracks in-flight per-row portal-invite sends so the quiet
+  // control can't be double-clicked into two overlapping sends.
+  const [invitingContactIds, setInvitingContactIds] = useState<Set<string>>(new Set());
   const [viewingResponse, setViewingResponse] = useState<{ assignmentId: string; contactName: string } | null>(
     null,
   );
@@ -283,6 +286,29 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
       setRemindPreviewError(err instanceof ApiError ? `Send failed: ${err.message}` : 'Send failed');
     } finally {
       setReminding(false);
+    }
+  }
+
+  // DEC-805: "Inviting a speaker to the portal is a send, not a pill" — one
+  // POST per click, reported through the same describeSendResult reporter
+  // every other send uses, with any recipient lacking an address named in
+  // the toast (never silently dropped) rather than restated as a bare count.
+  async function sendPortalInvite(contactId: string) {
+    if (!eventId) return;
+    setInvitingContactIds((prev) => new Set(prev).add(contactId));
+    setError(null);
+    try {
+      const res = await apiPost<SendResult>(`/events/${eventId}/portal-invites`, { contactIds: [contactId] });
+      const failedNames = res.failed && res.failed.length > 0 ? ` ${res.failed.map((f) => f.message).join('; ')}.` : '';
+      setToast(`${describeSendResult(res, { one: 'portal invite', many: 'portal invites' })}${failedNames}`);
+    } catch (err) {
+      setError(err instanceof ApiError ? `Portal invite failed: ${err.message}` : 'Portal invite failed');
+    } finally {
+      setInvitingContactIds((prev) => {
+        const next = new Set(prev);
+        next.delete(contactId);
+        return next;
+      });
     }
   }
 
@@ -462,6 +488,18 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
                       >
                         Remind {firstNameOf(row.contact.name)}
                       </button>
+                      {/* DEC-805: quiet, conditional — a contact who already
+                          has an account has no use for a claim-link invite. */}
+                      {!row.contact.hasAccount && (
+                        <button
+                          type="button"
+                          className="chq-btn chq-btn-tertiary chq-speakers-invite-one"
+                          onClick={() => sendPortalInvite(row.contact.id)}
+                          disabled={invitingContactIds.has(row.contact.id)}
+                        >
+                          Send portal invite
+                        </button>
+                      )}
                     </td>
                     {grid.tasks.map((task) => {
                       const cell = row.cells.find((c) => c.taskId === task.id);

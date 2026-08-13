@@ -188,6 +188,15 @@
   font-size: 11px;
 }
 
+/* Per-speaker portal invitation: same quiet family, conditional on the row
+   not already having an account (DEC-805). */
+.chq-speakers-invite-one {
+  margin-top: 4px;
+  margin-left: 4px;
+  padding: 2px 8px;
+  font-size: 11px;
+}
+
 .chq-speakers-file-link,
 .chq-speakers-response-link {
   font-size: 11px;
