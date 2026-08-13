@@ -18,21 +18,22 @@ export function isSurface(value: string): value is Surface {
   return (SURFACES as readonly string[]).includes(value);
 }
 
-/** DEC-989 Amendment (wave 37): the SSR public surfaces take their
- * container class from the CONTENT, not the route. sessions is the WIDE
- * pair (list + 300px rail, the 1180 measure DEC-989 itself names);
- * speakers/gallery (DEC-990: same surface, two views) and schedule are
- * READING columns; agenda is CANVAS (no class -- its lane count is the
- * event's room count). EmbedShell never consumes this: an embed fills its
- * host iframe. */
+/** DEC-989 Amendment (wave 37), further amended DEC-990 (wave 40): the SSR
+ * public surfaces take their container class from the CONTENT, not the
+ * route. sessions is the WIDE pair (list + 300px rail, the 1180 measure
+ * DEC-989 itself names); speakers (the ruled list) and schedule are READING
+ * columns; gallery (six ~184px tiles + gaps is ~1180, DEC-990 wave-40
+ * amendment) is WIDE too, even though it's the same surface as speakers;
+ * agenda is CANVAS (no class -- its lane count is the event's room count).
+ * EmbedShell never consumes this: an embed fills its host iframe. */
 export type PublicMeasure = "reading" | "wide" | "canvas";
 
 export function measureClassForSurface(surface: Surface): PublicMeasure {
   switch (surface) {
     case "sessions":
+    case "gallery":
       return "wide";
     case "speakers":
-    case "gallery":
     case "schedule":
       return "reading";
     case "agenda":
@@ -115,7 +116,7 @@ export const SURFACE_LABELS: Record<Surface, string> = {
   sessions: "Sessions",
   speakers: "Speakers",
   agenda: "Agenda",
-  schedule: "Schedule",
+  schedule: "My schedule",
   gallery: "Gallery",
 };
 
