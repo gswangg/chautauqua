@@ -140,7 +140,79 @@ function mockTwoChains(overrides: Record<string, unknown> = {}) {
   });
 }
 
+// w43-f: the chip strip's count reads the chain length for that KIND
+// ('Slides · 3 versions' after two replaces), not a per-upload-group tally
+// -- three linked versions of one kind must render as ONE chip reading "3
+// versions", never split into separate groups or stuck at "1 version".
+const threeVersionChain = [
+  {
+    id: 'file-slides-v3',
+    submissionId: SUBMISSION_ID,
+    kind: 'presentation',
+    filename: 'slides-v3.pdf',
+    sizeBytes: 100,
+    contentType: 'application/pdf',
+    previousFileId: 'file-slides-v2',
+    uploadedByContactId: null,
+    uploaderName: 'Speaker One',
+    createdAt: 1700000300000,
+    versionNo: 3,
+  },
+  {
+    id: 'file-slides-v2',
+    submissionId: SUBMISSION_ID,
+    kind: 'presentation',
+    filename: 'slides-v2.pdf',
+    sizeBytes: 95,
+    contentType: 'application/pdf',
+    previousFileId: 'file-slides-v1',
+    uploadedByContactId: null,
+    uploaderName: 'Speaker One',
+    createdAt: 1700000200000,
+    versionNo: 2,
+  },
+  {
+    id: 'file-slides-v1',
+    submissionId: SUBMISSION_ID,
+    kind: 'presentation',
+    filename: 'slides-v1.pdf',
+    sizeBytes: 90,
+    contentType: 'application/pdf',
+    previousFileId: null,
+    uploadedByContactId: null,
+    uploaderName: 'Speaker One',
+    createdAt: 1700000100000,
+    versionNo: 1,
+  },
+];
+
 describe('DeliverableDetail render smoke', () => {
+  it('w43-f: chip strip reads the chain length for the kind -- three linked replaces render ONE "3 versions" chip', async () => {
+    mockApi({
+      [`GET /api/v1/submissions/${SUBMISSION_ID}/files`]: listEnvelope(threeVersionChain),
+      [`GET /api/v1/submissions/${SUBMISSION_ID}`]: submissionDetail(),
+      [`GET /api/v1/files/file-slides-v3/comments`]: listEnvelope([]),
+      'GET /api/v1/me': { userId: 'user-1', email: 'org@example.com', name: 'Org User', role: 'organizer', orgId: 'org-1' },
+    });
+
+    render(
+      <MemoryRouter>
+        <DeliverableDetail
+          submissionId={SUBMISSION_ID}
+          title="A talk"
+          contentStatus="pending"
+          onBack={() => {}}
+          onContentStatusChange={() => {}}
+        />
+      </MemoryRouter>,
+    );
+
+    const chip = await screen.findByRole('tab', { name: 'Presentation · 3 versions' });
+    expect(chip).toBeInTheDocument();
+    // No stray per-version or per-upload-group chip for the same kind.
+    expect(screen.queryAllByRole('tab', { name: /Presentation/ })).toHaveLength(1);
+  });
+
   it('renders one chip (no filename suffix) for a kind with a single 2-file chain', async () => {
     mockBase();
 
