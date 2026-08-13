@@ -30,6 +30,7 @@ import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { EmbedsPanel } from './EmbedsPanel';
 import { SavedEmbedsPanel } from './SavedEmbedsPanel';
 import { SummarySection, type SummarySectionRow } from './SummarySection';
+import { PUBLIC_PAGES_STATE_TONE_CLASS } from './publicPagesState';
 
 const SECTION_KEY = 'public-pages';
 
@@ -137,7 +138,9 @@ export function PublicPagesPanel() {
       row.state === null ? (
         <DelayedLoading />
       ) : (
-        <span className={`chq-settings-public-pages-state chq-settings-public-pages-state-${stateTone(row.state)}`}>
+        <span
+          className={`chq-settings-public-pages-state ${PUBLIC_PAGES_STATE_TONE_CLASS[stateTone(row.state)]}`}
+        >
           {row.state}
         </span>
       ),
@@ -165,7 +168,7 @@ export function PublicPagesPanel() {
                     <DelayedLoading />
                   ) : (
                     <span
-                      className={`chq-settings-public-pages-state chq-settings-public-pages-state-${stateTone(row.state)}`}
+                      className={`chq-settings-public-pages-state ${PUBLIC_PAGES_STATE_TONE_CLASS[stateTone(row.state)]}`}
                     >
                       {row.state}
                     </span>

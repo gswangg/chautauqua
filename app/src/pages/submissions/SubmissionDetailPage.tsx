@@ -67,7 +67,12 @@ const INVITE_STATUS_LABELS: Record<InviteStatus, string> = {
 };
 
 function InviteStatusChip({ status }: { status: InviteStatus }) {
-  return <span className={`chq-status-pill chq-invite-status-${status}`}>{INVITE_STATUS_LABELS[status]}</span>;
+  // DEC-367: no per-status colour ("no red and no third accent") -- the
+  // pill's single neutral .chq-status-pill face is the whole of its style;
+  // a per-value chq-invite-status-<status> modifier was dead weight (no
+  // rule ever existed, and DEC-367 forbids adding one), so it is dropped
+  // rather than given a rule (DEC-976).
+  return <span className="chq-status-pill">{INVITE_STATUS_LABELS[status]}</span>;
 }
 
 // CNT-11 (DEC-158): session content version history.
