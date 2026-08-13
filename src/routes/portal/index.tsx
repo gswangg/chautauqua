@@ -427,7 +427,7 @@ function SubmissionDetailPage(props: {
           {detail.statusLabel} · {formatCalendarDate(detail.submittedAt)}
         </span>
       </div>
-      <h2 class="chq-portal-hero">{detail.title}</h2>
+      <h1 class="chq-portal-hero">{detail.title}</h1>
       {metaParts.length > 0 ? <p class="chq-portal-sub">{metaParts.join(" · ")}</p> : null}
       {placed ? (
         <p class="chq-portal-sub">{formatPlacement(detail.day!, detail.startMin!, detail.roomName)}</p>

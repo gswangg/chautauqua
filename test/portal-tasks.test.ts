@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
 import {
   assertOwnAssignment,
@@ -30,6 +30,15 @@ vi.mock("../src/server/repo/portal", async () => {
       tasks: [],
     })),
     getMyTaskAssignments: vi.fn(async () => []),
+    getAssignmentScope: vi.fn(),
+  };
+});
+
+vi.mock("../src/server/repo/tasks", async () => {
+  const actual = await vi.importActual<typeof import("../src/server/repo/tasks")>("../src/server/repo/tasks");
+  return {
+    ...actual,
+    updateAssignmentStatus: vi.fn(async () => ({})),
   };
 });
 
@@ -55,6 +64,130 @@ describe("portal tasks page shell sign-out", () => {
     const mainCloseIndex = html.indexOf("</main>");
     const formIndex = html.indexOf('<form method="post" action="/logout"');
     expect(formIndex).toBeGreaterThan(mainCloseIndex);
+  });
+});
+
+// DEC-953: display copy only — assignment status pills read "To do"/"Done"
+// on screen while the underlying status stays pending|complete on the wire
+// (DB column, updateAssignmentStatus argument, and POST route untouched).
+describe("portal tasks page — DEC-953 status pill wording", () => {
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("renders 'To do' for a pending assignment and 'Done' for a complete one, with the wire status untouched", async () => {
+    const { getMyTaskAssignments } = await import("../src/server/repo/portal");
+    vi.mocked(getMyTaskAssignments).mockResolvedValue([
+      {
+        id: "assign-pending",
+        taskId: "task-1",
+        eventId: "event-1",
+        kind: "general",
+        title: "Confirm bio",
+        description: null,
+        dueDate: null,
+        assignedAt: 0,
+        required: false,
+        status: "pending",
+        formId: null,
+        deliverableKind: null,
+        fileId: null,
+        responseJson: null,
+        timezone: "UTC",
+        completedAt: null,
+      },
+      {
+        id: "assign-complete",
+        taskId: "task-2",
+        eventId: "event-1",
+        kind: "general",
+        title: "Sign release",
+        description: null,
+        dueDate: null,
+        assignedAt: 0,
+        required: false,
+        status: "complete",
+        formId: null,
+        deliverableKind: null,
+        fileId: null,
+        responseJson: null,
+        timezone: "UTC",
+        completedAt: 1,
+      },
+    ]);
+
+    const { portalTasksRoutes } = await import("../src/routes/portal/tasks");
+    const app = new Hono<AppEnv>();
+    registerErrorHandler(app);
+    app.use("*", async (c, next) => {
+      c.set("auth", speakerAuth);
+      c.set("db", {} as never);
+      await next();
+    });
+    app.route("/portal", portalTasksRoutes);
+
+    const res = await app.request("/portal/tasks");
+    expect(res.status).toBe(200);
+    const html = await res.text();
+
+    // display copy: "To do" / "Done", not "Pending" / "Completed"
+    expect(html).toContain("To do");
+    expect(html).toContain("Done");
+    expect(html).not.toMatch(/>Pending</);
+    expect(html).not.toMatch(/>Completed</);
+    // class hooks and the summary line stay stable, just the count word changes
+    expect(html).toContain("chq-flag chq-portal-flag-done");
+    expect(html).toContain("1 of 2 done");
+    // the "Mark complete" button label and the POST endpoint are unchanged
+    expect(html).toContain(">Mark complete<");
+    expect(html).toContain('action="/portal/tasks/assign-pending/complete"');
+  });
+
+  it("POST /portal/tasks/:id/complete still calls updateAssignmentStatus with the literal 'complete' status", async () => {
+    const { getAssignmentScope } = await import("../src/server/repo/portal");
+    vi.mocked(getAssignmentScope).mockResolvedValue({
+      id: "assign-pending",
+      taskId: "task-1",
+      eventId: "event-1",
+      kind: "general",
+      formId: null,
+      deliverableKind: null,
+      contactId: "ct-1",
+      orgId: "org-1",
+      status: "pending",
+      fileId: null,
+    });
+
+    const { updateAssignmentStatus } = await import("../src/server/repo/tasks");
+    const { portalTasksRoutes } = await import("../src/routes/portal/tasks");
+    const app = new Hono<AppEnv>();
+    registerErrorHandler(app);
+    app.use("*", async (c, next) => {
+      c.set("auth", speakerAuth);
+      c.set("db", {} as never);
+      await next();
+    });
+    app.route("/portal", portalTasksRoutes);
+
+    const form = new URLSearchParams();
+    form.set("chq_csrf", "tok-1");
+    const res = await app.request("/portal/tasks/assign-pending/complete", {
+      method: "POST",
+      headers: {
+        "content-type": "application/x-www-form-urlencoded",
+        cookie: "chq_csrf=tok-1",
+      },
+      body: form.toString(),
+    });
+    expect(res.status).toBe(302);
+    expect(res.headers.get("location")).toBe("/portal/tasks");
+    expect(vi.mocked(updateAssignmentStatus)).toHaveBeenCalledWith(
+      expect.anything(),
+      "assign-pending",
+      "complete",
+      speakerAuth.userId,
+      expect.any(Date),
+    );
   });
 });
 

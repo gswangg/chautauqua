@@ -152,7 +152,7 @@ export function TaskRow(props: {
             pending|complete — only the on-screen wording grows a
             .chq-flag, never a red swatch (DEC-367). */}
         <span class={t.status === "complete" ? "chq-flag chq-portal-flag-done" : "chq-flag"}>
-          {t.status === "complete" ? "Completed" : "Pending"}
+          {t.status === "complete" ? "Done" : "To do"}
         </span>
       </div>
       {effectiveDue ? <span class="chq-portal-due">Due {formatCalendarDate(effectiveDue)}</span> : null}
@@ -235,7 +235,7 @@ export function TaskFormPage(props: {
   return (
     <PortalLayout branding={branding} csrfToken={csrfToken} speakerName={speakerName}>
       <PortalBackLink to="/portal/tasks" />
-      <h2 class="chq-portal-hero">{assignment.title}</h2>
+      <h1 class="chq-portal-hero">{assignment.title}</h1>
       {assignment.description ? <p class="chq-portal-sub">{assignment.description}</p> : null}
       <form method="post" action={`/portal/tasks/${assignment.id}/form`}>
         <input type="hidden" name={CSRF_COOKIE_NAME} value={csrfToken} />
@@ -272,11 +272,11 @@ export function TasksPage(props: {
   return (
     <PortalLayout branding={branding} csrfToken={csrfToken} speakerName={speakerName}>
       <PortalBackLink to="/portal" />
-      <h2 class="chq-portal-hero">My Tasks</h2>
+      <h1 class="chq-portal-hero">My Tasks</h1>
       {assignments.length > 0 ? (
         <div class="chq-portal-progress">
           <span class="chq-portal-progress-label">
-            {doneCount} of {assignments.length} complete
+            {doneCount} of {assignments.length} done
           </span>
           <div class="chq-bar">
             <div
@@ -297,7 +297,7 @@ export function TasksPage(props: {
                   {t.title}
                   {t.required ? <em> (required)</em> : null}
                 </span>
-                <span class="chq-flag">Pending</span>
+                <span class="chq-flag">To do</span>
               </div>
               {effectiveAssignmentDueDate(t.dueDate, t.assignedAt) ? (
                 <span class="chq-portal-due">
@@ -333,7 +333,7 @@ export function ResourcesPage(props: {
   return (
     <PortalLayout branding={branding} csrfToken={csrfToken} speakerName={speakerName}>
       <PortalBackLink to="/portal" />
-      <h2 class="chq-portal-hero">Resources</h2>
+      <h1 class="chq-portal-hero">Resources</h1>
       {groups.length === 0 ? (
         <p>No resources yet.</p>
       ) : (
