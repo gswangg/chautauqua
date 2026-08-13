@@ -8,7 +8,12 @@ import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { chunkIds } from "../../../lib/chunk";
 import { likeContains } from "../like";
-import { acceptedSpeakerExistsForContact, overdueAssignmentConditions } from "./crud";
+import { acceptedSpeakerConditions, acceptedSpeakerExistsForContact, overdueAssignmentConditions } from "./crud";
+
+// DEC-789 closed set (mirrors the participant.invite_status column comment
+// in db/schema.ts and the app/src/pages/speakers/types.ts InviteStatus type
+// the SPA writes through PATCH /submissions/:id/participants/:participantId).
+export type GridInviteStatus = "none" | "invited" | "accepted" | "declined";
 
 export interface GridTask {
   id: string;
@@ -34,6 +39,14 @@ export interface GridRow {
     email: string;
     company: string | null;
     hasAccount: boolean;
+    // DEC-789: the participant row backing this roster contact's invite
+    // status control -- participantId/submissionId together name the PATCH
+    // target (/submissions/:submissionId/participants/:participantId).
+    // Always populated: acceptedSpeakerExistsForContact (this row's base
+    // condition) guarantees at least one matching participant exists.
+    participantId: string;
+    submissionId: string;
+    inviteStatus: GridInviteStatus;
   };
   cells: GridCell[];
 }
@@ -45,6 +58,12 @@ export interface OnboardingGridParams {
   taskId: string | null;
   status: "pending" | "complete" | null;
   overdueOnly: boolean;
+  // DEC-789: an optional roster-wide invite-status filter, ANDed onto the
+  // same base row predicate below (never the overdue-count builder, which
+  // is DEC-776's separate query). Optional/undefined == no filter, so
+  // pre-existing callers that construct this params object without the
+  // field keep compiling.
+  inviteStatus?: GridInviteStatus | null;
   now: number;
 }
 
@@ -142,6 +161,17 @@ export async function getOnboardingGrid(db: Db, eventId: string, params: Onboard
   if (filterActive) {
     conditions.push(onboardingMatchExists(eventId, params.taskId, params.status, params.overdueOnly, params.now));
   }
+  // DEC-789: the invite-status filter is a SEPARATE predicate from the base
+  // acceptedSpeakerExistsForContact condition above (which already requires
+  // ACTIVE_INVITE_STATUSES) -- ANDed here, on the same row query, so a
+  // filter value outside 'none'/'accepted' correctly yields zero rows
+  // rather than silently matching the whole roster.
+  if (params.inviteStatus) {
+    const wantedStatus = params.inviteStatus;
+    conditions.push(
+      sql`exists (select 1 from ${schema.participant} inner join ${schema.submission} on ${schema.submission.id} = ${schema.participant.submissionId} where ${schema.participant.contactId} = ${schema.contact.id} and ${acceptedSpeakerConditions(eventId)} and ${schema.participant.inviteStatus} = ${wantedStatus})`,
+    );
+  }
   if (params.q) {
     const like = likeContains(params.q.toLowerCase());
     conditions.push(
@@ -157,6 +187,18 @@ export async function getOnboardingGrid(db: Db, eventId: string, params: Onboard
   const total = Number(totalRows[0]?.count ?? 0);
 
   const offset = (params.page - 1) * params.perPage;
+  // DEC-789: the roster row's invite-status control needs a single
+  // (participantId, submissionId, inviteStatus) triple per contact. A
+  // contact can carry more than one accepted participant row across
+  // submissions in the same event; these correlated scalar subqueries
+  // (ordered by participant.id for a deterministic pick, same
+  // acceptedSpeakerConditions the base row predicate already requires)
+  // pick exactly one, in the SAME select as the rest of the row -- no
+  // separate query to drift from the row set.
+  const participantIdSubquery = sql<string>`(select ${schema.participant.id} from ${schema.participant} inner join ${schema.submission} on ${schema.submission.id} = ${schema.participant.submissionId} where ${schema.participant.contactId} = ${schema.contact.id} and ${acceptedSpeakerConditions(eventId)} order by ${schema.participant.id} asc limit 1)`;
+  const submissionIdSubquery = sql<string>`(select ${schema.participant.submissionId} from ${schema.participant} inner join ${schema.submission} on ${schema.submission.id} = ${schema.participant.submissionId} where ${schema.participant.contactId} = ${schema.contact.id} and ${acceptedSpeakerConditions(eventId)} order by ${schema.participant.id} asc limit 1)`;
+  const inviteStatusSubquery = sql<string>`(select ${schema.participant.inviteStatus} from ${schema.participant} inner join ${schema.submission} on ${schema.submission.id} = ${schema.participant.submissionId} where ${schema.participant.contactId} = ${schema.contact.id} and ${acceptedSpeakerConditions(eventId)} order by ${schema.participant.id} asc limit 1)`;
+
   const contactRows = await db
     .select({
       id: schema.contact.id,
@@ -165,6 +207,9 @@ export async function getOnboardingGrid(db: Db, eventId: string, params: Onboard
       email: schema.contact.email,
       company: schema.contact.company,
       userId: schema.user.id,
+      participantId: participantIdSubquery,
+      submissionId: submissionIdSubquery,
+      inviteStatus: inviteStatusSubquery,
     })
     .from(schema.contact)
     .leftJoin(schema.user, eq(schema.user.contactId, schema.contact.id))
@@ -180,6 +225,13 @@ export async function getOnboardingGrid(db: Db, eventId: string, params: Onboard
   for (const c of contactRows) {
     let row = rowsByContact.get(c.id);
     if (!row) {
+      // acceptedSpeakerExistsForContact (this row set's base condition)
+      // guarantees at least one matching participant, so the scalar
+      // subqueries above can never come back null here — fail loudly
+      // instead of silently defaulting if that invariant is ever violated.
+      if (c.participantId == null || c.submissionId == null || c.inviteStatus == null) {
+        throw new Error(`onboarding grid: contact ${c.id} matched the accepted-speaker predicate but has no participant row`);
+      }
       row = {
         contact: {
           id: c.id,
@@ -187,6 +239,9 @@ export async function getOnboardingGrid(db: Db, eventId: string, params: Onboard
           email: c.email,
           company: c.company,
           hasAccount: false,
+          participantId: c.participantId,
+          submissionId: c.submissionId,
+          inviteStatus: c.inviteStatus as GridInviteStatus,
         },
         cells: [],
       };

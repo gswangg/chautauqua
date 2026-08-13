@@ -19,7 +19,7 @@ const GRID: OnboardingGridResponse = {
   ],
   rows: [
     {
-      contact: { id: 'ct1', name: 'Ada Lovelace', email: 'ada@example.com', company: 'Acme', hasAccount: true },
+      contact: { id: 'ct1', name: 'Ada Lovelace', email: 'ada@example.com', company: 'Acme', hasAccount: true , participantId: 'p-ct1', submissionId: 'sub-ct1', inviteStatus: 'accepted' },
       cells: [
         { taskId: 'task-1', assignmentId: 'as1', status: 'complete', completedAt: 1700000000000, fileId: null, lastRemindedAt: null },
         { taskId: 'task-2', assignmentId: 'as2', status: 'complete', completedAt: 1700000000000, fileId: null, lastRemindedAt: null },
@@ -28,7 +28,7 @@ const GRID: OnboardingGridResponse = {
     {
       // DEC-662: a pending form-kind cell renders no control at all --
       // "Response" only appears once the cell is complete.
-      contact: { id: 'ct2', name: 'Grace Hopper', email: 'grace@example.com', company: 'Navy', hasAccount: false },
+      contact: { id: 'ct2', name: 'Grace Hopper', email: 'grace@example.com', company: 'Navy', hasAccount: false , participantId: 'p-ct2', submissionId: 'sub-ct2', inviteStatus: 'accepted' },
       cells: [
         { taskId: 'task-1', assignmentId: 'as3', status: 'pending', completedAt: null, fileId: null, lastRemindedAt: null },
         { taskId: 'task-2', assignmentId: 'as4', status: 'pending', completedAt: null, fileId: null, lastRemindedAt: null },
@@ -79,11 +79,11 @@ describe('OnboardingGrid: DEC-730 one status-control family', () => {
       tasks: [{ id: 'task-1', kind: 'general', title: 'Sign speaker agreement', dueDate: now - 5 * 86_400_000, required: true }],
       rows: [
         {
-          contact: { id: 'ct1', name: 'Ada Lovelace', email: 'ada@example.com', company: 'Acme', hasAccount: true },
+          contact: { id: 'ct1', name: 'Ada Lovelace', email: 'ada@example.com', company: 'Acme', hasAccount: true , participantId: 'p-ct1', submissionId: 'sub-ct1', inviteStatus: 'accepted' },
           cells: [{ taskId: 'task-1', assignmentId: 'as1', status: 'complete', completedAt: now, fileId: null, lastRemindedAt: null }],
         },
         {
-          contact: { id: 'ct2', name: 'Grace Hopper', email: 'grace@example.com', company: 'Navy', hasAccount: false },
+          contact: { id: 'ct2', name: 'Grace Hopper', email: 'grace@example.com', company: 'Navy', hasAccount: false , participantId: 'p-ct2', submissionId: 'sub-ct2', inviteStatus: 'accepted' },
           cells: [{ taskId: 'task-1', assignmentId: 'as2', status: 'pending', completedAt: null, fileId: null, lastRemindedAt: null }],
         },
       ],
@@ -104,7 +104,7 @@ describe('OnboardingGrid: DEC-730 one status-control family', () => {
 
     const table = within(screen.getByRole('table'));
     const completeBtn = table.getByRole('button', { name: 'Toggle Sign speaker agreement for Ada Lovelace' });
-    const overdueBtn = table.getByRole('button', { name: 'Toggle Sign speaker agreement for Grace Hopper' });
+    const overdueBtn = table.getByRole('button', { name: /^Toggle Sign speaker agreement for Grace Hopper, \d+ days? late$/ });
 
     expect(completeBtn.tagName).toBe('BUTTON');
     expect(overdueBtn.tagName).toBe('BUTTON');
@@ -113,7 +113,11 @@ describe('OnboardingGrid: DEC-730 one status-control family', () => {
     expect(overdueBtn.className.split(/\s+/)).toContain('chq-speakers-status');
     expect(completeBtn.className).toContain('chq-speakers-status-complete');
     expect(overdueBtn.className).toContain('chq-speakers-status-overdue');
-    expect(overdueBtn).toHaveTextContent(/^\d+ DAYS? LATE$/);
+    // DEC-789: the visible mark is "OVERDUE" (not "N DAYS LATE"); the day
+    // count moves into the accessible name/title instead, so it's not lost.
+    expect(overdueBtn).toHaveTextContent('OVERDUE');
+    expect(overdueBtn.getAttribute('aria-label')).toMatch(/^Toggle Sign speaker agreement for Grace Hopper, \d+ days? late$/);
+    expect(overdueBtn.getAttribute('title')).toMatch(/^\d+ days? late$/);
 
     // Task header uses the mock's "Due D Mon [· Required]" shape.
     expect(screen.getAllByText(/^Due \d+ \w+ · Required$/).length).toBeGreaterThan(0);
@@ -312,6 +316,98 @@ describe('OnboardingGrid: DEC-694 per-row remind', () => {
     // composed "Sent N ..." sentence.
     await waitFor(() => {
       expect(screen.getByText('Sent to 1 contact.')).toBeInTheDocument();
+    });
+  });
+});
+
+// DEC-789: the roster row's invite-status control writes through
+// PATCH /submissions/:submissionId/participants/:participantId (mocked here
+// -- this test never imports src/routes/api/submissions.ts), labelled from
+// the ONE app/src/pages/speakers/types.ts vocabulary, optimistic with
+// rollback on failure.
+describe('OnboardingGrid: DEC-789 invite status control', () => {
+  it('shows the Not invited / Invited / Confirmed / Declined labels and PATCHes through on click, cycling to the next status', async () => {
+    const fetchMock = mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: GRID,
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+      'PATCH /api/v1/submissions/sub-ct1/participants/p-ct1': { body: {} },
+    });
+
+    render(<OnboardingGrid onAddSpeaker={vi.fn()} />);
+    await waitFor(() => screen.getAllByText('Ada Lovelace').length > 0);
+
+    // GRID's ct1 fixture starts inviteStatus: 'accepted' -> labelled Confirmed.
+    const table = within(screen.getByRole('table'));
+    const btn = table.getByRole('button', { name: 'Invite status for Ada Lovelace: Confirmed' });
+    expect(btn).toHaveTextContent('Confirmed');
+
+    fireEvent.click(btn);
+
+    // Optimistic: cycles accepted -> declined before the PATCH resolves.
+    await waitFor(() => {
+      expect(table.getByRole('button', { name: 'Invite status for Ada Lovelace: Declined' })).toBeInTheDocument();
+    });
+
+    await waitFor(() => {
+      const call = fetchMock.mock.calls.find(([input, init]) => {
+        const url = typeof input === 'string' ? input : (input as Request | URL).toString();
+        return url.includes('/submissions/sub-ct1/participants/p-ct1') && init?.method === 'PATCH';
+      });
+      expect(call).toBeDefined();
+      expect(JSON.parse(call![1]!.body as string)).toEqual({ inviteStatus: 'declined' });
+    });
+  });
+
+  it('rolls back visibly when the PATCH fails', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: GRID,
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+      'PATCH /api/v1/submissions/sub-ct1/participants/p-ct1': {
+        status: 500,
+        body: { error: { code: 'internal', message: 'boom' } },
+      },
+    });
+
+    render(<OnboardingGrid onAddSpeaker={vi.fn()} />);
+    await waitFor(() => screen.getAllByText('Ada Lovelace').length > 0);
+
+    const table = within(screen.getByRole('table'));
+    fireEvent.click(table.getByRole('button', { name: 'Invite status for Ada Lovelace: Confirmed' }));
+
+    await waitFor(() => {
+      expect(table.getByRole('button', { name: 'Invite status for Ada Lovelace: Declined' })).toBeInTheDocument();
+    });
+
+    // ...rolls back visibly on the failed PATCH, and surfaces the error.
+    await waitFor(() => {
+      expect(table.getByRole('button', { name: 'Invite status for Ada Lovelace: Confirmed' })).toBeInTheDocument();
+    });
+    expect(screen.getByText(/Update failed/)).toBeInTheDocument();
+  });
+
+  it('joins the invite-status pill into the grid request as an additional query param, composing with other filters', async () => {
+    const fetchMock = mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: GRID,
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+    });
+
+    render(<OnboardingGrid onAddSpeaker={vi.fn()} />);
+    await waitFor(() => screen.getAllByText('Ada Lovelace').length > 0);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Overdue only' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmed' }));
+
+    await waitFor(() => {
+      const calls = fetchMock.mock.calls.filter(([input]) => {
+        const url = typeof input === 'string' ? input : (input as Request | URL).toString();
+        return url.includes(`/events/${EVENT_ID}/onboarding?`);
+      });
+      const call = calls[calls.length - 1];
+      expect(call).toBeDefined();
+      const raw = typeof call![0] === 'string' ? call![0] : (call![0] as Request | URL).toString();
+      const url = new URL(raw.startsWith('http') ? raw : `http://x${raw}`);
+      expect(url.searchParams.get('overdueOnly')).toBe('1');
+      expect(url.searchParams.get('inviteStatus')).toBe('accepted');
     });
   });
 });

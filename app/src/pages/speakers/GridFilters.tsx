@@ -1,4 +1,4 @@
-import type { AssignmentStatus, GridFilterState, OnboardingTask } from './types';
+import { INVITE_STATUSES, INVITE_STATUS_LABELS, type AssignmentStatus, type GridFilterState, type OnboardingTask } from './types';
 
 interface GridFiltersProps {
   tasks: OnboardingTask[];
@@ -58,6 +58,21 @@ export function GridFilters({ tasks, filters, onChange }: GridFiltersProps) {
       >
         Overdue only
       </button>
+
+      {/* DEC-789: a set, joining the Overdue only pill above -- a click
+          composes the invite-status predicate, never replaces the other
+          active pills. Clicking the already-active pill clears it. */}
+      {INVITE_STATUSES.map((status) => (
+        <button
+          key={status}
+          type="button"
+          className={`chq-pill${filters.inviteStatus === status ? ' is-active' : ''}`}
+          aria-pressed={filters.inviteStatus === status}
+          onClick={() => onChange({ ...filters, inviteStatus: filters.inviteStatus === status ? null : status })}
+        >
+          {INVITE_STATUS_LABELS[status]}
+        </button>
+      ))}
     </div>
   );
 }

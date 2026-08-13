@@ -119,8 +119,13 @@ function parseOnboardingGridQuery(raw: Record<string, string | undefined>, now: 
   const status: "pending" | "complete" | null =
     raw.status === "pending" || raw.status === "complete" ? raw.status : null;
   const overdueOnly = raw.overdueOnly === "1" || raw.overdueOnly === "true";
+  // DEC-789: closed set, mirroring the participant.invite_status column.
+  const inviteStatus: "none" | "invited" | "accepted" | "declined" | null =
+    raw.inviteStatus === "none" || raw.inviteStatus === "invited" || raw.inviteStatus === "accepted" || raw.inviteStatus === "declined"
+      ? raw.inviteStatus
+      : null;
 
-  return { page, perPage, q, taskId, status, overdueOnly, now };
+  return { page, perPage, q, taskId, status, overdueOnly, inviteStatus, now };
 }
 
 // GET /api/v1/events/:eventId/onboarding
