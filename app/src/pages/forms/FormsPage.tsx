@@ -9,7 +9,7 @@ import { DelayedLoading } from '../../components/DelayedLoading';
 import { FieldList } from './FieldList';
 import { FieldModal, type FieldModalInput } from './FieldModal';
 import { guardEditableField, moveId } from './logic';
-import type { CfpForm, FormField } from './types';
+import type { CfpForm, EventTrack, FormField } from './types';
 import './forms.css';
 
 interface EventSummary {
@@ -37,6 +37,7 @@ export function FormsPage() {
 
   const [event, setEvent] = useState<EventSummary | null>(null);
   const [form, setForm] = useState<CfpForm | null>(null);
+  const [tracks, setTracks] = useState<EventTrack[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -45,14 +46,24 @@ export function FormsPage() {
   const [received, setReceived] = useState<ReceivedState>('loading');
   const [linkCopyResult, setLinkCopyResult] = useState<{ ok: boolean; text: string } | null>(null);
 
+  // The builder is the organiser's authoritative view of what the public
+  // form actually asks (DEC-008 amendment): the event's tracks feed the
+  // SAME single Track question src/routes/public/submit-views.tsx renders
+  // (TrackChoices), so this reader is folded into the page's one existing
+  // load() Promise.all rather than a second effect/fetch.
   const load = useCallback(() => {
     if (!eventId) return;
     setLoading(true);
     setError(null);
-    Promise.all([apiGet<EventSummary>(`/events/${eventId}`), apiGet<CfpForm>(`/events/${eventId}/forms`)])
-      .then(([ev, formResult]) => {
+    Promise.all([
+      apiGet<EventSummary>(`/events/${eventId}`),
+      apiGet<CfpForm>(`/events/${eventId}/forms`),
+      apiList<EventTrack>(`/events/${eventId}/tracks`),
+    ])
+      .then(([ev, formResult, tracksResult]) => {
         setEvent(ev);
         setForm(formResult);
+        setTracks(tracksResult.items);
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load the form'))
       .finally(() => setLoading(false));
@@ -178,6 +189,14 @@ export function FormsPage() {
 
   const receivedText = received === 'loading' || received === 'error' ? '—' : `${received.total} submissions`;
   const publicLink = `${window.location.origin}/submit/${event.slug}`;
+  // DEC-015/DEC-416: the public form offers form.tracks (a chosen subset)
+  // when set/non-empty, else every event track (src/lib/submit-core.ts's
+  // resolveOfferedTrackIds) -- the SAME rule here, applied to the already-
+  // loaded event track objects, so the builder's Track row shows exactly
+  // the options the public form actually offers, never the full event
+  // track list when the CFP has been scoped to a subset.
+  const offeredTrackIds = form.tracks && form.tracks.length > 0 ? new Set(form.tracks) : null;
+  const offeredTracks = offeredTrackIds ? tracks.filter((t) => offeredTrackIds.has(t.id)) : tracks;
   // Frame grammar: the footer row displays host+path with the protocol
   // stripped ('chautauqua.cc/submit/...'); Copy still copies the absolute
   // URL below.
@@ -238,6 +257,7 @@ export function FormsPage() {
           <div className="chq-forms-section-body">
             <FieldList
               fields={form.fields}
+              tracks={offeredTracks}
               busy={busy}
               onEdit={(field) => setModal({ mode: 'edit', field })}
               onDelete={handleDeleteField}

@@ -67,7 +67,7 @@ const FIELDS: FormField[] = [
 
 function renderList(fields: FormField[] = FIELDS) {
   return render(
-    <FieldList fields={fields} busy={false} onEdit={vi.fn()} onDelete={vi.fn()} onMove={vi.fn()} />,
+    <FieldList fields={fields} tracks={[]} busy={false} onEdit={vi.fn()} onDelete={vi.fn()} onMove={vi.fn()} />,
   );
 }
 
@@ -81,7 +81,7 @@ describe('FieldList row anatomy (DEC-715)', () => {
 
   it('ArrowDown on the drag handle calls onMove(field, 1)', () => {
     const onMove = vi.fn();
-    render(<FieldList fields={FIELDS} busy={false} onEdit={vi.fn()} onDelete={vi.fn()} onMove={onMove} />);
+    render(<FieldList fields={FIELDS} tracks={[]} busy={false} onEdit={vi.fn()} onDelete={vi.fn()} onMove={onMove} />);
     const handle = screen.getByRole('button', { name: 'Reorder Format (position 4 of 4)' });
     handle.focus();
     handle.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
@@ -93,7 +93,7 @@ describe('FieldList row anatomy (DEC-715)', () => {
 
   it('ArrowUp on the drag handle calls onMove(field, -1)', () => {
     const onMove = vi.fn();
-    render(<FieldList fields={FIELDS} busy={false} onEdit={vi.fn()} onDelete={vi.fn()} onMove={onMove} />);
+    render(<FieldList fields={FIELDS} tracks={[]} busy={false} onEdit={vi.fn()} onDelete={vi.fn()} onMove={onMove} />);
     const handle = screen.getByRole('button', { name: 'Reorder Format (position 4 of 4)' });
     handle.focus();
     handle.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }));
@@ -212,7 +212,7 @@ describe('FieldList drag-drop reorder (DEC-903)', () => {
 
   it('dropping a row onto another row calls onMove(draggedField, delta) once', () => {
     const onMove = vi.fn();
-    render(<FieldList fields={DRAG_FIELDS} busy={false} onEdit={vi.fn()} onDelete={vi.fn()} onMove={onMove} />);
+    render(<FieldList fields={DRAG_FIELDS} tracks={[]} busy={false} onEdit={vi.fn()} onDelete={vi.fn()} onMove={onMove} />);
 
     const alphaHandle = screen.getByRole('button', { name: 'Reorder Alpha (position 2 of 3)' });
     const betaRow = screen.getByText('Beta').closest('[role="listitem"]') as HTMLElement;
@@ -230,7 +230,7 @@ describe('FieldList drag-drop reorder (DEC-903)', () => {
 
   it('a locked row refuses to be a drag source or a drop target', () => {
     const onMove = vi.fn();
-    render(<FieldList fields={DRAG_FIELDS} busy={false} onEdit={vi.fn()} onDelete={vi.fn()} onMove={onMove} />);
+    render(<FieldList fields={DRAG_FIELDS} tracks={[]} busy={false} onEdit={vi.fn()} onDelete={vi.fn()} onMove={onMove} />);
 
     const titleHandle = screen.getByRole('button', { name: 'Reorder Title (position 1 of 3)' });
     expect(titleHandle).not.toHaveAttribute('draggable', 'true');

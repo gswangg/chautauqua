@@ -171,6 +171,14 @@
   outline-offset: 2px;
 }
 
+/* Synthesized Track row (DEC-008 amendment, w45-e): a non-interactive
+   placeholder standing in for the drag handle -- it must reserve the SAME
+   20px grid cell as every other row's handle, but never invite a drag
+   gesture the row can't perform. */
+.chq-forms-field-drag-empty {
+  cursor: default;
+}
+
 .chq-forms-field-label {
   display: flex;
   flex-direction: column;
