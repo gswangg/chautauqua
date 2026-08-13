@@ -8,6 +8,7 @@ import { and, asc, eq, inArray } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { formatRef, newId } from "../../domain/ids";
+import { ACTIVE_INVITE_STATUSES } from "../../domain/acceptance";
 import { chunkIds } from "../../lib/chunk";
 import { chunkRowsForInsert } from "../../lib/chunk";
 import { bumpIcsSequences } from "./ics-sequence";
@@ -246,7 +247,18 @@ async function loadAcceptedSessions(db: Db, eventId: string, recordPrefix: strin
       })
       .from(schema.participant)
       .innerJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
-      .where(inArray(schema.participant.submissionId, batch));
+      .where(
+        and(
+          inArray(schema.participant.submissionId, batch),
+          // DEC-974: the admin agenda's speaker set is the ACTIVE participants
+          // (not-declined). This is deliberately NOT `participant.visible` —
+          // `visible` is a public-display flag composed only for public
+          // surfaces (see visibleParticipantConditions); a speaker hidden
+          // from the public programme is still a person who cannot be
+          // double-booked, so they must still count for conflict detection.
+          inArray(schema.participant.inviteStatus, [...ACTIVE_INVITE_STATUSES]),
+        ),
+      );
     participantRows.push(...batchRows);
   }
 
