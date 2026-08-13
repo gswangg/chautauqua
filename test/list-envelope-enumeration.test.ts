@@ -13,7 +13,7 @@ import { join } from "node:path";
  *
  * (a) Every `return c.json({ items ...` site under src/routes/**\/*.{ts,tsx}
  *     must carry `total`, `page`, and `perPage` in the same returned object
- *     literal -- the DEC-461(a) list-envelope contract. Two sites are
+ *     literal -- the DEC-461(a) list-envelope contract. Three sites are
  *     deliberately not list-GET envelopes and are named exceptions, each
  *     read at file:line before being allowlisted:
  *       - src/routes/comms.ts:423 (POST .../compose/preview) returns a
@@ -26,6 +26,11 @@ import { join } from "node:path";
  *         BULK_EMAIL_PREVIEW_LIMIT)` (5) before rendering, so it is bounded
  *         by that constant, not by a page/perPage query param -- a preview
  *         payload, not a list GET.
+ *       - src/routes/review/plans.ts:463 (GET .../assignments/distribute/
+ *         preview, DEC-786) returns { items, perReviewer }: the pure
+ *         round-robin's proposed pairs plus a per-reviewer load summary,
+ *         bounded by the plan's own submission x reviewer set and writing
+ *         nothing -- a preview payload, not a list GET.
  *
  * (b) src/lib/pagination.ts must be the ONLY file under src/routes/** or
  *     src/server/repo/** that declares a constant named like
@@ -117,6 +122,13 @@ function findItemsEnvelopeSites(source: string, file: string): EnvelopeSite[] {
 const ENVELOPE_ALLOWLIST = new Set<string>([
   "src/routes/comms.ts:423",
   "src/routes/api/contacts/bulk-email.ts:215",
+  // src/routes/review/plans.ts:463 (GET .../assignments/distribute/preview,
+  // DEC-786) returns { items, perReviewer }: the pure round-robin's proposed
+  // pairs plus a per-reviewer load summary. Bounded by the plan's own
+  // submission x reviewer set (never larger than a single POST /reviewers
+  // fan-out would produce), and writes nothing -- a preview payload, not a
+  // paginated list GET, exactly like the two sites above.
+  "src/routes/review/plans.ts:463",
 ]);
 
 describe("DEC-480: list-envelope enumeration (executable, not prose)", () => {

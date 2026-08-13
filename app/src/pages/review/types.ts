@@ -289,3 +289,27 @@ export interface ScopePreview {
   items: ScopePreviewItem[];
   perPage: number;
 }
+
+// GET /api/v1/plans/:id/assignments/distribute/preview (DEC-786): writes
+// nothing -- the pairs a POST to .../distribute would add, plus the
+// per-reviewer load those pairs would produce, so the organizer can review
+// before confirming.
+export interface DistributePreviewItem {
+  userId: string;
+  reviewerName: string;
+  submissionId: string;
+  submissionRef: string;
+  submissionTitle: string;
+}
+
+export interface DistributePreviewReviewer {
+  userId: string;
+  name: string;
+  added: number;
+  total: number;
+}
+
+export interface DistributePreview {
+  items: DistributePreviewItem[];
+  perReviewer: DistributePreviewReviewer[];
+}

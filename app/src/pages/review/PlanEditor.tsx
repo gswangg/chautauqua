@@ -18,6 +18,7 @@ import {
   type EvaluationCriterion,
   type EvaluationPlan,
   type PlanDraft,
+  type DistributePreview,
   type PlanReviewer,
   type ProgressRow,
   type ReviewerOption,
@@ -28,9 +29,10 @@ import {
 // are computed by the same pure domain functions the server uses -- no
 // re-derivation of the weight-share math client-side.
 import { criterionWeightShares, DEFAULT_PLAN_CRITERIA } from '../../../../src/domain/evaluation';
-import { DEC_745 } from '../../../../src/decisions';
+import { DEC_745, DEC_786 } from '../../../../src/decisions';
 
 void DEC_745; // v4 shell: title-row NAME/Duplicate/Save, 2x2 field grid, "Who reviews what" below
+void DEC_786; // "Distribute evenly" link below: preview-then-confirm, zero non-GET requests before confirm
 
 // DEC-572: batches per-submission plan_reviewer POSTs to at most this many
 // concurrent requests per wave, mirroring the server's own bound.
@@ -349,6 +351,50 @@ export function PlanEditor() {
     setConfirmOpen(false);
     setChooseMode(false);
     setChosenSubmissionIds(new Set());
+  }
+
+  // DEC-786: "Distribute evenly" -- loads a preview (writes nothing), shows
+  // per-reviewer counts, and only POSTs on an explicit confirm, mirroring
+  // the track-assignment confirm gate above.
+  const [distributePreview, setDistributePreview] = useState<DistributePreview | null>(null);
+  const [distributeLoading, setDistributeLoading] = useState(false);
+  const [distributeConfirmOpen, setDistributeConfirmOpen] = useState(false);
+  const [distributing, setDistributing] = useState(false);
+
+  async function openDistributePreview() {
+    if (!planId) return;
+    setError(null);
+    setDistributeLoading(true);
+    try {
+      const res = await apiGet<DistributePreview>(`/plans/${planId}/assignments/distribute/preview`);
+      setDistributePreview(res);
+      setDistributeConfirmOpen(true);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Failed to load distribution preview');
+    } finally {
+      setDistributeLoading(false);
+    }
+  }
+
+  function cancelDistribute() {
+    setDistributeConfirmOpen(false);
+    setDistributePreview(null);
+  }
+
+  async function confirmDistribute() {
+    if (!planId || !distributePreview) return;
+    setError(null);
+    setDistributing(true);
+    try {
+      await apiPost<{ created: number }>(`/plans/${planId}/assignments/distribute`, {});
+      cancelDistribute();
+      const [reviewersRes] = await Promise.all([apiList<PlanReviewer>(`/plans/${planId}/reviewers`)]);
+      setReviewers(reviewersRes.items);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Failed to distribute reviewer assignments');
+    } finally {
+      setDistributing(false);
+    }
   }
 
   useEffect(() => {
@@ -964,6 +1010,17 @@ export function PlanEditor() {
               >
                 {assignFormOpen ? 'Close' : 'Assign a reviewer'}
               </button>
+              {/* DEC-786: preview-then-confirm, matching the "Assign a
+                  reviewer" link pattern -- zero non-GET requests before the
+                  explicit confirm below. */}
+              <button
+                type="button"
+                className="chq-link-button chq-section-action"
+                disabled={distributeLoading}
+                onClick={openDistributePreview}
+              >
+                {distributeLoading ? 'Loading…' : 'Distribute evenly'}
+              </button>
             </div>
             {reviewers.map((r) => {
               const progress = progressRows.find((p) => p.userId === r.userId);
@@ -1001,6 +1058,45 @@ export function PlanEditor() {
               );
             })}
             {reviewers.length === 0 && <p className="chq-empty">No reviewers assigned yet.</p>}
+
+            {/* DEC-786: nothing is POSTed until the explicit confirm below --
+                the preview already ran (GET only) when the link was clicked. */}
+            {distributeConfirmOpen && distributePreview && (
+              <div className="chq-review-scope-confirm" role="alertdialog" aria-label="Confirm even distribution">
+                {distributePreview.items.length === 0 ? (
+                  <p>Every submission already has enough reviewers -- nothing to distribute.</p>
+                ) : (
+                  <>
+                    <p>
+                      Add {distributePreview.items.length} reviewer assignment
+                      {distributePreview.items.length === 1 ? '' : 's'} to even out the load?
+                    </p>
+                    <ul className="chq-review-scope-preview-list">
+                      {distributePreview.perReviewer.map((pr) => (
+                        <li key={pr.userId}>
+                          {pr.name} — {pr.total} total{pr.added > 0 ? ` (+${pr.added})` : ''}
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+                <div className="chq-review-scope-confirm-actions">
+                  {distributePreview.items.length > 0 && (
+                    <button
+                      type="button"
+                      className="chq-btn chq-btn-primary"
+                      disabled={distributing}
+                      onClick={confirmDistribute}
+                    >
+                      {distributing ? 'Distributing…' : `Add ${distributePreview.items.length} assignment${distributePreview.items.length === 1 ? '' : 's'}`}
+                    </button>
+                  )}
+                  <button type="button" className="chq-btn chq-btn-tertiary" onClick={cancelDistribute}>
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* DEC-745: the anonymise switch is a reviewing rule, so it
                 lives here as one checkbox row rather than at page top level
