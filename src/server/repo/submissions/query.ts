@@ -4,8 +4,10 @@
 
 import { SUBMISSION_STATUSES, type SubmissionStatus } from "../../../domain/status";
 import { CONTENT_STATUSES, type ContentStatus } from "../files-content-status";
-import { DEC_078 } from "../../../decisions";
+import { DEC_078, DEC_843 } from "../../../decisions";
 import { clampPage, clampPerPage } from "../../../lib/pagination";
+
+void DEC_843; // one shared status-token reader for the list and its export
 
 void DEC_078; // canonical chunk helper, re-exported here for existing importers
 
@@ -31,25 +33,65 @@ export interface ParsedListQuery {
 }
 
 /**
- * Parses GET .../submissions query params per DEC-013 (page/perPage/q) +
- * DEC-016 (status/trackId/sort/includeAnswers). Unknown status tokens are
- * dropped silently (filters degrade gracefully; they don't reject a
- * request) — validation of status literals on WRITE happens in
- * parseStatusLiteral below, which fails loudly. Clamp rule per DEC-480
- * delegated to clampPage/clampPerPage -- no local copy.
+ * Reads status filter tokens per DEC-843. Accepts a repeated query param
+ * (`string[]`, as Hono's `c.req.queries('status')` returns) OR a single
+ * comma-separated string (or both — a caller may pass either shape), trims
+ * each token, drops empties, and dedupes preserving first-seen order. Any
+ * token outside SUBMISSION_STATUSES THROWS a plain Error naming the token —
+ * this is the loud counterpart to isValidStatusLiteral below, and it is the
+ * ONE reader both the submissions list route and its export call, so the
+ * two surfaces can never parse the same query string into different row
+ * sets.
  */
-export function parseListQuery(raw: Record<string, string | undefined>): ParsedListQuery {
+export function readStatusTokens(raw: string | string[] | undefined): SubmissionStatus[] {
+  const parts = raw === undefined ? [] : Array.isArray(raw) ? raw : [raw];
+  const tokens = parts
+    .flatMap((part) => part.split(","))
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+
+  const seen = new Set<string>();
+  const result: SubmissionStatus[] = [];
+  for (const token of tokens) {
+    if (!(SUBMISSION_STATUSES as readonly string[]).includes(token)) {
+      throw new Error(`Unknown status '${token}'`);
+    }
+    if (seen.has(token)) continue;
+    seen.add(token);
+    result.push(token as SubmissionStatus);
+  }
+  return result;
+}
+
+/**
+ * Parses GET .../submissions query params per DEC-013 (page/perPage/q) +
+ * DEC-016 (status/trackId/sort/includeAnswers). Per DEC-843, status tokens
+ * are read through readStatusTokens above: repeated params AND
+ * comma-separated tokens are both accepted, and an unknown token THROWS
+ * (loud) rather than being dropped — the list and its export share this
+ * exact reader so ?status=accepted&status=declined can never resolve to
+ * different row sets between the two, and a typo can never silently widen
+ * the filter to "every status". Clamp rule per DEC-480 delegated to
+ * clampPage/clampPerPage -- no local copy.
+ */
+export interface ListQueryInput {
+  page?: string;
+  perPage?: string;
+  q?: string;
+  status?: string | string[];
+  contentStatus?: string;
+  trackId?: string;
+  sort?: string;
+  includeAnswers?: string;
+}
+
+export function parseListQuery(raw: ListQueryInput): ParsedListQuery {
   const page = clampPage(raw.page);
   const perPage = clampPerPage(raw.perPage);
 
   const q = raw.q && raw.q.trim().length > 0 ? raw.q.trim() : null;
 
-  const status = (raw.status ?? "")
-    .split(",")
-    .map((s) => s.trim())
-    .filter((s): s is SubmissionStatus =>
-      (SUBMISSION_STATUSES as readonly string[]).includes(s),
-    );
+  const status = readStatusTokens(raw.status);
 
   const contentStatus = (raw.contentStatus ?? "")
     .split(",")

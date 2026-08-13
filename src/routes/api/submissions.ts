@@ -139,7 +139,14 @@ submissionsRoutes.get("/events/:eventId/submissions", requireOrganizer, async (c
   await assertEventOwnership(c.var.db, eventId, auth.orgId);
 
   const raw = c.req.query();
-  const parsed = parseListQuery(raw);
+  const statusTokens = c.req.queries("status");
+  let parsed;
+  try {
+    parsed = parseListQuery({ ...raw, status: statusTokens });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    throw new ApiError("invalid", message);
+  }
   const result = await listSubmissions(c.var.db, eventId, parsed);
 
   return c.json({

@@ -43,9 +43,9 @@ describe("parseListQuery (DEC-013 pagination + DEC-016 filters)", () => {
     expect(parseListQuery({ q: "   " }).q).toBeNull();
   });
 
-  it("parses comma-separated status, dropping unknown literals", () => {
+  it("parses comma-separated status (DEC-843: unknown literals now throw loudly)", () => {
     expect(parseListQuery({ status: "pending,accepted" }).status).toEqual(["pending", "accepted"]);
-    expect(parseListQuery({ status: "pending,bogus,declined" }).status).toEqual(["pending", "declined"]);
+    expect(() => parseListQuery({ status: "pending,bogus,declined" })).toThrow("bogus");
   });
 
   it("parses all four DEC-016 sorts and falls back to newest", () => {

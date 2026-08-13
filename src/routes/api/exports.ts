@@ -14,7 +14,7 @@ import { ApiError } from "../../server/http";
 import * as schema from "../../db/schema";
 import { toCsv } from "../../lib/csv";
 import { buildExport, buildShowflowExport, isExportKind } from "../../server/repo/exports";
-import { isValidStatusLiteral, parseListQuery } from "../../server/repo/submissions/query";
+import { parseListQuery } from "../../server/repo/submissions/query";
 import { parseContactListQuery } from "../../server/repo/contacts/query";
 import { parseRulesQueryParam } from "./contacts/segments";
 import { DEC_011, DEC_025, DEC_027, DEC_055, DEC_649, DEC_671 } from "../../decisions";
@@ -75,22 +75,22 @@ exportsRoutes.get("/api/v1/events/:eventId/export/:kind", requireOrganizer, asyn
     throw new ApiError("invalid", "format must be 'csv' or 'json'");
   }
 
-  // DEC-649: the 'submissions' export honours the list's own filter (q/
-  // status/trackId/sort) via the EXISTING parseListQuery — not a
-  // reimplementation. `status` is repeatable on the query string; each
-  // token is validated with isValidStatusLiteral (the existing write-path
-  // validator) so an unrecognised status literal fails loudly as a 400
-  // rather than silently degrading like a plain list filter would.
+  // DEC-649 + DEC-843: the 'submissions' export honours the list's own
+  // filter (q/status/trackId/sort) via the EXISTING parseListQuery — not a
+  // reimplementation — and status tokens go through the SAME
+  // readStatusTokens-backed reader the list route uses, so the two
+  // surfaces can never parse an identical query string into different row
+  // sets. An unrecognised status literal fails loudly as a 400.
   let submissionsListParams: ReturnType<typeof parseListQuery> | undefined;
   if (kind === "submissions") {
-    const statusTokens = c.req.queries("status") ?? [];
-    for (const token of statusTokens) {
-      if (!isValidStatusLiteral(token)) {
-        throw new ApiError("invalid", `Unknown status '${token}'`);
-      }
-    }
+    const statusTokens = c.req.queries("status");
     const raw = c.req.query();
-    submissionsListParams = parseListQuery({ ...raw, status: statusTokens.join(",") });
+    try {
+      submissionsListParams = parseListQuery({ ...raw, status: statusTokens });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      throw new ApiError("invalid", message);
+    }
   }
 
   // DEC-671: the 'contacts' export honours the directory's own filter (q/
