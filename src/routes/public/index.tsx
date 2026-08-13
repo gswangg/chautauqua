@@ -29,7 +29,7 @@ import { parseItineraryIds, MAX_ITINERARY_IDS } from "../../lib/itinerary";
 import { ApiError, errorEnvelope } from "../../server/http";
 import { publicCacheMiddleware, defaultCache } from "../../server/pubcache";
 import { DEC_022, DEC_007, DEC_017, DEC_005, DEC_012, DEC_080, DEC_083, DEC_151, DEC_289, DEC_489, DEC_661, DEC_672 } from "../../decisions";
-import { SURFACES, isSurface, setCacheHeaders, PublicShell, EmbedShell, isValidFrom, type Surface } from "./shell";
+import { SURFACES, isSurface, setCacheHeaders, PublicShell, EmbedShell, isValidFrom, measureClassForSurface, type Surface } from "./shell";
 import { PUBLIC_PER_PAGE } from "../../server/repo/public/bounds";
 import { renderSurfaceContent } from "./dispatch";
 import { SpeakerDetailContent, SessionDetailContent } from "./detail";
@@ -126,7 +126,7 @@ for (const surface of SURFACES) {
       roomId: c.req.query("roomId"),
     });
     return c.html(
-      <PublicShell event={event} active={surface} title={title}>
+      <PublicShell event={event} active={surface} title={title} measure={measureClassForSurface(surface)}>
         {content as any}
       </PublicShell>,
     );
@@ -161,7 +161,7 @@ publicRoutes.get("/e/:eventSlug/speakers/:contactId", async (c) => {
   if (!speaker) return publicNotFound(c, "Speaker not found.");
   const from = isValidFrom(c.req.query("from"), "speakers");
   return c.html(
-    <PublicShell event={event} active={from === "gallery" ? "gallery" : "speakers"} title={`${speaker.firstName} ${speaker.lastName} - ${event.name}`}>
+    <PublicShell event={event} active={from === "gallery" ? "gallery" : "speakers"} title={`${speaker.firstName} ${speaker.lastName} - ${event.name}`} measure="reading">
       <SpeakerDetailContent event={event} speaker={speaker} from={from} />
     </PublicShell>,
   );
@@ -175,7 +175,7 @@ publicRoutes.get("/e/:eventSlug/sessions/:sessionId", async (c) => {
   if (!session) return publicNotFound(c, "Session not found.");
   const from = isValidFrom(c.req.query("from"), "sessions");
   return c.html(
-    <PublicShell event={event} active={from} title={`${session.title} - ${event.name}`}>
+    <PublicShell event={event} active={from} title={`${session.title} - ${event.name}`} measure="reading">
       <SessionDetailContent event={event} session={session} from={from} />
     </PublicShell>,
   );

@@ -78,14 +78,18 @@ export const THEME_CSS = `
     --chq-type-micro-size: 10px;
     --chq-type-micro-weight: 800;
     --chq-type-micro-tracking: 0.11em;
-    /* Layout (DEC-744/DEC-989): the shared desktop page-content measures,
-       kept at token parity (DEC-367/372) with app/src/styles.css. Three
-       widths: reading (820), reading+rail/wide (1180), table (1440). The
-       measure CLASSES live in app/src/styles.css (DEC-989); the public
-       theme declares the tokens so the two sheets stay name-identical. */
+    /* Layout (DEC-744/DEC-989, Amendment wave 37): the shared desktop
+       page-content measures, kept at token parity (DEC-367/372) with the
+       admin SPA's own stylesheet. Two widths reach the public/SSR
+       surfaces: reading (820) and wide (1180, the sessions list + rail
+       pair). Table (1440) is an admin-SPA-only class -- nothing
+       server-rendered is table class, so --chq-measure-table lives only in
+       the admin SPA copy (its own page-measure test owns that copy) and is
+       NOT declared here; a token declared and consumed by nobody is a lie
+       (FINDINGS w37). .chq-measure / .chq-measure-wide below consume
+       these vars. */
     --chq-measure: 820px;
     --chq-measure-wide: 1180px;
-    --chq-measure-table: 1440px;
   }
 
   @font-face {
@@ -391,6 +395,7 @@ export const THEME_CSS = `
   }
 
   .chq-measure { max-width: var(--chq-measure); margin: 0 auto; }
+  .chq-measure-wide { max-width: var(--chq-measure-wide); margin: 0 auto; }
 
   main { padding: 26px 34px 34px; }
 
