@@ -195,7 +195,7 @@ export function MergePage() {
 
   if (ids.length < 2) {
     return (
-      <div className="chq-page chq-contacts-merge-page">
+      <div className="chq-page chq-measure chq-contacts-merge-page">
         <div className="chq-contacts-merge-topbar">{backLink}</div>
         <p className="chq-empty">Pick two or more duplicate records from the Duplicates tab.</p>
       </div>
@@ -203,7 +203,7 @@ export function MergePage() {
   }
 
   return (
-    <div className="chq-page chq-contacts-merge-page">
+    <div className="chq-page chq-measure chq-contacts-merge-page">
       <div className="chq-contacts-merge-topbar">{backLink}</div>
       <h1 className="chq-page-title">Merge two records</h1>
 
