@@ -187,7 +187,7 @@ describe("POST /api/v1/contacts/:id/add-to-event (CRM-10, DEC-156)", () => {
     const app = appWithDbAndAuth(db, ORGANIZER_A);
 
     const res = await app.request(
-      jsonRequest("/api/v1/contacts/contact-1/add-to-event", { eventId: "event-1" }),
+      jsonRequest("/api/v1/contacts/contact-1/add-to-event", { eventId: "event-1", title: "Keynote: Ada" }),
     );
 
     expect(res.status).toBe(201);
@@ -197,7 +197,7 @@ describe("POST /api/v1/contacts/:id/add-to-event (CRM-10, DEC-156)", () => {
     const submissionInsert = inserts.find((i) => i.table === schema.submission)!.vals as any;
     expect(submissionInsert.eventId).toBe("event-1");
     expect(submissionInsert.contentStatus).toBe("pending");
-    expect(submissionInsert.title).toBe("Invited: Ada Lovelace");
+    expect(submissionInsert.title).toBe("Keynote: Ada");
     // Final state, after updateSubmissionStatuses drives pending -> accepted.
     expect(state.submission[0].status).toBe("accepted");
     expect(state.submission[0].acceptedAt).toBeInstanceOf(Date);
@@ -206,6 +206,9 @@ describe("POST /api/v1/contacts/:id/add-to-event (CRM-10, DEC-156)", () => {
     expect(participantInsert.submissionId).toBe(submissionInsert.id);
     expect(participantInsert.contactId).toBe("contact-1");
     expect(participantInsert.visible).toBe(true);
+    // DEC-765: no role given -> falls back to 'speaker', not the model
+    // inventing a different default.
+    expect(participantInsert.role).toBe("speaker");
 
     // P1 fix (w1-f): acceptance planning actually fired — the contact got
     // every DEC-009 default onboarding task assigned (previously zero,
@@ -237,6 +240,92 @@ describe("POST /api/v1/contacts/:id/add-to-event (CRM-10, DEC-156)", () => {
 
     expect(res.status).toBe(201);
     expect((inserts.find((i) => i.table === schema.submission)!.vals as any).title).toBe("Keynote: Ada");
+  });
+
+  it("threads an explicit role through to participant.role (DEC-765)", async () => {
+    const { db, inserts } = fakeDb([CONTACT_ORG_A], [EVENT_ORG_A]);
+    const app = appWithDbAndAuth(db, ORGANIZER_A);
+
+    const res = await app.request(
+      jsonRequest("/api/v1/contacts/contact-1/add-to-event", {
+        eventId: "event-1",
+        title: "Panel: Ada",
+        role: "moderator",
+      }),
+    );
+
+    expect(res.status).toBe(201);
+    const participantInsert = inserts.find((i) => i.table === schema.participant)!.vals as any;
+    expect(participantInsert.role).toBe("moderator");
+  });
+
+  it("400s an invalid role", async () => {
+    const { db, inserts } = fakeDb([CONTACT_ORG_A], [EVENT_ORG_A]);
+    const app = appWithDbAndAuth(db, ORGANIZER_A);
+
+    const res = await app.request(
+      jsonRequest("/api/v1/contacts/contact-1/add-to-event", {
+        eventId: "event-1",
+        title: "Panel: Ada",
+        role: "keynote-emcee",
+      }),
+    );
+
+    expect(res.status).toBe(400);
+    const json = (await res.json()) as { error: { fields?: Record<string, string> } };
+    expect(json.error.fields).toEqual({ role: "invalid" });
+    expect(inserts.find((i) => i.table === schema.submission)).toBeUndefined();
+  });
+
+  it("400s a blank title instead of inventing one (DEC-764)", async () => {
+    const { db, inserts } = fakeDb([CONTACT_ORG_A], [EVENT_ORG_A]);
+    const app = appWithDbAndAuth(db, ORGANIZER_A);
+
+    const res = await app.request(
+      jsonRequest("/api/v1/contacts/contact-1/add-to-event", { eventId: "event-1", title: "   " }),
+    );
+
+    expect(res.status).toBe(400);
+    const json = (await res.json()) as { error: { fields?: Record<string, string> } };
+    expect(json.error.fields).toEqual({ title: "required" });
+    expect(inserts.find((i) => i.table === schema.submission)).toBeUndefined();
+  });
+
+  it("400s a missing title", async () => {
+    const { db, inserts } = fakeDb([CONTACT_ORG_A], [EVENT_ORG_A]);
+    const app = appWithDbAndAuth(db, ORGANIZER_A);
+
+    const res = await app.request(
+      jsonRequest("/api/v1/contacts/contact-1/add-to-event", { eventId: "event-1" }),
+    );
+
+    expect(res.status).toBe(400);
+    const json = (await res.json()) as { error: { fields?: Record<string, string> } };
+    expect(json.error.fields).toEqual({ title: "required" });
+    expect(inserts.find((i) => i.table === schema.submission)).toBeUndefined();
+  });
+
+  it("links the CRM contact by id -- a case/whitespace-differing email never mints a second contact row (DEC-765)", async () => {
+    // The contact's own CRM email is mixed-case/padded on purpose; the old
+    // email-round-trip path (findOrCreateContact) would normalize+re-match
+    // this, but a *different* differently-cased address than what's stored
+    // would have minted a duplicate. Linking by id sidesteps re-resolution
+    // by email entirely -- there is no second lookup to get wrong.
+    const contactWithMessyEmail = { ...CONTACT_ORG_A, email: "  Ada@Example.com  " };
+    const { db, inserts, state } = fakeDb([contactWithMessyEmail], [EVENT_ORG_A]);
+    const app = appWithDbAndAuth(db, ORGANIZER_A);
+
+    const res = await app.request(
+      jsonRequest("/api/v1/contacts/contact-1/add-to-event", { eventId: "event-1", title: "Keynote: Ada" }),
+    );
+
+    expect(res.status).toBe(201);
+    // No second contact row was ever inserted.
+    expect(inserts.find((i) => i.table === schema.contact)).toBeUndefined();
+    expect(state.contact).toHaveLength(1);
+
+    const participantInsert = inserts.find((i) => i.table === schema.participant)!.vals as any;
+    expect(participantInsert.contactId).toBe("contact-1");
   });
 
   it("404s when the event doesn't exist in the caller's org", async () => {

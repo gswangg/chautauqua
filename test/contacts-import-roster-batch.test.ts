@@ -91,9 +91,9 @@ describe("pushContactsToEvent (DEC-357): set-based batch push", () => {
   it("runs updateSubmissionStatuses's row-status read exactly ONCE for K contacts, not once per contact", async () => {
     const { db, submissionSelectCalls, submissionUpdateCalls } = statusCountingDb();
     const contacts = [
-      { id: "c-1", email: "a@example.com", firstName: "Ada", lastName: "Lovelace" },
-      { id: "c-2", email: "b@example.com", firstName: "Bea", lastName: "Neumann" },
-      { id: "c-3", email: "c@example.com", firstName: "Cy", lastName: "Turing" },
+      { id: "c-1", email: "a@example.com", firstName: "Ada", lastName: "Lovelace", title: null, company: null },
+      { id: "c-2", email: "b@example.com", firstName: "Bea", lastName: "Neumann", title: null, company: null },
+      { id: "c-3", email: "c@example.com", firstName: "Cy", lastName: "Turing", title: null, company: null },
     ];
 
     const ids = await pushContactsToEvent(db, "event-1", ORG_A, contacts, undefined);
@@ -143,7 +143,7 @@ describe("pushContactsToEvent (DEC-357): set-based batch push", () => {
       wrapped,
       "event-1",
       ORG_A,
-      [{ id: "c-1", email: "a@example.com", firstName: "Ada", lastName: "Lovelace" }],
+      [{ id: "c-1", email: "a@example.com", firstName: "Ada", lastName: "Lovelace", title: null, company: null }],
       undefined,
     );
 

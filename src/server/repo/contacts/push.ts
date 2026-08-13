@@ -5,24 +5,31 @@
 import type { Db } from "../../context";
 import { createSubmission } from "../submissions/create";
 import { updateSubmissionStatuses } from "../submissions";
-import { DEC_156 } from "../../../decisions";
+import { DEC_156, DEC_765 } from "../../../decisions";
 import type { ContactRow } from "./rows";
 
 // Compile-checked dependency marker: pushContactToEvent below implements
 // DEC-156's push-to-event contract (accepted submission, pending content,
 // no email).
 void DEC_156;
+// Compile-checked dependency marker: pushContactToEvent/pushContactsToEvent
+// below link the caller's already-owned contact by id (never re-resolve by
+// email through findOrCreateContact), and pass the chosen role through to
+// participant.role (DEC-765).
+void DEC_765;
 
 /**
  * Pushes an already-org-owned contact into an event as an organizer-invited
  * submission: status 'accepted', content_status left at its default
  * 'pending' (createSubmission's default), title defaulting to
  * 'Invited: <FirstName> <LastName>', and the contact as a visible
- * participant. Reuses createSubmission's contact-linking plumbing
- * (findOrCreateContact matches this contact's own email, so no duplicate
- * contact is created) rather than hand-rolling submission/participant
- * inserts. Sends no email. Caller is expected to have already verified the
- * contact and event both belong to the caller's org.
+ * participant with the given role (default 'speaker'). Links the caller's
+ * contact by id (DEC-765) — createSubmission's `contactId` input shape
+ * skips findOrCreateContact entirely, so this never re-resolves the contact
+ * by email and never risks minting a duplicate when the CRM address and a
+ * submission-path address differ. Sends no email. Caller is expected to
+ * have already verified the contact and event both belong to the caller's
+ * org.
  *
  * P1 fix (w1-f): this used to insert the submission directly with
  * status: 'accepted', which skips updateSubmissionStatuses's acceptance
@@ -41,13 +48,14 @@ export async function pushContactToEvent(
   db: Db,
   eventId: string,
   orgId: string,
-  contact: Pick<ContactRow, "email" | "firstName" | "lastName">,
+  contact: Pick<ContactRow, "id" | "email" | "firstName" | "lastName" | "title" | "company">,
   title: string | undefined,
+  role?: string,
 ): Promise<string> {
   const resolvedTitle = title && title.trim() ? title.trim() : `Invited: ${contact.firstName} ${contact.lastName}`;
   const submissionId = await createSubmission(db, eventId, orgId, {
     title: resolvedTitle,
-    contact: { email: contact.email, firstName: contact.firstName, lastName: contact.lastName },
+    contact: { contactId: contact.id, title: contact.title, company: contact.company, role },
   });
   await updateSubmissionStatuses(db, eventId, [submissionId], "accepted", new Date());
   return submissionId;
@@ -71,7 +79,7 @@ export async function pushContactsToEvent(
   db: Db,
   eventId: string,
   orgId: string,
-  contacts: Pick<ContactRow, "id" | "email" | "firstName" | "lastName">[],
+  contacts: Pick<ContactRow, "id" | "email" | "firstName" | "lastName" | "title" | "company">[],
   title?: string,
 ): Promise<string[]> {
   const resolvedTitle = title && title.trim() ? title.trim() : undefined;
@@ -80,7 +88,7 @@ export async function pushContactsToEvent(
     const contactTitle = resolvedTitle ?? `Invited: ${contact.firstName} ${contact.lastName}`;
     const submissionId = await createSubmission(db, eventId, orgId, {
       title: contactTitle,
-      contact: { email: contact.email, firstName: contact.firstName, lastName: contact.lastName },
+      contact: { contactId: contact.id, title: contact.title, company: contact.company },
     });
     submissionIds.push(submissionId);
   }
