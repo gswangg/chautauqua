@@ -70,10 +70,24 @@ function fakeDb(selectQueue: unknown[][]) {
       return makeChain(rows);
     },
     insert: () => ({
-      values: async (vals: unknown) => {
+      values: (vals: unknown) => {
         inserts.push(vals);
+        // DEC-948: checkAndIncrementScopedLimit chains
+        // .onConflictDoUpdate(...).returning(...) off insert().values(...)
+        // for its atomic D1 upsert; plain inserts elsewhere in this route
+        // still just await the values() call directly (thenable below). A
+        // minimal always-under-cap fake is enough since this test doesn't
+        // assert on rate-limit state.
+        return {
+          then: (resolve: (v: undefined) => void) => resolve(undefined),
+          onConflictDoUpdate: () => ({
+            returning: async () => [{ count: 1 }],
+            then: (resolve: (v: undefined) => void) => resolve(undefined),
+          }),
+        };
       },
     }),
+    delete: () => ({ where: async () => {} }),
   };
   return { db: db as unknown as AppEnv["Variables"]["db"], inserts };
 }

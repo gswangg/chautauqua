@@ -23,13 +23,13 @@ import {
 } from "../auth/cookies";
 import { consumeClaimToken, readClaimToken, type KVStore } from "../auth/claim";
 import { findAccountUserId } from "../server/repo/comms";
+import { requestIpFromHeaders } from "../lib/rate-limit";
 import {
   checkAndIncrementScopedLimit,
   peekScopedLimit,
   incrementScopedLimit,
   resetScopedLimit,
-  requestIpFromHeaders,
-} from "../lib/rate-limit";
+} from "../server/repo/rate-limit";
 import { ThemeStyles } from "../views/theme";
 import { AUTH_CSS } from "./auth.css";
 import { DEMO_IDENTITIES, type DemoIdentity } from "../lib/demo-identities";
@@ -272,7 +272,7 @@ authRoutes.get("/login", async (c) => {
 });
 
 authRoutes.post("/login", csrfForm, async (c) => {
-  const kv = c.env.KV as unknown as KVStore;
+  const db = c.var.db;
   const body = await c.req.parseBody();
   const email = String(body.email ?? "").trim().toLowerCase();
   const password = String(body.password ?? "");
@@ -290,15 +290,14 @@ authRoutes.post("/login", csrfForm, async (c) => {
   // confirmed. On success the per-email budget is cleared entirely.
   const ip = requestIpFromHeaders((name) => c.req.header(name));
   const loginNow = Date.now();
-  const userPeek = await peekScopedLimit(kv, "login-user", email, loginNow, {
+  const userPeek = await peekScopedLimit(db, "login-user", email, loginNow, {
     windowSeconds: AUTH_RATE_LIMIT_WINDOW_SECONDS,
     max: AUTH_RATE_LIMIT_MAX,
   });
-  const ipPeek = await peekScopedLimit(kv, "login-ip", ip, loginNow, {
+  const ipPeek = await peekScopedLimit(db, "login-ip", ip, loginNow, {
     windowSeconds: AUTH_RATE_LIMIT_WINDOW_SECONDS,
     max: 100,
   });
-  const db = c.var.db;
 
   if (!userPeek.ok || !ipPeek.ok) {
     const { token: csrfToken } = ensureCsrfCookie(c);
@@ -313,11 +312,11 @@ authRoutes.post("/login", csrfForm, async (c) => {
   const rows = await db.select().from(schema.user).where(eq(schema.user.email, email)).limit(1);
   const user = rows[0];
   if (!user || !(await verifyPassword(password, user.passwordHash))) {
-    await incrementScopedLimit(kv, "login-user", email, loginNow, {
+    await incrementScopedLimit(db, "login-user", email, loginNow, {
       windowSeconds: AUTH_RATE_LIMIT_WINDOW_SECONDS,
       max: AUTH_RATE_LIMIT_MAX,
     });
-    await incrementScopedLimit(kv, "login-ip", ip, loginNow, {
+    await incrementScopedLimit(db, "login-ip", ip, loginNow, {
       windowSeconds: AUTH_RATE_LIMIT_WINDOW_SECONDS,
       max: 100,
     });
@@ -330,7 +329,7 @@ authRoutes.post("/login", csrfForm, async (c) => {
     );
   }
 
-  await resetScopedLimit(kv, "login-user", email, loginNow, AUTH_RATE_LIMIT_WINDOW_SECONDS);
+  await resetScopedLimit(db, "login-user", email, loginNow, AUTH_RATE_LIMIT_WINDOW_SECONDS);
 
   const token = newSessionToken();
   const tokenHash = await hashToken(token);
@@ -376,7 +375,7 @@ authRoutes.post("/claim/:token", csrfForm, async (c) => {
   const token = c.req.param("token");
   const kv = c.env.KV as unknown as KVStore;
   const ip = requestIpFromHeaders((name) => c.req.header(name));
-  const limit = await checkAndIncrementScopedLimit(kv, "claim", ip, Date.now(), {
+  const limit = await checkAndIncrementScopedLimit(c.var.db, "claim", ip, Date.now(), {
     windowSeconds: AUTH_RATE_LIMIT_WINDOW_SECONDS,
     max: AUTH_RATE_LIMIT_MAX,
   });

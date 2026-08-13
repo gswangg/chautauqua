@@ -99,8 +99,18 @@ function makeDb() {
     insert: () => ({
       values: () => ({
         returning: async () => [{ id: "new-id" }],
+        // DEC-948: checkAndIncrementScopedLimit chains
+        // .onConflictDoUpdate(...).returning(...) for its atomic D1 upsert;
+        // a minimal always-under-cap fake is enough since no probe in this
+        // file asserts on rate-limit state.
+        onConflictDoUpdate: () => ({
+          returning: async () => [{ count: 1 }],
+          then: (resolve: (v: undefined) => void) => resolve(undefined),
+        }),
+        then: (resolve: (v: undefined) => void) => resolve(undefined),
       }),
     }),
+    delete: () => ({ where: async () => {} }),
   } as unknown as AppEnv["Variables"]["db"];
 }
 
@@ -118,8 +128,15 @@ function makeEmptyDb() {
     insert: () => ({
       values: () => ({
         returning: async () => [{ id: "new-id" }],
+        // DEC-948: see makeDb() above for why this chain exists.
+        onConflictDoUpdate: () => ({
+          returning: async () => [{ count: 1 }],
+          then: (resolve: (v: undefined) => void) => resolve(undefined),
+        }),
+        then: (resolve: (v: undefined) => void) => resolve(undefined),
       }),
     }),
+    delete: () => ({ where: async () => {} }),
   } as unknown as AppEnv["Variables"]["db"];
 }
 

@@ -217,6 +217,9 @@ describe("POST /api/v1/users/:id/reset-password", () => {
   const COLUMN_KEYS = new Map<unknown, string>([
     ...buildColumnMap(schema.user as unknown as Record<string, unknown>),
     ...buildColumnMap(schema.authSession as unknown as Record<string, unknown>),
+    // DEC-948: the login door's rate limiter now reads/writes a D1
+    // rate_limit row instead of KV.
+    ...buildColumnMap(schema.rateLimit as unknown as Record<string, unknown>),
   ]);
 
   function colKey(col: unknown): string {
@@ -266,10 +269,11 @@ describe("POST /api/v1/users/:id/reset-password", () => {
   }
 
   function makeFakeDb() {
-    const state: { users: Row[]; sessions: Row[] } = { users: [], sessions: [] };
+    const state: { users: Row[]; sessions: Row[]; rateLimits: Row[] } = { users: [], sessions: [], rateLimits: [] };
     function rowsFor(table: unknown): Row[] {
       if (table === schema.user) return state.users;
       if (table === schema.authSession) return state.sessions;
+      if (table === schema.rateLimit) return state.rateLimits;
       // DEC-740: the login door also queries getHubOrg (orderBy().limit(),
       // no where()) -- always empty here, so loadSingleEventContext
       // short-circuits before ever querying schema.event.
@@ -299,6 +303,32 @@ describe("POST /api/v1/users/:id/reset-password", () => {
       insert(table: unknown) {
         return {
           values(row: Row) {
+            // DEC-948: checkAndIncrementScopedLimit's atomic upsert (insert
+            // ... on conflict(key) do update set count = count + 1
+            // returning count) against the rate_limit table -- a real
+            // push-only insert would wrongly reject a second attempt
+            // against the same window.
+            if (table === schema.rateLimit) {
+              const existing = state.rateLimits.find((r) => r.key === row.key);
+              return {
+                onConflictDoUpdate: () => ({
+                  returning: async () => {
+                    if (existing) {
+                      existing.count = (existing.count as number) + 1;
+                      return [{ count: existing.count }];
+                    }
+                    const inserted = { ...row };
+                    state.rateLimits.push(inserted);
+                    return [{ count: inserted.count }];
+                  },
+                  then: (resolve: (v: undefined) => void) => {
+                    if (existing) existing.count = (existing.count as number) + 1;
+                    else state.rateLimits.push({ ...row });
+                    resolve(undefined);
+                  },
+                }),
+              };
+            }
             rowsFor(table).push({ ...row });
             return Promise.resolve();
           },
@@ -562,14 +592,28 @@ describe("DEC-199 email case normalization + login regression", () => {
     let lastInsertedId: string | null = null;
     let nextLoginEmail: string | null = null;
 
+    // DEC-948: the login door's rate limiter now reads/writes a D1
+    // rate_limit row instead of KV.
+    const rateLimits = new Map<string, { count: number; expiresAt: number }>();
+    function extractEqValue(cond: unknown): unknown {
+      const chunks = (cond as { queryChunks: unknown[] }).queryChunks;
+      const raw = chunks[3];
+      return raw && typeof raw === "object" && "value" in (raw as object) ? (raw as { value: unknown }).value : raw;
+    }
+
     const db = {
       select(cols?: unknown) {
         return {
           from(table: unknown) {
             return {
-              where(_cond: unknown) {
+              where(cond: unknown) {
                 return {
                   limit(_n: number) {
+                    if (table === schema.rateLimit) {
+                      const key = extractEqValue(cond);
+                      const row = rateLimits.get(key as string);
+                      return Promise.resolve(row ? [{ count: row.count }] : []);
+                    }
                     if (table !== schema.user) throw new Error("unexpected table in fake db select");
                     const isDupCheckProjection =
                       !!cols && typeof cols === "object" && Object.keys(cols as object).length === 1 && "id" in (cols as object);
@@ -598,12 +642,44 @@ describe("DEC-199 email case normalization + login regression", () => {
               rows.push({ ...row });
               lastInsertedId = row.id as string;
               pendingByIdLookup = true;
+              return Promise.resolve();
             } else if (table === schema.authSession) {
               sessions.push({ ...row });
+              return Promise.resolve();
+            } else if (table === schema.rateLimit) {
+              const key = row.key as string;
+              const existing = rateLimits.get(key);
+              return {
+                onConflictDoUpdate: () => ({
+                  returning: async () => {
+                    if (existing) {
+                      existing.count += 1;
+                      return [{ count: existing.count }];
+                    }
+                    rateLimits.set(key, { count: row.count as number, expiresAt: row.expiresAt as number });
+                    return [{ count: row.count }];
+                  },
+                  then: (resolve: (v: undefined) => void) => {
+                    if (existing) existing.count += 1;
+                    else rateLimits.set(key, { count: row.count as number, expiresAt: row.expiresAt as number });
+                    resolve(undefined);
+                  },
+                }),
+              };
             } else {
               throw new Error("unexpected insert table");
             }
-            return Promise.resolve();
+          },
+        };
+      },
+      delete(table: unknown) {
+        return {
+          where(cond: unknown) {
+            if (table === schema.rateLimit) {
+              rateLimits.delete(extractEqValue(cond) as string);
+              return Promise.resolve();
+            }
+            throw new Error("unexpected delete table");
           },
         };
       },

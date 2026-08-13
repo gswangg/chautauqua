@@ -1,6 +1,12 @@
 // Org-admin tooling tables: bearer API tokens and Submissions saved views.
 // Split out of the former monolithic src/db/schema.ts (contention-hotspot
 // decomposition; behavior-preserving).
+//
+// rateLimit also lives here (not org-scoped, but this module is the closest
+// fit among the existing submodules for cross-cutting infra tables): DEC-948
+// moves the rate limiter off a read-modify-write against KV to an atomic D1
+// counter. `key` is built by src/lib/rate-limit.ts's scopedRateLimitKey so
+// live bucket identity is unchanged; see src/server/repo/rate-limit.ts.
 
 import { sqliteTable, text, integer, index, uniqueIndex } from "drizzle-orm/sqlite-core";
 import { id, createdAt, updatedAt } from "./common";
@@ -52,5 +58,22 @@ export const savedView = sqliteTable(
   (t) => ({
     saved_view_event_id_idx: index("saved_view_event_id_idx").on(t.eventId),
     saved_view_created_by_user_id_idx: index("saved_view_created_by_user_id_idx").on(t.createdByUserId),
+  }),
+);
+
+// migrations/0030_rate_limit.sql (DEC-948): the counter itself. One row per
+// scope+id+window (key = scopedRateLimitKey(...)); count is incremented with
+// a single atomic `insert ... on conflict do update ... returning count`
+// statement (src/server/repo/rate-limit.ts), never a read-then-write. No
+// createdAt/updatedAt: rows are prune-and-replace, not audited history.
+export const rateLimit = sqliteTable(
+  "rate_limit",
+  {
+    key: text("key").primaryKey(),
+    count: integer("count").notNull(),
+    expiresAt: integer("expires_at").notNull(),
+  },
+  (t) => ({
+    rate_limit_expires_at_idx: index("rate_limit_expires_at_idx").on(t.expiresAt),
   }),
 );

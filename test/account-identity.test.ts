@@ -312,6 +312,10 @@ describe("POST /claim/:token redirects to /login (not a duplicate insert) for a 
   function makeFakeDb(opts: { contacts: unknown[] }) {
     const state = { contacts: [...opts.contacts] };
     const inserted: Array<{ table: unknown; row: unknown }> = [];
+    // DEC-948: checkAndIncrementScopedLimit's atomic D1 upsert against its
+    // own `rate_limit` row — dispatched separately from `inserted`, which
+    // this file's one test asserts stays empty for "no second user row".
+    const rateLimitRows = new Map<string, { count: number; expiresAt: number }>();
     return {
       db: {
         select() {
@@ -322,6 +326,7 @@ describe("POST /claim/:token redirects to /login (not a duplicate insert) for a 
                   return {
                     limit() {
                       if (table === schema.contact) return Promise.resolve(state.contacts);
+                      if (table === schema.rateLimit) return Promise.resolve([]);
                       throw new Error("unexpected table in fake db select");
                     },
                   };
@@ -333,8 +338,38 @@ describe("POST /claim/:token redirects to /login (not a duplicate insert) for a 
         insert(table: unknown) {
           return {
             values(row: unknown) {
+              if (table === schema.rateLimit) {
+                const vals = row as { key: string; count: number; expiresAt: number };
+                return {
+                  onConflictDoUpdate: () => ({
+                    returning: async () => {
+                      const existing = rateLimitRows.get(vals.key);
+                      if (existing) {
+                        existing.count += 1;
+                        return [{ count: existing.count }];
+                      }
+                      rateLimitRows.set(vals.key, { count: vals.count, expiresAt: vals.expiresAt });
+                      return [{ count: vals.count }];
+                    },
+                    then: (resolve: (v: undefined) => void) => {
+                      const existing = rateLimitRows.get(vals.key);
+                      if (existing) existing.count += 1;
+                      else rateLimitRows.set(vals.key, { count: vals.count, expiresAt: vals.expiresAt });
+                      resolve(undefined);
+                    },
+                  }),
+                };
+              }
               inserted.push({ table, row });
               return Promise.resolve();
+            },
+          };
+        },
+        delete(table: unknown) {
+          return {
+            where() {
+              if (table === schema.rateLimit) return Promise.resolve();
+              throw new Error("unexpected table in fake db delete");
             },
           };
         },
