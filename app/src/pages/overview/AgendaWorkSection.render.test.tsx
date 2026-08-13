@@ -95,9 +95,59 @@ describe('AgendaWorkSection (DEC-652)', () => {
     expect(screen.getByText('Onboarding in 30 Minutes')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Move DFC-047 to 11:30' })).toBeInTheDocument();
     expect(screen.getByText('Next free slot in Room 2A')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Place at 11:00' })).toBeInTheDocument();
+    // DEC-735: the suggestion names the room it would fill.
+    expect(screen.getByRole('button', { name: 'Place at 11:00 in Room 2B' })).toBeInTheDocument();
     // The old generic link is gone when a concrete suggestion exists.
     expect(screen.queryByRole('link', { name: 'Place it' })).not.toBeInTheDocument();
+    // DEC-735: the dangling "· min ·" duration clause is dropped — the
+    // server never sends a real per-submission duration for unplaced rows.
+    expect(document.body.textContent).not.toMatch(/·\s*min\s*·/);
+    expect(document.body.textContent).not.toMatch(/null min/);
+  });
+
+  // DEC-735: §02's row-actions container is an inline row, §04's conflict
+  // resolution container is a column — the two must never share a layout
+  // class again (that's the bug the split fixes).
+  it('gives the conflict resolution its own layout class, distinct from an inline action row', () => {
+    mockApi({});
+    render(<Harness payload={basePayload()} refetch={vi.fn()} />);
+
+    const resolutionButton = screen.getByRole('button', { name: 'Move DFC-047 to 11:30' });
+    const resolutionContainer = resolutionButton.parentElement!;
+    expect(resolutionContainer).toHaveClass('chq-overview-row-actions-column');
+    expect(resolutionContainer).not.toHaveClass('chq-overview-row-actions-inline');
+  });
+
+  // DEC-735: four "Place at 9:00" suggestions at the same clock time are
+  // indistinguishable unless the room disambiguates them.
+  it('keeps same-time placement suggestions room-distinct', () => {
+    mockApi({});
+    const payload = basePayload();
+    payload.agendaWork.unplaced = [
+      {
+        submissionId: 'sub-c',
+        ref: 'DFC-050',
+        title: 'Docs That Answer Back',
+        speakerName: 'Dana Whitmore',
+        durationMin: 30,
+        suggestion: { day: '2027-03-11', startMin: 660, roomId: 'room-2b', roomName: 'Room 2B', label: 'Place at 11:00' },
+      },
+      {
+        submissionId: 'sub-d',
+        ref: 'DFC-051',
+        title: 'Zero-Downtime Schema Migrations',
+        speakerName: 'Ezra Lindqvist',
+        durationMin: 30,
+        suggestion: { day: '2027-03-11', startMin: 660, roomId: 'room-3c', roomName: 'Room 3C', label: 'Place at 11:00' },
+      },
+    ];
+    render(<Harness payload={payload} refetch={vi.fn()} />);
+
+    const first = screen.getByRole('button', { name: 'Place at 11:00 in Room 2B' });
+    const second = screen.getByRole('button', { name: 'Place at 11:00 in Room 3C' });
+    expect(first).toBeInTheDocument();
+    expect(second).toBeInTheDocument();
+    expect(first.textContent).not.toEqual(second.textContent);
   });
 
   it('falls back to the "Place it" link when a row has no suggestion (never invents a time)', () => {
@@ -118,7 +168,7 @@ describe('AgendaWorkSection (DEC-652)', () => {
     });
     render(<Harness payload={basePayload()} refetch={vi.fn()} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Place at 11:00' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Place at 11:00 in Room 2B' }));
 
     await waitFor(() => {
       expect(screen.queryByText('Docs That Answer Back')).not.toBeInTheDocument();
@@ -175,7 +225,7 @@ describe('AgendaWorkSection (DEC-652)', () => {
     const refetch = vi.fn().mockResolvedValue(undefined);
     render(<Harness payload={basePayload()} refetch={refetch} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Place at 11:00' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Place at 11:00 in Room 2B' }));
 
     await waitFor(() => {
       expect(screen.getByText(/Slot already taken/)).toBeInTheDocument();

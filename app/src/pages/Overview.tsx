@@ -43,6 +43,15 @@ const PUBLIC_SURFACES: ReadonlyArray<{ key: string; label: string; path: (slug: 
   { key: 'cfp', label: 'CFP form', path: (slug) => `/submit/${slug}` },
 ];
 
+// DEC-735: a dangling clause with no computed value must never render — this
+// is always computable from the row's own submittedAt, so it's computed,
+// never dropped like the unplaced row's duration (which the server never
+// sends — see AgendaWorkSection.tsx).
+function waitingDaysLabel(submittedAt: number, now: number): string {
+  const days = Math.max(0, Math.round((now - submittedAt) / 86_400_000));
+  return `waiting ${days} ${pluralize(days, 'day')}`;
+}
+
 export function OverviewPage() {
   const { eventId, loading: eventLoading, error: eventError } = useCurrentEvent();
   const [payload, setPayload] = useState<OverviewPayload | null>(null);
@@ -319,9 +328,10 @@ export function OverviewPage() {
                 {row.title}
               </div>
               <div className="chq-overview-row-meta">
-                {row.speakerName} · {row.trackName ?? row.format} · {row.ref}
+                {row.speakerName} · {row.trackName ?? row.format} · {row.ref} ·{' '}
+                {waitingDaysLabel(row.submittedAt, now)}
               </div>
-              <div className="chq-overview-row-actions chq-overview-row-actions-stacked">
+              <div className="chq-overview-row-actions-inline">
                 <button
                   type="button"
                   className="chq-overview-btn chq-overview-btn-primary"
@@ -407,29 +417,30 @@ export function OverviewPage() {
             </span>
           </div>
         ))}
-      </section>
-
-      <section className="chq-overview-section">
-        <div className="chq-overview-section-header">
-          <span className="chq-overview-section-label">Public pages</span>
+        {/* DEC-735: the mock renders Public pages as ONE summary row inside
+            "No action needed", not a separate section listing every surface
+            — every surface still links out, from this single row's action
+            list rather than a stacked list of rows. */}
+        <div className="chq-overview-row chq-overview-row-public">
+          <span className="chq-overview-row-title chq-overview-row-title-sm">Public pages</span>
+          {eventSlug ? (
+            <div className="chq-overview-row-actions-inline">
+              {PUBLIC_SURFACES.map((surface) => (
+                <a
+                  key={surface.key}
+                  href={surface.path(eventSlug)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="chq-overview-link-btn"
+                >
+                  {surface.label}
+                </a>
+              ))}
+            </div>
+          ) : (
+            <span className="chq-overview-row-meta">{slugError ?? 'Resolving link…'}</span>
+          )}
         </div>
-        {PUBLIC_SURFACES.map((surface) => (
-          <div key={surface.key} className="chq-overview-row chq-overview-row-public">
-            <span className="chq-overview-row-title chq-overview-row-title-sm">{surface.label}</span>
-            {eventSlug ? (
-              <a
-                href={surface.path(eventSlug)}
-                target="_blank"
-                rel="noreferrer"
-                className="chq-overview-link-btn"
-              >
-                Open
-              </a>
-            ) : (
-              <span className="chq-overview-row-meta">{slugError ?? 'Resolving link…'}</span>
-            )}
-          </div>
-        ))}
       </section>
     </div>
   );
