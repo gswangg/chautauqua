@@ -310,10 +310,49 @@ async function main(): Promise<void> {
   const icsIds = await fetchAcceptedSubmissionIds(headers, 150);
   const icsQuery = joinIcsIds(icsIds);
   const ratingSubmissionId = icsIds[0]!;
+  // DEC-644 amendment (wave 46): a second accepted submission id, distinct
+  // from ratingSubmissionId above, so the "submission PATCH" write check
+  // below mutates a row no other timed check touches.
+  const patchSubmissionId = icsIds[1]!;
 
   const reviewerHeaders = isDefaultProfile
     ? { cookie: cookieHeader(await login(PERF_REVIEWER_EMAIL, PERF_REVIEWER_PASSWORD)) }
     : null;
+
+  // DEC-644 amendment (wave 46): a real recipient set drawn from the perf
+  // contact pool (800/6000-contact, profile-sized), the same q=perf filter
+  // the "contacts list (q=perf)" read check above already uses to match
+  // every seeded contact. Capped at MAX_BULK_EMAIL_RECIPIENTS (100).
+  const bulkEmailContactsRes = await fetch(
+    `${PERF_URL}/api/v1/contacts?q=perf&page=1&perPage=50`,
+    { headers },
+  );
+  if (!bulkEmailContactsRes.ok) {
+    throw new Error(`fetch bulk-email contact pool failed: ${bulkEmailContactsRes.status}`);
+  }
+  const bulkEmailContactsBody = (await bulkEmailContactsRes.json()) as { items: Array<{ id: string }> };
+  const bulkEmailContactIds = bulkEmailContactsBody.items.map((item) => item.id);
+  if (bulkEmailContactIds.length === 0) {
+    throw new Error("fetch bulk-email contact pool: expected at least 1 contact, got 0");
+  }
+
+  // DEC-644 amendment (wave 46): id + current stage of one perf-seeded
+  // pipeline_entry row, used by the "pipeline stage move" write check
+  // below to alternate stages on every call (so every call is a real move,
+  // not a same-stage no-op the route treats as a fit-only edit).
+  const pipelineEntryRes = await fetch(`${PERF_URL}/api/v1/pipeline?page=1&perPage=1`, { headers });
+  if (!pipelineEntryRes.ok) {
+    throw new Error(`fetch pipeline entry pool failed: ${pipelineEntryRes.status}`);
+  }
+  const pipelineEntryBody = (await pipelineEntryRes.json()) as {
+    items: Array<{ id: string; stage: string }>;
+  };
+  const pipelineEntry = pipelineEntryBody.items[0];
+  if (!pipelineEntry) {
+    throw new Error("fetch pipeline entry pool: expected at least 1 pipeline entry, got 0");
+  }
+  const PIPELINE_MOVE_STAGES = ["identified", "contacted"] as const;
+  let pipelineStageToggle = pipelineEntry.stage === PIPELINE_MOVE_STAGES[0] ? 1 : 0;
 
   const checks: TimedCheck[] = [
     {
@@ -594,6 +633,87 @@ async function main(): Promise<void> {
       name: "org users list (page 1)",
       cls: "read",
       run: () => fetch(`${PERF_URL}/api/v1/users?page=1&perPage=50`, { headers }),
+    },
+    {
+      // DEC-644 amendment (wave 46): contact bulk-email fanned out over a
+      // real ~50-recipient set from the perf contact pool. Times the
+      // /preview variant, not the send: send mints real claim tokens and
+      // writes email_log per recipient (DEC-923), which would grow
+      // unbounded across 35 iterations x 50 recipients against a shared
+      // perf environment; preview runs the identical validation + batched
+      // portal-link-resolution + merge-field-render fan-out
+      // (renderBulkEmailTargets, src/routes/api/contacts/bulk-email.ts)
+      // for every contactId supplied (only its *output* is capped to 5
+      // rows) without minting credentials or sending mail, so it measures
+      // the same structural cost as the send path. Runs on every profile.
+      name: "contacts bulk-email preview (50 recipients)",
+      cls: "write",
+      run: () =>
+        fetch(`${PERF_URL}/api/v1/contacts/bulk-email/preview`, {
+          method: "POST",
+          headers: { ...headers, "content-type": "application/json", "x-chq-csrf": "1" },
+          body: JSON.stringify({
+            eventId: PERF_EVENT_ID,
+            contactIds: bulkEmailContactIds,
+            subject: "Perf smoke preview",
+            bodyText: "Hi {speaker_name}, see you at {event_name}: {portal_link}",
+          }),
+        }),
+    },
+    {
+      // DEC-644 amendment (wave 46): the onboarding-task reminder fan-out
+      // (src/routes/tasks.ts's remind/preview -> previewRemindNow), timed
+      // via /preview rather than /remind for the same reason as the
+      // bulk-email check above — the real send writes email_log per
+      // outstanding contact; preview runs the identical
+      // buildReminderMessage render fan-out with no mailer call and no
+      // row written. Runs on every profile (not gated by
+      // PERF_PLAN_ID/PERF_REVIEWER_EMAIL).
+      name: "onboarding remind preview (all outstanding)",
+      cls: "write",
+      run: () =>
+        fetch(`${PERF_URL}/api/v1/events/${PERF_EVENT_ID}/onboarding/remind/preview`, {
+          method: "POST",
+          headers: { ...headers, "content-type": "application/json", "x-chq-csrf": "1" },
+          body: JSON.stringify({}),
+        }),
+    },
+    {
+      // DEC-644 amendment (wave 46): a real submission PATCH (title/
+      // description edit), the admin content-editing hot write path —
+      // exercises updateSubmissionFields + the DEC-158 revision-history
+      // append + bumpIcsSequences on every call (the description string
+      // includes Date.now() so it always differs from `before`, keeping
+      // the revision-write branch live rather than degenerating into a
+      // same-value no-op after the first iteration). Runs on every
+      // profile.
+      name: "submission PATCH (description edit)",
+      cls: "write",
+      run: () =>
+        fetch(`${PERF_URL}/api/v1/submissions/${patchSubmissionId}`, {
+          method: "PATCH",
+          headers: { ...headers, "content-type": "application/json", "x-chq-csrf": "1" },
+          body: JSON.stringify({ description: `perf smoke patch ${Date.now()}` }),
+        }),
+    },
+    {
+      // DEC-644 amendment (wave 46): a real pipeline stage move (CRM board
+      // drag-and-drop write path) — alternates between the two
+      // PIPELINE_MOVE_STAGES on every call so isMove is true every time
+      // (moveEntry + a pipeline_activity row on each call), never
+      // degenerating into the route's same-stage fit-only-edit branch.
+      // Runs on every profile.
+      name: "pipeline stage move",
+      cls: "write",
+      run: () => {
+        const toStage = PIPELINE_MOVE_STAGES[pipelineStageToggle]!;
+        pipelineStageToggle = pipelineStageToggle === 0 ? 1 : 0;
+        return fetch(`${PERF_URL}/api/v1/pipeline/${pipelineEntry.id}`, {
+          method: "PATCH",
+          headers: { ...headers, "content-type": "application/json", "x-chq-csrf": "1" },
+          body: JSON.stringify({ stage: toStage }),
+        });
+      },
     },
   ];
 

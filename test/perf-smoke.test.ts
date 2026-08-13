@@ -1,4 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   PERF_CLASS_BUDGET_MS,
   PERF_P95_BUDGET_MS,
@@ -264,5 +267,65 @@ describe("assertMinCsvLines", () => {
     expect(() => assertMinCsvLines("export.csv", body, 6)).toThrow(
       /export\.csv: expected >= 6 CSV lines, got 5/,
     );
+  });
+});
+
+// DEC-644 amendment (wave 46): scripts/perf-smoke.ts needs a running server
+// plus a perf seed to execute, so it can't be run directly by this suite
+// (see the task's TESTS note) — instead this scans the harness's own source
+// text for the shape the amendment mandates, the same source-scan technique
+// test/security-invariants.test.ts uses for csrfJson/csrfForm coverage: a
+// class taxonomy is the harness's own claim about what it verifies, and this
+// stops that claim from silently rotting back down to one write check.
+describe("perf-smoke.ts write-class coverage (DEC-644 amendment, wave 46)", () => {
+  const PERF_SMOKE_PATH = resolve(fileURLToPath(import.meta.url), "../../scripts/perf-smoke.ts");
+  const source = readFileSync(PERF_SMOKE_PATH, "utf-8");
+
+  // Vacuity guard: a regex that silently stops matching (e.g. after a
+  // harness refactor renames the `cls:` field) must fail this test loudly
+  // rather than let every assertion below pass on zero matches.
+  it("the harness source is non-trivial and the cls: pattern still matches at all (vacuity guard)", () => {
+    expect(source.length).toBeGreaterThan(1000);
+    const anyClsMatches = source.match(/cls:\s*"(read|write|public)"/g) ?? [];
+    expect(anyClsMatches.length).toBeGreaterThan(0);
+  });
+
+  it("declares at least four cls: \"write\" checks", () => {
+    const writeMatches = source.match(/cls:\s*"write"/g) ?? [];
+    expect(writeMatches.length).toBeGreaterThanOrEqual(4);
+  });
+
+  const expectedWriteCheckNames = [
+    "rating PUT",
+    "contacts bulk-email preview (50 recipients)",
+    "onboarding remind preview (all outstanding)",
+    "submission PATCH (description edit)",
+    "pipeline stage move",
+  ];
+
+  for (const name of expectedWriteCheckNames) {
+    it(`names the "${name}" write check`, () => {
+      expect(source).toContain(`name: "${name}"`);
+    });
+  }
+
+  it("at least one write-class check name is absent from DEFAULT_ONLY_CHECK_NAMES (runs on every profile)", () => {
+    const defaultOnlyMatch = source.match(/DEFAULT_ONLY_CHECK_NAMES = new Set\(\[([\s\S]*?)\]\);/);
+    expect(defaultOnlyMatch).not.toBeNull();
+    const defaultOnlyBlock = defaultOnlyMatch![1]!;
+
+    const newWriteCheckNames = [
+      "contacts bulk-email preview (50 recipients)",
+      "onboarding remind preview (all outstanding)",
+      "submission PATCH (description edit)",
+      "pipeline stage move",
+    ];
+    const everyProfileNames = newWriteCheckNames.filter((name) => !defaultOnlyBlock.includes(`"${name}"`));
+    expect(everyProfileNames.length).toBeGreaterThanOrEqual(1);
+
+    // task DEC-644 amendment text: "at minimum (c) [submission PATCH] and
+    // (d) [pipeline stage move] must not be default-only".
+    expect(defaultOnlyBlock).not.toContain('"submission PATCH (description edit)"');
+    expect(defaultOnlyBlock).not.toContain('"pipeline stage move"');
   });
 });
