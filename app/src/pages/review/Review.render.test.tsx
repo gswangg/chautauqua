@@ -537,8 +537,9 @@ describe('ReviewPage render smoke: reviewer', () => {
     // Landed IN the scoped route, not the unscoped "Your queue" hub.
     expect(screen.queryByRole('heading', { name: 'Your queue' })).not.toBeInTheDocument();
     expect(screen.getByText('REVIEW · Solo Plan')).toBeInTheDocument();
-    // Footer present on the scoped queue.
-    expect(screen.getByText('Scores stay hidden from other reviewers')).toBeInTheDocument();
+    // The "Scores stay hidden" footer now lives in the shell chrome
+    // (App.tsx Footer, DEC-369 amendment wave 42), not on this page --
+    // covered by App.render.test.tsx.
   });
 
   // DEC-874 landing branch: 2+ plans render a single PLAN LIST (name, scope,

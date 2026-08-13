@@ -303,10 +303,10 @@ export function ReviewerQueue() {
           </div>
         )}
         <PlanSection planId={routePlanId} onData={setRouteEnvelope} />
-        {/* DEC-874: the footer belongs beside the shell's existing sign-out
-            control (App.tsx Header) -- it renders once, globally, in the
-            shell chrome, so nothing here mints a second one. */}
-        <p className="chq-review-queue-footer">Scores stay hidden from other reviewers</p>
+        {/* DEC-369 amendment (wave 42): the "Scores stay hidden from other
+            reviewers" footer now renders once, globally, in the shell
+            chrome (App.tsx Footer) alongside Sign out -- nothing here
+            mints a second copy. */}
       </div>
     );
   }
