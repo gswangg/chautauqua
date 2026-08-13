@@ -92,75 +92,40 @@ headline buttons 37h) · spacing rhythm batch (header 59.5h, gap 34.5, stat band
 DEC decision, likely keep).
 (Earlier closures stand: DEC-735/779, room-named suggestions.)
 
-**Submissions — GATE-1 FLEET: FAIL (list near-pixel PASS; full report
-fidelity-gate1/02-submissions/report.md)**:
-MAJOR (detail, frame 02 structural): restore ACCEPT primary + Decline|Waitlist
-pair + "Deciding sends nothing. Notify from Comms." caption (status segmented
-demoted the triage action) · drop NN—numbering, adopt frame sections
-(ABSTRACT → curated FORM ANSWERS → REVIEWS; rail DECISION/SPEAKER/HISTORY) ·
-implement REAL history entries (submitted / confirmation sent / review in /
-opened-by — now empty behind SHOW) · curate FORM ANSWERS to Format/Audience/
-Notes-for-reviewers/Accessibility (raw dump duplicates title+abstract, omits the
-two frame fields) · review rows lighter per frame + LABEL the weighted blend's
-plan/weights (scores 4.80/4.33 are CORRECT weighted math across different plans
-— explainability gap, do NOT change the math) · em-dash spacing in section
-tokens.
-MAJOR (builder, frame 04): content 820px under a full-width header at 1440 —
-align header row to the content measure (Preview/Save float over dead space) ·
-disabled Edit/Delete/drag render identical to enabled — grey them · drag
-reorder inert — implement or drop handles · field list: add Track +
-Accessibility needs w/ frame captions, drop Job title/Company/Speaker-bio,
-"N options" description lines.
-MAJOR (save-view, frame 07): "Share it with the other organisers" CHECKBOX
-unimplemented — sharing silently forced on; build the opt-in.
-BROKEN: Agenda nav badge route-dependent (1 CLASH on list vs 3 on detail/forms,
-deterministic — unify the clash count source).
-MINOR batch: filter-row track select + Columns picker at chip height (26px
-pills) · header labels TRACK/SENT/FORMAT · "19 Feb" date grammar · global count
-when filtered · saved-view × affordance · triage view stored config (Columns:
-Format) · detail ref line "CODE · N of M" + Previous/Next text + speaker
-history line + ABSTRACT label · TRACKS/FORMAT/PARTICIPANTS/META extras (DEC:
-where does detail editing live) · new-submission modal: remove extra
-TRACKS/SESSION-FORMAT (or DEC) + kill off-system fieldset treatment + center ·
-save-view width/centering · builder Add-a-question link + "1,200" formatting +
-strip protocol + SETTINGS section DEC.
-(Earlier closures stand: DEC-715 anatomy, Prev/Next DEC-761, triage banner,
-history header, reviewer names.)
+**Submissions — GATE-2: PASS w/ reservations ✓** (report
+fidelity-gate2/02-submissions/report.md): remaining — FORM ANSWERS add
+Notes-for-reviewers + Accessibility, label "Format" · review rows LIGHTER
+(one-line "Name 4.0 date" + comment; keep plan label; rubric detail behind
+disclosure) · builder field set (add Track + Accessibility, drop
+Job-title/Company/Bio) + "1,200 characters" + strip protocol + SETTINGS DEC ·
+modal extra TRACKS/SESSION-FORMAT + drop unframed "· OPTIONAL" suffixes ·
+global count under filter · TRACK/SENT/FORMAT labels · filter controls at chip
+height · view-tab × · triage preset ships columns:[] (fix the client preset) ·
+Add-a-question back to green link (regressed) · builder locked rows: grey only
+Delete, not field names · bulk-bar Delete… DEC · speaker rail history line ·
+‹ glyph.
 
-**Review — GATE-1 FLEET: FAIL (full report fidelity-gate1/03-review/report.md)**:
-MAJOR: scorecard ratings must be 1-5 SEGMENTED BUTTONS w/ selected fill (now bare
-number inputs — the section's defining control) · add OVERALL block ("Averaged by
-weight · not editable" + computed blend) · add "Save draft" beside "Submit and
-next" · show "Weight N · NN%" per criterion on the scorecard · scorecard: short
-ABSTRACT + "Read the full submission" link — STOP dumping full answers + SPEAKER
-EMAIL (PII vs anonymization; abstract currently duplicated) · criteria table:
-CRITERION/GUIDANCE/WEIGHT headers + drag handles · distribute preview to frame
-anatomy (3-col table Name|Track|6→8 talks incl. "unchanged · wrong track" rows,
-bold headline, caps NOTHING-IS-SAVED right-aligned, "Assign these N"/Discard, ONE
-leftover line) · WHO-REVIEWS-WHAT: control row under the rule + "N talks · N
-reviews needed at N each · N reviewers" summary + "talks each" suffix · locked
-plan: criteria as read-only TEXT rows, lock card BELOW, header "Open · N of M
-reviews in" · results: RANK column first (drop REF/# EVALUATIONS per frame),
-Accept/Decline side-by-side · reviewer queue rows to frame anatomy (REF
-left/status right, meta w/ audience level, FULL-WIDTH action button) + footer
-"Scores stay hidden from other reviewers · Sign out" + recused INLINE ·
-new-plan onboarding sentence ("Three to start with…") · landing progress panel:
-restore "Remind the N not started" + per-reviewer track subtitles ·
-**SEED: set maxEvaluationsPerSubmission on plans (highest-leverage: restores
-Reviews-per-talk field, "· N reviews each" subtitles, distribute summary)** ·
-DECIDE: unscoped reviewer hub has NO frame and is the landing — redirect to the
-scoped queue when one active plan (frame-faithful screen first).
-MINOR batch: date grammar "2 Mar – 20 Mar" · status pills (OPEN NOW solid/OPENS
-outlined) · progress wording ("18 of 18 submitted", "Not started") · caps meta
-right-aligned on rules · REF no-wrap · one-decimal scores · weight cell "50%"
-only · middot/em-dash not hyphen · cap input width ("No cap" clips to "No") ·
-results duplicate headings/orphan CSV strip/pagination · new-plan header row +
-empty guidance placeholders · Add criterion as green link · copy drift (Submit
-and next · Discard · COMMENT TO THE COMMITTEE · Assign these N · eyebrow keeps
-round when rounds>1) · recusal as inline checkbox · audit extra elements vs DECs
-(Reset password, Anonymize, Delete plan, kbd tip).
-(Probe-5 closures stand: scoped-queue header block, weighted-score header+caption,
-cap+shortfall mechanics, reviewer nav highlight, names, DEC-763 batch.)
+**Review — GATE-2: FAIL, much improved** (same report): NEW TOP ITEMS —
+scorecard has NO MEASURE (full-bleed 1740px; extend the 820 card measure to the
+scorecard) · selected rating fill OLIVE not ink + five EQUAL-width segments
+across the measure · recusal below the comment (not above ratings) · one
+criterion renders a sunk band its sibling lacks · aria-pressed on scored
+segments · "7 of 18 done" counter + scoped progress bar/name · 1dp everywhere.
+STILL-OPEN: criteria drag handles ×3 editors · distribute anatomy (3-col
+Name|Track|6→8, caps NOTHING-IS-SAVED right, "Assign these N"/Discard, leftover
+summary line) · WHO-REVIEWS-WHAT control row below rule + "N talks · N reviews
+needed at N each · N reviewers" + "No cap" clip · status pills = real pills
+(now bare caps text) · US dates → "2 Mar – 20 Mar" · hyphen→middot sweep · dup
+results headings/orphan CSV/pagination · "COMMENT TO THE COMMITTEE" ·
+recusal inline checkbox · extras audit (Reset password/Anonymize/Delete
+plan/kbd tip) · landing remind + track subtitles · footer "· Sign out" · queue
+meta audience level + Change-your-score secondary.
+**SEED (top leverage): maxEvaluations on plans 0002-0004 · spread evaluation
+scores (31 rows collapse to 4 values — rank-order arbitrary) · second reviewer
+on plan 0003 · a recusal for the reviewer (RECUSED row never exercised) ·
+RESTORE seed_saved_view_0001 (concurrent agent deleted it).**
+(Gate-2 closures: segmented buttons, OVERALL, weights, PII clamp, RANK table,
+queue anatomy, compact hub, locked read-only, criteria headers.)
 
 **Speakers — GATE-1 FLEET: FAIL (report fidelity-gate1/04-speakers/report.md)**:
 BROKEN: `.chq-participation-menu-trigger { border: none }` (speakers.css:211)
