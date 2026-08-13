@@ -57,6 +57,7 @@ export function NewSubmissionModal({ tracks, formatField, onCancel, onCreate }: 
   const [trackIds, setTrackIds] = useState<string[]>([]);
   const [format, setFormat] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [emailError, setEmailError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
   function toggleTrack(trackId: string) {
@@ -72,10 +73,16 @@ export function NewSubmissionModal({ tracks, formatField, onCancel, onCreate }: 
     }
 
     const trimmedEmail = email.trim();
+    const trimmedName = speakerName.trim();
+    if (trimmedName !== '' && trimmedEmail === '') {
+      setEmailError('Add an email — a speaker record needs one');
+      return;
+    }
     const contact = trimmedEmail ? { email: trimmedEmail, ...splitSpeakerName(speakerName) } : null;
 
     setPending(true);
     setError(null);
+    setEmailError(null);
     try {
       await onCreate({ title: trimmedTitle, description: description.trim(), contact, trackIds, format });
     } catch (err) {
@@ -166,14 +173,17 @@ export function NewSubmissionModal({ tracks, formatField, onCancel, onCreate }: 
           placeholder="Jordan Alvarez"
         />
       </FormRow>
-      <FormRow label="Speaker email" htmlFor="new-submission-email">
+      <FormRow label="Speaker email" htmlFor="new-submission-email" error={emailError}>
         <input
           id="new-submission-email"
           className="chq-input"
           type="email"
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="sbek-organizer@example.com"
+          onChange={(e) => {
+            setEmail(e.target.value);
+            if (emailError) setEmailError(null);
+          }}
+          placeholder="jordan.alvarez@example.com"
         />
       </FormRow>
     </ModalFrame>
