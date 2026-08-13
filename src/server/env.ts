@@ -69,14 +69,17 @@ export function isDevMode(env: Pick<Bindings, "DEV_MODE">): boolean {
   return env.DEV_MODE === "1";
 }
 
-/** DEC-996 amendment (wave 43): the ONE predicate for "is mail configured" --
- * source for makeMailer's selection (src/server/context.ts), GET
- * /api/v1/mail-status, and the Settings "Email" definition row. isDevMode(env)
- * is checked first (DEC-434); a non-dev deployment is 'resend' only when BOTH
- * RESEND_API_KEY and MAIL_FROM_EMAIL are set (mirrors makeMailer's two
- * separate throws under DEC-547), otherwise 'none'. fromEmail always reflects
- * env.MAIL_FROM_EMAIL verbatim (or null) -- it is never the key, which this
- * status never echoes. */
+/** DEC-996 amendment (wave 43): the ONE predicate/read for "is mail
+ * configured" -- the single source for makeMailer's selection
+ * (src/server/context.ts), GET /api/v1/mail-status, and the Settings "Email"
+ * definition row. isDevMode(env) is checked FIRST (DEC-434), so a dev worker
+ * always reports 'dev-sink' even if a stray key is present in the
+ * environment. A non-dev deployment is 'resend' only when BOTH RESEND_API_KEY
+ * and MAIL_FROM_EMAIL are set (mirrors makeMailer's two separate throws under
+ * DEC-547), otherwise 'none'. fromEmail reflects env.MAIL_FROM_EMAIL verbatim
+ * (or null) in every provider state -- including 'none', where a set
+ * from-address with a missing key is exactly what an operator needs to see.
+ * It is never the key: this status never returns or logs any part of it. */
 export function mailConfigStatus(
   env: Pick<Bindings, "RESEND_API_KEY" | "DEV_MODE" | "MAIL_FROM_EMAIL" | "MAIL_FROM_NAME">,
 ): { provider: "dev-sink" | "resend" | "none"; configured: boolean; fromEmail: string | null } {

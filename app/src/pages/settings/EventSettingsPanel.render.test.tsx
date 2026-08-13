@@ -46,10 +46,19 @@ function renderPanel() {
   );
 }
 
+function renderSummary() {
+  render(
+    <MemoryRouter initialEntries={['/settings']}>
+      <EventSettingsPanel />
+    </MemoryRouter>,
+  );
+}
+
 describe('EventSettingsPanel unscheduled-by-window notice (DEC-844)', () => {
   it('renders a persistent status notice naming unscheduled sessions after a narrowing save', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}`]: eventDetail,
+      'GET /api/v1/mail-status': { provider: 'none', configured: false, fromEmail: null },
       [`PATCH /api/v1/events/${EVENT_ID}`]: {
         ...eventDetail,
         endDate: '2026-06-05',
@@ -77,9 +86,42 @@ describe('EventSettingsPanel unscheduled-by-window notice (DEC-844)', () => {
     expect(within(notice).getByRole('link', { name: 'View agenda' })).toHaveAttribute('href', '/agenda');
   });
 
+  describe('mail configuration Email row (DEC-996 amendment, wave 43)', () => {
+    it('reads "Sending as <fromEmail>" when resend is configured', async () => {
+      mockApi({
+        [`GET /api/v1/events/${EVENT_ID}`]: eventDetail,
+        'GET /api/v1/mail-status': { provider: 'resend', configured: true, fromEmail: 'cfp@example.org' },
+      });
+      renderSummary();
+
+      expect(await screen.findByText('Sending as cfp@example.org')).toBeInTheDocument();
+    });
+
+    it('reads "Dev mailbox (/dev/mailbox)" for dev-sink', async () => {
+      mockApi({
+        [`GET /api/v1/events/${EVENT_ID}`]: eventDetail,
+        'GET /api/v1/mail-status': { provider: 'dev-sink', configured: true, fromEmail: null },
+      });
+      renderSummary();
+
+      expect(await screen.findByText('Dev mailbox (/dev/mailbox)')).toBeInTheDocument();
+    });
+
+    it('reads "NOT CONFIGURED — sends will fail" when unconfigured', async () => {
+      mockApi({
+        [`GET /api/v1/events/${EVENT_ID}`]: eventDetail,
+        'GET /api/v1/mail-status': { provider: 'none', configured: false, fromEmail: null },
+      });
+      renderSummary();
+
+      expect(await screen.findByText('NOT CONFIGURED — sends will fail')).toBeInTheDocument();
+    });
+  });
+
   it('renders nothing when the save reports count 0', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}`]: eventDetail,
+      'GET /api/v1/mail-status': { provider: 'none', configured: false, fromEmail: null },
       [`PATCH /api/v1/events/${EVENT_ID}`]: {
         ...eventDetail,
         name: 'Renamed Con',
