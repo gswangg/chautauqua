@@ -40,6 +40,42 @@ export const speakerGate: MiddlewareHandler<AppEnv> = async (c, next) => {
   await next();
 };
 
+// DEC-914: one table naming every portal back-link destination — a link's
+// label must always agree with the route it lands on. A page linking
+// somewhere new must add an entry here (or the render throws) rather than
+// falling back to a generic "Back" that silently mismatches its href.
+// Static destinations use exact-string matches; the per-submission detail
+// page is matched by shape since its id varies per submission.
+export const PORTAL_BACK_LINKS: ReadonlyArray<{
+  readonly test: (to: string) => boolean;
+  readonly label: string;
+}> = [
+  { test: (to) => to === "/portal", label: "Your portal" },
+  { test: (to) => to === "/portal/submissions", label: "Your submissions" },
+  { test: (to) => to === "/portal/tasks", label: "Your tasks" },
+  { test: (to) => /^\/portal\/submissions\/[^/]+$/.test(to), label: "Your submission" },
+];
+
+function portalBackLinkLabel(to: string): string {
+  const entry = PORTAL_BACK_LINKS.find((e) => e.test(to));
+  if (!entry) {
+    throw new Error(`PortalBackLink: no label registered in PORTAL_BACK_LINKS for destination "${to}"`);
+  }
+  return entry.label;
+}
+
+/** One back-link renderer for every /portal/* page (DEC-914) — the label is
+ * always resolved from PORTAL_BACK_LINKS above, so a link's text can never
+ * drift from the route its href actually lands on. An unrecognised
+ * destination throws rather than falling back to a generic "Back". */
+export function PortalBackLink(props: { to: string }) {
+  return (
+    <a href={props.to} class="chq-portal-back">
+      &lsaquo; {portalBackLinkLabel(props.to)}
+    </a>
+  );
+}
+
 /** Shared page chrome for every /portal/* SSR page — the existing Layout
  * markup from index.tsx, taking { branding, children }. */
 export function PortalLayout(props: {
