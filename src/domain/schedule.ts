@@ -3,10 +3,24 @@
  * auto-schedule. Pure module — no node:/cloudflare imports (DEC-002).
  */
 
-import { DEC_130, DEC_476, DEC_615 } from "../decisions";
+import { DEC_130, DEC_476, DEC_615, DEC_772 } from "../decisions";
 void DEC_130;
 void DEC_476;
 void DEC_615;
+void DEC_772;
+
+/** DEC-772: extracts the integer minute duration from a parenthesised
+ * "(N min)"/"(N mins)"/"(N minutes)" suffix on a session-format option
+ * label, e.g. "Keynote (45 min)" -> 45. Case-insensitive. Returns null
+ * when absent or non-positive — callers fall back to the event's default
+ * duration, never invent a length. */
+export function parseFormatDurationMin(label: string | null | undefined): number | null {
+  if (!label) return null;
+  const match = label.match(/\((\d+)\s*(?:min|mins|minutes)\)/i);
+  if (!match) return null;
+  const n = Number(match[1]);
+  return Number.isInteger(n) && n > 0 ? n : null;
+}
 
 /** DEC-476: single source of truth for the day boundary in minutes. Every
  * schedule-slot writer and the auto-schedule bounds share this constant so

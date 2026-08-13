@@ -58,12 +58,17 @@ export function buildConflictRows(
   return rows;
 }
 
-/** DEC-652: the concrete "place it" suggestion for one unplaced submission
- * — delegates to nextFreeSlot (the SAME candidate scan autoSchedule runs),
- * searching only the rooms/days already in use on the event's placed
- * sessions (no extra room/date query — getOverviewPayload's own `placed`
- * array already carries every room and day the event has scheduled into).
- * Null whenever nextFreeSlot finds nothing — never invented. */
+/** DEC-652/DEC-772: the concrete "place it" suggestion for one unplaced
+ * submission — delegates to nextFreeSlot (the SAME candidate scan
+ * autoSchedule runs), searching only the rooms/days already in use on the
+ * event's placed sessions (no extra room/date query — getOverviewPayload's
+ * own `placed` array already carries every room and day the event has
+ * scheduled into). Null whenever nextFreeSlot finds nothing — never
+ * invented. `durationMin` lets a caller pass the submission's own
+ * format-derived length (src/server/repo/agenda.ts's
+ * loadDurationMinBySubmission) so a suggested slot agrees with what
+ * autoSchedule would actually place; omitted callers keep
+ * params.defaultDurationMin, matching prior behaviour. */
 export function buildPlacementSuggestion(
   leadSpeakerContactId: string | null,
   placed: PlacedSession[],
@@ -71,10 +76,11 @@ export function buildPlacementSuggestion(
   days: string[],
   roomNameById: Map<string, string>,
   params: NextFreeSlotParams,
+  durationMin: number = params.defaultDurationMin,
 ): PlacementSuggestion | null {
   const slot = nextFreeSlot({
     session: {
-      durationMin: params.defaultDurationMin,
+      durationMin,
       speakerContactIds: leadSpeakerContactId ? [leadSpeakerContactId] : [],
     },
     rooms,
