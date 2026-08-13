@@ -73,9 +73,10 @@ describe('SubmissionDetailPage render smoke: inline edit + content-status contro
       expect(screen.getByText('Original description')).toBeInTheDocument();
     });
 
-    // Decision panel states plainly that deciding never emails (house
+    // Decision rail states plainly that deciding never emails (house
     // invariant): notification is a separate, explicit action from Comms.
-    expect(screen.getByText('Deciding never sends email. Notify the speaker from Comms.')).toBeInTheDocument();
+    // DEC-878: caption renders in every rail state.
+    expect(screen.getByText('Deciding sends nothing. Notify from Comms.')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
     const titleInput = screen.getByLabelText('Title');
@@ -177,13 +178,14 @@ describe('SubmissionDetailPage render smoke: inline edit + content-status contro
   });
 });
 
-// DEC-596/DEC-577/DEC-723/DEC-736 (tasks w3-f, w2-h): the numbered Reviews
-// section header reads 'Reviews · N of M in', each row shows the reviewer
-// name (never 'Anonymous reviewer' — DEC-736), the plan's weighted score
-// (2dp / em-dash), full comment text, and criterion values under their
-// criteria[].label (never the raw criterionId); the decision panel is a
-// segmented button group, not a <select>.
-describe('SubmissionDetailPage render: Reviews section + segmented decision buttons', () => {
+// DEC-596/DEC-723/DEC-736 (tasks w3-f, w2-h): the numbered Reviews section
+// header reads 'Reviews · N of M in', each row shows the reviewer name
+// (never 'Anonymous reviewer' — DEC-736), the plan's weighted score (2dp /
+// em-dash), full comment text, and criterion values under their
+// criteria[].label (never the raw criterionId); DEC-878: the decision panel
+// is a rail (primary Accept + secondary Decline/Waitlist pair), not a
+// segmented button group or a <select>.
+describe('SubmissionDetailPage render: Reviews section + decision rail', () => {
   it('renders each evaluation under its criteria labels, the weighted score, and the Speaker card', async () => {
     const detail = baseDetail({
       status: 'pending',
@@ -265,19 +267,89 @@ describe('SubmissionDetailPage render: Reviews section + segmented decision butt
     expect(screen.getByText('Principal Engineer, Acme Corp')).toBeInTheDocument();
     expect(screen.getAllByText('jamie@example.com').length).toBeGreaterThan(0);
 
-    // Segmented decision buttons: three buttons, one filled primary
-    // (the current status), the other two secondary/outline.
-    const pendingBtn = screen.getByRole('button', { name: 'Pending' });
-    const acceptedBtn = screen.getByRole('button', { name: 'Accepted' });
-    const declinedBtn = screen.getByRole('button', { name: 'Declined' });
-    expect(pendingBtn).toHaveClass('chq-btn-primary');
-    expect(acceptedBtn).toHaveClass('chq-btn-secondary');
-    expect(declinedBtn).toHaveClass('chq-btn-secondary');
-    // No native <select> for status any more (scoped to the decision
-    // panel -- the Participants section's own role <select>, DEC-784, is
-    // unrelated and legitimately present elsewhere on the page).
-    const decisionStatusGroup = screen.getByRole('group', { name: 'Status' });
-    expect(within(decisionStatusGroup).queryByRole('combobox')).not.toBeInTheDocument();
+    // DEC-878 pending rail: Accept is the full-width primary, Decline and
+    // Waitlist are the secondary pair. No control offers 'Pending' as a
+    // choosable status.
+    const acceptBtn = screen.getByRole('button', { name: 'Accept' });
+    const declineBtn = screen.getByRole('button', { name: 'Decline' });
+    const waitlistBtn = screen.getByRole('button', { name: 'Waitlist' });
+    expect(acceptBtn).toHaveClass('chq-btn-primary');
+    expect(declineBtn).toHaveClass('chq-btn-secondary');
+    expect(waitlistBtn).toHaveClass('chq-btn-secondary');
+    expect(screen.queryByRole('button', { name: 'Pending' })).not.toBeInTheDocument();
+    // No native <select> for status any more (the Participants section's
+    // own role <select>, DEC-784, is unrelated and legitimately present
+    // elsewhere on the page).
+    expect(screen.queryByRole('combobox', { name: 'Status' })).not.toBeInTheDocument();
+  });
+});
+
+// DEC-878: once a decision is in force, the rail states it plainly (with a
+// date in the event's own timezone), offers only the two decisions NOT in
+// force, and exposes exactly one quiet 'Back to pending' un-decide path.
+describe('SubmissionDetailPage render: decided-state rail (DEC-878)', () => {
+  it('states the decision with a date, offers the other two as the secondary pair, and shows one Back to pending link', async () => {
+    const detail = baseDetail({ status: 'accepted', updatedAt: 1700000500000 });
+    mockApi({
+      [`GET /api/v1/submissions/${SUB_ID}`]: detail,
+      [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
+      [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
+      [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('Original description')).toBeInTheDocument();
+    });
+
+    // Stated decision line, not the bare eyebrow.
+    expect(screen.queryByText(/Awaiting triage/)).not.toBeInTheDocument();
+    expect(screen.getByText(/^Accepted · /)).toBeInTheDocument();
+
+    // The two decisions NOT in force, never the one already in force.
+    expect(screen.getByRole('button', { name: 'Decline' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Waitlist' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Accept' })).not.toBeInTheDocument();
+
+    // Exactly one un-decide path, and no button offers 'Pending'.
+    expect(screen.getAllByRole('button', { name: 'Back to pending' }).length).toBe(1);
+    expect(screen.queryByRole('button', { name: 'Pending' })).not.toBeInTheDocument();
+
+    // The caption renders in the decided state too.
+    expect(screen.getByText('Deciding sends nothing. Notify from Comms.')).toBeInTheDocument();
+  });
+
+  it('returns to the pending rail via Back to pending, PATCHing status=pending', async () => {
+    let currentDetail = baseDetail({ status: 'declined', updatedAt: 1700000500000 });
+    const statusMock = vi.fn(() => {
+      currentDetail = { ...currentDetail, status: 'pending' };
+      return { updated: 1 };
+    });
+    mockApi({
+      [`GET /api/v1/submissions/${SUB_ID}`]: () => currentDetail,
+      [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
+      [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
+      [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`POST /api/v1/events/evt-1/submissions/status`]: statusMock,
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText(/^Declined · /)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Back to pending' }));
+
+    await waitFor(() => {
+      expect(statusMock).toHaveBeenCalled();
+    });
+    await waitFor(() => {
+      expect(screen.getByText(/Awaiting triage/)).toBeInTheDocument();
+    });
   });
 });
 

@@ -293,15 +293,44 @@
   gap: 10px;
 }
 
-.chq-detail-decision-status {
+/* DEC-878: the rail -- eyebrow/stated line, then the primary action, then
+   the secondary pair, then the caption. Same shell in both the pending and
+   decided states so the caption never shifts position. */
+.chq-detail-decision-rail {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  font-size: 12px;
-  font-weight: 700;
+  gap: 9px;
+}
+
+.chq-detail-decision-primary {
+  width: 100%;
+  min-height: 46px;
+}
+
+.chq-detail-decision-secondary-pair {
+  display: flex;
+  gap: 8px;
+}
+
+.chq-detail-decision-secondary-pair .chq-btn {
+  flex: 1;
+}
+
+/* Stated decision line ('Accepted · <date>' etc) once one is in force --
+   same micro-label register as the triage eyebrow it replaces. */
+.chq-detail-decision-stated {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: var(--chq-muted);
+  color: var(--chq-ink);
+}
+
+/* The ONE un-decide path back to pending -- a quiet link, never a third
+   choosable status button. */
+.chq-detail-decision-back {
+  align-self: flex-start;
 }
 
 /* DEC-743: 'Awaiting triage · N days' -- a micro-label, never red (a
@@ -326,11 +355,6 @@
   flex-wrap: wrap;
   gap: 8px;
 }
-
-/* DEC-577: the decision status control is a segmented button group, not a
-   <select> -- the active status is the one filled/primary button, the other
-   two stay outline/secondary. The .chq-segmented base shell lives once in
-   ../../styles.css (w3-j) and is reused here. */
 
 /* Speaker card: name, title/company, email -- same numbered-section rule
    treatment as every other aside/main section. min-width:0 lets the long
@@ -553,8 +577,15 @@
     overflow-wrap: anywhere;
   }
 
-  /* Decision panel buttons: full-width, phone control radius. .chq-segmented
-     itself stacks via the shared ../../styles.css phone rule (w3-j). */
+  /* DEC-878 rail: the secondary pair keeps its phone control radius but
+     stays on one row (frame lines 268-271) -- only the Clone action row
+     below it stacks full-width. */
+  .chq-detail-decision-primary,
+  .chq-detail-decision-secondary-pair .chq-btn {
+    border-radius: var(--chq-r-ctl-phone);
+  }
+
+  /* Clone action row: full-width, phone control radius. */
   .chq-detail-decision-actions .chq-btn {
     width: 100%;
     border-radius: var(--chq-r-ctl-phone);

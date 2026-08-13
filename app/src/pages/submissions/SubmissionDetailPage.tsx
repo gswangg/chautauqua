@@ -34,14 +34,29 @@ void DEC_733;
 void DEC_761;
 void DEC_784;
 
-// DEC-577: the decision panel's status <select> becomes a segmented button
-// group -- markup surgery scoped to this page. Only the states an organiser
-// actually DECIDES between are buttons; the pipeline's own
+// DEC-878: the decision panel is a RAIL, not a segmented button group --
+// markup surgery scoped to this page (docs/design 'Chautauqua
+// Submissions.dc.html' lines 265-273). Only the three states an organiser
+// actually DECIDES between are ever offered as buttons; the pipeline's own
 // accept_queue/decline_queue intermediate states are set elsewhere (bulk
-// worklist), never from this per-submission decision panel. DEC-699 restores
-// 'waitlisted' as a fourth decision alongside Accept/Decline (docs/design
-// 'Chautauqua Submissions.dc.html' lines 95-98, 268-272).
-const DECISION_STATUSES: readonly SubmissionStatus[] = ['pending', 'accepted', 'declined', 'waitlisted'];
+// worklist), never from this per-submission decision panel. 'pending' is
+// the rail's starting point, not a choosable status -- the only way back to
+// it from a decided state is the single quiet 'Back to pending' link.
+const DECIDABLE_STATUSES = ['accepted', 'declined', 'waitlisted'] as const;
+type DecidableStatus = (typeof DECIDABLE_STATUSES)[number];
+
+function isDecidableStatus(status: SubmissionStatus): status is DecidableStatus {
+  return (DECIDABLE_STATUSES as readonly SubmissionStatus[]).includes(status);
+}
+
+// Imperative verb form for the rail's Accept/Decline/Waitlist buttons --
+// distinct from STATUS_LABELS' noun form ('Accepted'/'Declined'/
+// 'Waitlisted') used for the stated-decision line once one is in force.
+const DECISION_ACTION_LABELS: Record<DecidableStatus, string> = {
+  accepted: 'Accept',
+  declined: 'Decline',
+  waitlisted: 'Waitlist',
+};
 
 const INVITE_STATUS_LABELS: Record<InviteStatus, string> = {
   none: 'None',
@@ -117,6 +132,19 @@ function daysAwaitingTriage(createdAt: number, timeZone: string | null, now: num
     formatEventDate(now, timeZone);
     const diff = calendarDayIndex(now, timeZone) - calendarDayIndex(createdAt, timeZone);
     return diff >= 0 ? diff : null;
+  } catch {
+    return null;
+  }
+}
+
+// DEC-878: the stated decision line's date, formatted through the SAME
+// zone-explicit helper the triage label already uses (never the viewer's
+// ambient zone) -- null (never throws) when the zone isn't known yet, in
+// which case the caller renders the decision noun alone.
+function decidedDateLabel(decidedAt: number, timeZone: string | null): string | null {
+  if (!timeZone) return null;
+  try {
+    return formatEventDate(decidedAt, timeZone);
   } catch {
     return null;
   }
@@ -503,6 +531,17 @@ export function SubmissionDetailPage() {
   // first (order asc) participant when no role is literally 'speaker'.
   const speaker = detail.participants.find((p) => p.role === 'speaker') ?? detail.participants[0] ?? null;
   const triageDays = daysAwaitingTriage(detail.createdAt, eventTimeZone, Date.now());
+  // DEC-878: the rail's two states -- decided (accepted/declined/
+  // waitlisted) shows the stated-decision line + Back to pending; anything
+  // else (pending, plus the bulk worklist's own accept_queue/decline_queue
+  // intermediate states, which this per-submission panel never sets) shows
+  // the pending rail (Accept primary, Decline|Waitlist secondary pair).
+  const decidedStatus = isDecidableStatus(detail.status) ? detail.status : null;
+  // updatedAt is bumped on every status write (src/server/repo/submissions/
+  // status.ts), including the non-firing branch, so it is the one existing
+  // timestamp that is truthful for every decided status -- acceptedAt only
+  // ever fires for the FIRST accept transition.
+  const decidedLabel = decidedStatus ? decidedDateLabel(detail.updatedAt, eventTimeZone) : null;
   // DEC-780: the event default form's own SESSION_FORMAT field, matched by
   // its stable id (not a label heuristic) -- the same field the PATCH route
   // validates format against.
@@ -967,27 +1006,71 @@ export function SubmissionDetailPage() {
           <section className="chq-detail-section chq-detail-decision">
             <h2 className="chq-detail-section-title">Decision</h2>
             <div className="chq-detail-section-body chq-detail-decision-body">
-              {detail.status === 'pending' && (
-                <p className="chq-detail-triage-label">
-                  Awaiting triage{triageDays !== null ? ` · ${triageDays} day${triageDays === 1 ? '' : 's'}` : ''}
-                </p>
-              )}
-              <div className="chq-detail-decision-status">
-                Status
-                <div className="chq-segmented" role="group" aria-label="Status">
-                  {DECISION_STATUSES.map((status) => (
+              <div className="chq-detail-decision-rail">
+                {decidedStatus === null ? (
+                  <>
+                    <p className="chq-detail-triage-label">
+                      Awaiting triage{triageDays !== null ? ` · ${triageDays} day${triageDays === 1 ? '' : 's'}` : ''}
+                    </p>
                     <button
-                      key={status}
                       type="button"
-                      className={detail.status === status ? 'chq-btn chq-btn-primary' : 'chq-btn chq-btn-secondary'}
+                      className="chq-btn chq-btn-primary chq-detail-decision-primary"
                       disabled={statusPending}
-                      aria-pressed={detail.status === status}
-                      onClick={() => changeStatus(status)}
+                      onClick={() => changeStatus('accepted')}
                     >
-                      {STATUS_LABELS[status]}
+                      {DECISION_ACTION_LABELS.accepted}
                     </button>
-                  ))}
-                </div>
+                    <div className="chq-detail-decision-secondary-pair">
+                      <button
+                        type="button"
+                        className="chq-btn chq-btn-secondary"
+                        disabled={statusPending}
+                        onClick={() => changeStatus('declined')}
+                      >
+                        {DECISION_ACTION_LABELS.declined}
+                      </button>
+                      <button
+                        type="button"
+                        className="chq-btn chq-btn-secondary"
+                        disabled={statusPending}
+                        onClick={() => changeStatus('waitlisted')}
+                      >
+                        {DECISION_ACTION_LABELS.waitlisted}
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p className="chq-detail-decision-stated">
+                      {STATUS_LABELS[decidedStatus]}
+                      {decidedLabel !== null ? ` · ${decidedLabel}` : ''}
+                    </p>
+                    <div className="chq-detail-decision-secondary-pair">
+                      {DECIDABLE_STATUSES.filter((status) => status !== decidedStatus).map((status) => (
+                        <button
+                          key={status}
+                          type="button"
+                          className="chq-btn chq-btn-secondary"
+                          disabled={statusPending}
+                          onClick={() => changeStatus(status)}
+                        >
+                          {DECISION_ACTION_LABELS[status]}
+                        </button>
+                      ))}
+                    </div>
+                    {/* Exactly one un-decide path: a quiet link, never a
+                        third 'Pending' choice among the decision buttons. */}
+                    <button
+                      type="button"
+                      className="chq-link-button chq-detail-decision-back"
+                      disabled={statusPending}
+                      onClick={() => changeStatus('pending')}
+                    >
+                      Back to pending
+                    </button>
+                  </>
+                )}
+                <p className="chq-detail-decision-note">Deciding sends nothing. Notify from Comms.</p>
               </div>
               <div className="chq-detail-decision-actions">
                 <button type="button" className="chq-btn chq-btn-secondary" disabled={cloning} onClick={cloneSubmission}>
@@ -1000,7 +1083,6 @@ export function SubmissionDetailPage() {
               <Link to={`/content?submissionId=${id}`} className="chq-btn chq-btn-tertiary chq-detail-content-link">
                 Review the content &rsaquo;
               </Link>
-              <p className="chq-detail-decision-note">Deciding never sends email. Notify the speaker from Comms.</p>
             </div>
           </section>
         </aside>
