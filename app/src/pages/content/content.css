@@ -139,12 +139,6 @@
   gap: 10px;
 }
 
-.chq-content-group {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
 /* DEC-756: ONE deliverable chip strip scopes both the version list and the
    note thread beneath it. */
 .chq-content-detail-body {
@@ -449,16 +443,6 @@
   display: flex;
   align-items: center;
   gap: 9px;
-  flex-wrap: wrap;
-}
-
-/* w1-f (DEC-733/eval 60/37): Files library stat line + Download all,
-   mirrors the mock's header ('N files' + Download all). */
-.chq-content-files-stat-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
   flex-wrap: wrap;
 }
 

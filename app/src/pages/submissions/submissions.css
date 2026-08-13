@@ -47,13 +47,6 @@
   flex-wrap: wrap;
 }
 
-.chq-submissions-status-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
 .chq-submissions-status-label {
   font-size: 10px;
   font-weight: 800;
@@ -377,16 +370,6 @@
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--chq-muted);
-}
-
-/* DEC-651's optional dialog subtitle. Page-scoped rather than a new shared
-   `chq-modal-*` name: the shared header contract enforces only the title
-   and the Close control, so the Save-this-view caption stays local to this
-   page's vocabulary. */
-.chq-submissions-modal-sub {
-  margin: 0;
-  font-size: 13px;
-  color: var(--chq-ink-2);
 }
 
 /* Phone (DEC-385/386): one markup tree, no duplicated DOM. The table body

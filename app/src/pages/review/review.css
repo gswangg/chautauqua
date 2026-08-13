@@ -54,12 +54,6 @@
   background: var(--chq-surface-sunk);
 }
 
-.chq-review-plan-export {
-  font-size: 13px;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
 /* DEC-674: the landing page's region two/three wrappers -- each holds a
    composed ProgressPanel/ResultsTable (embedded=true, so those components'
    own page title/back-link chrome is suppressed; this section head is the
@@ -396,24 +390,6 @@
   color: var(--chq-ink);
 }
 
-.chq-review-recused-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.chq-review-recused-row {
-  padding: 12px 0;
-  border-bottom: 1px solid var(--chq-hairline);
-  display: flex;
-  align-items: baseline;
-  gap: 12px;
-  flex-wrap: wrap;
-  font-size: 13px;
-}
-
 .chq-review-scorecard-head {
   display: flex;
   flex-direction: column;
@@ -594,19 +570,6 @@
   display: flex;
   flex-direction: column;
   gap: 26px;
-}
-
-.chq-review-editor-dates {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 18px;
-  max-width: var(--chq-measure);
-}
-
-@media (max-width: 700px) {
-  .chq-review-editor-dates {
-    grid-template-columns: 1fr;
-  }
 }
 
 .chq-review-field {
@@ -843,28 +806,6 @@
    this file with) -- later rules here intentionally win on shared class
    names like .chq-review-criteria-locked-notice/.chq-review-add-criteria
    whose markup this task changed. */
-
-.chq-review-breadcrumb {
-  font-size: 13px;
-  font-weight: 700;
-  display: flex;
-  align-items: baseline;
-  gap: 4px;
-  color: var(--chq-muted);
-}
-
-.chq-review-breadcrumb a {
-  color: var(--chq-ink);
-}
-
-.chq-review-breadcrumb-current {
-  font-family: var(--chq-font-display);
-  font-size: 20px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  color: var(--chq-ink);
-  margin: 0;
-}
 
 /* DEC-709: the compact summary block -- Opens / Closes / Reviews per talk /
    Scale -- replaces a stack of raw labelled inputs for these four fields. */
