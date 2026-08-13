@@ -3,7 +3,7 @@
 // Unexpected exceptions become a 500 with code 'internal' — fail loudly, no
 // swallowing; they are logged to the console, never hidden.
 
-import type { Hono } from "hono";
+import type { Context, Hono } from "hono";
 import type { AppEnv } from "./env";
 
 // DEC-841: the one place the "/api/v1 vs everything else" rule lives. Both
@@ -131,6 +131,34 @@ export function parseBoundedOptionalText(
   }
   const text = parseBoundedText(value, field, { max: opts.max, required: false, trim: true });
   return text.length === 0 ? null : text;
+}
+
+// DEC-635 (amendment, wave 50): the ONE sanctioned way to read an OPTIONAL
+// JSON request body -- an absent/empty body is a valid "use the defaults"
+// signal (not an error), but a present-and-malformed body must still land
+// on the house 400 `invalid` envelope instead of an uncaught SyntaxError
+// producing a 500 `internal`. Every route with an optional body (empty ==
+// defaults, present == parsed) must call this instead of a bare
+// `c.req.text()` + `JSON.parse` -- see test/request-body-envelope.scan.test.ts,
+// which fails the build if a new bare pattern appears.
+export async function readOptionalJsonBody(c: Context<AppEnv>): Promise<Record<string, unknown>> {
+  const raw = await c.req.text();
+  if (raw.trim().length === 0) {
+    return {};
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (err) {
+    if (err instanceof SyntaxError) {
+      throw new ApiError("invalid", "Invalid JSON body");
+    }
+    throw err;
+  }
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+    throw new ApiError("invalid", "Invalid JSON body");
+  }
+  return parsed as Record<string, unknown>;
 }
 
 // DEC-626/DEC-841: a minimal self-contained HTML error page for requests

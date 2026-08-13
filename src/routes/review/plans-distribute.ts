@@ -8,11 +8,11 @@
 import { Hono } from "hono";
 import type { AppEnv } from "../../server/env";
 import { csrfJson, requireOrganizer } from "../../server/middleware";
-import { ApiError } from "../../server/http";
+import { ApiError, readOptionalJsonBody } from "../../server/http";
 import * as repo from "../../server/repo/review";
 import { DEC_786, DEC_824 } from "../../decisions";
 import { distributeAssignments } from "../../domain/review-distribute";
-import { asRecord, requireOwnedPlan } from "./shared";
+import { requireOwnedPlan } from "./shared";
 
 export const reviewPlansDistributeRoutes = new Hono<AppEnv>();
 
@@ -211,12 +211,8 @@ reviewPlansDistributeRoutes.post("/api/v1/plans/:id/assignments/distribute", req
   const plan = await requireOwnedPlan(c, c.req.param("id"));
   // DEC-824: capPerReviewer is optional -- an empty/absent JSON body is
   // valid (uncapped), matching /remind's optional-body convention.
-  let capPerReviewer: number | null = null;
-  const rawBody = await c.req.text();
-  if (rawBody.length > 0) {
-    const bodyRecord = asRecord(JSON.parse(rawBody));
-    capPerReviewer = parseCapPerReviewer(bodyRecord.cap);
-  }
+  const bodyRecord = await readOptionalJsonBody(c);
+  const capPerReviewer = parseCapPerReviewer(bodyRecord.cap);
   const { created } = await computeDistribution(c, plan, capPerReviewer);
   // DEC-924 (amendment, wave 47): one set-based insert instead of a
   // per-assignment loop -- addReviewers chunks through chunkRowsForInsert

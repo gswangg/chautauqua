@@ -7,7 +7,7 @@
 import { Hono } from "hono";
 import type { AppEnv } from "../../server/env";
 import { csrfJson, requireOrganizer } from "../../server/middleware";
-import { ApiError } from "../../server/http";
+import { ApiError, readOptionalJsonBody } from "../../server/http";
 import { makeMailer } from "../../server/context";
 import { newId } from "../../domain/ids";
 import { countOf } from "../../domain/count-copy";
@@ -26,7 +26,6 @@ import { roundCriteriaJsonOf } from "../../server/repo/review";
 import { DEC_238, DEC_466, DEC_535, DEC_707, DEC_708 } from "../../decisions";
 import { capById, MAX_REVIEWER_REMINDER_BATCH } from "../../domain/reminders";
 import {
-  asRecord,
   parseRoundQuery,
   ratingCriteria,
   dropdownCriteria,
@@ -160,15 +159,11 @@ reviewPlansProgressRoutes.post("/api/v1/plans/:id/remind", requireOrganizer, csr
   // tertiary link, 'incomplete' (default) is the broader batch nudge. Body
   // is optional (an empty/absent JSON body is valid: default scope).
   let scope: "not_started" | "incomplete" = "incomplete";
-  const rawBody = await c.req.text();
-  if (rawBody.length > 0) {
-    const parsed: unknown = JSON.parse(rawBody);
-    const bodyRecord = asRecord(parsed);
-    if (bodyRecord.scope === "not_started" || bodyRecord.scope === "incomplete") {
-      scope = bodyRecord.scope;
-    } else if (bodyRecord.scope !== undefined) {
-      throw new ApiError("invalid", "Invalid remind request", { scope: "must be 'not_started' or 'incomplete'" });
-    }
+  const bodyRecord = await readOptionalJsonBody(c);
+  if (bodyRecord.scope === "not_started" || bodyRecord.scope === "incomplete") {
+    scope = bodyRecord.scope;
+  } else if (bodyRecord.scope !== undefined) {
+    throw new ApiError("invalid", "Invalid remind request", { scope: "must be 'not_started' or 'incomplete'" });
   }
   const reviewerRows = await repo.listReviewerRowsForPlan(c.var.db, plan.id);
   const userIds = [...new Set(reviewerRows.map((r) => r.userId))];
