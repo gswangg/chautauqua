@@ -46,6 +46,12 @@ vi.mock("../src/server/repo/public", async () => {
     getPublicSpeakers: vi.fn(async () => ({ items: [], total: 0 })),
     getPublicScheduleDayCounts: vi.fn(async () => []),
     getPublicCfpWindow: vi.fn(async () => null),
+    // DEC-774: the sessions surface also queries the room / format filter
+    // vocabularies, so this stub db (which has no .select) must cover them
+    // too -- every repo call renderSurfaceContent makes for the saved
+    // surface has to be stubbed, or the route 500s.
+    getPublicRooms: vi.fn(async () => []),
+    getPublicFormatOptions: vi.fn(async () => []),
   };
 });
 

@@ -111,7 +111,21 @@ vi.mock("../src/server/repo/public", async () => {
     getPublicSessionDetail: vi.fn(async (_db: unknown, _event: unknown, sessionId: string) =>
       sessionId === SESSION.id ? SESSION : null,
     ),
-    getPublicAgenda: vi.fn(async () => ({ items: [AGENDA_ITEM_A, AGENDA_ITEM_B], total: 2 })),
+    // DEC-783: ?trackId=/?q= became SQL-level predicates INSIDE
+    // getPublicAgenda (dispatch.tsx no longer post-filters the rows it got
+    // back), so this stub has to honour the params it is handed — exactly
+    // like the real repo — for the /schedule?trackId= assertion below to
+    // mean "the route threaded the filter through".
+    getPublicAgenda: vi.fn(async (_db: unknown, _event: unknown, params?: { trackId?: string | null; q?: string | null }) => {
+      const trackId = params?.trackId ?? null;
+      const q = params?.q ?? null;
+      const items = [AGENDA_ITEM_A, AGENDA_ITEM_B].filter((item) => {
+        if (trackId !== null && !item.tracks.some((t) => t.id === trackId)) return false;
+        if (q !== null && !item.title.toLowerCase().includes(q.toLowerCase())) return false;
+        return true;
+      });
+      return { items, total: items.length };
+    }),
     getPublicSpeakers: vi.fn(async () => ({ items: [SPEAKER_NO_PHOTO], total: 1 })),
   };
 });
