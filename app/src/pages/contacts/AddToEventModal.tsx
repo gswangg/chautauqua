@@ -9,6 +9,7 @@ import type { ContactDetail, ContactListItem } from './types';
 import { PARTICIPANT_ROLE_OPTIONS, participantRoleLabel } from '../../../../src/domain/participant-roles';
 import { DEC_764, DEC_765, DEC_795 } from '../../../../src/decisions';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
+import { plural } from '../../lib/plural';
 
 // Compile-checked dependency markers: no `Invited: <name>` prefill, the
 // title field is required before submit, and the confirmation names the
@@ -179,7 +180,7 @@ export function AddToEventModal({ contact, onClose }: Props) {
             // they're about to do.
             <p className="chq-contacts-advisory chq-add-to-event-advisory">
               {contact.firstName} {contact.lastName} is already on this event — {submissionsOnSelectedEvent.length}{' '}
-              session{submissionsOnSelectedEvent.length === 1 ? '' : 's'}
+              {plural(submissionsOnSelectedEvent.length, 'session')}
             </p>
           )}
           <p className="chq-contacts-pipeline-caption">

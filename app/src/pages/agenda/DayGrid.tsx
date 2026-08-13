@@ -4,6 +4,7 @@ import type { AgendaConflict, AgendaRoom, AgendaTrack, PlacedAgendaSession } fro
 import { SessionCard } from './SessionCard';
 import { conflictKindLabel } from './ConflictChip';
 import { assignLanes, formatMinutes, gridRowEnd, minutesToGridRow, snapToGrid, totalGridRows } from './gridMath';
+import { countOf } from '../../lib/plural';
 
 export interface ArmedAgendaSession {
   submissionId: string;
@@ -325,7 +326,7 @@ export function DayGrid({
                 onDragOver={handleDragOver}
                 onDrop={(e) => handleDrop(e, roomId, minutes)}
                 onClick={() => handleCellPlace(roomId, minutes)}
-                aria-label={`Place ${armed.ref} at ${formatMinutes(minutes)} in ${roomName} — will clash with ${clashCount} session${clashCount === 1 ? '' : 's'}`}
+                aria-label={`Place ${armed.ref} at ${formatMinutes(minutes)} in ${roomName} — will clash with ${countOf(clashCount, 'session')}`}
                 data-room-id={colId}
                 data-start-min={minutes}
               />

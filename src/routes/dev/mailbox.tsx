@@ -17,6 +17,7 @@ import { icsDownloadHeaders } from "../../mail/ics";
 import { ThemeStyles } from "../../views/theme";
 import { ToolsStyles } from "../tools.css";
 import { DEC_546 } from "../../decisions";
+import { countOf } from "../../domain/count-copy";
 
 void DEC_546;
 
@@ -63,7 +64,7 @@ function MailboxListPage(props: {
           <div class="chq-section">
             <div class="chq-section-label">Dev mailbox</div>
             <p class="chq-tool-meta">
-              {total} message(s) — page {page}
+              {countOf(total, "message")} — page {page}
             </p>
             <div class="chq-tool-table-wrap">
               <table class="chq-table">

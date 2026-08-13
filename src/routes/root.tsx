@@ -23,6 +23,7 @@ import { HOME_CSS } from "./public/home.css";
 import { getHubOrg, listHubEvents, HUB_CANDIDATE_LIMIT } from "../server/repo/public/home";
 import { groupHubEvents, hubState, type HubEvent, type HubSections, type HubState } from "../lib/home-hub";
 import { formatEventDayRange, formatEventCloseDateLabel } from "../lib/event-time";
+import { countOf } from "../domain/count-copy";
 
 export const rootRoutes = new Hono<AppEnv>();
 
@@ -104,7 +105,7 @@ function closesLine(closeMs: number, timeZone: string, nowMs: number): string {
 }
 
 function sessionsLine(count: number): string {
-  return `${count} session${count === 1 ? "" : "s"}`;
+  return countOf(count, "session");
 }
 
 /** The hub row's meta line for a published event -- "12 sessions · full

@@ -4,6 +4,7 @@ import { apiDelete, apiGet, apiList, ApiError } from '../../lib/api';
 import './review.css';
 import type { EvaluationPlan, RecusalItem, ReviewerQueueEnvelope, ReviewerQueueItem } from './types';
 import { DelayedLoading } from '../../components/DelayedLoading';
+import { countOf } from '../../lib/plural';
 // DEC-522/DEC-831: "closes in N days" is computed the same way the CFP
 // summary's Closes row is (CallForPapersPanel.tsx) -- the owning event's own
 // timezone via dayLabelEndInstant, never the viewer's ambient machine zone.
@@ -20,7 +21,7 @@ const MS_PER_DAY = 24 * 60 * 60 * 1000;
 function closesInDaysLabel(closeDate: number | null, timezone: string): string | null {
   if (closeDate === null) return null;
   const daysLeft = Math.max(Math.ceil((dayLabelEndInstant(closeDate, timezone) - Date.now()) / MS_PER_DAY), 0);
-  return `closes in ${daysLeft} day${daysLeft === 1 ? '' : 's'}`;
+  return `closes in ${countOf(daysLeft, 'day')}`;
 }
 
 // DEC-586/DEC-874: a reviewer landing on /review sees their queue directly

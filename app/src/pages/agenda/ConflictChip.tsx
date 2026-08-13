@@ -1,4 +1,5 @@
 import type { AgendaConflict } from './types';
+import { plural } from '../../lib/plural';
 
 interface ConflictChipProps {
   conflicts: AgendaConflict[];
@@ -16,7 +17,7 @@ interface ConflictChipProps {
  * `speaker_overlap` has no room-count analogue and keeps its fixed caption. */
 export function conflictKindLabel(kind: 'room_overlap' | 'speaker_overlap', count = 2): string {
   if (kind !== 'room_overlap') return 'Speaker double-booked';
-  return `${numberWord(count)} session${count === 1 ? '' : 's'} in one room`;
+  return `${numberWord(count)} ${plural(count, 'session')} in one room`;
 }
 
 const NUMBER_WORDS = ['Zero', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'];

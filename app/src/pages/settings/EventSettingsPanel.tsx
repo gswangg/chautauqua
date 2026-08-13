@@ -13,6 +13,7 @@ import { apiGet, apiPatch, ApiError } from '../../lib/api';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { buildEventPatch, type EventSettingsForm } from './formState';
 import { SummarySection } from './SummarySection';
+import { plural } from '../../lib/plural';
 
 const SECTION_KEY = 'event';
 
@@ -140,7 +141,7 @@ export function EventSettingsPanel() {
       {eventError || error ? <p role="alert">{eventError ?? error}</p> : null}
       {unscheduledNotice ? (
         <p role="status" className="chq-event-unscheduled-notice">
-          {unscheduledNotice.count} placed session{unscheduledNotice.count === 1 ? '' : 's'} now fall
+          {unscheduledNotice.count} placed {plural(unscheduledNotice.count, 'session')} now fall
           {unscheduledNotice.count === 1 ? 's' : ''} outside these dates and{' '}
           {unscheduledNotice.count === 1 ? 'has' : 'have'} been unscheduled:{' '}
           {unscheduledNotice.sessions.map((s) => s.ref).join(', ')}. <Link to="/agenda">View agenda</Link>

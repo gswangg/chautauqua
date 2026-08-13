@@ -942,7 +942,7 @@ export function PlanEditor() {
                   <div className="chq-review-criteria-locked-notice" role="status">
                     <div className="chq-review-criteria-locked-text">
                       <p className="chq-review-criteria-locked-headline">
-                        Locked - {activeRoundLockedCount} review{activeRoundLockedCount === 1 ? '' : 's'} scored
+                        Locked - {countOf(activeRoundLockedCount, 'review')} scored
                         against these criteria
                       </p>
                       <p className="chq-review-criteria-locked-reason">Changing these would rescore work already done</p>
@@ -1174,7 +1174,7 @@ export function PlanEditor() {
                     ? `${r.submissionRef} - ${r.submissionTitle ?? 'Submission (removed)'}`
                     : 'Submission (removed)'
                   : 'All submissions';
-              const loadLabel = progress ? `${progress.assigned} talk${progress.assigned === 1 ? '' : 's'}` : null;
+              const loadLabel = progress ? countOf(progress.assigned, 'talk') : null;
               return (
                 <div key={r.id} className="chq-review-reviewer-row">
                   <div>
@@ -1211,7 +1211,7 @@ export function PlanEditor() {
                   <p>Every submission already has enough reviewers -- nothing to distribute.</p>
                 ) : (
                   <p>
-                    This would assign {distributePreview.totalAssigned} review{distributePreview.totalAssigned === 1 ? '' : 's'}.
+                    This would assign {countOf(distributePreview.totalAssigned, 'review')}.
                   </p>
                 )}
                 <ul className="chq-review-scope-preview-list">
@@ -1241,7 +1241,7 @@ export function PlanEditor() {
                     >
                       {distributing
                         ? 'Distributing…'
-                        : `Add ${distributePreview.totalAssigned} assignment${distributePreview.totalAssigned === 1 ? '' : 's'}`}
+                        : `Add ${countOf(distributePreview.totalAssigned, 'assignment')}`}
                     </button>
                   )}
                   <button type="button" className="chq-btn chq-btn-tertiary" onClick={cancelDistribute}>
@@ -1414,7 +1414,7 @@ export function PlanEditor() {
             {confirmOpen && scopePreview && (
               <div className="chq-review-scope-confirm" role="alertdialog" aria-label="Confirm track assignment">
                 <p>
-                  Assign {scopePreview.count} submission{scopePreview.count === 1 ? '' : 's'} in{' '}
+                  Assign {countOf(scopePreview.count, 'submission')} in{' '}
                   {tracks.find((t) => t.id === reviewerTrackId)?.name ?? reviewerTrackId} to this reviewer?
                 </p>
                 <ul className="chq-review-scope-preview-list">

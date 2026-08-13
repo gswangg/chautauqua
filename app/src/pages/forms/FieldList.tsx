@@ -8,6 +8,7 @@ import { kindLabel, type FormField } from './types';
 // MAX_LONG_TEXT_LENGTH, never a hand-copied number.
 import { lockedFieldName, SESSION_FORMAT_FIELD_ID } from '../../../../src/forms/types';
 import { MAX_LONG_TEXT_LENGTH } from '../../../../src/forms/validate';
+import { countOf } from '../../lib/plural';
 
 // DEC-592/DEC-762: the ONE id for the seeded session-format field is the
 // SAME id the API/seed use, so the builder's "Format" display label is
@@ -63,7 +64,7 @@ const OPTION_COUNT_KINDS = new Set(['dropdown', 'checkbox']);
 function optionCountCaption(field: FormField): string | undefined {
   if (!OPTION_COUNT_KINDS.has(field.kind)) return undefined;
   const count = field.options?.length ?? 0;
-  return `${count} option${count === 1 ? '' : 's'}`;
+  return countOf(count, 'option');
 }
 
 /** Projects the form's raw field list into the mock's row anatomy: the
