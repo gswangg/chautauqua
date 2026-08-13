@@ -312,6 +312,16 @@ describe("src/routes/api/contacts.ts — DEC-454 email validation", () => {
 
   it("POST /contacts stores 'Alice@Example.com ' normalized (lowercased, trimmed)", async () => {
     let capturedEmail: string | undefined;
+    // DEC-755 amendment (wave 43): POST /contacts now does a find-or-REFUSE
+    // lookup via findContactByEmail before createContact -- mock it to "no
+    // existing contact" so this test's stub db (an empty object) is never
+    // actually queried.
+    vi.doMock("../src/server/repo/submit", async () => {
+      const actual = await vi.importActual<typeof import("../src/server/repo/submit")>(
+        "../src/server/repo/submit",
+      );
+      return { ...actual, findContactByEmail: async () => null };
+    });
     vi.doMock("../src/server/repo/contacts", async () => {
       const actual = await vi.importActual<typeof import("../src/server/repo/contacts")>(
         "../src/server/repo/contacts",

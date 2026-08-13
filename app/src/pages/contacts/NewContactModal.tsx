@@ -35,6 +35,11 @@ export function NewContactModal({ onClose, onCreated }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [fields, setFields] = useState<Record<string, string>>({});
   const [duplicateMatch, setDuplicateMatch] = useState<DuplicateCandidateMatch | null>(null);
+  // DEC-755 amendment (wave 43): a 409 from POST /contacts (find-or-REFUSE)
+  // resolves the existing contact's id via GET /contacts?q=<email> so the
+  // error can offer to open its drawer, rather than leaving the organizer
+  // stuck on a named-but-unreachable conflict.
+  const [existingContactId, setExistingContactId] = useState<string | null>(null);
 
   // DEC-788: warn about a possible duplicate as the name/company/email
   // fields settle, using GET /contacts/duplicates/check — the same
@@ -73,6 +78,7 @@ export function NewContactModal({ onClose, onCreated }: Props) {
     setBusy(true);
     setError(null);
     setFields({});
+    setExistingContactId(null);
     try {
       await apiPost('/contacts', {
         firstName,
@@ -86,6 +92,19 @@ export function NewContactModal({ onClose, onCreated }: Props) {
       if (err instanceof ApiError) {
         setError(err.message);
         setFields(err.fields ?? {});
+        if (err.code === 'conflict') {
+          const trimmedEmail = email.trim();
+          if (trimmedEmail !== '') {
+            apiGet<{ items: DuplicateCandidateMatch[] }>(`/contacts?q=${encodeURIComponent(trimmedEmail)}`)
+              .then((res) => {
+                setExistingContactId(res.items[0]?.id ?? null);
+              })
+              .catch(() => {
+                // Advisory only -- the 409 message already named the
+                // existing contact; a failed lookup just drops the link.
+              });
+          }
+        }
       } else {
         setError('Failed to create contact');
       }
@@ -119,6 +138,14 @@ export function NewContactModal({ onClose, onCreated }: Props) {
       {error && (
         <div className="chq-error" role="alert">
           {error}
+          {existingContactId && (
+            <>
+              {' '}
+              <Link to={`/contacts?openContact=${existingContactId}`} onClick={onClose}>
+                Open the existing record
+              </Link>
+            </>
+          )}
         </div>
       )}
 
