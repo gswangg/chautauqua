@@ -67,30 +67,22 @@ async function pasteCsvAndPreview() {
   return preview;
 }
 
-// DEC-894: the shared .chq-file control, not a raw unstyled input[type=file]
-// -- same class ContactDrawer, ResourcesPanel and SessionboardImportPanel
-// already honour.
-// Gate report: the wizard's close glyph rendered centred in its own row (a
-// bare flex-column child stretches to the column's width, and .chq-btn
-// centres its own label) instead of the panel's top-right, unlike every
-// ModalFrame-built dialog's Close control. jsdom does not evaluate @media
-// rules or layout, so this is a source-scan plus a class-shape assertion —
-// mirroring ContactsApp.newContact.render.test.tsx.
-describe('ImportWizard: close glyph pinned top-right (contacts-panels.css)', () => {
-  it('the Close button carries chq-contacts-import-close', () => {
-    render(<ImportWizard onClose={() => {}} onImported={() => {}} />);
-    const closeButton = screen.getByRole('button', { name: 'Close' });
-    expect(closeButton).toHaveClass('chq-contacts-import-close');
-  });
-
-  it('.chq-contacts-import-close is absolutely positioned at the modal padding edge', () => {
-    const body = topLevelRuleBody(CSS, '.chq-contacts-import-close');
-    expect(body).toMatch(/position:\s*absolute/);
-  });
-
+// DEC-960: the wizard's dialog chrome (scrim, header, Close control) is now
+// ModalFrame's -- Close is the frame's own .chq-modal-close-btn, exercised
+// generically by ModalFrame.render.test.tsx. This suite only asserts the
+// wizard's own layout survives the switch (.chq-contacts-import still
+// establishes the positioning context other rules in this file rely on).
+describe('ImportWizard: dialog frame (DEC-960)', () => {
   it('.chq-contacts-import establishes the positioning context', () => {
     const body = topLevelRuleBody(CSS, '.chq-contacts-import');
     expect(body).toMatch(/position:\s*relative/);
+  });
+
+  it('renders through the shared ModalFrame as a portal child of document.body', async () => {
+    render(<ImportWizard onClose={() => {}} onImported={() => {}} />);
+    const dialog = await screen.findByRole('dialog', { name: 'Import contacts' });
+    expect(dialog.parentElement).toBe(document.body);
+    expect(within(dialog).getByRole('button', { name: 'Close' })).toBeInTheDocument();
   });
 });
 

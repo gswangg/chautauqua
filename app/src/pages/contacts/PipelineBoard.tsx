@@ -11,9 +11,8 @@
 // a client-side display filter only, the Move-to select below each card is
 // still what persists a stage change.
 
-import { useEffect, useState, type DragEvent, type FormEvent, type MouseEvent } from 'react';
+import { useEffect, useState, type DragEvent, type FormEvent } from 'react';
 import { apiGet, apiList, apiPost, apiPatch, ApiError } from '../../lib/api';
-import { useEscapeKey } from '../../lib/useEscapeKey';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { ModalFrame, FormRow } from '../../components/ModalFrame';
 import { formatDateTime } from '../../lib/dates';
@@ -537,69 +536,62 @@ function EntryDetailPanel({ entryId, onClose, onChanged }: EntryDetailPanelProps
     }
   }
 
-  useEscapeKey(true, () => {
-    if (!busy) onClose();
-  });
-
-  function handleScrimClick(e: MouseEvent<HTMLDivElement>) {
-    if (e.target === e.currentTarget && !busy) onClose();
-  }
-
   return (
-    <div className="chq-scrim" role="dialog" aria-modal="true" aria-label="Pipeline card detail" onClick={handleScrimClick}>
-      <div className="chq-modal">
-        {error && <div className="chq-error">{error}</div>}
-        {!detail && <DelayedLoading />}
-        {detail && (
-          <>
-            <h3 className="chq-page-title chq-modal-title">
-              {detail.contact.firstName} {detail.contact.lastName}
-            </h3>
-            <p className="chq-contacts-pipeline-caption">
-              {detail.contact.email}
-              {detail.contact.company ? ` — ${detail.contact.company}` : ''}
-            </p>
-            <p>Stage: {PIPELINE_STAGE_LABELS[detail.entry.stage]}</p>
-
-            <div className="chq-contacts-pipeline-notes">
-              <label className="chq-contacts-import-field">
-                Add a note
-                <textarea
-                  className="chq-textarea"
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                  placeholder="Followed up by phone, waiting on their reply"
-                />
-              </label>
-              <button type="button" className="chq-btn chq-btn-secondary" disabled={busy || note.trim() === ''} onClick={saveNote}>
-                Save note
-              </button>
-            </div>
-
-            <h4 className="chq-section-label">Activity</h4>
-            <ul className="chq-contacts-pipeline-activity">
-              {detail.activity.map((a, i) => (
-                <li key={i}>
-                  {a.kind === 'move' ? (
-                    <span>
-                      Moved {a.fromStage ? PIPELINE_STAGE_LABELS[a.fromStage] : 'Enrolled'} &rarr;{' '}
-                      {a.toStage ? PIPELINE_STAGE_LABELS[a.toStage] : ''}
-                    </span>
-                  ) : (
-                    <span>Note: {a.body}</span>
-                  )}
-                  {' — '}
-                  {a.authorName}, {formatDateTime(a.createdAt)}
-                </li>
-              ))}
-              {detail.activity.length === 0 && <li className="chq-empty">No activity yet.</li>}
-            </ul>
-          </>
-        )}
-        <button type="button" className="chq-btn chq-btn-secondary" onClick={onClose}>
-          Close
+    <ModalFrame
+      title={detail ? `${detail.contact.firstName} ${detail.contact.lastName}` : 'Pipeline entry'}
+      subtitle={
+        detail ? `${detail.contact.email}${detail.contact.company ? ' — ' + detail.contact.company : ''}` : undefined
+      }
+      ariaLabel="Pipeline card detail"
+      onClose={onClose}
+      closeDisabled={busy}
+      actions={
+        <button type="button" className="chq-btn chq-btn-primary" onClick={onClose}>
+          Done
         </button>
-      </div>
-    </div>
+      }
+    >
+      {error && <div className="chq-error">{error}</div>}
+      {!detail && <DelayedLoading />}
+      {detail && (
+        <>
+          <p>Stage: {PIPELINE_STAGE_LABELS[detail.entry.stage]}</p>
+
+          <div className="chq-contacts-pipeline-notes">
+            <label className="chq-contacts-import-field">
+              Add a note
+              <textarea
+                className="chq-textarea"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder="Followed up by phone, waiting on their reply"
+              />
+            </label>
+            <button type="button" className="chq-btn chq-btn-secondary" disabled={busy || note.trim() === ''} onClick={saveNote}>
+              Save note
+            </button>
+          </div>
+
+          <h4 className="chq-section-label">Activity</h4>
+          <ul className="chq-contacts-pipeline-activity">
+            {detail.activity.map((a, i) => (
+              <li key={i}>
+                {a.kind === 'move' ? (
+                  <span>
+                    Moved {a.fromStage ? PIPELINE_STAGE_LABELS[a.fromStage] : 'Enrolled'} &rarr;{' '}
+                    {a.toStage ? PIPELINE_STAGE_LABELS[a.toStage] : ''}
+                  </span>
+                ) : (
+                  <span>Note: {a.body}</span>
+                )}
+                {' — '}
+                {a.authorName}, {formatDateTime(a.createdAt)}
+              </li>
+            ))}
+            {detail.activity.length === 0 && <li className="chq-empty">No activity yet.</li>}
+          </ul>
+        </>
+      )}
+    </ModalFrame>
   );
 }
