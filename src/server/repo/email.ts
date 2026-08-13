@@ -236,6 +236,12 @@ export interface EmailBatchRow {
   sentAt: number;
   recipientCount: number;
   statusCounts: Record<string, number>;
+  // w41-g (DEC-751 amendment): the template that produced this batch, so
+  // Recent Sends can name it instead of leaving a silent gap. A fan-out
+  // send's recipient rows all share one templateId; MIN() is a safe
+  // aggregate the same way subject's MIN() is above. Null for a hand-
+  // written send with no template.
+  templateId: string | null;
 }
 
 export interface EmailBatchListParams {
@@ -279,6 +285,7 @@ export async function listEmailBatches(db: Db, params: EmailBatchListParams): Pr
       subject: sql<string>`min(${schema.emailLog.subject})`,
       sentAt: sql<number>`max(${schema.emailLog.sentAt})`,
       recipientCount: sql<number>`count(*)`,
+      templateId: sql<string | null>`min(${schema.emailLog.templateId})`,
     })
     .from(schema.emailLog)
     .where(where)
@@ -324,6 +331,7 @@ export async function listEmailBatches(db: Db, params: EmailBatchListParams): Pr
     sentAt: Number(r.sentAt),
     recipientCount: Number(r.recipientCount),
     statusCounts: statusCountsByBatch.get(r.batchKey) ?? {},
+    templateId: r.templateId,
   }));
 
   return { items, total };

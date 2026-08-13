@@ -2,12 +2,16 @@
 // batch rows -- these tests exercise both mounts directly (no fetch mock
 // needed, except for the recipients-disclosure drill-in, which History's
 // mount still owns).
+//
+// w41-g (DEC-751 amendment): the row is exactly five columns -- [when]
+// [subject][N sent][template][Open]. These tests exercise that shape plus
+// the section-head subtitle and both mounts' trailing control.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, waitFor, fireEvent, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { RecentSends } from './RecentSends';
 import { listEnvelope, mockApi } from '../../test-utils/mockApi';
-import { formatDateTime } from '../../lib/dates';
+import { formatDateTime, formatDateTimeWeekday } from '../../lib/dates';
 import type { EmailBatchRow } from './types';
 
 const EVENT_ID = 'evt-recent-sends';
@@ -19,6 +23,7 @@ function batch(overrides: Partial<EmailBatchRow> = {}): EmailBatchRow {
     sentAt: 1700000000000,
     recipientCount: 3,
     statusCounts: { sent: 3 },
+    templateId: null,
     ...overrides,
   };
 }
@@ -37,14 +42,71 @@ afterEach(() => {
   consoleErrorSpy.mockRestore();
 });
 
+function batchRowCells(row: HTMLElement): HTMLElement[] {
+  return Array.from(row.children) as HTMLElement[];
+}
+
 describe('RecentSends', () => {
-  it('renders an empty state when there are no batches', () => {
+  it('renders an empty state when there are no batches, and withholds the subtitle', () => {
     render(<RecentSends eventId={EVENT_ID} batches={[]} />);
     expect(screen.getByText('Recent sends')).toBeInTheDocument();
     expect(screen.getByText('No emails sent yet.')).toBeInTheDocument();
+    expect(document.querySelector('.chq-comms-recent-sends-subtitle')).not.toBeInTheDocument();
   });
 
-  it('caps rows at `limit` and renders "All history" instead of a recipients disclosure when onSeeAll is given', () => {
+  it('renders exactly five cells per batch row: when, subject, N sent, template, Open', () => {
+    render(<RecentSends eventId={EVENT_ID} batches={[batch()]} />);
+    const row = document.querySelector('.chq-comms-batch-row') as HTMLElement;
+    const cells = batchRowCells(row);
+    expect(cells).toHaveLength(5);
+    expect(cells[0]!.textContent).toBe(formatDateTime(1700000000000));
+    expect(cells[1]!.textContent).toBe('You are in!');
+    expect(cells[2]!.textContent).toBe('3 sent');
+    expect(cells[3]!.textContent).toBe('—');
+    expect(cells[4]!.tagName).toBe('BUTTON');
+  });
+
+  it("states '<n> sent' with no failed suffix when there are no failures", () => {
+    render(<RecentSends eventId={EVENT_ID} batches={[batch({ statusCounts: { sent: 5 } })]} />);
+    expect(screen.getByText('5 sent')).toBeInTheDocument();
+    expect(screen.queryByText(/failed/)).not.toBeInTheDocument();
+  });
+
+  it("appends '· N failed' only when a failure exists", () => {
+    render(<RecentSends eventId={EVENT_ID} batches={[batch({ statusCounts: { sent: 2, failed: 1 } })]} />);
+    expect(screen.getByText('2 sent · 1 failed')).toBeInTheDocument();
+  });
+
+  it('renders a batch whose statusCounts are all failures exactly like any other batch', () => {
+    render(<RecentSends eventId={EVENT_ID} batches={[batch({ statusCounts: { failed: 3 } })]} />);
+    expect(screen.getByText('You are in!')).toBeInTheDocument();
+    expect(screen.getByText('0 sent · 3 failed')).toBeInTheDocument();
+  });
+
+  it('names the template from templatesById when both templateId and the map entry are present', () => {
+    render(
+      <RecentSends
+        eventId={EVENT_ID}
+        batches={[batch({ templateId: 'tpl-1' })]}
+        templatesById={{ 'tpl-1': 'Acceptance letter' }}
+      />,
+    );
+    expect(screen.getByText('Acceptance letter')).toBeInTheDocument();
+  });
+
+  it('renders an em dash for the template column when templateId is null', () => {
+    render(<RecentSends eventId={EVENT_ID} batches={[batch({ templateId: null })]} templatesById={{}} />);
+    const row = document.querySelector('.chq-comms-batch-row') as HTMLElement;
+    expect(batchRowCells(row)[3]!.textContent).toBe('—');
+  });
+
+  it('renders an em dash for the template column when templateId is set but missing from templatesById', () => {
+    render(<RecentSends eventId={EVENT_ID} batches={[batch({ templateId: 'tpl-missing' })]} templatesById={{}} />);
+    const row = document.querySelector('.chq-comms-batch-row') as HTMLElement;
+    expect(batchRowCells(row)[3]!.textContent).toBe('—');
+  });
+
+  it('caps rows at `limit` and renders "All history" plus a per-row "Open" link (not a recipients disclosure) when onSeeAll is given', () => {
     const onSeeAll = vi.fn();
     const batches = [1, 2, 3, 4, 5].map((n) =>
       batch({ batchKey: `b${n}`, subject: `Send #${n}`, statusCounts: { sent: n } }),
@@ -56,16 +118,13 @@ describe('RecentSends', () => {
     expect(screen.getByText('Send #4')).toBeInTheDocument();
     expect(screen.queryByText('Send #5')).not.toBeInTheDocument();
 
-    expect(screen.queryByRole('button', { name: 'See the recipients' })).not.toBeInTheDocument();
-
     fireEvent.click(screen.getByRole('button', { name: 'All history' }));
     expect(onSeeAll).toHaveBeenCalledTimes(1);
-  });
 
-  it('renders a batch whose statusCounts are all failures exactly like any other batch', () => {
-    render(<RecentSends eventId={EVENT_ID} batches={[batch({ statusCounts: { failed: 3 } })]} />);
-    expect(screen.getByText('You are in!')).toBeInTheDocument();
-    expect(screen.getByText('3 failed')).toBeInTheDocument();
+    const openLinks = screen.getAllByRole('button', { name: 'Open' });
+    expect(openLinks).toHaveLength(4);
+    fireEvent.click(openLinks[0]!);
+    expect(onSeeAll).toHaveBeenCalledTimes(2);
   });
 
   it('never fabricates a count it did not receive -- omits a limit when none is given', () => {
@@ -74,7 +133,20 @@ describe('RecentSends', () => {
     expect(screen.getByText('Send #5')).toBeInTheDocument();
   });
 
-  it('without onSeeAll, renders the recipients disclosure and drills in on click (History mount)', async () => {
+  it('states the section-head subtitle from the FULL batches prop (not the limit-sliced rows)', () => {
+    const now = Date.now();
+    const batches = [
+      batch({ batchKey: 'recent-1', subject: 'Recent A', sentAt: now - 1000, statusCounts: { sent: 4 } }),
+      batch({ batchKey: 'recent-2', subject: 'Recent B', sentAt: now - 2000, statusCounts: { sent: 3 } }),
+      // Older than the limit cap would show, and older than 7 days -- must
+      // not count toward the "N sent in 7 days" figure.
+      batch({ batchKey: 'old', subject: 'Old', sentAt: now - 30 * 24 * 60 * 60 * 1000, statusCounts: { sent: 9 } }),
+    ];
+    render(<RecentSends eventId={EVENT_ID} batches={batches} limit={1} onSeeAll={() => undefined} />);
+    expect(screen.getByText(`7 sent in 7 days · last ${formatDateTimeWeekday(now - 1000)}`)).toBeInTheDocument();
+  });
+
+  it('without onSeeAll, renders the "Open"/"Close" recipients disclosure and drills in on click (History mount)', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/email-log`]: listEnvelope([
         {
@@ -91,7 +163,8 @@ describe('RecentSends', () => {
     render(<RecentSends eventId={EVENT_ID} batches={[batch()]} />);
 
     expect(screen.queryByRole('button', { name: 'All history' })).not.toBeInTheDocument();
-    const toggle = screen.getByRole('button', { name: 'See the recipients' });
+    const toggle = screen.getByRole('button', { name: 'Open' });
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
     const row = toggle.closest('.chq-comms-batch-row') as HTMLElement;
     fireEvent.click(toggle);
 
@@ -99,8 +172,28 @@ describe('RecentSends', () => {
       expect(screen.getByText('ada@example.com')).toBeInTheDocument();
     });
 
-    fireEvent.click(within(row).getByRole('button', { name: 'Hide the recipients' }));
+    const closeButton = within(row).getByRole('button', { name: 'Close' });
+    expect(closeButton).toHaveAttribute('aria-expanded', 'true');
+    fireEvent.click(closeButton);
     expect(screen.queryByText('ada@example.com')).not.toBeInTheDocument();
+  });
+
+  // DEC-751 amendment (w41-g): the per-status tally that used to sit on the
+  // collapsed row now lives inside the expanded recipients disclosure -- an
+  // all-failed batch stays auditable there even though the row itself only
+  // states the sent/failed summary.
+  it('shows the full per-status tally inside the expanded disclosure', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/email-log`]: listEnvelope([]),
+    });
+
+    render(<RecentSends eventId={EVENT_ID} batches={[batch({ statusCounts: { sent: 1, failed: 2, bounced: 1 } })]} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open' }));
+    await waitFor(() => {
+      expect(document.querySelector('.chq-comms-batch-tally')).toBeInTheDocument();
+    });
+    expect(document.querySelector('.chq-comms-batch-tally')?.textContent).toBe('1 bounced, 2 failed, 1 sent');
   });
 
   // DEC-833 (+ DEC-846's "history owes the WORDS" half): each recipient row
@@ -149,7 +242,7 @@ describe('RecentSends', () => {
 
     render(<RecentSends eventId={EVENT_ID} batches={[batch()]} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'See the recipients' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Open' }));
     await waitFor(() => {
       expect(screen.getByText('ada@example.com')).toBeInTheDocument();
     });
@@ -184,7 +277,7 @@ describe('RecentSends', () => {
 
     render(<RecentSends eventId={EVENT_ID} batches={[batch()]} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'See the recipients' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Open' }));
     await waitFor(() => {
       expect(screen.getByText('ada@example.com')).toBeInTheDocument();
     });
@@ -215,7 +308,7 @@ describe('RecentSends', () => {
 
     render(<RecentSends eventId={EVENT_ID} batches={[batch()]} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'See the recipients' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Open' }));
     await waitFor(() => {
       expect(screen.getByText('ada@example.com')).toBeInTheDocument();
     });
@@ -253,7 +346,7 @@ describe('RecentSends', () => {
 
     render(<RecentSends eventId={EVENT_ID} batches={[batch()]} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'See the recipients' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Open' }));
     await waitFor(() => {
       expect(screen.getByText('ada@example.com')).toBeInTheDocument();
     });

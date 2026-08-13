@@ -22,6 +22,7 @@ function batch(overrides: Partial<EmailBatchRow> = {}): EmailBatchRow {
     sentAt: 1700000000000,
     recipientCount: 2,
     statusCounts: { sent: 2 },
+    templateId: null,
     ...overrides,
   };
 }
@@ -112,7 +113,7 @@ describe('HistoryTab', () => {
 
     render(<HistoryTab eventId={EVENT_ID} />);
 
-    fireEvent.click(await screen.findByRole('button', { name: 'See the recipients' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Open' }));
     await waitFor(() => {
       expect(screen.getByText('ada@example.com')).toBeInTheDocument();
     });
@@ -162,7 +163,7 @@ describe('HistoryTab', () => {
 
     render(<HistoryTab eventId={EVENT_ID} />);
 
-    fireEvent.click(await screen.findByRole('button', { name: 'See the recipients' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Open' }));
     await waitFor(() => {
       expect(screen.getByText('ada@example.com')).toBeInTheDocument();
     });
