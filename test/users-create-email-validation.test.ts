@@ -108,6 +108,8 @@ describe("DEC-467: contacts.ts dedup keys unchanged by the normalizeEmail swap",
       { id: "2", email: "foo@bar.com", firstName: "B", lastName: "Two" },
       { id: "3", email: "unrelated@example.com", firstName: "C", lastName: "Three" },
     ]);
-    expect(groups).toEqual([["1", "2"]]);
+    // DEC-800: groups are now {contactIds, reason} candidates -- the email
+    // grouping key itself is what DEC-467 pins here, and it is unchanged.
+    expect(groups).toEqual([{ contactIds: ["1", "2"], reason: "email" }]);
   });
 });

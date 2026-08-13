@@ -248,6 +248,15 @@
   font-weight: 600;
 }
 
+/* DEC-800: every duplicate group names the reason it was surfaced ('Same
+   email', 'Same name, different company') as plain text -- typography comes
+   from .chq-contacts-pipeline-caption, which this element also carries, so
+   this rule only places the caption: beside the names, with the group's
+   actions left flush right. */
+.chq-contacts-duplicate-reason {
+  margin-right: auto;
+}
+
 .chq-contacts-merge-intro {
   font-size: 13px;
   color: var(--chq-muted);
