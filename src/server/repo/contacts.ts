@@ -36,6 +36,7 @@ export {
   patchContact,
   listContactsForOrg,
   countContactReferences,
+  countContactsForSegmentRules,
   deleteContact,
   type ContactInput,
   type ContactPatch,

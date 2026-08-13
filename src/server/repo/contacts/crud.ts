@@ -14,12 +14,13 @@ import { likeContains } from "../like";
 import { backfillNullAttribution } from "../attribution";
 import { ApiError } from "../../http";
 import { chunkIds } from "../../../lib/chunk";
-import { DEC_333, DEC_336, DEC_554, DEC_758 } from "../../../decisions";
+import { DEC_333, DEC_336, DEC_554, DEC_758, DEC_864 } from "../../../decisions";
 
 void DEC_333;
 void DEC_336;
 void DEC_554;
 void DEC_758;
+void DEC_864;
 
 export interface ContactInput {
   firstName: string;
@@ -235,15 +236,12 @@ interface ScanRecord extends ContactRecord {
   updatedAt: number;
 }
 
-/** DEC-336/DEC-554: the segmentId/rules whole-directory scan — bounded and
- * narrow (MAX_CONTACT_DIRECTORY_SCAN guard, refuse rather than truncate),
- * projecting only the columns matchesSegment/compareContacts read. Returns
- * every matching record, sorted, with NO page window — callers that need a
- * page slice it themselves; callers that need every row (export) use it as
- * is. Shared by listContactsForOrg's scan branch and
- * selectFilteredContactRows so the guard/predicate is one piece of code. */
-async function scanAndFilterContacts(db: Db, orgId: string, params: ParsedContactListQuery): Promise<ScanRecord[]> {
-  const whereExpr = buildContactWhereExpr(orgId, params);
+/** Extracted scan+guard shared by `scanAndFilterContacts` (org+q+segment/
+ * rules predicate) and `countContactsForSegmentRules` (org-scope-only
+ * predicate, DEC-864) — same narrow projection, same refuse-rather-than-
+ * truncate MAX_CONTACT_DIRECTORY_SCAN guard, one piece of code either way. */
+async function scanOrgContactRecords(db: Db, orgId: string, whereExpr: ReturnType<typeof buildContactWhereExpr>): Promise<ScanRecord[]> {
+  void orgId; // orgId is already folded into whereExpr by the caller
   const scanRows = await db
     .select({
       id: schema.contact.id,
@@ -267,7 +265,7 @@ async function scanAndFilterContacts(db: Db, orgId: string, params: ParsedContac
     );
   }
 
-  const scanRecords: ScanRecord[] = scanRows.map((r) => ({
+  return scanRows.map((r) => ({
     id: r.id,
     email: r.email,
     firstName: r.firstName,
@@ -277,6 +275,18 @@ async function scanAndFilterContacts(db: Db, orgId: string, params: ParsedContac
     ...(r.customFieldsJson ? { customFields: JSON.parse(r.customFieldsJson) as Record<string, string> } : {}),
     updatedAt: r.updatedAt.getTime(),
   }));
+}
+
+/** DEC-336/DEC-554: the segmentId/rules whole-directory scan — bounded and
+ * narrow (MAX_CONTACT_DIRECTORY_SCAN guard, refuse rather than truncate),
+ * projecting only the columns matchesSegment/compareContacts read. Returns
+ * every matching record, sorted, with NO page window — callers that need a
+ * page slice it themselves; callers that need every row (export) use it as
+ * is. Shared by listContactsForOrg's scan branch and
+ * selectFilteredContactRows so the guard/predicate is one piece of code. */
+async function scanAndFilterContacts(db: Db, orgId: string, params: ParsedContactListQuery): Promise<ScanRecord[]> {
+  const whereExpr = buildContactWhereExpr(orgId, params);
+  const scanRecords = await scanOrgContactRecords(db, orgId, whereExpr);
 
   let filtered = scanRecords;
   if (params.segmentId) {
@@ -290,6 +300,21 @@ async function scanAndFilterContacts(db: Db, orgId: string, params: ParsedContac
   }
 
   return [...filtered].sort(compareContacts(params.sort));
+}
+
+/** DEC-864: the GET /segments rail — instead of one whole-directory scan per
+ * segment (the old segmentCount(...) calling listContactsForOrg once per
+ * row), scan the org's contacts ONCE (org scope only, no q/segment
+ * predicate) and evaluate every ruleSet's matchesSegment against that single
+ * in-memory pass. Same matchesSegment used by the paged list/scan branch
+ * above, so a rail caption and the filtered list it drills into stay the
+ * same arithmetic fact — only the cost changes. Order of the returned counts
+ * matches the order of ruleSets. An empty rule set counts every scanned row,
+ * matching matchesSegment's own empty-rules-matches-everything behavior. */
+export async function countContactsForSegmentRules(db: Db, orgId: string, ruleSets: SegmentRule[][]): Promise<number[]> {
+  const whereExpr = eq(schema.contact.orgId, orgId);
+  const rows = await scanOrgContactRecords(db, orgId, whereExpr);
+  return ruleSets.map((rules) => rows.filter((r) => matchesSegment(rules, r as ContactRecord)).length);
 }
 
 /** DEC-671: the export row-selection half of listContactsForOrg — same q
