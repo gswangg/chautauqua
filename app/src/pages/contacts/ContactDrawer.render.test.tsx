@@ -27,7 +27,9 @@ const CONTACT: ContactDetail = {
   socialLinks: { twitter: '@priya', linkedin: null, github: null, website: null },
   customFields: {},
   history: {
-    submissions: [{ id: 'sub1', ref: 'SUB-1', title: 'Scaling caches', eventName: 'DevCon 2026', status: 'accepted' }],
+    submissions: [
+      { id: 'sub1', ref: 'SUB-1', title: 'Scaling caches', eventId: 'ev-1', eventName: 'DevCon 2026', status: 'accepted' },
+    ],
     emails: [{ id: 'em1', subject: 'Welcome', toEmail: 'priya@example.com', sentAt: 1735689600000 }],
     events: ['DevCon 2025'],
   },

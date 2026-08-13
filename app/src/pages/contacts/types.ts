@@ -30,6 +30,9 @@ export interface ContactSubmissionHistory {
   id: string;
   ref: string;
   title: string;
+  // DEC-795: a name is not an identity -- carried alongside eventName so a
+  // consumer can test "is this THE selected event" without string-matching.
+  eventId: string;
   eventName: string;
   status: string;
 }

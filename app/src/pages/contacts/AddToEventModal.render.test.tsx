@@ -13,7 +13,7 @@ import '@testing-library/jest-dom/vitest';
 import { AddToEventModal } from './AddToEventModal';
 import { mockApi, listEnvelope } from '../../test-utils/mockApi';
 import { PARTICIPANT_ROLE_OPTIONS } from '../../../../src/domain/participant-roles';
-import type { ContactListItem } from './types';
+import type { ContactDetail, ContactListItem } from './types';
 
 const CONTACT: ContactListItem = {
   id: 'ct-1',
@@ -23,14 +23,25 @@ const CONTACT: ContactListItem = {
   labels: [],
 };
 
+function detailWithSubmissions(submissions: ContactDetail['history']['submissions']): ContactDetail {
+  return {
+    ...CONTACT,
+    history: { submissions, emails: [], events: [] },
+  };
+}
+
+const NO_HISTORY = detailWithSubmissions([]);
+
 afterEach(() => {
   cleanup();
+  window.localStorage.clear();
 });
 
 describe('AddToEventModal (DEC-714/DEC-734)', () => {
   it('offers exactly the imported PARTICIPANT_ROLE_OPTIONS vocabulary, defaults to the first option, and states the no-email consequence', async () => {
     mockApi({
       'GET /api/v1/events': listEnvelope([{ id: 'ev-1', name: 'DevFlow Conf 2027' }]),
+      'GET /api/v1/contacts/ct-1': NO_HISTORY,
     });
 
     render(<AddToEventModal contact={CONTACT} onClose={() => {}} />);
@@ -53,6 +64,7 @@ describe('AddToEventModal (DEC-714/DEC-734)', () => {
   it('starts with no title prefill and disables Add them until a title is typed (DEC-764)', async () => {
     mockApi({
       'GET /api/v1/events': listEnvelope([{ id: 'ev-1', name: 'DevFlow Conf 2027' }]),
+      'GET /api/v1/contacts/ct-1': NO_HISTORY,
     });
 
     render(<AddToEventModal contact={CONTACT} onClose={() => {}} />);
@@ -78,6 +90,7 @@ describe('AddToEventModal (DEC-714/DEC-734)', () => {
   it('sends the chosen role in the POST body and names it in the success copy', async () => {
     const fetchMock = mockApi({
       'GET /api/v1/events': listEnvelope([{ id: 'ev-1', name: 'DevFlow Conf 2027' }]),
+      'GET /api/v1/contacts/ct-1': NO_HISTORY,
       'POST /api/v1/contacts/ct-1/add-to-event': { status: 201, body: { submissionId: 'sub-1' } },
     });
 
@@ -103,5 +116,107 @@ describe('AddToEventModal (DEC-714/DEC-734)', () => {
     const body = JSON.parse((call![1] as RequestInit).body as string);
     expect(body.role).toBe(nonDefault.value);
     expect(body.title).toBe('Panel: Priya');
+  });
+});
+
+describe('AddToEventModal defaults to the event in context (DEC-795)', () => {
+  it('defaults the Event select to the current event when it appears in the returned list', async () => {
+    window.localStorage.setItem('chq.currentEventId', 'ev-2');
+    mockApi({
+      'GET /api/v1/events': listEnvelope([
+        { id: 'ev-1', name: 'DevFlow Conf 2027' },
+        { id: 'ev-2', name: 'Forward Summit 2028' },
+      ]),
+      'GET /api/v1/contacts/ct-1': NO_HISTORY,
+    });
+
+    render(<AddToEventModal contact={CONTACT} onClose={() => {}} />);
+
+    await waitFor(() => {
+      expect((screen.getByLabelText('Event') as HTMLSelectElement).value).toBe('ev-2');
+    });
+  });
+
+  it('falls back to the first event when the current event id is not in the returned list', async () => {
+    window.localStorage.setItem('chq.currentEventId', 'ev-not-in-list');
+    mockApi({
+      'GET /api/v1/events': listEnvelope([
+        { id: 'ev-1', name: 'DevFlow Conf 2027' },
+        { id: 'ev-2', name: 'Forward Summit 2028' },
+      ]),
+      'GET /api/v1/contacts/ct-1': NO_HISTORY,
+    });
+
+    render(<AddToEventModal contact={CONTACT} onClose={() => {}} />);
+
+    await waitFor(() => {
+      expect((screen.getByLabelText('Event') as HTMLSelectElement).value).toBe('ev-1');
+    });
+  });
+});
+
+describe('AddToEventModal advisory when the contact already has a submission on the selected event (DEC-795)', () => {
+  it('shows a named advisory and relabels the primary action when a submission already exists on the selected event', async () => {
+    window.localStorage.setItem('chq.currentEventId', 'ev-1');
+    mockApi({
+      'GET /api/v1/events': listEnvelope([{ id: 'ev-1', name: 'DevFlow Conf 2027' }]),
+      'GET /api/v1/contacts/ct-1': detailWithSubmissions([
+        { id: 'sub-1', ref: 'SUB-1', title: 'Keynote', eventId: 'ev-1', eventName: 'DevFlow Conf 2027', status: 'accepted' },
+        { id: 'sub-2', ref: 'SUB-2', title: 'Panel', eventId: 'ev-1', eventName: 'DevFlow Conf 2027', status: 'accepted' },
+      ]),
+    });
+
+    render(<AddToEventModal contact={CONTACT} onClose={() => {}} />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Priya Raman is already on this event.*2 sessions/)).toBeInTheDocument();
+    });
+    expect(screen.getByRole('button', { name: 'Add another session' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Add them' })).not.toBeInTheDocument();
+    // Never blocked: the primary action stays enabled once a title exists.
+    fireEvent.change(screen.getByLabelText('Session title'), { target: { value: 'Second talk' } });
+    expect(screen.getByRole('button', { name: 'Add another session' })).not.toBeDisabled();
+  });
+
+  it('shows no advisory when the contact has no submission on the selected event', async () => {
+    window.localStorage.setItem('chq.currentEventId', 'ev-1');
+    mockApi({
+      'GET /api/v1/events': listEnvelope([{ id: 'ev-1', name: 'DevFlow Conf 2027' }]),
+      'GET /api/v1/contacts/ct-1': NO_HISTORY,
+    });
+
+    render(<AddToEventModal contact={CONTACT} onClose={() => {}} />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('option', { name: 'DevFlow Conf 2027' })).toBeInTheDocument();
+    });
+    expect(screen.queryByText(/already on this event/)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Add them' })).toBeInTheDocument();
+  });
+
+  it('re-evaluates the advisory when the Event select changes', async () => {
+    window.localStorage.setItem('chq.currentEventId', 'ev-1');
+    mockApi({
+      'GET /api/v1/events': listEnvelope([
+        { id: 'ev-1', name: 'DevFlow Conf 2027' },
+        { id: 'ev-2', name: 'Forward Summit 2028' },
+      ]),
+      'GET /api/v1/contacts/ct-1': detailWithSubmissions([
+        { id: 'sub-1', ref: 'SUB-1', title: 'Keynote', eventId: 'ev-1', eventName: 'DevFlow Conf 2027', status: 'accepted' },
+      ]),
+    });
+
+    render(<AddToEventModal contact={CONTACT} onClose={() => {}} />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/already on this event.*1 session/)).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByLabelText('Event'), { target: { value: 'ev-2' } });
+
+    await waitFor(() => {
+      expect(screen.queryByText(/already on this event/)).not.toBeInTheDocument();
+    });
+    expect(screen.getByRole('button', { name: 'Add them' })).toBeInTheDocument();
   });
 });
