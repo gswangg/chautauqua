@@ -189,8 +189,12 @@ describe('Desktop header single row + identity (DEC-576)', () => {
     // directly inside it.
     expect(within(header).getByText('chautauqua')).toBeInTheDocument();
     expect(within(header).getByRole('navigation', { name: 'Primary' })).toBeInTheDocument();
-    // The event renders as plain text, not a <select>.
-    expect(within(header).getByText('DevFlow Conf')).toBeInTheDocument();
+    // The event renders as plain text, not a <select>. DEC-978: the
+    // switcher's fetch waits for `me` to resolve before firing, so this
+    // needs a waitFor rather than a synchronous assertion.
+    await waitFor(() => {
+      expect(within(header).getByText('DevFlow Conf')).toBeInTheDocument();
+    });
     expect(within(header).queryByRole('combobox')).not.toBeInTheDocument();
     // The user renders as initials-form "J. ALVAREZ" beside Sign out —
     // never a bare email, never the literal 'undefined'.
