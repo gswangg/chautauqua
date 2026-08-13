@@ -8,6 +8,7 @@
 // unchanged from before this wave.
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { DateField } from '../../components/DateField';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { apiGet, apiPatch, ApiError } from '../../lib/api';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
@@ -192,22 +193,20 @@ export function EventSettingsPanel() {
             Slug
             <input className="chq-input" value={form.slug} onChange={(e) => update('slug', e.target.value)} />
           </label>
-          <label>
+          <label htmlFor="event-settings-start-date">
             Start date
-            <input
-              className="chq-input"
-              type="date"
+            <DateField
+              id="event-settings-start-date"
               value={form.startDate}
-              onChange={(e) => update('startDate', e.target.value)}
+              onChange={(next) => update('startDate', next)}
             />
           </label>
-          <label>
+          <label htmlFor="event-settings-end-date">
             End date
-            <input
-              className="chq-input"
-              type="date"
+            <DateField
+              id="event-settings-end-date"
               value={form.endDate}
-              onChange={(e) => update('endDate', e.target.value)}
+              onChange={(next) => update('endDate', next)}
             />
           </label>
           <label>

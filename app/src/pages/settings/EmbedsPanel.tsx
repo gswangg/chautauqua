@@ -5,6 +5,7 @@
 // decisions/DEC-289.md via embedSnippet.ts's pure builders.
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { DateField } from '../../components/DateField';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { apiGet, apiList, apiPatch, apiPost, ApiError } from '../../lib/api';
@@ -336,14 +337,9 @@ export function EmbedsPanel() {
           ) : null}
 
           {knobs.includes('day') ? (
-            <label>
+            <label htmlFor="embed-day">
               Day
-              <input
-                className="chq-input"
-                type="date"
-                value={day}
-                onChange={(e) => setDay(e.target.value)}
-              />
+              <DateField id="embed-day" value={day} onChange={setDay} />
             </label>
           ) : null}
 

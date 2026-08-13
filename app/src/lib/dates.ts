@@ -17,7 +17,7 @@
 import { countOf } from './plural';
 import { dayLabelEndInstant } from '../../../src/lib/timezone';
 
-/** Convert an epoch-ms timestamp to a yyyy-mm-dd string for <input type="date">. */
+/** Convert an epoch-ms timestamp to a yyyy-mm-dd string for DateField/date-input wire values. */
 export function msToDateInput(ms: number | null | undefined): string {
   if (ms === null || ms === undefined || Number.isNaN(ms)) return '';
   const date = new Date(ms);
@@ -26,7 +26,7 @@ export function msToDateInput(ms: number | null | undefined): string {
 }
 
 /**
- * Convert a yyyy-mm-dd <input type="date"> value to epoch-ms.
+ * Convert a yyyy-mm-dd DateField/date-input wire value to epoch-ms.
  * '' -> null. Anything non-empty that fails to parse throws so the form
  * can surface a field error (fail loudly, per house invariant).
  */
@@ -205,6 +205,71 @@ export function formatRelativeDays(ms: number, now: number): string {
   if (days <= 0) return 'today';
   if (days === 1) return 'yesterday';
   return `${countOf(days, 'day')} ago`;
+}
+
+/**
+ * DEC-146 amendment (w44-b): format a yyyy-mm-dd date-only string for
+ * DateField's text display, e.g. "11 May 2028" -- no leading zero on the
+ * day, short month, full year (same grammar as formatDayLabel's day/month
+ * but with the year, since a bare "11 May" is ambiguous outside the current
+ * year). '' for empty/invalid input -- DateField treats '' as the cleared
+ * state, never an error.
+ */
+export function formatDayInput(yyyyMmDd: string): string {
+  if (!yyyyMmDd) return '';
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(yyyyMmDd);
+  if (!match) return '';
+  const [, yearStr, monthStr, dayStr] = match;
+  const year = Number(yearStr);
+  const month = Number(monthStr);
+  const day = Number(dayStr);
+  if (!isValidCalendarDate(year, month, day)) return '';
+  return `${day} ${SHORT_MONTH_NAMES[month - 1]} ${year}`;
+}
+
+/**
+ * DEC-146 amendment (w44-b): parse DateField's free-text entry into a
+ * yyyy-mm-dd string. Accepts "11 May 2028" (any case month abbreviation,
+ * matched by its first three letters so "may"/"May"/"MAY"/"December" all
+ * work) and the raw wire format "2028-05-11". Returns null -- never a
+ * partially-parsed guess -- for anything else, including an empty string,
+ * so DateField can refuse to call onChange with garbage (fail loudly).
+ */
+export function parseDayInput(text: string): string | null {
+  const trimmed = text.trim();
+  if (trimmed === '') return null;
+
+  const isoMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(trimmed);
+  if (isoMatch) {
+    const [, yearStr, monthStr, dayStr] = isoMatch;
+    const year = Number(yearStr);
+    const month = Number(monthStr);
+    const day = Number(dayStr);
+    return isValidCalendarDate(year, month, day) ? `${yearStr}-${monthStr}-${dayStr}` : null;
+  }
+
+  const dayMonthYearMatch = /^(\d{1,2})\s+([A-Za-z]{3,})\s+(\d{4})$/.exec(trimmed);
+  if (dayMonthYearMatch) {
+    const [, dayStr, monthStr, yearStr] = dayMonthYearMatch;
+    if (!dayStr || !monthStr || !yearStr) return null;
+    const monthIndex = SHORT_MONTH_NAMES.findIndex(
+      (name) => name.toLowerCase() === monthStr.slice(0, 3).toLowerCase()
+    );
+    if (monthIndex === -1) return null;
+    const day = Number(dayStr);
+    const year = Number(yearStr);
+    if (!isValidCalendarDate(year, monthIndex + 1, day)) return null;
+    return `${String(year).padStart(4, '0')}-${String(monthIndex + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  }
+
+  return null;
+}
+
+function isValidCalendarDate(year: number, month: number, day: number): boolean {
+  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) return false;
+  if (month < 1 || month > 12) return false;
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
 }
 
 /**

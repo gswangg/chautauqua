@@ -8,6 +8,7 @@ import {
   type OnboardingTask,
   type TaskKind,
 } from './types';
+import { DateField } from '../../components/DateField';
 import { FormRow, ModalFrame } from '../../components/ModalFrame';
 import { dateInputToMs, msToDateInput } from '../../lib/dates';
 
@@ -156,14 +157,7 @@ export function TaskModal({ onCancel, onSubmit, forms, acceptedCount, task = nul
         </FormRow>
 
         <FormRow label="Due date" htmlFor="task-due-date" optional>
-          <input
-            id="task-due-date"
-            className="chq-input"
-            type="date"
-            value={dueDate}
-            onChange={(e) => setDueDate(e.target.value)}
-            placeholder="2026-05-01"
-          />
+          <DateField id="task-due-date" value={dueDate} onChange={setDueDate} />
         </FormRow>
 
         {/* DEC-933: kind is a task's shape and is fixed once created --

@@ -5,6 +5,7 @@ import { dateInputToMs, msToDateInput } from '../../lib/dates';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { copyText } from '../../lib/clipboard';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
+import { DateField } from '../../components/DateField';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { addCriterion, removeCriterion, updateCriterion, validateCriteriaList, validatePlanDraft } from './planForm';
 // DEC-708: the same name-or-email resolver ProgressPanel uses -- a plan
@@ -856,22 +857,22 @@ export function PlanEditor() {
             'Applies to every criterion in this plan' since it's plan-wide,
             never per-criterion. */}
         <div className="chq-review-summary-grid">
-          <label className="chq-review-field">
+          <label className="chq-review-field" htmlFor="plan-open-at">
             Opens
-            <input
-              type="date"
+            <DateField
+              id="plan-open-at"
               className="chq-input chq-date-input"
               value={msToDateInput(draft.openAt)}
-              onChange={(e) => setOpenAt(e.target.value)}
+              onChange={setOpenAt}
             />
           </label>
-          <label className="chq-review-field">
+          <label className="chq-review-field" htmlFor="plan-close-at">
             Closes
-            <input
-              type="date"
+            <DateField
+              id="plan-close-at"
               className="chq-input chq-date-input"
               value={msToDateInput(draft.closeAt)}
-              onChange={(e) => setCloseAt(e.target.value)}
+              onChange={setCloseAt}
             />
           </label>
           <label className="chq-review-field">
