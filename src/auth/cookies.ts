@@ -57,7 +57,18 @@ export function parseCookies(header: string | null): Record<string, string> {
     const name = trimmed.slice(0, equalsIndex).trim();
     const value = trimmed.slice(equalsIndex + 1).trim();
     if (name) {
-      cookies[name] = decodeURIComponent(value);
+      // Boundary input: cookie values arrive from the client and are not
+      // guaranteed to be valid percent-encoding (e.g. a stray '%' from a
+      // third-party cookie on the domain). Decode per-cookie so one
+      // malformed value can't throw and abandon the whole header. Our own
+      // minted tokens (session/csrf/draft) are base64url or hex, which is
+      // byte-identical whether or not decodeURIComponent runs, so falling
+      // back to the raw value is safe for everything we issue.
+      try {
+        cookies[name] = decodeURIComponent(value);
+      } catch {
+        cookies[name] = value;
+      }
     }
   }
   return cookies;
