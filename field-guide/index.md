@@ -28,33 +28,33 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   -- read the CODE, undefined var(--chq-*) resolves TRANSPARENT; two class
   families on ONE element = later rule wins; a delete with no dialog is five
   deletes with no dialog; a cron swallowing per-item failures makes the
-  failure branch dead code; a doc comment saying "the caller only passes
-  rows it owns" is the check living outside the query -- put it in the
-  WHERE; Intl with `undefined` locale differs per reader; the scrim IS the
-  dialog -- ban the ELEMENT PAIR.
-- FINDINGS w29-30 (DEC-965..978, compacted): mandate files list items already
-  CLOSED -- read the CODE. A COUNT is not an IDENTITY: "v"+chain-length
-  renumbers survivors after a middle delete. Two roots of one kind are two
-  documents not two versions. A class the stylesheet defines and no markup
-  uses is the token-defect in reverse -- scan BOTH directions, incl. SSR
-  stylesheets. role="menu" with only Escape is a list of buttons: outside
-  press, roving arrows and focus return ARE the menu. A per-event value
-  passed as a string LITERAL is invisible to a grep for its OUTPUT -- scan
-  the CALL. A transitive fixed point that hides by DELETING the trigger's
-  answer is wrong when the absence is a real value -- hide it STRUCTURALLY.
-  A read gate with no write counterpart lets you delete a row you cannot
-  list. A speaker who DECLINED still clashes if one query forgot the invite
-  filter. A scan proving the stylesheet is one direction of two.
-- FINDINGS w31 (DEC-979..982): ~25 mandate probes, ~4 still open -- the list
-  is a HYPOTHESIS, the code is the fact; find defects by READING. A refusal
-  that says "remove them from those tasks first" is a dead end when nothing
-  can remove one: a JOIN row (task_assignment, pipeline_entry) cascades with
-  its contact and the dialog NAMES it; only a row that would leave a document
-  orphaned may refuse. A value settable once and never editable is half a
-  feature -- and the edit needs its own write: a same-stage PATCH that calls
-  the mover forges a history row and resets the clock that history feeds. The
-  one active-participant predicate must reach the data that LEAVES the product
-  (Airtable) -- and an unordered join string re-writes an unchanged row on
-  every sync. A grid class shared by two components is a contract on CELL
-  COUNT: 8 cells in a 5-column template wrap silently, because the markup and
-  the grid live in different files and neither looks wrong alone.
+  failure branch dead code; a doc comment saying "caller only passes rows it
+  owns" is the check living outside the query -- put it in the WHERE; Intl
+  with `undefined` locale differs per reader; the scrim IS the dialog.
+- FINDINGS w29-31 (DEC-965..982, compacted): mandate files list items already
+  CLOSED -- read the CODE, tree MOVES WHILE YOU PLAN. A COUNT is not an
+  IDENTITY: "v"+chain-length renumbers survivors after a middle delete. Two
+  roots of one kind are two documents not two versions. A class the
+  stylesheet defines and no markup uses is the token-defect in reverse --
+  scan BOTH directions. role="menu" with only Escape is a list of buttons.
+  A per-event value passed as a string LITERAL is invisible to a grep for
+  its OUTPUT -- scan the CALL. Hide a transitive fixed point STRUCTURALLY,
+  never by deleting the trigger's answer. A read gate needs a write
+  counterpart. A speaker who DECLINED still clashes if one query forgot the
+  invite filter. A JOIN row cascades on contact delete; only a row losing a
+  document may refuse. A value settable once and never editable is half a
+  feature. The active-participant predicate must reach data that LEAVES the
+  product (Airtable). A grid class shared by two components is a CELL COUNT
+  contract.
+- FINDINGS w32 (DEC-983..987): the tree MOVED mid-plan -- a grep that says
+  "no matches" at minute 5 is a fact about minute 5, not about main;
+  re-probe before concluding a task never landed. The richest seam of
+  verified-open work is the codebase's OWN confessions: an
+  ALLOWED/EXCLUDED/LEGACY entry reading "pre-existing gap, flagged for
+  follow-up" is a defect with a comment -- four such lists were on main. A
+  predicate applied HALF (visible with no invite_status) is worse than
+  none -- it looks filtered. A state the server 409s on must be READABLE
+  on the route that renders the form, or the gate lives only until reload.
+  An exclusion list is a promise about a route's nature, never a parking
+  space: GET / -- the biggest new public surface -- had never been
+  render-swept because a task-scope note became a permanent entry.
