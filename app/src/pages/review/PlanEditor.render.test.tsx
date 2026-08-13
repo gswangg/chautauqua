@@ -892,13 +892,21 @@ describe('PlanEditor render smoke', () => {
     // Zero non-GET requests before confirm (DEC-786). The link is renamed
     // (DEC-840): it fills the unassigned pool, it does not level load.
     fireEvent.click(screen.getByRole('button', { name: 'Distribute the unassigned' }));
-    await waitFor(() => expect(screen.getByText('This would assign 22 reviews.')).toBeInTheDocument());
+    // frame 03 (w51/DEC-840 amendment): the summary line names talks,
+    // reviews needed and reviewers -- items ∪ shortfall's distinct
+    // submissions (s1, s9) is 2 talks, at the plan's own reviews-per-talk
+    // (unset here, so 1 each).
+    await waitFor(() => expect(screen.getByText('2 talks · 2 reviews needed at 1 each · 2 reviewers')).toBeInTheDocument());
     expect(distributePosted).toBe(false);
 
     // Each reviewer's change, unchanged reviewers listed with their reason
-    // rather than hidden.
-    expect(screen.getByText('Ada Lovelace — 6 → 8 talks')).toBeInTheDocument();
-    expect(screen.getByText('Grace Hopper — unchanged · wrong track')).toBeInTheDocument();
+    // rather than hidden -- now a name | track | before-after table.
+    expect(screen.getByText('Ada Lovelace')).toBeInTheDocument();
+    expect(screen.getByText('All submissions')).toBeInTheDocument();
+    expect(screen.getByText('6 → 8 talks')).toBeInTheDocument();
+    expect(screen.getByText('Grace Hopper')).toBeInTheDocument();
+    expect(screen.getByText('AI Engineering')).toBeInTheDocument();
+    expect(screen.getByText('unchanged · wrong track')).toBeInTheDocument();
 
     // The shortfall sentence names the constraint and the track.
     expect(
@@ -907,7 +915,7 @@ describe('PlanEditor render smoke', () => {
 
     expect(screen.getByText('Nothing is saved until you confirm.')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Add 22 assignments' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Assign these 22' }));
     await waitFor(() => expect(distributePosted).toBe(true));
     // The apply call sends byte-identically the cap the preview echoed.
     const applyCall = fetchMock.mock.calls.find(([input]) => {
@@ -917,6 +925,46 @@ describe('PlanEditor render smoke', () => {
     expect(applyCall).toBeDefined();
     const applyInit = applyCall?.[1] as RequestInit | undefined;
     expect(JSON.parse(applyInit?.body as string)).toEqual({ cap: null });
+  });
+
+  // w51/DEC-840 amendment: frame 03's cap row -- CAP PER REVIEWER [n] talks
+  // each -- echoes the preview's own cap, and the zero case still renders
+  // as a bare sentence with no table.
+  it('renders the cap row with the preview-echoed cap, and the zero case as a bare sentence', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}`]: { ...plan(), maxEvaluations: 2 },
+      [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}/assignments/distribute/preview`]: {
+        cap: 8,
+        items: [],
+        perReviewer: [],
+        totalAssigned: 0,
+        shortfall: [],
+      },
+      'GET /api/v1/users': listEnvelope([]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId" element={<PlanEditor />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(screen.getByText('Who reviews what')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Distribute the unassigned' }));
+
+    // Zero totalAssigned keeps the bare-sentence zero case, no cap row/table.
+    await waitFor(() =>
+      expect(
+        screen.getByText('Every submission already has enough reviewers -- nothing to distribute.'),
+      ).toBeInTheDocument(),
+    );
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    expect(screen.queryByText('talks each')).not.toBeInTheDocument();
   });
 
   // --- DEC-882: criteria table column headers + read-only lock + open-plan header ---

@@ -880,7 +880,36 @@
 }
 
 .chq-review-cap-input input {
-  width: 64px;
+  /* w51/DEC-840 amendment: 64px clipped the "No cap" placeholder to "No…"
+     (gate-3 report) -- wide enough for the full placeholder text. */
+  width: 92px;
+}
+
+/* w51/DEC-840 amendment: frame 03's cap row inside the distribute confirm
+   -- CAP PER REVIEWER [n] talks each, sharing the results-table eyebrow
+   type rather than a new token. */
+.chq-review-distribute-cap-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--chq-ink-2);
+}
+
+.chq-review-distribute-cap-value {
+  font-family: var(--chq-font-display);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--chq-ink);
+}
+
+.chq-review-distribute-summary {
+  font-size: 13px;
+  color: var(--chq-ink-2);
+}
+
+.chq-review-distribute-table {
+  margin-top: 4px;
 }
 
 /* DEC-824: the shortfall this run's cap could not meet -- named, not
