@@ -76,7 +76,8 @@
   padding: 10px 16px;
   font-size: 13px;
   font-weight: 600;
-  background: var(--chq-sunk);
+  font-family: var(--chq-font-ui);
+  background: var(--chq-surface-sunk);
   color: var(--chq-ink);
   cursor: pointer;
   white-space: nowrap;
@@ -249,7 +250,8 @@
   padding: 9px 16px;
   font-size: 13px;
   font-weight: 600;
-  background: var(--chq-sunk);
+  font-family: var(--chq-font-ui);
+  background: var(--chq-surface-sunk);
   color: var(--chq-ink);
   cursor: pointer;
   white-space: nowrap;
@@ -268,6 +270,7 @@
   padding: 0;
   font-size: 13px;
   font-weight: 700;
+  font-family: var(--chq-font-ui);
   color: var(--chq-brand);
   cursor: pointer;
   white-space: nowrap;
