@@ -1420,6 +1420,8 @@ a:hover {
   min-height: 44px;
   display: inline-flex;
   align-items: center;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .chq-file::file-selector-button {
@@ -1434,6 +1436,7 @@ a:hover {
   padding: 0 16px;
   margin-right: 12px;
   cursor: pointer;
+  max-width: 100%;
 }
 
 .chq-file::file-selector-button:hover {

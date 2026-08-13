@@ -7,12 +7,29 @@
 // track name or a room capacity issues zero writes; an explicit Save issues
 // exactly one PATCH; Cancel restores the loaded value; a Done control
 // clears the URL's drill state back to the summary.
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor, fireEvent, cleanup, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { TracksRoomsPanel, TRACK_SWATCHES } from './TracksRoomsPanel';
 import { listEnvelope, mockApi } from '../../test-utils/mockApi';
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+const SETTINGS_CSS = readFileSync(join(HERE, 'settings.css'), 'utf-8');
+
+/** Extracts a top-level (not inside an @media block) rule's declaration
+ * body by selector -- same helper as FilterRulesPanel.render.test.tsx. */
+function topLevelRuleBody(css: string, selector: string): string {
+  const withoutMedia = css.replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\}[^{}]*)*\}/g, '');
+  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const match = withoutMedia.match(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`));
+  const body = match?.[1];
+  if (body === undefined) throw new Error(`no top-level rule found for ${selector}`);
+  return body;
+}
 
 const EVENT_ID = 'evt-tracks-rooms';
 
@@ -74,6 +91,27 @@ describe('TracksRoomsPanel', () => {
 
     // Read view: no editable inputs yet.
     expect(within(section).queryByRole('textbox')).not.toBeInTheDocument();
+  });
+
+  // DEC-747 amendment (wave 53): the caption-less row hosting the two-column
+  // grid must carry the full-bleed row modifier -- otherwise the grid's
+  // width:100% resolves against the 170px/1fr/auto row's narrower value
+  // cell (settings.css:892), not the 820px settings column.
+  it('hosts the tracks-and-rooms grid in a single-column full-bleed row', async () => {
+    mockTracksRooms();
+    render(
+      <MemoryRouter>
+        <TracksRoomsPanel />
+      </MemoryRouter>,
+    );
+
+    const section = await screen.findByRole('region', { name: 'Tracks and rooms' });
+    const grid = section.querySelector('.chq-settings-tracks-rooms-grid')!;
+    const hostingRow = grid.closest('.chq-settings-row')!;
+    expect(hostingRow).toHaveClass('chq-settings-row-full');
+
+    const body = topLevelRuleBody(SETTINGS_CSS, '.chq-settings-row-full');
+    expect(body).toMatch(/grid-template-columns:\s*1fr\s*;/);
   });
 
   it('drills into the existing add/rename/delete form via the Add action', async () => {

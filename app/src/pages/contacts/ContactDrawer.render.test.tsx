@@ -4,6 +4,9 @@
 // fabricated one), (2) the "Across your events" section renders one row per
 // history entry across all three history collections, and (3) the bottom
 // action bar exposes Save / Email / Add to event as real <button>s.
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
@@ -11,6 +14,20 @@ import { MemoryRouter } from 'react-router-dom';
 import { ContactDrawer } from './ContactDrawer';
 import { mockApi, errorEnvelope } from '../../test-utils/mockApi';
 import type { ContactDetail } from './types';
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+const SHARED_CSS = readFileSync(join(HERE, '../../styles.css'), 'utf-8');
+
+/** Extracts a top-level (not inside an @media block) rule's declaration
+ * body by selector -- same helper as FilterRulesPanel.render.test.tsx. */
+function topLevelRuleBody(css: string, selector: string): string {
+  const withoutMedia = css.replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\}[^{}]*)*\}/g, '');
+  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const match = withoutMedia.match(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`));
+  const body = match?.[1];
+  if (body === undefined) throw new Error(`no top-level rule found for ${selector}`);
+  return body;
+}
 
 const CONTACT: ContactDetail = {
   id: 'ct1',
@@ -150,6 +167,15 @@ describe('ContactDrawer render (DEC-616 record view)', () => {
     expect(fileInput).not.toHaveClass('chq-input');
 
     expect(within(dialog).getByText(/priya-headshot\.jpg/)).toBeInTheDocument();
+  });
+
+  // DEC-894 amendment (wave 53): .chq-file had no width bound at all, so
+  // the UA's intrinsic file-input width won and pushed the control's right
+  // edge past the drawer's viewport (~38px of horizontal scroll). The rule
+  // must bound the control to its container.
+  it('bounds .chq-file to its container so the drawer never scrolls horizontally', () => {
+    const body = topLevelRuleBody(SHARED_CSS, '.chq-file');
+    expect(body).toMatch(/max-width:\s*100%/);
   });
 
   it('renders no headshot metadata line when there is no stored headshot', async () => {

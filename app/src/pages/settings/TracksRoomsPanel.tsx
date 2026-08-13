@@ -310,7 +310,7 @@ export function TracksRoomsPanel() {
       <SummarySection
         sectionKey={SECTION_KEY}
         label="Tracks and rooms"
-        rows={[{ label: '', value: readValue }]}
+        rows={[{ label: '', value: readValue, rowClassName: 'chq-settings-row-full' }]}
         actionLabel="Add"
         editing={editing}
       >

@@ -26,6 +26,13 @@ export interface SummarySectionRow {
   // dangling separator, since the grid track it would occupy has no
   // content to size against.
   hint?: ReactNode;
+  // DEC-747 amendment (wave 53): a caption-less row whose value spans the
+  // full 820px settings column (e.g. Tracks and rooms' two-column grid)
+  // needs the hosting `.chq-settings-row` itself to drop the label/hint
+  // tracks -- otherwise its `width: 100%` child resolves against the
+  // narrower `1fr` value cell, not the column. Added through the row's
+  // own class prop rather than forking SummarySection per caller.
+  rowClassName?: string;
 }
 
 export interface SummarySectionProps {
@@ -62,7 +69,10 @@ export function SummarySection({ sectionKey, label, rows, actionLabel, editing, 
       {editing
         ? children
         : rows.map((row) => (
-            <div className="chq-settings-row" key={row.label}>
+            <div
+              className={row.rowClassName ? `chq-settings-row ${row.rowClassName}` : 'chq-settings-row'}
+              key={row.label}
+            >
               <span className="chq-settings-row-label">{row.label}</span>
               <div className="chq-settings-row-value">{row.value}</div>
               {row.hint != null ? <div className="chq-settings-row-hint">{row.hint}</div> : null}
