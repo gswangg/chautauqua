@@ -93,6 +93,14 @@ describe('BulkEmailModal render smoke (CRM-11 template + preview)', () => {
 
     expect(await screen.findByText('Sent to 1 email. 1 failure.')).toBeInTheDocument();
     expect(screen.getByText('bad@example.com')).toBeInTheDocument();
+
+    // DEC-837: the sent-result "View in Comms history" link must land on
+    // the History tab (?tab=history), not fall through to Comms.tsx's
+    // compose fallback when ?tab= is absent.
+    expect(screen.getByRole('link', { name: 'View in Comms history' })).toHaveAttribute(
+      'href',
+      '/admin/comms?tab=history',
+    );
   });
 
   // DEC-793: the placeholder text must only advertise merge fields the

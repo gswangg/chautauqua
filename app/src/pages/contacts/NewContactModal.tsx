@@ -174,7 +174,7 @@ export function NewContactModal({ onClose, onCreated }: Props) {
       {duplicateMatch && (
         <p className="chq-contacts-new-contact-duplicate-hint" role="status">
           Possible duplicate:{' '}
-          <Link to={`/admin/contacts?openContact=${duplicateMatch.id}`} onClick={onClose}>
+          <Link to={`/contacts?openContact=${duplicateMatch.id}`} onClick={onClose}>
             {duplicateMatch.firstName} {duplicateMatch.lastName}
             {duplicateMatch.company ? `, ${duplicateMatch.company}` : ''}
           </Link>

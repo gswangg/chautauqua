@@ -242,7 +242,7 @@ export function BulkEmailModal({ contactIds, eventId, onClose }: Props) {
               ))}
             </ul>
           )}
-          <a href="/admin/comms">View in Comms history</a>
+          <a href="/admin/comms?tab=history">View in Comms history</a>
         </div>
       )}
     </ModalFrame>

@@ -44,7 +44,12 @@ describe('NewContactModal duplicate hint (DEC-788)', () => {
     await waitFor(() => {
       expect(screen.getByText(/Possible duplicate:/)).toBeInTheDocument();
     });
-    expect(screen.getByRole('link', { name: /Priya Raman, Latticework/ })).toBeInTheDocument();
+    const duplicateLink = screen.getByRole('link', { name: /Priya Raman, Latticework/ });
+    expect(duplicateLink).toBeInTheDocument();
+    // DEC-837: the app is mounted under <BrowserRouter basename="/admin">, so
+    // an in-app `to` must be basename-relative ("/contacts?...") -- a
+    // "/admin/..." literal here would double the prefix to /admin/admin/...
+    expect(duplicateLink).toHaveAttribute('href', '/contacts?openContact=ct-1');
 
     const createButton = screen.getByRole('button', { name: 'Create contact' });
     expect(createButton).not.toBeDisabled();
