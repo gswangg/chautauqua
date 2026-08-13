@@ -18,16 +18,32 @@ export interface SubmissionScope {
   orgId: string;
   /** contact ids of every participant on the submission — for speaker IDOR checks. */
   participantContactIds: string[];
+  /** submission status — feeds canEditSubmission (DEC-041 edit-lock). */
+  status: string;
+  /** DAY LABEL close date in epoch ms, or null when the submission has no
+   * form (isFormClosed treats null as open) — mirrors
+   * loadEditableSubmission's formCloseDate projection. */
+  formCloseDate: number | null;
+  /** owning event's IANA timezone — isFormClosed expands closeDate in this zone. */
+  timezone: string;
 }
 
 /** Loads the submission's event/org + participant contact ids, or null if
  * the submission doesn't exist. Used to authz both the upload and list
- * endpoints under /api/v1/submissions/:id/files. */
+ * endpoints under /api/v1/submissions/:id/files, and to feed the DEC-041
+ * edit-lock check in authzSubmissionWrite. */
 export async function getSubmissionScope(db: Db, submissionId: string): Promise<SubmissionScope | null> {
   const subRows = await db
-    .select({ eventId: schema.submission.eventId, orgId: schema.event.orgId })
+    .select({
+      eventId: schema.submission.eventId,
+      orgId: schema.event.orgId,
+      status: schema.submission.status,
+      formCloseDate: schema.form.closeDate,
+      timezone: schema.event.timezone,
+    })
     .from(schema.submission)
     .innerJoin(schema.event, eq(schema.submission.eventId, schema.event.id))
+    .leftJoin(schema.form, eq(schema.submission.formId, schema.form.id))
     .where(eq(schema.submission.id, submissionId))
     .limit(1);
   const sub = subRows[0];
@@ -48,6 +64,9 @@ export async function getSubmissionScope(db: Db, submissionId: string): Promise<
     eventId: sub.eventId,
     orgId: sub.orgId,
     participantContactIds: participantRows.map((r) => r.contactId),
+    status: sub.status,
+    formCloseDate: sub.formCloseDate ? sub.formCloseDate.getTime() : null,
+    timezone: sub.timezone,
   };
 }
 

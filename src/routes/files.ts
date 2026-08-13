@@ -33,6 +33,7 @@ import {
   slugifyTitle,
   validateUpload,
 } from "../domain/files";
+import { canEditSubmission } from "../domain/edit-lock"; // DEC-041
 import {
   canAccessFile,
   canAccessResourceFile,
@@ -81,8 +82,10 @@ function requireAuth(c: Context<AppEnv>): AuthInfo {
 }
 
 /** organizer: any submission in their org. speaker: only when a participant
- * on the submission (per DEC-020, "organizer or participant speaker"). */
-async function authzSubmissionWrite(c: Context<AppEnv>, submissionId: string) {
+ * on the submission (per DEC-020, "organizer or participant speaker"). Read
+ * only — no edit-lock check. Used for GET listing and as the shared base of
+ * authzSubmissionWrite. */
+async function authzSubmissionRead(c: Context<AppEnv>, submissionId: string) {
   const auth = requireAuth(c);
   const scope = await getSubmissionScope(c.var.db, submissionId);
   if (!scope) throw new ApiError("not_found", "Submission not found");
@@ -97,6 +100,21 @@ async function authzSubmissionWrite(c: Context<AppEnv>, submissionId: string) {
     return { auth, scope };
   }
   throw new ApiError("forbidden", "Requires organizer or participant speaker");
+}
+
+/** authzSubmissionRead, plus the DEC-041 edit-lock: a speaker may only
+ * write (upload/replace a deliverable) while canEditSubmission holds — the
+ * same rule src/routes/portal/edit.tsx enforces for the portal's own
+ * submission edits. Organizers are never locked. */
+async function authzSubmissionWrite(c: Context<AppEnv>, submissionId: string) {
+  const result = await authzSubmissionRead(c, submissionId);
+  const { auth, scope } = result;
+  if (auth.role === "speaker") {
+    if (!canEditSubmission(scope.status, scope.formCloseDate, Date.now(), scope.timezone)) {
+      throw new ApiError("forbidden", "This submission can no longer be edited");
+    }
+  }
+  return result;
 }
 
 // -----------------------------------------------------------------------
@@ -169,7 +187,7 @@ fileApiRoutes.post("/submissions/:id/files", csrfJson, async (c) => {
 // -----------------------------------------------------------------------
 fileApiRoutes.get("/submissions/:id/files", async (c) => {
   const submissionId = c.req.param("id");
-  await authzSubmissionWrite(c, submissionId);
+  await authzSubmissionRead(c, submissionId);
   const grouped = await listSubmissionFiles(c.var.db, submissionId);
   const items = Object.entries(grouped).flatMap(([kind, versions]) =>
     versions.map((v) => ({
@@ -348,6 +366,25 @@ async function authzFileRead(c: Context<AppEnv>, fileId: string) {
   return { auth, scope };
 }
 
+/** authzFileRead, plus the DEC-041 edit-lock for speaker writes (e.g.
+ * posting a comment) — a read predicate must never gate a write. Loads the
+ * file's submission scope to apply the same canEditSubmission check
+ * authzSubmissionWrite uses; scope.submissionId is always non-null here
+ * (getFileScope already filters to submission-attached files). */
+async function authzFileWrite(c: Context<AppEnv>, fileId: string) {
+  const result = await authzFileRead(c, fileId);
+  const { auth, scope } = result;
+  if (auth.role === "speaker") {
+    if (!scope.submissionId) throw new ApiError("forbidden", "Not authorized for this file");
+    const subScope = await getSubmissionScope(c.var.db, scope.submissionId);
+    if (!subScope) throw new ApiError("not_found", "Submission not found");
+    if (!canEditSubmission(subScope.status, subScope.formCloseDate, Date.now(), subScope.timezone)) {
+      throw new ApiError("forbidden", "This submission can no longer be edited");
+    }
+  }
+  return result;
+}
+
 fileApiRoutes.get("/files/:fileId/comments", async (c) => {
   const fileId = c.req.param("fileId");
   await authzFileRead(c, fileId);
@@ -359,7 +396,7 @@ fileApiRoutes.get("/files/:fileId/comments", async (c) => {
 
 fileApiRoutes.post("/files/:fileId/comments", csrfJson, async (c) => {
   const fileId = c.req.param("fileId");
-  const { auth } = await authzFileRead(c, fileId);
+  const { auth } = await authzFileWrite(c, fileId);
 
   const body = (await c.req.json().catch(() => ({}))) as { body?: unknown };
   const text = typeof body.body === "string" ? body.body.trim() : "";
