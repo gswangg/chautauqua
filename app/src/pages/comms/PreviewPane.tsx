@@ -69,7 +69,7 @@ export function PreviewPane({ item, attachIcs = false }: { item: RenderedRecipie
           Calendar invite: {formatIcsChip(item.ics)}
         </div>
       )}
-      {attachIcs && !item.ics && (
+      {attachIcs && !item.scheduled && (
         <div className="chq-comms-preview-field chq-comms-preview-ics" role="note">
           No slot yet — this recipient gets no calendar invite.
         </div>

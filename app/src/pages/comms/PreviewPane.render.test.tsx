@@ -103,4 +103,16 @@ describe('PreviewPane: attachIcs honesty (DEC-732) -- the ics footnote blocks de
     expect(screen.queryByText(/Calendar invite:/)).not.toBeInTheDocument();
     expect(screen.queryByText(/gets no calendar invite/)).not.toBeInTheDocument();
   });
+
+  it('shows no note for a scheduled recipient whose ics has not resolved yet (stale attachment payload)', () => {
+    const scheduledNoIcs: RenderedRecipient = { ...SCHEDULED, ics: undefined };
+    render(<PreviewPane item={scheduledNoIcs} attachIcs />);
+    expect(screen.queryByText(/Calendar invite:/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/gets no calendar invite/)).not.toBeInTheDocument();
+  });
+
+  it('shows the no-invite note for an unscheduled recipient', () => {
+    render(<PreviewPane item={NO_SLOT} attachIcs />);
+    expect(screen.getByText(/gets no calendar invite/)).toBeInTheDocument();
+  });
 });
