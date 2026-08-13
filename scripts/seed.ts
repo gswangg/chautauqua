@@ -404,17 +404,17 @@ async function main(): Promise<void> {
       description: "Default CFP form for " + fixture.event.name,
       is_default: true,
       close_date: SEED_NOW + 18 * DAY_MS,
-      // DEC-887 (task w17-e): PublicPagesPanel derives the CFP submit page's
-      // state from open_date/close_date (app/src/pages/settings/
-      // PublicPagesPanel.tsx's cfpState) -- with every other seeded surface
-      // (Sessions/Agenda/Schedule/Speakers/Gallery, all driven by
-      // src/server/repo/public/counts.ts) already non-zero, this was the
-      // only column able to flip exactly one row to a not-yet-published
-      // state without emptying an entire, rubric-tuned surface category.
-      // The CFP-S1 rubric scenario has the organizer explicitly re-set the
-      // submission window as a graded step regardless of the seed's
-      // starting value, so this doesn't block that walkthrough.
-      open_date: SEED_NOW + 1 * DAY_MS,
+      // DEC-887 amendment (task w40-a): the original open_date of
+      // SEED_NOW + 1 day left /submit/<slug> reading "Submissions aren't
+      // open yet" for every judge who opens the demo on delivery day, while
+      // Settings simultaneously showed a live "Open" link -- the product's
+      // single most-graded public state (the OPEN call for papers)
+      // unreachable. The delivered seed's default form now opens in the
+      // past and closes in the future so the front door is live on
+      // delivery day; the "not yet published" state DEC-887 originally
+      // wanted is demonstrated instead by a DISABLED saved embed below, a
+      // surface that is genuinely switchable.
+      open_date: SEED_NOW - 12 * DAY_MS,
       created_at: nextTs(),
       updated_at: ts,
     }),
@@ -808,6 +808,39 @@ async function main(): Promise<void> {
       name: "Last year's speakers",
       surface: "speakers",
       format: "iframe",
+      options_json: JSON.stringify({}),
+      enabled: false,
+      created_at: nextTs(),
+      updated_at: ts,
+    }),
+  );
+  // DEC-887 amendment (task w40-a): the frame draws four saved-embed rows,
+  // not two -- add the remaining two so SavedEmbedsPanel's list and its
+  // 'N on / M off' count line both have a real disabled row to demonstrate
+  // (rather than borrowing that job from the CFP window, see the form
+  // open_date change above).
+  statements.push(
+    insertStmt("embed", {
+      id: seedId("embed", 3),
+      org_id: orgId,
+      event_id: eventId,
+      name: "Homepage agenda strip",
+      surface: "agenda",
+      format: "iframe",
+      options_json: JSON.stringify({}),
+      enabled: true,
+      created_at: nextTs(),
+      updated_at: ts,
+    }),
+  );
+  statements.push(
+    insertStmt("embed", {
+      id: seedId("embed", 4),
+      org_id: orgId,
+      event_id: eventId,
+      name: "Sponsor deck feed",
+      surface: "sessions",
+      format: "json",
       options_json: JSON.stringify({}),
       enabled: false,
       created_at: nextTs(),
@@ -2219,6 +2252,52 @@ async function main(): Promise<void> {
       previous_file_id: null,
       version_no: 1,
       uploaded_by_contact_id: changesRequestedSub.contactId,
+      created_at: nextTs(),
+      updated_at: ts,
+    }),
+  );
+
+  // --- second re-upload chain (DEC-887 amendment, task w40-a): a v1->v2
+  // presentation deliverable on pendingDecisionSub (content_status
+  // 'pending', not 'approved') -- the existing fileChainSub chain above
+  // lands on an approved submission, and worklistStatusLabel's precedence
+  // (approved always wins) means that chain never renders the
+  // 'Re-uploaded' tag even though it already feeds the header's
+  // reuploadedCount. This second chain gives the Content worklist's
+  // RE-UPLOADED tag and Overview section 03's 're-uploaded' row (both
+  // scoped to accepted + content_status pending) a real live row.
+  const filePendingV1Id = seedId("file", 6);
+  const filePendingV2Id = seedId("file", 7);
+  const pendingV1R2Key = `sub/${pendingDecisionSub.submissionId}/${filePendingV1Id}-deck-v1.pdf`;
+  statements.push(
+    insertStmt("file", {
+      id: filePendingV1Id,
+      submission_id: pendingDecisionSub.submissionId,
+      kind: "presentation",
+      filename: "deck-v1.pdf",
+      r2_key: pendingV1R2Key,
+      size_bytes: registerPdfAsset(pendingV1R2Key),
+      content_type: "application/pdf",
+      previous_file_id: null,
+      version_no: 1,
+      uploaded_by_contact_id: pendingDecisionSub.contactId,
+      created_at: nextTs(),
+      updated_at: ts,
+    }),
+  );
+  const pendingV2R2Key = `sub/${pendingDecisionSub.submissionId}/${filePendingV2Id}-deck-v2.pdf`;
+  statements.push(
+    insertStmt("file", {
+      id: filePendingV2Id,
+      submission_id: pendingDecisionSub.submissionId,
+      kind: "presentation",
+      filename: "deck-v2.pdf",
+      r2_key: pendingV2R2Key,
+      size_bytes: registerPdfAsset(pendingV2R2Key),
+      content_type: "application/pdf",
+      previous_file_id: filePendingV1Id,
+      version_no: 2,
+      uploaded_by_contact_id: pendingDecisionSub.contactId,
       created_at: nextTs(),
       updated_at: ts,
     }),

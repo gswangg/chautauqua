@@ -548,3 +548,54 @@ describe("seed coherence (DEC-942): the three states the demo never showed", () 
     }
   });
 });
+
+describe("seed coherence (DEC-887 amendment, task w40-a): the front door is live on delivery day", () => {
+  it("the default CFP form's submission window straddles SEED_NOW (open in the past, close in the future)", () => {
+    const formRows = parseInserts(sql, "form");
+    const defaultForm = formRows.find((f) => f.is_default === "1" || f.is_default === "true");
+    expect(defaultForm, "no default form seeded").toBeTruthy();
+    const openDate = Number(defaultForm!.open_date);
+    const closeDate = Number(defaultForm!.close_date);
+    expect(openDate, "default form's open_date is not before now -- /submit/<slug> reads not-yet-open").toBeLessThan(
+      Date.now(),
+    );
+    expect(closeDate, "default form's close_date is not after now").toBeGreaterThan(Date.now());
+    expect(openDate).toBeLessThan(closeDate);
+  });
+
+  it("seeds at least four saved embed rows (matching the frame), with at least one enabled and one disabled", () => {
+    const embedRows = parseInserts(sql, "embed");
+    expect(embedRows.length).toBeGreaterThanOrEqual(4);
+    const enabled = embedRows.filter((r) => r.enabled === "1" || r.enabled === "true");
+    const disabled = embedRows.filter((r) => r.enabled === "0" || r.enabled === "false");
+    expect(enabled.length, `no enabled saved embed among ${embedRows.length}`).toBeGreaterThanOrEqual(1);
+    expect(disabled.length, `no disabled saved embed among ${embedRows.length}`).toBeGreaterThanOrEqual(1);
+  });
+
+  it("seeds a re-upload chain on a submission left content_status pending, so the Content worklist's RE-UPLOADED tag has a live row (not just the header count)", () => {
+    const fileRows = parseInserts(sql, "file");
+    const filesById = new Map(fileRows.map((f) => [f.id!, f]));
+    const v2ChainRows = fileRows.filter((f) => f.previous_file_id && filesById.has(f.previous_file_id));
+    expect(v2ChainRows.length, "expected at least one version-2 chain row").toBeGreaterThanOrEqual(1);
+
+    const submissionRows = parseInserts(sql, "submission");
+    const submissionById = new Map(submissionRows.map((s) => [s.id!, s]));
+
+    // Exactly one of the chain rows must sit on a submission whose
+    // content_status is 'pending' -- worklistStatusLabel's precedence
+    // (approved always wins) means a chain on an 'approved' submission never
+    // renders the 'Re-uploaded' tag.
+    const pendingChainRows = v2ChainRows.filter((v2) => submissionById.get(v2.submission_id!)?.content_status === "pending");
+    expect(
+      pendingChainRows.length,
+      `expected exactly one re-upload chain on a content_status 'pending' submission, found ${pendingChainRows.length}`,
+    ).toBe(1);
+
+    const v2 = pendingChainRows[0]!;
+    expect(v2.version_no).toBe("2");
+    const v1 = filesById.get(v2.previous_file_id!)!;
+    expect(v1.version_no).toBe("1");
+    expect(v1.submission_id).toBe(v2.submission_id);
+    expect(v1.kind).toBe(v2.kind);
+  });
+});
