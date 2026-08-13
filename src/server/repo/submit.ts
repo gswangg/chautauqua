@@ -163,39 +163,6 @@ export async function createContact(
   return id;
 }
 
-/** DEC-321(b): a repeat submitter's stored profile is never overwritten by a
- * later CFP submission — only columns that are currently null/empty are
- * filled from the new submission's answers. Returns the resolved
- * (post-fill) values so the caller can snapshot them onto the participant. */
-export async function fillContactProfileIfBlank(
-  db: Db,
-  contactId: string,
-  current: { title: string | null; company: string | null; bio: string | null },
-  incoming: { title: string | null; company: string | null; bio: string | null },
-): Promise<{ title: string | null; company: string | null; bio: string | null }> {
-  const resolved = { ...current };
-  const patch: Record<string, string> = {};
-  if (!current.title && incoming.title) {
-    patch.title = incoming.title;
-    resolved.title = incoming.title;
-  }
-  if (!current.company && incoming.company) {
-    patch.company = incoming.company;
-    resolved.company = incoming.company;
-  }
-  if (!current.bio && incoming.bio) {
-    patch.bio = incoming.bio;
-    resolved.bio = incoming.bio;
-  }
-  if (Object.keys(patch).length > 0) {
-    await db
-      .update(schema.contact)
-      .set({ ...patch, updatedAt: new Date() })
-      .where(eq(schema.contact.id, contactId));
-  }
-  return resolved;
-}
-
 export interface CreateSubmissionParams {
   eventId: string;
   formId: string;

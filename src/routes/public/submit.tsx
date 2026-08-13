@@ -22,7 +22,6 @@ import {
   getEventTracks,
   findContactByEmail,
   createContact,
-  fillContactProfileIfBlank,
   createSubmission,
   createParticipant,
   createSubmissionTracks,
@@ -42,6 +41,9 @@ import {
 } from "../../lib/submit-core";
 import { checkAndIncrementScopedLimit, requestIpFromHeaders } from "../../lib/rate-limit";
 import { MAX_TEXT_LENGTH, MAX_LONG_TEXT_LENGTH } from "../../forms/validate";
+import { DEC_814 } from "../../decisions";
+// implements DEC_814 (an anonymous CFP match never writes to the CRM contact row).
+void DEC_814;
 import {
   saveDraft,
   readDraft,
@@ -409,16 +411,14 @@ publicSubmitRoutes.post("/submit/:eventSlug", async (c) => {
   let resolvedCompany: string | null;
   if (existingContact) {
     contactId = existingContact.id;
-    // DEC-321(b): never overwrite a non-empty stored profile value — only
-    // fill columns that are currently null/empty.
-    const filled = await fillContactProfileIfBlank(
-      db,
-      contactId,
-      { title: existingContact.title, company: existingContact.company, bio: existingContact.bio },
-      { title: jobTitle, company, bio },
-    );
-    resolvedTitle = filled.title;
-    resolvedCompany = filled.company;
+    // DEC-814 supersedes DEC-321(b)'s fill-on-match behavior: an anonymous
+    // CFP submission must never write to an existing CRM contact row. The
+    // submitted job title/company are carried only onto this participant's
+    // titleAtTime/orgAtTime snapshot (DEC-258), falling back to the
+    // contact's stored values when the submitter left a field blank. The
+    // contact row itself — and its bio — are left byte-identical.
+    resolvedTitle = jobTitle ?? existingContact.title;
+    resolvedCompany = company ?? existingContact.company;
   } else {
     contactId = await createContact(db, {
       orgId: event.orgId,
