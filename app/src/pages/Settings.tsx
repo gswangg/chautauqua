@@ -1,10 +1,18 @@
-// Settings (w2-f, DEC-375): one route, no URL-level subscreens. Desktop
-// matches docs/design/Chautauqua Settings.dc.html lines 51-59 — a sticky
-// 196px section rail beside a single 760px-max scrolling column of every
-// panel. Below 700px the rail becomes a full-width list; picking a section
-// swaps in just that panel with a tertiary back control. Both states are
-// driven by one piece of component state (`active`) — no URL change, no
-// history entry, no new route. Every panel keeps its frozen (DEC-366) save
+// Settings (w2-f, DEC-375; DEC-728 w1-b): the section rail is a static
+// one-document at desktop — matches docs/design/Chautauqua Settings.dc.html
+// lines 51-59, a sticky 196px rail beside a single 760px-max scrolling
+// column of every panel — a rail click only scrolls to its section and
+// highlights it, it never hides sections there (no desktop drill). Below
+// 700px only, the rail becomes a full-width list and picking a section
+// swaps in just that panel with a tertiary back control; that mobile
+// single-panel mode is driven by one piece of component state (`active`)
+// scoped entirely to the @media block in settings.css — no URL change, no
+// history entry, no new route.
+//
+// This is orthogonal to each panel's own DEC-728 summary/edit drill, which
+// IS URL state (`?section=<key>&edit=1`, see SummarySection.tsx) so a
+// section's edit form is bookmarkable and Back leaves it; that drill lives
+// inside each panel, not here. Every panel keeps its frozen (DEC-366) save
 // endpoint, token reveal-once flow, delete-reference guards, export and
 // embed-snippet generation exactly as-is.
 import { useState, type ComponentType } from 'react';

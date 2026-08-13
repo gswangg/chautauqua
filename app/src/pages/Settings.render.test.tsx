@@ -8,6 +8,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor, fireEvent, cleanup, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
+import { MemoryRouter } from 'react-router-dom';
 import { SettingsPage } from './Settings';
 import { listEnvelope, mockApi } from '../test-utils/mockApi';
 
@@ -71,15 +72,20 @@ describe('SettingsPage render smoke', () => {
   it('mounts every panel without throwing', async () => {
     mockAllSections();
 
-    render(<SettingsPage />);
+    render(
+      <MemoryRouter>
+        <SettingsPage />
+      </MemoryRouter>,
+    );
 
     expect(screen.getByRole('heading', { name: 'Settings' })).toBeInTheDocument();
 
-    // Event settings panel.
+    // Event settings panel — read-only summary (DEC-728) until drilled.
     await waitFor(() => {
-      expect(screen.getByDisplayValue('DevCon 2026')).toBeInTheDocument();
+      expect(screen.getByText('DevCon 2026')).toBeInTheDocument();
     });
     expect(screen.getByRole('heading', { name: 'Event settings' })).toBeInTheDocument();
+    expect(screen.queryByDisplayValue('DevCon 2026')).not.toBeInTheDocument();
 
     // Tracks & rooms panel.
     expect(screen.getByRole('heading', { name: 'Tracks & rooms' })).toBeInTheDocument();
@@ -140,10 +146,14 @@ describe('SettingsPage render smoke', () => {
   it('drills into a section via the rail and back again without touching the route', async () => {
     mockAllSections();
 
-    render(<SettingsPage />);
+    render(
+      <MemoryRouter>
+        <SettingsPage />
+      </MemoryRouter>,
+    );
 
     await waitFor(() => {
-      expect(screen.getByDisplayValue('DevCon 2026')).toBeInTheDocument();
+      expect(screen.getByText('DevCon 2026')).toBeInTheDocument();
     });
 
     const pathBefore = window.location.pathname + window.location.search + window.location.hash;
@@ -175,10 +185,14 @@ describe('SettingsPage render smoke', () => {
   it('renders the rail sections in DEC-691 order', async () => {
     mockAllSections();
 
-    render(<SettingsPage />);
+    render(
+      <MemoryRouter>
+        <SettingsPage />
+      </MemoryRouter>,
+    );
 
     await waitFor(() => {
-      expect(screen.getByDisplayValue('DevCon 2026')).toBeInTheDocument();
+      expect(screen.getByText('DevCon 2026')).toBeInTheDocument();
     });
 
     const rail = screen.getByRole('navigation', { name: 'Settings sections' });
@@ -196,5 +210,45 @@ describe('SettingsPage render smoke', () => {
       'Your data',
       'Import from Sessionboard',
     ]);
+  });
+
+  // DEC-728: the event section's summary/edit drill is URL state, not
+  // component state — clicking 'Change' writes ?section=event&edit=1 (and
+  // the drilled form is reachable directly via that URL, e.g. via Back).
+  it('drills the Event section into its edit form via URL state', async () => {
+    mockAllSections();
+
+    render(
+      <MemoryRouter>
+        <SettingsPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('DevCon 2026')).toBeInTheDocument();
+    });
+    expect(screen.queryByDisplayValue('DevCon 2026')).not.toBeInTheDocument();
+
+    const eventSection = screen.getByRole('region', { name: 'Event settings' });
+    fireEvent.click(within(eventSection).getByRole('button', { name: 'Change' }));
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('DevCon 2026')).toBeInTheDocument();
+    });
+    expect(within(eventSection).queryByRole('button', { name: 'Change' })).not.toBeInTheDocument();
+  });
+
+  it('opens the Event section directly in its edit form when the URL already carries the drill params', async () => {
+    mockAllSections();
+
+    render(
+      <MemoryRouter initialEntries={['/settings?section=event&edit=1']}>
+        <SettingsPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('DevCon 2026')).toBeInTheDocument();
+    });
   });
 });
