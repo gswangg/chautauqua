@@ -10,7 +10,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { apiList, apiPost, ApiError } from '../lib/api';
 import { useEscapeKey } from '../lib/useEscapeKey';
 import { useMe } from '../lib/useMe';
-import { FormRow, ModalFrame } from './ModalFrame';
+import { FormRow, FormRowPair, ModalFrame } from './ModalFrame';
 import {
   buildNewEventPayload,
   mergeFieldErrors,
@@ -114,29 +114,33 @@ function NewEventModal({ onCancel, onCreated }: { onCancel: () => void; onCreate
           required
         />
       </FormRow>
-      {/* Per the mock: STARTS / ENDS / TIME ZONE / VENUE (eval-findings 25). */}
-      <FormRow label="Starts" htmlFor="new-event-start" required error={errors.startDate}>
-        <input
-          id="new-event-start"
-          className="chq-input"
-          type="date"
-          value={form.startDate}
-          onChange={(e) => setField('startDate', e.target.value)}
-          placeholder="2028-05-11"
-          required
-        />
-      </FormRow>
-      <FormRow label="Ends" htmlFor="new-event-end" required error={errors.endDate}>
-        <input
-          id="new-event-end"
-          className="chq-input"
-          type="date"
-          value={form.endDate}
-          onChange={(e) => setField('endDate', e.target.value)}
-          placeholder="2028-05-13"
-          required
-        />
-      </FormRow>
+      {/* Per the mock: STARTS / ENDS / TIME ZONE / VENUE (eval-findings 25).
+          DEC-897: Starts/Ends is ONE range row -- the paired geometry is
+          what makes close-before-open validation legible. */}
+      <FormRowPair>
+        <FormRow label="Starts" htmlFor="new-event-start" required error={errors.startDate}>
+          <input
+            id="new-event-start"
+            className="chq-input"
+            type="date"
+            value={form.startDate}
+            onChange={(e) => setField('startDate', e.target.value)}
+            placeholder="2028-05-11"
+            required
+          />
+        </FormRow>
+        <FormRow label="Ends" htmlFor="new-event-end" required error={errors.endDate}>
+          <input
+            id="new-event-end"
+            className="chq-input"
+            type="date"
+            value={form.endDate}
+            onChange={(e) => setField('endDate', e.target.value)}
+            placeholder="2028-05-13"
+            required
+          />
+        </FormRow>
+      </FormRowPair>
       <FormRow label="Time zone" htmlFor="new-event-timezone" required error={errors.timezone}>
         <input
           id="new-event-timezone"

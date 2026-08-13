@@ -64,6 +64,13 @@
   justify-content: flex-start;
 }
 
+/* DEC-897: action buttons match the modal's input height (46px, see the
+   narrow-breakpoint min-height below) so the footer doesn't read lighter
+   than the fields above it. */
+.chq-scrim .chq-modal-actions .chq-btn {
+  min-height: 46px;
+}
+
 /* FormRow (DEC-685): the ONE form-row skeleton. Label above the control,
    full measure, optional help caption, error distinguished by a leading
    glyph + weight (never colour alone, DEC-367). */
@@ -82,8 +89,19 @@
   color: var(--chq-muted);
 }
 
-.chq-form-row-required {
-  color: var(--chq-ink);
+/* DEC-897: paired rows (e.g. Starts/Ends) share one grid row, equal
+   columns, ~16px gap -- stacks below the modal's existing narrow
+   breakpoint (700px, matching the .chq-form-row-control rule below). */
+.chq-form-row-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 700px) {
+  .chq-form-row-pair {
+    grid-template-columns: 1fr;
+  }
 }
 
 .chq-form-row-control {
