@@ -343,9 +343,18 @@ describe("query.ts pure parsers (DEC-289 allowlists — never throw)", () => {
     expect(parseAccent("abc")).toBe("#aabbcc");
   });
 
+  // DEC-817: the embed builder's own Accent color placeholder shows the '#'
+  // form (`#4e5c31`) — a value copied verbatim must round-trip, so
+  // parseAccent now tolerates exactly one leading '#' (still normalizing to
+  // lowercase '#rrggbb'; DEC-374's value-free-CSS rule is untouched).
+  it("parseAccent: one leading '#' is tolerated and normalized (DEC-817)", () => {
+    expect(parseAccent("#aabbcc")).toBe("#aabbcc");
+    expect(parseAccent("#ABC")).toBe("#aabbcc");
+  });
+
   it("parseAccent: garbage / CSS-injection attempts parse to null", () => {
     expect(parseAccent("red;background:url(x)")).toBeNull();
-    expect(parseAccent("#aabbcc")).toBeNull(); // leading # not accepted per DEC-289
+    expect(parseAccent("##aabbcc")).toBeNull(); // more than one leading '#' still rejected
     expect(parseAccent("aabbccdd")).toBeNull();
     expect(parseAccent(undefined)).toBeNull();
     expect(parseAccent("")).toBeNull();

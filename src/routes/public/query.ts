@@ -69,10 +69,14 @@ export function parseLimit(raw: string | undefined): number | null {
 // core); re-exported here so every existing import site keeps compiling.
 export { ALL_CARD_FIELDS, parseCardFields, type CardField, type CardFields } from "../../lib/card-fields";
 
-/** `accent` = 3- or 6-digit hex without '#', normalized to '#rrggbb'
- * lowercase (3-digit expanded); anything else parses to null. */
+/** `accent` = 3- or 6-digit hex, with ONE optional leading '#' tolerated
+ * (DEC-817: the embed builder's own placeholder shows the '#' form, and a
+ * value the builder can emit must round-trip through this parser), normalized
+ * to '#rrggbb' lowercase (3-digit expanded); anything else parses to null. */
 export function parseAccent(raw: string | undefined): string | null {
-  if (!raw || !HEX3_OR_6_RE.test(raw)) return null;
-  const hex = raw.length === 3 ? raw.split("").map((c) => c + c).join("") : raw;
+  if (!raw) return null;
+  const stripped = raw.startsWith("#") ? raw.slice(1) : raw;
+  if (!HEX3_OR_6_RE.test(stripped)) return null;
+  const hex = stripped.length === 3 ? stripped.split("").map((c) => c + c).join("") : stripped;
   return `#${hex.toLowerCase()}`;
 }
