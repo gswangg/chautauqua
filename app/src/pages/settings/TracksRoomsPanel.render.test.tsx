@@ -260,6 +260,36 @@ describe('TracksRoomsPanel', () => {
     });
   });
 
+  it('a delete refusal renders the fields.submissions list under the failing row (DEC-931)', async () => {
+    mockTracksRooms({
+      'DELETE /api/v1/tracks/trk1': {
+        status: 409,
+        body: {
+          error: {
+            code: 'conflict',
+            message: "Track is referenced by one or more submissions",
+            fields: { submissions: 'TALK-001 - First Talk; TALK-002 - Second Talk' },
+          },
+        },
+      },
+    });
+    render(
+      <MemoryRouter>
+        <TracksRoomsPanel />
+      </MemoryRouter>,
+    );
+
+    const section = await openEdit();
+    const trackNameInput = within(section).getByLabelText('Track name for AI Engineering');
+    const trackRow = trackNameInput.closest('.chq-settings-edit-row')! as HTMLElement;
+    fireEvent.click(within(trackRow).getByRole('button', { name: 'Delete' }));
+
+    await waitFor(() => {
+      expect(within(trackRow).getByText('TALK-001 - First Talk')).toBeInTheDocument();
+    });
+    expect(within(trackRow).getByText('TALK-002 - Second Talk')).toBeInTheDocument();
+  });
+
   it('Done clears the URL drill state and returns to the read-only summary', async () => {
     mockTracksRooms();
     render(

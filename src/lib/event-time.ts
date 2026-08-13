@@ -5,6 +5,8 @@
 // in UTC. No fallback: an empty or invalid timeZone throws (fail loudly)
 // rather than silently rendering in UTC.
 
+import { zonedMinutesToUtc } from "./timezone";
+
 /** Formats a UTC instant (epoch ms) as a human-readable string in the given
  * IANA timeZone, e.g. "Mon, 01 Mar 2027, 11:59 PM PST". Throws if `timeZone`
  * is empty or not a valid IANA zone identifier — there is no UTC fallback
@@ -151,4 +153,31 @@ export function formatEventCloseDateLabel(closeMs: number, timeZone: string): st
     month: "short",
     timeZone,
   });
+}
+
+/** Names a schedule_slot's wall-clock placement (DEC-010: `day` +
+ * `startMin` are already the wall-clock fields in the owning event's own
+ * timezone) as "Wed 12, 10:00" — weekday + day-of-month, 24h HH:MM — for use
+ * in delete-refusal messages (DEC-931) that must name which slot is
+ * blocking, never a bare id. Takes the real instant via `zonedMinutesToUtc`
+ * so the weekday/day-of-month are DST-correct, then renders both pieces
+ * back through the OWNING EVENT's timeZone (never the server's local zone).
+ * Throws if `timeZone` is empty, matching the fail-loudly contract of its
+ * neighbours above. */
+export function formatScheduleSlotLabel(day: string, startMin: number, timeZone: string): string {
+  if (!timeZone) {
+    throw new Error("formatScheduleSlotLabel: timeZone must not be empty");
+  }
+  const instant = zonedMinutesToUtc(day, startMin, timeZone);
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    weekday: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(instant);
+  const partMap: Record<string, string> = {};
+  for (const part of parts) partMap[part.type] = part.value;
+  return `${partMap.weekday} ${partMap.day}, ${partMap.hour}:${partMap.minute}`;
 }
