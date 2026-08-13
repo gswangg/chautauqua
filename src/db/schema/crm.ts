@@ -19,6 +19,10 @@ export const segment = sqliteTable(
   },
   (t) => ({
     segment_org_id_idx: index("segment_org_id_idx").on(t.orgId),
+    // DEC-809 amendment (wave 38): a segment name is unique within its org
+    // — the DB contract backing the upsert-by-name write, not just a JS
+    // read-then-write convention. migrations/0031_segment_name_unique.sql.
+    segment_org_id_name_idx: uniqueIndex("segment_org_id_name_idx").on(t.orgId, t.name),
   }),
 );
 
