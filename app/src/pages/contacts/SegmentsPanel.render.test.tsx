@@ -16,7 +16,7 @@ import type { ContactListItem, Segment } from './types';
 const EVENT_ID = 'evt-segment-delete-render';
 
 const CONTACTS: ContactListItem[] = [
-  { id: 'ct1', firstName: 'Ada', lastName: 'Lovelace', email: 'ada@example.com' },
+  { id: 'ct1', firstName: 'Ada', lastName: 'Lovelace', email: 'ada@example.com', labels: [] },
 ];
 
 const SEGMENTS: Segment[] = [{ id: 'seg1', name: 'VIP speakers', rules: [{ field: 'company', op: 'eq', value: 'Acme' }] }];

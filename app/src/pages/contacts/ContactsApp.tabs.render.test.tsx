@@ -21,8 +21,8 @@ import type { ContactDetail, ContactListItem, DuplicateGroup, Segment } from './
 const EVENT_ID = 'evt-contacts-tabs-render';
 
 const CONTACTS: ContactListItem[] = [
-  { id: 'ct1', firstName: 'Ada', lastName: 'Lovelace', email: 'ada@example.com', company: 'Acme', title: 'Engineer', submissionCount: 2 },
-  { id: 'ct2', firstName: 'Grace', lastName: 'Hopper', email: 'grace@example.com', company: 'Navy', title: 'Admiral', submissionCount: 1 },
+  { id: 'ct1', firstName: 'Ada', lastName: 'Lovelace', email: 'ada@example.com', company: 'Acme', title: 'Engineer', submissionCount: 2, labels: [] },
+  { id: 'ct2', firstName: 'Grace', lastName: 'Hopper', email: 'grace@example.com', company: 'Navy', title: 'Admiral', submissionCount: 1, labels: [] },
 ];
 
 const DUPLICATE_GROUPS: DuplicateGroup[] = [
@@ -44,6 +44,7 @@ const FULL_CONTACT: ContactDetail = {
   email: 'ada@example.com',
   company: 'Acme',
   title: 'Engineer',
+  labels: [],
   phone: '555-0100',
   notes: 'Keynote speaker.',
   bio: 'Pioneering computer scientist and mathematician.',

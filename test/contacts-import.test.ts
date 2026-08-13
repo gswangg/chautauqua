@@ -91,10 +91,17 @@ function makeFakeContactDb() {
 
   const db = {
     select(fields?: Record<string, unknown>) {
+      let table: unknown = schema.contact;
       let whereCond: unknown = null;
       let limitN: number | null = null;
       let offsetN = 0;
       const run = () => {
+        // DEC-712: GET /contacts also issues a batched select over
+        // `participant` for the page's labels — this fake only models
+        // `contact` rows, and this test never seeds any participant rows,
+        // so any other table always resolves to an empty result set
+        // without running the contact-only condition evaluator.
+        if (table !== schema.contact) return [];
         const filtered = whereCond ? rows.filter((r) => evalCond(whereCond, r)) : rows.slice();
         // Aggregate select (e.g. `select({ count: sql`count(*)` })`): the
         // field value isn't a real schema.contact column, so colKey/project
@@ -112,7 +119,10 @@ function makeFakeContactDb() {
       // the module comment above — no eq/and-only condition evaluator for
       // ORDER BY exists).
       const chain: any = {
-        from: () => chain,
+        from: (t: unknown) => {
+          table = t;
+          return chain;
+        },
         where: (cond: unknown) => {
           whereCond = cond;
           return chain;
