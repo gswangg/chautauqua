@@ -127,18 +127,15 @@ export function registerSegmentRoutes(contactsRoutes: Hono<AppEnv>): void {
     if (Object.keys(fields).length > 0) throw new ApiError("invalid", "Validation failed", fields);
 
     // A re-save under an existing name updates that segment's rules rather
-    // than inserting a twin row (DEC-809); lookup and write are both
-    // org-scoped. No DB unique index on (orgId, name) is added here — some
-    // existing rows may already collide on name, and that dedupe migration
-    // is separate work.
-    const existing = await repo.findSegmentByNameForOrg(c.var.db, orgId, body.name as string);
-    if (existing) {
-      const updated = await repo.patchSegment(c.var.db, existing.id, { rules: rules as SegmentRule[] });
-      return c.json(serializeSegment(updated), 200);
-    }
-
-    const created = await repo.createSegment(c.var.db, orgId, body.name as string, rules as SegmentRule[]);
-    return c.json(serializeSegment(created), 201);
+    // than inserting a twin row (DEC-809), enforced atomically by the
+    // segment_org_id_name_idx unique index (migrations/0031_segment_name_
+    // unique.sql) via a single insert-or-update — no read-then-write race.
+    // Whether this was a fresh insert (201) or an update of an existing row
+    // (200) is read off the returned row itself (createdAt === updatedAt
+    // means this write minted the row) rather than a separate lookup.
+    const upserted = await repo.upsertSegmentByName(c.var.db, orgId, body.name as string, rules as SegmentRule[]);
+    const wasCreated = upserted.createdAt === upserted.updatedAt;
+    return c.json(serializeSegment(upserted), wasCreated ? 201 : 200);
   });
 
   contactsRoutes.patch("/segments/:id", csrfJson, async (c) => {

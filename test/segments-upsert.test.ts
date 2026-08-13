@@ -1,10 +1,14 @@
-// DEC-809: POST /segments upserts on org-scoped name collision instead of
-// twinning. A same-name re-save updates the existing row's rules (one row
-// after two saves) rather than inserting a second segment.
+// DEC-809 (amendment wave 38): POST /segments upserts on org-scoped name
+// collision instead of twinning, and the collision is now a DB contract
+// (segment_org_id_name_idx, migrations/0031_segment_name_unique.sql)
+// enforced by a single atomic onConflictDoUpdate rather than a
+// findSegmentByNameForOrg read followed by an insert-or-patch.
 
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { Hono } from "hono";
-import { registerErrorHandler } from "../src/server/http";
+import { registerErrorHandler, ApiError } from "../src/server/http";
 import type { AppEnv, AuthInfo } from "../src/server/env";
 
 const ORG_A = "org-a";
@@ -40,23 +44,41 @@ afterEach(() => {
 async function buildSegmentsApp(auth: AuthInfo = ORGANIZER_A) {
   const rows: FakeRow[] = [];
   let nextId = 1;
+  let nextTime = 1;
 
   vi.doMock("../src/server/repo/contacts", async () => {
     const actual = await vi.importActual<typeof import("../src/server/repo/contacts")>("../src/server/repo/contacts");
     return {
       ...actual,
-      findSegmentByNameForOrg: vi.fn(async (_db: unknown, orgId: string, name: string) => {
-        return rows.find((r) => r.orgId === orgId && r.name === name) ?? null;
+      findSegmentForOrg: vi.fn(async (_db: unknown, id: string, orgId: string) => {
+        return rows.find((r) => r.id === id && r.orgId === orgId) ?? null;
       }),
-      createSegment: vi.fn(async (_db: unknown, orgId: string, name: string, rules: unknown[]) => {
-        const row: FakeRow = { id: `seg${nextId++}`, orgId, name, rulesJson: JSON.stringify(rules), createdAt: 0, updatedAt: 0 };
+      // Mirrors the real repo's atomic insert-or-update-by-(orgId,name):
+      // createdAt === updatedAt on the returned row iff this call minted it.
+      upsertSegmentByName: vi.fn(async (_db: unknown, orgId: string, name: string, rules: unknown[]) => {
+        const existing = rows.find((r) => r.orgId === orgId && r.name === name);
+        const now = nextTime++;
+        if (existing) {
+          existing.rulesJson = JSON.stringify(rules);
+          existing.updatedAt = now;
+          return existing;
+        }
+        const row: FakeRow = { id: `seg${nextId++}`, orgId, name, rulesJson: JSON.stringify(rules), createdAt: now, updatedAt: now };
         rows.push(row);
         return row;
       }),
+      // Mirrors the real repo's unique-index collision surfacing (DEC-809
+      // amendment): renaming onto another row's name in the same org 400s.
       patchSegment: vi.fn(async (_db: unknown, id: string, patch: { name?: string; rules?: unknown[] }) => {
         const row = rows.find((r) => r.id === id);
         if (!row) throw new Error(`segment ${id} not found`);
-        if (patch.name !== undefined) row.name = patch.name;
+        if (patch.name !== undefined) {
+          const collision = rows.find((r) => r.id !== id && r.orgId === row.orgId && r.name === patch.name);
+          if (collision) {
+            throw new ApiError("invalid", "A segment with this name already exists", { name: "A segment with this name already exists" });
+          }
+          row.name = patch.name;
+        }
         if (patch.rules !== undefined) row.rulesJson = JSON.stringify(patch.rules);
         return row;
       }),
@@ -107,5 +129,44 @@ describe("POST /api/v1/segments upsert-by-name (DEC-809)", () => {
     const body = (await res.json()) as { id: string };
     expect(body.id).not.toBe("seg-other-org");
     expect(rows.filter((r) => r.name === "VIP speakers")).toHaveLength(2);
+  });
+});
+
+describe("PATCH /api/v1/segments/:id rename collision (DEC-809 amendment)", () => {
+  it("renaming onto an existing name in the same org is a loud 400, not a 500", async () => {
+    const { app } = await buildSegmentsApp();
+
+    const a = await app.request("/api/v1/segments", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-chq-csrf": "1" },
+      body: JSON.stringify({ name: "Keynote speakers", rules: [] }),
+    });
+    const b = await app.request("/api/v1/segments", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-chq-csrf": "1" },
+      body: JSON.stringify({ name: "Panelists", rules: [] }),
+    });
+    const bBody = (await b.json()) as { id: string };
+    void a;
+
+    const rename = await app.request(`/api/v1/segments/${bBody.id}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json", "x-chq-csrf": "1" },
+      body: JSON.stringify({ name: "Keynote speakers" }),
+    });
+    expect(rename.status).toBe(400);
+    const body = (await rename.json()) as { error: { code: string; fields?: Record<string, string> } };
+    expect(body.error.code).toBe("invalid");
+    expect(body.error.fields?.name).toBeTruthy();
+  });
+});
+
+describe("migrations/0031_segment_name_unique.sql shape", () => {
+  it("de-collides existing rows before creating the unique index", () => {
+    const sql = readFileSync(join(__dirname, "..", "migrations", "0031_segment_name_unique.sql"), "utf8");
+    const updateIdx = sql.search(/UPDATE\s+`segment`/i);
+    const createIdx = sql.search(/CREATE\s+UNIQUE\s+INDEX\s+`segment_org_id_name_idx`/i);
+    expect(updateIdx).toBeGreaterThanOrEqual(0);
+    expect(createIdx).toBeGreaterThan(updateIdx);
   });
 });
