@@ -20,6 +20,12 @@ import { useSearchParams } from 'react-router-dom';
 export interface SummarySectionRow {
   label: string;
   value: ReactNode;
+  // DEC-896: the row's third grid column -- a short right-aligned note
+  // ('Used in every public URL', 'Reviewers see only their assigned
+  // tracks'). Collapses when absent: never an empty cell, never a
+  // dangling separator, since the grid track it would occupy has no
+  // content to size against.
+  hint?: ReactNode;
 }
 
 export interface SummarySectionProps {
@@ -59,6 +65,7 @@ export function SummarySection({ sectionKey, label, rows, actionLabel, editing, 
             <div className="chq-settings-row" key={row.label}>
               <span className="chq-settings-row-label">{row.label}</span>
               <div className="chq-settings-row-value">{row.value}</div>
+              {row.hint != null ? <div className="chq-settings-row-hint">{row.hint}</div> : null}
             </div>
           ))}
     </section>

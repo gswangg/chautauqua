@@ -17,6 +17,8 @@ import { render, screen, waitFor, cleanup, within } from '@testing-library/react
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { SECTIONS } from '../Settings';
+import { EventSettingsPanel } from './EventSettingsPanel';
+import { PeopleRolesPanel } from './PeopleRolesPanel';
 import { PublicPagesPanel } from './PublicPagesPanel';
 import { listEnvelope, mockApi } from '../../test-utils/mockApi';
 
@@ -132,6 +134,52 @@ describe('Settings summary sweep (DEC-815 ENUMERATION)', () => {
         expect(controls.length).toBeGreaterThan(0);
       });
     });
+  });
+});
+
+describe('DEC-896: real row hints on the Event and People and roles summaries', () => {
+  it('Event settings: the Slug and Time zone rows carry a real hint; Name does not', async () => {
+    mockEverySettingsRoute();
+
+    render(
+      <MemoryRouter initialEntries={['/settings']}>
+        <EventSettingsPanel />
+      </MemoryRouter>,
+    );
+
+    const region = await screen.findByRole('region');
+    await waitFor(() => {
+      expect(within(region).getByText('DevCon 2026')).toBeInTheDocument();
+    });
+
+    const hintFor = (label: string) => {
+      const row = within(region).getByText(label).closest('.chq-settings-row') as HTMLElement;
+      return row.querySelector('.chq-settings-row-hint');
+    };
+
+    expect(hintFor('Slug')).toHaveTextContent('Used in every public URL');
+    expect(hintFor('Time zone')).toHaveTextContent('Applies to every date and deadline in this event');
+    expect(hintFor('Name')).toBeNull();
+  });
+
+  it('People and roles: the Reviewers row carries a real hint about track scoping', async () => {
+    mockEverySettingsRoute();
+
+    render(
+      <MemoryRouter initialEntries={['/settings']}>
+        <PeopleRolesPanel />
+      </MemoryRouter>,
+    );
+
+    const region = await screen.findByRole('region');
+    await waitFor(() => {
+      expect(within(region).getByText('Reviewers')).toBeInTheDocument();
+    });
+
+    const row = within(region).getByText('Reviewers').closest('.chq-settings-row') as HTMLElement;
+    expect(row.querySelector('.chq-settings-row-hint')).toHaveTextContent(
+      'Can be scoped to specific tracks in review assignment',
+    );
   });
 });
 

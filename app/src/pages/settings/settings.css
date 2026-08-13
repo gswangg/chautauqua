@@ -765,3 +765,45 @@
     border-bottom: none;
   }
 }
+
+/* w18-f/DEC-896: SummarySectionRow becomes the frame's three-column
+   definition grid (label / value / hint) -- mock 09-settings.png's Event
+   section ('Slug' → 'Used in every public URL', 'Dates' → '274 days
+   away'). The hint track is `auto`: with no `.chq-settings-row-hint`
+   child rendered for a hint-less row, the track has no content to size
+   against and collapses to zero width -- never an empty cell, never a
+   dangling separator column. Overrides the earlier .chq-settings-row
+   flex-column rule above (same selector, later in source order) so every
+   panel built on SummarySectionRow (Event, Call for papers, Tracks and
+   rooms, Public pages, Speaker portal, People and roles, Your data)
+   picks this up for free -- one shared vocabulary, not six per-page
+   rewrites. */
+.chq-settings-row {
+  display: grid;
+  grid-template-columns: 170px 1fr auto;
+  align-items: baseline;
+  column-gap: 20px;
+  row-gap: 6px;
+}
+
+.chq-settings-row-hint {
+  font-size: 12px;
+  color: var(--chq-ink-2);
+  text-align: right;
+  white-space: nowrap;
+}
+
+@media (max-width: 700px) {
+  /* Phone rows already reflow as a single-column stack (label above
+     value); the definition grid is a desktop-width layout only. The hint
+     stays visible, right-aligned under the value. */
+  .chq-settings-row {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .chq-settings-row-hint {
+    align-self: flex-end;
+  }
+}

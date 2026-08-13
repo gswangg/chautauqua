@@ -137,7 +137,15 @@ export function PeopleRolesPanel() {
   const rows = [
     { label: 'People', value: loading ? <DelayedLoading /> : `${total} ${total === 1 ? 'person' : 'people'}` },
     { label: 'Organizers', value: loading ? <DelayedLoading /> : `${organizerCount}` },
-    { label: 'Reviewers', value: loading ? <DelayedLoading /> : `${reviewerCount}` },
+    // DEC-896: a real hint, not a decorative one -- plan_reviewer rows can
+    // scope a reviewer to specific tracks (DEC-824, src/routes/review/
+    // plans-distribute.ts), so "N reviewers" alone hides that some of them
+    // may only ever see a subset of tracks.
+    {
+      label: 'Reviewers',
+      value: loading ? <DelayedLoading /> : `${reviewerCount}`,
+      hint: 'Can be scoped to specific tracks in review assignment',
+    },
   ];
 
   return (

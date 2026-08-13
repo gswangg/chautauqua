@@ -89,6 +89,33 @@ describe('SummarySection', () => {
     expect(probe.get('foo')).toBe('bar');
   });
 
+  // DEC-896: the read row is a three-column grid -- label / value / hint.
+  // A row with a hint renders it in its own hint column; a row without one
+  // renders no hint cell at all (never an empty placeholder div).
+  it('renders a row hint when supplied and collapses the hint column when absent', () => {
+    render(
+      <MemoryRouter initialEntries={['/settings']}>
+        <SummarySection
+          sectionKey="event"
+          label="Event settings"
+          rows={[
+            { label: 'Name', value: 'DevCon 2026' },
+            { label: 'Slug', value: 'devcon-2026', hint: 'Used in every public URL' },
+          ]}
+          actionLabel="Change"
+          editing={false}
+        >
+          <p>the form</p>
+        </SummarySection>
+      </MemoryRouter>,
+    );
+
+    const nameRow = screen.getByText('Name').closest('.chq-settings-row');
+    const slugRow = screen.getByText('Slug').closest('.chq-settings-row');
+    expect(nameRow?.querySelector('.chq-settings-row-hint')).toBeNull();
+    expect(slugRow?.querySelector('.chq-settings-row-hint')).toHaveTextContent('Used in every public URL');
+  });
+
   it('scopes the row action within the section (no floating band)', () => {
     render(
       <MemoryRouter initialEntries={['/settings']}>

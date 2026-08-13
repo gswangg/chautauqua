@@ -294,6 +294,66 @@ describe('SettingsPage render smoke', () => {
     expect(within(eventSection).queryByRole('button', { name: 'Change' })).not.toBeInTheDocument();
   });
 
+  // DEC-896: the rail follows the reader. An explicit click is
+  // authoritative immediately; once the observer reports a DIFFERENT
+  // section as most visible (simulating a scroll, since jsdom doesn't
+  // actually scroll), the rail's active link -- and its aria-current --
+  // moves to that section without any further click.
+  it('the rail active link follows the section reported in view by IntersectionObserver', async () => {
+    mockAllSections();
+
+    let observerCallback: IntersectionObserverCallback | undefined;
+    const observedElements: Element[] = [];
+    class FakeIntersectionObserver {
+      constructor(callback: IntersectionObserverCallback) {
+        observerCallback = callback;
+      }
+      observe(el: Element) {
+        observedElements.push(el);
+      }
+      disconnect() {}
+      unobserve() {}
+    }
+    vi.stubGlobal('IntersectionObserver', FakeIntersectionObserver);
+
+    render(
+      <MemoryRouter>
+        <SettingsPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('DevCon 2026')).toBeInTheDocument();
+    });
+
+    const rail = screen.getByRole('navigation', { name: 'Settings sections' });
+    const eventLink = within(rail).getByRole('button', { name: 'Event' });
+    const peopleLink = within(rail).getByRole('button', { name: 'People and roles' });
+
+    // Nothing clicked yet: no rail link claims active/aria-current.
+    expect(eventLink).not.toHaveClass('chq-settings-rail-link-active');
+    expect(peopleLink).not.toHaveAttribute('aria-current', 'true');
+
+    expect(observerCallback).toBeDefined();
+    expect(observedElements.length).toBeGreaterThan(0);
+
+    const peopleEl = observedElements.find((el) => el.id === 'chq-settings-section-people')!;
+    expect(peopleEl).toBeTruthy();
+
+    // Simulate the reader having scrolled the "People and roles" section
+    // into view -- no click involved.
+    observerCallback!(
+      [{ target: peopleEl, intersectionRatio: 0.9 } as IntersectionObserverEntry],
+      {} as IntersectionObserver,
+    );
+
+    await waitFor(() => {
+      expect(peopleLink).toHaveClass('chq-settings-rail-link-active');
+    });
+    expect(peopleLink).toHaveAttribute('aria-current', 'true');
+    expect(eventLink).not.toHaveClass('chq-settings-rail-link-active');
+  });
+
   it('opens the Event section directly in its edit form when the URL already carries the drill params', async () => {
     mockAllSections();
 

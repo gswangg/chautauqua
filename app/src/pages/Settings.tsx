@@ -15,7 +15,7 @@
 // inside each panel, not here. Every panel keeps its frozen (DEC-366) save
 // endpoint, token reveal-once flow, delete-reference guards, export and
 // embed-snippet generation exactly as-is.
-import { useState, type ComponentType } from 'react';
+import { useEffect, useRef, useState, type ComponentType } from 'react';
 import { EventSettingsPanel } from './settings/EventSettingsPanel';
 import { CallForPapersPanel } from './settings/CallForPapersPanel';
 import { TracksRoomsPanel } from './settings/TracksRoomsPanel';
@@ -51,17 +51,69 @@ export const SECTIONS: SettingsSection[] = [
 ];
 
 export function SettingsPage() {
-  // Mobile-only drill-in selection. Ignored by the desktop layout (CSS
-  // keeps every section visible there); on phone it toggles which single
-  // section is shown. Never touches history/location.
+  // Mobile-only drill-in selection AND (DEC-896) the desktop rail's
+  // click-authoritative highlight. Ignored by the desktop layout for
+  // drilling (CSS keeps every section visible there) but still drives
+  // which rail link is marked active there. Never touches history/
+  // location -- an explicit click wins immediately; once the reader
+  // scrolls, the IntersectionObserver below takes over deciding which
+  // section is "active" until the next click.
   const [active, setActive] = useState<string | null>(null);
+
+  // DEC-896: an explicit rail click is authoritative until the next
+  // scroll settles -- suppress observer-driven updates for a moment after
+  // a click so the section being scrolled TO isn't immediately clobbered
+  // by whatever's still onscreen mid-scroll.
+  const suppressObserverRef = useRef(false);
+  const settleTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   function selectSection(key: string) {
     setActive(key);
+    suppressObserverRef.current = true;
+    if (settleTimerRef.current) clearTimeout(settleTimerRef.current);
+    settleTimerRef.current = setTimeout(() => {
+      suppressObserverRef.current = false;
+    }, 600);
     const el = document.getElementById(`chq-settings-section-${key}`);
     // jsdom (test env) doesn't implement scrollIntoView; real browsers do.
     el?.scrollIntoView?.({ block: 'start' });
   }
+
+  // DEC-896: the rail follows the reader -- once the page scrolls, the
+  // active link tracks whichever section is actually most visible instead
+  // of freezing on the first one ever clicked. Guarded behind a feature
+  // check since jsdom (test env) has no IntersectionObserver; render
+  // tests exercise click-driven highlighting only, unaffected.
+  useEffect(() => {
+    if (typeof IntersectionObserver === 'undefined') return undefined;
+    const elements = SECTIONS.map((section) => document.getElementById(`chq-settings-section-${section.key}`)).filter(
+      (el): el is HTMLElement => el !== null,
+    );
+    if (elements.length === 0) return undefined;
+    const ratios = new Map<string, number>();
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          const key = entry.target.id.replace('chq-settings-section-', '');
+          ratios.set(key, entry.intersectionRatio);
+        }
+        if (suppressObserverRef.current) return;
+        let topKey: string | null = null;
+        let topRatio = 0;
+        for (const section of SECTIONS) {
+          const ratio = ratios.get(section.key) ?? 0;
+          if (ratio > topRatio) {
+            topRatio = ratio;
+            topKey = section.key;
+          }
+        }
+        if (topKey) setActive(topKey);
+      },
+      { threshold: [0, 0.1, 0.25, 0.5, 0.75, 1] },
+    );
+    elements.forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
+  }, []);
 
   return (
     <div className="chq-page chq-settings-page">
@@ -80,6 +132,7 @@ export function SettingsPage() {
                   ? 'chq-rail-link chq-settings-rail-link chq-settings-rail-link-active'
                   : 'chq-rail-link chq-settings-rail-link'
               }
+              aria-current={active === section.key ? 'true' : undefined}
               onClick={() => selectSection(section.key)}
             >
               {section.label}
