@@ -5,8 +5,10 @@
    sticky 196px rail beside a 760px-max scrolling column (mock lines
    51-61); below 700px the rail becomes a full-width list and picking a
    section swaps in just that panel with a tertiary back control (mock's
-   phone subscreens, lines 280-539). Falls back to literal hex so the page
-   still renders before the shell lane lands :root tokens. */
+   phone subscreens, lines 280-539). Content column clamps to the shared
+   --chq-measure token (DEC-744/DEC-808), not a page-local literal. Falls
+   back to literal hex so the page still renders before the shell lane
+   lands :root tokens. */
 
 .chq-settings-account-link {
   margin: 0 0 20px;
@@ -56,7 +58,8 @@
   display: flex;
   flex-direction: column;
   gap: 32px;
-  max-width: 760px;
+  /* Shared page measure (DEC-744/DEC-808). */
+  max-width: var(--chq-measure);
 }
 
 .chq-settings-back {

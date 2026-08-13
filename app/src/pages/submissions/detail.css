@@ -82,10 +82,13 @@
   white-space: nowrap;
 }
 
-/* Desktop: main column (form-shaped content) + decision aside. */
+/* Desktop: main column (form-shaped content) + decision aside. A page that
+   carries an aside fills the frame and clamps nothing (DEC-744/DEC-808) --
+   the main column takes the remaining space instead of a page-local px
+   literal, so it no longer stops early inside a wide frame. */
 .chq-detail-layout {
   display: grid;
-  grid-template-columns: minmax(0, 720px) 320px;
+  grid-template-columns: minmax(0, 1fr) 320px;
   gap: 34px;
   align-items: start;
 }
@@ -100,8 +103,8 @@
   display: flex;
   flex-direction: column;
   gap: 26px;
-  /* Required measure for form-shaped content: 660-760px. */
-  max-width: 720px;
+  /* No page-content clamp: this page carries an aside, so it fills the
+     frame (DEC-744/DEC-808) instead of re-inventing a measure. */
   min-width: 0;
 }
 
