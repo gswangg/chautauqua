@@ -8,6 +8,12 @@
 // (RULE_MATCH_JS, embedded verbatim into the rendered page) canonicalize
 // through the same rules, proven identical by a shared case table
 // (RULE_MATCH_CASES) exercised against both in test/form-render-rules.test.ts.
+// DEC-867: an unanswered field canonicalizes to undefined for EVERY kind
+// (number '' / null / boolean-typed strings, text/long_text/dropdown/file
+// blank strings) and undefined satisfies NO operator — eq, ne, and in all
+// return false when the trigger's canonical value is undefined. The one
+// exception is checkbox, whose absent answer canonicalizes to false (an
+// unchecked box), not undefined — that's a real value, not an absence.
 
 import type { FormFieldKind, FormFieldRule } from "./types";
 import { DEC_681 } from "../decisions";
@@ -38,6 +44,8 @@ export function canonicalizeOperand(
     }
     case "number": {
       if (typeof value === "boolean") return undefined; // Number(true) === 1 would lie
+      if (value === undefined || value === null) return undefined;
+      if (typeof value === "string" && value.trim() === "") return undefined; // Number('') === 0 would lie
       const num = Number(value);
       return Number.isFinite(num) ? num : undefined;
     }
@@ -69,6 +77,7 @@ export function ruleMatches(
       return actual === canonicalizeOperand(triggerKind, rule.value);
     }
     case "ne": {
+      if (actual === undefined) return false;
       const expected = canonicalizeOperand(triggerKind, rule.value);
       return actual !== expected;
     }
@@ -98,6 +107,8 @@ export const RULE_MATCH_JS = `function chqCanonicalize(kind, value) {
   }
   if (kind === 'number') {
     if (typeof value === 'boolean') return undefined;
+    if (value === undefined || value === null) return undefined;
+    if (typeof value === 'string' && value.trim() === '') return undefined;
     var num = Number(value);
     return isFinite(num) ? num : undefined;
   }
@@ -112,6 +123,7 @@ function chqRuleMatches(rule, value, kind) {
     return actual === chqCanonicalize(kind, rule.value);
   }
   if (rule.op === 'ne') {
+    if (actual === undefined) return false;
     var expected = chqCanonicalize(kind, rule.value);
     return actual !== expected;
   }
@@ -182,5 +194,35 @@ export const RULE_MATCH_CASES: {
     answer: "  hello  ",
     rule: { fieldId: "trigger", op: "eq", value: "hello" },
     expected: true,
+  },
+  {
+    kind: "number",
+    answer: "",
+    rule: { fieldId: "trigger", op: "eq", value: 0 },
+    expected: false,
+  },
+  {
+    kind: "number",
+    answer: "   ",
+    rule: { fieldId: "trigger", op: "eq", value: "0" },
+    expected: false,
+  },
+  {
+    kind: "number",
+    answer: null,
+    rule: { fieldId: "trigger", op: "eq", value: 0 },
+    expected: false,
+  },
+  {
+    kind: "number",
+    answer: "",
+    rule: { fieldId: "trigger", op: "ne", value: 0 },
+    expected: false,
+  },
+  {
+    kind: "text",
+    answer: "",
+    rule: { fieldId: "trigger", op: "ne", value: "Workshop" },
+    expected: false,
   },
 ];
