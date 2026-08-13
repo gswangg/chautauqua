@@ -499,6 +499,15 @@ submissionsRoutes.patch(
       await setParticipantInviteStatus(c.var.db, participantId, body.inviteStatus);
     }
     const row = await getParticipantRow(c.var.db, participantId);
+    // DEC-278/DEC-813: the Speakers grid's toggleInviteStatus control (this
+    // route) can flip a participant to an active invite status on a
+    // submission that is already 'accepted' -- the same acceptance-firing
+    // gap as the invite-a-new-participant path above, so it gets the same
+    // ensureOnboardingTasks guard rather than leaving the new speaker
+    // visible with zero onboarding tasks.
+    if (row && (await getSubmissionStatus(c.var.db, id)) === "accepted" && isActiveParticipant(row.inviteStatus)) {
+      await ensureOnboardingTasks(c.var.db, ownership.eventId, id, [row.contactId], new Date());
+    }
     return c.json(row);
   },
 );
