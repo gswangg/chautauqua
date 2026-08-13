@@ -5,6 +5,7 @@ import { DelayedLoading } from '../../components/DelayedLoading';
 import { apiList, apiPost, apiDelete, ApiError } from '../../lib/api';
 import { formatDateTime } from '../../lib/dates';
 import { copyText } from '../../lib/clipboard';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
 
 interface ApiTokenItem {
   id: string;
@@ -27,6 +28,11 @@ export function ApiTokensPanel() {
   const [revealedToken, setRevealedToken] = useState<string | null>(null);
   const [copyResult, setCopyResult] = useState<{ ok: boolean; text: string } | null>(null);
   const failedCopyRef = useRef<HTMLInputElement | null>(null);
+  // DEC-941: token revocation is unrecoverable (the plaintext is never shown
+  // again), so it's gated behind the shared ConfirmDialog rather than firing
+  // straight from the row's Revoke link.
+  const [pendingDelete, setPendingDelete] = useState<ApiTokenItem | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   function load() {
     setLoading(true);
@@ -74,13 +80,18 @@ export function ApiTokensPanel() {
     }
   }, [copyResult]);
 
-  async function handleDelete(id: string) {
+  async function confirmDelete() {
+    if (!pendingDelete) return;
     setError(null);
+    setDeleting(true);
     try {
-      await apiDelete(`/tokens/${id}`);
+      await apiDelete(`/tokens/${pendingDelete.id}`);
+      setPendingDelete(null);
       await load();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to delete API token');
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -162,7 +173,7 @@ export function ApiTokensPanel() {
                 </td>
                 <td data-label="Last used">{formatDate(t.lastUsedAt)}</td>
                 <td>
-                  <button type="button" className="chq-link-button" onClick={() => handleDelete(t.id)}>
+                  <button type="button" className="chq-link-button" onClick={() => setPendingDelete(t)}>
                     Revoke
                   </button>
                 </td>
@@ -170,6 +181,18 @@ export function ApiTokensPanel() {
             ))}
           </tbody>
         </table>
+      )}
+
+      {pendingDelete && (
+        <ConfirmDialog
+          title="Revoke this token?"
+          body={`Any script or embed still using ${pendingDelete.name} stops working immediately. This cannot be undone.`}
+          confirmLabel="Revoke"
+          destructive
+          pending={deleting}
+          onConfirm={() => void confirmDelete()}
+          onCancel={() => setPendingDelete(null)}
+        />
       )}
     </section>
   );

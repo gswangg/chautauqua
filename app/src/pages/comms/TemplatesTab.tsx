@@ -4,6 +4,7 @@ import { apiDelete, apiList, apiPatch, apiPost, ApiError } from '../../lib/api';
 import { COMPOSE_MERGE_FIELDS } from '../../lib/merge-fields';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { formatDate } from '../../lib/dates';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
 import type { EmailTemplate } from './types';
 import './templates.css';
 
@@ -24,6 +25,10 @@ export function TemplatesTab({ eventId }: { eventId: string }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<DraftTemplate>(BLANK_DRAFT);
   const [saving, setSaving] = useState(false);
+  // DEC-941: deleting a template is irreversible, so it's gated behind the
+  // shared ConfirmDialog rather than firing on click.
+  const [pendingDelete, setPendingDelete] = useState<EmailTemplate | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   function load() {
     setLoading(true);
@@ -70,13 +75,18 @@ export function TemplatesTab({ eventId }: { eventId: string }) {
     }
   }
 
-  async function remove(id: string) {
+  async function confirmRemove() {
+    if (!pendingDelete) return;
     setError(null);
+    setDeleting(true);
     try {
-      await apiDelete(`/templates/${id}`);
+      await apiDelete(`/templates/${pendingDelete.id}`);
+      setPendingDelete(null);
       load();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to delete template');
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -159,7 +169,7 @@ export function TemplatesTab({ eventId }: { eventId: string }) {
                       <button type="button" className="chq-btn chq-btn-secondary chq-btn-small" onClick={() => useInSend(t)}>
                         Use in a send
                       </button>
-                      <button type="button" className="chq-link-button" onClick={() => remove(t.id)}>
+                      <button type="button" className="chq-link-button" onClick={() => setPendingDelete(t)}>
                         Delete
                       </button>
                     </div>
@@ -221,6 +231,18 @@ export function TemplatesTab({ eventId }: { eventId: string }) {
           </section>
         )}
       </div>
+
+      {pendingDelete && (
+        <ConfirmDialog
+          title="Delete this template?"
+          body={`Sends already made keep their copy of "${pendingDelete.name}"'s text. This cannot be undone.`}
+          confirmLabel="Delete"
+          destructive
+          pending={deleting}
+          onConfirm={() => void confirmRemove()}
+          onCancel={() => setPendingDelete(null)}
+        />
+      )}
     </div>
   );
 }

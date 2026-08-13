@@ -102,4 +102,42 @@ describe('TemplatesTab', () => {
     const row = (await screen.findByText('Waitlist')).closest('tr') as HTMLElement;
     expect(within(row).getByRole('button', { name: 'Use in a send' })).toBeInTheDocument();
   });
+
+  // DEC-941: deleting a template is irreversible, so Delete must open the
+  // shared ConfirmDialog and only DELETE after an explicit confirm.
+  it('gates template delete behind a confirm dialog naming the template, and only DELETEs on confirm', async () => {
+    const fetchMock = mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([template({ id: 'tpl-1', name: 'Acceptance' })]),
+      'DELETE /api/v1/templates/tpl-1': { status: 200, body: {} },
+    });
+
+    render(
+      <MemoryRouter>
+        <TemplatesTab eventId={EVENT_ID} />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete' }));
+
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByText('Delete this template?')).toBeInTheDocument();
+    expect(
+      within(dialog).getByText('Sends already made keep their copy of "Acceptance"\'s text. This cannot be undone.'),
+    ).toBeInTheDocument();
+
+    expect(fetchMock.mock.calls.some(([, init]) => (init as RequestInit | undefined)?.method === 'DELETE')).toBe(
+      false,
+    );
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
+
+    await waitFor(() => {
+      expect(fetchMock.mock.calls.some(([, init]) => (init as RequestInit | undefined)?.method === 'DELETE')).toBe(
+        true,
+      );
+    });
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+  });
 });

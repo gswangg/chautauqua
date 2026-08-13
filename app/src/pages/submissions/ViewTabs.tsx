@@ -8,6 +8,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { apiDelete, apiList, apiPost, ApiError } from '../../lib/api';
 import { FormRow, ModalFrame } from '../../components/ModalFrame';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { sortLabel } from './FilterBar';
 import { serializeView, type SavedView, type SavedViewConfig } from './views';
 import { STATUS_LABELS, type SubmissionsFilterState, type Track } from './types';
@@ -185,6 +186,10 @@ export function ViewTabs({ eventId, filters, visibleFieldIds, tracks, onApply }:
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
+  // DEC-941: deleting a saved view is irreversible, so it's gated behind the
+  // shared ConfirmDialog rather than firing on click.
+  const [pendingDelete, setPendingDelete] = useState<SavedView | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     apiList<SavedView>(`/events/${eventId}/views`)
@@ -210,15 +215,21 @@ export function ViewTabs({ eventId, filters, visibleFieldIds, tracks, onApply }:
     }
   }
 
-  async function deleteView(id: string) {
+  async function confirmDeleteView() {
+    if (!pendingDelete) return;
+    const id = pendingDelete.id;
     setError(null);
+    setDeleting(true);
     const previous = views;
     setViews((prev) => prev.filter((v) => v.id !== id));
     try {
       await apiDelete(`/views/${id}`);
+      setPendingDelete(null);
     } catch (err) {
       setViews(previous);
       setError(err instanceof ApiError ? `Delete view failed: ${err.message}` : 'Delete view failed');
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -252,7 +263,7 @@ export function ViewTabs({ eventId, filters, visibleFieldIds, tracks, onApply }:
             type="button"
             className="chq-submissions-viewtabs-delete"
             aria-label={`Delete ${view.name}`}
-            onClick={() => deleteView(view.id)}
+            onClick={() => setPendingDelete(view)}
           >
             &times;
           </button>
@@ -274,6 +285,18 @@ export function ViewTabs({ eventId, filters, visibleFieldIds, tracks, onApply }:
           pending={saving}
           onCancel={() => setShowSaveDialog(false)}
           onSave={saveCurrentAsView}
+        />
+      )}
+
+      {pendingDelete && (
+        <ConfirmDialog
+          title="Delete this view?"
+          body={`Only the saved filter "${pendingDelete.name}" goes — no submissions are affected.`}
+          confirmLabel="Delete"
+          destructive
+          pending={deleting}
+          onConfirm={() => void confirmDeleteView()}
+          onCancel={() => setPendingDelete(null)}
         />
       )}
     </div>

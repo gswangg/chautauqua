@@ -648,13 +648,25 @@ export function PlanEditor() {
     });
   }
 
-  async function unassignReviewer(id: string) {
-    if (!planId) return;
+  // DEC-941: removing a reviewer drops their queue on this plan, so it's
+  // gated behind the shared ConfirmDialog rather than firing on click.
+  const [pendingUnassignReviewer, setPendingUnassignReviewer] = useState<{ id: string; displayName: string } | null>(
+    null,
+  );
+  const [unassigningReviewer, setUnassigningReviewer] = useState(false);
+
+  async function confirmUnassignReviewer() {
+    if (!planId || !pendingUnassignReviewer) return;
+    const { id } = pendingUnassignReviewer;
+    setUnassigningReviewer(true);
     try {
       await apiDelete(`/plans/${planId}/reviewers/${id}`);
       setReviewers((prev) => prev.filter((r) => r.id !== id));
+      setPendingUnassignReviewer(null);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to remove reviewer');
+    } finally {
+      setUnassigningReviewer(false);
     }
   }
 
@@ -1178,7 +1190,11 @@ export function PlanEditor() {
                   >
                     {resettingUserId === r.userId ? 'Resetting…' : 'Reset password'}
                   </button>
-                  <button type="button" className="chq-btn chq-btn-tertiary" onClick={() => unassignReviewer(r.id)}>
+                  <button
+                    type="button"
+                    className="chq-btn chq-btn-tertiary"
+                    onClick={() => setPendingUnassignReviewer({ id: r.id, displayName })}
+                  >
                     Remove
                   </button>
                 </div>
@@ -1500,6 +1516,18 @@ export function PlanEditor() {
           pending={resettingUserId === resetPasswordConfirm.userId}
           onConfirm={confirmResetReviewerPassword}
           onCancel={() => setResetPasswordConfirm(null)}
+        />
+      )}
+
+      {pendingUnassignReviewer && (
+        <ConfirmDialog
+          title="Remove this reviewer?"
+          body={`${pendingUnassignReviewer.displayName} loses their queue on this plan. Scores they have already submitted stay.`}
+          confirmLabel="Remove"
+          destructive
+          pending={unassigningReviewer}
+          onConfirm={() => void confirmUnassignReviewer()}
+          onCancel={() => setPendingUnassignReviewer(null)}
         />
       )}
     </div>

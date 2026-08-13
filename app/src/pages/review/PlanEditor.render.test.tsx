@@ -9,7 +9,7 @@
 //  2. adding a criterion, typing its label, then reassigning the round
 //     override must not discard the typed label.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, cleanup, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { PlanEditor } from './PlanEditor';
@@ -272,6 +272,65 @@ describe('PlanEditor render smoke', () => {
 
     // No 26-character ULID anywhere in the rendered reviewer list.
     expect(container.textContent ?? '').not.toMatch(/\b[0-9A-Za-z]{26}\b/);
+  });
+
+  // DEC-941: removing a reviewer is irreversible (it drops their queue), so
+  // the row's Remove button must open the shared ConfirmDialog and only
+  // DELETE after an explicit confirm -- never on the first click.
+  it('gates reviewer removal behind a confirm dialog naming the reviewer and the consequence', async () => {
+    const fetchMock = mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
+      [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([
+        {
+          id: 'pr-1',
+          userId: 'user-42',
+          email: 'reviewer@example.test',
+          trackId: null,
+          submissionId: null,
+          trackName: null,
+          submissionRef: null,
+          submissionTitle: null,
+        },
+      ]),
+      [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([]),
+      'GET /api/v1/users': listEnvelope([]),
+      [`DELETE /api/v1/plans/${PLAN_ID}/reviewers/pr-1`]: { status: 200, body: {} },
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId" element={<PlanEditor />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove' }));
+
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByText('Remove this reviewer?')).toBeInTheDocument();
+    expect(
+      within(dialog).getByText(
+        /reviewer@example\.test loses their queue on this plan\. Scores they have already submitted stay\./,
+      ),
+    ).toBeInTheDocument();
+
+    // No DELETE has fired yet -- only the confirm click sends it.
+    expect(fetchMock.mock.calls.some(([, init]) => (init as RequestInit | undefined)?.method === 'DELETE')).toBe(
+      false,
+    );
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Remove' }));
+
+    await waitFor(() => {
+      expect(fetchMock.mock.calls.some(([, init]) => (init as RequestInit | undefined)?.method === 'DELETE')).toBe(
+        true,
+      );
+    });
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
   });
 
   // DEC-676: a brand-new plan prefills three editable default criteria
