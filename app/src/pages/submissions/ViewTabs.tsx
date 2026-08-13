@@ -11,7 +11,8 @@ import { FormRow, ModalFrame } from '../../components/ModalFrame';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { sortLabel } from './FilterBar';
 import { serializeView, type SavedView, type SavedViewConfig } from './views';
-import { STATUS_LABELS, type SubmissionsFilterState, type Track } from './types';
+import { findFormatField } from './columns';
+import { STATUS_LABELS, type FormField, type SubmissionsFilterState, type Track } from './types';
 
 export interface BuiltInView {
   key: string;
@@ -22,23 +23,28 @@ export interface BuiltInView {
 /** The mock's three built-in presets, in display order. Each is a full
  * SavedViewConfig so activeViewKey can compare it against the live state the
  * same way it compares a server-saved view -- one comparison rule for both
- * kinds of tab. */
-export function builtInViews(): BuiltInView[] {
+ * kinds of tab. Their `columns` mirror the page's own default column
+ * resolver (DEC-243/249's Format field, via findFormatField) rather than a
+ * literal `[]` -- a preset's "no columns configured" is the page default,
+ * only a user-SAVED view's `columns: []` means "show nothing". */
+export function builtInViews(fields: FormField[]): BuiltInView[] {
+  const formatField = findFormatField(fields);
+  const defaultColumns = formatField ? [formatField.id] : [];
   return [
     {
       key: 'builtin-needs-triage',
       name: 'Needs triage',
-      config: { q: '', status: ['pending'], trackId: null, sort: 'newest', columns: [] },
+      config: { q: '', status: ['pending'], trackId: null, sort: 'newest', columns: defaultColumns },
     },
     {
       key: 'builtin-all',
       name: 'All submissions',
-      config: { q: '', status: [], trackId: null, sort: 'newest', columns: [] },
+      config: { q: '', status: [], trackId: null, sort: 'newest', columns: defaultColumns },
     },
     {
       key: 'builtin-accept-queue',
       name: 'Accept queue',
-      config: { q: '', status: ['accept_queue'], trackId: null, sort: 'newest', columns: [] },
+      config: { q: '', status: ['accept_queue'], trackId: null, sort: 'newest', columns: defaultColumns },
     },
   ];
 }
@@ -66,9 +72,10 @@ export function activeViewKey(
   filters: SubmissionsFilterState,
   visibleFieldIds: ReadonlySet<string>,
   savedViews: readonly SavedView[],
+  fields: FormField[],
 ): string | null {
   const current = serializeView(filters, visibleFieldIds);
-  for (const view of builtInViews()) {
+  for (const view of builtInViews(fields)) {
     if (configsEqual(current, view.config)) return view.key;
   }
   for (const view of savedViews) {
@@ -178,10 +185,11 @@ interface ViewTabsProps {
   filters: SubmissionsFilterState;
   visibleFieldIds: ReadonlySet<string>;
   tracks: readonly Track[];
+  formFields: FormField[];
   onApply: (config: SavedViewConfig) => void;
 }
 
-export function ViewTabs({ eventId, filters, visibleFieldIds, tracks, onApply }: ViewTabsProps) {
+export function ViewTabs({ eventId, filters, visibleFieldIds, tracks, formFields, onApply }: ViewTabsProps) {
   const [views, setViews] = useState<SavedView[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -197,7 +205,7 @@ export function ViewTabs({ eventId, filters, visibleFieldIds, tracks, onApply }:
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load views'));
   }, [eventId]);
 
-  const active = activeViewKey(filters, visibleFieldIds, views);
+  const active = activeViewKey(filters, visibleFieldIds, views, formFields);
 
   async function saveCurrentAsView(name: string, shared: boolean) {
     setSaving(true);
@@ -237,7 +245,7 @@ export function ViewTabs({ eventId, filters, visibleFieldIds, tracks, onApply }:
     <div className="chq-submissions-viewtabs" role="group" aria-label="Saved views">
       {error && <div className="chq-error">{error}</div>}
       <span className="chq-submissions-viewtabs-label">View</span>
-      {builtInViews().map((view) => (
+      {builtInViews(formFields).map((view) => (
         <button
           key={view.key}
           type="button"

@@ -13,7 +13,7 @@ import { SubmissionsPage } from '../Submissions';
 import { listEnvelope, mockApi } from '../../test-utils/mockApi';
 import { exportHref, paginationSummary } from './SubmissionsTable';
 import { activeViewKey, builtInViews } from './ViewTabs';
-import { DEFAULT_FILTER_STATE, type SubmissionsFilterState } from './types';
+import { DEFAULT_FILTER_STATE, type FormField, type SubmissionsFilterState } from './types';
 
 const EVENT_ID = 'evt-render-1';
 
@@ -420,24 +420,59 @@ describe('exportHref (DEC-649)', () => {
   });
 });
 
+const FORMAT_FIELD: FormField = {
+  id: 'f-format',
+  section: 'session',
+  kind: 'dropdown',
+  label: 'Format',
+  required: false,
+  position: 0,
+  options: ['Talk', 'Workshop'],
+};
+
+const NO_FORMAT_FIELDS: FormField[] = [
+  { id: 'f-abstract', section: 'session', kind: 'text', label: 'Abstract', required: true, position: 0 },
+];
+
 describe('ViewTabs pure helpers (DEC-648)', () => {
   it('builtInViews lists Needs triage, All submissions, Accept queue in that order', () => {
-    expect(builtInViews().map((v) => v.name)).toEqual(['Needs triage', 'All submissions', 'Accept queue']);
+    expect(builtInViews([FORMAT_FIELD]).map((v) => v.name)).toEqual([
+      'Needs triage',
+      'All submissions',
+      'Accept queue',
+    ]);
+  });
+
+  it('with a Format field present, each preset carries exactly that field id as its columns', () => {
+    for (const view of builtInViews([FORMAT_FIELD])) {
+      expect(view.config.columns).toEqual(['f-format']);
+    }
+  });
+
+  it('with no Format field present, each preset carries columns: []', () => {
+    for (const view of builtInViews(NO_FORMAT_FIELDS)) {
+      expect(view.config.columns).toEqual([]);
+    }
   });
 
   it('activeViewKey derives the active tab from live filter state, never click state', () => {
     const needsTriageFilters: SubmissionsFilterState = { ...DEFAULT_FILTER_STATE, status: ['pending'] };
-    expect(activeViewKey(needsTriageFilters, new Set(), [])).toBe('builtin-needs-triage');
+    expect(activeViewKey(needsTriageFilters, new Set(['f-format']), [], [FORMAT_FIELD])).toBe('builtin-needs-triage');
 
     const allFilters: SubmissionsFilterState = { ...DEFAULT_FILTER_STATE };
-    expect(activeViewKey(allFilters, new Set(), [])).toBe('builtin-all');
+    expect(activeViewKey(allFilters, new Set(['f-format']), [], [FORMAT_FIELD])).toBe('builtin-all');
 
     const acceptQueueFilters: SubmissionsFilterState = { ...DEFAULT_FILTER_STATE, status: ['accept_queue'] };
-    expect(activeViewKey(acceptQueueFilters, new Set(), [])).toBe('builtin-accept-queue');
+    expect(activeViewKey(acceptQueueFilters, new Set(['f-format']), [], [FORMAT_FIELD])).toBe('builtin-accept-queue');
 
     // No built-in and no saved view matches a q filter -> no tab is active.
     const customFilters: SubmissionsFilterState = { ...DEFAULT_FILTER_STATE, q: 'workshop' };
-    expect(activeViewKey(customFilters, new Set(), [])).toBeNull();
+    expect(activeViewKey(customFilters, new Set(['f-format']), [], [FORMAT_FIELD])).toBeNull();
+  });
+
+  it('the landing state (Format visible, no status filter) resolves to builtin-all', () => {
+    const landingFilters: SubmissionsFilterState = { ...DEFAULT_FILTER_STATE };
+    expect(activeViewKey(landingFilters, new Set(['f-format']), [], [FORMAT_FIELD])).toBe('builtin-all');
   });
 
   it('matches a saved view by its id when the config matches exactly', () => {
@@ -452,6 +487,6 @@ describe('ViewTabs pure helpers (DEC-648)', () => {
       createdAt: 0,
       updatedAt: 0,
     };
-    expect(activeViewKey(filters, new Set(), [savedView])).toBe('view-1');
+    expect(activeViewKey(filters, new Set(), [savedView], NO_FORMAT_FIELDS)).toBe('view-1');
   });
 });

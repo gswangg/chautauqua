@@ -268,6 +268,7 @@ export function SubmissionsTable() {
             filters={filters}
             visibleFieldIds={visibleFieldIds}
             tracks={tracks}
+            formFields={formFields}
             onApply={applySavedView}
           />
           <FilterBarSearchSort filters={filters} onChange={setFilters} />
