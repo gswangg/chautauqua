@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { apiDelete, apiList, ApiError } from '../../lib/api';
+import { apiDelete, apiGet, apiList, ApiError } from '../../lib/api';
 import './review.css';
 import type { EvaluationPlan, RecusalItem, ReviewerQueueEnvelope, ReviewerQueueItem } from './types';
 import { DelayedLoading } from '../../components/DelayedLoading';
@@ -133,12 +133,23 @@ export function ReviewerQueue() {
   const [plans, setPlans] = useState<EvaluationPlan[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // DEC-819: the deep-linked single-plan route heads itself with that
+  // plan's own name (never the landing page's generic "Your queue") -- a
+  // small dedicated fetch, since PlanSection itself only loads the queue.
+  const [routePlan, setRoutePlan] = useState<EvaluationPlan | null>(null);
+  const [routePlanLoading, setRoutePlanLoading] = useState(true);
+  const [routePlanError, setRoutePlanError] = useState<string | null>(null);
 
   useEffect(() => {
     // A deep link to a single plan (/review/plans/:planId) shows that plan
     // alone -- it never needs the reviewer's full plan list.
     if (routePlanId) {
       setLoading(false);
+      setRoutePlanLoading(true);
+      apiGet<EvaluationPlan>(`/review/plans/${routePlanId}`)
+        .then((plan) => setRoutePlan(plan))
+        .catch((err) => setRoutePlanError(err instanceof ApiError ? err.message : 'Failed to load this plan'))
+        .finally(() => setRoutePlanLoading(false));
       return;
     }
     setLoading(true);
@@ -156,7 +167,16 @@ export function ReviewerQueue() {
             &larr; Your plans
           </Link>
         </p>
-        <h1 className="chq-page-title">Your queue</h1>
+        {routePlanLoading ? (
+          <DelayedLoading />
+        ) : (
+          <h1 className="chq-page-title">{routePlan ? routePlan.name : 'Your queue'}</h1>
+        )}
+        {routePlanError && (
+          <div className="chq-error" role="alert">
+            {routePlanError}
+          </div>
+        )}
         <PlanSection planId={routePlanId} showHeading={false} />
       </div>
     );

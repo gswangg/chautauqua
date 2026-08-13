@@ -192,6 +192,9 @@ export function ProgressPanel({ planId: planIdProp }: { planId?: string } = {}) 
                 <div className="chq-bar">
                   <div className="chq-bar-fill" style={{ width: `${Math.round(fraction * 100)}%` }} />
                 </div>
+                <span className="chq-review-plan-meta">
+                  {row.completed} of {row.assigned}
+                </span>
                 <span className="chq-flag">{rowStateLabel(row)}</span>
               </div>
             );

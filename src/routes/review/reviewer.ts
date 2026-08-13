@@ -63,6 +63,15 @@ reviewReviewerRoutes.get("/api/v1/review/plans", async (c) => {
   return c.json({ items: plans, total, page, perPage });
 });
 
+// DEC-819: the plan-scoped queue route (/review/plans/:id) needs the plan's
+// own name to head the page -- mirrors /review/plans/:id/queue's
+// requireAssignedPlan scoping (organizer via org, reviewer via assignment).
+reviewReviewerRoutes.get("/api/v1/review/plans/:id", async (c) => {
+  requireReviewerOrOrganizer(c);
+  const plan = await requireAssignedPlan(c, c.req.param("id"));
+  return c.json(plan);
+});
+
 reviewReviewerRoutes.get("/api/v1/review/plans/:id/queue", async (c) => {
   requireReviewerOrOrganizer(c);
   const auth = currentAuth(c);
