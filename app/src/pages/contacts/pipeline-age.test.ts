@@ -20,7 +20,7 @@ describe('pipelineCardAge', () => {
   });
 
   it('confirmed: "Confirmed N days ago"', () => {
-    expect(pipelineCardAge('confirmed', NOW - 1 * DAY, NOW)).toEqual({ text: 'Confirmed 1 days ago', stale: false });
+    expect(pipelineCardAge('confirmed', NOW - 1 * DAY, NOW)).toEqual({ text: 'Confirmed 1 day ago', stale: false });
   });
 
   it('declined: "Declined N days ago"', () => {

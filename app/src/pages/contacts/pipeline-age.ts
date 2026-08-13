@@ -7,6 +7,7 @@
 // w2-4) — callers render `stale` via the bold-caps micro-label class, never
 // a colour change.
 
+import { countOf } from '../../lib/plural';
 import type { PipelineStage } from './types';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -28,22 +29,24 @@ export function pipelineCardAge(stage: PipelineStage, stageSinceMs: number, nowM
   const days = daysSince(stageSinceMs, nowMs);
   const stale = days > STALE_AFTER_DAYS;
 
+  const daysText = countOf(days, 'day');
+
   let text: string;
   switch (stage) {
     case 'identified':
-      text = `Added ${days} days ago`;
+      text = `Added ${daysText} ago`;
       break;
     case 'contacted':
-      text = `No reply · ${days} days`;
+      text = `No reply · ${daysText}`;
       break;
     case 'interested':
-      text = `Replied ${days} days ago`;
+      text = `Replied ${daysText} ago`;
       break;
     case 'confirmed':
-      text = `Confirmed ${days} days ago`;
+      text = `Confirmed ${daysText} ago`;
       break;
     case 'declined':
-      text = `Declined ${days} days ago`;
+      text = `Declined ${daysText} ago`;
       break;
     default: {
       const _exhaustive: never = stage;

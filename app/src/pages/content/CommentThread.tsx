@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { formatRelative } from '../../lib/dates';
 import { useMe } from '../../lib/useMe';
+import { countOf } from '../../lib/plural';
 import type { FileComment } from './types';
 
 interface SendResult {
@@ -100,13 +101,13 @@ export function CommentThread({ comments, onSend }: CommentThreadProps) {
       )}
       {summary && summary.failed.length > 0 && (
         <div className="chq-error" role="alert">
-          Sent to {summary.sent} recipient{summary.sent === 1 ? '' : 's'}; failed for{' '}
+          Sent to {countOf(summary.sent, 'recipient')}; failed for{' '}
           {summary.failed.map((f) => f.email).join(', ')}.
         </div>
       )}
       {summary && summary.failed.length === 0 && (
         <p className="chq-meta chq-content-comment-sent">
-          Sent to {summary.sent} recipient{summary.sent === 1 ? '' : 's'}.
+          Sent to {countOf(summary.sent, 'recipient')}.
         </p>
       )}
     </div>

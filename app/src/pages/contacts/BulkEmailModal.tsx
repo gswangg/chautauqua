@@ -3,6 +3,7 @@ import { apiList, apiPost, ApiError } from '../../lib/api';
 import { FormRow, ModalFrame } from '../../components/ModalFrame';
 import { BULK_EMAIL_MERGE_FIELDS, MAX_COMPOSE_RECIPIENTS as BULK_EMAIL_RECIPIENT_CAP } from '../../lib/merge-fields';
 import { describeSendResult, type SendResult } from '../../lib/sendResult';
+import { countOf } from '../../lib/plural';
 import { DEC_793 } from '../../../../src/decisions';
 
 void DEC_793;
@@ -106,7 +107,7 @@ export function BulkEmailModal({ contactIds, eventId, onClose }: Props) {
     }
   }
 
-  const title = `Email ${contactIds.length} contact${contactIds.length === 1 ? '' : 's'}`;
+  const title = `Email ${countOf(contactIds.length, 'contact')}`;
 
   let actions: ReactNode = null;
   if (step === 'compose') {
@@ -129,7 +130,7 @@ export function BulkEmailModal({ contactIds, eventId, onClose }: Props) {
     actions = (
       <>
         <button type="button" className="chq-btn chq-btn-primary" disabled={busy} onClick={send}>
-          Send to {contactIds.length} recipient{contactIds.length === 1 ? '' : 's'}
+          Send to {countOf(contactIds.length, 'recipient')}
         </button>
         <button type="button" className="chq-btn chq-btn-secondary" onClick={() => setStep('compose')} disabled={busy}>
           Back to edit
@@ -158,7 +159,7 @@ export function BulkEmailModal({ contactIds, eventId, onClose }: Props) {
       {step === 'compose' && (
         <>
           <p>
-            {contactIds.length} recipient{contactIds.length === 1 ? '' : 's'} selected
+            {countOf(contactIds.length, 'recipient')} selected
             {overCap && (
               <strong className="chq-cap-warning">
                 {' '}
@@ -217,7 +218,7 @@ export function BulkEmailModal({ contactIds, eventId, onClose }: Props) {
       {step === 'preview' && (
         <>
           <p>
-            Previewing {preview.length} of {contactIds.length} recipient{contactIds.length === 1 ? '' : 's'} with
+            Previewing {preview.length} of {countOf(contactIds.length, 'recipient')} with
             merge fields resolved.
           </p>
           <ul className="chq-bulk-email-preview-list">
