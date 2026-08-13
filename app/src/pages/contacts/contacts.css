@@ -267,6 +267,16 @@
   object-fit: cover;
 }
 
+/* DEC-950: the headshot upload is a dialog field, so it is a FormRow like any
+   other -- a labelled column, not a bare <label> wrapping a raw input. */
+.chq-contacts-headshot-upload {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
 /* ---------------------------------------------------------------------- */
 /* Modals (Bulk email / Add to event)                                     */
 /* ---------------------------------------------------------------------- */

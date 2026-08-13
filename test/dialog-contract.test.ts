@@ -89,10 +89,16 @@ describe("dialog contract (DEC-631)", () => {
   // matching nothing rather than against per-page duplication -- it
   // RATCHETS DOWN as more dialogs adopt ModalFrame, and lowering it to
   // match a genuine fold-in is the correct repair, never raising it back.
-  // The remaining still-standalone dialogs (App.tsx's More menu,
-  // ContactDrawer, PipelineBoard's card detail, ImportWizard, PhoneAgenda)
-  // plus ModalFrame itself keep the count comfortably above zero.
-  it("finds at least 6 dialogs, and every one carries aria-modal + an accessible name", () => {
+  // DEC-960 folded in the last three SPA hand-rollers at once -- ContactDrawer,
+  // PipelineBoard's card detail and ImportWizard -- so the floor drops 6 -> 3.
+  // What remains is ModalFrame's own tag plus the two PHONE shells that DEC-960
+  // leaves explicitly out of scope until the mobile round (App.tsx's 'More'
+  // sheet and PhoneAgenda's bottom sheet), both of which put role="dialog" on
+  // the inner element. 3 is therefore the true floor, not a slackened one: the
+  // per-tag aria-modal/accessible-name assertion below is what actually holds
+  // the contract, and DEC-960's own chq-scrim+role="dialog" pair scan
+  // (app/src/dialog-frame.scan.test.ts) is what stops a fourth from appearing.
+  it("finds at least 3 dialogs, and every one carries aria-modal + an accessible name", () => {
     const dialogTags: string[] = [];
     const violations: string[] = [];
     for (const file of scannedFiles) {
@@ -107,7 +113,7 @@ describe("dialog contract (DEC-631)", () => {
         }
       }
     }
-    expect(dialogTags.length).toBeGreaterThanOrEqual(6);
+    expect(dialogTags.length).toBeGreaterThanOrEqual(3);
     expect(violations, `dialog missing aria-modal/accessible name:\n${violations.join("\n")}`).toEqual([]);
   });
 });

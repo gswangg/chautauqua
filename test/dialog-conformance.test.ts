@@ -96,9 +96,13 @@ describe('dialog conformance (DEC-651)', () => {
   // role="dialog" and the hand-rolled set legitimately dropped 7 -> 6. The
   // floor tracks reality rather than blocking a decision: the per-file contract
   // assertions below are what actually stop a new dialog opting out.
-  it('scanned at least 60 source files and found at least 6 dialog files', () => {
+  // DEC-960 retired the last three SPA hand-rollers in one move (ContactDrawer,
+  // PipelineBoard's card detail, ImportWizard), so the hand-rolled set drops
+  // 6 -> 3: ModalFrame itself plus the two phone sheets (App.tsx 'More',
+  // PhoneAgenda) that DEC-960 holds out of scope until the mobile round.
+  it('scanned at least 60 source files and found at least 3 dialog files', () => {
     expect(scannedFiles.length).toBeGreaterThanOrEqual(60);
-    expect(dialogFiles.length).toBeGreaterThanOrEqual(6);
+    expect(dialogFiles.length).toBeGreaterThanOrEqual(3);
   });
 
   it('every dialog file carries chq-modal-title and a Close control', () => {

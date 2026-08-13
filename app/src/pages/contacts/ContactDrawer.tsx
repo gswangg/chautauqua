@@ -400,7 +400,7 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
                       {headshotFile.filename} — uploaded {formatDateTime(headshotFile.uploadedAt)}
                     </p>
                   )}
-                  <label htmlFor="chq-contact-headshot-upload">
+                  <label className="chq-contacts-headshot-upload" htmlFor="chq-contact-headshot-upload">
                     Upload headshot
                     <input
                       id="chq-contact-headshot-upload"
