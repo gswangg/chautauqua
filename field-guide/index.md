@@ -21,41 +21,39 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   drift -- IMPORT them; uniqueIndex is a CONTRACT; negation skips NULLs.
 - FINDINGS w1-14 (DEC-570..686, compacted): full suites SERIALIZED; real
   <button> not `div draggable`; colour isn't identity -- NAME it; blank
-  CSV cell is ABSENT DATA; seed has ONE clock; imported row keeps THEIR
-  id via `external_ref`; drawer is a RECORD; anonymity is a RATCHET;
-  merge takes a SET; confirmation is a DIALOG not window.confirm;
-  items+total from ONE where clause; raw id leaks -- render LABELS;
-  worklist row carries its action; guard citing unguarded routes is
-  desynced -- enumerate; cacheability DEFAULT + "own header wins"; send
-  ends in ONE reporter; capped ANONYMOUS list counts only what it
-  shows; export = same where clause everywhere; chromeless surface
-  CLOSED both ways; builder's options IMPORTED, validated in PLANNER
-  too; server rule the UI never states is a trap; rule's VALUE typed by
-  TRIGGER's kind; public list is list + rail, never /embed; irreversible
-  action is a PAGE at its own URL; paged read touches only the page.
-- FINDINGS w15 (DEC-687..696, compacted): `.toString()`-embedded fns carry
-  NO closure -- proved by EXECUTING the emitted script. Tier class
-  ALWAYS wins. Hub gives a row ONE action. Settings is read-only
-  SUMMARY + drill-in. Worklist row names LATEST artefact, two actions
-  only. Test vs docs conflict: THE TEST is wrong. Scope param on send
-  AND preview, identically. Thrown render is DESIGNED, never blank.
-- FINDINGS w16 (DEC-697..705, compacted): IMMUTABLE headers decorate via
-  ONE clone-on-failure helper. Grid cells POSITIONAL, absent -> EMPTY.
-  Waitlisted is a HOLD status; new enum re-reads every NEGATIVE
-  predicate. Badge refetches on nav + after mutation. Seeded prose
-  never says it's seed data. Ranked row names human+track; bulk label
-  states scope it SENDS; merge preview is the merge fn's OWN output.
-- FINDINGS w17 (DEC-706..716): section action is a LINK on its rule; a
-  filled primary lives on the title row or a form footer, never a
-  floating band; a row is chosen by CLICKING THE ROW, not a radio.
-  Progress speaks DONE/N TO GO/NOT STARTED; remind label names the
-  scope it SENDS -- ONE predicate, imported by route AND SPA. Person is
-  named by their CONTACT via one batched account->contact rule;
-  unresolved shows the email, never an invented name. START A NEW WAVE
-  copies locked criteria into a new round. Tab selection is URL state
-  (?tab=), never component state. Directory is TABLE + RAIL, every
-  figure endpoint-backed. Labels are DERIVED roles, batched per page --
-  no invented column. Deleted version re-links the chain, re-homes the
-  thread. Role control offers the app's OWN imported vocabulary. ONE
-  reorder affordance, pointer+keyboard. Sign-in names the event, offers
-  only the CFP that is open.
+  CSV cell is ABSENT DATA; imported row keeps THEIR id via
+  `external_ref`; anonymity is a RATCHET; merge takes a SET;
+  confirmation is a DIALOG not window.confirm; raw id leaks -- render
+  LABELS; guard citing unguarded routes is desynced -- enumerate;
+  cacheability DEFAULT + "own header wins"; send ends in ONE reporter;
+  export = same where clause everywhere; chromeless surface CLOSED
+  both ways; builder's options IMPORTED, validated in PLANNER too;
+  rule's VALUE typed by TRIGGER's kind; irreversible action is a PAGE.
+- FINDINGS w15-16 (DEC-687..705, compacted): `.toString()`-embedded fns
+  carry NO closure. Tier class ALWAYS wins. Hub gives a row ONE
+  action. Settings is read-only SUMMARY + drill-in. IMMUTABLE headers
+  decorate via ONE clone-on-failure helper. Grid cells POSITIONAL,
+  absent -> EMPTY. Waitlisted is a HOLD status. Badge refetches on nav
+  + after mutation. Merge preview is the merge fn's OWN output.
+- FINDINGS w17 (DEC-706..716, compacted): section action is a LINK on
+  its rule; filled primary on title row/form footer only; row chosen
+  by CLICKING, not a radio. Progress speaks DONE/N TO GO/NOT STARTED.
+  Person named by CONTACT via batched account->contact rule. START A
+  NEW WAVE copies locked criteria. Tab selection is URL state (?tab=).
+  Directory is TABLE + RAIL. Deleted version re-links chain, re-homes
+  thread. ONE reorder affordance, pointer+keyboard.
+- FINDINGS w18 (DEC-717..726): a column with side effects has ONE
+  writer -- an import that sets 'accepted' with a raw UPDATE skips
+  accepted_at and the whole acceptance. A validator must refuse what
+  the store cannot carry (Infinity round-trips to `null`); assert it
+  per KIND, enumerated. A sandboxed child's origin IS the string
+  "null" -- identity is source window + nonce. Asking for changes is a
+  MESSAGE (note + optional status + mail); the status route stays
+  mailer-free. One deliverable at a time: a chip scopes the versions
+  AND the thread. A detail page shares its siblings' measure; its
+  decision panel decides only. A review renders criterion LABELS and
+  the plan's own weighted score. The null-room column shows only when
+  it holds something or a placement is armed: "No room yet". A
+  periodic push is INCREMENTAL from a stored watermark and backs off
+  on 429. Labels are customFields in one keyed format (supersedes
+  DEC-712).
