@@ -90,10 +90,10 @@ const ALLOWED: Record<string, string[]> = {
     "keepParticipants read addresses participant rows by keepId's contactId to dedupe, not by eligibility.",
     "discard-count read counts participant rows by discardedContactIds for a merge-outcome summary, not by eligibility.",
   ],
-  "server/repo/overview.ts": [
-    "Placed-submission speaker-name hydration reads every participant of scheduled submissions for display, mirroring submissions/list.ts's admin-authorship read — not an eligibility read.",
-    "Speaker-order/name hydration (role='speaker' filter only) reads every speaker participant for display, mirroring submissions/list.ts — not an eligibility read.",
-  ],
+  // server/repo/overview.ts is deliberately absent: both of its participant
+  // reads (the placed-session fan-out behind speaker-clash detection and
+  // fetchLeadSpeakers' worklist name) now declare the ACTIVE audience per
+  // DEC-512, so an exemption here would be a stale allowance (DEC-985).
   "server/repo/exports/submissions.ts": [
     "Admin CSV export hydrates every participant of the exported row for the organizer, mirroring submissions/list.ts — not an eligibility read.",
   ],
