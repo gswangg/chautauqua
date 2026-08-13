@@ -52,6 +52,20 @@
   min-width: 230px;
 }
 
+/* DEC-827: Speakers carries a wayfinding LINK into the Contacts importer,
+   not a second import capability -- so it reads as a quiet tertiary link in
+   the toolbar rather than an action button competing with the title row. */
+.chq-speakers-import-link {
+  font-size: 12px;
+  color: var(--chq-muted);
+  text-decoration: none;
+}
+
+.chq-speakers-import-link:hover {
+  color: var(--chq-brand);
+  text-decoration: underline;
+}
+
 .chq-speakers-toolbar-caption {
   margin-left: auto;
   font-size: 11px;

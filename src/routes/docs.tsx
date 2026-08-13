@@ -175,6 +175,7 @@ export const ROUTE_GROUPS: { title: string; rows: Row[] }[] = [
       { method: "POST", path: "/api/v1/events/:eventId/compose/send", role: "organizer" },
       { method: "POST", path: "/api/v1/events/:eventId/portal-invites", role: "organizer" },
       { method: "GET", path: "/api/v1/events/:eventId/email-log", role: "organizer" },
+      { method: "GET", path: "/api/v1/events/:eventId/email-log/:emailId", role: "organizer" },
     ],
   },
   {

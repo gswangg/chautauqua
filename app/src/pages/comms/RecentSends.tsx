@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { apiList, ApiError } from '../../lib/api';
+import { apiGet, apiList, ApiError } from '../../lib/api';
 import { formatDateTime } from '../../lib/dates';
 import { DelayedLoading } from '../../components/DelayedLoading';
-import type { EmailBatchRow, EmailLogRow } from './types';
+import type { EmailBatchRow, EmailLogDetail, EmailLogRow } from './types';
 
 // DEC-751: "Recent sends" is ONE presentational component, mounted twice —
 // once (capped, read-only, with an "All history" link) at the bottom of the
@@ -24,7 +24,50 @@ interface RecipientsState {
   error: string | null;
 }
 
-function BatchRecipients({ items, error }: RecipientsState) {
+// DEC-833: per-row "Show what was sent" disclosure — fetches the full
+// stored row once (never re-rendered from the live template/merge fields)
+// and renders subject+bodyText verbatim, including for a failed attempt
+// (the stored row is the audit record either way).
+function SendDetailDisclosure({ eventId, emailId }: { eventId: string; emailId: string }) {
+  const [open, setOpen] = useState(false);
+  const [detail, setDetail] = useState<EmailLogDetail | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  function toggle() {
+    const next = !open;
+    setOpen(next);
+    if (next && !detail && !loading) {
+      setLoading(true);
+      apiGet<EmailLogDetail>(`/events/${eventId}/email-log/${emailId}`)
+        .then((res) => setDetail(res))
+        .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load what was sent'))
+        .finally(() => setLoading(false));
+    }
+  }
+
+  return (
+    <div className="chq-comms-send-detail">
+      <button type="button" className="chq-link-button" aria-expanded={open} onClick={toggle}>
+        {open ? 'Hide what was sent' : 'Show what was sent'}
+      </button>
+      {open && (
+        <div className="chq-comms-send-detail-body">
+          {loading && <DelayedLoading />}
+          {error && <div className="chq-error-banner">{error}</div>}
+          {detail && (
+            <>
+              <div className="chq-comms-history-subject">{detail.subject}</div>
+              <pre className="chq-comms-send-detail-text">{detail.bodyText}</pre>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function BatchRecipients({ eventId, items, error }: RecipientsState & { eventId: string }) {
   if (error) return <div className="chq-error-banner">{error}</div>;
   if (!items) return <DelayedLoading />;
 
@@ -36,6 +79,7 @@ function BatchRecipients({ items, error }: RecipientsState) {
           <span className="chq-comms-history-subject">{row.subject}</span>
           <span>{row.toEmail}</span>
           <span className="chq-meta">{row.status}</span>
+          <SendDetailDisclosure eventId={eventId} emailId={row.id} />
         </div>
       ))}
     </div>
@@ -118,7 +162,9 @@ export function RecentSends({ eventId, batches, limit, onSeeAll }: RecentSendsPr
                 </button>
               )}
             </div>
-            {!onSeeAll && isExpanded && <BatchRecipients items={entry?.items ?? null} error={entry?.error ?? null} />}
+            {!onSeeAll && isExpanded && (
+              <BatchRecipients eventId={eventId} items={entry?.items ?? null} error={entry?.error ?? null} />
+            )}
           </div>
         );
       })}

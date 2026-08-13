@@ -330,6 +330,30 @@
   padding: 9px 0;
 }
 
+/* DEC-833: per-recipient "Show what was sent" disclosure -- lives in the
+   history row's 5th (auto) grid column, so it doesn't disturb the
+   when/subject/email/status alignment above. */
+.chq-comms-send-detail {
+  grid-column: 5;
+  justify-self: end;
+}
+
+.chq-comms-send-detail-body {
+  grid-column: 1 / -1;
+  margin-top: 8px;
+  padding: 10px 12px;
+  background: var(--chq-surface-sunk);
+  border: 1px solid var(--chq-hairline);
+  border-radius: 4px;
+}
+
+.chq-comms-send-detail-text {
+  white-space: pre-wrap;
+  font-family: inherit;
+  font-size: 13px;
+  margin: 6px 0 0;
+}
+
 /* ---------------------------------------------------------------------- */
 /* Templates tab                                                          */
 /* ---------------------------------------------------------------------- */

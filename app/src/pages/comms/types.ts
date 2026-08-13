@@ -48,6 +48,27 @@ export interface EmailLogRow {
   sentAt: number;
 }
 
+// DEC-833: full stored row for GET .../email-log/:emailId — the "Show what
+// was sent" disclosure's response shape, mirrors src/server/repo/email.ts
+// EmailLogRow (SELECTED_COLUMNS). Deliberately NOT part of the list
+// projection above (DEC-543 stands): fetched one row at a time, on demand.
+export interface EmailLogDetail {
+  id: string;
+  eventId: string;
+  eventName: string;
+  templateId: string | null;
+  contactId: string | null;
+  toEmail: string;
+  subject: string;
+  bodyText: string;
+  bodyHtml: string | null;
+  icsText: string | null;
+  icsFilename: string | null;
+  provider: string;
+  status: string;
+  sentAt: number;
+}
+
 // DEC-603: one row per batch (a fan-out send's shared batch_id, or a legacy/
 // NULL-batch row's own id) — mirrors src/server/repo/email.ts EmailBatchRow.
 // GET .../email-log?groupBy=batch returns these; ?batchId=<batchKey> drills

@@ -303,6 +303,48 @@ describe('ComposeWizard missing-merge-field errors (DEC-793)', () => {
   });
 });
 
+// DEC-832: selecting a template copies its text into the composer's own
+// fields and clears the selection -- an edit to the body after picking a
+// template is what actually gets posted, never the stored template text.
+describe('ComposeWizard template selection copies text, edits win (DEC-832)', () => {
+  it('posts the edited body (not the stored template text) to compose/preview, and never sends templateId', async () => {
+    const fetchMock = mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope(page1(), { total: 340, page: 1, perPage: 50 }),
+      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([
+        { id: 'tpl-1', eventId: EVENT_ID, name: 'Acceptance', subject: 'You are in', bodyText: 'Original body' },
+      ]),
+      [`POST /api/v1/events/${EVENT_ID}/compose/preview`]: { items: [] },
+    });
+
+    render(<ComposeWizard eventId={EVENT_ID} />);
+
+    await screen.findByText('Talk number 1');
+    fireEvent.click(screen.getByLabelText('Select Talk number 1'));
+    fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
+
+    const templateSelect = await screen.findByLabelText('Template');
+    fireEvent.change(templateSelect, { target: { value: 'tpl-1' } });
+
+    // Selecting the template copies its text in and reverts the dropdown
+    // to "Write from scratch" (the selection is cleared, DEC-832).
+    expect(await screen.findByLabelText('Subject')).toHaveValue('You are in');
+    expect(screen.getByLabelText('Body')).toHaveValue('Original body');
+    expect(templateSelect).toHaveValue('');
+
+    fireEvent.change(screen.getByLabelText('Body'), { target: { value: 'Edited body wins' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Next: preview' }));
+
+    await waitFor(() => {
+      const previewCalls = fetchMock.mock.calls.filter((call) => String(call[0]).includes('/compose/preview'));
+      expect(previewCalls.length).toBeGreaterThan(0);
+      const lastBody = JSON.parse(String(previewCalls[previewCalls.length - 1]?.[1]?.body ?? '{}'));
+      expect(lastBody.subject).toBe('You are in');
+      expect(lastBody.bodyText).toBe('Edited body wins');
+      expect(lastBody.templateId).toBeUndefined();
+    });
+  });
+});
+
 // DEC-682: the "include reviewer feedback" toggle must be paired with a
 // plan picker naming exactly which plan+round to attach — never left to the
 // server to guess, and never silently omitted from the compose request.
