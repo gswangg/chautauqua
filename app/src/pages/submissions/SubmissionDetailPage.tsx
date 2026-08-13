@@ -512,13 +512,20 @@ export function SubmissionDetailPage() {
       {error && <div className="chq-error-banner">{error}</div>}
 
       <header className="chq-detail-heading">
-        <h1>
-          {detail.ref}: {detail.title}
-        </h1>
-        {/* DEC-780: only rendered once the session has an actual agenda
-            placement -- schedule_slot has at most one row per submission,
-            null means "not scheduled yet", never a blank/placeholder line. */}
-        {detail.slot && <p className="chq-detail-placement">{formatPlacementLine(detail.slot)}</p>}
+        {/* The title and its placement subtitle are ONE flex item:
+            .chq-detail-heading is space-between, so leaving the placement
+            line as a third direct child would scatter title / placement /
+            position-nav across the row (the same failure mode DEC-780 fixed
+            for .chq-detail-section-title-row). */}
+        <div className="chq-detail-heading-title">
+          <h1>
+            {detail.ref}: {detail.title}
+          </h1>
+          {/* DEC-780: only rendered once the session has an actual agenda
+              placement -- schedule_slot has at most one row per submission,
+              null means "not scheduled yet", never a blank/placeholder line. */}
+          {detail.slot && <p className="chq-detail-placement">{formatPlacementLine(detail.slot)}</p>}
+        </div>
         {listPosition && (
           <div className="chq-detail-position" aria-label="Position in list">
             {/* DEC-733: at either end the corresponding control is absent,

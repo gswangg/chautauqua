@@ -35,6 +35,25 @@
   line-height: 1.15;
 }
 
+/* Title + placement subtitle travel together as the row's left-hand item
+   (see SubmissionDetailPage's header comment). min-width:0 lets a long
+   title wrap instead of pushing the position nav off the row. */
+.chq-detail-heading-title {
+  min-width: 0;
+}
+
+/* DEC-780: the agenda placement line ("Tue 12 May, 10:00–10:30 · Room 2A"),
+   rendered only when the session actually has a slot. Quiet register — it
+   annotates the title, it is not a second heading. The negative top margin
+   pulls it up under the h1's own 1.25rem bottom margin so the pair reads as
+   one block while the spacing BELOW the pair stays unchanged. */
+.chq-detail-placement {
+  margin: -1rem 0 1.25rem;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--chq-muted);
+}
+
 /* DEC-761: '‹ N of M ›' navigation, absent (not disabled, DEC-733) at
    either end. */
 .chq-detail-position {
