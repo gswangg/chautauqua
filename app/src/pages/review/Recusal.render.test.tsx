@@ -83,6 +83,9 @@ describe('Scorecard recusal control (DEC-271)', () => {
     // must contain the words "conflict of interest".
     expect(screen.getByRole('button', { name: /conflict of interest/i })).toBeInTheDocument();
     expect(screen.getAllByText(/conflict of interest/i).length).toBeGreaterThan(0);
+    // DEC-939: the control is a real checkbox now -- its accessible name is
+    // the conflict sentence, not the (now hidden-until-checked) reason box.
+    expect(screen.getByRole('checkbox', { name: /conflict of interest/i })).toBeInTheDocument();
   });
 
   it('POSTs the exact recusal URL/body, then renders the recused state and disables scoring', async () => {
@@ -113,6 +116,11 @@ describe('Scorecard recusal control (DEC-271)', () => {
 
     expect(await screen.findByRole('heading', { name: 'S-020 — A Conflicted Talk' })).toBeInTheDocument();
 
+    // DEC-939: the reason field is revealed only once the checkbox is
+    // checked, and the Declare button only acts once the checkbox is
+    // checked.
+    expect(screen.queryByPlaceholderText('Reason (optional)')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('checkbox', { name: /conflict of interest/i }));
     const reasonInput = screen.getByPlaceholderText('Reason (optional)');
     fireEvent.change(reasonInput, { target: { value: 'I know the speaker personally.' } });
 
@@ -170,6 +178,7 @@ describe('Scorecard recusal control (DEC-271)', () => {
     );
 
     expect(await screen.findByRole('heading', { name: 'S-020 — A Conflicted Talk' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('checkbox', { name: /conflict of interest/i }));
     fireEvent.click(screen.getByRole('button', { name: /conflict of interest/i }));
     expect(await screen.findByText('You recused yourself from this submission.')).toBeInTheDocument();
 

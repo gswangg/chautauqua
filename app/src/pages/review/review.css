@@ -443,6 +443,13 @@
   margin-top: 4px;
 }
 
+/* DEC-939: the frame's "N of M done" caption under the progress bar. */
+.chq-review-scoped-progress-caption {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--chq-muted);
+}
+
 /* DEC-730 micro-label family: bold uppercase small text, tracked letters --
    the state is carried by WEIGHT/WORDING, never colour (this product has no
    red/green pair). Base rule below is shared shape; the two modifiers only
@@ -519,8 +526,11 @@
   gap: 8px;
 }
 
+/* DEC-939: focus affordance is an inset ring, never a fill (DEC-383
+   permits inset only) -- a filled band on a static frame reads as one
+   criterion styled unlike its siblings. */
 .chq-review-criterion.chq-focused {
-  background: var(--chq-surface-sunk);
+  box-shadow: inset 0 0 0 2px var(--chq-border-strong);
 }
 
 .chq-review-criterion-label {
@@ -1136,15 +1146,16 @@
   color: var(--chq-muted);
 }
 
-/* task-w15-c */
+/* task-w15-c; DEC-939: the scale is N equal segments spanning the measure,
+   not a wrapping row of chips -- N comes from --chq-review-scale-steps,
+   set inline by Scorecard.tsx from ratingScaleValues(plan.scale).length. */
 .chq-review-rating-group {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(var(--chq-review-scale-steps, 5), 1fr);
   gap: 6px;
-  flex-wrap: wrap;
 }
 
 .chq-review-rating-btn {
-  min-width: 40px;
   height: 40px;
   padding: 0 10px;
   border: 1px solid var(--chq-rule);
@@ -1162,10 +1173,12 @@
   opacity: 0.55;
 }
 
+/* DEC-939: the selected segment fills brand, the family every other
+   selected control in the product uses -- not --chq-ink. */
 .chq-review-rating-btn-selected {
-  background: var(--chq-ink);
-  color: var(--chq-surface);
-  border-color: var(--chq-ink);
+  background: var(--chq-brand);
+  color: var(--chq-on-brand);
+  border-color: var(--chq-brand);
 }
 
 .chq-review-criterion-weight-caption {
