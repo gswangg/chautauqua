@@ -87,8 +87,12 @@ class ByteWriter {
     this.length += other.length;
   }
 
-  toUint8Array(): Uint8Array {
-    const out = new Uint8Array(this.length);
+  /** Materialises as an ArrayBuffer-backed Uint8Array (never
+   * SharedArrayBuffer-backed) so callers get an honest `Uint8Array<ArrayBuffer>`
+   * type — no downstream copy needed to narrow it for consumers (e.g. Hono's
+   * c.body) that require ArrayBuffer specifically. */
+  toUint8Array(): Uint8Array<ArrayBuffer> {
+    const out = new Uint8Array(new ArrayBuffer(this.length));
     let offset = 0;
     for (const chunk of this.chunks) {
       out.set(chunk, offset);
@@ -112,7 +116,7 @@ const DOS_DATE = 0x21; // 1980-01-01
  * Throws if `entries` is empty or contains duplicate `name`s (fail loudly —
  * no silent dedup, no empty/ambiguous archive).
  */
-export function buildZip(entries: ZipEntry[]): Uint8Array {
+export function buildZip(entries: ZipEntry[]): Uint8Array<ArrayBuffer> {
   if (entries.length === 0) {
     throw new Error("buildZip: entries must not be empty");
   }

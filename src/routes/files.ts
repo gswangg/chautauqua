@@ -308,10 +308,21 @@ fileApiRoutes.get("/events/:eventId/files", requireOrganizer, async (c) => {
 // POST /api/v1/events/:eventId/files/archive — DEC-160 bulk ZIP download
 // -----------------------------------------------------------------------
 const MAX_ARCHIVE_FILES = 50;
-// DEC-353: bound the memory the archive materialises in-worker — the sum of
-// the resolved latest versions' sizeBytes must fit under this before any R2
-// get is issued (fail loudly, no truncation/partial archive/silent skip).
-export const ARCHIVE_MAX_TOTAL_BYTES = 40 * 1024 * 1024;
+// DEC-353 (wave-46 amendment): bound the memory the archive materialises
+// in-worker — the sum of the resolved latest versions' sizeBytes must fit
+// under this before any R2 get is issued (fail loudly, no truncation/partial
+// archive/silent skip). The cap is derived, not guessed: peak in-worker
+// memory during archive build is the entry buffers (fetched, held in
+// `entries`) plus the ByteWriter's transient growth while it assembles the
+// body/central/eocd chunks and materialises the final Uint8Array — call that
+// ARCHIVE_PEAK_MULTIPLIER x the total resolved bytes. That peak must stay
+// well under the isolate's memory budget (with headroom for everything else
+// running in the isolate), so ARCHIVE_MAX_TOTAL_BYTES is chosen such that
+// ARCHIVE_MAX_TOTAL_BYTES * ARCHIVE_PEAK_MULTIPLIER <= 0.75 *
+// ISOLATE_MEMORY_BUDGET_BYTES (see test/files-archive-budget.test.ts).
+export const ISOLATE_MEMORY_BUDGET_BYTES = 128 * 1024 * 1024;
+export const ARCHIVE_PEAK_MULTIPLIER = 4;
+export const ARCHIVE_MAX_TOTAL_BYTES = 20 * 1024 * 1024;
 
 fileApiRoutes.post("/events/:eventId/files/archive", requireOrganizer, csrfJson, async (c) => {
   const auth = requireAuth(c);
@@ -362,15 +373,7 @@ fileApiRoutes.post("/events/:eventId/files/archive", requireOrganizer, csrfJson,
   }
 
   const built = buildZip(entries);
-  // Copy into a plain ArrayBuffer-backed view: buildZip's return type is
-  // Uint8Array<ArrayBufferLike> (SharedArrayBuffer-compatible per DEC-002
-  // pure-core typing), narrower than Hono's c.body Uint8Array<ArrayBuffer>.
-  // Tried narrowing this away per DEC-353 (3): tsc rejects
-  // Uint8Array<ArrayBufferLike> -> Uint8Array<ArrayBuffer> even when the
-  // runtime value is always ArrayBuffer-backed, so the copy stays.
-  const zip = new Uint8Array(built.length);
-  zip.set(built);
-  return c.body(zip, 200, {
+  return c.body(built, 200, {
     "Content-Type": "application/zip",
     "Content-Disposition": `attachment; filename="${scope.slug}-files.zip"`,
     "X-Content-Type-Options": "nosniff",
