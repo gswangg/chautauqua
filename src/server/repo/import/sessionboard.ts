@@ -8,10 +8,10 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { newId } from "../../../domain/ids";
-import { chunkIds } from "../../../lib/chunk";
-import { isValidEmail } from "../../../domain/email";
+import { chunkIds, chunkRowsForInsert } from "../../../lib/chunk";
+import { isValidEmail, normalizeEmail } from "../../../domain/email";
 import { submissionSeqSubquery } from "../submissions/seq";
-import { findContactByEmail, replaceSubmissionTracks } from "../submit";
+import { replaceSubmissionTracks } from "../submit";
 import { SESSIONBOARD_SOURCE, externalRef, type SbEntity, type SbRowPlan } from "../../../domain/sessionboard";
 import { updateSubmissionStatuses } from "../submissions/status";
 import type { SubmissionStatus } from "../../../domain/status";
@@ -187,6 +187,85 @@ async function loadExistingParticipantPairs(db: Db, submissionIds: string[]): Pr
   return out;
 }
 
+/** Resolves contact rows by normalized email (DEC-454: the ONE email-identity
+ * rule, `normalizeEmail` -- never a second ad-hoc lower/trim), scoped to
+ * orgId. Chunked over the distinct normalized emails this batch actually
+ * references. Mirrors loadContactsByRef's shape so the row loop below never
+ * awaits a lookup -- it only reads this map. */
+async function loadContactsByEmail(
+  db: Db,
+  orgId: string,
+  emails: string[],
+): Promise<Map<string, { id: string; title: string | null; company: string | null }>> {
+  const out = new Map<string, { id: string; title: string | null; company: string | null }>();
+  if (emails.length === 0) return out;
+  for (const batch of chunkIds(emails)) {
+    const rows = await db
+      .select({
+        id: schema.contact.id,
+        email: schema.contact.email,
+        title: schema.contact.title,
+        company: schema.contact.company,
+      })
+      .from(schema.contact)
+      .where(and(eq(schema.contact.orgId, orgId), inArray(sql`lower(${schema.contact.email})`, batch)));
+    for (const r of rows) {
+      out.set(normalizeEmail(r.email), { id: r.id, title: r.title, company: r.company });
+    }
+  }
+  return out;
+}
+
+/** One grouped MAX(order) query per chunk of submissionIds -- never a
+ * correlated per-row sub-select, which cannot survive a multi-row insert.
+ * A submission with no existing participants is simply absent from the
+ * returned map; callers treat that as "next order is 0" (matching the old
+ * sub-select's `COALESCE(MAX(order), -1) + 1` for an empty set). */
+async function loadMaxOrderBySubmissionId(db: Db, submissionIds: string[]): Promise<Map<string, number>> {
+  const out = new Map<string, number>();
+  if (submissionIds.length === 0) return out;
+  for (const batch of chunkIds(submissionIds)) {
+    const rows = await db
+      .select({ submissionId: schema.participant.submissionId, maxOrder: sql<number>`max(${schema.participant.order})` })
+      .from(schema.participant)
+      .where(inArray(schema.participant.submissionId, batch))
+      .groupBy(schema.participant.submissionId);
+    for (const r of rows) {
+      out.set(r.submissionId, Number(r.maxOrder));
+    }
+  }
+  return out;
+}
+
+type ParticipantUpdateRow = {
+  id: string;
+  role?: string;
+  order?: number;
+};
+
+// DEC-528 (wave 47 amendment): the accumulated participant updates are
+// flushed HERE, after the row loop has finished resolving every id -- the
+// loop itself never awaits an update. Each row still applies as its own
+// statement: SQLite's `UPDATE ... SET` binds one column list per statement,
+// and this batch's rows carry differing column sets (role only / order only
+// / both), so a genuine multi-row single-statement UPDATE would require a
+// per-column CASE/WHEN expression keyed on id. The create path (the
+// dominant cost for a fresh CSV import -- see the INSERT chunking above)
+// gets that set-based treatment; the update path (idempotent re-import of
+// already-known pairs) is deferred out of the read loop but not fused into
+// fewer statements. Flagged as a narrower interpretation of "chunked
+// UPDATEs" than a literal multi-row CASE statement -- follow up if the
+// update path also needs to collapse to O(chunks) statements.
+async function flushParticipantUpdates(db: Db, rows: ParticipantUpdateRow[], ts: Date): Promise<void> {
+  for (const row of rows) {
+    const { id, ...set } = row;
+    await db
+      .update(schema.participant)
+      .set({ ...set, updatedAt: ts })
+      .where(eq(schema.participant.id, id));
+  }
+}
+
 export async function applySessionboardPlans(db: Db, args: ApplySessionboardPlansArgs): Promise<SbApplyResult> {
   const { orgId, eventId, entity, plans, dryRun } = args;
 
@@ -227,6 +306,47 @@ export async function applySessionboardPlans(db: Db, args: ApplySessionboardPlan
     const submissionIds = [...new Set([...submissionIdByRef.values()])];
     const pairMap = await loadExistingParticipantPairs(db, submissionIds);
 
+    // DEC-528 (wave 47 amendment): every id the row loop below needs is
+    // resolved HERE, in the batched pre-pass -- the loop reads maps and
+    // awaits nothing. The email fallback set is exactly the rows whose
+    // speakerExternalId is absent/unresolved AND which carry a speakerEmail;
+    // normalizeEmail is the ONE email-identity rule (DEC-454), applied at
+    // both the lookup key and the map key so a row's email always matches
+    // its own normalized form.
+    const emailFallbackSet = new Set<string>();
+    for (const plan of plans) {
+      const v = plan.values;
+      if (!v.speakerEmail) continue;
+      const speakerRef = v.speakerExternalId ? externalRef(SESSIONBOARD_SOURCE, v.speakerExternalId) : null;
+      const resolvedByRef = speakerRef ? contactByRef.get(speakerRef) : undefined;
+      if (!resolvedByRef) emailFallbackSet.add(normalizeEmail(v.speakerEmail));
+    }
+    const contactByEmail = await loadContactsByEmail(db, orgId, [...emailFallbackSet]);
+    // Pre-resolve each referenced submission's current MAX(order) ONCE --
+    // the correlated per-row sub-select this replaces cannot survive a
+    // multi-row insert. Orders assigned within this batch increment in JS
+    // (Map mutated below) so two new rows for the same submission in one
+    // import still land at consecutive orders, exactly as the old
+    // sub-select (re-evaluated after each serial INSERT) would have.
+    const maxOrderBySubmissionId = await loadMaxOrderBySubmissionId(db, submissionIds);
+
+    type ParticipantCreateRow = {
+      id: string;
+      submissionId: string;
+      contactId: string;
+      role: string;
+      order: number;
+      visible: boolean;
+      inviteStatus: string;
+      titleAtTime: string | null;
+      orgAtTime: string | null;
+      createdAt: Date;
+      updatedAt: Date;
+    };
+    const createRows: ParticipantCreateRow[] = [];
+    const updateRows: ParticipantUpdateRow[] = [];
+    const ts = now();
+
     for (const plan of plans) {
       const v = plan.values;
 
@@ -253,7 +373,7 @@ export async function applySessionboardPlans(db: Db, args: ApplySessionboardPlan
         }
       }
       if (!contactId && v.speakerEmail) {
-        const contact = await findContactByEmail(db, orgId, v.speakerEmail);
+        const contact = contactByEmail.get(normalizeEmail(v.speakerEmail));
         if (contact) {
           contactId = contact.id;
           titleAtTime = contact.title;
@@ -273,15 +393,21 @@ export async function applySessionboardPlans(db: Db, args: ApplySessionboardPlan
 
       if (existingId === undefined) {
         const id = newId();
+        let order: number;
+        if (v.order !== undefined) {
+          order = parseValidatedOrder(v.order);
+        } else {
+          const current = maxOrderBySubmissionId.get(submissionId) ?? -1;
+          order = current + 1;
+          maxOrderBySubmissionId.set(submissionId, order);
+        }
         if (!dryRun) {
-          const ts = now();
-          const nextOrderSql = sql<number>`(SELECT COALESCE(MAX(${schema.participant.order}), -1) + 1 FROM ${schema.participant} WHERE ${schema.participant.submissionId} = ${submissionId})`;
-          await db.insert(schema.participant).values({
+          createRows.push({
             id,
             submissionId,
             contactId,
             role: v.role ?? "speaker",
-            order: v.order !== undefined ? parseValidatedOrder(v.order) : nextOrderSql,
+            order,
             // DEC-675/DEC-656: an imported co-presenter is RECORDED, not
             // published -- it reaches the public site only through the
             // organizer's existing Visible checkbox on the submission-detail
@@ -300,17 +426,25 @@ export async function applySessionboardPlans(db: Db, args: ApplySessionboardPlan
       }
 
       if (!dryRun) {
-        const ts = now();
-        await db
-          .update(schema.participant)
-          .set({
-            ...(v.role !== undefined ? { role: v.role } : {}),
-            ...(v.order !== undefined ? { order: parseValidatedOrder(v.order) } : {}),
-            updatedAt: ts,
-          })
-          .where(eq(schema.participant.id, existingId));
+        const hasRole = v.role !== undefined;
+        const hasOrder = v.order !== undefined;
+        if (hasRole || hasOrder) {
+          updateRows.push({
+            id: existingId,
+            ...(hasRole ? { role: v.role as string } : {}),
+            ...(hasOrder ? { order: parseValidatedOrder(v.order as string) } : {}),
+          });
+        }
       }
       updated++;
+    }
+
+    if (!dryRun) {
+      for (const chunk of chunkRowsForInsert(createRows)) {
+        if (chunk.length === 0) continue;
+        await db.insert(schema.participant).values(chunk);
+      }
+      await flushParticipantUpdates(db, updateRows, ts);
     }
 
     return { created, updated, skipped };
