@@ -15,6 +15,7 @@ import type { FormFieldRow } from "../../server/repo/forms";
 import { listTracksForEvent } from "../../server/repo/events";
 import { isEpochMs, isEpochOrderValid } from "./validators"; // DEC-517
 import { DEC_300 } from "../../decisions";
+import { countOf } from "../../domain/count-copy";
 
 void DEC_300; // DELETE /api/v1/fields/:fieldId cascade-confirm below
 
@@ -246,7 +247,7 @@ formsRoutes.patch("/api/v1/fields/:fieldId", requireOrganizer, csrfJson, async (
     if (answerCount > 0) {
       throw new ApiError(
         "conflict",
-        `"${field.label}" has ${answerCount} collected answer(s); changing its kind would orphan them. Delete and re-create the question instead.`,
+        `"${field.label}" has ${countOf(answerCount, "collected answer")}; changing its kind would orphan them. Delete and re-create the question instead.`,
         { answers: String(answerCount) },
       );
     }
@@ -282,7 +283,7 @@ formsRoutes.delete("/api/v1/fields/:fieldId", requireOrganizer, csrfJson, async 
   if ((dependentLabels.length > 0 || answerCount > 0) && !cascade) {
     throw new ApiError(
       "conflict",
-      `"${field.label}" has ${dependentLabels.length} dependent question(s) and ${answerCount} collected answer(s). Confirm to delete them too.`,
+      `"${field.label}" has ${countOf(dependentLabels.length, "dependent question")} and ${countOf(answerCount, "collected answer")}. Confirm to delete them too.`,
       { dependents: dependentLabels.join(", "), answers: String(answerCount) },
     );
   }

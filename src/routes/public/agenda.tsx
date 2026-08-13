@@ -63,7 +63,7 @@ export function AgendaDayGrid(props: { day: string; items: PublicAgendaItem[]; e
 
   // DEC-140: overlapping sessions in the same room column must render
   // side-by-side (lanes) rather than stacked, or the top block eats the
-  // pointer events meant for the block(s) underneath it (docs/eval-
+  // pointer events meant for the blocks underneath it (docs/eval-
   // findings.md P1). Lanes are computed per-room since only sessions in the
   // same room column can visually collide.
   const laneByItem = new Map<string, { lane: number; laneCount: number }>();

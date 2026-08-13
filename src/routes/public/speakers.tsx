@@ -7,6 +7,7 @@ import { speakerDetailPath, surfacePath } from "./shell";
 import { PUBLIC_PER_PAGE, hasMorePages } from "../../server/repo/public/bounds";
 import { speakerInitials } from "./cards";
 import { PublicSearchBox } from "./filters";
+import { countOf } from "../../domain/count-copy";
 
 /** One card, shared by the directory (SpeakersContent) and the gallery
  * (GalleryContent), per DEC-593: both surfaces carry headshot, name, job
@@ -99,7 +100,7 @@ export function SpeakersContent(props: {
       ) : (
         <>
           <p>
-            {speakers.length} of {total} speaker(s)
+            {speakers.length} of {countOf(total, "speaker")}
           </p>
           <div class="chq-pub-speaker-grid">
             {speakers.map((sp) => (
@@ -145,7 +146,7 @@ export function GalleryContent(props: {
         hidden={limit ? <input type="hidden" name="limit" value={String(limit)} /> : null}
       />
       <p>
-        {speakers.length} of {total} speaker(s)
+        {speakers.length} of {countOf(total, "speaker")}
       </p>
       <div class="chq-pub-speaker-grid chq-pub-gallery-grid">
         {speakers.map((sp) => (

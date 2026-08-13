@@ -182,7 +182,7 @@ export function formatRelativeDays(ms: number, now: number): string {
 
 /**
  * Format a timestamp as a fine-grained relative label: 'just now', '<N>
- * minute(s) ago', '<N> hour(s) ago', or '<N> day(s) ago' up to 7 days, then
+ * N minutes ago', '<N> hours ago', or '<N> days ago' up to 7 days, then
  * falls back to formatDate -- a relative label past a week is less legible
  * than a date (DEC-907). `now` defaults to Date.now() but can be threaded in
  * by callers/tests for a stable render. '—' for null/undefined/NaN/invalid.

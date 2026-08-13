@@ -10,6 +10,7 @@ import { PhoneAgenda } from './agenda/PhoneAgenda';
 import { placeOptimistically, reconcileConflictsSummary, unscheduleOptimistically } from './agenda/state';
 import type { AgendaPayload, DescribedUnplaced, RefreshedConflictsSummary, UnplacedReason } from './agenda/types';
 import { formatDayLabel } from '../lib/dates';
+import { countOf } from '../lib/plural';
 import { formatMinutes } from './agenda/gridMath';
 import './agenda/agenda.css';
 
@@ -60,7 +61,7 @@ function placedPercent(agenda: AgendaPayload | null): number {
 }
 
 /** DEC-667: when a run places nothing, name why from the typed reasons the
- * run itself computed rather than reporting a bare "0 session(s)". */
+ * run itself computed rather than reporting a bare "0 sessions". */
 function describeUnplaced(reasons: DescribedUnplaced[]): string {
   if (reasons.length === 0) return 'nothing to place';
   const counts = new Map<UnplacedReason, number>();
@@ -171,11 +172,11 @@ export function AgendaPage() {
       // resolving them.
       const conflictsClause =
         result.summary.conflicts > 0
-          ? ` ${result.summary.conflicts} pre-existing conflict(s) left in place.`
+          ? ` ${countOf(result.summary.conflicts, 'pre-existing conflict')} left in place.`
           : '';
       const placedClause =
         placedCount > 0
-          ? `Auto-schedule placed ${placedCount} session(s). ${result.summary.unplaced} unplaced.`
+          ? `Auto-schedule placed ${countOf(placedCount, 'session')}. ${result.summary.unplaced} unplaced.`
           : `Auto-schedule placed no sessions: ${describeUnplaced(result.unplacedReasons)}.`;
       setToast(`${placedClause}${conflictsClause}`);
     } catch (err) {

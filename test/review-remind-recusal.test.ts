@@ -10,6 +10,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
 import { registerErrorHandler } from "../src/server/http";
 import type { AppEnv, AuthInfo } from "../src/server/env";
+import { countOf } from "../src/domain/count-copy";
 
 const ORG_A = "org-a";
 
@@ -145,6 +146,6 @@ describe("DEC-526: remind and progress agree on outstanding counts (DEC-271 recu
 
     // Assert the two endpoints agree with each other, not a hardcoded literal.
     expect(progressOutstanding).toBeGreaterThan(0);
-    expect(capturedText).toContain(`You have ${progressOutstanding} submission(s) left to review`);
+    expect(capturedText).toContain(`You have ${countOf(progressOutstanding, "submission")} left to review`);
   });
 });

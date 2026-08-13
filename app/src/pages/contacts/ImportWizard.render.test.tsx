@@ -1,7 +1,7 @@
 // DEC-663: the import wizard runs a dry-run POST (dryRun: true) before ever
 // committing, shows the plan as a Review step (per-row action, overwrites,
 // possible duplicates, a "skip this row" checkbox on EVERY row per DEC-858 --
-// the column header and the "N row(s) marked to skip" caption promise it for
+// the column header and the "N rows marked to skip" caption promise it for
 // all rows), then commits with the SAME {csvText, mapping} body plus
 // `skipLines` from the checked boxes -- and the Done step renders the
 // server's post-commit counts verbatim, never the dry run's intent counts.
@@ -62,7 +62,7 @@ const COMMIT_RESULT: ImportResult = {
 async function pasteCsvAndPreview() {
   render(<ImportWizard onClose={() => {}} onImported={() => {}} />);
   fireEvent.change(screen.getByLabelText('Or paste CSV text'), { target: { value: CSV } });
-  const preview = await screen.findByRole('button', { name: 'Preview 2 row(s)' });
+  const preview = await screen.findByRole('button', { name: 'Preview 2 rows' });
   fireEvent.click(preview);
   return preview;
 }
@@ -157,9 +157,9 @@ describe('ImportWizard: DEC-663 dry-run review step', () => {
     expect(screen.getByRole('checkbox', { name: 'Skip line 2' })).toBeInTheDocument();
     expect(screen.getByRole('checkbox', { name: 'Skip line 3' })).toBeInTheDocument();
 
-    expect(screen.getByRole('button', { name: 'Import 2 row(s)' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Import 2 rows' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('checkbox', { name: 'Skip line 2' }));
-    expect(screen.getByRole('button', { name: 'Import 1 row(s)' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Import 1 row' })).toBeInTheDocument();
   });
 
   it('renders a possibleDuplicate as a plain-language line naming the contact and its different email', async () => {
@@ -179,7 +179,7 @@ describe('ImportWizard: DEC-663 dry-run review step', () => {
     mockApi({ 'POST /api/v1/contacts/import': dupPlan });
     render(<ImportWizard onClose={() => {}} onImported={() => {}} />);
     fireEvent.change(screen.getByLabelText('Or paste CSV text'), { target: { value: CSV } });
-    fireEvent.click(await screen.findByRole('button', { name: 'Preview 2 row(s)' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Preview 2 rows' }));
 
     await screen.findByText('Review before import');
     expect(screen.getByText(/Jon Doe \(jon\.doe@old\.example\.com\)/)).toBeInTheDocument();
@@ -199,11 +199,11 @@ describe('ImportWizard: DEC-663 dry-run review step', () => {
     let imported = false;
     render(<ImportWizard onClose={() => {}} onImported={() => (imported = true)} />);
     fireEvent.change(screen.getByLabelText('Or paste CSV text'), { target: { value: CSV } });
-    fireEvent.click(await screen.findByRole('button', { name: 'Preview 2 row(s)' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Preview 2 rows' }));
     await screen.findByText('Review before import');
 
     fireEvent.click(screen.getByRole('checkbox', { name: 'Skip line 2' }));
-    const commitBtn = await screen.findByRole('button', { name: 'Import 1 row(s)' });
+    const commitBtn = await screen.findByRole('button', { name: 'Import 1 row' });
     fireEvent.click(commitBtn);
 
     await screen.findByText('Import complete');
@@ -231,7 +231,7 @@ describe('ImportWizard: DEC-810 session title required when scoped to an event',
   it('shows no session title field when eventId is absent', async () => {
     render(<ImportWizard onClose={() => {}} onImported={() => {}} />);
     fireEvent.change(screen.getByLabelText('Or paste CSV text'), { target: { value: CSV } });
-    await screen.findByRole('button', { name: 'Preview 2 row(s)' });
+    await screen.findByRole('button', { name: 'Preview 2 rows' });
     expect(screen.queryByLabelText('Session title for this batch')).not.toBeInTheDocument();
   });
 
@@ -240,7 +240,7 @@ describe('ImportWizard: DEC-810 session title required when scoped to an event',
     render(<ImportWizard onClose={() => {}} onImported={() => {}} eventId="ev-1" />);
     fireEvent.change(screen.getByLabelText('Or paste CSV text'), { target: { value: CSV } });
 
-    const preview = await screen.findByRole('button', { name: 'Preview 2 row(s)' });
+    const preview = await screen.findByRole('button', { name: 'Preview 2 rows' });
     expect(preview).toBeDisabled();
 
     const titleInput = screen.getByLabelText('Session title for this batch');

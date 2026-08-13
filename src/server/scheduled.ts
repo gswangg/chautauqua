@@ -6,6 +6,7 @@ import type { Bindings } from "./env";
 import { runDueReminders } from "../routes/tasks";
 import { runAirtableSync } from "../sync/airtable";
 import { makeDb } from "./context";
+import { plural } from "../domain/count-copy";
 
 export async function handleScheduled(
   controller: ScheduledController,
@@ -35,6 +36,6 @@ export async function handleScheduled(
   }
 
   if (failures.length > 0) {
-    throw new Error(`scheduled tick: job(s) failed: ${failures.join(", ")}`);
+    throw new Error(`scheduled tick: ${plural(failures.length, "job")} failed: ${failures.join(", ")}`);
   }
 }

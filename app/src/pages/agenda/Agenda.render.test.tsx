@@ -461,14 +461,14 @@ describe('AgendaPage render smoke', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText('Auto-schedule placed 1 session(s). 0 unplaced. 1 pre-existing conflict(s) left in place.'),
+        screen.getByText('Auto-schedule placed 1 session. 0 unplaced. 1 pre-existing conflict left in place.'),
       ).toBeInTheDocument();
     });
   });
 
   // DEC-667: when a run places nothing, the toast must name why from the
   // typed unplacedReasons the run computed, never report a bare "0
-  // session(s)" as though nothing needed explaining.
+  // sessions" as though nothing needed explaining.
   it('auto-schedule toast names why when the run places nothing', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/agenda`]: agendaPayload(),
@@ -490,7 +490,7 @@ describe('AgendaPage render smoke', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText('Auto-schedule placed no sessions: 1 no rooms configured. 1 pre-existing conflict(s) left in place.'),
+        screen.getByText('Auto-schedule placed no sessions: 1 no rooms configured. 1 pre-existing conflict left in place.'),
       ).toBeInTheDocument();
     });
   });

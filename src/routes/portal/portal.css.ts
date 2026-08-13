@@ -120,7 +120,7 @@ export const PORTAL_CSS = `
   }
 
   /* Task/session row: title + due date + a .chq-flag state marker, action
-     control(s) below. Every control stays >=44px tall down to 390px
+     controls below. Every control stays >=44px tall down to 390px
      (DEC-367 floor) — buttons in .chq-portal-actions never shrink under
      phone width, they wrap instead. */
   .chq-portal-row {

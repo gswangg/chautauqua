@@ -28,6 +28,7 @@ import {
   updateSubmissionStatuses,
 } from "../../server/repo/submissions";
 import { isActiveParticipant } from "../../domain/acceptance";
+import { plural } from "../../domain/count-copy";
 import {
   DUPLICATE_PARTICIPANT,
   getParticipantOwnership,
@@ -113,7 +114,7 @@ async function parseTrackIdsField(db: Db, eventId: string, raw: unknown): Promis
   const unknown = trackIds.filter((t) => !validTrackIds.has(t));
   if (unknown.length > 0) {
     throw new ApiError("invalid", "trackIds must belong to this event", {
-      trackIds: `Unknown track id(s): ${unknown.join(", ")}`,
+      trackIds: `Unknown ${plural(unknown.length, "track id")}: ${unknown.join(", ")}`,
     });
   }
   return trackIds;

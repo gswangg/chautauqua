@@ -10,6 +10,7 @@ import { csrfJson, requireOrganizer } from "../../server/middleware";
 import { ApiError } from "../../server/http";
 import { makeMailer } from "../../server/context";
 import { newId } from "../../domain/ids";
+import { countOf } from "../../domain/count-copy";
 import { textToHtml } from "../../mail/render";
 import {
   resolveAssignments,
@@ -229,9 +230,9 @@ reviewPlansProgressRoutes.post("/api/v1/plans/:id/remind", requireOrganizer, csr
       await mailer.send({
         to: { email: laggard.email, name: laggard.email },
         subject: `Reminder: ${plan.name} review queue`,
-        text: `You have ${laggard.assignedCount - laggard.completed} submission(s) left to review in "${plan.name}".`,
+        text: `You have ${countOf(laggard.assignedCount - laggard.completed, "submission")} left to review in "${plan.name}".`,
         html: textToHtml(
-          `You have ${laggard.assignedCount - laggard.completed} submission(s) left to review in "${plan.name}".`,
+          `You have ${countOf(laggard.assignedCount - laggard.completed, "submission")} left to review in "${plan.name}".`,
         ),
         eventId: plan.eventId,
         contactId: null,

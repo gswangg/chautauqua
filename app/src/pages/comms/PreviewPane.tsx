@@ -13,7 +13,7 @@ import type { RenderedRecipient } from './types';
 // (which quietly skips the ICS attachment) disagree.
 // DEC-883: splits the rendered body into paragraphs (blank-line separated,
 // matching how renderTemplate/formatFeedback join lines) and wraps the
-// paragraph(s) matching this recipient's own resolved `vars.feedback` value
+// the paragraphs matching this recipient's own resolved `vars.feedback` value
 // in a quoted "Reviewer feedback, merged" block. This is preview chrome
 // only -- it never re-derives or re-formats the feedback text, and the
 // SENT body (item.text itself) is untouched.

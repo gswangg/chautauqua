@@ -12,6 +12,7 @@ import { buildAnswerRows, resolveAnswerFields } from './detailRows';
 import { formatSubmissionScheduleLine } from './schedule';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { buildSubmissionsQuery, parseSubmissionsQuery } from './filters';
+import { countOf } from '../../lib/plural';
 import './detail.css';
 import {
   STATUS_LABELS,
@@ -863,7 +864,7 @@ export function SubmissionDetailPage() {
                     const hiddenCount = detail.participants.filter((p) => !p.visible).length;
                     return hiddenCount > 0 ? (
                       <p className="chq-detail-participants-note">
-                        {hiddenCount} speaker(s) on this session are not on the public site yet — tick Visible to
+                        {countOf(hiddenCount, 'speaker')} on this session are not on the public site yet — tick Visible to
                         publish them.
                       </p>
                     ) : null;

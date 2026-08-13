@@ -445,15 +445,15 @@ function EnrollDialog({ alreadyEnrolledContactIds, onClose, onEnrolled }: Enroll
       </FormRow>
       <FormRow label="Starting stage">
         <div className="chq-segmented" role="group" aria-label="Starting stage">
-          {PIPELINE_STAGES.map((s) => (
+          {PIPELINE_STAGES.map((st) => (
             <button
-              key={s}
+              key={st}
               type="button"
-              className={stage === s ? 'chq-btn chq-btn-primary' : 'chq-btn chq-btn-secondary'}
-              aria-pressed={stage === s}
-              onClick={() => setStage(s)}
+              className={stage === st ? 'chq-btn chq-btn-primary' : 'chq-btn chq-btn-secondary'}
+              aria-pressed={stage === st}
+              onClick={() => setStage(st)}
             >
-              {PIPELINE_STAGE_LABELS[s]}
+              {PIPELINE_STAGE_LABELS[st]}
             </button>
           ))}
         </div>

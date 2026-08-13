@@ -145,17 +145,17 @@ export function PhoneAgenda({
           const lengthLabel = `${slot.endMin - slot.startMin} min`;
 
           if (slot.kind === 'placed') {
-            const s = slot.sessions[0]!;
+            const sess = slot.sessions[0]!;
             return (
               <div key={key} className="chq-phone-slot">
                 <span className="chq-phone-slot-time">{formatMinutes(slot.startMin)}</span>
-                <button type="button" className="chq-phone-slot-card" onClick={() => armFromPlaced(s)}>
+                <button type="button" className="chq-phone-slot-card" onClick={() => armFromPlaced(sess)}>
                   <span className="chq-phone-slot-card-meta">
-                    {s.ref} &middot; {lengthLabel}
+                    {sess.ref} &middot; {lengthLabel}
                   </span>
-                  <span className="chq-phone-slot-card-title">{s.title}</span>
-                  {s.speakers.length > 0 && (
-                    <span className="chq-phone-slot-card-meta">{s.speakers.map((sp) => sp.name).join(', ')}</span>
+                  <span className="chq-phone-slot-card-title">{sess.title}</span>
+                  {sess.speakers.length > 0 && (
+                    <span className="chq-phone-slot-card-meta">{sess.speakers.map((sp) => sp.name).join(', ')}</span>
                   )}
                 </button>
               </div>
@@ -168,13 +168,13 @@ export function PhoneAgenda({
                 <span className="chq-phone-slot-time">{formatMinutes(slot.startMin)}</span>
                 <div className="chq-panel chq-phone-slot-clash">
                   <span className="chq-flag">Two sessions in this slot</span>
-                  {slot.sessions.map((s, idx) => (
-                    <div key={s.submissionId}>
+                  {slot.sessions.map((sess, idx) => (
+                    <div key={sess.submissionId}>
                       {idx > 0 && <div className="chq-panel-rule" />}
-                      <button type="button" className="chq-phone-slot-clash-item" onClick={() => armFromPlaced(s)}>
-                        <span className="chq-phone-slot-card-title">{s.title}</span>
+                      <button type="button" className="chq-phone-slot-clash-item" onClick={() => armFromPlaced(sess)}>
+                        <span className="chq-phone-slot-card-title">{sess.title}</span>
                         <span className="chq-panel-meta">
-                          {s.speakers.map((sp) => sp.name).join(', ')} &middot; {s.ref}
+                          {sess.speakers.map((sp) => sp.name).join(', ')} &middot; {sess.ref}
                         </span>
                       </button>
                     </div>

@@ -1,5 +1,5 @@
 // DEC-855: submission_track is the ONLY source of a submission's tracks.
-// Every reader that needs a submission's track name(s) must go through this
+// Every reader that needs a submission's track names must go through this
 // helper — never re-derive from the submission row's own scalar track
 // column (dead, DEC-855) or hand-roll a per-row query.
 import { asc, eq, inArray } from "drizzle-orm";

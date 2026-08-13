@@ -309,8 +309,8 @@ export function unscheduledIcsFields(
 }
 
 /** DEC-317 preflight: after loadComposeSubmissions (which now filters
- * participants down to ACTIVE_INVITE_STATUSES), a submission whose only
- * participant(s) declined/are still 'invited' loads with zero participants
+ * participants down to ACTIVE_INVITE_STATUSES), a submission whose
+ * participants all declined or are still 'invited' loads with zero participants
  * — a silent-drop hole that would otherwise render/send to a smaller
  * recipient set than requested with no error. Returns the ApiError `fields`
  * map for every selected submission id with zero loaded participants
@@ -480,8 +480,8 @@ commsRoutes.post("/api/v1/events/:eventId/compose/preview", requireOrganizer, cs
   requireFullMatch(input.submissionIds, submissions);
 
   // DEC-317: loadComposeSubmissions now filters participants down to active
-  // invite statuses only, so a submission whose only participant(s)
-  // declined would otherwise silently compose to zero people.
+  // invite statuses only, so a submission whose participants all declined
+  // would otherwise silently compose to zero people.
   const noRecipients = noRecipientFields(submissions, input.submissionIds);
   if (Object.keys(noRecipients).length > 0) {
     throw new ApiError("invalid", "Some selected sessions have no eligible recipients", noRecipients);

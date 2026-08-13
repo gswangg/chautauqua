@@ -31,6 +31,7 @@ import {
 // re-derivation of the weight-share math client-side.
 import { criterionWeightShares, DEFAULT_PLAN_CRITERIA } from '../../../../src/domain/evaluation';
 import { DEC_745, DEC_786, DEC_824, DEC_882 } from '../../../../src/decisions';
+import { countOf } from '../../lib/plural';
 
 void DEC_745; // v4 shell: title-row NAME/Duplicate/Save, 2x2 field grid, "Who reviews what" below
 void DEC_786; // "Distribute evenly" link below: preview-then-confirm, zero non-GET requests before confirm
@@ -1498,7 +1499,7 @@ export function PlanEditor() {
       {deletePlanConfirmOpen && deletePreview && (
         <ConfirmDialog
           title="Delete evaluation plan"
-          body={`This will permanently delete ${deletePreview.evaluationsSubmitted} submitted evaluation(s) and ${deletePreview.evaluationsDraft} draft evaluation(s), ${deletePreview.reviewers} reviewer assignment(s), and ${deletePreview.recusals} recusal(s). This plan's results table and CSV export go with it.`}
+          body={`This will permanently delete ${countOf(deletePreview.evaluationsSubmitted, 'submitted evaluation')} and ${countOf(deletePreview.evaluationsDraft, 'draft evaluation')}, ${countOf(deletePreview.reviewers, 'reviewer assignment')}, and ${countOf(deletePreview.recusals, 'recusal')}. This plan's results table and CSV export go with it.`}
           confirmLabel="Delete plan"
           destructive
           pending={saving}

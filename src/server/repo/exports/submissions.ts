@@ -1,6 +1,6 @@
 // submissions export (J12, DEC-027). Track membership reads ONLY
 // submission_track (DEC-017/DEC-855) — the submission row's own scalar
-// track column(s) are frozen legacy and never read here.
+// track columns are frozen legacy and never read here.
 
 import { and, asc, eq, inArray } from "drizzle-orm";
 import type { Db } from "../../context";

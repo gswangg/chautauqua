@@ -111,8 +111,8 @@ export function parseListQuery(raw: ListQueryInput): ParsedListQuery {
 
   const contentStatus = (raw.contentStatus ?? "")
     .split(",")
-    .map((s) => s.trim())
-    .filter((s): s is ContentStatus => (CONTENT_STATUSES as readonly string[]).includes(s));
+    .map((token) => token.trim())
+    .filter((token): token is ContentStatus => (CONTENT_STATUSES as readonly string[]).includes(token));
 
   const trackId = raw.trackId && raw.trackId.trim().length > 0 ? raw.trackId.trim() : null;
 
