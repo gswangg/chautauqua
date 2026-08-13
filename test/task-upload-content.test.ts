@@ -50,6 +50,11 @@ vi.mock("../src/server/repo/files", async () => {
   return {
     ...actual,
     insertFile: vi.fn(async () => "file-new-1"),
+    // DEC-922: previousFileId now chains only when the prior file's
+    // {submissionId, kind} matches the new upload's — the sole candidate
+    // this suite resolves to is "sub-resolved-1"/"presentation", so the
+    // prior file in these fixtures always belongs to that same submission.
+    getReplacesTarget: vi.fn(async () => ({ submissionId: "sub-resolved-1", kind: "presentation" })),
   };
 });
 

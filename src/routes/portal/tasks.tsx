@@ -42,6 +42,7 @@ import { newId } from "../../domain/ids";
 import { updateAssignmentStatus } from "../../server/repo/tasks";
 import {
   getFileVersionNumber,
+  getReplacesTarget,
   insertFile,
   insertFileComment,
   listFileChainVersions,
@@ -412,6 +413,26 @@ portalTasksRoutes.post("/tasks/:assignmentId/upload", csrfForm, async (c) => {
   const buf = await file.arrayBuffer();
   await store.put(r2Key, buf, validation.servedContentType);
 
+  // DEC-922: scope.fileId is this assignment's PREVIOUS upload, but the
+  // speaker may have re-chosen a different eligible submission via
+  // DEC-891's explicit picker (`submissionId` above) since that prior
+  // upload. Chaining onto it unconditionally would let insertFile label
+  // another submission's deliverable 'v2' and let
+  // resolveTaskFileChainLatest (files-versions.ts) serve it back as THIS
+  // task's file. Mirror domain/files.ts's isValidVersionChain rule
+  // (same submissionId + same kind, null-submissionId handouts included)
+  // inline, since insertFile's previousFileId is only ever this
+  // assignment's own prior file, never a cross-submission id: this is not
+  // a validation error for the speaker (never 400 here) — a mismatch just
+  // means a fresh chain starts at v1 for the newly chosen submission.
+  let previousFileId: string | null = null;
+  if (scope.fileId) {
+    const target = await getReplacesTarget(c.var.db, scope.fileId);
+    if (target && target.submissionId === submissionId && target.kind === kind) {
+      previousFileId = scope.fileId;
+    }
+  }
+
   const fileId = await insertFile(c.var.db, {
     submissionId,
     kind,
@@ -419,7 +440,7 @@ portalTasksRoutes.post("/tasks/:assignmentId/upload", csrfForm, async (c) => {
     r2Key,
     sizeBytes: file.size,
     contentType: validation.servedContentType,
-    previousFileId: scope.fileId,
+    previousFileId,
     uploadedByContactId: contactId,
   });
 
