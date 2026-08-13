@@ -19,39 +19,41 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   tasking; Token adopted server-side only is half -- scan by
   ENUMERATION; every page says who's signed in.
 - FINDINGS w7-10 (DEC-821..848, compacted): mandate/probe findings
-  EXPIRE, plan from the TREE, decision-with-no-code-two-waves is
-  dropped/re-tasked, re-grep the anchor line before writing a task. A
-  shared predicate must match the page's PRINTED number to the
-  query's arithmetic; no-collision scopes to identity not whole seed;
-  switched-off public surface is intentional blank not 404; a filter
-  returning only zero rows has a wrong LISTING predicate. A write that
-  unpublishes/narrows/unschedules SAYS so at the moment of choice; a
-  composer/send is auditable to its WORDS not templateId/metadata; a
-  subject is one line, no merge-field body vocabulary, no terminal
-  period on stated-absence. Identical labels at an irreversible choice
-  aren't labels; a day pill is navigation; a link is the route it
-  LANDS on (basename-relative, carries ?tab= state); a knob binds only
-  where DEFAULT equals rendered colour; two tasks on one decision means
-  the PLANNER pins the wire shape. An error's shape follows the
-  REQUEST's route not the middleware, share the 404 predicate. A
-  submitted blank CLEARS, an absent key is silence. A list and its
-  export read status through ONE reader; unknown filter token is loud
-  on both. A queue headed by a plan carries the plan's facts and the
-  reviewer's OWN score.
-- FINDINGS w11 (DEC-849..854): main can be RED — a merge left conflict
-  markers COMMITTED in src/routes/public/saved-embed.tsx AND its test,
-  unnoticed for two waves. Verifying "from the tree" now includes
-  grepping for `<<<<<<<`; the guard is a SCAN, never a habit. A saved
-  recipe storing a FORMAT that always answers HTML lies about the
-  recipe — resolve non-HTML formats to the canonical feed route, never
-  a second envelope. A knob table hand-listed per surface DESYNCS from
-  what the server honours: the page, its .json twin, its .xml twin and
-  the builder read ONE enumerated set, and the planner pins that set.
-  A grace rule that silently moves a deadline owes the moved date
-  BEFORE it bites; a date outside this year names its year. A write
-  that succeeds says what it did in the vocabulary its automated twin
-  already uses, including the clash it just created; a card that can
-  only be MOVED does not say "place". Roster-add writing invite_status
-  'none' is CORRECT by design (the menu then offers the invite) — that
-  mandate line is closed, not open. ~97% of the mandate now greps
-  CLOSED; hunt defects in the source, not the findings file.
+  EXPIRE, plan from the TREE, re-grep the anchor line before tasking.
+  Shared predicate matches printed number to query arithmetic;
+  no-collision scopes to identity not whole seed; switched-off public
+  surface is intentional blank not 404. Unpublish/narrow/unschedule
+  SAYS so at the moment of choice; composer/send auditable to WORDS;
+  subject one line, no terminal period on stated-absence. Identical
+  labels at an irreversible choice aren't labels; a link is the route
+  it LANDS on; a knob binds only where DEFAULT equals rendered colour.
+  Error shape follows the REQUEST's route; submitted blank CLEARS,
+  absent key is silence; list+export read status through ONE reader;
+  a queue headed by a plan carries the reviewer's OWN score.
+- FINDINGS w11 (DEC-849..854, compacted): main can be RED — grep for
+  `<<<<<<<` every wave, the guard is a SCAN not a habit. A saved
+  recipe storing a FORMAT that always answers HTML lies — resolve to
+  the canonical feed route. A knob table hand-listed per surface
+  DESYNCS from what the server honours: page/.json/.xml/builder read
+  ONE enumerated set. A grace rule that moves a deadline owes the
+  moved date BEFORE it bites; a write that succeeds says what it did
+  in its automated twin's vocabulary, including the clash it caused; a
+  card that can only be MOVED does not say "place".
+- FINDINGS w12 (DEC-855..859): the mandate is ~exhausted — hunt the
+  SOURCE. A "frozen legacy" column is only dead if NOTHING writes it:
+  submission.track_id was documented dead, still written by the
+  Sessionboard importer and still JOINed by four readers, so an
+  imported programme had tracks nowhere the public site looks and NULL
+  everywhere the portal looks. When one fact has two storage sites,
+  pin the source AND scan for the other by identifier, in the same
+  commit as the readers. A preflight that names one problem per round
+  trip lies about how much is wrong: collect ALL misses per recipient
+  and emit ONE message shape for singular and plural, or the client
+  grows two parsers that drift. A control that names an action the
+  user already took ("Score this" on a scored row) is the same defect
+  as a card that says "place" when it can only move. A gate that
+  renders its children while identity is still loading mounts the very
+  page it exists to prevent. Name identity at an irreversible choice
+  uses the DETECTOR's normalized form, not raw ===. A promised column
+  ("Skip this row") with controls on a minority of rows is a broken
+  promise, not conditional-and-quiet.
