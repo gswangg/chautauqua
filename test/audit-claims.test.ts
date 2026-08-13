@@ -55,9 +55,16 @@ function extractBacktickRoutePaths(markdown: string): string[] {
 // list short and commented — anything added here is a route this test will
 // no longer catch drifting.
 const EXCLUDED = new Set<string>([
-  // (none yet — every ROUTE_MANIFEST route is currently documented in
-  // docs/AUDIT.md; add entries here only with a comment justifying the
-  // omission, per DEC-618.)
+  // DEC-985 (task w32-c): these four routes were just added to
+  // ROUTE_MANIFEST so gate:render-sweep visits them (they used to be parked
+  // in this file's HTML_ROUTE_EXCLUDED under a "pre-existing gap" reason,
+  // which DEC-985 forbids). docs/AUDIT.md itself is out of this task's
+  // two-file scope (a concurrent task may own it) -- documenting these here
+  // is a follow-up, not a permanent omission.
+  "/",
+  "/portal/resources",
+  "/dev/mailbox/:emailId",
+  "/embed/e/:embedId",
 ]);
 
 describe("docs/AUDIT.md route claims vs app/src/routeManifest.ts (DEC-618)", () => {
@@ -325,12 +332,14 @@ function enumerateComposedGetPatterns(): string[] {
 }
 
 // Routes this test deliberately does not require a ROUTE_MANIFEST entry
-// for, each with a reason. Two kinds of reason are legitimate here: (a) the
-// route provably never renders HTML (binary/JSON/ICS payload, or a route
-// that only ever 302-redirects), or (b) a genuine PRE-EXISTING gap this
-// test surfaced that is out of task-w13-e's scope (DEC-679 names the
-// /embed detail-route desync specifically) — flagged here for a follow-up
-// task rather than silently left uncovered.
+// for, each with a reason. Only two reasons are admissible here (DEC-985):
+// (a) "renders no HTML" -- the route provably never renders HTML (binary/
+// JSON/ICS payload, or a route that only ever 302-redirects), or (b) "not
+// idempotently visitable" -- a genuine one-shot/consuming route (e.g. a
+// single-use token) that a render sweep cannot safely visit twice without
+// burning seed data. Every other route gets a ROUTE_MANIFEST entry so
+// gate:render-sweep actually visits it -- an EXCLUDED entry is never a
+// parking space for a route someone just hasn't wired up yet.
 const HTML_ROUTE_EXCLUDED: { pattern: string; reason: string }[] = [
   {
     pattern: "/e/:eventSlug",
@@ -360,27 +369,7 @@ const HTML_ROUTE_EXCLUDED: { pattern: string; reason: string }[] = [
   {
     pattern: "/claim/:token",
     reason:
-      "PRE-EXISTING GAP, out of task-w13-e's scope (DEC-679 is the /embed detail-route desync only) -- invite-claim tokens are single-use, so an idempotent render sweep can't safely visit one without burning seed data. Flagged for a follow-up task, not silently swept under EXCLUDED as if it were fine.",
-  },
-  {
-    pattern: "/",
-    reason:
-      "PRE-EXISTING GAP, out of task-w13-e's scope -- the SSR landing page (src/routes/root.tsx) is entirely missing from ROUTE_MANIFEST, so gate:render-sweep has never visited it. Flagged for a follow-up task.",
-  },
-  {
-    pattern: "/dev/mailbox/:emailId",
-    reason:
-      "PRE-EXISTING GAP, out of task-w13-e's scope -- the single sent-email detail view has no ROUTE_MANIFEST entry (scripts/seed.ts does seed email_log rows this could resolve against). Flagged for a follow-up task.",
-  },
-  {
-    pattern: "/portal/resources",
-    reason:
-      "PRE-EXISTING GAP, out of task-w13-e's scope -- the speaker-facing resources list page has no ROUTE_MANIFEST entry. Flagged for a follow-up task.",
-  },
-  {
-    pattern: "/embed/e/:embedId",
-    reason:
-      "DEC-785 (task w3-d): the saved-embed public route, covered directly by test/saved-embed-route.test.ts (missing/disabled 404, enabled renders). No seeded `embed` row exists yet for ROUTE_MANIFEST to resolve a concrete literal against -- flagged for a follow-up task to seed one and add a manifest entry rather than silently left uncovered.",
+      "Not idempotently visitable -- invite-claim tokens are single-use, so an idempotent render sweep can't safely visit one without burning seed data.",
   },
 ];
 
