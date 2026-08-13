@@ -5,12 +5,22 @@
 import { and, asc, desc, eq, sql } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
+import { findDuplicateGroupsForOrg } from "./merge";
+import { DEC_711 } from "../../../decisions";
+
+void DEC_711; // speakerCount + duplicateCount: every figure the directory page states is endpoint-backed
 
 export interface ContactStats {
   total: number;
   eventCount: number;
   returningSpeakers: number;
   topCompanies: { company: string; count: number }[];
+  // DEC-710/DEC-711: figures the directory title summary and rail actually
+  // render — a contact holding a 'speaker' participant role on any of the
+  // org's events, and the group count from findDuplicateGroupsForOrg
+  // (computed once here, not a second time by the caller).
+  speakerCount: number;
+  duplicateCount: number;
 }
 
 export async function getContactStats(db: Db, orgId: string): Promise<ContactStats> {
@@ -53,5 +63,24 @@ export async function getContactStats(db: Db, orgId: string): Promise<ContactSta
     .filter((r): r is { company: string; count: number } => r.company !== null)
     .map((r) => ({ company: r.company, count: Number(r.count) }));
 
-  return { total, eventCount, returningSpeakers, topCompanies };
+  // Contacts holding a 'speaker' participant role on any of the org's
+  // events (DEC-711): distinct contact count via a single count(*) over a
+  // GROUP BY subquery, same shape as the returningSpeakers query above.
+  const speakerSubquery = db
+    .select({ contactId: schema.contact.id })
+    .from(schema.contact)
+    .innerJoin(schema.participant, eq(schema.participant.contactId, schema.contact.id))
+    .innerJoin(schema.submission, eq(schema.submission.id, schema.participant.submissionId))
+    .where(and(eq(schema.contact.orgId, orgId), eq(schema.participant.role, "speaker")))
+    .groupBy(schema.contact.id)
+    .as("speaker_contacts");
+  const speakerCountRows = await db.select({ count: sql<number>`count(*)` }).from(speakerSubquery);
+  const speakerCount = Number(speakerCountRows[0]?.count ?? 0);
+
+  // DEC-711: the same group count the Duplicates tab and rail render — one
+  // definition (findDuplicateGroupsForOrg), never a second tally.
+  const duplicateGroups = await findDuplicateGroupsForOrg(db, orgId);
+  const duplicateCount = duplicateGroups.length;
+
+  return { total, eventCount, returningSpeakers, topCompanies, speakerCount, duplicateCount };
 }

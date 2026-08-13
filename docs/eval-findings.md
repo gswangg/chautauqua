@@ -867,3 +867,14 @@ AND audit noStoreByDefault + any other header-stamping middleware for the same t
     Timezone field; give the CFP an explicit publish affordance; close-before-open
     validation must be loud at the field, not a quiet banner. (Reviewer lockout
     re-confirmed on prod — item 65 stands.)
+
+71. **CONVERGENCE CRITERIA REDEFINED (user directive): this round completes when
+    DESKTOP is done.** The verification-only exit wave (DEC-514 rule) measures the
+    DESKTOP surfaces only: desktop render sweep, walkthrough, the desktop items of
+    this file (through item 70), and container-width/type-scale conformance. ALL
+    mobile items — phone agenda visibility, phone shells/tab bar, phone wizards,
+    subscreens, tap targets — are OUT of this round's completion criteria and become
+    the OPENING QUEUE of the next round (under rule 69's additive-reflow constraints).
+    Do NOT hold `.swarm-complete` for mobile work. After convergence, an external
+    desktop-only fidelity pass (round 4) is the acceptance gate before deploy — the
+    exit wave should leave the tree in a state it expects to pass that gate.

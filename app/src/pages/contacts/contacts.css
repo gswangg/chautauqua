@@ -1,5 +1,5 @@
 /* app/src/pages/contacts/contacts.css — Contacts page lane, lane 1 of 2
-   (DEC-376: this lane owns ContactsApp/ContactsTable/StatsStrip/
+   (DEC-376: this lane owns ContactsApp/ContactsTable/DirectoryRail/
    ContactDrawer/BulkEmailModal/AddToEventModal; PipelineBoard/
    DuplicatesView/SegmentsPanel/FilterRulesPanel/ImportWizard are lane 2's
    files and are NOT restyled here). Classes prefixed .chq-contacts-*;
@@ -29,75 +29,55 @@
   gap: 9px;
 }
 
+/* eval-findings 55 + DEC-710: the tab row carries the chips on the left and
+   the directory's search + segment controls on the right
+   (.chq-contacts-tab-filters, margin-left:auto). The StatsStrip KPI block
+   that used to sit under this row is gone with DEC-711, and so are its
+   .chq-contacts-stats-strip/.chq-contacts-kpis rules. */
 .chq-contacts-tabstrip-row {
-  gap: 0;
-}
-
-/* eval-findings 55: the segment control sits at the tab row's right edge. */
-.chq-contacts-segment-select {
-  margin-left: auto;
-}
-
-/* ---------------------------------------------------------------------- */
-/* Directory: stats + table                                               */
-/* ---------------------------------------------------------------------- */
-
-.chq-contacts-stats-strip {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.chq-contacts-kpis {
-  display: flex;
-  gap: 24px;
+  gap: 14px;
   flex-wrap: wrap;
 }
 
-.chq-stat {
+/* ---------------------------------------------------------------------- */
+/* Directory: two-column layout (task-w17-c, eval-findings items 22 + 55) */
+/* ---------------------------------------------------------------------- */
+
+/* DEC-710/711: table left, rail right — grid-template-columns: 1.5fr 1fr,
+   align-items: start, mirroring docs/design/Chautauqua Contacts.dc.html
+   lines 52-150. */
+.chq-contacts-directory-grid {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 26px;
+  align-items: start;
+}
+
+/* Search + segment control at the RIGHT end of the tab row. */
+.chq-contacts-tab-filters {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  align-items: center;
+  gap: 14px;
+  margin-left: auto;
 }
 
-.chq-stat-value {
-  font-family: var(--chq-font-display);
-  font-size: 28px;
-  font-weight: 700;
-  letter-spacing: -0.03em;
-  color: var(--chq-ink);
+.chq-contacts-search {
+  min-width: 230px;
 }
 
-.chq-stat-label {
-  font-size: 12px;
-  color: var(--chq-muted);
-}
-
-.chq-contacts-company-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.chq-contacts-company-row {
-  padding: 11px 0;
-  border-bottom: 1px solid var(--chq-hairline);
-  font-size: 14px;
+.chq-contacts-segment-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--chq-ink-2);
 }
 
 .chq-contacts-table-wrap {
   display: flex;
   flex-direction: column;
   gap: 14px;
-}
-
-.chq-contacts-search-toolbar {
-  justify-content: flex-start;
-  gap: 14px;
-}
-
-.chq-contacts-search {
-  min-width: 230px;
 }
 
 .chq-contacts-segment-select {
@@ -108,6 +88,67 @@
   font-weight: 600;
   color: var(--chq-ink-2);
   margin-left: auto;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Directory right rail (DirectoryRail.tsx)                               */
+/* ---------------------------------------------------------------------- */
+
+.chq-contacts-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.chq-contacts-rail-section .chq-section-head {
+  border-bottom: 2px solid var(--chq-ink);
+}
+
+.chq-contacts-company-list,
+.chq-contacts-rail-segments,
+.chq-contacts-rail-duplicates {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.chq-contacts-rail-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--chq-hairline);
+  font-size: 14px;
+}
+
+.chq-contacts-rail-segment-row {
+  align-items: baseline;
+}
+
+.chq-contacts-rail-segment-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.chq-contacts-rail-count {
+  font-family: var(--chq-font-display);
+  font-weight: 700;
+  text-align: right;
+}
+
+.chq-contacts-rail-duplicate-row {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--chq-hairline);
+  font-size: 14px;
+}
+
+.chq-contacts-rail-duplicate-names {
+  font-weight: 600;
 }
 
 .chq-contacts-name-cell,
@@ -285,17 +326,10 @@
     flex: 1;
   }
 
-  /* Stats strip: KPI tiles scroll horizontally, never wrap/shrink. */
-  .chq-contacts-kpis {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    gap: 18px;
-    padding-bottom: 2px;
-  }
-
-  .chq-stat {
-    flex-shrink: 0;
+  /* Two-column directory -> a single stacked column, table above rail. */
+  .chq-contacts-directory-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
   }
 
   .chq-contacts-table-wrap {
@@ -304,15 +338,30 @@
 
   /* Search + segment controls: full-width, 44px, phone control radius,
      centred flex (DEC-383: no var(--x, #hex) fallbacks). */
-  .chq-contacts-search-toolbar {
+  .chq-contacts-tab-filters {
     flex-direction: column;
     align-items: stretch;
     gap: 10px;
+    width: 100%;
+    margin-left: 0;
   }
 
   .chq-contacts-search {
     min-width: 0;
     width: 100%;
+    border-radius: var(--chq-r-ctl-phone);
+  }
+
+  .chq-contacts-segment-summary {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .chq-contacts-segment-summary .chq-select {
+    flex: 1;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
     border-radius: var(--chq-r-ctl-phone);
   }
 

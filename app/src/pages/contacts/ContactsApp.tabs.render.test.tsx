@@ -1,7 +1,7 @@
 // DEC-144 layer-2 harness (batch B, task-w3-e): component-render smoke
 // coverage for the ContactsApp tab surfaces that the existing CRM-12
 // drill-through test (ContactsApp.render.test.tsx) doesn't touch: the
-// directory tab (list envelope + StatsStrip), duplicates tab (a
+// directory tab (list envelope + DirectoryRail), duplicates tab (a
 // seeded-style same-name+company duplicate group per DEC-143), segments
 // tab, the ContactDrawer opened on a contact with populated bio/social/
 // headshot fields, the ImportWizard first step, and BulkEmailModal opened
@@ -35,7 +35,9 @@ const DUPLICATE_GROUPS: DuplicateGroup[] = [
   },
 ];
 
-const SEGMENTS: Segment[] = [{ id: 'seg1', name: 'VIP speakers', rules: [{ field: 'company', op: 'eq', value: 'Acme' }] }];
+const SEGMENTS: Segment[] = [
+  { id: 'seg1', name: 'VIP speakers', rules: [{ field: 'company', op: 'eq', value: 'Acme' }], count: 1 },
+];
 
 const FULL_CONTACT: ContactDetail = {
   id: 'ct1',
@@ -75,6 +77,8 @@ function baseRoutes() {
       total: 2,
       eventCount: 1,
       returningSpeakers: 1,
+      speakerCount: 1,
+      duplicateCount: DUPLICATE_GROUPS.length,
       topCompanies: [{ company: 'Acme', count: 1 }],
     },
     'GET /api/v1/segments': listEnvelope(SEGMENTS),
@@ -84,7 +88,7 @@ function baseRoutes() {
 }
 
 describe('ContactsApp render smoke: directory tab', () => {
-  it('renders the StatsStrip and the contacts list envelope', async () => {
+  it('renders the two-column directory (table + rail) and the contacts list envelope', async () => {
     mockApi(baseRoutes());
 
     render(
@@ -97,9 +101,10 @@ describe('ContactsApp render smoke: directory tab', () => {
       expect(screen.getByText('Ada Lovelace' as unknown as string, { exact: false })).toBeTruthy();
     });
 
-    // Stable markers: StatsStrip KPI + directory rows.
-    expect(screen.getByText('Total contacts')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Acme (1)' })).toBeInTheDocument();
+    // Stable markers: title summary + rail "Where they work" + directory rows.
+    expect(screen.getByText('2 people · 1 speakers · 1 possible duplicates')).toBeInTheDocument();
+    expect(screen.getByText('Where they work')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Acme' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Ada Lovelace' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Grace Hopper' })).toBeInTheDocument();
   });
@@ -115,7 +120,7 @@ describe('ContactsApp render smoke: duplicates tab', () => {
       </MemoryRouter>,
     );
 
-    fireEvent.click(screen.getByRole('tab', { name: 'Duplicates' }));
+    fireEvent.click(screen.getByRole('tab', { name: /^Duplicates/ }));
 
     await waitFor(() => {
       expect(screen.getByText('Possible duplicates')).toBeInTheDocument();
@@ -138,7 +143,7 @@ describe('ContactsApp render smoke: segments tab', () => {
       </MemoryRouter>,
     );
 
-    fireEvent.click(screen.getByRole('tab', { name: 'Segments' }));
+    fireEvent.click(screen.getByRole('tab', { name: /^Segments/ }));
 
     await waitFor(() => {
       // Scoped to the saved-segment list: the name also appears as an option

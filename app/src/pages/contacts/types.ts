@@ -20,6 +20,9 @@ export interface ContactStats {
   eventCount: number;
   returningSpeakers: number;
   topCompanies: { company: string; count: number }[];
+  // DEC-710/DEC-711: figures the title summary and rail render.
+  speakerCount: number;
+  duplicateCount: number;
 }
 
 export interface ContactSubmissionHistory {
@@ -68,6 +71,9 @@ export interface Segment {
   id: string;
   name: string;
   rules: SegmentRule[];
+  // DEC-710: computed with the SAME segment-rule where clause the
+  // directory list uses (GET /segments), never a second definition.
+  count: number;
 }
 
 // Matches the server's DuplicateGroup shape verbatim (src/server/repo/

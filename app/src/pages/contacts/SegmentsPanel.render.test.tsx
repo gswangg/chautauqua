@@ -19,7 +19,9 @@ const CONTACTS: ContactListItem[] = [
   { id: 'ct1', firstName: 'Ada', lastName: 'Lovelace', email: 'ada@example.com', labels: [] },
 ];
 
-const SEGMENTS: Segment[] = [{ id: 'seg1', name: 'VIP speakers', rules: [{ field: 'company', op: 'eq', value: 'Acme' }] }];
+const SEGMENTS: Segment[] = [
+  { id: 'seg1', name: 'VIP speakers', rules: [{ field: 'company', op: 'eq', value: 'Acme' }], count: 1 },
+];
 
 let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
 
@@ -38,7 +40,14 @@ afterEach(() => {
 describe('ContactsApp + SegmentsPanel: deleting the applied segment (w1-c P3, DEC-239)', () => {
   it('clears the segmentId filter before the delete-triggered refetch, so no request carries the deleted segmentId', async () => {
     const fetchMock = mockApi({
-      'GET /api/v1/contacts/stats': { total: 1, eventCount: 1, returningSpeakers: 0, topCompanies: [] },
+      'GET /api/v1/contacts/stats': {
+        total: 1,
+        eventCount: 1,
+        returningSpeakers: 0,
+        speakerCount: 0,
+        duplicateCount: 0,
+        topCompanies: [],
+      },
       'GET /api/v1/segments': () => listEnvelope(SEGMENTS),
       'GET /api/v1/contacts': listEnvelope(CONTACTS),
       'GET /api/v1/contacts/duplicates': listEnvelope([]),
@@ -66,7 +75,7 @@ describe('ContactsApp + SegmentsPanel: deleting the applied segment (w1-c P3, DE
     });
 
     // Delete that segment from the Segments tab.
-    fireEvent.click(screen.getByRole('tab', { name: 'Segments' }));
+    fireEvent.click(screen.getByRole('tab', { name: /^Segments/ }));
     await waitFor(() => {
       // Scoped to the saved-segment list: the name also appears as an option
       // in the tab row's "Segment: none ▾" control (eval-findings 55).

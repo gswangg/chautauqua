@@ -1,18 +1,29 @@
 import { useEffect, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { apiGet, apiList, ApiError } from '../../lib/api';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { BulkEmailModal } from './BulkEmailModal';
 import { ContactDrawer } from './ContactDrawer';
 import { ContactsTable } from './ContactsTable';
+import { DirectoryRail } from './DirectoryRail';
 import { DuplicatesView } from './DuplicatesView';
 import { ImportWizard } from './ImportWizard';
 import { NewContactModal } from './NewContactModal';
 import { PipelineBoard } from './PipelineBoard';
 import { EMPTY_SELECTION, selectionReducer } from './selection';
 import { SegmentsPanel } from './SegmentsPanel';
-import { StatsStrip } from './StatsStrip';
-import type { ContactListItem, ContactStats, Segment, SegmentRule } from './types';
+import type { ContactListItem, ContactStats, DuplicateGroup, Segment, SegmentRule } from './types';
+import { DEC_710, DEC_711 } from '../../../../src/decisions';
+
+// Compile-checked dependency markers: tab selection as ?tab= URL state
+// (DEC-710) and the two-column directory (table + rail, every figure
+// endpoint-backed — DEC-711).
+void DEC_710;
+void DEC_711;
+
+// DEC-711: the rail's "Possible duplicates" section names its top pairs —
+// bounded to a small preview, never the full Duplicates-tab list.
+const RAIL_DUPLICATE_PREVIEW = 3;
 
 const PER_PAGE = 25;
 
@@ -40,6 +51,10 @@ const PANEL_LABELS: Record<Panel, string> = {
   pipeline: 'Pipeline',
 };
 
+function isPanel(value: string | null): value is Panel {
+  return value === 'duplicates' || value === 'segments' || value === 'pipeline';
+}
+
 // DEC-684: after a merge, MergePage navigates back to /contacts with
 // { state: { panel: 'duplicates', notice: 'Contacts merged.' } } so the
 // directory lands on the Duplicates tab with the merge confirmation — a
@@ -55,8 +70,20 @@ export function ContactsApp() {
   const location = useLocation();
   const navigate = useNavigate();
   const navState = location.state as NavState | null;
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  const [panel, setPanel] = useState<Panel>(navState?.panel ?? 'directory');
+  // DEC-710: tab selection is URL state (?tab=), never component state —
+  // 'directory' (the default) carries no tab param.
+  const panel: Panel = isPanel(searchParams.get('tab')) ? (searchParams.get('tab') as Panel) : 'directory';
+  function setPanel(next: Panel) {
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev);
+      if (next === 'directory') params.delete('tab');
+      else params.set('tab', next);
+      return params;
+    });
+  }
+
   const [stats, setStats] = useState<ContactStats | null>(null);
   const [items, setItems] = useState<ContactListItem[]>([]);
   const [total, setTotal] = useState(0);
@@ -68,6 +95,7 @@ export function ContactsApp() {
   const [selection, setSelection] = useState(EMPTY_SELECTION);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [duplicatePreview, setDuplicatePreview] = useState<DuplicateGroup[]>([]);
 
   const [openContactId, setOpenContactId] = useState<string | null>(null);
   const [showImport, setShowImport] = useState(false);
@@ -82,8 +110,15 @@ export function ContactsApp() {
   useEffect(() => {
     // Clear the one-shot nav state (panel + notice) immediately after
     // mount so switching away from Duplicates and back never replays a
-    // stale merge confirmation.
-    if (navState) navigate(location.pathname, { replace: true, state: null });
+    // stale merge confirmation. MergePage still hands the target panel via
+    // location.state (DEC-684) — this folds it into the URL's ?tab= once,
+    // on the render that mounts this component.
+    if (navState) {
+      const params = new URLSearchParams(location.search);
+      if (navState.panel && navState.panel !== 'directory') params.set('tab', navState.panel);
+      const qs = params.toString();
+      navigate(`${location.pathname}${qs ? `?${qs}` : ''}`, { replace: true, state: null });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -97,6 +132,15 @@ export function ContactsApp() {
     apiList<Segment>('/segments')
       .then((res) => setSegments(res.items))
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load segments'));
+  }, [refreshKey]);
+
+  // DEC-711: the rail's duplicate preview reuses the SAME endpoint the
+  // Duplicates tab lists from (findDuplicateGroupsForOrg's own order),
+  // bounded to a small page rather than a second definition of "top pairs".
+  useEffect(() => {
+    apiList<DuplicateGroup>(`/contacts/duplicates?perPage=${RAIL_DUPLICATE_PREVIEW}`)
+      .then((res) => setDuplicatePreview(res.items))
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load duplicates'));
   }, [refreshKey]);
 
   useEffect(() => {
@@ -119,14 +163,11 @@ export function ContactsApp() {
 
   const selectedIds = [...selection.selectedIds];
 
-  // Factual, endpoint-backed summary (DEC-377): only counts GET
-  // /contacts/stats actually returns — no fabricated "N speakers" or
-  // "N possible duplicates" figures the way the design mock illustrates.
-  const summary = stats
-    ? `${stats.total} ${stats.total === 1 ? 'contact' : 'contacts'} · ${stats.eventCount} ${
-        stats.eventCount === 1 ? 'event' : 'events'
-      } · ${stats.returningSpeakers} returning ${stats.returningSpeakers === 1 ? 'speaker' : 'speakers'}`
-    : null;
+  // DEC-710/DEC-711: the mock's title summary ("N people · N speakers · N
+  // possible duplicates") — every figure is now endpoint-backed
+  // (speakerCount/duplicateCount added to GET /contacts/stats), no longer
+  // the DEC-377 substitute summary.
+  const summary = stats ? `${stats.total} people · ${stats.speakerCount} speakers · ${stats.duplicateCount} possible duplicates` : null;
 
   return (
     <div className="chq-page chq-contacts-page">
@@ -153,74 +194,76 @@ export function ContactsApp() {
 
       {error && <div className="chq-error" role="alert">{error}</div>}
 
-      {/* DEC-684: list search sits in the toolbar, directly under the
-          title — not buried inside the table component. First control in
-          this row, ahead of any other filter control that lands here. */}
-      <div className="chq-toolbar chq-contacts-search-toolbar">
-        <input
-          className="chq-input chq-contacts-search"
-          type="search"
-          placeholder="Search name, email or company…"
-          aria-label="Search contacts"
-          value={q}
-          onChange={(e) => {
-            setQ(e.target.value);
-            setPage(1);
-          }}
-        />
-      </div>
-
+      {/* DEC-710: tab chips carry counts; search + the segment control sit
+          at the RIGHT end of this same row (margin-left:auto), replacing
+          the search-only toolbar row that used to sit above it. */}
       <div className="chq-toolbar chq-contacts-tabstrip-row">
         <div className="chq-chipstrip" role="tablist" aria-label="Contacts view">
-          {(Object.keys(PANEL_LABELS) as Panel[]).map((key) => (
-            <button
-              key={key}
-              type="button"
-              role="tab"
-              aria-selected={panel === key}
-              className={panel === key ? 'chq-pill is-active' : 'chq-pill'}
-              onClick={() => setPanel(key)}
-            >
-              {PANEL_LABELS[key]}
-            </button>
-          ))}
+          {(Object.keys(PANEL_LABELS) as Panel[]).map((key) => {
+            let label = PANEL_LABELS[key];
+            if (key === 'duplicates' && stats) label = `${label} · ${stats.duplicateCount}`;
+            if (key === 'segments') label = `${label} · ${segments.length}`;
+            return (
+              <button
+                key={key}
+                type="button"
+                role="tab"
+                aria-selected={panel === key}
+                className={panel === key ? 'chq-pill is-active' : 'chq-pill'}
+                onClick={() => setPanel(key)}
+              >
+                {label}
+              </button>
+            );
+          })}
         </div>
-        {/* eval-findings 55: the applied-segment control sits ON the tab row
-            right ("Segment: none ▾"); it left ContactsTable with the rule
-            builder (task-w17-d). Kept here so a saved segment remains
-            applicable to the directory — task-w17-c owns dressing this row
-            with the search field and the tab counts. */}
-        <select
-          className="chq-select chq-contacts-segment-select"
-          aria-label="Segment filter"
-          value={segmentId}
-          onChange={(e) => {
-            setSegmentId(e.target.value);
-            setPage(1);
-          }}
-        >
-          <option value="">Segment: none</option>
-          {segments.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name}
-            </option>
-          ))}
-        </select>
+
+        {/* eval-findings 55 / DEC-710/DEC-711: search + segment filter only affect the
+            directory list, so they sit at the right end of THIS row but
+            only while the Directory tab is active — otherwise they'd shadow
+            the identically-named options SegmentsPanel renders on its own
+            tab. */}
+        {panel === 'directory' && (
+          <div className="chq-contacts-tab-filters">
+            <input
+              className="chq-input chq-contacts-search"
+              type="search"
+              placeholder="Search name, email or company…"
+              aria-label="Search contacts"
+              value={q}
+              onChange={(e) => {
+                setQ(e.target.value);
+                setPage(1);
+              }}
+            />
+            <label className="chq-contacts-segment-summary">
+              Segment:
+              {/* aria-label stays "Segment filter" — the name the applied-segment
+                  control has carried since it lived in ContactsTable (task-w17-d
+                  moved it onto this row). */}
+              <select
+                className="chq-select"
+                aria-label="Segment filter"
+                value={segmentId}
+                onChange={(e) => {
+                  setSegmentId(e.target.value);
+                  setPage(1);
+                }}
+              >
+                <option value="">none</option>
+                {segments.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        )}
       </div>
 
       {panel === 'directory' && (
-        <>
-          <StatsStrip
-            stats={stats}
-            onCompanyClick={(company) => {
-              // CRM-12 drill-through: the top-companies click applies a
-              // {field:'company',op:'eq'} filter rule (DEC-149), replacing the
-              // active rule set so the directory shows exactly that company.
-              setRules([{ field: 'company', op: 'eq', value: company }]);
-              setPage(1);
-            }}
-          />
-
+        <div className="chq-contacts-directory-grid">
           <ContactsTable
             items={items}
             total={total}
@@ -244,7 +287,26 @@ export function ContactsApp() {
             onOpenContact={setOpenContactId}
             onBulkEmail={() => setShowBulkEmail(true)}
           />
-        </>
+
+          <DirectoryRail
+            topCompanies={stats?.topCompanies ?? []}
+            onCompanyClick={(company) => {
+              // CRM-12 drill-through: the top-companies click applies a
+              // {field:'company',op:'eq'} filter rule (DEC-149), replacing the
+              // active rule set so the directory shows exactly that company.
+              setRules([{ field: 'company', op: 'eq', value: company }]);
+              setPage(1);
+            }}
+            segments={segments}
+            onApplySegment={(next) => {
+              setSegmentId(next);
+              setPage(1);
+            }}
+            onSaveCurrentFilters={() => setPanel('segments')}
+            duplicateCount={stats?.duplicateCount ?? 0}
+            duplicatePreview={duplicatePreview}
+          />
+        </div>
       )}
 
       {panel === 'duplicates' && <DuplicatesView onMerged={reload} initialNotice={navState?.notice} />}

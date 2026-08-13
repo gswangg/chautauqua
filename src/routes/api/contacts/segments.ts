@@ -8,9 +8,13 @@ import { csrfJson } from "../../../server/middleware";
 import { ApiError } from "../../../server/http";
 import { MAX_NAME_LENGTH } from "../../../forms/validate"; // DEC-417
 import * as repo from "../../../server/repo/contacts";
+import type { Db } from "../../../server/context";
 import { matchesSegment, type ContactRecord, type SegmentRule } from "../../../domain/contacts";
 import { clampPage, listPerPage } from "../../../lib/pagination";
+import { DEC_711 } from "../../../decisions";
 import { currentOrgId, asRecord, checkLen, serializeSegment, requireOwnedSegment } from "./shared";
+
+void DEC_711; // GET /segments `count`: the directory rail's per-segment figure, endpoint-backed
 
 function isRuleShape(r: unknown): r is SegmentRule {
   return (
@@ -91,6 +95,16 @@ export function parseRulesQueryParam(raw: string | undefined): SegmentRule[] {
   return rules;
 }
 
+/** DEC-710: a segment's rail/list count is computed with the SAME
+ * segment-rule where clause the directory list applies — this calls the
+ * exact repo.listContactsForOrg path GET /contacts uses with
+ * segmentId=<this segment>, never a second matchesSegment definition. */
+async function segmentCount(db: Db, orgId: string, segmentId: string): Promise<number> {
+  const params = repo.parseContactListQuery({ page: "1", perPage: "1" }, []);
+  const result = await repo.listContactsForOrg(db, orgId, { ...params, segmentId });
+  return result.total;
+}
+
 export function registerSegmentRoutes(contactsRoutes: Hono<AppEnv>): void {
   contactsRoutes.get("/segments", async (c) => {
     const orgId = currentOrgId(c);
@@ -100,7 +114,10 @@ export function registerSegmentRoutes(contactsRoutes: Hono<AppEnv>): void {
       repo.listSegmentsForOrg(c.var.db, orgId, { limit: perPage, offset: (page - 1) * perPage }),
       repo.countSegmentsForOrg(c.var.db, orgId),
     ]);
-    return c.json({ items: items.map(serializeSegment), total, page, perPage });
+    const serialized = await Promise.all(
+      items.map(async (item) => ({ ...serializeSegment(item), count: await segmentCount(c.var.db, orgId, item.id) })),
+    );
+    return c.json({ items: serialized, total, page, perPage });
   });
 
   contactsRoutes.post("/segments", csrfJson, async (c) => {

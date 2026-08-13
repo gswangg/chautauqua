@@ -1,0 +1,111 @@
+// DirectoryRail render coverage (task-w17-c, DEC-710/DEC-711): three
+// stacked sections ("Where they work" / "Saved segments" / "Possible
+// duplicates"), each rendering the counts/captions it was handed (never
+// recomputing them), and the duplicate row's Merge link routing to the
+// existing merge page at its own URL.
+import type { ComponentProps } from 'react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, render, screen } from '@testing-library/react';
+import '@testing-library/jest-dom/vitest';
+import { MemoryRouter } from 'react-router-dom';
+import { DirectoryRail } from './DirectoryRail';
+import type { DuplicateGroup, Segment } from './types';
+
+afterEach(() => {
+  cleanup();
+});
+
+const TOP_COMPANIES = [
+  { company: 'Acme', count: 4 },
+  { company: 'Navy', count: 2 },
+];
+
+const SEGMENTS: Segment[] = [
+  { id: 'seg1', name: 'VIP speakers', rules: [{ field: 'company', op: 'eq', value: 'Acme' }], count: 4 },
+];
+
+const DUPLICATE_GROUPS: DuplicateGroup[] = [
+  {
+    contactIds: ['ct3', 'ct4'],
+    contacts: [
+      { id: 'ct3', firstName: 'Sam', lastName: 'Rivera', email: 'sam.rivera@acme.example', company: 'Acme' },
+      { id: 'ct4', firstName: 'Sam', lastName: 'Rivera', email: 'sam.r@acmecorp.example', company: 'Acme' },
+    ],
+  },
+];
+
+function renderRail(overrides: Partial<ComponentProps<typeof DirectoryRail>> = {}) {
+  return render(
+    <MemoryRouter>
+      <DirectoryRail
+        topCompanies={TOP_COMPANIES}
+        onCompanyClick={vi.fn()}
+        segments={SEGMENTS}
+        onApplySegment={vi.fn()}
+        onSaveCurrentFilters={vi.fn()}
+        duplicateCount={DUPLICATE_GROUPS.length}
+        duplicatePreview={DUPLICATE_GROUPS}
+        {...overrides}
+      />
+    </MemoryRouter>,
+  );
+}
+
+describe('DirectoryRail', () => {
+  it('renders the three stacked sections with the mock\'s labels', () => {
+    renderRail();
+
+    expect(screen.getByText('Where they work')).toBeInTheDocument();
+    expect(screen.getByText('Saved segments')).toBeInTheDocument();
+    expect(screen.getByText('Possible duplicates · 1')).toBeInTheDocument();
+  });
+
+  it('renders top companies with their counts and fires onCompanyClick', () => {
+    const onCompanyClick = vi.fn();
+    renderRail({ onCompanyClick });
+
+    const acmeButton = screen.getByRole('button', { name: 'Acme' });
+    expect(acmeButton).toBeInTheDocument();
+    expect(acmeButton.closest('li')!.textContent).toContain('4');
+
+    acmeButton.click();
+    expect(onCompanyClick).toHaveBeenCalledWith('Acme');
+  });
+
+  it('renders each segment with its server-computed count and a one-line rule caption, never recomputing it', () => {
+    renderRail();
+
+    expect(screen.getByRole('button', { name: 'VIP speakers' })).toBeInTheDocument();
+    expect(screen.getByText('company = "Acme"')).toBeInTheDocument();
+    // The count rendered is exactly the prop's count (4) — the component
+    // never re-derives it from the rule set or the duplicate/company data.
+    const segmentRow = screen.getByRole('button', { name: 'VIP speakers' }).closest('li')!;
+    expect(segmentRow.textContent).toContain('4');
+  });
+
+  it('offers "Save current filters" as a tertiary link on the segments section rule', () => {
+    const onSaveCurrentFilters = vi.fn();
+    renderRail({ onSaveCurrentFilters });
+
+    const saveLink = screen.getByRole('button', { name: 'Save current filters' });
+    saveLink.click();
+    expect(onSaveCurrentFilters).toHaveBeenCalled();
+  });
+
+  it('renders duplicate pairs by name with a Merge link routing to the merge page at its own URL', () => {
+    renderRail();
+
+    expect(screen.getByText('Sam Rivera · Sam Rivera')).toBeInTheDocument();
+    const mergeLink = screen.getByRole('link', { name: 'Merge' });
+    expect(mergeLink).toHaveAttribute('href', '/contacts/merge?ids=ct3,ct4');
+  });
+
+  it('renders an honest empty state for each section when there is nothing to show', () => {
+    renderRail({ topCompanies: [], segments: [], duplicatePreview: [], duplicateCount: 0 });
+
+    expect(screen.getByText('—')).toBeInTheDocument();
+    expect(screen.getByText('No saved segments yet.')).toBeInTheDocument();
+    expect(screen.getByText('No duplicate groups found.')).toBeInTheDocument();
+    expect(screen.getByText('Possible duplicates · 0')).toBeInTheDocument();
+  });
+});
