@@ -79,13 +79,31 @@ function listCssFiles(dir: string): string[] {
 describe("design system token parity (DEC-367/372)", () => {
   const stylesCss = readFileSync(STYLES_CSS_PATH, "utf8");
 
-  it("app/src/styles.css and THEME_CSS declare the identical --chq-* name set", () => {
+  // DEC-989 Amendment (wave 37) is the one NAMED exception to DEC-372's set
+  // equality: the table measure (1440) is an admin-SPA-only class -- nothing
+  // server-rendered is table class -- so --chq-measure-table is declared in
+  // app/src/styles.css only and deliberately NOT in THEME_CSS (a token
+  // declared and consumed by nobody is a lie). test/ssr-public-measure.test.ts
+  // asserts the other half: that THEME_CSS never re-declares it. Every other
+  // name must still match exactly, so unintended drift still fails here.
+  const SPA_ONLY_TOKENS = ["--chq-measure-table"];
+
+  it("app/src/styles.css and THEME_CSS declare the identical --chq-* name set (except the DEC-989 wave-37 SPA-only measure)", () => {
     const stylesNames = readTokenNames(stylesCss);
     const themeNames = readTokenNames(THEME_CSS);
-    const onlyInStyles = [...stylesNames].filter((n) => !themeNames.has(n)).sort();
+    const onlyInStyles = [...stylesNames]
+      .filter((n) => !themeNames.has(n) && !SPA_ONLY_TOKENS.includes(n))
+      .sort();
     const onlyInTheme = [...themeNames].filter((n) => !stylesNames.has(n)).sort();
     expect(onlyInStyles).toEqual([]);
     expect(onlyInTheme).toEqual([]);
+    // The exception is exactly that: styles.css must still declare it.
+    for (const token of SPA_ONLY_TOKENS) {
+      expect(stylesNames.has(token), `${token} must still be declared in app/src/styles.css`).toBe(
+        true,
+      );
+      expect(themeNames.has(token), `${token} must NOT be declared in THEME_CSS`).toBe(false);
+    }
   });
 
   it("shared token values match between the two files, and match DEC-367", () => {
