@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { apiDelete, apiGet, apiList, apiPatch, apiPost, ApiError } from '../../lib/api';
-import { formatDateOnlyLong } from '../../lib/dates';
+import { formatDateOnly } from '../../lib/dates';
 import { copyText } from '../../lib/clipboard';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
@@ -239,11 +239,11 @@ export function FormsPage() {
         <div className="chq-forms-strip">
           <div className="chq-forms-strip-cell">
             <span className="chq-forms-strip-label">Opens</span>
-            <span className="chq-forms-strip-value">{formatDateOnlyLong(form.openDate)}</span>
+            <span className="chq-forms-strip-value">{formatDateOnly(form.openDate)}</span>
           </div>
           <div className="chq-forms-strip-cell">
             <span className="chq-forms-strip-label">Closes</span>
-            <span className="chq-forms-strip-value">{formatDateOnlyLong(form.closeDate)}</span>
+            <span className="chq-forms-strip-value">{formatDateOnly(form.closeDate)}</span>
           </div>
           <div className="chq-forms-strip-cell">
             <span className="chq-forms-strip-label">Received</span>

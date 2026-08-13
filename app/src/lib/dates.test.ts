@@ -84,13 +84,7 @@ describe('formatDateOnly', () => {
 
   it('renders the entered calendar date regardless of local timezone', () => {
     const ms = Date.UTC(2027, 4, 25); // 2027-05-25T00:00:00.000Z
-    const expected = new Intl.DateTimeFormat(undefined, {
-      timeZone: 'UTC',
-      year: 'numeric',
-      month: 'numeric',
-      day: 'numeric',
-    }).format(new Date(ms));
-    expect(formatDateOnly(ms)).toBe(expected);
+    expect(formatDateOnly(ms)).toBe('25 May 2027');
   });
 });
 
@@ -181,11 +175,6 @@ describe('formatDayLabel', () => {
 describe('formatDateTimeInZone', () => {
   it('formats a fixed instant in a given IANA zone', () => {
     const iso = '2026-01-15T13:30:00.000Z';
-    const expected = new Date(iso).toLocaleString(undefined, {
-      dateStyle: 'medium',
-      timeStyle: 'short',
-      timeZone: 'America/Los_Angeles',
-    });
-    expect(formatDateTimeInZone(iso, 'America/Los_Angeles')).toBe(expected);
+    expect(formatDateTimeInZone(iso, 'America/Los_Angeles')).toBe('15 Jan 2026, 05:30');
   });
 });

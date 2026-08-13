@@ -56,22 +56,18 @@ export function formatDate(ms: number | null | undefined): string {
 }
 
 /**
- * Format a UTC-midnight epoch-ms calendar-date value for display; '—' for
- * null/undefined/NaN/invalid. Reads the timestamp in the UTC timezone so
- * the calendar date entered by the user renders the same in every browser
- * timezone. Use for all date-only fields (task due dates, plan open/close
- * windows); never use formatDate/toLocaleDateString for these.
+ * Format a UTC-midnight epoch-ms calendar-date value as "16 Aug 2026"; '—'
+ * for null/undefined/NaN/invalid. Reads the timestamp in the UTC timezone
+ * (DEC-153) so the entered calendar date renders identically in every
+ * browser timezone. The day/short-month/year order is built by hand (never
+ * Intl, never toLocaleDateString) so the output is byte-identical
+ * regardless of the runtime's default locale (DEC-963).
  */
 export function formatDateOnly(ms: number | null | undefined): string {
   if (ms === null || ms === undefined || Number.isNaN(ms)) return '—';
   const date = new Date(ms);
   if (Number.isNaN(date.getTime())) return '—';
-  return new Intl.DateTimeFormat(undefined, {
-    timeZone: 'UTC',
-    year: 'numeric',
-    month: 'numeric',
-    day: 'numeric',
-  }).format(date);
+  return `${date.getUTCDate()} ${SHORT_MONTH_NAMES[date.getUTCMonth()]} ${date.getUTCFullYear()}`;
 }
 
 /**
@@ -106,22 +102,6 @@ const SHORT_MONTH_NAMES = [
   'Nov',
   'Dec',
 ];
-
-/**
- * Format a UTC-midnight epoch-ms calendar-date value as "16 Aug 2026"; '—'
- * for null/undefined/NaN/invalid. Like formatDateOnly, this reads the
- * timestamp in the UTC timezone (DEC-153) so the entered calendar date
- * renders identically in every browser timezone. The day/short-month/year
- * order is built by hand (never Intl's locale-dependent month/day
- * ordering) so the mock's exact "16 Aug 2026" shape is guaranteed
- * regardless of the runtime's default locale.
- */
-export function formatDateOnlyLong(ms: number | null | undefined): string {
-  if (ms === null || ms === undefined || Number.isNaN(ms)) return '—';
-  const date = new Date(ms);
-  if (Number.isNaN(date.getTime())) return '—';
-  return `${date.getUTCDate()} ${SHORT_MONTH_NAMES[date.getUTCMonth()]} ${date.getUTCFullYear()}`;
-}
 
 const SHORT_WEEKDAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -160,7 +140,18 @@ export function formatDayLabel(day: string | null | undefined): string {
  * (CallForPapersPanel.tsx, DEC-781).
  */
 export function formatDateTimeInZone(value: number | string, timeZone: string): string {
-  return new Date(value).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short', timeZone });
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone,
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(new Date(value));
+  const get = (type: Intl.DateTimeFormatPartTypes): string =>
+    parts.find((part) => part.type === type)?.value ?? '';
+  return `${get('day')} ${get('month')} ${get('year')}, ${get('hour')}:${get('minute')}`;
 }
 
 /**
