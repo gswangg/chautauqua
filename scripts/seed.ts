@@ -1331,11 +1331,29 @@ async function main(): Promise<void> {
     "Approve",
     "Approve",
   ] as const;
+  // DEC-942: a deterministic, reproducible string hash (djb2) reduced into
+  // the 1..5 scale. Deriving both scores from evalCounter alone (the prior
+  // `1 + ((n*7+2)%5)` / `1 + ((n*11+1)%5)` scheme) cycles with period 5, so
+  // 31 evaluations collapsed to five distinct score pairs and the RANK
+  // table's order was arbitrary. Hashing the (reviewerId, submissionId) pair
+  // instead spreads scores across the full seeded set while staying
+  // reproducible across runs (no Math.random / no wall-clock input).
+  function djb2Hash(input: string): number {
+    let h = 5381;
+    for (let i = 0; i < input.length; i++) {
+      h = (h * 33 + input.charCodeAt(i)) | 0;
+    }
+    return h >>> 0;
+  }
+  function hashedScore(reviewerId: string, submissionId: string, salt: string): number {
+    const h = djb2Hash(`${reviewerId}::${submissionId}::${salt}`);
+    return 1 + (h % 5);
+  }
   let evalCounter = 0;
   function insertEvaluation(reviewerId: string, submissionId: string, planId: string = evalPlanId): void {
     evalCounter += 1;
-    const contentScore = 1 + ((evalCounter * 7 + 2) % 5);
-    const deliveryScore = 1 + ((evalCounter * 11 + 1) % 5);
+    const contentScore = hashedScore(reviewerId, submissionId, "content_quality");
+    const deliveryScore = hashedScore(reviewerId, submissionId, "speaker_delivery");
     const recommendation =
       RECOMMENDATION_PATTERN[(evalCounter - 1) % RECOMMENDATION_PATTERN.length]!;
     const comment = EVAL_COMMENTS[evalCounter % EVAL_COMMENTS.length]!;
@@ -1374,6 +1392,23 @@ async function main(): Promise<void> {
   for (const submissionId of track1Subs) {
     insertEvaluation(reviewerDUserId, submissionId);
   }
+
+  // DEC-271/DEC-942: a recusal for the demo reviewer persona on a submission
+  // in plan 1 (track 0, their own scope) that they have NOT already
+  // evaluated (the loop above only covers track0Subs[0..6]), so the queue's
+  // RECUSED row, its shrunk actionable count, and the weighted-mean
+  // exclusion all render against real seed data instead of never firing.
+  const recusedSubmissionId = track0Subs[7]!;
+  statements.push(
+    insertStmt("review_recusal", {
+      id: seedId("review_recusal", 1),
+      plan_id: evalPlanId,
+      submission_id: recusedSubmissionId,
+      user_id: reviewerUserId,
+      reason: "Co-authored an earlier draft of this proposal with the submitter.",
+      created_at: nextTs(),
+    }),
+  );
 
   // --- evaluation plan 2 (DEC-668): closed and fully evaluated, so the
   // Review landing's plans list has a real 'closed' row whose progress bar
@@ -1934,13 +1969,16 @@ async function main(): Promise<void> {
     let activityCounter = 0;
     const nextActivityId = () => seedId("pipeline_activity", ++activityCounter);
 
-    // Entry 1: identified only, no history beyond enrollment.
+    // Entry 1: identified only, no history beyond enrollment. Carries a fit
+    // score/rationale (DEC-821, DEC-942) so the Fit pill has real data.
     statements.push(
       insertStmt("pipeline_entry", {
         id: pipelineEntryIds[0],
         org_id: orgId,
         contact_id: pipelineContactIds[0],
         stage: "identified",
+        fit_score: 4,
+        rationale: "Deep expertise in the track's core topic; hasn't spoken at this event before.",
         created_at: nextTs(),
         updated_at: ts,
       }),
@@ -2005,13 +2043,17 @@ async function main(): Promise<void> {
       }),
     );
 
-    // Entry 3: enrolled straight into 'confirmed', with a note.
+    // Entry 3: enrolled straight into 'confirmed', with a note. Also rated
+    // (DEC-942), leaving entry 2 as the deliberately unrated row so the
+    // dashed "Unrated" state stays visible on the board.
     statements.push(
       insertStmt("pipeline_entry", {
         id: pipelineEntryIds[2],
         org_id: orgId,
         contact_id: pipelineContactIds[2],
         stage: "confirmed",
+        fit_score: 5,
+        rationale: "Confirmed fast, strong audience draw from a past talk elsewhere.",
         created_at: nextTs(),
         updated_at: ts,
       }),

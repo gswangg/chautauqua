@@ -459,3 +459,92 @@ describe("seed coherence (DEC-771)", () => {
     );
   });
 });
+
+describe("seed coherence (DEC-942): the three states the demo never showed", () => {
+  it("(1) a review_recusal row exists for the demo reviewer persona in plan 1, on a submission they have NOT already evaluated", () => {
+    const recusalRows = parseInserts(sql, "review_recusal");
+    expect(recusalRows.length, "no review_recusal row was seeded at all").toBeGreaterThan(0);
+
+    const planRows = parseInserts(sql, "evaluation_plan");
+    const plan1 = planRows.find((r) => r.name === "Program Committee Review");
+    expect(plan1, "plan 1 ('Program Committee Review') not found").toBeTruthy();
+
+    const planReviewerRows = parseInserts(sql, "plan_reviewer");
+    const plan1ReviewerUserIds = new Set(
+      planReviewerRows.filter((r) => r.plan_id === plan1!.id).map((r) => r.user_id),
+    );
+
+    const recusal = recusalRows.find((r) => r.plan_id === plan1!.id);
+    expect(recusal, "no review_recusal row targets plan 1").toBeTruthy();
+    expect(
+      plan1ReviewerUserIds.has(recusal!.user_id!),
+      "the recused user is not scoped to plan 1 via plan_reviewer",
+    ).toBe(true);
+    expect(recusal!.reason, "recusal has no human-readable reason").toBeTruthy();
+
+    // The recused submission must NOT already have an evaluation from the
+    // same reviewer in the same plan, or the queue's recused row and
+    // actionable-count reduction would never actually change anything.
+    const evaluationRows = parseInserts(sql, "evaluation");
+    const alreadyEvaluated = evaluationRows.some(
+      (r) => r.plan_id === recusal!.plan_id && r.reviewer_id === recusal!.user_id && r.submission_id === recusal!.submission_id,
+    );
+    expect(alreadyEvaluated, "the recused submission was also independently evaluated by the same reviewer").toBe(false);
+  });
+
+  it("(2) plan 1's evaluations produce at least 6 distinct weighted scores, not a period-5 coin flip", () => {
+    const planRows = parseInserts(sql, "evaluation_plan");
+    const plan1 = planRows.find((r) => r.name === "Program Committee Review")!;
+    const criteria = JSON.parse(plan1.criteria_json!) as Array<{ id: string; kind: string; weight?: number }>;
+    const weights = new Map(
+      criteria.filter((c) => c.kind === "rating").map((c) => [c.id, c.weight ?? 1] as const),
+    );
+
+    const evaluationRows = parseInserts(sql, "evaluation").filter((r) => r.plan_id === plan1.id);
+    expect(evaluationRows.length).toBeGreaterThan(0);
+
+    const weightedScores = evaluationRows.map((r) => {
+      const scores = JSON.parse(r.scores_json!) as Record<string, number | string>;
+      let sum = 0;
+      let totalWeight = 0;
+      for (const [critId, weight] of weights) {
+        const val = scores[critId];
+        expect(typeof val, `scores_json missing rating criterion '${critId}'`).toBe("number");
+        sum += (val as number) * weight;
+        totalWeight += weight;
+      }
+      return sum / totalWeight;
+    });
+
+    const distinct = new Set(weightedScores.map((s) => s.toFixed(4)));
+    expect(
+      distinct.size,
+      `only ${distinct.size} distinct weighted scores across ${weightedScores.length} evaluations -- ranking degenerates to a coin flip`,
+    ).toBeGreaterThanOrEqual(6);
+  });
+
+  it("(3) a majority of pipeline_entry rows carry an integer 1-5 fit_score + rationale, but at least one is left unrated", () => {
+    const entryRows = parseInserts(sql, "pipeline_entry");
+    expect(entryRows.length).toBeGreaterThan(0);
+
+    const rated = entryRows.filter((r) => r.fit_score !== null && r.fit_score !== undefined);
+    const unrated = entryRows.filter((r) => r.fit_score === null || r.fit_score === undefined);
+
+    expect(unrated.length, "every pipeline_entry is rated -- the dashed 'Unrated' state never renders").toBeGreaterThan(0);
+    expect(
+      rated.length,
+      `rated (${rated.length}) is not a majority of ${entryRows.length} pipeline_entry rows`,
+    ).toBeGreaterThan(entryRows.length / 2);
+
+    for (const r of rated) {
+      const fitScore = Number(r.fit_score);
+      expect(Number.isInteger(fitScore), `fit_score '${r.fit_score}' is not an integer`).toBe(true);
+      expect(fitScore, `fit_score ${fitScore} out of 1-5 range`).toBeGreaterThanOrEqual(1);
+      expect(fitScore).toBeLessThanOrEqual(5);
+      expect(r.rationale, `rated entry ${r.id} has no rationale`).toBeTruthy();
+    }
+    for (const r of unrated) {
+      expect(r.rationale, `unrated entry ${r.id} unexpectedly has a rationale`).toBeFalsy();
+    }
+  });
+});
