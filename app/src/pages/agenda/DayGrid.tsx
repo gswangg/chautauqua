@@ -107,12 +107,14 @@ export function DayGrid({
   const dayPlaced = placed.filter((s) => s.day === day);
   const roomNameById = new Map(rooms.map((r) => [r.id, r.name]));
 
-  // DEC-724: the room-less column only earns a place in the grid when it
-  // has something to show — a placement without a room on the visible day,
-  // or a session currently armed (so its "Place ... in No room yet" button
-  // has somewhere to render).
+  // DEC-724/DEC-794: the room-less column only earns a place in the grid
+  // when it has something to show — a placement without a room on the
+  // visible day. Arming a session must never insert or remove this column
+  // (that would reflow every room column's position mid-placement) — the
+  // roomless-placement capability while armed and the column absent is
+  // instead served by a standalone button below the grid (see the JSX tail).
   const dayHasNullRoom = dayPlaced.some((s) => s.roomId === null);
-  const showTbdColumn = dayHasNullRoom || armed !== null;
+  const showTbdColumn = dayHasNullRoom;
   const columns = showTbdColumn ? [...rooms.map((r) => r.id), TBD_COL_ID] : rooms.map((r) => r.id);
 
   const roomKey = (roomId: string | null) => roomId ?? TBD_COL_ID;
@@ -236,8 +238,11 @@ export function DayGrid({
 
   const timeRowLabels = Array.from({ length: rows }, (_, i) => dayStartMin + i * gridMin);
 
+  const gridClassName = armed ? 'chq-day-grid chq-day-grid-armed' : 'chq-day-grid';
+
   return (
-    <div className="chq-day-grid" style={{ gridTemplateColumns, gridTemplateRows }} ref={gridRef}>
+    <>
+    <div className={gridClassName} style={{ gridTemplateColumns, gridTemplateRows }} ref={gridRef}>
       <div className="chq-day-grid-corner" style={{ gridColumn: 1, gridRow: 1 }} />
       {columns.map((colId, colIdx) => (
         <div key={colId} className="chq-day-grid-room-header" style={{ gridColumn: colIdx + 2, gridRow: 1 }}>
@@ -388,5 +393,15 @@ export function DayGrid({
         );
       })}
     </div>
+    {armed && !showTbdColumn && (
+      <button
+        type="button"
+        className="chq-day-grid-noroom-btn"
+        onClick={() => handleCellPlace(TBD_ROOM_ID, dayStartMin)}
+      >
+        {`Place ${armed.ref} with ${TBD_LABEL.charAt(0).toLowerCase()}${TBD_LABEL.slice(1)}`}
+      </button>
+    )}
+    </>
   );
 }

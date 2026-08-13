@@ -181,14 +181,16 @@ export function AgendaPage() {
         <h1 className="chq-page-title">Agenda</h1>
       </div>
 
-      {armed && (
-        <div className="chq-agenda-armed-bar" role="status">
-          Placing {armed.ref} — Esc to cancel
-          <button type="button" className="chq-link-button" onClick={() => setArmed(null)}>
-            Cancel
-          </button>
-        </div>
-      )}
+      <div className="chq-agenda-armed-bar" role="status" aria-hidden={armed ? undefined : true}>
+        {armed && (
+          <>
+            Placing {armed.ref} — Esc to cancel
+            <button type="button" className="chq-link-button" onClick={() => setArmed(null)}>
+              Cancel
+            </button>
+          </>
+        )}
+      </div>
 
       {error && <div className="chq-error-banner">{error}</div>}
       {toast && (

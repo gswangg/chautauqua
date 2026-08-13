@@ -236,18 +236,16 @@ describe('AgendaPage render smoke', () => {
 
     expect(screen.getByText(/Placing S-003 — Esc to cancel/)).toBeInTheDocument();
 
-    // DEC-724: the room-less column only appears while armed here (the
-    // seeded day has no roomless placement), and its header/accessible-name
-    // copy is "No room yet", never "TBD".
-    expect(screen.getByText('No room yet')).toBeInTheDocument();
+    // DEC-794: arming never inserts the room-less grid column (the seeded
+    // day has no roomless placement) — the roomless-placement capability is
+    // instead served by a standalone button below the grid, and its
+    // "No room yet" copy (DEC-724) never reads "TBD".
+    expect(screen.queryByText('No room yet', { selector: '.chq-day-grid-room-header' })).toBeNull();
     expect(document.body.textContent).not.toMatch(/\bTBD\b/);
 
-    const placeButtons = screen.getAllByRole('button', { name: /^Place S-003 at \d{1,2}:\d{2}[ap]m in /i });
-    expect(placeButtons.length).toBeGreaterThan(0);
-    const roomlessButton = placeButtons.find((b) => b.getAttribute('aria-label')?.endsWith('in No room yet'));
-    expect(roomlessButton).toBeDefined();
+    const roomlessButton = screen.getByRole('button', { name: 'Place S-003 with no room yet' });
 
-    fireEvent.click(roomlessButton!);
+    fireEvent.click(roomlessButton);
 
     await waitFor(() => {
       expect(document.querySelector('.chq-unscheduled-tray-header')?.textContent).toBe('Unscheduled (0)');
@@ -496,7 +494,10 @@ describe('AgendaPage render smoke', () => {
   });
 
   // DEC-724: the room-less column is conditional, not a permanent fixture.
-  it('hides the room-less column when nothing on the day is roomless and nothing is armed, shows it once armed', async () => {
+  // DEC-794: arming must never insert or remove it — that would reflow
+  // every room column mid-placement — so the column count is identical
+  // whether or not a session is armed on a day with no roomless placement.
+  it('never shows the room-less column while armed on a day with no roomless placement; arming keeps the column count stable', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/agenda`]: agendaPayload(),
     });
@@ -510,10 +511,58 @@ describe('AgendaPage render smoke', () => {
     expect(screen.queryByText('No room yet')).toBeNull();
     expect(document.querySelectorAll('.chq-day-grid-room-header')).toHaveLength(1);
 
-    // Present once armed.
+    // Still absent once armed — the column count never changes.
     fireEvent.click(screen.getByRole('button', { name: 'S-003: Unplaced Talk — click to select, then choose a time slot' }));
-    expect(screen.getByText('No room yet')).toBeInTheDocument();
-    expect(document.querySelectorAll('.chq-day-grid-room-header')).toHaveLength(2);
+    expect(screen.queryByText('No room yet', { selector: '.chq-day-grid-room-header' })).toBeNull();
+    expect(document.querySelectorAll('.chq-day-grid-room-header')).toHaveLength(1);
+
+    // The roomless-placement capability survives via the below-grid button.
+    expect(screen.getByRole('button', { name: 'Place S-003 with no room yet' })).toBeInTheDocument();
+  });
+
+  // DEC-794: the armed grid root carries a state class the CSS uses to
+  // raise cell-button targets above placed/clash cards.
+  it('adds the armed state class to the grid root only while a session is armed', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/agenda`]: agendaPayload(),
+    });
+
+    render(<AgendaPage />);
+    await waitFor(() => {
+      expect(screen.getByText('Overlapping Talk A')).toBeInTheDocument();
+    });
+
+    expect(document.querySelector('.chq-day-grid')).not.toHaveClass('chq-day-grid-armed');
+
+    fireEvent.click(screen.getByRole('button', { name: 'S-003: Unplaced Talk — click to select, then choose a time slot' }));
+    expect(document.querySelector('.chq-day-grid')).toHaveClass('chq-day-grid-armed');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(document.querySelector('.chq-day-grid')).not.toHaveClass('chq-day-grid-armed');
+  });
+
+  // DEC-794: the "Placing… Esc to cancel" banner must always occupy its
+  // box — only its content and aria-hidden swap — so arming/disarming
+  // never shifts the grid vertically.
+  it('keeps the armed banner container present (not removed) both before and after arming', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/agenda`]: agendaPayload(),
+    });
+
+    render(<AgendaPage />);
+    await waitFor(() => {
+      expect(screen.getByText('Overlapping Talk A')).toBeInTheDocument();
+    });
+
+    const bar = document.querySelector('.chq-agenda-armed-bar');
+    expect(bar).not.toBeNull();
+    expect(bar).toHaveAttribute('aria-hidden', 'true');
+
+    fireEvent.click(screen.getByRole('button', { name: 'S-003: Unplaced Talk — click to select, then choose a time slot' }));
+
+    const barAfter = document.querySelector('.chq-agenda-armed-bar');
+    expect(barAfter).toBe(bar);
+    expect(barAfter).not.toHaveAttribute('aria-hidden');
   });
 
   // DEC-724: Cancel (armed cleared without a placement) moves focus to the
