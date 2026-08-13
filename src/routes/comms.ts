@@ -13,7 +13,7 @@ import { getEventForOrg } from "../server/repo/events";
 import { getPlanById } from "../server/repo/review/plans";
 import type { KVStore } from "../auth/claim";
 import { redactClaimUrls } from "../auth/claim";
-import { resolvePortalLinks } from "../server/repo/portal-link";
+import { applyMintedPortalLinks, resolvePortalLinks } from "../server/repo/portal-link";
 import { textToHtml, blockFieldsInTemplate } from "../mail/render";
 import { buildIcsEvent } from "../mail/ics";
 import { resolveIcsOrganizerEmail } from "../server/context";
@@ -374,7 +374,6 @@ export async function buildRenderTargets(
   event: { id: string; name: string; recordPrefix: string; startDate: string; endDate: string },
   submissions: ComposeSubmission[],
   feedback: { planId: string; round: number } | null,
-  mintClaimTokens: boolean,
 ) {
   const expanded = expandRecipients(submissions);
   if (!expanded.ok) throw new ApiError("invalid", expanded.message);
@@ -426,17 +425,17 @@ export async function buildRenderTargets(
     outstandingByContact.set(row.contactId, arr);
   }
 
-  // DEC-530 wave-42 amendment: resolve every recipient's portal link (and
-  // mint any claim tokens it needs) through ONE batched Promise.all before
-  // the loop below, instead of an await-per-recipient KV round trip inside
-  // it — the loop itself must contain no await on KV.
-  const portalLinkMap = await resolvePortalLinks(
-    kv,
-    expanded.recipients.map((r) => ({ contactId: r.contactId, userId: accountMap.get(r.contactId) ?? null })),
-    event.id,
-    origin,
-    mintClaimTokens,
-  );
+  // DEC-397 wave-50 amendment (MINT LATE): the render pass that VALIDATES
+  // always resolves links with mintClaimTokens=false — zero KV writes, a
+  // non-empty PREVIEW_CLAIM_TOKEN placeholder so merge-field presence checks
+  // behave identically to a real send. Only once preflightRender accepts the
+  // batch does the caller mint real tokens via applyMintedPortalLinks and
+  // re-render.
+  const recipientAccounts = expanded.recipients.map((r) => ({
+    contactId: r.contactId,
+    userId: accountMap.get(r.contactId) ?? null,
+  }));
+  const portalLinkMap = await resolvePortalLinks(kv, recipientAccounts, event.id, origin, false);
 
   const targets = [];
   for (const recipient of expanded.recipients) {
@@ -474,7 +473,7 @@ export async function buildRenderTargets(
       vars,
     });
   }
-  return targets;
+  return { targets, recipients: recipientAccounts };
 }
 
 commsRoutes.post("/api/v1/events/:eventId/compose/preview", requireOrganizer, csrfJson, async (c) => {
@@ -502,8 +501,9 @@ commsRoutes.post("/api/v1/events/:eventId/compose/preview", requireOrganizer, cs
 
   const icsMap = input.attachIcs ? await preflightIcsSchedule(c.var.db, event, input.submissionIds) : undefined;
 
-  // DEC-397: preview never mints credentials — pass mintClaimTokens=false.
-  const targets = await buildRenderTargets(c, event, submissions, input.feedback, false);
+  // DEC-397: preview never mints credentials — buildRenderTargets always
+  // resolves links with mintClaimTokens=false now.
+  const { targets } = await buildRenderTargets(c, event, submissions, input.feedback);
 
   const result = preflightRender(targets, input.subjectTemplate, input.bodyTemplate);
   if (!result.ok) {
@@ -552,9 +552,25 @@ commsRoutes.post("/api/v1/events/:eventId/compose/send", requireOrganizer, csrfJ
 
   const icsMap = input.attachIcs ? await preflightIcsSchedule(c.var.db, event, input.submissionIds) : undefined;
 
-  // DEC-397: send mints real claim tokens — pass mintClaimTokens=true.
-  const targets = await buildRenderTargets(c, event, submissions, input.feedback, true);
+  // DEC-397 wave-50 amendment (MINT LATE): build targets with
+  // mintClaimTokens=false and preflight FIRST — a bad merge-field template
+  // must throw the 400 before any KV credential is minted. Only once
+  // preflightRender accepts the batch do we mint real portal links and
+  // re-render (preflightRender is pure, so the second pass costs no IO).
+  const { targets, recipients } = await buildRenderTargets(c, event, submissions, input.feedback);
 
+  const preflightResult = preflightRender(targets, input.subjectTemplate, input.bodyTemplate);
+  if (!preflightResult.ok) {
+    throw new ApiError(
+      "invalid",
+      "One or more recipients are missing merge fields",
+      missingToFields(preflightResult.missing),
+    );
+  }
+
+  const kv = c.env.KV as unknown as KVStore;
+  const origin = resolveBaseUrl(c);
+  await applyMintedPortalLinks(kv, recipients, event.id, origin, targets);
   const result = preflightRender(targets, input.subjectTemplate, input.bodyTemplate);
   if (!result.ok) {
     throw new ApiError("invalid", "One or more recipients are missing merge fields", missingToFields(result.missing));
