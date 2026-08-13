@@ -111,16 +111,26 @@ export async function renderSurfaceContent(
     }
     case "agenda": {
       const { items, total } = await getPublicAgenda(db, event, { day: query.day });
+      // DEC-768: ?day= filters `items` down to one day's rows, so the day
+      // switcher can no longer derive its full day list from `items` alone
+      // (that would drop every other day's pill, dead-ending a visitor who
+      // arrived here from the Sessions rail's day index). Fetch the full set
+      // of scheduled days independently so the switcher always shows every
+      // day, with the requested one marked current.
+      const allDays = query.day ? (await getPublicScheduleDayCounts(db, event)).map((d) => d.day) : null;
       return {
         title: `Agenda - ${event.name}`,
-        content: <AgendaContent event={event} items={items} total={total} embed={query.embed} />,
+        content: <AgendaContent event={event} items={items} total={total} embed={query.embed} allDays={allDays} activeDay={query.day ?? null} />,
       };
     }
     case "schedule": {
       const { items, total } = await getPublicAgenda(db, event, { day: query.day });
+      const allDays = query.day ? (await getPublicScheduleDayCounts(db, event)).map((d) => d.day) : null;
       return {
         title: `Schedule - ${event.name}`,
-        content: <ScheduleContent event={event} items={items} total={total} embed={query.embed} />,
+        content: (
+          <ScheduleContent event={event} items={items} total={total} embed={query.embed} allDays={allDays} activeDay={query.day ?? null} />
+        ),
       };
     }
     default: {

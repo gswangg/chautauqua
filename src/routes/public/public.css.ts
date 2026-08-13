@@ -321,21 +321,18 @@ export const PUBLIC_CSS = `
     background: var(--chq-surface-sunk);
   }
 
-  /* EMB-06 w3: a grid block's grid-row span sets its box height, but
-     unbounded text content still visually overflowed into the row below.
-     overflow:hidden clips to the assigned span; the title/speaker lines are
-     clamped so long text truncates instead of bleeding. A grid block must
-     never contain an interactive control (agenda.tsx no longer renders the
+  /* DEC-768: a grid block's grid-row span used to be a fixed 22px * spanCount
+     (overflow:hidden + line-clamp:2 to keep bleed contained), so a 15-minute
+     session's title/speakers routinely clipped away entirely. The row track
+     itself is now minmax(22px, auto) (agenda.tsx), so the block must grow
+     to its content instead of clipping it -- no fixed height, no
+     overflow:hidden, title wraps in full (mirrors app/src/pages/agenda/
+     DayGrid.tsx's DEC-742 merged-card treatment). A grid block must never
+     contain an interactive control (agenda.tsx no longer renders the
      itinerary checkbox inside AgendaDayGrid's blocks). */
-  .chq-pub-agenda-block {
-    overflow: hidden;
-  }
   .chq-pub-agenda-block-title,
   .chq-pub-agenda-block-speakers {
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
+    overflow-wrap: break-word;
   }
 
   /* EMB-09 w2: /schedule renders the shared item-list markup (.chq-pub-
