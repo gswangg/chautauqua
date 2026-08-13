@@ -264,7 +264,7 @@ function RoutedContent() {
     <RouteErrorBoundary key={location.pathname}>
       <Suspense fallback={<DelayedLoading />}>
         <Routes>
-          <Route path="/" element={<OverviewPage />} />
+          <Route path="/" element={<Navigate to="/overview" replace />} />
           {NAV_SECTIONS.map((section) => (
             <Route key={section.path} path={section.path} element={section.element} />
           ))}

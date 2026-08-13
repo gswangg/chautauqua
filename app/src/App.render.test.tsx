@@ -43,6 +43,45 @@ describe('App catch-all route', () => {
   });
 });
 
+describe('Root redirect (DEC-806)', () => {
+  it('lands an organizer on / at /overview, with Overview marked current', async () => {
+    window.history.pushState({}, '', '/admin');
+    mockApi({
+      'GET /api/v1/me': { userId: 'u-1', email: 'organizer@example.com', role: 'organizer', orgId: 'org-1' },
+      'GET /api/v1/events': { items: [{ id: 'ev-1', name: 'DevFlow Conf' }], total: 1, page: 1, perPage: 50 },
+      'GET /api/v1/events/ev-1/overview': {
+        speakers: { contactsOwing: 0, overdueAssignments: 0 },
+        agenda: { unplaced: 0, conflicts: 0 },
+      },
+    });
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(window.location.pathname).toBe('/admin/overview');
+    });
+    const primaryNav = await screen.findByRole('navigation', { name: 'Primary' });
+    expect(within(primaryNav).getByRole('link', { name: 'Overview' })).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('still bounces a reviewer landing on / to /review, not /overview', async () => {
+    window.history.pushState({}, '', '/admin');
+    mockApi({
+      'GET /api/v1/me': { userId: 'u-2', email: 'reviewer@example.com', role: 'reviewer', orgId: 'org-1' },
+      'GET /api/v1/events': { items: [], total: 0, page: 1, perPage: 50 },
+    });
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(window.location.pathname).toBe('/admin/review');
+    });
+    const primaryNav = await screen.findByRole('navigation', { name: 'Primary' });
+    expect(within(primaryNav).getByRole('link', { name: 'Review' })).toBeInTheDocument();
+    expect(within(primaryNav).queryByRole('link', { name: 'Overview' })).not.toBeInTheDocument();
+  });
+});
+
 describe('App shell (DEC-369)', () => {
   it('renders the lowercase wordmark', async () => {
     mockApi({

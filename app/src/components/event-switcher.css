@@ -24,9 +24,14 @@
   text-overflow: ellipsis;
 }
 
+/* w5-a (DEC-806/807): the name + caret read as ONE quiet control — no
+   resting border, so the button matches the plain-text name beside it.
+   Border + surface-sunk background appear only on :hover and while the
+   menu is open (aria-expanded), signalling interactivity without adding
+   chrome at rest. */
 .chq-eventswitcher-menu-btn {
   background: none;
-  border: 1px solid var(--chq-border);
+  border: 1px solid transparent;
   border-radius: var(--chq-r-ctl);
   color: var(--chq-ink);
   font: inherit;
@@ -36,7 +41,9 @@
   cursor: pointer;
 }
 
-.chq-eventswitcher-menu-btn:hover {
+.chq-eventswitcher-menu-btn:hover,
+.chq-eventswitcher-menu-btn[aria-expanded='true'] {
+  border-color: var(--chq-border);
   background: var(--chq-surface-sunk);
 }
 
