@@ -186,12 +186,6 @@ const KNOWN_SERIAL_WRITES: { file: string; functionOrNearestExport: string; reas
       "DEC-111 form-task self-heal: inserts one form_field row per FORM_TASK_FIELD_SPECS entry on first creation of a task's backing form -- bounded by a fixed template's field count (single digits), not by any table's row count.",
   },
   {
-    file: "src/server/repo/import/sessionboard.ts",
-    functionOrNearestExport: "applySessionboardPlans",
-    reason:
-      "Per-plan-row insert/update across contacts/submissions/tracks/participants during a Sessionboard CSV import -- concurrent lane w49-e is removing this loop's serial writes in this same file; if this ledger line still matches at merge time, the correct resolution is deleting this line, not re-adding the loop.",
-  },
-  {
     file: "src/server/repo/forms.ts",
     functionOrNearestExport: "reorderFields",
     reason:

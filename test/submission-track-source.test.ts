@@ -165,8 +165,13 @@ function importFakeDb(selectQueue: unknown[][]) {
       return makeChain(rows);
     },
     insert: (table: unknown) => ({
+      // DEC-528 (wave 52): the batched writer passes a multi-row array to
+      // .values(...) (chunkRowsForInsert) instead of one object per call --
+      // flatten so each row is still its own entry here, matching the
+      // per-row shape callers below expect.
       values: async (vals: unknown) => {
-        inserts.push({ table, vals });
+        const list = Array.isArray(vals) ? vals : [vals];
+        for (const v of list) inserts.push({ table, vals: v });
       },
     }),
   };
