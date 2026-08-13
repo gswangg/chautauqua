@@ -27,6 +27,18 @@ export function parseTrackId(raw: string | undefined): string | null {
   return raw && raw.trim().length > 0 ? raw.trim() : null;
 }
 
+// DEC-774: format/room chip filters on the public sessions surface — same
+// trim/length-bounds-free trim-or-null shape as parseTrackId (ids/format
+// values are opaque to the route layer; the repo-side EXISTS predicates do
+// the real matching).
+export function parseFormat(raw: string | undefined): string | null {
+  return raw && raw.trim().length > 0 ? raw.trim() : null;
+}
+
+export function parseRoomId(raw: string | undefined): string | null {
+  return raw && raw.trim().length > 0 ? raw.trim() : null;
+}
+
 /** Trim-or-null for the ?q= search box, shared by both search surfaces: the
  * EMB-02 keyword search on /sessions (title + speaker names) and the DEC-151
  * name search on /speakers and /gallery. Parsing is identical — only the

@@ -30,6 +30,10 @@ vi.mock("../src/server/repo/public", async () => {
     ...actual,
     getPublicEventBySlug: vi.fn(async (_db: unknown, slug: string) => (slug === EVENT.slug ? EVENT : null)),
     getPublicTracks: vi.fn(async () => []),
+    // DEC-774: dispatch.tsx's sessions case fetches these two unconditionally
+    // (like getPublicTracks above) for the filter chips.
+    getPublicRooms: vi.fn(async () => []),
+    getPublicFormatOptions: vi.fn(async () => []),
     getPublicSessions: vi.fn(async () => ({ items: [], total: 0 })),
     getPublicSpeakers: vi.fn(async () => ({ items: [], total: 0 })),
     getPublicSpeakerDetail: vi.fn(async () => null),

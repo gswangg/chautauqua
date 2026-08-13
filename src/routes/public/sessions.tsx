@@ -84,6 +84,11 @@ export function SessionsContent(props: {
   event: PublicEvent;
   tracks: PublicTrack[];
   activeTrackId: string | null;
+  // DEC-774: room/format chip filters, same shape/wiring as tracks.
+  rooms?: { id: string; name: string }[];
+  activeRoomId?: string | null;
+  formatOptions?: string[];
+  activeFormat?: string | null;
   q: string | null;
   items: PublicSession[];
   total: number;
@@ -100,7 +105,25 @@ export function SessionsContent(props: {
   dayCounts?: { day: string; count: number }[];
   cfpWindow?: { openDate: number | null; closeDate: number | null } | null;
 }) {
-  const { event, tracks, activeTrackId, q, items, total, page, perPage, limit, fields, embed, dayCounts, cfpWindow } = props;
+  const {
+    event,
+    tracks,
+    activeTrackId,
+    rooms,
+    activeRoomId,
+    formatOptions,
+    activeFormat,
+    q,
+    items,
+    total,
+    page,
+    perPage,
+    limit,
+    fields,
+    embed,
+    dayCounts,
+    cfpWindow,
+  } = props;
   // DEC-433/477/487: parsePage clamps page to MAX_PUBLIC_PAGE, so once we're
   // at the cap there is no page+1 to link to — stop rendering 'Show more'
   // even if items.length < total. Also stop once the cumulative row ceiling
@@ -115,36 +138,87 @@ export function SessionsContent(props: {
   // the sessions surface's knob table (DEC-489) — it filters nothing here,
   // so the URL must not advertise it.
   const carryQs = limit ? `limit=${limit}&` : "";
+  const activeRoom = activeRoomId ?? null;
+  const activeFmt = activeFormat ?? null;
+  // DEC-774: track/format/room filters all compose — every chip's href
+  // (and the search form's hidden inputs) must preserve whichever of the
+  // other two filters is currently active, overriding only its own axis.
+  // `null` in an override clears that axis (the "All ..." chip); `undefined`
+  // means "leave the active value alone".
+  function filterQs(override: { trackId?: string | null; format?: string | null; roomId?: string | null }): string {
+    const trackId = override.trackId !== undefined ? override.trackId : activeTrackId;
+    const format = override.format !== undefined ? override.format : activeFmt;
+    const roomId = override.roomId !== undefined ? override.roomId : activeRoom;
+    const parts: string[] = [];
+    if (trackId) parts.push(`trackId=${encodeURIComponent(trackId)}`);
+    if (format) parts.push(`format=${encodeURIComponent(format)}`);
+    if (roomId) parts.push(`roomId=${encodeURIComponent(roomId)}`);
+    return parts.length > 0 ? `?${parts.join("&")}` : "";
+  }
   return (
     <>
       <h2>Sessions</h2>
       <div class="chq-pub-sessions-layout">
         <div class="chq-pub-sessions-list">
-          {/* EMB-02: plain GET search form, preserves the active track filter as
-              a hidden field so search + track filtering compose. */}
+          {/* EMB-02: plain GET search form, preserves the active track/format/
+              room filters as hidden fields so search composes with all three. */}
           <form method="get" action={basePath} role="search">
             <label>
               Search
               <input type="search" name="q" value={q ?? ""} placeholder="Title or speaker name" />
             </label>
             {activeTrackId ? <input type="hidden" name="trackId" value={activeTrackId} /> : null}
+            {activeFmt ? <input type="hidden" name="format" value={activeFmt} /> : null}
+            {activeRoom ? <input type="hidden" name="roomId" value={activeRoom} /> : null}
             {limit ? <input type="hidden" name="limit" value={String(limit)} /> : null}
             <button type="submit">Search</button>
           </form>
           <nav aria-label="Track filters" class="chq-pub-filter-bar">
-            <a class="chq-pub-pill" href={basePath} aria-current={activeTrackId === null ? "true" : undefined}>
+            <a class="chq-pub-pill" href={`${basePath}${filterQs({ trackId: null })}`} aria-current={activeTrackId === null ? "true" : undefined}>
               All tracks
             </a>
             {tracks.map((t) => (
               <a
                 class="chq-pub-pill"
-                href={`${basePath}?trackId=${t.id}`}
+                href={`${basePath}${filterQs({ trackId: t.id })}`}
                 aria-current={activeTrackId === t.id ? "true" : undefined}
               >
                 {t.name}
               </a>
             ))}
           </nav>
+          {formatOptions && formatOptions.length > 0 ? (
+            <nav aria-label="Format filters" class="chq-pub-filter-bar">
+              <a class="chq-pub-pill" href={`${basePath}${filterQs({ format: null })}`} aria-current={activeFmt === null ? "true" : undefined}>
+                All formats
+              </a>
+              {formatOptions.map((f) => (
+                <a
+                  class="chq-pub-pill"
+                  href={`${basePath}${filterQs({ format: f })}`}
+                  aria-current={activeFmt === f ? "true" : undefined}
+                >
+                  {f}
+                </a>
+              ))}
+            </nav>
+          ) : null}
+          {rooms && rooms.length > 0 ? (
+            <nav aria-label="Room filters" class="chq-pub-filter-bar">
+              <a class="chq-pub-pill" href={`${basePath}${filterQs({ roomId: null })}`} aria-current={activeRoom === null ? "true" : undefined}>
+                All rooms
+              </a>
+              {rooms.map((r) => (
+                <a
+                  class="chq-pub-pill"
+                  href={`${basePath}${filterQs({ roomId: r.id })}`}
+                  aria-current={activeRoom === r.id ? "true" : undefined}
+                >
+                  {r.name}
+                </a>
+              ))}
+            </nav>
+          ) : null}
           <p>
             {items.length} of {total} session(s)
           </p>
@@ -155,6 +229,8 @@ export function SessionsContent(props: {
             <p>
               <a
                 href={`${basePath}?${activeTrackId ? `trackId=${activeTrackId}&` : ""}${
+                  activeFmt ? `format=${encodeURIComponent(activeFmt)}&` : ""
+                }${activeRoom ? `roomId=${encodeURIComponent(activeRoom)}&` : ""}${
                   q ? `q=${encodeURIComponent(q)}&` : ""
                 }${carryQs}page=${page + 1}`}
               >

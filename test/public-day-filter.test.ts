@@ -278,7 +278,9 @@ function buildSessionsAppDayAHtml() {
         ]);
       }
       if (selectCall === 2) return makeWindowChain([]); // getPublicTracks
-      if (selectCall === 3) {
+      if (selectCall === 3) return makeWindowChain([]); // getPublicRooms (DEC-774)
+      if (selectCall === 4) return makeWindowChain([]); // getPublicFormatOptions (DEC-774)
+      if (selectCall === 5) {
         return makeWindowChain(
           DAY_A_IDS.map((id, i) => ({
             id,
@@ -289,16 +291,16 @@ function buildSessionsAppDayAHtml() {
           })),
         );
       }
-      if (selectCall === 4) return makeWindowChain([]); // trackRows
-      if (selectCall === 5) return makeWindowChain([]); // speakerRows
-      if (selectCall === 6) return makeWindowChain([]); // slotRows
-      if (selectCall === 7) return makeWindowChain([]); // formatRows
-      if (selectCall === 8) return makeWindowChain([{ count: DAY_A_IDS.length }]); // countVisibleSubmissions
+      if (selectCall === 6) return makeWindowChain([]); // trackRows
+      if (selectCall === 7) return makeWindowChain([]); // speakerRows
+      if (selectCall === 8) return makeWindowChain([]); // slotRows
+      if (selectCall === 9) return makeWindowChain([]); // formatRows
+      if (selectCall === 10) return makeWindowChain([{ count: DAY_A_IDS.length }]); // countVisibleSubmissions
       // DEC-683: dispatch.tsx's !embed sessions case also fetches these two
       // rail queries — real row shapes here (never the count-shaped
       // fallback) so DayIndexRailSection's formatDay(d.day) never sees an
       // undefined day.
-      if (selectCall === 9) return makeWindowChain([]); // getPublicScheduleDayCounts
+      if (selectCall === 11) return makeWindowChain([]); // getPublicScheduleDayCounts
       return makeWindowChain([]); // getPublicCfpWindow (no default form)
     },
     selectDistinct: () => makeWindowChain(DAY_A_IDS.map((id, i) => ({ id, title: DAY_A_TITLES[i] }))),

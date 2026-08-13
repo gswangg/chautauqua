@@ -75,10 +75,11 @@ function installFakeCaches(): void {
 const TEST_ENV = { KV: fakeKv() } as unknown as AppEnv["Bindings"];
 
 // db.select() call order for /embed/:slug/sessions (HTML): 1 event,
-// 2 getPublicTracks, 3-7 hydrateSessions (subRows/trackRows/speakerRows/
-// slotRows/formatRows), 8 countVisibleSubmissions. For
-// /embed/:slug/sessions.json there is no getPublicTracks call, so it shifts
-// down by one.
+// 2 getPublicTracks, 3 getPublicRooms, 4 getPublicFormatOptions (DEC-774),
+// 5-9 hydrateSessions (subRows/trackRows/speakerRows/slotRows/formatRows),
+// 10 countVisibleSubmissions. For /embed/:slug/sessions.json there is no
+// getPublicTracks/getPublicRooms/getPublicFormatOptions call (the .json
+// feed doesn't render filter chips), so it shifts down by three.
 // DEC-634: `day` is now a SQL-level predicate (innerJoin schedule_slot) on
 // getVisibleSubmissionIdsOrdered/countVisibleSubmissions rather than a
 // post-page `.filter()` — so, mirroring test/public-agenda-event-range
@@ -94,9 +95,11 @@ function buildApp(opts: { html: boolean; day?: string }) {
   const db = {
     select: () => {
       selectCall += 1;
-      const offset = opts.html ? 1 : 0;
+      const offset = opts.html ? 3 : 0;
       if (selectCall === 1) return makeChain([EVENT_ROW]);
       if (opts.html && selectCall === 2) return makeChain([]); // getPublicTracks
+      if (opts.html && selectCall === 3) return makeChain([]); // getPublicRooms (DEC-774)
+      if (opts.html && selectCall === 4) return makeChain([]); // getPublicFormatOptions (DEC-774)
       if (selectCall === 2 + offset) return makeChain(subRows); // hydrateSessions subRows
       if (selectCall === 3 + offset) return makeChain(trackRows); // hydrateSessions trackRows
       if (selectCall === 4 + offset) return makeChain([]); // hydrateSessions speakerRows

@@ -193,24 +193,28 @@ describe("SessionCard schedule rendering (EMB-01: date/time + room)", () => {
         if (selectCall === 1) return makeChain([EVENT_ROW]);
         // 2: getPublicTracks
         if (selectCall === 2) return makeChain([]);
-        // 3: hydrateSessions subRows
-        if (selectCall === 3) {
+        // 3: getPublicRooms (DEC-774)
+        if (selectCall === 3) return makeChain([]);
+        // 4: getPublicFormatOptions (DEC-774)
+        if (selectCall === 4) return makeChain([]);
+        // 5: hydrateSessions subRows
+        if (selectCall === 5) {
           return makeChain([
             { id: "sub1", seq: 1, title: "Scheduled Talk", description: null, icsSequence: 0 },
             { id: "sub2", seq: 2, title: "Unscheduled Talk", description: null, icsSequence: 0 },
           ]);
         }
-        // 4: hydrateSessions trackRows
-        if (selectCall === 4) return makeChain([]);
-        // 5: hydrateSessions speakerRows
-        if (selectCall === 5) return makeChain([]);
-        // 6: hydrateSessions slotRows (EMB-01) — only sub1 has a slot
-        if (selectCall === 6) {
+        // 6: hydrateSessions trackRows
+        if (selectCall === 6) return makeChain([]);
+        // 7: hydrateSessions speakerRows
+        if (selectCall === 7) return makeChain([]);
+        // 8: hydrateSessions slotRows (EMB-01) — only sub1 has a slot
+        if (selectCall === 8) {
           return makeChain([
             { submissionId: "sub1", day: "2026-08-10", startMin: 540, endMin: 600, roomName: "Main Hall" },
           ]);
         }
-        // 7: hydrateSessions formatRows
+        // 9: hydrateSessions formatRows
         return makeChain([]);
       },
       selectDistinct: () =>
@@ -579,32 +583,36 @@ describe("DEC-683: sessions rail + Save control", () => {
         if (selectCall === 1) return makeChain([EVENT_ROW]);
         // 2: getPublicTracks
         if (selectCall === 2) return makeChain([]);
-        // 3: hydrateSessions subRows
-        if (selectCall === 3) {
+        // 3: getPublicRooms (DEC-774)
+        if (selectCall === 3) return makeChain([]);
+        // 4: getPublicFormatOptions (DEC-774)
+        if (selectCall === 4) return makeChain([]);
+        // 5: hydrateSessions subRows
+        if (selectCall === 5) {
           return makeChain([{ id: "sub1", seq: 1, title: "Scheduled Talk", description: null, icsSequence: 0 }]);
         }
-        // 4: hydrateSessions trackRows
-        if (selectCall === 4) return makeChain([]);
-        // 5: hydrateSessions speakerRows
-        if (selectCall === 5) return makeChain([]);
-        // 6: hydrateSessions slotRows
-        if (selectCall === 6) {
+        // 6: hydrateSessions trackRows
+        if (selectCall === 6) return makeChain([]);
+        // 7: hydrateSessions speakerRows
+        if (selectCall === 7) return makeChain([]);
+        // 8: hydrateSessions slotRows
+        if (selectCall === 8) {
           return makeChain([
             { submissionId: "sub1", day: "2026-08-10", startMin: 540, endMin: 600, roomName: "Main Hall" },
           ]);
         }
-        // 7: hydrateSessions formatRows
-        if (selectCall === 7) return makeChain([]);
-        // 8: countVisibleSubmissions
-        if (selectCall === 8) return makeChain([{ count: 1 }]);
-        // 9: getPublicScheduleDayCounts (only reached when !embed)
-        if (selectCall === 9) {
+        // 9: hydrateSessions formatRows
+        if (selectCall === 9) return makeChain([]);
+        // 10: countVisibleSubmissions
+        if (selectCall === 10) return makeChain([{ count: 1 }]);
+        // 11: getPublicScheduleDayCounts (only reached when !embed)
+        if (selectCall === 11) {
           return makeChain([
             { day: "2026-08-10", count: 2 },
             { day: "2026-08-11", count: 1 },
           ]);
         }
-        // 10: getPublicCfpWindow (only reached when !embed) — form.open_date/
+        // 12: getPublicCfpWindow (only reached when !embed) — form.open_date/
         // close_date are timestamp_ms columns, so drizzle hands back Date
         // objects, not raw numbers.
         return makeChain([{ openDate: null, closeDate: opts.closeDate === null ? null : new Date(opts.closeDate) }]);

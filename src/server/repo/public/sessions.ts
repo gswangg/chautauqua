@@ -74,6 +74,28 @@ function searchCondition(q: string) {
   );
 }
 
+/** DEC-774: format-filter predicate — an EXISTS on submission_answer for
+ * the event's SESSION_FORMAT_FIELD_ID with an exact value match (valueJson
+ * is the JSON-encoded answer, so the compare is against JSON.stringify of
+ * the requested format — never a substring/LIKE match). Added directly to
+ * baseConditions (shared by every trackId/day branch below) rather than a
+ * new join, so it composes with every existing branch without multiplying
+ * them. */
+function formatFilterCondition(format: string) {
+  return sql`EXISTS (SELECT 1 FROM ${schema.submissionAnswer} WHERE ${schema.submissionAnswer.submissionId} = ${schema.submission.id} AND ${schema.submissionAnswer.formFieldId} = ${SESSION_FORMAT_FIELD_ID} AND ${schema.submissionAnswer.valueJson} = ${JSON.stringify(format)})`;
+}
+
+/** DEC-774: room-filter predicate — an EXISTS on schedule_slot for the
+ * requested room_id, bounded to the event's own date range (DEC-318, same
+ * rule as slotWithinEventRange/dayFilterJoinCondition) so a slot dated
+ * outside the event window can't satisfy the filter. An unplaced session
+ * has no matching row and is excluded while a room filter is active — this
+ * is a separate EXISTS (not the day branch's innerJoin), so it composes
+ * with every trackId/day branch without multiplying them. */
+function roomFilterCondition(event: Pick<PublicEvent, "startDate" | "endDate">, roomId: string) {
+  return sql`EXISTS (SELECT 1 FROM ${schema.scheduleSlot} WHERE ${schema.scheduleSlot.submissionId} = ${schema.submission.id} AND ${schema.scheduleSlot.roomId} = ${roomId} AND ${schema.scheduleSlot.day} >= ${event.startDate} AND ${schema.scheduleSlot.day} <= ${event.endDate})`;
+}
+
 /** DEC-634: day-filter join condition — joins schedule_slot to the
  * submission being tested and applies the SAME event-window rule
  * (slotWithinEventRange, DEC-318) that already decides whether a session
@@ -113,9 +135,13 @@ async function getVisibleSubmissionIdsOrdered(
   day: string | null,
   limit: number,
   offset: number,
+  format: string | null,
+  roomId: string | null,
 ): Promise<Array<{ id: string }>> {
   const baseConditions = [eq(schema.submission.eventId, event.id), visibleSessionConditions()];
   if (q) baseConditions.push(searchCondition(q));
+  if (format) baseConditions.push(formatFilterCondition(format));
+  if (roomId) baseConditions.push(roomFilterCondition(event, roomId));
 
   if (trackId && day) {
     const query = db
@@ -204,9 +230,13 @@ async function countVisibleSubmissions(
   trackId: string | null,
   q: string | null,
   day: string | null,
+  format: string | null,
+  roomId: string | null,
 ): Promise<number> {
   const baseConditions = [eq(schema.submission.eventId, event.id), visibleSessionConditions()];
   if (q) baseConditions.push(searchCondition(q));
+  if (format) baseConditions.push(formatFilterCondition(format));
+  if (roomId) baseConditions.push(roomFilterCondition(event, roomId));
 
   if (trackId && day) {
     const rows = await db
@@ -462,10 +492,14 @@ export async function getPublicSessions(
     q?: string | null;
     window?: boolean;
     day?: string | null;
+    format?: string | null;
+    roomId?: string | null;
   },
 ): Promise<PublicSessionsPage> {
   const q = opts.q ?? null;
   const day = opts.day ?? null;
+  const format = opts.format ?? null;
+  const roomId = opts.roomId ?? null;
   // DEC-516: `window` opts into a real one-page LIMIT+OFFSET (boundedWindow)
   // for the paged JSON feeds; defaults to false so every existing HTML call
   // site keeps getting boundedRowLimit's cumulative prefix (pages 1..page
@@ -478,10 +512,20 @@ export async function getPublicSessions(
   // contiguous right after the id query, matching every existing fake-db
   // harness in test/public.test.ts that numbers db.select() calls by
   // position; the count query's separate select() runs last instead.
-  const ordered = await getVisibleSubmissionIdsOrdered(db, event, opts.trackId, q, day, limit, offset);
+  const ordered = await getVisibleSubmissionIdsOrdered(
+    db,
+    event,
+    opts.trackId,
+    q,
+    day,
+    limit,
+    offset,
+    format,
+    roomId,
+  );
   const pageIds = ordered.map((r) => r.id);
   const items = await hydrateSessions(db, pageIds, event);
-  const total = await countVisibleSubmissions(db, event, opts.trackId, q, day);
+  const total = await countVisibleSubmissions(db, event, opts.trackId, q, day, format, roomId);
   return { items, total };
 }
 

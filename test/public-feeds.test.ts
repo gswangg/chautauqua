@@ -121,17 +121,21 @@ function buildHtmlApp() {
       if (selectCall === 1) return makeChain([EVENT_ROW]);
       // 2: getPublicTracks
       if (selectCall === 2) return makeChain([]);
-      // 3: hydrateSessions subRows
-      if (selectCall === 3) {
+      // 3: getPublicRooms (DEC-774)
+      if (selectCall === 3) return makeChain([]);
+      // 4: getPublicFormatOptions (DEC-774)
+      if (selectCall === 4) return makeChain([]);
+      // 5: hydrateSessions subRows
+      if (selectCall === 5) {
         return makeChain([{ id: "sub1", seq: 1, title: "Visible Talk", description: null, icsSequence: 0 }]);
       }
-      // 4: hydrateSessions trackRows
-      if (selectCall === 4) return makeChain([]);
-      // 5: hydrateSessions speakerRows
-      if (selectCall === 5) return makeChain([]);
-      // 6: hydrateSessions slotRows
+      // 6: hydrateSessions trackRows
       if (selectCall === 6) return makeChain([]);
-      // 7: hydrateSessions formatRows
+      // 7: hydrateSessions speakerRows
+      if (selectCall === 7) return makeChain([]);
+      // 8: hydrateSessions slotRows
+      if (selectCall === 8) return makeChain([]);
+      // 9: hydrateSessions formatRows
       return makeChain([]);
     },
     selectDistinct: () => makeChain([{ id: "sub1", title: "Visible Talk" }]),
@@ -554,7 +558,9 @@ describe("GET /embed/:eventSlug/*.json single-page window (DEC-516)", () => {
         selectCall += 1;
         if (selectCall === 1) return makeChain([EVENT_ROW]);
         if (selectCall === 2) return makeChain([]); // getPublicTracks
-        if (selectCall === 3) {
+        if (selectCall === 3) return makeChain([]); // getPublicRooms (DEC-774)
+        if (selectCall === 4) return makeChain([]); // getPublicFormatOptions (DEC-774)
+        if (selectCall === 5) {
           return makeChain(
             sessionIds.map((id, i) => ({
               id,
@@ -565,13 +571,13 @@ describe("GET /embed/:eventSlug/*.json single-page window (DEC-516)", () => {
             })),
           );
         }
-        if (selectCall === 4) return makeChain([]); // trackRows (hydrate)
-        if (selectCall === 5) return makeChain([]); // speakerRows
-        if (selectCall === 6) return makeChain([]); // slotRows
-        if (selectCall === 7) return makeChain([]); // formatRows
-        if (selectCall === 8) return makeChain([{ count: N }]); // countVisibleSubmissions
+        if (selectCall === 6) return makeChain([]); // trackRows (hydrate)
+        if (selectCall === 7) return makeChain([]); // speakerRows
+        if (selectCall === 8) return makeChain([]); // slotRows
+        if (selectCall === 9) return makeChain([]); // formatRows
+        if (selectCall === 10) return makeChain([{ count: N }]); // countVisibleSubmissions
         // DEC-683: !embed sessions rail queries — real (empty) row shapes.
-        if (selectCall === 9) return makeChain([]); // getPublicScheduleDayCounts
+        if (selectCall === 11) return makeChain([]); // getPublicScheduleDayCounts
         return makeChain([]); // getPublicCfpWindow
       },
       selectDistinct: () => makeChain(sessionIds.map((id, i) => ({ id, title: `Talk ${i}` }))),

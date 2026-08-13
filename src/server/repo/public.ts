@@ -24,8 +24,8 @@ export {
   visibleSubmissionConditions,
 } from "./public/gates";
 
-export { getPublicEventBySlug, getPublicTracks, getPublicCfpWindow } from "./public/event";
-export type { PublicEvent, PublicTrack } from "./public/event";
+export { getPublicEventBySlug, getPublicTracks, getPublicCfpWindow, getPublicRooms, getPublicFormatOptions } from "./public/event";
+export type { PublicEvent, PublicTrack, PublicRoom } from "./public/event";
 
 export { getPublicSessions, getPublicSessionsByIds } from "./public/sessions";
 export type { PublicSpeaker, PublicSession, PublicSessionsPage } from "./public/sessions";

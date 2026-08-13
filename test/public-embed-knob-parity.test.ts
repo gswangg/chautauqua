@@ -307,11 +307,13 @@ function buildSessionsApp(day: string | null) {
       selectCall += 1;
       if (selectCall === 1) return makeChain([EVENT_ROW]); // getPublicEventBySlug
       if (selectCall === 2) return makeChain([]); // getPublicTracks
-      if (selectCall === 3) return makeChain(matchingRows); // hydrateSessions subRows
-      if (selectCall === 4) return makeChain([]); // hydrateSessions trackRows
-      if (selectCall === 5) return makeChain([]); // hydrateSessions speakerRows
-      if (selectCall === 6) return makeChain(SLOT_ROWS); // hydrateSessions EMB-01 slotRows
-      if (selectCall === 7) return makeChain([]); // hydrateSessions EMB-01/EMB-08 formatRows
+      if (selectCall === 3) return makeChain([]); // getPublicRooms (DEC-774)
+      if (selectCall === 4) return makeChain([]); // getPublicFormatOptions (DEC-774)
+      if (selectCall === 5) return makeChain(matchingRows); // hydrateSessions subRows
+      if (selectCall === 6) return makeChain([]); // hydrateSessions trackRows
+      if (selectCall === 7) return makeChain([]); // hydrateSessions speakerRows
+      if (selectCall === 8) return makeChain(SLOT_ROWS); // hydrateSessions EMB-01 slotRows
+      if (selectCall === 9) return makeChain([]); // hydrateSessions EMB-01/EMB-08 formatRows
       return makeChain([{ count: matchingRows.length }]); // countVisibleSubmissions (day-scoped)
     },
     selectDistinct: () => makeChain(matchingRows.map((s) => ({ id: s.id, title: s.title }))),

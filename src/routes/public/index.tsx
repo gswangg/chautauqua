@@ -40,6 +40,8 @@ import {
   parseLimit,
   parseCardFields,
   parseAccent,
+  parseFormat,
+  parseRoomId,
 } from "./query";
 import { buildSurfaceFeed, agendaIcsEvents, projectCardFields } from "./feeds";
 import type { CardFields } from "./query";
@@ -152,6 +154,8 @@ for (const surface of SURFACES) {
       day: parseDay(c.req.query("day")),
       limit: parseLimit(c.req.query("limit")),
       fields: parseCardFields(c.req.query("fields")),
+      format: c.req.query("format"),
+      roomId: c.req.query("roomId"),
     });
     return c.html(
       <PublicShell event={event} active={surface} title={title}>
@@ -229,6 +233,8 @@ publicRoutes.get("/embed/:eventSlug/:surface{[a-z]+\\.json}", async (c) => {
     limit: parseLimit(c.req.query("limit")),
     day: parseDay(c.req.query("day")),
     fields: parseCardFields(c.req.query("fields")),
+    format: c.req.query("format"),
+    roomId: c.req.query("roomId"),
   });
   return c.json(buildSurfaceFeed(event, surfaceParam, paged, new Date()));
 });
@@ -246,6 +252,8 @@ publicRoutes.get("/embed/:eventSlug/:surface", async (c) => {
     day: parseDay(c.req.query("day")),
     limit: parseLimit(c.req.query("limit")),
     fields: parseCardFields(c.req.query("fields")),
+    format: c.req.query("format"),
+    roomId: c.req.query("roomId"),
     // DEC-594 (EMB-7): every link/form rendered by this dispatch (currently
     // sessions' search form, track-filter pills, and drill-in title links)
     // must stay inside /embed/... rather than breaking out to the
@@ -366,11 +374,22 @@ async function getSurfaceFeedPage(
   db: Parameters<typeof getPublicSessions>[0],
   event: Parameters<typeof getPublicSessions>[1],
   surface: Surface,
-  query: { trackId?: string; page?: string; q?: string; limit: number | null; day: string | null; fields: CardFields },
+  query: {
+    trackId?: string;
+    page?: string;
+    q?: string;
+    limit: number | null;
+    day: string | null;
+    fields: CardFields;
+    format?: string;
+    roomId?: string;
+  },
 ): Promise<{ items: unknown; total: number; page: number; perPage: number }> {
   switch (surface) {
     case "sessions": {
       const trackId = parseTrackId(query.trackId);
+      const format = parseFormat(query.format);
+      const roomId = parseRoomId(query.roomId);
       const page = parsePage(query.page);
       const q = parseNameQuery(query.q);
       const perPage = query.limit ?? PUBLIC_PER_PAGE;
@@ -380,10 +399,11 @@ async function getSurfaceFeedPage(
       // stays the full unwindowed count so a consumer can still detect
       // truncation, and a page past the MAX_PUBLIC_ROWS ceiling honestly
       // returns an empty items array (never an error).
-      // DEC-634: `day` is a SQL-level predicate on the repo query (see
-      // dispatch.tsx's mirrored HTML case) — `total` and the LIMIT/OFFSET
-      // window both see the identical predicate, so page 2 of a
-      // day-filtered list returns the next window instead of nothing.
+      // DEC-634/DEC-774: `day`/`format`/`roomId` are all SQL-level
+      // predicates on the repo query (see dispatch.tsx's mirrored HTML
+      // case) — `total` and the LIMIT/OFFSET window both see the identical
+      // predicate, so page 2 of a filtered list returns the next window
+      // instead of nothing.
       const { items: rawItems, total } = await getPublicSessions(db, event, {
         trackId,
         page,
@@ -391,6 +411,8 @@ async function getSurfaceFeedPage(
         q,
         window: true,
         day: query.day,
+        format,
+        roomId,
       });
       // DEC-594 (EMB-6): mirrors the HTML dispatch's SessionCard `fields`
       // projection so the .json twin honors ?fields= too, driven by the

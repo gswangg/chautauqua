@@ -123,12 +123,14 @@ function buildApp() {
       selectCall += 1;
       if (selectCall === 1) return makeChain([EVENT_ROW]); // getPublicEventBySlug
       if (selectCall === 2) return makeChain([]); // getPublicTracks
-      if (selectCall === 3) return makeChain(SESSION_ROWS); // hydrateSessions subRows
-      if (selectCall === 4) {
+      if (selectCall === 3) return makeChain([]); // getPublicRooms (DEC-774)
+      if (selectCall === 4) return makeChain([]); // getPublicFormatOptions (DEC-774)
+      if (selectCall === 5) return makeChain(SESSION_ROWS); // hydrateSessions subRows
+      if (selectCall === 6) {
         // hydrateSessions trackRows
         return makeChain(SESSION_ROWS.map((s) => ({ submissionId: s.id, id: "trk1", name: "Track A", color: "#f00", sortOrder: 0 })));
       }
-      if (selectCall === 5) {
+      if (selectCall === 7) {
         // hydrateSessions speakerRows
         return makeChain(
           SESSION_ROWS.map((s) => ({
@@ -142,7 +144,7 @@ function buildApp() {
           })),
         );
       }
-      if (selectCall === 6) {
+      if (selectCall === 8) {
         // hydrateSessions slotRows (EMB-01)
         return makeChain(
           SESSION_ROWS.map((s, i) => ({

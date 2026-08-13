@@ -2,9 +2,14 @@
 // organizer-side embed builder (EmbedsPanel.tsx). Conforms exactly to the
 // server contract fixed in decisions/DEC-289.md: output format is a PATH
 // SUFFIX (never a ?format= query param), query params are optional and only
-// the non-default ones are serialized, in the stable order trackId, day, q,
-// limit, fields, accent, and `accent` is sent WITHOUT its leading '#' (the
-// server normalizes it back to '#rrggbb').
+// the non-default ones are serialized, in the stable order trackId, format,
+// roomId, day, q, limit, fields, accent, and `accent` is sent WITHOUT its
+// leading '#' (the server normalizes it back to '#rrggbb'). DEC-774: the
+// session-format filter's query param is named `format` server-side
+// (src/routes/public/query.ts's parseFormat) but is carried here as
+// opts.sessionFormat to avoid colliding with EmbedOptions.format (the
+// embed's own output format — iframe/json/etc, a PATH suffix, never this
+// query param).
 
 export const EMBED_SURFACES = ['sessions', 'speakers', 'agenda', 'schedule', 'gallery'] as const;
 export type EmbedSurface = (typeof EMBED_SURFACES)[number];
@@ -27,6 +32,11 @@ export type EmbedField = CardField;
 export interface EmbedOptions {
   format: EmbedFormat;
   trackId?: string;
+  // DEC-774: the sessions surface's format-filter chip value (server query
+  // param `format`) — named sessionFormat here to avoid colliding with the
+  // `format` field above (the embed's own output format).
+  sessionFormat?: string;
+  roomId?: string;
   day?: string;
   q?: string;
   limit?: number;
@@ -40,10 +50,11 @@ export interface EmbedOptions {
 // to sessions, speakers and gallery). buildEmbedUrl consults this so it
 // never serializes a param the surface ignores, and EmbedsPanel.tsx consults
 // it so it never renders a control for a knob the surface ignores.
-export type EmbedKnob = 'trackId' | 'day' | 'q' | 'limit' | 'fields' | 'accent';
+export type EmbedKnob = 'trackId' | 'format' | 'roomId' | 'day' | 'q' | 'limit' | 'fields' | 'accent';
 
 export const EMBED_KNOBS_BY_SURFACE: Record<EmbedSurface, readonly EmbedKnob[]> = {
-  sessions: ['trackId', 'day', 'q', 'limit', 'fields', 'accent'],
+  // DEC-774: format/roomId join trackId as sessions-only filter knobs.
+  sessions: ['trackId', 'format', 'roomId', 'day', 'q', 'limit', 'fields', 'accent'],
   speakers: ['q', 'limit', 'accent'],
   gallery: ['q', 'limit', 'accent'],
   agenda: ['day', 'accent'],
@@ -74,6 +85,8 @@ export function buildEmbedUrl(origin: string, slug: string, surface: EmbedSurfac
   const knobs = format === 'ics' ? [] : EMBED_KNOBS_BY_SURFACE[surface];
   const params = new URLSearchParams();
   if (knobs.includes('trackId') && opts.trackId) params.set('trackId', opts.trackId);
+  if (knobs.includes('format') && opts.sessionFormat) params.set('format', opts.sessionFormat);
+  if (knobs.includes('roomId') && opts.roomId) params.set('roomId', opts.roomId);
   if (knobs.includes('day') && opts.day) params.set('day', opts.day);
   if (knobs.includes('q') && opts.q) params.set('q', opts.q);
   if (knobs.includes('limit') && opts.limit !== undefined) params.set('limit', String(opts.limit));
