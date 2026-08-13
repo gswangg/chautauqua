@@ -824,3 +824,12 @@ AND audit noStoreByDefault + any other header-stamping middleware for the same t
     measure (same max-width + margins as Submissions/Overview), and check the same
     on Content's session detail + Review plan editor while there — one shared
     page-measure token, not per-page widths.
+
+68. r3-Comms: DEC-603 mechanism KEEP (code-verified). FIX (carries, measurements
+    unchanged from r2 — this file has absorbed the least of its queue): phone
+    step-bar letter-stacking; Body textarea = Subject width (187 vs 571px); 44px
+    phone Edit/Delete; phone landing content (summary + Draft card + Recent sends);
+    per-recipient SCHEDULED/NO-SLOT tags + advisory; bookmarkable Templates/History
+    routes (reload must not reset to Compose); bordered "See the recipients" CTA on
+    batch rows; persistent Recent-sends under Compose. SEED: add one multi-recipient
+    batch (~23 recipients) + 4 more templates so History/Templates demo like the mock.
