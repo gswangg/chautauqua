@@ -4,6 +4,7 @@
 // to the same archive endpoint FilesLibrary uses.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import '@testing-library/jest-dom/vitest';
 import { DeliverableDetail } from './DeliverableDetail';
 import { listEnvelope, mockApi } from '../../test-utils/mockApi';
@@ -72,7 +73,7 @@ function submissionDetail(overrides: Record<string, unknown> = {}) {
     id: SUBMISSION_ID,
     ref: 'S-042',
     updatedAt: 1700000300000,
-    participants: [{ name: 'Ada Lovelace' }],
+    participants: [{ name: 'Ada Lovelace', contactId: 'contact-ada' }],
     slot: { day: '2026-05-12', startMin: 600, endMin: 630, roomName: 'Main Hall' },
     ...overrides,
   };
@@ -141,13 +142,15 @@ describe('DeliverableDetail render smoke', () => {
     mockBase();
 
     render(
-      <DeliverableDetail
-        submissionId={SUBMISSION_ID}
-        title="A talk"
-        contentStatus="pending"
-        onBack={() => {}}
-        onContentStatusChange={() => {}}
-      />,
+      <MemoryRouter>
+        <DeliverableDetail
+          submissionId={SUBMISSION_ID}
+          title="A talk"
+          contentStatus="pending"
+          onBack={() => {}}
+          onContentStatusChange={() => {}}
+        />
+      </MemoryRouter>,
     );
 
     const presentationChip = await screen.findByRole('tab', { name: 'Presentation · 2 versions' });
@@ -159,13 +162,15 @@ describe('DeliverableDetail render smoke', () => {
     mockTwoChains();
 
     render(
-      <DeliverableDetail
-        submissionId={SUBMISSION_ID}
-        title="A talk"
-        contentStatus="pending"
-        onBack={() => {}}
-        onContentStatusChange={() => {}}
-      />,
+      <MemoryRouter>
+        <DeliverableDetail
+          submissionId={SUBMISSION_ID}
+          title="A talk"
+          contentStatus="pending"
+          onBack={() => {}}
+          onContentStatusChange={() => {}}
+        />
+      </MemoryRouter>,
     );
 
     const chipA = await screen.findByRole('tab', { name: 'Presentation · 1 version · keynote-a.pdf' });
@@ -190,13 +195,15 @@ describe('DeliverableDetail render smoke', () => {
     mockBase();
 
     render(
-      <DeliverableDetail
-        submissionId={SUBMISSION_ID}
-        title="A talk"
-        contentStatus="pending"
-        onBack={() => {}}
-        onContentStatusChange={() => {}}
-      />,
+      <MemoryRouter>
+        <DeliverableDetail
+          submissionId={SUBMISSION_ID}
+          title="A talk"
+          contentStatus="pending"
+          onBack={() => {}}
+          onContentStatusChange={() => {}}
+        />
+      </MemoryRouter>,
     );
 
     await screen.findByRole('tab', { name: 'Presentation · 2 versions' });
@@ -210,13 +217,15 @@ describe('DeliverableDetail render smoke', () => {
     mockBase();
 
     render(
-      <DeliverableDetail
-        submissionId={SUBMISSION_ID}
-        title="A talk"
-        contentStatus="pending"
-        onBack={() => {}}
-        onContentStatusChange={() => {}}
-      />,
+      <MemoryRouter>
+        <DeliverableDetail
+          submissionId={SUBMISSION_ID}
+          title="A talk"
+          contentStatus="pending"
+          onBack={() => {}}
+          onContentStatusChange={() => {}}
+        />
+      </MemoryRouter>,
     );
 
     const presentationChip = await screen.findByRole('tab', { name: 'Presentation · 2 versions' });
@@ -235,13 +244,15 @@ describe('DeliverableDetail render smoke', () => {
     mockBase();
 
     render(
-      <DeliverableDetail
-        submissionId={SUBMISSION_ID}
-        title="A talk"
-        contentStatus="pending"
-        onBack={() => {}}
-        onContentStatusChange={() => {}}
-      />,
+      <MemoryRouter>
+        <DeliverableDetail
+          submissionId={SUBMISSION_ID}
+          title="A talk"
+          contentStatus="pending"
+          onBack={() => {}}
+          onContentStatusChange={() => {}}
+        />
+      </MemoryRouter>,
     );
 
     await screen.findByText('slides-v2.pdf');
@@ -257,13 +268,15 @@ describe('DeliverableDetail render smoke', () => {
   it('renders Approve when the session is not approved and hides it once it is', async () => {
     mockBase();
     render(
-      <DeliverableDetail
-        submissionId={SUBMISSION_ID}
-        title="A talk"
-        contentStatus="pending"
-        onBack={() => {}}
-        onContentStatusChange={() => {}}
-      />,
+      <MemoryRouter>
+        <DeliverableDetail
+          submissionId={SUBMISSION_ID}
+          title="A talk"
+          contentStatus="pending"
+          onBack={() => {}}
+          onContentStatusChange={() => {}}
+        />
+      </MemoryRouter>,
     );
 
     await screen.findByText('slides-v2.pdf');
@@ -272,13 +285,15 @@ describe('DeliverableDetail render smoke', () => {
     cleanup();
     mockBase();
     render(
-      <DeliverableDetail
-        submissionId={SUBMISSION_ID}
-        title="A talk"
-        contentStatus="approved"
-        onBack={() => {}}
-        onContentStatusChange={() => {}}
-      />,
+      <MemoryRouter>
+        <DeliverableDetail
+          submissionId={SUBMISSION_ID}
+          title="A talk"
+          contentStatus="approved"
+          onBack={() => {}}
+          onContentStatusChange={() => {}}
+        />
+      </MemoryRouter>,
     );
 
     await screen.findByText('slides-v2.pdf');
@@ -289,13 +304,15 @@ describe('DeliverableDetail render smoke', () => {
     mockBase();
 
     render(
-      <DeliverableDetail
-        submissionId={SUBMISSION_ID}
-        title="A talk"
-        contentStatus="pending"
-        onBack={() => {}}
-        onContentStatusChange={() => {}}
-      />,
+      <MemoryRouter>
+        <DeliverableDetail
+          submissionId={SUBMISSION_ID}
+          title="A talk"
+          contentStatus="pending"
+          onBack={() => {}}
+          onContentStatusChange={() => {}}
+        />
+      </MemoryRouter>,
     );
 
     await screen.findByText('slides-v2.pdf');
@@ -334,22 +351,54 @@ describe('DeliverableDetail render smoke', () => {
     mockBase();
 
     render(
-      <DeliverableDetail
-        submissionId={SUBMISSION_ID}
-        title="A talk"
-        contentStatus="pending"
-        onBack={() => {}}
-        onContentStatusChange={() => {}}
-      />,
+      <MemoryRouter>
+        <DeliverableDetail
+          submissionId={SUBMISSION_ID}
+          title="A talk"
+          contentStatus="pending"
+          onBack={() => {}}
+          onContentStatusChange={() => {}}
+        />
+      </MemoryRouter>,
     );
 
     expect(screen.getByRole('button', { name: '‹ Content' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 1, name: 'A talk' })).toBeInTheDocument();
-    await screen.findByText(`Ada Lovelace · S-042 · ${formatDayLabel('2026-05-12')} 10:00–10:30, Main Hall`);
+    // DEC-998: the shown speaker name is a link into their contact record;
+    // the rest of the DEC-901 subtitle string is unchanged.
+    const speakerLink = await screen.findByRole('link', { name: 'Ada Lovelace' });
+    expect(speakerLink).toHaveAttribute('href', '/contacts?openContact=contact-ada');
+    expect(speakerLink.closest('p')).toHaveTextContent(
+      `Ada Lovelace · S-042 · ${formatDayLabel('2026-05-12')} 10:00–10:30, Main Hall`,
+    );
     expect(screen.getByText('Content status')).toBeInTheDocument();
     expect(screen.getByText('Pending')).toBeInTheDocument();
     expect(screen.getByText(`Updated ${formatDate(1700000300000)}`)).toBeInTheDocument();
     expect(screen.getByText('Deliverables')).toBeInTheDocument();
+  });
+
+  // DEC-998: quiet action row into the submission's editor, its history and
+  // (via the speaker link above) the speaker's contact record.
+  it('renders the DEC-998 action row linking to the open editor and open history', async () => {
+    mockBase();
+
+    render(
+      <MemoryRouter>
+        <DeliverableDetail
+          submissionId={SUBMISSION_ID}
+          title="A talk"
+          contentStatus="pending"
+          onBack={() => {}}
+          onContentStatusChange={() => {}}
+        />
+      </MemoryRouter>,
+    );
+
+    await screen.findByText('slides-v2.pdf');
+    const editLink = screen.getByRole('link', { name: 'Edit title and abstract ›' });
+    expect(editLink).toHaveAttribute('href', `/submissions/${SUBMISSION_ID}?edit=1`);
+    const historyLink = screen.getByRole('link', { name: 'Revision history ›' });
+    expect(historyLink).toHaveAttribute('href', `/submissions/${SUBMISSION_ID}?history=1`);
   });
 
   it('omits the slot/room clause (no trailing separator) when the session is unplaced', async () => {
@@ -362,16 +411,19 @@ describe('DeliverableDetail render smoke', () => {
     });
 
     render(
-      <DeliverableDetail
-        submissionId={SUBMISSION_ID}
-        title="A talk"
-        contentStatus="pending"
-        onBack={() => {}}
-        onContentStatusChange={() => {}}
-      />,
+      <MemoryRouter>
+        <DeliverableDetail
+          submissionId={SUBMISSION_ID}
+          title="A talk"
+          contentStatus="pending"
+          onBack={() => {}}
+          onContentStatusChange={() => {}}
+        />
+      </MemoryRouter>,
     );
 
-    await screen.findByText('Ada Lovelace · S-042');
-    expect(screen.queryByText(/Ada Lovelace · S-042 ·/)).not.toBeInTheDocument();
+    const speakerLink = await screen.findByRole('link', { name: 'Ada Lovelace' });
+    expect(speakerLink.closest('p')).toHaveTextContent('Ada Lovelace · S-042');
+    expect(speakerLink.closest('p')).not.toHaveTextContent(/Ada Lovelace · S-042 ·/);
   });
 });

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { apiGet, apiList, apiPost, apiPostBlob, apiUpload, ApiError } from '../../lib/api';
 import { CommentThread } from './CommentThread';
 import { groupByKindNewestFirst, orderVersionChains } from './version-chain';
@@ -17,6 +18,11 @@ import {
   type FileKind,
   type FileComment,
 } from './types';
+// DEC-761/DEC-998: code that depends on a decision must reference its
+// constant.
+import { DEC_998 } from '../../../../src/decisions';
+
+void DEC_998;
 
 // DEC-901: the header's speaker/CODE/slot subtitle and the CONTENT STATUS
 // band both need fields the worklist row never carries (ref, participants,
@@ -27,6 +33,11 @@ import {
 // SubmissionLookup shape.
 interface DeliverableHeaderParticipant {
   name: string;
+  // DEC-998: one more column on the query DeliverableDetail already runs
+  // (GET /submissions/:id -> getSubmissionDetail, which already SELECTs
+  // participant.contactId for SubmissionDetail's own participants list) --
+  // never a second by-ids fetch (DEC-734/DEC-992 precedent).
+  contactId: string;
 }
 
 interface DeliverableHeaderSlot {
@@ -51,15 +62,13 @@ function formatClockTime(minutesFromMidnight: number): string {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }
 
-/** 'Speaker · <CODE> · <slot>, <Room>' (DEC-901) -- the slot/room clause is
- * omitted entirely (not printed as an empty '· ,') when the session hasn't
- * been placed on the agenda yet. */
-function formatDetailSubtitle(detail: DeliverableHeaderDetail): string {
-  const [firstSpeaker, ...restSpeakers] = detail.participants;
-  const speakerLabel = firstSpeaker
-    ? `${firstSpeaker.name}${restSpeakers.length > 0 ? ` +${restSpeakers.length}` : ''}`
-    : 'No speakers';
-  const parts = [speakerLabel, detail.ref];
+/** '<CODE> · <slot>, <Room>' (DEC-901) -- the leading speaker clause is
+ * rendered separately (DEC-998: the shown speaker name is a link to their
+ * contact record), and the slot/room clause is omitted entirely (not
+ * printed as an empty '· ,') when the session hasn't been placed on the
+ * agenda yet. */
+function formatDetailTrailer(detail: DeliverableHeaderDetail): string {
+  const parts = [detail.ref];
   if (detail.slot) {
     const slotLabel = `${formatDayLabel(detail.slot.day)} ${formatClockTime(detail.slot.startMin)}–${formatClockTime(detail.slot.endMin)}`;
     parts.push(`${slotLabel}, ${detail.slot.roomName ?? ROOM_TBA_LABEL}`);
@@ -254,7 +263,11 @@ export function DeliverableDetail({
     }
   }
 
-  const subtitle = headerDetail ? formatDetailSubtitle(headerDetail) : null;
+  const subtitleTrailer = headerDetail ? formatDetailTrailer(headerDetail) : null;
+  // DEC-901/DEC-998: the shown speaker name (first participant, '+N' suffix
+  // for the rest, unchanged from the prior plain-text form) is now a link
+  // to that speaker's contact record.
+  const [firstSpeaker, ...restSpeakers] = headerDetail?.participants ?? [];
 
   return (
     <div className="chq-deliverable-detail chq-content-detail">
@@ -273,8 +286,35 @@ export function DeliverableDetail({
           {/* DEC-901: 'Speaker · CODE · slot, Room' -- withheld (not a blank
               line) until the header fetch resolves, and the slot/room
               clause is entirely absent (never an empty '· ,') for an
-              unplaced session -- see formatDetailSubtitle. */}
-          {subtitle && <p className="chq-meta chq-content-detail-subtitle">{subtitle}</p>}
+              unplaced session -- see formatDetailTrailer. DEC-998: the shown
+              speaker name is a link into their contact record, not plain
+              text. */}
+          {headerDetail && subtitleTrailer !== null && (
+            <p className="chq-meta chq-content-detail-subtitle">
+              {firstSpeaker ? (
+                <>
+                  <Link to={`/contacts?openContact=${firstSpeaker.contactId}`} className="chq-content-detail-speaker-link">
+                    {firstSpeaker.name}
+                  </Link>
+                  {restSpeakers.length > 0 ? ` +${restSpeakers.length}` : ''}
+                </>
+              ) : (
+                'No speakers'
+              )}
+              {` · ${subtitleTrailer}`}
+            </p>
+          )}
+          {/* DEC-998: quiet turn-diet actions straight into the submission's
+              open editor and its open history -- tertiary text links, no
+              bordered buttons (affordance grammar is conditional-and-quiet). */}
+          <p className="chq-content-detail-actions">
+            <Link to={`/submissions/${submissionId}?edit=1`} className="chq-content-detail-action-link">
+              Edit title and abstract &rsaquo;
+            </Link>
+            <Link to={`/submissions/${submissionId}?history=1`} className="chq-content-detail-action-link">
+              Revision history &rsaquo;
+            </Link>
+          </p>
         </div>
         <div className="chq-content-status-bar">
           {/* DEC-756/DEC-733: Approve renders only while the session is not

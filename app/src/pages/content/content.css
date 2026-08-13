@@ -606,3 +606,31 @@
   width: 64px;
   white-space: nowrap;
 }
+
+/* ---------------------------------------------------------------------- */
+/* w34-e (DEC-998): deliverable detail turn-diet action row -- tertiary    */
+/* text links, no bordered buttons (affordance grammar is                 */
+/* conditional-and-quiet).                                                */
+/* ---------------------------------------------------------------------- */
+
+.chq-content-detail-actions {
+  display: flex;
+  gap: 14px;
+  margin: 0;
+  flex-wrap: wrap;
+}
+
+.chq-content-detail-action-link {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--chq-muted);
+}
+
+.chq-content-detail-action-link:hover {
+  color: var(--chq-ink);
+}
+
+.chq-content-detail-speaker-link {
+  color: inherit;
+  font-weight: 600;
+}

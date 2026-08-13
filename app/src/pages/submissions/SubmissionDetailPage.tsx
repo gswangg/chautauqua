@@ -2,7 +2,7 @@
 // GET /api/v1/submissions/:id, the DEC-016 forms + tracks endpoints, and
 // the existing bulk status endpoint (ids:[id]) — no new server code.
 import { useEffect, useState } from 'react';
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { apiGet, apiList, apiPatch, apiPost, ApiError } from '../../lib/api';
 import { formatDate as formatTimestamp, formatDateTime } from '../../lib/dates';
 import { formatEventDate } from '../../../../src/lib/event-time';
@@ -25,7 +25,7 @@ import {
   type Track,
 } from './types';
 // DEC-761: code that depends on a decision must reference its constant.
-import { DEC_733, DEC_761, DEC_784 } from '../../../../src/decisions';
+import { DEC_733, DEC_761, DEC_784, DEC_998 } from '../../../../src/decisions';
 // DEC-784/DEC-604: role is picked from the SAME imported vocabulary
 // AddToEventModal.tsx uses -- never a hand-written list -- and rendered
 // through participantRoleLabel, never the raw stored value.
@@ -34,6 +34,7 @@ import { PARTICIPANT_ROLE_OPTIONS, participantRoleLabel } from '../../../../src/
 void DEC_733;
 void DEC_761;
 void DEC_784;
+void DEC_998;
 
 // DEC-878: the decision panel is a RAIL, not a segmented button group --
 // markup surgery scoped to this page (docs/design 'Chautauqua
@@ -182,6 +183,12 @@ export function SubmissionDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
+  // DEC-998: the editor and the history disclosure are URL state (`?edit=1`
+  // / `?history=1`), not local-only useState -- a deliverable-detail link
+  // can open either directly, and either can be bookmarked/shared. Precedent:
+  // DEC-710/DEC-728 (settings drills, comms tabs) use the same
+  // searchParams-as-source-of-truth shape.
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [detail, setDetail] = useState<SubmissionDetail | null>(null);
   const [tracks, setTracks] = useState<Track[]>([]);
@@ -199,11 +206,13 @@ export function SubmissionDetailPage() {
   const [coPresenterResults, setCoPresenterResults] = useState<ContactSearchResult[]>([]);
   const [coPresenterSearching, setCoPresenterSearching] = useState(false);
   const [addingContactId, setAddingContactId] = useState<string | null>(null);
-  const [editing, setEditing] = useState(false);
+  // DEC-998: editing/historyOpen are derived from the URL, not their own
+  // useState -- setSearchParams is the single writer for both.
+  const editing = searchParams.get('edit') === '1';
+  const historyOpen = searchParams.get('history') === '1';
   const [editTitle, setEditTitle] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
-  const [historyOpen, setHistoryOpen] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyEntries, setHistoryEntries] = useState<HistoryTimelineEntry[]>([]);
   const [historyError, setHistoryError] = useState<string | null>(null);
@@ -262,6 +271,33 @@ export function SubmissionDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [detail?.eventId]);
 
+  // DEC-998: a direct `?edit=1` link (e.g. from the deliverable detail's
+  // 'Edit title and abstract' action) opens the editor prefilled exactly as
+  // startEditing does today, once detail has loaded -- the button click path
+  // still prefills synchronously via startEditing itself, so this effect is
+  // a no-op there (same values).
+  useEffect(() => {
+    if (!detail) return;
+    if (searchParams.get('edit') === '1') {
+      setEditTitle(detail.title);
+      setEditDescription(detail.description ?? '');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [detail]);
+
+  // DEC-998: a direct `?history=1` link opens AND loads the history
+  // timeline -- the same effect fires when the Show/Hide toggle flips the
+  // param, so loadHistory has exactly one call site for "opening" either way.
+  useEffect(() => {
+    if (!id || !historyOpen) return;
+    setHistoryLoading(true);
+    setHistoryError(null);
+    loadHistory()
+      .catch((err) => setHistoryError(err instanceof ApiError ? err.message : 'Failed to load history'))
+      .finally(() => setHistoryLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, historyOpen]);
+
   // DEC-761: re-run the table's OWN list query from this page's own
   // search params (not router state) to derive total/position/neighbours.
   // A bare /submissions/:id (no params) falls back to the unfiltered
@@ -313,7 +349,19 @@ export function SubmissionDetailPage() {
     if (!detail) return;
     setEditTitle(detail.title);
     setEditDescription(detail.description ?? '');
-    setEditing(true);
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev);
+      params.set('edit', '1');
+      return params;
+    });
+  }
+
+  function closeEditing() {
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev);
+      params.delete('edit');
+      return params;
+    });
   }
 
   async function saveEdit() {
@@ -334,7 +382,7 @@ export function SubmissionDetailPage() {
         description: editDescription,
       });
       setDetail(updated);
-      setEditing(false);
+      closeEditing();
     } catch (err) {
       // Loud rollback: restore prior state and surface the failure.
       setDetail(previous);
@@ -491,20 +539,16 @@ export function SubmissionDetailPage() {
     setHistoryEntries(res.items);
   }
 
-  async function toggleHistory() {
-    const opening = !historyOpen;
-    setHistoryOpen(opening);
-    if (opening && id) {
-      setHistoryLoading(true);
-      setHistoryError(null);
-      try {
-        await loadHistory();
-      } catch (err) {
-        setHistoryError(err instanceof ApiError ? err.message : 'Failed to load history');
-      } finally {
-        setHistoryLoading(false);
+  function toggleHistory() {
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev);
+      if (historyOpen) {
+        params.delete('history');
+      } else {
+        params.set('history', '1');
       }
-    }
+      return params;
+    });
   }
 
   // A revision is restorable by its own id — the timeline's 'edited' entries
@@ -687,7 +731,7 @@ export function SubmissionDetailPage() {
                       type="button"
                       className="chq-btn chq-btn-secondary"
                       disabled={savingEdit}
-                      onClick={() => setEditing(false)}
+                      onClick={closeEditing}
                     >
                       Cancel
                     </button>
