@@ -44,7 +44,7 @@ portalResourcesRoutes.get("/resources/:resourceId/download", async (c) => {
   const obj = await store.get(scope.r2Key);
   if (!obj) throw new ApiError("not_found", "File contents not found");
 
-  const contentType = obj.contentType ?? scope.contentType;
+  const contentType = scope.contentType;
   const headers: Record<string, string> = {
     "Content-Type": contentType,
     "X-Content-Type-Options": "nosniff",

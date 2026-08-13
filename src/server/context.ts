@@ -11,6 +11,8 @@ import { EmailBindingMailer } from "../mail/email-binding";
 import type { EmailLogEntry, EmailLogWriter, Mailer } from "../mail/types";
 import { newId } from "../domain/ids";
 import { ICS_ORGANIZER_EMAIL } from "../mail/ics";
+import { DEC_995 } from "../decisions";
+void DEC_995;
 
 export function makeDb(env: Bindings) {
   return drizzle(env.DB, { schema });
@@ -77,10 +79,16 @@ export function resolveIcsOrganizerEmail(env: Pick<Bindings, "DEV_MODE" | "MAIL_
 }
 
 /** Minimal R2 port; stage 1 serves files through the Worker (DEC-005), no
- * presigned URLs. Stage 2 can add signing without touching callers. */
+ * presigned URLs. Stage 2 can add signing without touching callers.
+ *
+ * DEC-995: `get` does NOT return a content type. R2 object metadata is
+ * writer-supplied and mutable; the only trustworthy content type for a
+ * served file is the DB column validateUpload's extension allowlist wrote
+ * at upload time. Callers MUST read the content type from their own scope's
+ * DB row, never from the object store. */
 export interface FileStore {
   put(key: string, data: ReadableStream | ArrayBuffer, contentType?: string): Promise<void>;
-  get(key: string): Promise<{ body: ReadableStream; contentType: string | null; size: number } | null>;
+  get(key: string): Promise<{ body: ReadableStream; size: number } | null>;
   delete(key: string): Promise<void>;
 }
 
@@ -92,7 +100,7 @@ export function makeFileStore(files: R2Bucket): FileStore {
     async get(key) {
       const obj = await files.get(key);
       if (!obj) return null;
-      return { body: obj.body, contentType: obj.httpMetadata?.contentType ?? null, size: obj.size };
+      return { body: obj.body, size: obj.size };
     },
     async delete(key) {
       await files.delete(key);
