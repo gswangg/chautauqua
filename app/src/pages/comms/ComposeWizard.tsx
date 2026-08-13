@@ -104,6 +104,28 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
       .catch(() => undefined);
   }, [eventId]);
 
+  // DEC-890 (Templates "Use in a send"): a ?template=<id> landing preselects
+  // that template exactly as the template <select>'s own onChange does --
+  // prefill subject/body from the template, then clear the selection so
+  // (per DEC-846/DEC-832) templateId is never itself posted; the composer
+  // always sends its own text. Reads location.search directly (this
+  // component isn't otherwise router-aware) once templates have loaded, and
+  // only once per mount (a later template list refresh must not re-fire it).
+  const appliedTemplateParam = useRef(false);
+  useEffect(() => {
+    if (appliedTemplateParam.current || templates.length === 0) return;
+    const wanted = new URLSearchParams(window.location.search).get('template');
+    if (!wanted) return;
+    const found = templates.find((t) => t.id === wanted);
+    if (!found) return;
+    appliedTemplateParam.current = true;
+    setTemplateName(found.name);
+    setSubject(found.subject);
+    setBodyText(found.bodyText);
+    setTemplateId('');
+    setStep('template');
+  }, [templates]);
+
   useEffect(() => {
     apiList<EvaluationPlan>(`/events/${eventId}/plans`)
       .then((res) => setPlans(res.items))

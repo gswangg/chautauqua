@@ -178,6 +178,28 @@ export async function listEmailLog(db: Db, params: EmailLogListParams): Promise<
   return { items: rows.map(toListRow), total };
 }
 
+// DEC-890: the templates list's "Last used <date>" meta is DERIVED from
+// email_log, never a new column on email_template. One grouped query over
+// the whole event's email_log (MAX(sent_at) GROUP BY template_id), joined
+// onto the templates page in memory by the caller -- never a per-row query,
+// regardless of how many templates the page renders.
+export async function listTemplateLastUsedAt(db: Db, eventId: string): Promise<Map<string, number>> {
+  const rows = await db
+    .select({
+      templateId: schema.emailLog.templateId,
+      lastUsedAt: sql<number>`max(${schema.emailLog.sentAt})`,
+    })
+    .from(schema.emailLog)
+    .where(and(eq(schema.emailLog.eventId, eventId), sql`${schema.emailLog.templateId} is not null`))
+    .groupBy(schema.emailLog.templateId);
+
+  const map = new Map<string, number>();
+  for (const r of rows) {
+    if (r.templateId) map.set(r.templateId, Number(r.lastUsedAt));
+  }
+  return map;
+}
+
 /** DEC-546: org-scoped — an id belonging to a different org's event returns
  * null (indistinguishable from a nonexistent id) rather than leaking cross-
  * org email content. */

@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { apiDelete, apiList, apiPatch, apiPost, ApiError } from '../../lib/api';
 import { COMPOSE_MERGE_FIELDS } from '../../lib/merge-fields';
 import { DelayedLoading } from '../../components/DelayedLoading';
+import { formatDate } from '../../lib/dates';
 import type { EmailTemplate } from './types';
+import './templates.css';
 
 interface DraftTemplate {
   name: string;
@@ -13,6 +16,7 @@ interface DraftTemplate {
 const BLANK_DRAFT: DraftTemplate = { name: '', subject: '', bodyText: '' };
 
 export function TemplatesTab({ eventId }: { eventId: string }) {
+  const navigate = useNavigate();
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [loading, setLoading] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -76,20 +80,48 @@ export function TemplatesTab({ eventId }: { eventId: string }) {
     }
   }
 
+  // DEC-890 (3): duplicates the row's own stored text, never a re-fetch --
+  // the list projection already carries subject/bodyText. ' (copy)' is
+  // always appended, even if it makes the name collide with another copy;
+  // templates have no uniqueness constraint on name.
+  async function duplicate(t: EmailTemplate) {
+    setError(null);
+    try {
+      await apiPost(`/events/${eventId}/templates`, {
+        name: `${t.name} (copy)`,
+        subject: t.subject,
+        bodyText: t.bodyText,
+      });
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Failed to duplicate template');
+    }
+  }
+
+  function useInSend(t: EmailTemplate) {
+    navigate(`/comms?tab=compose&template=${t.id}`);
+  }
+
   function insertChip(field: string) {
     setDraft((d) => ({ ...d, bodyText: `${d.bodyText}{${field}}` }));
   }
 
   return (
     <div className="chq-comms-templates-tab">
-      {error && <div className="chq-error-banner">{error}</div>}
-      {loading && <DelayedLoading label="Loading templates…" />}
-
-      <div className="chq-toolbar">
+      <div className="chq-comms-templates-head">
+        <div className="chq-comms-templates-titles">
+          <button type="button" className="chq-link-button chq-comms-templates-breadcrumb" onClick={() => navigate('/comms?tab=compose')}>
+            &lsaquo; Comms
+          </button>
+          <h1 className="chq-page-title">Templates</h1>
+        </div>
         <button type="button" className="chq-btn chq-btn-primary" onClick={startNew}>
           New template
         </button>
       </div>
+
+      {error && <div className="chq-error-banner">{error}</div>}
+      {loading && <DelayedLoading label="Loading templates…" />}
 
       <div className="chq-comms-templates">
         <section>
@@ -100,26 +132,37 @@ export function TemplatesTab({ eventId }: { eventId: string }) {
             <thead>
               <tr>
                 <th>Name</th>
-                <th>Subject</th>
+                <th>Last used</th>
                 <th />
               </tr>
             </thead>
             <tbody>
               {templates.map((t) => (
                 <tr key={t.id}>
-                  <td>
+                  <td data-label="Name">
                     <div className="chq-comms-template-name">{t.name}</div>
-                  </td>
-                  <td>
                     <div className="chq-comms-template-detail">{t.subject}</div>
                   </td>
-                  <td>
-                    <button type="button" className="chq-link-button" onClick={() => startEdit(t)}>
-                      Edit
-                    </button>{' '}
-                    <button type="button" className="chq-link-button" onClick={() => remove(t.id)}>
-                      Delete
-                    </button>
+                  <td data-label="Last used">
+                    <span className="chq-comms-template-last-used">
+                      {t.lastUsedAt ? `Last used ${formatDate(t.lastUsedAt)}` : 'Not used yet'}
+                    </span>
+                  </td>
+                  <td data-label="Actions">
+                    <div className="chq-comms-template-row-actions">
+                      <button type="button" className="chq-link-button" onClick={() => startEdit(t)}>
+                        Edit
+                      </button>
+                      <button type="button" className="chq-link-button" onClick={() => duplicate(t)}>
+                        Duplicate
+                      </button>
+                      <button type="button" className="chq-btn chq-btn-secondary chq-btn-small" onClick={() => useInSend(t)}>
+                        Use in a send
+                      </button>
+                      <button type="button" className="chq-link-button" onClick={() => remove(t.id)}>
+                        Delete
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
