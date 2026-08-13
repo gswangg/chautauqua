@@ -557,7 +557,10 @@ describe("sessionTimeLabel", () => {
   });
 
   it("formats a scheduled session's day + time range", () => {
-    expect(sessionTimeLabel("2027-05-12", 540, 600)).toBe("2027-05-12, 9:00 AM–10:00 AM");
+    // w1-i: `day` now routes through the shared formatDay helper
+    // (src/lib/event-time.ts's formatEventDay) instead of interpolating
+    // the raw 'YYYY-MM-DD' string directly.
+    expect(sessionTimeLabel("2027-05-12", 540, 600)).toBe("Wed, May 12, 9:00 AM–10:00 AM");
   });
 });
 

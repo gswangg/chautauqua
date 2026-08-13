@@ -436,4 +436,24 @@ export const PUBLIC_CSS = `
   @media (max-width: 700px) {
     .chq-pub-sessions-layout { grid-template-columns: 1fr; gap: 20px; }
   }
+
+  /* ===== task-w1-i: itinerary label flip on /schedule + /agenda's list row,
+     and the session detail-page itinerary control =====
+     Owned by task-w1-i; another lane may append its own labelled block
+     below this one in the same file.
+
+     The schedule/agenda list row (.chq-pub-itinerary-row, agenda.tsx) now
+     renders the SAME shared ItineraryToggle markup as the sessions list's
+     Save/Saved pill (.chq-pub-save-off/-on spans, cards.tsx), but keeps its
+     own row layout instead of the pill's box/border. These rules key off
+     .chq-pub-itinerary-row specifically so the pill's box styling above
+     isn't dragged along onto the row. */
+  .chq-pub-itinerary-row .chq-pub-save-on { display: none; }
+  .chq-pub-itinerary-row input.chq-itinerary-toggle:checked ~ .chq-pub-save-off { display: none; }
+  .chq-pub-itinerary-row input.chq-itinerary-toggle:checked ~ .chq-pub-save-on { display: inline; }
+
+  /* Session detail page's itinerary control reuses the sessions list's
+     Save/Saved pill styling (.chq-pub-save) as-is; this just gives it its
+     own top margin so it doesn't crowd the description paragraph above it. */
+  .chq-pub-detail-itinerary { margin-top: 12px; }
 `;

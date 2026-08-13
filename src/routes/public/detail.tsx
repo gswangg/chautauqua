@@ -4,7 +4,8 @@
 
 import type { PublicEvent, PublicSpeakerDetail, PublicSessionDetail } from "../../server/repo/public";
 import { surfacePath, speakerDetailPath, sessionDetailPath, SURFACE_LABELS, type Surface, type SurfaceBase } from "./shell";
-import { TrackChips, FormatChip, SessionDescription, formatMinutes } from "./cards";
+import { TrackChips, FormatChip, SessionDescription, ItineraryToggle, formatDay, formatMinutes } from "./cards";
+import { ItineraryScript } from "./agenda";
 
 export function BackLink(props: { event: PublicEvent; from: Surface; base?: SurfaceBase }) {
   const { event, from, base = "/e" } = props;
@@ -17,7 +18,11 @@ export function BackLink(props: { event: PublicEvent; from: Surface; base?: Surf
 
 export function sessionTimeLabel(day: string | null, startMin: number | null, endMin: number | null): string | null {
   if (day === null || startMin === null || endMin === null) return null;
-  return `${day}, ${formatMinutes(startMin)}–${formatMinutes(endMin)}`;
+  // w1-i: `day` is a raw 'YYYY-MM-DD' (DEC-010); route it through the same
+  // shared formatter every other public surface's day heading uses
+  // (formatDay -> src/lib/event-time.ts) instead of interpolating the ISO
+  // string directly.
+  return `${formatDay(day)}, ${formatMinutes(startMin)}–${formatMinutes(endMin)}`;
 }
 
 export function SpeakerDetailContent(props: {
@@ -78,6 +83,11 @@ export function SessionDetailContent(props: {
 }) {
   const { event, session, from, base = "/e" } = props;
   const timeLabel = sessionTimeLabel(session.day, session.startMin, session.endMin);
+  // DEC-672/DEC-683: the itinerary picker is chromeless-closed — /embed's
+  // twin of this page never renders the .chq-itinerary-toggle control or
+  // ItineraryScript, same rule the sessions/schedule surfaces already
+  // follow (sessions.tsx, agenda.tsx).
+  const embed = base === "/embed";
   return (
     <>
       <BackLink event={event} from={from} base={base} />
@@ -101,7 +111,15 @@ export function SessionDetailContent(props: {
           ))}
         </p>
         {session.description ? <p>{session.description}</p> : null}
+        {/* w1-i: the list card already has a Save/Saved itinerary control
+            (SessionCard in cards.tsx) — the drill-in detail page had none,
+            so a session opened from a search result or a shared link had no
+            way to add it to the itinerary without navigating back. Same
+            .chq-itinerary-toggle class + localStorage key
+            (chq_itinerary_<slug>), driven by the SAME ItineraryScript. */}
+        {!embed ? <ItineraryToggle sessionId={session.id} wrapperClass="chq-pub-save chq-pub-detail-itinerary" /> : null}
       </div>
+      {!embed ? <ItineraryScript eventSlug={event.slug} /> : null}
     </>
   );
 }
