@@ -308,20 +308,19 @@ export function MergePage() {
             </p>
           )}
 
-          {/* DEC-992: the combine-rules explanation moves into ONE block
-              ABOVE the action row, rather than trailing it -- what will
-              happen (labels combine, notes are appended) is read BEFORE the
-              irreversible button, not after. */}
+          {/* DEC-992 (amended wave 47): the combine-rules explanation is ONE
+              block ABOVE the action row, exactly one sentence per rule, in a
+              stable order: labels (only when the preview actually carries a
+              customFields row), notes, and the fact that the discarded
+              record is deleted -- an irreversible action names what goes AND
+              what it refuses. */}
           {preview && (
             <div className="chq-contacts-merge-rules">
               {preview.some((f) => f.key.startsWith('customFields.')) && (
                 <p className="chq-contacts-merge-footnote">Labels always combine — they're never chosen one over the other.</p>
               )}
-              {/* DEC-834: the second rule that is NOT 'pick a side' -- notes
-                  are appended (DEC-266/DEC-705), not chosen -- must be
-                  visible beside the labels footnote before committing an
-                  irreversible merge. */}
-              <p className="chq-contacts-merge-footnote">Labels combine, notes are appended</p>
+              <p className="chq-contacts-merge-footnote">Notes are appended, never chosen one over the other.</p>
+              <p className="chq-contacts-merge-footnote">The discarded record is deleted.</p>
             </div>
           )}
 
@@ -365,7 +364,7 @@ export function MergePage() {
           {confirmOpen && (
             <ConfirmDialog
               title="Merge these records?"
-              body="History from the other record moves onto the kept record. This can't be undone."
+              body="History from the other record moves onto the kept record. The discarded record is deleted. This can't be undone."
               confirmLabel="Merge"
               destructive
               pending={busy}
