@@ -10,18 +10,18 @@ import { makeMailer } from "../../server/context";
 import { textToHtml } from "../../mail/render";
 import { hashPassword } from "../../auth/password";
 import * as repo from "../../server/repo/users";
+import { isOrgUserRole } from "../../server/repo/users";
 import { listEventsForOrg } from "../../server/repo/events";
 import { clampPage, listPerPage } from "../../lib/pagination";
 import { normalizeEmail, isValidEmail } from "../../domain/email";
-import { DEC_239, DEC_454, DEC_467, DEC_778 } from "../../decisions";
+import { DEC_239, DEC_454, DEC_467, DEC_778, DEC_865 } from "../../decisions";
 
 export const usersRoutes = new Hono<AppEnv>();
 void DEC_239; // GET /api/v1/users items must retain {id,email,role,...} -- the SPA's ReviewerOption keys on `id`, not `userId`
 void DEC_454; // one canonical email rule, applied at every contact.email write/lookup
 void DEC_467; // user.email obeys DEC-454 too
 void DEC_778; // PATCH /api/v1/users/:id role change -- a role you can see is a role you can change
-
-const ALLOWED_ROLES = new Set(["reviewer", "organizer"]);
+void DEC_865; // org user directory is organizer/reviewer only -- see repo/users.ts's ORG_USER_ROLES vocabulary
 
 function currentAuth(c: { var: { auth?: { userId: string; role: string; orgId: string } } }) {
   const auth = c.var.auth;
@@ -48,7 +48,7 @@ function generatePassword(): string {
 usersRoutes.get("/api/v1/users", requireOrganizer, async (c) => {
   const auth = currentAuth(c);
   const role = c.req.query("role");
-  if (role !== undefined && !ALLOWED_ROLES.has(role)) {
+  if (role !== undefined && !isOrgUserRole(role)) {
     throw new ApiError("invalid", "role must be 'reviewer' or 'organizer'", { role: "invalid" });
   }
   const page = clampPage(c.req.query("page"));
@@ -69,7 +69,7 @@ usersRoutes.post("/api/v1/users", requireOrganizer, csrfJson, async (c) => {
   const email = normalizeEmail(typeof record.email === "string" ? record.email : "");
   if (!isValidEmail(email)) errors.email = "must be a valid email address"; // DEC-454/DEC-467
   const role = typeof record.role === "string" ? record.role : "";
-  if (!ALLOWED_ROLES.has(role)) errors.role = "must be 'reviewer' or 'organizer'";
+  if (!isOrgUserRole(role)) errors.role = "must be 'reviewer' or 'organizer'";
   if (Object.keys(errors).length > 0) {
     throw new ApiError("invalid", "Invalid user", errors);
   }
@@ -146,7 +146,7 @@ usersRoutes.patch("/api/v1/users/:id", requireOrganizer, csrfJson, async (c) => 
   const body = await c.req.json().catch(() => null);
   const record = typeof body === "object" && body !== null ? (body as Record<string, unknown>) : {};
   const role = typeof record.role === "string" ? record.role : "";
-  if (!ALLOWED_ROLES.has(role)) {
+  if (!isOrgUserRole(role)) {
     throw new ApiError("invalid", "role must be 'reviewer' or 'organizer'", { role: "invalid" });
   }
 

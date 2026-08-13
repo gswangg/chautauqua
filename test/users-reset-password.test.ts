@@ -52,6 +52,13 @@ function unwrap(rawValue: unknown): unknown {
 function evalCond(cond: unknown, row: Row): boolean {
   const chunks = (cond as { queryChunks: unknown[] }).queryChunks;
   if (COLUMN_KEYS.has(chunks[1])) {
+    // inArray()'s chunks[3] is an array of Param values (DEC-865:
+    // getOrgUserById now scopes by inArray(role, ORG_USER_ROLES)); eq()'s
+    // chunks[3] is a single Param.
+    if (Array.isArray(chunks[3])) {
+      const values = (chunks[3] as unknown[]).map(unwrap);
+      return values.includes(row[colKey(chunks[1])]);
+    }
     return row[colKey(chunks[1])] === unwrap(chunks[3]);
   }
   let any = false;
