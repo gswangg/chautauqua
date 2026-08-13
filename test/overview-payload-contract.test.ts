@@ -66,7 +66,9 @@ function emptyResponses() {
     [], // triageDetail
     [{ total: 0, reuploaded: 0 }], // contentAgg
     [], // contentDetail
-    [], // accepted
+    [{ count: 0 }], // unplacedCount (DEC-370 wave-56 amendment)
+    [], // unplacedDetail
+    [], // slotRows (always fires now)
     [{ sentLast7Days: 0, lastSentAt: null }], // comms
   ];
 }
@@ -118,7 +120,9 @@ describe("DEC-589 amendment (wave 49): overview Phase 1 queries are concurrent, 
       [], // triageDetail
       [{ total: 0, reuploaded: 0 }], // contentAgg
       [], // contentDetail
-      [], // accepted
+      [{ count: 0 }], // unplacedCount (DEC-370 wave-56 amendment)
+      [], // unplacedDetail
+      [], // slotRows (always fires now)
       [{ sentLast7Days: 0, lastSentAt: null }], // comms
     ];
     let cursor = 0;
