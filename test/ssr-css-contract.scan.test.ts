@@ -16,14 +16,36 @@
 //      union of the SSR stylesheets -- otherwise the class does nothing in
 //      the browser and the author likely meant to style it.
 //
-// Both scans ENUMERATE their inputs via readdirSync (mirroring DEC-937/
-// DEC-808) rather than a hand-listed manifest, so a new SSR stylesheet or
-// page is checked automatically. This test does NOT add the reverse check
-// (a CSS rule no markup uses) -- see DEC-970's note on work in flight.
+//   C) the reverse direction (DEC-970's deferred half, landed here): every
+//      `chq-...` class TOKEN appearing in a class SELECTOR anywhere in the
+//      union of the SSR stylesheets must appear somewhere in the whole
+//      source TEXT of src/**/*.ts / src/**/*.tsx (excluding the SSR
+//      stylesheet modules themselves -- a selector trivially contains its
+//      own token, so counting a stylesheet's own text as "usage" of its own
+//      rule would make every rule vacuously alive). Matching is done against
+//      whole file text, not just `class=` attributes, so a class assembled
+//      by an inline <script> string, a helper constant, or a JSX `className`
+//      alias (Hono JSX maps className -> class, see node_modules/hono/dist/
+//      jsx/utils.js) is never a false positive. Work is done at TOKEN level:
+//      every class token in a rule's selector (including compound/
+//      descendant/pseudo selectors and selectors nested in @media blocks)
+//      is collected, and a rule is dead only when EVERY token in its
+//      selector is unused -- a rule with one live token among several stays.
+//
+// DEC-970 deferred (C) for exactly one stated reason: "DEC-968 is adopting
+// the one known instance, and a dead-rule check landing first would fail on
+// a defect another lane is fixing." DEC-968 landed (.chq-pub-session-tag is
+// now emitted by src/routes/public/cards.tsx:61-64), so that reason has
+// expired and (C) lands here.
+//
+// All three scans ENUMERATE their inputs via readdirSync (mirroring
+// DEC-937/DEC-808) rather than a hand-listed manifest, so a new SSR
+// stylesheet or page is checked automatically.
 import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { DEC_970 } from "../src/decisions";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SRC = join(HERE, "..", "src");
@@ -102,6 +124,47 @@ function isDeclaredIn(css: string, token: string): boolean {
   return new RegExp(`${escaped}\\s*:`).test(css);
 }
 
+/**
+ * Splits `css` into its individual style rules (leaf selector { ... }
+ * blocks), including rules nested inside @media/@supports/@keyframes
+ * wrappers, and returns each rule's raw selector text (comma-separated
+ * multi-selectors kept together, since they share one declaration block --
+ * a rule is one unit for the dead-rule check). At-rule preludes themselves
+ * (the `@media (...)` text) are never returned as a "selector".
+ */
+function extractRules(css: string): string[] {
+  const text = stripComments(css);
+  const rules: string[] = [];
+  let buffer = "";
+  const stack: Array<"atrule" | "selector"> = [];
+  for (const ch of text) {
+    if (ch === "{") {
+      const trimmed = buffer.trim();
+      if (trimmed.startsWith("@")) {
+        stack.push("atrule");
+      } else {
+        stack.push("selector");
+        rules.push(trimmed);
+      }
+      buffer = "";
+    } else if (ch === "}") {
+      stack.pop();
+      buffer = "";
+    } else {
+      buffer += ch;
+    }
+  }
+  return rules;
+}
+
+/** Every distinct `chq-...` class token appearing in a selector's text
+ * (compound `.chq-a.is-on`, descendant `.chq-a .chq-b`, pseudo `.chq-a:hover`
+ * all included -- CSS only ever spells `.chq-foo` as a class selector, never
+ * as a value, in this codebase). */
+function classTokensInSelector(selector: string): string[] {
+  return [...new Set([...selector.matchAll(/\.(chq-[A-Za-z0-9_-]+)/g)].map((m) => m[1]!))];
+}
+
 const MODULE_CSS = new Map(SSR_STYLE_MODULES.map((f) => [f, extractCssText(f)] as const));
 const THEME_CSS = MODULE_CSS.get(THEME_FILE);
 if (THEME_CSS === undefined) throw new Error("theme.ts's THEME_CSS was not extracted");
@@ -112,6 +175,12 @@ describe("SSR stylesheet CSS token + class contract (DEC-970)", () => {
     // Guards the enumeration itself: if readdirSync ever returned nothing,
     // every assertion below would vacuously pass.
     expect(SSR_STYLE_MODULES.length).toBeGreaterThan(5);
+  });
+
+  it("depends on DEC-970 (compile-checked)", () => {
+    // Code that depends on a decision must reference its constant so the
+    // dependency is compile-checked (see src/decisions.ts's header).
+    expect(DEC_970.length).toBeGreaterThan(0);
   });
 
   it("every var(--chq-...) reference resolves to a declaration in :root or its own module", () => {
@@ -205,6 +274,60 @@ describe("SSR stylesheet CSS token + class contract (DEC-970)", () => {
     }
     const stale = [...STYLE_FREE_BY_DESIGN.keys()].filter((cls) => !usedClasses.has(cls));
     expect(stale, `named exceptions no longer used in any class attribute:\n${stale.join("\n")}`).toEqual([]);
+  });
+
+  /**
+   * Invariant C (DEC-970's deferred reverse direction): named, individually-
+   * justified exceptions for a class token whose ONLY source rule is
+   * genuinely emitted elsewhere (an inline <script> string, a documented
+   * dynamic constant) that the whole-source-text scan still can't see --
+   * never an open allowlist, never populated from failure output.
+   */
+  const DEAD_RULE_EXCEPTIONS: ReadonlyMap<string, string> = new Map();
+
+  it("every chq-... class token in an SSR selector is used somewhere in src/**/*.ts(x) (or a named exception)", () => {
+    // "Used" is whole-source-text matching (not just `class=` attributes),
+    // deliberately: a class assembled by an inline <script> string, a
+    // helper constant, or Hono JSX's `className` alias (className -> class,
+    // see node_modules/hono/dist/jsx/utils.js) is never a false positive.
+    // The stylesheet modules themselves are excluded from the "used" text
+    // scan -- a selector always contains its own token, so counting that
+    // occurrence as "usage" would make every rule vacuously alive.
+    const styleModuleSet = new Set(SSR_STYLE_MODULES);
+    const sourceFiles = [...allFiles(SRC, ".ts"), ...allFiles(SRC, ".tsx")].filter((f) => !styleModuleSet.has(f));
+    const usedTokens = new Set<string>();
+    for (const filePath of sourceFiles) {
+      const text = readFileSync(filePath, "utf-8");
+      for (const m of text.matchAll(/chq-[A-Za-z0-9_-]+/g)) usedTokens.add(m[0]);
+    }
+
+    const offenders: string[] = [];
+    for (const [path, css] of MODULE_CSS) {
+      const label = relative(SRC, path);
+      for (const selector of extractRules(css)) {
+        const tokens = classTokensInSelector(selector);
+        if (tokens.length === 0) continue; // not a class rule (element/attr selector, keyframe %, etc.)
+        const liveTokens = tokens.filter((t) => usedTokens.has(t) || DEAD_RULE_EXCEPTIONS.has(t));
+        if (liveTokens.length > 0) continue; // at least one token in this rule is used -- rule stays
+        offenders.push(`${label}: selector "${selector}" -- dead token(s): ${tokens.join(", ")}`);
+      }
+    }
+
+    expect(
+      offenders,
+      `CSS rules whose class token(s) are used by no markup and have no named exception (delete the rule):\n${offenders.join("\n")}`,
+    ).toEqual([]);
+  });
+
+  it("every named dead-rule exception is actually declared in a class selector somewhere in the SSR stylesheets", () => {
+    // Guards DEAD_RULE_EXCEPTIONS from growing stale the same way
+    // STYLE_FREE_BY_DESIGN is guarded above.
+    const declaredTokens = new Set<string>();
+    for (const css of MODULE_CSS.values()) {
+      for (const selector of extractRules(css)) for (const t of classTokensInSelector(selector)) declaredTokens.add(t);
+    }
+    const stale = [...DEAD_RULE_EXCEPTIONS.keys()].filter((t) => !declaredTokens.has(t));
+    expect(stale, `named dead-rule exceptions no longer declared in any SSR selector:\n${stale.join("\n")}`).toEqual([]);
   });
 });
 

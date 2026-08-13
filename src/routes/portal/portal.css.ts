@@ -32,10 +32,6 @@ export const PORTAL_CSS = `
      more specific ".chq-nav a" rule (min-height: 44px) already covers
      it; duplicating it here at the old, now-stale floor would have been
      dead weight at best and a regression trap at worst. */
-  /* DEC-253: wide data tables (My Submissions/Tasks) scroll inside their
-     own container on a phone viewport rather than blowing out page-level
-     width. */
-  .chq-table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
   table { border-collapse: collapse; }
 
   /* --- new growth: .chq-portal-* --- */
