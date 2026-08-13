@@ -51,10 +51,18 @@ const SUBMISSIONS = [
   { id: "sub-2", ref: "SES-002", title: "Talk Two", trackIds: [], status: "pending" },
 ];
 
+// Amendment (wave 52): an all-null (trackId AND submissionId both null,
+// i.e. 'All submissions') row now resolves as ALREADY covering every
+// submission (resolveAssignments, src/domain/evaluation.ts) -- distribute
+// proposes nothing for scope that already covers everything. These fixture
+// rows instead point at a submission outside the 2-submission SUBMISSIONS
+// set below: broad for ELIGIBILITY (no trackId row at all) but zero real
+// resolved coverage among sub-1/sub-2, reproducing the "freshly added,
+// unscoped reviewer" shape these tests exercise.
 let plan = makePlan();
 let reviewerRows: { id: string; planId: string; userId: string; trackId: string | null; submissionId: string | null }[] = [
-  { id: "pr-1", planId: "plan-1", userId: "rev-1", trackId: null, submissionId: null },
-  { id: "pr-2", planId: "plan-1", userId: "rev-2", trackId: null, submissionId: null },
+  { id: "pr-1", planId: "plan-1", userId: "rev-1", trackId: null, submissionId: "sub-elsewhere" },
+  { id: "pr-2", planId: "plan-1", userId: "rev-2", trackId: null, submissionId: "sub-elsewhere" },
 ];
 let recusals: { planId: string; submissionId: string; userId: string; reason: string | null; createdAt: number }[] = [];
 let addedRows: { userId: string; submissionId: string | null }[] = [];
@@ -95,8 +103,8 @@ afterEach(() => {
   vi.clearAllMocks();
   plan = makePlan();
   reviewerRows = [
-    { id: "pr-1", planId: "plan-1", userId: "rev-1", trackId: null, submissionId: null },
-    { id: "pr-2", planId: "plan-1", userId: "rev-2", trackId: null, submissionId: null },
+    { id: "pr-1", planId: "plan-1", userId: "rev-1", trackId: null, submissionId: "sub-elsewhere" },
+    { id: "pr-2", planId: "plan-1", userId: "rev-2", trackId: null, submissionId: "sub-elsewhere" },
   ];
   recusals = [];
   addedRows = [];

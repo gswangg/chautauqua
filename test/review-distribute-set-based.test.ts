@@ -70,6 +70,16 @@ const SUBMISSIONS = Array.from({ length: SUBMISSION_COUNT }, (_, i) => ({
 
 const plan = makePlan();
 
+// Amendment (wave 52): an all-null (trackId AND submissionId both null,
+// i.e. 'All submissions') plan_reviewer row now resolves (via
+// resolveAssignments, src/domain/evaluation.ts) as ALREADY covering every
+// submission -- distribute proposes nothing for a plan scope alone already
+// covers. To keep exercising the chunked-insert path with a real created
+// set, these reviewer rows instead point at a submission OUTSIDE the test
+// fixture's 12-submission set (broad for ELIGIBILITY -- no trackId row at
+// all -- but zero real resolved coverage among SUBMISSIONS), reproducing
+// the same "fresh pool, round-robin everything" shape the old all-null
+// fixture intended.
 vi.mock("../src/server/repo/review", async () => {
   const actual = await vi.importActual<typeof import("../src/server/repo/review")>("../src/server/repo/review");
   return {
@@ -83,7 +93,7 @@ vi.mock("../src/server/repo/review", async () => {
         planId: plan.id,
         userId,
         trackId: null,
-        submissionId: null,
+        submissionId: "sub-outside-fixture",
       })),
     ),
     listPlanFilteredSubmissions: vi.fn(async () => SUBMISSIONS),
@@ -182,6 +192,31 @@ describe("DEC-924 amendment (wave 47): distribute apply writes are set-based", (
     });
     expect(res.status).toBe(201);
     const body = (await res.json()) as { created: number };
+    expect(body.created).toBe(0);
+    expect(insertCalls.length).toBe(0);
+  });
+
+  it("amendment (wave 52): an all-null ('All submissions') reviewer pool already covers every submission -- 201s with created: 0, no inserts", async () => {
+    const repo = await import("../src/server/repo/review");
+    vi.mocked(repo.listReviewerRowsForPlan).mockResolvedValueOnce(
+      REVIEWER_USER_IDS.map((userId, i) => ({
+        id: `pr-broad-${i}`,
+        planId: plan.id,
+        userId,
+        trackId: null,
+        submissionId: null,
+      })),
+    );
+    const { db, insertCalls } = makeCountingDb();
+    const app = await buildApp(organizer, db);
+    const res = await app.request(`/api/v1/plans/${plan.id}/assignments/distribute`, {
+      method: "POST",
+      headers: { "x-chq-csrf": "1" },
+    });
+    expect(res.status).toBe(201);
+    const body = (await res.json()) as { created: number };
+    // 3 broad reviewers already resolve as covering every submission
+    // (maxEvaluations 3 == reviewer pool size) -- nothing left to propose.
     expect(body.created).toBe(0);
     expect(insertCalls.length).toBe(0);
   });
