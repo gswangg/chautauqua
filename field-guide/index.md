@@ -31,30 +31,30 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   EVERY kind. A role read off a USER is null for a row with no user. A
   disabled input must look disabled. A toggle needing a companion choice
   REVEALS it and WAITS. An absent image is a DRAWN placeholder. A
-  deterministic TIE-BREAK answers "which row" but not "which of your
-  talks" — when data admits two, ASK. A timeline the data already implies
-  needs a UNION not a migration. Number() parses "1e999" as Infinity,
-  lands null in a REQUIRED column. A gate skipped for one content type is
-  not a gate. Nine date complaints on six pages are one formatter, never
-  the docstring. A page's actions belong to its title row. A prop that
-  renders nothing is a decision callers still believe in — delete it.
-  Three surfaces answering "narrow this list" differently are three
-  products. An onChange that writes to server races its own reload — a
-  row is a DRAFT until Save. Mandate files w19-21 mostly ALREADY CLOSED.
-- FINDINGS w22 (DEC-921..925): mandate file archaeology — every headline
-  item probed was ALREADY CLOSED. A cascade comment claiming "everything
-  it owns" is a claim to CHECK against the table list; deleting a row
-  another table merely POINTS AT is a 409 with no way back; a join row
-  keyed on (task, contact) is not owned by the file that completed it —
-  reopen, don't delete. One BOUNDARY should be the sole author of a
-  logged event. Six copies of one ternary is how the seventh gets it wrong.
-- FINDINGS w23 (DEC-926..930): both mandate files now pure archaeology --
-  ~12 headline items reprobed, all CLOSED. Work comes from READING deletes,
-  vocabularies, per-row awaits. A delete that repoints comments must
-  repoint every OTHER pointer at that row -- a resolver that THROWS on a
-  missing row turns a cheap orphan into a permanent 500 elsewhere. A batch
-  reader omitting the one column its caller needs re-introduces the N
-  queries it claims to avoid. `x as Input["k"]` at a call site hides a
-  value the server already accepts behind a hand-listed client vocabulary.
-  A confirm dialog with no BODY names nothing -- check the dialog next to
-  it. Every new /api/v1 route lands in src/routes/docs.tsx.
+  timeline the data already implies needs a UNION not a migration.
+  Number() parses "1e999" as Infinity, lands null in a REQUIRED column.
+  A gate skipped for one content type is not a gate. Nine date complaints
+  on six pages are one formatter, never the docstring. A page's actions
+  belong to its title row. A prop that renders nothing is a decision
+  callers still believe in — delete it. Three surfaces answering "narrow
+  this list" differently are three products. An onChange that writes to
+  server races its own reload — a row is a DRAFT until Save.
+- FINDINGS w22-23 (DEC-921..930, compacted): mandate files pure archaeology,
+  ~20 headline items reprobed, all CLOSED. A cascade comment claiming
+  "everything it owns" is a claim to CHECK against the table list; a
+  join row keyed on (task, contact) is not owned by the file that
+  completed it -- reopen, don't delete. One BOUNDARY is the sole author
+  of a logged event. A batch reader omitting the one column its caller
+  needs re-introduces the N queries it claims to avoid. A confirm dialog
+  with no BODY names nothing. Every new /api/v1 route lands in docs.tsx.
+- FINDINGS w24 (DEC-931..936): tree MOVED mid-plan -- re-grep before trusting
+  a probe from ten minutes ago. Mandate archaeology 3 waves running (10+
+  items reprobed, all CLOSED). A 409 naming a CLASS ("referenced by one or
+  more X") is a dead end -- name the ROWS, bounded 5+count. An expansion
+  at CREATE time is a snapshot: whoever joins later never gets it -- state
+  the invariant, BACK-FILL every activation path. A route with no caller
+  is as dead as a decision with no code -- grep apiPatch/apiDelete for
+  orphans. Two widened row sets meeting one narrow action set leave blank
+  cells permanent BY DESIGN: say so in the cells. `order by id asc limit
+  1` in a correlated subquery is the tie-break DEC-891 rejected -- ASK
+  when data admits two; check the filter predicate matches the row PRINTS.
