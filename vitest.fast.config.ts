@@ -11,6 +11,12 @@ import { defineConfig } from "vitest/config";
 // selects must already run correctly under plain "node".
 export default defineConfig({
   test: {
+    // DEC-797: same global DOM-cleanup setup file as vitest.config.ts. This
+    // tier is node-only and never selects a jsdom-environment file, so the
+    // setup file's `typeof document !== 'undefined'` guard is always false
+    // here -- it's a no-op, kept only so every project points at the one
+    // setup file rather than some projects silently opting out.
+    setupFiles: ["app/src/test-setup.ts"],
     // Unlike vitest.config.ts (mandate item 72/73's machine-protection cap
     // for the jsdom/wrangler-heavy full suite), this tier is plain-node
     // unit tests only -- no multi-GB jsdom/miniflare workers -- so it is
