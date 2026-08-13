@@ -76,7 +76,10 @@ export function UnscheduledTray({
           );
         })}
       </div>
-      <p className="chq-unscheduled-tray-hint">Drag to a slot &middot; drag back to unschedule</p>
+      <p className="chq-unscheduled-tray-hint">
+        Click a session, then click a time slot to place it &middot; dragging works too &middot; drag back here to
+        unschedule
+      </p>
     </div>
   );
 }

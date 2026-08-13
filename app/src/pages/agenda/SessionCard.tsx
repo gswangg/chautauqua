@@ -47,7 +47,12 @@ interface SessionCardProps {
 export function SessionCard({ session, tracks, conflicts, style, className, onDragOver, onDrop, dragHandle, onSelect, selected }: SessionCardProps) {
   const conflicted = conflicts.some((c) => c.submissionIds.includes(session.submissionId));
   const trackNames = tracks.filter((t) => session.trackIds.includes(t.id)).map((t) => t.name);
-  const accessibleName = `${session.ref}: ${session.title}${conflicted ? ' (conflict)' : ''}`;
+  // The placement path is click-to-arm (DEC-570), but nothing in the a11y tree
+  // said so — both sbek runs never found manual placement (mandate coverage
+  // item #1). Selectable cards now state the action in their accessible name.
+  const accessibleName = `${session.ref}: ${session.title}${conflicted ? ' (conflict)' : ''}${
+    onSelect ? ' — click to select, then choose a time slot' : ''
+  }`;
 
   function handleDragStart(e: DragEvent<HTMLButtonElement>) {
     e.dataTransfer.setData(AGENDA_DRAG_MIME, session.submissionId);
