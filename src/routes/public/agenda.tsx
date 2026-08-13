@@ -296,15 +296,26 @@ function DaySwitcher(props: {
     (trackId ? `&trackId=${encodeURIComponent(trackId)}` : "") +
     (q ? `&q=${encodeURIComponent(q)}` : "") +
     (format ? `&format=${encodeURIComponent(format)}` : "");
+  // DEC-885: a navigation control that never says where you are is a list
+  // of links. On the ?day=-filtered view `activeDay` names it directly; on
+  // the default unfiltered view no query param picks a day, but the page
+  // still opens on ONE day -- the first day rendered top-to-bottom -- so
+  // that first day is the one in view and gets aria-current, exactly one
+  // pill either way.
+  const effectiveActiveDay = activeDay ?? days[0] ?? null;
   return (
     <nav aria-label="Jump to day" class="chq-pub-day-switcher">
       {days.map((day) => {
-        const isActive = activeDay ? day === activeDay : false;
+        const isActive = day === effectiveActiveDay;
         const href = renderedDays.has(day)
           ? `${surfacePath(event, surface, base)}?day=${day}${extraParams}#chq-day-${day}`
           : `${surfacePath(event, surface, base)}?day=${day}${extraParams}`;
         return (
-          <a class="chq-pub-day-pill" href={href} aria-current={isActive ? "page" : undefined}>
+          <a
+            class={isActive ? "chq-pub-day-pill chq-pub-day-pill-active" : "chq-pub-day-pill"}
+            href={href}
+            aria-current={isActive ? "page" : undefined}
+          >
             {formatDay(day)}
           </a>
         );

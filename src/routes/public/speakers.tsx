@@ -5,6 +5,7 @@
 import type { PublicEvent, PublicSpeakerWithSessions } from "../../server/repo/public";
 import { speakerDetailPath, surfacePath } from "./shell";
 import { PUBLIC_PER_PAGE, hasMorePages } from "../../server/repo/public/bounds";
+import { speakerInitials } from "./cards";
 
 /** Plain GET name-search form (DEC-151): JS-free, preserves the page's other
  * query semantics by resubmitting only `q` — page param is intentionally
@@ -59,7 +60,14 @@ function SpeakerCard(props: {
             height="96"
           />
         ) : (
-          <div class="chq-pub-headshot-fallback" />
+          // DEC-885: a deliberate drawn placeholder (hatch background +
+          // initials, public.css.ts) rather than an empty sunk box that
+          // reads as a broken image. aria-hidden since the wrapping <a>
+          // already carries the speaker's full name via aria-label above --
+          // the initials text is decorative, not a second accessible name.
+          <div class="chq-pub-headshot-fallback" aria-hidden="true">
+            {speakerInitials(sp.firstName, sp.lastName)}
+          </div>
         )}
       </a>
       <a class="chq-pub-speaker-name" href={href}>

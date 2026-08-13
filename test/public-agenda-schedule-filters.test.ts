@@ -292,7 +292,7 @@ describe("/e/:eventSlug/schedule?trackId= (DEC-783)", () => {
     const app = buildScheduleApp(twoDayRows);
     const res = await app.request("/e/conf/schedule", {}, TEST_ENV);
     const html = await res.text();
-    const pillHrefs = [...html.matchAll(/class="chq-pub-day-pill" href="([^"]*)"/g)].map((m) => m[1]!);
+    const pillHrefs = [...html.matchAll(/class="chq-pub-day-pill[^"]*" href="([^"]*)"/g)].map((m) => m[1]!);
     expect(pillHrefs.length).toBe(2);
     for (const href of pillHrefs) {
       expect(href.startsWith("#")).toBe(false);
