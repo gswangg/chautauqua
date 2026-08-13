@@ -203,9 +203,18 @@ describe("seed.ts output (task w1-d, DEC-145)", () => {
   });
 
   it("DEC-591: assigns the demo speaker's contact at least 2 task_assignment rows, including a 'form'-kind and a 'file_request'-kind task, with exactly 3 of the 5 default task due dates already past and all before the event start", () => {
+    // DEC-739: task_assignment now carries response_json/file_id/
+    // last_reminded_at columns (previously always NULL/unwritten); those
+    // three columns can hold arbitrary quoted JSON, so they're consumed by
+    // a NULL-or-quoted-string alternation rather than `[^,]*` (which would
+    // desync on an embedded comma in response_json).
+    const QUOTED_OR_NULL = "(?:NULL|'(?:[^']|'')*')";
     const taskAssignmentRows = [
       ...sql.matchAll(
-        /INSERT INTO task_assignment \([^)]*\) VALUES \('[^']*', '([^']*)', 'seed_contact_0001', '[^']*', ([^,]*), [^,]*, (\d+), \d+\);/g,
+        new RegExp(
+          `INSERT INTO task_assignment \\([^)]*\\) VALUES \\('[^']*', '([^']*)', 'seed_contact_0001', '[^']*', [^,]*, [^,]*, ${QUOTED_OR_NULL}, ${QUOTED_OR_NULL}, NULL, \\d+, \\d+\\);`,
+          "g",
+        ),
       ),
     ];
     expect(taskAssignmentRows.length).toBeGreaterThanOrEqual(2);
@@ -235,9 +244,13 @@ describe("seed.ts output (task w1-d, DEC-145)", () => {
   });
 
   it("DEC-646: stages at least 3 pending, past-due task_assignment rows across >=3 distinct contacts with distinct due dates exactly 4/2/1 days before SEED_NOW, matching Overview §01's staggered lateness", () => {
+    const QUOTED_OR_NULL_2 = "(?:NULL|'(?:[^']|'')*')";
     const taskAssignmentRows = [
       ...sql.matchAll(
-        /INSERT INTO task_assignment \([^)]*\) VALUES \('[^']*', '([^']*)', '([^']*)', '(pending|complete)', [^,]*, [^,]*, \d+, \d+\);/g,
+        new RegExp(
+          `INSERT INTO task_assignment \\([^)]*\\) VALUES \\('[^']*', '([^']*)', '([^']*)', '(pending|complete)', [^,]*, [^,]*, ${QUOTED_OR_NULL_2}, ${QUOTED_OR_NULL_2}, NULL, \\d+, \\d+\\);`,
+          "g",
+        ),
       ),
     ].map((r) => ({ taskId: r[1]!, contactId: r[2]!, status: r[3]! }));
 
@@ -444,5 +457,161 @@ describe("seed.ts output (task w1-d, DEC-145)", () => {
     }
 
     expect(new Set(descriptions).size).toBe(descriptions.length);
+  });
+
+  // ---------------------------------------------------------------------
+  // Task w2-d / DEC-739: assertions by ENUMERATION over the generated SQL,
+  // via a small quote-aware row parser (rather than positional regex
+  // capture groups) so an added/reordered column can't silently desync a
+  // capture group and the assertion actually walks every matching row.
+  // ---------------------------------------------------------------------
+
+  /** Splits a VALUES(...) tuple's raw text into per-column literal strings
+   * (still quoted, e.g. "'foo'" or "NULL" or "123"), respecting SQL's
+   * doubled-single-quote escaping so an embedded comma inside a quoted
+   * string (e.g. response_json) never desyncs the column boundary. */
+  function tokenizeSqlValues(raw: string): string[] {
+    const out: string[] = [];
+    let i = 0;
+    while (i < raw.length) {
+      while (raw[i] === " ") i++;
+      if (raw[i] === "'") {
+        let j = i + 1;
+        let val = "'";
+        while (j < raw.length) {
+          if (raw[j] === "'" && raw[j + 1] === "'") {
+            val += "''";
+            j += 2;
+            continue;
+          }
+          if (raw[j] === "'") {
+            val += "'";
+            j++;
+            break;
+          }
+          val += raw[j];
+          j++;
+        }
+        out.push(val);
+        i = j;
+      } else {
+        let j = i;
+        while (j < raw.length && raw[j] !== ",") j++;
+        out.push(raw.slice(i, j).trim());
+        i = j;
+      }
+      while (raw[i] === " ") i++;
+      if (raw[i] === ",") i++;
+    }
+    return out;
+  }
+
+  /** Unquotes a tokenizeSqlValues() literal: "'foo'" -> "foo", "NULL" -> null. */
+  function unquote(literal: string): string | null {
+    if (literal === "NULL") return null;
+    if (literal.startsWith("'") && literal.endsWith("'")) {
+      return literal.slice(1, -1).replace(/''/g, "'");
+    }
+    return literal;
+  }
+
+  /** Parses every `INSERT INTO <table> (...) VALUES (...);` statement (one
+   * per output line — seed.ts never embeds a raw newline in a value) into a
+   * column-name -> unquoted-value record. */
+  function parseInserts(sqlText: string, table: string): Array<Record<string, string | null>> {
+    const rowRe = new RegExp(`^INSERT INTO ${table} \\(([^)]*)\\) VALUES \\((.*)\\);$`, "gm");
+    const rows: Array<Record<string, string | null>> = [];
+    for (const m of sqlText.matchAll(rowRe)) {
+      const columns = m[1]!.split(",").map((c) => c.trim().replace(/^"|"$/g, ""));
+      const values = tokenizeSqlValues(m[2]!);
+      if (values.length !== columns.length) {
+        throw new Error(
+          `parseInserts: column/value count mismatch for ${table} (${columns.length} cols, ${values.length} vals): ${m[0]}`,
+        );
+      }
+      const row: Record<string, string | null> = {};
+      columns.forEach((c, idx) => {
+        row[c] = unquote(values[idx]!);
+      });
+      rows.push(row);
+    }
+    return rows;
+  }
+
+  it("DEC-739: every complete form-kind task_assignment has a non-null response_json whose keys are exactly that task's form's form_field ids", () => {
+    const taskRows = parseInserts(sql, "task");
+    const kindByTaskId = new Map(taskRows.map((r) => [r.id!, r.kind!]));
+    const formIdByTaskId = new Map(taskRows.map((r) => [r.id!, r.form_id]));
+
+    const formFieldRows = parseInserts(sql, "form_field");
+    const fieldIdsByFormId = new Map<string, Set<string>>();
+    for (const f of formFieldRows) {
+      const set = fieldIdsByFormId.get(f.form_id!) ?? new Set<string>();
+      set.add(f.id!);
+      fieldIdsByFormId.set(f.form_id!, set);
+    }
+
+    const taskAssignmentRows = parseInserts(sql, "task_assignment");
+    const completeFormAssignments = taskAssignmentRows.filter(
+      (r) => r.status === "complete" && kindByTaskId.get(r.task_id!) === "form",
+    );
+    expect(completeFormAssignments.length).toBeGreaterThan(0);
+
+    for (const row of completeFormAssignments) {
+      expect(row.response_json, `task_assignment ${row.id} (task ${row.task_id})`).not.toBeNull();
+      const responseKeys = Object.keys(JSON.parse(row.response_json!));
+      const formId = formIdByTaskId.get(row.task_id!);
+      expect(formId, `task ${row.task_id} has no form_id`).not.toBeNull();
+      const expectedFieldIds = fieldIdsByFormId.get(formId!);
+      expect(expectedFieldIds, `no form_field rows for form ${formId}`).toBeTruthy();
+      expect(new Set(responseKeys)).toEqual(expectedFieldIds);
+    }
+  });
+
+  it("DEC-739: every complete file_request task_assignment has a non-null file_id", () => {
+    const taskRows = parseInserts(sql, "task");
+    const kindByTaskId = new Map(taskRows.map((r) => [r.id!, r.kind!]));
+
+    const taskAssignmentRows = parseInserts(sql, "task_assignment");
+    const completeFileRequestAssignments = taskAssignmentRows.filter(
+      (r) => r.status === "complete" && kindByTaskId.get(r.task_id!) === "file_request",
+    );
+    expect(completeFileRequestAssignments.length).toBeGreaterThan(0);
+
+    const fileIds = new Set(parseInserts(sql, "file").map((f) => f.id!));
+    for (const row of completeFileRequestAssignments) {
+      expect(row.file_id, `task_assignment ${row.id} (task ${row.task_id})`).not.toBeNull();
+      expect(fileIds.has(row.file_id!), `file_id ${row.file_id} has no matching file row`).toBe(true);
+    }
+  });
+
+  it("DEC-739: exactly one batch_id appears on >=20 email_log rows, and template count is 5", () => {
+    const emailLogRows = parseInserts(sql, "email_log");
+    const batchCounts = new Map<string, number>();
+    for (const row of emailLogRows) {
+      const batchId = row.batch_id;
+      if (!batchId) continue;
+      batchCounts.set(batchId, (batchCounts.get(batchId) ?? 0) + 1);
+    }
+    const bigBatches = [...batchCounts.entries()].filter(([, count]) => count >= 20);
+    expect(bigBatches.length).toBe(1);
+    const [, batchSize] = bigBatches[0]!;
+    expect(batchSize).toBeGreaterThanOrEqual(20);
+
+    // Same subject/sent_at cluster, mostly 'sent' with a non-trivial number
+    // of 'failed' rows.
+    const batchId = bigBatches[0]![0];
+    const rowsInBatch = emailLogRows.filter((r) => r.batch_id === batchId);
+    const subjects = new Set(rowsInBatch.map((r) => r.subject));
+    expect(subjects.size).toBe(1);
+    const sentAts = new Set(rowsInBatch.map((r) => r.sent_at));
+    expect(sentAts.size).toBe(1);
+    const statuses = rowsInBatch.map((r) => r.status);
+    expect(statuses.filter((s) => s === "sent").length).toBeGreaterThan(statuses.length / 2);
+    expect(statuses.filter((s) => s === "failed").length).toBeGreaterThanOrEqual(1);
+    expect(statuses.filter((s) => s === "failed").length).toBeLessThanOrEqual(2);
+
+    const templateRows = parseInserts(sql, "email_template");
+    expect(templateRows.length).toBe(5);
   });
 });
