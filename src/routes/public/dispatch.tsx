@@ -9,11 +9,13 @@ import {
   getPublicAgenda,
   getPublicScheduleDayCounts,
   getPublicCfpWindow,
+  getPublicRooms,
+  getPublicFormatOptions,
   type PublicEvent,
   type PublicAgendaItem,
 } from "../../server/repo/public";
 import type { Surface } from "./shell";
-import { parsePage, parseTrackId, parseNameQuery, type CardFields } from "./query";
+import { parsePage, parseTrackId, parseNameQuery, parseFormat, parseRoomId, type CardFields } from "./query";
 import { PUBLIC_PER_PAGE } from "../../server/repo/public/bounds";
 import { SessionsContent } from "./sessions";
 import { SpeakersContent, GalleryContent } from "./speakers";
@@ -41,24 +43,44 @@ export async function renderSurfaceContent(
   db: Parameters<typeof getPublicSessions>[0],
   event: PublicEvent,
   surface: Surface,
-  query: { trackId?: string; page?: string; q?: string; day?: string | null; limit?: number | null; fields?: CardFields; embed?: boolean },
+  query: {
+    trackId?: string;
+    page?: string;
+    q?: string;
+    day?: string | null;
+    limit?: number | null;
+    fields?: CardFields;
+    embed?: boolean;
+    format?: string;
+    roomId?: string;
+  },
 ): Promise<{ title: string; content: unknown }> {
   switch (surface) {
     case "sessions": {
       const trackId = parseTrackId(query.trackId);
+      const format = parseFormat(query.format);
+      const roomId = parseRoomId(query.roomId);
       const page = parsePage(query.page);
       const q = parseNameQuery(query.q);
       const perPage = query.limit ?? PUBLIC_PER_PAGE;
       const tracks = await getPublicTracks(db, event.id);
-      // DEC-634: `day` is now a SQL-level predicate on the repo query
-      // (joined + counted alongside trackId/q) rather than a post-page
-      // filter — LIMIT/OFFSET and `total` see the identical predicate.
+      // DEC-774: rooms/format options fetched alongside tracks — same
+      // "list of possible filter chips" shape, queried once regardless of
+      // whether the corresponding filter is active.
+      const rooms = await getPublicRooms(db, event.id);
+      const formatOptions = await getPublicFormatOptions(db, event.id);
+      // DEC-634/DEC-774: `day`/`format`/`roomId` are all SQL-level predicates
+      // on the repo query (joined/EXISTS'd + counted alongside trackId/q)
+      // rather than a post-page filter — LIMIT/OFFSET and `total` see the
+      // identical predicate.
       const { items, total } = await getPublicSessions(db, event, {
         trackId,
         page,
         perPage,
         q,
         day: query.day ?? null,
+        format,
+        roomId,
       });
       // DEC-683: the rail (Your schedule / day index / call for papers) is
       // chromeless-closed — /embed never renders it, so these two extra
@@ -72,6 +94,10 @@ export async function renderSurfaceContent(
             event={event}
             tracks={tracks}
             activeTrackId={trackId}
+            rooms={rooms}
+            activeRoomId={roomId}
+            formatOptions={formatOptions}
+            activeFormat={format}
             q={q}
             items={items}
             total={total}

@@ -68,6 +68,11 @@ export function EmbedsPanel() {
   const [surface, setSurface] = useState<EmbedSurface>('sessions');
   const [format, setFormat] = useState<EmbedFormat>('iframe');
   const [trackId, setTrackId] = useState('');
+  // DEC-774: session-format/room filter knobs (sessions surface only).
+  // Named sessionFormat/roomId to avoid colliding with the `format` state
+  // above (the embed's own output format).
+  const [sessionFormat, setSessionFormat] = useState('');
+  const [roomId, setRoomId] = useState('');
   const [day, setDay] = useState('');
   const [q, setQ] = useState('');
   const [limit, setLimit] = useState('');
@@ -120,6 +125,8 @@ export function EmbedsPanel() {
     ? buildEmbedUrl(window.location.origin, event.slug, surface, {
         format,
         trackId: trackId || undefined,
+        sessionFormat: sessionFormat || undefined,
+        roomId: roomId || undefined,
         day: day || undefined,
         q: q || undefined,
         limit: limit ? Number(limit) : undefined,
@@ -186,6 +193,32 @@ export function EmbedsPanel() {
                   </option>
                 ))}
               </select>
+            </label>
+          ) : null}
+
+          {knobs.includes('format') ? (
+            <label>
+              Session format
+              <input
+                className="chq-input"
+                type="text"
+                value={sessionFormat}
+                onChange={(e) => setSessionFormat(e.target.value)}
+                placeholder="(all formats)"
+              />
+            </label>
+          ) : null}
+
+          {knobs.includes('roomId') ? (
+            <label>
+              Room ID
+              <input
+                className="chq-input"
+                type="text"
+                value={roomId}
+                onChange={(e) => setRoomId(e.target.value)}
+                placeholder="(all rooms)"
+              />
             </label>
           ) : null}
 

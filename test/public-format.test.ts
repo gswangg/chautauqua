@@ -100,14 +100,16 @@ describe("Format on the sessions-list card (/e/:eventSlug/sessions)", () => {
         call += 1;
         if (call === 1) return makeChain([EVENT_ROW]); // getPublicEventBySlug
         if (call === 2) return makeChain([]); // getPublicTracks
-        if (call === 3) return makeChain([SUB_ROW]); // hydrateSessions subRows
-        if (call === 4) return makeChain([]); // trackRows
-        if (call === 5) return makeChain([]); // speakerRows
-        if (call === 6) return makeChain([]); // slotRows
-        if (call === 7) return makeChain(formatAnswerRows(hasAnswer)); // formatRows
-        if (call === 8) return makeChain([{ count: 1 }]); // countVisibleSubmissions
+        if (call === 3) return makeChain([]); // getPublicRooms (DEC-774)
+        if (call === 4) return makeChain([]); // getPublicFormatOptions (DEC-774)
+        if (call === 5) return makeChain([SUB_ROW]); // hydrateSessions subRows
+        if (call === 6) return makeChain([]); // trackRows
+        if (call === 7) return makeChain([]); // speakerRows
+        if (call === 8) return makeChain([]); // slotRows
+        if (call === 9) return makeChain(formatAnswerRows(hasAnswer)); // formatRows
+        if (call === 10) return makeChain([{ count: 1 }]); // countVisibleSubmissions
         // DEC-683: !embed sessions rail queries — real (empty) row shapes.
-        if (call === 9) return makeChain([]); // getPublicScheduleDayCounts
+        if (call === 11) return makeChain([]); // getPublicScheduleDayCounts
         return makeChain([]); // getPublicCfpWindow
       },
       selectDistinct: () => makeChain([{ id: "sub1", title: "Fireside Chat" }]),

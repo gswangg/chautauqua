@@ -151,19 +151,21 @@ function buildSessionsAppHtml() {
       selectCall += 1;
       if (selectCall === 1) return makeChain([EVENT_ROW]);
       if (selectCall === 2) return makeChain([]); // getPublicTracks
-      if (selectCall === 3) {
+      if (selectCall === 3) return makeChain([]); // getPublicRooms (DEC-774)
+      if (selectCall === 4) return makeChain([]); // getPublicFormatOptions (DEC-774)
+      if (selectCall === 5) {
         return makeChain(
           sessionIds.map((id, i) => ({ id, seq: i + 1, title: `Talk ${i}`, description: null, icsSequence: 0 })),
         );
       }
-      if (selectCall === 4) return makeChain([]); // trackRows
-      if (selectCall === 5) return makeChain([]); // speakerRows
-      if (selectCall === 6) return makeChain([]); // slotRows
-      if (selectCall === 7) return makeChain([]); // formatRows
-      if (selectCall === 8) return makeChain([{ count: N }]); // countVisibleSubmissions
+      if (selectCall === 6) return makeChain([]); // trackRows
+      if (selectCall === 7) return makeChain([]); // speakerRows
+      if (selectCall === 8) return makeChain([]); // slotRows
+      if (selectCall === 9) return makeChain([]); // formatRows
+      if (selectCall === 10) return makeChain([{ count: N }]); // countVisibleSubmissions
       // DEC-683: !embed sessions rail queries — real (empty) row shapes so
       // DayIndexRailSection/CfpRailSection never see the count-shaped row.
-      if (selectCall === 9) return makeChain([]); // getPublicScheduleDayCounts
+      if (selectCall === 11) return makeChain([]); // getPublicScheduleDayCounts
       return makeChain([]); // getPublicCfpWindow
     },
     selectDistinct: () => makeChain(sessionIds.map((id, i) => ({ id, title: `Talk ${i}` }))),
