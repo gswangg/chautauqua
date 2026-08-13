@@ -80,6 +80,7 @@ describe('ReviewPage render smoke: organizer', () => {
   it('renders the plan list', async () => {
     mockApi({
       'GET /api/v1/me': organizerMe(),
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
       [`GET /api/v1/events/${EVENT_ID}/plans`]: listEnvelope([planWithNullDates()]),
       [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([
         { userId: 'u-1', email: 'rev1@example.com', assigned: 4, completed: 1, recused: 0 },
@@ -114,6 +115,7 @@ describe('ReviewPage render smoke: organizer', () => {
     const planB = { ...planWithNullDates(), id: 'plan-b', name: 'Lightning Talks' };
     mockApi({
       'GET /api/v1/me': organizerMe(),
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
       [`GET /api/v1/events/${EVENT_ID}/plans`]: listEnvelope([planWithNullDates(), planB]),
       [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([
         { userId: 'u-1', email: 'rev1@example.com', assigned: 4, completed: 0, recused: 0 },
@@ -155,6 +157,33 @@ describe('ReviewPage render smoke: organizer', () => {
     expect(screen.queryByRole('heading', { name: 'Reviewer progress' })).not.toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: /^Results/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /Back to plans/ })).not.toBeInTheDocument();
+  });
+
+  // DEC-760/DEC-733: when nobody is unstarted the "Remind the N not
+  // started" reminder is an impossible action -- absent, never rendered
+  // disabled.
+  it('hides the "Remind the N not started" link when every reviewer has started', async () => {
+    mockApi({
+      'GET /api/v1/me': organizerMe(),
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+      [`GET /api/v1/events/${EVENT_ID}/plans`]: listEnvelope([planWithNullDates()]),
+      [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([
+        { userId: 'u-1', email: 'rev1@example.com', assigned: 4, completed: 2, recused: 0 },
+      ]),
+      [`GET /api/v1/plans/${PLAN_ID}`]: planWithNullDates(),
+      [`GET /api/v1/plans/${PLAN_ID}/results`]: listEnvelope([]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <ReviewPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('rev1@example.com')).toBeInTheDocument();
+    });
+    expect(screen.queryByRole('button', { name: /Remind the .* not started/ })).not.toBeInTheDocument();
   });
 
   it('renders plan detail for a plan with NULL open/close dates without throwing (DEC-146)', async () => {

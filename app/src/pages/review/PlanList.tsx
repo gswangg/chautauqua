@@ -9,7 +9,7 @@ import { buildResultsCsvHref } from './resultsCsv';
 import { ResultsTable } from './ResultsTable';
 import { DelayedLoading, useDelayedFlag } from '../../components/DelayedLoading';
 import './review.css';
-import type { EvaluationPlan, ProgressRow } from './types';
+import type { EvaluationPlan, ProgressRow, Track } from './types';
 
 /** Presentational-only window state derived from openDate/closeDate — never
  * stored server-side, so it must never be asserted as more than "now vs.
@@ -33,6 +33,16 @@ function isWindowOpen(plan: EvaluationPlan, now: number): boolean {
 function planWindow(plan: EvaluationPlan): string {
   if (plan.openDate === null && plan.closeDate === null) return 'No window set';
   return `${formatDateOnly(plan.openDate)} – ${formatDateOnly(plan.closeDate)}`;
+}
+
+/** DEC-760: the plan-row subtitle's track-scope clause -- "All tracks" when
+ * the plan carries no track filter, else the filtered tracks' resolved
+ * names (never raw ids -- FINDINGS: "raw id leaks -- render LABELS"),
+ * joined in the order the filter lists them. */
+function planTrackScope(plan: EvaluationPlan, trackNameById: Map<string, string>): string {
+  const trackIds = plan.filters?.trackIds ?? [];
+  if (trackIds.length === 0) return 'All tracks';
+  return trackIds.map((id) => trackNameById.get(id) ?? id).join(', ');
 }
 
 /** DEC-587: inline plan-row progress -- evaluations in against evaluations
@@ -69,6 +79,9 @@ export function PlanList() {
   const { eventId, loading: eventLoading, error: eventError } = useCurrentEvent();
   const [plans, setPlans] = useState<EvaluationPlan[]>([]);
   const [progressByPlan, setProgressByPlan] = useState<Record<string, ProgressRow[] | null>>({});
+  // DEC-760: track names for each row's scope subtitle -- resolved once per
+  // event, keyed by id (never a raw id rendered in the subtitle).
+  const [tracks, setTracks] = useState<Track[]>([]);
   const [loading, setLoading] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -78,6 +91,13 @@ export function PlanList() {
   // after a refetch keeps its selection rather than snapping back to the
   // default.
   const [selected, setSelected] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!eventId) return;
+    apiList<Track>(`/events/${eventId}/tracks`)
+      .then((res) => setTracks(res.items))
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load tracks'));
+  }, [eventId]);
 
   useEffect(() => {
     if (!eventId) return;
@@ -132,6 +152,16 @@ export function PlanList() {
 
   const now = Date.now();
   const selectedPlan = plans.find((p) => p.id === selected) ?? null;
+  const trackNameById = new Map(tracks.map((t) => [t.id, t.name]));
+  // DEC-760: "N with evaluations in" -- a plan counts once its progress
+  // aggregate has at least one recorded evaluation. Still-loading plans
+  // (missing from progressByPlan) mean the true count isn't known yet, so
+  // the whole clause is omitted rather than guessing a number (DEC-377).
+  const progressPending = plans.some((p) => progressByPlan[p.id] === undefined);
+  const withEvaluationsCount = plans.filter((p) => {
+    const rows = progressByPlan[p.id];
+    return rows != null && progressTotals(rows).completed > 0;
+  }).length;
 
   return (
     <div className="chq-page chq-review-page">
@@ -141,6 +171,7 @@ export function PlanList() {
         <h1 className="chq-page-title">Review</h1>
         <span className="chq-summary">
           {plans.length} {plans.length === 1 ? 'plan' : 'plans'}
+          {!progressPending && ` · ${withEvaluationsCount} with evaluations in`}
         </span>
         <div className="chq-review-title-actions">
           {selectedPlan && (
@@ -192,6 +223,10 @@ export function PlanList() {
             >
               <div>
                 <span className="chq-review-plan-name">{plan.name}</span>
+                <div className="chq-review-plan-meta">
+                  {planTrackScope(plan, trackNameById)}
+                  {plan.maxEvaluations !== null && ` · ${plan.maxEvaluations} reviews each`}
+                </div>
               </div>
               <span className="chq-flag">{planState(plan, now)}</span>
               <span className="chq-review-plan-meta">

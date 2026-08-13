@@ -63,6 +63,7 @@ describe('PlanList (DEC-706/DEC-707 render)', () => {
   it('renders a plan row with no radio input, and the remind link names the not-started count', async () => {
     mockApi({
       'GET /api/v1/me': { userId: 'u-organizer', email: 'organizer@example.com', role: 'organizer', orgId: 'org-1' },
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
       [`GET /api/v1/events/${EVENT_ID}/plans`]: listEnvelope([plan()]),
       [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope(PROGRESS_ROWS),
       [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
@@ -99,6 +100,7 @@ describe('PlanList (DEC-706/DEC-707 render)', () => {
   it('New plan and Export results CSV live on the title row, not a standalone toolbar band', async () => {
     mockApi({
       'GET /api/v1/me': { userId: 'u-organizer', email: 'organizer@example.com', role: 'organizer', orgId: 'org-1' },
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
       [`GET /api/v1/events/${EVENT_ID}/plans`]: listEnvelope([plan()]),
       [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([]),
       [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
@@ -117,5 +119,48 @@ describe('PlanList (DEC-706/DEC-707 render)', () => {
     const exportLink = screen.getByRole('link', { name: 'Export results CSV' });
     expect(exportLink.closest('.chq-review-title-row')).not.toBeNull();
     expect(exportLink).toHaveAttribute('href', expect.stringContaining(PLAN_ID));
+  });
+
+  // DEC-760: the title-row plan count gains a second clause once each
+  // plan's progress aggregate has resolved -- "N with evaluations in"
+  // counts plans with at least one recorded evaluation, and the clause is
+  // withheld entirely (no fabricated number) while any plan's progress is
+  // still in flight.
+  it('the plan-count summary adds "N with evaluations in" once progress resolves, and a plan row shows its scope subtitle', async () => {
+    const planB = { ...plan(), id: 'plan-b', name: 'Empty Plan', filters: { trackIds: ['track-1'] }, maxEvaluations: 2 };
+    mockApi({
+      'GET /api/v1/me': { userId: 'u-organizer', email: 'organizer@example.com', role: 'organizer', orgId: 'org-1' },
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([{ id: 'track-1', name: 'AI Engineering' }]),
+      [`GET /api/v1/events/${EVENT_ID}/plans`]: listEnvelope([plan(), planB]),
+      [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope(PROGRESS_ROWS),
+      [`GET /api/v1/plans/plan-b/progress`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
+      [`GET /api/v1/plans/${PLAN_ID}/results`]: listEnvelope([]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <PlanList />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText('Keynote Track Review')).toBeInTheDocument();
+
+    // Only 'plan-a' has completed evaluations (PROGRESS_ROWS has completed >
+    // 0 entries); 'plan-b' has none -- so the count is 1, not 2.
+    await waitFor(() => {
+      expect(screen.getByText('2 plans · 1 with evaluations in')).toBeInTheDocument();
+    });
+
+    // plan() has filters: null and maxEvaluations: null -- "All tracks"
+    // with no "reviews each" clause (DEC-377: never guess a number).
+    const rowA = screen.getByText('Keynote Track Review').closest('.chq-review-plan-row')!;
+    expect(rowA).toHaveTextContent('All tracks');
+    expect(rowA).not.toHaveTextContent('reviews each');
+
+    // planB carries a track filter + a max-evaluations cap -- the resolved
+    // track NAME (never the raw id) plus the reviews-each count.
+    const rowB = screen.getByText('Empty Plan').closest('.chq-review-plan-row')!;
+    expect(rowB).toHaveTextContent('AI Engineering · 2 reviews each');
   });
 });
