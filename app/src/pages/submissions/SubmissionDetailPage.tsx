@@ -2,13 +2,14 @@
 // GET /api/v1/submissions/:id, the DEC-016 forms + tracks endpoints, and
 // the existing bulk status endpoint (ids:[id]) — no new server code.
 import { useEffect, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { apiGet, apiList, apiPatch, apiPost, ApiError } from '../../lib/api';
 import { formatDate as formatTimestamp, formatDateTime } from '../../lib/dates';
 import { formatEventDate } from '../../../../src/lib/event-time';
 import type { CfpForm } from '../forms/types';
 import { buildAnswerRows, resolveAnswerFields } from './detailRows';
 import { DelayedLoading } from '../../components/DelayedLoading';
+import { buildSubmissionsQuery, parseSubmissionsQuery } from './filters';
 import './detail.css';
 import {
   STATUS_LABELS,
@@ -16,9 +17,15 @@ import {
   type InviteStatus,
   type SubmissionDetail,
   type SubmissionDetailParticipant,
+  type SubmissionListItem,
   type SubmissionStatus,
   type Track,
 } from './types';
+// DEC-761: code that depends on a decision must reference its constant.
+import { DEC_733, DEC_761 } from '../../../../src/decisions';
+
+void DEC_733;
+void DEC_761;
 
 // DEC-577: the decision panel's status <select> becomes a segmented button
 // group -- markup surgery scoped to this page. Only the states an organiser
@@ -108,9 +115,22 @@ function daysAwaitingTriage(createdAt: number, timeZone: string | null, now: num
   }
 }
 
+// DEC-761: position within the list the organiser came from, re-derived
+// from the SAME list query the table itself uses -- never handed down
+// through router state, so a reload or a shared link renders identically.
+// prevId/nextId are only known within the fetched page: absent (not
+// disabled, DEC-733) past either edge of that page.
+interface ListPosition {
+  total: number;
+  position: number;
+  prevId: string | null;
+  nextId: string | null;
+}
+
 export function SubmissionDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [detail, setDetail] = useState<SubmissionDetail | null>(null);
   const [tracks, setTracks] = useState<Track[]>([]);
@@ -145,6 +165,7 @@ export function SubmissionDetailPage() {
   // null while unresolved, in which case the label renders without its
   // '· N days' clause.
   const [eventTimeZone, setEventTimeZone] = useState<string | null>(null);
+  const [listPosition, setListPosition] = useState<ListPosition | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -184,6 +205,32 @@ export function SubmissionDetailPage() {
     // navigates to a new submission in a different (or the same) event.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [detail?.eventId]);
+
+  // DEC-761: re-run the table's OWN list query from this page's own
+  // search params (not router state) to derive total/position/neighbours.
+  // A bare /submissions/:id (no params) falls back to the unfiltered
+  // default list, which is still a truthful position.
+  useEffect(() => {
+    if (!detail || !id) return;
+    const listFilters = parseSubmissionsQuery(location.search);
+    apiList<SubmissionListItem>(`/events/${detail.eventId}/submissions${buildSubmissionsQuery(listFilters)}`)
+      .then((res) => {
+        const idx = res.items.findIndex((item) => item.id === id);
+        if (idx === -1) {
+          // Stale link: the id isn't on the returned page. Render with no
+          // position controls rather than erroring.
+          setListPosition(null);
+          return;
+        }
+        setListPosition({
+          total: res.total,
+          position: (res.page - 1) * res.perPage + idx + 1,
+          prevId: idx > 0 ? res.items[idx - 1]!.id : null,
+          nextId: idx < res.items.length - 1 ? res.items[idx + 1]!.id : null,
+        });
+      })
+      .catch(() => setListPosition(null));
+  }, [detail?.eventId, id, location.search]);
 
   async function changeStatus(status: SubmissionStatus) {
     if (!detail || !id) return;
@@ -437,6 +484,33 @@ export function SubmissionDetailPage() {
         <h1>
           {detail.ref}: {detail.title}
         </h1>
+        {listPosition && (
+          <div className="chq-detail-position" aria-label="Position in list">
+            {/* DEC-733: at either end the corresponding control is absent,
+                never disabled. */}
+            {listPosition.prevId && (
+              <Link
+                to={`/submissions/${listPosition.prevId}${location.search}`}
+                className="chq-detail-position-prev"
+                aria-label="Previous submission"
+              >
+                &lsaquo;
+              </Link>
+            )}
+            <span className="chq-detail-position-count">
+              {listPosition.position} of {listPosition.total}
+            </span>
+            {listPosition.nextId && (
+              <Link
+                to={`/submissions/${listPosition.nextId}${location.search}`}
+                className="chq-detail-position-next"
+                aria-label="Next submission"
+              >
+                &rsaquo;
+              </Link>
+            )}
+          </div>
+        )}
       </header>
 
       <div className="chq-detail-layout">

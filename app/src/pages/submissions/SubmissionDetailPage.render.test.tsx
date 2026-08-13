@@ -39,9 +39,9 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-function renderPage() {
+function renderPage(initialPath = `/submissions/${SUB_ID}`) {
   render(
-    <MemoryRouter initialEntries={[`/submissions/${SUB_ID}`]}>
+    <MemoryRouter initialEntries={[initialPath]}>
       <Routes>
         <Route path="/submissions/:id" element={<SubmissionDetailPage />} />
       </Routes>
@@ -490,5 +490,150 @@ describe('SubmissionDetailPage render: unpublished-participant caption (DEC-656)
       expect(screen.getAllByText('Jamie Speaker').length).toBeGreaterThan(0);
     });
     expect(screen.queryByText(/not on the public site yet/)).not.toBeInTheDocument();
+  });
+});
+
+// DEC-761: position in the list you came from, re-derived from THIS page's
+// own search params (the same ones the table sends), never router state.
+// DEC-733: prev/next are absent at either end, not disabled.
+describe('SubmissionDetailPage render: list position + neighbour navigation (DEC-761)', () => {
+  function listItem(overrides: Partial<Record<string, unknown>> = {}) {
+    return {
+      id: SUB_ID,
+      ref: 'S-003',
+      title: 'Middle Submission',
+      status: 'pending',
+      contentStatus: 'pending',
+      speakers: [],
+      trackIds: [],
+      submittedAt: 1700000000000,
+      createdAt: 1700000000000,
+      ...overrides,
+    };
+  }
+
+  it('shows "N of M" and both arrows for a middle row under the table\'s own filter query', async () => {
+    const detail = baseDetail();
+    mockApi({
+      [`GET /api/v1/submissions/${SUB_ID}`]: detail,
+      [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
+      [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
+      [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`GET /api/v1/events/evt-1/submissions`]: {
+        items: [
+          listItem({ id: 'sub-before', ref: 'S-002' }),
+          listItem({ id: SUB_ID, ref: 'S-003' }),
+          listItem({ id: 'sub-after', ref: 'S-004' }),
+        ],
+        total: 47,
+        page: 1,
+        perPage: 20,
+      },
+    });
+
+    renderPage(`/submissions/${SUB_ID}?status=pending&sort=oldest`);
+
+    await waitFor(() => {
+      expect(screen.getByText('2 of 47')).toBeInTheDocument();
+    });
+    expect(screen.getByRole('link', { name: 'Previous submission' })).toHaveAttribute(
+      'href',
+      '/submissions/sub-before?status=pending&sort=oldest',
+    );
+    expect(screen.getByRole('link', { name: 'Next submission' })).toHaveAttribute(
+      'href',
+      '/submissions/sub-after?status=pending&sort=oldest',
+    );
+  });
+
+  it('omits the Previous control when the submission is first in its page', async () => {
+    const detail = baseDetail();
+    mockApi({
+      [`GET /api/v1/submissions/${SUB_ID}`]: detail,
+      [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
+      [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
+      [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`GET /api/v1/events/evt-1/submissions`]: {
+        items: [listItem({ id: SUB_ID, ref: 'S-001' }), listItem({ id: 'sub-after', ref: 'S-002' })],
+        total: 2,
+        page: 1,
+        perPage: 20,
+      },
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('1 of 2')).toBeInTheDocument();
+    });
+    expect(screen.queryByRole('link', { name: 'Previous submission' })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Next submission' })).toBeInTheDocument();
+  });
+
+  it('renders no position controls when the id is not on the returned page (stale link)', async () => {
+    const detail = baseDetail();
+    mockApi({
+      [`GET /api/v1/submissions/${SUB_ID}`]: detail,
+      [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
+      [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
+      [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`GET /api/v1/events/evt-1/submissions`]: {
+        items: [listItem({ id: 'someone-else', ref: 'S-009' })],
+        total: 1,
+        page: 1,
+        perPage: 20,
+      },
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('Original description')).toBeInTheDocument();
+    });
+    expect(screen.queryByLabelText('Position in list')).not.toBeInTheDocument();
+  });
+});
+
+// DEC-761: the AWAITING TRIAGE banner is a restatement of status, never a
+// second source of truth -- present only while status is 'pending'.
+describe('SubmissionDetailPage render: awaiting-triage banner (DEC-761)', () => {
+  it('renders no banner for an accepted submission', async () => {
+    const detail = baseDetail({ status: 'accepted' });
+    mockApi({
+      [`GET /api/v1/submissions/${SUB_ID}`]: detail,
+      [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
+      [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
+      [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`GET /api/v1/events/evt-1/submissions`]: { items: [], total: 0, page: 1, perPage: 20 },
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('Original description')).toBeInTheDocument();
+    });
+    expect(screen.queryByText(/Awaiting triage/)).not.toBeInTheDocument();
+  });
+
+  it('renders the banner for a pending submission', async () => {
+    const detail = baseDetail({ status: 'pending' });
+    mockApi({
+      [`GET /api/v1/submissions/${SUB_ID}`]: detail,
+      [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
+      [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
+      [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`GET /api/v1/events/evt-1/submissions`]: { items: [], total: 0, page: 1, perPage: 20 },
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText(/Awaiting triage/)).toBeInTheDocument();
+    });
   });
 });
