@@ -7,6 +7,7 @@
 // .chq-speakers-card-task) stays with the caller, since it differs by
 // breakpoint.
 import { effectiveAssignmentDueDate } from '../../../../src/domain/task-due';
+import { countOf } from '../../lib/plural';
 import { daysLate, isCellOverdue } from './overdue';
 import type { AssignmentStatus, OnboardingCell, OnboardingTask } from './types';
 
@@ -34,8 +35,9 @@ export function formatDueDate(dueDate: number, now: number): string {
 const OVERDUE_LABEL = 'OVERDUE';
 
 function overdueTitle(dueDate: number, now: number): string {
-  const d = daysLate(dueDate, now);
-  return `${d} day${d === 1 ? '' : 's'} late`;
+  // DEC-925: the count phrase goes through the ONE plural helper, never a
+  // hand-copied singular/plural ternary.
+  return `${countOf(daysLate(dueDate, now), 'day')} late`;
 }
 
 /** The cell button's title/accessible-name suffix (DEC-852): an overdue

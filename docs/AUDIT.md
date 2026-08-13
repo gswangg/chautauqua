@@ -83,10 +83,12 @@ accepted (DEC-729). `MAX_PARTICIPANTS_PER_SUBMISSION`=6
 (`src/server/repo/portal-edit.ts`) caps co-speakers a speaker can add to their own
 submission from the portal.
 
-## J8 — Collect/review/approve content (`/admin/content`)
+## J8 — Collect/review/approve content (`/admin/content`, `/admin/content/:submissionId`)
 
 Per-session file uploads (typed: slides, headshot, bio, etc.), organizer approve/reject,
-version history. Built. Files are served through an authenticated Worker route
+version history. Built. A single session's deliverables live at their own URL,
+`/admin/content/:submissionId` (DEC-935) — linkable and back-button-correct, rather than
+behind a query param on the worklist route. Files are served through an authenticated Worker route
 (`src/routes/files.ts`), walked to the owning submission/event on every fetch — never
 trusted from the URL alone (`src/server/repo/files-authz.ts`).
 

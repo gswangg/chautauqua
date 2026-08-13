@@ -702,7 +702,7 @@ describe('OnboardingGrid: DEC-933/DEC-934 task Edit/Remove + not-chasing rows', 
       [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
     });
 
-    render(<OnboardingGrid onAddSpeaker={vi.fn()} />);
+    render(<MemoryRouter><OnboardingGrid onAddSpeaker={vi.fn()} /></MemoryRouter>);
     await waitFor(() => screen.getAllByText('Marie Curie').length > 0);
 
     const table = within(screen.getByRole('table'));
@@ -745,7 +745,7 @@ describe('OnboardingGrid: DEC-933/DEC-934 task Edit/Remove + not-chasing rows', 
       'PATCH /api/v1/tasks/task-1': { id: 'task-1', kind: 'general', title: 'Sign the updated agreement', dueDate: null, required: true },
     });
 
-    render(<OnboardingGrid onAddSpeaker={vi.fn()} />);
+    render(<MemoryRouter><OnboardingGrid onAddSpeaker={vi.fn()} /></MemoryRouter>);
     await waitFor(() => screen.getAllByText('Ada Lovelace').length > 0);
 
     const table = within(screen.getByRole('table'));
@@ -785,7 +785,7 @@ describe('OnboardingGrid: DEC-933/DEC-934 task Edit/Remove + not-chasing rows', 
       'DELETE /api/v1/tasks/task-1': { ok: true },
     });
 
-    render(<OnboardingGrid onAddSpeaker={vi.fn()} />);
+    render(<MemoryRouter><OnboardingGrid onAddSpeaker={vi.fn()} /></MemoryRouter>);
     await waitFor(() => screen.getAllByText('Ada Lovelace').length > 0);
 
     const table = within(screen.getByRole('table'));

@@ -146,6 +146,16 @@
   font-weight: 600;
 }
 
+/* DEC-379: the two members of that pair are named classes in the .tsx, so
+   they carry rules here rather than leaning on the container selector alone
+   -- the class vocabulary stays closed. Both read as the same quiet muted
+   text (DEC-367: Remove is not signalled by colour alone; the word "Remove"
+   and its confirmation dialog carry the meaning). */
+.chq-speakers-task-edit,
+.chq-speakers-task-remove {
+  color: var(--chq-muted);
+}
+
 /* DEC-934: the ONE muted strip a row whose participation is invited/declined
    renders instead of N blank task cells -- reads as a stated decision, not
    an accident. */
