@@ -1,11 +1,13 @@
-// w3-c/DEC-747 render smoke test: PortalSettingsPanel is the whole
-// 'Speaker portal' read view -- Welcome note, Speakers can edit (pills),
-// Onboarding tasks, Resources (delegated to ResourcesPanel, unchanged
-// endpoints) and Access -- with 'Open as a speaker' as the section's ONE
-// action, a real link rather than an edit-drill toggle.
+// w3-c/DEC-747 render smoke test, updated w6-e/DEC-815: PortalSettingsPanel
+// is now a read-only summary (SummarySection) -- Welcome note, Speakers
+// can edit (pills), Onboarding tasks, Resources, Access, and an 'Open as
+// a speaker' row-level link -- until the 'Change' action drills into
+// (?section=portal&edit=1) the one real edit surface, ResourcesPanel
+// (unchanged endpoints/CRUD).
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor, fireEvent, cleanup, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
+import { MemoryRouter } from 'react-router-dom';
 import { PortalSettingsPanel } from './PortalSettingsPanel';
 import { listEnvelope, mockApi } from '../../test-utils/mockApi';
 
@@ -51,47 +53,42 @@ function mockPortal(overrides: Record<string, unknown> = {}) {
 }
 
 describe('PortalSettingsPanel (Speaker portal read view)', () => {
-  it('renders every row of the read view from real data, with Open as a speaker as the one rule action', async () => {
+  it('renders every row of the read view from real data, with Open as a speaker as a row-level link and no resource form before edit', async () => {
     mockPortal();
-    render(<PortalSettingsPanel />);
+    render(
+      <MemoryRouter>
+        <PortalSettingsPanel />
+      </MemoryRouter>,
+    );
 
-    expect(screen.getByRole('heading', { name: 'Speaker portal' })).toBeInTheDocument();
-    const openAsSpeaker = screen.getByRole('link', { name: 'Open as a speaker' });
+    const section = await screen.findByRole('region', { name: 'Speaker portal' });
+    expect(within(section).getByRole('heading', { name: 'Speaker portal' })).toBeInTheDocument();
+    const openAsSpeaker = within(section).getByRole('link', { name: 'Open as a speaker' });
     expect(openAsSpeaker).toHaveAttribute('href', '/portal');
 
     await waitFor(() => {
-      expect(screen.getByText('Shown above the task list · 2 paragraphs')).toBeInTheDocument();
+      expect(within(section).getByText('Shown above the task list · 2 paragraphs')).toBeInTheDocument();
     });
-    expect(screen.getByText('3 tasks · created when a submission is accepted')).toBeInTheDocument();
-    expect(screen.getByText('Speakers claim their portal from a link in their acceptance email')).toBeInTheDocument();
+    expect(within(section).getByText('3 tasks · created when a submission is accepted')).toBeInTheDocument();
+    expect(
+      within(section).getByText('Speakers claim their portal from a link in their acceptance email'),
+    ).toBeInTheDocument();
 
     // Speakers-can-edit pills: filled for the always-editable profile
     // fields, outline for the gated session fields.
-    expect(screen.getByText('Bio')).toHaveClass('is-active');
-    expect(screen.getByText('Headshot')).toHaveClass('is-active');
-    expect(screen.getByText('Links')).toHaveClass('is-active');
-    expect(screen.getByText('Session title')).not.toHaveClass('is-active');
-    expect(screen.getByText('Abstract')).not.toHaveClass('is-active');
+    expect(within(section).getByText('Bio')).toHaveClass('is-active');
+    expect(within(section).getByText('Headshot')).toHaveClass('is-active');
+    expect(within(section).getByText('Links')).toHaveClass('is-active');
+    expect(within(section).getByText('Session title')).not.toHaveClass('is-active');
+    expect(within(section).getByText('Abstract')).not.toHaveClass('is-active');
 
-    // Resources row: name + size (never raw markdown body) + Replace, plus
-    // 'Add a resource'.
-    await waitFor(() => {
-      expect(screen.getByText('Travel info')).toBeInTheDocument();
-    });
-    expect(screen.getByText('6 words')).toBeInTheDocument();
-    expect(screen.queryByText(/Fly into AUS/)).not.toBeInTheDocument();
-    expect(screen.getByText('Slide template')).toBeInTheDocument();
-    expect(screen.getByText('File')).toBeInTheDocument();
-    // Wiki gets Replace; file has no replace control (no such endpoint).
-    const travelRow = screen.getByText('Travel info').closest('li')!;
-    expect(within(travelRow).getByRole('button', { name: 'Replace' })).toBeInTheDocument();
-    const slideRow = screen.getByText('Slide template').closest('li')!;
-    expect(within(slideRow).queryByRole('button', { name: 'Replace' })).not.toBeInTheDocument();
-
-    expect(screen.getByRole('button', { name: 'Add a resource' })).toBeInTheDocument();
+    // Summary view: resource list/add form is not rendered yet.
+    expect(within(section).queryByText('Travel info')).not.toBeInTheDocument();
+    expect(within(section).queryByRole('button', { name: 'Add a resource' })).not.toBeInTheDocument();
+    expect(within(section).getByRole('button', { name: 'Change' })).toBeInTheDocument();
   });
 
-  it('adds a resource and edits a wiki resource inline via Replace, without a separate URL drill', async () => {
+  it('drills into ResourcesPanel via Change, and adds/edits a resource there', async () => {
     const fetchMock = mockPortal({
       'POST /api/v1/events/evt-portal/resources': {
         status: 201,
@@ -106,11 +103,28 @@ describe('PortalSettingsPanel (Speaker portal read view)', () => {
         position: 0,
       },
     });
-    render(<PortalSettingsPanel />);
+    render(
+      <MemoryRouter>
+        <PortalSettingsPanel />
+      </MemoryRouter>,
+    );
+
+    const section = await screen.findByRole('region', { name: 'Speaker portal' });
+    fireEvent.click(within(section).getByRole('button', { name: 'Change' }));
 
     await waitFor(() => {
       expect(screen.getByText('Travel info')).toBeInTheDocument();
     });
+    expect(within(section).queryByRole('button', { name: 'Change' })).not.toBeInTheDocument();
+
+    expect(screen.getByText('6 words')).toBeInTheDocument();
+    expect(screen.queryByText(/Fly into AUS/)).not.toBeInTheDocument();
+    expect(screen.getByText('Slide template')).toBeInTheDocument();
+    expect(screen.getByText('File')).toBeInTheDocument();
+    const travelRow = screen.getByText('Travel info').closest('li')!;
+    expect(within(travelRow).getByRole('button', { name: 'Replace' })).toBeInTheDocument();
+    const slideRow = screen.getByText('Slide template').closest('li')!;
+    expect(within(slideRow).queryByRole('button', { name: 'Replace' })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Add a resource' }));
     fireEvent.change(screen.getAllByPlaceholderText('Title')[0]!, { target: { value: 'New page' } });
@@ -124,7 +138,6 @@ describe('PortalSettingsPanel (Speaker portal read view)', () => {
       expect(postCalls.length).toBe(1);
     });
 
-    const travelRow = screen.getByText('Travel info').closest('li')!;
     fireEvent.click(within(travelRow).getByRole('button', { name: 'Replace' }));
     await waitFor(() => {
       expect(within(travelRow).getByDisplayValue('Travel info')).toBeInTheDocument();

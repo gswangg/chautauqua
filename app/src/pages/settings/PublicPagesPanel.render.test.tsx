@@ -1,11 +1,15 @@
-// w15-e/DEC-691 render smoke test: PublicPagesPanel lists one row per real
-// public surface (Sessions, Speakers, Agenda, Schedule, CFP submit page)
-// with a real path, a state derived from real data (never a hardcoded
-// 'live'), and an Embed code control that opens the existing EmbedsPanel
-// builder in place.
+// w15-e/DEC-691 render smoke test, updated w6-e/DEC-815/DEC-816:
+// PublicPagesPanel is now a read-only summary (SummarySection) -- one row
+// per public surface with just its name and live state -- until the
+// 'Change' action drills into (?section=public-pages&edit=1) the full row
+// list (path, View link, Embed code control opening the existing
+// EmbedsPanel builder, plus the saved-embeds list). DEC-816: Agenda and
+// Schedule read counts.scheduled (not counts.sessions), so they can show a
+// DIFFERENT number from the Sessions row.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor, fireEvent, cleanup, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
+import { MemoryRouter } from 'react-router-dom';
 import { PublicPagesPanel } from './PublicPagesPanel';
 import { listEnvelope, mockApi } from '../../test-utils/mockApi';
 
@@ -38,88 +42,84 @@ function mockEvent(overrides: Record<string, unknown> = {}) {
 }
 
 describe('PublicPagesPanel', () => {
-  it('renders one row per public surface with a real path and a not-published state when there is nothing accepted yet', async () => {
+  it('renders a read-only summary row per public surface, with no path/View/Embed control before edit', async () => {
     mockEvent();
-    render(<PublicPagesPanel />);
+    render(
+      <MemoryRouter>
+        <PublicPagesPanel />
+      </MemoryRouter>,
+    );
 
+    const section = await screen.findByRole('region', { name: 'Public pages and embeds' });
     await waitFor(() => {
-      expect(screen.getByText('/e/devcon-2026/sessions')).toBeInTheDocument();
+      expect(within(section).getByText('Sessions')).toBeInTheDocument();
     });
 
-    const expectedRows: [string, string][] = [
-      ['Sessions', '/e/devcon-2026/sessions'],
-      ['Speakers', '/e/devcon-2026/speakers'],
-      ['Agenda', '/e/devcon-2026/agenda'],
-      ['Schedule', '/e/devcon-2026/schedule'],
-      ['Speaker gallery', '/e/devcon-2026/gallery'],
-      ['CFP submit page', '/submit/devcon-2026'],
-    ];
-
-    const rows = screen.getAllByRole('listitem');
-    expect(rows).toHaveLength(expectedRows.length);
-
-    expectedRows.forEach(([name, path], i) => {
-      const row = rows[i]!;
-      expect(within(row).getByText(name)).toBeInTheDocument();
-      expect(within(row).getByText(path)).toBeInTheDocument();
-      expect(within(row).getByRole('link', { name: 'View' })).toHaveAttribute('href', path);
+    ['Sessions', 'Speakers', 'Agenda', 'Schedule', 'Speaker gallery', 'CFP submit page'].forEach((name) => {
+      expect(within(section).getByText(name)).toBeInTheDocument();
     });
 
-    // No accepted submissions yet -> real, not hardcoded, not-published state.
-    expect(within(rows[0]!).getByText('Not published yet')).toBeInTheDocument();
-    // The gallery derives its state the same way as the other accepted-count surfaces.
-    expect(within(rows[4]!).getByText('Not published yet')).toBeInTheDocument();
-    // No CFP open/close window configured -> real, not hardcoded 'Open' state.
-    expect(within(rows[5]!).getByText('Open')).toBeInTheDocument();
+    expect(within(section).queryByText('/e/devcon-2026/sessions')).not.toBeInTheDocument();
+    expect(within(section).queryByRole('link', { name: 'View' })).not.toBeInTheDocument();
+    expect(within(section).queryByRole('button', { name: 'Embed code' })).not.toBeInTheDocument();
+    expect(within(section).getByRole('button', { name: 'Change' })).toBeInTheDocument();
   });
 
-  it('derives a live state from a real public-surface count, never a hardcoded string', async () => {
-    mockEvent({ [`GET /api/v1/events/${EVENT_ID}/public-surfaces`]: { sessions: 6, speakers: 6, scheduled: 6 } });
-    render(<PublicPagesPanel />);
-
-    await waitFor(() => {
-      expect(screen.getByText('/e/devcon-2026/sessions')).toBeInTheDocument();
-    });
-
-    const rows = screen.getAllByRole('listitem');
-    expect(within(rows[0]!).getByText('Live · 6 published')).toBeInTheDocument();
-    // DEC-747: state pill tone is a NAMED class, not a copied color literal.
-    expect(within(rows[0]!).getByText('Live · 6 published')).toHaveClass('chq-settings-public-pages-state-live');
-  });
-
-  it('DEC-767: Speakers and Sessions can show DIFFERENT numbers, sourced from different predicates', async () => {
+  it('DEC-816: Agenda and Schedule read the scheduled count, a DIFFERENT number from Sessions', async () => {
     mockEvent({
       [`GET /api/v1/events/${EVENT_ID}/public-surfaces`]: { sessions: 9, speakers: 3, scheduled: 2 },
     });
-    render(<PublicPagesPanel />);
+    render(
+      <MemoryRouter initialEntries={['/settings?section=public-pages&edit=1']}>
+        <PublicPagesPanel />
+      </MemoryRouter>,
+    );
 
     await waitFor(() => {
       expect(screen.getByText('/e/devcon-2026/sessions')).toBeInTheDocument();
     });
 
     const rows = screen.getAllByRole('listitem');
-    // Sessions/Agenda/Schedule read the session count.
+    // Sessions reads the session count.
     expect(within(rows[0]!).getByText('Live · 9 published')).toBeInTheDocument();
-    expect(within(rows[2]!).getByText('Live · 9 published')).toBeInTheDocument();
-    expect(within(rows[3]!).getByText('Live · 9 published')).toBeInTheDocument();
-    // Speakers/Gallery read the (different) speaker count.
+    // Agenda/Schedule read the (different, and smaller) scheduled count --
+    // never the session count, which would over-claim what a visitor sees.
+    expect(within(rows[2]!).getByText('Live · 2 published')).toBeInTheDocument();
+    expect(within(rows[3]!).getByText('Live · 2 published')).toBeInTheDocument();
+    // Speakers/Gallery read the speaker count.
     expect(within(rows[1]!).getByText('Live · 3 published')).toBeInTheDocument();
     expect(within(rows[4]!).getByText('Live · 3 published')).toBeInTheDocument();
   });
 
-  it('opens the existing EmbedsPanel builder from an Embed code control without replacing the list', async () => {
+  it('drills into the full row list and Embed code control via the Change action', async () => {
     mockEvent();
-    render(<PublicPagesPanel />);
+    render(
+      <MemoryRouter>
+        <PublicPagesPanel />
+      </MemoryRouter>,
+    );
 
+    const section = await screen.findByRole('region', { name: 'Public pages and embeds' });
     await waitFor(() => {
-      expect(screen.getByText('/e/devcon-2026/sessions')).toBeInTheDocument();
+      expect(within(section).getByText('Sessions')).toBeInTheDocument();
     });
 
-    expect(screen.queryByRole('heading', { name: 'Embeds' })).not.toBeInTheDocument();
+    fireEvent.click(within(section).getByRole('button', { name: 'Change' }));
+
+    await waitFor(() => {
+      expect(within(section).getByText('/e/devcon-2026/sessions')).toBeInTheDocument();
+    });
+    expect(within(section).queryByRole('button', { name: 'Change' })).not.toBeInTheDocument();
 
     const rows = screen.getAllByRole('listitem');
-    fireEvent.click(within(rows[0]!).getByRole('button', { name: 'Embed code' }));
+    expect(rows).toHaveLength(6);
+    expect(within(rows[0]!).getByRole('link', { name: 'View' })).toHaveAttribute(
+      'href',
+      '/e/devcon-2026/sessions',
+    );
 
+    expect(screen.queryByRole('heading', { name: 'Embeds' })).not.toBeInTheDocument();
+    fireEvent.click(within(rows[0]!).getByRole('button', { name: 'Embed code' }));
     expect(screen.getByRole('heading', { name: 'Embeds' })).toBeInTheDocument();
     // The list is still there beside the builder.
     expect(screen.getAllByRole('listitem')).toHaveLength(6);

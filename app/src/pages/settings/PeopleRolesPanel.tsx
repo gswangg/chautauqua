@@ -13,10 +13,19 @@
 // The server refuses (409) a self-service role change and demoting the
 // org's last organizer; that message surfaces inline on the row rather than
 // the panel-wide error banner, since it's specific to the row being edited.
+//
+// SummarySection adoption (w6-e, DEC-815): the landing view is a read-only
+// summary -- people/organizer/reviewer counts -- with the whole directory
+// (invite, per-row role change, reset password) behind the section's
+// 'Change' drill (?section=people&edit=1, DEC-728/DEC-710).
 import { useEffect, useState, type FormEvent } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { apiList, apiPatch, apiPost, ApiError } from '../../lib/api';
 import { useMe } from '../../lib/useMe';
+import { SummarySection } from './SummarySection';
+
+const SECTION_KEY = 'people';
 
 interface OrgUser {
   id: string;
@@ -28,6 +37,8 @@ type Role = 'organizer' | 'reviewer';
 
 export function PeopleRolesPanel() {
   const { me } = useMe();
+  const [searchParams] = useSearchParams();
+  const editing = searchParams.get('section') === SECTION_KEY && searchParams.get('edit') === '1';
   const [users, setUsers] = useState<OrgUser[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -120,10 +131,18 @@ export function PeopleRolesPanel() {
     }
   }
 
+  const organizerCount = users.filter((u) => u.role === 'organizer').length;
+  const reviewerCount = users.filter((u) => u.role !== 'organizer').length;
+
+  const rows = [
+    { label: 'People', value: loading ? <DelayedLoading /> : `${total} ${total === 1 ? 'person' : 'people'}` },
+    { label: 'Organizers', value: loading ? <DelayedLoading /> : `${organizerCount}` },
+    { label: 'Reviewers', value: loading ? <DelayedLoading /> : `${reviewerCount}` },
+  ];
+
   return (
-    <section className="chq-settings-panel chq-settings-numbered" aria-label="People and roles">
+    <SummarySection sectionKey={SECTION_KEY} label="People and roles" rows={rows} actionLabel="Change" editing={editing}>
       <div className="chq-settings-section-head">
-        <h2>People and roles</h2>
         <button
           type="button"
           className="chq-settings-section-action chq-link-button"
@@ -281,6 +300,6 @@ export function PeopleRolesPanel() {
           </p>
         </>
       )}
-    </section>
+    </SummarySection>
   );
 }

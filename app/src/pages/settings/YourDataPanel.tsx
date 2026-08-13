@@ -29,13 +29,24 @@
 // Import from Sessionboard row: a row that drills into the existing
 // three-step SessionboardImportPanel, unchanged, the same on/off drill
 // pattern PublicPagesPanel already uses for its embed builder.
+//
+// SummarySection adoption (w6-e, DEC-815): the landing view is a
+// read-only summary of the four rows above; the live pieces (export
+// pills/bundle button, ApiTokensPanel's create/revoke flow and the
+// Sessionboard import wizard) live behind the section's 'Change' drill
+// (?section=your-data&edit=1, DEC-728/DEC-710). The API docs link stays
+// visible in the summary -- it is a passive navigation, not a form.
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { apiGet, ApiError } from '../../lib/api';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { ApiTokensPanel } from './ApiTokensPanel';
 import { ExportsPanel } from './ExportsPanel';
 import { SessionboardImportPanel } from './SessionboardImportPanel';
+import { SummarySection } from './SummarySection';
+
+const SECTION_KEY = 'your-data';
 
 interface EventSummary {
   id: string;
@@ -49,6 +60,8 @@ const EVERYTHING_KINDS = ['submissions', 'speakers', 'evaluations', 'agenda', 'e
 
 export function YourDataPanel() {
   const { eventId, loading: eventLoading, error: eventError } = useCurrentEvent();
+  const [searchParams] = useSearchParams();
+  const editing = searchParams.get('section') === SECTION_KEY && searchParams.get('edit') === '1';
   const [event, setEvent] = useState<EventSummary | null>(null);
   const [error, setError] = useState<string | undefined>(undefined);
   const [moreExportsOpen, setMoreExportsOpen] = useState(false);
@@ -89,66 +102,79 @@ export function YourDataPanel() {
     }
   }
 
+  const rows = [
+    {
+      label: 'Exports',
+      value: 'Submissions CSV, Contacts CSV, Schedule ICS, Everything JSON + more',
+    },
+    { label: 'API tokens', value: 'Create and manage bearer API tokens for this event' },
+    {
+      label: 'API docs',
+      value: <a href="/docs/api">chautauqua.cc/docs/api</a>,
+    },
+    { label: 'Import from Sessionboard', value: 'Import speakers and sessions from a Sessionboard export' },
+  ];
+
   return (
-    <section className="chq-settings-panel chq-settings-numbered" aria-label="Your data">
-      <div className="chq-settings-section-head">
-        <h2>Your data</h2>
-      </div>
-
+    <>
       {eventLoading ? <DelayedLoading /> : null}
-      {eventError || error ? (
-        <p role="alert">{eventError ?? error}</p>
-      ) : null}
-
-      <div className="chq-settings-row">
-        <span className="chq-settings-row-label">Exports</span>
-        <div className="chq-settings-row-value">
-          {eventId ? (
-            <>
-              <a className="chq-pill" href={`/api/v1/events/${eventId}/export/submissions?format=csv`}>
-                Submissions CSV
-              </a>
-              <a className="chq-pill" href={`/api/v1/events/${eventId}/export/contacts?format=csv`}>
-                Contacts CSV
-              </a>
-              {event ? (
-                <a className="chq-pill" href={`/e/${event.slug}/agenda.ics`}>
-                  Schedule ICS
+      {eventError || error ? <p role="alert">{eventError ?? error}</p> : null}
+      <SummarySection sectionKey={SECTION_KEY} label="Your data" rows={rows} actionLabel="Change" editing={editing}>
+        <div className="chq-settings-row">
+          <span className="chq-settings-row-label">Exports</span>
+          <div className="chq-settings-row-value">
+            {eventId ? (
+              <>
+                <a className="chq-pill" href={`/api/v1/events/${eventId}/export/submissions?format=csv`}>
+                  Submissions CSV
                 </a>
-              ) : null}
-              <button type="button" className="chq-pill" disabled={bundling} onClick={() => void downloadEverythingJson()}>
-                {bundling ? 'Building…' : 'Everything JSON'}
+                <a className="chq-pill" href={`/api/v1/events/${eventId}/export/contacts?format=csv`}>
+                  Contacts CSV
+                </a>
+                {event ? (
+                  <a className="chq-pill" href={`/e/${event.slug}/agenda.ics`}>
+                    Schedule ICS
+                  </a>
+                ) : null}
+                <button
+                  type="button"
+                  className="chq-pill"
+                  disabled={bundling}
+                  onClick={() => void downloadEverythingJson()}
+                >
+                  {bundling ? 'Building…' : 'Everything JSON'}
+                </button>
+                <button type="button" className="chq-link-button" onClick={() => setMoreExportsOpen((v) => !v)}>
+                  {moreExportsOpen ? 'Hide more export formats' : 'More export formats'}
+                </button>
+              </>
+            ) : null}
+          </div>
+        </div>
+        {moreExportsOpen ? <ExportsPanel /> : null}
+
+        <ApiTokensPanel />
+
+        <div className="chq-settings-row">
+          <span className="chq-settings-row-label">API docs</span>
+          <div className="chq-settings-row-value">
+            <a href="/docs/api">chautauqua.cc/docs/api</a>
+          </div>
+        </div>
+
+        <div className="chq-settings-row">
+          <span className="chq-settings-row-label">Import from Sessionboard</span>
+          <div className="chq-settings-row-value">
+            {importOpen ? (
+              <SessionboardImportPanel />
+            ) : (
+              <button type="button" className="chq-link-button" onClick={() => setImportOpen(true)}>
+                Import from Sessionboard
               </button>
-              <button type="button" className="chq-link-button" onClick={() => setMoreExportsOpen((v) => !v)}>
-                {moreExportsOpen ? 'Hide more export formats' : 'More export formats'}
-              </button>
-            </>
-          ) : null}
+            )}
+          </div>
         </div>
-      </div>
-      {moreExportsOpen ? <ExportsPanel /> : null}
-
-      <ApiTokensPanel />
-
-      <div className="chq-settings-row">
-        <span className="chq-settings-row-label">API docs</span>
-        <div className="chq-settings-row-value">
-          <a href="/docs/api">chautauqua.cc/docs/api</a>
-        </div>
-      </div>
-
-      <div className="chq-settings-row">
-        <span className="chq-settings-row-label">Import from Sessionboard</span>
-        <div className="chq-settings-row-value">
-          {importOpen ? (
-            <SessionboardImportPanel />
-          ) : (
-            <button type="button" className="chq-link-button" onClick={() => setImportOpen(true)}>
-              Import from Sessionboard
-            </button>
-          )}
-        </div>
-      </div>
-    </section>
+      </SummarySection>
+    </>
   );
 }

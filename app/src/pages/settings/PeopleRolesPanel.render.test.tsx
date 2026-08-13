@@ -1,10 +1,12 @@
-// DEC-588 render smoke test: PeopleRolesPanel lists the org's people from
-// a mocked API, invites a new one and shows the returned one-time password
-// exactly once (reveal-once, matching ApiTokensPanel's pattern), and marks
-// the signed-in user's own row as non-actionable.
+// DEC-588 render smoke test, updated w6-e/DEC-815: PeopleRolesPanel is now
+// a read-only summary (SummarySection) -- people/organizer/reviewer
+// counts -- until the 'Change' action drills into (?section=people&edit=1)
+// the full directory (invite, reveal-once one-time password on
+// invite/reset, per-row inline role change, reset password).
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor, fireEvent, cleanup, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
+import { MemoryRouter } from 'react-router-dom';
 import { PeopleRolesPanel } from './PeopleRolesPanel';
 import { errorEnvelope, listEnvelope, mockApi } from '../../test-utils/mockApi';
 
@@ -32,32 +34,64 @@ function mockPeople(extra: Record<string, unknown> = {}) {
   });
 }
 
-describe('PeopleRolesPanel', () => {
-  it('renders the rail heading and the list from a mocked API, marking the signed-in row non-actionable', async () => {
-    mockPeople();
-    render(<PeopleRolesPanel />);
+function renderPanel(initialEntries?: string[]) {
+  return render(
+    <MemoryRouter initialEntries={initialEntries}>
+      <PeopleRolesPanel />
+    </MemoryRouter>,
+  );
+}
 
-    expect(screen.getByRole('heading', { name: 'People and roles' })).toBeInTheDocument();
+describe('PeopleRolesPanel', () => {
+  it('renders a read-only summary of people/organizer/reviewer counts, with no directory before edit', async () => {
+    mockPeople();
+    renderPanel();
+
+    const section = await screen.findByRole('region', { name: 'People and roles' });
+    expect(within(section).getByRole('heading', { name: 'People and roles' })).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(within(section).getByText('2 people')).toBeInTheDocument();
+    });
+    // 1 organizer (SELF), 1 reviewer (OTHER).
+    expect(within(section).getAllByText('1')).toHaveLength(2);
+
+    expect(within(section).queryByText(SELF.email)).not.toBeInTheDocument();
+    expect(within(section).queryByRole('button', { name: 'Invite someone' })).not.toBeInTheDocument();
+    expect(within(section).getByRole('button', { name: 'Change' })).toBeInTheDocument();
+  });
+
+  it('drills into the directory via Change, marking the signed-in row non-actionable', async () => {
+    mockPeople();
+    renderPanel();
+
+    const section = await screen.findByRole('region', { name: 'People and roles' });
+    await waitFor(() => {
+      expect(within(section).getByText('2 people')).toBeInTheDocument();
+    });
+
+    fireEvent.click(within(section).getByRole('button', { name: 'Change' }));
 
     await waitFor(() => {
       expect(screen.getByText(SELF.email)).toBeInTheDocument();
     });
     expect(screen.getByText(OTHER.email)).toBeInTheDocument();
+    // The section-level 'Change' drill action is gone once editing; the
+    // two remaining 'Change' buttons are the per-row inline role controls.
+    expect(within(section).getAllByRole('button', { name: 'Change' })).toHaveLength(2);
 
-    // Self row: no reset-password action, just a marker.
     const selfRow = screen.getByText(SELF.email).closest('li')!;
     expect(selfRow).toHaveTextContent('(you)');
     expect(within(selfRow).queryByRole('button', { name: 'Reset password' })).not.toBeInTheDocument();
 
-    // Other row: the reset action is present.
     const otherRow = screen.getByText(OTHER.email).closest('li')!;
     expect(within(otherRow).getByRole('button', { name: 'Reset password' })).toBeInTheDocument();
   });
 
   // w15-e/DEC-691: mock's 4-column row (identity, role, scope, Change).
-  it('exposes a scope cell per row', async () => {
+  it('exposes a scope cell per row, once drilled in', async () => {
     mockPeople();
-    render(<PeopleRolesPanel />);
+    renderPanel(['/settings?section=people&edit=1']);
 
     await waitFor(() => {
       expect(screen.getByText(SELF.email)).toBeInTheDocument();
@@ -74,7 +108,7 @@ describe('PeopleRolesPanel', () => {
     mockPeople({
       'PATCH /api/v1/users/u-other': { status: 200, body: { id: OTHER.id, email: OTHER.email, role: 'organizer' } },
     });
-    render(<PeopleRolesPanel />);
+    renderPanel(['/settings?section=people&edit=1']);
 
     await waitFor(() => {
       expect(screen.getByText(SELF.email)).toBeInTheDocument();
@@ -102,7 +136,7 @@ describe('PeopleRolesPanel', () => {
         body: errorEnvelope('conflict', "Cannot remove the organization's last organizer"),
       },
     });
-    render(<PeopleRolesPanel />);
+    renderPanel(['/settings?section=people&edit=1']);
 
     await waitFor(() => {
       expect(screen.getByText(SELF.email)).toBeInTheDocument();
@@ -123,7 +157,7 @@ describe('PeopleRolesPanel', () => {
     const fetchMock = mockPeople({
       'POST /api/v1/users': { status: 201, body: { id: 'u-new', email: 'new@example.com', role: 'reviewer', password: 'ab12-cd34-ef56' } },
     });
-    render(<PeopleRolesPanel />);
+    renderPanel(['/settings?section=people&edit=1']);
 
     await waitFor(() => {
       expect(screen.getByText(SELF.email)).toBeInTheDocument();
