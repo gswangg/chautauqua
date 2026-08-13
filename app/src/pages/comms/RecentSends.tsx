@@ -66,6 +66,7 @@ function SendDetailDisclosure({
           {error && <div className="chq-error-banner">{error}</div>}
           {detail && (
             <>
+              <div className="chq-comms-history-when">{formatDateTime(detail.sentAt)}</div>
               {detail.templateId && templatesById?.[detail.templateId] && (
                 <div className="chq-comms-send-detail-template">
                   Template: {templatesById[detail.templateId]}
@@ -86,17 +87,16 @@ function BatchRecipients({
   items,
   error,
   templatesById,
-}: RecipientsState & { eventId: string; templatesById?: Record<string, string> }) {
+  batchSubject,
+}: RecipientsState & { eventId: string; templatesById?: Record<string, string>; batchSubject: string }) {
   if (error) return <div className="chq-error-banner">{error}</div>;
   if (!items) return <DelayedLoading />;
 
   return (
     <div className="chq-comms-batch-recipients">
       {items.map((row) => (
-        <div key={row.id} className="chq-comms-history-row">
-          <span className="chq-comms-history-when">{formatDateTime(row.sentAt)}</span>
-          <span className="chq-comms-history-subject">{row.subject}</span>
-          <span>{row.toEmail}</span>
+        <div key={row.id} className="chq-comms-recipient-row">
+          <span className="chq-comms-recipient-to">{row.toEmail}</span>
           <span className="chq-meta">{row.status}</span>
           {/* DEC-846's "history owes the WORDS" half is served by DEC-833's
               disclosure below: the list projection stays narrow (DEC-543,
@@ -104,6 +104,13 @@ function BatchRecipients({
               one row at a time and rendered verbatim, whitespace preserved,
               for a failed attempt exactly as for a sent one. */}
           <SendDetailDisclosure eventId={eventId} emailId={row.id} templatesById={templatesById} />
+          {/* A subject only differs when a merge field made it real (e.g. a
+              per-recipient token) -- that's exactly when it's worth the
+              second line; the shared batch subject is already printed once
+              at the batch-row level. */}
+          {row.subject !== batchSubject && (
+            <span className="chq-comms-recipient-subject">Subject: {row.subject}</span>
+          )}
         </div>
       ))}
     </div>
@@ -197,6 +204,7 @@ export function RecentSends({ eventId, batches, limit, onSeeAll, templatesById }
                 items={entry?.items ?? null}
                 error={entry?.error ?? null}
                 templatesById={templatesById}
+                batchSubject={batch.subject}
               />
             )}
           </div>

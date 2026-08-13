@@ -117,7 +117,7 @@ describe('HistoryTab', () => {
       expect(screen.getByText('ada@example.com')).toBeInTheDocument();
     });
 
-    const rows = screen.getAllByText(/@example\.com/).map((el) => el.closest('.chq-comms-history-row') as HTMLElement);
+    const rows = screen.getAllByText(/@example\.com/).map((el) => el.closest('.chq-comms-recipient-row') as HTMLElement);
     const adaRow = rows.find((r) => within(r).queryByText('ada@example.com'))!;
     const boRow = rows.find((r) => within(r).queryByText('bo@example.com'))!;
 

@@ -356,16 +356,44 @@
   border-bottom: 1px solid var(--chq-hairline);
 }
 
-.chq-comms-batch-recipients .chq-comms-history-row {
-  border-bottom: none;
+/* w28-f: the per-recipient row no longer repeats the batch's own subject/
+   timestamp on every line -- those are already printed once at the batch
+   row above. The identifying column (the recipient address) gets the
+   width; status and the disclosure trail it. A differing subject (a merge
+   field made it real) gets its own full-width second line below. This is
+   deliberately its own class, not a second .chq-comms-recipient-row rule --
+   that class name is already owned by the compose step-3 recipients list
+   (ComposeWizard.tsx) with a different (2-column) grid, so scoping under
+   .chq-comms-batch-recipients keeps the two apart instead of one silently
+   overriding the other. */
+.chq-comms-batch-recipients .chq-comms-recipient-row {
+  display: grid;
+  grid-template-columns: 1fr 130px auto;
+  gap: 18px;
+  align-items: baseline;
   padding: 9px 0;
 }
 
+.chq-comms-recipient-to {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.chq-comms-recipient-subject {
+  grid-column: 1 / -1;
+  font-size: 13px;
+  color: var(--chq-muted);
+}
+
 /* DEC-833: per-recipient "Show what was sent" disclosure -- lives in the
-   history row's 5th (auto) grid column, so it doesn't disturb the
-   when/subject/email/status alignment above. */
+   recipient row's 3rd (auto) grid column, so it doesn't disturb the
+   to/status alignment above. */
 .chq-comms-send-detail {
-  grid-column: 5;
+  grid-column: 3;
   justify-self: end;
 }
 
