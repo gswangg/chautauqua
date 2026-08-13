@@ -240,7 +240,7 @@ interface Seed {
   event: Record<string, unknown>[];
   submission: Record<string, unknown>[];
   file: Record<string, unknown>[];
-  participant: { submissionId: string; contactId: string; order: number; role: string }[];
+  participant: { submissionId: string; contactId: string; order: number; role: string; inviteStatus: string }[];
   contact: { id: string; firstName: string; lastName: string }[];
 }
 
@@ -417,8 +417,8 @@ function baseSeed(): Seed {
       },
     ],
     participant: [
-      { submissionId: "sub-1", contactId: "contact-priya", order: 0, role: "speaker" },
-      { submissionId: "sub-1", contactId: "contact-other", order: 1, role: "speaker" },
+      { submissionId: "sub-1", contactId: "contact-priya", order: 0, role: "speaker", inviteStatus: "accepted" },
+      { submissionId: "sub-1", contactId: "contact-other", order: 1, role: "speaker", inviteStatus: "accepted" },
     ],
     contact: [
       { id: "contact-priya", firstName: "Priya", lastName: "Raman" },
@@ -484,7 +484,7 @@ describe("listEventDeliverableFiles (DEC-159/344)", () => {
       createdAt: new Date("2026-01-07T00:00:00Z"),
       versionNo: 1,
     });
-    seed.participant.push({ submissionId: "sub-2", contactId: "contact-other", order: 0, role: "speaker" });
+    seed.participant.push({ submissionId: "sub-2", contactId: "contact-other", order: 0, role: "speaker", inviteStatus: "accepted" });
     const db = makeFakeFilesDb(seed);
     const result = await listEventDeliverableFiles(db, "event-1", q());
     expect(result.items).toHaveLength(2);
@@ -506,7 +506,7 @@ describe("listEventDeliverableFiles (DEC-159/344)", () => {
       createdAt: new Date("2026-01-07T00:00:00Z"), // newest — created_at desc puts it first
       versionNo: 1,
     });
-    seed.participant.push({ submissionId: "sub-2", contactId: "contact-other", order: 0, role: "speaker" });
+    seed.participant.push({ submissionId: "sub-2", contactId: "contact-other", order: 0, role: "speaker", inviteStatus: "accepted" });
 
     const db1 = makeFakeFilesDb(seed);
     const page1 = await listEventDeliverableFiles(db1, "event-1", q({ perPage: 1, page: 1 }));
@@ -535,7 +535,7 @@ describe("listEventDeliverableFiles (DEC-159/344)", () => {
       createdAt: new Date("2026-01-07T00:00:00Z"),
       versionNo: 1,
     });
-    seed.participant.push({ submissionId: "sub-2", contactId: "contact-other", order: 0, role: "speaker" });
+    seed.participant.push({ submissionId: "sub-2", contactId: "contact-other", order: 0, role: "speaker", inviteStatus: "accepted" });
     const db = makeFakeFilesDb(seed);
     const result = await listEventDeliverableFiles(db, "event-1", q({ kinds: ["poster"] }));
     expect(result.items).toHaveLength(1);
@@ -592,7 +592,7 @@ describe("kindCounts (DEC-902): one grouped query, matching the filtered list's 
     });
     // sub-2's speaker is contact-other ("Someone Else"), never Priya Raman
     // — used below to prove kindCounts honors the q filter per kind.
-    seed.participant.push({ submissionId: "sub-2", contactId: "contact-other", order: 0, role: "speaker" });
+    seed.participant.push({ submissionId: "sub-2", contactId: "contact-other", order: 0, role: "speaker", inviteStatus: "accepted" });
     return seed;
   }
 

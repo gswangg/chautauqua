@@ -119,7 +119,6 @@ const ALLOWED: Record<string, string[]> = {
   ],
   "server/repo/review/submissions.ts": [
     "listSpeakersForSubmission lists every named author of a submission for the review UI, mirroring submissions/list.ts — not an eligibility read.",
-    "batchGetVisibleSpeakerNames filters participant.visible=1 only (no inviteStatus filter) — pre-existing gap outside this task's scope, flagged for follow-up.",
   ],
   "server/repo/profile.ts": [
     "Filters via gates.ts's visibleSubmissionConditions(), which itself ANDs visibleParticipantConditions() (DEC-274) — same predicate, different local call name than this scanner's regex.",
@@ -142,7 +141,6 @@ const ALLOWED: Record<string, string[]> = {
   "server/repo/files-library.ts": [
     "Headshot-count read filters via the local `headshotWhere` variable, built from buildHeadshotWhere()'s acceptedSpeakerConditions(eventId) — same predicate, indirected through a variable this scanner's regex doesn't follow.",
     "Headshot-list read filters via the same local `headshotWhere` variable built from acceptedSpeakerConditions(eventId) — same predicate, indirected through a variable.",
-    "Lead-speaker ordering read filters role='speaker' only (no inviteStatus filter) — pre-existing gap outside this task's scope, flagged for follow-up.",
   ],
 };
 
