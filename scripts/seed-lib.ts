@@ -311,7 +311,7 @@ export const ADDITIONAL_EMAIL_TEMPLATES: Array<{ name: string; subject: string; 
   },
   {
     name: "Content Reminder",
-    // DEC-836: the subject must not interpolate {task_list} — it's a
+    // DEC-836/DEC-847: the subject must not interpolate {task_list} — it's a
     // multi-line block (one task per line), which renders a paragraph
     // subject and a stray double period when the list is empty. Keep
     // {due_date} (a single value) and let the body carry the block.

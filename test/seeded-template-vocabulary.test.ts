@@ -10,7 +10,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { COMPOSE_MERGE_FIELDS } from "../src/mail/render";
+import { COMPOSE_MERGE_FIELDS, SUBJECT_MERGE_FIELDS } from "../src/mail/render";
 import { ADDITIONAL_EMAIL_TEMPLATES } from "../scripts/seed-lib";
 
 const REPO_ROOT = join(__dirname, "..");
@@ -30,6 +30,31 @@ describe("seeded-template merge-field vocabulary (DEC-792)", () => {
           `template '${tpl.name}' uses {${token}}, which is not in COMPOSE_MERGE_FIELDS`,
         ).toBe(true);
       }
+    }
+  });
+
+  it("every token in every ADDITIONAL_EMAIL_TEMPLATES entry's subject is a member of SUBJECT_MERGE_FIELDS (DEC-847)", () => {
+    expect(ADDITIONAL_EMAIL_TEMPLATES.length).toBeGreaterThan(0);
+    for (const tpl of ADDITIONAL_EMAIL_TEMPLATES) {
+      for (const token of tokensIn(tpl.subject)) {
+        expect(
+          (SUBJECT_MERGE_FIELDS as readonly string[]).includes(token),
+          `template '${tpl.name}' subject uses {${token}}, which is a block field and cannot go in a subject`,
+        ).toBe(true);
+      }
+    }
+  });
+
+  it("every token in the fixture acceptance subject is a member of SUBJECT_MERGE_FIELDS (DEC-847)", () => {
+    const fixture = JSON.parse(readFileSync(FIXTURE_PATH, "utf8")) as {
+      communications: { acceptance_subject: string; acceptance_body: string };
+    };
+    const tokens = tokensIn(fixture.communications.acceptance_subject);
+    for (const token of tokens) {
+      expect(
+        (SUBJECT_MERGE_FIELDS as readonly string[]).includes(token),
+        `fixture acceptance subject uses {${token}}, which is a block field and cannot go in a subject`,
+      ).toBe(true);
     }
   });
 
