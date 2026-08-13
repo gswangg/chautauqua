@@ -4,6 +4,7 @@ import { useEscapeKey } from '../../lib/useEscapeKey';
 import { formatDateTime } from '../../lib/dates';
 import type { ContactDetail, ContactListItem } from './types';
 import { fromRows, toRows, travelValue, type CustomFieldRow } from './customFields';
+import { contactLabels } from '../../../../src/domain/contact-labels';
 import { BulkEmailModal } from './BulkEmailModal';
 import { AddToEventModal } from './AddToEventModal';
 import { DelayedLoading } from '../../components/DelayedLoading';
@@ -211,8 +212,8 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
     email,
     company: company || undefined,
     title: title || undefined,
-    // DEC-712: this drawer-local projection only feeds AddToEventModal
-    // (which doesn't render labels) — never the directory table itself.
+    // This drawer-local projection only feeds AddToEventModal (which
+    // doesn't render labels) — never the directory table itself.
     labels: [],
   };
 
@@ -297,6 +298,28 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
               {textField('email', 'Email', email, setEmail, { type: 'email', placeholder: 'priya.raman@example.com' })}
               {textField('company', 'Company', company, setCompany, { placeholder: 'Latticework Systems' })}
               {textField('title', 'Title', title, setTitle, { placeholder: 'Principal Engineer' })}
+
+              {/* DEC-738/DEC-726: read-only view of the same Labels the
+                  directory table's chips show (contactLabels over this
+                  contact's customFields, travel key excluded) — the editable
+                  custom-field rows below are unaffected. */}
+              <div className="chq-contacts-record-row">
+                <span className="chq-contacts-record-label">Labels</span>
+                <div className="chq-contacts-record-value chq-contacts-record-readonly">
+                  {contactLabels(contact.customFields ?? {}).length > 0 ? (
+                    <ul className="chq-contacts-label-chips">
+                      {contactLabels(contact.customFields ?? {}).map((label) => (
+                        <li key={label} className="chq-contacts-label-chip">
+                          {label}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <span className="chq-contacts-record-empty">{EM_DASH}</span>
+                  )}
+                </div>
+              </div>
+
               {textField('phone', 'Phone', phone, setPhone, { placeholder: '+1 555 010 1234' })}
               {textField('notes', 'Notes', notes, setNotes, { multiline: true, placeholder: 'Internal notes about this contact' })}
               {textField('bio', 'Bio', bio, setBio, { multiline: true, placeholder: 'A short speaker bio' })}

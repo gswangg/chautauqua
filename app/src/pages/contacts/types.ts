@@ -10,8 +10,9 @@ export interface ContactListItem {
   company?: string | null;
   title?: string | null;
   submissionCount?: number;
-  // DEC-712: derived participation-role labels, batched one query per page
-  // over `participant` (never a per-row query, never a free-text column).
+  // DEC-738/DEC-726: the contact's customFields, formatted server-side as
+  // "`key` `value`" strings (src/domain/contact-labels.ts's contactLabels;
+  // supersedes DEC-712's derived participation-role labels).
   labels: string[];
 }
 

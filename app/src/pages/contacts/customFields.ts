@@ -3,7 +3,11 @@
 // module owns the pure serialize/deserialize rules so they are testable
 // without a DOM and shared by ContactDrawer.
 
-export const TRAVEL_KEY = 'travel_logistics';
+// DEC-738/DEC-726: TRAVEL_KEY is owned by src/domain/contact-labels.ts
+// (the server-importable Labels formatter) -- imported here rather than
+// re-declared, so the reserved key string has exactly one source.
+import { TRAVEL_KEY } from '../../../../src/domain/contact-labels';
+export { TRAVEL_KEY };
 
 export interface CustomFieldRow {
   key: string;
