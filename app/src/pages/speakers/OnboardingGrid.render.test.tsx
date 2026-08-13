@@ -1006,3 +1006,105 @@ describe('OnboardingGrid: DEC-730 amendment matrix header names both axes', () =
     expect(title).toHaveClass('chq-speakers-task-title');
   });
 });
+
+// DEC-934 amendment: "Send portal invite" only where inviting is still
+// possible -- an account rules it out (DEC-805), and now so does an
+// already-invited row, which renders the quiet 'EMAILED' marker in the same
+// cell instead. The invite state is read straight off
+// participations[].inviteStatus, the field the roster row model already
+// carries.
+describe('OnboardingGrid: DEC-934 amendment "Send portal invite" gates on not-yet-invited too', () => {
+  function gridWithRows(rows: OnboardingGridResponse['rows']): OnboardingGridResponse {
+    return {
+      tasks: [{ id: 'task-1', kind: 'general', title: 'Sign speaker agreement', dueDate: null, required: true }],
+      rows,
+      total: rows.length,
+      page: 1,
+      perPage: 50,
+      counts: { speakers: rows.length, outstandingRequired: rows.length, overdue: 0, outstandingContacts: rows.length },
+    };
+  }
+
+  function cellFor(assignmentId: string) {
+    return { taskId: 'task-1', assignmentId, status: 'pending' as const, completedAt: null, fileId: null, fileName: null, fileSizeBytes: null, lastRemindedAt: null, assignedAt: 0 };
+  }
+
+  it('has-account: neither the control nor the marker renders', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: gridWithRows([
+        {
+          contact: {
+            id: 'ct-has-account',
+            name: 'Grace Hopper',
+            email: 'grace@example.com',
+            company: 'Navy',
+            hasAccount: true,
+            participations: [{ participantId: 'p1', submissionId: 'sub1', ref: 'SES-001', title: 'Talk', inviteStatus: 'none' }],
+          },
+          cells: [cellFor('as1')],
+        },
+      ]),
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+    });
+
+    render(<MemoryRouter><OnboardingGrid onAddSpeaker={vi.fn()} /></MemoryRouter>);
+    await waitFor(() => screen.getAllByText('Grace Hopper').length > 0);
+
+    const table = within(screen.getByRole('table'));
+    expect(table.queryByRole('button', { name: 'Send portal invite' })).not.toBeInTheDocument();
+    expect(table.queryByText('EMAILED')).not.toBeInTheDocument();
+  });
+
+  it('no-account, not yet invited: the control renders', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: gridWithRows([
+        {
+          contact: {
+            id: 'ct-not-invited',
+            name: 'Ada Lovelace',
+            email: 'ada@example.com',
+            company: 'Acme',
+            hasAccount: false,
+            participations: [{ participantId: 'p1', submissionId: 'sub1', ref: 'SES-001', title: 'Talk', inviteStatus: 'none' }],
+          },
+          cells: [cellFor('as1')],
+        },
+      ]),
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+    });
+
+    render(<MemoryRouter><OnboardingGrid onAddSpeaker={vi.fn()} /></MemoryRouter>);
+    await waitFor(() => screen.getAllByText('Ada Lovelace').length > 0);
+
+    const table = within(screen.getByRole('table'));
+    expect(table.getByRole('button', { name: 'Send portal invite' })).toBeInTheDocument();
+    expect(table.queryByText('EMAILED')).not.toBeInTheDocument();
+  });
+
+  it('no-account, already invited: the quiet EMAILED marker renders, not the control', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: gridWithRows([
+        {
+          contact: {
+            id: 'ct-already-invited',
+            name: 'Marie Curie',
+            email: 'marie@example.com',
+            company: null,
+            hasAccount: false,
+            participations: [{ participantId: 'p1', submissionId: 'sub1', ref: 'SES-001', title: 'Talk', inviteStatus: 'invited' }],
+          },
+          cells: [cellFor('as1')],
+        },
+      ]),
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+    });
+
+    render(<MemoryRouter><OnboardingGrid onAddSpeaker={vi.fn()} /></MemoryRouter>);
+    await waitFor(() => screen.getAllByText('Marie Curie').length > 0);
+
+    const table = within(screen.getByRole('table'));
+    expect(table.queryByRole('button', { name: 'Send portal invite' })).not.toBeInTheDocument();
+    const marker = table.getByText('EMAILED');
+    expect(marker).toHaveClass('chq-speakers-invited-marker');
+  });
+});
