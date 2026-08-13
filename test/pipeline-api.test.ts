@@ -144,6 +144,41 @@ describe("GET /api/v1/pipeline", () => {
       lastName: "Lovelace",
       company: "Acme",
       stage: "identified",
+      stageSince: ENTRY_ROW.updatedAt.getTime(),
+      declineReason: null,
+    });
+  });
+
+  // DEC-803: declined entries carry their decline reason, read from the
+  // newest move-to-declined activity in ONE chunked query over the page's
+  // declined entry ids (not per card) -- a non-declined entry never queries
+  // pipeline_activity for a reason at all.
+  it("hydrates declineReason from the newest move-to-declined activity for declined entries", async () => {
+    const declinedEntry = { ...ENTRY_ROW, id: "entry-2", stage: "declined", updatedAt: new Date(9000) };
+    const olderDeclineMove = {
+      entryId: "entry-2",
+      body: "Scheduling conflict",
+      createdAt: new Date(5000),
+    };
+    const newerDeclineMove = {
+      entryId: "entry-2",
+      body: "Went with another speaker",
+      createdAt: new Date(9000),
+    };
+    const { db } = fakeDb([
+      [declinedEntry], // listPipelineForOrg: pipeline_entry rows
+      [{ count: 1 }], // countPipelineForOrg
+      [CONTACT_ORG_A], // contact batch (declinedEntry.contactId is still contact-1)
+      [olderDeclineMove, newerDeclineMove], // declineReason activity batch (order not guaranteed)
+    ]);
+    const app = appWithDbAndAuth(db, ORGANIZER_A);
+
+    const res = await app.request(new Request("http://local/api/v1/pipeline"));
+    expect(res.status).toBe(200);
+    const json = (await res.json()) as { items: any[] };
+    expect(json.items[0]).toMatchObject({
+      stage: "declined",
+      declineReason: "Went with another speaker",
     });
   });
 
@@ -271,6 +306,73 @@ describe("PATCH /api/v1/pipeline/:id (move)", () => {
     const res = await app.request(jsonRequest("PATCH", "/api/v1/pipeline/entry-other-org", { stage: "contacted" }));
     expect(res.status).toBe(404);
     expect(updates).toHaveLength(0);
+  });
+
+  // DEC-803: a move to 'declined' persists its reason as the move
+  // activity's body -- previously hard-coded null.
+  it("persists a reason as the move activity's body when moving to declined", async () => {
+    const { db, inserts } = fakeDb([
+      [ENTRY_ROW], // requireOwnedEntry
+      [ORGANIZER_USER], // resolveAuthorName
+      [{ ...ENTRY_ROW, stage: "declined" }], // findEntryById after update
+      [CONTACT_ORG_A], // findContactForOrg for response serialization
+    ]);
+    const app = appWithDbAndAuth(db, ORGANIZER_A);
+
+    const res = await app.request(
+      jsonRequest("PATCH", "/api/v1/pipeline/entry-1", { stage: "declined", reason: "Scheduling conflict" }),
+    );
+    expect(res.status).toBe(200);
+    const json = (await res.json()) as any;
+    expect(json.stage).toBe("declined");
+    expect(json.declineReason).toBe("Scheduling conflict");
+
+    expect(inserts).toHaveLength(1);
+    const activityInsert = inserts[0]!.vals as any;
+    expect(activityInsert.toStage).toBe("declined");
+    expect(activityInsert.body).toBe("Scheduling conflict");
+  });
+
+  // DEC-803: rejected before any write, not left for the UI to enforce alone.
+  it("400s a move to declined with a blank/missing reason, writing nothing", async () => {
+    const { db, inserts, updates } = fakeDb([
+      [ENTRY_ROW], // requireOwnedEntry
+    ]);
+    const app = appWithDbAndAuth(db, ORGANIZER_A);
+
+    const res = await app.request(jsonRequest("PATCH", "/api/v1/pipeline/entry-1", { stage: "declined" }));
+    expect(res.status).toBe(400);
+    const json = (await res.json()) as any;
+    expect(json.error.code).toBe("invalid");
+    expect(json.error.fields?.reason).toBeTruthy();
+    expect(inserts).toHaveLength(0);
+    expect(updates).toHaveLength(0);
+
+    const { db: db2, inserts: inserts2, updates: updates2 } = fakeDb([[ENTRY_ROW]]);
+    const app2 = appWithDbAndAuth(db2, ORGANIZER_A);
+    const res2 = await app2.request(
+      jsonRequest("PATCH", "/api/v1/pipeline/entry-1", { stage: "declined", reason: "   " }),
+    );
+    expect(res2.status).toBe(400);
+    expect(inserts2).toHaveLength(0);
+    expect(updates2).toHaveLength(0);
+  });
+
+  // A non-declined move never requires a reason and persists null body,
+  // as before.
+  it("persists a null body for a move that is not into declined", async () => {
+    const { db, inserts } = fakeDb([
+      [ENTRY_ROW], // requireOwnedEntry
+      [ORGANIZER_USER], // resolveAuthorName
+      [{ ...ENTRY_ROW, stage: "contacted" }], // findEntryById after update
+      [CONTACT_ORG_A], // findContactForOrg for response serialization
+    ]);
+    const app = appWithDbAndAuth(db, ORGANIZER_A);
+
+    const res = await app.request(jsonRequest("PATCH", "/api/v1/pipeline/entry-1", { stage: "contacted" }));
+    expect(res.status).toBe(200);
+    const activityInsert = inserts[0]!.vals as any;
+    expect(activityInsert.body).toBeNull();
   });
 
   it("403s a reviewer session", async () => {

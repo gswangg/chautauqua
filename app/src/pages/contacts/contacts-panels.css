@@ -112,6 +112,32 @@
   color: var(--chq-muted);
 }
 
+/* DEC-803: card age caption -- the bold-caps micro-label class every stale
+   marker in this product uses. `stale` (past 30 days) is signalled by
+   WEIGHT and WORDING only (900 + a literal "Stale" prefix), never colour --
+   this product has no red. */
+.chq-contacts-pipeline-card-age {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--chq-muted);
+}
+
+.chq-contacts-pipeline-card-age-stale {
+  font-weight: 900;
+}
+
+.chq-contacts-pipeline-card-age-stale::before {
+  content: 'Stale · ';
+}
+
+.chq-contacts-pipeline-card-decline-reason {
+  font-size: 12px;
+  color: var(--chq-muted);
+  font-style: italic;
+}
+
 .chq-contacts-pipeline-card-move {
   display: flex;
   flex-direction: column;

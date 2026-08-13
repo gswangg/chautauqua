@@ -176,6 +176,11 @@ export interface PipelineEntry {
   email: string;
   stage: PipelineStage;
   updatedAt: number;
+  // DEC-803: the moment this entry entered its current stage (only a move
+  // writes updatedAt, so it IS that moment) and, for a 'declined' entry, the
+  // reason recorded when it was declined -- null for every other stage.
+  stageSince: number;
+  declineReason: string | null;
 }
 
 export interface PipelineActivity {

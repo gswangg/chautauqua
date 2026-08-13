@@ -41,6 +41,10 @@ function serializeEntry(row: repo.PipelineListItem) {
     email: row.email,
     stage: row.stage,
     updatedAt: row.updatedAt,
+    // DEC-803: stageSince IS updatedAt (only moves write it); declineReason
+    // is null for every non-declined entry.
+    stageSince: row.stageSince,
+    declineReason: row.declineReason,
   };
 }
 
@@ -103,6 +107,8 @@ pipelineRoutes.post("/pipeline", csrfJson, async (c) => {
       email: contact.email,
       stage: entry.stage,
       updatedAt: entry.updatedAt,
+      stageSince: entry.updatedAt,
+      declineReason: null,
     }),
     201,
   );
@@ -146,8 +152,21 @@ pipelineRoutes.patch("/pipeline/:id", csrfJson, async (c) => {
     throw new ApiError("invalid", "Validation failed", { stage: `must be one of ${repo.PIPELINE_STAGES.join(", ")}` });
   }
 
+  // DEC-803: a move into 'declined' must carry a reason -- rejected here,
+  // before any write, not left to the UI to enforce alone.
+  const reason = typeof body.reason === "string" ? body.reason.trim() : "";
+  if (body.stage === "declined" && reason === "") {
+    throw new ApiError("invalid", "Validation failed", { reason: "required when declining" });
+  }
+
   const authorName = await repo.resolveAuthorName(c.var.db, auth.userId);
-  const updated = await repo.moveEntry(c.var.db, entry, body.stage, { userId: auth.userId, name: authorName });
+  const updated = await repo.moveEntry(
+    c.var.db,
+    entry,
+    body.stage,
+    { userId: auth.userId, name: authorName },
+    body.stage === "declined" ? reason : undefined,
+  );
 
   const contact = await findContactForOrg(c.var.db, updated.contactId, orgId);
   if (!contact) throw new ApiError("not_found", "Contact not found");
@@ -162,6 +181,8 @@ pipelineRoutes.patch("/pipeline/:id", csrfJson, async (c) => {
       email: contact.email,
       stage: updated.stage,
       updatedAt: updated.updatedAt,
+      stageSince: updated.updatedAt,
+      declineReason: updated.stage === "declined" ? reason : null,
     }),
   );
 });
