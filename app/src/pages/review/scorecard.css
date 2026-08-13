@@ -24,3 +24,27 @@
   color: var(--chq-ink-2);
   margin: 12px 0 0;
 }
+
+/* DEC-939 reconciliation line: the plain-average comparison figure printed
+   between the Overall caption and its blended value -- same size/colour as
+   the caption it sits beside, never louder than the number itself. */
+.chq-review-overall-reconciliation {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--chq-muted);
+}
+
+/* DEC-939 (bare recusal amendment): strips the review.css `.chq-review-
+   recusal` card (padding/border/border-radius/background) back to nothing
+   -- the conflict checkbox now sits on its own line, no bordered card, no
+   separate action button. `.chq-review-recusal` is kept as a class on the
+   element (review.css untouched this wave, per DEC-939-e scope) purely so
+   its selector stays a live token; this pairing class overrides every card
+   property it sets. */
+.chq-review-recusal.chq-review-recusal-bare {
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: none;
+  gap: 6px;
+}

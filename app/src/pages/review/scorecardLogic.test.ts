@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { clampRating, isEvaluationComplete, scorecardKeyAction } from './scorecardLogic';
+import { clampRating, isEvaluationComplete, plainAverage, scorecardKeyAction } from './scorecardLogic';
 import type { EvaluationCriterion, EvaluationScores } from './types';
 
 const criteria: EvaluationCriterion[] = [
@@ -56,6 +56,21 @@ describe('clampRating', () => {
     expect(clampRating(9, { min: 1, max: 5 })).toBe(5);
     expect(clampRating(0, { min: 1, max: 5 })).toBe(1);
     expect(clampRating(3, { min: 1, max: 5 })).toBe(3);
+  });
+});
+
+describe('plainAverage', () => {
+  it('computes the unweighted mean to full precision (rounded at render, not here)', () => {
+    expect(plainAverage([5, 4, 4])).toBeCloseTo(4.333333, 5);
+    expect(plainAverage([5, 4, 4]).toFixed(2)).toBe('4.33');
+  });
+
+  it('handles a single value', () => {
+    expect(plainAverage([3])).toBe(3);
+  });
+
+  it('throws rather than silently returning NaN for an empty list', () => {
+    expect(() => plainAverage([])).toThrow();
   });
 });
 

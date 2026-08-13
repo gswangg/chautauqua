@@ -4,9 +4,13 @@ import { apiDelete, apiGet, apiList, apiPost, apiPut, ApiError } from '../../lib
 import './review.css';
 import './scorecard.css';
 import { formatAnswerValue } from './answerText';
-import { isEvaluationComplete, ratingScaleValues, scorecardKeyAction } from './scorecardLogic';
+import { isEvaluationComplete, plainAverage, ratingScaleValues, scorecardKeyAction } from './scorecardLogic';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { planTrackScope } from './PlanList';
+// DEC-939: the scorecard header's 'N of N done' counter reads the SAME
+// reader the reviewer queue's own progress caption is built from -- never a
+// second count derived in this component.
+import { queueDoneCounts } from './progress';
 // DEC-873: the per-criterion weight caption and the "Overall" blend reuse
 // the exact functions the plan editor and server already use, so the
 // reviewer's number and the organizer's number can never disagree.
@@ -53,13 +57,19 @@ export function Scorecard() {
   // DEC-271: this reviewer's declared conflict of interest on this
   // submission, if any. Scoring is disabled once recused.
   const [recusal, setRecusal] = useState<RecusalRecord | null>(null);
-  // DEC-939: the conflict declaration is a real checkbox -- checking it is
-  // what reveals the optional reason field (DEC-883's toggle grammar), and
-  // what's required before the Declare button will act.
+  // DEC-939 (bare recusal amendment): the conflict declaration is a single
+  // checkbox on its own line -- checking it IS the declaration (no separate
+  // reason field or Declare button survives this amendment).
   const [recusalConfirmed, setRecusalConfirmed] = useState(false);
-  const [recusalReason, setRecusalReason] = useState('');
   const [recusing, setRecusing] = useState(false);
   const [undoingRecusal, setUndoingRecusal] = useState(false);
+
+  // DEC-939: the header's 'N of N done' counter -- fed by queueDoneCounts
+  // (progress.ts) over this reviewer's own queue envelope, fetched
+  // independently of the submission detail so a route that can't reach the
+  // queue endpoint (or an older/partial mock) simply renders no counter
+  // rather than a fabricated figure.
+  const [queueProgress, setQueueProgress] = useState<{ completed: number; total: number } | null>(null);
 
   // DEC-889: collapsed by default -- reveals the abstract's remainder and
   // both answer lists together, in place, when the reviewer opts in.
@@ -124,6 +134,17 @@ export function Scorecard() {
       .catch(() => setTracks([]));
   }, [plan]);
 
+  useEffect(() => {
+    // DEC-939: independent of the submission-detail load above -- a failure
+    // here (or a route that can't reach the queue endpoint) leaves
+    // queueProgress null, which renders no counter rather than a stale or
+    // fabricated one.
+    if (!planId) return;
+    apiList<ReviewerQueueItem>(`/review/plans/${planId}/queue`)
+      .then((res) => setQueueProgress(queueDoneCounts(res.items)))
+      .catch(() => setQueueProgress(null));
+  }, [planId]);
+
   // DEC-147: the submission detail's resolved criteria (this round) take
   // priority over the base plan.criteria.
   const criteria = submission?.criteria ?? plan?.criteria ?? [];
@@ -183,19 +204,22 @@ export function Scorecard() {
     }
   }
 
-  // DEC-271: POST/DELETE /api/v1/review/plans/:planId/recusals/:submissionId
-  // -- reason is optional free text, sent as null when blank.
+  // DEC-271/DEC-939 (bare recusal amendment): POST
+  // /api/v1/review/plans/:planId/recusals/:submissionId -- checking the
+  // bare checkbox IS the declaration now (no separate reason field or
+  // Declare button), so reason is always sent null.
   async function handleRecuse() {
     if (!planId || !submissionId) return;
     setRecusing(true);
     setError(null);
     try {
       const res = await apiPost<{ recusal: RecusalRecord }>(`/review/plans/${planId}/recusals/${submissionId}`, {
-        reason: recusalReason.trim() === '' ? null : recusalReason.trim(),
+        reason: null,
       });
       setRecusal(res.recusal);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to record recusal');
+      setRecusalConfirmed(false);
     } finally {
       setRecusing(false);
     }
@@ -208,6 +232,7 @@ export function Scorecard() {
     try {
       await apiDelete(`/review/plans/${planId}/recusals/${submissionId}`);
       setRecusal(null);
+      setRecusalConfirmed(false);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to undo recusal');
     } finally {
@@ -309,6 +334,13 @@ export function Scorecard() {
 
       <div className="chq-review-scorecard-head">
         <span className="chq-section-label">{scorecardEyebrow}</span>
+        {/* DEC-939: the same 'N of N done' progress the reviewer queue
+            shows, computed through queueDoneCounts (progress.ts) -- renders
+            nothing until that fetch resolves, and nothing at all for an
+            empty queue (nothing to count). */}
+        {queueProgress && queueProgress.total > 0 && (
+          <p className="chq-review-scoped-progress-caption">{`${queueProgress.completed} of ${queueProgress.total} done`}</p>
+        )}
         <h1 className="chq-page-title" style={{ fontSize: '27px' }}>
           {submission.ref} — {submission.title}
         </h1>
@@ -459,18 +491,42 @@ export function Scorecard() {
       <section className="chq-review-overall">
         <h2 className="chq-section-label">Overall</h2>
         <p className="chq-review-overall-caption">Averaged by weight · not editable</p>
+        {/* DEC-939 reconciliation line: the SAME per-criterion rating
+            values the weighted blend above just read, in criterion order,
+            as a plain (unweighted) mean -- never touches computeWeightedScore's
+            own math, only shows the un-weighted comparison figure. Renders
+            only once overallScore itself is non-null. */}
+        {overallScore !== null && ratingCriteria.length > 0 && (
+          <p className="chq-review-overall-reconciliation">
+            {`A plain average of ${ratingCriteria
+              .map((c) => scores[c.id] as number)
+              .join(', ')} would be ${plainAverage(ratingCriteria.map((c) => scores[c.id] as number)).toFixed(2)}`}
+          </p>
+        )}
         <p className="chq-review-overall-value">{overallScore === null ? '—' : overallScore.toFixed(1)}</p>
       </section>
 
       <label className="chq-review-field">
-        Comment
+        Comment to the committee
         <textarea className="chq-textarea" value={comment} disabled={!!recusal} onChange={(e) => setComment(e.target.value)} />
       </label>
 
-      {/* DEC-939: the recusal declaration sits below the work, not above it
-          -- a reviewer shouldn't be asked to declare a conflict before
-          seeing what they'd be conflicted about. */}
-      <div className="chq-review-recusal">
+      {/* DEC-939 (bare recusal amendment): the recusal declaration sits
+          below the work, not above it -- a reviewer shouldn't be asked to
+          declare a conflict before seeing what they'd be conflicted about.
+          It is now a bare checkbox on its own line: no bordered card, no
+          reason field, no separate Declare button -- checking the box IS
+          the declaration and POSTs immediately (existing recusal POST
+          behaviour, reason: null). */}
+      {/* DEC-939 (bare recusal amendment) note: `chq-review-recusal` (the
+          review.css card rule -- padding/border/background) is kept as a
+          class here purely so that shared selector stays a live token
+          (DEC-970 dead-CSS contract); `chq-review-recusal-bare`
+          (scorecard.css, this file's own stylesheet) strips every one of
+          those card properties back to nothing, so the rendered control is
+          visually bare -- no card, no border -- without editing review.css
+          this wave. */}
+      <div className="chq-review-recusal chq-review-recusal-bare">
         {recusal ? (
           <>
             <p>You recused yourself from this submission.</p>
@@ -479,35 +535,20 @@ export function Scorecard() {
             </button>
           </>
         ) : (
-          <>
-            <label className="chq-review-checkbox-label">
-              <input
-                type="checkbox"
-                className="chq-check"
-                checked={recusalConfirmed}
-                onChange={(e) => setRecusalConfirmed(e.target.checked)}
-              />
-              I have a conflict of interest with this submission
-            </label>
-            {recusalConfirmed && (
-              <input
-                type="text"
-                className="chq-input"
-                placeholder="Reason (optional)"
-                aria-label="Reason (optional)"
-                value={recusalReason}
-                onChange={(e) => setRecusalReason(e.target.value)}
-              />
-            )}
-            <button
-              type="button"
-              className="chq-btn chq-btn-secondary"
-              disabled={recusing || !recusalConfirmed}
-              onClick={() => void handleRecuse()}
-            >
-              Declare conflict of interest
-            </button>
-          </>
+          <label className="chq-review-checkbox-label">
+            <input
+              type="checkbox"
+              className="chq-check"
+              checked={recusalConfirmed}
+              disabled={recusing}
+              onChange={(e) => {
+                const checked = e.target.checked;
+                setRecusalConfirmed(checked);
+                if (checked) void handleRecuse();
+              }}
+            />
+            Recuse me — conflict of interest
+          </label>
         )}
       </div>
 

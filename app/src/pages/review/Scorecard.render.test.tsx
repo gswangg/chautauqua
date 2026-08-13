@@ -398,7 +398,7 @@ describe('Scorecard recusal placement and checkbox reveal (DEC-939)', () => {
     expect(await screen.findByRole('heading', { name: 'S-010 — A Deeply Nested Talk' })).toBeInTheDocument();
 
     const root = document.querySelector('.chq-page')!;
-    const commentField = screen.getByText('Comment').closest('label')!;
+    const commentField = screen.getByText('Comment to the committee').closest('label')!;
     const recusalBlock = document.querySelector('.chq-review-recusal')!;
     const actions = document.querySelector('.chq-review-editor-actions')!;
     const children = Array.from(root.children);
@@ -409,14 +409,14 @@ describe('Scorecard recusal placement and checkbox reveal (DEC-939)', () => {
     expect(recusalIndex).toBeGreaterThan(commentIndex);
     expect(actionsIndex).toBeGreaterThan(recusalIndex);
 
-    // The control is a real checkbox; the reason field is absent until it's
-    // checked.
+    // DEC-939 (bare recusal amendment): the control is a bare checkbox with
+    // no sibling button and no reason field -- nothing to reveal.
     const checkbox = screen.getByRole('checkbox', { name: /conflict of interest/i });
+    expect(checkbox).toBeInstanceOf(HTMLInputElement);
+    expect((checkbox as HTMLInputElement).type).toBe('checkbox');
     expect(screen.queryByPlaceholderText('Reason (optional)')).not.toBeInTheDocument();
-    fireEvent.click(checkbox);
-    expect(screen.getByPlaceholderText('Reason (optional)')).toBeInTheDocument();
-    fireEvent.click(checkbox);
-    expect(screen.queryByPlaceholderText('Reason (optional)')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /declare conflict of interest/i })).not.toBeInTheDocument();
+    expect(recusalBlock.querySelector('button')).toBeNull();
   });
 
   it('rating group segment count matches the plan scale, without aria-pressed (DEC-939)', async () => {
@@ -496,5 +496,163 @@ describe('Scorecard recusal survives reload (DEC-984)', () => {
     // off the GET response.
     const postCalls = fetchMock.mock.calls.filter(([, init]) => (init as RequestInit | undefined)?.method === 'POST');
     expect(postCalls).toHaveLength(0);
+  });
+});
+
+// w41-e (DEC-939 amendment): reconciliation line, header progress counter,
+// committee-facing comment label, bare recusal control.
+describe('Scorecard reconciliation line (DEC-939)', () => {
+  function criteria() {
+    return [
+      { id: 'c1', label: 'Quality', kind: 'rating' as const, weight: 1 },
+      { id: 'c2', label: 'Originality', kind: 'rating' as const, weight: 1 },
+      { id: 'c3', label: 'Delivery', kind: 'rating' as const, weight: 1 },
+    ];
+  }
+
+  it('is absent while the submission is unscored', async () => {
+    mockApi({
+      'GET /api/v1/review/plans': listEnvelope([plan()]),
+      [`GET /api/v1/review/submissions/${SUBMISSION_ID}`]: {
+        id: SUBMISSION_ID,
+        ref: 'S-010',
+        title: 'A Deeply Nested Talk',
+        sessionAnswers: [],
+        myEvaluation: undefined,
+        criteria: criteria(),
+      },
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}/submissions/${SUBMISSION_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId/submissions/:submissionId" element={<Scorecard />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('heading', { name: 'S-010 — A Deeply Nested Talk' })).toBeInTheDocument();
+    expect(document.querySelector('.chq-review-overall-reconciliation')).toBeNull();
+  });
+
+  it('prints the unweighted mean of a 5, 4, 4 rating set once every criterion is scored', async () => {
+    mockApi({
+      'GET /api/v1/review/plans': listEnvelope([plan()]),
+      [`GET /api/v1/review/submissions/${SUBMISSION_ID}`]: {
+        id: SUBMISSION_ID,
+        ref: 'S-010',
+        title: 'A Deeply Nested Talk',
+        sessionAnswers: [],
+        myEvaluation: undefined,
+        criteria: criteria(),
+      },
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}/submissions/${SUBMISSION_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId/submissions/:submissionId" element={<Scorecard />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('heading', { name: 'S-010 — A Deeply Nested Talk' })).toBeInTheDocument();
+
+    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Quality' })).getByRole('radio', { name: '5' }));
+    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Originality' })).getByRole('radio', { name: '4' }));
+    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Delivery' })).getByRole('radio', { name: '4' }));
+
+    await waitFor(() =>
+      expect(document.querySelector('.chq-review-overall-reconciliation')?.textContent).toBe(
+        'A plain average of 5, 4, 4 would be 4.33',
+      ),
+    );
+  });
+});
+
+describe('Scorecard header progress counter (DEC-939)', () => {
+  it('renders the same N of N done figure the reviewer queue computes', async () => {
+    mockApi({
+      'GET /api/v1/review/plans': listEnvelope([plan()]),
+      [`GET /api/v1/review/submissions/${SUBMISSION_ID}`]: {
+        id: SUBMISSION_ID,
+        ref: 'S-010',
+        title: 'A Deeply Nested Talk',
+        sessionAnswers: [],
+        myEvaluation: undefined,
+        criteria: [{ id: 'c1', label: 'Quality', kind: 'rating', weight: 1 }],
+      },
+      [`GET /api/v1/review/plans/${PLAN_ID}/queue`]: listEnvelope([
+        { submissionId: 'sub-a', ref: 'S-001', title: 'Rated', ratingsCount: 1, alreadyRatedByMe: true, myScore: 4, format: null },
+        { submissionId: 'sub-b', ref: 'S-002', title: 'Unrated', ratingsCount: 0, alreadyRatedByMe: false, myScore: null, format: null },
+        { submissionId: 'sub-c', ref: 'S-003', title: 'Also rated', ratingsCount: 1, alreadyRatedByMe: true, myScore: 5, format: null },
+      ]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}/submissions/${SUBMISSION_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId/submissions/:submissionId" element={<Scorecard />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('heading', { name: 'S-010 — A Deeply Nested Talk' })).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText('2 of 3 done')).toBeInTheDocument());
+  });
+
+  it('renders nothing when the queue fetch cannot be resolved', async () => {
+    mockApi({
+      'GET /api/v1/review/plans': listEnvelope([plan()]),
+      [`GET /api/v1/review/submissions/${SUBMISSION_ID}`]: {
+        id: SUBMISSION_ID,
+        ref: 'S-010',
+        title: 'A Deeply Nested Talk',
+        sessionAnswers: [],
+        myEvaluation: undefined,
+        criteria: [{ id: 'c1', label: 'Quality', kind: 'rating', weight: 1 }],
+      },
+      // No queue route registered -- the independent fetch rejects and the
+      // counter must render nothing rather than a fabricated figure.
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}/submissions/${SUBMISSION_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId/submissions/:submissionId" element={<Scorecard />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('heading', { name: 'S-010 — A Deeply Nested Talk' })).toBeInTheDocument();
+    expect(screen.queryByText(/of .* done/)).not.toBeInTheDocument();
+  });
+});
+
+describe('Scorecard comment label (frame 03--01)', () => {
+  it('labels the comment field for the committee', async () => {
+    mockApi({
+      'GET /api/v1/review/plans': listEnvelope([plan()]),
+      [`GET /api/v1/review/submissions/${SUBMISSION_ID}`]: {
+        id: SUBMISSION_ID,
+        ref: 'S-010',
+        title: 'A Deeply Nested Talk',
+        sessionAnswers: [],
+        myEvaluation: undefined,
+        criteria: [{ id: 'c1', label: 'Quality', kind: 'rating', weight: 1 }],
+      },
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}/submissions/${SUBMISSION_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId/submissions/:submissionId" element={<Scorecard />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('heading', { name: 'S-010 — A Deeply Nested Talk' })).toBeInTheDocument();
+    expect(screen.getByText('Comment to the committee')).toBeInTheDocument();
+    expect(screen.queryByText('Comment', { exact: true })).not.toBeInTheDocument();
   });
 });

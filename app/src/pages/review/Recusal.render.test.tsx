@@ -63,8 +63,8 @@ afterEach(() => {
   consoleErrorSpy.mockRestore();
 });
 
-describe('Scorecard recusal control (DEC-271)', () => {
-  it('renders a control whose label contains "conflict of interest"', async () => {
+describe('Scorecard recusal control (DEC-271/DEC-939 bare checkbox)', () => {
+  it('renders a bare checkbox control whose label contains "conflict of interest", with no sibling button', async () => {
     mockApi({
       'GET /api/v1/review/plans': listEnvelope([plan()]),
       [`GET /api/v1/review/submissions/${SUBMISSION_ID}`]: submissionDetail(),
@@ -81,14 +81,22 @@ describe('Scorecard recusal control (DEC-271)', () => {
     expect(await screen.findByRole('heading', { name: 'S-020 — A Conflicted Talk' })).toBeInTheDocument();
     // The rubric records the wording as evidence: the visible control label
     // must contain the words "conflict of interest".
-    expect(screen.getByRole('button', { name: /conflict of interest/i })).toBeInTheDocument();
+    const checkbox = screen.getByRole('checkbox', { name: /conflict of interest/i });
+    expect(checkbox).toBeInstanceOf(HTMLInputElement);
+    expect((checkbox as HTMLInputElement).type).toBe('checkbox');
     expect(screen.getAllByText(/conflict of interest/i).length).toBeGreaterThan(0);
-    // DEC-939: the control is a real checkbox now -- its accessible name is
-    // the conflict sentence, not the (now hidden-until-checked) reason box.
-    expect(screen.getByRole('checkbox', { name: /conflict of interest/i })).toBeInTheDocument();
+    // DEC-939 (bare recusal amendment): no separate Declare button, no
+    // bordered card wrapper.
+    expect(screen.queryByRole('button', { name: /conflict of interest/i })).not.toBeInTheDocument();
+    const recusalBlock = document.querySelector('.chq-review-recusal')!;
+    expect(recusalBlock).toBeInTheDocument();
+    expect(recusalBlock.querySelector('button')).toBeNull();
+    // DEC-939 (bare recusal amendment): the card styling is stripped via a
+    // pairing modifier class, not by deleting review.css's shared rule.
+    expect(recusalBlock).toHaveClass('chq-review-recusal-bare');
   });
 
-  it('POSTs the exact recusal URL/body, then renders the recused state and disables scoring', async () => {
+  it('POSTs the exact recusal URL/body (reason: null) the instant the checkbox is checked, then renders the recused state and disables scoring', async () => {
     const fetchMock = mockApi({
       'GET /api/v1/review/plans': listEnvelope([plan()]),
       [`GET /api/v1/review/submissions/${SUBMISSION_ID}`]: submissionDetail(),
@@ -99,7 +107,7 @@ describe('Scorecard recusal control (DEC-271)', () => {
             planId: PLAN_ID,
             submissionId: SUBMISSION_ID,
             userId: 'u-reviewer',
-            reason: 'I know the speaker personally.',
+            reason: null,
             createdAt: 1700000000000,
           },
         },
@@ -116,16 +124,10 @@ describe('Scorecard recusal control (DEC-271)', () => {
 
     expect(await screen.findByRole('heading', { name: 'S-020 — A Conflicted Talk' })).toBeInTheDocument();
 
-    // DEC-939: the reason field is revealed only once the checkbox is
-    // checked, and the Declare button only acts once the checkbox is
-    // checked.
+    // DEC-939 (bare recusal amendment): no reason field or separate action
+    // -- checking the checkbox itself is the declaration.
     expect(screen.queryByPlaceholderText('Reason (optional)')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('checkbox', { name: /conflict of interest/i }));
-    const reasonInput = screen.getByPlaceholderText('Reason (optional)');
-    fireEvent.change(reasonInput, { target: { value: 'I know the speaker personally.' } });
-
-    const recuseButton = screen.getByRole('button', { name: /conflict of interest/i });
-    fireEvent.click(recuseButton);
 
     await waitFor(() => {
       const postCall = fetchMock.mock.calls.find(([input, init]) => {
@@ -137,7 +139,7 @@ describe('Scorecard recusal control (DEC-271)', () => {
       const url = typeof input === 'string' ? input : (input as URL).toString();
       expect(url).toContain(`/api/v1/review/plans/${PLAN_ID}/recusals/${SUBMISSION_ID}`);
       const body = JSON.parse((init as RequestInit).body as string);
-      expect(body).toEqual({ reason: 'I know the speaker personally.' });
+      expect(body).toEqual({ reason: null });
     });
 
     expect(await screen.findByText('You recused yourself from this submission.')).toBeInTheDocument();
@@ -179,7 +181,6 @@ describe('Scorecard recusal control (DEC-271)', () => {
 
     expect(await screen.findByRole('heading', { name: 'S-020 — A Conflicted Talk' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('checkbox', { name: /conflict of interest/i }));
-    fireEvent.click(screen.getByRole('button', { name: /conflict of interest/i }));
     expect(await screen.findByText('You recused yourself from this submission.')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
@@ -198,7 +199,7 @@ describe('Scorecard recusal control (DEC-271)', () => {
     await waitFor(() => {
       expect(screen.queryByText('You recused yourself from this submission.')).not.toBeInTheDocument();
     });
-    expect(screen.getByRole('button', { name: /conflict of interest/i })).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: /conflict of interest/i })).toBeInTheDocument();
   });
 });
 
