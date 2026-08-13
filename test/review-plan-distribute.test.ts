@@ -120,7 +120,9 @@ describe("GET /api/v1/plans/:id/assignments/distribute/preview (DEC-786)", () =>
     expect(res.status).toBe(200);
     const body = (await res.json()) as {
       items: { userId: string; reviewerName: string; submissionId: string; submissionRef: string; submissionTitle: string }[];
-      perReviewer: { userId: string; name: string; added: number; total: number }[];
+      perReviewer: { userId: string; name: string; added: number; total: number; note?: string }[];
+      total: number;
+      shortfall: { submissionId: string; missing: number; reason: string }[];
     };
     expect(body.items).toEqual([
       { userId: "rev-1", reviewerName: "Ada Lovelace", submissionId: "sub-1", submissionRef: "SES-001", submissionTitle: "Talk One" },
@@ -130,6 +132,8 @@ describe("GET /api/v1/plans/:id/assignments/distribute/preview (DEC-786)", () =>
       { userId: "rev-1", name: "Ada Lovelace", added: 1, total: 1 },
       { userId: "rev-2", name: "Grace Hopper", added: 1, total: 1 },
     ]);
+    expect(body.total).toBe(2);
+    expect(body.shortfall).toEqual([]);
     // Nothing written.
     expect(reviewerRows.length).toBe(2);
     expect(addedRows.length).toBe(0);
@@ -139,6 +143,30 @@ describe("GET /api/v1/plans/:id/assignments/distribute/preview (DEC-786)", () =>
     const app = await buildApp(reviewer);
     const res = await app.request(`/api/v1/plans/${plan.id}/assignments/distribute/preview`);
     expect(res.status).toBe(403);
+  });
+
+  it("DEC-824: a capPerReviewer of 1 leaves the second submission a shortfall", async () => {
+    // 2 reviews needed per submission, but only 2 reviewers total each
+    // capped at 1 -- sub-1 consumes both reviewers' whole capacity, so
+    // sub-2 is an honest shortfall rather than a silent under-fill.
+    plan.maxEvaluations = 2;
+    const app = await buildApp(organizer);
+    const res = await app.request(`/api/v1/plans/${plan.id}/assignments/distribute/preview?capPerReviewer=1`);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      total: number;
+      shortfall: { submissionId: string; missing: number; reason: string }[];
+    };
+    expect(body.total).toBe(2);
+    expect(body.shortfall).toEqual([
+      { submissionId: "sub-2", submissionRef: "SES-002", submissionTitle: "Talk Two", trackName: "", missing: 2, reason: "cap_reached" },
+    ]);
+  });
+
+  it("DEC-824: rejects a non-positive-integer capPerReviewer loudly", async () => {
+    const app = await buildApp(organizer);
+    const res = await app.request(`/api/v1/plans/${plan.id}/assignments/distribute/preview?capPerReviewer=0`);
+    expect(res.status).toBe(400);
   });
 });
 

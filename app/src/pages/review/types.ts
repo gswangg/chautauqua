@@ -307,9 +307,25 @@ export interface DistributePreviewReviewer {
   name: string;
   added: number;
   total: number;
+  // DEC-824: this reviewer got nothing because their scope (a track) covers
+  // no submission this run still needs a reviewer for.
+  note?: 'wrong track';
+}
+
+// DEC-824: what a `capPerReviewer` run could not staff, per submission --
+// a closed-vocabulary reason so the dialog can name the constraint.
+export interface DistributePreviewShortfall {
+  submissionId: string;
+  submissionRef: string;
+  submissionTitle: string;
+  trackName: string;
+  missing: number;
+  reason: 'cap_reached' | 'no_eligible_reviewer';
 }
 
 export interface DistributePreview {
   items: DistributePreviewItem[];
   perReviewer: DistributePreviewReviewer[];
+  total: number;
+  shortfall: DistributePreviewShortfall[];
 }
