@@ -81,3 +81,29 @@ describe('speakers.css participation chip vs. trigger reset (DEC-880/DEC-940)', 
     expect(body).toMatch(/border(-\w+)?:/);
   });
 });
+
+// DEC-730 amendment (wave 39): matrix header inverts the frame's emphasis --
+// task TITLE gets sentence-case ink at ~15px, the DUE/REQUIRED second line
+// keeps the shared 11px uppercase-muted register, and the header row closes
+// with a 2px ink rule (docs/design/README.md: "one 2px rule per section").
+describe('speakers.css matrix header register (DEC-730 amendment, wave 39)', () => {
+  const css = readFileSync(CSS_PATH, 'utf-8');
+
+  it('the task title is sentence-case ink at ~15px, not uppercase-muted', () => {
+    const body = topLevelRuleBody(css, '.chq-speakers-task-title');
+    expect(body).toMatch(/font-size:\s*15px/);
+    expect(body).toMatch(/text-transform:\s*none/);
+    expect(body).toMatch(/color:\s*var\(--chq-ink\)/);
+  });
+
+  it('the due/required line keeps the uppercase-muted micro-label register', () => {
+    const body = topLevelRuleBody(css, '.chq-speakers-task-due');
+    expect(body).toMatch(/text-transform:\s*uppercase/);
+    expect(body).toMatch(/color:\s*var\(--chq-muted\)/);
+  });
+
+  it('the header row closes with a 2px ink rule, not the shared 1px hairline', () => {
+    const body = topLevelRuleBody(css, '.chq-speakers-grid thead th');
+    expect(body).toMatch(/border-bottom:\s*2px solid var\(--chq-ink\)/);
+  });
+});

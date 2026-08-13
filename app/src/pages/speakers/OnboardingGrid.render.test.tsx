@@ -972,3 +972,37 @@ describe('OnboardingGrid: DEC-933/DEC-934 task Edit/Remove + not-chasing rows', 
     expect(gridCalls.length).toBeGreaterThanOrEqual(2);
   });
 });
+
+// DEC-730 amendment (wave 39): the first column carries a participation
+// control (ParticipationMenu) as well as the speaker's identity -- its
+// header must name both axes, not just "Speaker".
+describe('OnboardingGrid: DEC-730 amendment matrix header names both axes', () => {
+  it('renders the first column header as Speaker + Participation', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: GRID,
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+    });
+
+    render(<MemoryRouter><OnboardingGrid onAddSpeaker={vi.fn()} /></MemoryRouter>);
+    await waitFor(() => screen.getAllByText('Ada Lovelace').length > 0);
+
+    const table = within(screen.getByRole('table'));
+    const headers = table.getAllByRole('columnheader');
+    expect(headers[0]).toHaveTextContent(/Speaker/);
+    expect(headers[0]).toHaveTextContent(/Participation/);
+  });
+
+  it('renders each task title in its own .chq-speakers-task-title element', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: GRID,
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+    });
+
+    render(<MemoryRouter><OnboardingGrid onAddSpeaker={vi.fn()} /></MemoryRouter>);
+    await waitFor(() => screen.getAllByText('Ada Lovelace').length > 0);
+
+    const table = within(screen.getByRole('table'));
+    const title = table.getByText('Sign speaker agreement');
+    expect(title).toHaveClass('chq-speakers-task-title');
+  });
+});

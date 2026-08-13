@@ -125,6 +125,19 @@
   min-width: 1060px;
 }
 
+/* DEC-730 amendment (wave 39): the shared .chq-table th register (11px
+   uppercase-muted) is right for the second line -- due/required -- but wrong
+   for the task TITLE, which the frame gives sentence-case ink at ~15px. This
+   overrides the title only; .chq-speakers-task-due keeps the shared register
+   unchanged. */
+.chq-speakers-task-title {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--chq-ink);
+}
+
 .chq-speakers-task-due {
   margin-top: 2px;
   font-size: 10px;
@@ -132,6 +145,13 @@
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--chq-muted);
+}
+
+/* DEC-730 amendment (wave 39): a 2px ink rule closes the section header --
+   "one 2px rule per section" (docs/design/README.md) -- replacing the shared
+   1px .chq-table th hairline for this grid's header row only. */
+.chq-speakers-grid thead th {
+  border-bottom: 2px solid var(--chq-ink);
 }
 
 /* DEC-933: the quiet Edit/Remove pair a task column header carries -- text
