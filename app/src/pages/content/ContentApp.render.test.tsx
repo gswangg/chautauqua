@@ -666,6 +666,104 @@ describe('ContentApp (DEC-952): exactly one h1 in every state', () => {
   });
 });
 
+// w42-c (DEC-274): a title-row "Approve N ready" action, distinct from the
+// row-selection bulk bar (DEC-825) above -- N is every row on the CURRENT
+// worklist page whose contentStatus isn't already 'approved', with no
+// selection required. Rendered only when N > 0; confirming posts every one
+// of those ids in a single request and reloads.
+describe('ContentApp "Approve N ready" title-row action (w42-c/DEC-274)', () => {
+  function twoUnapprovedEnvelope() {
+    return listEnvelope([
+      {
+        id: 'sub-1',
+        ref: 'S-001',
+        title: 'Talk One',
+        status: 'accepted',
+        contentStatus: 'pending',
+        speakers: [],
+        trackIds: [],
+        submittedAt: null,
+        createdAt: 1700000000000,
+        deliverableCounts: { presentation: 0, poster: 0, handout: 0 },
+      },
+      {
+        id: 'sub-2',
+        ref: 'S-002',
+        title: 'Talk Two',
+        status: 'accepted',
+        contentStatus: 'changes_requested',
+        speakers: [],
+        trackIds: [],
+        submittedAt: null,
+        createdAt: 1700000001000,
+        deliverableCounts: { presentation: 0, poster: 0, handout: 0 },
+      },
+    ]);
+  }
+
+  it('is absent when every row on the current page is already approved (N=0)', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([
+        {
+          id: 'sub-1',
+          ref: 'S-001',
+          title: 'Approved Talk',
+          status: 'accepted',
+          contentStatus: 'approved',
+          speakers: [],
+          trackIds: [],
+          submittedAt: null,
+          createdAt: 1700000000000,
+          deliverableCounts: { presentation: 0, poster: 0, handout: 0 },
+        },
+      ]),
+    });
+
+    renderContentApp();
+
+    fireEvent.click(await screen.findByRole('tab', { name: 'All accepted sessions' }));
+    await screen.findByText('Approved Talk');
+
+    expect(screen.queryByRole('button', { name: /^Approve \d+ ready$/ })).not.toBeInTheDocument();
+  });
+
+  it('names the count, opens a confirm naming the consequence, and posts every not-yet-approved id on confirm', async () => {
+    const submissionsMock = vi.fn(() => twoUnapprovedEnvelope());
+    const fetchMock = mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: submissionsMock,
+      [`POST /api/v1/events/${EVENT_ID}/submissions/content-status`]: { updated: 2 },
+    });
+
+    renderContentApp();
+
+    fireEvent.click(await screen.findByRole('tab', { name: 'All accepted sessions' }));
+    await screen.findByText('Talk One');
+    await screen.findByText('Talk Two');
+
+    const openButton = screen.getByRole('button', { name: 'Approve 2 ready' });
+    fireEvent.click(openButton);
+
+    expect(await screen.findByText('Unapproved sessions stay off the public site.')).toBeInTheDocument();
+
+    const callsBeforeConfirm = submissionsMock.mock.calls.length;
+    fireEvent.click(screen.getByRole('button', { name: 'Approve 2' }));
+
+    await waitFor(() => {
+      const bulkCalls = fetchMock.mock.calls.filter(([input]) => String(input).includes('/submissions/content-status'));
+      expect(bulkCalls).toHaveLength(1);
+    });
+    const [, init] = fetchMock.mock.calls.find(([input]) => String(input).includes('/submissions/content-status'))!;
+    const body = JSON.parse((init as RequestInit).body as string) as { ids: string[]; contentStatus: string };
+    expect(body.contentStatus).toBe('approved');
+    expect(body.ids.sort()).toEqual(['sub-1', 'sub-2']);
+
+    await waitFor(() => {
+      expect(submissionsMock.mock.calls.length).toBeGreaterThan(callsBeforeConfirm);
+    });
+    expect(screen.queryByText('Unapproved sessions stay off the public site.')).not.toBeInTheDocument();
+  });
+});
+
 describe('ContentApp worklist tab (DEC-825): ?tab= round-trips through the new vocabulary', () => {
   it('reads an explicit ?tab=approved from the URL and marks that chip active', async () => {
     mockApi({

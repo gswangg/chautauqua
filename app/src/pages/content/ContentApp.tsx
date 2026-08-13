@@ -6,6 +6,7 @@ import { DeliverableDetail } from './DeliverableDetail';
 import { FilesLibrary } from './FilesLibrary';
 import { SessionList } from './SessionList';
 import { DelayedLoading } from '../../components/DelayedLoading';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { type ContentStatus, type ContentSubmissionListItem } from './types';
 import { WORKLIST_TAB_CONTENT_STATUS, WORKLIST_TABS, type WorklistTab } from './worklist';
 
@@ -88,6 +89,11 @@ export function ContentApp() {
   // DEC-825 amendment: set-based bulk content-approval selection.
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkPending, setBulkPending] = useState(false);
+  // w42-c: title-row "Approve N ready" action — every row on the CURRENT
+  // worklist page whose contentStatus isn't already 'approved', independent
+  // of the row-selection bulk bar above (no selection required).
+  const [showApproveReadyConfirm, setShowApproveReadyConfirm] = useState(false);
+  const [approveReadyPending, setApproveReadyPending] = useState(false);
   // w1-e: bumping this remounts FilesLibrary (its own load() effect keys on
   // eventId, not on time), which forces a fresh fetch — used on view
   // switch, the explicit Refresh button, and after a deliverable upload so
@@ -273,6 +279,27 @@ export function ContentApp() {
     }
   }
 
+  // w42-c: ready-to-approve rows on the current worklist page.
+  const notApprovedIds = items.filter((item) => item.contentStatus !== 'approved').map((item) => item.id);
+
+  async function confirmApproveReady() {
+    if (!eventId || notApprovedIds.length === 0) return;
+    setError(null);
+    setApproveReadyPending(true);
+    try {
+      await apiPost(`/events/${eventId}/submissions/content-status`, {
+        ids: notApprovedIds,
+        contentStatus: 'approved',
+      });
+      setShowApproveReadyConfirm(false);
+      loadWorklist();
+    } catch (err) {
+      setError(err instanceof ApiError ? `Approve failed: ${err.message}` : 'Approve failed');
+    } finally {
+      setApproveReadyPending(false);
+    }
+  }
+
   if (eventLoading) {
     return (
       <div className="chq-page chq-measure-table">
@@ -322,6 +349,18 @@ export function ContentApp() {
               (named for where it goes, not where you are) plus Refresh. */}
           {!submissionId && (
             <div className="chq-content-summary-actions">
+              {/* w42-c: only when the current worklist page has at least one
+                  row that isn't already approved — a title-row action
+                  independent of the row-selection bulk bar. */}
+              {view === 'worklist' && notApprovedIds.length > 0 && (
+                <button
+                  type="button"
+                  className="chq-btn chq-btn-primary chq-content-approve-ready-btn"
+                  onClick={() => setShowApproveReadyConfirm(true)}
+                >
+                  Approve {notApprovedIds.length} ready
+                </button>
+              )}
               {view === 'worklist' ? (
                 <button type="button" className="chq-btn chq-btn-secondary" onClick={() => changeView('files')}>
                   All files
@@ -424,6 +463,16 @@ export function ContentApp() {
           counts={counts}
           selectedIds={selectedIds}
           onSelectionChange={setSelectedIds}
+        />
+      )}
+      {showApproveReadyConfirm && (
+        <ConfirmDialog
+          title={`Approve ${notApprovedIds.length} ready`}
+          body="Unapproved sessions stay off the public site."
+          confirmLabel={`Approve ${notApprovedIds.length}`}
+          pending={approveReadyPending}
+          onConfirm={confirmApproveReady}
+          onCancel={() => setShowApproveReadyConfirm(false)}
         />
       )}
     </div>
