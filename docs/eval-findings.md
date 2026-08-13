@@ -139,3 +139,16 @@ occupied-slot place-anyway. Phone shells: bottom fixed tab bar + inset scroll,
 Submissions triage cards' verbose fields, Settings subscreens as routes, phone CFP
 2-step wizard, phone password fixed footer + Cancel, roster screen, Home footer
 media rule). All under the additive-reflow rule.
+
+## ABS grader additions (2026-08-13, prod)
+
+- **Results sort-direction inverted (recurrence, persists)**: header arrow + CSV-link
+  direction disagree with actual row order on every click. Ranking correct, label wrong.
+- **Criterion labels CROSSED on organizer submission detail**: raw keys map to wrong
+  display names ("relevance"=4 is actually Originality; "depth"=2 is actually
+  Relevance) — values right, labels wrong, this view only.
+- **Anonymity inconsistency**: anonymized round's reviewer shows "Anonymous reviewer"
+  TO THE ORGANIZER on submission detail while named on Progress/Assignment — organizer
+  should see names consistently (per DEC-596's own rule).
+- Reconfirmed: pending submissions invisible speaker-side; co-presenter
+  organizer-only w/ generic role label.
