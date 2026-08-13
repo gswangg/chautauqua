@@ -113,11 +113,23 @@ until you open it" + don't show "NAME IS REQUIRED." before input · results: ONE
 blended SCORE column (per-criterion detail behind ▸ Reviews) — probe confirms still
 dense multi-column.
 
-**Speakers** (DEC-730 control family + hover ring + footer caption + em-dash modal
-all CLOSED by probe 2): overdue label copy — render mock's "OVERDUE", not "N DAYS
-LATE" (control anatomy is right, word is wrong) · (probe-3: DEC-776 badge consistency CLOSED — badge=stat=rendered cells) · horizontal scroll contained to grid wrapper · New-task
-modal: Kind = Upload/Form/Acknowledge, drop Description + assign-all, styled date ·
-remove desktop Import CSV button · headers "DUE 10 APR · REQUIRED".
+**Speakers** (probe-5 CLOSED: DEC-830 participation MENU — real menu, 4 states +
+Send portal invite, persistence + role DB-verified, DEC-730 shapes all four
+correct; deviation from frame is REASONED + documented in DEC-830 (Invited kept
+as a separate no-send state because invited is portal-read-only/not-public —
+accept the deviation, do not "fix") · DEC-827 importer link w/ live event context
+· "Any task status" relabel · earlier DEC-730/em-dash/badges batch):
+**Add-speaker breakage FIXED via manual-qa a2f85f83 (probe-5 found DEC-810's
+guard made the form 100% non-functional — form now sends sessionTitle + renders
+field-level errors); next probe re-verifies end-to-end.**
+Residual (cosmetic, gate-checkable): menu lacks per-item consequence captions +
+NOW badge + identity header + olive emphasis on the action · participation filter
+is 4 toggle pills (DEC-789) not the frame's "Any participation ▾" select —
+functional; check mock intent at gate · inline Send-portal-invite gated on
+!hasAccount (superset of Not-invited rule — fine) · DEC-826 effective date:
+visible on portal pending rows; organizer grid still prints raw date pre-breach
+(surface it there too) · horizontal scroll contained to grid wrapper · New-task
+modal: styled date · headers "DUE 10 APR · REQUIRED" + year for far dates.
 
 **Content** (probe 2 CLOSED: Approve hidden on approved rows · worklist header copy ·
 library pill chips counted, no select · Download all truthful): session detail
@@ -168,27 +180,25 @@ merge impact line present · DEC-800 named duplicate reasons incl. "Same name,
 different company" · duplicate hint at creation (debounced check + advisory) ·
 contact delete in drawer w/ honest 409 merge-instead guidance DEC-758):
 
-**P2 — LAST FABRICATION LIMB, UI-reachable**: push.ts:55 AND :88 still fabricate
-`Invited: <name>` ACCEPTED sessions on the two unguarded callers — POST /contacts
-w/ eventId (crud.ts:122; reached by Speakers → "Add speaker", whose Title field is
-the JOB title) and CSV import w/ eventId (import.ts:143; reached by Speakers →
-import). Apply the same title guard as crud.ts:368 or stop creating sessions on
-these paths (roster-only add); probe wrote 3 fabricated sessions incl. one via
-pure UI clicks.
-**NEW — duplicate-hint link 404s**: NewContactModal.tsx:177 uses <Link
-to="/admin/contacts…"> inside basename="/admin" → /admin/admin/contacts. Strip the
-basename from the `to`.
-**Merge header disambiguation**: for same-name pairs both columns render the
-IDENTICAL name at the moment of an irreversible choice — append the email/company
-disambiguator the pick-list already shows.
+(probe-5 CLOSED: fabrication fallback GONE server-side DEC-810 — sessionTitle
+required on all eventId paths, 0 fabricated rows · dup-hint link fixed
+(openContact drawer opens) · DEC-834 merge header disambiguation for identical
+names · DEC-823 seed ships 3 duplicate pairs w/ named reasons · DEC-821 pipeline
+fit behavior: migration + dialog fields + within-column ranking + activity write,
+no mailer)
+**Merge disambiguation case bug**: namesCollide compares raw names
+case-SENSITIVELY (MergePage.tsx:129) while headers render CSS-uppercased —
+"PARKER anders" vs "Parker Anders" shows two identical PARKER ANDERS columns; use
+the detector's normalizedName.
 Residue: effective (grace) deadline invisible until breached — surface it before
 overdue (e.g. tooltip/inline "counts from assignment: due 20 Aug") ·
 participant.invite_status written 'none' on add-to-event (write the real state) ·
 no row-level or bulk delete (drawer-only is fine if mock agrees — check at gate) ·
-**SEED still ships 0 duplicate pairs** (near-misses defeated by middle initials —
-add 2-3 real pairs so Duplicates/Merge demos non-empty) · duplicate DETECTION rule
-now explicit (DEC-800 caption) — drop the old decide-in-DEC line · drawer
-read-only reorder · import step panels/CTA · pipeline fit score (v5 §5).
+drawer read-only reorder · import step panels/CTA · pipeline fit PRESENTATION vs
+frame (dialog lacks "writes a move to the activity feed · no email is sent"
+footer + helper texts; Stage/Fit as selects not pill rows; title "Enroll a
+contact" vs "Add to the pipeline"; Fit pill neutral cream not olive — frame wants
+scorecard-family olive).
 
 **Settings**: READ-ONLY SUMMARY pattern (THE item — sections as label:value rows w/
 "Edit the form"/"Change"/"Replace" drill-ins; forms only on drill) · remove new
