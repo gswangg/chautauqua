@@ -324,20 +324,25 @@ describe("seed.ts output (task w1-d, DEC-145)", () => {
     }
   });
 
-  it("preserves the near-duplicate contacts: two Priya Raman + two Marcus Okafor rows, same name+company, different emails", () => {
+  it("DEC-771: keeps a near-duplicate Priya/Marcus contact row per person (same company, different email) WITHOUT colliding on normalized full name with the named speaker contact", () => {
     const priyaRows = [
-      ...sql.matchAll(/INSERT INTO contact \([^)]*\) VALUES \('([^']*)', 'seed_org_0001', 'Priya', 'Raman', '([^']*)', NULL, 'Latticework Systems'/g),
+      ...sql.matchAll(/INSERT INTO contact \([^)]*\) VALUES \('([^']*)', 'seed_org_0001', 'Priya', '([^']*)', '([^']*)', NULL, 'Latticework Systems'/g),
     ];
     expect(priyaRows.length).toBeGreaterThanOrEqual(2);
-    const priyaEmails = new Set(priyaRows.map((r) => r[2]));
+    const priyaEmails = new Set(priyaRows.map((r) => r[3]));
     expect(priyaEmails.size).toBeGreaterThanOrEqual(2);
+    // DEC-771: no two of these rows share a normalized (lowercased) full name.
+    const priyaNormalizedNames = priyaRows.map((r) => `priya ${r[2]}`.toLowerCase().trim());
+    expect(new Set(priyaNormalizedNames).size).toBe(priyaNormalizedNames.length);
 
     const marcusRows = [
-      ...sql.matchAll(/INSERT INTO contact \([^)]*\) VALUES \('([^']*)', 'seed_org_0001', 'Marcus', 'Okafor', '([^']*)', NULL, 'Cloudreach Labs'/g),
+      ...sql.matchAll(/INSERT INTO contact \([^)]*\) VALUES \('([^']*)', 'seed_org_0001', 'Marcus', '([^']*)', '([^']*)', NULL, 'Cloudreach Labs'/g),
     ];
     expect(marcusRows.length).toBeGreaterThanOrEqual(2);
-    const marcusEmails = new Set(marcusRows.map((r) => r[2]));
+    const marcusEmails = new Set(marcusRows.map((r) => r[3]));
     expect(marcusEmails.size).toBeGreaterThanOrEqual(2);
+    const marcusNormalizedNames = marcusRows.map((r) => `marcus ${r[2]}`.toLowerCase().trim());
+    expect(new Set(marcusNormalizedNames).size).toBe(marcusNormalizedNames.length);
   });
 
   // -------------------------------------------------------------------------

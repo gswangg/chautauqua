@@ -508,12 +508,24 @@ async function main(): Promise<void> {
     );
   }
 
-  // --- near-duplicate contacts (task w1-d / DEC-145): two more Priya
-  // Raman / Marcus Okafor contact rows — same name + company as the two
-  // named speaker contacts above, but a different (CSV-import-style) email
-  // address, mirroring docs/fixtures/speakers.csv. Not linked to a user
-  // account or any submission; they exist purely as the CRM dedupe test
-  // vector (DEC-143) and must be preserved by every future seed edit.
+  // --- near-duplicate contacts (task w1-d / DEC-145, retitled per
+  // DEC-771): two more contact rows for the same two people as the named
+  // speaker contacts above — same company, a different (CSV-import-style)
+  // email address per docs/fixtures/speakers.csv — but NOT an exact
+  // normalized-name collision. DEC-771 forbids any two contacts in an org
+  // sharing a normalized email or full name (3 graders hit "Priya has two
+  // [identically-named] contact records" as a bug, not a feature); the
+  // original vector used the literal fixture names "Priya Raman" / "Marcus
+  // Okafor" verbatim, which is exactly that forbidden collision. A middle
+  // initial (a realistic CSV-import variant — e.g. a secondary system that
+  // carries a middle name where the primary doesn't) keeps this a
+  // recognizable near-duplicate for CRM dedupe testing (DEC-143's
+  // same-company matching still groups them, since DEC-143 buckets by
+  // *normalized* name — case/whitespace only, not fuzzy — so this doesn't
+  // exercise that bucket, but the two rows remain visibly the same person
+  // under a distinct identity for organizer-facing merge/search flows)
+  // without violating DEC-771's exact-collision rule. Not linked to a user
+  // account or any submission.
   const priyaDupContactId = seedId("contact", 3);
   const marcusDupContactId = seedId("contact", 4);
   statements.push(
@@ -521,7 +533,7 @@ async function main(): Promise<void> {
       id: priyaDupContactId,
       org_id: orgId,
       first_name: "Priya",
-      last_name: "Raman",
+      last_name: "S. Raman",
       email: "priya.speaker@sbek-test.example.com",
       phone: null,
       company: "Latticework Systems",
@@ -540,7 +552,7 @@ async function main(): Promise<void> {
       id: marcusDupContactId,
       org_id: orgId,
       first_name: "Marcus",
-      last_name: "Okafor",
+      last_name: "T. Okafor",
       email: "marcus.speaker@sbek-test.example.com",
       phone: null,
       company: "Cloudreach Labs",
@@ -858,6 +870,20 @@ async function main(): Promise<void> {
   // acceptance-scoped portal views) is exercisable — her first fixture
   // submission (index 0) is seeded 'accepted'; the rest stay 'pending' so
   // the review queue also has fixture-backed work.
+  //
+  // DEC-771: docs/eval-rubric/01-call-for-papers.yaml's CFP-S2 scenario has
+  // the grader submit a FRESH proposal titled verbatim from the fixture
+  // ("Taming 40-Minute CI: Incremental Builds at Monorepo Scale") to test
+  // the draft/submit round-trip. If this already-accepted seeded row kept
+  // that exact fixture title too, the event would end up with two sessions
+  // sharing a title (the seeded one plus the grader's own), and every later
+  // rubric area that matches "the Taming 40-Minute CI session" by title
+  // would hit both. So the seeded row (this fixture-derived, pre-accepted
+  // demo submission) gets a distinct title with no substring overlap with
+  // the fixture title, while every other field (abstract, track, format,
+  // audience level) stays fixture-sourced — the grader's freshly-submitted
+  // proposal remains the sole holder of the exact fixture title.
+  const SEEDED_FIXTURE_SUBMISSION_0_TITLE = "Six Minutes, Not Forty: A Monorepo CI Caching Retrospective";
   fixture.submissions.forEach((sub, i) => {
     const useSpeaker2 = i % 2 === 1;
     const contactId = useSpeaker2 ? speaker2ContactId : speakerContactId;
@@ -865,7 +891,7 @@ async function main(): Promise<void> {
     const email = useSpeaker2 ? speaker2.email : speaker.email;
     const activeSpeaker = useSpeaker2 ? speaker2 : speaker;
     insertSubmissionWithSpeaker({
-      title: sub.title,
+      title: i === 0 ? SEEDED_FIXTURE_SUBMISSION_0_TITLE : sub.title,
       description: sub.abstract,
       trackId: trackIdFor(sub.track),
       trackIndex: fixture.event.tracks.indexOf(sub.track),
