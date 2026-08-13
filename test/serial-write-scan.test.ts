@@ -197,12 +197,6 @@ const KNOWN_SERIAL_WRITES: { file: string; functionOrNearestExport: string; reas
     reason:
       "Persists a drag-and-drop reorder as one UPDATE per field position; each row commonly gets a distinct `position` value, so it isn't a shared-predicate set update -- bounded by one form's field count (a UI-driven list, not a bulk/import path).",
   },
-  {
-    file: "src/server/repo/import/sessionboard.ts",
-    functionOrNearestExport: "flushParticipantUpdates",
-    reason:
-      "Idempotent re-import update path for participants whose role/order changed: each row's SET clause differs (role-only / order-only / both), so a single-statement update would need a per-column CASE/WHEN keyed on id -- the function's own comment flags this as a narrower interpretation than a literal multi-row CASE and marks it a follow-up; concurrent lane w49-e may also touch this file, so if this line no longer matches at merge time the correct resolution is deleting it, not re-adding the loop.",
-  },
 ];
 
 describe("serial per-row D1 write scan (DEC-948 amendment, wave 49)", () => {
