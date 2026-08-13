@@ -10,8 +10,6 @@ import * as schema from "../../../db/schema";
 import { newId } from "../../../domain/ids";
 import { chunkIds, chunkRowsForInsert } from "../../../lib/chunk";
 import { isValidEmail, normalizeEmail } from "../../../domain/email";
-import { submissionSeqSubquery } from "../submissions/seq";
-import { replaceSubmissionTracks } from "../submit";
 import { SESSIONBOARD_SOURCE, externalRef, type SbEntity, type SbRowPlan } from "../../../domain/sessionboard";
 import { updateSubmissionStatuses } from "../submissions/status";
 import type { SubmissionStatus } from "../../../domain/status";
@@ -243,21 +241,22 @@ type ParticipantUpdateRow = {
   order?: number;
 };
 
-// DEC-528 (wave 49 amendment): the accumulated participant updates are
-// flushed HERE, after the row loop has finished resolving every id -- the
-// loop itself never awaits an update. Rows are grouped by column-set
-// SIGNATURE (which optional keys are present -- derived by enumerating each
-// row's own keys, never a hand-listed enum that desyncs when
-// ParticipantUpdateRow grows) and then by the actual VALUE TUPLE for that
-// signature. Every row sharing a (signature, value tuple) sets the exact
-// same columns to the exact same values, so it collapses into one
-// `UPDATE ... WHERE id IN (...)` per chunk of that group's ids (chunked via
-// chunkIds for the D1 bound-parameter ceiling) instead of one statement per
-// row. A 500-row idempotent re-import (a handful of distinct role/order
-// combinations) now pays O(distinct value tuples * chunks) statements, not
-// O(rows).
-async function flushParticipantUpdates(db: Db, rows: ParticipantUpdateRow[], ts: Date): Promise<void> {
-  // Map from signature -> (value-tuple key -> { values, ids }).
+// DEC-528 (wave 49 amendment, generalized wave 52): every batched update
+// path in this file (participants, and now contacts/submissions/tracks
+// below) shares this ONE grouping idiom rather than each inventing its own:
+// rows are grouped by column-set SIGNATURE (which optional keys are present
+// -- derived by enumerating each row's own keys, never a hand-listed enum
+// that desyncs when a *UpdateRow type grows) and then by the actual VALUE
+// TUPLE for that signature. Every row sharing a (signature, value tuple)
+// sets the exact same columns to the exact same values, so it collapses
+// into one `UPDATE ... WHERE id IN (...)` per chunk of that group's ids
+// (chunked via chunkIds for the D1 bound-parameter ceiling) instead of one
+// statement per row. A 500-row idempotent re-import (a handful of distinct
+// value combinations) now pays O(distinct value tuples * chunks)
+// statements, not O(rows).
+function groupUpdateRows<T extends { id: string }>(
+  rows: T[],
+): Map<string, Map<string, { values: Record<string, unknown>; ids: string[] }>> {
   const groups = new Map<string, Map<string, { values: Record<string, unknown>; ids: string[] }>>();
 
   for (const row of rows) {
@@ -281,6 +280,11 @@ async function flushParticipantUpdates(db: Db, rows: ParticipantUpdateRow[], ts:
     entry.ids.push(id);
   }
 
+  return groups;
+}
+
+async function flushParticipantUpdates(db: Db, rows: ParticipantUpdateRow[], ts: Date): Promise<void> {
+  const groups = groupUpdateRows(rows);
   for (const bySignature of groups.values()) {
     for (const { values, ids } of bySignature.values()) {
       for (const batch of chunkIds(ids)) {
@@ -291,6 +295,106 @@ async function flushParticipantUpdates(db: Db, rows: ParticipantUpdateRow[], ts:
       }
     }
   }
+}
+
+type ContactUpdateRow = {
+  id: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  phone?: string | null;
+  company?: string | null;
+  title?: string | null;
+  bio?: string | null;
+};
+
+async function flushContactUpdates(db: Db, rows: ContactUpdateRow[], ts: Date): Promise<void> {
+  const groups = groupUpdateRows(rows);
+  for (const bySignature of groups.values()) {
+    for (const { values, ids } of bySignature.values()) {
+      for (const batch of chunkIds(ids)) {
+        await db
+          .update(schema.contact)
+          .set({ ...values, updatedAt: ts })
+          .where(inArray(schema.contact.id, batch));
+      }
+    }
+  }
+}
+
+type SubmissionUpdateRow = {
+  id: string;
+  title?: string;
+  description?: string | null;
+};
+
+async function flushSubmissionUpdates(db: Db, rows: SubmissionUpdateRow[], ts: Date): Promise<void> {
+  const groups = groupUpdateRows(rows);
+  for (const bySignature of groups.values()) {
+    for (const { values, ids } of bySignature.values()) {
+      for (const batch of chunkIds(ids)) {
+        await db
+          .update(schema.submission)
+          .set({ ...values, updatedAt: ts })
+          .where(inArray(schema.submission.id, batch));
+      }
+    }
+  }
+}
+
+type TrackUpdateRow = {
+  id: string;
+  name?: string;
+  color?: string | null;
+};
+
+async function flushTrackUpdates(db: Db, rows: TrackUpdateRow[], ts: Date): Promise<void> {
+  const groups = groupUpdateRows(rows);
+  for (const bySignature of groups.values()) {
+    for (const { values, ids } of bySignature.values()) {
+      for (const batch of chunkIds(ids)) {
+        await db
+          .update(schema.track)
+          .set({ ...values, updatedAt: ts })
+          .where(inArray(schema.track.id, batch));
+      }
+    }
+  }
+}
+
+/** Current MAX(seq) among the event's submissions -- the ONE pre-loaded
+ * read a batched create pass increments in JS per created row, replacing
+ * `submissionSeqSubquery`'s per-row correlated sub-select, which cannot
+ * survive a multi-row VALUES insert. Reads the plain `seq` column (not a SQL
+ * MAX() aggregate) so this stays the same "select this event's rows, reduce
+ * in JS" shape every other loader in this file already uses. The
+ * UNIQUE (event_id, seq) index (schema.ts) still fails loudly on a
+ * concurrent submit landing between this read and the batched insert below
+ * -- no retry is added; a Sessionboard import racing a live submission
+ * against the same event is the rare case that index exists to catch, not
+ * the common case a retry loop would need to paper over.
+ */
+async function loadMaxSubmissionSeq(db: Db, eventId: string): Promise<number> {
+  const rows = await db
+    .select({ seq: schema.submission.seq })
+    .from(schema.submission)
+    .where(eq(schema.submission.eventId, eventId));
+  let max = 0;
+  for (const r of rows) if (r.seq > max) max = r.seq;
+  return max;
+}
+
+/** Current MAX(position) among the event's tracks (-1 if none) -- same
+ * batching rationale as loadMaxSubmissionSeq, replacing the per-row
+ * correlated sub-select the track create path used to issue. */
+async function loadMaxTrackPosition(db: Db, eventId: string): Promise<number> {
+  const rows = await db
+    .select({ position: schema.track.position })
+    .from(schema.track)
+    .where(eq(schema.track.eventId, eventId));
+  let max = -1;
+  for (const r of rows) if (r.position > max) max = r.position;
+  return max;
 }
 
 export async function applySessionboardPlans(db: Db, args: ApplySessionboardPlansArgs): Promise<SbApplyResult> {
@@ -477,6 +581,67 @@ export async function applySessionboardPlans(db: Db, args: ApplySessionboardPlan
     return { created, updated, skipped };
   }
 
+  // DEC-528 (wave 52): the one-time allocator preloads for the two
+  // create-time sequential fields (submission.seq, track.position) --
+  // resolved ONCE here and incremented in JS per created row below, because
+  // a correlated per-row sub-select (the old submissionSeqSubquery / inline
+  // track position sub-select) cannot survive a multi-row VALUES insert.
+  let nextSubmissionSeq = entity === "submissions" ? await loadMaxSubmissionSeq(db, eventId) : 0;
+  let nextTrackPosition = entity === "tracks" ? await loadMaxTrackPosition(db, eventId) : -1;
+
+  type ContactCreateRow = {
+    id: string;
+    orgId: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string | null;
+    company: string | null;
+    title: string | null;
+    bio: string | null;
+    externalRef: string;
+    createdAt: Date;
+    updatedAt: Date;
+  };
+  type SubmissionCreateRow = {
+    id: string;
+    eventId: string;
+    formId: null;
+    seq: number;
+    title: string;
+    description: string | null;
+    status: "pending";
+    contentStatus: "pending";
+    externalRef: string;
+    createdAt: Date;
+    updatedAt: Date;
+  };
+  type TrackCreateRow = {
+    id: string;
+    eventId: string;
+    name: string;
+    color: string | null;
+    position: number;
+    externalRef: string;
+    createdAt: Date;
+    updatedAt: Date;
+  };
+  type SubmissionTrackCreateRow = { submissionId: string; trackId: string; createdAt: Date };
+
+  const contactCreateRows: ContactCreateRow[] = [];
+  const submissionCreateRows: SubmissionCreateRow[] = [];
+  const trackCreateRows: TrackCreateRow[] = [];
+  const submissionTrackCreateRows: SubmissionTrackCreateRow[] = [];
+  const contactUpdateRows: ContactUpdateRow[] = [];
+  const submissionUpdateRows: SubmissionUpdateRow[] = [];
+  const trackUpdateRows: TrackUpdateRow[] = [];
+  // DEC-855 (update path): only a row whose trackName KEY is present gets an
+  // entry here -- an absent key leaves existing tracks alone. Keyed by
+  // submissionId so a duplicate external_ref appearing twice in one batch
+  // resolves to its LAST value, same as the old serial-write ordering did.
+  const trackReplaceBySubmissionId = new Map<string, string | null>();
+  const rowTs = now();
+
   for (const plan of plans) {
     if (!plan.externalRef) {
       skipped.push({ row: plan.row, reason: "Missing external id (Record ID)" });
@@ -503,8 +668,7 @@ export async function applySessionboardPlans(db: Db, args: ApplySessionboardPlan
         }
         const id = newId();
         if (!dryRun) {
-          const ts = now();
-          await db.insert(schema.contact).values({
+          contactCreateRows.push({
             id,
             orgId,
             firstName,
@@ -515,8 +679,8 @@ export async function applySessionboardPlans(db: Db, args: ApplySessionboardPlan
             title: plan.values.title ?? null,
             bio: plan.values.bio ?? null,
             externalRef: plan.externalRef,
-            createdAt: ts,
-            updatedAt: ts,
+            createdAt: rowTs,
+            updatedAt: rowTs,
           });
         }
         refMap.set(plan.externalRef, id);
@@ -534,12 +698,12 @@ export async function applySessionboardPlans(db: Db, args: ApplySessionboardPlan
         // tracks -- the submission row itself never carries a trackId.
         const trackId = plan.values.trackName ? trackNameMap?.get(plan.values.trackName.trim().toLowerCase()) ?? null : null;
         if (!dryRun) {
-          const ts = now();
-          await db.insert(schema.submission).values({
+          nextSubmissionSeq += 1;
+          submissionCreateRows.push({
             id,
             eventId,
             formId: null,
-            seq: submissionSeqSubquery(eventId),
+            seq: nextSubmissionSeq,
             title,
             description: plan.values.description ?? null,
             // DEC-717: the raw insert always writes 'pending' -- a row
@@ -550,11 +714,11 @@ export async function applySessionboardPlans(db: Db, args: ApplySessionboardPlan
             status: "pending",
             contentStatus: "pending",
             externalRef: plan.externalRef,
-            createdAt: ts,
-            updatedAt: ts,
+            createdAt: rowTs,
+            updatedAt: rowTs,
           });
           if (trackId) {
-            await db.insert(schema.submissionTrack).values({ submissionId: id, trackId, createdAt: ts });
+            submissionTrackCreateRows.push({ submissionId: id, trackId, createdAt: rowTs });
           }
         }
         refMap.set(plan.externalRef, id);
@@ -575,17 +739,16 @@ export async function applySessionboardPlans(db: Db, args: ApplySessionboardPlan
       }
       const id = newId();
       if (!dryRun) {
-        const ts = now();
-        const nextPositionSql = sql<number>`(SELECT COALESCE(MAX(${schema.track.position}), -1) + 1 FROM ${schema.track} WHERE ${schema.track.eventId} = ${eventId})`;
-        await db.insert(schema.track).values({
+        nextTrackPosition += 1;
+        trackCreateRows.push({
           id,
           eventId,
           name,
           color: plan.values.color ?? null,
-          position: nextPositionSql,
+          position: nextTrackPosition,
           externalRef: plan.externalRef,
-          createdAt: ts,
-          updatedAt: ts,
+          createdAt: rowTs,
+          updatedAt: rowTs,
         });
       }
       refMap.set(plan.externalRef, id);
@@ -595,42 +758,37 @@ export async function applySessionboardPlans(db: Db, args: ApplySessionboardPlan
 
     // Update: only the fields present in this row's values are patched.
     if (!dryRun) {
-      const ts = now();
       if (entity === "contacts") {
         const v = plan.values;
-        await db
-          .update(schema.contact)
-          .set({
-            ...(v.firstName !== undefined ? { firstName: v.firstName } : {}),
-            ...(v.lastName !== undefined ? { lastName: v.lastName } : {}),
-            ...(v.email !== undefined ? { email: v.email } : {}),
-            ...(v.phone !== undefined ? { phone: v.phone } : {}),
-            ...(v.company !== undefined ? { company: v.company } : {}),
-            ...(v.title !== undefined ? { title: v.title } : {}),
-            ...(v.bio !== undefined ? { bio: v.bio } : {}),
-            updatedAt: ts,
-          })
-          .where(eq(schema.contact.id, existingId));
+        contactUpdateRows.push({
+          id: existingId,
+          ...(v.firstName !== undefined ? { firstName: v.firstName } : {}),
+          ...(v.lastName !== undefined ? { lastName: v.lastName } : {}),
+          ...(v.email !== undefined ? { email: v.email } : {}),
+          ...(v.phone !== undefined ? { phone: v.phone } : {}),
+          ...(v.company !== undefined ? { company: v.company } : {}),
+          ...(v.title !== undefined ? { title: v.title } : {}),
+          ...(v.bio !== undefined ? { bio: v.bio } : {}),
+        });
       } else if (entity === "submissions") {
         const v = plan.values;
-        await db
-          .update(schema.submission)
-          .set({
-            ...(v.title !== undefined ? { title: v.title } : {}),
-            ...(v.description !== undefined ? { description: v.description } : {}),
-            // DEC-717: status is NEVER written here -- a row carrying a
-            // status is applied AFTER the row loop through
-            // updateSubmissionStatuses, the ONE status writer.
-            updatedAt: ts,
-          })
-          .where(eq(schema.submission.id, existingId));
+        submissionUpdateRows.push({
+          id: existingId,
+          ...(v.title !== undefined ? { title: v.title } : {}),
+          ...(v.description !== undefined ? { description: v.description } : {}),
+          // DEC-717: status is NEVER written here -- a row carrying a
+          // status is applied AFTER the row loop through
+          // updateSubmissionStatuses, the ONE status writer.
+        });
         // DEC-855: an update that does not mention a track leaves the
         // existing submission_track rows alone -- only a row where
         // v.trackName is present (even if unresolved/blank) replaces the
-        // full set via the one full-set-replace writer (DEC-598).
+        // full set. Accumulated here and applied as ONE chunked delete +
+        // ONE chunked insert AFTER the row loop, mirroring the full-set-
+        // replace writer's contract (DEC-598) without a per-row round trip.
         if (v.trackName !== undefined) {
           const trackId = v.trackName ? trackNameMap?.get(v.trackName.trim().toLowerCase()) : undefined;
-          await replaceSubmissionTracks(db, existingId, trackId ? [trackId] : []);
+          trackReplaceBySubmissionId.set(existingId, trackId ?? null);
         }
         if (v.status !== undefined) {
           const status = v.status as SubmissionStatus;
@@ -640,17 +798,56 @@ export async function applySessionboardPlans(db: Db, args: ApplySessionboardPlan
         }
       } else {
         const v = plan.values;
-        await db
-          .update(schema.track)
-          .set({
-            ...(v.name !== undefined ? { name: v.name } : {}),
-            ...(v.color !== undefined ? { color: v.color } : {}),
-            updatedAt: ts,
-          })
-          .where(eq(schema.track.id, existingId));
+        trackUpdateRows.push({
+          id: existingId,
+          ...(v.name !== undefined ? { name: v.name } : {}),
+          ...(v.color !== undefined ? { color: v.color } : {}),
+        });
       }
     }
     updated++;
+  }
+
+  if (!dryRun) {
+    for (const chunk of chunkRowsForInsert(contactCreateRows)) {
+      if (chunk.length === 0) continue;
+      await db.insert(schema.contact).values(chunk);
+    }
+    for (const chunk of chunkRowsForInsert(submissionCreateRows)) {
+      if (chunk.length === 0) continue;
+      await db.insert(schema.submission).values(chunk);
+    }
+    for (const chunk of chunkRowsForInsert(submissionTrackCreateRows)) {
+      if (chunk.length === 0) continue;
+      await db.insert(schema.submissionTrack).values(chunk);
+    }
+    for (const chunk of chunkRowsForInsert(trackCreateRows)) {
+      if (chunk.length === 0) continue;
+      await db.insert(schema.track).values(chunk);
+    }
+
+    await flushContactUpdates(db, contactUpdateRows, rowTs);
+    await flushSubmissionUpdates(db, submissionUpdateRows, rowTs);
+    await flushTrackUpdates(db, trackUpdateRows, rowTs);
+
+    // Batched full-set-replace for every updated submission whose row
+    // carried a trackName key: one chunked delete of every existing
+    // submission_track row for those submissionIds, then one chunked
+    // insert for the (submissionId, trackId) pairs that resolved.
+    if (trackReplaceBySubmissionId.size > 0) {
+      const submissionIds = [...trackReplaceBySubmissionId.keys()];
+      for (const batch of chunkIds(submissionIds)) {
+        await db.delete(schema.submissionTrack).where(inArray(schema.submissionTrack.submissionId, batch));
+      }
+      const replaceInsertRows: SubmissionTrackCreateRow[] = [];
+      for (const [submissionId, trackId] of trackReplaceBySubmissionId) {
+        if (trackId) replaceInsertRows.push({ submissionId, trackId, createdAt: rowTs });
+      }
+      for (const chunk of chunkRowsForInsert(replaceInsertRows)) {
+        if (chunk.length === 0) continue;
+        await db.insert(schema.submissionTrack).values(chunk);
+      }
+    }
   }
 
   // DEC-717: apply every accumulated status, once per distinct status,
