@@ -225,7 +225,12 @@ API docs 12px · main/footer landmarks · published-row meta qualifier · sectio
 head 4pt · (CORRECTION: bare session counts are frame-legal; gate-1 premise too
 strict).
 
-**Public/Portal — GATE-2: FAIL improved** (same report; DEC-884 casing+tagline,
+**Public/Portal — GATE-2: FAIL improved — PLANNER: SCHEDULE THIS BATCH NEXT
+(user-priority: "the public pages look quite bad" — these are the judge's
+logged-out first impression). DECIDED (user, 2026-08-13): public submit form
+goes SINGLE-SELECT track radios per the v5 frames; keep the many-to-many model
+underneath; reseed the two 2-track sessions single; format = radio cards,
+audience = 3-pill segment per frame.** (same report; DEC-884 casing+tagline,
 3-up grid, hatched fallback, day-pill state, back-links, DEC-862 chrome halves,
 counters/helpers all CLOSED; claim contract HOLDS): TOP — sessions SEARCH ROW
 (compact ~240px inline input at the pill-row head, no button — DEC-835 never
