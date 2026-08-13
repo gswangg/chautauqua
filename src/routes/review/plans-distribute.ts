@@ -11,7 +11,8 @@ import { csrfJson, requireOrganizer } from "../../server/middleware";
 import { ApiError, readOptionalJsonBody } from "../../server/http";
 import * as repo from "../../server/repo/review";
 import { DEC_786, DEC_824 } from "../../decisions";
-import { distributeAssignments } from "../../domain/review-distribute";
+import { distributeAssignments, type DistributeReviewerScope } from "../../domain/review-distribute";
+import { resolveAssignments, type ReviewerScopeRow } from "../../domain/evaluation";
 import { requireOwnedPlan } from "./shared";
 
 export const reviewPlansDistributeRoutes = new Hono<AppEnv>();
@@ -32,38 +33,68 @@ function parseCapPerReviewer(raw: unknown): number | null {
   return n;
 }
 
+/** Amendment (wave 52): per-reviewer scope for distributeAssignments'
+ * eligibility check -- broad (eligible for anything) means either an
+ * explicit unrestricted ('All submissions') row, or simply no trackId-
+ * scoped row at all (an explicit single-submission pick never narrows a
+ * reviewer's eligibility for OTHER submissions -- only a track-scope row
+ * does that). Otherwise the reviewer is restricted to their scoped
+ * trackIds. */
+function buildReviewerScopes(reviewerUserIds: string[], reviewerRows: ReviewerScopeRow[]): DistributeReviewerScope[] {
+  return reviewerUserIds.map((userId) => {
+    const rows = reviewerRows.filter((r) => r.userId === userId);
+    const hasUnrestrictedRow = rows.some((r) => r.trackId === null && r.submissionId === null);
+    const trackIds = [...new Set(rows.filter((r) => r.trackId !== null).map((r) => r.trackId as string))];
+    const broad = hasUnrestrictedRow || trackIds.length === 0;
+    return { userId, broad, trackIds };
+  });
+}
+
 // DEC-786/DEC-824: pure round-robin distribution of the plan's own reviewer
 // pool (every distinct userId already assigned to this plan, regardless of
 // scope) across every submission the plan's filters resolve to, honoring
 // this run's own `capPerReviewer`. Shared by the preview (writes NOTHING)
 // and the apply endpoint below, so the two can never disagree about which
 // pairs would be added.
+// Amendment (wave 52): coverage/load ("existing") is resolved the SAME way
+// every other reader resolves a reviewer's scope -- resolveAssignments
+// (src/domain/evaluation.ts), not a flat filter over rows with an explicit
+// submissionId. A broad ('All submissions') or track-scoped reviewer
+// already covers every submission their scope reaches BEFORE this run, so
+// distribute proposes nothing for a plan that scope alone already covers.
+// Both preview and apply resolve trackIds (withTrackIds always true) so the
+// two can never see a different pair set (DEC-840's byte-identical promise).
 async function computeDistribution(
   c: { var: { db: import("../../server/context").Db } },
   plan: repo.PlanRecord,
   capPerReviewer: number | null,
-  opts?: { withTrackIds?: boolean },
 ) {
   const [reviewerRows, submissions, recusals] = await Promise.all([
     repo.listReviewerRowsForPlan(c.var.db, plan.id),
-    repo.listPlanFilteredSubmissions(c.var.db, plan, { withTrackIds: opts?.withTrackIds ?? false }),
+    repo.listPlanFilteredSubmissions(c.var.db, plan, { withTrackIds: true }),
     repo.listRecusalsForPlan(c.var.db, plan.id),
   ]);
   const reviewerUserIds = [...new Set(reviewerRows.map((r) => r.userId))].sort();
-  const existing = reviewerRows
-    .filter((r): r is typeof r & { submissionId: string } => r.submissionId !== null)
-    .map((r) => ({ userId: r.userId, submissionId: r.submissionId }));
+  const reviewerScopes = buildReviewerScopes(reviewerUserIds, reviewerRows);
+  const resolved = resolveAssignments(
+    submissions.map((s) => ({ id: s.id, trackIds: s.trackIds })),
+    reviewerRows,
+  );
+  const existing: { userId: string; submissionId: string }[] = [];
+  for (const [userId, subs] of resolved) {
+    for (const s of subs) existing.push({ userId, submissionId: s.id });
+  }
   const recused = recusals.map((r) => ({ userId: r.userId, submissionId: r.submissionId }));
   const reviewsPerSubmission = plan.maxEvaluations ?? 1;
   const { created, shortfall } = distributeAssignments({
-    submissionIds: submissions.map((s) => s.id),
-    reviewerUserIds,
+    submissions: submissions.map((s) => ({ id: s.id, trackIds: s.trackIds })),
+    reviewers: reviewerScopes,
     reviewsPerSubmission,
     existing,
     recused,
     capPerReviewer,
   });
-  return { created, shortfall, submissions, reviewerUserIds, reviewerRows, existing, reviewsPerSubmission };
+  return { created, shortfall, submissions, reviewerUserIds, reviewerRows, reviewerScopes, existing, reviewsPerSubmission };
 }
 
 // DEC-786/DEC-824: preview writes NOTHING -- the organizer sees exactly
@@ -73,20 +104,17 @@ async function computeDistribution(
 reviewPlansDistributeRoutes.get("/api/v1/plans/:id/assignments/distribute/preview", requireOrganizer, async (c) => {
   const plan = await requireOwnedPlan(c, c.req.param("id"));
   const capPerReviewer = parseCapPerReviewer(c.req.query("cap"));
-  const { created, shortfall, submissions, reviewerUserIds, reviewerRows, existing, reviewsPerSubmission } = await computeDistribution(
+  const { created, shortfall, submissions, reviewerUserIds, reviewerScopes, existing, reviewsPerSubmission } = await computeDistribution(
     c,
     plan,
     capPerReviewer,
-    { withTrackIds: true },
   );
 
   const submissionById = new Map(submissions.map((s) => [s.id, s]));
   const nameByUserId = await repo.batchUserDisplayNames(c.var.db, reviewerUserIds);
   const users = await repo.getUsersByIds(c.var.db, reviewerUserIds);
   const emailByUserId = new Map(users.map((u) => [u.userId, u.email]));
-  const scopeTrackIds = [
-    ...new Set(reviewerRows.filter((r) => r.trackId !== null).map((r) => r.trackId as string)),
-  ];
+  const scopeTrackIds = [...new Set(reviewerScopes.flatMap((s) => s.trackIds))];
   const trackIdsOnShortfall = [
     ...new Set(shortfall.map((s) => submissionById.get(s.submissionId)?.trackIds ?? []).flat()),
   ];
@@ -109,7 +137,7 @@ reviewPlansDistributeRoutes.get("/api/v1/plans/:id/assignments/distribute/previe
 
   const { perReviewer, totalAssigned } = buildPerReviewer({
     reviewerUserIds,
-    reviewerRows,
+    reviewerScopes,
     existing,
     created,
     submissions,
@@ -132,9 +160,15 @@ reviewPlansDistributeRoutes.get("/api/v1/plans/:id/assignments/distribute/previe
 // DEC-840: shared by preview and (indirectly, since only preview needs the
 // display shape) render of per-reviewer before/after/eligibility -- the
 // apply endpoint itself does not need this, only the plain created pairs.
+// Amendment (wave 52): `before`, `wrongTrack`, and `capReached` are all
+// derived from the SAME resolved-existing/eligibility inputs the distributor
+// itself used (distributeAssignments in src/domain/review-distribute.ts),
+// not re-inferred from raw plan_reviewer rows -- an 'All submissions'
+// reviewer's `before` reflects their real resolved load, and `wrongTrack`
+// matches the distributor's own broad/trackIds eligibility predicate.
 function buildPerReviewer(args: {
   reviewerUserIds: string[];
-  reviewerRows: { userId: string; trackId: string | null; submissionId: string | null }[];
+  reviewerScopes: { userId: string; broad: boolean; trackIds: string[] }[];
   existing: { userId: string; submissionId: string }[];
   created: { userId: string; submissionId: string }[];
   submissions: { id: string; trackIds: string[] }[];
@@ -144,10 +178,12 @@ function buildPerReviewer(args: {
   emailByUserId: Map<string, string>;
   trackNameById: Map<string, string>;
 }) {
-  const { reviewerUserIds, reviewerRows, existing, created, submissions, reviewsPerSubmission, capPerReviewer, nameByUserId, emailByUserId, trackNameById } = args;
+  const { reviewerUserIds, reviewerScopes, existing, created, submissions, reviewsPerSubmission, capPerReviewer, nameByUserId, emailByUserId, trackNameById } = args;
 
-  // Existing load per reviewer (before this run) plus how many this run
-  // would add, so the confirm dialog shows a fair-looking before/after.
+  // Existing load per reviewer (before this run, already resolved the same
+  // way the distributor resolves it -- see computeDistribution's `existing`)
+  // plus how many this run would add, so the confirm dialog shows a
+  // fair-looking before/after.
   const existingCountByUser = new Map<string, number>();
   for (const p of existing) {
     existingCountByUser.set(p.userId, (existingCountByUser.get(p.userId) ?? 0) + 1);
@@ -155,20 +191,12 @@ function buildPerReviewer(args: {
   const addedByUser = new Map<string, number>();
   for (const p of created) addedByUser.set(p.userId, (addedByUser.get(p.userId) ?? 0) + 1);
 
-  // DEC-824: a reviewer's own scope -- the union of trackIds across every
-  // plan_reviewer row for that userId that scopes to a track (submissionId
-  // null, trackId set). Empty means the reviewer's scope is broad ("All
-  // submissions") and "wrong track" never applies to them.
-  const scopeTrackIdsByUser = new Map<string, Set<string>>();
-  for (const row of reviewerRows) {
-    if (row.trackId === null) continue;
-    const set = scopeTrackIdsByUser.get(row.userId) ?? new Set<string>();
-    set.add(row.trackId);
-    scopeTrackIdsByUser.set(row.userId, set);
-  }
+  const scopeByUser = new Map(reviewerScopes.map((s) => [s.userId, s]));
+
   // Submissions still short of `reviewsPerSubmission` reviewers BEFORE this
-  // run (existing coverage only) -- what a reviewer's scope would need to
-  // reach for "wrong track" to be false.
+  // run (resolved existing coverage) -- what a reviewer's scope would need
+  // to reach for "wrong track" to be false. Mirrors the distributor's own
+  // per-submission `need` computation.
   const existingCoverageBySubmission = new Map<string, number>();
   for (const p of existing) {
     existingCoverageBySubmission.set(p.submissionId, (existingCoverageBySubmission.get(p.submissionId) ?? 0) + 1);
@@ -182,12 +210,17 @@ function buildPerReviewer(args: {
   const perReviewer = reviewerUserIds.map((userId) => {
     const added = addedByUser.get(userId) ?? 0;
     const before = existingCountByUser.get(userId) ?? 0;
-    const scope = scopeTrackIdsByUser.get(userId);
-    const wrongTrack = added === 0 && scope !== undefined && scope.size > 0 && ![...scope].some((t) => unassignedTrackIds.has(t));
+    const scope = scopeByUser.get(userId);
+    const broad = scope?.broad ?? true;
+    const trackIds = scope?.trackIds ?? [];
+    // Same eligibility predicate the distributor used: a non-broad reviewer
+    // is wrong-track when none of their scoped tracks appear on a still-short
+    // submission.
+    const wrongTrack = added === 0 && !broad && !trackIds.some((t) => unassignedTrackIds.has(t));
     const capReached = added === 0 && capPerReviewer !== null && before >= capPerReviewer;
     const reason: "cap_reached" | "wrong_track" | null = capReached ? "cap_reached" : wrongTrack ? "wrong_track" : null;
-    const trackName = scope && scope.size > 0
-      ? [...scope].map((t) => trackNameById.get(t)).filter((n): n is string => !!n).join(", ") || null
+    const trackName = trackIds.length > 0
+      ? trackIds.map((t) => trackNameById.get(t)).filter((n): n is string => !!n).join(", ") || null
       : null;
     return {
       userId,
