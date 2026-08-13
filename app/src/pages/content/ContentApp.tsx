@@ -261,20 +261,30 @@ export function ContentApp() {
   const selected: SubmissionLookup | undefined =
     worklistMatch ?? (submissionId && fetchedSubmissionId === submissionId ? (fetchedSubmission ?? undefined) : undefined);
 
+  // DEC-952 (one <h1> per state, innermost owner): ContentApp names the
+  // page only where no child view mounts its own heading — the worklist
+  // (view === 'files' hands the title to FilesLibrary) and the
+  // submissionId states that haven't resolved to a DeliverableDetail yet
+  // (loading / not-found / unresolved). Once selected resolves,
+  // DeliverableDetail owns the <h1>.
+  const showOwnHeading = submissionId ? !selected : view !== 'files';
+
   return (
     <div className="chq-page chq-content-page">
-      <div className="chq-content-summary-row">
-        <h1 className="chq-page-title">Content</h1>
-        {/* w1-f (DEC-733/eval 60/37): decision-framing copy, matching the
-            mock's header text ('N need a decision · M re-uploaded') —
-            withheld (not '0 · 0') until both aggregate reads resolve, per
-            DEC-665's "never assert a fact not yet measured". */}
-        {!submissionId && view === 'worklist' && counts.needs_decision !== null && reUploadedCount !== null && (
-          <span className="chq-summary">
-            {counts.needs_decision} need a decision &middot; {reUploadedCount} re-uploaded
-          </span>
-        )}
-      </div>
+      {showOwnHeading && (
+        <div className="chq-content-summary-row">
+          <h1 className="chq-page-title">Content</h1>
+          {/* w1-f (DEC-733/eval 60/37): decision-framing copy, matching the
+              mock's header text ('N need a decision · M re-uploaded') —
+              withheld (not '0 · 0') until both aggregate reads resolve, per
+              DEC-665's "never assert a fact not yet measured". */}
+          {!submissionId && view === 'worklist' && counts.needs_decision !== null && reUploadedCount !== null && (
+            <span className="chq-summary">
+              {counts.needs_decision} need a decision &middot; {reUploadedCount} re-uploaded
+            </span>
+          )}
+        </div>
+      )}
       {error && <div className="chq-error" role="alert">{error}</div>}
 
       {!submissionId && (
