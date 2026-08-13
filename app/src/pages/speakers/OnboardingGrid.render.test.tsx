@@ -659,3 +659,165 @@ describe('OnboardingGrid: DEC-920 file link names the file', () => {
     expect(screen.queryByRole('link', { name: /Download/ })).not.toBeInTheDocument();
   });
 });
+
+// DEC-933/DEC-934 (task-w24-c): task column Edit/Remove controls + the
+// DEC-934 not-chasing strip for 'invited'/'declined' rows.
+describe('OnboardingGrid: DEC-933/DEC-934 task Edit/Remove + not-chasing rows', () => {
+  const TASK_GRID: OnboardingGridResponse = {
+    tasks: [{ id: 'task-1', kind: 'general', title: 'Sign speaker agreement', dueDate: null, required: true }],
+    rows: [
+      {
+        contact: { id: 'ct1', name: 'Ada Lovelace', email: 'ada@example.com', company: 'Acme', hasAccount: true, participantId: 'p-ct1', submissionId: 'sub-ct1', inviteStatus: 'accepted' },
+        cells: [{ taskId: 'task-1', assignmentId: 'as1', status: 'pending', completedAt: null, fileId: null, fileName: null, fileSizeBytes: null, lastRemindedAt: null, assignedAt: 0 }],
+      },
+      {
+        contact: { id: 'ct2', name: 'Grace Hopper', email: 'grace@example.com', company: 'Navy', hasAccount: false, participantId: 'p-ct2', submissionId: 'sub-ct2', inviteStatus: 'accepted' },
+        cells: [{ taskId: 'task-1', assignmentId: 'as2', status: 'complete', completedAt: 1700000000000, fileId: null, fileName: null, fileSizeBytes: null, lastRemindedAt: null, assignedAt: 0 }],
+      },
+      {
+        // A stale assignment: the participant was later un-confirmed but the
+        // task_assignment row still exists -- counted toward Remove's N/M
+        // (DEC-933: "the grid rows already in memory", no extra filter) but
+        // its cell must never render in the grid (DEC-934: not-chasing).
+        contact: { id: 'ct3', name: 'Marie Curie', email: 'marie@example.com', company: null, hasAccount: false, participantId: 'p-ct3', submissionId: 'sub-ct3', inviteStatus: 'invited' },
+        cells: [{ taskId: 'task-1', assignmentId: 'as3', status: 'pending', completedAt: null, fileId: null, fileName: null, fileSizeBytes: null, lastRemindedAt: null, assignedAt: 0 }],
+      },
+      {
+        contact: { id: 'ct4', name: 'Rosalind Franklin', email: 'rosalind@example.com', company: null, hasAccount: false, participantId: 'p-ct4', submissionId: 'sub-ct4', inviteStatus: 'declined' },
+        cells: [],
+      },
+    ],
+    total: 4,
+    page: 1,
+    perPage: 50,
+    // DEC-934: the server-side aggregate already excludes ct3/ct4 (composed
+    // from acceptedSpeakerExistsForContact) -- outstandingRequired counts
+    // only ct1's pending required assignment, NOT ct3's stray one.
+    counts: { speakers: 4, outstandingRequired: 1, overdue: 0, outstandingContacts: 1 },
+  };
+
+  it('renders ONE muted strip (not N blank cells) for invited/declined rows, with a live participation control, and the header summary matches the server counts (excluding those rows)', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: TASK_GRID,
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+    });
+
+    render(<OnboardingGrid onAddSpeaker={vi.fn()} />);
+    await waitFor(() => screen.getAllByText('Marie Curie').length > 0);
+
+    const table = within(screen.getByRole('table'));
+    expect(
+      table.getAllByText("Not chasing - invite invited. Set participation to Confirmed to assign this event's tasks."),
+    ).toHaveLength(1);
+    expect(
+      table.getAllByText("Not chasing - invite declined. Set participation to Confirmed to assign this event's tasks."),
+    ).toHaveLength(1);
+
+    // No per-task toggle renders for either not-chased row.
+    expect(
+      table.queryByRole('button', { name: /Toggle Sign speaker agreement for Marie Curie/ }),
+    ).not.toBeInTheDocument();
+    expect(
+      table.queryByRole('button', { name: /Toggle Sign speaker agreement for Rosalind Franklin/ }),
+    ).not.toBeInTheDocument();
+
+    // The row's own participation control stays live -- it IS the fix.
+    expect(
+      table.getByRole('button', { name: 'Participation status for Marie Curie: Invited' }),
+    ).toBeInTheDocument();
+    expect(
+      table.getByRole('button', { name: 'Participation status for Rosalind Franklin: Declined' }),
+    ).toBeInTheDocument();
+
+    // The printed summary reads straight off the server's counts (which
+    // already exclude ct3's stray assignment) -- "1", never "2".
+    expect(screen.getByText('1', { selector: 'strong' })).toBeInTheDocument();
+    const summary = screen.getByText(/tasks open/).closest('span');
+    expect(summary).toHaveTextContent('4 accepted');
+    expect(summary).toHaveTextContent('1 tasks open');
+    expect(summary).toHaveTextContent('0 overdue');
+  });
+
+  it('Edit opens TaskModal in edit mode prefilled, and PATCHes only title/dueDate/required (never kind/formId)', async () => {
+    const fetchMock = mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: TASK_GRID,
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+      'PATCH /api/v1/tasks/task-1': { id: 'task-1', kind: 'general', title: 'Sign the updated agreement', dueDate: null, required: true },
+    });
+
+    render(<OnboardingGrid onAddSpeaker={vi.fn()} />);
+    await waitFor(() => screen.getAllByText('Ada Lovelace').length > 0);
+
+    const table = within(screen.getByRole('table'));
+    fireEvent.click(table.getByRole('button', { name: 'Edit' }));
+
+    const dialog = await screen.findByRole('dialog', { name: 'Edit task' });
+    const titleInput = within(dialog).getByRole('textbox', { name: 'Task' }) as HTMLInputElement;
+    expect(titleInput.value).toBe('Sign speaker agreement');
+    // Kind is fixed, not an interactive segmented control, in edit mode.
+    expect(within(dialog).queryByRole('group', { name: 'Kind' })).not.toBeInTheDocument();
+
+    fireEvent.change(titleInput, { target: { value: 'Sign the updated agreement' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save changes' }));
+
+    await waitFor(() => {
+      const call = fetchMock.mock.calls.find(([input, init]) => {
+        const url = typeof input === 'string' ? input : (input as Request | URL).toString();
+        return url.endsWith('/tasks/task-1') && init?.method === 'PATCH';
+      });
+      expect(call).toBeDefined();
+      expect(JSON.parse(call![1]!.body as string)).toEqual({
+        title: 'Sign the updated agreement',
+        dueDate: null,
+        required: true,
+      });
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: 'Edit task' })).not.toBeInTheDocument();
+    });
+  });
+
+  it('Remove opens a ConfirmDialog naming N assigned / M completed from rows already in state, then DELETEs and refetches', async () => {
+    const fetchMock = mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: TASK_GRID,
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+      'DELETE /api/v1/tasks/task-1': { ok: true },
+    });
+
+    render(<OnboardingGrid onAddSpeaker={vi.fn()} />);
+    await waitFor(() => screen.getAllByText('Ada Lovelace').length > 0);
+
+    const table = within(screen.getByRole('table'));
+    fireEvent.click(table.getByRole('button', { name: 'Remove' }));
+
+    const dialog = await screen.findByRole('dialog', { name: 'Remove task' });
+    // N=3 (ct1 pending, ct2 complete, ct3's stray assignment), M=1 (ct2) --
+    // computed from the grid rows already fetched, no new endpoint.
+    expect(dialog).toHaveTextContent(
+      '3 speakers are assigned this task and 1 have completed it. Their uploaded files stay in the files library; their form responses do not.',
+    );
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Remove' }));
+
+    await waitFor(() => {
+      const call = fetchMock.mock.calls.find(([input, init]) => {
+        const url = typeof input === 'string' ? input : (input as Request | URL).toString();
+        return url.endsWith('/tasks/task-1') && init?.method === 'DELETE';
+      });
+      expect(call).toBeDefined();
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: 'Remove task' })).not.toBeInTheDocument();
+    });
+
+    // Refetches the grid (not a client-side splice) -- one more GET beyond
+    // the initial load.
+    const gridCalls = fetchMock.mock.calls.filter(([input]) => {
+      const url = typeof input === 'string' ? input : (input as Request | URL).toString();
+      return url.includes(`/events/${EVENT_ID}/onboarding?`);
+    });
+    expect(gridCalls.length).toBeGreaterThanOrEqual(2);
+  });
+});

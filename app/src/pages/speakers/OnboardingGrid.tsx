@@ -1,15 +1,15 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { apiGet, apiPatch, apiPost, ApiError } from '../../lib/api';
+import { apiDelete, apiGet, apiPatch, apiPost, ApiError } from '../../lib/api';
 import { DEC_827 } from '../../../../src/decisions';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { GridFilters } from './GridFilters';
-import { daysLate, isCellOverdue } from './overdue';
-import { effectiveAssignmentDueDate } from '../../../../src/domain/task-due';
+import { TaskCell, formatDueDate } from './TaskCell';
 import { TaskModal } from './TaskModal';
 import { ResponseModal } from './ResponseModal';
 import { RemindPreviewModal } from './RemindPreviewModal';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { describeSendResult, type SendResult } from '../../lib/sendResult';
 import { ParticipationMenu } from './ParticipationMenu';
 import {
@@ -21,6 +21,7 @@ import {
   type InviteStatus,
   type NewTaskInput,
   type OnboardingGridResponse,
+  type OnboardingTask,
   type ReminderDraft,
 } from './types';
 
@@ -33,20 +34,6 @@ function nextStatus(status: AssignmentStatus): AssignmentStatus {
 }
 
 const PER_PAGE = 50;
-
-const SHORT_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-/** Shared day/month(/year) formatter for a due date -- both the column
- * header caption and a cell's title/aria-label read it, so the two can
- * never disagree. Appends the 4-digit UTC year only when the due date's
- * UTC year differs from `now`'s, so a far-dated column can't be mistaken
- * for "this year" (DEC-852). Reads UTC calendar parts directly (never
- * toISOString/local) per DEC-146/153. */
-function formatDueDate(dueDate: number, now: number): string {
-  const date = new Date(dueDate);
-  const yearSuffix = date.getUTCFullYear() !== new Date(now).getUTCFullYear() ? ` ${date.getUTCFullYear()}` : '';
-  return `${date.getUTCDate()} ${SHORT_MONTHS[date.getUTCMonth()]}${yearSuffix}`;
-}
 
 /** Task column header caption, design v4's "Due 10 Apr · Required" shape
  * (rendered upper-case via .chq-speakers-task-due's text-transform) --
@@ -72,45 +59,18 @@ function buildGridQuery(filters: GridFilterState, page: number): string {
   return params.toString();
 }
 
-/** v4 design copy for a pending, overdue cell — never colour alone, never
- * red (DEC-367). Complete is a filled pill, pending is an outline pill,
- * overdue is the same control family (box metrics, hover ring,
- * cursor:pointer) with an ink-outlined bold-caps "OVERDUE" mark (DEC-730,
- * DEC-789 — replaces the old "N DAYS LATE" copy). The day count isn't
- * dropped: it moves into the button's accessible name/title via
- * overdueTitle below, so no information is lost, just not shown inline. */
-const OVERDUE_LABEL = 'OVERDUE';
-
-function overdueTitle(dueDate: number, now: number): string {
-  const d = daysLate(dueDate, now);
-  return `${d} day${d === 1 ? '' : 's'} late`;
-}
-
-/** The cell button's title/accessible-name suffix (DEC-852): an overdue
- * cell keeps today's "N days late" text verbatim; any other non-complete
- * cell with a known effective due date names that date instead, so a
- * grace-shifted deadline is visible before it bites, not only after. */
-function cellDueTitle(
-  status: AssignmentStatus,
-  overdueTitleText: string | null,
-  effectiveDueDate: number | null,
-  now: number,
-): string | null {
-  if (overdueTitleText) return overdueTitleText;
-  if (status === 'complete' || effectiveDueDate === null) return null;
-  return `due ${formatDueDate(effectiveDueDate, now)}`;
-}
-
 function firstNameOf(fullName: string): string {
   return fullName.trim().split(/\s+/)[0] ?? fullName;
 }
 
-/** One control family for all three cell states (DEC-730): complete/pending/
- * overdue share box metrics, a hover ring and cursor:pointer -- only the
- * fill/outline/ink-outline modifier differs. */
-function statusCellClass(status: AssignmentStatus, overdue: boolean): string {
-  const modifier = status === 'complete' ? 'complete' : overdue ? 'overdue' : 'pending';
-  return `chq-speakers-status chq-speakers-status-${modifier}`;
+// DEC-934: a roster row whose participation is 'invited'/'declined' is one
+// the product will never chase (task expansion only covers
+// ACTIVE_INVITE_STATUSES) -- it renders ONE muted strip instead of N blank
+// task cells, so the emptiness reads as a stated decision, not an accident.
+const NOT_CHASING_STATUSES: readonly InviteStatus[] = ['invited', 'declined'];
+
+function notChasingMessage(status: InviteStatus): string {
+  return `Not chasing - invite ${status}. Set participation to Confirmed to assign this event's tasks.`;
 }
 
 // DEC-662/DEC-746: the roster's Add-speaker trigger lives here now (see
@@ -151,6 +111,11 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
   const [responseLoading, setResponseLoading] = useState(false);
   const [responseError, setResponseError] = useState<string | null>(null);
   const [responseDetail, setResponseDetail] = useState<AssignmentResponseDetail | null>(null);
+  // DEC-933: the task column being edited (Edit control) / offered for
+  // removal (Remove control) -- null when neither modal/dialog is open.
+  const [editingTask, setEditingTask] = useState<OnboardingTask | null>(null);
+  const [removingTask, setRemovingTask] = useState<OnboardingTask | null>(null);
+  const [removingBusy, setRemovingBusy] = useState(false);
 
   function loadGrid(id: string, currentFilters: GridFilterState, currentPage: number) {
     setLoading(true);
@@ -389,6 +354,56 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
     await loadGrid(eventId, filters, page);
   }
 
+  // DEC-933: PATCHes ONLY title/description/dueDate/required/deliverableKind
+  // -- kind and formId never leave this handler, even though TaskModal's
+  // onSubmit hands back a full NewTaskInput shape (formId/deliverableKind
+  // are undefined in edit mode -- see TaskModal's isEdit gating -- so this
+  // is a belt-and-braces filter, not the only guard). A task's kind is its
+  // shape; changing it would orphan the responses already stored against it.
+  async function handleEditTask(input: NewTaskInput) {
+    if (!editingTask) return;
+    await apiPatch(`/tasks/${editingTask.id}`, {
+      title: input.title,
+      dueDate: input.dueDate,
+      required: input.required,
+    });
+    setEditingTask(null);
+    setToast('Task updated.');
+    if (eventId) await loadGrid(eventId, filters, page);
+  }
+
+  // DEC-933: N/M are read straight off the grid rows already fetched into
+  // state -- never a new count endpoint, never a query per row.
+  function taskAssignmentCounts(task: OnboardingTask): { assigned: number; completed: number } {
+    let assigned = 0;
+    let completed = 0;
+    for (const row of visibleRows) {
+      const cell = row.cells.find((c) => c.taskId === task.id);
+      if (!cell) continue;
+      assigned += 1;
+      if (cell.status === 'complete') completed += 1;
+    }
+    return { assigned, completed };
+  }
+
+  async function confirmRemoveTask() {
+    if (!removingTask || !eventId) return;
+    setRemovingBusy(true);
+    setError(null);
+    try {
+      await apiDelete(`/tasks/${removingTask.id}`);
+      setRemovingTask(null);
+      setToast('Task removed.');
+      // DEC-933: refetch rather than splice, so the column count and the
+      // counts panel can't disagree.
+      await loadGrid(eventId, filters, page);
+    } catch (err) {
+      setError(err instanceof ApiError ? `Remove failed: ${err.message}` : 'Remove failed');
+    } finally {
+      setRemovingBusy(false);
+    }
+  }
+
   if (eventLoading) {
     return (
       <div className="chq-page chq-speakers-page">
@@ -466,6 +481,24 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
                     <th key={task.id}>
                       {task.title}
                       <div className="chq-speakers-task-due">{taskDueLabel(task, now)}</div>
+                      {/* DEC-933: quiet Edit/Remove controls -- the grid's
+                          columns are otherwise write-once. */}
+                      <div className="chq-speakers-task-header-actions">
+                        <button
+                          type="button"
+                          className="chq-link-button chq-speakers-task-edit"
+                          onClick={() => setEditingTask(task)}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          className="chq-link-button chq-speakers-task-remove"
+                          onClick={() => setRemovingTask(task)}
+                        >
+                          Remove
+                        </button>
+                      </div>
                     </th>
                   ))}
                 </tr>
@@ -525,61 +558,24 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
                         </button>
                       )}
                     </td>
-                    {grid.tasks.map((task) => {
-                      const cell = row.cells.find((c) => c.taskId === task.id);
-                      if (!cell) {
-                        return (
-                          <td key={task.id}>
-                            <span className="chq-speakers-cell-none">&mdash;</span>
-                          </td>
-                        );
-                      }
-                      const overdue = isCellOverdue(cell, task, now);
-                      const cellClass = statusCellClass(cell.status, overdue);
-                      const effectiveDueDate = effectiveAssignmentDueDate(task.dueDate, cell.assignedAt);
-                      const overdueTitleText = overdue && effectiveDueDate !== null ? overdueTitle(effectiveDueDate, now) : null;
-                      const cellTitleText = cellDueTitle(cell.status, overdueTitleText, effectiveDueDate, now);
-                      return (
+                    {NOT_CHASING_STATUSES.includes(row.contact.inviteStatus) ? (
+                      <td colSpan={grid.tasks.length} className="chq-speakers-not-chasing">
+                        {notChasingMessage(row.contact.inviteStatus)}
+                      </td>
+                    ) : (
+                      grid.tasks.map((task) => (
                         <td key={task.id}>
-                          <div className="chq-speakers-cell">
-                            <button
-                              type="button"
-                              className={cellClass}
-                              onClick={() => toggleCell(cell.assignmentId, cell.status)}
-                              aria-label={
-                                cellTitleText
-                                  ? `Toggle ${task.title} for ${row.contact.name}, ${cellTitleText}`
-                                  : `Toggle ${task.title} for ${row.contact.name}`
-                              }
-                              title={cellTitleText ?? undefined}
-                            >
-                              {cell.status === 'complete' ? 'Complete' : overdueTitleText ? OVERDUE_LABEL : 'Pending'}
-                            </button>
-                            {cell.fileId && cell.fileName && (
-                              <a
-                                href={`/files/${cell.fileId}`}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="chq-speakers-file-link"
-                                aria-label={`Download ${cell.fileName}`}
-                                title={cell.fileName}
-                              >
-                                {cell.fileName}
-                              </a>
-                            )}
-                            {task.kind === 'form' && cell.status === 'complete' && (
-                              <button
-                                type="button"
-                                className="chq-link-button chq-speakers-response-link"
-                                onClick={() => openResponse(cell.assignmentId, row.contact.name)}
-                              >
-                                Response
-                              </button>
-                            )}
-                          </div>
+                          <TaskCell
+                            task={task}
+                            cell={row.cells.find((c) => c.taskId === task.id)}
+                            contactName={row.contact.name}
+                            now={now}
+                            onToggle={toggleCell}
+                            onOpenResponse={openResponse}
+                          />
                         </td>
-                      );
-                    })}
+                      ))
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -621,63 +617,23 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
                   </button>
                 </div>
                 <div className="chq-speakers-card-tasks">
-                  {grid.tasks.map((task) => {
-                    const cell = row.cells.find((c) => c.taskId === task.id);
-                    if (!cell) {
-                      return (
-                        <div key={task.id} className="chq-speakers-card-task">
-                          <span className="chq-speakers-card-task-label">{task.title}</span>
-                          <span className="chq-speakers-cell-none">&mdash;</span>
-                        </div>
-                      );
-                    }
-                    const overdue = isCellOverdue(cell, task, now);
-                    const cellClass = statusCellClass(cell.status, overdue);
-                    const effectiveDueDate = effectiveAssignmentDueDate(task.dueDate, cell.assignedAt);
-                    const overdueTitleText = overdue && effectiveDueDate !== null ? overdueTitle(effectiveDueDate, now) : null;
-                    const cellTitleText = cellDueTitle(cell.status, overdueTitleText, effectiveDueDate, now);
-                    return (
+                  {NOT_CHASING_STATUSES.includes(row.contact.inviteStatus) ? (
+                    <div className="chq-speakers-not-chasing">{notChasingMessage(row.contact.inviteStatus)}</div>
+                  ) : (
+                    grid.tasks.map((task) => (
                       <div key={task.id} className="chq-speakers-card-task">
                         <span className="chq-speakers-card-task-label">{task.title}</span>
-                        <div className="chq-speakers-cell">
-                          <button
-                            type="button"
-                            className={cellClass}
-                            onClick={() => toggleCell(cell.assignmentId, cell.status)}
-                            aria-label={
-                              cellTitleText
-                                ? `Toggle ${task.title} for ${row.contact.name}, ${cellTitleText}`
-                                : `Toggle ${task.title} for ${row.contact.name}`
-                            }
-                            title={cellTitleText ?? undefined}
-                          >
-                            {cell.status === 'complete' ? 'Complete' : overdueTitleText ? OVERDUE_LABEL : 'Pending'}
-                          </button>
-                          {cell.fileId && cell.fileName && (
-                            <a
-                              href={`/files/${cell.fileId}`}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="chq-speakers-file-link"
-                              aria-label={`Download ${cell.fileName}`}
-                              title={cell.fileName}
-                            >
-                              {cell.fileName}
-                            </a>
-                          )}
-                          {task.kind === 'form' && cell.status === 'complete' && (
-                            <button
-                              type="button"
-                              className="chq-link-button chq-speakers-response-link"
-                              onClick={() => openResponse(cell.assignmentId, row.contact.name)}
-                            >
-                              Response
-                            </button>
-                          )}
-                        </div>
+                        <TaskCell
+                          task={task}
+                          cell={row.cells.find((c) => c.taskId === task.id)}
+                          contactName={row.contact.name}
+                          now={now}
+                          onToggle={toggleCell}
+                          onOpenResponse={openResponse}
+                        />
                       </div>
-                    );
-                  })}
+                    ))
+                  )}
                 </div>
               </div>
             ))}
@@ -718,6 +674,31 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
           onSubmit={handleCreateTask}
           forms={taskForms}
           acceptedCount={counts?.speakers ?? 0}
+        />
+      )}
+
+      {editingTask && (
+        <TaskModal
+          task={editingTask}
+          onCancel={() => setEditingTask(null)}
+          onSubmit={handleEditTask}
+          forms={taskForms}
+          acceptedCount={counts?.speakers ?? 0}
+        />
+      )}
+
+      {removingTask && (
+        <ConfirmDialog
+          title="Remove task"
+          body={(() => {
+            const { assigned, completed } = taskAssignmentCounts(removingTask);
+            return `${assigned} speakers are assigned this task and ${completed} have completed it. Their uploaded files stay in the files library; their form responses do not.`;
+          })()}
+          confirmLabel="Remove"
+          destructive
+          pending={removingBusy}
+          onConfirm={confirmRemoveTask}
+          onCancel={() => setRemovingTask(null)}
         />
       )}
 
