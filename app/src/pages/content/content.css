@@ -145,6 +145,18 @@
   gap: 4px;
 }
 
+/* DEC-756: ONE deliverable chip strip scopes both the version list and the
+   note thread beneath it. */
+.chq-content-detail-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.chq-content-chip-caption {
+  margin: 0;
+}
+
 .chq-content-group-body {
   display: grid;
   grid-template-columns: 1.35fr 1fr;

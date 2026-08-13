@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { apiList, apiPost, apiUpload, ApiError } from '../../lib/api';
+import { apiList, apiPost, apiPostBlob, apiUpload, ApiError } from '../../lib/api';
 import { CommentThread } from './CommentThread';
 import { groupByKindNewestFirst } from './version-chain';
 import { UploadZone } from './UploadZone';
 import { VersionList } from './VersionList';
 import { DelayedLoading } from '../../components/DelayedLoading';
+import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import {
   CONTENT_STATUS_LABELS,
   FILE_KINDS,
@@ -42,6 +43,13 @@ export function DeliverableDetail({
   const [commentsByFile, setCommentsByFile] = useState<Record<string, FileComment[]>>({});
   const [statusPending, setStatusPending] = useState(false);
   const [pill, setPill] = useState<ContentStatus>(contentStatus);
+  const { eventId } = useCurrentEvent();
+  // DEC-756: ONE deliverable at a time — a chip scopes both the version
+  // list and the note thread. Local selection state; default resolved
+  // below once files are loaded (first kind with files, else first kind).
+  const [selectedKind, setSelectedKind] = useState<FileKind | null>(null);
+  const [downloadPending, setDownloadPending] = useState(false);
+  const [downloadStatus, setDownloadStatus] = useState<string | null>(null);
 
   function loadFiles() {
     setLoading(true);
@@ -89,6 +97,40 @@ export function DeliverableDetail({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [files]);
+
+  const kindsWithFiles = FILE_KINDS.filter((kind) => grouped[kind].length > 0);
+  const defaultKind = kindsWithFiles[0] ?? FILE_KINDS[0];
+  const activeKind = selectedKind && (kindsWithFiles.length === 0 || kindsWithFiles.includes(selectedKind))
+    ? selectedKind
+    : defaultKind;
+  const activeVersions = grouped[activeKind];
+  const activeLatest = activeVersions[0];
+
+  async function handleDownloadAll() {
+    if (!eventId) return;
+    setDownloadStatus('Preparing ZIP…');
+    setDownloadPending(true);
+    setError(null);
+    try {
+      const fileIds = FILE_KINDS.map((kind) => grouped[kind][0]?.id).filter((id): id is string => Boolean(id));
+      const { blob, filename } = await apiPostBlob(`/events/${eventId}/files/archive`, { fileIds });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      setDownloadStatus(`${filename} downloaded.`);
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : 'Download failed';
+      setError(err instanceof ApiError ? `Download failed: ${err.message}` : 'Download failed');
+      setDownloadStatus(message);
+    } finally {
+      setDownloadPending(false);
+    }
+  }
 
   async function handleUpload(file: File, kind: FileKind, replacesFileId?: string) {
     const form = new FormData();
@@ -147,16 +189,35 @@ export function DeliverableDetail({
           <span className={pill === 'changes_requested' ? 'chq-flag' : 'chq-flag chq-content-status-muted'}>
             {CONTENT_STATUS_LABELS[pill]}
           </span>
+          {/* DEC-756/DEC-733: Approve renders only while the session is not
+              already approved -- an action that cannot apply is absent,
+              never disabled. */}
+          {pill !== 'approved' && (
+            <button
+              type="button"
+              className="chq-btn chq-btn-primary"
+              disabled={statusPending}
+              onClick={() => void handleApprove()}
+            >
+              Approve
+            </button>
+          )}
           <button
             type="button"
-            className="chq-btn chq-btn-primary"
-            disabled={statusPending}
-            onClick={() => void handleApprove()}
+            className="chq-btn chq-btn-secondary"
+            disabled={downloadPending || !eventId}
+            onClick={() => void handleDownloadAll()}
           >
-            Approve
+            {downloadPending ? 'Downloading…' : 'Download all'}
           </button>
         </div>
       </div>
+
+      {downloadStatus && (
+        <p className="chq-meta chq-content-download-status" role="status">
+          {downloadStatus}
+        </p>
+      )}
 
       {error && <div className="chq-error" role="alert">{error}</div>}
       {loading && <DelayedLoading label="Loading deliverables…" />}
@@ -169,32 +230,50 @@ export function DeliverableDetail({
         </p>
       )}
 
-      {!loading &&
-        FILE_KINDS.map((kind) => {
-          const versions = grouped[kind];
-          const latest = versions[0];
-          return (
-            <section key={kind} className="chq-deliverable-group chq-content-group">
-              <div className="chq-section-head">
-                <span className="chq-section-label">{DELIVERABLE_LABELS[kind]}</span>
+      {!loading && (
+        <div className="chq-content-detail-body">
+          {kindsWithFiles.length > 0 && (
+            <>
+              <div className="chq-chipstrip" role="tablist" aria-label="Deliverable">
+                {kindsWithFiles.map((kind) => {
+                  const n = grouped[kind].length;
+                  return (
+                    <button
+                      key={kind}
+                      type="button"
+                      role="tab"
+                      aria-selected={activeKind === kind}
+                      className={activeKind === kind ? 'chq-pill is-active' : 'chq-pill'}
+                      onClick={() => setSelectedKind(kind)}
+                    >
+                      {DELIVERABLE_LABELS[kind]} · {n} version{n === 1 ? '' : 's'}
+                    </button>
+                  );
+                })}
               </div>
-              <div className="chq-content-group-body">
-                <div className="chq-content-files-col">
-                  <VersionList versions={versions} onDeleted={() => void loadFiles()} />
-                  <UploadZone kind={kind} replacesFileId={latest?.id} onUpload={handleUpload} />
-                </div>
-                <div className="chq-content-comments-col">
-                  {latest && (
-                    <CommentThread
-                      comments={commentsByFile[latest.id] ?? []}
-                      onSend={(body, requestChanges) => handleSendNote(latest.id, body, requestChanges)}
-                    />
-                  )}
-                </div>
-              </div>
-            </section>
-          );
-        })}
+              <p className="chq-meta chq-content-chip-caption">
+                Versions and notes below are for the selected deliverable
+              </p>
+            </>
+          )}
+
+          <div className="chq-content-group-body">
+            <div className="chq-content-files-col">
+              <VersionList versions={activeVersions} onDeleted={() => void loadFiles()} />
+              <UploadZone kind={activeKind} replacesFileId={activeLatest?.id} onUpload={handleUpload} />
+            </div>
+            <div className="chq-content-comments-col">
+              <h3 className="chq-section-label">Notes on the {DELIVERABLE_LABELS[activeKind].toLowerCase()}</h3>
+              {activeLatest && (
+                <CommentThread
+                  comments={commentsByFile[activeLatest.id] ?? []}
+                  onSend={(body, requestChanges) => handleSendNote(activeLatest.id, body, requestChanges)}
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
