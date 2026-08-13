@@ -201,3 +201,17 @@ media rule). All under the additive-reflow rule.
 - **P3 add-to-event Title field**: the modal's Title is actually a placeholder SESSION
   title, not job title — silently creates a spurious session. Label it for what it
   does or drop it (ties to existing Contacts add-to-event item).
+
+## CNT grader additions (2026-08-13, prod — 3/3 scenarios PASS, defects below)
+
+- **P3 Session format dropped on create**: New-submission dialog discards the selected
+  Session format (created session has none), and NO surface — detail view or detail
+  Edit — exposes a format field to fix it afterward.
+- **P3 attribution by raw email**: file comments + session history show
+  "sbek-organizer@example.com" instead of the display name; history entries date-only,
+  no time.
+- Seed/coherence notes: two accepted sessions share the title "Taming 40-Minute CI"
+  (SES-001 seeded vs SES-031 grader-created) — later graders matching by title hit
+  both · duplicate seeded "Confirm participation" task · Priya has two contact
+  records · file-request kinds limited to Presentation/Poster/Handout (no
+  headshot/image kind).
