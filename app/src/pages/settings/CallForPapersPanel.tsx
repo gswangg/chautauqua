@@ -11,7 +11,7 @@ import { useSearchParams } from 'react-router-dom';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { apiGet, apiList, apiPatch, ApiError } from '../../lib/api';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
-import { dateInputToMs, msToDateInput, formatDateTimeInZone } from '../../lib/dates';
+import { dateInputToMs, msToDateInput, formatDateTimeInZone, daysUntil } from '../../lib/dates';
 import { copyText } from '../../lib/clipboard';
 import { formWindowState } from '../../../../src/lib/submit-core';
 import { dayLabelEndInstant } from '../../../../src/lib/timezone';
@@ -21,7 +21,6 @@ import { DEC_888 } from '../../../../src/decisions';
 void DEC_888;
 
 const SECTION_KEY = 'cfp';
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 interface EventSummary {
   id: string;
@@ -64,8 +63,8 @@ function closesRelativeNote(openMs: number | null, closeMs: number | null, timez
   const state = formWindowState(openMs, closeMs, Date.now(), timezone);
   if (state === 'closed') return 'CLOSED';
   if (closeMs === null) return '';
-  const daysLeft = Math.ceil((dayLabelEndInstant(closeMs, timezone) - Date.now()) / MS_PER_DAY);
-  return `IN ${Math.max(daysLeft, 0)} DAY${daysLeft === 1 ? '' : 'S'}`;
+  const daysLeft = daysUntil(closeMs, timezone, Date.now());
+  return `IN ${daysLeft} DAY${daysLeft === 1 ? '' : 'S'}`;
 }
 
 interface EventTrack {

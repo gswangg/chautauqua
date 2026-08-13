@@ -18,7 +18,7 @@ const EVENT_SLUG = 'devflow-conf-2027';
 
 function eventsListEnvelope() {
   return {
-    items: [{ id: EVENT_ID, slug: EVENT_SLUG }],
+    items: [{ id: EVENT_ID, slug: EVENT_SLUG, timezone: 'America/Chicago' }],
     total: 1,
     page: 1,
     perPage: 20,

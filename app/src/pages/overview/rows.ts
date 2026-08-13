@@ -4,6 +4,7 @@
 // rendering the page. Overview.tsx is the sole consumer.
 
 import type { OverviewPayload } from './types';
+import { daysUntil } from '../../lib/dates';
 
 // DEC-779: every dot-joined caption on the Overview page (triage row,
 // content-approval row, §04 unplaced/conflict captions, the "no action
@@ -68,10 +69,12 @@ const DEADLINE_META: Record<DeadlineCell['key'], { label: string; href: string }
 };
 
 /** Formats a deadline value relative to `now` — "6 days" / "1 day" /
- * "Today" — or an em dash when no date is set. */
-export function formatDeadlineValue(value: number | null, now: number): string {
+ * "Today" — or an em dash when no date is set. DEC-831: the day count comes
+ * from the ONE days-until reader (dates.ts daysUntil), expanded through the
+ * owning event's own timezone rather than a raw-ms subtraction. */
+export function formatDeadlineValue(value: number | null, now: number, timezone: string): string {
   if (value === null) return '—';
-  const diffDays = Math.round((value - now) / 86_400_000);
+  const diffDays = daysUntil(value, timezone, now);
   if (diffDays <= 0) return 'Today';
   return `${diffDays} ${pluralize(diffDays, 'day')}`;
 }
@@ -81,7 +84,11 @@ export function formatDeadlineValue(value: number | null, now: number): string {
  * a ranking, so it never reshuffles as dates change. Only the cell with the
  * nearest (soonest, non-null) value is marked with the "nearest" weight.
  * Pure — Overview.tsx owns the DOM. */
-export function buildDeadlineCells(deadlines: OverviewPayload['deadlines'], now: number): DeadlineCell[] {
+export function buildDeadlineCells(
+  deadlines: OverviewPayload['deadlines'],
+  now: number,
+  timezone: string,
+): DeadlineCell[] {
   const keys = Object.keys(DEADLINE_META) as DeadlineCell['key'][];
   const cells = keys.map((key) => {
     const value = deadlines[key];
@@ -95,7 +102,7 @@ export function buildDeadlineCells(deadlines: OverviewPayload['deadlines'], now:
       label,
       href: meta.href,
       value,
-      display: formatDeadlineValue(value, now),
+      display: formatDeadlineValue(value, now, timezone),
       isNearest: false,
     };
   });

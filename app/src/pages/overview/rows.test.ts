@@ -11,8 +11,14 @@ import {
 } from './rows';
 import type { OverviewPayload } from './types';
 
-const NOW = Date.UTC(2027, 0, 1);
 const DAY = 86_400_000;
+// DEC-831: `now` sits at the END of "today" (23:59:59.999 UTC) rather than
+// exactly at midnight -- daysUntil expands a day-label deadline through
+// dayLabelEndInstant, so a `now` pinned to midnight would read one day high
+// for every N-days-ahead deadline below (the fix's own w40 finding). Placing
+// `now` at today's own day-label end keeps every existing "N days" fixture
+// value unchanged while exercising the real (zone-aware) formula.
+const NOW = Date.UTC(2027, 0, 1) + DAY - 1;
 
 function payload(overrides: Partial<OverviewPayload> = {}): OverviewPayload {
   return {
@@ -112,30 +118,30 @@ describe('headlineCount / headlineText', () => {
 
 describe('formatDeadlineValue', () => {
   it('renders an em dash for no deadline', () => {
-    expect(formatDeadlineValue(null, NOW)).toBe('—');
+    expect(formatDeadlineValue(null, NOW, 'UTC')).toBe('—');
   });
 
   it('renders whole day counts', () => {
-    expect(formatDeadlineValue(NOW + 6 * DAY, NOW)).toBe('6 days');
-    expect(formatDeadlineValue(NOW + 1 * DAY, NOW)).toBe('1 day');
+    expect(formatDeadlineValue(NOW + 6 * DAY, NOW, 'UTC')).toBe('6 days');
+    expect(formatDeadlineValue(NOW + 1 * DAY, NOW, 'UTC')).toBe('1 day');
   });
 
   it('renders Today for a same-day or past deadline', () => {
-    expect(formatDeadlineValue(NOW, NOW)).toBe('Today');
-    expect(formatDeadlineValue(NOW - DAY, NOW)).toBe('Today');
+    expect(formatDeadlineValue(NOW, NOW, 'UTC')).toBe('Today');
+    expect(formatDeadlineValue(NOW - DAY, NOW, 'UTC')).toBe('Today');
   });
 });
 
 describe('buildDeadlineCells', () => {
   it('keeps the fixed reading order (CFP close, next task due, Review wave, Doors open) and marks only the nearest', () => {
-    const cells = buildDeadlineCells(payload().deadlines, NOW);
+    const cells = buildDeadlineCells(payload().deadlines, NOW, 'UTC');
     expect(cells.map((c) => c.key)).toEqual(['formCloseDate', 'nextTaskDueDate', 'planCloseDate', 'eventStartDate']);
     expect(cells.find((c) => c.key === 'nextTaskDueDate')!.isNearest).toBe(true);
     expect(cells.filter((c) => c.key !== 'nextTaskDueDate').every((c) => c.isNearest === false)).toBe(true);
   });
 
   it('carries the round number onto the Review wave label', () => {
-    const cells = buildDeadlineCells(payload().deadlines, NOW);
+    const cells = buildDeadlineCells(payload().deadlines, NOW, 'UTC');
     expect(cells.find((c) => c.key === 'planCloseDate')!.label).toBe('Review wave 2');
   });
 
@@ -143,6 +149,7 @@ describe('buildDeadlineCells', () => {
     const cells = buildDeadlineCells(
       { formCloseDate: null, nextTaskDueDate: null, planCloseDate: NOW + 5 * DAY, planRound: null, eventStartDate: null },
       NOW,
+      'UTC',
     );
     expect(cells.find((c) => c.key === 'planCloseDate')!.label).toBe('Review wave');
   });
@@ -151,6 +158,7 @@ describe('buildDeadlineCells', () => {
     const cells = buildDeadlineCells(
       { formCloseDate: null, nextTaskDueDate: NOW + 3 * DAY, planCloseDate: null, planRound: null, eventStartDate: null },
       NOW,
+      'UTC',
     );
     expect(cells.map((c) => c.key)).toEqual(['formCloseDate', 'nextTaskDueDate', 'planCloseDate', 'eventStartDate']);
     expect(cells.find((c) => c.key === 'nextTaskDueDate')!.isNearest).toBe(true);
@@ -161,6 +169,7 @@ describe('buildDeadlineCells', () => {
     const cells = buildDeadlineCells(
       { formCloseDate: null, nextTaskDueDate: null, planCloseDate: null, planRound: null, eventStartDate: null },
       NOW,
+      'UTC',
     );
     expect(cells.every((c) => c.isNearest === false)).toBe(true);
   });
