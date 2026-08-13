@@ -36,10 +36,10 @@ describe('App catch-all route', () => {
       expect(screen.getByRole('heading', { name: "That page isn't here" })).toBeInTheDocument();
     });
 
-    expect(screen.getByText('/this-page-does-not-exist', { exact: false })).toBeInTheDocument();
+    // DEC-945: the attempted path is no longer shown in the card body.
     // Header (with the sign-out control) still renders around the 404 body.
     expect(screen.getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Go to Overview' })).toHaveAttribute('href', '/admin/overview');
+    expect(screen.getByRole('link', { name: 'Overview ›' })).toHaveAttribute('href', '/admin/overview');
   });
 });
 
