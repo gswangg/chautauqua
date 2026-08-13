@@ -173,6 +173,38 @@ function selectQueueFor() {
   return [[EVENT_ROW], [FORM_ROW], FIELD_ROWS, [TRACK_ROW], [], [{ seq: 7 }], []];
 }
 
+describe("DEC-972: confirmation quotes the event's own record prefix, not a hardcoded literal", () => {
+  it("renders the confirmation page with a ref built from the event's recordPrefix when it isn't 'SES'", async () => {
+    const eventRow = { ...EVENT_ROW, recordPrefix: "DEVX" };
+    const { db, inserts } = fakeDb([[eventRow], [FORM_ROW], FIELD_ROWS, [TRACK_ROW], [], [{ seq: 7 }], []]);
+    const app = appWithDb(db);
+    const req = submitForm();
+
+    const res = await app.request(req, undefined, {
+      KV: fakeKv(),
+      FILES: fakeFilesBucket(),
+      EMAIL: { async send() {} },
+      MAIL_FROM_EMAIL: "noreply@example.com",
+      MAIL_FROM_NAME: "Chautauqua",
+    } as unknown as AppEnv["Bindings"]);
+
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    // The submission's seq (7, from the queued readback) is formatted with
+    // the event's own recordPrefix ("DEVX"), never the "SES" literal that
+    // formatRef("SES", ...) used to hardcode.
+    expect(html).toContain("DEVX-007");
+    expect(html).not.toContain("SES-007");
+
+    // And the same ref reached the confirmation email body, not just the page.
+    const emailLogInserts = inserts.filter(
+      (v) => typeof v === "object" && v !== null && !Array.isArray(v) && "toEmail" in (v as object),
+    );
+    expect(emailLogInserts).toHaveLength(1);
+    expect((emailLogInserts[0] as any).status).toBe("sent");
+  });
+});
+
 describe("public submit: mailer failure is best-effort (DEC-237/DEC-238)", () => {
   it("returns the confirmation page, persists the submission, and logs a 'failed' email_log row when the mailer throws", async () => {
     const { db, inserts } = fakeDb(selectQueueFor());

@@ -436,7 +436,7 @@ publicSubmitRoutes.post("/submit/:eventSlug", async (c) => {
   }
 
   const submission = await createSubmission(db, { eventId: event.id, formId: form.id, title, description });
-  const ref = formatRef("SES", submission.seq);
+  const ref = formatRef(event.recordPrefix, submission.seq);
   await createParticipant(db, {
     submissionId: submission.id,
     contactId,
