@@ -110,7 +110,7 @@ export function PipelineBoard() {
           {!loading && <span className="chq-contacts-pipeline-caption">{total} people</span>}
         </div>
         <button type="button" className="chq-btn chq-btn-secondary" onClick={() => setShowEnroll(true)}>
-          + Enroll
+          Add to the pipeline
         </button>
       </div>
       {error && <div className="chq-error">{error}</div>}
@@ -305,7 +305,9 @@ function PipelineCard({ entry, onOpen, onMove }: PipelineCardProps) {
       {/* DEC-821: fit is a visible state, never blank -- an unrated card
           still says so, rather than implying a zero. */}
       {entry.fitScore !== null ? (
-        <span className="chq-pill chq-contacts-pipeline-card-fit">Fit {entry.fitScore}</span>
+        <span className="chq-pill chq-contacts-pipeline-card-fit chq-contacts-pipeline-card-fit-rated">
+          Fit {entry.fitScore}
+        </span>
       ) : (
         <span className="chq-pill chq-contacts-pipeline-card-fit chq-contacts-pipeline-card-fit-unrated">Unrated</span>
       )}
@@ -368,76 +370,90 @@ function EnrollDialog({ alreadyEnrolledContactIds, onClose, onEnrolled }: Enroll
     }
   }
 
-  useEscapeKey(true, () => {
-    if (!busy) onClose();
-  });
-
-  function handleScrimClick(e: MouseEvent<HTMLDivElement>) {
-    if (e.target === e.currentTarget && !busy) onClose();
-  }
-
   return (
-    <div className="chq-scrim" role="dialog" aria-modal="true" aria-label="Enroll contact" onClick={handleScrimClick}>
-      <div className="chq-modal">
-        <div className="chq-modal-head">
-          <h3 className="chq-page-title chq-modal-title">Enroll a contact</h3>
-          <button type="button" className="chq-btn chq-btn-tertiary" onClick={onClose} disabled={busy}>
-            Close
-          </button>
-        </div>
-        {error && <div className="chq-error">{error}</div>}
-        <label className="chq-contacts-import-field">
-          Contact
-          <select className="chq-select" value={contactId} onChange={(e) => setContactId(e.target.value)}>
-            <option value="">Select a contact...</option>
-            {available.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.firstName} {c.lastName} — {c.email}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="chq-contacts-import-field">
-          Starting stage
-          <select className="chq-select" value={stage} onChange={(e) => setStage(e.target.value as PipelineStage)}>
-            {PIPELINE_STAGES.map((s) => (
-              <option key={s} value={s}>
-                {PIPELINE_STAGE_LABELS[s]}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="chq-contacts-import-field">
-          Fit (1–5, optional)
-          <select className="chq-select" value={fitScore} onChange={(e) => setFitScore(e.target.value)}>
-            <option value="">Unrated</option>
-            {[1, 2, 3, 4, 5].map((n) => (
-              <option key={n} value={n}>
-                {n}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="chq-contacts-import-field">
-          Why them
-          <input
-            type="text"
-            className="chq-input"
-            value={rationale}
-            onChange={(e) => setRationale(e.target.value)}
-            placeholder="Keynoted a similar event last year"
-          />
-        </label>
-        <div className="chq-contacts-import-actions">
+    <ModalFrame
+      title="Add to the pipeline"
+      onClose={onClose}
+      closeDisabled={busy}
+      actions={
+        <>
           <button type="button" className="chq-btn chq-btn-primary" disabled={busy || !contactId} onClick={enroll}>
-            Enroll
+            Add to the pipeline
           </button>
-          <button type="button" className="chq-btn chq-btn-secondary" onClick={onClose}>
+          <button type="button" className="chq-btn chq-btn-secondary" onClick={onClose} disabled={busy}>
             Cancel
           </button>
+        </>
+      }
+    >
+      {error && <div className="chq-error">{error}</div>}
+      <FormRow label="Contact" htmlFor="pipeline-enroll-contact">
+        <select
+          id="pipeline-enroll-contact"
+          className="chq-select"
+          value={contactId}
+          onChange={(e) => setContactId(e.target.value)}
+        >
+          <option value="">Select a contact...</option>
+          {available.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.firstName} {c.lastName} — {c.email}
+            </option>
+          ))}
+        </select>
+      </FormRow>
+      <FormRow label="Starting stage">
+        <div className="chq-segmented" role="group" aria-label="Starting stage">
+          {PIPELINE_STAGES.map((s) => (
+            <button
+              key={s}
+              type="button"
+              className={stage === s ? 'chq-btn chq-btn-primary' : 'chq-btn chq-btn-secondary'}
+              aria-pressed={stage === s}
+              onClick={() => setStage(s)}
+            >
+              {PIPELINE_STAGE_LABELS[s]}
+            </button>
+          ))}
         </div>
-      </div>
-    </div>
+      </FormRow>
+      <FormRow label="Fit">
+        <div className="chq-segmented" role="group" aria-label="Fit">
+          <button
+            type="button"
+            className={fitScore === '' ? 'chq-btn chq-btn-primary' : 'chq-btn chq-btn-secondary'}
+            aria-pressed={fitScore === ''}
+            onClick={() => setFitScore('')}
+          >
+            Unrated
+          </button>
+          {[1, 2, 3, 4, 5].map((n) => (
+            <button
+              key={n}
+              type="button"
+              className={fitScore === String(n) ? 'chq-btn chq-btn-primary' : 'chq-btn chq-btn-secondary'}
+              aria-pressed={fitScore === String(n)}
+              onClick={() => setFitScore(String(n))}
+            >
+              {n}
+            </button>
+          ))}
+        </div>
+      </FormRow>
+      <FormRow label="Why them" htmlFor="pipeline-enroll-rationale">
+        <input
+          id="pipeline-enroll-rationale"
+          type="text"
+          className="chq-input"
+          value={rationale}
+          onChange={(e) => setRationale(e.target.value)}
+          placeholder="Keynoted a similar event last year"
+        />
+      </FormRow>
+      <p className="chq-contacts-pipeline-enroll-consequence">
+        Adding writes a move to the activity feed · No email is sent
+      </p>
+    </ModalFrame>
   );
 }
 
