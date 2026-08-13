@@ -544,6 +544,14 @@ export function SubmissionDetailPage() {
 
   const trackNames = detail.trackIds.map((trackId) => tracks.find((t) => t.id === trackId)?.name ?? trackId);
   const answerRows = buildAnswerRows(detail.answers, resolveAnswerFields(form, detail.formId));
+  // DEC-908 eyebrow: track names joined ' · ' plus the session format,
+  // either half omitted when absent, the whole line omitted when both are.
+  const eyebrowTrackNames = trackNames.join(' · ');
+  const eyebrowFormat = typeof detail.answers[SESSION_FORMAT_FIELD_ID] === 'string'
+    ? (detail.answers[SESSION_FORMAT_FIELD_ID] as string).trim()
+    : '';
+  const eyebrowParts = [eyebrowTrackNames, eyebrowFormat].filter((part) => part !== '');
+  const eyebrowText = eyebrowParts.length > 0 ? eyebrowParts.join(' · ') : null;
   // Speaker card: the named 'speaker' role participant, falling back to the
   // first (order asc) participant when no role is literally 'speaker'.
   const speaker = detail.participants.find((p) => p.role === 'speaker') ?? detail.participants[0] ?? null;
@@ -569,24 +577,54 @@ export function SubmissionDetailPage() {
 
   return (
     <div className="chq-page chq-detail-page">
-      <div className="chq-detail-topbar">
+      {/* DEC-908 ref row: back link, then the muted '<ref> · N of M' string
+          (absent -- not blank -- when this page's own list query hasn't
+          resolved a position, e.g. a stale/shared link), then the
+          right-aligned Previous/Next TEXT links. DEC-733: at either edge
+          the corresponding link is absent, never disabled; both keep
+          location.search so paging survives the round trip. */}
+      <div className="chq-detail-ref-row">
         <Link to="/submissions" className="chq-detail-back">
           &larr; All submissions
         </Link>
+        {listPosition && (
+          <span className="chq-detail-ref-position">
+            {detail.ref} &middot; {listPosition.position} of {listPosition.total}
+          </span>
+        )}
+        {listPosition && (listPosition.prevId || listPosition.nextId) && (
+          <div className="chq-detail-position" aria-label="Position in list">
+            {listPosition.prevId && (
+              <Link
+                to={`/submissions/${listPosition.prevId}${location.search}`}
+                className="chq-detail-position-prev"
+                aria-label="Previous submission"
+              >
+                &lsaquo; Previous
+              </Link>
+            )}
+            {listPosition.nextId && (
+              <Link
+                to={`/submissions/${listPosition.nextId}${location.search}`}
+                className="chq-detail-position-next"
+                aria-label="Next submission"
+              >
+                Next &rsaquo;
+              </Link>
+            )}
+          </div>
+        )}
       </div>
 
       {error && <div className="chq-error-banner">{error}</div>}
 
       <header className="chq-detail-heading">
-        {/* The title and its placement subtitle are ONE flex item:
-            .chq-detail-heading is space-between, so leaving the placement
-            line as a third direct child would scatter title / placement /
-            position-nav across the row (the same failure mode DEC-780 fixed
-            for .chq-detail-section-title-row). */}
+        {/* DEC-908: the ref now lives on the ref row above -- the H1 is
+            detail.title alone. Eyebrow (tracks + format) and the placement
+            subtitle travel with the title as one flex item. */}
         <div className="chq-detail-heading-title">
-          <h1>
-            {detail.ref}: {detail.title}
-          </h1>
+          {eyebrowText !== null && <p className="chq-detail-eyebrow">{eyebrowText}</p>}
+          <h1>{detail.title}</h1>
           {/* DEC-828: only rendered once the session has an actual agenda
               placement -- schedule_slot has at most one row per submission,
               null means "not scheduled yet", never a blank/placeholder line. */}
@@ -596,39 +634,16 @@ export function SubmissionDetailPage() {
             </p>
           )}
         </div>
-        {listPosition && (
-          <div className="chq-detail-position" aria-label="Position in list">
-            {/* DEC-733: at either end the corresponding control is absent,
-                never disabled. */}
-            {listPosition.prevId && (
-              <Link
-                to={`/submissions/${listPosition.prevId}${location.search}`}
-                className="chq-detail-position-prev"
-                aria-label="Previous submission"
-              >
-                &lsaquo;
-              </Link>
-            )}
-            <span className="chq-detail-position-count">
-              {listPosition.position} of {listPosition.total}
-            </span>
-            {listPosition.nextId && (
-              <Link
-                to={`/submissions/${listPosition.nextId}${location.search}`}
-                className="chq-detail-position-next"
-                aria-label="Next submission"
-              >
-                &rsaquo;
-              </Link>
-            )}
-          </div>
-        )}
       </header>
 
       <div className="chq-detail-layout">
         <div className="chq-detail-main">
+          {/* DEC-908 main column order: Abstract -> Form Answers -> Reviews
+              -> Session Details. This is today's "Session details" section,
+              retitled Abstract -- content and inline-edit behaviour
+              unchanged. */}
           <section className="chq-detail-section">
-            <h2 className="chq-detail-section-title">Session details</h2>
+            <h2 className="chq-detail-section-title">Abstract</h2>
             <div className="chq-detail-section-body">
               {!editing ? (
                 <>
@@ -676,64 +691,82 @@ export function SubmissionDetailPage() {
             </div>
           </section>
 
-          <section className="chq-detail-section chq-submission-history">
-            {/* DEC-707 section-action grammar: a plain label above the 2px
-                rule, the show/hide toggle rendered as the section's ONE
-                action ON that same rule -- never a bare toggle-button
-                standing in for the heading. */}
-            <div className="chq-detail-section-title chq-detail-section-title-row">
-              <span className="chq-detail-section-title-text">History</span>
-              <button type="button" className="chq-detail-section-action chq-link-button" onClick={toggleHistory}>
-                {historyOpen ? 'Hide' : 'Show'}
-              </button>
+          {/* DEC-908: today's Answers section, retitled Form Answers and
+              moved up to sit right after Abstract. Same 190px/1fr baseline
+              grid with 1px hairline row rules the frame calls for (already
+              .chq-answer-row's shape -- unchanged here). */}
+          <section className="chq-detail-section">
+            <h2 className="chq-detail-section-title">Form answers</h2>
+            <div className="chq-detail-section-body">
+              {answerRows.length === 0 ? (
+                <p>No custom answers.</p>
+              ) : (
+                <dl className="chq-answers-list">
+                  {answerRows.map((row) => (
+                    <div key={row.fieldId} className="chq-answer-row">
+                      <dt>{row.label}</dt>
+                      <dd>{row.displayValue}</dd>
+                    </div>
+                  ))}
+                </dl>
+              )}
             </div>
-            {historyOpen && (
-              <div className="chq-detail-section-body">
-                {historyError && <div className="chq-error-banner">{historyError}</div>}
-                {historyLoading ? (
-                  <DelayedLoading label="Loading history…" />
-                ) : historyEntries.length === 0 ? (
-                  <p>No history recorded yet.</p>
-                ) : (
-                  <ul className="chq-submission-history-list">
-                    {historyEntries.map((entry) => (
-                      <li key={entry.id} className="chq-submission-history-entry">
-                        {/* DEC-892 timeline entry in the DEC-707 `when |
-                            what` row grammar: the merged kind's label (and
-                            its detail, when the kind carries one) reads as
-                            the 'what' half. */}
-                        <div className="chq-submission-history-row">
-                          <span className="chq-submission-history-when">{formatTimestamp(entry.at)}</span>
-                          <span aria-hidden="true"> | </span>
-                          <span className="chq-submission-history-what">
-                            <strong>{entry.label}</strong>
-                            {entry.detail ? <> &mdash; {entry.detail}</> : null}
-                          </span>
-                        </div>
-                        {/* Only an 'edited' entry is a revision that can be
-                            restored — a submitted/reviewed/emailed entry has
-                            no prior content to put back. */}
-                        {entry.kind === 'edited' && (
-                          <button
-                            type="button"
-                            className="chq-btn chq-btn-tertiary"
-                            disabled={restoringId === entry.id}
-                            onClick={() => restoreRevision(entry.id)}
-                          >
-                            Restore
-                          </button>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            )}
           </section>
 
-          <section className="chq-detail-section">
-            <h2 className="chq-detail-section-title">Tracks</h2>
+          <section className="chq-detail-section chq-detail-reviews">
+            <h2 className="chq-detail-section-title">
+              Reviews &middot; {evaluations.filter((ev) => ev.submittedAt !== null).length} of {evaluations.length} in
+            </h2>
             <div className="chq-detail-section-body">
+              {evaluationsError && <div className="chq-error-banner">{evaluationsError}</div>}
+              {evaluations.length === 0 ? (
+                <p>No reviews recorded yet.</p>
+              ) : (
+                <ul className="chq-review-list">
+                  {evaluations.map((ev, i) => (
+                    <li key={`${ev.planId}-${ev.round}-${i}`} className="chq-review-entry">
+                      <div className="chq-review-entry-meta">
+                        {/* DEC-736: the organiser is always told who
+                            reviewed -- never render 'Anonymous reviewer',
+                            even for an anonymized plan. */}
+                        <strong>{ev.reviewerName}</strong>
+                        <span className="chq-review-entry-score">{ev.score !== null ? ev.score.toFixed(2) : '—'}</span>
+                        <span className="chq-review-entry-plan">
+                          {ev.planName} &middot; Round {ev.round} &middot; {formatTimestamp(ev.submittedAt)}
+                        </span>
+                      </div>
+                      {ev.criteria.length > 0 && (
+                        <dl className="chq-review-scores">
+                          {/* Criterion values render under criteria[].label
+                              -- the raw criterionId key never reaches the
+                              DOM (used only as the React list key). */}
+                          {ev.criteria.map((criterion) => (
+                            <div key={criterion.id} className="chq-review-score">
+                              <dt>{criterion.label}</dt>
+                              <dd>{ev.scores[criterion.id] ?? '—'}</dd>
+                            </div>
+                          ))}
+                        </dl>
+                      )}
+                      {/* Copy rule 6: sentences are for people -- the full
+                          comment text, never truncated. */}
+                      {ev.comment && <p className="chq-review-comment">{ev.comment}</p>}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </section>
+
+          {/* DEC-908: ONE trailing "Session details" section holding today's
+              Tracks/Format/Participants blocks verbatim (every behaviour --
+              optimistic write, loud rollback, co-presenter search, role
+              picker -- unchanged); only their placement moves here. */}
+          <section className="chq-detail-section chq-detail-session-details">
+            <h2 className="chq-detail-section-title">Session details</h2>
+            <div className="chq-detail-section-body chq-detail-session-details-body">
+              <div className="chq-detail-subsection">
+                <h3 className="chq-detail-subsection-title">Tracks</h3>
               {tracksError && <div className="chq-error-banner">{tracksError}</div>}
               {!editingTracks ? (
                 <>
@@ -789,38 +822,34 @@ export function SubmissionDetailPage() {
                   </div>
                 </div>
               )}
-            </div>
-          </section>
+              </div>
 
-          <section className="chq-detail-section">
-            <h2 className="chq-detail-section-title">Format</h2>
-            <div className="chq-detail-section-body">
-              {formatError && <div className="chq-error-banner">{formatError}</div>}
-              {formatField ? (
-                <select
-                  id="submission-format"
-                  className="chq-select"
-                  aria-label="Format"
-                  value={currentFormat}
-                  disabled={formatPending}
-                  onChange={(e) => changeFormat(e.target.value)}
-                >
-                  <option value="">Not set</option>
-                  {(formatField.options ?? []).map((option) => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <p>This event's form has no session format field.</p>
-              )}
-            </div>
-          </section>
+              <div className="chq-detail-subsection">
+                <h3 className="chq-detail-subsection-title">Format</h3>
+                {formatError && <div className="chq-error-banner">{formatError}</div>}
+                {formatField ? (
+                  <select
+                    id="submission-format"
+                    className="chq-select"
+                    aria-label="Format"
+                    value={currentFormat}
+                    disabled={formatPending}
+                    onChange={(e) => changeFormat(e.target.value)}
+                  >
+                    <option value="">Not set</option>
+                    {(formatField.options ?? []).map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <p>This event's form has no session format field.</p>
+                )}
+              </div>
 
-          <section className="chq-detail-section">
-            <h2 className="chq-detail-section-title">Participants</h2>
-            <div className="chq-detail-section-body">
+              <div className="chq-detail-subsection">
+                <h3 className="chq-detail-subsection-title">Participants</h3>
               {participantsError && <div className="chq-error-banner">{participantsError}</div>}
               {detail.participants.length === 0 ? (
                 <p>No participants.</p>
@@ -938,98 +967,13 @@ export function SubmissionDetailPage() {
                   </ul>
                 )}
               </div>
-            </div>
-          </section>
-
-          <section className="chq-detail-section">
-            <h2 className="chq-detail-section-title">Answers</h2>
-            <div className="chq-detail-section-body">
-              {answerRows.length === 0 ? (
-                <p>No custom answers.</p>
-              ) : (
-                <dl className="chq-answers-list">
-                  {answerRows.map((row) => (
-                    <div key={row.fieldId} className="chq-answer-row">
-                      <dt>{row.label}</dt>
-                      <dd>{row.displayValue}</dd>
-                    </div>
-                  ))}
-                </dl>
-              )}
-            </div>
-          </section>
-
-          <section className="chq-detail-section chq-detail-reviews">
-            <h2 className="chq-detail-section-title">
-              Reviews &middot; {evaluations.filter((ev) => ev.submittedAt !== null).length} of {evaluations.length} in
-            </h2>
-            <div className="chq-detail-section-body">
-              {evaluationsError && <div className="chq-error-banner">{evaluationsError}</div>}
-              {evaluations.length === 0 ? (
-                <p>No reviews recorded yet.</p>
-              ) : (
-                <ul className="chq-review-list">
-                  {evaluations.map((ev, i) => (
-                    <li key={`${ev.planId}-${ev.round}-${i}`} className="chq-review-entry">
-                      <div className="chq-review-entry-meta">
-                        {/* DEC-736: the organiser is always told who
-                            reviewed -- never render 'Anonymous reviewer',
-                            even for an anonymized plan. */}
-                        <strong>{ev.reviewerName}</strong>
-                        <span className="chq-review-entry-score">{ev.score !== null ? ev.score.toFixed(2) : '—'}</span>
-                        <span className="chq-review-entry-plan">
-                          {ev.planName} &middot; Round {ev.round} &middot; {formatTimestamp(ev.submittedAt)}
-                        </span>
-                      </div>
-                      {ev.criteria.length > 0 && (
-                        <dl className="chq-review-scores">
-                          {/* Criterion values render under criteria[].label
-                              -- the raw criterionId key never reaches the
-                              DOM (used only as the React list key). */}
-                          {ev.criteria.map((criterion) => (
-                            <div key={criterion.id} className="chq-review-score">
-                              <dt>{criterion.label}</dt>
-                              <dd>{ev.scores[criterion.id] ?? '—'}</dd>
-                            </div>
-                          ))}
-                        </dl>
-                      )}
-                      {/* Copy rule 6: sentences are for people -- the full
-                          comment text, never truncated. */}
-                      {ev.comment && <p className="chq-review-comment">{ev.comment}</p>}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </section>
-
-          <section className="chq-detail-section">
-            <h2 className="chq-detail-section-title">Meta</h2>
-            <div className="chq-detail-section-body">
-              <p>Created: {formatDateTime(detail.createdAt)}</p>
-              <p>Updated: {formatDateTime(detail.updatedAt)}</p>
-              <p>Accepted: {formatDateTime(detail.acceptedAt)}</p>
+              </div>
             </div>
           </section>
         </div>
 
+        {/* DEC-908 rail order: Decision -> Speaker -> History. */}
         <aside className="chq-detail-aside">
-          {speaker && (
-            <section className="chq-detail-section chq-detail-speaker">
-              <h2 className="chq-detail-section-title">Speaker</h2>
-              <div className="chq-detail-section-body chq-detail-speaker-body">
-                <strong className="chq-detail-speaker-name">{speaker.name}</strong>
-                {(speaker.title || speaker.company) && (
-                  <span className="chq-detail-speaker-role">
-                    {[speaker.title, speaker.company].filter(Boolean).join(', ')}
-                  </span>
-                )}
-                <span className="chq-detail-speaker-email">{speaker.email}</span>
-              </div>
-            </section>
-          )}
-
           <section className="chq-detail-section chq-detail-decision">
             <h2 className="chq-detail-section-title">Decision</h2>
             <div className="chq-detail-section-body chq-detail-decision-body">
@@ -1111,6 +1055,79 @@ export function SubmissionDetailPage() {
                 Review the content &rsaquo;
               </Link>
             </div>
+          </section>
+
+          {speaker && (
+            <section className="chq-detail-section chq-detail-speaker">
+              <h2 className="chq-detail-section-title">Speaker</h2>
+              <div className="chq-detail-section-body chq-detail-speaker-body">
+                <strong className="chq-detail-speaker-name">{speaker.name}</strong>
+                {(speaker.title || speaker.company) && (
+                  <span className="chq-detail-speaker-role">
+                    {[speaker.title, speaker.company].filter(Boolean).join(', ')}
+                  </span>
+                )}
+                <span className="chq-detail-speaker-email">{speaker.email}</span>
+              </div>
+            </section>
+          )}
+
+          {/* DEC-908: History moves into the rail, below Speaker. Each
+              entry renders on the frame's 96px/1fr 'when | what' grid --
+              the grid itself is the separator, so the literal ' | ' span is
+              gone. Show/Hide toggle, DEC-892 entry kinds, and the
+              per-revision Restore button are unchanged. */}
+          <section className="chq-detail-section chq-submission-history">
+            {/* DEC-707 section-action grammar: a plain label above the 2px
+                rule, the show/hide toggle rendered as the section's ONE
+                action ON that same rule -- never a bare toggle-button
+                standing in for the heading. */}
+            <div className="chq-detail-section-title chq-detail-section-title-row">
+              <span className="chq-detail-section-title-text">History</span>
+              <button type="button" className="chq-detail-section-action chq-link-button" onClick={toggleHistory}>
+                {historyOpen ? 'Hide' : 'Show'}
+              </button>
+            </div>
+            {historyOpen && (
+              <div className="chq-detail-section-body">
+                {historyError && <div className="chq-error-banner">{historyError}</div>}
+                {historyLoading ? (
+                  <DelayedLoading label="Loading history…" />
+                ) : historyEntries.length === 0 ? (
+                  <p>No history recorded yet.</p>
+                ) : (
+                  <ul className="chq-submission-history-list">
+                    {historyEntries.map((entry) => (
+                      <li key={entry.id} className="chq-submission-history-entry">
+                        {/* DEC-892 timeline entry on the frame's 96px/1fr
+                            'when | what' grid -- the grid gap is the
+                            separator, no literal ' | ' text. */}
+                        <div className="chq-submission-history-row">
+                          <span className="chq-submission-history-when">{formatTimestamp(entry.at)}</span>
+                          <span className="chq-submission-history-what">
+                            <strong>{entry.label}</strong>
+                            {entry.detail ? <> &mdash; {entry.detail}</> : null}
+                          </span>
+                        </div>
+                        {/* Only an 'edited' entry is a revision that can be
+                            restored — a submitted/reviewed/emailed entry has
+                            no prior content to put back. */}
+                        {entry.kind === 'edited' && (
+                          <button
+                            type="button"
+                            className="chq-btn chq-btn-tertiary"
+                            disabled={restoringId === entry.id}
+                            onClick={() => restoreRevision(entry.id)}
+                          >
+                            Restore
+                          </button>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
           </section>
         </aside>
       </div>

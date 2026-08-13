@@ -5,6 +5,9 @@
 // as real SubmissionDetail columns per DEC-016, not in `answers`.
 import { formatAnswerValue } from './columns';
 import type { FormField } from './types';
+// DEC-908: the ONE test for "is this answer key a locked built-in field" --
+// never a new hand-written id list beside this one.
+import { lockedFieldName } from '../../../../src/forms/types';
 
 export interface CfpFormLike {
   id: string;
@@ -33,11 +36,22 @@ export function resolveAnswerFields(form: CfpFormLike | null, formId: string | n
  * matching field's position (author-defined order); answers with no
  * matching field (fall back to the raw key) sort after all matched ones,
  * in raw key order.
+ *
+ * DEC-908: two exclusions before display. (1) An answer whose fieldId
+ * resolves to a locked built-in field (title/description/first name/last
+ * name/email/...) is skipped -- locked fields already have their own
+ * dedicated SubmissionDetail columns (DEC-016) and must never double-render
+ * as a Form Answers row, even if a stray one somehow lands in `answers`.
+ * The check goes through the SAME lockedFieldName helper the builder uses,
+ * never a second hand-written list. (2) An answer whose formatted value is
+ * empty/whitespace-only is skipped -- an unanswered optional field is not a
+ * fact worth a row.
  */
 export function buildAnswerRows(answers: Record<string, unknown>, fields: FormField[]): AnswerRow[] {
   const fieldById = new Map(fields.map((f) => [f.id, f]));
 
   return Object.entries(answers)
+    .filter(([fieldId]) => lockedFieldName(fieldId) === null)
     .map(([fieldId, value]) => {
       const field = fieldById.get(fieldId);
       return {
@@ -47,6 +61,7 @@ export function buildAnswerRows(answers: Record<string, unknown>, fields: FormFi
         position: field?.position ?? Number.POSITIVE_INFINITY,
       };
     })
+    .filter((row) => row.displayValue.trim() !== '')
     .sort((a, b) => {
       if (a.position !== b.position) return a.position - b.position;
       return a.fieldId.localeCompare(b.fieldId);

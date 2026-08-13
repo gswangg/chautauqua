@@ -98,7 +98,9 @@ describe('SubmissionDetailPage render smoke: inline edit + content-status contro
     await waitFor(() => {
       expect(screen.getByText('Updated description')).toBeInTheDocument();
     });
-    expect(screen.getByRole('heading', { name: 'S-001: Updated Title' })).toBeInTheDocument();
+    // DEC-908: the H1 is detail.title ALONE -- the ref moved to the ref row.
+    expect(screen.getByRole('heading', { name: 'Updated Title' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: /^S-001:/ })).not.toBeInTheDocument();
   });
 
   it('leaves content approval to the content screen via a single tertiary link (DEC-743)', async () => {
@@ -167,8 +169,12 @@ describe('SubmissionDetailPage render smoke: inline edit + content-status contro
     });
     expect(screen.getByText('Submitted')).toBeInTheDocument();
 
-    // Each history entry renders as a `when | what` row.
-    expect(screen.getAllByText('|').length).toBeGreaterThan(0);
+    // DEC-908: each history entry renders on the 96px/1fr 'when | what'
+    // grid -- the grid gap is the separator, no literal ' | ' text node.
+    expect(screen.queryByText('|')).not.toBeInTheDocument();
+    expect(document.querySelectorAll('.chq-submission-history-row').length).toBeGreaterThan(0);
+    // History lives in the rail aside, below Speaker/Decision.
+    expect(document.querySelector('.chq-detail-aside .chq-submission-history')).not.toBeNull();
 
     expect(screen.getByRole('button', { name: 'Hide' })).toBeInTheDocument();
 
@@ -393,7 +399,7 @@ describe('SubmissionDetailPage render: editable Tracks section', () => {
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText('Frontend')).toBeInTheDocument();
+      expect(screen.getAllByText('Frontend').length).toBeGreaterThan(0);
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Edit tracks' }));
@@ -440,7 +446,7 @@ describe('SubmissionDetailPage render: editable Tracks section', () => {
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText('Frontend')).toBeInTheDocument();
+      expect(screen.getAllByText('Frontend').length).toBeGreaterThan(0);
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Edit tracks' }));
@@ -488,7 +494,7 @@ describe('SubmissionDetailPage render: editable Tracks section', () => {
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText('Frontend')).toBeInTheDocument();
+      expect(screen.getAllByText('Frontend').length).toBeGreaterThan(0);
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Edit tracks' }));
@@ -617,8 +623,9 @@ describe('SubmissionDetailPage render: list position + neighbour navigation (DEC
 
     renderPage(`/submissions/${SUB_ID}?status=pending&sort=oldest`);
 
+    // DEC-908 ref row: '<ref> · N of M' as one muted string.
     await waitFor(() => {
-      expect(screen.getByText('2 of 47')).toBeInTheDocument();
+      expect(screen.getByText('S-001 · 2 of 47')).toBeInTheDocument();
     });
     expect(screen.getByRole('link', { name: 'Previous submission' })).toHaveAttribute(
       'href',
@@ -649,7 +656,7 @@ describe('SubmissionDetailPage render: list position + neighbour navigation (DEC
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText('1 of 2')).toBeInTheDocument();
+      expect(screen.getByText('S-001 · 1 of 2')).toBeInTheDocument();
     });
     expect(screen.queryByRole('link', { name: 'Previous submission' })).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Next submission' })).toBeInTheDocument();
@@ -916,5 +923,140 @@ describe('SubmissionDetailPage render: co-presenter role picker (DEC-784)', () =
     const table = document.querySelector('.chq-participants-table') as HTMLElement;
     expect(within(table).getByText('Co-presenter')).toBeInTheDocument();
     expect(within(table).queryByText('co-presenter')).not.toBeInTheDocument();
+  });
+});
+
+// DEC-908: rebuild to the frame's anatomy (docs/design 'Chautauqua
+// Submissions.dc.html' lines 207-299) -- ref row above the grid, an eyebrow
+// (tracks + format) above a title-only H1, main column reordered to
+// Abstract -> Form Answers -> Reviews -> Session Details, History moved
+// into the rail below Speaker, and the Meta section deleted outright.
+describe('SubmissionDetailPage render: DEC-908 frame anatomy', () => {
+  it('renders the ref-row string, the eyebrow, and a title-only H1', async () => {
+    const detail = baseDetail({
+      title: 'Docs That Answer Back',
+      trackIds: ['t1', 't2'],
+      answers: { field_session_format: 'Lightning talk' },
+    });
+    mockApi({
+      [`GET /api/v1/submissions/${SUB_ID}`]: detail,
+      [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
+      [`GET /api/v1/events/evt-1/tracks`]: {
+        items: [
+          { id: 't1', name: 'Developer Experience' },
+          { id: 't2', name: 'Platform' },
+        ],
+        total: 2,
+        page: 1,
+        perPage: 20,
+      },
+      [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`GET /api/v1/events/evt-1/submissions`]: { items: [], total: 0, page: 1, perPage: 20 },
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Docs That Answer Back' })).toBeInTheDocument();
+    });
+    // H1 does NOT contain the ref -- it now lives on the ref row alone.
+    expect(screen.queryByRole('heading', { name: /^S-001:/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /All submissions/ })).toBeInTheDocument();
+    // Eyebrow: track names joined ' · ' plus the session format.
+    expect(document.querySelector('.chq-detail-eyebrow')?.textContent).toBe('Developer Experience · Platform · Lightning talk');
+  });
+
+  it('omits the eyebrow entirely when neither tracks nor format are present', async () => {
+    const detail = baseDetail({ trackIds: [], answers: {} });
+    mockApi({
+      [`GET /api/v1/submissions/${SUB_ID}`]: detail,
+      [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
+      [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
+      [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('Original description')).toBeInTheDocument();
+    });
+    expect(document.querySelector('.chq-detail-eyebrow')).not.toBeInTheDocument();
+  });
+
+  it('orders the main column Abstract -> Form Answers -> Reviews -> Session Details, with no Meta heading', async () => {
+    const detail = baseDetail();
+    mockApi({
+      [`GET /api/v1/submissions/${SUB_ID}`]: detail,
+      [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
+      [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
+      [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('Original description')).toBeInTheDocument();
+    });
+
+    const main = document.querySelector('.chq-detail-main') as HTMLElement;
+    const sectionTitles = Array.from(main.querySelectorAll(':scope > section > h2')).map((h) => h.textContent);
+    expect(sectionTitles[0]).toBe('Abstract');
+    expect(sectionTitles[1]).toBe('Form answers');
+    expect(sectionTitles[2]).toMatch(/^Reviews/);
+    expect(sectionTitles[3]).toBe('Session details');
+    expect(sectionTitles.length).toBe(4);
+
+    // Meta is gone outright -- neither heading nor its Created/Updated/
+    // Accepted lines render anywhere on the page.
+    expect(screen.queryByRole('heading', { name: 'Meta' })).not.toBeInTheDocument();
+    expect(screen.queryByText(/^Created:/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^Accepted:/)).not.toBeInTheDocument();
+  });
+
+  it('moves History into the rail aside, below Speaker', async () => {
+    const detail = baseDetail({
+      participants: [
+        {
+          id: 'p1',
+          contactId: 'c1',
+          name: 'Jamie Speaker',
+          email: 'jamie@example.com',
+          title: null,
+          company: null,
+          role: 'speaker',
+          order: 0,
+          visible: true,
+          inviteStatus: 'accepted',
+        },
+      ],
+    });
+    mockApi({
+      [`GET /api/v1/submissions/${SUB_ID}`]: detail,
+      [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
+      [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
+      [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getAllByText('Jamie Speaker').length).toBeGreaterThan(0);
+    });
+
+    const aside = document.querySelector('.chq-detail-aside') as HTMLElement;
+    expect(aside.querySelector('.chq-submission-history')).not.toBeNull();
+    const asideSectionTitles = Array.from(aside.querySelectorAll(':scope > section')).map(
+      (section) =>
+        section.querySelector('h2, .chq-detail-section-title-text')?.textContent?.trim(),
+    );
+    // DECISION -> SPEAKER -> HISTORY.
+    expect(asideSectionTitles).toEqual(['Decision', 'Speaker', 'History']);
+    // History never appears in the main column any more.
+    const main = document.querySelector('.chq-detail-main') as HTMLElement;
+    expect(main.querySelector('.chq-submission-history')).toBeNull();
   });
 });
