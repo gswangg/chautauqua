@@ -8,7 +8,7 @@ import type { AppEnv } from "../../server/env";
 import { requireOrganizer, csrfJson } from "../../server/middleware";
 import { ApiError } from "../../server/http";
 import { MAX_NAME_LENGTH, MAX_TEXT_LENGTH, MAX_LONG_TEXT_LENGTH, MAX_RICH_TEXT_LENGTH } from "../../forms/validate"; // DEC-417
-import { makeFileStore } from "../../server/context";
+import { makeFileStore, putThenRecord } from "../../server/context";
 import { newId } from "../../domain/ids";
 import { sanitizeFilenameForKey, validateUpload } from "../../domain/files";
 import { getEventForOrg } from "../../server/repo/events";
@@ -220,14 +220,14 @@ async function createFileResourceHandler(c: Context<AppEnv>, eventId: string) {
   const sanitized = sanitizeFilenameForKey(uploadedFile.name);
   const r2Key = `resource/${eventId}/${newId()}-${sanitized}`;
   const store = makeFileStore(c.env.FILES);
-  await store.put(r2Key, uploadedFile.stream(), validation.servedContentType);
-
-  const fileId = await insertResourceFile(c.var.db, {
-    filename: uploadedFile.name,
-    r2Key,
-    sizeBytes: uploadedFile.size,
-    contentType: validation.servedContentType,
-  });
+  const fileId = await putThenRecord(store, r2Key, uploadedFile.stream(), validation.servedContentType, () =>
+    insertResourceFile(c.var.db, {
+      filename: uploadedFile.name,
+      r2Key,
+      sizeBytes: uploadedFile.size,
+      contentType: validation.servedContentType,
+    }),
+  );
 
   const created = await createFileResource(c.var.db, eventId, {
     title: (title as string).trim(),

@@ -20,7 +20,7 @@ import { setContactHeadshot, serializeSocialLinks, type SocialLinks } from "../.
 import { sanitizeFilenameForKey, validateHeadshotUpload } from "../../../domain/files";
 import { readImageDims, MAX_HEADSHOT_EDGE_PX } from "../../../lib/image-dims";
 import { newId } from "../../../domain/ids";
-import { makeFileStore } from "../../../server/context";
+import { makeFileStore, putThenRecord } from "../../../server/context";
 import { clampPage, listPerPage } from "../../../lib/pagination";
 import { PARTICIPANT_ROLE_OPTIONS } from "../../../domain/participant-roles";
 import {
@@ -410,16 +410,16 @@ export function registerCrudRoutes(contactsRoutes: Hono<AppEnv>): void {
     const sanitized = sanitizeFilenameForKey(headshot.name);
     const r2Key = `headshot/${contact.id}/${newId()}-${sanitized}`;
     const store = makeFileStore(c.env.FILES);
-    await store.put(r2Key, buf, validation.servedContentType);
-
     const auth = c.var.auth!;
-    await setContactHeadshot(c.var.db, contact.id, {
-      filename: headshot.name,
-      r2Key,
-      sizeBytes: headshot.size,
-      contentType: validation.servedContentType,
-      uploadedByContactId: auth.contactId ?? contact.id,
-    });
+    await putThenRecord(store, r2Key, buf, validation.servedContentType, () =>
+      setContactHeadshot(c.var.db, contact.id, {
+        filename: headshot.name,
+        r2Key,
+        sizeBytes: headshot.size,
+        contentType: validation.servedContentType,
+        uploadedByContactId: auth.contactId ?? contact.id,
+      }),
+    );
 
     const updated = await requireOwnedContact(c.var.db, contact.id, orgId);
     return c.json(serializeContact(updated));

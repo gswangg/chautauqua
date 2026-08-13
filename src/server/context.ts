@@ -111,6 +111,32 @@ export interface FileStore {
   deleteMany(keys: string[]): Promise<void>;
 }
 
+/** DEC-005 amendment (wave 50): the ONLY sanctioned single-object upload
+ * path. Every call site that writes one R2 object and then inserts/updates
+ * the row that names it MUST route through this helper — never call
+ * `store.put` directly outside this function (see
+ * test/file-put-compensation.scan.test.ts). `record` runs the row write;
+ * if it throws, the just-written object is deleted (best-effort — a
+ * cleanup failure is swallowed, never masking or replacing the original
+ * error) and the ORIGINAL error is rethrown unchanged. Multi-object batch
+ * uploads (src/routes/public/submit.tsx) keep their own rollback because a
+ * single delete-on-throw doesn't cover N objects. */
+export async function putThenRecord<T>(
+  store: FileStore,
+  key: string,
+  data: ReadableStream | ArrayBuffer,
+  contentType: string,
+  record: () => Promise<T>,
+): Promise<T> {
+  await store.put(key, data, contentType);
+  try {
+    return await record();
+  } catch (err) {
+    await store.delete(key).catch(() => {});
+    throw err;
+  }
+}
+
 const R2_DELETE_CHUNK_SIZE = 1000;
 
 export function makeFileStore(files: R2Bucket): FileStore {

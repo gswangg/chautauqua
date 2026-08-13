@@ -8,7 +8,7 @@ import { Hono } from "hono";
 import type { AppEnv, AuthInfo } from "../../server/env";
 import { csrfForm } from "../../server/middleware";
 import { ApiError } from "../../server/http";
-import { makeFileStore } from "../../server/context";
+import { makeFileStore, putThenRecord } from "../../server/context";
 import { assertSpeakerContactId, getPortalData } from "../../server/repo/portal";
 import { DEC_067, DEC_084, DEC_894 } from "../../decisions";
 import { readImageDims, MAX_HEADSHOT_EDGE_PX } from "../../lib/image-dims";
@@ -371,15 +371,15 @@ portalProfileRoutes.post("/profile", csrfForm, async (c) => {
     const sanitized = sanitizeFilenameForKey(headshot.name);
     const r2Key = `headshot/${contactId}/${newId()}-${sanitized}`;
     const store = makeFileStore(c.env.FILES);
-    await store.put(r2Key, buf, validation.servedContentType);
-
-    await setContactHeadshot(c.var.db, contactId, {
-      filename: headshot.name,
-      r2Key,
-      sizeBytes: headshot.size,
-      contentType: validation.servedContentType,
-      uploadedByContactId: contactId,
-    });
+    await putThenRecord(store, r2Key, buf, validation.servedContentType, () =>
+      setContactHeadshot(c.var.db, contactId, {
+        filename: headshot.name,
+        r2Key,
+        sizeBytes: headshot.size,
+        contentType: validation.servedContentType,
+        uploadedByContactId: contactId,
+      }),
+    );
     uploadedHeadshot = true;
   }
 
