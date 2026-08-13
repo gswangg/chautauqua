@@ -20,7 +20,9 @@ import * as schema from "../src/db/schema";
 type Marker =
   | { __marker: "eq"; col: unknown; val: unknown }
   | { __marker: "and"; conds: unknown[] }
-  | { __marker: "inArray"; col: unknown; val: unknown[] };
+  | { __marker: "inArray"; col: unknown; val: unknown[] }
+  | { __marker: "lower"; col: unknown }
+  | { __marker: "max"; col: unknown };
 
 vi.mock("drizzle-orm", async (importOriginal) => {
   const actual = await importOriginal<typeof import("drizzle-orm")>();
@@ -29,45 +31,32 @@ vi.mock("drizzle-orm", async (importOriginal) => {
     eq: (col: unknown, val: unknown): Marker => ({ __marker: "eq", col, val }),
     and: (...conds: unknown[]): Marker => ({ __marker: "and", conds }),
     inArray: (col: unknown, vals: unknown[]): Marker => ({ __marker: "inArray", col, val: vals }),
-    // submissionSeqSubquery / the track position subquery both build a raw
-    // sql`...` fragment that is only ever WRITTEN into an insert's `values`
-    // (never evaluated by this fake's evalCond), so the real tag can stay
-    // unmocked here — this test only asserts created/updated/skipped
-    // counts, never seq/position values.
-    sql: actual.sql,
-  };
-});
-
-// findContactByEmail's own lookup uses a raw sql`lower(...) = lower(...)`
-// fragment this fake's structural evalCond cannot interpret (it only knows
-// eq/and/inArray markers) -- mocked directly against the currently-active
-// fake rows instead of going through db.select, so the participants
-// speakerEmail fallback path is still exercised end to end.
-let currentFakeRows: FakeRows | null = null;
-
-vi.mock("../src/server/repo/submit", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../src/server/repo/submit")>();
-  return {
-    ...actual,
-    findContactByEmail: async (_db: unknown, orgId: string, email: string) => {
-      const rows = currentFakeRows;
-      if (!rows) return null;
-      const match = rows.contact.find(
-        (c) => c.orgId === orgId && String(c.email).toLowerCase() === email.toLowerCase(),
-      );
-      if (!match) return null;
-      return {
-        id: match.id as string,
-        title: (match.title as string | null) ?? null,
-        company: (match.company as string | null) ?? null,
-        bio: (match.bio as string | null) ?? null,
-      };
-    },
+    // The wave-47 email-fallback pre-pass (loadContactsByEmail) uses
+    // inArray(sql`lower(col)`, batch); the order pre-pass
+    // (loadMaxOrderBySubmissionId) uses a `max(col)` aggregate select field
+    // + groupBy. Both fragments are mocked to structural markers (same
+    // technique as test/contacts-import.test.ts) so this fake's
+    // evalCond/project below can interpret them; every OTHER sql`...` usage
+    // (submissionSeqSubquery, the track/participant position/order
+    // sub-selects written only into an insert's `values`) falls back to the
+    // real tag, unchanged.
+    sql: Object.assign(
+      (strings: TemplateStringsArray, ...values: unknown[]): unknown => {
+        if (strings.length === 2 && strings[0]?.trim() === "lower(" && strings[1]?.trim() === ")") {
+          return { __marker: "lower", col: values[0] } satisfies Marker;
+        }
+        if (strings.length === 2 && strings[0]?.trim() === "max(" && strings[1]?.trim() === ")") {
+          return { __marker: "max", col: values[0] } satisfies Marker;
+        }
+        return actual.sql(strings, ...values);
+      },
+      actual.sql,
+    ),
   };
 });
 
 // Imported after the mocks so importRoutes -> repo/events.ts + repo/import/
-// sessionboard.ts pick up the mocked eq/and/inArray/findContactByEmail.
+// sessionboard.ts pick up the mocked eq/and/inArray/sql.
 const { importRoutes } = await import("../src/routes/api/import");
 const { MAX_IMPORT_CSV_BYTES, MAX_IMPORT_ROWS } = await import("../src/routes/api/contacts/import");
 
@@ -97,19 +86,23 @@ function colInfo(col: unknown): { tag: string; key: string } | null {
   return null;
 }
 
+/** Resolves a column reference -- which may be wrapped in a "lower" marker
+ * from a mocked sql`lower(...)` call -- to its value on a row. */
+function fieldValue(colOrExpr: unknown, row: Record<string, unknown>): unknown {
+  const m = colOrExpr as Marker;
+  if (m && typeof m === "object" && "__marker" in m && m.__marker === "lower") {
+    return String(fieldValue(m.col, row)).toLowerCase();
+  }
+  const info = colInfo(colOrExpr);
+  if (!info) throw new Error("fake db: condition/select referenced an unresolved column");
+  return row[info.key];
+}
+
 function evalCond(cond: unknown, row: Record<string, unknown>): boolean {
   const m = cond as Marker;
-  if (m.__marker === "eq") {
-    const info = colInfo(m.col);
-    if (!info) throw new Error("fake db: eq on unresolved column");
-    return row[info.key] === m.val;
-  }
+  if (m.__marker === "eq") return fieldValue(m.col, row) === m.val;
   if (m.__marker === "and") return m.conds.every((c) => evalCond(c, row));
-  if (m.__marker === "inArray") {
-    const info = colInfo(m.col);
-    if (!info) throw new Error("fake db: inArray on unresolved column");
-    return m.val.includes(row[info.key]);
-  }
+  if (m.__marker === "inArray") return m.val.includes(fieldValue(m.col, row));
   throw new Error(`fake db: unsupported condition ${JSON.stringify(cond)}`);
 }
 
@@ -132,13 +125,13 @@ function makeFakeDb() {
     track: [],
     participant: [],
   };
-  currentFakeRows = rows;
 
   const db = {
     select(fields?: Record<string, unknown>) {
       let table: unknown = null;
       let whereCond: unknown = null;
       let limitN: number | null = null;
+      let groupByCol: unknown = null;
       const chain: any = {
         from: (t: unknown) => {
           table = t;
@@ -152,16 +145,47 @@ function makeFakeDb() {
           limitN = n;
           return chain;
         },
+        // groupBy is only used by loadMaxOrderBySubmissionId (a select field
+        // is the mocked "max" marker) -- the projection branch below
+        // aggregates per group instead of mapping row-for-row whenever a
+        // groupByCol is set.
+        groupBy: (col: unknown) => {
+          groupByCol = col;
+          return chain;
+        },
         then: (resolve: (v: unknown[]) => void) => {
           const tag = tableTag(table);
           const all = rows[tag] ?? [];
           const filtered = whereCond ? all.filter((r) => evalCond(whereCond, r)) : all.slice();
+          if (groupByCol) {
+            const groups = new Map<unknown, Record<string, unknown>[]>();
+            for (const r of filtered) {
+              const key = fieldValue(groupByCol, r);
+              const g = groups.get(key) ?? [];
+              g.push(r);
+              groups.set(key, g);
+            }
+            const out: Record<string, unknown>[] = [];
+            for (const groupRows of groups.values()) {
+              const row: Record<string, unknown> = {};
+              for (const [outKey, col] of Object.entries(fields ?? {})) {
+                const m = col as Marker;
+                if (m && typeof m === "object" && "__marker" in m && m.__marker === "max") {
+                  row[outKey] = Math.max(...groupRows.map((r) => Number(fieldValue(m.col, r))));
+                } else {
+                  row[outKey] = fieldValue(col, groupRows[0] as Record<string, unknown>);
+                }
+              }
+              out.push(row);
+            }
+            resolve(out);
+            return;
+          }
           const projected = fields
             ? filtered.map((r) => {
                 const out: Record<string, unknown> = {};
                 for (const [outKey, col] of Object.entries(fields)) {
-                  const info = colInfo(col);
-                  out[outKey] = info ? r[info.key] : undefined;
+                  out[outKey] = fieldValue(col, r);
                 }
                 return out;
               })
@@ -174,8 +198,12 @@ function makeFakeDb() {
     insert(table: unknown) {
       const tag = tableTag(table);
       return {
-        values: async (vals: Record<string, unknown>) => {
-          rows[tag]?.push({ ...vals });
+        // A multi-row insert (chunkRowsForInsert's set-based flush) passes
+        // an array of value objects rather than one object -- support both
+        // shapes.
+        values: async (vals: Record<string, unknown> | Record<string, unknown>[]) => {
+          const list = Array.isArray(vals) ? vals : [vals];
+          for (const v of list) rows[tag]?.push({ ...v });
         },
       };
     },
@@ -535,5 +563,101 @@ describe("POST .../import/sessionboard, entity=participants (DEC-639/DEC-640)", 
     const body = (await res.json()) as { created: number; skipped: unknown[] };
     expect(body).toMatchObject({ created: 1, skipped: [] });
     expect(rows.participant[0]).toMatchObject({ submissionId: "sub-1", contactId: "con-1", titleAtTime: "CTO", orgAtTime: "Beta" });
+  });
+});
+
+// DEC-528 (wave 47 amendment) coverage: applySessionboardPlans's
+// participants branch, called directly (below the CSV/route layer) with a
+// statement-counting wrapper around the same structural fake db above --
+// asserts the email-fallback pre-pass and the participant create flush are
+// genuinely O(chunks), not O(rows), over a batch large enough (40 rows, all
+// resolved by speakerEmail with no speakerExternalId at all -- the "hand-
+// exported CSV" shape the amendment names) to expose a per-row SELECT or a
+// per-row INSERT if either regressed.
+describe("applySessionboardPlans participants: batched pre-pass + set-based create (DEC-528 wave 47)", () => {
+  it("issues O(1) SELECTs and O(chunks) participant INSERTs for 40 email-only rows, with matching output rows", async () => {
+    const { applySessionboardPlans } = await import("../src/server/repo/import/sessionboard");
+    const { db, rows } = makeFakeDb();
+    seedEvent(rows, "ev1", "org-1");
+    seedSubmission(rows, { id: "sub-1", eventId: "ev1", externalRef: "sessionboard:sb-sess-1", title: "Talk" });
+
+    const ROW_COUNT = 40;
+    for (let i = 0; i < ROW_COUNT; i++) {
+      seedContact(rows, {
+        id: `con-${i}`,
+        orgId: "org-1",
+        externalRef: null, // resolved by email only -- no Record ID on this row
+        email: `speaker${i}@example.com`,
+      });
+    }
+
+    let selectCount = 0;
+    let insertStatementCount = 0;
+    const countingDb: typeof db = {
+      ...db,
+      select: (...args: unknown[]) => {
+        selectCount++;
+        return (db as any).select(...args);
+      },
+      insert: (table: unknown) => {
+        const real = (db as any).insert(table);
+        return {
+          values: async (vals: unknown) => {
+            insertStatementCount++;
+            return real.values(vals);
+          },
+        };
+      },
+    } as unknown as typeof db;
+
+    const plans = Array.from({ length: ROW_COUNT }, (_, i) => ({
+      row: i + 2,
+      externalRef: null,
+      values: {
+        sessionExternalId: "sb-sess-1",
+        speakerEmail: `speaker${i}@example.com`,
+        role: "speaker",
+      },
+    }));
+
+    const result = await applySessionboardPlans(countingDb, {
+      orgId: "org-1",
+      eventId: "ev1",
+      entity: "participants",
+      plans: plans as any,
+      dryRun: false,
+    });
+
+    // (a) O(1) SELECTs: the pre-pass issues one chunked query per lookup
+    // (session refs, contact-by-email, existing pairs, max-order) -- never
+    // one per row. 40 rows all fit one ID_CHUNK_SIZE=90 batch per lookup, so
+    // this stays in the single digits regardless of row count.
+    expect(selectCount).toBeLessThan(10);
+
+    // (b) O(chunks) participant INSERTs, not O(rows): chunkRowsForInsert
+    // slices an 11-column participant row at floor(90/11)=8 rows/chunk, so
+    // 40 rows -> 5 statements, never 40.
+    expect(insertStatementCount).toBeGreaterThan(0);
+    expect(insertStatementCount).toBeLessThan(ROW_COUNT);
+    expect(insertStatementCount).toBe(Math.ceil(ROW_COUNT / 8));
+
+    // (c) resulting rows match the shape the pre-batching implementation
+    // produced: one participant per row, all created (none skipped), speaker
+    // role, visible=false, inviteStatus='none', order assigned 0..39 within
+    // the batch (DEC-675/DEC-656 snapshot semantics untouched).
+    expect(result.created).toBe(ROW_COUNT);
+    expect(result.updated).toBe(0);
+    expect(result.skipped).toEqual([]);
+    expect(rows.participant).toHaveLength(ROW_COUNT);
+    const orders = rows.participant.map((r) => r.order as number).sort((a, b) => a - b);
+    expect(orders).toEqual(Array.from({ length: ROW_COUNT }, (_, i) => i));
+    for (const r of rows.participant) {
+      expect(r.submissionId).toBe("sub-1");
+      expect(r.role).toBe("speaker");
+      expect(r.visible).toBe(false);
+      expect(r.inviteStatus).toBe("none");
+      const idx = Number(String(r.contactId).replace("con-", ""));
+      expect(Number.isInteger(idx)).toBe(true);
+    }
   });
 });
