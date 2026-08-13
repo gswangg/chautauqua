@@ -162,6 +162,16 @@ interface ListPosition {
   nextId: string | null;
 }
 
+// DEC-892: the history panel's real timeline — submitted/edited/reviewed/
+// emailed, merged server-side by listSubmissionHistory.
+interface HistoryTimelineEntry {
+  id: string;
+  at: number;
+  kind: 'submitted' | 'edited' | 'reviewed' | 'emailed';
+  label: string;
+  detail: string | null;
+}
+
 export function SubmissionDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -189,7 +199,7 @@ export function SubmissionDetailPage() {
   const [savingEdit, setSavingEdit] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(false);
-  const [historyEntries, setHistoryEntries] = useState<RevisionEntry[]>([]);
+  const [historyEntries, setHistoryEntries] = useState<HistoryTimelineEntry[]>([]);
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [restoringId, setRestoringId] = useState<string | null>(null);
   const [evaluations, setEvaluations] = useState<SubmissionReviewItem[]>([]);
@@ -469,6 +479,12 @@ export function SubmissionDetailPage() {
     }
   }
 
+  async function loadHistory() {
+    if (!id) return;
+    const res = await apiList<HistoryTimelineEntry>(`/submissions/${id}/history`);
+    setHistoryEntries(res.items);
+  }
+
   async function toggleHistory() {
     const opening = !historyOpen;
     setHistoryOpen(opening);
@@ -476,8 +492,7 @@ export function SubmissionDetailPage() {
       setHistoryLoading(true);
       setHistoryError(null);
       try {
-        const res = await apiList<RevisionEntry>(`/submissions/${id}/revisions`);
-        setHistoryEntries(res.items);
+        await loadHistory();
       } catch (err) {
         setHistoryError(err instanceof ApiError ? err.message : 'Failed to load history');
       } finally {
@@ -486,6 +501,9 @@ export function SubmissionDetailPage() {
     }
   }
 
+  // A revision is restorable by its own id — the timeline's 'edited' entries
+  // are sourced 1:1 from submission_revision rows (history.ts reuses
+  // listRevisions), so entry.id IS the revisionId here.
   async function restoreRevision(revisionId: string) {
     if (!id) return;
     setRestoringId(revisionId);
@@ -493,8 +511,7 @@ export function SubmissionDetailPage() {
     try {
       const updated = await apiPost<SubmissionDetail>(`/submissions/${id}/revisions/${revisionId}/restore`);
       setDetail(updated);
-      const res = await apiList<RevisionEntry>(`/submissions/${id}/revisions`);
-      setHistoryEntries(res.items);
+      await loadHistory();
     } catch (err) {
       setHistoryError(err instanceof ApiError ? `Restore failed: ${err.message}` : 'Restore failed');
     } finally {
@@ -676,26 +693,36 @@ export function SubmissionDetailPage() {
                 {historyLoading ? (
                   <DelayedLoading label="Loading history…" />
                 ) : historyEntries.length === 0 ? (
-                  <p>No edits recorded yet.</p>
+                  <p>No history recorded yet.</p>
                 ) : (
                   <ul className="chq-submission-history-list">
                     {historyEntries.map((entry) => (
                       <li key={entry.id} className="chq-submission-history-entry">
+                        {/* DEC-892 timeline entry in the DEC-707 `when |
+                            what` row grammar: the merged kind's label (and
+                            its detail, when the kind carries one) reads as
+                            the 'what' half. */}
                         <div className="chq-submission-history-row">
-                          <span className="chq-submission-history-when">{formatTimestamp(entry.createdAt)}</span>
+                          <span className="chq-submission-history-when">{formatTimestamp(entry.at)}</span>
                           <span aria-hidden="true"> | </span>
                           <span className="chq-submission-history-what">
-                            <strong>{entry.editorName}</strong> &mdash; {entry.title}
+                            <strong>{entry.label}</strong>
+                            {entry.detail ? <> &mdash; {entry.detail}</> : null}
                           </span>
                         </div>
-                        <button
-                          type="button"
-                          className="chq-btn chq-btn-tertiary"
-                          disabled={restoringId === entry.id}
-                          onClick={() => restoreRevision(entry.id)}
-                        >
-                          Restore
-                        </button>
+                        {/* Only an 'edited' entry is a revision that can be
+                            restored — a submitted/reviewed/emailed entry has
+                            no prior content to put back. */}
+                        {entry.kind === 'edited' && (
+                          <button
+                            type="button"
+                            className="chq-btn chq-btn-tertiary"
+                            disabled={restoringId === entry.id}
+                            onClick={() => restoreRevision(entry.id)}
+                          >
+                            Restore
+                          </button>
+                        )}
                       </li>
                     ))}
                   </ul>

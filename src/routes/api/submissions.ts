@@ -40,6 +40,7 @@ import { PARTICIPANT_ROLE_OPTIONS } from "../../domain/participant-roles";
 import { findContactForOrg } from "../../server/repo/contacts";
 import { resolveActorName } from "../../server/repo/users";
 import { appendSubmissionRevision, countRevisions, getRevision, listRevisions } from "../../server/repo/revisions";
+import { listSubmissionHistory } from "../../server/repo/submissions/history";
 import { isValidEmail, normalizeEmail } from "../../domain/email";
 import { clampPage, listPerPage } from "../../lib/pagination";
 import { bumpIcsSequences } from "../../server/repo/ics-sequence";
@@ -353,6 +354,22 @@ submissionsRoutes.get("/submissions/:id/revisions", requireOrganizer, async (c) 
   ]);
 
   return c.json({ items, total, page, perPage });
+});
+
+// GET /api/v1/submissions/:id/history — organizer-only, DEC-892: the real
+// timeline (submitted / edited / reviewed / emailed), merged and sorted
+// server-side by listSubmissionHistory. Unpaginated, same rationale as
+// GET .../evaluations — bounded by this one submission's own activity.
+submissionsRoutes.get("/submissions/:id/history", requireOrganizer, async (c) => {
+  const auth = requireAuth(c);
+  const id = c.req.param("id");
+  const ownership = await getSubmissionOwnership(c.var.db, id);
+  if (!ownership) throw new ApiError("not_found", "Submission not found");
+  if (ownership.orgId !== auth.orgId) throw new ApiError("forbidden", "Submission belongs to a different org");
+
+  const entries = await listSubmissionHistory(c.var.db, id);
+  const items = entries.map((e) => ({ id: e.id, at: e.at.getTime(), kind: e.kind, label: e.label, detail: e.detail }));
+  return c.json({ items, total: items.length, page: 1, perPage: items.length });
 });
 
 // POST /api/v1/submissions/:id/revisions/:revisionId/restore — organizer-only.

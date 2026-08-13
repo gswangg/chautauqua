@@ -93,6 +93,7 @@ export const ROUTE_GROUPS: { title: string; rows: Row[] }[] = [
         path: "/api/v1/submissions/:id/revisions/:revisionId/restore",
         role: "organizer",
       },
+      { method: "GET", path: "/api/v1/submissions/:id/history", role: "organizer" },
     ],
   },
   {

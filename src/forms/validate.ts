@@ -145,7 +145,11 @@ export function validateAnswers(
           errors[field.id] = "must be a number";
           continue;
         }
-        cleaned[field.id] = num;
+        // Normalize -0 to 0: JSON.stringify(-0) is "0", so the sign would
+        // otherwise silently flip on the very next round-trip through the
+        // store — normalize here so `cleaned` already matches what gets
+        // persisted and read back.
+        cleaned[field.id] = num === 0 ? 0 : num;
         break;
       }
       case "file": {

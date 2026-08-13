@@ -126,14 +126,19 @@ describe('SubmissionDetailPage render smoke: inline edit + content-status contro
     expect(contentLink).toHaveAttribute('href', `/content?submissionId=${SUB_ID}`);
   });
 
-  it('shows history panel and restores a prior revision (CNT-11, DEC-158)', async () => {
+  it('shows the history timeline and restores a prior revision (CNT-11, DEC-158, DEC-892)', async () => {
     let currentDetail = baseDetail();
-    const revisions = [
-      { id: 'rev-2', editorName: 'organizer@example.com', title: 'Original Title', description: 'Second edit', createdAt: 1700000200000 },
-      { id: 'rev-1', editorName: 'organizer@example.com', title: 'Original Title', description: 'First edit', createdAt: 1700000100000 },
+    let history = [
+      { id: 'rev-2', at: 1700000200000, kind: 'edited', label: 'Edited by organizer@example.com', detail: 'Original Title' },
+      { id: 'rev-1', at: 1700000100000, kind: 'edited', label: 'Edited by organizer@example.com', detail: 'Original Title' },
+      { id: 'submission:sub-1', at: 1700000000000, kind: 'submitted', label: 'Submitted', detail: null },
     ];
     const restoreMock = vi.fn(() => {
       currentDetail = { ...currentDetail, description: 'First edit' };
+      history = [
+        { id: 'rev-3', at: 1700000300000, kind: 'edited', label: 'Edited by organizer@example.com', detail: 'Original Title' },
+        ...history,
+      ];
       return currentDetail;
     });
     mockApi({
@@ -142,7 +147,7 @@ describe('SubmissionDetailPage render smoke: inline edit + content-status contro
       [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
       [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
       [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
-      [`GET /api/v1/submissions/${SUB_ID}/revisions`]: { items: revisions, total: 2, page: 1, perPage: 2 },
+      [`GET /api/v1/submissions/${SUB_ID}/history`]: () => ({ items: history, total: history.length, page: 1, perPage: history.length }),
       [`POST /api/v1/submissions/${SUB_ID}/revisions/rev-1/restore`]: restoreMock,
     });
 
@@ -158,8 +163,9 @@ describe('SubmissionDetailPage render smoke: inline edit + content-status contro
     fireEvent.click(screen.getByRole('button', { name: 'Show' }));
 
     await waitFor(() => {
-      expect(screen.getAllByText('organizer@example.com').length).toBe(2);
+      expect(screen.getAllByText('Edited by organizer@example.com').length).toBe(2);
     });
+    expect(screen.getByText('Submitted')).toBeInTheDocument();
 
     // Each history entry renders as a `when | what` row.
     expect(screen.getAllByText('|').length).toBeGreaterThan(0);
@@ -173,7 +179,7 @@ describe('SubmissionDetailPage render smoke: inline edit + content-status contro
       expect(restoreMock).toHaveBeenCalled();
     });
     await waitFor(() => {
-      expect(screen.getByText('First edit')).toBeInTheDocument();
+      expect(screen.getAllByText('Edited by organizer@example.com').length).toBe(3);
     });
   });
 });
