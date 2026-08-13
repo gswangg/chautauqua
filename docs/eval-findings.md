@@ -198,28 +198,20 @@ MINOR batch in report.
 (Closures stand: DEC-823 pairs w/ reasons · dup hint + fixed link · DEC-802
 truth · dismissal persistence · 409 guidance · DEC-800 · DEC-821 mechanics.)
 
-**Settings — GATE-1 FLEET: FAIL, worst section (report
-fidelity-gate1/09-settings/report.md)**:
-BROKEN: tracks/rooms edit = unstyled HTML (bullets, input/Delete collisions,
-raw purple color input) · CFP "Tracks offered" native fieldset + orphaned
-status line · saved-embed rows WRAP at 1440 (actions land under wrong columns) ·
-"Reviewers 6" = people−organizers (counts speakers).
-STRUCTURAL ×6 panels: 3-col definition grid (label ‖ value ‖ right hint) not
-stacked rows · read views show the frame's LISTS (URLs+Embed code, roster,
-resources, export pills — not summaries behind Change) · section actions
-right-aligned ON the eyebrow line · rail active state + scroll-spy.
-MAJOR: CFP Edit-the-form must reach the QUESTION BUILDER · portal Change must
-edit welcome note + pills + tasks (not just resources) · embed builder: FIELDS
-SHOWN pills, EDITING·NAME + CHROMELESS eyebrows, two-col grid, Preview, un-
-overlap Copy buttons, Edit loads the embed's OWN URL · recipe caption full +
-middle column = where-pasted · New-embed row caption · date grammar + hints ·
-resource file picker styled · markdown RENDERED view in Settings · People names
-+ per-track scope + aligned columns · per-row Edit tracks/rooms.
-**SEED: add 2 saved embeds · 2 API tokens · room capacities (900/220/220/60) ·
-one NOT PUBLISHED page · person display names · per-track reviewer scopes** —
-six frame elements currently unrepresentable.
-MINOR batch in report. FAITHFUL: rail inventory, read two-col tracks/rooms, CFP
-link/badge, embeds wording batch (N on·M off etc.), export pills all live.
+**Settings — GATE-2: FAIL improved** (report fidelity-gate2/09-settings/
+report.md; editor/pills/scroll-spy/count/seeds/recipe/eyebrow CLOSED):
+TOP — **embed-row wrap at 1440, THIRD GATE** (pin the row grid; add a width
+test) · builder field toggles = native fieldset again (make the 6 FIELDS SHOWN
+pills; the fieldset defect relocated) · **THE STRUCTURAL TRIO** (one change,
+~7 panels): 3-col definition grid (label ‖ value @455 ‖ right hint) ·
+read-views show the frames' LISTS · section actions right-aligned ON the
+eyebrow. Rest: Edit-the-form links the question builder · portal Change edits
+welcome/pills/tasks · styled resource picker · un-overlap Copy buttons +
+Preview · middle col = where-pasted + caption placement · date grammar + hints
++ label-drift pairs · CFP orphan row + balanced open/close (show one) ·
+markdown rendered view · SEED: display names, per-track scopes, NOT PUBLISHED
+page, accessibility-needs question · submission-delete DISCOVERABILITY (path
+exists via list bulk bar — add detail-page action).
 
 **Account — GATE-2: FAIL UNCHANGED — ZERO commits touched auth files since
 gate-1; PLANNER: schedule this section FIRST this round** (report
@@ -240,30 +232,20 @@ API docs 12px · main/footer landmarks · published-row meta qualifier · sectio
 head 4pt · (CORRECTION: bare session counts are frame-legal; gate-1 premise too
 strict).
 
-**Public/Portal — GATE-1 FLEET: FAIL all four subsections; claim-URL security
-PASSES (report fidelity-gate1/10-public-portal/report.md — full ranked list of
-7 BROKEN / 17 MAJOR / 11 MINOR there; headline items):
-BROKEN: portal wordmark lowercases the EVENT name (theme.ts:294 transform on
-branding.eventName) · raw ISO on portal home hero line · profile back-link
-mislabelled · REMOVE the portal tagline entirely (frame has none; it shares the
-header line with identity) · speakers grid 7-col at 1440 (frame 3-up; fix
-minmax) + gallery packing · headshot fallback = empty div (frame: hatched
-placeholder) · agenda ?day= pills lack active state.
-MAJOR: sessions search = compact inline box beside pills, no submit button ·
-session rows title/speaker/meta/Save only (drop abstract + ▶) · meta as
-letterspaced caps text not pills · one filter idiom everywhere · .ics footer
-CTA · overlap indicators · empty-day heading under my-picks ·
-**submit-form control types DEC: frames = single-track radios/format cards/
-audience segment; data model = multi-track (seed has 2-track sessions) —
-reconcile deliberately** · submit form missing char counter/ACCESSIBILITY
-NEEDS/helpers/OPTIONAL suffixes/ABSTRACT label/single NAME/two-col layout ·
-confirmation chrome: SUBMITTED · <ref> eyebrow, echo email, card meta, PRIMARY
-buttons per frames 12-15, fresh-state extras, closed-CFP "Browse the sessions ›"
-· systemic date grammar · one back-link string · header on body grid.
-MINOR batch in report (pluralization, empty-.ics guard, task vocab TO DO/DONE,
-slides Replace row, bullets, spacing).
-(Closures stand: DEC-098 three states · detail badge/meta incl. TRACK ·
-pending-submissions · submit footer row · itinerary + .ics validity.)
+**Public/Portal — GATE-2: FAIL improved** (same report; DEC-884 casing+tagline,
+3-up grid, hatched fallback, day-pill state, back-links, DEC-862 chrome halves,
+counters/helpers all CLOSED; claim contract HOLDS): TOP — sessions SEARCH ROW
+(compact ~240px inline input at the pill-row head, no button — DEC-835 never
+reached this page) + ONE pill row · session-row anatomy (time+room left gutter,
+drop abstract/▶, caps meta DEC-919) · portal-home ISO date (one-line formatter)
+· overlap indicator (seed's real double-booking unflagged) · CFP-closed page
+needs links · confirmation meta card + edit-until + spam + submit-another +
+browse · **submit-form control DEC — decide this round** (multi-track model vs
+frame radios; checkboxes/selects/two-name/DESCRIPTION/accessibility/1-col all
+hang on it) · .ics footer CTA · date restated ×3 per row · portal header on
+body grid · task vocab → TO DO/DONE everywhere · NEW: speaker tiles landscape
+~262×152 · sessions rail CALL FOR PAPERS block · meta separator concatenation ·
+submit-page single title. Minor tail in report.
 
 **Grader P3s** (two-track-selectors CLOSED by probe 2): label New-event Timezone ·
 explicit CFP publish affordance · close-before-open validation loud at the field.
