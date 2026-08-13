@@ -9,7 +9,7 @@
 // otherwise shadow the real addCoPresenter this file exercises directly.
 
 import { describe, expect, it } from "vitest";
-import { addCoPresenter, MAX_PARTICIPANTS_PER_SUBMISSION } from "../src/server/repo/portal-edit";
+import { addCoPresenter, getPortalParticipants, MAX_PARTICIPANTS_PER_SUBMISSION } from "../src/server/repo/portal-edit";
 import { participantRoleLabel, PARTICIPANT_ROLE_OPTIONS } from "../src/domain/participant-roles";
 import type { AppEnv } from "../src/server/env";
 
@@ -134,6 +134,91 @@ describe("addCoPresenter repo layer (DEC-604)", () => {
     expect(result.ok).toBe(false);
     if (result.ok) throw new Error("unreachable");
     expect(result.errors.email).toBeTruthy();
+  });
+});
+
+function makeJoinChain(rows: unknown[]) {
+  const chain: any = {
+    from: () => chain,
+    innerJoin: () => chain,
+    where: () => chain,
+    orderBy: () => chain,
+    then: (resolve: (v: unknown[]) => void) => resolve(rows),
+  };
+  return chain;
+}
+
+describe("addCoPresenter + getPortalParticipants echo rule (DEC-866)", () => {
+  it("writes the SUBMITTED first/last as nameAtTime when the email matches an existing contact", async () => {
+    const existingContact = { id: "contact-9", title: "Staff Engineer", company: "Acme" };
+    // select order: [0] participant count, [1] findContactByEmail -> match
+    const { db, inserts } = fakeDb([[{ count: 1 }], [existingContact]], [{ id: "participant-2" }]);
+    const result = await addCoPresenter(db, BASE_INPUT);
+    expect(result.ok).toBe(true);
+
+    expect(inserts.length).toBe(1);
+    expect(inserts[0].contactId).toBe("contact-9");
+    // The submitted name, not the matched contact's identity.
+    expect(inserts[0].nameAtTime).toBe("Marcus Okafor");
+  });
+
+  it("writes the SUBMITTED first/last as nameAtTime when a fresh contact is created", async () => {
+    // select order: [0] participant count, [1] findContactByEmail -> no match
+    const { db, inserts } = fakeDb([[{ count: 1 }], []], [{ id: "participant-1" }]);
+    const result = await addCoPresenter(db, BASE_INPUT);
+    expect(result.ok).toBe(true);
+
+    const participantInsert = inserts.find((v) => "submissionId" in v);
+    expect(participantInsert.nameAtTime).toBe("Marcus Okafor");
+  });
+
+  it("getPortalParticipants renders nameAtTime in preference to the joined contact name", async () => {
+    const db = {
+      select: () =>
+        makeJoinChain([
+          {
+            id: "p-1",
+            firstName: "Jane",
+            lastName: "Doe",
+            email: "marcus@example.com",
+            role: "co-presenter",
+            order: 0,
+            visible: false,
+            nameAtTime: "Marcus Okafor",
+          },
+        ]),
+    } as unknown as AppEnv["Variables"]["db"];
+    const result = await getPortalParticipants(db, "sub-1");
+    expect(result).toEqual([
+      {
+        id: "p-1",
+        name: "Marcus Okafor",
+        email: "marcus@example.com",
+        role: "co-presenter",
+        roleLabel: participantRoleLabel("co-presenter"),
+        visible: false,
+      },
+    ]);
+  });
+
+  it("getPortalParticipants falls back to the live contact name when nameAtTime is null", async () => {
+    const db = {
+      select: () =>
+        makeJoinChain([
+          {
+            id: "p-2",
+            firstName: "Jordan",
+            lastName: "Lee",
+            email: "jordan@example.com",
+            role: "speaker",
+            order: 0,
+            visible: true,
+            nameAtTime: null,
+          },
+        ]),
+    } as unknown as AppEnv["Variables"]["db"];
+    const result = await getPortalParticipants(db, "sub-1");
+    expect(result[0]!.name).toBe("Jordan Lee");
   });
 });
 

@@ -103,6 +103,13 @@ export const participant = sqliteTable(
     // read the live contact fields — that split is deliberate.
     titleAtTime: text("title_at_time"),
     orgAtTime: text("org_at_time"),
+    // DEC-866: joins the titleAtTime/orgAtTime snapshot family above. Written
+    // ONLY by the speaker-portal addCoPresenter path
+    // (src/server/repo/portal-edit.ts), read ONLY by getPortalParticipants —
+    // NULL for every other participant writer (original CFP submitter,
+    // organizer invites), which correctly falls back to the live contact
+    // name.
+    nameAtTime: text("name_at_time"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
