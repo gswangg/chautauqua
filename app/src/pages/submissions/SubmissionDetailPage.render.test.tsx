@@ -190,6 +190,64 @@ describe('SubmissionDetailPage render smoke: inline edit + content-status contro
   });
 });
 
+// DEC-998: the editor and the history disclosure are URL state, not local
+// useState -- a `?edit=1`/`?history=1` link (e.g. from the Content
+// deliverable detail's action row) opens either directly, and closing
+// either removes the param.
+describe('SubmissionDetailPage render: DEC-998 URL-state editor + history', () => {
+  it('opens the editor prefilled from the loaded detail when mounted at ?edit=1', async () => {
+    const detail = baseDetail();
+    mockApi({
+      [`GET /api/v1/submissions/${SUB_ID}`]: detail,
+      [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
+      [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
+      [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+    });
+
+    renderPage(`/submissions/${SUB_ID}?edit=1`);
+
+    const titleInput = await screen.findByLabelText('Title');
+    expect(titleInput).toHaveValue('Original Title');
+    expect(screen.getByLabelText('Abstract')).toHaveValue('Original description');
+
+    // Cancel removes the param and closes the editor.
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    await waitFor(() => {
+      expect(screen.queryByLabelText('Title')).not.toBeInTheDocument();
+    });
+  });
+
+  it('opens AND loads the history timeline when mounted at ?history=1', async () => {
+    const detail = baseDetail();
+    const history = [
+      { id: 'submission:sub-1', at: 1700000000000, kind: 'submitted', label: 'Submitted', detail: null },
+    ];
+    mockApi({
+      [`GET /api/v1/submissions/${SUB_ID}`]: detail,
+      [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
+      [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
+      [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/history`]: { items: history, total: 1, page: 1, perPage: 20 },
+    });
+
+    renderPage(`/submissions/${SUB_ID}?history=1`);
+
+    await waitFor(() => {
+      expect(screen.getByText('Submitted')).toBeInTheDocument();
+    });
+    expect(screen.getByRole('button', { name: 'Hide' })).toBeInTheDocument();
+
+    // Hide removes the param and closes the disclosure.
+    fireEvent.click(screen.getByRole('button', { name: 'Hide' }));
+    await waitFor(() => {
+      expect(screen.queryByText('Submitted')).not.toBeInTheDocument();
+    });
+    expect(screen.getByRole('button', { name: 'Show' })).toBeInTheDocument();
+  });
+});
+
 // DEC-596/DEC-723/DEC-736 (tasks w3-f, w2-h): the numbered Reviews section
 // header reads 'Reviews · N of M in', each row shows the reviewer name
 // (never 'Anonymous reviewer' — DEC-736), the plan's weighted score (2dp /
