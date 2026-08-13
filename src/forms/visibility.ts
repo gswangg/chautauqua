@@ -21,16 +21,17 @@ export function isVisible(
   return ruleMatches(rule, answers[rule.fieldId], triggerKind);
 }
 
-// DEC-532: visibility is transitive — a field whose rule points at a
-// currently-hidden field is itself hidden, even if its own rule would
-// otherwise evaluate true against the raw (stale) answer map. Computed as a
-// monotone fixed point: fields only move visible -> hidden, so this
-// terminates in at most fields.length passes. A field is hidden if (a) its
-// rule names a fieldId that isn't in this field list, or (b) isVisible is
-// false once every currently-hidden field's answer is removed from the
-// answer map. A rule cycle (A gated on B, B gated on A) terminates rather
-// than looping forever, since the fixed point converges as soon as a pass
-// adds nothing new.
+// DEC-532/DEC-973: visibility is transitive — a field whose rule points at a
+// currently-hidden field is itself hidden, marked (not deleted) as soon as
+// its trigger joins the hidden set, even if its own rule would otherwise
+// evaluate true against the raw answer map. Computed as a monotone fixed
+// point: fields only move visible -> hidden, so this terminates in at most
+// fields.length passes. A field is hidden if (a) its rule names a fieldId
+// that isn't in this field list, (b) its rule's trigger field is itself
+// hidden (DEC-973 — marked structurally rather than by scrubbing the answer
+// map), or (c) isVisible is false against the raw answer map. A rule cycle
+// (A gated on B, B gated on A) terminates rather than looping forever, since
+// the fixed point converges as soon as a pass adds nothing new.
 export function resolveHiddenFieldIds(
   fields: FormFieldDef[],
   answers: AnswerMap,
@@ -42,8 +43,6 @@ export function resolveHiddenFieldIds(
   let changed = true;
   while (changed) {
     changed = false;
-    const effectiveAnswers: AnswerMap = { ...answers };
-    for (const id of hidden) delete effectiveAnswers[id];
 
     for (const field of fields) {
       if (hidden.has(field.id)) continue;
@@ -59,7 +58,12 @@ export function resolveHiddenFieldIds(
         changed = true;
         continue;
       }
-      if (!isVisible(field, effectiveAnswers, rule ? kindById.get(rule.fieldId) : undefined)) {
+      if (rule && hidden.has(rule.fieldId)) {
+        hidden.add(field.id);
+        changed = true;
+        continue;
+      }
+      if (!isVisible(field, answers, rule ? kindById.get(rule.fieldId) : undefined)) {
         hidden.add(field.id);
         changed = true;
       }

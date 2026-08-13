@@ -160,6 +160,68 @@ describe("resolveHiddenFieldIds — a two-field rule cycle", () => {
   });
 });
 
+// DEC-973: a hidden trigger hides its dependents structurally — a dependent
+// ruled against a checkbox trigger that is itself currently hidden must be
+// hidden too, regardless of what the checkbox's stale answer says, and must
+// not be required. When the trigger is visible and unanswered, the
+// canonicalizer's "absent checkbox => false" behaviour is unchanged.
+describe("resolveHiddenFieldIds — dependent on a hidden checkbox trigger (DEC-973)", () => {
+  const gateField: FormFieldDef = {
+    id: "gate",
+    section: "session",
+    kind: "dropdown",
+    label: "Gate",
+    required: false,
+    position: 0,
+    options: ["Open", "Closed"],
+  };
+
+  const triggerField: FormFieldDef = {
+    id: "trigger",
+    section: "session",
+    kind: "checkbox",
+    label: "Trigger",
+    required: false,
+    position: 1,
+    rule: { fieldId: "gate", op: "eq", value: "Open" },
+  };
+
+  const dependentField: FormFieldDef = {
+    id: "dependent",
+    section: "session",
+    kind: "text",
+    label: "Dependent",
+    required: true,
+    position: 2,
+    rule: { fieldId: "trigger", op: "ne", value: true },
+  };
+
+  const chainFields = [gateField, triggerField, dependentField];
+
+  it("hides the dependent (and drops its required-ness) when the trigger is itself hidden, even though the stale checked=true answer would otherwise satisfy ne:true", () => {
+    const answers = { gate: "Closed", trigger: true };
+
+    const hidden = resolveHiddenFieldIds(chainFields, answers);
+    expect(hidden.has("trigger")).toBe(true);
+    expect(hidden.has("dependent")).toBe(true);
+
+    const result = validateAnswers(chainFields, answers);
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error("unreachable");
+    expect(result.hiddenFieldIds).toContain("dependent");
+    expect(result.cleaned.dependent).toBeUndefined();
+  });
+
+  it("keeps the dependent visible using the unchanged absent-checkbox=>false canonicalizer when the trigger is visible and unanswered", () => {
+    const answers = { gate: "Open" };
+
+    const hidden = resolveHiddenFieldIds(chainFields, answers);
+    expect(hidden.has("trigger")).toBe(false);
+    // trigger unanswered canonicalizes to false; ne:true against false is true
+    expect(hidden.has("dependent")).toBe(false);
+  });
+});
+
 describe("makeVisibilityPredicate", () => {
   it("drops into the two-arg isVisible shape and matches resolveHiddenFieldIds", () => {
     const answers = { format: "Talk", workshopLength: "90 min" };

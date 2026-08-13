@@ -211,8 +211,8 @@ export function FieldRulesScript(props: { fields: FormFieldDef[] }) {
       rules.forEach(function(r){
         if (hidden[r.fieldId]) return;
         if (r.triggerKind === undefined) { hidden[r.fieldId] = true; changed = true; return; }
-        var triggerHidden = !!hidden[r.rule.fieldId];
-        var val = triggerHidden ? undefined : getValue(r.rule.fieldId);
+        if (hidden[r.rule.fieldId]) { hidden[r.fieldId] = true; changed = true; return; }
+        var val = getValue(r.rule.fieldId);
         if (!chqRuleMatches(r.rule, val, r.triggerKind)) {
           hidden[r.fieldId] = true;
           changed = true;
