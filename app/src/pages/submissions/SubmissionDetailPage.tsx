@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { apiGet, apiList, apiPatch, apiPost, ApiError } from '../../lib/api';
 import { formatDate as formatTimestamp, formatDateTime } from '../../lib/dates';
+import { formatEventDate } from '../../../../src/lib/event-time';
 import type { CfpForm } from '../forms/types';
 import { buildAnswerRows, resolveAnswerFields } from './detailRows';
 import { DelayedLoading } from '../../components/DelayedLoading';
@@ -15,7 +16,6 @@ import {
   type InviteStatus,
   type SubmissionDetail,
   type SubmissionDetailParticipant,
-  type SubmissionEvaluation,
   type SubmissionStatus,
   type Track,
 } from './types';
@@ -49,6 +49,65 @@ interface RevisionEntry {
   createdAt: number;
 }
 
+// DEC-723: /submissions/:id/evaluations item, landed server-side by task
+// w2-a in this same batch. criteria[] carries the plan's rubric (label,
+// kind, weight) so a criterion's DISPLAY VALUE is always looked up by
+// criteria[].label -- the raw criterionId key never reaches the DOM. score
+// is the plan's weighted total (2dp when present). DEC-736: the organiser
+// is always told who reviewed, even on an anonymized plan, so reviewerName
+// is never null here and 'Anonymous reviewer' must never render.
+interface ReviewCriterion {
+  id: string;
+  label: string;
+  kind: string;
+  weight: number;
+}
+
+interface SubmissionReviewItem {
+  planId: string;
+  planName: string;
+  round: number;
+  reviewerName: string;
+  scores: Record<string, number | string>;
+  criteria: ReviewCriterion[];
+  score: number | null;
+  comment: string | null;
+  submittedAt: number | null;
+}
+
+// Whole calendar days between createdAt and now, both read in the event's
+// own IANA timezone (never the viewer's ambient zone) -- DEC-408's
+// zone-explicit contract via formatEventDate, which throws on an
+// empty/invalid timeZone. Returns null (never throws) when the zone isn't
+// known yet or is invalid, so the caller can render the label's bare form
+// rather than a dangling '· ' or a crashed page.
+function calendarDayIndex(ms: number, timeZone: string): number {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date(ms));
+  const year = Number(parts.find((p) => p.type === 'year')?.value);
+  const month = Number(parts.find((p) => p.type === 'month')?.value);
+  const day = Number(parts.find((p) => p.type === 'day')?.value);
+  return Date.UTC(year, month - 1, day) / 86_400_000;
+}
+
+function daysAwaitingTriage(createdAt: number, timeZone: string | null, now: number): number | null {
+  if (!timeZone) return null;
+  try {
+    // Reuses formatEventDate's empty/invalid-timeZone validation (DEC-408)
+    // before doing the raw day-boundary arithmetic Intl doesn't expose as
+    // a single call.
+    formatEventDate(now, timeZone);
+    const diff = calendarDayIndex(now, timeZone) - calendarDayIndex(createdAt, timeZone);
+    return diff >= 0 ? diff : null;
+  } catch {
+    return null;
+  }
+}
+
 export function SubmissionDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -70,18 +129,22 @@ export function SubmissionDetailPage() {
   const [editTitle, setEditTitle] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
-  const [contentStatusPending, setContentStatusPending] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyEntries, setHistoryEntries] = useState<RevisionEntry[]>([]);
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [restoringId, setRestoringId] = useState<string | null>(null);
-  const [evaluations, setEvaluations] = useState<SubmissionEvaluation[]>([]);
+  const [evaluations, setEvaluations] = useState<SubmissionReviewItem[]>([]);
   const [evaluationsError, setEvaluationsError] = useState<string | null>(null);
   const [editingTracks, setEditingTracks] = useState(false);
   const [trackSelection, setTrackSelection] = useState<string[]>([]);
   const [savingTracks, setSavingTracks] = useState(false);
   const [tracksError, setTracksError] = useState<string | null>(null);
+  // DEC-743: the triage micro-label needs the OWNING EVENT's timezone
+  // (never the viewer's ambient zone) to compute a calendar-day count --
+  // null while unresolved, in which case the label renders without its
+  // '· N days' clause.
+  const [eventTimeZone, setEventTimeZone] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -97,7 +160,7 @@ export function SubmissionDetailPage() {
   useEffect(() => {
     if (!id) return;
     setEvaluationsError(null);
-    apiList<SubmissionEvaluation>(`/submissions/${id}/evaluations`)
+    apiList<SubmissionReviewItem>(`/submissions/${id}/evaluations`)
       .then((res) => setEvaluations(res.items))
       .catch((err) => setEvaluationsError(err instanceof ApiError ? err.message : 'Failed to load reviews'));
   }, [id]);
@@ -110,6 +173,13 @@ export function SubmissionDetailPage() {
     apiGet<CfpForm>(`/events/${detail.eventId}/forms`)
       .then(setForm)
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load form fields'));
+    // DEC-743: the triage label degrades to its bare form (no dangling
+    // '· ') rather than surfacing a page-level error when the event's
+    // timezone can't be resolved, so failures here are swallowed
+    // deliberately (never fed into the page's error banner).
+    apiGet<{ timezone: string }>(`/events/${detail.eventId}`)
+      .then((res) => setEventTimeZone(res.timezone))
+      .catch(() => setEventTimeZone(null));
     // Deliberately keyed on detail.eventId only: re-runs when a clone
     // navigates to a new submission in a different (or the same) event.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -212,26 +282,6 @@ export function SubmissionDetailPage() {
       }
     } finally {
       setSavingTracks(false);
-    }
-  }
-
-  async function changeContentStatus(status: SubmissionDetail['contentStatus']) {
-    if (!detail || !id) return;
-    const previous = detail;
-    setContentStatusPending(true);
-    setError(null);
-    // Optimistic update.
-    setDetail({ ...detail, contentStatus: status });
-    try {
-      await apiPost<{ id: string; contentStatus: string }>(`/submissions/${id}/content-status`, {
-        contentStatus: status,
-      });
-    } catch (err) {
-      // Loud rollback: restore prior state and surface the failure.
-      setDetail(previous);
-      setError(err instanceof ApiError ? `Content status update failed: ${err.message}` : 'Content status update failed');
-    } finally {
-      setContentStatusPending(false);
     }
   }
 
@@ -371,6 +421,7 @@ export function SubmissionDetailPage() {
   // Speaker card: the named 'speaker' role participant, falling back to the
   // first (order asc) participant when no role is literally 'speaker'.
   const speaker = detail.participants.find((p) => p.role === 'speaker') ?? detail.participants[0] ?? null;
+  const triageDays = daysAwaitingTriage(detail.createdAt, eventTimeZone, Date.now());
 
   return (
     <div className="chq-page chq-detail-page">
@@ -440,11 +491,16 @@ export function SubmissionDetailPage() {
           </section>
 
           <section className="chq-detail-section chq-submission-history">
-            <h2 className="chq-detail-section-title">
-              <button type="button" className="chq-detail-history-toggle" onClick={toggleHistory}>
-                {historyOpen ? 'Hide history' : 'Show history'}
+            {/* DEC-707 section-action grammar: a plain label above the 2px
+                rule, the show/hide toggle rendered as the section's ONE
+                action ON that same rule -- never a bare toggle-button
+                standing in for the heading. */}
+            <div className="chq-detail-section-title chq-detail-section-title-row">
+              <span>History</span>
+              <button type="button" className="chq-detail-section-action chq-link-button" onClick={toggleHistory}>
+                {historyOpen ? 'Hide' : 'Show'}
               </button>
-            </h2>
+            </div>
             {historyOpen && (
               <div className="chq-detail-section-body">
                 {historyError && <div className="chq-error-banner">{historyError}</div>}
@@ -456,10 +512,13 @@ export function SubmissionDetailPage() {
                   <ul className="chq-submission-history-list">
                     {historyEntries.map((entry) => (
                       <li key={entry.id} className="chq-submission-history-entry">
-                        <div>
-                          <strong>{entry.editorName}</strong> &mdash; {formatTimestamp(entry.createdAt)}
+                        <div className="chq-submission-history-row">
+                          <span className="chq-submission-history-when">{formatTimestamp(entry.createdAt)}</span>
+                          <span aria-hidden="true"> | </span>
+                          <span className="chq-submission-history-what">
+                            <strong>{entry.editorName}</strong> &mdash; {entry.title}
+                          </span>
                         </div>
-                        <div>{entry.title}</div>
                         <button
                           type="button"
                           className="chq-btn chq-btn-tertiary"
@@ -664,7 +723,9 @@ export function SubmissionDetailPage() {
           </section>
 
           <section className="chq-detail-section chq-detail-reviews">
-            <h2 className="chq-detail-section-title">Reviews</h2>
+            <h2 className="chq-detail-section-title">
+              Reviews &middot; {evaluations.filter((ev) => ev.submittedAt !== null).length} of {evaluations.length} in
+            </h2>
             <div className="chq-detail-section-body">
               {evaluationsError && <div className="chq-error-banner">{evaluationsError}</div>}
               {evaluations.length === 0 ? (
@@ -674,17 +735,24 @@ export function SubmissionDetailPage() {
                   {evaluations.map((ev, i) => (
                     <li key={`${ev.planId}-${ev.round}-${i}`} className="chq-review-entry">
                       <div className="chq-review-entry-meta">
-                        <strong>{ev.reviewerName ?? 'Anonymous reviewer'}</strong>
+                        {/* DEC-736: the organiser is always told who
+                            reviewed -- never render 'Anonymous reviewer',
+                            even for an anonymized plan. */}
+                        <strong>{ev.reviewerName}</strong>
+                        <span className="chq-review-entry-score">{ev.score !== null ? ev.score.toFixed(2) : '—'}</span>
                         <span className="chq-review-entry-plan">
-                          {ev.planName} &middot; Round {ev.round}
+                          {ev.planName} &middot; Round {ev.round} &middot; {formatTimestamp(ev.submittedAt)}
                         </span>
                       </div>
-                      {Object.keys(ev.scores).length > 0 && (
+                      {ev.criteria.length > 0 && (
                         <dl className="chq-review-scores">
-                          {Object.entries(ev.scores).map(([criterionId, value]) => (
-                            <div key={criterionId} className="chq-review-score">
-                              <dt>{criterionId}</dt>
-                              <dd>{value}</dd>
+                          {/* Criterion values render under criteria[].label
+                              -- the raw criterionId key never reaches the
+                              DOM (used only as the React list key). */}
+                          {ev.criteria.map((criterion) => (
+                            <div key={criterion.id} className="chq-review-score">
+                              <dt>{criterion.label}</dt>
+                              <dd>{ev.scores[criterion.id] ?? '—'}</dd>
                             </div>
                           ))}
                         </dl>
@@ -728,6 +796,11 @@ export function SubmissionDetailPage() {
           <section className="chq-detail-section chq-detail-decision">
             <h2 className="chq-detail-section-title">Decision</h2>
             <div className="chq-detail-section-body chq-detail-decision-body">
+              {detail.status === 'pending' && (
+                <p className="chq-detail-triage-label">
+                  Awaiting triage{triageDays !== null ? ` · ${triageDays} day${triageDays === 1 ? '' : 's'}` : ''}
+                </p>
+              )}
               <div className="chq-detail-decision-status">
                 Status
                 <div className="chq-segmented" role="group" aria-label="Status">
@@ -745,28 +818,17 @@ export function SubmissionDetailPage() {
                   ))}
                 </div>
               </div>
-              <span className="chq-content-status">Content: {detail.contentStatus}</span>
               <div className="chq-detail-decision-actions">
-                <button
-                  type="button"
-                  className="chq-btn chq-btn-primary"
-                  disabled={contentStatusPending || detail.contentStatus === 'approved'}
-                  onClick={() => changeContentStatus('approved')}
-                >
-                  Approve content
-                </button>
-                <button
-                  type="button"
-                  className="chq-btn chq-btn-secondary"
-                  disabled={contentStatusPending || detail.contentStatus === 'changes_requested'}
-                  onClick={() => changeContentStatus('changes_requested')}
-                >
-                  Request changes
-                </button>
                 <button type="button" className="chq-btn chq-btn-secondary" disabled={cloning} onClick={cloneSubmission}>
                   Clone
                 </button>
               </div>
+              {/* Content approval lives on the content screen (worklist /
+                  deliverable detail), not here -- this page only points at
+                  it (DEC-743). */}
+              <Link to={`/content?submissionId=${id}`} className="chq-btn chq-btn-tertiary chq-detail-content-link">
+                Review the content &rsaquo;
+              </Link>
               <p className="chq-detail-decision-note">Deciding never sends email. Notify the speaker from Comms.</p>
             </div>
           </section>
