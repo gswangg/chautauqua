@@ -8,6 +8,7 @@ import type { FormFieldDef, AnswerMap } from "../forms/types";
 import { ALLOWED_UPLOAD_EXTENSIONS, uploadHintText } from "../domain/files";
 import { RULE_MATCH_JS } from "../forms/rule-match";
 import { MAX_LONG_TEXT_LENGTH } from "../forms/validate";
+import { OPTIONAL_SUFFIX } from "../domain/form-copy";
 
 export const FIELD_NAME_PREFIX = "field__";
 
@@ -126,7 +127,7 @@ export function FormField(props: { field: FormFieldDef; value: unknown; error?: 
         <span class="chq-field-label-row">
           <span class="chq-field-label">
             {field.label}
-            {field.required === false ? <span class="chq-field-optional"> · optional</span> : null}
+            {field.required === false ? <span class="chq-field-optional">{OPTIONAL_SUFFIX}</span> : null}
           </span>
           {counterMax !== undefined ? (
             <span class="chq-field-counter" data-field-counter={field.id} data-max={counterMax}>

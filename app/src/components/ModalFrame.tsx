@@ -1,6 +1,7 @@
 import type { FormEvent, MouseEvent, ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useEscapeKey } from '../lib/useEscapeKey';
+import { OPTIONAL_SUFFIX } from '../../../src/domain/form-copy';
 import './modal-frame.css';
 
 interface ModalFrameBaseProps {
@@ -58,7 +59,7 @@ export function FormRow({ label, htmlFor, help, error, optional = false, childre
     <div className="chq-form-row">
       <label className="chq-form-row-label" htmlFor={htmlFor}>
         {label}
-        {optional ? <span className="chq-form-row-optional"> &#183; optional</span> : null}
+        {optional ? <span className="chq-form-row-optional">{OPTIONAL_SUFFIX}</span> : null}
       </label>
       <div className="chq-form-row-control">{children}</div>
       {help !== undefined && <div className="chq-form-row-help">{help}</div>}
