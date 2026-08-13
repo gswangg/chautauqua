@@ -61,7 +61,7 @@ export function HistoryTab({ eventId }: { eventId: string }) {
 
       <div className="chq-toolbar">
         <input
-          className="chq-input"
+          className="chq-input chq-comms-history-search"
           type="search"
           placeholder="Search subject or recipient..."
           value={q}
@@ -71,7 +71,12 @@ export function HistoryTab({ eventId }: { eventId: string }) {
       </div>
 
       {loading && <DelayedLoading />}
-      {!loading && loaded && <RecentSends eventId={eventId} batches={items} templatesById={templatesById} />}
+      {!loading && loaded && items.length === 0 && q.trim() !== '' && (
+        <p className="chq-empty">No sends match &ldquo;{q.trim()}&rdquo;.</p>
+      )}
+      {!loading && loaded && (items.length > 0 || q.trim() === '') && (
+        <RecentSends eventId={eventId} batches={items} templatesById={templatesById} />
+      )}
 
       <p className="chq-summary">{total} total</p>
     </div>

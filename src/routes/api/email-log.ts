@@ -37,6 +37,19 @@ emailLogRoutes.get("/api/v1/events/:eventId/email-log", requireOrganizer, async 
   const q = c.req.query("q") || undefined;
   const batchId = c.req.query("batchId") || undefined;
 
+  // DEC-905: epoch-ms lower bound on sentAt, backing the Comms head's "N
+  // sent in the last 7 days" -- fails loudly on a malformed value rather
+  // than silently ignoring the filter.
+  const sinceRaw = c.req.query("since");
+  let since: number | undefined;
+  if (sinceRaw !== undefined) {
+    const n = Number(sinceRaw);
+    if (!Number.isFinite(n) || !Number.isInteger(n) || n < 0) {
+      throw new ApiError("invalid", "since must be a non-negative integer epoch-ms timestamp", { since: "invalid" });
+    }
+    since = n;
+  }
+
   // DEC-603: ?groupBy=batch collapses a fan-out send's recipient rows into
   // one row (when/subject/N recipients/status tally); ?batchId= drills into
   // one batch's recipients (flat shape, same as the default), keeping
@@ -52,6 +65,7 @@ emailLogRoutes.get("/api/v1/events/:eventId/email-log", requireOrganizer, async 
     status,
     q,
     batchKey: batchId,
+    since,
     page,
     perPage,
   });

@@ -2,7 +2,7 @@
 // types). Backs both /dev/mailbox (dev-only sink viewer, DEC-005/DEC-006)
 // and GET /api/v1/events/:eventId/email-log (J5 per-recipient history).
 
-import { and, asc, desc, eq, inArray, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, or, sql, type SQL } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { likeContains } from "./like";
@@ -54,6 +54,11 @@ export interface EmailLogListParams {
    * COALESCE(batch_id, id) expression listEmailBatches groups by — so a
    * legacy/NULL-batch row's own id is a valid batchKey too. */
   batchKey?: string;
+  /** DEC-905: epoch-ms lower bound (inclusive) on sentAt, pushed into the
+   * SQL WHERE clause — never a post-fetch filter — so the Comms head's
+   * "N sent in the last 7 days" reads the window's own total rather than a
+   * count computed over a page already narrowed by LIMIT/OFFSET. */
+  since?: number;
   page: number;
   perPage: number;
 }
@@ -140,6 +145,7 @@ export async function listEmailLog(db: Db, params: EmailLogListParams): Promise<
   if (params.status) conditions.push(eq(schema.emailLog.status, params.status));
   if (params.orgId) conditions.push(eq(schema.event.orgId, params.orgId));
   if (params.batchKey) conditions.push(eq(BATCH_KEY, params.batchKey));
+  if (params.since !== undefined) conditions.push(gte(schema.emailLog.sentAt, new Date(params.since)));
   if (params.q && params.q.trim() !== "") {
     // DEC-506: escape via likeContains + ESCAPE '\\' so a literal `%`/`_`
     // in the query string can't widen into a wildcard match.
