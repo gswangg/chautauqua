@@ -169,12 +169,20 @@ describe("DEC-355 bulk accept is set-based, not per-submission", () => {
     expect(submissionSelects).toBe(expectedChunks);
     expect(participantSelects).toBe(expectedChunks);
     expect(taskAssignmentSelects).toBe(expectedChunks);
-    expect(taskSelects).toBe(distinctTitles);
+    // DEC-932: the back-fill pass adds ONE more select — the event's task
+    // ids — after the DEFAULT_ONBOARDING_TASKS titles are planned. This
+    // fake db's schema.task responses are canned-empty (not stateful), so
+    // that select returns zero rows and the back-fill's chunked
+    // existing-pairs select/insert never runs (the `eventTaskIds.length ===
+    // 0` early return below fires) — taskAssignmentSelects above stays
+    // unchanged at exactly `expectedChunks`.
+    expect(taskSelects).toBe(distinctTitles + 1);
     expect(formSelects).toBe(formTitles);
 
     const totalSelects = selectCalls.length;
-    // +1 for the single DEC-520 event-start-date read.
-    expect(totalSelects).toBe(expectedChunks * 3 + distinctTitles + formTitles + 1);
+    // +1 for the single DEC-520 event-start-date read, +1 for the DEC-932
+    // event-task-ids back-fill read.
+    expect(totalSelects).toBe(expectedChunks * 3 + distinctTitles + 1 + formTitles + 1);
     // The load-bearing assertion: total SELECT count is nowhere near N (200)
     // — it is bounded by chunk count + distinct-title count, not id count.
     expect(totalSelects).toBeLessThan(31);

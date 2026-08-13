@@ -14,7 +14,8 @@ import { planAcceptance, FORM_TASK_FIELD_SPECS, isActiveParticipant, onboardingT
 import { isValidStatusLiteral } from "./query";
 import { chunkIds, chunkRowsForInsert } from "../../../lib/chunk";
 import { ApiError } from "../../http";
-import { DEC_079, DEC_111, DEC_133, DEC_520, DEC_521, DEC_556 } from "../../../decisions";
+import { MAX_TASK_ASSIGNMENT_WRITES } from "../tasks/crud";
+import { DEC_079, DEC_111, DEC_133, DEC_520, DEC_521, DEC_556, DEC_932 } from "../../../decisions";
 
 void DEC_079; // planning-before-commit acceptance ordering + chunked/batched bulk status changes below
 void DEC_111; // form-task tasks get real backing forms, self-healed when formId is null
@@ -22,6 +23,7 @@ void DEC_133; // full-set id match guard below (mirrors DEC-122's requireFullMat
 void DEC_520; // auto-created onboarding tasks get a due date derived from the event start date
 void DEC_521; // task_assignment inserts are chunked, bounded by MAX_ACCEPTANCE_TASK_ASSIGNMENTS
 void DEC_556; // task_assignment insert below targets the real (task_id, contact_id) unique index
+void DEC_932; // back-fill pass below: every participantContactIds member gets EVERY event task
 
 /** DEC-521: a planned set of task_assignment rows above this size is refused
  * BEFORE any insert — unlike MAX_AUTO_SCHEDULE_PLACEMENTS' silent slice, a
@@ -214,6 +216,63 @@ async function planAndPersistOnboardingTasks(
   // NOTHING alongside the existence pre-read above (kept for DEC-521's
   // write-burst cap).
   for (const chunk of chunkRowsForInsert(assignmentRows)) {
+    await db
+      .insert(schema.taskAssignment)
+      .values(chunk)
+      .onConflictDoNothing({ target: [schema.taskAssignment.taskId, schema.taskAssignment.contactId] });
+  }
+
+  // DEC-932: activation BACK-FILLS, it never snapshots. planAcceptance above
+  // only plans DEFAULT_ONBOARDING_TASKS titles — a CUSTOM task the organizer
+  // created (or created after a contact was already active) is never in that
+  // plan, so every contact in participantContactIds must also hold an
+  // assignment for EVERY row of schema.task with this eventId, not just the
+  // planned default titles. Set-based: ONE select of the event's task ids,
+  // ONE chunked select (by contact, DEC-078) of existing (taskId, contactId)
+  // pairs restricted to those task ids and exactly these contacts, ONE
+  // chunked insert (DEC-528) of the missing pairs. Never UPDATE/DELETE an
+  // existing row — a completed assignment stays complete.
+  const eventTaskRows = await db.select({ id: schema.task.id }).from(schema.task).where(eq(schema.task.eventId, eventId));
+  const eventTaskIds = eventTaskRows.map((r) => r.id);
+  if (eventTaskIds.length === 0) return;
+
+  const existingPairs = new Set<string>();
+  for (const contactChunk of chunkIds(participantContactIds)) {
+    const existingRows = await db
+      .select({ taskId: schema.taskAssignment.taskId, contactId: schema.taskAssignment.contactId })
+      .from(schema.taskAssignment)
+      .where(
+        and(inArray(schema.taskAssignment.taskId, eventTaskIds), inArray(schema.taskAssignment.contactId, contactChunk)),
+      );
+    for (const r of existingRows) {
+      existingPairs.add(`${r.taskId}|${r.contactId}`);
+    }
+  }
+
+  const missingRows: {
+    id: string;
+    taskId: string;
+    contactId: string;
+    status: "pending";
+    createdAt: Date;
+    updatedAt: Date;
+  }[] = [];
+  for (const taskId of eventTaskIds) {
+    for (const contactId of participantContactIds) {
+      if (existingPairs.has(`${taskId}|${contactId}`)) continue;
+      missingRows.push({ id: newId(), taskId, contactId, status: "pending", createdAt: now, updatedAt: now });
+    }
+  }
+
+  if (missingRows.length > MAX_TASK_ASSIGNMENT_WRITES) {
+    throw new ApiError(
+      "invalid",
+      `Task assignments to create (${missingRows.length}) exceed the cap of ${MAX_TASK_ASSIGNMENT_WRITES}`,
+      { contactIds: `${missingRows.length} exceeds cap ${MAX_TASK_ASSIGNMENT_WRITES}` },
+    );
+  }
+
+  for (const chunk of chunkRowsForInsert(missingRows)) {
     await db
       .insert(schema.taskAssignment)
       .values(chunk)
