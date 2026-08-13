@@ -227,4 +227,160 @@ describe("FieldRulesScript emits a transitive fixed point for a chain (DEC-681/D
     expect(wrapC.style.display).toBe("none");
     expect(inputC.required).toBe(false);
   });
+
+  it("hides a dependent whose rule targets a hidden checkbox trigger, even though the trigger's stale unchecked state would otherwise satisfy ne:true (DEC-973)", () => {
+    const gate: FormFieldDef = {
+      id: "gate",
+      section: "session",
+      kind: "dropdown",
+      label: "Gate",
+      required: false,
+      position: 0,
+      options: ["Open", "Closed"],
+    };
+    const trigger: FormFieldDef = {
+      id: "trigger",
+      section: "session",
+      kind: "checkbox",
+      label: "Trigger",
+      required: false,
+      position: 1,
+      rule: { fieldId: "gate", op: "eq", value: "Open" },
+    };
+    const dependent: FormFieldDef = {
+      id: "dependent",
+      section: "session",
+      kind: "text",
+      label: "Dependent",
+      required: true,
+      position: 2,
+      rule: { fieldId: "trigger", op: "ne", value: true },
+    };
+
+    const html = FieldRulesScript({ fields: [gate, trigger, dependent] }).toString();
+    const match = html.match(
+      /<script type="application\/json" id="chq-field-rules">([\s\S]*?)<\/script>/,
+    );
+    if (!match || match[1] === undefined) throw new Error("chq-field-rules script tag not found");
+    const scriptMatch = html.match(/<script>([\s\S]*?)<\/script>\s*$/);
+    if (!scriptMatch || scriptMatch[1] === undefined) throw new Error("inline script not found");
+    const inlineJs = scriptMatch[1];
+
+    function makeInput(fieldId: string, extra: Record<string, unknown>) {
+      return { dataset: { fieldId, required: "true" }, required: false, ...extra };
+    }
+    const rulesScriptEl = { textContent: match[1] };
+    const inputGate = makeInput("gate", { type: "text", value: "Closed" });
+    // Stale: trigger's checkbox is unchecked, which would satisfy ne:true
+    // directly — the fixed point must still hide dependent because trigger
+    // itself is hidden (gate !== "Open").
+    const inputTrigger = makeInput("trigger", { type: "checkbox", checked: false });
+    const inputDependent = makeInput("dependent", { type: "text", value: "irrelevant" });
+    const wrapTrigger = { style: { display: "" }, querySelector: () => inputTrigger };
+    const wrapDependent = { style: { display: "" }, querySelector: () => inputDependent };
+
+    const byId: Record<string, unknown> = {
+      "chq-field-rules": rulesScriptEl,
+      "chq-field-wrap-trigger": wrapTrigger,
+      "chq-field-wrap-dependent": wrapDependent,
+    };
+    const bySelector: Record<string, unknown> = {
+      '[data-field-id="gate"]': inputGate,
+      '[data-field-id="trigger"]': inputTrigger,
+      '[data-field-id="dependent"]': inputDependent,
+    };
+    function querySelector(sel: string) {
+      return bySelector[sel] ?? null;
+    }
+
+    const fakeDocument = {
+      getElementById: (id: string) => byId[id] ?? null,
+      querySelector,
+      addEventListener: () => {},
+    };
+
+    // eslint-disable-next-line @typescript-eslint/no-implied-eval
+    new Function("document", inlineJs)(fakeDocument);
+
+    expect(wrapTrigger.style.display).toBe("none");
+    expect(wrapDependent.style.display).toBe("none");
+    expect(inputDependent.required).toBe(false);
+  });
+
+  it("keeps a dependent visible when its checkbox trigger is visible and unanswered (unchanged absent-checkbox=>false canonicalizer)", () => {
+    const gate: FormFieldDef = {
+      id: "gate",
+      section: "session",
+      kind: "dropdown",
+      label: "Gate",
+      required: false,
+      position: 0,
+      options: ["Open", "Closed"],
+    };
+    const trigger: FormFieldDef = {
+      id: "trigger",
+      section: "session",
+      kind: "checkbox",
+      label: "Trigger",
+      required: false,
+      position: 1,
+      rule: { fieldId: "gate", op: "eq", value: "Open" },
+    };
+    const dependent: FormFieldDef = {
+      id: "dependent",
+      section: "session",
+      kind: "text",
+      label: "Dependent",
+      required: true,
+      position: 2,
+      rule: { fieldId: "trigger", op: "ne", value: true },
+    };
+
+    const html = FieldRulesScript({ fields: [gate, trigger, dependent] }).toString();
+    const match = html.match(
+      /<script type="application\/json" id="chq-field-rules">([\s\S]*?)<\/script>/,
+    );
+    if (!match || match[1] === undefined) throw new Error("chq-field-rules script tag not found");
+    const scriptMatch = html.match(/<script>([\s\S]*?)<\/script>\s*$/);
+    if (!scriptMatch || scriptMatch[1] === undefined) throw new Error("inline script not found");
+    const inlineJs = scriptMatch[1];
+
+    function makeInput(fieldId: string, extra: Record<string, unknown>) {
+      return { dataset: { fieldId, required: "true" }, required: false, ...extra };
+    }
+    const rulesScriptEl = { textContent: match[1] };
+    const inputGate = makeInput("gate", { type: "text", value: "Open" });
+    // trigger is visible (gate === "Open") but unanswered — no DOM element
+    // for it yet, so getValue returns undefined; the canonicalizer treats an
+    // absent checkbox as false, and ne:true against false is true.
+    const inputDependent = makeInput("dependent", { type: "text", value: "irrelevant" });
+    const wrapTrigger = { style: { display: "" }, querySelector: () => null };
+    const wrapDependent = { style: { display: "" }, querySelector: () => inputDependent };
+
+    const byId: Record<string, unknown> = {
+      "chq-field-rules": rulesScriptEl,
+      "chq-field-wrap-trigger": wrapTrigger,
+      "chq-field-wrap-dependent": wrapDependent,
+    };
+    const bySelector: Record<string, unknown> = {
+      '[data-field-id="gate"]': inputGate,
+      '[data-field-id="dependent"]': inputDependent,
+    };
+    function querySelector(sel: string) {
+      return bySelector[sel] ?? null;
+    }
+
+    const fakeDocument = {
+      getElementById: (id: string) => byId[id] ?? null,
+      querySelector,
+      addEventListener: () => {},
+    };
+
+    // eslint-disable-next-line @typescript-eslint/no-implied-eval
+    new Function("document", inlineJs)(fakeDocument);
+
+    expect(wrapTrigger.style.display).toBe("");
+    expect(wrapDependent.style.display).toBe("");
+    expect(inputDependent.required).toBe(true);
+  });
 });
