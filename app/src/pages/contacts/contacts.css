@@ -75,20 +75,23 @@
   flex-wrap: wrap;
 }
 
+/* DEC-868 amendment (wave 45): one eyebrow, one control tier — caption
+   reads as a section-label (uppercase + the shared size/weight/tracking
+   tokens) rather than plain muted body text; the DOM text stays "Matching
+   all of" so the accessible name is unchanged. */
 .chq-contacts-filter-rules-caption {
   color: var(--chq-muted);
   white-space: nowrap;
+  text-transform: uppercase;
+  font-size: var(--chq-type-section-label-size);
+  font-weight: var(--chq-type-section-label-weight);
+  letter-spacing: var(--chq-type-section-label-tracking);
 }
 
 .chq-contacts-filter-rule-group {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-}
-
-.chq-contacts-add-rule {
-  border: 1px dashed var(--chq-border);
-  background: none;
 }
 
 .chq-contacts-filter-rules-end {
