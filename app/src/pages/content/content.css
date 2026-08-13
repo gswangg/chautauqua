@@ -406,20 +406,22 @@
   padding-top: 14px;
 }
 
-/* DEC-741: the composer's standing caption — the note is always emailed to
-   the session's active speakers, so the promise sits above the buttons
-   rather than only appearing after a send. */
-.chq-content-comment-caption {
-  margin: -2px 0 0;
-  color: var(--chq-muted);
-}
-
-/* "Ask for changes" (secondary) + "Send note only" (primary) sit on one
-   row, matching .chq-content-actions' spacing. */
+/* "Ask for changes" (primary — the filled action moves work: it posts the
+   note and moves content_status to changes_requested) + "Send note only"
+   (secondary — posts the note, leaves status alone) sit on one row,
+   matching .chq-content-actions' spacing. */
 .chq-content-comment-actions {
   display: flex;
   gap: 9px;
   flex-wrap: wrap;
+}
+
+/* DEC-741: the composer's standing caption — the note is always emailed to
+   the session's active speakers, so the promise reads as the legend for the
+   choice above rather than a caption on the textarea. */
+.chq-content-comment-caption {
+  margin: 6px 0 0;
+  color: var(--chq-muted);
 }
 
 /* Post-send confirmation counting ACTUAL sends (DEC-741: the toast counts
