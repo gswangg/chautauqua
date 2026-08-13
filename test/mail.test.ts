@@ -29,10 +29,24 @@ describe("renderTemplate", () => {
       "talk_title",
       "event_name",
       "portal_link",
-      "due_date",
+      "task_due_date",
       "task_list",
       "feedback",
     ]);
+  });
+
+  // DEC-792 amendment (wave 45): {task_due_date} is canonical; {due_date} is
+  // a permanent alias resolved in the one renderer — both must resolve to
+  // the identical value forever since {due_date} is already sitting in
+  // seeded and user-authored template bodies.
+  it("resolves {task_due_date} and its permanent alias {due_date} to the identical value", () => {
+    const vars = { task_due_date: "14 Mar" };
+    expect(renderTemplate("Due {task_due_date}", vars)).toBe("Due 14 Mar");
+    expect(renderTemplate("Due {due_date}", vars)).toBe("Due 14 Mar");
+  });
+
+  it("throws MergeFieldError naming the alias when {due_date} resolves to a missing var", () => {
+    expect(() => renderTemplate("Due {due_date}", {})).toThrow(MergeFieldError);
   });
 });
 

@@ -34,6 +34,12 @@ export function InsertFieldMenu({ fields, onInsert, label }: InsertFieldMenuProp
       >
         {triggerLabel} <span aria-hidden="true">▾</span>
       </button>
+      {/* The count is computed from the SAME `fields` list the panel below
+          renders — never a hardcoded numeral — so growing/shrinking the
+          vocabulary can never desync the sentence from the options. */}
+      <p className="chq-insert-field-menu-hint">
+        {fields.length} available &middot; dropped in at the cursor
+      </p>
 
       {open && (
         <div

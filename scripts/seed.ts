@@ -2721,7 +2721,11 @@ async function main(): Promise<void> {
     const vars = {
       speaker_name: r.speakerName,
       task_list: batchTaskList,
-      due_date: batchDueDate,
+      // DEC-792 amendment (wave 45): task_due_date is the canonical merge
+      // vars key the ADDITIONAL_EMAIL_TEMPLATES Content Reminder template
+      // now spells ({task_due_date}); {due_date} keeps resolving as a
+      // permanent alias but this seed demonstrates the canonical name.
+      task_due_date: batchDueDate,
       portal_link: SEED_PORTAL_LINK,
     };
     statements.push(

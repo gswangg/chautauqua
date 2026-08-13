@@ -7,12 +7,27 @@ export const MERGE_FIELDS = [
   "talk_title",
   "event_name",
   "portal_link",
-  "due_date",
+  "task_due_date",
   "task_list",
   "feedback",
 ] as const;
 
 export type MergeField = (typeof MERGE_FIELDS)[number];
+
+// DEC-792 amendment (wave 45): `task_due_date` is the canonical token — the
+// one MERGE_FIELDS declares, MERGE_FIELD_SAMPLES keys, and the Insert-a-field
+// menu offers. `due_date` is a permanent alias: it is already sitting in
+// seeded and user-authored template bodies and must keep resolving to the
+// identical value forever, but must never appear as a choice in any UI. The
+// alias is resolved HERE — the one renderer — so no call site forks the
+// substitution.
+const MERGE_FIELD_ALIASES: Readonly<Record<string, MergeField>> = {
+  due_date: "task_due_date",
+};
+
+function canonicalMergeField(name: string): string {
+  return MERGE_FIELD_ALIASES[name] ?? name;
+}
 
 // DEC-660: one merge-field vocabulary. These are subsets of MERGE_FIELDS,
 // each naming exactly the vars a given send path actually supplies —
@@ -21,8 +36,8 @@ export type MergeField = (typeof MERGE_FIELDS)[number];
 // reject as MergeFieldError.
 
 // Matches src/domain/compose.ts buildMergeVars's target vars (speaker_name,
-// talk_title, event_name, portal_link, feedback, due_date, task_list) — a
-// compose template may now also reference the recipient's outstanding
+// talk_title, event_name, portal_link, feedback, task_due_date, task_list) —
+// a compose template may now also reference the recipient's outstanding
 // task list (DEC-792: growing the vocabulary rather than leaving a seeded
 // template whose tokens the path rejects as a landmine).
 export const COMPOSE_MERGE_FIELDS: readonly MergeField[] = [
@@ -31,7 +46,7 @@ export const COMPOSE_MERGE_FIELDS: readonly MergeField[] = [
   "event_name",
   "portal_link",
   "feedback",
-  "due_date",
+  "task_due_date",
   "task_list",
 ] as const;
 
@@ -58,7 +73,7 @@ export const MERGE_FIELD_SAMPLES: Record<MergeField, string> = {
   talk_title: "Taming 40-Minute CI",
   event_name: "DevFlow Conf 2027",
   portal_link: "https://…/portal",
-  due_date: "14 Mar",
+  task_due_date: "14 Mar",
   task_list: "• Sign speaker agreement  • Upload your slides",
   feedback: "Great pacing — tighten the intro by about two minutes.",
 };
@@ -82,8 +97,10 @@ export function blockFieldsInTemplate(template: string): MergeField[] {
   const found = new Set<MergeField>();
   for (const match of template.matchAll(PLACEHOLDER_RE)) {
     const name = match[1];
-    if (name !== undefined && (BLOCK_MERGE_FIELDS as readonly string[]).includes(name)) {
-      found.add(name as MergeField);
+    if (name === undefined) continue;
+    const canonical = canonicalMergeField(name);
+    if ((BLOCK_MERGE_FIELDS as readonly string[]).includes(canonical)) {
+      found.add(canonical as MergeField);
     }
   }
   return [...found];
@@ -100,7 +117,8 @@ export function missingMergeFields(template: string, vars: Record<string, string
     const name = match[1];
     if (name === undefined) continue;
     if (seen.has(name)) continue;
-    if (!Object.prototype.hasOwnProperty.call(vars, name) || vars[name] === undefined) {
+    const canonical = canonicalMergeField(name);
+    if (!Object.prototype.hasOwnProperty.call(vars, canonical) || vars[canonical] === undefined) {
       missing.push(name);
       seen.add(name);
     }
@@ -110,10 +128,11 @@ export function missingMergeFields(template: string, vars: Record<string, string
 
 export function renderTemplate(template: string, vars: Record<string, string>): string {
   return template.replace(PLACEHOLDER_RE, (_match, name: string) => {
-    if (!Object.prototype.hasOwnProperty.call(vars, name) || vars[name] === undefined) {
+    const canonical = canonicalMergeField(name);
+    if (!Object.prototype.hasOwnProperty.call(vars, canonical) || vars[canonical] === undefined) {
       throw new MergeFieldError(name);
     }
-    return vars[name];
+    return vars[canonical];
   });
 }
 
