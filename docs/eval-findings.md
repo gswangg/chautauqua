@@ -129,15 +129,21 @@ tags + "N have no slot" advisory in Preview · persistent Recent sends under Com
 (STILL-OPEN — exists only inside History tab) · bordered "See the recipients" CTA on
 batch rows · SEED: one ~23-recipient batch + 4 more templates.
 
-**Contacts** (after sweep B): verify DirectoryRail two-column, then complete: LABELS
-column + drawer row + merge rows; tab chips w/ counts; search + Segment on tab row;
-DELETE KPI trio, filter-rules row, #Submissions column · merge: ALL differing fields,
-fix loader (Company renders "—" though directory has values), fixed-primary +
-per-field keep, pair counter, "Not a duplicate", strikethrough + footer · add-to-event
-ROLE control (Speaker/Reviewer/Guest) + drop hardcoded sentence + unclip Title ·
-drawer = read-only record view (history + action bar exist; reorder page around them)
-· import: real step panels or CTA above fold · pipeline: card captions ("Added N days
-ago", "No reply · N days" bold past 30, declined reason) · Duplicates tab "Keep both".
+**Contacts** (DirectoryRail, Labels column, tab chips w/ counts, search+Segment
+placement, applied-segment, loader values, strikethrough all CLOSED by probe): merge
+**BUG MORPHED — differing fields where one side is EMPTY are omitted as rows
+entirely** (AcmeCo/Engineer vs empty rendered only the Email row; mock shows value vs
+struck "—") — render ALL differing fields incl. value-vs-empty + Labels row · merge
+mock gaps: "1 of N pairs" counter, "Not a duplicate" (+ Duplicates-tab "Keep both"),
+kept-record column headed by record name (not generic DISCARD radios), footer
+specifics ("3 submissions and 1 task move to the kept record") · duplicate DETECTION
+drops pairs when companies differ non-empty (probe incidental — decide intended
+matching rule in a DEC) · no contact-delete affordance anywhere (drawer has only
+Save/Email/Add-to-event) · add-to-event ROLE control (Speaker/Reviewer/Guest) + drop
+hardcoded sentence + unclip Title · drawer = read-only record view (history + action
+bar exist; reorder page around them) · import: real step panels or CTA above fold ·
+pipeline: card captions ("Added N days ago", "No reply · N days" bold past 30,
+declined reason).
 
 **Settings**: READ-ONLY SUMMARY pattern (THE item — sections as label:value rows w/
 "Edit the form"/"Change"/"Replace" drill-ins; forms only on drill) · remove new
