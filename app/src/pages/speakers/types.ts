@@ -57,16 +57,27 @@ export const INVITE_STATUS_LABELS: Record<InviteStatus, string> = {
   declined: 'Declined',
 };
 
+// DEC-936: one participation this roster row covers -- a contact can carry
+// more than one accepted participation in the same event (co-speaker on
+// more than one session). Each names its own PATCH target
+// (/submissions/:submissionId/participants/:participantId).
+export interface OnboardingParticipation {
+  participantId: string;
+  submissionId: string;
+  ref: string;
+  title: string;
+  inviteStatus: InviteStatus;
+}
+
 export interface OnboardingContact {
   id: string;
   name: string;
   email: string;
   company: string | null;
   hasAccount: boolean;
-  // DEC-789: names the PATCH target for this row's invite-status control.
-  participantId: string;
-  submissionId: string;
-  inviteStatus: InviteStatus;
+  // DEC-936: EVERY participation this contact covers on this roster row,
+  // ordered by submission seq. Always non-empty.
+  participations: OnboardingParticipation[];
 }
 
 export interface OnboardingRow {

@@ -21,6 +21,20 @@ import { newId } from "../src/domain/ids";
 import type { Db } from "../src/server/context";
 
 const DDL = `
+create table event (
+  id text primary key,
+  org_id text,
+  name text,
+  slug text,
+  start_date text,
+  end_date text,
+  location text,
+  timezone text,
+  record_prefix text,
+  branding_json text,
+  created_at integer,
+  updated_at integer
+);
 create table contact (
   id text primary key,
   org_id text,
@@ -137,7 +151,38 @@ function makeTestDb(): { db: Db; sqlite: DatabaseSync } {
   return { db: db as unknown as Db, sqlite };
 }
 
+// DEC-936: a counting variant -- each real SQL round trip (SELECT or INSERT)
+// through the sqlite-proxy driver increments the counter, so a test can
+// assert the grid issues the SAME number of round trips regardless of how
+// many participation ROWS a single contact's grouped query returns (the
+// point of "ONE grouped query, never a query per row").
+function makeCountingTestDb(): { db: Db; sqlite: DatabaseSync; queryCount: () => number } {
+  const sqlite = new DatabaseSync(":memory:");
+  sqlite.exec(DDL);
+  let count = 0;
+  const db = drizzle(async (sqlText, params, method) => {
+    count += 1;
+    const stmt = sqlite.prepare(sqlText);
+    stmt.setReturnArrays(true);
+    if (method === "run") {
+      stmt.run(...params);
+      return { rows: [] };
+    }
+    const rows = stmt.all(...params) as unknown[];
+    return { rows };
+  }, { schema });
+  return { db: db as unknown as Db, sqlite, queryCount: () => count };
+}
+
 const NOW = new Date(1_700_000_000_000);
+
+function insertEvent(sqlite: DatabaseSync, id: string, recordPrefix = "SES") {
+  sqlite
+    .prepare(
+      `insert into event (id, org_id, name, slug, start_date, end_date, timezone, record_prefix, created_at, updated_at) values (?, 'org-1', 'Event', ?, '2026-01-01', '2026-01-02', 'UTC', ?, ?, ?)`,
+    )
+    .run(id, id, recordPrefix, NOW.getTime(), NOW.getTime());
+}
 
 function insertContact(sqlite: DatabaseSync, id: string, firstName: string) {
   sqlite
@@ -178,6 +223,7 @@ describe("onboarding roster == accepted-speaker set (DEC-754)", () => {
 
   beforeEach(() => {
     ({ db, sqlite } = makeTestDb());
+    insertEvent(sqlite, EVENT);
   });
 
   afterEach(() => {
@@ -330,6 +376,7 @@ describe("onboarding grid invite-status control + filter (DEC-789)", () => {
 
   beforeEach(() => {
     ({ db, sqlite } = makeTestDb());
+    insertEvent(sqlite, EVENT);
   });
 
   afterEach(() => {
@@ -354,10 +401,12 @@ describe("onboarding grid invite-status control + filter (DEC-789)", () => {
     });
     const row = grid.rows.find((r) => r.contact.id === "c1");
     expect(row).toBeDefined();
-    expect(row!.contact.inviteStatus).toBe("accepted");
-    expect(row!.contact.submissionId).toBe("sub-1");
-    expect(typeof row!.contact.participantId).toBe("string");
-    expect(row!.contact.participantId.length).toBeGreaterThan(0);
+    expect(row!.contact.participations).toHaveLength(1);
+    expect(row!.contact.participations[0]!.inviteStatus).toBe("accepted");
+    expect(row!.contact.participations[0]!.submissionId).toBe("sub-1");
+    expect(typeof row!.contact.participations[0]!.participantId).toBe("string");
+    expect(row!.contact.participations[0]!.participantId.length).toBeGreaterThan(0);
+    expect(row!.contact.participations[0]!.ref).toBe("SES-001");
   });
 
   it("an inviteStatus filter narrows the roster to that status, on the SAME row query -- for all four statuses (DEC-829)", async () => {
@@ -404,7 +453,7 @@ describe("onboarding grid invite-status control + filter (DEC-789)", () => {
       now: NOW.getTime(),
     });
     expect(invitedOnly.rows.map((r) => r.contact.id)).toEqual(["c-invited"]);
-    expect(invitedOnly.rows[0]!.contact.inviteStatus).toBe("invited");
+    expect(invitedOnly.rows[0]!.contact.participations[0]!.inviteStatus).toBe("invited");
 
     const declinedOnly = await getOnboardingGrid(db, EVENT, {
       page: 1,
@@ -417,7 +466,7 @@ describe("onboarding grid invite-status control + filter (DEC-789)", () => {
       now: NOW.getTime(),
     });
     expect(declinedOnly.rows.map((r) => r.contact.id)).toEqual(["c-declined"]);
-    expect(declinedOnly.rows[0]!.contact.inviteStatus).toBe("declined");
+    expect(declinedOnly.rows[0]!.contact.participations[0]!.inviteStatus).toBe("declined");
 
     const unfiltered = await getOnboardingGrid(db, EVENT, {
       page: 1,
@@ -435,5 +484,95 @@ describe("onboarding grid invite-status control + filter (DEC-789)", () => {
       "c-invited",
       "c-none",
     ]);
+  });
+});
+
+// DEC-936: a roster row carries EVERY participation it covers, not a
+// lowest-id pick -- built from ONE grouped query over the page's contact
+// ids, never a subquery per column, never a query per row.
+describe("onboarding grid row carries every participation (DEC-936)", () => {
+  let db: Db;
+  let sqlite: DatabaseSync;
+  const EVENT = "event-1";
+
+  beforeEach(() => {
+    ({ db, sqlite } = makeTestDb());
+    insertEvent(sqlite, EVENT);
+  });
+
+  afterEach(() => {
+    sqlite.close();
+  });
+
+  it("a contact with two accepted participations in one event returns both, in submission-seq order", async () => {
+    insertTask(sqlite, "task-1", EVENT);
+    insertContact(sqlite, "c-multi", "Ada");
+    // sub-2 is inserted (and its participant row created) BEFORE sub-1, and
+    // carries a HIGHER seq -- proves the order comes from submission.seq,
+    // not from participant.id/insertion order.
+    sqlite
+      .prepare(
+        `insert into submission (id, event_id, seq, title, status, content_status, ics_sequence, created_at, updated_at) values ('sub-2', ?, 2, 'Talk Two', 'accepted', 'pending', 0, ?, ?)`,
+      )
+      .run(EVENT, NOW.getTime(), NOW.getTime());
+    insertParticipant(sqlite, "sub-2", "c-multi", "accepted");
+    sqlite
+      .prepare(
+        `insert into submission (id, event_id, seq, title, status, content_status, ics_sequence, created_at, updated_at) values ('sub-1', ?, 1, 'Talk One', 'accepted', 'pending', 0, ?, ?)`,
+      )
+      .run(EVENT, NOW.getTime(), NOW.getTime());
+    insertParticipant(sqlite, "sub-1", "c-multi", "invited");
+
+    const grid = await getOnboardingGrid(db, EVENT, {
+      page: 1,
+      perPage: 50,
+      q: null,
+      taskId: null,
+      status: null,
+      overdueOnly: false,
+      inviteStatus: null,
+      now: NOW.getTime(),
+    });
+    const row = grid.rows.find((r) => r.contact.id === "c-multi");
+    expect(row).toBeDefined();
+    expect(row!.contact.participations).toHaveLength(2);
+    expect(row!.contact.participations.map((p) => p.submissionId)).toEqual(["sub-1", "sub-2"]);
+    expect(row!.contact.participations.map((p) => p.ref)).toEqual(["SES-001", "SES-002"]);
+    expect(row!.contact.participations.map((p) => p.title)).toEqual(["Talk One", "Talk Two"]);
+    expect(row!.contact.participations.map((p) => p.inviteStatus)).toEqual(["invited", "accepted"]);
+  });
+
+  it("the grid issues the same number of D1 round trips whether a contact's participations query returns 3 rows or 300 (ONE grouped query, never a query per row)", async () => {
+    async function runWithParticipationCount(n: number): Promise<number> {
+      const { db, sqlite, queryCount } = makeCountingTestDb();
+      insertEvent(sqlite, EVENT);
+      insertTask(sqlite, "task-1", EVENT);
+      insertContact(sqlite, "c-scale", "Ada");
+      for (let i = 0; i < n; i++) {
+        const subId = `sub-${i}`;
+        sqlite
+          .prepare(
+            `insert into submission (id, event_id, seq, title, status, content_status, ics_sequence, created_at, updated_at) values (?, ?, ?, ?, 'accepted', 'pending', 0, ?, ?)`,
+          )
+          .run(subId, EVENT, i + 1, `Talk ${i}`, NOW.getTime(), NOW.getTime());
+        insertParticipant(sqlite, subId, "c-scale", "accepted");
+      }
+      await getOnboardingGrid(db, EVENT, {
+        page: 1,
+        perPage: 50,
+        q: null,
+        taskId: null,
+        status: null,
+        overdueOnly: false,
+        inviteStatus: null,
+        now: NOW.getTime(),
+      });
+      sqlite.close();
+      return queryCount();
+    }
+
+    const small = await runWithParticipationCount(3);
+    const large = await runWithParticipationCount(300);
+    expect(small).toBe(large);
   });
 });

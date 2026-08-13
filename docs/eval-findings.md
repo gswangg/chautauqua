@@ -156,47 +156,32 @@ vocabulary DEC (surface-dependent strings are CORRECT — agenda generalizes
 N-way, overview uses TWO-SESSIONS string; document, don't unify blindly) ·
 no-room toast copy · tray footer copy + unframed ⋮⋮.
 
-**Comms — GATE-1 FLEET: FAIL (report fidelity-gate1/07-comms/report.md)**:
-BROKEN: "Include reviewer feedback" ALWAYS 400s (plan select only revealed BY
-the failing click — reorder: reveal select, fetch after choice) AND the merged
-REVIEWER FEEDBACK blockquote never renders for any plan (frame centerpiece —
-implement) · History expanded rows: email overlaps status text · compose Recent
-Sends stale after send · template editor BODY textarea fixed ~185px (full-width
-~290 per frame) · **send-honesty watch: reserved-domain send returned
-{"sent":1} success — earlier builds reported the failure; verify mailer failure
-detection** · no confirm on "Send N emails" (DEC).
-MAJOR: header subtitle "N sent in 7 days · last <t>" · recipient rows carry
-"· <ref>" · UNGATE SCHEDULED/NO-SLOT tags from the calendar checkbox (frame
-shows always; footnote correct once shown) · Recent Sends per-row Open ·
-Templates page to frame: breadcrumb + H1 + New-template top-right, list w/
-descriptions + Last-used meta, Duplicate, "Use in a send" (path into compose).
-MINOR batch in report (tab pill, sublabels, step-4 badge, card title, checked
-default, timestamps/template-name column, seed template body sign-off +
-paragraphs, nav overflow at 1240, editor preselect/header/NAME input/token
-parity, History header count + search width + miss copy + de-noise).
-(Probe closures stand: DEC-792/793/796/751 + history CTA.)
+**Comms — GATE-2: FAIL improved** (report fidelity-gate2/07-comms/report.md;
+DEC-883 both halves + DEC-912 + Templates chrome + stale-sends + overlap all
+CLOSED; send-honesty EXONERATED — DevSinkMailer locally, DEC-923 verified):
+**NEW P1 — ICS slot self-contradiction**: one screen shows SCHEDULED on every
+row AND "No slot yet" preview AND "11 of 11 have no slot" AND raw-DB-id error
+AND enabled Send — unify the slot predicate (DEC-912 flag vs ICS resolver),
+disable send on block, human refs in errors · **P1 {feedback} circular gate**:
+chip offered on step 2, server rejects without includeFeedback which lives on
+step 3 — accept pre-toggle or auto-enable + restore the named-fields banner
+(regressed to silent) · make the merged block reachable on the natural path ·
+BODY textarea (byte-identical 3rd look) · send confirm dialog · history: widen
+the identifying column, stop repeating subject/timestamp ×N · Recent-Sends
+Open/timestamps/template col · templates purpose-copy + editor polish batch.
 
-**Contacts — GATE-1 FLEET: FAIL (report fidelity-gate1/08-contacts/report.md;
-headline items — full ranked list there)**:
-BROKEN: new-contact modal unstyled (no chq-form-row) · drawer headshot row raw
-file input overflowing panel · import × centered · dup-tab row wrapping.
-MAJOR: DEC-868 rules row to frame grammar (MATCHING ALL OF, inline chip groups,
-Add a rule, N-of-M counter, Save-as-segment in row; drop the permanent
-FIELD/OPERATOR/VALUE form) · rail duplicates reason line + Keep both · merge
-view renders the 6 identity rows ALWAYS (strike only dropped) + header/footer
-composition · pipeline page header + DRAG-AND-DROP (Move-to selects pre-select
-current stage) · add-to-event option set/selected-state/event-cards (v5 frame:
-Speaker/Reviewer/Guest — fold into the role DEC) · contact-scoped
-add-to-pipeline from drawer · import wizard stepwise w/ sample values + dup
-footer + visible required batch-title · bulk email subtitle + terminal Send
-primary + MESSAGE · drawer ACROSS YOUR EVENTS as event→status table.
-**PRODUCT GAP DEC: no submission/session delete route — every import/add
-permanently pollutes (fleet left 5+ test sessions; judges will too). Decide:
-delete route w/ guard, or archive.**
-SEED: rated Fit entries + rationales for the pipeline board.
-MINOR batch in report.
-(Closures stand: DEC-823 pairs w/ reasons · dup hint + fixed link · DEC-802
-truth · dismissal persistence · 409 guidance · DEC-800 · DEC-821 mechanics.)
+**Contacts — GATE-2: FAIL barely-moved — PLANNER: the modal/drawer BROKEN
+batch was never scheduled; schedule it FIRST with Account** (report same):
+UNCHANGED BROKEN ×4: new-contact modal form grammar · headshot raw file input
+past viewport + indigo square · import × (506px centered button) ·
+duplicates-tab wrapping. FIXED: DEC-868 rules row functional (chrome residue:
+one bordered strip, eyebrow leader, no-wrap, text-link save) · pipeline
+drag-and-drop (drop/fix MOVE-TO selects). Remaining majors: rail reasons +
+Keep both · merge 6 identity rows + composition · pipeline header ·
+add-to-event cards + option DEC + selected-state · drawer pipeline entry ·
+import step-2 screen + samples + dup footer + REQUIRED marker + org→Company
+auto-map (silent data loss) · bulk-email names + terminal Send + MESSAGE ·
+ACROSS-YOUR-EVENTS table · SEED fit/rationales/staleness · "1 events".
 
 **Settings — GATE-2: FAIL improved** (report fidelity-gate2/09-settings/
 report.md; editor/pills/scroll-spy/count/seeds/recipe/eyebrow CLOSED):

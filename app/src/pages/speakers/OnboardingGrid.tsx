@@ -73,6 +73,24 @@ function notChasingMessage(status: InviteStatus): string {
   return `Not chasing - invite ${status}. Set participation to Confirmed to assign this event's tasks.`;
 }
 
+// DEC-934 under DEC-936: a row now carries EVERY participation the contact
+// covers, so "will we chase this row?" is an EXISTS-any question, not a
+// single scalar's. The row is chased when ANY participation is active
+// ('none'/'accepted', ACTIVE_INVITE_STATUSES) -- exactly the predicate the
+// server's outstanding/overdue aggregate composes
+// (acceptedSpeakerExistsForContact), which is what keeps the printed summary
+// and the rendered strip agreeing on the same set of rows as DEC-934
+// requires. Returns the status to print when the row is NOT chased, else
+// null.
+function notChasingStatus(contact: { id: string; participations: readonly { inviteStatus: InviteStatus }[] }): InviteStatus | null {
+  const first = contact.participations[0];
+  // DEC-936: the array is never empty (rosterParticipantExistsForContact
+  // guarantees at least one) -- a loud throw, never a silent blank row.
+  if (!first) throw new Error(`roster row for contact ${contact.id} carries no participations`);
+  if (!contact.participations.every((p) => NOT_CHASING_STATUSES.includes(p.inviteStatus))) return null;
+  return first.inviteStatus;
+}
+
 // DEC-662/DEC-746: the roster's Add-speaker trigger lives here now (see
 // RosterPanel), beside New task/Remind all outstanding, so the page renders
 // exactly one title action row -- Import CSV is the Contacts page's job, not
@@ -207,7 +225,17 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
     setGrid({
       ...grid,
       rows: grid.rows.map((row) =>
-        row.contact.id === contactId ? { ...row, contact: { ...row.contact, inviteStatus: desired } } : row,
+        row.contact.id === contactId
+          ? {
+              ...row,
+              contact: {
+                ...row.contact,
+                participations: row.contact.participations.map((p) =>
+                  p.participantId === participantId ? { ...p, inviteStatus: desired } : p,
+                ),
+              },
+            }
+          : row,
       ),
     });
     setError(null);
@@ -511,7 +539,9 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
                     </td>
                   </tr>
                 )}
-                {visibleRows.map((row) => (
+                {visibleRows.map((row) => {
+                  const notChased = notChasingStatus(row.contact);
+                  return (
                   <tr key={row.contact.id}>
                     <td>
                       {/* DEC-930: the grid's name cell is the link into the
@@ -529,15 +559,19 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
                           </>
                         )}
                       </div>
-                      <ParticipationMenu
-                        contactName={row.contact.name}
-                        status={row.contact.inviteStatus}
-                        onSelectStatus={(status) =>
-                          setInviteStatus(row.contact.id, row.contact.submissionId, row.contact.participantId, status)
-                        }
-                        onSendInvite={() => sendPortalInvite(row.contact.id)}
-                        sendInviteDisabled={invitingContactIds.has(row.contact.id)}
-                      />
+                      {row.contact.participations.map((participation) => (
+                        <ParticipationMenu
+                          key={participation.participantId}
+                          contactName={row.contact.name}
+                          label={row.contact.participations.length > 1 ? participation.ref : undefined}
+                          status={participation.inviteStatus}
+                          onSelectStatus={(status) =>
+                            setInviteStatus(row.contact.id, participation.submissionId, participation.participantId, status)
+                          }
+                          onSendInvite={() => sendPortalInvite(row.contact.id)}
+                          sendInviteDisabled={invitingContactIds.has(row.contact.id)}
+                        />
+                      ))}
                       <button
                         type="button"
                         className="chq-btn chq-btn-tertiary chq-speakers-remind-one"
@@ -558,9 +592,9 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
                         </button>
                       )}
                     </td>
-                    {NOT_CHASING_STATUSES.includes(row.contact.inviteStatus) ? (
+                    {notChased !== null ? (
                       <td colSpan={grid.tasks.length} className="chq-speakers-not-chasing">
-                        {notChasingMessage(row.contact.inviteStatus)}
+                        {notChasingMessage(notChased)}
                       </td>
                     ) : (
                       grid.tasks.map((task) => (
@@ -577,14 +611,17 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
                       ))
                     )}
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
 
           <div className="chq-speakers-cards">
             {visibleRows.length === 0 && <p className="chq-empty">No speakers match the current filters.</p>}
-            {visibleRows.map((row) => (
+            {visibleRows.map((row) => {
+              const notChased = notChasingStatus(row.contact);
+              return (
               <div key={row.contact.id} className="chq-speakers-card">
                 <div className="chq-speakers-card-head">
                   <Link className="chq-row-title chq-speakers-name-link" to={`/speakers/${row.contact.id}`}>
@@ -599,15 +636,19 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
                       </>
                     )}
                   </span>
-                  <ParticipationMenu
-                    contactName={row.contact.name}
-                    status={row.contact.inviteStatus}
-                    onSelectStatus={(status) =>
-                      setInviteStatus(row.contact.id, row.contact.submissionId, row.contact.participantId, status)
-                    }
-                    onSendInvite={() => sendPortalInvite(row.contact.id)}
-                    sendInviteDisabled={invitingContactIds.has(row.contact.id)}
-                  />
+                  {row.contact.participations.map((participation) => (
+                    <ParticipationMenu
+                      key={participation.participantId}
+                      contactName={row.contact.name}
+                      label={row.contact.participations.length > 1 ? participation.ref : undefined}
+                      status={participation.inviteStatus}
+                      onSelectStatus={(status) =>
+                        setInviteStatus(row.contact.id, participation.submissionId, participation.participantId, status)
+                      }
+                      onSendInvite={() => sendPortalInvite(row.contact.id)}
+                      sendInviteDisabled={invitingContactIds.has(row.contact.id)}
+                    />
+                  ))}
                   <button
                     type="button"
                     className="chq-btn chq-btn-tertiary chq-speakers-remind-one"
@@ -617,8 +658,8 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
                   </button>
                 </div>
                 <div className="chq-speakers-card-tasks">
-                  {NOT_CHASING_STATUSES.includes(row.contact.inviteStatus) ? (
-                    <div className="chq-speakers-not-chasing">{notChasingMessage(row.contact.inviteStatus)}</div>
+                  {notChased !== null ? (
+                    <div className="chq-speakers-not-chasing">{notChasingMessage(notChased)}</div>
                   ) : (
                     grid.tasks.map((task) => (
                       <div key={task.id} className="chq-speakers-card-task">
@@ -636,7 +677,8 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
                   )}
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         </>
       )}

@@ -7,6 +7,7 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { chunkIds } from "../../../lib/chunk";
+import { formatRef } from "../../../domain/ids";
 import { likeContains } from "../like";
 import { overdueAssignmentConditions, rosterParticipantConditions, rosterParticipantExistsForContact } from "./crud";
 import { ASSIGNED_LATE_GRACE_DAYS } from "../../../domain/task-due";
@@ -41,6 +42,14 @@ export interface GridCell {
   assignedAt: number;
 }
 
+export interface GridParticipation {
+  participantId: string;
+  submissionId: string;
+  ref: string;
+  title: string;
+  inviteStatus: GridInviteStatus;
+}
+
 export interface GridRow {
   contact: {
     id: string;
@@ -48,15 +57,12 @@ export interface GridRow {
     email: string;
     company: string | null;
     hasAccount: boolean;
-    // DEC-789: the participant row backing this roster contact's invite
-    // status control -- participantId/submissionId together name the PATCH
-    // target (/submissions/:submissionId/participants/:participantId).
-    // Always populated: rosterParticipantExistsForContact (this row's base
-    // condition, DEC-829) guarantees at least one matching participant
-    // exists, whatever its invite status.
-    participantId: string;
-    submissionId: string;
-    inviteStatus: GridInviteStatus;
+    // DEC-936: EVERY participation this contact covers on this roster row,
+    // ordered by submission seq -- not a lowest-id pick. Always non-empty:
+    // rosterParticipantExistsForContact (this row's base condition,
+    // DEC-829) guarantees at least one matching participant exists,
+    // whatever its invite status.
+    participations: GridParticipation[];
   };
   cells: GridCell[];
 }
@@ -209,17 +215,6 @@ export async function getOnboardingGrid(db: Db, eventId: string, params: Onboard
   const total = Number(totalRows[0]?.count ?? 0);
 
   const offset = (params.page - 1) * params.perPage;
-  // DEC-789: the roster row's invite-status control needs a single
-  // (participantId, submissionId, inviteStatus) triple per contact. A
-  // contact can carry more than one accepted participant row across
-  // submissions in the same event; these correlated scalar subqueries
-  // (ordered by participant.id for a deterministic pick, same
-  // rosterParticipantConditions the base row predicate already requires)
-  // pick exactly one, in the SAME select as the rest of the row -- no
-  // separate query to drift from the row set.
-  const participantIdSubquery = sql<string>`(select ${schema.participant.id} from ${schema.participant} inner join ${schema.submission} on ${schema.submission.id} = ${schema.participant.submissionId} where ${schema.participant.contactId} = ${schema.contact.id} and ${rosterParticipantConditions(eventId)} order by ${schema.participant.id} asc limit 1)`;
-  const submissionIdSubquery = sql<string>`(select ${schema.participant.submissionId} from ${schema.participant} inner join ${schema.submission} on ${schema.submission.id} = ${schema.participant.submissionId} where ${schema.participant.contactId} = ${schema.contact.id} and ${rosterParticipantConditions(eventId)} order by ${schema.participant.id} asc limit 1)`;
-  const inviteStatusSubquery = sql<string>`(select ${schema.participant.inviteStatus} from ${schema.participant} inner join ${schema.submission} on ${schema.submission.id} = ${schema.participant.submissionId} where ${schema.participant.contactId} = ${schema.contact.id} and ${rosterParticipantConditions(eventId)} order by ${schema.participant.id} asc limit 1)`;
 
   const contactRows = await db
     .select({
@@ -229,9 +224,6 @@ export async function getOnboardingGrid(db: Db, eventId: string, params: Onboard
       email: schema.contact.email,
       company: schema.contact.company,
       userId: schema.user.id,
-      participantId: participantIdSubquery,
-      submissionId: submissionIdSubquery,
-      inviteStatus: inviteStatusSubquery,
     })
     .from(schema.contact)
     .leftJoin(schema.user, eq(schema.user.contactId, schema.contact.id))
@@ -247,13 +239,6 @@ export async function getOnboardingGrid(db: Db, eventId: string, params: Onboard
   for (const c of contactRows) {
     let row = rowsByContact.get(c.id);
     if (!row) {
-      // rosterParticipantExistsForContact (this row set's base condition,
-      // DEC-829) guarantees at least one matching participant, so the scalar
-      // subqueries above can never come back null here — fail loudly
-      // instead of silently defaulting if that invariant is ever violated.
-      if (c.participantId == null || c.submissionId == null || c.inviteStatus == null) {
-        throw new Error(`onboarding grid: contact ${c.id} matched the accepted-speaker predicate but has no participant row`);
-      }
       row = {
         contact: {
           id: c.id,
@@ -261,9 +246,7 @@ export async function getOnboardingGrid(db: Db, eventId: string, params: Onboard
           email: c.email,
           company: c.company,
           hasAccount: false,
-          participantId: c.participantId,
-          submissionId: c.submissionId,
-          inviteStatus: c.inviteStatus as GridInviteStatus,
+          participations: [],
         },
         cells: [],
       };
@@ -271,6 +254,62 @@ export async function getOnboardingGrid(db: Db, eventId: string, params: Onboard
       contactIdsInOrder.push(c.id);
     }
     if (c.userId) row.contact.hasAccount = true;
+  }
+
+  // DEC-936: EVERY participation a roster row covers, built from ONE grouped
+  // query over the page's contact ids (chunked per DEC-078) — never a
+  // subquery per column, never a query per row. Joins participant ->
+  // submission composing rosterParticipantConditions (DEC-829, the same
+  // predicate the base row condition above requires), ordered by submission
+  // seq so a contact with more than one accepted participation lists them
+  // in a stable, meaningful order.
+  if (contactIdsInOrder.length > 0) {
+    const eventRows = await db
+      .select({ recordPrefix: schema.event.recordPrefix })
+      .from(schema.event)
+      .where(eq(schema.event.id, eventId))
+      .limit(1);
+    const recordPrefix = eventRows[0]?.recordPrefix;
+    if (recordPrefix === undefined) {
+      throw new Error(`onboarding grid: event ${eventId} has no record prefix`);
+    }
+
+    for (const batch of chunkIds(contactIdsInOrder)) {
+      const participationRows = await db
+        .select({
+          contactId: schema.participant.contactId,
+          participantId: schema.participant.id,
+          submissionId: schema.participant.submissionId,
+          submissionSeq: schema.submission.seq,
+          submissionTitle: schema.submission.title,
+          inviteStatus: schema.participant.inviteStatus,
+        })
+        .from(schema.participant)
+        .innerJoin(schema.submission, eq(schema.submission.id, schema.participant.submissionId))
+        .where(and(inArray(schema.participant.contactId, batch), rosterParticipantConditions(eventId)))
+        .orderBy(sql`${schema.submission.seq} asc`, sql`${schema.participant.id} asc`);
+      for (const p of participationRows) {
+        const row = rowsByContact.get(p.contactId);
+        if (!row) continue;
+        row.contact.participations.push({
+          participantId: p.participantId,
+          submissionId: p.submissionId,
+          ref: formatRef(recordPrefix, p.submissionSeq),
+          title: p.submissionTitle,
+          inviteStatus: p.inviteStatus as GridInviteStatus,
+        });
+      }
+    }
+  }
+
+  // rosterParticipantExistsForContact (this row set's base condition,
+  // DEC-829) guarantees at least one matching participant per contact —
+  // fail loudly instead of silently rendering an impossible empty roster
+  // control if that invariant is ever violated.
+  for (const row of rowsByContact.values()) {
+    if (row.contact.participations.length === 0) {
+      throw new Error(`onboarding grid: contact ${row.contact.id} matched the accepted-speaker predicate but has no participant row`);
+    }
   }
 
   // Cells for exactly those page contacts, carrying ALL their cells
