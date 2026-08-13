@@ -4,8 +4,10 @@ import {
   DEFAULT_AUTO_SCHEDULE_PARAMS,
   getAgendaPayload,
   isValidSlotInput,
+  listSlotsOutsideWindow,
   runAutoSchedule,
 } from "../src/server/repo/agenda";
+import { formatRef } from "../src/domain/ids";
 import * as schema from "../src/db/schema";
 import type { Db } from "../src/server/context";
 
@@ -374,5 +376,76 @@ describe("DEC-974 declined participants are excluded from the agenda speaker set
     expect(payload.unplacedReasons).toEqual([]);
     const placedSub2 = payload.placed.find((p) => p.submissionId === "sub-2");
     expect(placedSub2).toBeTruthy();
+  });
+});
+
+// DEC-844 (wave 54): listSlotsOutsideWindow must issue one COUNT query and
+// one row query (both carrying the same WHERE, the row query also carrying
+// LIMIT) instead of pulling every accepted session's slot into JS and
+// filtering/slicing there. The SQL condition's semantics (agreement with
+// isDayWithinEventRange) are proved separately by the matrix test in
+// test/agenda-day-outside-window.test.ts — this test proves the repo
+// function's ASSEMBLY: it trusts what each query returns and never re-filters
+// or re-slices in JS.
+describe("listSlotsOutsideWindow (DEC-844 wave 54: SQL count+limit, no JS scan)", () => {
+  it("3 slots (1 outside window) -> count 1, that one named row, rows query carries a LIMIT", async () => {
+    const recordPrefix = "EV";
+    // Only the outside-window row — the fake db stands in for a WHERE clause
+    // that has already excluded the two in-range slots at the SQL level.
+    const outsideRows = [{ submissionId: "sub-3", day: "2026-08-12", seq: 3, title: "Talk Three" }];
+
+    let call = 0;
+    let capturedLimit: number | undefined;
+    const db = {
+      select: () => {
+        call += 1;
+        const thisCall = call;
+        const chain: any = {
+          from: () => chain,
+          innerJoin: () => chain,
+          where: () => chain,
+          orderBy: () => chain,
+          limit: async (n: number) => {
+            if (thisCall === 3) capturedLimit = n;
+            const rows = thisCall === 1 ? [{ recordPrefix }] : outsideRows;
+            return rows.slice(0, n);
+          },
+          then: (resolve: (v: unknown[]) => void) => {
+            // Query #2 (COUNT) never calls .limit — resolved directly here.
+            if (thisCall === 2) return resolve([{ count: outsideRows.length }]);
+            return resolve(outsideRows);
+          },
+        };
+        return chain;
+      },
+    } as unknown as Db;
+
+    const result = await listSlotsOutsideWindow(db, "event1", "2026-08-10", "2026-08-11", 20);
+
+    expect(result.count).toBe(1);
+    expect(result.sessions).toEqual([
+      { submissionId: "sub-3", ref: formatRef(recordPrefix, 3), title: "Talk Three", day: "2026-08-12" },
+    ]);
+    // The rows query (call #3) must have carried an explicit LIMIT.
+    expect(capturedLimit).toBe(20);
+  });
+
+  it("recordPrefix===undefined short-circuits to an empty result without querying slots", async () => {
+    let call = 0;
+    const db = {
+      select: () => {
+        call += 1;
+        const chain: any = {
+          from: () => chain,
+          where: () => chain,
+          limit: async () => [],
+        };
+        return chain;
+      },
+    } as unknown as Db;
+
+    const result = await listSlotsOutsideWindow(db, "event1", "2026-08-10", "2026-08-11", 20);
+    expect(result).toEqual({ count: 0, sessions: [] });
+    expect(call).toBe(1);
   });
 });

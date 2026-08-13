@@ -4,7 +4,7 @@
 // submission_track (DEC-017) — submission.track_id/additional_track_ids_json
 // are frozen legacy and never touched here.
 
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, gt, inArray, lt, or, sql } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { formatRef, newId } from "../../domain/ids";
@@ -62,6 +62,14 @@ export function computeDays(startDate: string, endDate: string): string[] {
  * slot writes and payload classification must agree on this boundary. */
 export function isDayWithinEventRange(day: string, startDate: string, endDate: string): boolean {
   return day >= startDate && day <= endDate;
+}
+
+/** SQL twin of isDayWithinEventRange's negation: true iff schedule_slot.day
+ * falls OUTSIDE [startDate, endDate] inclusive. Same lexical ISO-day
+ * comparison, expressed as a WHERE condition so listSlotsOutsideWindow can
+ * COUNT and LIMIT in SQL instead of scanning every row into JS (DEC-844). */
+export function dayOutsideEventRangeCondition(startDate: string, endDate: string) {
+  return or(lt(schema.scheduleSlot.day, startDate), gt(schema.scheduleSlot.day, endDate));
 }
 
 export const DEFAULT_AUTO_SCHEDULE_PARAMS = {
@@ -457,6 +465,19 @@ export async function listSlotsOutsideWindow(
   const recordPrefix = eventRows[0]?.recordPrefix;
   if (recordPrefix === undefined) return { count: 0, sessions: [] };
 
+  const baseWhere = and(
+    eq(schema.submission.eventId, eventId),
+    eq(schema.submission.status, "accepted"),
+    dayOutsideEventRangeCondition(startDate, endDate),
+  );
+
+  const countRows = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(schema.scheduleSlot)
+    .innerJoin(schema.submission, eq(schema.scheduleSlot.submissionId, schema.submission.id))
+    .where(baseWhere);
+  const count = Number(countRows[0]?.count ?? 0);
+
   const rows = await db
     .select({
       submissionId: schema.scheduleSlot.submissionId,
@@ -466,13 +487,13 @@ export async function listSlotsOutsideWindow(
     })
     .from(schema.scheduleSlot)
     .innerJoin(schema.submission, eq(schema.scheduleSlot.submissionId, schema.submission.id))
-    .where(and(eq(schema.submission.eventId, eventId), eq(schema.submission.status, "accepted")))
-    .orderBy(asc(schema.scheduleSlot.submissionId));
+    .where(baseWhere)
+    .orderBy(asc(schema.scheduleSlot.submissionId))
+    .limit(limit);
 
-  const outside = rows.filter((r) => !isDayWithinEventRange(r.day, startDate, endDate));
   return {
-    count: outside.length,
-    sessions: outside.slice(0, limit).map((r) => ({
+    count,
+    sessions: rows.map((r) => ({
       submissionId: r.submissionId,
       ref: formatRef(recordPrefix, r.seq),
       title: r.title,

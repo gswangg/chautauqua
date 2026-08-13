@@ -119,28 +119,36 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-// Fake db: two select() calls inside listSlotsOutsideWindow — (1) the event
-// row for recordPrefix, (2) the scheduleSlot/submission join. Mirrors the
-// makeChain pattern established in test/agenda-repo.test.ts.
-function makeChain(rows: unknown[]) {
+// Fake db: three select() calls inside listSlotsOutsideWindow — (1) the
+// event row for recordPrefix, (2) a COUNT(*) over the scheduleSlot/submission
+// join, (3) the LIMITed row query over the same join (DEC-844 wave 54: both
+// now carry the day-outside-range condition in SQL, so the fake db is given
+// the ALREADY-outside-window rows directly, standing in for what a real WHERE
+// clause would have filtered down to). Mirrors the makeChain pattern
+// established in test/agenda-repo.test.ts.
+function makeChain(rows: unknown[], onLimit?: (n: number) => void) {
   const chain: any = {
     from: () => chain,
     innerJoin: () => chain,
     where: () => chain,
     orderBy: () => chain,
-    limit: async () => rows,
+    limit: async (n: number) => {
+      onLimit?.(n);
+      return rows.slice(0, n);
+    },
     then: (resolve: (v: unknown[]) => void) => resolve(rows),
   };
   return chain;
 }
 
-function fakeDb(slotRows: unknown[]) {
+function fakeDb(outsideRows: { submissionId: string; day: string; seq: number; title: string }[]) {
   let call = 0;
   return {
     select: () => {
       call += 1;
       if (call === 1) return makeChain([{ recordPrefix: "EV" }]); // event lookup
-      return makeChain(slotRows); // scheduleSlot join
+      if (call === 2) return makeChain([{ count: outsideRows.length }]); // COUNT(*)
+      return makeChain(outsideRows); // LIMITed row query
     },
   } as unknown as import("../src/server/context").Db;
 }
@@ -162,7 +170,9 @@ describe("DEC-844: PATCH /api/v1/events/:eventId narrowing names unscheduled ses
   it("applies the write and names the placed session that now falls outside the new window", async () => {
     const db = fakeDb([
       { submissionId: "sub-1", day: "2026-06-15", seq: 4, title: "Outside Talk" }, // outside new 06-01..06-05 window
-      { submissionId: "sub-2", day: "2026-06-03", seq: 5, title: "Inside Talk" }, // still inside
+      // "Inside Talk" (still inside) is not in this list — the WHERE clause
+      // that would exclude it lives in SQL now, not a JS filter, so the fake
+      // db is handed only what the real query would have returned.
     ]);
     const app = await buildApp(db, { userId: "u1", role: "organizer", orgId: ORG_A });
 
@@ -188,7 +198,7 @@ describe("DEC-844: PATCH /api/v1/events/:eventId narrowing names unscheduled ses
   });
 
   it("reports count 0 with the key present when narrowing unschedules nothing", async () => {
-    const db = fakeDb([{ submissionId: "sub-2", day: "2026-06-03", seq: 5, title: "Inside Talk" }]);
+    const db = fakeDb([]); // no row falls outside the (unchanged) window
     const app = await buildApp(db, { userId: "u1", role: "organizer", orgId: ORG_A });
 
     const res = await app.request(`/api/v1/events/${EVENT_ID}`, {
