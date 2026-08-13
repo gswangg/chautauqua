@@ -1,9 +1,12 @@
-// DEC-785: GET /embed/e/:embedId resolves the saved embed row -- missing or
-// disabled 404s with the SAME designed "not found" page every other unknown
-// public route uses; enabled renders the saved surface. Mirrors the
-// vi.mock(../src/server/repo/public) + vi.mock(../src/server/repo/embeds)
-// pattern established in test/public-404-no-store.test.ts (no local
-// sqlite/D1 test driver is wired up).
+// DEC-785/DEC-822/DEC-839: GET /embed/e/:embedId resolves the saved embed
+// row -- an unknown id 404s with the SAME designed "not found" page every
+// other unknown public route uses; a DISABLED embed returns an empty 200
+// (DEC-822's explicit override of DEC-785 -- a page the organiser switched
+// off must not shout "not found" on a customer's site); enabled renders the
+// saved surface. Mirrors the vi.mock(../src/server/repo/public) +
+// vi.mock(../src/server/repo/embeds) pattern established in
+// test/public-404-no-store.test.ts (no local sqlite/D1 test driver is wired
+// up).
 
 import { describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
@@ -28,7 +31,7 @@ const ENABLED_EMBED = {
   name: "Homepage widget",
   surface: "sessions",
   format: "iframe",
-  optionsJson: "{}",
+  options: {},
   enabled: true,
   createdAt: 1,
   updatedAt: 1,
@@ -122,13 +125,17 @@ describe("DEC-785: GET /embed/e/:embedId", () => {
     expect(res.headers.get("Cache-Control")).toBe("no-store");
   });
 
-  it("404s the designed not-found page for a disabled embed, not a silently-served page", async () => {
+  it("returns an empty 200 for a disabled embed -- an intentional blank, not a 404 (DEC-822)", async () => {
     const app = buildApp();
     const res = await app.request(`/embed/e/${DISABLED_EMBED.id}`);
 
-    expect(res.status).toBe(404);
+    expect(res.status).toBe(200);
     const html = await res.text();
-    expect(html).toContain("That page isn");
+    expect(html).toBe("");
+    expect(res.headers.get("Content-Type")).toContain("text/html");
+    // DEC-822: a switched-off embed keeps the same cache headers as a live
+    // one -- unlike publicNotFound, which forces no-store.
+    expect(res.headers.get("Cache-Control")).not.toBe("no-store");
   });
 
   it("renders the saved surface for an enabled embed", async () => {

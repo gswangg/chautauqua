@@ -1,14 +1,41 @@
-// Saved embeds repo (DEC-785). Repo functions are the only code that
-// touches drizzle row types (DEC-012); handlers in src/routes/api/embeds.ts
-// and the public renderer in src/routes/public/saved-embed.tsx call these.
+// Saved embeds repo (DEC-785/DEC-822/DEC-839). Repo functions are the only
+// code that touches drizzle row types (DEC-012); handlers in
+// src/routes/api/embeds.ts and the public renderer in
+// src/routes/public/saved-embed.tsx call these.
 
 import { asc, eq, sql } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { newId } from "../../domain/ids";
-import { DEC_785 } from "../../decisions";
+import { DEC_785, DEC_822, DEC_839 } from "../../decisions";
 
 void DEC_785;
+void DEC_822;
+void DEC_839;
+
+/** DEC-839 wire contract: the parsed shape every embed's stored recipe
+ * serialises to. Never the raw JSON string -- src/routes/api/embeds.ts
+ * validates every key through the SAME parsers the live route runs before
+ * it's ever stringified for storage, so parsing it back out here is a
+ * structural re-hydrate, not a second validation pass. */
+export interface EmbedOptions {
+  trackId?: string;
+  day?: string;
+  q?: string;
+  limit?: number;
+  fields?: string[];
+  accent?: string;
+}
+
+/** Structural re-hydrate of the stored options_json column into the DEC-839
+ * parsed shape. Shared by the repo's own row serialisation (below) and the
+ * public renderer (src/routes/public/saved-embed.tsx) -- ONE place parses
+ * the stored JSON, per DEC-839's "parse in one place" contract. */
+export function parseStoredEmbedOptions(raw: string): EmbedOptions {
+  const parsed = JSON.parse(raw) as unknown;
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return {};
+  return parsed as EmbedOptions;
+}
 
 export interface EmbedRecord {
   id: string;
@@ -17,7 +44,7 @@ export interface EmbedRecord {
   name: string;
   surface: string;
   format: string;
-  optionsJson: string;
+  options: EmbedOptions;
   enabled: boolean;
   createdAt: number;
   updatedAt: number;
@@ -42,7 +69,7 @@ function toRecord(row: {
     name: row.name,
     surface: row.surface,
     format: row.format,
-    optionsJson: row.optionsJson,
+    options: parseStoredEmbedOptions(row.optionsJson),
     enabled: row.enabled,
     createdAt: row.createdAt.getTime(),
     updatedAt: row.updatedAt.getTime(),
@@ -101,7 +128,7 @@ export async function createEmbed(
     name,
     surface,
     format,
-    optionsJson,
+    options: parseStoredEmbedOptions(optionsJson),
     enabled: true,
     createdAt: now.getTime(),
     updatedAt: now.getTime(),
@@ -118,10 +145,20 @@ export async function getEmbedOwnership(db: Db, id: string): Promise<{ orgId: st
 export async function updateEmbed(
   db: Db,
   id: string,
-  patch: { name?: string; enabled?: boolean },
+  patch: { name?: string; surface?: string; format?: string; optionsJson?: string; enabled?: boolean },
 ): Promise<EmbedRecord | null> {
-  const values: { name?: string; enabled?: boolean; updatedAt: Date } = { updatedAt: new Date() };
+  const values: {
+    name?: string;
+    surface?: string;
+    format?: string;
+    optionsJson?: string;
+    enabled?: boolean;
+    updatedAt: Date;
+  } = { updatedAt: new Date() };
   if (patch.name !== undefined) values.name = patch.name;
+  if (patch.surface !== undefined) values.surface = patch.surface;
+  if (patch.format !== undefined) values.format = patch.format;
+  if (patch.optionsJson !== undefined) values.optionsJson = patch.optionsJson;
   if (patch.enabled !== undefined) values.enabled = patch.enabled;
   await db.update(schema.embed).set(values).where(eq(schema.embed.id, id));
   const rows = await db.select().from(schema.embed).where(eq(schema.embed.id, id)).limit(1);

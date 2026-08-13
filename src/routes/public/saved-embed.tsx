@@ -1,11 +1,13 @@
-// DEC-785: saved embeds. GET /embed/e/:embedId resolves the embed row and,
-// when it's missing or disabled, returns the SAME designed 404 page every
-// other unknown public route uses (publicNotFound, ./index.tsx) — never a
-// silently-served page. When enabled, it renders the saved surface with the
-// saved options through the existing embed render path (renderSurfaceContent
-// + EmbedShell — the identical pipeline /embed/:eventSlug/:surface uses).
-// Route file exports a named Hono sub-app; mounted with one line from
-// ./index.tsx (DEC-012).
+// DEC-785/DEC-822/DEC-839: saved embeds. GET /embed/e/:embedId resolves the
+// embed row. An unknown id returns the SAME designed 404 page every other
+// unknown public route uses (publicNotFound, ./index.tsx). A DISABLED embed
+// is DEC-822's explicit override of DEC-785: it returns an empty 200 (an
+// intentional blank inside someone else's iframe), not a 404 -- a page the
+// organiser switched off must not shout "not found" on a customer's site.
+// When enabled, it renders the saved surface with the saved options through
+// the existing embed render path (renderSurfaceContent + EmbedShell — the
+// identical pipeline /embed/:eventSlug/:surface uses). Route file exports a
+// named Hono sub-app; mounted with one line from ./index.tsx (DEC-012).
 
 import { Hono } from "hono";
 import type { AppEnv } from "../../server/env";
@@ -16,42 +18,31 @@ import { parseTrackId, parseNameQuery, parseDay, parseLimit, parseCardFields, pa
 import { renderSurfaceContent } from "./dispatch";
 import { publicNotFound } from "./not-found";
 import { publicCacheMiddleware, defaultCache } from "../../server/pubcache";
+import { DEC_822, DEC_839 } from "../../decisions";
+
+void DEC_822;
+void DEC_839;
 
 export const savedEmbedRoutes = new Hono<AppEnv>();
 
 savedEmbedRoutes.use("/embed/e/*", publicCacheMiddleware(defaultCache));
 
-interface StoredEmbedOptions {
-  trackId?: string;
-  day?: string;
-  q?: string;
-  limit?: number | string;
-  fields?: string[];
-  accent?: string;
-}
-
-function parseStoredOptions(raw: string): StoredEmbedOptions {
-  try {
-    const parsed = JSON.parse(raw) as unknown;
-    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return {};
-    return parsed as StoredEmbedOptions;
-  } catch {
-    return {};
-  }
-}
-
 savedEmbedRoutes.get("/embed/e/:embedId", async (c) => {
   setCacheHeaders(c);
   const embed = await getEmbedById(c.var.db, c.req.param("embedId"));
-  // DEC-785: missing OR disabled both 404 — a disabled embed's public
-  // effect is a 404, not a grey pill.
-  if (!embed || !embed.enabled) return publicNotFound(c, "Embed not found.");
+  if (!embed) return publicNotFound(c, "Embed not found.");
+  // DEC-822/DEC-839: disabled is an intentional blank, not a 404 -- keep
+  // the cache headers setCacheHeaders(c) already set above (unlike
+  // publicNotFound, which forces no-store).
+  if (!embed.enabled) return c.html("");
   if (!isSurface(embed.surface)) return publicNotFound(c, "Embed not found.");
 
   const event = await getPublicEventById(c.var.db, embed.eventId);
   if (!event) return publicNotFound(c, "Embed not found.");
 
-  const opts = parseStoredOptions(embed.optionsJson);
+  // DEC-839: embed.options is already the PARSED shape (repo re-hydrates
+  // options_json once, in src/server/repo/embeds.ts) -- no local re-parse.
+  const opts = embed.options;
   const { title, content } = await renderSurfaceContent(c.var.db, event, embed.surface, {
     trackId: parseTrackId(opts.trackId) ?? undefined,
     q: parseNameQuery(opts.q) ?? undefined,
