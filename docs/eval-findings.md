@@ -149,7 +149,13 @@ placing entry.
 (CLOSED by probe 2: DEC-724 conditional "No room yet" column · DEC-742 merged clash
 card — inverted ink card, zero inner scroll, fully visible content.)
 
-**Comms** (DEC-710 + history count CLOSED by probe): per-recipient SCHEDULED/NO-SLOT
+**Comms** (DEC-710 + history count CLOSED by probe): "One or more recipients are
+missing merge fields" error is generic though the API payload (missingToFields)
+names each recipient+field — render the culprits ("Marcus Okafor is missing
+speaker_name") so the organizer can fix data or template; comms.ts:416/459 +
+bulk-email.ts:153/212 (ties to CRM-grader D9: composer placeholder advertises
+{first_name} which the validator rejects — placeholder must only show allowed
+fields) · per-recipient SCHEDULED/NO-SLOT
 tags + "N have no slot" advisory in Preview · persistent Recent sends under Compose
 (STILL-OPEN — exists only inside History tab) · bordered "See the recipients" CTA on
 batch rows · SEED: one ~23-recipient batch + 4 more templates.
