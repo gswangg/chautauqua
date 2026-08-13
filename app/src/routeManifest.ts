@@ -217,4 +217,32 @@ export const ROUTE_MANIFEST: readonly RouteManifestEntry[] = [
   { path: "/login", role: "public" },
   { path: "/docs/api", role: "public" },
   { path: "/dev/mailbox", role: "public" },
+
+  // --- DEC-985 (task w32-c): four routes the render sweep never visited
+  // because HTML_ROUTE_EXCLUDED (test/audit-claims.test.ts) parked them
+  // behind "pre-existing gap" reasons instead of wiring them up. ---
+  // DEC-581/582: the anonymous event hub (src/routes/root.tsx) -- 302s to
+  // the signed-in user's default surface when a session exists, otherwise
+  // renders HTML directly, so it must be swept as `public`.
+  { path: "/", role: "public" },
+  // Speaker-facing resources list page (src/routes/portal/...), no dynamic
+  // segment -- a static path like /portal/tasks.
+  { path: "/portal/resources", role: "speaker" },
+  // Single sent-email detail view. scripts/seed.ts:2370 seeds email_log
+  // rows via seedId("email_log", i + 1); the first is seed_email_log_0001.
+  {
+    path: "/dev/mailbox/seed_email_log_0001",
+    role: "public",
+    params: { emailId: "seed_email_log_0001" },
+  },
+  // DEC-785 (task w3-d): the saved-embed public route. scripts/seed.ts:787
+  // seeds seed_embed_0001 as "AI track sessions" with enabled: true (the
+  // sibling seed_embed_0002 "Last year's speakers" is disabled) -- so this
+  // literal resolves to the enabled row, not the disabled one that would
+  // serve an empty 200.
+  {
+    path: "/embed/e/seed_embed_0001",
+    role: "public",
+    params: { embedId: "seed_embed_0001" },
+  },
 ] as const;
