@@ -13,7 +13,7 @@ import { getEventForOrg } from "../server/repo/events";
 import { getPlanById } from "../server/repo/review/plans";
 import type { KVStore } from "../auth/claim";
 import { redactClaimUrls } from "../auth/claim";
-import { resolvePortalLink } from "../server/repo/portal-link";
+import { resolvePortalLinks } from "../server/repo/portal-link";
 import { textToHtml, blockFieldsInTemplate } from "../mail/render";
 import { buildIcsEvent } from "../mail/ics";
 import { resolveIcsOrganizerEmail } from "../server/context";
@@ -426,13 +426,25 @@ export async function buildRenderTargets(
     outstandingByContact.set(row.contactId, arr);
   }
 
+  // DEC-530 wave-42 amendment: resolve every recipient's portal link (and
+  // mint any claim tokens it needs) through ONE batched Promise.all before
+  // the loop below, instead of an await-per-recipient KV round trip inside
+  // it — the loop itself must contain no await on KV.
+  const portalLinkMap = await resolvePortalLinks(
+    kv,
+    expanded.recipients.map((r) => ({ contactId: r.contactId, userId: accountMap.get(r.contactId) ?? null })),
+    event.id,
+    origin,
+    mintClaimTokens,
+  );
+
   const targets = [];
   for (const recipient of expanded.recipients) {
     const submission = submissionById.get(recipient.submissionId);
     if (!submission) throw new Error(`recipient references unknown submission ${recipient.submissionId}`);
     const feedbackComments = feedback ? feedbackMap.get(recipient.submissionId) ?? [] : null;
-    const userId = accountMap.get(recipient.contactId) ?? null;
-    const portalLink = await resolvePortalLink(kv, recipient.contactId, event.id, userId, origin, mintClaimTokens);
+    const portalLink = portalLinkMap.get(recipient.contactId);
+    if (!portalLink) throw new Error(`no portal link resolved for contactId ${recipient.contactId}`);
 
     const assignments = outstandingByContact.get(recipient.contactId) ?? [];
     const taskList = assignments.length > 0 ? formatTaskLines(assignments).join("\n") : NO_TASKS_TEXT;
@@ -654,13 +666,16 @@ commsRoutes.post("/api/v1/events/:eventId/portal-invites", requireOrganizer, csr
     participants.map((p) => ({ contactId: p.contactId, email: p.email })),
   );
 
-  // portal_link built with the SAME helper the compose path uses; a portal
-  // invite always mints real claim tokens (never a preview).
-  const portalLinkByContactId = new Map<string, string>();
-  for (const p of participants) {
-    const userId = accountMap.get(p.contactId) ?? null;
-    portalLinkByContactId.set(p.contactId, await resolvePortalLink(kv, p.contactId, eventId, userId, origin, true));
-  }
+  // portal_link built with the SAME batched helper the compose path uses
+  // (DEC-530 wave-42 amendment); a portal invite always mints real claim
+  // tokens (never a preview).
+  const portalLinkByContactId = await resolvePortalLinks(
+    kv,
+    participants.map((p) => ({ contactId: p.contactId, userId: accountMap.get(p.contactId) ?? null })),
+    eventId,
+    origin,
+    true,
+  );
 
   const recipients: PortalInviteRecipient[] = participants.map((p) => ({
     contactId: p.contactId,

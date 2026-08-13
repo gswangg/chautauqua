@@ -16,7 +16,7 @@ import { resolveBaseUrl } from "../server/origin";
 import { textToHtml } from "../mail/render";
 import { newId } from "../domain/ids";
 import type { KVStore } from "../auth/claim";
-import { resolvePortalLink } from "../server/repo/portal-link";
+import { resolvePortalLinks } from "../server/repo/portal-link";
 import { getFileScope, getSubmissionScope, insertFileComment, updateContentStatus } from "../server/repo/files";
 import { findAccountUserIds, loadComposeSubmissions } from "../server/repo/comms";
 import { noRecipientFields } from "./comms";
@@ -115,14 +115,25 @@ contentNoteRoutes.post("/submissions/:id/content-note", requireOrganizer, csrfJs
   const batchId = newId();
   const subject = `A note on "${composeSubmission!.title}"`;
 
+  // DEC-530 wave-42 amendment: resolve every participant's portal link (and
+  // mint any claim tokens needed) through ONE batched Promise.all before the
+  // send loop, instead of an await-per-participant KV round trip inside it.
+  const portalLinkMap = await resolvePortalLinks(
+    kv,
+    composeSubmission!.participants.map((p) => ({ contactId: p.contactId, userId: accountMap.get(p.contactId) ?? null })),
+    scope.eventId,
+    origin,
+    true,
+  );
+
   // DEC-238 class 2 (organizer-triggered batch): a bad recipient must not
   // abort the whole send — catch per-recipient, keep going, report partial
   // outcome in the 200 response.
   const failed: { email: string; message: string }[] = [];
   let sent = 0;
   for (const participant of composeSubmission!.participants) {
-    const userId = accountMap.get(participant.contactId) ?? null;
-    const portalLink = await resolvePortalLink(kv, participant.contactId, scope.eventId, userId, origin, true);
+    const portalLink = portalLinkMap.get(participant.contactId);
+    if (!portalLink) throw new Error(`no portal link resolved for contactId ${participant.contactId}`);
     const name = `${participant.firstName} ${participant.lastName}`.trim();
     const text = `${noteText}\n\nView your submission: ${portalLink}`;
     try {
