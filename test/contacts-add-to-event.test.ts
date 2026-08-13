@@ -87,6 +87,12 @@ function fakeDb(seedContacts: unknown[], seedEvents: unknown[]) {
     if (table === schema.participant) return state.participant;
     if (table === schema.task) return state.task;
     if (table === schema.taskAssignment) return state.taskAssignment;
+    // DEC-111 amendment (wave 55): getOrCreateFormTaskForm now SELECTs the
+    // form table (its post-insert winner read) — before the amendment its
+    // only form read was a pre-insert existence check that was happy with a
+    // canned empty result, so form was absent here. It must be readable now
+    // or the post-insert select finds nothing and the helper throws.
+    if (table === schema.form) return state.form;
     return [];
   }
 
@@ -106,9 +112,9 @@ function fakeDb(seedContacts: unknown[], seedEvents: unknown[]) {
     const chain: any = {
       innerJoin: () => chain,
       where: () => chain,
-      // DEC-111 amendment (wave 48): getOrCreateTask/getOrCreateFormTaskForm
-      // do insert-then-select-limit(1) (task) and select-limit(1)-then-insert
-      // (form) lookups keyed by (eventId, title); this fake ignores WHERE
+      // DEC-111 amendment (waves 48 and 55): getOrCreateTask and
+      // getOrCreateFormTaskForm both do insert-on-conflict-do-nothing-then-
+      // select-limit(1) lookups keyed by (eventId, title); this fake ignores WHERE
       // entirely (see the module doc comment), so a naive rows[0] would
       // always resolve to the FIRST row ever inserted into the table,
       // regardless of which title a later call is actually looking for.

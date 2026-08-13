@@ -72,6 +72,15 @@ function fakeDb() {
   // shape), which always runs first, while the table is still genuinely
   // empty, so it can stay canned-empty.
   const insertedAssignmentPairs: { taskId: string; contactId: string }[] = [];
+  // DEC-111 amendment (wave 55): getOrCreateFormTaskForm is now insert-on-
+  // conflict-do-nothing THEN select too (was select-then-insert), backed by
+  // the real UNIQUE(event_id, title) index from
+  // migrations/0033_form_title_unique.sql. Same fake-db consequence as the
+  // wave-48 task change above: the form select must return whatever was JUST
+  // inserted, or the post-insert select finds nothing and the helper throws.
+  // Deterministic call order (one title fully resolved before the next) makes
+  // "the most recently inserted form row" the right answer here.
+  let lastInsertedForm: { id: string } | null = null;
 
   const db = {
     select(selection: unknown) {
@@ -116,9 +125,11 @@ function fakeDb() {
                 };
               }
               if (table === schema.form) {
-                // getOrCreateFormTaskForm existence check — no pre-existing forms.
+                // getOrCreateFormTaskForm's post-insert winner select: no
+                // pre-existing forms, so the winner is always the row this
+                // call's own insert just wrote.
                 selectCalls.push({ table: "form", joined });
-                return makeResult([]);
+                return makeResult(lastInsertedForm ? [lastInsertedForm] : []);
               }
               if (table === schema.event) {
                 // DEC-520: single event-start-date read, before the plan loop.
@@ -161,6 +172,9 @@ function fakeDb() {
             const row = value as { id: string; formId?: string | null };
             lastInsertedTask = { id: row.id, formId: row.formId ?? null };
             allInsertedTasks.push(lastInsertedTask);
+          }
+          if (table === schema.form) {
+            lastInsertedForm = { id: (value as { id: string }).id };
           }
           if (table === schema.taskAssignment) {
             const rows = Array.isArray(value) ? value : [value];
