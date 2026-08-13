@@ -70,10 +70,19 @@ reviewReviewerRoutes.get("/api/v1/review/plans/:id/queue", async (c) => {
   const page = clampPage(c.req.query("page"));
   const perPage = listPerPage(c.req.query("perPage"));
 
+  // Both branches below build through this single shaper so the closed-plan
+  // early return and the open-plan result cannot diverge in shape -- the
+  // Review landing reads `recused.length` unconditionally across all plans
+  // (5th-cycle lockout regression, docs/eval-findings.md).
+  const shapeQueueEnvelope = (fields: {
+    items: unknown[];
+    total: number;
+    open: boolean;
+    recused: unknown[];
+  }) => c.json({ items: fields.items, total: fields.total, page, perPage, open: fields.open, recused: fields.recused });
+
   if (!isPlanOpen(plan.openDate, plan.closeDate, Date.now(), plan.timezone)) {
-    // The closed-plan envelope must carry every key the open one does -- the
-    // Review landing reads `recused.length` unconditionally across all plans.
-    return c.json({ items: [], total: 0, page, perPage, open: false, recused: [] });
+    return shapeQueueEnvelope({ items: [], total: 0, open: false, recused: [] });
   }
 
   const scoped = await repo.resolveReviewerSubmissions(c.var.db, plan, auth.userId);
@@ -137,7 +146,7 @@ reviewReviewerRoutes.get("/api/v1/review/plans/:id/queue", async (c) => {
   const total = items.length;
   const start = (page - 1) * perPage;
   const pagedItems = items.slice(start, start + perPage);
-  return c.json({ items: pagedItems, total, page, perPage, open: true, recused: recusedOut });
+  return shapeQueueEnvelope({ items: pagedItems, total, open: true, recused: recusedOut });
 });
 
 reviewReviewerRoutes.get("/api/v1/review/submissions/:id", async (c) => {
