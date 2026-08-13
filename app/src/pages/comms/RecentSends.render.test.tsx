@@ -7,6 +7,7 @@ import { cleanup, render, screen, waitFor, fireEvent, within } from '@testing-li
 import '@testing-library/jest-dom/vitest';
 import { RecentSends } from './RecentSends';
 import { listEnvelope, mockApi } from '../../test-utils/mockApi';
+import { formatDateTime } from '../../lib/dates';
 import type { EmailBatchRow } from './types';
 
 const EVENT_ID = 'evt-recent-sends';
@@ -167,5 +168,102 @@ describe('RecentSends', () => {
     await waitFor(() => {
       expect(screen.getByText('Hi Bad, welcome aboard.')).toBeInTheDocument();
     });
+  });
+
+  // w28-f: recipient rows no longer repeat the batch's own subject/
+  // timestamp on every line -- that's already printed once at the batch
+  // row, and a merge field making a recipient's subject differ is exactly
+  // when it's worth the extra line.
+  it('renders the shared batch subject once, no per-recipient timestamp, and the address as each row\'s first cell', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/email-log`]: listEnvelope([
+        { id: 'log-1', eventName: 'Evt', toEmail: 'ada@example.com', subject: 'You are in!', status: 'sent', sentAt: 1700000000000 },
+        { id: 'log-2', eventName: 'Evt', toEmail: 'bo@example.com', subject: 'You are in!', status: 'sent', sentAt: 1700000000000 },
+      ]),
+    });
+
+    render(<RecentSends eventId={EVENT_ID} batches={[batch()]} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'See the recipients' }));
+    await waitFor(() => {
+      expect(screen.getByText('ada@example.com')).toBeInTheDocument();
+    });
+
+    // The batch subject renders exactly once in the whole component.
+    expect(screen.getAllByText('You are in!')).toHaveLength(1);
+    // No per-recipient timestamp anywhere in the collapsed list -- only the
+    // batch row's own single .chq-comms-history-when span survives.
+    expect(document.querySelectorAll('.chq-comms-history-when')).toHaveLength(1);
+    expect(screen.queryByText(/Subject:/)).not.toBeInTheDocument();
+
+    const rows = document.querySelectorAll('.chq-comms-recipient-row');
+    expect(rows).toHaveLength(2);
+    for (const row of Array.from(rows)) {
+      expect((row.firstElementChild as HTMLElement).className).toContain('chq-comms-recipient-to');
+    }
+    expect(rows[0]!.querySelector('.chq-comms-recipient-to')?.textContent).toBe('ada@example.com');
+    expect(rows[1]!.querySelector('.chq-comms-recipient-to')?.textContent).toBe('bo@example.com');
+  });
+
+  it("shows a 'Subject:' line only for the recipient row whose subject differs from the batch subject", async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/email-log`]: listEnvelope([
+        { id: 'log-1', eventName: 'Evt', toEmail: 'ada@example.com', subject: 'You are in!', status: 'sent', sentAt: 1700000000000 },
+        { id: 'log-2', eventName: 'Evt', toEmail: 'bo@example.com', subject: 'You are in, Bo!', status: 'sent', sentAt: 1700000000000 },
+      ]),
+    });
+
+    render(<RecentSends eventId={EVENT_ID} batches={[batch()]} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'See the recipients' }));
+    await waitFor(() => {
+      expect(screen.getByText('ada@example.com')).toBeInTheDocument();
+    });
+
+    const rows = document.querySelectorAll('.chq-comms-recipient-row');
+    const adaRow = Array.from(rows).find((r) => within(r as HTMLElement).queryByText('ada@example.com')) as HTMLElement;
+    const boRow = Array.from(rows).find((r) => within(r as HTMLElement).queryByText('bo@example.com')) as HTMLElement;
+
+    expect(within(adaRow).queryByText(/Subject:/)).not.toBeInTheDocument();
+    expect(within(boRow).getByText('Subject: You are in, Bo!')).toBeInTheDocument();
+  });
+
+  it("puts the recipient's own send time in the expanded disclosure body, not the collapsed row", async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/email-log`]: listEnvelope([
+        { id: 'log-1', eventName: 'Evt', toEmail: 'ada@example.com', subject: 'You are in!', status: 'sent', sentAt: 1700000000000 },
+      ]),
+      [`GET /api/v1/events/${EVENT_ID}/email-log/log-1`]: {
+        id: 'log-1',
+        eventId: EVENT_ID,
+        eventName: 'Evt',
+        templateId: null,
+        contactId: 'ct-1',
+        toEmail: 'ada@example.com',
+        subject: 'You are in!',
+        bodyText: 'Hi Ada, welcome aboard.',
+        bodyHtml: null,
+        icsText: null,
+        icsFilename: null,
+        provider: 'dev',
+        status: 'sent',
+        sentAt: 1700000000000,
+      },
+    });
+
+    render(<RecentSends eventId={EVENT_ID} batches={[batch()]} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'See the recipients' }));
+    await waitFor(() => {
+      expect(screen.getByText('ada@example.com')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show what was sent' }));
+    await waitFor(() => {
+      expect(screen.getByText('Hi Ada, welcome aboard.')).toBeInTheDocument();
+    });
+
+    const body = document.querySelector('.chq-comms-send-detail-body') as HTMLElement;
+    expect(within(body).getByText(formatDateTime(1700000000000))).toBeInTheDocument();
   });
 });
