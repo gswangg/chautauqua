@@ -13,7 +13,7 @@ import '@testing-library/jest-dom/vitest';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { ContactsApp } from './ContactsApp';
 import { mockApi, listEnvelope } from '../../test-utils/mockApi';
-import type { DuplicateGroup } from './types';
+import type { DuplicateGroup, SegmentRule } from './types';
 
 // DEC-710 round-trip check: exposes the router's current search string so
 // the test can assert ?tab= is real URL state, not component state.
@@ -213,6 +213,111 @@ describe('ContactsApp render smoke: two-column directory architecture (DEC-710/D
     await waitFor(() => {
       expect(screen.getByTestId('location-search').textContent).toBe('');
       expect(screen.getByRole('button', { name: 'Ada Lovelace' })).toBeInTheDocument();
+    });
+  });
+});
+
+// DEC-787: the FilterRulesPanel rule builder composes with the rail's
+// company drill-through rather than the two fighting over one rule slot.
+describe('ContactsApp: FilterRulesPanel composes with the rail (DEC-787)', () => {
+  function lastRulesParam(fetchMock: ReturnType<typeof mockApi>): SegmentRule[] | null {
+    const last = requestUrls(fetchMock)
+      .filter((u) => u.includes('/contacts?'))
+      .at(-1)!;
+    const raw = new URLSearchParams(last.split('?')[1]).get('rules');
+    return raw === null ? null : JSON.parse(raw);
+  }
+
+  it('adding a second rule via the panel narrows the request rather than replacing the first', async () => {
+    const fetchMock = mockApi(directoryRoutes());
+
+    render(
+      <MemoryRouter initialEntries={['/contacts']}>
+        <ContactsApp />
+      </MemoryRouter>,
+    );
+
+    await screen.findByRole('button', { name: 'Ada Lovelace' });
+
+    fireEvent.change(screen.getByLabelText('Filter field'), { target: { value: 'title' } });
+    fireEvent.change(screen.getByLabelText('Filter value'), { target: { value: 'Engineer' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add filter' }));
+
+    await waitFor(() => {
+      expect(lastRulesParam(fetchMock)).toEqual([{ field: 'title', op: 'contains', value: 'Engineer' }]);
+    });
+
+    fireEvent.change(screen.getByLabelText('Filter field'), { target: { value: 'company' } });
+    fireEvent.change(screen.getByLabelText('Filter value'), { target: { value: 'Acme' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add filter' }));
+
+    await waitFor(() => {
+      expect(lastRulesParam(fetchMock)).toEqual([
+        { field: 'title', op: 'contains', value: 'Engineer' },
+        { field: 'company', op: 'contains', value: 'Acme' },
+      ]);
+    });
+  });
+
+  it('removing a chip widens the request back to the remaining rules', async () => {
+    const fetchMock = mockApi(directoryRoutes());
+
+    render(
+      <MemoryRouter initialEntries={['/contacts']}>
+        <ContactsApp />
+      </MemoryRouter>,
+    );
+
+    await screen.findByRole('button', { name: 'Ada Lovelace' });
+
+    fireEvent.change(screen.getByLabelText('Filter value'), { target: { value: 'acme.com' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add filter' }));
+    await waitFor(() => {
+      expect(lastRulesParam(fetchMock)).toEqual([{ field: 'email', op: 'contains', value: 'acme.com' }]);
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /Remove filter/ }));
+
+    await waitFor(() => {
+      expect(lastRulesParam(fetchMock)).toBeNull();
+    });
+  });
+
+  it('a rail company click preserves an unrelated rule already in the panel', async () => {
+    const fetchMock = mockApi(directoryRoutes());
+
+    render(
+      <MemoryRouter initialEntries={['/contacts']}>
+        <ContactsApp />
+      </MemoryRouter>,
+    );
+
+    await screen.findByRole('button', { name: 'Ada Lovelace' });
+
+    fireEvent.change(screen.getByLabelText('Filter field'), { target: { value: 'title' } });
+    fireEvent.change(screen.getByLabelText('Filter value'), { target: { value: 'Engineer' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add filter' }));
+    await waitFor(() => {
+      expect(lastRulesParam(fetchMock)).toEqual([{ field: 'title', op: 'contains', value: 'Engineer' }]);
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Acme' }));
+
+    await waitFor(() => {
+      expect(lastRulesParam(fetchMock)).toEqual([
+        { field: 'title', op: 'contains', value: 'Engineer' },
+        { field: 'company', op: 'eq', value: 'Acme' },
+      ]);
+    });
+
+    // Clicking the SAME company again replaces only its own rule, not the
+    // unrelated one.
+    fireEvent.click(screen.getByRole('button', { name: 'Acme' }));
+    await waitFor(() => {
+      expect(lastRulesParam(fetchMock)).toEqual([
+        { field: 'title', op: 'contains', value: 'Engineer' },
+        { field: 'company', op: 'eq', value: 'Acme' },
+      ]);
     });
   });
 });

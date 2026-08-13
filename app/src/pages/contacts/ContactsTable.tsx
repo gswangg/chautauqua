@@ -1,4 +1,4 @@
-import type { ContactListItem, Segment, SegmentRule } from './types';
+import type { ContactListItem } from './types';
 import { isPageFullySelected, isPagePartiallySelected, selectionReducer, type SelectionState } from './selection';
 import { DelayedLoading } from '../../components/DelayedLoading';
 
@@ -7,18 +7,8 @@ interface Props {
   total: number;
   page: number;
   perPage: number;
-  // eval-findings 45+55: the FIELD/OPERATOR/VALUE rule builder and the
-  // in-table Segment select moved out of this component (segment control
-  // now lives on the tab row) — these five props are kept, unused, purely
-  // so ContactsApp's existing call site keeps compiling until it is updated
-  // to stop passing them.
-  rules: SegmentRule[];
-  segmentId: string;
-  segments: Segment[];
   selection: SelectionState;
   loading: boolean;
-  onChangeRules: (rules: SegmentRule[]) => void;
-  onChangeSegment: (segmentId: string) => void;
   onChangePage: (page: number) => void;
   onSelectionChange: (selection: SelectionState) => void;
   onOpenContact: (id: string) => void;
