@@ -366,6 +366,13 @@ export interface FileDeleteScope {
   previousFileId: string | null;
   uploadedByContactId: string | null;
   contentStatus: string | null;
+  /** submission status — feeds canEditSubmission (DEC-041 edit-lock). */
+  status: string | null;
+  /** DAY LABEL close date in epoch ms, or null when the submission has no
+   * form — mirrors SubmissionScope.formCloseDate. */
+  formCloseDate: number | null;
+  /** owning event's IANA timezone — isFormClosed expands closeDate in this zone. */
+  timezone: string | null;
   /** true when no other file's previous_file_id points at this one — i.e.
    * this is the newest link in its own version chain (DEC-713: a speaker may
    * only delete the LATEST version they uploaded). */
@@ -394,11 +401,22 @@ export async function getFileDeleteScope(db: Db, fileId: string): Promise<FileDe
   let orgId: string | null = null;
   let eventId: string | null = null;
   let contentStatus: string | null = null;
+  let status: string | null = null;
+  let formCloseDate: number | null = null;
+  let timezone: string | null = null;
   if (fileRow.submissionId) {
     const subRows = await db
-      .select({ eventId: schema.submission.eventId, orgId: schema.event.orgId, contentStatus: schema.submission.contentStatus })
+      .select({
+        eventId: schema.submission.eventId,
+        orgId: schema.event.orgId,
+        contentStatus: schema.submission.contentStatus,
+        status: schema.submission.status,
+        formCloseDate: schema.form.closeDate,
+        timezone: schema.event.timezone,
+      })
       .from(schema.submission)
       .innerJoin(schema.event, eq(schema.submission.eventId, schema.event.id))
+      .leftJoin(schema.form, eq(schema.submission.formId, schema.form.id))
       .where(eq(schema.submission.id, fileRow.submissionId))
       .limit(1);
     const sub = subRows[0];
@@ -406,6 +424,9 @@ export async function getFileDeleteScope(db: Db, fileId: string): Promise<FileDe
       orgId = sub.orgId;
       eventId = sub.eventId;
       contentStatus = sub.contentStatus;
+      status = sub.status;
+      formCloseDate = sub.formCloseDate ? sub.formCloseDate.getTime() : null;
+      timezone = sub.timezone;
     }
   }
 
@@ -425,6 +446,9 @@ export async function getFileDeleteScope(db: Db, fileId: string): Promise<FileDe
     previousFileId: fileRow.previousFileId,
     uploadedByContactId: fileRow.uploadedByContactId,
     contentStatus,
+    status,
+    formCloseDate,
+    timezone,
     isLatestInChain: successorRows.length === 0,
   };
 }
