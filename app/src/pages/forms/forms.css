@@ -50,8 +50,8 @@
   flex-direction: column;
   gap: 24px;
   padding-top: 22px;
-  /* Required measure for form-shaped content: 660-760px. */
-  max-width: 720px;
+  /* Shared page measure (DEC-744). */
+  max-width: var(--chq-measure);
 }
 
 /* Opens / Closes / Received three-cell strip. */
@@ -229,9 +229,9 @@
   display: flex;
   flex-direction: column;
   gap: 18px;
-  /* Required measure for form-shaped content: 660-760px. min-width removed
+  /* Shared page measure (DEC-744). min-width removed
      (DEC-385) -- it forced horizontal overflow at the 390px phone frame. */
-  max-width: 720px;
+  max-width: var(--chq-measure);
 }
 
 .chq-forms-settings .chq-field {
