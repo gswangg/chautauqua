@@ -42,7 +42,41 @@ reporting, page measure).
 
 **P2 · Distribute preview + who-reviews-what anatomy** — frame 03: cap row `CAP PER REVIEWER [8] talks each` + summary "18 talks · 36 reviews needed at 2 each · 4 reviewers"; preview is a 3-col table (name | track | `6 → 8 talks`, `unchanged · wrong track`) + "Assign these N" + leftover line. App: one flat line, cap input shows clipped "No", no summary, no leftover line.
 
-(Verified fixed at gate-3, hands off: accept-primary pair+caption, save-view modal, drag handles on builder rows, review segment fill olive+equal spans, scorecard measure, recusal placement, RANK-led results 1dp, recused-envelope closed-plan queue — regression test passed live.)
+**Pair-1 reds (01-overview FAIL 4 MAJOR · 06-agenda FAIL 4 MAJOR):**
+
+**P1 · Overview headline row wraps at exactly the 820 cap** — h1 505.2 + gap 28 + "Export submissions" 148.5 + 9 + "New submission" 129.3 = 820.0, so the h1 breaks to two lines and buttons drop below. Frame label is just "Export" (74px) and the row fits at 747. Rename the button "Export" AND make the headline row resilient (title truncates/actions never wrap under).
+
+**P1 · Agenda clash card struck through in select mode** — armed, the dark clash card lightens #1B1D17→#3F4237 and slot-button cell rules paint OVER its text (three 1px lines strike title/ref/speaker). Keep the resting card (which is now exactly the v6 dark card) fully opaque and above the armed lattice; z-order + keep resting bg when armed. This is the user-filed clash-visibility complaint still alive in its last form.
+
+**P1 · Agenda row structure** — frame is 30-min rows, uniform 44px pitch, one rule per boundary, rule #EDE9DD; app renders 15-min sub-rows with a rule at EVERY 15-min line (double rules, uneven 24.0/32.6 sub-rows, 56.6px effective pitch, +29% grid height). Keep 15-min placement resolution but draw rules only at 30-min boundaries with uniform pitch. (Confirms gate-2's corrected 44px measurement.)
+
+**P1 · Gutter time grammar** — 24-hour like frame ("13:00"), not meridiem-stripped "1:00"; align aria strings to the same grammar (currently three grammars on one surface).
+
+**P2 · Agenda summary placement** — "N unplaced · N conflicts · N% placed" sits 16px right of the "Agenda" title (frame x=166), not inside head-actions at x=915 stacked over the buttons.
+
+**P2 · Overview §03 artifact meta** — row line must be "Speaker · slides v3, 14 MB · re-uploaded yesterday" (template joins only speaker+file+'re-uploaded'; no size/relative-time — and seed degrades it to bare name; ties to the SEED re-upload item below).
+
+**P2 · Overview quiet-block table discipline** — Public-pages row breaks the 200px/600px two-column grid (284.3/515.7, value 12px vs 14px); copy should be the frame's summary ("17 sessions live, with speakers and schedule"), not a route enumeration. §04 clash tails must not break mid-ref/mid-name (no-wrap the "— Name · REF" tail); §04 meta prints duration twice ("Keynote (45 min) · 45 min") and Title-Cases format vs frame "lightning talk, 10 min".
+
+**P2 · Overview/agenda shared polish:** `.chq-overview-section-action` add font-family (same Arial class as `.chq-pill`); modal native date inputs vs frame's text "11 May 2028" (one date-input DEC for app+public); modal head rule #1B1D17 not #D3CFC0; "NEXT FREE SLOT" caption is sentence-case grey in frame; "VENUE · OPTIONAL"→"VENUE"; spell small numbers ("Remind all three"); tray card anatomy (flat 1px border no accent stripe, "· 10 min" duration, "Unscheduled" + right-count); tray footer hint is ONE line "Click a session, then click a time slot · drag back to unschedule"-style, not 3 lines; gutter 63px not 80; clash caption vocab per v6 agenda card "ROOM DOUBLE-BOOKED"; clash cells need a hover/visible disclosure (4/144 armed cells silent); nav badges "9 LATE"/"1 CLASH" are unframed chrome — DEC needed: keep (functional win) or drop (fidelity); header event-name title-case untracked per frame.
+
+**Pair-3 reds (04-speakers FAIL 3 MAJOR · 05-content FAIL 8 MAJOR):**
+
+**P1 · `.chq-pill` renders in Arial** — `app/src/styles.css` `.chq-pill` declares no `font-family` and buttons don't inherit; worklist tabs, library type chips, deliverable chips, Overdue-only toggle all compute Arial while neighbors are Figtree. One declaration (`font-family: inherit` on the pill or a global `button { font: inherit }` consistent with scan-lock); add computed-font render test.
+
+**P1 · 05-content structural batch (one wave, shared anatomy):** (a) content-status band must be FULL-BLEED with 1px ink rule above + hairline below, 79px tall, carrying Approve + "Download all" (app: inset to column, 40px, no rules, actions hoisted to title row); (b) 2px ink header rule on BOTH content tables (worklist + files library) — same missing-heavy-rule class as speakers matrix; (c) decision buttons INVERTED — `Ask for changes` is the filled olive primary, `Send note only` the outline; helper sentence goes BELOW the pair; (d) kill the extra `Worklist / Files / Refresh` band on every content view — frame puts "All files" + "Refresh" as title-row buttons; (e) two-column headings (`Deliverables` / `Notes on the presentation`) must top-align within 4px, each ruled across its column; (f) worklist SESSION subtitle = "REF · Tue 10:00, Room 2A" (slot/room data exists on detail); (g) dropzone = single-line dashed box "Drop a file to upload for the speaker" + uppercase type list right, ~50px — not the 180px wrapped-sentence box with native file input; (h) files library columns = FILE / SESSION / VERSION / SIZE / Download only (fold uploader+date into FILE subline; drop select-all/KIND/UPLOADED cols + `Download ZIP (0)` button).
+
+**P1 · Speakers matrix header typography + rule** — task column headers are sentence-case ink ~15px (frame "Confirm participation"), NOT uppercase-muted 11px; only the second line ("DUE 1 APR · REQUIRED") is uppercase-muted. Heavy 2px ink rule under the header row (app has 1px hairline). First col header reads `SPEAKER · PARTICIPATION`.
+
+**P1 · Per-speaker detail page: participation + task status as PILLS, not plain text** (turn-diet surface — pills are what sbek reads); page carries two tables so it takes `.chq-measure-table` 1440, and SLOT/ROOM must use the app's own "Thu 13 May 10:00–10:45" grammar, not raw ISO.
+
+**P2 · speakers matrix polish batch:** All-tasks select sizes to longest option (242 vs 86px); toolbar controls 44px vs frame 33px; unframed Edit/Remove links in column headers; upload cells show "File" inline right of pill (not truncated filename second line); row pitch uniform ~107 (rows wrap when "Send portal invite" overflows — show invite link ONLY on NOT-INVITED rows per frame, which also fixes the identity-stack finding); "· has account" lowercase; "Showing 1—6" em dash; skip-copy "EMAILED" not "REMINDED".
+
+**P2 · content polish batch:** LATEST FILE = per-kind summary ("Slides v3 · recording v1"); library VERSION bold accent caps; search placeholder fits; headshots don't sort atop library; version rows "NEWEST" right-aligned + no per-version Delete; notes placeholder "Write a note — sent with the decision, and kept on the thread"; deliverable chips per KIND ("Slides · 3 versions") not per upload-group; one time convention.
+
+**SEED · no RE-UPLOADED row demoable** — header claims "1 re-uploaded" but zero rows render it; seed a genuine re-upload chain (also unblocks CNT turn-diet demo).
+
+(Verified fixed at gate-3, hands off: accept-primary pair+caption, save-view modal, drag handles on builder rows, review segment fill olive+equal spans, scorecard measure, recusal placement, RANK-led results 1dp, recused-envelope closed-plan queue — regression test passed live. Pair-3 verified fixed: participation-pill 4-state (guard test in speakers-css.test.ts), add-speaker E2E 201, menu focus/arrows/escape, DEC-920 filename links on detail, DEC-990 one-page-two-views with /e/…/gallery as Grid URL.)
 
 ## P0 — CLOSED (probe-2 verified end-to-end 2026-08-13)
 
