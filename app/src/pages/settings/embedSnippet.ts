@@ -68,8 +68,13 @@ export const EMBED_KNOBS_BY_SURFACE: Record<EmbedSurface, readonly EmbedKnob[]> 
   sessions: ['trackId', 'format', 'roomId', 'day', 'q', 'limit', 'fields', 'accent'],
   speakers: ['q', 'limit', 'accent'],
   gallery: ['q', 'limit', 'accent'],
-  agenda: ['day', 'accent'],
-  schedule: ['day', 'accent'],
+  // DEC-851: agenda/schedule honour trackId/format/day/q/limit/accent as
+  // real SQL-level predicates on getPublicAgenda — no roomId (the grid
+  // renders rooms as columns) and no fields (no card-field allowlist on a
+  // time grid). This hand-listed pair had desynced from what the server
+  // actually honoured (DEC-783/DEC-804 taught it trackId and q).
+  agenda: ['trackId', 'format', 'day', 'q', 'limit', 'accent'],
+  schedule: ['trackId', 'format', 'day', 'q', 'limit', 'accent'],
 };
 
 /** Builds the public embed URL for a surface + format + filter/branding

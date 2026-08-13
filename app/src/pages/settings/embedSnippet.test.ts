@@ -127,22 +127,34 @@ describe('buildEmbedUrl knob table (DEC-489/DEC-490)', () => {
     expect(url).not.toContain('fields=');
   });
 
-  it('agenda honors only day and accent, dropping trackId, limit, fields', () => {
+  // DEC-851: agenda/schedule honor trackId, format (the session-format
+  // filter, ALL_OPTS' sessionFormat is exercised in the knob-table test
+  // below), day, q, limit, accent — no roomId (the grid renders rooms as
+  // columns) and no fields (no card-field allowlist on a time grid).
+  it('agenda honors trackId, day, q, limit, accent, dropping fields', () => {
     const url = buildEmbedUrl(ORIGIN, SLUG, 'agenda', ALL_OPTS);
+    expect(url).toContain('trackId=trk1');
     expect(url).toContain('day=2026-09-02');
+    expect(url).toContain('q=ai');
+    expect(url).toContain('limit=10');
     expect(url).toContain('accent=4f46e5');
-    expect(url).not.toContain('trackId=');
-    expect(url).not.toContain('limit=');
     expect(url).not.toContain('fields=');
   });
 
-  it('schedule honors only day and accent, dropping trackId, limit, fields', () => {
+  it('schedule honors trackId, day, q, limit, accent, dropping fields', () => {
     const url = buildEmbedUrl(ORIGIN, SLUG, 'schedule', ALL_OPTS);
+    expect(url).toContain('trackId=trk1');
     expect(url).toContain('day=2026-09-02');
+    expect(url).toContain('q=ai');
+    expect(url).toContain('limit=10');
     expect(url).toContain('accent=4f46e5');
-    expect(url).not.toContain('trackId=');
-    expect(url).not.toContain('limit=');
     expect(url).not.toContain('fields=');
+  });
+
+  it('agenda/schedule honor the session-format knob too (DEC-851)', () => {
+    const opts = { ...ALL_OPTS, sessionFormat: 'talk' };
+    expect(buildEmbedUrl(ORIGIN, SLUG, 'agenda', opts)).toContain('format=talk');
+    expect(buildEmbedUrl(ORIGIN, SLUG, 'schedule', opts)).toContain('format=talk');
   });
 
   it('ics drops every knob, including accent', () => {

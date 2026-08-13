@@ -386,22 +386,24 @@ describe("AgendaContent / ScheduleContent day switcher (EMB-07)", () => {
         if (selectCall === 1) return makeChain([EVENT_ROW]);
         // 2: DEC-804 getPublicTracks (search form's track <select>)
         if (selectCall === 2) return makeChain([]);
-        // 3: DEC-548 getPublicAgenda's total count(*) subquery
-        if (selectCall === 3) return makeChain([{ count: 2 }]);
-        // 4: getPublicAgenda's room lookup
-        if (selectCall === 4) return makeChain([{ id: "room1", name: "Main Hall" }]);
-        // 5: hydrateSessions subRows
-        if (selectCall === 5) {
+        // 3: DEC-851 getPublicFormatOptions (search form's format <select>)
+        if (selectCall === 3) return makeChain([]);
+        // 4: DEC-548 getPublicAgenda's total count(*) subquery
+        if (selectCall === 4) return makeChain([{ count: 2 }]);
+        // 5: getPublicAgenda's room lookup
+        if (selectCall === 5) return makeChain([{ id: "room1", name: "Main Hall" }]);
+        // 6: hydrateSessions subRows
+        if (selectCall === 6) {
           return makeChain([
             { id: "sub1", seq: 1, title: "Day One Talk", description: null, icsSequence: 0 },
             { id: "sub2", seq: 2, title: "Day Two Talk", description: null, icsSequence: 0 },
           ]);
         }
-        // 6: hydrateSessions trackRows
-        if (selectCall === 6) return makeChain([]);
-        // 7: hydrateSessions speakerRows
+        // 7: hydrateSessions trackRows
         if (selectCall === 7) return makeChain([]);
-        // 8: hydrateSessions slotRows
+        // 8: hydrateSessions speakerRows
+        if (selectCall === 8) return makeChain([]);
+        // 9: hydrateSessions slotRows
         return makeChain([]);
       },
       selectDistinct: () =>

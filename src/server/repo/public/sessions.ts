@@ -81,7 +81,7 @@ export function searchCondition(q: string) {
  * baseConditions (shared by every trackId/day branch below) rather than a
  * new join, so it composes with every existing branch without multiplying
  * them. */
-function formatFilterCondition(format: string) {
+export function formatFilterCondition(format: string) {
   return sql`EXISTS (SELECT 1 FROM ${schema.submissionAnswer} WHERE ${schema.submissionAnswer.submissionId} = ${schema.submission.id} AND ${schema.submissionAnswer.formFieldId} = ${SESSION_FORMAT_FIELD_ID} AND ${schema.submissionAnswer.valueJson} = ${JSON.stringify(format)})`;
 }
 

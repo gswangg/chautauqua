@@ -7,8 +7,16 @@ import * as schema from "../../../db/schema";
 import { chunkIds } from "../../../lib/chunk";
 import { visibleParticipantConditions, visibleSessionConditions, slotWithinEventRange } from "./gates";
 import type { PublicEvent, PublicTrack } from "./event";
-import { hydrateSessions, searchCondition, type PublicSpeaker } from "./sessions";
+import { hydrateSessions, searchCondition, formatFilterCondition, type PublicSpeaker } from "./sessions";
 import { MAX_PUBLIC_ROWS } from "./bounds";
+import { DEC_851 } from "../../../decisions";
+
+// Compile-checked dependency marker: getPublicAgenda's `format` predicate
+// below (and its callers threading trackId/q/format through the same
+// enumerated knob set) exists because DEC-851 pinned
+// ['trackId','format','day','q','limit','accent'] as the ONE set every
+// agenda/schedule surface (page, .json, .xml, embed builder) honours.
+void DEC_851;
 
 export interface PublicAgendaItem {
   submissionId: string;
@@ -40,16 +48,18 @@ export interface PublicAgendaItem {
 export async function getPublicAgenda(
   db: Db,
   event: PublicEvent,
-  params?: { day?: string | null; trackId?: string | null; q?: string | null },
+  params?: { day?: string | null; trackId?: string | null; q?: string | null; format?: string | null },
 ): Promise<{ items: PublicAgendaItem[]; total: number }> {
   const conditions = [eq(schema.submission.eventId, event.id), visibleSessionConditions(), slotWithinEventRange(event)];
   if (params?.day) conditions.push(eq(schema.scheduleSlot.day, params.day));
-  // DEC-783: q/trackId are SQL-level predicates on this same join (mirrors
-  // getVisibleSubmissionIdsOrdered/countVisibleSubmissions in sessions.ts) so
-  // both `items` (windowed by LIMIT below) and `total` (the count subquery)
-  // see the identical filtered set — never a post-fetch JS filter, which
-  // would desync the "Showing the first N of M" line from the actual rows.
+  // DEC-783/DEC-851: q/trackId/format are SQL-level predicates on this same
+  // join (mirrors getVisibleSubmissionIdsOrdered/countVisibleSubmissions in
+  // sessions.ts) so both `items` (windowed by LIMIT below) and `total` (the
+  // count subquery) see the identical filtered set — never a post-fetch JS
+  // filter, which would desync the "Showing the first N of M" line from the
+  // actual rows.
   if (params?.q) conditions.push(searchCondition(params.q));
+  if (params?.format) conditions.push(formatFilterCondition(params.format));
   const trackId = params?.trackId ?? null;
 
   const cols = {

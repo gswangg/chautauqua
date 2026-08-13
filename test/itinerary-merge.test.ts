@@ -100,6 +100,8 @@ describe("DEC-555: the schedule page ships the one implementation, not a copy", 
         // DEC-804: the agenda/schedule dispatch also loads getPublicTracks to
         // feed the search form's track <select> — stub it alongside the rest.
         getPublicTracks: vi.fn(async () => []),
+        // DEC-851: getPublicFormatOptions is now loaded alongside getPublicTracks.
+        getPublicFormatOptions: vi.fn(async () => []),
         getPublicAgenda: vi.fn(async () => ({ items: AGENDA, total: AGENDA.length })),
         getPublicAgendaByIds: vi.fn(async (_db: unknown, _event: unknown, ids: string[]) =>
           AGENDA.filter((item) => ids.includes(item.submissionId)),
