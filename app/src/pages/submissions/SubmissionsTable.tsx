@@ -288,6 +288,7 @@ export function SubmissionsTable() {
       <BulkActionBar
         selectedCount={selection.selectedIds.size}
         pending={bulkPending}
+        statusFilter={filters.status.length === 1 ? (filters.status[0] ?? null) : null}
         onApply={applyBulkStatus}
         onClear={() => setSelection((s) => selectionReducer(s, { type: 'CLEAR' }))}
       />

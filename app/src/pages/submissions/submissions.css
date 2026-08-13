@@ -206,6 +206,12 @@
   font-size: 13px;
 }
 
+/* DEC-752: the status pill's own column is narrow ("Decline queue" is the
+ * longest label) -- never let it wrap into two lines. */
+.chq-submissions-table .chq-flag {
+  white-space: nowrap;
+}
+
 .chq-submissions-table tbody tr:last-child td {
   border-bottom: none;
 }
