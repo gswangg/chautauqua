@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clampPage, clampPerPage, listPerPage } from "../src/lib/pagination";
+import { MAX_PAGE, clampPage, clampPerPage, listPerPage } from "../src/lib/pagination";
 
 describe("clampPage (DEC-013: 1-based)", () => {
   it("defaults to 1 for missing/invalid input", () => {
@@ -17,6 +17,40 @@ describe("clampPage (DEC-013: 1-based)", () => {
   it("passes through valid integers", () => {
     expect(clampPage("3")).toBe(3);
     expect(clampPage(7)).toBe(7);
+  });
+
+  it("clamps to MAX_PAGE instead of overflowing", () => {
+    expect(clampPage("20000")).toBe(MAX_PAGE);
+    expect(clampPage(MAX_PAGE + 1)).toBe(MAX_PAGE);
+    expect(clampPage(MAX_PAGE)).toBe(MAX_PAGE);
+  });
+});
+
+// DEC-013 wave 54 amendment: `(clampPage(x)-1)*clampPerPage(y)` must always
+// be a safe integer that can reach `.offset()` without 500ing, for ANY page
+// input -- test the invariant across a table of hostile inputs, not just one
+// example.
+describe("clampPage x clampPerPage offset invariant (DEC-013 wave 54)", () => {
+  const HOSTILE_PAGES = ["1e21", "99999999999999999999", "1e400", "Infinity", "-0", "2.5", "abc", ""];
+
+  it.each(HOSTILE_PAGES)("keeps the offset a safe integer for page=%s", (raw) => {
+    const offset = (clampPage(raw) - 1) * clampPerPage("50");
+    expect(Number.isSafeInteger(offset)).toBe(true);
+  });
+
+  it("also holds when perPage is hostile alongside a hostile page", () => {
+    for (const p of HOSTILE_PAGES) {
+      for (const pp of HOSTILE_PAGES) {
+        const offset = (clampPage(p) - 1) * clampPerPage(pp);
+        expect(Number.isSafeInteger(offset)).toBe(true);
+      }
+    }
+  });
+
+  it("leaves valid pages untouched by the new upper clamp", () => {
+    expect(clampPage("1")).toBe(1);
+    expect(clampPage("42")).toBe(42);
+    expect(clampPage(9999)).toBe(9999);
   });
 });
 

@@ -8,12 +8,16 @@ void DEC_465;
 
 const DEFAULT_PER_PAGE = 50;
 const MAX_PER_PAGE = 200;
+const MAX_PAGE = 10_000;
 
-/** Clamps an arbitrary (possibly absent/NaN/negative) page param to >= 1. */
+/** Clamps an arbitrary (possibly absent/NaN/negative/huge) page param to
+ * [1, MAX_PAGE] per DEC-013 wave 54 amendment: a page param is clamped,
+ * never trusted into an offset — `(clampPage(x)-1)*clampPerPage(y)` must
+ * always be a safe integer for any input. */
 export function clampPage(raw: string | number | null | undefined): number {
   const n = typeof raw === "number" ? raw : Number(raw);
   if (!Number.isFinite(n) || !Number.isInteger(n) || n < 1) return 1;
-  return n;
+  return Math.min(n, MAX_PAGE);
 }
 
 /** Clamps an arbitrary perPage param to [1, 200], defaulting to 50. */
@@ -36,4 +40,4 @@ export function listPerPage(raw: string | number | null | undefined): number {
   return Math.min(n, MAX_PER_PAGE);
 }
 
-export { DEFAULT_PER_PAGE, MAX_PER_PAGE };
+export { DEFAULT_PER_PAGE, MAX_PER_PAGE, MAX_PAGE };
