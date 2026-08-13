@@ -47,6 +47,18 @@ function resolveRoomName(rooms: AgendaPayload['rooms'], roomId: string | null): 
   return rooms.find((r) => r.id === roomId)?.name ?? roomId;
 }
 
+/** DEC-899/900: the summary's "% placed" is derived from the same placed +
+ * unscheduled counts the rest of the page renders (never a server-supplied
+ * shortcut field) so the printed percentage always matches the arithmetic a
+ * reader could do themselves from what's on screen. Zero total sessions
+ * reads as 0% rather than dividing by zero. */
+function placedPercent(agenda: AgendaPayload | null): number {
+  if (!agenda) return 0;
+  const total = agenda.placed.length + agenda.unscheduled.length;
+  if (total === 0) return 0;
+  return Math.round((agenda.placed.length / total) * 100);
+}
+
 /** DEC-667: when a run places nothing, name why from the typed reasons the
  * run itself computed rather than reporting a bare "0 session(s)". */
 function describeUnplaced(reasons: DescribedUnplaced[]): string {
@@ -213,6 +225,19 @@ export function AgendaPage() {
     <div className="chq-page chq-agenda-page">
       <div className="chq-agenda-head">
         <h1 className="chq-page-title">Agenda</h1>
+        <div className="chq-agenda-head-actions">
+          <div className="chq-summary chq-agenda-summary">
+            {`${agenda?.summary.unplaced ?? 0} unplaced · `}
+            <strong>{`${agenda?.summary.conflicts ?? 0} ${agenda?.summary.conflicts === 1 ? 'conflict' : 'conflicts'}`}</strong>
+            {` · ${placedPercent(agenda)}% placed`}
+          </div>
+          <button type="button" className="chq-btn chq-btn-secondary" onClick={handleAutoSchedule} disabled={autoScheduling || !agenda}>
+            {autoScheduling ? 'Auto-scheduling...' : 'Auto-schedule'}
+          </button>
+          <button type="button" className="chq-btn chq-btn-primary" onClick={handlePublish} disabled={publishing || !agenda}>
+            {publishing ? 'Publishing...' : 'Publish schedule'}
+          </button>
+        </div>
       </div>
 
       <div className="chq-agenda-armed-bar" role="status" aria-hidden={armed ? undefined : true}>
@@ -235,22 +260,6 @@ export function AgendaPage() {
           </button>
         </div>
       )}
-
-      <div className="chq-toolbar chq-agenda-toolbar">
-        <div className="chq-summary chq-agenda-summary">
-          <strong>{`${agenda?.summary.unplaced ?? 0} unplaced`}</strong> &middot;{' '}
-          <strong>{`${agenda?.summary.conflicts ?? 0} ${agenda?.summary.conflicts === 1 ? 'conflict' : 'conflicts'}`}</strong>
-        </div>
-        <button type="button" className="chq-btn chq-btn-secondary" onClick={handleAutoSchedule} disabled={autoScheduling || !agenda}>
-          {autoScheduling ? 'Auto-scheduling...' : 'Auto-schedule'}
-        </button>
-        <button type="button" className="chq-btn chq-btn-primary" onClick={handlePublish} disabled={publishing || !agenda}>
-          {publishing ? 'Publishing...' : 'Publish schedule'}
-        </button>
-        <a href="/settings#chq-settings-section-tracks" className="chq-toolbar-link">
-          Add a room or track
-        </a>
-      </div>
 
       {loading && <DelayedLoading label="Loading agenda…" />}
 
@@ -292,21 +301,35 @@ export function AgendaPage() {
           ) : (
             <div className="chq-agenda-layout">
               <div className="chq-agenda-main">
-                {activeDay && (
-                  <DayGrid
-                    day={activeDay}
-                    rooms={agenda.rooms}
-                    tracks={agenda.tracks}
-                    placed={agenda.placed}
-                    conflicts={agenda.conflicts}
-                    dayStartMin={DAY_START_MIN}
-                    dayEndMin={DAY_END_MIN}
-                    gridMin={GRID_MIN}
-                    onDropPlace={handlePlace}
-                    armed={armed}
-                    onArm={setArmed}
-                    onPlaceAt={handlePlaceAt}
-                  />
+                {agenda.rooms.length === 0 ? (
+                  // DEC-899/900: "Add a room or track" is only ever the
+                  // grid's own empty state — there is nothing to drop a
+                  // session onto until a room exists, so it appears here
+                  // instead of as a permanent toolbar control that implies
+                  // rooms/tracks always need attention.
+                  <div className="chq-agenda-empty-state">
+                    <p>No rooms configured yet — add one to start placing sessions.</p>
+                    <a href="/settings#chq-settings-section-tracks" className="chq-toolbar-link">
+                      Add a room or track
+                    </a>
+                  </div>
+                ) : (
+                  activeDay && (
+                    <DayGrid
+                      day={activeDay}
+                      rooms={agenda.rooms}
+                      tracks={agenda.tracks}
+                      placed={agenda.placed}
+                      conflicts={agenda.conflicts}
+                      dayStartMin={DAY_START_MIN}
+                      dayEndMin={DAY_END_MIN}
+                      gridMin={GRID_MIN}
+                      onDropPlace={handlePlace}
+                      armed={armed}
+                      onArm={setArmed}
+                      onPlaceAt={handlePlaceAt}
+                    />
+                  )
                 )}
               </div>
               <UnscheduledTray

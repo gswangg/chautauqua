@@ -33,6 +33,16 @@ interface DayGridProps {
   onPlaceAt: (roomId: string | null, startMin: number) => void;
 }
 
+/** DEC-899/900: the grid's own left-rail row labels read plain '9:00' — the
+ * am/pm suffix formatMinutes adds is load-bearing everywhere it disambiguates
+ * a spoken time (placement toasts, cell accessible names), but the row rail
+ * runs top-to-bottom through a single day already anchored by its own
+ * am/pm-labelled hour markers, so repeating the suffix on every 30-minute
+ * row is noise, not information. */
+function formatTimeLabel(minutes: number): string {
+  return formatMinutes(minutes).replace(/(am|pm)$/, '');
+}
+
 const TBD_ROOM_ID = null;
 const TBD_COL_ID = '__tbd__';
 /** DEC-724: the trailing room-less column is no longer a permanent "TBD"
@@ -46,10 +56,10 @@ interface OverlapItem {
 }
 
 /** Groups items into maximal connected overlap clusters (union-find over
- * pairwise time overlap) so a same-room clash of exactly two sessions
- * (DEC-742) can be told apart from a lone session or a 3+-way pile-up
- * (which keeps the existing side-by-side lane rendering — see the render
- * test proving a 3-way overlap still renders three separate cards). */
+ * pairwise time overlap) so any same-room clash of two or more sessions
+ * (DEC-742, generalised by DEC-899/900) can be told apart from a lone
+ * session — every cluster of size >= 2 merges into one inverted clash card,
+ * regardless of N. */
 function computeOverlapClusters(items: OverlapItem[]): OverlapItem[][] {
   const parent = new Map<string, string>();
   for (const item of items) parent.set(item.id, item.id);
@@ -119,30 +129,30 @@ export function DayGrid({
 
   const roomKey = (roomId: string | null) => roomId ?? TBD_COL_ID;
 
-  // DEC-742: a same-room pair whose times overlap merges into ONE inverted
-  // clash card instead of two side-by-side lanes — computed per room column
-  // via connected-component clustering so a 3+-way pile-up (a different,
-  // pre-existing shape) is left alone.
-  const clashPairSubmissionIds = new Set<string>();
-  const clashPairs: PlacedAgendaSession[][] = [];
+  // DEC-742/DEC-899/900: any same-room cluster of two or more sessions
+  // whose times overlap merges into ONE inverted clash card instead of N
+  // side-by-side lanes — computed per room column via connected-component
+  // clustering.
+  const clashClusterSubmissionIds = new Set<string>();
+  const clashClusters: PlacedAgendaSession[][] = [];
   for (const key of new Set(dayPlaced.map((s) => roomKey(s.roomId)))) {
     const items = dayPlaced.filter((s) => roomKey(s.roomId) === key);
     const clusters = computeOverlapClusters(items.map((s) => ({ id: s.submissionId, startMin: s.startMin, endMin: s.endMin })));
     for (const cluster of clusters) {
-      if (cluster.length !== 2) continue;
+      if (cluster.length < 2) continue;
       const sessions = cluster.map((c) => items.find((s) => s.submissionId === c.id)!);
-      clashPairs.push(sessions);
-      for (const s of sessions) clashPairSubmissionIds.add(s.submissionId);
+      clashClusters.push(sessions);
+      for (const s of sessions) clashClusterSubmissionIds.add(s.submissionId);
     }
   }
 
   // Overlapping blocks in the same room column render side-by-side via
   // assignLanes (DEC-140 pattern) so every card stays an independent drop
   // target for the pointer instead of the top card eating the click. Merged
-  // clash pairs (DEC-742, above) are excluded here — they render as their
-  // own full-width card instead of a lane.
+  // clash clusters (DEC-742/899/900, above) are excluded here — they render
+  // as their own full-width card instead of a lane.
   const lanesByRoom = new Map<string, ReturnType<typeof assignLanes<{ id: string; startMin: number; endMin: number }>>>();
-  const lanedPlaced = dayPlaced.filter((s) => !clashPairSubmissionIds.has(s.submissionId));
+  const lanedPlaced = dayPlaced.filter((s) => !clashClusterSubmissionIds.has(s.submissionId));
   for (const key of new Set(lanedPlaced.map((s) => roomKey(s.roomId)))) {
     const items = lanedPlaced
       .filter((s) => roomKey(s.roomId) === key)
@@ -184,6 +194,18 @@ export function DayGrid({
         s.startMin <= minutes &&
         minutes < s.endMin,
     ).length;
+  }
+
+  /** The open run of free minutes starting at this cell, capped at the day's
+   * end and at the next occupied slot in this room (armed session excluded,
+   * same as occupancyCount) — feeds the DEC-899/900 hover affordance's
+   * "Place here · N MIN FREE" copy so the organiser sees how much room a
+   * click here would land the armed session in. */
+  function freeMinutesAt(roomId: string | null, minutes: number): number {
+    const nextStart = dayPlaced
+      .filter((s) => s.submissionId !== armed?.submissionId && roomKey(s.roomId) === roomKey(roomId) && s.startMin > minutes)
+      .reduce((min, s) => Math.min(min, s.startMin), dayEndMin);
+    return Math.max(0, nextStart - minutes);
   }
 
   // Focus management (DEC-724): after a successful click-to-place, focus
@@ -257,7 +279,7 @@ export function DayGrid({
             className="chq-day-grid-time-label"
             style={{ gridColumn: 1, gridRow: rowIdx + 2 }}
           >
-            {formatMinutes(minutes)}
+            {formatTimeLabel(minutes)}
           </div>
         ) : null,
       )}
@@ -270,6 +292,7 @@ export function DayGrid({
           if (armed) {
             const clashCount = occupancyCount(roomId, minutes);
             if (clashCount === 0) {
+              const freeMin = freeMinutesAt(roomId, minutes);
               return (
                 <button
                   key={`cell-${colId}-${minutes}`}
@@ -282,7 +305,11 @@ export function DayGrid({
                   aria-label={`Place ${armed.ref} at ${formatMinutes(minutes)} in ${roomName}`}
                   data-room-id={colId}
                   data-start-min={minutes}
-                />
+                >
+                  <span className="chq-day-grid-cell-hover-label" aria-hidden="true">
+                    {`Place here · ${freeMin} MIN FREE`}
+                  </span>
+                </button>
               );
             }
             // DEC-701/J9 warn-never-block: an occupied cell must still
@@ -349,7 +376,7 @@ export function DayGrid({
         );
       })}
 
-      {clashPairs.map((sessions) => {
+      {clashClusters.map((sessions) => {
         const colId = roomKey(sessions[0]!.roomId);
         const colIdx = columns.indexOf(colId);
         if (colIdx < 0) return null;
