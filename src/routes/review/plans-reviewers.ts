@@ -8,11 +8,11 @@
 import { Hono } from "hono";
 import type { AppEnv } from "../../server/env";
 import { csrfJson, requireOrganizer } from "../../server/middleware";
-import { ApiError, parseBoundedIdArray } from "../../server/http";
+import { ApiError, parseBoundedIdArray, readJsonBody } from "../../server/http";
 import { clampPage, listPerPage } from "../../lib/pagination";
 import * as repo from "../../server/repo/review";
 import { DEC_572, DEC_623, DEC_659, DEC_924 } from "../../decisions";
-import { asRecord, currentAuth, requireOwnedPlan } from "./shared";
+import { currentAuth, requireOwnedPlan } from "./shared";
 
 export const reviewPlansReviewersRoutes = new Hono<AppEnv>();
 
@@ -23,7 +23,7 @@ void DEC_924; // POST /plans/:id/reviewers: submissionIds[] array form below -- 
 
 reviewPlansReviewersRoutes.post("/api/v1/plans/:id/reviewers", requireOrganizer, csrfJson, async (c) => {
   const plan = await requireOwnedPlan(c, c.req.param("id"));
-  const body = asRecord(await c.req.json());
+  const body = await readJsonBody(c);
   if (typeof body.userId !== "string" || body.userId.length === 0) {
     throw new ApiError("invalid", "Invalid reviewer assignment", { userId: "required" });
   }

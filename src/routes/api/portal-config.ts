@@ -6,7 +6,7 @@
 import { Hono, type Context } from "hono";
 import type { AppEnv } from "../../server/env";
 import { requireOrganizer, csrfJson } from "../../server/middleware";
-import { ApiError } from "../../server/http";
+import { ApiError, readJsonBody } from "../../server/http";
 import { MAX_NAME_LENGTH, MAX_TEXT_LENGTH, MAX_LONG_TEXT_LENGTH, MAX_RICH_TEXT_LENGTH } from "../../forms/validate"; // DEC-417
 import { makeFileStore, putThenRecord } from "../../server/context";
 import { newId } from "../../domain/ids";
@@ -54,13 +54,6 @@ function currentOrgId(c: { var: { auth?: { orgId: string } } }): string {
   return auth.orgId;
 }
 
-function asRecord(body: unknown): Record<string, unknown> {
-  if (typeof body !== "object" || body === null) {
-    throw new ApiError("invalid", "Request body must be a JSON object");
-  }
-  return body as Record<string, unknown>;
-}
-
 /** Resolves an event by id and asserts it belongs to orgId — 404 on any mismatch (no IDOR). */
 async function requireEvent(
   db: import("../../server/context").Db,
@@ -100,7 +93,7 @@ portalConfigRoutes.put("/events/:eventId/portal-settings", csrfJson, async (c) =
   const eventId = c.req.param("eventId");
   await requireEvent(c.var.db, orgId, eventId);
 
-  const body = asRecord(await c.req.json());
+  const body = await readJsonBody(c);
   const fields: Record<string, string> = {};
 
   const logoUrl = body.logoUrl;
@@ -247,7 +240,7 @@ portalConfigRoutes.post("/events/:eventId/resources", csrfJson, async (c) => {
     return createFileResourceHandler(c, eventId);
   }
 
-  const body = asRecord(await c.req.json());
+  const body = await readJsonBody(c);
   const fields: Record<string, string> = {};
 
   const title = body.title;
@@ -288,7 +281,7 @@ portalConfigRoutes.patch("/resources/:resourceId", csrfJson, async (c) => {
   if (!eventId) throw new ApiError("not_found", "Resource not found");
   await requireEvent(db, orgId, eventId);
 
-  const body = asRecord(await c.req.json());
+  const body = await readJsonBody(c);
   const fields: Record<string, string> = {};
 
   const title = body.title;

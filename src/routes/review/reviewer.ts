@@ -7,7 +7,7 @@
 import { Hono } from "hono";
 import type { AppEnv } from "../../server/env";
 import { csrfJson } from "../../server/middleware";
-import { ApiError } from "../../server/http";
+import { ApiError, readJsonBody } from "../../server/http";
 import { MAX_LONG_TEXT_LENGTH } from "../../forms/validate"; // DEC-425
 import {
   buildReviewerQueue,
@@ -25,7 +25,7 @@ import { roundCriteriaJsonOf } from "../../server/repo/review";
 import type { PlanRecord } from "../../server/repo/review";
 import * as eventsRepo from "../../server/repo/events";
 import { DEC_239, DEC_460, DEC_461, DEC_466, DEC_831, DEC_857 } from "../../decisions";
-import { currentAuth, requireReviewerOrOrganizer, asRecord, requireAssignedPlan } from "./shared";
+import { currentAuth, requireReviewerOrOrganizer, requireAssignedPlan } from "./shared";
 
 export const reviewReviewerRoutes = new Hono<AppEnv>();
 void DEC_239; // /review/plans/:id/queue: shaped {submissionId,ref,title,ratingsCount,alreadyRatedByMe} below
@@ -292,7 +292,7 @@ reviewReviewerRoutes.put("/api/v1/review/plans/:planId/evaluations/:submissionId
     throw new ApiError("conflict", "You have recused yourself from this submission");
   }
 
-  const body = asRecord(await c.req.json());
+  const body = await readJsonBody(c);
   const scores = body.scores;
   if (typeof scores !== "object" || scores === null) {
     throw new ApiError("invalid", "scores is required", { scores: "required" });
