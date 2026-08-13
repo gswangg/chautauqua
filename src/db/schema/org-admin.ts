@@ -51,5 +51,6 @@ export const savedView = sqliteTable(
   },
   (t) => ({
     saved_view_event_id_idx: index("saved_view_event_id_idx").on(t.eventId),
+    saved_view_created_by_user_id_idx: index("saved_view_created_by_user_id_idx").on(t.createdByUserId),
   }),
 );

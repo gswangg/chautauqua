@@ -160,6 +160,7 @@ function SaveViewDialog({ filters, tracks, pending, onCancel, onSave }: SaveView
       </FormRow>
       <label className="chq-submissions-viewtabs-share">
         <input
+          className="chq-check"
           type="checkbox"
           checked={shared}
           onChange={(e) => setShared(e.target.checked)}
