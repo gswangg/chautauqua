@@ -887,3 +887,14 @@ AND audit noStoreByDefault + any other header-stamping middleware for the same t
     scripts/with-test-lock.sh mutex from the test policy (mkdir-spinlock; full-suite
     invocations serialize) — it was mandated and never built. The machine hosting
     this swarm stalls every time two full suites overlap; this is self-harm.
+
+73. **TIER THE SUITE (user directive — the suite's size is now a hindrance).** Split
+    into two npm scripts: `test:fast` = pure domain + scan-lock/enumeration +
+    invariant tests (no jsdom, no miniflare — must run in <60s, capped workers) and
+    `test:full` = everything. NEW POLICY: workers run targeted tests; merge trains
+    run `test:fast` + build; ONLY the verification/exit wave runs `test:full` (once,
+    serialized, maxWorkers 2 per item 72). Rationale: the heavy jsdom/miniflare tier
+    has the worst catch-rate (all major integration bugs were caught by render-sweep,
+    not unit suites) while costing ~24GB×15min per run. DO NOT delete tests this
+    round — tier them. Post-submission, a consolidation pass may prune render-smokes
+    superseded by the browser sweep.
