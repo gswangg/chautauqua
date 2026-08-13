@@ -19,6 +19,13 @@
   font-weight: 700;
 }
 
+.chq-detail-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
 .chq-detail-heading h1 {
   margin: 0.25rem 0 1.25rem;
   font-family: var(--chq-font-display, 'Familjen Grotesk', 'Figtree', sans-serif);
@@ -26,6 +33,25 @@
   font-weight: 700;
   letter-spacing: -0.03em;
   line-height: 1.15;
+}
+
+/* DEC-761: '‹ N of M ›' navigation, absent (not disabled, DEC-733) at
+   either end. */
+.chq-detail-position {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  padding-top: 0.5rem;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--chq-ink-muted, #565a4b);
+}
+
+.chq-detail-position-prev,
+.chq-detail-position-next {
+  font-size: 15px;
+  font-weight: 700;
 }
 
 /* Desktop: main column (form-shaped content) + decision aside. */

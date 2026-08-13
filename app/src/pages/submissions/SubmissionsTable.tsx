@@ -355,7 +355,14 @@ export function SubmissionsTable() {
                   </td>
                   <td className="chq-submissions-table-ref">{item.ref}</td>
                   <td>
-                    <Link to={`/submissions/${item.id}`} className="chq-submissions-table-title">
+                    {/* DEC-761: the detail page re-derives its position from
+                        the SAME filter/sort/page query the table used, so
+                        the row link must carry that query string along —
+                        the detail page must not depend on router state. */}
+                    <Link
+                      to={`/submissions/${item.id}${buildSubmissionsQuery(filters)}`}
+                      className="chq-submissions-table-title"
+                    >
                       {item.title}
                     </Link>
                   </td>
