@@ -205,4 +205,32 @@ describe("seed coherence (DEC-771)", () => {
     const templateRows = parseInserts(sql, "email_template");
     expect(templateRows.length).toBe(5);
   });
+
+  it("(DEC-796) no seeded email_log row's subject or body_text contains a raw '{merge_field}' placeholder", () => {
+    // Scans the raw SQL text (not just parsed rows) so a literal '{' inside
+    // an email_log INSERT's subject/body_text column is caught even if a
+    // future edit changes the row shape — every seeded history row must
+    // show the text that was actually sent, never the unrendered template.
+    const emailLogInsertRe = /^INSERT INTO email_log \(([^)]*)\) VALUES \((.*)\);$/gm;
+    const offenders: string[] = [];
+    for (const m of sql.matchAll(emailLogInsertRe)) {
+      const columns = m[1]!.split(",").map((c) => c.trim().replace(/^"|"$/g, ""));
+      const values = tokenizeSqlValues(m[2]!);
+      const row: Record<string, string | null> = {};
+      columns.forEach((c, idx) => {
+        row[c] = unquote(values[idx]!);
+      });
+      for (const field of ["subject", "body_text"] as const) {
+        const value = row[field];
+        if (value && value.includes("{")) {
+          offenders.push(`${field}="${value}"`);
+        }
+      }
+    }
+    const emailLogRows = parseInserts(sql, "email_log");
+    expect(emailLogRows.length).toBeGreaterThan(0);
+    expect(offenders, `seeded email_log rows still carry raw template placeholders: ${JSON.stringify(offenders)}`).toEqual(
+      [],
+    );
+  });
 });
