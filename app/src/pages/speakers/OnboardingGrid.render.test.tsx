@@ -531,7 +531,7 @@ describe('OnboardingGrid: DEC-830 participation menu', () => {
     expect(screen.getByText(/Update failed/)).toBeInTheDocument();
   });
 
-  it('joins the invite-status pill into the grid request as an additional query param, composing with other filters', async () => {
+  it('joins the invite-status selection into the grid request as an additional query param, composing with other filters', async () => {
     const fetchMock = mockApi({
       [`GET /api/v1/events/${EVENT_ID}/onboarding`]: GRID,
       [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
@@ -541,7 +541,7 @@ describe('OnboardingGrid: DEC-830 participation menu', () => {
     await waitFor(() => screen.getAllByText('Ada Lovelace').length > 0);
 
     fireEvent.click(screen.getByRole('button', { name: 'Overdue only' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Confirmed' }));
+    fireEvent.change(screen.getByRole('combobox', { name: 'Any participation' }), { target: { value: 'accepted' } });
 
     await waitFor(() => {
       const calls = fetchMock.mock.calls.filter(([input]) => {

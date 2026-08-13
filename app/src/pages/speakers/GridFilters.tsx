@@ -1,4 +1,11 @@
-import { INVITE_STATUSES, INVITE_STATUS_LABELS, type AssignmentStatus, type GridFilterState, type OnboardingTask } from './types';
+import {
+  INVITE_STATUSES,
+  INVITE_STATUS_LABELS,
+  type AssignmentStatus,
+  type GridFilterState,
+  type InviteStatus,
+  type OnboardingTask,
+} from './types';
 
 interface GridFiltersProps {
   tasks: OnboardingTask[];
@@ -53,6 +60,26 @@ export function GridFilters({ tasks, filters, onChange }: GridFiltersProps) {
         ))}
       </select>
 
+      {/* DEC-861: filters.inviteStatus is a single nullable value -- it has
+          always been a mutually-exclusive choice, never a composable set,
+          so it renders as one select (like "Any task status" above it),
+          not four independently-pressable pills. */}
+      <select
+        className="chq-select"
+        aria-label="Any participation"
+        value={filters.inviteStatus ?? ''}
+        onChange={(e) =>
+          onChange({ ...filters, inviteStatus: e.target.value === '' ? null : (e.target.value as InviteStatus) })
+        }
+      >
+        <option value="">Any participation</option>
+        {INVITE_STATUSES.map((status) => (
+          <option key={status} value={status}>
+            {INVITE_STATUS_LABELS[status]}
+          </option>
+        ))}
+      </select>
+
       <button
         type="button"
         className={`chq-pill${filters.overdueOnly ? ' is-active' : ''}`}
@@ -61,21 +88,6 @@ export function GridFilters({ tasks, filters, onChange }: GridFiltersProps) {
       >
         Overdue only
       </button>
-
-      {/* DEC-789: a set, joining the Overdue only pill above -- a click
-          composes the invite-status predicate, never replaces the other
-          active pills. Clicking the already-active pill clears it. */}
-      {INVITE_STATUSES.map((status) => (
-        <button
-          key={status}
-          type="button"
-          className={`chq-pill${filters.inviteStatus === status ? ' is-active' : ''}`}
-          aria-pressed={filters.inviteStatus === status}
-          onClick={() => onChange({ ...filters, inviteStatus: filters.inviteStatus === status ? null : status })}
-        >
-          {INVITE_STATUS_LABELS[status]}
-        </button>
-      ))}
     </div>
   );
 }
