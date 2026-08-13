@@ -101,10 +101,21 @@ export function SavedEmbedsPanel({ onBuild }: Props) {
 
   return (
     <section className="chq-settings-panel" aria-label="Saved embeds">
-      <h2>Saved embeds</h2>
-      {embeds && embeds.length > 0 ? (
-        <p className="chq-settings-count">{`${onCount} on · ${offCount} off`}</p>
-      ) : null}
+      {/* w41-h/DEC-785: the eyebrow row -- title + "N on · M off" (computed
+          from the rows already loaded, DEC-785 amendment (5)) on the left,
+          the "Turning one off..." caption right-flushed on the SAME row
+          rather than tucked under Build an embed. */}
+      <div className="chq-settings-saved-embed-eyebrow">
+        <div className="chq-settings-saved-embed-eyebrow-title">
+          <h2>Saved embeds</h2>
+          {embeds && embeds.length > 0 ? (
+            <p className="chq-settings-count">{`${onCount} on · ${offCount} off`}</p>
+          ) : null}
+        </div>
+        <p className="chq-settings-note chq-settings-saved-embed-caption">
+          Turning one off breaks it wherever it is pasted
+        </p>
+      </div>
       {error ? <p role="alert">{error}</p> : null}
 
       {embeds === null ? (
@@ -129,9 +140,17 @@ export function SavedEmbedsPanel({ onBuild }: Props) {
             });
             return (
               <li key={embed.id} className="chq-settings-saved-embed-row">
-                <span className="chq-settings-public-pages-name">{embed.name}</span>
-                <span className="chq-settings-public-pages-path">{`/embed/e/${embed.id}`}</span>
-                <span className="chq-embeds-recipe">{recipe}</span>
+                {/* w41-h/DEC-785: name + path stack in ONE fixed-width cell
+                    (the row's leading column) so the descriptor cell next
+                    to it can be the one that clamps -- the row must not
+                    reflow when the recipe is long. */}
+                <span className="chq-settings-saved-embed-name-cell">
+                  <span className="chq-settings-public-pages-name">{embed.name}</span>
+                  <span className="chq-settings-public-pages-path">{`/embed/e/${embed.id}`}</span>
+                </span>
+                <span className="chq-embeds-recipe chq-settings-saved-embed-descriptor" title={recipe}>
+                  {recipe}
+                </span>
                 <span
                   className={`chq-settings-public-pages-state ${
                     PUBLIC_PAGES_STATE_TONE_CLASS[embed.enabled ? 'live' : 'muted']
@@ -167,12 +186,19 @@ export function SavedEmbedsPanel({ onBuild }: Props) {
       )}
 
       {onBuild ? (
-        <button type="button" className="chq-link-button" onClick={onBuild}>
-          Build an embed
-        </button>
+        // w41-h/DEC-785: the "New embed" affordance (this panel's build
+        // disclosure) carries its own caption beside it -- what a saved
+        // embed's URL/edit actually mean -- rather than the "Turning one
+        // off..." warning, which lives on the eyebrow row above instead.
+        <div className="chq-settings-saved-embed-build-row">
+          <button type="button" className="chq-link-button" onClick={onBuild}>
+            Build an embed
+          </button>
+          <p className="chq-settings-note">
+            A saved embed keeps its own URL · editing it updates every page that uses it
+          </p>
+        </div>
       ) : null}
-
-      <p className="chq-settings-note">Turning one off breaks it wherever it is pasted</p>
 
       {pendingDelete ? (
         <ConfirmDialog

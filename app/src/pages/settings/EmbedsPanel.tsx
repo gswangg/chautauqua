@@ -377,18 +377,26 @@ export function EmbedsPanel() {
 
           {knobs.includes('fields') ? (
             <fieldset>
-              <legend>Fields</legend>
-              {EMBED_FIELDS.map((field) => (
-                <label key={field}>
-                  <input
-                    className="chq-check"
-                    type="checkbox"
-                    checked={fields.includes(field)}
-                    onChange={() => toggleField(field)}
-                  />
-                  {FIELD_LABELS[field]}
-                </label>
-              ))}
+              <legend>Fields shown</legend>
+              {/* w41-h/DEC-785: one row of aria-pressed toggle pills, not six
+                  stacked checkbox rows -- the selected-fields state and what
+                  Save writes are unchanged (toggleField), only the control
+                  shape. Reuses the shared chq-chipstrip/chq-pill vocabulary
+                  (CallForPapersPanel's "Tracks offered" row) rather than
+                  inventing a second pill grammar. */}
+              <div className="chq-chipstrip" role="group" aria-label="Fields shown">
+                {EMBED_FIELDS.map((field) => (
+                  <button
+                    key={field}
+                    type="button"
+                    className={fields.includes(field) ? 'chq-pill is-active' : 'chq-pill'}
+                    aria-pressed={fields.includes(field)}
+                    onClick={() => toggleField(field)}
+                  >
+                    {FIELD_LABELS[field]}
+                  </button>
+                ))}
+              </div>
             </fieldset>
           ) : null}
 
@@ -439,6 +447,13 @@ export function EmbedsPanel() {
             >
               {copyResult?.target === 'snippet' && copyResult.ok ? 'Copied!' : 'Copy snippet'}
             </button>
+            {/* w41-h/DEC-785: Preview opens the SAME url the snippet embeds
+                (built above via buildEmbedUrl) -- never a second URL
+                builder, so the preview can never drift from what the
+                snippet/Copy URL actually point at. */}
+            <a className="chq-btn chq-btn-secondary" href={url} target="_blank" rel="noreferrer">
+              Preview
+            </a>
             <div role="status" aria-live="polite" className="chq-copy-status">
               {copyResult
                 ? copyResult.ok
