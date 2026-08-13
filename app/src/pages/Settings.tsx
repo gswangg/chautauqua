@@ -23,9 +23,7 @@ import { PublicPagesPanel } from './settings/PublicPagesPanel';
 import { PortalSettingsPanel } from './settings/PortalSettingsPanel';
 import { ResourcesPanel } from './settings/ResourcesPanel';
 import { PeopleRolesPanel } from './settings/PeopleRolesPanel';
-import { ApiTokensPanel } from './settings/ApiTokensPanel';
-import { ExportsPanel } from './settings/ExportsPanel';
-import { SessionboardImportPanel } from './settings/SessionboardImportPanel';
+import { YourDataPanel } from './settings/YourDataPanel';
 import './settings/settings.css';
 
 interface SettingsSection {
@@ -47,22 +45,11 @@ function SpeakerPortalSection() {
   );
 }
 
-// DEC-691: 'Your data' composes the existing ExportsPanel and
-// ApiTokensPanel into one section (both are ways to get this event's data
-// out); neither panel's export/token-reveal-once flow changes.
-function YourDataSection() {
-  return (
-    <>
-      <ExportsPanel />
-      <ApiTokensPanel />
-    </>
-  );
-}
-
-// DEC-691: rail converges on the mock's seven sections (docs/design/
-// Chautauqua Settings.dc.html lines 61-215), in this order. 'Import from
-// Sessionboard' has no mock section -- it stays as an eighth, honestly
-// labelled extra rather than being folded into one of the seven or cut.
+// DEC-747/DEC-691: rail converges on exactly the mock's seven sections
+// (docs/design/Chautauqua Settings.dc.html lines 61-233), in this order.
+// 'Import from Sessionboard' is no longer an eighth top-level rail entry --
+// it's a row inside 'Your data' (YourDataPanel) that drills into the same
+// SessionboardImportPanel, unchanged.
 const SECTIONS: SettingsSection[] = [
   { key: 'event', label: 'Event', Panel: EventSettingsPanel },
   { key: 'cfp', label: 'Call for papers', Panel: CallForPapersPanel },
@@ -70,8 +57,7 @@ const SECTIONS: SettingsSection[] = [
   { key: 'public-pages', label: 'Public pages and embeds', Panel: PublicPagesPanel },
   { key: 'portal', label: 'Speaker portal', Panel: SpeakerPortalSection },
   { key: 'people', label: 'People and roles', Panel: PeopleRolesPanel },
-  { key: 'your-data', label: 'Your data', Panel: YourDataSection },
-  { key: 'sessionboard-import', label: 'Import from Sessionboard', Panel: SessionboardImportPanel },
+  { key: 'your-data', label: 'Your data', Panel: YourDataPanel },
 ];
 
 export function SettingsPage() {

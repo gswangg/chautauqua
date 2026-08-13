@@ -135,7 +135,7 @@ export function ApiTokensPanel() {
           placeholder="e.g. CI pipeline"
         />
         <button type="submit" className="chq-btn chq-btn-primary" disabled={creating || newName.trim().length === 0}>
-          {creating ? 'Creating…' : 'Create token'}
+          {creating ? 'Creating…' : 'New token'}
         </button>
       </form>
 

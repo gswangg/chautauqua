@@ -1,0 +1,154 @@
+// 'Your data' settings section (w3-d, DEC-747/DEC-728): ONE numbered
+// section (docs/design/Chautauqua Settings.dc.html lines 198-233) whose
+// rows are Exports, API tokens, API docs and Import from Sessionboard --
+// converging DEC-691's two-panel composition (ExportsPanel + ApiTokensPanel
+// stacked as separate top-level panels) into the mock's single section.
+//
+// Exports row: the mock shows exactly four pills (Submissions CSV,
+// Contacts CSV, Schedule ICS, Everything JSON). Two of those already exist
+// as real endpoints (DEC-027 'submissions'/'contacts' kinds, format=csv)
+// and are linked directly. 'Schedule ICS' has no DEC-027 kind -- the
+// closest real, already-shipped capability is the public full-agenda feed
+// at GET /e/:slug/agenda.ics (EMB-15/DEC-289), so that's what the pill
+// links to rather than a fabricated event-scoped ICS export. 'Everything
+// JSON' has no single server endpoint either; rather than link to a URL
+// that 404s or silently mislabel one kind's export as "everything", this
+// button walks every DEC-027 kind's JSON export client-side and bundles
+// them into one downloaded file -- honest (uses only real endpoints,
+// mirrors what a combined export would contain) and requires no server
+// change. Per "chrome fidelity never deletes a capability" (FINDINGS
+// w21), the full per-kind CSV/JSON table (speakers, evaluations,
+// email-log, showflow -- kinds the mock's four pills don't cover) stays
+// reachable via "More export formats", not deleted.
+//
+// API tokens row: ApiTokensPanel, embedded unchanged -- same reveal-once
+// creation flow, same name/masked-value/last-used/Revoke row shape the
+// mock calls for. Its create button is relabelled "New token" to match
+// the mock's primary-button copy; no other behavior changes.
+//
+// Import from Sessionboard row: a row that drills into the existing
+// three-step SessionboardImportPanel, unchanged, the same on/off drill
+// pattern PublicPagesPanel already uses for its embed builder.
+import { useEffect, useState } from 'react';
+import { apiGet, ApiError } from '../../lib/api';
+import { useCurrentEvent } from '../../lib/useCurrentEvent';
+import { DelayedLoading } from '../../components/DelayedLoading';
+import { ApiTokensPanel } from './ApiTokensPanel';
+import { ExportsPanel } from './ExportsPanel';
+import { SessionboardImportPanel } from './SessionboardImportPanel';
+
+interface EventSummary {
+  id: string;
+  slug: string;
+}
+
+// The DEC-027 kinds bundled into "Everything JSON" -- every kind that
+// export/:kind already serves for this event (excludes nothing; 'contacts'
+// is org-scoped per DEC-597 but rides the same route/format machinery).
+const EVERYTHING_KINDS = ['submissions', 'speakers', 'evaluations', 'agenda', 'email-log', 'contacts'] as const;
+
+export function YourDataPanel() {
+  const { eventId, loading: eventLoading, error: eventError } = useCurrentEvent();
+  const [event, setEvent] = useState<EventSummary | null>(null);
+  const [error, setError] = useState<string | undefined>(undefined);
+  const [moreExportsOpen, setMoreExportsOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [bundling, setBundling] = useState(false);
+
+  useEffect(() => {
+    if (!eventId) return;
+    apiGet<EventSummary>(`/events/${eventId}`)
+      .then(setEvent)
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load event'));
+  }, [eventId]);
+
+  async function downloadEverythingJson() {
+    if (!eventId) return;
+    setBundling(true);
+    setError(undefined);
+    try {
+      const bundle: Record<string, unknown> = {};
+      for (const kind of EVERYTHING_KINDS) {
+        const res = await fetch(`/api/v1/events/${eventId}/export/${kind}?format=json`, {
+          credentials: 'include',
+        });
+        if (!res.ok) throw new Error(`Failed to export ${kind}`);
+        bundle[kind] = await res.json();
+      }
+      const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = 'everything.json';
+      anchor.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to build the combined export');
+    } finally {
+      setBundling(false);
+    }
+  }
+
+  return (
+    <section className="chq-settings-panel chq-settings-numbered" aria-label="Your data">
+      <div className="chq-settings-section-head">
+        <h2>Your data</h2>
+      </div>
+
+      {eventLoading ? <DelayedLoading /> : null}
+      {eventError || error ? (
+        <p role="alert">{eventError ?? error}</p>
+      ) : null}
+
+      <div className="chq-settings-row">
+        <span className="chq-settings-row-label">Exports</span>
+        <div className="chq-settings-row-value">
+          {eventId ? (
+            <>
+              <a className="chq-pill" href={`/api/v1/events/${eventId}/export/submissions?format=csv`}>
+                Submissions CSV
+              </a>
+              <a className="chq-pill" href={`/api/v1/events/${eventId}/export/contacts?format=csv`}>
+                Contacts CSV
+              </a>
+              {event ? (
+                <a className="chq-pill" href={`/e/${event.slug}/agenda.ics`}>
+                  Schedule ICS
+                </a>
+              ) : null}
+              <button type="button" className="chq-pill" disabled={bundling} onClick={() => void downloadEverythingJson()}>
+                {bundling ? 'Building…' : 'Everything JSON'}
+              </button>
+              <button type="button" className="chq-link-button" onClick={() => setMoreExportsOpen((v) => !v)}>
+                {moreExportsOpen ? 'Hide more export formats' : 'More export formats'}
+              </button>
+            </>
+          ) : null}
+        </div>
+      </div>
+      {moreExportsOpen ? <ExportsPanel /> : null}
+
+      <ApiTokensPanel />
+
+      <div className="chq-settings-row">
+        <span className="chq-settings-row-label">API docs</span>
+        <div className="chq-settings-row-value">
+          <a href="/docs/api">chautauqua.cc/docs/api</a>
+        </div>
+      </div>
+
+      <div className="chq-settings-row">
+        <span className="chq-settings-row-label">Import from Sessionboard</span>
+        <div className="chq-settings-row-value">
+          {importOpen ? (
+            <SessionboardImportPanel />
+          ) : (
+            <button type="button" className="chq-link-button" onClick={() => setImportOpen(true)}>
+              Import from Sessionboard
+            </button>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
