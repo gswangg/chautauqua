@@ -32,6 +32,13 @@ export interface EmailLogRow {
 // capped at MAX_RICH_TEXT_LENGTH and their HTML twin, so shipping them on
 // every list page is an oversized payload (SPEC §7). getEmailLogById keeps
 // the full EmailLogRow for the detail page and its .ics download.
+//
+// DEC-949: LIST_COLUMNS excludes bodyText/bodyHtml entirely, so the history
+// LIST route (GET /api/v1/events/:eventId/email-log) never has a claim URL
+// to redact in the first place — only getEmailLogById's send-detail route
+// (src/routes/comms.ts) needs redactClaimUrls applied. If a future change
+// widens EmailLogListRow to include a body field, it must gain the same
+// redaction the detail route has.
 export interface EmailLogListRow {
   id: string;
   eventName: string;

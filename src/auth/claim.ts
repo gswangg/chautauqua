@@ -5,6 +5,10 @@
 // (DEC-002) — no node:/cloudflare imports, so this is fully vitest-testable
 // against an in-memory fake.
 
+import { DEC_949 } from "../decisions";
+
+void DEC_949;
+
 export const CLAIM_TTL_SECONDS = 30 * 24 * 60 * 60;
 
 export interface ClaimRecord {
@@ -45,17 +49,35 @@ export function claimKvKey(tokenHash: string): string {
   return `claim:${tokenHash}`;
 }
 
+/** DEC-949: a grant is SINGLE-ACTIVE per (contactId, eventId) — this index
+ * key holds the hash of the currently-live token, so createClaimToken can
+ * find and revoke the previous grant before minting a new one. */
+export function claimIndexKey(contactId: string, eventId: string): string {
+  return `claim-for:${contactId}:${eventId}`;
+}
+
 export function newClaimToken(): string {
   const bytes = crypto.getRandomValues(new Uint8Array(32));
   return toBase64Url(bytes);
 }
 
 /** Creates and stores a fresh claim token, returning the plaintext token
- * (only ever placed in an email link / on-screen confirmation URL). */
+ * (only ever placed in an email link / on-screen confirmation URL).
+ * DEC-949: single-active grant per (contactId, eventId) — any prior grant
+ * for the same pair is revoked (its record key deleted) before the new one
+ * is stored, so the newest email is the only one that works. Only hashes
+ * are ever stored; plaintext exists nowhere but the email. */
 export async function createClaimToken(kv: KVStore, record: ClaimRecord): Promise<string> {
+  const indexKey = claimIndexKey(record.contactId, record.eventId);
+  const priorHash = await kv.get(indexKey);
+  if (priorHash) {
+    await kv.delete(claimKvKey(priorHash));
+  }
+
   const token = newClaimToken();
   const hash = await hashClaimToken(token);
   await kv.put(claimKvKey(hash), JSON.stringify(record), { expirationTtl: CLAIM_TTL_SECONDS });
+  await kv.put(indexKey, hash, { expirationTtl: CLAIM_TTL_SECONDS });
   return token;
 }
 
@@ -67,12 +89,33 @@ export async function readClaimToken(kv: KVStore, token: string): Promise<ClaimR
   return JSON.parse(raw) as ClaimRecord;
 }
 
-/** Reads and deletes the claim record (used on successful POST). */
+/** Reads and deletes the claim record (used on successful POST). DEC-949:
+ * also deletes the (contactId, eventId) index when it still points at the
+ * hash being consumed, so a stale index never resurrects a dead grant. */
 export async function consumeClaimToken(kv: KVStore, token: string): Promise<ClaimRecord | null> {
   const hash = await hashClaimToken(token);
   const key = claimKvKey(hash);
   const raw = await kv.get(key);
   if (!raw) return null;
+  const record = JSON.parse(raw) as ClaimRecord;
   await kv.delete(key);
-  return JSON.parse(raw) as ClaimRecord;
+  const indexKey = claimIndexKey(record.contactId, record.eventId);
+  const indexedHash = await kv.get(indexKey);
+  if (indexedHash === hash) {
+    await kv.delete(indexKey);
+  }
+  return record;
+}
+
+// DEC-949: the base64url token charset newClaimToken emits (RFC 4648 §5,
+// unpadded), long enough (16+) to avoid matching short incidental path
+// segments elsewhere in a message body.
+const CLAIM_URL_RE = /\/claim\/[A-Za-z0-9_-]{16,}/g;
+
+/** Rewrites every `/claim/<token>` URL in `text` to `/claim/<redacted>`,
+ * leaving every other byte identical. DEC-949: applied to the organizer-
+ * readable send-detail (and history list, if it ever grows bodies) so a
+ * credential never sits disclosed in an audit view. Pure — no KV access. */
+export function redactClaimUrls(text: string): string {
+  return text.replace(CLAIM_URL_RE, "/claim/<redacted>");
 }

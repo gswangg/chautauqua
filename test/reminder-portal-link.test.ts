@@ -174,7 +174,9 @@ describe("DEC-559: J6 reminder body carries the portal link via the shared resol
     expect(previewKv.putCount).toBe(0);
 
     await remindNow(sendDb, mailer, "event_1", undefined, NOW, sendKv, ORIGIN);
-    expect(sendKv.putCount).toBe(1);
+    // DEC-949: createClaimToken now also writes the single-active-grant
+    // index alongside the record — 2 puts for the one minted token.
+    expect(sendKv.putCount).toBe(2);
 
     const draft = preview.drafts[0];
     expect(draft).toBeDefined();

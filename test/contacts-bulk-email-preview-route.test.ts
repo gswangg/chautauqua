@@ -168,7 +168,12 @@ describe("POST /contacts/bulk-email/preview (CRM-11, DEC-150)", () => {
 // DEC-397: preview never mints credentials — verify against a fake KV that
 // records every put() call.
 describe("POST /contacts/bulk-email/preview vs /contacts/bulk-email — claim-token minting (DEC-397)", () => {
-  function postJsonWithKv(app: Hono<AppEnv>, path: string, body: unknown, kv: { put: (...a: unknown[]) => unknown }) {
+  function postJsonWithKv(
+    app: Hono<AppEnv>,
+    path: string,
+    body: unknown,
+    kv: { put: (...a: unknown[]) => unknown; get?: (...a: unknown[]) => unknown; delete?: (...a: unknown[]) => unknown },
+  ) {
     return app.request(
       path,
       {
@@ -203,7 +208,9 @@ describe("POST /contacts/bulk-email/preview vs /contacts/bulk-email — claim-to
   it("send mints one claim token per userless recipient", async () => {
     const app = buildApp();
     const puts: unknown[] = [];
-    const fakeKv = { put: (...args: unknown[]) => puts.push(args) };
+    // DEC-949: createClaimToken now also reads/writes a single-active-grant
+    // index (get returns null — no prior grant — and delete is a no-op).
+    const fakeKv = { put: (...args: unknown[]) => puts.push(args), get: () => null, delete: () => {} };
 
     const res = await postJsonWithKv(app, "/contacts/bulk-email", {
       contactIds: ["ct_1", "ct_2"],
@@ -214,7 +221,8 @@ describe("POST /contacts/bulk-email/preview vs /contacts/bulk-email — claim-to
 
     expect(res.status).toBe(200);
     // findAccountUserId mock always returns null, so both recipients are
-    // userless and each mints exactly one claim token.
-    expect(puts).toHaveLength(2);
+    // userless and each mints exactly one claim token — DEC-949 adds one
+    // extra put (the index key) per token, so 2 puts each = 4 total.
+    expect(puts).toHaveLength(4);
   });
 });

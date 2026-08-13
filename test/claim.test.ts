@@ -6,6 +6,8 @@ import {
   consumeClaimToken,
   hashClaimToken,
   claimKvKey,
+  claimIndexKey,
+  redactClaimUrls,
 } from "../src/auth/claim";
 import type { KVStore } from "../src/auth/claim";
 import { authRoutes } from "../src/routes/auth";
@@ -75,6 +77,84 @@ describe("claim token flow", () => {
     const a = await createClaimToken(kv, { contactId: "c1", eventId: "e1" });
     const b = await createClaimToken(kv, { contactId: "c2", eventId: "e1" });
     expect(a).not.toBe(b);
+  });
+});
+
+// DEC-949: a grant is SINGLE-ACTIVE per (contactId, eventId) — minting a
+// second token for the same pair revokes the first.
+describe("single-active claim grant (DEC-949)", () => {
+  it("minting a second grant for the same (contactId, eventId) makes the first token unreadable and unconsumable while the second works", async () => {
+    const kv = new InMemoryKV();
+    const first = await createClaimToken(kv, { contactId: "c1", eventId: "e1" });
+    const second = await createClaimToken(kv, { contactId: "c1", eventId: "e1" });
+
+    expect(second).not.toBe(first);
+    await expect(readClaimToken(kv, first)).resolves.toBeNull();
+    await expect(consumeClaimToken(kv, first)).resolves.toBeNull();
+    await expect(readClaimToken(kv, second)).resolves.toEqual({ contactId: "c1", eventId: "e1" });
+  });
+
+  it("a grant for a different event is untouched", async () => {
+    const kv = new InMemoryKV();
+    const forEventA = await createClaimToken(kv, { contactId: "c1", eventId: "e1" });
+    await createClaimToken(kv, { contactId: "c1", eventId: "e2" });
+
+    await expect(readClaimToken(kv, forEventA)).resolves.toEqual({ contactId: "c1", eventId: "e1" });
+  });
+
+  it("a grant for a different contact is untouched", async () => {
+    const kv = new InMemoryKV();
+    const forC1 = await createClaimToken(kv, { contactId: "c1", eventId: "e1" });
+    await createClaimToken(kv, { contactId: "c2", eventId: "e1" });
+
+    await expect(readClaimToken(kv, forC1)).resolves.toEqual({ contactId: "c1", eventId: "e1" });
+  });
+
+  it("consuming deletes both the record key and the index key", async () => {
+    const kv = new InMemoryKV();
+    const token = await createClaimToken(kv, { contactId: "c1", eventId: "e1" });
+    const hash = await hashClaimToken(token);
+
+    expect(kv.has(claimKvKey(hash))).toBe(true);
+    expect(kv.has(claimIndexKey("c1", "e1"))).toBe(true);
+
+    await consumeClaimToken(kv, token);
+
+    expect(kv.has(claimKvKey(hash))).toBe(false);
+    expect(kv.has(claimIndexKey("c1", "e1"))).toBe(false);
+  });
+
+  it("consuming a stale (already-revoked) token does not delete the newer grant's index", async () => {
+    const kv = new InMemoryKV();
+    const first = await createClaimToken(kv, { contactId: "c1", eventId: "e1" });
+    const second = await createClaimToken(kv, { contactId: "c1", eventId: "e1" });
+
+    // The first token's record is already gone (revoked), so this is a
+    // no-op — but it must not disturb the index now pointing at `second`.
+    await expect(consumeClaimToken(kv, first)).resolves.toBeNull();
+    await expect(readClaimToken(kv, second)).resolves.toEqual({ contactId: "c1", eventId: "e1" });
+  });
+});
+
+// DEC-949: the organizer-facing disclosure REDACTS every /claim/<token> URL.
+describe("redactClaimUrls (DEC-949)", () => {
+  it("leaves non-claim text byte-identical", () => {
+    const text = "Hi Ada, welcome to DevCon! See you at /agenda and /portal.";
+    expect(redactClaimUrls(text)).toBe(text);
+  });
+
+  it("kills a real token", async () => {
+    const kv = new InMemoryKV();
+    const token = await createClaimToken(kv, { contactId: "c1", eventId: "e1" });
+    const text = `Set your password: https://example.com/claim/${token}`;
+    const redacted = redactClaimUrls(text);
+    expect(redacted).not.toContain(token);
+    expect(redacted).toBe("Set your password: https://example.com/claim/<redacted>");
+  });
+
+  it("redacts multiple occurrences", () => {
+    const text = "Link one: /claim/abcdefghijklmnopqrstuvwxyz and again /claim/ABCDEFGHIJKLMNOP12345";
+    expect(redactClaimUrls(text)).toBe("Link one: /claim/<redacted> and again /claim/<redacted>");
   });
 });
 
