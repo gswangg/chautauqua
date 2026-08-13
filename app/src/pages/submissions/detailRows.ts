@@ -32,41 +32,53 @@ export function resolveAnswerFields(form: CfpFormLike | null, formId: string | n
 }
 
 /**
- * Build labeled rows for a submission's dynamic answers, sorted by the
- * matching field's position (author-defined order); answers with no
- * matching field (fall back to the raw key) sort after all matched ones,
- * in raw key order.
+ * Build labeled rows for a submission's dynamic answers.
  *
- * DEC-908: two exclusions before display. (1) An answer whose fieldId
- * resolves to a locked built-in field (title/description/first name/last
- * name/email/...) is skipped -- locked fields already have their own
- * dedicated SubmissionDetail columns (DEC-016) and must never double-render
- * as a Form Answers row, even if a stray one somehow lands in `answers`.
- * The check goes through the SAME lockedFieldName helper the builder uses,
- * never a second hand-written list. (2) An answer whose formatted value is
- * empty/whitespace-only is skipped -- an unanswered optional field is not a
- * fact worth a row.
+ * DEC-908 (amended): FORM ANSWERS enumerates `fields`, not `answers` --
+ * every non-locked form field gets a row, in the form's author-defined
+ * position order, whether or not the submitter answered it. A field with
+ * no stored answer (or an empty/whitespace-only one) renders with an em
+ * dash rather than vanishing, so an unanswered optional question (e.g.
+ * "Accessibility needs") still reads as a real, unanswered question. Locked
+ * built-in fields (title/description/first name/last name/email/...) are
+ * skipped -- they already have their own dedicated SubmissionDetail columns
+ * (DEC-016) and must never double-render as a Form Answers row. The check
+ * goes through the SAME lockedFieldName helper the builder uses, never a
+ * second hand-written list.
+ *
+ * After every form field has produced a row, any answer key that matches no
+ * field (a stray/orphaned answer -- e.g. from a field since deleted from the
+ * form) still gets a row, appended in raw key order, exactly as before.
  */
 export function buildAnswerRows(answers: Record<string, unknown>, fields: FormField[]): AnswerRow[] {
-  const fieldById = new Map(fields.map((f) => [f.id, f]));
+  const EM_DASH = '—';
+  const matchedFieldIds = new Set<string>();
 
-  return Object.entries(answers)
-    .filter(([fieldId]) => lockedFieldName(fieldId) === null)
-    .map(([fieldId, value]) => {
-      const field = fieldById.get(fieldId);
+  const fieldRows = fields
+    .filter((field) => lockedFieldName(field.id) === null)
+    .sort((a, b) => a.position - b.position)
+    .map((field) => {
+      matchedFieldIds.add(field.id);
+      const hasAnswer = Object.prototype.hasOwnProperty.call(answers, field.id);
+      const displayValue = hasAnswer ? formatAnswerValue(answers[field.id]) : '';
       return {
-        fieldId,
-        label: field?.label ?? fieldId,
-        displayValue: formatAnswerValue(value),
-        position: field?.position ?? Number.POSITIVE_INFINITY,
+        fieldId: field.id,
+        label: field.label,
+        displayValue: displayValue.trim() === '' ? EM_DASH : displayValue,
       };
-    })
+    });
+
+  const orphanRows = Object.entries(answers)
+    .filter(([fieldId]) => !matchedFieldIds.has(fieldId) && lockedFieldName(fieldId) === null)
+    .map(([fieldId, value]) => ({
+      fieldId,
+      label: fieldId,
+      displayValue: formatAnswerValue(value),
+    }))
     .filter((row) => row.displayValue.trim() !== '')
-    .sort((a, b) => {
-      if (a.position !== b.position) return a.position - b.position;
-      return a.fieldId.localeCompare(b.fieldId);
-    })
-    .map(({ fieldId, label, displayValue }) => ({ fieldId, label, displayValue }));
+    .sort((a, b) => a.fieldId.localeCompare(b.fieldId));
+
+  return [...fieldRows, ...orphanRows];
 }
 
 // DEC-828: the placement line itself lives in ./schedule.ts (formatSubmissionScheduleLine)

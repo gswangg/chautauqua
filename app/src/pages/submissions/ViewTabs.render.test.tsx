@@ -1,8 +1,8 @@
-// DEC-941: deleting a saved view is irreversible, so the tab's delete
-// control must open the shared ConfirmDialog and only DELETE after an
-// explicit confirm -- never on the first click.
+// DEC-941/w41-j: deleting a saved view is irreversible; the view tab row
+// itself no longer carries a delete (x) control (frame 00 has none) -- a
+// saved-view tab just names and applies its filter/column config.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { ViewTabs } from './ViewTabs';
 import { listEnvelope, mockApi } from '../../test-utils/mockApi';
@@ -38,10 +38,9 @@ afterEach(() => {
 });
 
 describe('ViewTabs (DEC-941)', () => {
-  it('gates saved-view delete behind a confirm dialog naming the view, and only DELETEs on confirm', async () => {
-    const fetchMock = mockApi({
+  it('renders a saved view tab with no delete (x) control', async () => {
+    mockApi({
       [`GET /api/v1/events/${EVENT_ID}/views`]: listEnvelope([savedView()]),
-      [`DELETE /api/v1/views/view-1`]: { status: 200, body: {} },
     });
 
     render(
@@ -55,27 +54,7 @@ describe('ViewTabs (DEC-941)', () => {
       />,
     );
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Delete AI track, unread' }));
-
-    const dialog = screen.getByRole('dialog');
-    expect(within(dialog).getByText('Delete this view?')).toBeInTheDocument();
-    expect(
-      within(dialog).getByText('Only the saved filter "AI track, unread" goes — no submissions are affected.'),
-    ).toBeInTheDocument();
-
-    expect(fetchMock.mock.calls.some(([, init]) => (init as RequestInit | undefined)?.method === 'DELETE')).toBe(
-      false,
-    );
-
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
-
-    await waitFor(() => {
-      expect(fetchMock.mock.calls.some(([, init]) => (init as RequestInit | undefined)?.method === 'DELETE')).toBe(
-        true,
-      );
-    });
-    await waitFor(() => {
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    });
+    expect(await screen.findByRole('button', { name: 'AI track, unread' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Delete AI track, unread' })).not.toBeInTheDocument();
   });
 });

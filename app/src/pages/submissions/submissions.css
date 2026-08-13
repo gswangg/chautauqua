@@ -71,13 +71,23 @@
   margin-left: auto;
 }
 
+/* Filter controls sit at chip height (w41-j): matches the .chq-pill status
+   chips beside them (26px register) rather than the 44px/radius-4 default
+   .chq-input/.chq-select controls. The phone media block below still forces
+   44px minimums there for tap targets -- left untouched. */
 .chq-submissions-filterbar-search {
   min-width: 220px;
-  min-height: 44px;
+  min-height: 26px;
+  padding: 5px 12px;
+  border-radius: var(--chq-r-pill);
+  font-size: 12px;
 }
 
 .chq-submissions-filterbar-select {
-  min-height: 44px;
+  min-height: 26px;
+  padding: 5px 12px;
+  border-radius: var(--chq-r-pill);
+  font-size: 12px;
 }
 
 .chq-submissions-filterbar-divider {
@@ -312,15 +322,6 @@
   display: inline-flex;
   align-items: center;
   gap: 2px;
-}
-
-.chq-submissions-viewtabs-delete {
-  background: none;
-  border: none;
-  color: var(--chq-muted);
-  cursor: pointer;
-  padding: 4px;
-  font-size: 13px;
 }
 
 .chq-submissions-viewtabs-save {

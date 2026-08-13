@@ -267,14 +267,6 @@ export function ViewTabs({ eventId, filters, visibleFieldIds, tracks, formFields
             {view.name}
           </button>
           {!view.shared && <span className="chq-submissions-viewtabs-private">Only you</span>}
-          <button
-            type="button"
-            className="chq-submissions-viewtabs-delete"
-            aria-label={`Delete ${view.name}`}
-            onClick={() => setPendingDelete(view)}
-          >
-            &times;
-          </button>
         </span>
       ))}
       <button
