@@ -235,6 +235,48 @@ export function registerCrudRoutes(contactsRoutes: Hono<AppEnv>): void {
     return c.json(serializeContact(updated));
   });
 
+  // DEC-758: delete refuses honestly — a contact with any dependent row
+  // (participant, task assignment, pipeline entry, or linked user account)
+  // 409s naming the counts; merge is the answer for a contact with history.
+  // requireOrganizer + csrfJson are already applied at the /contacts/*
+  // router level (see index.ts); org scoping is requireOwnedContact's
+  // existence-hiding 404 for a cross-org id.
+  contactsRoutes.delete("/contacts/:id", csrfJson, async (c) => {
+    const orgId = currentOrgId(c);
+    const contact = await requireOwnedContact(c.var.db, c.req.param("id"), orgId);
+
+    const counts = await repo.countContactReferences(c.var.db, contact.id);
+    const parts: string[] = [];
+    const fields: Record<string, string> = {};
+    if (counts.participants > 0) {
+      parts.push(`${counts.participants} submission${counts.participants === 1 ? "" : "s"}`);
+      fields.participants = String(counts.participants);
+    }
+    if (counts.taskAssignments > 0) {
+      parts.push(`${counts.taskAssignments} task${counts.taskAssignments === 1 ? "" : "s"}`);
+      fields.taskAssignments = String(counts.taskAssignments);
+    }
+    if (counts.pipelineEntries > 0) {
+      parts.push(`${counts.pipelineEntries} pipeline entr${counts.pipelineEntries === 1 ? "y" : "ies"}`);
+      fields.pipelineEntries = String(counts.pipelineEntries);
+    }
+    if (counts.userAccounts > 0) {
+      parts.push(`${counts.userAccounts} user account${counts.userAccounts === 1 ? "" : "s"}`);
+      fields.userAccounts = String(counts.userAccounts);
+    }
+    if (parts.length > 0) {
+      const list = parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`;
+      throw new ApiError(
+        "conflict",
+        `This contact is on ${list}. Merge it into another record instead of deleting it.`,
+        fields,
+      );
+    }
+
+    await repo.deleteContact(c.var.db, contact.id);
+    return c.body(null, 204);
+  });
+
   // -------------------------------------------------------------------------
   // Headshot upload (CNT-10, DEC-152: organizer-side mirror of the portal
   // headshot route src/routes/portal/profile.tsx — same validation limits,
