@@ -716,3 +716,8 @@ AND audit noStoreByDefault + any other header-stamping middleware for the same t
     (Submit-a-talk + Browse-sessions links) and the event-named subheading. Password:
     build the phone fixed two-button footer (Change it + Cancel); placeholder "At
     least 12 characters" AND raise minlength 8→12 to match (real validation gap).
+
+58. r3-Home: all six item-31 fixes VERIFIED (desktop hub now FAITHFUL; date branches
+    unit-tested). One remaining line: phone footer — add the ≤700px rule that drops
+    the descriptor clause from .chq-home-footer-text so "Running on Chautauqua" +
+    "API docs" share one row per the phone mock. Then Home is closed.
