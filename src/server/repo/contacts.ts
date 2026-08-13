@@ -61,7 +61,12 @@ export {
   type ImportPlanOverwrite,
 } from "./contacts/import";
 
-export { findDuplicateGroupsForOrg, mergeContacts, type DuplicateGroup } from "./contacts/merge";
+export {
+  findDuplicateGroupsForOrg,
+  mergeContacts,
+  dismissDuplicatePair,
+  type DuplicateGroup,
+} from "./contacts/merge";
 
 export { getContactStats, type ContactStats } from "./contacts/stats";
 

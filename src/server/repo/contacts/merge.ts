@@ -12,9 +12,56 @@ import { ApiError } from "../../http";
 import { findContactById } from "./crud";
 import { toContactRecord, type ContactRow, MAX_CONTACT_DIRECTORY_SCAN } from "./rows";
 import { buildMergeRepointOps, mergedPipelineStage, type PipelineStageLike } from "./query";
-import { DEC_479 } from "../../../decisions";
+import { newId } from "../../../domain/ids";
+import { DEC_479, DEC_770 } from "../../../decisions";
 
 void DEC_479;
+void DEC_770;
+
+/** DEC-770: dismissal pairs are always keyed by (org, min(id), max(id)) so
+ * the caller's argument order never matters and the unique index below is
+ * the single idempotency contract. */
+function orderedPair(idA: string, idB: string): [string, string] {
+  return idA < idB ? [idA, idB] : [idB, idA];
+}
+
+/** DEC-770: persists a 'Not a duplicate' / 'Keep both' dismissal for a pair
+ * of contacts. Idempotent -- onConflictDoNothing against the
+ * (org_id, contact_id_a, contact_id_b) unique index, so a repeat dismissal
+ * of the same pair is a no-op, never a 500. Both ids must already be
+ * verified org-scoped by the caller. */
+export async function dismissDuplicatePair(db: Db, orgId: string, idA: string, idB: string): Promise<void> {
+  const [contactIdA, contactIdB] = orderedPair(idA, idB);
+  await db
+    .insert(schema.contactDuplicateDismissal)
+    .values({
+      id: newId(),
+      orgId,
+      contactIdA,
+      contactIdB,
+      createdAt: new Date(),
+    })
+    .onConflictDoNothing({
+      target: [
+        schema.contactDuplicateDismissal.orgId,
+        schema.contactDuplicateDismissal.contactIdA,
+        schema.contactDuplicateDismissal.contactIdB,
+      ],
+    });
+}
+
+/** DEC-770: the set of dismissed pairs for an org, as "idA,idB" keys (idA <
+ * idB) for O(1) membership checks against a group's own sorted pair. */
+async function loadDismissedPairKeys(db: Db, orgId: string): Promise<Set<string>> {
+  const rows = await db
+    .select({
+      contactIdA: schema.contactDuplicateDismissal.contactIdA,
+      contactIdB: schema.contactDuplicateDismissal.contactIdB,
+    })
+    .from(schema.contactDuplicateDismissal)
+    .where(eq(schema.contactDuplicateDismissal.orgId, orgId));
+  return new Set(rows.map((r) => `${r.contactIdA},${r.contactIdB}`));
+}
 
 export interface DuplicateGroup {
   contactIds: string[];
@@ -67,7 +114,18 @@ export async function findDuplicateGroupsForOrg(db: Db, orgId: string): Promise<
     lastName: r.lastName,
     ...(r.company ? { company: r.company } : {}),
   }));
-  const groups = findDuplicateGroups(records);
+  const allGroups = findDuplicateGroups(records);
+  // DEC-770: a dismissed pair never appears in the list OR the total --
+  // filtered here, server-side, before pagination/total ever see it, so the
+  // count and the list can never drift. Only 2-contact groups are pairs; a
+  // 3+ contact email-bucket group has no single pair to dismiss against, so
+  // it is left alone (dismissDuplicatePair/the wire contract is pairwise).
+  const dismissedPairKeys = await loadDismissedPairKeys(db, orgId);
+  const groups = allGroups.filter((ids) => {
+    if (ids.length !== 2) return true;
+    const [a, b] = orderedPair(ids[0]!, ids[1]!);
+    return !dismissedPairKeys.has(`${a},${b}`);
+  });
   const byId = new Map(rows.map((r) => [r.id, r]));
   const out = groups.map((ids) => ({
     contactIds: ids,

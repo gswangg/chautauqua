@@ -86,9 +86,10 @@ describe('DuplicatesView render (DEC-684: merge moved to its own page)', () => {
     expect(screen.getByText('Contacts merged.')).toBeInTheDocument();
   });
 
-  it('DEC-734: a pair counter tracks the visible groups, and "Keep both" dismisses a pair from the list without merging', async () => {
-    mockApi({
+  it('DEC-734/DEC-770: a pair counter tracks the visible groups, and "Keep both" dismisses a pair from the list without merging, POSTing the dismissal', async () => {
+    const fetchMock = mockApi({
       'GET /api/v1/contacts/duplicates': listEnvelope([GROUP, SECOND_GROUP]),
+      'POST /api/v1/contacts/duplicates/dismiss': { ok: true },
     });
 
     render(
@@ -108,6 +109,15 @@ describe('DuplicatesView render (DEC-684: merge moved to its own page)', () => {
     expect(screen.getByText(/Possible duplicates/).closest('h2')).toHaveTextContent('· 1');
     expect(screen.queryByText(/Jane Doe/)).not.toBeInTheDocument();
     expect(screen.getByText(/Sam Ng/)).toBeInTheDocument();
+
+    await waitFor(() => {
+      const dismissCall = fetchMock.mock.calls.find(([input]) =>
+        (typeof input === 'string' ? input : input.toString()).endsWith('/contacts/duplicates/dismiss'),
+      );
+      expect(dismissCall).toBeDefined();
+      const body = JSON.parse((dismissCall![1] as RequestInit).body as string);
+      expect(body).toEqual({ contactIds: ['ct-keep', 'ct-merge'] });
+    });
   });
 
   it('DEC-734: reads a one-shot initialDismissPairIds (from MergePage\'s "Not a duplicate" footer) and drops that pair on mount', async () => {

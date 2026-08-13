@@ -793,3 +793,25 @@ export const emailLog = sqliteTable(
     email_log_batch_id_idx: index("email_log_batch_id_idx").on(t.batchId),
   }),
 );
+
+// DEC-770: persisted "Not a duplicate" / "Keep both" dismissals for the CRM
+// duplicates list (w1-g). contactIdA/contactIdB are always stored in
+// ascending id order by the repo layer (dismissDuplicatePair), so the
+// unique index below is the single idempotency contract -- a repeat dismiss
+// of the same pair is a no-op, not a second row.
+export const contactDuplicateDismissal = sqliteTable(
+  "contact_duplicate_dismissal",
+  {
+    id: id(),
+    orgId: text("org_id").notNull(),
+    contactIdA: text("contact_id_a").notNull(),
+    contactIdB: text("contact_id_b").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => ({
+    contact_duplicate_dismissal_org_id_idx: index("contact_duplicate_dismissal_org_id_idx").on(t.orgId),
+    contact_duplicate_dismissal_org_id_contact_id_a_contact_id_b_idx: uniqueIndex(
+      "contact_duplicate_dismissal_org_id_contact_id_a_contact_id_b_idx",
+    ).on(t.orgId, t.contactIdA, t.contactIdB),
+  }),
+);
