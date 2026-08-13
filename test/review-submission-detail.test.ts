@@ -234,6 +234,8 @@ async function buildApp(auth: AuthInfo) {
   return app;
 }
 
+const { hasRecusal } = await import("../src/server/repo/review");
+
 describe("GET /api/v1/review/submissions/:id (DEC-561 contract)", () => {
   it("speakers carry name/company/title and never an email key anywhere in the body", async () => {
     evaluationStore = new Map();
@@ -295,5 +297,35 @@ describe("GET /api/v1/review/submissions/:id (DEC-561 contract)", () => {
     expect("speakerAnswers" in body).toBe(false);
     expect((body.sessionAnswers as unknown[]).length).toBeGreaterThan(0);
     expect(body.myEvaluation).toEqual({ scores: { c1: 5 }, comment: null });
+  });
+
+  // DEC-984: a recusal must survive a reload -- the detail carries the
+  // caller's own recusal (never another reviewer's) so the SPA can render
+  // the recused branch on first paint, not only after a client-side POST.
+  it("carries myRecusal when this reviewer has recused themselves", async () => {
+    evaluationStore = new Map();
+    vi.mocked(hasRecusal).mockResolvedValueOnce({
+      id: "rec-1",
+      planId: planRecord.id,
+      submissionId: "sub-1",
+      userId: "u1",
+      reason: "Co-author on this submission",
+      createdAt: 1700000000000,
+    });
+    const app = await buildApp({ userId: "u1", role: "organizer", orgId: ORG_A });
+    const res = await app.request(`/api/v1/review/submissions/sub-1?planId=${planRecord.id}`);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { myRecusal?: { reason: string | null; createdAt: number } };
+    expect(body.myRecusal).toEqual({ reason: "Co-author on this submission", createdAt: 1700000000000 });
+    // userId is never echoed on this endpoint -- only reason/createdAt.
+    expect(JSON.stringify(body.myRecusal)).not.toContain("u1");
+  });
+
+  it("omits myRecusal when this reviewer has not recused", async () => {
+    evaluationStore = new Map();
+    const app = await buildApp({ userId: "u1", role: "organizer", orgId: ORG_A });
+    const res = await app.request(`/api/v1/review/submissions/sub-1?planId=${planRecord.id}`);
+    const body = (await res.json()) as Record<string, unknown>;
+    expect("myRecusal" in body).toBe(false);
   });
 });

@@ -94,6 +94,16 @@ export function Scorecard() {
         }
         setScores(initialScores);
         setComment(subRes?.myEvaluation?.comment ?? '');
+        // DEC-984: a recusal must survive a reload -- initialise straight off
+        // the fetched detail, not only after a client-side POST. `userId` is
+        // never rendered from this record (only `!!recusal`/`.reason`), so a
+        // placeholder is safe; the wire's myRecusal deliberately omits it
+        // (it's implicitly "me").
+        setRecusal(
+          subRes?.myRecusal
+            ? { planId: planId, submissionId: submissionId, userId: '', reason: subRes.myRecusal.reason, createdAt: subRes.myRecusal.createdAt }
+            : null,
+        );
         const firstRating = criteria.find((c) => c.kind === 'rating');
         setFocusedId(firstRating?.id ?? criteria[0]?.id ?? null);
       })
