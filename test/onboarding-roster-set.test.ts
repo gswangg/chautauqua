@@ -1,12 +1,15 @@
-// DEC-754: the onboarding roster and the accepted-speaker set an action
-// (createTask/assignToAllAccepted) expands over must be ONE predicate.
-// This runs the real getOnboardingGrid/listAcceptedContactIds against a
-// real (in-memory) SQLite engine via node:sqlite + drizzle-orm's
-// sqlite-proxy driver — no fakeDb row-queue stand-in — so the correlated
-// EXISTS in acceptedSpeakerExistsForContact (crud.ts) is actually
-// evaluated, not merely asserted as SQL text. Enumeration, never sampling:
-// every seeded contact is checked against both the grid's rows and
-// listAcceptedContactIds, in both directions.
+// DEC-754/DEC-829: the onboarding roster the grid LISTS is now a WIDER set
+// (rosterParticipantConditions -- any invite status) than the set an action
+// (createTask/assignToAllAccepted, via listAcceptedContactIds) EXPANDS
+// over (acceptedSpeakerConditions -- active invite status only); the two
+// predicates must never drift from their own definitions. This runs the
+// real getOnboardingGrid/listAcceptedContactIds against a real (in-memory)
+// SQLite engine via node:sqlite + drizzle-orm's sqlite-proxy driver — no
+// fakeDb row-queue stand-in — so the correlated EXISTS predicates in
+// crud.ts are actually evaluated, not merely asserted as SQL text.
+// Enumeration, never sampling: every seeded contact/invite-status
+// combination is checked against both the grid's rows and
+// listAcceptedContactIds.
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { DatabaseSync } from "node:sqlite";
@@ -230,42 +233,49 @@ describe("onboarding roster == accepted-speaker set (DEC-754)", () => {
     expect(ids).not.toContain("c-stale-assignment");
   });
 
-  it("a declined-invite accepted-submission contact does NOT appear", async () => {
+  it("a declined-invite accepted-submission contact DOES appear (DEC-829), but is excluded from listAcceptedContactIds", async () => {
     insertTask(sqlite, "task-1", EVENT);
     insertContact(sqlite, "c-declined", "Rosa");
     insertSubmission(sqlite, "sub-declined", EVENT, "accepted");
     insertParticipant(sqlite, "sub-declined", "c-declined", "declined");
 
     const ids = await allGridContactIds();
-    expect(ids).not.toContain("c-declined");
+    expect(ids).toContain("c-declined");
+    expect(await listAcceptedContactIds(db, EVENT)).not.toContain("c-declined");
   });
 
-  it("grid roster across all pages == listAcceptedContactIds, and counts.speakers is its size", async () => {
+  it("grid roster (DEC-829) is a SUPERSET of listAcceptedContactIds -- 'invited'/'declined' participants are rows but not expansion targets", async () => {
     insertTask(sqlite, "task-1", EVENT);
 
-    // (i) accepted + active, no assignment -- should appear.
+    // (i) accepted + active, no assignment -- should appear in both.
     insertContact(sqlite, "c1", "Ada");
     insertSubmission(sqlite, "sub-1", EVENT, "accepted");
     insertParticipant(sqlite, "sub-1", "c1", "none");
 
-    // (ii) accepted + active, WITH an assignment -- should appear.
+    // (ii) accepted + active, WITH an assignment -- should appear in both.
     insertContact(sqlite, "c2", "Grace");
     insertSubmission(sqlite, "sub-2", EVENT, "accepted");
     insertParticipant(sqlite, "sub-2", "c2", "accepted");
     await createTaskAssignments(db, "task-1", ["c2"], NOW);
 
-    // (iii) accepted submission but invite declined -- must NOT appear.
+    // (iii) accepted submission but invite declined -- DEC-829: a grid row,
+    // but NOT an expansion target.
     insertContact(sqlite, "c3", "Rosa");
     insertSubmission(sqlite, "sub-3", EVENT, "accepted");
     insertParticipant(sqlite, "sub-3", "c3", "declined");
 
-    // (iv) pending (not accepted) submission -- must NOT appear.
+    // (iii-b) accepted submission, invited -- same as (iii) but 'invited'.
+    insertContact(sqlite, "c3b", "Marie");
+    insertSubmission(sqlite, "sub-3b", EVENT, "accepted");
+    insertParticipant(sqlite, "sub-3b", "c3b", "invited");
+
+    // (iv) pending (not accepted) submission -- must NOT appear in either.
     insertContact(sqlite, "c4", "Mae");
     insertSubmission(sqlite, "sub-4", EVENT, "pending");
     insertParticipant(sqlite, "sub-4", "c4", "none");
 
     // (v) has a task_assignment for this event's task but no participation
-    // at all -- must NOT appear (the P2 bug this task fixes).
+    // at all -- must NOT appear in either (the P2 bug DEC-754 fixed).
     insertContact(sqlite, "c5", "Katherine");
     sqlite
       .prepare(
@@ -276,9 +286,9 @@ describe("onboarding roster == accepted-speaker set (DEC-754)", () => {
     const gridIds = new Set(await allGridContactIds());
     const acceptedIds = new Set(await listAcceptedContactIds(db, EVENT));
 
-    expect(gridIds).toEqual(new Set(["c1", "c2"]));
+    expect(gridIds).toEqual(new Set(["c1", "c2", "c3", "c3b"]));
     expect(acceptedIds).toEqual(new Set(["c1", "c2"]));
-    expect(gridIds).toEqual(acceptedIds);
+    for (const id of acceptedIds) expect(gridIds).toContain(id);
 
     const grid = await getOnboardingGrid(db, EVENT, {
       page: 1,
@@ -289,8 +299,10 @@ describe("onboarding roster == accepted-speaker set (DEC-754)", () => {
       overdueOnly: false,
       now: NOW.getTime(),
     });
-    expect(grid.counts.speakers).toBe(acceptedIds.size);
-    expect(grid.counts.speakers).toBe(2);
+    // counts.speakers is the ROSTER's own predicate (DEC-829), not
+    // listAcceptedContactIds' narrower expansion-target set.
+    expect(grid.counts.speakers).toBe(gridIds.size);
+    expect(grid.counts.speakers).toBe(4);
   });
 });
 
@@ -335,7 +347,7 @@ describe("onboarding grid invite-status control + filter (DEC-789)", () => {
     expect(row!.contact.participantId.length).toBeGreaterThan(0);
   });
 
-  it("an inviteStatus filter narrows the roster to that status, on the SAME row query", async () => {
+  it("an inviteStatus filter narrows the roster to that status, on the SAME row query -- for all four statuses (DEC-829)", async () => {
     insertTask(sqlite, "task-1", EVENT);
 
     insertContact(sqlite, "c-accepted", "Ada");
@@ -345,6 +357,14 @@ describe("onboarding grid invite-status control + filter (DEC-789)", () => {
     insertContact(sqlite, "c-none", "Grace");
     insertSubmission(sqlite, "sub-none", EVENT, "accepted");
     insertParticipant(sqlite, "sub-none", "c-none", "none");
+
+    insertContact(sqlite, "c-invited", "Marie");
+    insertSubmission(sqlite, "sub-invited", EVENT, "accepted");
+    insertParticipant(sqlite, "sub-invited", "c-invited", "invited");
+
+    insertContact(sqlite, "c-declined", "Rosa");
+    insertSubmission(sqlite, "sub-declined", EVENT, "accepted");
+    insertParticipant(sqlite, "sub-declined", "c-declined", "declined");
 
     const acceptedOnly = await getOnboardingGrid(db, EVENT, {
       page: 1,
@@ -358,9 +378,21 @@ describe("onboarding grid invite-status control + filter (DEC-789)", () => {
     });
     expect(acceptedOnly.rows.map((r) => r.contact.id)).toEqual(["c-accepted"]);
 
-    // A filter value outside the roster's active-invite-status base
-    // condition (DEC-754: none/accepted only) correctly yields zero rows
-    // rather than silently matching the whole roster.
+    // DEC-829: 'invited' and 'declined' now LIST with their status rather
+    // than the filter silently matching the whole roster or yielding zero.
+    const invitedOnly = await getOnboardingGrid(db, EVENT, {
+      page: 1,
+      perPage: 50,
+      q: null,
+      taskId: null,
+      status: null,
+      overdueOnly: false,
+      inviteStatus: "invited",
+      now: NOW.getTime(),
+    });
+    expect(invitedOnly.rows.map((r) => r.contact.id)).toEqual(["c-invited"]);
+    expect(invitedOnly.rows[0]!.contact.inviteStatus).toBe("invited");
+
     const declinedOnly = await getOnboardingGrid(db, EVENT, {
       page: 1,
       perPage: 50,
@@ -371,7 +403,8 @@ describe("onboarding grid invite-status control + filter (DEC-789)", () => {
       inviteStatus: "declined",
       now: NOW.getTime(),
     });
-    expect(declinedOnly.rows).toEqual([]);
+    expect(declinedOnly.rows.map((r) => r.contact.id)).toEqual(["c-declined"]);
+    expect(declinedOnly.rows[0]!.contact.inviteStatus).toBe("declined");
 
     const unfiltered = await getOnboardingGrid(db, EVENT, {
       page: 1,
@@ -383,6 +416,11 @@ describe("onboarding grid invite-status control + filter (DEC-789)", () => {
       inviteStatus: null,
       now: NOW.getTime(),
     });
-    expect(unfiltered.rows.map((r) => r.contact.id).sort()).toEqual(["c-accepted", "c-none"]);
+    expect(unfiltered.rows.map((r) => r.contact.id).sort()).toEqual([
+      "c-accepted",
+      "c-declined",
+      "c-invited",
+      "c-none",
+    ]);
   });
 });
