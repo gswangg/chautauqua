@@ -525,13 +525,23 @@ export async function runDueReminders(env: Bindings): Promise<void> {
   const kv = env.KV as unknown as KVStore;
   const origin = resolveBaseUrlForCron(env);
   const eventIds = await listEventIdsWithOutstandingAssignments(db);
+  // DEC-946: per-event isolation stays (DEC-238 class 1) — one bad event
+  // must not cost the others their sends — but a swallowed failure here
+  // made src/server/scheduled.ts's aggregate-rethrow dead code, since this
+  // function could never reject. Collect the failing eventIds and rethrow
+  // ONE aggregate error after the loop so a mailer outage is reported.
+  const failedEventIds: string[] = [];
   for (const eventId of eventIds) {
-    // DEC-238 class 1 (cron): one event's failure (bad row, mailer outage,
-    // etc.) must not abort the tick for every other event.
     try {
       await sendDueRemindersForEvent(db, mailer, eventId, now, kv, origin);
     } catch (err) {
       console.error("due-reminder pass failed for event", eventId, err);
+      failedEventIds.push(eventId);
     }
+  }
+  if (failedEventIds.length > 0) {
+    throw new Error(
+      `runDueReminders: ${failedEventIds.length} event(s) failed: ${failedEventIds.join(", ")}`,
+    );
   }
 }

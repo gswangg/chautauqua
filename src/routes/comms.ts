@@ -14,7 +14,8 @@ import { getPlanById } from "../server/repo/review/plans";
 import type { KVStore } from "../auth/claim";
 import { resolvePortalLink } from "../server/repo/portal-link";
 import { textToHtml, blockFieldsInTemplate } from "../mail/render";
-import { buildIcsEvent, ICS_ORGANIZER_EMAIL } from "../mail/ics";
+import { buildIcsEvent } from "../mail/ics";
+import { resolveIcsOrganizerEmail } from "../server/context";
 import { zonedMinutesToUtc } from "../lib/timezone";
 import {
   buildMergeVars,
@@ -575,7 +576,7 @@ commsRoutes.post("/api/v1/events/:eventId/compose/send", requireOrganizer, csrfJ
           },
           {
             method: "REQUEST",
-            organizer: { name: event.name, email: ICS_ORGANIZER_EMAIL },
+            organizer: { name: event.name, email: resolveIcsOrganizerEmail(c.env) },
             attendee: { name: rendered.name, email: rendered.email },
           },
         ),
