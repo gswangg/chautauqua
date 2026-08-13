@@ -5,6 +5,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, waitFor, fireEvent, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import { CommsPage } from '../Comms';
 import { listEnvelope, mockApi } from '../../test-utils/mockApi';
 
@@ -22,6 +23,14 @@ function submission() {
     submittedAt: null,
     createdAt: 1700000000000,
   };
+}
+
+// Exposes the current router location.search as visible text, so tests can
+// assert on the URL search param without depending on jsdom's real
+// window.location (MemoryRouter keeps its own in-memory history stack).
+function LocationSearchProbe() {
+  const location = useLocation();
+  return <div data-testid="location-search">{location.search}</div>;
 }
 
 function template() {
@@ -63,7 +72,11 @@ describe('CommsPage render smoke', () => {
       },
     });
 
-    render(<CommsPage />);
+    render(
+      <MemoryRouter>
+        <CommsPage />
+      </MemoryRouter>,
+    );
 
     expect(await screen.findByRole('heading', { name: 'Comms' })).toBeInTheDocument();
     expect(await screen.findByText('A Talk About Testing')).toBeInTheDocument();
@@ -87,7 +100,11 @@ describe('CommsPage render smoke', () => {
       [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([template()]),
     });
 
-    render(<CommsPage />);
+    render(
+      <MemoryRouter>
+        <CommsPage />
+      </MemoryRouter>,
+    );
 
     fireEvent.click(await screen.findByRole('tab', { name: 'Templates' }));
 
@@ -122,7 +139,11 @@ describe('CommsPage render smoke', () => {
       })(),
     });
 
-    render(<CommsPage />);
+    render(
+      <MemoryRouter>
+        <CommsPage />
+      </MemoryRouter>,
+    );
 
     fireEvent.click(await screen.findByRole('tab', { name: 'History' }));
 
@@ -131,5 +152,101 @@ describe('CommsPage render smoke', () => {
     expect(within(batchButton).getByText('3 recipients')).toBeInTheDocument();
     expect(within(batchButton).getByText('3 sent')).toBeInTheDocument();
     expect(screen.getByText('1 total')).toBeInTheDocument();
+  });
+});
+
+// DEC-710: the Compose/Templates/History strip reads and writes ?tab= via
+// useSearchParams instead of component state, so the tab is bookmarkable and
+// participates in back/forward.
+describe('CommsPage tab strip is URL state (DEC-710)', () => {
+  it('mounts at /comms?tab=history directly on the history tab, with aria-selected set from the URL', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([]),
+      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
+      [`GET /api/v1/events/${EVENT_ID}/email-log`]: listEnvelope([]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/comms?tab=history']}>
+        <CommsPage />
+      </MemoryRouter>,
+    );
+
+    const historyTab = await screen.findByRole('tab', { name: 'History' });
+    expect(historyTab).toHaveAttribute('aria-selected', 'true');
+    const composeTab = screen.getByRole('tab', { name: 'Compose' });
+    expect(composeTab).toHaveAttribute('aria-selected', 'false');
+  });
+
+  it('falls back to compose when ?tab= is absent or unknown', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([]),
+      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/comms?tab=not-a-real-tab']}>
+        <CommsPage />
+      </MemoryRouter>,
+    );
+
+    const composeTab = await screen.findByRole('tab', { name: 'Compose' });
+    expect(composeTab).toHaveAttribute('aria-selected', 'true');
+    expect(await screen.findByText('1. Pick submissions')).toBeInTheDocument();
+  });
+
+  it('clicking a tab updates the ?tab= search param', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([]),
+      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([template()]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/comms']}>
+        <CommsPage />
+        <LocationSearchProbe />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(await screen.findByRole('tab', { name: 'Templates' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('tab', { name: 'Templates' })).toHaveAttribute('aria-selected', 'true');
+    });
+    expect(screen.getByTestId('location-search')).toHaveTextContent('?tab=templates');
+  });
+});
+
+describe('ComposeWizard compose-step field layout (DEC-710)', () => {
+  it('renders Subject and Body sharing the same field-row class, with no per-control width override', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([submission()]),
+      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([template()]),
+    });
+
+    render(
+      <MemoryRouter>
+        <CommsPage />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(await screen.findByLabelText('Select A Talk About Testing'));
+    fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
+
+    expect(await screen.findByText('2. Pick or edit a template')).toBeInTheDocument();
+
+    const subjectInput = screen.getByLabelText('Subject');
+    const bodyTextarea = screen.getByLabelText('Body');
+
+    const subjectRow = subjectInput.closest('.chq-form-row') as HTMLElement;
+    const bodyRow = bodyTextarea.closest('.chq-form-row') as HTMLElement;
+    expect(subjectRow).not.toBeNull();
+    expect(bodyRow).not.toBeNull();
+
+    // Same field-row skeleton for both -- no bespoke width class on either
+    // control (the shared .chq-form-row-control > .chq-input/.chq-textarea
+    // rule is what gives them the same full measure).
+    expect(subjectInput.className).toBe('chq-input');
+    expect(bodyTextarea.className).toBe('chq-textarea');
   });
 });
