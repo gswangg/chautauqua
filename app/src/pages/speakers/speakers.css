@@ -139,8 +139,10 @@
   cursor: pointer;
 }
 
+/* Ring is inset: DEC-383 bans any non-inset box-shadow under app/src, so the
+   DEC-730 hover ring is drawn inside the pill's edge rather than around it. */
 .chq-speakers-status:hover {
-  box-shadow: 0 0 0 2px var(--chq-border-strong);
+  box-shadow: inset 0 0 0 2px var(--chq-border-strong);
 }
 
 /* Complete: filled olive pill. */
