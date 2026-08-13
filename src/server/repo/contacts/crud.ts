@@ -5,7 +5,7 @@
 import { and, eq, inArray, or, sql } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
-import { newId } from "../../../domain/ids";
+import { newId, formatRef } from "../../../domain/ids";
 import { matchesSegment, tokenizeContactQuery, type ContactRecord, type SegmentRule } from "../../../domain/contacts";
 import { findSegmentForOrg } from "./segments";
 import { toRow, MAX_CONTACT_DIRECTORY_SCAN, type ContactRow } from "./rows";
@@ -154,39 +154,96 @@ export async function patchContact(db: Db, id: string, patch: ContactPatch): Pro
   return updated;
 }
 
-export interface ContactReferenceCounts {
-  participants: number;
-  taskAssignments: number;
-  pipelineEntries: number;
-  userAccounts: number;
+export interface ContactReferenceRows {
+  submissions: { id: string; ref: string; title: string; eventName: string }[];
+  tasks: { id: string; title: string; eventName: string }[];
+  pipelineEntries: { id: string; stage: string }[];
+  userAccounts: { id: string; email: string }[];
+  more: { submissions: number; tasks: number; pipelineEntries: number; userAccounts: number };
 }
 
-/** DEC-758: bounded one-query-per-table count of everything that would
- * dangle if this contact were deleted — the refusal at the route names
- * these counts in prose rather than deleting and orphaning history. */
-export async function countContactReferences(db: Db, contactId: string): Promise<ContactReferenceCounts> {
-  const [participants, taskAssignments, pipelineEntries, userAccounts] = await Promise.all([
-    db.select({ count: sql<number>`count(*)` }).from(schema.participant).where(eq(schema.participant.contactId, contactId)),
-    db
-      .select({ count: sql<number>`count(*)` })
-      .from(schema.taskAssignment)
-      .where(eq(schema.taskAssignment.contactId, contactId)),
-    db
-      .select({ count: sql<number>`count(*)` })
-      .from(schema.pipelineEntry)
-      .where(eq(schema.pipelineEntry.contactId, contactId)),
-    db.select({ count: sql<number>`count(*)` }).from(schema.user).where(eq(schema.user.contactId, contactId)),
-  ]);
+/** DEC-956: bounded one-query-per-class READ of the actual rows that would
+ * dangle if this contact were deleted, not just their counts — the refusal
+ * at the route names them so an organiser can act. Each query joins through
+ * to the owning event for display (participant->submission->event,
+ * task_assignment->task->event), orders by id for a deterministic slice,
+ * and caps at 6 rows via `count(*) over ()` (a window function computed
+ * over the full matching set BEFORE the LIMIT trims the output) so a single
+ * query yields both the first 5 rows to name and the exact remainder count
+ * — never a second query, never a query per row (DEC-078/DEC-418). */
+export async function listContactReferenceRows(db: Db, contactId: string): Promise<ContactReferenceRows> {
+  const submissionRows = await db
+    .select({
+      id: schema.submission.id,
+      seq: schema.submission.seq,
+      title: schema.submission.title,
+      eventName: schema.event.name,
+      recordPrefix: schema.event.recordPrefix,
+      total: sql<number>`count(*) over ()`,
+    })
+    .from(schema.participant)
+    .innerJoin(schema.submission, eq(schema.participant.submissionId, schema.submission.id))
+    .innerJoin(schema.event, eq(schema.submission.eventId, schema.event.id))
+    .where(eq(schema.participant.contactId, contactId))
+    .orderBy(schema.submission.id)
+    .limit(6);
+
+  const taskRows = await db
+    .select({
+      id: schema.task.id,
+      title: schema.task.title,
+      eventName: schema.event.name,
+      total: sql<number>`count(*) over ()`,
+    })
+    .from(schema.taskAssignment)
+    .innerJoin(schema.task, eq(schema.taskAssignment.taskId, schema.task.id))
+    .innerJoin(schema.event, eq(schema.task.eventId, schema.event.id))
+    .where(eq(schema.taskAssignment.contactId, contactId))
+    .orderBy(schema.task.id)
+    .limit(6);
+
+  const pipelineRows = await db
+    .select({
+      id: schema.pipelineEntry.id,
+      stage: schema.pipelineEntry.stage,
+      total: sql<number>`count(*) over ()`,
+    })
+    .from(schema.pipelineEntry)
+    .where(eq(schema.pipelineEntry.contactId, contactId))
+    .orderBy(schema.pipelineEntry.id)
+    .limit(6);
+
+  const userRows = await db
+    .select({
+      id: schema.user.id,
+      email: schema.user.email,
+      total: sql<number>`count(*) over ()`,
+    })
+    .from(schema.user)
+    .where(eq(schema.user.contactId, contactId))
+    .orderBy(schema.user.id)
+    .limit(6);
+
+  const remainder = (total: number | undefined) => Math.max(Number(total ?? 0) - 5, 0);
+
   return {
-    participants: Number(participants[0]?.count ?? 0),
-    taskAssignments: Number(taskAssignments[0]?.count ?? 0),
-    pipelineEntries: Number(pipelineEntries[0]?.count ?? 0),
-    userAccounts: Number(userAccounts[0]?.count ?? 0),
+    submissions: submissionRows
+      .slice(0, 5)
+      .map((r) => ({ id: r.id, ref: formatRef(r.recordPrefix, r.seq), title: r.title, eventName: r.eventName })),
+    tasks: taskRows.slice(0, 5).map((r) => ({ id: r.id, title: r.title, eventName: r.eventName })),
+    pipelineEntries: pipelineRows.slice(0, 5).map((r) => ({ id: r.id, stage: r.stage })),
+    userAccounts: userRows.slice(0, 5).map((r) => ({ id: r.id, email: r.email })),
+    more: {
+      submissions: remainder(submissionRows[0]?.total),
+      tasks: remainder(taskRows[0]?.total),
+      pipelineEntries: remainder(pipelineRows[0]?.total),
+      userAccounts: remainder(userRows[0]?.total),
+    },
   };
 }
 
-/** DEC-758: only reachable once countContactReferences is all-zero (checked
- * by the route) — the contact itself carries no separate segment-
+/** DEC-758: only reachable once listContactReferenceRows is all-empty
+ * (checked by the route) — the contact itself carries no separate segment-
  * membership/label rows (segments are rule-evaluated at query time over
  * customFieldsJson, DEC-149/DEC-336; labels are that same JSON column), so
  * deleting the contact row is the whole cascade. */

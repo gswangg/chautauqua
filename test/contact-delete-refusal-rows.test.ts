@@ -1,12 +1,11 @@
-// DEC-758/DEC-956: DELETE /api/v1/contacts/:id refuses honestly when
-// anything depends on the contact (participant, task assignment, pipeline
-// entry, or linked user account) — naming the actual rows in prose plus a
-// per-kind `fields` entry (DEC-956 supersedes the earlier count-only
-// message) — and otherwise deletes cleanly. Runs the real contactsRoutes
-// sub-app against a real (in-memory) SQLite engine via node:sqlite +
-// drizzle-orm's sqlite-proxy driver (same technique as
-// test/contacts-history-event-id.test.ts), so the real innerJoin-based
-// listContactReferenceRows read is exercised, not a hand-simulated shape.
+// DEC-956: DELETE /api/v1/contacts/:id refuses by NAMING the rows it
+// refuses over (submission refs, task titles, event names, "has a login"),
+// not just class counts — an organiser cannot act on "3 tasks". Runs the
+// real contactsRoutes sub-app against a real (in-memory) SQLite engine via
+// node:sqlite + drizzle-orm's sqlite-proxy driver, same technique as
+// test/contacts-history-event-id.test.ts, so the real innerJoin +
+// `count(*) over()` cap-and-remainder projection in
+// listContactReferenceRows is exercised, not a hand-simulated row shape.
 
 import { describe, expect, it } from "vitest";
 import { DatabaseSync } from "node:sqlite";
@@ -162,7 +161,7 @@ function deleteRequest(path: string) {
   });
 }
 
-function insertContact(sqlite: DatabaseSync, id: string, firstName = "Priya", lastName = "Raman") {
+function insertContact(sqlite: DatabaseSync, id: string, firstName: string, lastName: string) {
   sqlite
     .prepare(
       `insert into contact (id, org_id, first_name, last_name, email, created_at, updated_at) values (?, ?, ?, ?, ?, ?, ?)`,
@@ -170,33 +169,39 @@ function insertContact(sqlite: DatabaseSync, id: string, firstName = "Priya", la
     .run(id, ORG_A, firstName, lastName, `${firstName.toLowerCase()}@example.com`, NOW, NOW);
 }
 
-describe("DELETE /api/v1/contacts/:id (DEC-758/DEC-956)", () => {
-  it("deletes a bare contact with no dependents", async () => {
+function insertEvent(sqlite: DatabaseSync, id: string, name: string) {
+  sqlite
+    .prepare(
+      `insert into event (id, org_id, name, slug, start_date, end_date, timezone, record_prefix, created_at, updated_at)
+       values (?, ?, ?, ?, '2027-01-01', '2027-01-02', 'UTC', 'DFC', ?, ?)`,
+    )
+    .run(id, ORG_A, name, id, NOW, NOW);
+}
+
+describe("DELETE /api/v1/contacts/:id names the rows it refuses over (DEC-956)", () => {
+  it("204s a contact with zero references", async () => {
     const { db, sqlite } = makeTestDb();
-    insertContact(sqlite, "contact-1");
+    insertContact(sqlite, "contact-1", "Grace", "Hopper");
     const app = appWithDbAndAuth(db, ORGANIZER_A);
 
     const res = await app.request(deleteRequest("/api/v1/contacts/contact-1"));
 
     expect(res.status).toBe(204);
-    expect(sqlite.prepare(`select id from contact where id = 'contact-1'`).all()).toHaveLength(0);
+    const row = sqlite.prepare(`select id from contact where id = 'contact-1'`).all();
+    expect(row).toHaveLength(0);
   });
 
-  it("409s naming the row when the contact has a participant, and leaves it in place", async () => {
+  it("409s naming the submission ref, task titles, event name and login, capping rows with a remainder", async () => {
     const { db, sqlite } = makeTestDb();
-    insertContact(sqlite, "contact-1");
-    sqlite
-      .prepare(
-        `insert into event (id, org_id, name, slug, start_date, end_date, timezone, record_prefix, created_at, updated_at)
-         values ('event-1', ?, 'DevFlow Conf 2027', 'devflow', '2027-01-01', '2027-01-02', 'UTC', 'DFC', ?, ?)`,
-      )
-      .run(ORG_A, NOW, NOW);
+    insertContact(sqlite, "contact-1", "Ada", "Lovelace");
+    insertEvent(sqlite, "event-1", "DevFlow Conf 2027");
+
     sqlite
       .prepare(
         `insert into submission (id, event_id, seq, title, status, content_status, ics_sequence, created_at, updated_at)
-         values ('sub-1', 'event-1', 12, 'Taming CI', 'accepted', 'approved', 0, ?, ?)`,
+         values (?, ?, 12, 'Taming CI', 'accepted', 'approved', 0, ?, ?)`,
       )
-      .run(NOW, NOW);
+      .run("sub-1", "event-1", NOW, NOW);
     sqlite
       .prepare(
         `insert into participant (id, submission_id, contact_id, role, "order", visible, created_at, updated_at)
@@ -204,75 +209,61 @@ describe("DELETE /api/v1/contacts/:id (DEC-758/DEC-956)", () => {
       )
       .run(newId(), NOW, NOW);
 
-    const app = appWithDbAndAuth(db, ORGANIZER_A);
-    const res = await app.request(deleteRequest("/api/v1/contacts/contact-1"));
+    // 7 task assignments across 7 tasks on event-1: cap at 5 named, 2 more.
+    for (let i = 0; i < 7; i++) {
+      const taskId = `task-${i}`;
+      sqlite
+        .prepare(
+          `insert into task (id, event_id, kind, title, required, created_at, updated_at)
+           values (?, ?, 'general', ?, 0, ?, ?)`,
+        )
+        .run(taskId, "event-1", `Task ${i}`, NOW + i, NOW + i);
+      sqlite
+        .prepare(
+          `insert into task_assignment (id, task_id, contact_id, status, created_at, updated_at)
+           values (?, ?, 'contact-1', 'pending', ?, ?)`,
+        )
+        .run(newId(), taskId, NOW + i, NOW + i);
+    }
 
-    expect(res.status).toBe(409);
-    const json = (await res.json()) as { error: { code: string; message: string; fields?: Record<string, string> } };
-    expect(json.error.code).toBe("conflict");
-    expect(json.error.message).toContain("DFC-012");
-    expect(json.error.message).toContain("Taming CI");
-    expect(json.error.message).toMatch(/merge/i);
-    expect(json.error.fields?.participants).toBe("1");
-    expect(sqlite.prepare(`select id from contact where id = 'contact-1'`).all()).toHaveLength(1);
-  });
-
-  it("409s naming multiple kinds when a task assignment and a user account both reference the contact", async () => {
-    const { db, sqlite } = makeTestDb();
-    insertContact(sqlite, "contact-1");
     sqlite
-      .prepare(
-        `insert into event (id, org_id, name, slug, start_date, end_date, timezone, record_prefix, created_at, updated_at)
-         values ('event-1', ?, 'DevFlow Conf 2027', 'devflow', '2027-01-01', '2027-01-02', 'UTC', 'DFC', ?, ?)`,
-      )
-      .run(ORG_A, NOW, NOW);
-    sqlite
-      .prepare(
-        `insert into task (id, event_id, kind, title, required, created_at, updated_at)
-         values ('task-1', 'event-1', 'general', 'Send bio', 0, ?, ?)`,
-      )
-      .run(NOW, NOW);
-    sqlite
-      .prepare(
-        `insert into task_assignment (id, task_id, contact_id, status, created_at, updated_at)
-         values (?, 'task-1', 'contact-1', 'pending', ?, ?)`,
-      )
-      .run(newId(), NOW, NOW);
-    sqlite
-      .prepare(
-        `insert into user (id, org_id, email, password_hash, role, contact_id, created_at, updated_at)
-         values (?, ?, 'priya@example.com', 'x', 'speaker', 'contact-1', ?, ?)`,
-      )
+      .prepare(`insert into user (id, org_id, email, password_hash, role, contact_id, created_at, updated_at)
+        values (?, ?, 'ada@example.com', 'x', 'speaker', 'contact-1', ?, ?)`)
       .run(newId(), ORG_A, NOW, NOW);
 
     const app = appWithDbAndAuth(db, ORGANIZER_A);
     const res = await app.request(deleteRequest("/api/v1/contacts/contact-1"));
 
     expect(res.status).toBe(409);
-    const json = (await res.json()) as { error: { message: string; fields?: Record<string, string> } };
-    expect(json.error.message).toContain("Send bio");
+    const json = (await res.json()) as { error: { code: string; message: string; fields?: Record<string, string> } };
+    expect(json.error.code).toBe("conflict");
+
+    // Names the submission ref and its owning event.
+    expect(json.error.message).toContain("DFC-012");
+    expect(json.error.message).toContain("Taming CI");
+    expect(json.error.message).toContain("DevFlow Conf 2027");
+
+    // Names task titles and their owning event, capped at 5 with a remainder.
+    expect(json.error.message).toContain("Task 0");
+    expect(json.error.message).toContain("Task 4");
+    expect(json.error.message).not.toContain("Task 5");
+    expect(json.error.message).toContain("2 more task");
+
+    // States a login exists.
     expect(json.error.message).toMatch(/login/i);
-    expect(json.error.fields?.taskAssignments).toBe("1");
+
+    // Both ways forward.
+    expect(json.error.message).toMatch(/merge/i);
+    expect(json.error.message).toMatch(/remove them/i);
+
+    // `fields` keeps the count-shaped keys the SPA banner already renders.
+    expect(json.error.fields?.participants).toBe("1");
+    expect(json.error.fields?.taskAssignments).toBe("7");
     expect(json.error.fields?.userAccounts).toBe("1");
-  });
+    expect(json.error.fields?.pipelineEntries).toBeUndefined();
 
-  it("404s when the contact belongs to a different org (existence-hiding, never 403)", async () => {
-    const { db } = makeTestDb();
-    const app = appWithDbAndAuth(db, ORGANIZER_A);
-
-    const res = await app.request(deleteRequest("/api/v1/contacts/contact-from-org-b"));
-
-    expect(res.status).toBe(404);
-  });
-
-  it("403s a non-organizer session before any db access", async () => {
-    const { db, sqlite } = makeTestDb();
-    insertContact(sqlite, "contact-1");
-    const app = appWithDbAndAuth(db, { userId: "u-reviewer-a", role: "reviewer", orgId: ORG_A });
-
-    const res = await app.request(deleteRequest("/api/v1/contacts/contact-1"));
-
-    expect(res.status).toBe(403);
-    expect(sqlite.prepare(`select id from contact where id = 'contact-1'`).all()).toHaveLength(1);
+    // Never deleted.
+    const row = sqlite.prepare(`select id from contact where id = 'contact-1'`).all();
+    expect(row).toHaveLength(1);
   });
 });

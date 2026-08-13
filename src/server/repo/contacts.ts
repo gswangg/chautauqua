@@ -35,13 +35,13 @@ export {
   createContact,
   patchContact,
   listContactsForOrg,
-  countContactReferences,
+  listContactReferenceRows,
   countContactsForSegmentRules,
   deleteContact,
   type ContactInput,
   type ContactPatch,
   type ContactListResult,
-  type ContactReferenceCounts,
+  type ContactReferenceRows,
 } from "./contacts/crud";
 
 export {

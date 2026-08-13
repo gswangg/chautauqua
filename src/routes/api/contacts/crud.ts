@@ -285,42 +285,61 @@ export function registerCrudRoutes(contactsRoutes: Hono<AppEnv>): void {
     return c.json(serializeContact(updated));
   });
 
-  // DEC-758: delete refuses honestly — a contact with any dependent row
-  // (participant, task assignment, pipeline entry, or linked user account)
-  // 409s naming the counts; merge is the answer for a contact with history.
-  // requireOrganizer + csrfJson are already applied at the /contacts/*
-  // router level (see index.ts); org scoping is requireOwnedContact's
-  // existence-hiding 404 for a cross-org id.
+  // DEC-956 (supersedes the count-only 409 under DEC-758): delete refuses
+  // honestly and NAMES the rows — a class count like "3 tasks" is a dead
+  // end an organiser cannot act on. requireOrganizer + csrfJson are already
+  // applied at the /contacts/* router level (see index.ts); org scoping is
+  // requireOwnedContact's existence-hiding 404 for a cross-org id.
   contactsRoutes.delete("/contacts/:id", csrfJson, async (c) => {
     const orgId = currentOrgId(c);
     const contact = await requireOwnedContact(c.var.db, c.req.param("id"), orgId);
 
-    const counts = await repo.countContactReferences(c.var.db, contact.id);
+    const refs = await repo.listContactReferenceRows(c.var.db, contact.id);
     const parts: string[] = [];
     const fields: Record<string, string> = {};
-    if (counts.participants > 0) {
-      parts.push(`${counts.participants} submission${counts.participants === 1 ? "" : "s"}`);
-      fields.participants = String(counts.participants);
+
+    if (refs.submissions.length > 0) {
+      const total = refs.submissions.length + refs.more.submissions;
+      fields.participants = String(total);
+      const named = refs.submissions
+        .slice(0, 5)
+        .map((s) => `${contact.firstName} ${contact.lastName} is a speaker on ${s.ref} "${s.title}" (${s.eventName})`)
+        .join("; ");
+      const extra = refs.more.submissions > 0 ? ` and ${refs.more.submissions} more submission${refs.more.submissions === 1 ? "" : "s"}` : "";
+      parts.push(`${named}${extra}`);
     }
-    if (counts.taskAssignments > 0) {
-      parts.push(`${counts.taskAssignments} task${counts.taskAssignments === 1 ? "" : "s"}`);
-      fields.taskAssignments = String(counts.taskAssignments);
+    if (refs.tasks.length > 0) {
+      const total = refs.tasks.length + refs.more.tasks;
+      fields.taskAssignments = String(total);
+      const named = refs.tasks
+        .slice(0, 5)
+        .map((t) => `owes "${t.title}" on ${t.eventName}`)
+        .join("; ");
+      const extra = refs.more.tasks > 0 ? ` and ${refs.more.tasks} more task${refs.more.tasks === 1 ? "" : "s"}` : "";
+      parts.push(`${named}${extra}`);
     }
-    if (counts.pipelineEntries > 0) {
-      parts.push(`${counts.pipelineEntries} pipeline entr${counts.pipelineEntries === 1 ? "y" : "ies"}`);
-      fields.pipelineEntries = String(counts.pipelineEntries);
+    if (refs.pipelineEntries.length > 0) {
+      const total = refs.pipelineEntries.length + refs.more.pipelineEntries;
+      fields.pipelineEntries = String(total);
+      const named = refs.pipelineEntries
+        .slice(0, 5)
+        .map((p) => `is in the sourcing pipeline at stage "${p.stage}"`)
+        .join("; ");
+      const extra = refs.more.pipelineEntries > 0 ? ` and ${refs.more.pipelineEntries} more pipeline entr${refs.more.pipelineEntries === 1 ? "y" : "ies"}` : "";
+      parts.push(`${named}${extra}`);
     }
-    if (counts.userAccounts > 0) {
-      parts.push(`${counts.userAccounts} user account${counts.userAccounts === 1 ? "" : "s"}`);
-      fields.userAccounts = String(counts.userAccounts);
+    if (refs.userAccounts.length > 0) {
+      const total = refs.userAccounts.length + refs.more.userAccounts;
+      fields.userAccounts = String(total);
+      parts.push("has a login");
     }
+
     if (parts.length > 0) {
-      const list = parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`;
-      throw new ApiError(
-        "conflict",
-        `This contact is on ${list}. Merge it into another record instead of deleting it.`,
-        fields,
-      );
+      const message =
+        `${parts.join(", ")}. ` +
+        "To delete this contact, merge this record into the one you are keeping, " +
+        "or remove them from those sessions and tasks first.";
+      throw new ApiError("conflict", message, fields);
     }
 
     await repo.deleteContact(c.var.db, contact.id);
