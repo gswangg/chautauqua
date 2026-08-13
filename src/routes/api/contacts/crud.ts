@@ -29,8 +29,10 @@ import {
   DEC_765,
   DEC_810,
   DEC_894,
+  DEC_979,
 } from "../../../decisions";
 void DEC_894; // DEC-894: headshot dimension gate covers webp too — see below.
+void DEC_979;
 import {
   currentOrgId,
   asRecord,
@@ -285,10 +287,14 @@ export function registerCrudRoutes(contactsRoutes: Hono<AppEnv>): void {
     return c.json(serializeContact(updated));
   });
 
-  // DEC-956 (supersedes the count-only 409 under DEC-758): delete refuses
-  // honestly and NAMES the rows — a class count like "3 tasks" is a dead
-  // end an organiser cannot act on. requireOrganizer + csrfJson are already
-  // applied at the /contacts/* router level (see index.ts); org scoping is
+  // DEC-979 (supersedes DEC-956's tasks/pipelineEntries refusal classes):
+  // a task_assignment and a pipeline_entry are JOIN rows, not documents —
+  // deleteContact cascades them (chunked, set-based) rather than refusing,
+  // since the product has no way to remove either independently. The only
+  // refusal classes left are ones where something else would lose its
+  // meaning: a participant row (a submission would lose an author) and a
+  // login (a user account). requireOrganizer + csrfJson are already applied
+  // at the /contacts/* router level (see index.ts); org scoping is
   // requireOwnedContact's existence-hiding 404 for a cross-org id.
   contactsRoutes.delete("/contacts/:id", csrfJson, async (c) => {
     const orgId = currentOrgId(c);
@@ -308,26 +314,6 @@ export function registerCrudRoutes(contactsRoutes: Hono<AppEnv>): void {
       const extra = refs.more.submissions > 0 ? ` and ${refs.more.submissions} more submission${refs.more.submissions === 1 ? "" : "s"}` : "";
       parts.push(`${named}${extra}`);
     }
-    if (refs.tasks.length > 0) {
-      const total = refs.tasks.length + refs.more.tasks;
-      fields.taskAssignments = String(total);
-      const named = refs.tasks
-        .slice(0, 5)
-        .map((t) => `owes "${t.title}" on ${t.eventName}`)
-        .join("; ");
-      const extra = refs.more.tasks > 0 ? ` and ${refs.more.tasks} more task${refs.more.tasks === 1 ? "" : "s"}` : "";
-      parts.push(`${named}${extra}`);
-    }
-    if (refs.pipelineEntries.length > 0) {
-      const total = refs.pipelineEntries.length + refs.more.pipelineEntries;
-      fields.pipelineEntries = String(total);
-      const named = refs.pipelineEntries
-        .slice(0, 5)
-        .map((p) => `is in the sourcing pipeline at stage "${p.stage}"`)
-        .join("; ");
-      const extra = refs.more.pipelineEntries > 0 ? ` and ${refs.more.pipelineEntries} more pipeline entr${refs.more.pipelineEntries === 1 ? "y" : "ies"}` : "";
-      parts.push(`${named}${extra}`);
-    }
     if (refs.userAccounts.length > 0) {
       const total = refs.userAccounts.length + refs.more.userAccounts;
       fields.userAccounts = String(total);
@@ -338,7 +324,8 @@ export function registerCrudRoutes(contactsRoutes: Hono<AppEnv>): void {
       const message =
         `${parts.join(", ")}. ` +
         "To delete this contact, merge this record into the one you are keeping, " +
-        "or remove them from those sessions and tasks first.";
+        "or remove them from the named session(s) in the submission editor, " +
+        "or delete the login in Settings > People.";
       throw new ApiError("conflict", message, fields);
     }
 

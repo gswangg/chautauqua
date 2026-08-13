@@ -1,7 +1,10 @@
-// DEC-956: DELETE /api/v1/contacts/:id refuses by NAMING the rows it
-// refuses over (submission refs, task titles, event names, "has a login"),
-// not just class counts — an organiser cannot act on "3 tasks". Runs the
-// real contactsRoutes sub-app against a real (in-memory) SQLite engine via
+// DEC-956/DEC-979: DELETE /api/v1/contacts/:id refuses by NAMING the rows
+// it refuses over (submission refs, event names, "has a login"), not just
+// class counts — an organiser cannot act on "3 tasks". Per DEC-979, task
+// assignments and pipeline entries are no longer refusal classes at all
+// (they cascade-delete instead), so this file only covers the two classes
+// that remain: participant (submission) and userAccounts. Runs the real
+// contactsRoutes sub-app against a real (in-memory) SQLite engine via
 // node:sqlite + drizzle-orm's sqlite-proxy driver, same technique as
 // test/contacts-history-event-id.test.ts, so the real innerJoin +
 // `count(*) over()` cap-and-remainder projection in
@@ -191,40 +194,51 @@ describe("DELETE /api/v1/contacts/:id names the rows it refuses over (DEC-956)",
     expect(row).toHaveLength(0);
   });
 
-  it("409s naming the submission ref, task titles, event name and login, capping rows with a remainder", async () => {
+  it("409s naming submission refs, event names and login, capping rows with a remainder — and never names task/pipeline rows (DEC-979 cascades those)", async () => {
     const { db, sqlite } = makeTestDb();
     insertContact(sqlite, "contact-1", "Ada", "Lovelace");
     insertEvent(sqlite, "event-1", "DevFlow Conf 2027");
 
+    // 7 submissions on event-1 with contact-1 as a participant: cap at 5
+    // named, 2 more.
+    for (let i = 0; i < 7; i++) {
+      const subId = `sub-${i}`;
+      sqlite
+        .prepare(
+          `insert into submission (id, event_id, seq, title, status, content_status, ics_sequence, created_at, updated_at)
+           values (?, ?, ?, ?, 'accepted', 'approved', 0, ?, ?)`,
+        )
+        .run(subId, "event-1", 10 + i, `Talk ${i}`, NOW + i, NOW + i);
+      sqlite
+        .prepare(
+          `insert into participant (id, submission_id, contact_id, role, "order", visible, created_at, updated_at)
+           values (?, ?, 'contact-1', 'speaker', 0, 1, ?, ?)`,
+        )
+        .run(newId(), subId, NOW + i, NOW + i);
+    }
+
+    // A task assignment and a pipeline entry also reference contact-1 — per
+    // DEC-979 these are JOIN rows, not documents, so they must never appear
+    // in the refusal (they'd cascade-delete once the blocking refs above
+    // are resolved).
     sqlite
       .prepare(
-        `insert into submission (id, event_id, seq, title, status, content_status, ics_sequence, created_at, updated_at)
-         values (?, ?, 12, 'Taming CI', 'accepted', 'approved', 0, ?, ?)`,
+        `insert into task (id, event_id, kind, title, required, created_at, updated_at)
+         values ('task-0', 'event-1', 'general', 'Send bio', 0, ?, ?)`,
       )
-      .run("sub-1", "event-1", NOW, NOW);
+      .run(NOW, NOW);
     sqlite
       .prepare(
-        `insert into participant (id, submission_id, contact_id, role, "order", visible, created_at, updated_at)
-         values (?, 'sub-1', 'contact-1', 'speaker', 0, 1, ?, ?)`,
+        `insert into task_assignment (id, task_id, contact_id, status, created_at, updated_at)
+         values (?, 'task-0', 'contact-1', 'pending', ?, ?)`,
       )
       .run(newId(), NOW, NOW);
-
-    // 7 task assignments across 7 tasks on event-1: cap at 5 named, 2 more.
-    for (let i = 0; i < 7; i++) {
-      const taskId = `task-${i}`;
-      sqlite
-        .prepare(
-          `insert into task (id, event_id, kind, title, required, created_at, updated_at)
-           values (?, ?, 'general', ?, 0, ?, ?)`,
-        )
-        .run(taskId, "event-1", `Task ${i}`, NOW + i, NOW + i);
-      sqlite
-        .prepare(
-          `insert into task_assignment (id, task_id, contact_id, status, created_at, updated_at)
-           values (?, ?, 'contact-1', 'pending', ?, ?)`,
-        )
-        .run(newId(), taskId, NOW + i, NOW + i);
-    }
+    sqlite
+      .prepare(
+        `insert into pipeline_entry (id, org_id, contact_id, stage, created_at, updated_at)
+         values (?, ?, 'contact-1', 'identified', ?, ?)`,
+      )
+      .run(newId(), ORG_A, NOW, NOW);
 
     sqlite
       .prepare(`insert into user (id, org_id, email, password_hash, role, contact_id, created_at, updated_at)
@@ -238,28 +252,31 @@ describe("DELETE /api/v1/contacts/:id names the rows it refuses over (DEC-956)",
     const json = (await res.json()) as { error: { code: string; message: string; fields?: Record<string, string> } };
     expect(json.error.code).toBe("conflict");
 
-    // Names the submission ref and its owning event.
-    expect(json.error.message).toContain("DFC-012");
-    expect(json.error.message).toContain("Taming CI");
+    // Names submission refs and their owning event, capped at 5 with a
+    // remainder.
+    expect(json.error.message).toContain("Talk 0");
+    expect(json.error.message).toContain("Talk 4");
+    expect(json.error.message).not.toContain("Talk 5");
     expect(json.error.message).toContain("DevFlow Conf 2027");
-
-    // Names task titles and their owning event, capped at 5 with a remainder.
-    expect(json.error.message).toContain("Task 0");
-    expect(json.error.message).toContain("Task 4");
-    expect(json.error.message).not.toContain("Task 5");
-    expect(json.error.message).toContain("2 more task");
+    expect(json.error.message).toContain("2 more submission");
 
     // States a login exists.
     expect(json.error.message).toMatch(/login/i);
 
-    // Both ways forward.
-    expect(json.error.message).toMatch(/merge/i);
-    expect(json.error.message).toMatch(/remove them/i);
+    // Never names the task assignment or pipeline entry.
+    expect(json.error.message).not.toContain("Send bio");
+    expect(json.error.message).not.toMatch(/pipeline/i);
 
-    // `fields` keeps the count-shaped keys the SPA banner already renders.
-    expect(json.error.fields?.participants).toBe("1");
-    expect(json.error.fields?.taskAssignments).toBe("7");
+    // Both ways forward — merge, or fix the named refs.
+    expect(json.error.message).toMatch(/merge/i);
+    expect(json.error.message).toMatch(/submission editor/i);
+    expect(json.error.message).toMatch(/settings > people/i);
+
+    // `fields` keeps the count-shaped keys the SPA banner already renders —
+    // only the two refusal classes that remain.
+    expect(json.error.fields?.participants).toBe("7");
     expect(json.error.fields?.userAccounts).toBe("1");
+    expect(json.error.fields?.taskAssignments).toBeUndefined();
     expect(json.error.fields?.pipelineEntries).toBeUndefined();
 
     // Never deleted.
