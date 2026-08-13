@@ -1,14 +1,31 @@
 import { CONTENT_STATUS_LABELS, type ContentStatus, type ContentSubmissionListItem } from './types';
 import { WORKLIST_TABS, type WorklistTab } from './worklist';
 import { DelayedLoading } from '../../components/DelayedLoading';
-import { formatDate } from '../../lib/dates';
 
+// w1-f (DEC-733/eval 60/37): mock pill naming (docs/design/
+// 'Chautauqua Content.dc.html', screens/05-content.png) — 'all' is the
+// only tab whose wording the mock names 1:1 ('All accepted sessions').
+// The mock collapses 'changes_requested'+'pending' into one 'Needs a
+// decision' pill; WORKLIST_TABS (worklist.ts) keeps them as separate
+// server-filterable tabs, so this page still renders four pills rather
+// than the mock's three — flagged as a follow-up, not silently faked.
 export const TAB_LABELS: Record<WorklistTab, string> = {
-  all: 'All',
+  all: 'All accepted sessions',
   changes_requested: 'Changes requested',
   pending: 'Pending',
   approved: 'Approved',
 };
+
+// w1-f: 'now' is threaded down from the caller (ContentApp) rather than
+// read via Date.now() at call time, so a render never disagrees with
+// itself between two cells of the same table on either side of a tick.
+export function formatRelativeDate(ms: number, now: number): string {
+  const dayMs = 86_400_000;
+  const days = Math.floor((now - ms) / dayMs);
+  if (days <= 0) return 'today';
+  if (days === 1) return 'yesterday';
+  return `${days} days ago`;
+}
 
 interface SessionListProps {
   items: ContentSubmissionListItem[];
@@ -30,6 +47,10 @@ interface SessionListProps {
   page: number;
   perPage: number;
   onPageChange: (page: number) => void;
+  // w1-f: epoch-ms 'now' for the Latest file column's relative date
+  // ('2 days ago') — a prop rather than Date.now() inline so every row in
+  // one render agrees on the same instant.
+  now: number;
 }
 
 export function SessionList({
@@ -44,6 +65,7 @@ export function SessionList({
   page,
   perPage,
   onPageChange,
+  now,
 }: SessionListProps) {
   const visible = items;
   const rangeStart = total === 0 ? 0 : (page - 1) * perPage + 1;
@@ -121,7 +143,9 @@ export function SessionList({
                         <div className="chq-content-latest-file-name">
                           {item.latestFile.filename} · v{item.latestFile.versionCount}
                         </div>
-                        <div className="chq-content-latest-file-date">{formatDate(item.latestFile.uploadedAt)}</div>
+                        <div className="chq-content-latest-file-date">
+                          {formatRelativeDate(item.latestFile.uploadedAt, now)}
+                        </div>
                       </>
                     ) : (
                       <span className="chq-content-latest-file-empty">No files yet</span>
@@ -137,14 +161,20 @@ export function SessionList({
                     </span>
                   </td>
                   <td onClick={(e) => e.stopPropagation()} className="chq-content-actions">
-                    <button
-                      type="button"
-                      className="chq-btn chq-btn-primary"
-                      disabled={item.contentStatus === 'approved'}
-                      onClick={() => onContentStatusChange(item.id, 'approved')}
-                    >
-                      Approve
-                    </button>
+                    {/* w1-f: Approve is ABSENT (never disabled) once a row is
+                        already approved — a disabled control implies the
+                        action might apply again later, which it never does
+                        from here (re-review happens via 'Ask for changes'
+                        in the deliverable detail). */}
+                    {item.contentStatus !== 'approved' && (
+                      <button
+                        type="button"
+                        className="chq-btn chq-btn-primary"
+                        onClick={() => onContentStatusChange(item.id, 'approved')}
+                      >
+                        Approve
+                      </button>
+                    )}
                     <button type="button" className="chq-btn chq-btn-secondary" onClick={() => onSelect(item.id)}>
                       Open
                     </button>

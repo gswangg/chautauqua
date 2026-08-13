@@ -54,7 +54,7 @@ describe('ContentApp / SessionList render smoke: always-visible content-status c
     // w11-e: default tab is 'all' (DEC-665) — the row is visible without
     // switching tabs.
     await waitFor(() => {
-      expect(screen.getByRole('tab', { name: 'All' })).toHaveClass('is-active');
+      expect(screen.getByRole('tab', { name: 'All accepted sessions' })).toHaveClass('is-active');
     });
 
     await waitFor(() => {
@@ -127,7 +127,7 @@ describe('ContentApp worklist latest file column (DEC-686 page-scoped hydration)
       </MemoryRouter>,
     );
 
-    fireEvent.click(await screen.findByRole('tab', { name: 'All' }));
+    fireEvent.click(await screen.findByRole('tab', { name: 'All accepted sessions' }));
 
     await waitFor(() => {
       expect(container.querySelector('.chq-content-row-title')).toHaveTextContent('A Talk With A Replaced File');
@@ -165,7 +165,7 @@ describe('ContentApp worklist latest file column (DEC-686 page-scoped hydration)
       </MemoryRouter>,
     );
 
-    fireEvent.click(await screen.findByRole('tab', { name: 'All' }));
+    fireEvent.click(await screen.findByRole('tab', { name: 'All accepted sessions' }));
 
     await waitFor(() => {
       expect(container.querySelector('.chq-content-row-title')).toHaveTextContent('A Talk With No Files');
@@ -212,12 +212,17 @@ describe('ContentApp: fresh loads on view switch and explicit refresh', () => {
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Refresh' })).toBeInTheDocument();
     });
-    expect(submissionsMock).toHaveBeenCalledTimes(1);
+    // w1-f: loadWorklist (1) plus the header's two bounded aggregate reads
+    // (needs-decision, re-uploaded — DEC-733/eval 60/37) hit the same
+    // /submissions path, so mounting fires 3 requests, not 1.
+    await waitFor(() => {
+      expect(submissionsMock).toHaveBeenCalledTimes(3);
+    });
 
     fireEvent.click(screen.getByRole('button', { name: 'Refresh' }));
 
     await waitFor(() => {
-      expect(submissionsMock).toHaveBeenCalledTimes(2);
+      expect(submissionsMock).toHaveBeenCalledTimes(6);
     });
   });
 
@@ -239,14 +244,17 @@ describe('ContentApp: fresh loads on view switch and explicit refresh', () => {
     });
     fireEvent.click(screen.getByRole('tab', { name: 'Files' }));
 
+    // w1-f: FilesLibrary's own load() (the table) plus its stat-line/chip
+    // count reads (allCount + one per FILE_KIND — DEC-733/eval 60/37) all
+    // hit the same /files path, so one mount fires 5 requests, not 1.
     await waitFor(() => {
-      expect(filesMock).toHaveBeenCalledTimes(1);
+      expect(filesMock).toHaveBeenCalledTimes(5);
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Refresh' }));
 
     await waitFor(() => {
-      expect(filesMock).toHaveBeenCalledTimes(2);
+      expect(filesMock).toHaveBeenCalledTimes(10);
     });
   });
 });

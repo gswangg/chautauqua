@@ -4,7 +4,7 @@ import { apiGet, apiList, apiPost, ApiError } from '../../lib/api';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { DeliverableDetail } from './DeliverableDetail';
 import { FilesLibrary } from './FilesLibrary';
-import { SessionList, TAB_LABELS } from './SessionList';
+import { SessionList } from './SessionList';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { type ContentStatus, type ContentSubmissionListItem } from './types';
 import { WORKLIST_TABS, type WorklistTab } from './worklist';
@@ -47,6 +47,15 @@ export function ContentApp() {
   const [loading, setLoading] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // w1-f (DEC-733/eval 60/37): the mock's header reads 'N need a decision ·
+  // M re-uploaded' regardless of which tab is active — a fact the
+  // currently-active tab's own `total` can't carry (it's scoped to one
+  // status). Two bounded, page-1/perPage-1 aggregate reads against the same
+  // submissions list endpoint (never a page-count stand-in, per the field
+  // guide's "a cap the UI can't see LIES, render total") supply the two
+  // numbers without a per-row fan-out.
+  const [needsDecisionCount, setNeedsDecisionCount] = useState<number | null>(null);
+  const [reUploadedCount, setReUploadedCount] = useState<number | null>(null);
   // w1-e: bumping this remounts FilesLibrary (its own load() effect keys on
   // eventId, not on time), which forces a fresh fetch — used on view
   // switch, the explicit Refresh button, and after a deliverable upload so
@@ -81,6 +90,27 @@ export function ContentApp() {
   useEffect(() => {
     loadWorklist();
   }, [loadWorklist]);
+
+  const loadCounts = useCallback(() => {
+    if (!eventId) return;
+    const decisionParams = new URLSearchParams();
+    decisionParams.set('perPage', '1');
+    decisionParams.set('contentStatus', 'changes_requested,pending');
+    apiList<ContentSubmissionListItem>(`/events/${eventId}/submissions?${decisionParams.toString()}`)
+      .then((res) => setNeedsDecisionCount(res.total))
+      .catch(() => setNeedsDecisionCount(null));
+
+    const reUploadedParams = new URLSearchParams();
+    reUploadedParams.set('perPage', '1');
+    reUploadedParams.set('contentStatus', 'changes_requested');
+    apiList<ContentSubmissionListItem>(`/events/${eventId}/submissions?${reUploadedParams.toString()}`)
+      .then((res) => setReUploadedCount(res.total))
+      .catch(() => setReUploadedCount(null));
+  }, [eventId]);
+
+  useEffect(() => {
+    loadCounts();
+  }, [loadCounts]);
 
   // CNT-D1: the worklist's current page almost never contains the submission
   // a Files-library click resolves to (different sort, different tab filter,
@@ -141,6 +171,7 @@ export function ContentApp() {
     } else {
       loadWorklist();
     }
+    loadCounts();
   }
 
   function changeTab(next: WorklistTab) {
@@ -190,6 +221,7 @@ export function ContentApp() {
     onContentStatusChange(id, status);
     try {
       await apiPost(`/submissions/${id}/content-status`, { contentStatus: status });
+      loadCounts();
     } catch (err) {
       setItems(previous);
       setError(err instanceof ApiError ? `Content status update failed: ${err.message}` : 'Content status update failed');
@@ -221,9 +253,13 @@ export function ContentApp() {
     <div className="chq-page chq-content-page">
       <div className="chq-content-summary-row">
         <h1 className="chq-page-title">Content</h1>
-        {!submissionId && (
+        {/* w1-f (DEC-733/eval 60/37): decision-framing copy, matching the
+            mock's header text ('N need a decision · M re-uploaded') —
+            withheld (not '0 · 0') until both aggregate reads resolve, per
+            DEC-665's "never assert a fact not yet measured". */}
+        {!submissionId && view === 'worklist' && needsDecisionCount !== null && reUploadedCount !== null && (
           <span className="chq-summary">
-            {total} {total === 1 ? 'submission' : 'submissions'} &middot; {TAB_LABELS[tab]} view
+            {needsDecisionCount} need a decision &middot; {reUploadedCount} re-uploaded
           </span>
         )}
       </div>
@@ -292,6 +328,7 @@ export function ContentApp() {
           page={page}
           perPage={PER_PAGE}
           onPageChange={changePage}
+          now={Date.now()}
         />
       )}
     </div>

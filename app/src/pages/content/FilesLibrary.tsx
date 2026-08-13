@@ -38,6 +38,15 @@ export function FilesLibrary({ eventId, onSelectSubmission }: FilesLibraryProps)
   // other page feedback — this live region is the only in-page signal that
   // the request started, finished, or failed.
   const [downloadStatus, setDownloadStatus] = useState<string | null>(null);
+  // w1-f (DEC-733/eval 60/37): the library's stat line and deliverable-type
+  // chips read from the list endpoint's OWN counts, never a tally of the
+  // current page — a page-derived count would silently drop to whatever the
+  // pagesize is once a library exceeds PER_PAGE. allCount/kindCounts are
+  // page-1/perPage-1 reads against the same list endpoint (same q, no kind
+  // filter), kept independent of `kind`/`page` so switching a chip or
+  // paging never invalidates the others' counts.
+  const [allCount, setAllCount] = useState<number | null>(null);
+  const [kindCounts, setKindCounts] = useState<Record<FileKind, number> | null>(null);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -63,6 +72,33 @@ export function FilesLibrary({ eventId, onSelectSubmission }: FilesLibraryProps)
   useEffect(() => {
     load();
   }, [load]);
+
+  const loadCounts = useCallback(() => {
+    const baseParams = new URLSearchParams();
+    baseParams.set('page', '1');
+    baseParams.set('perPage', '1');
+    if (q.trim() !== '') baseParams.set('q', q.trim());
+
+    apiList<EventFileChainItem>(`/events/${eventId}/files?${baseParams.toString()}`)
+      .then((res) => setAllCount(res.total))
+      .catch(() => setAllCount(null));
+
+    void Promise.all(
+      FILE_KINDS.map((k) => {
+        const kindParams = new URLSearchParams(baseParams);
+        kindParams.set('kind', k);
+        return apiList<EventFileChainItem>(`/events/${eventId}/files?${kindParams.toString()}`).then(
+          (res) => [k, res.total] as const,
+        );
+      }),
+    )
+      .then((entries) => setKindCounts(Object.fromEntries(entries) as Record<FileKind, number>))
+      .catch(() => setKindCounts(null));
+  }, [eventId, q]);
+
+  useEffect(() => {
+    loadCounts();
+  }, [loadCounts]);
 
   // Headshots tab: a separate, separately-paginated query against the new
   // endpoint (DEC-669) — never unioned into the deliverable rows above.
@@ -113,8 +149,10 @@ export function FilesLibrary({ eventId, onSelectSubmission }: FilesLibraryProps)
 
   const overArchiveLimit = selected.size > MAX_ARCHIVE_FILES;
 
-  async function downloadZip() {
-    if (overArchiveLimit) return;
+  // Shared with downloadAll below — the archive endpoint (test/zip.test.ts,
+  // POST /events/:eventId/files/archive) is the ONE zip path; a 'Download
+  // all' affordance that didn't call it would be decorative.
+  async function runArchiveDownload(fileIds: string[]) {
     setError(null);
     // CNT-14/CNT-D5: the disabled button alone is not feedback — the
     // live region must confirm generation is in flight before the
@@ -122,10 +160,7 @@ export function FilesLibrary({ eventId, onSelectSubmission }: FilesLibraryProps)
     setDownloadStatus('Preparing ZIP…');
     setDownloading(true);
     try {
-      // Latest-version ids: resolveLatestVersions accepts any chain-member
-      // id, but the library always surfaces latestFileId per DEC-159.
-      const fileCount = selected.size;
-      const fileIds = items.filter((i) => selected.has(i.rootFileId)).map((i) => i.latestFileId);
+      const fileCount = fileIds.length;
       const { blob, filename } = await apiPostBlob(`/events/${eventId}/files/archive`, { fileIds });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -142,6 +177,47 @@ export function FilesLibrary({ eventId, onSelectSubmission }: FilesLibraryProps)
       setError(err instanceof ApiError ? `Download failed: ${err.message}` : 'Download failed');
       setDownloadStatus(message);
     } finally {
+      setDownloading(false);
+    }
+  }
+
+  async function downloadZip() {
+    if (overArchiveLimit) return;
+    // Latest-version ids: resolveLatestVersions accepts any chain-member
+    // id, but the library always surfaces latestFileId per DEC-159.
+    const fileIds = items.filter((i) => selected.has(i.rootFileId)).map((i) => i.latestFileId);
+    await runArchiveDownload(fileIds);
+  }
+
+  // w1-f: 'Download all' — every file matching the CURRENT kind/search
+  // filters (never just the loaded page), bounded by the same
+  // MAX_ARCHIVE_FILES the row-selection ZIP already enforces. When the
+  // match count exceeds the cap it refuses with the same loud message
+  // rather than silently truncating.
+  async function downloadAll() {
+    setError(null);
+    setDownloadStatus('Preparing ZIP…');
+    setDownloading(true);
+    try {
+      const params = new URLSearchParams();
+      params.set('page', '1');
+      params.set('perPage', String(MAX_ARCHIVE_FILES));
+      if (kind) params.set('kind', kind);
+      if (q.trim() !== '') params.set('q', q.trim());
+      const res = await apiList<EventFileChainItem>(`/events/${eventId}/files?${params.toString()}`);
+      if (res.total > MAX_ARCHIVE_FILES) {
+        const message = `This view has ${res.total} files; Download all is limited to ${MAX_ARCHIVE_FILES}. Narrow the search or type filter, or select files individually.`;
+        setError(message);
+        setDownloadStatus(message);
+        setDownloading(false);
+        return;
+      }
+      const fileIds = res.items.map((i) => i.latestFileId);
+      await runArchiveDownload(fileIds);
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : 'Download failed';
+      setError(err instanceof ApiError ? `Download failed: ${err.message}` : 'Download failed');
+      setDownloadStatus(message);
       setDownloading(false);
     }
   }
@@ -245,26 +321,53 @@ export function FilesLibrary({ eventId, onSelectSubmission }: FilesLibraryProps)
         </div>
       )}
 
+      {/* w1-f (DEC-733/eval 60/37): stat line + Download all, both truthful
+          against the list endpoint's own counts (never the loaded page) —
+          mirrors the mock's 'N files' + Download all header
+          (docs/design/'Chautauqua Content.dc.html', screens/05-content.png). */}
+      <div className="chq-content-files-stat-row">
+        <span className="chq-summary">{allCount === null ? 'Counting files…' : `${allCount} ${allCount === 1 ? 'file' : 'files'}`}</span>
+        <button
+          type="button"
+          className="chq-btn chq-btn-secondary"
+          disabled={downloading || allCount === null || allCount === 0}
+          aria-busy={downloading}
+          onClick={downloadAll}
+        >
+          Download all
+        </button>
+      </div>
+
       <div className="chq-files-library-toolbar chq-content-files-toolbar">
-        <label>
-          Kind{' '}
-          <select
-            className="chq-select"
-            aria-label="Filter by kind"
-            value={kind}
-            onChange={(e) => {
-              setKind(e.target.value as FileKind | '');
+        <div className="chq-chipstrip" role="tablist" aria-label="Deliverable type">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={kind === ''}
+            className={kind === '' ? 'chq-pill is-active' : 'chq-pill'}
+            onClick={() => {
+              setKind('');
               setPage(1);
             }}
           >
-            <option value="">All</option>
-            {FILE_KINDS.map((k) => (
-              <option key={k} value={k}>
-                {DELIVERABLE_LABELS[k]}
-              </option>
-            ))}
-          </select>
-        </label>
+            All types
+          </button>
+          {FILE_KINDS.map((k) => (
+            <button
+              key={k}
+              type="button"
+              role="tab"
+              aria-selected={kind === k}
+              className={kind === k ? 'chq-pill is-active' : 'chq-pill'}
+              onClick={() => {
+                setKind(k);
+                setPage(1);
+              }}
+            >
+              {DELIVERABLE_LABELS[k]} &middot; {kindCounts?.[k] ?? '…'}
+            </button>
+          ))}
+        </div>
         <input
           type="search"
           className="chq-input"

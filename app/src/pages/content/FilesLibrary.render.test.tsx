@@ -2,7 +2,7 @@
 // mounts against real /api/v1/events/:eventId/files list-envelope shapes
 // and asserts a marker element renders with zero console.error.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { FilesLibrary } from './FilesLibrary';
 import { listEnvelope, mockApi } from '../../test-utils/mockApi';
@@ -116,7 +116,7 @@ describe('FilesLibrary render smoke', () => {
     consoleError.mockRestore();
   });
 
-  it('renders a kind filter and search box (DEC-344 server-side filtering)', async () => {
+  it('renders deliverable-type chips and a search box (DEC-344 server-side filtering)', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/files`]: listEnvelope([]),
     });
@@ -127,14 +127,43 @@ describe('FilesLibrary render smoke', () => {
       expect(screen.getByText('No deliverable files yet.')).toBeInTheDocument();
     });
 
-    const kindSelect = screen.getByLabelText('Filter by kind') as HTMLSelectElement;
-    expect(Array.from(kindSelect.options).map((o) => o.textContent)).toEqual([
-      'All',
-      'Presentation',
-      'Poster',
-      'Handout',
-    ]);
+    // w1-f: the kind <select> is replaced by a chip strip whose counts come
+    // from the list endpoint's own totals (mockApi returns the same
+    // envelope regardless of query — here that's total: 0 for every kind).
+    const typeTabs = screen.getByRole('tablist', { name: 'Deliverable type' });
+    expect(within(typeTabs).getByRole('tab', { name: 'All types' })).toHaveClass('is-active');
+    expect(within(typeTabs).getByRole('tab', { name: /Presentation/ })).toBeInTheDocument();
+    expect(within(typeTabs).getByRole('tab', { name: /Poster/ })).toBeInTheDocument();
+    expect(within(typeTabs).getByRole('tab', { name: /Handout/ })).toBeInTheDocument();
     expect(screen.getByLabelText('Search files')).toBeInTheDocument();
+  });
+
+  it('renders a stat line and Download all button sourced from the list endpoint total, not the page', async () => {
+    const items = Array.from({ length: 3 }, (_, i) => ({
+      rootFileId: `file-${i}`,
+      latestFileId: `file-${i}-latest`,
+      filename: `slides-${i}.pdf`,
+      kind: 'presentation' as const,
+      submissionId: `sub-${i}`,
+      submissionRef: `SES-${i}`,
+      submissionTitle: `Talk ${i}`,
+      speakerName: 'Speaker',
+      uploadedAt: 1700000000000,
+      versionCount: 1,
+      sizeBytes: 1234567,
+      uploaderName: 'Priya Raman',
+    }));
+
+    mockApi({
+      // Envelope's own `total` (31) is far larger than the 3 items on this
+      // page — the stat line must read 31, never items.length.
+      [`GET /api/v1/events/${EVENT_ID}/files`]: listEnvelope(items, { total: 31, page: 1, perPage: 3 }),
+    });
+
+    render(<FilesLibrary eventId={EVENT_ID} onSelectSubmission={() => {}} />);
+
+    expect(await screen.findByText('31 files')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Download all' })).toBeEnabled();
   });
 
   it('renders a Previous/Next pager driven by the envelope total', async () => {
