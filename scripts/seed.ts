@@ -788,6 +788,12 @@ async function main(): Promise<void> {
     // is created, snapshotted onto participant.title_at_time/org_at_time.
     titleAtTime: string | null;
     orgAtTime: string | null;
+    // DEC-836: an accepted submission defaults to content_status
+    // 'approved' below; a caller may override it (only meaningful when
+    // status is 'accepted') so the seed can demonstrate a real spread of
+    // content statuses instead of every accepted session reading
+    // pre-approved.
+    contentStatusOverride?: "pending" | "approved" | "changes_requested";
   }): string {
     seq += 1;
     submissionCounter += 1;
@@ -807,7 +813,7 @@ async function main(): Promise<void> {
         track_id: null,
         additional_track_ids_json: null,
         status: opts.status,
-        content_status: isAccepted ? "approved" : "pending",
+        content_status: opts.contentStatusOverride ?? (isAccepted ? "approved" : "pending"),
         accepted_at: isAccepted ? nextTs() : null,
         ics_sequence: 0,
         created_at: nextTs(),
@@ -966,6 +972,13 @@ async function main(): Promise<void> {
     const audienceLevel = audienceLevels[i % audienceLevels.length]!;
     const title = synthTitle(i);
 
+    // DEC-836: of the 3 statuses bumped to 'accepted' above, the 2nd and
+    // 3rd (i === 1, i === 2) carry an explicit content-status override so
+    // the accepted set isn't uniformly pre-approved — see
+    // insertSubmissionWithSpeaker's contentStatusOverride doc comment.
+    const contentStatusOverride =
+      i === 1 ? ("changes_requested" as const) : i === 2 ? ("pending" as const) : undefined;
+
     insertSubmissionWithSpeaker({
       title,
       description: SYNTH_ABSTRACTS[i % SYNTH_ABSTRACTS.length]!,
@@ -980,6 +993,7 @@ async function main(): Promise<void> {
       email,
       titleAtTime: "Software Engineer",
       orgAtTime: company,
+      contentStatusOverride,
     });
     synthContacts.push({ contactId, email, speakerName: `${first} ${last}`.trim() });
   }
@@ -1300,9 +1314,14 @@ async function main(): Promise<void> {
     }
   }
 
-  // --- evaluation plan 3 (DEC-668): not yet open -- reviewers assigned so
-  // the plan is ready to run, but its window hasn't opened, so it carries
-  // zero evaluations and reads 'upcoming' on the Review landing.
+  // --- evaluation plan 3 (DEC-668/DEC-836): a SECOND plan open at SEED_NOW
+  // alongside plan 1 -- the Review landing needs more than one open row so
+  // the multi-plan reviewer queue and the per-plan scoping DEC-831 is about
+  // are both reachable from seeded data. reviewerUserId (the demo reviewer
+  // persona) is scoped to track 0 on both plan 1 and this plan, so 'which
+  // queue am I in' is a real question against seeded rows. Zero evaluations
+  // are seeded here on purpose -- an open plan mid-progress (0/N), distinct
+  // from plan 1's partially-worked queue and plan 2's fully-closed one.
   const evalPlan3Id = seedId("evaluation_plan", 3);
   const evalPlan3Criteria = [
     {
@@ -1327,10 +1346,11 @@ async function main(): Promise<void> {
       event_id: eventId,
       name: "Late-Stage Program Review",
       instructions: "Second-pass review of the remaining program once the first round closes.",
-      // DEC-591/DEC-668: open_date lands after SEED_NOW so this plan reads
-      // as not-yet-open regardless of when the seed is run.
-      open_date: SEED_NOW + 15 * DAY_MS,
-      close_date: SEED_NOW + 45 * DAY_MS,
+      // DEC-591/DEC-836: bounds straddle SEED_NOW (distinct from plan 1's
+      // -30/+25 window) so this plan reads as open regardless of when the
+      // seed is run, giving the Review landing a second open row.
+      open_date: SEED_NOW - 10 * DAY_MS,
+      close_date: SEED_NOW + 40 * DAY_MS,
       filters_json: null,
       anonymized: false,
       scale_json: JSON.stringify({ min: 1, max: 5 }),
@@ -1838,6 +1858,18 @@ async function main(): Promise<void> {
     throw new Error("seed: expected at least one accepted submission for the file pipeline demo");
   }
 
+  // DEC-836: acceptedSubmissions[2]/[3] were seeded above with an explicit
+  // content_status override ('changes_requested'/'pending' respectively —
+  // see the synthetic-submission loop's contentStatusOverride) so the
+  // accepted set isn't uniformly pre-approved; acceptedSubmissions[0]'s
+  // v1->v2 chain (fileChainSub, asserted by id in test/seed.test.ts) stays
+  // the default 'approved' and untouched.
+  const changesRequestedSub = acceptedSubmissions[2];
+  const pendingDecisionSub = acceptedSubmissions[3];
+  if (!changesRequestedSub || !pendingDecisionSub) {
+    throw new Error("seed: expected at least 4 accepted submissions for the content-status spread demo");
+  }
+
   const filePresV1Id = seedId("file", 1);
   const filePresV2Id = seedId("file", 2);
   const filePosterId = seedId("file", 3);
@@ -1912,6 +1944,29 @@ async function main(): Promise<void> {
       author_contact_id: fileChainSub.contactId,
       author_user_id: null,
       body: "Good catch — done, re-uploaded with the larger font.",
+      created_at: nextTs(),
+      updated_at: ts,
+    }),
+  );
+
+  // DEC-836: a third accepted submission carries a deliverable, this one
+  // still under review (content_status 'changes_requested' above) — so the
+  // Content worklist's needs-a-decision row has a real file to open, not
+  // just an empty state.
+  const fileChangesRequestedId = seedId("file", 5);
+  const changesRequestedR2Key = `sub/${changesRequestedSub.submissionId}/${fileChangesRequestedId}-slides.pdf`;
+  statements.push(
+    insertStmt("file", {
+      id: fileChangesRequestedId,
+      submission_id: changesRequestedSub.submissionId,
+      kind: "presentation",
+      filename: "slides.pdf",
+      r2_key: changesRequestedR2Key,
+      size_bytes: registerPdfAsset(changesRequestedR2Key),
+      content_type: "application/pdf",
+      previous_file_id: null,
+      version_no: 1,
+      uploaded_by_contact_id: changesRequestedSub.contactId,
       created_at: nextTs(),
       updated_at: ts,
     }),

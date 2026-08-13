@@ -271,6 +271,100 @@ describe("seed coherence (DEC-771)", () => {
     expect(templateRows.length).toBeGreaterThanOrEqual(5);
   });
 
+  it("(DEC-836) at least two evaluation plans are open at SEED_NOW, one of them alongside a genuinely closed plan, with a reviewer scoped to both open plans", () => {
+    const planRows = parseInserts(sql, "evaluation_plan");
+    expect(planRows.length).toBeGreaterThanOrEqual(3);
+
+    // Mirrors app/src/pages/review/PlanList.tsx's isPlanOpen: now falls
+    // inside [openDate, closeDate], a null bound unbounded on that side.
+    // seed.ts always writes numeric epoch-ms literals for these two
+    // columns (never NULL), so a plain Number() parse is safe here.
+    const now = Date.now();
+    const isOpen = (r: Record<string, string | null>) => {
+      const openDate = Number(r.open_date);
+      const closeDate = Number(r.close_date);
+      if (closeDate < now) return false;
+      if (openDate > now) return false;
+      return true;
+    };
+    const isClosed = (r: Record<string, string | null>) => Number(r.close_date) < now;
+
+    const openPlans = planRows.filter(isOpen);
+    const closedPlans = planRows.filter(isClosed);
+    expect(openPlans.length, `expected >=2 open plans, found: ${JSON.stringify(openPlans)}`).toBeGreaterThanOrEqual(2);
+    expect(closedPlans.length, `expected >=1 closed plan, found: ${JSON.stringify(closedPlans)}`).toBeGreaterThanOrEqual(1);
+
+    // Criterion weights must visibly differ between at least two plans
+    // (docs/design/README.md:204 — weighted must visibly differ from
+    // naive), keyed by criterion id so the comparison is meaningful even
+    // if plans list criteria in a different order.
+    function weightsById(criteriaJson: string): Record<string, number> {
+      const criteria = JSON.parse(criteriaJson) as Array<{ id: string; weight?: number }>;
+      const out: Record<string, number> = {};
+      for (const c of criteria) if (typeof c.weight === "number") out[c.id] = c.weight;
+      return out;
+    }
+    const openWeightSets = openPlans.map((r) => JSON.stringify(weightsById(r.criteria_json!)));
+    expect(
+      new Set(openWeightSets).size,
+      `open plans' criterion weights must differ: ${JSON.stringify(openWeightSets)}`,
+    ).toBeGreaterThan(1);
+
+    // At least one reviewer (plan_reviewer.user_id) is scoped to every open
+    // plan, so the multi-plan queue landing and the plan-scoped route are
+    // both reachable from seeded data.
+    const planReviewerRows = parseInserts(sql, "plan_reviewer");
+    const openPlanIds = new Set(openPlans.map((r) => r.id!));
+    const usersByOpenPlan = openPlanIds.size;
+    const reviewerOpenPlanCounts = new Map<string, Set<string>>();
+    for (const row of planReviewerRows) {
+      if (!row.plan_id || !openPlanIds.has(row.plan_id)) continue;
+      const set = reviewerOpenPlanCounts.get(row.user_id!) ?? new Set<string>();
+      set.add(row.plan_id);
+      reviewerOpenPlanCounts.set(row.user_id!, set);
+    }
+    const reviewerOnAllOpenPlans = [...reviewerOpenPlanCounts.entries()].some(
+      ([, plans]) => plans.size === usersByOpenPlan,
+    );
+    expect(
+      reviewerOnAllOpenPlans,
+      `no reviewer scoped to all ${usersByOpenPlan} open plans: ${JSON.stringify([...reviewerOpenPlanCounts.entries()].map(([u, p]) => [u, [...p]]))}`,
+    ).toBe(true);
+  });
+
+  it("(DEC-836) the Content worklist's three questions (needs a decision, approved, all accepted) each count a non-zero row", () => {
+    const submissionRows = parseInserts(sql, "submission");
+    const acceptedRows = submissionRows.filter((r) => r.status === "accepted");
+    expect(acceptedRows.length).toBeGreaterThan(0);
+
+    // Product predicate: files-content-status.ts's CONTENT_STATUSES set and
+    // the worklist's pending ∪ changes_requested "needs a decision" union.
+    const needsDecision = acceptedRows.filter(
+      (r) => r.content_status === "pending" || r.content_status === "changes_requested",
+    );
+    const approved = acceptedRows.filter((r) => r.content_status === "approved");
+
+    expect(needsDecision.length, "needs-a-decision (pending ∪ changes_requested) count is zero").toBeGreaterThan(0);
+    expect(approved.length, "approved count is zero").toBeGreaterThan(0);
+    expect(acceptedRows.length, "all-accepted count is zero").toBeGreaterThan(0);
+
+    // No two tasks in one event share a title (also asserted by DEC-771's
+    // (c) above; restated per DEC-836's proof requirement so this file's
+    // own test set is self-sufficient).
+    const taskRows = parseInserts(sql, "task");
+    const dupeTasks = duplicateGroups(taskRows, (r) => r.title!);
+    expect(dupeTasks, `duplicate task titles: ${JSON.stringify(dupeTasks)}`).toEqual([]);
+  });
+
+  it("(DEC-836) the ADDITIONAL_EMAIL_TEMPLATES 'Content Reminder' subject never interpolates the multi-line {task_list} block", () => {
+    const templateRows = parseInserts(sql, "email_template");
+    const contentReminder = templateRows.find((r) => r.name === "Content Reminder");
+    expect(contentReminder, "no 'Content Reminder' email_template row found").toBeTruthy();
+    expect(contentReminder!.subject).not.toContain("{task_list}");
+    // The body keeps the block.
+    expect(contentReminder!.body_text).toContain("{task_list}");
+  });
+
   it("(DEC-796) no seeded email_log row's subject or body_text contains a raw '{merge_field}' placeholder", () => {
     // Scans the raw SQL text (not just parsed rows) so a literal '{' inside
     // an email_log INSERT's subject/body_text column is caught even if a
