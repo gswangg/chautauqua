@@ -60,7 +60,11 @@
   font-size: var(--chq-type-overview-headline-size);
   font-weight: var(--chq-type-overview-headline-weight);
   letter-spacing: var(--chq-type-overview-headline-tracking);
-  line-height: var(--chq-type-overview-headline-line-height);
+  /* DEC-991: the shared --chq-type-overview-headline-line-height token (1.04)
+     clips the glyph box below the line box; overridden here with a literal
+     value rather than raising the shared token (owned by theme.ts/
+     styles.css, outside this file's scope). */
+  line-height: 1.2;
   color: var(--chq-ink);
 }
 

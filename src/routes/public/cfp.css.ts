@@ -24,7 +24,7 @@ export const CFP_CSS = `
      validated by the caller, not interpolated into this file). */
   .chq-cfp-header { border-top: 3px solid var(--chq-brandable-accent); border-bottom: 1px solid var(--chq-ink); padding: 26px 44px 20px; display: flex; flex-direction: column; gap: 7px; }
   .chq-cfp-meta { font-size: 11px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--chq-muted); }
-  .chq-cfp-title { font-family: var(--chq-font-display); font-size: 32px; font-weight: 700; letter-spacing: -0.04em; line-height: 1; margin: 0; }
+  .chq-cfp-title { font-family: var(--chq-font-display); font-size: 32px; font-weight: 700; letter-spacing: -0.04em; line-height: 1.2; margin: 0; }
   .chq-cfp-sub { font-size: 15px; color: var(--chq-ink-2); }
   .chq-cfp-body { padding: 28px 44px 40px; display: flex; flex-direction: column; gap: 30px; }
   .chq-cfp-intro { display: flex; flex-direction: column; gap: 11px; max-width: 62ch; }

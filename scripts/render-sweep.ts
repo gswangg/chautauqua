@@ -163,77 +163,24 @@ const ADMIN_MOBILE_CONTROL_SELECTOR = [
   "header nav a",
 ].join(", ");
 
-// DEC-620: named exceptions for a vertical-clip offender whose fix would land
-// in a file another in-flight branch currently owns (the public agenda/
-// schedule routes, ContentApp.tsx, Overview.tsx, App.tsx, ViewsDropdown.tsx,
-// HistoryTab.tsx, FilesLibrary), OR whose offender is a single-line heading
-// a few px short of its box because the display font's own rendered line box
-// is slightly taller than this component's line-height value — real text,
-// fully visible, nothing hidden or lost (unlike the DEC-620 agenda-card fix
-// in agenda.css, where multi-line content was silently truncated). Bumping
-// these line-height values needs a visual pass this task can't do headless;
-// named here rather than guessed at blind. Keyed `${route path}::${selector}`
-// where selector is the offender string's leading "tag.class.class" token
-// (before " clip="). Named exceptions only — never widen
-// OVERFLOW_TOLERANCE_PX-style tolerance to absorb a real offender; see
-// filterKnownClipExceptions in render-sweep-lib.ts.
+// DEC-991: KNOWN_CLIP_EXCEPTIONS is not a scheduling or deferred-work list.
+// The only admissible reason to name an offender here is a fact about the
+// element itself -- a deliberate, designed truncation (e.g. a
+// -webkit-line-clamp on a card that scrolls) -- never "owned by another
+// in-flight branch" (a wave-scoped scheduling note, not a property of the
+// element) and never "needs a visual pass" (a deferred fix, not a reason
+// the clip is correct). Every other named offender in this list's history
+// was a real line-height-vs-font-metrics bug and has been fixed at its CSS
+// source rather than parked here. Keyed `${route path}::${selector}` where
+// selector is the offender string's leading "tag.class.class" token (before
+// " clip="). Never widen OVERFLOW_TOLERANCE_PX-style tolerance to absorb a
+// real offender; see filterKnownClipExceptions in render-sweep-lib.ts.
 export const KNOWN_CLIP_EXCEPTIONS: Readonly<Record<string, string>> = {
   // app/src/pages/agenda/agenda.css .chq-session-card-title is a deliberate
   // 3-line -webkit-line-clamp truncation (a long title on a short-duration
   // card) — the card itself now scrolls (DEC-620 fix above), so this is
   // designed truncation, not lost content.
   "/admin/agenda::div.chq-session-card-title": "intentional 3-line -webkit-line-clamp truncation",
-
-  // Overview.tsx is an in-flight branch's file (task exclusion list).
-  "/admin/overview::div.chq-overview-headline-row": "Overview.tsx owned by another in-flight branch",
-  "/admin/overview::h1.chq-overview-headline": "Overview.tsx owned by another in-flight branch",
-
-  // src/routes/portal/portal.css.ts .chq-portal-hero — tight line-height
-  // heading, font metrics vs CSS line-height (see file-level comment above).
-  "/portal::h1.chq-portal-hero": "chq-portal-hero line-height tighter than font metrics; needs a visual pass",
-  "/portal/profile::h2.chq-portal-hero": "chq-portal-hero line-height tighter than font metrics; needs a visual pass",
-  "/portal/submissions/seed_submission_0001::h2.chq-portal-hero":
-    "chq-portal-hero line-height tighter than font metrics; needs a visual pass",
-  "/portal/submissions/seed_submission_0001/edit::h2.chq-portal-hero":
-    "chq-portal-hero line-height tighter than font metrics; needs a visual pass",
-  "/portal/tasks::h2.chq-portal-hero": "chq-portal-hero line-height tighter than font metrics; needs a visual pass",
-  "/portal/tasks/seed_task_assignment_0001/form::h2.chq-portal-hero":
-    "chq-portal-hero line-height tighter than font metrics; needs a visual pass",
-
-  // src/routes/public/shell.tsx + public.css.ts .chq-pub-header-meta /
-  // .chq-pub-header-title — shared public-site header, same font-metric
-  // reasoning. /agenda and /schedule are additionally the explicit
-  // route-ownership exclusion (public agenda/schedule routes).
-  "/e/devflow-conf-2027/sessions::div.chq-pub-header-meta": "shared public header line-height vs font metrics",
-  "/e/devflow-conf-2027/sessions::span.chq-pub-header-title": "shared public header line-height vs font metrics",
-  "/e/devflow-conf-2027/speakers::div.chq-pub-header-meta": "shared public header line-height vs font metrics",
-  "/e/devflow-conf-2027/speakers::span.chq-pub-header-title": "shared public header line-height vs font metrics",
-  "/e/devflow-conf-2027/gallery::div.chq-pub-header-meta": "shared public header line-height vs font metrics",
-  "/e/devflow-conf-2027/gallery::span.chq-pub-header-title": "shared public header line-height vs font metrics",
-  "/e/devflow-conf-2027/sessions/seed_submission_0001::div.chq-pub-header-meta":
-    "shared public header line-height vs font metrics",
-  "/e/devflow-conf-2027/sessions/seed_submission_0001::span.chq-pub-header-title":
-    "shared public header line-height vs font metrics",
-  "/e/devflow-conf-2027/speakers/seed_contact_0001::div.chq-pub-header-meta":
-    "shared public header line-height vs font metrics",
-  "/e/devflow-conf-2027/speakers/seed_contact_0001::span.chq-pub-header-title":
-    "shared public header line-height vs font metrics",
-  "/e/devflow-conf-2027/agenda::div.chq-pub-header-meta": "public agenda route owned by another in-flight branch",
-  "/e/devflow-conf-2027/agenda::span.chq-pub-header-title": "public agenda route owned by another in-flight branch",
-  "/e/devflow-conf-2027/agenda::div.chq-pub-agenda-block": "public agenda route owned by another in-flight branch",
-  "/embed/devflow-conf-2027/agenda::div.chq-pub-agenda-block": "public agenda route owned by another in-flight branch",
-  "/e/devflow-conf-2027/schedule::div.chq-pub-header-meta": "public schedule route owned by another in-flight branch",
-  "/e/devflow-conf-2027/schedule::span.chq-pub-header-title":
-    "public schedule route owned by another in-flight branch",
-
-  // src/routes/public/cfp.css.ts .chq-cfp-title / src/routes/auth.css.ts
-  // .chq-auth-title — same font-metric reasoning.
-  "/submit/devflow-conf-2027::span.chq-cfp-title": "chq-cfp-title line-height tighter than font metrics",
-  "/account/password::div": "chq-auth wrapper line-height tighter than font metrics",
-  "/account/password::div.chq-auth-title": "chq-auth-title line-height tighter than font metrics",
-
-  // Anonymous event hub (/) — bare <h1>, same font-metric reasoning.
-  "/::h1": "home-hub h1 line-height tighter than font metrics",
 };
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
