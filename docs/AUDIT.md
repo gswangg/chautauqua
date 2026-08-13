@@ -73,7 +73,7 @@ onboarding-progress dashboard are built. `/admin/speakers` is the accepted-speak
 carrying that speaker's sessions and task assignments, each row linking to its own submission
 or deliverable. See the reminder cap and Overview row cap below.
 
-## J7 — Speaker self-serve portal (`/portal`, `/portal/profile`, `/portal/submissions`, `/portal/submissions/:id`, `/portal/submissions/:id/edit`, `/portal/tasks`, `/portal/tasks/:assignmentId/form`)
+## J7 — Speaker self-serve portal (`/portal`, `/portal/profile`, `/portal/submissions`, `/portal/submissions/:id`, `/portal/submissions/:id/edit`, `/portal/tasks`, `/portal/tasks/:assignmentId/form`, `/portal/resources`)
 
 Branded portal (logo/accent from event settings), submission edit within the organizer's
 open-edit window, profile, and per-task forms/uploads. Built. `/portal/submissions` lists
@@ -81,7 +81,10 @@ every submission the speaker owns — pending and declined included, newest firs
 its DEC-016 public status label — so a speaker can track a submission that was never
 accepted (DEC-729). `MAX_PARTICIPANTS_PER_SUBMISSION`=6
 (`src/server/repo/portal-edit.ts`) caps co-speakers a speaker can add to their own
-submission from the portal.
+submission from the portal. `/portal/resources` (DEC-029, `src/routes/portal/tasks/resources.tsx`,
+`src/server/repo/portal/resources.ts`) lists wiki notes and files, grouped by every event the
+signed-in speaker participates in — scoped by contact id, never a query param, so a speaker
+never sees another event's or another speaker's resources.
 
 ## J8 — Collect/review/approve content (`/admin/content`, `/admin/content/:submissionId`)
 
@@ -110,6 +113,17 @@ returns `unplaced: UnplacedSession[]` (`src/domain/schedule.ts:400`), each item 
 `duration_exceeds_day`, `speaker_double_booked`, `no_free_slot` — rendered to prose by the
 one renderer `describeUnplaced` (`src/domain/schedule.ts:89`). Not a bare count.
 
+## Anonymous event hub (`/`)
+
+`GET /` (`src/routes/root.tsx`) is the instance's anonymous landing page (DEC-582): a
+signed-in organizer/reviewer visiting `/` is redirected to the admin shell, a signed-in
+speaker to `/portal` — the same rule the admin shell already enforces in reverse. An
+anonymous visitor sees
+the org's own name and its events grouped by what a stranger may do (submit / browse / look
+back), built entirely from the pure `src/lib/home-hub.ts`. No organizer-only metric (review
+progress, submission counts) reaches any row here (DEC-581) — every field is one a
+competitor could read without leaking anything.
+
 ## J10 — Publish to the public site (`/e/:eventSlug/sessions`, `/e/:eventSlug/sessions/:sessionId`, `/e/:eventSlug/speakers`, `/e/:eventSlug/speakers/:speakerId`, `/e/:eventSlug/gallery`, `/e/:eventSlug/agenda`, `/e/:eventSlug/schedule`, `/embed/:eventSlug/sessions`, `/embed/:eventSlug/speakers`, `/embed/:eventSlug/gallery`, `/embed/:eventSlug/agenda`, `/embed/:eventSlug/schedule`, `/embed/:eventSlug/sessions/:sessionId`, `/embed/:eventSlug/speakers/:speakerId`)
 
 Five public, mobile-friendly, no-login surfaces plus their embed twins (iframe
@@ -121,6 +135,19 @@ is public). `/e/:eventSlug/schedule` also serves `.ics`. Built.
 (`src/server/repo/public/bounds.ts`) — `MAX_PUBLIC_ROWS = MAX_PUBLIC_PAGE * PUBLIC_PER_PAGE`
 is the deepest row reachable via pagination or `?limit=`; deeper pages are not offered
 (`hasMore` false past the ceiling), not silently truncated with no signal.
+
+**Saved embeds (`/embed/e/:embedId`, DEC-785/DEC-822/DEC-839):** the embeds panel under
+`/admin/settings` can save a surface + option recipe as a short embeddable id
+(`src/routes/public/saved-embed.tsx`); `/embed/e/:embedId` resolves it. An unknown id
+returns the same designed 404 every other unknown public route uses. A **disabled** embed
+returns an empty 200 body, not a 404 (DEC-822's deliberate override of DEC-785) — a page the
+organizer switched off must render as an intentional blank inside a customer's iframe, not
+shout "not found" on someone else's site. An enabled embed resolves in its saved format:
+`iframe`/`element`/`link` render inline through the same `renderSurfaceContent` +
+`EmbedShell` pipeline the generic per-surface embed routes use; `json`/`xml` 302-redirect to
+the per-surface feed twin carrying the saved options as query params; `ics` 302-redirects to
+the fixed whole-agenda schedule feed (DEC-289) — a redirect in every case, not a second copy
+of any envelope's rendering.
 
 **Steal-mandate item 3 (hardened `embed.js` custom element) is built:** `public/embed.js`
 ships a custom element with an origin-validated `src`, a sandboxed iframe, and
@@ -163,12 +190,21 @@ Session login, self-service password change (any authenticated role), and the SP
 catch-all (`/admin/*`) that every unmatched admin path resolves through (DEC-154) rather than a
 blank screen. Built.
 
-## Dev-only (`/dev/mailbox`)
+## Dev-only (`/dev/mailbox`, `/dev/mailbox/:emailId`)
 
 The mailer port's local sink: every "send" (status-change notification, reminder,
 compose, .ics invite) writes an `email_log` row and is viewable, full rendered message
 included, at `/dev/mailbox` — deliberately **not mounted in production** (see README).
 Real delivery (Resend) is stage-2 wiring, listed below.
+
+`/dev/mailbox/:emailId` (`src/server/repo/email.ts`, guarded by `guardDevMailbox` in
+`src/server/app.ts`) is the single logged message's own rendered view — same guard as the
+list. What makes it unreachable in production: `guardDevMailbox` checks `DEV_MODE === '1'`
+(DEC-005) ahead of the route match and answers `c.notFound()`, not a 403, when it isn't —
+with `DEV_MODE` unset the route is indistinguishable from never having existed, not merely
+access-denied. Once `DEV_MODE='1'` is established, the guard is also organizer-only and
+org-scoped (DEC-546). The recipient-controlled HTML body renders inside a sandboxed
+`<iframe srcdoc>`, never injected into the mailbox page's own DOM (SPEC §6).
 
 ## Pagination and list caps
 
