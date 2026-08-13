@@ -363,6 +363,19 @@ vi.mock("../src/server/repo/review", async () => {
         ...(input as Record<string, unknown>),
       })),
     ),
+    // DEC-659 (amendment, wave 55): POST /plans/:id/reviewers now decorates
+    // the row it just wrote with the same batched label lookups the GET list
+    // uses. This file drives the route with an empty `{}` db, so the three
+    // lookups are stubbed here rather than hitting drizzle.
+    getUsersByIds: vi.fn(async (_db: unknown, userIds: string[]) =>
+      userIds.map((userId) => ({ userId, email: "rev@org.test" })),
+    ),
+    getTrackNamesByIds: vi.fn(async (_db: unknown, trackIds: string[]) =>
+      new Map(trackIds.map((id) => [id, "Track One"])),
+    ),
+    getSubmissionLabelsByIds: vi.fn(async (_db: unknown, submissionIds: string[]) =>
+      new Map(submissionIds.map((id) => [id, { ref: "S-1", title: "Talk" }])),
+    ),
   };
 });
 

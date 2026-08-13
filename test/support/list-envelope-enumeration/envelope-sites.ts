@@ -49,5 +49,5 @@ export const ENVELOPE_ALLOWLIST = new Set<string>([
   // it just wrote (bounded by the request's own parseBoundedIdArray cap),
   // never a paginated read -- same shape-exception class as the compose
   // preview above (comms.ts:524).
-  "src/routes/review/plans-reviewers.ts:70",
+  "src/routes/review/plans-reviewers.ts:111",
 ]);
