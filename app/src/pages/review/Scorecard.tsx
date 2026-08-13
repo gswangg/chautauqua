@@ -11,6 +11,7 @@ import { planTrackScope } from './PlanList';
 // the exact functions the plan editor and server already use, so the
 // reviewer's number and the organizer's number can never disagree.
 import { computeWeightedScore, criterionWeightShares } from '../../../../src/domain/evaluation';
+import { OPTIONAL_SUFFIX } from '../../../../src/domain/form-copy';
 import type {
   EvaluationCriterion,
   EvaluationPlan,
@@ -385,7 +386,7 @@ export function Scorecard() {
           <label className="chq-review-criterion-label">
             {criterion.label}
             {criterion.kind === 'text' && !criterion.required && (
-              <span className="chq-review-criterion-optional"> &#183; optional</span>
+              <span className="chq-review-criterion-optional">{OPTIONAL_SUFFIX}</span>
             )}
           </label>
           {/* DEC-676: guidance renders under the label; nothing when absent. */}
