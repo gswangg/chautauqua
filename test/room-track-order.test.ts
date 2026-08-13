@@ -57,6 +57,32 @@ function makeFakeDb() {
     select(_fields?: unknown) {
       return {
         from(table: unknown) {
+          if (table === schema.submissionTrack) {
+            // DEC-916: getTrackForEvent's submissionCount grouped aggregate.
+            // No submission_track fixture rows exist in this test -- every
+            // track's count resolves to 0, same as the real query would with
+            // an empty join.
+            return {
+              innerJoin(_joinTable: unknown, _joinCond: unknown) {
+                return {
+                  where(_cond: unknown) {
+                    return {
+                      then(resolve: (v: unknown) => unknown, reject?: (e: unknown) => unknown) {
+                        return Promise.resolve([{ count: 0 }]).then(resolve, reject);
+                      },
+                      groupBy(_col: unknown) {
+                        return {
+                          then(resolve: (v: unknown) => unknown, reject?: (e: unknown) => unknown) {
+                            return Promise.resolve([] as { trackId: string; count: number }[]).then(resolve, reject);
+                          },
+                        };
+                      },
+                    };
+                  },
+                };
+              },
+            };
+          }
           const rows = tables.get(table)!;
           return {
             where(cond: unknown) {

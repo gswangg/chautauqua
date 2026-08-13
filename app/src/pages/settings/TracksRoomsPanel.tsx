@@ -4,6 +4,13 @@
 // with 'Add' as the section's one drill action (SummarySection, DEC-728)
 // into the existing add/rename/delete form. Endpoints unchanged:
 // GET/POST /events/:id/tracks|rooms, PATCH/DELETE /tracks|rooms/:id.
+//
+// DEC-915: each existing row is a local DRAFT, not a live-wired input --
+// typing writes nothing until an explicit Save; Cancel restores the loaded
+// value; the drilled edit view carries a Done control back to the summary,
+// matching EventSettingsPanel/ResourcesPanel/PeopleRolesPanel/ApiTokensPanel.
+// DEC-916: submissionCount rides the tracks list response (one grouped
+// server-side aggregate) -- no per-track follow-up request.
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { DelayedLoading } from '../../components/DelayedLoading';
@@ -41,6 +48,7 @@ interface Track {
   id: string;
   name: string;
   color: string | null;
+  submissionCount: number;
 }
 
 interface Room {
@@ -52,33 +60,44 @@ interface Room {
 const EMPTY_TRACK: TrackForm = { name: '', color: TRACK_SWATCHES[0].value };
 const EMPTY_ROOM: RoomForm = { name: '', capacity: '' };
 
+/** Draft baseline for a track row -- same transform applied every time so
+ * the dirty check (draft vs this baseline) never drifts from the loaded
+ * record (a null color maps to the picker's own default, consistently). */
+function trackBaseline(track: Track): TrackForm {
+  return { name: track.name, color: track.color ?? TRACK_SWATCHES[0].value };
+}
+
+function roomBaseline(room: Room): RoomForm {
+  return { name: room.name, capacity: room.capacity !== null ? String(room.capacity) : '' };
+}
+
 export function TracksRoomsPanel() {
   const { eventId, loading: eventLoading, error: eventError } = useCurrentEvent();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const editing = searchParams.get('section') === SECTION_KEY && searchParams.get('edit') === '1';
   const [tracks, setTracks] = useState<Track[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
-  // DEC-678: null until the accepted-submission count that backs it has
-  // settled -- an em dash rather than a premature '0 submissions'.
-  const [trackCounts, setTrackCounts] = useState<Record<string, number>>({});
   const [error, setError] = useState<string | undefined>(undefined);
   const [newTrack, setNewTrack] = useState<TrackForm>(EMPTY_TRACK);
   const [newRoom, setNewRoom] = useState<RoomForm>(EMPTY_ROOM);
   const [trackFieldErrors, setTrackFieldErrors] = useState<TrackFormErrors>({});
   const [roomFieldErrors, setRoomFieldErrors] = useState<RoomFormErrors>({});
 
+  // DEC-915: local draft per existing row, keyed by id -- typing here never
+  // touches the network. Populated (once per row) from the loaded record;
+  // an already-present entry survives an incidental reload (e.g. saving a
+  // different row) so mid-typing state in one row is never clobbered by a
+  // fetch triggered by another.
+  const [trackDrafts, setTrackDrafts] = useState<Record<string, TrackForm>>({});
+  const [roomDrafts, setRoomDrafts] = useState<Record<string, RoomForm>>({});
+  const [trackRowErrors, setTrackRowErrors] = useState<Record<string, TrackFormErrors>>({});
+  const [roomRowErrors, setRoomRowErrors] = useState<Record<string, RoomFormErrors>>({});
+  const [savingTrackId, setSavingTrackId] = useState<string | null>(null);
+  const [savingRoomId, setSavingRoomId] = useState<string | null>(null);
+
   function reload(id: string) {
     apiList<Track>(`/events/${id}/tracks`)
-      .then((res) => {
-        setTracks(res.items);
-        void Promise.all(
-          res.items.map((track) =>
-            apiList<unknown>(`/events/${id}/submissions?trackId=${track.id}&perPage=1`).then(
-              (r) => [track.id, r.total] as const,
-            ),
-          ),
-        ).then((pairs) => setTrackCounts(Object.fromEntries(pairs)));
-      })
+      .then((res) => setTracks(res.items))
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load tracks'));
     apiList<Room>(`/events/${id}/rooms`)
       .then((res) => setRooms(res.items))
@@ -90,6 +109,57 @@ export function TracksRoomsPanel() {
     reload(eventId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eventId]);
+
+  useEffect(() => {
+    setTrackDrafts((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      for (const track of tracks) {
+        if (!(track.id in next)) {
+          next[track.id] = trackBaseline(track);
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [tracks]);
+
+  useEffect(() => {
+    setRoomDrafts((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      for (const room of rooms) {
+        if (!(room.id in next)) {
+          next[room.id] = roomBaseline(room);
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [rooms]);
+
+  function closeEdit() {
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev);
+      params.delete('section');
+      params.delete('edit');
+      return params;
+    });
+  }
+
+  function isTrackDirty(track: Track): boolean {
+    const draft = trackDrafts[track.id];
+    if (!draft) return false;
+    const base = trackBaseline(track);
+    return draft.name !== base.name || draft.color !== base.color;
+  }
+
+  function isRoomDirty(room: Room): boolean {
+    const draft = roomDrafts[room.id];
+    if (!draft) return false;
+    const base = roomBaseline(room);
+    return draft.name !== base.name || draft.capacity !== base.capacity;
+  }
 
   async function addTrack() {
     if (!eventId) return;
@@ -108,14 +178,27 @@ export function TracksRoomsPanel() {
     }
   }
 
-  async function renameTrack(track: Track, name: string) {
+  async function saveTrack(track: Track) {
     if (!eventId) return;
+    const draft = trackDrafts[track.id];
+    if (!draft) return;
+    const errors = validateTrackForm(draft);
+    setTrackRowErrors((prev) => ({ ...prev, [track.id]: errors }));
+    if (Object.keys(errors).length > 0) return;
+    setSavingTrackId(track.id);
     try {
-      await apiPatch(`/tracks/${track.id}`, { name });
+      await apiPatch(`/tracks/${track.id}`, { name: draft.name, color: draft.color || null });
       reload(eventId);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Failed to rename track');
+      setError(err instanceof ApiError ? err.message : 'Failed to save track');
+    } finally {
+      setSavingTrackId(null);
     }
+  }
+
+  function cancelTrack(track: Track) {
+    setTrackDrafts((prev) => ({ ...prev, [track.id]: trackBaseline(track) }));
+    setTrackRowErrors((prev) => ({ ...prev, [track.id]: {} }));
   }
 
   async function deleteTrack(track: Track) {
@@ -145,6 +228,32 @@ export function TracksRoomsPanel() {
     }
   }
 
+  async function saveRoom(room: Room) {
+    if (!eventId) return;
+    const draft = roomDrafts[room.id];
+    if (!draft) return;
+    const errors = validateRoomForm(draft);
+    setRoomRowErrors((prev) => ({ ...prev, [room.id]: errors }));
+    if (Object.keys(errors).length > 0) return;
+    setSavingRoomId(room.id);
+    try {
+      await apiPatch(`/rooms/${room.id}`, {
+        name: draft.name,
+        capacity: draft.capacity.trim().length > 0 ? Number(draft.capacity) : null,
+      });
+      reload(eventId);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Failed to save room');
+    } finally {
+      setSavingRoomId(null);
+    }
+  }
+
+  function cancelRoom(room: Room) {
+    setRoomDrafts((prev) => ({ ...prev, [room.id]: roomBaseline(room) }));
+    setRoomRowErrors((prev) => ({ ...prev, [room.id]: {} }));
+  }
+
   async function deleteRoom(room: Room) {
     if (!eventId) return;
     try {
@@ -162,9 +271,7 @@ export function TracksRoomsPanel() {
         {tracks.map((track) => (
           <div key={track.id} className="chq-settings-tracks-rooms-row">
             <span>{track.name}</span>
-            <span className="chq-settings-tracks-rooms-count">
-              {trackCounts[track.id] !== undefined ? `${trackCounts[track.id]} submissions` : '—'}
-            </span>
+            <span className="chq-settings-tracks-rooms-count">{track.submissionCount} submissions</span>
           </div>
         ))}
       </div>
@@ -196,29 +303,79 @@ export function TracksRoomsPanel() {
         <div>
           <h3 className="chq-section-label">Tracks</h3>
           <ul className="chq-settings-edit-list">
-            {tracks.map((track) => (
-              <li key={track.id} className="chq-settings-edit-row">
-                <span className="chq-settings-edit-row-value">
-                  <span
-                    className="chq-color-swatch"
-                    style={{ background: track.color ?? 'transparent' }}
-                    aria-hidden="true"
-                  />
-                  <input
-                    className="chq-input"
-                    value={track.name}
-                    onChange={(e) => renameTrack(track, e.target.value)}
-                    aria-label={`Track name for ${track.name}`}
-                  />
-                </span>
-                <span className="chq-settings-edit-row-meta" />
-                <span className="chq-settings-edit-row-actions">
-                  <button type="button" className="chq-link-button" onClick={() => deleteTrack(track)}>
-                    Delete
-                  </button>
-                </span>
-              </li>
-            ))}
+            {tracks.map((track) => {
+              const draft = trackDrafts[track.id] ?? trackBaseline(track);
+              const dirty = isTrackDirty(track);
+              const rowErrors = trackRowErrors[track.id] ?? {};
+              const saving = savingTrackId === track.id;
+              return (
+                <li key={track.id} className="chq-settings-edit-row">
+                  <span className="chq-settings-edit-row-value">
+                    <span
+                      className="chq-color-swatch"
+                      style={{ background: draft.color }}
+                      aria-hidden="true"
+                    />
+                    <input
+                      className="chq-input"
+                      value={draft.name}
+                      onChange={(e) =>
+                        setTrackDrafts((prev) => ({ ...prev, [track.id]: { ...draft, name: e.target.value } }))
+                      }
+                      aria-label={`Track name for ${track.name}`}
+                    />
+                    <div
+                      className="chq-swatch-picker"
+                      role="radiogroup"
+                      aria-label={`Track color for ${track.name}`}
+                    >
+                      {TRACK_SWATCHES.map((swatch) => (
+                        <button
+                          key={swatch.value}
+                          type="button"
+                          role="radio"
+                          className="chq-color-swatch chq-swatch-picker-option"
+                          style={{ background: swatch.value }}
+                          aria-checked={draft.color === swatch.value}
+                          aria-label={swatch.label}
+                          onClick={() =>
+                            setTrackDrafts((prev) => ({ ...prev, [track.id]: { ...draft, color: swatch.value } }))
+                          }
+                        />
+                      ))}
+                    </div>
+                  </span>
+                  <span className="chq-settings-edit-row-meta">{track.submissionCount} submissions</span>
+                  <span className="chq-settings-edit-row-actions">
+                    {dirty ? (
+                      <>
+                        <button
+                          type="button"
+                          className="chq-link-button"
+                          onClick={() => void saveTrack(track)}
+                          disabled={saving}
+                        >
+                          Save
+                        </button>
+                        <button
+                          type="button"
+                          className="chq-link-button"
+                          onClick={() => cancelTrack(track)}
+                          disabled={saving}
+                        >
+                          Cancel
+                        </button>
+                      </>
+                    ) : null}
+                    <button type="button" className="chq-link-button" onClick={() => void deleteTrack(track)}>
+                      Delete
+                    </button>
+                  </span>
+                  {rowErrors.name ? <span role="alert">{rowErrors.name}</span> : null}
+                  {rowErrors.color ? <span role="alert">{rowErrors.color}</span> : null}
+                </li>
+              );
+            })}
           </ul>
           <div className="chq-settings-row">
             <input
@@ -250,19 +407,64 @@ export function TracksRoomsPanel() {
 
           <h3 className="chq-section-label">Rooms</h3>
           <ul className="chq-settings-edit-list">
-            {rooms.map((room) => (
-              <li key={room.id} className="chq-settings-edit-row">
-                <span className="chq-settings-edit-row-value">{room.name}</span>
-                <span className="chq-settings-edit-row-meta">
-                  {room.capacity !== null ? `Capacity ${room.capacity}` : ''}
-                </span>
-                <span className="chq-settings-edit-row-actions">
-                  <button type="button" className="chq-link-button" onClick={() => deleteRoom(room)}>
-                    Delete
-                  </button>
-                </span>
-              </li>
-            ))}
+            {rooms.map((room) => {
+              const draft = roomDrafts[room.id] ?? roomBaseline(room);
+              const dirty = isRoomDirty(room);
+              const rowErrors = roomRowErrors[room.id] ?? {};
+              const saving = savingRoomId === room.id;
+              return (
+                <li key={room.id} className="chq-settings-edit-row">
+                  <span className="chq-settings-edit-row-value">
+                    <input
+                      className="chq-input"
+                      value={draft.name}
+                      onChange={(e) =>
+                        setRoomDrafts((prev) => ({ ...prev, [room.id]: { ...draft, name: e.target.value } }))
+                      }
+                      aria-label={`Room name for ${room.name}`}
+                    />
+                  </span>
+                  <span className="chq-settings-edit-row-meta">
+                    <input
+                      className="chq-input"
+                      placeholder="Capacity"
+                      value={draft.capacity}
+                      onChange={(e) =>
+                        setRoomDrafts((prev) => ({ ...prev, [room.id]: { ...draft, capacity: e.target.value } }))
+                      }
+                      aria-label={`Capacity for ${room.name}`}
+                    />
+                  </span>
+                  <span className="chq-settings-edit-row-actions">
+                    {dirty ? (
+                      <>
+                        <button
+                          type="button"
+                          className="chq-link-button"
+                          onClick={() => void saveRoom(room)}
+                          disabled={saving}
+                        >
+                          Save
+                        </button>
+                        <button
+                          type="button"
+                          className="chq-link-button"
+                          onClick={() => cancelRoom(room)}
+                          disabled={saving}
+                        >
+                          Cancel
+                        </button>
+                      </>
+                    ) : null}
+                    <button type="button" className="chq-link-button" onClick={() => void deleteRoom(room)}>
+                      Delete
+                    </button>
+                  </span>
+                  {rowErrors.name ? <span role="alert">{rowErrors.name}</span> : null}
+                  {rowErrors.capacity ? <span role="alert">{rowErrors.capacity}</span> : null}
+                </li>
+              );
+            })}
           </ul>
           <div className="chq-settings-row">
             <input
@@ -283,6 +485,10 @@ export function TracksRoomsPanel() {
             {roomFieldErrors.name ? <span role="alert">{roomFieldErrors.name}</span> : null}
             {roomFieldErrors.capacity ? <span role="alert">{roomFieldErrors.capacity}</span> : null}
           </div>
+
+          <button type="button" className="chq-btn chq-btn-tertiary" onClick={closeEdit}>
+            Done
+          </button>
         </div>
       </SummarySection>
     </>

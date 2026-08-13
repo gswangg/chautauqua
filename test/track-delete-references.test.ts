@@ -90,13 +90,18 @@ function formRow(overrides: Partial<Record<string, unknown>> = {}) {
 
 describe("deleteTrack referential guard (DEC-229, never cascades)", () => {
   it("409s when a submission still references the track (existing check)", async () => {
-    const db = fakeDb([[trackRow], [{ id: "sub1" }]]);
+    const db = fakeDb([
+      [trackRow], // getTrackForEvent row lookup
+      [], // getTrackForEvent's submissionCount grouped aggregate (DEC-916)
+      [{ id: "sub1" }],
+    ]);
     await expect(deleteTrack(db, "track1", "event1")).rejects.toMatchObject({ status: 409 });
   });
 
   it("409s when a form's tracks_json still lists the track", async () => {
     const db = fakeDb([
-      [trackRow], // getTrackForEvent
+      [trackRow], // getTrackForEvent row lookup
+      [], // getTrackForEvent's submissionCount grouped aggregate (DEC-916)
       [], // submissionTrack join refs (DEC-855: the only submission-track guard query now)
       [formRow({ tracksJson: JSON.stringify(["track1", "track2"]) })], // findFormForEvent
     ]);
@@ -106,6 +111,7 @@ describe("deleteTrack referential guard (DEC-229, never cascades)", () => {
   it("409s when a plan's filters_json track filter still lists the track", async () => {
     const db = fakeDb([
       [trackRow],
+      [], // getTrackForEvent's submissionCount grouped aggregate (DEC-916)
       [],
       [], // no form
       [{ plan: planRow({ filtersJson: JSON.stringify({ trackIds: ["track1"] }) }), timezone: "UTC" }], // listPlansForEvent
@@ -116,6 +122,7 @@ describe("deleteTrack referential guard (DEC-229, never cascades)", () => {
   it("409s when a plan_reviewer row still scopes a reviewer to the track", async () => {
     const db = fakeDb([
       [trackRow],
+      [], // getTrackForEvent's submissionCount grouped aggregate (DEC-916)
       [],
       [], // no form
       [{ plan: planRow(), timezone: "UTC" }], // one plan, no filter reference
@@ -127,6 +134,7 @@ describe("deleteTrack referential guard (DEC-229, never cascades)", () => {
   it("deletes cleanly when the track is wholly unreferenced", async () => {
     const db = fakeDb([
       [trackRow],
+      [], // getTrackForEvent's submissionCount grouped aggregate (DEC-916)
       [],
       [], // no form
       [{ plan: planRow(), timezone: "UTC" }], // one plan, no filter reference

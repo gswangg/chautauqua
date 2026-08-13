@@ -237,9 +237,15 @@ export interface TrackRecord {
   position: number;
   createdAt: number;
   updatedAt: number;
+  // DEC-916: rides the same list read as every other field -- computed by
+  // ONE grouped aggregate over schema.submissionTrack joined to
+  // schema.submission scoped to this event (matching the submissions list's
+  // own trackId EXISTS predicate, src/server/repo/submissions/list.ts), never
+  // a per-track follow-up request.
+  submissionCount: number;
 }
 
-function toTrackRecord(row: typeof schema.track.$inferSelect): TrackRecord {
+function toTrackRecord(row: typeof schema.track.$inferSelect, submissionCount: number): TrackRecord {
   return {
     id: row.id,
     eventId: row.eventId,
@@ -248,6 +254,7 @@ function toTrackRecord(row: typeof schema.track.$inferSelect): TrackRecord {
     position: row.position,
     createdAt: row.createdAt.getTime(),
     updatedAt: row.updatedAt.getTime(),
+    submissionCount,
   };
 }
 
@@ -258,7 +265,23 @@ export async function listTracksForEvent(db: Db, eventId: string, page?: RepoPag
     .where(eq(schema.track.eventId, eventId))
     .orderBy(asc(schema.track.position), asc(schema.track.id));
   const rows = page ? await base.limit(page.limit).offset(page.offset) : await base;
-  return rows.map(toTrackRecord);
+
+  // DEC-916: ONE grouped query for every track on this page -- never one
+  // request per track. Scoped through schema.submission.eventId (same scope
+  // the submissions list's trackId EXISTS predicate uses) so this count and
+  // the submissions list's per-track count can never drift.
+  const countRows = await db
+    .select({
+      trackId: schema.submissionTrack.trackId,
+      count: sql<number>`count(*)`,
+    })
+    .from(schema.submissionTrack)
+    .innerJoin(schema.submission, eq(schema.submission.id, schema.submissionTrack.submissionId))
+    .where(eq(schema.submission.eventId, eventId))
+    .groupBy(schema.submissionTrack.trackId);
+  const counts = new Map(countRows.map((r) => [r.trackId, Number(r.count)]));
+
+  return rows.map((row) => toTrackRecord(row, counts.get(row.id) ?? 0));
 }
 
 export async function countTracksForEvent(db: Db, eventId: string): Promise<number> {
@@ -298,7 +321,13 @@ export async function getTrackForEvent(db: Db, trackId: string, eventId: string)
     .where(and(eq(schema.track.id, trackId), eq(schema.track.eventId, eventId)))
     .limit(1);
   const row = rows[0];
-  return row ? toTrackRecord(row) : null;
+  if (!row) return null;
+  const countRows = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(schema.submissionTrack)
+    .innerJoin(schema.submission, eq(schema.submission.id, schema.submissionTrack.submissionId))
+    .where(and(eq(schema.submissionTrack.trackId, trackId), eq(schema.submission.eventId, eventId)));
+  return toTrackRecord(row, Number(countRows[0]?.count ?? 0));
 }
 
 export async function updateTrack(
