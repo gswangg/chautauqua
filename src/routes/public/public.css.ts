@@ -274,6 +274,17 @@ export const PUBLIC_CSS = `
     color: var(--chq-muted);
   }
   .chq-pub-agenda-list-speakers { font-size: 13px; color: var(--chq-ink-2); }
+  /* DEC-783/DEC-970: the per-start-time sub-header rendered above a group
+     of rows that share a start time (AgendaItemList's groupByStart) --
+     was previously rendering with no declared style at all. */
+  .chq-pub-schedule-time-subhead {
+    font-family: var(--chq-font-display);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--chq-muted);
+    padding: 10px 0 2px;
+    list-style: none;
+  }
 
   .chq-pub-day-switcher { display: flex; gap: 8px; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 4px; }
   /* DEC-838: the day pill (agenda + schedule's shared DaySwitcher, agenda.tsx)

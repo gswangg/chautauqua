@@ -322,6 +322,9 @@ export const PORTAL_CSS = `
   /* DEC-777: the status badge is its own block-level row, never an inline
      sibling sharing a line with the back link above it. */
   .chq-portal-status-row { margin-top: 8px; }
+  /* DEC-970: the back-link wrapper row above it gets the matching gap,
+     rather than relying solely on the status row's own margin-top. */
+  .chq-portal-back-row { margin-bottom: 8px; }
   .chq-portal-status-badge {
     display: block;
     font-size: 11px;
