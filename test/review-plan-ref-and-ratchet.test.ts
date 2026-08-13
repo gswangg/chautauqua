@@ -73,11 +73,23 @@ vi.mock("../src/server/repo/review", async () => {
       if (input === submission.id || input === submission.ref) return submission.id;
       return null;
     }),
-    addReviewer: vi.fn(async (_db: unknown, planId: string, input: Record<string, unknown>) => ({
-      id: "pr-1",
-      planId,
-      ...input,
-    })),
+    // DEC-924 (amendment, wave 47): the singular addReviewer is retired, so
+    // the single-pair POST /plans/:id/reviewers path now goes through the
+    // set-based addReviewers with a one-element array.
+    addReviewers: vi.fn(
+      async (
+        _db: unknown,
+        planId: string,
+        inputs: { userId: string; trackId?: string | null; submissionId?: string | null }[],
+      ) =>
+        inputs.map((input, i) => ({
+          id: `pr-${i + 1}`,
+          planId,
+          userId: input.userId,
+          trackId: input.trackId ?? null,
+          submissionId: input.submissionId ?? null,
+        })),
+    ),
   };
 });
 
