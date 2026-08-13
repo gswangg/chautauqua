@@ -171,7 +171,9 @@ describe('ReviewPage render smoke: organizer', () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByRole('heading', { name: 'Keynote Track Review' })).toBeInTheDocument();
+    // DEC-745: the plan NAME is the page title, rendered as an editable
+    // input rather than an <h1> -- no heading role for it anymore.
+    expect(await screen.findByDisplayValue('Keynote Track Review')).toBeInTheDocument();
 
     // Null-safe fallback: msToDateInput(null) -> '' rather than throwing.
     const opensInput = screen.getByLabelText('Opens') as HTMLInputElement;
@@ -196,11 +198,14 @@ describe('ReviewPage render smoke: organizer', () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByRole('heading', { name: 'Keynote Track Review' })).toBeInTheDocument();
-    const trackCheckbox = screen.getByLabelText('Main Stage') as HTMLInputElement;
-    expect(trackCheckbox.checked).toBe(true);
+    // DEC-745: no heading role and no track-filter checkboxes anymore --
+    // the plan's already-loaded filters.trackIds still round-trips through
+    // Save even without a UI to edit it (draft.trackIds is preserved data,
+    // just no longer an editable field row).
+    expect(await screen.findByDisplayValue('Keynote Track Review')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Main Stage')).not.toBeInTheDocument();
 
-    const saveButton = screen.getByRole('button', { name: 'Save plan' });
+    const saveButton = screen.getByRole('button', { name: 'Save' });
     saveButton.click();
 
     await waitFor(() => {

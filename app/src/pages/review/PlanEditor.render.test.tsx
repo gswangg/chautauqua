@@ -1,11 +1,13 @@
 // DEC-239 regression + DEC-018 P3 coverage (docs/eval-findings.md Section B
 // "Reviewer assignment always fails 'User not found'", Section D "Add-
-// criterion clicks made before changing Rounds are discarded"):
+// criterion clicks made before changing Rounds are discarded") plus DEC-745
+// v4-shell coverage (title-row NAME/Duplicate/Save, 2x2 field grid, "Who
+// reviews what" renamed section, no-touch-no-error on the new-plan route).
 //  1. reviewerOptions built from {id,email,role} rows (GET /api/v1/users
 //     wire shape) must render <option value> equal to the row's `id` --
 //     not `undefined` from a stale `userId` field read.
-//  2. adding a criterion, typing its label, then changing Rounds must not
-//     discard the typed label.
+//  2. adding a criterion, typing its label, then reassigning the round
+//     override must not discard the typed label.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
@@ -16,7 +18,7 @@ import { listEnvelope, mockApi } from '../../test-utils/mockApi';
 const EVENT_ID = 'evt-plan-editor';
 const PLAN_ID = 'plan-1';
 
-function plan() {
+function plan(overrides: Record<string, unknown> = {}) {
   return {
     id: PLAN_ID,
     eventId: EVENT_ID,
@@ -33,6 +35,7 @@ function plan() {
     roundCriteria: null,
     maxEvaluations: null,
     createdAt: 1700000000000,
+    ...overrides,
   };
 }
 
@@ -50,12 +53,17 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+async function openAssignForm() {
+  fireEvent.click(await screen.findByRole('button', { name: 'Assign a reviewer' }));
+}
+
 describe('PlanEditor render smoke', () => {
   it('renders reviewer options keyed on `id` (not `userId`) from the GET /api/v1/users wire shape', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
       [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
       [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([]),
       'GET /api/v1/users': listEnvelope([{ id: 'user-42', email: 'reviewer@example.test', role: 'reviewer', contactId: null, createdAt: 0 }]),
     });
 
@@ -67,6 +75,7 @@ describe('PlanEditor render smoke', () => {
       </MemoryRouter>,
     );
 
+    await openAssignForm();
     await waitFor(() => {
       expect(screen.getByRole('option', { name: 'reviewer@example.test' })).toBeInTheDocument();
     });
@@ -74,11 +83,12 @@ describe('PlanEditor render smoke', () => {
     expect(option.value).toBe('user-42');
   });
 
-  it('keeps a just-typed criterion label after the Rounds count changes', async () => {
+  it('keeps a just-typed criterion label after switching the round tab', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
-      [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
+      [`GET /api/v1/plans/${PLAN_ID}`]: plan({ rounds: 2 }),
       [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([]),
       'GET /api/v1/users': listEnvelope([]),
     });
 
@@ -91,7 +101,7 @@ describe('PlanEditor render smoke', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('Track Review')).toBeInTheDocument();
+      expect(screen.getByDisplayValue('Track Review')).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByRole('link', { name: 'Add criterion' }));
@@ -100,8 +110,11 @@ describe('PlanEditor render smoke', () => {
     fireEvent.change(labelInput, { target: { value: 'Innovation' } });
     expect((labelInput as HTMLInputElement).value).toBe('Innovation');
 
-    const roundsInput = screen.getByLabelText('Rounds');
-    fireEvent.change(roundsInput, { target: { value: '2' } });
+    // Round tabs are the only remaining round control (ROUNDS number input
+    // is gone -- DEC-745; POST /plans/:id/waves is now the sole way rounds
+    // grow). Switching to round 1 and back to Base must not discard it.
+    fireEvent.change(screen.getByLabelText(/Editing criteria for/), { target: { value: '1' } });
+    fireEvent.change(screen.getByLabelText(/Editing criteria for/), { target: { value: '0' } });
 
     expect((screen.getByPlaceholderText('Label') as HTMLInputElement).value).toBe('Innovation');
   });
@@ -115,6 +128,7 @@ describe('PlanEditor render smoke', () => {
       [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
       [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
       [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([]),
       'GET /api/v1/users': listEnvelope([{ id: 'user-42', email: 'reviewer@example.test', role: 'reviewer', contactId: null, createdAt: 0 }]),
       [`POST /api/v1/plans/${PLAN_ID}/reviewers`]: {
         status: 201,
@@ -130,6 +144,7 @@ describe('PlanEditor render smoke', () => {
       </MemoryRouter>,
     );
 
+    await openAssignForm();
     await waitFor(() => {
       expect(screen.getByRole('option', { name: 'reviewer@example.test' })).toBeInTheDocument();
     });
@@ -150,6 +165,7 @@ describe('PlanEditor render smoke', () => {
       [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
       [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
       [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([]),
       'GET /api/v1/users': listEnvelope(
         [{ id: 'user-1', email: 'r1@example.test', role: 'reviewer', contactId: null, createdAt: 0 }],
         { total: 250 },
@@ -164,6 +180,7 @@ describe('PlanEditor render smoke', () => {
       </MemoryRouter>,
     );
 
+    await openAssignForm();
     await waitFor(() => {
       expect(screen.getByText('Showing first 1 of 250 reviewers')).toBeInTheDocument();
     });
@@ -174,6 +191,7 @@ describe('PlanEditor render smoke', () => {
       [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
       [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
       [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([]),
       'GET /api/v1/users': listEnvelope([
         { id: 'user-1', email: 'r1@example.test', role: 'reviewer', contactId: null, createdAt: 0 },
       ]),
@@ -187,6 +205,7 @@ describe('PlanEditor render smoke', () => {
       </MemoryRouter>,
     );
 
+    await openAssignForm();
     await waitFor(() => {
       expect(screen.getByRole('option', { name: 'r1@example.test' })).toBeInTheDocument();
     });
@@ -233,6 +252,7 @@ describe('PlanEditor render smoke', () => {
           submissionTitle: null,
         },
       ]),
+      [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([]),
       'GET /api/v1/users': listEnvelope([]),
     });
 
@@ -271,7 +291,7 @@ describe('PlanEditor render smoke', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('New evaluation plan')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Create the plan' })).toBeInTheDocument();
     });
     expect(screen.getAllByPlaceholderText('Label').map((el) => (el as HTMLInputElement).value)).toEqual([
       'Relevance',
@@ -296,6 +316,7 @@ describe('PlanEditor render smoke', () => {
         ],
       },
       [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([]),
       'GET /api/v1/users': listEnvelope([]),
     });
 
@@ -328,6 +349,7 @@ describe('PlanEditor render smoke', () => {
       [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
       [`GET /api/v1/plans/${PLAN_ID}`]: { ...plan(), criteria: sevenCriteria },
       [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([]),
       'GET /api/v1/users': listEnvelope([]),
     });
 
@@ -359,6 +381,7 @@ describe('PlanEditor render smoke', () => {
         evaluationCountsByRound: { '1': 3 },
       },
       [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([]),
       'GET /api/v1/users': listEnvelope([]),
     });
 
@@ -386,6 +409,7 @@ describe('PlanEditor render smoke', () => {
       [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
       [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
       [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([]),
       'GET /api/v1/users': listEnvelope([]),
     });
 
@@ -407,5 +431,175 @@ describe('PlanEditor render smoke', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Dropdown' }));
 
     expect(screen.getByPlaceholderText('Options (comma-separated)')).toBeInTheDocument();
+  });
+
+  // --- DEC-745: v4 shell coverage -------------------------------------
+
+  it('renders the plan NAME as an editable title input, and renaming it survives', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
+      [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([]),
+      'GET /api/v1/users': listEnvelope([]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId" element={<PlanEditor />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const titleInput = await screen.findByDisplayValue('Track Review');
+    expect(titleInput.tagName).toBe('INPUT');
+    fireEvent.change(titleInput, { target: { value: 'Renamed Plan' } });
+    expect(screen.getByDisplayValue('Renamed Plan')).toBeInTheDocument();
+    // The old labelled "Name" field row is gone -- no separate "Name" text.
+    expect(screen.queryByText('Name', { selector: 'label' })).not.toBeInTheDocument();
+  });
+
+  it('deletes the removed fields: Instructions, Rounds and the track-filter checkboxes', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([{ id: 'track-1', name: 'Backend' }]),
+      [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
+      [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([]),
+      'GET /api/v1/users': listEnvelope([]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId" element={<PlanEditor />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(screen.getByDisplayValue('Track Review')).toBeInTheDocument());
+    expect(screen.queryByLabelText('Rounds')).not.toBeInTheDocument();
+    expect(screen.queryByText('Instructions')).not.toBeInTheDocument();
+    expect(screen.queryByText('Track filter')).not.toBeInTheDocument();
+    expect(screen.queryByText('Backend', { selector: 'label' })).not.toBeInTheDocument();
+    // POST /plans/:id/waves's "Start a new wave" control is a different
+    // affordance (only rendered once a round is locked) -- untouched here.
+  });
+
+  it('renders the 2x2 field grid captioned "Applies to every criterion in this plan"', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
+      [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([]),
+      'GET /api/v1/users': listEnvelope([]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId" element={<PlanEditor />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(screen.getByText('Opens')).toBeInTheDocument());
+    expect(screen.getByText('Closes')).toBeInTheDocument();
+    expect(screen.getByText('Reviews per talk')).toBeInTheDocument();
+    expect(screen.getByText('Rating scale')).toBeInTheDocument();
+    expect(screen.getByText('Applies to every criterion in this plan')).toBeInTheDocument();
+  });
+
+  it('Duplicate POSTs a new plan carrying dates/scale/criteria/reviews-per-talk and navigates to it, with no new endpoint', async () => {
+    const postSpy = vi.fn(() => ({ status: 201, body: { ...plan(), id: 'plan-2', name: 'Track Review (copy)' } }));
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}`]: {
+        ...plan(),
+        openDate: 1000,
+        closeDate: 2000,
+        maxEvaluations: 2,
+        criteria: [{ id: 'c1', label: 'Content', kind: 'rating', weight: 1 }],
+      },
+      [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([]),
+      [`GET /api/v1/plans/plan-2`]: { ...plan(), id: 'plan-2', name: 'Track Review (copy)' },
+      [`GET /api/v1/plans/plan-2/reviewers`]: listEnvelope([]),
+      [`GET /api/v1/plans/plan-2/progress`]: listEnvelope([]),
+      'GET /api/v1/users': listEnvelope([]),
+      [`POST /api/v1/events/${EVENT_ID}/plans`]: postSpy,
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId" element={<PlanEditor />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(screen.getByDisplayValue('Track Review')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Duplicate' }));
+
+    await waitFor(() => expect(postSpy).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.getByDisplayValue('Track Review (copy)')).toBeInTheDocument());
+  });
+
+  it('renames "Reviewer assignment" to "Who reviews what", with the recusal footnote and an in-section anonymise checkbox', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
+      [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([
+        { id: 'pr-1', userId: 'user-42', email: 'reviewer@example.test', trackId: null, submissionId: null },
+      ]),
+      [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([
+        { userId: 'user-42', email: 'reviewer@example.test', name: 'Jamie Rivera', assigned: 6, completed: 2, recused: 0 },
+      ]),
+      'GET /api/v1/users': listEnvelope([]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId" element={<PlanEditor />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(screen.getByText('Who reviews what')).toBeInTheDocument());
+    expect(screen.queryByText('Reviewer assignment')).not.toBeInTheDocument();
+    // Name over email, and the load count.
+    expect(screen.getByText('Jamie Rivera')).toBeInTheDocument();
+    expect(screen.getByText('reviewer@example.test')).toBeInTheDocument();
+    expect(screen.getByText('6 talks')).toBeInTheDocument();
+    expect(screen.getByText('A reviewer never sees a talk they are recused from.')).toBeInTheDocument();
+    expect(
+      screen.getByRole('checkbox', { name: 'Anonymize speaker identity for reviewers' }),
+    ).toBeInTheDocument();
+  });
+
+  it('new-plan route: Cancel + Create the plan on the title row, the "nothing sent" line, and no name error before touch', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+      'GET /api/v1/users': listEnvelope([]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/review/plans/new']}>
+        <Routes>
+          <Route path="/review/plans/new" element={<PlanEditor />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Create the plan' })).toBeInTheDocument());
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
+    expect(screen.getByText('Nothing is sent to reviewers until you open it.')).toBeInTheDocument();
+    expect(screen.queryByText('Name is required.')).not.toBeInTheDocument();
+
+    // Touching (blurring) the empty title now surfaces the error.
+    const titleInput = screen.getByPlaceholderText('New evaluation plan');
+    fireEvent.blur(titleInput);
+    expect(screen.getByText('Name is required.')).toBeInTheDocument();
   });
 });

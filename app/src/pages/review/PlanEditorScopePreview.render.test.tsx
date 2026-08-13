@@ -1,6 +1,9 @@
 // DEC-572 regression coverage (ABS-S2-D1): reviewer track-scope assignment
 // must show the TRUE fan-out count and require an explicit confirm before
 // any plan_reviewer row is POSTed.
+// DEC-745: the assign controls this test drives now sit behind the "Who
+// reviews what" section's "Assign a reviewer" link (progressive disclosure,
+// not a removed capability) -- renderEditor opens it before interacting.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
@@ -63,6 +66,10 @@ async function renderEditor(fetchMock: ReturnType<typeof mockApi>) {
     </MemoryRouter>,
   );
   await waitFor(() => {
+    expect(screen.getByRole('button', { name: 'Assign a reviewer' })).toBeInTheDocument();
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Assign a reviewer' }));
+  await waitFor(() => {
     expect(screen.getByRole('option', { name: 'reviewer@example.test' })).toBeInTheDocument();
   });
   void fetchMock;
@@ -81,6 +88,7 @@ describe('DEC-572: PlanEditor track-scope assignment confirm gate', () => {
       [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope(TRACKS),
       [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
       [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([]),
       'GET /api/v1/users': listEnvelope([REVIEWER]),
       [`GET /api/v1/plans/${PLAN_ID}/scope-preview`]: { count: 3, items: PREVIEW_ITEMS, perPage: 200 },
       [`POST /api/v1/plans/${PLAN_ID}/reviewers`]: postSpy,
@@ -116,6 +124,7 @@ describe('DEC-572: PlanEditor track-scope assignment confirm gate', () => {
       [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope(TRACKS),
       [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
       [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([]),
       'GET /api/v1/users': listEnvelope([REVIEWER]),
       [`GET /api/v1/plans/${PLAN_ID}/scope-preview`]: { count: 3, items: PREVIEW_ITEMS, perPage: 200 },
       [`POST /api/v1/plans/${PLAN_ID}/reviewers`]: postSpy,

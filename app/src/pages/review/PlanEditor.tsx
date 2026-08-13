@@ -7,6 +7,10 @@ import { copyText } from '../../lib/clipboard';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { addCriterion, removeCriterion, updateCriterion, validateCriteriaList, validatePlanDraft } from './planForm';
+// DEC-708: the same name-or-email resolver ProgressPanel uses -- a plan
+// reviewer row names a person by their resolved contact, never a
+// fabricated name, falling back to the bare email.
+import { reviewerDisplayLabel } from './progress';
 import './review.css';
 import {
   DEFAULT_PLAN_DRAFT,
@@ -15,6 +19,7 @@ import {
   type EvaluationPlan,
   type PlanDraft,
   type PlanReviewer,
+  type ProgressRow,
   type ReviewerOption,
   type ScopePreview,
   type Track,
@@ -23,6 +28,9 @@ import {
 // are computed by the same pure domain functions the server uses -- no
 // re-derivation of the weight-share math client-side.
 import { criterionWeightShares, DEFAULT_PLAN_CRITERIA } from '../../../../src/domain/evaluation';
+import { DEC_745 } from '../../../../src/decisions';
+
+void DEC_745; // v4 shell: title-row NAME/Duplicate/Save, 2x2 field grid, "Who reviews what" below
 
 // DEC-572: batches per-submission plan_reviewer POSTs to at most this many
 // concurrent requests per wave, mirroring the server's own bound.
@@ -61,8 +69,22 @@ export function PlanEditor() {
   const [reviewers, setReviewers] = useState<PlanReviewer[]>([]);
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
+  const [duplicating, setDuplicating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dateFieldError, setDateFieldError] = useState<string | null>(null);
+  // DEC-745: the plan NAME is the page title now, an <input> rather than a
+  // labelled field row. A brand-new plan starts blank, so its "required"
+  // error must stay silent until the field has actually been touched --
+  // an existing plan always loads with a name, so it's touched from the start.
+  const [nameTouched, setNameTouched] = useState(!isNew);
+  // DEC-745: "Assign a reviewer" is a link on the "Who reviews what" rule,
+  // not an always-open form -- it discloses the assignment controls
+  // (existing create-account + scope-assign capability, never dropped).
+  const [assignFormOpen, setAssignFormOpen] = useState(false);
+  // DEC-745/DEC-708: "load" on a reviewer row ("6 talks") reads the same
+  // assigned/completed aggregate ProgressPanel already renders, joined by
+  // userId -- never a second count derived here.
+  const [progressRows, setProgressRows] = useState<ProgressRow[]>([]);
 
   // DEC-147: 0 = editing the base criteria; a round number 1..rounds means
   // editing that round's override (or "inherit base" when no override key
@@ -183,12 +205,21 @@ export function PlanEditor() {
         // Reviewer roster is a nice-to-have on the editor; the plan itself
         // still loaded, so don't block the page on this failing.
       });
+    apiList<ProgressRow>(`/plans/${planId}/progress`)
+      .then((res) => setProgressRows(res.items))
+      .catch(() => {
+        // Same non-blocking treatment -- rows still render with a bare
+        // email/no load count if this fails.
+      });
   }, [planId, isNew]);
 
   const errors = validatePlanDraft(draft);
 
   async function save() {
     if (!eventId) return;
+    // DEC-745: a Save/Create click always surfaces the name error even if
+    // the title input itself was never blurred.
+    setNameTouched(true);
     if (Object.keys(errors).length > 0) {
       setError('Fix the highlighted fields before saving.');
       return;
@@ -221,6 +252,33 @@ export function PlanEditor() {
       setError(err instanceof ApiError ? err.message : 'Failed to save plan');
     } finally {
       setSaving(false);
+    }
+  }
+
+  // DEC-745: Duplicate needs no new endpoint -- it's the same
+  // POST /events/:eventId/plans the new-plan route already uses, carrying
+  // this plan's dates/scale/criteria/reviews-per-talk (the fields DEC-745
+  // names), never its rounds/roundCriteria/anonymized/trackIds/instructions,
+  // which start fresh on the copy.
+  async function duplicatePlan() {
+    if (!eventId || isNew) return;
+    setDuplicating(true);
+    setError(null);
+    try {
+      const body = {
+        name: `${draft.name} (copy)`,
+        openDate: draft.openAt,
+        closeDate: draft.closeAt,
+        scale: draft.scale,
+        criteria: draft.criteria,
+        maxEvaluations: draft.maxEvaluationsPerSubmission ?? null,
+      };
+      const created = await apiPost<EvaluationPlan>(`/events/${eventId}/plans`, body);
+      navigate(`/review/plans/${created.id}`);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Failed to duplicate plan');
+    } finally {
+      setDuplicating(false);
     }
   }
 
@@ -529,16 +587,53 @@ export function PlanEditor() {
 
   return (
     <div className="chq-page chq-review-page">
-      {/* DEC-709: breadcrumb 'Review / <plan name>' replaces the standalone
-          back-link + separate h1 -- the page's own title IS the breadcrumb's
-          trailing crumb. */}
-      <nav className="chq-review-breadcrumb" aria-label="Breadcrumb">
-        <Link to="/review">Review</Link>
-        <span aria-hidden="true"> / </span>
-        <h1 className="chq-review-breadcrumb-current">
-          {isNew ? 'New evaluation plan' : draft.name || 'Evaluation plan'}
-        </h1>
-      </nav>
+      {/* DEC-745: the v4 title row -- a '‹ Review' back-link over the plan's
+          own NAME rendered as an editable title input (renaming survives now
+          that the old labelled Name field row is gone), with Duplicate/Save
+          (or Cancel/Create the plan when isNew) on the same row. */}
+      <div className="chq-review-editor-title-row">
+        <div className="chq-review-editor-title-col">
+          <Link to="/review" className="chq-review-editor-back-link">
+            &lsaquo; Review
+          </Link>
+          <input
+            className="chq-review-editor-title-input"
+            aria-label="Plan name"
+            placeholder="New evaluation plan"
+            value={draft.name}
+            onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
+            onBlur={() => setNameTouched(true)}
+          />
+          {nameTouched && errors.name && <span className="chq-review-field-error">{errors.name}</span>}
+          {isNew && <p className="chq-review-field-caption">Nothing is sent to reviewers until you open it.</p>}
+        </div>
+        <div className="chq-review-editor-title-actions">
+          {isNew ? (
+            <>
+              <button type="button" className="chq-btn chq-btn-tertiary" disabled={saving} onClick={() => navigate('/review')}>
+                Cancel
+              </button>
+              <button type="button" className="chq-btn chq-btn-primary" disabled={saving} onClick={save}>
+                {saving ? 'Creating…' : 'Create the plan'}
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                className="chq-btn chq-btn-secondary"
+                disabled={saving || duplicating}
+                onClick={() => void duplicatePlan()}
+              >
+                {duplicating ? 'Duplicating…' : 'Duplicate'}
+              </button>
+              <button type="button" className="chq-btn chq-btn-primary" disabled={saving} onClick={save}>
+                {saving ? 'Saving…' : 'Save'}
+              </button>
+            </>
+          )}
+        </div>
+      </div>
       {error && (
         <div className="chq-error" role="alert">
           {error}
@@ -593,7 +688,7 @@ export function PlanEditor() {
             )}
           </label>
           <div className="chq-review-field">
-            Scale
+            Rating scale
             <div className="chq-review-scale-inputs">
               <input
                 type="number"
@@ -615,70 +710,6 @@ export function PlanEditor() {
             {errors.scale && <span className="chq-review-field-error">{errors.scale}</span>}
           </div>
         </div>
-
-        <label className="chq-review-field">
-          Name
-          <input
-            className="chq-input"
-            value={draft.name}
-            onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
-          />
-          {errors.name && <span className="chq-review-field-error">{errors.name}</span>}
-        </label>
-
-        <label className="chq-review-field">
-          Instructions
-          <textarea
-            className="chq-textarea"
-            value={draft.instructions ?? ''}
-            onChange={(e) => setDraft((d) => ({ ...d, instructions: e.target.value }))}
-          />
-        </label>
-
-        <label className="chq-review-field">
-          Rounds
-          <input
-            type="number"
-            className="chq-input"
-            min={1}
-            value={draft.rounds}
-            onChange={(e) => setDraft((d) => ({ ...d, rounds: Number(e.target.value) }))}
-          />
-          {errors.rounds && <span className="chq-review-field-error">{errors.rounds}</span>}
-        </label>
-
-        <fieldset>
-          <legend className="chq-review-field" style={{ marginBottom: '6px' }}>
-            Track filter
-          </legend>
-          {tracks.map((track) => (
-            <label key={track.id} className="chq-review-checkbox-label">
-              <input
-                type="checkbox"
-                className="chq-check"
-                checked={draft.trackIds.includes(track.id)}
-                onChange={(e) =>
-                  setDraft((d) => ({
-                    ...d,
-                    trackIds: e.target.checked ? [...d.trackIds, track.id] : d.trackIds.filter((id) => id !== track.id),
-                  }))
-                }
-              />
-              {track.name}
-            </label>
-          ))}
-          {tracks.length === 0 && <p className="chq-review-plan-meta">No tracks defined; plan covers all submissions.</p>}
-        </fieldset>
-
-        <label className="chq-review-checkbox-label">
-          <input
-            type="checkbox"
-            className="chq-check"
-            checked={draft.anonymized}
-            onChange={(e) => setDraft((d) => ({ ...d, anonymized: e.target.checked }))}
-          />
-          Anonymize speaker identity for reviewers
-        </label>
 
         <section className="chq-section">
           <div className="chq-section-head">
@@ -918,61 +949,96 @@ export function PlanEditor() {
 
         {!isNew && planId && (
           <section className="chq-section">
+            {/* DEC-745: "Reviewer assignment" renamed to "Who reviews what",
+                with "Assign a reviewer" as the link on the section's own
+                rule (matching the "Add criterion" link pattern above) --
+                progressive disclosure, not a capability drop: the existing
+                create-account + scope-assign controls below still exist,
+                they just open behind this link instead of always showing. */}
             <div className="chq-section-head">
-              <h2 className="chq-section-label">Reviewer assignment</h2>
-            </div>
-            {reviewers.map((r) => (
-              <div key={r.id} className="chq-review-reviewer-row">
-                <div>
-                  <div>{r.email ?? '(account removed)'}</div>
-                  <div className="chq-review-reviewer-email">
-                    {r.trackId
-                      ? r.trackName
-                        ? `Track - ${r.trackName}`
-                        : 'Track (removed)'
-                      : r.submissionId
-                        ? r.submissionRef
-                          ? `${r.submissionRef} - ${r.submissionTitle ?? 'Submission (removed)'}`
-                          : 'Submission (removed)'
-                        : 'All submissions'}
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  className="chq-btn chq-btn-secondary"
-                  disabled={resettingUserId === r.userId}
-                  onClick={() => resetReviewerPassword(r.userId, r.email)}
-                >
-                  {resettingUserId === r.userId ? 'Resetting…' : 'Reset password'}
-                </button>
-                <button type="button" className="chq-btn chq-btn-tertiary" onClick={() => unassignReviewer(r.id)}>
-                  Remove
-                </button>
-              </div>
-            ))}
-            {reviewers.length === 0 && <p className="chq-empty">No reviewers assigned yet.</p>}
-
-            <div className="chq-review-reviewer-form">
-              <label className="chq-review-field">
-                New reviewer account (email)
-                <input
-                  type="email"
-                  className="chq-input"
-                  placeholder="reviewer@example.com"
-                  value={newReviewerEmail}
-                  onChange={(e) => setNewReviewerEmail(e.target.value)}
-                />
-              </label>
+              <h2 className="chq-section-label">Who reviews what</h2>
               <button
                 type="button"
-                className="chq-btn chq-btn-secondary"
-                disabled={creatingReviewer || !newReviewerEmail.trim()}
-                onClick={createReviewerAccount}
+                className="chq-link-button chq-section-action"
+                onClick={() => setAssignFormOpen((open) => !open)}
               >
-                {creatingReviewer ? 'Creating…' : 'Create reviewer account'}
+                {assignFormOpen ? 'Close' : 'Assign a reviewer'}
               </button>
             </div>
-            {revealedPassword && (
+            {reviewers.map((r) => {
+              const progress = progressRows.find((p) => p.userId === r.userId);
+              const displayName = progress ? reviewerDisplayLabel(progress) : (r.email ?? '(account removed)');
+              const trackLabel = r.trackId
+                ? r.trackName
+                  ? `Track - ${r.trackName}`
+                  : 'Track (removed)'
+                : r.submissionId
+                  ? r.submissionRef
+                    ? `${r.submissionRef} - ${r.submissionTitle ?? 'Submission (removed)'}`
+                    : 'Submission (removed)'
+                  : 'All submissions';
+              const loadLabel = progress ? `${progress.assigned} talk${progress.assigned === 1 ? '' : 's'}` : null;
+              return (
+                <div key={r.id} className="chq-review-reviewer-row">
+                  <div>
+                    <div className="chq-review-reviewer-name">{displayName}</div>
+                    {r.email && r.email !== displayName && <div className="chq-review-reviewer-email">{r.email}</div>}
+                  </div>
+                  <span className="chq-review-reviewer-track">{trackLabel}</span>
+                  <span className="chq-review-reviewer-load">{loadLabel}</span>
+                  <button
+                    type="button"
+                    className="chq-btn chq-btn-secondary"
+                    disabled={resettingUserId === r.userId}
+                    onClick={() => resetReviewerPassword(r.userId, r.email)}
+                  >
+                    {resettingUserId === r.userId ? 'Resetting…' : 'Reset password'}
+                  </button>
+                  <button type="button" className="chq-btn chq-btn-tertiary" onClick={() => unassignReviewer(r.id)}>
+                    Remove
+                  </button>
+                </div>
+              );
+            })}
+            {reviewers.length === 0 && <p className="chq-empty">No reviewers assigned yet.</p>}
+
+            {/* DEC-745: the anonymise switch is a reviewing rule, so it
+                lives here as one checkbox row rather than at page top level
+                (SPEC §5.7/J4 blind review stays reachable even though the
+                mock omits the control entirely). */}
+            <label className="chq-review-checkbox-label">
+              <input
+                type="checkbox"
+                className="chq-check"
+                checked={draft.anonymized}
+                onChange={(e) => setDraft((d) => ({ ...d, anonymized: e.target.checked }))}
+              />
+              Anonymize speaker identity for reviewers
+            </label>
+
+            {assignFormOpen && (
+              <>
+                <div className="chq-review-reviewer-form">
+                  <label className="chq-review-field">
+                    New reviewer account (email)
+                    <input
+                      type="email"
+                      className="chq-input"
+                      placeholder="reviewer@example.com"
+                      value={newReviewerEmail}
+                      onChange={(e) => setNewReviewerEmail(e.target.value)}
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    className="chq-btn chq-btn-secondary"
+                    disabled={creatingReviewer || !newReviewerEmail.trim()}
+                    onClick={createReviewerAccount}
+                  >
+                    {creatingReviewer ? 'Creating…' : 'Create reviewer account'}
+                  </button>
+                </div>
+                {revealedPassword && (
               <div className="chq-review-token-reveal" role="alert">
                 <strong>Copy this password now — it will not be shown again:</strong>
                 <code>{revealedPassword}</code>
@@ -1156,22 +1222,24 @@ export function PlanEditor() {
                 )}
               </div>
             )}
+              </>
+            )}
+
+            {/* DEC-745: the fixed footnote this section always ends with. */}
+            <p className="chq-review-field-caption">A reviewer never sees a talk they are recused from.</p>
           </section>
         )}
 
-        {/* DEC-706: primaries live on the title row or a form's footer, never
-            a floating band -- this is the plan editor's own footer, at the
-            end of the form, not mid-page. */}
-        <footer className="chq-review-editor-footer">
-          <button type="button" className="chq-btn chq-btn-primary" disabled={saving} onClick={save}>
-            {isNew ? 'Create plan' : 'Save plan'}
-          </button>
-          {!isNew && (
+        {/* DEC-745: Save/Create moved to the title row -- Delete stays as
+            ONE quiet tertiary at the very end of the document, never beside
+            Save. */}
+        {!isNew && (
+          <footer className="chq-review-editor-footer">
             <button type="button" className="chq-btn chq-btn-tertiary" disabled={saving} onClick={removePlan}>
               Delete plan
             </button>
-          )}
-        </footer>
+          </footer>
+        )}
       </div>
 
       {deletePlanConfirmOpen && (
