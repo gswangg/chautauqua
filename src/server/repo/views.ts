@@ -141,14 +141,21 @@ export async function createSavedView(
   return { id, eventId, name, config, createdByUserId, shared, createdAt: now.getTime(), updatedAt: now.getTime() };
 }
 
-/** Returns the saved view's eventId + org id, for ownership checks — null if
- * the view doesn't exist. */
+/** Returns the saved view's eventId + org id + author + sharing state, for
+ * both the cross-org authz check and the DEC-975 delete gate (which must
+ * match the DEC-904 read gate: an unshared view is invisible to anyone but
+ * its author) — null if the view doesn't exist. */
 export async function getSavedViewOwnership(
   db: Db,
   id: string,
-): Promise<{ eventId: string; orgId: string } | null> {
+): Promise<{ eventId: string; orgId: string; createdByUserId: string | null; shared: boolean } | null> {
   const rows = await db
-    .select({ eventId: schema.savedView.eventId, orgId: schema.event.orgId })
+    .select({
+      eventId: schema.savedView.eventId,
+      orgId: schema.event.orgId,
+      createdByUserId: schema.savedView.createdByUserId,
+      shared: schema.savedView.shared,
+    })
     .from(schema.savedView)
     .innerJoin(schema.event, eq(schema.savedView.eventId, schema.event.id))
     .where(eq(schema.savedView.id, id))

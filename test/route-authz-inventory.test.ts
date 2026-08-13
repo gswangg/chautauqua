@@ -68,8 +68,12 @@ const orgAAuth: AuthInfo = { userId: "u-org-a", role: "organizer", orgId: "org-a
 describe("DELETE /api/v1/views/:id (DEC-031) — app-level orgId comparison, not SQL-filtered", () => {
   it("403s when the saved view's event belongs to a different org (IDOR)", async () => {
     // getSavedViewOwnership returns the row regardless of org; the route
-    // itself must compare ownership.orgId to auth.orgId and reject.
-    const app = appWithDb(viewsRoutes, orgAAuth, [[{ eventId: "event-b", orgId: "org-b" }]]);
+    // itself must compare ownership.orgId to auth.orgId and reject. Legacy
+    // (null createdByUserId) row so this exercises only the org-level gate,
+    // not the DEC-975 author/shared gate.
+    const app = appWithDb(viewsRoutes, orgAAuth, [
+      [{ eventId: "event-b", orgId: "org-b", createdByUserId: null, shared: true }],
+    ]);
     const res = await app.request(
       "/views/view-1",
       { method: "DELETE", headers: { "x-chq-csrf": "1" } },
@@ -79,7 +83,11 @@ describe("DELETE /api/v1/views/:id (DEC-031) — app-level orgId comparison, not
   });
 
   it("succeeds (200) when the saved view belongs to the caller's own org", async () => {
-    const app = appWithDb(viewsRoutes, orgAAuth, [[{ eventId: "event-a", orgId: "org-a" }]]);
+    // Legacy (null createdByUserId) row: any organiser in the org may
+    // delete it (DEC-975), so this exercises only the org-level gate.
+    const app = appWithDb(viewsRoutes, orgAAuth, [
+      [{ eventId: "event-a", orgId: "org-a", createdByUserId: null, shared: true }],
+    ]);
     const res = await app.request(
       "/views/view-1",
       { method: "DELETE", headers: { "x-chq-csrf": "1" } },
