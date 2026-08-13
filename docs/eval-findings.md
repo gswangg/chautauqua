@@ -7,7 +7,10 @@ snapshot; their dispositions update this file. Trust this file over memory.
 
 **Standing rules** (unchanged): desktop-first — ALL mobile work deferred (see queue at
 bottom) · convergence = DESKTOP-DONE, verification-only exit wave, desktop measures
-only · mobile is additive reflow (media-blocks/phone-classes only; a mobile wave that
+only · FIDELITY VERIFICATION IS DESKTOP-ONLY until the desktop gate passes: probes
+and the gate fleet judge frames ≥1000px wide exclusively; phone frames (v5,
+full-scroll) are held for the mobile round — phone findings filed before the gate
+are out-of-order and go to the mobile queue, not the open items · mobile is additive reflow (media-blocks/phone-classes only; a mobile wave that
 changes a desktop pixel has failed; scan-lock) · tests: workers targeted, trains run
 fast tier (pure domain + scans, <60s), full suite ONLY at exit, maxWorkers 2 (now in
 vitest.config.ts — keep) · every fix needs a test; where a test contradicts the v4
