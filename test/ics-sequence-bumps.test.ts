@@ -77,8 +77,11 @@ describe("PATCH /api/v1/submissions/:id (DEC-519)", () => {
         getSubmissionContent: vi.fn(async () => before),
         updateSubmissionFields: vi.fn(async () => {}),
         getSubmissionDetail: vi.fn(async () => DETAIL_ROW),
-        getUserEmail: vi.fn(async () => "organizer@example.com"),
       };
+    });
+    vi.doMock("../src/server/repo/users", async () => {
+      const actual = await vi.importActual<typeof import("../src/server/repo/users")>("../src/server/repo/users");
+      return { ...actual, resolveActorName: vi.fn(async () => "organizer@example.com") };
     });
     vi.doMock("../src/server/repo/revisions", async () => {
       const actual = await vi.importActual<typeof import("../src/server/repo/revisions")>(
@@ -140,8 +143,11 @@ describe("POST /api/v1/submissions/:id/revisions/:revisionId/restore (DEC-519)",
         getSubmissionContent: vi.fn(async () => before),
         updateSubmissionFields: vi.fn(async () => {}),
         getSubmissionDetail: vi.fn(async () => DETAIL_ROW),
-        getUserEmail: vi.fn(async () => "organizer@example.com"),
       };
+    });
+    vi.doMock("../src/server/repo/users", async () => {
+      const actual = await vi.importActual<typeof import("../src/server/repo/users")>("../src/server/repo/users");
+      return { ...actual, resolveActorName: vi.fn(async () => "organizer@example.com") };
     });
     vi.doMock("../src/server/repo/revisions", async () => {
       const actual = await vi.importActual<typeof import("../src/server/repo/revisions")>(

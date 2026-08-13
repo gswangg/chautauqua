@@ -21,7 +21,6 @@ import {
   getSubmissionDetail,
   getSubmissionOwnership,
   getSubmissionStatus,
-  getUserEmail,
   isValidStatusLiteral,
   listSubmissions,
   parseListQuery,
@@ -37,12 +36,13 @@ import {
   setParticipantVisible,
 } from "../../server/repo/participants";
 import { findContactForOrg } from "../../server/repo/contacts";
+import { resolveActorName } from "../../server/repo/users";
 import { appendSubmissionRevision, countRevisions, getRevision, listRevisions } from "../../server/repo/revisions";
 import { isValidEmail, normalizeEmail } from "../../domain/email";
 import { clampPage, listPerPage } from "../../lib/pagination";
 import { bumpIcsSequences } from "../../server/repo/ics-sequence";
 import { getEventTracks, replaceSubmissionTracks } from "../../server/repo/submit";
-import { DEC_460, DEC_461, DEC_462, DEC_519, DEC_598 } from "../../decisions";
+import { DEC_460, DEC_461, DEC_462, DEC_519, DEC_598, DEC_757 } from "../../decisions";
 
 // Compile-checked dependency marker: the trackIds validate+replace below
 // (organizer editing a submission's tracks) implements DEC-598.
@@ -57,6 +57,11 @@ void DEC_519;
 void DEC_460;
 void DEC_461;
 void DEC_462;
+
+// Compile-checked dependency marker: editorName below resolves the editor's
+// display name (never a raw email/id) via resolveActorName, implementing
+// DEC-757.
+void DEC_757;
 
 export const submissionsRoutes = new Hono<AppEnv>();
 
@@ -230,7 +235,7 @@ submissionsRoutes.patch("/submissions/:id", requireOrganizer, csrfJson, async (c
   const newTitle = fields.title ?? before.title;
   const newDescription = fields.description !== undefined ? fields.description : before.description;
   if (newTitle !== before.title || newDescription !== before.description) {
-    const editorName = (await getUserEmail(c.var.db, auth.userId)) ?? auth.userId;
+    const editorName = await resolveActorName(c.var.db, auth.userId);
     await appendSubmissionRevision(c.var.db, {
       submissionId: id,
       editorUserId: auth.userId,
@@ -298,7 +303,7 @@ submissionsRoutes.post(
     await updateSubmissionFields(c.var.db, id, { title: revision.title, description: revision.description });
 
     if (revision.title !== before.title || revision.description !== before.description) {
-      const editorName = (await getUserEmail(c.var.db, auth.userId)) ?? auth.userId;
+      const editorName = await resolveActorName(c.var.db, auth.userId);
       await appendSubmissionRevision(c.var.db, {
         submissionId: id,
         editorUserId: auth.userId,

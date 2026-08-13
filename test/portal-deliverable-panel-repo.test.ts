@@ -278,22 +278,22 @@ describe("listFileComments across a version chain (DEC-573)", () => {
         {
           id: "c1",
           fileId: "file-v1",
-          authorUserId: null,
-          authorContactId: null,
+          authorUserId: "u-chain",
+          authorContactId: "contact-chain",
           body: "Comment on v1",
           createdAt: new Date("2026-01-01T01:00:00Z"),
         },
         {
           id: "c2",
           fileId: "file-v3",
-          authorUserId: null,
-          authorContactId: null,
+          authorUserId: "u-chain",
+          authorContactId: "contact-chain",
           body: "Comment on v3",
           createdAt: new Date("2026-01-03T01:00:00Z"),
         },
       ],
-      user: [],
-      contact: [],
+      user: [{ id: "u-chain", email: "chain@example.com", role: "organizer", contactId: "contact-chain" }],
+      contact: [{ id: "contact-chain", firstName: "Chain", lastName: "Author" }],
     });
     return db;
   }
