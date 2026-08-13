@@ -44,29 +44,36 @@ interface ParticipationMenuProps {
   onSelectStatus: (status: InviteStatus) => void;
   onSendInvite: () => void;
   sendInviteDisabled?: boolean;
+  // DEC-936: when a contact carries more than one participation on this
+  // roster row, OnboardingGrid renders one menu per session, each labelled
+  // with THAT session's ref -- never a single menu ambiguous about which
+  // participation it writes.
+  label?: string;
 }
 
-export function ParticipationMenu({ contactName, status, onSelectStatus, onSendInvite, sendInviteDisabled }: ParticipationMenuProps) {
+export function ParticipationMenu({ contactName, status, onSelectStatus, onSendInvite, sendInviteDisabled, label }: ParticipationMenuProps) {
   const [open, setOpen] = useState(false);
   const close = () => setOpen(false);
   useEscapeKey(open, close);
+  const identity = label ? `${contactName} — ${label}` : contactName;
 
   return (
     <div className="chq-participation-menu">
+      {label && <span className="chq-participation-menu-ref">{label}</span>}
       <button
         type="button"
         className={`${participationStatusClass(status)} chq-participation-menu-trigger`}
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label={`Participation status for ${contactName}: ${INVITE_STATUS_LABELS[status]}`}
+        aria-label={`Participation status for ${identity}: ${INVITE_STATUS_LABELS[status]}`}
         onClick={() => setOpen((v) => !v)}
       >
         {INVITE_STATUS_LABELS[status]} <span aria-hidden="true">▾</span>
       </button>
 
       {open && (
-        <div className="chq-participation-menu-panel" role="menu" aria-label={`Participation status for ${contactName}`}>
-          <p className="chq-participation-menu-identity">{contactName}</p>
+        <div className="chq-participation-menu-panel" role="menu" aria-label={`Participation status for ${identity}`}>
+          <p className="chq-participation-menu-identity">{identity}</p>
           {INVITE_STATUSES.map((candidate) => (
             <button
               key={candidate}

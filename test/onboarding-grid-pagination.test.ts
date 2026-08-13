@@ -79,13 +79,24 @@ function contactRow(id: string, first: string, last: string) {
     email: `${first}@example.com`.toLowerCase(),
     company: null,
     userId: null,
-    // DEC-789: the fakeDb doesn't evaluate the scalar subqueries grid.ts
-    // adds to this same select -- stand in with a plausible participant
-    // triple so the row-construction fail-loudly check doesn't trip on
-    // fixtures unrelated to invite status.
-    participantId: `participant-${id}`,
-    submissionId: `submission-${id}`,
-    inviteStatus: "accepted",
+  };
+}
+
+// DEC-936: the event lookup (recordPrefix, for formatRef) and the ONE
+// grouped participations query, queued right after the contacts page select
+// whenever that page is non-empty -- fixtures for tests with a non-empty
+// contacts page must supply both so the roster row's fail-loudly
+// empty-participations check doesn't trip on unrelated fixtures.
+const EVENT_ROW = [{ recordPrefix: "SES" }];
+
+function participationRow(contactId: string, seq = 1, overrides: Partial<{ participantId: string; submissionId: string; submissionTitle: string; inviteStatus: string }> = {}) {
+  return {
+    contactId,
+    participantId: overrides.participantId ?? `participant-${contactId}-${seq}`,
+    submissionId: overrides.submissionId ?? `submission-${contactId}-${seq}`,
+    submissionSeq: seq,
+    submissionTitle: overrides.submissionTitle ?? `Talk ${seq}`,
+    inviteStatus: overrides.inviteStatus ?? "accepted",
   };
 }
 
@@ -124,14 +135,37 @@ describe("getOnboardingGrid (DEC-340)", () => {
     const page1Contacts = [contactRow("c1", "Ada", "Lovelace"), contactRow("c2", "Grace", "Hopper")];
     const page2Contacts = [contactRow("c3", "Rosa", "Parks"), contactRow("c4", "Mae", "Jemison")];
 
-    const { db: db1, calls: calls1 } = fakeDb([TASK_ROWS, [{ count: 4 }], page1Contacts, [], SPEAKERS_COUNT_ROW, COUNTS_ROW, OVERDUE_COUNT_ROW]);
+    const page1Participations = [participationRow("c1"), participationRow("c2")];
+    const page2Participations = [participationRow("c3"), participationRow("c4")];
+
+    const { db: db1, calls: calls1 } = fakeDb([
+      TASK_ROWS,
+      [{ count: 4 }],
+      page1Contacts,
+      EVENT_ROW,
+      page1Participations,
+      [],
+      SPEAKERS_COUNT_ROW,
+      COUNTS_ROW,
+      OVERDUE_COUNT_ROW,
+    ]);
     const result1 = await getOnboardingGrid(db1, "event-1", baseParams({ page: 1, perPage: 2 }));
     expect(result1.rows.map((r) => r.contact.id)).toEqual(["c1", "c2"]);
     // contactRows is call index 2 (0=tasks, 1=count, 2=contacts page).
     expect(calls1[2]?.offset).toBe(0);
     expect(calls1[2]?.limit).toBe(2);
 
-    const { db: db2, calls: calls2 } = fakeDb([TASK_ROWS, [{ count: 4 }], page2Contacts, [], SPEAKERS_COUNT_ROW, COUNTS_ROW, OVERDUE_COUNT_ROW]);
+    const { db: db2, calls: calls2 } = fakeDb([
+      TASK_ROWS,
+      [{ count: 4 }],
+      page2Contacts,
+      EVENT_ROW,
+      page2Participations,
+      [],
+      SPEAKERS_COUNT_ROW,
+      COUNTS_ROW,
+      OVERDUE_COUNT_ROW,
+    ]);
     const result2 = await getOnboardingGrid(db2, "event-1", baseParams({ page: 2, perPage: 2 }));
     expect(result2.rows.map((r) => r.contact.id)).toEqual(["c3", "c4"]);
     expect(calls2[2]?.offset).toBe(2);
@@ -151,7 +185,7 @@ describe("getOnboardingGrid (DEC-340)", () => {
       { assignmentId: "a2", taskId: "task-2", status: "complete", completedAt: null, fileId: null, fileName: null, fileSizeBytes: null, lastRemindedAt: null, contactId: "c1", createdAt: new Date(500_000) },
       { assignmentId: "a3", taskId: "task-3", status: "pending", completedAt: null, fileId: null, fileName: null, fileSizeBytes: null, lastRemindedAt: null, contactId: "c1", createdAt: new Date(500_000) },
     ];
-    const { db } = fakeDb([TASK_ROWS, [{ count: 1 }], contacts, cellRows, SPEAKERS_COUNT_ROW, COUNTS_ROW, OVERDUE_COUNT_ROW]);
+    const { db } = fakeDb([TASK_ROWS, [{ count: 1 }], contacts, EVENT_ROW, [participationRow("c1")], cellRows, SPEAKERS_COUNT_ROW, COUNTS_ROW, OVERDUE_COUNT_ROW]);
     const result = await getOnboardingGrid(db, "event-1", baseParams());
     expect(result.total).toBe(1);
     expect(result.rows[0]?.cells.length).toBe(3);
@@ -260,7 +294,7 @@ describe("getOnboardingGrid (DEC-340)", () => {
         createdAt: new Date(500_000),
       },
     ];
-    const { db } = fakeDb([TASK_ROWS, [{ count: 1 }], contacts, cellRows, SPEAKERS_COUNT_ROW, COUNTS_ROW, OVERDUE_COUNT_ROW]);
+    const { db } = fakeDb([TASK_ROWS, [{ count: 1 }], contacts, EVENT_ROW, [participationRow("c1")], cellRows, SPEAKERS_COUNT_ROW, COUNTS_ROW, OVERDUE_COUNT_ROW]);
     const result = await getOnboardingGrid(db, "event-1", baseParams());
     const cellWithFile = result.rows[0]!.cells.find((c) => c.assignmentId === "a1");
     const cellWithoutFile = result.rows[0]!.cells.find((c) => c.assignmentId === "a2");
@@ -287,7 +321,7 @@ describe("getOnboardingGrid (DEC-340)", () => {
         createdAt: new Date(500_000),
       },
     ];
-    const { db } = fakeDb([TASK_ROWS, [{ count: 1 }], contacts, cellRows, SPEAKERS_COUNT_ROW, COUNTS_ROW, OVERDUE_COUNT_ROW]);
+    const { db } = fakeDb([TASK_ROWS, [{ count: 1 }], contacts, EVENT_ROW, [participationRow("c1")], cellRows, SPEAKERS_COUNT_ROW, COUNTS_ROW, OVERDUE_COUNT_ROW]);
     await expect(getOnboardingGrid(db, "event-1", baseParams())).rejects.toThrow(/a1.*missing-file/s);
   });
 
@@ -299,14 +333,26 @@ describe("getOnboardingGrid (DEC-340)", () => {
     const cellRows = [
       { assignmentId: "a1", taskId: "task-1", status: "pending", completedAt: null, fileId: null, fileName: null, fileSizeBytes: null, lastRemindedAt: null, contactId: "c1", createdAt: new Date(500_000) },
     ];
+    const participations = [participationRow("c1"), participationRow("c2"), participationRow("c3")];
     const { calls } = await (async () => {
-      const { db, calls } = fakeDb([TASK_ROWS, [{ count: 3 }], contacts, cellRows, SPEAKERS_COUNT_ROW, COUNTS_ROW, OVERDUE_COUNT_ROW]);
+      const { db, calls } = fakeDb([
+        TASK_ROWS,
+        [{ count: 3 }],
+        contacts,
+        EVENT_ROW,
+        participations,
+        cellRows,
+        SPEAKERS_COUNT_ROW,
+        COUNTS_ROW,
+        OVERDUE_COUNT_ROW,
+      ]);
       await getOnboardingGrid(db, "event-1", baseParams());
       return { calls };
     })();
-    // tasks, count, contacts page, ONE cells select, speakers count,
-    // counts aggregate, overdue count == 7 total regardless of row count.
-    expect(calls.length).toBe(7);
+    // tasks, count, contacts page, event lookup, ONE participations select,
+    // ONE cells select, speakers count, counts aggregate, overdue count == 9
+    // total regardless of row count.
+    expect(calls.length).toBe(9);
   });
 
   // DEC-558: the J6 grid's task COLUMN query is now a legible total order —

@@ -242,7 +242,17 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
     setGrid({
       ...grid,
       rows: grid.rows.map((row) =>
-        row.contact.id === contactId ? { ...row, contact: { ...row.contact, inviteStatus: desired } } : row,
+        row.contact.id === contactId
+          ? {
+              ...row,
+              contact: {
+                ...row.contact,
+                participations: row.contact.participations.map((p) =>
+                  p.participantId === participantId ? { ...p, inviteStatus: desired } : p,
+                ),
+              },
+            }
+          : row,
       ),
     });
     setError(null);
@@ -496,15 +506,19 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
                           </>
                         )}
                       </div>
-                      <ParticipationMenu
-                        contactName={row.contact.name}
-                        status={row.contact.inviteStatus}
-                        onSelectStatus={(status) =>
-                          setInviteStatus(row.contact.id, row.contact.submissionId, row.contact.participantId, status)
-                        }
-                        onSendInvite={() => sendPortalInvite(row.contact.id)}
-                        sendInviteDisabled={invitingContactIds.has(row.contact.id)}
-                      />
+                      {row.contact.participations.map((participation) => (
+                        <ParticipationMenu
+                          key={participation.participantId}
+                          contactName={row.contact.name}
+                          label={row.contact.participations.length > 1 ? participation.ref : undefined}
+                          status={participation.inviteStatus}
+                          onSelectStatus={(status) =>
+                            setInviteStatus(row.contact.id, participation.submissionId, participation.participantId, status)
+                          }
+                          onSendInvite={() => sendPortalInvite(row.contact.id)}
+                          sendInviteDisabled={invitingContactIds.has(row.contact.id)}
+                        />
+                      ))}
                       <button
                         type="button"
                         className="chq-btn chq-btn-tertiary chq-speakers-remind-one"
@@ -603,15 +617,19 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
                       </>
                     )}
                   </span>
-                  <ParticipationMenu
-                    contactName={row.contact.name}
-                    status={row.contact.inviteStatus}
-                    onSelectStatus={(status) =>
-                      setInviteStatus(row.contact.id, row.contact.submissionId, row.contact.participantId, status)
-                    }
-                    onSendInvite={() => sendPortalInvite(row.contact.id)}
-                    sendInviteDisabled={invitingContactIds.has(row.contact.id)}
-                  />
+                  {row.contact.participations.map((participation) => (
+                    <ParticipationMenu
+                      key={participation.participantId}
+                      contactName={row.contact.name}
+                      label={row.contact.participations.length > 1 ? participation.ref : undefined}
+                      status={participation.inviteStatus}
+                      onSelectStatus={(status) =>
+                        setInviteStatus(row.contact.id, participation.submissionId, participation.participantId, status)
+                      }
+                      onSendInvite={() => sendPortalInvite(row.contact.id)}
+                      sendInviteDisabled={invitingContactIds.has(row.contact.id)}
+                    />
+                  ))}
                   <button
                     type="button"
                     className="chq-btn chq-btn-tertiary chq-speakers-remind-one"

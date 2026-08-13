@@ -20,7 +20,7 @@ const GRID: OnboardingGridResponse = {
   ],
   rows: [
     {
-      contact: { id: 'ct1', name: 'Ada Lovelace', email: 'ada@example.com', company: 'Acme', hasAccount: true , participantId: 'p-ct1', submissionId: 'sub-ct1', inviteStatus: 'accepted' },
+      contact: { id: 'ct1', name: 'Ada Lovelace', email: 'ada@example.com', company: 'Acme', hasAccount: true , participations: [{ participantId: 'p-ct1', submissionId: 'sub-ct1', ref: 'SES-001', title: 'Talk', inviteStatus: 'accepted' }] },
       cells: [
         { taskId: 'task-1', assignmentId: 'as1', status: 'complete', completedAt: 1700000000000, fileId: null, fileName: null, fileSizeBytes: null, lastRemindedAt: null, assignedAt: 0 },
         { taskId: 'task-2', assignmentId: 'as2', status: 'complete', completedAt: 1700000000000, fileId: null, fileName: null, fileSizeBytes: null, lastRemindedAt: null, assignedAt: 0 },
@@ -29,7 +29,7 @@ const GRID: OnboardingGridResponse = {
     {
       // DEC-662: a pending form-kind cell renders no control at all --
       // "Response" only appears once the cell is complete.
-      contact: { id: 'ct2', name: 'Grace Hopper', email: 'grace@example.com', company: 'Navy', hasAccount: false , participantId: 'p-ct2', submissionId: 'sub-ct2', inviteStatus: 'accepted' },
+      contact: { id: 'ct2', name: 'Grace Hopper', email: 'grace@example.com', company: 'Navy', hasAccount: false , participations: [{ participantId: 'p-ct2', submissionId: 'sub-ct2', ref: 'SES-001', title: 'Talk', inviteStatus: 'accepted' }] },
       cells: [
         { taskId: 'task-1', assignmentId: 'as3', status: 'pending', completedAt: null, fileId: null, fileName: null, fileSizeBytes: null, lastRemindedAt: null, assignedAt: 0 },
         { taskId: 'task-2', assignmentId: 'as4', status: 'pending', completedAt: null, fileId: null, fileName: null, fileSizeBytes: null, lastRemindedAt: null, assignedAt: 0 },
@@ -80,11 +80,11 @@ describe('OnboardingGrid: DEC-730 one status-control family', () => {
       tasks: [{ id: 'task-1', kind: 'general', title: 'Sign speaker agreement', dueDate: now - 5 * 86_400_000, required: true }],
       rows: [
         {
-          contact: { id: 'ct1', name: 'Ada Lovelace', email: 'ada@example.com', company: 'Acme', hasAccount: true , participantId: 'p-ct1', submissionId: 'sub-ct1', inviteStatus: 'accepted' },
+          contact: { id: 'ct1', name: 'Ada Lovelace', email: 'ada@example.com', company: 'Acme', hasAccount: true , participations: [{ participantId: 'p-ct1', submissionId: 'sub-ct1', ref: 'SES-001', title: 'Talk', inviteStatus: 'accepted' }] },
           cells: [{ taskId: 'task-1', assignmentId: 'as1', status: 'complete', completedAt: now, fileId: null, fileName: null, fileSizeBytes: null, lastRemindedAt: null, assignedAt: 0 }],
         },
         {
-          contact: { id: 'ct2', name: 'Grace Hopper', email: 'grace@example.com', company: 'Navy', hasAccount: false , participantId: 'p-ct2', submissionId: 'sub-ct2', inviteStatus: 'accepted' },
+          contact: { id: 'ct2', name: 'Grace Hopper', email: 'grace@example.com', company: 'Navy', hasAccount: false , participations: [{ participantId: 'p-ct2', submissionId: 'sub-ct2', ref: 'SES-001', title: 'Talk', inviteStatus: 'accepted' }] },
           cells: [{ taskId: 'task-1', assignmentId: 'as2', status: 'pending', completedAt: null, fileId: null, fileName: null, fileSizeBytes: null, lastRemindedAt: null, assignedAt: 0 }],
         },
       ],
@@ -359,7 +359,7 @@ describe('OnboardingGrid: DEC-852 due-date visibility', () => {
       tasks: [{ id: 'task-1', kind: 'general', title: 'Sign speaker agreement', dueDate, required: true }],
       rows: [
         {
-          contact: { id: 'ct1', name: 'Ada Lovelace', email: 'ada@example.com', company: 'Acme', hasAccount: true, participantId: 'p-ct1', submissionId: 'sub-ct1', inviteStatus: 'accepted' },
+          contact: { id: 'ct1', name: 'Ada Lovelace', email: 'ada@example.com', company: 'Acme', hasAccount: true, participations: [{ participantId: 'p-ct1', submissionId: 'sub-ct1', ref: 'SES-001', title: 'Talk', inviteStatus: 'accepted' }] },
           cells: [{ taskId: 'task-1', assignmentId: 'as1', status: 'pending', completedAt: null, fileId: null, fileName: null, fileSizeBytes: null, lastRemindedAt: null, assignedAt: now - 86_400_000 }],
         },
       ],
@@ -393,7 +393,7 @@ describe('OnboardingGrid: DEC-852 due-date visibility', () => {
       tasks: [{ id: 'task-1', kind: 'general', title: 'Sign speaker agreement', dueDate: rawDueDate, required: true }],
       rows: [
         {
-          contact: { id: 'ct1', name: 'Ada Lovelace', email: 'ada@example.com', company: 'Acme', hasAccount: true, participantId: 'p-ct1', submissionId: 'sub-ct1', inviteStatus: 'accepted' },
+          contact: { id: 'ct1', name: 'Ada Lovelace', email: 'ada@example.com', company: 'Acme', hasAccount: true, participations: [{ participantId: 'p-ct1', submissionId: 'sub-ct1', ref: 'SES-001', title: 'Talk', inviteStatus: 'accepted' }] },
           cells: [{ taskId: 'task-1', assignmentId: 'as1', status: 'pending', completedAt: null, fileId: null, fileName: null, fileSizeBytes: null, lastRemindedAt: null, assignedAt }],
         },
       ],
@@ -435,7 +435,7 @@ describe('OnboardingGrid: DEC-852 due-date visibility', () => {
       ],
       rows: [
         {
-          contact: { id: 'ct1', name: 'Ada Lovelace', email: 'ada@example.com', company: 'Acme', hasAccount: true, participantId: 'p-ct1', submissionId: 'sub-ct1', inviteStatus: 'accepted' },
+          contact: { id: 'ct1', name: 'Ada Lovelace', email: 'ada@example.com', company: 'Acme', hasAccount: true, participations: [{ participantId: 'p-ct1', submissionId: 'sub-ct1', ref: 'SES-001', title: 'Talk', inviteStatus: 'accepted' }] },
           cells: [
             { taskId: 'task-far', assignmentId: 'as1', status: 'pending', completedAt: null, fileId: null, fileName: null, fileSizeBytes: null, lastRemindedAt: null, assignedAt: now },
             { taskId: 'task-near', assignmentId: 'as2', status: 'pending', completedAt: null, fileId: null, fileName: null, fileSizeBytes: null, lastRemindedAt: null, assignedAt: now },
@@ -569,7 +569,7 @@ describe('OnboardingGrid: DEC-920 file link names the file', () => {
       tasks: [{ id: 'task-1', kind: 'file_request', title: 'Upload headshot', dueDate: null, required: true }],
       rows: [
         {
-          contact: { id: 'ct1', name: 'Ada Lovelace', email: 'ada@example.com', company: 'Acme', hasAccount: true, participantId: 'p-ct1', submissionId: 'sub-ct1', inviteStatus: 'accepted' },
+          contact: { id: 'ct1', name: 'Ada Lovelace', email: 'ada@example.com', company: 'Acme', hasAccount: true, participations: [{ participantId: 'p-ct1', submissionId: 'sub-ct1', ref: 'SES-001', title: 'Talk', inviteStatus: 'accepted' }] },
           cells: [
             {
               taskId: 'task-1',
@@ -623,7 +623,7 @@ describe('OnboardingGrid: DEC-920 file link names the file', () => {
       tasks: [{ id: 'task-1', kind: 'file_request', title: 'Upload headshot', dueDate: null, required: true }],
       rows: [
         {
-          contact: { id: 'ct1', name: 'Ada Lovelace', email: 'ada@example.com', company: 'Acme', hasAccount: true, participantId: 'p-ct1', submissionId: 'sub-ct1', inviteStatus: 'accepted' },
+          contact: { id: 'ct1', name: 'Ada Lovelace', email: 'ada@example.com', company: 'Acme', hasAccount: true, participations: [{ participantId: 'p-ct1', submissionId: 'sub-ct1', ref: 'SES-001', title: 'Talk', inviteStatus: 'accepted' }] },
           cells: [
             {
               taskId: 'task-1',
@@ -657,5 +657,156 @@ describe('OnboardingGrid: DEC-920 file link names the file', () => {
     });
 
     expect(screen.queryByRole('link', { name: /Download/ })).not.toBeInTheDocument();
+  });
+});
+
+// DEC-936: a roster row carries EVERY participation it covers -- when a
+// contact has more than one, the identity column renders one menu PER
+// session, each labelled with that session's ref, and each PATCHes its own
+// participantId/submissionId. A contact with exactly one participation still
+// renders the existing single, unlabelled menu (no regression for the
+// common case).
+describe('OnboardingGrid: one participation menu per session (DEC-936)', () => {
+  it('renders two labelled menus for a contact with two participations, each PATCHing its own participantId', async () => {
+    const multiGrid: OnboardingGridResponse = {
+      tasks: [{ id: 'task-1', kind: 'general', title: 'Sign speaker agreement', dueDate: null, required: true }],
+      rows: [
+        {
+          contact: {
+            id: 'ct-multi',
+            name: 'Ada Lovelace',
+            email: 'ada@example.com',
+            company: 'Acme',
+            hasAccount: true,
+            participations: [
+              { participantId: 'p-1', submissionId: 'sub-1', ref: 'SES-001', title: 'Talk One', inviteStatus: 'invited' },
+              { participantId: 'p-2', submissionId: 'sub-2', ref: 'SES-002', title: 'Talk Two', inviteStatus: 'accepted' },
+            ],
+          },
+          cells: [{ taskId: 'task-1', assignmentId: 'as1', status: 'pending', completedAt: null, fileId: null, fileName: null, fileSizeBytes: null, lastRemindedAt: null, assignedAt: 0 }],
+        },
+      ],
+      total: 1,
+      page: 1,
+      perPage: 50,
+      counts: { speakers: 1, outstandingRequired: 1, overdue: 0, outstandingContacts: 1 },
+    };
+
+    const fetchMock = mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: multiGrid,
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+      'PATCH /api/v1/submissions/sub-1/participants/p-1': { body: {} },
+      'PATCH /api/v1/submissions/sub-2/participants/p-2': { body: {} },
+    });
+
+    render(<MemoryRouter><OnboardingGrid onAddSpeaker={vi.fn()} /></MemoryRouter>);
+    await waitFor(() => screen.getAllByText('Ada Lovelace').length > 0);
+    const table = within(screen.getByRole('table'));
+
+    const menuOne = table.getByRole('button', { name: 'Participation status for Ada Lovelace — SES-001: Invited' });
+    const menuTwo = table.getByRole('button', { name: 'Participation status for Ada Lovelace — SES-002: Confirmed' });
+    expect(menuOne).toBeInTheDocument();
+    expect(menuTwo).toBeInTheDocument();
+
+    // Selecting a new state in SES-001's menu PATCHes ONLY sub-1/p-1.
+    fireEvent.click(menuOne);
+    fireEvent.click(
+      within(table.getByRole('menu', { name: 'Participation status for Ada Lovelace — SES-001' })).getByRole(
+        'menuitemradio',
+        { name: /^Declined/ },
+      ),
+    );
+
+    await waitFor(() => {
+      const call = fetchMock.mock.calls.find(([input, init]) => {
+        const url = typeof input === 'string' ? input : (input as Request | URL).toString();
+        return url.includes('/submissions/sub-1/participants/p-1') && init?.method === 'PATCH';
+      });
+      expect(call).toBeDefined();
+      expect(JSON.parse(call![1]!.body as string)).toEqual({ inviteStatus: 'declined' });
+    });
+    // SES-002's menu is untouched -- no PATCH to sub-2/p-2 fired.
+    const sub2Call = fetchMock.mock.calls.find(([input]) => String(input).includes('/submissions/sub-2/participants/p-2'));
+    expect(sub2Call).toBeUndefined();
+
+    // SES-002's menu still reads Confirmed, unaffected by the SES-001 write.
+    expect(table.getByRole('button', { name: 'Participation status for Ada Lovelace — SES-002: Confirmed' })).toBeInTheDocument();
+  });
+
+  it('renders one unlabelled menu (no regression) for a contact with a single participation', async () => {
+    const singleGrid: OnboardingGridResponse = {
+      tasks: [{ id: 'task-1', kind: 'general', title: 'Sign speaker agreement', dueDate: null, required: true }],
+      rows: [
+        {
+          contact: {
+            id: 'ct-single',
+            name: 'Grace Hopper',
+            email: 'grace@example.com',
+            company: 'Navy',
+            hasAccount: false,
+            participations: [{ participantId: 'p-1', submissionId: 'sub-1', ref: 'SES-001', title: 'Talk', inviteStatus: 'accepted' }],
+          },
+          cells: [{ taskId: 'task-1', assignmentId: 'as1', status: 'pending', completedAt: null, fileId: null, fileName: null, fileSizeBytes: null, lastRemindedAt: null, assignedAt: 0 }],
+        },
+      ],
+      total: 1,
+      page: 1,
+      perPage: 50,
+      counts: { speakers: 1, outstandingRequired: 1, overdue: 0, outstandingContacts: 1 },
+    };
+
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: singleGrid,
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+    });
+
+    render(<MemoryRouter><OnboardingGrid onAddSpeaker={vi.fn()} /></MemoryRouter>);
+    await waitFor(() => screen.getAllByText('Grace Hopper').length > 0);
+    const table = within(screen.getByRole('table'));
+    expect(table.getByRole('button', { name: 'Participation status for Grace Hopper: Confirmed' })).toBeInTheDocument();
+  });
+
+  // DEC-936: a contact matching the ?inviteStatus=declined filter pill is a
+  // row whose (filtered) participation is 'declined' -- the row's menu must
+  // reflect that state, not the roster-wide default.
+  it('a contact matching the ?inviteStatus=declined pill shows a Declined menu on the row', async () => {
+    const declinedFilteredGrid: OnboardingGridResponse = {
+      tasks: [{ id: 'task-1', kind: 'general', title: 'Sign speaker agreement', dueDate: null, required: true }],
+      rows: [
+        {
+          contact: {
+            id: 'ct-declined',
+            name: 'Rosa Parks',
+            email: 'rosa@example.com',
+            company: null,
+            hasAccount: false,
+            participations: [{ participantId: 'p-1', submissionId: 'sub-1', ref: 'SES-001', title: 'Talk', inviteStatus: 'declined' }],
+          },
+          cells: [{ taskId: 'task-1', assignmentId: 'as1', status: 'pending', completedAt: null, fileId: null, fileName: null, fileSizeBytes: null, lastRemindedAt: null, assignedAt: 0 }],
+        },
+      ],
+      total: 1,
+      page: 1,
+      perPage: 50,
+      counts: { speakers: 1, outstandingRequired: 1, overdue: 0, outstandingContacts: 1 },
+    };
+
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: declinedFilteredGrid,
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+    });
+
+    render(<MemoryRouter><OnboardingGrid onAddSpeaker={vi.fn()} /></MemoryRouter>);
+    // Selecting the "Declined" pill in the invite-status filter drives the
+    // request that (server-side) narrows to this row -- mockApi ignores the
+    // query string, so this exercises the same fixture the ?inviteStatus=
+    // declined request would resolve to.
+    await waitFor(() => screen.getAllByText('Rosa Parks').length > 0);
+    fireEvent.change(screen.getByRole('combobox', { name: 'Any participation' }), { target: { value: 'declined' } });
+
+    await waitFor(() => {
+      const table = within(screen.getByRole('table'));
+      expect(table.getByRole('button', { name: 'Participation status for Rosa Parks: Declined' })).toBeInTheDocument();
+    });
   });
 });
