@@ -99,15 +99,19 @@ describe("DEC-457: POST /login with an oversized email", () => {
       select() {
         return {
           from(table: unknown) {
-            return {
-              where() {
-                return {
-                  limit() {
-                    if (table === schema.user) return Promise.resolve([]);
-                    throw new Error("unexpected table in fake db select");
-                  },
-                };
+            // DEC-740: the login door also queries getHubOrg
+            // (orderBy().limit(), no where()) -- schema.org always resolves
+            // empty here so loadSingleEventContext short-circuits.
+            const limitFrom = () => ({
+              limit() {
+                if (table === schema.user) return Promise.resolve([]);
+                if (table === schema.org) return Promise.resolve([]);
+                throw new Error("unexpected table in fake db select");
               },
+            });
+            return {
+              where: limitFrom,
+              orderBy: limitFrom,
             };
           },
         };

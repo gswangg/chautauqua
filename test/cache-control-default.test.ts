@@ -83,6 +83,7 @@ describe("DEC-658: app-wide no-store default", () => {
       const chain: any = {
         from: () => chain,
         where: () => chain,
+        orderBy: () => chain,
         limit: async () => [],
       };
       c.set("db", { select: () => chain } as unknown as AppEnv["Variables"]["db"]);

@@ -52,7 +52,7 @@ export const AUTH_CSS = `
     color: var(--chq-ink);
   }
   .chq-auth-subtitle { font-size: 14px; color: var(--chq-muted); margin-top: 6px; }
-  .chq-auth-back { font-size: 13px; font-weight: 700; min-height: 44px; display: inline-flex; align-items: center; }
+  .chq-auth-back { font-size: 13px; font-weight: 700; min-height: 44px; display: inline-flex; align-items: center; text-decoration: underline; }
 
   .chq-auth-fields { display: flex; flex-direction: column; gap: 14px; }
   .chq-auth-label {

@@ -223,7 +223,13 @@ describe("GET /login markup carries the pending-state hook", () => {
       // DEC-583: GET /login now queries demoIdentitiesPresent, so it needs a
       // (empty-result) fake db — this test doesn't care about the demo block.
       c.set("db", {
-        select: () => ({ from: () => ({ where: () => ({ limit: async () => [] }) }) }),
+        // DEC-740: the login door now also queries getHubOrg/listHubEvents
+        // for its single-event subtitle/footer -- chain needs orderBy() too
+        // (org has no `where` clause), not just where()/limit().
+        select: () => {
+          const chain: any = { from: () => chain, where: () => chain, orderBy: () => chain, limit: async () => [] };
+          return chain;
+        },
       } as unknown as AppEnv["Variables"]["db"]);
       await next();
     });
@@ -278,16 +284,22 @@ describe("POST /login rate limiting (DEC-180)", () => {
       select() {
         return {
           from(table: unknown) {
-            return {
-              where() {
-                return {
-                  limit() {
-                    if (table === schema.user) return Promise.resolve(users);
-                    throw new Error("unexpected table in fake db select");
-                  },
-                };
+            // DEC-740: the login door also queries getHubOrg/listHubEvents
+            // (org has no `where`, just `orderBy().limit()`) -- the chain
+            // below supports both shapes, keyed off which table was passed
+            // to `from`. schema.org resolves to [] so
+            // loadSingleEventContext short-circuits before ever querying
+            // schema.event.
+            const chain: any = {
+              where: () => chain,
+              orderBy: () => chain,
+              limit() {
+                if (table === schema.user) return Promise.resolve(users);
+                if (table === schema.org) return Promise.resolve([]);
+                throw new Error("unexpected table in fake db select");
               },
             };
+            return chain;
           },
         };
       },
