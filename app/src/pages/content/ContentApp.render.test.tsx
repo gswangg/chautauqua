@@ -212,18 +212,17 @@ describe('ContentApp: fresh loads on view switch and explicit refresh', () => {
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Refresh' })).toBeInTheDocument();
     });
-    // w1-f/DEC-825: loadWorklist (1) plus one bounded count per chip (3,
-    // WORKLIST_TABS) plus the header's re-uploaded aggregate read
-    // (DEC-733/eval 60/37) hit the same /submissions path, so mounting
-    // fires 5 requests, not 1.
+    // DEC-913: the chip counts and re-uploaded headline ride the same
+    // worklist response — mounting fires exactly ONE /submissions request,
+    // not a per-chip fan-out.
     await waitFor(() => {
-      expect(submissionsMock).toHaveBeenCalledTimes(5);
+      expect(submissionsMock).toHaveBeenCalledTimes(1);
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Refresh' }));
 
     await waitFor(() => {
-      expect(submissionsMock).toHaveBeenCalledTimes(10);
+      expect(submissionsMock).toHaveBeenCalledTimes(2);
     });
   });
 
@@ -390,14 +389,18 @@ describe('ContentApp: Files-library drill-in fetches an out-of-page submission (
   });
 });
 
-// DEC-825: one predicate over one set — a chip's own bounded count read must
-// filter by the EXACT same contentStatus string the worklist list fetch uses
-// once that chip's tab is active, both sourced from worklist.ts's single
-// WORKLIST_TAB_CONTENT_STATUS map.
-describe('ContentApp worklist chips (DEC-825): count query matches the tab list filter', () => {
-  it("uses the identical contentStatus query string for the 'Needs a decision' list fetch and its own chip count", async () => {
+// DEC-913: the tab strip's chip counts and the 'N need a decision · M
+// re-uploaded' headline are ONE grouped aggregate riding the SAME worklist
+// list response — no per-chip fetch, and switching tabs never moves the
+// numbers because the server strips the tab's own contentStatus narrowing
+// before grouping.
+describe('ContentApp worklist chips (DEC-913): counts derive from the one list envelope, no per-chip fetch', () => {
+  it('renders every chip count and the re-uploaded headline from the envelope, with exactly one list request per load', async () => {
     const fetchMock = mockApi({
-      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([]),
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([], {
+        contentStatusCounts: { pending: 2, approved: 5, changes_requested: 3 },
+        reuploadedCount: 4,
+      }),
     });
 
     render(
@@ -406,28 +409,33 @@ describe('ContentApp worklist chips (DEC-825): count query matches the tab list 
       </MemoryRouter>,
     );
 
-    fireEvent.click(await screen.findByRole('tab', { name: /Needs a decision/ }));
+    // needs_decision sums pending+changes_requested (2+3=5); approved is its
+    // own count (5); all is the full total (2+5+3=10) — each read off the
+    // SAME WORKLIST_TAB_CONTENT_STATUS entry the tab's own list filter uses.
+    await waitFor(() => {
+      expect(screen.getByRole('tab', { name: 'Needs a decision · 5' })).toBeInTheDocument();
+    });
+    expect(screen.getByRole('tab', { name: 'Approved · 5' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'All accepted sessions · 10' })).toBeInTheDocument();
+    expect(screen.getByText('5 need a decision · 4 re-uploaded')).toBeInTheDocument();
+
+    // Exactly one /submissions request for the initial mount — no per-chip
+    // fan-out and no separate re-uploaded headline request.
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole('tab', { name: /^Approved/ }));
 
     await waitFor(() => {
-      expect(screen.getByRole('tab', { name: /Needs a decision/ })).toHaveClass('is-active');
+      expect(screen.getByRole('tab', { name: /^Approved/ })).toHaveClass('is-active');
     });
 
-    function contentStatusParams(sortValue: string | null) {
-      return fetchMock.mock.calls
-        .map(([input]) => new URL(typeof input === 'string' ? input : input.toString(), 'http://localhost'))
-        .filter((url) => url.searchParams.get('sort') === sortValue)
-        .map((url) => url.searchParams.get('contentStatus'));
-    }
-
-    // Only the fetches made once the 'needs_decision' tab is active carry
-    // its contentStatus filter — the initial mount's default-tab ('all')
-    // list fetch has none, so it's excluded rather than falsified against.
-    const listContentStatuses = contentStatusParams('worklist').filter((v) => v !== null);
-    const chipCountContentStatuses = contentStatusParams(null);
-
-    expect(listContentStatuses.length).toBeGreaterThan(0);
-    expect(listContentStatuses.every((v) => v === 'changes_requested,pending')).toBe(true);
-    expect(chipCountContentStatuses).toContain('changes_requested,pending');
+    // Switching tabs re-fetches the list (its own new contentStatus filter)
+    // but the chip numbers themselves stay the SAME server-reported totals
+    // — never move just because the active tab changed.
+    expect(screen.getByRole('tab', { name: 'Needs a decision · 5' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Approved · 5' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'All accepted sessions · 10' })).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });
 

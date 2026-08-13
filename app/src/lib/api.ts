@@ -36,6 +36,12 @@ export interface ListEnvelope<T> {
   total: number;
   page: number;
   perPage: number;
+  // DEC-913: present on the submissions worklist list envelope only — the
+  // chips + re-uploaded headline ride the same response as the rows,
+  // computed by one grouped aggregate server-side. Optional because other
+  // apiList<T> callers' endpoints don't return these.
+  contentStatusCounts?: { pending: number; approved: number; changes_requested: number };
+  reuploadedCount?: number;
 }
 
 function isApiErrorBody(body: unknown): body is ApiErrorBody {

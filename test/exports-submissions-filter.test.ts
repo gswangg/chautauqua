@@ -100,11 +100,12 @@ function orderBySqlOf(callLog: { method: string; args: unknown[] }[]) {
   return dialect.sqlToQuery(orderByCall!.args[0] as any);
 }
 
-// listSubmissions' response queue: event prefix, count, page rows,
-// participants, tracks, deliverable counts, latestFile candidates (matches
-// test/content-worklist-server-driven.test.ts's ordering).
+// listSubmissions' response queue: event prefix, count, DEC-913 grouped
+// counts, page rows, participants, tracks, deliverable counts, latestFile
+// candidates (matches test/content-worklist-server-driven.test.ts's
+// ordering).
 function listResponses(rows: unknown[], total: number) {
-  return [[{ recordPrefix: "SES" }], [{ count: total }], rows, [], [], [], []];
+  return [[{ recordPrefix: "SES" }], [{ count: total }], [], rows, [], [], [], []];
 }
 
 // exportSubmissions' response queue: recordPrefix, submissions (unpaginated,
@@ -137,13 +138,13 @@ async function assertSameFilter(
   // (b) the WHERE clause each function's main select ran is byte-identical
   // (same SQL text, same bound params) — the export used the SAME
   // submissionListConditions the list used, not a hand-copied filter.
-  const listWhere = whereSqlOf(listDb.calls[2]!);
+  const listWhere = whereSqlOf(listDb.calls[3]!);
   const exportWhere = whereSqlOf(exportDb.calls[1]!);
   expect(exportWhere.sql, `${label}: WHERE SQL text`).toBe(listWhere.sql);
   expect(exportWhere.params, `${label}: WHERE bound params`).toEqual(listWhere.params);
 
   // orderBy also matches (same orderByForSort(params.sort)).
-  const listOrder = orderBySqlOf(listDb.calls[2]!);
+  const listOrder = orderBySqlOf(listDb.calls[3]!);
   const exportOrder = orderBySqlOf(exportDb.calls[1]!);
   expect(exportOrder.sql, `${label}: ORDER BY SQL text`).toBe(listOrder.sql);
 }

@@ -80,6 +80,7 @@ describe("listSubmissions contentStatus filter (DEC-341)", () => {
     const responses = [
       [{ recordPrefix: "SES" }],
       [{ count: 3 }],
+      [], // DEC-913 grouped counts
       [submissionRow("sub-1", 1, "Talk One")],
       [], // participants
       [], // tracks
@@ -90,8 +91,9 @@ describe("listSubmissions contentStatus filter (DEC-341)", () => {
 
     await listSubmissions(db, EVENT_ID, baseParams({ contentStatus: ["changes_requested"] }));
 
-    // Call index 2 is the page query (0: event prefix, 1: count, 2: page).
-    const pageCallLog = db.calls[2]!;
+    // Call index 3 is the page query (0: event prefix, 1: count, 2: DEC-913
+    // grouped counts, 3: page).
+    const pageCallLog = db.calls[3]!;
     const whereCall = pageCallLog.find((c: { method: string }) => c.method === "where");
     expect(whereCall).toBeDefined();
     const { sql, params } = dialect.sqlToQuery(whereCall!.args[0] as any);
@@ -105,6 +107,7 @@ describe("listSubmissions contentStatus filter (DEC-341)", () => {
     const page1Responses = [
       [{ recordPrefix: "SES" }],
       [{ count: 137 }],
+      [], // DEC-913 grouped counts
       Array.from({ length: 50 }, (_, i) => submissionRow(`sub-${i}`, i, `Talk ${i}`)),
       [],
       [],
@@ -124,6 +127,7 @@ describe("listSubmissions contentStatus filter (DEC-341)", () => {
     const page3Responses = [
       [{ recordPrefix: "SES" }],
       [{ count: 137 }],
+      [], // DEC-913 grouped counts
       Array.from({ length: 37 }, (_, i) => submissionRow(`sub-p3-${i}`, 100 + i, `Talk P3 ${i}`)),
       [],
       [],
@@ -146,6 +150,7 @@ describe("listSubmissions sort=worklist (DEC-341)", () => {
     const responses = [
       [{ recordPrefix: "SES" }],
       [{ count: 1 }],
+      [], // DEC-913 grouped counts
       [submissionRow("sub-1", 1, "A Talk")],
       [],
       [],
@@ -156,7 +161,7 @@ describe("listSubmissions sort=worklist (DEC-341)", () => {
 
     await listSubmissions(db, EVENT_ID, baseParams({ sort: "worklist" }));
 
-    const pageCallLog = db.calls[2]!;
+    const pageCallLog = db.calls[3]!;
     const orderByCall = pageCallLog.find((c: { method: string }) => c.method === "orderBy");
     expect(orderByCall).toBeDefined();
     const { sql } = dialect.sqlToQuery(orderByCall!.args[0] as any);
@@ -175,6 +180,7 @@ describe("listSubmissions deliverableCounts (DEC-341 hydration, DEC-247 chain ro
     const responses = [
       [{ recordPrefix: "SES" }],
       [{ count: 1 }],
+      [], // DEC-913 grouped counts
       [submissionRow("sub-1", 1, "A Talk")],
       [],
       [],
@@ -185,8 +191,8 @@ describe("listSubmissions deliverableCounts (DEC-341 hydration, DEC-247 chain ro
 
     await listSubmissions(db, EVENT_ID, baseParams());
 
-    // Deliverable-count query is the 6th select() call (index 5).
-    const deliverableCallLog = db.calls[5]!;
+    // Deliverable-count query is the 7th select() call (index 6).
+    const deliverableCallLog = db.calls[6]!;
     const whereCall = deliverableCallLog.find((c: { method: string }) => c.method === "where");
     expect(whereCall).toBeDefined();
     const { sql } = dialect.sqlToQuery(whereCall!.args[0] as any);
@@ -198,6 +204,7 @@ describe("listSubmissions deliverableCounts (DEC-341 hydration, DEC-247 chain ro
     const responses = [
       [{ recordPrefix: "SES" }],
       [{ count: 1 }],
+      [], // DEC-913 grouped counts
       [submissionRow("sub-1", 1, "A Talk")],
       [],
       [],
@@ -218,6 +225,7 @@ describe("listSubmissions deliverableCounts (DEC-341 hydration, DEC-247 chain ro
     const responses = [
       [{ recordPrefix: "SES" }],
       [{ count: 1 }],
+      [], // DEC-913 grouped counts
       [submissionRow("sub-1", 1, "A Talk")],
       [],
       [],
@@ -237,6 +245,7 @@ describe("listSubmissions latestFile (w15-f, DEC-686 page-scoped hydration)", ()
     const responses = [
       [{ recordPrefix: "SES" }],
       [{ count: 1 }],
+      [], // DEC-913 grouped counts
       [submissionRow("sub-1", 1, "A Talk")],
       [], // participants
       [], // tracks
@@ -281,6 +290,7 @@ describe("listSubmissions latestFile (w15-f, DEC-686 page-scoped hydration)", ()
     const responses = [
       [{ recordPrefix: "SES" }],
       [{ count: 1 }],
+      [], // DEC-913 grouped counts
       [submissionRow("sub-1", 1, "A Talk")],
       [],
       [],
@@ -303,6 +313,7 @@ describe("listSubmissions reuploaded (DEC-881)", () => {
     const responses = [
       [{ recordPrefix: "SES" }],
       [{ count: 1 }],
+      [], // DEC-913 grouped counts
       [submissionRow("sub-1", 1, "A Talk")],
       [],
       [],
@@ -313,7 +324,7 @@ describe("listSubmissions reuploaded (DEC-881)", () => {
 
     await listSubmissions(db, EVENT_ID, baseParams({ reuploaded: true }));
 
-    const pageCallLog = db.calls[2]!;
+    const pageCallLog = db.calls[3]!;
     const whereCall = pageCallLog.find((c: { method: string }) => c.method === "where");
     expect(whereCall).toBeDefined();
     const { sql } = dialect.sqlToQuery(whereCall!.args[0] as any);
@@ -325,6 +336,7 @@ describe("listSubmissions reuploaded (DEC-881)", () => {
     const responses = [
       [{ recordPrefix: "SES" }],
       [{ count: 1 }],
+      [], // DEC-913 grouped counts
       [submissionRow("sub-1", 1, "A Talk")],
       [],
       [],
@@ -335,7 +347,7 @@ describe("listSubmissions reuploaded (DEC-881)", () => {
 
     await listSubmissions(db, EVENT_ID, baseParams());
 
-    const pageCallLog = db.calls[2]!;
+    const pageCallLog = db.calls[3]!;
     const whereCall = pageCallLog.find((c: { method: string }) => c.method === "where");
     const { sql } = dialect.sqlToQuery(whereCall!.args[0] as any);
     expect(sql).not.toContain('"file"."version_no"');
@@ -345,6 +357,7 @@ describe("listSubmissions reuploaded (DEC-881)", () => {
     const responses = [
       [{ recordPrefix: "SES" }],
       [{ count: 1 }],
+      [], // DEC-913 grouped counts
       [submissionRow("sub-1", 1, "A Talk")],
       [],
       [],
@@ -386,6 +399,7 @@ describe("listSubmissions reuploaded (DEC-881)", () => {
     const responses = [
       [{ recordPrefix: "SES" }],
       [{ count: 1 }],
+      [], // DEC-913 grouped counts
       [submissionRow("sub-1", 1, "A Talk")],
       [],
       [],
@@ -416,6 +430,7 @@ describe("listSubmissions reuploaded (DEC-881)", () => {
     const responses = [
       [{ recordPrefix: "SES" }],
       [{ count: 1 }],
+      [], // DEC-913 grouped counts
       [submissionRow("sub-1", 1, "A Talk")],
       [],
       [],
