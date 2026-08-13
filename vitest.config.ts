@@ -13,6 +13,10 @@ import react from "@vitejs/plugin-react";
 export default defineConfig({
   plugins: [react()],
   test: {
+    // DEC-797: harness-level DOM cleanup between render tests -- see
+    // app/src/test-setup.ts. Guarded so node-environment suites (which must
+    // never import testing-library) are unaffected.
+    setupFiles: ["app/src/test-setup.ts"],
     // Machine-protection caps (mandate item 72/73): the full suite spawned 6+
     // multi-GB workers and swamped the 16GB host twice. maxWorkers alone does
     // not bind the forks pool (vitest's default pool) -- poolOptions.forks
