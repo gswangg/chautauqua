@@ -89,6 +89,7 @@ function makePlan(overrides: Partial<PlanRecord> = {}): PlanRecord {
     closeDate: null,
     filters: null,
     anonymized: false,
+    anonymizedAt: null,
     scale: { min: 1, max: 5 },
     criteria: [{ id: "c1", label: "Quality", kind: "rating", weight: 1 }],
     rounds: 1,

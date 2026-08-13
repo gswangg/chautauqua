@@ -29,6 +29,7 @@ function makePlan(n: number): PlanRecord {
     closeDate: null,
     filters: null,
     anonymized: false,
+    anonymizedAt: null,
     scale: { min: 1, max: 5 },
     criteria: [],
     rounds: 1,

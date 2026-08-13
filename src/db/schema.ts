@@ -305,6 +305,13 @@ export const evaluationPlan = sqliteTable(
     // session filters, e.g. track ids
     filtersJson: text("filters_json"),
     anonymized: integer("anonymized", { mode: "boolean" }).notNull().default(false),
+    // DEC-799: when `anonymized` last transitioned false -> true (or was set
+    // true at creation), null when never anonymized or legitimately switched
+    // off. The ratchet guard (countSubmittedEvaluationsForPlan) counts only
+    // evaluations submitted since this timestamp, so evaluations submitted
+    // BEFORE anonymity was enabled never lock a plan into permanent anonymity.
+    // migrations/0024_review_anonymized_at.sql.
+    anonymizedAt: integer("anonymized_at", { mode: "timestamp_ms" }),
     // rating scale definition, e.g. { min, max, labels }
     scaleJson: text("scale_json").notNull(),
     // weighted criteria, e.g. [{ id, label, weight }]

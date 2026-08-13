@@ -158,7 +158,7 @@ describe('PlanList (DEC-706/DEC-707 render)', () => {
     expect(new URL(exportLinkBefore.getAttribute('href')!, 'http://localhost').searchParams.get('sort')).toBeNull();
 
     expect(await screen.findByText('A Great Talk')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /^Score/ }));
+    fireEvent.click(screen.getByRole('button', { name: /^Weighted score/ }));
 
     await waitFor(() => {
       const exportLinkAfter = screen.getByRole('link', { name: 'Export results CSV' });
