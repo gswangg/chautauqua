@@ -5,11 +5,12 @@
 // action. The active tab is DERIVED from the live filter/column state via
 // activeViewKey, never from which tab was last clicked.
 
-import { useEffect, useState, type FormEvent, type MouseEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { apiDelete, apiList, apiPost, ApiError } from '../../lib/api';
-import { useEscapeKey } from '../../lib/useEscapeKey';
+import { FormRow, ModalFrame } from '../../components/ModalFrame';
+import { sortLabel } from './FilterBar';
 import { serializeView, type SavedView, type SavedViewConfig } from './views';
-import { STATUS_LABELS, type SubmissionsFilterState } from './types';
+import { STATUS_LABELS, type SubmissionsFilterState, type Track } from './types';
 
 export interface BuiltInView {
   key: string;
@@ -75,38 +76,39 @@ export function activeViewKey(
   return null;
 }
 
-function summarizeFilters(filters: SubmissionsFilterState): string {
+/** DEC-750: the save-view subtitle names the ACTUAL current filter/sort
+ * state (e.g. "Pending · AI Engineering · newest first") rather than a
+ * generic "Saves the current view" sentence -- status first, then a search
+ * term, then the track name (if filtered), then the sort order (always
+ * present), joined with " · ". */
+export function summarizeFilters(filters: SubmissionsFilterState, tracks: readonly Track[]): string {
   const parts: string[] = [];
-  if (filters.q.trim().length > 0) parts.push(`search “${filters.q.trim()}”`);
   if (filters.status.length > 0) {
-    parts.push(`status ${filters.status.map((s) => STATUS_LABELS[s]).join(', ')}`);
+    parts.push(filters.status.map((s) => STATUS_LABELS[s]).join(', '));
   }
-  if (filters.trackId) parts.push('a track filter');
-  if (parts.length === 0) return 'Saves the current view with no filters applied.';
-  return `Saves the current view: ${parts.join(' · ')}.`;
+  if (filters.q.trim().length > 0) parts.push(`search “${filters.q.trim()}”`);
+  if (filters.trackId) {
+    const track = tracks.find((t) => t.id === filters.trackId);
+    parts.push(track ? track.name : 'a track filter');
+  }
+  parts.push(sortLabel(filters.sort).toLowerCase());
+  return parts.join(' · ');
 }
 
 interface SaveViewDialogProps {
   filters: SubmissionsFilterState;
+  tracks: readonly Track[];
   pending: boolean;
   onCancel: () => void;
   onSave: (name: string) => Promise<void>;
 }
 
-// DEC-651: the ONE dialog header contract -- .chq-modal-title, a Close
-// control, and a placeholder on the free-text input -- plus DEC-648's
-// primary-first action order. saved_view has no owner column (event-scoped
-// only), so sharing is a static caption, not a toggle the server can't
-// persist.
-function SaveViewDialog({ filters, pending, onCancel, onSave }: SaveViewDialogProps) {
+// DEC-651/DEC-750: ModalFrame like every other dialog, primary bottom-left
+// (modal-frame.css). saved_view has no owner column (event-scoped only), so
+// sharing is a static caption, not a checkbox toggle the store can't persist.
+function SaveViewDialog({ filters, tracks, pending, onCancel, onSave }: SaveViewDialogProps) {
   const [name, setName] = useState('');
   const [error, setError] = useState<string | null>(null);
-
-  useEscapeKey(!pending, onCancel);
-
-  function handleScrimClick(e: MouseEvent<HTMLDivElement>) {
-    if (e.target === e.currentTarget && !pending) onCancel();
-  }
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -124,38 +126,38 @@ function SaveViewDialog({ filters, pending, onCancel, onSave }: SaveViewDialogPr
   }
 
   return (
-    <div className="chq-scrim" role="dialog" aria-modal="true" aria-label="Save this view" onClick={handleScrimClick}>
-      <form className="chq-modal" onSubmit={submit}>
-        <div className="chq-submissions-viewtabs-dialog-head">
-          <h2 className="chq-modal-title">Save this view</h2>
-          <button type="button" className="chq-modal-close" onClick={onCancel} disabled={pending} aria-label="Close">
-            &times;
-          </button>
-        </div>
-        <p className="chq-submissions-modal-sub">{summarizeFilters(filters)}</p>
-        {error && <div className="chq-error">{error}</div>}
-        <label className="chq-submissions-modal-field">
-          <span className="chq-submissions-modal-label">Name</span>
-          <input
-            className="chq-input"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="AI track, unread"
-            autoFocus
-            disabled={pending}
-          />
-        </label>
-        <p className="chq-submissions-modal-sub">Shared with every organiser on this event.</p>
-        <div className="chq-modal-actions">
+    <ModalFrame
+      as="form"
+      onSubmit={submit}
+      title="Save this view"
+      subtitle={summarizeFilters(filters, tracks)}
+      onClose={onCancel}
+      closeDisabled={pending}
+      actions={
+        <>
           <button type="submit" className="chq-btn chq-btn-primary" disabled={pending}>
             Save the view
           </button>
           <button type="button" className="chq-btn chq-btn-secondary" onClick={onCancel} disabled={pending}>
             Cancel
           </button>
-        </div>
-      </form>
-    </div>
+        </>
+      }
+    >
+      {error && <div className="chq-error">{error}</div>}
+      <FormRow label="Name it" htmlFor="save-view-name">
+        <input
+          id="save-view-name"
+          className="chq-input"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="AI track, unread"
+          autoFocus
+          disabled={pending}
+        />
+      </FormRow>
+      <p className="chq-submissions-modal-sub">Everyone organising this event sees it.</p>
+    </ModalFrame>
   );
 }
 
@@ -163,10 +165,11 @@ interface ViewTabsProps {
   eventId: string;
   filters: SubmissionsFilterState;
   visibleFieldIds: ReadonlySet<string>;
+  tracks: readonly Track[];
   onApply: (config: SavedViewConfig) => void;
 }
 
-export function ViewTabs({ eventId, filters, visibleFieldIds, onApply }: ViewTabsProps) {
+export function ViewTabs({ eventId, filters, visibleFieldIds, tracks, onApply }: ViewTabsProps) {
   const [views, setViews] = useState<SavedView[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -255,6 +258,7 @@ export function ViewTabs({ eventId, filters, visibleFieldIds, onApply }: ViewTab
       {showSaveDialog && (
         <SaveViewDialog
           filters={filters}
+          tracks={tracks}
           pending={saving}
           onCancel={() => setShowSaveDialog(false)}
           onSave={saveCurrentAsView}

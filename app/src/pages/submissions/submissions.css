@@ -335,13 +335,6 @@
   color: var(--chq-ink);
 }
 
-.chq-submissions-viewtabs-dialog-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-}
-
 /* Phone-only per-row triage action group (DEC-610): a row awaiting triage
    (status 'pending') gets an Accept/Decline/Waitlist group in its own cell.
    Hidden above 700px -- desktop triage happens via the bulk-action bar

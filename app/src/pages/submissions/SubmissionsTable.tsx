@@ -264,7 +264,13 @@ export function SubmissionsTable() {
 
       <div className="chq-submissions-toolbar">
         <div className="chq-submissions-toolbar-row">
-          <ViewTabs eventId={eventId} filters={filters} visibleFieldIds={visibleFieldIds} onApply={applySavedView} />
+          <ViewTabs
+            eventId={eventId}
+            filters={filters}
+            visibleFieldIds={visibleFieldIds}
+            tracks={tracks}
+            onApply={applySavedView}
+          />
           <FilterBarSearchSort filters={filters} onChange={setFilters} />
         </div>
         <FilterBar

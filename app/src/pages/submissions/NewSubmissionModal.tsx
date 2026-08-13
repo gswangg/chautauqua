@@ -27,6 +27,20 @@ export interface NewSubmissionInput {
   trackIds: string[];
 }
 
+/** DEC-749: splits "Jordan Alvarez" into { firstName: 'Jordan', lastName:
+ * 'Alvarez' }. Splits on the FINAL run of whitespace -- everything before
+ * it is firstName, the last token is lastName -- so a middle name/multi-word
+ * given name ("Mary Jane Watson") stays with firstName. A single token (no
+ * whitespace) yields firstName only, with an empty lastName. Nothing beyond
+ * that is inferred. */
+export function splitSpeakerName(value: string): { firstName: string; lastName: string } {
+  const trimmed = value.trim();
+  if (trimmed === '') return { firstName: '', lastName: '' };
+  const idx = trimmed.search(/\s+\S+$/);
+  if (idx === -1) return { firstName: trimmed, lastName: '' };
+  return { firstName: trimmed.slice(0, idx).trim(), lastName: trimmed.slice(idx).trim() };
+}
+
 interface NewSubmissionModalProps {
   tracks: Track[];
   formatField?: FormField;
@@ -38,8 +52,7 @@ export function NewSubmissionModal({ tracks, formatField, onCancel, onCreate }: 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [email, setEmail] = useState('');
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
+  const [speakerName, setSpeakerName] = useState('');
   const [trackIds, setTrackIds] = useState<string[]>([]);
   const [format, setFormat] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -58,9 +71,7 @@ export function NewSubmissionModal({ tracks, formatField, onCancel, onCreate }: 
     }
 
     const trimmedEmail = email.trim();
-    const contact = trimmedEmail
-      ? { email: trimmedEmail, firstName: firstName.trim(), lastName: lastName.trim() }
-      : null;
+    const contact = trimmedEmail ? { email: trimmedEmail, ...splitSpeakerName(speakerName) } : null;
 
     setPending(true);
     setError(null);
@@ -145,25 +156,16 @@ export function NewSubmissionModal({ tracks, formatField, onCancel, onCreate }: 
         </FormRow>
       )}
 
-      <FormRow label="Speaker name" htmlFor="new-submission-first-name">
+      <FormRow label="Speaker name" htmlFor="new-submission-speaker-name">
         <input
-          id="new-submission-first-name"
+          id="new-submission-speaker-name"
           className="chq-input"
-          value={firstName}
-          onChange={(e) => setFirstName(e.target.value)}
+          value={speakerName}
+          onChange={(e) => setSpeakerName(e.target.value)}
           placeholder="Jordan Alvarez"
         />
       </FormRow>
-      <FormRow label="Speaker last name" htmlFor="new-submission-last-name">
-        <input
-          id="new-submission-last-name"
-          className="chq-input"
-          value={lastName}
-          onChange={(e) => setLastName(e.target.value)}
-          placeholder="Alvarez"
-        />
-      </FormRow>
-      <FormRow label="Speaker email (optional)" htmlFor="new-submission-email">
+      <FormRow label="Speaker email" htmlFor="new-submission-email">
         <input
           id="new-submission-email"
           className="chq-input"

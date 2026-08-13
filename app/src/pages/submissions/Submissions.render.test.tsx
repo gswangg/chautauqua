@@ -319,7 +319,7 @@ describe('SubmissionsPage render smoke', () => {
     // Empty-name validation must not have posted.
     expect(fetchMock.mock.calls.some(([, init]) => (init as RequestInit | undefined)?.method === 'POST')).toBe(false);
 
-    fireEvent.change(screen.getByRole('textbox', { name: 'Name' }), { target: { value: '  My saved view  ' } });
+    fireEvent.change(screen.getByRole('textbox', { name: 'Name it' }), { target: { value: '  My saved view  ' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save the view' }));
 
     await waitFor(() => {
