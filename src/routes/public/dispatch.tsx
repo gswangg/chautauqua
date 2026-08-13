@@ -110,7 +110,12 @@ export async function renderSurfaceContent(
       };
     }
     case "agenda": {
-      const { items, total } = await getPublicAgenda(db, event, { day: query.day });
+      // DEC-783: q/trackId parsed with the ONE parsers /sessions already
+      // uses (query.ts) and pushed into the repo query as SQL predicates —
+      // both `items` and `total` see the identical filter.
+      const trackId = parseTrackId(query.trackId);
+      const q = parseNameQuery(query.q);
+      const { items, total } = await getPublicAgenda(db, event, { day: query.day, trackId, q });
       // DEC-768: ?day= filters `items` down to one day's rows, so the day
       // switcher can no longer derive its full day list from `items` alone
       // (that would drop every other day's pill, dead-ending a visitor who
@@ -120,16 +125,38 @@ export async function renderSurfaceContent(
       const allDays = query.day ? (await getPublicScheduleDayCounts(db, event)).map((d) => d.day) : null;
       return {
         title: `Agenda - ${event.name}`,
-        content: <AgendaContent event={event} items={items} total={total} embed={query.embed} allDays={allDays} activeDay={query.day ?? null} />,
+        content: (
+          <AgendaContent
+            event={event}
+            items={items}
+            total={total}
+            embed={query.embed}
+            allDays={allDays}
+            activeDay={query.day ?? null}
+            trackId={trackId}
+            q={q}
+          />
+        ),
       };
     }
     case "schedule": {
-      const { items, total } = await getPublicAgenda(db, event, { day: query.day });
+      const trackId = parseTrackId(query.trackId);
+      const q = parseNameQuery(query.q);
+      const { items, total } = await getPublicAgenda(db, event, { day: query.day, trackId, q });
       const allDays = query.day ? (await getPublicScheduleDayCounts(db, event)).map((d) => d.day) : null;
       return {
         title: `Schedule - ${event.name}`,
         content: (
-          <ScheduleContent event={event} items={items} total={total} embed={query.embed} allDays={allDays} activeDay={query.day ?? null} />
+          <ScheduleContent
+            event={event}
+            items={items}
+            total={total}
+            embed={query.embed}
+            allDays={allDays}
+            activeDay={query.day ?? null}
+            trackId={trackId}
+            q={q}
+          />
         ),
       };
     }
