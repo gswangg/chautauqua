@@ -58,17 +58,19 @@ const boxShadowScopeFiles = [
   ...glob(join(REPO_ROOT, "src/routes"), [".css.ts"]),
 ];
 
-// Rule 3's scope is the whole app/src and src trees, but src/decisions.ts is
-// the compile-checked DEC constant registry (never hand-edited per DEC-*):
-// its string literals quote decision text describing the "no red" rule itself
-// ("it reports red", "no semantic red anywhere"), not a CSS colour value, so
-// it is excluded from the literal-colour-word scan the same way the two token
+// Rule 3's scope is the whole app/src and src trees, but src/decisions.ts
+// (and its src/decisions-data/*.ts parts) is the compile-checked DEC
+// constant registry (never hand-edited per DEC-*): its string literals
+// quote decision text describing the "no red" rule itself ("it reports
+// red", "no semantic red anywhere"), not a CSS colour value, so it is
+// excluded from the literal-colour-word scan the same way the two token
 // files are excluded from rule 1.
 const DECISIONS_FILE = join(REPO_ROOT, "src/decisions.ts");
+const DECISIONS_DATA_DIR = join(REPO_ROOT, "src/decisions-data");
 const wholeTreeFiles = [
   ...glob(join(REPO_ROOT, "app/src"), [".ts", ".tsx", ".css"]),
   ...glob(join(REPO_ROOT, "src"), [".ts", ".tsx", ".css"]),
-].filter((f) => f !== DECISIONS_FILE);
+].filter((f) => f !== DECISIONS_FILE && !f.startsWith(DECISIONS_DATA_DIR + "/"));
 
 describe("palette closure guard (DEC-383)", () => {
   it("scanned at least one page sheet and one SSR surface module", () => {
