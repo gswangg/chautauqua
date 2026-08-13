@@ -128,6 +128,12 @@ export const ROUTE_GROUPS: { title: string; rows: Row[] }[] = [
       { method: "PUT", path: "/api/v1/review/plans/:planId/evaluations/:submissionId", role: "reviewer" },
       { method: "POST", path: "/api/v1/review/plans/:planId/recusals/:submissionId", role: "reviewer" },
       { method: "DELETE", path: "/api/v1/review/plans/:planId/recusals/:submissionId", role: "reviewer" },
+      {
+        method: "GET",
+        path: "/api/v1/plans/:id/assignments/distribute/preview",
+        role: "organizer (DEC-786: pure round-robin preview, writes nothing)",
+      },
+      { method: "POST", path: "/api/v1/plans/:id/assignments/distribute", role: "organizer (DEC-786: applies exactly the previewed pairs)" },
     ],
   },
   {

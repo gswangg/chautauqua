@@ -20,12 +20,13 @@ import {
   selectRemindTargets,
   type ResultsSortKey,
 } from "../../domain/evaluation";
+import { distributeAssignments } from "../../domain/review-distribute";
 import { toCsv } from "../../lib/csv";
 import { clampPage, clampPerPage, listPerPage } from "../../lib/pagination";
 import * as repo from "../../server/repo/review";
 import { roundCriteriaJsonOf } from "../../server/repo/review";
 import * as eventsRepo from "../../server/repo/events";
-import { DEC_015, DEC_123, DEC_146, DEC_147, DEC_148, DEC_213, DEC_238, DEC_460, DEC_461, DEC_466, DEC_535, DEC_572, DEC_623, DEC_624, DEC_659, DEC_676, DEC_707, DEC_708, DEC_709 } from "../../decisions";
+import { DEC_015, DEC_123, DEC_146, DEC_147, DEC_148, DEC_213, DEC_238, DEC_460, DEC_461, DEC_466, DEC_535, DEC_572, DEC_623, DEC_624, DEC_659, DEC_676, DEC_707, DEC_708, DEC_709, DEC_786 } from "../../decisions";
 import { capById, MAX_REVIEWER_REMINDER_BATCH } from "../../domain/reminders";
 import {
   asRecord,
@@ -67,6 +68,7 @@ void DEC_676; // GET /plans/:id: evaluationCountsByRound surfaces DEC-213's free
 void DEC_707; // GET /plans/:id/progress + POST /plans/:id/remind: scope selection via selectRemindTargets below
 void DEC_708; // GET /plans/:id/progress: item.name via batchUserDisplayNames below
 void DEC_709; // POST /plans/:id/waves: locked criteria carry forward into a new editable round below
+void DEC_786; // /plans/:id/assignments/distribute(/preview): pure round-robin below
 
 reviewPlansRoutes.get("/api/v1/events/:eventId/plans", requireOrganizer, async (c) => {
   const auth = currentAuth(c);
@@ -387,6 +389,90 @@ reviewPlansRoutes.delete("/api/v1/plans/:id/reviewers/:reviewerId", requireOrgan
   if (!row || row.planId !== plan.id) throw new ApiError("not_found", "Reviewer assignment not found");
   await repo.removeReviewerById(c.var.db, reviewerId);
   return c.body(null, 204);
+});
+
+// DEC-786: pure round-robin distribution of the plan's own reviewer pool
+// (every distinct userId already assigned to this plan, regardless of
+// scope) across every submission the plan's filters resolve to. Shared by
+// the preview (writes NOTHING) and the apply endpoint below, so the two can
+// never disagree about which pairs would be added.
+async function computeDistribution(c: { var: { db: import("../../server/context").Db } }, plan: repo.PlanRecord) {
+  const [reviewerRows, submissions, recusals] = await Promise.all([
+    repo.listReviewerRowsForPlan(c.var.db, plan.id),
+    repo.listPlanFilteredSubmissions(c.var.db, plan, { withTrackIds: false }),
+    repo.listRecusalsForPlan(c.var.db, plan.id),
+  ]);
+  const reviewerUserIds = [...new Set(reviewerRows.map((r) => r.userId))].sort();
+  const existing = reviewerRows
+    .filter((r): r is typeof r & { submissionId: string } => r.submissionId !== null)
+    .map((r) => ({ userId: r.userId, submissionId: r.submissionId }));
+  const recused = recusals.map((r) => ({ userId: r.userId, submissionId: r.submissionId }));
+  const pairs = distributeAssignments({
+    submissionIds: submissions.map((s) => s.id),
+    reviewerUserIds,
+    reviewsPerSubmission: plan.maxEvaluations ?? 1,
+    existing,
+    recused,
+  });
+  return { pairs, submissions, reviewerUserIds };
+}
+
+// DEC-786: preview writes NOTHING -- the organizer sees exactly which pairs
+// would be added, and the per-reviewer load those pairs would produce,
+// before confirming the apply call below.
+reviewPlansRoutes.get("/api/v1/plans/:id/assignments/distribute/preview", requireOrganizer, async (c) => {
+  const plan = await requireOwnedPlan(c, c.req.param("id"));
+  const { pairs, submissions, reviewerUserIds } = await computeDistribution(c, plan);
+
+  const submissionById = new Map(submissions.map((s) => [s.id, s]));
+  const nameByUserId = await repo.batchUserDisplayNames(c.var.db, reviewerUserIds);
+  const users = await repo.getUsersByIds(c.var.db, reviewerUserIds);
+  const emailByUserId = new Map(users.map((u) => [u.userId, u.email]));
+
+  const items = pairs.map((p) => {
+    const sub = submissionById.get(p.submissionId);
+    return {
+      userId: p.userId,
+      reviewerName: nameByUserId.get(p.userId) ?? emailByUserId.get(p.userId) ?? p.userId,
+      submissionId: p.submissionId,
+      submissionRef: sub?.ref ?? "",
+      submissionTitle: sub?.title ?? "",
+    };
+  });
+
+  // Existing load per reviewer (before this run) plus how many this run
+  // would add, so the confirm dialog shows a fair-looking before/after.
+  const existingCountByUser = new Map<string, number>();
+  for (const p of await repo.listReviewerRowsForPlan(c.var.db, plan.id)) {
+    if (p.submissionId === null) continue;
+    existingCountByUser.set(p.userId, (existingCountByUser.get(p.userId) ?? 0) + 1);
+  }
+  const addedByUser = new Map<string, number>();
+  for (const p of pairs) addedByUser.set(p.userId, (addedByUser.get(p.userId) ?? 0) + 1);
+  const perReviewer = reviewerUserIds.map((userId) => {
+    const added = addedByUser.get(userId) ?? 0;
+    const before = existingCountByUser.get(userId) ?? 0;
+    return {
+      userId,
+      name: nameByUserId.get(userId) ?? emailByUserId.get(userId) ?? userId,
+      added,
+      total: before + added,
+    };
+  });
+
+  return c.json({ items, perReviewer });
+});
+
+// DEC-786: applies exactly the pairs the preview above computed -- no
+// re-derivation, no independent randomness or clock, so a preview the
+// organizer saw is exactly what gets written.
+reviewPlansRoutes.post("/api/v1/plans/:id/assignments/distribute", requireOrganizer, csrfJson, async (c) => {
+  const plan = await requireOwnedPlan(c, c.req.param("id"));
+  const { pairs } = await computeDistribution(c, plan);
+  for (const p of pairs) {
+    await repo.addReviewer(c.var.db, plan.id, { userId: p.userId, submissionId: p.submissionId });
+  }
+  return c.json({ created: pairs.length }, 201);
 });
 
 reviewPlansRoutes.get("/api/v1/plans/:id/progress", requireOrganizer, async (c) => {
