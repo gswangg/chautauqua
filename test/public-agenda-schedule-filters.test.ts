@@ -169,12 +169,13 @@ function buildScheduleApp(rows: typeof FULL_AGENDA_ROWS) {
     select: () => {
       selectCall += 1;
       if (selectCall === 1) return makeChain([EVENT_ROW]); // getPublicEventBySlug
-      if (selectCall === 2) return makeChain([{ count: rows.length }]); // DEC-548 total
-      if (selectCall === 3) return makeChain(rows.length > 0 ? [{ id: "room1", name: "Alpha" }, { id: "room2", name: "Beta" }] : []); // roomRows
-      if (selectCall === 4) return makeChain(sessionRows); // hydrateSessions subRows
-      if (selectCall === 5) return makeChain([]); // trackRows
-      if (selectCall === 6) return makeChain([]); // speakerRows
-      if (selectCall === 7) return makeChain([]); // slotRows (unused by agenda grid)
+      if (selectCall === 2) return makeChain([]); // DEC-804 getPublicTracks (search form's track <select>)
+      if (selectCall === 3) return makeChain([{ count: rows.length }]); // DEC-548 total
+      if (selectCall === 4) return makeChain(rows.length > 0 ? [{ id: "room1", name: "Alpha" }, { id: "room2", name: "Beta" }] : []); // roomRows
+      if (selectCall === 5) return makeChain(sessionRows); // hydrateSessions subRows
+      if (selectCall === 6) return makeChain([]); // trackRows
+      if (selectCall === 7) return makeChain([]); // speakerRows
+      if (selectCall === 8) return makeChain([]); // slotRows (unused by agenda grid)
       return makeChain([]); // formatRows
     },
     selectDistinct: () => makeChain(rows),
@@ -247,13 +248,14 @@ describe("/e/:eventSlug/schedule?trackId= (DEC-783)", () => {
       select: () => {
         selectCall += 1;
         if (selectCall === 1) return makeChain([EVENT_ROW]); // getPublicEventBySlug
-        if (selectCall === 2) return makeChain([{ count: FILTERED_ROWS.length }]); // DEC-548 total
-        if (selectCall === 3) return makeChain([{ id: "room1", name: "Alpha" }]); // roomRows
-        if (selectCall === 4) return makeChain(sessionRows); // hydrateSessions subRows
-        if (selectCall === 5) return makeChain([]); // trackRows
-        if (selectCall === 6) return makeChain([]); // speakerRows
-        if (selectCall === 7) return makeChain([]); // slotRows
-        if (selectCall === 8) return makeChain([]); // formatRows
+        if (selectCall === 2) return makeChain([]); // DEC-804 getPublicTracks
+        if (selectCall === 3) return makeChain([{ count: FILTERED_ROWS.length }]); // DEC-548 total
+        if (selectCall === 4) return makeChain([{ id: "room1", name: "Alpha" }]); // roomRows
+        if (selectCall === 5) return makeChain(sessionRows); // hydrateSessions subRows
+        if (selectCall === 6) return makeChain([]); // trackRows
+        if (selectCall === 7) return makeChain([]); // speakerRows
+        if (selectCall === 8) return makeChain([]); // slotRows
+        if (selectCall === 9) return makeChain([]); // formatRows
         // getPublicScheduleDayCounts (allDays, since ?day= was passed)
         return makeChain([
           { day: "2026-08-10", count: 1 },
@@ -304,5 +306,86 @@ describe("/schedule groups rows sharing a start time under a time sub-header (DE
     expect(subheadCount).toBe(2);
     // The sub-header renders formatMinutes' label for the shared start.
     expect(html).toContain("9:00 AM");
+  });
+});
+
+// DEC-804: /agenda and /schedule render the SAME search-and-track control
+// the sessions list already answers via ?q=/?trackId= (DEC-783 made both
+// real server-side predicates here). Built on the SAME db.select() call
+// sequence as buildScheduleApp above, but with real track rows at position
+// 2 (getPublicTracks) and a `surface` switch so the same harness can mount
+// either /agenda or /embed/.../agenda.
+function buildSurfaceApp(surface: "agenda" | "schedule", rows: typeof FULL_AGENDA_ROWS, tracks: { id: string; name: string; color: string | null }[]) {
+  let selectCall = 0;
+  const sessionRows = rows.map((r) => sessionRow(r.submissionId, `Talk ${r.submissionId}`));
+  const db = {
+    select: () => {
+      selectCall += 1;
+      if (selectCall === 1) return makeChain([EVENT_ROW]); // getPublicEventBySlug
+      if (selectCall === 2) return makeChain(tracks); // DEC-804 getPublicTracks
+      if (selectCall === 3) return makeChain([{ count: rows.length }]); // DEC-548 total
+      if (selectCall === 4) return makeChain(rows.length > 0 ? [{ id: "room1", name: "Alpha" }, { id: "room2", name: "Beta" }] : []); // roomRows
+      if (selectCall === 5) return makeChain(sessionRows); // hydrateSessions subRows
+      if (selectCall === 6) return makeChain([]); // trackRows
+      if (selectCall === 7) return makeChain([]); // speakerRows
+      if (selectCall === 8) return makeChain([]); // slotRows (unused by agenda grid)
+      return makeChain([]); // formatRows
+    },
+    selectDistinct: () => makeChain(rows),
+  } as unknown as AppEnv["Variables"]["db"];
+
+  const app = new Hono<AppEnv>();
+  app.use("*", async (c, next) => {
+    c.set("db", db);
+    await next();
+  });
+  registerErrorHandler(app);
+  app.route("/", publicRoutes);
+  return app;
+}
+
+const TRACKS = [{ id: "trk-a", name: "Track A", color: null }];
+
+describe("/agenda and /schedule render the DEC-804 search-and-track form", () => {
+  it("/agenda's form carries the current q/trackId as values", async () => {
+    installFakeCaches();
+    const app = buildSurfaceApp("agenda", FULL_AGENDA_ROWS, TRACKS);
+    const res = await app.request("/e/conf/agenda?q=keynote&trackId=trk-a", {}, TEST_ENV);
+    const html = await res.text();
+    expect(html).toContain('<form method="get" action="/e/conf/agenda" role="search">');
+    expect(html).toContain('<input type="search" name="q" value="keynote"');
+    expect(html).toContain('<option value="trk-a" selected="">Track A</option>');
+    // No format control: /agenda's repo query applies no format predicate.
+    expect(html).not.toContain('name="format"');
+  });
+
+  it("/schedule's form carries the current q/trackId as values", async () => {
+    installFakeCaches();
+    const app = buildSurfaceApp("schedule", FULL_AGENDA_ROWS, TRACKS);
+    const res = await app.request("/e/conf/schedule?q=keynote&trackId=trk-a", {}, TEST_ENV);
+    const html = await res.text();
+    expect(html).toContain('<form method="get" action="/e/conf/schedule" role="search">');
+    expect(html).toContain('<input type="search" name="q" value="keynote"');
+    expect(html).toContain('<option value="trk-a" selected="">Track A</option>');
+    expect(html).not.toContain('name="format"');
+  });
+
+  it("carries the active ?day= forward as a hidden input, so filtering never jumps the reader off their day", async () => {
+    installFakeCaches();
+    const app = buildSurfaceApp("schedule", FULL_AGENDA_ROWS, TRACKS);
+    const res = await app.request("/e/conf/schedule?day=2026-08-10", {}, TEST_ENV);
+    const html = await res.text();
+    const formMatch = html.match(/<form method="get" action="\/e\/conf\/schedule" role="search">[\s\S]*?<\/form>/);
+    expect(formMatch).not.toBeNull();
+    expect(formMatch![0]).toContain('<input type="hidden" name="day" value="2026-08-10"/>');
+  });
+
+  it("the embed variant's form action stays under /embed", async () => {
+    installFakeCaches();
+    const app = buildSurfaceApp("agenda", FULL_AGENDA_ROWS, TRACKS);
+    const res = await app.request("/embed/conf/agenda", {}, TEST_ENV);
+    const html = await res.text();
+    expect(html).toContain('<form method="get" action="/embed/conf/agenda" role="search">');
+    expect(html).not.toContain('action="/e/conf/agenda"');
   });
 });
