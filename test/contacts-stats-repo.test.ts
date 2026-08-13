@@ -214,10 +214,14 @@ function makeDb(dataByTag: Record<string, Record<string, unknown>[]>) {
 
 function seed() {
   return {
+    // DEC-711: getContactStats now also runs findDuplicateGroupsForOrg (for
+    // duplicateCount) — email/firstName/lastName are required there
+    // (normalizeEmail reads them), so every seeded contact carries distinct
+    // values that never collide into a duplicate group.
     contact: [
-      { id: "c-returning", orgId: "org-1", company: "Acme" },
-      { id: "c-single", orgId: "org-1", company: "Acme" },
-      { id: "c-none", orgId: "org-1", company: null },
+      { id: "c-returning", orgId: "org-1", company: "Acme", email: "returning@example.com", firstName: "Rita", lastName: "Returning" },
+      { id: "c-single", orgId: "org-1", company: "Acme", email: "single@example.com", firstName: "Sam", lastName: "Single" },
+      { id: "c-none", orgId: "org-1", company: null, email: "none@example.com", firstName: "Noel", lastName: "None" },
     ],
     event: [
       { id: "event-1", orgId: "org-1" },

@@ -180,6 +180,12 @@ describe("GET /api/v1/segments bounds (DEC-460/461)", () => {
           return slice(ALL, page);
         }),
         countSegmentsForOrg: vi.fn(async (_db: unknown, orgId: string) => (orgId === ORG_A ? ALL.length : 0)),
+        // DEC-710: GET /segments computes each row's `count` via the SAME
+        // listContactsForOrg path GET /contacts uses (segmentId set) — this
+        // pagination-bounds test has no contacts fixture, so stub it to 0
+        // rather than let the real (db-backed) implementation run against
+        // this test's fake `{}` db.
+        listContactsForOrg: vi.fn(async () => ({ items: [], total: 0 })),
       };
     });
     const { contactsRoutes } = await import("../src/routes/api/contacts");
