@@ -233,6 +233,16 @@ form field configs (required only: title, abstract, name, email, track, format)
 + assert via test. This also inflates grader/judge friction on the first public
 flow.
 
+**PENDING v6 HANDOFF (user designing now): Speakers page gains a List/Grid view
+toggle; the standalone Gallery page + nav item GO AWAY. IMPLEMENTATION CONTRACT
+when the handoff lands: /e/<slug>/gallery MUST keep resolving (grader probes the
+path; embed builder lists the surface; EMB-12/13 grade the grid) — it becomes
+the Grid-view URL of the Speakers page (toggle links to it; or 302 to
+/speakers?view=grid, either is fine as long as the photo-grid renders there).
+Grid cards stay CAPTIONED (headshot + name + title + company per EMB-12);
+headshots-only strip is dropped (nothing grades it). Do NOT build against this
+until the v6 frames arrive.**
+
 **Public/Portal — GATE-2: FAIL improved — PLANNER: SCHEDULE THIS BATCH NEXT
 (user-priority: "the public pages look quite bad" — these are the judge's
 logged-out first impression). DECIDED (user, 2026-08-13): public submit form
