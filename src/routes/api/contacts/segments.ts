@@ -132,6 +132,17 @@ export function registerSegmentRoutes(contactsRoutes: Hono<AppEnv>): void {
     const rules = parseRules(body, fields);
     if (Object.keys(fields).length > 0) throw new ApiError("invalid", "Validation failed", fields);
 
+    // A re-save under an existing name updates that segment's rules rather
+    // than inserting a twin row (DEC-809); lookup and write are both
+    // org-scoped. No DB unique index on (orgId, name) is added here — some
+    // existing rows may already collide on name, and that dedupe migration
+    // is separate work.
+    const existing = await repo.findSegmentByNameForOrg(c.var.db, orgId, body.name as string);
+    if (existing) {
+      const updated = await repo.patchSegment(c.var.db, existing.id, { rules: rules as SegmentRule[] });
+      return c.json(serializeSegment(updated), 200);
+    }
+
     const created = await repo.createSegment(c.var.db, orgId, body.name as string, rules as SegmentRule[]);
     return c.json(serializeSegment(created), 201);
   });

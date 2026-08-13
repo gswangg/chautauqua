@@ -181,7 +181,9 @@ describe('ContactsApp render smoke: two-column directory architecture (DEC-710/D
     // summary and the rail sections remain.
     expect(screen.queryByText('Total contacts')).not.toBeInTheDocument();
     expect(screen.queryByText('Returning speakers')).not.toBeInTheDocument();
-    expect(screen.getByText('2 people · 1 speakers · 1 possible duplicates')).toBeInTheDocument();
+    // DEC-809: the headline states every figure GET /contacts/stats
+    // computes, not just total/speakerCount/duplicateCount.
+    expect(screen.getByText('2 people · 1 speakers · 1 returning · 1 events · 1 possible duplicates')).toBeInTheDocument();
 
     // Tab chips carry counts.
     expect(screen.getByRole('tab', { name: 'Duplicates · 1' })).toBeInTheDocument();

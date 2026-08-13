@@ -188,11 +188,14 @@ export function ContactsApp() {
 
   const selectedIds = [...selection.selectedIds];
 
-  // DEC-710/DEC-711: the mock's title summary ("N people · N speakers · N
-  // possible duplicates") — every figure is now endpoint-backed
-  // (speakerCount/duplicateCount added to GET /contacts/stats), no longer
-  // the DEC-377 substitute summary.
-  const summary = stats ? `${stats.total} people · ${stats.speakerCount} speakers · ${stats.duplicateCount} possible duplicates` : null;
+  // DEC-710/DEC-711/DEC-809: the title summary names every figure GET
+  // /contacts/stats computes — eventCount and returningSpeakers were
+  // already shipped in the payload (src/server/repo/contacts/stats.ts) but
+  // dropped on render; this reads the same `stats` fetch, no new request
+  // and no client-side re-derivation.
+  const summary = stats
+    ? `${stats.total} people · ${stats.speakerCount} speakers · ${stats.returningSpeakers} returning · ${stats.eventCount} events · ${stats.duplicateCount} possible duplicates`
+    : null;
 
   return (
     <div className="chq-page chq-contacts-page">

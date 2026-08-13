@@ -103,7 +103,7 @@ describe('ContactsApp render smoke: directory tab', () => {
     });
 
     // Stable markers: title summary + rail "Where they work" + directory rows.
-    expect(screen.getByText('2 people · 1 speakers · 1 possible duplicates')).toBeInTheDocument();
+    expect(screen.getByText('2 people · 1 speakers · 1 returning · 1 events · 1 possible duplicates')).toBeInTheDocument();
     expect(screen.getByText('Where they work')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Acme' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Ada Lovelace' })).toBeInTheDocument();

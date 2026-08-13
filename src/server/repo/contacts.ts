@@ -77,6 +77,7 @@ export {
   listSegmentsForOrg,
   countSegmentsForOrg,
   findSegmentForOrg,
+  findSegmentByNameForOrg,
   createSegment,
   patchSegment,
   deleteSegment,

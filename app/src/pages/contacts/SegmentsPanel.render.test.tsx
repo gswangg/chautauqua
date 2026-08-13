@@ -83,6 +83,11 @@ describe('ContactsApp + SegmentsPanel: deleting the applied segment (w1-c P3, DE
     });
     fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
 
+    // Delete goes through the shared ConfirmDialog (DEC-809) — the click
+    // above only arms it, the dialog's own "Delete" confirms.
+    const dialog = await screen.findByRole('dialog', { name: 'Delete this segment' });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
+
     await waitFor(() => {
       const deleteCall = fetchMock.mock.calls.find(([input]) =>
         (typeof input === 'string' ? input : input.toString()).includes('/segments/seg1'),
@@ -103,5 +108,52 @@ describe('ContactsApp + SegmentsPanel: deleting the applied segment (w1-c P3, DE
       const lastContactsCall = contactsCallsAfterDelete[contactsCallsAfterDelete.length - 1]!;
       expect(lastContactsCall).not.toContain('segmentId=seg1');
     });
+  });
+
+  it('asks first via the shared ConfirmDialog, naming the segment, and cancelling deletes nothing (DEC-809)', async () => {
+    const fetchMock = mockApi({
+      'GET /api/v1/contacts/stats': {
+        total: 1,
+        eventCount: 1,
+        returningSpeakers: 0,
+        speakerCount: 0,
+        duplicateCount: 0,
+        topCompanies: [],
+      },
+      'GET /api/v1/segments': () => listEnvelope(SEGMENTS),
+      'GET /api/v1/contacts': listEnvelope(CONTACTS),
+      'GET /api/v1/contacts/duplicates': listEnvelope([]),
+      'DELETE /api/v1/segments/seg1': { ok: true },
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/contacts']}>
+        <ContactsApp />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Ada Lovelace' })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('tab', { name: /^Segments/ }));
+    await waitFor(() => {
+      expect(within(screen.getByRole('list')).getByText('VIP speakers', { exact: false })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+
+    const dialog = await screen.findByRole('dialog', { name: 'Delete this segment' });
+    // Names the view being removed rather than a bare "are you sure?".
+    expect(within(dialog).getByText(/VIP speakers/)).toBeInTheDocument();
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+
+    expect(screen.queryByRole('dialog', { name: 'Delete this segment' })).not.toBeInTheDocument();
+    expect(
+      fetchMock.mock.calls.some(([input]) =>
+        (typeof input === 'string' ? input : input.toString()).includes('/segments/seg1'),
+      ),
+    ).toBe(false);
   });
 });

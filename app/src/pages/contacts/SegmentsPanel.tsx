@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { apiDelete, apiPost, ApiError } from '../../lib/api';
 import { buildSegmentRulesFromFilters, describeRules, type ActiveFilters } from './segments';
 import type { Segment } from './types';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
 import './contacts-panels.css';
 
 interface Props {
@@ -25,6 +26,10 @@ export function SegmentsPanel({ segments, activeFilters, activeSegmentId, onChan
   const [name, setName] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // Delete is destructive and irreversible, so it goes through the shared
+  // ConfirmDialog contract (DEC-631) naming the view being removed, rather
+  // than deleting on click.
+  const [pendingDelete, setPendingDelete] = useState<Segment | null>(null);
 
   const rules = buildSegmentRulesFromFilters(activeFilters);
 
@@ -57,6 +62,7 @@ export function SegmentsPanel({ segments, activeFilters, activeSegmentId, onChan
       setError(err instanceof ApiError ? err.message : 'Failed to delete segment');
     } finally {
       setBusy(false);
+      setPendingDelete(null);
     }
   }
 
@@ -90,13 +96,30 @@ export function SegmentsPanel({ segments, activeFilters, activeSegmentId, onChan
               <span className="chq-contacts-segment-name">{s.name}</span>
               <span className="chq-contacts-segment-rule">{describeRules(s.rules)}</span>
             </div>
-            <button type="button" className="chq-btn chq-btn-secondary" disabled={busy} onClick={() => remove(s.id)}>
+            <button
+              type="button"
+              className="chq-btn chq-btn-secondary"
+              disabled={busy}
+              onClick={() => setPendingDelete(s)}
+            >
               Delete
             </button>
           </li>
         ))}
         {segments.length === 0 && <li className="chq-empty">No saved segments yet.</li>}
       </ul>
+
+      {pendingDelete && (
+        <ConfirmDialog
+          title="Delete this segment"
+          body={`Delete "${pendingDelete.name}"? This cannot be undone.`}
+          confirmLabel="Delete"
+          destructive
+          pending={busy}
+          onConfirm={() => remove(pendingDelete.id)}
+          onCancel={() => setPendingDelete(null)}
+        />
+      )}
     </div>
   );
 }

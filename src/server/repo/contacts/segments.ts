@@ -56,6 +56,22 @@ export async function findSegmentForOrg(db: Db, id: string, orgId: string): Prom
   return row ? toSegmentRow(row) : null;
 }
 
+/** Org-scoped exact-name lookup, used by POST /segments to decide
+ * insert-vs-update: a re-save under an existing name updates that row
+ * rather than twinning it (DEC-809). No DB unique index on
+ * (orgId, name) exists yet — pre-existing rows may already collide on
+ * name, so adding one here would break on migration; that dedupe is
+ * separate work. */
+export async function findSegmentByNameForOrg(db: Db, orgId: string, name: string): Promise<SegmentRow | null> {
+  const rows = await db
+    .select()
+    .from(schema.segment)
+    .where(and(eq(schema.segment.orgId, orgId), eq(schema.segment.name, name)))
+    .limit(1);
+  const row = rows[0];
+  return row ? toSegmentRow(row) : null;
+}
+
 export async function createSegment(db: Db, orgId: string, name: string, rules: SegmentRule[]): Promise<SegmentRow> {
   const id = newId();
   const now = new Date();
