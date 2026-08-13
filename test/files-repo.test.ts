@@ -105,6 +105,7 @@ function collectLiteralValues(node: unknown, seen = new Set<unknown>(), out: Set
 interface FakeFileRow {
   id: string;
   previousFileId: string | null;
+  versionNo: number;
 }
 interface FakeCommentRow {
   id: string;
@@ -166,6 +167,18 @@ function makeFilesCommentsDb(params: { fileRows: FakeFileRow[]; commentRows: Fak
                 },
               };
             }
+            if (keys.length === 2 && keys.includes("id") && keys.includes("versionNo")) {
+              // DEC-818: batched version_no lookup for the whole chain.
+              return {
+                where(cond: unknown) {
+                  const literals = collectLiteralValues(cond);
+                  const rows = [...fileById.values()]
+                    .filter((f) => literals.has(f.id))
+                    .map((f) => ({ id: f.id, versionNo: f.versionNo }));
+                  return Promise.resolve(rows);
+                },
+              };
+            }
             throw new Error(`unexpected file select shape: ${keys.join(",")}`);
           }
           if (table === schema.fileComment) {
@@ -223,8 +236,8 @@ function makeFilesCommentsDb(params: { fileRows: FakeFileRow[]; commentRows: Fak
 
 function chainOf5() {
   const fileRows: FakeFileRow[] = [
-    { id: "f1", previousFileId: null },
-    { id: "f2", previousFileId: "f1" },
+    { id: "f1", previousFileId: null, versionNo: 1 },
+    { id: "f2", previousFileId: "f1", versionNo: 2 },
   ];
   const commentRows: FakeCommentRow[] = [
     { id: "c1", fileId: "f1", body: "one", createdAt: new Date(1000), authorUserId: "u-author" },
@@ -259,11 +272,11 @@ describe("listFileComments paging (DEC-686)", () => {
   });
 
   it("throws rather than silently paging within a chunk when the chain exceeds ID_CHUNK_SIZE", async () => {
-    const fileRows: FakeFileRow[] = [{ id: "root", previousFileId: null }];
+    const fileRows: FakeFileRow[] = [{ id: "root", previousFileId: null, versionNo: 1 }];
     let prev = "root";
     for (let i = 0; i < 95; i++) {
       const id = `f${i}`;
-      fileRows.push({ id, previousFileId: prev });
+      fileRows.push({ id, previousFileId: prev, versionNo: i + 2 });
       prev = id;
     }
     const { db } = makeFilesCommentsDb({ fileRows, commentRows: [] });

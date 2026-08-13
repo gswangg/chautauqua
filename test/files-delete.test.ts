@@ -36,6 +36,7 @@ interface FileRow {
   filename: string;
   r2Key: string;
   previousFileId: string | null;
+  versionNo: number;
   uploadedByContactId: string | null;
 }
 interface CommentRow {
@@ -187,9 +188,9 @@ function makeFakeDb(state: { files: FileRow[]; comments: CommentRow[]; submissio
 function chain() {
   // v1 (root) -> v2 (middle) -> v3 (latest)
   const files: FileRow[] = [
-    { id: "v1", submissionId: "sub1", filename: "deck-v1.pdf", r2Key: "sub/sub1/v1.pdf", previousFileId: null, uploadedByContactId: "c1" },
-    { id: "v2", submissionId: "sub1", filename: "deck-v2.pdf", r2Key: "sub/sub1/v2.pdf", previousFileId: "v1", uploadedByContactId: "c1" },
-    { id: "v3", submissionId: "sub1", filename: "deck-v3.pdf", r2Key: "sub/sub1/v3.pdf", previousFileId: "v2", uploadedByContactId: "c1" },
+    { id: "v1", submissionId: "sub1", filename: "deck-v1.pdf", r2Key: "sub/sub1/v1.pdf", previousFileId: null, versionNo: 1, uploadedByContactId: "c1" },
+    { id: "v2", submissionId: "sub1", filename: "deck-v2.pdf", r2Key: "sub/sub1/v2.pdf", previousFileId: "v1", versionNo: 2, uploadedByContactId: "c1" },
+    { id: "v3", submissionId: "sub1", filename: "deck-v3.pdf", r2Key: "sub/sub1/v3.pdf", previousFileId: "v2", versionNo: 3, uploadedByContactId: "c1" },
   ];
   const comments: CommentRow[] = [
     { id: "cm1", fileId: "v2", authorUserId: "u1", authorContactId: null, body: "looks good", createdAt: new Date(1000) },
@@ -254,7 +255,7 @@ describe("deleteFileVersion (DEC-713)", () => {
 
   it("removes comments along with the file when it is the sole version in its chain", async () => {
     const files: FileRow[] = [
-      { id: "solo", submissionId: "sub2", filename: "solo.pdf", r2Key: "sub/sub2/solo.pdf", previousFileId: null, uploadedByContactId: "c2" },
+      { id: "solo", submissionId: "sub2", filename: "solo.pdf", r2Key: "sub/sub2/solo.pdf", previousFileId: null, versionNo: 1, uploadedByContactId: "c2" },
     ];
     const comments: CommentRow[] = [
       { id: "cmA", fileId: "solo", authorUserId: "u1", authorContactId: null, body: "hello", createdAt: new Date(1000) },

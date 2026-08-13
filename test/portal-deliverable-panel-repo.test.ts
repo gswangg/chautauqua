@@ -221,7 +221,7 @@ function makeChainDb(data: Record<TableKey, Record<string, unknown>[]>) {
   } as unknown as AppEnv["Variables"]["db"];
 }
 
-function fileRow(id: string, previousFileId: string | null, createdAt: string) {
+function fileRow(id: string, previousFileId: string | null, createdAt: string, versionNo = 1) {
   return {
     id,
     previousFileId,
@@ -229,6 +229,7 @@ function fileRow(id: string, previousFileId: string | null, createdAt: string) {
     contentType: "application/pdf",
     r2Key: `sub/${id}.pdf`,
     createdAt: new Date(createdAt),
+    versionNo,
   };
 }
 
@@ -270,9 +271,9 @@ describe("listFileComments across a version chain (DEC-573)", () => {
   function buildThreeLinkChain() {
     const db = makeChainDb({
       file: [
-        fileRow("file-v1", null, "2026-01-01T00:00:00Z"),
-        fileRow("file-v2", "file-v1", "2026-01-02T00:00:00Z"),
-        fileRow("file-v3", "file-v2", "2026-01-03T00:00:00Z"),
+        fileRow("file-v1", null, "2026-01-01T00:00:00Z", 1),
+        fileRow("file-v2", "file-v1", "2026-01-02T00:00:00Z", 2),
+        fileRow("file-v3", "file-v2", "2026-01-03T00:00:00Z", 3),
       ],
       fileComment: [
         {
