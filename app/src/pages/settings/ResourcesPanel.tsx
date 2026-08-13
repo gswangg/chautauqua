@@ -12,6 +12,7 @@ import { DelayedLoading } from '../../components/DelayedLoading';
 import { apiDelete, apiList, apiPatch, apiPost, apiUpload, ApiError } from '../../lib/api';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { validateResourceForm, type ResourceForm, type ResourceFormErrors } from './formState';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
 
 interface Resource {
   id: string;
@@ -48,6 +49,10 @@ export function ResourcesPanel() {
   const [fileTitle, setFileTitle] = useState('');
   const [fileToUpload, setFileToUpload] = useState<File | null>(null);
   const [fileError, setFileError] = useState<string | undefined>(undefined);
+  // DEC-941: deleting a resource is irreversible, so it's gated behind the
+  // shared ConfirmDialog rather than firing on click.
+  const [pendingDelete, setPendingDelete] = useState<Resource | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   function reload(id: string) {
     setLoading(true);
@@ -137,13 +142,17 @@ export function ResourcesPanel() {
     }
   }
 
-  async function deleteResource(resource: Resource) {
-    if (!eventId) return;
+  async function confirmDeleteResource() {
+    if (!eventId || !pendingDelete) return;
+    setDeleting(true);
     try {
-      await apiDelete(`/resources/${resource.id}`);
+      await apiDelete(`/resources/${pendingDelete.id}`);
+      setPendingDelete(null);
       reload(eventId);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to delete resource');
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -196,7 +205,7 @@ export function ResourcesPanel() {
                       Replace
                     </button>
                   ) : null}
-                  <button type="button" className="chq-link-button" onClick={() => void deleteResource(resource)}>
+                  <button type="button" className="chq-link-button" onClick={() => setPendingDelete(resource)}>
                     Delete
                   </button>
                 </>
@@ -248,6 +257,18 @@ export function ResourcesPanel() {
         <button type="button" className="chq-settings-portal-add-resource" onClick={() => setAdding(true)}>
           Add a resource
         </button>
+      )}
+
+      {pendingDelete && (
+        <ConfirmDialog
+          title="Delete this resource?"
+          body={`Speakers lose the download from their portal. "${pendingDelete.title}" cannot be recovered.`}
+          confirmLabel="Delete"
+          destructive
+          pending={deleting}
+          onConfirm={() => void confirmDeleteResource()}
+          onCancel={() => setPendingDelete(null)}
+        />
       )}
     </div>
   );
