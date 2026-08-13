@@ -533,3 +533,90 @@ describe('PipelineBoard: Add to the pipeline dialog (DEC-859)', () => {
     expect(consoleErrorSpy).not.toHaveBeenCalled();
   });
 });
+
+// DEC-898: the board accepts a dropped card via the agenda DayGrid's exact
+// drag contract (entry id in text/plain, effectAllowed 'move'; the column
+// preventDefaults on dragover and reads the id on drop) and the drop calls
+// the SAME stage-change request as the Move-to select.
+describe('PipelineBoard: drag-and-drop stage change (DEC-898)', () => {
+  function makeDataTransfer() {
+    const data = new Map<string, string>();
+    return {
+      setData: (k: string, v: string) => data.set(k, v),
+      getData: (k: string) => data.get(k) ?? '',
+      dropEffect: '',
+      effectAllowed: '',
+    };
+  }
+
+  it('dropping a card on a different column issues exactly one stage request for that entry/stage', async () => {
+    const fetchMock = mockApi({
+      'GET /api/v1/pipeline': listEnvelope([ENTRY_IDENTIFIED]),
+      'PATCH /api/v1/pipeline/entry-1': { ...ENTRY_IDENTIFIED, stage: 'contacted', updatedAt: 3000 },
+    });
+
+    render(<PipelineBoard />);
+    await waitFor(() => within(desktopBoard()).getByText('Ada Lovelace'));
+
+    const card = within(desktopBoard()).getByText('Ada Lovelace').closest('li') as HTMLElement;
+    const dataTransfer = makeDataTransfer();
+    fireEvent.dragStart(card, { dataTransfer });
+
+    const contactedColumn = document.querySelector('[data-stage="contacted"]') as HTMLElement;
+    fireEvent.dragOver(contactedColumn, { dataTransfer });
+    fireEvent.drop(contactedColumn, { dataTransfer });
+
+    await waitFor(() => {
+      const patchCalls = fetchMock.mock.calls.filter(
+        ([, init]) => (init as RequestInit | undefined)?.method === 'PATCH',
+      );
+      expect(patchCalls).toHaveLength(1);
+      const body = JSON.parse(String((patchCalls[0]![1] as RequestInit).body));
+      expect(body).toMatchObject({ stage: 'contacted' });
+      expect(String(patchCalls[0]![0])).toContain('/pipeline/entry-1');
+    });
+
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
+  });
+
+  it('dropping a card on its own current column issues zero requests', async () => {
+    const fetchMock = mockApi({
+      'GET /api/v1/pipeline': listEnvelope([ENTRY_IDENTIFIED]),
+    });
+
+    render(<PipelineBoard />);
+    await waitFor(() => within(desktopBoard()).getByText('Ada Lovelace'));
+
+    const card = within(desktopBoard()).getByText('Ada Lovelace').closest('li') as HTMLElement;
+    const dataTransfer = makeDataTransfer();
+    fireEvent.dragStart(card, { dataTransfer });
+
+    const identifiedColumn = document.querySelector('[data-stage="identified"]') as HTMLElement;
+    fireEvent.dragOver(identifiedColumn, { dataTransfer });
+    fireEvent.drop(identifiedColumn, { dataTransfer });
+
+    // Give any accidental async request a tick to fire.
+    await new Promise((r) => setTimeout(r, 0));
+
+    const patchOrPostCalls = fetchMock.mock.calls.filter(([, init]) =>
+      ['PATCH', 'POST'].includes((init as RequestInit | undefined)?.method ?? ''),
+    );
+    expect(patchOrPostCalls).toHaveLength(0);
+
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
+  });
+
+  it("the Move-to select's value equals the entry's current stage, never blank", async () => {
+    mockApi({
+      'GET /api/v1/pipeline': listEnvelope([ENTRY_CONTACTED]),
+    });
+
+    render(<PipelineBoard />);
+    await waitFor(() => within(desktopBoard()).getByText('Grace Hopper'));
+
+    const select = within(desktopBoard()).getAllByLabelText('Move to')[0] as HTMLSelectElement;
+    expect(select.value).toBe('contacted');
+
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
+  });
+});
