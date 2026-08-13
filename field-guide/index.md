@@ -29,31 +29,32 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   export = same where clause everywhere; chromeless surface CLOSED
   both ways; builder's options IMPORTED, validated in PLANNER too;
   rule's VALUE typed by TRIGGER's kind; irreversible action is a PAGE.
-- FINDINGS w15-16 (DEC-687..705, compacted): `.toString()`-embedded fns
-  carry NO closure. Tier class ALWAYS wins. Hub gives a row ONE
-  action. Settings is read-only SUMMARY + drill-in. IMMUTABLE headers
-  decorate via ONE clone-on-failure helper. Grid cells POSITIONAL,
-  absent -> EMPTY. Waitlisted is a HOLD status. Badge refetches on nav
-  + after mutation. Merge preview is the merge fn's OWN output.
-- FINDINGS w17 (DEC-706..716, compacted): section action is a LINK on
-  its rule; filled primary on title row/form footer only; row chosen
-  by CLICKING, not a radio. Progress speaks DONE/N TO GO/NOT STARTED.
-  Person named by CONTACT via batched account->contact rule. START A
-  NEW WAVE copies locked criteria. Tab selection is URL state (?tab=).
-  Directory is TABLE + RAIL. Deleted version re-links chain, re-homes
-  thread. ONE reorder affordance, pointer+keyboard.
-- FINDINGS w18 (DEC-717..726): a column with side effects has ONE
-  writer -- an import that sets 'accepted' with a raw UPDATE skips
-  accepted_at and the whole acceptance. A validator must refuse what
-  the store cannot carry (Infinity round-trips to `null`); assert it
-  per KIND, enumerated. A sandboxed child's origin IS the string
-  "null" -- identity is source window + nonce. Asking for changes is a
-  MESSAGE (note + optional status + mail); the status route stays
-  mailer-free. One deliverable at a time: a chip scopes the versions
-  AND the thread. A detail page shares its siblings' measure; its
-  decision panel decides only. A review renders criterion LABELS and
-  the plan's own weighted score. The null-room column shows only when
-  it holds something or a placement is armed: "No room yet". A
-  periodic push is INCREMENTAL from a stored watermark and backs off
-  on 429. Labels are customFields in one keyed format (supersedes
-  DEC-712).
+- FINDINGS w15-17 (DEC-687..716, compacted): `.toString()`-embedded fns
+  carry NO closure; tier class ALWAYS wins; hub gives a row ONE action;
+  settings is SUMMARY + drill-in; immutable headers via ONE clone-on-
+  failure helper; grid cells POSITIONAL, absent -> EMPTY; waitlisted is
+  a HOLD status; badge refetches on nav + mutation; merge preview is
+  the merge fn's OWN output; section action is a LINK on its rule;
+  filled primary on title row/form footer only; progress speaks
+  DONE/N TO GO/NOT STARTED; person named by CONTACT via batched
+  account->contact; tab selection is URL state; directory is
+  TABLE + RAIL; ONE reorder affordance, pointer+keyboard.
+- FINDINGS w18 (DEC-717..726, compacted): a column with side effects has
+  ONE writer; validators refuse what the store can't carry (Infinity ->
+  `null`), assert per KIND. Sandboxed child's origin IS "null" --
+  identity is source window + nonce. Asking for changes is a MESSAGE;
+  status route stays mailer-free. One deliverable at a time: a chip
+  scopes versions AND thread. Review renders criterion LABELS + plan's
+  weighted score. Null-room column: "No room yet" only when armed.
+  Periodic push INCREMENTAL from a watermark, backs off on 429. Labels
+  are customFields, one keyed format (supersedes DEC-712).
+- FINDINGS w19 (DEC-727..735): tiers are a PREDICATE over the tree, not a
+  list -- caps bind in vitest.config.ts, not the env. Settings is a
+  SUMMARY + drill-in, drill in the URL. Portal shows EVERY submission a
+  speaker owns -- a decline they never see is a bug. Three states, ONE
+  control family: outline is the shared "not done" axis. Publish is the
+  WINDOW, not a flag. A dialog's form is one measure via ModalFrame's
+  FormRow; a preview names each recipient's blocker. An action that can't
+  apply is ABSENT, not disabled. A duplicate group carries the fields its
+  merge screen shows. A class describes ONE layout behaviour -- split it
+  before a media block mutates it. Desktop first, phone in @media.

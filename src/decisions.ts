@@ -729,3 +729,12 @@ export const DEC_723 = "An evaluation read carries its plan's criteria and the p
 export const DEC_724 = "The null-room agenda column is conditional, and it is called \"No room yet\"";
 export const DEC_725 = "The Airtable push is incremental from a stored watermark, and a rate-limited response backs off instead of throwing";
 export const DEC_726 = "A contact's Labels are its customFields, rendered in one keyed format everywhere (supersedes DEC-712)";
+export const DEC_727 = "Test tiers are DERIVED by predicate, never hand-listed, and parallelism is capped in config (not the environment)";
+export const DEC_728 = "Settings is a read-only summary with drill-in editing, and the drilled section is URL state";
+export const DEC_729 = "The portal shows every submission the speaker owns, with its status — pending and declined included";
+export const DEC_730 = "The onboarding grid's three status states are one control family: fill = done, outline = not done, ink caps = overdue";
+export const DEC_731 = "A call for papers is published by its window, not a flag: the builder states the live state and writes open/close dates";
+export const DEC_732 = "A dialog's form is one measure with labels above; a send names the constraint each recipient carries";
+export const DEC_733 = "An action that cannot apply to a row is ABSENT, not disabled — and a library states only endpoint-backed figures";
+export const DEC_734 = "A duplicate group carries the identity fields the merge screen shows, and 'Keep both' is a first-class outcome";
+export const DEC_735 = "A class describes ONE layout behaviour; a suggestion names the room it would fill";
