@@ -569,21 +569,6 @@
   max-width: 640px;
 }
 
-/* Gate report: the close glyph rendered centred in its own full-width row
-   (a bare flex-column child stretches to the column's cross-axis width, and
-   .chq-btn centres its own label) instead of sitting at the panel's
-   top-right like every ModalFrame-built dialog's Close control. Pinned to
-   the modal's own padding edge, matching .chq-modal-close-btn's corner. */
-.chq-contacts-import-close {
-  position: absolute;
-  top: 20px;
-  right: 26px;
-}
-
-.chq-contacts-import > .chq-modal-title {
-  padding-right: 40px;
-}
-
 .chq-contacts-import-drop {
   display: flex;
   flex-direction: column;

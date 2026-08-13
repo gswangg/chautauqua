@@ -1,7 +1,6 @@
-import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { apiDelete, apiGet, apiPatch, apiUpload, ApiError } from '../../lib/api';
-import { useEscapeKey } from '../../lib/useEscapeKey';
 import { formatDateTime } from '../../lib/dates';
 import type { ContactDetail, ContactListItem } from './types';
 import { fromRows, toRows, travelValue, type CustomFieldRow } from './customFields';
@@ -10,6 +9,7 @@ import { BulkEmailModal } from './BulkEmailModal';
 import { AddToEventModal } from './AddToEventModal';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { DelayedLoading } from '../../components/DelayedLoading';
+import { ModalFrame } from '../../components/ModalFrame';
 
 interface Props {
   contactId: string;
@@ -257,12 +257,7 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
   }
 
   const nestedModalOpen = showEmail || showAddToEvent || showDeleteConfirm;
-
-  useEscapeKey(!saving && !headshotUploading && !nestedModalOpen, onClose);
-
-  function handleScrimClick(e: MouseEvent<HTMLDivElement>) {
-    if (e.target === e.currentTarget && !saving && !headshotUploading && !nestedModalOpen) onClose();
-  }
+  const closeDisabled = saving || headshotUploading || nestedModalOpen;
 
   const historyRows = contact ? buildHistoryRows(contact.history) : [];
 
@@ -321,33 +316,30 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
     );
   }
 
-  return (
-    <div className="chq-scrim" role="dialog" aria-modal="true" aria-label="Contact detail" onClick={handleScrimClick}>
-      <div className="chq-drawer chq-contacts-drawer">
-        <div className="chq-contacts-drawer-head">
-          {!loading && contact && (
-            <div className="chq-contacts-drawer-heading">
-              <span className="chq-contacts-drawer-name chq-modal-title">
-                {firstName} {lastName}
-              </span>
-              <span className="chq-meta">
-                {company || title ? (
-                  <>
-                    {company}
-                    {company && title ? ' · ' : ''}
-                    {title}
-                  </>
-                ) : (
-                  EM_DASH
-                )}
-              </span>
-            </div>
-          )}
-          <button type="button" className="chq-btn-tertiary chq-drawer-close" onClick={onClose} aria-label="Close">
-            Close
-          </button>
-        </div>
+  const drawerTitle = !loading && contact ? `${firstName} ${lastName}`.trim() || 'Contact' : 'Contact';
+  const drawerSubtitle =
+    !loading && contact ? (
+      company || title ? (
+        <>
+          {company}
+          {company && title ? ' · ' : ''}
+          {title}
+        </>
+      ) : (
+        EM_DASH
+      )
+    ) : undefined;
 
+  return (
+    <>
+      <ModalFrame
+        title={drawerTitle}
+        subtitle={drawerSubtitle}
+        ariaLabel="Contact detail"
+        onClose={onClose}
+        closeDisabled={closeDisabled}
+        modalClassName="chq-drawer chq-contacts-drawer"
+      >
         {loading && <DelayedLoading />}
         {error && <div className="chq-error">{error}</div>}
 
@@ -510,7 +502,7 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
             </div>
           </>
         )}
-      </div>
+      </ModalFrame>
 
       {showEmail && <BulkEmailModal contactIds={[contactId]} eventId={null} onClose={() => setShowEmail(false)} />}
       {showAddToEvent && <AddToEventModal contact={contactListItem} onClose={() => setShowAddToEvent(false)} />}
@@ -536,6 +528,6 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
           onCancel={() => setShowDeleteConfirm(false)}
         />
       )}
-    </div>
+    </>
   );
 }

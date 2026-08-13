@@ -1244,10 +1244,6 @@ a:hover {
   padding: 4px 0;
 }
 
-.chq-drawer-close {
-  margin-left: auto;
-}
-
 .chq-comms-history-tab,
 .chq-comms-templates-tab {
   display: flex;

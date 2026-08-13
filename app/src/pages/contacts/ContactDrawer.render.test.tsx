@@ -52,6 +52,13 @@ describe('ContactDrawer render (DEC-616 record view)', () => {
       expect(within(dialog).getByText('Priya Raman')).toBeInTheDocument();
     });
 
+    // DEC-960: ModalFrame is now the sole scrim/dialog frame, but the
+    // drawer's own geometry (fixed right-hand panel, not a centred modal)
+    // must still win the cascade -- the dialog element carries chq-drawer
+    // alongside ModalFrame's own chq-modal class.
+    const modalEl = dialog.querySelector('.chq-modal');
+    expect(modalEl).toHaveClass('chq-drawer');
+
     // '{company} · {title}' subline.
     expect(within(dialog).getByText('Latticework Systems · Principal Engineer')).toBeInTheDocument();
 

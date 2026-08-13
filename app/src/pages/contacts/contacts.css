@@ -247,28 +247,6 @@
   gap: 18px;
 }
 
-.chq-contacts-drawer-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  padding-bottom: 14px;
-  border-bottom: 1px solid var(--chq-ink);
-}
-
-.chq-contacts-drawer-heading {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.chq-contacts-drawer-name {
-  font-family: var(--chq-font-display);
-  font-size: 22px;
-  font-weight: 700;
-  letter-spacing: -0.03em;
-}
-
 .chq-contacts-drawer-section-title {
   font-family: var(--chq-font-display);
   font-size: 11px;
