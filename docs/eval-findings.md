@@ -833,3 +833,16 @@ AND audit noStoreByDefault + any other header-stamping middleware for the same t
     routes (reload must not reset to Compose); bordered "See the recipients" CTA on
     batch rows; persistent Recent-sends under Compose. SEED: add one multi-recipient
     batch (~23 recipients) + 4 more templates so History/Templates demo like the mock.
+
+69. **STRUCTURAL RULE for all mobile work (user directive — protects the desktop
+    design): mobile is a REFLOW, achieved additively.** (a) Desktop styles are the
+    base; every phone adaptation lives inside `@media (max-width:700px)` blocks or
+    phone-only components/classes (chq-phone-*) — NEVER by editing a shared or
+    desktop rule to serve a phone need. (b) A class may not change its layout axis or
+    behavior between contexts — if desktop and phone need different behavior, split
+    the class (the Overview §02/§04 stacking regression and the phone-agenda
+    display:none breakage were both shared-rule mutations). (c) Lock it with a scan:
+    no chq-phone-* selector outside a media block or phone component; no media block
+    redefines a non-phone class's display/flex-direction (flag for review if it
+    must). (d) Every mobile-focused wave ends by re-running the DESKTOP render sweep
+    — a mobile wave that changes any desktop pixel has failed.
