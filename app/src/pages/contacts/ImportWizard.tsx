@@ -361,17 +361,15 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
                         )}
                       </td>
                       <td>
-                        {decorated && (
-                          <label className="chq-contacts-import-review-skip">
-                            <input
-                              className="chq-check"
-                              type="checkbox"
-                              checked={skipLines.has(row.line)}
-                              onChange={() => toggleSkipLine(row.line)}
-                              aria-label={`Skip line ${row.line}`}
-                            />
-                          </label>
-                        )}
+                        <label className="chq-contacts-import-review-skip">
+                          <input
+                            className="chq-check"
+                            type="checkbox"
+                            checked={skipLines.has(row.line)}
+                            onChange={() => toggleSkipLine(row.line)}
+                            aria-label={`Skip line ${row.line}`}
+                          />
+                        </label>
                       </td>
                     </tr>
                   );

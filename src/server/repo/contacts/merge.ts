@@ -89,7 +89,7 @@ type ScannedContactRow = {
 /** DEC-554/DEC-734/DEC-788: the one org-contact scan both
  * findDuplicateGroupsForOrg and the create-time duplicate check
  * (GET /contacts/duplicates/check) build on -- project only the columns
- * findDuplicateGroups (via normalizeEmail/normalizedName/normalizedCompany)
+ * findDuplicateGroups (via normalizeEmail/normalizedContactName/normalizedCompany)
  * and either caller's own output actually read, not every persisted contact
  * field. Bounded + deterministically ordered; the scan refuses rather than
  * silently truncating past the cap. */

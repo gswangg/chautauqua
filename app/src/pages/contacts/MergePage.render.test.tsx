@@ -146,6 +146,37 @@ describe('MergePage render (DEC-834: same-name pair disambiguates compare heads,
       expect(screen.getByText('Labels combine, notes are appended')).toBeInTheDocument();
     });
   });
+
+  // DEC-858: names differing only by case are the same name at a merge --
+  // the disambiguator must fire on a case-insensitive collision too, not
+  // just an exact string match.
+  const CASE_COLLIDE_GROUP = {
+    contactIds: ['ct-keep', 'ct-merge'],
+    contacts: [
+      { id: 'ct-keep', firstName: 'PARKER', lastName: 'anders', email: 'parker@upper.com', company: 'Upper Co' },
+      { id: 'ct-merge', firstName: 'Parker', lastName: 'Anders', email: 'parker@lower.com', company: 'Lower Co' },
+    ],
+  };
+
+  it('gives each column head a disambiguator when the kept and discarded names differ only by case', async () => {
+    mockApi({
+      'GET /api/v1/contacts/duplicates': listEnvelope([CASE_COLLIDE_GROUP]),
+      'GET /api/v1/contacts/merge/preview': { fields: PREVIEW_FIELDS },
+    });
+
+    renderAt('/contacts/merge?ids=ct-keep,ct-merge&keep=ct-keep');
+
+    await waitFor(() => {
+      expect(screen.getByText('Merge two records')).toBeInTheDocument();
+    });
+
+    const headRow = document.querySelector('.chq-contacts-merge-compare-head') as HTMLElement;
+    const keepHead = within(headRow).getByText('PARKER anders (parker@upper.com)');
+    const discardHead = within(headRow).getByText('Parker Anders (parker@lower.com)');
+    expect(keepHead).toBeInTheDocument();
+    expect(discardHead).toBeInTheDocument();
+    expect(keepHead.textContent).not.toEqual(discardHead.textContent);
+  });
 });
 
 describe('MergePage render (DEC-802: honest discard column head and impact line)', () => {

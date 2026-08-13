@@ -53,7 +53,7 @@ export function safeExternalUrl(raw: string | null | undefined): string | null {
   }
 }
 
-function normalizedName(first: string, last: string): string {
+export function normalizedContactName(first: string, last: string): string {
   return `${first} ${last}`
     .toLowerCase()
     .trim()
@@ -130,7 +130,7 @@ export function findDuplicateGroups(contacts: ContactRecord[]): DuplicateCandida
 
   const byName = new Map<string, ContactRecord[]>();
   for (const contact of remainder) {
-    const name = normalizedName(contact.firstName, contact.lastName);
+    const name = normalizedContactName(contact.firstName, contact.lastName);
     if (name === "") continue;
     const bucket = byName.get(name);
     if (bucket) {
@@ -220,13 +220,13 @@ export function findImportDuplicateCandidates(
   row: { firstName?: string; lastName?: string; company?: string; email: string },
   candidates: ContactRecord[],
 ): ContactRecord[] {
-  const name = normalizedName(row.firstName ?? "", row.lastName ?? "");
+  const name = normalizedContactName(row.firstName ?? "", row.lastName ?? "");
   if (name === "") return [];
   const rowEmail = normalizeEmail(row.email);
   const rowCompany = normalizedCompany(row.company);
 
   const nameMatches = candidates.filter(
-    (c) => normalizeEmail(c.email) !== rowEmail && normalizedName(c.firstName, c.lastName) === name,
+    (c) => normalizeEmail(c.email) !== rowEmail && normalizedContactName(c.firstName, c.lastName) === name,
   );
 
   if (rowCompany === "") {

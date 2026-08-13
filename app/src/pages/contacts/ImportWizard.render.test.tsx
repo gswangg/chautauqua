@@ -1,9 +1,10 @@
 // DEC-663: the import wizard runs a dry-run POST (dryRun: true) before ever
 // committing, shows the plan as a Review step (per-row action, overwrites,
-// possible duplicates, a "skip this row" checkbox on decorated rows only),
-// then commits with the SAME {csvText, mapping} body plus `skipLines` from
-// the checked boxes -- and the Done step renders the server's post-commit
-// counts verbatim, never the dry run's intent counts.
+// possible duplicates, a "skip this row" checkbox on EVERY row per DEC-858 --
+// the column header and the "N row(s) marked to skip" caption promise it for
+// all rows), then commits with the SAME {csvText, mapping} body plus
+// `skipLines` from the checked boxes -- and the Done step renders the
+// server's post-commit counts verbatim, never the dry run's intent counts.
 import { afterEach, describe, expect, it } from 'vitest';
 import { cleanup, render, screen, fireEvent, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
@@ -57,7 +58,7 @@ describe('ImportWizard: DEC-663 dry-run review step', () => {
     expect(steps.map((li) => li.textContent)).toEqual(['Choose file', 'Match columns', 'Review', 'Done']);
   });
 
-  it('posts dryRun:true on Preview and renders per-row action, overwrites, and a skip checkbox only on decorated rows', async () => {
+  it('posts dryRun:true on Preview and renders per-row action, overwrites, and a skip checkbox on every row', async () => {
     const fetchMock = mockApi({ 'POST /api/v1/contacts/import': PLAN });
     await pasteCsvAndPreview();
 
@@ -81,7 +82,31 @@ describe('ImportWizard: DEC-663 dry-run review step', () => {
     expect(within(johnRow!).getByRole('checkbox', { name: 'Skip line 2' })).not.toBeChecked();
 
     expect(within(janeRow!).getByText('Create')).toBeInTheDocument();
-    expect(within(janeRow!).queryByRole('checkbox')).not.toBeInTheDocument();
+    // DEC-858: skipping is possible on every row, including a plain create
+    // with no overwrites/duplicates to decorate it.
+    expect(within(janeRow!).getByRole('checkbox', { name: 'Skip line 3' })).toBeInTheDocument();
+  });
+
+  it('DEC-858: a plan whose rows are all plain creates still renders one skip checkbox per row, and ticking one drops the primary button\'s count', async () => {
+    const plainPlan: ImportPlan = {
+      rows: [
+        { line: 2, email: 'john@example.com', action: 'create' },
+        { line: 3, email: 'jane@example.com', action: 'create' },
+      ],
+      created: 2,
+      updated: 0,
+      skipped: 0,
+    };
+    mockApi({ 'POST /api/v1/contacts/import': plainPlan });
+    await pasteCsvAndPreview();
+    await screen.findByText('Review before import');
+
+    expect(screen.getByRole('checkbox', { name: 'Skip line 2' })).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: 'Skip line 3' })).toBeInTheDocument();
+
+    expect(screen.getByRole('button', { name: 'Import 2 row(s)' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Skip line 2' }));
+    expect(screen.getByRole('button', { name: 'Import 1 row(s)' })).toBeInTheDocument();
   });
 
   it('renders a possibleDuplicate as a plain-language line naming the contact and its different email', async () => {

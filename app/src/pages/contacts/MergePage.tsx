@@ -20,6 +20,9 @@ import type { DuplicateGroup } from './types';
 // the ONE server-importable formatter -- never a hand-copied "`key` value"
 // join here.
 import { contactLabels } from '../../../../src/domain/contact-labels';
+// DEC-858: names that differ only by case are the same name at a merge --
+// share the ONE name-identity rule the duplicate detector already uses.
+import { normalizedContactName } from '../../../../src/domain/contacts';
 import './contacts-panels.css';
 
 // DEC-705: what the merge will actually write, computed server-side by the
@@ -129,7 +132,8 @@ export function MergePage() {
   const namesCollide =
     !!keepContact &&
     !!soleDiscard &&
-    `${keepContact.firstName} ${keepContact.lastName}` === `${soleDiscard.firstName} ${soleDiscard.lastName}`;
+    normalizedContactName(keepContact.firstName, keepContact.lastName) ===
+      normalizedContactName(soleDiscard.firstName, soleDiscard.lastName);
   const keepHeadLabel = keepContact
     ? namesCollide
       ? `${keepContact.firstName} ${keepContact.lastName} (${disambiguator(keepContact)})`
