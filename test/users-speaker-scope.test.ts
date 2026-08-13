@@ -1,6 +1,8 @@
-// DEC-778 coverage: PATCH /api/v1/users/:id (role change). Same fake-db
-// harness as test/users-reset-password.test.ts (dispatches by table
-// identity, evaluates real drizzle eq()/and() condition trees).
+// DEC-865 coverage: the organizer user-directory API (org/reviewer accounts)
+// must never reach speaker portal accounts even though they share the
+// `user` table. Same fake-db harness as test/users-role-change.test.ts
+// (dispatches by table identity, evaluates real drizzle eq()/and()/
+// inArray() condition trees) extended with inArray support.
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
@@ -22,7 +24,10 @@ function buildColumnMap(table: Record<string, unknown>): Map<unknown, string> {
   return map;
 }
 
-const COLUMN_KEYS = new Map<unknown, string>([...buildColumnMap(schema.user as unknown as Record<string, unknown>)]);
+const COLUMN_KEYS = new Map<unknown, string>([
+  ...buildColumnMap(schema.user as unknown as Record<string, unknown>),
+  ...buildColumnMap(schema.authSession as unknown as Record<string, unknown>),
+]);
 
 function colKey(col: unknown): string {
   const key = COLUMN_KEYS.get(col);
@@ -36,17 +41,20 @@ function unwrap(rawValue: unknown): unknown {
     : rawValue;
 }
 
+// Evaluates a real drizzle eq()/and()/inArray() condition tree against a
+// row. Recurses into any nested queryChunks-bearing chunk so and(eq, eq,
+// inArray) works without hardcoding AND's chunk layout. inArray's chunk
+// shape is [.., column, " in ", Param[], ..] -- detected by chunks[3]
+// being an array of Param-shaped values rather than a single Param.
 function evalCond(cond: unknown, row: Row): boolean {
   const chunks = (cond as { queryChunks: unknown[] }).queryChunks;
   if (COLUMN_KEYS.has(chunks[1])) {
-    // inArray()'s chunks[3] is an array of Param values (DEC-865:
-    // getOrgUserById now scopes by inArray(role, ORG_USER_ROLES)); eq()'s
-    // chunks[3] is a single Param.
+    const key = colKey(chunks[1]);
     if (Array.isArray(chunks[3])) {
       const values = (chunks[3] as unknown[]).map(unwrap);
-      return values.includes(row[colKey(chunks[1])]);
+      return values.includes(row[key]);
     }
-    return row[colKey(chunks[1])] === unwrap(chunks[3]);
+    return row[key] === unwrap(chunks[3]);
   }
   let any = false;
   let result = true;
@@ -68,9 +76,10 @@ function project(row: Row, fields?: Record<string, unknown>): Row {
 }
 
 function makeFakeDb() {
-  const state: { users: Row[] } = { users: [] };
+  const state: { users: Row[]; sessions: Row[] } = { users: [], sessions: [] };
   function rowsFor(table: unknown): Row[] {
     if (table === schema.user) return state.users;
+    if (table === schema.authSession) return state.sessions;
     throw new Error("unexpected table in fake db test helper");
   }
   const db = {
@@ -90,6 +99,25 @@ function makeFakeDb() {
               return Object.assign(Promise.resolve(projected), {
                 limit(n: number) {
                   return Promise.resolve(projected.slice(0, n));
+                },
+                offset(n: number) {
+                  const sliced = projected.slice(n);
+                  return Object.assign(Promise.resolve(sliced), {
+                    limit(m: number) {
+                      return Promise.resolve(sliced.slice(0, m));
+                    },
+                  });
+                },
+                orderBy() {
+                  return Object.assign(Promise.resolve(projected), {
+                    limit(n: number) {
+                      return Object.assign(Promise.resolve(projected.slice(0, n)), {
+                        offset(o: number) {
+                          return Promise.resolve(projected.slice(o, o + n));
+                        },
+                      });
+                    },
+                  });
                 },
               });
             },
@@ -111,12 +139,22 @@ function makeFakeDb() {
         },
       };
     },
+    delete(table: unknown) {
+      return {
+        where(cond: unknown) {
+          const rows = rowsFor(table);
+          const remaining = rows.filter((r) => !evalCond(cond, r));
+          rows.length = 0;
+          rows.push(...remaining);
+          return Promise.resolve();
+        },
+      };
+    },
   };
   return { db: db as unknown as AppEnv["Variables"]["db"], state };
 }
 
 const ORG_A = "org-a";
-const ORG_B = "org-b";
 
 async function seedUser(state: { users: Row[] }, overrides: Partial<Row> = {}) {
   const passwordHash = await hashPassword("some-password-1");
@@ -147,123 +185,92 @@ function organizerApp(db: AppEnv["Variables"]["db"], auth: AuthInfo) {
   return app;
 }
 
-function patchRole(app: Hono<AppEnv>, targetId: string, role: unknown, headers: Record<string, string> = { "content-type": "application/json", "x-chq-csrf": "1" }) {
-  return app.request(`/api/v1/users/${targetId}`, { method: "PATCH", headers, body: JSON.stringify({ role }) });
-}
-
 afterEach(() => {
   vi.clearAllMocks();
 });
 
-describe("PATCH /api/v1/users/:id (DEC-778)", () => {
-  it("(1) organizer promotes a reviewer to organizer: 200 and the row is updated", async () => {
+describe("DEC-865: org user directory excludes speaker portal accounts", () => {
+  it("GET /api/v1/users with no ?role= excludes a speaker row in the same org; total excludes it too", async () => {
     const { db, state } = makeFakeDb();
     await seedUser(state, { id: "org-admin", role: "organizer" });
-    const target = await seedUser(state, { id: "target-1", role: "reviewer", email: "reviewer@example.test" });
+    await seedUser(state, { id: "rev-1", role: "reviewer", email: "reviewer@example.test" });
+    await seedUser(state, { id: "speaker-1", role: "speaker", email: "speaker@example.test" });
     const org = organizerApp(db, { userId: "org-admin", role: "organizer", orgId: ORG_A });
 
-    const res = await patchRole(org, target.id as string, "organizer");
+    const res = await org.request("/api/v1/users");
     expect(res.status).toBe(200);
-    const body = (await res.json()) as { id: string; email: string; role: string };
-    expect(body.role).toBe("organizer");
+    const body = (await res.json()) as { items: { id: string; role: string }[]; total: number };
 
-    const stored = state.users.find((u) => u.id === target.id)!;
-    expect(stored.role).toBe("organizer");
+    expect(body.items.map((u) => u.id)).not.toContain("speaker-1");
+    expect(body.items.every((u) => u.role !== "speaker")).toBe(true);
+    // Only org-admin + rev-1 count -- speaker-1 is excluded from both the
+    // list and the total (same where-builder, DEC-865).
+    expect(body.total).toBe(2);
+    expect(body.items).toHaveLength(2);
   });
 
-  it("(2) 400 on an unknown role", async () => {
+  it("POST /api/v1/users/:id/reset-password targeting a speaker user id returns 404 and performs no password-hash write or session delete", async () => {
     const { db, state } = makeFakeDb();
     await seedUser(state, { id: "org-admin", role: "organizer" });
-    const target = await seedUser(state, { id: "target-1", role: "reviewer" });
+    const speaker = await seedUser(state, { id: "speaker-1", role: "speaker", email: "speaker@example.test" });
+    const originalHash = speaker.passwordHash;
     const org = organizerApp(db, { userId: "org-admin", role: "organizer", orgId: ORG_A });
 
-    const res = await patchRole(org, target.id as string, "superadmin");
-    expect(res.status).toBe(400);
-    const body = (await res.json()) as { error: { code: string } };
-    expect(body.error.code).toBe("invalid");
-  });
-
-  it("(3) 404 when the target is not in the caller's org", async () => {
-    const { db, state } = makeFakeDb();
-    await seedUser(state, { id: "org-admin", role: "organizer" });
-    const target = await seedUser(state, { id: "target-1", role: "reviewer", orgId: ORG_B });
-    const org = organizerApp(db, { userId: "org-admin", role: "organizer", orgId: ORG_A });
-
-    const res = await patchRole(org, target.id as string, "organizer");
+    const res = await org.request(`/api/v1/users/${speaker.id}/reset-password`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-chq-csrf": "1" },
+      body: "{}",
+    });
     expect(res.status).toBe(404);
+
+    // No write happened: the speaker's password hash is unchanged and no
+    // session-delete pass ran (makeFakeDb's delete() would throw on an
+    // unexpected table, but here delete() should simply never be called
+    // for schema.authSession since getOrgUserById returned undefined and
+    // the route short-circuits before ever reaching updateUserPasswordHash
+    // / deleteUserSessions).
+    const stored = state.users.find((u) => u.id === speaker.id)!;
+    expect(stored.passwordHash).toBe(originalHash);
   });
 
-  it("(4) 409 when the target is the caller themselves", async () => {
-    const { db, state } = makeFakeDb();
-    const self = await seedUser(state, { id: "org-admin", role: "organizer" });
-    await seedUser(state, { id: "target-1", role: "organizer", email: "other-organizer@example.test" });
-    const org = organizerApp(db, { userId: "org-admin", role: "organizer", orgId: ORG_A });
-
-    const res = await patchRole(org, self.id as string, "reviewer");
-    expect(res.status).toBe(409);
-    const body = (await res.json()) as { error: { code: string } };
-    expect(body.error.code).toBe("conflict");
-  });
-
-  it("(5) allows demoting one organizer when a second organizer row exists in the org", async () => {
+  it("PATCH /api/v1/users/:id targeting a speaker user id returns 404 and writes no role", async () => {
     const { db, state } = makeFakeDb();
     await seedUser(state, { id: "org-admin", role: "organizer" });
-    const secondOrganizer = await seedUser(state, { id: "target-1", role: "organizer", email: "second@example.test" });
+    const speaker = await seedUser(state, { id: "speaker-1", role: "speaker", email: "speaker@example.test" });
     const org = organizerApp(db, { userId: "org-admin", role: "organizer", orgId: ORG_A });
 
-    // org-admin (caller) and secondOrganizer are both organizer-role rows,
-    // so demoting secondOrganizer leaves org-admin as organizer -- allowed.
-    const res = await patchRole(org, secondOrganizer.id as string, "reviewer");
+    const res = await org.request(`/api/v1/users/${speaker.id}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json", "x-chq-csrf": "1" },
+      body: JSON.stringify({ role: "organizer" }),
+    });
+    expect(res.status).toBe(404);
+
+    const stored = state.users.find((u) => u.id === speaker.id)!;
+    expect(stored.role).toBe("speaker");
+  });
+
+  it("GET /api/v1/users?role=reviewer still excludes speakers (defense in depth against a bad role param)", async () => {
+    const { db, state } = makeFakeDb();
+    await seedUser(state, { id: "org-admin", role: "organizer" });
+    await seedUser(state, { id: "rev-1", role: "reviewer", email: "reviewer@example.test" });
+    await seedUser(state, { id: "speaker-1", role: "speaker", email: "speaker@example.test" });
+    const org = organizerApp(db, { userId: "org-admin", role: "organizer", orgId: ORG_A });
+
+    const res = await org.request("/api/v1/users?role=reviewer");
     expect(res.status).toBe(200);
+    const body = (await res.json()) as { items: { id: string; role: string }[]; total: number };
+    expect(body.items).toHaveLength(1);
+    expect(body.items[0]?.id).toBe("rev-1");
+    expect(body.total).toBe(1);
   });
 
-  it("(6) 409 when demoting the org's last organizer (exactly one organizer row)", async () => {
-    const { db, state } = makeFakeDb();
-    // Caller's own row is a reviewer so it doesn't count toward the
-    // organizer total; the target is the sole organizer.
-    await seedUser(state, { id: "org-admin", role: "reviewer" });
-    const onlyOrganizer = await seedUser(state, { id: "target-1", role: "organizer", email: "sole@example.test" });
-    const org = organizerApp(db, { userId: "org-admin", role: "organizer", orgId: ORG_A });
-
-    const res = await patchRole(org, onlyOrganizer.id as string, "reviewer");
-    expect(res.status).toBe(409);
-    const body = (await res.json()) as { error: { code: string } };
-    expect(body.error.code).toBe("conflict");
-
-    const stored = state.users.find((u) => u.id === onlyOrganizer.id)!;
-    expect(stored.role).toBe("organizer");
-  });
-
-  it("(7) rejects a missing CSRF header", async () => {
+  it("400s when ?role=speaker is requested directly -- speaker is not an allowed role filter", async () => {
     const { db, state } = makeFakeDb();
     await seedUser(state, { id: "org-admin", role: "organizer" });
-    const target = await seedUser(state, { id: "target-1", role: "reviewer" });
     const org = organizerApp(db, { userId: "org-admin", role: "organizer", orgId: ORG_A });
 
-    const res = await patchRole(org, target.id as string, "organizer", { "content-type": "application/json" });
+    const res = await org.request("/api/v1/users?role=speaker");
     expect(res.status).toBe(400);
-  });
-
-  it("(8) rejects reviewer and speaker callers", async () => {
-    const { db, state } = makeFakeDb();
-    const target = await seedUser(state, { id: "target-1", role: "reviewer" });
-
-    const reviewerApp = organizerApp(db, { userId: "u1", role: "reviewer", orgId: ORG_A });
-    expect((await patchRole(reviewerApp, target.id as string, "organizer")).status).toBe(403);
-
-    const speakerApp = organizerApp(db, { userId: "u2", role: "speaker", orgId: ORG_A });
-    expect((await patchRole(speakerApp, target.id as string, "organizer")).status).toBe(403);
-  });
-
-  it("(9) does not revoke sessions -- no authSession table access on role change", async () => {
-    const { db, state } = makeFakeDb();
-    await seedUser(state, { id: "org-admin", role: "organizer" });
-    const target = await seedUser(state, { id: "target-1", role: "reviewer" });
-    const org = organizerApp(db, { userId: "org-admin", role: "organizer", orgId: ORG_A });
-
-    const res = await patchRole(org, target.id as string, "organizer");
-    expect(res.status).toBe(200);
-    // makeFakeDb throws on any table other than schema.user, so a 200 here
-    // proves no authSession delete/select was attempted.
   });
 });

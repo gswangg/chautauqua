@@ -2,14 +2,36 @@
 // accounts here. user_email_idx (schema.ts) is globally unique across orgs —
 // a duplicate email anywhere fails loudly as a 409 conflict.
 
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { newId } from "../../domain/ids";
 import { ApiError } from "../http";
-import { DEC_757 } from "../../decisions";
+import { DEC_757, DEC_865 } from "../../decisions";
 
 void DEC_757;
+void DEC_865; // organizer user-directory API must never reach speaker portal accounts
+
+/** DEC-865: the org-user directory (list/count/reset-password/role-change)
+ * is organizer/reviewer accounts only -- speaker portal accounts share the
+ * `user` table but must never surface here. */
+export const ORG_USER_ROLES = ["organizer", "reviewer"] as const;
+export type OrgUserRole = (typeof ORG_USER_ROLES)[number];
+export function isOrgUserRole(value: string): value is OrgUserRole {
+  return (ORG_USER_ROLES as readonly string[]).includes(value);
+}
+
+/** Single where-builder shared by listOrgUsers and countOrgUsers (DEC-865) so
+ * the list and its total can never drift on which roles count as "org
+ * users". Always scopes to ORG_USER_ROLES even when a specific role is
+ * requested, so a speaker id can never be reached via ?role=. */
+function orgUserWhere(orgId: string, role?: string) {
+  if (role === undefined) {
+    return and(eq(schema.user.orgId, orgId), inArray(schema.user.role, ORG_USER_ROLES));
+  }
+  if (!isOrgUserRole(role)) throw new Error(`orgUserWhere: role must already be validated by the route, got ${role}`);
+  return and(eq(schema.user.orgId, orgId), eq(schema.user.role, role));
+}
 
 export interface OrgUserRecord {
   id: string;
@@ -35,7 +57,7 @@ function toOrgUserRecord(row: typeof schema.user.$inferSelect): OrgUserRecord {
  * by id asc. `page` absent means today's unbounded behavior (internal callers
  * are unaffected) — see countOrgUsers for the matching total (DEC-460/461). */
 export async function listOrgUsers(db: Db, orgId: string, role?: string, page?: { limit: number; offset: number }): Promise<OrgUserRecord[]> {
-  const whereExpr = role ? and(eq(schema.user.orgId, orgId), eq(schema.user.role, role)) : eq(schema.user.orgId, orgId);
+  const whereExpr = orgUserWhere(orgId, role);
   let query = db.select().from(schema.user).where(whereExpr).orderBy(asc(schema.user.id));
   if (page) {
     query = query.limit(page.limit).offset(page.offset) as typeof query;
@@ -46,7 +68,7 @@ export async function listOrgUsers(db: Db, orgId: string, role?: string, page?: 
 
 /** Counts org users under the same optional role filter as listOrgUsers. */
 export async function countOrgUsers(db: Db, orgId: string, role?: string): Promise<number> {
-  const whereExpr = role ? and(eq(schema.user.orgId, orgId), eq(schema.user.role, role)) : eq(schema.user.orgId, orgId);
+  const whereExpr = orgUserWhere(orgId, role);
   const rows = await db.select({ count: sql<number>`count(*)` }).from(schema.user).where(whereExpr);
   return Number(rows[0]?.count ?? 0);
 }
@@ -89,12 +111,14 @@ export async function createUser(db: Db, input: CreateUserInput): Promise<OrgUse
 }
 
 /** Loads a user by id, scoped to orgId — returns undefined for an unknown
- * id OR a cross-org id, so callers can 404 without leaking which case it was. */
+ * id, a cross-org id, OR a same-org id outside ORG_USER_ROLES (DEC-865: a
+ * speaker portal account's id reads as missing here too), so callers can
+ * 404 without leaking which case it was. */
 export async function getOrgUserById(db: Db, userId: string, orgId: string): Promise<OrgUserRecord | undefined> {
   const rows = await db
     .select()
     .from(schema.user)
-    .where(and(eq(schema.user.id, userId), eq(schema.user.orgId, orgId)))
+    .where(and(eq(schema.user.id, userId), eq(schema.user.orgId, orgId), inArray(schema.user.role, ORG_USER_ROLES)))
     .limit(1);
   const row = rows[0];
   return row ? toOrgUserRecord(row) : undefined;
