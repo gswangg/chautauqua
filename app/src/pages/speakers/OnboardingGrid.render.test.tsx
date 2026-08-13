@@ -4,7 +4,7 @@
 // clicking it fetches GET /api/v1/task-assignments/:id/response and opens
 // ResponseModal with the fetched fields.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor, fireEvent, cleanup } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, cleanup, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { OnboardingGrid } from './OnboardingGrid';
 import { mockApi } from '../../test-utils/mockApi';
@@ -67,6 +67,60 @@ afterEach(() => {
   consoleErrorSpy.mockRestore();
   window.localStorage.clear();
   vi.unstubAllGlobals();
+});
+
+// DEC-730: complete/pending/overdue are one control family -- all three
+// render as real <button>s sharing the chq-speakers-status base class, and
+// the grid footer states the one interaction rule.
+describe('OnboardingGrid: DEC-730 one status-control family', () => {
+  it('renders complete, pending and overdue cells as buttons in the same class family, plus the footer caption', async () => {
+    const now = Date.now();
+    const overdueGrid: OnboardingGridResponse = {
+      tasks: [{ id: 'task-1', kind: 'general', title: 'Sign speaker agreement', dueDate: now - 5 * 86_400_000, required: true }],
+      rows: [
+        {
+          contact: { id: 'ct1', name: 'Ada Lovelace', email: 'ada@example.com', company: 'Acme', hasAccount: true },
+          cells: [{ taskId: 'task-1', assignmentId: 'as1', status: 'complete', completedAt: now, fileId: null, lastRemindedAt: null }],
+        },
+        {
+          contact: { id: 'ct2', name: 'Grace Hopper', email: 'grace@example.com', company: 'Navy', hasAccount: false },
+          cells: [{ taskId: 'task-1', assignmentId: 'as2', status: 'pending', completedAt: null, fileId: null, lastRemindedAt: null }],
+        },
+      ],
+      total: 2,
+      page: 1,
+      perPage: 50,
+      counts: { speakers: 2, outstandingRequired: 1, overdue: 1, outstandingContacts: 1 },
+    };
+
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: overdueGrid,
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+    });
+
+    render(<OnboardingGrid onAddSpeaker={vi.fn()} onImportCsv={vi.fn()} />);
+
+    await waitFor(() => screen.getAllByText('Ada Lovelace').length > 0);
+
+    const table = within(screen.getByRole('table'));
+    const completeBtn = table.getByRole('button', { name: 'Toggle Sign speaker agreement for Ada Lovelace' });
+    const overdueBtn = table.getByRole('button', { name: 'Toggle Sign speaker agreement for Grace Hopper' });
+
+    expect(completeBtn.tagName).toBe('BUTTON');
+    expect(overdueBtn.tagName).toBe('BUTTON');
+    // Same control family: both carry the shared base class.
+    expect(completeBtn.className.split(/\s+/)).toContain('chq-speakers-status');
+    expect(overdueBtn.className.split(/\s+/)).toContain('chq-speakers-status');
+    expect(completeBtn.className).toContain('chq-speakers-status-complete');
+    expect(overdueBtn.className).toContain('chq-speakers-status-overdue');
+    expect(overdueBtn).toHaveTextContent(/^\d+ DAYS? LATE$/);
+
+    // Task header uses the mock's "Due D Mon [· Required]" shape.
+    expect(screen.getAllByText(/^Due \d+ \w+ · Required$/).length).toBeGreaterThan(0);
+
+    // Footer caption.
+    expect(screen.getByText('Click any status to mark it complete or pending')).toBeInTheDocument();
+  });
 });
 
 describe('OnboardingGrid: DEC-291/DEC-662 Response control', () => {
