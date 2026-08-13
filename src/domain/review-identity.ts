@@ -1,20 +1,19 @@
-// Blind-review identity resolution (DEC-622): one resolver so the
+// Reviewer identity resolution (DEC-622, DEC-736): one resolver so the
 // evaluations screen and the evaluations export can never disagree about
-// who a reviewer's identity is shown as when a plan is anonymized.
+// who a reviewer's identity is shown as. DEC-736 supersedes DEC-622's
+// null-iff-anonymized rule: anonymization hides the SPEAKER from the
+// REVIEWER, never the reviewer's identity from the organiser -- the
+// organiser is always told who reviewed.
 
 export interface ReviewerIdentityRow {
-  anonymized: boolean;
   firstName?: string | null;
   lastName?: string | null;
   email: string;
 }
 
-/** Returns null iff row.anonymized (caller renders the withheld cell, never
- * blank -- see ANONYMIZED_REVIEWER_CELL). Otherwise prefers "First Last"
- * when BOTH names are non-empty, else falls back to the reviewer's email. */
-export function resolveReviewerIdentity(row: ReviewerIdentityRow): string | null {
-  if (row.anonymized) return null;
+/** Prefers "First Last" when BOTH names are non-empty, else falls back to
+ * the reviewer's email. Never returns null -- the organiser is always told
+ * who reviewed (DEC-736). */
+export function resolveReviewerIdentity(row: ReviewerIdentityRow): string {
   return row.firstName && row.lastName ? `${row.firstName} ${row.lastName}`.trim() : row.email;
 }
-
-export const ANONYMIZED_REVIEWER_CELL = "(anonymized)";

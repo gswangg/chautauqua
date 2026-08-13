@@ -1,9 +1,9 @@
-// DEC-622: the evaluations export and GET /api/v1/submissions/:id/evaluations
-// must agree about anonymity -- an anonymized plan's reviewer email is never
-// leaked through either surface, and a non-anonymized plan's email still
-// appears in the export (reviewerEmail column keeps meaning an email in that
-// case, per the task's constraint of passing no names to the export's
-// resolveReviewerIdentity call).
+// DEC-736: the evaluations export and GET /api/v1/submissions/:id/evaluations
+// must agree that the organiser is ALWAYS told who reviewed -- anonymization
+// hides the SPEAKER from the REVIEWER, never the reviewer's identity from
+// the organiser. Both surfaces resolve identity through the same
+// resolveReviewerIdentity helper (DEC-622's "one resolver" shape), so they
+// can never disagree.
 
 import { describe, expect, it, vi, afterEach } from "vitest";
 import { Hono } from "hono";
@@ -43,7 +43,7 @@ function fakeDb(selectQueue: unknown[][]) {
   return db as unknown as AppEnv["Variables"]["db"];
 }
 
-function evaluationExportRow(anonymized: boolean) {
+function evaluationExportRow() {
   return {
     planId: "plan-1",
     planName: "Program Committee",
@@ -51,7 +51,6 @@ function evaluationExportRow(anonymized: boolean) {
     roundCriteriaJson: null,
     seq: 1,
     title: "Talk One",
-    anonymized,
     reviewerEmail: REVIEWER_EMAIL,
     round: 1,
     scoresJson: JSON.stringify({ c1: 4 }),
@@ -62,38 +61,50 @@ function evaluationExportRow(anonymized: boolean) {
 
 // buildExport('evaluations') call order: getRecordPrefix, then evaluation rows.
 // requireOwnedEvent (route middleware) selects the event first.
-function exportQueue(anonymized: boolean) {
+function exportQueue() {
   return [
     [{ id: EVENT_ID, orgId: ORG_A }], // requireOwnedEvent
     [{ recordPrefix: "SES" }], // getRecordPrefix
-    [evaluationExportRow(anonymized)], // evaluation rows
+    [evaluationExportRow()], // evaluation rows
   ];
 }
 
-async function buildExportApp(auth: AuthInfo, anonymized: boolean) {
+async function buildExportApp(auth: AuthInfo) {
   const app = new Hono<AppEnv>();
   registerErrorHandler(app);
   app.use("*", async (c, next) => {
     c.set("auth", auth);
-    c.set("db", fakeDb(exportQueue(anonymized)));
+    c.set("db", fakeDb(exportQueue()));
     await next();
   });
   app.route("/", exportsRoutes);
   return app;
 }
 
-async function buildSubmissionEvaluationsApp(auth: AuthInfo, anonymized: boolean) {
+async function buildSubmissionEvaluationsApp(auth: AuthInfo) {
   vi.spyOn(evaluationsRepo, "listEvaluationsForSubmission").mockResolvedValue([
     {
       planId: "plan-1",
       planName: "Program Committee",
       round: 1,
-      reviewerName: anonymized ? null : REVIEWER_EMAIL,
+      reviewerName: REVIEWER_EMAIL,
       scores: { c1: 4 },
       comment: "Great talk",
       submittedAt: 1_700_000_000_000,
     },
   ]);
+  vi.spyOn(evaluationsRepo, "listPlanCriteriaByIds").mockResolvedValue(
+    new Map([
+      [
+        "plan-1",
+        {
+          criteria: [{ id: "c1", label: "Clarity", kind: "rating" as const, weight: 1 }],
+          roundCriteriaJson: null,
+          scale: { min: 1, max: 5 },
+        },
+      ],
+    ]),
+  );
 
   const submissionsRepo = await import("../src/server/repo/submissions");
   vi.spyOn(submissionsRepo, "getSubmissionOwnership").mockImplementation(async (_db: unknown, submissionId: string) =>
@@ -115,49 +126,36 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe("DEC-622: evaluations export obeys the same reviewer-identity resolution as the screen", () => {
-  it("an anonymized plan's export contains '(anonymized)' and never the reviewer's email", async () => {
-    const app = await buildExportApp({ userId: "u1", role: "organizer", orgId: ORG_A }, true);
+describe("DEC-736: evaluations export and evaluations screen agree by naming the reviewer", () => {
+  it("the export contains the reviewer's identity, never a withheld sentinel", async () => {
+    const app = await buildExportApp({ userId: "u1", role: "organizer", orgId: ORG_A });
     const res = await app.request(`/api/v1/events/${EVENT_ID}/export/evaluations?format=json`);
     expect(res.status).toBe(200);
     const records = (await res.json()) as Array<Record<string, string>>;
     expect(records).toHaveLength(1);
-    expect(records[0]!["reviewerEmail"]).toBe("(anonymized)");
-    const serialized = JSON.stringify(records);
-    expect(serialized).not.toContain(REVIEWER_EMAIL);
-  });
-
-  it("a non-anonymized plan's export still contains the reviewer's email", async () => {
-    const app = await buildExportApp({ userId: "u1", role: "organizer", orgId: ORG_A }, false);
-    const res = await app.request(`/api/v1/events/${EVENT_ID}/export/evaluations?format=json`);
-    expect(res.status).toBe(200);
-    const records = (await res.json()) as Array<Record<string, string>>;
     expect(records[0]!["reviewerEmail"]).toBe(REVIEWER_EMAIL);
+    const serialized = JSON.stringify(records);
+    expect(serialized).not.toContain("(anonymized)");
   });
 
-  it("the export and GET /api/v1/submissions/:id/evaluations agree: both withhold identity for an anonymized plan", async () => {
-    const exportApp = await buildExportApp({ userId: "u1", role: "organizer", orgId: ORG_A }, true);
+  it("the screen contains the reviewer's identity, never null", async () => {
+    const app = await buildSubmissionEvaluationsApp({ userId: "u1", role: "organizer", orgId: ORG_A });
+    const res = await app.request(`/api/v1/submissions/${SUBMISSION_ID}/evaluations`);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { items: Array<{ reviewerName: string }> };
+    expect(body.items[0]!.reviewerName).toBe(REVIEWER_EMAIL);
+    expect(body.items[0]!.reviewerName).not.toBeNull();
+  });
+
+  it("the export and the screen agree: both name the same reviewer for the same underlying identity", async () => {
+    const exportApp = await buildExportApp({ userId: "u1", role: "organizer", orgId: ORG_A });
     const exportRes = await exportApp.request(`/api/v1/events/${EVENT_ID}/export/evaluations?format=json`);
     const exportRecords = (await exportRes.json()) as Array<Record<string, string>>;
 
-    const screenApp = await buildSubmissionEvaluationsApp({ userId: "u1", role: "organizer", orgId: ORG_A }, true);
+    const screenApp = await buildSubmissionEvaluationsApp({ userId: "u1", role: "organizer", orgId: ORG_A });
     const screenRes = await screenApp.request(`/api/v1/submissions/${SUBMISSION_ID}/evaluations`);
-    const screenBody = (await screenRes.json()) as { items: Array<{ reviewerName: string | null }> };
+    const screenBody = (await screenRes.json()) as { items: Array<{ reviewerName: string }> };
 
-    expect(exportRecords[0]!["reviewerEmail"]).toBe("(anonymized)");
-    expect(screenBody.items[0]!.reviewerName).toBeNull();
-  });
-
-  it("the export and GET /api/v1/submissions/:id/evaluations agree: both reveal identity for a non-anonymized plan", async () => {
-    const exportApp = await buildExportApp({ userId: "u1", role: "organizer", orgId: ORG_A }, false);
-    const exportRes = await exportApp.request(`/api/v1/events/${EVENT_ID}/export/evaluations?format=json`);
-    const exportRecords = (await exportRes.json()) as Array<Record<string, string>>;
-
-    const screenApp = await buildSubmissionEvaluationsApp({ userId: "u1", role: "organizer", orgId: ORG_A }, false);
-    const screenRes = await screenApp.request(`/api/v1/submissions/${SUBMISSION_ID}/evaluations`);
-    const screenBody = (await screenRes.json()) as { items: Array<{ reviewerName: string | null }> };
-
-    expect(exportRecords[0]!["reviewerEmail"]).toBe(REVIEWER_EMAIL);
-    expect(screenBody.items[0]!.reviewerName).toBe(REVIEWER_EMAIL);
+    expect(exportRecords[0]!["reviewerEmail"]).toBe(screenBody.items[0]!.reviewerName);
   });
 });

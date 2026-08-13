@@ -6,7 +6,7 @@ import * as schema from "../../../db/schema";
 import { formatRef } from "../../../domain/ids";
 import { computeWeightedScore } from "../../../domain/evaluation";
 import { DEC_529 } from "../../../decisions";
-import { resolveReviewerIdentity, ANONYMIZED_REVIEWER_CELL } from "../../../domain/review-identity";
+import { resolveReviewerIdentity } from "../../../domain/review-identity";
 import { type ExportTable, buildTable, nameCustomColumns } from "./table";
 import { getRecordPrefix } from "./common";
 
@@ -132,7 +132,6 @@ export async function exportEvaluations(db: Db, eventId: string): Promise<Export
       roundCriteriaJson: schema.evaluationPlan.roundCriteriaJson,
       seq: schema.submission.seq,
       title: schema.submission.title,
-      anonymized: schema.evaluationPlan.anonymized,
       reviewerEmail: schema.user.email,
       round: schema.evaluation.round,
       scoresJson: schema.evaluation.scoresJson,
@@ -187,7 +186,7 @@ export async function exportEvaluations(db: Db, eventId: string): Promise<Export
       planName: r.planName,
       ref: formatRef(recordPrefix, r.seq),
       title: r.title,
-      reviewerEmail: resolveReviewerIdentity({ anonymized: r.anonymized, email: r.reviewerEmail }) ?? ANONYMIZED_REVIEWER_CELL,
+      reviewerEmail: resolveReviewerIdentity({ email: r.reviewerEmail }),
       round: r.round,
       scores,
       weightedScore,
