@@ -192,7 +192,7 @@ describe("seed coherence (DEC-771)", () => {
     expect(commentsOnAcceptedFiles.length).toBeGreaterThanOrEqual(1);
   });
 
-  it("(d) at least one comms batch of ~20 recipients sharing one batch_id, plus five email templates", () => {
+  it("(d) at least one comms batch of ~20 recipients sharing one batch_id, plus at least five email templates", () => {
     const emailLogRows = parseInserts(sql, "email_log");
     const batchCounts = new Map<string, number>();
     for (const row of emailLogRows) {
@@ -202,7 +202,11 @@ describe("seed coherence (DEC-771)", () => {
     const bigBatches = [...batchCounts.entries()].filter(([, count]) => count >= 20);
     expect(bigBatches.length).toBeGreaterThanOrEqual(1);
 
+    // DEC-771 asks for "roughly ... five templates" -- a density floor, not a
+    // cap: DEC-796 adds a sixth ("Speaker Portal Invitation") so the
+    // portal-invite send is one template pick away. The floor is what the
+    // Templates tab needs to show its own shape.
     const templateRows = parseInserts(sql, "email_template");
-    expect(templateRows.length).toBe(5);
+    expect(templateRows.length).toBeGreaterThanOrEqual(5);
   });
 });

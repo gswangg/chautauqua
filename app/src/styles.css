@@ -1118,6 +1118,21 @@ a:hover {
   color: var(--chq-muted);
 }
 
+/* DEC-795: a contacts-modal advisory states a fact the organizer should know
+   before acting (already on this event's roster) -- it never blocks the
+   action, so it reads muted and quiet like the DEC-788 duplicate hint rather
+   than as a validation error. */
+.chq-contacts-advisory {
+  margin: 0;
+  font-size: 13px;
+  color: var(--chq-muted);
+}
+
+.chq-add-to-event-advisory {
+  /* Sits directly above the modal's action row. */
+  margin-top: 2px;
+}
+
 .chq-add-to-event-result,
 .chq-bulk-email-result {
   font-size: 13px;

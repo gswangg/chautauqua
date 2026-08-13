@@ -590,7 +590,7 @@ describe("seed.ts output (task w1-d, DEC-145)", () => {
     }
   });
 
-  it("DEC-739: exactly one batch_id appears on >=20 email_log rows, and template count is 5", () => {
+  it("DEC-739: exactly one batch_id appears on >=20 email_log rows, and template count is at least 5", () => {
     const emailLogRows = parseInserts(sql, "email_log");
     const batchCounts = new Map<string, number>();
     for (const row of emailLogRows) {
@@ -616,8 +616,10 @@ describe("seed.ts output (task w1-d, DEC-145)", () => {
     expect(statuses.filter((s) => s === "failed").length).toBeGreaterThanOrEqual(1);
     expect(statuses.filter((s) => s === "failed").length).toBeLessThanOrEqual(2);
 
+    // DEC-771's "five templates" is a density floor, not a cap -- DEC-796
+    // adds a sixth ("Speaker Portal Invitation").
     const templateRows = parseInserts(sql, "email_template");
-    expect(templateRows.length).toBe(5);
+    expect(templateRows.length).toBeGreaterThanOrEqual(5);
   });
 
   // Task w3-a: reviewer users previously seeded with contact_id NULL, so
