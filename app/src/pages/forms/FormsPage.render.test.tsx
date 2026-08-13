@@ -27,12 +27,21 @@ const FORM: CfpForm = {
   fields: [
     { id: 'f1', section: 'session', kind: 'text', label: 'Title', required: true, position: 0, locked: true },
     {
+      id: 'form-1:description',
+      section: 'session',
+      kind: 'long_text',
+      label: 'Abstract',
+      required: true,
+      position: 1,
+      locked: true,
+    },
+    {
       id: 'f2',
       section: 'session',
       kind: 'text',
       label: 'Co-speaker email',
       required: false,
-      position: 1,
+      position: 2,
       locked: false,
       rule: { fieldId: 'f1', op: 'eq', value: 'Panel' },
     },
@@ -74,6 +83,21 @@ describe('FormsPage render smoke', () => {
 
     expect(screen.getByRole('heading', { name: 'CFP form' })).toBeInTheDocument();
 
+    // DEC-008 amendment (w45-e): the builder synthesizes a Track row from
+    // the event's tracks -- the SAME single-choice question the public CFP
+    // (TrackChoices) renders -- as a view, never a real field row: no
+    // Edit/Delete, no drag handle, just a quiet link into Settings.
+    const trackRow = screen.getByText('Track').closest('[role="listitem"]') as HTMLElement;
+    expect(trackRow).not.toBeNull();
+    expect(trackRow).toHaveClass('chq-forms-field-locked');
+    expect(within(trackRow).getByText('Single choice')).toBeInTheDocument();
+    expect(within(trackRow).getByText('1 option')).toBeInTheDocument();
+    expect(within(trackRow).queryByRole('button', { name: /^Reorder /i })).not.toBeInTheDocument();
+    expect(within(trackRow).queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument();
+    expect(within(trackRow).queryByRole('button', { name: 'Delete' })).not.toBeInTheDocument();
+    const trackLink = within(trackRow).getByRole('link', { name: 'Manage in Settings' });
+    expect(trackLink).toHaveAttribute('href', '/settings?section=tracks-rooms&edit=1');
+
     // FieldList (DEC-715 row anatomy): the locked built-in gets a quiet
     // caption/kind treatment (no LOCKED pill), and the custom field's
     // condition summary renders as its own line.
@@ -82,7 +106,7 @@ describe('FormsPage render smoke', () => {
     // No up/down move buttons remain; the drag handle is the ONE reorder
     // affordance, a real button with an accessible position label.
     expect(screen.queryByRole('button', { name: /^Move / })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Reorder Title (position 1 of 2)' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Reorder Title (position 1 of 4)' })).toBeInTheDocument();
 
     // Received strip cell: a real read of the submissions total (never a
     // fabricated count), rendered "N submissions".

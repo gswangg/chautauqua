@@ -1,6 +1,7 @@
 import { useState, type DragEvent } from 'react';
+import { Link } from 'react-router-dom';
 import { describeCondition, fieldsByIdMap } from './condition';
-import { kindLabel, type FormField } from './types';
+import { kindLabel, type EventTrack, type FormField } from './types';
 // The FE form-builder module reads the SAME short-name test and length cap
 // the API/pure core validate against (../../../../src/forms) so the
 // builder's captions can never drift from the rule that actually enforces
@@ -26,6 +27,7 @@ function formatThousands(n: number): string {
 
 interface FieldListProps {
   fields: FormField[];
+  tracks: EventTrack[];
   busy: boolean;
   onEdit: (field: FormField) => void;
   onDelete: (field: FormField) => void;
@@ -60,6 +62,13 @@ interface DisplayRow {
   condition?: string;
   kindText: string;
   builtIn: boolean;
+  /** True only for the synthesized Track row (below): it is a VIEW of the
+   * event's tracks the public CFP already asks (TrackChoices in
+   * src/routes/public/submit-views.tsx), never a real form_field row -- no
+   * drag handle, no Edit/Delete, just a quiet link into the place tracks
+   * are actually changed (Settings > Tracks & rooms). */
+  viewOnly?: boolean;
+  viewLink?: { to: string; label: string };
 }
 
 /** Kinds whose caption, when the field has no helpText of its own, states
@@ -74,15 +83,49 @@ function optionCountCaption(field: FormField): string | undefined {
   return countOf(count, 'option');
 }
 
+// DEC-008 amendment (w45-e): the public CFP renders a REQUIRED single-choice
+// Track question (TrackChoices, src/routes/public/submit-views.tsx) whenever
+// the event has tracks -- sourced from the event's tracks, never from a
+// form_field row. The builder synthesizes the SAME row here, purely as a
+// VIEW: no field id is minted, no PATCH/POST is ever issued for it, it is
+// not editable/deletable/reorderable, and it carries a quiet link into the
+// place tracks are actually changed (Settings > Tracks & rooms) instead of
+// Edit/Delete. Gated on tracks.length > 0 to mirror DEC-301 (a form with no
+// tracks configured offers no Track fieldset on the public side either).
+function buildTrackRow(tracks: EventTrack[]): DisplayRow {
+  const trackField: FormField = {
+    id: '__track__',
+    section: 'session',
+    kind: 'dropdown',
+    label: 'Track',
+    required: true,
+    position: -1,
+    options: tracks.map((t) => t.name),
+    locked: true,
+  };
+  return {
+    key: 'built-in-track',
+    field: trackField,
+    label: 'Track',
+    caption: optionCountCaption(trackField),
+    kindText: kindLabel('dropdown'),
+    builtIn: true,
+    viewOnly: true,
+    viewLink: { to: '/settings?section=tracks-rooms&edit=1', label: 'Manage in Settings' },
+  };
+}
+
 /** Projects the form's raw field list into the mock's row anatomy: the
  * three locked speaker-identity fields collapse into one "Speaker name and
  * email" row, 'description' renders as "Abstract" with the real imported
- * length cap, and the rest of the DEC-008 locked built-ins get a quiet
- * caption from BUILT_IN_CAPTIONS instead of a LOCKED pill. Every other
- * field (custom, non-locked) keeps its own label/kind/required and its
- * caption is its own helpText, per field, with the conditional-visibility
- * summary rendered as a second line when a rule exists. */
-function buildRows(fields: FormField[]): DisplayRow[] {
+ * length cap plus a synthesized Track row immediately after it (frame 04's
+ * Title -> Abstract -> Track order), and the rest of the DEC-008 locked
+ * built-ins get a quiet caption from BUILT_IN_CAPTIONS instead of a LOCKED
+ * pill. Every other field (custom, non-locked) keeps its own label/kind/
+ * required and its caption is its own helpText, per field, with the
+ * conditional-visibility summary rendered as a second line when a rule
+ * exists. */
+function buildRows(fields: FormField[], tracks: EventTrack[]): DisplayRow[] {
   const ordered = [...fields].sort((a, b) => a.position - b.position);
   const fieldsById = fieldsByIdMap(fields);
   const rows: DisplayRow[] = [];
@@ -114,6 +157,9 @@ function buildRows(fields: FormField[]): DisplayRow[] {
         kindText: kindLabel(field.kind),
         builtIn: true,
       });
+      if (tracks.length > 0) {
+        rows.push(buildTrackRow(tracks));
+      }
       continue;
     }
 
@@ -150,8 +196,8 @@ function buildRows(fields: FormField[]): DisplayRow[] {
  * the row, operable by pointer (click focuses it) and keyboard
  * (ArrowUp/ArrowDown call the existing onMove(field, -1|1) contract) --
  * there are no separate up/down buttons. */
-export function FieldList({ fields, busy, onEdit, onDelete, onMove }: FieldListProps) {
-  const rows = buildRows(fields);
+export function FieldList({ fields, tracks, busy, onEdit, onDelete, onMove }: FieldListProps) {
+  const rows = buildRows(fields, tracks);
   // The row currently under a dragged field (DEC-903 visible insertion
   // point) -- cleared on drop/leave, never persisted past the drag gesture.
   const [dragOverKey, setDragOverKey] = useState<string | null>(null);
@@ -207,25 +253,32 @@ export function FieldList({ fields, busy, onEdit, onDelete, onMove }: FieldListP
           onDragLeave={() => handleDragLeave(row)}
           onDrop={(event) => handleDrop(event, row, index)}
         >
-          <button
-            type="button"
-            className="chq-forms-field-drag"
-            aria-label={`Reorder ${row.label} (position ${index + 1} of ${rows.length})`}
-            disabled={busy || row.field.locked}
-            draggable={!(busy || row.field.locked)}
-            onDragStart={(event) => handleDragStart(event, row)}
-            onKeyDown={(event) => {
-              if (event.key === 'ArrowUp') {
-                event.preventDefault();
-                onMove(row.field, -1);
-              } else if (event.key === 'ArrowDown') {
-                event.preventDefault();
-                onMove(row.field, 1);
-              }
-            }}
-          >
-            ⋮⋮
-          </button>
+          {row.viewOnly ? (
+            // Synthesized Track row: not reorderable, so there is no drag
+            // handle at all -- an inert, non-interactive placeholder keeps
+            // the row's grid cell count identical to every other row.
+            <span className="chq-forms-field-drag chq-forms-field-drag-empty" aria-hidden="true" />
+          ) : (
+            <button
+              type="button"
+              className="chq-forms-field-drag"
+              aria-label={`Reorder ${row.label} (position ${index + 1} of ${rows.length})`}
+              disabled={busy || row.field.locked}
+              draggable={!(busy || row.field.locked)}
+              onDragStart={(event) => handleDragStart(event, row)}
+              onKeyDown={(event) => {
+                if (event.key === 'ArrowUp') {
+                  event.preventDefault();
+                  onMove(row.field, -1);
+                } else if (event.key === 'ArrowDown') {
+                  event.preventDefault();
+                  onMove(row.field, 1);
+                }
+              }}
+            >
+              ⋮⋮
+            </button>
+          )}
 
           <div className="chq-forms-field-label">
             <span className="chq-forms-field-label-text">{row.label}</span>
@@ -240,22 +293,30 @@ export function FieldList({ fields, busy, onEdit, onDelete, onMove }: FieldListP
           </span>
 
           <div className="chq-forms-field-actions">
-            <button
-              type="button"
-              className="chq-btn chq-btn-tertiary"
-              disabled={busy || row.field.locked}
-              onClick={() => onEdit(row.field)}
-            >
-              Edit
-            </button>
-            <button
-              type="button"
-              className="chq-btn chq-btn-tertiary"
-              disabled={busy || row.field.locked}
-              onClick={() => onDelete(row.field)}
-            >
-              Delete
-            </button>
+            {row.viewOnly && row.viewLink ? (
+              <Link to={row.viewLink.to} className="chq-btn chq-btn-tertiary">
+                {row.viewLink.label}
+              </Link>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  className="chq-btn chq-btn-tertiary"
+                  disabled={busy || row.field.locked}
+                  onClick={() => onEdit(row.field)}
+                >
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  className="chq-btn chq-btn-tertiary"
+                  disabled={busy || row.field.locked}
+                  onClick={() => onDelete(row.field)}
+                >
+                  Delete
+                </button>
+              </>
+            )}
           </div>
         </div>
       ))}
