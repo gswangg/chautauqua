@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { apiGet, apiPost, ApiError } from '../../lib/api';
-import { ModalFrame } from '../../components/ModalFrame';
+import { FormRow, ModalFrame } from '../../components/ModalFrame';
 
 interface Props {
   onClose: () => void;
@@ -122,55 +122,52 @@ export function NewContactModal({ onClose, onCreated }: Props) {
         </div>
       )}
 
-      <label>
-        First name
+      <FormRow label="First name" htmlFor="new-contact-first-name" error={fields.firstName}>
         <input
+          id="new-contact-first-name"
           className="chq-input"
           value={firstName}
           onChange={(e) => setFirstName(e.target.value)}
           placeholder="Priya"
         />
-        {fields.firstName && <span className="chq-field-error">{fields.firstName}</span>}
-      </label>
-      <label>
-        Last name
+      </FormRow>
+      <FormRow label="Last name" htmlFor="new-contact-last-name" error={fields.lastName}>
         <input
+          id="new-contact-last-name"
           className="chq-input"
           value={lastName}
           onChange={(e) => setLastName(e.target.value)}
           placeholder="Raman"
         />
-        {fields.lastName && <span className="chq-field-error">{fields.lastName}</span>}
-      </label>
-      <label>
-        Email
+      </FormRow>
+      <FormRow label="Email" htmlFor="new-contact-email" error={fields.email}>
         <input
+          id="new-contact-email"
           className="chq-input"
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="priya.raman@example.com"
         />
-        {fields.email && <span className="chq-field-error">{fields.email}</span>}
-      </label>
-      <label>
-        Company
+      </FormRow>
+      <FormRow label="Company" htmlFor="new-contact-company" error={fields.company} optional>
         <input
+          id="new-contact-company"
           className="chq-input"
           value={company}
           onChange={(e) => setCompany(e.target.value)}
           placeholder="Latticework Systems"
         />
-      </label>
-      <label>
-        Title
+      </FormRow>
+      <FormRow label="Title" htmlFor="new-contact-title" error={fields.title} optional>
         <input
+          id="new-contact-title"
           className="chq-input"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Principal Engineer"
         />
-      </label>
+      </FormRow>
       {duplicateMatch && (
         <p className="chq-contacts-new-contact-duplicate-hint" role="status">
           Possible duplicate:{' '}

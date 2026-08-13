@@ -5,12 +5,29 @@
 // all rows), then commits with the SAME {csvText, mapping} body plus
 // `skipLines` from the checked boxes -- and the Done step renders the
 // server's post-commit counts verbatim, never the dry run's intent counts.
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
 import { cleanup, render, screen, fireEvent, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { ImportWizard } from './ImportWizard';
 import { mockApi } from '../../test-utils/mockApi';
 import type { ImportPlan, ImportResult } from './types';
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+const CSS = readFileSync(join(HERE, 'contacts-panels.css'), 'utf-8');
+
+/** Extracts a top-level (not inside an @media block) rule's declaration
+ * body by selector — same helper as ContactsApp.newContact.render.test.tsx. */
+function topLevelRuleBody(css: string, selector: string): string {
+  const withoutMedia = css.replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\}[^{}]*)*\}/g, '');
+  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const match = withoutMedia.match(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`));
+  const body = match?.[1];
+  if (body === undefined) throw new Error(`no top-level rule found for ${selector}`);
+  return body;
+}
 
 afterEach(() => {
   cleanup();
@@ -49,6 +66,42 @@ async function pasteCsvAndPreview() {
   fireEvent.click(preview);
   return preview;
 }
+
+// DEC-894: the shared .chq-file control, not a raw unstyled input[type=file]
+// -- same class ContactDrawer, ResourcesPanel and SessionboardImportPanel
+// already honour.
+// Gate report: the wizard's close glyph rendered centred in its own row (a
+// bare flex-column child stretches to the column's width, and .chq-btn
+// centres its own label) instead of the panel's top-right, unlike every
+// ModalFrame-built dialog's Close control. jsdom does not evaluate @media
+// rules or layout, so this is a source-scan plus a class-shape assertion —
+// mirroring ContactsApp.newContact.render.test.tsx.
+describe('ImportWizard: close glyph pinned top-right (contacts-panels.css)', () => {
+  it('the Close button carries chq-contacts-import-close', () => {
+    render(<ImportWizard onClose={() => {}} onImported={() => {}} />);
+    const closeButton = screen.getByRole('button', { name: 'Close' });
+    expect(closeButton).toHaveClass('chq-contacts-import-close');
+  });
+
+  it('.chq-contacts-import-close is absolutely positioned at the modal padding edge', () => {
+    const body = topLevelRuleBody(CSS, '.chq-contacts-import-close');
+    expect(body).toMatch(/position:\s*absolute/);
+  });
+
+  it('.chq-contacts-import establishes the positioning context', () => {
+    const body = topLevelRuleBody(CSS, '.chq-contacts-import');
+    expect(body).toMatch(/position:\s*relative/);
+  });
+});
+
+describe('ImportWizard: DEC-894 shared .chq-file control', () => {
+  it('the CSV file input carries the shared chq-file class', () => {
+    render(<ImportWizard onClose={() => {}} onImported={() => {}} />);
+    const fileInput = screen.getByLabelText('Upload a CSV file') as HTMLInputElement;
+    expect(fileInput.type).toBe('file');
+    expect(fileInput).toHaveClass('chq-file');
+  });
+});
 
 describe('ImportWizard: DEC-663 dry-run review step', () => {
   it('step strip reads Choose file / Match columns / Review / Done', async () => {

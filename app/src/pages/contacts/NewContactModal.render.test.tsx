@@ -21,6 +21,38 @@ function renderModal(onCreated = vi.fn()) {
   );
 }
 
+// DEC-950: every dialog field is a FormRow -- NewContactModal's five fields
+// (First name / Last name / Email / Company / Title) render through the
+// shared ModalFrame FormRow, not a bare <label><input></label> pair.
+describe('NewContactModal fields render as FormRow (DEC-950)', () => {
+  it('renders each field inside a .chq-form-row with its label explicitly associated to the input', () => {
+    mockApi({});
+    renderModal();
+
+    const rows = document.querySelectorAll('.chq-form-row');
+    expect(rows.length).toBe(5);
+
+    for (const labelText of ['First name', 'Last name', 'Email', 'Company', 'Title']) {
+      const input = screen.getByLabelText(new RegExp(`^${labelText}`));
+      expect(input.closest('.chq-form-row')).not.toBeNull();
+    }
+  });
+
+  it('marks Company and Title optional', () => {
+    mockApi({});
+    renderModal();
+
+    const rows = Array.from(document.querySelectorAll('.chq-form-row'));
+    const companyRow = rows.find((row) => row.textContent?.includes('Company'));
+    const titleRow = rows.find((row) => row.textContent?.includes('Title'));
+    expect(companyRow?.querySelector('.chq-form-row-optional')).not.toBeNull();
+    expect(titleRow?.querySelector('.chq-form-row-optional')).not.toBeNull();
+
+    const firstNameRow = rows.find((row) => row.textContent?.startsWith('First name'));
+    expect(firstNameRow?.querySelector('.chq-form-row-optional')).toBeNull();
+  });
+});
+
 describe('NewContactModal duplicate hint (DEC-788)', () => {
   it('shows a "Possible duplicate" hint once the check finds a match, and Create still succeeds', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });

@@ -279,6 +279,14 @@
     flex-direction: column;
     gap: 3px;
   }
+
+  .chq-contacts-duplicate-group {
+    grid-template-columns: 1fr;
+  }
+
+  .chq-contacts-duplicate-names {
+    white-space: normal;
+  }
 }
 
 /* ---------------------------------------------------------------------- */
@@ -299,14 +307,24 @@
   flex-direction: column;
 }
 
+/* Gate report: at desktop width the row wrapped (names + reason + the
+   Merge/Keep-both actions all fighting for one flex-wrap row's baseline),
+   so the actions could land on their own line under a long name list.
+   Pinned as a 3-column grid -- names get the flexible column and truncate
+   with an ellipsis rather than push the actions down; the reason caption
+   and the actions column each keep their own content width and never
+   wrap. Stacks back to a single column at the shared 700px breakpoint. */
 .chq-contacts-duplicate-group {
   padding: 14px 0;
   border-bottom: 1px solid var(--chq-hairline);
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: baseline;
-  justify-content: space-between;
   gap: 14px;
-  flex-wrap: wrap;
+}
+
+.chq-contacts-duplicate-group .chq-contacts-import-actions {
+  flex-wrap: nowrap;
 }
 
 .chq-contacts-duplicates-rule {
@@ -318,6 +336,9 @@
 .chq-contacts-duplicate-names {
   font-size: 14px;
   font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* DEC-800: every duplicate group names the reason it was surfaced ('Same
@@ -541,10 +562,26 @@
 /* ---------------------------------------------------------------------- */
 
 .chq-contacts-import {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 18px;
   max-width: 640px;
+}
+
+/* Gate report: the close glyph rendered centred in its own full-width row
+   (a bare flex-column child stretches to the column's cross-axis width, and
+   .chq-btn centres its own label) instead of sitting at the panel's
+   top-right like every ModalFrame-built dialog's Close control. Pinned to
+   the modal's own padding edge, matching .chq-modal-close-btn's corner. */
+.chq-contacts-import-close {
+  position: absolute;
+  top: 20px;
+  right: 26px;
+}
+
+.chq-contacts-import > .chq-modal-title {
+  padding-right: 40px;
 }
 
 .chq-contacts-import-drop {
