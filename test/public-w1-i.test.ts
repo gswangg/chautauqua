@@ -155,6 +155,10 @@ vi.mock("../src/server/repo/public", async () => {
       });
       return { items, total: items.length };
     }),
+    // DEC-804: the agenda/schedule dispatch now also loads getPublicTracks
+    // to feed the search form's track <select> — stub it so this test's
+    // synthetic `db` ({}) is never touched by the real repo call.
+    getPublicTracks: vi.fn(async () => [TRACK_A, TRACK_B]),
     getPublicSpeakers: vi.fn(async () => ({ items: [SPEAKER_NO_PHOTO], total: 1 })),
     getPublicSpeakerDetail: vi.fn(async (_db: unknown, _event: unknown, contactId: string) => {
       if (contactId === SPEAKER_LONG_BIO.contactId) return SPEAKER_LONG_BIO;

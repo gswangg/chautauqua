@@ -2,7 +2,7 @@
 // Split out of the former monolithic src/routes/public.tsx (contention
 // decomposition) — no behavior change.
 
-import type { PublicAgendaItem, PublicEvent } from "../../server/repo/public";
+import type { PublicAgendaItem, PublicEvent, PublicTrack } from "../../server/repo/public";
 import { MAX_ITINERARY_IDS, itineraryStorageKey, mergeItinerarySelection, mirrorItineraryCheckboxes } from "../../lib/itinerary";
 import { assignLanes } from "../../lib/overlap-lanes";
 import { publicRoomLabel } from "../../domain/schedule";
@@ -304,8 +304,50 @@ function DaySwitcher(props: {
   );
 }
 
+// DEC-804: the itinerary surfaces (/agenda, /schedule) render the SAME
+// search-and-track control the sessions list already answers via ?q=/
+// ?trackId= (DEC-783 made both real server-side predicates here). No
+// format control: the agenda/schedule repo queries apply no format
+// predicate, so a chip the server ignores would be worse than none
+// (EMB-02 family). `activeDay` is carried forward as a hidden field so a
+// search or track pick never jumps the reader off the day they're on.
+function ItinerarySearchForm(props: {
+  event: PublicEvent;
+  tracks: PublicTrack[];
+  activeTrackId: string | null;
+  activeDay: string | null;
+  q: string | null;
+  basePath: string;
+}) {
+  const { tracks, activeTrackId, activeDay, q, basePath } = props;
+  return (
+    <form method="get" action={basePath} role="search">
+      <label>
+        Search
+        <input type="search" name="q" value={q ?? ""} placeholder="Title or speaker name" />
+      </label>
+      <label>
+        Track
+        <select name="trackId">
+          <option value="" selected={!activeTrackId}>
+            All tracks
+          </option>
+          {tracks.map((t) => (
+            <option value={t.id} selected={activeTrackId === t.id}>
+              {t.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      {activeDay ? <input type="hidden" name="day" value={activeDay} /> : null}
+      <button type="submit">Search</button>
+    </form>
+  );
+}
+
 export function AgendaContent(props: {
   event: PublicEvent;
+  tracks?: PublicTrack[];
   items: PublicAgendaItem[];
   total: number;
   embed?: boolean;
@@ -318,9 +360,18 @@ export function AgendaContent(props: {
   const renderedDays = new Set(byDay.keys());
   const days = props.allDays ?? [...renderedDays];
   const base: SurfaceBase = props.embed ? "/embed" : "/e";
+  const basePath = surfacePath(props.event, "agenda", base);
   return (
     <>
       <h2>Agenda</h2>
+      <ItinerarySearchForm
+        event={props.event}
+        tracks={props.tracks ?? []}
+        activeTrackId={props.trackId ?? null}
+        activeDay={props.activeDay ?? null}
+        q={props.q ?? null}
+        basePath={basePath}
+      />
       {byDay.size === 0 ? (
         <p>No sessions scheduled yet.</p>
       ) : (
@@ -445,6 +496,7 @@ export function ItineraryScript(props: { eventSlug: string }) {
 
 export function ScheduleContent(props: {
   event: PublicEvent;
+  tracks?: PublicTrack[];
   items: PublicAgendaItem[];
   total: number;
   embed?: boolean;
@@ -457,9 +509,18 @@ export function ScheduleContent(props: {
   const renderedDays = new Set(byDay.keys());
   const days = props.allDays ?? [...renderedDays];
   const base: SurfaceBase = props.embed ? "/embed" : "/e";
+  const basePath = surfacePath(props.event, "schedule", base);
   return (
     <>
       <h2>My schedule</h2>
+      <ItinerarySearchForm
+        event={props.event}
+        tracks={props.tracks ?? []}
+        activeTrackId={props.trackId ?? null}
+        activeDay={props.activeDay ?? null}
+        q={props.q ?? null}
+        basePath={basePath}
+      />
       <p>
         Check sessions to build a personal itinerary. Your picks are saved in this browser and survive a reload.{" "}
         <a

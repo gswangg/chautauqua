@@ -185,7 +185,11 @@ describe("DEC-489: speakers/gallery `limit` behaves identically on HTML and .jso
 
 // -- agenda/schedule: `day` ------------------------------------------------
 // Two agenda items on two distinct days.
-function buildAgendaApp() {
+// DEC-804: the HTML dispatch (renderSurfaceContent) now calls getPublicTracks
+// once to feed the search form's track <select> — the plain .json feed
+// (getSurfaceFeedPage) does NOT call it, so `forJson` controls whether this
+// fake's select() sequence includes that extra call.
+function buildAgendaApp(forJson = false) {
   let selectCall = 0;
   const SESSION_ROWS = [
     { id: "sub1", seq: 1, title: "Talk 1", description: "d", icsSequence: 0 },
@@ -227,14 +231,16 @@ function buildAgendaApp() {
   const db = {
     select: () => {
       selectCall += 1;
+      const offset = forJson ? 0 : 1;
       if (selectCall === 1) return makeChain([AGENDA_EVENT_ROW]); // getPublicEventBySlug
+      if (!forJson && selectCall === 2) return makeChain([]); // DEC-804 getPublicTracks (search form's track <select>, HTML dispatch only)
       // DEC-548: the unwindowed count(*) over the same filtered join, read
       // after selectDistinct's .where() has already narrowed `matched`.
-      if (selectCall === 2) return makeChain([{ count: matched.length }]);
-      if (selectCall === 3) return makeChain([{ id: "room1", name: "Main Hall" }]); // roomRows
-      if (selectCall === 4) return makeChain(SESSION_ROWS); // hydrateSessions subRows
-      if (selectCall === 5) return makeChain([]); // hydrateSessions trackRows
-      if (selectCall === 6) return makeChain([]); // hydrateSessions speakerRows
+      if (selectCall === 2 + offset) return makeChain([{ count: matched.length }]);
+      if (selectCall === 3 + offset) return makeChain([{ id: "room1", name: "Main Hall" }]); // roomRows
+      if (selectCall === 4 + offset) return makeChain(SESSION_ROWS); // hydrateSessions subRows
+      if (selectCall === 5 + offset) return makeChain([]); // hydrateSessions trackRows
+      if (selectCall === 6 + offset) return makeChain([]); // hydrateSessions speakerRows
       return makeChain([]); // hydrateSessions EMB-01 slotRows (unused by agenda grid)
     },
     selectDistinct: () => agendaChain(),
@@ -254,7 +260,7 @@ describe("DEC-489: agenda/schedule `day` behaves identically on HTML and .json",
 
   it("agenda.json?day=<d> returns only that day's items and reports the filtered total", async () => {
     installFakeCaches();
-    const app = buildAgendaApp();
+    const app = buildAgendaApp(true);
     const res = await app.request("/embed/conf/agenda.json?day=2026-08-10", {}, TEST_ENV);
     const body = (await res.json()) as { items: Array<{ submissionId: string }>; total: number };
     expect(body.items.map((i) => i.submissionId)).toEqual(["sub1"]);
@@ -273,7 +279,7 @@ describe("DEC-489: agenda/schedule `day` behaves identically on HTML and .json",
     expect(html).not.toContain("chq-agenda-list-sub1");
 
     installFakeCaches();
-    const jsonApp = buildAgendaApp();
+    const jsonApp = buildAgendaApp(true);
     const jsonRes = await jsonApp.request("/embed/conf/schedule.json?day=2026-08-11", {}, TEST_ENV);
     const body = (await jsonRes.json()) as { items: Array<{ submissionId: string }>; total: number };
     expect(body.items.map((i) => i.submissionId)).toEqual(["sub2"]);

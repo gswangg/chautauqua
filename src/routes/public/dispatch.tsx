@@ -147,6 +147,10 @@ export async function renderSurfaceContent(
       // both `items` and `total` see the identical filter.
       const trackId = parseTrackId(query.trackId);
       const q = parseNameQuery(query.q);
+      // DEC-804: the same search/track control the sessions list renders —
+      // reuse the ONE getPublicTracks repo call (sessions already calls it)
+      // rather than adding a second query for the same list.
+      const tracks = await getPublicTracks(db, event.id);
       const { items, total } = await getPublicAgenda(db, event, { day: query.day, trackId, q });
       // DEC-768: ?day= filters `items` down to one day's rows, so the day
       // switcher can no longer derive its full day list from `items` alone
@@ -160,6 +164,7 @@ export async function renderSurfaceContent(
         content: (
           <AgendaContent
             event={event}
+            tracks={tracks}
             items={items}
             total={total}
             embed={query.embed}
@@ -174,6 +179,9 @@ export async function renderSurfaceContent(
     case "schedule": {
       const trackId = parseTrackId(query.trackId);
       const q = parseNameQuery(query.q);
+      // DEC-804: same reuse as the agenda case above — one getPublicTracks
+      // call feeds the search form's track <select>.
+      const tracks = await getPublicTracks(db, event.id);
       // DEC-783: ?trackId=/?q= are pushed into the repo query as SQL
       // predicates (never a post-fetch JS filter), so `items` and `total`
       // are ONE predicate over ONE set — same call shape as the agenda case.
@@ -187,6 +195,7 @@ export async function renderSurfaceContent(
         content: (
           <ScheduleContent
             event={event}
+            tracks={tracks}
             items={items}
             total={total}
             embed={query.embed}
