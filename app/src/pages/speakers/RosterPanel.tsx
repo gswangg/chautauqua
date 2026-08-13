@@ -9,6 +9,7 @@ import { useState } from 'react';
 import { apiPost, ApiError } from '../../lib/api';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { ImportWizard } from '../contacts/ImportWizard';
+import { FormRow, ModalFrame } from '../../components/ModalFrame';
 
 interface NewSpeakerForm {
   firstName: string;
@@ -115,95 +116,97 @@ export function RosterPanel({ mode, onClose, onChanged }: RosterPanelProps) {
       )}
 
       {mode === 'add' && (
-        <section className="chq-speakers-roster">
-          {error && <div className="chq-error">{error}</div>}
-          <form onSubmit={handleAddSpeaker} className="chq-speakers-roster-form">
-            <h2 className="chq-section-label">Add speaker</h2>
-            <label className="chq-speakers-roster-field" htmlFor="roster-first-name">
-              First name
-              <input
-                id="roster-first-name"
-                className="chq-input"
-                type="text"
-                required
-                value={form.firstName}
-                onChange={(e) => updateField('firstName', e.target.value)}
-              />
-            </label>
-            <label className="chq-speakers-roster-field" htmlFor="roster-last-name">
-              Last name
-              <input
-                id="roster-last-name"
-                className="chq-input"
-                type="text"
-                required
-                value={form.lastName}
-                onChange={(e) => updateField('lastName', e.target.value)}
-              />
-            </label>
-            <label className="chq-speakers-roster-field" htmlFor="roster-session-title">
-              Session title
-              <input
-                id="roster-session-title"
-                className="chq-input"
-                type="text"
-                required
-                placeholder="e.g. Scaling Kubernetes at 2am"
-                value={form.sessionTitle}
-                onChange={(e) => updateField('sessionTitle', e.target.value)}
-              />
-              <span className="chq-meta">Added as an accepted session on this event. No email is sent.</span>
-            </label>
-            <label className="chq-speakers-roster-field" htmlFor="roster-email">
-              Email
-              <input
-                id="roster-email"
-                className="chq-input"
-                type="email"
-                required
-                value={form.email}
-                onChange={(e) => updateField('email', e.target.value)}
-              />
-            </label>
-            <label className="chq-speakers-roster-field" htmlFor="roster-title">
-              Title
-              <input
-                id="roster-title"
-                className="chq-input"
-                type="text"
-                value={form.title}
-                onChange={(e) => updateField('title', e.target.value)}
-              />
-            </label>
-            <label className="chq-speakers-roster-field" htmlFor="roster-company">
-              Company
-              <input
-                id="roster-company"
-                className="chq-input"
-                type="text"
-                value={form.company}
-                onChange={(e) => updateField('company', e.target.value)}
-              />
-            </label>
-            <label className="chq-speakers-roster-field" htmlFor="roster-bio">
-              Bio
-              <textarea
-                id="roster-bio"
-                className="chq-textarea"
-                value={form.bio}
-                onChange={(e) => updateField('bio', e.target.value)}
-              />
-            </label>
-            <div className="chq-speakers-roster-actions">
+        <ModalFrame
+          as="form"
+          onSubmit={handleAddSpeaker}
+          title="Add speaker"
+          onClose={onClose}
+          closeDisabled={adding}
+          modalClassName="chq-speakers-add-modal"
+          actions={
+            <>
               <button type="submit" className="chq-btn chq-btn-primary" disabled={adding}>
                 {adding ? 'Adding...' : 'Add speaker'}
               </button>
               <button type="button" className="chq-btn chq-btn-secondary" onClick={onClose} disabled={adding}>
                 Cancel
               </button>
-            </div>
-          </form>
-        </section>
+            </>
+          }
+        >
+          {error && <div className="chq-error">{error}</div>}
+          <FormRow label="First name" htmlFor="roster-first-name">
+            <input
+              id="roster-first-name"
+              className="chq-input"
+              type="text"
+              required
+              value={form.firstName}
+              onChange={(e) => updateField('firstName', e.target.value)}
+            />
+          </FormRow>
+          <FormRow label="Last name" htmlFor="roster-last-name">
+            <input
+              id="roster-last-name"
+              className="chq-input"
+              type="text"
+              required
+              value={form.lastName}
+              onChange={(e) => updateField('lastName', e.target.value)}
+            />
+          </FormRow>
+          <FormRow
+            label="Session title"
+            htmlFor="roster-session-title"
+            help="Added as an accepted session on this event. No email is sent."
+          >
+            <input
+              id="roster-session-title"
+              className="chq-input"
+              type="text"
+              required
+              placeholder="e.g. Scaling Kubernetes at 2am"
+              value={form.sessionTitle}
+              onChange={(e) => updateField('sessionTitle', e.target.value)}
+            />
+          </FormRow>
+          <FormRow label="Email" htmlFor="roster-email">
+            <input
+              id="roster-email"
+              className="chq-input"
+              type="email"
+              required
+              value={form.email}
+              onChange={(e) => updateField('email', e.target.value)}
+            />
+          </FormRow>
+          <FormRow label="Title" htmlFor="roster-title">
+            <input
+              id="roster-title"
+              className="chq-input"
+              type="text"
+              value={form.title}
+              onChange={(e) => updateField('title', e.target.value)}
+            />
+          </FormRow>
+          <FormRow label="Company" htmlFor="roster-company">
+            <input
+              id="roster-company"
+              className="chq-input"
+              type="text"
+              value={form.company}
+              onChange={(e) => updateField('company', e.target.value)}
+            />
+          </FormRow>
+          <FormRow label="Bio" htmlFor="roster-bio">
+            <textarea
+              id="roster-bio"
+              className="chq-textarea"
+              value={form.bio}
+              onChange={(e) => updateField('bio', e.target.value)}
+            />
+          </FormRow>
+        </ModalFrame>
       )}
 
       {mode === 'import' && (

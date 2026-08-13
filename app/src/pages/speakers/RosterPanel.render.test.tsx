@@ -74,6 +74,16 @@ describe('RosterPanel', () => {
     expect(onClose).toHaveBeenCalled();
   });
 
+  it('renders the add-speaker form as a dialog, closed by Escape', () => {
+    const onClose = vi.fn();
+    render(<RosterPanel mode="add" onClose={onClose} onChanged={vi.fn()} />);
+
+    expect(screen.getByRole('dialog', { name: /Add speaker/i })).toBeInTheDocument();
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(onClose).toHaveBeenCalled();
+  });
+
   it('opens the import wizard scoped to the current event when mode is import', () => {
     render(<RosterPanel mode="import" onClose={vi.fn()} onChanged={vi.fn()} />);
     expect(screen.getByRole('dialog', { name: 'Import contacts' })).toBeInTheDocument();

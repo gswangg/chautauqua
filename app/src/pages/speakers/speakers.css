@@ -208,8 +208,17 @@
   display: inline-block;
 }
 
+/* DEC-880: only reset what a <button> brings that the chip doesn't want --
+   never `border: none`, or three of the four DEC-730 status modifiers
+   (pending/overdue/none) lose their outline and only the filled Confirmed
+   variant survives. Each .chq-speakers-status-* modifier keeps its own
+   border declaration. */
 .chq-participation-menu-trigger {
-  border: none;
+  appearance: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
 }
 
 .chq-participation-menu-panel {
@@ -469,29 +478,14 @@
   flex-wrap: wrap;
 }
 
-/* Roster panel (add speaker / import CSV). */
-.chq-speakers-roster {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.chq-speakers-roster-form {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.chq-speakers-roster-field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.chq-speakers-roster-actions {
-  display: flex;
-  gap: 9px;
-  flex-wrap: wrap;
+/* DEC-880: add-speaker panel, rendered through the shared ModalFrame dialog
+   contract (RosterPanel.tsx) instead of an inline fragment that used to
+   push the roster grid down the page. Fields/actions use the shared
+   .chq-form-row / .chq-modal-actions language; this only widens the
+   base 560px .chq-modal to fit the roster's longer field set. */
+.chq-speakers-add-modal {
+  width: 100%;
+  max-width: 740px;
 }
 
 .chq-check-label {
