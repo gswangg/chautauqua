@@ -73,6 +73,12 @@ export const ROUTE_MANIFEST: readonly RouteManifestEntry[] = [
     params: { id: SUBMISSION_ID },
   },
   { path: "/admin/speakers", role: "organizer" },
+  // DEC-930: per-speaker detail page (app/src/pages/speakers/SpeakerDetailPage.tsx).
+  {
+    path: "/admin/speakers/seed_contact_0001",
+    role: "organizer",
+    params: { contactId: "seed_contact_0001" },
+  },
   { path: "/admin/content", role: "organizer" },
   { path: "/admin/agenda", role: "organizer" },
   { path: "/admin/comms", role: "organizer" },
