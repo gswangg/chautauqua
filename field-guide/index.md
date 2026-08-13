@@ -19,43 +19,42 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   tree MOVES WHILE YOU PLAN; every page says who's signed in. Shared
   predicate matches printed number to query arithmetic; a "frozen" column
   is dead only if NOTHING writes it. Unpublish/narrow/unschedule SAYS so;
-  a link is the route it LANDS on and names the FILE, not a generic word;
+  a link is the route it LANDS on, names the FILE not a generic word;
   error shape follows the REQUEST's route; submitted blank CLEARS, absent
   key is silence; list+export read status through ONE reader; main can be
   RED — grep `<<<<<<<` every wave. A gate must not render children while
   identity loads. A promised column needs controls on EVERY row; two save
   paths for one row is one too many. Pills that clear each other are a
   radio group in a toggle's clothes. A per-row/per-kind count re-scanning
-  per row is N scans (even wearing a Promise.all) — one grouped query. An
+  per row is N scans (even wearing Promise.all) — one grouped query. An
   identity from a supplied email must never be ECHOED. Blank is ABSENT for
   EVERY kind. A role read off a USER is null for a row with no user. A
-  disabled input must look disabled; a status picker is not a decision. A
-  toggle needing a companion choice REVEALS it and WAITS. An absent image
-  is a DRAWN placeholder. A deterministic TIE-BREAK answers "which row"
-  but not "which of your talks" — when data admits two, ASK. A timeline
-  the data already implies needs a UNION not a migration; a fact stored
-  twice drifts. Number() parses JS literals: "1e999" is Infinity, lands
-  null in a REQUIRED column. A gate skipped for one content type is not a
-  gate. A caption for a checkbox is a silent decision. Nine date
-  complaints on six pages are one toLocaleDateString/formatter, never the
-  docstring. A page's actions belong to its title row. A prop that
-  renders nothing is a decision callers still believe in — delete, don't
-  document. Three surfaces answering "narrow this list" differently are
-  three products. An onChange that writes to the server races its own
-  reload — a row is a DRAFT until Save. A drilled edit view needs a Done.
-  Mandate files across w19-21 mostly ALREADY CLOSED — grep, cite a line.
-- FINDINGS w22 (DEC-921..925): mandate file now pure archaeology — every
-  headline item probed this wave (accent no-op, wordmark case, Reviewers
-  count, participation border, agenda clipping, fit score, reopen action)
-  was ALREADY CLOSED; the four review-lens code claims were all TRUE. Read
-  the CODE, not the list. A decision doc whose code never landed is this
-  wave's most reliable backlog — grep DEC-NNN's anchor line before
-  believing a prior summary (w21 shipped 3/5; DEC-917/920 doc-only). A
-  cascade comment that says "everything it owns" is a claim to CHECK
-  against the table list. Deleting a row that another table
-  merely POINTS AT is a 409 with no way back. A join row keyed on (task,
-  contact) is not owned by the file that completed it — reopen, don't
-  delete. Two writers logging one event invent two vocabularies; make the
-  BOUNDARY the sole author and every forgetful caller is fixed at once. A
-  confirm that writes N times can be half-confirmed. Six copies of one
-  pluralization ternary is how the seventh gets it wrong.
+  disabled input must look disabled. A toggle needing a companion choice
+  REVEALS it and WAITS. An absent image is a DRAWN placeholder. A
+  deterministic TIE-BREAK answers "which row" but not "which of your
+  talks" — when data admits two, ASK. A timeline the data already implies
+  needs a UNION not a migration. Number() parses "1e999" as Infinity,
+  lands null in a REQUIRED column. A gate skipped for one content type is
+  not a gate. Nine date complaints on six pages are one formatter, never
+  the docstring. A page's actions belong to its title row. A prop that
+  renders nothing is a decision callers still believe in — delete it.
+  Three surfaces answering "narrow this list" differently are three
+  products. An onChange that writes to server races its own reload — a
+  row is a DRAFT until Save. Mandate files w19-21 mostly ALREADY CLOSED.
+- FINDINGS w22 (DEC-921..925): mandate file archaeology — every headline
+  item probed was ALREADY CLOSED. A cascade comment claiming "everything
+  it owns" is a claim to CHECK against the table list; deleting a row
+  another table merely POINTS AT is a 409 with no way back; a join row
+  keyed on (task, contact) is not owned by the file that completed it —
+  reopen, don't delete. One BOUNDARY should be the sole author of a
+  logged event. Six copies of one ternary is how the seventh gets it wrong.
+- FINDINGS w23 (DEC-926..930): both mandate files now pure archaeology --
+  ~12 headline items reprobed, all CLOSED. Work comes from READING deletes,
+  vocabularies, per-row awaits. A delete that repoints comments must
+  repoint every OTHER pointer at that row -- a resolver that THROWS on a
+  missing row turns a cheap orphan into a permanent 500 elsewhere. A batch
+  reader omitting the one column its caller needs re-introduces the N
+  queries it claims to avoid. `x as Input["k"]` at a call site hides a
+  value the server already accepts behind a hand-listed client vocabulary.
+  A confirm dialog with no BODY names nothing -- check the dialog next to
+  it. Every new /api/v1 route lands in src/routes/docs.tsx.
