@@ -557,7 +557,9 @@ describe("sessionTimeLabel", () => {
   });
 
   it("formats a scheduled session's day + time range", () => {
-    expect(sessionTimeLabel("2027-05-12", 540, 600)).toBe("2027-05-12, 9:00 AM–10:00 AM");
+    // DEC-782: routes through the card's formatDay — a weekday-named
+    // calendar date, never the raw ISO 'YYYY-MM-DD'.
+    expect(sessionTimeLabel("2027-05-12", 540, 600)).toBe("Wed, May 12, 2027, 9:00 AM–10:00 AM");
   });
 });
 

@@ -4,7 +4,8 @@
 
 import type { PublicEvent, PublicSpeakerDetail, PublicSessionDetail } from "../../server/repo/public";
 import { surfacePath, speakerDetailPath, sessionDetailPath, SURFACE_LABELS, type Surface, type SurfaceBase } from "./shell";
-import { TrackChips, FormatChip, SessionDescription, formatMinutes } from "./cards";
+import { TrackChips, FormatChip, SessionDescription, formatMinutes, formatDay } from "./cards";
+import { ItineraryScript } from "./agenda";
 
 export function BackLink(props: { event: PublicEvent; from: Surface; base?: SurfaceBase }) {
   const { event, from, base = "/e" } = props;
@@ -17,7 +18,7 @@ export function BackLink(props: { event: PublicEvent; from: Surface; base?: Surf
 
 export function sessionTimeLabel(day: string | null, startMin: number | null, endMin: number | null): string | null {
   if (day === null || startMin === null || endMin === null) return null;
-  return `${day}, ${formatMinutes(startMin)}–${formatMinutes(endMin)}`;
+  return `${formatDay(day)}, ${formatMinutes(startMin)}–${formatMinutes(endMin)}`;
 }
 
 export function SpeakerDetailContent(props: {
@@ -101,7 +102,23 @@ export function SessionDetailContent(props: {
           ))}
         </p>
         {session.description ? <p>{session.description}</p> : null}
+        {base === "/e" ? (
+          <>
+            <label class="chq-pub-save">
+              <input type="checkbox" class="chq-itinerary-toggle" value={session.id} />
+              <span class="chq-pub-save-off">Save</span>
+              <span class="chq-pub-save-on">Saved</span>
+            </label>
+            <p>
+              <span id="chq-ics-count">0 picked</span> ·{" "}
+              <a id="chq-ics-link" class="chq-pub-itinerary-cta" href={`/e/${event.slug}/schedule.ics`} aria-disabled="true">
+                Download .ics
+              </a>
+            </p>
+          </>
+        ) : null}
       </div>
+      {base === "/e" ? <ItineraryScript eventSlug={event.slug} /> : null}
     </>
   );
 }
