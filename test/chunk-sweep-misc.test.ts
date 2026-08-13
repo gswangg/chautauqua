@@ -62,8 +62,14 @@ describe("DEC-104 chunk sweep — misc lane", () => {
 
   it("reminders.ts: sendReminderEmails stamps lastRemindedAt in chunkIds batches", () => {
     const src = readSrc("reminders.ts");
+    // wave-48: the stamped id list is now `sentAssignmentIds` — accumulated
+    // across the send loop (only recipients whose mail actually went out) and
+    // flushed in ONE chunked UPDATE after the loop, rather than an UPDATE per
+    // recipient. The chunking guard itself is unchanged, only the accumulator
+    // name; the raw-list forms stay forbidden.
     expect(src).not.toMatch(/\.where\(inArray\(schema\.taskAssignment\.id, assignmentIds\)\)/);
-    expect(src).toMatch(/for \(const batch of chunkIds\(assignmentIds\)\) \{[\s\S]*?inArray\(schema\.taskAssignment\.id, batch\)/);
+    expect(src).not.toMatch(/\.where\(inArray\(schema\.taskAssignment\.id, sentAssignmentIds\)\)/);
+    expect(src).toMatch(/for \(const batch of chunkIds\(sentAssignmentIds\)\) \{[\s\S]*?inArray\(schema\.taskAssignment\.id, batch\)/);
     // exempt bounded track filter (DEC-104-exempt) still present once.
     expect((src.match(/inArray\(schema\.taskAssignment\.taskId, taskIds\)/g) ?? []).length).toBe(1);
   });

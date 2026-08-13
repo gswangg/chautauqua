@@ -309,6 +309,7 @@
 }
 
 .chq-participation-menu-identity,
+.chq-participation-menu-identity-sub,
 .chq-participation-menu-footer {
   margin: 0;
   padding: 2px 6px;
@@ -319,6 +320,12 @@
 .chq-participation-menu-identity {
   font-weight: 700;
   color: var(--chq-ink);
+}
+
+/* DEC-694 (wave-48 amendment c): the company / portal-account line is the
+   SECOND line of one two-line panel header, so the header's hairline divider
+   sits below this line rather than between it and the name above. */
+.chq-participation-menu-identity-sub {
   padding-bottom: 6px;
   border-bottom: 1px solid var(--chq-hairline);
   margin-bottom: 4px;
