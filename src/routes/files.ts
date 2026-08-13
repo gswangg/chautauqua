@@ -503,18 +503,25 @@ fileApiRoutes.delete("/files/:fileId", csrfJson, async (c) => {
     throw new ApiError("forbidden", "Requires organizer or the uploading speaker");
   }
 
-  // DEC-713: the R2 object is deleted through the same store abstraction the
-  // upload path uses, and BEFORE any DB write — if the object delete throws,
-  // nothing here has mutated yet, so the row (and chain) stays intact and
-  // the request just errors. Never delete the row first and orphan the object.
-  const store = makeFileStore(c.env.FILES);
-  await store.delete(scope.r2Key);
-
+  // DEC-713 ordering (amended wave 50): the DB write commits FIRST, then the
+  // R2 object is deleted. The two failure modes are not symmetric — a
+  // committed row pointing at missing bytes 404s forever and silently
+  // breaks the "history complete and downloadable" guarantee, while an
+  // object outliving its row is just an unreferenced blob, invisible and
+  // reclaimable. A store.delete throw after the commit is logged and
+  // swallowed: a committed delete must never be reported as a failure.
   await deleteFileVersion(c.var.db, {
     fileId,
     deletedByUserId: auth.userId,
     deletedByContactId: auth.contactId ?? null,
   });
+
+  const store = makeFileStore(c.env.FILES);
+  try {
+    await store.delete(scope.r2Key);
+  } catch (err) {
+    console.error(`files/:fileId delete: store.delete failed for file ${fileId} after row commit (key ${scope.r2Key})`, err);
+  }
 
   return c.json({ id: fileId, deleted: true });
 });

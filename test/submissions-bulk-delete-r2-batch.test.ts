@@ -1,10 +1,12 @@
-// DEC-713 amendment (wave 47) coverage: POST /events/:eventId/submissions/delete
+// DEC-713 amendment (wave 50) coverage: POST /events/:eventId/submissions/delete
 // must delete every eligible submission's R2 deliverables via FileStore's
 // batched deleteMany (O(chunks) R2 round trips), not a per-key loop, and
-// must still finish every R2 delete BEFORE the first DB commit statement
-// (DEC-713's retryable ordering). Mirrors test/submission-delete.test.ts's
-// fake-db harness (drizzle-orm query-condition builders mocked to a tiny
-// predicate AST evaluated against in-memory rows).
+// must commit the DB row delete BEFORE the R2 objects are removed — a
+// committed row must never point at bytes that vanished silently, whereas an
+// orphaned object is just an unreferenced blob. Mirrors
+// test/submission-delete.test.ts's fake-db harness (drizzle-orm
+// query-condition builders mocked to a tiny predicate AST evaluated against
+// in-memory rows).
 
 import { describe, expect, it, vi } from "vitest";
 
@@ -277,8 +279,8 @@ async function buildApp(db: Db, files: R2Bucket) {
   return app;
 }
 
-describe("POST /events/:eventId/submissions/delete — R2 batch delete (DEC-713 wave-47 amendment)", () => {
-  it("batches R2 deletes (O(chunks), not O(keys)), deletes the exact key set, before any DB commit, and keeps {deleted, refused}", async () => {
+describe("POST /events/:eventId/submissions/delete — R2 batch delete (DEC-713 wave-50 amendment)", () => {
+  it("batches R2 deletes (O(chunks), not O(keys)), deletes the exact key set, after the DB commit, and keeps {deleted, refused}", async () => {
     const state = fixture();
     const log: EventLog = [];
     const db = makeFakeDb(state, log);
@@ -310,11 +312,12 @@ describe("POST /events/:eventId/submissions/delete — R2 batch delete (DEC-713 
     // item's fileR2Keys.
     expect(deleteManyCalls[0]?.slice().sort()).toEqual(expectedKeys.slice().sort());
 
-    // (c) every R2 delete happens before the first DB commit statement.
+    // (c) the DB commit happens before any R2 delete (row first, bytes
+    // second — DEC-713 amendment wave 50).
     const firstDbIdx = log.findIndex((e) => e.startsWith("db:"));
     const firstR2Idx = log.findIndex((e) => e === "r2:delete");
-    expect(firstR2Idx).toBeGreaterThanOrEqual(0);
-    expect(firstDbIdx).toBeGreaterThan(firstR2Idx);
+    expect(firstDbIdx).toBeGreaterThanOrEqual(0);
+    expect(firstR2Idx).toBeGreaterThan(firstDbIdx);
 
     // (d) DB rows are actually gone (commit ran) and refusal semantics are
     // unchanged — an id belonging to another event is refused, not thrown.
