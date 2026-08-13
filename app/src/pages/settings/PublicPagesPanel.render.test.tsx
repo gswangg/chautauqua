@@ -29,7 +29,7 @@ afterEach(() => {
 function mockEvent(overrides: Record<string, unknown> = {}) {
   return mockApi({
     [`GET /api/v1/events/${EVENT_ID}`]: { id: EVENT_ID, slug: 'devcon-2026', name: 'DevCon 2026' },
-    [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([], { total: 0 }),
+    [`GET /api/v1/events/${EVENT_ID}/public-surfaces`]: { sessions: 0, speakers: 0, scheduled: 0 },
     [`GET /api/v1/events/${EVENT_ID}/forms`]: { id: 'form1', eventId: EVENT_ID, openDate: null, closeDate: null },
     [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
     ...overrides,
@@ -72,8 +72,8 @@ describe('PublicPagesPanel', () => {
     expect(within(rows[5]!).getByText('Open')).toBeInTheDocument();
   });
 
-  it('derives a live state from a real accepted-submission count, never a hardcoded string', async () => {
-    mockEvent({ [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([], { total: 6 }) });
+  it('derives a live state from a real public-surface count, never a hardcoded string', async () => {
+    mockEvent({ [`GET /api/v1/events/${EVENT_ID}/public-surfaces`]: { sessions: 6, speakers: 6, scheduled: 6 } });
     render(<PublicPagesPanel />);
 
     await waitFor(() => {
@@ -84,6 +84,26 @@ describe('PublicPagesPanel', () => {
     expect(within(rows[0]!).getByText('Live · 6 published')).toBeInTheDocument();
     // DEC-747: state pill tone is a NAMED class, not a copied color literal.
     expect(within(rows[0]!).getByText('Live · 6 published')).toHaveClass('chq-settings-public-pages-state-live');
+  });
+
+  it('DEC-767: Speakers and Sessions can show DIFFERENT numbers, sourced from different predicates', async () => {
+    mockEvent({
+      [`GET /api/v1/events/${EVENT_ID}/public-surfaces`]: { sessions: 9, speakers: 3, scheduled: 2 },
+    });
+    render(<PublicPagesPanel />);
+
+    await waitFor(() => {
+      expect(screen.getByText('/e/devcon-2026/sessions')).toBeInTheDocument();
+    });
+
+    const rows = screen.getAllByRole('listitem');
+    // Sessions/Agenda/Schedule read the session count.
+    expect(within(rows[0]!).getByText('Live · 9 published')).toBeInTheDocument();
+    expect(within(rows[2]!).getByText('Live · 9 published')).toBeInTheDocument();
+    expect(within(rows[3]!).getByText('Live · 9 published')).toBeInTheDocument();
+    // Speakers/Gallery read the (different) speaker count.
+    expect(within(rows[1]!).getByText('Live · 3 published')).toBeInTheDocument();
+    expect(within(rows[4]!).getByText('Live · 3 published')).toBeInTheDocument();
   });
 
   it('opens the existing EmbedsPanel builder from an Embed code control without replacing the list', async () => {
