@@ -79,6 +79,11 @@ function BatchRecipients({ eventId, items, error }: RecipientsState & { eventId:
           <span className="chq-comms-history-subject">{row.subject}</span>
           <span>{row.toEmail}</span>
           <span className="chq-meta">{row.status}</span>
+          {/* DEC-846's "history owes the WORDS" half is served by DEC-833's
+              disclosure below: the list projection stays narrow (DEC-543,
+              which DEC-833 explicitly keeps), and the stored body is fetched
+              one row at a time and rendered verbatim, whitespace preserved,
+              for a failed attempt exactly as for a sent one. */}
           <SendDetailDisclosure eventId={eventId} emailId={row.id} />
         </div>
       ))}

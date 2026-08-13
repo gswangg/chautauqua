@@ -413,3 +413,47 @@ describe('ComposeWizard feedback plan picker (DEC-682)', () => {
     });
   });
 });
+
+// DEC-846: the composer sends what it shows -- selecting a template only
+// prefills subject/bodyText, so an edit made afterward (including a merge
+// chip insert) is what actually goes out, and templateId is never sent.
+describe('ComposeWizard sends edited body, not the template id (DEC-846)', () => {
+  it('posts the edited subject/bodyText after selecting a template, with no templateId', async () => {
+    const fetchMock = mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope(page1(), { total: 340, page: 1, perPage: 50 }),
+      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([
+        { id: 'tpl-1', eventId: EVENT_ID, name: 'Acceptance', subject: 'You are in', bodyText: 'Congrats {speaker_name}' },
+      ]),
+      [`POST /api/v1/events/${EVENT_ID}/compose/preview`]: { items: [] },
+    });
+
+    render(<ComposeWizard eventId={EVENT_ID} />);
+
+    await screen.findByText('Talk number 1');
+    fireEvent.click(screen.getByLabelText('Select Talk number 1'));
+    fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
+
+    const templateSelect = await screen.findByLabelText('Template');
+    fireEvent.change(templateSelect, { target: { value: 'tpl-1' } });
+
+    const subject = screen.getByLabelText('Subject') as HTMLInputElement;
+    const body = screen.getByLabelText('Body') as HTMLTextAreaElement;
+    expect(subject.value).toBe('You are in');
+    expect(body.value).toBe('Congrats {speaker_name}');
+
+    // Edit both fields after the template prefill.
+    fireEvent.change(subject, { target: { value: 'You are in (edited)' } });
+    fireEvent.change(body, { target: { value: 'Congrats {speaker_name}, edited body' } });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Next: preview' }));
+
+    await waitFor(() => {
+      const previewCalls = fetchMock.mock.calls.filter((call) => String(call[0]).includes('/compose/preview'));
+      expect(previewCalls.length).toBeGreaterThan(0);
+      const lastBody = JSON.parse(String(previewCalls[previewCalls.length - 1]?.[1]?.body ?? '{}'));
+      expect(lastBody.templateId).toBeUndefined();
+      expect(lastBody.subject).toBe('You are in (edited)');
+      expect(lastBody.bodyText).toBe('Congrats {speaker_name}, edited body');
+    });
+  });
+});

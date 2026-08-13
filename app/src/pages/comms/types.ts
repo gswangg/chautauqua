@@ -37,8 +37,10 @@ export interface RenderedRecipient {
 
 // DEC-543: narrow list projection returned by GET .../email-log — mirrors
 // src/server/repo/email.ts EmailLogListRow. No bodyText/bodyHtml/icsText/
-// icsFilename: HistoryTab.tsx never renders them, and the API no longer
-// sends them on the list endpoint.
+// icsFilename: the API does not send them on the list endpoint, and
+// DEC-846's "history owes the WORDS" half is served by the DEC-833
+// per-row detail fetch (EmailLogDetail, below) rather than by widening
+// this projection back out.
 export interface EmailLogRow {
   id: string;
   eventName: string;

@@ -140,11 +140,13 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
     if (effectiveIncludeFeedback && effectiveFeedbackPlanId) {
       base.feedbackPlanId = effectiveFeedbackPlanId;
     }
-    // DEC-832: a template is a starting point, not a mode — selecting one
-    // copies its text into these fields and the composer thereafter ALWAYS
-    // posts its own subject/bodyText, so an edited template body is what
-    // actually gets sent (never the stored template, silently ignoring the
-    // organizer's typing).
+    // DEC-832/DEC-846: a template is a starting point, not a mode — selecting
+    // one only prefills these fields (below, in the template <select>
+    // onChange) and the composer thereafter ALWAYS posts its own
+    // subject/bodyText. templateId is never sent, so every later edit
+    // (including DEC-793 merge chip inserts) is what actually goes out and
+    // history shows the words — never the stored template, silently ignoring
+    // the organizer's typing.
     base.subject = subject;
     base.bodyText = bodyText;
     return base;

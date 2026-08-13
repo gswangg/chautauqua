@@ -76,7 +76,14 @@ describe('RecentSends', () => {
   it('without onSeeAll, renders the recipients disclosure and drills in on click (History mount)', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/email-log`]: listEnvelope([
-        { id: 'log-1', eventName: 'Evt', toEmail: 'ada@example.com', subject: 'You are in!', status: 'sent', sentAt: 1700000000000 },
+        {
+          id: 'log-1',
+          eventName: 'Evt',
+          toEmail: 'ada@example.com',
+          subject: 'You are in!',
+          status: 'sent',
+          sentAt: 1700000000000,
+        },
       ]),
     });
 
@@ -95,7 +102,8 @@ describe('RecentSends', () => {
     expect(screen.queryByText('ada@example.com')).not.toBeInTheDocument();
   });
 
-  // DEC-833: each recipient row gets a quiet "Show what was sent" disclosure
+  // DEC-833 (+ DEC-846's "history owes the WORDS" half): each recipient row
+  // gets a quiet "Show what was sent" disclosure
   // that fetches the full stored row once and renders subject+bodyText
   // verbatim -- including for a failed attempt.
   it('shows what was sent for a recipient row, verbatim, including a failed attempt', async () => {
