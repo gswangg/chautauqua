@@ -15,7 +15,7 @@ import { makeFileStore } from "../server/context";
 import { newId } from "../domain/ids";
 import { buildZip } from "../lib/zip";
 import { clampPage, clampPerPage, listPerPage } from "../lib/pagination";
-import { DEC_013, DEC_461, DEC_465, DEC_468, DEC_471, DEC_713 } from "../decisions";
+import { DEC_013, DEC_461, DEC_465, DEC_468, DEC_471, DEC_713, DEC_965 } from "../decisions";
 
 void DEC_013;
 void DEC_461;
@@ -23,6 +23,7 @@ void DEC_465;
 void DEC_468;
 void DEC_471;
 void DEC_713;
+void DEC_965;
 import {
   FILE_KINDS,
   isImageContentType,
@@ -181,6 +182,7 @@ fileApiRoutes.get("/submissions/:id/files", async (c) => {
       previousFileId: v.previousFileId,
       uploadedByContactId: v.uploadedByContactId,
       createdAt: v.createdAt,
+      versionNo: v.versionNo,
     })),
   );
   const page = clampPage(c.req.query("page"));

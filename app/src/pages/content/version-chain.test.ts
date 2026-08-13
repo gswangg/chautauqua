@@ -14,6 +14,7 @@ function file(overrides: Partial<DeliverableFile> = {}): DeliverableFile {
     uploadedByContactId: 'c1',
     uploaderName: null,
     createdAt: 1000,
+    versionNo: 1,
     ...overrides,
   };
 }

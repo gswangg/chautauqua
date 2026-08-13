@@ -79,12 +79,14 @@ export function VersionList({ versions, onDeleted, contentStatus, statusChangedA
         {chains.map((chain, chainIdx) =>
           chain.map((v, idxInChain) => {
             const isCurrent = chainIdx === 0 && idxInChain === 0;
-            // DEC-901: the newest row always names its version number AND
-            // the marker -- never the marker alone, so the one row that
+            // DEC-901/965: the newest row always names its version number
+            // AND the marker -- never the marker alone, so the one row that
             // matters isn't the only row whose position in the chain can't
-            // be read.
-            const versionNumber = chain.length - idxInChain;
-            const tag = isCurrent ? `v${versionNumber} · Latest` : `v${versionNumber}`;
+            // be read. DEC-965: the tag reads the row's own STORED
+            // version_no (a version number is an identity, not a chain
+            // position) so a deleted middle version never renumbers its
+            // surviving siblings.
+            const tag = isCurrent ? `v${v.versionNo} · Latest` : `v${v.versionNo}`;
             // DEC-901: a row superseded by a later upload in the SAME
             // chain (idxInChain > 0 means this chain's own head, at index
             // 0, replaced it) carries REPLACED -- never across unrelated

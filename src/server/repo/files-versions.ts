@@ -8,11 +8,12 @@ import * as schema from "../../db/schema";
 import { newId } from "../../domain/ids";
 import type { FileKind } from "../../domain/files";
 import { chunkIds } from "../../lib/chunk";
-import { DEC_244, DEC_713, DEC_818 } from "../../decisions";
+import { DEC_244, DEC_713, DEC_818, DEC_965 } from "../../decisions";
 
 void DEC_244;
 void DEC_713;
 void DEC_818;
+void DEC_965;
 
 // ---------------------------------------------------------------------------
 // Version-chain lookups
@@ -305,6 +306,9 @@ export interface FileVersion {
   previousFileId: string | null;
   uploadedByContactId: string | null;
   createdAt: number;
+  /** DEC-965: the row's own stored version_no (DEC-818 identity) — carried
+   * end-to-end instead of re-derived from chain position. */
+  versionNo: number;
 }
 
 export type FilesByKind = Record<string, FileVersion[]>;
@@ -322,6 +326,7 @@ export async function listSubmissionFiles(db: Db, submissionId: string): Promise
       previousFileId: schema.file.previousFileId,
       uploadedByContactId: schema.file.uploadedByContactId,
       createdAt: schema.file.createdAt,
+      versionNo: schema.file.versionNo,
     })
     .from(schema.file)
     .where(eq(schema.file.submissionId, submissionId))
@@ -329,6 +334,9 @@ export async function listSubmissionFiles(db: Db, submissionId: string): Promise
 
   const grouped: FilesByKind = {};
   for (const row of rows) {
+    if (row.versionNo === null || row.versionNo === undefined) {
+      throw new Error(`listSubmissionFiles: file ${row.id} has no stored version_no -- data corruption`);
+    }
     const version: FileVersion = {
       id: row.id,
       filename: row.filename,
@@ -337,6 +345,7 @@ export async function listSubmissionFiles(db: Db, submissionId: string): Promise
       previousFileId: row.previousFileId,
       uploadedByContactId: row.uploadedByContactId,
       createdAt: row.createdAt.getTime(),
+      versionNo: row.versionNo,
     };
     (grouped[row.kind] ??= []).push(version);
   }

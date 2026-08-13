@@ -24,14 +24,15 @@ function file(overrides: Partial<DeliverableFile> = {}): DeliverableFile {
     uploadedByContactId: 'c1',
     uploaderName: null,
     createdAt: 1000,
+    versionNo: 1,
     ...overrides,
   };
 }
 
 describe('VersionList', () => {
   it('labels a single chain Latest/v1', () => {
-    const v1 = file({ id: 'v1', filename: 'slides-v1.pdf', createdAt: 100, previousFileId: null });
-    const v2 = file({ id: 'v2', filename: 'slides-v2.pdf', createdAt: 200, previousFileId: 'v1' });
+    const v1 = file({ id: 'v1', filename: 'slides-v1.pdf', createdAt: 100, previousFileId: null, versionNo: 1 });
+    const v2 = file({ id: 'v2', filename: 'slides-v2.pdf', createdAt: 200, previousFileId: 'v1', versionNo: 2 });
     render(<VersionList versions={[v2, v1]} onDeleted={() => {}} />);
     const items = screen.getAllByRole('listitem');
     expect(items[0]).toHaveTextContent('Latest');
@@ -42,8 +43,8 @@ describe('VersionList', () => {
   // marker (never the marker alone), and the version it replaced carries
   // REPLACED.
   it('labels the newest row "v<N> · Latest" and the version it replaced REPLACED', () => {
-    const v1 = file({ id: 'v1', filename: 'slides-v1.pdf', createdAt: 100, previousFileId: null });
-    const v2 = file({ id: 'v2', filename: 'slides-v2.pdf', createdAt: 200, previousFileId: 'v1' });
+    const v1 = file({ id: 'v1', filename: 'slides-v1.pdf', createdAt: 100, previousFileId: null, versionNo: 1 });
+    const v2 = file({ id: 'v2', filename: 'slides-v2.pdf', createdAt: 200, previousFileId: 'v1', versionNo: 2 });
     render(<VersionList versions={[v2, v1]} onDeleted={() => {}} />);
     const items = screen.getAllByRole('listitem');
     expect(items[0]).toHaveTextContent('v2 · Latest');
@@ -87,6 +88,10 @@ describe('VersionList', () => {
     const taskOld = file({ id: 'task-old', filename: 'slides.pdf', createdAt: 10, previousFileId: null });
     const taskNew = file({ id: 'task-new', filename: 'slides.pdf', createdAt: 20, previousFileId: 'task-old' });
 
+    orgOld.versionNo = 1;
+    orgNew.versionNo = 2;
+    taskOld.versionNo = 1;
+    taskNew.versionNo = 2;
     render(<VersionList versions={[orgNew, orgOld, taskNew, taskOld]} onDeleted={() => {}} />);
     const items = screen.getAllByRole('listitem');
     expect(items).toHaveLength(4);
@@ -98,6 +103,19 @@ describe('VersionList', () => {
     expect(items[2]).toHaveTextContent('v2');
     expect(items[2]).not.toHaveTextContent('Latest');
     expect(items[3]).toHaveTextContent('v1');
+  });
+
+  // DEC-965: a version number is the row's STORED identity, not a chain
+  // position -- when a middle version is deleted the survivors keep their
+  // own version_no rather than being renumbered to look contiguous.
+  it('renders the stored version_no for a chain with a deleted middle version, never a re-derived position', () => {
+    const v1 = file({ id: 'v1', filename: 'slides-v1.pdf', createdAt: 100, previousFileId: null, versionNo: 1 });
+    const v3 = file({ id: 'v3', filename: 'slides-v3.pdf', createdAt: 300, previousFileId: 'v1', versionNo: 3 });
+    render(<VersionList versions={[v3, v1]} onDeleted={() => {}} />);
+    const items = screen.getAllByRole('listitem');
+    expect(items[0]).toHaveTextContent('v3 · Latest');
+    expect(items[1]).toHaveTextContent('v1');
+    expect(screen.queryByText('v2')).not.toBeInTheDocument();
   });
 
   it('renders nothing-uploaded-yet copy for an empty list', () => {
