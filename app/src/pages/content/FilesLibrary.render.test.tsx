@@ -1,7 +1,8 @@
-// DEC-161 render smoke for the DEC-159/DEC-160 central files library:
-// mounts against real /api/v1/events/:eventId/files list-envelope shapes
-// and asserts a marker element renders with zero console.error.
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+// DEC-161/773 render smoke for the central files library: mounts against
+// real /api/v1/events/:eventId/files list-envelope shapes (ONE list —
+// deliverable version chains AND headshot rows, no tabs) and asserts a
+// marker element renders with zero console.error.
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { FilesLibrary } from './FilesLibrary';
@@ -46,7 +47,7 @@ describe('FilesLibrary render smoke', () => {
       expect(screen.getByTestId('files-library')).toBeInTheDocument();
     });
     expect(await screen.findByText('slides.pdf')).toBeInTheDocument();
-    expect(screen.getByText('Priya Raman')).toBeInTheDocument();
+    expect(screen.getAllByText('Priya Raman').length).toBeGreaterThan(0);
     expect(screen.getByRole('button', { name: 'Download ZIP (0)' })).toBeInTheDocument();
 
     // Filename, session, and Versions cells must all be real focusable
@@ -62,10 +63,14 @@ describe('FilesLibrary render smoke', () => {
     fireEvent.click(openButtons[2]!);
     expect(onSelectSubmission).toHaveBeenCalledWith('sub-1');
 
+    // A per-row Download link to the authenticated file-serve route.
+    const downloadLink = screen.getByRole('link', { name: 'Download slides.pdf' });
+    expect(downloadLink).toHaveAttribute('href', '/files/file-v2');
+
     consoleError.mockRestore();
   });
 
-  it('renders a dash instead of a dead control for rows with no submissionId', async () => {
+  it('renders a headshot row as a plain filename with a dash instead of a dead control', async () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {
       throw new Error('console.error called during render');
     });
@@ -73,17 +78,17 @@ describe('FilesLibrary render smoke', () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/files`]: listEnvelope([
         {
-          rootFileId: 'file-orphan',
-          latestFileId: 'file-orphan',
-          filename: 'orphan.pdf',
-          kind: 'presentation',
+          rootFileId: 'file-hs-1',
+          latestFileId: 'file-hs-1',
+          filename: 'priya.jpg',
+          kind: 'headshot',
           submissionId: '',
           submissionRef: '',
           submissionTitle: '',
-          speakerName: 'Unknown',
+          speakerName: 'Priya Raman',
           uploadedAt: 1700000000000,
           versionCount: 1,
-          sizeBytes: 1234567,
+          sizeBytes: 234567,
           uploaderName: 'Priya Raman',
         },
       ]),
@@ -91,9 +96,16 @@ describe('FilesLibrary render smoke', () => {
 
     render(<FilesLibrary eventId={EVENT_ID} onSelectSubmission={() => {}} />);
 
-    expect(await screen.findByText('orphan.pdf')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /Open orphan\.pdf/ })).not.toBeInTheDocument();
+    expect(await screen.findByText('priya.jpg')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Open priya\.jpg/ })).not.toBeInTheDocument();
     expect(screen.getByText('—')).toBeInTheDocument();
+    expect(screen.getByText('Headshot')).toBeInTheDocument();
+
+    // A headshot row's Download link serves through the gated headshot
+    // route, never /files/:fileId (headshots are structurally disjoint
+    // from submission deliverables — DEC-773).
+    const downloadLink = screen.getByRole('link', { name: 'Download priya.jpg' });
+    expect(downloadLink).toHaveAttribute('href', '/headshots/file-hs-1');
 
     consoleError.mockRestore();
   });
@@ -116,7 +128,7 @@ describe('FilesLibrary render smoke', () => {
     consoleError.mockRestore();
   });
 
-  it('renders deliverable-type chips and a search box (DEC-344 server-side filtering)', async () => {
+  it('renders file-type chips (including a counted Headshot chip) and a search box, no tab strip', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/files`]: listEnvelope([]),
     });
@@ -127,18 +139,22 @@ describe('FilesLibrary render smoke', () => {
       expect(screen.getByText('No deliverable files yet.')).toBeInTheDocument();
     });
 
-    // w1-f: the kind <select> is replaced by a chip strip whose counts come
-    // from the list endpoint's own totals (mockApi returns the same
-    // envelope regardless of query — here that's total: 0 for every kind).
-    const typeTabs = screen.getByRole('tablist', { name: 'Deliverable type' });
+    // w1-f/DEC-773: the kind <select> is replaced by a chip strip whose
+    // counts come from the list endpoint's own totals (mockApi returns the
+    // same envelope regardless of query — here that's total: 0 for every
+    // kind). There is no separate Deliverables/Headshots tablist anymore.
+    expect(screen.queryByRole('tab', { name: 'Deliverables' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: 'Headshots' })).not.toBeInTheDocument();
+    const typeTabs = screen.getByRole('tablist', { name: 'File type' });
     expect(within(typeTabs).getByRole('tab', { name: 'All types' })).toHaveClass('is-active');
     expect(within(typeTabs).getByRole('tab', { name: /Presentation/ })).toBeInTheDocument();
     expect(within(typeTabs).getByRole('tab', { name: /Poster/ })).toBeInTheDocument();
     expect(within(typeTabs).getByRole('tab', { name: /Handout/ })).toBeInTheDocument();
+    expect(within(typeTabs).getByRole('tab', { name: /Headshot/ })).toBeInTheDocument();
     expect(screen.getByLabelText('Search files')).toBeInTheDocument();
   });
 
-  it('renders a stat line and Download all button sourced from the list endpoint total, not the page', async () => {
+  it('renders a stat line as "N files · size" and a Download all button sourced from the list endpoint, not the page', async () => {
     const items = Array.from({ length: 3 }, (_, i) => ({
       rootFileId: `file-${i}`,
       latestFileId: `file-${i}-latest`,
@@ -155,14 +171,20 @@ describe('FilesLibrary render smoke', () => {
     }));
 
     mockApi({
-      // Envelope's own `total` (31) is far larger than the 3 items on this
-      // page — the stat line must read 31, never items.length.
-      [`GET /api/v1/events/${EVENT_ID}/files`]: listEnvelope(items, { total: 31, page: 1, perPage: 3 }),
+      // Envelope's own `total`/`totalSizeBytes` (31 files, 412 MB) is far
+      // larger than the 3 items on this page — the stat line must read
+      // those, never items.length/a page-derived sum.
+      [`GET /api/v1/events/${EVENT_ID}/files`]: listEnvelope(items, {
+        total: 31,
+        totalSizeBytes: 412 * 1024 * 1024,
+        page: 1,
+        perPage: 3,
+      }),
     });
 
     render(<FilesLibrary eventId={EVENT_ID} onSelectSubmission={() => {}} />);
 
-    expect(await screen.findByText('31 files')).toBeInTheDocument();
+    expect(await screen.findByText('31 files · 412.0 MB')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Download all' })).toBeEnabled();
   });
 
@@ -373,51 +395,5 @@ describe('FilesLibrary render smoke', () => {
         'Requested files total 42.0MB, which exceeds the 40MB archive limit. Select fewer files.',
       );
     });
-  });
-
-  it('DEC-669: switches to a separately-paginated Headshots tab that queries the headshots endpoint', async () => {
-    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {
-      throw new Error('console.error called during render');
-    });
-
-    mockApi({
-      [`GET /api/v1/events/${EVENT_ID}/files`]: listEnvelope([]),
-      [`GET /api/v1/events/${EVENT_ID}/headshots`]: listEnvelope([
-        {
-          fileId: 'file-hs-1',
-          filename: 'priya.jpg',
-          sizeBytes: 234567,
-          contentType: 'image/jpeg',
-          createdAt: 1700000000000,
-          contactId: 'contact-1',
-          contactName: 'Priya Raman',
-          company: 'Acme Corp',
-        },
-      ]),
-    });
-
-    render(<FilesLibrary eventId={EVENT_ID} onSelectSubmission={() => {}} />);
-
-    await waitFor(() => {
-      expect(screen.getByText('No deliverable files yet.')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByRole('tab', { name: 'Headshots' }));
-
-    expect(await screen.findByText('priya.jpg')).toBeInTheDocument();
-    const row = screen.getByText('priya.jpg').closest('tr');
-    if (!row) throw new Error('headshot row not found');
-    expect(row).toHaveTextContent('Priya Raman');
-    expect(row).toHaveTextContent('Acme Corp');
-    expect(row).toHaveTextContent('229.1 KB');
-
-    const link = screen.getByRole('link', { name: 'priya.jpg' });
-    expect(link).toHaveAttribute('href', '/headshots/file-hs-1');
-
-    // Bulk-download / select-all controls stay on the deliverables tab only.
-    expect(screen.queryByLabelText('Select all files on this page')).not.toBeInTheDocument();
-    expect(screen.queryByText(/Download ZIP/)).not.toBeInTheDocument();
-
-    consoleError.mockRestore();
   });
 });

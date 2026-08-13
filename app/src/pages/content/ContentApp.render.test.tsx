@@ -244,17 +244,18 @@ describe('ContentApp: fresh loads on view switch and explicit refresh', () => {
     });
     fireEvent.click(screen.getByRole('tab', { name: 'Files' }));
 
-    // w1-f: FilesLibrary's own load() (the table) plus its stat-line/chip
-    // count reads (allCount + one per FILE_KIND — DEC-733/eval 60/37) all
-    // hit the same /files path, so one mount fires 5 requests, not 1.
+    // w1-f/DEC-773: FilesLibrary's own load() (the table) plus its
+    // stat-line/chip count reads (allTotal + one per LIBRARY_KIND, which
+    // now includes 'headshot' alongside the 3 deliverable kinds) all hit
+    // the same /files path, so one mount fires 6 requests, not 1.
     await waitFor(() => {
-      expect(filesMock).toHaveBeenCalledTimes(5);
+      expect(filesMock).toHaveBeenCalledTimes(6);
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Refresh' }));
 
     await waitFor(() => {
-      expect(filesMock).toHaveBeenCalledTimes(10);
+      expect(filesMock).toHaveBeenCalledTimes(12);
     });
   });
 });

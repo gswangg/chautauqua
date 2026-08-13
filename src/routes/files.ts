@@ -45,11 +45,11 @@ import {
   batchContactNames,
   deleteFileVersion,
   getFileDeleteScope,
+  HEADSHOT_KIND,
   insertFile,
   insertFileComment,
   isValidContentStatus,
   listEventDeliverableFiles,
-  listEventHeadshotFiles,
   listFileComments,
   listSubmissionFiles,
   PENDING_CONTENT_STATUS,
@@ -57,6 +57,13 @@ import {
   reviewerCanAccessSubmissionFile,
   updateContentStatus,
 } from "../server/repo/files";
+
+// DEC-773: the ?kind= filter on the files library also accepts 'headshot'
+// (a headshot is a file kind, not a separate tab/endpoint) — kept separate
+// from domain FILE_KINDS, which stays the upload-time vocabulary
+// (presentation/poster/handout only; a headshot is never uploaded through
+// the submission-files upload route).
+const LIBRARY_KIND_TOKENS: readonly string[] = [...FILE_KINDS, HEADSHOT_KIND];
 
 // Mounted at /api/v1 (submission-scoped file/comment/content-status
 // endpoints) in src/index.ts.
@@ -226,7 +233,7 @@ function parseKinds(c: Context<AppEnv>): string[] {
   const single = c.req.query("kind");
   if (single) raw.push(single);
   const tokens = raw.flatMap((v) => v.split(","));
-  return [...new Set(tokens.map((t) => t.trim()).filter((t) => (FILE_KINDS as readonly string[]).includes(t)))];
+  return [...new Set(tokens.map((t) => t.trim()).filter((t) => LIBRARY_KIND_TOKENS.includes(t)))];
 }
 
 fileApiRoutes.get("/events/:eventId/files", requireOrganizer, async (c) => {
@@ -243,27 +250,13 @@ fileApiRoutes.get("/events/:eventId/files", requireOrganizer, async (c) => {
   const q = qRaw && qRaw.trim().length > 0 ? qRaw.trim() : null;
 
   const result = await listEventDeliverableFiles(c.var.db, eventId, { page, perPage, kinds, q });
-  return c.json({ items: result.items, total: result.total, page: result.page, perPage: result.perPage });
-});
-
-// -----------------------------------------------------------------------
-// GET /api/v1/events/:eventId/headshots — DEC-669 speaker headshots tab
-// -----------------------------------------------------------------------
-fileApiRoutes.get("/events/:eventId/headshots", requireOrganizer, async (c) => {
-  const auth = requireAuth(c);
-  const eventId = c.req.param("eventId");
-  const scope = await getEventFilesScope(c.var.db, eventId);
-  // DEC-669: an eventId from another org 404s, never 403 — object-level
-  // ownership is not disclosed to the caller.
-  if (!scope || scope.orgId !== auth.orgId) throw new ApiError("not_found", "Event not found");
-
-  const page = clampPage(c.req.query("page"));
-  const perPage = clampPerPage(c.req.query("perPage"));
-  const qRaw = c.req.query("q");
-  const q = qRaw && qRaw.trim().length > 0 ? qRaw.trim() : undefined;
-
-  const result = await listEventHeadshotFiles(c.var.db, eventId, { page, perPage, q });
-  return c.json({ items: result.items, total: result.total, page: result.page, perPage: result.perPage });
+  return c.json({
+    items: result.items,
+    total: result.total,
+    totalSizeBytes: result.totalSizeBytes,
+    page: result.page,
+    perPage: result.perPage,
+  });
 });
 
 // -----------------------------------------------------------------------

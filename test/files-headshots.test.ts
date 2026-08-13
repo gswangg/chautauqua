@@ -1,20 +1,22 @@
-// DEC-669 coverage: speaker headshots are structurally unreachable from
-// listEventDeliverableFiles (a headshot file carries submission_id null and
-// is linked instead by contact.headshot_url = '/headshots/<fileId>'). This
-// exercises the new, separate listEventHeadshotFiles query and the
-// GET /api/v1/events/:eventId/headshots route's org-scoped 404 (never 403)
-// against an in-memory fake DB that evaluates the actual drizzle
-// where/join/orderBy conditions the repo builds — same rationale as
-// test/files-library.test.ts ("no D1 test harness exists in this repo").
+// DEC-773 coverage (supersedes DEC-669): a headshot file (kind 'headshot',
+// submissionId null, linked via contact.headshot_url = '/headshots/<fileId>')
+// is now a ROW in the ONE files library list, not a separate tab/endpoint.
+// This exercises listEventDeliverableFiles's headshot branch (kinds:
+// ['headshot']) and resolveLatestVersions' headshot resolution, against an
+// in-memory fake DB that evaluates the actual drizzle where/join/orderBy
+// conditions the repo builds — same rationale as test/files-library.test.ts
+// ("no D1 test harness exists in this repo").
 
 import { describe, expect, it, vi } from "vitest";
 import * as schema from "../src/db/schema";
+import { ApiError } from "../src/server/http";
 
 type Marker =
   | { __marker: "eq"; col: unknown; val: unknown }
   | { __marker: "and"; conds: unknown[] }
   | { __marker: "or"; conds: unknown[] }
   | { __marker: "inArray"; col: unknown; vals: unknown[] }
+  | { __marker: "isNull"; col: unknown }
   | { __marker: "isNotNull"; col: unknown };
 
 vi.mock("drizzle-orm", async (importOriginal) => {
@@ -25,11 +27,12 @@ vi.mock("drizzle-orm", async (importOriginal) => {
     and: (...conds: unknown[]): Marker => ({ __marker: "and", conds }),
     or: (...conds: unknown[]): Marker => ({ __marker: "or", conds }),
     inArray: (col: unknown, vals: unknown[]): Marker => ({ __marker: "inArray", col, vals }),
+    isNull: (col: unknown): Marker => ({ __marker: "isNull", col }),
     isNotNull: (col: unknown): Marker => ({ __marker: "isNotNull", col }),
   };
 });
 
-const { listEventHeadshotFiles } = await import("../src/server/repo/files-library");
+const { listEventDeliverableFiles, resolveLatestVersions } = await import("../src/server/repo/files-library");
 const { listAcceptedContactIds } = await import("../src/server/repo/tasks");
 
 // -----------------------------------------------------------------------
@@ -39,6 +42,7 @@ const { listAcceptedContactIds } = await import("../src/server/repo/tasks");
 // -----------------------------------------------------------------------
 
 const TABLES = {
+  event: schema.event,
   participant: schema.participant,
   submission: schema.submission,
   contact: schema.contact,
@@ -47,9 +51,10 @@ const TABLES = {
 type TableKey = keyof typeof TABLES;
 
 interface JoinedRow {
-  participant: Record<string, unknown>;
-  submission: Record<string, unknown>;
-  contact: Record<string, unknown>;
+  event?: Record<string, unknown>;
+  participant?: Record<string, unknown>;
+  submission?: Record<string, unknown>;
+  contact?: Record<string, unknown>;
   file?: Record<string, unknown>;
 }
 
@@ -102,8 +107,8 @@ function likeMatches(value: string, likePattern: string): boolean {
 
 /** Renders a sql`` node's literal text with column refs embedded as
  * `#table.prop` and every other interpolated value collected as a param —
- * only the two known shapes this module emits (the headshot join predicate
- * and the q-filter LIKE templates) are ever evaluated. */
+ * only the shapes this module emits (the headshot join predicate and the
+ * q-filter LIKE templates) are ever evaluated. */
 function renderSql(node: { queryChunks: unknown[] }): { text: string; cols: unknown[]; params: unknown[] } {
   let text = "";
   const cols: unknown[] = [];
@@ -158,19 +163,22 @@ function evalCond(cond: unknown, row: JoinedRow): boolean {
   if (m.__marker === "and") return m.conds.every((c) => evalCond(c, row));
   if (m.__marker === "or") return m.conds.some((c) => evalCond(c, row));
   if (m.__marker === "inArray") return m.vals.includes(resolveVal(m.col, row));
+  if (m.__marker === "isNull") return resolveVal(m.col, row) == null;
   if (m.__marker === "isNotNull") return resolveVal(m.col, row) != null;
   throw new Error(`fake db: unsupported condition ${JSON.stringify(cond)}`);
 }
 
 interface Seed {
+  event: { id: string; orgId: string; slug: string; recordPrefix: string }[];
   participant: { submissionId: string; contactId: string; order: number; role: string; inviteStatus: string }[];
-  submission: { id: string; eventId: string; status: string }[];
+  submission: { id: string; eventId: string; status: string; seq?: number; title?: string }[];
   contact: { id: string; firstName: string; lastName: string; company: string | null; headshotUrl: string | null }[];
-  file: { id: string; filename: string; sizeBytes: number; contentType: string; createdAt: Date }[];
+  file: { id: string; filename: string; sizeBytes: number; contentType: string; r2Key?: string; createdAt: Date; uploadedByContactId?: string | null }[];
 }
 
 function makeFakeHeadshotsDb(seed: Seed) {
   const byTable: Record<TableKey, Record<string, unknown>[]> = {
+    event: seed.event as unknown as Record<string, unknown>[],
     participant: seed.participant as unknown as Record<string, unknown>[],
     submission: seed.submission as unknown as Record<string, unknown>[],
     contact: seed.contact as unknown as Record<string, unknown>[],
@@ -183,7 +191,8 @@ function makeFakeHeadshotsDb(seed: Seed) {
   };
 
   /** `count(distinct <col>)` aggregate — the only aggregate this module's
-   * select() fields ever request (DEC-680's headshots total). */
+   * select() fields ever request for the headshot branch (DEC-680's total,
+   * DEC-773's totalSizeBytes uses a plain selectDistinct instead). */
   function isCountDistinctNode(x: unknown): x is { queryChunks: unknown[] } {
     if (!isSqlNode(x)) return false;
     const { text } = renderSql(x);
@@ -206,13 +215,12 @@ function makeFakeHeadshotsDb(seed: Seed) {
         return [{ [outKey]: distinctVals.size }];
       }
       if (orderByArg) {
-        matched = matched
-          .slice()
-          .sort((a, b) => {
-            const an = `${a.contact.lastName}|${a.contact.firstName}|${a.file?.id}`;
-            const bn = `${b.contact.lastName}|${b.contact.firstName}|${b.file?.id}`;
-            return an < bn ? -1 : an > bn ? 1 : 0;
-          });
+        matched = matched.slice().sort((a, b) => {
+          const at = (a.file?.createdAt as Date | undefined)?.getTime() ?? 0;
+          const bt = (b.file?.createdAt as Date | undefined)?.getTime() ?? 0;
+          if (bt !== at) return bt - at;
+          return String(a.file?.id).localeCompare(String(b.file?.id));
+        });
       }
       let projected = matched.map((r) => {
         const out: Record<string, unknown> = {};
@@ -237,8 +245,6 @@ function makeFakeHeadshotsDb(seed: Seed) {
     const chain: any = {
       from: (table: Record<string, unknown>) => {
         const tableKey = keyOf(table);
-        // from() seeds rows with a single table; the remaining tables are
-        // filled in by innerJoin() before any condition is evaluated.
         source = (byTable[tableKey] ?? []).map((r) => ({ [tableKey]: r }) as unknown as JoinedRow);
         return chain;
       },
@@ -291,6 +297,7 @@ function makeFakeHeadshotsDb(seed: Seed) {
 
 function baseSeed(): Seed {
   return {
+    event: [{ id: "event-1", orgId: "org-1", slug: "demo-event", recordPrefix: "SES" }],
     participant: [
       { submissionId: "sub-1", contactId: "contact-priya", order: 0, role: "speaker", inviteStatus: "accepted" },
       { submissionId: "sub-1", contactId: "contact-other", order: 1, role: "speaker", inviteStatus: "accepted" },
@@ -306,60 +313,84 @@ function baseSeed(): Seed {
       { id: "contact-declined", firstName: "Not", lastName: "Accepted", company: null, headshotUrl: "/headshots/file-hs-declined" },
     ],
     file: [
-      { id: "file-hs-priya", filename: "priya.jpg", sizeBytes: 234567, contentType: "image/jpeg", createdAt: new Date("2026-01-05T00:00:00Z") },
-      { id: "file-hs-declined", filename: "declined.jpg", sizeBytes: 111, contentType: "image/jpeg", createdAt: new Date("2026-01-05T00:00:00Z") },
+      {
+        id: "file-hs-priya",
+        filename: "priya.jpg",
+        sizeBytes: 234567,
+        contentType: "image/jpeg",
+        r2Key: "r2/priya",
+        createdAt: new Date("2026-01-05T00:00:00Z"),
+        uploadedByContactId: "contact-priya",
+      },
+      {
+        id: "file-hs-declined",
+        filename: "declined.jpg",
+        sizeBytes: 111,
+        contentType: "image/jpeg",
+        r2Key: "r2/declined",
+        createdAt: new Date("2026-01-05T00:00:00Z"),
+        uploadedByContactId: "contact-declined",
+      },
     ],
   };
 }
 
-describe("listEventHeadshotFiles (DEC-669)", () => {
+describe("listEventDeliverableFiles kinds:['headshot'] (DEC-773)", () => {
   it("surfaces only the accepted speaker with a headshot, joined via contact.headshot_url = '/headshots/' || file.id", async () => {
     const db = makeFakeHeadshotsDb(baseSeed());
-    const result = await listEventHeadshotFiles(db, "event-1", { page: 1, perPage: 50 });
+    const result = await listEventDeliverableFiles(db, "event-1", { page: 1, perPage: 50, kinds: ["headshot"], q: null });
     expect(result.total).toBe(1);
     expect(result.items).toHaveLength(1);
     expect(result.items[0]).toMatchObject({
-      fileId: "file-hs-priya",
+      rootFileId: "file-hs-priya",
+      latestFileId: "file-hs-priya",
       filename: "priya.jpg",
-      contactId: "contact-priya",
-      contactName: "Priya Raman",
-      company: "Acme Corp",
+      kind: "headshot",
+      submissionId: "",
+      submissionRef: "",
+      submissionTitle: "",
+      speakerName: "Priya Raman",
+      versionCount: 1,
+      sizeBytes: 234567,
+      uploaderName: "Priya Raman",
     });
+    expect(result.totalSizeBytes).toBe(234567);
   });
 
   it("excludes a speaker with no headshot and a headshot belonging to a non-accepted submission's speaker", async () => {
     const db = makeFakeHeadshotsDb(baseSeed());
-    const result = await listEventHeadshotFiles(db, "event-1", { page: 1, perPage: 50 });
-    const contactIds = result.items.map((i) => i.contactId);
-    expect(contactIds).not.toContain("contact-other");
-    expect(contactIds).not.toContain("contact-declined");
+    const result = await listEventDeliverableFiles(db, "event-1", { page: 1, perPage: 50, kinds: ["headshot"], q: null });
+    const names = result.items.map((i) => i.speakerName);
+    expect(names).not.toContain("Someone Else");
+    expect(names).not.toContain("Not Accepted");
   });
 
   it("q filters by speaker name", async () => {
     const db = makeFakeHeadshotsDb(baseSeed());
-    const hit = await listEventHeadshotFiles(db, "event-1", { page: 1, perPage: 50, q: "raman" });
+    const hit = await listEventDeliverableFiles(db, "event-1", { page: 1, perPage: 50, kinds: ["headshot"], q: "raman" });
     expect(hit.items).toHaveLength(1);
 
     const dbMiss = makeFakeHeadshotsDb(baseSeed());
-    const miss = await listEventHeadshotFiles(dbMiss, "event-1", { page: 1, perPage: 50, q: "nonexistent" });
+    const miss = await listEventDeliverableFiles(dbMiss, "event-1", { page: 1, perPage: 50, kinds: ["headshot"], q: "nonexistent" });
     expect(miss.items).toHaveLength(0);
     expect(miss.total).toBe(0);
+    expect(miss.totalSizeBytes).toBe(0);
   });
 
-  it("returns items and total from the same where clause (never a union) for an event with no eligible contacts", async () => {
+  it("returns items, total, and totalSizeBytes from the same where clause for an event with no eligible contacts", async () => {
     const seed = baseSeed();
     seed.contact[0]!.headshotUrl = null; // Priya no longer has a headshot
     const db = makeFakeHeadshotsDb(seed);
-    const result = await listEventHeadshotFiles(db, "event-1", { page: 1, perPage: 50 });
-    expect(result).toEqual({ items: [], total: 0, page: 1, perPage: 50 });
+    const result = await listEventDeliverableFiles(db, "event-1", { page: 1, perPage: 50, kinds: ["headshot"], q: null });
+    expect(result).toEqual({ items: [], total: 0, totalSizeBytes: 0, page: 1, perPage: 50 });
   });
 });
 
 // -----------------------------------------------------------------------
-// DEC-680: total is count(distinct contact.id), never rows.length of a
+// DEC-680: total is count(distinct file.id), never rows.length of a
 // materialized scan — and 'accepted speaker' is the ONE predicate
 // (tasks/crud.ts's acceptedSpeakerConditions) both listAcceptedContactIds
-// and listEventHeadshotFiles compose.
+// and the headshot branch compose.
 // -----------------------------------------------------------------------
 
 function manySpeakerSeed(n: number): Seed {
@@ -380,22 +411,31 @@ function manySpeakerSeed(n: number): Seed {
       company: null,
       headshotUrl: `/headshots/${fileId}`,
     });
-    file.push({ id: fileId, filename: `${contactId}.jpg`, sizeBytes: 100, contentType: "image/jpeg", createdAt: new Date("2026-01-05T00:00:00Z") });
+    file.push({
+      id: fileId,
+      filename: `${contactId}.jpg`,
+      sizeBytes: 100,
+      contentType: "image/jpeg",
+      r2Key: `r2/${fileId}`,
+      createdAt: new Date(2026, 0, 5, 0, 0, 0, i), // strictly increasing so createdAt-desc order is stable
+      uploadedByContactId: contactId,
+    });
   }
-  return { participant, submission, contact, file };
+  return { event: [{ id: "event-1", orgId: "org-1", slug: "demo-event", recordPrefix: "SES" }], participant, submission, contact, file };
 }
 
-describe("listEventHeadshotFiles total (DEC-680)", () => {
-  it("counts with count(distinct contact.id) — total is the true roster size even when page 1 truncates it", async () => {
+describe("listEventDeliverableFiles headshot total (DEC-680/773)", () => {
+  it("counts with count(distinct file.id) — total is the true roster size even when page 1 truncates it", async () => {
     const db = makeFakeHeadshotsDb(manySpeakerSeed(75));
-    const page1 = await listEventHeadshotFiles(db, "event-1", { page: 1, perPage: 50 });
+    const page1 = await listEventDeliverableFiles(db, "event-1", { page: 1, perPage: 50, kinds: ["headshot"], q: null });
     expect(page1.items).toHaveLength(50); // page window truncates...
-    expect(page1.total).toBe(75); // ...but total is the full distinct-contact count, not items.length
+    expect(page1.total).toBe(75); // ...but total is the full distinct-file count, not items.length
+    expect(page1.totalSizeBytes).toBe(75 * 100); // ...and so is totalSizeBytes, summed over every match.
   });
 });
 
 describe("acceptedSpeakerConditions is the ONE predicate (DEC-680)", () => {
-  it("a participant whose invite status is not active is excluded from BOTH listAcceptedContactIds and listEventHeadshotFiles", async () => {
+  it("a participant whose invite status is not active is excluded from BOTH listAcceptedContactIds and the headshot branch", async () => {
     const seed = baseSeed();
     // Flip Priya's invite status to 'declined' — an inactive status per
     // ACTIVE_INVITE_STATUSES — while keeping her headshot and her
@@ -407,8 +447,35 @@ describe("acceptedSpeakerConditions is the ONE predicate (DEC-680)", () => {
     expect(acceptedIds).not.toContain("contact-priya");
 
     const dbHeadshots = makeFakeHeadshotsDb(seed);
-    const headshots = await listEventHeadshotFiles(dbHeadshots, "event-1", { page: 1, perPage: 50 });
-    expect(headshots.items.map((i) => i.contactId)).not.toContain("contact-priya");
+    const headshots = await listEventDeliverableFiles(dbHeadshots, "event-1", { page: 1, perPage: 50, kinds: ["headshot"], q: null });
+    expect(headshots.items.map((i) => i.speakerName)).not.toContain("Priya Raman");
     expect(headshots.total).toBe(0);
+  });
+});
+
+// -----------------------------------------------------------------------
+// DEC-160/773: resolveLatestVersions also resolves headshot file ids (the
+// bulk-ZIP archive route accepts any row's latestFileId, headshot or
+// deliverable) — scoped the same way the headshot branch is (accepted
+// speaker, reverse headshot_url match).
+// -----------------------------------------------------------------------
+
+describe("resolveLatestVersions resolves headshot ids (DEC-773)", () => {
+  it("resolves a headshot file id to its own row, submissionTitle carrying the contact's name", async () => {
+    const db = makeFakeHeadshotsDb(baseSeed());
+    const resolved = await resolveLatestVersions(db, "event-1", ["file-hs-priya"]);
+    expect(resolved.get("file-hs-priya")).toMatchObject({
+      id: "file-hs-priya",
+      filename: "priya.jpg",
+      contentType: "image/jpeg",
+      r2Key: "r2/priya",
+      submissionTitle: "Priya Raman",
+      sizeBytes: 234567,
+    });
+  });
+
+  it("throws (no silent skip) for a headshot file id outside the event's accepted-speaker scope", async () => {
+    const db = makeFakeHeadshotsDb(baseSeed());
+    await expect(resolveLatestVersions(db, "event-1", ["file-hs-declined"])).rejects.toThrow(ApiError);
   });
 });
