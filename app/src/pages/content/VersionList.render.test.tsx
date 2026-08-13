@@ -4,8 +4,8 @@
 // replace chain got labeled "v1"/"v2" as if it were older versions of a
 // completely separate organizer-uploaded chain's "v3"/"Latest". Version
 // numbers must be computed per chain.
-import { afterEach, describe, expect, it } from 'vitest';
-import { cleanup, render, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { VersionList } from './VersionList';
 import type { DeliverableFile } from './types';
@@ -32,7 +32,7 @@ describe('VersionList', () => {
   it('labels a single chain Latest/v1', () => {
     const v1 = file({ id: 'v1', filename: 'slides-v1.pdf', createdAt: 100, previousFileId: null });
     const v2 = file({ id: 'v2', filename: 'slides-v2.pdf', createdAt: 200, previousFileId: 'v1' });
-    render(<VersionList versions={[v2, v1]} />);
+    render(<VersionList versions={[v2, v1]} onDeleted={() => {}} />);
     const items = screen.getAllByRole('listitem');
     expect(items[0]).toHaveTextContent('Latest');
     expect(items[1]).toHaveTextContent('v1');
@@ -46,7 +46,7 @@ describe('VersionList', () => {
     const taskOld = file({ id: 'task-old', filename: 'slides.pdf', createdAt: 10, previousFileId: null });
     const taskNew = file({ id: 'task-new', filename: 'slides.pdf', createdAt: 20, previousFileId: 'task-old' });
 
-    render(<VersionList versions={[orgNew, orgOld, taskNew, taskOld]} />);
+    render(<VersionList versions={[orgNew, orgOld, taskNew, taskOld]} onDeleted={() => {}} />);
     const items = screen.getAllByRole('listitem');
     expect(items).toHaveLength(4);
     // Only the single overall-newest file is "Latest".
@@ -60,7 +60,7 @@ describe('VersionList', () => {
   });
 
   it('renders nothing-uploaded-yet copy for an empty list', () => {
-    render(<VersionList versions={[]} />);
+    render(<VersionList versions={[]} onDeleted={() => {}} />);
     expect(screen.getByText('No versions uploaded yet.')).toBeInTheDocument();
   });
 
@@ -69,7 +69,7 @@ describe('VersionList', () => {
   it('keeps a Download link on every version and marks only the current one is-current', () => {
     const v1 = file({ id: 'v1', filename: 'slides-v1.pdf', createdAt: 100, previousFileId: null });
     const v2 = file({ id: 'v2', filename: 'slides-v2.pdf', createdAt: 200, previousFileId: 'v1' });
-    render(<VersionList versions={[v2, v1]} />);
+    render(<VersionList versions={[v2, v1]} onDeleted={() => {}} />);
 
     const items = screen.getAllByRole('listitem');
     expect(items[0]).toHaveClass('is-current');
@@ -79,5 +79,62 @@ describe('VersionList', () => {
     expect(downloadLinks).toHaveLength(2);
     expect(downloadLinks[0]).toHaveAttribute('href', '/files/v2');
     expect(downloadLinks[1]).toHaveAttribute('href', '/files/v1');
+  });
+
+  // DEC-713: delete is a quiet tertiary, confirmed through ConfirmDialog
+  // (never window.confirm), and refreshes the list on success.
+  describe('delete (DEC-713)', () => {
+    const originalFetch = global.fetch;
+
+    afterEach(() => {
+      global.fetch = originalFetch;
+      vi.restoreAllMocks();
+    });
+
+    it('shows a Delete button per row and only opens the confirm dialog after clicking it', () => {
+      const v1 = file({ id: 'v1', filename: 'slides-v1.pdf', createdAt: 100, previousFileId: null });
+      render(<VersionList versions={[v1]} onDeleted={() => {}} />);
+
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      const deleteButtons = screen.getAllByRole('button', { name: 'Delete' });
+      expect(deleteButtons).toHaveLength(1);
+    });
+
+    it('deletes via DELETE /api/v1/files/:id and calls onDeleted after confirming', async () => {
+      const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ id: 'v1', deleted: true }), { status: 200 }));
+      global.fetch = fetchMock as unknown as typeof fetch;
+
+      const onDeleted = vi.fn();
+      const v1 = file({ id: 'v1', filename: 'slides-v1.pdf', createdAt: 100, previousFileId: null });
+      render(<VersionList versions={[v1]} onDeleted={onDeleted} />);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+      const dialog = screen.getByRole('dialog');
+      expect(dialog).toBeInTheDocument();
+      expect(within(dialog).getByText(/slides-v1\.pdf/)).toBeInTheDocument();
+
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
+
+      await waitFor(() => expect(onDeleted).toHaveBeenCalledTimes(1));
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining('/files/v1'),
+        expect.objectContaining({ method: 'DELETE' }),
+      );
+    });
+
+    it('cancelling the confirm dialog never calls DELETE', () => {
+      const fetchMock = vi.fn();
+      global.fetch = fetchMock as unknown as typeof fetch;
+
+      const v1 = file({ id: 'v1', filename: 'slides-v1.pdf', createdAt: 100, previousFileId: null });
+      render(<VersionList versions={[v1]} onDeleted={() => {}} />);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
   });
 });

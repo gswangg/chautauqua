@@ -173,7 +173,7 @@ export function DeliverableDetail({
               </div>
               <div className="chq-content-group-body">
                 <div className="chq-content-files-col">
-                  <VersionList versions={versions} />
+                  <VersionList versions={versions} onDeleted={() => void loadFiles()} />
                   <UploadZone kind={kind} replacesFileId={latest?.id} onUpload={handleUpload} />
                 </div>
                 <div className="chq-content-comments-col">
