@@ -166,11 +166,14 @@ export function ProgressPanel({ planId: planIdProp }: { planId?: string } = {}) 
       <section className={embedded ? 'chq-section chq-review-landing-progress' : 'chq-section'}>
         <div className="chq-section-head">
           <h2 className="chq-section-label">{embedded && plan ? `${plan.name} · reviewer progress` : 'Who has scored'}</h2>
-          {embedded && (
+          {/* DEC-760: when nobody is unstarted the reminder is impossible to
+              act on -- the control is absent rather than rendered disabled
+              (DEC-733: an action that can't apply is ABSENT, not disabled). */}
+          {embedded && notStarted.length > 0 && (
             <button
               type="button"
               className="chq-link-button chq-section-action"
-              disabled={reminding || notStarted.length === 0}
+              disabled={reminding}
               onClick={() => void sendReminder('not_started')}
             >
               Remind the {notStarted.length} not started
