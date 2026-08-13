@@ -300,10 +300,13 @@ export interface Track {
 // GET /api/v1/users?role=reviewer item (DEC-239 wire-shape contract: the
 // server's OrgUserRecord keys the id as `id`, not `userId` -- an earlier
 // mismatch here posted `undefined` as the reviewer assignment's userId).
+// w35-e/DEC-757: `name` is optional so a pre-w35-c payload (no name field)
+// still round-trips -- callers fall back to `email` when it's absent/blank.
 export interface ReviewerOption {
   id: string;
   email: string;
   role: string;
+  name?: string;
 }
 
 // GET /api/v1/plans/:id/scope-preview?trackId=... response (DEC-572): the

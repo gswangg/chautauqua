@@ -1327,11 +1327,20 @@ export function PlanEditor() {
             <div className="chq-review-reviewer-form">
               <select className="chq-select" aria-label="Reviewer" value={reviewerUserId} onChange={(e) => setReviewerUserId(e.target.value)}>
                 <option value="">Select a reviewer…</option>
-                {reviewerOptions.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.email}
-                  </option>
-                ))}
+                {reviewerOptions.map((r) => {
+                  // w35-e/DEC-757: name leads, email is the quiet secondary --
+                  // an <option> can't render two lines, so the fallback rule
+                  // (name if non-blank, else email) picks the primary text
+                  // and the email is appended in parens only when a name is
+                  // actually present.
+                  const hasName = Boolean(r.name && r.name.trim());
+                  const label = hasName ? r.name!.trim() : r.email;
+                  return (
+                    <option key={r.id} value={r.id}>
+                      {hasName ? `${label} (${r.email})` : label}
+                    </option>
+                  );
+                })}
               </select>
               {reviewerOptions.length < reviewerOptionsTotal && (
                 // DEC-468: the picker only ever shows the first page of
