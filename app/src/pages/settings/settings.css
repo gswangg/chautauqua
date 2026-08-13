@@ -807,3 +807,36 @@
     align-self: flex-end;
   }
 }
+
+/* DEC-931: a refused track/room delete names the blocking rows inline,
+   under the row that was clicked -- a lead line ("Can't delete --
+   referenced by sessions:") plus one <li> per named blocker. Sits inside
+   a .chq-settings-panel <li>, so the nested list has to opt out of the
+   panel's row vocabulary above: no per-item hairline, no 14px row
+   padding, no column-flex stretch -- those style the panel's own rows,
+   not a message body nested inside one. Declared after the phone media
+   query so the opt-out holds at every width (same specificity, later in
+   source order). Muted ink, meta size: an explanation of why the action
+   didn't happen, not a row of its own. */
+.chq-settings-delete-blockers {
+  margin: 2px 0 0;
+  font-size: var(--chq-type-meta-size);
+  color: var(--chq-ink-2);
+}
+
+.chq-settings-delete-blockers p {
+  margin: 0;
+}
+
+.chq-settings-delete-blockers ul {
+  list-style: disc;
+  margin: 2px 0 0;
+  padding: 0 0 0 18px;
+}
+
+.chq-settings-delete-blockers li {
+  display: list-item;
+  padding: 0;
+  border-bottom: none;
+  gap: 0;
+}
