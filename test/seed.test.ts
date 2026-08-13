@@ -614,4 +614,27 @@ describe("seed.ts output (task w1-d, DEC-145)", () => {
     const templateRows = parseInserts(sql, "email_template");
     expect(templateRows.length).toBe(5);
   });
+
+  // Task w3-a: reviewer users previously seeded with contact_id NULL, so
+  // every organiser-facing reviewer surface fell back to rendering a raw
+  // email instead of a name. Enumerate every role='reviewer' user (not a
+  // hand-picked sample) and assert each resolves to a contact carrying both
+  // firstName and lastName, with the contact's email matching the user's.
+  it("gives every seeded role='reviewer' user a contact_id whose contact has firstName and lastName", () => {
+    const userRows = parseInserts(sql, "user");
+    const contactRows = parseInserts(sql, "contact");
+    const contactById = new Map(contactRows.map((r) => [r.id!, r]));
+
+    const reviewerUsers = userRows.filter((r) => r.role === "reviewer");
+    expect(reviewerUsers.length).toBeGreaterThanOrEqual(4);
+
+    for (const user of reviewerUsers) {
+      expect(user.contact_id, `reviewer user ${user.email} has null contact_id`).toBeTruthy();
+      const contact = contactById.get(user.contact_id!);
+      expect(contact, `no contact row for reviewer user ${user.email}'s contact_id ${user.contact_id}`).toBeTruthy();
+      expect(contact!.first_name).toBeTruthy();
+      expect(contact!.last_name).toBeTruthy();
+      expect(contact!.email).toBe(user.email);
+    }
+  });
 });

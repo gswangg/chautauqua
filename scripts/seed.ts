@@ -560,6 +560,91 @@ async function main(): Promise<void> {
   const speaker2UserId = seedId("user", 3);
   const reviewerUserId = seedId("user", 4);
 
+  // --- reviewer contact rows (w3-a): every organiser-facing surface renders
+  // a reviewer by contact name, not raw email -- seeded reviewer users had
+  // contact_id null, so those surfaces fell back to showing an email
+  // instead of a name. Names from docs/design/Chautauqua Review.dc.html.
+  const reviewerContactId = seedId("contact", 5);
+  const reviewerBContactId = seedId("contact", 6);
+  const reviewerCContactId = seedId("contact", 7);
+  const reviewerDContactId = seedId("contact", 8);
+  statements.push(
+    insertStmt("contact", {
+      id: reviewerContactId,
+      org_id: orgId,
+      first_name: "Sam",
+      last_name: "Whitfield",
+      email: reviewer.email,
+      phone: null,
+      company: null,
+      title: null,
+      bio: null,
+      headshot_url: null,
+      social_links_json: null,
+      notes: null,
+      custom_fields_json: null,
+      created_at: nextTs(),
+      updated_at: ts,
+    }),
+  );
+  statements.push(
+    insertStmt("contact", {
+      id: reviewerBContactId,
+      org_id: orgId,
+      first_name: "Ana",
+      last_name: "Petrov",
+      email: "reviewer.b@example-speakers.test",
+      phone: null,
+      company: null,
+      title: null,
+      bio: null,
+      headshot_url: null,
+      social_links_json: null,
+      notes: null,
+      custom_fields_json: null,
+      created_at: nextTs(),
+      updated_at: ts,
+    }),
+  );
+  statements.push(
+    insertStmt("contact", {
+      id: reviewerCContactId,
+      org_id: orgId,
+      first_name: "Devin",
+      last_name: "Cole",
+      email: "reviewer.c@example-speakers.test",
+      phone: null,
+      company: null,
+      title: null,
+      bio: null,
+      headshot_url: null,
+      social_links_json: null,
+      notes: null,
+      custom_fields_json: null,
+      created_at: nextTs(),
+      updated_at: ts,
+    }),
+  );
+  statements.push(
+    insertStmt("contact", {
+      id: reviewerDContactId,
+      org_id: orgId,
+      first_name: "Ines",
+      last_name: "Duarte",
+      email: "reviewer.d@example-speakers.test",
+      phone: null,
+      company: null,
+      title: null,
+      bio: null,
+      headshot_url: null,
+      social_links_json: null,
+      notes: null,
+      custom_fields_json: null,
+      created_at: nextTs(),
+      updated_at: ts,
+    }),
+  );
+
   statements.push(
     insertStmt("user", {
       id: organizerUserId,
@@ -603,7 +688,7 @@ async function main(): Promise<void> {
       email: reviewer.email,
       password_hash: await hashPassword(reviewer.password),
       role: "reviewer",
-      contact_id: null,
+      contact_id: reviewerContactId,
       created_at: nextTs(),
       updated_at: ts,
     }),
@@ -615,10 +700,10 @@ async function main(): Promise<void> {
   const reviewerCUserId = seedId("user", 6);
   const reviewerDUserId = seedId("user", 7);
   const synthReviewerPassword = "ReviewerSeed!2027";
-  for (const [id, email] of [
-    [reviewerBUserId, "reviewer.b@example-speakers.test"],
-    [reviewerCUserId, "reviewer.c@example-speakers.test"],
-    [reviewerDUserId, "reviewer.d@example-speakers.test"],
+  for (const [id, email, contactId] of [
+    [reviewerBUserId, "reviewer.b@example-speakers.test", reviewerBContactId],
+    [reviewerCUserId, "reviewer.c@example-speakers.test", reviewerCContactId],
+    [reviewerDUserId, "reviewer.d@example-speakers.test", reviewerDContactId],
   ] as const) {
     statements.push(
       insertStmt("user", {
@@ -627,7 +712,7 @@ async function main(): Promise<void> {
         email,
         password_hash: await hashPassword(synthReviewerPassword),
         role: "reviewer",
-        contact_id: null,
+        contact_id: contactId,
         created_at: nextTs(),
         updated_at: ts,
       }),

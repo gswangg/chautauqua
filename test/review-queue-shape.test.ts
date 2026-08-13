@@ -88,7 +88,13 @@ describe("DEC-239: reviewer queue item wire shape", () => {
     expect(res.status).toBe(200);
     const body = (await res.json()) as {
       items: { submissionId: string; ref: string; title: string; ratingsCount: number; alreadyRatedByMe: boolean }[];
+      open: boolean;
+      recused: unknown[];
     };
+    // Open-plan shape is unchanged by the shared-envelope refactor: `open`
+    // and `recused` are still present alongside `items`/`total`.
+    expect(body.open).toBe(true);
+    expect(Array.isArray(body.recused)).toBe(true);
     expect(body.items.length).toBeGreaterThan(0);
     for (const item of body.items) {
       expect(typeof item.submissionId).toBe("string");
