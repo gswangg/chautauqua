@@ -984,6 +984,101 @@ async function main(): Promise<void> {
     synthContacts.push({ contactId, email, speakerName: `${first} ${last}`.trim() });
   }
 
+  // --- DUPLICATE FIXTURE SET (task w7-c / DEC-823): the Duplicates tab and
+  // the whole merge flow need real findDuplicateGroups() hits to demo
+  // against. DEC-771's collision ban only ever applied to IDENTITY contacts
+  // (personas, reviewers, anything a seeded user account points at via
+  // user.contact_id) -- it never promised the synthetic CRM directory itself
+  // would be collision-free, and a directory with zero duplicates is exactly
+  // what made the Duplicates tab and merge flow demo empty. These three
+  // extra contact rows are deliberately built to COLLIDE with three of the
+  // ~27 synthetic directory contacts seeded above (never a fixture persona,
+  // never a reviewer, never a contact any user account is linked to), each
+  // one exercising a distinct DEC-800 duplicate reason:
+  //   - dupEmailContact shares a normalized email with synth index 2 (Casey
+  //     Quraishi) but a different display name -- reason 'email' (a CSV
+  //     import that carried a different name spelling against the same
+  //     inbox).
+  //   - dupNameCompanyContact shares a normalized name AND company with
+  //     synth index 15 (Parker Anders, Fernway Technologies) but a
+  //     different email -- reason 'name_and_company'.
+  //   - dupNameOnlyContact shares only a normalized name with synth index 8
+  //     (Indigo Fontaine) at a different company -- reason 'name' (the
+  //     "changed employers" case).
+  {
+    const baseEmailIdx = 2;
+    const baseEmail = synthName(baseEmailIdx);
+    const dupEmailContactId = seedId("dup_contact", 1);
+    statements.push(
+      insertStmt("contact", {
+        id: dupEmailContactId,
+        org_id: orgId,
+        first_name: "C.",
+        last_name: `${baseEmail.last}-Imported`,
+        email: `${baseEmail.first.toLowerCase()}.${baseEmail.last.toLowerCase().replace(/[^a-z]/g, "")}@example-speakers.test`,
+        phone: null,
+        company: SYNTH_COMPANIES[baseEmailIdx % SYNTH_COMPANIES.length]!,
+        title: "Software Engineer",
+        bio: null,
+        headshot_url: null,
+        social_links_json: null,
+        notes: null,
+        custom_fields_json: null,
+        created_at: nextTs(),
+        updated_at: ts,
+      }),
+    );
+
+    const baseNameCompanyIdx = 15;
+    const baseNameCompany = synthName(baseNameCompanyIdx);
+    const dupNameCompanyContactId = seedId("dup_contact", 2);
+    statements.push(
+      insertStmt("contact", {
+        id: dupNameCompanyContactId,
+        org_id: orgId,
+        first_name: baseNameCompany.first.toUpperCase(),
+        last_name: baseNameCompany.last.toLowerCase(),
+        email: "parker.anders.dup@example-speakers.test",
+        phone: null,
+        company: SYNTH_COMPANIES[baseNameCompanyIdx % SYNTH_COMPANIES.length]!,
+        title: "Senior Engineer",
+        bio: null,
+        headshot_url: null,
+        social_links_json: null,
+        notes: null,
+        custom_fields_json: null,
+        created_at: nextTs(),
+        updated_at: ts,
+      }),
+    );
+
+    const baseNameOnlyIdx = 8;
+    const baseNameOnly = synthName(baseNameOnlyIdx);
+    const dupNameOnlyContactId = seedId("dup_contact", 3);
+    statements.push(
+      insertStmt("contact", {
+        id: dupNameOnlyContactId,
+        org_id: orgId,
+        first_name: baseNameOnly.first,
+        last_name: baseNameOnly.last,
+        email: "indigo.fontaine.newco@example-speakers.test",
+        phone: null,
+        // Deliberately NOT SYNTH_COMPANIES[baseNameOnlyIdx % ...] -- a
+        // different company is the whole point of the 'name' reason (a
+        // person who changed employers).
+        company: SYNTH_COMPANIES[(baseNameOnlyIdx + 3) % SYNTH_COMPANIES.length]!,
+        title: "Engineering Manager",
+        bio: null,
+        headshot_url: null,
+        social_links_json: null,
+        notes: null,
+        custom_fields_json: null,
+        created_at: nextTs(),
+        updated_at: ts,
+      }),
+    );
+  }
+
   // --- contact Labels (task w2-c/DEC-739): custom_fields_json drives the
   // Labels column ('role speaker · year 2027'-style rendering). Speaker
   // contacts carry role+year; one contact carries a lone 'reviewer' role

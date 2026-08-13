@@ -12,6 +12,21 @@
 // ENUMERATION never sample" rule, restated by DEC-771 itself. Reuses the
 // quote-aware SQL row parser already established in test/seed.test.ts
 // (task w2-d / DEC-739) rather than inventing a second one.
+//
+// DEC-823 (task w7-c): DEC-771's (b) collision ban only ever protected the
+// IDENTITY contacts a human actually matches a person by across the app —
+// personas and reviewers, which in this seed are precisely "any contact a
+// seeded user account points at via user.contact_id" (every persona/
+// reviewer contact IS user-linked; no other contact is). It never promised
+// the synthetic CRM directory itself would be duplicate-free — a directory
+// with zero duplicates is exactly what left the Duplicates tab and merge
+// flow with nothing to demo. (b)'s two assertions below are rescoped to
+// that identity set (derived by ENUMERATION over the seeded user rows, never
+// hand-listed, per the field guide's "hand-listed manifests desync --
+// enumerate"), and a new assertion below enumerates findDuplicateGroups()
+// over every seeded contact to confirm the directory now carries real,
+// groupable duplicates spanning DEC-800's reasons, none of them an identity
+// contact.
 
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
@@ -19,6 +34,8 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { beforeAll, describe, expect, it } from "vitest";
+
+import { findDuplicateGroups, type ContactRecord } from "../src/domain/contacts";
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(SCRIPT_DIR, "..");
@@ -133,20 +150,64 @@ describe("seed coherence (DEC-771)", () => {
     expect(titles).not.toContain("Taming 40-Minute CI: Incremental Builds at Monorepo Scale");
   });
 
-  it("(b) no two contacts in the org share a normalized email", () => {
+  /** Identity contacts (DEC-823): every contact a seeded user account points
+   * at via user.contact_id — personas and reviewers are exactly this set in
+   * this seed, derived by enumeration rather than hand-listed ids. */
+  function identityContactIds(): Set<string> {
+    const userRows = parseInserts(sql, "user");
+    return new Set(userRows.map((r) => r.contact_id).filter((id): id is string => !!id));
+  }
+
+  it("(b) no two IDENTITY contacts (personas/reviewers, i.e. user-linked) in the org share a normalized email", () => {
     const contactRows = parseInserts(sql, "contact");
     expect(contactRows.length).toBeGreaterThan(0);
-    const dupes = duplicateGroups(contactRows, (r) => (r.email ?? "").toLowerCase().trim());
-    expect(dupes, `duplicate contact emails: ${JSON.stringify(dupes)}`).toEqual([]);
+    const identityIds = identityContactIds();
+    expect(identityIds.size).toBeGreaterThan(0);
+    const identityRows = contactRows.filter((r) => identityIds.has(r.id!));
+    const dupes = duplicateGroups(identityRows, (r) => (r.email ?? "").toLowerCase().trim());
+    expect(dupes, `duplicate identity contact emails: ${JSON.stringify(dupes)}`).toEqual([]);
   });
 
-  it("(b) no two contacts in the org share a normalized full name", () => {
+  it("(b) no two IDENTITY contacts (personas/reviewers, i.e. user-linked) in the org share a normalized full name", () => {
     const contactRows = parseInserts(sql, "contact");
+    const identityIds = identityContactIds();
+    const identityRows = contactRows.filter((r) => identityIds.has(r.id!));
     const dupes = duplicateGroups(
-      contactRows,
+      identityRows,
       (r) => `${r.first_name ?? ""} ${r.last_name ?? ""}`.toLowerCase().trim().replace(/\s+/g, " "),
     );
-    expect(dupes, `duplicate contact full names: ${JSON.stringify(dupes)}`).toEqual([]);
+    expect(dupes, `duplicate identity contact full names: ${JSON.stringify(dupes)}`).toEqual([]);
+  });
+
+  it("(DEC-823) the seeded contact directory carries real, groupable duplicates spanning every DEC-800 reason, none of them an identity contact", () => {
+    const contactRows = parseInserts(sql, "contact");
+    const identityIds = identityContactIds();
+
+    const records: ContactRecord[] = contactRows.map((r) => ({
+      id: r.id!,
+      email: r.email ?? "",
+      firstName: r.first_name ?? "",
+      lastName: r.last_name ?? "",
+      company: r.company ?? undefined,
+    }));
+
+    const groups = findDuplicateGroups(records);
+    expect(groups.length, `expected >= 2 duplicate groups, found: ${JSON.stringify(groups)}`).toBeGreaterThanOrEqual(2);
+
+    const reasons = new Set(groups.map((g) => g.reason));
+    expect(reasons.has("email"), `no 'email' reason among: ${JSON.stringify([...reasons])}`).toBe(true);
+    expect(reasons.has("name_and_company"), `no 'name_and_company' reason among: ${JSON.stringify([...reasons])}`).toBe(
+      true,
+    );
+
+    for (const group of groups) {
+      for (const contactId of group.contactIds) {
+        expect(
+          identityIds.has(contactId),
+          `duplicate group ${JSON.stringify(group)} contains identity contact ${contactId}`,
+        ).toBe(false);
+      }
+    }
   });
 
   it("(c) no two tasks in the event share a title", () => {
