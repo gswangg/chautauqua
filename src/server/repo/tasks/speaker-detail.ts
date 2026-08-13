@@ -1,0 +1,255 @@
+// J6 onboarding tasks repo (DEC-023): the per-speaker detail read
+// (GET /api/v1/events/:eventId/speakers/:contactId — DEC-930). Split out of
+// repo/tasks.ts for contention decomposition (no behavior change) — see
+// repo/tasks.ts's barrel header.
+//
+// DEC-930: the wire contract is normative and shared with the SPA task
+// (w23-f) building the page against it — do not change these shapes without
+// re-checking that decision.
+
+import { and, eq, inArray } from "drizzle-orm";
+import type { Db } from "../../context";
+import * as schema from "../../../db/schema";
+import { formatRef } from "../../../domain/ids";
+import { overdueAssignmentConditions, rosterParticipantConditions } from "./crud";
+import { DEC_930 } from "../../../decisions";
+
+void DEC_930; // this file is the ONE bounded GET DEC-930 mandates.
+
+export interface SpeakerDetailContact {
+  id: string;
+  name: string;
+  email: string;
+  company: string | null;
+  title: string | null;
+  hasAccount: boolean;
+}
+
+export interface SpeakerDetailParticipation {
+  participantId: string;
+  submissionId: string;
+  inviteStatus: string;
+}
+
+export interface SpeakerDetailScheduled {
+  day: string;
+  startMin: number;
+  endMin: number;
+  roomName: string | null;
+}
+
+export interface SpeakerDetailSession {
+  submissionId: string;
+  ref: string;
+  title: string;
+  status: string;
+  contentStatus: string;
+  role: string;
+  scheduled: SpeakerDetailScheduled | null;
+}
+
+export interface SpeakerDetailFile {
+  id: string;
+  filename: string;
+  sizeBytes: number;
+  versionNo: number | null;
+}
+
+export interface SpeakerDetailTask {
+  assignmentId: string;
+  taskId: string;
+  title: string;
+  kind: string;
+  required: boolean;
+  dueDate: number | null;
+  status: string;
+  completedAt: number | null;
+  file: SpeakerDetailFile | null;
+}
+
+export interface SpeakerDetailCounts {
+  outstandingRequired: number;
+  overdue: number;
+}
+
+export interface SpeakerDetail {
+  contact: SpeakerDetailContact;
+  participation: SpeakerDetailParticipation;
+  sessions: SpeakerDetailSession[];
+  tasks: SpeakerDetailTask[];
+  counts: SpeakerDetailCounts;
+}
+
+/** Builds the DEC-930 per-speaker detail payload for one contact on one
+ * event, in a bounded number of queries independent of how many
+ * sessions/tasks the contact has: (i) the contact + roster participation
+ * rows (roster membership composes rosterParticipantConditions, DEC-829 —
+ * returns null, "not on this event's roster", when empty); (ii) the event's
+ * recordPrefix for session refs; (iii) one schedule-slot/room join for the
+ * whole session set; (iv) one task_assignment/task/file join for the whole
+ * task set (the SAME join shape grid.ts's cells query carries, never a
+ * query per task); (v) the overdue count, composing the existing DEC-801
+ * overdueAssignmentConditions predicate rather than re-typing its grace
+ * window. Returns null when the contact is not on this event's roster. */
+export async function getSpeakerDetail(db: Db, eventId: string, contactId: string): Promise<SpeakerDetail | null> {
+  const contactRows = await db
+    .select({
+      id: schema.contact.id,
+      firstName: schema.contact.firstName,
+      lastName: schema.contact.lastName,
+      email: schema.contact.email,
+      company: schema.contact.company,
+      title: schema.contact.title,
+      userId: schema.user.id,
+    })
+    .from(schema.contact)
+    .leftJoin(schema.user, eq(schema.user.contactId, schema.contact.id))
+    .where(eq(schema.contact.id, contactId))
+    .limit(1);
+  const contactRow = contactRows[0];
+  if (!contactRow) return null;
+
+  // Every participant row for this contact on an accepted submission of
+  // this event (DEC-829's roster predicate) — the base of both the
+  // singular `participation` triple and the `sessions` list.
+  const participantRows = await db
+    .select({
+      participantId: schema.participant.id,
+      submissionId: schema.participant.submissionId,
+      inviteStatus: schema.participant.inviteStatus,
+      role: schema.participant.role,
+      submissionSeq: schema.submission.seq,
+      submissionTitle: schema.submission.title,
+      submissionStatus: schema.submission.status,
+      submissionContentStatus: schema.submission.contentStatus,
+    })
+    .from(schema.participant)
+    .innerJoin(schema.submission, eq(schema.submission.id, schema.participant.submissionId))
+    .where(and(eq(schema.participant.contactId, contactId), rosterParticipantConditions(eventId)))
+    .orderBy(schema.participant.id);
+
+  if (participantRows.length === 0) return null;
+
+  const eventRows = await db
+    .select({ recordPrefix: schema.event.recordPrefix })
+    .from(schema.event)
+    .where(eq(schema.event.id, eventId))
+    .limit(1);
+  const recordPrefix = eventRows[0]?.recordPrefix;
+  if (recordPrefix === undefined) return null;
+
+  const submissionIds = participantRows.map((p) => p.submissionId);
+  const scheduledBySubmission = new Map<string, SpeakerDetailScheduled>();
+  if (submissionIds.length > 0) {
+    const slotRows = await db
+      .select({
+        submissionId: schema.scheduleSlot.submissionId,
+        day: schema.scheduleSlot.day,
+        startMin: schema.scheduleSlot.startMin,
+        endMin: schema.scheduleSlot.endMin,
+        roomName: schema.room.name,
+      })
+      .from(schema.scheduleSlot)
+      .leftJoin(schema.room, eq(schema.room.id, schema.scheduleSlot.roomId))
+      .where(inArray(schema.scheduleSlot.submissionId, submissionIds));
+    for (const r of slotRows) {
+      scheduledBySubmission.set(r.submissionId, {
+        day: r.day,
+        startMin: r.startMin,
+        endMin: r.endMin,
+        roomName: r.roomName,
+      });
+    }
+  }
+
+  const sessions: SpeakerDetailSession[] = participantRows.map((p) => ({
+    submissionId: p.submissionId,
+    ref: formatRef(recordPrefix, p.submissionSeq),
+    title: p.submissionTitle,
+    status: p.submissionStatus,
+    contentStatus: p.submissionContentStatus,
+    role: p.role,
+    scheduled: scheduledBySubmission.get(p.submissionId) ?? null,
+  }));
+
+  // The one query for the whole task set — the same taskAssignment/task/file
+  // join shape grid.ts's cells query carries (DEC-920), never a query per
+  // task.
+  const assignmentRows = await db
+    .select({
+      assignmentId: schema.taskAssignment.id,
+      taskId: schema.taskAssignment.taskId,
+      taskTitle: schema.task.title,
+      taskKind: schema.task.kind,
+      required: schema.task.required,
+      dueDate: schema.task.dueDate,
+      status: schema.taskAssignment.status,
+      completedAt: schema.taskAssignment.completedAt,
+      fileId: schema.taskAssignment.fileId,
+      fileName: schema.file.filename,
+      fileSizeBytes: schema.file.sizeBytes,
+      fileVersionNo: schema.file.versionNo,
+    })
+    .from(schema.taskAssignment)
+    .innerJoin(schema.task, eq(schema.task.id, schema.taskAssignment.taskId))
+    .leftJoin(schema.file, eq(schema.file.id, schema.taskAssignment.fileId))
+    .where(and(eq(schema.taskAssignment.contactId, contactId), eq(schema.task.eventId, eventId)));
+
+  let outstandingRequired = 0;
+  const tasks: SpeakerDetailTask[] = assignmentRows.map((r) => {
+    // schema.file.filename/sizeBytes are notNull columns (DEC-920) — a
+    // non-null fileId whose file row didn't resolve through the join is a
+    // broken reference, not a "no file" state. Fail loudly rather than
+    // falling back to a generic "Has file" label (mirrors grid.ts).
+    if (r.fileId != null && r.fileName == null) {
+      throw new Error(`speaker detail: assignment ${r.assignmentId} has fileId ${r.fileId} that does not resolve to a file row`);
+    }
+    if (r.status !== "complete" && r.required) outstandingRequired += 1;
+    return {
+      assignmentId: r.assignmentId,
+      taskId: r.taskId,
+      title: r.taskTitle,
+      kind: r.taskKind,
+      required: r.required,
+      dueDate: r.dueDate ? r.dueDate.getTime() : null,
+      status: r.status,
+      completedAt: r.completedAt ? r.completedAt.getTime() : null,
+      file:
+        r.fileId != null && r.fileName != null && r.fileSizeBytes != null
+          ? { id: r.fileId, filename: r.fileName, sizeBytes: r.fileSizeBytes, versionNo: r.fileVersionNo }
+          : null,
+    };
+  });
+
+  const overdueRows = await db
+    .select({ id: schema.taskAssignment.id })
+    .from(schema.taskAssignment)
+    .innerJoin(schema.task, eq(schema.task.id, schema.taskAssignment.taskId))
+    .innerJoin(schema.contact, eq(schema.contact.id, schema.taskAssignment.contactId))
+    .where(and(eq(schema.taskAssignment.contactId, contactId), overdueAssignmentConditions(eventId, Date.now())));
+
+  const primary = participantRows[0];
+  if (!primary) throw new Error("speaker detail: participantRows unexpectedly empty after length check");
+
+  return {
+    contact: {
+      id: contactRow.id,
+      name: `${contactRow.firstName} ${contactRow.lastName}`.trim(),
+      email: contactRow.email,
+      company: contactRow.company,
+      title: contactRow.title,
+      hasAccount: contactRow.userId != null,
+    },
+    participation: {
+      participantId: primary.participantId,
+      submissionId: primary.submissionId,
+      inviteStatus: primary.inviteStatus,
+    },
+    sessions,
+    tasks,
+    counts: {
+      outstandingRequired,
+      overdue: overdueRows.length,
+    },
+  };
+}
