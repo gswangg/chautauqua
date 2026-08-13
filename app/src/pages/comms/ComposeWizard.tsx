@@ -583,15 +583,22 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
               <div key={r.contactId + r.submissionId} className="chq-comms-recipient-row">
                 <div>
                   <div className="chq-comms-recipient-name">{r.name}</div>
-                  <div className="chq-comms-recipient-meta">{r.email}</div>
+                  <div className="chq-comms-recipient-meta">
+                    {r.email} &middot; {r.ref}
+                  </div>
                 </div>
-                {attachIcs && <span className="chq-flag">{r.ics ? 'Scheduled' : 'No slot yet'}</span>}
+                {/* DEC-912: the scheduled flag names the talk's slot state
+                    unconditionally -- never gated on the attachIcs toggle,
+                    which only governs whether an invite is attached. */}
+                <span className="chq-flag">{r.scheduled ? 'Scheduled' : 'No slot yet'}</span>
               </div>
             ))}
             {preview.length === 0 && <p>No recipients to preview.</p>}
-            {overflowCount > 0 && (
+            {preview.length > 0 && (
               <div className="chq-comms-overflow">
-                {overflowCount} more &middot; {preview.length} is under the {RECIPIENT_CAP}-recipient cap
+                {overflowCount > 0 && <>{overflowCount} more &middot; </>}
+                {preview.length} is {preview.length >= RECIPIENT_CAP ? 'at' : 'under'} the {RECIPIENT_CAP}-recipient
+                cap
               </div>
             )}
 

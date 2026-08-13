@@ -146,18 +146,20 @@ describe("findAccountUserIds contract-matches findAccountUserId (DEC-456)", () =
 //    same submission still each get the identical feedback block.
 // ---------------------------------------------------------------------------
 
-const event = { id: "evt-1", name: "DevCon" };
+const event = { id: "evt-1", name: "DevCon", recordPrefix: "DEV" };
 const feedbackScope = { planId: "plan-1", round: 1 };
 
 const submissions: ComposeSubmission[] = [
   {
     id: "sub-1",
     title: "Talk One",
+    seq: 1,
     participants: [{ contactId: "ct-1", firstName: "Ada", lastName: "Lovelace", email: "ada@example.com" }],
   },
   {
     id: "sub-2",
     title: "Talk Two (co-speakers)",
+    seq: 2,
     participants: [
       { contactId: "ct-2", firstName: "Grace", lastName: "Hopper", email: "grace@example.com" },
       { contactId: "ct-3", firstName: "Radia", lastName: "Perlman", email: "radia@example.com" },
@@ -166,6 +168,7 @@ const submissions: ComposeSubmission[] = [
   {
     id: "sub-3",
     title: "Talk Three",
+    seq: 3,
     participants: [
       { contactId: "ct-4", firstName: "Margaret", lastName: "Hamilton", email: "margaret@example.com" },
       { contactId: "ct-5", firstName: "Katherine", lastName: "Johnson", email: "katherine@example.com" },
@@ -190,6 +193,7 @@ function makeComposeDb() {
   let feedbackCalls = 0;
   let accountCalls = 0;
   let outstandingCalls = 0;
+  let icsScheduleCalls = 0;
   let selectCalls = 0;
 
   const feedbackRows = [
@@ -213,6 +217,15 @@ function makeComposeDb() {
         outstandingCalls += 1;
         return makeSelectChain([]); // no outstanding tasks for any recipient
       }
+      // DEC-912: buildRenderTargets's now-unconditional schedule-data lookup
+      // (src/server/repo/comms.ts loadIcsScheduleData) selects a
+      // "day"-shaped projection — distinguish it too, so this fixture's
+      // per-query counters stay meaningful. No schedule_slot rows means
+      // every recipient's `scheduled` resolves false here.
+      if ("day" in proj) {
+        icsScheduleCalls += 1;
+        return makeSelectChain([]); // no submissions are scheduled in this fixture
+      }
       accountCalls += 1;
       return makeSelectChain([]); // no accounts exist — every recipient gets a claim link path
     },
@@ -223,6 +236,7 @@ function makeComposeDb() {
     getFeedbackCalls: () => feedbackCalls,
     getAccountCalls: () => accountCalls,
     getOutstandingCalls: () => outstandingCalls,
+    getIcsScheduleCalls: () => icsScheduleCalls,
     getSelectCalls: () => selectCalls,
   };
 }
@@ -236,8 +250,8 @@ function fakeContext(db: AppEnv["Variables"]["db"], kv: KVStore) {
 }
 
 describe("buildRenderTargets batches per-request, not per-recipient (DEC-530)", () => {
-  it("issues exactly one feedback query, one account query, and one outstanding-task query for 3 submissions / 5 recipients", async () => {
-    const { db, getFeedbackCalls, getAccountCalls, getOutstandingCalls, getSelectCalls } = makeComposeDb();
+  it("issues exactly one feedback query, one account query, one outstanding-task query, and one schedule query for 3 submissions / 5 recipients", async () => {
+    const { db, getFeedbackCalls, getAccountCalls, getOutstandingCalls, getIcsScheduleCalls, getSelectCalls } = makeComposeDb();
     const c = fakeContext(db, new InMemoryKV());
 
     const targets = await buildRenderTargets(c as never, event, submissions, /* feedback */ feedbackScope, /* mintClaimTokens */ false);
@@ -246,7 +260,19 @@ describe("buildRenderTargets batches per-request, not per-recipient (DEC-530)", 
     expect(getFeedbackCalls()).toBe(1);
     expect(getAccountCalls()).toBe(1);
     expect(getOutstandingCalls()).toBe(1);
-    expect(getSelectCalls()).toBe(3);
+    expect(getIcsScheduleCalls()).toBe(1);
+    expect(getSelectCalls()).toBe(4);
+  });
+
+  it("populates ref and scheduled unconditionally (DEC-912), never per-recipient", async () => {
+    const { db } = makeComposeDb();
+    const c = fakeContext(db, new InMemoryKV());
+
+    const targets = await buildRenderTargets(c as never, event, submissions, null, false);
+
+    const ada = targets.find((t) => t.contactId === "ct-1");
+    expect(ada?.ref).toBe("DEV-001");
+    expect(ada?.scheduled).toBe(false); // no schedule_slot rows in this fixture
   });
 
   it("gives co-speakers on the same submission the identical feedback block", async () => {

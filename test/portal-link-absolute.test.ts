@@ -58,11 +58,13 @@ vi.mock("../src/server/repo/comms", async () => {
       {
         id: "sub-existing",
         title: "On Engines",
+        seq: 1,
         participants: [{ contactId: "ct-existing", firstName: "Ada", lastName: "Lovelace", email: "ada@example.com" }],
       },
       {
         id: "sub-new",
         title: "On Looms",
+        seq: 2,
         participants: [{ contactId: "ct-new", firstName: "Bea", lastName: "Byte", email: "bea@example.com" }],
       },
     ]),
@@ -72,6 +74,9 @@ vi.mock("../src/server/repo/comms", async () => {
     ),
     listFeedbackComments: vi.fn(async () => []),
     listFeedbackCommentsForSubmissions: vi.fn(async () => new Map()),
+    // DEC-912: buildRenderTargets now unconditionally loads schedule data
+    // for `scheduled` — unrelated to this file's portal-link scope.
+    loadIcsScheduleData: vi.fn(async () => new Map()),
   };
 });
 

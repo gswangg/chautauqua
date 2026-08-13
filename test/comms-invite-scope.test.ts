@@ -121,8 +121,8 @@ describe("loadComposeSubmissions participant WHERE clause (DEC-317)", () => {
 describe("noRecipientFields (DEC-317)", () => {
   it("flags a selected id whose loaded submission has zero participants", () => {
     const submissions: ComposeSubmission[] = [
-      { id: "sub-ok", title: "Ok", participants: [{ contactId: "c1", firstName: "A", lastName: "B", email: "a@example.com" }] },
-      { id: "sub-empty", title: "Empty", participants: [] },
+      { id: "sub-ok", title: "Ok", seq: 1, participants: [{ contactId: "c1", firstName: "A", lastName: "B", email: "a@example.com" }] },
+      { id: "sub-empty", title: "Empty", seq: 2, participants: [] },
     ];
     const fields = noRecipientFields(submissions, ["sub-ok", "sub-empty"]);
     expect(fields).toEqual({ "sub-empty": "no eligible recipients" });
@@ -136,7 +136,7 @@ describe("noRecipientFields (DEC-317)", () => {
 
   it("returns {} when every selected submission has at least one participant", () => {
     const submissions: ComposeSubmission[] = [
-      { id: "sub-1", title: "A", participants: [{ contactId: "c1", firstName: "A", lastName: "B", email: "a@example.com" }] },
+      { id: "sub-1", title: "A", seq: 1, participants: [{ contactId: "c1", firstName: "A", lastName: "B", email: "a@example.com" }] },
     ];
     expect(noRecipientFields(submissions, ["sub-1"])).toEqual({});
   });

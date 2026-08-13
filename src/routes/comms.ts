@@ -28,6 +28,7 @@ import {
 import { formatTaskLines, type ReminderAssignment } from "../domain/reminders";
 import { listOutstandingForEvent } from "../server/repo/tasks/reminders";
 import { formatCalendarDate } from "../lib/event-time";
+import { formatRef } from "../domain/ids";
 import {
   MAX_PORTAL_INVITE_RECIPIENTS,
   renderPortalInvites,
@@ -369,7 +370,7 @@ export async function buildRenderTargets(
     env: { KV: KVNamespace; PUBLIC_BASE_URL?: string; DEV_MODE?: string };
     req: { url: string; header(name: string): string | undefined };
   },
-  event: { id: string; name: string },
+  event: { id: string; name: string; recordPrefix: string },
   submissions: ComposeSubmission[],
   feedback: { planId: string; round: number } | null,
   mintClaimTokens: boolean,
@@ -401,6 +402,14 @@ export async function buildRenderTargets(
   // regardless of recipient count.
   const contactIds = [...new Set(expanded.recipients.map((r) => r.contactId))];
   const outstandingRows = await listOutstandingForEvent(c.var.db, event.id, undefined, contactIds);
+
+  // DEC-912: 'ref' (talk display code) and 'scheduled' (whether a
+  // schedule_slot exists) are populated on EVERY rendered recipient,
+  // unconditionally — never gated on attachIcs, which only governs the
+  // `ics` attachment payload computed at the callsite below. One batched
+  // schedule-data query for the whole expanded submission set (never
+  // per-recipient), mirroring the feedback/account/task batching above.
+  const icsScheduleMap = await repo.loadIcsScheduleData(c.var.db, submissionIds);
   const outstandingByContact = new Map<string, ReminderAssignment[]>();
   for (const row of outstandingRows) {
     const arr = outstandingByContact.get(row.contactId) ?? [];
@@ -447,6 +456,8 @@ export async function buildRenderTargets(
       submissionId: recipient.submissionId,
       email: recipient.email,
       name: recipient.name,
+      ref: formatRef(event.recordPrefix, submission.seq),
+      scheduled: icsScheduleMap.has(recipient.submissionId),
       vars,
     });
   }

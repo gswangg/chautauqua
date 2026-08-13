@@ -53,9 +53,10 @@ export function PreviewPane({ item, attachIcs = false }: { item: RenderedRecipie
         <span className="chq-comms-preview-field-label">To</span>
         <span className="chq-comms-preview-field-value">
           {item.name} &lt;{item.email}&gt;
-          {attachIcs && (
-            <span className="chq-flag chq-comms-preview-ics-flag">{item.ics ? 'Scheduled' : 'No slot'}</span>
-          )}
+          {/* DEC-912: the scheduled flag names the talk's slot state
+              unconditionally -- never gated on attachIcs, which only governs
+              whether an invite is attached (the two footnote blocks below). */}
+          <span className="chq-flag chq-comms-preview-ics-flag">{item.scheduled ? 'Scheduled' : 'No slot'}</span>
         </span>
       </div>
       <div className="chq-comms-preview-field">

@@ -50,6 +50,7 @@ const existingSubmissions = [
   {
     id: "sub-existing",
     title: "On Engines",
+    seq: 1,
     participants: [{ contactId: "ct-existing", firstName: "Ada", lastName: "Lovelace", email: "ada@example.com" }],
   },
 ];
@@ -71,6 +72,9 @@ vi.mock("../src/server/repo/comms", async () => {
     findAccountUserIds: vi.fn(async (_db: unknown, params: { contactId: string }[]) => new Map(params.map((p) => [p.contactId, null]))),
     listFeedbackComments: vi.fn(async () => []),
     listFeedbackCommentsForSubmissions: vi.fn(async () => new Map()),
+    // DEC-912: buildRenderTargets now unconditionally loads schedule data
+    // for `scheduled` — unrelated to this file's DEC-122 scope.
+    loadIcsScheduleData: vi.fn(async () => new Map()),
   };
 });
 

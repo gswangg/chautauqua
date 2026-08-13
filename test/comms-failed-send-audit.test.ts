@@ -51,16 +51,19 @@ const allBadSubmissions = [
   {
     id: "sub-bad-1",
     title: "On Failure 1",
+    seq: 1,
     participants: [{ contactId: "ct-bad-1", firstName: "Grace", lastName: "Hopper", email: "bad1@example.com" }],
   },
   {
     id: "sub-bad-2",
     title: "On Failure 2",
+    seq: 2,
     participants: [{ contactId: "ct-bad-2", firstName: "Kay", lastName: "McNulty", email: "bad2@example.com" }],
   },
   {
     id: "sub-bad-3",
     title: "On Failure 3",
+    seq: 3,
     participants: [{ contactId: "ct-bad-3", firstName: "Betty", lastName: "Holberton", email: "bad3@example.com" }],
   },
 ];
@@ -82,6 +85,9 @@ vi.mock("../src/server/repo/comms", async () => {
     findAccountUserIds: vi.fn(async (_db: unknown, params: { contactId: string }[]) => new Map(params.map((p) => [p.contactId, null]))),
     listFeedbackComments: vi.fn(async () => []),
     listFeedbackCommentsForSubmissions: vi.fn(async () => new Map()),
+    // DEC-912: buildRenderTargets now unconditionally loads schedule data
+    // for `scheduled` — unrelated to this file's failed-send-audit scope.
+    loadIcsScheduleData: vi.fn(async () => new Map()),
   };
 });
 

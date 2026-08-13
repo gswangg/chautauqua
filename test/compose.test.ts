@@ -24,8 +24,8 @@ function participant(contactId: string, email = `${contactId}@example.com`) {
 describe("expandRecipients", () => {
   it("produces one (contactId, submissionId) row per participant", () => {
     const submissions: ComposeSubmission[] = [
-      { id: "sub_1", title: "On Engines", participants: [participant("ct_1"), participant("ct_2")] },
-      { id: "sub_2", title: "On Looms", participants: [participant("ct_1")] },
+      { id: "sub_1", title: "On Engines", seq: 1, participants: [participant("ct_1"), participant("ct_2")] },
+      { id: "sub_2", title: "On Looms", seq: 2, participants: [participant("ct_1")] },
     ];
     const result = expandRecipients(submissions);
     expect(result.ok).toBe(true);
@@ -42,6 +42,7 @@ describe("expandRecipients", () => {
       {
         id: "sub_1",
         title: "Big talk",
+        seq: 1,
         participants: Array.from({ length: MAX_COMPOSE_RECIPIENTS + 1 }, (_, i) => participant(`ct_${i}`)),
       },
     ];
@@ -56,6 +57,7 @@ describe("expandRecipients", () => {
       {
         id: "sub_1",
         title: "Big talk",
+        seq: 1,
         participants: Array.from({ length: MAX_COMPOSE_RECIPIENTS }, (_, i) => participant(`ct_${i}`)),
       },
     ];
@@ -150,6 +152,8 @@ describe("preflightRender", () => {
       submissionId: "sub_1",
       email: "ada@example.com",
       name: "Ada Lovelace",
+      ref: "DFC-001",
+      scheduled: true,
       vars: {
         talk_title: "On Engines",
         speaker_name: "Ada Lovelace",

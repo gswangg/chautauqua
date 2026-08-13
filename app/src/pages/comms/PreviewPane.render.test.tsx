@@ -1,6 +1,8 @@
-// DEC-732 (eval-findings 44d/68): the preview must equal what send() will
-// actually do -- when attachIcs is set, every recipient card says SCHEDULED
-// or NO SLOT, not just recipients who happen to have a resolved slot.
+// DEC-912: the 'To' line's Scheduled/No slot flag names the talk's slot
+// state unconditionally -- driven by item.scheduled, never gated on
+// attachIcs. The two ics footnote blocks ('Calendar invite: …' / 'No slot
+// yet — this recipient gets no calendar invite.') describe the ATTACHMENT
+// and stay gated on attachIcs.
 import { afterEach, describe, expect, it } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
@@ -16,6 +18,8 @@ const SCHEDULED: RenderedRecipient = {
   submissionId: 's1',
   email: 'ada@example.com',
   name: 'Ada Lovelace',
+  ref: 'DFC-014',
+  scheduled: true,
   subject: 'You are in!',
   text: 'See you there',
   ics: {
@@ -32,6 +36,8 @@ const NO_SLOT: RenderedRecipient = {
   submissionId: 's2',
   email: 'grace@example.com',
   name: 'Grace Hopper',
+  ref: 'DFC-021',
+  scheduled: false,
   subject: 'You are in!',
   text: 'See you there',
 };
@@ -41,6 +47,8 @@ const WITH_FEEDBACK: RenderedRecipient = {
   submissionId: 's3',
   email: 'radia@example.com',
   name: 'Radia Perlman',
+  ref: 'DFC-041',
+  scheduled: true,
   subject: 'You are in!',
   text: 'Congratulations on your session.\n\nGreat energy; clear structure.\n\nSee you there',
   vars: { feedback: 'Great energy; clear structure.' },
@@ -61,23 +69,38 @@ describe('PreviewPane: merged reviewer feedback block (DEC-883)', () => {
   });
 });
 
-describe('PreviewPane: attachIcs honesty (DEC-732)', () => {
-  it('tags a recipient with a resolved slot as Scheduled and shows the invite line', () => {
+describe('PreviewPane: To-line scheduled flag is unconditional (DEC-912)', () => {
+  it('shows Scheduled for a scheduled recipient even when attachIcs was never requested', () => {
+    render(<PreviewPane item={SCHEDULED} />);
+    expect(screen.getByText('Scheduled')).toBeInTheDocument();
+  });
+
+  it('shows No slot for an unscheduled recipient even when attachIcs was never requested', () => {
+    render(<PreviewPane item={NO_SLOT} />);
+    expect(screen.getByText('No slot')).toBeInTheDocument();
+  });
+
+  it('keeps showing Scheduled/No slot when attachIcs IS set (flag unaffected by the toggle)', () => {
     render(<PreviewPane item={SCHEDULED} attachIcs />);
     expect(screen.getByText('Scheduled')).toBeInTheDocument();
+  });
+});
+
+describe('PreviewPane: attachIcs honesty (DEC-732) -- the ics footnote blocks describe the attachment', () => {
+  it('shows the invite line for a recipient with a resolved slot', () => {
+    render(<PreviewPane item={SCHEDULED} attachIcs />);
     expect(screen.getByText(/Calendar invite:/)).toBeInTheDocument();
   });
 
-  it('tags a recipient with no resolved slot as No slot and says so instead of the invite line', () => {
+  it('shows the no-invite footnote for a recipient with no resolved slot', () => {
     render(<PreviewPane item={NO_SLOT} attachIcs />);
-    expect(screen.getByText('No slot')).toBeInTheDocument();
     expect(screen.queryByText(/Calendar invite:/)).not.toBeInTheDocument();
     expect(screen.getByText(/gets no calendar invite/)).toBeInTheDocument();
   });
 
-  it('shows no scheduling tag at all when attachIcs was never requested', () => {
+  it('shows neither footnote block when attachIcs was never requested', () => {
     render(<PreviewPane item={NO_SLOT} />);
-    expect(screen.queryByText('No slot')).not.toBeInTheDocument();
-    expect(screen.queryByText('Scheduled')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Calendar invite:/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/gets no calendar invite/)).not.toBeInTheDocument();
   });
 });

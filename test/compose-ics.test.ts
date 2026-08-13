@@ -185,6 +185,7 @@ function icsTzSubmissionFixture(id: string, contactId: string, email: string) {
   return {
     id,
     title: `Talk ${id}`,
+    seq: 1,
     participants: [{ contactId, firstName: "Ada", lastName: "Lovelace", email }],
   };
 }

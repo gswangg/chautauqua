@@ -45,11 +45,13 @@ const existingSubmissions = [
   {
     id: "sub-good",
     title: "On Engines",
+    seq: 1,
     participants: [{ contactId: "ct-good", firstName: "Ada", lastName: "Lovelace", email: "good@example.com" }],
   },
   {
     id: "sub-bad",
     title: "On Failure",
+    seq: 2,
     participants: [{ contactId: "ct-bad", firstName: "Grace", lastName: "Hopper", email: "bad@example.com" }],
   },
 ];
@@ -71,6 +73,9 @@ vi.mock("../src/server/repo/comms", async () => {
     findAccountUserIds: vi.fn(async (_db: unknown, params: { contactId: string }[]) => new Map(params.map((p) => [p.contactId, null]))),
     listFeedbackComments: vi.fn(async () => []),
     listFeedbackCommentsForSubmissions: vi.fn(async () => new Map()),
+    // DEC-912: buildRenderTargets now unconditionally loads schedule data
+    // for `scheduled` — unrelated to this file's mailer-failure scope.
+    loadIcsScheduleData: vi.fn(async () => new Map()),
   };
 });
 

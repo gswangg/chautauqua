@@ -352,6 +352,8 @@ describe("bulk-email atomicity (DEC-019 via preflightRender, DEC-026 whitelist)"
       submissionId: "",
       email: "ada@example.com",
       name: "Ada Lovelace",
+      ref: "",
+      scheduled: false,
       vars: { speaker_name: "Ada Lovelace", event_name: "DevCon", portal_link: "/portal" },
       ...overrides,
     };

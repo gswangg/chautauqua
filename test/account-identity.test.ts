@@ -60,6 +60,10 @@ vi.mock("../src/server/repo/comms", async () => {
     loadComposeSubmissions: vi.fn(async () => []),
     listFeedbackComments: vi.fn(async () => []),
     listFeedbackCommentsForSubmissions: vi.fn(async () => new Map()),
+    // DEC-912: buildRenderTargets now unconditionally loads schedule data
+    // for `scheduled` — unrelated to this file's account-identity scope, so
+    // stub it to "nothing scheduled" (an empty map).
+    loadIcsScheduleData: vi.fn(async () => new Map()),
     findAccountUserId: findAccountUserIdMock,
     // Batched sibling delegates to the (per-test-overridable) singular mock
     // above so every existing findAccountUserId.mockImplementation(...) in
@@ -226,6 +230,7 @@ describe("resolvePortalLink keys off contact_id, not email alone (DEC-456)", () 
       {
         id: "sub-1",
         title: "On Engines",
+        seq: 1,
         participants: [{ contactId: "ct-desynced", firstName: "Ada", lastName: "Lovelace", email: "ada-new@example.com" }],
       },
     ]);

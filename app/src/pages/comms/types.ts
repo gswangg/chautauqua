@@ -33,6 +33,12 @@ export interface RenderedRecipient {
   submissionId: string;
   email: string;
   name: string;
+  // DEC-912: the talk's human ref (e.g. 'DFC-014') and whether it has a
+  // schedule slot, populated unconditionally on every rendered recipient —
+  // never gated on attachIcs. `ics` (below) stays gated: it's the
+  // attachment payload, not the fact of scheduling.
+  ref: string;
+  scheduled: boolean;
   subject: string;
   text: string;
   ics?: RenderedRecipientIcs;
