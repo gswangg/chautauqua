@@ -173,13 +173,87 @@ export const PUBLIC_CSS = `
     border-radius: 50%;
     background: var(--chq-track-color, var(--chq-hairline));
   }
-  /* Speaker grid (speakers.tsx / gallery). DEC-885/DEC-385: this codebase is
-     single-direction (narrow overrides wide via max-width only, never
-     min-width -- see test/breakpoint-conformance.test.ts) so the WIDE
-     desktop frame is the unprefixed default -- a fixed three columns,
-     COUNTED rather than left to an auto-fill floor that packed seven
-     columns at the 1240-1440 frame -- and the two max-width blocks below
-     narrow it down for the 900px/700px steps. */
+  /* ===== task-w40-f (DEC-990 Amendment, wave 40): List/Grid are two
+     anatomies, not one grid with a modifier =====
+     Title row: h1 left, the joined List/Grid toggle right-flushed beside
+     it; PublicSearchBox renders immediately below (task-w40-e owns the
+     search box's own internals, not this row). */
+  .chq-pub-title-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 18px;
+  }
+  .chq-pub-title-row .chq-pub-surface-title { margin-bottom: 0; }
+
+  /* Joined segmented control (replaces the two-separate-pills toggle DEC-990
+     shipped wave 37): one bordered wrapper, two halves sharing the middle
+     border, the active half filled --chq-ink with --chq-paper text. */
+  .chq-pub-view-toggle {
+    display: inline-flex;
+    border: 1px solid var(--chq-border);
+    border-radius: var(--chq-r-pill);
+    overflow: hidden;
+  }
+  .chq-pub-view-toggle-option {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0 16px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--chq-ink-2);
+    text-decoration: none;
+  }
+  .chq-pub-view-toggle-option + .chq-pub-view-toggle-option {
+    border-left: 1px solid var(--chq-border);
+  }
+  .chq-pub-view-toggle-option[aria-current=page] {
+    background: var(--chq-ink);
+    color: var(--chq-paper);
+    font-weight: 600;
+  }
+
+  /* List view (SpeakersContent/SpeakerListRow): a ruled list, not a grid --
+     ~80px rounded headshot | name + role/company | that speaker's session
+     titles in a right-hand column, one hairline rule per row. */
+  .chq-pub-speaker-list { list-style: none; margin: 0; padding: 0; }
+  .chq-pub-speaker-list-row {
+    display: grid;
+    grid-template-columns: 80px 1fr 1fr;
+    gap: 20px;
+    align-items: center;
+    padding: 16px 0;
+    border-bottom: 1px solid var(--chq-hairline);
+  }
+  .chq-pub-speaker-list-photo { width: 80px; }
+  .chq-pub-speaker-list-photo img,
+  .chq-pub-speaker-list-photo .chq-pub-headshot-fallback {
+    width: 80px;
+    height: 80px;
+    aspect-ratio: 1/1;
+    object-fit: cover;
+    border-radius: 50%;
+    background: var(--chq-surface-sunk);
+  }
+  .chq-pub-speaker-list-info { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .chq-pub-speaker-list-row .chq-pub-speaker-sessions {
+    font-size: 13px;
+    line-height: 1.45;
+    margin: 0;
+    padding-left: 1.1em;
+    color: var(--chq-ink-2);
+  }
+
+  /* Grid view (GalleryContent/SpeakerGridTile). DEC-885/DEC-385: this
+     codebase is single-direction (narrow overrides wide via max-width only,
+     never min-width -- see test/breakpoint-conformance.test.ts) so the WIDE
+     desktop frame is the unprefixed default -- six ~184px square tiles,
+     COUNTED rather than left to an auto-fill floor -- and the two max-width
+     blocks below narrow it down for the 900px/700px steps. */
   .chq-pub-speaker-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
   .chq-pub-speaker-card { display: flex; flex-direction: column; gap: 9px; }
   .chq-pub-speaker-grid img, .chq-pub-headshot-fallback {
@@ -223,9 +297,6 @@ export const PUBLIC_CSS = `
   }
   .chq-pub-speaker-role { font-size: 13px; color: var(--chq-muted); line-height: 1.45; margin: 0; }
   .chq-pub-speaker-sessions { font-size: 13px; line-height: 1.45; margin: 0; padding-left: 1.1em; }
-
-  /* Gallery (headshots only, no session details). */
-  .chq-pub-gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 10px; }
 
   /* Agenda day grid (DEC-253: the day grid itself keeps its legible
      per-room minmax columns and scrolls sideways in its own container
@@ -398,10 +469,36 @@ export const PUBLIC_CSS = `
     .chq-pub-agenda-list { display: block; }
   }
 
-  /* DEC-593: gallery reuses the directory's SpeakerCard markup
-     (.chq-pub-speaker-grid/-card/-name) but keeps its own tighter,
-     headshot-first column width via the .chq-pub-gallery-grid modifier. */
-  .chq-pub-gallery-grid { grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 10px; }
+  /* DEC-990 Amendment (wave 40): the grid view is six COUNTED ~184px square
+     tiles at the WIDE desktop measure (repeat(6, 1fr) + 16px gaps is
+     ~1180, matching the 'wide' measure class shell.tsx now assigns this
+     surface) -- reusing .chq-pub-speaker-grid/-card for the shared
+     headshot/name/role markup (DEC-593), only the column count/caption
+     type scale differ. Narrower steps fall back to an auto-fill floor,
+     same idiom as .chq-pub-speaker-grid's own 900px/700px overrides
+     above. */
+  .chq-pub-gallery-grid { grid-template-columns: repeat(6, 1fr); gap: 16px; }
+  /* Caption type scale tuned down from the directory's (DEC-990: names
+     stop wrapping to 2-4 lines inside a 184px tile without truncating the
+     text). */
+  .chq-pub-gallery-grid .chq-pub-speaker-name { font-size: 13px; line-height: 1.25; }
+  .chq-pub-gallery-grid .chq-pub-speaker-role { font-size: 11px; line-height: 1.3; }
+
+  @media (max-width: 900px) {
+    .chq-pub-gallery-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+  }
+  @media (max-width: 700px) {
+    .chq-pub-gallery-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
+    .chq-pub-speaker-list-row {
+      grid-template-columns: 64px 1fr;
+      grid-template-areas: "photo info" "sessions sessions";
+    }
+    .chq-pub-speaker-list-photo { grid-area: photo; width: 64px; }
+    .chq-pub-speaker-list-photo img,
+    .chq-pub-speaker-list-photo .chq-pub-headshot-fallback { width: 64px; height: 64px; }
+    .chq-pub-speaker-list-info { grid-area: info; }
+    .chq-pub-speaker-list-row .chq-pub-speaker-sessions { grid-area: sessions; padding-left: 84px; }
+  }
 
   /* EMB-01/EMB-08: Format chip, styled like a track chip but without the
      colour dot (format has no organizer-assigned colour). */

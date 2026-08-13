@@ -111,7 +111,8 @@ describe("DEC-990: public shell nav drops Gallery", () => {
     expect(navHtml).toContain(">Sessions<");
     expect(navHtml).toContain(">Speakers<");
     expect(navHtml).toContain(">Agenda<");
-    expect(navHtml).toContain(">Schedule<");
+    // frame 10--00: the nav item's label is now 'My schedule'.
+    expect(navHtml).toContain(">My schedule<");
     expect(navHtml).not.toContain(">Gallery<");
     expect(navHtml).not.toContain("/gallery");
   });

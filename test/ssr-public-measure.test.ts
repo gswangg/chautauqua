@@ -1,6 +1,7 @@
-// DEC-989 Amendment (wave 37): the SSR public surfaces take their container
-// class from the CONTENT. sessions = wide (1180, list + rail pair);
-// speakers/gallery/schedule/session+speaker detail = reading (820);
+// DEC-989 Amendment (wave 37), further amended DEC-990 (wave 40): the SSR
+// public surfaces take their container class from the CONTENT. sessions and
+// gallery = wide (1180: sessions' list + rail pair, gallery's six ~184px
+// tiles + gaps); speakers/schedule/session+speaker detail = reading (820);
 // agenda = canvas (no class, its lane count is the room count). EmbedShell
 // never carries a measure class -- an embed fills its host iframe. Mirrors
 // the vi.mock(../src/server/repo/public) pattern from
@@ -172,7 +173,7 @@ describe("theme.ts: .chq-measure / .chq-measure-wide consume their own vars", ()
 const SURFACE_CASES: { path: string; expectClasses: string[] }[] = [
   { path: "/e/conf/sessions", expectClasses: ["chq-pub-main", "chq-measure-wide"] },
   { path: "/e/conf/speakers", expectClasses: ["chq-pub-main", "chq-measure"] },
-  { path: "/e/conf/gallery", expectClasses: ["chq-pub-main", "chq-measure"] },
+  { path: "/e/conf/gallery", expectClasses: ["chq-pub-main", "chq-measure-wide"] },
   { path: "/e/conf/schedule", expectClasses: ["chq-pub-main", "chq-measure"] },
   { path: "/e/conf/agenda", expectClasses: ["chq-pub-main"] },
   { path: "/e/conf/sessions/s1", expectClasses: ["chq-pub-main", "chq-measure"] },
