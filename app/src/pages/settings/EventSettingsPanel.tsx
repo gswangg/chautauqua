@@ -7,7 +7,7 @@
 // PATCH /api/v1/events/:id endpoint and buildEventPatch diffing are
 // unchanged from before this wave.
 import { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { apiGet, apiPatch, ApiError } from '../../lib/api';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
@@ -26,6 +26,10 @@ interface EventDetail {
   timezone: string;
   recordPrefix: string;
   branding: { logoUrl?: string; accentColor?: string } | null;
+  unscheduledByWindow?: {
+    count: number;
+    sessions: { submissionId: string; ref: string; title: string; day: string }[];
+  };
 }
 
 function toForm(event: EventDetail): EventSettingsForm {
@@ -58,6 +62,7 @@ export function EventSettingsPanel() {
   const [error, setError] = useState<string | undefined>(undefined);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [unscheduledNotice, setUnscheduledNotice] = useState<EventDetail['unscheduledByWindow'] | null>(null);
 
   useEffect(() => {
     if (!eventId) return;
@@ -99,6 +104,9 @@ export function EventSettingsPanel() {
       setInitial(f);
       setForm(f);
       setSaved(true);
+      setUnscheduledNotice(
+        updated.unscheduledByWindow && updated.unscheduledByWindow.count > 0 ? updated.unscheduledByWindow : null,
+      );
       closeEdit();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to save event settings');
@@ -124,6 +132,14 @@ export function EventSettingsPanel() {
     <>
       {eventLoading ? <DelayedLoading /> : null}
       {eventError || error ? <p role="alert">{eventError ?? error}</p> : null}
+      {unscheduledNotice ? (
+        <p role="status" className="chq-event-unscheduled-notice">
+          {unscheduledNotice.count} placed session{unscheduledNotice.count === 1 ? '' : 's'} now fall
+          {unscheduledNotice.count === 1 ? 's' : ''} outside these dates and{' '}
+          {unscheduledNotice.count === 1 ? 'has' : 'have'} been unscheduled:{' '}
+          {unscheduledNotice.sessions.map((s) => s.ref).join(', ')}. <Link to="/agenda">View agenda</Link>
+        </p>
+      ) : null}
       <SummarySection
         sectionKey={SECTION_KEY}
         label="Event settings"

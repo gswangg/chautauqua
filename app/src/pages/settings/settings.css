@@ -67,6 +67,15 @@
   align-self: flex-start;
 }
 
+/* DEC-844: persistent notice naming placed sessions a window-narrowing save
+   unscheduled. Not a toast/alert — stays until the next save overwrites or
+   clears it. */
+.chq-event-unscheduled-notice {
+  border: 1px solid var(--chq-ink);
+  padding: 12px 16px;
+  font-size: 13px;
+}
+
 .chq-settings-section {
   display: block;
 }
