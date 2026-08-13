@@ -256,6 +256,7 @@ export async function loadComposeSubmissions(
   return submissionRows.map((s) => ({
     id: s.id,
     title: s.title,
+    seq: s.seq,
     participants: participantRows
       .filter((p) => p.submissionId === s.id)
       .map((p) => ({ contactId: p.contactId, firstName: p.firstName, lastName: p.lastName, email: p.email })),

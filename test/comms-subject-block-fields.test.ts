@@ -46,6 +46,7 @@ const eligibleSubmissions: ComposeSubmission[] = [
   {
     id: "sub-1",
     title: "On Rejection",
+    seq: 1,
     participants: [
       {
         contactId: "c-1",

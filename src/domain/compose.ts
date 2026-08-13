@@ -37,6 +37,10 @@ export interface ComposeParticipant {
 export interface ComposeSubmission {
   id: string;
   title: string;
+  /** DEC-912: the submission's seq, combined with the event's recordPrefix
+   * (via domain/ids.ts formatRef) at the route layer to produce the human
+   * ref (e.g. 'DFC-014') every rendered recipient carries. */
+  seq: number;
   participants: ComposeParticipant[];
 }
 
@@ -145,6 +149,14 @@ export interface RenderTarget {
   submissionId: string;
   email: string;
   name: string;
+  /** DEC-912: the submission's human ref (e.g. 'DFC-014'), carried through
+   * to the rendered recipient row unconditionally — not gated on attachIcs. */
+  ref: string;
+  /** DEC-912: whether this submission has a schedule_slot row, carried
+   * through to the rendered recipient row unconditionally. This is the
+   * FACT of scheduling, distinct from `ics` (the attachment payload, which
+   * stays gated on attachIcs). */
+  scheduled: boolean;
   vars: Record<string, string>;
 }
 
@@ -153,6 +165,8 @@ export interface RenderedRecipientEmail {
   submissionId: string;
   email: string;
   name: string;
+  ref: string;
+  scheduled: boolean;
   subject: string;
   text: string;
 }
@@ -199,6 +213,8 @@ export function preflightRender(
       submissionId: target.submissionId,
       email: target.email,
       name: target.name,
+      ref: target.ref,
+      scheduled: target.scheduled,
       subject: renderTemplate(subjectTemplate, target.vars),
       text: renderTemplate(bodyTemplate, target.vars),
     });

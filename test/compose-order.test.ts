@@ -100,11 +100,11 @@ describe("loadComposeSubmissions reproducible order (DEC-564)", () => {
     expect(orderedRecipients.recipients.map((r) => r.contactId)).toEqual(["ct-1", "ct-2", "ct-3", "ct-4", "ct-5"]);
   });
 
-  it("does not leak seq/order onto the returned ComposeSubmission/ComposeParticipant shapes", async () => {
+  it("does not leak order onto the returned ComposeSubmission/ComposeParticipant shapes (seq IS present, DEC-912's ref source)", async () => {
     const db = makeComposeDb({ submissionRows: submissionRowsInOrder, participantRows: participantRowsInOrder });
     const subs = await loadComposeSubmissions(db, "evt-1", ["sub-a", "sub-b", "sub-c"]);
     for (const s of subs) {
-      expect(Object.keys(s).sort()).toEqual(["id", "participants", "title"]);
+      expect(Object.keys(s).sort()).toEqual(["id", "participants", "seq", "title"]);
       for (const p of s.participants) {
         expect(Object.keys(p).sort()).toEqual(["contactId", "email", "firstName", "lastName"]);
       }

@@ -117,6 +117,11 @@ async function renderBulkEmailTargets(
       submissionId: "",
       email: contact.email,
       name: `${contact.firstName} ${contact.lastName}`.trim(),
+      // DEC-912's ref/scheduled describe a talk; bulk email is
+      // contact-scoped (DEC-026), not submission-scoped, so there is no
+      // talk to name here.
+      ref: "",
+      scheduled: false,
       vars: {
         speaker_name: `${contact.firstName} ${contact.lastName}`.trim(),
         event_name: event.name,

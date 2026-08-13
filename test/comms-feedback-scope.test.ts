@@ -132,9 +132,9 @@ class InMemoryKV implements KVStore {
 
 describe("buildRenderTargets only renders the composing plan+round's feedback (DEC-682)", () => {
   const submissions: ComposeSubmission[] = [
-    { id: "sub-1", title: "Talk One", participants: [{ contactId: "ct-1", firstName: "Ada", lastName: "Lovelace", email: "ada@example.com" }] },
+    { id: "sub-1", title: "Talk One", seq: 1, participants: [{ contactId: "ct-1", firstName: "Ada", lastName: "Lovelace", email: "ada@example.com" }] },
   ];
-  const event = { id: "evt-1", name: "DevCon" };
+  const event = { id: "evt-1", name: "DevCon", recordPrefix: "DEV" };
 
   function fakeContext(db: AppEnv["Variables"]["db"]) {
     return {

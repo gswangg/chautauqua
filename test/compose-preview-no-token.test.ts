@@ -32,6 +32,7 @@ function submissionFixture(id: string, contactId: string, email: string) {
   return {
     id,
     title: `Talk ${id}`,
+    seq: 1,
     participants: [{ contactId, firstName: "Ada", lastName: "Lovelace", email }],
   };
 }
@@ -57,6 +58,9 @@ vi.mock("../src/server/repo/comms", async () => {
     findAccountUserIds: vi.fn(async (_db: unknown, params: { contactId: string }[]) => new Map(params.map((p) => [p.contactId, null]))),
     listFeedbackComments: vi.fn(async () => []),
     listFeedbackCommentsForSubmissions: vi.fn(async () => new Map()),
+    // DEC-912: buildRenderTargets now unconditionally loads schedule data
+    // for `scheduled` — unrelated to this file's claim-token scope.
+    loadIcsScheduleData: vi.fn(async () => new Map()),
   };
 });
 

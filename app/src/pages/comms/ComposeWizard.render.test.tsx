@@ -552,3 +552,101 @@ describe('ComposeWizard sends edited body, not the template id (DEC-846)', () =>
     });
   });
 });
+
+// DEC-912: the step-3 recipient row names the talk (ref) and states the
+// slot (scheduled), and the flag is unconditional -- rendered whether or
+// not "Attach calendar invite" is checked. The frame's list footer reads
+// the recipient-cap constant, never a second literal 100.
+describe('ComposeWizard recipient rows name the talk and state the slot (DEC-912)', () => {
+  function recipient(contactId: string, submissionId: string, name: string, ref: string, scheduled: boolean) {
+    return {
+      contactId,
+      submissionId,
+      email: `${contactId}@example.com`,
+      name,
+      ref,
+      scheduled,
+      subject: 'You are in!',
+      text: 'See you there',
+    };
+  }
+
+  async function goToPreviewWith(items: ReturnType<typeof recipient>[]) {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope(page1(), { total: 340, page: 1, perPage: 50 }),
+      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
+      [`POST /api/v1/events/${EVENT_ID}/compose/preview`]: { items },
+    });
+
+    render(<ComposeWizard eventId={EVENT_ID} />);
+    await screen.findByText('Talk number 1');
+    fireEvent.click(screen.getByLabelText('Select Talk number 1'));
+    fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
+
+    const subject = await screen.findByLabelText('Subject');
+    fireEvent.change(subject, { target: { value: 'Hello' } });
+    fireEvent.change(screen.getByLabelText('Body'), { target: { value: 'Body text' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Next: preview' }));
+    await screen.findByText('Attachments');
+  }
+
+  it('renders name on the first line and "<email> · <ref>" on the second, with the scheduled flag ungated', async () => {
+    await goToPreviewWith([
+      recipient('c1', 'sub-1', 'Priya Raman', 'DFC-014', true),
+      recipient('c2', 'sub-2', 'Nadia Ferrone', 'DFC-041', false),
+    ]);
+
+    expect(screen.getByText('Priya Raman')).toBeInTheDocument();
+    expect(screen.getByText('c1@example.com · DFC-014')).toBeInTheDocument();
+    expect(screen.getByText('Nadia Ferrone')).toBeInTheDocument();
+    expect(screen.getByText('c2@example.com · DFC-041')).toBeInTheDocument();
+
+    // Both flags render even though "Attach calendar invite" was never
+    // checked -- DEC-912's flag is unconditional. Scope to the recipient
+    // rows: the PreviewPane's own To-line flag (also ungated, DEC-912)
+    // would otherwise also match "Scheduled".
+    const row = screen.getByText('Priya Raman').closest('.chq-comms-recipient-row');
+    expect(row).not.toBeNull();
+    expect(row!.querySelector('.chq-flag')?.textContent).toBe('Scheduled');
+    const otherRow = screen.getByText('Nadia Ferrone').closest('.chq-comms-recipient-row');
+    expect(otherRow!.querySelector('.chq-flag')?.textContent).toBe('No slot yet');
+  });
+
+  it('shows the flag unchanged after toggling Attach calendar invite on', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope(page1(), { total: 340, page: 1, perPage: 50 }),
+      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
+      [`POST /api/v1/events/${EVENT_ID}/compose/preview`]: () => ({
+        items: [recipient('c1', 'sub-1', 'Priya Raman', 'DFC-014', true)],
+      }),
+    });
+
+    render(<ComposeWizard eventId={EVENT_ID} />);
+    await screen.findByText('Talk number 1');
+    fireEvent.click(screen.getByLabelText('Select Talk number 1'));
+    fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
+    const subject = await screen.findByLabelText('Subject');
+    fireEvent.change(subject, { target: { value: 'Hello' } });
+    fireEvent.change(screen.getByLabelText('Body'), { target: { value: 'Body text' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Next: preview' }));
+    await screen.findByText('Priya Raman');
+    const rowFlag = () => screen.getByText('Priya Raman').closest('.chq-comms-recipient-row')!.querySelector('.chq-flag');
+    expect(rowFlag()?.textContent).toBe('Scheduled');
+
+    fireEvent.click(screen.getByLabelText('Attach calendar invite'));
+
+    await waitFor(() => expect(rowFlag()?.textContent).toBe('Scheduled'));
+  });
+
+  it('reads the recipient cap from the shared constant: "under" below the cap, "at" at the cap', async () => {
+    const under = Array.from({ length: 3 }, (_, i) => recipient(`c${i}`, `sub-${i}`, `Speaker ${i}`, `DFC-0${i}`, true));
+    await goToPreviewWith(under);
+    expect(screen.getByText(/3 is under the 100-recipient cap/)).toBeInTheDocument();
+  });
+
+  it('switches to "at the cap" wording when total meets the cap', async () => {
+    const atCap = Array.from({ length: 100 }, (_, i) => recipient(`c${i}`, `sub-${i}`, `Speaker ${i}`, `DFC-0${i}`, true));
+    await goToPreviewWith(atCap);
+    expect(screen.getByText(/100 is at the 100-recipient cap/)).toBeInTheDocument();
+  });
+});

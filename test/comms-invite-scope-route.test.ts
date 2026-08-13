@@ -47,7 +47,7 @@ const event = {
 
 // Simulates DB output for a submission whose only participant declined: the
 // DEC-317-scoped query returns zero participant rows for it.
-const declinedOnlySubmissions: ComposeSubmission[] = [{ id: "sub-declined", title: "On Rejection", participants: [] }];
+const declinedOnlySubmissions: ComposeSubmission[] = [{ id: "sub-declined", title: "On Rejection", seq: 1, participants: [] }];
 
 vi.mock("../src/server/repo/events", async () => {
   const actual = await vi.importActual<typeof import("../src/server/repo/events")>("../src/server/repo/events");
