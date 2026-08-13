@@ -346,9 +346,53 @@ export async function countEvaluationsByRound(db: Db, planId: string): Promise<R
   return out;
 }
 
+export interface PlanDeleteImpact {
+  reviewers: number;
+  evaluationsSubmitted: number;
+  evaluationsDraft: number;
+  recusals: number;
+}
+
+/** DEC-929: plan deletion names what it destroys -- feeds the DELETE
+ * confirmation dialog's prose. One grouped/aggregate query per table (never
+ * a per-reviewer scan): distinct reviewer count from plan_reviewer,
+ * submitted-vs-draft split from evaluation in a single grouped query, and a
+ * plain count from review_recusal. */
+export async function countPlanDeleteImpact(db: Db, planId: string): Promise<PlanDeleteImpact> {
+  const [reviewerRows, evalRows, recusalRows] = await Promise.all([
+    db
+      .select({ count: sql<number>`count(distinct ${schema.planReviewer.userId})` })
+      .from(schema.planReviewer)
+      .where(eq(schema.planReviewer.planId, planId)),
+    db
+      .select({
+        submitted: sql<number>`count(case when ${schema.evaluation.submittedAt} is not null then 1 end)`,
+        draft: sql<number>`count(case when ${schema.evaluation.submittedAt} is null then 1 end)`,
+      })
+      .from(schema.evaluation)
+      .where(eq(schema.evaluation.planId, planId)),
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(schema.reviewRecusal)
+      .where(eq(schema.reviewRecusal.planId, planId)),
+  ]);
+  return {
+    reviewers: Number(reviewerRows[0]?.count ?? 0),
+    evaluationsSubmitted: Number(evalRows[0]?.submitted ?? 0),
+    evaluationsDraft: Number(evalRows[0]?.draft ?? 0),
+    recusals: Number(recusalRows[0]?.count ?? 0),
+  };
+}
+
+/** DEC-929: deletes every row this plan owns across its four tables --
+ * plan_reviewer (assignments), evaluation (scores), review_recusal
+ * (conflict-of-interest opt-outs), and finally the evaluation_plan row
+ * itself. Matches countPlanDeleteImpact's tally exactly so the confirm
+ * dialog's numbers are never a lie about what this actually deletes. */
 export async function deletePlan(db: Db, planId: string): Promise<void> {
   await db.delete(schema.planReviewer).where(eq(schema.planReviewer.planId, planId));
   await db.delete(schema.evaluation).where(eq(schema.evaluation.planId, planId));
+  await db.delete(schema.reviewRecusal).where(eq(schema.reviewRecusal.planId, planId));
   await db.delete(schema.evaluationPlan).where(eq(schema.evaluationPlan.id, planId));
 }
 

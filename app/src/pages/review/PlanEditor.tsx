@@ -19,6 +19,7 @@ import {
   type EvaluationPlan,
   type PlanDraft,
   type DistributePreview,
+  type PlanDeleteImpact,
   type PlanReviewer,
   type ProgressRow,
   type ReviewerOption,
@@ -344,10 +345,27 @@ export function PlanEditor() {
   }
 
   const [deletePlanConfirmOpen, setDeletePlanConfirmOpen] = useState(false);
+  // DEC-929: plan deletion names what it destroys -- fetched from the
+  // read-only preview endpoint before the dialog opens, so the confirm body
+  // never guesses at the counts deletePlan is about to act on.
+  const [deletePreview, setDeletePreview] = useState<PlanDeleteImpact | null>(null);
+  const [deletePreviewLoading, setDeletePreviewLoading] = useState(false);
 
-  function removePlan() {
+  async function removePlan() {
     if (isNew || !planId) return;
-    setDeletePlanConfirmOpen(true);
+    setDeletePreviewLoading(true);
+    setError(null);
+    try {
+      const preview = await apiGet<{ planId: string; name: string; counts: PlanDeleteImpact }>(
+        `/plans/${planId}/delete-preview`,
+      );
+      setDeletePreview(preview.counts);
+      setDeletePlanConfirmOpen(true);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Failed to load delete preview');
+    } finally {
+      setDeletePreviewLoading(false);
+    }
   }
 
   async function confirmRemovePlan() {
@@ -1449,16 +1467,22 @@ export function PlanEditor() {
             Save. */}
         {!isNew && (
           <footer className="chq-review-editor-footer">
-            <button type="button" className="chq-btn chq-btn-tertiary" disabled={saving} onClick={removePlan}>
+            <button
+              type="button"
+              className="chq-btn chq-btn-tertiary"
+              disabled={saving || deletePreviewLoading}
+              onClick={removePlan}
+            >
               Delete plan
             </button>
           </footer>
         )}
       </div>
 
-      {deletePlanConfirmOpen && (
+      {deletePlanConfirmOpen && deletePreview && (
         <ConfirmDialog
           title="Delete evaluation plan"
+          body={`This will permanently delete ${deletePreview.evaluationsSubmitted} submitted evaluation(s) and ${deletePreview.evaluationsDraft} draft evaluation(s), ${deletePreview.reviewers} reviewer assignment(s), and ${deletePreview.recusals} recusal(s). This plan's results table and CSV export go with it.`}
           confirmLabel="Delete plan"
           destructive
           pending={saving}

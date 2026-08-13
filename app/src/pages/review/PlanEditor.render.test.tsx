@@ -801,4 +801,41 @@ describe('PlanEditor render smoke', () => {
     await waitFor(() => expect(screen.getByDisplayValue('Track Review')).toBeInTheDocument());
     expect(screen.queryByText(/^Open ·/)).not.toBeInTheDocument();
   });
+
+  // DEC-929: plan deletion names what it destroys -- Delete plan fetches the
+  // preview before opening the confirm dialog, and the dialog body prints
+  // the tallied counts in prose.
+  it('Delete plan fetches the delete-preview and states the submitted-review count in the confirm dialog body', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
+      [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([]),
+      'GET /api/v1/users': listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}/delete-preview`]: {
+        planId: PLAN_ID,
+        name: 'Track Review',
+        counts: { reviewers: 2, evaluationsSubmitted: 5, evaluationsDraft: 1, recusals: 3 },
+      },
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId" element={<PlanEditor />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(screen.getByDisplayValue('Track Review')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Delete plan' }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/5 submitted evaluation/)).toBeInTheDocument();
+    });
+    expect(screen.getByText(/1 draft evaluation/)).toBeInTheDocument();
+    expect(screen.getByText(/2 reviewer/)).toBeInTheDocument();
+    expect(screen.getByText(/3 recusal/)).toBeInTheDocument();
+    expect(screen.getByText(/results table and CSV export go with it/)).toBeInTheDocument();
+  });
 });

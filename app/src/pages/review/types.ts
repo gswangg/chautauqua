@@ -363,3 +363,13 @@ export interface DistributePreview {
   totalAssigned: number;
   shortfall: DistributePreviewShortfall[];
 }
+
+// GET /api/v1/plans/:id/delete-preview (DEC-929): names what DELETE
+// /api/v1/plans/:id is about to destroy, so the confirm dialog's prose
+// matches deletePlan's tally exactly.
+export interface PlanDeleteImpact {
+  reviewers: number;
+  evaluationsSubmitted: number;
+  evaluationsDraft: number;
+  recusals: number;
+}
