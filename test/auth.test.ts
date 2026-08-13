@@ -267,6 +267,16 @@ describe("POST /login rate limiting (DEC-180)", () => {
     }
   }
 
+  // DEC-948: extracts the right-hand-side value of a real drizzle eq(col,
+  // value) condition tree (unwrapping the Param wrapper), so the rate_limit
+  // fake below can key its store by the same `key` column peekScopedLimit
+  // etc. actually filter on -- rather than discarding the condition.
+  function extractEqValue(cond: unknown): unknown {
+    const chunks = (cond as { queryChunks: unknown[] }).queryChunks;
+    const raw = chunks[3];
+    return raw && typeof raw === "object" && "value" in (raw as object) ? (raw as { value: unknown }).value : raw;
+  }
+
   async function buildApp() {
     const passwordHash = await hashPassword(PASSWORD);
     const users = [
@@ -280,22 +290,29 @@ describe("POST /login rate limiting (DEC-180)", () => {
       },
     ];
     const sessions: unknown[] = [];
+    // DEC-948: the login door's rate limiter now upserts/reads/deletes a D1
+    // rate_limit row instead of KV -- real per-key state so this describe
+    // block's cap-crossing and success-reset assertions still hold.
+    const rateLimits = new Map<string, { count: number; expiresAt: number }>();
     const db = {
       select() {
         return {
           from(table: unknown) {
-            // DEC-740: the login door also queries getHubOrg/listHubEvents
-            // (org has no `where`, just `orderBy().limit()`) -- the chain
-            // below supports both shapes, keyed off which table was passed
-            // to `from`. schema.org resolves to [] so
-            // loadSingleEventContext short-circuits before ever querying
-            // schema.event.
+            let whereCond: unknown;
             const chain: any = {
-              where: () => chain,
+              where(cond: unknown) {
+                whereCond = cond;
+                return chain;
+              },
               orderBy: () => chain,
               limit() {
                 if (table === schema.user) return Promise.resolve(users);
                 if (table === schema.org) return Promise.resolve([]);
+                if (table === schema.rateLimit) {
+                  const key = extractEqValue(whereCond);
+                  const row = rateLimits.get(key as string);
+                  return Promise.resolve(row ? [{ count: row.count }] : []);
+                }
                 throw new Error("unexpected table in fake db select");
               },
             };
@@ -305,8 +322,42 @@ describe("POST /login rate limiting (DEC-180)", () => {
       },
       insert(table: unknown) {
         return {
-          values(row: unknown) {
-            if (table === schema.authSession) sessions.push(row);
+          values(row: any) {
+            if (table === schema.authSession) {
+              sessions.push(row);
+              return Promise.resolve();
+            }
+            if (table === schema.rateLimit) {
+              const existing = rateLimits.get(row.key);
+              return {
+                onConflictDoUpdate: () => ({
+                  returning: async () => {
+                    if (existing) {
+                      existing.count += 1;
+                      return [{ count: existing.count }];
+                    }
+                    rateLimits.set(row.key, { count: row.count, expiresAt: row.expiresAt });
+                    return [{ count: row.count }];
+                  },
+                  then: (resolve: (v: undefined) => void) => {
+                    if (existing) existing.count += 1;
+                    else rateLimits.set(row.key, { count: row.count, expiresAt: row.expiresAt });
+                    resolve(undefined);
+                  },
+                }),
+              };
+            }
+            return Promise.resolve();
+          },
+        };
+      },
+      delete(table: unknown) {
+        return {
+          where(cond: unknown) {
+            if (table === schema.rateLimit) {
+              const key = extractEqValue(cond);
+              rateLimits.delete(key as string);
+            }
             return Promise.resolve();
           },
         };

@@ -160,8 +160,25 @@ function fakeDb(selectQueue: unknown[][]) {
       return makeChain(rows);
     },
     insert: () => ({
-      values: async (vals: unknown) => {
-        inserts.push(vals);
+      values: (vals: unknown) => {
+        // DEC-948: checkAndIncrementScopedLimit's rate_limit upsert is a
+        // distinct concern from the submission-writing inserts this test's
+        // `inserts` array asserts on (it legitimately writes even when a
+        // later validation failure aborts the submission) -- shaped
+        // {key,count,expiresAt}, so it's excluded from the tracked list.
+        const isRateLimitRow =
+          vals && typeof vals === "object" && "key" in vals && "count" in vals && "expiresAt" in vals;
+        if (!isRateLimitRow) inserts.push(vals);
+        // .onConflictDoUpdate(...).returning(...) for its atomic D1 upsert;
+        // a minimal always-under-cap fake is enough since this test doesn't
+        // assert on rate-limit state.
+        return {
+          then: (resolve: (v: undefined) => void) => resolve(undefined),
+          onConflictDoUpdate: () => ({
+            returning: async () => [{ count: 1 }],
+            then: (resolve: (v: undefined) => void) => resolve(undefined),
+          }),
+        };
       },
     }),
     update: () => ({
@@ -171,6 +188,7 @@ function fakeDb(selectQueue: unknown[][]) {
         },
       }),
     }),
+    delete: () => ({ where: async () => {} }),
   };
   return { db: db as unknown as AppEnv["Variables"]["db"], inserts, updates };
 }

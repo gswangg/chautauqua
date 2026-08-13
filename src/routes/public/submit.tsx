@@ -39,7 +39,8 @@ import {
   resolveOfferedTrackIds,
   extractFileAnswers,
 } from "../../lib/submit-core";
-import { checkAndIncrementScopedLimit, requestIpFromHeaders } from "../../lib/rate-limit";
+import { requestIpFromHeaders } from "../../lib/rate-limit";
+import { checkAndIncrementScopedLimit } from "../../server/repo/rate-limit";
 import { MAX_TEXT_LENGTH, MAX_LONG_TEXT_LENGTH } from "../../forms/validate";
 import { DEC_814 } from "../../decisions";
 // implements DEC_814 (an anonymous CFP match never writes to the CRM contact row).
@@ -187,7 +188,7 @@ publicSubmitRoutes.post("/submit/:eventSlug/save-draft", csrfForm, async (c) => 
   // before touching KV.
   const kv = c.env.KV as unknown as DraftKVStore;
   const ip = requestIpFromHeaders((name) => c.req.header(name));
-  const rate = await checkAndIncrementScopedLimit(kv, "draft", ip, Date.now(), {
+  const rate = await checkAndIncrementScopedLimit(db, "draft", ip, Date.now(), {
     windowSeconds: 3600,
     max: 60,
   });
@@ -315,7 +316,7 @@ publicSubmitRoutes.post("/submit/:eventSlug", async (c) => {
   // (DEC-038).
   const kv = c.env.KV as unknown as DraftKVStore;
   const ip = requestIpFromHeaders((name) => c.req.header(name));
-  const rate = await checkAndIncrementScopedLimit(kv, "submit", ip, Date.now(), {
+  const rate = await checkAndIncrementScopedLimit(db, "submit", ip, Date.now(), {
     windowSeconds: 3600,
     max: 60,
   });

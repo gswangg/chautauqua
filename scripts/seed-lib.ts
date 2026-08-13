@@ -92,6 +92,10 @@ export const TABLES_IN_DELETE_ORDER: readonly string[] = [
   "event",
   "segment",
   "api_token",
+  // DEC-948: rate_limit has no FK to anything the seed creates (its `key`
+  // column is an opaque derived string, not a reference) -- no ordering
+  // constraint, listed here alongside its schema-file neighbor api_token.
+  "rate_limit",
   "org",
 ];
 

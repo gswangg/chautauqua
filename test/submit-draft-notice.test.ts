@@ -59,6 +59,18 @@ function fakeDb(selectQueue: unknown[][]) {
       call += 1;
       return makeChain(rows);
     },
+    // DEC-948: checkAndIncrementScopedLimit now upserts a rate_limit row via
+    // D1 instead of writing to KV; a minimal always-under-cap fake is enough
+    // since these tests don't assert on rate-limit state.
+    insert: () => ({
+      values: () => ({
+        onConflictDoUpdate: () => ({
+          returning: async () => [{ count: 1 }],
+          then: (resolve: (v: undefined) => void) => resolve(undefined),
+        }),
+      }),
+    }),
+    delete: () => ({ where: async () => {} }),
   };
   return db as unknown as AppEnv["Variables"]["db"];
 }

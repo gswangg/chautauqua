@@ -120,6 +120,13 @@
       "when": 1786614200000,
       "tag": "0029_saved_view_created_by_idx",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "6",
+      "when": 1786622940000,
+      "tag": "0030_rate_limit",
+      "breakpoints": true
     }
   ]
 }

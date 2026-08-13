@@ -55,14 +55,41 @@ function makeChain(rows: unknown[]) {
   return chain;
 }
 
-function fakeDb(selectQueue: unknown[][]) {
+// DEC-948: checkAndIncrementScopedLimit now upserts a rate_limit row via D1
+// instead of writing to KV. `rateLimitSeed` lets a test pre-seed a row's
+// count (mirroring the old fakeKv pre-seed pattern) so the atomic
+// increment's returned count can actually cross the cap.
+function fakeDb(selectQueue: unknown[][], rateLimitSeed?: Record<string, { count: number; expiresAt: number }>) {
   let call = 0;
+  const rateLimitRows = new Map(Object.entries(rateLimitSeed ?? {}));
   const db = {
     select: () => {
       const rows = selectQueue[call] ?? [];
       call += 1;
       return makeChain(rows);
     },
+    insert: () => ({
+      values: (vals: { key: string; count: number; expiresAt: number }) => ({
+        onConflictDoUpdate: () => ({
+          returning: async () => {
+            const existing = rateLimitRows.get(vals.key);
+            if (existing) {
+              existing.count += 1;
+              return [{ count: existing.count }];
+            }
+            rateLimitRows.set(vals.key, { count: vals.count, expiresAt: vals.expiresAt });
+            return [{ count: vals.count }];
+          },
+          then: (resolve: (v: undefined) => void) => {
+            const existing = rateLimitRows.get(vals.key);
+            if (existing) existing.count += 1;
+            else rateLimitRows.set(vals.key, { count: vals.count, expiresAt: vals.expiresAt });
+            resolve(undefined);
+          },
+        }),
+      }),
+    }),
+    delete: () => ({ where: async () => {} }),
   };
   return db as unknown as AppEnv["Variables"]["db"];
 }
@@ -173,9 +200,11 @@ describe("POST /submit/:eventSlug/save-draft — DEC-422 per-IP rate limit", () 
     // time, so the seeded key must use the same clock.
     const windowStart = Math.floor(Date.now() / (3600 * 1000)) * 3600 * 1000;
     const key = scopedRateLimitKey("draft", "9.9.9.9", windowStart);
-    const db = fakeDb([[EVENT_ROW], [FORM_ROW], FIELD_ROWS, [TRACK_ROW]]);
+    const db = fakeDb([[EVENT_ROW], [FORM_ROW], FIELD_ROWS, [TRACK_ROW]], {
+      [key]: { count: 60, expiresAt: windowStart + 3600 * 1000 },
+    });
     const app = appWithDb(db);
-    const { kv } = fakeKv({ [key]: "60" });
+    const { kv } = fakeKv();
 
     const res = await app.request(
       "/submit/test-conf/save-draft",

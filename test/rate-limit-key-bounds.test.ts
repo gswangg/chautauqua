@@ -1,12 +1,14 @@
-// DEC-457: KV keys must never carry unbounded external input. Cloudflare KV
-// rejects keys over 512 UTF-8 bytes, so a caller-supplied id (email,
-// x-forwarded-for) that's arbitrarily long could otherwise crash the
-// limiter with a 5xx instead of degrading gracefully. boundRateLimitId caps
-// the id portion of scopedRateLimitKey's output; these tests prove the
-// bound holds both at the unit level and through real routes against a
-// KVStore fake that throws on an over-length key (the honest mirror of
-// Cloudflare KV — an in-memory Map that ignores key length would hide the
-// bug this fix addresses).
+// DEC-457: rate-limit keys must never carry unbounded external input. A
+// caller-supplied id (email, x-forwarded-for) that's arbitrarily long could
+// otherwise crash the limiter with a 5xx instead of degrading gracefully.
+// boundRateLimitId caps the id portion of scopedRateLimitKey's output;
+// these tests prove the bound holds both at the unit level and through
+// real routes.
+//
+// DEC-948: the counter itself moved from KV to a D1 `rate_limit` row keyed
+// by that same scopedRateLimitKey — the fake db below records every
+// rate_limit upsert (mirroring the old kv.puts assertions) rather than a
+// KVStore fake, since that's where an oversized key would now land.
 
 import { describe, expect, it } from "vitest";
 import { Hono } from "hono";
@@ -28,6 +30,46 @@ const KV_MAX_KEY_BYTES = 512;
 
 function utf8Len(s: string): number {
   return new TextEncoder().encode(s).length;
+}
+
+/** DEC-948: minimal fake of src/server/repo/rate-limit.ts's atomic upsert
+ * (insert ... on conflict do update ... returning count) plus the prune
+ * delete, keyed by the row's own `key` column so a real over-length key
+ * still round-trips (an in-memory Map that silently accepted an oversized
+ * key would hide the bug DEC-457 fixes, same rationale as the deleted
+ * ThrowingKV fake). `keys` records every key written, mirroring the old
+ * kv.puts assertions below. */
+function makeRateLimitFakeMethods() {
+  const rows = new Map<string, { count: number; expiresAt: number }>();
+  const keys: string[] = [];
+  return {
+    keys,
+    insert: () => ({
+      values: (vals: { key: string; count: number; expiresAt: number }) => {
+        keys.push(vals.key);
+        return {
+          onConflictDoUpdate: () => ({
+            returning: async () => {
+              const existing = rows.get(vals.key);
+              if (existing) {
+                existing.count += 1;
+                return [{ count: existing.count }];
+              }
+              rows.set(vals.key, { count: vals.count, expiresAt: vals.expiresAt });
+              return [{ count: vals.count }];
+            },
+            then: (resolve: (v: undefined) => void) => {
+              const existing = rows.get(vals.key);
+              if (existing) existing.count += 1;
+              else rows.set(vals.key, { count: vals.count, expiresAt: vals.expiresAt });
+              resolve(undefined);
+            },
+          }),
+        };
+      },
+    }),
+    delete: () => ({ where: async () => {} }),
+  };
 }
 
 describe("DEC-457: boundRateLimitId (unit)", () => {
@@ -63,12 +105,13 @@ describe("DEC-457: boundRateLimitId (unit)", () => {
   });
 });
 
-/** Mirrors Cloudflare KV's real 512-UTF-8-byte key cap by throwing — an
- * in-memory Map that silently accepts oversized keys would not catch a
- * regression of DEC-457's bound. */
+/** Mirrors the real claim-token KV store's 512-UTF-8-byte key cap by
+ * throwing — an in-memory Map that silently accepts oversized keys would
+ * not catch a regression of DEC-457's bound. Still used for claim-token
+ * storage (unrelated to the DEC-948 rate-limit counter, which now lives in
+ * the fake db's rate_limit table via makeRateLimitFakeMethods). */
 class ThrowingKV implements KVStore {
   private readonly store = new Map<string, string>();
-  puts: Array<{ key: string; value: string }> = [];
 
   private assertKeyBounded(key: string) {
     if (utf8Len(key) > KV_MAX_KEY_BYTES) {
@@ -84,7 +127,6 @@ class ThrowingKV implements KVStore {
   async put(key: string, value: string): Promise<void> {
     this.assertKeyBounded(key);
     this.store.set(key, value);
-    this.puts.push({ key, value });
   }
 
   async delete(key: string): Promise<void> {
@@ -95,6 +137,7 @@ class ThrowingKV implements KVStore {
 
 describe("DEC-457: POST /login with an oversized email", () => {
   async function buildApp() {
+    const rateLimitFake = makeRateLimitFakeMethods();
     const db = {
       select() {
         return {
@@ -106,6 +149,9 @@ describe("DEC-457: POST /login with an oversized email", () => {
               limit() {
                 if (table === schema.user) return Promise.resolve([]);
                 if (table === schema.org) return Promise.resolve([]);
+                // DEC-948: peekScopedLimit's read-only select, always empty
+                // here (this fake never pre-seeds a row).
+                if (table === schema.rateLimit) return Promise.resolve([]);
                 throw new Error("unexpected table in fake db select");
               },
             });
@@ -116,6 +162,8 @@ describe("DEC-457: POST /login with an oversized email", () => {
           },
         };
       },
+      insert: rateLimitFake.insert,
+      delete: rateLimitFake.delete,
     } as unknown as AppEnv["Variables"]["db"];
 
     const kv = new ThrowingKV();
@@ -127,11 +175,11 @@ describe("DEC-457: POST /login with an oversized email", () => {
     });
     app.route("/", authRoutes);
     const env = { KV: kv as unknown as AppEnv["Bindings"]["KV"] };
-    return { app, kv, env };
+    return { app, kv, env, rateLimitKeys: rateLimitFake.keys };
   }
 
   it("returns 401 (not 5xx) and still increments the limiter", async () => {
-    const { app, kv, env } = await buildApp();
+    const { app, env, rateLimitKeys } = await buildApp();
     const getRes = await app.request("/login", {}, env);
     const setCookie = getRes.headers.get("set-cookie") ?? "";
     const match = setCookie.match(new RegExp(`${CSRF_COOKIE_NAME}=([^;]+)`));
@@ -156,17 +204,18 @@ describe("DEC-457: POST /login with an oversized email", () => {
     );
 
     expect(res.status).toBe(401);
-    expect(kv.puts.some((p) => p.key.startsWith("ratelimit:login-user:"))).toBe(true);
+    expect(rateLimitKeys.some((k) => k.startsWith("ratelimit:login-user:"))).toBe(true);
   });
 });
 
 describe("DEC-457: POST /claim/:token with an oversized x-forwarded-for", () => {
   it("is not 5xx", async () => {
     const kv = new ThrowingKV();
+    const rateLimitFake = makeRateLimitFakeMethods();
     const app = new Hono<AppEnv>();
     registerErrorHandler(app);
     app.use("*", async (c, next) => {
-      c.set("db", {} as AppEnv["Variables"]["db"]);
+      c.set("db", { insert: rateLimitFake.insert, delete: rateLimitFake.delete } as unknown as AppEnv["Variables"]["db"]);
       await next();
     });
     app.route("/", authRoutes);
@@ -198,7 +247,7 @@ describe("DEC-457: POST /claim/:token with an oversized x-forwarded-for", () => 
     );
 
     expect(res.status).toBeLessThan(500);
-    expect(kv.puts.some((p) => p.key.startsWith("ratelimit:claim:"))).toBe(true);
+    expect(rateLimitFake.keys.some((k) => k.startsWith("ratelimit:claim:"))).toBe(true);
   });
 });
 
@@ -254,14 +303,17 @@ function makeChain(rows: unknown[]) {
 
 function fakeDb(selectQueue: unknown[][]) {
   let call = 0;
+  const rateLimitFake = makeRateLimitFakeMethods();
   const db = {
     select: () => {
       const rows = selectQueue[call] ?? [];
       call += 1;
       return makeChain(rows);
     },
+    insert: rateLimitFake.insert,
+    delete: rateLimitFake.delete,
   };
-  return db as unknown as AppEnv["Variables"]["db"];
+  return { db: db as unknown as AppEnv["Variables"]["db"], rateLimitKeys: rateLimitFake.keys };
 }
 
 function appWithDb(db: AppEnv["Variables"]["db"]) {
@@ -294,7 +346,7 @@ function formRequest(fields: Record<string, string>, extraHeaders: Record<string
 
 describe("DEC-457: POST /submit/:eventSlug with an oversized x-forwarded-for", () => {
   it("is not 5xx and the submit limiter still counts", async () => {
-    const db = fakeDb([[EVENT_ROW], [FORM_ROW], FIELD_ROWS, [TRACK_ROW]]);
+    const { db, rateLimitKeys } = fakeDb([[EVENT_ROW], [FORM_ROW], FIELD_ROWS, [TRACK_ROW]]);
     const app = appWithDb(db);
     const kv = new ThrowingKV();
     const oversizedXff = "8".repeat(4000);
@@ -306,13 +358,13 @@ describe("DEC-457: POST /submit/:eventSlug with an oversized x-forwarded-for", (
     );
 
     expect(res.status).toBeLessThan(500);
-    expect(kv.puts.some((p) => p.key.startsWith("ratelimit:submit:"))).toBe(true);
+    expect(rateLimitKeys.some((k) => k.startsWith("ratelimit:submit:"))).toBe(true);
   });
 });
 
 describe("DEC-457: POST /submit/:eventSlug/save-draft with an oversized x-forwarded-for", () => {
   it("is not 5xx", async () => {
-    const db = fakeDb([[EVENT_ROW], [FORM_ROW], FIELD_ROWS, [TRACK_ROW]]);
+    const { db, rateLimitKeys } = fakeDb([[EVENT_ROW], [FORM_ROW], FIELD_ROWS, [TRACK_ROW]]);
     const app = appWithDb(db);
     const kv = new ThrowingKV();
     const oversizedXff = "7".repeat(4000);
@@ -324,6 +376,6 @@ describe("DEC-457: POST /submit/:eventSlug/save-draft with an oversized x-forwar
     );
 
     expect(res.status).toBeLessThan(500);
-    expect(kv.puts.some((p) => p.key.startsWith("ratelimit:draft:"))).toBe(true);
+    expect(rateLimitKeys.some((k) => k.startsWith("ratelimit:draft:"))).toBe(true);
   });
 });
