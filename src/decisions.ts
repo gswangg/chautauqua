@@ -708,3 +708,14 @@ export const DEC_702 = "Seeded prose is real prose: the seed never ships text th
 export const DEC_703 = "A ranked result names the human and the track, and the export carries the table's columns in the table's order";
 export const DEC_704 = "A bulk action's label states the scope it actually SENDS; the deadline strip's order is fixed and only the nearest is emphasised";
 export const DEC_705 = "A merge preview is the merge function's own output: every field the merge will change, in the words of what it will do";
+export const DEC_706 = "A section's action is a link on its rule; a filled primary lives on the title row or a form footer; a row is chosen by clicking the row, never by a radio";
+export const DEC_707 = "Reviewer progress speaks three states, and a reminder's label names the scope it actually sends -- from ONE predicate both the route and the SPA import";
+export const DEC_708 = "A person is named by their contact, resolved from the account by ONE batched rule; an unresolvable account shows its email, never an invented name";
+export const DEC_709 = "Locked criteria are not a dead end: 'Start a new wave' carries the frozen criteria into a new round, and the plan editor is a summary plus inline rows";
+export const DEC_710 = "A tab strip's selection is URL state (?tab=), never component state";
+export const DEC_711 = "The contacts directory is a table plus a rail, and every figure the page states is endpoint-backed";
+export const DEC_712 = "A contact's labels are DERIVED participation roles, batched one query per page -- no invented labels column";
+export const DEC_713 = "A file version is deletable: the chain re-links across the gap, the thread is re-homed, the object goes with the row, and the removal is recorded";
+export const DEC_714 = "A role control offers the app's OWN role vocabulary, imported -- never another system's role names";
+export const DEC_715 = "Reordering has ONE affordance, operable by pointer and by keyboard: the drag handle IS a button";
+export const DEC_716 = "The sign-in page names the event when there is exactly one, and offers the open call for papers as the only onward action -- suppressed when none is open";
