@@ -90,27 +90,19 @@ DECLINE QUEUE no-wrap · "Columns: <state>" label · bulk bar → 3 actions · d
 section · ANSWERS = curated subset · quick-add combined name field · co-presenter
 search row layout.
 
-**Review** (probe-2 CLOSED: honest sort DEC-737, criterion labels DEC-723 —
-weight-math proven, reviewer identity DEC-736 incl. anonymized case, blended SCORE
-column w/ ▸ Reviews): **NEW P2 — ▸ Reviews disclosure NOT plan-scoped: plan-2 row
-"Reviews (2)" expands to 3 entries incl. another plan's evaluation (cross-plan leak +
-count mismatch); scope the disclosure query by planId** · header "Export results CSV"
-ignores current sort params (diverges from in-table Download CSV — carry sort/dir) ·
-shell fires one non-fatal 403 organizer-overview fetch after reviewer login (skip for
-non-organizers) · USER: reviewer-side /review vs /review/plans/:id read as
-duplicates — the plan-scoped queue (deep-link target for scorecard back-links/
-auto-advance) never ANNOUNCES its scope; add "‹ All plans" breadcrumb + plan-name
-heading + only-this-plan framing, or collapse the route in a DEC (differentiate
-preferred: multi-plan reviewers exist; seed's single open plan is why they look
-identical). SEED: stagger a SECOND plan open (different track scope) so the
-multi-plan reviewer experience is visible to judges/graders — zero code cost,
-makes landing-vs-scoped visibly distinct · anonymity ratchet counts evaluations submitted BEFORE anonymization
-was enabled (guard should count only under-anonymity evals) · reviewer NAMES on
-progress rows (seed reviewer contacts since landed — verify names now render) ·
-title-row summary "3 plans · 1 with evaluations in" (string absent from bundle) ·
-plan rows lack mock subtitle ("All tracks · 3 reviews each") + "N of M" counts ·
-remind link renders disabled "Remind the 0 not started" at N=0 — hide instead
-(affordance rule) · plan
+**Review** (probe-3 CLOSED: DEC-763 plan-scoped disclosures — all 37 swept clean ·
+DEC-763 export sort — hrefs byte-identical all 8 states, CSVs match · reviewer
+NAMES render · DEC-760 remind hidden at N=0; earlier: DEC-737/723/736 + blended
+SCORE): scoped queue PARTIAL — "← Your plans" breadcrumb landed, but h1 is still
+"Your queue" on both routes; add the plan-name heading on the scoped page (the
+landing's section-label h2 is dropped there) · SEED still pending: stagger a SECOND
+plan open so multi-plan reviewer experience is visible · shell 403 NARROWED: fires
+once during login→redirect only (clean thereafter) — skip the overview fetch for
+non-organizers at login · plan-row subtitle truncated: "All tracks" without "· 3
+reviews each"; progress rows lack per-reviewer track subtitle + "X of Y" numeric ·
+anonymity ratchet counts evaluations submitted BEFORE anonymization was enabled
+(guard should count only under-anonymity evals) · title-row summary "3 plans · 1
+with evaluations in" (string absent from bundle) · plan
 editor v4 shell PARTIAL (criterion rows/Add-criterion/scale caption/locked-state all
 landed): still — title-row Duplicate + Save (not page-bottom Save/Delete), remove
 legacy fields the mock omits (NAME/INSTRUCTIONS/ROUNDS/track-filter checkboxes/
@@ -165,29 +157,18 @@ placing entry.
 (CLOSED by probe 2: DEC-724 conditional "No room yet" column · DEC-742 merged clash
 card — inverted ink card, zero inner scroll, fully visible content.)
 
-**Comms** (DEC-710 + history count CLOSED by probe): **SEEDED TEMPLATE LANDMINE
-(repro'd): "Content Reminder" template uses {task_list}/{due_date}, which the
-compose path does NOT supply (they exist only in the per-speaker task-reminder
-renderer) — selecting it fails preflight for EVERY recipient.** Preferred fix:
-compose supplies task_list (outstanding tasks) + due_date (earliest due) per
-recipient by reusing the task-reminder builder — the demo template then works AND
-the vocabulary grows; fallback: rewrite the seed template to supported fields.
-Either way add a test: every SEEDED template must preflight clean against the
-seeded recipients (template-vocabulary parity test). Note: the API error payload
-DOES name recipient+field per entry (contactId:submissionId keys) — UI must
-surface it with human names · compose body step has ZERO
-merge-field affordance — no list of available fields, no insert action, no hint
-that {tokens} auto-fill per recipient (user thought they were manual); the panel
-TITLED "Attachments and merge fields" (ComposeWizard.tsx:469) contains only
-attachment toggles. FIX: quiet chip row under the Body field listing allowed
-fields ({speaker_name} · {event_name} · …, click inserts at cursor) + one-line
-hint "Fills in per recipient — see Preview"; retitle the panel "Attachments" ·
-"One or more recipients are missing merge fields" error is generic though the API payload (missingToFields)
-names each recipient+field — render the culprits ("Marcus Okafor is missing
-speaker_name") so the organizer can fix data or template; comms.ts:416/459 +
-bulk-email.ts:153/212 (ties to CRM-grader D9: composer placeholder advertises
-{first_name} which the validator rejects — placeholder must only show allowed
-fields) · per-recipient SCHEDULED/NO-SLOT
+**Comms** (probe-3 CLOSED: DEC-751 Recent sends under Compose on all steps ·
+History "See the recipients" bordered CTA · earlier DEC-710 + history count;
+template landmine PARTIALLY fixed: task_list + portal_link now RESOLVE in compose —
+only {due_date} remains unsupported, then the seeded "Content Reminder" template
+works; finish due_date via the task-reminder builder + add the seeded-template
+preflight parity test) · preflight error UI still discards the per-recipient field
+detail the API already returns — render culprits with human names · compose body
+step still has zero merge-field affordance (no field list/insert/hint; NOTE probe:
+the "Attachments and merge fields" panel TITLE + two toggles match the mock exactly
+— do NOT retitle; missing vs mock is the caption "3 of 23 have no slot yet — those
+get no invite") · Recent sends minor: template-label column + per-row Open link ·
+per-recipient SCHEDULED/NO-SLOT
 tags + "N have no slot" advisory in Preview · persistent Recent sends under Compose
 (STILL-OPEN — exists only inside History tab) · bordered "See the recipients" CTA on
 batch rows · SEED: one ~23-recipient batch + 4 more templates.
