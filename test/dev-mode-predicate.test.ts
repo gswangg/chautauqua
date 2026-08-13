@@ -12,6 +12,8 @@ import { resolveBaseUrl } from "../src/server/origin";
 import { makeMailer } from "../src/server/context";
 import { DevSinkMailer } from "../src/mail/dev-sink";
 import { ResendMailer } from "../src/mail/resend";
+import { UnconfiguredMailer } from "../src/mail/unconfigured";
+import { MailNotConfiguredError } from "../src/mail/types";
 
 const DEV_MODE_VALUES: Array<string | undefined> = [undefined, "", "0", "1", "true", "yes"];
 
@@ -91,16 +93,42 @@ describe("makeMailer (DEC-547): never silently selects the dev sink", () => {
     expect(mailer).toBeInstanceOf(DevSinkMailer);
   });
 
+  // DEC-547 amendment (wave 43): makeMailer never throws at construction —
+  // an unconfigured, non-dev environment resolves to UnconfiguredMailer,
+  // which logs the attempt and throws MailNotConfiguredError from send()
+  // (inside callers' existing per-recipient try/catch), not from
+  // construction (which used to 500 the whole request before any recipient
+  // was attempted).
   for (const devMode of [undefined, "", "0", "true", "yes"]) {
-    it(`DEV_MODE=${JSON.stringify(devMode)} with no RESEND_API_KEY set throws naming DEV_MODE and RESEND_API_KEY`, () => {
-      expect(() =>
-        makeMailer(stubDb, {
+    it(`DEV_MODE=${JSON.stringify(devMode)} with no RESEND_API_KEY set never throws at construction; selects UnconfiguredMailer, which throws MailNotConfiguredError from send()`, async () => {
+      let mailer: ReturnType<typeof makeMailer> | undefined;
+      expect(() => {
+        mailer = makeMailer(stubDb, {
           RESEND_API_KEY: undefined,
           DEV_MODE: devMode,
           MAIL_FROM_EMAIL: undefined,
           MAIL_FROM_NAME: undefined,
+        });
+      }).not.toThrow();
+      expect(mailer).toBeInstanceOf(UnconfiguredMailer);
+
+      const insertedDb = { insert: () => ({ values: async () => {} }) } as Parameters<typeof makeMailer>[0];
+      const guardedMailer = makeMailer(insertedDb, {
+        RESEND_API_KEY: undefined,
+        DEV_MODE: devMode,
+        MAIL_FROM_EMAIL: undefined,
+        MAIL_FROM_NAME: undefined,
+      });
+      await expect(
+        guardedMailer.send({
+          to: { email: "ada@example.com", name: "Ada" },
+          subject: "s",
+          text: "t",
+          html: "<p>t</p>",
+          eventId: "evt_1",
+          contactId: null,
         }),
-      ).toThrowError(/DEV_MODE.*RESEND_API_KEY|RESEND_API_KEY.*DEV_MODE/);
+      ).rejects.toBeInstanceOf(MailNotConfiguredError);
     });
   }
 });
