@@ -74,6 +74,13 @@ export const ROUTE_MANIFEST: readonly RouteManifestEntry[] = [
   },
   { path: "/admin/speakers", role: "organizer" },
   { path: "/admin/content", role: "organizer" },
+  // DEC-935: a session's content (deliverables/versions/notes) at its own
+  // URL, not behind ?submissionId= on the worklist route.
+  {
+    path: `/admin/content/${SUBMISSION_ID}`,
+    role: "organizer",
+    params: { submissionId: SUBMISSION_ID },
+  },
   { path: "/admin/agenda", role: "organizer" },
   { path: "/admin/comms", role: "organizer" },
   { path: "/admin/contacts", role: "organizer" },

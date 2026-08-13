@@ -7,7 +7,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, waitFor, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
-import { MemoryRouter, useLocation } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { ContentApp } from './ContentApp';
 import { errorEnvelope, listEnvelope, mockApi } from '../../test-utils/mockApi';
 
@@ -22,6 +22,22 @@ afterEach(() => {
   window.localStorage.clear();
   vi.unstubAllGlobals();
 });
+
+// DEC-935: mirrors App.tsx's own two <Route>s for /content (worklist) and
+// /content/:submissionId (deliverable detail) -- both render the SAME
+// ContentApp component, so tests mount it under the real route shape
+// rather than at a bare "/" (matching SubmissionDetailPage.render.test.tsx's
+// renderPage pattern).
+function renderContentApp(initialPath = '/content') {
+  return render(
+    <MemoryRouter initialEntries={[initialPath]}>
+      <Routes>
+        <Route path="/content/:submissionId" element={<ContentApp />} />
+        <Route path="/content" element={<ContentApp />} />
+      </Routes>
+    </MemoryRouter>,
+  );
+}
 
 describe('ContentApp / SessionList render smoke: always-visible content-status control', () => {
   it('approves content directly from the worklist row without opening deliverable detail', async () => {
@@ -45,11 +61,7 @@ describe('ContentApp / SessionList render smoke: always-visible content-status c
       [`POST /api/v1/submissions/sub-1/content-status`]: contentStatusMock,
     });
 
-    const { container } = render(
-      <MemoryRouter>
-        <ContentApp />
-      </MemoryRouter>,
-    );
+    const { container } = renderContentApp();
 
     // DEC-881: default tab is 'needs_decision' — the row (contentStatus
     // 'pending') is visible without switching tabs.
@@ -82,11 +94,7 @@ describe('ContentApp reskin (DEC-366..368)', () => {
       [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([]),
     });
 
-    render(
-      <MemoryRouter>
-        <ContentApp />
-      </MemoryRouter>,
-    );
+    renderContentApp();
 
     const heading = await screen.findByRole('heading', { name: 'Content' });
     expect(heading).toHaveClass('chq-page-title');
@@ -121,11 +129,7 @@ describe('ContentApp worklist latest file column (DEC-686 page-scoped hydration)
       ]),
     });
 
-    const { container } = render(
-      <MemoryRouter>
-        <ContentApp />
-      </MemoryRouter>,
-    );
+    const { container } = renderContentApp();
 
     fireEvent.click(await screen.findByRole('tab', { name: 'All accepted sessions' }));
 
@@ -159,11 +163,7 @@ describe('ContentApp worklist latest file column (DEC-686 page-scoped hydration)
       ]),
     });
 
-    const { container } = render(
-      <MemoryRouter>
-        <ContentApp />
-      </MemoryRouter>,
-    );
+    const { container } = renderContentApp();
 
     fireEvent.click(await screen.findByRole('tab', { name: 'All accepted sessions' }));
 
@@ -203,11 +203,7 @@ describe('ContentApp: fresh loads on view switch and explicit refresh', () => {
       [`GET /api/v1/events/${EVENT_ID}/submissions`]: submissionsMock,
     });
 
-    render(
-      <MemoryRouter>
-        <ContentApp />
-      </MemoryRouter>,
-    );
+    renderContentApp();
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Refresh' })).toBeInTheDocument();
@@ -233,11 +229,7 @@ describe('ContentApp: fresh loads on view switch and explicit refresh', () => {
       [`GET /api/v1/events/${EVENT_ID}/files`]: filesMock,
     });
 
-    render(
-      <MemoryRouter>
-        <ContentApp />
-      </MemoryRouter>,
-    );
+    renderContentApp();
 
     await waitFor(() => {
       expect(screen.getByRole('tab', { name: 'Files' })).toBeInTheDocument();
@@ -289,11 +281,7 @@ describe('ContentApp: Files-library drill-in fetches an out-of-page submission (
       [`GET /api/v1/submissions/sub-99`]: submissionMock,
     });
 
-    render(
-      <MemoryRouter initialEntries={['/?view=files&submissionId=sub-99']}>
-        <ContentApp />
-      </MemoryRouter>,
-    );
+    renderContentApp('/content/sub-99?view=files');
 
     // DEC-678: the loading state is withheld for ~250ms (DelayedLoading),
     // so no "Loading submission..." text renders on the first frame -- the
@@ -321,11 +309,7 @@ describe('ContentApp: Files-library drill-in fetches an out-of-page submission (
       [`GET /api/v1/submissions/sub-missing`]: { status: 404, body: errorEnvelope('not_found', 'Submission not found') },
     });
 
-    render(
-      <MemoryRouter initialEntries={['/?view=files&submissionId=sub-missing']}>
-        <ContentApp />
-      </MemoryRouter>,
-    );
+    renderContentApp('/content/sub-missing?view=files');
 
     const alert = await screen.findByRole('alert');
     expect(alert).toHaveTextContent('Submission not found.');
@@ -373,11 +357,7 @@ describe('ContentApp: Files-library drill-in fetches an out-of-page submission (
       },
     });
 
-    render(
-      <MemoryRouter initialEntries={['/?view=files']}>
-        <ContentApp />
-      </MemoryRouter>,
-    );
+    renderContentApp('/content?view=files');
 
     const openButtons = await screen.findAllByRole('button', { name: 'Open slides.pdf versions and comments' });
     fireEvent.click(openButtons[0]!);
@@ -386,6 +366,82 @@ describe('ContentApp: Files-library drill-in fetches an out-of-page submission (
       expect(screen.getByRole('heading', { name: 'Off-Page Talk' })).toBeInTheDocument();
     });
     expect(screen.getByRole('button', { name: '‹ Content' })).toBeInTheDocument();
+  });
+});
+
+// DEC-935: the deliverable detail is a real route, /content/:submissionId,
+// not ?submissionId= on the worklist route. Mirrors App.tsx's own two
+// <Route>s (both rendering ContentApp) via the renderContentApp helper.
+describe('ContentApp (DEC-935): /content/:submissionId is a real route', () => {
+  it('renders the deliverable detail when mounted directly at /content/:submissionId', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([
+        {
+          id: 'sub-1',
+          ref: 'S-001',
+          title: 'A Talk With No Files Yet',
+          status: 'accepted',
+          contentStatus: 'pending',
+          speakers: [{ contactId: 'c1', name: 'Ada Lovelace' }],
+          trackIds: [],
+          submittedAt: null,
+          createdAt: 1700000000000,
+          deliverableCounts: { presentation: 0, poster: 0, handout: 0 },
+          latestFile: null,
+        },
+      ]),
+    });
+
+    renderContentApp('/content/sub-1');
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'A Talk With No Files Yet' })).toBeInTheDocument();
+    });
+    expect(screen.getByRole('button', { name: '‹ Content' })).toBeInTheDocument();
+    // The worklist toolbar (Worklist/Files pills, Refresh) belongs to the
+    // /content list view only -- it must not render underneath the detail.
+    expect(screen.queryByRole('tab', { name: 'Worklist' })).not.toBeInTheDocument();
+  });
+
+  it('navigates the URL to /content/<id> (not ?submissionId=) when a worklist row is opened', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([
+        {
+          id: 'sub-1',
+          ref: 'S-001',
+          title: 'A Talk With No Files Yet',
+          status: 'accepted',
+          contentStatus: 'pending',
+          speakers: [],
+          trackIds: [],
+          submittedAt: null,
+          createdAt: 1700000000000,
+          deliverableCounts: { presentation: 0, poster: 0, handout: 0 },
+          latestFile: null,
+        },
+      ]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/content']}>
+        <Routes>
+          <Route path="/content/:submissionId" element={<ContentApp />} />
+          <Route path="/content" element={<ContentApp />} />
+        </Routes>
+        <LocationProbe />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Open' })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'A Talk With No Files Yet' })).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('location-search').textContent).not.toContain('submissionId');
   });
 });
 
@@ -403,11 +459,7 @@ describe('ContentApp worklist chips (DEC-913): counts derive from the one list e
       }),
     });
 
-    render(
-      <MemoryRouter>
-        <ContentApp />
-      </MemoryRouter>,
-    );
+    renderContentApp();
 
     // needs_decision sums pending+changes_requested (2+3=5); approved is its
     // own count (5); all is the full total (2+5+3=10) — each read off the
@@ -454,8 +506,11 @@ describe('ContentApp worklist tab (DEC-825): ?tab= round-trips through the new v
     });
 
     render(
-      <MemoryRouter initialEntries={['/?tab=approved']}>
-        <ContentApp />
+      <MemoryRouter initialEntries={['/content?tab=approved']}>
+        <Routes>
+          <Route path="/content/:submissionId" element={<ContentApp />} />
+          <Route path="/content" element={<ContentApp />} />
+        </Routes>
         <LocationProbe />
       </MemoryRouter>,
     );
@@ -472,8 +527,11 @@ describe('ContentApp worklist tab (DEC-825): ?tab= round-trips through the new v
     });
 
     render(
-      <MemoryRouter initialEntries={['/']}>
-        <ContentApp />
+      <MemoryRouter initialEntries={['/content']}>
+        <Routes>
+          <Route path="/content/:submissionId" element={<ContentApp />} />
+          <Route path="/content" element={<ContentApp />} />
+        </Routes>
         <LocationProbe />
       </MemoryRouter>,
     );

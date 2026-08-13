@@ -125,7 +125,7 @@ describe('SubmissionDetailPage render smoke: inline edit + content-status contro
     expect(screen.queryByText(/^Content:/)).not.toBeInTheDocument();
 
     const contentLink = screen.getByRole('link', { name: /Review the content/ });
-    expect(contentLink).toHaveAttribute('href', `/content?submissionId=${SUB_ID}`);
+    expect(contentLink).toHaveAttribute('href', `/content/${SUB_ID}`);
   });
 
   it('shows the history timeline and restores a prior revision (CNT-11, DEC-158, DEC-892)', async () => {

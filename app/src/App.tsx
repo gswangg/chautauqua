@@ -305,6 +305,15 @@ function RoutedContent() {
               declaration order here doesn't matter, but forms stays
               first for readability. */}
           <Route path="/submissions/:id" element={<SubmissionDetailPage />} />
+          {/* DEC-935: a session's content (deliverables, versions, notes)
+              lives at its own URL, not behind ?submissionId= on the
+              worklist route. ContentApp itself reads the id via
+              useParams and renders the deliverable detail in place of the
+              worklist -- same component as the /content route above,
+              reused rather than split into a separate page (mirrors how
+              /submissions/:id above IS a distinct page, but content's
+              worklist/detail toggle is intentionally one component). */}
+          <Route path="/content/:submissionId" element={<ContentPage />} />
           {/* DEC-154: admin catch-all, must stay last so specific routes win. */}
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
