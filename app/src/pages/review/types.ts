@@ -280,6 +280,12 @@ export interface ReviewerSubmissionDetail {
   // This reviewer's own prior rating on this submission, if any. Reviewers
   // never see the aggregate/other reviewers' scores (DEC-018) -- only this.
   myEvaluation?: MyEvaluation;
+  // DEC-984: this reviewer's own recusal on this submission, if any --
+  // property absent (not null) when there is no recusal, same convention as
+  // myEvaluation. Never another reviewer's recusal, never a list. Lets the
+  // recused branch (disabled scorecard + Undo) render on first paint after a
+  // reload, instead of only after a client-side POST.
+  myRecusal?: { reason: string | null; createdAt: number };
   // DEC-147: criteria resolved for the plan's ACTIVE round (via the server's
   // criteriaForRound) -- the Scorecard renders these instead of plan.criteria
   // so a round override actually takes effect.

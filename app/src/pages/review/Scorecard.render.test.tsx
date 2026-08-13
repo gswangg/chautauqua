@@ -451,3 +451,50 @@ describe('Scorecard recusal placement and checkbox reveal (DEC-939)', () => {
     expect(root.style.getPropertyValue('--chq-review-scale-steps')).toBe('5');
   });
 });
+
+// DEC-984: a recusal must survive a reload -- the recused branch renders
+// straight off the fetched detail's `myRecusal`, never only after a
+// client-side POST.
+describe('Scorecard recusal survives reload (DEC-984)', () => {
+  it('renders the recused branch on first paint from a fetched detail carrying myRecusal, with no POST', async () => {
+    const fetchMock = mockApi({
+      'GET /api/v1/review/plans': listEnvelope([plan()]),
+      [`GET /api/v1/review/submissions/${SUBMISSION_ID}`]: {
+        id: SUBMISSION_ID,
+        ref: 'S-010',
+        title: 'A Deeply Nested Talk',
+        sessionAnswers: [],
+        myEvaluation: undefined,
+        myRecusal: { reason: 'Co-author on this submission', createdAt: 1700000000000 },
+        criteria: [
+          { id: 'c1', label: 'Quality', kind: 'rating', weight: 1 },
+          { id: 'c2', label: 'Fit', kind: 'dropdown', options: ['Poor', 'OK', 'Great'] },
+        ],
+      },
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}/submissions/${SUBMISSION_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId/submissions/:submissionId" element={<Scorecard />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText('You recused yourself from this submission.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Undo' })).toBeInTheDocument();
+    expect(screen.queryByRole('checkbox', { name: /conflict of interest/i })).not.toBeInTheDocument();
+
+    // Every rating/dropdown control and both action buttons are disabled.
+    const qualityGroup = screen.getByRole('radiogroup', { name: 'Quality' });
+    within(qualityGroup).getAllByRole('radio').forEach((r) => expect(r).toBeDisabled());
+    expect(screen.getByRole('combobox')).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Submit and next' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
+
+    // No client-side POST was made to establish this -- it rendered straight
+    // off the GET response.
+    const postCalls = fetchMock.mock.calls.filter(([, init]) => (init as RequestInit | undefined)?.method === 'POST');
+    expect(postCalls).toHaveLength(0);
+  });
+});

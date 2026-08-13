@@ -244,6 +244,12 @@ reviewReviewerRoutes.get("/api/v1/review/submissions/:id", async (c) => {
   // yet -- lets a reviewer reopen/revise a submitted review.
   const myEvaluationRecord = await repo.getEvaluation(c.var.db, plan.id, submissionId, auth.userId, plan.currentRound);
 
+  // DEC-984: this reviewer's own recusal (if any) for THIS submission -- must
+  // survive a reload, not just live in client state after a POST. Property
+  // absent (not null) when there's no recusal, matching myEvaluation's
+  // convention (DEC-561). Never another reviewer's recusal, never a list.
+  const myRecusalRecord = await repo.hasRecusal(c.var.db, plan.id, submissionId, auth.userId);
+
   const detail = {
     ...summary,
     speakers: speakers as repo.SpeakerSummary[] | undefined,
@@ -251,6 +257,7 @@ reviewReviewerRoutes.get("/api/v1/review/submissions/:id", async (c) => {
     sessionAnswers: answers.filter((a) => a.section === "session"),
     criteria,
     ...(myEvaluationRecord ? { myEvaluation: { scores: myEvaluationRecord.scores, comment: myEvaluationRecord.comment } } : {}),
+    ...(myRecusalRecord ? { myRecusal: { reason: myRecusalRecord.reason ?? null, createdAt: myRecusalRecord.createdAt } } : {}),
   };
 
   // DEC-018: server-side anonymization only, never client-side.
