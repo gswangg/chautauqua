@@ -12,8 +12,11 @@ export type EmbedSurface = (typeof EMBED_SURFACES)[number];
 // DEC-617: 'element' is the hardened <chq-embed> custom-element upgrade —
 // same URL/path rules as 'iframe', a different copyable snippet. The plain
 // iframe snippet stays the default; this is additive, never a replacement.
-export const EMBED_FORMATS = ['iframe', 'element', 'link', 'json', 'ics'] as const;
-export type EmbedFormat = (typeof EMBED_FORMATS)[number];
+// DEC-785: moved to a pure-core home (src/lib/embed-formats.ts) via the ONE
+// named app/->src/ boundary crossing, embed-formats.ts, so the saved-embeds
+// API shares this exact vocabulary instead of a hand-copied list.
+import { EMBED_FORMATS, type EmbedFormat } from '../../lib/embed-formats';
+export { EMBED_FORMATS, type EmbedFormat };
 
 // DEC-289/DEC-673: `fields` allowlist — sessions surface cards only. Title
 // and its detail link always render and are not part of the allowlist.

@@ -36,6 +36,28 @@ export async function getPublicEventBySlug(db: Db, slug: string): Promise<Public
   };
 }
 
+// DEC-785: the saved-embed public route (src/routes/public/saved-embed.tsx)
+// resolves an embed row's eventId to its PublicEvent by id rather than by
+// slug — the same visibility-gate-free lookup as getPublicEventBySlug,
+// keyed differently.
+export async function getPublicEventById(db: Db, id: string): Promise<PublicEvent | null> {
+  const rows = await db.select().from(schema.event).where(eq(schema.event.id, id)).limit(1);
+  const row = rows[0];
+  if (!row) return null;
+  return {
+    id: row.id,
+    orgId: row.orgId,
+    name: row.name,
+    slug: row.slug,
+    startDate: row.startDate,
+    endDate: row.endDate,
+    location: row.location,
+    timezone: row.timezone,
+    recordPrefix: row.recordPrefix,
+    brandingJson: row.brandingJson,
+  };
+}
+
 export interface PublicTrack {
   id: string;
   name: string;

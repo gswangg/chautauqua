@@ -19,6 +19,7 @@ import { DelayedLoading } from '../../components/DelayedLoading';
 import { apiGet, ApiError } from '../../lib/api';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { EmbedsPanel } from './EmbedsPanel';
+import { SavedEmbedsPanel } from './SavedEmbedsPanel';
 
 interface EventSummary {
   id: string;
@@ -145,6 +146,8 @@ export function PublicPagesPanel() {
           <EmbedsPanel />
         </div>
       ) : null}
+
+      <SavedEmbedsPanel />
     </section>
   );
 }

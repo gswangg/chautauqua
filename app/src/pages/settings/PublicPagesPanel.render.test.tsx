@@ -32,6 +32,7 @@ function mockEvent(overrides: Record<string, unknown> = {}) {
     [`GET /api/v1/events/${EVENT_ID}/public-surfaces`]: { sessions: 0, speakers: 0, scheduled: 0 },
     [`GET /api/v1/events/${EVENT_ID}/forms`]: { id: 'form1', eventId: EVENT_ID, openDate: null, closeDate: null },
     [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+    [`GET /api/v1/events/${EVENT_ID}/embeds`]: listEnvelope([]),
     ...overrides,
   });
 }
