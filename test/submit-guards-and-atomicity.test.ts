@@ -132,8 +132,7 @@ function submitForm(opts: { origin?: string; referer?: string; csrfCookie?: stri
   form.set(CSRF_COOKIE_NAME, opts.csrfCookie ?? CSRF_TOKEN);
   form.set("field__title", "My great talk");
   form.set("field__description", "A talk about things.");
-  form.set("field__first_name", "Ada");
-  form.set("field__last_name", "Lovelace");
+  form.set("speaker_name", "Ada Lovelace");
   form.set("field__email", "ada@example.com");
   if (opts.file) {
     form.set("field__slides_file", new File(["hello"], "slides.pdf", { type: "application/pdf" }));

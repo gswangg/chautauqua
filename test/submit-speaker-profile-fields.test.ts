@@ -163,8 +163,7 @@ function submitForm(fields: Record<string, string>) {
   form.set(CSRF_COOKIE_NAME, CSRF_TOKEN);
   form.set("field__title", "My great talk");
   form.set("field__description", "A talk about things.");
-  form.set("field__first_name", "Ada");
-  form.set("field__last_name", "Lovelace");
+  form.set("speaker_name", "Ada Lovelace");
   form.set("field__email", "ada@example.com");
   for (const [k, v] of Object.entries(fields)) {
     form.set(`field__${k}`, v);

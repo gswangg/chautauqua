@@ -99,6 +99,23 @@ export function nextSeqRef(recordPrefix: string, currentMaxSeq: number): string 
   return formatRef(recordPrefix, currentMaxSeq + 1);
 }
 
+/** DEC-986 (wave 45 amendment): the public CFP asks for ONE "Name" control;
+ * the two locked speaker fields (first_name/last_name) still exist as real
+ * columns underneath (DEC-016), so the submitted string is split here before
+ * validateAnswers ever runs. Split on the LAST run of whitespace: everything
+ * before it is first_name, the remainder last_name. A single-token name (no
+ * whitespace) puts the whole string in first_name and leaves last_name empty
+ * — never rejected, since last_name carries no required-ness of its own
+ * (the single control is what's required). The input is NOT trimmed of
+ * interior formatting beyond this split; callers trim the two halves
+ * themselves via the normal text-field validation path. */
+export function splitSubmittedName(name: string): { firstName: string; lastName: string } {
+  const trimmed = name.trim();
+  const match = /^(.*)\s+(\S+)$/.exec(trimmed);
+  if (!match) return { firstName: trimmed, lastName: "" };
+  return { firstName: match[1] ?? "", lastName: match[2] ?? "" };
+}
+
 /** DEC-040: pulls each file-kind field's uploaded File out of a parsed
  * multipart body. `fieldNameOf` maps a field id to its form input name
  * (kept as a caller-supplied callback rather than importing the view layer,

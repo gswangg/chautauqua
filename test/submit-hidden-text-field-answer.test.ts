@@ -157,8 +157,7 @@ function submitForm(opts: { format: string; prereqs?: string }) {
   if (opts.prereqs !== undefined) {
     form.set("field__prereqs", opts.prereqs);
   }
-  form.set("field__first_name", "Ada");
-  form.set("field__last_name", "Lovelace");
+  form.set("speaker_name", "Ada Lovelace");
   form.set("field__email", "ada@example.com");
   form.set("trackIds", "track-1");
   return new Request("http://local/submit/test-conf", {

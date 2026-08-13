@@ -41,14 +41,11 @@ export const CFP_CSS = `
      surface. */
   .chq-cfp-track-format-row { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: start; }
 
-  /* DEC-986 (wave 40 amendment): the YOU section pairs Name|Email, then
-     Company|Job title, then Bio full-width. .chq-cfp-you-names is itself
-     ONE grid cell holding the two locked name fields side by side (DEC-986
-     defers collapsing first/last name into one control -- this is a layout
-     pairing only, the two inputs stay two FormFieldDefs). */
+  /* DEC-986 (wave 45 amendment): the YOU section pairs Name|Email, then
+     Company|Job title, then Bio full-width -- one grid cell per field now
+     that Name is a single control (closes the wave-40 amendment's deferred
+     name-collapse). */
   .chq-cfp-you-grid.chq-cfp-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
-  .chq-cfp-you-names { display: flex; gap: 12px; min-width: 0; }
-  .chq-cfp-you-names .chq-field { flex: 1; min-width: 0; }
   .chq-cfp-you-bio { grid-column: 1 / -1; }
 
   /* DEC-986 (wave 40 amendment): the Audience-level three-pill segment --
@@ -134,6 +131,5 @@ export const CFP_CSS = `
     .chq-cfp-header, .chq-cfp-body { padding-left: 16px; padding-right: 16px; }
     .chq-cfp-track-format-row,
     .chq-cfp-you-grid.chq-cfp-fields { grid-template-columns: 1fr; }
-    .chq-cfp-you-names { flex-direction: column; }
   }
 `;
