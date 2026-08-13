@@ -514,7 +514,8 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
       TASK_ROWS, // tasks
       [{ count: 0 }], // total
       [], // contacts page (empty; unrelated to the counts aggregate)
-      [{ speakers: 5, outstandingRequired: 0, overdue: 1, outstandingContacts: 3 }], // counts
+      [{ count: 5 }], // DEC-754: speakers roster COUNT(*) (own query now)
+      [{ outstandingRequired: 0, overdue: 1, outstandingContacts: 3 }], // counts
     ]);
     const grid = await getOnboardingGrid(gridDb, "event-1", {
       page: 1,

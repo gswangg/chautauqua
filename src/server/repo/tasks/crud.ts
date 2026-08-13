@@ -2,7 +2,7 @@
 // assignment status transitions. Split out of repo/tasks.ts for contention
 // decomposition (no behavior change) — see repo/tasks.ts's barrel header.
 
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { newId } from "../../../domain/ids";
@@ -86,6 +86,19 @@ export function acceptedSpeakerConditions(eventId: string) {
  * pushed into the query itself (inArray against ACTIVE_INVITE_STATUSES)
  * rather than filtered in application code, so a test double's WHERE
  * evaluation can't drift from what production SQL actually does. */
+/** DEC-754: the ONE predicate for "is this contact an accepted speaker of
+ * this event" as a correlated EXISTS against `schema.contact` — the
+ * onboarding grid's base row condition (grid.ts) composes this directly so
+ * the roster it lists and the set createTask/assignToAllAccepted expand
+ * over (via listAcceptedContactIds, built from the same
+ * acceptedSpeakerConditions) can never drift apart: a contact this returns
+ * true for is a row in the grid whether or not it has any task_assignment
+ * yet, and a contact this returns false for never appears no matter how
+ * many stale/unrelated assignments it carries. */
+export function acceptedSpeakerExistsForContact(eventId: string) {
+  return sql`exists (select 1 from ${schema.participant} inner join ${schema.submission} on ${schema.submission.id} = ${schema.participant.submissionId} where ${schema.participant.contactId} = ${schema.contact.id} and ${acceptedSpeakerConditions(eventId)})`;
+}
+
 export async function listAcceptedContactIds(db: Db, eventId: string): Promise<string[]> {
   const rows = await db
     .select({ contactId: schema.participant.contactId })

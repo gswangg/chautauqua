@@ -8,6 +8,7 @@ import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { chunkIds } from "../../../lib/chunk";
 import { likeContains } from "../like";
+import { acceptedSpeakerExistsForContact } from "./crud";
 
 export interface GridTask {
   id: string;
@@ -63,11 +64,16 @@ export interface OnboardingGrid {
   counts: OnboardingGridCounts;
 }
 
-/** The correlated EXISTS predicate a matching contact must satisfy: at
- * least one task_assignment, for a task in this event, that satisfies EVERY
- * active filter simultaneously (DEC-312: the WHERE is normative — this is
- * the SQL form of app/src/pages/speakers/rowFilters.ts's now-deleted "one
- * cell matching all filters" semantics, preserved exactly per DEC-340). */
+/** The correlated EXISTS predicate a matching contact must satisfy WHEN a
+ * taskId/status/overdueOnly filter is active: at least one task_assignment,
+ * for a task in this event, that satisfies EVERY active filter
+ * simultaneously (DEC-312: the WHERE is normative — this is the SQL form of
+ * app/src/pages/speakers/rowFilters.ts's now-deleted "one cell matching all
+ * filters" semantics, preserved exactly per DEC-340). Per DEC-754 this is
+ * now an ADDITIONAL condition ANDed onto the base row condition
+ * (acceptedSpeakerExistsForContact) rather than the base condition itself —
+ * an unfiltered grid must list the accepted roster even for speakers with
+ * zero assignments, which no task_assignment-anchored EXISTS can express. */
 function onboardingMatchExists(
   eventId: string,
   taskId: string | null,
@@ -125,9 +131,17 @@ export async function getOnboardingGrid(db: Db, eventId: string, params: Onboard
     return { tasks: [], rows: [], total: 0, page: params.page, perPage: params.perPage, counts: emptyCounts };
   }
 
-  const matchExists = onboardingMatchExists(eventId, params.taskId, params.status, params.overdueOnly, params.now);
-
-  const conditions = [matchExists];
+  // DEC-754: the base row condition is the accepted-speaker predicate
+  // (contact-only EXISTS, no join to `contact`) — the SAME set createTask
+  // expands assignments over. A taskId/status/overdueOnly filter is an
+  // ADDITIONAL condition, active only when requested, so an unfiltered
+  // grid lists every accepted speaker (assignments or not) while a
+  // filtered grid narrows to those with a matching cell.
+  const filterActive = params.taskId !== null || params.status !== null || params.overdueOnly;
+  const conditions = [acceptedSpeakerExistsForContact(eventId)];
+  if (filterActive) {
+    conditions.push(onboardingMatchExists(eventId, params.taskId, params.status, params.overdueOnly, params.now));
+  }
   if (params.q) {
     const like = likeContains(params.q.toLowerCase());
     conditions.push(
@@ -186,7 +200,7 @@ export async function getOnboardingGrid(db: Db, eventId: string, params: Onboard
   // unfiltered so every task column still renders — chunked per DEC-104 so
   // the page's contact ids never reach inArray unbounded.
   const taskIds = tasks.map((t) => t.id);
-  if (contactIdsInOrder.length > 0) {
+  if (contactIdsInOrder.length > 0 && taskIds.length > 0) {
     for (const batch of chunkIds(contactIdsInOrder)) {
       const cellRows = await db
         .select({
@@ -218,10 +232,18 @@ export async function getOnboardingGrid(db: Db, eventId: string, params: Onboard
   const rows = contactIdsInOrder.map((id) => rowsByContact.get(id)).filter((r): r is GridRow => r !== undefined);
 
   // Event-wide aggregate, filter- and page-independent (DEC-333/334): SQL
-  // COUNT forms, never materialized rows.
+  // COUNT forms, never materialized rows. DEC-754: `speakers` is the size
+  // of the accepted roster itself (the base row condition), NOT
+  // count(distinct taskAssignment.contactId) — an accepted speaker with
+  // zero assignments is still one of the `speakers` this grid counts.
+  const speakersCountRows = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(schema.contact)
+    .where(acceptedSpeakerExistsForContact(eventId));
+  const speakersCount = Number(speakersCountRows[0]?.count ?? 0);
+
   const countsRow = await db
     .select({
-      speakers: sql<number>`count(distinct ${schema.taskAssignment.contactId})`,
       outstandingRequired: sql<number>`count(distinct case when ${schema.taskAssignment.status} <> 'complete' and ${schema.task.required} = 1 then ${schema.taskAssignment.id} end)`,
       overdue: sql<number>`count(distinct case when ${schema.taskAssignment.status} <> 'complete' and ${schema.task.dueDate} is not null and ${schema.task.dueDate} < ${params.now} then ${schema.taskAssignment.id} end)`,
       outstandingContacts: sql<number>`count(distinct case when ${schema.taskAssignment.status} <> 'complete' then ${schema.taskAssignment.contactId} end)`,
@@ -232,12 +254,12 @@ export async function getOnboardingGrid(db: Db, eventId: string, params: Onboard
 
   const counts: OnboardingGridCounts = countsRow[0]
     ? {
-        speakers: Number(countsRow[0].speakers),
+        speakers: speakersCount,
         outstandingRequired: Number(countsRow[0].outstandingRequired),
         overdue: Number(countsRow[0].overdue),
         outstandingContacts: Number(countsRow[0].outstandingContacts),
       }
-    : emptyCounts;
+    : { ...emptyCounts, speakers: speakersCount };
 
   return { tasks, rows, total, page: params.page, perPage: params.perPage, counts };
 }
