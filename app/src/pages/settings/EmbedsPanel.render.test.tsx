@@ -3,8 +3,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor, fireEvent, cleanup } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
+import { MemoryRouter } from 'react-router-dom';
 import { EmbedsPanel } from './EmbedsPanel';
 import { mockApi, listEnvelope } from '../../test-utils/mockApi';
+
+function renderPanel(initialEntries: string[] = ['/settings']) {
+  return render(
+    <MemoryRouter initialEntries={initialEntries}>
+      <EmbedsPanel />
+    </MemoryRouter>,
+  );
+}
 
 const EVENT_ID = 'evt-embeds-render';
 
@@ -40,7 +49,7 @@ function mockEvent() {
 describe('EmbedsPanel', () => {
   it('renders the default iframe snippet for the sessions surface', async () => {
     mockEvent();
-    render(<EmbedsPanel />);
+    renderPanel();
 
     expect(screen.getByRole('heading', { name: 'Embeds' })).toBeInTheDocument();
     await waitFor(() => {
@@ -50,7 +59,10 @@ describe('EmbedsPanel', () => {
 
     // Re-skin (w2-f, DEC-368): one shared .chq-btn-primary per section, and
     // form controls use the shared .chq-select/.chq-input classes.
-    expect(screen.getByRole('button', { name: 'Copy snippet' })).toHaveClass('chq-btn-primary');
+    // DEC-822: Save is now the section's one primary action; Copy snippet
+    // (like Copy URL) is demoted to secondary.
+    expect(screen.getByRole('button', { name: 'Save embed' })).toHaveClass('chq-btn-primary');
+    expect(screen.getByRole('button', { name: 'Copy snippet' })).toHaveClass('chq-btn-secondary');
     expect(screen.getByLabelText('Surface')).toHaveClass('chq-select');
     expect(screen.getByRole('combobox', { name: 'Track' })).toHaveClass('chq-select');
   });
@@ -59,13 +71,15 @@ describe('EmbedsPanel', () => {
     mockEvent();
     const writeText = vi.fn().mockResolvedValue(undefined);
     vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } });
-    render(<EmbedsPanel />);
+    renderPanel();
 
     await waitFor(() => {
       expect(screen.getByText(/^<iframe/)).toBeInTheDocument();
     });
 
-    const status = screen.getByRole('status');
+    // DEC-822: Save's own status region now shares role="status", so scope
+    // to the copy-specific one by its class (chq-copy-status).
+    const status = screen.getAllByRole('status').find((el) => el.classList.contains('chq-copy-status'))!;
     expect(status).toHaveAttribute('aria-live', 'polite');
     expect(status).toHaveTextContent('');
 
@@ -80,7 +94,7 @@ describe('EmbedsPanel', () => {
     mockEvent();
     const writeText = vi.fn().mockRejectedValue(new Error('denied'));
     vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } });
-    render(<EmbedsPanel />);
+    renderPanel();
 
     await waitFor(() => {
       expect(screen.getByText(/^<iframe/)).toBeInTheDocument();
@@ -88,7 +102,7 @@ describe('EmbedsPanel', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Copy snippet' }));
 
-    const status = screen.getByRole('status');
+    const status = screen.getAllByRole('status').find((el) => el.classList.contains('chq-copy-status'))!;
     await waitFor(() => {
       expect(status).toHaveTextContent('Copy failed — select the text and copy it manually');
     });
@@ -99,7 +113,7 @@ describe('EmbedsPanel', () => {
 
   it('updates the snippet when the format changes to link', async () => {
     mockEvent();
-    render(<EmbedsPanel />);
+    renderPanel();
 
     await waitFor(() => {
       expect(screen.getByText(/^<iframe/)).toBeInTheDocument();
@@ -115,7 +129,7 @@ describe('EmbedsPanel', () => {
 
   it('reflects a trackId knob in the live URL, and drops it back out when cleared (DEC-659: a select of track names, never a typed ULID)', async () => {
     mockEvent();
-    render(<EmbedsPanel />);
+    renderPanel();
 
     await waitFor(() => {
       expect(screen.getAllByText(/embed\/devcon-2026\/sessions/).length).toBeGreaterThan(0);
@@ -141,7 +155,7 @@ describe('EmbedsPanel', () => {
 
   it('drops the fields param when a field checkbox is unchecked then re-checked back to the full default set', async () => {
     mockEvent();
-    render(<EmbedsPanel />);
+    renderPanel();
 
     await waitFor(() => {
       expect(screen.getAllByText(/embed\/devcon-2026\/sessions/).length).toBeGreaterThan(0);
@@ -160,7 +174,7 @@ describe('EmbedsPanel', () => {
 
   it('offers ics only for agenda/schedule surfaces', async () => {
     mockEvent();
-    render(<EmbedsPanel />);
+    renderPanel();
 
     await waitFor(() => {
       expect(screen.getAllByText(/embed\/devcon-2026\/sessions/).length).toBeGreaterThan(0);
@@ -180,7 +194,7 @@ describe('EmbedsPanel', () => {
   // (DEC-634 made `day` a real predicate on sessions too).
   it('shows the Day control for sessions (DEC-634) but hides it for speakers', async () => {
     mockEvent();
-    render(<EmbedsPanel />);
+    renderPanel();
 
     await waitFor(() => {
       expect(screen.getAllByText(/embed\/devcon-2026\/sessions/).length).toBeGreaterThan(0);
@@ -196,7 +210,7 @@ describe('EmbedsPanel', () => {
 
   it('hides the Track control for the agenda surface', async () => {
     mockEvent();
-    render(<EmbedsPanel />);
+    renderPanel();
 
     await waitFor(() => {
       expect(screen.getAllByText(/embed\/devcon-2026\/sessions/).length).toBeGreaterThan(0);
@@ -213,7 +227,7 @@ describe('EmbedsPanel', () => {
 
   it('never leaks a stale trackId into the URL after switching to a surface that ignores it', async () => {
     mockEvent();
-    render(<EmbedsPanel />);
+    renderPanel();
 
     await waitFor(() => {
       expect(screen.getAllByText(/embed\/devcon-2026\/sessions/).length).toBeGreaterThan(0);
@@ -233,7 +247,7 @@ describe('EmbedsPanel', () => {
 
   it('reflects a q knob in the live URL for sessions', async () => {
     mockEvent();
-    render(<EmbedsPanel />);
+    renderPanel();
 
     await waitFor(() => {
       expect(screen.getAllByText(/embed\/devcon-2026\/sessions/).length).toBeGreaterThan(0);
@@ -242,6 +256,79 @@ describe('EmbedsPanel', () => {
     fireEvent.change(screen.getByLabelText('Search'), { target: { value: 'ai ethics' } });
     await waitFor(() => {
       expect(screen.getAllByText(/q=ai\+ethics/).length).toBeGreaterThan(0);
+    });
+  });
+
+  // DEC-822: Save writes the FULL current knob set as the embed's options
+  // via POST when there's no ?embed= in the URL (a brand-new saved embed).
+  it('Save posts the full current knob set as options when creating a new embed', async () => {
+    mockEvent();
+    const fetchMock = mockApi({
+      [`GET /api/v1/events/${EVENT_ID}`]: { id: EVENT_ID, slug: 'devcon-2026', name: 'DevCon 2026' },
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([{ id: 'trk-42', name: 'Keynotes', color: null }]),
+      [`POST /api/v1/events/${EVENT_ID}/embeds`]: { id: 'emb-new', name: 'Homepage widget' },
+    });
+    renderPanel();
+
+    await waitFor(() => {
+      expect(screen.getByText(/^<iframe/)).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Homepage widget' } });
+    fireEvent.change(await screen.findByRole('combobox', { name: 'Track' }), { target: { value: 'trk-42' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save embed' }));
+
+    await waitFor(() => {
+      const call = fetchMock.mock.calls.find(([input]) =>
+        String(input).includes(`/api/v1/events/${EVENT_ID}/embeds`),
+      );
+      expect(call).toBeDefined();
+      const [, init] = call!;
+      expect(init).toMatchObject({ method: 'POST' });
+      const body = JSON.parse(String(init!.body));
+      expect(body).toMatchObject({
+        name: 'Homepage widget',
+        surface: 'sessions',
+        format: 'iframe',
+        options: { trackId: 'trk-42' },
+      });
+    });
+  });
+
+  // DEC-822: opened at ?embed=<id>, the builder loads that row's saved
+  // recipe, heads itself 'Editing · <name>', and Save PATCHes it.
+  it('loads a saved embed at ?embed=<id>, heads itself "Editing · <name>", and Save PATCHes it', async () => {
+    const fetchMock = mockApi({
+      [`GET /api/v1/events/${EVENT_ID}`]: { id: EVENT_ID, slug: 'devcon-2026', name: 'DevCon 2026' },
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([{ id: 'trk-42', name: 'Keynotes', color: null }]),
+      [`GET /api/v1/events/${EVENT_ID}/embeds`]: listEnvelope([
+        {
+          id: 'emb-1',
+          name: 'Homepage widget',
+          surface: 'speakers',
+          format: 'json',
+          optionsJson: JSON.stringify({ q: 'ai', limit: 5 }),
+          enabled: true,
+        },
+      ]),
+      [`PATCH /api/v1/embeds/emb-1`]: { id: 'emb-1', name: 'Homepage widget' },
+    });
+    renderPanel([`/settings?embed=emb-1`]);
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Editing · Homepage widget' })).toBeInTheDocument();
+    });
+    expect(screen.getByLabelText('Name')).toHaveValue('Homepage widget');
+    expect(screen.getByLabelText('Surface')).toHaveValue('speakers');
+    expect(screen.getByLabelText('Search')).toHaveValue('ai');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => {
+      const call = fetchMock.mock.calls.find(([input]) => String(input).includes('/api/v1/embeds/emb-1'));
+      expect(call).toBeDefined();
+      const [, init] = call!;
+      expect(init).toMatchObject({ method: 'PATCH' });
     });
   });
 });

@@ -87,9 +87,17 @@ embedsRoutes.post("/events/:eventId/embeds", requireOrganizer, csrfJson, async (
 interface UpdateEmbedBody {
   name?: unknown;
   enabled?: unknown;
+  surface?: unknown;
+  format?: unknown;
+  options?: unknown;
 }
 
-// PATCH /api/v1/embeds/:id
+// PATCH /api/v1/embeds/:id — DEC-822: the builder's primary Save action
+// PATCHes the FULL recipe (surface/format/options), not just name/enabled,
+// so a saved embed's filters can be edited later instead of frozen at
+// creation. Same validation POST already runs (isSurface, EMBED_FORMATS,
+// object-shaped options) so a PATCH can never leave a row in a shape POST
+// itself would have rejected.
 embedsRoutes.patch("/embeds/:id", requireOrganizer, csrfJson, async (c) => {
   const auth = requireAuth(c);
   const id = c.req.param("id");
@@ -98,7 +106,7 @@ embedsRoutes.patch("/embeds/:id", requireOrganizer, csrfJson, async (c) => {
   if (ownership.orgId !== auth.orgId) throw new ApiError("forbidden", "Embed belongs to a different org");
 
   const body = (await c.req.json().catch(() => ({}))) as UpdateEmbedBody;
-  const patch: { name?: string; enabled?: boolean } = {};
+  const patch: { name?: string; enabled?: boolean; surface?: string; format?: string; optionsJson?: string } = {};
   if (body.name !== undefined) {
     patch.name = parseBoundedText(body.name, "name", { max: MAX_NAME_LENGTH, required: true });
   }
@@ -107,6 +115,25 @@ embedsRoutes.patch("/embeds/:id", requireOrganizer, csrfJson, async (c) => {
       throw new ApiError("invalid", "enabled must be a boolean", { enabled: "Must be true or false" });
     }
     patch.enabled = body.enabled;
+  }
+  if (body.surface !== undefined) {
+    if (typeof body.surface !== "string" || !isSurface(body.surface)) {
+      throw new ApiError("invalid", "surface must be a known public surface", { surface: "Unknown surface" });
+    }
+    patch.surface = body.surface;
+  }
+  if (body.format !== undefined) {
+    if (typeof body.format !== "string" || !(EMBED_FORMATS as readonly string[]).includes(body.format)) {
+      throw new ApiError("invalid", "format must be a known embed format", { format: "Unknown format" });
+    }
+    patch.format = body.format;
+  }
+  if (body.options !== undefined) {
+    const options = body.options !== null ? body.options : {};
+    if (typeof options !== "object" || Array.isArray(options)) {
+      throw new ApiError("invalid", "options must be an object", { options: "Invalid options" });
+    }
+    patch.optionsJson = JSON.stringify(options);
   }
 
   const embed = await updateEmbed(c.var.db, id, patch);
