@@ -387,7 +387,7 @@ function submitForm(opts: { title: string; extraNotes?: string }) {
 }
 
 function selectQueueFor() {
-  return [[EVENT_ROW], [FORM_ROW], FIELD_ROWS, [TRACK_ROW], [], [{ maxSeq: 0 }], []];
+  return [[EVENT_ROW], [FORM_ROW], FIELD_ROWS, [TRACK_ROW], [], [{ seq: 3 }], []];
 }
 
 async function run(db: AppEnv["Variables"]["db"], req: Request) {

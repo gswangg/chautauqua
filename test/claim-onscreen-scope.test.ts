@@ -132,7 +132,12 @@ function selectQueueFor(contactRow: unknown[], userRow: unknown[]) {
     FIELD_ROWS,
     [TRACK_ROW],
     contactRow,
-    [{ maxSeq: 0 }],
+    // Answers createSubmission's post-insert readback, which selects
+    // `{ seq: schema.submission.seq }` (src/server/repo/submit.ts) — the
+    // key here must be `seq` to match that shape (previously `maxSeq`,
+    // which silently returned `undefined` for `submission.seq` since
+    // nothing read that field until DEC-862 added the confirmation ref).
+    [{ seq: 14 }],
     userRow,
   ];
 }

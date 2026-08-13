@@ -169,12 +169,12 @@ function submitForm(fields: Record<string, string>) {
  * getFormFields, getEventTracks, findContactByEmail (none), nextSubmissionSeq
  * (inside createSubmission), findAccountUserId. */
 function selectQueueFresh() {
-  return [[EVENT_ROW], [FORM_ROW], FIELD_ROWS, [TRACK_ROW], [], [{ maxSeq: 0 }], []];
+  return [[EVENT_ROW], [FORM_ROW], FIELD_ROWS, [TRACK_ROW], [], [{ seq: 3 }], []];
 }
 
 /** Same shape, but findContactByEmail resolves an existing contact row. */
 function selectQueueExisting(existingContact: { id: string; title: string | null; company: string | null; bio: string | null }) {
-  return [[EVENT_ROW], [FORM_ROW], FIELD_ROWS, [TRACK_ROW], [existingContact], [{ maxSeq: 1 }], []];
+  return [[EVENT_ROW], [FORM_ROW], FIELD_ROWS, [TRACK_ROW], [existingContact], [{ seq: 4 }], []];
 }
 
 describe("public CFP submit collects job_title/company/bio (DEC-321, DEC-814)", () => {
@@ -251,7 +251,7 @@ describe("public CFP submit collects job_title/company/bio (DEC-321, DEC-814)", 
     const res = await app.request(req, undefined, { ...BINDINGS, KV: fakeKv(), FILES: fakeFilesBucket() } as unknown as AppEnv["Bindings"]);
     expect(res.status).toBe(200);
     const html = await res.text();
-    expect(html).toContain("Thanks for your submission!");
+    expect(html).toContain("Check your email.");
 
     const contactInsert = inserts.find((v) => typeof v === "object" && v !== null && "firstName" in v);
     expect((contactInsert as any).title).toBeNull();

@@ -269,14 +269,16 @@ export type ConfirmationState = "fresh" | "pending-existing-contact" | "has-acco
 export function ConfirmationPage(props: {
   event: EventRow;
   title: string;
+  ref: string;
+  submittedEmail: string;
   claimPath: string;
   state: ConfirmationState;
 }) {
   return (
     <PageShell title={`Submission received - ${props.event.name}`}>
       <div class="chq-cfp-confirm">
-        <span class="chq-cfp-confirm-flag">Submitted</span>
-        <h1>Thanks for your submission!</h1>
+        <span class="chq-cfp-confirm-flag">SUBMITTED &middot; {props.ref}</span>
+        <h1>That's in. Check your email.</h1>
         <div class="chq-cfp-confirm-card">
           <span class="chq-cfp-title" style="font-size:17px">
             {props.title}
@@ -285,24 +287,40 @@ export function ConfirmationPage(props: {
         {/* DEC-377: no delivery-window or "check spam" timing promise here —
             the earlier copy asserted arrival timing the confirmation email
             send (a best-effort side effect) can't actually guarantee. */}
-        <p class="chq-cfp-confirm-body">We've emailed a confirmation for "{props.title}" to the address you provided.</p>
+        <p class="chq-cfp-confirm-body">
+          We've emailed a confirmation for "{props.title}" to {props.submittedEmail}.
+        </p>
         <div class="chq-cfp-confirm-actions">
           {props.state === "has-account" ? (
             <p>
-              <a href="/login">Log in</a> to track your submission.
+              <a class="chq-btn chq-btn-primary" href="/login">
+                Log in to track it
+              </a>
             </p>
           ) : props.state === "pending-existing-contact" ? (
-            <p>
-              A password-setup link was emailed to the address you submitted. <a href="/login">Log in</a> if you
-              already have a password.
-            </p>
+            <>
+              <p>
+                A password-setup link was emailed to {props.submittedEmail}. <a href="/login">Log in</a> if you
+                already have a password.
+              </p>
+              <p>
+                Already have a password? <a href="/login">Log in &rsaquo;</a>
+              </p>
+            </>
           ) : (
             // DEC-252: same-origin on-page links are RELATIVE — they never
             // depend on origin inference. Only the emailed copy (built with
             // resolveBaseUrl below) is absolute.
-            <p>
-              <a href={props.claimPath}>Create a password to track your submission</a>
-            </p>
+            <>
+              <p>
+                <a class="chq-btn chq-btn-primary" href={props.claimPath}>
+                  Create a password
+                </a>
+              </p>
+              <p>
+                Already have a password? <a href="/login">Log in &rsaquo;</a>
+              </p>
+            </>
           )}
         </div>
       </div>

@@ -56,7 +56,7 @@ import { createClaimToken, type KVStore as ClaimKVStore } from "../../auth/claim
 import { parseCookies, newCsrfToken, buildCsrfCookie, buildDraftCookie, isSecureRequest, CSRF_COOKIE_NAME } from "../../auth/cookies";
 import { renderTemplate, escapeHtml } from "../../mail/render";
 import { validateUpload, sanitizeFilenameForKey, type ValidUpload } from "../../domain/files";
-import { newId } from "../../domain/ids";
+import { newId, formatRef } from "../../domain/ids";
 import { fieldInputName } from "../../views/form-render";
 import {
   DEC_014,
@@ -434,6 +434,7 @@ publicSubmitRoutes.post("/submit/:eventSlug", async (c) => {
   }
 
   const submission = await createSubmission(db, { eventId: event.id, formId: form.id, title, description });
+  const ref = formatRef("SES", submission.seq);
   await createParticipant(db, {
     submissionId: submission.id,
     contactId,
@@ -496,19 +497,21 @@ publicSubmitRoutes.post("/submit/:eventSlug", async (c) => {
 
   const mailer = makeMailer(db, c.env);
   const text = renderTemplate(
-    "Hi {speaker_name},\n\nWe received your submission \"{talk_title}\" for {event_name}.\n\n{portal_link}\n",
+    "Hi {speaker_name},\n\nWe received your submission \"{talk_title}\" ({ref}) for {event_name}.\n\n{portal_link}\n",
     {
       speaker_name: `${firstName} ${lastName}`.trim(),
       talk_title: title,
+      ref,
       event_name: event.name,
       portal_link: claimUrl,
     },
   );
   const safeSpeakerName = escapeHtml(`${firstName} ${lastName}`.trim());
   const safeTitle = escapeHtml(title);
+  const safeRef = escapeHtml(ref);
   const safeEventName = escapeHtml(event.name);
   const safeClaimUrl = escapeHtml(claimUrl);
-  const html = `<p>Hi ${safeSpeakerName},</p><p>We received your submission "${safeTitle}" for ${safeEventName}.</p><p><a href="${safeClaimUrl}">${safeClaimUrl}</a></p>`;
+  const html = `<p>Hi ${safeSpeakerName},</p><p>We received your submission "${safeTitle}" (${safeRef}) for ${safeEventName}.</p><p><a href="${safeClaimUrl}">${safeClaimUrl}</a></p>`;
   // The submission is already persisted; the confirmation email is a
   // best-effort side effect at an IO boundary (a real provider can reject a
   // recipient or transiently fail). A send failure must NOT 500 the submit —
@@ -540,6 +543,13 @@ publicSubmitRoutes.post("/submit/:eventSlug", async (c) => {
       : "pending-existing-contact";
 
   return c.html(
-    <ConfirmationPage event={event} title={title} claimPath={claimPath} state={confirmationState} />,
+    <ConfirmationPage
+      event={event}
+      title={title}
+      ref={ref}
+      submittedEmail={email}
+      claimPath={claimPath}
+      state={confirmationState}
+    />,
   );
 });
