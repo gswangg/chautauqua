@@ -279,13 +279,14 @@ function TaskFormPage(props: {
   answers: AnswerMap;
   csrfToken: string;
   errors?: Record<string, string>;
+  speakerName: string;
 }) {
-  const { branding, assignment, fields, answers, csrfToken, errors } = props;
+  const { branding, assignment, fields, answers, csrfToken, errors, speakerName } = props;
   // DEC-532: one predicate built from the FULL field list (a session field
   // can gate a speaker field), shared by both sections below.
   const isVisible = makeVisibilityPredicate(fields, answers);
   return (
-    <PortalLayout branding={branding} csrfToken={csrfToken}>
+    <PortalLayout branding={branding} csrfToken={csrfToken} speakerName={speakerName}>
       <a href="/portal/tasks" class="chq-portal-back">&larr; Back to My Tasks</a>
       <h2 class="chq-portal-hero">{assignment.title}</h2>
       {assignment.description ? <p class="chq-portal-sub">{assignment.description}</p> : null}
@@ -307,11 +308,12 @@ function TasksPage(props: {
   formLinkFor: (a: PortalTaskAssignment) => string | null;
   errorFor?: (assignmentId: string) => string | undefined;
   fileExtrasFor?: (assignmentId: string) => FileRequestExtras | undefined;
+  speakerName: string;
 }) {
-  const { branding, assignments, csrfToken, formLinkFor, errorFor, fileExtrasFor } = props;
+  const { branding, assignments, csrfToken, formLinkFor, errorFor, fileExtrasFor, speakerName } = props;
   const doneCount = assignments.filter((a) => a.status === "complete").length;
   return (
-    <PortalLayout branding={branding} csrfToken={csrfToken}>
+    <PortalLayout branding={branding} csrfToken={csrfToken} speakerName={speakerName}>
       <a href="/portal" class="chq-portal-back">&larr; Back to Dashboard</a>
       <h2 class="chq-portal-hero">My Tasks</h2>
       {assignments.length > 0 ? (
@@ -358,10 +360,11 @@ function ResourcesPage(props: {
   branding: PortalBrandingChrome;
   groups: Awaited<ReturnType<typeof getMyResources>>;
   csrfToken: string;
+  speakerName: string;
 }) {
-  const { branding, groups, csrfToken } = props;
+  const { branding, groups, csrfToken, speakerName } = props;
   return (
-    <PortalLayout branding={branding} csrfToken={csrfToken}>
+    <PortalLayout branding={branding} csrfToken={csrfToken} speakerName={speakerName}>
       <a href="/portal" class="chq-portal-back">&larr; Back to Dashboard</a>
       <h2 class="chq-portal-hero">Resources</h2>
       {groups.length === 0 ? (
@@ -464,6 +467,7 @@ portalTasksRoutes.get("/tasks", async (c) => {
       csrfToken={csrfToken}
       formLinkFor={(a) => `/portal/tasks/${a.id}/form`}
       fileExtrasFor={(id) => fileExtrasByAssignmentId.get(id)}
+      speakerName={data.contactName}
     />,
   );
 });
@@ -492,7 +496,14 @@ portalTasksRoutes.get("/tasks/:assignmentId/form", async (c) => {
   if (setCookieIfNew) c.header("Set-Cookie", setCookieIfNew, { append: true });
 
   return c.html(
-    <TaskFormPage branding={data.branding} assignment={assignment} fields={fields} answers={answers} csrfToken={csrfToken} />,
+    <TaskFormPage
+      branding={data.branding}
+      assignment={assignment}
+      fields={fields}
+      answers={answers}
+      csrfToken={csrfToken}
+      speakerName={data.contactName}
+    />,
   );
 });
 
@@ -559,6 +570,7 @@ portalTasksRoutes.post("/tasks/:assignmentId/form", csrfForm, async (c) => {
         answers={answers}
         csrfToken={csrfToken}
         errors={validation.errors}
+        speakerName={data.contactName}
       />,
       400,
     );
@@ -604,6 +616,7 @@ portalTasksRoutes.post("/tasks/:assignmentId/upload", csrfForm, async (c) => {
         formLinkFor={(a) => `/portal/tasks/${a.id}/form`}
         fileExtrasFor={(id) => fileExtrasByAssignmentId.get(id)}
         errorFor={(id) => (id === assignmentId ? message : undefined)}
+        speakerName={data.contactName}
       />,
       400,
     );
@@ -787,7 +800,9 @@ portalTasksRoutes.get("/resources", async (c) => {
   ]);
   const { token: csrfToken, setCookieIfNew } = ensureCsrfCookie(c);
   if (setCookieIfNew) c.header("Set-Cookie", setCookieIfNew, { append: true });
-  return c.html(<ResourcesPage branding={data.branding} groups={groups} csrfToken={csrfToken} />);
+  return c.html(
+    <ResourcesPage branding={data.branding} groups={groups} csrfToken={csrfToken} speakerName={data.contactName} />,
+  );
 });
 
 portalTasksRoutes.get("/resources/:resourceId/download", async (c) => {

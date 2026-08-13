@@ -40,6 +40,7 @@ describe("track fieldset render parity (DEC-696)", () => {
     editable: true,
     tracksEditable: true,
     participants: [],
+    speakerName: "Speaker Name",
   }).toString();
 
   const submitHtml = TrackChoices({

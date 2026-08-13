@@ -133,10 +133,11 @@ function ProfilePage(props: {
   error?: string;
   saved?: boolean;
   headshotSavedMessage?: string;
+  speakerName: string;
 }) {
   const { profile } = props;
   return (
-    <PortalLayout branding={props.branding} csrfToken={props.csrfToken}>
+    <PortalLayout branding={props.branding} csrfToken={props.csrfToken} speakerName={props.speakerName}>
       <a href="/portal" class="chq-portal-back">&larr; Back to My Submissions</a>
       <h2 class="chq-portal-hero">My Profile</h2>
       {props.error ? <p role="alert">{props.error}</p> : null}
@@ -231,11 +232,11 @@ async function loadProfile(c: { var: { db: any; auth?: AuthInfo } }) {
     // guarantees auth.contactId is set for a speaker session.
     throw new Error(`No contact row for speaker contactId '${contactId}'`);
   }
-  return { branding: data.branding, profile };
+  return { branding: data.branding, profile, contactName: data.contactName };
 }
 
 portalProfileRoutes.get("/profile", async (c) => {
-  const { branding, profile } = await loadProfile(c);
+  const { branding, profile, contactName } = await loadProfile(c);
   const { token: csrfToken, setCookieIfNew } = ensureCsrfCookie(c);
   if (setCookieIfNew) c.header("Set-Cookie", setCookieIfNew);
   const saved = c.req.query("saved") === "1";
@@ -247,6 +248,7 @@ portalProfileRoutes.get("/profile", async (c) => {
       csrfToken={csrfToken}
       saved={saved}
       headshotSavedMessage={headshotSavedMessage}
+      speakerName={contactName}
     />,
   );
 });
@@ -278,7 +280,7 @@ portalProfileRoutes.post("/profile", csrfForm, async (c) => {
   // Re-render on any validation failure with what the speaker just typed,
   // not the previously stored row — losing typed-but-unsaved edits on a
   // rejected submit would be its own data-loss path.
-  const { branding, profile: storedProfile } = await loadProfile(c);
+  const { branding, profile: storedProfile, contactName } = await loadProfile(c);
   const { token: csrfToken } = ensureCsrfCookie(c);
   const submittedProfile: ContactProfile = {
     ...storedProfile,
@@ -290,7 +292,16 @@ portalProfileRoutes.post("/profile", csrfForm, async (c) => {
     socialLinks,
   };
   const renderError = (error: string) =>
-    c.html(<ProfilePage branding={branding} profile={submittedProfile} csrfToken={csrfToken} error={error} />, 400);
+    c.html(
+      <ProfilePage
+        branding={branding}
+        profile={submittedProfile}
+        csrfToken={csrfToken}
+        error={error}
+        speakerName={contactName}
+      />,
+      400,
+    );
 
   if (!firstName || !lastName) {
     return renderError("First and last name are required.");

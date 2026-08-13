@@ -130,11 +130,12 @@ export function EditPage(props: {
   participants: PortalParticipant[];
   participantErrors?: Record<string, string>;
   participantValues?: { firstName: string; lastName: string; email: string; role: string };
+  speakerName: string;
 }) {
-  const { data, answers, selectedTrackIds, csrfToken, errors, trackError, editable, tracksEditable, participants, participantErrors, participantValues } = props;
+  const { data, answers, selectedTrackIds, csrfToken, errors, trackError, editable, tracksEditable, participants, participantErrors, participantValues, speakerName } = props;
   if (!editable) {
     return (
-      <PortalLayout branding={props.branding} csrfToken={csrfToken}>
+      <PortalLayout branding={props.branding} csrfToken={csrfToken} speakerName={speakerName}>
         <a href={`/portal/submissions/${props.submissionId}`} class="chq-portal-back">&larr; Back to submission</a>
         <h2 class="chq-portal-hero">Editing closed</h2>
         <p role="alert">
@@ -148,7 +149,7 @@ export function EditPage(props: {
   // can gate a speaker field), shared by both sections below.
   const isVisible = makeVisibilityPredicate(data.fields, answers);
   return (
-    <PortalLayout branding={props.branding} csrfToken={csrfToken}>
+    <PortalLayout branding={props.branding} csrfToken={csrfToken} speakerName={speakerName}>
       <a href={`/portal/submissions/${props.submissionId}`} class="chq-portal-back">&larr; Back to submission</a>
       <h2 class="chq-portal-hero">Edit submission</h2>
       <form method="post" action={`/portal/submissions/${props.submissionId}/edit`}>
@@ -326,6 +327,7 @@ portalEditRoutes.get("/submissions/:id/edit", async (c) => {
       editable={editable}
       tracksEditable={tracksEditable}
       participants={participants}
+      speakerName={portalData.contactName}
     />,
   );
 });
@@ -383,6 +385,7 @@ portalEditRoutes.post("/submissions/:id/edit", csrfForm, async (c) => {
         editable={true}
         tracksEditable={tracksEditable}
         participants={participants}
+        speakerName={portalData.contactName}
       />,
       400,
     );
@@ -457,6 +460,7 @@ portalEditRoutes.post("/submissions/:id/participants", csrfForm, async (c) => {
         participants={participants}
         participantErrors={result.errors}
         participantValues={{ firstName, lastName, email, role }}
+        speakerName={portalData.contactName}
       />,
       400,
     );
