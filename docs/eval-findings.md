@@ -277,7 +277,9 @@ Remaining S-tier:
   placed cards should say "click to select, then choose a new slot" (move).
 
 M-tier remaining: SPK-04 speaker workflow status control + roster filter ·
-ABS-06 auto-distribute or per-reviewer cap · CRM-02 multi-facet rule builder UI.
+CRM-02 multi-facet rule builder UI. (ABS-06 REMOVED: rubric is an OR of three
+mechanisms and our probe-verified assign-by-track preview/confirm satisfies it —
+do NOT build caps/auto-distribute.)
 
 **META — click-depth/turn-budget audit** (unchanged, still worth more than several
 features): both sbek runs lost more to cannot_judge turn-limit deaths than to
