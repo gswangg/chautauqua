@@ -47,6 +47,7 @@ function resultsRow(overrides: Partial<{ status: string; speakers: string[]; tra
     status: overrides.status ?? 'pending',
     speakers: overrides.speakers ?? ['Ada Lovelace'],
     trackNames: overrides.trackNames ?? ['Engineering'],
+    recusals: 0,
   };
 }
 
@@ -114,9 +115,82 @@ describe('ResultsTable weighted-score caption (DEC-819)', () => {
     );
 
     expect(await screen.findByText(/A Great Talk/)).toBeInTheDocument();
-    expect(screen.getByText('Scores average by weight · recusals excluded')).toBeInTheDocument();
+    const eyebrow = screen.getByText('Scores average by weight · recusals excluded');
+    expect(eyebrow).toBeInTheDocument();
     expect(screen.queryByText(/Mean of submitted reviews/)).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^Score/ })).toBeInTheDocument();
+    // w42-h/DEC-366: the frame's uppercase letterspaced treatment.
+    expect(eyebrow.className).toContain('chq-review-results-eyebrow');
+  });
+});
+
+// w42-h/DEC-366 amendment: the export link is a section-rule action on the
+// "Ranked results" section head, not an orphan bordered button in its own
+// toolbar band -- and it still carries the same sort/dir params.
+describe('ResultsTable CSV export lives on the section rule (DEC-366)', () => {
+  it('renders Download CSV as a section-action link beside the Ranked results eyebrow', async () => {
+    mockApi({
+      [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
+      [`GET /api/v1/plans/${PLAN_ID}/results`]: listEnvelope([resultsRow()]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}/results`]}>
+        <Routes>
+          <Route path="/review/plans/:planId/results" element={<ResultsTable />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText(/A Great Talk/)).toBeInTheDocument();
+
+    const sectionHead = document.querySelector('.chq-section-head')!;
+    const csvLink = screen.getByRole('link', { name: 'Download CSV' });
+    expect(sectionHead.contains(csvLink)).toBe(true);
+    expect(csvLink.className).toContain('chq-section-action');
+    expect(new URL(csvLink.getAttribute('href')!, 'http://localhost').searchParams.get('round')).toBe('1');
+  });
+});
+
+// w42-h/DEC-366 amendment: the REVIEWS cell reads as text -- "N reviews · M
+// recusals" -- with the existing per-review disclosure kept behind that
+// text as its own trigger, so a recusal count is never lost from the cell.
+describe('ResultsTable Reviews cell names the recusal count (DEC-366)', () => {
+  it('reads "N reviews · M recusal(s)" when the row has recusals', async () => {
+    mockApi({
+      [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
+      [`GET /api/v1/plans/${PLAN_ID}/results`]: listEnvelope([{ ...resultsRow(), recusals: 1 }]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}/results`]}>
+        <Routes>
+          <Route path="/review/plans/:planId/results" element={<ResultsTable />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText(/A Great Talk/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /3 reviews · 1 recusal/ })).toBeInTheDocument();
+  });
+
+  it('reads just "N reviews" (no dangling recusal clause) when there are none', async () => {
+    mockApi({
+      [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
+      [`GET /api/v1/plans/${PLAN_ID}/results`]: listEnvelope([resultsRow()]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}/results`]}>
+        <Routes>
+          <Route path="/review/plans/:planId/results" element={<ResultsTable />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText(/A Great Talk/)).toBeInTheDocument();
+    const reviewsButton = screen.getByRole('button', { name: /3 reviews/ });
+    expect(reviewsButton.textContent).not.toContain('recusal');
   });
 });
 
@@ -372,7 +446,7 @@ describe('ResultsTable decision truth + reviews drawer (DEC-632/DEC-633)', () =>
     );
 
     expect(await screen.findByText(/A Great Talk/)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /Reviews \(3\)/ }));
+    fireEvent.click(screen.getByRole('button', { name: /3 reviews/ }));
 
     expect(await screen.findByText('Strong proposal, well scoped.')).toBeInTheDocument();
     // DEC-736: the server always resolves a reviewer name -- no
@@ -442,7 +516,7 @@ describe('ResultsTable row disclosure is plan-scoped (DEC-763)', () => {
     );
 
     expect(await screen.findByText(/A Great Talk/)).toBeInTheDocument();
-    const reviewsButton = screen.getByRole('button', { name: /Reviews \(3\)/ });
+    const reviewsButton = screen.getByRole('button', { name: /3 reviews/ });
     fireEvent.click(reviewsButton);
 
     expect(await screen.findByText('Strong proposal, well scoped.')).toBeInTheDocument();

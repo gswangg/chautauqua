@@ -6,6 +6,7 @@ import { buildResultsCsvHref } from './resultsCsv';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import type { EvaluationPlan, ResultsRow, SubmissionEvaluationItem } from './types';
 import { STATUS_LABELS, type SubmissionStatus } from '../submissions/types';
+import { countOf } from '../../lib/plural';
 
 // DEC-587: the submissions table's own status endpoint -- reused verbatim
 // rather than inventing a second "decide" endpoint.
@@ -312,30 +313,35 @@ export function ResultsTable({
             </select>
           </label>
         )}
-        {planId && (
-          <a
-            href={buildResultsCsvHref(
-              planId,
-              round ?? undefined,
-              sort ? { column: sort.key.column, direction: sort.direction } : undefined,
-            )}
-            download
-            className="chq-btn chq-btn-secondary"
-          >
-            Download CSV
-          </a>
-        )}
       </div>
 
       <section className="chq-section">
+        {/* w42-h/DEC-366 amendment: section actions are links on the section
+           rule, never an orphan bordered button floating in its own band --
+           the export link moves here, carrying the same sort/dir params it
+           always has. The eyebrow takes the frame's uppercase letterspaced
+           treatment, but its claim stays true: a weighted-by-criterion
+           average, recusals excluded -- never "mean of submitted reviews". */}
         <div className="chq-section-head">
           <h2 className="chq-section-label">Ranked results</h2>
-          <span
-            className="chq-section-action chq-review-results-note"
-            style={{ color: 'var(--chq-muted)' }}
-          >
-            Scores average by weight · recusals excluded
-          </span>
+          <div className="chq-review-results-head-actions">
+            <span className="chq-review-results-note chq-review-results-eyebrow">
+              Scores average by weight · recusals excluded
+            </span>
+            {planId && (
+              <a
+                href={buildResultsCsvHref(
+                  planId,
+                  round ?? undefined,
+                  sort ? { column: sort.key.column, direction: sort.direction } : undefined,
+                )}
+                download
+                className="chq-section-action chq-link-button"
+              >
+                Download CSV
+              </a>
+            )}
+          </div>
         </div>
         {/* DEC-587/product principle 4: said once here, not per row -- a
            decision never triggers email; notifying speakers is a separate,
@@ -394,12 +400,17 @@ export function ResultsTable({
                   {row.average.toFixed(1)}
                 </td>
                 <td data-label="Reviews">
+                  {/* w42-h/DEC-366 amendment: the cell reads as text -- "N
+                     reviews · M recusals" -- with the existing disclosure
+                     kept behind that text as its own trigger, so a recusal
+                     count is never lost from the cell. */}
                   <button
                     type="button"
                     className="chq-btn chq-btn-secondary chq-review-reviews-toggle"
                     onClick={() => void toggleExpand(row.submissionId)}
                   >
-                    {expanded ? '▾' : '▸'} Reviews ({row.count})
+                    {expanded ? '▾' : '▸'} {countOf(row.count, 'review')}
+                    {row.recusals > 0 ? ` · ${countOf(row.recusals, 'recusal')}` : ''}
                   </button>
                 </td>
                 <td data-label="Decision">
@@ -491,6 +502,9 @@ export function ResultsTable({
           </tbody>
         </table>
 
+        {/* DEC-366 (wave 42): a frame drawn at ten rows never authorizes
+           deleting a volume affordance -- the pager stays; server pagination
+           at 2,000 rows is exactly what it's for. */}
         {total > 0 && (
           <div className="chq-pager">
             <button

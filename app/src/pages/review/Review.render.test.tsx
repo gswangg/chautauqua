@@ -408,7 +408,9 @@ describe('ReviewPage render smoke: reviewer', () => {
 
     const rows = screen.getAllByRole('listitem');
     expect(rows[0]).toHaveTextContent('Score this');
-    expect(rows[0]).toHaveTextContent('Talk (30 min)');
+    // w42-h/DEC-366: the frame's comma-joined format/duration reading, not
+    // the server-verbatim parenthetical ('Talk (30 min)' -> 'Talk, 30 min').
+    expect(rows[0]).toHaveTextContent('Talk, 30 min');
     expect(rows[1]).toHaveTextContent('Change your score');
     expect(rows[1]).not.toHaveTextContent('Score this');
 
@@ -421,7 +423,7 @@ describe('ReviewPage render smoke: reviewer', () => {
     // No format meta text leaks into the second (format: null) row, and the
     // first row's format meta renders exactly one element (row-scoped, since
     // the page header may render its own .chq-review-plan-meta subtitle).
-    expect(rows[1]).not.toHaveTextContent('Talk (30 min)');
+    expect(rows[1]).not.toHaveTextContent('Talk, 30 min');
     expect(rows[0]?.querySelectorAll('.chq-review-plan-meta').length).toBe(1);
     expect(rows[1]?.querySelectorAll('.chq-review-plan-meta').length).toBe(0);
   });
@@ -459,6 +461,36 @@ describe('ReviewPage render smoke: reviewer', () => {
     expect(bar).toBeTruthy();
     // 1 of 2 items scored -> 50%.
     expect(bar.style.width).toBe('50%');
+  });
+
+  // w42-h/DEC-366 amendment: a plan whose close date has already passed
+  // reads in the past tense ('closed N days ago'), never daysUntil's
+  // zero-clamped 'closes in 0 days'.
+  it('reads "closed N days ago" once the close date has passed', async () => {
+    mockApi({
+      'GET /api/v1/me': reviewerMe(),
+      [`GET /api/v1/review/plans/${PLAN_ID}`]: { ...planWithNullDates(), timezone: 'America/New_York' },
+      [`GET /api/v1/review/plans/${PLAN_ID}/queue`]: {
+        ...listEnvelope([
+          { submissionId: 'sub-1', ref: 'S-001', title: 'A Talk About Testing', ratingsCount: 0, alreadyRatedByMe: false, myScore: null },
+        ]),
+        open: true,
+        recused: [],
+        planName: 'Keynote Track Review',
+        scopeTrackName: 'Main Stage',
+        closeDate: Date.now() - 10 * 24 * 60 * 60 * 1000,
+      },
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/plans/${PLAN_ID}`]}>
+        <ReviewPage />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText(/Main Stage/)).toBeInTheDocument();
+    expect(screen.getByText(/closed \d+ days? ago/)).toBeInTheDocument();
+    expect(screen.queryByText(/closes in 0 days/)).not.toBeInTheDocument();
   });
 
   // DEC-845: the zero-count case never reads "0 left to score" -- it keeps

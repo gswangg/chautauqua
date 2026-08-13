@@ -12,12 +12,35 @@ import { countOf } from '../../lib/plural';
 // envelope carries planName/scopeTrackName/closeDate, but a day-label close
 // date is meaningless without the owning event's tz to expand it through.
 import { daysUntil } from '../../lib/dates';
+// w42-h/DEC-366 amendment: a countdown is a formatter, not a per-call
+// expression -- daysUntil's own zero-clamp is right for "how many days
+// remain", but a CLOSED plan needs the same zone-aware boundary read the
+// other direction. dayLabelEndInstant is the shared primitive daysUntil
+// itself is built on (src/lib/timezone, pure-core).
+import { dayLabelEndInstant } from '../../../../src/lib/timezone';
 
-// DEC-831: 'closes in N days' -- null when the plan has no close date (a
-// window unbounded on that side has nothing to count down to).
+// w42-h/DEC-366 amendment: display-only reshaping of the server-verbatim
+// format string ('Talk (30 min)' -> 'Talk, 30 min') -- DEC-857's wire
+// contract (format arrives verbatim, already carrying its own duration
+// suffix) is untouched; only how the trailing parenthetical prints changes.
+function formatMetaLabel(format: string): string {
+  return format.replace(/\s*\(([^)]+)\)$/, ', $1');
+}
+
+// DEC-831/w42-h: 'closes in N days' while the window is still open; a plan
+// whose close date has already passed reads in the past tense ('closed N
+// days ago') instead of daysUntil's zero-clamped 'closes in 0 days' --
+// null when the plan has no close date (a window unbounded on that side has
+// nothing to count down to or from).
 function closesInDaysLabel(closeDate: number | null, timezone: string): string | null {
   if (closeDate === null) return null;
-  const daysLeft = daysUntil(closeDate, timezone, Date.now());
+  const now = Date.now();
+  const endInstant = dayLabelEndInstant(closeDate, timezone);
+  if (now > endInstant) {
+    const daysAgo = Math.ceil((now - endInstant) / 86_400_000);
+    return `closed ${countOf(daysAgo, 'day')} ago`;
+  }
+  const daysLeft = daysUntil(closeDate, timezone, now);
   return `closes in ${countOf(daysLeft, 'day')}`;
 }
 
@@ -136,7 +159,9 @@ function PlanSection({
                 renders when the submission has neither. */}
             {(item.format != null || item.audienceLevel != null) && (
               <p className="chq-review-plan-meta">
-                {[item.format, item.audienceLevel].filter((v): v is string => v != null).join(' · ')}
+                {[item.format != null ? formatMetaLabel(item.format) : null, item.audienceLevel]
+                  .filter((v): v is string => v != null)
+                  .join(' · ')}
               </p>
             )}
             {/* DEC-857/DEC-874: the action names what it actually offers --
