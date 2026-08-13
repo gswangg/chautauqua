@@ -149,7 +149,17 @@ placing entry.
 (CLOSED by probe 2: DEC-724 conditional "No room yet" column · DEC-742 merged clash
 card — inverted ink card, zero inner scroll, fully visible content.)
 
-**Comms** (DEC-710 + history count CLOSED by probe): compose body step has ZERO
+**Comms** (DEC-710 + history count CLOSED by probe): **SEEDED TEMPLATE LANDMINE
+(repro'd): "Content Reminder" template uses {task_list}/{due_date}, which the
+compose path does NOT supply (they exist only in the per-speaker task-reminder
+renderer) — selecting it fails preflight for EVERY recipient.** Preferred fix:
+compose supplies task_list (outstanding tasks) + due_date (earliest due) per
+recipient by reusing the task-reminder builder — the demo template then works AND
+the vocabulary grows; fallback: rewrite the seed template to supported fields.
+Either way add a test: every SEEDED template must preflight clean against the
+seeded recipients (template-vocabulary parity test). Note: the API error payload
+DOES name recipient+field per entry (contactId:submissionId keys) — UI must
+surface it with human names · compose body step has ZERO
 merge-field affordance — no list of available fields, no insert action, no hint
 that {tokens} auto-fill per recipient (user thought they were manual); the panel
 TITLED "Attachments and merge fields" (ComposeWizard.tsx:469) contains only

@@ -44,7 +44,12 @@ function SpeakerCard(props: {
   const href = speakerDetailPath(event, sp.contactId, surface, base);
   return (
     <div class="chq-pub-speaker-card">
-      <a href={href}>
+      {/* w1-i: a photo-less card's fallback <div> carries no text, so the
+          wrapping link had no accessible name at all when there's no
+          headshot <img> to supply one via `alt`. The headshot <img>'s alt
+          already names the link in the other branch, so the aria-label is
+          only needed on the fallback path. */}
+      <a href={href} aria-label={sp.headshotUrl ? undefined : `${sp.firstName} ${sp.lastName}`}>
         {sp.headshotUrl ? (
           <img
             src={sp.headshotUrl}

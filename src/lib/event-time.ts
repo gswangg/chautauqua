@@ -79,3 +79,22 @@ export function formatCalendarDate(ms: number): string {
   });
   return formatter.format(new Date(ms));
 }
+
+/** Formats a `day` field (DEC-010: already the wall-clock 'YYYY-MM-DD' in
+ * the owning event's own timezone — never re-zoned here) as a human label,
+ * e.g. "Wed, May 12, 2027" — same DEC-522 "calendar day, not an instant"
+ * rule as formatCalendarDate (no timeZone param, no toISOString: this is
+ * the ONE formatter every public-surface day heading and schedule/detail
+ * date label routes through, replacing the raw ISO string those surfaces
+ * used to emit directly). This is the STRING-KEYED door onto
+ * formatCalendarDate — the rendering itself lives there and only there, so
+ * a day label reads identically whether its source is a 'YYYY-MM-DD' field
+ * or a UTC-midnight epoch. Malformed input (not a parseable Y-M-D string)
+ * returns the original string unchanged rather than throwing mid-render,
+ * matching the public surfaces' fail-soft rendering contract for
+ * organizer-entered scheduling data. */
+export function formatEventDay(day: string): string {
+  const [year, month, date] = day.split("-").map(Number);
+  if (!year || !month || !date) return day;
+  return formatCalendarDate(Date.UTC(year, month - 1, date));
+}

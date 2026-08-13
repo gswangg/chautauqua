@@ -7,7 +7,7 @@ import { MAX_ITINERARY_IDS, itineraryStorageKey, mergeItinerarySelection, mirror
 import { assignLanes } from "../../lib/overlap-lanes";
 import { publicRoomLabel } from "../../domain/schedule";
 import { sessionDetailPath, surfacePath, type Surface, type SurfaceBase } from "./shell";
-import { TrackChips, FormatChip, SpeakerNames, SessionDescription, formatDay, formatMinutes } from "./cards";
+import { TrackChips, FormatChip, SpeakerNames, SessionDescription, ItineraryToggle, formatDay, formatMinutes } from "./cards";
 
 // DEC-602: shared row-map math. The hour-label column (grid-column 1) and
 // every session block are positioned from the SAME dayStart/gridMin
@@ -79,7 +79,8 @@ export function AgendaDayGrid(props: { day: string; items: PublicAgendaItem[]; e
     // DEC-768: the day heading is owned by AgendaDay (the caller wrapping
     // both this grid and AgendaItemList below) -- rendering it here too
     // duplicated it in the DOM (both copies always present, only one
-    // display:none'd per breakpoint).
+    // display:none'd per breakpoint). w1-i's formatDay() day label is kept
+    // (it now reaches the DOM through that single owning heading).
     <section aria-label={`Agenda for ${formatDay(day)}`}>
       <div class="chq-pub-agenda-day-scroll">
         <div
@@ -200,10 +201,12 @@ function AgendaItemList(props: {
               <SpeakerNames speakers={item.speakers} />
             </div>
             {itinerary ? (
-              <label class="chq-pub-itinerary-row">
-                <input type="checkbox" class="chq-itinerary-toggle" value={item.submissionId} />
-                Add to itinerary
-              </label>
+              // w1-i: same shared ItineraryToggle as the sessions list card
+              // (cards.tsx) — the label previously stayed "Add to itinerary"
+              // even once checked, unlike /sessions' Save -> Saved flip.
+              // `.chq-pub-itinerary-row` keeps this row's own layout; the
+              // flip CSS lives in the appended block in public.css.ts.
+              <ItineraryToggle sessionId={item.submissionId} wrapperClass="chq-pub-itinerary-row" />
             ) : null}
           </li>
         ))}

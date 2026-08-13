@@ -5,7 +5,7 @@
 import type { PublicSession, PublicTrack } from "../../server/repo/public";
 import { sessionDetailPath, type Surface } from "./shell";
 import type { CardFields } from "./query";
-import { formatCalendarDate } from "../../lib/event-time";
+import { formatEventDay } from "../../lib/event-time";
 
 const ALL_FIELDS_ON: CardFields = {
   track: true,
@@ -63,14 +63,15 @@ export function SpeakerNames(props: { speakers: PublicSession["speakers"] }) {
 // EMB-01: shared day/time formatting for session cards and agenda blocks.
 // `day` is already the wall-clock 'YYYY-MM-DD' in the event's own timezone
 // (DEC-010) — no zonedMinutesToUtc conversion needed to *display* it, only
-// to export it as a UTC .ics instant (schedule.ics). DEC-768: routes
-// through event-time.ts's formatCalendarDate (never toISOString, never the
-// browser's own zone) — a calendar-day string reads its UTC fields
-// everywhere, same rule as any other date-only label in the app.
+// to export it as a UTC .ics instant (schedule.ics).
+// w1-i + DEC-768 (merge): delegates to the ONE shared formatter
+// (src/lib/event-time.ts's formatEventDay, which itself renders through
+// formatCalendarDate — never toISOString, never the browser's own zone) so
+// every public surface's day heading/date label (session cards, day
+// headings, session-detail schedule line) renders identically instead of
+// each surface re-implementing (or skipping) the same Y-M-D -> label math.
 export function formatDay(day: string): string {
-  const [year, month, date] = day.split("-").map(Number);
-  if (!year || !month || !date) return day;
-  return formatCalendarDate(Date.UTC(year, month - 1, date));
+  return formatEventDay(day);
 }
 
 export function formatMinutes(min: number): string {
@@ -125,6 +126,32 @@ export function SessionSchedule(props: { session: PublicSession; fields?: CardFi
   );
 }
 
+// w1-i: ONE shared label pair for every `.chq-itinerary-toggle` control
+// across the sessions list, schedule/agenda list rows and the session
+// detail page — a per-surface literal ("Save"/"Saved" here, static "Add to
+// itinerary" there) is exactly how the detail/schedule surfaces ended up
+// with a checked state that never re-labels itself. Any surface rendering
+// an itinerary toggle imports this instead of writing its own strings.
+export const ITINERARY_TOGGLE_LABEL = { off: "Save", on: "Saved" } as const;
+
+/** Shared `.chq-itinerary-toggle` checkbox + flipping label, reused by the
+ * sessions list card, the schedule/agenda list row and the session detail
+ * page (DEC-683's markup/CSS pattern, generalized off this one component so
+ * the id, storage key and inline script in agenda.tsx's ItineraryScript
+ * keep working unchanged everywhere the control now appears). `wrapperClass`
+ * lets a surface keep its own outer layout class (e.g. the schedule row's
+ * `.chq-pub-itinerary-row`) while still getting the same flip behavior. */
+export function ItineraryToggle(props: { sessionId: string; wrapperClass?: string }) {
+  const wrapperClass = props.wrapperClass ?? "chq-pub-save";
+  return (
+    <label class={wrapperClass}>
+      <input type="checkbox" class="chq-itinerary-toggle" value={props.sessionId} />
+      <span class="chq-pub-save-off">{ITINERARY_TOGGLE_LABEL.off}</span>
+      <span class="chq-pub-save-on">{ITINERARY_TOGGLE_LABEL.on}</span>
+    </label>
+  );
+}
+
 export function SessionCard(props: {
   session: PublicSession;
   event: import("../../server/repo/public").PublicEvent;
@@ -167,11 +194,7 @@ export function SessionCard(props: {
         // /schedule's .chq-pub-itinerary-row (agenda.tsx), just styled as a
         // pill with the two labels swapped by :checked (public.css.ts). No
         // second store, no new JS — ItineraryScript already drives this.
-        <label class="chq-pub-save">
-          <input type="checkbox" class="chq-itinerary-toggle" value={session.id} />
-          <span class="chq-pub-save-off">Save</span>
-          <span class="chq-pub-save-on">Saved</span>
-        </label>
+        <ItineraryToggle sessionId={session.id} />
       ) : null}
     </div>
   );
