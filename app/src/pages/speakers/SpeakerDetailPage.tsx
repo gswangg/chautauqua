@@ -8,8 +8,9 @@ import { Link, useParams } from 'react-router-dom';
 import { apiGet, ApiError } from '../../lib/api';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { DelayedLoading } from '../../components/DelayedLoading';
-import { formatDateOnly } from '../../lib/dates';
+import { formatDateOnly, formatDayLabel } from '../../lib/dates';
 import { INVITE_STATUS_LABELS } from './types';
+import { participationStatusClass } from './ParticipationMenu';
 import { STATUS_LABELS } from '../submissions/types';
 import { CONTENT_STATUS_LABELS } from '../content/types';
 import { DEC_930 } from '../../../../src/decisions';
@@ -37,7 +38,7 @@ function formatClockTime(minutesFromMidnight: number): string {
 
 function scheduledLabel(scheduled: SpeakerDetailResponse['sessions'][number]['scheduled']): string {
   if (!scheduled) return 'Not placed';
-  const slot = `${scheduled.day} ${formatClockTime(scheduled.startMin)}–${formatClockTime(scheduled.endMin)}`;
+  const slot = `${formatDayLabel(scheduled.day)} ${formatClockTime(scheduled.startMin)}–${formatClockTime(scheduled.endMin)}`;
   return `${slot}, ${scheduled.roomName ?? 'To be announced'}`;
 }
 
@@ -60,7 +61,7 @@ export function SpeakerDetailPage() {
 
   if (eventLoading) {
     return (
-      <div className="chq-page chq-speaker-detail-page chq-measure">
+      <div className="chq-page chq-speaker-detail-page chq-measure-table">
         <DelayedLoading label="Loading event…" />
       </div>
     );
@@ -68,7 +69,7 @@ export function SpeakerDetailPage() {
 
   if (eventError || !eventId) {
     return (
-      <div className="chq-page chq-speaker-detail-page chq-measure">
+      <div className="chq-page chq-speaker-detail-page chq-measure-table">
         <h1 className="chq-page-title">Speaker</h1>
         <div className="chq-error">{eventError ?? 'No event selected.'}</div>
       </div>
@@ -76,7 +77,7 @@ export function SpeakerDetailPage() {
   }
 
   return (
-    <div className="chq-page chq-speaker-detail-page chq-measure">
+    <div className="chq-page chq-speaker-detail-page chq-measure-table">
       <div className="chq-speaker-detail-topbar">
         <Link className="chq-link-button chq-speaker-detail-back" to="/speakers">
           &lsaquo; Speakers
@@ -98,7 +99,10 @@ export function SpeakerDetailPage() {
           </div>
 
           <p className="chq-meta chq-speaker-detail-participation">
-            Participation: {INVITE_STATUS_LABELS[detail.participation.inviteStatus]}
+            Participation:{' '}
+            <span className={participationStatusClass(detail.participation.inviteStatus)}>
+              {INVITE_STATUS_LABELS[detail.participation.inviteStatus]}
+            </span>
           </p>
 
           <section className="chq-section chq-speaker-detail-sessions">
@@ -125,8 +129,12 @@ export function SpeakerDetailPage() {
                           {session.ref} &middot; {session.title}
                         </Link>
                       </td>
-                      <td>{STATUS_LABELS[session.status]}</td>
-                      <td>{CONTENT_STATUS_LABELS[session.contentStatus]}</td>
+                      <td>
+                        <span className="chq-flag">{STATUS_LABELS[session.status]}</span>
+                      </td>
+                      <td>
+                        <span className="chq-flag">{CONTENT_STATUS_LABELS[session.contentStatus]}</span>
+                      </td>
                       <td>{scheduledLabel(session.scheduled)}</td>
                     </tr>
                   ))}
@@ -165,7 +173,9 @@ export function SpeakerDetailPage() {
                         {task.required && <span className="chq-speaker-detail-required"> Required</span>}
                       </td>
                       <td>{formatDateOnly(task.dueDate)}</td>
-                      <td>{TASK_STATUS_LABELS[task.status]}</td>
+                      <td>
+                        <span className="chq-flag">{TASK_STATUS_LABELS[task.status]}</span>
+                      </td>
                       <td>
                         {/* DEC-920/DEC-930: a deliverable link is named by the
                             file's own filename -- never the word 'File' --

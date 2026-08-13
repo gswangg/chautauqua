@@ -268,6 +268,7 @@ describe('page measure (DEC-744/DEC-808/DEC-989)', () => {
       'contacts/ContactsApp.tsx',
       'content/ContentApp.tsx',
       'speakers/OnboardingGrid.tsx',
+      'speakers/SpeakerDetailPage.tsx',
       'Comms.tsx',
       'review/ResultsTable.tsx',
       'review/PlanList.tsx',
