@@ -1,10 +1,12 @@
-// DEC-144 layer-2 harness (batch B, task-w3-e; converged w15-e/DEC-691):
-// component-render smoke test for the Settings page. Mounts the real
-// SettingsPage against mocked fetch routes for every panel it renders
-// unconditionally (event settings, tracks/rooms, public pages, speaker
-// portal [portal settings + resources], people and roles, your data
-// [exports + API tokens]) and asserts each panel's heading renders without
-// throwing.
+// DEC-144 layer-2 harness (batch B, task-w3-e; converged w15-e/DEC-691;
+// w3-d/DEC-747 folds 'Your data' into one section and drops the eighth
+// rail entry): component-render smoke test for the Settings page. Mounts
+// the real SettingsPage against mocked fetch routes for every panel it
+// renders unconditionally (event settings, tracks/rooms, public pages,
+// speaker portal [portal settings + resources], people and roles, your
+// data [export pills + API tokens, with the full export table and the
+// Sessionboard importer reachable via drill]) and asserts each panel's
+// heading renders without throwing.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor, fireEvent, cleanup, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
@@ -123,19 +125,46 @@ describe('SettingsPage render smoke', () => {
       expect(screen.getByText('self@example.com')).toBeInTheDocument();
     });
 
-    // Your data section (Exports + API tokens composed).
-    expect(screen.getByRole('heading', { name: 'Exports' })).toBeInTheDocument();
-    expect(screen.getAllByRole('link', { name: 'Download CSV' })[0]).toHaveAttribute(
+    // Your data section (DEC-747: ONE section -- Exports pills, API
+    // tokens, API docs and an Import-from-Sessionboard drill row).
+    expect(screen.getByRole('heading', { name: 'Your data' })).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByRole('link', { name: 'Submissions CSV' })).toHaveAttribute(
+        'href',
+        `/api/v1/events/${EVENT_ID}/export/submissions?format=csv`,
+      );
+    });
+    expect(screen.getByRole('link', { name: 'Contacts CSV' })).toHaveAttribute(
       'href',
-      `/api/v1/events/${EVENT_ID}/export/submissions?format=csv`,
+      `/api/v1/events/${EVENT_ID}/export/contacts?format=csv`,
     );
+    expect(screen.getByRole('link', { name: 'Schedule ICS' })).toHaveAttribute(
+      'href',
+      `/e/devcon-2026/agenda.ics`,
+    );
+    expect(screen.getByRole('button', { name: 'Everything JSON' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'chautauqua.cc/docs/api' })).toHaveAttribute('href', '/docs/api');
+
     expect(screen.getByRole('heading', { name: 'API Tokens' })).toBeInTheDocument();
     await waitFor(() => {
       expect(screen.getByText('CI pipeline')).toBeInTheDocument();
     });
 
-    // Sessionboard import panel (renders synchronously once eventId
-    // resolves; makes no GET requests of its own).
+    // The full multi-kind export table stays reachable, not deleted, behind
+    // a "More export formats" drill (FINDINGS w21: chrome fidelity never
+    // deletes a capability).
+    expect(screen.queryByRole('heading', { name: 'Exports' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'More export formats' }));
+    expect(screen.getByRole('heading', { name: 'Exports' })).toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: 'Download CSV' })[0]).toHaveAttribute(
+      'href',
+      `/api/v1/events/${EVENT_ID}/export/submissions?format=csv`,
+    );
+
+    // Import from Sessionboard is now a row inside 'Your data' that drills
+    // into the same three-step panel, not an eighth rail entry.
+    expect(screen.queryByRole('heading', { name: 'Import from Sessionboard' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Import from Sessionboard' }));
     expect(screen.getByRole('heading', { name: 'Import from Sessionboard' })).toBeInTheDocument();
     expect(screen.getByText(/API token is not implemented in this build/)).toBeInTheDocument();
   });
@@ -179,9 +208,10 @@ describe('SettingsPage render smoke', () => {
     expect(window.history.length).toBe(historyLengthBefore);
   });
 
-  // DEC-691: rail converges on the mock's seven sections (docs/design/
-  // Chautauqua Settings.dc.html lines 61-215), in this order, plus the
-  // honestly-labelled 'Import from Sessionboard' extra.
+  // DEC-747/DEC-691: rail converges on exactly the mock's seven sections
+  // (docs/design/Chautauqua Settings.dc.html lines 61-233), in this order --
+  // 'Import from Sessionboard' is a row inside 'Your data', not an eighth
+  // rail entry.
   it('renders the rail sections in DEC-691 order', async () => {
     mockAllSections();
 
@@ -208,7 +238,6 @@ describe('SettingsPage render smoke', () => {
       'Speaker portal',
       'People and roles',
       'Your data',
-      'Import from Sessionboard',
     ]);
   });
 
