@@ -721,3 +721,16 @@ AND audit noStoreByDefault + any other header-stamping middleware for the same t
     unit-tested). One remaining line: phone footer — add the ≤700px rule that drops
     the descriptor clause from .chq-home-footer-text so "Running on Chautauqua" +
     "API docs" share one row per the phone mock. Then Home is closed.
+
+59. r3-Overview: KEEP the four new fixes (deadline order, remind honesty w/ "4 more
+    overdue", §04 stacking, dynamic wave number). **FIX THE FIX: splitting needed —
+    §02 triage buttons now stack vertically because .chq-overview-row-actions-stacked
+    is shared with §04; give §02 an inline-row class and §04 the column class** (the
+    class name should describe one behavior each). STILL OPEN (carry): modal mount —
+    the scrim's position:fixed only MASKS the header-identity mount; move modals to a
+    root ModalFrame portal and give chq-modal-title/chq-field their own typography;
+    native date inputs + STARTS/ENDS/TIME ZONE/VENUE labels; §02 "waiting N days"
+    clause (kill the dangling dots); Public pages single summary row; duration clause
+    (derive from format or drop); VERIFY the four identical "Place at 9:00"
+    suggestions are room-distinct (add room name to the suggestion copy: "Place at
+    9:00 in Room 2B" — disambiguates AND informs).
