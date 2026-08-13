@@ -62,6 +62,7 @@ function taskFixture(overrides: Partial<PortalTaskAssignment>): PortalTaskAssign
   return {
     id: "assign-1",
     taskId: "task-1",
+    eventId: "evt-1",
     kind: "general",
     title: "Untitled task",
     description: null,
@@ -200,6 +201,34 @@ describe("speakerStatusLabel", () => {
 
   it("throws on an unknown status literal — fail loudly, no silent default", () => {
     expect(() => speakerStatusLabel("bogus" as any)).toThrow();
+  });
+});
+
+// DEC-777: the welcome tagline is confined to the portal home route, so
+// subpages lead with the wordmark + identity instead of displacing it.
+describe("portal home tagline (DEC-777)", () => {
+  it("renders the welcome tagline on GET /portal", async () => {
+    const { getPortalData } = await import("../src/server/repo/portal");
+    vi.mocked(getPortalData).mockResolvedValueOnce({
+      branding: {
+        eventId: "evt-1",
+        eventName: "Arbitrary Con",
+        welcomeMessage: "Welcome to the speaker portal!",
+        accentColor: null,
+        logoUrl: null,
+        showResources: true,
+      },
+      submissions: [],
+      tasks: [],
+      contactName: "Priya Raman",
+      contactCompany: null,
+    });
+    mockTasks = [];
+    mockInvitations = [];
+    const app = await buildPortalApp();
+    const res = await app.request("/portal");
+    const html = await res.text();
+    expect(html).toContain("Welcome to the speaker portal!");
   });
 });
 

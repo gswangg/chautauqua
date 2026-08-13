@@ -319,9 +319,11 @@ export const PORTAL_CSS = `
     color: inherit;
     text-decoration: none;
   }
+  /* DEC-777: the status badge is its own block-level row, never an inline
+     sibling sharing a line with the back link above it. */
+  .chq-portal-status-row { margin-top: 8px; }
   .chq-portal-status-badge {
-    display: inline-block;
-    margin-top: 8px;
+    display: block;
     font-size: 11px;
     font-weight: 800;
     letter-spacing: 0.09em;

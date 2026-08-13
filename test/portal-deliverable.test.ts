@@ -95,6 +95,7 @@ describe("GET /portal/tasks — completed file_request assignment (DEC-242)", ()
       {
         id: ASSIGNMENT_ID,
         taskId: "task-1",
+        eventId: "evt-1",
         kind: "file_request",
         title: "Upload slides",
         description: null,

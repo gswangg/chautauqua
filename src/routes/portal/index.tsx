@@ -23,6 +23,7 @@ import {
   getPortalData,
   getPortalSubmissionDetail,
   nextInviteStatus,
+  resolveDeliverableSubmissionId,
   setInviteStatus,
   type InviteAction,
   type PortalData,
@@ -33,9 +34,11 @@ import {
   type PortalSubmissionListItem,
   type PortalTaskAssignment,
 } from "../../server/repo/portal";
-import { DEC_729 } from "../../decisions";
+import { getFileVersionNumber } from "../../server/repo/files";
+import { DEC_729, DEC_777 } from "../../decisions";
 
 void DEC_729;
+void DEC_777;
 import {
   parseCookies,
   newCsrfToken,
@@ -43,7 +46,7 @@ import {
   isSecureRequest,
   CSRF_COOKIE_NAME,
 } from "../../auth/cookies";
-import { loadEditableSubmission, getPortalParticipants, type PortalParticipant } from "../../server/repo/portal-edit";
+import { loadEditableSubmission } from "../../server/repo/portal-edit";
 import { canEditSubmission } from "../../domain/edit-lock";
 import { ensureOnboardingTasks, getSubmissionStatusForParticipant } from "../../server/repo/submissions";
 
@@ -263,7 +266,7 @@ function PortalPage(props: {
   );
 
   return (
-    <PortalLayout branding={branding} csrfToken={csrfToken} speakerName={contactName} footerExtra={footerExtra}>
+    <PortalLayout branding={branding} csrfToken={csrfToken} speakerName={contactName} footerExtra={footerExtra} showTagline>
       <h1 class="chq-portal-hero">
         {n} {n === 1 ? "thing" : "things"} to do
       </h1>
@@ -334,38 +337,88 @@ function minutesToClock(min: number | null): string {
   return `${h}:${m}`;
 }
 
-// DEC-729 (w1-c rebuild): docs/design "Portal · Your session" frame —
-// uppercase status badge + submitted date, title, "REF · format · track"
-// line, a placement line only when the session has actually landed on the
-// schedule (day + startMin both set, same placed-test as scheduledSubline),
-// Abstract, a Slides/deliverable card, then the existing Participants/
-// Answers sections this task doesn't remove.
+/** DEC-522-style treatment: `day` ('YYYY-MM-DD') is a calendar day already
+ * expressed in the owning event's timezone (schema.scheduleSlot.day), not a
+ * raw instant — so it's parsed as a UTC-midnight label and rendered through
+ * formatCalendarDate (never toISOString, never re-zoned through a second
+ * timezone conversion, which would risk shifting the calendar day). */
+function parseDayLabel(day: string): number {
+  const [year, month, date] = day.split("-").map(Number);
+  if (!year || !month || !date) {
+    throw new Error(`Invalid day '${day}' — expected 'YYYY-MM-DD'`);
+  }
+  return Date.UTC(year, month - 1, date);
+}
+
+// DEC-777: "<day>, <HH:MM> · <room>" — day via formatCalendarDate (a
+// calendar-day label, not an instant), start time via the already-local
+// startMin (schedule_slot stores minutes-from-midnight IN the event's own
+// timezone — DEC-010 — so no further zone conversion applies), and an
+// honest "Room to be announced" instead of silently omitting the room.
+function formatPlacement(day: string, startMin: number, roomName: string | null): string {
+  const room = roomName ?? "Room to be announced";
+  return `${formatCalendarDate(parseDayLabel(day))}, ${minutesToClock(startMin)} · ${room}`;
+}
+
+const BYTE_UNITS = ["B", "KB", "MB", "GB"];
+
+/** formatBytes-equivalent (DEC-777's Slides card needs a human file size —
+ * no such helper exists yet elsewhere in the codebase, so this is scoped
+ * locally rather than growing a new shared lib entry point for one call
+ * site). */
+function formatFileSize(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes < 0) {
+    throw new Error(`formatFileSize: bytes must be a finite non-negative number, got ${bytes}`);
+  }
+  let value = bytes;
+  let unitIndex = 0;
+  while (value >= 1024 && unitIndex < BYTE_UNITS.length - 1) {
+    value /= 1024;
+    unitIndex += 1;
+  }
+  const rounded = unitIndex === 0 ? value.toString() : value.toFixed(1);
+  return `${rounded} ${BYTE_UNITS[unitIndex]}`;
+}
+
+// DEC-777 (w2-f rebuild): docs/design "Portal · Your session" frame — status
+// badge, title and back link EACH their own block-level row (never sharing
+// an inline line), "REF · format · track" as its own line, a placement line
+// (event-timezone, honest "Room to be announced" when unplaced) only when
+// the session has actually landed on the schedule, Abstract, then a Slides
+// card carrying real file metadata (filename/version/size/"Shared with the
+// organisers") plus — ONLY when a file_request task exists for this speaker
+// on this submission's event — a link to that task's upload page. The old
+// Participants/Answers sections are gone from this READ view: both stay
+// reachable via /portal/submissions/:id/edit (src/routes/portal/edit.tsx),
+// which this task does not touch.
 function SubmissionDetailPage(props: {
   branding: PortalData["branding"];
   detail: PortalSubmissionDetail;
   editable: boolean;
   csrfToken: string;
-  participants: PortalParticipant[];
   deliverable: PortalDeliverable | null;
+  deliverableVersion: number | null;
+  fileRequestTask: PortalTaskAssignment | null;
 }) {
-  const { detail, editable, participants, deliverable } = props;
+  const { detail, editable, deliverable, deliverableVersion, fileRequestTask } = props;
   const metaParts = [detail.ref, detail.format, detail.trackName].filter(
     (p): p is string => p !== null && p.length > 0,
   );
   const placed = detail.day !== null && detail.startMin !== null;
   return (
     <PortalLayout branding={props.branding} csrfToken={props.csrfToken}>
-      <a href="/portal/submissions" class="chq-portal-back">&larr; Back to My Submissions</a>
-      <span class="chq-flag chq-portal-status-badge">
-        {detail.statusLabel} · {formatCalendarDate(detail.submittedAt)}
-      </span>
-      <h2 class="chq-portal-hero">{detail.title}</h2>
-      {metaParts.length > 0 ? <span class="chq-portal-sub">{metaParts.join(" · ")}</span> : null}
-      {placed ? (
-        <span class="chq-portal-sub">
-          {detail.day}, {minutesToClock(detail.startMin)}
-          {detail.roomName ? ` · ${detail.roomName}` : ""}
+      <div class="chq-portal-back-row">
+        <a href="/portal/submissions" class="chq-portal-back">&larr; Back to My Submissions</a>
+      </div>
+      <div class="chq-portal-status-row">
+        <span class="chq-flag chq-portal-status-badge">
+          {detail.statusLabel} · {formatCalendarDate(detail.submittedAt)}
         </span>
+      </div>
+      <h2 class="chq-portal-hero">{detail.title}</h2>
+      {metaParts.length > 0 ? <p class="chq-portal-sub">{metaParts.join(" · ")}</p> : null}
+      {placed ? (
+        <p class="chq-portal-sub">{formatPlacement(detail.day!, detail.startMin!, detail.roomName)}</p>
       ) : null}
       {editable ? (
         <div class="chq-portal-actions">
@@ -380,36 +433,22 @@ function SubmissionDetailPage(props: {
       {deliverable ? (
         <div class="chq-portal-row">
           <span class="chq-portal-row-title">{deliverable.filename}</span>
-          <span class="chq-portal-due">Uploaded {formatEventDate(deliverable.uploadedAt, detail.timezone)}</span>
+          <span class="chq-portal-due">
+            v{deliverableVersion ?? 1} · {formatFileSize(deliverable.sizeBytes)} · Shared with the organisers
+          </span>
+          {/* DEC-777: never a button with nowhere to go — the upload link
+              only renders when this speaker actually has a file_request
+              task assignment behind it. */}
+          {fileRequestTask ? (
+            <div class="chq-portal-actions">
+              <a href={taskActionHref(fileRequestTask)} class="chq-btn chq-btn-secondary">
+                {taskActionLabel(fileRequestTask)}
+              </a>
+            </div>
+          ) : null}
         </div>
       ) : (
         <p>Nothing uploaded yet.</p>
-      )}
-
-      <h3 class="chq-section-label">Participants</h3>
-      {participants.length === 0 ? (
-        <p>No participants yet.</p>
-      ) : (
-        <ul>
-          {participants.map((p) => (
-            <li>
-              {p.name} — <span class="chq-flag">{p.roleLabel}</span>
-            </li>
-          ))}
-        </ul>
-      )}
-      <h3 class="chq-section-label">Answers</h3>
-      {detail.answers.length === 0 ? (
-        <p>No additional answers.</p>
-      ) : (
-        <dl>
-          {detail.answers.map((a) => (
-            <>
-              <dt>{a.label}</dt>
-              <dd>{String(a.value)}</dd>
-            </>
-          ))}
-        </dl>
       )}
     </PortalLayout>
   );
@@ -497,8 +536,21 @@ portalRoutes.get("/submissions/:id", async (c) => {
   const editable = editData
     ? canEditSubmission(editData.submission.status, editData.form.closeDate, Date.now(), editData.form.timezone)
     : false;
-  const participants = await getPortalParticipants(c.var.db, id);
   const deliverable = await getLatestDeliverable(c.var.db, id);
+  const deliverableVersion = deliverable ? await getFileVersionNumber(c.var.db, deliverable.id) : null;
+  // DEC-777: the Slides card only ever links to an upload page that exists
+  // — resolve the speaker's own file_request task assignments (any event)
+  // and find the one whose DEC-240 deliverable linkage actually resolves to
+  // THIS submission, never a button with nowhere to go.
+  const myTaskAssignments = await getMyTaskAssignments(c.var.db, contactId, auth.orgId);
+  const fileRequestCandidates = myTaskAssignments.filter((t) => t.kind === "file_request");
+  const fileRequestMatches = await Promise.all(
+    fileRequestCandidates.map(async (t) => ({
+      task: t,
+      submissionId: await resolveDeliverableSubmissionId(c.var.db, contactId, t.eventId),
+    })),
+  );
+  const fileRequestTask = fileRequestMatches.find((m) => m.submissionId === id)?.task ?? null;
   const { token: csrfToken, setCookieIfNew } = ensureCsrfCookie(c);
   if (setCookieIfNew) c.header("Set-Cookie", setCookieIfNew, { append: true });
   return c.html(
@@ -507,8 +559,9 @@ portalRoutes.get("/submissions/:id", async (c) => {
       detail={detail}
       editable={editable}
       csrfToken={csrfToken}
-      participants={participants}
       deliverable={deliverable}
+      deliverableVersion={deliverableVersion}
+      fileRequestTask={fileRequestTask}
     />,
   );
 });

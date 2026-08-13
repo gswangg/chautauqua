@@ -173,6 +173,7 @@ export interface PortalSubmissionAnswer {
 
 export interface PortalSubmissionDetail {
   id: string;
+  eventId: string;
   ref: string;
   title: string;
   description: string | null;
@@ -211,6 +212,7 @@ export async function getPortalSubmissionDetail(
       status: schema.submission.status,
       createdAt: schema.submission.createdAt,
       recordPrefix: schema.event.recordPrefix,
+      eventId: schema.event.id,
       eventOrgId: schema.event.orgId,
       timezone: schema.event.timezone,
       trackName: schema.track.name,
@@ -284,6 +286,7 @@ export async function getPortalSubmissionDetail(
   const status = row.status as SubmissionStatus;
   return {
     id: row.id,
+    eventId: row.eventId,
     ref: formatRef(row.recordPrefix, row.seq),
     title: row.title,
     description: row.description,

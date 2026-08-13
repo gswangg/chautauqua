@@ -53,6 +53,13 @@ export function PortalLayout(props: {
   // ahead of the sign-out control — placement only, never touching the
   // sign-out form/button below (a sibling task owns that cascade).
   footerExtra?: unknown;
+  // DEC-777: the "Welcome to the speaker portal!" tagline (branding.
+  // welcomeMessage) only belongs on the portal home route, where there's no
+  // other identity being displaced — every subpage leads with the wordmark
+  // instead. Defaults to false so every existing call site (subpages) keeps
+  // the tagline off without touching each one; only the /portal home route
+  // opts in.
+  showTagline?: boolean;
 }) {
   const accent = safeAccent(props.branding.accentColor);
   return (
@@ -71,7 +78,7 @@ export function PortalLayout(props: {
             {props.branding.eventName}
           </span>
           {props.speakerName ? <span class="chq-portal-header-name">{props.speakerName}</span> : null}
-          {props.branding.welcomeMessage ? <p class="chq-meta">{props.branding.welcomeMessage}</p> : null}
+          {props.showTagline && props.branding.welcomeMessage ? <p class="chq-meta">{props.branding.welcomeMessage}</p> : null}
         </header>
         <main>{props.children as any}</main>
         {/* DEC-154: sign-out control on every /portal/* page, via the

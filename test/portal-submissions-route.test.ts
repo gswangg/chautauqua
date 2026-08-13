@@ -38,6 +38,7 @@ vi.mock("../src/server/repo/portal", async () => {
     ]),
     getPortalSubmissionDetail: vi.fn(async (_db: unknown, id: string) => (id === "sub-mine" ? {
       id: "sub-mine",
+      eventId: "evt-1",
       ref: "SES-004",
       title: "Mine",
       description: "desc",
@@ -120,5 +121,93 @@ describe("GET /portal/submissions/:id scoping (DEC-729)", () => {
     const html = await res.text();
     expect(html).toContain("Mine");
     expect(html).toContain('href="/portal/submissions"');
+  });
+});
+
+// DEC-777: block-level rows, event-timezone placement (never raw
+// detail.day/toISOString), an honest "Room to be announced" fallback, and no
+// Participants/Answers dump on this READ view (both stay reachable via
+// /portal/submissions/:id/edit, which this task doesn't touch).
+describe("GET /portal/submissions/:id — DEC-777 detail rebuild", () => {
+  it("formats a placed session's placement line through the event-time helpers, in event-timezone, and announces a null room honestly", async () => {
+    const { getPortalSubmissionDetail } = await import("../src/server/repo/portal");
+    vi.mocked(getPortalSubmissionDetail).mockResolvedValueOnce({
+      id: "sub-placed",
+      eventId: "evt-1",
+      ref: "SES-005",
+      title: "Placed talk",
+      description: "An abstract",
+      status: "accepted",
+      statusLabel: "Accepted",
+      submittedAt: Date.UTC(2027, 2, 1),
+      timezone: "UTC",
+      answers: [],
+      trackName: "Platform",
+      format: "Talk",
+      day: "2027-05-12",
+      startMin: 600, // 10:00
+      endMin: 660,
+      roomName: null,
+    });
+    const app = await buildApp(speakerAuth);
+    const res = await app.request("/portal/submissions/sub-placed");
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    // Same calendar-day treatment as formatCalendarDate (event-time.ts) —
+    // never the raw '2027-05-12' string, never toISOString.
+    expect(html).not.toContain("2027-05-12");
+    expect(html).toContain("May");
+    expect(html).toContain("10:00");
+    expect(html).toContain("Room to be announced");
+  });
+
+  it("never renders the Participants heading — that capability lives at /portal/submissions/:id/edit instead", async () => {
+    const { loadEditableSubmission } = await import("../src/server/repo/portal-edit");
+    vi.mocked(loadEditableSubmission).mockResolvedValueOnce({
+      submission: { id: "sub-mine", status: "accepted", title: "Mine", description: "desc" },
+      form: { id: "form-1", closeDate: null, timezone: "UTC" },
+      fields: [],
+      answers: {},
+      offeredTrackIds: [],
+      allTracks: [],
+      selectedTrackIds: [],
+    });
+    const app = await buildApp(speakerAuth);
+    const res = await app.request("/portal/submissions/sub-mine");
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).not.toContain("Participants");
+    expect(html).not.toContain("Answers");
+    expect(html).toContain('href="/portal/submissions/sub-mine/edit"');
+  });
+
+  it("puts the back link, status badge and title each on their own block-level row", async () => {
+    const app = await buildApp(speakerAuth);
+    const res = await app.request("/portal/submissions/sub-mine");
+    const html = await res.text();
+    expect(html).toContain('class="chq-portal-back-row"');
+    expect(html).toContain('class="chq-portal-status-row"');
+  });
+
+  it("never shows the welcome tagline on a submission-detail subpage, even when branding sets one", async () => {
+    const { getPortalData } = await import("../src/server/repo/portal");
+    vi.mocked(getPortalData).mockResolvedValueOnce({
+      branding: {
+        eventId: "evt-1",
+        eventName: "Arbitrary Con",
+        welcomeMessage: "Welcome to the speaker portal!",
+        accentColor: null,
+        logoUrl: null,
+        showResources: true,
+      },
+      submissions: [],
+      tasks: [],
+      contactName: "Priya Raman",
+      contactCompany: null,
+    });
+    const app = await buildApp(speakerAuth);
+    const res = await app.request("/portal/submissions/sub-mine");
+    const html = await res.text();
+    expect(html).not.toContain("Welcome to the speaker portal!");
   });
 });
