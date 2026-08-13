@@ -91,6 +91,20 @@ function notChasingStatus(contact: { id: string; participations: readonly { invi
   return first.inviteStatus;
 }
 
+// DEC-934 amendment: the matrix answers ONE question -- who still needs
+// inviting -- so the standalone "Send portal invite" control (below) must
+// gate on not-yet-invited as well as no-account, reading the SAME
+// participations[].inviteStatus the row model already carries (the
+// participation menu's own footer already documents 'invited' as "records
+// that the invite went out"). A row is already invited only once EVERY
+// participation has moved past 'none' -- the same all-must-agree shape
+// notChasingStatus above uses, so a row with a still-'none' session keeps
+// offering the control rather than going quiet on a session nobody's
+// invited yet.
+function alreadyInvited(contact: { participations: readonly { inviteStatus: InviteStatus }[] }): boolean {
+  return contact.participations.every((p) => p.inviteStatus !== 'none');
+}
+
 // DEC-662/DEC-746: the roster's Add-speaker trigger lives here now (see
 // RosterPanel), beside New task/Remind all outstanding, so the page renders
 // exactly one title action row -- Import CSV is the Contacts page's job, not
@@ -579,9 +593,12 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
                       >
                         Remind {firstNameOf(row.contact.name)}
                       </button>
-                      {/* DEC-805: quiet, conditional — a contact who already
-                          has an account has no use for a claim-link invite. */}
-                      {!row.contact.hasAccount && (
+                      {/* DEC-805/DEC-934: quiet, conditional — a contact who
+                          already has an account has no use for a claim-link
+                          invite, and a contact already invited has nothing
+                          left for this control to do (the frame's one
+                          question is "who still needs inviting"). */}
+                      {!row.contact.hasAccount && !alreadyInvited(row.contact) && (
                         <button
                           type="button"
                           className="chq-btn chq-btn-tertiary chq-speakers-invite-one"
@@ -590,6 +607,9 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
                         >
                           Send portal invite
                         </button>
+                      )}
+                      {!row.contact.hasAccount && alreadyInvited(row.contact) && (
+                        <span className="chq-speakers-invited-marker">EMAILED</span>
                       )}
                     </td>
                     {notChased !== null ? (

@@ -403,6 +403,22 @@
   font-size: 11px;
 }
 
+/* DEC-934 amendment: the quiet marker an already-invited, still-account-less
+   row shows in place of .chq-speakers-invite-one above -- same box/type
+   metrics (inline, matched margins) so swapping control for marker never
+   changes the row's pitch. */
+.chq-speakers-invited-marker {
+  display: inline-block;
+  margin-top: 4px;
+  margin-left: 4px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--chq-muted);
+}
+
 .chq-speakers-file-link,
 .chq-speakers-response-link {
   font-size: 11px;

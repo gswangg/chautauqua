@@ -18,14 +18,16 @@ const GRID: OnboardingGridResponse = {
   tasks: [{ id: 'task-1', kind: 'general', title: 'Sign speaker agreement', dueDate: null, required: true }],
   rows: [
     {
-      // No account yet -- the invite control should render for this row.
+      // No account yet, not yet invited -- the invite control should render
+      // for this row (DEC-934 amendment: the control also gates on
+      // not-yet-invited, see OnboardingGrid.render.test.tsx).
       contact: {
         id: 'ct-no-account',
         name: 'Ada Lovelace',
         email: 'ada@example.com',
         company: 'Acme',
         hasAccount: false,
-        participations: [{ participantId: 'p-ct1', submissionId: 'sub-ct1', ref: 'SES-001', title: 'Talk', inviteStatus: 'accepted' }],
+        participations: [{ participantId: 'p-ct1', submissionId: 'sub-ct1', ref: 'SES-001', title: 'Talk', inviteStatus: 'none' }],
       },
       cells: [{ taskId: 'task-1', assignmentId: 'as1', status: 'pending', completedAt: null, fileId: null, fileName: null, fileSizeBytes: null, lastRemindedAt: null, assignedAt: 0 }],
     },
