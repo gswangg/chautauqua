@@ -9,11 +9,26 @@
 // ThemeStyles() inlines THEME_CSS, so hono/jsx never HTML-escapes it (no
 // stray &#39;/&quot;/&gt; entities in the rendered <style> text).
 
-import { DEC_367, DEC_373, DEC_374 } from "../../decisions";
+import { DEC_367, DEC_373, DEC_374, DEC_838 } from "../../decisions";
 
 void DEC_367;
 void DEC_373;
 void DEC_374;
+void DEC_838;
+
+// DEC-838: the ONE list of classes whose colour is bound to
+// --chq-brandable-accent -- interpolated into the selectors below (never
+// hand-listed a second time) so test/embed-accent-surfaces.test.ts's
+// enumeration reads the exact same set the CSS text actually uses. Every
+// entry here was, before this change, ALREADY rendering at var(--chq-brand)
+// (either directly or via the plain-<a> global `a { color: var(--chq-brand)
+// }` rule in theme.ts) -- and --chq-brand's default (#4E5C31) equals
+// --chq-brandable-accent's default (#4E5C31), so repointing these specific
+// rules to the per-event custom property changes NOTHING about the default
+// render; only a non-default accent becomes visible. No other rule in this
+// file qualifies (body text, filled buttons, and fg/bg pairs like the track
+// chip are excluded on purpose -- contrast is not the organizer's to break).
+export const ACCENT_BOUND_CLASSES = ["chq-pub-agenda-block", "chq-pub-day-pill", "chq-pub-accent-link"] as const;
 
 export const PUBLIC_CSS = `
   /* DEC-253: mobile bar (390x844) -- nav/filter/submit controls stay
@@ -190,7 +205,7 @@ export const PUBLIC_CSS = `
      width). */
   .chq-pub-agenda-day-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 1.5rem; }
   .chq-pub-agenda-day { display: grid; gap: 1px; background: var(--chq-hairline); margin-bottom: 0; }
-  .chq-pub-agenda-block {
+  .${ACCENT_BOUND_CLASSES[0]} {
     background: var(--chq-surface);
     border-left: 3px solid var(--chq-brandable-accent);
     padding: 0.4rem 0.6rem;
@@ -231,7 +246,14 @@ export const PUBLIC_CSS = `
   .chq-pub-agenda-list-speakers { font-size: 13px; color: var(--chq-ink-2); }
 
   .chq-pub-day-switcher { display: flex; gap: 8px; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 4px; }
-  .chq-pub-day-pill {
+  /* DEC-838: the day pill (agenda + schedule's shared DaySwitcher, agenda.tsx)
+     was an unclassed-color <a> before this rule -- it rendered at
+     var(--chq-brand) purely via theme.ts's global a-tag colour cascade.
+     This makes that inherited colour an explicit, per-event-accent-bound
+     declaration instead: byte-identical by default (both tokens share the
+     #4E5C31 default), customizable once an organizer sets a branding
+     accentColor. */
+  .${ACCENT_BOUND_CLASSES[1]} {
     flex-shrink: 0;
     border-radius: var(--chq-r-pill);
     min-height: 44px;
@@ -241,7 +263,7 @@ export const PUBLIC_CSS = `
     font-size: 13px;
     font-weight: 500;
     border: 1px solid var(--chq-border);
-    color: var(--chq-ink-2);
+    color: var(--chq-brandable-accent);
     text-decoration: none;
   }
 
@@ -470,4 +492,18 @@ export const PUBLIC_CSS = `
      Save/Saved pill styling (.chq-pub-save) as-is; this just gives it its
      own top margin so it doesn't crowd the description paragraph above it. */
   .chq-pub-detail-itinerary { margin-top: 12px; }
+
+  /* ===== task-w9-b (DEC-838): per-event accent visible on every public/
+     embed surface, without moving a default pixel =====
+     .chq-pub-accent-link is applied (shell.tsx/sessions.tsx/speakers.tsx/
+     detail.tsx) to a handful of plain <a> elements -- "Show more"
+     (sessions/speakers/gallery) and the drill-in "Back to <surface>" link
+     (session/speaker detail) -- that carried NO class and NO explicit
+     colour rule before this change, so their rendered colour already came
+     from theme.ts's global a-tag colour cascade. Same rationale as
+     .chq-pub-day-pill above: default value unchanged (#4E5C31 === #4E5C31),
+     only a non-default accentColor becomes visible. */
+  .${ACCENT_BOUND_CLASSES[2]} {
+    color: var(--chq-brandable-accent);
+  }
 `;

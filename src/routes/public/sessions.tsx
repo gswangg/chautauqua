@@ -228,6 +228,7 @@ export function SessionsContent(props: {
           {hasMore ? (
             <p>
               <a
+                class="chq-pub-accent-link"
                 href={`${basePath}?${activeTrackId ? `trackId=${activeTrackId}&` : ""}${
                   activeFmt ? `format=${encodeURIComponent(activeFmt)}&` : ""
                 }${activeRoom ? `roomId=${encodeURIComponent(activeRoom)}&` : ""}${

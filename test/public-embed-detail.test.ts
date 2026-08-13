@@ -138,7 +138,7 @@ describe("DEC-672: /embed session/speaker detail routes", () => {
     const app = buildApp();
     const res = await app.request(`/embed/${EVENT.slug}/sessions/${SESSION.id}`);
     const body = await res.text();
-    const match = body.match(/<a href="([^"]+)">← Back to/);
+    const match = body.match(/<a class="chq-pub-accent-link" href="([^"]+)">\s*← Back to/);
     expect(match).not.toBeNull();
     const href = match?.[1];
     expect(href).toBeDefined();
@@ -164,7 +164,7 @@ describe("DEC-672: /embed session/speaker detail routes", () => {
     const app = buildApp();
     const res = await app.request(`/embed/${EVENT.slug}/speakers/${SPEAKER.contactId}`);
     const body = await res.text();
-    const match = body.match(/<a href="([^"]+)">← Back to/);
+    const match = body.match(/<a class="chq-pub-accent-link" href="([^"]+)">\s*← Back to/);
     expect(match).not.toBeNull();
     const href = match?.[1];
     expect(href).toBeDefined();
