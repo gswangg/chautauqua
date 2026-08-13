@@ -93,6 +93,17 @@
   background: var(--chq-surface-sunk);
 }
 
+/* DEC-021 amendment (w55): the click/keyboard unschedule action for an
+   armed PLACED session, rendered inside the already-reserved armed bar
+   (no new band). min-height meets the 44px tap-target floor even though
+   the bar itself is thinner — the button is allowed to be the tallest
+   thing in the row. */
+.chq-agenda-unschedule-btn {
+  font-family: inherit;
+  min-height: 44px;
+  padding: 8px 14px;
+}
+
 .chq-agenda-layout {
   display: grid;
   grid-template-columns: 1fr 268px;

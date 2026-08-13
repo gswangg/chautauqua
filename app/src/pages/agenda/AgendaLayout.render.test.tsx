@@ -136,7 +136,7 @@ describe('unscheduled tray polish (w41)', () => {
       />,
     );
     const hint = container.querySelector('.chq-unscheduled-tray-hint');
-    expect(hint?.textContent).toBe('Click a session, then click a time slot · drag back to unschedule');
+    expect(hint?.textContent).toBe('Click a session, then click a time slot · click Unschedule (or drag back) to remove');
   });
 
   it('tray card states its duration as "· N min"', () => {

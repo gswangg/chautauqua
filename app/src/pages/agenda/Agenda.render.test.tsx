@@ -887,6 +887,87 @@ describe('AgendaPage armed self-clash and top-layer click-to-place (DEC-769)', (
   });
 });
 
+// DEC-021 amendment (w55): click/keyboard unschedule — a real <button> in
+// the armed bar so a keyboard-only organiser who placed a session can
+// remove it again without HTML5 drag-and-drop.
+describe('AgendaPage click/keyboard unschedule (DEC-021 amendment)', () => {
+  it('reveals the Unschedule button only when the armed session already has a slot', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/agenda`]: agendaPayload(),
+    });
+
+    render(<AgendaPage />);
+    await waitFor(() => {
+      expect(screen.getByText('Overlapping Talk A')).toBeInTheDocument();
+    });
+
+    // Arming a PLACED card reveals the button.
+    fireEvent.click(screen.getByRole('button', { name: 'S-001: Overlapping Talk A (conflict)' }));
+    expect(screen.getByText(/Placing S-001 — Esc to cancel/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Unschedule' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByRole('button', { name: 'Unschedule' })).toBeNull();
+
+    // Arming an UNSCHEDULED tray card does not — there's nothing to remove.
+    fireEvent.click(screen.getByRole('button', { name: 'S-003: Unplaced Talk — click to select, then choose a time slot' }));
+    expect(screen.getByText(/Placing S-003 — Esc to cancel/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Unschedule' })).toBeNull();
+  });
+
+  it('clicking Unschedule fires the DELETE for the armed session and toasts its ref', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/agenda`]: agendaPayload(),
+      'DELETE /api/v1/submissions/sub-1/slot': { status: 200, body: { conflicts: [], summary: { unplaced: 2, conflicts: 0 } } },
+    });
+
+    render(<AgendaPage />);
+    await waitFor(() => {
+      expect(screen.getByText('Overlapping Talk A')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'S-001: Overlapping Talk A (conflict)' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Unschedule' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Unscheduled S-001.')).toBeInTheDocument();
+    });
+    // The armed bar clears along with the placement.
+    expect(screen.queryByText(/Placing S-001/)).toBeNull();
+  });
+
+  // No mouse/pointer event anywhere in this test — only .focus() (the
+  // mechanism Tab-navigation uses) and a click dispatched at the focused
+  // element itself, which is the event a browser fires by default when
+  // Space/Enter activates a focused native <button> (jsdom does not
+  // synthesize that default action from a raw keydown, so this asserts the
+  // two halves a real browser would supply: the button IS reachable by
+  // focus, and activating the focused element invokes the handler).
+  it('the Unschedule button is keyboard-reachable and activates without any pointer event', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/agenda`]: agendaPayload(),
+      'DELETE /api/v1/submissions/sub-1/slot': { status: 200, body: { conflicts: [], summary: { unplaced: 2, conflicts: 0 } } },
+    });
+
+    render(<AgendaPage />);
+    await waitFor(() => {
+      expect(screen.getByText('Overlapping Talk A')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'S-001: Overlapping Talk A (conflict)' }));
+    const unscheduleBtn = screen.getByRole('button', { name: 'Unschedule' });
+
+    unscheduleBtn.focus();
+    expect(document.activeElement).toBe(unscheduleBtn);
+
+    fireEvent.click(unscheduleBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText('Unscheduled S-001.')).toBeInTheDocument();
+    });
+  });
+});
+
 /** Minimal jsdom-safe MediaQueryList stand-in so useIsPhone's
  * `window.matchMedia('(max-width: 700px)')` subscription resolves to the
  * phone tree in these tests (DEC-380). jsdom does not implement
