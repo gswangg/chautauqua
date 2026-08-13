@@ -175,16 +175,23 @@ describe('OverviewPage render smoke (DEC-370)', () => {
     expect(screen.getByText('Schedule')).toBeInTheDocument();
     expect(screen.getByText('CFP form')).toBeInTheDocument();
 
-    const openLinks = await screen.findAllByRole('link', { name: 'Open' });
-    const hrefs = openLinks.map((link) => link.getAttribute('href'));
-    expect(hrefs).toEqual([
-      `/e/${EVENT_SLUG}/sessions`,
-      `/e/${EVENT_SLUG}/speakers`,
-      `/e/${EVENT_SLUG}/gallery`,
-      `/e/${EVENT_SLUG}/agenda`,
-      `/e/${EVENT_SLUG}/schedule`,
-      `/submit/${EVENT_SLUG}`,
-    ]);
+    // DEC-735: Public pages renders as ONE summary row (not one row per
+    // surface) — every surface still links out, named by its own label.
+    const sessionsLink = screen.getByRole('link', { name: 'Sessions' });
+    const speakersLink = screen.getByRole('link', { name: 'Speakers' });
+    const galleryLink = screen.getByRole('link', { name: 'Gallery' });
+    const agendaLink = screen.getByRole('link', { name: 'Agenda' });
+    const scheduleLink = screen.getByRole('link', { name: 'Schedule' });
+    const cfpLink = screen.getByRole('link', { name: 'CFP form' });
+    expect(sessionsLink).toHaveAttribute('href', `/e/${EVENT_SLUG}/sessions`);
+    expect(speakersLink).toHaveAttribute('href', `/e/${EVENT_SLUG}/speakers`);
+    expect(galleryLink).toHaveAttribute('href', `/e/${EVENT_SLUG}/gallery`);
+    expect(agendaLink).toHaveAttribute('href', `/e/${EVENT_SLUG}/agenda`);
+    expect(scheduleLink).toHaveAttribute('href', `/e/${EVENT_SLUG}/schedule`);
+    expect(cfpLink).toHaveAttribute('href', `/submit/${EVENT_SLUG}`);
+    // Every surface link lives inside the SAME single row.
+    expect(sessionsLink.closest('.chq-overview-row-public')).toBe(cfpLink.closest('.chq-overview-row-public'));
+    expect(document.querySelectorAll('.chq-overview-row-public').length).toBe(1);
 
     // DEC-704: the deadlines strip keeps a FIXED reading order (never
     // reshuffles by nearest date) and names its Review wave round.
@@ -192,6 +199,51 @@ describe('OverviewPage render smoke (DEC-370)', () => {
     expect(screen.getByText('Tasks due')).toBeInTheDocument();
     expect(screen.getByText('Review wave 2')).toBeInTheDocument();
     expect(screen.getByText('Doors open')).toBeInTheDocument();
+
+    // DEC-735: §02's "waiting N days" clause is computed from the row's own
+    // submittedAt, never left dangling.
+    expect(screen.getByText(/waiting 6 days/)).toBeInTheDocument();
+  });
+
+  // DEC-735: the shared-rule regression — §02's triage actions must stay an
+  // inline row, §04's conflict actions must stay a column, and the two must
+  // never again point at the same layout class.
+  it('keeps §02 triage actions and §04 conflict actions on separate layout classes', async () => {
+    const p = payload();
+    p.agendaWork.conflicts[0]!.resolution = {
+      submissionId: 'sub-3',
+      ref: 'DFC-020',
+      day: '2027-03-11',
+      startMin: 690,
+      roomId: 'room-2a',
+      roomName: 'Ballroom',
+      label: 'Move DFC-020 to 11:30',
+    };
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/overview`]: p,
+      'GET /api/v1/events': eventsListEnvelope(),
+    });
+
+    render(
+      <MemoryRouter>
+        <OverviewPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(screen.getByText('Docs That Answer Back')).toBeInTheDocument());
+
+    const acceptButton = screen.getByRole('button', { name: 'Accept' });
+    const triageActions = acceptButton.parentElement!;
+    expect(triageActions).toHaveClass('chq-overview-row-actions-inline');
+
+    const conflictActions = document.querySelector('.chq-overview-row-actions-column');
+    expect(conflictActions).not.toBeNull();
+
+    expect(triageActions.className.split(' ')).not.toEqual(
+      expect.arrayContaining(Array.from(conflictActions!.classList)),
+    );
+    expect(triageActions).not.toHaveClass('chq-overview-row-actions-column');
+    expect(conflictActions).not.toHaveClass('chq-overview-row-actions-inline');
   });
 
   // DEC-704: "Remind all" must name exactly what it sends — the rendered
@@ -233,11 +285,12 @@ describe('OverviewPage render smoke (DEC-370)', () => {
     );
 
     await waitFor(() => expect(screen.getByText('Public pages')).toBeInTheDocument());
+    // DEC-735: a single summary row now carries the unresolved-slug reason
+    // once, not once per surface.
     await waitFor(() => {
-      expect(screen.getAllByText('Event not found in the events list').length).toBe(6);
+      expect(screen.getAllByText('Event not found in the events list').length).toBe(1);
     });
-    expect(screen.getByText('Sessions')).toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'Open' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Sessions' })).not.toBeInTheDocument();
   });
 
   it('fires the accept endpoint and removes the row optimistically', async () => {

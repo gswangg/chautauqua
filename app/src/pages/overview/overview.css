@@ -201,10 +201,25 @@
   grid-template-columns: 1fr;
 }
 
-.chq-overview-row-actions-stacked {
+/* DEC-735: split from the old shared `.chq-overview-row-actions-stacked` —
+   this is §02's (and Public pages') ONE behaviour: an inline row of actions
+   below a title/meta stack. */
+.chq-overview-row-actions-inline {
+  display: flex;
+  gap: 14px;
+  margin-top: 11px;
+  align-self: flex-start;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* DEC-735: §04's ONE behaviour: a resolution button stacked above its
+   caption, as its own grid cell (never combined with the inline-row rule
+   above — that's the bug this class replaces). */
+.chq-overview-row-actions-column {
   display: flex;
   flex-direction: column;
-  margin-top: 11px;
+  gap: 6px;
   align-self: flex-start;
 }
 
@@ -315,12 +330,14 @@
     border-radius: var(--chq-r-ctl-phone);
   }
 
-  .chq-overview-row-actions {
+  .chq-overview-row-actions,
+  .chq-overview-row-actions-inline {
     flex-wrap: wrap;
     width: 100%;
   }
 
-  .chq-overview-row-actions .chq-overview-btn {
+  .chq-overview-row-actions .chq-overview-btn,
+  .chq-overview-row-actions-inline .chq-overview-btn {
     flex: 1;
     min-height: 44px;
     display: flex;

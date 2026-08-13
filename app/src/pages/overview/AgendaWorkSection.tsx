@@ -81,7 +81,7 @@ export function AgendaWorkSection({ payload, setPayload, setError, refetch }: Ag
             ))}
           </div>
           {conflict.resolution ? (
-            <div className="chq-overview-row-actions-stacked">
+            <div className="chq-overview-row-actions-column">
               <button
                 type="button"
                 className="chq-overview-link-btn"
@@ -116,8 +116,12 @@ export function AgendaWorkSection({ payload, setPayload, setError, refetch }: Ag
           <span className="chq-overview-caption chq-overview-caption-flush">No slot yet</span>
           <div>
             <div>{row.title}</div>
+            {/* DEC-735: no persisted per-submission duration reaches this
+                row (server always sends durationMin: null — see the
+                DEFAULT_UNPLACED_DURATION_MIN comment above), so the "· N
+                min ·" clause is dropped rather than rendered dangling. */}
             <div className="chq-overview-row-meta">
-              {row.speakerName} · {row.durationMin} min · {row.ref}
+              {row.speakerName} · {row.ref}
             </div>
           </div>
           {row.suggestion ? (
@@ -136,7 +140,10 @@ export function AgendaWorkSection({ payload, setPayload, setError, refetch }: Ag
                 }));
               }}
             >
-              {row.suggestion.label}
+              {/* DEC-735: a suggestion names the room it would fill —
+                  otherwise several "Place at 9:00" rows on the same wall
+                  clock are indistinguishable. */}
+              {row.suggestion.label} in {row.suggestion.roomName}
             </button>
           ) : (
             <Link to="/agenda" className="chq-overview-link-btn">
