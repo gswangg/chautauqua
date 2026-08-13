@@ -19,7 +19,7 @@ import { newId } from "../../../domain/ids";
 import { makeFileStore } from "../../../server/context";
 import { clampPage, listPerPage } from "../../../lib/pagination";
 import { PARTICIPANT_ROLE_OPTIONS } from "../../../domain/participant-roles";
-import { DEC_290, DEC_461, DEC_466, DEC_764, DEC_765 } from "../../../decisions";
+import { DEC_290, DEC_461, DEC_466, DEC_764, DEC_765, DEC_810 } from "../../../decisions";
 import {
   currentOrgId,
   asRecord,
@@ -43,6 +43,10 @@ void DEC_764;
 // the owned contact row (never re-resolved by email) to pushContactToEvent
 // (DEC-765).
 void DEC_765;
+// Compile-checked dependency marker: POST /contacts below rejects a
+// missing/blank `sessionTitle` when `eventId` is present, before creating
+// the contact's roster push -- no 'Invited: <name>' fallback (DEC-810).
+void DEC_810;
 
 export function registerCrudRoutes(contactsRoutes: Hono<AppEnv>): void {
   contactsRoutes.get("/contacts", async (c) => {
@@ -94,7 +98,13 @@ export function registerCrudRoutes(contactsRoutes: Hono<AppEnv>): void {
 
     // DEC-290: an optional eventId puts the newly-created contact directly on
     // the event roster, riding the existing add-to-event push (no new route).
+    // DEC-810: pushing onto an event creates a real, named session, so an
+    // eventId requires a session title -- rejected loudly rather than
+    // falling back to an invented 'Invited: <name>' title. This is a
+    // distinct field from `title` (the contact's own job title, validated
+    // above), named `sessionTitle` so the two never collide.
     let eventId: string | undefined;
+    let sessionTitle: string | undefined;
     if (body.eventId !== undefined) {
       if (typeof body.eventId !== "string" || body.eventId.trim() === "") {
         throw new ApiError("invalid", "Validation failed", { eventId: "must be a non-empty string" });
@@ -102,6 +112,12 @@ export function registerCrudRoutes(contactsRoutes: Hono<AppEnv>): void {
       const event = await getEventForOrg(c.var.db, body.eventId, orgId);
       if (!event) throw new ApiError("not_found", "Event not found");
       eventId = event.id;
+      if (typeof body.sessionTitle !== "string" || body.sessionTitle.trim() === "") {
+        throw new ApiError("invalid", "Validation failed", {
+          sessionTitle: "required to name the session this contact is added to the event with",
+        });
+      }
+      sessionTitle = body.sessionTitle.trim();
     }
 
     const created = await repo.createContact(c.var.db, orgId, {
@@ -119,7 +135,8 @@ export function registerCrudRoutes(contactsRoutes: Hono<AppEnv>): void {
     if (eventId !== undefined) {
       const alreadyOnRoster = await listAcceptedContactIds(c.var.db, eventId);
       if (!alreadyOnRoster.includes(created.id)) {
-        await repo.pushContactToEvent(c.var.db, eventId, orgId, created, undefined);
+        if (sessionTitle === undefined) throw new Error("sessionTitle required when eventId is set (checked above)");
+        await repo.pushContactToEvent(c.var.db, eventId, orgId, created, sessionTitle);
       }
     }
 

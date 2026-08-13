@@ -5,7 +5,7 @@
 import type { Db } from "../../context";
 import { createSubmission } from "../submissions/create";
 import { updateSubmissionStatuses } from "../submissions";
-import { DEC_156, DEC_765 } from "../../../decisions";
+import { DEC_156, DEC_765, DEC_810 } from "../../../decisions";
 import type { ContactRow } from "./rows";
 
 // Compile-checked dependency marker: pushContactToEvent below implements
@@ -17,19 +17,24 @@ void DEC_156;
 // email through findOrCreateContact), and pass the chosen role through to
 // participant.role (DEC-765).
 void DEC_765;
+// Compile-checked dependency marker: pushContactToEvent/pushContactsToEvent
+// below take `title` as a required non-empty string -- no
+// 'Invited: <First> <Last>' fallback. Callers (routes) reject a
+// missing/blank title before ever reaching this module (DEC-810).
+void DEC_810;
 
 /**
  * Pushes an already-org-owned contact into an event as an organizer-invited
  * submission: status 'accepted', content_status left at its default
- * 'pending' (createSubmission's default), title defaulting to
- * 'Invited: <FirstName> <LastName>', and the contact as a visible
- * participant with the given role (default 'speaker'). Links the caller's
- * contact by id (DEC-765) — createSubmission's `contactId` input shape
- * skips findOrCreateContact entirely, so this never re-resolves the contact
- * by email and never risks minting a duplicate when the CRM address and a
- * submission-path address differ. Sends no email. Caller is expected to
- * have already verified the contact and event both belong to the caller's
- * org.
+ * 'pending' (createSubmission's default), the caller-supplied title (DEC-810
+ * — no fallback), and the contact as a visible participant with the given
+ * role (default 'speaker'). Links the caller's contact by id (DEC-765) —
+ * createSubmission's `contactId` input shape skips findOrCreateContact
+ * entirely, so this never re-resolves the contact by email and never risks
+ * minting a duplicate when the CRM address and a submission-path address
+ * differ. Sends no email. Caller is expected to have already verified the
+ * contact and event both belong to the caller's org, and that `title` is a
+ * non-empty string.
  *
  * P1 fix (w1-f): this used to insert the submission directly with
  * status: 'accepted', which skips updateSubmissionStatuses's acceptance
@@ -49,12 +54,11 @@ export async function pushContactToEvent(
   eventId: string,
   orgId: string,
   contact: Pick<ContactRow, "id" | "email" | "firstName" | "lastName" | "title" | "company">,
-  title: string | undefined,
+  title: string,
   role?: string,
 ): Promise<string> {
-  const resolvedTitle = title && title.trim() ? title.trim() : `Invited: ${contact.firstName} ${contact.lastName}`;
   const submissionId = await createSubmission(db, eventId, orgId, {
-    title: resolvedTitle,
+    title,
     contact: { contactId: contact.id, title: contact.title, company: contact.company, role },
   });
   await updateSubmissionStatuses(db, eventId, [submissionId], "accepted", new Date());
@@ -68,26 +72,25 @@ export async function pushContactToEvent(
  * (deliberately NOT a multi-row insert: submissionSeqSubquery at
  * src/server/repo/submit.ts:225 evaluates against the pre-statement table
  * state, so a multi-row VALUES would collide on seq), applying the same
- * `Invited: <First> <Last>` default title per contact when no title is
- * given, then runs updateSubmissionStatuses ONCE over every created id
- * (instead of once per contact) so the acceptance planner (DEC-079) does a
- * single set-based pass. Same DEC-156 contract as pushContactToEvent:
- * status accepted, content_status pending, visible participant, no email.
- * Returns submission ids in input order.
+ * caller-supplied `title` (DEC-810 — no per-contact 'Invited: <First>
+ * <Last>' fallback) to every contact in the batch, then runs
+ * updateSubmissionStatuses ONCE over every created id (instead of once per
+ * contact) so the acceptance planner (DEC-079) does a single set-based
+ * pass. Same DEC-156 contract as pushContactToEvent: status accepted,
+ * content_status pending, visible participant, no email. Returns
+ * submission ids in input order.
  */
 export async function pushContactsToEvent(
   db: Db,
   eventId: string,
   orgId: string,
   contacts: Pick<ContactRow, "id" | "email" | "firstName" | "lastName" | "title" | "company">[],
-  title?: string,
+  title: string,
 ): Promise<string[]> {
-  const resolvedTitle = title && title.trim() ? title.trim() : undefined;
   const submissionIds: string[] = [];
   for (const contact of contacts) {
-    const contactTitle = resolvedTitle ?? `Invited: ${contact.firstName} ${contact.lastName}`;
     const submissionId = await createSubmission(db, eventId, orgId, {
-      title: contactTitle,
+      title,
       contact: { contactId: contact.id, title: contact.title, company: contact.company },
     });
     submissionIds.push(submissionId);

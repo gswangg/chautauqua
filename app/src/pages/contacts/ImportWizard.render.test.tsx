@@ -145,3 +145,38 @@ describe('ImportWizard: DEC-663 dry-run review step', () => {
     expect(screen.getByText('Line 2: skipped by organizer')).toBeInTheDocument();
   });
 });
+
+// DEC-810: when the import is scoped to an event, the wizard collects a
+// required session title for the batch (in the same step the event is
+// already chosen), never lets the server invent an 'Invited: <name>' title.
+describe('ImportWizard: DEC-810 session title required when scoped to an event', () => {
+  it('shows no session title field when eventId is absent', async () => {
+    render(<ImportWizard onClose={() => {}} onImported={() => {}} />);
+    fireEvent.change(screen.getByLabelText('Or paste CSV text'), { target: { value: CSV } });
+    await screen.findByRole('button', { name: 'Preview 2 row(s)' });
+    expect(screen.queryByLabelText('Session title for this batch')).not.toBeInTheDocument();
+  });
+
+  it('disables Preview until a session title is entered, then sends it as sessionTitle', async () => {
+    const fetchMock = mockApi({ 'POST /api/v1/contacts/import': PLAN });
+    render(<ImportWizard onClose={() => {}} onImported={() => {}} eventId="ev-1" />);
+    fireEvent.change(screen.getByLabelText('Or paste CSV text'), { target: { value: CSV } });
+
+    const preview = await screen.findByRole('button', { name: 'Preview 2 row(s)' });
+    expect(preview).toBeDisabled();
+
+    const titleInput = screen.getByLabelText('Session title for this batch');
+    fireEvent.change(titleInput, { target: { value: 'Lightning talks' } });
+    expect(preview).not.toBeDisabled();
+
+    fireEvent.click(preview);
+    await screen.findByText('Review before import');
+
+    const postCall = fetchMock.mock.calls.find(([input]) =>
+      (typeof input === 'string' ? input : input.toString()).includes('/contacts/import'),
+    );
+    const body = JSON.parse((postCall![1]?.body as string) ?? '{}');
+    expect(body.eventId).toBe('ev-1');
+    expect(body.sessionTitle).toBe('Lightning talks');
+  });
+});

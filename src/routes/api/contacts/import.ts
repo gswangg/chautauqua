@@ -11,12 +11,17 @@ import { getEventForOrg } from "../../../server/repo/events";
 import { listAcceptedContactIds } from "../../../server/repo/tasks";
 import { parseCsv } from "../../../lib/csv";
 import { mapImportRow } from "../../../domain/contacts";
-import { DEC_290 } from "../../../decisions";
+import { DEC_290, DEC_810 } from "../../../decisions";
 import { currentOrgId, asRecord, isPlainObject } from "./shared";
 
 // Compile-checked dependency marker: the optional eventId on POST
 // /contacts/import (roster-scoped import) implements DEC-290.
 void DEC_290;
+// Compile-checked dependency marker: POST /contacts/import below rejects a
+// missing/blank `sessionTitle` when `eventId` is present, before applying
+// any import row -- the whole batch shares one session title, never an
+// invented per-row 'Invited: <name>' fallback (DEC-810).
+void DEC_810;
 
 // DEC-417: CSV import request-input bound, before parseCsv touches an
 // arbitrarily large body.
@@ -73,7 +78,12 @@ export function registerImportRoutes(contactsRoutes: Hono<AppEnv>): void {
       skipLines = body.skipLines as number[];
     }
 
+    // DEC-810: an eventId means every imported contact not already on the
+    // roster gets pushed on with one shared session title -- rejected loudly
+    // up front (before parsing/writing anything) rather than an invented
+    // per-row 'Invited: <name>' fallback.
     let eventId: string | undefined;
+    let sessionTitle: string | undefined;
     if (body.eventId !== undefined) {
       if (typeof body.eventId !== "string" || body.eventId.trim() === "") {
         throw new ApiError("invalid", "Validation failed", { eventId: "must be a non-empty string" });
@@ -81,6 +91,12 @@ export function registerImportRoutes(contactsRoutes: Hono<AppEnv>): void {
       const event = await getEventForOrg(c.var.db, body.eventId, orgId);
       if (!event) throw new ApiError("not_found", "Event not found");
       eventId = event.id;
+      if (typeof body.sessionTitle !== "string" || body.sessionTitle.trim() === "") {
+        throw new ApiError("invalid", "Validation failed", {
+          sessionTitle: "required to name the session this batch is added to the event with",
+        });
+      }
+      sessionTitle = body.sessionTitle.trim();
     }
 
     let table: string[][];
@@ -140,7 +156,8 @@ export function registerImportRoutes(contactsRoutes: Hono<AppEnv>): void {
       if (!contact) throw new Error(`applyImportRows returned contactId ${contactId} not owned by org ${orgId}`);
       return contact;
     });
-    await repo.pushContactsToEvent(c.var.db, eventId, orgId, toAdd, undefined);
+    if (sessionTitle === undefined) throw new Error("sessionTitle required when eventId is set (checked above)");
+    await repo.pushContactsToEvent(c.var.db, eventId, orgId, toAdd, sessionTitle);
     const addedToEvent = toAdd.length;
 
     return c.json({ created: result.created, updated: result.updated, skipped: result.skipped, addedToEvent });
