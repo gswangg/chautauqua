@@ -26,6 +26,7 @@ import {
   getAssignmentResponseDetail,
   getEventOrgId,
   getOnboardingGrid,
+  getSpeakerDetail,
   getTaskOwnership,
   listEventIdsWithOutstandingAssignments,
   previewRemindNow,
@@ -140,6 +141,20 @@ taskRoutes.get("/events/:eventId/onboarding", requireOrganizer, async (c) => {
   const params = parseOnboardingGridQuery(c.req.query(), Date.now());
   const grid = await getOnboardingGrid(c.var.db, eventId, params);
   return c.json(grid);
+});
+
+// GET /api/v1/events/:eventId/speakers/:contactId
+// DEC-930: the ONE event-scoped per-speaker detail read -- 404s (rather than
+// exposing whether the contact exists at all) when the contact is not on
+// this event's roster, existence-hiding like every other nested read.
+taskRoutes.get("/events/:eventId/speakers/:contactId", requireOrganizer, async (c) => {
+  const auth = requireAuth(c);
+  const eventId = c.req.param("eventId");
+  const contactId = c.req.param("contactId");
+  await assertEventOwnership(c.var.db, eventId, auth.orgId);
+  const detail = await getSpeakerDetail(c.var.db, eventId, contactId);
+  if (!detail) throw new ApiError("not_found", "Speaker not found in this event");
+  return c.json(detail);
 });
 
 // ---------------------------------------------------------------------------

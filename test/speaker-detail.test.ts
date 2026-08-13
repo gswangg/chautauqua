@@ -1,0 +1,243 @@
+// DEC-930 repo-level regression: getSpeakerDetail (src/server/repo/tasks/
+// speaker-detail.ts) is the ONE bounded read behind
+// GET /api/v1/events/:eventId/speakers/:contactId — returns null (route
+// 404s) when the contact is not on this event's roster, and its query count
+// is independent of how many sessions/tasks the contact has. In-memory
+// table-double fakeDb pattern from test/onboarding-late-participant.test.ts
+// (WHERE/JOIN ignored — every table here only ever holds rows relevant to
+// the contact/event under test; no real-D1 harness exists in stage 1 per
+// DEC-266).
+
+import { describe, expect, it } from "vitest";
+import * as schema from "../src/db/schema";
+import { getSpeakerDetail } from "../src/server/repo/tasks";
+import type { Db } from "../src/server/context";
+
+function fakeDb(seed: {
+  contact?: unknown[];
+  user?: unknown[];
+  participant?: unknown[];
+  submission?: unknown[];
+  event?: unknown[];
+  scheduleSlot?: unknown[];
+  room?: unknown[];
+  taskAssignment?: unknown[];
+  task?: unknown[];
+  file?: unknown[];
+}) {
+  const state = {
+    contact: [...(seed.contact ?? [])] as any[],
+    user: [...(seed.user ?? [])] as any[],
+    participant: [...(seed.participant ?? [])] as any[],
+    submission: [...(seed.submission ?? [])] as any[],
+    event: [...(seed.event ?? [])] as any[],
+    scheduleSlot: [...(seed.scheduleSlot ?? [])] as any[],
+    room: [...(seed.room ?? [])] as any[],
+    taskAssignment: [...(seed.taskAssignment ?? [])] as any[],
+    task: [...(seed.task ?? [])] as any[],
+    file: [...(seed.file ?? [])] as any[],
+  };
+  const touchedTables: unknown[] = [];
+
+  function stateArrayFor(table: unknown): any[] | undefined {
+    if (table === schema.contact) return state.contact;
+    if (table === schema.user) return state.user;
+    if (table === schema.participant) return state.participant;
+    if (table === schema.submission) return state.submission;
+    if (table === schema.event) return state.event;
+    if (table === schema.scheduleSlot) return state.scheduleSlot;
+    if (table === schema.room) return state.room;
+    if (table === schema.taskAssignment) return state.taskAssignment;
+    if (table === schema.task) return state.task;
+    if (table === schema.file) return state.file;
+    return undefined;
+  }
+
+  function makeChain(rows: unknown[]) {
+    const chain: any = {
+      innerJoin: () => chain,
+      leftJoin: () => chain,
+      where: () => chain,
+      limit: () => chain,
+      orderBy: () => chain,
+      then: (resolve: (v: unknown[]) => void) => resolve(rows),
+    };
+    return chain;
+  }
+
+  const db = {
+    select: (_cols?: unknown) => ({
+      from: (table: unknown) => {
+        touchedTables.push(table);
+        return makeChain([...(stateArrayFor(table) ?? [])]);
+      },
+    }),
+  };
+  return { db: db as unknown as Db, touchedTables };
+}
+
+const EVENT_ID = "event-1";
+const CONTACT_ID = "contact-1";
+
+function contactRow() {
+  return {
+    id: CONTACT_ID,
+    firstName: "Ada",
+    lastName: "Lovelace",
+    email: "ada@example.com",
+    company: "Analytical Engines Inc",
+    title: "Engineer",
+    userId: null,
+  };
+}
+
+function eventRow() {
+  return { recordPrefix: "SES" };
+}
+
+function participantRow(submissionId: string, seq: number, opts: Partial<Record<string, unknown>> = {}) {
+  return {
+    participantId: `p-${submissionId}`,
+    submissionId,
+    inviteStatus: "accepted",
+    role: "speaker",
+    submissionSeq: seq,
+    submissionTitle: `Talk ${seq}`,
+    submissionStatus: "accepted",
+    submissionContentStatus: "approved",
+    ...opts,
+  };
+}
+
+function assignmentRow(assignmentId: string, taskId: string, opts: Partial<Record<string, unknown>> = {}) {
+  return {
+    assignmentId,
+    taskId,
+    taskTitle: `Task ${taskId}`,
+    taskKind: "general",
+    required: true,
+    dueDate: null,
+    status: "pending",
+    completedAt: null,
+    fileId: null,
+    fileName: null,
+    fileSizeBytes: null,
+    fileVersionNo: null,
+    ...opts,
+  };
+}
+
+describe("DEC-930 getSpeakerDetail", () => {
+  it("returns the exact payload shape for a roster contact with a session and a task", async () => {
+    const { db } = fakeDb({
+      contact: [contactRow()],
+      event: [eventRow()],
+      participant: [participantRow("sub-1", 14)],
+      scheduleSlot: [{ submissionId: "sub-1", day: "2026-06-01", startMin: 540, endMin: 600, roomName: "Ballroom A" }],
+      taskAssignment: [assignmentRow("assign-1", "task-1", { fileId: "file-1", fileName: "slides.pdf", fileSizeBytes: 1024, fileVersionNo: 2 })],
+    });
+
+    const detail = await getSpeakerDetail(db, EVENT_ID, CONTACT_ID);
+    expect(detail).toEqual({
+      contact: {
+        id: CONTACT_ID,
+        name: "Ada Lovelace",
+        email: "ada@example.com",
+        company: "Analytical Engines Inc",
+        title: "Engineer",
+        hasAccount: false,
+      },
+      participation: {
+        participantId: "p-sub-1",
+        submissionId: "sub-1",
+        inviteStatus: "accepted",
+      },
+      sessions: [
+        {
+          submissionId: "sub-1",
+          ref: "SES-014",
+          title: "Talk 14",
+          status: "accepted",
+          contentStatus: "approved",
+          role: "speaker",
+          scheduled: { day: "2026-06-01", startMin: 540, endMin: 600, roomName: "Ballroom A" },
+        },
+      ],
+      tasks: [
+        {
+          assignmentId: "assign-1",
+          taskId: "task-1",
+          title: "Task task-1",
+          kind: "general",
+          required: true,
+          dueDate: null,
+          status: "pending",
+          completedAt: null,
+          file: { id: "file-1", filename: "slides.pdf", sizeBytes: 1024, versionNo: 2 },
+        },
+      ],
+      // The fakeDb's WHERE/JOIN no-op means the overdue query (which is
+      // driven entirely by SQL conditions on taskAssignment/task/contact —
+      // DEC-801's overdueAssignmentConditions) returns every seeded
+      // taskAssignment row rather than actually evaluating overdueness; the
+      // real predicate is exercised by test/onboarding-late-participant.test.ts
+      // and the D1-equivalent grid tests. This test only asserts the shape
+      // and that `overdue` is wired from that query's row count.
+      counts: { outstandingRequired: 1, overdue: 1 },
+    });
+  });
+
+  it("returns a null scheduled slot and null file for a session/task without one", async () => {
+    const { db } = fakeDb({
+      contact: [contactRow()],
+      event: [eventRow()],
+      participant: [participantRow("sub-2", 1)],
+      taskAssignment: [assignmentRow("assign-2", "task-2")],
+    });
+
+    const detail = await getSpeakerDetail(db, EVENT_ID, CONTACT_ID);
+    expect(detail?.sessions[0]?.scheduled).toBeNull();
+    expect(detail?.tasks[0]?.file).toBeNull();
+  });
+
+  it("returns null (route 404s) for a contact not on this event's roster", async () => {
+    const { db } = fakeDb({
+      contact: [contactRow()],
+      event: [eventRow()],
+      participant: [], // no participant row for this event's roster
+    });
+
+    const detail = await getSpeakerDetail(db, EVENT_ID, CONTACT_ID);
+    expect(detail).toBeNull();
+  });
+
+  it("returns null when the contact does not exist at all", async () => {
+    const { db } = fakeDb({ contact: [], event: [eventRow()], participant: [] });
+    const detail = await getSpeakerDetail(db, EVENT_ID, "does-not-exist");
+    expect(detail).toBeNull();
+  });
+
+  it("issues the same number of queries regardless of session/task count (no per-row query)", async () => {
+    const manySessions = Array.from({ length: 12 }, (_, i) => participantRow(`sub-${i}`, i + 1));
+    const manyTasks = Array.from({ length: 20 }, (_, i) => assignmentRow(`assign-${i}`, `task-${i}`));
+
+    const { db: smallDb, touchedTables: smallTouched } = fakeDb({
+      contact: [contactRow()],
+      event: [eventRow()],
+      participant: [participantRow("sub-1", 1)],
+      taskAssignment: [assignmentRow("assign-1", "task-1")],
+    });
+    await getSpeakerDetail(smallDb, EVENT_ID, CONTACT_ID);
+
+    const { db: bigDb, touchedTables: bigTouched } = fakeDb({
+      contact: [contactRow()],
+      event: [eventRow()],
+      participant: manySessions,
+      scheduleSlot: manySessions.map((p) => ({ submissionId: p.submissionId, day: "2026-06-01", startMin: 0, endMin: 60, roomName: null })),
+      taskAssignment: manyTasks,
+    });
+    await getSpeakerDetail(bigDb, EVENT_ID, CONTACT_ID);
+
+    expect(smallTouched.length).toBe(bigTouched.length);
+  });
+});

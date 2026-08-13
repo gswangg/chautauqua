@@ -165,6 +165,7 @@ export const ROUTE_GROUPS: { title: string; rows: Row[] }[] = [
     title: "Tasks & assignments",
     rows: [
       { method: "GET", path: "/api/v1/events/:eventId/onboarding", role: "organizer" },
+      { method: "GET", path: "/api/v1/events/:eventId/speakers/:contactId", role: "organizer (DEC-930: per-speaker detail read)" },
       { method: "POST", path: "/api/v1/events/:eventId/tasks", role: "organizer" },
       { method: "PATCH", path: "/api/v1/tasks/:id", role: "organizer" },
       { method: "DELETE", path: "/api/v1/tasks/:id", role: "organizer" },
