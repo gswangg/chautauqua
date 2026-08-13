@@ -47,4 +47,21 @@ describe('UploadZone', () => {
     expect(input.accept).toContain('.pdf');
     expect(input.accept).toContain('.md');
   });
+
+  // w41-a: single-line dashed strip -- "Drop a file..." prompt + the
+  // accepted-type/size-cap text (CNT-06, verbatim, never a tooltip) on the
+  // same line, the native input reachable but visually hidden behind a
+  // <label>, still keyboard-focusable via that label's `for`.
+  it('renders the drop prompt and the CNT-06 caps text in one line, with the input reachable via a label', () => {
+    render(<UploadZone kind="handout" onUpload={vi.fn()} />);
+    expect(screen.getByText('Drop a file to upload for the speaker')).toBeInTheDocument();
+    const input = screen.getByLabelText('Upload handout') as HTMLInputElement;
+    expect(input).toHaveAttribute('type', 'file');
+    // the input is still findable by its own aria-label, and pointed at by
+    // a <label for> — clicking the label's text still reaches the input.
+    const label = document.querySelector(`label[for="${input.id}"]`);
+    expect(label).not.toBeNull();
+    expect(label).toHaveTextContent('Drop a file to upload for the speaker');
+    expect(label).toHaveTextContent(/PDF/i);
+  });
 });

@@ -6,6 +6,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import '@testing-library/jest-dom/vitest';
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { DeliverableDetail } from './DeliverableDetail';
 import { listEnvelope, mockApi } from '../../test-utils/mockApi';
 import { formatDate, formatDayLabel } from '../../lib/dates';
@@ -425,5 +428,91 @@ describe('DeliverableDetail render smoke', () => {
     const speakerLink = await screen.findByRole('link', { name: 'Ada Lovelace' });
     expect(speakerLink.closest('p')).toHaveTextContent('Ada Lovelace · S-042');
     expect(speakerLink.closest('p')).not.toHaveTextContent(/Ada Lovelace · S-042 ·/);
+  });
+
+  // w41-a (DEC-901 amendment): Approve and "Download all" moved out of the
+  // title column's own status bar (deleted) into the CONTENT STATUS band.
+  it('carries both Approve and "Download all" inside the status band, and drops Approve once approved', async () => {
+    mockBase();
+
+    const { container } = render(
+      <MemoryRouter>
+        <DeliverableDetail
+          submissionId={SUBMISSION_ID}
+          title="A talk"
+          contentStatus="pending"
+          onBack={() => {}}
+          onContentStatusChange={() => {}}
+        />
+      </MemoryRouter>,
+    );
+
+    await screen.findByText('slides-v2.pdf');
+    const band = container.querySelector('.chq-content-status-band');
+    expect(band).not.toBeNull();
+    expect(band!.querySelector('button')).not.toBeNull();
+    const approveInBand = Array.from(band!.querySelectorAll('button')).find((b) => b.textContent === 'Approve');
+    const downloadInBand = Array.from(band!.querySelectorAll('button')).find((b) => b.textContent === 'Download all');
+    expect(approveInBand).toBeDefined();
+    expect(downloadInBand).toBeDefined();
+    // the old parallel .chq-content-status-bar box is gone entirely.
+    expect(container.querySelector('.chq-content-status-bar')).toBeNull();
+
+    cleanup();
+    mockBase();
+    const { container: approvedContainer } = render(
+      <MemoryRouter>
+        <DeliverableDetail
+          submissionId={SUBMISSION_ID}
+          title="A talk"
+          contentStatus="approved"
+          onBack={() => {}}
+          onContentStatusChange={() => {}}
+        />
+      </MemoryRouter>,
+    );
+    await screen.findByText('slides-v2.pdf');
+    const approvedBand = approvedContainer.querySelector('.chq-content-status-band');
+    expect(Array.from(approvedBand!.querySelectorAll('button')).find((b) => b.textContent === 'Approve')).toBeUndefined();
+    expect(Array.from(approvedBand!.querySelectorAll('button')).find((b) => b.textContent === 'Download all')).toBeDefined();
+  });
+
+  // DEC-989 amendment (wave 41): the band is chrome -- no max-width/side
+  // margin of its own, the same bare-rule idiom
+  // .chq-review-editor-title-row uses (review.css:995-1007).
+  it('declares no max-width on the status band in content.css', () => {
+    const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'content.css'), 'utf-8');
+    const withoutMedia = css.replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\}[^{}]*)*\}/g, '');
+    const match = withoutMedia.match(/\.chq-content-status-band\s*\{([^}]*)\}/);
+    expect(match).not.toBeNull();
+    expect(match![1]).not.toMatch(/max-width/);
+    expect(match![1]).not.toMatch(/margin:\s*0\s+auto/);
+  });
+
+  // w41-a: "Deliverables" and "Notes on the <kind>" are peers -- each the
+  // first child of its own column wrapper -- so they share one top edge.
+  it('renders the Deliverables and Notes headings as first children of their own column wrappers', async () => {
+    mockBase();
+    const { container } = render(
+      <MemoryRouter>
+        <DeliverableDetail
+          submissionId={SUBMISSION_ID}
+          title="A talk"
+          contentStatus="pending"
+          onBack={() => {}}
+          onContentStatusChange={() => {}}
+        />
+      </MemoryRouter>,
+    );
+
+    await screen.findByText('slides-v2.pdf');
+    const filesCol = container.querySelector('.chq-content-files-col');
+    const commentsCol = container.querySelector('.chq-content-comments-col');
+    expect(filesCol).not.toBeNull();
+    expect(commentsCol).not.toBeNull();
+    expect(filesCol!.firstElementChild?.tagName).toBe('H2');
+    expect(filesCol!.firstElementChild?.textContent).toBe('Deliverables');
+    expect(commentsCol!.firstElementChild?.tagName).toBe('H3');
+    expect(commentsCol!.firstElementChild?.textContent).toBe('Notes on the presentation');
   });
 });

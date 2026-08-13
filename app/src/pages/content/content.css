@@ -133,12 +133,6 @@
   font-size: 28px;
 }
 
-.chq-content-status-bar {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
 /* DEC-756: ONE deliverable chip strip scopes both the version list and the
    note thread beneath it. */
 .chq-content-detail-body {
@@ -148,9 +142,14 @@
 }
 
 .chq-content-chip-caption {
-  margin: 0;
+  margin: 8px 0 0;
 }
 
+/* w41-a (DEC-901 amendment): "Deliverables"/"Notes on the <kind>" are now
+   PEERS living inside their own column here -- each column's heading is its
+   first child, so both headings share one top edge (grid items start-align
+   by default) and each heading's own border-bottom (below) rules only its
+   own column's width, never the full row. */
 .chq-content-group-body {
   display: grid;
   grid-template-columns: 1.35fr 1fr;
@@ -259,15 +258,25 @@
     align-self: flex-start;
   }
 
-  /* Upload zone: accepted-types/size-cap text reflows onto two lines
-     rather than clipping or forcing horizontal scroll on one wide line. */
+  /* Upload zone: the prompt/caps line wraps to a stacked pair rather than
+     ellipsis-clipping the accepted-types text on a narrow phone width. */
+  .chq-content-upload-label {
+    flex-wrap: wrap;
+  }
+
   .chq-content-upload-caps {
+    flex-basis: 100%;
+    text-align: left;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
     line-height: 1.4;
   }
 
-  .chq-content-status-bar {
+  .chq-content-status-band {
     flex-wrap: wrap;
     row-gap: 8px;
+    min-height: 0;
   }
 }
 
@@ -340,13 +349,17 @@
 /* Upload zone                                                             */
 /* ---------------------------------------------------------------------- */
 
+/* w41-a: single-line strip (~50px tall via min-height, never the old 180px
+   wrapped-sentence box) -- the label fills it edge to edge so the whole
+   strip is one click/drop target for the (visually hidden, still
+   keyboard-focusable) file input it points at. */
 .chq-content-upload-zone {
   border: 1px dashed var(--chq-border);
   border-radius: var(--chq-r-card);
-  padding: 16px;
+  min-height: 50px;
   display: flex;
-  flex-direction: column;
-  gap: 10px;
+  align-items: center;
+  position: relative;
 }
 
 .chq-content-upload-zone.drag-over {
@@ -354,12 +367,54 @@
   background: var(--chq-surface-sunk);
 }
 
+.chq-content-upload-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  width: 100%;
+  padding: 0 16px;
+  cursor: pointer;
+}
+
+.chq-content-upload-prompt {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--chq-ink);
+  white-space: nowrap;
+}
+
+/* Accepted-type/size-cap text (CNT-06) -- right-flushed against the prompt
+   on the same line, uppercased for the chrome-strip register. Still the
+   full verbatim hint text in the DOM (never truncated in markup); only the
+   overflow is visually clipped with an ellipsis on a narrow viewport. */
 .chq-content-upload-caps {
+  flex: 1 1 auto;
+  min-width: 0;
   margin: 0;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.02em;
+  text-transform: uppercase;
+  text-align: right;
   color: var(--chq-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Visually hidden, never display:none -- stays in the tab order and
+   reachable by keyboard via the <label for> above (w41-a). */
+.chq-content-upload-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -498,13 +553,46 @@
   margin: 0;
 }
 
+/* w41-a (DEC-901 amendment): the band now also carries the Approve/
+   "Download all" actions that used to sit in the title column's own
+   .chq-content-status-bar (deleted). ~79px tall via min-height (the row's
+   own content -- a label + flag + date on the left, two buttons on the
+   right -- sets the real height; min-height only floors it so an empty
+   band never collapses thinner). A 1px solid ink rule above (this band is
+   the FIRST thing under the title block, so the rule reads as the top edge
+   of a new region) and a hairline below (matching every other sunk-surface
+   band's border language in this file), background stays the sunk surface.
+
+   DEC-989 amendment (wave 41): this band is chrome sitting on the page
+   root's own box -- the same bare-rule idiom .chq-review-editor-title-row
+   documents in review.css (app/src/pages/review/review.css:995-1007) --
+   so it deliberately carries NO max-width/side margin of its own. Never
+   add one here, and never reach for 100vw/cqw either: .chq-main scrolls
+   INTERNALLY so viewport units overshoot its own scrollbar gutter. */
 .chq-content-status-band {
   display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+  min-height: 79px;
   padding: 10px 14px;
-  border-radius: var(--chq-r-card);
+  border-top: 1px solid var(--chq-ink);
+  border-bottom: 1px solid var(--chq-hairline);
   background: var(--chq-surface-sunk);
+}
+
+.chq-content-status-band-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.chq-content-status-band-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .chq-content-status-band-label {
@@ -515,12 +603,13 @@
   color: var(--chq-muted);
 }
 
-.chq-content-status-band-updated {
-  margin-left: auto;
-}
-
-.chq-content-deliverables-label {
-  margin: 0;
+/* w41-a: "Deliverables"/"Notes on the <kind>" -- PEER headings, each ruled
+   across its OWN column (see .chq-content-group-body above). */
+.chq-content-deliverables-label,
+.chq-content-notes-label {
+  margin: 0 0 12px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--chq-ink);
 }
 
 .chq-content-version-flag {

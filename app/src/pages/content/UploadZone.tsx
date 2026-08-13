@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import { validateUpload, uploadHintText, ALLOWED_UPLOAD_EXTENSIONS } from '../../../../src/domain/files';
 import type { FileKind } from './types';
 
@@ -10,13 +10,23 @@ interface UploadZoneProps {
 
 const ACCEPT_ATTR = ALLOWED_UPLOAD_EXTENSIONS.map((e) => `.${e}`).join(',');
 
-/** File input + drag-drop upload zone. States DEC-020 accepted types/caps verbatim (CNT-12),
- * validated by the same pure-core rule (src/domain/files.ts) the server enforces. */
+/** File input + drag-drop upload zone: a single-line dashed strip (w41-a --
+ * replaces the old 180px wrapped-sentence box), the accepted-type/size-cap
+ * text (CNT-06) still stated verbatim (never hidden behind a tooltip) but
+ * now right-flushed against the "Drop a file..." prompt on the same line,
+ * uppercased for that chrome-strip register. The native file input is kept
+ * reachable rather than removed -- visually hidden (not display:none, so it
+ * stays in the tab order) and pointed at by a <label for>, so it is still
+ * keyboard-focusable and still the thing screen readers land on -- the
+ * dashed box's own click/drag affordance is layered on top of that same
+ * input via the label, not a second parallel control. Validated by the
+ * same pure-core rule (src/domain/files.ts) the server enforces. */
 export function UploadZone({ kind, replacesFileId, onUpload }: UploadZoneProps) {
   const [dragOver, setDragOver] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const inputId = useId();
 
   async function handleFile(file: File | undefined) {
     if (!file) return;
@@ -51,13 +61,20 @@ export function UploadZone({ kind, replacesFileId, onUpload }: UploadZoneProps) 
         void handleFile(e.dataTransfer.files[0]);
       }}
     >
-      {/* CNT-12: the accepted-types + size-cap text must be visible verbatim on
-          the upload zone, not hidden behind a tooltip or validation-only error. */}
-      <p className="chq-upload-caps chq-content-upload-caps">{uploadHintText()}</p>
+      {/* CNT-06: the accepted-types + size-cap text must be visible verbatim on
+          the upload zone, not hidden behind a tooltip or validation-only
+          error -- the prompt and the caps text share this one line, the
+          label wraps the whole line so a click anywhere in it opens the
+          (visually hidden) file input below. */}
+      <label htmlFor={inputId} className="chq-content-upload-label">
+        <span className="chq-content-upload-prompt">Drop a file to upload for the speaker</span>
+        <span className="chq-upload-caps chq-content-upload-caps">{uploadHintText()}</span>
+      </label>
       <input
         ref={inputRef}
+        id={inputId}
         type="file"
-        className="chq-file"
+        className="chq-file chq-content-upload-input"
         accept={ACCEPT_ATTR}
         aria-label={replacesFileId ? `Replace ${kind}` : `Upload ${kind}`}
         disabled={pending}
