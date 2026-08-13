@@ -95,6 +95,69 @@ export function buildSurfaceFeed<T>(
   };
 }
 
+// DEC-775: escapes the five XML-significant characters for both attribute
+// values and text nodes (a superset is always safe in either position).
+function escapeXml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
+// Recursively renders one item field. Arrays repeat the same child element
+// once per entry (DEC-775 — e.g. a session's `tracks: PublicTrack[]` becomes
+// N sibling <tracks> elements, each holding its own object's fields). A
+// nested object becomes a wrapping element around its own key/value fields.
+// null/undefined are omitted entirely — never rendered as the text "null".
+function fieldToXml(key: string, value: unknown): string {
+  if (value === null || value === undefined) return "";
+  if (Array.isArray(value)) return value.map((entry) => fieldToXml(key, entry)).join("");
+  if (typeof value === "object") {
+    const inner = Object.entries(value as Record<string, unknown>)
+      .map(([k, v]) => fieldToXml(k, v))
+      .join("");
+    return `<${key}>${inner}</${key}>`;
+  }
+  return `<${key}>${escapeXml(String(value))}</${key}>`;
+}
+
+function itemToXml(item: Record<string, unknown>): string {
+  const body = Object.entries(item)
+    .map(([key, value]) => fieldToXml(key, value))
+    .join("");
+  return `<item>${body}</item>`;
+}
+
+/** XML twin of buildSurfaceFeed — a pure serializer over the exact same
+ * PublicSurfaceFeed envelope (same event/surface/generatedAt/page/perPage/
+ * total/items shaping), never a second query or a second projection. Scalar
+ * envelope fields (surface/generatedAt/page/perPage/total) become <feed>
+ * attributes alongside <event>'s own attributes; `items` becomes repeated
+ * <item> children of <items>, each item's own fields rendered recursively
+ * via fieldToXml (DEC-775). */
+export function buildSurfaceFeedXml<T>(
+  event: PublicEvent,
+  surface: Surface,
+  paged: { items: T; total: number; page: number; perPage: number },
+  generatedAt: Date,
+): string {
+  const feed = buildSurfaceFeed(event, surface, paged, generatedAt);
+  const eventAttrs = (["slug", "name", "timezone", "startDate", "endDate"] as const)
+    .map((key) => `${key}="${escapeXml(String(feed.event[key]))}"`)
+    .join(" ");
+  const items = Array.isArray(feed.items) ? (feed.items as unknown as Record<string, unknown>[]) : [];
+  const itemsXml = items.map(itemToXml).join("");
+  return (
+    `<feed surface="${escapeXml(feed.surface)}" generatedAt="${escapeXml(feed.generatedAt)}" ` +
+    `page="${feed.page}" perPage="${feed.perPage}" total="${feed.total}">` +
+    `<event ${eventAttrs}/>` +
+    `<items>${itemsXml}</items>` +
+    `</feed>`
+  );
+}
+
 /** Maps a full public agenda to the IcsEventInput[] shape buildIcsCalendar
  * expects (mirrors src/routes/public/index.tsx's schedule.ics handler) —
  * same uidSubmissionId/sequence per session so a calendar app that already

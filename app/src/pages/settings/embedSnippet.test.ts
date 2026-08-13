@@ -24,6 +24,12 @@ describe('buildEmbedUrl', () => {
     );
   });
 
+  it('appends .xml as a path suffix, not a query param, for xml format (DEC-775)', () => {
+    expect(buildEmbedUrl(ORIGIN, SLUG, 'agenda', { format: 'xml' })).toBe(
+      `${ORIGIN}/embed/${SLUG}/agenda.xml`,
+    );
+  });
+
   it('routes ics to the fixed /e/:slug/agenda.ics path regardless of surface', () => {
     expect(buildEmbedUrl(ORIGIN, SLUG, 'schedule', { format: 'ics' })).toBe(
       `${ORIGIN}/e/${SLUG}/agenda.ics`,
@@ -31,7 +37,7 @@ describe('buildEmbedUrl', () => {
   });
 
   it('throws loudly on an unknown format', () => {
-    expect(() => buildEmbedUrl(ORIGIN, SLUG, 'sessions', { format: 'xml' as never })).toThrow(
+    expect(() => buildEmbedUrl(ORIGIN, SLUG, 'sessions', { format: 'yaml' as never })).toThrow(
       /Unknown embed format/,
     );
   });
@@ -172,12 +178,16 @@ describe('buildSnippet', () => {
     expect(buildSnippet(`${url}.json`, 'sessions', 'json')).toBe(`${url}.json`);
   });
 
+  it('returns the bare url for xml format (DEC-775)', () => {
+    expect(buildSnippet(`${url}.xml`, 'sessions', 'xml')).toBe(`${url}.xml`);
+  });
+
   it('returns the bare url for ics format', () => {
     const icsUrl = `${ORIGIN}/e/${SLUG}/agenda.ics`;
     expect(buildSnippet(icsUrl, 'agenda', 'ics')).toBe(icsUrl);
   });
 
   it('throws loudly on an unknown format', () => {
-    expect(() => buildSnippet(url, 'sessions', 'xml' as never)).toThrow(/Unknown embed format/);
+    expect(() => buildSnippet(url, 'sessions', 'yaml' as never)).toThrow(/Unknown embed format/);
   });
 });

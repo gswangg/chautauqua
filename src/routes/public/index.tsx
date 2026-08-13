@@ -41,7 +41,7 @@ import {
   parseCardFields,
   parseAccent,
 } from "./query";
-import { buildSurfaceFeed, agendaIcsEvents, projectCardFields } from "./feeds";
+import { buildSurfaceFeed, buildSurfaceFeedXml, agendaIcsEvents, projectCardFields } from "./feeds";
 import type { CardFields } from "./query";
 
 export const publicRoutes = new Hono<AppEnv>();
@@ -231,6 +231,29 @@ publicRoutes.get("/embed/:eventSlug/:surface{[a-z]+\\.json}", async (c) => {
     fields: parseCardFields(c.req.query("fields")),
   });
   return c.json(buildSurfaceFeed(event, surfaceParam, paged, new Date()));
+});
+
+// DEC-775: XML twin of the .json feed above — same isSurface check, same
+// getSurfaceFeedPage call, same cache headers; only the serialization and
+// content-type differ. Registered before the plain HTML route below for the
+// same reason the .json route is.
+publicRoutes.get("/embed/:eventSlug/:surface{[a-z]+\\.xml}", async (c) => {
+  setCacheHeaders(c);
+  const surfaceParam = c.req.param("surface").replace(/\.xml$/, "");
+  if (!isSurface(surfaceParam)) return publicNotFound(c, "Unknown embed surface.");
+  const event = await getPublicEventBySlug(c.var.db, c.req.param("eventSlug"));
+  if (!event) return publicNotFound(c, "Event not found.");
+  const paged = await getSurfaceFeedPage(c.var.db, event, surfaceParam, {
+    trackId: c.req.query("trackId"),
+    page: c.req.query("page"),
+    q: c.req.query("q"),
+    limit: parseLimit(c.req.query("limit")),
+    day: parseDay(c.req.query("day")),
+    fields: parseCardFields(c.req.query("fields")),
+  });
+  return c.body(buildSurfaceFeedXml(event, surfaceParam, paged, new Date()), 200, {
+    "Content-Type": "application/xml; charset=utf-8",
+  });
 });
 
 publicRoutes.get("/embed/:eventSlug/:surface", async (c) => {
