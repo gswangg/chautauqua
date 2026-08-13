@@ -148,13 +148,16 @@ batch rows · SEED: one ~23-recipient batch + 4 more templates.
 **Contacts** (probe-2 re-verified; CLOSED: record-picker/group identity fields ·
 Labels in directory AND drawer w/ variety · earlier DirectoryRail/chips/segment
 batch):
-**P2 — add-to-event FABRICATES DATA**: Title pre-filled "Invited: {name}" → every
-add-to-event creates an ACCEPTED session + roster row + overdue tasks even with the
-field untouched (probe: badge 9→15 LATE). Make add-to-event create NO session by
-default; session creation must be explicit. Also: role IS sent to API but
-moderator/panelist surfaces NOWHERE; post-add message hardcodes "was added as an
-accepted speaker."; option set Speaker/Co-presenter/Moderator/Panelist vs mock's
-Speaker/Reviewer/Guest — reconcile in a DEC.
+**P1 (CRM grader CONFIRMED ON PROD) — add-to-event FABRICATES DATA**: Title
+pre-filled "Invited: {name}" → every add-to-event creates an ACCEPTED session +
+roster row + 10 auto-overdue tasks even with the field untouched (prod now carries
+SES-039 from the grader run). Make add-to-event create NO session by default;
+session creation must be explicit. ALSO (CRM grader): the dialog defaults Event to
+the WRONG EVENT (Forward Summit 2028 while working in DevFlow Conf 2027 — default to
+current context) and adds a DUPLICATE roster row with no already-on-roster check.
+Role IS sent to API but moderator/panelist surfaces NOWHERE; post-add message
+hardcodes "was added as an accepted speaker."; option set Speaker/Co-presenter/
+Moderator/Panelist vs mock's Speaker/Reviewer/Guest — reconcile in a DEC.
 **P2 — DEC-734 "Not a duplicate"/"Keep both" are UI-ONLY**: zero network requests;
 "Keep both" reverts on reload, "Not a duplicate" doesn't even hide the pair. Needs a
 persisted dismissal (store the pair as not-duplicate; both controls write it).
@@ -253,6 +256,25 @@ capability, not broken behavior — data correctness was flawless)
   photo-less speaker cards emit unlabelled links (a11y) · "Add to itinerary" label
   static when checked (/sessions flips Save→Saved) · organizer submission detail
   omits date/time/room for a placed session · no post-download .ics confirmation.
+
+## CRM grader additions (2026-08-13, prod — 2/2 PASS; pipeline = strongest feature,
+import dedupe-on-email flawless; add-to-event P1 + wrong-event default merged into
+Contacts section above)
+
+- **P2 no duplicate warning at creation**: new contact with identical name+company
+  saves silently — surface an inline "possible duplicate" hint at create time (the
+  Duplicates tab alone is too late).
+- P3 batch: CSV import Review advertises "SKIP THIS ROW" + "0 rows marked to skip"
+  but renders NO checkboxes · saving a segment under an existing name creates a
+  second identical segment (upsert or reject) + segment Delete has no confirmation ·
+  bulk-email body placeholder advertises {first_name} which the validator rejects,
+  {portal_link} resolves to a literal example link, "View in Comms history" opens
+  the Compose tab · pipeline enrol dialog has no score/rationale fields · custom
+  fields are free-form key/value only (no library/type/filterability — capability
+  triage) · CRM dashboard is a 3-number KPI strip (capability triage).
+- Prod-lag note: prod merge view still shows the OLD Company-"—" bug and has NO
+  "Keep both"/"Not a duplicate" controls — those changes are on main, post-deploy.
+  Not new work; ships with the gate deploy.
 
 ## CNT grader additions (2026-08-13, prod — 3/3 scenarios PASS, defects below)
 
