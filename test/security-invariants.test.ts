@@ -22,15 +22,18 @@ const SUBMIT_PATH = resolve(fileURLToPath(import.meta.url), "../../src/routes/pu
 const CSRF_MIDDLEWARE = ["csrfJson", "csrfForm", "csrfFormOrHeader"];
 
 /** Deliberate exceptions to the "every mutating route carries CSRF
- * middleware" rule. Each entry must be `{ file, line, reason }` with a
- * stated reason — never silent (DEC-628). `file` is relative to src/routes,
- * `line` is the 1-based line the route registration's call starts on. An
- * edit that shifts that line makes this test fail loudly rather than
- * silently widening the exemption. */
-export const CSRF_EXEMPT: Array<{ file: string; line: number; reason: string }> = [
+ * middleware" rule. Each entry must be `{ file, method, path, reason }` with
+ * a stated reason — never silent (DEC-628). `file` is relative to
+ * src/routes; `method` + `path` key the registration by identity (its own
+ * route path literal) rather than by source line, so an unrelated edit that
+ * shifts line numbers elsewhere in the file cannot make this exemption
+ * silently stop matching (wave 46 amendment). The type deliberately has no
+ * `line` field so the old line-keyed shape cannot creep back. */
+export const CSRF_EXEMPT: Array<{ file: string; method: string; path: string; reason: string }> = [
   {
     file: "public/submit.tsx",
-    line: 288,
+    method: "post",
+    path: "/submit/:eventSlug",
     reason:
       "DEC-626: the public CFP post checks CSRF in-body via the shared " +
       "checkDoubleSubmitCsrf predicate (DEC-544) instead of the csrfForm " +
@@ -61,6 +64,10 @@ interface RouteRegistration {
   line: number;
   receiver: string;
   method: string;
+  /** The route's own path literal, e.g. "/submit/:eventSlug" — the first
+   * quoted string literal inside headerSlice (identity key for exemptions,
+   * wave 46 amendment; a line number moves, a path literal doesn't). */
+  path: string;
   /** Source slice from the registration call to the handler arrow
    * function's opening `{`, i.e. everything that could hold middleware. */
   headerSlice: string;
@@ -96,7 +103,16 @@ function scanRouteRegistrations(filePath: string, source: string): RouteRegistra
     }
     const headerSlice = source.slice(startIdx, handlerMatch.index + handlerMatch[0].length);
     const line = source.slice(0, startIdx).split("\n").length;
-    registrations.push({ file: filePath, line, receiver, method, headerSlice });
+    const pathMatch = /^[A-Za-z_][A-Za-z0-9_]*Routes\.(?:post|patch|put|delete)\(\s*"([^"]*)"/.exec(headerSlice);
+    if (!pathMatch) {
+      throw new Error(
+        `${filePath}:${line}: found route registration '${receiver}.${method}(' but no parseable ` +
+          `quoted path literal follows it — this scanner's assumption about this repo's route ` +
+          `registration shape has drifted; update the scanner rather than silently skipping.`,
+      );
+    }
+    const path = pathMatch[1] as string;
+    registrations.push({ file: filePath, line, receiver, method, path, headerSlice });
   }
   return registrations;
 }
@@ -121,7 +137,9 @@ describe("SPEC §6: every mutating route registration carries CSRF middleware (D
       const relFile = relative(ROUTES_DIR, reg.file);
       const hasCsrf = CSRF_MIDDLEWARE.some((name) => new RegExp(`\\b${name}\\b`).test(reg.headerSlice));
       if (hasCsrf) continue;
-      const exempt = CSRF_EXEMPT.find((e) => e.file === relFile && e.line === reg.line);
+      const exempt = CSRF_EXEMPT.find(
+        (e) => e.file === relFile && e.method === reg.method && e.path === reg.path,
+      );
       if (exempt) {
         expect(exempt.reason.length).toBeGreaterThan(0);
         continue;
@@ -135,9 +153,21 @@ describe("SPEC §6: every mutating route registration carries CSRF middleware (D
     for (const exempt of CSRF_EXEMPT) {
       expect(exempt.reason.length).toBeGreaterThan(0);
       const match = allRegistrations.find(
-        (reg) => relative(ROUTES_DIR, reg.file) === exempt.file && reg.line === exempt.line,
+        (reg) =>
+          relative(ROUTES_DIR, reg.file) === exempt.file &&
+          reg.method === exempt.method &&
+          reg.path === exempt.path,
       );
-      expect(match, `CSRF_EXEMPT names ${exempt.file}:${exempt.line}, which is not a route registration`).toBeDefined();
+      expect(
+        match,
+        `CSRF_EXEMPT names ${exempt.file} ${exempt.method.toUpperCase()} ${exempt.path}, which is not a route registration`,
+      ).toBeDefined();
+    }
+  });
+
+  it("no CSRF_EXEMPT entry carries a `line` property (identity-keyed only, wave 46 amendment)", () => {
+    for (const exempt of CSRF_EXEMPT) {
+      expect(Object.prototype.hasOwnProperty.call(exempt, "line")).toBe(false);
     }
   });
 
