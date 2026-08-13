@@ -5,8 +5,10 @@
 // DEC-425: caps attacker-controlled filename length; reuses MAX_NAME_LENGTH.
 import { MAX_NAME_LENGTH } from "../forms/validate";
 
-// 'presentation' | 'poster' | 'handout' — DEC-003 file.kind literal.
-export const FILE_KINDS = ["presentation", "poster", "handout"] as const;
+// 'presentation' | 'poster' | 'handout' | 'recording' — DEC-003/DEC-879
+// file.kind literal. DEC-879: a session recording is a deliverable like any
+// other file kind, not a separate concept.
+export const FILE_KINDS = ["presentation", "poster", "handout", "recording"] as const;
 export type FileKind = (typeof FILE_KINDS)[number];
 
 export function isValidFileKind(value: unknown): value is FileKind {
@@ -42,12 +44,22 @@ const TEXT_EXT_CONTENT_TYPE: Record<string, string> = {
   md: "text/plain",
 };
 
+// DEC-879: a recording is a video deliverable. mp4/mov/webm only, forced to
+// their standard video content type — never sniffed, never HTML.
+const VIDEO_EXT_CONTENT_TYPE: Record<string, string> = {
+  mp4: "video/mp4",
+  mov: "video/quicktime",
+  webm: "video/webm",
+};
+
 const DOCUMENT_MAX_BYTES = 25 * BYTES_PER_MB;
 const IMAGE_MAX_BYTES = 8 * BYTES_PER_MB;
 // DEC-020 doesn't state a separate cap for txt/md; narrowest reasonable
 // reading reuses the document-tier cap (25 MB) since they're just another
 // flavor of document upload.
 const TEXT_MAX_BYTES = 25 * BYTES_PER_MB;
+// DEC-879: recordings are far larger than any other deliverable — 250 MB cap.
+export const VIDEO_MAX_BYTES = 250 * BYTES_PER_MB;
 
 /** Every extension validateUpload accepts, for UI hints (accept attr, help
  * text) — never used to bypass validateUpload itself, which stays the
@@ -56,12 +68,14 @@ export const ALLOWED_UPLOAD_EXTENSIONS: readonly string[] = [
   ...Object.keys(DOCUMENT_EXT_CONTENT_TYPE),
   ...Object.keys(IMAGE_EXT_CONTENT_TYPE),
   ...Object.keys(TEXT_EXT_CONTENT_TYPE),
+  ...Object.keys(VIDEO_EXT_CONTENT_TYPE),
 ];
 
 /** Human-readable summary of the upload allowlist + size caps, for form
- * field help text (DEC-020: 25 MB documents/text, 8 MB images). */
+ * field help text (DEC-020: 25 MB documents/text, 8 MB images; DEC-879:
+ * 250 MB for recordings). */
 export function uploadHintText(): string {
-  return `Allowed types: ${ALLOWED_UPLOAD_EXTENSIONS.map((e) => `.${e}`).join(", ")}. Max 25 MB (8 MB for images).`;
+  return `Allowed types: ${ALLOWED_UPLOAD_EXTENSIONS.map((e) => `.${e}`).join(", ")}. Max 25 MB (8 MB for images, 250 MB for recordings).`;
 }
 
 export interface UploadInput {
@@ -135,6 +149,13 @@ export function validateUpload(input: UploadInput): ValidateUploadResult {
       return { ok: false, message: "File exceeds the 25 MB limit for this type", fields: { file: "Too large" } };
     }
     return { ok: true, ext, servedContentType: TEXT_EXT_CONTENT_TYPE[ext]! };
+  }
+
+  if (ext in VIDEO_EXT_CONTENT_TYPE) {
+    if (input.sizeBytes > VIDEO_MAX_BYTES) {
+      return { ok: false, message: "File exceeds the 250 MB limit for recordings", fields: { file: "Too large" } };
+    }
+    return { ok: true, ext, servedContentType: VIDEO_EXT_CONTENT_TYPE[ext]! };
   }
 
   return {

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  ALLOWED_UPLOAD_EXTENSIONS,
   extname,
+  FILE_KINDS,
   isImageContentType,
   isValidFileKind,
   isValidVersionChain,
@@ -115,6 +117,45 @@ describe("validateUpload", () => {
     expect(filename.length).toBe(200);
     const result = validateUpload({ filename, sizeBytes: 100, kind: "handout" });
     expect(result.ok).toBe(true);
+  });
+});
+
+// DEC-879: a recording is a deliverable like any other file kind.
+describe("validateUpload — recording (DEC-879)", () => {
+  it("accepts a 186 MB mp4 under the 250 MB video cap", () => {
+    const result = validateUpload({ filename: "talk.mp4", sizeBytes: 186 * 1024 * 1024, kind: "recording" });
+    expect(result).toEqual({ ok: true, ext: "mp4", servedContentType: "video/mp4" });
+  });
+
+  it("rejects a 300 MB mp4 over the 250 MB video cap", () => {
+    const result = validateUpload({ filename: "talk.mp4", sizeBytes: 300 * 1024 * 1024, kind: "recording" });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.message).toMatch(/250 MB/);
+  });
+
+  it("accepts mov and webm too, never with an HTML/sniffable content type", () => {
+    for (const [filename, expectedType] of [
+      ["clip.mov", "video/quicktime"],
+      ["clip.webm", "video/webm"],
+    ] as const) {
+      const result = validateUpload({ filename, sizeBytes: 1024, kind: "recording" });
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.servedContentType).toBe(expectedType);
+        expect(result.servedContentType).not.toMatch(/html/i);
+      }
+    }
+  });
+
+  it("never serves an mp4 with an HTML/sniffable content type regardless of declared kind", () => {
+    const result = validateUpload({ filename: "recording.mp4", sizeBytes: 1024, kind: "recording" });
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.servedContentType).toBe("video/mp4");
+  });
+
+  it("FILE_KINDS and ALLOWED_UPLOAD_EXTENSIONS both include the new members, derived not hand-typed", () => {
+    expect(FILE_KINDS).toContain("recording");
+    expect(ALLOWED_UPLOAD_EXTENSIONS).toEqual(expect.arrayContaining(["mp4", "mov", "webm"]));
   });
 });
 

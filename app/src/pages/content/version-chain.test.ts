@@ -85,11 +85,12 @@ describe('orderVersionChains', () => {
 });
 
 describe('groupByKindNewestFirst', () => {
-  it('returns all three kinds even when a kind has no files', () => {
+  it('returns every FILE_KINDS kind even when a kind has no files', () => {
     const grouped = groupByKindNewestFirst([file({ id: 'p1', kind: 'poster' })]);
-    expect(Object.keys(grouped).sort()).toEqual(['handout', 'poster', 'presentation']);
+    expect(Object.keys(grouped).sort()).toEqual(['handout', 'poster', 'presentation', 'recording']);
     expect(grouped.presentation).toEqual([]);
     expect(grouped.handout).toEqual([]);
+    expect(grouped.recording).toEqual([]);
     expect(grouped.poster.map((f) => f.id)).toEqual(['p1']);
   });
 
