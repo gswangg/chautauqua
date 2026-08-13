@@ -7,6 +7,7 @@ import type { AppEnv } from "../server/env";
 import { csrfJson, requireOrganizer } from "../server/middleware";
 import { ApiError, parseBoundedIdArray } from "../server/http";
 import * as repo from "../server/repo/comms";
+import { getEmailLogById } from "../server/repo/email";
 import { bumpIcsSequences } from "../server/repo/ics-sequence";
 import { getEventForOrg } from "../server/repo/events";
 import { getPlanById } from "../server/repo/review/plans";
@@ -32,7 +33,7 @@ import {
   renderPortalInvites,
   type PortalInviteRecipient,
 } from "../domain/portal-invite";
-import { DEC_122, DEC_252, DEC_766, DEC_805 } from "../decisions";
+import { DEC_122, DEC_252, DEC_766, DEC_805, DEC_832, DEC_833 } from "../decisions";
 import { MAX_NAME_LENGTH, MAX_TEXT_LENGTH, MAX_RICH_TEXT_LENGTH } from "../forms/validate"; // DEC-417
 import { resolveBaseUrl } from "../server/origin";
 import { clampPage, listPerPage } from "../lib/pagination";
@@ -43,6 +44,8 @@ import { isDevMode } from "../server/env";
 void DEC_252;
 void DEC_766;
 void DEC_805;
+void DEC_832;
+void DEC_833;
 
 export const commsRoutes = new Hono<AppEnv>();
 
@@ -227,6 +230,15 @@ async function resolveComposeInput(
 
   let subjectTemplate: string;
   let bodyTemplate: string;
+  // DEC-832: the composer copies a template's text into its own fields and
+  // clears the selection client-side, so a request naming BOTH templateId
+  // and subject/bodyText names an ambiguous instruction — reject it loudly
+  // instead of picking a silent precedence rule between them.
+  if (b.templateId !== undefined && (b.subject !== undefined || b.bodyText !== undefined)) {
+    throw new ApiError("invalid", "Provide either templateId or subject/bodyText, not both", {
+      templateId: "cannot be combined with subject/bodyText",
+    });
+  }
   if (b.templateId !== undefined) {
     const auth = c.var.auth;
     if (!auth) throw new ApiError("unauthorized", "Login required");
@@ -677,3 +689,24 @@ function missingToFields(missing: { contactId: string; submissionId: string; fie
 // applies if that route were missing). This file extends its repo function
 // (listEmailLog, src/server/repo/email.ts) with the ?q filter the HistoryTab
 // needs; see that route file for the endpoint itself.
+
+// ---------------------------------------------------------------------------
+// Per-recipient send detail (DEC-833)
+// ---------------------------------------------------------------------------
+
+// DEC-833: the audit surface for a single recipient's stored email_log row —
+// getEmailLogById is already org-scoped (src/server/repo/email.ts:184), but
+// an id belonging to a different event within the SAME org must still 404
+// rather than let one event's "Show what was sent" disclosure read another
+// event's mail (object-level ownership, not just org scoping).
+commsRoutes.get("/api/v1/events/:eventId/email-log/:emailId", requireOrganizer, async (c) => {
+  const eventId = c.req.param("eventId");
+  const emailId = c.req.param("emailId");
+  const auth = c.var.auth;
+  if (!auth) throw new ApiError("unauthorized", "Login required");
+
+  const row = await getEmailLogById(c.var.db, emailId, auth.orgId);
+  if (!row || row.eventId !== eventId) throw new ApiError("not_found", "Email not found");
+
+  return c.json(row);
+});

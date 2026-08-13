@@ -140,12 +140,13 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
     if (effectiveIncludeFeedback && effectiveFeedbackPlanId) {
       base.feedbackPlanId = effectiveFeedbackPlanId;
     }
-    if (templateId) {
-      base.templateId = templateId;
-    } else {
-      base.subject = subject;
-      base.bodyText = bodyText;
-    }
+    // DEC-832: a template is a starting point, not a mode — selecting one
+    // copies its text into these fields and the composer thereafter ALWAYS
+    // posts its own subject/bodyText, so an edited template body is what
+    // actually gets sent (never the stored template, silently ignoring the
+    // organizer's typing).
+    base.subject = subject;
+    base.bodyText = bodyText;
     return base;
   }
 
@@ -309,7 +310,7 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
     {
       step: 'template',
       title: 'Template',
-      detail: templateId ? templateName || 'Saved template' : subject ? 'Custom message' : 'Not started',
+      detail: templateName ? `From "${templateName}"` : subject ? 'Custom message' : 'Not started',
     },
     { step: 'preview', title: 'Preview', detail: 'One email per recipient' },
     { step: 'sent', title: 'Send', detail: 'Logged in History' },
@@ -467,14 +468,19 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
               value={templateId}
               onChange={(e) => {
                 const id = e.target.value;
-                setTemplateId(id);
                 const found = templates.find((t) => t.id === id);
                 if (found) {
+                  // DEC-832: copy the template's text into the composer's
+                  // own fields, then clear the selection — the dropdown
+                  // reverts to "Write from scratch" and further edits to
+                  // subject/body are what get sent, not the stored template.
                   setTemplateName(found.name);
                   setSubject(found.subject);
                   setBodyText(found.bodyText);
+                  setTemplateId('');
                 } else {
                   setTemplateName('');
+                  setTemplateId(id);
                 }
               }}
             >
@@ -517,7 +523,7 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
             <button
               type="button"
               className="chq-btn chq-btn-primary"
-              disabled={busy || (!templateId && (!subject || !bodyText))}
+              disabled={busy || !subject || !bodyText}
               onClick={() => runPreview()}
             >
               Next: preview

@@ -94,4 +94,70 @@ describe('RecentSends', () => {
     fireEvent.click(within(row).getByRole('button', { name: 'Hide the recipients' }));
     expect(screen.queryByText('ada@example.com')).not.toBeInTheDocument();
   });
+
+  // DEC-833: each recipient row gets a quiet "Show what was sent" disclosure
+  // that fetches the full stored row once and renders subject+bodyText
+  // verbatim -- including for a failed attempt.
+  it('shows what was sent for a recipient row, verbatim, including a failed attempt', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/email-log`]: listEnvelope([
+        { id: 'log-1', eventName: 'Evt', toEmail: 'ada@example.com', subject: 'You are in!', status: 'sent', sentAt: 1700000000000 },
+        { id: 'log-2', eventName: 'Evt', toEmail: 'bad@example.com', subject: 'You are in!', status: 'failed', sentAt: 1700000000000 },
+      ]),
+      [`GET /api/v1/events/${EVENT_ID}/email-log/log-1`]: {
+        id: 'log-1',
+        eventId: EVENT_ID,
+        eventName: 'Evt',
+        templateId: null,
+        contactId: 'ct-1',
+        toEmail: 'ada@example.com',
+        subject: 'You are in!',
+        bodyText: 'Hi Ada, welcome aboard.',
+        bodyHtml: null,
+        icsText: null,
+        icsFilename: null,
+        provider: 'dev',
+        status: 'sent',
+        sentAt: 1700000000000,
+      },
+      [`GET /api/v1/events/${EVENT_ID}/email-log/log-2`]: {
+        id: 'log-2',
+        eventId: EVENT_ID,
+        eventName: 'Evt',
+        templateId: null,
+        contactId: 'ct-2',
+        toEmail: 'bad@example.com',
+        subject: 'You are in!',
+        bodyText: 'Hi Bad, welcome aboard.',
+        bodyHtml: null,
+        icsText: null,
+        icsFilename: null,
+        provider: 'dev',
+        status: 'failed',
+        sentAt: 1700000000000,
+      },
+    });
+
+    render(<RecentSends eventId={EVENT_ID} batches={[batch()]} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'See the recipients' }));
+    await waitFor(() => {
+      expect(screen.getByText('ada@example.com')).toBeInTheDocument();
+    });
+
+    const disclosures = screen.getAllByRole('button', { name: 'Show what was sent' });
+    expect(disclosures).toHaveLength(2);
+
+    fireEvent.click(disclosures[0]!);
+    await waitFor(() => {
+      expect(screen.getByText('Hi Ada, welcome aboard.')).toBeInTheDocument();
+    });
+
+    // The failed attempt's stored row is shown too -- the audit record
+    // covers it exactly like a successful send.
+    fireEvent.click(disclosures[1]!);
+    await waitFor(() => {
+      expect(screen.getByText('Hi Bad, welcome aboard.')).toBeInTheDocument();
+    });
+  });
 });
