@@ -15,46 +15,46 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   negation skips NULLs; merge a SET showing EVERY differing field;
   irreversible action a PAGE naming what goes AND what it refuses; publish
   the WINDOW not a flag; decision with no code a LIE; seed satisfies every
-  read; mandate file a HYPOTHESIS -- grep before tasking, verify twice, the
-  tree MOVES WHILE YOU PLAN; every page says who's signed in. Shared
-  predicate matches printed number to query arithmetic; a "frozen" column
-  is dead only if NOTHING writes it. Unpublish/narrow/unschedule SAYS so;
-  a link is the route it LANDS on, names the FILE not a generic word;
-  error shape follows the REQUEST's route; submitted blank CLEARS, absent
-  key is silence; list+export read status through ONE reader; main can be
-  RED — grep `<<<<<<<` every wave. A gate must not render children while
-  identity loads. A promised column needs controls on EVERY row; two save
-  paths for one row is one too many. Pills that clear each other are a
-  radio group in a toggle's clothes. A per-row/per-kind count is N scans
-  even wearing Promise.all — one grouped query. An identity from a
-  supplied email must never be ECHOED. Blank is ABSENT for EVERY kind. A
-  disabled input must look disabled. A toggle needing a companion choice
-  REVEALS it and WAITS. An absent image is a DRAWN placeholder. Number()
-  parses "1e999" as Infinity, lands null in a REQUIRED column. A gate
-  skipped for one content type is not a gate. A page's actions belong to
-  its title row. A prop that renders nothing is a decision callers still
-  believe in — delete it. An onChange that writes to server races its own
-  reload — a row is a DRAFT until Save. Mandate files are pure
-  archaeology (~30 headline items reprobed across w22-24, all CLOSED): a
-  cascade comment claiming "everything it owns" is a claim to CHECK; a
-  batch reader omitting one column re-introduces the N queries it avoids;
-  a confirm dialog with no BODY names nothing; every /api/v1 route lands
-  in docs.tsx; a 409 naming a CLASS is a dead end -- name the ROWS; an
-  expansion at CREATE time is a snapshot -- BACK-FILL every activation
-  path; `order by id asc limit 1` in a correlated subquery is a rejected
-  tie-break -- ASK when data admits two.
-- FINDINGS w25 (DEC-937..943): wave 24 branches existed but had NOT merged --
-  ALWAYS check .git/refs/heads before re-tasking a prior wave's decisions; a
-  decision doc + field-guide entry land at PLAN time, code lands later. Mandate
-  archaeology 4 waves running (12 more items reprobed, all CLOSED). A token
-  nothing defines resolves TRANSPARENT, silently -- scan every var(--chq-*) for
-  a definition. A <button> with no font-family is Arial next to your type. A
-  regression test can ENSHRINE the defect: assert the OUTCOME the user sees,
-  never the reset's contents (3rd collision on one rule). Quieting is a COLOUR
-  substitution -- opacity fades the TEXT too and eats the AA margin. Two class
-  families on ONE element = a cascade race the later rule always wins. A single-
-  select scale is a radio group, NOT aria-pressed -- refuse-with-reason in a DEC
-  so it stops being re-filed. A delete with no dialog is five deletes with no
-  dialog: scan the call sites, name the exemptions. A branch of code the seed
-  never reaches has never rendered. Scores from one counter mod N rank by coin
-  flip.
+  read; mandate file a HYPOTHESIS -- tree MOVES WHILE YOU PLAN; every page
+  says who's signed in; a "frozen" column is dead only if NOTHING writes
+  it; a link is the route it LANDS on; error shape follows the REQUEST's
+  route; submitted blank CLEARS, absent key is silence; main
+  can be RED — grep `<<<<<<<` every wave; a gate must not render children
+  while identity loads; two save paths for one row is one too many; pills
+  that clear each other are a radio group in a toggle's clothes; a
+  per-row/per-kind count is N scans even under Promise.all — one grouped
+  query; a supplied email must never be ECHOED; blank is ABSENT for EVERY
+  kind; a disabled input must look disabled; a toggle needing a companion
+  choice REVEALS it and WAITS; Number() parses "1e999" as Infinity, lands
+  null in a REQUIRED column; a gate skipped for one content type is not a
+  gate; a prop that renders nothing is a decision callers still believe in —
+  delete it; an onChange that writes to server races its own reload — a row
+  is a DRAFT until Save. Mandate archaeology (~30 items w22-24, all CLOSED):
+  a cascade comment claiming "everything it owns" is a claim to CHECK; a 409
+  naming a CLASS is a dead end -- name the ROWS; an expansion at CREATE time
+  is a snapshot -- BACK-FILL every activation path; `order by id asc limit
+  1` in a correlated subquery is a rejected tie-break -- ASK when data
+  admits two.
+- FINDINGS w25 (DEC-937..943, compacted): check .git/refs/heads before
+  re-tasking a prior wave -- decision doc lands at PLAN time, code later.
+  Undefined var(--chq-*) resolves TRANSPARENT, silently. Regression tests
+  ENSHRINE defects -- assert the OUTCOME not the reset's contents. Quieting
+  via opacity fades text too, eats the AA margin. Two class families on ONE
+  element = later rule always wins. A single-select scale is a radio group
+  NOT aria-pressed -- refuse-with-reason in a DEC. A delete with no dialog
+  is five deletes with no dialog. A branch the seed never reaches has never
+  rendered.
+- FINDINGS w26 (DEC-944..951): TEN branches unmerged at plan time --
+  `.git/refs/heads` is the only truth; a decision doc on main proves a PLAN,
+  never code; defects found by READING, not the findings file. A cron
+  catching per-item failures and never rethrowing makes the caller's
+  failure branch dead code -- isolate AND aggregate. Read-modify-write
+  against an eventually-consistent store is a suggestion not a limit; the
+  passing test has a strongly-consistent fake. A credential in an audit log
+  stays a credential -- mint-with-revocation, redact on disclosure. A
+  hardcoded `.local` address is a shipped placeholder: policy at one
+  boundary (makeMailer) must govern every consumer. Keeping a replacement's
+  function NAMES lets a call-site swap be one argument wide. The last
+  asterisk in a product is on the page strangers see first. HAZARD:
+  DEC-932's back-fill vs New-Task's "assign all accepted" CHECKBOX conflict
+  -- w24 landing must reconcile or the checkbox lies at next acceptance.
