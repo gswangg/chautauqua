@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { apiGet, apiList, apiPost, apiPostBlob, apiUpload, ApiError } from '../../lib/api';
 import { CommentThread } from './CommentThread';
-import { groupByKindNewestFirst } from './version-chain';
+import { groupByKindNewestFirst, orderVersionChains } from './version-chain';
 import { UploadZone } from './UploadZone';
 import { VersionList } from './VersionList';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { formatDate, formatDayLabel } from '../../lib/dates';
+import { countOf } from '../../lib/plural';
 import {
   CONTENT_STATUS_LABELS,
   FILE_KINDS,
@@ -94,10 +95,13 @@ export function DeliverableDetail({
   const [statusPending, setStatusPending] = useState(false);
   const [pill, setPill] = useState<ContentStatus>(contentStatus);
   const { eventId } = useCurrentEvent();
-  // DEC-756: ONE deliverable at a time — a chip scopes both the version
-  // list and the note thread. Local selection state; default resolved
-  // below once files are loaded (first kind with files, else first kind).
-  const [selectedKind, setSelectedKind] = useState<FileKind | null>(null);
+  // DEC-756/DEC-971: ONE deliverable CHAIN at a time — a chip scopes both
+  // the version list and the note thread, and two independent chains of
+  // the same kind get two separate chips (two v1 uploads of one kind are
+  // two documents, not two versions of one). Selection is keyed by the
+  // selected chain's head file id; default resolved below once files are
+  // loaded (first chain of the first kind with files).
+  const [selectedHeadId, setSelectedHeadId] = useState<string | null>(null);
   const [downloadPending, setDownloadPending] = useState(false);
   const [downloadStatus, setDownloadStatus] = useState<string | null>(null);
   // DEC-901: header-only data (subtitle + status band) -- absent (not a
@@ -151,20 +155,31 @@ export function DeliverableDetail({
     }
   }
 
+  // DEC-971: chip strip (and therefore selection + version list + thread)
+  // is built from CHAINS, not kinds -- two independent chains of one kind
+  // (e.g. two separately-uploaded v1 presentations) get two chips, each
+  // scoping its own version list and its own comment thread.
+  const chainsList: { kind: FileKind; chain: DeliverableFile[] }[] = FILE_KINDS.flatMap((kind) =>
+    orderVersionChains(files.filter((f) => f.kind === kind)).map((chain) => ({ kind, chain })),
+  );
+  const chainCountByKind: Record<FileKind, number> = {} as Record<FileKind, number>;
+  for (const kind of FILE_KINDS) {
+    chainCountByKind[kind] = chainsList.filter((c) => c.kind === kind).length;
+  }
+
   useEffect(() => {
-    for (const kind of FILE_KINDS) {
-      const latest = grouped[kind][0];
-      if (latest) void loadComments(latest.id);
+    for (const { chain } of chainsList) {
+      const head = chain[0];
+      if (head) void loadComments(head.id);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [files]);
 
-  const kindsWithFiles = FILE_KINDS.filter((kind) => grouped[kind].length > 0);
-  const defaultKind = kindsWithFiles[0] ?? FILE_KINDS[0];
-  const activeKind = selectedKind && (kindsWithFiles.length === 0 || kindsWithFiles.includes(selectedKind))
-    ? selectedKind
-    : defaultKind;
-  const activeVersions = grouped[activeKind];
+  const defaultChain = chainsList[0] ?? null;
+  const activeChain =
+    (selectedHeadId ? chainsList.find((c) => c.chain[0]?.id === selectedHeadId) : undefined) ?? defaultChain;
+  const activeKind = activeChain?.kind ?? FILE_KINDS[0];
+  const activeVersions = activeChain?.chain ?? [];
   const activeLatest = activeVersions[0];
 
   async function handleDownloadAll() {
@@ -330,21 +345,32 @@ export function DeliverableDetail({
               chq-section-label vocabulary the notes column already uses
               below, never a parallel heading style. */}
           <h2 className="chq-section-label chq-content-deliverables-label">Deliverables</h2>
-          {kindsWithFiles.length > 0 && (
+          {chainsList.length > 0 && (
             <>
               <div className="chq-chipstrip" role="tablist" aria-label="Deliverable">
-                {kindsWithFiles.map((kind) => {
-                  const n = grouped[kind].length;
+                {chainsList.map(({ kind, chain }) => {
+                  // orderVersionChains never returns an empty chain (see
+                  // version-chain.ts); the non-null assertion just narrows
+                  // the type TS otherwise can't infer from array indexing.
+                  const head = chain[0]!;
+                  const headId = head.id;
+                  const isActive = activeChain?.chain[0]?.id === headId;
+                  // DEC-971: only distinguished with a filename suffix when
+                  // this kind holds more than one independent chain -- the
+                  // common single-chain case stays the plain
+                  // "<kind> · N versions" label.
+                  const suffix = chainCountByKind[kind] > 1 ? ` · ${head.filename}` : '';
                   return (
                     <button
-                      key={kind}
+                      key={headId}
                       type="button"
                       role="tab"
-                      aria-selected={activeKind === kind}
-                      className={activeKind === kind ? 'chq-pill is-active' : 'chq-pill'}
-                      onClick={() => setSelectedKind(kind)}
+                      aria-selected={isActive}
+                      className={isActive ? 'chq-pill is-active' : 'chq-pill'}
+                      onClick={() => setSelectedHeadId(headId)}
                     >
-                      {DELIVERABLE_LABELS[kind]} · {n} version{n === 1 ? '' : 's'}
+                      {DELIVERABLE_LABELS[kind]} · {countOf(chain.length, 'version')}
+                      {suffix}
                     </button>
                   );
                 })}

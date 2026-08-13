@@ -88,7 +88,118 @@ function mockBase(overrides: Record<string, unknown> = {}) {
   });
 }
 
+// DEC-971: two independent v1 uploads of one kind are two documents, not
+// two versions of one -- the chip strip is built from orderVersionChains,
+// not from grouped[kind].
+const twoChainFiles = [
+  {
+    id: 'file-slides-a',
+    submissionId: SUBMISSION_ID,
+    kind: 'presentation',
+    filename: 'keynote-a.pdf',
+    sizeBytes: 100,
+    contentType: 'application/pdf',
+    previousFileId: null,
+    uploadedByContactId: null,
+    uploaderName: 'Speaker One',
+    createdAt: 1700000200000,
+  },
+  {
+    id: 'file-slides-b',
+    submissionId: SUBMISSION_ID,
+    kind: 'presentation',
+    filename: 'keynote-b.pdf',
+    sizeBytes: 90,
+    contentType: 'application/pdf',
+    previousFileId: null,
+    uploadedByContactId: null,
+    uploaderName: 'Speaker One',
+    createdAt: 1700000100000,
+  },
+];
+
+function mockTwoChains(overrides: Record<string, unknown> = {}) {
+  return mockApi({
+    [`GET /api/v1/submissions/${SUBMISSION_ID}/files`]: listEnvelope(twoChainFiles),
+    [`GET /api/v1/submissions/${SUBMISSION_ID}`]: submissionDetail(),
+    [`GET /api/v1/files/file-slides-a/comments`]: listEnvelope([
+      { id: 'c-a', fileId: 'file-slides-a', versionNumber: 1, body: 'note on a', authorName: 'Org User', authorRole: 'organizer', authorUserId: 'user-1', createdAt: 1700000210000 },
+    ]),
+    [`GET /api/v1/files/file-slides-b/comments`]: listEnvelope([
+      { id: 'c-b', fileId: 'file-slides-b', versionNumber: 1, body: 'note on b', authorName: 'Org User', authorRole: 'organizer', authorUserId: 'user-1', createdAt: 1700000110000 },
+    ]),
+    'GET /api/v1/me': { userId: 'user-1', email: 'org@example.com', name: 'Org User', role: 'organizer', orgId: 'org-1' },
+    ...overrides,
+  });
+}
+
 describe('DeliverableDetail render smoke', () => {
+  it('renders one chip (no filename suffix) for a kind with a single 2-file chain', async () => {
+    mockBase();
+
+    render(
+      <DeliverableDetail
+        submissionId={SUBMISSION_ID}
+        title="A talk"
+        contentStatus="pending"
+        onBack={() => {}}
+        onContentStatusChange={() => {}}
+      />,
+    );
+
+    const presentationChip = await screen.findByRole('tab', { name: 'Presentation · 2 versions' });
+    expect(presentationChip).toBeInTheDocument();
+    expect(screen.queryByText(/Presentation · 2 versions ·/)).not.toBeInTheDocument();
+  });
+
+  it('renders two chips (each filename-suffixed) for a kind with two independent chains, and selecting the second scopes its own version and thread', async () => {
+    mockTwoChains();
+
+    render(
+      <DeliverableDetail
+        submissionId={SUBMISSION_ID}
+        title="A talk"
+        contentStatus="pending"
+        onBack={() => {}}
+        onContentStatusChange={() => {}}
+      />,
+    );
+
+    const chipA = await screen.findByRole('tab', { name: 'Presentation · 1 version · keynote-a.pdf' });
+    const chipB = screen.getByRole('tab', { name: 'Presentation · 1 version · keynote-b.pdf' });
+    expect(chipA).toHaveClass('is-active');
+    expect(chipB).not.toHaveClass('is-active');
+    expect(screen.getByText('keynote-a.pdf')).toBeInTheDocument();
+    expect(screen.queryByText('keynote-b.pdf')).not.toBeInTheDocument();
+    expect(screen.getByText('note on a')).toBeInTheDocument();
+
+    fireEvent.click(chipB);
+
+    await waitFor(() => {
+      expect(screen.getByText('keynote-b.pdf')).toBeInTheDocument();
+    });
+    expect(screen.queryByText('keynote-a.pdf')).not.toBeInTheDocument();
+    expect(screen.getByText('note on b')).toBeInTheDocument();
+    expect(screen.queryByText('note on a')).not.toBeInTheDocument();
+  });
+
+  it('renders no chip for an empty kind', async () => {
+    mockBase();
+
+    render(
+      <DeliverableDetail
+        submissionId={SUBMISSION_ID}
+        title="A talk"
+        contentStatus="pending"
+        onBack={() => {}}
+        onContentStatusChange={() => {}}
+      />,
+    );
+
+    await screen.findByRole('tab', { name: 'Presentation · 2 versions' });
+    expect(screen.queryByRole('tab', { name: /Recording/ })).not.toBeInTheDocument();
+  });
+
   it('renders one chip per kind-with-files carrying its count, defaulting to the first', async () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {
       throw new Error('console.error called during render');
