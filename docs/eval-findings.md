@@ -308,6 +308,16 @@ open · 08-contacts--12-add-to-the-pipeline · 09-settings--09-settings-saved-
 embeds · 10-public-and-portal--14/15 (password-CTA states); assignment tooling
 lives INSIDE the plan-editor frames; filter rules inside 08-contacts--00.
 
+## GATE-2 SBEK: 91.5% (coverage 93.4). SPK RECOVERED 75→89.1 (turn-diet works).
+NEW FLAG: CNT 73.9 (was 88.6) — PURE TURN-BUDGET (coverage 74%; CNT-09/10/11
+cannot_judge, S3 truncated before session-edit/history/speaker-profile steps).
+**TURN-DIET THE CONTENT PATHS**: session title/abstract edit + revision history
++ speaker bio/headshot must be reachable in FEW clicks from the content detail
+(direct edit affordances, no intermediate screens). ABS 98.1 · CRM 100 · AIA
+100 held · EMB 95.7 (EMB-15 saved-embeds partial — spec items already filed).
+CNT-08 reminder "14 failures" = honest reserved-domain mailer on prod
+(environment, not defect — real inboxes deliver).
+
 ## GATE-1 SBEK: 90.1% — TARGET HIT. ONE REGRESSION FLAG (SPK 75%, was 86)
 
 Evidence-driven, not functional: 8 partials/0 fails; both SPK scenarios died at
