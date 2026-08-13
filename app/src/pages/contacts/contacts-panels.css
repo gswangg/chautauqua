@@ -152,6 +152,23 @@
   color: var(--chq-muted);
 }
 
+/* DEC-859: rated fit pill takes the same filled-olive treatment as
+   DEC-730's complete state (speakers.css:162-167) -- the same
+   --chq-on-brand/--chq-brand custom properties, never a new hex literal
+   (DEC-383 palette closure). */
+.chq-contacts-pipeline-card-fit-rated {
+  color: var(--chq-on-brand);
+  background: var(--chq-brand);
+  border: none;
+}
+
+/* DEC-859: the enroll dialog's consequence sentence, immediately above the
+   primary action -- same caption treatment as other modal footers. */
+.chq-contacts-pipeline-enroll-consequence {
+  font-size: 12px;
+  color: var(--chq-muted);
+}
+
 .chq-contacts-pipeline-card-rationale {
   font-size: 12px;
   color: var(--chq-muted);

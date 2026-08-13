@@ -423,3 +423,113 @@ describe('PipelineBoard: fit score + rationale (DEC-821)', () => {
     expect(consoleErrorSpy).not.toHaveBeenCalled();
   });
 });
+
+// DEC-859: the add-to-the-pipeline dialog is the frame's dialog (ModalFrame,
+// not a hand-rolled scrim), with the title/trigger vocabulary aligned and
+// the Starting stage / Fit controls built on the shared .chq-segmented
+// radio-group markup, not a third chip vocabulary.
+describe('PipelineBoard: Add to the pipeline dialog (DEC-859)', () => {
+  const CONTACT = { id: 'ct9', firstName: 'Rosa', lastName: 'Park', email: 'rosa@example.com', company: null };
+
+  it('opens through the shared ModalFrame with matching title/trigger vocabulary', async () => {
+    mockApi({
+      'GET /api/v1/pipeline': listEnvelope([]),
+      'GET /api/v1/contacts': listEnvelope([CONTACT]),
+    });
+
+    render(<PipelineBoard />);
+    await waitFor(() => expect(screen.getByText('0 people')).toBeInTheDocument());
+
+    const trigger = screen.getByRole('button', { name: 'Add to the pipeline' });
+    fireEvent.click(trigger);
+
+    // The frame's contract: a role="dialog" with the given aria-label,
+    // rendered as a portal child of document.body (ModalFrame.render.test's
+    // assertions), plus the shared header Close control.
+    const dialog = await screen.findByRole('dialog', { name: 'Add to the pipeline' });
+    expect(dialog.parentElement).toBe(document.body);
+    expect(within(dialog).getByRole('button', { name: 'Close' })).toBeInTheDocument();
+    // Title and trigger read identically.
+    expect(within(dialog).getByText('Add to the pipeline', { selector: 'h2' })).toBeInTheDocument();
+
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
+  });
+
+  it('exposes Starting stage and Fit as chip rows of aria-pressed buttons, not comboboxes', async () => {
+    mockApi({
+      'GET /api/v1/pipeline': listEnvelope([]),
+      'GET /api/v1/contacts': listEnvelope([CONTACT]),
+    });
+
+    render(<PipelineBoard />);
+    await waitFor(() => expect(screen.getByText('0 people')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Add to the pipeline' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Add to the pipeline' });
+
+    const stageGroup = within(dialog).getByRole('group', { name: 'Starting stage' });
+    const stageButtons = within(stageGroup).getAllByRole('button');
+    expect(stageButtons).toHaveLength(5);
+    stageButtons.forEach((b) => expect(b).toHaveAttribute('aria-pressed'));
+    expect(within(stageGroup).getByRole('button', { name: 'Identified' })).toHaveAttribute('aria-pressed', 'true');
+
+    const fitGroup = within(dialog).getByRole('group', { name: 'Fit' });
+    const fitButtons = within(fitGroup).getAllByRole('button');
+    expect(fitButtons.map((b) => b.textContent)).toEqual(['Unrated', '1', '2', '3', '4', '5']);
+    expect(within(fitGroup).getByRole('button', { name: 'Unrated' })).toHaveAttribute('aria-pressed', 'true');
+
+    expect(dialog.querySelector('select[aria-label="Starting stage"]')).toBeNull();
+    expect(dialog.querySelector('select[aria-label="Fit"]')).toBeNull();
+
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
+  });
+
+  it('shows the consequence sentence above the primary action', async () => {
+    mockApi({
+      'GET /api/v1/pipeline': listEnvelope([]),
+      'GET /api/v1/contacts': listEnvelope([CONTACT]),
+    });
+
+    render(<PipelineBoard />);
+    await waitFor(() => expect(screen.getByText('0 people')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Add to the pipeline' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Add to the pipeline' });
+
+    const consequence = within(dialog).getByText('Adding writes a move to the activity feed · No email is sent');
+    const primary = within(dialog).getByRole('button', { name: 'Add to the pipeline' });
+    const position = consequence.compareDocumentPosition(primary);
+    // eslint-disable-next-line no-bitwise
+    expect(position & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
+  });
+
+  it('enrolls with Unrated left selected and posts no fitScore', async () => {
+    const fetchMock = mockApi({
+      'GET /api/v1/pipeline': listEnvelope([]),
+      'GET /api/v1/contacts': listEnvelope([CONTACT]),
+      'POST /api/v1/pipeline': { id: 'entry-9', contactId: 'ct9', stage: 'identified', fitScore: null },
+    });
+
+    render(<PipelineBoard />);
+    await waitFor(() => expect(screen.getByText('0 people')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Add to the pipeline' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Add to the pipeline' });
+
+    await waitFor(() => {
+      expect(within(dialog).getByText('Rosa Park — rosa@example.com')).toBeInTheDocument();
+    });
+    fireEvent.change(within(dialog).getByLabelText('Contact'), { target: { value: 'ct9' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Add to the pipeline' }));
+
+    await waitFor(() => {
+      const postCall = fetchMock.mock.calls.find(([, init]) => (init as RequestInit | undefined)?.method === 'POST');
+      expect(postCall).toBeDefined();
+    });
+
+    const postCall = fetchMock.mock.calls.find(([, init]) => (init as RequestInit | undefined)?.method === 'POST');
+    const body = JSON.parse(String((postCall![1] as RequestInit).body));
+    expect(body).toMatchObject({ contactId: 'ct9', stage: 'identified', fitScore: null });
+
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
+  });
+});
