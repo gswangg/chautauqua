@@ -52,9 +52,12 @@ export const HOME_CSS = `
 
   .chq-home-footer { border-top: 1px solid var(--chq-rule); background: var(--chq-surface-sunk); padding: 18px 44px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
   .chq-home-footer-text { font-size: 12px; color: var(--chq-muted); line-height: 1.5; }
-  .chq-home-footer-link { font-weight: 700; color: var(--chq-brand); white-space: nowrap; display: inline-flex; align-items: center; gap: 5px; text-decoration: none; }
+  /* Inline flow, not inline-flex: a flex link takes its baseline from the
+     SVG's bottom edge, floating the whole "mark + name" above the sentence's
+     baseline. In inline flow the mark's vertical-align nudge works. */
+  .chq-home-footer-link { font-weight: 700; color: var(--chq-brand); white-space: nowrap; text-decoration: none; }
   .chq-home-footer-link-end { margin-left: auto; }
-  .chq-home-github-mark { vertical-align: -2px; }
+  .chq-home-github-mark { vertical-align: -2px; margin-right: 5px; }
 
   @media (max-width: 700px) {
     .chq-home-header { padding: 14px 16px; }
