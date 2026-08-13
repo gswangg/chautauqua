@@ -2,6 +2,12 @@
 // dependency-free so pure helpers (overdue computation, row filtering) stay
 // unit-testable without a DOM.
 
+// DEC-928: re-exported from the pure core (src/domain/files.ts) so the
+// onboarding task deliverable-kind vocabulary can never desync from the
+// upload vocabulary — same relative-import idiom as
+// ../content/UploadZone.tsx.
+import { FILE_KINDS, type FileKind } from '../../../../src/domain/files';
+
 export type TaskKind = 'general' | 'file_request' | 'form';
 
 export const TASK_KINDS: readonly TaskKind[] = ['general', 'file_request', 'form'];
@@ -105,11 +111,13 @@ export const DEFAULT_GRID_FILTERS: GridFilterState = {
   inviteStatus: null,
 };
 
-// DEC-240: meaningful only when kind='file_request' — the content-pipeline
-// file kind portal uploads for the task should land as.
-export type DeliverableKind = 'presentation' | 'poster' | 'handout';
+// DEC-240/DEC-928: meaningful only when kind='file_request' — the
+// content-pipeline file kind portal uploads for the task should land as.
+// One vocabulary: DeliverableKind is FileKind, DELIVERABLE_KINDS is
+// FILE_KINDS.
+export type DeliverableKind = FileKind;
 
-export const DELIVERABLE_KINDS: readonly DeliverableKind[] = ['presentation', 'poster', 'handout'];
+export const DELIVERABLE_KINDS: readonly DeliverableKind[] = FILE_KINDS;
 
 // GET /api/v1/task-assignments/:id/response response (DEC-291).
 export interface AssignmentResponseField {

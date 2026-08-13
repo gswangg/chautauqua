@@ -7,7 +7,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { TaskModal } from './TaskModal';
-import type { EventForm } from './types';
+import { DELIVERABLE_KINDS, type EventForm } from './types';
+import { FILE_KINDS } from '../../../../src/domain/files';
 
 const FORMS: EventForm[] = [
   { id: 'form-default', title: 'Speaker agreement form', isDefault: true },
@@ -78,6 +79,24 @@ describe('TaskModal: DEC-398 form picker', () => {
 
     expect(onSubmit).not.toHaveBeenCalled();
     expect(screen.getByText('Select a form before creating a form task.')).toBeInTheDocument();
+  });
+});
+
+// DEC-928: deliverableKind is one vocabulary (src/domain/files.ts) -- the
+// Upload kind's Deliverable kind select offers every FILE_KINDS entry
+// (including 'recording'), in FILE_KINDS order, defaulting to the first.
+describe('TaskModal: DEC-928 deliverable kind vocabulary', () => {
+  it('offers a Recording option and defaults to Presentation', () => {
+    render(<TaskModal onCancel={() => {}} onSubmit={vi.fn()} forms={FORMS} acceptedCount={12} />);
+
+    const select = screen.getByLabelText(/Deliverable kind/) as HTMLSelectElement;
+    expect(select).toBeInTheDocument();
+    expect(screen.getByText('Recording')).toBeInTheDocument();
+    expect(select.value).toBe('presentation');
+  });
+
+  it('parity: SPA DELIVERABLE_KINDS equals the pure-core FILE_KINDS, member-for-member and in order', () => {
+    expect(DELIVERABLE_KINDS).toEqual(FILE_KINDS);
   });
 });
 
