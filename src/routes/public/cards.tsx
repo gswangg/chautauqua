@@ -74,6 +74,17 @@ export function formatDay(day: string): string {
   return formatEventDay(day);
 }
 
+// DEC-885: initials for the drawn headshot-fallback placeholder
+// (speakers.tsx's SpeakerCard fallback branch) -- shared here rather than
+// duplicated per-caller since the placeholder markup itself lives in
+// public.css.ts's .chq-pub-headshot-fallback rule, which every headshot-less
+// card (directory, gallery) renders through the same fallback branch.
+export function speakerInitials(firstName: string, lastName: string): string {
+  const f = firstName.trim().charAt(0);
+  const l = lastName.trim().charAt(0);
+  return `${f}${l}`.toUpperCase();
+}
+
 export function formatMinutes(min: number): string {
   const h = Math.floor(min / 60);
   const m = min % 60;

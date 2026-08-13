@@ -172,8 +172,14 @@ export const PUBLIC_CSS = `
   }
   .chq-pub-session-action { white-space: nowrap; align-self: center; }
 
-  /* Speaker grid (speakers.tsx / gallery). */
-  .chq-pub-speaker-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 20px; }
+  /* Speaker grid (speakers.tsx / gallery). DEC-885/DEC-385: this codebase is
+     single-direction (narrow overrides wide via max-width only, never
+     min-width -- see test/breakpoint-conformance.test.ts) so the WIDE
+     desktop frame is the unprefixed default -- a fixed three columns,
+     COUNTED rather than left to an auto-fill floor that packed seven
+     columns at the 1240-1440 frame -- and the two max-width blocks below
+     narrow it down for the 900px/700px steps. */
+  .chq-pub-speaker-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
   .chq-pub-speaker-card { display: flex; flex-direction: column; gap: 9px; }
   .chq-pub-speaker-grid img, .chq-pub-headshot-fallback {
     width: 100%;
@@ -181,6 +187,30 @@ export const PUBLIC_CSS = `
     object-fit: cover;
     border-radius: var(--chq-r-card);
     background: var(--chq-surface-sunk);
+  }
+  /* DEC-885: an absent headshot is a DRAWN placeholder, not an empty sunk
+     box that reads as a broken image -- a repeating hatch built from the
+     existing hairline/surface-sunk tokens, with the speaker's initials
+     (speakers.tsx SpeakerCard fallback branch, via cards.tsx's
+     speakerInitials) centered on top. Same aspect-ratio/border-radius as
+     the shared rule above; this rule only overrides background + adds the
+     centering/typography for the initials text node. */
+  .chq-pub-headshot-fallback {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: repeating-linear-gradient(
+      45deg,
+      var(--chq-surface-sunk),
+      var(--chq-surface-sunk) 8px,
+      var(--chq-hairline) 8px,
+      var(--chq-hairline) 9px
+    );
+    color: var(--chq-muted);
+    font-family: var(--chq-font-display);
+    font-weight: 600;
+    font-size: 1.3rem;
+    letter-spacing: 0.02em;
   }
   .chq-pub-speaker-name {
     font-family: var(--chq-font-display);
@@ -266,6 +296,15 @@ export const PUBLIC_CSS = `
     color: var(--chq-brandable-accent);
     text-decoration: none;
   }
+  /* DEC-885: the day pill in view carries aria-current="page" (agenda.tsx
+     DaySwitcher) on BOTH the default and the day-filtered view -- this is
+     the paired visual treatment so the "current" day reads as chosen, not
+     just accessibly marked. */
+  .chq-pub-day-pill-active {
+    background: var(--chq-brandable-accent);
+    color: var(--chq-on-brand);
+    border-color: var(--chq-brandable-accent);
+  }
 
   /* Itinerary (schedule surface, DEC-022 localStorage-driven -- class name
      ".chq-itinerary-toggle" itself is behavior-critical, read by inline JS
@@ -286,6 +325,17 @@ export const PUBLIC_CSS = `
     color: var(--chq-ink-2);
   }
   .chq-pub-itinerary-cta[aria-disabled=true] { opacity: 0.5; pointer-events: none; }
+
+  /* DEC-885/DEC-385: the 900px sanctioned intermediate breakpoint --
+     max-width only, this codebase is single-direction. Below 900px there
+     isn't room for 3 fixed columns to stay legible, so this narrows the
+     desktop default (repeat(3, 1fr), set above) back down to the
+     auto-fill floor the phone rule at 700px further narrows again. This
+     block sits ahead of the 700px block below so the (later, more
+     specific to width) 700px override still wins there. */
+  @media (max-width: 900px) {
+    .chq-pub-speaker-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+  }
 
   /* DEC-385: single phone switch shared by every stylesheet. Collapses
      the header/main gutters, stacks the session row's when/room line
