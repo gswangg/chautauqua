@@ -471,6 +471,11 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
             <section aria-label="Across your events" className="chq-contacts-history">
               <h3 className="chq-contacts-drawer-section-title">Across your events</h3>
               {historyRows.length === 0 && <p className="chq-meta">No history yet.</p>}
+              {contact.history.submissionsTotal > contact.history.submissions.length && (
+                <p className="chq-meta">
+                  Showing {contact.history.submissions.length} of {contact.history.submissionsTotal} submissions
+                </p>
+              )}
               {historyRows.map((row) => (
                 <div className="chq-contacts-history-row" key={row.key}>
                   <span className="chq-contacts-history-event">{row.event}</span>

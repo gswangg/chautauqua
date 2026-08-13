@@ -3,10 +3,17 @@
 // behavior change). See repo/contacts.ts for the module-level contract
 // notes.
 
-import { asc, desc, eq } from "drizzle-orm";
+import { asc, desc, eq, sql } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { formatRef } from "../../../domain/ids";
+
+// w56-c: the drawer's submissions list is capped (matching the existing
+// 20-email cap below) so it can never grow unbounded. The cap is a slice of
+// the ordered list, never the population — submissionsTotal (a separate
+// count(*)) and events (a separate distinct query) both stay computed over
+// the FULL join so capping the list can never shrink either.
+export const MAX_CONTACT_HISTORY_SUBMISSIONS = 20;
 
 export interface ContactHistorySubmission {
   id: string;
@@ -30,6 +37,7 @@ export interface ContactHistoryEmail {
 
 export interface ContactHistory {
   submissions: ContactHistorySubmission[];
+  submissionsTotal: number;
   emails: ContactHistoryEmail[];
   events: string[];
 }
@@ -51,9 +59,13 @@ export async function getContactHistory(db: Db, contactId: string): Promise<Cont
     .where(eq(schema.participant.contactId, contactId))
     // DEC-534: unforced row order was arbitrary — order the per-contact
     // history panel deterministically by submission creation then id.
-    .orderBy(asc(schema.submission.createdAt), asc(schema.submission.id));
+    .orderBy(asc(schema.submission.createdAt), asc(schema.submission.id))
+    // w56-c: deterministic cap, matching the emails cap below — bounded by
+    // the SAME order the drawer renders, plus one over the cap so the count
+    // query (not this row count) is the only source of truth for the total.
+    .limit(MAX_CONTACT_HISTORY_SUBMISSIONS + 1);
 
-  const submissions: ContactHistorySubmission[] = submissionRows.map((r) => ({
+  const submissions: ContactHistorySubmission[] = submissionRows.slice(0, MAX_CONTACT_HISTORY_SUBMISSIONS).map((r) => ({
     id: r.id,
     ref: formatRef(r.recordPrefix, r.seq),
     title: r.title,
@@ -61,6 +73,14 @@ export async function getContactHistory(db: Db, contactId: string): Promise<Cont
     eventName: r.eventName,
     status: r.status,
   }));
+
+  const [submissionsTotalRow] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(schema.participant)
+    .innerJoin(schema.submission, eq(schema.submission.id, schema.participant.submissionId))
+    .innerJoin(schema.event, eq(schema.event.id, schema.submission.eventId))
+    .where(eq(schema.participant.contactId, contactId));
+  const submissionsTotal = submissionsTotalRow?.count ?? 0;
 
   const emailRows = await db
     .select({
@@ -79,7 +99,16 @@ export async function getContactHistory(db: Db, contactId: string): Promise<Cont
 
   const emails: ContactHistoryEmail[] = emailRows.map((r) => ({ ...r, sentAt: r.sentAt.getTime() }));
 
-  const events = Array.from(new Set(submissions.map((s) => s.eventName)));
+  // w56-c: its OWN distinct query over the full join — capping the
+  // submissions list above must never shrink "Across your events".
+  const eventRows = await db
+    .selectDistinct({ eventName: schema.event.name })
+    .from(schema.participant)
+    .innerJoin(schema.submission, eq(schema.submission.id, schema.participant.submissionId))
+    .innerJoin(schema.event, eq(schema.event.id, schema.submission.eventId))
+    .where(eq(schema.participant.contactId, contactId))
+    .orderBy(asc(schema.event.name));
+  const events = eventRows.map((r) => r.eventName);
 
-  return { submissions, emails, events };
+  return { submissions, submissionsTotal, emails, events };
 }

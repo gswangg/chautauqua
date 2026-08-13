@@ -47,6 +47,7 @@ const CONTACT: ContactDetail = {
     submissions: [
       { id: 'sub1', ref: 'SUB-1', title: 'Scaling caches', eventId: 'ev-1', eventName: 'DevCon 2026', status: 'accepted' },
     ],
+    submissionsTotal: 1,
     emails: [{ id: 'em1', subject: 'Welcome', toEmail: 'priya@example.com', sentAt: 1735689600000 }],
     events: ['DevCon 2025'],
   },

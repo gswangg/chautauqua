@@ -63,6 +63,11 @@ export interface ContactDetail extends ContactListItem {
   customFields?: Record<string, string>;
   history: {
     submissions: ContactSubmissionHistory[];
+    // w56-c: total submission count across ALL events, distinct from
+    // submissions.length once the list is capped (DEC-026 amendment) — the
+    // drawer names the shortfall rather than presenting a truncated list as
+    // complete.
+    submissionsTotal: number;
     emails: ContactEmailHistory[];
     events: string[];
   };

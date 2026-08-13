@@ -154,6 +154,64 @@ describe("getContactHistory carries eventId alongside eventName (DEC-795)", () =
         expect(typeof s.eventId).toBe("string");
         expect(s.eventId.length).toBeGreaterThan(0);
       }
+      // A contact with no more submissions than the cap has nothing capped.
+      expect(history.submissionsTotal).toBe(2);
     });
+  });
+});
+
+// w56-c (DEC-026 wave-56 amendment): the submissions list is capped at
+// MAX_CONTACT_HISTORY_SUBMISSIONS, but submissionsTotal and events are each
+// their own query over the FULL join -- capping the list can never shrink
+// the "Across your events" list or hide how many submissions exist.
+describe("getContactHistory bounds submissions and reports the full total (w56-c)", () => {
+  it("caps submissions at 20, reports submissionsTotal 25, and lists all 3 events", async () => {
+    const { db, sqlite } = makeTestDb();
+
+    sqlite
+      .prepare(
+        `insert into contact (id, org_id, first_name, last_name, email, created_at, updated_at) values (?, 'org-1', 'Priya', 'Raman', 'priya@example.com', ?, ?)`,
+      )
+      .run("contact-1", NOW, NOW);
+
+    const eventIds = ["event-a", "event-b", "event-c"];
+    const eventNames = ["Alpha Conf", "Beta Summit", "Gamma Forum"];
+    for (let i = 0; i < eventIds.length; i++) {
+      sqlite
+        .prepare(
+          `insert into event (id, org_id, name, slug, start_date, end_date, timezone, record_prefix, created_at, updated_at)
+           values (?, 'org-1', ?, ?, '2027-01-01', '2027-01-02', 'UTC', 'SUB', ?, ?)`,
+        )
+        .run(eventIds[i]!, eventNames[i]!, `slug-${i}`, NOW, NOW);
+    }
+
+    // 25 submissions spread across the 3 events, each with a distinct
+    // createdAt so DEC-534's (createdAt asc, id asc) order is deterministic.
+    for (let i = 0; i < 25; i++) {
+      const subId = `sub-${i}`;
+      const eventId = eventIds[i % eventIds.length]!;
+      sqlite
+        .prepare(
+          `insert into submission (id, event_id, seq, title, status, content_status, ics_sequence, created_at, updated_at)
+           values (?, ?, 1, ?, 'accepted', 'approved', 0, ?, ?)`,
+        )
+        .run(subId, eventId, `Talk ${i}`, NOW + i, NOW + i);
+      sqlite
+        .prepare(
+          `insert into participant (id, submission_id, contact_id, role, "order", visible, created_at, updated_at)
+           values (?, ?, 'contact-1', 'speaker', 0, 1, ?, ?)`,
+        )
+        .run(newId(), subId, NOW + i, NOW + i);
+    }
+
+    const history = await getContactHistory(db, "contact-1");
+    expect(history.submissions).toHaveLength(20);
+    expect(history.submissionsTotal).toBe(25);
+    // deterministic (createdAt asc, id asc) order -- the first 20 of 25.
+    expect(history.submissions.map((s) => s.title)).toEqual(
+      Array.from({ length: 20 }, (_, i) => `Talk ${i}`),
+    );
+    expect(new Set(history.events)).toEqual(new Set(eventNames));
+    expect(history.events).toHaveLength(3);
   });
 });
