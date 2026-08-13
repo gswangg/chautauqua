@@ -7,6 +7,7 @@
 import type { FormFieldDef, AnswerMap } from "../forms/types";
 import { ALLOWED_UPLOAD_EXTENSIONS, uploadHintText } from "../domain/files";
 import { RULE_MATCH_JS } from "../forms/rule-match";
+import { MAX_LONG_TEXT_LENGTH } from "../forms/validate";
 
 export const FIELD_NAME_PREFIX = "field__";
 
@@ -107,15 +108,31 @@ function FieldControl(props: { field: FormFieldDef; value: unknown }) {
   }
 }
 
+function formatThousands(n: number): string {
+  return n.toLocaleString("en-US");
+}
+
 /** One labeled field, wrapped in the div the visibility script toggles. */
 export function FormField(props: { field: FormFieldDef; value: unknown; error?: string; visible: boolean }) {
   const { field, value, error, visible } = props;
+  // DEC-909: a long-text field with a budget carries a live counter, seeded
+  // here with the initial (prefilled) length; the inline script keeps it in
+  // sync with the DOM as the submitter types.
+  const counterMax = field.kind === "long_text" ? field.maximum ?? MAX_LONG_TEXT_LENGTH : undefined;
+  const initialCount = typeof value === "string" ? value.length : 0;
   return (
     <div id={wrapId(field.id)} class="chq-field" style={visible ? undefined : "display:none"}>
       <label>
-        <span class="chq-field-label">
-          {field.label}
-          {field.required ? " *" : ""}
+        <span class="chq-field-label-row">
+          <span class="chq-field-label">
+            {field.label}
+            {field.required === false ? <span class="chq-field-optional"> · optional</span> : null}
+          </span>
+          {counterMax !== undefined ? (
+            <span class="chq-field-counter" data-field-counter={field.id} data-max={counterMax}>
+              {formatThousands(initialCount)} / {formatThousands(counterMax)}
+            </span>
+          ) : null}
         </span>
         <FieldControl field={field} value={value} />
       </label>
@@ -217,6 +234,25 @@ export function FieldRulesScript(props: { fields: FormFieldDef[] }) {
   document.addEventListener('change', apply);
   document.addEventListener('DOMContentLoaded', apply);
   apply();
+  // DEC-909: live character counter for long-text fields with a budget --
+  // fed by the same inline script, no separate bundle. Counts the DOM
+  // textarea's current value (not a react-style controlled state), so it
+  // stays correct across undo/paste/etc without a framework.
+  function fmtThousands(n){ return n.toLocaleString('en-US'); }
+  function updateCounters(){
+    if (typeof document.querySelectorAll !== 'function') return;
+    document.querySelectorAll('[data-field-counter]').forEach(function(el){
+      var fieldId = el.getAttribute('data-field-counter');
+      var max = Number(el.getAttribute('data-max'));
+      var input = document.querySelector('[data-field-id="' + fieldId + '"]');
+      if (!input) return;
+      var len = (input.value || '').length;
+      el.textContent = fmtThousands(len) + ' / ' + fmtThousands(max);
+    });
+  }
+  document.addEventListener('input', updateCounters);
+  document.addEventListener('DOMContentLoaded', updateCounters);
+  updateCounters();
 })();`;
   return (
     <>
