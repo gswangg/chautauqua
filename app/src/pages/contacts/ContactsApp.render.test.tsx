@@ -220,9 +220,11 @@ describe('ContactsApp render smoke: two-column directory architecture (DEC-710/D
   });
 });
 
-// DEC-787: the FilterRulesPanel rule builder composes with the rail's
-// company drill-through rather than the two fighting over one rule slot.
-describe('ContactsApp: FilterRulesPanel composes with the rail (DEC-787)', () => {
+// DEC-868: the FilterRulesPanel rule builder (one editable row, edited in
+// place) composes with the rail's company drill-through rather than the two
+// fighting over one rule slot. A half-typed rule (activeRules()) never
+// reaches the request.
+describe('ContactsApp: FilterRulesPanel composes with the rail (DEC-868)', () => {
   function lastRulesParam(fetchMock: ReturnType<typeof mockApi>): SegmentRule[] | null {
     const last = requestUrls(fetchMock)
       .filter((u) => u.includes('/contacts?'))
@@ -242,17 +244,17 @@ describe('ContactsApp: FilterRulesPanel composes with the rail (DEC-787)', () =>
 
     await screen.findByRole('button', { name: 'Ada Lovelace' });
 
-    fireEvent.change(screen.getByLabelText('Filter field'), { target: { value: 'title' } });
-    fireEvent.change(screen.getByLabelText('Filter value'), { target: { value: 'Engineer' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Add filter' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add a rule' }));
+    fireEvent.change(screen.getByLabelText('Filter 1 field'), { target: { value: 'title' } });
+    fireEvent.change(screen.getByLabelText('Filter 1 value'), { target: { value: 'Engineer' } });
 
     await waitFor(() => {
       expect(lastRulesParam(fetchMock)).toEqual([{ field: 'title', op: 'contains', value: 'Engineer' }]);
     });
 
-    fireEvent.change(screen.getByLabelText('Filter field'), { target: { value: 'company' } });
-    fireEvent.change(screen.getByLabelText('Filter value'), { target: { value: 'Acme' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Add filter' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add a rule' }));
+    fireEvent.change(screen.getByLabelText('Filter 2 field'), { target: { value: 'company' } });
+    fireEvent.change(screen.getByLabelText('Filter 2 value'), { target: { value: 'Acme' } });
 
     await waitFor(() => {
       expect(lastRulesParam(fetchMock)).toEqual([
@@ -262,7 +264,7 @@ describe('ContactsApp: FilterRulesPanel composes with the rail (DEC-787)', () =>
     });
   });
 
-  it('removing a chip widens the request back to the remaining rules', async () => {
+  it('removing a rule widens the request back to the remaining rules', async () => {
     const fetchMock = mockApi(directoryRoutes());
 
     render(
@@ -273,13 +275,13 @@ describe('ContactsApp: FilterRulesPanel composes with the rail (DEC-787)', () =>
 
     await screen.findByRole('button', { name: 'Ada Lovelace' });
 
-    fireEvent.change(screen.getByLabelText('Filter value'), { target: { value: 'acme.com' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Add filter' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add a rule' }));
+    fireEvent.change(screen.getByLabelText('Filter 1 value'), { target: { value: 'acme.com' } });
     await waitFor(() => {
       expect(lastRulesParam(fetchMock)).toEqual([{ field: 'email', op: 'contains', value: 'acme.com' }]);
     });
 
-    fireEvent.click(screen.getByRole('button', { name: /Remove filter/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remove filter 1' }));
 
     await waitFor(() => {
       expect(lastRulesParam(fetchMock)).toBeNull();
@@ -297,9 +299,9 @@ describe('ContactsApp: FilterRulesPanel composes with the rail (DEC-787)', () =>
 
     await screen.findByRole('button', { name: 'Ada Lovelace' });
 
-    fireEvent.change(screen.getByLabelText('Filter field'), { target: { value: 'title' } });
-    fireEvent.change(screen.getByLabelText('Filter value'), { target: { value: 'Engineer' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Add filter' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add a rule' }));
+    fireEvent.change(screen.getByLabelText('Filter 1 field'), { target: { value: 'title' } });
+    fireEvent.change(screen.getByLabelText('Filter 1 value'), { target: { value: 'Engineer' } });
     await waitFor(() => {
       expect(lastRulesParam(fetchMock)).toEqual([{ field: 'title', op: 'contains', value: 'Engineer' }]);
     });
