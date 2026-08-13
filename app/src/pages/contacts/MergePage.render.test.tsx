@@ -227,6 +227,17 @@ describe('MergePage render (DEC-802: honest discard column head and impact line)
   });
 });
 
+describe('MergePage render (DEC-989/DEC-985: v6 width — page root reads chq-measure, exemption expired)', () => {
+  it('page root carries chq-measure and neither chq-measure-wide nor chq-measure-table', () => {
+    renderAt('/contacts/merge');
+
+    const root = document.querySelector('.chq-contacts-merge-page') as HTMLElement;
+    expect(root).toHaveClass('chq-measure');
+    expect(root).not.toHaveClass('chq-measure-wide');
+    expect(root).not.toHaveClass('chq-measure-table');
+  });
+});
+
 describe('MergePage render (DEC-684)', () => {
   it('renders an honest empty state with no ids — the render sweep must not crash', () => {
     renderAt('/contacts/merge');

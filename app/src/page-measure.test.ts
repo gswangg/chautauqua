@@ -192,10 +192,20 @@ describe('page measure (DEC-744/DEC-808/DEC-989)', () => {
   //    hangs in the left margin -- adding a chq-measure* class to the
   //    outer chq-page shell itself would double-clamp a width the grid
   //    already owns.
-  //  - MergePage: a different in-flight task (contacts/MergePage.tsx,
-  //    contacts.css, contacts/types.ts) owns Merge's rebuild this wave; its
-  //    width class is that task's call to make, not this one's.
-  const NAMED_EXEMPTIONS = new Set(['Agenda.tsx', 'Settings.tsx', 'MergePage.tsx']);
+  // MergePage's prior exemption expired: DEC-992's merge rebuild landed and
+  // MergePage.tsx now reads chq-measure like any other reading page (DEC-989,
+  // DEC-985 -- an exclusion list is a promise about the thing's nature, never
+  // a parking space, and its reason can expire).
+  const NAMED_EXEMPTIONS = new Set(['Agenda.tsx', 'Settings.tsx']);
+
+  // NAMED_EXEMPTIONS must never grow beyond these two STRUCTURAL exemptions:
+  // Agenda is the one canvas (its width is bought by the event's room count,
+  // not a reading measure); Settings' width is owned entirely by
+  // .chq-settings-layout's three-track grid. Neither is a wave-scoped
+  // scheduling note -- DEC-989, DEC-985.
+  it('NAMED_EXEMPTIONS is exactly the two structural exemptions, never a parking space', () => {
+    expect(NAMED_EXEMPTIONS).toEqual(new Set(['Agenda.tsx', 'Settings.tsx']));
+  });
 
   it('every page root className="chq-page" literal carries exactly one measure class', () => {
     const MEASURE_CLASSES = ['chq-measure-wide', 'chq-measure-table', 'chq-measure'];
