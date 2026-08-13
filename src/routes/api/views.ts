@@ -90,6 +90,19 @@ viewsRoutes.delete("/views/:id", requireOrganizer, csrfJson, async (c) => {
   if (!ownership) throw new ApiError("not_found", "Saved view not found");
   if (ownership.orgId !== auth.orgId) throw new ApiError("forbidden", "Saved view belongs to a different org");
 
+  // DEC-975: the delete gate matches the DEC-904 read gate. A row with
+  // createdByUserId === null is legacy org-owned (pre-DEC-904) -- any
+  // organiser in the org may delete it, so that branch falls through below
+  // unconditionally rather than by accident of a null comparison.
+  if (ownership.createdByUserId !== null && ownership.createdByUserId !== auth.userId) {
+    if (!ownership.shared) {
+      // Private and not authored by this caller: DEC-904 says it's not
+      // visible to them at all, so a 403 here would confirm its existence.
+      throw new ApiError("not_found", "Saved view not found");
+    }
+    throw new ApiError("forbidden", "Only the organiser who created a saved view can delete it");
+  }
+
   await deleteSavedView(c.var.db, id, ownership.eventId);
   return c.json({ deleted: true });
 });
