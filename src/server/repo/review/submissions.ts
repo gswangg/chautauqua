@@ -8,6 +8,7 @@ import * as schema from "../../../db/schema";
 import { formatRef, parseRef } from "../../../domain/ids";
 import { chunkIds } from "../../../lib/chunk";
 import { SESSION_FORMAT_FIELD_ID } from "../../../forms/types";
+import { visibleParticipantConditions } from "../public/gates";
 import type { PlanRecord } from "./plans";
 
 /** DEC-346: the narrow shape every plan-scoped whole-set load returns --
@@ -584,7 +585,7 @@ export async function listSpeakerNamesForSubmissions(db: Db, submissionIds: stri
       })
       .from(schema.participant)
       .innerJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
-      .where(and(inArray(schema.participant.submissionId, batch), eq(schema.participant.visible, true)))
+      .where(and(inArray(schema.participant.submissionId, batch), visibleParticipantConditions()))
       .orderBy(asc(schema.participant.order), asc(schema.contact.id));
     for (const row of rows) {
       const list = map.get(row.submissionId) ?? [];

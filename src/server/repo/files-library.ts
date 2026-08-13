@@ -19,6 +19,7 @@ import { likeContains } from "./like";
 import { ApiError } from "../http";
 import { batchContactNames } from "./files-versions";
 import { acceptedSpeakerConditions } from "./tasks/crud";
+import { ACTIVE_INVITE_STATUSES } from "../../domain/acceptance";
 import { DEC_680, DEC_773, DEC_902 } from "../../decisions";
 
 void DEC_680;
@@ -413,7 +414,13 @@ export async function listEventDeliverableFiles(
         })
         .from(schema.participant)
         .innerJoin(schema.contact, eq(schema.contact.id, schema.participant.contactId))
-        .where(and(inArray(schema.participant.submissionId, batch), eq(schema.participant.role, "speaker")));
+        .where(
+          and(
+            inArray(schema.participant.submissionId, batch),
+            eq(schema.participant.role, "speaker"),
+            inArray(schema.participant.inviteStatus, [...ACTIVE_INVITE_STATUSES]),
+          ),
+        );
       for (const p of batchRows) {
         if (!p.submissionId) continue;
         const existing = leadBySubmission.get(p.submissionId);
