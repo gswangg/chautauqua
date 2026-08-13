@@ -50,6 +50,7 @@ describe('ViewTabs (DEC-941)', () => {
         filters={DEFAULT_FILTER_STATE}
         visibleFieldIds={new Set()}
         tracks={[]}
+        formFields={[]}
         onApply={() => {}}
       />,
     );
