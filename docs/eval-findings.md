@@ -69,23 +69,40 @@ inherited), styled dates, labels STARTS/ENDS/TIME ZONE/VENUE · Public pages as
 single summary row · resolve "· min ·" (derive from format or drop) · Review-row
 copy shape ("N of M plans in · wave X complete").
 
-**Submissions** (probe 2 CLOSED: AWAITING TRIAGE banner · content-approval moved out
-of Decision panel · History under own header): (probe-4 CLOSED: review rows name linked contacts · History label numeral rhythm ·
-earlier: Prev/Next "N of 31" landed DEC-761) ·
-builder rows CLOSED
-(probe-verified all 7 anatomy points); residue: kind copy "Dropdown"→"Single choice",
-"Session format"→"Format", captions on format/audience rows, drop duplicate
-Public-link inside Settings, align field set to mock (Track + Accessibility needs
-missing; Job title/Company/Speaker bio extra) · builder page WIDTH still clamps
-(720px in 1372px container — sweep A) · save-view: share opt-in checkbox (static
-"Shared with every organiser" text is NOT the mock's unchecked checkbox), subtitle
-names actual state ("Pending · AI Engineering · newest first" not "a track filter."),
-"Close" text not "×", label "NAME IT" · new-submission modal: Create it/Cancel
-bottom-LEFT per mock (now bottom-right), drop extra TRACKS/SESSION FORMAT/LAST NAME
-fields, "SPEAKER EMAIL" label (not "(OPTIONAL)") ·
-DECLINE QUEUE no-wrap · "Columns: <state>" label · bulk bar → 3 actions · drop META
-section · ANSWERS = curated subset · quick-add combined name field · co-presenter
-search row layout.
+**Submissions — GATE-1 FLEET: FAIL (list near-pixel PASS; full report
+fidelity-gate1/02-submissions/report.md)**:
+MAJOR (detail, frame 02 structural): restore ACCEPT primary + Decline|Waitlist
+pair + "Deciding sends nothing. Notify from Comms." caption (status segmented
+demoted the triage action) · drop NN—numbering, adopt frame sections
+(ABSTRACT → curated FORM ANSWERS → REVIEWS; rail DECISION/SPEAKER/HISTORY) ·
+implement REAL history entries (submitted / confirmation sent / review in /
+opened-by — now empty behind SHOW) · curate FORM ANSWERS to Format/Audience/
+Notes-for-reviewers/Accessibility (raw dump duplicates title+abstract, omits the
+two frame fields) · review rows lighter per frame + LABEL the weighted blend's
+plan/weights (scores 4.80/4.33 are CORRECT weighted math across different plans
+— explainability gap, do NOT change the math) · em-dash spacing in section
+tokens.
+MAJOR (builder, frame 04): content 820px under a full-width header at 1440 —
+align header row to the content measure (Preview/Save float over dead space) ·
+disabled Edit/Delete/drag render identical to enabled — grey them · drag
+reorder inert — implement or drop handles · field list: add Track +
+Accessibility needs w/ frame captions, drop Job title/Company/Speaker-bio,
+"N options" description lines.
+MAJOR (save-view, frame 07): "Share it with the other organisers" CHECKBOX
+unimplemented — sharing silently forced on; build the opt-in.
+BROKEN: Agenda nav badge route-dependent (1 CLASH on list vs 3 on detail/forms,
+deterministic — unify the clash count source).
+MINOR batch: filter-row track select + Columns picker at chip height (26px
+pills) · header labels TRACK/SENT/FORMAT · "19 Feb" date grammar · global count
+when filtered · saved-view × affordance · triage view stored config (Columns:
+Format) · detail ref line "CODE · N of M" + Previous/Next text + speaker
+history line + ABSTRACT label · TRACKS/FORMAT/PARTICIPANTS/META extras (DEC:
+where does detail editing live) · new-submission modal: remove extra
+TRACKS/SESSION-FORMAT (or DEC) + kill off-system fieldset treatment + center ·
+save-view width/centering · builder Add-a-question link + "1,200" formatting +
+strip protocol + SETTINGS section DEC.
+(Earlier closures stand: DEC-715 anatomy, Prev/Next DEC-761, triage banner,
+history header, reviewer names.)
 
 **Review — GATE-1 FLEET: FAIL (full report fidelity-gate1/03-review/report.md)**:
 MAJOR: scorecard ratings must be 1-5 SEGMENTED BUTTONS w/ selected fill (now bare
