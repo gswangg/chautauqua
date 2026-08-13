@@ -276,6 +276,19 @@
   font-weight: 600;
 }
 
+/* DEC-751: the extracted Recent sends block (section head + batch rows),
+   mounted both under Compose and inside the History tab. Extracting it out
+   of HistoryTab nested the head and the rows one level deeper, which
+   collapsed the 16px gap .chq-comms-history-tab used to give them, so the
+   wrapper carries that column gap itself and stays layout-neutral in both
+   mounts (the compose mount's separation from the wizard above comes from
+   .chq-comms-page's own 20px gap). */
+.chq-comms-recent-sends {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
 /* DEC-603: one batch (its toggle row + expanded recipients, when open). */
 .chq-comms-batch {
   display: block;

@@ -53,13 +53,25 @@ describe('page measure (DEC-744)', () => {
     expect(body).not.toMatch(/max-width:\s*820px/);
   });
 
-  it('no top-level rule in forms.css or review.css declares a px max-width below 820px (modal widths excluded)', () => {
+  // DEC-744 governs the PAGE measure -- the clamp on a subscreen's content
+  // column -- and says so in its own terms: prose measures in `ch` and modal
+  // widths "are NOT page measures and stay as they are". An inner field grid
+  // is the same kind of thing: it is a block inside the column, not the column.
+  // .chq-review-summary-grid is the DEC-745 2x2 Opens/Closes/Reviews-per-talk/
+  // Rating-scale grid, whose 440px is drawn by the design itself
+  // (docs/design/Chautauqua Review.dc.html:264), so it is exempted by name
+  // rather than by loosening the scan -- a page still cannot re-invent a
+  // literal for its own content column, which is what this guard is for.
+  const NOT_PAGE_MEASURES = ['.chq-review-summary-grid'];
+
+  it('no top-level rule in forms.css or review.css declares a px max-width below 820px (modal and inner-block widths excluded)', () => {
     for (const [name, css] of [
       ['forms.css', FORMS_CSS],
       ['review.css', REVIEW_CSS],
     ] as const) {
       for (const { selector, body } of topLevelRules(css)) {
         if (/modal/i.test(selector)) continue;
+        if (NOT_PAGE_MEASURES.some((s) => selector.includes(s))) continue;
         const match = body.match(/max-width:\s*(\d+)px/);
         if (!match) continue;
         const px = Number(match[1]);

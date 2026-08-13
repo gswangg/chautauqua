@@ -959,7 +959,11 @@
   margin: -2px -6px;
   min-width: 0;
   width: 100%;
-  max-width: 480px;
+  /* DEC-744: a px clamp here would read as a second page measure and trips
+     the page-measure guard. The cap's job is to stop the borderless input's
+     hover/focus box running the full measure behind a short plan name --
+     that is a text measure, which DEC-744 keeps in `ch`. */
+  max-width: 32ch;
 }
 
 .chq-review-editor-title-input:hover {
