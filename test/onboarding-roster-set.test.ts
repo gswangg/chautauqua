@@ -293,3 +293,96 @@ describe("onboarding roster == accepted-speaker set (DEC-754)", () => {
     expect(grid.counts.speakers).toBe(2);
   });
 });
+
+// DEC-789: the roster row carries a (participantId, submissionId,
+// inviteStatus) triple sourced from the SAME row query as the rest of the
+// row, and an inviteStatus filter param is ANDed onto that SAME query --
+// never a separate predicate the row set could drift from.
+describe("onboarding grid invite-status control + filter (DEC-789)", () => {
+  let db: Db;
+  let sqlite: DatabaseSync;
+  const EVENT = "event-1";
+
+  beforeEach(() => {
+    ({ db, sqlite } = makeTestDb());
+  });
+
+  afterEach(() => {
+    sqlite.close();
+  });
+
+  it("each row carries the participant/submission id backing it, and its current inviteStatus", async () => {
+    insertTask(sqlite, "task-1", EVENT);
+    insertContact(sqlite, "c1", "Ada");
+    insertSubmission(sqlite, "sub-1", EVENT, "accepted");
+    insertParticipant(sqlite, "sub-1", "c1", "accepted");
+
+    const grid = await getOnboardingGrid(db, EVENT, {
+      page: 1,
+      perPage: 50,
+      q: null,
+      taskId: null,
+      status: null,
+      overdueOnly: false,
+      inviteStatus: null,
+      now: NOW.getTime(),
+    });
+    const row = grid.rows.find((r) => r.contact.id === "c1");
+    expect(row).toBeDefined();
+    expect(row!.contact.inviteStatus).toBe("accepted");
+    expect(row!.contact.submissionId).toBe("sub-1");
+    expect(typeof row!.contact.participantId).toBe("string");
+    expect(row!.contact.participantId.length).toBeGreaterThan(0);
+  });
+
+  it("an inviteStatus filter narrows the roster to that status, on the SAME row query", async () => {
+    insertTask(sqlite, "task-1", EVENT);
+
+    insertContact(sqlite, "c-accepted", "Ada");
+    insertSubmission(sqlite, "sub-accepted", EVENT, "accepted");
+    insertParticipant(sqlite, "sub-accepted", "c-accepted", "accepted");
+
+    insertContact(sqlite, "c-none", "Grace");
+    insertSubmission(sqlite, "sub-none", EVENT, "accepted");
+    insertParticipant(sqlite, "sub-none", "c-none", "none");
+
+    const acceptedOnly = await getOnboardingGrid(db, EVENT, {
+      page: 1,
+      perPage: 50,
+      q: null,
+      taskId: null,
+      status: null,
+      overdueOnly: false,
+      inviteStatus: "accepted",
+      now: NOW.getTime(),
+    });
+    expect(acceptedOnly.rows.map((r) => r.contact.id)).toEqual(["c-accepted"]);
+
+    // A filter value outside the roster's active-invite-status base
+    // condition (DEC-754: none/accepted only) correctly yields zero rows
+    // rather than silently matching the whole roster.
+    const declinedOnly = await getOnboardingGrid(db, EVENT, {
+      page: 1,
+      perPage: 50,
+      q: null,
+      taskId: null,
+      status: null,
+      overdueOnly: false,
+      inviteStatus: "declined",
+      now: NOW.getTime(),
+    });
+    expect(declinedOnly.rows).toEqual([]);
+
+    const unfiltered = await getOnboardingGrid(db, EVENT, {
+      page: 1,
+      perPage: 50,
+      q: null,
+      taskId: null,
+      status: null,
+      overdueOnly: false,
+      inviteStatus: null,
+      now: NOW.getTime(),
+    });
+    expect(unfiltered.rows.map((r) => r.contact.id).sort()).toEqual(["c-accepted", "c-none"]);
+  });
+});

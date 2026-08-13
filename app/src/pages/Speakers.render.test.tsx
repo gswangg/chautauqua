@@ -23,14 +23,14 @@ const GRID: OnboardingGridResponse = {
   ],
   rows: [
     {
-      contact: { id: 'ct1', name: 'Ada Lovelace', email: 'ada@example.com', company: 'Acme', hasAccount: true },
+      contact: { id: 'ct1', name: 'Ada Lovelace', email: 'ada@example.com', company: 'Acme', hasAccount: true , participantId: 'p-ct1', submissionId: 'sub-ct1', inviteStatus: 'accepted' },
       cells: [
         { taskId: 'task-1', assignmentId: 'as1', status: 'complete', completedAt: 1700000000000, fileId: null, lastRemindedAt: null },
         { taskId: 'task-2', assignmentId: 'as2', status: 'pending', completedAt: null, fileId: null, lastRemindedAt: null },
       ],
     },
     {
-      contact: { id: 'ct2', name: 'Grace Hopper', email: 'grace@example.com', company: 'Navy', hasAccount: false },
+      contact: { id: 'ct2', name: 'Grace Hopper', email: 'grace@example.com', company: 'Navy', hasAccount: false , participantId: 'p-ct2', submissionId: 'sub-ct2', inviteStatus: 'accepted' },
       cells: [
         // 1970 due date -> deep in the past, so this pending cell renders overdue.
         { taskId: 'task-1', assignmentId: 'as3', status: 'pending', completedAt: null, fileId: null, lastRemindedAt: null },
@@ -94,13 +94,15 @@ describe('SpeakersPage render smoke (OnboardingGrid)', () => {
     const table = within(screen.getByRole('table'));
 
     // Mixed cell states: complete (filled), pending (outline), overdue (the
-    // same control family, ink-outlined bold caps, "N DAYS LATE" -- never a
-    // plain "Overdue" word, never colour alone, never red -- DEC-367/730).
+    // same control family, ink-outlined bold caps, "OVERDUE" -- DEC-789
+    // replaces the old "N DAYS LATE" copy; the day count moves into the
+    // button's accessible name/title instead of the visible text -- never a
+    // plain "Overdue" word alone with no count anywhere, never colour
+    // alone, never red -- DEC-367/730/789).
     expect(table.getByRole('button', { name: 'Toggle Sign speaker agreement for Ada Lovelace' })).toHaveTextContent('Complete');
     expect(table.getByRole('button', { name: 'Toggle Upload headshot for Ada Lovelace' })).toHaveTextContent('Pending');
-    expect(table.getByRole('button', { name: 'Toggle Sign speaker agreement for Grace Hopper' })).toHaveTextContent(
-      /^\d+ DAYS? LATE$/,
-    );
+    const overdueBtn = table.getByRole('button', { name: /^Toggle Sign speaker agreement for Grace Hopper, \d+ days? late$/ });
+    expect(overdueBtn).toHaveTextContent('OVERDUE');
 
     // TaskModal open.
     screen.getByRole('button', { name: 'New task' }).click();

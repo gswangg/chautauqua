@@ -72,7 +72,21 @@ function baseParams(overrides: Partial<OnboardingGridParams> = {}): OnboardingGr
 const TASK_ROWS = [{ id: "task-1", kind: "general", title: "Sign W9", dueDate: null, required: true }];
 
 function contactRow(id: string, first: string, last: string) {
-  return { id, firstName: first, lastName: last, email: `${first}@example.com`.toLowerCase(), company: null, userId: null };
+  return {
+    id,
+    firstName: first,
+    lastName: last,
+    email: `${first}@example.com`.toLowerCase(),
+    company: null,
+    userId: null,
+    // DEC-789: the fakeDb doesn't evaluate the scalar subqueries grid.ts
+    // adds to this same select -- stand in with a plausible participant
+    // triple so the row-construction fail-loudly check doesn't trip on
+    // fixtures unrelated to invite status.
+    participantId: `participant-${id}`,
+    submissionId: `submission-${id}`,
+    inviteStatus: "accepted",
+  };
 }
 
 // DEC-754: `speakers` is now its own event-wide accepted-roster COUNT(*)

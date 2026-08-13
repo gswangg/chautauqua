@@ -10,10 +10,13 @@ import { RemindPreviewModal } from './RemindPreviewModal';
 import { describeSendResult, type SendResult } from '../../lib/sendResult';
 import {
   DEFAULT_GRID_FILTERS,
+  INVITE_STATUS_LABELS,
+  INVITE_STATUSES,
   type AssignmentResponseDetail,
   type AssignmentStatus,
   type EventForm,
   type GridFilterState,
+  type InviteStatus,
   type NewTaskInput,
   type OnboardingGridResponse,
   type ReminderDraft,
@@ -49,16 +52,22 @@ function buildGridQuery(filters: GridFilterState, page: number): string {
   if (filters.taskId) params.set('taskId', filters.taskId);
   if (filters.status) params.set('status', filters.status);
   if (filters.overdueOnly) params.set('overdueOnly', '1');
+  if (filters.inviteStatus) params.set('inviteStatus', filters.inviteStatus);
   return params.toString();
 }
 
-/** Label for a pending, overdue cell — never colour alone, never red
- * (DEC-367). Complete is a filled pill, pending is an outline pill, overdue
- * is the same control family (box metrics, hover ring, cursor:pointer) with
- * an ink-outlined bold-caps "N DAYS LATE" typographic mark (DEC-730). */
-function lateLabel(dueDate: number, now: number): string {
+/** v4 design copy for a pending, overdue cell — never colour alone, never
+ * red (DEC-367). Complete is a filled pill, pending is an outline pill,
+ * overdue is the same control family (box metrics, hover ring,
+ * cursor:pointer) with an ink-outlined bold-caps "OVERDUE" mark (DEC-730,
+ * DEC-789 — replaces the old "N DAYS LATE" copy). The day count isn't
+ * dropped: it moves into the button's accessible name/title via
+ * overdueTitle below, so no information is lost, just not shown inline. */
+const OVERDUE_LABEL = 'OVERDUE';
+
+function overdueTitle(dueDate: number, now: number): string {
   const d = daysLate(dueDate, now);
-  return `${d} DAY${d === 1 ? '' : 'S'} LATE`;
+  return `${d} day${d === 1 ? '' : 's'} late`;
 }
 
 function firstNameOf(fullName: string): string {
@@ -71,6 +80,22 @@ function firstNameOf(fullName: string): string {
 function statusCellClass(status: AssignmentStatus, overdue: boolean): string {
   const modifier = status === 'complete' ? 'complete' : overdue ? 'overdue' : 'pending';
   return `chq-speakers-status chq-speakers-status-${modifier}`;
+}
+
+// DEC-789: the roster's invite-status control reuses the DEC-730 status
+// control family (same base class, same fill/outline/ink-outline axis) --
+// confirmed reads as the filled "done" pill, invited/not-invited read as
+// outline "not done", declined reads as the ink-outlined urgency mark.
+function inviteStatusCellClass(status: InviteStatus): string {
+  const modifier = status === 'accepted' ? 'complete' : status === 'declined' ? 'overdue' : 'pending';
+  return `chq-speakers-status chq-speakers-status-${modifier}`;
+}
+
+const INVITE_STATUS_CYCLE: readonly InviteStatus[] = INVITE_STATUSES;
+
+function nextInviteStatus(status: InviteStatus): InviteStatus {
+  const i = INVITE_STATUS_CYCLE.indexOf(status);
+  return INVITE_STATUS_CYCLE[(i + 1) % INVITE_STATUS_CYCLE.length]!;
 }
 
 // DEC-662/DEC-746: the roster's Add-speaker trigger lives here now (see
@@ -178,6 +203,32 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
 
     try {
       await apiPatch(`/task-assignments/${assignmentId}`, { status: desired });
+    } catch (err) {
+      setGrid(previous);
+      setError(err instanceof ApiError ? `Update failed: ${err.message}` : 'Update failed');
+    }
+  }
+
+  // DEC-789: writes the roster row's invite status through
+  // PATCH /submissions/:submissionId/participants/:participantId (task-w3-c,
+  // mocked in tests -- this file never imports src/routes/api/submissions.ts).
+  // Optimistic, with rollback on ApiError (matching toggleCell/
+  // changeResponseStatus's established pattern on this page).
+  async function toggleInviteStatus(contactId: string, submissionId: string, participantId: string, current: InviteStatus) {
+    if (!grid) return;
+    const previous = grid;
+    const desired = nextInviteStatus(current);
+
+    setGrid({
+      ...grid,
+      rows: grid.rows.map((row) =>
+        row.contact.id === contactId ? { ...row, contact: { ...row.contact, inviteStatus: desired } } : row,
+      ),
+    });
+    setError(null);
+
+    try {
+      await apiPatch(`/submissions/${submissionId}/participants/${participantId}`, { inviteStatus: desired });
     } catch (err) {
       setGrid(previous);
       setError(err instanceof ApiError ? `Update failed: ${err.message}` : 'Update failed');
@@ -396,6 +447,16 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
                       </div>
                       <button
                         type="button"
+                        className={inviteStatusCellClass(row.contact.inviteStatus)}
+                        onClick={() =>
+                          toggleInviteStatus(row.contact.id, row.contact.submissionId, row.contact.participantId, row.contact.inviteStatus)
+                        }
+                        aria-label={`Invite status for ${row.contact.name}: ${INVITE_STATUS_LABELS[row.contact.inviteStatus]}`}
+                      >
+                        {INVITE_STATUS_LABELS[row.contact.inviteStatus]}
+                      </button>
+                      <button
+                        type="button"
                         className="chq-btn chq-btn-tertiary chq-speakers-remind-one"
                         onClick={() => openRemindReview([row.contact.id])}
                       >
@@ -413,6 +474,7 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
                       }
                       const overdue = isCellOverdue(cell, task, now);
                       const cellClass = statusCellClass(cell.status, overdue);
+                      const overdueTitleText = overdue && task.dueDate !== null ? overdueTitle(task.dueDate, now) : null;
                       return (
                         <td key={task.id}>
                           <div className="chq-speakers-cell">
@@ -420,13 +482,14 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
                               type="button"
                               className={cellClass}
                               onClick={() => toggleCell(cell.assignmentId, cell.status)}
-                              aria-label={`Toggle ${task.title} for ${row.contact.name}`}
+                              aria-label={
+                                overdueTitleText
+                                  ? `Toggle ${task.title} for ${row.contact.name}, ${overdueTitleText}`
+                                  : `Toggle ${task.title} for ${row.contact.name}`
+                              }
+                              title={overdueTitleText ?? undefined}
                             >
-                              {cell.status === 'complete'
-                                ? 'Complete'
-                                : overdue && task.dueDate !== null
-                                  ? lateLabel(task.dueDate, now)
-                                  : 'Pending'}
+                              {cell.status === 'complete' ? 'Complete' : overdueTitleText ? OVERDUE_LABEL : 'Pending'}
                             </button>
                             {cell.fileId && (
                               <a
@@ -476,6 +539,16 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
                   </span>
                   <button
                     type="button"
+                    className={inviteStatusCellClass(row.contact.inviteStatus)}
+                    onClick={() =>
+                      toggleInviteStatus(row.contact.id, row.contact.submissionId, row.contact.participantId, row.contact.inviteStatus)
+                    }
+                    aria-label={`Invite status for ${row.contact.name}: ${INVITE_STATUS_LABELS[row.contact.inviteStatus]}`}
+                  >
+                    {INVITE_STATUS_LABELS[row.contact.inviteStatus]}
+                  </button>
+                  <button
+                    type="button"
                     className="chq-btn chq-btn-tertiary chq-speakers-remind-one"
                     onClick={() => openRemindReview([row.contact.id])}
                   >
@@ -495,6 +568,7 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
                     }
                     const overdue = isCellOverdue(cell, task, now);
                     const cellClass = statusCellClass(cell.status, overdue);
+                    const overdueTitleText = overdue && task.dueDate !== null ? overdueTitle(task.dueDate, now) : null;
                     return (
                       <div key={task.id} className="chq-speakers-card-task">
                         <span className="chq-speakers-card-task-label">{task.title}</span>
@@ -503,13 +577,14 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
                             type="button"
                             className={cellClass}
                             onClick={() => toggleCell(cell.assignmentId, cell.status)}
-                            aria-label={`Toggle ${task.title} for ${row.contact.name}`}
+                            aria-label={
+                              overdueTitleText
+                                ? `Toggle ${task.title} for ${row.contact.name}, ${overdueTitleText}`
+                                : `Toggle ${task.title} for ${row.contact.name}`
+                            }
+                            title={overdueTitleText ?? undefined}
                           >
-                            {cell.status === 'complete'
-                              ? 'Complete'
-                              : overdue && task.dueDate !== null
-                                ? lateLabel(task.dueDate, now)
-                                : 'Pending'}
+                            {cell.status === 'complete' ? 'Complete' : overdueTitleText ? OVERDUE_LABEL : 'Pending'}
                           </button>
                           {cell.fileId && (
                             <a
