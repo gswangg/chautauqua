@@ -71,14 +71,10 @@ export function CommentThread({ comments, onSend }: CommentThreadProps) {
           placeholder="Write a note to the speakers..."
           disabled={pending}
         />
-        <p className="chq-meta chq-content-comment-caption">
-          Ask for changes emails this note and moves the session out of your queue · Send note only emails it and
-          leaves the status alone
-        </p>
         <div className="chq-content-comment-actions">
           <button
             type="button"
-            className="chq-btn chq-btn-secondary"
+            className="chq-btn chq-btn-primary"
             disabled={pending || draft.trim().length === 0}
             onClick={() => void submit(true)}
           >
@@ -86,13 +82,17 @@ export function CommentThread({ comments, onSend }: CommentThreadProps) {
           </button>
           <button
             type="button"
-            className="chq-btn chq-btn-primary"
+            className="chq-btn chq-btn-secondary"
             disabled={pending || draft.trim().length === 0}
             onClick={() => void submit(false)}
           >
             Send note only
           </button>
         </div>
+        <p className="chq-meta chq-content-comment-caption">
+          Ask for changes emails this note and moves the session out of your queue · Send note only emails it and
+          leaves the status alone
+        </p>
       </div>
       {error && (
         <div className="chq-error" role="alert">

@@ -58,4 +58,22 @@ describe('CommentThread', () => {
     expect(screen.queryByText('Pat Organizer')).not.toBeInTheDocument();
     expect(document.querySelector('.chq-comment-date')).toHaveTextContent('2 days ago');
   });
+
+  it('renders "Ask for changes" as the filled (primary) action and "Send note only" as secondary, with the caption below the action group (DEC-720 amendment: the filled action is the one that moves work)', () => {
+    render(<CommentThread comments={[]} onSend={noopSend} />);
+    const askButton = screen.getByRole('button', { name: 'Ask for changes' });
+    const sendButton = screen.getByRole('button', { name: 'Send note only' });
+    expect(askButton.className.split(' ')).toEqual(expect.arrayContaining(['chq-btn', 'chq-btn-primary']));
+    expect(askButton.className).not.toContain('chq-btn-secondary');
+    expect(sendButton.className.split(' ')).toEqual(expect.arrayContaining(['chq-btn', 'chq-btn-secondary']));
+    expect(sendButton.className).not.toContain('chq-btn-primary');
+
+    const actions = document.querySelector('.chq-content-comment-actions');
+    const caption = document.querySelector('.chq-content-comment-caption');
+    expect(actions).toBeInTheDocument();
+    expect(caption).toBeInTheDocument();
+    const position = actions!.compareDocumentPosition(caption!);
+    // eslint-disable-next-line no-bitwise
+    expect(position & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
 });
