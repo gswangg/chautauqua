@@ -49,6 +49,16 @@ interface RevisionEntry {
   createdAt: number;
 }
 
+// DEC-892: the history panel's real timeline — submitted/edited/reviewed/
+// emailed, merged server-side by listSubmissionHistory.
+interface HistoryTimelineEntry {
+  id: string;
+  at: number;
+  kind: 'submitted' | 'edited' | 'reviewed' | 'emailed';
+  label: string;
+  detail: string | null;
+}
+
 export function SubmissionDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -73,7 +83,7 @@ export function SubmissionDetailPage() {
   const [contentStatusPending, setContentStatusPending] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(false);
-  const [historyEntries, setHistoryEntries] = useState<RevisionEntry[]>([]);
+  const [historyEntries, setHistoryEntries] = useState<HistoryTimelineEntry[]>([]);
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [restoringId, setRestoringId] = useState<string | null>(null);
   const [evaluations, setEvaluations] = useState<SubmissionEvaluation[]>([]);
@@ -310,6 +320,12 @@ export function SubmissionDetailPage() {
     }
   }
 
+  async function loadHistory() {
+    if (!id) return;
+    const res = await apiList<HistoryTimelineEntry>(`/submissions/${id}/history`);
+    setHistoryEntries(res.items);
+  }
+
   async function toggleHistory() {
     const opening = !historyOpen;
     setHistoryOpen(opening);
@@ -317,8 +333,7 @@ export function SubmissionDetailPage() {
       setHistoryLoading(true);
       setHistoryError(null);
       try {
-        const res = await apiList<RevisionEntry>(`/submissions/${id}/revisions`);
-        setHistoryEntries(res.items);
+        await loadHistory();
       } catch (err) {
         setHistoryError(err instanceof ApiError ? err.message : 'Failed to load history');
       } finally {
@@ -327,6 +342,9 @@ export function SubmissionDetailPage() {
     }
   }
 
+  // A revision is restorable by its own id — the timeline's 'edited' entries
+  // are sourced 1:1 from submission_revision rows (history.ts reuses
+  // listRevisions), so entry.id IS the revisionId here.
   async function restoreRevision(revisionId: string) {
     if (!id) return;
     setRestoringId(revisionId);
@@ -334,8 +352,7 @@ export function SubmissionDetailPage() {
     try {
       const updated = await apiPost<SubmissionDetail>(`/submissions/${id}/revisions/${revisionId}/restore`);
       setDetail(updated);
-      const res = await apiList<RevisionEntry>(`/submissions/${id}/revisions`);
-      setHistoryEntries(res.items);
+      await loadHistory();
     } catch (err) {
       setHistoryError(err instanceof ApiError ? `Restore failed: ${err.message}` : 'Restore failed');
     } finally {
@@ -451,23 +468,25 @@ export function SubmissionDetailPage() {
                 {historyLoading ? (
                   <DelayedLoading label="Loading history…" />
                 ) : historyEntries.length === 0 ? (
-                  <p>No edits recorded yet.</p>
+                  <p>No history recorded yet.</p>
                 ) : (
                   <ul className="chq-submission-history-list">
                     {historyEntries.map((entry) => (
                       <li key={entry.id} className="chq-submission-history-entry">
                         <div>
-                          <strong>{entry.editorName}</strong> &mdash; {formatTimestamp(entry.createdAt)}
+                          <strong>{entry.label}</strong> &mdash; {formatTimestamp(entry.at)}
                         </div>
-                        <div>{entry.title}</div>
-                        <button
-                          type="button"
-                          className="chq-btn chq-btn-tertiary"
-                          disabled={restoringId === entry.id}
-                          onClick={() => restoreRevision(entry.id)}
-                        >
-                          Restore
-                        </button>
+                        {entry.detail && <div>{entry.detail}</div>}
+                        {entry.kind === 'edited' && (
+                          <button
+                            type="button"
+                            className="chq-btn chq-btn-tertiary"
+                            disabled={restoringId === entry.id}
+                            onClick={() => restoreRevision(entry.id)}
+                          >
+                            Restore
+                          </button>
+                        )}
                       </li>
                     ))}
                   </ul>
