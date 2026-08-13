@@ -6,8 +6,11 @@
 import type { PublicEvent } from "../../server/repo/public";
 import { ThemeStyles } from "../../views/theme";
 import { PUBLIC_CSS } from "./public.css";
-import { DEC_374 } from "../../decisions";
+import { DEC_374, DEC_371 } from "../../decisions";
 import { formatEventDayRange } from "../../lib/event-time";
+import { normalizeHexColor } from "../../domain/color";
+
+void DEC_371;
 
 void DEC_374;
 
@@ -75,16 +78,16 @@ export function branding(event: PublicEvent): { logoUrl?: string; accentColor?: 
 }
 
 const DEFAULT_ACCENT = "#4E5C31";
-const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
 
 /** DEC-374: the per-event accent is never interpolated into CSS text (that
  * was the pre-redesign approach, and it's how untrusted branding JSON could
  * have injected arbitrary CSS/markup into a `<style>` block). Instead it's
- * validated against a strict hex pattern and applied as a `style` attribute
- * on <body> -- exported so a non-hex brandingJson value can be asserted to
- * fall back to DEFAULT_ACCENT in tests. */
+ * validated against the ONE hex-colour grammar (src/domain/color.ts, DEC-371
+ * amendment wave 43) and applied as a `style` attribute on <body> --
+ * exported so a non-hex brandingJson value can be asserted to fall back to
+ * DEFAULT_ACCENT in tests. */
 export function validAccent(color: string | undefined): string {
-  return color && HEX_COLOR_RE.test(color) ? color : DEFAULT_ACCENT;
+  return normalizeHexColor(color) ?? DEFAULT_ACCENT;
 }
 
 // DEC-594: every path helper below takes an explicit `base` ("/e" or

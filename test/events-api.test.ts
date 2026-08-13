@@ -2,10 +2,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
 import {
   isDateOrderValid,
-  isValidHexColor,
   isValidSlug,
   isValidTimezone,
 } from "../src/routes/api/validators";
+import { isValidHexColor } from "../src/domain/color";
 import { registerErrorHandler } from "../src/server/http";
 import type { AppEnv, AuthInfo } from "../src/server/env";
 
@@ -26,14 +26,17 @@ describe("isValidSlug", () => {
 });
 
 describe("isValidHexColor", () => {
-  it("accepts 6-digit and 3-digit hex with #", () => {
+  it("accepts 6-digit and 3-digit hex with or without a leading #", () => {
     expect(isValidHexColor("#336699")).toBe(true);
     expect(isValidHexColor("#FFF")).toBe(true);
     expect(isValidHexColor("#000000")).toBe(true);
+    // DEC-371 amendment (wave 43): the unified grammar (src/domain/color.ts)
+    // tolerates an optional leading '#' everywhere — a bare '336699' now
+    // validates the same as '#336699'.
+    expect(isValidHexColor("336699")).toBe(true);
   });
 
-  it("rejects missing #, wrong length, non-hex chars", () => {
-    expect(isValidHexColor("336699")).toBe(false);
+  it("rejects wrong length, non-hex chars", () => {
     expect(isValidHexColor("#12345")).toBe(false);
     expect(isValidHexColor("#zzzzzz")).toBe(false);
     expect(isValidHexColor("")).toBe(false);

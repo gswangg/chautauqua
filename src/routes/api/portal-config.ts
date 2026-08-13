@@ -26,7 +26,7 @@ import {
   updateWikiResource,
   upsertPortalSettings,
 } from "../../server/repo/portal-config";
-import { isValidHexColor } from "./validators";
+import { isValidHexColor, normalizeHexColor } from "../../domain/color";
 import { clampPage, listPerPage } from "../../lib/pagination";
 import { DEC_523 } from "../../decisions";
 
@@ -135,7 +135,15 @@ portalConfigRoutes.put("/events/:eventId/portal-settings", csrfJson, async (c) =
 
   const updated = await upsertPortalSettings(c.var.db, eventId, {
     logoUrl: logoUrl === undefined ? undefined : (logoUrl as string | null),
-    accentColor: accentColor === undefined ? undefined : (accentColor as string | null),
+    // DEC-371 amendment (wave 43): normalize on WRITE so a reader (SSR
+    // shells, embed query parser) can never disagree with the writer that
+    // accepted the value — '#abc' is stored as '#aabbcc'.
+    accentColor:
+      accentColor === undefined
+        ? undefined
+        : accentColor === null
+          ? null
+          : normalizeHexColor(accentColor as string),
     welcomeMessage: welcomeMessage === undefined ? undefined : (welcomeMessage as string | null),
     showResources: showResources === undefined ? undefined : (showResources as boolean),
   });

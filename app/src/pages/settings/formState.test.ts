@@ -63,8 +63,12 @@ describe('isValidHexColorOrEmpty', () => {
   });
 
   it('rejects malformed values', () => {
-    expect(isValidHexColorOrEmpty('336699')).toBe(false);
     expect(isValidHexColorOrEmpty('#zzzzzz')).toBe(false);
+    expect(isValidHexColorOrEmpty('#12345')).toBe(false);
+  });
+
+  it('accepts a bare hex color without a leading # (DEC-371 amendment, wave 43: unified grammar tolerates it)', () => {
+    expect(isValidHexColorOrEmpty('336699')).toBe(true);
   });
 });
 

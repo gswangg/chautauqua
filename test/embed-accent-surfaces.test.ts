@@ -30,7 +30,9 @@ const EVENT: PublicEvent = {
   brandingJson: null,
 };
 
-const NON_DEFAULT_ACCENT = "#123ABC";
+// DEC-371 amendment (wave 43): normalizeHexColor (src/domain/color.ts) always
+// lowercases, so this must already be lowercase to round-trip unchanged.
+const NON_DEFAULT_ACCENT = "#123abc";
 
 function session(overrides: Partial<PublicSession>): PublicSession {
   return {
