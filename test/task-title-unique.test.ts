@@ -92,6 +92,7 @@ create table form (
   created_at integer,
   updated_at integer
 );
+create unique index form_event_id_title_idx on form (event_id, title);
 create table form_field (
   id text primary key,
   form_id text,
