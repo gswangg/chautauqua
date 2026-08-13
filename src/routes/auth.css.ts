@@ -21,31 +21,31 @@ void DEC_374;
 void DEC_944;
 void DEC_945;
 
-// DEC-945 narrow-card numbers (task-w26-b matches these): max-width 520px,
-// padding 35px, control column (inputs/actions/footer links) capped at
-// 450px — the password/not-found frame's card shape.
+// DEC-945 amendment (task-w40-c): v6 measures. body align-items switches
+// to flex-start so a card hugs its content instead of stretching to full
+// viewport height. No card draws a border on any 11-account frame, so the
+// border/border-radius are dropped from .chq-auth-card. Class NAMES stay
+// as-is (a rename would touch five call sites two lanes are editing):
+// .chq-auth-card is the plain login/form card at 732px; the
+// .chq-auth-card-narrow modifier is now the WIDER plain-card frame at
+// 820px (password / not-found) despite its name -- it is no longer
+// narrower than .chq-auth-card. The 450px control-column cap under
+// -narrow is gone.
 export const AUTH_CSS = `
-  body { display: flex; justify-content: center; padding: 40px 20px; }
+  body { display: flex; justify-content: center; align-items: flex-start; padding: 40px 20px; }
 
   .chq-auth-card {
     width: 100%;
-    max-width: 640px;
+    max-width: 732px;
     background: var(--chq-paper);
-    border: 1px solid var(--chq-rule);
-    border-radius: 6px;
     padding: 44px 44px 40px;
     display: flex;
     flex-direction: column;
     gap: 26px;
   }
   .chq-auth-card.chq-auth-card-narrow {
-    max-width: 520px;
+    max-width: 820px;
     padding: 35px;
-  }
-  .chq-auth-card-narrow .chq-auth-fields,
-  .chq-auth-card-narrow .chq-auth-actions,
-  .chq-auth-card-narrow .chq-auth-footer-links {
-    max-width: 450px;
   }
 
   .chq-auth-wordmark {
@@ -79,7 +79,7 @@ export const AUTH_CSS = `
   }
   .chq-auth-back:hover,
   .chq-auth-back:focus-visible { text-decoration: underline; }
-  .chq-auth-titlerow .chq-auth-title { margin-left: 36px; }
+  /* v6: ‹ Back and the h1 share one x -- no margin-left indent. */
 
   .chq-auth-fields { display: flex; flex-direction: column; gap: 14px; }
   .chq-auth-label {
