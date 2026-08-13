@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   dateInputToMs,
+  daysUntil,
   formatDate,
   formatDateOnly,
   formatDateTime,
@@ -9,6 +10,7 @@ import {
   formatRelative,
   msToDateInput,
 } from './dates';
+import { dayLabelEndInstant } from '../../../src/lib/timezone';
 
 describe('msToDateInput', () => {
   it('returns empty string for null', () => {
@@ -169,6 +171,26 @@ describe('formatDayLabel', () => {
   it('reads the literal calendar date regardless of ambient timezone (never shifts via a UTC-instant reinterpretation)', () => {
     // 2027-05-12 is a Wednesday.
     expect(formatDayLabel('2027-05-12')).toBe('Wed 12 May');
+  });
+});
+
+describe('daysUntil', () => {
+  // DEC-831: the ONE days-until reader -- pins the fix for the w40 finding
+  // where overview/rows.ts's raw Math.round vs CallForPapersPanel/
+  // ReviewerQueue's Math.ceil-through-tz answered 17 vs 19 for one deadline
+  // whose true answer was 18.
+  const TODAY_LABEL = Date.UTC(2027, 0, 1);
+  const TODAY_END = dayLabelEndInstant(TODAY_LABEL, 'UTC');
+
+  it('returns 18 for a close date 18 calendar days ahead in the event zone', () => {
+    const closeLabel = TODAY_LABEL + 18 * 86_400_000;
+    expect(daysUntil(closeLabel, 'UTC', TODAY_END)).toBe(18);
+  });
+
+  it('returns 0 for a same-day close, never a negative', () => {
+    expect(daysUntil(TODAY_LABEL, 'UTC', TODAY_END)).toBe(0);
+    // Well past the close day's end -- clamped to 0, not negative.
+    expect(daysUntil(TODAY_LABEL, 'UTC', TODAY_END + 5 * 86_400_000)).toBe(0);
   });
 });
 

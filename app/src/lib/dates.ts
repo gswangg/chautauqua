@@ -15,6 +15,7 @@
 // local-timezone display is correct.
 
 import { countOf } from './plural';
+import { dayLabelEndInstant } from '../../../src/lib/timezone';
 
 /** Convert an epoch-ms timestamp to a yyyy-mm-dd string for <input type="date">. */
 export function msToDateInput(ms: number | null | undefined): string {
@@ -152,6 +153,20 @@ export function formatDateTimeInZone(value: number | string, timeZone: string): 
   const get = (type: Intl.DateTimeFormatPartTypes): string =>
     parts.find((part) => part.type === type)?.value ?? '';
   return `${get('day')} ${get('month')} ${get('year')}, ${get('hour')}:${get('minute')}`;
+}
+
+/**
+ * DEC-831: the ONE days-until reader in the SPA — counts down a day-label
+ * epoch-ms value (e.g. a CFP close date) to `now` through the OWNING
+ * event's own timezone (dayLabelEndInstant), never a raw-ms subtraction on
+ * the day-label instant itself. Two independently-hand-rolled formulas
+ * (Math.round on the raw instant vs Math.ceil through the zone) answered
+ * differently for the same deadline (w40 finding) — every caller must go
+ * through this function instead of re-deriving the arithmetic. Clamped to
+ * zero: a past-due/closing-today deadline reads 0, never negative.
+ */
+export function daysUntil(dayLabelMs: number, timezone: string, now: number): number {
+  return Math.max(0, Math.ceil((dayLabelEndInstant(dayLabelMs, timezone) - now) / 86_400_000));
 }
 
 /**

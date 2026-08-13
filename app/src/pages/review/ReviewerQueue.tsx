@@ -5,22 +5,19 @@ import './review.css';
 import type { EvaluationPlan, RecusalItem, ReviewerQueueEnvelope, ReviewerQueueItem } from './types';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { countOf } from '../../lib/plural';
-// DEC-522/DEC-831: "closes in N days" is computed the same way the CFP
-// summary's Closes row is (CallForPapersPanel.tsx) -- the owning event's own
-// timezone via dayLabelEndInstant, never the viewer's ambient machine zone.
-// The plan-scoped route still fetches the plan itself (below) purely for its
-// timezone -- DEC-845's envelope carries planName/scopeTrackName/closeDate,
-// but a day-label close date is meaningless without the owning event's tz to
-// expand it through.
-import { dayLabelEndInstant } from '../../../../src/lib/timezone';
-
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
+// DEC-522/DEC-831: "closes in N days" is computed via the ONE days-until
+// reader (dates.ts daysUntil), through the owning event's own timezone --
+// never the viewer's ambient machine zone. The plan-scoped route still
+// fetches the plan itself (below) purely for its timezone -- DEC-845's
+// envelope carries planName/scopeTrackName/closeDate, but a day-label close
+// date is meaningless without the owning event's tz to expand it through.
+import { daysUntil } from '../../lib/dates';
 
 // DEC-831: 'closes in N days' -- null when the plan has no close date (a
 // window unbounded on that side has nothing to count down to).
 function closesInDaysLabel(closeDate: number | null, timezone: string): string | null {
   if (closeDate === null) return null;
-  const daysLeft = Math.max(Math.ceil((dayLabelEndInstant(closeDate, timezone) - Date.now()) / MS_PER_DAY), 0);
+  const daysLeft = daysUntil(closeDate, timezone, Date.now());
   return `closes in ${countOf(daysLeft, 'day')}`;
 }
 

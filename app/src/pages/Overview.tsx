@@ -29,6 +29,7 @@ type ContentDecision = 'approved' | 'changes_requested';
 interface EventListItem {
   id: string;
   slug: string;
+  timezone: string;
 }
 
 // Mirrors src/routes/public/shell.tsx's SURFACES tuple plus the CFP form
@@ -61,6 +62,7 @@ export function OverviewPage() {
   const [error, setError] = useState<string | null>(null);
   const [remindToast, setRemindToast] = useState<string | null>(null);
   const [eventSlug, setEventSlug] = useState<string | null>(null);
+  const [eventTimezone, setEventTimezone] = useState<string | null>(null);
   const [slugError, setSlugError] = useState<string | null>(null);
 
   async function loadPayload() {
@@ -89,6 +91,7 @@ export function OverviewPage() {
           return;
         }
         setEventSlug(match.slug);
+        setEventTimezone(match.timezone);
       })
       .catch((err) => {
         setSlugError(err instanceof ApiError ? err.message : 'Could not resolve the public link');
@@ -204,7 +207,10 @@ export function OverviewPage() {
   }
 
   const now = Date.now();
-  const deadlineCells = buildDeadlineCells(payload.deadlines, now);
+  // DEC-831: the deadline strip's day counts need the owning event's own
+  // timezone (never a UTC default) -- the strip renders empty until the
+  // small dedicated /events fetch above resolves it, rather than guessing.
+  const deadlineCells = eventTimezone ? buildDeadlineCells(payload.deadlines, now, eventTimezone) : [];
   const noActionRows = buildNoActionRows(payload, now);
   const oldestTriageDays =
     payload.triage.oldestSubmittedAt !== null
