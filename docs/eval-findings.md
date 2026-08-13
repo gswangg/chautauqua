@@ -240,6 +240,58 @@ portal detail meta still lacks TRACK ("SES-001 · Talk (30 min)" — add
 **Grader P3s** (two-track-selectors CLOSED by probe 2): label New-event Timezone ·
 explicit CFP publish affordance · close-before-open validation loud at the field.
 
+## DESIGN PACK v5 LANDED (2026-08-13, vendored to docs/design/ — AUTHORITATIVE,
+supersedes v4 for Contacts/Public-Portal/Review/Settings/Speakers; README carries
+code-level specs — READ IT). Eight design-backed additions, build per mock:
+
+1. **Saved embeds (Settings)** — DEC-785 already built the skeleton; ALIGN IT:
+   list rows reuse PublicPagesPanel row shape (name + recipe caption + On/Off
+   state pill + Get code + Turn on/off); builder becomes "Editing · ‹name›" with
+   Name field, primary = Save changes (Copy secondary); URL carries the name
+   (?embed=<slug>) resolved server-side to stored params. **DESIGN OVERRIDES
+   DEC-785 on one point: a DISABLED embed returns an EMPTY 200, not 404** ("an
+   intentional blank, not a broken page") — change it + caption "Turning one off
+   breaks it wherever it is pasted".
+2. **Participation status (Speakers, SPK-04 w2)** — organiser-set menu control in
+   the IDENTITY column (not among task cells): Not invited/Invited/Confirmed/
+   Declined w/ caret; reuses DEC-730 shapes (filled=confirmed, outlined=invited,
+   ink caps=declined, dashed=not invited); filter row gains "Any participation ▾"
+   and the old "Any status" RELABELS to "Any task status".
+3. **Send portal invite (Speakers, SPK-06 w2)** — lives IN that menu ("Send
+   portal invite" = the Not invited→Invited transition; emails claim link);
+   footer "Only 'Invited' sends anything…"; rows at Not-invited also get an
+   inline Send-portal-invite link.
+4. **Filter rules (Contacts, CRM-02 w2)** — rules row under the tab row:
+   "Matching all of [field][op][value][Remove] … Add a rule · N of M match ·
+   Save as a segment"; company-rail click WRITES a rule into this row (one
+   mechanism); fields = SEGMENT_STANDARD_FIELDS + custom.<key>.
+5. **Pipeline fit score (Contacts)** — enrol dialog gains fit 1-5 (optional) +
+   one-line "Why them"; cards show "Fit 5" pill (olive, scorecard family) or
+   dashed "Unrated" (must stay visible); NEEDS two nullable columns on
+   pipeline_entry (fit_score int, rationale text); fit ranks WITHIN a column,
+   never reorders stages; dialog states: adding writes activity, no email sent.
+6. **Assignment tooling (Review)** — plan editor "Who reviews what" gains
+   cap-per-reviewer field + "Distribute the unassigned" with preview-then-confirm:
+   names each reviewer/track/change ("6 → 8 talks"), total ("This would assign 22
+   reviews"), "Nothing is saved until you confirm", AND states what it CANNOT do
+   ("14 reviews stay unassigned — cap reached and nobody else covers X");
+   out-of-track reviewers listed "unchanged · wrong track", not hidden.
+   (Supersedes the earlier do-not-build note — design authority now exists;
+   rubric OR already satisfied, this adds legs 1+2.)
+7. **Scoped reviewer queue (Review)** — queue headed "Review · ‹plan name›" over
+   the count + "‹scope› · closes in N days" beneath; scorecard back link "‹ ‹plan›
+   queue"; scorecard eyebrow names plan · track · round.
+8. **Password CTA, three states (Public, CFP-05 w3) — SECURITY RULE (DEC-098)**:
+   `fresh` (contact created by THIS submit) → "Create a password" button w/ claim
+   path · `pending-existing-contact` (email already in CRM) → NO claim URL in the
+   HTML AT ALL; "We emailed … a link to set a password" + Log in fallback ·
+   `has-account` → "Log in to track it", no claim minted. Copy is "set a
+   password", never "create an account" (no public signup route). NOTHING on the
+   form itself. Add a test asserting the pending-existing-contact response
+   contains no claim URL.
+
+Fidelity frames: design-frames-v5 being rendered; gate fidelity round uses v5.
+
 ## EVAL-COVERAGE CAPABILITY SECTION (probe-3 verified 2026-08-13)
 
 CLOSED by probe 3: click-to-place discoverability (a11y labels intact, no

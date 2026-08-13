@@ -265,7 +265,88 @@ The rule vocabulary is fixed by `SEGMENT_STANDARD_FIELDS` — `email`, `firstNam
 
 **The board is five columns and scrolls sideways** below 1000px rather than compressing — it was laid out for four before the stages were corrected.
 
+**Fit score and rationale are NEW columns — they do not exist.** `pipeline_entry` is `{orgId, contactId, stage, …}` and `enrollContact(db, orgId, contactId, stage, {userId, name})` takes neither; `pipeline_activity` stores only `fromStage`/`toStage`. The design adds two nullable columns, `fit_score` (integer 1–5) and `rationale` (short text), set in the enroll dialog and editable after.
+
+They answer a question stage cannot: stage says how far along someone is, fit says how much you want them. Two people can sit in `contacted` for six weeks with completely different worth in chasing. Every card therefore shows `Fit 5` (olive, same family as the review scorecard's score pills) or a dashed **Unrated** — unrated must stay visible, or an organiser reads absence as a low score. Fit ranks people **within** a column; it never reorders stages.
+
+The enroll dialog sets stage (the five chips), fit (1–5, optional), and a one-line "Why them" shown on the card, and states the two things that surprise people: adding writes a move to the activity feed, and no email is sent.
+
 Moving a card writes a `move` activity; notes write a `note` activity to the same append-only feed (`pipeline_activity`). Neither sends email — the module comment is explicit that pipeline moves and notes never touch the mailer.
+
+## Embeds — saved, not stateless
+
+`EmbedsPanel.tsx` is a **stateless builder** today: every knob (surface, format, track, day, limit, fields, accent) maps onto `buildEmbedUrl`/`buildSnippet` query params and is lost on reload. The design adds the lifecycle around it, in Settings → Public pages and embeds, below the existing surface rows.
+
+- **Saved embeds list** — one named row each, reusing the `PublicPagesPanel` row shape: name + recipe ("Sessions · iframe · AI Engineering · 6 fields"), where it is in use, an **On/Off** state pill in the same live/muted tones `stateTone` already produces, and two actions: *Get code* and *Turn on/off*. The section caption states the consequence — "Turning one off breaks it wherever it is pasted" — because an embed is live HTML on somebody else's site.
+- **The builder becomes an editor of one saved embed.** Same knobs, plus a **Name** field, headed "Editing · ‹name›". Its primary action is *Save changes*, not *Copy snippet* — copying is secondary once the embed persists.
+- **The saved embed's URL carries its name** (`?embed=ai-track`), which is the point of saving: editing filters later updates every page it is pasted on. A stateless snippet freezes its filters at copy time.
+- Phone gets the list, the On/Off toggle and *Get code*; editing filters says "easier on a laptop".
+
+**New work:** there is no embed table. This needs a persisted row per embed (org/event, name, surface, format, params, enabled) and a resolver so `?embed=<slug>` expands to the stored params at request time. `enabled: false` should return an empty 200 rather than a 404 — a disabled embed is an intentional blank, not a broken page.
+
+## Speakers — participation status
+
+`participant.invite_status` (`src/db/schema.ts:274`, default `"none"`) is organiser-set and today read-only in the admin, surfacing only as a chip on submission detail. The roster row now carries it as a control under the speaker's name — **Not invited / Invited / Confirmed / Declined** — with a caret, because it is a menu moving between named states rather than the two-state toggle the task cells use.
+
+It deliberately reuses the DEC-730 control shapes (filled olive = confirmed, outlined = invited, ink-outlined caps = declined, dashed = not invited) so the grid has one visual vocabulary, but it sits in the **identity column**, not among the task cells: the task cells are speaker-driven and toggle on click; this one is organiser-driven and opens a menu. The filter row gains **Any participation ▾** beside the existing task filters, and the old "Any status" is relabelled "Any task status" — with two status axes on one screen, an unqualified "status" is ambiguous.
+
+## Contacts — filter rules
+
+The backend supports AND-composed `SegmentRule` sets (`{field, op, value}`, DEC-149) but the UI builder was removed in the DirectoryRail redesign, leaving only company-rail clicks and saved segments. The design restores it as a **rules row directly under the tab row**, so it composes with the search box and Segment control already there rather than replacing them:
+
+```
+Matching all of   [company ▾][is ▾][Latticework Systems][Remove]   [custom.role ▾][is ▾][speaker][Remove]   Add a rule        41 of 318 match   Save as a segment
+```
+
+"Matching all of" states the AND without a boolean control. The match count sits at the end of the row, next to *Save as a segment* — the one moment a rule set becomes durable. A company-rail click writes its rule into this same row, so the drill-through and the builder are visibly one mechanism. Field options are bounded by `SEGMENT_STANDARD_FIELDS` + `custom.<key>` (see below). On phone, each rule is a removable chip with a dashed **+ Rule** at the end.
+
+## Review — the queue is scoped to a plan
+
+A reviewer can be assigned to several plans, so a bare "11 left to score" doesn't say which. The queue is headed **Review · Wave 2** over the count, with "AI Engineering deep pass · closes in 19 days" beneath, and the scorecard's back link reads *‹ Wave 2 queue* rather than *‹ Queue*. The scorecard's own eyebrow names the round too (`Wave 2 · AI Engineering · round 1`), since `criteriaForRound` means the criteria a reviewer sees depend on it.
+
+## Review — assignment tooling
+
+The plan editor's "Who reviews what" section gains a **cap per reviewer** field and a **Distribute the unassigned** action, sitting above the reviewer list. Distribution is **preview-then-confirm**, never a silent write: the preview names each reviewer, their track, and the change ("6 → 8 talks"), states the total ("This would assign 22 reviews"), and marks itself "Nothing is saved until you confirm".
+
+The preview must also state what it **cannot** do — "14 reviews stay unassigned — the cap is reached and nobody else covers AI Engineering". An auto-distribute that silently under-fills is worse than none, because the organiser believes the round is staffed. Reviewers already outside the track are listed as "unchanged · wrong track" rather than hidden, so the reason is visible.
+
+## Speakers — where the portal invite lives
+
+The roster has no drawer, so a per-speaker "Send portal invite" has no obvious home. It lives on the **participation control's own menu**, because sending an invite *is* the Not invited → Invited transition — a separate button would be a second way to do one thing. The menu reads: Not invited (current) · **Send portal invite** (emails a claim link and sets this to Invited) · Confirmed · Declined, with the footer "Only 'Invited' sends anything — the other two just record what you already know". Rows sitting at "Not invited" also carry an inline *Send portal invite* link, so the common case needs no menu.
+
+## Public — the password CTA has three states, and that is a security rule
+
+This CTA already exists (`submit-views.tsx:304`) and is governed by **DEC-098**: the on-screen claim link is only safe when the contact was created by *this* request. Anyone can type a known speaker's email into a public form, so rendering that contact's claim URL would hand over their portal. The design draws all three states as separate frames, because they differ in what may appear on screen — not in tone:
+
+| State | On screen |
+|---|---|
+| `fresh` — contact created by this submit | **Create a password** button, linking the claim path |
+| `pending-existing-contact` — email already in the CRM | **No claim URL in the HTML at all.** "We emailed … a link to set a password", plus a *Log in* fallback |
+| `has-account` — a user already exists | **Log in to track it**; no claim path minted |
+
+Copy follows the mechanism: it is *set a password* on an emailed claim link, never "create an account" — there is no public signup route. The benefit stated is the one that is true, "track this talk without waiting for the email". An earlier draft of this design also promised that an account would let you "submit again without retyping your details"; nothing pre-fills a submission for an authenticated submitter, so it was cut.
+
+Nothing about this appears on the form itself. Submitting needs no account, that promise is already in the lede, and a signup affordance beside the submit button competes with the one action that matters.
+
+## What this round added
+
+Eight additions, in plain terms. Each has its own section above with the code-level detail.
+
+1. **Saved embeds** (Settings). Embeds were a builder you copied from and lost. Now each one is a saved, named thing in a list, with an On/Off switch and a "Get code" button; the builder becomes an editor for one of them. The embed's URL carries its name, so changing its filters later updates every website it is pasted on. *Needs a new table and a `?embed=<slug>` resolver.*
+
+2. **Participation status** (Speakers). Each roster row gets a menu under the speaker's name — Not invited / Invited / Confirmed / Declined. The organiser sets this one; the task cells beside it are speaker-driven. The filter bar gained "Any participation", and the old "Any status" became "Any task status" so the two aren't confused.
+
+3. **Send portal invite** (Speakers). It lives inside that same menu, because sending an invite *is* the Not invited → Invited move. Rows already at "Not invited" also carry an inline link, so the common case skips the menu.
+
+4. **Filter rules** (Contacts). A row of stackable rules under the tabs — `company is Latticework` + `role is speaker` — with "Matching all of" in front and a live match count at the end. Clicking a company in the sidebar writes a rule into the same row, so the drill-through and the builder are one mechanism.
+
+5. **Pipeline fit score** (Contacts). Each card shows "Fit 5" or a dashed "Unrated", plus a one-line reason. Stage says how far along someone is; fit says how much you want them — two people can sit in `contacted` for six weeks and be worth chasing very differently. Set when you add someone. *Needs two new columns on `pipeline_entry`.*
+
+6. **Assignment tooling** (Review). A cap-per-reviewer field and a "Distribute the unassigned" action in the plan editor. It previews before it writes — naming each reviewer's change, the total, and, critically, what it could **not** do ("14 reviews stay unassigned — the cap is reached and nobody else covers AI Engineering"). A distribute that silently under-fills is worse than none.
+
+7. **Scoped reviewer queue** (Review). The queue and scorecard name which wave you are in, so a reviewer working two plans can tell them apart.
+
+8. **Password CTA, three states** (Public). The confirmation screen's "set a password" link only appears when this submission created the contact; when the email is already in the CRM, no claim URL may appear on screen at all. That is a takeover defence, not a copy variant.
 
 ## Copy rules
 

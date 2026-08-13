@@ -66,14 +66,15 @@
         <div style="display:flex; align-items:center; gap:12px; border-top:1px solid #D3CFC0; border-bottom:1px solid #D3CFC0; padding:13px 0; flex-wrap:wrap">
           <div style="border:1px solid #BAB6A6; border-radius:4px; padding:8px 12px; font-size:13px; color:#565A4B; background:#FAF8F2; min-width:230px">Search speaker or company…</div>
           <div style="border:1px solid #BAB6A6; border-radius:4px; padding:8px 12px; font-size:13px; font-weight:600">All tasks ▾</div>
-          <div style="border:1px solid #BAB6A6; border-radius:4px; padding:8px 12px; font-size:13px; font-weight:600">Any status ▾</div>
+          <div style="border:1px solid #BAB6A6; border-radius:4px; padding:8px 12px; font-size:13px; font-weight:600">Any task status ▾</div>
+          <div style="border:1px solid #BAB6A6; border-radius:4px; padding:8px 12px; font-size:13px; font-weight:600">Any participation ▾</div>
           <span style="background:#1B1D17; color:#F4F1E8; border-radius:99px; padding:6px 13px; font-size:12px; font-weight:600">Overdue only</span>
           <span style="margin-left:auto; font-size:11px; font-weight:600; letter-spacing:0.04em; text-transform:uppercase; color:#565A4B">Skips anyone emailed in the last hour</span>
         </div>
 
         <div style="overflow-x:auto; -webkit-overflow-scrolling:touch">
           <div style="min-width:1060px; display:grid; grid-template-columns:230px repeat(6, 1fr); gap:12px; padding:0 0 10px; border-bottom:2px solid #1B1D17">
-            <span style="font-size:10px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Speaker</span>
+            <span style="font-size:10px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Speaker · participation</span>
             <sc-for list="{{ tasks }}" as="t" hint-placeholder-count="6">
               <div style="display:flex; flex-direction:column; gap:2px">
                 <span style="font-size:12px; font-weight:700; line-height:1.25">{{ t.title }}</span>
@@ -83,9 +84,15 @@
           </div>
           <sc-for list="{{ speakers }}" as="row" hint-placeholder-count="6">
             <div style="min-width:1060px; display:grid; grid-template-columns:230px repeat(6, 1fr); gap:12px; align-items:center; padding:13px 0; border-bottom:1px solid #E1DDCE">
-              <div style="display:flex; flex-direction:column; gap:3px; padding-right:12px">
+              <div style="display:flex; flex-direction:column; gap:4px; padding-right:12px">
                 <a href="#" style="font-family:'Familjen Grotesk', sans-serif; font-size:16px; font-weight:600; letter-spacing:-0.015em; color:#1B1D17">{{ row.name }}</a>
                 <span style="font-size:12px; color:#565A4B">{{ row.meta }}</span>
+                <div style="display:flex; align-items:center; gap:9px; flex-wrap:wrap">
+                  <span style="{{ row.inviteStyle }}" style-hover="box-shadow:0 0 0 2px #CFC7B7">{{ row.invite }} ▾</span>
+                  <sc-if value="{{ row.needsInvite }}" hint-placeholder-val="{{ false }}">
+                    <a href="#" style="font-size:12px; font-weight:700">Send portal invite</a>
+                  </sc-if>
+                </div>
                 <sc-if value="{{ row.outstanding }}" hint-placeholder-val="{{ true }}">
                   <a href="#" style="font-size:12px; font-weight:700; padding-top:2px">Remind {{ row.first }}</a>
                 </sc-if>
@@ -141,9 +148,10 @@
       <div style="flex:1; min-height:0; overflow-y:auto; padding:4px 16px 16px">
         <sc-for list="{{ speakers }}" as="row" hint-placeholder-count="4">
           <div style="padding:16px 0; border-bottom:1px solid #E1DDCE; display:flex; flex-direction:column; gap:11px">
-            <div style="display:flex; flex-direction:column; gap:2px">
+            <div style="display:flex; flex-direction:column; gap:5px">
               <span style="font-family:'Familjen Grotesk', sans-serif; font-size:17px; font-weight:600; letter-spacing:-0.02em">{{ row.name }}</span>
               <span style="font-size:12px; color:#565A4B">{{ row.meta }}</span>
+              <span style="{{ row.inviteStyleM }}">{{ row.invite }} ▾</span>
             </div>
             <div style="display:flex; flex-direction:column; gap:8px">
               <sc-for list="{{ row.cells }}" as="cell" hint-placeholder-count="6">
@@ -265,6 +273,7 @@
             <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:2px">
               <span style="font-family:'Familjen Grotesk', sans-serif; font-size:16px; font-weight:600; letter-spacing:-0.015em">{{ row.name }}</span>
               <span style="font-size:12px; color:#565A4B; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">{{ row.meta }}</span>
+              <span style="{{ row.inviteStyleM }}">{{ row.invite }} ▾</span>
             </div>
             <span style="border:1px solid #BAB6A6; border-radius:6px; background:#EFEBDF; min-height:44px; display:flex; align-items:center; padding:0 13px; font-size:13px; font-weight:600">Open</span>
           </div>
@@ -273,6 +282,37 @@
       <div style="flex-shrink:0; border-top:1px solid #1B1D17; background:#EFEBDF; padding:12px 16px 16px; display:flex; gap:8px">
         <span style="flex:1; background:#4E5C31; color:#F7F9F0; border-radius:6px; min-height:48px; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700">Add a speaker</span>
         <span style="border:1px solid #BAB6A6; border-radius:6px; min-height:48px; display:flex; align-items:center; padding:0 16px; font-size:13px; font-weight:600">Import CSV</span>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:center; gap:12px">
+      <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; background:#1B1D17; color:#F4F1E8; padding:5px 10px; border-radius:4px">Menu</span>
+      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Participation · open</span>
+      <span style="font-size:11px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B">Where the portal invite lives</span>
+    </div>
+
+    <div style="width:420px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:6px; overflow:hidden; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+      <div style="border-bottom:1px solid #1B1D17; padding:16px 20px; display:flex; flex-direction:column; gap:3px">
+        <span style="font-family:'Familjen Grotesk', sans-serif; font-size:17px; font-weight:600; letter-spacing:-0.02em">Wei Chen</span>
+        <span style="font-size:12px; color:#565A4B">Northwind Data · no portal account</span>
+      </div>
+      <div style="padding:8px 0">
+        <sc-for list="{{ inviteMenu }}" as="m" hint-placeholder-count="4">
+          <div style="{{ m.rowStyle }}">
+            <div style="display:flex; flex-direction:column; gap:2px">
+              <span style="{{ m.labelStyle }}">{{ m.label }}</span>
+              <span style="font-size:12px; color:#565A4B; line-height:1.45">{{ m.detail }}</span>
+            </div>
+            <sc-if value="{{ m.current }}" hint-placeholder-val="{{ false }}">
+              <span style="margin-left:auto; font-size:11px; font-weight:800; letter-spacing:0.09em; text-transform:uppercase; color:#4E5C31">Now</span>
+            </sc-if>
+          </div>
+        </sc-for>
+      </div>
+      <div style="border-top:1px solid #D3CFC0; background:#EFEBDF; padding:14px 20px; display:flex; flex-direction:column; gap:4px">
+        <span style="font-size:12px; color:#565A4B; line-height:1.5">Only "Invited" sends anything — the other two just record what you already know</span>
       </div>
     </div>
   </div>
@@ -299,13 +339,30 @@ function cells(states, files) {
   }));
 }
 
+// participant.invite_status — ORGANISER-set, unlike the speaker-driven task cells.
+// Same DEC-730 control shapes; the caret marks it as a menu, not a toggle.
+const INV_BASE = 'font-size:11px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; border-radius:3px; padding:2px 8px; cursor:pointer; align-self:flex-start';
+const INV = {
+  Confirmed: 'color:#F7F9F0; background:#4E5C31; font-weight:800; ' + INV_BASE,
+  Invited: 'color:#3F4237; border:1px solid #BAB6A6; ' + INV_BASE,
+  Declined: 'color:#1B1D17; border:1px solid #1B1D17; font-weight:800; ' + INV_BASE,
+  'Not invited': 'color:#565A4B; border:1px dashed #BAB6A6; ' + INV_BASE,
+};
+
 function withRemind(rows) {
   return rows.map((r) => ({
     ...r,
     first: r.name.split(' ')[0],
     outstanding: r.cells.some((c) => c.label === 'Pending' || c.label === 'Overdue'),
+    inviteStyle: INV[r.invite],
+    needsInvite: r.invite === 'Not invited',
+    inviteStyleM: INV[r.invite] + '; min-height:32px; display:inline-flex; align-items:center',
   }));
 }
+
+const M_ROW = 'display:flex; align-items:center; gap:12px; padding:11px 20px; cursor:pointer';
+const M_ROW_ON = M_ROW + '; background:#EFEBDF';
+const M_LABEL = 'font-size:15px; font-weight:600';
 
 class Component extends DCLogic {
   renderVals() {
@@ -317,6 +374,12 @@ class Component extends DCLogic {
         { q: 'Accessibility needs', a: 'None' },
         { q: 'Anything else', a: 'Happy to share a hotel with other speakers' },
       ],
+      inviteMenu: [
+        { label: 'Not invited', detail: 'Nothing has been sent', rowStyle: 'display:flex; align-items:center; gap:12px; padding:11px 20px; cursor:pointer; background:#EFEBDF', labelStyle: 'font-size:15px; font-weight:600', current: true },
+        { label: 'Send portal invite', detail: 'Emails a claim link and sets this to Invited', rowStyle: 'display:flex; align-items:center; gap:12px; padding:11px 20px; cursor:pointer', labelStyle: 'font-size:15px; font-weight:700; color:#4E5C31', current: false },
+        { label: 'Confirmed', detail: 'They told you another way', rowStyle: 'display:flex; align-items:center; gap:12px; padding:11px 20px; cursor:pointer', labelStyle: 'font-size:15px; font-weight:600', current: false },
+        { label: 'Declined', detail: 'They are not speaking this year', rowStyle: 'display:flex; align-items:center; gap:12px; padding:11px 20px; cursor:pointer', labelStyle: 'font-size:15px; font-weight:600', current: false },
+      ],
       tasks: [
         { title: 'Confirm participation', due: 'Due 1 Apr · required' },
         { title: 'Upload headshot', due: 'Due 10 Apr · required' },
@@ -326,12 +389,12 @@ class Component extends DCLogic {
         { title: 'Hotel stay form', due: 'Due 25 Apr · form' },
       ],
       speakers: withRemind([
-        { name: 'Priya Raman', meta: 'Latticework Systems · has account', cells: cells(['c','c','p','p','c','c'], [1]) },
-        { name: 'Marcus Okafor', meta: 'Cloudreach Labs · has account', cells: cells(['c','l','p','p','p','p']) },
-        { name: 'Ruth Adeyemi', meta: 'Meridian Tools', cells: cells(['p','p','p','l','p','p']) },
-        { name: 'Oskar Vance', meta: 'Independent', cells: cells(['c','c','c','c','l','c'], [3]) },
-        { name: 'Nadia Ferrone', meta: 'Northwind Data · has account', cells: cells(['c','c','c','p','c','p']) },
-        { name: 'Wei Chen', meta: 'Northwind Data', cells: cells(['c','p','p','n','p','n']) },
+        { name: 'Priya Raman', invite: 'Confirmed', meta: 'Latticework Systems · has account', cells: cells(['c','c','p','p','c','c'], [1]) },
+        { name: 'Marcus Okafor', invite: 'Confirmed', meta: 'Cloudreach Labs · has account', cells: cells(['c','l','p','p','p','p']) },
+        { name: 'Ruth Adeyemi', invite: 'Invited', meta: 'Meridian Tools', cells: cells(['p','p','p','l','p','p']) },
+        { name: 'Oskar Vance', invite: 'Declined', meta: 'Independent', cells: cells(['c','c','c','c','l','c'], [3]) },
+        { name: 'Nadia Ferrone', invite: 'Confirmed', meta: 'Northwind Data · has account', cells: cells(['c','c','c','p','c','p']) },
+        { name: 'Wei Chen', invite: 'Not invited', meta: 'Northwind Data', cells: cells(['c','p','p','n','p','n']) },
       ]),
       tabs: [
         { label: 'Overview', dot: 'width:8px; height:8px; border-radius:50%; background:#BAB6A6', text: 'font-size:11px; font-weight:600; color:#565A4B' },
