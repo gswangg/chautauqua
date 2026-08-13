@@ -786,3 +786,23 @@ AND audit noStoreByDefault + any other header-stamping middleware for the same t
     violates the affordance rule); real per-track scope values; organiser+reviewers
     only in People list; render Markdown in wiki (STILL raw — bug); Tracks-and-rooms
     read-only w/ drill-in edit; phone subscreens as routes + bottom tab bar.
+
+65. r3-Review + r3-Submissions dispositions.
+    **THE SINGLE MOST URGENT ITEM IN THIS FILE: the reviewer role is STILL locked out
+    (item 33a, third cycle).** The error boundary landed; the ROLE-AWARE SHELL FETCH
+    did not — the shell still calls organizer-only /api/v1/events/:id/overview for
+    reviewers → 403 → crash card with dead-end recovery (Try again loops, Back to
+    Overview re-crashes, /review 404s). FIX NOW: the shell requests badge/overview
+    data ONLY for organizer role; reviewers get a role-appropriate shell (no badges or
+    a reviewer-scoped endpoint). One conditional. Until this lands, a third of the
+    app's personas cannot use it — autograder-fatal AND human-fatal.
+    Review keeps: freeze-is-real, weight shares, 3-default prefill, Speaker/Track
+    columns. Review carries: item 52 grammar (all of it), typed-criteria → v4 uniform
+    rows, "Start a new wave", read-only locked rows, blended score column, names not
+    emails, three-state vocabulary.
+    Submissions keeps: **WAITLIST fully restored** (chip + toggle + bulk), phone
+    triage buttons on pending rows, dynamic save-view subtitle. Submissions carries:
+    item 51 builder anatomy (FAILED again — two-line rows, ↑↓ arrows, six locked
+    speaker rows vs one combined built-in, "Description", settings block wedged before
+    the Public link), share opt-in checkbox, detail structure set, phone fixed-footer
+    decisions, co-presenter search layout bug, quick-add combined name field.
