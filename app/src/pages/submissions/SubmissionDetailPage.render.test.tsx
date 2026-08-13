@@ -30,6 +30,7 @@ function baseDetail(overrides: Partial<Record<string, unknown>> = {}) {
     updatedAt: 1700000000000,
     participants: [],
     answers: {},
+    slot: null as { day: string; startMin: number; endMin: number; roomName: string | null } | null,
     ...overrides,
   };
 }
@@ -635,5 +636,97 @@ describe('SubmissionDetailPage render: awaiting-triage banner (DEC-761)', () => 
     await waitFor(() => {
       expect(screen.getByText(/Awaiting triage/)).toBeInTheDocument();
     });
+  });
+});
+
+// DEC-780: the organiser's submission detail carries format and placement.
+describe('SubmissionDetailPage render: placement + format (DEC-780)', () => {
+  it('renders the placement line only when slot is non-null', async () => {
+    const detail = baseDetail({
+      slot: { day: '2026-05-12', startMin: 600, endMin: 630, roomName: 'Room 2A' },
+    });
+    mockApi({
+      [`GET /api/v1/submissions/${SUB_ID}`]: detail,
+      [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
+      [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
+      [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('Original description')).toBeInTheDocument();
+    });
+    expect(screen.getByText('Tue 12 May, 10:00–10:30 · Room 2A')).toBeInTheDocument();
+  });
+
+  it('renders no placement line when slot is null (not yet scheduled)', async () => {
+    const detail = baseDetail({ slot: null });
+    mockApi({
+      [`GET /api/v1/submissions/${SUB_ID}`]: detail,
+      [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
+      [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
+      [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('Original description')).toBeInTheDocument();
+    });
+    expect(document.querySelector('.chq-detail-placement')).not.toBeInTheDocument();
+  });
+
+  it('lists the SESSION_FORMAT field options and PATCHes { format } on change', async () => {
+    let currentDetail = baseDetail();
+    const patchMock = vi.fn(() => {
+      currentDetail = { ...currentDetail, answers: { field_session_format: 'Workshop' } };
+      return currentDetail;
+    });
+    const fetchMock = mockApi({
+      [`GET /api/v1/submissions/${SUB_ID}`]: () => currentDetail,
+      [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
+      [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
+      [`GET /api/v1/events/evt-1/forms`]: {
+        id: 'form-1',
+        fields: [
+          {
+            id: 'field_session_format',
+            section: 'session',
+            kind: 'dropdown',
+            label: 'Format',
+            required: false,
+            position: 1,
+            options: ['Talk', 'Workshop'],
+          },
+        ],
+      },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`PATCH /api/v1/submissions/${SUB_ID}`]: patchMock,
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('Original description')).toBeInTheDocument();
+    });
+
+    const select = await screen.findByLabelText('Format');
+    expect(select).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Talk' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Workshop' })).toBeInTheDocument();
+
+    fireEvent.change(select, { target: { value: 'Workshop' } });
+
+    await waitFor(() => {
+      expect(patchMock).toHaveBeenCalled();
+    });
+    const patchCall = fetchMock.mock.calls.find(([input, init]) => {
+      const url = typeof input === 'string' ? input : (input as Request | URL).toString();
+      return url.includes(`/submissions/${SUB_ID}`) && init?.method === 'PATCH';
+    })!;
+    expect(JSON.parse(patchCall[1]!.body as string)).toEqual({ format: 'Workshop' });
   });
 });

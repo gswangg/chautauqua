@@ -21,6 +21,7 @@ function makeChain(rows: unknown[]) {
   const chain: any = {
     from: () => chain,
     innerJoin: () => chain,
+      leftJoin: () => chain,
     where: () => chain,
     orderBy: () => chain,
     limit: () => chain,

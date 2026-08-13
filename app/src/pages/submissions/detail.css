@@ -107,7 +107,23 @@
   text-transform: uppercase;
 }
 
-.chq-detail-section-title::before {
+/* The numbered prefix must sit in the SAME head as the title text. A plain
+   .chq-detail-section-title (no row layout) puts ::before directly on the
+   element, which reads fine inline. But .chq-detail-section-title-row is a
+   flex container with justify-content:space-between — putting ::before on
+   THAT element makes the pseudo-element its own flex item, so
+   space-between shoves "01 —" to the far left, the title text to the
+   middle, and the action button to the right: three floating pieces
+   instead of "01 — History" read as one head. For the row variant the
+   prefix is attached to the title text's own span instead, so it travels
+   with the text as a single flex item on the left; the action button
+   remains the sole item on the right. */
+.chq-detail-section-title:not(.chq-detail-section-title-row)::before {
+  content: counter(chq-detail-section, decimal-leading-zero) ' \2014 ';
+  color: var(--chq-muted);
+}
+
+.chq-detail-section-title-row .chq-detail-section-title-text::before {
   content: counter(chq-detail-section, decimal-leading-zero) ' \2014 ';
   color: var(--chq-muted);
 }

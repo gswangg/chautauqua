@@ -6,8 +6,9 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { apiGet, apiList, apiPatch, apiPost, ApiError } from '../../lib/api';
 import { formatDate as formatTimestamp, formatDateTime } from '../../lib/dates';
 import { formatEventDate } from '../../../../src/lib/event-time';
+import { SESSION_FORMAT_FIELD_ID } from '../../../../src/forms/types';
 import type { CfpForm } from '../forms/types';
-import { buildAnswerRows, resolveAnswerFields } from './detailRows';
+import { buildAnswerRows, formatPlacementLine, resolveAnswerFields } from './detailRows';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { buildSubmissionsQuery, parseSubmissionsQuery } from './filters';
 import './detail.css';
@@ -166,6 +167,8 @@ export function SubmissionDetailPage() {
   // '· N days' clause.
   const [eventTimeZone, setEventTimeZone] = useState<string | null>(null);
   const [listPosition, setListPosition] = useState<ListPosition | null>(null);
+  const [formatPending, setFormatPending] = useState(false);
+  const [formatError, setFormatError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -332,6 +335,27 @@ export function SubmissionDetailPage() {
     }
   }
 
+  // DEC-780/DEC-755: the format select PATCHes { format } straight through
+  // the route that already validates it against the event default form's
+  // SESSION_FORMAT field options (src/routes/api/submissions.ts) -- no new
+  // validation, no second writer.
+  async function changeFormat(value: string) {
+    if (!detail || !id || !value) return;
+    const previous = detail;
+    setFormatPending(true);
+    setFormatError(null);
+    setDetail({ ...detail, answers: { ...detail.answers, [SESSION_FORMAT_FIELD_ID]: value } });
+    try {
+      const updated = await apiPatch<SubmissionDetail>(`/submissions/${id}`, { format: value });
+      setDetail(updated);
+    } catch (err) {
+      setDetail(previous);
+      setFormatError(err instanceof ApiError ? `Format update failed: ${err.message}` : 'Format update failed');
+    } finally {
+      setFormatPending(false);
+    }
+  }
+
   async function cloneSubmission() {
     if (!id) return;
     setCloning(true);
@@ -469,6 +493,13 @@ export function SubmissionDetailPage() {
   // first (order asc) participant when no role is literally 'speaker'.
   const speaker = detail.participants.find((p) => p.role === 'speaker') ?? detail.participants[0] ?? null;
   const triageDays = daysAwaitingTriage(detail.createdAt, eventTimeZone, Date.now());
+  // DEC-780: the event default form's own SESSION_FORMAT field, matched by
+  // its stable id (not a label heuristic) -- the same field the PATCH route
+  // validates format against.
+  const formatField = form?.fields.find((f) => f.id === SESSION_FORMAT_FIELD_ID);
+  const currentFormat = typeof detail.answers[SESSION_FORMAT_FIELD_ID] === 'string'
+    ? (detail.answers[SESSION_FORMAT_FIELD_ID] as string)
+    : '';
 
   return (
     <div className="chq-page chq-detail-page">
@@ -484,6 +515,10 @@ export function SubmissionDetailPage() {
         <h1>
           {detail.ref}: {detail.title}
         </h1>
+        {/* DEC-780: only rendered once the session has an actual agenda
+            placement -- schedule_slot has at most one row per submission,
+            null means "not scheduled yet", never a blank/placeholder line. */}
+        {detail.slot && <p className="chq-detail-placement">{formatPlacementLine(detail.slot)}</p>}
         {listPosition && (
           <div className="chq-detail-position" aria-label="Position in list">
             {/* DEC-733: at either end the corresponding control is absent,
@@ -570,7 +605,7 @@ export function SubmissionDetailPage() {
                 action ON that same rule -- never a bare toggle-button
                 standing in for the heading. */}
             <div className="chq-detail-section-title chq-detail-section-title-row">
-              <span>History</span>
+              <span className="chq-detail-section-title-text">History</span>
               <button type="button" className="chq-detail-section-action chq-link-button" onClick={toggleHistory}>
                 {historyOpen ? 'Hide' : 'Show'}
               </button>
@@ -666,6 +701,32 @@ export function SubmissionDetailPage() {
                     </button>
                   </div>
                 </div>
+              )}
+            </div>
+          </section>
+
+          <section className="chq-detail-section">
+            <h2 className="chq-detail-section-title">Format</h2>
+            <div className="chq-detail-section-body">
+              {formatError && <div className="chq-error-banner">{formatError}</div>}
+              {formatField ? (
+                <select
+                  id="submission-format"
+                  className="chq-select"
+                  aria-label="Format"
+                  value={currentFormat}
+                  disabled={formatPending}
+                  onChange={(e) => changeFormat(e.target.value)}
+                >
+                  <option value="">Not set</option>
+                  {(formatField.options ?? []).map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <p>This event's form has no session format field.</p>
               )}
             </div>
           </section>

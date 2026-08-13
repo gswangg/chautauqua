@@ -137,6 +137,8 @@ export interface SubmissionDetail {
   updatedAt: number;
   participants: SubmissionDetailParticipant[];
   answers: Record<string, unknown>;
+  // DEC-780: null when the session hasn't been placed on the agenda yet.
+  slot: { day: string; startMin: number; endMin: number; roomName: string | null } | null;
 }
 
 export const DEFAULT_FILTER_STATE: SubmissionsFilterState = {
