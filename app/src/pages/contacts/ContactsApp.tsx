@@ -103,7 +103,26 @@ export function ContactsApp() {
   const [duplicatePreview, setDuplicatePreview] = useState<DuplicateGroup[]>([]);
 
   const [openContactId, setOpenContactId] = useState<string | null>(null);
-  const [showImport, setShowImport] = useState(false);
+  // DEC-827: Speakers links into the importer with ?import=1 (the event
+  // preselected via useCurrentEvent) -- the toolbar's "Import CSV" button
+  // shares this same opener/URL-state path, so there is one way in, not
+  // two. The param is deleted the moment the wizard closes so a later
+  // navigation (e.g. browser back) can never replay it.
+  const showImport = searchParams.get('import') === '1';
+  function openImport() {
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev);
+      params.set('import', '1');
+      return params;
+    });
+  }
+  function closeImport() {
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev);
+      params.delete('import');
+      return params;
+    });
+  }
   const [showNewContact, setShowNewContact] = useState(false);
   const [showBulkEmail, setShowBulkEmail] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -211,7 +230,7 @@ export function ContactsApp() {
               Export CSV
             </a>
           )}
-          <button type="button" className="chq-btn chq-btn-secondary" onClick={() => setShowImport(true)}>
+          <button type="button" className="chq-btn chq-btn-secondary" onClick={openImport}>
             Import CSV
           </button>
           <button type="button" className="chq-btn chq-btn-primary" onClick={() => setShowNewContact(true)}>
@@ -398,7 +417,8 @@ export function ContactsApp() {
 
       {showImport && (
         <ImportWizard
-          onClose={() => setShowImport(false)}
+          eventId={eventId ?? undefined}
+          onClose={closeImport}
           onImported={() => {
             reload();
           }}
