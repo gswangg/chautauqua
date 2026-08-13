@@ -17,6 +17,7 @@ import type {
 } from './overview/types';
 import { buildDeadlineCells, buildNoActionRows, daysLateLabel, headlineText, joinSegments, pluralize } from './overview/rows';
 import { AgendaWorkSection } from './overview/AgendaWorkSection';
+import { daysAgo } from '../lib/dates';
 import './overview/overview.css';
 
 type SubmissionStatus = 'accepted' | 'accept_queue' | 'declined';
@@ -51,7 +52,7 @@ const PUBLIC_SURFACES: ReadonlyArray<{ label: string }> = [
 // never dropped like the unplaced row's duration (which the server never
 // sends — see AgendaWorkSection.tsx).
 function waitingDaysLabel(submittedAt: number, now: number): string {
-  const days = Math.max(0, Math.round((now - submittedAt) / 86_400_000));
+  const days = daysAgo(submittedAt, now);
   return `waiting ${days} ${pluralize(days, 'day')}`;
 }
 
@@ -213,9 +214,7 @@ export function OverviewPage() {
   const deadlineCells = eventTimezone ? buildDeadlineCells(payload.deadlines, now, eventTimezone) : [];
   const noActionRows = buildNoActionRows(payload, now);
   const oldestTriageDays =
-    payload.triage.oldestSubmittedAt !== null
-      ? Math.max(0, Math.round((now - payload.triage.oldestSubmittedAt) / 86_400_000))
-      : null;
+    payload.triage.oldestSubmittedAt !== null ? daysAgo(payload.triage.oldestSubmittedAt, now) : null;
 
   return (
     <div className="chq-page chq-measure">

@@ -8,9 +8,8 @@
 // a colour change.
 
 import { countOf } from '../../lib/plural';
+import { daysAgo } from '../../lib/dates';
 import type { PipelineStage } from './types';
-
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 // DEC-803: past 30 days is stale -- exactly 30 days is not yet stale.
 const STALE_AFTER_DAYS = 30;
@@ -21,8 +20,7 @@ export interface PipelineCardAge {
 }
 
 function daysSince(stageSinceMs: number, nowMs: number): number {
-  const diff = nowMs - stageSinceMs;
-  return Math.max(0, Math.floor(diff / MS_PER_DAY));
+  return daysAgo(stageSinceMs, nowMs);
 }
 
 export function pipelineCardAge(stage: PipelineStage, stageSinceMs: number, nowMs: number): PipelineCardAge {

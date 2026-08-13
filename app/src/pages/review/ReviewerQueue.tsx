@@ -11,7 +11,7 @@ import { countOf } from '../../lib/plural';
 // fetches the plan itself (below) purely for its timezone -- DEC-845's
 // envelope carries planName/scopeTrackName/closeDate, but a day-label close
 // date is meaningless without the owning event's tz to expand it through.
-import { daysUntil } from '../../lib/dates';
+import { daysUntil, daysAgo } from '../../lib/dates';
 // w42-h/DEC-366 amendment: a countdown is a formatter, not a per-call
 // expression -- daysUntil's own zero-clamp is right for "how many days
 // remain", but a CLOSED plan needs the same zone-aware boundary read the
@@ -37,8 +37,8 @@ function closesInDaysLabel(closeDate: number | null, timezone: string): string |
   const now = Date.now();
   const endInstant = dayLabelEndInstant(closeDate, timezone);
   if (now > endInstant) {
-    const daysAgo = Math.ceil((now - endInstant) / 86_400_000);
-    return `closed ${countOf(daysAgo, 'day')} ago`;
+    const closedDaysAgo = daysAgo(endInstant, now);
+    return `closed ${countOf(closedDaysAgo, 'day')} ago`;
   }
   const daysLeft = daysUntil(closeDate, timezone, now);
   return `closes in ${countOf(daysLeft, 'day')}`;

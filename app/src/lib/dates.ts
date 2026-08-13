@@ -16,6 +16,11 @@
 
 import { countOf } from './plural';
 import { dayLabelEndInstant } from '../../../src/lib/timezone';
+// daysUntil/daysAgo/epochDayIndex are the ONE days-until/days-ago/day-index
+// readers per DEC-831 (wave 40 + wave 54 amendment) -- compile-checked
+// dependency on the decision.
+import { DEC_831 } from '../../../src/decisions';
+void DEC_831;
 
 /** Convert an epoch-ms timestamp to a yyyy-mm-dd string for DateField/date-input wire values. */
 export function msToDateInput(ms: number | null | undefined): string {
@@ -191,6 +196,19 @@ export function daysUntil(dayLabelMs: number, timezone: string, now: number): nu
 }
 
 /**
+ * DEC-831 amendment (wave 54): the ONE 'how many days ago' reader in the
+ * SPA -- daysUntil's mirror. Four independent hand-rolled formulas
+ * (Math.floor, Math.round x2, Math.ceil) answered the same "days ago"
+ * question differently for the same instant; every caller now goes through
+ * this rather than re-deriving the arithmetic. Floor (not round/ceil):
+ * a partial day elapsed doesn't count as a whole day ago yet. Clamped to
+ * zero: a future/just-now instant reads 0, never negative.
+ */
+export function daysAgo(ms: number, now: number): number {
+  return Math.max(0, Math.floor((now - ms) / 86_400_000));
+}
+
+/**
  * Format a timestamp as a coarse "N days ago" relative label ('today',
  * 'yesterday', or '<N> days ago'). `now` is threaded in by the caller
  * rather than read via Date.now() at call time, so a render never
@@ -200,11 +218,30 @@ export function daysUntil(dayLabelMs: number, timezone: string, now: number): nu
  * share the same output instead of hand-rolling a duplicate.
  */
 export function formatRelativeDays(ms: number, now: number): string {
-  const dayMs = 86_400_000;
-  const days = Math.floor((now - ms) / dayMs);
-  if (days <= 0) return 'today';
+  const days = daysAgo(ms, now);
+  if (days === 0) return 'today';
   if (days === 1) return 'yesterday';
   return `${countOf(days, 'day')} ago`;
+}
+
+/**
+ * DEC-831 amendment (wave 54): whole-calendar-day index of an epoch-ms
+ * instant read in an explicit IANA timeZone -- e.g. two calls' difference
+ * counts whole calendar days elapsed (SubmissionDetailPage's triage-age
+ * label), which is NOT the same question as daysAgo's rolling 24h window.
+ * Not a relative-time label; a raw index for the caller to difference.
+ */
+export function epochDayIndex(ms: number, timeZone: string): number {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date(ms));
+  const year = Number(parts.find((p) => p.type === 'year')?.value);
+  const month = Number(parts.find((p) => p.type === 'month')?.value);
+  const day = Number(parts.find((p) => p.type === 'day')?.value);
+  return Date.UTC(year, month - 1, day) / 86_400_000;
 }
 
 /**
