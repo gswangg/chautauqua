@@ -28,7 +28,15 @@ interface RecipientsState {
 // stored row once (never re-rendered from the live template/merge fields)
 // and renders subject+bodyText verbatim, including for a failed attempt
 // (the stored row is the audit record either way).
-function SendDetailDisclosure({ eventId, emailId }: { eventId: string; emailId: string }) {
+function SendDetailDisclosure({
+  eventId,
+  emailId,
+  templatesById,
+}: {
+  eventId: string;
+  emailId: string;
+  templatesById?: Record<string, string>;
+}) {
   const [open, setOpen] = useState(false);
   const [detail, setDetail] = useState<EmailLogDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -57,6 +65,11 @@ function SendDetailDisclosure({ eventId, emailId }: { eventId: string; emailId: 
           {error && <div className="chq-error-banner">{error}</div>}
           {detail && (
             <>
+              {detail.templateId && templatesById?.[detail.templateId] && (
+                <div className="chq-comms-send-detail-template">
+                  Template: {templatesById[detail.templateId]}
+                </div>
+              )}
               <div className="chq-comms-history-subject">{detail.subject}</div>
               <pre className="chq-comms-send-detail-text">{detail.bodyText}</pre>
             </>
@@ -67,7 +80,12 @@ function SendDetailDisclosure({ eventId, emailId }: { eventId: string; emailId: 
   );
 }
 
-function BatchRecipients({ eventId, items, error }: RecipientsState & { eventId: string }) {
+function BatchRecipients({
+  eventId,
+  items,
+  error,
+  templatesById,
+}: RecipientsState & { eventId: string; templatesById?: Record<string, string> }) {
   if (error) return <div className="chq-error-banner">{error}</div>;
   if (!items) return <DelayedLoading />;
 
@@ -84,7 +102,7 @@ function BatchRecipients({ eventId, items, error }: RecipientsState & { eventId:
               which DEC-833 explicitly keeps), and the stored body is fetched
               one row at a time and rendered verbatim, whitespace preserved,
               for a failed attempt exactly as for a sent one. */}
-          <SendDetailDisclosure eventId={eventId} emailId={row.id} />
+          <SendDetailDisclosure eventId={eventId} emailId={row.id} templatesById={templatesById} />
         </div>
       ))}
     </div>
@@ -99,9 +117,14 @@ export interface RecentSendsProps {
    * the per-row recipients disclosure -- the compose mount is read-only and
    * hands off to the full History tab rather than drilling in place. */
   onSeeAll?: () => void;
+  /** DEC-876 nit: id->name map for the per-row send-detail disclosure's
+   * template label. Optional and additive -- the Compose mount doesn't pass
+   * it (onSeeAll is given there, so the disclosure never renders), and a
+   * missing/empty map just omits the label rather than failing. */
+  templatesById?: Record<string, string>;
 }
 
-export function RecentSends({ eventId, batches, limit, onSeeAll }: RecentSendsProps) {
+export function RecentSends({ eventId, batches, limit, onSeeAll, templatesById }: RecentSendsProps) {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [recipients, setRecipients] = useState<Record<string, RecipientsState>>({});
 
@@ -168,7 +191,12 @@ export function RecentSends({ eventId, batches, limit, onSeeAll }: RecentSendsPr
               )}
             </div>
             {!onSeeAll && isExpanded && (
-              <BatchRecipients eventId={eventId} items={entry?.items ?? null} error={entry?.error ?? null} />
+              <BatchRecipients
+                eventId={eventId}
+                items={entry?.items ?? null}
+                error={entry?.error ?? null}
+                templatesById={templatesById}
+              />
             )}
           </div>
         );

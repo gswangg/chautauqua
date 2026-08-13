@@ -354,6 +354,16 @@
   margin: 6px 0 0;
 }
 
+/* DEC-876: template-label nit -- the opened send-detail's template name,
+   when the recipient's stored row carries a templateId that resolves
+   against the event's own template list. Sits above the subject line it
+   annotates. */
+.chq-comms-send-detail-template {
+  font-size: 12px;
+  color: var(--chq-muted);
+  margin-bottom: 4px;
+}
+
 /* ---------------------------------------------------------------------- */
 /* Templates tab                                                          */
 /* ---------------------------------------------------------------------- */
