@@ -66,6 +66,7 @@ export {
   findDuplicateCandidatesForOrg,
   mergeContacts,
   dismissDuplicatePair,
+  countMergeImpact,
   type DuplicateGroup,
   type DuplicateCandidateMatch,
 } from "./contacts/merge";

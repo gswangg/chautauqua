@@ -68,6 +68,10 @@ export function registerMergeRoutes(contactsRoutes: Hono<AppEnv>): void {
       toContactRecord(keepRow),
       duplicateRows.map((row) => toContactRecord(row)),
     );
-    return c.json({ fields });
+    const impact = await repo.countMergeImpact(
+      c.var.db,
+      duplicateRows.map((row) => row.id),
+    );
+    return c.json({ fields, impact });
   });
 }

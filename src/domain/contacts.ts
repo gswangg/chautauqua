@@ -409,26 +409,41 @@ export function previewMerge(primary: ContactRecord, duplicates: ContactRecord[]
 
     // Notes: DEC-167 always appends duplicate-only notes text onto the
     // running primary's notes rather than filling/discarding, whether or
-    // not the primary already had notes of its own.
+    // not the primary already had notes of its own. DEC-802: the Notes row
+    // is shown whenever either side has notes at all, even when the
+    // duplicate contributes nothing (a keeper-only note must still be
+    // visible in the preview).
     labelByKey.set("notes", "Notes");
     const beforeNotes = (before.notes ?? "").trim();
     const dupNotes = (duplicate.notes ?? "").trim();
     if (dupNotes !== "" && dupNotes !== beforeNotes) {
       outcomeByKey.set("notes", "append");
+    } else if (beforeNotes !== "" && !outcomeByKey.has("notes")) {
+      outcomeByKey.set("notes", "keep");
     }
 
-    // Custom fields: union, primary wins on key collision (a 'keep'), a
-    // duplicate-only key is added by the union (a 'combine').
-    for (const [fieldKey, dupValue] of Object.entries(duplicate.customFields ?? {})) {
+    // Custom fields: union of both sides' keys (DEC-802 -- a keeper-only key
+    // must surface too, not just duplicate-carried keys). Primary wins on
+    // key collision (a 'keep'), a duplicate-only key is added by the union
+    // (a 'combine'), and a keeper-only key emits an empty-discarded 'keep'.
+    const customFieldKeys = new Set<string>([
+      ...Object.keys(before.customFields ?? {}),
+      ...Object.keys(duplicate.customFields ?? {}),
+    ]);
+    for (const fieldKey of customFieldKeys) {
       const key = `customFields.${fieldKey}`;
       labelByKey.set(key, fieldKey);
       const beforeValue = before.customFields?.[fieldKey];
+      const hasDupValue = Object.prototype.hasOwnProperty.call(duplicate.customFields ?? {}, fieldKey);
+      const dupValue = duplicate.customFields?.[fieldKey];
       if (beforeValue === undefined) {
-        if (!outcomeByKey.has(key)) outcomeByKey.set(key, "combine");
+        if (hasDupValue && !outcomeByKey.has(key)) outcomeByKey.set(key, "combine");
+      } else if (!hasDupValue) {
+        if (!outcomeByKey.has(key)) outcomeByKey.set(key, "keep");
       } else if (beforeValue !== dupValue) {
         outcomeByKey.set(key, "keep");
         const list = discardedByKey.get(key) ?? [];
-        if (!list.includes(dupValue)) list.push(dupValue);
+        if (dupValue !== undefined && !list.includes(dupValue)) list.push(dupValue);
         discardedByKey.set(key, list);
       }
     }
