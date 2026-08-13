@@ -775,3 +775,14 @@ AND audit noStoreByDefault + any other header-stamping middleware for the same t
     subtitle = event + identity per README (drop the welcome sentence); phone CFP
     2-step wizard; headshot stripe texture. DESIGN-PACK NOTE: v4's Track radio art is
     stale vs DEC-579 (checkboxes correct) — update the mock, not the code.
+
+64. r3-Settings: KEEP Public-pages restoration (fix its list: Speaker gallery row per
+    mock, pill-styled state) + scope/Change scaffolding. STILL THE KEY REBUILD:
+    read-only summary pattern (sections load as label:value rows w/ Edit-the-form/
+    Change/Replace drill-ins; forms appear only on drill). Un-diverge: desktop rail =
+    static one-document (remove the new desktop drill); merge Your data per mock (4
+    export pills + tokens + RESTORE the API-docs link); fold Import-from-Sessionboard
+    under Your data (rail = 7); enable Change (role) or hide it (disabled-button
+    violates the affordance rule); real per-track scope values; organiser+reviewers
+    only in People list; render Markdown in wiki (STILL raw — bug); Tracks-and-rooms
+    read-only w/ drill-in edit; phone subscreens as routes + bottom tab bar.
