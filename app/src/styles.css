@@ -450,6 +450,18 @@ a:hover {
   color: var(--chq-muted);
 }
 
+/* Files library File cell (DEC-773): filename above the uploader/owner
+   name, mirroring the mock's f.name + f.who stack. */
+.chq-content-file-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.chq-content-file-who {
+  font-size: 12px;
+}
+
 /* Lateness/clash/"not reviewed" — type only, never colour (DEC-367). */
 .chq-flag {
   font-size: 10px;
@@ -1423,14 +1435,6 @@ a:hover {
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
-}
-
-/* Headshots tab body (DEC-669): same vertical stack as the deliverables tab
-   so the error banner, table and pager keep the library's 16px rhythm. */
-.chq-content-headshots-tab {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
 }
 
 .chq-files-library-pager {

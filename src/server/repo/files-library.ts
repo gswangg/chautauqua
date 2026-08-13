@@ -9,7 +9,7 @@
 // scans the event's submissions; it only ever loads the requested files'
 // own submissions/version chains.
 
-import { and, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, isNull, or, type SQL, sql } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { formatRef } from "../../domain/ids";
@@ -18,10 +18,15 @@ import { likeContains } from "./like";
 import { ApiError } from "../http";
 import { batchContactNames } from "./files-versions";
 import { acceptedSpeakerConditions } from "./tasks/crud";
-import { DEC_669, DEC_680 } from "../../decisions";
+import { DEC_680, DEC_773 } from "../../decisions";
 
-void DEC_669;
 void DEC_680;
+void DEC_773;
+
+// DEC-773 (supersedes DEC-669): a headshot file's kind, used both as the
+// row's `kind` value and as the extra token the ?kind= filter accepts
+// alongside the deliverable kinds.
+export const HEADSHOT_KIND = "headshot";
 
 export interface EventFilesScope {
   orgId: string;
@@ -39,6 +44,12 @@ export async function getEventFilesScope(db: Db, eventId: string): Promise<Event
   return rows[0] ?? null;
 }
 
+/** DEC-773: one row per version chain -- either a deliverable (attributed
+ * to its submission) or a speaker headshot (attributed directly to its
+ * contact, submissionId/submissionRef/submissionTitle all ""). A headshot
+ * is structurally a single-file chain (setContactHeadshot never sets
+ * previousFileId), so its versionCount is always 1 and rootFileId ===
+ * latestFileId. */
 export interface EventDeliverableChain {
   rootFileId: string;
   latestFileId: string;
@@ -57,6 +68,7 @@ export interface EventDeliverableChain {
 export interface EventFilesQuery {
   page: number;
   perPage: number;
+  // May contain any of FILE_KINDS plus HEADSHOT_KIND (DEC-773).
   kinds: string[];
   q: string | null;
 }
@@ -64,6 +76,10 @@ export interface EventFilesQuery {
 export interface EventDeliverableChainPage {
   items: EventDeliverableChain[];
   total: number;
+  // DEC-773: sum of the latest version's sizeBytes for every chain
+  // matching the current kind/q filters (not just the page's rows) --
+  // produced by the same conditions `total` is, never a page-derived tally.
+  totalSizeBytes: number;
   page: number;
   perPage: number;
 }
@@ -102,78 +118,11 @@ export function findRoot(fileId: string, byId: Map<string, DeliverableFileRow>):
   return current.id;
 }
 
-/** DEC-344: one paginated statement over chain roots (file.previous_file_id
- * is null) inner-joined to submission, kinds/q pushed into the WHERE as
- * inArray / AND-across-tokens x OR-across-columns correlated conditions —
- * never a whole-event scan. Per-page hydration (versions/lead speaker) is
- * bounded to the page's submission ids. */
-export async function listEventDeliverableFiles(
-  db: Db,
-  eventId: string,
-  params: EventFilesQuery,
-): Promise<EventDeliverableChainPage> {
-  const eventRows = await db
-    .select({ recordPrefix: schema.event.recordPrefix })
-    .from(schema.event)
-    .where(eq(schema.event.id, eventId))
-    .limit(1);
-  const recordPrefix = eventRows[0]?.recordPrefix ?? "SES";
-
-  const conditions = [isNull(schema.file.previousFileId), eq(schema.submission.eventId, eventId)];
-
-  if (params.kinds.length > 0) {
-    conditions.push(inArray(schema.file.kind, params.kinds));
-  }
-
-  if (params.q) {
-    const tokens = params.q.split(/\s+/).filter((t) => t.length > 0);
-    const tokenConditions = tokens.map((token) => {
-      const like = likeContains(token.toLowerCase());
-      return or(
-        sql`lower(${schema.file.filename}) like ${like} escape '\\'`,
-        sql`lower(${schema.submission.title}) like ${like} escape '\\'`,
-        sql`exists (select 1 from ${schema.participant} inner join ${schema.contact} on ${schema.contact.id} = ${schema.participant.contactId} where ${schema.participant.submissionId} = ${schema.submission.id} and lower(${schema.contact.firstName} || ' ' || ${schema.contact.lastName}) like ${like} escape '\\')`,
-      )!;
-    });
-    if (tokenConditions.length > 0) {
-      conditions.push(and(...tokenConditions)!);
-    }
-  }
-
-  const whereExpr = and(...conditions);
-  const offset = (params.page - 1) * params.perPage;
-
-  const totalRows = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(schema.file)
-    .innerJoin(schema.submission, eq(schema.submission.id, schema.file.submissionId))
-    .where(whereExpr);
-  const total = Number(totalRows[0]?.count ?? 0);
-
-  const rows = await db
-    .select({
-      id: schema.file.id,
-      submissionId: schema.file.submissionId,
-      kind: schema.file.kind,
-      filename: schema.file.filename,
-      createdAt: schema.file.createdAt,
-      submissionSeq: schema.submission.seq,
-      submissionTitle: schema.submission.title,
-    })
-    .from(schema.file)
-    .innerJoin(schema.submission, eq(schema.submission.id, schema.file.submissionId))
-    .where(whereExpr)
-    .orderBy(sql`${schema.file.createdAt} desc, ${schema.file.id} asc`)
-    .limit(params.perPage)
-    .offset(offset);
-
-  if (rows.length === 0) return { items: [], total, page: params.page, perPage: params.perPage };
-
-  const submissionIds = [...new Set(rows.map((r) => r.submissionId).filter((id): id is string => !!id))];
-
-  // Hydrate version chains ONLY for the page's submissions (DEC-344) — load
-  // every file row on those submissions (not the whole event) to walk
-  // findRoot -> group -> latest/versionCount.
+/** Loads every file row for `submissionIds` (chunked, never the whole
+ * event — DEC-344) and groups them into version chains keyed by root id
+ * via findRoot. Shared by the page hydration and the totalSizeBytes
+ * aggregate below so both walk chains the same way. */
+async function loadDeliverableChains(db: Db, submissionIds: string[]): Promise<Map<string, DeliverableFileRow[]>> {
   const fileRows: DeliverableFileRow[] = [];
   for (const batch of chunkIds(submissionIds)) {
     const batchRows = await db
@@ -194,7 +143,6 @@ export async function listEventDeliverableFiles(
     }
   }
   const byId = new Map(fileRows.map((f) => [f.id, f]));
-
   const chains = new Map<string, DeliverableFileRow[]>();
   for (const f of fileRows) {
     const root = findRoot(f.id, byId);
@@ -202,97 +150,344 @@ export async function listEventDeliverableFiles(
     arr.push(f);
     chains.set(root, arr);
   }
+  return chains;
+}
 
-  // Lead speaker: ONE query over the page's submission ids, min participant
-  // order among role='speaker' rows — single pass, no per-row .find (DEC-344
-  // deletes the old O(n^2) loop).
-  const leadBySubmission = new Map<string, { order: number; contactId: string; name: string }>();
-  for (const batch of chunkIds(submissionIds)) {
-    const batchRows = await db
+function latestOf(chain: DeliverableFileRow[]): DeliverableFileRow {
+  let latest = chain[0]!;
+  for (const f of chain) {
+    if (f.createdAt.getTime() > latest.createdAt.getTime()) latest = f;
+  }
+  return latest;
+}
+
+function buildDeliverableWhere(eventId: string, deliverableKinds: string[], q: string | null): SQL {
+  const conditions = [isNull(schema.file.previousFileId), eq(schema.submission.eventId, eventId)];
+  if (deliverableKinds.length > 0) {
+    conditions.push(inArray(schema.file.kind, deliverableKinds));
+  }
+  if (q) {
+    const tokens = q.split(/\s+/).filter((t) => t.length > 0);
+    const tokenConditions = tokens.map((token) => {
+      const like = likeContains(token.toLowerCase());
+      return or(
+        sql`lower(${schema.file.filename}) like ${like} escape '\\'`,
+        sql`lower(${schema.submission.title}) like ${like} escape '\\'`,
+        sql`exists (select 1 from ${schema.participant} inner join ${schema.contact} on ${schema.contact.id} = ${schema.participant.contactId} where ${schema.participant.submissionId} = ${schema.submission.id} and lower(${schema.contact.firstName} || ' ' || ${schema.contact.lastName}) like ${like} escape '\\')`,
+      )!;
+    });
+    if (tokenConditions.length > 0) {
+      conditions.push(and(...tokenConditions)!);
+    }
+  }
+  return and(...conditions)!;
+}
+
+const HEADSHOT_JOIN = sql`${schema.contact.headshotUrl} = '/headshots/' || ${schema.file.id}`;
+
+function buildHeadshotWhere(eventId: string, q: string | null): SQL {
+  const conditions = [acceptedSpeakerConditions(eventId), isNotNull(schema.contact.headshotUrl)];
+  if (q) {
+    const tokens = q.split(/\s+/).filter((t) => t.length > 0);
+    const tokenConditions = tokens.map((token) => {
+      const like = likeContains(token.toLowerCase());
+      return or(
+        sql`lower(${schema.contact.firstName} || ' ' || ${schema.contact.lastName}) like ${like} escape '\\'`,
+        sql`lower(coalesce(${schema.contact.company}, '')) like ${like} escape '\\'`,
+        sql`lower(${schema.file.filename}) like ${like} escape '\\'`,
+      )!;
+    });
+    if (tokenConditions.length > 0) {
+      conditions.push(and(...tokenConditions)!);
+    }
+  }
+  return and(...conditions)!;
+}
+
+interface DeliverableRootRow {
+  id: string;
+  submissionId: string | null;
+  createdAt: Date;
+  submissionSeq: number;
+  submissionTitle: string;
+}
+
+interface HeadshotRootRow {
+  id: string;
+  contactId: string;
+  createdAt: Date;
+  filename: string;
+  sizeBytes: number;
+  uploadedByContactId: string | null;
+}
+
+/** DEC-773: the files library is ONE list — deliverable version chains AND
+ * speaker headshots (kind='headshot', submissionId null, attributed to
+ * their contact) merged by createdAt desc/id asc. Never a SQL UNION (the
+ * two populations join through entirely different tables); instead each
+ * branch fetches every MATCHING root once — totalSizeBytes has to visit
+ * every matching chain's latest version regardless (DEC-773), so there's no
+ * bounded-page-only fetch left to preserve on top of it — and total, the
+ * merge candidates, and totalSizeBytes are all derived from that same one
+ * fetch per branch, never a page-derived tally. Per-page hydration
+ * (lead speaker names, uploader names) stays scoped to just the page's
+ * rows (DEC-344). */
+export async function listEventDeliverableFiles(
+  db: Db,
+  eventId: string,
+  params: EventFilesQuery,
+): Promise<EventDeliverableChainPage> {
+  const eventRows = await db
+    .select({ recordPrefix: schema.event.recordPrefix })
+    .from(schema.event)
+    .where(eq(schema.event.id, eventId))
+    .limit(1);
+  const recordPrefix = eventRows[0]?.recordPrefix ?? "SES";
+
+  const deliverableKinds = params.kinds.filter((k) => k !== HEADSHOT_KIND);
+  const wantsDeliverables = params.kinds.length === 0 || deliverableKinds.length > 0;
+  const wantsHeadshots = params.kinds.length === 0 || params.kinds.includes(HEADSHOT_KIND);
+
+  let deliverableRoots: DeliverableRootRow[] = [];
+  let deliverableChains = new Map<string, DeliverableFileRow[]>();
+  if (wantsDeliverables) {
+    const deliverableWhere = buildDeliverableWhere(eventId, deliverableKinds, params.q);
+    deliverableRoots = await db
       .select({
-        submissionId: schema.participant.submissionId,
-        order: schema.participant.order,
+        id: schema.file.id,
+        submissionId: schema.file.submissionId,
+        createdAt: schema.file.createdAt,
+        submissionSeq: schema.submission.seq,
+        submissionTitle: schema.submission.title,
+      })
+      .from(schema.file)
+      .innerJoin(schema.submission, eq(schema.submission.id, schema.file.submissionId))
+      .where(deliverableWhere)
+      .orderBy(sql`${schema.file.createdAt} desc, ${schema.file.id} asc`);
+    const submissionIds = [...new Set(deliverableRoots.map((r) => r.submissionId).filter((id): id is string => !!id))];
+    deliverableChains = await loadDeliverableChains(db, submissionIds);
+  }
+
+  let headshotRoots: HeadshotRootRow[] = [];
+  if (wantsHeadshots) {
+    const headshotWhere = buildHeadshotWhere(eventId, params.q);
+    const rows = await db
+      .selectDistinct({
+        id: schema.file.id,
         contactId: schema.contact.id,
-        firstName: schema.contact.firstName,
-        lastName: schema.contact.lastName,
+        createdAt: schema.file.createdAt,
+        filename: schema.file.filename,
+        sizeBytes: schema.file.sizeBytes,
+        uploadedByContactId: schema.file.uploadedByContactId,
       })
       .from(schema.participant)
-      .innerJoin(schema.contact, eq(schema.contact.id, schema.participant.contactId))
-      .where(and(inArray(schema.participant.submissionId, batch), eq(schema.participant.role, "speaker")));
-    for (const p of batchRows) {
-      if (!p.submissionId) continue;
-      const existing = leadBySubmission.get(p.submissionId);
-      if (!existing || p.order < existing.order || (p.order === existing.order && p.contactId < existing.contactId)) {
-        leadBySubmission.set(p.submissionId, {
-          order: p.order,
-          contactId: p.contactId,
-          name: `${p.firstName} ${p.lastName}`.trim(),
-        });
+      .innerJoin(schema.submission, eq(schema.participant.submissionId, schema.submission.id))
+      .innerJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
+      .innerJoin(schema.file, HEADSHOT_JOIN)
+      .where(headshotWhere)
+      .orderBy(sql`${schema.file.createdAt} desc, ${schema.file.id} asc`);
+    // A contact can speak on multiple accepted submissions — dedupe by
+    // file id (DEC-680), never rely on selectDistinct alone since row
+    // identity here is the file, not the (participant, file) pair.
+    const seen = new Set<string>();
+    headshotRoots = rows.filter((r) => {
+      if (seen.has(r.id)) return false;
+      seen.add(r.id);
+      return true;
+    });
+  }
+
+  const total = deliverableRoots.length + headshotRoots.length;
+
+  let totalSizeBytes = 0;
+  for (const root of deliverableRoots) {
+    const chain = deliverableChains.get(root.id);
+    if (!chain || chain.length === 0) {
+      throw new Error(`listEventDeliverableFiles: chain root ${root.id} not resolved`);
+    }
+    totalSizeBytes += latestOf(chain).sizeBytes;
+  }
+  for (const root of headshotRoots) totalSizeBytes += root.sizeBytes;
+
+  interface Candidate {
+    id: string;
+    createdAt: Date;
+    deliverable: DeliverableRootRow | null;
+    headshot: HeadshotRootRow | null;
+  }
+  const merged: Candidate[] = [
+    ...deliverableRoots.map((r) => ({ id: r.id, createdAt: r.createdAt, deliverable: r, headshot: null })),
+    ...headshotRoots.map((r) => ({ id: r.id, createdAt: r.createdAt, deliverable: null, headshot: r })),
+  ];
+  merged.sort((a, b) => {
+    const diff = b.createdAt.getTime() - a.createdAt.getTime();
+    if (diff !== 0) return diff;
+    return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+  });
+  const offset = (params.page - 1) * params.perPage;
+  const page = merged.slice(offset, offset + params.perPage);
+
+  if (page.length === 0) return { items: [], total, totalSizeBytes, page: params.page, perPage: params.perPage };
+
+  const deliverablePage = page.filter((c) => c.deliverable !== null);
+  const headshotPage = page.filter((c) => c.headshot !== null);
+
+  // Lead speaker names, scoped to just the page's submissions (DEC-344).
+  const leadBySubmission = new Map<string, { order: number; contactId: string; name: string }>();
+  if (deliverablePage.length > 0) {
+    const submissionIds = [
+      ...new Set(deliverablePage.map((c) => c.deliverable!.submissionId).filter((id): id is string => !!id)),
+    ];
+    for (const batch of chunkIds(submissionIds)) {
+      const batchRows = await db
+        .select({
+          submissionId: schema.participant.submissionId,
+          order: schema.participant.order,
+          contactId: schema.contact.id,
+          firstName: schema.contact.firstName,
+          lastName: schema.contact.lastName,
+        })
+        .from(schema.participant)
+        .innerJoin(schema.contact, eq(schema.contact.id, schema.participant.contactId))
+        .where(and(inArray(schema.participant.submissionId, batch), eq(schema.participant.role, "speaker")));
+      for (const p of batchRows) {
+        if (!p.submissionId) continue;
+        const existing = leadBySubmission.get(p.submissionId);
+        if (!existing || p.order < existing.order || (p.order === existing.order && p.contactId < existing.contactId)) {
+          leadBySubmission.set(p.submissionId, {
+            order: p.order,
+            contactId: p.contactId,
+            name: `${p.firstName} ${p.lastName}`.trim(),
+          });
+        }
       }
     }
   }
 
-  // DEC-601: latest-version rows for the page, resolved so uploaderName can
-  // be batched in ONE lookup below (never per-row).
+  // Uploader/owner names, batched across BOTH branches' page rows in ONE
+  // lookup (never per-row, DEC-601).
   const latestByRoot = new Map<string, DeliverableFileRow>();
-  for (const row of rows) {
-    const chain = chains.get(row.id);
+  for (const c of deliverablePage) {
+    const chain = deliverableChains.get(c.id);
     if (!chain || chain.length === 0) {
-      // Fail loudly (DEC-344): the root row selected by the page query must
-      // resolve in the hydration pass — a miss here means the two queries
-      // disagree, which should never happen.
-      throw new Error(`listEventDeliverableFiles: chain root ${row.id} not resolved in per-page hydration`);
+      throw new Error(`listEventDeliverableFiles: chain root ${c.id} not resolved in per-page hydration`);
     }
-    let latest = chain[0]!;
-    for (const f of chain) {
-      if (f.createdAt.getTime() > latest.createdAt.getTime()) latest = f;
-    }
-    latestByRoot.set(row.id, latest);
+    latestByRoot.set(c.id, latestOf(chain));
   }
-
-  // DEC-601: one batched contact lookup scoped to this page's uploader ids.
-  const uploaderContactIds = [
-    ...new Set([...latestByRoot.values()].map((f) => f.uploadedByContactId).filter((id): id is string => !!id)),
+  const contactIds = [
+    ...new Set([
+      ...[...latestByRoot.values()].map((f) => f.uploadedByContactId).filter((id): id is string => !!id),
+      ...headshotPage.map((c) => c.headshot!.contactId),
+      ...headshotPage.map((c) => c.headshot!.uploadedByContactId).filter((id): id is string => !!id),
+    ]),
   ];
-  const nameById = await batchContactNames(db, uploaderContactIds);
+  const nameById = await batchContactNames(db, contactIds);
 
-  const items: EventDeliverableChain[] = rows.map((row) => {
-    const latest = latestByRoot.get(row.id);
-    if (!latest) throw new Error(`listEventDeliverableFiles: latest version for chain root ${row.id} not resolved`);
-    const chain = chains.get(row.id);
-    if (!chain) throw new Error(`listEventDeliverableFiles: chain root ${row.id} not resolved in per-page hydration`);
-    const lead = row.submissionId ? leadBySubmission.get(row.submissionId) : undefined;
+  const items: EventDeliverableChain[] = page.map((c) => {
+    if (c.deliverable) {
+      const latest = latestByRoot.get(c.id)!;
+      const chain = deliverableChains.get(c.id)!;
+      const lead = c.deliverable.submissionId ? leadBySubmission.get(c.deliverable.submissionId) : undefined;
+      return {
+        rootFileId: c.id,
+        latestFileId: latest.id,
+        filename: latest.filename,
+        kind: latest.kind,
+        submissionId: c.deliverable.submissionId ?? "",
+        submissionRef: formatRef(recordPrefix, c.deliverable.submissionSeq),
+        submissionTitle: c.deliverable.submissionTitle,
+        speakerName: lead?.name ?? "",
+        uploadedAt: latest.createdAt.getTime(),
+        versionCount: chain.length,
+        sizeBytes: latest.sizeBytes,
+        uploaderName: latest.uploadedByContactId ? (nameById.get(latest.uploadedByContactId) ?? null) : null,
+      };
+    }
+    const h = c.headshot!;
+    const contactName = nameById.get(h.contactId) ?? "";
     return {
-      rootFileId: row.id,
-      latestFileId: latest.id,
-      filename: latest.filename,
-      kind: latest.kind,
-      submissionId: row.submissionId ?? "",
-      submissionRef: formatRef(recordPrefix, row.submissionSeq),
-      submissionTitle: row.submissionTitle,
-      speakerName: lead?.name ?? "",
-      uploadedAt: latest.createdAt.getTime(),
-      versionCount: chain.length,
-      sizeBytes: latest.sizeBytes,
-      uploaderName: latest.uploadedByContactId ? (nameById.get(latest.uploadedByContactId) ?? null) : null,
+      rootFileId: h.id,
+      latestFileId: h.id,
+      filename: h.filename,
+      kind: HEADSHOT_KIND,
+      submissionId: "",
+      submissionRef: "",
+      submissionTitle: "",
+      speakerName: contactName,
+      uploadedAt: h.createdAt.getTime(),
+      versionCount: 1,
+      sizeBytes: h.sizeBytes,
+      uploaderName: h.uploadedByContactId ? (nameById.get(h.uploadedByContactId) ?? contactName) : contactName,
     };
   });
 
-  return { items, total, page: params.page, perPage: params.perPage };
+  return { items, total, totalSizeBytes, page: params.page, perPage: params.perPage };
 }
 
-/** DEC-160/344: resolves each requested file id to its version chain's
- * latest file row (id/filename/contentType/r2Key/submissionTitle), scoped
- * to `eventId` — throws if any requested id doesn't resolve to a
- * deliverable of that event's submissions (no silent skips, per DEC-160's
- * "whole request 404s" rule). Never calls listEventDeliverableFiles and
- * never loads the event's submissions — only the requested files' own
- * submissions/version chains (DEC-344 bounded-cost rule). */
+/** Resolves headshot file ids to their own row (a headshot is always its
+ * own single-version chain — setContactHeadshot never sets
+ * previousFileId), scoped to accepted speakers of `eventId` via the same
+ * acceptedSpeakerConditions the library listing composes, and to the
+ * REVERSE contact.headshot_url match (so a superseded upload 404s even
+ * though its file row/R2 object still exist — mirrors profile.ts's
+ * getHeadshotServeScope). Throws (no silent skip) on any id not found in
+ * that scope. */
+async function resolveHeadshotVersions(
+  db: Db,
+  eventId: string,
+  fileIds: string[],
+): Promise<Map<string, { id: string; filename: string; contentType: string; r2Key: string; submissionTitle: string; sizeBytes: number }>> {
+  const out = new Map<string, { id: string; filename: string; contentType: string; r2Key: string; submissionTitle: string; sizeBytes: number }>();
+  if (fileIds.length === 0) return out;
+
+  for (const batch of chunkIds(fileIds)) {
+    const rows = await db
+      .selectDistinct({
+        id: schema.file.id,
+        filename: schema.file.filename,
+        contentType: schema.file.contentType,
+        r2Key: schema.file.r2Key,
+        sizeBytes: schema.file.sizeBytes,
+        firstName: schema.contact.firstName,
+        lastName: schema.contact.lastName,
+      })
+      .from(schema.participant)
+      .innerJoin(schema.submission, eq(schema.participant.submissionId, schema.submission.id))
+      .innerJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
+      .innerJoin(schema.file, HEADSHOT_JOIN)
+      .where(and(acceptedSpeakerConditions(eventId), inArray(schema.file.id, batch)));
+    for (const r of rows) {
+      out.set(r.id, {
+        id: r.id,
+        filename: r.filename,
+        contentType: r.contentType,
+        r2Key: r.r2Key,
+        submissionTitle: `${r.firstName} ${r.lastName}`.trim(),
+        sizeBytes: r.sizeBytes,
+      });
+    }
+  }
+  for (const id of fileIds) {
+    if (!out.has(id)) throw new ApiError("not_found", `File ${id} is not a deliverable of this event`);
+  }
+  return out;
+}
+
+/** DEC-160/344/773: resolves each requested file id to its version chain's
+ * latest file row (id/filename/contentType/r2Key/submissionTitle) —
+ * deliverables resolve through their submission's chain, headshots through
+ * resolveHeadshotVersions — throws if any requested id doesn't resolve
+ * within `eventId`'s scope (no silent skips, per DEC-160's "whole request
+ * 404s" rule). Never calls listEventDeliverableFiles and never loads the
+ * event's submissions — only the requested files' own submissions/version
+ * chains (DEC-344 bounded-cost rule). */
 export async function resolveLatestVersions(
   db: Db,
   eventId: string,
   fileIds: string[],
 ): Promise<Map<string, { id: string; filename: string; contentType: string; r2Key: string; submissionTitle: string; sizeBytes: number }>> {
+  if (fileIds.length === 0) return new Map();
+
   interface RequestedFileRow extends DeliverableFileRow {
     contentType: string;
     r2Key: string;
@@ -300,6 +495,7 @@ export async function resolveLatestVersions(
   }
 
   const requestedFileRows: RequestedFileRow[] = [];
+  const headshotIds: string[] = [];
   for (const batch of chunkIds(fileIds)) {
     const rows = await db
       .select({
@@ -317,12 +513,21 @@ export async function resolveLatestVersions(
       .from(schema.file)
       .where(inArray(schema.file.id, batch));
     for (const r of rows) {
-      if (r.submissionId) requestedFileRows.push({ ...r, submissionId: r.submissionId });
+      if (r.submissionId) {
+        requestedFileRows.push({ ...r, submissionId: r.submissionId });
+      } else {
+        // DEC-773: submissionId null means either a headshot or a resource/
+        // task upload — resolveHeadshotVersions itself scopes to kind
+        // 'headshot' + an accepted-speaker contact, so a non-headshot
+        // submissionId-null file simply won't resolve there and 404s below.
+        headshotIds.push(r.id);
+      }
     }
   }
-  const requestedById = new Map(requestedFileRows.map((f) => [f.id, f]));
-  for (const id of fileIds) {
-    if (!requestedById.has(id)) throw new ApiError("not_found", `File ${id} is not a deliverable of this event`);
+  const deliverableIds = requestedFileRows.map((f) => f.id);
+  const missingIds = fileIds.filter((id) => !deliverableIds.includes(id) && !headshotIds.includes(id));
+  if (missingIds.length > 0) {
+    throw new ApiError("not_found", `File ${missingIds[0]} is not a deliverable of this event`);
   }
 
   const submissionIds = [...new Set(requestedFileRows.map((f) => f.submissionId))];
@@ -385,7 +590,7 @@ export async function resolveLatestVersions(
   }
 
   const out = new Map<string, { id: string; filename: string; contentType: string; r2Key: string; submissionTitle: string; sizeBytes: number }>();
-  for (const requestedId of fileIds) {
+  for (const requestedId of deliverableIds) {
     const root = findRoot(requestedId, byId);
     const chain = chainsByRoot.get(root);
     if (!chain || chain.length === 0) {
@@ -406,121 +611,9 @@ export async function resolveLatestVersions(
       sizeBytes: latest.sizeBytes,
     });
   }
+
+  const headshotResolved = await resolveHeadshotVersions(db, eventId, headshotIds);
+  for (const [id, value] of headshotResolved) out.set(id, value);
+
   return out;
-}
-
-// -----------------------------------------------------------------------
-// Headshots tab (DEC-669) — speaker headshot files are structurally
-// unreachable from listEventDeliverableFiles: a headshot's file row carries
-// submissionId null (DEC-028) and is linked instead by
-// contact.headshot_url = '/headshots/<fileId>'. This is a SEPARATE query
-// (never a union into listEventDeliverableFiles, per DEC-669) returning the
-// product's ONE page shape with items AND total from the same WHERE.
-// -----------------------------------------------------------------------
-
-export interface EventHeadshotFile {
-  fileId: string;
-  filename: string;
-  sizeBytes: number;
-  contentType: string;
-  createdAt: number;
-  contactId: string;
-  contactName: string;
-  company: string | null;
-}
-
-export interface EventHeadshotFilesQuery {
-  page: number;
-  perPage: number;
-  q?: string;
-}
-
-export interface EventHeadshotFilesPage {
-  items: EventHeadshotFile[];
-  total: number;
-  page: number;
-  perPage: number;
-}
-
-/** Scopes contacts to the event's accepted speakers via
- * tasks/crud.ts's acceptedSpeakerConditions (DEC-278/312/680: accepted
- * submissions, invite status in ACTIVE_INVITE_STATUSES) — the same builder
- * listAcceptedContactIds composes, so the definition can't drift between
- * the onboarding grid and this tab. Pushed into the WHERE alongside the
- * headshot join rather than resolved as a separate id list — items and
- * total come from this ONE where clause. */
-export async function listEventHeadshotFiles(
-  db: Db,
-  eventId: string,
-  params: EventHeadshotFilesQuery,
-): Promise<EventHeadshotFilesPage> {
-  const conditions = [acceptedSpeakerConditions(eventId), isNotNull(schema.contact.headshotUrl)];
-
-  if (params.q) {
-    const tokens = params.q.split(/\s+/).filter((t) => t.length > 0);
-    const tokenConditions = tokens.map((token) => {
-      const like = likeContains(token.toLowerCase());
-      return or(
-        sql`lower(${schema.contact.firstName} || ' ' || ${schema.contact.lastName}) like ${like} escape '\\'`,
-        sql`lower(coalesce(${schema.contact.company}, '')) like ${like} escape '\\'`,
-        sql`lower(${schema.file.filename}) like ${like} escape '\\'`,
-      )!;
-    });
-    if (tokenConditions.length > 0) {
-      conditions.push(and(...tokenConditions)!);
-    }
-  }
-
-  const whereExpr = and(...conditions);
-  const headshotJoin = sql`${schema.contact.headshotUrl} = '/headshots/' || ${schema.file.id}`;
-
-  // DEC-680: total is count(distinct contact.id) over the same joins and
-  // whereExpr as the item query below — never a materialized scan whose
-  // length stands in for the count (a contact can speak on multiple
-  // accepted submissions; one headshot row per contact, not one per
-  // participant row).
-  const totalRows = await db
-    .select({ count: sql<number>`count(distinct ${schema.contact.id})` })
-    .from(schema.participant)
-    .innerJoin(schema.submission, eq(schema.participant.submissionId, schema.submission.id))
-    .innerJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
-    .innerJoin(schema.file, headshotJoin)
-    .where(whereExpr);
-  const total = Number(totalRows[0]?.count ?? 0);
-
-  const offset = (params.page - 1) * params.perPage;
-
-  const rows = await db
-    .selectDistinct({
-      fileId: schema.file.id,
-      filename: schema.file.filename,
-      sizeBytes: schema.file.sizeBytes,
-      contentType: schema.file.contentType,
-      createdAt: schema.file.createdAt,
-      contactId: schema.contact.id,
-      firstName: schema.contact.firstName,
-      lastName: schema.contact.lastName,
-      company: schema.contact.company,
-    })
-    .from(schema.participant)
-    .innerJoin(schema.submission, eq(schema.participant.submissionId, schema.submission.id))
-    .innerJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
-    .innerJoin(schema.file, headshotJoin)
-    .where(whereExpr)
-    .orderBy(sql`${schema.contact.lastName} asc, ${schema.contact.firstName} asc, ${schema.file.id} asc`)
-    .limit(params.perPage)
-    .offset(offset);
-
-  const items: EventHeadshotFile[] = rows.map((row) => ({
-    fileId: row.fileId,
-    filename: row.filename,
-    sizeBytes: row.sizeBytes,
-    contentType: row.contentType,
-    createdAt: row.createdAt.getTime(),
-    contactId: row.contactId,
-    contactName: `${row.firstName} ${row.lastName}`.trim(),
-    company: row.company ?? null,
-  }));
-
-  return { items, total, page: params.page, perPage: params.perPage };
 }

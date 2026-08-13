@@ -230,9 +230,9 @@ describe("DEC-562: JS re-aggregation sorts gain the contact-id tiebreak (byte-id
     async function run(leadRows: unknown[]) {
       const db = makeFakeDb([
         [{ recordPrefix: "SES" }], // event prefix
-        [{ count: 1 }], // total
-        [pageRow], // page of file chain roots
+        [pageRow], // ALL matching deliverable chain roots (DEC-773: totalSizeBytes needs every match, not just a page)
         [fileRow], // per-submission file rows (chain resolution)
+        [], // ALL matching headshot roots — kinds:[] queries both branches; none seeded here
         leadRows, // lead-speaker candidate rows
       ]);
       return listEventDeliverableFiles(db, EVENT_ID, { page: 1, perPage: 20, kinds: [], q: null });

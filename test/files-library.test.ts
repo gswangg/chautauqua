@@ -24,7 +24,8 @@ type Marker =
   | { __marker: "and"; conds: unknown[] }
   | { __marker: "or"; conds: unknown[] }
   | { __marker: "inArray"; col: unknown; vals: unknown[] }
-  | { __marker: "isNull"; col: unknown };
+  | { __marker: "isNull"; col: unknown }
+  | { __marker: "isNotNull"; col: unknown };
 
 vi.mock("drizzle-orm", async (importOriginal) => {
   const actual = await importOriginal<typeof import("drizzle-orm")>();
@@ -35,6 +36,7 @@ vi.mock("drizzle-orm", async (importOriginal) => {
     or: (...conds: unknown[]): Marker => ({ __marker: "or", conds }),
     inArray: (col: unknown, vals: unknown[]): Marker => ({ __marker: "inArray", col, vals }),
     isNull: (col: unknown): Marker => ({ __marker: "isNull", col }),
+    isNotNull: (col: unknown): Marker => ({ __marker: "isNotNull", col }),
   };
 });
 
@@ -172,35 +174,40 @@ function evalCond(cond: unknown, row: Record<string, unknown>, seed: Seed): bool
   if (m.__marker === "or") return m.conds.some((c) => evalCond(c, row, seed));
   if (m.__marker === "inArray") return m.vals.includes(row[colKey(m.col)]);
   if (m.__marker === "isNull") return row[colKey(m.col)] == null;
+  if (m.__marker === "isNotNull") return row[colKey(m.col)] != null;
   throw new Error(`fake db: unsupported condition ${JSON.stringify(cond)}`);
 }
 
-/** Resolves a join predicate's column operand against whichever of the two
- * joined tables actually declares it — avoids the "id" key collision a
- * naive object merge would hit (every table's PK is named "id"). */
-function resolveJoinOperand(
-  col: unknown,
-  sRow: Record<string, unknown>,
-  jRow: Record<string, unknown>,
-  sTable: Record<string, unknown>,
-  jTable: Record<string, unknown>,
-): unknown {
-  if (Object.values(sTable).includes(col)) return sRow[colKey(col)];
-  if (Object.values(jTable).includes(col)) return jRow[colKey(col)];
-  throw new Error("fake db: join predicate column not found on either joined table");
+/** Resolves a join predicate's column operand against whichever row (the
+ * freshly-joined `jRow`, checked first, or the accumulated `sRow`) actually
+ * carries that column's key — the newly-joined table's own row is checked
+ * first so its "id" is never shadowed by an accumulated row's "id" from an
+ * earlier join (every table's PK is literally "id"). Key-based rather than
+ * schema-membership-based so it stays correct across 3+-way join chains
+ * (e.g. the headshot join's participant->submission->contact->file), where
+ * a stale "the FROM table" reference would otherwise mis-resolve a
+ * mid-chain table's column (DEC-773). */
+function resolveJoinOperand(col: unknown, sRow: Record<string, unknown>, jRow: Record<string, unknown>): unknown {
+  const key = colKey(col); // throws if `col` isn't a known column at all
+  return key in jRow ? jRow[key] : sRow[key];
 }
 
-function evalJoinCond(
-  cond: unknown,
-  sRow: Record<string, unknown>,
-  jRow: Record<string, unknown>,
-  sTable: Record<string, unknown>,
-  jTable: Record<string, unknown>,
-): boolean {
+/** The headshot join's `${contact.headshotUrl} = '/headshots/' || ${file.id}`
+ * predicate — the only sql`` join condition this module ever emits. */
+function evalJoinSqlNode(node: { queryChunks: unknown[] }, sRow: Record<string, unknown>, jRow: Record<string, unknown>): boolean {
+  const colChunks = node.queryChunks.filter((c) => isColumnRef(c));
+  if (colChunks.length !== 2) throw new Error("fake db: unsupported join sql node");
+  const left = resolveJoinOperand(colChunks[0], sRow, jRow);
+  const right = resolveJoinOperand(colChunks[1], sRow, jRow);
+  return left === `/headshots/${String(right)}`;
+}
+
+function evalJoinCond(cond: unknown, sRow: Record<string, unknown>, jRow: Record<string, unknown>): boolean {
+  if (isSqlNode(cond)) return evalJoinSqlNode(cond, sRow, jRow);
   const m = cond as Marker;
   if (m.__marker !== "eq") throw new Error("fake db: only eq join predicates supported");
-  const left = resolveJoinOperand(m.col, sRow, jRow, sTable, jTable);
-  const right = resolveJoinOperand(m.val, sRow, jRow, sTable, jTable);
+  const left = resolveJoinOperand(m.col, sRow, jRow);
+  const right = resolveJoinOperand(m.val, sRow, jRow);
   return left === right;
 }
 
@@ -215,6 +222,18 @@ function project(row: Record<string, unknown>, fields: Record<string, unknown>) 
 function isCountStarFields(fields: Record<string, unknown> | undefined): boolean {
   if (!fields || Object.keys(fields).length !== 1) return false;
   return isSqlNode(fields.count);
+}
+
+/** `count(distinct <col>)` — DEC-680's headshot-branch total. Dedupes by
+ * the referenced column's value rather than falling back to matched.length
+ * (which the plain `count(*)` branch above uses). */
+function isCountDistinctFields(fields: Record<string, unknown> | undefined): { col: unknown } | null {
+  if (!fields || Object.keys(fields).length !== 1) return null;
+  const node = fields.count;
+  if (!isSqlNode(node)) return null;
+  const colChunks = node.queryChunks.filter((c) => isColumnRef(c));
+  if (colChunks.length !== 1) return null;
+  return { col: colChunks[0] };
 }
 
 interface Seed {
@@ -234,73 +253,94 @@ function makeFakeFilesDb(seed: Seed) {
     [schema.contact, seed.contact as unknown as Record<string, unknown>[]],
   ]);
 
-  const db = {
-    select(fields?: Record<string, unknown>) {
-      let source: Record<string, unknown>[] = [];
-      let fromTable: Record<string, unknown> | null = null;
-      let whereCond: unknown = null;
-      let orderByArg: unknown = null;
-      let limitN: number | undefined;
-      let offsetN = 0;
-      const run = () => {
-        const matched = whereCond ? source.filter((r) => evalCond(whereCond, r, seed)) : source.slice();
-        if (isCountStarFields(fields)) return [{ count: matched.length }];
-        let filtered = matched;
-        if (orderByArg) {
-          filtered = filtered.slice().sort((a, b) => {
-            const av = (a.createdAt as Date | undefined)?.getTime() ?? 0;
-            const bv = (b.createdAt as Date | undefined)?.getTime() ?? 0;
-            if (bv !== av) return bv - av; // created_at desc
-            return String(a.id).localeCompare(String(b.id)); // id asc tiebreak
-          });
-        }
-        if (offsetN) filtered = filtered.slice(offsetN);
-        if (limitN !== undefined) filtered = filtered.slice(0, limitN);
-        return fields ? filtered.map((r) => project(r, fields)) : filtered.map((r) => ({ ...r }));
-      };
-      const chain: any = {
-        from: (table: Record<string, unknown>) => {
-          fromTable = table;
-          source = (byTable.get(table) ?? []).map((r) => ({ ...r }));
-          return chain;
-        },
-        innerJoin: (table: Record<string, unknown>, cond: unknown) => {
-          const joinRows = byTable.get(table) ?? [];
-          const sTable = fromTable!;
-          const merged: Record<string, unknown>[] = [];
-          for (const s of source) {
-            for (const j of joinRows) {
-              if (evalJoinCond(cond, s, j, sTable, table)) {
-                // s (the driving/"from" table) wins on key collisions (every
-                // table's PK is literally "id") — downstream where/select in
-                // this module only ever reference the driving table's id.
-                merged.push({ ...j, ...s });
-              }
+  function select(fields: Record<string, unknown> | undefined, distinct: boolean) {
+    let source: Record<string, unknown>[] = [];
+    let whereCond: unknown = null;
+    let orderByArg: unknown = null;
+    let limitN: number | undefined;
+    let offsetN = 0;
+    const run = () => {
+      const matched = whereCond ? source.filter((r) => evalCond(whereCond, r, seed)) : source.slice();
+      const countDistinct = isCountDistinctFields(fields);
+      if (countDistinct) {
+        const key = colKey(countDistinct.col);
+        return [{ count: new Set(matched.map((r) => r[key])).size }];
+      }
+      if (isCountStarFields(fields)) return [{ count: matched.length }];
+      let filtered = matched;
+      if (orderByArg) {
+        filtered = filtered.slice().sort((a, b) => {
+          const av = (a.createdAt as Date | undefined)?.getTime() ?? 0;
+          const bv = (b.createdAt as Date | undefined)?.getTime() ?? 0;
+          if (bv !== av) return bv - av; // created_at desc
+          return String(a.id).localeCompare(String(b.id)); // id asc tiebreak
+        });
+      }
+      let projected = fields ? filtered.map((r) => project(r, fields)) : filtered.map((r) => ({ ...r }));
+      if (distinct) {
+        const seen = new Set<string>();
+        projected = projected.filter((p) => {
+          const key = JSON.stringify(p);
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+      }
+      if (offsetN) projected = projected.slice(offsetN);
+      if (limitN !== undefined) projected = projected.slice(0, limitN);
+      return projected;
+    };
+    const chain: any = {
+      from: (table: Record<string, unknown>) => {
+        source = (byTable.get(table) ?? []).map((r) => ({ ...r }));
+        return chain;
+      },
+      innerJoin: (table: Record<string, unknown>, cond: unknown) => {
+        const joinRows = byTable.get(table) ?? [];
+        const merged: Record<string, unknown>[] = [];
+        for (const s of source) {
+          for (const j of joinRows) {
+            if (evalJoinCond(cond, s, j)) {
+              // s (the accumulated/driving side) wins on key collisions
+              // (every table's PK is literally "id") — downstream
+              // where/select in this module only ever reference the
+              // driving table's id. evalJoinCond itself resolves each
+              // join's OWN predicate against the fresh `j`/accumulated `s`
+              // pair directly (checking `j` first), so this storage-order
+              // choice never affects join correctness, only what a LATER
+              // join step or the final WHERE/projection sees for columns
+              // this table doesn't declare.
+              merged.push({ ...j, ...s });
             }
           }
-          source = merged;
-          return chain;
-        },
-        where: (cond: unknown) => {
-          whereCond = cond;
-          return chain;
-        },
-        orderBy: (arg: unknown) => {
-          orderByArg = arg;
-          return chain;
-        },
-        limit: (n: number) => {
-          limitN = n;
-          return chain;
-        },
-        offset: (n: number) => {
-          offsetN = n;
-          return chain;
-        },
-        then: (resolve: (v: unknown[]) => void) => resolve(run()),
-      };
-      return chain;
-    },
+        }
+        source = merged;
+        return chain;
+      },
+      where: (cond: unknown) => {
+        whereCond = cond;
+        return chain;
+      },
+      orderBy: (arg: unknown) => {
+        orderByArg = arg;
+        return chain;
+      },
+      limit: (n: number) => {
+        limitN = n;
+        return chain;
+      },
+      offset: (n: number) => {
+        offsetN = n;
+        return chain;
+      },
+      then: (resolve: (v: unknown[]) => void) => resolve(run()),
+    };
+    return chain;
+  }
+
+  const db = {
+    select: (fields?: Record<string, unknown>) => select(fields, false),
+    selectDistinct: (fields?: Record<string, unknown>) => select(fields, true),
   };
   return db as unknown as import("../src/server/context").Db;
 }
@@ -385,7 +425,7 @@ describe("listEventDeliverableFiles (DEC-159/344)", () => {
     seed.file = [];
     const db = makeFakeFilesDb(seed);
     const result = await listEventDeliverableFiles(db, "event-1", q());
-    expect(result).toEqual({ items: [], total: 0, page: 1, perPage: 50 });
+    expect(result).toEqual({ items: [], total: 0, totalSizeBytes: 0, page: 1, perPage: 50 });
   });
 
   it("keeps unrelated single-version files as their own one-item chain", async () => {

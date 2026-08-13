@@ -62,11 +62,11 @@ function toTaskRecord(row: typeof schema.task.$inferSelect): TaskRecord {
 
 /** DEC-680: the ONE accepted-speaker predicate — accepted submissions in
  * `eventId` whose participant invite status is still active. Both
- * listAcceptedContactIds below and files-library.ts's listEventHeadshotFiles
- * compose this instead of hand-copying the pair of conditions, so the
- * definition can't drift between the onboarding grid and the headshots tab.
- * Callers AND this with `eq(schema.submission.eventId, eventId)` and their
- * own joins/conditions. */
+ * listAcceptedContactIds below and files-library.ts's listEventDeliverableFiles
+ * headshot branch (DEC-773) compose this instead of hand-copying the pair
+ * of conditions, so the definition can't drift between the onboarding grid
+ * and the files library's headshot rows. Callers AND this with
+ * `eq(schema.submission.eventId, eventId)` and their own joins/conditions. */
 export function acceptedSpeakerConditions(eventId: string) {
   return and(
     eq(schema.submission.eventId, eventId),

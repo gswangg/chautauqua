@@ -383,7 +383,10 @@ describe("DEC-534: every OFFSET-paged .orderBy() ends in a unique column, enumer
       "src/server/repo/review/plans.ts",
       "src/server/repo/contacts/segments.ts",
       "src/server/repo/users.ts",
-      "src/server/repo/files-library.ts",
+      // files-library.ts (DEC-773): the merged files-library list (deliverable
+      // chains + headshots) now fetches every MATCHING root once (totalSizeBytes
+      // has to visit every match anyway) and paginates via an in-memory slice,
+      // not a SQL OFFSET — so it's deliberately no longer part of this check.
       "src/server/repo/views.ts",
       "src/server/repo/portal-config.ts",
       "src/server/repo/events.ts",

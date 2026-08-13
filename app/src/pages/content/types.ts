@@ -28,6 +28,20 @@ export const DELIVERABLE_LABELS: Record<FileKind, string> = {
   handout: 'Handout',
 };
 
+// DEC-773: the files library is ONE list — a headshot is a file kind, not a
+// tab. LIBRARY_KINDS/LIBRARY_KIND_LABELS extend the deliverable vocabulary
+// with 'headshot' for the kind-chip strip and the ?kind= filter; the
+// upload-time vocabulary (FILE_KINDS above) stays presentation/poster/
+// handout only — a headshot is never uploaded through the submission-files
+// upload route.
+export const HEADSHOT_KIND = 'headshot' as const;
+export type LibraryKind = FileKind | typeof HEADSHOT_KIND;
+export const LIBRARY_KINDS: readonly LibraryKind[] = [...FILE_KINDS, HEADSHOT_KIND];
+export const LIBRARY_KIND_LABELS: Record<LibraryKind, string> = {
+  ...DELIVERABLE_LABELS,
+  headshot: 'Headshot',
+};
+
 // Item shape for the worklist, sourced from GET /api/v1/events/:eventId/submissions
 // (DEC-016 list contract; contentStatus already lands there).
 export interface ContentSubmissionListItem {
@@ -59,13 +73,15 @@ export interface DeliverableFile {
   createdAt: number;
 }
 
-// GET /api/v1/events/:eventId/files item (DEC-159: one row per
-// previous_file_id version chain, newest version's metadata surfaced).
+// GET /api/v1/events/:eventId/files item (DEC-159/773: one row per
+// previous_file_id version chain OR speaker headshot, newest version's
+// metadata surfaced). A headshot row carries submissionId/submissionRef/
+// submissionTitle all "" (no submission) and versionCount 1.
 export interface EventFileChainItem {
   rootFileId: string;
   latestFileId: string;
   filename: string;
-  kind: FileKind;
+  kind: LibraryKind;
   submissionId: string;
   submissionRef: string;
   submissionTitle: string;
@@ -76,17 +92,14 @@ export interface EventFileChainItem {
   uploaderName: string | null;
 }
 
-// GET /api/v1/events/:eventId/headshots item (DEC-669: headshots reach the
-// Files area as a SEPARATE, separately-paginated tab).
-export interface EventHeadshotFileItem {
-  fileId: string;
-  filename: string;
-  sizeBytes: number;
-  contentType: string;
-  createdAt: number;
-  contactId: string;
-  contactName: string;
-  company: string | null;
+// GET /api/v1/events/:eventId/files envelope (DEC-773: totalSizeBytes sums
+// the latest version of every matching chain, alongside `total`).
+export interface EventFilesEnvelope {
+  items: EventFileChainItem[];
+  total: number;
+  totalSizeBytes: number;
+  page: number;
+  perPage: number;
 }
 
 // GET/POST /api/v1/files/:fileId/comments item (DEC-020: author name + role).
