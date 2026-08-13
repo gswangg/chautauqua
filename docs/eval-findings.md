@@ -294,7 +294,14 @@ code-level specs — READ IT). Eight design-backed additions, build per mock:
    form itself. Add a test asserting the pending-existing-contact response
    contains no claim URL.
 
-Fidelity frames: design-frames-v5 being rendered; gate fidelity round uses v5.
+Fidelity frames: design-frames-v5 READY (88 frames, manifest.json) — the gate
+fleet and all probes use v5 exclusively. NOTE: v4 phone frames were CLIPPED
+(fixed 844pt shell, up to ~70% of content discarded) — v5 is full-scroll; any
+earlier phone-fidelity judgment made against v4 frames is unreliable and the
+mobile round must re-derive from v5. New frames: 04-speakers--05-participation-
+open · 08-contacts--12-add-to-the-pipeline · 09-settings--09-settings-saved-
+embeds · 10-public-and-portal--14/15 (password-CTA states); assignment tooling
+lives INSIDE the plan-editor frames; filter rules inside 08-contacts--00.
 
 ## EVAL-COVERAGE CAPABILITY SECTION (probe-3 verified 2026-08-13)
 
