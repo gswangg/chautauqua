@@ -8,7 +8,7 @@
 import { Hono } from "hono";
 import type { AppEnv } from "../../server/env";
 import { speakerGate, PortalLayout, PortalBackLink } from "./shared";
-import { formatCalendarDate, formatEventDate } from "../../lib/event-time";
+import { formatCalendarDate, formatEventDate, formatScheduleSlotLabel } from "../../lib/event-time";
 import { effectiveAssignmentDueDate } from "../../domain/task-due";
 import { csrfForm } from "../../server/middleware";
 import { ApiError } from "../../server/http";
@@ -199,6 +199,15 @@ function SessionCard(props: { session: PortalSession; deliverable: PortalDeliver
           {deliverable.filename} · uploaded {formatEventDate(deliverable.uploadedAt, s.timezone)}
         </span>
       ) : null}
+      {/* DEC-777 (wave 44 amendment): advisory-only inline flag — the
+          speaker sees their own clash. Never a block, never an email,
+          never a status change. Composes the existing quiet .chq-portal-
+          detail muted-text style rather than a new class. */}
+      {s.overlaps.map((o) => (
+        <span class="chq-portal-detail">
+          Overlaps {o.ref} · {formatScheduleSlotLabel(o.day, o.startMin, s.timezone)}
+        </span>
+      ))}
       <div class="chq-portal-actions">
         <a href="/portal/tasks" class="chq-btn chq-btn-secondary">Upload again</a>
         <a href="/portal/resources" class="chq-btn chq-btn-secondary">Read notes</a>
