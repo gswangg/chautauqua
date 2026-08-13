@@ -23,7 +23,8 @@ import {
   getParticipantScope,
   getPortalData,
   getPortalSubmissionDetail,
-  listDeliverableCandidates,
+  listDeliverableCandidatesForEvents,
+  listLatestDeliverables,
   nextInviteStatus,
   setInviteStatus,
   type InviteAction,
@@ -498,13 +499,10 @@ portalRoutes.get("/", async (c) => {
     getMyTaskAssignments(c.var.db, contactId, auth.orgId),
     getMySubmissions(c.var.db, contactId, auth.orgId),
   ]);
-  const deliverableEntries = await Promise.all(
-    sessions.map(async (s): Promise<[string, PortalDeliverable | null]> => [
-      s.submissionId,
-      await getLatestDeliverable(c.var.db, s.submissionId),
-    ]),
+  const deliverables = await listLatestDeliverables(
+    c.var.db,
+    sessions.map((s) => s.submissionId),
   );
-  const deliverables = new Map(deliverableEntries);
   const { token: csrfToken, setCookieIfNew } = ensureCsrfCookie(c);
   if (setCookieIfNew) c.header("Set-Cookie", setCookieIfNew, { append: true });
   return c.html(
@@ -571,13 +569,14 @@ portalRoutes.get("/submissions/:id", async (c) => {
   // asks which one; with exactly one it is this one).
   const myTaskAssignments = await getMyTaskAssignments(c.var.db, contactId, auth.orgId);
   const fileRequestCandidates = myTaskAssignments.filter((t) => t.kind === "file_request");
-  const fileRequestMatches = await Promise.all(
-    fileRequestCandidates.map(async (t) => ({
-      task: t,
-      candidates: await listDeliverableCandidates(c.var.db, contactId, t.eventId),
-    })),
+  const candidatesByEvent = await listDeliverableCandidatesForEvents(
+    c.var.db,
+    contactId,
+    fileRequestCandidates.map((t) => t.eventId),
   );
-  const fileRequestTask = fileRequestMatches.find((m) => m.candidates.some((cand) => cand.id === id))?.task ?? null;
+  const fileRequestTask =
+    fileRequestCandidates.find((t) => (candidatesByEvent.get(t.eventId) ?? []).some((cand) => cand.id === id)) ??
+    null;
   const { token: csrfToken, setCookieIfNew } = ensureCsrfCookie(c);
   if (setCookieIfNew) c.header("Set-Cookie", setCookieIfNew, { append: true });
   return c.html(
