@@ -170,9 +170,86 @@
   border: 1px solid var(--chq-ink);
 }
 
+/* Not invited: dashed outline -- the fourth DEC-730 modifier, distinct from
+   the pending task cells' solid outline so the two status axes never look
+   like one control family (DEC-830). */
+.chq-speakers-status-none {
+  color: var(--chq-muted);
+  font-weight: 600;
+  background: none;
+  border: 1px dashed var(--chq-border);
+}
+
 .chq-speakers-cell-none {
   font-size: 11px;
   color: var(--chq-disabled);
+}
+
+/* DEC-830: the participation menu (ParticipationMenu.tsx) replaces the old
+   cycle-on-click invite-status button with a real menu -- trigger keeps the
+   DEC-730 pill shapes, the panel is a plain anchored dropdown matching
+   event-switcher.css's menu pattern. */
+.chq-participation-menu {
+  position: relative;
+  display: inline-block;
+}
+
+.chq-participation-menu-trigger {
+  border: none;
+}
+
+.chq-participation-menu-panel {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 260px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px;
+  background: var(--chq-surface, #fff);
+  border: 1px solid var(--chq-border);
+  border-radius: 6px;
+  box-shadow: inset 0 0 0 1px var(--chq-hairline);
+}
+
+.chq-participation-menu-caption,
+.chq-participation-menu-footer {
+  margin: 0;
+  padding: 2px 6px;
+  font-size: 11px;
+  color: var(--chq-muted);
+}
+
+.chq-participation-menu-footer {
+  border-top: 1px solid var(--chq-hairline);
+  padding-top: 6px;
+  margin-top: 2px;
+}
+
+.chq-participation-menu-item {
+  text-align: left;
+  padding: 6px 8px;
+  border: none;
+  background: none;
+  border-radius: 4px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.chq-participation-menu-item:hover {
+  background: var(--chq-hairline);
+}
+
+.chq-participation-menu-item.is-current {
+  font-weight: 700;
+}
+
+.chq-participation-menu-action {
+  border-top: 1px solid var(--chq-hairline);
+  margin-top: 2px;
+  padding-top: 8px;
 }
 
 .chq-speakers-has-account {

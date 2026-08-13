@@ -10,10 +10,9 @@ import { TaskModal } from './TaskModal';
 import { ResponseModal } from './ResponseModal';
 import { RemindPreviewModal } from './RemindPreviewModal';
 import { describeSendResult, type SendResult } from '../../lib/sendResult';
+import { ParticipationMenu } from './ParticipationMenu';
 import {
   DEFAULT_GRID_FILTERS,
-  INVITE_STATUS_LABELS,
-  INVITE_STATUSES,
   type AssignmentResponseDetail,
   type AssignmentStatus,
   type EventForm,
@@ -86,22 +85,6 @@ function firstNameOf(fullName: string): string {
 function statusCellClass(status: AssignmentStatus, overdue: boolean): string {
   const modifier = status === 'complete' ? 'complete' : overdue ? 'overdue' : 'pending';
   return `chq-speakers-status chq-speakers-status-${modifier}`;
-}
-
-// DEC-789: the roster's invite-status control reuses the DEC-730 status
-// control family (same base class, same fill/outline/ink-outline axis) --
-// confirmed reads as the filled "done" pill, invited/not-invited read as
-// outline "not done", declined reads as the ink-outlined urgency mark.
-function inviteStatusCellClass(status: InviteStatus): string {
-  const modifier = status === 'accepted' ? 'complete' : status === 'declined' ? 'overdue' : 'pending';
-  return `chq-speakers-status chq-speakers-status-${modifier}`;
-}
-
-const INVITE_STATUS_CYCLE: readonly InviteStatus[] = INVITE_STATUSES;
-
-function nextInviteStatus(status: InviteStatus): InviteStatus {
-  const i = INVITE_STATUS_CYCLE.indexOf(status);
-  return INVITE_STATUS_CYCLE[(i + 1) % INVITE_STATUS_CYCLE.length]!;
 }
 
 // DEC-662/DEC-746: the roster's Add-speaker trigger lives here now (see
@@ -219,15 +202,16 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
     }
   }
 
-  // DEC-789: writes the roster row's invite status through
+  // DEC-789/DEC-830: writes the roster row's invite status through
   // PATCH /submissions/:submissionId/participants/:participantId (task-w3-c,
   // mocked in tests -- this file never imports src/routes/api/submissions.ts).
   // Optimistic, with rollback on ApiError (matching toggleCell/
-  // changeResponseStatus's established pattern on this page).
-  async function toggleInviteStatus(contactId: string, submissionId: string, participantId: string, current: InviteStatus) {
+  // changeResponseStatus's established pattern on this page). Driven by an
+  // explicit menu selection (ParticipationMenu) rather than a click-to-cycle
+  // control -- the desired state is chosen, never advanced.
+  async function setInviteStatus(contactId: string, submissionId: string, participantId: string, desired: InviteStatus) {
     if (!grid) return;
     const previous = grid;
-    const desired = nextInviteStatus(current);
 
     setGrid({
       ...grid,
@@ -481,16 +465,15 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
                           </>
                         )}
                       </div>
-                      <button
-                        type="button"
-                        className={inviteStatusCellClass(row.contact.inviteStatus)}
-                        onClick={() =>
-                          toggleInviteStatus(row.contact.id, row.contact.submissionId, row.contact.participantId, row.contact.inviteStatus)
+                      <ParticipationMenu
+                        contactName={row.contact.name}
+                        status={row.contact.inviteStatus}
+                        onSelectStatus={(status) =>
+                          setInviteStatus(row.contact.id, row.contact.submissionId, row.contact.participantId, status)
                         }
-                        aria-label={`Invite status for ${row.contact.name}: ${INVITE_STATUS_LABELS[row.contact.inviteStatus]}`}
-                      >
-                        {INVITE_STATUS_LABELS[row.contact.inviteStatus]}
-                      </button>
+                        onSendInvite={() => sendPortalInvite(row.contact.id)}
+                        sendInviteDisabled={invitingContactIds.has(row.contact.id)}
+                      />
                       <button
                         type="button"
                         className="chq-btn chq-btn-tertiary chq-speakers-remind-one"
@@ -586,16 +569,15 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
                       </>
                     )}
                   </span>
-                  <button
-                    type="button"
-                    className={inviteStatusCellClass(row.contact.inviteStatus)}
-                    onClick={() =>
-                      toggleInviteStatus(row.contact.id, row.contact.submissionId, row.contact.participantId, row.contact.inviteStatus)
+                  <ParticipationMenu
+                    contactName={row.contact.name}
+                    status={row.contact.inviteStatus}
+                    onSelectStatus={(status) =>
+                      setInviteStatus(row.contact.id, row.contact.submissionId, row.contact.participantId, status)
                     }
-                    aria-label={`Invite status for ${row.contact.name}: ${INVITE_STATUS_LABELS[row.contact.inviteStatus]}`}
-                  >
-                    {INVITE_STATUS_LABELS[row.contact.inviteStatus]}
-                  </button>
+                    onSendInvite={() => sendPortalInvite(row.contact.id)}
+                    sendInviteDisabled={invitingContactIds.has(row.contact.id)}
+                  />
                   <button
                     type="button"
                     className="chq-btn chq-btn-tertiary chq-speakers-remind-one"
