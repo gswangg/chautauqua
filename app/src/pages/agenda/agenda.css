@@ -185,22 +185,24 @@
   outline-offset: -2px;
 }
 
-/* DEC-870/DEC-794: while armed, cell-buttons must read as the live target
+/* DEC-870/DEC-938: while armed, cell-buttons must read as the live target
    even where they sit under a placed card or the merged clash card — a
    higher z-index than either, plus a standing (not just :focus-visible)
-   outline so an occupied slot's target is never buried under the card
-   painted on top of it. The prior --chq-brand outline measured only
-   1.80:1 against the quieted clash card below (ink fill @ opacity .55
-   blended over --chq-surface ≈ rgb(127,128,122)) — below the 3:1 floor.
-   var(--chq-ink) measures ≈16:1 against --chq-surface (#faf8f2) and
-   ≈4.3:1 against that same blended clash-card fill, clearing 3:1 against
-   both backgrounds the ring can sit on. :hover thickens the ring and adds
-   a faint brand tint so the "Place here · N MIN FREE" affordance responds
-   to the pointer, not just to focus. */
+   ring so an occupied slot's target is never buried under the card painted
+   on top of it. The clash card below is quieted by colour substitution
+   (DEC-938: --chq-ink-2 fill, no opacity), so this at-rest ring only needs
+   to clear 3:1 against that fill, not the near-black --chq-ink it used to
+   sit on — var(--chq-rule) measures ≈6.6:1 against --chq-ink-2, well past
+   the floor, so the ring drops from a 2px --chq-ink outline (which doubled
+   at shared cell edges across ~144 cells) to a 1px inset --chq-rule ring.
+   :hover and :focus-visible below stay the heavier ink/brand rings so the
+   armed target still reads unambiguously once a pointer or keyboard is on
+   it — only the at-rest state, present on every cell simultaneously, needed
+   quieting. */
 .chq-day-grid-armed .chq-day-grid-cell-btn {
   z-index: 6;
-  outline: 2px solid var(--chq-ink);
-  outline-offset: -2px;
+  outline: 1px solid var(--chq-rule);
+  outline-offset: -1px;
 }
 
 /* The hover tint must stay translucent: this button paints at z-index 6,
@@ -261,8 +263,15 @@
   border-color: transparent;
 }
 
+/* DEC-938: quiet the armed clash card by colour substitution, not opacity —
+   opacity 0.55 faded the card's text along with its fill (both blend toward
+   the page background together), so the on-ink text over the blended fill
+   measured only 3.56:1, the last AA failure on the desktop gate. Swapping
+   to the lighter --chq-ink-2 fill keeps --chq-on-ink text at ≈9.1:1, clear
+   of the 4.5:1 floor, without touching the card's opacity at all. */
 .chq-day-grid-armed .chq-day-grid-clash-card {
-  opacity: 0.55;
+  background: var(--chq-ink-2);
+  color: var(--chq-on-ink);
   outline: 1px dashed var(--chq-on-ink);
   outline-offset: -1px;
 }
