@@ -541,6 +541,144 @@ describe('AgendaPage render smoke', () => {
   });
 });
 
+// DEC-769: a placed session's own occupied slot must never count against
+// itself once armed (a lone session can't clash with itself), and the
+// armed-mode cell buttons must sit ABOVE the placed cards sharing their
+// grid area so a click lands at the row the organiser clicked, not at
+// whatever startMin the underlying card happened to carry.
+function twoRoomPayload() {
+  return {
+    days: ['2026-06-01'],
+    rooms: [
+      { id: 'room-1', name: 'Main Hall' },
+      { id: 'room-2', name: 'Room B' },
+    ],
+    tracks: [],
+    placed: [
+      {
+        submissionId: 'sub-1',
+        ref: 'S-001',
+        title: 'Solo Talk A',
+        trackIds: [],
+        speakers: [],
+        roomId: 'room-1',
+        day: '2026-06-01',
+        startMin: 600,
+        endMin: 630,
+      },
+      {
+        submissionId: 'sub-5',
+        ref: 'S-005',
+        title: 'Room B Talk',
+        trackIds: [],
+        speakers: [],
+        roomId: 'room-2',
+        day: '2026-06-01',
+        startMin: 600,
+        endMin: 630,
+      },
+    ],
+    unscheduled: [],
+    conflicts: [],
+    unplacedReasons: [],
+    summary: { unplaced: 0, conflicts: 0 },
+  };
+}
+
+describe('AgendaPage armed self-clash and top-layer click-to-place (DEC-769)', () => {
+  it('arming a placed session and clicking a different room occupied cell issues the slot PUT with THAT cell startMin', async () => {
+    const fetchMock = mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/agenda`]: twoRoomPayload(),
+      'PUT /api/v1/submissions/sub-1/slot': { status: 200, body: { conflicts: [], summary: { unplaced: 0, conflicts: 1 } } },
+    });
+
+    render(<AgendaPage />);
+    await waitFor(() => {
+      expect(screen.getByText('Solo Talk A')).toBeInTheDocument();
+    });
+
+    // Arm sub-1 (Main Hall, 10:00-10:30) by clicking its own placed card.
+    fireEvent.click(screen.getByRole('button', { name: 'S-001: Solo Talk A' }));
+    expect(screen.getByText(/Placing S-001 — Esc to cancel/)).toBeInTheDocument();
+
+    // sub-5 occupies Room B 10:00-10:30. Click the 10:15am row -- inside
+    // sub-5's span, but NOT its own startMin -- to prove the button (not
+    // the card underneath it) receives the click and reports the row's
+    // own minutes.
+    const clashButton = screen.getByRole('button', {
+      name: 'Place S-001 at 10:15am in Room B — will clash with 1 session',
+    });
+    fireEvent.click(clashButton);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining('/api/v1/submissions/sub-1/slot'),
+        expect.objectContaining({ method: 'PUT' }),
+      );
+    });
+    const call = fetchMock.mock.calls.find(([, init]) => init?.method === 'PUT');
+    expect(call).toBeDefined();
+    const body = JSON.parse((call![1] as RequestInit).body as string);
+    expect(body).toMatchObject({ day: '2026-06-01', roomId: 'room-2', startMin: 615, endMin: 645 });
+  });
+
+  it('arming a placed session and reading its own cell accessible name shows no clash', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/agenda`]: twoRoomPayload(),
+    });
+
+    render(<AgendaPage />);
+    await waitFor(() => {
+      expect(screen.getByText('Solo Talk A')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'S-001: Solo Talk A' }));
+
+    // sub-1's own slot (Main Hall, 10:00am) — excluded from its own
+    // occupancy count, so it renders as an ordinary (non-clash) button.
+    const ownCellButton = screen.getByRole('button', { name: 'Place S-001 at 10:00am in Main Hall' });
+    expect(ownCellButton).not.toHaveClass('chq-day-grid-cell-btn-clash');
+    expect(
+      screen.queryByRole('button', { name: /Place S-001 at 10:00am in Main Hall — will clash/ }),
+    ).toBeNull();
+  });
+
+  it('placing onto a genuinely occupied cell still writes and the conflict chip appears afterwards', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/agenda`]: twoRoomPayload(),
+      'PUT /api/v1/submissions/sub-1/slot': {
+        status: 200,
+        body: {
+          conflicts: [
+            { kind: 'room_overlap', submissionIds: ['sub-1', 'sub-5'], detail: 'Solo Talk A and Room B Talk overlap in Room B.' },
+          ],
+          summary: { unplaced: 0, conflicts: 1 },
+        },
+      },
+    });
+
+    render(<AgendaPage />);
+    await waitFor(() => {
+      expect(screen.getByText('Solo Talk A')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'S-001: Solo Talk A' }));
+    const clashButton = screen.getByRole('button', {
+      name: 'Place S-001 at 10:15am in Room B — will clash with 1 session',
+    });
+    fireEvent.click(clashButton);
+
+    // sub-1 now overlaps sub-5 in Room B (10:15-10:45 vs 10:00-10:30) --
+    // exactly two overlapping sessions in one room merge into DEC-742's
+    // single inverted clash card with a caption, proving the write landed
+    // and the resulting conflict actually renders (never a silent no-op).
+    await waitFor(() => {
+      expect(document.querySelector('.chq-day-grid-clash-caption')).not.toBeNull();
+    });
+    expect(document.querySelector('.chq-day-grid-clash-caption')?.textContent).toBe('Two sessions in one room');
+  });
+});
+
 /** Minimal jsdom-safe MediaQueryList stand-in so useIsPhone's
  * `window.matchMedia('(max-width: 700px)')` subscription resolves to the
  * phone tree in these tests (DEC-380). jsdom does not implement
