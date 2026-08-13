@@ -620,6 +620,43 @@ describe("seed.ts output (task w1-d, DEC-145)", () => {
     }
   });
 
+  it("DEC-966: the seeded default CFP form's field ids are in position order, with the required set exactly {title, description, field_session_format, first_name, last_name, email}", () => {
+    const formRows = parseInserts(sql, "form");
+    const defaultForm = formRows.find((r) => r.is_default === "1");
+    expect(defaultForm, "no default form row").toBeTruthy();
+
+    const formFieldRows = parseInserts(sql, "form_field").filter((r) => r.form_id === defaultForm!.id);
+
+    const sessionFields = formFieldRows
+      .filter((r) => r.section === "session")
+      .sort((a, b) => Number(a.position) - Number(b.position));
+    expect(sessionFields.map((r) => r.id)).toEqual([
+      "title",
+      "description",
+      "field_session_format",
+      "field_audience_level",
+      "field_notes_for_reviewers",
+      "field_accessibility_needs",
+    ]);
+
+    const speakerFields = formFieldRows
+      .filter((r) => r.section === "speaker")
+      .sort((a, b) => Number(a.position) - Number(b.position));
+    expect(speakerFields.map((r) => r.id)).toEqual([
+      "first_name",
+      "last_name",
+      "email",
+      "job_title",
+      "company",
+      "bio",
+    ]);
+
+    const requiredIds = new Set(formFieldRows.filter((r) => r.required === "1").map((r) => r.id!));
+    expect(requiredIds).toEqual(
+      new Set(["title", "description", "field_session_format", "first_name", "last_name", "email"]),
+    );
+  });
+
   it("DEC-739: exactly one batch_id appears on >=20 email_log rows, and template count is at least 5", () => {
     const emailLogRows = parseInserts(sql, "email_log");
     const batchCounts = new Map<string, number>();

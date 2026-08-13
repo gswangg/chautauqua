@@ -23,6 +23,7 @@ import { formatCalendarDate } from "../src/lib/event-time";
 import { DEFAULT_ONBOARDING_TASKS, FORM_TASK_FIELD_SPECS } from "../src/domain/acceptance";
 import type { FormTaskFieldKind } from "../src/domain/acceptance";
 import { SESSION_FORMAT_FIELD_ID } from "../src/forms/types";
+import { MAX_LONG_TEXT_LENGTH } from "../src/forms/validate";
 import * as schema from "../src/db/schema";
 import {
   DEC_003,
@@ -435,11 +436,12 @@ async function main(): Promise<void> {
     options: string[] | null;
     locked: boolean;
   }> = [
-    { id: "title", section: "session", kind: "text", label: "Title", helpText: null, required: true, position: 0, options: null, locked: true },
-    { id: "description", section: "session", kind: "long_text", label: "Description", helpText: null, required: true, position: 1, options: null, locked: true },
-    { id: SESSION_FORMAT_FIELD_ID, section: "session", kind: "dropdown", label: "Session format", helpText: null, required: true, position: 2, options: fixture.event.session_formats, locked: false },
-    { id: "field_audience_level", section: "session", kind: "dropdown", label: "Audience level", helpText: null, required: true, position: 3, options: audienceLevels, locked: false },
-    { id: "field_notes_for_reviewers", section: "session", kind: "long_text", label: "Notes for reviewers", helpText: "Optional context for the program committee.", required: false, position: 4, options: null, locked: false },
+    { id: "title", section: "session", kind: "text", label: "Title", helpText: "Shown on every public page", required: true, position: 0, options: null, locked: true },
+    { id: "description", section: "session", kind: "long_text", label: "Abstract", helpText: `Up to ${MAX_LONG_TEXT_LENGTH.toLocaleString("en-US")} characters`, required: true, position: 1, options: null, locked: true },
+    { id: SESSION_FORMAT_FIELD_ID, section: "session", kind: "dropdown", label: "Format", helpText: `${fixture.event.session_formats.length} options`, required: true, position: 2, options: fixture.event.session_formats, locked: false },
+    { id: "field_audience_level", section: "session", kind: "dropdown", label: "Audience level", helpText: "Beginner, intermediate, advanced", required: false, position: 3, options: audienceLevels, locked: false },
+    { id: "field_notes_for_reviewers", section: "session", kind: "long_text", label: "Notes for reviewers", helpText: "Never shown publicly", required: false, position: 4, options: null, locked: false },
+    { id: "field_accessibility_needs", section: "session", kind: "text", label: "Accessibility needs", helpText: "Passed to the venue team only", required: false, position: 5, options: null, locked: false },
     { id: "first_name", section: "speaker", kind: "text", label: "First name", helpText: null, required: true, position: 0, options: null, locked: true },
     { id: "last_name", section: "speaker", kind: "text", label: "Last name", helpText: null, required: true, position: 1, options: null, locked: true },
     { id: "email", section: "speaker", kind: "text", label: "Email", helpText: null, required: true, position: 2, options: null, locked: true },
