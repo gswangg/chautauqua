@@ -17,6 +17,7 @@ import { describe, expect, it } from "vitest";
 import type { FormFieldDef } from "../src/forms/types";
 import { FieldRulesScript, FormField } from "../src/views/form-render";
 import { resolveHiddenFieldIds } from "../src/forms/visibility";
+import { FormatChoices, AudienceChoices } from "../src/routes/public/submit-views";
 
 const formatField: FormFieldDef = {
   id: "format",
@@ -112,5 +113,50 @@ describe("public CFP conditional field: present-but-hidden markup + client toggl
     // never hides the locked field either.
     const hidden = resolveHiddenFieldIds([formatField, lockedTitle], { format: "Talk" });
     expect(hidden.has(lockedTitle.id)).toBe(false);
+  });
+});
+
+// w54-e (P1 fix): FormatChoices/AudienceChoices render every radio option
+// under the same data-field-id (getValue is fixed to be radio-group aware in
+// form-render-rules.test.ts) but, before this fix, emitted no
+// chq-field-wrap-<fieldId> element at all — so a rule ON one of these
+// pulled-out fields could never be toggled/hidden in the browser, since
+// FieldRulesScript's apply() looks the wrap up by id and silently no-ops
+// when it's missing.
+describe("FormatChoices/AudienceChoices carry the toggler's wrap id + data-required (w54-e)", () => {
+  const audienceField: FormFieldDef = {
+    id: "audience_level",
+    section: "session",
+    kind: "dropdown",
+    label: "Audience level",
+    required: true,
+    position: 0,
+    options: ["Beginner", "Intermediate", "Advanced"],
+  };
+
+  it("FormatChoices wraps its fieldset in chq-field-wrap-<fieldId> and marks options data-required", () => {
+    const html = FormatChoices({ field: formatField, value: undefined, visible: true }).toString();
+    expect(html).toContain(`id="chq-field-wrap-${formatField.id}"`);
+    expect(html).toContain('data-required="true"');
+    expect(html).not.toContain("display:none");
+  });
+
+  it("FormatChoices renders display:none inline when not visible", () => {
+    const html = FormatChoices({ field: formatField, value: undefined, visible: false }).toString();
+    expect(html).toContain(`id="chq-field-wrap-${formatField.id}"`);
+    expect(html).toContain("display:none");
+  });
+
+  it("AudienceChoices wraps its fieldset in chq-field-wrap-<fieldId> and marks options data-required", () => {
+    const html = AudienceChoices({ field: audienceField, value: undefined, visible: true }).toString();
+    expect(html).toContain(`id="chq-field-wrap-${audienceField.id}"`);
+    expect(html).toContain('data-required="true"');
+    expect(html).not.toContain("display:none");
+  });
+
+  it("AudienceChoices renders display:none inline when not visible", () => {
+    const html = AudienceChoices({ field: audienceField, value: undefined, visible: false }).toString();
+    expect(html).toContain(`id="chq-field-wrap-${audienceField.id}"`);
+    expect(html).toContain("display:none");
   });
 });

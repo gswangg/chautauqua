@@ -138,6 +138,10 @@ export function DraftSavedNotice() {
 // option parity is about the chq-cfp-option chrome, not the input type, so
 // the shared classes stay; only the caption differs from the edit surface's
 // "Choose all that apply."
+// w54-e: TrackChoices has no FormFieldDef of its own (`trackIds` isn't a
+// row in the field list, just a join-table posted array), so there is no
+// field id to key a `chq-field-wrap-<id>` element or a rule on -- it gets
+// no wrap, per the task's own carve-out.
 export function TrackChoices(props: { tracks: TrackRow[]; selected: string[] }) {
   return (
     <fieldset class="chq-cfp-fieldset">
@@ -169,25 +173,39 @@ export function TrackChoices(props: { tracks: TrackRow[]; selected: string[] }) 
 // other dropdown-kind field, including this same field on /portal/edit.
 // Reuses the chq-cfp-option chrome for the same reason TrackChoices does:
 // parity is about the option chrome, not the input type.
-export function FormatChoices(props: { field: FormFieldDef; value: unknown; error?: string }) {
-  const { field, value, error } = props;
+// w54-e: wrapped in the same `chq-field-wrap-<fieldId>` element FormField
+// emits (form-render.tsx) so the visibility script's `apply()` can find and
+// toggle it -- without this wrap, a rule targeting this field was rendered
+// unconditionally and could never be hidden in the browser.
+export function FormatChoices(props: { field: FormFieldDef; value: unknown; error?: string; visible: boolean }) {
+  const { field, value, error, visible } = props;
   const name = fieldInputName(field.id);
   return (
-    <fieldset class="chq-cfp-fieldset">
-      <legend>{field.label}</legend>
-      {field.helpText ? <p class="help">{field.helpText}</p> : null}
-      {(field.options ?? []).map((opt) => (
-        <label class="chq-cfp-option">
-          <input type="radio" name={name} data-field-id={field.id} value={opt} checked={value === opt} required={field.required} />
-          {opt}
-        </label>
-      ))}
-      {error ? (
-        <p role="alert" class="chq-field-error">
-          {error}
-        </p>
-      ) : null}
-    </fieldset>
+    <div id={`chq-field-wrap-${field.id}`} style={visible ? undefined : "display:none"}>
+      <fieldset class="chq-cfp-fieldset">
+        <legend>{field.label}</legend>
+        {field.helpText ? <p class="help">{field.helpText}</p> : null}
+        {(field.options ?? []).map((opt) => (
+          <label class="chq-cfp-option">
+            <input
+              type="radio"
+              name={name}
+              data-field-id={field.id}
+              data-required={field.required ? "true" : "false"}
+              value={opt}
+              checked={value === opt}
+              required={field.required}
+            />
+            {opt}
+          </label>
+        ))}
+        {error ? (
+          <p role="alert" class="chq-field-error">
+            {error}
+          </p>
+        ) : null}
+      </fieldset>
+    </div>
   );
 }
 
@@ -197,27 +215,38 @@ export function FormatChoices(props: { field: FormFieldDef; value: unknown; erro
 // pulls Session-format -- but drawn as a horizontal three-pill segment
 // (.chq-cfp-segment) rather than FormatChoices'/TrackChoices' one-column
 // list, reusing the same .chq-cfp-option chrome per DEC-696 parity.
-export function AudienceChoices(props: { field: FormFieldDef; value: unknown; error?: string }) {
-  const { field, value, error } = props;
+// w54-e: same wrap as FormatChoices, above, for the same reason.
+export function AudienceChoices(props: { field: FormFieldDef; value: unknown; error?: string; visible: boolean }) {
+  const { field, value, error, visible } = props;
   const name = fieldInputName(field.id);
   return (
-    <fieldset class="chq-cfp-fieldset">
-      <legend>{field.label}</legend>
-      {field.helpText ? <p class="help">{field.helpText}</p> : null}
-      <div class="chq-cfp-segment">
-        {(field.options ?? []).map((opt) => (
-          <label class="chq-cfp-option chq-cfp-pill">
-            <input type="radio" name={name} data-field-id={field.id} value={opt} checked={value === opt} required={field.required} />
-            {opt}
-          </label>
-        ))}
-      </div>
-      {error ? (
-        <p role="alert" class="chq-field-error">
-          {error}
-        </p>
-      ) : null}
-    </fieldset>
+    <div id={`chq-field-wrap-${field.id}`} style={visible ? undefined : "display:none"}>
+      <fieldset class="chq-cfp-fieldset">
+        <legend>{field.label}</legend>
+        {field.helpText ? <p class="help">{field.helpText}</p> : null}
+        <div class="chq-cfp-segment">
+          {(field.options ?? []).map((opt) => (
+            <label class="chq-cfp-option chq-cfp-pill">
+              <input
+                type="radio"
+                name={name}
+                data-field-id={field.id}
+                data-required={field.required ? "true" : "false"}
+                value={opt}
+                checked={value === opt}
+                required={field.required}
+              />
+              {opt}
+            </label>
+          ))}
+        </div>
+        {error ? (
+          <p role="alert" class="chq-field-error">
+            {error}
+          </p>
+        ) : null}
+      </fieldset>
+    </div>
   );
 }
 
@@ -398,7 +427,12 @@ export function SubmitPage(props: {
                     misleading. */}
                 {tracks.length > 0 ? <TrackChoices tracks={tracks} selected={selectedTrackIds} /> : null}
                 {formatField ? (
-                  <FormatChoices field={formatField} value={answers[formatField.id]} error={errors?.[formatField.id]} />
+                  <FormatChoices
+                    field={formatField}
+                    value={answers[formatField.id]}
+                    error={errors?.[formatField.id]}
+                    visible={isVisible(formatField, answers)}
+                  />
                 ) : null}
               </div>
               {trackError ? (
@@ -407,7 +441,12 @@ export function SubmitPage(props: {
                 </p>
               ) : null}
               {audienceField ? (
-                <AudienceChoices field={audienceField} value={answers[audienceField.id]} error={errors?.[audienceField.id]} />
+                <AudienceChoices
+                  field={audienceField}
+                  value={answers[audienceField.id]}
+                  error={errors?.[audienceField.id]}
+                  visible={isVisible(audienceField, answers)}
+                />
               ) : null}
               <FormFieldsSection
                 fields={fields}
