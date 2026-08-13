@@ -6,6 +6,17 @@
 import type { Hono } from "hono";
 import type { AppEnv } from "./env";
 
+// DEC-841: the one place the "/api/v1 vs everything else" rule lives. Both
+// the notFound handler (not-found.tsx) and the onError handler below
+// classify a request the same way -- an HTML navigation always gets an HTML
+// error, an API call always gets the JSON envelope, regardless of which
+// handler happens to fire.
+export const API_PREFIX = "/api/v1";
+
+export function isApiPath(pathname: string): boolean {
+  return pathname === API_PREFIX || pathname.startsWith(`${API_PREFIX}/`);
+}
+
 export type ApiErrorCode =
   | "unauthorized"
   | "forbidden"
@@ -122,11 +133,12 @@ export function parseBoundedOptionalText(
   return text.length === 0 ? null : text;
 }
 
-// DEC-626: a minimal self-contained HTML error page for requests marked
-// htmlSurface (plain form posts) -- an HTML form post never ends as a JSON
-// blob. Same status as the JSON envelope would have used; message is the
-// visible text; 'Go back' links to the referring path (same-origin only)
-// or '/'.
+// DEC-626/DEC-841: a minimal self-contained HTML error page for requests
+// that want an HTML surface -- either marked htmlSurface (plain form posts,
+// including a form post to an /api/v1 path) or any non-API-path GET
+// navigation -- an HTML navigation never ends as a JSON blob. Same status as
+// the JSON envelope would have used; message is the visible text; 'Go back'
+// links to the referring path (same-origin only) or '/'.
 function renderHtmlError(message: string, referer: string | undefined): string {
   const safeMessage = escapeHtmlText(message);
   const backHref = safeReferrerPath(referer);
@@ -158,9 +170,9 @@ function safeReferrerPath(referer: string | undefined): string {
 /** Registers the shared onError handler; call once on the top-level app. */
 export function registerErrorHandler(app: Hono<AppEnv>): void {
   app.onError((err, c) => {
-    const htmlSurface = c.var.htmlSurface === true;
+    const wantsHtml = c.var.htmlSurface === true || !isApiPath(new URL(c.req.url).pathname);
     if (err instanceof ApiError) {
-      if (htmlSurface) {
+      if (wantsHtml) {
         return c.html(
           renderHtmlError(err.message, c.req.header("referer") ?? undefined),
           err.status as 400 | 401 | 403 | 404 | 409,
@@ -170,7 +182,7 @@ export function registerErrorHandler(app: Hono<AppEnv>): void {
     }
     // Fail loudly: unexpected errors are never swallowed, always logged.
     console.error("unhandled error", err);
-    if (htmlSurface) {
+    if (wantsHtml) {
       return c.html(
         renderHtmlError("Internal server error", c.req.header("referer") ?? undefined),
         500,
