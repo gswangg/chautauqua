@@ -13,15 +13,17 @@ import { and, eq, inArray, isNotNull, isNull, or, type SQL, sql } from "drizzle-
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { formatRef } from "../../domain/ids";
+import { FILE_KINDS } from "../../domain/files";
 import { chunkIds } from "../../lib/chunk";
 import { likeContains } from "./like";
 import { ApiError } from "../http";
 import { batchContactNames } from "./files-versions";
 import { acceptedSpeakerConditions } from "./tasks/crud";
-import { DEC_680, DEC_773 } from "../../decisions";
+import { DEC_680, DEC_773, DEC_902 } from "../../decisions";
 
 void DEC_680;
 void DEC_773;
+void DEC_902;
 
 // DEC-773 (supersedes DEC-669): a headshot file's kind, used both as the
 // row's `kind` value and as the extra token the ?kind= filter accepts
@@ -61,6 +63,11 @@ export interface EventDeliverableChain {
   speakerName: string;
   uploadedAt: number;
   versionCount: number;
+  // DEC-902: the file's own stored version number (DEC-818 identity, not
+  // chain position) -- what the library's VERSION column shows, never
+  // versionCount (a chain-length marker). A headshot is structurally its
+  // own single-version chain, so this is always 1 for a headshot row.
+  versionNo: number;
   sizeBytes: number;
   uploaderName: string | null;
 }
@@ -82,6 +89,15 @@ export interface EventDeliverableChainPage {
   totalSizeBytes: number;
   page: number;
   perPage: number;
+  // DEC-902: one count per LIBRARY_KIND token, computed by ONE `group by
+  // kind` aggregate (deliverables) plus one dedupe-by-file-id count
+  // (headshots, a structurally separate population per DEC-773) over the
+  // SAME event-scope + q predicate the list itself uses -- never filtered
+  // by the currently-selected kind, so switching chips never invalidates
+  // the other chips' own counts. Every LIBRARY_KIND token is present, 0
+  // for a kind with no matching rows (an absent group must never silently
+  // drop a key).
+  kindCounts: Record<string, number>;
 }
 
 export interface DeliverableFileRow {
@@ -93,6 +109,10 @@ export interface DeliverableFileRow {
   createdAt: Date;
   sizeBytes: number;
   uploadedByContactId: string | null;
+  // DEC-818/DEC-902: this file's own stored version number (identity, not
+  // chain position) — the library's VERSION column reads this, never
+  // versionCount (a chain-length marker).
+  versionNo: number | null;
 }
 
 /** Follows previous_file_id links to find the oldest ancestor ('root') of
@@ -135,6 +155,7 @@ async function loadDeliverableChains(db: Db, submissionIds: string[]): Promise<M
         createdAt: schema.file.createdAt,
         sizeBytes: schema.file.sizeBytes,
         uploadedByContactId: schema.file.uploadedByContactId,
+        versionNo: schema.file.versionNo,
       })
       .from(schema.file)
       .where(inArray(schema.file.submissionId, batch));
@@ -204,6 +225,45 @@ function buildHeadshotWhere(eventId: string, q: string | null): SQL {
   return and(...conditions)!;
 }
 
+/** DEC-902: one count per LIBRARY_KIND token (FILE_KINDS + HEADSHOT_KIND),
+ * over event-scope + q ONLY -- never the caller's selected kind, so a chip's
+ * own printed number never depends on which chip is active. The deliverable
+ * branch is ONE `group by kind` aggregate over chain roots; the headshot
+ * branch counts distinct file ids the same way listEventDeliverableFiles's
+ * own headshot branch dedupes (a contact can speak on multiple accepted
+ * submissions matching the same headshot file). Every FILE_KINDS/HEADSHOT_
+ * KIND token is enumerated into the result at 0 first, so a kind with no
+ * matching rows still appears in the map. */
+async function computeKindCounts(db: Db, eventId: string, q: string | null): Promise<Record<string, number>> {
+  const counts: Record<string, number> = {};
+  for (const k of FILE_KINDS) counts[k] = 0;
+  counts[HEADSHOT_KIND] = 0;
+
+  const deliverableWhere = buildDeliverableWhere(eventId, [], q);
+  const deliverableGroups = await db
+    .select({ kind: schema.file.kind, count: sql<number>`count(*)` })
+    .from(schema.file)
+    .innerJoin(schema.submission, eq(schema.submission.id, schema.file.submissionId))
+    .where(deliverableWhere)
+    .groupBy(schema.file.kind);
+  for (const g of deliverableGroups) {
+    counts[g.kind] = Number(g.count);
+  }
+
+  const headshotWhere = buildHeadshotWhere(eventId, q);
+  const headshotFileIds = await db
+    .select({ id: schema.file.id })
+    .from(schema.participant)
+    .innerJoin(schema.submission, eq(schema.participant.submissionId, schema.submission.id))
+    .innerJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
+    .innerJoin(schema.file, HEADSHOT_JOIN)
+    .where(headshotWhere)
+    .groupBy(schema.file.id);
+  counts[HEADSHOT_KIND] = headshotFileIds.length;
+
+  return counts;
+}
+
 interface DeliverableRootRow {
   id: string;
   submissionId: string | null;
@@ -243,6 +303,10 @@ export async function listEventDeliverableFiles(
     .where(eq(schema.event.id, eventId))
     .limit(1);
   const recordPrefix = eventRows[0]?.recordPrefix ?? "SES";
+
+  // DEC-902: independent of params.kinds -- the chip strip's own counts
+  // must never depend on which chip is currently selected.
+  const kindCounts = await computeKindCounts(db, eventId, params.q);
 
   const deliverableKinds = params.kinds.filter((k) => k !== HEADSHOT_KIND);
   const wantsDeliverables = params.kinds.length === 0 || deliverableKinds.length > 0;
@@ -327,7 +391,7 @@ export async function listEventDeliverableFiles(
   const offset = (params.page - 1) * params.perPage;
   const page = merged.slice(offset, offset + params.perPage);
 
-  if (page.length === 0) return { items: [], total, totalSizeBytes, page: params.page, perPage: params.perPage };
+  if (page.length === 0) return { items: [], total, totalSizeBytes, page: params.page, perPage: params.perPage, kindCounts };
 
   const deliverablePage = page.filter((c) => c.deliverable !== null);
   const headshotPage = page.filter((c) => c.headshot !== null);
@@ -388,6 +452,11 @@ export async function listEventDeliverableFiles(
       const latest = latestByRoot.get(c.id)!;
       const chain = deliverableChains.get(c.id)!;
       const lead = c.deliverable.submissionId ? leadBySubmission.get(c.deliverable.submissionId) : undefined;
+      if (latest.versionNo === null || latest.versionNo === undefined) {
+        // DEC-818: fail loudly rather than re-deriving version from chain
+        // position -- see getFileVersionNumber's identical rule.
+        throw new Error(`listEventDeliverableFiles: file ${latest.id} has no stored version_no — data corruption`);
+      }
       return {
         rootFileId: c.id,
         latestFileId: latest.id,
@@ -399,6 +468,7 @@ export async function listEventDeliverableFiles(
         speakerName: lead?.name ?? "",
         uploadedAt: latest.createdAt.getTime(),
         versionCount: chain.length,
+        versionNo: latest.versionNo,
         sizeBytes: latest.sizeBytes,
         uploaderName: latest.uploadedByContactId ? (nameById.get(latest.uploadedByContactId) ?? null) : null,
       };
@@ -416,12 +486,16 @@ export async function listEventDeliverableFiles(
       speakerName: contactName,
       uploadedAt: h.createdAt.getTime(),
       versionCount: 1,
+      // DEC-773: a headshot is structurally its own single-version chain
+      // (setContactHeadshot never sets previousFileId, never version_no) --
+      // its own version number is always 1.
+      versionNo: 1,
       sizeBytes: h.sizeBytes,
       uploaderName: h.uploadedByContactId ? (nameById.get(h.uploadedByContactId) ?? contactName) : contactName,
     };
   });
 
-  return { items, total, totalSizeBytes, page: params.page, perPage: params.perPage };
+  return { items, total, totalSizeBytes, page: params.page, perPage: params.perPage, kindCounts };
 }
 
 /** Resolves headshot file ids to their own row (a headshot is always its
@@ -509,6 +583,7 @@ export async function resolveLatestVersions(
         r2Key: schema.file.r2Key,
         sizeBytes: schema.file.sizeBytes,
         uploadedByContactId: schema.file.uploadedByContactId,
+        versionNo: schema.file.versionNo,
       })
       .from(schema.file)
       .where(inArray(schema.file.id, batch));
@@ -572,6 +647,7 @@ export async function resolveLatestVersions(
         r2Key: schema.file.r2Key,
         sizeBytes: schema.file.sizeBytes,
         uploadedByContactId: schema.file.uploadedByContactId,
+        versionNo: schema.file.versionNo,
       })
       .from(schema.file)
       .where(inArray(schema.file.submissionId, batch));

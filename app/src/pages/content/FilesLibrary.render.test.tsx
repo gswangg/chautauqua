@@ -1,6 +1,7 @@
-// DEC-161/773 render smoke for the central files library: mounts against
+// DEC-161/773/902 render smoke for the central files library: mounts against
 // real /api/v1/events/:eventId/files list-envelope shapes (ONE list —
-// deliverable version chains AND headshot rows, no tabs) and asserts a
+// deliverable version chains AND headshot rows, no tabs, kindCounts/total/
+// totalSizeBytes all read from the SAME envelope, no fan-out) and asserts a
 // marker element renders with zero console.error.
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
@@ -9,6 +10,14 @@ import { FilesLibrary } from './FilesLibrary';
 import { listEnvelope, mockApi } from '../../test-utils/mockApi';
 
 const EVENT_ID = 'evt-files-render-1';
+
+const ALL_ZERO_KIND_COUNTS = {
+  presentation: 0,
+  poster: 0,
+  handout: 0,
+  recording: 0,
+  headshot: 0,
+};
 
 afterEach(() => {
   cleanup();
@@ -22,26 +31,31 @@ describe('FilesLibrary render smoke', () => {
     });
 
     mockApi({
-      [`GET /api/v1/events/${EVENT_ID}/files`]: listEnvelope([
-        {
-          rootFileId: 'file-v1',
-          latestFileId: 'file-v2',
-          filename: 'slides.pdf',
-          kind: 'presentation',
-          submissionId: 'sub-1',
-          submissionRef: 'SES-014',
-          submissionTitle: 'Scaling Vector Search',
-          speakerName: 'Priya Raman',
-          uploadedAt: 1700000000000,
-          versionCount: 2,
-          sizeBytes: 1234567,
-          uploaderName: 'Priya Raman',
-        },
-      ]),
+      [`GET /api/v1/events/${EVENT_ID}/files`]: listEnvelope(
+        [
+          {
+            rootFileId: 'file-v1',
+            latestFileId: 'file-v2',
+            filename: 'slides.pdf',
+            kind: 'presentation',
+            submissionId: 'sub-1',
+            submissionRef: 'SES-014',
+            submissionTitle: 'Scaling Vector Search',
+            speakerName: 'Priya Raman',
+            uploadedAt: 1700000000000,
+            versionCount: 2,
+            versionNo: 2,
+            sizeBytes: 1234567,
+            uploaderName: 'Priya Raman',
+          },
+        ],
+        { kindCounts: { ...ALL_ZERO_KIND_COUNTS, presentation: 1 } },
+      ),
     });
 
     const onSelectSubmission = vi.fn();
-    render(<FilesLibrary eventId={EVENT_ID} onSelectSubmission={onSelectSubmission} />);
+    const onBack = vi.fn();
+    render(<FilesLibrary eventId={EVENT_ID} onSelectSubmission={onSelectSubmission} onBack={onBack} />);
 
     await waitFor(() => {
       expect(screen.getByTestId('files-library')).toBeInTheDocument();
@@ -50,55 +64,63 @@ describe('FilesLibrary render smoke', () => {
     expect(screen.getAllByText('Priya Raman').length).toBeGreaterThan(0);
     expect(screen.getByRole('button', { name: 'Download ZIP (0)' })).toBeInTheDocument();
 
-    // Filename, session, and Versions cells must all be real focusable
-    // buttons (not onClick divs) so keyboard users and automation can
-    // discover and open the deliverable detail drill-in.
+    // Filename and session cells must be real focusable buttons (not
+    // onClick divs) so keyboard users and automation can discover and open
+    // the deliverable detail drill-in.
     const openButtons = screen.getAllByRole('button', { name: 'Open slides.pdf versions and comments' });
-    expect(openButtons).toHaveLength(3);
+    expect(openButtons).toHaveLength(2);
     for (const button of openButtons) {
       expect(button.tagName).toBe('BUTTON');
     }
     fireEvent.click(openButtons[0]!);
     expect(onSelectSubmission).toHaveBeenCalledWith('sub-1');
-    fireEvent.click(openButtons[2]!);
+    fireEvent.click(openButtons[1]!);
     expect(onSelectSubmission).toHaveBeenCalledWith('sub-1');
 
     // A per-row Download link to the authenticated file-serve route.
     const downloadLink = screen.getByRole('link', { name: 'Download slides.pdf' });
     expect(downloadLink).toHaveAttribute('href', '/files/file-v2');
 
+    // The breadcrumb is a real link back to the worklist.
+    fireEvent.click(screen.getByRole('button', { name: /Content/ }));
+    expect(onBack).toHaveBeenCalledTimes(1);
+
     consoleError.mockRestore();
   });
 
-  it('renders a headshot row as a plain filename with a dash instead of a dead control', async () => {
+  it('renders a headshot row as a plain filename with its own version number', async () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {
       throw new Error('console.error called during render');
     });
 
     mockApi({
-      [`GET /api/v1/events/${EVENT_ID}/files`]: listEnvelope([
-        {
-          rootFileId: 'file-hs-1',
-          latestFileId: 'file-hs-1',
-          filename: 'priya.jpg',
-          kind: 'headshot',
-          submissionId: '',
-          submissionRef: '',
-          submissionTitle: '',
-          speakerName: 'Priya Raman',
-          uploadedAt: 1700000000000,
-          versionCount: 1,
-          sizeBytes: 234567,
-          uploaderName: 'Priya Raman',
-        },
-      ]),
+      [`GET /api/v1/events/${EVENT_ID}/files`]: listEnvelope(
+        [
+          {
+            rootFileId: 'file-hs-1',
+            latestFileId: 'file-hs-1',
+            filename: 'priya.jpg',
+            kind: 'headshot',
+            submissionId: '',
+            submissionRef: '',
+            submissionTitle: '',
+            speakerName: 'Priya Raman',
+            uploadedAt: 1700000000000,
+            versionCount: 1,
+            versionNo: 1,
+            sizeBytes: 234567,
+            uploaderName: 'Priya Raman',
+          },
+        ],
+        { kindCounts: { ...ALL_ZERO_KIND_COUNTS, headshot: 1 } },
+      ),
     });
 
-    render(<FilesLibrary eventId={EVENT_ID} onSelectSubmission={() => {}} />);
+    render(<FilesLibrary eventId={EVENT_ID} onSelectSubmission={() => {}} onBack={() => {}} />);
 
     expect(await screen.findByText('priya.jpg')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Open priya\.jpg/ })).not.toBeInTheDocument();
-    expect(screen.getByText('—')).toBeInTheDocument();
+    expect(screen.getByText('v1')).toBeInTheDocument();
     expect(screen.getByText('Headshot')).toBeInTheDocument();
 
     // A headshot row's Download link serves through the gated headshot
@@ -116,10 +138,10 @@ describe('FilesLibrary render smoke', () => {
     });
 
     mockApi({
-      [`GET /api/v1/events/${EVENT_ID}/files`]: listEnvelope([]),
+      [`GET /api/v1/events/${EVENT_ID}/files`]: listEnvelope([], { kindCounts: ALL_ZERO_KIND_COUNTS }),
     });
 
-    render(<FilesLibrary eventId={EVENT_ID} onSelectSubmission={() => {}} />);
+    render(<FilesLibrary eventId={EVENT_ID} onSelectSubmission={() => {}} onBack={() => {}} />);
 
     await waitFor(() => {
       expect(screen.getByText('No deliverable files yet.')).toBeInTheDocument();
@@ -128,33 +150,44 @@ describe('FilesLibrary render smoke', () => {
     consoleError.mockRestore();
   });
 
-  it('renders file-type chips (including a counted Headshot chip) and a search box, no tab strip', async () => {
+  it('renders a chip only for a kind with a nonzero count, from the SAME envelope as the list — no tab strip', async () => {
     mockApi({
-      [`GET /api/v1/events/${EVENT_ID}/files`]: listEnvelope([]),
+      [`GET /api/v1/events/${EVENT_ID}/files`]: listEnvelope([], {
+        kindCounts: { ...ALL_ZERO_KIND_COUNTS, presentation: 4, headshot: 2 },
+      }),
     });
 
-    render(<FilesLibrary eventId={EVENT_ID} onSelectSubmission={() => {}} />);
+    render(<FilesLibrary eventId={EVENT_ID} onSelectSubmission={() => {}} onBack={() => {}} />);
 
     await waitFor(() => {
-      expect(screen.getByText('No deliverable files yet.')).toBeInTheDocument();
+      expect(screen.getByRole('tablist', { name: 'File type' })).toBeInTheDocument();
     });
 
-    // w1-f/DEC-773: the kind <select> is replaced by a chip strip whose
-    // counts come from the list endpoint's own totals (mockApi returns the
-    // same envelope regardless of query — here that's total: 0 for every
-    // kind). There is no separate Deliverables/Headshots tablist anymore.
     expect(screen.queryByRole('tab', { name: 'Deliverables' })).not.toBeInTheDocument();
     expect(screen.queryByRole('tab', { name: 'Headshots' })).not.toBeInTheDocument();
     const typeTabs = screen.getByRole('tablist', { name: 'File type' });
     expect(within(typeTabs).getByRole('tab', { name: 'All types' })).toHaveClass('is-active');
-    expect(within(typeTabs).getByRole('tab', { name: /Presentation/ })).toBeInTheDocument();
-    expect(within(typeTabs).getByRole('tab', { name: /Poster/ })).toBeInTheDocument();
-    expect(within(typeTabs).getByRole('tab', { name: /Handout/ })).toBeInTheDocument();
-    expect(within(typeTabs).getByRole('tab', { name: /Headshot/ })).toBeInTheDocument();
-    expect(screen.getByLabelText('Search files')).toBeInTheDocument();
+    // Nonzero kinds get a chip, with the SAME count the list's own envelope
+    // supplied.
+    expect(within(typeTabs).getByRole('tab', { name: 'Presentation · 4' })).toBeInTheDocument();
+    expect(within(typeTabs).getByRole('tab', { name: 'Headshot · 2' })).toBeInTheDocument();
+    // A zero-count kind (DEC-902) offers no chip — a filter that can only
+    // empty the list is a dead control.
+    expect(within(typeTabs).queryByRole('tab', { name: /Poster/ })).not.toBeInTheDocument();
+    expect(within(typeTabs).queryByRole('tab', { name: /Handout/ })).not.toBeInTheDocument();
+    expect(within(typeTabs).queryByRole('tab', { name: /Recording/ })).not.toBeInTheDocument();
+
+    // The search box sits to the LEFT of the chip strip it narrows.
+    const toolbar = screen.getByLabelText('Search files').closest('.chq-content-files-toolbar');
+    if (!toolbar) throw new Error('toolbar not found');
+    const children = Array.from(toolbar.children);
+    const searchIndex = children.findIndex((el) => el.contains(screen.getByLabelText('Search files')));
+    const chipIndex = children.indexOf(typeTabs);
+    expect(searchIndex).toBeGreaterThanOrEqual(0);
+    expect(chipIndex).toBeGreaterThan(searchIndex);
   });
 
-  it('renders a stat line as "N files · size" and a Download all button sourced from the list endpoint, not the page', async () => {
+  it('renders a page header — breadcrumb, H1 "Files", and the total/size stat on the header row', async () => {
     const items = Array.from({ length: 3 }, (_, i) => ({
       rootFileId: `file-${i}`,
       latestFileId: `file-${i}-latest`,
@@ -166,6 +199,7 @@ describe('FilesLibrary render smoke', () => {
       speakerName: 'Speaker',
       uploadedAt: 1700000000000,
       versionCount: 1,
+      versionNo: 1,
       sizeBytes: 1234567,
       uploaderName: 'Priya Raman',
     }));
@@ -179,13 +213,18 @@ describe('FilesLibrary render smoke', () => {
         totalSizeBytes: 412 * 1024 * 1024,
         page: 1,
         perPage: 3,
+        kindCounts: { ...ALL_ZERO_KIND_COUNTS, presentation: 31 },
       }),
     });
 
-    render(<FilesLibrary eventId={EVENT_ID} onSelectSubmission={() => {}} />);
+    render(<FilesLibrary eventId={EVENT_ID} onSelectSubmission={() => {}} onBack={() => {}} />);
 
-    expect(await screen.findByText('31 files · 412.0 MB')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Download all' })).toBeEnabled();
+    const heading = await screen.findByRole('heading', { name: 'Files', level: 1 });
+    const headerRow = heading.closest<HTMLElement>('.chq-content-files-header-row');
+    if (!headerRow) throw new Error('header row not found');
+    expect(within(headerRow).getByText('31 files · 412.0 MB')).toBeInTheDocument();
+    expect(within(headerRow).getByRole('button', { name: /Content/ })).toBeInTheDocument();
+    expect(within(headerRow).getByRole('button', { name: 'Download all' })).toBeEnabled();
   });
 
   it('renders a Previous/Next pager driven by the envelope total', async () => {
@@ -203,15 +242,16 @@ describe('FilesLibrary render smoke', () => {
             speakerName: 'Priya Raman',
             uploadedAt: 1700000000000,
             versionCount: 2,
+            versionNo: 2,
             sizeBytes: 1234567,
             uploaderName: 'Priya Raman',
           },
         ],
-        { total: 137, page: 1, perPage: 50 },
+        { total: 137, page: 1, perPage: 50, kindCounts: { ...ALL_ZERO_KIND_COUNTS, presentation: 137 } },
       ),
     });
 
-    render(<FilesLibrary eventId={EVENT_ID} onSelectSubmission={() => {}} />);
+    render(<FilesLibrary eventId={EVENT_ID} onSelectSubmission={() => {}} onBack={() => {}} />);
 
     expect(await screen.findByText('Page 1 · 137 total')).toBeInTheDocument();
     const prevButton = screen.getByRole('button', { name: 'Previous' });
@@ -232,15 +272,21 @@ describe('FilesLibrary render smoke', () => {
       speakerName: 'Speaker',
       uploadedAt: 1700000000000,
       versionCount: 1,
+      versionNo: 1,
       sizeBytes: 1234567,
       uploaderName: 'Priya Raman',
     }));
 
     mockApi({
-      [`GET /api/v1/events/${EVENT_ID}/files`]: listEnvelope(items, { total: 51, page: 1, perPage: 51 }),
+      [`GET /api/v1/events/${EVENT_ID}/files`]: listEnvelope(items, {
+        total: 51,
+        page: 1,
+        perPage: 51,
+        kindCounts: { ...ALL_ZERO_KIND_COUNTS, presentation: 51 },
+      }),
     });
 
-    render(<FilesLibrary eventId={EVENT_ID} onSelectSubmission={() => {}} />);
+    render(<FilesLibrary eventId={EVENT_ID} onSelectSubmission={() => {}} onBack={() => {}} />);
 
     await waitFor(() => {
       expect(screen.getByLabelText('Select all files on this page')).toBeInTheDocument();
@@ -257,34 +303,41 @@ describe('FilesLibrary render smoke', () => {
     expect(alert).toHaveClass('chq-error');
   });
 
-  it('renders session/speaker/date/version metadata columns for a file row', async () => {
+  it('renders session/date/version/size metadata columns for a file row', async () => {
     mockApi({
-      [`GET /api/v1/events/${EVENT_ID}/files`]: listEnvelope([
-        {
-          rootFileId: 'file-v1',
-          latestFileId: 'file-v2',
-          filename: 'slides.pdf',
-          kind: 'presentation',
-          submissionId: 'sub-1',
-          submissionRef: 'SES-014',
-          submissionTitle: 'Scaling Vector Search',
-          speakerName: 'Priya Raman',
-          uploadedAt: 1700000000000,
-          versionCount: 2,
-          sizeBytes: 1234567,
-          uploaderName: 'Priya Raman',
-        },
-      ]),
+      [`GET /api/v1/events/${EVENT_ID}/files`]: listEnvelope(
+        [
+          {
+            rootFileId: 'file-v1',
+            latestFileId: 'file-v2',
+            filename: 'slides.pdf',
+            kind: 'presentation',
+            submissionId: 'sub-1',
+            submissionRef: 'SES-014',
+            submissionTitle: 'Scaling Vector Search',
+            speakerName: 'Priya Raman',
+            uploadedAt: 1700000000000,
+            versionCount: 2,
+            versionNo: 2,
+            sizeBytes: 1234567,
+            uploaderName: 'Priya Raman',
+          },
+        ],
+        { kindCounts: { ...ALL_ZERO_KIND_COUNTS, presentation: 1 } },
+      ),
     });
 
-    render(<FilesLibrary eventId={EVENT_ID} onSelectSubmission={() => {}} />);
+    render(<FilesLibrary eventId={EVENT_ID} onSelectSubmission={() => {}} onBack={() => {}} />);
 
     const row = (await screen.findByText('slides.pdf')).closest('tr');
     if (!row) throw new Error('file row not found');
-    expect(row).toHaveTextContent('Priya Raman');
     expect(row).toHaveTextContent('SES-014');
     expect(row).toHaveTextContent('Scaling Vector Search');
-    expect(row).toHaveTextContent('2');
+    // VERSION shows the file's OWN version number (versionNo), never the
+    // chain-length marker (versionCount, which is 2 here vs. versionNo 2
+    // coincidentally equal — the distinct 'v' prefix is the regression
+    // signal that this reads versionNo, not a bare count).
+    expect(row).toHaveTextContent('v2');
     // DEC-601 (3): the size column, formatted with the shared formatBytes
     // helper (1234567 bytes -> 1.2 MB).
     expect(row).toHaveTextContent('1.2 MB');
@@ -302,14 +355,17 @@ describe('FilesLibrary render smoke', () => {
       speakerName: 'Priya Raman',
       uploadedAt: 1700000000000,
       versionCount: 2,
+      versionNo: 2,
       sizeBytes: 1234567,
       uploaderName: 'Priya Raman',
     };
     mockApi({
-      [`GET /api/v1/events/${EVENT_ID}/files`]: listEnvelope([item]),
+      [`GET /api/v1/events/${EVENT_ID}/files`]: listEnvelope([item], {
+        kindCounts: { ...ALL_ZERO_KIND_COUNTS, presentation: 1 },
+      }),
     });
 
-    render(<FilesLibrary eventId={EVENT_ID} onSelectSubmission={() => {}} />);
+    render(<FilesLibrary eventId={EVENT_ID} onSelectSubmission={() => {}} onBack={() => {}} />);
     await screen.findByText('slides.pdf');
     fireEvent.click(screen.getByLabelText(`Select ${item.filename}`));
 
@@ -373,18 +429,21 @@ describe('FilesLibrary render smoke', () => {
       speakerName: 'Priya Raman',
       uploadedAt: 1700000000000,
       versionCount: 2,
+      versionNo: 2,
       sizeBytes: 1234567,
       uploaderName: 'Priya Raman',
     };
     mockApi({
-      [`GET /api/v1/events/${EVENT_ID}/files`]: listEnvelope([item]),
+      [`GET /api/v1/events/${EVENT_ID}/files`]: listEnvelope([item], {
+        kindCounts: { ...ALL_ZERO_KIND_COUNTS, presentation: 1 },
+      }),
       [`POST /api/v1/events/${EVENT_ID}/files/archive`]: {
         status: 400,
         body: { error: { code: 'invalid', message: 'Requested files total 42.0MB, which exceeds the 40MB archive limit. Select fewer files.' } },
       },
     });
 
-    render(<FilesLibrary eventId={EVENT_ID} onSelectSubmission={() => {}} />);
+    render(<FilesLibrary eventId={EVENT_ID} onSelectSubmission={() => {}} onBack={() => {}} />);
     await screen.findByText('slides.pdf');
     fireEvent.click(screen.getByLabelText(`Select ${item.filename}`));
     fireEvent.click(screen.getByRole('button', { name: 'Download ZIP (1)' }));

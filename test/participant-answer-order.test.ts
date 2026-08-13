@@ -221,6 +221,7 @@ describe("DEC-562: JS re-aggregation sorts gain the contact-id tiebreak (byte-id
       filename: "deck.pdf",
       previousFileId: null,
       createdAt: new Date(0),
+      versionNo: 1,
     };
     const leadCandidatesA = [
       { submissionId: "sub-1", order: 0, contactId: "c-b", firstName: "Bob", lastName: "B" },
@@ -231,6 +232,8 @@ describe("DEC-562: JS re-aggregation sorts gain the contact-id tiebreak (byte-id
     async function run(leadRows: unknown[]) {
       const db = makeFakeDb([
         [{ recordPrefix: "SES" }], // event prefix
+        [], // DEC-902 kindCounts: deliverable `group by kind` — unseeded here (not asserted)
+        [], // DEC-902 kindCounts: headshot dedupe-by-id group — unseeded here (not asserted)
         [pageRow], // ALL matching deliverable chain roots (DEC-773: totalSizeBytes needs every match, not just a page)
         [fileRow], // per-submission file rows (chain resolution)
         [], // ALL matching headshot roots — kinds:[] queries both branches; none seeded here

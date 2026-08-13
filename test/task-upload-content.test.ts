@@ -391,8 +391,34 @@ function makeFakeDb(seed: {
     let orderDesc = false;
     let limitN: number | undefined;
     let offsetN = 0;
+    let groupByCols: unknown[] | null = null;
     const run = () => {
       const matched = whereCond ? source.filter((r) => evalCond(whereCond, r)) : source.slice();
+      // DEC-902: `group by <col[, col...]>` — one output row per distinct
+      // combination of the grouped columns, with a plain `sql\`count(*)\``
+      // field (if present) resolved to that group's own row count. Used by
+      // computeKindCounts's `group by kind` aggregate and its
+      // dedupe-by-file-id headshot count.
+      if (groupByCols && groupByCols.length > 0) {
+        const keys = groupByCols.map((c) => colKey(c));
+        const groups = new Map<string, Record<string, unknown>[]>();
+        for (const r of matched) {
+          const gkey = keys.map((k) => String(r[k])).join("||");
+          const arr = groups.get(gkey) ?? [];
+          arr.push(r);
+          groups.set(gkey, arr);
+        }
+        const rows: Record<string, unknown>[] = [];
+        for (const groupRows of groups.values()) {
+          const rep = groupRows[0]!;
+          const out: Record<string, unknown> = {};
+          for (const [outKey, col] of Object.entries(fields ?? {})) {
+            out[outKey] = isSqlNode(col) ? groupRows.length : isColumnRef(col) ? rep[colKey(col)] : rep[outKey];
+          }
+          rows.push(out);
+        }
+        return rows;
+      }
       if (isCountStarFields(fields)) return [{ count: matched.length }];
       let filtered = matched;
       if (orderDesc) {
@@ -440,6 +466,10 @@ function makeFakeDb(seed: {
         whereCond = cond;
         return chain;
       },
+      groupBy: (...cols: unknown[]) => {
+        groupByCols = cols;
+        return chain;
+      },
       orderBy: () => {
         orderDesc = true;
         return chain;
@@ -482,6 +512,7 @@ describe("read side: DEC-240-linked task upload surfaces through existing file q
           contentType: "application/pdf",
           uploadedByContactId: "contact-speaker",
           createdAt: now,
+          versionNo: 1,
         },
         // Second (re-)upload through the portal task-upload path: chains
         // previous_file_id to the first, same submission_id (DEC-240).
@@ -495,6 +526,7 @@ describe("read side: DEC-240-linked task upload surfaces through existing file q
           contentType: "application/pdf",
           uploadedByContactId: "contact-speaker",
           createdAt: later,
+          versionNo: 2,
         },
       ],
       participant: [{ submissionId: "sub-1", contactId: "contact-speaker", order: 0, role: "speaker" }],

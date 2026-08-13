@@ -52,18 +52,26 @@ export function mockApi(routes: Record<string, MockRouteHandler>) {
 }
 
 /** Builds a real list envelope: {items, total, page, perPage}. Callers that
- * need the files-library envelope's extra `totalSizeBytes` (DEC-773) pass
- * it as an override; every other list endpoint ignores the extra field. */
+ * need the files-library envelope's extra `totalSizeBytes`/`kindCounts`
+ * (DEC-773/DEC-902) pass them as overrides; every other list endpoint
+ * ignores the extra fields. */
 export function listEnvelope<T>(
   items: T[],
-  overrides: Partial<{ total: number; totalSizeBytes: number; page: number; perPage: number }> = {},
-): { items: T[]; total: number; totalSizeBytes: number; page: number; perPage: number } {
+  overrides: Partial<{
+    total: number;
+    totalSizeBytes: number;
+    page: number;
+    perPage: number;
+    kindCounts: Record<string, number>;
+  }> = {},
+): { items: T[]; total: number; totalSizeBytes: number; page: number; perPage: number; kindCounts: Record<string, number> } {
   return {
     items,
     total: overrides.total ?? items.length,
     totalSizeBytes: overrides.totalSizeBytes ?? 0,
     page: overrides.page ?? 1,
     perPage: overrides.perPage ?? 20,
+    kindCounts: overrides.kindCounts ?? {},
   };
 }
 

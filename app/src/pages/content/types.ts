@@ -95,18 +95,25 @@ export interface EventFileChainItem {
   speakerName: string;
   uploadedAt: number;
   versionCount: number;
+  // DEC-902: the file's own stored version number (DEC-818 identity) --
+  // what the library's VERSION column shows, never versionCount (a
+  // chain-length marker).
+  versionNo: number;
   sizeBytes: number;
   uploaderName: string | null;
 }
 
 // GET /api/v1/events/:eventId/files envelope (DEC-773: totalSizeBytes sums
-// the latest version of every matching chain, alongside `total`).
+// the latest version of every matching chain, alongside `total`; DEC-902:
+// kindCounts is one count per LIBRARY_KIND, independent of the caller's
+// ?kind= selection, computed server-side in ONE grouped query).
 export interface EventFilesEnvelope {
   items: EventFileChainItem[];
   total: number;
   totalSizeBytes: number;
   page: number;
   perPage: number;
+  kindCounts: Record<LibraryKind, number>;
 }
 
 // GET/POST /api/v1/files/:fileId/comments item (DEC-020: author name + role).

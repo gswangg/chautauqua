@@ -259,8 +259,34 @@ function makeFakeFilesDb(seed: Seed) {
     let orderByArg: unknown = null;
     let limitN: number | undefined;
     let offsetN = 0;
+    let groupByCols: unknown[] | null = null;
     const run = () => {
       const matched = whereCond ? source.filter((r) => evalCond(whereCond, r, seed)) : source.slice();
+      // DEC-902: `group by <col[, col...]>` — one output row per distinct
+      // combination of the grouped columns, with a `sql\`count(*)\`` field
+      // (if present) resolved to that group's own row count. Used by
+      // computeKindCounts's `group by kind` aggregate and its
+      // dedupe-by-file-id headshot count.
+      if (groupByCols && groupByCols.length > 0) {
+        const keys = groupByCols.map((c) => colKey(c));
+        const groups = new Map<string, Record<string, unknown>[]>();
+        for (const r of matched) {
+          const gkey = keys.map((k) => String(r[k])).join("||");
+          const arr = groups.get(gkey) ?? [];
+          arr.push(r);
+          groups.set(gkey, arr);
+        }
+        const rows: Record<string, unknown>[] = [];
+        for (const groupRows of groups.values()) {
+          const rep = groupRows[0]!;
+          const out: Record<string, unknown> = {};
+          for (const [outKey, col] of Object.entries(fields ?? {})) {
+            out[outKey] = isSqlNode(col) ? groupRows.length : isColumnRef(col) ? rep[colKey(col)] : rep[outKey];
+          }
+          rows.push(out);
+        }
+        return rows;
+      }
       const countDistinct = isCountDistinctFields(fields);
       if (countDistinct) {
         const key = colKey(countDistinct.col);
@@ -321,6 +347,10 @@ function makeFakeFilesDb(seed: Seed) {
         whereCond = cond;
         return chain;
       },
+      groupBy: (...cols: unknown[]) => {
+        groupByCols = cols;
+        return chain;
+      },
       orderBy: (arg: unknown) => {
         orderByArg = arg;
         return chain;
@@ -371,6 +401,7 @@ function baseSeed(): Seed {
         r2Key: "r2/file-v1",
         createdAt: now,
         sizeBytes: 1000000,
+        versionNo: 1,
       },
       {
         id: "file-v2",
@@ -382,6 +413,7 @@ function baseSeed(): Seed {
         r2Key: "r2/file-v2",
         createdAt: later,
         sizeBytes: 1234567,
+        versionNo: 2,
       },
     ],
     participant: [
@@ -412,6 +444,9 @@ describe("listEventDeliverableFiles (DEC-159/344)", () => {
       submissionTitle: "Scaling Vector Search",
       speakerName: "Priya Raman",
       versionCount: 2,
+      // DEC-902/DEC-818: the file's own stored version number (file-v2's
+      // version_no is 2), never re-derived from chain length/position.
+      versionNo: 2,
       // DEC-606: the CHAIN's latest version's size, not the root/oldest
       // version's — file-v2 (the later upload) is 1234567 bytes.
       sizeBytes: 1234567,
@@ -425,7 +460,14 @@ describe("listEventDeliverableFiles (DEC-159/344)", () => {
     seed.file = [];
     const db = makeFakeFilesDb(seed);
     const result = await listEventDeliverableFiles(db, "event-1", q());
-    expect(result).toEqual({ items: [], total: 0, totalSizeBytes: 0, page: 1, perPage: 50 });
+    expect(result).toEqual({
+      items: [],
+      total: 0,
+      totalSizeBytes: 0,
+      page: 1,
+      perPage: 50,
+      kindCounts: { presentation: 0, poster: 0, handout: 0, recording: 0, headshot: 0 },
+    });
   });
 
   it("keeps unrelated single-version files as their own one-item chain", async () => {
@@ -440,6 +482,7 @@ describe("listEventDeliverableFiles (DEC-159/344)", () => {
       contentType: "image/png",
       r2Key: "r2/file-poster",
       createdAt: new Date("2026-01-07T00:00:00Z"),
+      versionNo: 1,
     });
     seed.participant.push({ submissionId: "sub-2", contactId: "contact-other", order: 0, role: "speaker" });
     const db = makeFakeFilesDb(seed);
@@ -461,6 +504,7 @@ describe("listEventDeliverableFiles (DEC-159/344)", () => {
       contentType: "image/png",
       r2Key: "r2/file-poster",
       createdAt: new Date("2026-01-07T00:00:00Z"), // newest — created_at desc puts it first
+      versionNo: 1,
     });
     seed.participant.push({ submissionId: "sub-2", contactId: "contact-other", order: 0, role: "speaker" });
 
@@ -489,6 +533,7 @@ describe("listEventDeliverableFiles (DEC-159/344)", () => {
       contentType: "image/png",
       r2Key: "r2/file-poster",
       createdAt: new Date("2026-01-07T00:00:00Z"),
+      versionNo: 1,
     });
     seed.participant.push({ submissionId: "sub-2", contactId: "contact-other", order: 0, role: "speaker" });
     const db = makeFakeFilesDb(seed);
@@ -526,6 +571,82 @@ describe("listEventDeliverableFiles (DEC-159/344)", () => {
     const dbNoMatch = makeFakeFilesDb(seed);
     const noMatch = await listEventDeliverableFiles(dbNoMatch, "event-1", q({ q: "999%_done" }));
     expect(noMatch.items).toHaveLength(0);
+  });
+});
+
+describe("kindCounts (DEC-902): one grouped query, matching the filtered list's own arithmetic", () => {
+  function seedWithTwoKinds(): Seed {
+    const seed = baseSeed();
+    seed.submission.push({ id: "sub-2", eventId: "event-1", seq: 20, title: "Other Talk" });
+    seed.file.push({
+      id: "file-poster",
+      submissionId: "sub-2",
+      kind: "poster",
+      filename: "poster.png",
+      previousFileId: null,
+      contentType: "image/png",
+      r2Key: "r2/file-poster",
+      createdAt: new Date("2026-01-07T00:00:00Z"),
+      versionNo: 1,
+      sizeBytes: 500,
+    });
+    // sub-2's speaker is contact-other ("Someone Else"), never Priya Raman
+    // — used below to prove kindCounts honors the q filter per kind.
+    seed.participant.push({ submissionId: "sub-2", contactId: "contact-other", order: 0, role: "speaker" });
+    return seed;
+  }
+
+  it("counts every LIBRARY_KIND (0 for a kind with no rows), independent of the caller's own kind selection", async () => {
+    const db = makeFakeFilesDb(seedWithTwoKinds());
+    const result = await listEventDeliverableFiles(db, "event-1", q());
+    // One presentation chain (file-v1/file-v2, one root) + one poster
+    // chain (file-poster) — the SAME two roots `total` counts.
+    expect(result.total).toBe(2);
+    expect(result.kindCounts).toEqual({
+      presentation: 1,
+      poster: 1,
+      handout: 0,
+      recording: 0,
+      headshot: 0,
+    });
+  });
+
+  it("kindCounts honors q the same way the list does, and stays independent of the selected kind", async () => {
+    const seed = seedWithTwoKinds();
+
+    // Unfiltered by kind, q='raman' matches only the presentation chain
+    // (sub-1's speaker) — sub-2's speaker is "Someone Else".
+    const dbAll = makeFakeFilesDb(seed);
+    const resultAll = await listEventDeliverableFiles(dbAll, "event-1", q({ q: "raman" }));
+    expect(resultAll.total).toBe(1);
+    expect(resultAll.kindCounts).toEqual({
+      presentation: 1,
+      poster: 0,
+      handout: 0,
+      recording: 0,
+      headshot: 0,
+    });
+
+    // Selecting kind=presentation with the SAME q: the list's own total
+    // (scoped to that kind) must equal kindCounts.presentation from the
+    // unfiltered-by-kind call above — same predicate, same arithmetic.
+    const dbPresentation = makeFakeFilesDb(seed);
+    const resultPresentation = await listEventDeliverableFiles(
+      dbPresentation,
+      "event-1",
+      q({ q: "raman", kinds: ["presentation"] }),
+    );
+    expect(resultPresentation.total).toBe(1);
+    expect(resultPresentation.kindCounts.presentation).toBe(1);
+
+    // Selecting kind=poster with the SAME q must show the list itself
+    // (not just the chip) empty — proving the zero kindCounts entry and
+    // the filtered list agree, never diverge.
+    const dbPoster = makeFakeFilesDb(seed);
+    const resultPoster = await listEventDeliverableFiles(dbPoster, "event-1", q({ q: "raman", kinds: ["poster"] }));
+    expect(resultPoster.total).toBe(0);
+    expect(resultPoster.items).toHaveLength(0);
+    expect(resultPoster.kindCounts.poster).toBe(0);
   });
 });
 
