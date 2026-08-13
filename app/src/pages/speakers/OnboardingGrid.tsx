@@ -504,10 +504,10 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
             <table className="chq-table chq-speakers-grid">
               <thead>
                 <tr>
-                  <th>Speaker</th>
+                  <th>Speaker &middot; Participation</th>
                   {grid.tasks.map((task) => (
                     <th key={task.id}>
-                      {task.title}
+                      <div className="chq-speakers-task-title">{task.title}</div>
                       <div className="chq-speakers-task-due">{taskDueLabel(task, now)}</div>
                       {/* DEC-933: quiet Edit/Remove controls -- the grid's
                           columns are otherwise write-once. */}
