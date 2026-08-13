@@ -36,7 +36,7 @@ const DETAIL: SpeakerDetailResponse = {
       status: 'accepted',
       contentStatus: 'pending',
       role: 'speaker',
-      scheduled: null,
+      scheduled: { day: '2026-05-13', startMin: 600, endMin: 645, roomName: 'Hall A' },
     },
   ],
   tasks: [
@@ -117,5 +117,29 @@ describe('SpeakerDetailPage render smoke', () => {
     // Counts printed on the page agree with the payload's own arrays.
     expect(screen.getByText('Sessions · 1')).toBeInTheDocument();
     expect(screen.getByText('Tasks · 2 · 1 outstanding · 0 overdue')).toBeInTheDocument();
+
+    // DEC-930 amendment: page root carries chq-measure-table (two scanned
+    // tables), never the plain chq-measure reading-page class.
+    expect(document.querySelector('.chq-speaker-detail-page')).toHaveClass('chq-measure-table');
+    expect(document.querySelector('.chq-speaker-detail-page')).not.toHaveClass('chq-measure');
+
+    // Participation renders the roster matrix's own four-state pill class,
+    // never plain text.
+    const participation = document.querySelector('.chq-speaker-detail-participation .chq-speakers-status');
+    expect(participation).not.toBeNull();
+    expect(participation).toHaveClass('chq-speakers-status-complete');
+    expect(participation).toHaveTextContent('Confirmed');
+
+    // Status / content status cells render inside .chq-flag.
+    const sessionRow = sessionLink.closest('tr');
+    expect(sessionRow?.querySelectorAll('.chq-flag')).toHaveLength(2);
+
+    // Task status cell also renders inside .chq-flag.
+    const taskRow = screen.getByText('Upload slides').closest('tr');
+    expect(taskRow?.querySelectorAll('.chq-flag')).toHaveLength(1);
+
+    // Exact slot string for a placed session: day formatted via
+    // formatDayLabel + zero-padded clock times, never the raw ISO day.
+    expect(screen.getByText('Wed 13 May 10:00–10:45, Hall A')).toBeInTheDocument();
   });
 });
