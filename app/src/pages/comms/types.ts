@@ -35,15 +35,17 @@ export interface RenderedRecipient {
   ics?: RenderedRecipientIcs;
 }
 
-// DEC-543: narrow list projection returned by GET .../email-log — mirrors
-// src/server/repo/email.ts EmailLogListRow. No bodyText/bodyHtml/icsText/
-// icsFilename: HistoryTab.tsx never renders them, and the API no longer
-// sends them on the list endpoint.
+// DEC-543/DEC-846: narrow list projection returned by GET .../email-log —
+// mirrors src/server/repo/email.ts EmailLogListRow. bodyText IS included:
+// the composer sends what it shows, so a batch's recipient rows must carry
+// the words actually attempted (RecentSends.tsx's BatchRecipients renders
+// it), not just their status.
 export interface EmailLogRow {
   id: string;
   eventName: string;
   toEmail: string;
   subject: string;
+  bodyText: string;
   status: string;
   sentAt: number;
 }

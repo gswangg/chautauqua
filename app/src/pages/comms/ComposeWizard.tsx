@@ -140,12 +140,12 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
     if (effectiveIncludeFeedback && effectiveFeedbackPlanId) {
       base.feedbackPlanId = effectiveFeedbackPlanId;
     }
-    if (templateId) {
-      base.templateId = templateId;
-    } else {
-      base.subject = subject;
-      base.bodyText = bodyText;
-    }
+    // DEC-846: the composer sends what it shows. Selecting a template only
+    // prefills subject/bodyText (below, in the template <select> onChange) —
+    // it is never sent by id, so every later edit (including DEC-793 merge
+    // chip inserts) is what actually goes out and history shows the words.
+    base.subject = subject;
+    base.bodyText = bodyText;
     return base;
   }
 
@@ -517,7 +517,7 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
             <button
               type="button"
               className="chq-btn chq-btn-primary"
-              disabled={busy || (!templateId && (!subject || !bodyText))}
+              disabled={busy || !subject || !bodyText}
               onClick={() => runPreview()}
             >
               Next: preview

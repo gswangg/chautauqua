@@ -31,11 +31,17 @@ function BatchRecipients({ items, error }: RecipientsState) {
   return (
     <div className="chq-comms-batch-recipients">
       {items.map((row) => (
-        <div key={row.id} className="chq-comms-history-row">
-          <span className="chq-comms-history-when">{formatDateTime(row.sentAt)}</span>
-          <span className="chq-comms-history-subject">{row.subject}</span>
-          <span>{row.toEmail}</span>
-          <span className="chq-meta">{row.status}</span>
+        <div key={row.id} className="chq-comms-history-row-detail">
+          <div className="chq-comms-history-row">
+            <span className="chq-comms-history-when">{formatDateTime(row.sentAt)}</span>
+            <span className="chq-comms-history-subject">{row.subject}</span>
+            <span>{row.toEmail}</span>
+            <span className="chq-meta">{row.status}</span>
+          </div>
+          {/* DEC-846: the composer sends what it shows, so a recipient's
+              stored body is exactly what was attempted -- shown even for a
+              failed row, whitespace preserved. */}
+          <div className="chq-comms-history-body">{row.bodyText}</div>
         </div>
       ))}
     </div>

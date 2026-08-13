@@ -76,7 +76,15 @@ describe('RecentSends', () => {
   it('without onSeeAll, renders the recipients disclosure and drills in on click (History mount)', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/email-log`]: listEnvelope([
-        { id: 'log-1', eventName: 'Evt', toEmail: 'ada@example.com', subject: 'You are in!', status: 'sent', sentAt: 1700000000000 },
+        {
+          id: 'log-1',
+          eventName: 'Evt',
+          toEmail: 'ada@example.com',
+          subject: 'You are in!',
+          bodyText: 'Congrats Ada,\nsee you there',
+          status: 'sent',
+          sentAt: 1700000000000,
+        },
       ]),
     });
 
@@ -91,7 +99,38 @@ describe('RecentSends', () => {
       expect(screen.getByText('ada@example.com')).toBeInTheDocument();
     });
 
+    // DEC-846: the recipient's stored body renders under its row, whitespace
+    // preserved, so an expanded batch shows exactly what was attempted.
+    const bodyEl = screen.getByText((_, el) => el?.textContent === 'Congrats Ada,\nsee you there');
+    expect(bodyEl).toHaveClass('chq-comms-history-body');
+
     fireEvent.click(within(row).getByRole('button', { name: 'Hide the recipients' }));
     expect(screen.queryByText('ada@example.com')).not.toBeInTheDocument();
+  });
+
+  // DEC-846: a fully-failed batch is auditable to its words too -- expanding
+  // it still shows the body that was attempted, not just the failure status.
+  it('renders the stored body for a fully-failed batch on expansion', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/email-log`]: listEnvelope([
+        {
+          id: 'log-2',
+          eventName: 'Evt',
+          toEmail: 'bounced@example.com',
+          subject: 'You are in!',
+          bodyText: 'Congrats, this bounced',
+          status: 'failed',
+          sentAt: 1700000000000,
+        },
+      ]),
+    });
+
+    render(<RecentSends eventId={EVENT_ID} batches={[batch({ statusCounts: { failed: 1 }, recipientCount: 1 })]} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'See the recipients' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Congrats, this bounced')).toBeInTheDocument();
+    });
   });
 });

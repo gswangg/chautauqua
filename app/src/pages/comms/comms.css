@@ -330,6 +330,23 @@
   padding: 9px 0;
 }
 
+.chq-comms-history-row-detail {
+  border-bottom: 1px solid var(--chq-hairline);
+}
+
+.chq-comms-history-row-detail .chq-comms-history-row {
+  border-bottom: none;
+}
+
+/* DEC-846: the recipient's stored body, exactly as sent -- whitespace
+   preserved rather than collapsed to a single line. */
+.chq-comms-history-body {
+  white-space: pre-wrap;
+  padding: 0 0 9px;
+  color: var(--chq-text-muted, #555);
+  font-size: 0.9em;
+}
+
 /* ---------------------------------------------------------------------- */
 /* Templates tab                                                          */
 /* ---------------------------------------------------------------------- */
