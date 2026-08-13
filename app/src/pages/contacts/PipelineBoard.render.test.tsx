@@ -40,6 +40,8 @@ const ENTRY_IDENTIFIED = {
   email: 'ada@example.com',
   stage: 'identified',
   updatedAt: 1000,
+  stageSince: 1000,
+  declineReason: null,
 };
 
 const ENTRY_CONTACTED = {
@@ -51,6 +53,8 @@ const ENTRY_CONTACTED = {
   email: 'grace@example.com',
   stage: 'contacted',
   updatedAt: 2000,
+  stageSince: 2000,
+  declineReason: null,
 };
 
 describe('PipelineBoard render smoke (CRM-07/08)', () => {
@@ -277,6 +281,86 @@ describe('PipelineBoard: withholds unmeasured counts during the first load', () 
     });
     expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
 
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
+  });
+});
+
+// DEC-803: every card carries its age caption, a declined card shows its
+// decline reason, and moving a card into declined asks for a reason before
+// it persists.
+describe('PipelineBoard: card age + decline reason (DEC-803)', () => {
+  it('renders the age caption on every card', async () => {
+    mockApi({
+      'GET /api/v1/pipeline': listEnvelope([ENTRY_IDENTIFIED, ENTRY_CONTACTED]),
+    });
+
+    render(<PipelineBoard />);
+    await waitFor(() => within(desktopBoard()).getByText('Ada Lovelace'));
+
+    // ENTRY_IDENTIFIED.stageSince = 1000ms, far in the past relative to
+    // Date.now() -- the exact day count isn't asserted (that's
+    // pipeline-age.test.ts's job), just that a caption renders per card.
+    const identifiedColumn = document.querySelector('[data-stage="identified"]') as HTMLElement;
+    const contactedColumn = document.querySelector('[data-stage="contacted"]') as HTMLElement;
+    expect(identifiedColumn.querySelector('.chq-contacts-pipeline-card-age')).not.toBeNull();
+    expect(contactedColumn.querySelector('.chq-contacts-pipeline-card-age')).not.toBeNull();
+
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
+  });
+
+  it('renders the decline reason on a declined card', async () => {
+    const declined = { ...ENTRY_IDENTIFIED, id: 'entry-3', stage: 'declined', declineReason: 'Scheduling conflict' };
+    mockApi({
+      'GET /api/v1/pipeline': listEnvelope([declined]),
+    });
+
+    render(<PipelineBoard />);
+    await waitFor(() => within(desktopBoard()).getByText('Ada Lovelace'));
+
+    expect(within(desktopBoard()).getByText('Scheduling conflict')).toBeInTheDocument();
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
+  });
+
+  it('asks for a reason before moving a card into declined, and sends it with the move', async () => {
+    const fetchMock = mockApi({
+      'GET /api/v1/pipeline': listEnvelope([ENTRY_IDENTIFIED]),
+      'PATCH /api/v1/pipeline/entry-1': () => ({
+        ...ENTRY_IDENTIFIED,
+        stage: 'declined',
+        declineReason: 'Went with another speaker',
+      }),
+    });
+
+    render(<PipelineBoard />);
+    await waitFor(() => within(desktopBoard()).getByText('Ada Lovelace'));
+
+    const select = within(desktopBoard()).getAllByLabelText('Move to')[0] as HTMLSelectElement;
+    fireEvent.change(select, { target: { value: 'declined' } });
+
+    // The card must not have moved yet -- it's still in the identified
+    // column, awaiting the reason.
+    const identifiedColumn = document.querySelector('[data-stage="identified"]') as HTMLElement;
+    expect(identifiedColumn).toContainElement(within(desktopBoard()).getByText('Ada Lovelace'));
+
+    const dialog = await screen.findByRole('dialog', { name: 'Decline this contact?' });
+    const reasonField = within(dialog).getByLabelText(/Reason/) as HTMLTextAreaElement;
+
+    // Submit is disabled until a reason is entered.
+    expect(within(dialog).getByRole('button', { name: 'Decline' })).toBeDisabled();
+
+    fireEvent.change(reasonField, { target: { value: 'Went with another speaker' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Decline' }));
+
+    await waitFor(() => {
+      const declinedColumn = document.querySelector('[data-stage="declined"]') as HTMLElement;
+      expect(declinedColumn).toContainElement(within(desktopBoard()).getByText('Ada Lovelace'));
+    });
+
+    const patchCall = fetchMock.mock.calls.find(([, init]) => (init as RequestInit | undefined)?.method === 'PATCH');
+    expect(patchCall).toBeDefined();
+    const patchBody = JSON.parse(String((patchCall![1] as RequestInit).body));
+    expect(patchBody).toMatchObject({ stage: 'declined', reason: 'Went with another speaker' });
+    expect(screen.queryByRole('dialog', { name: 'Decline this contact?' })).not.toBeInTheDocument();
     expect(consoleErrorSpy).not.toHaveBeenCalled();
   });
 });

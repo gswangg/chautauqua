@@ -11,11 +11,13 @@
 // a client-side display filter only, the Move-to select below each card is
 // still what persists a stage change.
 
-import { useEffect, useState, type MouseEvent } from 'react';
+import { useEffect, useState, type FormEvent, type MouseEvent } from 'react';
 import { apiGet, apiList, apiPost, apiPatch, ApiError } from '../../lib/api';
 import { useEscapeKey } from '../../lib/useEscapeKey';
 import { DelayedLoading } from '../../components/DelayedLoading';
+import { ModalFrame, FormRow } from '../../components/ModalFrame';
 import { formatDateTime } from '../../lib/dates';
+import { pipelineCardAge } from './pipeline-age';
 import type { ContactListItem, PipelineEntry, PipelineEntryDetail, PipelineStage } from './types';
 import { PIPELINE_STAGES, PIPELINE_STAGE_LABELS } from './types';
 import './contacts-panels.css';
@@ -33,6 +35,10 @@ export function PipelineBoard() {
   const [showEnroll, setShowEnroll] = useState(false);
   const [openEntryId, setOpenEntryId] = useState<string | null>(null);
   const [phoneStage, setPhoneStage] = useState<PipelineStage>(PIPELINE_STAGES[0]);
+  // DEC-803: moving a card into 'declined' asks for a reason first -- the
+  // card holding this state is the one awaiting that prompt; nothing moves
+  // until it's submitted.
+  const [declinePrompt, setDeclinePrompt] = useState<PipelineEntry | null>(null);
 
   function reload() {
     setLoading(true);
@@ -67,20 +73,29 @@ export function PipelineBoard() {
     reload();
   }, []);
 
-  async function moveTo(entry: PipelineEntry, stage: PipelineStage) {
-    if (stage === entry.stage) return;
+  async function doMove(entry: PipelineEntry, stage: PipelineStage, reason?: string) {
     const previous = entries;
     // Optimistic update.
     setEntries((prev) => prev.map((e) => (e.id === entry.id ? { ...e, stage } : e)));
     setError(null);
     try {
-      const updated = await apiPatch<PipelineEntry>(`/pipeline/${entry.id}`, { stage });
+      const updated = await apiPatch<PipelineEntry>(`/pipeline/${entry.id}`, { stage, reason });
       setEntries((prev) => prev.map((e) => (e.id === entry.id ? updated : e)));
     } catch (err) {
       // Loud rollback: restore the pre-move board state and surface the error.
       setEntries(previous);
       setError(err instanceof ApiError ? err.message : 'Failed to move card');
     }
+  }
+
+  function moveTo(entry: PipelineEntry, stage: PipelineStage) {
+    if (stage === entry.stage) return;
+    // DEC-803: declining requires a reason -- ask before persisting anything.
+    if (stage === 'declined') {
+      setDeclinePrompt(entry);
+      return;
+    }
+    void doMove(entry, stage);
   }
 
   return (
@@ -152,13 +167,21 @@ export function PipelineBoard() {
           <ul className="chq-contacts-pipeline-phone-list">
             {entries
               .filter((e) => e.stage === phoneStage)
-              .map((entry) => (
+              .map((entry) => {
+                const age = pipelineCardAge(entry.stage, entry.stageSince, Date.now());
+                return (
                 <li key={entry.id} className="chq-contacts-pipeline-phone-card">
                   <div className="chq-contacts-pipeline-phone-card-body">
                     <button type="button" className="chq-contacts-pipeline-card-name" onClick={() => setOpenEntryId(entry.id)}>
                       {entry.firstName} {entry.lastName}
                     </button>
                     {entry.company && <span className="chq-contacts-pipeline-card-company">{entry.company}</span>}
+                    <div className={`chq-contacts-pipeline-card-age${age.stale ? ' chq-contacts-pipeline-card-age-stale' : ''}`}>
+                      {age.text}
+                    </div>
+                    {entry.stage === 'declined' && entry.declineReason && (
+                      <div className="chq-contacts-pipeline-card-decline-reason">{entry.declineReason}</div>
+                    )}
                   </div>
                   <label className="chq-contacts-pipeline-card-move">
                     Move to
@@ -175,7 +198,8 @@ export function PipelineBoard() {
                     </select>
                   </label>
                 </li>
-              ))}
+                );
+              })}
           </ul>
         </>
       )}
@@ -192,7 +216,70 @@ export function PipelineBoard() {
       )}
 
       {openEntryId && <EntryDetailPanel entryId={openEntryId} onClose={() => setOpenEntryId(null)} onChanged={reload} />}
+
+      {declinePrompt && (
+        <DeclineReasonDialog
+          entry={declinePrompt}
+          onCancel={() => setDeclinePrompt(null)}
+          onConfirm={(reason) => {
+            setDeclinePrompt(null);
+            void doMove(declinePrompt, 'declined', reason);
+          }}
+        />
+      )}
     </div>
+  );
+}
+
+interface DeclineReasonDialogProps {
+  entry: PipelineEntry;
+  onCancel: () => void;
+  onConfirm: (reason: string) => void;
+}
+
+// DEC-803: a move into 'declined' asks for a reason before it persists
+// anything -- built on ModalFrame (DEC-651: the ONE dialog contract), not a
+// bare window.prompt.
+function DeclineReasonDialog({ entry, onCancel, onConfirm }: DeclineReasonDialogProps) {
+  const [reason, setReason] = useState('');
+  const trimmed = reason.trim();
+
+  function handleSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (trimmed === '') return;
+    onConfirm(trimmed);
+  }
+
+  return (
+    <ModalFrame
+      as="form"
+      onSubmit={handleSubmit}
+      title="Decline this contact?"
+      subtitle={`${entry.firstName} ${entry.lastName}`}
+      onClose={onCancel}
+      modalClassName="chq-contacts-pipeline-decline-modal"
+      actions={
+        <>
+          <button type="submit" className="chq-btn chq-btn-primary" disabled={trimmed === ''}>
+            Decline
+          </button>
+          <button type="button" className="chq-btn chq-btn-secondary" onClick={onCancel}>
+            Cancel
+          </button>
+        </>
+      }
+    >
+      <FormRow label="Reason" htmlFor="pipeline-decline-reason" required>
+        <textarea
+          id="pipeline-decline-reason"
+          className="chq-textarea"
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          placeholder="Went with another speaker"
+          autoFocus
+        />
+      </FormRow>
+    </ModalFrame>
   );
 }
 
@@ -203,12 +290,19 @@ interface PipelineCardProps {
 }
 
 function PipelineCard({ entry, onOpen, onMove }: PipelineCardProps) {
+  const age = pipelineCardAge(entry.stage, entry.stageSince, Date.now());
   return (
     <li className="chq-contacts-pipeline-card">
       <button type="button" className="chq-contacts-pipeline-card-name" onClick={onOpen}>
         {entry.firstName} {entry.lastName}
       </button>
       {entry.company && <div className="chq-contacts-pipeline-card-company">{entry.company}</div>}
+      <div className={`chq-contacts-pipeline-card-age${age.stale ? ' chq-contacts-pipeline-card-age-stale' : ''}`}>
+        {age.text}
+      </div>
+      {entry.stage === 'declined' && entry.declineReason && (
+        <div className="chq-contacts-pipeline-card-decline-reason">{entry.declineReason}</div>
+      )}
       <label className="chq-contacts-pipeline-card-move">
         Move to
         <select className="chq-select" value={entry.stage} onChange={(e) => onMove(entry, e.target.value as PipelineStage)}>

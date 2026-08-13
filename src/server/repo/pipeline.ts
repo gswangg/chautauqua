@@ -129,6 +129,13 @@ export interface PipelineListItem {
   email: string;
   stage: PipelineStage;
   updatedAt: number;
+  // DEC-803: the entry's updatedAt — only moveEntry/enrollContact write it,
+  // so it IS the moment the card entered its current stage.
+  stageSince: number;
+  // DEC-803: newest move-to-declined activity's body, for entries whose
+  // stage is 'declined'; null otherwise (including a declined entry whose
+  // move activity somehow carries no reason — never invented).
+  declineReason: string | null;
 }
 
 /** Counts pipeline entries for an org (same WHERE as listPipelineForOrg),
@@ -172,6 +179,40 @@ export async function listPipelineForOrg(db: Db, orgId: string, page?: { limit: 
     for (const c of rows) contactMap.set(c.id, c);
   }
 
+  // DEC-803: declineReason for the page's declined entries, read in ONE
+  // chunked query over entry ids (never per card) — newest move-to-declined
+  // activity's body per entry, picked in application code since D1/SQLite
+  // has no simple "latest row per group" here.
+  const declineReasonByEntryId = new Map<string, string | null>();
+  const declinedEntryIds = entries.filter((e) => e.stage === "declined").map((e) => e.id);
+  for (const batch of chunkIds(declinedEntryIds)) {
+    const rows = await db
+      .select({
+        entryId: schema.pipelineActivity.entryId,
+        body: schema.pipelineActivity.body,
+        createdAt: schema.pipelineActivity.createdAt,
+      })
+      .from(schema.pipelineActivity)
+      .where(
+        and(
+          inArray(schema.pipelineActivity.entryId, batch),
+          eq(schema.pipelineActivity.kind, "move"),
+          eq(schema.pipelineActivity.toStage, "declined"),
+        ),
+      );
+    // Newest-wins per entry: rows aren't guaranteed ordered across a chunk,
+    // so pick explicitly by createdAt rather than trust query order.
+    const newestByEntry = new Map<string, { body: string | null; createdAt: number }>();
+    for (const row of rows) {
+      const createdAtMs = row.createdAt instanceof Date ? row.createdAt.getTime() : (row.createdAt as unknown as number);
+      const current = newestByEntry.get(row.entryId);
+      if (!current || createdAtMs > current.createdAt) {
+        newestByEntry.set(row.entryId, { body: row.body, createdAt: createdAtMs });
+      }
+    }
+    for (const [entryId, v] of newestByEntry) declineReasonByEntryId.set(entryId, v.body);
+  }
+
   return entries
     .map((e) => {
       const contact = contactMap.get(e.contactId);
@@ -187,6 +228,8 @@ export async function listPipelineForOrg(db: Db, orgId: string, page?: { limit: 
         email: contact.email,
         stage: e.stage,
         updatedAt: e.updatedAt,
+        stageSince: e.updatedAt,
+        declineReason: e.stage === "declined" ? (declineReasonByEntryId.get(e.id) ?? null) : null,
       };
     });
 }
@@ -246,6 +289,7 @@ export async function moveEntry(
   entry: PipelineEntryRow,
   toStage: PipelineStage,
   actor: { userId: string; name: string },
+  reason?: string | null,
 ): Promise<PipelineEntryRow> {
   const now = new Date();
   await db
@@ -256,7 +300,7 @@ export async function moveEntry(
     id: newId(),
     entryId: entry.id,
     kind: "move",
-    body: null,
+    body: reason ?? null,
     fromStage: entry.stage,
     toStage,
     authorUserId: actor.userId,
