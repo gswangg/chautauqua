@@ -99,7 +99,9 @@ duplicates — the plan-scoped queue (deep-link target for scorecard back-links/
 auto-advance) never ANNOUNCES its scope; add "‹ All plans" breadcrumb + plan-name
 heading + only-this-plan framing, or collapse the route in a DEC (differentiate
 preferred: multi-plan reviewers exist; seed's single open plan is why they look
-identical) · anonymity ratchet counts evaluations submitted BEFORE anonymization
+identical). SEED: stagger a SECOND plan open (different track scope) so the
+multi-plan reviewer experience is visible to judges/graders — zero code cost,
+makes landing-vs-scoped visibly distinct · anonymity ratchet counts evaluations submitted BEFORE anonymization
 was enabled (guard should count only under-anonymity evals) · reviewer NAMES on
 progress rows (seed reviewer contacts since landed — verify names now render) ·
 title-row summary "3 plans · 1 with evaluations in" (string absent from bundle) ·
