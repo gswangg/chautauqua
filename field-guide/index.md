@@ -27,34 +27,34 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   `## Amendment (wave N)` on nearest existing DEC, DEC-004 precedent -- never
   a new file; compacted): grep "no matches" is a fact about that minute --
   re-probe. A predicate applied HALF is worse than none; a DEFERRAL IS A
-  DATED PROMISE; TRUST FLOWS ONE WAY; A REVIEW FINDING IS A HYPOTHESIS WITH A
-  FILE:LINE; a DECISION DOC IS EVIDENCE OF A DECISION, NEVER OF A FIX. Shapes:
-  WRITE gated by READ predicate; RESPONSE carrying what the request MINTED;
-  predicate with THREE readers is ONE function; one grammar per surface.
-- FINDINGS w40-42 (amendments only, compacted): A REVIEW LENS AGES FASTER THAN
-  A MANDATE -- across three waves, most re-probed P1s/security items were
-  ALREADY FIXED on main; open file:line before the lane, tree is the only
-  evidence. Shapes: CLAMP THE BOX CANNOT REACH (max-width+auto margins on a
-  flex-COLUMN child cancels stretch); TWO READERS OF ONE DEADLINE disagree --
-  countdown is a FORMATTER; A SEED IS A CLAIM (tomorrow's window darkens
-  today's front door); FULL BLEED BY ABSENCE not escape; a link-reached
-  two-view surface is a DESTINATION not tablist; an ARGUMENT THAT IS NEVER
-  READ is a lie in a signature (validateUpload took `kind`, dispatched on
-  extension); a GUARD PLACED AFTER THE COST guards nothing; MINTING IS IO --
-  a write inside a per-recipient loop is a read's defect; a FRAME DRAWN AT
-  TEN ROWS never authorizes deleting a pager.
-- FINDINGS w43 (amendments only): THE MANDATE LAGS THE TREE BY A WHOLE WAVE -- 11 of ~15
-  re-probed items (queue-CTA contrast, anonymization, conflict co-presenters, deliverable
-  edit-lock, comms two-readers, saved-embed format, per-surface counts, /schedule search,
-  create-format, orphan task, co-presenter role) were ALREADY CLOSED on main with guard
-  tests. Open the file:line BEFORE the lane; a probe report is a claim about a DEPLOYED
-  SHA, and prod lags main. Shapes found by reading instead: A CONSTRUCTOR THAT THROWS IS
-  A GUARD BEFORE THE MUTATION IS PAID FOR -- makeMailer threw, so every send path 500'd
-  after its row persisted AND wrote no log, making the failure unauditable too; a boundary
-  fails per RECIPIENT, never per REQUEST. ONE RULE, SIX REGEXES, THREE GRAMMARS -- the API
-  accepted `#abc` while every renderer silently repainted the default; normalize on WRITE.
-  A PREDICATE HONOURED ON FOUR PATHS AND SKIPPED ON THE FIFTH is the root of four
-  separately-filed 'defects' (duplicate rows, a 0 KPI, tasks on the wrong twin, a missed
-  double-booking) -- identity keyed on an id can never clash with itself. A SERVER-ONLY
-  PREDICATE ON A SERVER-RENDERED FORM decides once, at GET, against an empty answer map:
-  unreachable without a client MIRROR that never becomes a second authority.
+  DATED PROMISE; TRUST FLOWS ONE WAY; a DECISION DOC IS EVIDENCE OF A
+  DECISION, NEVER OF A FIX. Shapes: WRITE gated by READ predicate; predicate
+  with THREE readers is ONE function; one grammar per surface.
+- FINDINGS w40-43 (amendments only, compacted): A REVIEW LENS AGES FASTER
+  THAN A MANDATE -- across waves, most re-probed P1s/security items were
+  ALREADY FIXED/CLOSED on main; open file:line before the lane, tree is the
+  only evidence, prod lags main. Shapes: CLAMP THE BOX CANNOT REACH; TWO
+  READERS OF ONE DEADLINE disagree; A SEED IS A CLAIM; an ARGUMENT NEVER READ
+  is a lie in a signature; a GUARD PLACED AFTER THE COST guards nothing;
+  MINTING IS IO -- a write inside a per-recipient loop is a read's defect; A
+  CONSTRUCTOR THAT THROWS IS A GUARD BEFORE THE MUTATION IS PAID FOR; a
+  boundary fails per RECIPIENT never per REQUEST; ONE RULE SIX REGEXES THREE
+  GRAMMARS -- normalize on WRITE; A PREDICATE HONOURED ON FOUR PATHS AND
+  SKIPPED ON THE FIFTH is the root of separately-filed 'defects'.
+- FINDINGS w44 (amendments only): THE MANDATE IS NOW MOSTLY A CLOSURE LEDGER
+  -- ~22 of 25 re-probed gate-3 reds were ALREADY CLOSED on main with guard
+  tests (auth flex-start, CFP-builder measure, content structural batch a-h,
+  speakers matrix header, inline recusal, locked-plan eyebrow, focus ring,
+  RecentSends columns, import alias, agenda click-unschedule, public width
+  pairs, seed CFP window, .chq-file width, validateUpload `kind`, submit
+  guard ordering, batched portal links on 2 of 3 paths). Budget the PROBE,
+  not the fix; open the file:line before you write the lane. Shapes found by
+  reading: FONT DOES NOT CROSS A BUTTON -- a class setting size/weight but
+  not family renders UA Arial beside Figtree. A NATIVE type=date IS A LOCALE
+  YOU DID NOT CHOOSE. THE LAST PATH IS THE DEFECT -- two of three send paths
+  batched KV minting, so the third makes the rule's own comment a lie. A
+  BOARD WITH ONE POPULATED COLUMN PROVES NOTHING -- an unfalsifiable
+  vocabulary looks identical to "not implemented". AN AFFORDANCE ON EVERY ROW
+  IS NOT AN AFFORDANCE. A COUNT STATED TWICE IS TWO READERS WAITING TO
+  DISAGREE. Also: a finding can be OBSOLETE-VS-DEC not just stale -- check
+  the DEC before filing (DEC-735 suggestion suffix, DEC-939 radiogroup).
