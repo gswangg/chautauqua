@@ -7,7 +7,7 @@
 import { describe, expect, it } from "vitest";
 import { remindNow } from "../src/server/repo/tasks";
 import { d1EmailLogWriter, type Db } from "../src/server/context";
-import { EmailBindingMailer, type EmailSender } from "../src/mail/email-binding";
+import { ResendMailer } from "../src/mail/resend";
 import type { Mailer } from "../src/mail/types";
 import type { KVStore } from "../src/auth/claim";
 
@@ -141,13 +141,13 @@ describe("remindNow (DEC-238 class 2 organizer batch, partial mailer failure)", 
     expect(updateCalls).toHaveLength(1);
   });
 
-  // DEC-923: reminders.ts has no logFailedSend call of its own — it inherits
-  // the audit row purely from the mailer it's given. A fully-failed remindNow
-  // batch driven by a REAL EmailBindingMailer (over a throwing EmailSender)
+  // DEC-923/DEC-996: reminders.ts has no logFailedSend call of its own — it
+  // inherits the audit row purely from the mailer it's given. A fully-failed
+  // remindNow batch driven by a REAL ResendMailer (over a throwing fetch)
   // must still leave one 'failed' email_log row per recipient, sharing a
   // batchId — the regression the graders filed as '0 total' for a
   // fully-failed multi-recipient send.
-  it("leaves a 'failed' email_log row per recipient when every send is rejected by a real EmailBindingMailer", async () => {
+  it("leaves a 'failed' email_log row per recipient when every send is rejected by a real ResendMailer", async () => {
     const contacts = ["a", "b", "c"].map((letter, i) => ({
       assignmentId: `assign_${letter}`,
       taskId: `task_${i}`,
@@ -166,13 +166,11 @@ describe("remindNow (DEC-238 class 2 organizer batch, partial mailer failure)", 
     }));
     const { db, updateCalls, inserts } = fakeDb(contacts);
 
-    const throwingSender: EmailSender = {
-      send: async () => {
-        throw new Error("simulated total provider outage");
-      },
-    };
+    const throwingFetch = (async () => {
+      throw new Error("simulated total provider outage");
+    }) as unknown as typeof fetch;
     const log = d1EmailLogWriter(db);
-    const mailer: Mailer = new EmailBindingMailer(throwingSender, log, {
+    const mailer: Mailer = new ResendMailer(throwingFetch, "re_test_key", log, {
       email: "noreply@example.com",
       name: "Chautauqua",
     });

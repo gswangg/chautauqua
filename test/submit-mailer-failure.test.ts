@@ -4,17 +4,16 @@
 // (src/routes/public/submit.tsx): a throwing mailer must not stop the
 // confirmation page from rendering, and the failed attempt is still logged
 // to email_log with status 'failed' (DEC-923: 'failed' is the only
-// failure word — EmailBindingMailer's own contract).
+// failure word — ResendMailer's own contract, DEC-996).
 //
 // Mounts the real publicSubmitRoutes sub-app against a minimal fake db that
 // queues select() rows in call order and records every insert(), mirroring
-// the fakeDb pattern in test/submit-hidden-file-field.test.ts. env.EMAIL is a
-// stub whose send() always throws and env.DEV_MODE is false, so
-// server/context.ts's makeMailer selects EmailBindingMailer (not the dev
-// sink) — that mailer logs a 'failed' email_log row via its EmailLogWriter
-// and rethrows, and the route's try/catch around mailer.send swallows it.
+// the fakeDb pattern in test/submit-hidden-file-field.test.ts. env.RESEND_API_KEY
+// is set and env.DEV_MODE is false, so server/context.ts's makeMailer selects
+// ResendMailer (not the dev sink); globalThis.fetch is stubbed for the
+// duration of each test so ResendMailer's HTTP call is intercepted.
 
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
 import { publicSubmitRoutes } from "../src/routes/public/submit";
 import { registerErrorHandler } from "../src/server/http";
@@ -67,7 +66,7 @@ function makeChain(rows: unknown[]) {
 
 /** Feeds successive db.select() calls the queued row sets, in order, and
  * records every insert() write (including email_log rows written by
- * EmailBindingMailer via d1EmailLogWriter). */
+ * ResendMailer via d1EmailLogWriter). */
 function fakeDb(selectQueue: unknown[][]) {
   let call = 0;
   const inserts: any[] = [];
@@ -123,16 +122,17 @@ function fakeFilesBucket(): R2Bucket {
   } as unknown as R2Bucket;
 }
 
-/** Structural EmailSender stub whose send() always throws — exercises the
- * EmailBindingMailer branch of server/context.ts's makeMailer (env.EMAIL set
- * + DEV_MODE false), not the dev sink. */
-function throwingEmailBinding() {
-  return {
-    async send() {
-      throw new Error("simulated provider outage");
-    },
-  };
+/** Stub fetch whose response is always a 500 — exercises the ResendMailer
+ * branch of server/context.ts's makeMailer (env.RESEND_API_KEY set +
+ * DEV_MODE false), not the dev sink. */
+function throwingFetch() {
+  return vi.fn(async () => new Response("simulated provider outage", { status: 500 })) as unknown as typeof fetch;
 }
+
+const originalFetch = globalThis.fetch;
+afterEach(() => {
+  globalThis.fetch = originalFetch;
+});
 
 function appWithDb(db: AppEnv["Variables"]["db"]) {
   const app = new Hono<AppEnv>();
@@ -175,6 +175,7 @@ function selectQueueFor() {
 
 describe("DEC-972: confirmation quotes the event's own record prefix, not a hardcoded literal", () => {
   it("renders the confirmation page with a ref built from the event's recordPrefix when it isn't 'SES'", async () => {
+    globalThis.fetch = vi.fn(async () => new Response(JSON.stringify({ id: "re_ok" }), { status: 200 })) as unknown as typeof fetch;
     const eventRow = { ...EVENT_ROW, recordPrefix: "DEVX" };
     const { db, inserts } = fakeDb([[eventRow], [FORM_ROW], FIELD_ROWS, [TRACK_ROW], [], [{ seq: 7 }], []]);
     const app = appWithDb(db);
@@ -183,7 +184,7 @@ describe("DEC-972: confirmation quotes the event's own record prefix, not a hard
     const res = await app.request(req, undefined, {
       KV: fakeKv(),
       FILES: fakeFilesBucket(),
-      EMAIL: { async send() {} },
+      RESEND_API_KEY: "re_test_key",
       MAIL_FROM_EMAIL: "noreply@example.com",
       MAIL_FROM_NAME: "Chautauqua",
     } as unknown as AppEnv["Bindings"]);
@@ -207,6 +208,7 @@ describe("DEC-972: confirmation quotes the event's own record prefix, not a hard
 
 describe("public submit: mailer failure is best-effort (DEC-237/DEC-238)", () => {
   it("returns the confirmation page, persists the submission, and logs a 'failed' email_log row when the mailer throws", async () => {
+    globalThis.fetch = throwingFetch();
     const { db, inserts } = fakeDb(selectQueueFor());
     const app = appWithDb(db);
     const req = submitForm();
@@ -214,10 +216,10 @@ describe("public submit: mailer failure is best-effort (DEC-237/DEC-238)", () =>
     const res = await app.request(req, undefined, {
       KV: fakeKv(),
       FILES: fakeFilesBucket(),
-      EMAIL: throwingEmailBinding(),
+      RESEND_API_KEY: "re_test_key",
       // DEV_MODE is typed as an optional string (src/server/env.ts); leaving
       // it unset (falsy) is what makeMailer treats as "not dev mode" so it
-      // selects EmailBindingMailer over the dev sink.
+      // selects ResendMailer over the dev sink.
       MAIL_FROM_EMAIL: "noreply@example.com",
       MAIL_FROM_NAME: "Chautauqua",
     } as unknown as AppEnv["Bindings"]);
@@ -238,16 +240,16 @@ describe("public submit: mailer failure is best-effort (DEC-237/DEC-238)", () =>
     expect(submissionInserts).toHaveLength(1);
     expect((submissionInserts[0] as any).title).toBe("My great talk");
 
-    // EmailBindingMailer logs the failed attempt with status 'failed' before
+    // ResendMailer logs the failed attempt with status 'failed' before
     // rethrowing (DEC-923: 'failed' is the only failure word — src/mail/
-    // email-binding.ts) — the route's try/catch around mailer.send swallows
-    // that rethrow.
+    // resend.ts, DEC-996) — the route's try/catch around mailer.send
+    // swallows that rethrow.
     const emailLogInserts = inserts.filter(
       (v) => typeof v === "object" && v !== null && !Array.isArray(v) && "toEmail" in (v as object),
     );
     expect(emailLogInserts).toHaveLength(1);
     expect((emailLogInserts[0] as any).status).toBe("failed");
     expect((emailLogInserts[0] as any).toEmail).toBe("ada@example.com");
-    expect((emailLogInserts[0] as any).provider).toBe("cloudflare-email");
+    expect((emailLogInserts[0] as any).provider).toBe("resend");
   });
 });

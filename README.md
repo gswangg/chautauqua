@@ -30,9 +30,9 @@ No login needed for the public surfaces: [CFP form](https://chautauqua.cc/submit
 [API docs](https://chautauqua.cc/docs/api)
 
 The deployed instance sends **real email** from `hello@chautauqua.cc` via the
-Cloudflare Email Service binding (SPF/DKIM/DMARC in-zone), including `.ics`
-calendar invites as attachments. `/dev/mailbox` (the local dev email sink) is
-deliberately **not** mounted in production.
+Resend HTTP API (DEC-996; `RESEND_API_KEY` is a Worker secret set at deploy
+time), including `.ics` calendar invites as attachments. `/dev/mailbox` (the
+local dev email sink) is deliberately **not** mounted in production.
 
 ## Quickstart
 

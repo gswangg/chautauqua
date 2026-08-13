@@ -13,10 +13,11 @@ export type Bindings = {
   // absolute links (e.g. `wrangler dev --var PUBLIC_BASE_URL:http://localhost:8801`
   // for a non-default port). Must be an absolute http/https URL when set.
   PUBLIC_BASE_URL?: string;
-  // Stage 2: Cloudflare Email Service binding + sender identity. Optional so
-  // test env fixtures and pre-deploy local dev stay green; makeMailer only
-  // selects the real mailer when EMAIL is bound and isDevMode(env) is false.
-  EMAIL?: import("../mail/email-binding").EmailSender;
+  // DEC-996: production mail goes through Resend over HTTP. Optional so test
+  // env fixtures and pre-deploy local dev stay green; makeMailer only selects
+  // ResendMailer when RESEND_API_KEY is set and isDevMode(env) is false. The
+  // key is a Worker secret, set at deploy time — never checked in.
+  RESEND_API_KEY?: string;
   MAIL_FROM_EMAIL?: string;
   MAIL_FROM_NAME?: string;
   // Optional one-way Airtable sync (bonus): both must be set (as Worker

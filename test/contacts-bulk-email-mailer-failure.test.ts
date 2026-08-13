@@ -70,22 +70,24 @@ vi.mock("../src/auth/claim", async () => {
   };
 });
 
-const mailerSendMock = vi.fn(async (mail: { to: { email: string } }) => {
-  if (mail.to.email.startsWith("bad")) {
+const mailerSendMock = vi.fn(async (url: string, init: RequestInit) => {
+  const body = JSON.parse(init.body as string) as { to: string[] };
+  if (body.to[0]!.startsWith("bad")) {
     throw new Error("simulated provider rejection");
   }
+  return new Response(JSON.stringify({ id: "re_ok" }), { status: 200 });
 });
-// DEC-923: makeMailer returns a REAL EmailBindingMailer over the throwing
-// sender + the test's insert-recording db, so the mailer is the sole
+// DEC-923/DEC-996: makeMailer returns a REAL ResendMailer over the throwing
+// fetch + the test's insert-recording db, so the mailer is the sole
 // author of the 'failed' email_log rows (no route-level duplicate).
 vi.mock("../src/server/context", async () => {
   const actual = await vi.importActual<typeof import("../src/server/context")>("../src/server/context");
-  const { EmailBindingMailer } = await import("../src/mail/email-binding");
+  const { ResendMailer } = await import("../src/mail/resend");
   return {
     ...actual,
     makeMailer: vi.fn((db: unknown) => {
       const log = actual.d1EmailLogWriter(db as never);
-      return new EmailBindingMailer({ send: mailerSendMock }, log, { email: "noreply@example.com", name: "Chautauqua" });
+      return new ResendMailer(mailerSendMock as unknown as typeof fetch, "re_test_key", log, { email: "noreply@example.com", name: "Chautauqua" });
     }),
   };
 });
@@ -180,7 +182,7 @@ describe("POST /contacts/bulk-email — partial mailer failure (DEC-238 class 2)
     expect(failedRows.map((r) => r.toEmail).sort()).toEqual(["bad2@example.com", "bad3@example.com", "bad@example.com"]);
     for (const row of failedRows) {
       expect(row.eventId).toBe("ev1");
-      expect(row.provider).toBe("cloudflare-email");
+      expect(row.provider).toBe("resend");
     }
 
     // listEmailBatches groups by COALESCE(batch_id, id) with no special

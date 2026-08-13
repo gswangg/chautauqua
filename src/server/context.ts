@@ -7,7 +7,7 @@ import { drizzle } from "drizzle-orm/d1";
 import * as schema from "../db/schema";
 import { isDevMode, type Bindings } from "./env";
 import { DevSinkMailer } from "../mail/dev-sink";
-import { EmailBindingMailer } from "../mail/email-binding";
+import { ResendMailer } from "../mail/resend";
 import type { EmailLogEntry, EmailLogWriter, Mailer } from "../mail/types";
 import { newId } from "../domain/ids";
 import { ICS_ORGANIZER_EMAIL } from "../mail/ics";
@@ -43,7 +43,7 @@ export function d1EmailLogWriter(db: Db): EmailLogWriter {
   };
 }
 
-/** Stage-2 mailer selection: the Cloudflare Email Service binding when it is
+/** Stage-2 mailer selection (DEC-996): Resend over HTTP when RESEND_API_KEY is
  * configured AND isDevMode(env) is false (DEC-434: DEV_MODE="1" keeps local
  * dev, tests, and the render-sweep/walkthrough gates on the dev sink +
  * /dev/mailbox; every other DEV_MODE value, including "0", is non-dev); the
@@ -53,13 +53,14 @@ export function d1EmailLogWriter(db: Db): EmailLogWriter {
  * DEC-547: env is REQUIRED — makeMailer must never silently fall back to the
  * dev sink because a caller forgot to pass env. isDevMode(env) is the ONE
  * positive predicate that selects the dev sink; every other configuration
- * (missing EMAIL, missing MAIL_FROM_EMAIL) throws rather than degrading. */
-export function makeMailer(db: Db, env: Pick<Bindings, "EMAIL" | "DEV_MODE" | "MAIL_FROM_EMAIL" | "MAIL_FROM_NAME">): Mailer {
+ * (missing RESEND_API_KEY, missing MAIL_FROM_EMAIL) throws rather than
+ * degrading. */
+export function makeMailer(db: Db, env: Pick<Bindings, "RESEND_API_KEY" | "DEV_MODE" | "MAIL_FROM_EMAIL" | "MAIL_FROM_NAME">): Mailer {
   const log = d1EmailLogWriter(db);
   if (isDevMode(env)) return new DevSinkMailer(log);
-  if (!env.EMAIL) throw new Error("EMAIL binding is not configured and DEV_MODE is not \"1\": set DEV_MODE=\"1\" for local/dev, or bind EMAIL for production");
-  if (!env.MAIL_FROM_EMAIL) throw new Error("EMAIL binding configured but MAIL_FROM_EMAIL is not set");
-  return new EmailBindingMailer(env.EMAIL, log, {
+  if (!env.RESEND_API_KEY) throw new Error("RESEND_API_KEY is not configured and DEV_MODE is not \"1\": set DEV_MODE=\"1\" for local/dev, or set the RESEND_API_KEY secret for production");
+  if (!env.MAIL_FROM_EMAIL) throw new Error("RESEND_API_KEY is configured but MAIL_FROM_EMAIL is not set");
+  return new ResendMailer(fetch, env.RESEND_API_KEY, log, {
     email: env.MAIL_FROM_EMAIL,
     name: env.MAIL_FROM_NAME ?? "Chautauqua",
   });

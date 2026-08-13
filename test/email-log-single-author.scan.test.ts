@@ -2,13 +2,13 @@
 // logging one send-failure event invent two vocabularies ('error' vs
 // 'failed') and, worse, can double-write a row for one attempt (the bug
 // this closes: RecentSends.tsx's statusTally printed "3 error, 3 failed" for
-// a single prod failure because both EmailBindingMailer AND the route-level
+// a single prod failure because both the real mailer AND the route-level
 // logFailedSend fired). This is a pure source-text scan: log-failed.ts must
 // be gone outright (no shim, no re-export — house rule), and `insert(schema
 // .emailLog)` — the one place an email_log row is actually written — must
 // occur in exactly one file, src/server/context.ts (d1EmailLogWriter). Every
-// other write path (mail/dev-sink.ts, mail/email-binding.ts, and any future
-// mailer) must go THROUGH that one writer, not around it.
+// other write path (mail/dev-sink.ts, mail/resend.ts, and any future mailer)
+// must go THROUGH that one writer, not around it.
 
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";

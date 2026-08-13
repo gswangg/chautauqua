@@ -24,11 +24,6 @@
       "bucket_name": "chautauqua-files"
     }
   ],
-  "send_email": [
-    {
-      "name": "EMAIL"
-    }
-  ],
   "routes": [
     {
       "pattern": "chautauqua.cc",
@@ -48,8 +43,8 @@
     "mode": "smart"
   },
   "vars": {
-    // Stage-2 sender identity for the EMAIL (send_email) binding; the domain
-    // is onboarded to Cloudflare Email Sending with SPF/DKIM/DMARC in-zone.
+    // Stage-2 sender identity for the Resend adapter (DEC-996); the
+    // RESEND_API_KEY is a Worker secret, set at deploy time (never a var).
     "MAIL_FROM_EMAIL": "hello@chautauqua.cc",
     "MAIL_FROM_NAME": "Chautauqua",
     // DEC-812/DEC-252: a scheduled (cron) trigger has no incoming request to
