@@ -221,6 +221,40 @@ export function AudienceChoices(props: { field: FormFieldDef; value: unknown; er
   );
 }
 
+// DEC-986 (wave 45 amendment): the single "Name" control the public CFP
+// posts under SPEAKER_NAME_FIELD (src/routes/public/submit-body.ts) --
+// deliberately NOT built from a FormFieldDef/FieldControl, since neither
+// locked speaker field id (first_name/last_name) may appear as its own
+// input on this form any more. Mirrors FormField's markup (label row +
+// input + inline error) so it reads identically to every other field on
+// the page.
+export function NameField(props: { value: string; error?: string }) {
+  const { value, error } = props;
+  return (
+    <div class="chq-field">
+      <label>
+        <span class="chq-field-label-row">
+          <span class="chq-field-label">Name</span>
+        </span>
+        <input
+          type="text"
+          class="chq-input"
+          id="speaker_name"
+          name="speaker_name"
+          autocomplete="name"
+          value={value}
+          required
+        />
+      </label>
+      {error ? (
+        <p role="alert" class="chq-field-error">
+          {error}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 export function SubmitPage(props: {
   event: EventRow;
   form: FormRow;
@@ -260,13 +294,17 @@ export function SubmitPage(props: {
   const nonLockedSessionIds = sessionFields.filter((f) => lockedFieldName(f.id) === null).map((f) => f.id);
   const lockedSessionIds = sessionFields.filter((f) => lockedFieldName(f.id) !== null).map((f) => f.id);
   const pulledOutSessionIds = [formatField?.id, audienceField?.id].filter((id): id is string => Boolean(id));
-  // DEC-986 (wave 40 amendment): the YOU section pairs Name|Email, then
+  // DEC-986 (wave 45 amendment): the YOU section pairs Name|Email, then
   // Company|Job title, then Bio full-width -- a layout FormFieldsSection's
   // generic per-kind flow can't express, so the locked speaker fields are
   // drawn directly with FormField (same component FormFieldsSection uses
-  // internally), found by their locked short name (DEC-050/DEC-475). First/
-  // last name stay two LOCKED fields (deferred name-collapse, see DEC-986's
-  // wave-40 amendment) -- never merged into one control.
+  // internally), found by their locked short name (DEC-050/DEC-475). First
+  // and last name are still two real FormFieldDefs/columns underneath
+  // (DEC-016), but the public form now asks for ONE "Name" control (closes
+  // the wave-40 amendment's deferred name-collapse) -- NameField, below,
+  // posts under a name that is neither locked field's own input name; the
+  // POST handler (src/routes/public/submit.tsx) splits it back into
+  // first_name/last_name before validateAnswers runs.
   const speakerFields = fields.filter((f) => f.section === "speaker");
   const byLockedName = (name: string) => speakerFields.find((f) => lockedFieldName(f.id) === name);
   const firstNameField = byLockedName("first_name");
@@ -280,6 +318,15 @@ export function SubmitPage(props: {
     .map((f) => f.id);
   const renderSpeakerField = (field: FormFieldDef | undefined) =>
     field ? <FormField field={field} value={answers[field.id]} error={errors?.[field.id]} visible={isVisible(field, answers)} /> : null;
+  // DEC-986 (wave 45 amendment): re-derives the single control's display
+  // value from the two underlying answers so both round-trip paths (a
+  // re-rendered errored POST, a resumed KV draft) show what was typed --
+  // applyNameSplit (submit.tsx) writes the same two answer keys before
+  // either render path runs.
+  const firstNameValue = typeof answers[firstNameField?.id ?? ""] === "string" ? (answers[firstNameField!.id] as string) : "";
+  const lastNameValue = typeof answers[lastNameField?.id ?? ""] === "string" ? (answers[lastNameField!.id] as string) : "";
+  const nameValue = [firstNameValue, lastNameValue].filter((part) => part.length > 0).join(" ");
+  const nameError = firstNameField ? errors?.[firstNameField.id] : undefined;
   // DEC-986 (wave 40 amendment): the header's date·venue eyebrow traces to
   // the event's own startDate/endDate/location (never illustrative copy) --
   // guarded because those columns, while NOT NULL in the schema, aren't
@@ -307,9 +354,15 @@ export function SubmitPage(props: {
               the form inside the reading column -- the header above no
               longer carries an <h1> of its own. */}
           <h1>Submit a talk</h1>
+          {/* DEC-986 (wave 45 amendment): copy follows the mechanism (docs/
+              design/README.md's copy rule) -- it is *set a password* on an
+              emailed claim link after submitting, never "create an
+              account"; there is no public signup route (DEC-814: an
+              anonymous submission never creates one for an existing
+              contact). */}
           <p class="chq-cfp-identity-note">
             Already have an account? <a href="/login">Sign in to the speaker portal</a>. First time
-            submitting? Submitting this form creates your speaker portal account.
+            submitting? We'll email you a link to set a password after you submit.
           </p>
         </div>
         {props.banner ? (
@@ -369,10 +422,7 @@ export function SubmitPage(props: {
           <section>
             <div class="chq-cfp-section-label">You</div>
             <div class="chq-cfp-fields chq-cfp-you-grid">
-              <div class="chq-cfp-you-names">
-                {renderSpeakerField(firstNameField)}
-                {renderSpeakerField(lastNameField)}
-              </div>
+              <NameField value={nameValue} error={nameError} />
               {renderSpeakerField(emailField)}
               {renderSpeakerField(companyField)}
               {renderSpeakerField(jobTitleField)}

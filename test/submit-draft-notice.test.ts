@@ -111,7 +111,7 @@ describe("POST /submit/:eventSlug/save-draft", () => {
     const form = new URLSearchParams();
     form.set(CSRF_COOKIE_NAME, CSRF_TOKEN);
     form.set("field__title", "My great talk");
-    form.set("field__first_name", "Ada");
+    form.set("speaker_name", "Ada");
 
     const res = await app.request(
       "/submit/test-conf/save-draft",

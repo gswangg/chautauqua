@@ -387,8 +387,7 @@ function submitForm(opts: { title: string; extraNotes?: string }) {
   form.set("field__title", opts.title);
   form.set("field__description", "A talk about things.");
   if (opts.extraNotes !== undefined) form.set("field__extra_notes", opts.extraNotes);
-  form.set("field__first_name", "Ada");
-  form.set("field__last_name", "Lovelace");
+  form.set("speaker_name", "Ada Lovelace");
   form.set("field__email", "ada@example.com");
   form.set("trackIds", "track-1");
   return new Request("http://local/submit/test-conf", {

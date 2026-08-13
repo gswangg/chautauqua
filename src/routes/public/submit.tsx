@@ -33,13 +33,14 @@ import { commitSubmissionDelete } from "../../server/repo/submission-delete";
 import { validateAnswers } from "../../forms/validate";
 import { makeVisibilityPredicate } from "../../forms/visibility";
 import type { AnswerMap } from "../../forms/types";
-import { LOCKED_SESSION_FIELDS, LOCKED_SPEAKER_FIELDS } from "../../forms/types";
+import { LOCKED_SESSION_FIELDS, LOCKED_SPEAKER_FIELDS, lockedFieldName } from "../../forms/types";
 import {
   formWindowState,
   validateTrackChoice,
   resolveOfferedTrackIds,
   extractFileAnswers,
 } from "../../lib/submit-core";
+import { NAME_REQUIRED_MESSAGE } from "./submit-body";
 import { requestIpFromHeaders } from "../../lib/rate-limit";
 import { checkAndIncrementScopedLimit } from "../../server/repo/rate-limit";
 import { MAX_TEXT_LENGTH, MAX_LONG_TEXT_LENGTH } from "../../forms/validate";
@@ -83,7 +84,7 @@ import {
   SubmitPage,
   type ConfirmationState,
 } from "./submit-views";
-import { ensureCsrfCookie, extractAnswers, extractTrackIds } from "./submit-body";
+import { ensureCsrfCookie, extractAnswers, extractTrackIds, applyNameSplit } from "./submit-body";
 
 void DEC_252;
 
@@ -223,6 +224,7 @@ publicSubmitRoutes.post("/submit/:eventSlug/save-draft", csrfForm, async (c) => 
   const tracks = eventTracks.filter((t) => offeredTrackIds.includes(t.id));
   const body = (await c.req.parseBody({ all: true })) as Record<string, unknown>;
   const answers = extractAnswers(fields, body);
+  applyNameSplit(fields, body, answers);
   const selectedTrackIds = extractTrackIds(body);
 
   // DEC-422: reject any answer over its field-kind cap before it ever
@@ -360,6 +362,10 @@ publicSubmitRoutes.post("/submit/:eventSlug", async (c) => {
 
   const body = (await c.req.parseBody({ all: true })) as Record<string, unknown>;
   const answers = extractAnswers(fields, body);
+  // DEC-986 (wave 45 amendment): the locked first_name/last_name answers are
+  // derived from the single Name control BEFORE validateAnswers runs — see
+  // applyNameSplit's own comment for the split rule.
+  applyNameSplit(fields, body, answers);
   const selectedTrackIds = extractTrackIds(body);
 
   // DEC-626: this ONE route does its own CSRF check in-body (rather than the
@@ -425,12 +431,29 @@ publicSubmitRoutes.post("/submit/:eventSlug", async (c) => {
     answers[field.id] = "pending";
   }
 
-  const validation = validateAnswers(fields, answers);
+  // DEC-986 (wave 45 amendment): the single Name control is what's required
+  // on this surface — the last_name half it also fills is exempt from
+  // validateAnswers' own required check (a form must never fail on a field
+  // it does not render), so this ONE call passes a locally-required-false
+  // copy of the last_name field def, never mutating the `fields` array used
+  // everywhere else (extraction, visibility, re-render).
+  const firstNameField = fields.find((f) => lockedFieldName(f.id) === "first_name");
+  const lastNameField = fields.find((f) => lockedFieldName(f.id) === "last_name");
+  const validationFields = lastNameField
+    ? fields.map((f) => (f.id === lastNameField.id ? { ...f, required: false } : f))
+    : fields;
+  const validation = validateAnswers(validationFields, answers);
   const trackResult = validateTrackChoice(selectedTrackIds, offeredTrackIds);
   const hasFileErrors = Object.keys(fileErrors).length > 0;
 
   if (!validation.ok || !trackResult.ok || hasFileErrors) {
     const mergedErrors = { ...(validation.ok ? {} : validation.errors), ...fileErrors };
+    // The single Name control carries first_name's required-ness; its
+    // generic "required" message is replaced with copy naming the ONE
+    // control the submitter actually sees.
+    if (firstNameField && mergedErrors[firstNameField.id] === "required") {
+      mergedErrors[firstNameField.id] = NAME_REQUIRED_MESSAGE;
+    }
     return c.html(
       <SubmitPage
         event={event}

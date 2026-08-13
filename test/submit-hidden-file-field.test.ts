@@ -164,8 +164,7 @@ function submitForm(opts: { wantsSlides: string; file?: { name: string; content:
   if (opts.file) {
     form.set("field__slides_file", new File([opts.file.content], opts.file.name, { type: opts.file.type }));
   }
-  form.set("field__first_name", "Ada");
-  form.set("field__last_name", "Lovelace");
+  form.set("speaker_name", "Ada Lovelace");
   form.set("field__email", "ada@example.com");
   form.set("trackIds", "track-1");
   return new Request("http://local/submit/test-conf", {

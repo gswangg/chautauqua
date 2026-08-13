@@ -129,7 +129,7 @@ describe("POST /submit/:eventSlug - DEC-626 htmlSurface", () => {
 
     const form = new URLSearchParams();
     form.set("field__title", "My Expired-Session Talk");
-    form.set("field__first_name", "Ada");
+    form.set("speaker_name", "Ada");
 
     const res = await app.request(
       "/submit/test-conf",
@@ -165,7 +165,7 @@ describe("POST /submit/:eventSlug - DEC-626 htmlSurface", () => {
     const form = new URLSearchParams();
     form.set(CSRF_COOKIE_NAME, "tok-1");
     form.set("field__title", "My Rate-Limited Talk");
-    form.set("field__first_name", "Ada");
+    form.set("speaker_name", "Ada");
 
     const res = await app.request(
       "/submit/test-conf",

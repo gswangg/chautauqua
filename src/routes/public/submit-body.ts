@@ -5,7 +5,16 @@
 
 import { parseCookies, newCsrfToken, buildCsrfCookie, isSecureRequest, CSRF_COOKIE_NAME } from "../../auth/cookies";
 import type { AnswerMap, FormFieldDef } from "../../forms/types";
+import { lockedFieldName } from "../../forms/types";
 import { fieldInputName } from "../../views/form-render";
+import { splitSubmittedName } from "../../lib/submit-core";
+
+// DEC-986 (wave 45 amendment): the public CFP's single Name control posts
+// under this literal name, deliberately NOT `fieldInputName(<a locked field
+// id>)` — neither locked speaker field id (first_name/last_name) may appear
+// as its own input on the public form any more.
+export const SPEAKER_NAME_FIELD = "speaker_name";
+export const NAME_REQUIRED_MESSAGE = "Enter your name";
 
 export function ensureCsrfCookie(c: {
   req: { header(name: string): string | undefined; url: string };
@@ -40,6 +49,23 @@ export function extractAnswers(fields: FormFieldDef[], body: Record<string, unkn
     answers[field.id] = typeof raw === "string" ? raw : String(raw);
   }
   return answers;
+}
+
+/** DEC-986 (wave 45 amendment): splits the submitted single Name control
+ * into the two locked speaker fields (first_name/last_name) and writes the
+ * result directly onto `answers`, keyed by whichever field ids THIS form's
+ * speaker fields actually carry (DEC-050 per-form-prefixed ids) — must run
+ * before validateAnswers so the derived values are what's validated/
+ * persisted, and before any re-render so the control round-trips what was
+ * typed. Mutates `answers` in place (mirrors extractAnswers' answers being
+ * built up field-by-field). */
+export function applyNameSplit(fields: FormFieldDef[], body: Record<string, unknown>, answers: AnswerMap): void {
+  const firstNameField = fields.find((f) => lockedFieldName(f.id) === "first_name");
+  const lastNameField = fields.find((f) => lockedFieldName(f.id) === "last_name");
+  const raw = body[SPEAKER_NAME_FIELD];
+  const { firstName, lastName } = splitSubmittedName(typeof raw === "string" ? raw : "");
+  if (firstNameField) answers[firstNameField.id] = firstName;
+  if (lastNameField) answers[lastNameField.id] = lastName;
 }
 
 export function extractTrackIds(body: Record<string, unknown>): string[] {
