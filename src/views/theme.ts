@@ -78,6 +78,9 @@ export const THEME_CSS = `
     --chq-type-micro-size: 10px;
     --chq-type-micro-weight: 800;
     --chq-type-micro-tracking: 0.11em;
+    /* Layout (DEC-744): the shared desktop page-content measure, kept at
+       token parity (DEC-367/372) with app/src/styles.css. */
+    --chq-measure: 820px;
   }
 
   @font-face {
@@ -371,7 +374,7 @@ export const THEME_CSS = `
     margin-bottom: 0.75rem;
   }
 
-  .chq-measure { max-width: 820px; margin: 0 auto; }
+  .chq-measure { max-width: var(--chq-measure); margin: 0 auto; }
 
   main { padding: 26px 34px 34px; }
 
