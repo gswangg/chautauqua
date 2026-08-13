@@ -45,3 +45,14 @@ export interface EmailLogEntry {
 export interface EmailLogWriter {
   write(row: EmailLogEntry): Promise<void>;
 }
+
+// DEC-547 amendment (wave 43): thrown by UnconfiguredMailer.send after it has
+// already logged the attempt as a 'failed' email_log row. Pure core (no
+// node:/cloudflare imports, DEC-002) so route-level catch blocks can
+// recognize "mail isn't configured" without importing the Worker context.
+export class MailNotConfiguredError extends Error {
+  constructor() {
+    super("mail provider not configured");
+    this.name = "MailNotConfiguredError";
+  }
+}

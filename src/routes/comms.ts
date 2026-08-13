@@ -572,42 +572,47 @@ commsRoutes.post("/api/v1/events/:eventId/compose/send", requireOrganizer, csrfJ
   // partial outcome in the 200 response rather than surfacing a 500.
   const failed: { email: string; message: string }[] = [];
   for (const rendered of result.rendered) {
-    let ics: { filename: string; content: string } | undefined;
-    if (icsMap) {
-      const slot = icsMap.get(rendered.submissionId)!;
-      const submission = submissionById.get(rendered.submissionId)!;
-      ics = {
-        filename: `chq-${rendered.submissionId}.ics`,
-        content: buildIcsEvent(
-          {
-            uidSubmissionId: rendered.submissionId,
-            sequence: slot.icsSequence,
-            title: submission.title,
-            startUtc: zonedMinutesToUtc(slot.day, slot.startMin, event.timezone),
-            endUtc: zonedMinutesToUtc(slot.day, slot.endMin, event.timezone),
-            location: slot.roomName ?? undefined,
-            dtstamp: new Date(),
-          },
-          {
-            method: "REQUEST",
-            organizer: { name: event.name, email: resolveIcsOrganizerEmail(c.env) },
-            attendee: { name: rendered.name, email: rendered.email },
-          },
-        ),
-      };
-    }
-    const attempt = {
-      to: { email: rendered.email, name: rendered.name },
-      subject: rendered.subject,
-      text: rendered.text,
-      html: textToHtml(rendered.text),
-      ics,
-      templateId,
-      eventId,
-      contactId: rendered.contactId,
-      batchId,
-    };
     try {
+      // DEC-547 amendment (wave 43): the ICS construction (and its
+      // resolveIcsOrganizerEmail(c.env) config read, which can throw when
+      // mail isn't configured) now runs INSIDE this per-recipient try —
+      // previously it ran before the try, so an unconfigured deployment
+      // 500'd on the very first recipient instead of landing in `failed[]`.
+      let ics: { filename: string; content: string } | undefined;
+      if (icsMap) {
+        const slot = icsMap.get(rendered.submissionId)!;
+        const submission = submissionById.get(rendered.submissionId)!;
+        ics = {
+          filename: `chq-${rendered.submissionId}.ics`,
+          content: buildIcsEvent(
+            {
+              uidSubmissionId: rendered.submissionId,
+              sequence: slot.icsSequence,
+              title: submission.title,
+              startUtc: zonedMinutesToUtc(slot.day, slot.startMin, event.timezone),
+              endUtc: zonedMinutesToUtc(slot.day, slot.endMin, event.timezone),
+              location: slot.roomName ?? undefined,
+              dtstamp: new Date(),
+            },
+            {
+              method: "REQUEST",
+              organizer: { name: event.name, email: resolveIcsOrganizerEmail(c.env) },
+              attendee: { name: rendered.name, email: rendered.email },
+            },
+          ),
+        };
+      }
+      const attempt = {
+        to: { email: rendered.email, name: rendered.name },
+        subject: rendered.subject,
+        text: rendered.text,
+        html: textToHtml(rendered.text),
+        ics,
+        templateId,
+        eventId,
+        contactId: rendered.contactId,
+        batchId,
+      };
       await mailer.send(attempt);
     } catch (err) {
       // DEC-923: the mailer itself logs the failed attempt (status

@@ -68,3 +68,20 @@ export type AppEnv = {
 export function isDevMode(env: Pick<Bindings, "DEV_MODE">): boolean {
   return env.DEV_MODE === "1";
 }
+
+/** DEC-996 amendment (wave 43): the ONE predicate for "is mail configured" --
+ * source for makeMailer's selection (src/server/context.ts), GET
+ * /api/v1/mail-status, and the Settings "Email" definition row. isDevMode(env)
+ * is checked first (DEC-434); a non-dev deployment is 'resend' only when BOTH
+ * RESEND_API_KEY and MAIL_FROM_EMAIL are set (mirrors makeMailer's two
+ * separate throws under DEC-547), otherwise 'none'. fromEmail always reflects
+ * env.MAIL_FROM_EMAIL verbatim (or null) -- it is never the key, which this
+ * status never echoes. */
+export function mailConfigStatus(
+  env: Pick<Bindings, "RESEND_API_KEY" | "DEV_MODE" | "MAIL_FROM_EMAIL" | "MAIL_FROM_NAME">,
+): { provider: "dev-sink" | "resend" | "none"; configured: boolean; fromEmail: string | null } {
+  const fromEmail = env.MAIL_FROM_EMAIL ?? null;
+  if (isDevMode(env)) return { provider: "dev-sink", configured: true, fromEmail };
+  if (env.RESEND_API_KEY && env.MAIL_FROM_EMAIL) return { provider: "resend", configured: true, fromEmail };
+  return { provider: "none", configured: false, fromEmail };
+}

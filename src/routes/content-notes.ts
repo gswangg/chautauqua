@@ -111,7 +111,10 @@ contentNoteRoutes.post("/submissions/:id/content-note", requireOrganizer, csrfJs
     composeSubmission!.participants.map((p) => ({ contactId: p.contactId, email: p.email })),
   );
 
-  const mailer = makeMailer(c.var.db, c.env);
+  // DEC-547 amendment (wave 43): construct the mailer lazily, inside the
+  // per-recipient guarded region below, so a note reply on an unconfigured
+  // deployment returns { sent, failed } instead of 500ing before any
+  // participant is attempted.
   const batchId = newId();
   const subject = `A note on "${composeSubmission!.title}"`;
 
@@ -137,6 +140,7 @@ contentNoteRoutes.post("/submissions/:id/content-note", requireOrganizer, csrfJs
     const name = `${participant.firstName} ${participant.lastName}`.trim();
     const text = `${noteText}\n\nView your submission: ${portalLink}`;
     try {
+      const mailer = makeMailer(c.var.db, c.env);
       await mailer.send({
         to: { email: participant.email, name },
         subject,

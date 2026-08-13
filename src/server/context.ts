@@ -5,14 +5,17 @@
 
 import { drizzle } from "drizzle-orm/d1";
 import * as schema from "../db/schema";
-import { isDevMode, type Bindings } from "./env";
+import { isDevMode, mailConfigStatus, type Bindings } from "./env";
 import { DevSinkMailer } from "../mail/dev-sink";
 import { ResendMailer } from "../mail/resend";
+import { UnconfiguredMailer } from "../mail/unconfigured";
 import type { EmailLogEntry, EmailLogWriter, Mailer } from "../mail/types";
 import { newId } from "../domain/ids";
 import { ICS_ORGANIZER_EMAIL } from "../mail/ics";
-import { DEC_995 } from "../decisions";
+import { DEC_547, DEC_947, DEC_995 } from "../decisions";
 void DEC_995;
+void DEC_547;
+void DEC_947;
 
 export function makeDb(env: Bindings) {
   return drizzle(env.DB, { schema });
@@ -52,29 +55,38 @@ export function d1EmailLogWriter(db: Db): EmailLogWriter {
  * dev sink otherwise. Callers pass the request's env; the cron path passes
  * its Bindings directly.
  *
- * DEC-547: env is REQUIRED — makeMailer must never silently fall back to the
- * dev sink because a caller forgot to pass env. isDevMode(env) is the ONE
- * positive predicate that selects the dev sink; every other configuration
- * (missing RESEND_API_KEY, missing MAIL_FROM_EMAIL) throws rather than
- * degrading. */
+ * DEC-547 amendment (wave 43): makeMailer NEVER throws. It reads the ONE
+ * mailConfigStatus(env) predicate (src/server/env.ts) and always returns a
+ * Mailer: DevSinkMailer in dev mode, ResendMailer when Resend is fully
+ * configured, and UnconfiguredMailer (src/mail/unconfigured.ts) otherwise --
+ * UnconfiguredMailer logs the attempt as a 'failed' row and throws from
+ * *send*, inside callers' existing per-recipient try/catch, instead of
+ * failing the whole request at construction before any recipient is
+ * attempted (that used to leave email_log with zero rows for a fully-failed
+ * batch, which is also why Comms History read '0 total'). */
 export function makeMailer(db: Db, env: Pick<Bindings, "RESEND_API_KEY" | "DEV_MODE" | "MAIL_FROM_EMAIL" | "MAIL_FROM_NAME">): Mailer {
   const log = d1EmailLogWriter(db);
-  if (isDevMode(env)) return new DevSinkMailer(log);
-  if (!env.RESEND_API_KEY) throw new Error("RESEND_API_KEY is not configured and DEV_MODE is not \"1\": set DEV_MODE=\"1\" for local/dev, or set the RESEND_API_KEY secret for production");
-  if (!env.MAIL_FROM_EMAIL) throw new Error("RESEND_API_KEY is configured but MAIL_FROM_EMAIL is not set");
-  return new ResendMailer(fetch, env.RESEND_API_KEY, log, {
-    email: env.MAIL_FROM_EMAIL,
-    name: env.MAIL_FROM_NAME ?? "Chautauqua",
-  });
+  const status = mailConfigStatus(env);
+  if (status.provider === "dev-sink") return new DevSinkMailer(log);
+  if (status.provider === "resend") {
+    return new ResendMailer(fetch, env.RESEND_API_KEY!, log, {
+      email: env.MAIL_FROM_EMAIL!,
+      name: env.MAIL_FROM_NAME ?? "Chautauqua",
+    });
+  }
+  return new UnconfiguredMailer(log);
 }
 
 /** DEC-947: the ICS ORGANIZER email is governed by the same policy as
  * makeMailer (DEC-547) — env.MAIL_FROM_EMAIL when set, the dev-local
  * placeholder in ics.ts only when isDevMode(env), and otherwise a loud
  * throw rather than silently shipping a non-routable ".local" organizer
- * that bounces RSVPs. */
+ * that bounces RSVPs. Reads mailConfigStatus's fromEmail (rather than
+ * env.MAIL_FROM_EMAIL directly) so both predicates agree on what "set"
+ * means. */
 export function resolveIcsOrganizerEmail(env: Pick<Bindings, "DEV_MODE" | "MAIL_FROM_EMAIL">): string {
-  if (env.MAIL_FROM_EMAIL) return env.MAIL_FROM_EMAIL;
+  const status = mailConfigStatus({ DEV_MODE: env.DEV_MODE, MAIL_FROM_EMAIL: env.MAIL_FROM_EMAIL, RESEND_API_KEY: undefined, MAIL_FROM_NAME: undefined });
+  if (status.fromEmail) return status.fromEmail;
   if (isDevMode(env)) return ICS_ORGANIZER_EMAIL;
   throw new Error('MAIL_FROM_EMAIL is not set and DEV_MODE is not "1": set DEV_MODE="1" for local/dev, or configure MAIL_FROM_EMAIL for production');
 }
