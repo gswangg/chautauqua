@@ -43,9 +43,9 @@ export function SpeakerDetailContent(props: {
         ) : (
           <div class="chq-pub-headshot-fallback" style="width:160px" />
         )}
-        <h2>
+        <h1 class="chq-pub-surface-title">
           {speaker.firstName} {speaker.lastName}
-        </h2>
+        </h1>
         <p>{[speaker.title, speaker.company].filter(Boolean).join(", ")}</p>
         {speaker.bio ? <SessionDescription description={speaker.bio} /> : null}
         {speaker.socialLinks.length > 0 ? (
@@ -60,7 +60,7 @@ export function SpeakerDetailContent(props: {
           </ul>
         ) : null}
       </div>
-      <h3>Sessions ({speaker.sessions.length})</h3>
+      <h2 class="chq-pub-section-title">Sessions ({speaker.sessions.length})</h2>
       <ul>
         {speaker.sessions.map((s) => {
           const timeLabel = sessionTimeLabel(s.day, s.startMin, s.endMin);
@@ -96,7 +96,7 @@ export function SessionDetailContent(props: {
       <div class="chq-card">
         <TrackChips tracks={session.tracks} />
         <FormatChip format={session.format} />
-        <h2>{session.title}</h2>
+        <h1 class="chq-pub-surface-title">{session.title}</h1>
         <p>
           {timeLabel ?? "Not yet scheduled"}
           {session.roomName ? ` · ${session.roomName}` : ""}

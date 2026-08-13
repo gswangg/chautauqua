@@ -420,7 +420,7 @@ export function AgendaContent(props: {
   const basePath = surfacePath(props.event, "agenda", base);
   return (
     <>
-      <h2>Agenda</h2>
+      <h1 class="chq-pub-surface-title">Agenda</h1>
       <ItinerarySearchForm
         event={props.event}
         tracks={props.tracks ?? []}
@@ -574,7 +574,7 @@ export function ScheduleContent(props: {
   const basePath = surfacePath(props.event, "schedule", base);
   return (
     <>
-      <h2>My schedule</h2>
+      <h1 class="chq-pub-surface-title">My schedule</h1>
       <ItinerarySearchForm
         event={props.event}
         tracks={props.tracks ?? []}
@@ -633,7 +633,7 @@ export function ScheduleContent(props: {
               {/* DEC-768: AgendaItemList no longer renders its own heading
                   (only AgendaDay's grid+list pairing did that before) -- this
                   wrapper is the sole owner of the day heading here. */}
-              <h3>{formatDay(day)}</h3>
+              <h2 class="chq-pub-section-title">{formatDay(day)}</h2>
               <AgendaItemList
                 day={day}
                 items={byDay.get(day) ?? []}
