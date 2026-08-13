@@ -90,14 +90,18 @@
   white-space: nowrap;
 }
 
-/* Desktop: main column (form-shaped content) + decision aside. A page that
-   carries an aside fills the frame and clamps nothing (DEC-744/DEC-808) --
-   the main column takes the remaining space instead of a page-local px
-   literal, so it no longer stops early inside a wide frame. */
+/* Desktop: main column (form-shaped content) + decision aside. DEC-989
+   (wave 42 amendment): gate-3 measured frame 02 at 1600 -- body rules
+   x=244->944 (700px), rail x=1036->1356 (320px), 92px gutter between --
+   1112 total, centred on the page (max-width + margin: 0 auto), replacing
+   the prior "fills the frame" reading (DEC-744/DEC-808) that stretched the
+   body column to whatever space chq-measure-wide left over. */
 .chq-detail-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 320px;
-  gap: 34px;
+  grid-template-columns: 700px 320px;
+  gap: 92px;
+  max-width: 1112px;
+  margin: 0 auto;
   align-items: start;
 }
 
@@ -319,11 +323,13 @@
   width: 100%;
 }
 
+/* DEC-989/DEC-908 (wave 42 amendment): the rail's Decision block is not a
+   card -- no border, radius, or panel fill. It sits on the page ground
+   like every other numbered section, the section-title rule under its
+   eyebrow doing the separating work the card's border used to do. */
 .chq-detail-decision {
-  border: 1px solid var(--chq-rule);
-  border-radius: 6px;
-  padding: 16px 18px 18px;
-  background: var(--chq-surface-sunk);
+  padding: 0;
+  background: none;
 }
 
 .chq-detail-decision-body {
@@ -387,12 +393,6 @@
    the content screen replaces the old Approve/Request-changes controls. */
 .chq-detail-content-link {
   align-self: flex-start;
-}
-
-.chq-detail-decision-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
 }
 
 /* Speaker card: name, title/company, email -- same numbered-section rule
@@ -616,22 +616,11 @@
     overflow-wrap: anywhere;
   }
 
-  /* DEC-878 rail: the secondary pair keeps its phone control radius but
-     stays on one row (frame lines 268-271) -- only the Clone action row
-     below it stacks full-width. */
+  /* DEC-878 rail: the primary + secondary pair keep phone control radius,
+     the pair staying on one row (frame lines 268-271). */
   .chq-detail-decision-primary,
   .chq-detail-decision-secondary-pair .chq-btn {
     border-radius: var(--chq-r-ctl-phone);
-  }
-
-  /* Clone action row: full-width, phone control radius. */
-  .chq-detail-decision-actions .chq-btn {
-    width: 100%;
-    border-radius: var(--chq-r-ctl-phone);
-  }
-
-  .chq-detail-decision-actions {
-    flex-direction: column;
   }
 
   /* Edit form + co-presenter search: stack full-width on phone. */
