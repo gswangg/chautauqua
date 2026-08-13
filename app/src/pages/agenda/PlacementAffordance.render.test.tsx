@@ -52,4 +52,13 @@ describe("agenda placement discoverability", () => {
     render(<SessionCard session={SESSION as never} tracks={[]} conflicts={[]} />);
     expect(screen.getByRole("button", { name: "SES-001: Talk One" })).toBeTruthy();
   });
+
+  it("a placed (grid) card's accessible name says the gesture is a move, not a first placement", () => {
+    render(
+      <SessionCard session={SESSION as never} tracks={[]} conflicts={[]} onSelect={() => {}} placed />,
+    );
+    expect(
+      screen.getByRole("button", { name: /SES-001: Talk One — click to select, then choose a new slot/ }),
+    ).toBeTruthy();
+  });
 });

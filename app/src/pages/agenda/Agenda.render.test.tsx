@@ -300,6 +300,76 @@ describe('AgendaPage render smoke', () => {
     expect(document.activeElement).toBe(document.querySelector('[data-submission-id="sub-3"]'));
   });
 
+  // DEC-853: a successful placement says so — ref, room, start time — in the
+  // same toast vocabulary as auto-schedule, with no clash clause when the
+  // refreshed conflict count didn't grow.
+  it('placement toast names the ref, room and start time with no clash clause when conflicts are unchanged', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/agenda`]: agendaPayload(),
+      'PUT /api/v1/submissions/sub-3/slot': { status: 200, body: { conflicts: [], summary: { unplaced: 0, conflicts: 1 } } },
+    });
+
+    render(<AgendaPage />);
+    await waitFor(() => {
+      expect(screen.getByText('Overlapping Talk A')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'S-003: Unplaced Talk — click to select, then choose a time slot' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Place S-003 with no room yet' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Placed S-003 in no room yet at 9:00am.')).toBeInTheDocument();
+    });
+  });
+
+  // DEC-853/SPEC §2.3 warn-never-block: a placement that creates a NEW
+  // clash still succeeds (never blocked) but the toast names the delta,
+  // computed from the server's own before/after conflict counts.
+  it('placement toast appends a new-clash clause only when the refreshed conflict count grows', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/agenda`]: agendaPayload(),
+      'PUT /api/v1/submissions/sub-3/slot': { status: 200, body: { conflicts: [], summary: { unplaced: 0, conflicts: 2 } } },
+    });
+
+    render(<AgendaPage />);
+    await waitFor(() => {
+      expect(screen.getByText('Overlapping Talk A')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'S-003: Unplaced Talk — click to select, then choose a time slot' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Place S-003 with no room yet' }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('Placed S-003 in no room yet at 9:00am. 1 new clash — flagged, not blocked.'),
+      ).toBeInTheDocument();
+    });
+  });
+
+  // DEC-853: unschedule states what just happened, naming the ref.
+  it('unschedule toast names the ref', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/agenda`]: agendaPayload(),
+      'DELETE /api/v1/submissions/sub-1/slot': { status: 200, body: { conflicts: [], summary: { unplaced: 2, conflicts: 0 } } },
+    });
+
+    render(<AgendaPage />);
+    await waitFor(() => {
+      expect(screen.getByText('Overlapping Talk A')).toBeInTheDocument();
+    });
+
+    const clashItem = document.querySelector('[data-submission-id="sub-1"].chq-day-grid-clash-item');
+    expect(clashItem).not.toBeNull();
+    const dt = new FakeDataTransfer();
+    dt.setData('text/plain', 'sub-1');
+    fireEvent.dragOver(document.querySelector('.chq-unscheduled-tray') as Element, { dataTransfer: dt });
+    fireEvent.drop(document.querySelector('.chq-unscheduled-tray') as Element, { dataTransfer: dt });
+
+    await waitFor(() => {
+      expect(screen.getByText('Unscheduled S-001.')).toBeInTheDocument();
+    });
+  });
+
   // DEC-595: publish toast names all three counts and only mentions
   // held-back sessions when there actually are some (AIA-S2-D1 regression —
   // the old toast lied by reporting the placement count as "public").
@@ -690,7 +760,7 @@ describe('AgendaPage armed self-clash and top-layer click-to-place (DEC-769)', (
     });
 
     // Arm sub-1 (Main Hall, 10:00-10:30) by clicking its own placed card.
-    fireEvent.click(screen.getByRole('button', { name: 'S-001: Solo Talk A — click to select, then choose a time slot' }));
+    fireEvent.click(screen.getByRole('button', { name: 'S-001: Solo Talk A — click to select, then choose a new slot' }));
     expect(screen.getByText(/Placing S-001 — Esc to cancel/)).toBeInTheDocument();
 
     // sub-5 occupies Room B 10:00-10:30. Click the 10:15am row -- inside
@@ -724,7 +794,7 @@ describe('AgendaPage armed self-clash and top-layer click-to-place (DEC-769)', (
       expect(screen.getByText('Solo Talk A')).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'S-001: Solo Talk A — click to select, then choose a time slot' }));
+    fireEvent.click(screen.getByRole('button', { name: 'S-001: Solo Talk A — click to select, then choose a new slot' }));
 
     // sub-1's own slot (Main Hall, 10:00am) — excluded from its own
     // occupancy count, so it renders as an ordinary (non-clash) button.
@@ -754,7 +824,7 @@ describe('AgendaPage armed self-clash and top-layer click-to-place (DEC-769)', (
       expect(screen.getByText('Solo Talk A')).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'S-001: Solo Talk A — click to select, then choose a time slot' }));
+    fireEvent.click(screen.getByRole('button', { name: 'S-001: Solo Talk A — click to select, then choose a new slot' }));
     const clashButton = screen.getByRole('button', {
       name: 'Place S-001 at 10:15am in Room B — will clash with 1 session',
     });
