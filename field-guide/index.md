@@ -19,42 +19,42 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   hand-listed manifests desync -- enumerate; conditional visibility is a
   FIXED POINT; hand-copied vocabularies drift -- IMPORT them; uniqueIndex
   is a CONTRACT; negation skips NULLs.
-- FINDINGS w1-17 (DEC-570..716, compacted): full suites SERIALIZED; real
+- FINDINGS w1-20 (DEC-570..743, compacted): full suites SERIALIZED; real
   <button> not `div draggable`; colour isn't identity -- NAME it; blank
   CSV cell is ABSENT DATA; anonymity is a RATCHET; merge takes a SET; raw
   id leaks -- render LABELS; cacheability DEFAULT + "own header wins";
-  irreversible action is a PAGE; hub gives a row ONE action; settings
-  SUMMARY + drill-in; grid cells POSITIONAL; person named by CONTACT; tab
-  selection is URL state; directory is TABLE + RAIL.
-- FINDINGS w18-20 (DEC-717..743, compacted): a column with side effects
-  has ONE writer; validators refuse what the store can't carry. Sandboxed
-  child's origin IS "null". One deliverable at a time: a chip scopes
-  versions AND thread. Periodic push INCREMENTAL, backs off on 429.
-  Labels are customFields, one keyed format. Tiers are a PREDICATE over
-  the tree. Portal shows EVERY submission a speaker owns. Publish is the
-  WINDOW, not a flag. An action that can't apply is ABSENT, not disabled.
-  A recorded decision with no code is a LIE -- grep the ROUTE before
-  re-tasking. Anonymised hides the SPEAKER from the REVIEWER, never the
-  organiser. The seed must satisfy every read it enables -- assert by
-  enumeration.
-- FINDINGS w21 (DEC-744..753): an envelope's KEYS are fixed by its route,
-  never by whether the branch had anything to say -- the empty case emits
-  the empty array. A seeded reviewer is a NAMED person (user.contact_id) or
-  every organiser surface shows an email. ONE measure token. Chrome
-  fidelity never deletes a capability. A dialog may not offer what the
-  store cannot carry. A task with no assignee is not a state we offer --
-  creation always expands. Merge shows EVERY differing field.
-- FINDINGS w22 (DEC-754..762): a roster and the set an action expands
-  over are ONE predicate -- a screen that lists someone the action skips
-  is lying. Every control in a creation dialog must reach the store; a
-  selector the POST body drops is decoration. Contact identity is
-  (org, lower(email)) on every find-or-create. An author is a PERSON --
-  resolve the contact, never print the address, never "Unknown". Delete
-  is refused with counts; merge is the answer for a contact carrying
-  history. A card you must scroll inside is not readable: rows grow,
-  clashes split into lanes. Position ("N of 47") re-derives from the
-  URL's own filter, never router state.
-- VERIFY, don't inherit: eval-findings.md ran ~2 probes stale this wave --
-  Overview residue, portal session detail, Speakers overdue cells, results
-  score column, response-modal em-dashes and Account/auth already closed;
-  a wave-3 merge landed mid-planning. Grep the route before re-tasking.
+  irreversible action is a PAGE; hub gives a row ONE action; grid cells
+  POSITIONAL; person named by CONTACT; tab selection is URL state; a
+  column with side effects has ONE writer; validators refuse what the
+  store can't carry; sandboxed child's origin IS "null"; labels are
+  customFields; tiers are a PREDICATE over the tree; portal shows EVERY
+  submission a speaker owns; publish is the WINDOW, not a flag; a
+  recorded decision with no code is a LIE; anonymised hides the SPEAKER
+  from the REVIEWER, never the organiser; the seed must satisfy every
+  read it enables -- assert by enumeration.
+- FINDINGS w21-22 (DEC-744..762, compacted): an envelope's KEYS are fixed
+  by its route, not whether the branch had anything to say. A seeded
+  reviewer is a NAMED person (user.contact_id). ONE measure token. Chrome
+  fidelity never deletes a capability. A task with no assignee is not a
+  state we offer -- creation always expands. Merge shows EVERY differing
+  field. A roster and the set an action expands over are ONE predicate.
+  Every control in a creation dialog must reach the store; a selector the
+  POST body drops is decoration. Contact identity is (org, lower(email)).
+  An author is a PERSON, never "Unknown". Delete is refused with counts;
+  merge is the answer for a contact carrying history. Rows grow, not
+  scroll. Position ("N of 47") re-derives from the URL, never router
+  state.
+- FINDINGS w1(this run, DEC-763..771): the mandate file was ~2 probes
+  stale AGAIN -- grep the route before re-tasking; a finding is a
+  hypothesis until the tree agrees. A disclosure and the count beside it
+  are ONE predicate. An export href must carry the sort the table shows.
+  Fix fabricated data with honesty about what the action does, not a
+  second concept the model lacks -- `participant` is the ONLY
+  contact-to-event link. Identity is an id you already hold, never an
+  email you re-derive; a duplicate contact makes speaker double-booking
+  INVISIBLE. Failure is a STATUS not an absence -- an attempt that
+  leaves no row is the one the audit needed. A count on a settings row
+  is a promise about a visitor's query: produce it with that query.
+  Public grid rows must grow like the admin grid's. A session cannot
+  clash with itself; while armed the CELL owns the click, not the card
+  over it. A control whose effect dies on reload is decoration.
