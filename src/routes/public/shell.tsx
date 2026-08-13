@@ -18,6 +18,28 @@ export function isSurface(value: string): value is Surface {
   return (SURFACES as readonly string[]).includes(value);
 }
 
+/** DEC-989 Amendment (wave 37): the SSR public surfaces take their
+ * container class from the CONTENT, not the route. sessions is the WIDE
+ * pair (list + 300px rail, the 1180 measure DEC-989 itself names);
+ * speakers/gallery (DEC-990: same surface, two views) and schedule are
+ * READING columns; agenda is CANVAS (no class -- its lane count is the
+ * event's room count). EmbedShell never consumes this: an embed fills its
+ * host iframe. */
+export type PublicMeasure = "reading" | "wide" | "canvas";
+
+export function measureClassForSurface(surface: Surface): PublicMeasure {
+  switch (surface) {
+    case "sessions":
+      return "wide";
+    case "speakers":
+    case "gallery":
+    case "schedule":
+      return "reading";
+    case "agenda":
+      return "canvas";
+  }
+}
+
 /** DEC-990: "Speakers: one page, two views" -- the gallery is still a live
  * surface (its own URL, its own route, and the embed builder can still pick
  * it), it just stops being a nav destination now that /speakers offers a
@@ -137,10 +159,11 @@ function eventDatesLine(event: PublicEvent): string {
 
 /** Mobile-first shared layout with event branding + surface nav (DEC-022,
  * DEC-366 chrome from docs/design/Chautauqua Public and Portal.dc.html). */
-export function PublicShell(props: { event: PublicEvent; active: Surface; title: string; children: unknown }) {
-  const { event, active } = props;
+export function PublicShell(props: { event: PublicEvent; active: Surface; title: string; measure: PublicMeasure; children: unknown }) {
+  const { event, active, measure } = props;
   const b = branding(event);
   const accent = validAccent(b.accentColor);
+  const measureClass = measure === "wide" ? " chq-measure-wide" : measure === "reading" ? " chq-measure" : "";
   return (
     <html lang="en">
       <head>
@@ -166,7 +189,7 @@ export function PublicShell(props: { event: PublicEvent; active: Surface; title:
             ))}
           </nav>
         </header>
-        <main class="chq-pub-main">{props.children as any}</main>
+        <main class={`chq-pub-main${measureClass}`}>{props.children as any}</main>
       </body>
     </html>
   );
