@@ -133,19 +133,20 @@ set/order ("Needs a decision · N" FIRST, "Approved · N", "All accepted session
 N") · relative dates in LATEST FILE · SEED: worklist too sparse (28/30 "No files
 yet").
 
-**Agenda (desktop)**: USER-REPORTED (click-to-place UX, file w/ DEC): (a) the
-inverted ink clash card visually BURIES intersecting slot buttons in placing mode —
-placement targets under/over the black block are hard to see exactly where
-place-anyway matters; while armed, either lift slot buttons above the clash card
-(z-index + visible outline legible on ink) or dim/outline the clash card in placing
-mode; (b) arm/disarm causes LAYOUT SHIFT ×2 — the conditional "No room yet" column
-inserts a 5th grid column (reflows all widths) and the "Placing… Esc to cancel"
-banner pushes the grid down; keep geometry stable (reserve banner height or overlay
-it; only insert the no-room column when the armed session is actually roomless, or
-overlay it) · **P2 (AIA grader): click-to-place into an OCCUPIED slot is a
-silent no-op** — button says "will clash with 1 session" and banner says "Clashes are
-flagged, not blocked", but the click does nothing (existing card likely intercepts
-it); make place-anyway work · **P2: invited-placeholder sessions ("Invited: Priya
+**Agenda (desktop)** (probe-3 CLOSED: occupied-slot place-anyway — PUT 200,
+persists · clash-card content legible while armed · DEC-759 cards don't scroll ·
+DEC-779 dot-joins): **NEW — placing-mode slot targets INVISIBLE over the clash
+card**: slot buttons are transparent with a 1px dashed border in rgb(27,29,23) —
+EXACTLY the clash card's background (1:1 contrast) — and empty text; "will clash
+with N" exists only in aria-label; non-clash cells have NO visible affordance and
+no hover change. Fix: dashed border on-ink over ink (paper color) + a hover state
+on all cells + consider visible micro-copy on clash targets · **layout shift on
+arm/disarm STILL-OPEN (measured)**: armed bar pushes grid +58.8px; the "No room
+yet" 5th column shrinks room columns 251→200.8px (−150px displacement). Keep
+geometry stable: overlay/reserve the banner; only add the no-room column for a
+roomless armed session or overlay it · card titles CLAMP at 2 lines (no scroll,
+but long titles truncate — decide vs mock) · place-anyway lands with NO
+confirm/toast — add the mock's feedback if any · **P2: invited-placeholder sessions ("Invited: Priya
 Raman") are invisible to double-booking detection** despite displaying speaker names
 — auto-schedule stacked them over the speakers' real sessions with zero flags ·
 auto-schedule ignores format durations (Keynote 45/Workshop 120/Lightning 10 all
@@ -226,12 +227,13 @@ not-in-mock Participants + full-Answers sections · header: drop "Welcome to the
 speaker portal!…" tagline (displaces identity on subpages; mock = wordmark +
 identity only) · pending status label "UNDER REVIEW" — mock vocabulary check ·
 admin-404 links run together ("Go to Overview Submissions ›" — separate them) ·
-public form track checkboxes centered above labels, should be inline · USER-REPORTED
-(prod screenshot): public Sessions search form misaligned — src/routes/public/
-sessions.tsx:125-133 has label(text+input) then button with NO row wrapper, so the
-green Search button floats to the container top-right, vertically offset above the
-input line; wrap input+button in a flex row, button aligned to the input (check the
-other public surfaces' search forms for the same structure).
+public form track checkboxes centered above labels, should be inline · search button MOSTLY FIXED
+(same row now); residual: button center 11.1px above the input — the flex row
+centers the 44px button against the 66px label (caption+input); align to the INPUT
+box (align-items flex-end or dedicated input+button row) · DEC-777 residue: portal
+SUBPAGE headers drop identity entirely (wordmark only — restore name on subpages) ·
+portal detail meta still lacks TRACK ("SES-001 · Talk (30 min)" — add
+"· Platform & Infra").
 
 **Grader P3s** (two-track-selectors CLOSED by probe 2): label New-event Timezone ·
 explicit CFP publish affordance · close-before-open validation loud at the field.
