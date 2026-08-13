@@ -484,3 +484,57 @@
   font-size: 13px;
   color: var(--chq-muted);
 }
+
+/* ---------------------------------------------------------------------- */
+/* w19-c (DEC-902): Files library page header + trimmed column widths.    */
+/* Appended block — task-w19-b also appends to this stylesheet; both      */
+/* additions stay in their own commented block at the end of the file.    */
+/* ---------------------------------------------------------------------- */
+
+.chq-content-files-header-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.chq-content-files-titles {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.chq-content-files-breadcrumb {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--chq-muted);
+  align-self: flex-start;
+}
+
+.chq-content-files-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* Search box sits to the LEFT of the chip strip it narrows. */
+.chq-content-files-toolbar {
+  flex-wrap: wrap;
+}
+
+.chq-content-files-toolbar .chq-input {
+  flex: 0 1 260px;
+}
+
+/* Fixed-width size column so numerals align (DEC-902). */
+.chq-content-files-table .chq-content-files-col-size {
+  width: 90px;
+  text-align: right;
+}
+
+.chq-content-files-table .chq-content-files-col-version {
+  width: 64px;
+  white-space: nowrap;
+}

@@ -256,6 +256,9 @@ fileApiRoutes.get("/events/:eventId/files", requireOrganizer, async (c) => {
     totalSizeBytes: result.totalSizeBytes,
     page: result.page,
     perPage: result.perPage,
+    // DEC-902: one grouped-query count per LIBRARY_KIND, independent of the
+    // caller's ?kind= selection -- the chip strip's own arithmetic.
+    kindCounts: result.kindCounts,
   });
 });
 

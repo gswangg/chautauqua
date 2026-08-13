@@ -205,9 +205,34 @@ function makeFakeHeadshotsDb(seed: Seed) {
     let orderByArg: unknown = null;
     let limitN: number | undefined;
     let offsetN = 0;
+    let groupByCols: unknown[] | null = null;
     const countField = Object.entries(fields).find(([, v]) => isCountDistinctNode(v));
     const run = () => {
       let matched = whereCond ? source.filter((r) => evalCond(whereCond, r)) : source.slice();
+      // DEC-902: `group by <col[, col...]>` — one output row per distinct
+      // combination of the grouped columns, with a plain `sql\`count(*)\``
+      // field (if present) resolved to that group's own row count. Used by
+      // computeKindCounts's `group by kind` aggregate and its
+      // dedupe-by-file-id headshot count.
+      if (groupByCols && groupByCols.length > 0) {
+        const groups = new Map<string, JoinedRow[]>();
+        for (const r of matched) {
+          const gkey = groupByCols.map((c) => String(resolveVal(c, r))).join("||");
+          const arr = groups.get(gkey) ?? [];
+          arr.push(r);
+          groups.set(gkey, arr);
+        }
+        const rows: Record<string, unknown>[] = [];
+        for (const groupRows of groups.values()) {
+          const rep = groupRows[0]!;
+          const out: Record<string, unknown> = {};
+          for (const [outKey, col] of Object.entries(fields)) {
+            out[outKey] = isSqlNode(col) ? groupRows.length : resolveVal(col, rep);
+          }
+          rows.push(out);
+        }
+        return rows;
+      }
       if (countField) {
         const [outKey, node] = countField as [string, { queryChunks: unknown[] }];
         const { cols } = renderSql(node);
@@ -263,6 +288,10 @@ function makeFakeHeadshotsDb(seed: Seed) {
       },
       where: (cond: unknown) => {
         whereCond = cond;
+        return chain;
+      },
+      groupBy: (...cols: unknown[]) => {
+        groupByCols = cols;
         return chain;
       },
       orderBy: (arg: unknown) => {
@@ -382,7 +411,14 @@ describe("listEventDeliverableFiles kinds:['headshot'] (DEC-773)", () => {
     seed.contact[0]!.headshotUrl = null; // Priya no longer has a headshot
     const db = makeFakeHeadshotsDb(seed);
     const result = await listEventDeliverableFiles(db, "event-1", { page: 1, perPage: 50, kinds: ["headshot"], q: null });
-    expect(result).toEqual({ items: [], total: 0, totalSizeBytes: 0, page: 1, perPage: 50 });
+    expect(result).toEqual({
+      items: [],
+      total: 0,
+      totalSizeBytes: 0,
+      page: 1,
+      perPage: 50,
+      kindCounts: { presentation: 0, poster: 0, handout: 0, recording: 0, headshot: 0 },
+    });
   });
 });
 

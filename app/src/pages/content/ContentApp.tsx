@@ -330,7 +330,12 @@ export function ContentApp() {
         // never fall through to the list view underneath it.
         <DelayedLoading label="Loading submission…" />
       ) : view === 'files' ? (
-        <FilesLibrary key={filesReloadKey} eventId={eventId} onSelectSubmission={selectSubmission} />
+        <FilesLibrary
+          key={filesReloadKey}
+          eventId={eventId}
+          onSelectSubmission={selectSubmission}
+          onBack={() => changeView('worklist')}
+        />
       ) : (
         <SessionList
           items={items}

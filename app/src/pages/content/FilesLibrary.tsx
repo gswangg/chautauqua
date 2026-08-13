@@ -15,6 +15,10 @@ import { formatBytes } from './format';
 interface FilesLibraryProps {
   eventId: string;
   onSelectSubmission: (submissionId: string) => void;
+  // DEC-902: the library gets the frame's own page header (breadcrumb, H1
+  // 'Files') -- onBack is the breadcrumb's real destination (back to the
+  // Content worklist), never a decorative link.
+  onBack: () => void;
 }
 
 const PER_PAGE = 50;
@@ -27,10 +31,19 @@ const MAX_ARCHIVE_FILES = 50;
  * (kind + search), with multi-select bulk ZIP download and a per-row
  * Download link. Row click drills into the same DeliverableDetail used by
  * the worklist for a deliverable row; a headshot row has no submission to
- * drill into. */
-export function FilesLibrary({ eventId, onSelectSubmission }: FilesLibraryProps) {
+ * drill into.
+ *
+ * DEC-902: the kind-chip counts and the total/size stat all come from the
+ * SAME GET /events/:eventId/files response the table itself renders from —
+ * kindCounts is one `group by kind` aggregate the server computes over
+ * event-scope + q (never the caller's selected kind), so switching chips
+ * never invalidates another chip's own printed number. There is no
+ * separate per-kind fan-out and no separate unfiltered "totals" call. */
+export function FilesLibrary({ eventId, onSelectSubmission, onBack }: FilesLibraryProps) {
   const [items, setItems] = useState<EventFileChainItem[]>([]);
   const [total, setTotal] = useState(0);
+  const [totalSizeBytes, setTotalSizeBytes] = useState(0);
+  const [kindCounts, setKindCounts] = useState<Record<LibraryKind, number> | null>(null);
   const [page, setPage] = useState(1);
   const [kind, setKind] = useState<LibraryKind | ''>('');
   const [q, setQ] = useState('');
@@ -43,16 +56,6 @@ export function FilesLibrary({ eventId, onSelectSubmission }: FilesLibraryProps)
   // other page feedback — this live region is the only in-page signal that
   // the request started, finished, or failed.
   const [downloadStatus, setDownloadStatus] = useState<string | null>(null);
-  // w1-f (DEC-733/eval 60/37): the library's stat line and kind-type chips
-  // read from the list endpoint's OWN counts, never a tally of the current
-  // page — a page-derived count would silently drop to whatever the
-  // pagesize is once a library exceeds PER_PAGE. allTotal/allTotalSizeBytes/
-  // kindCounts are page-1/perPage-1 reads against the same list endpoint
-  // (same q, no/one kind filter), kept independent of `kind`/`page` so
-  // switching a chip or paging never invalidates the header stat.
-  const [allTotal, setAllTotal] = useState<number | null>(null);
-  const [allTotalSizeBytes, setAllTotalSizeBytes] = useState(0);
-  const [kindCounts, setKindCounts] = useState<Record<LibraryKind, number> | null>(null);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -66,6 +69,8 @@ export function FilesLibrary({ eventId, onSelectSubmission }: FilesLibraryProps)
       .then((res) => {
         setItems(res.items);
         setTotal(res.total);
+        setTotalSizeBytes(res.totalSizeBytes);
+        setKindCounts(res.kindCounts);
         setSelected(new Set());
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load files'))
@@ -78,36 +83,6 @@ export function FilesLibrary({ eventId, onSelectSubmission }: FilesLibraryProps)
   useEffect(() => {
     load();
   }, [load]);
-
-  const loadCounts = useCallback(() => {
-    const baseParams = new URLSearchParams();
-    baseParams.set('page', '1');
-    baseParams.set('perPage', '1');
-    if (q.trim() !== '') baseParams.set('q', q.trim());
-
-    apiGet<EventFilesEnvelope>(`/events/${eventId}/files?${baseParams.toString()}`)
-      .then((res) => {
-        setAllTotal(res.total);
-        setAllTotalSizeBytes(res.totalSizeBytes);
-      })
-      .catch(() => setAllTotal(null));
-
-    void Promise.all(
-      LIBRARY_KINDS.map((k) => {
-        const kindParams = new URLSearchParams(baseParams);
-        kindParams.set('kind', k);
-        return apiGet<EventFilesEnvelope>(`/events/${eventId}/files?${kindParams.toString()}`).then(
-          (res) => [k, res.total] as const,
-        );
-      }),
-    )
-      .then((entries) => setKindCounts(Object.fromEntries(entries) as Record<LibraryKind, number>))
-      .catch(() => setKindCounts(null));
-  }, [eventId, q]);
-
-  useEffect(() => {
-    loadCounts();
-  }, [loadCounts]);
 
   function toggle(rootFileId: string) {
     setSelected((prev) => {
@@ -216,27 +191,44 @@ export function FilesLibrary({ eventId, onSelectSubmission }: FilesLibraryProps)
         </div>
       )}
 
-      {/* w1-f/DEC-773 (docs/design/Chautauqua Content.dc.html:240): stat line +
-          Download all, both truthful against the list endpoint's own
-          total/totalSizeBytes (never the loaded page). */}
-      <div className="chq-content-files-stat-row">
-        <span className="chq-summary">
-          {allTotal === null
-            ? 'Counting files…'
-            : `${allTotal} ${allTotal === 1 ? 'file' : 'files'} · ${formatBytes(allTotalSizeBytes)}`}
-        </span>
-        <button
-          type="button"
-          className="chq-btn chq-btn-secondary"
-          disabled={downloading || allTotal === null || allTotal === 0}
-          aria-busy={downloading}
-          onClick={downloadAll}
-        >
-          Download all
-        </button>
+      {/* DEC-902: the frame's own page header — breadcrumb back to Content,
+          H1 'Files', and the total/size stat ON this same row (never a
+          separate band below it). */}
+      <div className="chq-content-files-header-row">
+        <div className="chq-content-files-titles">
+          <button type="button" className="chq-link-button chq-content-files-breadcrumb" onClick={onBack}>
+            &lsaquo; Content
+          </button>
+          <h1 className="chq-page-title">Files</h1>
+        </div>
+        <div className="chq-content-files-header-actions">
+          <span className="chq-summary">
+            {`${total} ${total === 1 ? 'file' : 'files'} · ${formatBytes(totalSizeBytes)}`}
+          </span>
+          <button
+            type="button"
+            className="chq-btn chq-btn-secondary"
+            disabled={downloading || total === 0}
+            aria-busy={downloading}
+            onClick={downloadAll}
+          >
+            Download all
+          </button>
+        </div>
       </div>
 
       <div className="chq-files-library-toolbar chq-content-files-toolbar">
+        <input
+          type="search"
+          className="chq-input"
+          aria-label="Search files"
+          placeholder="Search filename, session, or speaker"
+          value={q}
+          onChange={(e) => {
+            setQ(e.target.value);
+            setPage(1);
+          }}
+        />
         <div className="chq-chipstrip" role="tablist" aria-label="File type">
           <button
             type="button"
@@ -250,7 +242,11 @@ export function FilesLibrary({ eventId, onSelectSubmission }: FilesLibraryProps)
           >
             All types
           </button>
-          {LIBRARY_KINDS.map((k) => (
+          {/* DEC-902: a kind with zero matches offers no chip -- a filter
+              that can only empty the list is a dead control. kindCounts is
+              read straight from the SAME envelope the table renders from,
+              never re-fetched per kind. */}
+          {LIBRARY_KINDS.filter((k) => (kindCounts?.[k] ?? 0) > 0).map((k) => (
             <button
               key={k}
               type="button"
@@ -262,21 +258,10 @@ export function FilesLibrary({ eventId, onSelectSubmission }: FilesLibraryProps)
                 setPage(1);
               }}
             >
-              {LIBRARY_KIND_LABELS[k]} &middot; {kindCounts?.[k] ?? '…'}
+              {LIBRARY_KIND_LABELS[k]} &middot; {kindCounts?.[k] ?? 0}
             </button>
           ))}
         </div>
-        <input
-          type="search"
-          className="chq-input"
-          aria-label="Search files"
-          placeholder="Search filename, session, or speaker"
-          value={q}
-          onChange={(e) => {
-            setQ(e.target.value);
-            setPage(1);
-          }}
-        />
         <button
           type="button"
           className="chq-btn chq-btn-primary"
@@ -296,7 +281,7 @@ export function FilesLibrary({ eventId, onSelectSubmission }: FilesLibraryProps)
         </span>
       </div>
 
-      <table className="chq-table chq-content-table">
+      <table className="chq-table chq-content-table chq-content-files-table">
         <thead>
           <tr>
             <th>
@@ -311,24 +296,23 @@ export function FilesLibrary({ eventId, onSelectSubmission }: FilesLibraryProps)
             <th>File</th>
             <th>Kind</th>
             <th>Session</th>
-            <th>Speaker</th>
-            <th>Size</th>
+            <th className="chq-content-files-col-version">Version</th>
+            <th className="chq-content-files-col-size">Size</th>
             <th>Uploaded</th>
-            <th>Versions</th>
             <th></th>
           </tr>
         </thead>
         <tbody>
           {loading && (
             <tr>
-              <td colSpan={9}>
+              <td colSpan={8}>
                 <DelayedLoading />
               </td>
             </tr>
           )}
           {loaded && !loading && items.length === 0 && (
             <tr>
-              <td colSpan={9} className="chq-empty">
+              <td colSpan={8} className="chq-empty">
                 No deliverable files yet.
               </td>
             </tr>
@@ -379,23 +363,9 @@ export function FilesLibrary({ eventId, onSelectSubmission }: FilesLibraryProps)
                     </>
                   )}
                 </td>
-                <td>{item.speakerName}</td>
-                <td className="chq-meta">{formatBytes(item.sizeBytes)}</td>
+                <td className="chq-content-files-col-version">v{item.versionNo}</td>
+                <td className="chq-meta chq-content-files-col-size">{formatBytes(item.sizeBytes)}</td>
                 <td className="chq-meta">{formatDateTime(item.uploadedAt)}</td>
-                <td>
-                  {item.submissionId ? (
-                    <button
-                      type="button"
-                      className="chq-link-button"
-                      aria-label={`Open ${item.filename} versions and comments`}
-                      onClick={() => onSelectSubmission(item.submissionId)}
-                    >
-                      {item.versionCount}
-                    </button>
-                  ) : (
-                    '—'
-                  )}
-                </td>
                 <td onClick={(e) => e.stopPropagation()}>
                   <a
                     className="chq-link-button"
