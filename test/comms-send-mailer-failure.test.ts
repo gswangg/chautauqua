@@ -101,13 +101,28 @@ function withEnv(kv: KVStore) {
   return { KV: kv as unknown as AppEnv["Bindings"]["KV"] };
 }
 
-async function buildCommsApp() {
+/** DEC-766: the catch block now also writes a 'failed' email_log row via
+ * d1EmailLogWriter, so `db` needs an insert() double even in tests that only
+ * care about the response shape. Records every insert() call. */
+function fakeDbWithInsertLog() {
+  const inserts: any[] = [];
+  const db = {
+    insert: () => ({
+      values: async (vals: unknown) => {
+        inserts.push(vals);
+      },
+    }),
+  };
+  return { db: db as never, inserts };
+}
+
+async function buildCommsApp(db: never) {
   const { commsRoutes } = await import("../src/routes/comms");
   const app = new Hono<AppEnv>();
   registerErrorHandler(app);
   app.use("*", async (c, next) => {
     c.set("auth", organizerAuth);
-    c.set("db", {} as never);
+    c.set("db", db);
     await next();
   });
   app.route("/", commsRoutes);
@@ -124,7 +139,8 @@ function composeBody(submissionIds: string[]) {
 
 describe("POST /api/v1/events/:eventId/compose/send — partial mailer failure (DEC-238 class 2)", () => {
   it("never 500s; sends the good recipient, reports the bad one in 'failed'", async () => {
-    const app = await buildCommsApp();
+    const { db } = fakeDbWithInsertLog();
+    const app = await buildCommsApp(db);
     const res = await app.request(
       `${ORIGIN}/api/v1/events/evt-1/compose/send`,
       {
@@ -148,5 +164,41 @@ describe("POST /api/v1/events/:eventId/compose/send — partial mailer failure (
     expect(body.failed).toHaveLength(1);
     expect(body.failed[0]?.email).toBe("bad@example.com");
     expect(body.failed[0]?.message).toContain("simulated provider rejection");
+  });
+
+  // DEC-766: a rejected send still gets an email_log row, so a fully-failed
+  // batch is visible in comms history instead of reading as '0 total'. The
+  // sole 'sub-bad' recipient in this fixture's failure lands here too — see
+  // test/comms-failed-send-audit.test.ts for the multi-recipient/all-fail
+  // case (a dedicated fixture, since this file's loadComposeSubmissions mock
+  // ignores submissionIds and always returns both fixtures).
+  it("writes a 'failed' email_log row for the recipient the mailer rejects", async () => {
+    const { db, inserts } = fakeDbWithInsertLog();
+    const app = await buildCommsApp(db);
+    const res = await app.request(
+      `${ORIGIN}/api/v1/events/evt-1/compose/send`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-chq-csrf": "1" },
+        body: composeBody(["sub-good", "sub-bad"]),
+      },
+      withEnv(new InMemoryKV()),
+    );
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { sent: number; failed: { email: string }[] };
+    expect(body.sent).toBe(1);
+    expect(body.failed).toHaveLength(1);
+
+    const failedRows = inserts.filter((v) => v.status === "failed");
+    expect(failedRows).toHaveLength(1);
+    expect(failedRows[0].toEmail).toBe("bad@example.com");
+    expect(failedRows[0].eventId).toBe("evt-1");
+    expect(failedRows[0].contactId).toBe("ct-bad");
+    expect(typeof failedRows[0].batchId).toBe("string");
+    expect(failedRows[0].batchId.length).toBeGreaterThan(0);
+
+    // No row for the recipient that succeeded.
+    expect(inserts.some((v) => v.toEmail === "good@example.com")).toBe(false);
   });
 });

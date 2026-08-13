@@ -16,6 +16,11 @@ import type { Db } from "../../../server/context";
 import { resolveBaseUrl } from "../../../server/origin";
 import { currentOrgId, asRecord } from "./shared";
 import { newId } from "../../../domain/ids";
+import { logFailedSend } from "../../../mail/log-failed";
+import { isDevMode } from "../../../server/env";
+import { DEC_766 } from "../../../decisions";
+
+void DEC_766;
 
 const MAX_BULK_EMAIL_RECIPIENTS = 100;
 
@@ -148,8 +153,10 @@ export function registerBulkEmailRoutes(contactsRoutes: Hono<AppEnv>): void {
       throw new ApiError("invalid", "One or more recipients are missing merge fields (only speaker_name/event_name/portal_link are allowed)", fields);
     }
 
-    const { makeMailer } = await import("../../../server/context");
+    const { makeMailer, d1EmailLogWriter } = await import("../../../server/context");
     const mailer = makeMailer(c.var.db, c.env);
+    const emailLog = d1EmailLogWriter(c.var.db);
+    const provider = isDevMode(c.env) ? "dev" : "cloudflare-email";
     // DEC-603: one id per fan-out call, shared by every recipient in this
     // loop, so the comms history tab can group the batch into one row.
     const batchId = newId();
@@ -158,18 +165,23 @@ export function registerBulkEmailRoutes(contactsRoutes: Hono<AppEnv>): void {
     // partial outcome in the 200 response rather than surfacing a 500.
     const failed: { email: string; message: string }[] = [];
     for (const rendered of result.rendered) {
+      const attempt = {
+        to: { email: rendered.email, name: rendered.name },
+        subject: rendered.subject,
+        text: rendered.text,
+        html: textToHtml(rendered.text),
+        eventId: event.id,
+        contactId: rendered.contactId,
+        batchId,
+      };
       try {
-        await mailer.send({
-          to: { email: rendered.email, name: rendered.name },
-          subject: rendered.subject,
-          text: rendered.text,
-          html: textToHtml(rendered.text),
-          eventId: event.id,
-          contactId: rendered.contactId,
-          batchId,
-        });
+        await mailer.send(attempt);
       } catch (err) {
         console.error("CRM bulk email failed for", rendered.email, err);
+        // DEC-766: the mailer rejected this recipient — write the attempted
+        // row so the batch's failure is visible in comms history, not a
+        // silent gap that reads as '0 total'.
+        await logFailedSend(emailLog, attempt, provider, err);
         failed.push({ email: rendered.email, message: err instanceof Error ? err.message : String(err) });
       }
     }

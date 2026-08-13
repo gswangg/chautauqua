@@ -22,13 +22,16 @@ import {
   MAX_COMPOSE_RECIPIENTS,
   type ComposeSubmission,
 } from "../domain/compose";
-import { DEC_122, DEC_252 } from "../decisions";
+import { DEC_122, DEC_252, DEC_766 } from "../decisions";
 import { MAX_NAME_LENGTH, MAX_TEXT_LENGTH, MAX_RICH_TEXT_LENGTH } from "../forms/validate"; // DEC-417
 import { resolveBaseUrl } from "../server/origin";
 import { clampPage, listPerPage } from "../lib/pagination";
 import { newId } from "../domain/ids";
+import { logFailedSend } from "../mail/log-failed";
+import { isDevMode } from "../server/env";
 
 void DEC_252;
+void DEC_766;
 
 export const commsRoutes = new Hono<AppEnv>();
 
@@ -458,8 +461,10 @@ commsRoutes.post("/api/v1/events/:eventId/compose/send", requireOrganizer, csrfJ
 
   const submissionById = new Map(submissions.map((s) => [s.id, s]));
   const templateId = typeof body.templateId === "string" ? body.templateId : undefined;
-  const { makeMailer } = await import("../server/context");
+  const { makeMailer, d1EmailLogWriter } = await import("../server/context");
   const mailer = makeMailer(c.var.db, c.env);
+  const emailLog = d1EmailLogWriter(c.var.db);
+  const provider = isDevMode(c.env) ? "dev" : "cloudflare-email";
   // DEC-603: one id per fan-out call, shared by every recipient in this
   // loop, so the comms history tab can group the batch into one row.
   const batchId = newId();
@@ -492,20 +497,24 @@ commsRoutes.post("/api/v1/events/:eventId/compose/send", requireOrganizer, csrfJ
         ),
       };
     }
+    const attempt = {
+      to: { email: rendered.email, name: rendered.name },
+      subject: rendered.subject,
+      text: rendered.text,
+      html: textToHtml(rendered.text),
+      ics,
+      templateId,
+      eventId,
+      contactId: rendered.contactId,
+      batchId,
+    };
     try {
-      await mailer.send({
-        to: { email: rendered.email, name: rendered.name },
-        subject: rendered.subject,
-        text: rendered.text,
-        html: textToHtml(rendered.text),
-        ics,
-        templateId,
-        eventId,
-        contactId: rendered.contactId,
-        batchId,
-      });
+      await mailer.send(attempt);
     } catch (err) {
-      console.error("compose send failed for", rendered.email, err);
+      // DEC-766: the mailer rejected this recipient — write the attempted
+      // row so the batch's failure is visible in comms history, not a
+      // silent gap that reads as '0 total'.
+      await logFailedSend(emailLog, attempt, provider, err);
       failed.push({ email: rendered.email, message: err instanceof Error ? err.message : String(err) });
     }
   }
