@@ -416,6 +416,99 @@ describe('ComposeWizard feedback plan picker (DEC-682)', () => {
   });
 });
 
+// DEC-883: checking "Include reviewer feedback" alone must never fire a
+// request (the server 400s includeFeedback without a plan) -- it only
+// reveals the plan select and a note; the request fires on the plan choice,
+// and unchecking clears the plan and re-previews without feedback.
+describe('ComposeWizard include-feedback toggle reachability (DEC-883)', () => {
+  function plan(id: string, name: string, currentRound: number, rounds = 3) {
+    return { id, eventId: EVENT_ID, name, openDate: null, closeDate: null, filters: null, anonymized: false, scale: { min: 1, max: 5 }, criteria: [], rounds, currentRound };
+  }
+
+  async function goToPreview(fetchMock: ReturnType<typeof mockApi>) {
+    render(<ComposeWizard eventId={EVENT_ID} />);
+    await screen.findByText('Talk number 1');
+    fireEvent.click(screen.getByLabelText('Select Talk number 1'));
+    fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
+
+    const subject = await screen.findByLabelText('Subject');
+    fireEvent.change(subject, { target: { value: 'Hello' } });
+    fireEvent.change(screen.getByLabelText('Body'), { target: { value: 'Body text' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Next: preview' }));
+
+    await screen.findByText('Attachments');
+    return fetchMock;
+  }
+
+  function previewCallCount(fetchMock: ReturnType<typeof mockApi>) {
+    return fetchMock.mock.calls.filter((call) => String(call[0]).includes('/compose/preview')).length;
+  }
+
+  it('checking the box with no plan chosen issues zero further preview requests and shows the note', async () => {
+    const fetchMock = mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope(page1(), { total: 340, page: 1, perPage: 50 }),
+      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
+      [`GET /api/v1/events/${EVENT_ID}/plans`]: listEnvelope([plan('plan-a', 'Track A Review', 2)]),
+      [`POST /api/v1/events/${EVENT_ID}/compose/preview`]: { items: [] },
+    });
+
+    await goToPreview(fetchMock);
+    const before = previewCallCount(fetchMock);
+
+    fireEvent.click(screen.getByLabelText('Include reviewer feedback'));
+
+    expect(await screen.findByText('Choose a plan to merge its feedback.')).toBeInTheDocument();
+    expect(previewCallCount(fetchMock)).toBe(before);
+  });
+
+  it('choosing a plan issues exactly one preview request', async () => {
+    const fetchMock = mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope(page1(), { total: 340, page: 1, perPage: 50 }),
+      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
+      [`GET /api/v1/events/${EVENT_ID}/plans`]: listEnvelope([plan('plan-a', 'Track A Review', 2)]),
+      [`POST /api/v1/events/${EVENT_ID}/compose/preview`]: { items: [] },
+    });
+
+    await goToPreview(fetchMock);
+    fireEvent.click(screen.getByLabelText('Include reviewer feedback'));
+    await screen.findByText('Choose a plan to merge its feedback.');
+    const before = previewCallCount(fetchMock);
+
+    const select = screen.getByLabelText('Evaluation plan');
+    fireEvent.change(select, { target: { value: 'plan-a' } });
+
+    await waitFor(() => {
+      expect(previewCallCount(fetchMock)).toBe(before + 1);
+    });
+  });
+
+  it('unchecking the box clears the chosen plan and re-runs the preview without feedback', async () => {
+    const fetchMock = mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope(page1(), { total: 340, page: 1, perPage: 50 }),
+      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
+      [`GET /api/v1/events/${EVENT_ID}/plans`]: listEnvelope([plan('plan-a', 'Track A Review', 2)]),
+      [`POST /api/v1/events/${EVENT_ID}/compose/preview`]: { items: [] },
+    });
+
+    await goToPreview(fetchMock);
+    fireEvent.click(screen.getByLabelText('Include reviewer feedback'));
+    const select = await screen.findByLabelText('Evaluation plan');
+    fireEvent.change(select, { target: { value: 'plan-a' } });
+    await waitFor(() => expect(previewCallCount(fetchMock)).toBeGreaterThan(0));
+
+    fireEvent.click(screen.getByLabelText('Include reviewer feedback'));
+
+    expect(screen.queryByLabelText('Evaluation plan')).not.toBeInTheDocument();
+    await waitFor(() => {
+      const calls = fetchMock.mock.calls.filter((call) => String(call[0]).includes('/compose/preview'));
+      const last = calls[calls.length - 1];
+      const lastBody = JSON.parse(String(last?.[1]?.body ?? '{}'));
+      expect(lastBody.includeFeedback).toBe(false);
+      expect(lastBody.feedbackPlanId).toBeUndefined();
+    });
+  });
+});
+
 // DEC-846: the composer sends what it shows -- selecting a template only
 // prefills subject/bodyText, so an edit made afterward (including a merge
 // chip insert) is what actually goes out, and templateId is never sent.

@@ -663,3 +663,32 @@
     cursor: pointer;
   }
 }
+
+/* w17-a: DEC-883 -- the merged-reviewer-feedback block inside the preview
+   pane. Preview chrome only; appended per lane-file convention. */
+.chq-comms-preview-body-paragraph {
+  margin: 0;
+  padding: 0;
+  white-space: pre-wrap;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  color: inherit;
+}
+
+.chq-comms-feedback {
+  margin: 0;
+  border-left: 3px solid var(--chq-brand);
+  padding: 2px 0 2px 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.chq-comms-feedback-eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--chq-muted);
+}

@@ -36,6 +36,31 @@ const NO_SLOT: RenderedRecipient = {
   text: 'See you there',
 };
 
+const WITH_FEEDBACK: RenderedRecipient = {
+  contactId: 'c3',
+  submissionId: 's3',
+  email: 'radia@example.com',
+  name: 'Radia Perlman',
+  subject: 'You are in!',
+  text: 'Congratulations on your session.\n\nGreat energy; clear structure.\n\nSee you there',
+  vars: { feedback: 'Great energy; clear structure.' },
+};
+
+describe('PreviewPane: merged reviewer feedback block (DEC-883)', () => {
+  it('renders the eyebrow and blockquote when vars.feedback is present and matches a paragraph', () => {
+    render(<PreviewPane item={WITH_FEEDBACK} />);
+    expect(screen.getByText('Reviewer feedback, merged')).toBeInTheDocument();
+    const quote = screen.getByText('Great energy; clear structure.').closest('blockquote');
+    expect(quote).toHaveClass('chq-comms-feedback');
+  });
+
+  it('renders the plain body with no blockquote when vars.feedback is absent', () => {
+    render(<PreviewPane item={SCHEDULED} />);
+    expect(screen.queryByText('Reviewer feedback, merged')).not.toBeInTheDocument();
+    expect(screen.getByText('See you there')).toBeInTheDocument();
+  });
+});
+
 describe('PreviewPane: attachIcs honesty (DEC-732)', () => {
   it('tags a recipient with a resolved slot as Scheduled and shows the invite line', () => {
     render(<PreviewPane item={SCHEDULED} attachIcs />);

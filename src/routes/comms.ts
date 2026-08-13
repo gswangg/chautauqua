@@ -483,9 +483,16 @@ commsRoutes.post("/api/v1/events/:eventId/compose/preview", requireOrganizer, cs
     throw new ApiError("invalid", "One or more recipients are missing merge fields", missingToFields(result.missing));
   }
 
-  const items = icsMap
-    ? result.rendered.map((r) => ({ ...r, ics: icsPreviewInfoFor(icsMap.get(r.submissionId)!, event) }))
-    : result.rendered;
+  // DEC-883: the preview identifies the merged-feedback block by matching
+  // this recipient's own resolved `feedback` var against the rendered body
+  // -- never re-deriving or re-fetching it -- so the wire payload carries it
+  // alongside the rendered text (preview only; /compose/send never does this).
+  const feedbackByTarget = new Map(targets.map((t) => [`${t.contactId}:${t.submissionId}`, t.vars.feedback]));
+  const items = result.rendered.map((r) => {
+    const withIcs = icsMap ? { ...r, ics: icsPreviewInfoFor(icsMap.get(r.submissionId)!, event) } : r;
+    const feedback = feedbackByTarget.get(`${r.contactId}:${r.submissionId}`);
+    return feedback !== undefined ? { ...withIcs, vars: { feedback } } : withIcs;
+  });
 
   return c.json({ items });
 });
