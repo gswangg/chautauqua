@@ -188,14 +188,14 @@ const EMAIL = "speaker@example.test";
 const OLD_PASSWORD = "old-password-123";
 const NEW_PASSWORD = "new-password-456";
 
-async function seedUser(state: { users: Row[] }) {
+async function seedUser(state: { users: Row[] }, role: "organizer" | "reviewer" | "speaker" = "organizer") {
   const passwordHash = await hashPassword(OLD_PASSWORD);
   const user = {
     id: "u_1",
     orgId: "org_1",
     email: EMAIL,
     passwordHash,
-    role: "organizer",
+    role,
     contactId: null,
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -300,6 +300,39 @@ describe("GET/POST /account/password — anonymous", () => {
     const postRes = await app.request("/account/password", { method: "POST" }, env);
     expect(postRes.status).toBe(302);
     expect(postRes.headers.get("location")).toBe("/login");
+  });
+});
+
+// DEC-366: the '‹ Back' link on /account/password used to hardcode /admin,
+// which is role-blind -- a speaker (whose home is /portal, not /admin)
+// would be sent to a surface their role can't open.
+describe("GET /account/password — role-aware '‹ Back' link", () => {
+  it("organizer sees a back link to /admin", async () => {
+    const { db, state } = makeFakeDb();
+    await seedUser(state, "organizer");
+    const { app, env } = buildApp(db);
+
+    const loginRes = await login(app, env, OLD_PASSWORD);
+    const sessionCookie = sessionCookieFrom(loginRes);
+    const res = await app.request("/account/password", { headers: { cookie: sessionCookie } }, env);
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).toContain('href="/admin"');
+    expect(html).not.toContain('href="/portal"');
+  });
+
+  it("speaker sees a back link to /portal, not /admin", async () => {
+    const { db, state } = makeFakeDb();
+    await seedUser(state, "speaker");
+    const { app, env } = buildApp(db);
+
+    const loginRes = await login(app, env, OLD_PASSWORD);
+    const sessionCookie = sessionCookieFrom(loginRes);
+    const res = await app.request("/account/password", { headers: { cookie: sessionCookie } }, env);
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).toContain('href="/portal"');
+    expect(html).not.toContain('href="/admin"');
   });
 });
 

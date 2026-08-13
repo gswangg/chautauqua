@@ -521,6 +521,15 @@ a:hover {
   color: var(--chq-brand-hover);
 }
 
+/* DEC-366: tertiary/link-style buttons carry no border/background of their
+   own to hint a focus state, so without an explicit ring here they fall
+   back to the UA's off-palette default outline (e.g. "Delete this contact"
+   in the contacts drawer) instead of the theme's 2px olive ring. */
+.chq-btn-tertiary:focus-visible {
+  outline: 2px solid var(--chq-brand);
+  outline-offset: 2px;
+}
+
 /* Inline text-styled button (row cells that act as links but must stay
    real <button> elements for keyboard/AT). */
 .chq-link-button {
@@ -535,6 +544,11 @@ a:hover {
 
 .chq-link-button:hover {
   color: var(--chq-brand-hover);
+}
+
+.chq-link-button:focus-visible {
+  outline: 2px solid var(--chq-brand);
+  outline-offset: 2px;
 }
 
 /* DEC-577: shared segmented-button-group shell -- a <select> replaced by a

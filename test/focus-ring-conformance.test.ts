@@ -96,6 +96,40 @@ describe("focus ring conformance (DEC-409)", () => {
     ).toBe(true);
   });
 
+  // DEC-366: .chq-btn-tertiary ("Delete this contact" in the contacts
+  // drawer, and every other tertiary/link-style button) must carry its own
+  // explicit :focus-visible ring, not rely solely on the page falling back
+  // to whatever the UA renders.
+  it("app/src/styles.css declares .chq-btn-tertiary:focus-visible with the designed olive ring", () => {
+    const src = readFileSync(stylesCss, "utf8");
+    const bodies = extractRuleBodies(src, ".chq-btn-tertiary:focus-visible");
+    expect(bodies.length).toBeGreaterThan(0);
+    expect(
+      bodies.some(
+        (body) =>
+          body.includes("outline: 2px solid var(--chq-brand)") &&
+          body.includes("outline-offset: 2px"),
+      ),
+    ).toBe(true);
+  });
+
+  // DEC-366: src/routes/auth.css.ts's demo prefill buttons use `all: unset`,
+  // which also strips the UA's default outline -- they must restore one
+  // explicitly on :focus-visible.
+  it("src/routes/auth.css.ts restores a focus ring on .chq-auth-demo-btn despite `all: unset`", () => {
+    const authCss = join(REPO_ROOT, "src/routes/auth.css.ts");
+    const src = readFileSync(authCss, "utf8");
+    const bodies = extractRuleBodies(src, ".chq-auth-demo-buttons .chq-auth-demo-btn:focus-visible");
+    expect(bodies.length).toBeGreaterThan(0);
+    expect(
+      bodies.some(
+        (body) =>
+          body.includes("outline: 2px solid var(--chq-brand)") &&
+          body.includes("outline-offset: 2px"),
+      ),
+    ).toBe(true);
+  });
+
   it("no scanned stylesheet silences the focus ring with `outline: none` or `outline: 0`", () => {
     const violations: string[] = [];
     for (const file of scannedFiles) {

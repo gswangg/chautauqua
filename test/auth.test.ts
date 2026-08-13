@@ -451,4 +451,26 @@ describe("POST /login rate limiting (DEC-180)", () => {
     const res21AfterReset = await postLogin(app, env, { email: EMAIL, password: "wrong" });
     expect(res21AfterReset.status).toBe(429);
   });
+
+  // DEC-366 (same class of fix as DEC-626's keep-what-you-typed): a failed
+  // sign-in must re-render with the typed email still in the field instead
+  // of discarding it.
+  it("re-renders the login form with the typed email still in the field after a wrong-password failure", async () => {
+    const { app, env } = await buildApp();
+    const res = await postLogin(app, env, { email: EMAIL, password: "wrong-password" });
+    expect(res.status).toBe(401);
+    const html = await res.text();
+    expect(html).toContain(`value="${EMAIL}"`);
+  });
+
+  it("re-renders the login form with the typed email still in the field after a rate-limited failure", async () => {
+    const { app, env } = await buildApp();
+    for (let i = 0; i < 20; i++) {
+      await postLogin(app, env, { email: EMAIL, password: "wrong" });
+    }
+    const res = await postLogin(app, env, { email: EMAIL, password: "wrong" });
+    expect(res.status).toBe(429);
+    const html = await res.text();
+    expect(html).toContain(`value="${EMAIL}"`);
+  });
 });

@@ -54,7 +54,19 @@ function ensureCsrfCookie(c: {
 // routes/auth.css.ts) supplies the shared .chq-auth-* card layout;
 // ThemeStyles() supplies tokens/reset. Both injected via
 // dangerouslySetInnerHTML, never a JSX text child (DEC-374).
-function PasswordPage(props: { csrfToken: string; error?: string; success?: boolean }) {
+/** DEC-366: /admin is organizer/reviewer turf; a speaker's home is /portal
+ * -- hardcoding /admin sent a signed-in speaker to a page their role can't
+ * open. */
+function backHrefForRole(role: "organizer" | "reviewer" | "speaker"): string {
+  return role === "speaker" ? "/portal" : "/admin";
+}
+
+function PasswordPage(props: {
+  csrfToken: string;
+  backHref: string;
+  error?: string;
+  success?: boolean;
+}) {
   return (
     <html lang="en">
       <head>
@@ -67,7 +79,7 @@ function PasswordPage(props: { csrfToken: string; error?: string; success?: bool
       <body>
         <main className="chq-auth-card chq-auth-card-narrow">
           <div className="chq-auth-titlerow">
-            <a className="chq-auth-back" href="/admin">
+            <a className="chq-auth-back" href={props.backHref}>
               &lsaquo; Back
             </a>
             <h1 className="chq-auth-title">Change your password</h1>
@@ -120,7 +132,7 @@ accountRoutes.get("/account/password", (c) => {
   if (!c.var.auth) return c.redirect("/login", 302);
   const { token: csrfToken, setCookieIfNew } = ensureCsrfCookie(c);
   if (setCookieIfNew) c.header("Set-Cookie", setCookieIfNew);
-  return c.html(<PasswordPage csrfToken={csrfToken} />);
+  return c.html(<PasswordPage csrfToken={csrfToken} backHref={backHrefForRole(c.var.auth.role)} />);
 });
 
 /** Runs ahead of csrfForm so an anonymous POST redirects to /login instead
@@ -149,22 +161,28 @@ accountRoutes.post("/account/password", requireAuthOr302, csrfForm, async (c) =>
     throw new Error(`No user row for authenticated userId '${auth.userId}'`);
   }
 
+  const backHref = backHrefForRole(auth.role);
+
   if (!(await verifyPassword(current, user.passwordHash))) {
     const { token: csrfToken } = ensureCsrfCookie(c);
-    return c.html(<PasswordPage csrfToken={csrfToken} error="Current password is incorrect." />, 400);
+    return c.html(<PasswordPage csrfToken={csrfToken} backHref={backHref} error="Current password is incorrect." />, 400);
   }
 
   if (next.length < MIN_PASSWORD_LENGTH) {
     const { token: csrfToken } = ensureCsrfCookie(c);
     return c.html(
-      <PasswordPage csrfToken={csrfToken} error={`New password must be at least ${MIN_PASSWORD_LENGTH} characters.`} />,
+      <PasswordPage
+        csrfToken={csrfToken}
+        backHref={backHref}
+        error={`New password must be at least ${MIN_PASSWORD_LENGTH} characters.`}
+      />,
       400,
     );
   }
   if (next !== confirm) {
     const { token: csrfToken } = ensureCsrfCookie(c);
     return c.html(
-      <PasswordPage csrfToken={csrfToken} error="New password and confirmation do not match." />,
+      <PasswordPage csrfToken={csrfToken} backHref={backHref} error="New password and confirmation do not match." />,
       400,
     );
   }
@@ -181,5 +199,5 @@ accountRoutes.post("/account/password", requireAuthOr302, csrfForm, async (c) =>
 
   c.header("Set-Cookie", buildSessionCookie(token, { secure: isSecureRequest(c.req.url) }));
   const { token: csrfToken } = ensureCsrfCookie(c);
-  return c.html(<PasswordPage csrfToken={csrfToken} success />);
+  return c.html(<PasswordPage csrfToken={csrfToken} backHref={backHref} success />);
 });
