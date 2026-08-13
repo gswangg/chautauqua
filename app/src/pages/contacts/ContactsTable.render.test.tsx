@@ -1,8 +1,11 @@
-// eval-findings 45+55 (DEC-712, task-w17-d): the contacts directory table
-// drops the '# Submissions' column and the FIELD/OPERATOR/VALUE
-// FilterRulesPanel rule builder entirely (segment control moves to the tab
-// row, owned by task-w17-c), gains a Labels column of derived-role chips,
-// and the row action becomes a quiet 'Open' tertiary link.
+// eval-findings 45+55 (DEC-712, task-w17-d) + DEC-738/DEC-726 (task-w2-c):
+// the contacts directory table drops the '# Submissions' column and the
+// FIELD/OPERATOR/VALUE FilterRulesPanel rule builder entirely (segment
+// control moves to the tab row, owned by task-w17-c), gains a Labels column
+// of chips reading the contact's customFields ("`key` `value`", server-
+// formatted via src/domain/contact-labels.ts -- supersedes DEC-712's
+// derived participation-role chips), and the row action becomes a quiet
+// 'Open' tertiary link.
 import { afterEach, describe, expect, it } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
@@ -18,7 +21,7 @@ const ITEMS: ContactListItem[] = [
     email: 'ada@example.com',
     company: 'Acme',
     title: 'Engineer',
-    labels: ['Speaker', 'Moderator'],
+    labels: ['role speaker', 'tshirt L'],
   },
   {
     id: 'ct2',
@@ -57,7 +60,7 @@ afterEach(() => {
   cleanup();
 });
 
-describe('ContactsTable render (eval-findings 45+55, DEC-712)', () => {
+describe('ContactsTable render (eval-findings 45+55, DEC-738/DEC-726)', () => {
   it('renders exactly the checkbox/Name and email/Company/Labels columns plus the row action', () => {
     renderTable();
     const headerRow = screen.getAllByRole('row')[0]!;
@@ -78,10 +81,16 @@ describe('ContactsTable render (eval-findings 45+55, DEC-712)', () => {
     expect(screen.queryByLabelText('Segment filter')).not.toBeInTheDocument();
   });
 
-  it('renders one uppercase small-caps chip per derived label for a two-role contact', () => {
+  it('renders one uppercase small-caps chip per label for a contact with two custom fields', () => {
     renderTable();
-    expect(screen.getByText('Speaker')).toBeInTheDocument();
-    expect(screen.getByText('Moderator')).toBeInTheDocument();
+    expect(screen.getByText('role speaker')).toBeInTheDocument();
+    expect(screen.getByText('tshirt L')).toBeInTheDocument();
+  });
+
+  it("renders a chip reading the formatted '`key` `value`' string rather than a bare value", () => {
+    renderTable();
+    expect(screen.getByText('role speaker')).toBeInTheDocument();
+    expect(screen.queryByText('speaker')).not.toBeInTheDocument();
   });
 
   it('renders a quiet Open tertiary link as the row action, not Add to event', () => {

@@ -21,14 +21,11 @@ export {
   CONTACT_FK_TABLES,
   buildMergeRepointOps,
   mergedPipelineStage,
-  deriveContactLabels,
-  fetchContactLabels,
   type ParsedContactListQuery,
   type ImportUpsertAction,
   type MergeRepointTable,
   type MergeRepointOp,
   type PipelineStageLike,
-  type ContactParticipantRoleRow,
 } from "./contacts/query";
 
 export {

@@ -530,6 +530,12 @@
   color: var(--chq-muted);
 }
 
+/* DEC-738/DEC-726: the drawer's Labels row is a plain read view, never a
+   click-to-edit field like the other .chq-contacts-record-value rows. */
+.chq-contacts-record-readonly {
+  cursor: default;
+}
+
 .chq-contacts-record-editor {
   display: flex;
   flex-direction: column;

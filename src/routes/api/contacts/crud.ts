@@ -9,6 +9,7 @@ import { ApiError } from "../../../server/http";
 import { MAX_NAME_LENGTH, MAX_TEXT_LENGTH, MAX_LONG_TEXT_LENGTH } from "../../../forms/validate"; // DEC-417
 import { isValidEmail, normalizeEmail } from "../../../domain/email"; // DEC-454
 import * as repo from "../../../server/repo/contacts";
+import { contactLabels } from "../../../domain/contact-labels";
 import { getEventForOrg } from "../../../server/repo/events";
 import { listAcceptedContactIds } from "../../../server/repo/tasks";
 import { setContactHeadshot, serializeSocialLinks, type SocialLinks } from "../../../server/repo/profile";
@@ -41,17 +42,12 @@ export function registerCrudRoutes(contactsRoutes: Hono<AppEnv>): void {
     const rules = parseRulesQueryParam(query.rules);
     const params = repo.parseContactListQuery(query as Record<string, string | undefined>, rules);
     const result = await repo.listContactsForOrg(c.var.db, orgId, params);
-    // DEC-712: ONE batched query over `participant` for this page's contact
-    // ids -- never a per-row query. A contact with zero participant rows
-    // gets [] (map miss), not an error.
-    const labelsByContactId = await repo.fetchContactLabels(
-      c.var.db,
-      result.items.map((item) => item.id),
-    );
+    // DEC-738/DEC-726 (supersedes DEC-712): labels are the contact's own
+    // customFields, formatted once here -- no separate query.
     return c.json({
       items: result.items.map((item) => ({
         ...serializeContact(item),
-        labels: labelsByContactId.get(item.id) ?? [],
+        labels: contactLabels(item.customFieldsJson ? JSON.parse(item.customFieldsJson) : {}),
       })),
       total: result.total,
       page: params.page,

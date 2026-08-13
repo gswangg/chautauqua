@@ -7,11 +7,11 @@ interface Props {
   total: number;
   page: number;
   perPage: number;
-  // DEC-712/eval-findings 45+55: the FIELD/OPERATOR/VALUE rule builder and
-  // the in-table Segment select moved out of this component (segment
-  // control now lives on the tab row) — these five props are kept, unused,
-  // purely so ContactsApp's existing call site keeps compiling until it is
-  // updated to stop passing them.
+  // eval-findings 45+55: the FIELD/OPERATOR/VALUE rule builder and the
+  // in-table Segment select moved out of this component (segment control
+  // now lives on the tab row) — these five props are kept, unused, purely
+  // so ContactsApp's existing call site keeps compiling until it is updated
+  // to stop passing them.
   rules: SegmentRule[];
   segmentId: string;
   segments: Segment[];
