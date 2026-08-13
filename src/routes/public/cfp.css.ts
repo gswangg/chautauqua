@@ -70,6 +70,10 @@ export const CFP_CSS = `
 
   .chq-cfp-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 16px; border-top: 1px solid var(--chq-rule); padding-top: 22px; }
   .chq-cfp-actions-note { font-size: 13px; color: var(--chq-muted); line-height: 1.5; }
+  /* DEC-970: the "already have an account?" note in the form intro was
+     rendering with no declared style -- same small/muted note treatment
+     as .chq-cfp-actions-note above. */
+  .chq-cfp-identity-note { font-size: 13px; color: var(--chq-muted); line-height: 1.5; }
 
   /* DEC-951: a one-column list at the form's measure -- the fieldset never
      wraps its rows into a grid, and each option row stretches to the
