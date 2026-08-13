@@ -17,22 +17,14 @@ title row or form footer; section actions are links on the section rule · one s
 vocabulary + scan-lock beats per-page fixes (dialogs=ModalFrame, buttons, send
 reporting, page measure).
 
-## P0 — DO FIRST, ALONE
+## P0 — FIX LANDED (manual-qa lane, commit 5edfebb) — external re-verify pending
 
-**REVIEWER STILL LOCKED OUT (5th cycle) — ROOT CAUSE CHANGED, old fix landed.**
-External probe (2026-08-13, snapshot e254eca): the role-conditional shell IS in —
-reviewer login works, /admin redirects to /admin/review, nav is role-appropriate,
-organizer routes show a polite guard. BUT /admin/review crashes deterministically
-(3 fresh sessions): "Cannot read properties of undefined (reading 'length')". NEW
-cause: the landing fetches every plan's queue; for closed plans
-(`GET /api/v1/review/plans/:id/queue` with `open:false`) the response OMITS the
-`recused` key (open plans include `"recused":[]`), and the landing renders
-`recused.length`. Since the reviewer's only nav link points here, it's functionally
-the same lockout. Everything downstream WORKS by direct URL (queue, scorecard,
-scoring end-to-end verified 200). FIX: make the queue endpoint always include
-`recused: []` (preferred — the omission is the bug) and add a regression test that
-asserts the closed-plan queue shape. Verify: sbek-reviewer login → /admin/review
-renders → reach a scorecard through the UI.
+**Reviewer lockout root cause fixed**: closed-plan queue envelope now always
+includes `recused: []` (src/routes/review/reviewer.ts) + regression test asserting
+the closed-plan queue shape (test/review-queue-shape.test.ts, verified red-without/
+green-with). Next probe MUST re-verify end-to-end: sbek-reviewer login →
+/admin/review renders → reach a scorecard through the UI. Only then does this leave
+the file. Swarm: do NOT rework this; treat as done pending verification.
 
 ## Cross-cutting sweeps (each closes a class)
 
