@@ -25,36 +25,35 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   contact delete; a grid class shared by two components is a CELL COUNT.
 - FINDINGS w32-39 (DEC-983..999; 001-999 FULL, no DEC-1000+; successor rule
   `## Amendment (wave N)` on nearest existing DEC, DEC-004 precedent -- never
-  a new file; compacted): grep "no matches" is a fact about that minute --
-  re-probe. A predicate applied HALF is worse than none; a DEFERRAL IS A
-  DATED PROMISE; TRUST FLOWS ONE WAY; a DECISION DOC IS EVIDENCE OF A
-  DECISION, NEVER OF A FIX. Shapes: WRITE gated by READ predicate; predicate
-  with THREE readers is ONE function; one grammar per surface.
-- FINDINGS w40-44 (amendments only, heavily compacted): A REVIEW LENS AGES
+  a new file): grep "no matches" is a fact about that minute -- re-probe. A
+  predicate applied HALF is worse than none; a DEFERRAL IS A DATED PROMISE;
+  TRUST FLOWS ONE WAY; a DECISION DOC IS EVIDENCE OF A DECISION, NEVER OF A
+  FIX. Shapes: WRITE gated by READ predicate; predicate with THREE readers
+  is ONE function; one grammar per surface.
+- FINDINGS w40-45 (amendments only, heavily compacted): A REVIEW LENS AGES
   FASTER THAN A MANDATE -- most re-probed P1s/security items were ALREADY
   FIXED/CLOSED on main; open file:line before the lane, tree is the only
-  evidence. Shapes: CLAMP THE BOX CANNOT REACH; TWO READERS OF ONE DEADLINE
+  evidence; budget one grep per claim, stop when three in a row come back
+  closed. Shapes: CLAMP THE BOX CANNOT REACH; TWO READERS OF ONE DEADLINE
   disagree; A SEED IS A CLAIM; an ARGUMENT NEVER READ is a lie in a
   signature; a GUARD PLACED AFTER THE COST guards nothing; MINTING IS IO; a
   boundary fails per RECIPIENT never per REQUEST; ONE RULE SIX REGEXES THREE
   GRAMMARS -- normalize on WRITE; FONT DOES NOT CROSS A BUTTON; A NATIVE
   type=date IS A LOCALE YOU DID NOT CHOOSE; THE LAST PATH IS THE DEFECT; A
   BOARD WITH ONE POPULATED COLUMN PROVES NOTHING; A COUNT STATED TWICE IS
-  TWO READERS WAITING TO DISAGREE; a finding can be OBSOLETE-VS-DEC -- check
-  the DEC before filing.
-- FINDINGS w45: THE PROBE IS NOW THE EXPENSIVE HALF. ~20 more gate-3 reds
-  re-probed against main (anonymize-for-reviewer, replace-file version chain,
-  conditional visibility, co-presenter conflicts DEC-974, queue-CTA
-  contrast, plan-editor measure, criteria drag handles, scorecard counts,
-  merge v6 Swap, saved-embed format, published counts, accent binding,
-  agenda clipping DEC-768, ICS reader, contact-delete cascade DEC-979,
-  tertiary focus ring, remind contactIds DEC-694, portal date formatter,
-  submit compensating delete) -- ALL CLOSED WITH TESTS. Budget one
-  grep per claim, stop when three in a row come back closed. Shapes that DID
-  find work: LIVE DEFERRAL IS THE DEFECT -- grep src/ for "deferred|TODO",
-  the one hit (submit-views.tsx name-collapse) was real. A SURFACE THE
-  BUILDER CANNOT SEE -- public form asks a Track question sourced outside
-  `form_field`, builder's list is not the form. A VALUE TYPED ONLY BY ITS
-  KIND -- seeded text answer keyed on kind alone puts "SFO" in "Check-in
-  date". A TOKEN IS A NAME PEOPLE TYPED -- rename only with a permanent
-  resolving alias.
+  TWO READERS DISAGREEING; a finding can be OBSOLETE-VS-DEC -- check the DEC
+  before filing; LIVE DEFERRAL IS THE DEFECT; A SURFACE THE BUILDER CANNOT
+  SEE; A VALUE TYPED ONLY BY ITS KIND; A TOKEN IS A NAME PEOPLE TYPED --
+  rename only with a permanent resolving alias.
+- FINDINGS w46: THE MANDATE LIST IS SPENT -- six gate-3/review-lens fidelity
+  claims re-probed came back ALL CLOSED WITH TESTS; real work came from
+  opening file:line on ENGINEERING claims instead. Shapes that found work:
+  A CONVENIENCE WRAPPER INVITES THE FOURTH SERIAL LOOP -- batching landed on
+  4 of 5 fan-outs across 3 waves because the singular API stayed callable;
+  delete it, don't document it. A SAMPLE ONE-PER-FILE IS NOT AN ENUMERATION
+  (DEC-417 missed 5 unbounded free-text writes). THE LEAST REVERSIBLE ACTION
+  IS THE LEAST GUARDED (DELETE skipped the DEC-041 lock upload/comment both
+  apply). A CAP THAT CONTRADICTS ITS OWN DECISION'S ARITHMETIC -- derive the
+  number from named inputs and MEASURE it once. A LINE NUMBER IS A CURSOR
+  THAT MOVES -- key security exemptions on identity, not a line. A CLASS
+  WITH ONE MEMBER IS A CLAIM THE HARNESS CANNOT SUPPORT.
