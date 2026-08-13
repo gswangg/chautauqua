@@ -1,7 +1,7 @@
 // Reviewer/user info lookups used by the review surfaces (batching bounded
 // via chunkIds per DEC-078; org-scoped existence check for reviewer mgmt).
 
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { ApiError } from "../../http";
@@ -23,6 +23,70 @@ export async function getUsersByIds(db: Db, userIds: string[]): Promise<Reviewer
     rows.push(...batchRows);
   }
   return rows;
+}
+
+/**
+ * DEC-708: batched account -> contact display-name resolver, the exact
+ * inverse of findAccountUserId/findAccountUserIds' contact-id-OR-email rule
+ * (comms.ts DEC-530). Resolution order per user: user.contactId first, else
+ * an org-scoped contact-email match (contact.orgId = user.orgId AND
+ * lower(contact.email) = lower(user.email)) -- never a bare email match
+ * across orgs. Exactly one query per direction (user batch, contact-by-id
+ * batch, contact-by-org+email batch), never a query per row. Every
+ * requested userId is present in the returned map; a userId with no
+ * resolvable contact maps to null (render the email alone, never a
+ * fabricated name from the email's local part).
+ */
+export async function batchUserDisplayNames(db: Db, userIds: string[]): Promise<Map<string, string | null>> {
+  const result = new Map<string, string | null>();
+  if (userIds.length === 0) return result;
+  for (const id of userIds) result.set(id, null);
+
+  const users: { id: string; orgId: string; email: string; contactId: string | null }[] = [];
+  for (const batch of chunkIds(userIds)) {
+    const rows = await db
+      .select({ id: schema.user.id, orgId: schema.user.orgId, email: schema.user.email, contactId: schema.user.contactId })
+      .from(schema.user)
+      .where(inArray(schema.user.id, batch));
+    users.push(...rows);
+  }
+
+  const contactIds = [...new Set(users.filter((u) => u.contactId !== null).map((u) => u.contactId as string))];
+  const contactById = new Map<string, { firstName: string; lastName: string }>();
+  for (const batch of chunkIds(contactIds)) {
+    const rows = await db
+      .select({ id: schema.contact.id, firstName: schema.contact.firstName, lastName: schema.contact.lastName })
+      .from(schema.contact)
+      .where(inArray(schema.contact.id, batch));
+    for (const row of rows) contactById.set(row.id, { firstName: row.firstName, lastName: row.lastName });
+  }
+
+  const needsEmailMatch = users.filter((u) => u.contactId === null || !contactById.has(u.contactId));
+  const contactByOrgEmail = new Map<string, { firstName: string; lastName: string }>();
+  if (needsEmailMatch.length > 0) {
+    const orgIds = [...new Set(needsEmailMatch.map((u) => u.orgId))];
+    const emails = [...new Set(needsEmailMatch.map((u) => u.email.toLowerCase()))];
+    const rows = await db
+      .select({
+        orgId: schema.contact.orgId,
+        email: schema.contact.email,
+        firstName: schema.contact.firstName,
+        lastName: schema.contact.lastName,
+      })
+      .from(schema.contact)
+      .where(and(inArray(schema.contact.orgId, orgIds), inArray(sql`lower(${schema.contact.email})`, emails)));
+    for (const row of rows) {
+      contactByOrgEmail.set(`${row.orgId}::${row.email.toLowerCase()}`, { firstName: row.firstName, lastName: row.lastName });
+    }
+  }
+
+  for (const u of users) {
+    const contact =
+      (u.contactId !== null ? contactById.get(u.contactId) : undefined) ??
+      contactByOrgEmail.get(`${u.orgId}::${u.email.toLowerCase()}`);
+    result.set(u.id, contact ? `${contact.firstName} ${contact.lastName}`.trim() : null);
+  }
+  return result;
 }
 
 /** Confirms the user is a reviewer or organizer in this org, and (for

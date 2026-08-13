@@ -109,6 +109,9 @@ export interface PlanReviewer {
 export interface ProgressRow {
   userId: string;
   email: string;
+  // DEC-708: batched account->contact resolution; null when unresolvable --
+  // render the email alone, never a fabricated name.
+  name: string | null;
   assigned: number;
   completed: number;
   recused: number;

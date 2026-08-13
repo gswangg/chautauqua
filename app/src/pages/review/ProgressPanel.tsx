@@ -1,12 +1,26 @@
 import { Fragment, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { apiGet, apiList, apiPost, ApiError } from '../../lib/api';
-import { reviewersWithIncompleteQueues } from './progress';
+// DEC-707: reviewerProgressState/reviewersWithIncompleteQueues/
+// reviewersNotStarted all resolve through the SAME domain predicate the
+// route imports -- never a second copy here.
+import { reviewersWithIncompleteQueues, reviewersNotStarted, reviewerDisplayLabel } from './progress';
+import { reviewerProgressState } from '../../../../src/domain/evaluation';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { describeSendResult, type SendResult } from '../../lib/sendResult';
 import './review.css';
 import type { EvaluationPlan, ProgressRow } from './types';
+
+/** DEC-707: the row-level state label -- DONE / N TO GO / NOT STARTED,
+ * counts on one line (never a separate "not done" flag layered on top of a
+ * raw "3 of 8" count). */
+function rowStateLabel(row: ProgressRow): string {
+  const state = reviewerProgressState(row);
+  if (state === 'done') return 'Done';
+  if (state === 'not_started') return 'Not started';
+  return `${row.assigned - row.completed} to go`;
+}
 
 // DEC-674: when a planId prop is supplied (the organiser Review landing
 // embeds this panel as its "region two"), it wins over the route param, and
@@ -15,6 +29,13 @@ import type { EvaluationPlan, ProgressRow } from './types';
 // still renders it unchanged (no planId prop -> falls back to useParams()).
 // `embedded` is derived from the prop's presence rather than a second flag,
 // since the two are the same condition by construction.
+//
+// DEC-706: the embedded region gets ONE header total. PlanList no longer
+// wraps this component in its own section/head -- when embedded, THIS
+// component owns that single section-head (plan name + a right-aligned
+// tertiary "Remind the N not started" link on its rule), replacing both the
+// standalone page's "Who has scored" sub-header and its filled primary
+// Remind button.
 export function ProgressPanel({ planId: planIdProp }: { planId?: string } = {}) {
   const { planId: planIdParam } = useParams<{ planId: string }>();
   const planId = planIdProp ?? planIdParam;
@@ -43,14 +64,15 @@ export function ProgressPanel({ planId: planIdProp }: { planId?: string } = {}) 
   useEffect(load, [planId]);
 
   const laggards = reviewersWithIncompleteQueues(rows);
+  const notStarted = reviewersNotStarted(rows);
 
-  async function remindLaggards() {
+  async function sendReminder(scope: 'not_started' | 'incomplete') {
     if (!planId) return;
     setReminding(true);
     setError(null);
     setRemindMessage(null);
     try {
-      const res = await apiPost<SendResult>(`/plans/${planId}/remind`);
+      const res = await apiPost<SendResult>(`/plans/${planId}/remind`, scope === 'not_started' ? { scope } : undefined);
       setRemindMessage(describeSendResult(res, { one: 'reviewer', many: 'reviewers' }));
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to send reminders');
@@ -96,20 +118,22 @@ export function ProgressPanel({ planId: planIdProp }: { planId?: string } = {}) 
   return (
     <Wrapper {...wrapperProps}>
       {!embedded && (
-        <p>
-          <Link to="/review" className="chq-review-back">
-            &larr; Back to plans
-          </Link>
-        </p>
+        <>
+          <p>
+            <Link to="/review" className="chq-review-back">
+              &larr; Back to plans
+            </Link>
+          </p>
+          <div className="chq-review-summary-row">
+            <h1 className="chq-page-title">Reviewer progress</h1>
+            {plan && (
+              <span className="chq-summary">
+                Round {plan.currentRound} of {plan.rounds}
+              </span>
+            )}
+          </div>
+        </>
       )}
-      <div className="chq-review-summary-row">
-        {!embedded && <h1 className="chq-page-title">Reviewer progress</h1>}
-        {plan && (
-          <span className="chq-summary">
-            Round {plan.currentRound} of {plan.rounds}
-          </span>
-        )}
-      </div>
       {error && (
         <div className="chq-error" role="alert">
           {error}
@@ -121,49 +145,65 @@ export function ProgressPanel({ planId: planIdProp }: { planId?: string } = {}) 
         </div>
       )}
 
-      <div className="chq-toolbar">
-        <button
-          type="button"
-          className="chq-btn chq-btn-primary"
-          disabled={reminding || laggards.length === 0}
-          onClick={remindLaggards}
-        >
-          Remind laggards ({laggards.length})
-        </button>
-        {plan && plan.currentRound < plan.rounds && (
-          <button type="button" className="chq-btn chq-btn-secondary" disabled={advancing} onClick={advanceRound}>
-            Advance to round {plan.currentRound + 1}
+      {!embedded && (
+        <div className="chq-toolbar">
+          <button
+            type="button"
+            className="chq-btn chq-btn-primary"
+            disabled={reminding || laggards.length === 0}
+            onClick={() => void sendReminder('incomplete')}
+          >
+            Remind laggards ({laggards.length})
           </button>
-        )}
-      </div>
+          {plan && plan.currentRound < plan.rounds && (
+            <button type="button" className="chq-btn chq-btn-secondary" disabled={advancing} onClick={advanceRound}>
+              Advance to round {plan.currentRound + 1}
+            </button>
+          )}
+        </div>
+      )}
 
-      <section className="chq-section">
+      <section className={embedded ? 'chq-section chq-review-landing-progress' : 'chq-section'}>
         <div className="chq-section-head">
-          <h2 className="chq-section-label">Who has scored</h2>
+          <h2 className="chq-section-label">{embedded && plan ? `${plan.name} · reviewer progress` : 'Who has scored'}</h2>
+          {embedded && (
+            <button
+              type="button"
+              className="chq-link-button chq-section-action"
+              disabled={reminding || notStarted.length === 0}
+              onClick={() => void sendReminder('not_started')}
+            >
+              Remind the {notStarted.length} not started
+            </button>
+          )}
         </div>
         <div className="chq-review-progress-grid">
           {rows.map((row) => {
-            const done = row.completed >= row.assigned;
             const fraction = row.assigned === 0 ? 0 : Math.min(1, row.completed / row.assigned);
             return (
               <div key={row.userId} className="chq-review-progress-row">
                 <div>
-                  <span className="chq-review-progress-name">{row.email}</span>
+                  <span className="chq-review-progress-name">{reviewerDisplayLabel(row)}</span>
                   {row.recused > 0 && <span className="chq-review-plan-meta"> · {row.recused} recused</span>}
                 </div>
                 <div className="chq-bar">
                   <div className="chq-bar-fill" style={{ width: `${Math.round(fraction * 100)}%` }} />
                 </div>
-                <span className="chq-flag">
-                  {row.completed} of {row.assigned}
-                  {!done && ' · not done'}
-                </span>
+                <span className="chq-flag">{rowStateLabel(row)}</span>
               </div>
             );
           })}
           {rows.length === 0 && <p className="chq-empty">No reviewers assigned yet.</p>}
         </div>
       </section>
+
+      {embedded && plan && plan.currentRound < plan.rounds && (
+        <div className="chq-toolbar">
+          <button type="button" className="chq-btn chq-btn-secondary" disabled={advancing} onClick={advanceRound}>
+            Advance to round {plan.currentRound + 1}
+          </button>
+        </div>
+      )}
 
       {advanceConfirmOpen && plan && (
         <ConfirmDialog

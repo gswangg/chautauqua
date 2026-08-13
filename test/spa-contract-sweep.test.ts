@@ -84,6 +84,10 @@ async function buildReviewApp() {
       ),
       listReviewerRowsForPlan: vi.fn(async () => REVIEWER_ROWS),
       getUsersByIds: vi.fn(async () => USERS),
+      // DEC-708: batched account->contact display-name resolver -- no
+      // contact fixtures here, so every userId resolves to null (email
+      // rendered alone), still present as the `name` key.
+      batchUserDisplayNames: vi.fn(async () => new Map()),
       listEvaluationsForPlan: vi.fn(async () => EVALUATIONS),
       listEvaluationScoresForPlan: vi.fn(async (_db: unknown, planId: string, round: number) =>
         EVALUATIONS.filter((e) => e.planId === planId && e.round === round).map((e) => ({
@@ -121,13 +125,13 @@ async function buildReviewApp() {
 }
 
 describe("DEC-239: plan progress/results wire shapes", () => {
-  it("GET /api/v1/plans/:id/progress items match ProgressRow {userId,email,assigned,completed,recused}", async () => {
+  it("GET /api/v1/plans/:id/progress items match ProgressRow {userId,email,name,assigned,completed,recused}", async () => {
     const app = await buildReviewApp();
     const res = await app.request(`/api/v1/plans/${PLAN.id}/progress`);
     expect(res.status).toBe(200);
     const body = (await res.json()) as { items: Record<string, unknown>[] };
     expect(body.items.length).toBeGreaterThan(0);
-    expect(keysOf(first(body.items))).toEqual(["assigned", "completed", "email", "recused", "userId"]);
+    expect(keysOf(first(body.items))).toEqual(["assigned", "completed", "email", "name", "recused", "userId"]);
   });
 
   it("GET /api/v1/plans/:id/results items match ResultsRow incl perCriterion/perDropdown", async () => {

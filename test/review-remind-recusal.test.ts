@@ -65,6 +65,7 @@ vi.mock("../src/server/repo/review", async () => {
       { userId: "rev-full", email: "full@example.test" },
       { userId: "rev-partial", email: "partial@example.test" },
     ]),
+    batchUserDisplayNames: vi.fn(async () => new Map()),
     listEvaluationsForPlan: vi.fn(async () => []),
     listCompletedPairsForPlan: vi.fn(async () => []),
     listPlanFilteredSubmissions: vi.fn(async () => SUBMISSIONS),

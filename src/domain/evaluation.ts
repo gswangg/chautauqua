@@ -632,3 +632,49 @@ export function assignedExcludingRecused<T extends { id: string }>(
 ): T[] {
   return assigned.filter((item) => !recusedIds.has(item.id));
 }
+
+// ---------------------------------------------------------------------------
+// Reviewer progress state + reminder scope (DEC-707): the mock's vocabulary
+// is DONE / N TO GO / NOT STARTED, and a reminder's label must name exactly
+// who it sends to -- ONE predicate here, imported by both
+// POST /plans/:id/remind and the Review landing's SPA label.
+// ---------------------------------------------------------------------------
+
+export type ReviewerProgressState = "done" | "not_started" | "in_progress";
+
+/** DEC-707: a reviewer with nothing assigned reads as "done" (vacuously
+ * complete -- there is no queue to work), never "not started". */
+export function reviewerProgressState({
+  assigned,
+  completed,
+}: {
+  assigned: number;
+  completed: number;
+}): ReviewerProgressState {
+  if (completed >= assigned) return "done";
+  if (completed === 0) return "not_started";
+  return "in_progress";
+}
+
+export interface RemindTargetRow {
+  userId: string;
+  assigned: number;
+  completed: number;
+}
+
+/**
+ * DEC-707: selects which reviewer rows a reminder send targets. 'not_started'
+ * is the landing page's tertiary "Remind the N not started" link; 'incomplete'
+ * (any non-done state) is the broader batch POST /plans/:id/remind defaults
+ * to. Both the route and the SPA label MUST call this -- a hand-copied
+ * predicate in either place is exactly the drift DEC-707 forbids.
+ */
+export function selectRemindTargets<T extends RemindTargetRow>(
+  rows: T[],
+  scope: "not_started" | "incomplete",
+): T[] {
+  if (scope === "not_started") {
+    return rows.filter((r) => reviewerProgressState(r) === "not_started");
+  }
+  return rows.filter((r) => reviewerProgressState(r) !== "done");
+}

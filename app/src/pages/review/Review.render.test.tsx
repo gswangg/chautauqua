@@ -95,7 +95,10 @@ describe('ReviewPage render smoke: organizer', () => {
     );
 
     expect(await screen.findByRole('heading', { name: 'Evaluation plans' })).toBeInTheDocument();
-    expect(await screen.findByRole('link', { name: 'Keynote Track Review' })).toBeInTheDocument();
+    expect(await screen.findByText('Keynote Track Review')).toBeInTheDocument();
+    // DEC-706: the plan row is chosen by clicking the row, not a radio --
+    // per-row navigation is via the Edit link (Edit -> /review/plans/:id).
+    expect(screen.getByRole('link', { name: 'Edit' })).toBeInTheDocument();
 
     // DEC-587: inline row progress reads from the SAME /plans/:id/progress
     // aggregate the Progress page consumes -- 1 of 4 evaluations in here.
@@ -113,7 +116,7 @@ describe('ReviewPage render smoke: organizer', () => {
       'GET /api/v1/me': organizerMe(),
       [`GET /api/v1/events/${EVENT_ID}/plans`]: listEnvelope([planWithNullDates(), planB]),
       [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([
-        { userId: 'u-1', email: 'rev1@example.com', assigned: 4, completed: 1, recused: 0 },
+        { userId: 'u-1', email: 'rev1@example.com', assigned: 4, completed: 0, recused: 0 },
       ]),
       [`GET /api/v1/plans/plan-b/progress`]: listEnvelope([]),
       [`GET /api/v1/plans/${PLAN_ID}`]: planWithNullDates(),
@@ -130,14 +133,15 @@ describe('ReviewPage render smoke: organizer', () => {
 
     // Region one: the plans list.
     expect(await screen.findByRole('heading', { name: 'Evaluation plans' })).toBeInTheDocument();
-    expect(await screen.findByRole('link', { name: 'Keynote Track Review' })).toBeInTheDocument();
+    expect(await screen.findByText('Keynote Track Review')).toBeInTheDocument();
 
     // Region two: the selected plan's reviewer-progress table, embedded
-    // (no navigation) with its 'Remind laggards' control present.
+    // (no navigation) with the DEC-706/707 tertiary "Remind the N not
+    // started" link on its section rule (never a filled primary button).
     await waitFor(() => {
       expect(screen.getByText('rev1@example.com')).toBeInTheDocument();
     });
-    expect(screen.getByRole('button', { name: /Remind laggards/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Remind the 1 not started' })).toBeInTheDocument();
 
     // Region three: the selected plan's ranked-results table, embedded (no
     // navigation) with an Accept control present.
