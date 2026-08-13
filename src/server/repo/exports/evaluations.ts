@@ -7,7 +7,7 @@ import { formatRef } from "../../../domain/ids";
 import { computeWeightedScore } from "../../../domain/evaluation";
 import { DEC_529 } from "../../../decisions";
 import { resolveReviewerIdentity } from "../../../domain/review-identity";
-import { type ExportTable, buildTable, nameCustomColumns } from "./table";
+import { type ExportTable, EXPORT_MAX_ROWS, buildTable, nameCustomColumns } from "./table";
 import { getRecordPrefix } from "./common";
 
 // exportEvaluations below: labelled per-criterion columns + weightedScore,
@@ -143,7 +143,14 @@ export async function exportEvaluations(db: Db, eventId: string): Promise<Export
     .innerJoin(schema.submission, eq(schema.evaluation.submissionId, schema.submission.id))
     .innerJoin(schema.user, eq(schema.evaluation.reviewerId, schema.user.id))
     .where(eq(schema.evaluationPlan.eventId, eventId))
-    .orderBy(asc(schema.submission.seq), asc(schema.evaluation.reviewerId), asc(schema.evaluation.round), asc(schema.evaluation.id));
+    .orderBy(asc(schema.submission.seq), asc(schema.evaluation.reviewerId), asc(schema.evaluation.round), asc(schema.evaluation.id))
+    .limit(EXPORT_MAX_ROWS + 1);
+
+  // DEC-027 amendment (wave 50): bound on the query — cap+1 evaluation rows
+  // proves overflow before the per-plan label/criteria work below.
+  if (rows.length > EXPORT_MAX_ROWS) {
+    return buildTable([...EVALUATIONS_FIXED_HEADER], [], true);
+  }
 
   const labelsByPlan = new Map<string, Map<string, string>>();
   const planNames = new Map<string, string>();

@@ -21,7 +21,7 @@
 import { asc, eq } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
-import { type ExportTable, buildTable } from "./table";
+import { type ExportTable, EXPORT_MAX_ROWS, buildTable } from "./table";
 import { selectFilteredContactRows } from "../contacts/crud";
 import type { ParsedContactListQuery } from "../contacts/query";
 import type { ContactRow } from "../contacts/rows";
@@ -49,7 +49,13 @@ function rowToCsvRow(r: { id: string; firstName: string; lastName: string; email
  * exported, as before. */
 export async function exportContacts(db: Db, orgId: string, params?: ParsedContactListQuery): Promise<ExportTable> {
   if (params) {
-    const rows: ContactRow[] = await selectFilteredContactRows(db, orgId, params);
+    // DEC-027 amendment (wave 50): bound on the query — cap+1 rows proves
+    // overflow before the (lastName, firstName, id) re-sort / labels work
+    // below.
+    const rows: ContactRow[] = await selectFilteredContactRows(db, orgId, params, EXPORT_MAX_ROWS + 1);
+    if (rows.length > EXPORT_MAX_ROWS) {
+      return buildTable([...CONTACTS_HEADER], [], true);
+    }
     // (lastName, firstName, id) ordering to match the unfiltered path —
     // selectFilteredContactRows's default branch already sorts this way in
     // SQL, but the segment/rules scan branch sorts by the requested
@@ -90,7 +96,14 @@ export async function exportContacts(db: Db, orgId: string, params?: ParsedConta
     })
     .from(schema.contact)
     .where(eq(schema.contact.orgId, orgId))
-    .orderBy(asc(schema.contact.lastName), asc(schema.contact.firstName), asc(schema.contact.id));
+    .orderBy(asc(schema.contact.lastName), asc(schema.contact.firstName), asc(schema.contact.id))
+    .limit(EXPORT_MAX_ROWS + 1);
+
+  // DEC-027 amendment (wave 50): bound on the query — cap+1 rows proves
+  // overflow.
+  if (rows.length > EXPORT_MAX_ROWS) {
+    return buildTable([...CONTACTS_HEADER], [], true);
+  }
 
   const outRows = rows.map((r) =>
     rowToCsvRow({

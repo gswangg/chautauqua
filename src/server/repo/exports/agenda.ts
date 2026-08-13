@@ -5,7 +5,7 @@ import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { formatRef } from "../../../domain/ids";
 import { chunkIds } from "../../../lib/chunk";
-import { type ExportTable, buildTable, minutesToClock } from "./table";
+import { type ExportTable, EXPORT_MAX_ROWS, buildTable, minutesToClock } from "./table";
 import { getRecordPrefix } from "./common";
 
 export const AGENDA_HEADER = ["day", "start", "end", "room", "ref", "title", "speakers", "tracks"] as const;
@@ -74,7 +74,14 @@ export async function exportAgenda(db: Db, eventId: string): Promise<ExportTable
       asc(schema.scheduleSlot.startMin),
       asc(schema.room.name),
       asc(schema.submission.seq),
-    );
+    )
+    .limit(EXPORT_MAX_ROWS + 1);
+
+  // DEC-027 amendment (wave 50): bound on the query — cap+1 schedule-slot
+  // rows proves overflow before the per-submission join fetches below.
+  if (slotRows.length > EXPORT_MAX_ROWS) {
+    return buildTable([...AGENDA_HEADER], [], true);
+  }
 
   if (slotRows.length === 0) return shapeAgendaExport([]);
   const ids = slotRows.map((r) => r.submissionId);

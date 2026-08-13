@@ -13,7 +13,7 @@ import { requireOrganizer } from "../../server/middleware";
 import { ApiError } from "../../server/http";
 import * as schema from "../../db/schema";
 import { toCsv } from "../../lib/csv";
-import { buildExport, buildShowflowExport, isExportKind } from "../../server/repo/exports";
+import { buildExport, buildShowflowExport, isExportKind, EXPORT_MAX_ROWS } from "../../server/repo/exports";
 import { parseListQuery } from "../../server/repo/submissions/query";
 import { parseContactListQuery } from "../../server/repo/contacts/query";
 import { parseRulesQueryParam } from "./contacts/segments";
@@ -54,6 +54,12 @@ exportsRoutes.get("/api/v1/events/:eventId/exports/showflow.csv", requireOrganiz
   await requireOwnedEvent(c, eventId);
 
   const table = await buildShowflowExport(c.var.db, eventId);
+  // DEC-027 amendment (wave 50): refuse rather than ship a silently
+  // truncated show-flow — this surface has no list filter to narrow with,
+  // so the only guidance is the cap itself.
+  if (table.truncated) {
+    throw new ApiError("invalid", `This event has more than ${EXPORT_MAX_ROWS} accepted sessions — the show-flow export cannot exceed ${EXPORT_MAX_ROWS} rows.`);
+  }
   const csv = toCsv([table.header, ...table.rows]);
   c.header("Content-Type", "text/csv; charset=utf-8");
   c.header("Content-Disposition", 'attachment; filename="showflow.csv"');
@@ -105,6 +111,21 @@ exportsRoutes.get("/api/v1/events/:eventId/export/:kind", requireOrganizer, asyn
   }
 
   const table = await buildExport(c.var.db, eventId, kind, orgId, submissionsListParams, contactsListParams);
+
+  // DEC-027 amendment (wave 50): refuse rather than ship a silently
+  // truncated file. 'submissions' and 'contacts' already honour the list's
+  // own filter (q/status/trackId/sort per DEC-649; q/segmentId/rules per
+  // DEC-671) so "narrow with that filter and retry" is a real next action;
+  // every other kind is told the cap plainly since it has no filter here.
+  if (table.truncated) {
+    const narrowHint =
+      kind === "submissions"
+        ? " Narrow with the list's own filter (q/status/trackId) and retry."
+        : kind === "contacts"
+          ? " Narrow with the directory's own filter (q/segmentId/rules) and retry."
+          : "";
+    throw new ApiError("invalid", `This export would exceed the ${EXPORT_MAX_ROWS}-row cap.${narrowHint}`);
+  }
 
   if (format === "json") {
     c.header("Content-Disposition", `attachment; filename="${kind}.json"`);

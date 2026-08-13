@@ -15,7 +15,7 @@ import type { ParsedListQuery } from "../submissions/query";
 // from the dynamic custom-field export columns.
 import { lockedFieldName } from "../../../forms/types";
 import { DEC_017, DEC_027 } from "../../../decisions";
-import { type ExportTable, type CustomFieldColumn, buildTable, nameCustomColumns } from "./table";
+import { type ExportTable, type CustomFieldColumn, EXPORT_MAX_ROWS, buildTable, nameCustomColumns } from "./table";
 import { getRecordPrefix } from "./common";
 
 void DEC_017;
@@ -116,7 +116,15 @@ export async function exportSubmissions(
     })
     .from(schema.submission)
     .where(whereExpr)
-    .orderBy(orderExpr);
+    .orderBy(orderExpr)
+    .limit(EXPORT_MAX_ROWS + 1);
+
+  // DEC-027 amendment (wave 50): bound on the query, not after the rows are
+  // in memory — the cap+1 row proves overflow; drop it and skip every
+  // downstream join fetch below rather than materializing them too.
+  if (submissions.length > EXPORT_MAX_ROWS) {
+    return buildTable([...SUBMISSIONS_HEADER, "description"], [], true);
+  }
 
   if (submissions.length === 0) return shapeSubmissionsExport([]);
   const ids = submissions.map((s) => s.id);
