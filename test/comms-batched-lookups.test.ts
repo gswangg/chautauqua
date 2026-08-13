@@ -254,7 +254,7 @@ describe("buildRenderTargets batches per-request, not per-recipient (DEC-530)", 
     const { db, getFeedbackCalls, getAccountCalls, getOutstandingCalls, getIcsScheduleCalls, getSelectCalls } = makeComposeDb();
     const c = fakeContext(db, new InMemoryKV());
 
-    const targets = await buildRenderTargets(c as never, event, submissions, /* feedback */ feedbackScope, /* mintClaimTokens */ false);
+    const { targets } = await buildRenderTargets(c as never, event, submissions, /* feedback */ feedbackScope);
 
     expect(targets).toHaveLength(5);
     expect(getFeedbackCalls()).toBe(1);
@@ -268,7 +268,7 @@ describe("buildRenderTargets batches per-request, not per-recipient (DEC-530)", 
     const { db } = makeComposeDb();
     const c = fakeContext(db, new InMemoryKV());
 
-    const targets = await buildRenderTargets(c as never, event, submissions, null, false);
+    const { targets } = await buildRenderTargets(c as never, event, submissions, null);
 
     const ada = targets.find((t) => t.contactId === "ct-1");
     expect(ada?.ref).toBe("DEV-001");
@@ -279,7 +279,7 @@ describe("buildRenderTargets batches per-request, not per-recipient (DEC-530)", 
     const { db } = makeComposeDb();
     const c = fakeContext(db, new InMemoryKV());
 
-    const targets = await buildRenderTargets(c as never, event, submissions, feedbackScope, false);
+    const { targets } = await buildRenderTargets(c as never, event, submissions, feedbackScope);
 
     const grace = targets.find((t) => t.contactId === "ct-2");
     const radia = targets.find((t) => t.contactId === "ct-3");
@@ -297,7 +297,7 @@ describe("buildRenderTargets batches per-request, not per-recipient (DEC-530)", 
     const { db, getFeedbackCalls, getAccountCalls } = makeComposeDb();
     const c = fakeContext(db, new InMemoryKV());
 
-    await buildRenderTargets(c as never, event, submissions, null, false);
+    await buildRenderTargets(c as never, event, submissions, null);
 
     expect(getFeedbackCalls()).toBe(0);
     expect(getAccountCalls()).toBe(1);

@@ -163,7 +163,7 @@ describe("buildRenderTargets only renders the composing plan+round's feedback (D
 
   it("a submission with an out-of-scope comment (wrong plan/round) renders NO_FEEDBACK_TEXT, not that comment", async () => {
     const c = fakeContext(makeDb());
-    const targets = await buildRenderTargets(c as never, event, submissions, { planId: "plan-A", round: 5 }, false);
+    const { targets } = await buildRenderTargets(c as never, event, submissions, { planId: "plan-A", round: 5 });
     expect(targets).toHaveLength(1);
     expect(targets[0]?.vars.feedback).toBe(NO_FEEDBACK_TEXT);
     expect(targets[0]?.vars.feedback).not.toContain("Wrong plan's comment");
@@ -173,13 +173,13 @@ describe("buildRenderTargets only renders the composing plan+round's feedback (D
 
   it("the same submission with the composing plan+round DOES attach that comment", async () => {
     const c = fakeContext(makeDb());
-    const targets = await buildRenderTargets(c as never, event, submissions, { planId: "plan-A", round: 2 }, false);
+    const { targets } = await buildRenderTargets(c as never, event, submissions, { planId: "plan-A", round: 2 });
     expect(targets[0]?.vars.feedback).toBe(formatFeedback(["This round's comment"]));
   });
 
   it("feedback: null (toggle off) omits the feedback key entirely", async () => {
     const c = fakeContext(makeDb());
-    const targets = await buildRenderTargets(c as never, event, submissions, null, false);
+    const { targets } = await buildRenderTargets(c as never, event, submissions, null);
     expect(targets[0]?.vars.feedback).toBeUndefined();
     expect("feedback" in (targets[0]?.vars ?? {})).toBe(false);
   });

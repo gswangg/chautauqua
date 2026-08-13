@@ -60,3 +60,23 @@ export async function resolvePortalLinks(
 
   return result;
 }
+
+/** DEC-397 wave-50 amendment (MINT LATE): overwrites vars.portal_link on
+ * already-built render targets with REAL minted links, in place, after
+ * preflightRender has already accepted the batch built with
+ * mintClaimTokens=false. Mints once via a single resolvePortalLinks call
+ * (still one batched Promise.all of KV writes) rather than per-target. */
+export async function applyMintedPortalLinks(
+  kv: KVStore,
+  recipients: { contactId: string; userId: string | null }[],
+  eventId: string,
+  origin: string,
+  targets: { contactId: string; vars: Record<string, string> }[],
+): Promise<void> {
+  const portalLinkMap = await resolvePortalLinks(kv, recipients, eventId, origin, true);
+  for (const target of targets) {
+    const portalLink = portalLinkMap.get(target.contactId);
+    if (!portalLink) throw new Error(`no portal link resolved for contactId ${target.contactId}`);
+    target.vars.portal_link = portalLink;
+  }
+}

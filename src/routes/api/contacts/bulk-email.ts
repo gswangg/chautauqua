@@ -11,7 +11,7 @@ import * as repo from "../../../server/repo/contacts";
 import { getEventForOrg } from "../../../server/repo/events";
 import type { KVStore } from "../../../auth/claim";
 import { preflightRender, type RenderTarget } from "../../../domain/compose";
-import { resolvePortalLinks } from "../../../server/repo/portal-link";
+import { applyMintedPortalLinks, resolvePortalLinks } from "../../../server/repo/portal-link";
 import { textToHtml } from "../../../mail/render";
 import type { Db } from "../../../server/context";
 import { resolveBaseUrl } from "../../../server/origin";
@@ -77,7 +77,6 @@ async function renderBulkEmailTargets(
   contacts: repo.ContactRow[],
   subject: string,
   bodyText: string,
-  mintClaimTokens: boolean,
 ) {
   // DEC-530: resolve account identity once for the whole contact batch
   // instead of once per contact.
@@ -86,17 +85,13 @@ async function renderBulkEmailTargets(
     contacts.map((c) => ({ contactId: c.id, email: c.email })),
   );
 
-  // DEC-530 wave-42 amendment: resolve every recipient's portal link (and
-  // mint any claim tokens it needs) through ONE batched Promise.all before
-  // the loop below, instead of an await-per-recipient KV round trip inside
-  // it — the loop itself must contain no await on KV.
-  const portalLinkMap = await resolvePortalLinks(
-    kv,
-    contacts.map((c) => ({ contactId: c.id, userId: accountMap.get(c.id) ?? null })),
-    event.id,
-    origin,
-    mintClaimTokens,
-  );
+  // DEC-397 wave-50 amendment (MINT LATE): the render pass that VALIDATES
+  // always resolves links with mintClaimTokens=false — zero KV writes, a
+  // non-empty PREVIEW_CLAIM_TOKEN placeholder so merge-field presence checks
+  // behave identically to a real send. The send handler mints real tokens
+  // via applyMintedPortalLinks only after preflightRender accepts the batch.
+  const recipients = contacts.map((c) => ({ contactId: c.id, userId: accountMap.get(c.id) ?? null }));
+  const portalLinkMap = await resolvePortalLinks(kv, recipients, event.id, origin, false);
 
   const targets: RenderTarget[] = [];
   for (const contact of contacts) {
@@ -119,7 +114,8 @@ async function renderBulkEmailTargets(
       },
     });
   }
-  return preflightRender(targets, subject, bodyText);
+  const result = preflightRender(targets, subject, bodyText);
+  return { targets, recipients, result };
 }
 
 const BULK_EMAIL_PREVIEW_LIMIT = 5;
@@ -140,8 +136,28 @@ export function registerBulkEmailRoutes(contactsRoutes: Hono<AppEnv>): void {
     // first send is attempted; any failure (including a submission-scoped
     // placeholder like {talk_title}/{feedback}, absent from the whitelist
     // above) rejects the whole batch — zero sends.
-    // DEC-397: send mints real claim tokens — pass mintClaimTokens=true.
-    const result = await renderBulkEmailTargets(c.var.db, kv, origin, event, contacts, subject, bodyText, true);
+    // DEC-397 wave-50 amendment (MINT LATE): renderBulkEmailTargets always
+    // resolves links with mintClaimTokens=false, so this preflight throws
+    // the 400 BEFORE any KV credential is minted. Only once it accepts the
+    // batch do we mint real portal links and re-run preflightRender
+    // (preflightRender is pure — the second pass costs no IO).
+    const { targets, recipients, result: preflightResult } = await renderBulkEmailTargets(
+      c.var.db,
+      kv,
+      origin,
+      event,
+      contacts,
+      subject,
+      bodyText,
+    );
+    if (!preflightResult.ok) {
+      const fields: Record<string, string> = {};
+      for (const m of preflightResult.missing) fields[m.contactId] = `missing merge fields: ${m.fields.join(", ")}`;
+      throw new ApiError("invalid", "One or more recipients are missing merge fields (only speaker_name/event_name/portal_link are allowed)", fields);
+    }
+
+    await applyMintedPortalLinks(kv, recipients, event.id, origin, targets);
+    const result = preflightRender(targets, subject, bodyText);
     if (!result.ok) {
       const fields: Record<string, string> = {};
       for (const m of result.missing) fields[m.contactId] = `missing merge fields: ${m.fields.join(", ")}`;
@@ -157,22 +173,11 @@ export function registerBulkEmailRoutes(contactsRoutes: Hono<AppEnv>): void {
     // partial outcome in the 200 response rather than surfacing a 500.
     const failed: { email: string; message: string }[] = [];
 
-    // DEC-547: makeMailer throws on a misconfigured environment — a
-    // config-level failure, not a per-recipient one, so construct it inside
-    // this guarded region (result.rendered is already known) so that
-    // failure reports as every recipient 'failed' in the normal 200
-    // envelope instead of 500ing.
-    let mailer;
-    try {
-      mailer = makeMailer(c.var.db, c.env);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      console.error("bulk email: mailer unavailable", message);
-      return c.json({
-        sent: 0,
-        failed: result.rendered.map((r) => ({ email: r.email, message })),
-      });
-    }
+    // DEC-547 amendment (wave 43): makeMailer never throws — it always
+    // returns a Mailer (DevSinkMailer/ResendMailer/UnconfiguredMailer), so a
+    // misconfigured environment surfaces as a per-recipient 'failed' row
+    // from UnconfiguredMailer.send inside the try/catch below, not here.
+    const mailer = makeMailer(c.var.db, c.env);
 
     for (const rendered of result.rendered) {
       const attempt = {
@@ -215,8 +220,9 @@ export function registerBulkEmailRoutes(contactsRoutes: Hono<AppEnv>): void {
     const origin = resolveBaseUrl(c);
     const previewContacts = contacts.slice(0, BULK_EMAIL_PREVIEW_LIMIT);
 
-    // DEC-397: preview never mints credentials — pass mintClaimTokens=false.
-    const result = await renderBulkEmailTargets(c.var.db, kv, origin, event, previewContacts, subject, bodyText, false);
+    // DEC-397: preview never mints credentials — renderBulkEmailTargets
+    // always resolves links with mintClaimTokens=false now.
+    const { result } = await renderBulkEmailTargets(c.var.db, kv, origin, event, previewContacts, subject, bodyText);
     if (!result.ok) {
       const fields: Record<string, string> = {};
       for (const m of result.missing) fields[m.contactId] = `missing merge fields: ${m.fields.join(", ")}`;

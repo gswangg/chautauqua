@@ -104,7 +104,26 @@ function buildApp() {
   return app;
 }
 
-function postJson(app: Hono<AppEnv>, path: string, body: unknown, kv: unknown = {}) {
+// DEC-397 wave-50 amendment (MINT LATE): a real send now runs
+// applyMintedPortalLinks AFTER preflight, which calls the real (un-mocked —
+// it's an internal same-module call) resolvePortalLinks/createClaimToken —
+// so a working KV fake, not `{}`, is required by default.
+function fakeKv() {
+  const store = new Map<string, string>();
+  return {
+    async get(key: string) {
+      return store.get(key) ?? null;
+    },
+    async put(key: string, value: string) {
+      store.set(key, value);
+    },
+    async delete(key: string) {
+      store.delete(key);
+    },
+  };
+}
+
+function postJson(app: Hono<AppEnv>, path: string, body: unknown, kv: unknown = fakeKv()) {
   return app.request(
     path,
     {
