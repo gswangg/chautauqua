@@ -240,7 +240,16 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
   // ICS resolution itself are untouched (DEC-051/DEC-366).
   function handleIncludeFeedbackChange(next: boolean) {
     setIncludeFeedback(next);
-    void runPreview({ includeFeedback: next });
+    if (next) {
+      // DEC-882/DEC-683: checking the box alone must never fire a request —
+      // the server rejects includeFeedback without a plan. Just reveal the
+      // plan picker (below) and wait for a choice.
+      if (feedbackPlanId === '') return;
+      void runPreview({ includeFeedback: true });
+    } else {
+      setFeedbackPlanId('');
+      void runPreview({ includeFeedback: false, feedbackPlanId: '' });
+    }
   }
 
   function handleFeedbackPlanChange(next: string) {
@@ -591,17 +600,21 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
                       </option>
                     ))}
                   </select>
-                  {feedbackPlanId &&
-                    (() => {
-                      const selectedPlan = plans.find((p) => p.id === feedbackPlanId);
-                      return selectedPlan ? (
-                        <span className="chq-comms-panel-note">
-                          Round {selectedPlan.currentRound} of {selectedPlan.name}
-                        </span>
-                      ) : null;
-                    })()}
                 </label>
               )}
+              {includeFeedback && feedbackPlanId === '' && (
+                <span className="chq-comms-panel-note">Choose a plan to merge its feedback.</span>
+              )}
+              {includeFeedback &&
+                feedbackPlanId &&
+                (() => {
+                  const selectedPlan = plans.find((p) => p.id === feedbackPlanId);
+                  return selectedPlan ? (
+                    <span className="chq-comms-panel-note">
+                      Round {selectedPlan.currentRound} of {selectedPlan.name}
+                    </span>
+                  ) : null;
+                })()}
               <label className="chq-comms-toggle">
                 <input
                   type="checkbox"

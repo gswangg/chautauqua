@@ -33,6 +33,10 @@ export interface RenderedRecipient {
   subject: string;
   text: string;
   ics?: RenderedRecipientIcs;
+  // DEC-883: present only on /compose/preview responses when feedback was
+  // resolved for this recipient -- identifies the merged-feedback paragraph
+  // inside `text` for preview chrome. Never sent by /compose/send.
+  vars?: { feedback?: string };
 }
 
 // DEC-543: narrow list projection returned by GET .../email-log — mirrors
