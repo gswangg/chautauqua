@@ -1,12 +1,18 @@
-// DEC-877: forms.css clamped .chq-forms-content to var(--chq-measure) while
-// .chq-forms-header (the Preview/Save row) stayed unclamped, so at a wide
-// desktop frame the header spanned the full content width while the field
-// list/settings column stopped ~550px short of it -- two different right
-// edges on the same page. This test reads the stylesheet's own text
+// DEC-877/DEC-744 (task-w40-b): forms.css clamped .chq-forms-content to
+// var(--chq-measure) while .chq-forms-header (the Preview/Save row) stayed
+// unclamped, so at a wide desktop frame the header spanned the full content
+// width while the field list/settings column stopped ~550px short of it --
+// two different right edges on the same page. The fix was NOT to give the
+// header its own matching clamp: FormsPage.tsx already puts the ONE
+// .chq-measure clamp on the page root, and a max-width + auto margins on a
+// flex-column CHILD cancels align-items:stretch (the box shrinks to its own
+// content, 275px observed, instead of sharing the root's edges). So the
+// header/content blocks now declare NO max-width of their own and stretch
+// to fill the root instead. This test reads the stylesheet's own text
 // (mirroring app/src/page-measure.test.ts and
 // app/src/pages/agenda/agenda-card-geometry.test.ts -- jsdom does not apply
-// an external stylesheet's layout) and asserts BOTH the header and the
-// content column clamp with the SAME shared token, never a hard-coded px.
+// an external stylesheet's layout) and asserts the header and content
+// column share ONE right edge by both declaring no clamp of their own.
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -41,10 +47,10 @@ function topLevelRuleBody(css: string, selector: string): string {
   return body;
 }
 
-describe('forms.css header measure (DEC-877)', () => {
-  it('.chq-forms-header and .chq-forms-content both clamp with var(--chq-measure)', () => {
-    expect(topLevelRuleBody(CSS, '.chq-forms-header')).toMatch(/max-width:\s*var\(--chq-measure\)/);
-    expect(topLevelRuleBody(CSS, '.chq-forms-content')).toMatch(/max-width:\s*var\(--chq-measure\)/);
+describe('forms.css header measure (DEC-877/DEC-744)', () => {
+  it('.chq-forms-header and .chq-forms-content declare no max-width of their own, stretching to the page root measure', () => {
+    expect(topLevelRuleBody(CSS, '.chq-forms-header')).not.toMatch(/max-width/);
+    expect(topLevelRuleBody(CSS, '.chq-forms-content')).not.toMatch(/max-width/);
   });
 
   it('never hard-codes a px max-width on the header or content clamp', () => {

@@ -68,6 +68,23 @@
 //      DYNAMIC_CSS_PROPS below with its setter file — never an allowlist
 //      populated from the failure output.
 //
+//   G) (DEC-744, task-w40-b) the class of bug that shrink-wrapped the CFP
+//      builder: `.chq-page` is a flex COLUMN (styles.css), and a
+//      max-width: var(--chq-measure*) + auto left/right margins on a flex-
+//      column CHILD cancels align-items:stretch -- the box sizes to its own
+//      content instead of sharing the page root's clamp (forms.css's header
+//      band rendered 275.5px inside an 820px column). Every rule in
+//      app/src/**/*.css (enumerated, not hand-listed, per DEC-808) that
+//      declares `max-width: var(--chq-measure*)` together with BOTH
+//      `margin-left: auto` and `margin-right: auto` (the shrink-wrap shape)
+//      must also declare `width: 100%` or `align-self: stretch` to defeat
+//      the shrink -- unless it is one of the three foundational
+//      .chq-measure / .chq-measure-wide / .chq-measure-table rules in
+//      styles.css themselves (the token DEFINITIONS, always used on a block
+//      or grid-item context, never a flex-column child). task-w40-g
+//      deliberately lands one legal instance of this shape,
+//      .chq-comms-editor, which pairs the clamp with `width: 100%`.
+//
 // All scans ENUMERATE every *.css / *.tsx file under app/src via
 // readdirSync (mirroring page-measure.test.ts / DEC-808) rather than a
 // hand-listed manifest, so a new page's markup and CSS are checked
@@ -511,6 +528,64 @@ describe('CSS token + button-face contract (DEC-937)', () => {
     expect(resetRe.test(STYLES_CSS), 'global form-control font-family: inherit reset not found in styles.css').toBe(
       true,
     );
+  });
+
+  it('no rule clamps max-width: var(--chq-measure*) with auto left+right margins unless it also stretches (G, DEC-744)', () => {
+    const MEASURE_CLAMP_RE = /max-width:\s*var\(--chq-measure(?:-wide|-table)?\)/;
+    const MARGIN_LEFT_AUTO_RE = /margin-left:\s*auto/;
+    const MARGIN_RIGHT_AUTO_RE = /margin-right:\s*auto/;
+    const STRETCH_RE = /width:\s*100%|align-self:\s*stretch/;
+
+    /** Whether a `body`'s margin declarations (longhand OR the `margin:`
+     * shorthand, e.g. `margin: 0 auto;`) set BOTH left and right to auto --
+     * the CSS box-model shorthand rule: 1 value -> all sides; 2 values ->
+     * [vertical, horizontal]; 3 -> [top, horizontal, bottom]; 4 -> [top,
+     * right, bottom, left]. */
+    function hasAutoLeftAndRightMargins(body: string): boolean {
+      if (MARGIN_LEFT_AUTO_RE.test(body) && MARGIN_RIGHT_AUTO_RE.test(body)) return true;
+      const shorthand = body.match(/(?:^|[;{])\s*margin\s*:\s*([^;]+);/);
+      if (!shorthand) return false;
+      const parts = shorthand[1]!.trim().split(/\s+/);
+      let left: string | undefined;
+      let right: string | undefined;
+      if (parts.length === 1) {
+        left = right = parts[0];
+      } else if (parts.length === 2) {
+        right = left = parts[1];
+      } else if (parts.length === 3) {
+        right = left = parts[1];
+      } else if (parts.length === 4) {
+        right = parts[1];
+        left = parts[3];
+      }
+      return left === 'auto' && right === 'auto';
+    }
+
+    const offenders: string[] = [];
+    for (const path of CSS_FILES) {
+      const label = relative(HERE, path);
+      const css = readFileSync(path, 'utf-8');
+      for (const { selector, body } of allRulesIncludingMedia(css)) {
+        if (!MEASURE_CLAMP_RE.test(body)) continue;
+        if (!hasAutoLeftAndRightMargins(body)) continue;
+        if (STRETCH_RE.test(body)) continue;
+        // The three foundational token-definition rules in styles.css are
+        // the one legitimate place this shape is allowed to appear
+        // unguarded -- they define .chq-measure* itself, always consumed on
+        // a block/grid-item context, never a flex-column child.
+        if (
+          path === STYLES_PATH &&
+          ['.chq-measure', '.chq-measure-wide', '.chq-measure-table'].includes(selector.trim())
+        ) {
+          continue;
+        }
+        offenders.push(`${label}: "${selector}"`);
+      }
+    }
+    expect(
+      offenders,
+      `rules that clamp max-width: var(--chq-measure*) with auto left+right margins but no width:100%/align-self:stretch (shrink-wraps inside a flex-column parent):\n${offenders.join('\n')}`,
+    ).toEqual([]);
   });
 
   it('every var(--chq-foo, <fallback>) call also resolves to a real declaration (F)', () => {

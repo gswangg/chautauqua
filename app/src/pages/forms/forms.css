@@ -11,10 +11,11 @@
 }
 
 /* Header band: breadcrumb + h1 on the left, Preview/Save right-aligned.
-   Shares the SAME --chq-measure clamp as .chq-forms-content below (DEC-744/
-   877) so the header row and the content column share one left and right
-   edge instead of the header spanning the full width while the content
-   column stops ~550px short of it at desktop widths. */
+   The page ROOT (.chq-forms-page, via .chq-measure on FormsPage.tsx) carries
+   the one --chq-measure clamp (DEC-744); this block stretches to fill it
+   rather than re-clamping itself, since an auto-margin max-width on a flex
+   COLUMN child cancels align-items:stretch and the box shrinks to its
+   content instead of sharing the root's edges. */
 .chq-forms-header {
   display: flex;
   align-items: flex-end;
@@ -22,9 +23,6 @@
   gap: 20px;
   padding-bottom: 16px;
   border-bottom: 1px solid var(--chq-ink);
-  max-width: var(--chq-measure);
-  margin-left: auto;
-  margin-right: auto;
 }
 
 .chq-forms-header-titles {
@@ -57,10 +55,8 @@
   flex-direction: column;
   gap: 24px;
   padding-top: 22px;
-  /* Shared page measure (DEC-744). */
-  max-width: var(--chq-measure);
-  margin-left: auto;
-  margin-right: auto;
+  /* Shared page measure lives on the page root (DEC-744); this block
+     stretches to fill it. */
 }
 
 /* Opens / Closes / Received three-cell strip. */
@@ -255,11 +251,9 @@
   display: flex;
   flex-direction: column;
   gap: 18px;
-  /* Shared page measure (DEC-744). min-width removed
-     (DEC-385) -- it forced horizontal overflow at the 390px phone frame. */
-  max-width: var(--chq-measure);
-  margin-left: auto;
-  margin-right: auto;
+  /* Shared page measure lives on the page root (DEC-744); this block
+     stretches to fill it. min-width removed (DEC-385) -- it forced
+     horizontal overflow at the 390px phone frame. */
 }
 
 .chq-forms-settings .chq-field {
@@ -358,7 +352,6 @@
   .chq-forms-header {
     flex-shrink: 0;
     padding-bottom: 12px;
-    max-width: none;
   }
 
   .chq-forms-header-titles h1 {
@@ -369,13 +362,8 @@
     flex: 1;
     min-height: 0;
     overflow-y: auto;
-    max-width: none;
     padding-top: 16px;
     padding-bottom: 16px;
-  }
-
-  .chq-forms-settings {
-    max-width: none;
   }
 
   .chq-forms-field-modal {
