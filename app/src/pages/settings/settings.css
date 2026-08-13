@@ -548,6 +548,19 @@
   gap: 2px;
 }
 
+/* task-w35-e/DEC-757: a teammate is a person, so the identity cell leads with
+   the account's name and demotes the address to a second, quieter line (the
+   email line is only rendered when a name exists). */
+.chq-settings-people-name {
+  font-weight: 600;
+  color: var(--chq-ink);
+}
+
+.chq-settings-people-email {
+  font-size: 12px;
+  color: var(--chq-ink-2);
+}
+
 .chq-settings-people-scope {
   font-size: 12px;
   color: var(--chq-ink-2);
