@@ -149,8 +149,14 @@ placing entry.
 (CLOSED by probe 2: DEC-724 conditional "No room yet" column · DEC-742 merged clash
 card — inverted ink card, zero inner scroll, fully visible content.)
 
-**Comms** (DEC-710 + history count CLOSED by probe): "One or more recipients are
-missing merge fields" error is generic though the API payload (missingToFields)
+**Comms** (DEC-710 + history count CLOSED by probe): compose body step has ZERO
+merge-field affordance — no list of available fields, no insert action, no hint
+that {tokens} auto-fill per recipient (user thought they were manual); the panel
+TITLED "Attachments and merge fields" (ComposeWizard.tsx:469) contains only
+attachment toggles. FIX: quiet chip row under the Body field listing allowed
+fields ({speaker_name} · {event_name} · …, click inserts at cursor) + one-line
+hint "Fills in per recipient — see Preview"; retitle the panel "Attachments" ·
+"One or more recipients are missing merge fields" error is generic though the API payload (missingToFields)
 names each recipient+field — render the culprits ("Marcus Okafor is missing
 speaker_name") so the organizer can fix data or template; comms.ts:416/459 +
 bulk-email.ts:153/212 (ties to CRM-grader D9: composer placeholder advertises
