@@ -23,11 +23,12 @@ import { chunkIds } from "../../lib/chunk";
 import { newId } from "../../domain/ids";
 import { isValidEmail, normalizeEmail } from "../../domain/email";
 import { isCoPresenterRoleValue, participantRoleLabel } from "../../domain/participant-roles";
-import { DEC_604, DEC_656 } from "../../decisions";
+import { DEC_604, DEC_656, DEC_842 } from "../../decisions";
 
 // touch DEC constant so the dependency is compile-checked (field guide convention)
 void DEC_604;
 void DEC_656;
+void DEC_842;
 
 export interface EditableSubmission {
   id: string;
@@ -205,6 +206,7 @@ export async function saveSubmissionEdits(
   cleanedAnswers: AnswerMap,
   trackIds: string[] | null,
   hiddenFieldIds: string[],
+  clearedFieldIds: string[] = [],
 ): Promise<void> {
   const now = new Date();
   const title = cleanedAnswers[LOCKED_SESSION_FIELDS[0]];
@@ -261,12 +263,21 @@ export async function saveSubmissionEdits(
   // empty string clears to null. A key that's entirely absent from
   // cleanedAnswers means "not submitted this request" and must leave the
   // stored column untouched — only a present key (including "") writes.
+  // DEC-842: validateAnswers now strips a blank from `cleaned` entirely (it
+  // is never an empty string there), so a clear is signalled via
+  // clearedFieldIds instead — write NULL when the locked field's id is in
+  // that set; the "absent key leaves the column untouched" rule is
+  // unchanged for ids that are neither present-cleaned nor cleared.
   const jobTitle = cleanedAnswers[LOCKED_SPEAKER_FIELDS[3]];
   const company = cleanedAnswers[LOCKED_SPEAKER_FIELDS[4]];
   const bio = cleanedAnswers[LOCKED_SPEAKER_FIELDS[5]];
+  const clearedSet = new Set(clearedFieldIds);
   if (typeof jobTitle === "string") contactUpdate.title = jobTitle.trim() || null;
+  else if (clearedSet.has(LOCKED_SPEAKER_FIELDS[3])) contactUpdate.title = null;
   if (typeof company === "string") contactUpdate.company = company.trim() || null;
+  else if (clearedSet.has(LOCKED_SPEAKER_FIELDS[4])) contactUpdate.company = null;
   if (typeof bio === "string") contactUpdate.bio = bio.trim() || null;
+  else if (clearedSet.has(LOCKED_SPEAKER_FIELDS[5])) contactUpdate.bio = null;
   if (Object.keys(contactUpdate).length > 0) {
     contactUpdate.updatedAt = now;
     await db.update(schema.contact).set(contactUpdate).where(eq(schema.contact.id, contactId));
@@ -302,7 +313,13 @@ export async function saveSubmissionEdits(
   // and CSV/JSON exports. Delete stale answers for hidden fields here,
   // excluding locked built-ins (never rule-hidden, never stored as
   // submission_answer rows in the first place).
-  const hiddenCustomFieldIds = hiddenFieldIds.filter((fieldId) => lockedFieldName(fieldId) === null);
+  // DEC-842: a submitted blank on a visible, non-required custom field is
+  // the same kind of "no longer has a stored answer" case as a hidden
+  // field — reuse the exact same deletion path rather than adding a second
+  // delete mechanism.
+  const hiddenCustomFieldIds = [...new Set([...hiddenFieldIds, ...clearedFieldIds])].filter(
+    (fieldId) => lockedFieldName(fieldId) === null,
+  );
   if (hiddenCustomFieldIds.length > 0) {
     for (const batch of chunkIds(hiddenCustomFieldIds)) {
       await db
