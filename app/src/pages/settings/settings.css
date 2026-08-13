@@ -517,3 +517,149 @@
     justify-content: flex-start;
   }
 }
+
+/* task-w3-c/DEC-747: a SummarySection row with no label (Tracks and
+   rooms' two-column grid has no row caption in the mock) collapses the
+   empty label span rather than leaving a blank line above the value. */
+.chq-settings-row-label:empty {
+  display: none;
+}
+
+/* task-w3-c/DEC-747: Tracks and rooms read view -- two columns, name +
+   count/capacity per row (mock lines 108-125). */
+.chq-settings-tracks-rooms-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 34px;
+  width: 100%;
+}
+
+.chq-settings-tracks-rooms-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.chq-settings-tracks-rooms-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: baseline;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--chq-hairline);
+  font-size: 14px;
+}
+
+.chq-settings-tracks-rooms-row:last-child {
+  border-bottom: none;
+}
+
+.chq-settings-tracks-rooms-count {
+  font-size: 12px;
+  color: var(--chq-ink-2);
+}
+
+.chq-settings-empty {
+  font-size: 13px;
+  color: var(--chq-ink-2);
+  margin: 8px 0;
+}
+
+/* task-w3-c/DEC-747: Public pages state pill -- tone NAMED from the
+   semantic state (live vs not), never a copied color literal. */
+.chq-settings-public-pages-state-live {
+  color: var(--chq-brand);
+}
+
+.chq-settings-public-pages-state-muted {
+  color: var(--chq-ink-2);
+}
+
+/* task-w3-c/DEC-747: Speaker portal read view (mock lines 142-182). */
+.chq-settings-portal-pills {
+  gap: 8px;
+}
+
+.chq-pill-static {
+  cursor: default;
+}
+
+.chq-settings-portal-resources {
+  width: 100%;
+}
+
+.chq-settings-portal-resources-block {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.chq-settings-portal-resource-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.chq-settings-portal-resource-row {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.chq-settings-portal-resource-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.chq-settings-portal-resource-name {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.chq-settings-portal-resource-detail {
+  font-size: 13px;
+  color: var(--chq-ink-2);
+}
+
+.chq-settings-portal-resource-add {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.chq-settings-portal-add-resource {
+  align-self: flex-start;
+  border: 1px solid var(--chq-border);
+  border-radius: 4px;
+  padding: 9px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--chq-surface-sunk);
+  cursor: pointer;
+}
+
+@media (max-width: 700px) {
+  .chq-settings-tracks-rooms-grid {
+    grid-template-columns: 1fr;
+    gap: 20px 0;
+  }
+
+  .chq-settings-portal-resource-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--chq-hairline);
+  }
+
+  .chq-settings-portal-resource-list li:last-child {
+    border-bottom: none;
+  }
+}

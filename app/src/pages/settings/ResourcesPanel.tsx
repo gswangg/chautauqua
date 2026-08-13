@@ -1,7 +1,12 @@
-// Resources panel (w4-h, DEC-032; file kind w6-d/DEC-047): wiki page
-// list/create/edit/delete with textarea content, plus an "Upload file
-// resource" form (multipart -> kind='file', served to organizers via
-// GET /files/:fileId).
+// Resources (w4-h, DEC-047; folded into Speaker portal's read view w3-c,
+// DEC-747): wiki page list/create/edit/delete plus file-resource upload.
+// Rendered as a fragment (no own <section>/h2) inside PortalSettingsPanel's
+// Resources row -- 'Add a resource' toggles both add-forms; a wiki row's
+// 'Replace' opens its inline edit form. A file row has no replace control:
+// there is no server endpoint that replaces a file's bytes, and DEC-733
+// says omit a control the store can't carry rather than render it
+// disabled. A wiki resource's read row names the page and its SIZE (word
+// count), never its raw markdown body (DEC-747).
 import { useEffect, useState } from 'react';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { apiDelete, apiList, apiPatch, apiPost, apiUpload, ApiError } from '../../lib/api';
@@ -19,10 +24,24 @@ interface Resource {
 
 const EMPTY_FORM: ResourceForm = { title: '', content: '' };
 
+function wordCount(text: string | null): number {
+  const trimmed = (text ?? '').trim();
+  return trimmed.length === 0 ? 0 : trimmed.split(/\s+/).length;
+}
+
+/** Read-row detail string: a wiki page's SIZE, never its body; a file's kind. */
+function resourceDetail(resource: Resource): string {
+  if (resource.kind === 'file') return 'File';
+  const count = wordCount(resource.content);
+  return `${count} word${count === 1 ? '' : 's'}`;
+}
+
 export function ResourcesPanel() {
-  const { eventId, loading: eventLoading, error: eventError } = useCurrentEvent();
+  const { eventId } = useCurrentEvent();
   const [resources, setResources] = useState<Resource[]>([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | undefined>(undefined);
+  const [adding, setAdding] = useState(false);
   const [newResource, setNewResource] = useState<ResourceForm>(EMPTY_FORM);
   const [fieldErrors, setFieldErrors] = useState<ResourceFormErrors>({});
   const [editing, setEditing] = useState<Record<string, ResourceForm>>({});
@@ -31,14 +50,17 @@ export function ResourcesPanel() {
   const [fileError, setFileError] = useState<string | undefined>(undefined);
 
   function reload(id: string) {
+    setLoading(true);
     apiList<Resource>(`/events/${id}/resources`)
       .then((res) => setResources(res.items))
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load resources'));
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load resources'))
+      .finally(() => setLoading(false));
   }
 
   useEffect(() => {
     if (!eventId) return;
     reload(eventId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eventId]);
 
   async function addResource() {
@@ -89,6 +111,14 @@ export function ResourcesPanel() {
     }));
   }
 
+  function cancelEdit(resource: Resource) {
+    setEditing((prev) => {
+      const next = { ...prev };
+      delete next[resource.id];
+      return next;
+    });
+  }
+
   async function saveEdit(resource: Resource) {
     if (!eventId) return;
     const form = editing[resource.id];
@@ -100,11 +130,7 @@ export function ResourcesPanel() {
     }
     try {
       await apiPatch(`/resources/${resource.id}`, { title: form.title, content: form.content });
-      setEditing((prev) => {
-        const next = { ...prev };
-        delete next[resource.id];
-        return next;
-      });
+      cancelEdit(resource);
       reload(eventId);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to save resource');
@@ -122,19 +148,17 @@ export function ResourcesPanel() {
   }
 
   return (
-    <section className="chq-settings-panel" aria-label="Resources">
-      <h2>Resources</h2>
-      {eventLoading ? <DelayedLoading /> : null}
-      {eventError || error ? <p role="alert">{eventError ?? error}</p> : null}
+    <div className="chq-settings-portal-resources-block">
+      {loading ? <DelayedLoading /> : null}
+      {error ? <p role="alert">{error}</p> : null}
 
-      <ul>
+      <ul className="chq-settings-portal-resource-list">
         {resources.map((resource) => {
           const editForm = editing[resource.id];
           return (
-            <li key={resource.id}>
-              <span data-testid="resource-kind-badge">{resource.kind === 'file' ? 'File' : 'Wiki'}</span>
+            <li key={resource.id} className="chq-settings-portal-resource-row">
               {editForm && resource.kind === 'wiki' ? (
-                <div>
+                <div className="chq-settings-portal-resource-edit">
                   <input
                     className="chq-input"
                     value={editForm.title}
@@ -149,74 +173,82 @@ export function ResourcesPanel() {
                       setEditing((prev) => ({ ...prev, [resource.id]: { ...editForm, content: e.target.value } }))
                     }
                   />
-                  <button type="button" className="chq-btn chq-btn-secondary" onClick={() => void saveEdit(resource)}>
+                  {fieldErrors.title ? <span role="alert">{fieldErrors.title}</span> : null}
+                  {fieldErrors.content ? <span role="alert">{fieldErrors.content}</span> : null}
+                  <button type="button" className="chq-btn chq-btn-primary" onClick={() => void saveEdit(resource)}>
                     Save
+                  </button>
+                  <button type="button" className="chq-btn chq-btn-tertiary" onClick={() => cancelEdit(resource)}>
+                    Cancel
                   </button>
                 </div>
               ) : (
-                <div>
-                  <strong>{resource.title}</strong>
+                <>
+                  <span className="chq-settings-portal-resource-name">{resource.title}</span>
+                  <span className="chq-settings-portal-resource-detail">{resourceDetail(resource)}</span>
                   {resource.kind === 'file' && resource.fileId ? (
-                    <p>
-                      <a href={`/files/${resource.fileId}`}>Download</a>
-                    </p>
-                  ) : (
-                    <p>{resource.content}</p>
-                  )}
+                    <a className="chq-settings-inline-action" href={`/files/${resource.fileId}`}>
+                      Download
+                    </a>
+                  ) : null}
                   {resource.kind === 'wiki' ? (
                     <button type="button" className="chq-link-button" onClick={() => startEdit(resource)}>
-                      Edit
+                      Replace
                     </button>
                   ) : null}
                   <button type="button" className="chq-link-button" onClick={() => void deleteResource(resource)}>
                     Delete
                   </button>
-                </div>
+                </>
               )}
             </li>
           );
         })}
       </ul>
 
-      <h3>Add a wiki page</h3>
-      <div>
-        <input
-          className="chq-input"
-          placeholder="Title"
-          value={newResource.title}
-          onChange={(e) => setNewResource({ ...newResource, title: e.target.value })}
-        />
-        {fieldErrors.title ? <span role="alert">{fieldErrors.title}</span> : null}
-        <textarea
-          className="chq-textarea"
-          placeholder="Content"
-          value={newResource.content}
-          onChange={(e) => setNewResource({ ...newResource, content: e.target.value })}
-        />
-        {fieldErrors.content ? <span role="alert">{fieldErrors.content}</span> : null}
-        <button type="button" className="chq-btn chq-btn-primary" onClick={() => void addResource()}>
-          Add resource
-        </button>
-      </div>
+      {adding ? (
+        <div className="chq-settings-portal-resource-add">
+          <h3>Add a wiki page</h3>
+          <input
+            className="chq-input"
+            placeholder="Title"
+            value={newResource.title}
+            onChange={(e) => setNewResource({ ...newResource, title: e.target.value })}
+          />
+          {fieldErrors.title ? <span role="alert">{fieldErrors.title}</span> : null}
+          <textarea
+            className="chq-textarea"
+            placeholder="Content"
+            value={newResource.content}
+            onChange={(e) => setNewResource({ ...newResource, content: e.target.value })}
+          />
+          {fieldErrors.content ? <span role="alert">{fieldErrors.content}</span> : null}
+          <button type="button" className="chq-btn chq-btn-primary" onClick={() => void addResource()}>
+            Add wiki page
+          </button>
 
-      <h3>Upload file resource</h3>
-      <div>
-        <input
-          className="chq-input"
-          placeholder="Title"
-          value={fileTitle}
-          onChange={(e) => setFileTitle(e.target.value)}
-        />
-        <input
-          className="chq-file"
-          type="file"
-          onChange={(e) => setFileToUpload(e.target.files?.[0] ?? null)}
-        />
-        {fileError ? <span role="alert">{fileError}</span> : null}
-        <button type="button" className="chq-btn chq-btn-secondary" onClick={() => void uploadFileResource()}>
-          Upload file resource
+          <h3>Upload a file</h3>
+          <input
+            className="chq-input"
+            placeholder="Title"
+            value={fileTitle}
+            onChange={(e) => setFileTitle(e.target.value)}
+          />
+          <input className="chq-file" type="file" onChange={(e) => setFileToUpload(e.target.files?.[0] ?? null)} />
+          {fileError ? <span role="alert">{fileError}</span> : null}
+          <button type="button" className="chq-btn chq-btn-secondary" onClick={() => void uploadFileResource()}>
+            Upload file
+          </button>
+
+          <button type="button" className="chq-btn chq-btn-tertiary" onClick={() => setAdding(false)}>
+            Done
+          </button>
+        </div>
+      ) : (
+        <button type="button" className="chq-settings-portal-add-resource" onClick={() => setAdding(true)}>
+          Add a resource
         </button>
-      </div>
-    </section>
+      )}
+    </div>
   );
 }

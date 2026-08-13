@@ -1,12 +1,12 @@
-// Public pages and embeds settings panel (w15-e, DEC-691): lists this
-// event's public surfaces (docs/design/Chautauqua Settings.dc.html lines
-// 149-162) -- Sessions, Speakers, Agenda, Schedule and the CFP submit page
-// -- each row's live/not-published state DERIVED from real data (the
-// event's accepted-submission count and the CFP form's open/close window),
-// never a hardcoded 'live'. The embed builder (EmbedsPanel, EMB-15 /
-// DEC-289, unmodified) is reachable from this section via each row's
-// "Embed code" control -- it is a second sub-section, not a replacement
-// for the list.
+// Public pages and embeds settings panel (w15-e, DEC-691; row set + pill
+// state w3-c, DEC-747): lists this event's public surfaces (docs/design/
+// Chautauqua Settings.dc.html lines 128-139) -- Sessions, Speakers, Agenda,
+// Schedule, Speaker gallery and the CFP submit page -- each row's
+// live/not-published state DERIVED from real data (the event's
+// accepted-submission count and the CFP form's open/close window), never a
+// hardcoded 'live'. The embed builder (EmbedsPanel, EMB-15 / DEC-289,
+// unmodified) is reachable from this section via each row's "Embed code"
+// control -- it is a second sub-section, not a replacement for the list.
 import { useEffect, useState } from 'react';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { apiGet, apiList, ApiError } from '../../lib/api';
@@ -47,6 +47,13 @@ function cfpState(form: CfpFormSummary | null, now: number): string | null {
   return 'Open';
 }
 
+// DEC-747: the row's state renders as a tone-modified pill rather than
+// plain text -- the tone is NAMED from the semantic state (live vs not),
+// never a copied color literal (FINDINGS w1-17: colour isn't identity).
+function stateTone(state: string): 'live' | 'muted' {
+  return state.startsWith('Live') || state === 'Open' ? 'live' : 'muted';
+}
+
 export function PublicPagesPanel() {
   const { eventId, loading: eventLoading, error: eventError } = useCurrentEvent();
   const [event, setEvent] = useState<EventSummary | null>(null);
@@ -74,6 +81,7 @@ export function PublicPagesPanel() {
         { key: 'speakers', name: 'Speakers', path: `/e/${event.slug}/speakers`, state: surfaceState(acceptedCount) },
         { key: 'agenda', name: 'Agenda', path: `/e/${event.slug}/agenda`, state: surfaceState(acceptedCount) },
         { key: 'schedule', name: 'Schedule', path: `/e/${event.slug}/schedule`, state: surfaceState(acceptedCount) },
+        { key: 'gallery', name: 'Speaker gallery', path: `/e/${event.slug}/gallery`, state: surfaceState(acceptedCount) },
         { key: 'submit', name: 'CFP submit page', path: `/submit/${event.slug}`, state: cfpState(form, Date.now()) },
       ]
     : [];
@@ -93,7 +101,9 @@ export function PublicPagesPanel() {
               {row.state === null ? (
                 <DelayedLoading />
               ) : (
-                <span className="chq-settings-public-pages-state">{row.state}</span>
+                <span className={`chq-settings-public-pages-state chq-settings-public-pages-state-${stateTone(row.state)}`}>
+                  {row.state}
+                </span>
               )}
               <a className="chq-settings-inline-action" href={row.path}>
                 View
