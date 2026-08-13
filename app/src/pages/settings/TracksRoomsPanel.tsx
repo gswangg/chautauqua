@@ -18,6 +18,22 @@ import {
   type TrackFormErrors,
 } from './formState';
 import { SummarySection } from './SummarySection';
+import { DEC_888 } from '../../../../src/decisions';
+
+// DEC-888: ONE enumeration supplies the swatch picker buttons, the new-
+// track default (its first entry), and the .chq-color-swatch preview --
+// so the palette a track can be given and the palette the picker offers
+// can never desync. Colors drawn from the product palette, never an
+// off-palette literal like the old raw <input type="color"> default.
+export const TRACK_SWATCHES = [
+  { value: '#4338ca', label: 'Indigo' },
+  { value: '#0f766e', label: 'Teal' },
+  { value: '#b45309', label: 'Amber' },
+  { value: '#be123c', label: 'Rose' },
+  { value: '#4d7c0f', label: 'Olive' },
+  { value: '#1d4ed8', label: 'Blue' },
+] as const;
+void DEC_888;
 
 const SECTION_KEY = 'tracks-rooms';
 
@@ -33,7 +49,7 @@ interface Room {
   capacity: number | null;
 }
 
-const EMPTY_TRACK: TrackForm = { name: '', color: '' };
+const EMPTY_TRACK: TrackForm = { name: '', color: TRACK_SWATCHES[0].value };
 const EMPTY_ROOM: RoomForm = { name: '', capacity: '' };
 
 export function TracksRoomsPanel() {
@@ -178,40 +194,53 @@ export function TracksRoomsPanel() {
         editing={editing}
       >
         <div>
-          <h3>Tracks</h3>
-          <ul>
+          <h3 className="chq-section-label">Tracks</h3>
+          <ul className="chq-settings-edit-list">
             {tracks.map((track) => (
-              <li key={track.id}>
-                <span
-                  className="chq-color-swatch"
-                  style={{ background: track.color ?? 'transparent' }}
-                  aria-hidden="true"
-                />
-                <input
-                  className="chq-input"
-                  value={track.name}
-                  onChange={(e) => renameTrack(track, e.target.value)}
-                  aria-label={`Track name for ${track.name}`}
-                />
-                <button type="button" className="chq-link-button" onClick={() => deleteTrack(track)}>
-                  Delete
-                </button>
+              <li key={track.id} className="chq-settings-edit-row">
+                <span className="chq-settings-edit-row-value">
+                  <span
+                    className="chq-color-swatch"
+                    style={{ background: track.color ?? 'transparent' }}
+                    aria-hidden="true"
+                  />
+                  <input
+                    className="chq-input"
+                    value={track.name}
+                    onChange={(e) => renameTrack(track, e.target.value)}
+                    aria-label={`Track name for ${track.name}`}
+                  />
+                </span>
+                <span className="chq-settings-edit-row-meta" />
+                <span className="chq-settings-edit-row-actions">
+                  <button type="button" className="chq-link-button" onClick={() => deleteTrack(track)}>
+                    Delete
+                  </button>
+                </span>
               </li>
             ))}
           </ul>
-          <div>
+          <div className="chq-settings-row">
             <input
               className="chq-input"
               placeholder="New track name"
               value={newTrack.name}
               onChange={(e) => setNewTrack({ ...newTrack, name: e.target.value })}
             />
-            <input
-              className="chq-input"
-              type="color"
-              value={newTrack.color || '#4f46e5'}
-              onChange={(e) => setNewTrack({ ...newTrack, color: e.target.value })}
-            />
+            <div className="chq-swatch-picker" role="radiogroup" aria-label="Track color">
+              {TRACK_SWATCHES.map((swatch) => (
+                <button
+                  key={swatch.value}
+                  type="button"
+                  role="radio"
+                  className="chq-color-swatch chq-swatch-picker-option"
+                  style={{ background: swatch.value }}
+                  aria-checked={newTrack.color === swatch.value}
+                  aria-label={swatch.label}
+                  onClick={() => setNewTrack({ ...newTrack, color: swatch.value })}
+                />
+              ))}
+            </div>
             <button type="button" className="chq-btn chq-btn-primary" onClick={() => void addTrack()}>
               Add track
             </button>
@@ -219,18 +248,23 @@ export function TracksRoomsPanel() {
             {trackFieldErrors.color ? <span role="alert">{trackFieldErrors.color}</span> : null}
           </div>
 
-          <h3>Rooms</h3>
-          <ul>
+          <h3 className="chq-section-label">Rooms</h3>
+          <ul className="chq-settings-edit-list">
             {rooms.map((room) => (
-              <li key={room.id}>
-                {room.name} {room.capacity !== null ? `(capacity ${room.capacity})` : ''}
-                <button type="button" className="chq-link-button" onClick={() => deleteRoom(room)}>
-                  Delete
-                </button>
+              <li key={room.id} className="chq-settings-edit-row">
+                <span className="chq-settings-edit-row-value">{room.name}</span>
+                <span className="chq-settings-edit-row-meta">
+                  {room.capacity !== null ? `Capacity ${room.capacity}` : ''}
+                </span>
+                <span className="chq-settings-edit-row-actions">
+                  <button type="button" className="chq-link-button" onClick={() => deleteRoom(room)}>
+                    Delete
+                  </button>
+                </span>
               </li>
             ))}
           </ul>
-          <div>
+          <div className="chq-settings-row">
             <input
               className="chq-input"
               placeholder="New room name"

@@ -671,6 +671,82 @@
   cursor: pointer;
 }
 
+/* task-w17-f/DEC-888: Tracks & rooms edit view -- the settings row
+   vocabulary rather than bare <h3>/<ul>/<li>. Each row is a
+   name ‖ meta ‖ actions grid so a Delete action can never sit inside the
+   value it's next to. */
+.chq-settings-edit-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.chq-settings-edit-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--chq-hairline);
+}
+
+.chq-settings-edit-row:last-child {
+  border-bottom: none;
+}
+
+.chq-settings-edit-row-value {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+}
+
+.chq-settings-edit-row-meta {
+  font-size: 12px;
+  color: var(--chq-ink-2);
+  white-space: nowrap;
+}
+
+.chq-settings-edit-row-actions {
+  display: flex;
+  align-items: center;
+  justify-self: end;
+}
+
+/* task-w17-f/DEC-888: swatch picker -- the SAME TRACK_SWATCHES
+   enumeration supplies these buttons, the new-track default, and the
+   .chq-color-swatch preview, so the palette can never desync. */
+.chq-swatch-picker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.chq-swatch-picker-option {
+  padding: 0;
+  border: 1px solid var(--chq-border);
+}
+
+.chq-swatch-picker-option[aria-checked='true'] {
+  outline: 2px solid var(--chq-ink);
+  outline-offset: 2px;
+}
+
+/* task-w17-f/DEC-888: CFP 'Tracks offered' row -- the settings row
+   grammar (label ‖ value) rather than a native fieldset/legend, with the
+   empty-state hint living beneath the chipstrip inside the value column. */
+.chq-settings-row-value-stack {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.chq-settings-row-hint {
+  font-size: 12px;
+  color: var(--chq-ink-2);
+  margin: 0;
+}
+
 @media (max-width: 700px) {
   .chq-settings-tracks-rooms-grid {
     grid-template-columns: 1fr;
