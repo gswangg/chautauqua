@@ -34,27 +34,25 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   WRONG FIX -- check what it DELETES first. LANDING PAGE IS THE SLOWEST
   READ -- phase independent queries. "follow up if" IS AN OPEN DEFECT.
   FOURTH WAVE OF SAME FINDING = BUILD THE SCAN (two-directional ledger).
-- FINDINGS w50: mandate SPENT, closed with live tests. FAILURE MODES ARE
-  NOT SYMMETRIC -- order by which corpse is worse (orphan blob = garbage;
-  row without bytes = data loss). THE OPTIONAL BODY IS WHERE THE GUARD
-  FELL OFF -- name the optional case explicitly. THE UNBOUNDED SURFACE IS
-  THE ONE THAT NEVER PAGED -- cap the QUERY, never the array. A COMMENT
-  NAMING A THROW THE CALLEE NO LONGER PERFORMS LEAVES A DEAD CATCH.
-- FINDINGS w51: mandate SPENT for the THIRD wave running -- ~25 more items
-  re-probed by opening file:line and all closed. Work came from reading.
-  NEW: AN ENUMERATION IN AN OLD AMENDMENT IS A CHECKLIST THE NEXT
-  AMENDMENT MUST WALK -- DEC-713 wave-47 listed TWO single-delete sites,
-  wave-50 converted one. A BOUNDARY THAT SWALLOWS MUST STILL TELL THE
-  READER -- the swallowed send survived as on-screen copy asserting
-  delivery. TWO READERS OF ONE STORED ID: the one that VALIDATES is not
-  the one that ANSWERS. THE BUDGET LIST IS AS SAMPLED AS THE BUDGET -- SPEC
-  §7 named four hot actions, the smoke measured one. A PAYLOAD THAT
-  ALREADY CARRIES THE ANSWER MUST NOT BE SUMMARISED INTO A SENTENCE.
-- FINDINGS w52: THE TREE MOVES WHILE YOU PLAN -- three lanes verified as
-  missing landed mid-session; re-probe file:line immediately before writing
-  the task, not once at the start. A LEDGER THAT OUTLIVES THE LANE THAT
-  COULD NOT FIX IT BECOMES PERMISSION (13 "not my files" entries stood two
-  waves). TWO READERS OF ONE TABLE: the one that WRITES must resolve it the
-  way the ones that READ do. A DISPLAY-ONLY REASON CODE IS A CLAIM THE
-  WRITER MUST HONOUR. AN EMPTY RESULT IS NOT AN EMPTY PROBLEM -- branch the
-  copy on the SHORTFALL, never on the count.
+- FINDINGS w50-51: mandate SPENT twice running, ~25+ items re-probed and
+  closed by reading file:line. FAILURE MODES NOT SYMMETRIC -- order by
+  which corpse is worse. THE OPTIONAL BODY IS WHERE THE GUARD FELL OFF.
+  THE UNBOUNDED SURFACE NEVER PAGED -- cap the QUERY not the array. AN
+  ENUMERATION IN AN OLD AMENDMENT IS A CHECKLIST THE NEXT MUST WALK
+  (partial conversions recur). A BOUNDARY THAT SWALLOWS MUST STILL TELL
+  THE READER. TWO READERS OF ONE STORED ID: VALIDATES != ANSWERS. A
+  PAYLOAD CARRYING THE ANSWER MUST NOT BE SUMMARISED INTO A SENTENCE.
+- FINDINGS w52-53: mandate SPENT for the FOURTH wave running -- ~30+
+  named file:line claims re-probed and already closed each time. Work
+  comes from the gate-4 blocking set / re-reading files, not the mandate
+  list. THE TREE MOVES WHILE YOU PLAN -- re-probe file:line right before
+  writing the task. A LEDGER THAT OUTLIVES THE LANE THAT COULD NOT FIX IT
+  BECOMES PERMISSION. A DISPLAY-ONLY REASON CODE IS A CLAIM THE WRITER
+  MUST HONOUR. AN EMPTY RESULT IS NOT AN EMPTY PROBLEM -- branch on the
+  SHORTFALL, never the count. A CLASS INTERPOLATED INTO A CSS STRING IS
+  INVISIBLE TO GREP (`.${ACCENT_BOUND_CLASSES[0]}` hid a rule). A FLEX
+  PARENT OVERRIDES AN inline-flex CHILD -- default align-items:stretch
+  turns a pill into a strip; fix the CONTAINER, never the shared class.
+  REMOVING A BAD WIDTH IS NOT ADDING A BOUND. CHECK .git/refs/heads
+  BEFORE PLANNING -- a live task-wNN-* loose ref means that lane is in
+  flight; re-planning it wastes the whole wave.
