@@ -233,17 +233,25 @@ earlier item) · no-room toast copy.
 (Probe-4 closures stand: geometry-on-arm columns, place-anyway, toasts, DEC-724,
 DEC-853, accessible-name verb split, auto-schedule durations.)
 
-**Comms** (probe-4 CLOSED: DEC-792 vocabulary — Content Reminder preflights clean
-w/ per-recipient values · DEC-793 chip row + cursor insert + hint + NAMED
-preflight errors · DEC-796 rendered history, zero raw tokens; earlier: DEC-751 +
-history CTA + DEC-710): (probe-5: subject fixed — "Reminder: onboarding tasks due {due_date}") · preflight banner needs role="alert" + name ALL missing
-fields per recipient (only first named) · template-selected mode silently ignores
-textarea edits (bogus tokens no-op — either respect edits or lock the textarea) ·
-history shows no body anywhere (list projection drops bodyText — add body to the
-expanded batch view) · SEED: give the 23-recipient batch VARIED subjects so
-per-recipient rendering is evidenced · per-recipient SCHEDULED/NO-SLOT tags +
-"N have no slot" advisory in Preview (mock caption) · Recent sends minor:
-template-label column + per-row Open link.
+**Comms — GATE-1 FLEET: FAIL (report fidelity-gate1/07-comms/report.md)**:
+BROKEN: "Include reviewer feedback" ALWAYS 400s (plan select only revealed BY
+the failing click — reorder: reveal select, fetch after choice) AND the merged
+REVIEWER FEEDBACK blockquote never renders for any plan (frame centerpiece —
+implement) · History expanded rows: email overlaps status text · compose Recent
+Sends stale after send · template editor BODY textarea fixed ~185px (full-width
+~290 per frame) · **send-honesty watch: reserved-domain send returned
+{"sent":1} success — earlier builds reported the failure; verify mailer failure
+detection** · no confirm on "Send N emails" (DEC).
+MAJOR: header subtitle "N sent in 7 days · last <t>" · recipient rows carry
+"· <ref>" · UNGATE SCHEDULED/NO-SLOT tags from the calendar checkbox (frame
+shows always; footnote correct once shown) · Recent Sends per-row Open ·
+Templates page to frame: breadcrumb + H1 + New-template top-right, list w/
+descriptions + Last-used meta, Duplicate, "Use in a send" (path into compose).
+MINOR batch in report (tab pill, sublabels, step-4 badge, card title, checked
+default, timestamps/template-name column, seed template body sign-off +
+paragraphs, nav overflow at 1240, editor preselect/header/NAME input/token
+parity, History header count + search width + miss copy + de-noise).
+(Probe closures stand: DEC-792/793/796/751 + history CTA.)
 
 **Contacts** (probe-4: P1 main path CLOSED — event default proven w/ planted 2028
 event · roster advisory verbatim, keyed to selected event · born-overdue killed by
@@ -275,14 +283,28 @@ footer + helper texts; Stage/Fit as selects not pill rows; title "Enroll a
 contact" vs "Add to the pipeline"; Fit pill neutral cream not olive — frame wants
 scorecard-family olive).
 
-**Settings**: READ-ONLY SUMMARY pattern (THE item — sections as label:value rows w/
-"Edit the form"/"Change"/"Replace" drill-ins; forms only on drill) · remove new
-desktop drill behavior (static one-document rail) · rail → 7 (Import under Your data)
-· re-merge Your data (4 export pills + tokens + RESTORE API-docs link) · Change: enable
-or hide (disabled violates affordance rule) · real per-track scope values · People
-list = organiser + reviewers · render Markdown in wiki (raw "##" bug) · Tracks-and-
-rooms read-only w/ drill-in · Public pages list: Speaker gallery row per mock, pill
-states.
+**Settings — GATE-1 FLEET: FAIL, worst section (report
+fidelity-gate1/09-settings/report.md)**:
+BROKEN: tracks/rooms edit = unstyled HTML (bullets, input/Delete collisions,
+raw purple color input) · CFP "Tracks offered" native fieldset + orphaned
+status line · saved-embed rows WRAP at 1440 (actions land under wrong columns) ·
+"Reviewers 6" = people−organizers (counts speakers).
+STRUCTURAL ×6 panels: 3-col definition grid (label ‖ value ‖ right hint) not
+stacked rows · read views show the frame's LISTS (URLs+Embed code, roster,
+resources, export pills — not summaries behind Change) · section actions
+right-aligned ON the eyebrow line · rail active state + scroll-spy.
+MAJOR: CFP Edit-the-form must reach the QUESTION BUILDER · portal Change must
+edit welcome note + pills + tasks (not just resources) · embed builder: FIELDS
+SHOWN pills, EDITING·NAME + CHROMELESS eyebrows, two-col grid, Preview, un-
+overlap Copy buttons, Edit loads the embed's OWN URL · recipe caption full +
+middle column = where-pasted · New-embed row caption · date grammar + hints ·
+resource file picker styled · markdown RENDERED view in Settings · People names
++ per-track scope + aligned columns · per-row Edit tracks/rooms.
+**SEED: add 2 saved embeds · 2 API tokens · room capacities (900/220/220/60) ·
+one NOT PUBLISHED page · person display names · per-track reviewer scopes** —
+six frame elements currently unrepresentable.
+MINOR batch in report. FAITHFUL: rail inventory, read two-col tracks/rooms, CFP
+link/badge, embeds wording batch (N on·M off etc.), export pills all live.
 
 **Account — GATE-1 FLEET: FAIL (report fidelity-gate1/11-account/report.md;
 login/password geometry near-exact)**: MAJOR — /e/<bad-slug> renders an
