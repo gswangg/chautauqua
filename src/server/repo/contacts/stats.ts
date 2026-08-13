@@ -2,10 +2,11 @@
 // decomposition, no behavior change). See repo/contacts.ts for the
 // module-level contract notes.
 
-import { and, asc, desc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { findDuplicateGroupsForOrg } from "./merge";
+import { ACTIVE_INVITE_STATUSES } from "../../../domain/acceptance";
 import { DEC_711 } from "../../../decisions";
 
 void DEC_711; // speakerCount + duplicateCount: every figure the directory page states is endpoint-backed
@@ -71,7 +72,13 @@ export async function getContactStats(db: Db, orgId: string): Promise<ContactSta
     .from(schema.contact)
     .innerJoin(schema.participant, eq(schema.participant.contactId, schema.contact.id))
     .innerJoin(schema.submission, eq(schema.submission.id, schema.participant.submissionId))
-    .where(and(eq(schema.contact.orgId, orgId), eq(schema.participant.role, "speaker")))
+    .where(
+      and(
+        eq(schema.contact.orgId, orgId),
+        eq(schema.participant.role, "speaker"),
+        inArray(schema.participant.inviteStatus, [...ACTIVE_INVITE_STATUSES]),
+      ),
+    )
     .groupBy(schema.contact.id)
     .as("speaker_contacts");
   const speakerCountRows = await db.select({ count: sql<number>`count(*)` }).from(speakerSubquery);
