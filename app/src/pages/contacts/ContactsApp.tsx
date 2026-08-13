@@ -63,6 +63,10 @@ function isPanel(value: string | null): value is Panel {
 interface NavState {
   panel?: Panel;
   notice?: string;
+  // DEC-734: MergePage's footer 'Not a duplicate' navigates back the same
+  // one-shot way a merge does, naming the pair to drop from this session's
+  // Duplicates list.
+  dismissPairIds?: string[];
 }
 
 export function ContactsApp() {
@@ -309,7 +313,9 @@ export function ContactsApp() {
         </div>
       )}
 
-      {panel === 'duplicates' && <DuplicatesView onMerged={reload} initialNotice={navState?.notice} />}
+      {panel === 'duplicates' && (
+        <DuplicatesView onMerged={reload} initialNotice={navState?.notice} initialDismissPairIds={navState?.dismissPairIds} />
+      )}
 
       {panel === 'segments' && (
         <SegmentsPanel

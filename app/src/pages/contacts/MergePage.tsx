@@ -152,7 +152,9 @@ export function MergePage() {
                   checked={keepId === c.id}
                   onChange={() => setKeepId(c.id)}
                 />
-                {c.firstName} {c.lastName} — {c.email} {c.company ? `— ${c.company}` : ''}
+                {c.firstName} {c.lastName} — {c.email}
+                {c.company ? ` — ${c.company}` : ''}
+                {c.title ? ` — ${c.title}` : ''}
               </label>
             ))}
           </div>
@@ -198,6 +200,20 @@ export function MergePage() {
               onClick={() => navigate('/contacts', { state: { panel: 'duplicates' } })}
             >
               Cancel
+            </button>
+            {/* DEC-734: 'Not a duplicate' -- these records aren't the same
+                person, dismiss the pair (session-only, same mechanism as
+                DuplicatesView's own 'Keep both') and land back on the tab. */}
+            <button
+              type="button"
+              className="chq-btn chq-btn-secondary"
+              onClick={() =>
+                navigate('/contacts', {
+                  state: { panel: 'duplicates', notice: 'Marked as not a duplicate.', dismissPairIds: group.contactIds },
+                })
+              }
+            >
+              Not a duplicate
             </button>
           </div>
 

@@ -18,16 +18,27 @@ void DEC_479;
 
 export interface DuplicateGroup {
   contactIds: string[];
-  contacts: { id: string; firstName: string; lastName: string; email: string }[];
+  contacts: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    company?: string | null;
+    title?: string | null;
+  }[];
 }
 
 export async function findDuplicateGroupsForOrg(db: Db, orgId: string): Promise<DuplicateGroup[]> {
-  // DEC-554: project only the columns findDuplicateGroups (via
+  // DEC-554/DEC-734: project only the columns findDuplicateGroups (via
   // normalizeEmail/normalizedName/normalizedCompany) and this function's own
-  // output actually read -- id, email, firstName, lastName, company -- not
-  // every persisted contact field. Bounded + deterministically ordered so
-  // page 2+ of GET /api/v1/contacts/duplicates stays meaningful (DEC-466)
-  // and the scan refuses rather than silently truncating past the cap.
+  // output actually read -- id, email, firstName, lastName, company, title
+  // -- not every persisted contact field. `title` was added by DEC-734 so
+  // the merge page's identity columns (which draw the group straight from
+  // this payload, DEC-629) stop rendering '—' for a field the directory
+  // already shows -- never a second by-ids fetch. Bounded + deterministically
+  // ordered so page 2+ of GET /api/v1/contacts/duplicates stays meaningful
+  // (DEC-466) and the scan refuses rather than silently truncating past the
+  // cap.
   const scanned = await db
     .select({
       id: schema.contact.id,
@@ -35,6 +46,7 @@ export async function findDuplicateGroupsForOrg(db: Db, orgId: string): Promise<
       firstName: schema.contact.firstName,
       lastName: schema.contact.lastName,
       company: schema.contact.company,
+      title: schema.contact.title,
     })
     .from(schema.contact)
     .where(eq(schema.contact.orgId, orgId))
@@ -46,7 +58,8 @@ export async function findDuplicateGroupsForOrg(db: Db, orgId: string): Promise<
       `Org has more than ${MAX_CONTACT_DIRECTORY_SCAN} contacts; duplicate detection cannot scan the whole directory at this size. Narrow the scope or raise MAX_CONTACT_DIRECTORY_SCAN.`,
     );
   }
-  const rows: { id: string; email: string; firstName: string; lastName: string }[] = scanned;
+  const rows: { id: string; email: string; firstName: string; lastName: string; company: string | null; title: string | null }[] =
+    scanned;
   const records: ContactRecord[] = scanned.map((r) => ({
     id: r.id,
     email: r.email,
@@ -61,7 +74,14 @@ export async function findDuplicateGroupsForOrg(db: Db, orgId: string): Promise<
     contacts: ids.map((id) => {
       const r = byId.get(id);
       if (!r) throw new Error(`duplicate group referenced unknown contact ${id}`);
-      return { id: r.id, firstName: r.firstName, lastName: r.lastName, email: r.email };
+      return {
+        id: r.id,
+        firstName: r.firstName,
+        lastName: r.lastName,
+        email: r.email,
+        company: r.company,
+        title: r.title,
+      };
     }),
   }));
   // DEC-466: the query above has no ORDER BY, so `rows` (and therefore
