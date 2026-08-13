@@ -519,20 +519,27 @@ publicSubmitRoutes.post("/submit/:eventSlug", async (c) => {
   // (file.stream(), not file.arrayBuffer()) so a large upload is never
   // buffered whole in memory.
   const fileStore = makeFileStore(c.env.FILES);
-  const preparedFiles: { fieldId: string; file: File; r2Key: string; validated: ValidUpload }[] = [];
-  for (const field of fileFields) {
-    // DEC-132: only proceed for fields that survived validation with the
-    // "pending" placeholder (visible + valid upload) — hidden fields never
-    // reach `answers[field.id] = "pending"` above, so `cleaned[field.id]`
-    // is undefined here and this loop skips them entirely.
-    if (cleaned[field.id] !== "pending") continue;
-    const file = fileAnswers[field.id];
-    const validated = fileValidations[field.id];
-    if (!file || !validated) continue;
-    const r2Key = `sub/pending/${newId()}-${sanitizeFilenameForKey(file.name)}`;
-    await fileStore.put(r2Key, file.stream(), validated.servedContentType);
-    preparedFiles.push({ fieldId: field.id, file, r2Key, validated });
-  }
+  // DEC-132: only proceed for fields that survived validation with the
+  // "pending" placeholder (visible + valid upload) — hidden fields never
+  // reach `answers[field.id] = "pending"` above, so `cleaned[field.id]` is
+  // undefined here and those fields are filtered out before upload.
+  const toUpload = fileFields
+    .filter((field) => cleaned[field.id] === "pending")
+    .map((field) => ({ fieldId: field.id, file: fileAnswers[field.id], validated: fileValidations[field.id] }))
+    .filter(
+      (entry): entry is { fieldId: string; file: File; validated: ValidUpload } =>
+        entry.file !== undefined && entry.validated !== undefined,
+    );
+  // DEC-530: R2 puts fan out in parallel (Promise.all), not one await per
+  // field in a loop — order is preserved via .map so preparedFiles still
+  // lines up 1:1 with toUpload regardless of which put settles first.
+  const preparedFiles: { fieldId: string; file: File; r2Key: string; validated: ValidUpload }[] = await Promise.all(
+    toUpload.map(async ({ fieldId, file, validated }) => {
+      const r2Key = `sub/pending/${newId()}-${sanitizeFilenameForKey(file.name)}`;
+      await fileStore.put(r2Key, file.stream(), validated.servedContentType);
+      return { fieldId, file, r2Key, validated };
+    }),
+  );
 
   // The DB write phase is one committed unit: any failure past this point
   // (including a thrown error from any of these repo calls) deletes every
@@ -564,9 +571,8 @@ publicSubmitRoutes.post("/submit/:eventSlug", async (c) => {
 
     await upsertSubmissionAnswers(db, submission.id, cleaned);
   } catch (err) {
-    for (const pf of preparedFiles) {
-      await fileStore.delete(pf.r2Key);
-    }
+    // DEC-530: rollback deletes fan out in parallel too.
+    await Promise.all(preparedFiles.map((pf) => fileStore.delete(pf.r2Key)));
     if (submission !== undefined) {
       await commitSubmissionDelete(db, event.id, [submission.id]);
     }
