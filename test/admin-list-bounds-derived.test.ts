@@ -74,6 +74,8 @@ describe("GET /api/v1/review/plans/:id/queue (DEC-466/461(e) bounds)", () => {
         listSubmissionIdsRatedBy: vi.fn(async () => new Set<string>()),
         listEvaluationScoresForReviewer: vi.fn(async () => new Map()),
         listRecusalsForReviewer: vi.fn(async () => []),
+        // DEC-857: no format answers in this fixture set.
+        listFormatLabelsBySubmission: vi.fn(async () => new Map()),
       };
     });
     const { reviewReviewerRoutes } = await import("../src/routes/review/reviewer");

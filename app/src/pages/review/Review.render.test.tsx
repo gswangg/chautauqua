@@ -360,6 +360,72 @@ describe('ReviewPage render smoke: reviewer', () => {
     expect(rows[1]).not.toHaveTextContent('Complete');
   });
 
+  // DEC-857: a row's action link names the action it actually offers, the
+  // ref renders exactly once (title alone), and the format meta line only
+  // renders when the queue item carries a non-null format.
+  it('names the row action by scored state, renders the ref once, and prints format meta only when present', async () => {
+    mockApi({
+      'GET /api/v1/me': reviewerMe(),
+      [`GET /api/v1/review/plans/${PLAN_ID}`]: planWithNullDates(),
+      [`GET /api/v1/review/plans/${PLAN_ID}/queue`]: {
+        ...listEnvelope([
+          {
+            submissionId: 'sub-1',
+            ref: 'S-001',
+            title: 'A Talk About Testing',
+            ratingsCount: 0,
+            alreadyRatedByMe: false,
+            myScore: null,
+            format: 'Talk (30 min)',
+          },
+          {
+            submissionId: 'sub-2',
+            ref: 'S-002',
+            title: 'Another Talk',
+            ratingsCount: 1,
+            alreadyRatedByMe: true,
+            myScore: 4.5,
+            format: null,
+          },
+        ]),
+        open: true,
+        recused: [],
+        planName: 'Keynote Track Review',
+        scopeTrackName: null,
+        closeDate: null,
+      },
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/plans/${PLAN_ID}`]}>
+        <ReviewPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('A Talk About Testing')).toBeInTheDocument();
+    });
+
+    const rows = screen.getAllByRole('listitem');
+    expect(rows[0]).toHaveTextContent('Score this');
+    expect(rows[0]).toHaveTextContent('Talk (30 min)');
+    expect(rows[1]).toHaveTextContent('Change your score');
+    expect(rows[1]).not.toHaveTextContent('Score this');
+
+    // The ref string appears exactly once within each row's textContent.
+    const countOccurrences = (haystack: string, needle: string) =>
+      haystack.split(needle).length - 1;
+    expect(countOccurrences(rows[0]?.textContent ?? '', 'S-001')).toBe(1);
+    expect(countOccurrences(rows[1]?.textContent ?? '', 'S-002')).toBe(1);
+
+    // No format meta text leaks into the second (format: null) row, and the
+    // first row's format meta renders exactly one element (row-scoped, since
+    // the page header may render its own .chq-review-plan-meta subtitle).
+    expect(rows[1]).not.toHaveTextContent('Talk (30 min)');
+    expect(rows[0]?.querySelectorAll('.chq-review-plan-meta').length).toBe(1);
+    expect(rows[1]?.querySelectorAll('.chq-review-plan-meta').length).toBe(0);
+  });
+
   // DEC-845: the subtitle names the CALLER's own scope track (or "All
   // tracks") and "closes in N days" -- omitted entirely when the plan has
   // no close date. The progress bar reads scored/total.

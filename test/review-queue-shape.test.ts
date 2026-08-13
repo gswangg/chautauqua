@@ -66,6 +66,8 @@ vi.mock("../src/server/repo/review", async () => {
     // scoping in these fixtures.
     getReviewerScopeTrackId: vi.fn(async () => null),
     getTrackNamesByIds: vi.fn(async () => new Map()),
+    // DEC-857: sub-1 carries a format answer, sub-2 has none.
+    listFormatLabelsBySubmission: vi.fn(async () => new Map([["sub-1", "Talk (30 min)"]])),
   };
 });
 
@@ -157,5 +159,19 @@ describe("DEC-239: reviewer queue item wire shape", () => {
     expect(body.items).toEqual([]);
     expect(Array.isArray(body.recused)).toBe(true);
     expect(body.recused).toEqual([]);
+  });
+
+  // DEC-857: the queue envelope carries `format` -- the stored answer LABEL
+  // verbatim, null when the submission has no format answer.
+  it("carries format on each queue item, null when unanswered", async () => {
+    const app = await buildApp({ userId: "u1", role: "organizer", orgId: ORG_A });
+    const res = await app.request(`/api/v1/review/plans/${planRecord.id}/queue`);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      items: { submissionId: string; format: string | null }[];
+    };
+    const bySubmission = new Map(body.items.map((i) => [i.submissionId, i]));
+    expect(bySubmission.get("sub-1")?.format).toBe("Talk (30 min)");
+    expect(bySubmission.get("sub-2")?.format).toBeNull();
   });
 });

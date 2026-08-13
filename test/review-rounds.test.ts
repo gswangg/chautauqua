@@ -175,6 +175,8 @@ vi.mock("../src/server/repo/review", async () => {
     // scoping in this fixture set.
     getReviewerScopeTrackId: vi.fn(async () => null),
     getTrackNamesByIds: vi.fn(async () => new Map()),
+    // DEC-857: no format answers in this fixture set.
+    listFormatLabelsBySubmission: vi.fn(async () => new Map()),
   };
 });
 
