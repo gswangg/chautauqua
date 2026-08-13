@@ -253,15 +253,16 @@ describe("public submit: mailer failure is best-effort (DEC-237/DEC-238)", () =>
     expect((emailLogInserts[0] as any).provider).toBe("resend");
   });
 
-  // DEC-547 (w43-b): makeMailer(db, c.env) itself used to sit above the try
-  // that wraps mailer.send — a misconfigured environment (no RESEND_API_KEY,
-  // not DEV_MODE) throws synchronously from makeMailer, which the ABOVE test
-  // can't exercise (its mailer *is* constructed fine; only send() rejects).
-  // That construction failure must fall into the exact same best-effort path
-  // as a send() rejection: confirmation page renders, submission persists,
-  // no email_log row is written (the mailer that would have written it was
-  // never built).
-  it("still returns the confirmation page and persists the submission when makeMailer() itself throws (misconfigured env)", async () => {
+  // DEC-547 wave-43 amendment: a misconfigured environment (no RESEND_API_KEY,
+  // DEV_MODE unset) no longer throws from makeMailer at all — makeMailer NEVER
+  // throws; it returns UnconfiguredMailer (src/mail/unconfigured.ts), which
+  // writes the email_log row (provider 'none', status 'failed') and only then
+  // throws MailNotConfiguredError from *send*, inside the route's existing
+  // best-effort try/catch. So the misconfigured deployment must look exactly
+  // like the send()-rejection case above: confirmation page renders, the
+  // submission persists, and the attempt is auditable as one 'failed' row —
+  // never a 500 on a submit whose row is already committed.
+  it("still returns the confirmation page and persists the submission on a misconfigured (unconfigured-mailer) env", async () => {
     const { db, inserts } = fakeDb(selectQueueFor());
     const app = appWithDb(db);
     const req = submitForm();
@@ -269,8 +270,8 @@ describe("public submit: mailer failure is best-effort (DEC-237/DEC-238)", () =>
     const res = await app.request(req, undefined, {
       KV: fakeKv(),
       FILES: fakeFilesBucket(),
-      // No RESEND_API_KEY and DEV_MODE unset: makeMailer throws synchronously
-      // before ever reaching mailer.send.
+      // No RESEND_API_KEY and DEV_MODE unset: mailConfigStatus reports
+      // provider 'none', so makeMailer hands back UnconfiguredMailer.
       MAIL_FROM_EMAIL: "noreply@example.com",
       MAIL_FROM_NAME: "Chautauqua",
     } as unknown as AppEnv["Bindings"]);
@@ -284,12 +285,15 @@ describe("public submit: mailer failure is best-effort (DEC-237/DEC-238)", () =>
     );
     expect(submissionInserts).toHaveLength(1);
 
-    // No mailer was ever constructed, so no email_log row was written at all
-    // (contrast with the send()-rejection test above, which logs a 'failed'
-    // row via ResendMailer).
+    // The attempt is still auditable: UnconfiguredMailer logs before it
+    // throws, so exactly one row lands — provider 'none' (not 'resend', which
+    // was never contacted) and DEC-923's single failure word.
     const emailLogInserts = inserts.filter(
       (v) => typeof v === "object" && v !== null && !Array.isArray(v) && "toEmail" in (v as object),
     );
-    expect(emailLogInserts).toHaveLength(0);
+    expect(emailLogInserts).toHaveLength(1);
+    expect((emailLogInserts[0] as any).status).toBe("failed");
+    expect((emailLogInserts[0] as any).provider).toBe("none");
+    expect((emailLogInserts[0] as any).toEmail).toBe("ada@example.com");
   });
 });
