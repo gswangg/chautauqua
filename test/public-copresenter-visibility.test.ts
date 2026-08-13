@@ -41,16 +41,21 @@ function speakerIds(db: InstanceType<typeof DatabaseSync>): string[] {
 describe("DEC-656: a speaker-added co-presenter (visible=false) is excluded from the public speakers gate", () => {
   it("does not appear while visible=0 (the state addCoPresenter writes), and appears once flipped to 1", () => {
     const db = makeDb();
-    // Mirrors exactly what addCoPresenter inserts: inviteStatus='none',
-    // visible=false — an active participant that is not yet published.
-    db.exec("INSERT INTO participant VALUES ('p1', 'sub-1', 'contact-added', 0, 'none')");
+    // Mirrors exactly what addCoPresenter inserts (DEC-317 Amendment, wave
+    // 37): inviteStatus='invited', visible=false — a not-yet-active
+    // participant that is not yet published either.
+    db.exec("INSERT INTO participant VALUES ('p1', 'sub-1', 'contact-added', 0, 'invited')");
 
     expect(speakerIds(db)).not.toContain("contact-added");
 
-    // Organizer flips the existing visibility toggle (DEC-656's only path
-    // to publication) — no new endpoint, just participant.visible=1.
+    // Flipping visible=1 alone is not enough — 'invited' is still excluded
+    // by the invite_status gate until the co-presenter accepts.
     db.exec("UPDATE participant SET visible = 1 WHERE id = 'p1'");
+    expect(speakerIds(db)).not.toContain("contact-added");
 
+    // Once accepted (and the organizer flips the existing visibility
+    // toggle, DEC-656's only path to publication), the row is public.
+    db.exec("UPDATE participant SET invite_status = 'accepted' WHERE id = 'p1'");
     expect(speakerIds(db)).toContain("contact-added");
   });
 
