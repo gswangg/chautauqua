@@ -8,9 +8,13 @@
   color: var(--chq-ink);
 }
 
-.chq-detail-topbar {
+/* DEC-908 ref row: '‹ All submissions', a muted '<ref> · N of M' string,
+   then the right-aligned Previous/Next TEXT links. One line above the
+   two-column grid, replacing the old bare position header. */
+.chq-detail-ref-row {
   display: flex;
   align-items: center;
+  gap: 16px;
   margin-bottom: 0.75rem;
 }
 
@@ -19,11 +23,26 @@
   font-weight: 700;
 }
 
+.chq-detail-ref-position {
+  font-size: 13px;
+  color: var(--chq-muted);
+}
+
 .chq-detail-heading {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
+}
+
+/* DEC-908 eyebrow: track names + session format, above the H1. */
+.chq-detail-eyebrow {
+  margin: 0 0 8px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--chq-muted);
 }
 
 .chq-detail-heading h1 {
@@ -54,31 +73,20 @@
   color: var(--chq-muted);
 }
 
-/* DEC-761: '‹ N of M ›' navigation, absent (not disabled, DEC-733) at
-   either end. */
+/* DEC-761/DEC-908: 'Previous'/'Next' TEXT links, right-aligned on the ref
+   row, absent (not disabled, DEC-733) at either end. */
 .chq-detail-position {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 14px;
   flex-shrink: 0;
-  padding-top: 0.5rem;
+  margin-left: auto;
   font-size: 13px;
-  font-weight: 600;
-  /* --chq-ink-muted is not a token that exists; the literal fallback was the
-     one actually rendering. It is byte-identical to --chq-muted, so this is
-     the same colour through the real token (DEC-383: no hex literals). */
-  color: var(--chq-muted);
+  font-weight: 700;
 }
 
 .chq-detail-position-prev,
 .chq-detail-position-next {
-  font-size: 15px;
-  font-weight: 700;
-}
-
-/* 'N of M' never wraps between the two arrows (DEC-379: the class was
-   already on the span; this is the rule that closes it). */
-.chq-detail-position-count {
   white-space: nowrap;
 }
 
@@ -193,20 +201,51 @@
   color: var(--chq-brand-hover);
 }
 
-/* History rows: `when | what`, the pipe purely visual (aria-hidden). */
+/* DEC-908: 'Session details' trailing section holds its three sub-blocks
+   (Tracks/Format/Participants) stacked, each own its own quiet sub-heading
+   -- these are NOT counted sections (no border-bottom rule, no numbering)
+   since the wrapping section already carries both. */
+.chq-detail-session-details {
+  min-width: 0;
+}
+
+.chq-detail-session-details-body {
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+}
+
+.chq-detail-subsection {
+  min-width: 0;
+}
+
+.chq-detail-subsection-title {
+  margin: 0 0 12px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--chq-muted);
+}
+
+/* History rows: the frame's 96px/1fr 'when | what' grid IS the separator --
+   no literal ' | ' text (DEC-908). */
 .chq-submission-history-entry {
   display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .chq-submission-history-row {
+  display: grid;
+  grid-template-columns: 96px 1fr;
+  gap: 12px;
+  align-items: baseline;
   overflow-wrap: anywhere;
 }
 
 .chq-submission-history-when {
+  font-size: 12px;
   color: var(--chq-muted);
 }
 

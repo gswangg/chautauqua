@@ -47,4 +47,20 @@ describe('buildAnswerRows', () => {
   it('returns an empty list for empty answers', () => {
     expect(buildAnswerRows({}, fields)).toEqual([]);
   });
+
+  // DEC-908: a locked built-in field answer (matched via the SAME
+  // lockedFieldName helper the builder uses -- never a hand-written list)
+  // and a blank/whitespace-only answer are both excluded, while a genuine
+  // custom-field answer still renders normally.
+  it('excludes a locked built-in field answer and a blank answer', () => {
+    const answers = {
+      f1: 'Advanced',
+      title: 'Should never render as a Form Answers row',
+      description: '   ',
+      'form1:first_name': 'Also locked, per-form-PK form',
+      f2: '',
+    };
+    const rows = buildAnswerRows(answers, fields);
+    expect(rows).toEqual([{ fieldId: 'f1', label: 'Level', displayValue: 'Advanced' }]);
+  });
 });
