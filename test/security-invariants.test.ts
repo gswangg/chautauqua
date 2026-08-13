@@ -30,7 +30,7 @@ const CSRF_MIDDLEWARE = ["csrfJson", "csrfForm", "csrfFormOrHeader"];
 export const CSRF_EXEMPT: Array<{ file: string; line: number; reason: string }> = [
   {
     file: "public/submit.tsx",
-    line: 264,
+    line: 265,
     reason:
       "DEC-626: the public CFP post checks CSRF in-body via the shared " +
       "checkDoubleSubmitCsrf predicate (DEC-544) instead of the csrfForm " +
