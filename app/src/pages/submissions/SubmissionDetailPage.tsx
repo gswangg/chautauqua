@@ -1051,7 +1051,7 @@ export function SubmissionDetailPage() {
               {/* Content approval lives on the content screen (worklist /
                   deliverable detail), not here -- this page only points at
                   it (DEC-743). */}
-              <Link to={`/content?submissionId=${id}`} className="chq-btn chq-btn-tertiary chq-detail-content-link">
+              <Link to={`/content/${id}`} className="chq-btn chq-btn-tertiary chq-detail-content-link">
                 Review the content &rsaquo;
               </Link>
             </div>

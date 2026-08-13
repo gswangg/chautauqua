@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { apiGet, apiList, apiPost, ApiError } from '../../lib/api';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { DeliverableDetail } from './DeliverableDetail';
@@ -34,8 +34,13 @@ const DEFAULT_WORKLIST_TAB: WorklistTab = 'needs_decision';
 /** J8 content review loop entry point: worklist -> per-session deliverable detail. */
 export function ContentApp() {
   const { eventId, loading: eventLoading, error: eventError } = useCurrentEvent();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const submissionId = searchParams.get('submissionId');
+  // DEC-935: the id is a route param (/content/:submissionId), not a
+  // ?submissionId= query param -- /content itself carries no param, so
+  // this reads as undefined there.
+  const { submissionId: routeSubmissionId } = useParams<{ submissionId: string }>();
+  const submissionId = routeSubmissionId ?? null;
   // DEC-881: defaults to 'needs_decision' — see DEFAULT_WORKLIST_TAB above.
   const tab = (searchParams.get('tab') as WorklistTab | null) ?? DEFAULT_WORKLIST_TAB;
   const view = (searchParams.get('view') as ContentView | null) ?? 'worklist';
@@ -152,19 +157,14 @@ export function ContentApp() {
   }, [submissionId, worklistMatch, fetchedSubmissionId]);
 
   function selectSubmission(id: string) {
-    setSearchParams((prev) => {
-      const next = new URLSearchParams(prev);
-      next.set('submissionId', id);
-      return next;
-    });
+    // DEC-935: the id travels in the path (/content/:submissionId);
+    // ?tab=/?view=/?page= worklist state carries over unchanged so
+    // backToWorklist lands where the row was opened from.
+    navigate({ pathname: `/content/${id}`, search: searchParams.toString() });
   }
 
   function backToWorklist() {
-    setSearchParams((prev) => {
-      const next = new URLSearchParams(prev);
-      next.delete('submissionId');
-      return next;
-    });
+    navigate({ pathname: '/content', search: searchParams.toString() });
     // Whichever list we're returning to may be stale (e.g. an upload just
     // happened in DeliverableDetail) — reload it rather than trusting
     // first-mount data.
@@ -206,7 +206,6 @@ export function ContentApp() {
     setSearchParams((prev) => {
       const params = new URLSearchParams(prev);
       params.set('view', next);
-      params.delete('submissionId');
       return params;
     });
     // Reload whichever list backs the view being switched to, so a
