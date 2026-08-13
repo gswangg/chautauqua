@@ -216,7 +216,7 @@ describe('AgendaPage render smoke', () => {
 
     const buttons = screen.getAllByRole('button');
     const names = buttons.map((b) => b.getAttribute('aria-label')).filter(Boolean);
-    expect(names).toEqual(expect.arrayContaining(['S-001: Overlapping Talk A (conflict)', 'S-002: Overlapping Talk B (conflict)', 'S-003: Unplaced Talk']));
+    expect(names).toEqual(expect.arrayContaining(['S-001: Overlapping Talk A (conflict)', 'S-002: Overlapping Talk B (conflict)', 'S-003: Unplaced Talk — click to select, then choose a time slot']));
   });
 
   // DEC-570: clicking an unscheduled card arms it, revealing empty-cell
@@ -232,7 +232,7 @@ describe('AgendaPage render smoke', () => {
       expect(screen.getByText('Overlapping Talk A')).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'S-003: Unplaced Talk' }));
+    fireEvent.click(screen.getByRole('button', { name: 'S-003: Unplaced Talk — click to select, then choose a time slot' }));
 
     expect(screen.getByText(/Placing S-003 — Esc to cancel/)).toBeInTheDocument();
 
@@ -371,7 +371,7 @@ describe('AgendaPage render smoke', () => {
       expect(screen.getByText('Overlapping Talk A')).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'S-003: Unplaced Talk' }));
+    fireEvent.click(screen.getByRole('button', { name: 'S-003: Unplaced Talk — click to select, then choose a time slot' }));
     expect(screen.getByText(/Placing S-003 — Esc to cancel/)).toBeInTheDocument();
 
     // sub-1 (10:00-11:00) and sub-2 (10:30-11:30) both cover 10:30am in
@@ -511,7 +511,7 @@ describe('AgendaPage render smoke', () => {
     expect(document.querySelectorAll('.chq-day-grid-room-header')).toHaveLength(1);
 
     // Present once armed.
-    fireEvent.click(screen.getByRole('button', { name: 'S-003: Unplaced Talk' }));
+    fireEvent.click(screen.getByRole('button', { name: 'S-003: Unplaced Talk — click to select, then choose a time slot' }));
     expect(screen.getByText('No room yet')).toBeInTheDocument();
     expect(document.querySelectorAll('.chq-day-grid-room-header')).toHaveLength(2);
   });
@@ -529,7 +529,7 @@ describe('AgendaPage render smoke', () => {
       expect(screen.getByText('Overlapping Talk A')).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'S-003: Unplaced Talk' }));
+    fireEvent.click(screen.getByRole('button', { name: 'S-003: Unplaced Talk — click to select, then choose a time slot' }));
     expect(screen.getByText(/Placing S-003 — Esc to cancel/)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
