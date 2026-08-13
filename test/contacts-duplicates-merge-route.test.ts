@@ -136,8 +136,7 @@ describe("POST /api/v1/contacts/merge roundtrip from a duplicates response (DEC-
 
     // 2) Merge, using exactly the ids the duplicates endpoint returned.
     const { db: mergeDb, updates, deletes } = fakeDb([
-      [KEEP.id === keepId ? KEEP : MERGE], // requireOwnedContact(keepId)
-      [KEEP.id === mergeId ? KEEP : MERGE], // requireOwnedContact(mergeId)
+      [KEEP, MERGE], // requireOwnedContacts([keepId, mergeId]) -- one set-based select
       [KEEP.id === keepId ? KEEP : MERGE], // mergeContacts: findContactById(keepId)
       [KEEP.id === mergeId ? KEEP : MERGE], // mergeContacts: findContactById(mergeId)
       [], // mergeContacts: user rows for keepId (none)
@@ -180,9 +179,7 @@ describe("POST /api/v1/contacts/merge set-based mergeIds (DEC-629)", () => {
     // org (a foreign/unknown contact), so the whole request fails before
     // mergeContacts is ever called.
     const { db, updates, deletes } = fakeDb([
-      [KEEP], // requireOwnedContact(keepId)
-      [MERGE], // requireOwnedContact(mergeIds[0])
-      [], // requireOwnedContact(mergeIds[1]) -- not found in this org
+      [KEEP, MERGE], // requireOwnedContacts([keepId, mergeIds[0], mergeIds[1]]) -- mergeIds[1] absent
     ]);
     const app = appWithDbAndAuth(db, ORGANIZER_A);
 

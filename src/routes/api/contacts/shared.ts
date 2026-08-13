@@ -2,8 +2,10 @@
 // split out of the former monolithic src/routes/api/contacts.ts for
 // contention (803-line hotspot) reasons only; no behavior change.
 
+import { and, eq, inArray } from "drizzle-orm";
 import { ApiError } from "../../../server/http";
 import * as repo from "../../../server/repo/contacts";
+import * as schema from "../../../db/schema";
 import type { Db } from "../../../server/context";
 import type { SegmentRule } from "../../../domain/contacts";
 
@@ -62,6 +64,28 @@ export async function requireOwnedContact(db: Db, id: string, orgId: string): Pr
   const contact = await repo.findContactForOrg(db, id, orgId);
   if (!contact) throw new ApiError("not_found", "Contact not found");
   return contact;
+}
+
+// DEC-629 amendment (wave 49): set-based twin of requireOwnedContact. Proves
+// org ownership of a whole id set in ONE select (inArray + orgId), instead
+// of one sequential SELECT per id. Walks `ids` in REQUEST order so the FIRST
+// id missing from the org's contacts throws the identical ApiError the
+// singular helper throws -- a foreign or unknown id anywhere in the set
+// still yields zero writes, same as before.
+export async function requireOwnedContacts(db: Db, ids: string[], orgId: string): Promise<Map<string, repo.ContactRow>> {
+  const rows = await db
+    .select()
+    .from(schema.contact)
+    .where(and(inArray(schema.contact.id, ids), eq(schema.contact.orgId, orgId)));
+  const byId = new Map<string, repo.ContactRow>();
+  for (const row of rows) {
+    const contact = repo.toRow(row);
+    byId.set(contact.id, contact);
+  }
+  for (const id of ids) {
+    if (!byId.has(id)) throw new ApiError("not_found", "Contact not found");
+  }
+  return byId;
 }
 
 export async function requireOwnedSegment(db: Db, id: string, orgId: string): Promise<repo.SegmentRow> {

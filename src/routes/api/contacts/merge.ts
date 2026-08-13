@@ -9,7 +9,7 @@ import { ApiError, parseBoundedIdArray } from "../../../server/http";
 import * as repo from "../../../server/repo/contacts";
 import { previewMerge } from "../../../domain/contacts";
 import { toContactRecord } from "../../../server/repo/contacts/rows";
-import { currentOrgId, asRecord, serializeContact, requireOwnedContact } from "./shared";
+import { currentOrgId, asRecord, serializeContact, requireOwnedContacts } from "./shared";
 
 export function registerMergeRoutes(contactsRoutes: Hono<AppEnv>): void {
   contactsRoutes.post("/contacts/merge", csrfJson, async (c) => {
@@ -23,21 +23,20 @@ export function registerMergeRoutes(contactsRoutes: Hono<AppEnv>): void {
     }
     const mergeIds = parseBoundedIdArray(body.mergeIds, "mergeIds", { maxCount: 20 });
 
-    // DEC-629: every id (keepId + all mergeIds) must be verified
-    // org-scoped BEFORE any write, so one foreign or unknown id means zero
-    // writes -- not a partial merge of whichever ids happened to be checked
-    // first.
-    await requireOwnedContact(c.var.db, body.keepId, orgId);
-    for (const mergeId of mergeIds) {
-      await requireOwnedContact(c.var.db, mergeId, orgId);
-    }
+    // DEC-629 (amended wave 49): every id (keepId + all mergeIds) must be
+    // verified org-scoped BEFORE any write, so one foreign or unknown id
+    // means zero writes -- not a partial merge of whichever ids happened to
+    // be checked first. Proved in ONE select over the whole set, not one
+    // sequential SELECT per id.
+    await requireOwnedContacts(c.var.db, [body.keepId, ...mergeIds], orgId);
 
     const merged = await repo.mergeContacts(c.var.db, body.keepId, mergeIds);
     return c.json(serializeContact(merged));
   });
 
   // DEC-705: preview beside the merge route, org-scoped/authz'd identically
-  // (requireOwnedContact on every id BEFORE anything else). Computes its
+  // (requireOwnedContacts over the whole id set BEFORE anything else).
+  // Computes its
   // report by running the same pure-core planMerge fold the POST route's
   // repo.mergeContacts uses (via previewMerge) over the FULL contact
   // records -- never a second implementation of the merge rules -- so the
@@ -58,11 +57,10 @@ export function registerMergeRoutes(contactsRoutes: Hono<AppEnv>): void {
       throw new ApiError("invalid", "ids must contain at least one id other than keep", { ids: "required" });
     }
 
-    const keepRow = await requireOwnedContact(c.var.db, keepId, orgId);
-    const duplicateRows = [];
-    for (const mergeId of Array.from(new Set(mergeIds))) {
-      duplicateRows.push(await requireOwnedContact(c.var.db, mergeId, orgId));
-    }
+    const dedupedMergeIds = Array.from(new Set(mergeIds));
+    const owned = await requireOwnedContacts(c.var.db, [keepId, ...dedupedMergeIds], orgId);
+    const keepRow = owned.get(keepId)!;
+    const duplicateRows = dedupedMergeIds.map((id) => owned.get(id)!);
 
     const fields = previewMerge(
       toContactRecord(keepRow),
