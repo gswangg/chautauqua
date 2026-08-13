@@ -18,7 +18,7 @@ export function BackLink(props: { event: PublicEvent; from: Surface; base?: Surf
 
 export function sessionTimeLabel(day: string | null, startMin: number | null, endMin: number | null): string | null {
   if (day === null || startMin === null || endMin === null) return null;
-  // w1-i: `day` is a raw 'YYYY-MM-DD' (DEC-010); route it through the same
+  // DEC-782: `day` is a raw 'YYYY-MM-DD' (DEC-010); route it through the same
   // shared formatter every other public surface's day heading uses
   // (formatDay -> src/lib/event-time.ts) instead of interpolating the ISO
   // string directly.
@@ -111,13 +111,25 @@ export function SessionDetailContent(props: {
           ))}
         </p>
         {session.description ? <p>{session.description}</p> : null}
-        {/* w1-i: the list card already has a Save/Saved itinerary control
-            (SessionCard in cards.tsx) — the drill-in detail page had none,
-            so a session opened from a search result or a shared link had no
-            way to add it to the itinerary without navigating back. Same
-            .chq-itinerary-toggle class + localStorage key
-            (chq_itinerary_<slug>), driven by the SAME ItineraryScript. */}
-        {!embed ? <ItineraryToggle sessionId={session.id} wrapperClass="chq-pub-save chq-pub-detail-itinerary" /> : null}
+        {/* DEC-782: the list card already has a Save/Saved itinerary control
+            (SessionCard in cards.tsx) — the drill-in detail page had none, so
+            a session opened from a search result or a shared link had no way
+            to add it to the itinerary without navigating back. ONE markup
+            vocabulary: the SAME ItineraryToggle component the card renders,
+            the same localStorage key (chq_itinerary_<slug>), driven by the
+            SAME ItineraryScript — plus the picked-count/.ics CTA the sessions
+            rail carries, so the control has a visible consequence here too. */}
+        {!embed ? (
+          <>
+            <ItineraryToggle sessionId={session.id} wrapperClass="chq-pub-save chq-pub-detail-itinerary" />
+            <p>
+              <span id="chq-ics-count">0 picked</span> ·{" "}
+              <a id="chq-ics-link" class="chq-pub-itinerary-cta" href={`/e/${event.slug}/schedule.ics`} aria-disabled="true">
+                Download .ics
+              </a>
+            </p>
+          </>
+        ) : null}
       </div>
       {!embed ? <ItineraryScript eventSlug={event.slug} /> : null}
     </>
