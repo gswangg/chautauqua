@@ -1029,6 +1029,17 @@
   color: var(--chq-ink);
 }
 
+/* DEC-882: the open plan's status line under the title -- "Open · N of M
+   reviews in", read straight off the progress aggregate. It is a caption,
+   not a heading, so it takes the caption's muted voice. */
+.chq-review-plan-open-status {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--chq-muted);
+  line-height: 1.4;
+  margin: 0;
+}
+
 /* An <input> carrying the title type -- same visual weight as
    .chq-page-title, but editable and borderless until focused. */
 .chq-review-editor-title-input {
