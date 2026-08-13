@@ -55,6 +55,11 @@ const SESSION: import("../src/server/repo/public").PublicSessionDetail = {
   format: "talk",
 };
 
+const LONG_DESCRIPTION =
+  "This session covers a comprehensive tour of itinerary building tools, from " +
+  "the earliest calculating engines to modern conference scheduling software, " +
+  "with plenty of worked examples along the way for attendees to follow.";
+
 const TRACK_A = { id: "trackA", name: "Track A", color: null };
 const TRACK_B = { id: "trackB", name: "Track B", color: null };
 
@@ -103,6 +108,30 @@ const SPEAKER_NO_PHOTO: import("../src/server/repo/public").PublicSpeakerWithSes
   sessions: [],
 };
 
+const SPEAKER_LONG_BIO: import("../src/server/repo/public").PublicSpeakerDetail = {
+  contactId: "spk-longbio",
+  firstName: "Ada",
+  lastName: "Lovelace",
+  title: "Engineer",
+  company: "Acme",
+  headshotUrl: null,
+  bio: LONG_DESCRIPTION,
+  socialLinks: [],
+  sessions: [],
+};
+
+const SPEAKER_SHORT_BIO: import("../src/server/repo/public").PublicSpeakerDetail = {
+  contactId: "spk-shortbio",
+  firstName: "Grace",
+  lastName: "Hopper",
+  title: "Admiral",
+  company: null,
+  headshotUrl: null,
+  bio: "A short bio.",
+  socialLinks: [],
+  sessions: [],
+};
+
 vi.mock("../src/server/repo/public", async () => {
   const actual = await vi.importActual<typeof import("../src/server/repo/public")>("../src/server/repo/public");
   return {
@@ -127,6 +156,11 @@ vi.mock("../src/server/repo/public", async () => {
       return { items, total: items.length };
     }),
     getPublicSpeakers: vi.fn(async () => ({ items: [SPEAKER_NO_PHOTO], total: 1 })),
+    getPublicSpeakerDetail: vi.fn(async (_db: unknown, _event: unknown, contactId: string) => {
+      if (contactId === SPEAKER_LONG_BIO.contactId) return SPEAKER_LONG_BIO;
+      if (contactId === SPEAKER_SHORT_BIO.contactId) return SPEAKER_SHORT_BIO;
+      return null;
+    }),
   };
 });
 
@@ -269,5 +303,57 @@ describe("w1-i: photo-less speaker cards get an accessible name", () => {
     expect(res.status).toBe(200);
     const html = await res.text();
     expect(html).toContain(`aria-label="${SPEAKER_NO_PHOTO.firstName} ${SPEAKER_NO_PHOTO.lastName}"`);
+  });
+
+  it("the visible name link also names the speaker (non-empty accessible name via link text)", async () => {
+    const app = buildApp();
+    const res = await app.request(`/e/${EVENT.slug}/speakers`);
+    const html = await res.text();
+    expect(html).toMatch(
+      new RegExp(`<a class="chq-pub-speaker-name"[^>]*>\\s*${SPEAKER_NO_PHOTO.firstName} ${SPEAKER_NO_PHOTO.lastName}\\s*</a>`),
+    );
+  });
+});
+
+// w4-k: a long description's disclosure replaces its preview -- the reader
+// sees the snippet (inside <summary>) OR the full text (once <details> is
+// opened), never both, and never the snippet doubled into the disclosed
+// content.
+describe("w4-k: description disclosure replaces its preview", () => {
+  it("the snippet lives in <summary> and the full description appears exactly once, outside it", async () => {
+    const app = buildApp();
+    const res = await app.request(`/e/${EVENT.slug}/speakers/${SPEAKER_LONG_BIO.contactId}`);
+    expect(res.status).toBe(200);
+    const html = await res.text();
+
+    // The full description string appears exactly once in the whole page.
+    const occurrences = html.split(LONG_DESCRIPTION).length - 1;
+    expect(occurrences).toBe(1);
+
+    // The <summary> carries the snippet (truncated prefix + ellipsis) and
+    // the "Show more" affordance, not the full text.
+    const summaryMatch = html.match(/<summary>([\s\S]*?)<\/summary>/);
+    expect(summaryMatch).not.toBeNull();
+    const summaryHtml = summaryMatch![1];
+    expect(summaryHtml).toContain(LONG_DESCRIPTION.slice(0, 160));
+    expect(summaryHtml).toContain("Show more");
+    expect(summaryHtml).not.toContain(LONG_DESCRIPTION);
+
+    // The full description sits in the <details> body, after </summary>.
+    const detailsMatch = html.match(/<details[^>]*>([\s\S]*?)<\/details>/);
+    expect(detailsMatch).not.toBeNull();
+    expect(detailsMatch![1]).toContain(LONG_DESCRIPTION);
+
+    // The CSS rule that hides the snippet once expanded ships with the page.
+    expect(html).toContain("chq-pub-desc-snippet");
+  });
+
+  it("a short bio still renders as a bare <p>, no <details> disclosure", async () => {
+    const app = buildApp();
+    const res = await app.request(`/e/${EVENT.slug}/speakers/${SPEAKER_SHORT_BIO.contactId}`);
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).toContain(`<p>${SPEAKER_SHORT_BIO.bio}</p>`);
+    expect(html).not.toContain("<details");
   });
 });

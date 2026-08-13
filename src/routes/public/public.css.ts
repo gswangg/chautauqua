@@ -112,6 +112,11 @@ export const PUBLIC_CSS = `
     text-decoration: none;
   }
   .chq-pub-session-speaker { font-size: 14px; color: var(--chq-ink-2); margin: 0; }
+  /* w4-k: the description snippet lives inside the summary alongside "Show
+     more" so it doubles as the collapsed preview -- once the disclosure is
+     opened the snippet must disappear or the full description prints
+     twice (snippet, then full text). */
+  details[open] .chq-pub-desc-snippet { display: none; }
   .chq-pub-session-tags { display: flex; gap: 8px; align-items: center; }
   .chq-pub-session-tag { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--chq-muted); }
   /* DEC-430: organizer-supplied track colour is untrusted for text-on-fill contrast

@@ -84,15 +84,23 @@ export function formatMinutes(min: number): string {
 
 const DESCRIPTION_SNIPPET_LEN = 160;
 
+// w4-k: the snippet lives inside the <summary> alongside the "Show more"
+// affordance, and the disclosed <details> content is ONLY the full
+// description — never snippet-then-full, which prints the opening sentence
+// twice once expanded. `.chq-pub-desc-snippet` is hidden via CSS when the
+// <details> is open (public.css.ts) so the reader sees the preview OR the
+// full text, never both at once.
 export function SessionDescription(props: { description: string | null }) {
   const { description } = props;
   if (!description) return null;
   if (description.length <= DESCRIPTION_SNIPPET_LEN) return <p>{description}</p>;
   return (
     <p>
-      {description.slice(0, DESCRIPTION_SNIPPET_LEN)}…{" "}
       <details style="display:inline">
-        <summary>Show more</summary>
+        <summary>
+          <span class="chq-pub-desc-snippet">{description.slice(0, DESCRIPTION_SNIPPET_LEN)}…</span>{" "}
+          Show more
+        </summary>
         {description}
       </details>
     </p>
