@@ -36,6 +36,7 @@ const ALL_COMMENTS = Array.from({ length: 250 }, (_, i) => ({
   body: `comment ${i + 1}`,
   authorName: "Reviewer",
   authorRole: "organizer",
+  authorUserId: "user-organizer",
   createdAt: i + 1,
 }));
 

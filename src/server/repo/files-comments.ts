@@ -31,7 +31,8 @@ export interface FileCommentRow {
   versionNumber: number;
   body: string;
   authorName: string;
-  authorRole: string;
+  authorRole: string | null;
+  authorUserId: string | null;
   createdAt: number;
 }
 
@@ -201,7 +202,8 @@ export async function listFileComments(
       versionNumber,
       body: row.body,
       authorName,
-      authorRole: user?.role ?? "unknown",
+      authorRole: user?.role ?? null,
+      authorUserId: row.authorUserId,
       createdAt: row.createdAt.getTime(),
     };
   });

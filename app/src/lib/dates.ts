@@ -147,3 +147,20 @@ export function formatDayLabel(day: string | null | undefined): string {
 export function formatDateTimeInZone(value: number | string, timeZone: string): string {
   return new Date(value).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short', timeZone });
 }
+
+/**
+ * Format a timestamp as a coarse "N days ago" relative label ('today',
+ * 'yesterday', or '<N> days ago'). `now` is threaded in by the caller
+ * rather than read via Date.now() at call time, so a render never
+ * disagrees with itself between two cells rendered on either side of a
+ * tick. The ONE relative-time reader in the SPA (w15-e) -- moved here
+ * from content/SessionList.tsx so other pages (e.g. comment timestamps)
+ * share the same output instead of hand-rolling a duplicate.
+ */
+export function formatRelativeDays(ms: number, now: number): string {
+  const dayMs = 86_400_000;
+  const days = Math.floor((now - ms) / dayMs);
+  if (days <= 0) return 'today';
+  if (days === 1) return 'yesterday';
+  return `${days} days ago`;
+}

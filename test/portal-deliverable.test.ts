@@ -120,6 +120,7 @@ describe("GET /portal/tasks — completed file_request assignment (DEC-242)", ()
           body: "Looks great",
           authorName: "Pat Organizer",
           authorRole: "organizer",
+          authorUserId: "user-organizer",
           createdAt: Date.now(),
         },
       ],
