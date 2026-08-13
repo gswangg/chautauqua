@@ -1150,7 +1150,17 @@ async function main(): Promise<void> {
       scale_json: JSON.stringify({ min: 1, max: 5 }),
       criteria_json: JSON.stringify(evalCriteria),
       rounds: 1,
-      max_evaluations: null,
+      // DEC-875: capped at 3 so the "Reviews per talk" field and the
+      // "· N reviews each" subtitles/distribute summary have a real
+      // maxEvaluations to read instead of null. Safe against the seeded
+      // per-submission counts below: track 0 tops out at 1 (7 of 10
+      // submissions get exactly one evaluation), track 2 at 1, and track 1
+      // at 2 (reviewerB + reviewerD each evaluate every track-1
+      // submission once) -- so no submission ever carries more than 2
+      // evaluations, well under the cap of 3, meaning
+      // needsMoreRatings (`ratingsCount < cap`, src/domain/evaluation.ts)
+      // removes nothing from any reviewer's queue at this cap.
+      max_evaluations: 3,
       created_at: nextTs(),
       updated_at: ts,
     }),
@@ -1285,6 +1295,11 @@ async function main(): Promise<void> {
       scale_json: JSON.stringify({ min: 1, max: 5 }),
       criteria_json: JSON.stringify(evalPlan2Criteria),
       rounds: 1,
+      // Left null (no cap) per DEC-875: this plan is closed and every
+      // scoped plan_reviewer pair already has a matching evaluation for
+      // every submission in its track (100% progress) -- a cap here would
+      // change nothing observable and DEC-875 only mandates restoring the
+      // field/subtitle read path via plan 1, the OPEN plan.
       max_evaluations: null,
       created_at: nextTs(),
       updated_at: ts,

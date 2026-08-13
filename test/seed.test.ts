@@ -652,6 +652,48 @@ describe("seed.ts output (task w1-d, DEC-145)", () => {
     expect(templateRows.length).toBeGreaterThanOrEqual(5);
   });
 
+  // -------------------------------------------------------------------------
+  // Task w15-g / DEC-875: evaluation_plan 1 (the OPEN plan) is capped at
+  // maxEvaluations=3 so the Reviews-per-talk field, "· N reviews each"
+  // subtitles, and distribute summary have a real cap to read; plan 2 (the
+  // closed/fully-evaluated plan) stays uncapped.
+  // -------------------------------------------------------------------------
+  it("DEC-875: caps the open evaluation plan (plan 1) at maxEvaluations=3, leaves the closed plan (plan 2) uncapped, and no submission's evaluation count exceeds the cap", () => {
+    const planRows = parseInserts(sql, "evaluation_plan");
+    expect(planRows.length).toBeGreaterThanOrEqual(2);
+
+    const openPlan = planRows.find((r) => r.id === "seed_evaluation_plan_0001");
+    expect(openPlan).toBeTruthy();
+    expect(openPlan!.max_evaluations).toBe("3");
+
+    const closedPlan = planRows.find((r) => r.id === "seed_evaluation_plan_0002");
+    expect(closedPlan).toBeTruthy();
+    expect(closedPlan!.max_evaluations).toBeNull();
+
+    // Enumerate every seeded evaluation row (not a hand-picked sample) and
+    // count per (plan_id, submission_id) -- no submission may carry more
+    // evaluations than its plan's cap, or a reviewer's queue would go
+    // silently empty (needsMoreRatings, src/domain/evaluation.ts).
+    const evaluationRows = parseInserts(sql, "evaluation");
+    expect(evaluationRows.length).toBeGreaterThan(0);
+
+    const capByPlanId = new Map(planRows.map((r) => [r.id!, r.max_evaluations]));
+    const countByPlanAndSubmission = new Map<string, number>();
+    for (const row of evaluationRows) {
+      const key = `${row.plan_id}::${row.submission_id}`;
+      countByPlanAndSubmission.set(key, (countByPlanAndSubmission.get(key) ?? 0) + 1);
+    }
+
+    for (const [key, count] of countByPlanAndSubmission) {
+      const [planId] = key.split("::");
+      const cap = capByPlanId.get(planId!);
+      if (cap === null || cap === undefined) continue; // uncapped plan
+      expect(count, `plan ${planId} submission in ${key} has ${count} evaluations, cap is ${cap}`).toBeLessThanOrEqual(
+        Number(cap),
+      );
+    }
+  });
+
   // Task w3-a: reviewer users previously seeded with contact_id NULL, so
   // every organiser-facing reviewer surface fell back to rendering a raw
   // email instead of a name. Enumerate every role='reviewer' user (not a
