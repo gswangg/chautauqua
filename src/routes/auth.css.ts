@@ -28,9 +28,21 @@ void DEC_945;
 // as-is (a rename would touch five call sites two lanes are editing):
 // .chq-auth-card is the plain login/form card at 732px; the
 // .chq-auth-card-narrow modifier is now the WIDER plain-card frame at
-// 820px (password / not-found) despite its name -- it is no longer
-// narrower than .chq-auth-card. The 450px control-column cap under
-// -narrow is gone.
+// the full reading measure (password / not-found) despite its name -- it
+// is no longer narrower than .chq-auth-card. The 450px control-column cap
+// under -narrow is gone.
+//
+// That full measure is DEC-945's "the full 820", and 820 is exactly the
+// --chq-measure reading column theme.ts already declares -- so it is spelt
+// var(--chq-measure), not a hand-copied 820px. DEC-989's wave-37 amendment
+// forbids hand-copied page clamps of 800px+ on the SSR side and names
+// .chq-home-shell as its ONE exception; .chq-portal-footer took the same
+// var(--chq-measure) treatment there rather than keeping its own number.
+// Every AUTH_CSS consumer (routes/auth.tsx, routes/account.tsx,
+// server/not-found.tsx, routes/public/not-found.tsx via shell.tsx's
+// BaseStyles) emits ThemeStyles/THEME_CSS first, so the token is always
+// defined here. The 732 stays a literal: it is the 820 column inset by the
+// card's own 44px padding, not the measure itself.
 export const AUTH_CSS = `
   body { display: flex; justify-content: center; align-items: flex-start; padding: 40px 20px; }
 
@@ -44,7 +56,7 @@ export const AUTH_CSS = `
     gap: 26px;
   }
   .chq-auth-card.chq-auth-card-narrow {
-    max-width: 820px;
+    max-width: var(--chq-measure);
     padding: 35px;
   }
 
