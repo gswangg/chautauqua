@@ -28,6 +28,7 @@ vi.mock("../src/server/repo/portal", async () => {
     getMySessions: vi.fn(async () => []),
     getMyInvitations: vi.fn(async () => []),
     getMyTaskAssignments: vi.fn(async () => []),
+    getMySubmissions: vi.fn(async () => []),
   };
 });
 

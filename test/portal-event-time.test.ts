@@ -66,6 +66,12 @@ describe("portal repo row types carry timezone (DEC-413)", () => {
       submittedAt: Date.now(),
       timezone: "Europe/Berlin",
       answers: [],
+      trackName: null,
+      format: null,
+      day: null,
+      startMin: null,
+      endMin: null,
+      roomName: null,
     };
     expect(row.timezone).toBe("Europe/Berlin");
   });

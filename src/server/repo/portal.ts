@@ -13,11 +13,13 @@
 //   portal/invitations.ts — invite accept/decline
 //   portal/sessions.ts    — scheduled sessions + latest deliverable
 //   portal/resources.ts   — event resources + download authz
+//   portal/submissions.ts — DEC-729: every submission the speaker owns
 //
 // See DEC-005 (/portal SSR), DEC-012 (repo layer owns drizzle row types),
 // DEC-016 (locked fields live on submission/contact columns).
-import { DEC_699 } from "../../decisions";
+import { DEC_699, DEC_729 } from "../../decisions";
 void DEC_699;
+void DEC_729;
 
 export * from "./portal/shared";
 export * from "./portal/data";
@@ -25,3 +27,4 @@ export * from "./portal/tasks";
 export * from "./portal/invitations";
 export * from "./portal/sessions";
 export * from "./portal/resources";
+export * from "./portal/submissions";

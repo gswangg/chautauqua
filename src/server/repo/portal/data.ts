@@ -2,12 +2,13 @@
 // out of the former monolithic portal.ts — see ./shared.ts for the pure
 // ownership/status helpers this module relies on.
 
-import { and, asc, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, lte } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { formatRef } from "../../../domain/ids";
 import type { SubmissionStatus } from "../../../domain/status";
 import { PORTAL_VISIBLE_INVITE_STATUSES } from "../../../domain/acceptance";
+import { SESSION_FORMAT_FIELD_ID } from "../../../forms/types";
 import { isOwnedByContact, speakerStatusLabel, type SpeakerStatusLabel } from "./shared";
 
 export interface PortalSubmissionSummary {
@@ -180,6 +181,13 @@ export interface PortalSubmissionDetail {
   submittedAt: number;
   timezone: string;
   answers: PortalSubmissionAnswer[];
+  // w1-c (DEC-729 detail rebuild): REF · format · track line + placement.
+  trackName: string | null;
+  format: string | null;
+  day: string | null;
+  startMin: number | null;
+  endMin: number | null;
+  roomName: string | null;
 }
 
 /**
@@ -205,13 +213,44 @@ export async function getPortalSubmissionDetail(
       recordPrefix: schema.event.recordPrefix,
       eventOrgId: schema.event.orgId,
       timezone: schema.event.timezone,
+      trackName: schema.track.name,
+      // DEC-318/DEC-536: same out-of-range-slot-nulls-placement rule as
+      // getMySessions — the range predicate lives in the LEFT JOIN's ON
+      // clause, not the WHERE, so an out-of-range slot never drops the row.
+      day: schema.scheduleSlot.day,
+      startMin: schema.scheduleSlot.startMin,
+      endMin: schema.scheduleSlot.endMin,
+      roomName: schema.room.name,
     })
     .from(schema.submission)
     .innerJoin(schema.event, eq(schema.submission.eventId, schema.event.id))
+    .leftJoin(schema.track, eq(schema.submission.trackId, schema.track.id))
+    .leftJoin(
+      schema.scheduleSlot,
+      and(
+        eq(schema.scheduleSlot.submissionId, schema.submission.id),
+        gte(schema.scheduleSlot.day, schema.event.startDate),
+        lte(schema.scheduleSlot.day, schema.event.endDate),
+      ),
+    )
+    .leftJoin(schema.room, eq(schema.scheduleSlot.roomId, schema.room.id))
     .where(eq(schema.submission.id, submissionId))
     .limit(1);
   const row = rows[0];
   if (!row || row.eventOrgId !== orgId) return null;
+
+  const formatRows = await db
+    .select({ valueJson: schema.submissionAnswer.valueJson })
+    .from(schema.submissionAnswer)
+    .where(
+      and(
+        eq(schema.submissionAnswer.submissionId, submissionId),
+        eq(schema.submissionAnswer.formFieldId, SESSION_FORMAT_FIELD_ID),
+      ),
+    )
+    .limit(1);
+  const formatParsed: unknown = formatRows[0] ? JSON.parse(formatRows[0].valueJson) : null;
+  const format = typeof formatParsed === "string" && formatParsed.length > 0 ? formatParsed : null;
 
   const participantRows = await db
     .select({ contactId: schema.participant.contactId, inviteStatus: schema.participant.inviteStatus })
@@ -253,5 +292,11 @@ export async function getPortalSubmissionDetail(
     submittedAt: row.createdAt.getTime(),
     timezone: row.timezone,
     answers,
+    trackName: row.trackName,
+    format,
+    day: row.day,
+    startMin: row.startMin,
+    endMin: row.endMin,
+    roomName: row.roomName,
   };
 }
