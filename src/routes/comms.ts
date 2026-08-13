@@ -13,7 +13,7 @@ import { getEventForOrg } from "../server/repo/events";
 import { getPlanById } from "../server/repo/review/plans";
 import type { KVStore } from "../auth/claim";
 import { resolvePortalLink } from "../server/repo/portal-link";
-import { textToHtml } from "../mail/render";
+import { textToHtml, blockFieldsInTemplate } from "../mail/render";
 import { buildIcsEvent, ICS_ORGANIZER_EMAIL } from "../mail/ics";
 import { zonedMinutesToUtc } from "../lib/timezone";
 import {
@@ -265,6 +265,17 @@ async function resolveComposeInput(
     }
     subjectTemplate = b.subject;
     bodyTemplate = b.bodyText;
+  }
+
+  // DEC-847: a subject is one line. task_list/feedback render as multi-line
+  // blocks, so a subject referencing either — whether typed or loaded from a
+  // stored template — fails loudly instead of mailing a paragraph subject.
+  const subjectBlockFields = blockFieldsInTemplate(subjectTemplate);
+  if (subjectBlockFields.length > 0) {
+    const field = subjectBlockFields[0];
+    const noun = field === "task_list" ? "a list" : "a block of text";
+    const message = `{${field}} is ${noun}; it cannot go in a subject`;
+    throw new ApiError("invalid", message, { subject: message });
   }
 
   const feedback = await resolveFeedbackScope(c, eventId, b);

@@ -11,9 +11,12 @@ export const MAX_COMPOSE_RECIPIENTS = 100;
 /** DEC-019: the stated value for zero reviewer comments (not a silent blank). */
 export const NO_FEEDBACK_TEXT = "No reviewer feedback was recorded.";
 
-/** DEC-792: the stated value for a recipient with zero outstanding tasks
- * (not a silent blank), mirroring NO_FEEDBACK_TEXT's precedent. */
-export const NO_TASKS_TEXT = "No outstanding tasks.";
+/** DEC-792/DEC-847: the stated value for a recipient with zero outstanding
+ * tasks (not a silent blank), mirroring NO_FEEDBACK_TEXT's precedent. No
+ * terminal period: {task_list} is substituted inline into the template's
+ * own sentence, which owns its own punctuation (unlike NO_FEEDBACK_TEXT,
+ * which stands alone as a block paragraph). */
+export const NO_TASKS_TEXT = "No outstanding tasks";
 
 /** DEC-792: the stated value for {due_date} when the recipient has no
  * outstanding task carrying a due date (not a silent blank). */

@@ -44,6 +44,15 @@ export const BULK_EMAIL_MERGE_FIELDS: readonly MergeField[] = [
   "portal_link",
 ] as const;
 
+// DEC-847: a subject is one line. task_list/feedback render as multi-line
+// blocks (a bulleted list / a paragraph of prose) and so may only appear in
+// the body, never the subject line.
+export const BLOCK_MERGE_FIELDS: readonly MergeField[] = ["task_list", "feedback"] as const;
+
+export const SUBJECT_MERGE_FIELDS: readonly MergeField[] = COMPOSE_MERGE_FIELDS.filter(
+  (f) => !(BLOCK_MERGE_FIELDS as readonly string[]).includes(f),
+);
+
 export class MergeFieldError extends Error {
   constructor(public readonly field: string) {
     super(`Unknown or missing merge field: {${field}}`);
@@ -52,6 +61,19 @@ export class MergeFieldError extends Error {
 }
 
 const PLACEHOLDER_RE = /\{([a-zA-Z0-9_]+)\}/g;
+
+// DEC-847: scan a template's placeholders for any block-only merge field
+// (e.g. rejecting {task_list}/{feedback} in a subject line before render).
+export function blockFieldsInTemplate(template: string): MergeField[] {
+  const found = new Set<MergeField>();
+  for (const match of template.matchAll(PLACEHOLDER_RE)) {
+    const name = match[1];
+    if (name !== undefined && (BLOCK_MERGE_FIELDS as readonly string[]).includes(name)) {
+      found.add(name as MergeField);
+    }
+  }
+  return [...found];
+}
 
 export function renderTemplate(template: string, vars: Record<string, string>): string {
   return template.replace(PLACEHOLDER_RE, (_match, name: string) => {
