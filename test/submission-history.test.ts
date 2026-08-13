@@ -101,7 +101,11 @@ describe("listSubmissionHistory (DEC-892)", () => {
     expect(entries.some((e) => e.id === "ev-2")).toBe(false);
   });
 
-  it("labels an anonymized-plan review with the withheld cell, never the reviewer's identity", async () => {
+  // DEC-736 supersedes DEC-622's null-iff-anonymized rule: anonymization
+  // hides the SPEAKER from the REVIEWER, never the reviewer's identity from
+  // the organiser, so an anonymized plan's review still names its reviewer
+  // here (a withheld '(anonymized)' cell must never render on this panel).
+  it("still names the reviewer on an anonymized plan's review (DEC-736)", async () => {
     const db = fakeDb([
       [{ id: "sub-1", createdAt: new Date(1000), externalRef: null }],
       [],
@@ -121,7 +125,7 @@ describe("listSubmissionHistory (DEC-892)", () => {
 
     const entries = await listSubmissionHistory(db, "sub-1");
     const reviewed = entries.find((e) => e.kind === "reviewed");
-    expect(reviewed?.detail).toBe("(anonymized)");
+    expect(reviewed?.detail).toBe("Jane Reviewer");
   });
 
   it("surfaces the import source on the submitted entry when external_ref is set", async () => {
