@@ -488,16 +488,39 @@ describe('ReviewPage render smoke: reviewer', () => {
     expect(await screen.findByRole('heading', { name: 'Nothing left in your queue. Nicely done.' })).toBeInTheDocument();
   });
 
+  // DEC-874 landing branch: 0 plans keeps today's empty state.
+  it('landing on /review with zero plans shows the empty state', async () => {
+    mockApi({
+      'GET /api/v1/me': reviewerMe(),
+      'GET /api/v1/review/plans': listEnvelope([]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <ReviewPage />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText('You have no assigned evaluation plans yet.')).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /Your plans/ })).not.toBeInTheDocument();
+  });
+
+  // DEC-874 landing branch: exactly one plan navigates straight into its
+  // scoped queue (replace) -- no unscoped hub, no plan-name-only picker.
   it('landing on /review with exactly one plan shows the queue directly, no plan-name-only picker', async () => {
     mockApi({
       'GET /api/v1/me': reviewerMe(),
       'GET /api/v1/review/plans': listEnvelope([{ ...planWithNullDates(), id: PLAN_ID, name: 'Solo Plan' }]),
+      [`GET /api/v1/review/plans/${PLAN_ID}`]: planWithNullDates(),
       [`GET /api/v1/review/plans/${PLAN_ID}/queue`]: {
         ...listEnvelope([
           { submissionId: 'sub-1', ref: 'S-001', title: 'Only Talk', ratingsCount: 0, alreadyRatedByMe: false },
         ]),
         open: true,
         recused: [],
+        planName: 'Solo Plan',
+        scopeTrackName: null,
+        closeDate: null,
       },
     });
 
@@ -511,9 +534,17 @@ describe('ReviewPage render smoke: reviewer', () => {
     // No picker: the single plan's name never renders as its own heading.
     expect(screen.queryByRole('heading', { name: 'Solo Plan' })).not.toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Your evaluation plans' })).not.toBeInTheDocument();
+    // Landed IN the scoped route, not the unscoped "Your queue" hub.
+    expect(screen.queryByRole('heading', { name: 'Your queue' })).not.toBeInTheDocument();
+    expect(screen.getByText('REVIEW · Solo Plan')).toBeInTheDocument();
+    // Footer present on the scoped queue.
+    expect(screen.getByText('Scores stay hidden from other reviewers')).toBeInTheDocument();
   });
 
-  it('landing on /review with several plans renders one section per plan, in list order, without merging or re-sorting items', async () => {
+  // DEC-874 landing branch: 2+ plans render a single PLAN LIST (name, scope,
+  // count) whose rows link into the scoped queue -- never several queues
+  // stacked on one page.
+  it('landing on /review with several plans renders one PLAN LIST, in list order, whose rows link into the scoped queue', async () => {
     const planA = { ...planWithNullDates(), id: 'plan-a', name: 'Plan A' };
     const planB = { ...planWithNullDates(), id: 'plan-b', name: 'Plan B' };
     mockApi({
@@ -526,6 +557,9 @@ describe('ReviewPage render smoke: reviewer', () => {
         ]),
         open: true,
         recused: [],
+        planName: 'Plan A',
+        scopeTrackName: 'Main Stage',
+        closeDate: null,
       },
       'GET /api/v1/review/plans/plan-b/queue': {
         ...listEnvelope([
@@ -533,6 +567,9 @@ describe('ReviewPage render smoke: reviewer', () => {
         ]),
         open: true,
         recused: [{ submissionId: 'b-2', ref: 'B-002', title: 'Beta Recused', reason: 'conflict' }],
+        planName: 'Plan B',
+        scopeTrackName: null,
+        closeDate: null,
       },
     });
 
@@ -542,24 +579,34 @@ describe('ReviewPage render smoke: reviewer', () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByRole('heading', { name: 'Plan A' })).toBeInTheDocument();
-    expect(await screen.findByRole('heading', { name: 'Plan B' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Your plans' })).toBeInTheDocument();
+    expect(await screen.findByText('Plan A')).toBeInTheDocument();
+    expect(screen.getByText('Plan B')).toBeInTheDocument();
 
-    const headings = screen.getAllByRole('heading', { level: 2 });
-    const headingNames = headings.map((h) => h.textContent);
-    expect(headingNames.indexOf('Plan A')).toBeLessThan(headingNames.indexOf('Plan B'));
+    // A single list, one row per plan, in the order the API returned them.
+    const rows = screen.getAllByRole('listitem');
+    const rowNames = rows.map((r) => r.textContent);
+    expect(rowNames.findIndex((t) => t?.includes('Plan A'))).toBeLessThan(
+      rowNames.findIndex((t) => t?.includes('Plan B')),
+    );
 
-    // Item order within each section is delivered exactly as the server
-    // sent it -- never re-sorted, and never merged across plan sections.
-    const planASection = screen.getByRole('heading', { name: 'Plan A' }).closest('section')!;
-    const planARows = planASection.querySelectorAll('li.chq-review-queue-row');
-    expect(planARows[0]).toHaveTextContent('Alpha First');
-    expect(planARows[1]).toHaveTextContent('Alpha Second');
+    // Never several queues stacked on one page: no queue-row list items or
+    // per-plan queue titles rendered here.
+    expect(screen.queryByText('Alpha First')).not.toBeInTheDocument();
+    expect(screen.queryByText('Beta Recused')).not.toBeInTheDocument();
 
-    // The recusal stays attached to its own plan (Plan B), never Plan A.
-    const planBSection = screen.getByRole('heading', { name: 'Plan B' }).closest('section')!;
-    expect(planBSection).toHaveTextContent('Beta Recused');
-    expect(planASection).not.toHaveTextContent('Beta Recused');
+    // Each row's scope + "N left to score" resolves from its own queue
+    // envelope once known.
+    await waitFor(() => {
+      expect(screen.getByText(/Main Stage/)).toBeInTheDocument();
+    });
+    expect(screen.getAllByText(/1 left to score/).length).toBe(2);
+
+    // Rows link into the scoped queue route.
+    const planALink = screen.getByRole('link', { name: /Plan A/ });
+    expect(planALink).toHaveAttribute('href', '/review/plans/plan-a');
+    const planBLink = screen.getByRole('link', { name: /Plan B/ });
+    expect(planBLink).toHaveAttribute('href', '/review/plans/plan-b');
   });
 });
 

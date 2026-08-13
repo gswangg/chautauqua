@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, Navigate, useParams } from 'react-router-dom';
 import { apiDelete, apiGet, apiList, ApiError } from '../../lib/api';
 import './review.css';
 import type { EvaluationPlan, RecusalItem, ReviewerQueueEnvelope, ReviewerQueueItem } from './types';
@@ -23,23 +23,17 @@ function closesInDaysLabel(closeDate: number | null, timezone: string): string |
   return `closes in ${daysLeft} day${daysLeft === 1 ? '' : 's'}`;
 }
 
-// DEC-586: a reviewer landing on /review sees their queue directly -- no
-// intermediate plan-name-only picker page (that component is deleted, not
-// hidden behind a route). With exactly one assigned plan the section below
-// renders with no heading at all; with several, each plan gets its own
-// section in the order GET /review/plans returned them. Items are never
-// merged or re-sorted across (or within) plans -- a recusal is scoped to
-// its own plan-and-submission pair, so it stays attached to that plan's
-// section.
+// DEC-586/DEC-874: a reviewer landing on /review sees their queue directly
+// -- no intermediate plan-name-only picker page. With exactly one assigned
+// plan, ReviewerQueue navigates straight into this scoped section (no
+// heading needed -- the route's own header already names the plan); with
+// several, /review renders a plan LIST instead (see PlanListRow below) and
+// this section only ever mounts once the reviewer has picked a plan.
 function PlanSection({
   planId,
-  planName,
-  showHeading,
   onData,
 }: {
   planId: string;
-  planName?: string;
-  showHeading: boolean;
   // DEC-831/DEC-845: lets a single-plan-route parent read the loaded queue
   // envelope for its own header (N left to score, progress bar, plan name,
   // scope track, close date) without a second fetch.
@@ -86,11 +80,6 @@ function PlanSection({
   if (loading) {
     return (
       <section className="chq-section">
-        {showHeading && (
-          <div className="chq-section-head">
-            <h2 className="chq-section-label">{planName}</h2>
-          </div>
-        )}
         <DelayedLoading />
       </section>
     );
@@ -98,11 +87,6 @@ function PlanSection({
 
   return (
     <section className="chq-section">
-      {showHeading && (
-        <div className="chq-section-head">
-          <h2 className="chq-section-label">{planName}</h2>
-        </div>
-      )}
       {error && (
         <div className="chq-error" role="alert">
           {error}
@@ -116,69 +100,118 @@ function PlanSection({
         never be re-sorted here.
       */}
       {!open && !error && <p className="chq-empty">This review plan is not currently open.</p>}
-      {open && items.length === 0 && !error && <p className="chq-empty">Nothing left in your queue. Nicely done.</p>}
+      {open && items.length === 0 && recused.length === 0 && !error && (
+        <p className="chq-empty">Nothing left in your queue. Nicely done.</p>
+      )}
+      {/* DEC-874: recused submissions render INLINE in this same ordered
+          list -- marked and carrying the reason plus the existing Undo --
+          rather than in a separate trailing section that hides why the
+          actionable queue above looks short. Items keep the API's own
+          order (see the comment above); recused rows are appended after
+          them since the queue endpoint reports them as a distinct set with
+          no interleaved position of its own. */}
       <ol className="chq-review-queue-list">
         {items.map((item) => (
           <li key={item.submissionId} className="chq-review-queue-row">
-            <span className="chq-review-queue-ref">{item.ref}</span>
+            <div className="chq-review-queue-row-top">
+              <span className="chq-review-queue-ref">{item.ref}</span>
+              {/* DEC-831/DEC-845: the queue's own score column -- SCORED
+                  <blended score> once this reviewer has rated it, NOT
+                  SCORED otherwise. DEC-730 micro-label family: weight/
+                  wording carry the state, never colour. */}
+              <span
+                className={`chq-review-queue-score ${
+                  item.alreadyRatedByMe ? 'chq-review-queue-score-scored' : 'chq-review-queue-score-unscored'
+                }`}
+              >
+                {item.alreadyRatedByMe
+                  ? `SCORED ${typeof item.myScore === 'number' ? item.myScore.toFixed(1) : '—'}`
+                  : 'NOT SCORED'}
+              </span>
+            </div>
             <Link to={`/review/plans/${planId}/submissions/${item.submissionId}`} className="chq-review-queue-title">
               {item.title}
             </Link>
-            {/* DEC-857: the format meta line is a session-shape fact, never
-                stripped for an anonymized plan -- nothing renders when the
-                submission has no format answer (no empty element/separator). */}
-            {item.format != null && <span className="chq-review-plan-meta">{item.format}</span>}
-            {/* DEC-831/DEC-845: the queue's own score column -- SCORED <blended
-                score> once this reviewer has rated it, NOT SCORED with a
-                direct scoring link otherwise. Replaces the old bare
-                "N ratings so far" count and Complete pill. DEC-730 micro-
-                label family: weight/wording carry the state, never colour. */}
-            <span
-              className={`chq-review-queue-score ${
-                item.alreadyRatedByMe ? 'chq-review-queue-score-scored' : 'chq-review-queue-score-unscored'
-              }`}
-            >
-              {item.alreadyRatedByMe ? `SCORED ${typeof item.myScore === 'number' ? item.myScore.toFixed(1) : '—'}` : 'NOT SCORED'}
-            </span>
-            {/* DEC-857: the action link names what it actually offers -- a
-                scored row already took the action, so it reads "Change your
-                score" rather than repeating "Score this". */}
+            {/* DEC-857/DEC-874: the meta line is a session-shape fact, never
+                stripped for an anonymized plan -- format and (when the item
+                carries one) audience level, joined on one line; nothing
+                renders when the submission has neither. */}
+            {(item.format != null || item.audienceLevel != null) && (
+              <p className="chq-review-plan-meta">
+                {[item.format, item.audienceLevel].filter((v): v is string => v != null).join(' · ')}
+              </p>
+            )}
+            {/* DEC-857/DEC-874: the action names what it actually offers --
+                a scored row already took the action, so it reads "Change
+                your score" rather than repeating "Score this" -- rendered
+                as a full-width button, not an inline link. */}
             <Link
               to={`/review/plans/${planId}/submissions/${item.submissionId}`}
-              className="chq-review-queue-score-action"
+              className="chq-review-queue-score-action chq-btn chq-btn-primary chq-review-queue-row-action"
             >
               {item.alreadyRatedByMe ? 'Change your score' : 'Score this'}
             </Link>
           </li>
         ))}
+        {recused.map((item) => (
+          <li key={item.submissionId} className="chq-review-queue-row chq-review-queue-row-recused">
+            <div className="chq-review-queue-row-top">
+              <span className="chq-review-queue-ref">{item.ref}</span>
+              <span className="chq-review-queue-score chq-review-queue-score-recused">Recused</span>
+            </div>
+            <span className="chq-review-queue-title">{item.title}</span>
+            {item.reason && <p className="chq-review-plan-meta">{item.reason}</p>}
+            <button
+              type="button"
+              className="chq-btn chq-btn-secondary chq-review-queue-row-action"
+              disabled={undoingId === item.submissionId}
+              onClick={() => void undoRecusal(item.submissionId)}
+            >
+              Undo
+            </button>
+          </li>
+        ))}
       </ol>
-
-      {recused.length > 0 && (
-        <section className="chq-section">
-          <div className="chq-section-head">
-            <h2 className="chq-section-label">Recused (not in your queue)</h2>
-          </div>
-          <ul className="chq-review-recused-list">
-            {recused.map((item) => (
-              <li key={item.submissionId} className="chq-review-recused-row">
-                <span>
-                  {item.ref} — {item.title}
-                  {item.reason && <span className="chq-review-plan-meta"> ({item.reason})</span>}
-                </span>
-                <button
-                  type="button"
-                  className="chq-btn chq-btn-secondary"
-                  disabled={undoingId === item.submissionId}
-                  onClick={() => void undoRecusal(item.submissionId)}
-                >
-                  Undo
-                </button>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
     </section>
+  );
+}
+
+// DEC-874: a row in the 2+ plan landing list. Name and scope come off the
+// same queue envelope the scoped route itself reads (scopeTrackName), so
+// this row can never disagree with the page it links into; "N left to
+// score" is rendered only once that fetch resolves ("when known" -- the
+// row never blocks on it, and a failed background fetch just leaves the
+// count/scope absent rather than failing the whole list).
+function ReviewerPlanRow({ plan }: { plan: EvaluationPlan }) {
+  const [envelope, setEnvelope] = useState<ReviewerQueueEnvelope | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (apiList(`/review/plans/${plan.id}/queue`) as Promise<ReviewerQueueEnvelope>)
+      .then((res) => {
+        if (!cancelled) setEnvelope(res);
+      })
+      .catch(() => {
+        // Scope/count are decoration on this row -- the row itself still
+        // links into the scoped queue, which does its own error handling.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [plan.id]);
+
+  const scope = envelope ? envelope.scopeTrackName ?? 'All tracks' : null;
+  const left = envelope ? envelope.items.filter((i) => !i.alreadyRatedByMe).length : null;
+
+  const meta = [scope, left !== null ? `${left} left to score` : null].filter((v): v is string => v !== null);
+
+  return (
+    <li className="chq-reviewer-plan-row">
+      <Link to={`/review/plans/${plan.id}`} className="chq-reviewer-plan-row-link">
+        <span className="chq-reviewer-plan-row-name">{plan.name}</span>
+        {meta.length > 0 && <span className="chq-review-plan-meta">{meta.join(' · ')}</span>}
+      </Link>
+    </li>
   );
 }
 
@@ -265,7 +298,11 @@ export function ReviewerQueue() {
             {routePlanError}
           </div>
         )}
-        <PlanSection planId={routePlanId} showHeading={false} onData={setRouteEnvelope} />
+        <PlanSection planId={routePlanId} onData={setRouteEnvelope} />
+        {/* DEC-874: the footer belongs beside the shell's existing sign-out
+            control (App.tsx Header) -- it renders once, globally, in the
+            shell chrome, so nothing here mints a second one. */}
+        <p className="chq-review-queue-footer">Scores stay hidden from other reviewers</p>
       </div>
     );
   }
@@ -279,6 +316,38 @@ export function ReviewerQueue() {
     );
   }
 
+  // DEC-874: exactly one assigned plan lands the reviewer straight in its
+  // scoped queue -- `replace` so Back doesn't bounce to an unscoped hub
+  // that no longer exists.
+  if (plans && plans.length === 1) {
+    // Relative (no leading slash): resolves against wherever this Routes
+    // subtree is itself mounted (App.tsx mounts it at /review/*), so it
+    // works both nested in the real app and when this page is exercised
+    // standalone in tests.
+    return <Navigate to={`plans/${plans[0]!.id}`} replace />;
+  }
+
+  // DEC-874: two or more plans render a PLAN LIST -- never several stacked
+  // queues on one page, because a page that is several pages at once has
+  // no header that is true.
+  if (plans && plans.length > 1) {
+    return (
+      <div className="chq-page chq-review-page">
+        <h1 className="chq-page-title">Your plans</h1>
+        {error && (
+          <div className="chq-error" role="alert">
+            {error}
+          </div>
+        )}
+        <ul className="chq-reviewer-plan-list">
+          {plans.map((plan) => (
+            <ReviewerPlanRow key={plan.id} plan={plan} />
+          ))}
+        </ul>
+      </div>
+    );
+  }
+
   return (
     <div className="chq-page chq-review-page">
       <h1 className="chq-page-title">Your queue</h1>
@@ -288,10 +357,6 @@ export function ReviewerQueue() {
         </div>
       )}
       {plans && plans.length === 0 && !error && <p className="chq-empty">You have no assigned evaluation plans yet.</p>}
-      {plans &&
-        plans.map((plan) => (
-          <PlanSection key={plan.id} planId={plan.id} planName={plan.name} showHeading={plans.length > 1} />
-        ))}
     </div>
   );
 }

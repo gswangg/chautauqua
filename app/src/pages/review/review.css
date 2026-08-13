@@ -1081,3 +1081,72 @@
   font-size: 13px;
   color: var(--chq-muted);
 }
+
+/* task-w15-d */
+/* DEC-874: the reviewer's own PLAN LIST (2+ assigned plans) -- one row per
+   plan, linking into its scoped queue. Mirrors .chq-review-plan-row's shape
+   family without reusing its class name (that one belongs to PlanList.tsx,
+   the organiser-facing plan list, a different page). */
+.chq-reviewer-plan-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.chq-reviewer-plan-row {
+  border-bottom: 1px solid var(--chq-hairline);
+}
+
+.chq-reviewer-plan-row-link {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 15px 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.chq-reviewer-plan-row-name {
+  font-family: var(--chq-font-display);
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--chq-ink);
+}
+
+/* DEC-874 row anatomy: REF/SCORED-NOT-SCORED share a top line, the action
+   is a full-width button (not the earlier inline link), and a recused row
+   marks itself on the same top line rather than in a trailing section. */
+.chq-review-queue-row-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.chq-review-queue-row-action {
+  display: flex;
+  width: 100%;
+  margin-top: 2px;
+}
+
+.chq-review-queue-row-recused {
+  opacity: 0.85;
+}
+
+.chq-review-queue-score-recused {
+  color: var(--chq-muted);
+  font-weight: 700;
+}
+
+/* DEC-874: footer under the queue list, beside the shell's own sign-out
+   control (App.tsx Header) -- not a second sign-out path. */
+.chq-review-queue-footer {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--chq-hairline);
+  font-size: 12px;
+  color: var(--chq-muted);
+}
