@@ -118,6 +118,12 @@ export function PlanEditor() {
   const [draft, setDraft] = useState<PlanDraft>(
     isNew ? { ...DEFAULT_PLAN_DRAFT, criteria: defaultDraftCriteria() } : DEFAULT_PLAN_DRAFT,
   );
+  // wave 49/DEC-745 amendment: the dirty-navigation-guard baseline. Captured
+  // once at load (isNew's initial draft above is already the pristine
+  // value for a brand-new plan) and reset only by save() -- same shape as
+  // TracksRoomsPanel.tsx's trackBaseline/isTrackDirty pair, never
+  // re-derived from the server mid-edit.
+  const [pristineDraft, setPristineDraft] = useState<PlanDraft>(draft);
   // DEC-676: recorded-evaluation count per round (GET /plans/:id only) --
   // read-only server truth, never re-derived from draft state.
   const [evaluationCountsByRound, setEvaluationCountsByRound] = useState<Record<string, number>>({});
@@ -277,7 +283,7 @@ export function PlanEditor() {
     setLoading(true);
     apiGet<EvaluationPlan>(`/plans/${planId}`)
       .then((plan) => {
-        setDraft({
+        const loaded: PlanDraft = {
           name: plan.name,
           instructions: plan.instructions ?? '',
           openAt: plan.openDate,
@@ -289,7 +295,9 @@ export function PlanEditor() {
           rounds: plan.rounds,
           roundCriteria: plan.roundCriteria ?? null,
           maxEvaluationsPerSubmission: plan.maxEvaluations ?? undefined,
-        });
+        };
+        setDraft(loaded);
+        setPristineDraft(loaded);
         setEvaluationCountsByRound(plan.evaluationCountsByRound ?? {});
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load plan'))
@@ -310,6 +318,84 @@ export function PlanEditor() {
 
   const errors = validatePlanDraft(draft);
 
+  // wave 49/DEC-745 amendment: every FIELD (name/dates/criteria/anonymize
+  // etc.) is draft state committed only by save() -- dirty is that draft
+  // compared against the pristine baseline captured at load, never
+  // re-derived from the server mid-edit.
+  const dirty = JSON.stringify(draft) !== JSON.stringify(pristineDraft);
+
+  const DIRTY_FIELD_LABELS: Record<keyof PlanDraft, string> = {
+    name: 'Name',
+    instructions: 'Instructions',
+    openAt: 'Opens',
+    closeAt: 'Closes',
+    trackIds: 'Tracks',
+    anonymized: 'Anonymize',
+    scale: 'Rating scale',
+    criteria: 'Scoring criteria',
+    rounds: 'Rounds',
+    roundCriteria: 'Round criteria',
+    maxEvaluationsPerSubmission: 'Reviews per talk',
+  };
+
+  function dirtyFieldLabels(): string[] {
+    return (Object.keys(DIRTY_FIELD_LABELS) as (keyof PlanDraft)[])
+      .filter((key) => JSON.stringify(draft[key]) !== JSON.stringify(pristineDraft[key]))
+      .map((key) => DIRTY_FIELD_LABELS[key]);
+  }
+
+  function joinWithAnd(items: string[]): string {
+    if (items.length <= 1) return items.join('');
+    if (items.length === 2) return `${items[0]} and ${items[1]}`;
+    return `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`;
+  }
+
+  // wave 49/DEC-745 amendment: a dirty editor never navigates away
+  // silently. Every in-app navigation OUT of the editor (the back-link, the
+  // new-plan Cancel button) routes through here first; the confirm body
+  // NAMES the unsaved fields rather than a generic warning.
+  const [leaveConfirmOpen, setLeaveConfirmOpen] = useState(false);
+  const pendingLeaveRef = useRef<(() => void) | null>(null);
+
+  function requestLeave(action: () => void) {
+    if (!dirty) {
+      action();
+      return;
+    }
+    pendingLeaveRef.current = action;
+    setLeaveConfirmOpen(true);
+  }
+
+  function confirmLeave() {
+    const action = pendingLeaveRef.current;
+    pendingLeaveRef.current = null;
+    setLeaveConfirmOpen(false);
+    action?.();
+  }
+
+  function cancelLeave() {
+    pendingLeaveRef.current = null;
+    setLeaveConfirmOpen(false);
+  }
+
+  // wave 49/DEC-745 amendment: the browser-level half of the same guard --
+  // tab close/reload while dirty, removed on unmount/save.
+  useEffect(() => {
+    if (!dirty) return;
+    function handleBeforeUnload(event: BeforeUnloadEvent) {
+      event.preventDefault();
+      event.returnValue = '';
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [dirty]);
+
+  // DEC-799: anonymize is now a drafted FIELD (wave 49/DEC-745 amendment),
+  // so its true->false ratchet confirm fires at Save time, not on the
+  // checkbox click -- the server still refuses the flip outright once any
+  // evaluation was submitted under anonymity (src/routes/review/plans-crud.ts).
+  const [anonymizeRatchetConfirmOpen, setAnonymizeRatchetConfirmOpen] = useState(false);
+
   async function save() {
     if (!eventId) return;
     // DEC-745: a Save/Create click always surfaces the name error even if
@@ -319,6 +405,15 @@ export function PlanEditor() {
       setError('Fix the highlighted fields before saving.');
       return;
     }
+    if (!isNew && pristineDraft.anonymized && !draft.anonymized) {
+      setAnonymizeRatchetConfirmOpen(true);
+      return;
+    }
+    await commitSave();
+  }
+
+  async function commitSave() {
+    if (!eventId) return;
     setSaving(true);
     setError(null);
     // DEC-171: the API speaks PlanRecord's wire names (openDate/closeDate/
@@ -339,15 +434,26 @@ export function PlanEditor() {
     try {
       if (isNew) {
         const created = await apiPost<EvaluationPlan>(`/events/${eventId}/plans`, body);
+        setPristineDraft(draft);
         navigate(`/review/plans/${created.id}`);
       } else {
         await apiPatch<EvaluationPlan>(`/plans/${planId}`, body);
+        setPristineDraft(draft);
       }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to save plan');
     } finally {
       setSaving(false);
     }
+  }
+
+  function confirmAnonymizeRatchet() {
+    setAnonymizeRatchetConfirmOpen(false);
+    void commitSave();
+  }
+
+  function cancelAnonymizeRatchet() {
+    setAnonymizeRatchetConfirmOpen(false);
   }
 
   // DEC-745: Duplicate needs no new endpoint -- it's the same
@@ -791,7 +897,18 @@ export function PlanEditor() {
           (or Cancel/Create the plan when isNew) on the same row. */}
       <div className="chq-review-editor-title-row">
         <div className="chq-review-editor-title-col">
-          <Link to="/review" className="chq-review-editor-back-link">
+          <Link
+            to="/review"
+            className="chq-review-editor-back-link"
+            onClick={(e) => {
+              // wave 49/DEC-745 amendment: a dirty editor never navigates
+              // away silently -- block the default Link navigation and
+              // route through the same confirm the Cancel button uses.
+              if (!dirty) return;
+              e.preventDefault();
+              requestLeave(() => navigate('/review'));
+            }}
+          >
             &lsaquo; Review
           </Link>
           <input
@@ -816,7 +933,12 @@ export function PlanEditor() {
         <div className="chq-review-editor-title-actions">
           {isNew ? (
             <>
-              <button type="button" className="chq-btn chq-btn-tertiary" disabled={saving} onClick={() => navigate('/review')}>
+              <button
+                type="button"
+                className="chq-btn chq-btn-tertiary"
+                disabled={saving}
+                onClick={() => requestLeave(() => navigate('/review'))}
+              >
                 Cancel
               </button>
               <button type="button" className="chq-btn chq-btn-primary" disabled={saving} onClick={save}>
@@ -1282,6 +1404,14 @@ export function PlanEditor() {
                 {distributeLoading ? 'Loading…' : 'Distribute the unassigned'}
               </button>
             </div>
+            {/* wave 49/DEC-745 amendment: the split between drafted FIELDS
+                (Save-gated) and immediate ACTIONS is legible right on the
+                section rule -- same chq-review-section-caption convention
+                the Scoring criteria section already uses above, no new
+                band, no floating primary. */}
+            <p className="chq-review-section-caption">
+              Assign a reviewer applies immediately. Distribute the unassigned applies immediately.
+            </p>
             {reviewers.map((r) => {
               const progress = progressRows.find((p) => p.userId === r.userId);
               const displayName = progress ? reviewerDisplayLabel(progress) : (r.email ?? '(account removed)');
@@ -1634,6 +1764,30 @@ export function PlanEditor() {
           pending={saving}
           onConfirm={confirmRemovePlan}
           onCancel={() => setDeletePlanConfirmOpen(false)}
+        />
+      )}
+
+      {leaveConfirmOpen && (
+        <ConfirmDialog
+          title="Leave without saving?"
+          body={`${joinWithAnd(dirtyFieldLabels())} ${dirtyFieldLabels().length === 1 ? 'is' : 'are'} not saved yet.`}
+          confirmLabel="Leave"
+          cancelLabel="Keep editing"
+          destructive
+          onConfirm={confirmLeave}
+          onCancel={cancelLeave}
+        />
+      )}
+
+      {anonymizeRatchetConfirmOpen && (
+        <ConfirmDialog
+          title="Turn off anonymity?"
+          body="Anyone who already reviewed under anonymity keeps that promise -- it cannot be revoked for evaluations already submitted. Turning this off only changes what happens from here on."
+          confirmLabel="Turn off anonymity"
+          destructive
+          pending={saving}
+          onConfirm={confirmAnonymizeRatchet}
+          onCancel={cancelAnonymizeRatchet}
         />
       )}
 
