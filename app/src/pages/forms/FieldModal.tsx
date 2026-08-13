@@ -16,7 +16,7 @@ import {
   type FormFieldKind,
   type FormFieldSection,
 } from './types';
-import { ModalFrame } from '../../components/ModalFrame';
+import { FormRow, ModalFrame } from '../../components/ModalFrame';
 
 export interface FieldModalInput {
   section: FormFieldSection;
@@ -135,28 +135,31 @@ export function FieldModal({ field, allFields, onCancel, onSubmit }: FieldModalP
     >
       {error && <div className="chq-error-banner">{error}</div>}
 
-        <label className="chq-field">
-          Section
-          <select className="chq-select" value={section} onChange={(e) => setSection(e.target.value as FormFieldSection)}>
+        <FormRow label="Section" htmlFor="field-section">
+          <select
+            id="field-section"
+            className="chq-select"
+            value={section}
+            onChange={(e) => setSection(e.target.value as FormFieldSection)}
+          >
             <option value="session">Session</option>
             <option value="speaker">Speaker</option>
           </select>
-        </label>
+        </FormRow>
 
-        <label className="chq-field">
-          Kind
-          <select className="chq-select" value={kind} onChange={(e) => setKind(e.target.value as FormFieldKind)}>
+        <FormRow label="Kind" htmlFor="field-kind">
+          <select id="field-kind" className="chq-select" value={kind} onChange={(e) => setKind(e.target.value as FormFieldKind)}>
             {FIELD_KINDS.map((k) => (
               <option key={k} value={k}>
                 {kindLabel(k)}
               </option>
             ))}
           </select>
-        </label>
+        </FormRow>
 
-        <label className="chq-field">
-          Label
+        <FormRow label="Label" htmlFor="field-label">
           <input
+            id="field-label"
             className="chq-input"
             type="text"
             value={label}
@@ -164,17 +167,17 @@ export function FieldModal({ field, allFields, onCancel, onSubmit }: FieldModalP
             placeholder="Talk abstract"
             required
           />
-        </label>
+        </FormRow>
 
-        <label className="chq-field">
-          Help text
+        <FormRow label="Help text" htmlFor="field-help-text" optional>
           <textarea
+            id="field-help-text"
             className="chq-textarea"
             value={helpText}
             onChange={(e) => setHelpText(e.target.value)}
             placeholder="Shown beneath the field, e.g. 300 words max"
           />
-        </label>
+        </FormRow>
 
         <label className="chq-checkbox-label">
           <input className="chq-check" type="checkbox" checked={required} onChange={(e) => setRequired(e.target.checked)} />
@@ -182,22 +185,26 @@ export function FieldModal({ field, allFields, onCancel, onSubmit }: FieldModalP
         </label>
 
         {kind === 'dropdown' && (
-          <label className="chq-field">
-            Options (one per line)
+          <FormRow label="Options (one per line)" htmlFor="field-options" optional>
             <textarea
+              id="field-options"
               className="chq-textarea"
               value={optionsText}
               onChange={(e) => setOptionsText(e.target.value)}
               placeholder={'Beginner\nIntermediate\nAdvanced'}
             />
-          </label>
+          </FormRow>
         )}
 
         <fieldset className="chq-forms-rule-builder">
           <legend>Show this field when...</legend>
-          <label className="chq-field">
-            Field
-            <select className="chq-select" value={rule.fieldId} onChange={(e) => setTrigger(e.target.value)}>
+          <FormRow label="Field" htmlFor="field-rule-trigger">
+            <select
+              id="field-rule-trigger"
+              className="chq-select"
+              value={rule.fieldId}
+              onChange={(e) => setTrigger(e.target.value)}
+            >
               <option value="">Always visible</option>
               {candidates.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -205,12 +212,12 @@ export function FieldModal({ field, allFields, onCancel, onSubmit }: FieldModalP
                 </option>
               ))}
             </select>
-          </label>
+          </FormRow>
           {rule.fieldId.length > 0 && (
             <>
-              <label className="chq-field">
-                Condition
+              <FormRow label="Condition" htmlFor="field-rule-op">
                 <select
+                  id="field-rule-op"
                   className="chq-select"
                   value={rule.op}
                   onChange={(e) => setOp(e.target.value as RuleBuilderState['op'])}
@@ -221,12 +228,12 @@ export function FieldModal({ field, allFields, onCancel, onSubmit }: FieldModalP
                     </option>
                   ))}
                 </select>
-              </label>
+              </FormRow>
 
               {valueControl === 'boolean' && (
-                <label className="chq-field">
-                  Value
+                <FormRow label="Value" htmlFor="field-rule-value">
                   <select
+                    id="field-rule-value"
                     className="chq-select"
                     value={rule.value}
                     onChange={(e) => setRule({ ...rule, value: e.target.value })}
@@ -234,25 +241,25 @@ export function FieldModal({ field, allFields, onCancel, onSubmit }: FieldModalP
                     <option value="true">Yes</option>
                     <option value="false">No</option>
                   </select>
-                </label>
+                </FormRow>
               )}
 
               {valueControl === 'number' && (
-                <label className="chq-field">
-                  Value
+                <FormRow label="Value" htmlFor="field-rule-value">
                   <input
+                    id="field-rule-value"
                     className="chq-input"
                     type="number"
                     value={rule.value}
                     onChange={(e) => setRule({ ...rule, value: e.target.value })}
                   />
-                </label>
+                </FormRow>
               )}
 
               {valueControl === 'options' && rule.op !== 'in' && (
-                <label className="chq-field">
-                  Value
+                <FormRow label="Value" htmlFor="field-rule-value">
                   <select
+                    id="field-rule-value"
                     className="chq-select"
                     value={rule.value}
                     onChange={(e) => setRule({ ...rule, value: e.target.value })}
@@ -264,11 +271,11 @@ export function FieldModal({ field, allFields, onCancel, onSubmit }: FieldModalP
                       </option>
                     ))}
                   </select>
-                </label>
+                </FormRow>
               )}
 
               {valueControl === 'options' && rule.op === 'in' && (
-                <fieldset className="chq-field chq-forms-rule-options">
+                <fieldset className="chq-forms-rule-options">
                   <legend>Value (any of)</legend>
                   {(trigger?.options ?? []).map((o) => {
                     const selected = rule.value
@@ -291,16 +298,16 @@ export function FieldModal({ field, allFields, onCancel, onSubmit }: FieldModalP
               )}
 
               {valueControl === 'text' && (
-                <label className="chq-field">
-                  Value{rule.op === 'in' ? ' (comma-separated)' : ''}
+                <FormRow label={`Value${rule.op === 'in' ? ' (comma-separated)' : ''}`} htmlFor="field-rule-value">
                   <input
+                    id="field-rule-value"
                     className="chq-input"
                     type="text"
                     value={rule.value}
                     onChange={(e) => setRule({ ...rule, value: e.target.value })}
                     placeholder="Keynote"
                   />
-                </label>
+                </FormRow>
               )}
             </>
           )}
