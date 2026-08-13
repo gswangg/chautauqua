@@ -6,10 +6,12 @@
 // org" regardless of which event the URL names.
 //
 // Column order is fixed: id, firstName, lastName, email, company, title,
-// tags, created. There is no tags concept anywhere in the contact data
-// model (no column, no join table) as of DEC-597 — the column is declared
-// per the decision's exact wording but every cell is "" until a tags
-// feature exists to populate it. Flagged as a gap, not silently dropped.
+// labels, created. DEC-977: the seventh column carries Labels, not an
+// always-empty "tags" placeholder — Labels ARE customFields (DEC-738/
+// DEC-726), formatted once by domain/contact-labels's contactLabels, so
+// this export reads the exact same values the directory table, contact
+// drawer and merge screens render (reserved travel key excluded per
+// DEC-292: travel/logistics is not a label).
 //
 // DEC-560: total order ends in a unique column. Contacts have no natural
 // event-adjacent ordering (agenda's day/start, submissions' seq), so this
@@ -23,10 +25,11 @@ import { type ExportTable, buildTable } from "./table";
 import { selectFilteredContactRows } from "../contacts/crud";
 import type { ParsedContactListQuery } from "../contacts/query";
 import type { ContactRow } from "../contacts/rows";
+import { contactLabels } from "../../../domain/contact-labels";
 
-export const CONTACTS_HEADER = ["id", "firstName", "lastName", "email", "company", "title", "tags", "created"] as const;
+export const CONTACTS_HEADER = ["id", "firstName", "lastName", "email", "company", "title", "labels", "created"] as const;
 
-function rowToCsvRow(r: { id: string; firstName: string; lastName: string; email: string; company: string | null; title: string | null; createdAt: string }): string[] {
+function rowToCsvRow(r: { id: string; firstName: string; lastName: string; email: string; company: string | null; title: string | null; createdAt: string; customFields: Record<string, string> }): string[] {
   return [
     r.id,
     r.firstName,
@@ -34,7 +37,7 @@ function rowToCsvRow(r: { id: string; firstName: string; lastName: string; email
     r.email,
     r.company ?? "",
     r.title ?? "",
-    "", // tags: no data-model support yet (see module note)
+    contactLabels(r.customFields).join(" · "),
     r.createdAt,
   ];
 }
@@ -68,6 +71,7 @@ export async function exportContacts(db: Db, orgId: string, params?: ParsedConta
         company: r.company,
         title: r.title,
         createdAt: new Date(r.createdAt).toISOString(),
+        customFields: r.customFieldsJson ? (JSON.parse(r.customFieldsJson) as Record<string, string>) : {},
       }),
     );
     return buildTable([...CONTACTS_HEADER], outRows);
@@ -82,12 +86,19 @@ export async function exportContacts(db: Db, orgId: string, params?: ParsedConta
       company: schema.contact.company,
       title: schema.contact.title,
       createdAt: schema.contact.createdAt,
+      customFieldsJson: schema.contact.customFieldsJson,
     })
     .from(schema.contact)
     .where(eq(schema.contact.orgId, orgId))
     .orderBy(asc(schema.contact.lastName), asc(schema.contact.firstName), asc(schema.contact.id));
 
-  const outRows = rows.map((r) => rowToCsvRow({ ...r, createdAt: r.createdAt.toISOString() }));
+  const outRows = rows.map((r) =>
+    rowToCsvRow({
+      ...r,
+      createdAt: r.createdAt.toISOString(),
+      customFields: r.customFieldsJson ? (JSON.parse(r.customFieldsJson) as Record<string, string>) : {},
+    }),
+  );
 
   return buildTable([...CONTACTS_HEADER], outRows);
 }
