@@ -4,7 +4,7 @@ import { formatDateTime } from '../../lib/dates';
 import { orderVersionChains } from './version-chain';
 import { apiDelete, ApiError } from '../../lib/api';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
-import type { DeliverableFile } from './types';
+import type { ContentStatus, DeliverableFile } from './types';
 
 interface VersionListProps {
   versions: DeliverableFile[];
@@ -12,6 +12,19 @@ interface VersionListProps {
    * (DeliverableDetail) can reload the list — this component never owns the
    * source-of-truth list itself. */
   onDeleted: () => void;
+  /** DEC-901: best-available signal for "uploaded after a changes-requested
+   * decision". There is no persisted content-status history anywhere in the
+   * schema (files-content-status.ts's updateContentStatus takes no
+   * before/after log) -- only the submission's CURRENT contentStatus plus
+   * the timestamp that status took effect (updatedAt, bumped in the same
+   * write, the same precedent DeliverableDetail's CONTENT STATUS band and
+   * SubmissionDetailPage's decidedDateLabel both already rely on). A
+   * version uploaded after that instant, while the submission still reads
+   * changes_requested, is annotated; both optional so existing callers that
+   * don't have this data yet simply render without the annotation rather
+   * than crash. */
+  contentStatus?: ContentStatus;
+  statusChangedAt?: number | null;
 }
 
 /** Newest-first version history for one deliverable kind (DEC-020). The
@@ -23,14 +36,17 @@ interface VersionListProps {
  * for the same submission+kind) -- version numbers are computed PER CHAIN
  * (via orderVersionChains), not by flat position in the combined list, so
  * two unrelated documents never get mislabeled as versions of each other.
- * Only the single newest file overall is labeled "Latest"; every other
- * chain head still gets its own chain-relative "vN" (never "Latest").
+ * Only the single newest file overall carries "Latest", and DEC-901 requires
+ * it read "v<N> · Latest" (number AND marker, never the marker alone) --
+ * every other chain head still gets its own chain-relative "vN" (never
+ * "Latest"). A row a later upload in its OWN chain superseded carries
+ * REPLACED.
  *
  * DEC-713: this surface is organizer-only (mounted from the admin Content
  * app), so an organizer may delete any version here — the quiet Delete
  * tertiary renders on every row, confirmed through the shared ConfirmDialog
  * (never window.confirm), and refreshes the list on success. */
-export function VersionList({ versions, onDeleted }: VersionListProps) {
+export function VersionList({ versions, onDeleted, contentStatus, statusChangedAt }: VersionListProps) {
   const [pendingDelete, setPendingDelete] = useState<DeliverableFile | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -63,7 +79,20 @@ export function VersionList({ versions, onDeleted }: VersionListProps) {
         {chains.map((chain, chainIdx) =>
           chain.map((v, idxInChain) => {
             const isCurrent = chainIdx === 0 && idxInChain === 0;
-            const tag = isCurrent ? 'Latest' : `v${chain.length - idxInChain}`;
+            // DEC-901: the newest row always names its version number AND
+            // the marker -- never the marker alone, so the one row that
+            // matters isn't the only row whose position in the chain can't
+            // be read.
+            const versionNumber = chain.length - idxInChain;
+            const tag = isCurrent ? `v${versionNumber} · Latest` : `v${versionNumber}`;
+            // DEC-901: a row superseded by a later upload in the SAME
+            // chain (idxInChain > 0 means this chain's own head, at index
+            // 0, replaced it) carries REPLACED -- never across unrelated
+            // chains, which are independent documents, not versions of
+            // each other (version-chain.ts).
+            const isReplaced = idxInChain > 0;
+            const isAfterChangesRequested =
+              contentStatus === 'changes_requested' && statusChangedAt != null && v.createdAt > statusChangedAt;
             return (
               <li key={v.id} className={isCurrent ? 'chq-version-item chq-content-version-item is-current' : 'chq-version-item chq-content-version-item'}>
                 <span className="chq-content-version-tag">{tag}</span>
@@ -75,6 +104,14 @@ export function VersionList({ versions, onDeleted }: VersionListProps) {
                     {v.uploaderName ?? 'Uploaded in the admin'} &middot; {formatDateTime(v.createdAt)} &middot;{' '}
                     {formatBytes(v.sizeBytes)}
                   </span>
+                  {isReplaced && (
+                    <span className="chq-content-version-flag chq-content-version-flag-replaced">REPLACED</span>
+                  )}
+                  {isAfterChangesRequested && (
+                    <span className="chq-content-version-flag chq-content-version-flag-changes">
+                      Uploaded after changes were requested
+                    </span>
+                  )}
                 </div>
                 <a href={`/files/${v.id}`} download className="chq-content-version-download">
                   Download

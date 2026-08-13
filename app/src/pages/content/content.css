@@ -484,3 +484,71 @@
   font-size: 13px;
   color: var(--chq-muted);
 }
+
+/* ---------------------------------------------------------------------- */
+/* w19-b (DEC-901): deliverable detail header -- back link, title/subtitle, */
+/* sunk CONTENT STATUS band, DELIVERABLES section rule.                    */
+/* task-w19-c also appends to this file -- keep new rules in THIS one      */
+/* block, at the end, to keep that merge hunk small.                       */
+/* ---------------------------------------------------------------------- */
+
+.chq-content-detail-topbar {
+  display: flex;
+}
+
+.chq-content-detail-back {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.chq-content-detail-title-col {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.chq-content-detail-subtitle {
+  margin: 0;
+}
+
+.chq-content-status-band {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: var(--chq-r-card);
+  background: var(--chq-surface-sunk);
+}
+
+.chq-content-status-band-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--chq-muted);
+}
+
+.chq-content-status-band-updated {
+  margin-left: auto;
+}
+
+.chq-content-deliverables-label {
+  margin: 0;
+}
+
+.chq-content-version-flag {
+  align-self: flex-start;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.chq-content-version-flag-replaced {
+  text-transform: uppercase;
+  color: var(--chq-muted);
+}
+
+.chq-content-version-flag-changes {
+  color: var(--chq-ink);
+}

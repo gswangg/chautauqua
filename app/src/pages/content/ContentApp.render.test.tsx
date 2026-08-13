@@ -304,13 +304,17 @@ describe('ContentApp: Files-library drill-in fetches an out-of-page submission (
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: 'Off-Page Talk' })).toBeInTheDocument();
     });
-    expect(screen.getByRole('button', { name: /Back to worklist/ })).toBeInTheDocument();
-    expect(submissionMock).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('button', { name: '‹ Content' })).toBeInTheDocument();
+    // DEC-901: DeliverableDetail's own header fetch (subtitle + CONTENT
+    // STATUS band, keyed on submissionId only) hits this same endpoint
+    // alongside ContentApp's own CNT-D1 out-of-page lookup -- 2 calls, not
+    // 1, but still never more than 2 on a rerender.
+    expect(submissionMock).toHaveBeenCalledTimes(2);
 
     // A rerender (e.g. from the worklist poll finishing) must not re-fire
     // the fetch for the same id.
     await waitFor(() => {
-      expect(submissionMock).toHaveBeenCalledTimes(1);
+      expect(submissionMock).toHaveBeenCalledTimes(2);
     });
   });
 
@@ -384,7 +388,7 @@ describe('ContentApp: Files-library drill-in fetches an out-of-page submission (
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: 'Off-Page Talk' })).toBeInTheDocument();
     });
-    expect(screen.getByRole('button', { name: /Back to worklist/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '‹ Content' })).toBeInTheDocument();
   });
 });
 

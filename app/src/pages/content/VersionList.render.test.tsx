@@ -38,6 +38,47 @@ describe('VersionList', () => {
     expect(items[1]).toHaveTextContent('v1');
   });
 
+  // DEC-901: the newest row must name its version NUMBER as well as the
+  // marker (never the marker alone), and the version it replaced carries
+  // REPLACED.
+  it('labels the newest row "v<N> · Latest" and the version it replaced REPLACED', () => {
+    const v1 = file({ id: 'v1', filename: 'slides-v1.pdf', createdAt: 100, previousFileId: null });
+    const v2 = file({ id: 'v2', filename: 'slides-v2.pdf', createdAt: 200, previousFileId: 'v1' });
+    render(<VersionList versions={[v2, v1]} onDeleted={() => {}} />);
+    const items = screen.getAllByRole('listitem');
+    expect(items[0]).toHaveTextContent('v2 · Latest');
+    expect(items[0]).not.toHaveTextContent('REPLACED');
+    expect(items[1]).toHaveTextContent('v1');
+    expect(items[1]).toHaveTextContent('REPLACED');
+  });
+
+  // DEC-901: a version uploaded after the submission's most recent
+  // changes-requested decision (statusChangedAt, DeliverableDetail's
+  // header-band timestamp) is annotated, but only while the submission
+  // still reads changes_requested and only for versions newer than that
+  // instant.
+  it('annotates a version uploaded after a changes-requested decision', () => {
+    const beforeAsk = file({ id: 'before', filename: 'slides-v1.pdf', createdAt: 100, previousFileId: null });
+    const afterAsk = file({ id: 'after', filename: 'slides-v2.pdf', createdAt: 300, previousFileId: 'before' });
+    render(
+      <VersionList
+        versions={[afterAsk, beforeAsk]}
+        onDeleted={() => {}}
+        contentStatus="changes_requested"
+        statusChangedAt={200}
+      />,
+    );
+    const items = screen.getAllByRole('listitem');
+    expect(items[0]).toHaveTextContent('Uploaded after changes were requested');
+    expect(items[1]).not.toHaveTextContent('Uploaded after changes were requested');
+  });
+
+  it('does not annotate any row when contentStatus/statusChangedAt are absent', () => {
+    const v1 = file({ id: 'v1', filename: 'slides-v1.pdf', createdAt: 100, previousFileId: null });
+    render(<VersionList versions={[v1]} onDeleted={() => {}} />);
+    expect(screen.queryByText('Uploaded after changes were requested')).not.toBeInTheDocument();
+  });
+
   it('numbers two independent chains separately instead of merging them into one fake lineage', () => {
     // Newest chain (organizer upload): 2 versions, newest overall.
     const orgOld = file({ id: 'org-old', filename: 'slides-v1.pdf', createdAt: 100, previousFileId: null });

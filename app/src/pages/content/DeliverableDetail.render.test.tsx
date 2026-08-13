@@ -7,6 +7,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import '@testing-library/jest-dom/vitest';
 import { DeliverableDetail } from './DeliverableDetail';
 import { listEnvelope, mockApi } from '../../test-utils/mockApi';
+import { formatDate, formatDayLabel } from '../../lib/dates';
 
 const SUBMISSION_ID = 'sub-detail-1';
 const EVENT_ID = 'evt-detail-1';
@@ -60,9 +61,24 @@ const files = [
   },
 ];
 
+// DEC-901: DeliverableDetail's header (subtitle + CONTENT STATUS band) now
+// fetches GET /api/v1/submissions/:id directly, independent of the
+// title/contentStatus props ContentApp already passes in.
+function submissionDetail(overrides: Record<string, unknown> = {}) {
+  return {
+    id: SUBMISSION_ID,
+    ref: 'S-042',
+    updatedAt: 1700000300000,
+    participants: [{ name: 'Ada Lovelace' }],
+    slot: { day: '2026-05-12', startMin: 600, endMin: 630, roomName: 'Main Hall' },
+    ...overrides,
+  };
+}
+
 function mockBase(overrides: Record<string, unknown> = {}) {
   return mockApi({
     [`GET /api/v1/submissions/${SUBMISSION_ID}/files`]: listEnvelope(files),
+    [`GET /api/v1/submissions/${SUBMISSION_ID}`]: submissionDetail(),
     [`GET /api/v1/files/file-slides-v2/comments`]: listEnvelope([]),
     [`GET /api/v1/files/file-recording-v1/comments`]: listEnvelope([]),
     // w15-e: CommentThread's 'You'-vs-name identity check reads useMe(),
@@ -197,5 +213,51 @@ describe('DeliverableDetail render smoke', () => {
       expect(capturedBody).toEqual({ fileIds: ['file-slides-v2', 'file-recording-v1'] });
     });
     expect(screen.getByRole('status')).toHaveTextContent('a-talk.zip downloaded.');
+  });
+
+  // DEC-901: back link + H1 + subtitle + sunk CONTENT STATUS band.
+  it('renders the "‹ Content" back link, the title as an H1, the Speaker · CODE · slot subtitle, and the status band', async () => {
+    mockBase();
+
+    render(
+      <DeliverableDetail
+        submissionId={SUBMISSION_ID}
+        title="A talk"
+        contentStatus="pending"
+        onBack={() => {}}
+        onContentStatusChange={() => {}}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: '‹ Content' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'A talk' })).toBeInTheDocument();
+    await screen.findByText(`Ada Lovelace · S-042 · ${formatDayLabel('2026-05-12')} 10:00–10:30, Main Hall`);
+    expect(screen.getByText('Content status')).toBeInTheDocument();
+    expect(screen.getByText('Pending')).toBeInTheDocument();
+    expect(screen.getByText(`Updated ${formatDate(1700000300000)}`)).toBeInTheDocument();
+    expect(screen.getByText('Deliverables')).toBeInTheDocument();
+  });
+
+  it('omits the slot/room clause (no trailing separator) when the session is unplaced', async () => {
+    mockApi({
+      [`GET /api/v1/submissions/${SUBMISSION_ID}/files`]: listEnvelope(files),
+      [`GET /api/v1/submissions/${SUBMISSION_ID}`]: submissionDetail({ slot: null }),
+      [`GET /api/v1/files/file-slides-v2/comments`]: listEnvelope([]),
+      [`GET /api/v1/files/file-recording-v1/comments`]: listEnvelope([]),
+      'GET /api/v1/me': { userId: 'user-1', email: 'org@example.com', name: 'Org User', role: 'organizer', orgId: 'org-1' },
+    });
+
+    render(
+      <DeliverableDetail
+        submissionId={SUBMISSION_ID}
+        title="A talk"
+        contentStatus="pending"
+        onBack={() => {}}
+        onContentStatusChange={() => {}}
+      />,
+    );
+
+    await screen.findByText('Ada Lovelace · S-042');
+    expect(screen.queryByText(/Ada Lovelace · S-042 ·/)).not.toBeInTheDocument();
   });
 });
