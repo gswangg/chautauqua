@@ -28,9 +28,12 @@ overview fetch right after reviewer login — make the shell skip it for reviewe
 
 ## Cross-cutting sweeps (each closes a class)
 
-A. **Page-measure audit, all admin routes**: submission detail, session detail, plan
-   editor, form builder all clamp left/narrow. One shared container token; render-
-   sweep asserts width per route.
+A. **Page-measure audit, all admin routes — STILL OPEN, half-landed**: DEC-744's
+   --chq-measure token exists but was adopted ONLY on server-rendered surfaces
+   (public/docs/mailbox/submit); app/src has ZERO adoption, so submission detail
+   (user re-confirmed on 79e58f0: content ends ~75% w/ dead right gutter), session
+   detail, plan editor, form builder still clamp left/narrow. Finish the sweep:
+   admin SPA containers adopt the token; render-sweep asserts width per route.
 B. **customFields/Labels UI surface** (mostly landed — probe 2: directory column AND
    drawer chips w/ label variety verified): remaining — Labels row in the MERGE view
    renders raw lowercase custom-field keys; apply the server-side formatting there
