@@ -85,12 +85,32 @@ reviewReviewerRoutes.get("/api/v1/review/plans/:id/queue", async (c) => {
   // early return and the open-plan result cannot diverge in shape -- the
   // Review landing reads `recused.length` unconditionally across all plans
   // (5th-cycle lockout regression, docs/eval-findings.md).
+  // DEC-845: the envelope carries the plan's own facts (name/scope
+  // track/close date) so the queue header renders from ONE fetch instead of
+  // a second GET /review/plans/:id round trip -- resolved here so both the
+  // closed-plan early return and the open-plan result share the same values.
+  const scopeTrackId = auth.role === "organizer" ? null : await repo.getReviewerScopeTrackId(c.var.db, plan.id, auth.userId);
+  const scopeTrackName = scopeTrackId
+    ? (await repo.getTrackNamesByIds(c.var.db, [scopeTrackId])).get(scopeTrackId) ?? null
+    : null;
+
   const shapeQueueEnvelope = (fields: {
     items: unknown[];
     total: number;
     open: boolean;
     recused: unknown[];
-  }) => c.json({ items: fields.items, total: fields.total, page, perPage, open: fields.open, recused: fields.recused });
+  }) =>
+    c.json({
+      items: fields.items,
+      total: fields.total,
+      page,
+      perPage,
+      open: fields.open,
+      recused: fields.recused,
+      planName: plan.name,
+      scopeTrackName,
+      closeDate: plan.closeDate,
+    });
 
   if (!isPlanOpen(plan.openDate, plan.closeDate, Date.now(), plan.timezone)) {
     return shapeQueueEnvelope({ items: [], total: 0, open: false, recused: [] });
@@ -147,16 +167,19 @@ reviewReviewerRoutes.get("/api/v1/review/plans/:id/queue", async (c) => {
       submissionId: s.id,
       ratingsCount: countsBySubmission.get(s.id) ?? 0,
       alreadyRatedByMe: ratedByMe.has(s.id),
+      myScore: myScoreFor(s.id),
     }))
     .filter((item) => item.alreadyRatedByMe || needsMoreRatings(item, plan.maxEvaluations ?? undefined));
 
-  const orderedIds = buildReviewerQueue(queueItems);
+  const ordered = buildReviewerQueue(queueItems);
   const byId = new Map(scopedActionable.map((s) => [s.id, s]));
-  // DEC-239/DEC-831: the SPA reads submissionId/ref/title/ratingsCount/
-  // alreadyRatedByMe/myScore by exact key -- emit the shaped item, not the
-  // raw SubmissionSummary row (which has `id`, not `submissionId`).
-  const items = orderedIds
-    .map((id) => {
+  // DEC-239/DEC-831/DEC-845: the SPA reads submissionId/ref/title/
+  // ratingsCount/alreadyRatedByMe/myScore by exact key -- emit the shaped
+  // item, not the raw SubmissionSummary row (which has `id`, not
+  // `submissionId`); myScore comes straight off buildReviewerQueue's own
+  // ordered item now, not a second lookup.
+  const items = ordered
+    .map(({ submissionId: id, myScore }) => {
       const summary = byId.get(id);
       if (!summary) return undefined;
       return {
@@ -165,7 +188,7 @@ reviewReviewerRoutes.get("/api/v1/review/plans/:id/queue", async (c) => {
         title: summary.title,
         ratingsCount: countsBySubmission.get(id) ?? 0,
         alreadyRatedByMe: ratedByMe.has(id),
-        myScore: myScoreFor(id),
+        myScore,
       };
     })
     .filter((item): item is NonNullable<typeof item> => item !== undefined);

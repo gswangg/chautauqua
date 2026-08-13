@@ -318,6 +318,9 @@ describe('ReviewPage render smoke: reviewer', () => {
         ]),
         open: true,
         recused: [],
+        planName: 'Keynote Track Review',
+        scopeTrackName: null,
+        closeDate: null,
       },
     });
 
@@ -345,13 +348,78 @@ describe('ReviewPage render smoke: reviewer', () => {
     expect(screen.getByText('NOT SCORED')).toBeInTheDocument();
     expect(screen.getByText('SCORED 4.5')).toBeInTheDocument();
 
-    // DEC-561: completed items keep their spot in the delivered (never
-    // re-sorted) order, rendered with a Complete pill.
+    // DEC-561/DEC-845: completed items keep their spot in the delivered
+    // (never re-sorted) order -- SCORED/NOT SCORED replaces the old Complete
+    // pill entirely, so neither row renders that word anymore.
     const rows = screen.getAllByRole('listitem');
     expect(rows[0]).toHaveTextContent('A Talk About Testing');
+    expect(rows[0]).toHaveTextContent('NOT SCORED');
     expect(rows[0]).not.toHaveTextContent('Complete');
     expect(rows[1]).toHaveTextContent('Another Talk');
-    expect(rows[1]).toHaveTextContent('Complete');
+    expect(rows[1]).toHaveTextContent('SCORED 4.5');
+    expect(rows[1]).not.toHaveTextContent('Complete');
+  });
+
+  // DEC-845: the subtitle names the CALLER's own scope track (or "All
+  // tracks") and "closes in N days" -- omitted entirely when the plan has
+  // no close date. The progress bar reads scored/total.
+  it('renders the subtitle scope/close clause and progress bar from the queue envelope', async () => {
+    mockApi({
+      'GET /api/v1/me': reviewerMe(),
+      [`GET /api/v1/review/plans/${PLAN_ID}`]: { ...planWithNullDates(), timezone: 'America/New_York' },
+      [`GET /api/v1/review/plans/${PLAN_ID}/queue`]: {
+        ...listEnvelope([
+          { submissionId: 'sub-1', ref: 'S-001', title: 'A Talk About Testing', ratingsCount: 0, alreadyRatedByMe: false, myScore: null },
+          { submissionId: 'sub-2', ref: 'S-002', title: 'Another Talk', ratingsCount: 1, alreadyRatedByMe: true, myScore: 4.5 },
+        ]),
+        open: true,
+        recused: [],
+        planName: 'Keynote Track Review',
+        scopeTrackName: 'Main Stage',
+        closeDate: Date.now() + 3 * 24 * 60 * 60 * 1000,
+      },
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/plans/${PLAN_ID}`]}>
+        <ReviewPage />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText(/Main Stage/)).toBeInTheDocument();
+    expect(screen.getByText(/closes in \d+ days?/)).toBeInTheDocument();
+
+    const bar = document.querySelector('.chq-review-scoped-progress .chq-bar-fill') as HTMLElement;
+    expect(bar).toBeTruthy();
+    // 1 of 2 items scored -> 50%.
+    expect(bar.style.width).toBe('50%');
+  });
+
+  // DEC-845: the zero-count case never reads "0 left to score" -- it keeps
+  // the existing empty-queue copy.
+  it('reads "Nothing left in your queue. Nicely done." when nothing is left to score', async () => {
+    mockApi({
+      'GET /api/v1/me': reviewerMe(),
+      [`GET /api/v1/review/plans/${PLAN_ID}`]: planWithNullDates(),
+      [`GET /api/v1/review/plans/${PLAN_ID}/queue`]: {
+        ...listEnvelope([
+          { submissionId: 'sub-1', ref: 'S-001', title: 'A Talk About Testing', ratingsCount: 1, alreadyRatedByMe: true, myScore: 4 },
+        ]),
+        open: true,
+        recused: [],
+        planName: 'Keynote Track Review',
+        scopeTrackName: null,
+        closeDate: null,
+      },
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/plans/${PLAN_ID}`]}>
+        <ReviewPage />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('heading', { name: 'Nothing left in your queue. Nicely done.' })).toBeInTheDocument();
   });
 
   it('landing on /review with exactly one plan shows the queue directly, no plan-name-only picker', async () => {

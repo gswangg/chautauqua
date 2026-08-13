@@ -411,16 +411,29 @@ export interface ReviewerQueueItem {
   submissionId: string;
   ratingsCount: number;
   alreadyRatedByMe: boolean;
+  // DEC-845: this reviewer's OWN blended score (computeWeightedScore, this
+  // module), null when they have not scored the submission yet. Optional on
+  // input -- callers that don't yet have it can omit it and it reads as null
+  // on output -- but always present on every returned item.
+  myScore?: number | null;
+}
+
+export interface OrderedReviewerQueueItem {
+  submissionId: string;
+  myScore: number | null;
 }
 
 /**
- * Builds a reviewer's queue ordering: returns EVERY item's id (DEC-561 --
+ * Builds a reviewer's queue ordering: returns EVERY item (DEC-561 --
  * completed work sinks to the bottom instead of vanishing), sorted by
  * (alreadyRatedByMe ? 1 : 0) asc first, then ratingsCount asc, then
  * submissionId asc, then original index -- so everything actionable stays
  * fewest-ratings-first ahead of everything already rated by this reviewer.
+ * DEC-845: each returned item also carries the reviewer's own `myScore`
+ * (passed through verbatim, defaulting to null) -- callers no longer need a
+ * second pass over the ordered ids to attach it.
  */
-export function buildReviewerQueue(items: ReviewerQueueItem[]): string[] {
+export function buildReviewerQueue(items: ReviewerQueueItem[]): OrderedReviewerQueueItem[] {
   return items
     .map((item, index) => ({ item, index }))
     .sort((a, b) => {
@@ -435,7 +448,7 @@ export function buildReviewerQueue(items: ReviewerQueueItem[]): string[] {
       }
       return a.index - b.index;
     })
-    .map(({ item }) => item.submissionId);
+    .map(({ item }) => ({ submissionId: item.submissionId, myScore: item.myScore ?? null }));
 }
 
 /**

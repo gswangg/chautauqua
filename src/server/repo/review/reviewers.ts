@@ -1,7 +1,7 @@
 // Reviewers (plan_reviewer scope rows -- DEC-017): the drizzle-row/domain
 // boundary for who is assigned to review what within a plan.
 
-import { eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { formatRef, newId } from "../../../domain/ids";
@@ -131,6 +131,24 @@ export async function getSubmissionLabelsByIds(db: Db, submissionIds: string[]):
     for (const row of rows) map.set(row.id, { ref: formatRef(row.recordPrefix, row.seq), title: row.title });
   }
   return map;
+}
+
+/** DEC-845: the reviewer queue header names the caller's OWN scope track (or
+ * "all tracks"), not the plan-wide filters.trackIds. Returns null when the
+ * caller has no rows, has any unrestricted row (trackId+submissionId both
+ * null), or scopes across more than one distinct track -- all read as "All
+ * tracks" rather than naming a single one. */
+export async function getReviewerScopeTrackId(db: Db, planId: string, userId: string): Promise<string | null> {
+  const rows = await db
+    .select({ trackId: schema.planReviewer.trackId, submissionId: schema.planReviewer.submissionId })
+    .from(schema.planReviewer)
+    .where(and(eq(schema.planReviewer.planId, planId), eq(schema.planReviewer.userId, userId)));
+  if (rows.length === 0) return null;
+  const unrestricted = rows.some((r) => r.trackId === null && r.submissionId === null);
+  if (unrestricted) return null;
+  const trackIds = [...new Set(rows.filter((r) => r.trackId !== null).map((r) => r.trackId as string))];
+  if (trackIds.length !== 1) return null;
+  return trackIds[0] ?? null;
 }
 
 export async function listPlanIdsForReviewer(db: Db, userId: string): Promise<string[]> {

@@ -154,6 +154,10 @@ vi.mock("../src/server/repo/review", async () => {
         ? [submission, submission2].find((s) => s.id === submissionId)
         : null,
     ),
+    // DEC-845: the queue envelope's scopeTrackName resolution -- no track
+    // scoping in this fixture set.
+    getReviewerScopeTrackId: vi.fn(async () => null),
+    getTrackNamesByIds: vi.fn(async () => new Map()),
   };
 });
 
