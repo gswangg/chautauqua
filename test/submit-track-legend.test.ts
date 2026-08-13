@@ -150,3 +150,23 @@ describe("GET /submit/:eventSlug track fieldset (DEC-579)", () => {
     expect(legendMatches.length).toBe(1);
   });
 });
+
+// DEC-790: the submit page shell offers a returning speaker a quiet way
+// in (a /login link), without ever rendering a claim URL -- DEC-098's
+// "claim link only in the fresh post-submit state" rule is untouched, so
+// a plain GET of the submit form (never having submitted anything) must
+// never show /claim/ anywhere in the body.
+describe("GET /submit/:eventSlug offers a sign-in link, never a claim URL (DEC-790)", () => {
+  it("renders a /login sign-in link near the header, and no /claim/ URL anywhere in the body", async () => {
+    const db = fakeDb([[EVENT_ROW], [FORM_ROW], FIELD_ROWS, TRACK_ROWS]);
+    const app = appWithDb(db);
+
+    const res = await app.request("/submit/test-conf", { headers: {} }, { KV: fakeKv() } as unknown as AppEnv["Bindings"]);
+    expect(res.status).toBe(200);
+    const body = await res.text();
+
+    expect(body).toContain('href="/login"');
+    expect(body.toLowerCase()).toContain("sign in to the speaker portal");
+    expect(body).not.toContain("/claim/");
+  });
+});

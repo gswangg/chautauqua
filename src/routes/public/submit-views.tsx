@@ -175,6 +175,10 @@ export function SubmitPage(props: {
         <div class="chq-cfp-body">
           <div class="chq-cfp-intro">
             <h1>Submit a talk</h1>
+            <p class="chq-cfp-identity-note">
+              Already have an account? <a href="/login">Sign in to the speaker portal</a>. First time
+              submitting? Submitting this form creates your speaker portal account.
+            </p>
           </div>
           {props.banner ? (
             <p role="alert" class="chq-cfp-actions-note">
