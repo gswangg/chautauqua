@@ -6,7 +6,7 @@ import { cleanup, render, screen, waitFor, fireEvent, act } from '@testing-libra
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { NewContactModal } from './NewContactModal';
-import { mockApi } from '../../test-utils/mockApi';
+import { mockApi, errorEnvelope, listEnvelope } from '../../test-utils/mockApi';
 
 afterEach(() => {
   cleanup();
@@ -109,5 +109,63 @@ describe('NewContactModal duplicate hint (DEC-788)', () => {
     });
 
     expect(screen.queryByText(/Possible duplicate:/)).not.toBeInTheDocument();
+  });
+});
+
+describe('NewContactModal duplicate-address 409 (DEC-755 amendment wave 43)', () => {
+  it('renders the inline email field error and an "Open the existing record" link on a 409', async () => {
+    mockApi({
+      'GET /api/v1/contacts/duplicates/check': { items: [] },
+      'POST /api/v1/contacts': {
+        status: 409,
+        body: errorEnvelope('conflict', 'Priya Raman already uses this email', {
+          email: 'Already on an existing contact',
+        }),
+      },
+      'GET /api/v1/contacts': listEnvelope([
+        { id: 'ct-existing', firstName: 'Priya', lastName: 'Raman', email: 'priya@example.com' },
+      ]),
+    });
+
+    renderModal();
+
+    fireEvent.change(screen.getByLabelText('First name'), { target: { value: 'Priya' } });
+    fireEvent.change(screen.getByLabelText('Last name'), { target: { value: 'Raman' } });
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'priya@example.com' } });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Create contact' }));
+
+    await waitFor(() => {
+      expect(document.querySelector('.chq-error')).toHaveTextContent('Priya Raman already uses this email');
+    });
+    expect(screen.getByLabelText(/^Email/).closest('.chq-form-row')?.textContent).toContain(
+      'Already on an existing contact',
+    );
+
+    const openLink = await screen.findByRole('link', { name: 'Open the existing record' });
+    expect(openLink).toHaveAttribute('href', '/contacts?openContact=ct-existing');
+  });
+
+  it('does not offer the open-existing link for a non-conflict error', async () => {
+    mockApi({
+      'GET /api/v1/contacts/duplicates/check': { items: [] },
+      'POST /api/v1/contacts': {
+        status: 400,
+        body: errorEnvelope('invalid', 'Validation failed', { email: 'must be a valid email address' }),
+      },
+    });
+
+    renderModal();
+
+    fireEvent.change(screen.getByLabelText('First name'), { target: { value: 'Priya' } });
+    fireEvent.change(screen.getByLabelText('Last name'), { target: { value: 'Raman' } });
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'not-an-email' } });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Create contact' }));
+
+    await waitFor(() => {
+      expect(document.querySelector('.chq-error')).toHaveTextContent('Validation failed');
+    });
+    expect(screen.queryByRole('link', { name: 'Open the existing record' })).not.toBeInTheDocument();
   });
 });

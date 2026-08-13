@@ -11,6 +11,7 @@ import { ApiError } from "../../../server/http";
 import { MAX_NAME_LENGTH, MAX_TEXT_LENGTH, MAX_LONG_TEXT_LENGTH } from "../../../forms/validate"; // DEC-417
 import { isValidEmail, normalizeEmail } from "../../../domain/email"; // DEC-454
 import * as repo from "../../../server/repo/contacts";
+import { findContactByEmail } from "../../../server/repo/submit";
 import { contactLabels } from "../../../domain/contact-labels";
 import { plural } from "../../../domain/count-copy"; // DEC-957
 import { getEventForOrg } from "../../../server/repo/events";
@@ -26,12 +27,14 @@ import {
   DEC_290,
   DEC_461,
   DEC_466,
+  DEC_755,
   DEC_764,
   DEC_765,
   DEC_810,
   DEC_894,
   DEC_979,
 } from "../../../decisions";
+void DEC_755; // DEC-755 amendment (wave 43): POST /contacts is find-or-REFUSE, never mint-a-duplicate.
 void DEC_894; // DEC-894: headshot dimension gate covers webp too — see below.
 void DEC_979;
 import {
@@ -134,10 +137,26 @@ export function registerCrudRoutes(contactsRoutes: Hono<AppEnv>): void {
       sessionTitle = body.sessionTitle.trim();
     }
 
+    // DEC-755 amendment (wave 43): contact identity within an org is
+    // (orgId, lower(email)) on every find-or-create path -- this manual
+    // create is find-or-REFUSE, not find-or-mint-a-duplicate. A silent
+    // find-and-return would be a silent merge of two different people's
+    // names, so a hit is a 409 naming the existing contact rather than a
+    // 201 of the existing row.
+    const normalizedEmail = normalizeEmail(body.email as string); // DEC-454
+    const existing = await findContactByEmail(c.var.db, orgId, normalizedEmail);
+    if (existing) {
+      const existingFull = await repo.findContactForOrg(c.var.db, existing.id, orgId);
+      const existingName = existingFull ? `${existingFull.firstName} ${existingFull.lastName}` : "An existing contact";
+      throw new ApiError("conflict", `${existingName} already uses this email`, {
+        email: "Already on an existing contact",
+      });
+    }
+
     const created = await repo.createContact(c.var.db, orgId, {
       firstName: body.firstName as string,
       lastName: body.lastName as string,
-      email: normalizeEmail(body.email as string), // DEC-454
+      email: normalizedEmail,
       phone: typeof body.phone === "string" ? body.phone : undefined,
       company: typeof body.company === "string" ? body.company : undefined,
       title: typeof body.title === "string" ? body.title : undefined,
