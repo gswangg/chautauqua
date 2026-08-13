@@ -2,18 +2,13 @@ import { CONTENT_STATUS_LABELS, type ContentStatus, type ContentSubmissionListIt
 import { WORKLIST_TABS, type WorklistTab } from './worklist';
 import { DelayedLoading } from '../../components/DelayedLoading';
 
-// w1-f (DEC-733/eval 60/37): mock pill naming (docs/design/
-// 'Chautauqua Content.dc.html', screens/05-content.png) — 'all' is the
-// only tab whose wording the mock names 1:1 ('All accepted sessions').
-// The mock collapses 'changes_requested'+'pending' into one 'Needs a
-// decision' pill; WORKLIST_TABS (worklist.ts) keeps them as separate
-// server-filterable tabs, so this page still renders four pills rather
-// than the mock's three — flagged as a follow-up, not silently faked.
+// DEC-825: mock pill naming (docs/design/'Chautauqua Content.dc.html',
+// screens/05-content.png) — the worklist now renders exactly the mock's
+// three chips, in the mock's order (worklist.ts WORKLIST_TABS).
 export const TAB_LABELS: Record<WorklistTab, string> = {
-  all: 'All accepted sessions',
-  changes_requested: 'Changes requested',
-  pending: 'Pending',
+  needs_decision: 'Needs a decision',
   approved: 'Approved',
+  all: 'All accepted sessions',
 };
 
 // w1-f: 'now' is threaded down from the caller (ContentApp) rather than
@@ -51,6 +46,10 @@ interface SessionListProps {
   // ('2 days ago') — a prop rather than Date.now() inline so every row in
   // one render agrees on the same instant.
   now: number;
+  // DEC-825: one bounded (perPage=1) count per chip, keyed by tab — null
+  // until its own aggregate read resolves, rendered honestly absent (never
+  // a placeholder 0) until then.
+  counts: Record<WorklistTab, number | null>;
 }
 
 export function SessionList({
@@ -66,6 +65,7 @@ export function SessionList({
   perPage,
   onPageChange,
   now,
+  counts,
 }: SessionListProps) {
   const visible = items;
   const rangeStart = total === 0 ? 0 : (page - 1) * perPage + 1;
@@ -84,6 +84,7 @@ export function SessionList({
             onClick={() => onTabChange(t)}
           >
             {TAB_LABELS[t]}
+            {counts[t] !== null ? ` · ${counts[t]}` : ''}
           </button>
         ))}
       </div>

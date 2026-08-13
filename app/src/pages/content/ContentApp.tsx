@@ -7,7 +7,7 @@ import { FilesLibrary } from './FilesLibrary';
 import { SessionList } from './SessionList';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { type ContentStatus, type ContentSubmissionListItem } from './types';
-import { WORKLIST_TABS, type WorklistTab } from './worklist';
+import { WORKLIST_TAB_CONTENT_STATUS, WORKLIST_TABS, type WorklistTab } from './worklist';
 
 // CNT-D1: shape carried by GET /api/v1/submissions/:id (SubmissionDetail in
 // src/server/repo/submissions/detail.ts) — only the fields DeliverableDetail
@@ -23,10 +23,12 @@ type ContentView = 'worklist' | 'files';
 
 const PER_PAGE = 50;
 
-// w11-e (DEC-665): WORKLIST_TABS[0] is 'all' -- named here (rather than
-// indexed inline) since noUncheckedIndexedAccess types a bare array index
-// as possibly undefined.
-const DEFAULT_WORKLIST_TAB: WorklistTab = WORKLIST_TABS[0] ?? 'all';
+// w11-e (DEC-665): default to the unfiltered worklist — opening on a
+// filtered tab reads '0 submissions' on a populated event whenever nothing
+// matches yet. DEC-825 reordered WORKLIST_TABS to lead with
+// 'needs_decision' (chip order matches the mock), so the default tab is
+// named directly here rather than indexed from WORKLIST_TABS[0].
+const DEFAULT_WORKLIST_TAB: WorklistTab = 'all';
 
 /** J8 content review loop entry point: worklist -> per-session deliverable detail. */
 export function ContentApp() {
@@ -47,14 +49,18 @@ export function ContentApp() {
   const [loading, setLoading] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // DEC-825: one bounded (perPage=1) aggregate read per chip, each filtered
+  // by EXACTLY that tab's own contentStatus value from WORKLIST_TAB_CONTENT_
+  // STATUS — never a page-count stand-in, per the field guide's "a cap the
+  // UI can't see LIES, render total".
+  const [counts, setCounts] = useState<Record<WorklistTab, number | null>>(() =>
+    Object.fromEntries(WORKLIST_TABS.map((t) => [t, null])) as Record<WorklistTab, number | null>,
+  );
   // w1-f (DEC-733/eval 60/37): the mock's header reads 'N need a decision ·
-  // M re-uploaded' regardless of which tab is active — a fact the
-  // currently-active tab's own `total` can't carry (it's scoped to one
-  // status). Two bounded, page-1/perPage-1 aggregate reads against the same
-  // submissions list endpoint (never a page-count stand-in, per the field
-  // guide's "a cap the UI can't see LIES, render total") supply the two
-  // numbers without a per-row fan-out.
-  const [needsDecisionCount, setNeedsDecisionCount] = useState<number | null>(null);
+  // M re-uploaded' regardless of which tab is active. `needs a decision`
+  // reuses the needs_decision chip's own count (same query, DEC-825); the
+  // re-uploaded figure ('changes_requested' only, no chip owns that exact
+  // predicate) is its own bounded aggregate read.
   const [reUploadedCount, setReUploadedCount] = useState<number | null>(null);
   // w1-e: bumping this remounts FilesLibrary (its own load() effect keys on
   // eventId, not on time), which forces a fresh fetch — used on view
@@ -74,7 +80,11 @@ export function ContentApp() {
     params.set('sort', 'worklist');
     params.set('page', String(page));
     params.set('perPage', String(PER_PAGE));
-    if (tab !== 'all') params.set('contentStatus', tab);
+    // DEC-825: the tab's contentStatus filter is read from the same map the
+    // chip counts read from, so the list and its own chip's count can never
+    // disagree on what the tab means.
+    const tabStatusFilter = WORKLIST_TAB_CONTENT_STATUS[tab];
+    if (tabStatusFilter) params.set('contentStatus', tabStatusFilter);
     apiList<ContentSubmissionListItem>(`/events/${eventId}/submissions?${params.toString()}`)
       .then((res) => {
         setItems(res.items);
@@ -93,12 +103,15 @@ export function ContentApp() {
 
   const loadCounts = useCallback(() => {
     if (!eventId) return;
-    const decisionParams = new URLSearchParams();
-    decisionParams.set('perPage', '1');
-    decisionParams.set('contentStatus', 'changes_requested,pending');
-    apiList<ContentSubmissionListItem>(`/events/${eventId}/submissions?${decisionParams.toString()}`)
-      .then((res) => setNeedsDecisionCount(res.total))
-      .catch(() => setNeedsDecisionCount(null));
+    for (const t of WORKLIST_TABS) {
+      const chipParams = new URLSearchParams();
+      chipParams.set('perPage', '1');
+      const statusFilter = WORKLIST_TAB_CONTENT_STATUS[t];
+      if (statusFilter) chipParams.set('contentStatus', statusFilter);
+      apiList<ContentSubmissionListItem>(`/events/${eventId}/submissions?${chipParams.toString()}`)
+        .then((res) => setCounts((prev) => ({ ...prev, [t]: res.total })))
+        .catch(() => setCounts((prev) => ({ ...prev, [t]: null })));
+    }
 
     const reUploadedParams = new URLSearchParams();
     reUploadedParams.set('perPage', '1');
@@ -257,9 +270,9 @@ export function ContentApp() {
             mock's header text ('N need a decision · M re-uploaded') —
             withheld (not '0 · 0') until both aggregate reads resolve, per
             DEC-665's "never assert a fact not yet measured". */}
-        {!submissionId && view === 'worklist' && needsDecisionCount !== null && reUploadedCount !== null && (
+        {!submissionId && view === 'worklist' && counts.needs_decision !== null && reUploadedCount !== null && (
           <span className="chq-summary">
-            {needsDecisionCount} need a decision &middot; {reUploadedCount} re-uploaded
+            {counts.needs_decision} need a decision &middot; {reUploadedCount} re-uploaded
           </span>
         )}
       </div>
@@ -329,6 +342,7 @@ export function ContentApp() {
           perPage={PER_PAGE}
           onPageChange={changePage}
           now={Date.now()}
+          counts={counts}
         />
       )}
     </div>

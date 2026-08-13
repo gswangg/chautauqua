@@ -212,17 +212,18 @@ describe('ContentApp: fresh loads on view switch and explicit refresh', () => {
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Refresh' })).toBeInTheDocument();
     });
-    // w1-f: loadWorklist (1) plus the header's two bounded aggregate reads
-    // (needs-decision, re-uploaded — DEC-733/eval 60/37) hit the same
-    // /submissions path, so mounting fires 3 requests, not 1.
+    // w1-f/DEC-825: loadWorklist (1) plus one bounded count per chip (3,
+    // WORKLIST_TABS) plus the header's re-uploaded aggregate read
+    // (DEC-733/eval 60/37) hit the same /submissions path, so mounting
+    // fires 5 requests, not 1.
     await waitFor(() => {
-      expect(submissionsMock).toHaveBeenCalledTimes(3);
+      expect(submissionsMock).toHaveBeenCalledTimes(5);
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Refresh' }));
 
     await waitFor(() => {
-      expect(submissionsMock).toHaveBeenCalledTimes(6);
+      expect(submissionsMock).toHaveBeenCalledTimes(10);
     });
   });
 
@@ -383,5 +384,46 @@ describe('ContentApp: Files-library drill-in fetches an out-of-page submission (
       expect(screen.getByRole('heading', { name: 'Off-Page Talk' })).toBeInTheDocument();
     });
     expect(screen.getByRole('button', { name: /Back to worklist/ })).toBeInTheDocument();
+  });
+});
+
+// DEC-825: one predicate over one set — a chip's own bounded count read must
+// filter by the EXACT same contentStatus string the worklist list fetch uses
+// once that chip's tab is active, both sourced from worklist.ts's single
+// WORKLIST_TAB_CONTENT_STATUS map.
+describe('ContentApp worklist chips (DEC-825): count query matches the tab list filter', () => {
+  it("uses the identical contentStatus query string for the 'Needs a decision' list fetch and its own chip count", async () => {
+    const fetchMock = mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([]),
+    });
+
+    render(
+      <MemoryRouter>
+        <ContentApp />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(await screen.findByRole('tab', { name: /Needs a decision/ }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('tab', { name: /Needs a decision/ })).toHaveClass('is-active');
+    });
+
+    function contentStatusParams(sortValue: string | null) {
+      return fetchMock.mock.calls
+        .map(([input]) => new URL(typeof input === 'string' ? input : input.toString(), 'http://localhost'))
+        .filter((url) => url.searchParams.get('sort') === sortValue)
+        .map((url) => url.searchParams.get('contentStatus'));
+    }
+
+    // Only the fetches made once the 'needs_decision' tab is active carry
+    // its contentStatus filter — the initial mount's default-tab ('all')
+    // list fetch has none, so it's excluded rather than falsified against.
+    const listContentStatuses = contentStatusParams('worklist').filter((v) => v !== null);
+    const chipCountContentStatuses = contentStatusParams(null);
+
+    expect(listContentStatuses.length).toBeGreaterThan(0);
+    expect(listContentStatuses.every((v) => v === 'changes_requested,pending')).toBe(true);
+    expect(chipCountContentStatuses).toContain('changes_requested,pending');
   });
 });
