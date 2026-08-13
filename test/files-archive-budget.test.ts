@@ -11,7 +11,12 @@ import { describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
 import { registerErrorHandler } from "../src/server/http";
 import type { AppEnv, AuthInfo } from "../src/server/env";
-import { ARCHIVE_MAX_TOTAL_BYTES } from "../src/routes/files";
+import {
+  ARCHIVE_MAX_TOTAL_BYTES,
+  ARCHIVE_PEAK_MULTIPLIER,
+  ISOLATE_MEMORY_BUDGET_BYTES,
+} from "../src/routes/files";
+import { buildZip } from "../src/lib/zip";
 
 interface ResolvedEntry {
   id: string;
@@ -100,8 +105,8 @@ describe("POST /api/v1/events/:eventId/files/archive total-byte budget (DEC-353)
     expect(res.status).toBe(400);
     const body = (await res.json()) as { error: { code: string; message: string; fields?: Record<string, string> } };
     expect(body.error.code).toBe("invalid");
-    expect(body.error.message).toMatch(/50\.0MB/);
-    expect(body.error.message).toMatch(/40MB/);
+    expect(body.error.message).toMatch(/30\.0MB/);
+    expect(body.error.message).toMatch(/20MB/);
     expect(body.error.fields).toEqual({ fileIds: "Too large" });
     expect(getCount.count).toBe(0);
   });
@@ -122,5 +127,48 @@ describe("POST /api/v1/events/:eventId/files/archive total-byte budget (DEC-353)
     expect(res.status).toBe(200);
     expect(res.headers.get("content-type")).toBe("application/zip");
     expect(getCount.count).toBe(3);
+  });
+
+  it("(wave 46) the cap's peak multiplier stays under 75% of the isolate memory budget — any future cap raise must first lower the multiplier", () => {
+    expect(ARCHIVE_MAX_TOTAL_BYTES * ARCHIVE_PEAK_MULTIPLIER).toBeLessThanOrEqual(0.75 * ISOLATE_MEMORY_BUDGET_BYTES);
+  });
+
+  it("(wave 46) buildZip actually completes a near-cap archive (measured, not just asserted)", () => {
+    const entryBytes = 1 * 1024 * 1024; // ~1MB per entry
+    const entryCount = Math.floor(ARCHIVE_MAX_TOTAL_BYTES / entryBytes); // ~20 entries
+    const entries = Array.from({ length: entryCount }, (_, i) => ({
+      name: `file-${i}.bin`,
+      data: new Uint8Array(entryBytes).fill(i % 256),
+    }));
+    const inputTotal = entries.reduce((sum, e) => sum + e.data.length, 0);
+    expect(inputTotal).toBeLessThanOrEqual(ARCHIVE_MAX_TOTAL_BYTES);
+
+    const zip = buildZip(entries);
+
+    expect(zip.length).toBeGreaterThanOrEqual(inputTotal);
+  });
+
+  it("(wave 46) exactly-at-cap total is accepted (200), cap+1 is a loud 400 with zero R2 gets issued", async () => {
+    resolvedSizes = { "file-1": ARCHIVE_MAX_TOTAL_BYTES };
+    const okGetCount = { count: 0 };
+    const okApp = await buildArchiveApp(ORGANIZER, new TextEncoder().encode("fake"), okGetCount);
+    const okRes = await okApp.request("/api/v1/events/event-1/files/archive", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-chq-csrf": "1" },
+      body: JSON.stringify({ fileIds: ["file-1"] }),
+    });
+    expect(okRes.status).toBe(200);
+    expect(okGetCount.count).toBe(1);
+
+    resolvedSizes = { "file-1": ARCHIVE_MAX_TOTAL_BYTES + 1 };
+    const overGetCount = { count: 0 };
+    const overApp = await buildArchiveApp(ORGANIZER, new TextEncoder().encode("fake"), overGetCount);
+    const overRes = await overApp.request("/api/v1/events/event-1/files/archive", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-chq-csrf": "1" },
+      body: JSON.stringify({ fileIds: ["file-1"] }),
+    });
+    expect(overRes.status).toBe(400);
+    expect(overGetCount.count).toBe(0);
   });
 });
