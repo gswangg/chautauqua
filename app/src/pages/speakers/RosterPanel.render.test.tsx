@@ -37,6 +37,7 @@ function fillAddForm() {
   fireEvent.change(screen.getByLabelText('First name'), { target: { value: 'Ada' } });
   fireEvent.change(screen.getByLabelText('Last name'), { target: { value: 'Lovelace' } });
   fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'ada@example.com' } });
+  fireEvent.change(screen.getByLabelText(/Session title/), { target: { value: 'Analytical Engines at Scale' } });
 }
 
 describe('RosterPanel', () => {
@@ -59,7 +60,15 @@ describe('RosterPanel', () => {
     await waitFor(() => expect(apiPostMock).toHaveBeenCalledTimes(1));
     expect(apiPostMock).toHaveBeenCalledWith(
       '/contacts',
-      expect.objectContaining({ firstName: 'Ada', lastName: 'Lovelace', email: 'ada@example.com', eventId: EVENT_ID }),
+      expect.objectContaining({
+        firstName: 'Ada',
+        lastName: 'Lovelace',
+        email: 'ada@example.com',
+        eventId: EVENT_ID,
+        // DEC-810: the server requires a session title with eventId; the
+        // form must send it or every add fails with a 400.
+        sessionTitle: 'Analytical Engines at Scale',
+      }),
     );
     await waitFor(() => expect(onChanged).toHaveBeenCalled());
     expect(onClose).toHaveBeenCalled();
