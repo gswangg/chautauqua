@@ -95,7 +95,7 @@ export function FilterBar({ filters, tracks, columns, visibleFieldIds, onChange,
   );
 }
 
-function sortLabel(sort: SortOrder): string {
+export function sortLabel(sort: SortOrder): string {
   switch (sort) {
     case 'newest':
       return 'Newest first';

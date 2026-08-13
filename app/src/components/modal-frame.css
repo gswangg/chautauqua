@@ -55,6 +55,15 @@
   flex-shrink: 0;
 }
 
+/* DEC-750: the mock puts the primary action bottom-LEFT in every modal
+   frame (Submissions.dc.html:476, Speakers.dc.html:213) -- one
+   declaration here so every ModalFrame-built dialog aligns its action
+   row left instead of the base .chq-modal-actions flex-end
+   (styles.css), rather than each caller re-deciding alignment. */
+.chq-scrim .chq-modal-actions {
+  justify-content: flex-start;
+}
+
 /* FormRow (DEC-685): the ONE form-row skeleton. Label above the control,
    full measure, optional help caption, error distinguished by a leading
    glyph + weight (never colour alone, DEC-367). */
