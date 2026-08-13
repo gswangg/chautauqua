@@ -21,27 +21,19 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   a JOIN row cascades on contact delete.
 - FINDINGS w32-45 (DEC-983..999, 001-999 FULL no DEC-1000+, successor rule
   `## Amendment (wave N)` on nearest existing DEC): grep "no matches" is a
-  fact about that minute -- re-probe. A DECISION DOC IS EVIDENCE OF A
-  DECISION, NEVER OF A FIX; A REVIEW LENS AGES FASTER THAN A MANDATE. WRITE
-  gated by READ predicate; a GUARD PLACED AFTER THE COST guards nothing;
-  MINTING IS IO; boundary fails per RECIPIENT never REQUEST.
-- FINDINGS w46-48: work comes from opening file:line, not the mandate list.
+  fact about that minute -- re-probe; A DECISION DOC IS EVIDENCE OF A FIX
+  NEVER; WRITE gated by READ predicate; a GUARD AFTER THE COST guards
+  nothing; MINTING IS IO; boundary fails per RECIPIENT never REQUEST.
+- FINDINGS w46-49: work comes from opening file:line, not the mandate list.
   A CONVENIENCE WRAPPER INVITES THE FOURTH SERIAL LOOP -- delete, don't
-  document; SET-BASED TWIN EXISTS AND SINGULAR STILL WINS (check every
-  caller); BATCHING LANDS ON THE READ NOT THE WRITE; PARITY IS NOT USE --
-  decisions-parity guards doc<->constant, not constant<->code. A LATER
-  TABLE IS NOT IN THE OLDER MANIFEST. THE CLIENT RE-DECIDED THE KIND --
-  geometry chooses LAYOUT never KIND. A CHAIN WALK IS A QUERY PER LINK --
-  batch the FRONTIER. FIND-OR-CREATE WITHOUT A UNIQUE INDEX IS A DUPLICATE
-  WAITING. DEC 001-999 FULL: two tasks amending the SAME DEC = merge
-  conflict -- distinct DEC per lane.
-- FINDINGS w49: MANDATE+LENS SPENT -- work came from reading files. A
-  UNIQUE INDEX THAT KILLS A FEATURE IS THE WRONG FIX -- check what a
-  constraint DELETES first. OWNERSHIP CHECK IS PART OF THE SET OP. LANDING
-  PAGE IS THE SLOWEST READ -- phase independent queries (Promise.all per
-  dependency level). A LOOP OF IO YOU DID NOT WRITE IS STILL YOURS. "follow
-  up if" IS AN OPEN DEFECT. FOURTH WAVE OF SAME FINDING = BUILD THE SCAN:
-  ledgered two-directional manifest (unlisted hit fails; stale line fails).
+  document; SET-BASED TWIN EXISTS AND SINGULAR STILL WINS; BATCHING LANDS
+  ON THE READ NOT THE WRITE; PARITY IS NOT USE (doc<->constant only). A
+  CHAIN WALK IS A QUERY PER LINK -- batch the FRONTIER. FIND-OR-CREATE
+  WITHOUT A UNIQUE INDEX IS A DUPLICATE WAITING; two tasks amending the
+  SAME DEC = merge conflict. A UNIQUE INDEX THAT KILLS A FEATURE IS THE
+  WRONG FIX -- check what it DELETES first. LANDING PAGE IS THE SLOWEST
+  READ -- phase independent queries. "follow up if" IS AN OPEN DEFECT.
+  FOURTH WAVE OF SAME FINDING = BUILD THE SCAN (two-directional ledger).
 - FINDINGS w50: mandate SPENT, closed with live tests. FAILURE MODES ARE
   NOT SYMMETRIC -- order by which corpse is worse (orphan blob = garbage;
   row without bytes = data loss). THE OPTIONAL BODY IS WHERE THE GUARD
@@ -58,3 +50,11 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   the one that ANSWERS. THE BUDGET LIST IS AS SAMPLED AS THE BUDGET -- SPEC
   §7 named four hot actions, the smoke measured one. A PAYLOAD THAT
   ALREADY CARRIES THE ANSWER MUST NOT BE SUMMARISED INTO A SENTENCE.
+- FINDINGS w52: THE TREE MOVES WHILE YOU PLAN -- three lanes verified as
+  missing landed mid-session; re-probe file:line immediately before writing
+  the task, not once at the start. A LEDGER THAT OUTLIVES THE LANE THAT
+  COULD NOT FIX IT BECOMES PERMISSION (13 "not my files" entries stood two
+  waves). TWO READERS OF ONE TABLE: the one that WRITES must resolve it the
+  way the ones that READ do. A DISPLAY-ONLY REASON CODE IS A CLAIM THE
+  WRITER MUST HONOUR. AN EMPTY RESULT IS NOT AN EMPTY PROBLEM -- branch the
+  copy on the SHORTFALL, never on the count.
