@@ -321,6 +321,32 @@ describe('OverviewPage render smoke (DEC-370)', () => {
     expect(call).toBeTruthy();
   });
 
+  // DEC-779: joinSegments must drop a missing track AND a blank format
+  // rather than leave a doubled/dangling ' · ' in the triage row meta.
+  it('renders the triage row meta with no doubled separator when track and format are absent', async () => {
+    const p = payload();
+    p.triage.rows[0]!.trackName = null;
+    p.triage.rows[0]!.format = '';
+
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/overview`]: p,
+      'GET /api/v1/events': eventsListEnvelope(),
+    });
+
+    render(
+      <MemoryRouter>
+        <OverviewPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(screen.getByText('Docs That Answer Back')).toBeInTheDocument());
+
+    const meta = screen.getByText(/waiting 6 days/);
+    expect(meta.textContent).toBe('Dana Whitmore · DFC-033 · waiting 6 days');
+    expect(meta.textContent).not.toMatch(/ · · /);
+    expect(document.body.textContent).not.toMatch(/ · · /);
+  });
+
   it('rolls back loudly when an action fails', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/overview`]: payload(),

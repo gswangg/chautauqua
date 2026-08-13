@@ -9,6 +9,7 @@
 import { Link } from 'react-router-dom';
 import { apiPut, ApiError } from '../../lib/api';
 import { conflictKindLabel } from '../agenda/ConflictChip';
+import { joinSegments } from './rows';
 import type { OverviewPayload } from './types';
 
 // DEC-652: mirrors src/server/repo/agenda.ts's DEFAULT_AUTO_SCHEDULE_PARAMS
@@ -76,7 +77,8 @@ export function AgendaWorkSection({ payload, setPayload, setError, refetch }: Ag
             <div className="chq-overview-row-late">{conflictKindLabel(conflict.kind, conflict.entries.length)}</div>
             {conflict.entries.map((entry) => (
               <div key={entry.submissionId}>
-                {entry.title} <span className="chq-overview-row-meta">— {entry.speakerName} · {entry.ref}</span>
+                {entry.title}{' '}
+                <span className="chq-overview-row-meta">— {joinSegments([entry.speakerName, entry.ref])}</span>
               </div>
             ))}
           </div>
@@ -116,12 +118,13 @@ export function AgendaWorkSection({ payload, setPayload, setError, refetch }: Ag
           <span className="chq-overview-caption chq-overview-caption-flush">No slot yet</span>
           <div>
             <div>{row.title}</div>
-            {/* DEC-735: no persisted per-submission duration reaches this
-                row (server always sends durationMin: null — see the
-                DEFAULT_UNPLACED_DURATION_MIN comment above), so the "· N
-                min ·" clause is dropped rather than rendered dangling. */}
+            {/* DEC-735/DEC-779: no persisted per-submission duration reaches
+                this row (server always sends durationMin: null — see the
+                DEFAULT_UNPLACED_DURATION_MIN comment above), so joinSegments
+                drops the "N min" clause rather than leaving a dangling
+                "· min ·" fragment. */}
             <div className="chq-overview-row-meta">
-              {row.speakerName} · {row.ref}
+              {joinSegments([row.speakerName, row.durationMin !== null ? `${row.durationMin} min` : null, row.ref])}
             </div>
           </div>
           {row.suggestion ? (
