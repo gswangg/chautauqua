@@ -92,6 +92,25 @@ vi.mock("../src/server/repo/review", async () => {
         return rows;
       },
     ),
+    // DEC-659 amendment: decorateReviewerRows batches these three lookups
+    // for both POST forms' responses, not just GET.
+    getUsersByIds: vi.fn(async (_db: unknown, userIds: string[]) =>
+      userIds.filter((id) => id === "rev-1").map((id) => ({ userId: id, email: "rev1@org.test" })),
+    ),
+    getTrackNamesByIds: vi.fn(async (_db: unknown, trackIds: string[]) => {
+      const map = new Map<string, string>();
+      for (const id of trackIds) if (id === "track-a") map.set(id, "Track A");
+      return map;
+    }),
+    getSubmissionLabelsByIds: vi.fn(async (_db: unknown, submissionIds: string[]) => {
+      const map = new Map<string, { ref: string; title: string }>();
+      for (const id of submissionIds) {
+        const sub = Object.values(SUBMISSIONS).find((s) => s.id === id);
+        if (sub) map.set(id, { ref: sub.ref, title: `Title for ${sub.ref}` });
+      }
+      return map;
+    }),
+    trackExistsInEvent: vi.fn(async (_db: unknown, trackId: string, eventId: string) => eventId === plan.eventId && trackId === "track-a"),
   };
 });
 
@@ -125,9 +144,19 @@ describe("DEC-924: POST /api/v1/plans/:id/reviewers submissionIds[] array form",
       body: JSON.stringify({ userId: "rev-1", submissionIds: ["SES-1", "sub-2"] }),
     });
     expect(res.status).toBe(201);
-    const body = (await res.json()) as { items: unknown[]; total: number };
+    const body = (await res.json()) as {
+      items: { submissionRef: string | null; submissionTitle: string | null }[];
+      total: number;
+    };
     expect(body.total).toBe(2);
     expect(body.items.length).toBe(2);
+    // DEC-659 amendment: the array form's response carries the same
+    // submissionRef/submissionTitle labels the GET list mapper computes for
+    // every created item -- never null for a live submission.
+    for (const item of body.items) {
+      expect(item.submissionRef).not.toBeNull();
+      expect(item.submissionTitle).not.toBeNull();
+    }
     expect(writtenRows).toEqual([
       { userId: "rev-1", trackId: null, submissionId: "sub-1" },
       { userId: "rev-1", trackId: null, submissionId: "sub-2" },
@@ -177,7 +206,24 @@ describe("DEC-924: POST /api/v1/plans/:id/reviewers submissionIds[] array form",
       body: JSON.stringify({ userId: "rev-1", submissionId: "SES-1" }),
     });
     expect(res.status).toBe(201);
-    const body = (await res.json()) as { submissionId: string };
+    const body = (await res.json()) as { submissionId: string; submissionRef: string | null; submissionTitle: string | null };
     expect(body.submissionId).toBe("sub-1");
+    // DEC-659 amendment: the single form's response also carries the
+    // decorated label, not just the raw ids.
+    expect(body.submissionRef).toBe("SES-1");
+    expect(body.submissionTitle).not.toBeNull();
+  });
+
+  it("the pre-existing single trackId form's response carries trackName non-null", async () => {
+    const app = await buildApp(organizer);
+    const res = await app.request(`/api/v1/plans/${plan.id}/reviewers`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-chq-csrf": "1" },
+      body: JSON.stringify({ userId: "rev-1", trackId: "track-a" }),
+    });
+    expect(res.status).toBe(201);
+    const body = (await res.json()) as { trackId: string; trackName: string | null };
+    expect(body.trackId).toBe("track-a");
+    expect(body.trackName).toBe("Track A");
   });
 });

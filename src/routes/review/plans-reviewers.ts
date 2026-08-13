@@ -6,11 +6,13 @@
 // into `reviewPlansRoutes` (DEC-012/DEC-013).
 
 import { Hono } from "hono";
+import type { Db } from "../../server/context";
 import type { AppEnv } from "../../server/env";
 import { csrfJson, requireOrganizer } from "../../server/middleware";
 import { ApiError, parseBoundedIdArray, readJsonBody } from "../../server/http";
 import { clampPage, listPerPage } from "../../lib/pagination";
 import * as repo from "../../server/repo/review";
+import type { PlanReviewerRecord } from "../../server/repo/review/reviewers";
 import { DEC_572, DEC_623, DEC_659, DEC_924 } from "../../decisions";
 import { currentAuth, requireOwnedPlan } from "./shared";
 
@@ -18,8 +20,46 @@ export const reviewPlansReviewersRoutes = new Hono<AppEnv>();
 
 void DEC_572; // /plans/:id/scope-preview: true count + bounded preview before a track-scope fan-out below
 void DEC_623; // POST /plans/:id/reviewers: submissionId resolved through findSubmissionIdByRefOrId below
-void DEC_659; // GET /plans/:id/reviewers: trackName/submissionRef/submissionTitle labels below
+void DEC_659; // GET + POST /plans/:id/reviewers: trackName/submissionRef/submissionTitle labels below
 void DEC_924; // POST /plans/:id/reviewers: submissionIds[] array form below -- one set-based, all-or-nothing request
+
+export interface DecoratedReviewerRow {
+  id: string;
+  userId: string;
+  email: string;
+  trackId: string | null;
+  submissionId: string | null;
+  trackName: string | null;
+  submissionRef: string | null;
+  submissionTitle: string | null;
+}
+
+/** DEC-659: reviewer assignment scope speaks in names, not ULIDs -- ONE
+ * batched query over the set's distinct non-null trackIds and ONE over the
+ * distinct non-null submissionIds (never a query per row). Shared by the GET
+ * list and both POST forms so a just-created row never renders "(removed)"
+ * before a reload. */
+async function decorateReviewerRows(db: Db, rows: PlanReviewerRecord[]): Promise<DecoratedReviewerRow[]> {
+  const [users, trackNameById, submissionLabelById] = await Promise.all([
+    repo.getUsersByIds(db, [...new Set(rows.map((r) => r.userId))]),
+    repo.getTrackNamesByIds(db, [...new Set(rows.map((r) => r.trackId).filter((id): id is string => id !== null))]),
+    repo.getSubmissionLabelsByIds(
+      db,
+      [...new Set(rows.map((r) => r.submissionId).filter((id): id is string => id !== null))],
+    ),
+  ]);
+  const emailByUserId = new Map(users.map((u) => [u.userId, u.email]));
+  return rows.map((r) => ({
+    id: r.id,
+    userId: r.userId,
+    email: emailByUserId.get(r.userId) ?? "",
+    trackId: r.trackId,
+    submissionId: r.submissionId,
+    trackName: r.trackId !== null ? (trackNameById.get(r.trackId) ?? null) : null,
+    submissionRef: r.submissionId !== null ? (submissionLabelById.get(r.submissionId)?.ref ?? null) : null,
+    submissionTitle: r.submissionId !== null ? (submissionLabelById.get(r.submissionId)?.title ?? null) : null,
+  }));
+}
 
 reviewPlansReviewersRoutes.post("/api/v1/plans/:id/reviewers", requireOrganizer, csrfJson, async (c) => {
   const plan = await requireOwnedPlan(c, c.req.param("id"));
@@ -67,7 +107,8 @@ reviewPlansReviewersRoutes.post("/api/v1/plans/:id/reviewers", requireOrganizer,
         submissionId: resolvedByInput.get(input) as string,
       })),
     );
-    return c.json({ items: created, total: created.length }, 201);
+    const items = await decorateReviewerRows(c.var.db, created);
+    return c.json({ items, total: items.length }, 201);
   }
 
   // DEC-354: reject a trackId/submissionId that does not belong to the
@@ -113,7 +154,9 @@ reviewPlansReviewersRoutes.post("/api/v1/plans/:id/reviewers", requireOrganizer,
   // not an array) unchanged.
   const [created] = await repo.addReviewers(c.var.db, plan.id, [{ userId: body.userId, trackId, submissionId }]);
   if (!created) throw new Error("addReviewers: insert did not persist");
-  return c.json(created, 201);
+  const [decorated] = await decorateReviewerRows(c.var.db, [created]);
+  if (!decorated) throw new Error("decorateReviewerRows: did not return a row for the created reviewer");
+  return c.json(decorated, 201);
 });
 
 // DEC-572: preview a plan_reviewer track-scope assignment BEFORE it fans out
@@ -144,27 +187,7 @@ reviewPlansReviewersRoutes.get("/api/v1/plans/:id/reviewers", requireOrganizer, 
     repo.listReviewerRowsForPlan(c.var.db, plan.id, { limit: perPage, offset: (page - 1) * perPage }),
     repo.countReviewerRowsForPlan(c.var.db, plan.id),
   ]);
-  const users = await repo.getUsersByIds(c.var.db, [...new Set(rows.map((r) => r.userId))]);
-  const emailByUserId = new Map(users.map((u) => [u.userId, u.email]));
-  // DEC-659: reviewer assignment scope speaks in names, not ULIDs -- ONE
-  // batched query over the page's distinct non-null trackIds and ONE over
-  // the distinct non-null submissionIds (never a query per row).
-  const trackNameById = await repo.getTrackNamesByIds(c.var.db, [
-    ...new Set(rows.map((r) => r.trackId).filter((id): id is string => id !== null)),
-  ]);
-  const submissionLabelById = await repo.getSubmissionLabelsByIds(c.var.db, [
-    ...new Set(rows.map((r) => r.submissionId).filter((id): id is string => id !== null)),
-  ]);
-  const items = rows.map((r) => ({
-    id: r.id,
-    userId: r.userId,
-    email: emailByUserId.get(r.userId) ?? "",
-    trackId: r.trackId,
-    submissionId: r.submissionId,
-    trackName: r.trackId !== null ? (trackNameById.get(r.trackId) ?? null) : null,
-    submissionRef: r.submissionId !== null ? (submissionLabelById.get(r.submissionId)?.ref ?? null) : null,
-    submissionTitle: r.submissionId !== null ? (submissionLabelById.get(r.submissionId)?.title ?? null) : null,
-  }));
+  const items = await decorateReviewerRows(c.var.db, rows);
   return c.json({ items, total, page, perPage });
 });
 

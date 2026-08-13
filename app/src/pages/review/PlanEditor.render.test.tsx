@@ -149,10 +149,10 @@ describe('PlanEditor render smoke', () => {
   });
 
   it('shows the assigned reviewer email (not the raw userId) immediately after Assign, before any reload', async () => {
-    // Section B repair: the browser pass (task-w1-d) found that the newly-
-    // assigned row rendered "seed_user_0004" instead of the email, because
-    // POST /plans/:id/reviewers's PlanReviewerRecord response has no email
-    // column -- fixed by resolving it from the already-loaded reviewerOptions.
+    // Section B repair (DEC-659 amendment, wave 55): the server's create
+    // response is decorated the same way the GET list mapper is (email/
+    // trackName/submissionRef/submissionTitle), so the client renders it
+    // as-is with no local patching from reviewerOptions.
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
       [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
@@ -161,7 +161,16 @@ describe('PlanEditor render smoke', () => {
       'GET /api/v1/users': listEnvelope([{ id: 'user-42', email: 'reviewer@example.test', role: 'reviewer', contactId: null, createdAt: 0 }]),
       [`POST /api/v1/plans/${PLAN_ID}/reviewers`]: {
         status: 201,
-        body: { id: 'pr-1', userId: 'user-42', trackId: null, submissionId: null },
+        body: {
+          id: 'pr-1',
+          userId: 'user-42',
+          email: 'reviewer@example.test',
+          trackId: null,
+          submissionId: null,
+          trackName: null,
+          submissionRef: null,
+          submissionTitle: null,
+        },
       },
     });
 
@@ -301,6 +310,67 @@ describe('PlanEditor render smoke', () => {
 
     // No 26-character ULID anywhere in the rendered reviewer list.
     expect(container.textContent ?? '').not.toMatch(/\b[0-9A-Za-z]{26}\b/);
+  });
+
+  // DEC-659 amendment (wave 55): the POST response for a submission-scoped
+  // assignment is decorated with the same submissionRef/submissionTitle
+  // labels the GET list mapper computes, so the freshly assigned row shows
+  // the ref+title immediately -- never "Submission (removed)" /
+  // "Track (removed)" before a reload.
+  it('shows submissionRef+title for a just-assigned submission-scoped reviewer, never "(removed)"', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([{ id: 'track-1', name: 'Backend' }]),
+      [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
+      [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([]),
+      'GET /api/v1/users': listEnvelope([{ id: 'user-42', email: 'reviewer@example.test', role: 'reviewer', contactId: null, createdAt: 0 }]),
+      [`GET /api/v1/plans/${PLAN_ID}/scope-preview`]: {
+        count: 1,
+        items: [{ id: 'sub-1', ref: 'SES-014', title: 'Talk Title' }],
+        perPage: 200,
+      },
+      [`POST /api/v1/plans/${PLAN_ID}/reviewers`]: {
+        status: 201,
+        body: {
+          id: 'pr-1',
+          userId: 'user-42',
+          email: 'reviewer@example.test',
+          trackId: null,
+          submissionId: 'sub-1',
+          trackName: null,
+          submissionRef: 'SES-014',
+          submissionTitle: 'Talk Title',
+        },
+      },
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId" element={<PlanEditor />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await openAssignForm();
+    await waitFor(() => {
+      expect(screen.getByRole('option', { name: 'reviewer@example.test' })).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByLabelText('Reviewer'), { target: { value: 'user-42' } });
+    fireEvent.change(screen.getByLabelText('Assignment scope'), { target: { value: 'submission' } });
+    fireEvent.change(screen.getByLabelText('Track'), { target: { value: 'track-1' } });
+    await waitFor(() => {
+      expect(screen.getByRole('option', { name: 'SES-014 — Talk Title' })).toBeInTheDocument();
+    });
+    fireEvent.change(screen.getByLabelText('Submission'), { target: { value: 'sub-1' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Assign' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('SES-014 - Talk Title')).toBeInTheDocument();
+    });
+    expect(screen.queryByText('Submission (removed)')).not.toBeInTheDocument();
+    expect(screen.queryByText('Track (removed)')).not.toBeInTheDocument();
   });
 
   // DEC-941: removing a reviewer is irreversible (it drops their queue), so
