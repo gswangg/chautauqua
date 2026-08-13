@@ -17,6 +17,16 @@
   flex-wrap: wrap;
 }
 
+/* w41-b (DEC-902 amendment): the view-switch + Refresh buttons that used to
+   live in a standalone .chq-toolbar band now ride the title row, pushed to
+   its trailing edge. */
+.chq-content-summary-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
 /* ---------------------------------------------------------------------- */
 /* Worklist                                                                */
 /* ---------------------------------------------------------------------- */
@@ -27,8 +37,13 @@
   gap: 16px;
 }
 
+/* DEC-730 amendment (wave 39) / w41-b: a 2px ink rule closes the section
+   header -- "one 2px rule per section" (docs/design/README.md), replacing
+   the shared 1px .chq-table th hairline for this table's header row only.
+   Declared ONCE here -- no second declaration elsewhere in this stylesheet. */
 .chq-content-table thead th {
   white-space: nowrap;
+  border-bottom: 2px solid var(--chq-ink);
 }
 
 .chq-content-row {

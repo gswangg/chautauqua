@@ -181,7 +181,7 @@ describe("listSubmissions: one paginated statement for q+trackId (DEC-333/335)",
       const thisCallLog: { method: string; args: unknown[] }[] = [];
       calls.push(thisCallLog);
       const obj: any = {};
-      const passthrough = ["from", "where", "innerJoin", "orderBy", "limit", "offset", "select", "groupBy"];
+      const passthrough = ["from", "where", "innerJoin", "leftJoin", "orderBy", "limit", "offset", "select", "groupBy"];
       for (const m of passthrough) {
         obj[m] = (...args: unknown[]) => {
           thisCallLog.push({ method: m, args });
@@ -226,6 +226,7 @@ describe("listSubmissions: one paginated statement for q+trackId (DEC-333/335)",
       [], // submission_track enrichment
       [], // deliverable-count enrichment (DEC-341)
       [], // latestFile candidate enrichment (w15-f)
+      [], // scheduled (schedule_slot/room) enrichment (w41-b)
     ];
     const db = makeFakeDb(responses);
 
@@ -241,9 +242,9 @@ describe("listSubmissions: one paginated statement for q+trackId (DEC-333/335)",
       reuploaded: null,
     });
 
-    // Exactly 8 db.select() calls total: 4 core (incl. DEC-913 grouped
-    // counts) + 4 enrichment batches.
-    expect(db.calls.length).toBe(8);
+    // Exactly 9 db.select() calls total: 4 core (incl. DEC-913 grouped
+    // counts) + 5 enrichment batches.
+    expect(db.calls.length).toBe(9);
     expect(result.total).toBe(1);
     expect(result.items[0]!.id).toBe("sub-1");
     expect(result.contentStatusCounts).toEqual({ pending: 1, approved: 0, changes_requested: 0 });
@@ -290,6 +291,69 @@ describe("listSubmissions: one paginated statement for q+trackId (DEC-333/335)",
     expect(result.contentStatusCounts).toEqual({ pending: 2, approved: 3, changes_requested: 1 });
     expect(result.reuploadedCount).toBe(2);
   });
+
+  // w41-b (DEC-902 amendment): the worklist SESSION cell's subtitle needs
+  // the submission's placed schedule_slot + room -- batched per id chunk the
+  // SAME way deliverableCounts/latestFile are (one query per chunk, never a
+  // per-row fetch). This exercises the batched query in isolation and
+  // asserts a submission with no schedule_slot row reads back `scheduled:
+  // null`.
+  it("populates `scheduled` from one batched schedule_slot/room query, null for an unplaced submission", async () => {
+    const EVENT_ID = "event-1";
+    const placedRow = {
+      id: "sub-1",
+      title: "Placed Talk",
+      seq: 1,
+      createdAt: new Date(2026, 0, 1),
+      updatedAt: new Date(2026, 0, 1),
+      eventId: EVENT_ID,
+      description: null,
+      formId: null,
+      trackId: null,
+      additionalTrackIdsJson: null,
+      status: "accepted",
+      contentStatus: "pending",
+      acceptedAt: null,
+      icsSequence: 0,
+    };
+    const unplacedRow = { ...placedRow, id: "sub-2", title: "Unplaced Talk", seq: 2 };
+
+    const responses = [
+      [{ recordPrefix: "SES" }], // 1: event prefix lookup
+      [{ count: 2 }], // 2: count
+      [{ contentStatus: "pending", count: 2, reuploaded: 0 }], // 3: DEC-913 grouped counts
+      [placedRow, unplacedRow], // 4: page
+      [], // 5: participant enrichment
+      [], // 6: submission_track enrichment
+      [], // 7: deliverable-count enrichment (DEC-341)
+      [], // 8: latestFile candidate enrichment (w15-f)
+      [
+        { submissionId: "sub-1", day: "2026-05-12", startMin: 600, endMin: 660, roomName: "Room 2A" },
+      ], // 9: w41-b scheduled enrichment -- only sub-1 has a schedule_slot row
+    ];
+    const db = makeFakeDb(responses);
+
+    const result = await listSubmissions(db, EVENT_ID, {
+      page: 1,
+      perPage: 50,
+      q: null,
+      status: [],
+      contentStatus: [],
+      trackId: null,
+      sort: "newest",
+      includeAnswers: false,
+      reuploaded: null,
+    });
+
+    // Exactly ONE batched query for the scheduled enrichment (9 selects
+    // total: 4 core + 5 enrichment batches, not a per-row fetch).
+    expect(db.calls.length).toBe(9);
+
+    const placed = result.items.find((i) => i.id === "sub-1");
+    const unplaced = result.items.find((i) => i.id === "sub-2");
+    expect(placed?.scheduled).toEqual({ day: "2026-05-12", startMin: 600, endMin: 660, roomName: "Room 2A" });
+    expect(unplaced?.scheduled).toBeNull();
+  });
 });
 
 // DEC-913: GET .../submissions serves the grouped contentStatusCounts +
@@ -300,7 +364,7 @@ describe("GET /api/v1/events/:eventId/submissions (DEC-913 grouped counts on the
     let cursor = 0;
     function chain(): any {
       const obj: any = {};
-      const passthrough = ["from", "where", "innerJoin", "orderBy", "limit", "offset", "select", "groupBy"];
+      const passthrough = ["from", "where", "innerJoin", "leftJoin", "orderBy", "limit", "offset", "select", "groupBy"];
       for (const m of passthrough) {
         obj[m] = (..._args: unknown[]) => obj;
       }
@@ -580,7 +644,7 @@ describe("GET /api/v1/events/:eventId/submissions?includeAnswers=1 (DEC-243 answ
     let cursor = 0;
     function link(): any {
       const obj: any = {};
-      const passthrough = ["from", "where", "innerJoin", "orderBy", "limit", "offset", "select", "groupBy"];
+      const passthrough = ["from", "where", "innerJoin", "leftJoin", "orderBy", "limit", "offset", "select", "groupBy"];
       for (const m of passthrough) obj[m] = () => obj;
       obj.then = (resolve: (v: unknown) => void, reject?: (e: unknown) => void) => {
         const value = responses[cursor];
@@ -640,8 +704,9 @@ describe("GET /api/v1/events/:eventId/submissions?includeAnswers=1 (DEC-243 answ
       [],
       [],
       [{ submissionId: "sub-1", formFieldId: "field-format", valueJson: JSON.stringify("Workshop") }],
-      [],
-      [],
+      [], // deliverable-count enrichment (DEC-341)
+      [], // latestFile candidate enrichment (w15-f)
+      [], // scheduled (schedule_slot/room) enrichment (w41-b)
     ]);
     const app = appWithDb(db, ORGANIZER_A);
 
@@ -683,6 +748,7 @@ describe("GET /api/v1/events/:eventId/submissions?includeAnswers=1 (DEC-243 answ
       // no answers response: includeAnswers=false skips the answers query
       [], // deliverable-count enrichment (DEC-341)
       [], // latestFile candidate enrichment (w15-f)
+      [], // scheduled (schedule_slot/room) enrichment (w41-b)
     ]);
     const app = appWithDb(db, ORGANIZER_A);
 

@@ -63,6 +63,11 @@ export interface ContentSubmissionListItem {
   // version could disagree with version_no).
   latestFileVersionNo: number | null;
   reuploaded: boolean;
+  // w41-b (DEC-902 amendment): the worklist SESSION cell's subtitle --
+  // batched off schedule_slot/room server-side (src/server/repo/submissions
+  // /list.ts), never a per-row fetch. null for a submission not yet placed
+  // on the agenda.
+  scheduled: { day: string; startMin: number; endMin: number; roomName: string | null } | null;
 }
 
 // GET /api/v1/submissions/:id/files item (DEC-020: flat file rows; the SPA
