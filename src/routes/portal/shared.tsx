@@ -109,7 +109,7 @@ export function PortalLayout(props: {
           </span>
           {props.speakerName ? <span class="chq-portal-header-name">{props.speakerName}</span> : null}
         </header>
-        <main>{props.children as any}</main>
+        <main class="chq-measure">{props.children as any}</main>
         {/* DEC-154: sign-out control on every /portal/* page, via the
             shared layout so it's not duplicated per-page. w2-g demotes it
             to a quiet tertiary footer link — placement only, the POST

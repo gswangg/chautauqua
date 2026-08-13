@@ -16,7 +16,7 @@ void DEC_374;
 export const CFP_CSS = `
   /* 660-760px measure for the form body (DEC-367/design frames: 660px
      inner column on the 900px desktop frame). */
-  .chq-cfp-shell { max-width: 900px; margin: 0 auto; background: var(--chq-surface); border: 1px solid var(--chq-rule); }
+  .chq-cfp-shell { margin: 0 auto; background: var(--chq-surface); border: 1px solid var(--chq-rule); }
   /* DEC-371: --chq-brandable-accent is the only per-event recolour hook --
      it never repoints --chq-brand/--chq-ink or button colours, so a
      thin top rule on the header is the only place the CFP page recolours
