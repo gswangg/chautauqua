@@ -29,13 +29,23 @@ function glob(dir: string): string[] {
 
 /** Strip // line comments and /* *\/ block comments so a comment merely
  * mentioning `role="dialog"` (documentation prose) can't be mistaken for
- * markup. */
+ * markup.
+ *
+ * Order and anchoring both matter. Line comments go FIRST, and a block
+ * comment only OPENS at `{/*` (JSX) or at the start of a line -- because a
+ * mid-line `/*` is code, not a comment: App.tsx's route literal
+ * `path: '/review/*'` contains one. Stripping blocks first (and unanchored)
+ * let that literal pair with a later `*\/}` and silently swallow every line
+ * between them, including real role="dialog" markup, which made this scan
+ * under-count instead of fail. */
 function stripComments(src: string): string {
-  return src
-    .replace(/\/\*[\s\S]*?\*\//g, '')
+  const withoutLineComments = src
     .split('\n')
     .map((line) => (line.trim().startsWith('//') ? '' : line))
     .join('\n');
+  return withoutLineComments.replace(/(\{[ \t]*|^[ \t]*|\n[ \t]*)\/\*[\s\S]*?\*\//g, (_match, prefix: string) =>
+    prefix.startsWith('{') ? '{' : prefix,
+  );
 }
 
 /** Extract every JSX-ish opening tag `<...>` (no nested `<`/`>`) from the

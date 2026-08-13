@@ -240,7 +240,17 @@ export function ReviewerQueue() {
           routePlan && (
             <div className="chq-review-scoped-head">
               <span className="chq-section-label">{`REVIEW · ${routePlan.name}`}</span>
-              <h1 className="chq-page-title">{scoreLeft === null ? 'Loading…' : `${scoreLeft} left to score`}</h1>
+              {/* DEC-678: while the queue is still in flight the count is not
+                  known, and a bare literal in the title is exactly the
+                  hand-rolled indicator the app-wide policy bans -- render the
+                  sanctioned delayed block instead. DEC-831's "counts what is
+                  LEFT" title appears the moment the count exists; the eyebrow
+                  above already heads the queue with the plan it is scoped to. */}
+              {scoreLeft === null ? (
+                <DelayedLoading />
+              ) : (
+                <h1 className="chq-page-title">{`${scoreLeft} left to score`}</h1>
+              )}
               {subtitle && <p className="chq-review-plan-meta">{subtitle}</p>}
               {routeQueueItems && totalCount > 0 && (
                 <div className="chq-bar chq-review-scoped-progress">
