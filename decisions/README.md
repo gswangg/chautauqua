@@ -1,7 +1,8 @@
 # Design decisions
 
-One file per decision, named `DEC-NNN.md` (three digits, e.g. `DEC-001.md`),
-written only by the swarm scribe from the planner's output. Format:
+One file per decision, named `DEC-NNN.md` (three or more digits, e.g.
+`DEC-001.md`, and `DEC-1000.md` onward once 001-999 are all taken), written
+only by the swarm scribe from the planner's output. Format:
 
 ```markdown
 # DEC-NNN: <title>
