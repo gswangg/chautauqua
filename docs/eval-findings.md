@@ -221,22 +221,24 @@ six frame elements currently unrepresentable.
 MINOR batch in report. FAITHFUL: rail inventory, read two-col tracks/rooms, CFP
 link/badge, embeds wording batch (N on·M off etc.), export pills all live.
 
-**Account — GATE-1 FLEET: FAIL (report fidelity-gate1/11-account/report.md;
-login/password geometry near-exact)**: MAJOR — /e/<bad-slug> renders an
-UNDESIGNED second 404 (route through the designed card) · admin-404 links jammed
-into one phrase (chevron + gap on both) · demo-account block UNFRAMED — KEEP
-(judge path) but DEC it + design-bless the styling. MINOR: email placeholder
-"you@example.com" · "NEW PASSWORD AGAIN" label · headings ~30/26px per frame ·
-‹ Back up-left of indented heading, underline on hover only (same for NO-ACCOUNT
-links) · card padding/inputs metrics (35pt/450/48) · cards hug content height ·
-semantics (h1/landmarks/label-for) · drop unframed code-type sentence on admin
-404.
+**Account — GATE-2: FAIL UNCHANGED — ZERO commits touched auth files since
+gate-1; PLANNER: schedule this section FIRST this round** (report
+fidelity-gate2/11-account/report.md): PRIORITY — route /e/<bad-slug> through
+the designed 404 card (publicNotFound() call sites; note the undesigned page
+already carries the frame-correct 28px/15px type — reuse it) · put frame 02's
+520 content-hugging card ON /admin/* (currently on public; admin renders bare
+820 w/ jammed links + code sentence) · cards hug content (viewport-stretch
+leaves 206-526pt dead) · titles 36→28px · demo block per its OWN signed mandate
+wording: three SMALL LINKS in card vocabulary (not 44px buttons) · underline on
+hover only · ‹ Back up-left of indented title · metrics (padding 35, column
+450, inputs 48, card 640) · NEW PASSWORD AGAIN + you@example.com placeholder ·
+h1+main semantics · designed-404 body 15px/24.5.
 
-**Home — GATE-1 FLEET: PASS ✓** (layout ~1pt-exact; composed hero grammar;
-footer verbatim). MINOR: event-row meta → "Three tracks · five formats" grammar
-(session count is the kept-off-rows shape the notes forbid) · API docs 12px ·
-footer/main landmarks. LATER: seeded pass for between-cycles + fresh-deploy
-states.
+**Home — GATE-2: strict FAIL, no regression** (same report): drop the extra
+stacked Speakers action (one centred action/row) · shell body → --chq-paper ·
+API docs 12px · main/footer landmarks · published-row meta qualifier · section
+head 4pt · (CORRECTION: bare session counts are frame-legal; gate-1 premise too
+strict).
 
 **Public/Portal — GATE-1 FLEET: FAIL all four subsections; claim-URL security
 PASSES (report fidelity-gate1/10-public-portal/report.md — full ranked list of
