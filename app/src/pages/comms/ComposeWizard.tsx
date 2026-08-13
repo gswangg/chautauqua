@@ -174,24 +174,29 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
     setBodyText(bodyText.slice(0, start) + token + bodyText.slice(end));
   }
 
-  // DEC-793: the server rejects recipients with fields keyed
-  // `<contactId>:<submissionId>` and messages `missing merge field '<field>'`.
-  // Resolved through the already-loaded submissions' speakers, naming the
-  // PERSON — falling back to the submission's title when the contact
-  // doesn't resolve, never a raw id.
+  // DEC-856: the server rejects recipients with fields keyed
+  // `<contactId>:<submissionId>` and messages
+  // `missing merge fields: <field>[, <field>...]` — one entry per recipient,
+  // naming every field they're missing (not just the first). Resolved
+  // through the already-loaded submissions' speakers, naming the PERSON —
+  // falling back to the submission's title when the contact doesn't
+  // resolve, never a raw id.
   function extractMissingMergeFieldLines(err: ApiError): string[] | null {
     if (!err.fields) return null;
     const lines: string[] = [];
     for (const [key, message] of Object.entries(err.fields)) {
       const keyMatch = /^(.+):([^:]+)$/.exec(key);
-      const msgMatch = /^missing merge field '(.+)'$/.exec(message);
+      const msgMatch = /^missing merge fields: (.+)$/.exec(message);
       if (!keyMatch || !msgMatch) continue;
       const [, contactId, submissionId] = keyMatch;
-      const field = msgMatch[1];
+      const fieldList = msgMatch[1];
+      if (!fieldList) continue;
+      const fields = fieldList.split(', ');
       const submission = submissions.find((s) => s.id === submissionId);
       const speaker = submission?.speakers.find((sp) => sp.contactId === contactId);
       const label = speaker?.name ?? submission?.title ?? contactId;
-      lines.push(`${label} — missing {${field}}`);
+      const tokens = fields.map((field) => `{${field}}`).join(', ');
+      lines.push(`${label} — missing ${tokens}`);
     }
     return lines.length > 0 ? lines : null;
   }
@@ -328,7 +333,7 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
   return (
     <div className="chq-compose-wizard">
       {error && (
-        <div className="chq-error-banner">
+        <div className="chq-error-banner" role="alert">
           {error}
           {missingMergeFieldLines && missingMergeFieldLines.length > 0 && (
             <ul>

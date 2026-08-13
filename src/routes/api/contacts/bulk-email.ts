@@ -149,7 +149,7 @@ export function registerBulkEmailRoutes(contactsRoutes: Hono<AppEnv>): void {
     const result = await renderBulkEmailTargets(c.var.db, kv, origin, event, contacts, subject, bodyText, true);
     if (!result.ok) {
       const fields: Record<string, string> = {};
-      for (const m of result.missing) fields[m.contactId] = `missing merge field '${m.field}'`;
+      for (const m of result.missing) fields[m.contactId] = `missing merge fields: ${m.fields.join(", ")}`;
       throw new ApiError("invalid", "One or more recipients are missing merge fields (only speaker_name/event_name/portal_link are allowed)", fields);
     }
 
@@ -208,7 +208,7 @@ export function registerBulkEmailRoutes(contactsRoutes: Hono<AppEnv>): void {
     const result = await renderBulkEmailTargets(c.var.db, kv, origin, event, previewContacts, subject, bodyText, false);
     if (!result.ok) {
       const fields: Record<string, string> = {};
-      for (const m of result.missing) fields[m.contactId] = `missing merge field '${m.field}'`;
+      for (const m of result.missing) fields[m.contactId] = `missing merge fields: ${m.fields.join(", ")}`;
       throw new ApiError("invalid", "One or more recipients are missing merge fields (only speaker_name/event_name/portal_link are allowed)", fields);
     }
 

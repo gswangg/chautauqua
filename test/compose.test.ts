@@ -176,20 +176,34 @@ describe("preflightRender", () => {
     if (result.ok) throw new Error("expected rejection");
     expect(result.error).toBe("invalid");
     // Missing-field details identify which recipient/field failed.
-    expect(result.missing.some((m) => m.contactId === "ct_2" && m.field === "speaker_name")).toBe(true);
+    expect(result.missing.some((m) => m.contactId === "ct_2" && m.fields.includes("speaker_name"))).toBe(true);
   });
 
-  it("reports a missing field from both the subject and body templates for a fully-blank recipient", () => {
+  it("reports one entry per recipient naming every missing field from both the subject and body templates", () => {
     const badTarget = target({ vars: {} });
     const result = preflightRender([badTarget], subjectTemplate, bodyTemplate);
     expect(result.ok).toBe(false);
     if (result.ok) throw new Error("expected rejection");
-    // renderTemplate throws on the first unresolved placeholder it hits per
-    // template string, so a blank vars map yields one missing entry from the
-    // subject template (talk_title) and one from the body template
-    // (speaker_name, the first placeholder in bodyTemplate).
-    const fields = result.missing.map((m) => m.field).sort();
-    expect(fields).toEqual(["speaker_name", "talk_title"]);
+    // DEC-856: a blank vars map yields ONE entry naming every unresolved
+    // placeholder across both templates — subject's misses first, then
+    // body's, deduped — not one entry per template/field.
+    expect(result.missing).toHaveLength(1);
+    expect(result.missing[0]?.contactId).toBe("ct_1");
+    expect([...result.missing[0]!.fields].sort()).toEqual(["feedback", "portal_link", "speaker_name", "talk_title"]);
+  });
+
+  it("DEC-856: a recipient missing two fields across subject and body produces ONE entry carrying both", () => {
+    const missingBoth = target({
+      contactId: "ct_3",
+      submissionId: "sub_3",
+      vars: { portal_link: "/portal", feedback: NO_FEEDBACK_TEXT },
+    });
+    const result = preflightRender([missingBoth], subjectTemplate, bodyTemplate);
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error("expected rejection");
+    expect(result.missing).toEqual([
+      { contactId: "ct_3", submissionId: "sub_3", fields: ["talk_title", "speaker_name"] },
+    ]);
   });
 
   it("DEC-682: a {feedback} template sent with the feedback toggle off (vars built from feedbackComments: null) names 'feedback' as missing, never a silently-invented value", () => {
@@ -201,7 +215,7 @@ describe("preflightRender", () => {
     const result = preflightRender([noFeedbackVars], subjectTemplate, bodyTemplate);
     expect(result.ok).toBe(false);
     if (result.ok) throw new Error("expected rejection");
-    expect(result.missing).toEqual([{ contactId: "ct_1", submissionId: "sub_1", field: "feedback" }]);
+    expect(result.missing).toEqual([{ contactId: "ct_1", submissionId: "sub_1", fields: ["feedback"] }]);
   });
 
   // DEC-792: growing the COMPOSE_MERGE_FIELDS vocabulary to close the
