@@ -66,9 +66,14 @@ describe("D1 bind safety: no object binds inside sql`` templates", () => {
     expect(offenders.map((o) => o.file)).toEqual([]);
   });
 
-  it("overview.ts overdue-task-rows query uses the numeric `< ${now}` idiom", () => {
-    const overviewPath = join(SRC_ROOT, "server", "repo", "overview.ts");
-    const source = readFileSync(overviewPath, "utf8");
+  // DEC-776: the overdue predicate (including this numeric `< ${now}`
+  // idiom) moved out of overview.ts's inline query into the shared
+  // overdueAssignmentConditions in tasks/crud.ts, which overview.ts's
+  // overdue-task-rows query and count now both compose instead of
+  // hand-copying the comparison.
+  it("tasks/crud.ts's overdue predicate uses the numeric `< ${now}` idiom", () => {
+    const crudPath = join(SRC_ROOT, "server", "repo", "tasks", "crud.ts");
+    const source = readFileSync(crudPath, "utf8");
     expect(source).toContain("< ${now}");
   });
 });

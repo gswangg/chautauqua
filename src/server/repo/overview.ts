@@ -26,10 +26,12 @@ import { findConflicts, type PlacedSession } from "../../domain/schedule";
 import { formatRef } from "../../domain/ids";
 import { chunkIds } from "../../lib/chunk";
 import { DEFAULT_AUTO_SCHEDULE_PARAMS } from "./agenda";
-import { DEC_370, DEC_531, DEC_704 } from "../../decisions";
+import { overdueAssignmentConditions } from "./tasks/crud";
+import { DEC_370, DEC_531, DEC_704, DEC_776 } from "../../decisions";
 void DEC_370;
 void DEC_531;
 void DEC_704;
+void DEC_776;
 
 export * from "./overview/types";
 export * from "./overview/aggregate";
@@ -114,23 +116,39 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number): 
   const speakerAggRows = await db
     .select({
       outstandingContacts: sql<number>`count(distinct case when ${schema.taskAssignment.status} <> 'complete' then ${schema.taskAssignment.contactId} end)`,
-      overdue: sql<number>`count(distinct case when ${schema.taskAssignment.status} <> 'complete' and ${schema.task.dueDate} is not null and ${schema.task.dueDate} < ${now} then ${schema.taskAssignment.id} end)`,
       nextDue: sql<number | null>`min(case when ${schema.taskAssignment.status} <> 'complete' then ${schema.task.dueDate} end)`,
     })
     .from(schema.taskAssignment)
     .innerJoin(schema.task, eq(schema.taskAssignment.taskId, schema.task.id))
     .where(eq(schema.task.eventId, eventId));
+
+  // DEC-776: the overdue-assignment count is a separate query (rather than
+  // folded into speakerAggRows above) because overdueAssignmentConditions
+  // composes the roster predicate, which needs a join to `contact` — an
+  // assignment for a contact who is no longer an accepted speaker must not
+  // inflate this count, matches src/server/repo/tasks/grid.ts's
+  // counts.overdue verbatim (DEC-531) so the two surfaces can't drift.
+  const overdueAssignmentCountRows = await db
+    .select({ count: sql<number>`count(distinct ${schema.taskAssignment.id})` })
+    .from(schema.taskAssignment)
+    .innerJoin(schema.task, eq(schema.taskAssignment.taskId, schema.task.id))
+    .innerJoin(schema.contact, eq(schema.contact.id, schema.taskAssignment.contactId))
+    .where(overdueAssignmentConditions(eventId, now));
+  const overdueAssignmentCount = Number(overdueAssignmentCountRows[0]?.count ?? 0);
+
   const speakers: OverviewPayload["speakers"] = {
     contactsOwing: Number(speakerAggRows[0]?.outstandingContacts ?? 0),
-    overdueAssignments: Number(speakerAggRows[0]?.overdue ?? 0),
+    overdueAssignments: overdueAssignmentCount,
   };
   const nextTaskDueDate =
     speakerAggRows[0]?.nextDue == null ? null : Number(speakerAggRows[0].nextDue);
 
   // --- Overdue task rows (DEC-370 section 01): capped detail rows for the
-  // same pending+overdue set the speakers aggregate above already counted
+  // same overdue set the speakers aggregate above already counted
   // (overdueTasks.total reuses speakers.overdueAssignments — no second
-  // count query).
+  // count query). DEC-776: the SAME overdueAssignmentConditions predicate
+  // (status <> 'complete', not = 'pending', plus the roster join) so the
+  // number and the rows describe one set.
   const overdueDetailRows = await db
     .select({
       assignmentId: schema.taskAssignment.id,
@@ -145,13 +163,7 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number): 
     .from(schema.taskAssignment)
     .innerJoin(schema.task, eq(schema.taskAssignment.taskId, schema.task.id))
     .innerJoin(schema.contact, eq(schema.contact.id, schema.taskAssignment.contactId))
-    .where(
-      and(
-        eq(schema.task.eventId, eventId),
-        eq(schema.taskAssignment.status, "pending"),
-        sql`${schema.task.dueDate} is not null and ${schema.task.dueDate} < ${now}`,
-      ),
-    )
+    .where(overdueAssignmentConditions(eventId, now))
     .orderBy(asc(schema.task.dueDate), asc(schema.taskAssignment.id))
     .limit(ROW_CAP);
   const overdueTasks = {

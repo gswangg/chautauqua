@@ -61,6 +61,7 @@ function emptyResponses() {
     [{ closeDate: null }], // planClose
     [{ closeDate: null }], // formClose
     [], // pendingAssignments
+    [{ count: 0 }], // overdueAssignmentCount (DEC-776)
     [], // overdueDetail
     [], // triageDetail
     [{ total: 0, reuploaded: 0 }], // contentAgg

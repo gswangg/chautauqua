@@ -99,6 +99,25 @@ export function acceptedSpeakerExistsForContact(eventId: string) {
   return sql`exists (select 1 from ${schema.participant} inner join ${schema.submission} on ${schema.submission.id} = ${schema.participant.submissionId} where ${schema.participant.contactId} = ${schema.contact.id} and ${acceptedSpeakerConditions(eventId)})`;
 }
 
+/** DEC-776: the ONE overdue-assignment predicate — a task_assignment is
+ * "overdue" iff its task belongs to `eventId`, its status is not 'complete'
+ * (matching every non-complete status a status enum might grow, not just
+ * 'pending'), its task has a due date in the past relative to `now`, AND its
+ * contact is currently an accepted speaker on the event (composing
+ * acceptedSpeakerExistsForContact so this can never drift from the
+ * onboarding roster). Callers must join task_assignment -> task (on
+ * task.id = task_assignment.task_id) -> contact (on contact.id =
+ * task_assignment.contact_id) before applying this in a WHERE clause, since
+ * acceptedSpeakerExistsForContact correlates against schema.contact.id. */
+export function overdueAssignmentConditions(eventId: string, now: number) {
+  return and(
+    eq(schema.task.eventId, eventId),
+    sql`${schema.taskAssignment.status} <> 'complete'`,
+    sql`${schema.task.dueDate} is not null and ${schema.task.dueDate} < ${now}`,
+    acceptedSpeakerExistsForContact(eventId),
+  )!;
+}
+
 export async function listAcceptedContactIds(db: Db, eventId: string): Promise<string[]> {
   const rows = await db
     .select({ contactId: schema.participant.contactId })
