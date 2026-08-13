@@ -383,10 +383,11 @@ describe("/agenda and /schedule render the DEC-804 search-and-track form", () =>
     const html = await res.text();
     expect(html).toContain('<form method="get" action="/e/conf/agenda" role="search">');
     expect(html).toContain('<input type="search" name="q" value="keynote"');
-    expect(html).toContain('<option value="trk-a" selected="">Track A</option>');
+    // DEC-919: track narrowing is the shared pill-bar idiom, not a <select>.
+    expect(html).toContain('class="chq-pub-pill" href="/e/conf/agenda?trackId=trk-a&amp;q=keynote" aria-current="true">Track A</a>');
     // DEC-851: no format options configured for this event -> no format
-    // <select> renders (never a control the server has nothing to offer).
-    expect(html).not.toContain('name="format"');
+    // pill bar renders (never a control the server has nothing to offer).
+    expect(html).not.toContain('Format filters');
   });
 
   it("/schedule's form carries the current q/trackId as values", async () => {
@@ -396,8 +397,9 @@ describe("/agenda and /schedule render the DEC-804 search-and-track form", () =>
     const html = await res.text();
     expect(html).toContain('<form method="get" action="/e/conf/schedule" role="search">');
     expect(html).toContain('<input type="search" name="q" value="keynote"');
-    expect(html).toContain('<option value="trk-a" selected="">Track A</option>');
-    expect(html).not.toContain('name="format"');
+    // DEC-919: track narrowing is the shared pill-bar idiom, not a <select>.
+    expect(html).toContain('class="chq-pub-pill" href="/e/conf/schedule?trackId=trk-a&amp;q=keynote" aria-current="true">Track A</a>');
+    expect(html).not.toContain('Format filters');
   });
 
   it("carries the active ?day= forward as a hidden input, so filtering never jumps the reader off their day", async () => {

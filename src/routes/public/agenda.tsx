@@ -8,6 +8,7 @@ import { assignLanes } from "../../lib/overlap-lanes";
 import { publicRoomLabel } from "../../domain/schedule";
 import { sessionDetailPath, surfacePath, type Surface, type SurfaceBase } from "./shell";
 import { TrackChips, FormatChip, SpeakerNames, SessionDescription, ItineraryToggle, formatDay, formatMinutes } from "./cards";
+import { PublicSearchBox, PublicFilterBar } from "./filters";
 
 // DEC-602: shared row-map math. The hour-label column (grid-column 1) and
 // every session block are positioned from the SAME dayStart/gridMin
@@ -261,6 +262,28 @@ export function groupByDay(items: PublicAgendaItem[]): Map<string, PublicAgendaI
   return map;
 }
 
+// DEC-919/DEC-835/DEC-851: the ONE param-composition rule for every
+// itinerary-surface out-link (day pills, track/format pills, and the search
+// form's hidden fields) — day, trackId, q and format all carry forward
+// together unless an override says otherwise, reused by DaySwitcher below
+// AND by ItinerarySearchForm's new track/format pill bars, rather than a
+// second hand-written composition living next to the first.
+function agendaQs(
+  current: { day?: string | null; trackId?: string | null; q?: string | null; format?: string | null },
+  override: { day?: string | null; trackId?: string | null; q?: string | null; format?: string | null } = {},
+): string {
+  const day = override.day !== undefined ? override.day : (current.day ?? null);
+  const trackId = override.trackId !== undefined ? override.trackId : (current.trackId ?? null);
+  const q = override.q !== undefined ? override.q : (current.q ?? null);
+  const format = override.format !== undefined ? override.format : (current.format ?? null);
+  const parts: string[] = [];
+  if (day) parts.push(`day=${day}`);
+  if (trackId) parts.push(`trackId=${encodeURIComponent(trackId)}`);
+  if (q) parts.push(`q=${encodeURIComponent(q)}`);
+  if (format) parts.push(`format=${encodeURIComponent(format)}`);
+  return parts.length > 0 ? `?${parts.join("&")}` : "";
+}
+
 /** EMB-07: day switcher — one pill per event day. DEC-768: `renderedDays`
  * is the set of days that actually have a `#chq-day-<day>` section on THIS
  * page (so their pill can jump in-page); any day outside that set (e.g.
@@ -285,17 +308,14 @@ function DaySwitcher(props: {
   if (days.length <= 1) return null;
   // DEC-783/DEC-851: a day jump must not silently drop the active
   // q/trackId/format filter — every out-link carries them forward
-  // alongside ?day=.
+  // alongside ?day=, via the shared agendaQs composer above.
   // DEC-835: the day a visitor is reading is in the URL — every pill (on
   // the default unfiltered view AND a filtered one) emits a real
   // `?day=<day>` href, never a bare `#chq-day-<day>` anchor, so the URL
   // always reflects the day in view and a reload/share lands back on it.
   // The `#chq-day-<day>` section id is still appended as a fragment so an
   // already-rendered day's pill scrolls in place instead of a full reload.
-  const extraParams =
-    (trackId ? `&trackId=${encodeURIComponent(trackId)}` : "") +
-    (q ? `&q=${encodeURIComponent(q)}` : "") +
-    (format ? `&format=${encodeURIComponent(format)}` : "");
+  const current = { trackId: trackId ?? null, q: q ?? null, format: format ?? null };
   // DEC-885: a navigation control that never says where you are is a list
   // of links. On the ?day=-filtered view `activeDay` names it directly; on
   // the default unfiltered view no query param picks a day, but the page
@@ -307,9 +327,10 @@ function DaySwitcher(props: {
     <nav aria-label="Jump to day" class="chq-pub-day-switcher">
       {days.map((day) => {
         const isActive = day === effectiveActiveDay;
+        const qs = agendaQs(current, { day });
         const href = renderedDays.has(day)
-          ? `${surfacePath(event, surface, base)}?day=${day}${extraParams}#chq-day-${day}`
-          : `${surfacePath(event, surface, base)}?day=${day}${extraParams}`;
+          ? `${surfacePath(event, surface, base)}${qs}#chq-day-${day}`
+          : `${surfacePath(event, surface, base)}${qs}`;
         return (
           <a
             class={isActive ? "chq-pub-day-pill chq-pub-day-pill-active" : "chq-pub-day-pill"}
@@ -324,13 +345,16 @@ function DaySwitcher(props: {
   );
 }
 
-// DEC-804/DEC-851: the itinerary surfaces (/agenda, /schedule) render the
-// SAME search-and-track-and-format control the sessions list already
-// answers via ?q=/?trackId=/?format= — all three are now real server-side
-// predicates on getPublicAgenda (DEC-783 covered q/trackId; DEC-851 added
-// format), so a control here is honoured, never a chip the server ignores.
-// `activeDay` is carried forward as a hidden field so a search/track/format
-// pick never jumps the reader off the day they're on.
+// DEC-804/DEC-851/DEC-919: the itinerary surfaces (/agenda, /schedule) render
+// the SAME PublicSearchBox + PublicFilterBar idiom the sessions list already
+// uses — track/format used to be <select> dropdowns living inside this form
+// (narrowing needed a submit); they are now pill bars like every other
+// public surface, honoured server-side exactly the same way (DEC-783 covered
+// q/trackId; DEC-851 added format). `activeDay` (and, now that they are no
+// longer select values, activeTrackId/activeFormat too) are carried forward
+// as hidden fields on the search box, and as query params on every pill
+// href, via the shared agendaQs composer — a search/track/format/day pick
+// never drops any of the others.
 function ItinerarySearchForm(props: {
   event: PublicEvent;
   tracks: PublicTrack[];
@@ -342,43 +366,37 @@ function ItinerarySearchForm(props: {
   activeFormat?: string | null;
 }) {
   const { tracks, activeTrackId, activeDay, q, basePath, formatOptions, activeFormat } = props;
+  const current = { day: activeDay, trackId: activeTrackId, q, format: activeFormat ?? null };
   return (
-    <form method="get" action={basePath} role="search">
-      <label>
-        Search
-        <input type="search" name="q" value={q ?? ""} placeholder="Title or speaker name" />
-      </label>
-      <label>
-        Track
-        <select name="trackId">
-          <option value="" selected={!activeTrackId}>
-            All tracks
-          </option>
-          {tracks.map((t) => (
-            <option value={t.id} selected={activeTrackId === t.id}>
-              {t.name}
-            </option>
-          ))}
-        </select>
-      </label>
+    <>
+      <PublicSearchBox
+        action={basePath}
+        q={q}
+        hidden={
+          <>
+            {activeTrackId ? <input type="hidden" name="trackId" value={activeTrackId} /> : null}
+            {activeFormat ? <input type="hidden" name="format" value={activeFormat} /> : null}
+            {activeDay ? <input type="hidden" name="day" value={activeDay} /> : null}
+          </>
+        }
+      />
+      <PublicFilterBar
+        ariaLabel="Track filters"
+        allLabel="All tracks"
+        options={tracks.map((t) => ({ value: t.id, label: t.name }))}
+        activeValue={activeTrackId}
+        hrefFor={(v) => `${basePath}${agendaQs(current, { trackId: v })}`}
+      />
       {formatOptions && formatOptions.length > 0 ? (
-        <label>
-          Format
-          <select name="format">
-            <option value="" selected={!activeFormat}>
-              All formats
-            </option>
-            {formatOptions.map((f) => (
-              <option value={f} selected={activeFormat === f}>
-                {f}
-              </option>
-            ))}
-          </select>
-        </label>
+        <PublicFilterBar
+          ariaLabel="Format filters"
+          allLabel="All formats"
+          options={formatOptions.map((f) => ({ value: f, label: f }))}
+          activeValue={activeFormat ?? null}
+          hrefFor={(v) => `${basePath}${agendaQs(current, { format: v })}`}
+        />
       ) : null}
-      {activeDay ? <input type="hidden" name="day" value={activeDay} /> : null}
-      <button type="submit">Search</button>
-    </form>
+    </>
   );
 }
 

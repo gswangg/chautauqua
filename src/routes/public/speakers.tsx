@@ -6,26 +6,7 @@ import type { PublicEvent, PublicSpeakerWithSessions } from "../../server/repo/p
 import { speakerDetailPath, surfacePath } from "./shell";
 import { PUBLIC_PER_PAGE, hasMorePages } from "../../server/repo/public/bounds";
 import { speakerInitials } from "./cards";
-
-/** Plain GET name-search form (DEC-151): JS-free, preserves the page's other
- * query semantics by resubmitting only `q` — page param is intentionally
- * dropped on a new search since the result set changes size. DEC-289/DEC-489:
- * a configured embed's `limit` is carried forward as a hidden field, exactly
- * like SessionsContent's search form, so a search does not lose the embed's
- * page size. */
-function NameSearchForm(props: { action: string; q: string | null; limit: number | null }) {
-  return (
-    <form method="get" action={props.action} role="search">
-      <label>
-        Search by name{" "}
-        <input type="search" name="q" value={props.q ?? ""} placeholder="Speaker name" />
-      </label>{" "}
-      {props.limit ? <input type="hidden" name="limit" value={String(props.limit)} /> : null}
-      <button type="submit">Search</button>
-      {props.q ? <a href={props.action}>Clear</a> : null}
-    </form>
-  );
-}
+import { PublicSearchBox } from "./filters";
 
 /** One card, shared by the directory (SpeakersContent) and the gallery
  * (GalleryContent), per DEC-593: both surfaces carry headshot, name, job
@@ -108,7 +89,11 @@ export function SpeakersContent(props: {
   return (
     <>
       <h2>Speakers</h2>
-      <NameSearchForm action={basePath} q={q} limit={limit ?? null} />
+      <PublicSearchBox
+        action={basePath}
+        q={q}
+        hidden={limit ? <input type="hidden" name="limit" value={String(limit)} /> : null}
+      />
       {speakers.length === 0 ? (
         <p>No speakers to show yet.</p>
       ) : (
@@ -154,7 +139,11 @@ export function GalleryContent(props: {
   return (
     <>
       <h2>Speaker gallery</h2>
-      <NameSearchForm action={basePath} q={q} limit={limit ?? null} />
+      <PublicSearchBox
+        action={basePath}
+        q={q}
+        hidden={limit ? <input type="hidden" name="limit" value={String(limit)} /> : null}
+      />
       <p>
         {speakers.length} of {total} speaker(s)
       </p>

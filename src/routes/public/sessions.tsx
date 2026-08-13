@@ -16,6 +16,7 @@ import { SessionCard, formatDay } from "./cards";
 import { ItineraryScript } from "./agenda";
 import { type CardFields } from "./query";
 import { surfacePath } from "./shell";
+import { PublicSearchBox, PublicFilterBar } from "./filters";
 import { PUBLIC_PER_PAGE, hasMorePages } from "../../server/repo/public/bounds";
 
 function ScheduleRailSection(props: { event: PublicEvent }) {
@@ -160,64 +161,45 @@ export function SessionsContent(props: {
       <h2>Sessions</h2>
       <div class="chq-pub-sessions-layout">
         <div class="chq-pub-sessions-list">
-          {/* EMB-02: plain GET search form, preserves the active track/format/
-              room filters as hidden fields so search composes with all three. */}
-          <form method="get" action={basePath} role="search">
-            <label>
-              Search
-              <input type="search" name="q" value={q ?? ""} placeholder="Title or speaker name" />
-            </label>
-            {activeTrackId ? <input type="hidden" name="trackId" value={activeTrackId} /> : null}
-            {activeFmt ? <input type="hidden" name="format" value={activeFmt} /> : null}
-            {activeRoom ? <input type="hidden" name="roomId" value={activeRoom} /> : null}
-            {limit ? <input type="hidden" name="limit" value={String(limit)} /> : null}
-            <button type="submit">Search</button>
-          </form>
-          <nav aria-label="Track filters" class="chq-pub-filter-bar">
-            <a class="chq-pub-pill" href={`${basePath}${filterQs({ trackId: null })}`} aria-current={activeTrackId === null ? "true" : undefined}>
-              All tracks
-            </a>
-            {tracks.map((t) => (
-              <a
-                class="chq-pub-pill"
-                href={`${basePath}${filterQs({ trackId: t.id })}`}
-                aria-current={activeTrackId === t.id ? "true" : undefined}
-              >
-                {t.name}
-              </a>
-            ))}
-          </nav>
+          {/* EMB-02/DEC-919: the one PublicSearchBox markup, preserving the
+              active track/format/room filters as hidden fields so search
+              composes with all three. */}
+          <PublicSearchBox
+            action={basePath}
+            q={q}
+            hidden={
+              <>
+                {activeTrackId ? <input type="hidden" name="trackId" value={activeTrackId} /> : null}
+                {activeFmt ? <input type="hidden" name="format" value={activeFmt} /> : null}
+                {activeRoom ? <input type="hidden" name="roomId" value={activeRoom} /> : null}
+                {limit ? <input type="hidden" name="limit" value={String(limit)} /> : null}
+              </>
+            }
+          />
+          <PublicFilterBar
+            ariaLabel="Track filters"
+            allLabel="All tracks"
+            options={tracks.map((t) => ({ value: t.id, label: t.name }))}
+            activeValue={activeTrackId}
+            hrefFor={(v) => `${basePath}${filterQs({ trackId: v })}`}
+          />
           {formatOptions && formatOptions.length > 0 ? (
-            <nav aria-label="Format filters" class="chq-pub-filter-bar">
-              <a class="chq-pub-pill" href={`${basePath}${filterQs({ format: null })}`} aria-current={activeFmt === null ? "true" : undefined}>
-                All formats
-              </a>
-              {formatOptions.map((f) => (
-                <a
-                  class="chq-pub-pill"
-                  href={`${basePath}${filterQs({ format: f })}`}
-                  aria-current={activeFmt === f ? "true" : undefined}
-                >
-                  {f}
-                </a>
-              ))}
-            </nav>
+            <PublicFilterBar
+              ariaLabel="Format filters"
+              allLabel="All formats"
+              options={formatOptions.map((f) => ({ value: f, label: f }))}
+              activeValue={activeFmt}
+              hrefFor={(v) => `${basePath}${filterQs({ format: v })}`}
+            />
           ) : null}
           {rooms && rooms.length > 0 ? (
-            <nav aria-label="Room filters" class="chq-pub-filter-bar">
-              <a class="chq-pub-pill" href={`${basePath}${filterQs({ roomId: null })}`} aria-current={activeRoom === null ? "true" : undefined}>
-                All rooms
-              </a>
-              {rooms.map((r) => (
-                <a
-                  class="chq-pub-pill"
-                  href={`${basePath}${filterQs({ roomId: r.id })}`}
-                  aria-current={activeRoom === r.id ? "true" : undefined}
-                >
-                  {r.name}
-                </a>
-              ))}
-            </nav>
+            <PublicFilterBar
+              ariaLabel="Room filters"
+              allLabel="All rooms"
+              options={rooms.map((r) => ({ value: r.id, label: r.name }))}
+              activeValue={activeRoom}
+              hrefFor={(v) => `${basePath}${filterQs({ roomId: v })}`}
+            />
           ) : null}
           <p>
             {items.length} of {total} session(s)
