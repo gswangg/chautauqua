@@ -16,6 +16,9 @@ import { copyText } from '../../lib/clipboard';
 import { formWindowState } from '../../../../src/lib/submit-core';
 import { dayLabelEndInstant } from '../../../../src/lib/timezone';
 import { SummarySection } from './SummarySection';
+import { DEC_888 } from '../../../../src/decisions';
+
+void DEC_888;
 
 const SECTION_KEY = 'cfp';
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -344,23 +347,27 @@ export function CallForPapersPanel() {
               Close the call now
             </button>
           </div>
-          <fieldset className="chq-settings-row">
-            <legend>Tracks offered</legend>
-            {tracks.length === 0 && <p>No tracks configured for this event yet.</p>}
-            <div className="chq-chipstrip">
-              {tracks.map((track) => (
-                <button
-                  key={track.id}
-                  type="button"
-                  className={selectedTracks.includes(track.id) ? 'chq-pill is-active' : 'chq-pill'}
-                  aria-pressed={selectedTracks.includes(track.id)}
-                  onClick={() => toggleTrack(track.id)}
-                >
-                  {track.name}
-                </button>
-              ))}
+          <div className="chq-settings-row">
+            <span className="chq-settings-row-label">Tracks offered</span>
+            <div className="chq-settings-row-value chq-settings-row-value-stack">
+              <div className="chq-chipstrip" role="group" aria-label="Tracks offered">
+                {tracks.map((track) => (
+                  <button
+                    key={track.id}
+                    type="button"
+                    className={selectedTracks.includes(track.id) ? 'chq-pill is-active' : 'chq-pill'}
+                    aria-pressed={selectedTracks.includes(track.id)}
+                    onClick={() => toggleTrack(track.id)}
+                  >
+                    {track.name}
+                  </button>
+                ))}
+              </div>
+              {tracks.length === 0 ? (
+                <p className="chq-settings-row-hint">No tracks configured for this event yet.</p>
+              ) : null}
             </div>
-          </fieldset>
+          </div>
           <button type="submit" className="chq-btn chq-btn-primary" disabled={saving}>
             {saving ? 'Saving…' : 'Save'}
           </button>

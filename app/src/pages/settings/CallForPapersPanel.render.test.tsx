@@ -110,6 +110,12 @@ describe('CallForPapersPanel', () => {
     expect(within(section).getByRole('button', { name: 'Workshops' })).toHaveAttribute('aria-pressed', 'false');
     expect(within(section).queryByRole('button', { name: 'Edit the form' })).not.toBeInTheDocument();
 
+    // DEC-888: no native <fieldset>/<legend> remains in the tracks block --
+    // the settings row grammar (label ‖ value) replaces it.
+    expect(section.querySelector('fieldset')).toBeNull();
+    expect(section.querySelector('legend')).toBeNull();
+    expect(within(section).getByText('Tracks offered')).toBeInTheDocument();
+
     mockCfp({
       [`PATCH /api/v1/forms/form1`]: {
         id: 'form1',
@@ -132,5 +138,31 @@ describe('CallForPapersPanel', () => {
       expect(within(section).getByRole('button', { name: 'Edit the form' })).toBeInTheDocument();
     });
     expect(within(section).queryByRole('textbox')).not.toBeInTheDocument();
+  });
+
+  it('renders the no-tracks hint beneath the chipstrip, inside the value column, when the event has no tracks', async () => {
+    mockCfp({ [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]) });
+    render(
+      <MemoryRouter>
+        <CallForPapersPanel />
+      </MemoryRouter>,
+    );
+
+    const section = await screen.findByRole('region', { name: 'Call for papers' });
+    await waitFor(() => {
+      expect(within(section).getByText(`${window.location.origin}/submit/devcon-2026`)).toBeInTheDocument();
+    });
+
+    fireEvent.click(within(section).getByRole('button', { name: 'Edit the form' }));
+
+    await waitFor(() => {
+      expect(within(section).getByText('No tracks configured for this event yet.')).toBeInTheDocument();
+    });
+    const hint = within(section).getByText('No tracks configured for this event yet.');
+    expect(hint).toHaveClass('chq-settings-row-hint');
+    const valueColumn = hint.closest('.chq-settings-row-value');
+    expect(valueColumn).not.toBeNull();
+    expect(valueColumn!.querySelector('.chq-chipstrip')).not.toBeNull();
+    expect(section.querySelector('fieldset')).toBeNull();
   });
 });

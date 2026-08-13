@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor, fireEvent, cleanup, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter } from 'react-router-dom';
-import { TracksRoomsPanel } from './TracksRoomsPanel';
+import { TracksRoomsPanel, TRACK_SWATCHES } from './TracksRoomsPanel';
 import { listEnvelope, mockApi } from '../../test-utils/mockApi';
 
 const EVENT_ID = 'evt-tracks-rooms';
@@ -84,5 +84,52 @@ describe('TracksRoomsPanel', () => {
     expect(within(section).getByPlaceholderText('New track name')).toBeInTheDocument();
     expect(within(section).getByPlaceholderText('New room name')).toBeInTheDocument();
     expect(within(section).queryByRole('button', { name: 'Add' })).not.toBeInTheDocument();
+  });
+
+  it('renders the edit view with the settings vocabulary: no browser bullets, actions never inside a value cell, and a swatch-picker default matching TRACK_SWATCHES[0]', async () => {
+    mockTracksRooms();
+    render(
+      <MemoryRouter>
+        <TracksRoomsPanel />
+      </MemoryRouter>,
+    );
+
+    const section = await screen.findByRole('region', { name: 'Tracks and rooms' });
+    fireEvent.click(within(section).getByRole('button', { name: 'Add' }));
+
+    await waitFor(() => {
+      expect(within(section).getByDisplayValue('AI Engineering')).toBeInTheDocument();
+    });
+
+    // Track/room lists carry the list-style:none class rather than bare <ul>.
+    const lists = section.querySelectorAll('ul.chq-settings-edit-list');
+    expect(lists.length).toBe(2);
+
+    // A row's action (Delete) is a SIBLING of the value cell, never nested
+    // inside it -- so it can never collide with the value text.
+    const trackNameInput = within(section).getByLabelText('Track name for AI Engineering');
+    const trackRow = trackNameInput.closest('.chq-settings-edit-row')!;
+    expect(trackRow).not.toBeNull();
+    const valueCell = trackRow.querySelector('.chq-settings-edit-row-value')!;
+    const actionsCell = trackRow.querySelector('.chq-settings-edit-row-actions')!;
+    expect(valueCell.contains(actionsCell)).toBe(false);
+    expect(actionsCell.parentElement).toBe(trackRow);
+    expect(within(actionsCell as HTMLElement).getByRole('button', { name: 'Delete' })).toBeInTheDocument();
+
+    // A room's capacity renders in the meta column, not a parenthetical in
+    // the name.
+    const roomList = section.querySelectorAll('ul.chq-settings-edit-list')[1]!;
+    const roomRows = roomList.querySelectorAll('.chq-settings-edit-row');
+    const mainStageRow = Array.from(roomRows).find((row) => row.textContent?.includes('Main Stage'))!;
+    expect(mainStageRow.querySelector('.chq-settings-edit-row-value')!.textContent).toBe('Main Stage');
+    expect(mainStageRow.querySelector('.chq-settings-edit-row-meta')!.textContent).toBe('Capacity 900');
+
+    // The color default equals TRACK_SWATCHES[0]: the swatch picker's first
+    // option is checked, and no bare <input type="color"> remains.
+    const swatchGroup = within(section).getByRole('radiogroup', { name: 'Track color' });
+    const options = within(swatchGroup).getAllByRole('radio');
+    expect(options[0]).toHaveAttribute('aria-checked', 'true');
+    expect(options[0]).toHaveStyle({ background: TRACK_SWATCHES[0].value });
+    expect(section.querySelector('input[type="color"]')).not.toBeInTheDocument();
   });
 });
