@@ -87,31 +87,40 @@ DECLINE QUEUE no-wrap · "Columns: <state>" label · bulk bar → 3 actions · d
 section · ANSWERS = curated subset · quick-add combined name field · co-presenter
 search row layout.
 
-**Review** (probe-5 CLOSED: reviewer nav aria-current on all routes · weighted
-caption now "Scores average by weight" · earlier probe-3 batch: DEC-763 plan-scoped disclosures — all 37 swept clean ·
-DEC-763 export sort — hrefs byte-identical all 8 states, CSVs match · reviewer
-NAMES render · DEC-760 remind hidden at N=0; earlier: DEC-737/723/736 + blended
-SCORE): scoped queue probe-5 MOSTLY CLOSED (eyebrow/h1-count/subtitle/real progress
-bar/named back link all frame-true; round segment correctly suppressed at
-rounds=1 per DEC-831): row residue — scored rows say "Score this" not "Change
-your score" + extra Complete pill · no session-meta line ("Talk, 30 min ·
-advanced") · ref duplicated (span + title) · SEED still pending: stagger a SECOND
-plan open so multi-plan reviewer experience is visible · shell 403 NARROWED: fires
-once during login→redirect only (clean thereafter) — skip the overview fetch for
-non-organizers at login · plan-row subtitle truncated: "All tracks" without "· 3
-reviews each"; progress rows lack per-reviewer track subtitle + "X of Y" numeric ·
-anonymity ratchet counts evaluations submitted BEFORE anonymization was enabled
-(guard should count only under-anonymity evals) · title-row summary "3 plans · 1
-with evaluations in" (string absent from bundle) · plan
-editor v4 shell PARTIAL (criterion rows/Add-criterion/scale caption/locked-state all
-landed): still — title-row Duplicate + Save (not page-bottom Save/Delete), remove
-legacy fields the mock omits (NAME/INSTRUCTIONS/ROUNDS/track-filter checkboxes/
-Anonymize/dropdown-kind criterion), reviewer section → "WHO REVIEWS WHAT" grammar
-(names, "6 talks", "Assign a reviewer", recusal footnote; account-admin out),
-new-plan page: Cancel/"Create the plan" on title row + "Nothing is sent to reviewers
-until you open it" + don't show "NAME IS REQUIRED." before input · results: ONE
-blended SCORE column (per-criterion detail behind ▸ Reviews) — probe confirms still
-dense multi-column.
+**Review — GATE-1 FLEET: FAIL (full report fidelity-gate1/03-review/report.md)**:
+MAJOR: scorecard ratings must be 1-5 SEGMENTED BUTTONS w/ selected fill (now bare
+number inputs — the section's defining control) · add OVERALL block ("Averaged by
+weight · not editable" + computed blend) · add "Save draft" beside "Submit and
+next" · show "Weight N · NN%" per criterion on the scorecard · scorecard: short
+ABSTRACT + "Read the full submission" link — STOP dumping full answers + SPEAKER
+EMAIL (PII vs anonymization; abstract currently duplicated) · criteria table:
+CRITERION/GUIDANCE/WEIGHT headers + drag handles · distribute preview to frame
+anatomy (3-col table Name|Track|6→8 talks incl. "unchanged · wrong track" rows,
+bold headline, caps NOTHING-IS-SAVED right-aligned, "Assign these N"/Discard, ONE
+leftover line) · WHO-REVIEWS-WHAT: control row under the rule + "N talks · N
+reviews needed at N each · N reviewers" summary + "talks each" suffix · locked
+plan: criteria as read-only TEXT rows, lock card BELOW, header "Open · N of M
+reviews in" · results: RANK column first (drop REF/# EVALUATIONS per frame),
+Accept/Decline side-by-side · reviewer queue rows to frame anatomy (REF
+left/status right, meta w/ audience level, FULL-WIDTH action button) + footer
+"Scores stay hidden from other reviewers · Sign out" + recused INLINE ·
+new-plan onboarding sentence ("Three to start with…") · landing progress panel:
+restore "Remind the N not started" + per-reviewer track subtitles ·
+**SEED: set maxEvaluationsPerSubmission on plans (highest-leverage: restores
+Reviews-per-talk field, "· N reviews each" subtitles, distribute summary)** ·
+DECIDE: unscoped reviewer hub has NO frame and is the landing — redirect to the
+scoped queue when one active plan (frame-faithful screen first).
+MINOR batch: date grammar "2 Mar – 20 Mar" · status pills (OPEN NOW solid/OPENS
+outlined) · progress wording ("18 of 18 submitted", "Not started") · caps meta
+right-aligned on rules · REF no-wrap · one-decimal scores · weight cell "50%"
+only · middot/em-dash not hyphen · cap input width ("No cap" clips to "No") ·
+results duplicate headings/orphan CSV strip/pagination · new-plan header row +
+empty guidance placeholders · Add criterion as green link · copy drift (Submit
+and next · Discard · COMMENT TO THE COMMITTEE · Assign these N · eyebrow keeps
+round when rounds>1) · recusal as inline checkbox · audit extra elements vs DECs
+(Reset password, Anonymize, Delete plan, kbd tip).
+(Probe-5 closures stand: scoped-queue header block, weighted-score header+caption,
+cap+shortfall mechanics, reviewer nav highlight, names, DEC-763 batch.)
 
 **Speakers** (probe-5 CLOSED: DEC-830 participation MENU — real menu, 4 states +
 Send portal invite, persistence + role DB-verified, DEC-730 shapes all four
@@ -131,16 +140,30 @@ visible on portal pending rows; organizer grid still prints raw date pre-breach
 (surface it there too) · horizontal scroll contained to grid wrapper · New-task
 modal: styled date · headers "DUE 10 APR · REQUIRED" + year for far dates.
 
-**Content** (probe 2 CLOSED: Approve hidden on approved rows · worklist header copy ·
-library pill chips counted, no select · Download all truthful): session detail
-rebuild — shared version list + ONE scoped note thread, "Send note only", Download
-all · "Unknown (unknown)" is the COMMENT AUTHOR on speaker replies (attribution bug
-in comment write path; version-uploader attribution is correct) · comment version
-tags renumber after a version delete (keep original version refs) · (probe-3: DEC-773 CLOSED — one unified list, tabs gone, "11 files · 4.9 KB" stat,
-counted chips incl. Headshot·3) · worklist chips: counted + mock
-set/order ("Needs a decision · N" FIRST, "Approved · N", "All accepted sessions ·
-N") · relative dates in LATEST FILE · SEED: worklist too sparse (28/30 "No files
-yet").
+**Content — GATE-1 FLEET: FAIL (full report fidelity-gate1/05-content/report.md)**:
+BROKEN: worklist row separators STAGGERED — td's carry display:flex
+(content.css L58/69/84) → per-column borders at different y + misaligned
+baselines on all rows; wrap cell contents in divs · "(unknown)" author-role
+leaks on every speaker note (files-comments.ts:204) — hide unknown role.
+MAJOR: organizer's own notes labeled "You · relative-time" (now raw email +
+"(organizer)" + absolute timestamp) · detail version list: newest row shows its
+version_no (now "Latest" w/o number) + REPLACED/changes-requested annotations ·
+style the drop zone (native Choose-File shows) + ADD .mp4 to accept (Recording
+deliverable currently un-uploadable) · "N re-uploaded" semantics wrong (counts
+changes_requested; no row can show RE-UPLOADED) — adopt frame vocabulary NOT
+REVIEWED/RE-UPLOADED or count real re-uploads · detail header rebuild: left back
+link above title, session title as H1 w/ "‹ Content" breadcrumb, subtitle
+"Speaker · CODE · slot, Room", CONTENT STATUS sunk band w/ when/by-whom,
+DELIVERABLES section rule · worklist default tab = "Needs a decision"
+(DEFAULT_WORKLIST_TAB ContentApp.tsx:42).
+MINOR: decision buttons — Ask-for-changes primary, helper below · relative
+timestamps everywhere · library header (breadcrumb + H1 Files + stat on header
+row) · library VERSION column = file's version; trim columns to frame; size col
+width · search left of chips · hide zero-count kind chips · headshot rows sort ·
+notes heading copy + rule + textarea placeholder · per-version Delete vs frame
+(DEC) · add a changes_requested→pending revert affordance (no UI path exists).
+(Probe closures stand: DEC-773 unified library, Download-all, version chaining,
+chips/counts, note paths.)
 
 **Agenda (desktop) — GATE-1 FLEET: FAIL (full report
 chautauqua-research/fidelity-gate1/06-agenda/report.md)**:
