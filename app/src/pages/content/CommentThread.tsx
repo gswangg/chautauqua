@@ -67,7 +67,8 @@ export function CommentThread({ comments, onSend }: CommentThreadProps) {
           disabled={pending}
         />
         <p className="chq-meta chq-content-comment-caption">
-          Emailed to every active speaker on this session.
+          Ask for changes emails this note and moves the session out of your queue · Send note only emails it and
+          leaves the status alone
         </p>
         <div className="chq-content-comment-actions">
           <button
