@@ -42,6 +42,30 @@ reporting, page measure).
 
 **P2 · Distribute preview + who-reviews-what anatomy** — frame 03: cap row `CAP PER REVIEWER [8] talks each` + summary "18 talks · 36 reviews needed at 2 each · 4 reviewers"; preview is a 3-col table (name | track | `6 → 8 talks`, `unchanged · wrong track`) + "Assign these N" + leftover line. App: one flat line, cap input shows clipped "No", no summary, no leftover line.
 
+**Pair-5 reds (09-settings FAIL · 10-public-portal FAIL — USER-PRIORITY SECTION):**
+
+**P1-BROKEN-SEED · Public CFP form dark on the delivered seed.** Seed sets form `opens` = 2026-08-14 (tomorrow) so /submit/devflow-conf-2027 says "Submissions aren't open yet" while Settings says "Closes 31 Aug · IN 19 DAYS" with a live Open link and Public-pages says "NOT OPEN YET" — three surfaces disagree and the demo's primary public state (frame 10--11 = the OPEN form) is unreachable. Fix seed: opens in the past, closes in the future. Also reconcile the relative-date math (Settings "IN 19 DAYS" vs overview "17 days" for the same deadline; actual 18).
+
+**P1 · Public 1180 pair layout applied NOWHERE.** Every public surface is x=34 w=1372 full-bleed-ish. Spec/frames: 1180 centered (x=130 at 1440), main ≈820 + 36 gap + rail 324. Applies to /sessions, /agenda, /schedule, /speakers, /gallery, session detail. One container-class fix + per-page adoption.
+
+**P1 · Public search row (the user-filed misalignment).** App: stacked `Search` label + 951×44 input + separate green Search button on their own row, on EVERY public page. Frame: one ~259×40 inline input at the HEAD of the pill row, no label, no button. Single track-pill row (wrapping), not three ruled rows (tracks/formats/rooms).
+
+**P1 · Speakers List/Grid wrong-way-round batch:** /speakers renders the GRID (3×444px tiles, 444px headshots) but frame 10--08 is a LIST (~80px rounded headshot, name+role/company left, session title right column, hairline rules); /gallery must be a 6-col ~184px square-tile grid (app: 13 cols of 96px, names wrapping 2-4 lines); the List/Grid toggle has NO visual selected state (both pills transparent; frame = joined segmented control, active half filled near-black) and belongs right-flushed on the title row next to search; public nav missing "Gallery" and "My schedule" entries (frame 10--00: Sessions / Speakers / Agenda / My schedule / Gallery).
+
+**P1 · CFP form desktop anatomy:** full-bleed page header (date·venue eyebrow / event wordmark / "Call for papers · closes…") + separate H1 "Submit a talk" — not a bordered card in the column; field order/pairing per frame (Title → Abstract → TRACK|FORMAT 2-up → Audience-level PILLS not caret-less select → Notes → Accessibility → YOU: NAME|EMAIL → COMPANY|JOB TITLE → Bio); single NAME field not First/Last; textareas real heights (abstract ~5 rows, app 53px one-liners); email input type=email; YOU section needs a real section break (currently collides with last track row); track radios carry required marker + error copy for single-choice ("Select a track", not "at least one"); limits per frame (1,200 chars pattern).
+
+**P2 · agenda public chips full-width** — `.chq-pub-track-chip`/`format-chip` compute w=622 inside agenda blocks (correct as pills on session detail) — scope fix.
+
+**P2 · sessions list polish:** gutter 268px two-line "9:00 / Main Stage" (app: 126px, 3 lines with full date); unslotted rows (empty gutter) must not sort ABOVE timed rows; rail adds CALL FOR PAPERS block ("Closes … · no account needed" + "Submit a talk ›"); rail day block titled "THREE DAYS" with all 3 days (app: "DAYS", 2 rows); speaker line bare name; "TALK, 30 MIN" comma grammar; drop extra "7 of 7 sessions" row + duplicate H1.
+
+**P2 · settings batch:** 3-col definition rows single-line label|value|right-meta at ~50px pitch (app stacks at 88px); read views SHOW the lists (resources, people, exports, tokens, SAVED EMBEDS + inline editor — all currently gated behind Change); public-pages read rows = 4-col `Sessions | /path | LIVE | Embed code`; section actions right-flushed ON the eyebrow row ×7; tracks-and-rooms grid spans the 820 (app 488px, rules stop short); embed FIELDS SHOWN = one row of 6 pills (app: six 790×51 stacked checkbox rows); embeds middle column = where-pasted; Dates one row "12–14 May 2027" + right-flushed relative pill; rail order/labels per frame (Public pages · Speaker portal · Your data · People and roles); H1 aligned to rail edge; login "Submit a talk ›" footer link when CFP open; confirmation measure consistent with form (620 vs 662 inset drift).
+
+**P2 · caret focus ring (user complaint confirmed):** `.chq-eventswitcher-menu-btn` is a 24×23 button holding only "▾" — the 2px olive focus box around a bare glyph reads as stray. Give the switcher a larger focus target (ring around name+caret group), not a box around the caret.
+
+**SEED · missing frame states:** only 2 saved embeds vs frame's 4 (missing "Homepage agenda strip", "Sponsor deck feed") — feeds the saved-embeds build; track counts/capacities fine.
+
+(Pair-5 verified fixed: settings 3-col page-centered grid EXACT (242/820/242, rail sticky justify-end — DEC-989 wave landed), scroll-spy holds, DEC-966 optional fields verified BY SUBMISSION (only required fields → SES-031 accepted; cleaned up), track radios single-choice horizontal rows, ABSTRACT label, accessibility question present, confirmation edit-until + submit-another + browse links, CFP-closed dead-end has escape links, .ics disabled at 0, speaker-edit pills exact, bulk submission delete E2E works — note its blast-radius page primary opens a SECOND confirm modal, discoverability trap.)
+
 **Pair-4 reds (07-comms FAIL 4 MAJOR · 08-contacts FAIL 1 BROKEN + 4 MAJOR):**
 
 **P1-BROKEN · Headshot file input overflows drawer AND viewport (gate-2 BROKEN survivor).** `.chq-file` hard-coded `width: 284px` inside the drawer's 220px value column: right edge 1477 vs 1440 viewport; drawer scrollWidth 456 / clientWidth 418 (38px internal overflow). Make it fit the value column (max-width: 100%); overflow test on `.chq-contacts-drawer`.
