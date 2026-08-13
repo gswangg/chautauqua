@@ -6,7 +6,7 @@
 // where the registry is split into range-scoped modules (part1..part4) to
 // keep any single file's append tail small and reduce merge contention.
 // The scribe appends new decisions to the LAST part file
-// (src/decisions-data/part4.ts, currently DEC_630-DEC_848); when a part
+// (src/decisions-data/part4.ts, currently DEC_630-DEC_864); when a part
 // file grows too large, start a new part file and add its `export *` line
 // here. Do not hand-edit the generated constants in the part files.
 export const DECISIONS_INDEX = true;

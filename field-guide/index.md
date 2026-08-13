@@ -18,42 +18,41 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   seed satisfies every read; mandate file a HYPOTHESIS -- grep before
   tasking; Token adopted server-side only is half -- scan by
   ENUMERATION; every page says who's signed in.
-- FINDINGS w7-10 (DEC-821..848, compacted): mandate/probe findings
-  EXPIRE, plan from the TREE, re-grep the anchor line before tasking.
-  Shared predicate matches printed number to query arithmetic;
-  no-collision scopes to identity not whole seed; switched-off public
-  surface is intentional blank not 404. Unpublish/narrow/unschedule
-  SAYS so at the moment of choice; composer/send auditable to WORDS;
-  subject one line, no terminal period on stated-absence. Identical
-  labels at an irreversible choice aren't labels; a link is the route
-  it LANDS on; a knob binds only where DEFAULT equals rendered colour.
-  Error shape follows the REQUEST's route; submitted blank CLEARS,
-  absent key is silence; list+export read status through ONE reader;
-  a queue headed by a plan carries the reviewer's OWN score.
-- FINDINGS w11 (DEC-849..854, compacted): main can be RED — grep for
-  `<<<<<<<` every wave, the guard is a SCAN not a habit. A saved
-  recipe storing a FORMAT that always answers HTML lies — resolve to
-  the canonical feed route. A knob table hand-listed per surface
-  DESYNCS from what the server honours: page/.json/.xml/builder read
-  ONE enumerated set. A grace rule that moves a deadline owes the
-  moved date BEFORE it bites; a write that succeeds says what it did
-  in its automated twin's vocabulary, including the clash it caused; a
-  card that can only be MOVED does not say "place".
-- FINDINGS w12 (DEC-855..859): the mandate is ~exhausted — hunt the
-  SOURCE. A "frozen legacy" column is only dead if NOTHING writes it:
-  submission.track_id was documented dead, still written by the
-  Sessionboard importer and still JOINed by four readers, so an
-  imported programme had tracks nowhere the public site looks and NULL
-  everywhere the portal looks. When one fact has two storage sites,
-  pin the source AND scan for the other by identifier, in the same
-  commit as the readers. A preflight that names one problem per round
-  trip lies about how much is wrong: collect ALL misses per recipient
-  and emit ONE message shape for singular and plural, or the client
-  grows two parsers that drift. A control that names an action the
-  user already took ("Score this" on a scored row) is the same defect
-  as a card that says "place" when it can only move. A gate that
-  renders its children while identity is still loading mounts the very
-  page it exists to prevent. Name identity at an irreversible choice
-  uses the DETECTOR's normalized form, not raw ===. A promised column
-  ("Skip this row") with controls on a minority of rows is a broken
-  promise, not conditional-and-quiet.
+- FINDINGS w7-11 (DEC-821..854, heavily compacted): mandate/probe
+  findings EXPIRE, plan from the TREE, re-grep the anchor line before
+  tasking. Shared predicate matches printed number to query
+  arithmetic; no-collision scopes to identity not whole seed;
+  switched-off public surface is intentional blank not 404.
+  Unpublish/narrow/unschedule SAYS so at the moment of choice;
+  composer/send auditable to WORDS; identical labels at an
+  irreversible choice aren't labels; a link is the route it LANDS on;
+  a knob binds only where DEFAULT equals rendered colour. Error shape
+  follows the REQUEST's route; submitted blank CLEARS, absent key is
+  silence; list+export read status through ONE reader. main can be
+  RED — grep for `<<<<<<<` every wave. A saved recipe storing a
+  FORMAT that always answers HTML lies; a knob table hand-listed per
+  surface DESYNCS — page/.json/.xml/builder read ONE enumerated set.
+  A write that succeeds says what it did in its automated twin's
+  vocabulary; a card that can only be MOVED does not say "place".
+- FINDINGS w12 (DEC-855..859, compacted): a "frozen legacy" column is
+  only dead if NOTHING writes it — pin the source AND scan for the
+  other storage site by identifier, same commit as the readers. A
+  preflight collects ALL misses per recipient, ONE message shape. A
+  control that names an action the user already took is the "place"
+  defect again. A gate must not render children while identity loads.
+  Name identity at an irreversible choice via the DETECTOR's
+  normalized form, not raw ===. A promised column needs controls on
+  EVERY row it claims to affect.
+- FINDINGS w13 (DEC-860..864): re-grep the anchor line before tasking,
+  even a finding that arrived this hour — several w13 leads were
+  already fixed on main. Two save paths for one row is one too many:
+  a quick-save hardcoding defaults writes rows whose STATED recipe
+  nobody chose. Pills that clear each other are a radio group in a
+  toggle's clothes — a single-choice filter is a select, and two
+  filter axes each name their axis. A confirmation naming neither
+  the reference nor the emailed address hides the typo that lost the
+  talk. An optional field dropped unless a DIFFERENT optional field
+  is filled is DEC-810's fabrication guard inverted. A harness login
+  in a product placeholder is the test leaking into the product. A
+  per-row count re-running a whole-directory scan per row is N scans
+  for a caption: count every set in ONE pass, same predicate as list.
