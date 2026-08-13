@@ -13,6 +13,7 @@ import { parseCsv } from "../../../lib/csv";
 import { mapImportRow } from "../../../domain/contacts";
 import { DEC_290, DEC_810 } from "../../../decisions";
 import { currentOrgId, asRecord, isPlainObject } from "./shared";
+import { MAX_NAME_LENGTH } from "../../../forms/validate"; // DEC-417
 
 // Compile-checked dependency marker: the optional eventId on POST
 // /contacts/import (roster-scoped import) implements DEC-290.
@@ -95,6 +96,9 @@ export function registerImportRoutes(contactsRoutes: Hono<AppEnv>): void {
         throw new ApiError("invalid", "Validation failed", {
           sessionTitle: "required to name the session this batch is added to the event with",
         });
+      }
+      if (body.sessionTitle.length > MAX_NAME_LENGTH) {
+        throw new ApiError("invalid", "Validation failed", { sessionTitle: `Max ${MAX_NAME_LENGTH}` }); // DEC-417
       }
       sessionTitle = body.sessionTitle.trim();
     }

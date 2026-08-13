@@ -13,6 +13,7 @@ import * as repo from "../../server/repo/pipeline";
 import { findContactForOrg } from "../../server/repo/contacts";
 import { clampPage, listPerPage } from "../../lib/pagination";
 import { PIPELINE_FIT_MIN, PIPELINE_FIT_MAX, PIPELINE_RATIONALE_MAX_LEN } from "../../domain/pipeline-fit";
+import { MAX_TEXT_LENGTH, MAX_LONG_TEXT_LENGTH } from "../../forms/validate"; // DEC-417
 
 export const pipelineRoutes = new Hono<AppEnv>();
 
@@ -214,6 +215,9 @@ pipelineRoutes.patch("/pipeline/:id", csrfJson, async (c) => {
   if (isMove && body.stage === "declined" && reason === "") {
     throw new ApiError("invalid", "Validation failed", { reason: "required when declining" });
   }
+  if (reason.length > MAX_TEXT_LENGTH) {
+    throw new ApiError("invalid", "Validation failed", { reason: `Max ${MAX_TEXT_LENGTH}` }); // DEC-417
+  }
 
   let current = entry;
   if (isMove) {
@@ -275,6 +279,9 @@ pipelineRoutes.post("/pipeline/:id/notes", csrfJson, async (c) => {
 
   if (typeof body.body !== "string" || body.body.trim() === "") {
     throw new ApiError("invalid", "Validation failed", { body: "required" });
+  }
+  if (body.body.length > MAX_LONG_TEXT_LENGTH) {
+    throw new ApiError("invalid", "Validation failed", { body: `Max ${MAX_LONG_TEXT_LENGTH}` }); // DEC-417
   }
 
   const authorName = await repo.resolveAuthorName(c.var.db, auth.userId);
