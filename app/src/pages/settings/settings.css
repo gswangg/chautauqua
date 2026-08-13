@@ -660,6 +660,15 @@
   display: none;
 }
 
+/* DEC-747 amendment (wave 53): full-bleed variant for a caption-less row
+   (Tracks and rooms) -- the hosting .chq-settings-row drops its label/hint
+   tracks entirely so the row's single value cell IS the 820px settings
+   column, not the narrower 1fr value cell it would resolve against under
+   the default 170px/1fr/auto template (settings.css:892). */
+.chq-settings-row-full {
+  grid-template-columns: 1fr;
+}
+
 /* task-w3-c/DEC-747: Tracks and rooms read view -- two columns, name +
    count/capacity per row (mock lines 108-125). */
 .chq-settings-tracks-rooms-grid {
