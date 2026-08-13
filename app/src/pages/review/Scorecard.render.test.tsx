@@ -106,6 +106,15 @@ describe('Scorecard render smoke', () => {
     expect(screen.getByLabelText('Notes')).toBeInTheDocument();
     expect(screen.getByLabelText('Notes').tagName).toBe('TEXTAREA');
 
+    // DEC-889: the answer lists live behind the disclosure -- collapsed by
+    // default, they don't render at all until the reviewer opts in.
+    expect(screen.queryByText('Talk length')).not.toBeInTheDocument();
+    expect(screen.queryByText('45 minutes')).not.toBeInTheDocument();
+    expect(screen.queryByText('AV needs')).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Speaker answers' })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Read the full submission ›' }));
+
     // sessionAnswers render as label + formatted value, in delivered order.
     expect(screen.getByText('Talk length')).toBeInTheDocument();
     expect(screen.getByText('45 minutes')).toBeInTheDocument();
@@ -226,5 +235,133 @@ describe('Scorecard render smoke', () => {
       expect.objectContaining({ method: 'PUT' }),
     );
     expect(await screen.findByRole('heading', { name: 'S-010 — A Deeply Nested Talk' })).toBeInTheDocument();
+  });
+});
+
+// DEC-889: the abstract clamps to its first ~60 words and a single
+// disclosure -- not a second copy of the submission detail -- owns both
+// the clamped remainder and the two answer lists.
+describe('Scorecard abstract clamp and disclosure (DEC-889)', () => {
+  function longDescription(wordCount: number) {
+    return Array.from({ length: wordCount }, (_, i) => `word${i}`).join(' ');
+  }
+
+  it('collapsed default renders the clamped abstract exactly once and neither answer list', async () => {
+    mockApi({
+      'GET /api/v1/review/plans': listEnvelope([plan()]),
+      [`GET /api/v1/review/submissions/${SUBMISSION_ID}`]: {
+        id: SUBMISSION_ID,
+        ref: 'S-010',
+        title: 'A Deeply Nested Talk',
+        description: longDescription(90),
+        sessionAnswers: [{ fieldId: 'f1', label: 'Talk length', kind: 'dropdown', value: '45 minutes' }],
+        speakerAnswers: [{ fieldId: 'f3', label: 'Bio', kind: 'text', value: 'Mathematician and writer.' }],
+        myEvaluation: undefined,
+        criteria: [{ id: 'c1', label: 'Quality', kind: 'rating', weight: 1 }],
+      },
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}/submissions/${SUBMISSION_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId/submissions/:submissionId" element={<Scorecard />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('heading', { name: 'S-010 — A Deeply Nested Talk' })).toBeInTheDocument();
+
+    // The abstract renders exactly once, clamped to the first 60 words
+    // with a trailing ellipsis -- word60 is the first word cut.
+    const abstracts = document.querySelectorAll('.chq-review-scorecard-abstract');
+    expect(abstracts).toHaveLength(1);
+    const abstractText = abstracts[0]!.textContent ?? '';
+    expect(abstractText).toContain('word59');
+    expect(abstractText).not.toContain('word60');
+    expect(abstractText.endsWith('…')).toBe(true);
+    expect(document.body.textContent).not.toContain(longDescription(90));
+
+    // Neither answer list renders before the disclosure is activated.
+    expect(screen.queryByText('Talk length')).not.toBeInTheDocument();
+    expect(screen.queryByText('Bio')).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Submission answers' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Speaker answers' })).not.toBeInTheDocument();
+
+    const disclosure = screen.getByRole('button', { name: 'Read the full submission ›' });
+    expect(disclosure).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('activating the disclosure reveals the abstract remainder and both answer lists', async () => {
+    mockApi({
+      'GET /api/v1/review/plans': listEnvelope([plan()]),
+      [`GET /api/v1/review/submissions/${SUBMISSION_ID}`]: {
+        id: SUBMISSION_ID,
+        ref: 'S-010',
+        title: 'A Deeply Nested Talk',
+        description: longDescription(90),
+        sessionAnswers: [{ fieldId: 'f1', label: 'Talk length', kind: 'dropdown', value: '45 minutes' }],
+        speakerAnswers: [{ fieldId: 'f3', label: 'Bio', kind: 'text', value: 'Mathematician and writer.' }],
+        myEvaluation: undefined,
+        criteria: [{ id: 'c1', label: 'Quality', kind: 'rating', weight: 1 }],
+      },
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}/submissions/${SUBMISSION_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId/submissions/:submissionId" element={<Scorecard />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('heading', { name: 'S-010 — A Deeply Nested Talk' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Read the full submission ›' }));
+
+    expect(screen.getByRole('button', { name: 'Hide the full submission ‹' })).toHaveAttribute('aria-expanded', 'true');
+    // The remainder (word60 onward) is now visible.
+    expect(document.body.textContent).toContain('word89');
+    expect(screen.getByText('Talk length')).toBeInTheDocument();
+    expect(screen.getByText('45 minutes')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Submission answers' })).toBeInTheDocument();
+    expect(screen.getByText('Bio')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Speaker answers' })).toBeInTheDocument();
+  });
+
+  it('a short abstract renders no clamp ellipsis but still hides the answer lists behind the disclosure', async () => {
+    mockApi({
+      'GET /api/v1/review/plans': listEnvelope([plan()]),
+      [`GET /api/v1/review/submissions/${SUBMISSION_ID}`]: {
+        id: SUBMISSION_ID,
+        ref: 'S-010',
+        title: 'A Deeply Nested Talk',
+        description: 'A short abstract about testing scorecards.',
+        sessionAnswers: [{ fieldId: 'f1', label: 'Talk length', kind: 'dropdown', value: '45 minutes' }],
+        speakerAnswers: [],
+        myEvaluation: undefined,
+        criteria: [{ id: 'c1', label: 'Quality', kind: 'rating', weight: 1 }],
+      },
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}/submissions/${SUBMISSION_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId/submissions/:submissionId" element={<Scorecard />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('heading', { name: 'S-010 — A Deeply Nested Talk' })).toBeInTheDocument();
+
+    const abstract = document.querySelector('.chq-review-scorecard-abstract')!;
+    expect(abstract.textContent).toBe('A short abstract about testing scorecards.');
+    expect(abstract.textContent?.endsWith('…')).toBe(false);
+
+    // The disclosure still owns the (non-empty) answer list -- hidden by
+    // default even though the abstract itself didn't clamp.
+    expect(screen.queryByText('Talk length')).not.toBeInTheDocument();
+    const disclosure = screen.getByRole('button', { name: 'Read the full submission ›' });
+    fireEvent.click(disclosure);
+    expect(screen.getByText('Talk length')).toBeInTheDocument();
   });
 });
