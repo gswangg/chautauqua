@@ -111,8 +111,7 @@ const ORGANIZER_A: AuthInfo = { userId: "u-organizer-a", role: "organizer", orgI
 describe("GET /api/v1/contacts/merge/preview (DEC-705)", () => {
   it("reports keep/discard for company, append for notes, and combine for a duplicate-only custom field, matching what previewMerge computes directly", async () => {
     const db = fakeDb([
-      [KEEP], // requireOwnedContact(keep)
-      [DUP], // requireOwnedContact(dup)
+      [KEEP, DUP], // requireOwnedContacts([keep, dup]) -- one set-based select
     ]);
     const app = appWithDbAndAuth(db, ORGANIZER_A);
 
@@ -159,8 +158,7 @@ describe("GET /api/v1/contacts/merge/preview (DEC-705)", () => {
 
   it("returns impact: set-based submissions/tasks counts belonging to the discarded contact (DEC-802)", async () => {
     const db = fakeDb([
-      [KEEP], // requireOwnedContact(keep)
-      [DUP], // requireOwnedContact(dup)
+      [KEEP, DUP], // requireOwnedContacts([keep, dup]) -- one set-based select
       [{ count: 3 }], // countMergeImpact participant count
       [{ count: 2 }], // countMergeImpact task_assignment count
     ]);
@@ -176,8 +174,7 @@ describe("GET /api/v1/contacts/merge/preview (DEC-705)", () => {
 
   it("a foreign/unknown id in ids -> 404, matching the POST route's org-scoped authz", async () => {
     const db = fakeDb([
-      [KEEP], // requireOwnedContact(keep)
-      [], // requireOwnedContact(dup) -- not found in this org
+      [KEEP], // requireOwnedContacts([keep, contact-foreign]) -- foreign id absent from the row set
     ]);
     const app = appWithDbAndAuth(db, ORGANIZER_A);
 
