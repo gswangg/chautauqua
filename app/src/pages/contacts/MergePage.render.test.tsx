@@ -50,6 +50,53 @@ function renderAt(path: string) {
   );
 }
 
+describe('MergePage render (DEC-748: struck-empty discards, Labels row, keep-column name, pair counter)', () => {
+  it('renders a struck em dash for a field the duplicate left blank, a Labels row combining customFields, the kept name as the column head, and a pair counter', async () => {
+    mockApi({
+      'GET /api/v1/contacts/duplicates': listEnvelope([GROUP, {
+        contactIds: ['ct-a', 'ct-b'],
+        contacts: [
+          { id: 'ct-a', firstName: 'Sam', lastName: 'Ng', email: 'sam@example.com' },
+          { id: 'ct-b', firstName: 'Sam', lastName: 'Ng', email: 'sam2@example.com' },
+        ],
+      }]),
+      'GET /api/v1/contacts/merge/preview': {
+        fields: [
+          { key: 'company', label: 'Company', kept: 'Acme', discarded: [''], outcome: 'keep' },
+          { key: 'customFields.shirtSize', label: 'shirtSize', kept: 'M', discarded: [], outcome: 'combine' },
+        ],
+      },
+    });
+
+    renderAt('/contacts/merge?ids=ct-keep,ct-merge&keep=ct-keep');
+
+    await waitFor(() => {
+      expect(screen.getByText('Merge two records')).toBeInTheDocument();
+    });
+
+    // "1 of N pairs" counter above the compare table.
+    await waitFor(() => {
+      expect(screen.getByText('1 of 2 pairs')).toBeInTheDocument();
+    });
+
+    // Column head names the kept record instead of a generic label.
+    expect(screen.getByText('Jane Doe')).toBeInTheDocument();
+
+    // A blank duplicate side still renders a row, struck through, not
+    // silently dropped.
+    const companyRow = screen.getByText('Company').closest('.chq-contacts-merge-compare-row') as HTMLElement;
+    const dropCell = within(companyRow).getByText('—');
+    expect(dropCell).toHaveClass('chq-contacts-merge-compare-drop');
+
+    // Labels combine into one row via src/domain/contact-labels.ts, and the
+    // raw customFields.* row is folded into it, not listed separately.
+    expect(screen.queryByText('shirtSize')).not.toBeInTheDocument();
+    const labelsRow = screen.getByText('Labels').closest('.chq-contacts-merge-compare-row') as HTMLElement;
+    expect(within(labelsRow).getByText('shirtSize M')).toBeInTheDocument();
+    expect(screen.getByText(/Labels always combine/)).toBeInTheDocument();
+  });
+});
+
 describe('MergePage render (DEC-684)', () => {
   it('renders an honest empty state with no ids — the render sweep must not crash', () => {
     renderAt('/contacts/merge');

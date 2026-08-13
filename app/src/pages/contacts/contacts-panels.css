@@ -237,6 +237,12 @@
   flex-wrap: wrap;
 }
 
+.chq-contacts-duplicates-rule {
+  font-size: 12px;
+  color: var(--chq-muted);
+  margin: 0 0 12px;
+}
+
 .chq-contacts-duplicate-names {
   font-size: 14px;
   font-weight: 600;
@@ -258,6 +264,13 @@
   align-items: baseline;
   gap: 10px;
   padding: 8px 0;
+}
+
+.chq-contacts-merge-pair-count {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--chq-muted);
+  margin: 4px 0 0;
 }
 
 .chq-contacts-merge-compare-head {

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   findDuplicateGroups,
   planMerge,
+  previewMerge,
   matchesSegment,
   mapImportRow,
   type ContactRecord,
@@ -223,6 +224,76 @@ describe("planMerge", () => {
 
     const primarySame = contact({ id: "p", email: "p@example.com", firstName: "P", lastName: "P", notes: "Shared note." });
     expect(planMerge(primarySame, dup).merged.notes).toBe("Shared note.");
+  });
+});
+
+describe("previewMerge (DEC-748)", () => {
+  it("emits a 'keep' row with a blank discarded entry when the duplicate's side is empty and the primary's is not", () => {
+    const primary = contact({
+      id: "p",
+      email: "p@example.com",
+      firstName: "P",
+      lastName: "P",
+      company: "AcmeCo",
+      title: "Engineer",
+    });
+    const duplicate = contact({ id: "d", email: "p@example.com", firstName: "P", lastName: "P" });
+
+    const fields = previewMerge(primary, [duplicate]);
+    const byKey = new Map(fields.map((f) => [f.key, f]));
+
+    const company = byKey.get("company");
+    expect(company).toBeDefined();
+    expect(company!.outcome).toBe("keep");
+    expect(company!.kept).toBe("AcmeCo");
+    expect(company!.discarded).toEqual([""]);
+
+    const title = byKey.get("title");
+    expect(title).toBeDefined();
+    expect(title!.outcome).toBe("keep");
+    expect(title!.kept).toBe("Engineer");
+    expect(title!.discarded).toEqual([""]);
+  });
+
+  it("emits a 'fill' row (not a blank-discard 'keep') when the primary's side is empty and the duplicate's is not", () => {
+    const primary = contact({ id: "p", email: "p@example.com", firstName: "P", lastName: "P" });
+    const duplicate = contact({
+      id: "d",
+      email: "p@example.com",
+      firstName: "P",
+      lastName: "P",
+      company: "AcmeCo",
+    });
+
+    const fields = previewMerge(primary, [duplicate]);
+    const company = fields.find((f) => f.key === "company");
+    expect(company).toBeDefined();
+    expect(company!.outcome).toBe("fill");
+    expect(company!.kept).toBe("AcmeCo");
+    expect(company!.discarded).toEqual([]);
+  });
+
+  it("suppresses a field entirely when both sides are blank or identical", () => {
+    const primary = contact({ id: "p", email: "p@example.com", firstName: "P", lastName: "P", company: "AcmeCo" });
+    const duplicateBlank = contact({ id: "d1", email: "p@example.com", firstName: "P", lastName: "P" });
+    const duplicateSame = contact({ id: "d2", email: "p@example.com", firstName: "P", lastName: "P", company: "AcmeCo" });
+
+    // both blank (a field neither side has) never appears
+    const bothBlank = previewMerge(
+      contact({ id: "p2", email: "p@example.com", firstName: "P", lastName: "P" }),
+      [contact({ id: "d3", email: "p@example.com", firstName: "P", lastName: "P" })],
+    );
+    expect(bothBlank.some((f) => f.key === "company")).toBe(false);
+
+    // primary non-blank, duplicate blank -> still reported (asserted above);
+    // primary non-blank, duplicate identical -> suppressed
+    const identical = previewMerge(primary, [duplicateSame]);
+    expect(identical.some((f) => f.key === "company")).toBe(false);
+
+    // sanity: the blank-duplicate case from the prior test is not itself
+    // suppressed by this same-primary setup
+    const blankDup = previewMerge(primary, [duplicateBlank]);
+    expect(blankDup.find((f) => f.key === "company")?.outcome).toBe("keep");
   });
 });
 
