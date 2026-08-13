@@ -51,7 +51,15 @@ export const CFP_CSS = `
      the column layout once centered checkboxes above their track names). */
   .chq-cfp-fields label:not(.chq-cfp-option),
   .chq-cfp-fieldset label:not(.chq-cfp-option) { display: flex; flex-direction: column; gap: 6px; }
+  /* DEC-909: label row is a flex row -- label (and its optional marker) on
+     the left, the live long-text counter (when present) on the right,
+     baseline-aligned per the design frame ('Abstract' / '412 / 1,200'). */
+  .chq-field-label-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
   .chq-field-label { font-size: 11px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--chq-muted); }
+  /* Required fields carry no marker; optional fields append this span --
+     same weight/case as the label it trails, not a separate legend. */
+  .chq-field-optional { font-weight: 800; }
+  .chq-field-counter { font-size: 12px; color: var(--chq-muted); white-space: nowrap; }
   .chq-cfp-fields .help { font-size: 12px; color: var(--chq-muted); margin: 0; }
 
   /* Errors are typographic, never colour (DEC-367: no semantic red) --

@@ -29,6 +29,12 @@ export interface FormFieldDef {
   position: number;
   options?: string[];
   rule?: FormFieldRule;
+  // DEC-909: a long-text field's own character budget, when it carries one.
+  // Absent means the renderer's counter falls back to the shared
+  // MAX_LONG_TEXT_LENGTH (src/forms/validate.ts) -- no field defines its own
+  // today, so this is currently always undefined, but the hook is named so
+  // a future per-field cap doesn't require a second grammar.
+  maximum?: number;
 }
 
 // Answers keyed by fieldId. Values are unvalidated/untrusted input until
