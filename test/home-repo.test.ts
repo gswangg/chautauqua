@@ -62,7 +62,12 @@ describe("listHubEvents", () => {
         closeDate: null,
       },
     ];
-    const responses = [eventRows, [{ eventId: "e1", count: 2 }]];
+    const responses = [
+      eventRows,
+      [{ eventId: "e1", count: 2 }],
+      [{ eventId: "e1", count: 3 }],
+      [{ eventId: "e1", count: 5 }],
+    ];
     let call = 0;
     const db = {
       select: () => {
@@ -81,6 +86,8 @@ describe("listHubEvents", () => {
 
     const e1 = page.items.find((e) => e.id === "e1")!;
     expect(e1.publishedSessionCount).toBe(2);
+    expect(e1.trackCount).toBe(3);
+    expect(e1.formatCount).toBe(5);
     expect(e1.startDate).toBe(Date.UTC(2026, 9, 1));
     expect(e1.endDate).toBe(Date.UTC(2026, 9, 3));
     // null open/close date means the form never closes and opens immediately
@@ -90,6 +97,41 @@ describe("listHubEvents", () => {
 
     const e2 = page.items.find((e) => e.id === "e2")!;
     expect(e2.publishedSessionCount).toBe(0); // no aggregate row for e2 -> 0, not dropped
+    expect(e2.trackCount).toBe(0);
+    expect(e2.formatCount).toBe(0);
+  });
+
+  // DEC-943/DEC-078: exactly two grouped queries (track, format) beyond the
+  // event-rows + published-count queries -- never a query per event. A
+  // fake-db call counter directly measures this without relying on the
+  // driver-specific shape of the queries.
+  it("issues exactly one grouped track-count query and one grouped format-count query, regardless of event count (DEC-078)", async () => {
+    const N = 12;
+    const eventRows = Array.from({ length: N }, (_, i) => ({
+      id: `e${i}`,
+      name: `Event ${i}`,
+      slug: `event-${i}`,
+      startDate: "2026-10-01",
+      endDate: "2026-10-03",
+      location: null,
+      timezone: "UTC",
+      openDate: null,
+      closeDate: null,
+    }));
+    let selectCalls = 0;
+    const responses = [eventRows, [], [], []];
+    const db = {
+      select: () => {
+        const rows = responses[selectCalls] ?? [];
+        selectCalls += 1;
+        return makeChain(rows);
+      },
+    } as unknown as Db;
+
+    await listHubEvents(db, "org-1", Date.UTC(2026, 5, 1));
+    // event-rows query + published-count + track-count + format-count = 4,
+    // independent of N.
+    expect(selectCalls).toBe(4);
   });
 
   it("does not filter or group candidates in SQL — a not-yet-open, unpublished event is still returned as an item", async () => {

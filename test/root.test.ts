@@ -57,6 +57,7 @@ function fakeDb(resultQueue: unknown[][]): Db {
       const chain: any = {
         from: () => chain,
         leftJoin: () => chain,
+        innerJoin: () => chain,
         where: () => chain,
         orderBy: () => chain,
         limit: () => chain,
@@ -106,12 +107,21 @@ function eventRow(overrides: {
   };
 }
 
-/** Builds the [orgRows, eventRows, countRows] queue listHubEvents/getHubOrg
- * consume, in call order. `countRows` may be omitted for a zero-event
- * fixture (listHubEvents skips that query when eventIds is empty). */
-function buildQueue(opts: { events: ReturnType<typeof eventRow>[]; countRows?: { eventId: string; count: number }[] }): unknown[][] {
-  const countRows = opts.events.length > 0 ? (opts.countRows ?? []) : [];
-  return [[ORG], opts.events, countRows];
+/** Builds the [orgRows, eventRows, countRows, trackCountRows, formatCountRows]
+ * queue listHubEvents/getHubOrg consume, in call order. `countRows`/
+ * `trackCountRows`/`formatCountRows` may be omitted for a zero-event fixture
+ * (listHubEvents skips all three grouped queries when eventIds is empty). */
+function buildQueue(opts: {
+  events: ReturnType<typeof eventRow>[];
+  countRows?: { eventId: string; count: number }[];
+  trackCountRows?: { eventId: string; count: number }[];
+  formatCountRows?: { eventId: string; count: number }[];
+}): unknown[][] {
+  const hasEvents = opts.events.length > 0;
+  const countRows = hasEvents ? (opts.countRows ?? []) : [];
+  const trackCountRows = hasEvents ? (opts.trackCountRows ?? []) : [];
+  const formatCountRows = hasEvents ? (opts.formatCountRows ?? []) : [];
+  return [[ORG], opts.events, countRows, trackCountRows, formatCountRows];
 }
 
 function buildApp(opts: { auth?: AuthInfo; queue?: unknown[][] }) {
@@ -555,6 +565,101 @@ describe("GET / — hero summary spells counts one through nine (mandate item 31
     const res = await app.request("/", {}, { ASSETS: fakeAssets() });
     const body = await res.text();
     expect(body).toContain("10 calls for papers are open.");
+  });
+});
+
+describe("GET / — row meta: shape while live, size once past (DEC-943)", () => {
+  it("an open-CFP row renders the shape line ('Three tracks · five formats'), not a session count", async () => {
+    const events = [
+      eventRow({ id: "e1", startDate: "2027-05-12", endDate: "2027-05-14", openMs: null, closeMs: NOW + 6 * DAY }),
+    ];
+    const app = buildApp({
+      queue: buildQueue({
+        events,
+        countRows: [{ eventId: "e1", count: 12 }],
+        trackCountRows: [{ eventId: "e1", count: 3 }],
+        formatCountRows: [{ eventId: "e1", count: 5 }],
+      }),
+    });
+    const res = await app.request("/", {}, { ASSETS: fakeAssets() });
+    const body = await res.text();
+    expect(body).toContain("Three tracks · five formats");
+    expect(body).not.toContain("12 sessions");
+  });
+
+  it("a published row renders the shape line too", async () => {
+    const events = [
+      eventRow({
+        id: "e2",
+        name: "DevFlow Workshops",
+        slug: "devflow-workshops",
+        startDate: "2027-10-09",
+        endDate: "2027-10-10",
+        openMs: null,
+        closeMs: null,
+      }),
+    ];
+    (events[0] as { closeDate: Date | null }).closeDate = new Date(NOW - 30 * DAY);
+    const app = buildApp({
+      queue: buildQueue({
+        events,
+        countRows: [{ eventId: "e2", count: 12 }],
+        trackCountRows: [{ eventId: "e2", count: 1 }],
+        formatCountRows: [{ eventId: "e2", count: 0 }],
+      }),
+    });
+    const res = await app.request("/", {}, { ASSETS: fakeAssets() });
+    const body = await res.text();
+    // one track, zero formats -> the format clause is dropped entirely, no
+    // dangling separator.
+    expect(body).toContain("One track");
+    expect(body).not.toContain("· 0 format");
+    expect(body).not.toContain("formats");
+  });
+
+  it("an archive row renders 'N sessions · M tracks' (numeral sessions, spelled tracks)", async () => {
+    const events = [
+      eventRow({
+        id: "e1",
+        name: "DevFlow Conf 2026",
+        startDate: "2026-01-01",
+        endDate: "2026-01-03",
+        openMs: null,
+        closeMs: null,
+      }),
+    ];
+    const app = buildApp({
+      queue: buildQueue({
+        events,
+        countRows: [{ eventId: "e1", count: 48 }],
+        trackCountRows: [{ eventId: "e1", count: 3 }],
+        formatCountRows: [{ eventId: "e1", count: 6 }],
+      }),
+    });
+    const res = await app.request("/", {}, { ASSETS: fakeAssets() });
+    const body = await res.text();
+    expect(body).toContain("48 sessions · three tracks");
+    // format count is never surfaced on the archive row.
+    expect(body).not.toContain("formats");
+  });
+
+  it("an archive row with zero sessions and zero tracks renders no meta line at all", async () => {
+    const events = [
+      eventRow({
+        id: "e1",
+        name: "DevFlow Conf 2026",
+        startDate: "2026-01-01",
+        endDate: "2026-01-03",
+        openMs: null,
+        closeMs: null,
+      }),
+    ];
+    const app = buildApp({ queue: buildQueue({ events, countRows: [], trackCountRows: [], formatCountRows: [] }) });
+    const res = await app.request("/", {}, { ASSETS: fakeAssets() });
+    const body = await res.text();
+    // the stylesheet unconditionally defines .chq-home-meta -- what must
+    // never render is the element itself.
+    expect(body).not.toContain('class="chq-home-meta"');
   });
 });
 

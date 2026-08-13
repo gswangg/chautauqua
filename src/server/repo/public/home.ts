@@ -13,6 +13,7 @@ import * as schema from "../../../db/schema";
 import { formWindowState } from "../../../lib/submit-core";
 import type { HubEvent } from "../../../lib/home-hub";
 import { visibleSessionConditions } from "./gates";
+import { SESSION_FORMAT_FIELD_ID } from "../../../forms/types";
 
 /** DEC-522: event.start_date/end_date are DAY LABELS ('YYYY-MM-DD'), not
  * instants — parsed here as UTC midnight of that calendar day, the same
@@ -87,6 +88,44 @@ export async function listHubEvents(db: Db, orgId: string, nowMs: number): Promi
           .groupBy(schema.submission.eventId);
   const publishedCountByEventId = new Map(countRows.map((r) => [r.eventId, Number(r.count)]));
 
+  // DEC-943: two grouped queries over the already-collected eventIds --
+  // never a query per event (DEC-078). Both compose the same
+  // visibleSessionConditions() predicate the published-session count above
+  // uses, so "shape" counts only ever reflect publicly visible sessions.
+  const trackCountRows =
+    eventIds.length === 0
+      ? []
+      : await db
+          .select({
+            eventId: schema.submission.eventId,
+            count: sql<number>`count(distinct ${schema.submissionTrack.trackId})`,
+          })
+          .from(schema.submissionTrack)
+          .innerJoin(schema.submission, eq(schema.submissionTrack.submissionId, schema.submission.id))
+          .where(and(inArray(schema.submission.eventId, eventIds), visibleSessionConditions()))
+          .groupBy(schema.submission.eventId);
+  const trackCountByEventId = new Map(trackCountRows.map((r) => [r.eventId, Number(r.count)]));
+
+  const formatCountRows =
+    eventIds.length === 0
+      ? []
+      : await db
+          .select({
+            eventId: schema.submission.eventId,
+            count: sql<number>`count(distinct ${schema.submissionAnswer.valueJson})`,
+          })
+          .from(schema.submissionAnswer)
+          .innerJoin(schema.submission, eq(schema.submissionAnswer.submissionId, schema.submission.id))
+          .where(
+            and(
+              inArray(schema.submission.eventId, eventIds),
+              eq(schema.submissionAnswer.formFieldId, SESSION_FORMAT_FIELD_ID),
+              visibleSessionConditions(),
+            ),
+          )
+          .groupBy(schema.submission.eventId);
+  const formatCountByEventId = new Map(formatCountRows.map((r) => [r.eventId, Number(r.count)]));
+
   const items: HubEvent[] = rows.map((row) => {
     const openDate = row.openDate ? row.openDate.getTime() : null;
     const closeDate = row.closeDate ? row.closeDate.getTime() : null;
@@ -101,6 +140,8 @@ export async function listHubEvents(db: Db, orgId: string, nowMs: number): Promi
       cfpCloseDate: closeDate,
       cfpOpen: formWindowState(openDate, closeDate, nowMs, row.timezone) === "open",
       publishedSessionCount: publishedCountByEventId.get(row.id) ?? 0,
+      trackCount: trackCountByEventId.get(row.id) ?? 0,
+      formatCount: formatCountByEventId.get(row.id) ?? 0,
     };
   });
 

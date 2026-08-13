@@ -17,6 +17,13 @@ export interface HubEvent {
   cfpCloseDate: number | null;
   cfpOpen: boolean;
   publishedSessionCount: number;
+  // DEC-943: distinct track/format counts across the event's publicly
+  // visible sessions (same visibleSessionConditions() predicate as
+  // publishedSessionCount) -- used by the hub row's "shape" line (live
+  // rows) vs "size" line (archive rows). Purely carried through this
+  // module; grouping/ordering logic never reads them.
+  trackCount: number;
+  formatCount: number;
 }
 
 export interface HubSections {
