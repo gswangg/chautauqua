@@ -84,6 +84,30 @@ function isPlanOpenNow(openAt: number | null, closeAt: number | null, now: numbe
 // constraint AND the track -- grouped by (reason, track) so a run with
 // several stuck submissions in the same track reads as one honest count,
 // not a wall of per-submission lines.
+// DEC-840 amendment (wave 51): frame 03's distribute-preview anatomy --
+// "N talks · M reviews needed at K each · R reviewers" -- computed from the
+// preview payload the editor already has, never a second fetch. `talks` is
+// the distinct submissions this run touches (items ∪ shortfall); `reviews`
+// is talks × the plan's own reviews-per-talk setting.
+function distributeSummaryLine(preview: DistributePreview, reviewsPerTalk: number): string {
+  const talkIds = new Set<string>();
+  for (const item of preview.items) talkIds.add(item.submissionId);
+  for (const s of preview.shortfall) talkIds.add(s.submissionId);
+  const talks = talkIds.size;
+  const reviewsNeeded = talks * reviewsPerTalk;
+  const reviewers = preview.perReviewer.length;
+  return `${countOf(talks, 'talk')} · ${countOf(reviewsNeeded, 'review')} needed at ${reviewsPerTalk} each · ${countOf(reviewers, 'reviewer')}`;
+}
+
+// DEC-840: a reviewer the run could not use is LISTED with its reason,
+// never omitted -- this is the closed-vocabulary text for the "unchanged"
+// cell, shared with the sentence-form shortfall summaries above.
+function distributeReviewerCell(pr: DistributePreview['perReviewer'][number]): string {
+  if (pr.added > 0) return `${pr.before} → ${pr.after} talks`;
+  if (!pr.reason) return 'unchanged';
+  return `unchanged · ${pr.reason === 'wrong_track' ? 'wrong track' : 'at cap'}`;
+}
+
 function shortfallSummaries(shortfall: DistributePreview['shortfall']): { key: string; text: string }[] {
   const groups = new Map<string, { reason: 'cap_reached' | 'no_eligible_reviewer'; trackName: string | null; needed: number }>();
   for (const s of shortfall) {
@@ -1460,19 +1484,40 @@ export function PlanEditor() {
                 {distributePreview.totalAssigned === 0 ? (
                   <p>Every submission already has enough reviewers -- nothing to distribute.</p>
                 ) : (
-                  <p>
-                    This would assign {countOf(distributePreview.totalAssigned, 'review')}.
-                  </p>
+                  <>
+                    {/* frame 03: the cap row -- CAP PER REVIEWER [n] talks each,
+                        echoing distributePreview.cap (DEC-840 byte-identical
+                        value), never a re-derivation from the live input. */}
+                    <div className="chq-review-distribute-cap-row">
+                      <span className="chq-review-results-eyebrow">Cap per reviewer</span>
+                      <span className="chq-review-distribute-cap-value">
+                        {distributePreview.cap !== null ? distributePreview.cap : 'No cap'}
+                      </span>
+                      {distributePreview.cap !== null && <span>talks each</span>}
+                    </div>
+                    <p className="chq-review-distribute-summary">
+                      {distributeSummaryLine(distributePreview, draft.maxEvaluationsPerSubmission ?? 1)}
+                    </p>
+                    <table className="chq-review-results-table chq-review-distribute-table">
+                      <thead>
+                        <tr>
+                          <th>Name</th>
+                          <th>Track</th>
+                          <th>Talks</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {distributePreview.perReviewer.map((pr) => (
+                          <tr key={pr.userId}>
+                            <td data-label="Name">{pr.name}</td>
+                            <td data-label="Track">{pr.trackName ?? 'All submissions'}</td>
+                            <td data-label="Talks">{distributeReviewerCell(pr)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </>
                 )}
-                <ul className="chq-review-scope-preview-list">
-                  {distributePreview.perReviewer.map((pr) => (
-                    <li key={pr.userId}>
-                      {pr.added > 0
-                        ? `${pr.name} — ${pr.before} → ${pr.after} talks`
-                        : `${pr.name} — unchanged${pr.reason ? ` · ${pr.reason === 'wrong_track' ? 'wrong track' : 'at cap'}` : ''}`}
-                    </li>
-                  ))}
-                </ul>
                 {distributePreview.shortfall.length > 0 && (
                   <div className="chq-review-distribute-shortfall">
                     {shortfallSummaries(distributePreview.shortfall).map((s) => (
@@ -1489,9 +1534,7 @@ export function PlanEditor() {
                       disabled={distributing}
                       onClick={confirmDistribute}
                     >
-                      {distributing
-                        ? 'Distributing…'
-                        : `Add ${countOf(distributePreview.totalAssigned, 'assignment')}`}
+                      {distributing ? 'Distributing…' : `Assign these ${distributePreview.totalAssigned}`}
                     </button>
                   )}
                   <button type="button" className="chq-btn chq-btn-tertiary" onClick={cancelDistribute}>
