@@ -53,17 +53,20 @@ C. **Verify-then-close list** (commits claim these landed — external probe con
 
 ## Per-surface open items (desktop)
 
-**Overview**: split .chq-overview-row-actions-stacked (§02 triage buttons regressed to
-full-width stacks) · New-event modal → root ModalFrame portal + own typography (ALL-
-CAPS is inherited), styled dates, labels STARTS/ENDS/TIME ZONE/VENUE · §02 "waiting N
-days" clause (kill dangling "· ·") · Public pages as single summary row · resolve
-"· min ·" (derive from format or drop) · suggestions: add room name ("Place at 9:00 in
-Room 2B") + verify room-distinctness · Review-row copy shape ("N of M plans in · wave
-X complete").
+**Overview** (DEC-735 class split CLOSED — §02 inline AND §04 stacked both verified;
+room-named suggestions CLOSED): kill dangling "· ·" on triage rows ("Marcus Okafor
+· · SES-002 · waiting 120 days" — empty track slot between separators; drop empty
+segments) · New-event modal → root ModalFrame portal + own typography (ALL-CAPS is
+inherited), styled dates, labels STARTS/ENDS/TIME ZONE/VENUE · Public pages as
+single summary row · resolve "· min ·" (derive from format or drop) · Review-row
+copy shape ("N of M plans in · wave X complete").
 
-**Submissions**: detail structure — Prev/Next + "N of 47", AWAITING TRIAGE banner,
-content-approval controls OUT of decision panel (two screens), history entries under
-its header, reviews as name + computed score + comment · builder rows CLOSED
+**Submissions** (probe 2 CLOSED: AWAITING TRIAGE banner · content-approval moved out
+of Decision panel · History under own header): detail structure remaining — Prev/Next
++ "N of 47" · review rows show reviewer EMAIL though the user links to contact "Sam
+Whitfield" — resolve identity via linked contact name, not account email · History
+section label detaches from its "02" number prefix (centered; match other sections) ·
+builder rows CLOSED
 (probe-verified all 7 anatomy points); residue: kind copy "Dropdown"→"Single choice",
 "Session format"→"Format", captions on format/audience rows, drop duplicate
 Public-link inside Settings, align field set to mock (Track + Accessibility needs
@@ -102,22 +105,25 @@ until you open it" + don't show "NAME IS REQUIRED." before input · results: ONE
 blended SCORE column (per-criterion detail behind ▸ Reviews) — probe confirms still
 dense multi-column.
 
-**Speakers**: overdue cells = shared control shape, ink-outlined bold caps, mock's
-"OVERDUE" label · hover ring all three states · footer caption "Click any status to
-mark it complete or pending" · **BUG: response modal renders completed answers as
-em-dashes (4/4 fields)** · horizontal scroll contained to grid wrapper · New-task
+**Speakers** (DEC-730 control family + hover ring + footer caption + em-dash modal
+all CLOSED by probe 2): overdue label copy — render mock's "OVERDUE", not "N DAYS
+LATE" (control anatomy is right, word is wrong) · **nav "Speakers N LATE" badge
+INCONSISTENT across routes** (9 on Speakers page vs 12 on Submissions, same session —
+unify the count source) · horizontal scroll contained to grid wrapper · New-task
 modal: Kind = Upload/Form/Acknowledge, drop Description + assign-all, styled date ·
 remove desktop Import CSV button · headers "DUE 10 APR · REQUIRED".
 
-**Content**: session detail rebuild — shared version list + ONE scoped note thread,
-"Send note only", Download all · "Unknown (unknown)" is the COMMENT AUTHOR on speaker
-replies (authorName/authorRole "unknown" — attribution bug in comment write path;
-version-uploader attribution is correct) · comment version tags renumber after a
-version delete (display should keep original version refs) · library: count/size
-stat, pill chips not select, Download all, drop Deliverables/Headshots tabs · hide
-Approve on approved rows · worklist header "N need a decision · M re-uploaded" + mock
-pill chips WITH counts (now "30 submissions · All view", chips uncounted) · relative
-dates in LATEST FILE · SEED: worklist too sparse (28/30 rows "No files yet").
+**Content** (probe 2 CLOSED: Approve hidden on approved rows · worklist header copy ·
+library pill chips counted, no select · Download all truthful): session detail
+rebuild — shared version list + ONE scoped note thread, "Send note only", Download
+all · "Unknown (unknown)" is the COMMENT AUTHOR on speaker replies (attribution bug
+in comment write path; version-uploader attribution is correct) · comment version
+tags renumber after a version delete (keep original version refs) · library: DROP
+Deliverables/Headshots tabs (still present despite DEC-733 claim) + stat needs total
+SIZE ("8 files" vs mock "31 files · 412 MB") · worklist chips: counted + mock
+set/order ("Needs a decision · N" FIRST, "Approved · N", "All accepted sessions ·
+N") · relative dates in LATEST FILE · SEED: worklist too sparse (28/30 "No files
+yet").
 
 **Agenda (desktop)**: **P2 (AIA grader): click-to-place into an OCCUPIED slot is a
 silent no-op** — button says "will clash with 1 session" and banner says "Clashes are
@@ -129,10 +135,10 @@ auto-schedule ignores format durations (Keynote 45/Workshop 120/Lightning 10 all
 placed as 30-min blocks) · slot previews pre-announce room clashes but not speaker
 double-bookings · "1 conflicts" grammar; a session's own slot counts itself ("will
 clash with 1 session") · public agenda renders day headings twice (second empty) ·
-conflict cell — content hidden behind inner scroll; size to content or designed
-reveal; decide lane-split vs mock full-width card in a DEC · TBD column conditional +
-"No room yet" (DEC-724 claims landed — probe verifies) · focus → Cancel/first cell on
-placing entry · verify a 3rd-placement round-trip persists.
+day tabs raw ISO ("2027-05-12") vs mock "Tue 12 May" · focus → Cancel/first cell on
+placing entry.
+(CLOSED by probe 2: DEC-724 conditional "No room yet" column · DEC-742 merged clash
+card — inverted ink card, zero inner scroll, fully visible content.)
 
 **Comms** (DEC-710 + history count CLOSED by probe): per-recipient SCHEDULED/NO-SLOT
 tags + "N have no slot" advisory in Preview · persistent Recent sends under Compose
