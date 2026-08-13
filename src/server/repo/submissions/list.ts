@@ -71,6 +71,11 @@ export interface SubmissionListItem {
   latestFileVersionNo: number | null;
   reuploaded: boolean;
   answers?: Record<string, unknown>;
+  // w41-b: the worklist SESSION cell's subtitle (DEC-902 amendment) --
+  // batched off schedule_slot/room the same way deliverableCounts/latestFile
+  // are, never a per-row fetch. null for a submission not yet placed on the
+  // agenda.
+  scheduled: { day: string; startMin: number; endMin: number; roomName: string | null } | null;
 }
 
 export interface SubmissionContentStatusCounts {
@@ -358,6 +363,38 @@ export async function listSubmissions(
     }
   }
 
+  // w41-b (DEC-902 amendment): the worklist SESSION cell's subtitle needs
+  // the submission's placed schedule_slot + room, batched per id chunk the
+  // same way deliverableCounts/latestFile are above -- never a per-row
+  // fetch. A submission with no schedule_slot row simply isn't in the
+  // batch's result set.
+  const scheduledBySubmission = new Map<
+    string,
+    { day: string; startMin: number; endMin: number; roomName: string | null }
+  >();
+  for (const batch of idBatches) {
+    const batchRows = await db
+      .select({
+        submissionId: schema.scheduleSlot.submissionId,
+        day: schema.scheduleSlot.day,
+        startMin: schema.scheduleSlot.startMin,
+        endMin: schema.scheduleSlot.endMin,
+        roomName: schema.room.name,
+      })
+      .from(schema.scheduleSlot)
+      .leftJoin(schema.room, eq(schema.room.id, schema.scheduleSlot.roomId))
+      .where(inArray(schema.scheduleSlot.submissionId, batch));
+    for (const r of batchRows) {
+      if (!r.submissionId) continue;
+      scheduledBySubmission.set(r.submissionId, {
+        day: r.day,
+        startMin: r.startMin,
+        endMin: r.endMin,
+        roomName: r.roomName ?? null,
+      });
+    }
+  }
+
   const deliverableCountsBySubmission = new Map<string, Record<FileKind, number>>();
   for (const d of deliverableRows) {
     if (!d.submissionId) continue;
@@ -418,6 +455,7 @@ export async function listSubmissions(
       latestFile: latestFileBySubmission.get(r.id) ?? null,
       latestFileVersionNo,
       reuploaded: latestFileVersionNo !== null && latestFileVersionNo > 1,
+      scheduled: scheduledBySubmission.get(r.id) ?? null,
       ...(params.includeAnswers ? { answers: answersBySubmission.get(r.id) ?? {} } : {}),
     };
   });

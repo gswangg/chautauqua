@@ -304,9 +304,9 @@ export function ContentApp() {
 
   return (
     <div className="chq-page chq-content-page chq-measure-table">
-      {showOwnHeading && (
+      {(showOwnHeading || !submissionId) && (
         <div className="chq-content-summary-row">
-          <h1 className="chq-page-title">Content</h1>
+          {showOwnHeading && <h1 className="chq-page-title">Content</h1>}
           {/* w1-f (DEC-733/eval 60/37): decision-framing copy, matching the
               mock's header text ('N need a decision · M re-uploaded') —
               withheld (not '0 · 0') until both aggregate reads resolve, per
@@ -316,37 +316,29 @@ export function ContentApp() {
               {counts.needs_decision} need a decision &middot; {reUploadedCount} re-uploaded
             </span>
           )}
+          {/* w41-b (DEC-902 amendment): Worklist/Files are destinations, not
+              tabs of one surface — the toolbar's role=tablist pills are gone;
+              the title row carries the one button that switches destination
+              (named for where it goes, not where you are) plus Refresh. */}
+          {!submissionId && (
+            <div className="chq-content-summary-actions">
+              {view === 'worklist' ? (
+                <button type="button" className="chq-btn chq-btn-secondary" onClick={() => changeView('files')}>
+                  All files
+                </button>
+              ) : (
+                <button type="button" className="chq-btn chq-btn-secondary" onClick={() => changeView('worklist')}>
+                  Worklist
+                </button>
+              )}
+              <button type="button" className="chq-btn chq-btn-secondary" aria-label="Refresh" onClick={refresh}>
+                Refresh
+              </button>
+            </div>
+          )}
         </div>
       )}
       {error && <div className="chq-error" role="alert">{error}</div>}
-
-      {!submissionId && (
-        <div className="chq-toolbar">
-          <div className="chq-chipstrip" role="tablist" aria-label="Content view">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={view === 'worklist'}
-              className={view === 'worklist' ? 'chq-pill is-active' : 'chq-pill'}
-              onClick={() => changeView('worklist')}
-            >
-              Worklist
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={view === 'files'}
-              className={view === 'files' ? 'chq-pill is-active' : 'chq-pill'}
-              onClick={() => changeView('files')}
-            >
-              Files
-            </button>
-          </div>
-          <button type="button" className="chq-btn chq-btn-secondary" aria-label="Refresh" onClick={refresh}>
-            Refresh
-          </button>
-        </div>
-      )}
 
       {!submissionId && view === 'worklist' && selectedIds.size > 0 && (
         <div className="chq-bulkbar" role="toolbar" aria-label="Bulk content actions">

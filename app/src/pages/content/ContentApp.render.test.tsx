@@ -89,7 +89,7 @@ describe('ContentApp / SessionList render smoke: always-visible content-status c
 // w1-h reskin smoke: page shell uses the shared DEC-367/368 tokens/classes
 // rather than the old unstyled chq-page/chq-tab markup.
 describe('ContentApp reskin (DEC-366..368)', () => {
-  it('renders the page title and view tabs with the shared shell classes', async () => {
+  it('renders the page title with the shared shell classes', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([]),
     });
@@ -98,10 +98,31 @@ describe('ContentApp reskin (DEC-366..368)', () => {
 
     const heading = await screen.findByRole('heading', { name: 'Content' });
     expect(heading).toHaveClass('chq-page-title');
+  });
+});
 
-    const worklistTab = screen.getByRole('tab', { name: 'Worklist' });
-    expect(worklistTab).toHaveClass('chq-pill');
-    expect(worklistTab).toHaveClass('is-active');
+// w41-b (DEC-902 amendment): Worklist/Files are destinations reached by a
+// button in the title row, not a role=tablist pair -- the toolbar band is
+// gone.
+describe('ContentApp title-row destination buttons (w41-b/DEC-902 amendment)', () => {
+  it("shows 'All files' + Refresh on the worklist, and switches to Files on click", async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([]),
+      [`GET /api/v1/events/${EVENT_ID}/files`]: listEnvelope([]),
+    });
+
+    renderContentApp();
+
+    await screen.findByRole('button', { name: 'All files' });
+    expect(screen.getByRole('button', { name: 'Refresh' })).toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: 'Worklist' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: 'Files' })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'All files' }));
+
+    await screen.findByTestId('files-library');
+    expect(screen.getByRole('button', { name: 'Worklist' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Refresh' })).toBeInTheDocument();
   });
 });
 
@@ -316,9 +337,9 @@ describe('ContentApp: fresh loads on view switch and explicit refresh', () => {
     renderContentApp();
 
     await waitFor(() => {
-      expect(screen.getByRole('tab', { name: 'Files' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'All files' })).toBeInTheDocument();
     });
-    fireEvent.click(screen.getByRole('tab', { name: 'Files' }));
+    fireEvent.click(screen.getByRole('button', { name: 'All files' }));
 
     // DEC-902: the stat line/chip counts are read from the SAME envelope
     // the table renders from (kindCounts + total/totalSizeBytes) — one

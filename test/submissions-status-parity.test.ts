@@ -51,7 +51,7 @@ function makeFakeDb(responses: unknown[][]) {
   let cursor = 0;
   function chain(): any {
     const obj: any = {};
-    const passthrough = ["from", "where", "innerJoin", "orderBy", "limit", "offset", "select", "groupBy"];
+    const passthrough = ["from", "where", "innerJoin", "leftJoin", "orderBy", "limit", "offset", "select", "groupBy"];
     for (const m of passthrough) obj[m] = (..._args: unknown[]) => obj;
     obj.then = (resolve: (v: unknown) => void, reject?: (e: unknown) => void) => {
       const value = responses[cursor];
@@ -82,6 +82,7 @@ function listDbFor(matchingRows: ReturnType<typeof submissionRow>[]) {
     [],
     [],
     [],
+    [], // scheduled (schedule_slot/room) enrichment (w41-b)
   ]);
 }
 

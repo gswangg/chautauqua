@@ -1,7 +1,28 @@
 import { type ContentStatus, type ContentSubmissionListItem } from './types';
 import { WORKLIST_TABS, worklistStatusLabel, type WorklistTab } from './worklist';
 import { DelayedLoading } from '../../components/DelayedLoading';
-import { formatRelativeDays } from '../../lib/dates';
+import { formatRelativeDays, formatDayLabel } from '../../lib/dates';
+
+/** Render minutes-from-midnight as a zero-padded HH:MM clock time (same
+ * grammar as DeliverableDetail.tsx / submissions/schedule.ts). */
+function formatClockTime(minutesFromMidnight: number): string {
+  const h = Math.floor(minutesFromMidnight / 60);
+  const m = minutesFromMidnight % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
+const ROOM_TBA_LABEL = 'To be announced';
+
+/** w41-b (DEC-902 amendment): the worklist SESSION cell's subtitle --
+ * 'REF · <day> <start>, <room>' once placed on the agenda, or the bare ref
+ * (no '· ,' residue) when the submission hasn't been scheduled yet. */
+function formatSessionSubtitle(item: ContentSubmissionListItem): string {
+  if (!item.scheduled) return item.ref;
+  const dayLabel = formatDayLabel(item.scheduled.day);
+  const timeLabel = formatClockTime(item.scheduled.startMin);
+  const roomLabel = item.scheduled.roomName ?? ROOM_TBA_LABEL;
+  return `${item.ref} · ${dayLabel} ${timeLabel}, ${roomLabel}`;
+}
 
 // DEC-825: mock pill naming (docs/design/'Chautauqua Content.dc.html',
 // screens/05-content.png) — the worklist now renders exactly the mock's
@@ -185,7 +206,7 @@ export function SessionList({
                   <td>
                     <div className="chq-content-row-session">
                       <div className="chq-content-row-title">{item.title}</div>
-                      <div className="chq-content-row-ref">{item.ref}</div>
+                      <div className="chq-content-row-ref">{formatSessionSubtitle(item)}</div>
                     </div>
                   </td>
                   <td className="chq-content-row-speaker">

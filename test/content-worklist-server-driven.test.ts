@@ -37,7 +37,7 @@ function makeFakeDb(responses: unknown[]) {
     const thisCallLog: { method: string; args: unknown[] }[] = [];
     calls.push(thisCallLog);
     const obj: any = {};
-    const passthrough = ["from", "where", "innerJoin", "orderBy", "limit", "offset", "select", "groupBy"];
+    const passthrough = ["from", "where", "innerJoin", "leftJoin", "orderBy", "limit", "offset", "select", "groupBy"];
     for (const m of passthrough) {
       obj[m] = (...args: unknown[]) => {
         thisCallLog.push({ method: m, args });
@@ -86,6 +86,7 @@ describe("listSubmissions contentStatus filter (DEC-341)", () => {
       [], // tracks
       [], // deliverable counts
       [], // latestFile candidates
+      [], // scheduled (schedule_slot/room) enrichment (w41-b)
     ];
     const db = makeFakeDb(responses);
 
@@ -113,6 +114,7 @@ describe("listSubmissions contentStatus filter (DEC-341)", () => {
       [],
       [],
       [],
+      [], // scheduled (schedule_slot/room) enrichment (w41-b)
     ];
     const db1 = makeFakeDb(page1Responses);
     const page1 = await listSubmissions(
@@ -133,6 +135,7 @@ describe("listSubmissions contentStatus filter (DEC-341)", () => {
       [],
       [],
       [],
+      [], // scheduled (schedule_slot/room) enrichment (w41-b)
     ];
     const db3 = makeFakeDb(page3Responses);
     const page3 = await listSubmissions(
@@ -156,6 +159,7 @@ describe("listSubmissions sort=worklist (DEC-341)", () => {
       [],
       [],
       [],
+      [], // scheduled (schedule_slot/room) enrichment (w41-b)
     ];
     const db = makeFakeDb(responses);
 
@@ -186,6 +190,7 @@ describe("listSubmissions deliverableCounts (DEC-341 hydration, DEC-247 chain ro
       [],
       [{ submissionId: "sub-1", kind: "presentation", count: 1 }],
       [], // latestFile candidates
+      [], // scheduled (schedule_slot/room) enrichment (w41-b)
     ];
     const db = makeFakeDb(responses);
 
@@ -213,6 +218,7 @@ describe("listSubmissions deliverableCounts (DEC-341 hydration, DEC-247 chain ro
       // WHERE, not filtered client-side), and poster/handout have none.
       [{ submissionId: "sub-1", kind: "presentation", count: 1 }],
       [], // latestFile candidates
+      [], // scheduled (schedule_slot/room) enrichment (w41-b)
     ];
     const db = makeFakeDb(responses);
 
@@ -231,6 +237,7 @@ describe("listSubmissions deliverableCounts (DEC-341 hydration, DEC-247 chain ro
       [],
       [],
       [], // latestFile candidates
+      [], // scheduled (schedule_slot/room) enrichment (w41-b)
     ];
     const db = makeFakeDb(responses);
 
@@ -273,6 +280,7 @@ describe("listSubmissions latestFile (w15-f, DEC-686 page-scoped hydration)", ()
           uploadedByContactId: null,
         },
       ],
+      [], // scheduled (schedule_slot/room) enrichment (w41-b)
     ];
     const db = makeFakeDb(responses);
 
@@ -296,6 +304,7 @@ describe("listSubmissions latestFile (w15-f, DEC-686 page-scoped hydration)", ()
       [],
       [],
       [], // latestFile candidates — none
+      [], // scheduled (schedule_slot/room) enrichment (w41-b)
     ];
     const db = makeFakeDb(responses);
 
@@ -319,6 +328,7 @@ describe("listSubmissions reuploaded (DEC-881)", () => {
       [],
       [],
       [],
+      [], // scheduled (schedule_slot/room) enrichment (w41-b)
     ];
     const db = makeFakeDb(responses);
 
@@ -342,6 +352,7 @@ describe("listSubmissions reuploaded (DEC-881)", () => {
       [],
       [],
       [],
+      [], // scheduled (schedule_slot/room) enrichment (w41-b)
     ];
     const db = makeFakeDb(responses);
 
@@ -386,6 +397,7 @@ describe("listSubmissions reuploaded (DEC-881)", () => {
           versionNo: 2,
         },
       ],
+      [], // scheduled (schedule_slot/room) enrichment (w41-b)
     ];
     const db = makeFakeDb(responses);
 
@@ -417,6 +429,7 @@ describe("listSubmissions reuploaded (DEC-881)", () => {
           versionNo: 1,
         },
       ],
+      [], // scheduled (schedule_slot/room) enrichment (w41-b)
     ];
     const db = makeFakeDb(responses);
 
@@ -436,6 +449,7 @@ describe("listSubmissions reuploaded (DEC-881)", () => {
       [],
       [],
       [],
+      [], // scheduled (schedule_slot/room) enrichment (w41-b)
     ];
     const db = makeFakeDb(responses);
 

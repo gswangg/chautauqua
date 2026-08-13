@@ -71,7 +71,7 @@ function makeFakeDb(responses: unknown[][]) {
     const thisCallLog: { method: string; args: unknown[] }[] = [];
     calls.push(thisCallLog);
     const obj: any = {};
-    const passthrough = ["from", "where", "innerJoin", "orderBy", "limit", "offset", "select", "groupBy"];
+    const passthrough = ["from", "where", "innerJoin", "leftJoin", "orderBy", "limit", "offset", "select", "groupBy"];
     for (const m of passthrough) {
       obj[m] = (...args: unknown[]) => {
         thisCallLog.push({ method: m, args });
@@ -105,7 +105,7 @@ function orderBySqlOf(callLog: { method: string; args: unknown[] }[]) {
 // candidates (matches test/content-worklist-server-driven.test.ts's
 // ordering).
 function listResponses(rows: unknown[], total: number) {
-  return [[{ recordPrefix: "SES" }], [{ count: total }], [], rows, [], [], [], []];
+  return [[{ recordPrefix: "SES" }], [{ count: total }], [], rows, [], [], [], [], []];
 }
 
 // exportSubmissions' response queue: recordPrefix, submissions (unpaginated,

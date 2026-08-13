@@ -36,6 +36,7 @@ const baseItem: ContentSubmissionListItem = {
   latestFile: { filename: 'slides.pdf', kind: 'presentation', versionCount: 2, uploadedAt: 1700000000000 },
   latestFileVersionNo: 2,
   reuploaded: true,
+  scheduled: null,
 };
 
 function noop() {
@@ -100,6 +101,94 @@ describe('SessionList: v4 mock five-column IA (DEC-692)', () => {
     expect(row).not.toBeNull();
     expect(row).toHaveTextContent('A Talk About Testing');
     expect(row!.querySelector('.chq-content-row-ref')).toHaveTextContent('S-001');
+  });
+});
+
+// w41-b (DEC-902 amendment): the Session cell's subtitle carries the placed
+// schedule slot ('REF · Tue 12 May 10:00, Room 2A') once scheduled, or the
+// bare ref (no '· ,' residue) for an unplaced submission.
+describe('SessionList: Session cell subtitle carries the placed schedule slot (w41-b)', () => {
+  it('renders "REF · <day> <start>, <room>" for a placed session', () => {
+    const { container } = render(
+      <SessionList
+        {...SELECTION_PROPS}
+        items={[
+          {
+            ...baseItem,
+            scheduled: { day: '2026-05-12', startMin: 600, endMin: 660, roomName: 'Room 2A' },
+          },
+        ]}
+        tab="all"
+        onTabChange={noop}
+        onSelect={noop}
+        loading={false}
+        loaded={true}
+        onContentStatusChange={noop}
+        total={1}
+        page={1}
+        perPage={20}
+        onPageChange={noop}
+        now={1700000200000}
+        counts={NO_COUNTS}
+      />,
+    );
+
+    const subtitle = container.querySelector('.chq-content-row-ref');
+    expect(subtitle).toHaveTextContent('S-001 · Tue 12 May 10:00, Room 2A');
+  });
+
+  it('falls back to the honest "To be announced" room label when unassigned', () => {
+    const { container } = render(
+      <SessionList
+        {...SELECTION_PROPS}
+        items={[
+          {
+            ...baseItem,
+            scheduled: { day: '2026-05-12', startMin: 600, endMin: 660, roomName: null },
+          },
+        ]}
+        tab="all"
+        onTabChange={noop}
+        onSelect={noop}
+        loading={false}
+        loaded={true}
+        onContentStatusChange={noop}
+        total={1}
+        page={1}
+        perPage={20}
+        onPageChange={noop}
+        now={1700000200000}
+        counts={NO_COUNTS}
+      />,
+    );
+
+    const subtitle = container.querySelector('.chq-content-row-ref');
+    expect(subtitle).toHaveTextContent('To be announced');
+  });
+
+  it('renders the bare ref with no "· ," residue for an unplaced session', () => {
+    const { container } = render(
+      <SessionList
+        {...SELECTION_PROPS}
+        items={[{ ...baseItem, scheduled: null }]}
+        tab="all"
+        onTabChange={noop}
+        onSelect={noop}
+        loading={false}
+        loaded={true}
+        onContentStatusChange={noop}
+        total={1}
+        page={1}
+        perPage={20}
+        onPageChange={noop}
+        now={1700000200000}
+        counts={NO_COUNTS}
+      />,
+    );
+
+    const subtitle = container.querySelector('.chq-content-row-ref');
+    expect(subtitle).toHaveTextContent('S-001');
+    expect(subtitle!.textContent).not.toMatch(/·|,/);
   });
 
   it('renders the first speaker plus a +N overflow count', () => {
