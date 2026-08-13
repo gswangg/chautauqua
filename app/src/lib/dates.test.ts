@@ -6,6 +6,7 @@ import {
   formatDateTime,
   formatDateTimeInZone,
   formatDayLabel,
+  formatRelative,
   msToDateInput,
 } from './dates';
 
@@ -55,9 +56,16 @@ describe('formatDate', () => {
     expect(formatDate(NaN)).toBe('—');
   });
 
-  it('formats a valid timestamp', () => {
-    const ms = Date.UTC(2026, 0, 15);
-    expect(formatDate(ms)).toBe(new Date(ms).toLocaleDateString());
+  it('formats a valid timestamp as "<D> <Mon>" when in the current year', () => {
+    const now = new Date();
+    const ms = new Date(now.getFullYear(), 0, 15).getTime();
+    expect(formatDate(ms)).toBe('15 Jan');
+  });
+
+  it('appends the year when the date falls outside the current year', () => {
+    const pastYear = new Date().getFullYear() - 3;
+    const ms = new Date(pastYear, 1, 19).getTime();
+    expect(formatDate(ms)).toBe(`19 Feb ${pastYear}`);
   });
 });
 
@@ -103,9 +111,48 @@ describe('formatDateTime', () => {
     expect(formatDateTime(new Date('x').getTime())).toBe('—');
   });
 
-  it('formats a valid timestamp matching toLocaleString', () => {
-    const ms = Date.UTC(2026, 0, 15, 13, 30);
-    expect(formatDateTime(ms)).toBe(new Date(ms).toLocaleString());
+  it('formats a valid timestamp as "<D> <Mon>, HH:MM" (24-hour)', () => {
+    const ms = new Date(2026, 0, 15, 13, 30).getTime();
+    expect(formatDateTime(ms)).toBe('15 Jan, 13:30');
+  });
+
+  it('pads single-digit hours and minutes', () => {
+    const ms = new Date(2026, 0, 5, 9, 5).getTime();
+    expect(formatDateTime(ms)).toBe('5 Jan, 09:05');
+  });
+});
+
+describe('formatRelative', () => {
+  const now = new Date(2026, 5, 15, 12, 0, 0).getTime();
+
+  it('returns em dash for null/undefined/NaN', () => {
+    expect(formatRelative(null, now)).toBe('—');
+    expect(formatRelative(undefined, now)).toBe('—');
+    expect(formatRelative(NaN, now)).toBe('—');
+  });
+
+  it('returns "just now" for under a minute', () => {
+    expect(formatRelative(now - 30_000, now)).toBe('just now');
+  });
+
+  it('returns "N minutes ago" under an hour', () => {
+    expect(formatRelative(now - 5 * 60_000, now)).toBe('5 minutes ago');
+    expect(formatRelative(now - 1 * 60_000, now)).toBe('1 minute ago');
+  });
+
+  it('returns "N hours ago" under a day', () => {
+    expect(formatRelative(now - 3 * 3_600_000, now)).toBe('3 hours ago');
+    expect(formatRelative(now - 1 * 3_600_000, now)).toBe('1 hour ago');
+  });
+
+  it('returns "N days ago" up to 7 days', () => {
+    expect(formatRelative(now - 2 * 86_400_000, now)).toBe('2 days ago');
+    expect(formatRelative(now - 6 * 86_400_000, now)).toBe('6 days ago');
+  });
+
+  it('falls back to formatDate past 7 days', () => {
+    const ms = now - 8 * 86_400_000;
+    expect(formatRelative(ms, now)).toBe(formatDate(ms));
   });
 });
 

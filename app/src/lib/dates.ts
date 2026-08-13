@@ -36,12 +36,21 @@ export function dateInputToMs(value: string): number | null {
   return ms;
 }
 
-/** Format an epoch-ms timestamp for display; '—' for null/undefined/NaN/invalid. */
+/**
+ * Format an epoch-ms timestamp for display as "<D> <Mon>" (no leading zero,
+ * three-letter month), e.g. "19 Feb". Appends " <YYYY>" only when the date
+ * falls outside the current calendar year. '—' for null/undefined/NaN/invalid.
+ * The ONE date grammar in the SPA (DEC-907) -- never toLocaleDateString.
+ */
 export function formatDate(ms: number | null | undefined): string {
   if (ms === null || ms === undefined || Number.isNaN(ms)) return '—';
   const date = new Date(ms);
   if (Number.isNaN(date.getTime())) return '—';
-  return date.toLocaleDateString();
+  const day = date.getDate();
+  const month = SHORT_MONTH_NAMES[date.getMonth()];
+  const year = date.getFullYear();
+  const currentYear = new Date().getFullYear();
+  return year === currentYear ? `${day} ${month}` : `${day} ${month} ${year}`;
 }
 
 /**
@@ -64,17 +73,21 @@ export function formatDateOnly(ms: number | null | undefined): string {
 }
 
 /**
- * Format an epoch-ms timestamp as a locale date+time string for display;
+ * Format an epoch-ms timestamp as "<D> <Mon>, HH:MM" (24-hour) for display;
  * '—' for null/undefined/NaN/invalid. Use for true instants (createdAt,
  * updatedAt, sentAt, uploadedAt, etc.) rendered in the viewer's local
- * timezone. DEC-545: this is the ONE date-time formatter in the SPA --
- * pages must never call toLocaleString directly.
+ * timezone. DEC-545/DEC-907: this is the ONE date-time formatter in the
+ * SPA -- pages must never call toLocaleString directly.
  */
 export function formatDateTime(ms: number | null | undefined): string {
   if (ms === null || ms === undefined || Number.isNaN(ms)) return '—';
   const date = new Date(ms);
   if (Number.isNaN(date.getTime())) return '—';
-  return date.toLocaleString();
+  const day = date.getDate();
+  const month = SHORT_MONTH_NAMES[date.getMonth()];
+  const hh = String(date.getHours()).padStart(2, '0');
+  const mm = String(date.getMinutes()).padStart(2, '0');
+  return `${day} ${month}, ${hh}:${mm}`;
 }
 
 const SHORT_MONTH_NAMES = [
@@ -163,4 +176,35 @@ export function formatRelativeDays(ms: number, now: number): string {
   if (days <= 0) return 'today';
   if (days === 1) return 'yesterday';
   return `${days} days ago`;
+}
+
+/**
+ * Format a timestamp as a fine-grained relative label: 'just now', '<N>
+ * minute(s) ago', '<N> hour(s) ago', or '<N> day(s) ago' up to 7 days, then
+ * falls back to formatDate -- a relative label past a week is less legible
+ * than a date (DEC-907). `now` defaults to Date.now() but can be threaded in
+ * by callers/tests for a stable render. '—' for null/undefined/NaN/invalid.
+ */
+export function formatRelative(ms: number | null | undefined, now: number = Date.now()): string {
+  if (ms === null || ms === undefined || Number.isNaN(ms)) return '—';
+  const date = new Date(ms);
+  if (Number.isNaN(date.getTime())) return '—';
+  const minuteMs = 60_000;
+  const hourMs = 3_600_000;
+  const dayMs = 86_400_000;
+  const diff = now - ms;
+  if (diff < minuteMs) return 'just now';
+  if (diff < hourMs) {
+    const minutes = Math.floor(diff / minuteMs);
+    return `${minutes} minute${minutes === 1 ? '' : 's'} ago`;
+  }
+  if (diff < dayMs) {
+    const hours = Math.floor(diff / hourMs);
+    return `${hours} hour${hours === 1 ? '' : 's'} ago`;
+  }
+  const days = Math.floor(diff / dayMs);
+  if (days < 7) {
+    return `${days} day${days === 1 ? '' : 's'} ago`;
+  }
+  return formatDate(ms);
 }

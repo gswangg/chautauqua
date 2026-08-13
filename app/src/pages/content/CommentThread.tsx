@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { formatRelativeDays } from '../../lib/dates';
+import { formatRelative } from '../../lib/dates';
 import { useMe } from '../../lib/useMe';
 import type { FileComment } from './types';
 
@@ -54,9 +54,8 @@ export function CommentThread({ comments, onSend }: CommentThreadProps) {
               <span className="chq-comment-author chq-content-comment-author">
                 {me && c.authorUserId === me.userId ? 'You' : c.authorName}
               </span>
-              {c.authorRole !== null && <span className="chq-role-label chq-meta">({c.authorRole})</span>}
               <span className="chq-comment-version chq-meta">v{c.versionNumber}</span>
-              <span className="chq-comment-date chq-meta">{formatRelativeDays(c.createdAt, now)}</span>
+              <span className="chq-comment-date chq-meta"> · {formatRelative(c.createdAt, now)}</span>
             </div>
             <span className="chq-comment-body chq-content-comment-body">{c.body}</span>
           </li>
