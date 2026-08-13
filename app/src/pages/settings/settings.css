@@ -262,6 +262,11 @@
   }
 }
 
+/* w1-b/DEC-728: SummarySection (the settings summary/edit-drill primitive)
+   reuses this exact numbered-section-head/-row vocabulary rather than
+   defining new classes -- a converted panel's view mode IS a
+   chq-settings-numbered section whose rows happen to be read-only. */
+
 /* DEC-588: numbered-section header pattern (docs/design/Chautauqua
    Settings.dc.html lines 79-84) shared by Call for papers and People and
    roles -- uppercase label + rule, right-aligned action link, rows split

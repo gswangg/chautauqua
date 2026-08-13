@@ -1,11 +1,20 @@
-// Event settings panel (w4-h, DEC-032): name, slug, dates, location,
-// timezone, record prefix (read-only), branding logo URL + accent color.
-// PATCH /api/v1/events/:id (endpoint landed in w2-b's events.ts).
+// Event settings panel (w4-h, DEC-032; summary-first w1-b, DEC-728): name,
+// slug, dates, location, timezone, record prefix (read-only), branding
+// logo URL + accent color. Renders as a read-only summary (SummarySection)
+// with a single 'Change' action that drills into the existing form; the
+// drilled state is `?section=event&edit=1` in the URL (DEC-728/DEC-710),
+// so it is bookmarkable and Back leaves it. The form itself, its
+// PATCH /api/v1/events/:id endpoint and buildEventPatch diffing are
+// unchanged from before this wave.
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { apiGet, apiPatch, ApiError } from '../../lib/api';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { buildEventPatch, type EventSettingsForm } from './formState';
+import { SummarySection } from './SummarySection';
+
+const SECTION_KEY = 'event';
 
 interface EventDetail {
   id: string;
@@ -33,8 +42,17 @@ function toForm(event: EventDetail): EventSettingsForm {
   };
 }
 
+function brandingSummary(form: EventSettingsForm): string {
+  const parts: string[] = [];
+  if (form.logoUrl) parts.push('Logo set');
+  if (form.accentColor) parts.push(`Accent ${form.accentColor}`);
+  return parts.length > 0 ? parts.join(' · ') : 'Not set';
+}
+
 export function EventSettingsPanel() {
   const { eventId, loading: eventLoading, error: eventError } = useCurrentEvent();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const editing = searchParams.get('section') === SECTION_KEY && searchParams.get('edit') === '1';
   const [initial, setInitial] = useState<EventSettingsForm | null>(null);
   const [form, setForm] = useState<EventSettingsForm | null>(null);
   const [error, setError] = useState<string | undefined>(undefined);
@@ -57,10 +75,22 @@ export function EventSettingsPanel() {
     setSaved(false);
   }
 
+  function closeEdit() {
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev);
+      params.delete('section');
+      params.delete('edit');
+      return params;
+    });
+  }
+
   async function handleSave() {
     if (!eventId || !initial || !form) return;
     const patch = buildEventPatch(initial, form);
-    if (Object.keys(patch).length === 0) return;
+    if (Object.keys(patch).length === 0) {
+      closeEdit();
+      return;
+    }
     setSaving(true);
     setError(undefined);
     try {
@@ -69,6 +99,7 @@ export function EventSettingsPanel() {
       setInitial(f);
       setForm(f);
       setSaved(true);
+      closeEdit();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to save event settings');
     } finally {
@@ -76,12 +107,31 @@ export function EventSettingsPanel() {
     }
   }
 
+  const rows = form
+    ? [
+        { label: 'Name', value: form.name },
+        { label: 'Slug', value: form.slug },
+        { label: 'Starts', value: form.startDate },
+        { label: 'Ends', value: form.endDate },
+        { label: 'Time zone', value: form.timezone },
+        { label: 'Venue', value: form.location || 'Not set' },
+        { label: 'Record prefix', value: form.recordPrefix },
+        { label: 'Branding', value: brandingSummary(form) },
+      ]
+    : [];
+
   return (
-    <section className="chq-settings-panel" aria-label="Event settings">
-      <h2>Event settings</h2>
+    <>
       {eventLoading ? <DelayedLoading /> : null}
       {eventError || error ? <p role="alert">{eventError ?? error}</p> : null}
-      {form ? (
+      <SummarySection
+        sectionKey={SECTION_KEY}
+        label="Event settings"
+        rows={rows}
+        actionLabel="Change"
+        editing={editing}
+      >
+        {form ? (
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -141,9 +191,13 @@ export function EventSettingsPanel() {
           <button type="submit" className="chq-btn chq-btn-primary" disabled={saving}>
             {saving ? 'Saving…' : 'Save'}
           </button>
+          <button type="button" className="chq-btn chq-btn-tertiary" onClick={closeEdit} disabled={saving}>
+            Cancel
+          </button>
           {saved ? <span role="status"> Saved.</span> : null}
         </form>
-      ) : null}
-    </section>
+        ) : null}
+      </SummarySection>
+    </>
   );
 }
