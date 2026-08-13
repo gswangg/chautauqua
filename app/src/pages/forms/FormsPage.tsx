@@ -16,6 +16,7 @@ import './forms.css';
 interface EventSummary {
   id: string;
   slug: string;
+  timezone: string;
 }
 
 type ModalState = { mode: 'create' } | { mode: 'edit'; field: FormField } | null;
@@ -293,7 +294,14 @@ export function FormsPage() {
             <h2>Settings</h2>
           </div>
           <div className="chq-forms-section-body">
-            <FormSettings ref={settingsRef} form={form} tracks={tracks} eventSlug={event.slug} onSave={handleSaveSettings} />
+            <FormSettings
+              ref={settingsRef}
+              form={form}
+              tracks={tracks}
+              eventSlug={event.slug}
+              timezone={event.timezone}
+              onSave={handleSaveSettings}
+            />
           </div>
         </section>
       </div>

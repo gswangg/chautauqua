@@ -251,6 +251,20 @@
   color: var(--chq-muted);
 }
 
+/* DEC-731: the builder's own statement of the call's live state (derived
+   from open_date/close_date, never a separate published flag) plus the
+   "now" actions that write those dates directly. */
+.chq-forms-call-state {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.chq-forms-call-actions {
+  display: flex;
+  gap: 9px;
+}
+
 .chq-forms-settings-tracks {
   border: none;
   padding: 0;

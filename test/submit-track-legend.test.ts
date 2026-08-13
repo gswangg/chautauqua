@@ -126,4 +126,27 @@ describe("GET /submit/:eventSlug track fieldset (DEC-579)", () => {
     // Guard against the fidelity report's rejected fix ever landing.
     expect(body).not.toContain('type="radio"');
   });
+
+  // DEC-731 (eval-findings 70c): the page must render exactly ONE track
+  // control -- a leftover custom <select> dropdown beside the built-in
+  // checkbox group would let a submitter pick a track two contradictory
+  // ways. Guard both: no <select> anywhere carries the track options, and
+  // there is exactly one fieldset offering them.
+  it("renders exactly one track control (the checkbox fieldset), never a second dropdown", async () => {
+    const db = fakeDb([[EVENT_ROW], [FORM_ROW], FIELD_ROWS, TRACK_ROWS]);
+    const app = appWithDb(db);
+
+    const res = await app.request("/submit/test-conf", { headers: {} }, { KV: fakeKv() } as unknown as AppEnv["Bindings"]);
+    const body = await res.text();
+
+    // No <select> element anywhere on the page carries a track's name as
+    // an <option> -- the only allowed track markup is the checkbox group.
+    for (const track of TRACK_ROWS) {
+      const selectWithTrackOption = new RegExp(`<select[^>]*>(?:(?!</select>).)*${track.name}`, "s");
+      expect(body).not.toMatch(selectWithTrackOption);
+    }
+    // Exactly one fieldset/legend pair offers tracks.
+    const legendMatches = [...body.matchAll(/<legend>Tracks \*<\/legend>/g)];
+    expect(legendMatches.length).toBe(1);
+  });
 });

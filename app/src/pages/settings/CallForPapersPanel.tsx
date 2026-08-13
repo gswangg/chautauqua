@@ -9,10 +9,39 @@ import { apiGet, apiList, apiPatch, ApiError } from '../../lib/api';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { dateInputToMs, msToDateInput } from '../../lib/dates';
 import { copyText } from '../../lib/clipboard';
+import { formWindowState } from '../../../../src/lib/submit-core';
 
 interface EventSummary {
   id: string;
   slug: string;
+  timezone: string;
+}
+
+const SHORT_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/** Renders a day-label epoch-ms value (UTC-midnight of the intended
+ * calendar day, DEC-153/DEC-522) as "16 Aug" -- read via UTC field getters,
+ * never a timezone conversion (the calendar day itself doesn't move with
+ * the viewer's zone). */
+function formatDayMonth(ms: number): string {
+  const date = new Date(ms);
+  return `${date.getUTCDate()} ${SHORT_MONTHS[date.getUTCMonth()]}`;
+}
+
+/** Today's calendar day as a day-label epoch-ms value (UTC midnight). */
+function todayDayLabelMs(): number {
+  const now = new Date();
+  return Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+}
+
+/** DEC-731: the call's LIVE state, derived from open_date/close_date via
+ * the same pure formWindowState the public submit route gates on -- never
+ * a separate published flag. */
+function callStateLabel(openMs: number | null, closeMs: number | null, timezone: string): string {
+  const state = formWindowState(openMs, closeMs, Date.now(), timezone);
+  if (state === 'not_yet_open') return 'Not yet open';
+  if (state === 'closed') return 'Closed';
+  return closeMs !== null ? `Open · closes ${formatDayMonth(closeMs)}` : 'Open';
 }
 
 interface EventTrack {
@@ -42,6 +71,9 @@ export function CallForPapersPanel() {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  // DEC-731: field-level errors (openDate/closeDate order refusal) surface
+  // inline at the field they belong to, never as a quiet banner alone.
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [copyResult, setCopyResult] = useState<{ ok: boolean; text: string } | null>(null);
   const failedCopyRef = useRef<HTMLInputElement | null>(null);
 
@@ -76,6 +108,7 @@ export function CallForPapersPanel() {
     if (!form) return;
     setSaving(true);
     setError(null);
+    setFieldErrors({});
     try {
       const updated = await apiPatch<CfpForm>(`/forms/${form.id}`, {
         intro: intro.trim().length > 0 ? intro : null,
@@ -86,7 +119,32 @@ export function CallForPapersPanel() {
       setForm(updated);
       setSaved(true);
     } catch (err) {
+      if (err instanceof ApiError && err.fields) setFieldErrors(err.fields);
       setError(err instanceof ApiError ? err.message : 'Failed to save the CFP form');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  // DEC-731: "Open/Close the call now" write open_date/close_date directly
+  // -- no new column, no published flag. The server's PATCH validator is
+  // still the ONE place close-before-open is refused (DEC-517); a
+  // rejection surfaces at the Opens/Closes field it belongs to.
+  async function handleWindowNow(which: 'openDate' | 'closeDate') {
+    if (!form) return;
+    setSaving(true);
+    setError(null);
+    setFieldErrors({});
+    const today = todayDayLabelMs();
+    try {
+      const updated = await apiPatch<CfpForm>(`/forms/${form.id}`, { [which]: today });
+      setForm(updated);
+      if (which === 'openDate') setOpenDate(msToDateInput(today));
+      else setCloseDate(msToDateInput(today));
+      setSaved(true);
+    } catch (err) {
+      if (err instanceof ApiError && err.fields) setFieldErrors(err.fields);
+      setError(err instanceof ApiError ? err.message : 'Failed to update the call window');
     } finally {
       setSaving(false);
     }
@@ -168,6 +226,11 @@ export function CallForPapersPanel() {
               />
             </label>
           </div>
+          {event ? (
+            <p role="status" className="chq-settings-row">
+              {callStateLabel(dateInputToMs(openDate), dateInputToMs(closeDate), event.timezone)}
+            </p>
+          ) : null}
           <div className="chq-settings-row">
             <label>
               Opens
@@ -178,8 +241,10 @@ export function CallForPapersPanel() {
                 onChange={(e) => {
                   setOpenDate(e.target.value);
                   setSaved(false);
+                  setFieldErrors((prev) => ({ ...prev, openDate: '' }));
                 }}
               />
+              {fieldErrors.openDate ? <span className="chq-field-error">{fieldErrors.openDate}</span> : null}
             </label>
           </div>
           <div className="chq-settings-row">
@@ -192,9 +257,19 @@ export function CallForPapersPanel() {
                 onChange={(e) => {
                   setCloseDate(e.target.value);
                   setSaved(false);
+                  setFieldErrors((prev) => ({ ...prev, closeDate: '' }));
                 }}
               />
+              {fieldErrors.closeDate ? <span className="chq-field-error">{fieldErrors.closeDate}</span> : null}
             </label>
+          </div>
+          <div className="chq-settings-row">
+            <button type="button" className="chq-btn chq-btn-secondary" disabled={saving} onClick={() => void handleWindowNow('openDate')}>
+              Open the call now
+            </button>
+            <button type="button" className="chq-btn chq-btn-secondary" disabled={saving} onClick={() => void handleWindowNow('closeDate')}>
+              Close the call now
+            </button>
           </div>
           <fieldset className="chq-settings-row">
             <legend>Tracks offered</legend>
