@@ -341,6 +341,19 @@
   width: 100%;
 }
 
+/* The "N sent" column (third of the five). A real class hook rather than a
+   positional `.chq-comms-batch-row > span:nth-child(3)` selector -- the same
+   reason .chq-comms-history-row's nth-child rule was deleted in the DEC-976
+   scan: the column order is grammar, not a style contract. */
+.chq-comms-batch-count {
+  font-size: 13px;
+  color: var(--chq-ink-2);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .chq-comms-batch-template {
   color: var(--chq-muted);
   font-size: 13px;
@@ -635,11 +648,7 @@
     padding: 14px 0;
   }
 
-  .chq-comms-batch-row > span:nth-child(3) {
-    font-size: 13px;
-    color: var(--chq-ink-2);
-  }
-
+  .chq-comms-batch-count,
   .chq-comms-batch-template {
     white-space: normal;
   }

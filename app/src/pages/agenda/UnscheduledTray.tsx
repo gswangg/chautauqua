@@ -66,7 +66,6 @@ export function UnscheduledTray({
                 session={session}
                 tracks={tracks}
                 conflicts={conflicts}
-                className="chq-unscheduled-tray-card"
                 selected={armed?.submissionId === session.submissionId}
                 onSelect={
                   onArm
