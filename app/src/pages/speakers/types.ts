@@ -97,12 +97,10 @@ export interface AssignmentResponseDetail {
 export interface NewTaskInput {
   kind: TaskKind;
   title: string;
-  description?: string;
   dueDate?: number;
   required: boolean;
   formId?: string;
   deliverableKind?: DeliverableKind;
-  assignToAllAccepted?: boolean;
 }
 
 // DEC-398: one entry of the `forms` list additively returned by

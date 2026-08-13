@@ -73,15 +73,15 @@ function statusCellClass(status: AssignmentStatus, overdue: boolean): string {
   return `chq-speakers-status chq-speakers-status-${modifier}`;
 }
 
-// DEC-662: the roster's Add-speaker/Import-CSV triggers live here now (see
+// DEC-662/DEC-746: the roster's Add-speaker trigger lives here now (see
 // RosterPanel), beside New task/Remind all outstanding, so the page renders
-// exactly one title action row.
+// exactly one title action row -- Import CSV is the Contacts page's job, not
+// this row's.
 interface OnboardingGridProps {
   onAddSpeaker: () => void;
-  onImportCsv: () => void;
 }
 
-export function OnboardingGrid({ onAddSpeaker, onImportCsv }: OnboardingGridProps) {
+export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
   const { eventId, loading: eventLoading, error: eventError } = useCurrentEvent();
 
   const [grid, setGrid] = useState<OnboardingGridResponse | null>(null);
@@ -337,9 +337,6 @@ export function OnboardingGrid({ onAddSpeaker, onImportCsv }: OnboardingGridProp
           <button type="button" className="chq-btn chq-btn-secondary" onClick={onAddSpeaker}>
             Add speaker
           </button>
-          <button type="button" className="chq-btn chq-btn-secondary" onClick={onImportCsv}>
-            Import CSV
-          </button>
           <button type="button" className="chq-btn chq-btn-secondary" onClick={() => setShowNewTask(true)}>
             New task
           </button>
@@ -574,7 +571,12 @@ export function OnboardingGrid({ onAddSpeaker, onImportCsv }: OnboardingGridProp
       )}
 
       {showNewTask && (
-        <TaskModal onCancel={() => setShowNewTask(false)} onSubmit={handleCreateTask} forms={taskForms} />
+        <TaskModal
+          onCancel={() => setShowNewTask(false)}
+          onSubmit={handleCreateTask}
+          forms={taskForms}
+          acceptedCount={counts?.speakers ?? 0}
+        />
       )}
 
       {reviewingRemind && (

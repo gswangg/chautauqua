@@ -23,15 +23,27 @@ function fillTitle(value: string) {
   fireEvent.change(screen.getByRole('textbox', { name: 'Task' }), { target: { value } });
 }
 
+// DEC-746: createTask always assigns every accepted speaker now -- the
+// modal states the count instead of offering an assign-all checkbox, and
+// drops the Description textarea.
+describe('TaskModal: DEC-746 always-assign subtitle and dropped fields', () => {
+  it('states the accepted count in the subtitle and offers neither a Description field nor an assign-all checkbox', () => {
+    render(<TaskModal onCancel={() => {}} onSubmit={vi.fn()} forms={FORMS} acceptedCount={12} />);
+    expect(screen.getByText('Created for all 12 accepted speakers')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Description')).not.toBeInTheDocument();
+    expect(screen.queryByText('Assign to all accepted speakers')).not.toBeInTheDocument();
+  });
+});
+
 describe('TaskModal: DEC-398 form picker', () => {
   it('hides the Form field for non-form kinds', () => {
-    render(<TaskModal onCancel={() => {}} onSubmit={vi.fn()} forms={FORMS} />);
+    render(<TaskModal onCancel={() => {}} onSubmit={vi.fn()} forms={FORMS} acceptedCount={12} />);
     expect(screen.queryByLabelText('Form')).not.toBeInTheDocument();
   });
 
   it('lists the fetched form titles and submits the selected id, defaulting to the first form', async () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined);
-    render(<TaskModal onCancel={() => {}} onSubmit={onSubmit} forms={FORMS} />);
+    render(<TaskModal onCancel={() => {}} onSubmit={onSubmit} forms={FORMS} acceptedCount={12} />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Form' }));
 
@@ -53,7 +65,7 @@ describe('TaskModal: DEC-398 form picker', () => {
 
   it('disables the select, explains, and blocks submit when the event has no forms', async () => {
     const onSubmit = vi.fn();
-    render(<TaskModal onCancel={() => {}} onSubmit={onSubmit} forms={[]} />);
+    render(<TaskModal onCancel={() => {}} onSubmit={onSubmit} forms={[]} acceptedCount={12} />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Form' }));
 
@@ -76,27 +88,29 @@ describe('TaskModal: DEC-398 form picker', () => {
 // chq-btn-primary vs chq-btn-secondary class swap).
 describe('TaskModal: DEC-577 segmented Kind control', () => {
   it('renders one real button per kind, keyboard-focusable, with the active state carried by aria-pressed and class, not colour alone', () => {
-    render(<TaskModal onCancel={() => {}} onSubmit={vi.fn()} forms={FORMS} />);
+    render(<TaskModal onCancel={() => {}} onSubmit={vi.fn()} forms={FORMS} acceptedCount={12} />);
 
     const group = screen.getByRole('group', { name: 'Kind' });
     expect(group).toBeInTheDocument();
 
-    const general = screen.getByRole('button', { name: 'General' });
-    const fileRequest = screen.getByRole('button', { name: 'File request' });
+    // DEC-746: labels are Upload / Form / Acknowledge (mapping onto
+    // file_request / form / general), in that order.
+    const upload = screen.getByRole('button', { name: 'Upload' });
     const form = screen.getByRole('button', { name: 'Form' });
+    const acknowledge = screen.getByRole('button', { name: 'Acknowledge' });
 
     // Every kind is a real, tabbable <button> -- no tabindex hacks needed.
-    for (const btn of [general, fileRequest, form]) {
+    for (const btn of [upload, form, acknowledge]) {
       expect(btn.tagName).toBe('BUTTON');
       expect(btn).not.toHaveAttribute('tabindex', '-1');
     }
 
-    // Default: 'General' is active -- filled class + aria-pressed, not a
-    // bare CSS colour difference the test can't observe.
-    expect(general).toHaveAttribute('aria-pressed', 'true');
-    expect(general.className).toContain('chq-btn-primary');
-    expect(fileRequest).toHaveAttribute('aria-pressed', 'false');
-    expect(fileRequest.className).toContain('chq-btn-secondary');
+    // Default: 'Upload' (file_request) is active -- filled class +
+    // aria-pressed, not a bare CSS colour difference the test can't observe.
+    expect(upload).toHaveAttribute('aria-pressed', 'true');
+    expect(upload.className).toContain('chq-btn-primary');
+    expect(acknowledge).toHaveAttribute('aria-pressed', 'false');
+    expect(acknowledge.className).toContain('chq-btn-secondary');
 
     form.focus();
     expect(form).toHaveFocus();
@@ -104,8 +118,8 @@ describe('TaskModal: DEC-577 segmented Kind control', () => {
 
     expect(form).toHaveAttribute('aria-pressed', 'true');
     expect(form.className).toContain('chq-btn-primary');
-    expect(general).toHaveAttribute('aria-pressed', 'false');
-    expect(general.className).toContain('chq-btn-secondary');
+    expect(upload).toHaveAttribute('aria-pressed', 'false');
+    expect(upload.className).toContain('chq-btn-secondary');
 
     // Submit payload still carries the plain TaskKind string value.
     fillTitle('A form task');

@@ -28,7 +28,6 @@ export interface CreateTaskInput {
   formId?: string | null;
   // DEC-240: only meaningful when kind='file_request'.
   deliverableKind?: DeliverableKind | null;
-  assignToAllAccepted?: boolean;
 }
 
 export interface TaskRecord {
@@ -159,10 +158,10 @@ export async function createTask(db: Db, eventId: string, input: CreateTaskInput
     updatedAt: now,
   });
 
-  if (input.assignToAllAccepted) {
-    const contactIds = await listAcceptedContactIds(db, eventId);
-    await createTaskAssignments(db, id, contactIds, now);
-  }
+  // DEC-746: createTask always expands to every accepted speaker (with an
+  // active invite, per DEC-283/DEC-278) -- there is no longer an opt-out.
+  const contactIds = await listAcceptedContactIds(db, eventId);
+  await createTaskAssignments(db, id, contactIds, now);
 
   const rows = await db.select().from(schema.task).where(eq(schema.task.id, id)).limit(1);
   const row = rows[0];

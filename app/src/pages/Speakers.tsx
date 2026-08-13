@@ -8,9 +8,10 @@ export function SpeakersPage() {
   // this page's existing reload idiom (OnboardingGrid loads its own grid in
   // a mount-time effect) -- used after RosterPanel adds/imports a speaker.
   const [refreshKey, setRefreshKey] = useState(0);
-  // DEC-662: RosterPanel no longer owns its own trigger buttons -- its
-  // "Add speaker"/"Import CSV" triggers live in OnboardingGrid's single
-  // title action row, and open this panel via `mode`.
+  // DEC-662/DEC-746: RosterPanel no longer owns its own trigger button --
+  // its "Add speaker" trigger lives in OnboardingGrid's single title action
+  // row, and opens this panel via `mode`. CSV import lives on the Contacts
+  // page now (RosterPanel's own 'import' mode is unreachable from here).
   const [rosterMode, setRosterMode] = useState<RosterPanelMode>('none');
 
   function handleRosterChanged() {
@@ -21,11 +22,7 @@ export function SpeakersPage() {
   return (
     <>
       <RosterPanel mode={rosterMode} onClose={() => setRosterMode('none')} onChanged={handleRosterChanged} />
-      <OnboardingGrid
-        key={refreshKey}
-        onAddSpeaker={() => setRosterMode('add')}
-        onImportCsv={() => setRosterMode('import')}
-      />
+      <OnboardingGrid key={refreshKey} onAddSpeaker={() => setRosterMode('add')} />
     </>
   );
 }

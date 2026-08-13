@@ -18,13 +18,30 @@ interface TaskModalProps {
   // an id. An empty list (no forms yet, or the fetch failed) disables the
   // select and blocks submit rather than silently posting no formId.
   forms: EventForm[];
+  // DEC-746: createTask always expands to every accepted speaker now -- the
+  // subtitle states the count instead of offering an opt-out checkbox.
+  acceptedCount: number;
 }
 
-function kindLabel(kind: TaskKind): string {
-  if (kind === 'general') return 'General';
-  if (kind === 'file_request') return 'File request';
-  return 'Form';
+// DEC-746: the segmented control's labels/order per
+// docs/design/Chautauqua Speakers.dc.html:186-216 -- Upload, Form,
+// Acknowledge, mapping onto the existing kind values so every other kind
+// gate (deliverable-kind row, form picker) keeps working unchanged.
+export function kindLabel(kind: TaskKind): string {
+  if (kind === 'file_request') return 'Upload';
+  if (kind === 'form') return 'Form';
+  return 'Acknowledge';
 }
+
+const KIND_ORDER: readonly TaskKind[] = (() => {
+  const order: TaskKind[] = ['file_request', 'form', 'general'];
+  // TASK_KINDS is the source enumeration; assert the display order is a
+  // permutation of it so a new kind can't silently go unlisted here.
+  if (order.length !== TASK_KINDS.length || !TASK_KINDS.every((k) => order.includes(k))) {
+    throw new Error('TaskModal: KIND_ORDER is out of sync with TASK_KINDS');
+  }
+  return order;
+})();
 
 function deliverableKindLabel(kind: DeliverableKind): string {
   if (kind === 'presentation') return 'Presentation';
@@ -32,13 +49,11 @@ function deliverableKindLabel(kind: DeliverableKind): string {
   return 'Handout';
 }
 
-export function TaskModal({ onCancel, onSubmit, forms }: TaskModalProps) {
-  const [kind, setKind] = useState<TaskKind>('general');
+export function TaskModal({ onCancel, onSubmit, forms, acceptedCount }: TaskModalProps) {
+  const [kind, setKind] = useState<TaskKind>('file_request');
   const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [required, setRequired] = useState(true);
-  const [assignToAllAccepted, setAssignToAllAccepted] = useState(true);
   const [formId, setFormId] = useState('');
   const [deliverableKind, setDeliverableKind] = useState<DeliverableKind>('handout');
   const [submitting, setSubmitting] = useState(false);
@@ -72,12 +87,10 @@ export function TaskModal({ onCancel, onSubmit, forms }: TaskModalProps) {
       await onSubmit({
         kind,
         title: title.trim(),
-        description: description.trim().length > 0 ? description.trim() : undefined,
         dueDate: dateInputToMs(dueDate) ?? undefined,
         required,
         formId: kind === 'form' ? formId : undefined,
         deliverableKind: kind === 'file_request' ? deliverableKind : undefined,
-        assignToAllAccepted,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create task');
@@ -91,7 +104,7 @@ export function TaskModal({ onCancel, onSubmit, forms }: TaskModalProps) {
       as="form"
       onSubmit={handleSubmit}
       title="New task"
-      subtitle="Applies to every accepted speaker"
+      subtitle={`Created for all ${acceptedCount} accepted speakers`}
       onClose={onCancel}
       closeDisabled={submitting}
       modalClassName="chq-speakers-modal"
@@ -108,25 +121,6 @@ export function TaskModal({ onCancel, onSubmit, forms }: TaskModalProps) {
     >
       {error && <div className="chq-error">{error}</div>}
 
-        <div className="chq-speakers-modal-field">
-          <span className="chq-speakers-modal-label" id="task-kind-label">
-            Kind
-          </span>
-          <div className="chq-segmented" role="group" aria-label="Kind">
-            {TASK_KINDS.map((k) => (
-              <button
-                key={k}
-                type="button"
-                className={kind === k ? 'chq-btn chq-btn-primary' : 'chq-btn chq-btn-secondary'}
-                aria-pressed={kind === k}
-                onClick={() => setKind(k)}
-              >
-                {kindLabel(k)}
-              </button>
-            ))}
-          </div>
-        </div>
-
         <FormRow label="Task" htmlFor="task-title">
           <input
             id="task-title"
@@ -136,16 +130,6 @@ export function TaskModal({ onCancel, onSubmit, forms }: TaskModalProps) {
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Submit your slides"
             required
-          />
-        </FormRow>
-
-        <FormRow label="Description" htmlFor="task-description">
-          <textarea
-            id="task-description"
-            className="chq-textarea"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Optional instructions shown to the speaker"
           />
         </FormRow>
 
@@ -159,6 +143,25 @@ export function TaskModal({ onCancel, onSubmit, forms }: TaskModalProps) {
             placeholder="2026-05-01"
           />
         </FormRow>
+
+        <div className="chq-speakers-modal-field">
+          <span className="chq-speakers-modal-label" id="task-kind-label">
+            Kind
+          </span>
+          <div className="chq-segmented" role="group" aria-label="Kind">
+            {KIND_ORDER.map((k) => (
+              <button
+                key={k}
+                type="button"
+                className={kind === k ? 'chq-btn chq-btn-primary' : 'chq-btn chq-btn-secondary'}
+                aria-pressed={kind === k}
+                onClick={() => setKind(k)}
+              >
+                {kindLabel(k)}
+              </button>
+            ))}
+          </div>
+        </div>
 
         {kind === 'form' && (
           <FormRow
@@ -210,16 +213,6 @@ export function TaskModal({ onCancel, onSubmit, forms }: TaskModalProps) {
         <label className="chq-check-label">
           <input className="chq-check" type="checkbox" checked={required} onChange={(e) => setRequired(e.target.checked)} />
           Required
-        </label>
-
-        <label className="chq-check-label">
-          <input
-            className="chq-check"
-            type="checkbox"
-            checked={assignToAllAccepted}
-            onChange={(e) => setAssignToAllAccepted(e.target.checked)}
-          />
-          Assign to all accepted speakers
         </label>
     </ModalFrame>
   );
