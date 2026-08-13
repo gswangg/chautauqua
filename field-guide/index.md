@@ -30,31 +30,31 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   DATED PROMISE; TRUST FLOWS ONE WAY; a DECISION DOC IS EVIDENCE OF A
   DECISION, NEVER OF A FIX. Shapes: WRITE gated by READ predicate; predicate
   with THREE readers is ONE function; one grammar per surface.
-- FINDINGS w40-43 (amendments only, compacted): A REVIEW LENS AGES FASTER
-  THAN A MANDATE -- across waves, most re-probed P1s/security items were
-  ALREADY FIXED/CLOSED on main; open file:line before the lane, tree is the
-  only evidence, prod lags main. Shapes: CLAMP THE BOX CANNOT REACH; TWO
-  READERS OF ONE DEADLINE disagree; A SEED IS A CLAIM; an ARGUMENT NEVER READ
-  is a lie in a signature; a GUARD PLACED AFTER THE COST guards nothing;
-  MINTING IS IO -- a write inside a per-recipient loop is a read's defect; A
-  CONSTRUCTOR THAT THROWS IS A GUARD BEFORE THE MUTATION IS PAID FOR; a
+- FINDINGS w40-44 (amendments only, heavily compacted): A REVIEW LENS AGES
+  FASTER THAN A MANDATE -- most re-probed P1s/security items were ALREADY
+  FIXED/CLOSED on main; open file:line before the lane, tree is the only
+  evidence. Shapes: CLAMP THE BOX CANNOT REACH; TWO READERS OF ONE DEADLINE
+  disagree; A SEED IS A CLAIM; an ARGUMENT NEVER READ is a lie in a
+  signature; a GUARD PLACED AFTER THE COST guards nothing; MINTING IS IO; a
   boundary fails per RECIPIENT never per REQUEST; ONE RULE SIX REGEXES THREE
-  GRAMMARS -- normalize on WRITE; A PREDICATE HONOURED ON FOUR PATHS AND
-  SKIPPED ON THE FIFTH is the root of separately-filed 'defects'.
-- FINDINGS w44 (amendments only): THE MANDATE IS NOW MOSTLY A CLOSURE LEDGER
-  -- ~22 of 25 re-probed gate-3 reds were ALREADY CLOSED on main with guard
-  tests (auth flex-start, CFP-builder measure, content structural batch a-h,
-  speakers matrix header, inline recusal, locked-plan eyebrow, focus ring,
-  RecentSends columns, import alias, agenda click-unschedule, public width
-  pairs, seed CFP window, .chq-file width, validateUpload `kind`, submit
-  guard ordering, batched portal links on 2 of 3 paths). Budget the PROBE,
-  not the fix; open the file:line before you write the lane. Shapes found by
-  reading: FONT DOES NOT CROSS A BUTTON -- a class setting size/weight but
-  not family renders UA Arial beside Figtree. A NATIVE type=date IS A LOCALE
-  YOU DID NOT CHOOSE. THE LAST PATH IS THE DEFECT -- two of three send paths
-  batched KV minting, so the third makes the rule's own comment a lie. A
-  BOARD WITH ONE POPULATED COLUMN PROVES NOTHING -- an unfalsifiable
-  vocabulary looks identical to "not implemented". AN AFFORDANCE ON EVERY ROW
-  IS NOT AN AFFORDANCE. A COUNT STATED TWICE IS TWO READERS WAITING TO
-  DISAGREE. Also: a finding can be OBSOLETE-VS-DEC not just stale -- check
-  the DEC before filing (DEC-735 suggestion suffix, DEC-939 radiogroup).
+  GRAMMARS -- normalize on WRITE; FONT DOES NOT CROSS A BUTTON; A NATIVE
+  type=date IS A LOCALE YOU DID NOT CHOOSE; THE LAST PATH IS THE DEFECT; A
+  BOARD WITH ONE POPULATED COLUMN PROVES NOTHING; A COUNT STATED TWICE IS
+  TWO READERS WAITING TO DISAGREE; a finding can be OBSOLETE-VS-DEC -- check
+  the DEC before filing.
+- FINDINGS w45: THE PROBE IS NOW THE EXPENSIVE HALF. ~20 more gate-3 reds
+  re-probed against main (anonymize-for-reviewer, replace-file version chain,
+  conditional visibility, co-presenter conflicts DEC-974, queue-CTA
+  contrast, plan-editor measure, criteria drag handles, scorecard counts,
+  merge v6 Swap, saved-embed format, published counts, accent binding,
+  agenda clipping DEC-768, ICS reader, contact-delete cascade DEC-979,
+  tertiary focus ring, remind contactIds DEC-694, portal date formatter,
+  submit compensating delete) -- ALL CLOSED WITH TESTS. Budget one
+  grep per claim, stop when three in a row come back closed. Shapes that DID
+  find work: LIVE DEFERRAL IS THE DEFECT -- grep src/ for "deferred|TODO",
+  the one hit (submit-views.tsx name-collapse) was real. A SURFACE THE
+  BUILDER CANNOT SEE -- public form asks a Track question sourced outside
+  `form_field`, builder's list is not the form. A VALUE TYPED ONLY BY ITS
+  KIND -- seeded text answer keyed on kind alone puts "SFO" in "Check-in
+  date". A TOKEN IS A NAME PEOPLE TYPED -- rename only with a permanent
+  resolving alias.
