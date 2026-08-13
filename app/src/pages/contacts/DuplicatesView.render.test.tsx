@@ -14,6 +14,7 @@ import { mockApi, listEnvelope } from '../../test-utils/mockApi';
 
 const GROUP = {
   contactIds: ['ct-keep', 'ct-merge'],
+  reason: 'email',
   contacts: [
     { id: 'ct-keep', firstName: 'Jane', lastName: 'Doe', email: 'jane@example.com', company: 'Acme' },
     { id: 'ct-merge', firstName: 'Jane', lastName: 'Doe', email: 'jane@example.com', company: 'Acme Corp' },
@@ -22,9 +23,19 @@ const GROUP = {
 
 const SECOND_GROUP = {
   contactIds: ['ct-a', 'ct-b'],
+  reason: 'name_and_company',
   contacts: [
     { id: 'ct-a', firstName: 'Sam', lastName: 'Ng', email: 'sam@example.com', company: null },
     { id: 'ct-b', firstName: 'Sam', lastName: 'Ng', email: 'sam2@example.com', company: null },
+  ],
+};
+
+const NAME_ONLY_GROUP = {
+  contactIds: ['ct-c', 'ct-d'],
+  reason: 'name',
+  contacts: [
+    { id: 'ct-c', firstName: 'Ali', lastName: 'Rao', email: 'ali@old-employer.example', company: 'Old Co' },
+    { id: 'ct-d', firstName: 'Ali', lastName: 'Rao', email: 'ali@new-employer.example', company: 'New Co' },
   ],
 };
 
@@ -68,8 +79,30 @@ describe('DuplicatesView render (DEC-684: merge moved to its own page)', () => {
     );
 
     expect(
-      screen.getByText('Matched on the same email, or the same name at the same company.'),
+      screen.getByText(
+        'Matched on the same email, the same name at the same company, or the same name at a different company.',
+      ),
     ).toBeInTheDocument();
+  });
+
+  it('DEC-800: renders the duplicate reason as a plain-text caption on each pair', async () => {
+    mockApi({
+      'GET /api/v1/contacts/duplicates': listEnvelope([GROUP, SECOND_GROUP, NAME_ONLY_GROUP]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/contacts']}>
+        <DuplicatesView onMerged={() => {}} />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/Jane Doe/)).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('Same email')).toBeInTheDocument();
+    expect(screen.getByText('Same name and company')).toBeInTheDocument();
+    expect(screen.getByText('Same name, different company')).toBeInTheDocument();
   });
 
   it('shows the one-shot merge notice passed in via initialNotice, without re-fetching a merge dialog', async () => {

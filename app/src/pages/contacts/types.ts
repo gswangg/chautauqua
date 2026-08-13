@@ -84,8 +84,14 @@ export interface Segment {
 // contacts.ts) — {contactIds, contacts}, not {ids, contacts}. A client/server
 // drift here (w1-c P1, DEC-239) let a TypeError escape outside the merge
 // try/catch and hang the merge dialog with no visible error.
+// DEC-800: why the pair/group was surfaced -- an exact email match, a
+// same-name-same-company match (DEC-143), or a same-name-different-company
+// match (a person who changed employers).
+export type DuplicateReason = 'email' | 'name_and_company' | 'name';
+
 export interface DuplicateGroup {
   contactIds: string[];
+  reason: DuplicateReason;
   contacts: {
     id: string;
     firstName: string;

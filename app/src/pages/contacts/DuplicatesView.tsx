@@ -14,8 +14,16 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { apiList, apiPost, ApiError } from '../../lib/api';
 import { DelayedLoading } from '../../components/DelayedLoading';
-import type { DuplicateGroup } from './types';
+import type { DuplicateGroup, DuplicateReason } from './types';
 import './contacts-panels.css';
+
+// DEC-800: the reason a group was surfaced, as a plain-text caption -- never
+// a colour-only signal.
+const REASON_CAPTIONS: Record<DuplicateReason, string> = {
+  email: 'Same email',
+  name_and_company: 'Same name and company',
+  name: 'Same name, different company',
+};
 
 interface Props {
   onMerged: () => void;
@@ -94,7 +102,7 @@ export function DuplicatesView({ onMerged, initialNotice, initialDismissPairIds 
       {/* DEC-143/DEC-748: the matching rule stated plainly so a same-name,
           different-company non-match doesn't read as a bug. */}
       <p className="chq-contacts-duplicates-rule">
-        Matched on the same email, or the same name at the same company.
+        Matched on the same email, the same name at the same company, or the same name at a different company.
       </p>
       {error && <div className="chq-error">{error}</div>}
       {dismissError && <div className="chq-error">{dismissError}</div>}
@@ -113,6 +121,9 @@ export function DuplicatesView({ onMerged, initialNotice, initialDismissPairIds 
               {g.contacts
                 .map((c) => `${c.firstName} ${c.lastName} <${c.email}>${c.company ? ` — ${c.company}` : ''}`)
                 .join(' / ')}
+            </span>
+            <span className="chq-contacts-duplicate-reason chq-contacts-pipeline-caption">
+              {REASON_CAPTIONS[g.reason]}
             </span>
             <div className="chq-contacts-import-actions">
               <Link className="chq-btn chq-btn-primary" to={`/contacts/merge?ids=${g.contactIds.join(',')}`}>

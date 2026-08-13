@@ -107,11 +107,11 @@ describe("GET /api/v1/contacts/duplicates wire contract (DEC-239)", () => {
 
     const res = await app.request(new Request("http://local/api/v1/contacts/duplicates"));
     expect(res.status).toBe(200);
-    const json = (await res.json()) as { items: { contactIds: string[]; contacts: unknown[] }[] };
+    const json = (await res.json()) as { items: { contactIds: string[]; reason: string; contacts: unknown[] }[] };
 
     expect(json.items).toHaveLength(1);
     const group = json.items[0]!;
-    expect(Object.keys(group).sort()).toEqual(["contactIds", "contacts"]);
+    expect(Object.keys(group).sort()).toEqual(["contactIds", "contacts", "reason"]);
     expect(group.contactIds.sort()).toEqual(["contact-keep", "contact-merge"].sort());
     for (const c of group.contacts as Record<string, unknown>[]) {
       // DEC-734: company + title ride along so the merge page's identity

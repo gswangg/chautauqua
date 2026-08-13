@@ -6,7 +6,7 @@ import { asc, eq, inArray, sql } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { chunkIds } from "../../../lib/chunk";
-import { findDuplicateGroups, planMerge, type ContactRecord } from "../../../domain/contacts";
+import { findDuplicateGroups, planMerge, type ContactRecord, type DuplicateReason } from "../../../domain/contacts";
 import { normalizeEmail } from "../../../domain/email";
 import { serializeSocialLinks } from "../profile";
 import { ApiError } from "../../http";
@@ -66,6 +66,7 @@ async function loadDismissedPairKeys(db: Db, orgId: string): Promise<Set<string>
 
 export interface DuplicateGroup {
   contactIds: string[];
+  reason: DuplicateReason;
   contacts: {
     id: string;
     firstName: string;
@@ -131,15 +132,16 @@ export async function findDuplicateGroupsForOrg(db: Db, orgId: string): Promise<
   // 3+ contact email-bucket group has no single pair to dismiss against, so
   // it is left alone (dismissDuplicatePair/the wire contract is pairwise).
   const dismissedPairKeys = await loadDismissedPairKeys(db, orgId);
-  const groups = allGroups.filter((ids) => {
-    if (ids.length !== 2) return true;
-    const [a, b] = orderedPair(ids[0]!, ids[1]!);
+  const groups = allGroups.filter((g) => {
+    if (g.contactIds.length !== 2) return true;
+    const [a, b] = orderedPair(g.contactIds[0]!, g.contactIds[1]!);
     return !dismissedPairKeys.has(`${a},${b}`);
   });
   const byId = new Map(rows.map((r) => [r.id, r]));
-  const out = groups.map((ids) => ({
-    contactIds: ids,
-    contacts: ids.map((id) => {
+  const out = groups.map((g) => ({
+    contactIds: g.contactIds,
+    reason: g.reason,
+    contacts: g.contactIds.map((id) => {
       const r = byId.get(id);
       if (!r) throw new Error(`duplicate group referenced unknown contact ${id}`);
       return {
@@ -213,9 +215,9 @@ export async function findDuplicateCandidatesForOrg(
     ...(candidate.company ? { company: candidate.company } : {}),
   };
   const allGroups = findDuplicateGroups([...records, candidateRecord]);
-  const group = allGroups.find((ids) => ids.includes(CANDIDATE_SENTINEL_ID));
+  const group = allGroups.find((g) => g.contactIds.includes(CANDIDATE_SENTINEL_ID));
   if (!group) return [];
-  const matchedIds = group.filter((id) => id !== CANDIDATE_SENTINEL_ID);
+  const matchedIds = group.contactIds.filter((id) => id !== CANDIDATE_SENTINEL_ID);
   if (matchedIds.length === 0) return [];
 
   // DEC-770: the candidate's matched real ids necessarily also form their
