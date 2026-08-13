@@ -96,7 +96,7 @@ function appWithDb(db: AppEnv["Variables"]["db"]) {
 }
 
 describe("GET /submit/:eventSlug track fieldset (DEC-579)", () => {
-  it("renders a plural 'Tracks *' legend with a 'choose all that apply' help line, not the singular 'Track *'", async () => {
+  it("renders a plural 'Tracks' legend (DEC-951: no asterisk) with a 'choose all that apply' help line, not the singular 'Track'", async () => {
     const db = fakeDb([[EVENT_ROW], [FORM_ROW], FIELD_ROWS, TRACK_ROWS]);
     const app = appWithDb(db);
 
@@ -104,8 +104,9 @@ describe("GET /submit/:eventSlug track fieldset (DEC-579)", () => {
     expect(res.status).toBe(200);
     const body = await res.text();
 
-    expect(body).toContain("Tracks *");
-    expect(body).not.toContain(">Track *<");
+    expect(body).toContain("<legend>Tracks</legend>");
+    expect(body).not.toContain("Tracks *");
+    expect(body).not.toContain(">Track<");
     expect(body.toLowerCase()).toContain("choose all that apply");
   });
 
@@ -146,7 +147,7 @@ describe("GET /submit/:eventSlug track fieldset (DEC-579)", () => {
       expect(body).not.toMatch(selectWithTrackOption);
     }
     // Exactly one fieldset/legend pair offers tracks.
-    const legendMatches = [...body.matchAll(/<legend>Tracks \*<\/legend>/g)];
+    const legendMatches = [...body.matchAll(/<legend>Tracks<\/legend>/g)];
     expect(legendMatches.length).toBe(1);
   });
 });

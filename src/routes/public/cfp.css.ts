@@ -71,12 +71,17 @@ export const CFP_CSS = `
   .chq-cfp-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 16px; border-top: 1px solid var(--chq-rule); padding-top: 22px; }
   .chq-cfp-actions-note { font-size: 13px; color: var(--chq-muted); line-height: 1.5; }
 
-  .chq-cfp-fieldset { border: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+  /* DEC-951: a one-column list at the form's measure -- the fieldset never
+     wraps its rows into a grid, and each option row stretches to the
+     fieldset's own width (which already inherits .chq-cfp-fields'
+     760px measure) rather than sizing to its content. */
+  .chq-cfp-fieldset { border: none; margin: 0; padding: 0; max-width: 760px; display: flex; flex-direction: column; gap: 8px; }
   .chq-cfp-fieldset legend { font-size: 11px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--chq-muted); padding: 0; }
   .chq-cfp-option {
     display: flex;
     align-items: center;
     gap: 11px;
+    width: 100%;
     border: 1px solid var(--chq-border);
     border-radius: 4px;
     background: var(--chq-surface);
