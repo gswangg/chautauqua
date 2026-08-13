@@ -25,10 +25,21 @@ validation (`MAX_TEXT_LENGTH`=2000, `MAX_LONG_TEXT_LENGTH`=20000, `MAX_NAME_LENG
 `MAX_RICH_TEXT_LENGTH`=100000 in `src/forms/validate.ts`) and up to `MAX_FORM_FIELDS`=200
 fields per form (`src/server/repo/forms.ts`). Built.
 
-## J3 — Triage submissions (`/admin/submissions`, `/admin/submissions/forms`, `/admin/submissions/:id`)
+## J3 — Triage submissions (`/admin/submissions`, `/admin/submissions/forms`, `/admin/submissions/delete`, `/admin/submissions/:id`)
 
 List, filter, bulk status change, saved views. Built. List queries and bulk ops are
 capped like every other list in this app — see "Pagination and list caps" below.
+
+Session delete (DEC-886) is a guarded cascade behind a confirmation page at
+`/admin/submissions/delete` (`app/src/pages/submissions/DeleteSubmissionsPage.tsx`,
+mirroring `/admin/contacts/merge`'s "irreversible action gets a page" convention) — the
+selected ids travel in the query string. `POST /api/v1/events/:eventId/submissions/delete`
+(`src/server/repo/submission-delete.ts`) refuses any submission carrying at least one
+SUBMITTED evaluation, and refuses (never 500s) an id belonging to another event; every
+other id's submission_answer, submission_track, participant, file-request task
+assignments, files (and their R2 objects), file_comment, review_recusal, and revision
+rows are removed, then the submission row itself. `email_log` rows are historical fact
+and are never touched.
 
 ## J4 — Committee review (`/admin/review`, `/admin/review/plans/new`, `/admin/review/plans/:planId`, `/admin/review/plans/:planId/progress`, `/admin/review/plans/:planId/results`, `/admin/review/plans/:planId/submissions/:submissionId`)
 

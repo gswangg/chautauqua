@@ -62,6 +62,11 @@ export const ROUTE_MANIFEST: readonly RouteManifestEntry[] = [
   { path: "/admin/overview", role: "organizer" },
   { path: "/admin/submissions", role: "organizer" },
   { path: "/admin/submissions/forms", role: "organizer" },
+  // DEC-886: session delete is a page at its own URL (app/src/pages/
+  // submissions/DeleteSubmissionsPage.tsx) -- ids travel in the query
+  // string, not a path param, so no seed-id substitution is needed (mirrors
+  // /admin/contacts/merge above).
+  { path: "/admin/submissions/delete", role: "organizer" },
   {
     path: `/admin/submissions/${SUBMISSION_ID}`,
     role: "organizer",

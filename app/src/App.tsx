@@ -25,6 +25,8 @@ const pageLoaders = {
   settings: () => import('./pages/Settings').then((m) => ({ default: m.SettingsPage })),
   submissionDetail: () =>
     import('./pages/submissions/SubmissionDetailPage').then((m) => ({ default: m.SubmissionDetailPage })),
+  submissionsDelete: () =>
+    import('./pages/submissions/DeleteSubmissionsPage').then((m) => ({ default: m.DeleteSubmissionsPage })),
   notFound: () => import('./pages/NotFound').then((m) => ({ default: m.NotFoundPage })),
 } as const;
 
@@ -40,6 +42,7 @@ const ContactsPage = lazy(pageLoaders.contacts);
 const ContactsMergePage = lazy(pageLoaders.contactsMerge);
 const SettingsPage = lazy(pageLoaders.settings);
 const SubmissionDetailPage = lazy(pageLoaders.submissionDetail);
+const DeleteSubmissionsPage = lazy(pageLoaders.submissionsDelete);
 const NotFoundPage = lazy(pageLoaders.notFound);
 
 // DEC-369: nav badge source. Each entry that can carry an exception names
@@ -292,6 +295,11 @@ function RoutedContent() {
           <Route path="/contacts/merge" element={<ContactsMergePage />} />
           {/* DEC-033: form builder lives under Submissions (route only — no new top-nav section). */}
           <Route path="/submissions/forms" element={<FormsPage />} />
+          {/* DEC-886: session delete confirmation page (route only — no new
+              top-nav section, mirrors /submissions/forms above). React
+              Router v6 ranks this static path above the dynamic :id
+              segment below regardless of declaration order. */}
+          <Route path="/submissions/delete" element={<DeleteSubmissionsPage />} />
           {/* DEC-045: submission detail. React Router v6 ranks the static
               /submissions/forms route above this dynamic :id segment, so
               declaration order here doesn't matter, but forms stays
