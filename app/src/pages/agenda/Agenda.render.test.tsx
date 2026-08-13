@@ -118,13 +118,14 @@ describe('AgendaPage render smoke', () => {
     expect(screen.getByText('Unscheduled (1)')).toBeInTheDocument();
     expect(screen.getByText('Unplaced Talk')).toBeInTheDocument();
 
-    // Conflicted cards invert (ink/on-ink) with the caption, not a chip
-    // (DEC-367/369 redesign: no red, lateness/clash are type not colour).
+    // DEC-742: a same-room clash of exactly two sessions merges into ONE
+    // inverted card sharing a single caption, not two separately-captioned
+    // cards.
     const captions = screen.getAllByText('Two sessions in one room');
-    expect(captions.length).toBe(2);
+    expect(captions.length).toBe(1);
   });
 
-  it('renders a conflicted cell inverted to ink/on-ink with its caption', async () => {
+  it('renders a same-room two-session clash as one merged inverted card with both titles uncropped', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/agenda`]: agendaPayload(),
     });
@@ -136,12 +137,22 @@ describe('AgendaPage render smoke', () => {
 
     const cardA = document.querySelector('[data-submission-id="sub-1"]');
     const cardB = document.querySelector('[data-submission-id="sub-2"]');
-    expect(cardA).toHaveClass('chq-session-card-conflict');
-    expect(cardB).toHaveClass('chq-session-card-conflict');
+    expect(cardA).toHaveClass('chq-day-grid-clash-item');
+    expect(cardB).toHaveClass('chq-day-grid-clash-item');
     expect(cardA).toHaveAttribute('data-conflict', 'true');
 
-    expect(cardA?.querySelector('.chq-conflict-caption')?.textContent).toBe('Two sessions in one room');
-    expect(cardB?.querySelector('.chq-conflict-caption')?.textContent).toBe('Two sessions in one room');
+    // DEC-742: ONE merged card (not two), inverted to ink/on-ink, holding
+    // both sessions and a single shared caption — no red chip (DEC-367).
+    const clashCard = cardA?.closest('.chq-day-grid-clash-card');
+    expect(clashCard).not.toBeNull();
+    expect(clashCard).toBe(cardB?.closest('.chq-day-grid-clash-card'));
+    expect(clashCard?.querySelector('.chq-day-grid-clash-caption')?.textContent).toBe('Two sessions in one room');
+
+    // Both titles render in full within the merged card — not clipped by a
+    // line-clamp/overflow rule the way an ordinary short card's content can
+    // be.
+    expect(clashCard?.textContent).toContain('Overlapping Talk A');
+    expect(clashCard?.textContent).toContain('Overlapping Talk B');
   });
 
   // Regression for a live-browser finding (task-w3-e): DayGrid renders
@@ -169,8 +180,12 @@ describe('AgendaPage render smoke', () => {
     // sub-3 ("Unplaced Talk") starts in the unscheduled tray.
     expect(document.querySelector('.chq-unscheduled-tray-header')?.textContent).toBe('Unscheduled (1)');
 
-    // Drop it directly onto sub-1's already-placed card element.
-    const occupiedCard = document.querySelector('[data-submission-id="sub-1"].chq-day-grid-placed-card');
+    // Drop it directly onto sub-1's already-placed card element (DEC-742:
+    // sub-1/sub-2 overlap in the same room, so sub-1 now renders as one of
+    // the two stacked items inside a merged clash card rather than its own
+    // full .chq-day-grid-placed-card — the drop still bubbles up to the
+    // merged card's onDrop handler).
+    const occupiedCard = document.querySelector('[data-submission-id="sub-1"].chq-day-grid-clash-item');
     expect(occupiedCard).not.toBeNull();
 
     const dt = new FakeDataTransfer();
@@ -221,18 +236,27 @@ describe('AgendaPage render smoke', () => {
 
     expect(screen.getByText(/Placing S-003 — Esc to cancel/)).toBeInTheDocument();
 
+    // DEC-724: the room-less column only appears while armed here (the
+    // seeded day has no roomless placement), and its header/accessible-name
+    // copy is "No room yet", never "TBD".
+    expect(screen.getByText('No room yet')).toBeInTheDocument();
+    expect(document.body.textContent).not.toMatch(/\bTBD\b/);
+
     const placeButtons = screen.getAllByRole('button', { name: /^Place S-003 at \d{1,2}:\d{2}[ap]m in /i });
     expect(placeButtons.length).toBeGreaterThan(0);
-    // TBD column reads "in TBD" specifically.
-    expect(placeButtons.some((b) => b.getAttribute('aria-label')?.endsWith('in TBD'))).toBe(true);
+    const roomlessButton = placeButtons.find((b) => b.getAttribute('aria-label')?.endsWith('in No room yet'));
+    expect(roomlessButton).toBeDefined();
 
-    fireEvent.click(placeButtons[0]!);
+    fireEvent.click(roomlessButton!);
 
     await waitFor(() => {
       expect(document.querySelector('.chq-unscheduled-tray-header')?.textContent).toBe('Unscheduled (0)');
     });
     // Placing bar is dismissed after placement.
     expect(screen.queryByText(/Placing S-003/)).toBeNull();
+
+    // DEC-724: focus moves to the just-placed session's own cell.
+    expect(document.activeElement).toBe(document.querySelector('[data-submission-id="sub-3"]'));
   });
 
   // DEC-595: publish toast names all three counts and only mentions
@@ -414,6 +438,51 @@ describe('AgendaPage render smoke', () => {
     });
 
     expect(document.body.textContent).not.toMatch(/undefined/);
+  });
+
+  // DEC-724: the room-less column is conditional, not a permanent fixture.
+  it('hides the room-less column when nothing on the day is roomless and nothing is armed, shows it once armed', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/agenda`]: agendaPayload(),
+    });
+
+    render(<AgendaPage />);
+    await waitFor(() => {
+      expect(screen.getByText('Overlapping Talk A')).toBeInTheDocument();
+    });
+
+    // Absent: every seeded placement has a real room, nothing is armed.
+    expect(screen.queryByText('No room yet')).toBeNull();
+    expect(document.querySelectorAll('.chq-day-grid-room-header')).toHaveLength(1);
+
+    // Present once armed.
+    fireEvent.click(screen.getByRole('button', { name: 'S-003: Unplaced Talk' }));
+    expect(screen.getByText('No room yet')).toBeInTheDocument();
+    expect(document.querySelectorAll('.chq-day-grid-room-header')).toHaveLength(2);
+  });
+
+  // DEC-724: Cancel (armed cleared without a placement) moves focus to the
+  // first cell of the grid that was showing while armed, rather than
+  // dropping focus to the document body.
+  it('moves focus to the first grid cell after Cancel clears an armed session', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/agenda`]: agendaPayload(),
+    });
+
+    render(<AgendaPage />);
+    await waitFor(() => {
+      expect(screen.getByText('Overlapping Talk A')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'S-003: Unplaced Talk' }));
+    expect(screen.getByText(/Placing S-003 — Esc to cancel/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByText(/Placing S-003/)).toBeNull();
+
+    const firstCell = document.querySelector('[data-room-id="room-1"][data-start-min="540"]');
+    expect(firstCell).not.toBeNull();
+    expect(document.activeElement).toBe(firstCell);
   });
 });
 

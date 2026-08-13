@@ -140,6 +140,82 @@
   background: transparent;
 }
 
+/* DEC-742: a same-room pair of sessions that overlap in time merges into
+   ONE inverted card instead of two side-by-side lanes — no inner scroll (the
+   DEC-620 rule on .chq-day-grid-placed-card below is deliberately not
+   repeated here) so the card grows to its content and the shared
+   minmax(24px, auto) row track grows with it instead of clipping either
+   session invisible. Ink fill + caption is the only clash signal (DEC-367:
+   no red/third accent). */
+.chq-day-grid-clash-card {
+  align-self: stretch;
+  justify-self: start;
+  width: 100%;
+  background: var(--chq-ink);
+  border: 1px solid var(--chq-ink);
+  border-radius: var(--chq-r-ctl);
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--chq-on-ink);
+}
+
+.chq-day-grid-clash-item {
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--chq-on-ink-muted);
+  padding: 4px 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.chq-day-grid-clash-item:last-of-type {
+  border-bottom: none;
+}
+
+.chq-day-grid-clash-item:focus-visible {
+  outline: 2px solid var(--chq-on-ink);
+  outline-offset: -2px;
+}
+
+.chq-day-grid-clash-item-ref {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--chq-on-ink-muted);
+}
+
+.chq-day-grid-clash-item-title {
+  font-family: var(--chq-font-display);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--chq-on-ink);
+}
+
+.chq-day-grid-clash-item-speakers {
+  font-size: 11px;
+  color: var(--chq-on-ink-muted);
+}
+
+.chq-day-grid-clash-caption {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--chq-on-ink);
+  border-top: 2px solid var(--chq-on-ink);
+  padding-top: 4px;
+  align-self: flex-start;
+}
+
 .chq-day-grid-placed-card {
   align-self: stretch;
   justify-self: start;
