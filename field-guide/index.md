@@ -24,28 +24,33 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   dialog; two roots of one kind are two documents not two versions; a JOIN
   row cascades on contact delete, only a row losing a document may refuse;
   a grid class shared by two components is a CELL COUNT contract.
-- FINDINGS w32-36 (DEC-983..999; 001-999 FULL, decisions/README.md permits
-  DEC-1000+): a grep saying "no matches" is a fact about that minute, not
-  main -- re-probe (overview.ts gained its invite filter BETWEEN two greps
-  in one session). Codebase's OWN confessions ("pre-existing gap") are
-  defects with comments; a predicate applied HALF is worse than none; an
-  exclusion list's REASON can expire (page-measure NAMED_EXEMPTIONS parked
-  MergePage.tsx after its rebuild shipped in DEC-992). Mandate open lists
-  age fast (~90% stale by w34) -- MINE THE CODE, twice. A DEFERRAL IS A
-  DATED PROMISE: DEC-970 postponed CSS reverse-direction only until DEC-968
-  landed, and it landed, yet .chq-auth-hint stayed unmarked -- grep
-  decisions for "not this wave" and check if the lane landed.
-- FINDINGS w37 (no new DEC -- 001-999 ALL exist and the planner schema pins
-  DEC-\d{3}; successor rule now lands in decisions/README.md: a new ruling is
-  an `## Amendment (wave N)` section on the nearest existing DEC, the DEC-004
-  precedent -- never a new file, never an overwrite): a decision can land on
-  ONE PACKAGE and read as done. DEC-989's width system reached app/src and
-  stopped at the src/ boundary -- main.chq-pub-main clamps NOTHING, and the
-  public sessions pair the decision names by name (820+34+300) spreads to the
-  monitor. Ask of every cross-cutting decision: WHICH PACKAGE did it reach?
-  A TOKEN declared and consumed by nobody is the same lie as a rule no markup
-  uses (theme.ts held --chq-measure-table for no one). And TRUST FLOWS ONE
-  WAY: the organizer's add-participant wrote 'invited' (inactive until
-  accepted) while the SPEAKER-supplied co-presenter path wrote 'none'
-  (ACTIVE). When an untrusted path is MORE permissive than the trusted one,
-  the defect is in the WRITE -- and the invite scan on main only reads reads.
+- FINDINGS w32-37 (DEC-983..999; 001-999 FULL, no DEC-1000+; successor rule
+  is `## Amendment (wave N)` on the nearest existing DEC, decisions/README.md,
+  DEC-004 precedent -- never a new file): a grep "no matches" is a fact about
+  that minute, not main -- re-probe. Confessions in comments are defects; a
+  predicate applied HALF is worse than none; an exclusion REASON can expire
+  (check the lane landed). Mandate lists age fast -- MINE THE CODE twice. A
+  DEFERRAL IS A DATED PROMISE -- grep "not this wave", check if it landed. A
+  decision can land on ONE PACKAGE and read as done (DEC-989 stopped at src/
+  boundary) -- ask WHICH PACKAGE did it reach. A TOKEN declared and consumed
+  by nobody is the same lie as a rule no markup uses. TRUST FLOWS ONE WAY: an
+  untrusted path MORE permissive than the trusted one is a defect in the WRITE.
+- FINDINGS w38 (amendments only; the DEC-004 `## Amendment (wave N)` form): the
+  MANDATE IS EXHAUSTED. w38 re-probed ~20 more named items (public search rows,
+  per-surface published counts, headshot library, seed required-flags, .chq-file
+  inputs, participation MENU, filter-rules panel, Home landmarks, {first_name}
+  placeholder, weighted caption, CSV org->Company) -- every one already closed.
+  Worse, TWO of four external review-lens "P1"s were closed before the reviewer
+  read the tree (send_email binding -> DEC-996 Resend; login rotation -> DEC-994)
+  and a third by DEC-995. A REVIEW FINDING IS A HYPOTHESIS WITH A FILE:LINE --
+  open the line. Three defect shapes recur once you mine the code: (1) a WRITE
+  gated by a READ predicate (POST /files/:id/comments through authzFileRead; an
+  upload through a helper NAMED ...Write that only checks membership) -- name a
+  predicate after the verb it protects; (2) a RESPONSE carrying what the request
+  MINTED (compose/send returned result.rendered, live /claim/ tokens, to a client
+  that reads only sent/failed) -- a send reports counts, never bodies; (3) a rule
+  stated in a COMMENT instead of a CONSTRAINT ("no unique index on (org_id,name)
+  yet... that dedupe is separate work") -- prose plus read-then-write is not a
+  contract, and the named blocker IS the work. And a predicate with THREE readers
+  must be ONE function: DEC-318's event-range bound guards the agenda and the
+  public schedule but not loadIcsScheduleData, so .ics disagrees with both.
