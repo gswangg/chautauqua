@@ -13,7 +13,11 @@
 import type { Context } from "hono";
 import type { AppEnv } from "../../server/env";
 import { BaseStyles } from "./shell";
+import { AUTH_CSS } from "../auth.css";
 
+// DEC-945: shares the design card src/server/not-found.tsx draws (task-
+// w26-a owns that module and the AUTH_CSS numbers it references -- this
+// only references the classes, never re-declares their values).
 function PublicNotFoundShell(props: { message: string }) {
   return (
     <html lang="en">
@@ -22,19 +26,20 @@ function PublicNotFoundShell(props: { message: string }) {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>Not found</title>
         <BaseStyles />
+        <style dangerouslySetInnerHTML={{ __html: AUTH_CSS }} />
       </head>
       <body>
-        <main style="max-width:520px; margin:64px auto; padding:0 20px; display:flex; flex-direction:column; gap:14px;">
-          <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:var(--chq-muted);">
-            Not found
-          </span>
-          <h1 style="font-family:var(--chq-font-display); font-size:28px; font-weight:700; letter-spacing:-0.04em; line-height:1.06; margin:0;">
-            That page isn't here
-          </h1>
-          <p style="font-size:15px; line-height:1.65; color:var(--chq-ink-2); margin:0;">{props.message}</p>
-          <a href="/" style="font-size:14px; font-weight:700;">
-            Back to Chautauqua
-          </a>
+        <main>
+          <div class="chq-auth-card chq-auth-card-narrow">
+            <div>
+              <span class="chq-auth-label">Not found</span>
+              <h1 class="chq-auth-title">That page isn't here</h1>
+            </div>
+            <p class="chq-auth-body">{props.message}</p>
+            <div class="chq-auth-footer-links">
+              <a href="/">Back to Chautauqua &rsaquo;</a>
+            </div>
+          </div>
         </main>
       </body>
     </html>

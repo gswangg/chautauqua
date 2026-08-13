@@ -1,0 +1,39 @@
+/* DEC-945: content-hugging card for the admin SPA's catch-all, matching the
+   shared design card SSR surfaces draw (src/server/not-found.tsx,
+   src/routes/public/not-found.tsx via AUTH_CSS's chq-auth-card). These
+   numbers are the SPA's own copy -- task-w26-a owns AUTH_CSS's numbers
+   (28px title, 520/35 narrow card, 15px/1.63 body); if AUTH_CSS's values
+   drift from these, that's a diff to notice, not to silently follow. */
+
+.chq-notfound-card {
+  max-width: 520px; /* DEC-945: matches AUTH_CSS's chq-auth-card-narrow */
+  padding: 35px; /* DEC-945 */
+  border: 1px solid var(--chq-rule);
+  background: var(--chq-paper);
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.chq-notfound-title {
+  font-family: var(--chq-font-display);
+  font-size: 28px; /* DEC-945 */
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 1.06;
+  margin: 0;
+}
+
+.chq-notfound-body {
+  font-size: 15px; /* DEC-945 */
+  line-height: 1.63; /* DEC-945 */
+  color: var(--chq-ink-2);
+  margin: 0;
+}
+
+.chq-notfound-links {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
