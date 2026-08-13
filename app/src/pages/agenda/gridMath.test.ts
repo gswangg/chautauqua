@@ -55,10 +55,10 @@ describe('snapToGrid', () => {
 });
 
 describe('formatMinutes', () => {
-  it('formats morning, noon, and afternoon times', () => {
-    expect(formatMinutes(540)).toBe('9:00am');
-    expect(formatMinutes(720)).toBe('12:00pm');
-    expect(formatMinutes(0)).toBe('12:00am');
-    expect(formatMinutes(1080)).toBe('6:00pm');
+  it('formats morning, noon, and afternoon times as zero-padded 24-hour HH:MM', () => {
+    expect(formatMinutes(540)).toBe('09:00');
+    expect(formatMinutes(720)).toBe('12:00');
+    expect(formatMinutes(0)).toBe('00:00');
+    expect(formatMinutes(1080)).toBe('18:00');
   });
 });

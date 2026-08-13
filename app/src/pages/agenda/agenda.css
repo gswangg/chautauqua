@@ -143,8 +143,15 @@
   z-index: 1;
 }
 
+/* DEC-900 amendment (wave 39, LATTICE): padding/line-height are trimmed to
+   fit inside the 22px row floor below (44px per 30-minute pair) — at the
+   prior 7px/default-line-height this cell's own min-content (~28px)
+   exceeded the neighbouring blank row's 24px floor, so the two rows in
+   every labelled pair settled at different heights (24.0px / 32.6px, a
+   56.6px effective pitch, +29% grid height against the 44px frame). */
 .chq-day-grid-time-label {
-  padding: 7px 8px;
+  padding: 3px 8px;
+  line-height: 1;
   font-size: 11px;
   font-weight: 600;
   color: var(--chq-muted);
@@ -157,6 +164,19 @@
 .chq-day-grid-cell {
   border-bottom: 1px solid var(--chq-hairline);
   border-left: 1px solid var(--chq-hairline);
+}
+
+/* DEC-900 amendment (wave 39, LATTICE): every 15-minute line draws the same
+   hairline rule, but the 30-minute boundary — the bottom edge of the second
+   row in each labelled pair — draws the stronger --chq-rule tone instead,
+   one rule per boundary, so the lattice reads as 30-minute rows rather than
+   36 indistinguishable lines. Compound selectors (2 classes) so this wins
+   over .chq-day-grid-cell/-cell-btn/-cell-btn-clash regardless of where
+   those rules land in the file. */
+.chq-day-grid-cell.chq-day-grid-cell-boundary,
+.chq-day-grid-cell-btn.chq-day-grid-cell-boundary,
+.chq-day-grid-cell-btn-clash.chq-day-grid-cell-boundary {
+  border-bottom-color: var(--chq-rule);
 }
 
 /* DEC-570: while a session is armed, every cell in the grid (occupied or
@@ -346,8 +366,18 @@
      (it renders after the cell grid), but that's fragile against future
      reordering — position + z-index makes the "card sits above the grid
      lines, never cut by them" contract explicit rather than incidental. */
+  /* DEC-900 amendment (wave 39, LATTICE): raised past every armed cell-btn
+     z-index (6 at rest, 7 focus-visible) so the card's own opaque fill sits
+     ABOVE the lattice instead of under it. At z-index 2 the per-15-minute
+     cell-btn stacked over this card regardless of DOM order (a positioned
+     descendant always outranks an unpositioned one), so each row within the
+     card's own span painted its own outline ring across the card, showing
+     as three 1px lines through the title/ref/speaker text — arming the
+     grid must never restyle a card that isn't the drop target. The card
+     stays a real drop target itself (own onDragOver/onDrop/onClick above),
+     so nothing here changes what's clickable, only what paints on top. */
   position: relative;
-  z-index: 2;
+  z-index: 9;
 }
 
 .chq-day-grid-clash-item {
@@ -409,6 +439,13 @@
   align-self: stretch;
   justify-self: start;
   height: 100%;
+  /* DEC-900 amendment (wave 39, LATTICE): same fix as .chq-day-grid-clash-card
+     above — a resting card that is NOT the current armed drop target must
+     keep its own background and sit above the armed lattice's per-row
+     outline, not have three hairlines painted across its title/ref/speaker
+     by the occupied cell-btn stacked beneath it at z-index 6/7. */
+  position: relative;
+  z-index: 9;
   /* DEC-759: a short-duration card's content (title + track/speaker meta)
      can need more vertical room than its time-grid row provides — the ROW
      grows to fit it (see .chq-day-grid's `minmax(24px, auto)` row template)

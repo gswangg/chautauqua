@@ -37,13 +37,15 @@ export function gridRowEnd(endMin: number, dayStartMin: number, gridMin: number)
   return minutesToGridRow(endMin, dayStartMin, gridMin);
 }
 
-/** Formats minutes-from-midnight as 'H:MMam/pm' for row labels and card times. */
+/** Formats minutes-from-midnight as zero-padded 24-hour 'HH:MM' — the single
+ * time grammar for the admin agenda (DEC-900 amendment, wave 39): the row
+ * rail, card times, every placement aria-label and every toast all route
+ * through this one function so the surface never mixes a '1:00pm' meridiem
+ * form with a stripped, placeless '1:00'. */
 export function formatMinutes(minutes: number): string {
   const h24 = Math.floor(minutes / 60);
   const m = minutes % 60;
-  const period = h24 >= 12 ? 'pm' : 'am';
-  const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
-  return `${h12}:${String(m).padStart(2, '0')}${period}`;
+  return `${String(h24).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }
 
 // DEC-140 side-by-side lane assignment, reimplemented locally: the SPA
