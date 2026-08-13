@@ -618,6 +618,13 @@
   flex-wrap: wrap;
 }
 
+/* w40-h: names the blocker beside the disabled Preview primary instead of
+   leaving an unexplained disabled state. */
+.chq-contacts-import-blocker {
+  font-size: 13px;
+  color: var(--chq-muted);
+}
+
 .chq-contacts-import-review {
   display: flex;
   flex-direction: column;

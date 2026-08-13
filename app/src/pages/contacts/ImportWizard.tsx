@@ -195,6 +195,12 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
       <button type="button" className="chq-btn chq-btn-secondary" onClick={onClose}>
         Cancel
       </button>
+      {/* w40-h: names the blocker on the disabled primary instead of leaving
+          an unexplained disabled button -- disappears the moment the field
+          that unblocks it is filled. */}
+      {!!eventId && sessionTitle.trim() === '' && (
+        <span className="chq-contacts-import-blocker">Add a session title for this batch to preview</span>
+      )}
     </>
   );
 
@@ -256,6 +262,7 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
                 value={sessionTitle}
                 onChange={(e) => setSessionTitle(e.target.value)}
                 placeholder="e.g. Lightning talks"
+                required
               />
             </FormRow>
           )}

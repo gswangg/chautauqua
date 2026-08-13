@@ -249,4 +249,22 @@ describe('ImportWizard: DEC-810 session title required when scoped to an event',
     expect(body.eventId).toBe('ev-1');
     expect(body.sessionTitle).toBe('Lightning talks');
   });
+
+  // w40-h: the disabled Preview button previously gave no reason -- names
+  // the blocker inline, and the sentence disappears the moment the field
+  // that unblocks it is filled.
+  it('names the blocker beside the disabled Preview button, and the sentence disappears once a title is entered', async () => {
+    render(<ImportWizard onClose={() => {}} onImported={() => {}} eventId="ev-1" />);
+    fireEvent.change(screen.getByLabelText('Or paste CSV text'), { target: { value: CSV } });
+
+    const preview = await screen.findByRole('button', { name: 'Preview 2 rows' });
+    expect(preview).toBeDisabled();
+    expect(screen.getByText('Add a session title for this batch to preview')).toBeInTheDocument();
+
+    const titleInput = screen.getByLabelText('Session title for this batch');
+    fireEvent.change(titleInput, { target: { value: 'Lightning talks' } });
+
+    expect(preview).not.toBeDisabled();
+    expect(screen.queryByText('Add a session title for this batch to preview')).not.toBeInTheDocument();
+  });
 });

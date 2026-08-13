@@ -258,7 +258,7 @@ const FIELD_ALIASES: Record<StandardImportField, string[]> = {
   firstName: ['firstname', 'first', 'fname', 'givenname'],
   lastName: ['lastname', 'last', 'lname', 'surname', 'familyname'],
   email: ['email', 'emailaddress', 'e-mail', 'mail'],
-  company: ['company', 'organization', 'organisation', 'employer'],
+  company: ['company', 'organization', 'organisation', 'employer', 'org', 'orgname', 'companyname'],
   title: ['title', 'jobtitle', 'role'],
   phone: ['phone', 'phonenumber', 'telephone', 'mobile', 'cell'],
   bio: ['bio', 'biography', 'about'],
