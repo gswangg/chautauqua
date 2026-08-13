@@ -399,6 +399,7 @@ function SubmissionDetailPage(props: {
   deliverable: PortalDeliverable | null;
   deliverableVersion: number | null;
   fileRequestTask: PortalTaskAssignment | null;
+  speakerName: string;
 }) {
   const { detail, editable, deliverable, deliverableVersion, fileRequestTask } = props;
   const metaParts = [detail.ref, detail.format, detail.trackName].filter(
@@ -406,7 +407,7 @@ function SubmissionDetailPage(props: {
   );
   const placed = detail.day !== null && detail.startMin !== null;
   return (
-    <PortalLayout branding={props.branding} csrfToken={props.csrfToken}>
+    <PortalLayout branding={props.branding} csrfToken={props.csrfToken} speakerName={props.speakerName}>
       <div class="chq-portal-back-row">
         <a href="/portal/submissions" class="chq-portal-back">&larr; Back to My Submissions</a>
       </div>
@@ -457,10 +458,15 @@ function SubmissionDetailPage(props: {
 // DEC-729: /portal/submissions full-page list — the same rows the portal
 // home's "Your submissions" section renders, just not truncated by the
 // home page's other sections.
-function SubmissionsListPage(props: { branding: PortalData["branding"]; csrfToken: string; submissions: PortalSubmissionListItem[] }) {
+function SubmissionsListPage(props: {
+  branding: PortalData["branding"];
+  csrfToken: string;
+  submissions: PortalSubmissionListItem[];
+  speakerName: string;
+}) {
   const { submissions } = props;
   return (
-    <PortalLayout branding={props.branding} csrfToken={props.csrfToken}>
+    <PortalLayout branding={props.branding} csrfToken={props.csrfToken} speakerName={props.speakerName}>
       <a href="/portal" class="chq-portal-back">&larr; Your portal</a>
       <h1 class="chq-portal-hero">Your submissions</h1>
       {submissions.length === 0 ? (
@@ -516,7 +522,14 @@ portalRoutes.get("/submissions", async (c) => {
   ]);
   const { token: csrfToken, setCookieIfNew } = ensureCsrfCookie(c);
   if (setCookieIfNew) c.header("Set-Cookie", setCookieIfNew, { append: true });
-  return c.html(<SubmissionsListPage branding={data.branding} csrfToken={csrfToken} submissions={submissions} />);
+  return c.html(
+    <SubmissionsListPage
+      branding={data.branding}
+      csrfToken={csrfToken}
+      submissions={submissions}
+      speakerName={data.contactName}
+    />,
+  );
 });
 
 portalRoutes.get("/submissions/:id", async (c) => {
@@ -562,6 +575,7 @@ portalRoutes.get("/submissions/:id", async (c) => {
       deliverable={deliverable}
       deliverableVersion={deliverableVersion}
       fileRequestTask={fileRequestTask}
+      speakerName={data.contactName}
     />,
   );
 });
