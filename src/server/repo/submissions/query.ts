@@ -74,7 +74,9 @@ export function readStatusTokens(raw: string | string[] | undefined): Submission
  * (loud) rather than being dropped — the list and its export share this
  * exact reader so ?status=accepted&status=declined can never resolve to
  * different row sets between the two, and a typo can never silently widen
- * the filter to "every status". Clamp rule per DEC-480 delegated to
+ * the filter to "every status". contentStatus tokens go through
+ * readContentStatusTokens below with the same loud-on-unknown-token
+ * contract (DEC-843 amendment, w38). Clamp rule per DEC-480 delegated to
  * clampPage/clampPerPage -- no local copy.
  */
 export interface ListQueryInput {
@@ -101,6 +103,33 @@ export function readReuploadedToken(raw: string | undefined): boolean | null {
   throw new Error(`Unknown reuploaded '${token}'`);
 }
 
+/**
+ * Reads contentStatus filter tokens per the DEC-843 amendment (w38): modelled
+ * exactly on readStatusTokens above (trim, drop empties, dedupe preserving
+ * first-seen order). Any token outside CONTENT_STATUSES THROWS a plain Error
+ * naming the token — the list and its export share this reader through
+ * parseListQuery, so a typo (e.g. `?contentStatus=aproved`) can never
+ * silently widen the filter to "every content status" on either surface.
+ */
+export function readContentStatusTokens(raw: string | undefined): ContentStatus[] {
+  const tokens = (raw ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+
+  const seen = new Set<string>();
+  const result: ContentStatus[] = [];
+  for (const token of tokens) {
+    if (!(CONTENT_STATUSES as readonly string[]).includes(token)) {
+      throw new Error(`Unknown contentStatus '${token}'`);
+    }
+    if (seen.has(token)) continue;
+    seen.add(token);
+    result.push(token as ContentStatus);
+  }
+  return result;
+}
+
 export function parseListQuery(raw: ListQueryInput): ParsedListQuery {
   const page = clampPage(raw.page);
   const perPage = clampPerPage(raw.perPage);
@@ -109,10 +138,7 @@ export function parseListQuery(raw: ListQueryInput): ParsedListQuery {
 
   const status = readStatusTokens(raw.status);
 
-  const contentStatus = (raw.contentStatus ?? "")
-    .split(",")
-    .map((token) => token.trim())
-    .filter((token): token is ContentStatus => (CONTENT_STATUSES as readonly string[]).includes(token));
+  const contentStatus = readContentStatusTokens(raw.contentStatus);
 
   const trackId = raw.trackId && raw.trackId.trim().length > 0 ? raw.trackId.trim() : null;
 

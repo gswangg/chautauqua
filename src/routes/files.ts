@@ -245,15 +245,32 @@ fileApiRoutes.post("/submissions/:id/content-status", requireOrganizer, csrfJson
 // GET /api/v1/events/:eventId/files — DEC-159/344 central files library
 // -----------------------------------------------------------------------
 
-/** kind is repeatable (?kind=poster&kind=handout) or CSV (?kind=poster,handout);
- * unknown tokens are dropped silently, same tolerant parsing as `status` on
- * the submissions list (DEC-016). */
+/** kind is repeatable (?kind=poster&kind=handout) or CSV (?kind=poster,handout),
+ * deduped preserving first-seen order. Per the DEC-843 amendment (w38), an
+ * unknown token THROWS a plain Error naming the token — the same loud
+ * contract as `status` on the submissions list — rather than being dropped,
+ * so a typo can never silently widen the library to every kind. Callers wrap
+ * this in try/catch and map the Error to ApiError('invalid', ...). */
 function parseKinds(c: Context<AppEnv>): string[] {
   const raw = [...(c.req.queries("kind") ?? [])];
   const single = c.req.query("kind");
   if (single) raw.push(single);
-  const tokens = raw.flatMap((v) => v.split(","));
-  return [...new Set(tokens.map((t) => t.trim()).filter((t) => LIBRARY_KIND_TOKENS.includes(t)))];
+  const tokens = raw
+    .flatMap((v) => v.split(","))
+    .map((t) => t.trim())
+    .filter((t) => t.length > 0);
+
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const token of tokens) {
+    if (!LIBRARY_KIND_TOKENS.includes(token)) {
+      throw new Error(`Unknown kind '${token}'`);
+    }
+    if (seen.has(token)) continue;
+    seen.add(token);
+    result.push(token);
+  }
+  return result;
 }
 
 fileApiRoutes.get("/events/:eventId/files", requireOrganizer, async (c) => {
@@ -265,7 +282,13 @@ fileApiRoutes.get("/events/:eventId/files", requireOrganizer, async (c) => {
 
   const page = clampPage(c.req.query("page"));
   const perPage = clampPerPage(c.req.query("perPage"));
-  const kinds = parseKinds(c);
+  let kinds: string[];
+  try {
+    kinds = parseKinds(c);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    throw new ApiError("invalid", message);
+  }
   const qRaw = c.req.query("q");
   const q = qRaw && qRaw.trim().length > 0 ? qRaw.trim() : null;
 
