@@ -403,6 +403,19 @@ open · 08-contacts--12-add-to-the-pipeline · 09-settings--09-settings-saved-
 embeds · 10-public-and-portal--14/15 (password-CTA states); assignment tooling
 lives INSIDE the plan-editor frames; filter rules inside 08-contacts--00.
 
+## GATE-1 SBEK: 90.1% — TARGET HIT. ONE REGRESSION FLAG (SPK 75%, was 86)
+
+Evidence-driven, not functional: 8 partials/0 fails; both SPK scenarios died at
+70 turns. FIX BEFORE GATE 2: (1) **TURN-DIET the Speakers grid paths** — the #1
+eval lever, now worth a measured −11: fewer clicks to invite/task/file evidence,
+direct links, larger targets (grid cells are 27px), consider a per-speaker
+detail row the agent can read in one snapshot; (2) task-cell upload shows a
+generic "File" label — show the FILENAME (grader needed it for evidence);
+(3) DEC-880's pill-visibility fix must hold (invisible pills at gate SHA burned
+agent turns). AIA + EMB hit 100% — protect them (regression tests on facets,
+feeds, durations, placement). CNT coverage 71% / CFP 81.6% — same turn-diet
+treatment on their scenario paths.
+
 ## EVAL-COVERAGE CAPABILITY SECTION (probe-3 verified 2026-08-13)
 
 CLOSED by probe 3: click-to-place discoverability (a11y labels intact, no
