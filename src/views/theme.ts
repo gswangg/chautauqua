@@ -295,6 +295,17 @@ export const THEME_CSS = `
     color: var(--chq-ink);
     text-decoration: none;
   }
+  /* DEC-884: the customer's event name is never lowercased -- .chq-wordmark's
+     text-transform: lowercase is reserved for the literal product wordmark
+     on operator surfaces (dev mailbox, docs, tools). Same face otherwise. */
+  .chq-eventmark {
+    font-family: 'Familjen Grotesk', system-ui, sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    color: var(--chq-ink);
+    text-decoration: none;
+  }
   .chq-nav {
     display: flex;
     flex-wrap: wrap;
