@@ -716,3 +716,161 @@
   max-height: 300px;
   overflow-y: auto;
 }
+
+/* w17-b */
+/* DEC-706/DEC-709: plan editor rebuild -- breadcrumb, compact summary
+   block, form-builder criteria rows, locked-row forward move, footer
+   actions. Appended (never edits the rules above, which task-w17-a shares
+   this file with) -- later rules here intentionally win on shared class
+   names like .chq-review-criteria-locked-notice/.chq-review-add-criteria
+   whose markup this task changed. */
+
+.chq-review-breadcrumb {
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  color: var(--chq-muted);
+}
+
+.chq-review-breadcrumb a {
+  color: var(--chq-ink);
+}
+
+.chq-review-breadcrumb-current {
+  font-family: var(--chq-font-display);
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--chq-ink);
+  margin: 0;
+}
+
+/* DEC-709: the compact summary block -- Opens / Closes / Reviews per talk /
+   Scale -- replaces a stack of raw labelled inputs for these four fields. */
+.chq-review-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
+  max-width: 660px;
+}
+
+@media (max-width: 700px) {
+  .chq-review-summary-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.chq-review-scale-inputs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--chq-ink-2);
+}
+
+.chq-review-scale-inputs .chq-input {
+  width: 64px;
+  text-align: center;
+}
+
+.chq-review-field-caption {
+  font-size: 12px;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--chq-muted);
+  line-height: 1.4;
+}
+
+/* DEC-706: no bare native chrome on the date fields. */
+.chq-date-input {
+  color-scheme: light;
+}
+
+.chq-date-input::-webkit-calendar-picker-indicator {
+  opacity: 0.65;
+  cursor: pointer;
+}
+
+.chq-date-input::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
+
+/* DEC-676/DEC-709: ONE tertiary "Add criterion" link plus its segmented
+   kind picker, and the soft-cap caption beside it (always visible, not
+   just once the cap is hit). Overrides the earlier .chq-review-add-criteria
+   rule above (block layout, not a row of secondary buttons). */
+.chq-review-add-criteria {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding-top: 14px;
+}
+
+.chq-review-add-link {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--chq-ink);
+}
+
+.chq-review-add-link[aria-disabled='true'] {
+  color: var(--chq-disabled);
+  pointer-events: none;
+}
+
+/* DEC-709: the locked-round notice is now a callout naming the reason and
+   offering the forward move, not a bare one-line status paragraph.
+   Overrides the earlier .chq-review-criteria-locked-notice rule above. */
+.chq-review-criteria-locked-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  font-size: 13px;
+  color: var(--chq-ink-2);
+  background: var(--chq-surface-sunk);
+  border: 1px solid var(--chq-hairline);
+  border-radius: var(--chq-r-card, 5px);
+  padding: 14px 16px;
+  margin: 0 0 12px;
+}
+
+.chq-review-criteria-locked-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 52ch;
+}
+
+.chq-review-criteria-locked-headline {
+  font-family: var(--chq-font-display);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--chq-ink);
+  margin: 0;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.chq-review-criteria-locked-reason {
+  font-size: 13px;
+  color: var(--chq-ink-2);
+  margin: 0;
+}
+
+/* DEC-706: the editor's footer -- Save plan (primary), Delete plan
+   (tertiary) -- lives at the end of the form, never a floating band. */
+.chq-review-editor-footer {
+  display: flex;
+  gap: 9px;
+  padding-top: 6px;
+  border-top: 1px solid var(--chq-hairline);
+  margin-top: 4px;
+}

@@ -243,6 +243,49 @@ export async function countSubmittedEvaluationsForPlan(db: Db, planId: string): 
   return Number(rows[0]?.count ?? 0);
 }
 
+/** DEC-709: count of SUBMITTED evaluations for one specific round -- the
+ * gate for POST /api/v1/plans/:id/waves: a wave only opens a fresh round
+ * when the round it freezes actually froze something (a submitted score),
+ * mirroring DEC-624's submitted-only ratchet rather than DEC-123's
+ * any-evaluation-including-drafts guard. */
+export async function countSubmittedEvaluationsForRound(db: Db, planId: string, round: number): Promise<number> {
+  const rows = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(schema.evaluation)
+    .where(
+      and(
+        eq(schema.evaluation.planId, planId),
+        eq(schema.evaluation.round, round),
+        sql`${schema.evaluation.submittedAt} is not null`,
+      ),
+    );
+  return Number(rows[0]?.count ?? 0);
+}
+
+/** DEC-709: atomically opens a new wave -- rounds/currentRound both advance
+ * to the new round number and roundCriteria carries the frozen round's
+ * criteria forward as that new round's editable override, in one UPDATE
+ * (read-then-write would race a concurrent evaluation submit into the very
+ * round being frozen). */
+export async function startNewWave(
+  db: Db,
+  planId: string,
+  input: { newRound: number; roundCriteria: Record<string, EvaluationCriterionDef[]> },
+): Promise<PlanRecord> {
+  await db
+    .update(schema.evaluationPlan)
+    .set({
+      rounds: input.newRound,
+      currentRound: input.newRound,
+      roundCriteriaJson: JSON.stringify(input.roundCriteria),
+      updatedAt: new Date(),
+    })
+    .where(eq(schema.evaluationPlan.id, planId));
+  const updated = await getPlanById(db, planId);
+  if (!updated) throw new Error(`plan ${planId} not found after starting a new wave`);
+  return updated;
+}
+
 /** DEC-213: distinct rounds that have at least one recorded evaluation, for
  * the PATCH /api/v1/plans/:id per-round freeze guard -- callers resolve
  * effective criteria (before/after) for each of these rounds rather than
