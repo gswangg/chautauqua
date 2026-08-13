@@ -76,8 +76,27 @@ vi.mock("../src/server/repo/review/evaluations", async () => {
   );
   return {
     ...actual,
-    listEvaluationsForSubmission: vi.fn(async () => [namedRow, blindPlanRow]),
+    listEvaluationsForSubmission: vi.fn(async (_db: unknown, _submissionId: string, planId?: string) =>
+      planId ? [namedRow, blindPlanRow].filter((r) => r.planId === planId) : [namedRow, blindPlanRow],
+    ),
     listPlanCriteriaByIds: vi.fn(async () => PLAN_CRITERIA),
+  };
+});
+
+// DEC-763: getPlanForOrg backs the ?planId= ownership check -- plan-1
+// belongs to event-1/ORG_A (the submission's own event/org); plan-9 exists
+// but under a different event, so it must 404 rather than silently scope.
+vi.mock("../src/server/repo/review/plans", async () => {
+  const actual = await vi.importActual<typeof import("../src/server/repo/review/plans")>(
+    "../src/server/repo/review/plans",
+  );
+  return {
+    ...actual,
+    getPlanForOrg: vi.fn(async (_db: unknown, planId: string, orgId: string) => {
+      if (planId === "plan-1" && orgId === ORG_A) return { id: "plan-1", eventId: "event-1" };
+      if (planId === "plan-9" && orgId === ORG_A) return { id: "plan-9", eventId: "event-other" };
+      return null;
+    }),
   };
 });
 
@@ -173,6 +192,41 @@ describe("DEC-596/DEC-723/DEC-736: GET /api/v1/submissions/:id/evaluations", () 
     const app = await buildApp({ userId: "u1", role: "organizer", orgId: ORG_B });
     const res = await app.request(`/api/v1/submissions/${SUBMISSION_ID}/evaluations`);
     expect(res.status).toBe(403);
+  });
+
+  it("DEC-763: ?planId= scopes the disclosure -- plan B's row is absent when scoped, present unscoped", async () => {
+    // vi.clearAllMocks() (afterEach) clears call history but not a prior
+    // test's mockResolvedValue override -- reinstate the plan-scoping
+    // implementation explicitly rather than relying on the factory default.
+    vi.mocked(evaluationsRepo.listEvaluationsForSubmission).mockImplementation(
+      async (_db: unknown, _submissionId: string, planId?: string) =>
+        planId ? [namedRow, blindPlanRow].filter((r) => r.planId === planId) : [namedRow, blindPlanRow],
+    );
+    vi.mocked(evaluationsRepo.listPlanCriteriaByIds).mockResolvedValue(PLAN_CRITERIA);
+    const app = await buildApp({ userId: "u1", role: "organizer", orgId: ORG_A });
+
+    const scoped = await app.request(`/api/v1/submissions/${SUBMISSION_ID}/evaluations?planId=plan-1`);
+    expect(scoped.status).toBe(200);
+    const scopedBody = (await scoped.json()) as { items: Array<{ planId: string }> };
+    expect(scopedBody.items).toHaveLength(1);
+    expect(scopedBody.items[0]!.planId).toBe("plan-1");
+    expect(scopedBody.items.some((i) => i.planId === "plan-2")).toBe(false);
+
+    const unscoped = await app.request(`/api/v1/submissions/${SUBMISSION_ID}/evaluations`);
+    const unscopedBody = (await unscoped.json()) as { items: Array<{ planId: string }> };
+    expect(unscopedBody.items.map((i) => i.planId)).toEqual(["plan-1", "plan-2"]);
+  });
+
+  it("DEC-763: 404s when ?planId= refers to a plan outside the submission's own event", async () => {
+    const app = await buildApp({ userId: "u1", role: "organizer", orgId: ORG_A });
+    const res = await app.request(`/api/v1/submissions/${SUBMISSION_ID}/evaluations?planId=plan-9`);
+    expect(res.status).toBe(404);
+  });
+
+  it("DEC-763: 404s when ?planId= refers to a plan that doesn't exist / belongs to another org", async () => {
+    const app = await buildApp({ userId: "u1", role: "organizer", orgId: ORG_A });
+    const res = await app.request(`/api/v1/submissions/${SUBMISSION_ID}/evaluations?planId=does-not-exist`);
+    expect(res.status).toBe(404);
   });
 
   it("401s when unauthenticated", async () => {

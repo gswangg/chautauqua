@@ -91,6 +91,10 @@ export function PlanList() {
   // after a refetch keeps its selection rather than snapping back to the
   // default.
   const [selected, setSelected] = useState<string | null>(null);
+  // DEC-763: the sort ResultsTable is currently showing, mirrored here so
+  // the title row's 'Export results CSV' link honours it too -- the same
+  // sort the in-table 'Download CSV' link already carries.
+  const [resultsSort, setResultsSort] = useState<{ column: string; direction: 'asc' | 'desc' } | null>(null);
 
   useEffect(() => {
     if (!eventId) return;
@@ -176,7 +180,7 @@ export function PlanList() {
         <div className="chq-review-title-actions">
           {selectedPlan && (
             <a
-              href={buildResultsCsvHref(selectedPlan.id, selectedPlan.currentRound)}
+              href={buildResultsCsvHref(selectedPlan.id, selectedPlan.currentRound, resultsSort ?? undefined)}
               download
               className="chq-btn chq-btn-secondary"
             >
@@ -263,7 +267,7 @@ export function PlanList() {
             <div className="chq-section-head">
               <h2 className="chq-section-label">{selectedPlan.name} results · ranked</h2>
             </div>
-            <ResultsTable planId={selectedPlan.id} />
+            <ResultsTable planId={selectedPlan.id} onSortChange={setResultsSort} />
           </section>
         </>
       )}

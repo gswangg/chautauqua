@@ -10,12 +10,14 @@ import { requireOrganizer } from "../../server/middleware";
 import { ApiError } from "../../server/http";
 import { getSubmissionOwnership } from "../../server/repo/submissions";
 import { listEvaluationsForSubmission, listPlanCriteriaByIds } from "../../server/repo/review/evaluations";
+import { getPlanForOrg } from "../../server/repo/review/plans";
 import { criteriaForRound, computeWeightedScore, type EvaluationCriterionDef } from "../../domain/evaluation";
-import { DEC_596, DEC_723, DEC_736 } from "../../decisions";
+import { DEC_596, DEC_723, DEC_736, DEC_763 } from "../../decisions";
 
 void DEC_596; // organiser reads the same evaluation the reviewer wrote, across every plan
 void DEC_723; // each item carries its own round's criteria + the plan's weighted score
 void DEC_736; // reviewerName is always populated -- anonymization never hides the reviewer from the organiser
+void DEC_763; // an optional ?planId= scopes the row disclosure to the plan the caller is looking at
 
 export const reviewEvaluationsRoutes = new Hono<AppEnv>();
 
@@ -27,7 +29,13 @@ reviewEvaluationsRoutes.get("/api/v1/submissions/:id/evaluations", requireOrgani
   if (!ownership) throw new ApiError("not_found", "Submission not found");
   if (ownership.orgId !== auth.orgId) throw new ApiError("forbidden", "Submission belongs to a different org");
 
-  const rows = await listEvaluationsForSubmission(c.var.db, submissionId);
+  const planIdParam = c.req.query("planId");
+  if (planIdParam) {
+    const plan = await getPlanForOrg(c.var.db, planIdParam, auth.orgId);
+    if (!plan || plan.eventId !== ownership.eventId) throw new ApiError("not_found", "Plan not found");
+  }
+
+  const rows = await listEvaluationsForSubmission(c.var.db, submissionId, planIdParam);
 
   // DEC-723: an evaluation read carries its own round's criteria and the
   // plan's own weighted score -- never bare criterion ids. Plan lookups

@@ -194,7 +194,11 @@ export interface SubmissionEvaluationRow {
  * from the reviewer, never the reviewer's identity from the organiser.
  * Totally ordered (planName, round, submittedAt, id asc) per DEC-534/558 so
  * a LIMIT-less list still has one deterministic shape. */
-export async function listEvaluationsForSubmission(db: Db, submissionId: string): Promise<SubmissionEvaluationRow[]> {
+export async function listEvaluationsForSubmission(
+  db: Db,
+  submissionId: string,
+  planId?: string,
+): Promise<SubmissionEvaluationRow[]> {
   const rows = await db
     .select({
       planId: schema.evaluation.planId,
@@ -212,7 +216,11 @@ export async function listEvaluationsForSubmission(db: Db, submissionId: string)
     .innerJoin(schema.evaluationPlan, eq(schema.evaluation.planId, schema.evaluationPlan.id))
     .innerJoin(schema.user, eq(schema.evaluation.reviewerId, schema.user.id))
     .leftJoin(schema.contact, eq(schema.user.contactId, schema.contact.id))
-    .where(eq(schema.evaluation.submissionId, submissionId))
+    .where(
+      planId
+        ? and(eq(schema.evaluation.submissionId, submissionId), eq(schema.evaluation.planId, planId))
+        : eq(schema.evaluation.submissionId, submissionId),
+    )
     .orderBy(
       asc(schema.evaluationPlan.name),
       asc(schema.evaluation.round),
