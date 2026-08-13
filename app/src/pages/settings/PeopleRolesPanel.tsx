@@ -131,21 +131,46 @@ export function PeopleRolesPanel() {
     }
   }
 
-  const organizerCount = users.filter((u) => u.role === 'organizer').length;
-  const reviewerCount = users.filter((u) => u.role !== 'organizer').length;
+  // DEC-910: a role count counts the role -- grouped in one pass over the
+  // observed role values (never a hand-written complementary predicate, so
+  // a third role -- e.g. a speaker with a portal account -- cannot be
+  // silently absorbed into "reviewer"). There's no single exported user-role
+  // vocabulary to source order from (routeManifest.ts's role union covers
+  // route access, not the org user directory), so unknown roles fall back to
+  // an alphabetical tail after the two known roles.
+  const KNOWN_ROLE_ORDER = ['organizer', 'reviewer'] as const;
+  const ROLE_LABELS: Record<string, string> = { organizer: 'Organizers', reviewer: 'Reviewers' };
+  function roleLabel(role: string): string {
+    const known = ROLE_LABELS[role];
+    if (known) return known;
+    const capitalized = role.charAt(0).toUpperCase() + role.slice(1);
+    return capitalized.endsWith('s') ? capitalized : `${capitalized}s`;
+  }
+
+  const roleCounts = new Map<string, number>();
+  for (const u of users) {
+    roleCounts.set(u.role, (roleCounts.get(u.role) ?? 0) + 1);
+  }
+  const observedRoles = [...roleCounts.keys()];
+  // Organizers/Reviewers always render (even at 0, even mid-load, matching
+  // prior behaviour); any other observed role -- e.g. a speaker holding a
+  // portal account -- gets its own row rather than being folded in.
+  const roleOrder = [
+    ...KNOWN_ROLE_ORDER,
+    ...observedRoles.filter((r) => !(KNOWN_ROLE_ORDER as readonly string[]).includes(r)).sort(),
+  ];
 
   const rows = [
     { label: 'People', value: loading ? <DelayedLoading /> : `${total} ${total === 1 ? 'person' : 'people'}` },
-    { label: 'Organizers', value: loading ? <DelayedLoading /> : `${organizerCount}` },
-    // DEC-896: a real hint, not a decorative one -- plan_reviewer rows can
-    // scope a reviewer to specific tracks (DEC-824, src/routes/review/
-    // plans-distribute.ts), so "N reviewers" alone hides that some of them
-    // may only ever see a subset of tracks.
-    {
-      label: 'Reviewers',
-      value: loading ? <DelayedLoading /> : `${reviewerCount}`,
-      hint: 'Can be scoped to specific tracks in review assignment',
-    },
+    ...roleOrder.map((role) => ({
+      label: roleLabel(role),
+      value: loading ? <DelayedLoading /> : `${roleCounts.get(role) ?? 0}`,
+      // DEC-896: a real hint, not a decorative one -- plan_reviewer rows can
+      // scope a reviewer to specific tracks (DEC-824, src/routes/review/
+      // plans-distribute.ts), so "N reviewers" alone hides that some of them
+      // may only ever see a subset of tracks.
+      ...(role === 'reviewer' ? { hint: 'Can be scoped to specific tracks in review assignment' } : {}),
+    })),
   ];
 
   return (
