@@ -334,10 +334,23 @@ portalConfigRoutes.delete("/resources/:resourceId", csrfJson, async (c) => {
     // DEC-047: file-kind resource — cascade-delete the file row + R2 object.
     // Fail loudly (getFileForDelete throws) rather than leaving an orphan
     // file row after the resource row is already gone.
+    //
+    // DEC-713 ordering (amended wave 50): row-delete commits FIRST, then the
+    // R2 object is deleted. The two failure modes are not symmetric — a
+    // committed row pointing at missing bytes 404s forever and silently
+    // breaks the "history complete and downloadable" guarantee, while an
+    // object outliving its row is just an unreferenced blob, invisible and
+    // reclaimable. A store.delete throw after the commit is logged and
+    // swallowed: a committed delete must never be reported as a failure.
     const { r2Key } = await getFileForDelete(db, fileId);
-    const store = makeFileStore(c.env.FILES);
-    await store.delete(r2Key);
     await deleteFileRow(db, fileId);
+
+    const store = makeFileStore(c.env.FILES);
+    try {
+      await store.delete(r2Key);
+    } catch (err) {
+      console.error(`portal-config/resources delete: store.delete failed for file ${fileId} after row commit (key ${r2Key})`, err);
+    }
   }
   return c.body(null, 204);
 });

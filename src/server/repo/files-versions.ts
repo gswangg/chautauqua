@@ -710,9 +710,12 @@ export interface DeleteFileVersionInput {
  * A task_assignment row is never deleted here — completion state must
  * survive its linked file's deletion.
  *
- * Caller (the route) MUST delete the R2 object first and only call this once
- * that succeeds — this function never touches R2, so a throw here can't
- * orphan an object, only a row that still has its file. */
+ * DEC-713 ordering (amended wave 50): the caller (the route) commits THIS
+ * row-delete FIRST and only deletes the R2 object afterwards, logging and
+ * swallowing a store.delete failure rather than rethrowing it — this
+ * function never touches R2, so a throw here can't orphan an object, only
+ * leave the row (and its bytes) still present. A committed row-delete must
+ * never be reported as a failure just because the object cleanup failed. */
 export async function deleteFileVersion(db: Db, input: DeleteFileVersionInput): Promise<void> {
   const { fileId } = input;
   const rows = await db
