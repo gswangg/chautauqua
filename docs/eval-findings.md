@@ -124,6 +124,28 @@ ALL 11 SECTIONS FAIL.
 Reports: `chautauqua-research/fidelity-gate3/{01-overview,02-submissions,04-speakers,07-comms,09-settings,11-account}/report.md`
 (each covers its pair). These reports are the authority for every disposition below.
 
+## P0 · USER DECISION (2026-08-13): REVERT PROD MAIL TO CLOUDFLARE EMAIL SERVICE — DEC-996 IS SUPERSEDED
+
+DEC-996's premise is FALSIFIED BY EMPIRICAL EVIDENCE: the user RECEIVED real emails from the
+Cloudflare `send_email`/EmailBindingMailer implementation; the gate-2 prod email_log showed honest
+per-recipient results ("2 failed, 21 sent" — failures were reserved example.com recipients); the
+SES-039 confirmation dispatched. Commit 9131a53a's "unusable" verdict was static analysis (it
+pattern-matched the binding name to the Email Routing API and inferred prod couldn't send) with
+ZERO observed runtime failure. Do not re-litigate this without new RUNTIME evidence.
+
+REVERT SHAPE (mint a superseding DEC):
+- Restore `src/mail/email-binding.ts` (EmailBindingMailer) from `9131a53a^` — that version already
+  carries the DEC-923 single-writer email_log discipline. Restore its tests likewise.
+- Re-add the `"send_email": [{"name": "EMAIL"}]` block to wrangler.jsonc and the `EMAIL` binding
+  type to env.ts (structural interface, per DEC-002). Restore the Stage-2 MAIL_FROM comment.
+- `makeMailer`: dev mode → DevSinkMailer (unchanged); EMAIL binding present → EmailBindingMailer;
+  binding absent on a non-dev env → the existing UnconfiguredMailer honest-failure path (KEEP the
+  wave-43 boundary work — guarded construction at all 8 send sites, per-recipient failed rows,
+  /api/v1/mail-status — it is mailer-agnostic and correct).
+- DELETE `src/mail/resend.ts` + RESEND_API_KEY from env.ts (no dual-mailer support, no shim).
+- Reserved-domain recipients (example.com) failing at send is CORRECT honest behavior, not a bug.
+This ships with the gate-4 deploy; deploy procedure keeps the secrets/bindings parity check.
+
 ## DELTA PROBE w49 (2026-08-13, snapshot 2cfc855a) — DISPOSITIONS OVER THE GATE-3 REDS BELOW
 
 28 P1 items measured: **16 FIXED · 8 PARTIAL · 4 STILL-PRESENT · 0 BROKEN.** Verified FIXED (hands off, red-block clauses below are DEAD for these): reviewer CTA contrast (6.8:1); plan editor + /plans/new on table measure with full-bleed title row; CFP builder Track field; Columns: Format + populated column; plan status pills (open filled / opens outlined / closed bare); scorecard reconciliation line; **plan-editor unsaved-draft guard ("Leave without saving?" dialog)**; public 1180 pair layout (x130/1180, 778+300); speakers List view + 6×172px gallery grid; joined List/Grid toggle on the title row; /submit OPEN with full-bleed header, TRACK|FORMAT 2-up, audience pills, single name, real textareas; import org→Company automap + named preview blocker; compose ICS note per-recipient (single flag + honest aggregate); pill/button font Figtree everywhere; mail boundary = UnconfiguredMailer with failed log rows + guarded construction at ALL 8 send sites + /api/v1/mail-status Settings read; auth 732/820 borderless flex-start; /e/bad-slug 404 designed card at real 404.
