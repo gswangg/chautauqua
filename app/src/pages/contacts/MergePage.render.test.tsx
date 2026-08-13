@@ -17,7 +17,7 @@ const GROUP = {
   contactIds: ['ct-keep', 'ct-merge'],
   contacts: [
     { id: 'ct-keep', firstName: 'Jane', lastName: 'Doe', email: 'jane@example.com', company: 'Acme', title: 'Principal Engineer' },
-    { id: 'ct-merge', firstName: 'Jane', lastName: 'Doe', email: 'jane@example.com', company: 'Acme Corp', title: 'Developer Advocate' },
+    { id: 'ct-merge', firstName: 'Jane', lastName: 'Doe', email: 'jane.merge@example.com', company: 'Acme Corp', title: 'Developer Advocate' },
   ],
 };
 
@@ -81,9 +81,11 @@ describe('MergePage render (DEC-748: struck-empty discards, Labels row, keep-col
 
     // Column head names the kept record instead of a generic label. DEC-802:
     // the third column also now names the discarded record (also "Jane
-    // Doe" in this fixture), so scope this assertion to the head row.
+    // Doe" in this fixture). DEC-834: since the names collide, both heads
+    // carry the pick list's disambiguator (email) so they read distinctly.
     const headRow = document.querySelector('.chq-contacts-merge-compare-head') as HTMLElement;
-    expect(within(headRow).getAllByText('Jane Doe').length).toBeGreaterThan(0);
+    expect(within(headRow).getByText('Jane Doe (jane@example.com)')).toBeInTheDocument();
+    expect(within(headRow).getByText('Jane Doe (jane.merge@example.com)')).toBeInTheDocument();
 
     // A blank duplicate side still renders a row, but DEC-802: nothing was
     // actually dropped (the duplicate's side was already blank), so it
@@ -106,6 +108,43 @@ describe('MergePage render (DEC-748: struck-empty discards, Labels row, keep-col
     const labelsRow = screen.getByText('Labels').closest('.chq-contacts-merge-compare-row') as HTMLElement;
     expect(within(labelsRow).getByText('shirtSize M')).toBeInTheDocument();
     expect(screen.getByText(/Labels always combine/)).toBeInTheDocument();
+  });
+});
+
+describe('MergePage render (DEC-834: same-name pair disambiguates compare heads, notes footnote)', () => {
+  const SAME_NAME_GROUP = {
+    contactIds: ['ct-keep', 'ct-merge'],
+    contacts: [
+      { id: 'ct-keep', firstName: 'Sam', lastName: 'Ng', email: 'sam@lattice.com', company: 'Lattice' },
+      { id: 'ct-merge', firstName: 'Sam', lastName: 'Ng', email: 'sam@other.com', company: 'Other Co' },
+    ],
+  };
+
+  it('gives each column head an email disambiguator when the kept and discarded names are identical, and prints the notes-append footnote', async () => {
+    mockApi({
+      'GET /api/v1/contacts/duplicates': listEnvelope([SAME_NAME_GROUP]),
+      'GET /api/v1/contacts/merge/preview': { fields: PREVIEW_FIELDS },
+    });
+
+    renderAt('/contacts/merge?ids=ct-keep,ct-merge&keep=ct-keep');
+
+    await waitFor(() => {
+      expect(screen.getByText('Merge two records')).toBeInTheDocument();
+    });
+
+    const headRow = document.querySelector('.chq-contacts-merge-compare-head') as HTMLElement;
+    // Both heads read "Sam Ng" alone before DEC-834 -- indistinguishable at
+    // the moment of an irreversible choice. Each must now carry the pick
+    // list's own disambiguator (email) so the two heads read differently.
+    const keepHead = within(headRow).getByText('Sam Ng (sam@lattice.com)');
+    const discardHead = within(headRow).getByText('Sam Ng (sam@other.com)');
+    expect(keepHead).toBeInTheDocument();
+    expect(discardHead).toBeInTheDocument();
+    expect(keepHead.textContent).not.toEqual(discardHead.textContent);
+
+    await waitFor(() => {
+      expect(screen.getByText('Labels combine, notes are appended')).toBeInTheDocument();
+    });
   });
 });
 

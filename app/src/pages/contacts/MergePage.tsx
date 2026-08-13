@@ -118,10 +118,28 @@ export function MergePage() {
   // name, not the literal 'Discard' -- a 3+ group has no single discarded
   // record to name, so it reads 'N other records' instead.
   const discardedContacts = group?.contacts.filter((c) => c.id !== keepId) ?? [];
-  const discardHeadLabel =
-    discardedContacts.length === 1
-      ? `${discardedContacts[0]!.firstName} ${discardedContacts[0]!.lastName}`
-      : `${discardedContacts.length} other records`;
+  // DEC-834: when the keeper's and the sole discarded record's display
+  // names are identical, the two compare-table column heads are otherwise
+  // indistinguishable -- append the same disambiguator the pick list above
+  // already shows for that purpose (email, else company).
+  function disambiguator(c: { email: string; company?: string | null }) {
+    return c.email || c.company || '';
+  }
+  const soleDiscard = discardedContacts.length === 1 ? discardedContacts[0]! : null;
+  const namesCollide =
+    !!keepContact &&
+    !!soleDiscard &&
+    `${keepContact.firstName} ${keepContact.lastName}` === `${soleDiscard.firstName} ${soleDiscard.lastName}`;
+  const keepHeadLabel = keepContact
+    ? namesCollide
+      ? `${keepContact.firstName} ${keepContact.lastName} (${disambiguator(keepContact)})`
+      : `${keepContact.firstName} ${keepContact.lastName}`
+    : '';
+  const discardHeadLabel = soleDiscard
+    ? namesCollide
+      ? `${soleDiscard.firstName} ${soleDiscard.lastName} (${disambiguator(soleDiscard)})`
+      : `${soleDiscard.firstName} ${soleDiscard.lastName}`
+    : `${discardedContacts.length} other records`;
 
   // DEC-770: 'Not a duplicate' persists the dismissal (POST
   // /contacts/duplicates/dismiss) BEFORE navigating back -- a fact about
@@ -215,7 +233,7 @@ export function MergePage() {
 
           <div className="chq-contacts-merge-compare-head">
             <span>Field</span>
-            <span>{keepContact.firstName} {keepContact.lastName}</span>
+            <span>{keepHeadLabel}</span>
             <span>{discardHeadLabel}</span>
           </div>
           {previewError && <div className="chq-error">{previewError}</div>}
@@ -275,6 +293,13 @@ export function MergePage() {
           )}
           {preview && preview.some((f) => f.key.startsWith('customFields.')) && (
             <p className="chq-contacts-merge-footnote">Labels always combine — they're never chosen one over the other.</p>
+          )}
+          {/* DEC-834: the second rule that is NOT 'pick a side' -- notes are
+              appended (DEC-266/DEC-705), not chosen -- must be visible
+              beside the labels footnote before committing an irreversible
+              merge. */}
+          {preview && (
+            <p className="chq-contacts-merge-footnote">Labels combine, notes are appended</p>
           )}
 
           {impact && keepContact && (

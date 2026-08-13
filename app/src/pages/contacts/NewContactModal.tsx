@@ -174,7 +174,10 @@ export function NewContactModal({ onClose, onCreated }: Props) {
       {duplicateMatch && (
         <p className="chq-contacts-new-contact-duplicate-hint" role="status">
           Possible duplicate:{' '}
-          <Link to={`/admin/contacts?openContact=${duplicateMatch.id}`} onClick={onClose}>
+          {/* DEC-834: the router's basename is already '/admin' -- a `to`
+              starting with '/admin/contacts' resolves to '/admin/admin/contacts'
+              and 404s. */}
+          <Link to={`/contacts?openContact=${duplicateMatch.id}`} onClick={onClose}>
             {duplicateMatch.firstName} {duplicateMatch.lastName}
             {duplicateMatch.company ? `, ${duplicateMatch.company}` : ''}
           </Link>

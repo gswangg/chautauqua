@@ -44,7 +44,11 @@ describe('NewContactModal duplicate hint (DEC-788)', () => {
     await waitFor(() => {
       expect(screen.getByText(/Possible duplicate:/)).toBeInTheDocument();
     });
-    expect(screen.getByRole('link', { name: /Priya Raman, Latticework/ })).toBeInTheDocument();
+    const hintLink = screen.getByRole('link', { name: /Priya Raman, Latticework/ });
+    expect(hintLink).toBeInTheDocument();
+    // DEC-834: the router's basename is already '/admin', so `to` must not
+    // repeat it (a '/admin/contacts?...' href 404s at '/admin/admin/contacts').
+    expect(hintLink).toHaveAttribute('href', '/contacts?openContact=ct-1');
 
     const createButton = screen.getByRole('button', { name: 'Create contact' });
     expect(createButton).not.toBeDisabled();
