@@ -73,6 +73,11 @@ export const ROUTE_GROUPS: { title: string; rows: Row[] }[] = [
       { method: "POST", path: "/api/v1/submissions/:id/clone", role: "organizer" },
       { method: "POST", path: "/api/v1/events/:eventId/submissions/status", role: "organizer (bulk status change)" },
       {
+        method: "GET",
+        path: "/api/v1/events/:eventId/submissions/delete-plan",
+        role: "organizer (blast-radius preview for the delete confirmation page; DEC-921)",
+      },
+      {
         method: "POST",
         path: "/api/v1/events/:eventId/submissions/delete",
         role: "organizer (guarded cascade delete; DEC-886, refuses any id with a submitted evaluation)",
