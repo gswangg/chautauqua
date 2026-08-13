@@ -192,3 +192,20 @@ media rule). All under the additive-reflow rule.
   should see names consistently (per DEC-596's own rule).
 - Reconfirmed: pending submissions invisible speaker-side; co-presenter
   organizer-only w/ generic role label.
+
+## SPK grader additions (2026-08-13, prod — 3/3 scenarios PASS, defects below)
+
+- **P2 orphaned task**: New Task with "Assign to all accepted speakers" UNCHECKED
+  creates a permanently unassigned task with no recovery UI — either require an
+  assignee or provide an assign-later surface.
+- **P2 task assignment misses portal-linked rows**: with assign-to-all CHECKED, the
+  "Has account" roster row (Marcus) did NOT receive the new tasks while his duplicate
+  non-account row did — assignment keys on the wrong record.
+- **P2 headshot uploads invisible in Content**: portal-uploaded headshots show
+  0 total under Content files/Headshots, and the Contacts record shows the image with
+  NO filename/uploader/timestamp metadata.
+- **P2 Comms audit trail**: a fully-failed 13-recipient send left NO history entry
+  ("0 total") — failed/attempted sends must still be auditable.
+- **P3 add-to-event Title field**: the modal's Title is actually a placeholder SESSION
+  title, not job title — silently creates a spurious session. Label it for what it
+  does or drop it (ties to existing Contacts add-to-event item).
