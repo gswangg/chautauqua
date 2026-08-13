@@ -146,6 +146,9 @@ export const PUBLIC_CSS = `
   details[open] .chq-pub-desc-snippet { display: none; }
   .chq-pub-session-tags { display: flex; gap: 8px; align-items: center; }
   .chq-pub-session-tag { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--chq-muted); }
+  /* DEC-968: the sessions-list row's track/format meta line separates its two
+     clauses with a small dot, never rendered when either clause is absent. */
+  .chq-pub-session-tag-dot { width: 3px; height: 3px; border-radius: 50%; background: var(--chq-border); }
   /* DEC-430: organizer-supplied track colour is untrusted for text-on-fill contrast
      (measured 3.00-3.10:1 against --chq-on-brand) -- the chip now renders ink-on-
      surface always, and carries the track colour only as a bounded swatch dot fed
