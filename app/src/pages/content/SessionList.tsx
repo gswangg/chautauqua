@@ -151,7 +151,8 @@ export function SessionList({
                       {item.latestFile ? (
                         <>
                           <div className="chq-content-latest-file-name">
-                            {item.latestFile.filename} · v{item.latestFile.versionCount}
+                            {item.latestFile.filename}
+                            {item.latestFileVersionNo != null ? ` · v${item.latestFileVersionNo}` : ''}
                           </div>
                           <div className="chq-content-latest-file-date">
                             {formatRelativeDays(item.latestFile.uploadedAt, now)}

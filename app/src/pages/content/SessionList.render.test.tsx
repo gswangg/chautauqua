@@ -114,6 +114,34 @@ describe('SessionList: v4 mock five-column IA (DEC-692)', () => {
     expect(speakerCell).toHaveTextContent('Ada Lovelace +1');
   });
 
+  // DEC-965: the Latest file cell prints the STORED version_no
+  // (latestFileVersionNo), never versionCount -- a deleted middle version
+  // would leave a stale versionCount that no longer matches the true
+  // identity of the newest surviving row.
+  it('renders the stored latestFileVersionNo, never versionCount, in the Latest file cell', () => {
+    const { container } = render(
+      <SessionList
+        items={[{ ...baseItem, latestFile: { ...baseItem.latestFile!, versionCount: 2 }, latestFileVersionNo: 3 }]}
+        tab="all"
+        onTabChange={noop}
+        onSelect={noop}
+        loading={false}
+        loaded={true}
+        onContentStatusChange={noop}
+        total={1}
+        page={1}
+        perPage={20}
+        onPageChange={noop}
+        now={1700000200000}
+        counts={NO_COUNTS}
+      />,
+    );
+
+    const cell = container.querySelector('.chq-content-latest-file-name');
+    expect(cell).toHaveTextContent('v3');
+    expect(cell).not.toHaveTextContent('v2');
+  });
+
   it("renders 'No speakers' when the submission has none", () => {
     const { container } = render(
       <SessionList

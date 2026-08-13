@@ -34,6 +34,7 @@ const files = [
     uploadedByContactId: null,
     uploaderName: 'Speaker One',
     createdAt: 1700000200000,
+    versionNo: 2,
   },
   {
     id: 'file-slides-v1',
@@ -46,6 +47,7 @@ const files = [
     uploadedByContactId: null,
     uploaderName: 'Speaker One',
     createdAt: 1700000100000,
+    versionNo: 1,
   },
   {
     id: 'file-recording-v1',
@@ -58,6 +60,7 @@ const files = [
     uploadedByContactId: null,
     uploaderName: 'Speaker One',
     createdAt: 1700000050000,
+    versionNo: 1,
   },
 ];
 

@@ -242,6 +242,7 @@ describe("DEC-239/DEC-247: GET /api/v1/submissions/:id/files vs DeliverableFile"
               previousFileId: null,
               uploadedByContactId: "ct-1",
               createdAt: 1700000000000,
+              versionNo: 1,
             },
           ],
         })),
@@ -278,6 +279,7 @@ describe("DEC-239/DEC-247: GET /api/v1/submissions/:id/files vs DeliverableFile"
         "submissionId",
         "uploadedByContactId",
         "uploaderName",
+        "versionNo",
       ].sort(),
     );
   });

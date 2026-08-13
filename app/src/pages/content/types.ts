@@ -78,6 +78,9 @@ export interface DeliverableFile {
   uploadedByContactId: string | null;
   uploaderName: string | null;
   createdAt: number;
+  /** DEC-965: the row's own stored version_no — carried end-to-end instead
+   * of re-derived from chain position. */
+  versionNo: number;
 }
 
 // GET /api/v1/events/:eventId/files item (DEC-159/773: one row per
