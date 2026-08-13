@@ -91,7 +91,7 @@ describe('SettingsPage render smoke', () => {
     await waitFor(() => {
       expect(screen.getByText('DevCon 2026')).toBeInTheDocument();
     });
-    expect(screen.getByRole('heading', { name: 'Event settings' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Event' })).toBeInTheDocument();
     expect(screen.queryByDisplayValue('DevCon 2026')).not.toBeInTheDocument();
 
     // Tracks & rooms panel — read-only summary (DEC-747) until drilled.
@@ -111,11 +111,11 @@ describe('SettingsPage render smoke', () => {
     expect(within(cfpSection).getByText('1 — Format')).toBeInTheDocument();
     expect(within(cfpSection).queryByDisplayValue('Tell us about your talk.')).not.toBeInTheDocument();
 
-    // Public pages and embeds panel — read-only summary (DEC-815) until
+    // Public pages panel — read-only summary (DEC-815) until
     // drilled: one row per public surface, name + state pill, with the
     // paths/View links/embed controls behind the section's 'Change'.
-    const publicPagesSection = screen.getByRole('region', { name: 'Public pages and embeds' });
-    expect(within(publicPagesSection).getByRole('heading', { name: 'Public pages and embeds' })).toBeInTheDocument();
+    const publicPagesSection = screen.getByRole('region', { name: 'Public pages' });
+    expect(within(publicPagesSection).getByRole('heading', { name: 'Public pages' })).toBeInTheDocument();
     await waitFor(() => {
       expect(within(publicPagesSection).getByText('Sessions')).toBeInTheDocument();
     });
@@ -261,7 +261,7 @@ describe('SettingsPage render smoke', () => {
       'Event',
       'Call for papers',
       'Tracks and rooms',
-      'Public pages and embeds',
+      'Public pages',
       'Speaker portal',
       'People and roles',
       'Your data',
@@ -285,7 +285,7 @@ describe('SettingsPage render smoke', () => {
     });
     expect(screen.queryByDisplayValue('DevCon 2026')).not.toBeInTheDocument();
 
-    const eventSection = screen.getByRole('region', { name: 'Event settings' });
+    const eventSection = screen.getByRole('region', { name: 'Event' });
     fireEvent.click(within(eventSection).getByRole('button', { name: 'Change' }));
 
     await waitFor(() => {

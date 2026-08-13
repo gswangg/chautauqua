@@ -45,11 +45,11 @@ function todayDayLabelMs(): number {
   return Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
 }
 
-/** DEC-731: the call's LIVE state, derived from open_date/close_date via
- * the same pure formWindowState the public submit route gates on -- never
- * a separate published flag. */
-function callStateLabel(openMs: number | null, closeMs: number | null, timezone: string): string {
-  const state = formWindowState(openMs, closeMs, Date.now(), timezone);
+/** DEC-731: the call's LIVE state, rendered from a formWindowState value
+ * already read by the caller (the wave-44 amendment: the window is read
+ * once and both the printed copy and the action control derive from that
+ * one reading, never a second independent call to formWindowState). */
+function callStateLabel(state: ReturnType<typeof formWindowState>, closeMs: number | null): string {
   if (state === 'not_yet_open') return 'Not yet open';
   if (state === 'closed') return 'Closed';
   return closeMs !== null ? `Open · closes ${formatDayMonth(closeMs)}` : 'Open';
@@ -218,6 +218,14 @@ export function CallForPapersPanel() {
     }
   }, [copyResult]);
 
+  // DEC-731 (wave-44 amendment): the edit form's window state is read ONCE
+  // from the in-progress openDate/closeDate inputs and reused for both the
+  // printed status copy and the single action control it enables --
+  // never a second, independent formWindowState call per consumer.
+  const editWindowState = event
+    ? formWindowState(dateInputToMs(openDate), dateInputToMs(closeDate), Date.now(), event.timezone)
+    : null;
+
   const publicLink = event ? `${window.location.origin}/submit/${event.slug}` : '';
 
   const publicLinkValue = (
@@ -301,9 +309,9 @@ export function CallForPapersPanel() {
               />
             </label>
           </div>
-          {event ? (
+          {event && editWindowState ? (
             <p role="status" className="chq-settings-row">
-              {callStateLabel(dateInputToMs(openDate), dateInputToMs(closeDate), event.timezone)}
+              {callStateLabel(editWindowState, dateInputToMs(closeDate))}
             </p>
           ) : null}
           <div className="chq-settings-row">
@@ -340,8 +348,7 @@ export function CallForPapersPanel() {
           </div>
           {event ? (
             <div className="chq-settings-row">
-              {formWindowState(dateInputToMs(openDate), dateInputToMs(closeDate), Date.now(), event.timezone) ===
-              'open' ? (
+              {editWindowState === 'open' ? (
                 <button
                   type="button"
                   className="chq-btn chq-btn-secondary"

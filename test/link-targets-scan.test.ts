@@ -123,7 +123,7 @@ const TAB_SURFACES: TabSurface[] = [
       "Event",
       "Call for papers",
       "Tracks and rooms",
-      "Public pages and embeds",
+      "Public pages",
       "Speaker portal",
       "People and roles",
       "Your data",
