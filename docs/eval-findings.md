@@ -124,6 +124,21 @@ ALL 11 SECTIONS FAIL.
 Reports: `chautauqua-research/fidelity-gate3/{01-overview,02-submissions,04-speakers,07-comms,09-settings,11-account}/report.md`
 (each covers its pair). These reports are the authority for every disposition below.
 
+## DELTA PROBE w49 (2026-08-13, snapshot 2cfc855a) — DISPOSITIONS OVER THE GATE-3 REDS BELOW
+
+28 P1 items measured: **16 FIXED · 8 PARTIAL · 4 STILL-PRESENT · 0 BROKEN.** Verified FIXED (hands off, red-block clauses below are DEAD for these): reviewer CTA contrast (6.8:1); plan editor + /plans/new on table measure with full-bleed title row; CFP builder Track field; Columns: Format + populated column; plan status pills (open filled / opens outlined / closed bare); scorecard reconciliation line; **plan-editor unsaved-draft guard ("Leave without saving?" dialog)**; public 1180 pair layout (x130/1180, 778+300); speakers List view + 6×172px gallery grid; joined List/Grid toggle on the title row; /submit OPEN with full-bleed header, TRACK|FORMAT 2-up, audience pills, single name, real textareas; import org→Company automap + named preview blocker; compose ICS note per-recipient (single flag + honest aggregate); pill/button font Figtree everywhere; mail boundary = UnconfiguredMailer with failed log rows + guarded construction at ALL 8 send sites + /api/v1/mail-status Settings read; auth 732/820 borderless flex-start; /e/bad-slug 404 designed card at real 404.
+
+**GATE-4 BLOCKING SET (the only items holding the gate; all measured w49):**
+- **(16) Public agenda track/format chips are 622px full-width strips** — `.chq-pub-track-chip`/`.chq-pub-format-chip` display:flex inside `.chq-pub-agenda-block`; must be inline pills (correct on session detail — scope the fix). USER-PRIORITY surface.
+- **(11) Public search row: input still on its own row above THREE separate `nav.chq-pub-filter-bar` rows** (tracks/formats/rooms at y238/292/400) — frame: ONE pill row with the compact input at its head. Label/button correctly hidden now; the row collapse is what's left. USER-PRIORITY surface.
+- **(14) Public nav lacks "Gallery"** — /gallery reachable only via the Speakers toggle; frame 10--00 nav: Sessions / Speakers / Agenda / My schedule / Gallery.
+- **(7) Distribute preview STILL flat** — cap input 64px clips "No cap"; no "talks each" suffix; no "N talks · N reviews needed at N each · N reviewers" summary; flat `<li>` list not the 3-col table. (Frame 03 anatomy in the Pair-2 block below.)
+- **(17) Contact drawer headshot input STILL overflows** — `.chq-file` right edge 1477 vs 1440 viewport, drawer scrolls 38px horizontally. THE last surviving gate-2 BROKEN. `max-width:100%` on `.chq-file` + drawer overflow test.
+- **(22) Tracks-and-rooms grid still 488px** in the 820 settings column (two 227px cols).
+- **(28-admin) /admin/* 404 still inside full admin chrome at HTTP 200** — frame is chromeless; return real 404.
+
+**PARTIAL residuals (ship-with, not blocking):** (3) forms content 820 vs 756 inset; (19) template editor renders the v6 two-pane correctly at table measure — the "820 reading" clause below is MIS-SPECIFIED vs frame 07--02, drop it; (21) Settings read views: Resources + API tokens description-only, People counts-not-names, SAVED EMBEDS only in edit mode; (23) files view keeps a Worklist/Refresh band; (25) speaker-detail TASK STATUS cells still `.chq-flag` bare text (participation chip done).
+
 ## GATE-3 REDS — THE OPEN LIST (measured at gate-3; these supersede any older filing of the same finding)
 
 **Full fleet reports live at chautauqua-research/fidelity-gate3/*/report.md — they carry
