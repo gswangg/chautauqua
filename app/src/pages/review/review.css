@@ -724,6 +724,30 @@
   overflow-y: auto;
 }
 
+/* DEC-824: cap-per-reviewer input beside "Distribute evenly". */
+.chq-review-cap-input {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--chq-ink-2);
+}
+
+.chq-review-cap-input input {
+  width: 64px;
+}
+
+/* DEC-824: the shortfall this run's cap could not meet -- named, not
+   hidden, so the organiser cannot walk away believing the round is fully
+   staffed. */
+.chq-review-distribute-shortfall {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--chq-ink-2);
+}
+
 /* w17-b */
 /* DEC-706/DEC-709: plan editor rebuild -- breadcrumb, compact summary
    block, form-builder criteria rows, locked-row forward move, footer

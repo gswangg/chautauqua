@@ -602,4 +602,58 @@ describe('PlanEditor render smoke', () => {
     fireEvent.blur(titleInput);
     expect(screen.getByText('Name is required.')).toBeInTheDocument();
   });
+
+  it('DEC-824: distribute confirm dialog states the total, each reviewer\'s change, the shortfall, and lists an unchanged reviewer with its reason', async () => {
+    let distributePosted = false;
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
+      [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}/assignments/distribute/preview`]: {
+        items: [{ userId: 'u1', reviewerName: 'Ada Lovelace', submissionId: 's1', submissionRef: 'SES-001', submissionTitle: 'Talk One' }],
+        perReviewer: [
+          { userId: 'u1', name: 'Ada Lovelace', added: 2, total: 8 },
+          { userId: 'u2', name: 'Grace Hopper', added: 0, total: 3, note: 'wrong track' },
+        ],
+        total: 22,
+        shortfall: [
+          { submissionId: 's9', submissionRef: 'SES-009', submissionTitle: 'Talk Nine', trackName: 'Data', missing: 1, reason: 'cap_reached' },
+        ],
+      },
+      'GET /api/v1/users': listEnvelope([]),
+      'POST /api/v1/plans/plan-1/assignments/distribute': () => {
+        distributePosted = true;
+        return { created: 1 };
+      },
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId" element={<PlanEditor />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(screen.getByText('Who reviews what')).toBeInTheDocument());
+
+    // Zero non-GET requests before confirm (DEC-786).
+    fireEvent.click(screen.getByRole('button', { name: 'Distribute evenly' }));
+    await waitFor(() => expect(screen.getByText('This would assign 22 reviews.')).toBeInTheDocument());
+    expect(distributePosted).toBe(false);
+
+    // Each reviewer's change, unchanged reviewers listed with their reason
+    // rather than hidden.
+    expect(screen.getByText('Ada Lovelace — 6 → 8 talks')).toBeInTheDocument();
+    expect(screen.getByText('Grace Hopper — unchanged (wrong track)')).toBeInTheDocument();
+
+    // The shortfall sentence names the constraint and the track.
+    expect(screen.getByText(/SES-009 Talk Nine is short 1 review in Data because every eligible reviewer is at the cap\./)).toBeInTheDocument();
+
+    expect(screen.getByText('Nothing is saved until you confirm.')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add 22 assignments' }));
+    await waitFor(() => expect(distributePosted).toBe(true));
+  });
 });

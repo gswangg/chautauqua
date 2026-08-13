@@ -29,10 +29,11 @@ import {
 // are computed by the same pure domain functions the server uses -- no
 // re-derivation of the weight-share math client-side.
 import { criterionWeightShares, DEFAULT_PLAN_CRITERIA } from '../../../../src/domain/evaluation';
-import { DEC_745, DEC_786 } from '../../../../src/decisions';
+import { DEC_745, DEC_786, DEC_824 } from '../../../../src/decisions';
 
 void DEC_745; // v4 shell: title-row NAME/Duplicate/Save, 2x2 field grid, "Who reviews what" below
 void DEC_786; // "Distribute evenly" link below: preview-then-confirm, zero non-GET requests before confirm
+void DEC_824; // cap-per-reviewer input + shortfall/note rendering in the confirm dialog below
 
 // DEC-572: batches per-submission plan_reviewer POSTs to at most this many
 // concurrent requests per wave, mirroring the server's own bound.
@@ -360,13 +361,25 @@ export function PlanEditor() {
   const [distributeLoading, setDistributeLoading] = useState(false);
   const [distributeConfirmOpen, setDistributeConfirmOpen] = useState(false);
   const [distributing, setDistributing] = useState(false);
+  // DEC-824: the cap is a parameter of THIS RUN, not a column on the plan --
+  // held in local state and repeated byte-identically on preview and apply.
+  const [capPerReviewerInput, setCapPerReviewerInput] = useState('');
+
+  function parsedCapPerReviewer(): number | undefined {
+    const trimmed = capPerReviewerInput.trim();
+    if (trimmed === '') return undefined;
+    const n = Number(trimmed);
+    return Number.isInteger(n) && n >= 1 ? n : undefined;
+  }
 
   async function openDistributePreview() {
     if (!planId) return;
     setError(null);
     setDistributeLoading(true);
     try {
-      const res = await apiGet<DistributePreview>(`/plans/${planId}/assignments/distribute/preview`);
+      const cap = parsedCapPerReviewer();
+      const qs = cap !== undefined ? `?capPerReviewer=${cap}` : '';
+      const res = await apiGet<DistributePreview>(`/plans/${planId}/assignments/distribute/preview${qs}`);
       setDistributePreview(res);
       setDistributeConfirmOpen(true);
     } catch (err) {
@@ -386,7 +399,8 @@ export function PlanEditor() {
     setError(null);
     setDistributing(true);
     try {
-      await apiPost<{ created: number }>(`/plans/${planId}/assignments/distribute`, {});
+      const cap = parsedCapPerReviewer();
+      await apiPost<{ created: number }>(`/plans/${planId}/assignments/distribute`, cap !== undefined ? { capPerReviewer: cap } : {});
       cancelDistribute();
       const [reviewersRes] = await Promise.all([apiList<PlanReviewer>(`/plans/${planId}/reviewers`)]);
       setReviewers(reviewersRes.items);
@@ -1010,6 +1024,20 @@ export function PlanEditor() {
               >
                 {assignFormOpen ? 'Close' : 'Assign a reviewer'}
               </button>
+              {/* DEC-824: the cap is a parameter of THIS RUN -- typed here,
+                  repeated byte-identically on the preview and the apply. */}
+              <label className="chq-review-cap-input">
+                Cap per reviewer
+                <input
+                  type="number"
+                  className="chq-input"
+                  min={1}
+                  step={1}
+                  value={capPerReviewerInput}
+                  onChange={(e) => setCapPerReviewerInput(e.target.value)}
+                  placeholder="No cap"
+                />
+              </label>
               {/* DEC-786: preview-then-confirm, matching the "Assign a
                   reviewer" link pattern -- zero non-GET requests before the
                   explicit confirm below. */}
@@ -1063,32 +1091,41 @@ export function PlanEditor() {
                 the preview already ran (GET only) when the link was clicked. */}
             {distributeConfirmOpen && distributePreview && (
               <div className="chq-review-scope-confirm" role="alertdialog" aria-label="Confirm even distribution">
-                {distributePreview.items.length === 0 ? (
+                {distributePreview.total === 0 ? (
                   <p>Every submission already has enough reviewers -- nothing to distribute.</p>
                 ) : (
-                  <>
-                    <p>
-                      Add {distributePreview.items.length} reviewer assignment
-                      {distributePreview.items.length === 1 ? '' : 's'} to even out the load?
-                    </p>
-                    <ul className="chq-review-scope-preview-list">
-                      {distributePreview.perReviewer.map((pr) => (
-                        <li key={pr.userId}>
-                          {pr.name} — {pr.total} total{pr.added > 0 ? ` (+${pr.added})` : ''}
-                        </li>
-                      ))}
-                    </ul>
-                  </>
+                  <p>This would assign {distributePreview.total} review{distributePreview.total === 1 ? '' : 's'}.</p>
                 )}
+                <ul className="chq-review-scope-preview-list">
+                  {distributePreview.perReviewer.map((pr) => (
+                    <li key={pr.userId}>
+                      {pr.added > 0
+                        ? `${pr.name} — ${pr.total - pr.added} → ${pr.total} talks`
+                        : `${pr.name} — unchanged${pr.note ? ` (${pr.note})` : ' (no assignment this run)'}`}
+                    </li>
+                  ))}
+                </ul>
+                {distributePreview.shortfall.length > 0 && (
+                  <div className="chq-review-distribute-shortfall">
+                    {distributePreview.shortfall.map((s) => (
+                      <p key={s.submissionId}>
+                        {s.submissionRef} {s.submissionTitle} is short {s.missing} review{s.missing === 1 ? '' : 's'}
+                        {s.trackName ? ` in ${s.trackName}` : ''} because{' '}
+                        {s.reason === 'cap_reached' ? 'every eligible reviewer is at the cap' : 'no eligible reviewer remains'}.
+                      </p>
+                    ))}
+                  </div>
+                )}
+                <p>Nothing is saved until you confirm.</p>
                 <div className="chq-review-scope-confirm-actions">
-                  {distributePreview.items.length > 0 && (
+                  {distributePreview.total > 0 && (
                     <button
                       type="button"
                       className="chq-btn chq-btn-primary"
                       disabled={distributing}
                       onClick={confirmDistribute}
                     >
-                      {distributing ? 'Distributing…' : `Add ${distributePreview.items.length} assignment${distributePreview.items.length === 1 ? '' : 's'}`}
+                      {distributing ? 'Distributing…' : `Add ${distributePreview.total} assignment${distributePreview.total === 1 ? '' : 's'}`}
                     </button>
                   )}
                   <button type="button" className="chq-btn chq-btn-tertiary" onClick={cancelDistribute}>

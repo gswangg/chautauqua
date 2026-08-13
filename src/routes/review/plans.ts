@@ -26,7 +26,7 @@ import { clampPage, clampPerPage, listPerPage } from "../../lib/pagination";
 import * as repo from "../../server/repo/review";
 import { roundCriteriaJsonOf } from "../../server/repo/review";
 import * as eventsRepo from "../../server/repo/events";
-import { DEC_015, DEC_123, DEC_146, DEC_147, DEC_148, DEC_213, DEC_238, DEC_460, DEC_461, DEC_466, DEC_535, DEC_572, DEC_623, DEC_624, DEC_659, DEC_676, DEC_707, DEC_708, DEC_709, DEC_786 } from "../../decisions";
+import { DEC_015, DEC_123, DEC_146, DEC_147, DEC_148, DEC_213, DEC_238, DEC_460, DEC_461, DEC_466, DEC_535, DEC_572, DEC_623, DEC_624, DEC_659, DEC_676, DEC_707, DEC_708, DEC_709, DEC_786, DEC_824 } from "../../decisions";
 import { capById, MAX_REVIEWER_REMINDER_BATCH } from "../../domain/reminders";
 import {
   asRecord,
@@ -69,6 +69,7 @@ void DEC_707; // GET /plans/:id/progress + POST /plans/:id/remind: scope selecti
 void DEC_708; // GET /plans/:id/progress: item.name via batchUserDisplayNames below
 void DEC_709; // POST /plans/:id/waves: locked criteria carry forward into a new editable round below
 void DEC_786; // /plans/:id/assignments/distribute(/preview): pure round-robin below
+void DEC_824; // capPerReviewer + honest shortfall below
 
 reviewPlansRoutes.get("/api/v1/events/:eventId/plans", requireOrganizer, async (c) => {
   const auth = currentAuth(c);
@@ -393,15 +394,34 @@ reviewPlansRoutes.delete("/api/v1/plans/:id/reviewers/:reviewerId", requireOrgan
   return c.body(null, 204);
 });
 
-// DEC-786: pure round-robin distribution of the plan's own reviewer pool
-// (every distinct userId already assigned to this plan, regardless of
-// scope) across every submission the plan's filters resolve to. Shared by
-// the preview (writes NOTHING) and the apply endpoint below, so the two can
-// never disagree about which pairs would be added.
-async function computeDistribution(c: { var: { db: import("../../server/context").Db } }, plan: repo.PlanRecord) {
+/** DEC-824: `capPerReviewer` is a parameter of THIS RUN (never a column on
+ * the plan) -- accepted from the preview's query string (a string) or the
+ * apply's JSON body (a number), positive integer or absent, anything else
+ * a loud 400. */
+function parseCapPerReviewer(raw: unknown): number | null {
+  if (raw === undefined || raw === null || raw === "") return null;
+  const n = typeof raw === "string" ? Number(raw) : raw;
+  if (typeof n !== "number" || !Number.isInteger(n) || n < 1) {
+    throw new ApiError("invalid", "Invalid distribution request", { capPerReviewer: "must be a positive integer, or absent" });
+  }
+  return n;
+}
+
+// DEC-786/DEC-824: pure round-robin distribution of the plan's own reviewer
+// pool (every distinct userId already assigned to this plan, regardless of
+// scope) across every submission the plan's filters resolve to, honoring
+// this run's own `capPerReviewer`. Shared by the preview (writes NOTHING)
+// and the apply endpoint below, so the two can never disagree about which
+// pairs would be added.
+async function computeDistribution(
+  c: { var: { db: import("../../server/context").Db } },
+  plan: repo.PlanRecord,
+  capPerReviewer: number | null,
+  opts?: { withTrackIds?: boolean },
+) {
   const [reviewerRows, submissions, recusals] = await Promise.all([
     repo.listReviewerRowsForPlan(c.var.db, plan.id),
-    repo.listPlanFilteredSubmissions(c.var.db, plan, { withTrackIds: false }),
+    repo.listPlanFilteredSubmissions(c.var.db, plan, { withTrackIds: opts?.withTrackIds ?? false }),
     repo.listRecusalsForPlan(c.var.db, plan.id),
   ]);
   const reviewerUserIds = [...new Set(reviewerRows.map((r) => r.userId))].sort();
@@ -409,29 +429,42 @@ async function computeDistribution(c: { var: { db: import("../../server/context"
     .filter((r): r is typeof r & { submissionId: string } => r.submissionId !== null)
     .map((r) => ({ userId: r.userId, submissionId: r.submissionId }));
   const recused = recusals.map((r) => ({ userId: r.userId, submissionId: r.submissionId }));
-  const pairs = distributeAssignments({
+  const reviewsPerSubmission = plan.maxEvaluations ?? 1;
+  const { created, shortfall } = distributeAssignments({
     submissionIds: submissions.map((s) => s.id),
     reviewerUserIds,
-    reviewsPerSubmission: plan.maxEvaluations ?? 1,
+    reviewsPerSubmission,
     existing,
     recused,
+    capPerReviewer,
   });
-  return { pairs, submissions, reviewerUserIds };
+  return { created, shortfall, submissions, reviewerUserIds, reviewerRows, existing, reviewsPerSubmission };
 }
 
-// DEC-786: preview writes NOTHING -- the organizer sees exactly which pairs
-// would be added, and the per-reviewer load those pairs would produce,
-// before confirming the apply call below.
+// DEC-786/DEC-824: preview writes NOTHING -- the organizer sees exactly
+// which pairs would be added, the per-reviewer load those pairs would
+// produce, and the honest shortfall this run's cap could not meet, before
+// confirming the apply call below.
 reviewPlansRoutes.get("/api/v1/plans/:id/assignments/distribute/preview", requireOrganizer, async (c) => {
   const plan = await requireOwnedPlan(c, c.req.param("id"));
-  const { pairs, submissions, reviewerUserIds } = await computeDistribution(c, plan);
+  const capPerReviewer = parseCapPerReviewer(c.req.query("capPerReviewer"));
+  const { created, shortfall, submissions, reviewerUserIds, reviewerRows, existing, reviewsPerSubmission } = await computeDistribution(
+    c,
+    plan,
+    capPerReviewer,
+    { withTrackIds: true },
+  );
 
   const submissionById = new Map(submissions.map((s) => [s.id, s]));
   const nameByUserId = await repo.batchUserDisplayNames(c.var.db, reviewerUserIds);
   const users = await repo.getUsersByIds(c.var.db, reviewerUserIds);
   const emailByUserId = new Map(users.map((u) => [u.userId, u.email]));
+  const trackIdsOnShortfall = [
+    ...new Set(shortfall.map((s) => submissionById.get(s.submissionId)?.trackIds ?? []).flat()),
+  ];
+  const trackNameById = await repo.getTrackNamesByIds(c.var.db, trackIdsOnShortfall);
 
-  const items = pairs.map((p) => {
+  const items = created.map((p) => {
     const sub = submissionById.get(p.submissionId);
     return {
       userId: p.userId,
@@ -442,39 +475,87 @@ reviewPlansRoutes.get("/api/v1/plans/:id/assignments/distribute/preview", requir
     };
   });
 
+  const shortfallItems = shortfall.map((s) => {
+    const sub = submissionById.get(s.submissionId);
+    const trackNames = (sub?.trackIds ?? []).map((id) => trackNameById.get(id)).filter((n): n is string => !!n);
+    return {
+      submissionId: s.submissionId,
+      submissionRef: sub?.ref ?? "",
+      submissionTitle: sub?.title ?? "",
+      trackName: trackNames.join(", "),
+      missing: s.missing,
+      reason: s.reason,
+    };
+  });
+
   // Existing load per reviewer (before this run) plus how many this run
   // would add, so the confirm dialog shows a fair-looking before/after.
   const existingCountByUser = new Map<string, number>();
-  for (const p of await repo.listReviewerRowsForPlan(c.var.db, plan.id)) {
-    if (p.submissionId === null) continue;
+  for (const p of existing) {
     existingCountByUser.set(p.userId, (existingCountByUser.get(p.userId) ?? 0) + 1);
   }
   const addedByUser = new Map<string, number>();
-  for (const p of pairs) addedByUser.set(p.userId, (addedByUser.get(p.userId) ?? 0) + 1);
+  for (const p of created) addedByUser.set(p.userId, (addedByUser.get(p.userId) ?? 0) + 1);
+
+  // DEC-824: a reviewer's own scope -- the union of trackIds across every
+  // plan_reviewer row for that userId that scopes to a track (submissionId
+  // null, trackId set). Empty means the reviewer's scope is broad ("All
+  // submissions") and this note never applies to them.
+  const scopeTrackIdsByUser = new Map<string, Set<string>>();
+  for (const row of reviewerRows) {
+    if (row.trackId === null) continue;
+    const set = scopeTrackIdsByUser.get(row.userId) ?? new Set<string>();
+    set.add(row.trackId);
+    scopeTrackIdsByUser.set(row.userId, set);
+  }
+  // Submissions still short of `reviewsPerSubmission` reviewers BEFORE this
+  // run (existing coverage only) -- what a reviewer's scope would need to
+  // reach for "wrong track" to be false.
+  const existingCoverageBySubmission = new Map<string, number>();
+  for (const p of existing) {
+    existingCoverageBySubmission.set(p.submissionId, (existingCoverageBySubmission.get(p.submissionId) ?? 0) + 1);
+  }
+  const unassignedTrackIds = new Set<string>();
+  for (const sub of submissions) {
+    const covered = existingCoverageBySubmission.get(sub.id) ?? 0;
+    if (covered < reviewsPerSubmission) for (const t of sub.trackIds) unassignedTrackIds.add(t);
+  }
+
   const perReviewer = reviewerUserIds.map((userId) => {
     const added = addedByUser.get(userId) ?? 0;
     const before = existingCountByUser.get(userId) ?? 0;
+    const scope = scopeTrackIdsByUser.get(userId);
+    const wrongTrack = added === 0 && scope !== undefined && scope.size > 0 && ![...scope].some((t) => unassignedTrackIds.has(t));
     return {
       userId,
       name: nameByUserId.get(userId) ?? emailByUserId.get(userId) ?? userId,
       added,
       total: before + added,
+      ...(wrongTrack ? { note: "wrong track" as const } : {}),
     };
   });
 
-  return c.json({ items, perReviewer });
+  return c.json({ items, perReviewer, total: created.length, shortfall: shortfallItems });
 });
 
-// DEC-786: applies exactly the pairs the preview above computed -- no
-// re-derivation, no independent randomness or clock, so a preview the
-// organizer saw is exactly what gets written.
+// DEC-786/DEC-824: applies exactly the pairs the preview above computed
+// under the SAME cap -- no re-derivation, no independent randomness or
+// clock, so a preview the organizer saw is exactly what gets written.
 reviewPlansRoutes.post("/api/v1/plans/:id/assignments/distribute", requireOrganizer, csrfJson, async (c) => {
   const plan = await requireOwnedPlan(c, c.req.param("id"));
-  const { pairs } = await computeDistribution(c, plan);
-  for (const p of pairs) {
+  // DEC-824: capPerReviewer is optional -- an empty/absent JSON body is
+  // valid (uncapped), matching /remind's optional-body convention above.
+  let capPerReviewer: number | null = null;
+  const rawBody = await c.req.text();
+  if (rawBody.length > 0) {
+    const bodyRecord = asRecord(JSON.parse(rawBody));
+    capPerReviewer = parseCapPerReviewer(bodyRecord.capPerReviewer);
+  }
+  const { created } = await computeDistribution(c, plan, capPerReviewer);
+  for (const p of created) {
     await repo.addReviewer(c.var.db, plan.id, { userId: p.userId, submissionId: p.submissionId });
   }
-  return c.json({ created: pairs.length }, 201);
+  return c.json({ created: created.length }, 201);
 });
 
 reviewPlansRoutes.get("/api/v1/plans/:id/progress", requireOrganizer, async (c) => {

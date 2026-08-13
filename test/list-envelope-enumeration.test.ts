@@ -26,11 +26,14 @@ import { join } from "node:path";
  *         BULK_EMAIL_PREVIEW_LIMIT)` (5) before rendering, so it is bounded
  *         by that constant, not by a page/perPage query param -- a preview
  *         payload, not a list GET.
- *       - src/routes/review/plans.ts:465 (GET .../assignments/distribute/
- *         preview, DEC-786) returns { items, perReviewer }: the pure
- *         round-robin's proposed pairs plus a per-reviewer load summary,
- *         bounded by the plan's own submission x reviewer set and writing
- *         nothing -- a preview payload, not a list GET.
+ *       - src/routes/review/plans.ts:538 (GET .../assignments/distribute/
+ *         preview, DEC-786/DEC-824) returns { items, perReviewer, total,
+ *         shortfall }: the pure round-robin's proposed pairs, a
+ *         per-reviewer load summary, the run's own total, and the honest
+ *         shortfall this run's cap could not meet -- bounded by the plan's
+ *         own submission x reviewer set and writing nothing -- a preview
+ *         payload, not a list GET (its `total` is the run's own created
+ *         count, not a page/perPage-bounded list total).
  *       - src/routes/api/contacts/duplicates.ts:32 (GET
  *         /contacts/duplicates/check, DEC-788) is a bounded (cap 5),
  *         deterministically-ordered near-duplicate lookup for a
@@ -127,13 +130,16 @@ function findItemsEnvelopeSites(source: string, file: string): EnvelopeSite[] {
 const ENVELOPE_ALLOWLIST = new Set<string>([
   "src/routes/comms.ts:467",
   "src/routes/api/contacts/bulk-email.ts:215",
-  // src/routes/review/plans.ts:465 (GET .../assignments/distribute/preview,
-  // DEC-786) returns { items, perReviewer }: the pure round-robin's proposed
-  // pairs plus a per-reviewer load summary. Bounded by the plan's own
-  // submission x reviewer set (never larger than a single POST /reviewers
-  // fan-out would produce), and writes nothing -- a preview payload, not a
-  // paginated list GET, exactly like the two sites above.
-  "src/routes/review/plans.ts:465",
+  // src/routes/review/plans.ts:538 (GET .../assignments/distribute/preview,
+  // DEC-786/DEC-824) returns { items, perReviewer, total, shortfall }: the
+  // pure round-robin's proposed pairs, a per-reviewer load summary, the
+  // run's own total, and the honest shortfall this run's cap could not
+  // meet. Bounded by the plan's own submission x reviewer set (never larger
+  // than a single POST /reviewers fan-out would produce), and writes
+  // nothing -- a preview payload, not a paginated list GET, exactly like
+  // the two sites above (its `total` is the run's own created count, not a
+  // page/perPage-bounded list total).
+  "src/routes/review/plans.ts:538",
   // DEC-788: GET /contacts/duplicates/check is a bounded (cap 5),
   // deterministically-ordered lookup for a not-yet-created candidate, not a
   // paginated list -- same shape-exception class as the bulk-email preview
