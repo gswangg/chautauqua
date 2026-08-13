@@ -32,7 +32,7 @@ export function findItemsEnvelopeSites(source: string, file: string): EnvelopeSi
 // file-header comment above for why each one is exempt.
 export const ENVELOPE_ALLOWLIST = new Set<string>([
   "src/routes/comms.ts:511",
-  "src/routes/api/contacts/bulk-email.ts:194",
+  "src/routes/api/contacts/bulk-email.ts:197",
   // NOTE (DEC-840): GET .../assignments/distribute/preview used to be
   // allowlisted here (it was previously `c.json({ items, perReviewer,
   // total, shortfall })`, matching the scanner's `{ items` pattern). The
